@@ -48,3 +48,25 @@ DEBUG=1 .venv/bin/python -m pytest tests/test_platform.py tests/test_processors.
 ```
 
 The independent suite is `tests/test_adversarial.py`. All generated documents are synthetic temporary fixtures; no customer documents, production credentials or real messages were used. Final independent result: **22 passed**, with all five findings above fixed and verified. Command completed on 2026-09-22 in approximately 3.2 seconds. The backend owner separately maintains the platform baseline and combined suite results.
+
+## Expanded review · 2026-09-23
+
+New regression suites cover commerce, bot delivery, batches, studio provider boundaries, branding/revisions and staff integration configuration. Findings fixed during this implementation:
+
+- Workflow confirmation formerly trusted a client boolean. It now requires a signed, expiring owner/version/input/plan-bound token, persisted execution snapshots and recoverable child idempotency.
+- Staff demotion could leave Django's legacy superuser flag active. Role changes now clear that flag and revoke operations sessions. Staff cannot change their own privileges through this action.
+- Bot process status could mistake a different project's relative `manage.py runbot` invocation for this runner. Control now requires the held lock, recorded PID and exact absolute project command.
+- Malformed staff IDs and oversized support replies produced server errors. They now return controlled validation failures.
+- Learner PPTX output inherited private speaker notes. Learner roles now omit them; teacher answer keys remain separate and cannot receive learner share grants.
+- Output metadata omitted real form fields/page dimensions, preventing safe re-editing. Successful PDF outputs are inspected again in the bounded child and retain safe geometry/form metadata.
+- Provider redirects could forward authorization to another origin. Text, image and vision adapters use fixed API origins and reject redirects; no URL-result fetch fallback exists for generated images.
+- Provider payload and output limits now cover schema/instructions plus content, bind the selected model to the quote, validate the exact JSON shape and reject output/count/citation overruns without consuming user credits.
+- Brand logos resolve only owner-scoped, unexpired, bounded image assets. Quotes bind the logo fingerprint; rendering rechecks the actual bytes. Remote logo URLs and arbitrary paths are rejected.
+- Selected-section revisions fork an owned, version-bound source and reconstruct all unselected sections from the original snapshot. Teacher/school sources cannot be recast into a generic public revision.
+- A new outbox field exposed compatibility between old and new running workers during an additive migration. Its default is now database-level, with an old-column INSERT regression. Migration application alone is not a substitute for this check.
+
+Secrets in admin are encrypted, input-only and omitted from template contexts/audit payloads. Local encryption uses a random mode-0600 key outside Git. Production configuration must use a stable managed key and verified backup/restore. Sandbox invoices, payments, grants and periods cannot silently become production entitlements.
+
+This review used synthetic files, local transport and mocked external provider responses. It does not establish live provider quality, legal/educational correctness, production isolation or PostgreSQL load behavior. Final aggregate test totals live in `verification.md`.
+
+Final extended findings: actual input bytes are now verified with bounded regular-file reads against the immutable quote before processors or providers run; changing a valid file without updating its database row cannot silently change the task. Teacher feedback, marks suggestions, rubrics, lesson plans and syllabuses default to private teacher roles. Sharing checks also reject legacy links to previously mislabeled artifacts, and answer-key renderers preserve answers/marks in their private PDF/PPTX output. Outline responses must preserve the exact requested section identities. Corresponding regression cases passed before the combined release-candidate run.

@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "PDF Master staff API",
-    "version": "1.0.0",
-    "description": "Separate staff session and server role authorization; never distribute to the customer app."
+    "version": "1.1.0",
+    "description": "Separate staff-session realm with role authorization and CSRF protection. Read-only analytics APIs and server-rendered staff forms. Secrets are write-only except one-time TOTP enrollment. Do not distribute to the customer app."
   },
   "servers": [
     {
@@ -75,6 +75,695 @@
           }
         }
       }
+    },
+    "/staff": {
+      "servers": [
+        {
+          "url": "/ops"
+        }
+      ],
+      "get": {
+        "operationId": "getStaffAccess",
+        "summary": "List staff roles and active state",
+        "x-allowed-roles": [
+          "Administrator"
+        ],
+        "security": [
+          {
+            "staffSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Server-rendered HTML, Cache-Control: no-store."
+          },
+          "302": {
+            "description": "Staff authentication required."
+          },
+          "403": {
+            "description": "Role denied."
+          }
+        }
+      },
+      "post": {
+        "operationId": "manageStaffAccess",
+        "summary": "Create staff with encrypted TOTP and one-time enrollment, or update a different staff account. Role changes clear legacy superuser override and revoke all staff sessions. Self-changes are rejected.",
+        "x-allowed-roles": [
+          "Administrator"
+        ],
+        "security": [
+          {
+            "staffSession": [],
+            "csrfHeader": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "action": {
+                        "const": "create"
+                      },
+                      "username": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9_.@-]{3,100}$"
+                      },
+                      "password": {
+                        "type": "string",
+                        "minLength": 12,
+                        "maxLength": 256,
+                        "writeOnly": true
+                      },
+                      "role": {
+                        "type": "string",
+                        "enum": [
+                          "Administrator",
+                          "Analyst",
+                          "Content manager",
+                          "Finance",
+                          "Operations",
+                          "Support"
+                        ]
+                      },
+                      "reason": {
+                        "type": "string",
+                        "minLength": 5,
+                        "maxLength": 1000
+                      }
+                    },
+                    "required": [
+                      "action",
+                      "username",
+                      "password",
+                      "role",
+                      "reason"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "action": {
+                        "const": "update"
+                      },
+                      "user_id": {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      "role": {
+                        "type": "string",
+                        "enum": [
+                          "Administrator",
+                          "Analyst",
+                          "Content manager",
+                          "Finance",
+                          "Operations",
+                          "Support"
+                        ]
+                      },
+                      "active": {
+                        "type": "string",
+                        "enum": [
+                          "on",
+                          ""
+                        ]
+                      },
+                      "reason": {
+                        "type": "string",
+                        "minLength": 5,
+                        "maxLength": 1000
+                      }
+                    },
+                    "required": [
+                      "action",
+                      "user_id",
+                      "role",
+                      "reason"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Form rendered with outcome or redirected after recorded action."
+          },
+          "302": {
+            "description": "Successful action redirect, or staff login required."
+          },
+          "400": {
+            "description": "Invalid input or action conflict."
+          },
+          "403": {
+            "description": "Role or CSRF denied."
+          },
+          "405": {
+            "description": "Method not allowed."
+          }
+        }
+      }
+    },
+    "/users/{accountId}/grants": {
+      "servers": [
+        {
+          "url": "/ops"
+        }
+      ],
+      "post": {
+        "operationId": "grantExceptionalAllowance",
+        "summary": "Idempotent exceptional allowance. A task grant requires page units. It never changes plan features or file caps.",
+        "x-allowed-roles": [
+          "Administrator"
+        ],
+        "security": [
+          {
+            "staffSession": [],
+            "csrfHeader": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "idempotency_key": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 1000
+                  },
+                  "file_tasks": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100000
+                  },
+                  "file_page_units": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100000
+                  },
+                  "ai_credits": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100000
+                  }
+                },
+                "required": [
+                  "idempotency_key",
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "302": {
+            "description": "Successful action redirect, or staff login required."
+          },
+          "400": {
+            "description": "Invalid input or action conflict."
+          },
+          "403": {
+            "description": "Role or CSRF denied."
+          },
+          "405": {
+            "description": "Method not allowed."
+          }
+        }
+      },
+      "parameters": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    },
+    "/jobs/{jobId}/cancel": {
+      "servers": [
+        {
+          "url": "/ops"
+        }
+      ],
+      "post": {
+        "operationId": "cancelQueuedTask",
+        "summary": "Cancel an eligible queued job and append a reasoned audit record.",
+        "x-allowed-roles": [
+          "Operations",
+          "Administrator"
+        ],
+        "security": [
+          {
+            "staffSession": [],
+            "csrfHeader": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 1000
+                  }
+                },
+                "required": [
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "302": {
+            "description": "Successful action redirect, or staff login required."
+          },
+          "400": {
+            "description": "Invalid input or action conflict."
+          },
+          "403": {
+            "description": "Role or CSRF denied."
+          },
+          "405": {
+            "description": "Method not allowed."
+          }
+        }
+      },
+      "parameters": [
+        {
+          "name": "jobId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    },
+    "/integrations": {
+      "servers": [
+        {
+          "url": "/ops"
+        }
+      ],
+      "get": {
+        "operationId": "getIntegrationStatus",
+        "summary": "Show configuration status; never show stored secrets",
+        "x-allowed-roles": [
+          "Administrator"
+        ],
+        "security": [
+          {
+            "staffSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Server-rendered HTML, Cache-Control: no-store."
+          },
+          "302": {
+            "description": "Staff authentication required."
+          },
+          "403": {
+            "description": "Role denied."
+          }
+        }
+      },
+      "post": {
+        "operationId": "manageIntegrations",
+        "summary": "Save encrypted Telegram/AI credentials; blank secrets preserve stored values. Connection test and process controls apply only to Telegram. Start/stop require explicit loopback development access.",
+        "x-allowed-roles": [
+          "Administrator"
+        ],
+        "security": [
+          {
+            "staffSession": [],
+            "csrfHeader": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "integration": {
+                    "type": "string",
+                    "enum": [
+                      "telegram",
+                      "ai"
+                    ]
+                  },
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "save",
+                      "test",
+                      "start",
+                      "stop"
+                    ]
+                  },
+                  "token": {
+                    "type": "string",
+                    "writeOnly": true
+                  },
+                  "api_key": {
+                    "type": "string",
+                    "writeOnly": true
+                  },
+                  "username": {
+                    "type": "string"
+                  },
+                  "webapp_url": {
+                    "type": "string",
+                    "format": "uri"
+                  },
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "local_fixture",
+                      "openai",
+                      "disabled"
+                    ]
+                  },
+                  "model": {
+                    "type": "string",
+                    "maxLength": 100
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 1000
+                  }
+                },
+                "required": [
+                  "integration",
+                  "action",
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Form rendered with outcome or redirected after recorded action."
+          },
+          "302": {
+            "description": "Successful action redirect, or staff login required."
+          },
+          "400": {
+            "description": "Invalid input or action conflict."
+          },
+          "403": {
+            "description": "Role or CSRF denied."
+          },
+          "405": {
+            "description": "Method not allowed."
+          }
+        }
+      }
+    },
+    "/payments": {
+      "servers": [
+        {
+          "url": "/ops"
+        }
+      ],
+      "get": {
+        "operationId": "getPaymentRows",
+        "summary": "Filtered payment rows and financial aggregates; production excludes sandbox and test accounts",
+        "x-allowed-roles": [
+          "Finance",
+          "Administrator"
+        ],
+        "security": [
+          {
+            "staffSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Server-rendered HTML, Cache-Control: no-store."
+          },
+          "302": {
+            "description": "Staff authentication required."
+          },
+          "403": {
+            "description": "Role denied."
+          }
+        }
+      }
+    },
+    "/analytics/revenue": {
+      "servers": [
+        {
+          "url": "/ops"
+        }
+      ],
+      "get": {
+        "operationId": "getRevenueReport",
+        "summary": "Aggregate finance for Analyst; identifiable rows and refund links only for Finance/Administrator. Refunds use their own confirmation dates.",
+        "x-allowed-roles": [
+          "Analyst",
+          "Finance",
+          "Administrator"
+        ],
+        "security": [
+          {
+            "staffSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Server-rendered HTML, Cache-Control: no-store."
+          },
+          "302": {
+            "description": "Staff authentication required."
+          },
+          "403": {
+            "description": "Role denied."
+          }
+        }
+      }
+    },
+    "/payments/{paymentId}": {
+      "servers": [
+        {
+          "url": "/ops"
+        }
+      ],
+      "get": {
+        "operationId": "getPaymentDetails",
+        "summary": "Inspect a payment and refund state",
+        "x-allowed-roles": [
+          "Finance",
+          "Administrator"
+        ],
+        "security": [
+          {
+            "staffSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Server-rendered HTML, Cache-Control: no-store."
+          },
+          "302": {
+            "description": "Staff authentication required."
+          },
+          "403": {
+            "description": "Role denied."
+          }
+        }
+      },
+      "post": {
+        "operationId": "refundPayment",
+        "summary": "Request provider-confirmed full refund. Unknown provider outcome remains pending; no synthetic refund confirmation.",
+        "x-allowed-roles": [
+          "Finance",
+          "Administrator"
+        ],
+        "security": [
+          {
+            "staffSession": [],
+            "csrfHeader": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Form rendered with outcome or redirected after recorded action."
+          },
+          "302": {
+            "description": "Successful action redirect, or staff login required."
+          },
+          "400": {
+            "description": "Invalid input or action conflict."
+          },
+          "403": {
+            "description": "Role or CSRF denied."
+          },
+          "405": {
+            "description": "Method not allowed."
+          }
+        }
+      },
+      "parameters": [
+        {
+          "name": "paymentId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    },
+    "/support/{ticketId}": {
+      "servers": [
+        {
+          "url": "/ops"
+        }
+      ],
+      "get": {
+        "operationId": "getSupportThread",
+        "summary": "Inspect support metadata and owner-scoped conversation",
+        "x-allowed-roles": [
+          "Support",
+          "Administrator"
+        ],
+        "security": [
+          {
+            "staffSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Server-rendered HTML, Cache-Control: no-store."
+          },
+          "302": {
+            "description": "Staff authentication required."
+          },
+          "403": {
+            "description": "Role denied."
+          }
+        }
+      },
+      "post": {
+        "operationId": "updateSupportThread",
+        "summary": "Post a reply or update ticket status, with audit reason. No outbound notification is sent automatically.",
+        "x-allowed-roles": [
+          "Support",
+          "Administrator"
+        ],
+        "security": [
+          {
+            "staffSession": [],
+            "csrfHeader": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 1000
+                  },
+                  "reply": {
+                    "type": "string",
+                    "maxLength": 4000
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "open",
+                      "resolved"
+                    ]
+                  }
+                },
+                "required": [
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Form rendered with outcome or redirected after recorded action."
+          },
+          "302": {
+            "description": "Successful action redirect, or staff login required."
+          },
+          "400": {
+            "description": "Invalid input or action conflict."
+          },
+          "403": {
+            "description": "Role or CSRF denied."
+          },
+          "405": {
+            "description": "Method not allowed."
+          }
+        }
+      },
+      "parameters": [
+        {
+          "name": "ticketId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
     }
   },
   "components": {
@@ -83,6 +772,12 @@
         "type": "apiKey",
         "in": "cookie",
         "name": "ops_session"
+      },
+      "csrfHeader": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-CSRFToken",
+        "description": "Django CSRF token, obtained from the staff form csrfmiddlewaretoken or CSRF cookie. Native browser forms may send the hidden csrfmiddlewaretoken form field instead."
       }
     }
   }

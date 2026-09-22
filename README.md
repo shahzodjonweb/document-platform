@@ -1,12 +1,14 @@
 # PDF Master · document-platform
 
-Django API, Telegram adapter, private document processing and staff operations. The separate customer application is in the sibling `document-web` repository. This repository owns all authorization, usage policy, API contracts and staff assets.
+Django API, Telegram bot, private document processing and staff operations. The sibling `document-web` repository contains the Nuxt customer website, web application and Telegram Mini App. This repository owns authorization, prices and usage policy, all processing, public contracts and the separate staff application.
 
-**Current state: working local beta, with production release gates still closed.** The complete 128-feature specification is preserved in [docs/product](docs/product). [Progress](docs/progress.md), [feature coverage](docs/feature-coverage.md) and the [security review](docs/security-review.md) distinguish verified local functionality from unimplemented or unqualified releases. This is not the full AI/education/content-editor roadmap release.
+Private GitHub repositories: [document-platform](https://github.com/shahzodjonweb/document-platform) and [document-web](https://github.com/shahzodjonweb/document-web).
 
-## Start locally
+The applications run locally with persistent data, actual document outputs and an explicitly labeled payment sandbox. The original 128-feature/48-ticket specification is preserved unchanged in [docs/product](docs/product). [Feature coverage](docs/feature-coverage.md) distinguishes artifact-tested functionality, provider-dependent implementation and remaining qualification; a menu entry alone is not acceptance evidence.
 
-Requirements: Python 3.12 or 3.13, Node 22+, and Chrome for the optional browser tests. PostgreSQL and Docker are not needed for the default local workflow.
+## Run locally
+
+Use Python 3.12/3.13 and Node 22. Optional OCR requires Tesseract; optional Office conversion requires LibreOffice. SQLite is the default development database.
 
 ```sh
 cd document-platform
@@ -15,7 +17,7 @@ python3 -m venv .venv
 ./scripts/dev-api.sh
 ```
 
-In a second terminal:
+In another terminal:
 
 ```sh
 cd document-web
@@ -23,66 +25,63 @@ npm ci
 npm run dev
 ```
 
-- Customer application: http://127.0.0.1:3000/en/app
-- Customer website: http://127.0.0.1:3000/en
-- Staff application: http://127.0.0.1:8000/ops/login
-- Public API: http://127.0.0.1:8000/api/v1/auth/session
+- Customer web application: http://127.0.0.1:3000/en/app
+- Local bot conversation: http://127.0.0.1:3000/en/app/bot
+- Staff sign-in: http://127.0.0.1:8000/ops/login
+- Bot and AI configuration: http://127.0.0.1:8000/ops/integrations
+- API health: http://127.0.0.1:8000/api/v1/health
 
-Use **Use local development account** in the customer app. This creates a real isolated test account with normal limits, files and history; it does not claim Telegram verification. Use **Open local staff workspace** for the separate staff session. The latter is allowed only from loopback with explicit development flags. Production reports exclude test accounts; choose *Development / test* to see local activity.
+Choose **Use local development account** in the customer app and **Open local staff workspace** for the separate staff session. These loopback-only fixtures require explicit development flags. Development accounts have real limits and persisted history. Choose *Development / test* in staff reports to see them; production reports exclude sandbox financial facts and test accounts.
 
-SQLite is persisted in `db.sqlite3`; private files are in `.private/`. Both are ignored by Git. Development limits are the real draft limits: Free includes 3 tasks daily, 90 tasks per 30-day cycle and 500 processed pages. Neither restarting the app nor changing language resets a grant. A no-op compression is uncharged. API processing errors release reservations.
+The [local demonstration guide](docs/local-demo.md) gives complete walkthroughs. No public deployment or Git push is needed.
 
-## What is implemented
+## Telegram credentials are managed in admin
 
-- Thirteen locally qualified document operations: merge, split, extract, delete, reorder, rotate, compress, images to PDF, PDF to images, password protection, known-password unlocking, Word to PDF and PowerPoint to PDF. The Office tools appear only when a qualified local engine is available; the bundled alpha runtime is development-only.
-- Private MIME-inspected, owner-scoped uploads; short-lived encrypted password handles; quoted task/page charges; transactional reservations, idempotent submission and settlement; downloadable artifacts and history.
-- Django sessions with CSRF, validated Telegram Mini App identity, browser-bound one-use Telegram login challenges, localized errors and preferences.
-- Telegram polling/webhook transport, owner-bound action callbacks and shared domain workflows. Bot credentials and live-device verification remain external gates.
-- Separate staff authentication with production TOTP, explicit roles, acquisition/task/feature analytics, safe CSV exports, support case handling and append-only audit events. Financial reports say unavailable while payment integration is gated; no invented revenue/KPIs.
-- Uzbek Latin, English and Russian customer, bot and staff catalogs. Local font assets include their license files.
+Open **Integrations → Telegram bot**, enter the bot token and username, add a change reason, then save. Use **Test connection** to verify Telegram `getMe`, and **Start local bot** to run the polling process. The runner uses a process lock and prevents duplicate polling. Stop it on the same page. Supply an HTTPS web application URL when testing a Mini App on a real Telegram device; localhost is only reachable on this computer.
 
-[Backend API notes](docs/backend-api.md) document exact request/response shapes and current transport limitations. [Processor capabilities](docs/processor-capabilities.md) record engines and actual artifact evidence. Further features stay in the original backlog with explicit release dependencies.
+Tokens are encrypted in the database and are never returned to a form, API response or audit entry. Local encryption uses the random `.private/integration.key` file with owner-only permissions. **Back up the database and encryption key together.** For a deployment, configure `INTEGRATION_ENCRYPTION_KEY` through the secret manager. Environment variables remain optional fallbacks, not the required setup interface.
 
-## Configure Telegram and staff
+The local bot page runs the actual aiogram handlers and shared account/job services with a local transport. It supports commands, inline actions, uploads and real artifact delivery without sending anything to Telegram. This verifies handler behavior; live Telegram connectivity requires your credentials.
 
-Copy `.env.example` to `.env` for Compose. The direct development script does not automatically source `.env`; export only the variables needed in your shell. Never commit real bot tokens, database URLs, file encryption keys or staff passwords.
+## Application functionality
 
-For polling, set `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`, and an HTTPS `TELEGRAM_WEBAPP_URL` when testing the actual Mini App. Leave `TELEGRAM_WEBHOOK_SECRET` unset for polling, then run:
+- PDF merging, splitting, selected pages, ordering, rotation, compression, images/PDF conversion, password protection and known-password unlock; Office-to-PDF when an engine is available.
+- Printed English, Uzbek and Russian OCR, searchable PDFs, editable Word text extraction and native PDF-table-to-Excel conversion.
+- A page-based PDF editor with positioned text, highlights, notes/drawings, Unicode form filling, images/signatures, actual supported text/image replacement, and permanent raster redaction. Exact format limitations appear in [processor-capabilities.md](docs/processor-capabilities.md).
+- Batch processing with per-child outcomes and exact-once settlement; saved multistep workflows with signed quote confirmation and recovery leases; reusable templates.
+- Document and education authoring with editable outlines, PDF/native editable PPTX exports, explicit source citations, optional structured AI generation, saved consent-based projects and practice results. Teacher answer keys use separate artifacts; share links allow learner artifacts only and support expiry/revocation.
+- Shared balance/quotes, task and AI packs, Stars invoice/subscription/refund adapters, sandbox checkout, referral qualification and optional sponsor controls. Production offers remain disabled until deployment configuration explicitly enables reviewed prices.
+- Separate staff sessions, password/TOTP enrollment, role management, account/job views, usage grants, support threads and priority queues, audited actions, revenue/retention/activity reports and safe filtered CSV exports. Analyst reports omit payer identifiers.
+- English, Uzbek Latin and Russian interfaces, mobile layouts, light/dark themes and local licensed fonts.
+
+**AI setup:** Integrations also contains the provider mode, text/image models and encrypted API key. Local authoring creates real documents from the content you supply and charges zero AI credits; it never pretends to generate AI content. Provider mode performs bounded structured requests only after a confirmed quote. Live provider quality and pricing cannot be qualified without configuration and review. Advanced feature-specific acceptance status is in [feature-status.json](docs/feature-status.json).
+
+## Data, workers and operations
+
+`db.sqlite3` and `.private/` are ignored by Git. Normal binaries expire after 24 hours; saved education content requires consent and expires after 90 days. Changing locale or restarting does not replenish usage. Failed jobs release their reservations, and ineffective compression is uncharged. Password handles expire after ten minutes and are deleted after their task finishes.
+
+For asynchronous development, set `LOCAL_SYNC_JOBS=0` for the API and run:
 
 ```sh
-DEBUG=1 ENABLE_BETA_TOOLS=1 .venv/bin/python manage.py runbot
+DEBUG=1 ENABLE_BETA_TOOLS=1 .venv/bin/python manage.py runworker
 ```
 
-For staff credentials, use `DEBUG=1 .venv/bin/python manage.py setup_staff your-name --role Administrator`. Run management commands with the same `SECRET_KEY` environment as the API so encrypted MFA enrollment remains readable. It prompts for a password and produces a one-time authenticator enrollment URI. Store it securely. Password+TOTP login is separate from customer sign-in; built-in Django sessions do not confer operations access.
+`runworker` drains ordinary durable jobs. Run `manage.py runbatches` as a separate process for asynchronous batch work so long batches cannot block all ordinary tasks. Polling includes durable result delivery; webhook deployments run `dispatchtelegram` and `deliverbot`. See [commerce operations](apps/commerce/README.md) for financial reconciliation and sandbox isolation. Run `cleanupfiles` regularly to expire files, secrets, drafts, saved projects and revoked shares.
 
-For asynchronous local jobs, set `LOCAL_SYNC_JOBS=0` in the API process and run `DEBUG=1 ENABLE_BETA_TOOLS=1 .venv/bin/python manage.py runworker` in another terminal. Its durable outbox is retried without repeating settlement. The optional Celery publisher is `manage.py dispatchoutbox`; do not start multiple queue modes unintentionally.
+Staff can be enrolled through **Staff access**, or using `DEBUG=1 .venv/bin/python manage.py setup_staff your-name --role Administrator`. Production staff login requires password and TOTP. Run management commands with the same secret configuration as the API. Django's built-in session does not grant operations access.
 
-Run `DEBUG=1 .venv/bin/python manage.py cleanupfiles` regularly. The cleanup command revokes expired files, removes binaries, expires secrets and handles crash-orphaned outputs. Runtime access checks reject expired assets before the physical cleanup runs. Metadata history remains.
-
-## Verification
+## Verify
 
 ```sh
 DEBUG=1 .venv/bin/python manage.py check
 DEBUG=1 .venv/bin/python manage.py makemigrations --check --dry-run
-DEBUG=1 .venv/bin/python -m pytest tests -q
+DEBUG=1 .venv/bin/python -m pytest tests apps/commerce/tests -q
 DEBUG=1 .venv/bin/python scripts/verify_contract.py
 python3 scripts/coverage_report.py --check
 npm ci
 npm run test:browser
 ```
 
-Browser tests use installed Chrome and the running local API. Set `PLAYWRIGHT_CHANNEL=chromium` after installing the Playwright Chromium binary if preferred. The staff suite checks login, three-language layouts, mobile overflow, and automated WCAG 2 A/AA issues. Automated checks are not a complete accessibility certification.
+Browser checks need the running API and installed Chrome. Regenerate the public schema using `manage.py export_contract`, then update the customer copy, checksum and generated types together. The staff schema stays separate. [Verification](docs/verification.md) records current results and evidence.
 
-Regenerate the public contract with `DEBUG=1 .venv/bin/python manage.py export_contract`. Its checksum is pinned in the customer repo; update its copy and generated types together. Staff contract lives separately in `contracts/admin.openapi.json` and is never included in the customer build.
-
-## Deployment
-
-[Operations runbook](docs/runbooks/operations.md) covers retention, failure recovery, staff enrollment, migration order and the production checklist. [infra/compose.yaml](infra/compose.yaml) describes a pinned local PostgreSQL/Redis/API/worker/web stack:
-
-```sh
-cp .env.example .env
-# Edit local configuration, then:
-docker compose --env-file .env -f infra/compose.yaml up --build
-```
-
-Docker is unavailable on the implementation machine, so Compose deployment has not been executed here. It is explicitly a development stack. Live checkout is disabled; Stars prices are unset. Real Telegram transport, production parser/network containment, PostgreSQL concurrency/restore tests, approved providers/licenses, reviewed legal copy and multilingual release signoff remain production gates. No code or configuration in this repository authorizes payment activation or external publishing.
+[Compose](infra/compose.yaml) and the [operations runbook](docs/runbooks/operations.md) describe deployment. Docker is unavailable on the implementation host, so Compose/PostgreSQL load and restore checks remain unexecuted. Production containment, stable Office runtime qualification, live Telegram/payment/AI verification, educational/language review and operational signoff remain release gates. The local demonstration is not a production release approval.

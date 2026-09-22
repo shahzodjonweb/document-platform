@@ -14,6 +14,133 @@ def obj(properties,required=()): return {'type':'object','properties':properties
 def arr(items): return {'type':'array','items':items}
 def ref(name): return {'$ref':f'#/components/schemas/{name}'}
 
+def extend_schema(models, endpoint, paths):
+    """Public studio and commerce schemas; staff configuration stays excluded."""
+    O={'type':'object'}
+    nullable_string={'type':['string','null']}
+    version=obj({'version':I},['version'])
+    deleted=obj({'deleted':B},['deleted'])
+    models.update({
+        'GenerationSection':obj({'id':S,'heading':S,'body':S,'notes':S},['id','heading','body']),
+        'GenerationQuestion':obj({'id':S,'stem':S,'options':arr(S),'answer':S,'explanation':S,'topic':S,'marks':I},['id','stem','answer','marks']),
+        'GenerationContent':obj({'title':S,'sections':arr(ref('GenerationSection')),'questions':arr(ref('GenerationQuestion')),'citations':arr(obj({'asset_id':UUID,'page':I}))},['title','sections','questions']),
+        'GenerationDraft':obj({'id':UUID,'feature_id':S,'version':I,'provider_mode':S,'expires_at':DT,'title':S,'prompt':S,'source_text':S,'source_ids':arr(UUID),'excerpts':arr(obj({'asset_id':UUID,'page':I,'text':S})),'output_locale':{'enum':['en','uz','ru']},'output_format':{'enum':['pdf','pptx','png']},'options':O,'content':ref('GenerationContent'),'outline':arr(obj({'id':S,'title':S,'body':S}))},['id','feature_id','version','provider_mode','expires_at','title','output_locale','output_format','content']),
+        'SavedDefinition':obj({'id':UUID,'name':S,'kind':{'enum':['workflow','template','form']},'version':I,'content':O,'output_locale':S,'steps':arr(ref('WorkflowStep'))},['id','name','kind','version']),
+        'WorkflowStep':obj({'feature_id':S,'parameters':O,'meters':O},['feature_id']),
+        'WorkflowQuote':obj({'workflow_id':UUID,'version':I,'input_ids':arr(UUID),'steps':arr(ref('WorkflowStep')),'meters':arr(obj({'meter':S,'amount':I},['meter','amount'])),'confirmation_required':B,'confirmation_token':S,'expires_at':DT,'limitations':arr(S)},['workflow_id','version','input_ids','steps','meters','confirmation_required','confirmation_token','expires_at','limitations']),
+        'WorkflowRun':obj({'id':UUID,'status':S,'jobs':arr(ref('Job'))},['id','status','jobs']),
+        'PracticeResult':obj({'score':I,'max_score':I,'questions':arr(obj({'question_id':S,'correct':B,'expected_answer':S,'explanation':S,'marks':I})),'weak_topics':arr(S),'grading':S},['score','max_score','questions','weak_topics','grading']),
+        'EducationProject':obj({'id':UUID,'title':S,'version':I,'expires_at':DT,'created_at':DT,'attempts':arr(ref('PracticeResult')),'content':ref('GenerationContent')},['id','title','version','expires_at','attempts']),
+        'ShareGrant':obj({'id':UUID,'artifact_id':UUID,'url':S,'expires_at':DT,'revoked':B},['id','expires_at']),
+        'EditorDocument':obj({'id':UUID,'version':I,'file':ref('Asset'),'pages':arr(obj({'width':{'type':'number'},'height':{'type':'number'}},['width','height'])),'form_fields':arr(obj({'name':S,'type':S},['name','type'])),'image_counts':arr(I),'commands':arr(ref('EditorCommand')),'input_ids':arr(UUID)},['id','version','file','pages','commands','input_ids']),
+        'BillingOffer':obj({'id':S,'version':S,'kind':S,'plan':nullable_string,'name':S,'price_xtr':I,'currency':S,'period_seconds':{'type':['integer','null']},'quantities':{'type':'object','additionalProperties':I},'sandbox':B,'checkout_enabled':B},['id','version','kind','name','price_xtr','currency','quantities','sandbox','checkout_enabled']),
+        'Invoice':obj({'id':UUID,'offer_id':S,'kind':S,'plan':nullable_string,'status':S,'amount_xtr':I,'currency':S,'sandbox':B,'invoice_url':nullable_string,'created_at':DT,'expires_at':DT,'paid_at':{'type':['string','null'],'format':'date-time'}},['id','offer_id','kind','status','amount_xtr','currency','sandbox','expires_at']),
+        'Payment':obj({'id':UUID,'invoice_id':UUID,'kind':S,'plan':nullable_string,'amount_xtr':I,'currency':S,'sandbox':B,'occurred_at':DT,'is_renewal':B,'refunded_xtr':I,'status':S,'refund_status':nullable_string},['id','invoice_id','kind','amount_xtr','currency','sandbox','occurred_at','is_renewal','refunded_xtr','status']),
+        'Subscription':obj({'id':UUID,'plan':S,'status':S,'renewal_enabled':B,'current_period_end':DT,'active_until':{'type':['string','null'],'format':'date-time'},'scheduled_plan':nullable_string,'scheduled_at':{'type':['string','null'],'format':'date-time'},'requires_new_checkout':B,'sandbox':B},['id','plan','status','renewal_enabled','current_period_end','sandbox']),
+        'SubscriptionState':obj({'plan':S,'subscription':{'anyOf':[ref('Subscription'),{'type':'null'}]},'sandbox':B,'checkout_enabled':B},['plan','subscription','sandbox','checkout_enabled']),
+        'Refund':obj({'id':UUID,'payment_id':UUID,'status':S,'amount_xtr':I,'confirmed_at':{'type':['string','null'],'format':'date-time'},'error_code':nullable_string},['id','payment_id','status','amount_xtr']),
+        'SupportMessage':obj({'id':UUID,'message':S,'sender':{'enum':['customer','staff']},'created_at':DT},['id','message','sender','created_at']),
+        'BotDelivery':obj({'id':UUID,'status':S,'attempts':I},['id','status','attempts']),
+    })
+    models['GenerationMaterial']=obj({'key':S,'title':S,'sections':arr(ref('GenerationSection')),'questions':arr(ref('GenerationQuestion')),'citations':arr(obj({'asset_id':UUID,'page':I,'quote':S}))},['key','title','sections','questions'])
+    models['GenerationContent']['properties']['materials']=arr(ref('GenerationMaterial'))
+    models['GenerationContent']['properties']['citations']['items']['properties']['quote']=S
+    for field in ('transcription_ready','transcription_reviewed'):models['GenerationDraft']['properties'][field]={'type':'boolean','readOnly':True}
+    models['GenerationDraft']['properties']['revision']=obj({'source_draft_id':UUID,'source_version':I,'selected_section_ids':arr(S),'base_content':ref('GenerationContent')})
+    # Typed command alternatives exactly match the processor's strict allowlist.
+    from processors.editor import FIELDS
+    commands=[]
+    for kind,fields in FIELDS.items():
+        fieldspec={name:S for name in fields}
+        fieldspec['type']={'const':kind}
+        for name in ('page','input_index','image_index'):
+            if name in fields:fieldspec[name]={'type':'integer','minimum':0 if name=='image_index' else 1}
+        for name in ('x','y','width','height','font_size','stroke_width'):
+            if name in fields:fieldspec[name]={'type':'number','minimum':0}
+        if 'points' in fields:fieldspec['points']={'type':'array','minItems':2,'maxItems':200,'items':{'type':'array','minItems':2,'maxItems':2,'items':{'type':'number','minimum':0}}}
+        command=obj(fieldspec,sorted(fields-{'font_size','color','stroke_width'}));command['additionalProperties']=False;commands.append(command)
+    models['EditorCommand']={'oneOf':commands,'description':'PDF points from displayed top-left, pages start at 1, image indices start at 0. Image input indices reference extra uploaded assets. Redaction requires explicit rasterization acknowledgement and a separate export.'}
+    studio_feature=obj({'id':S,'name':S,'surface':S,'eligible':B,'requires_provider':B,'parameter_schema':O,'locales':arr(S)},['id','name','eligible'])
+    template=obj({'id':S,'name':S,'locales':arr(S),'kind':S,'style':O,'eligible':B},['id','name'])
+    models['BatchQuote']=obj({'id':UUID,'quote_id':UUID,'feature_id':S,'groups':arr(obj({'index':I,'feature_id':S,'input_ids':arr(UUID),'normalized_parameters':O,'meters':{'type':'object','additionalProperties':I}})),'meters':arr(obj({'meter':S,'amount':I})),'affordable':B,'available_balances':ref('Balances'),'expires_at':DT,'max_children':I,'reservation_mode':S,'template':obj({'id':UUID,'name':S,'version':I},['id','name','version']),'limitations':arr(S)},['id','quote_id','feature_id','groups','meters','affordable','expires_at','reservation_mode','limitations'])
+    models['BatchRun']=obj({'id':UUID,'quote_id':UUID,'feature_id':S,'status':S,'created_at':DT,'completed_at':{'type':['string','null'],'format':'date-time'},'children':arr(obj({'index':I,'feature_id':S,'status':S,'job':{'anyOf':[ref('Job'),{'type':'null'}]},'error':{'anyOf':[ref('Error'),{'type':'null'}]}})),'jobs':arr(ref('Job')),'meters':{'type':'object','additionalProperties':I},'settled_meters':{'type':'object','additionalProperties':I},'counts':{'type':'object','additionalProperties':I}},['id','quote_id','feature_id','status','children','jobs','meters','settled_meters','counts'])
+    endpoint('/health','get','getHealth',obj({'status':S,'service':S,'api_version':S},['status','service','api_version']),public=True)
+    endpoint('/batches/quotes','post','quoteBatch',ref('BatchQuote'),{'oneOf':[obj({'feature_id':{'enum':['batch.convert','batch.compress','batch.image_sets']},'groups':arr(obj({'feature_id':S,'input_ids':arr(UUID),'parameters':O},['input_ids']))},['feature_id','groups']),obj({'feature_id':{'const':'editor.batch_forms'},'template_id':UUID,'template_version':I,'input_ids':arr(UUID)},['feature_id','template_id','template_version','input_ids'])]},code='201')
+    endpoint('/batches','get','listBatches',obj({'results':arr(ref('BatchRun'))},['results']))
+    endpoint('/batches','post','submitBatch',ref('BatchRun'),obj({'quote_id':UUID},['quote_id']),code='201',description='Child jobs reserve when started and settle separately. Successful children stay charged when other children fail; no parent task charge.')
+    endpoint('/batches/{id}','get','getBatch',ref('BatchRun'))
+    endpoint('/batches/{id}','post','continueBatch',ref('BatchRun'),obj({}))
+    endpoint('/batches/{id}/resume','post','resumeBatch',ref('BatchRun'),obj({}))
+    endpoint('/batches/{id}/resume','get','getBatchResumeStatus',ref('BatchRun'))
+    endpoint('/studio/config','get','getStudioConfig',obj({'provider':obj({'id':S,'mode':S,'label':S,'configured':B},['id','mode','label','configured']),'features':arr(studio_feature),'generation_features':arr(studio_feature),'templates':arr(template),'limits':O},['provider','features','generation_features','templates','limits']))
+    create=obj({'feature_id':S,'title':S,'prompt':S,'source_text':S,'source_ids':arr(UUID),'output_locale':{'enum':['en','uz','ru']},'output_format':{'enum':['pdf','pptx','png']},'options':O},['feature_id'])
+    endpoint('/generation/drafts','get','listGenerationDrafts',obj({'results':arr(ref('GenerationDraft'))},['results']))
+    endpoint('/generation/drafts','post','createGenerationDraft',ref('GenerationDraft'),create,code='201',description='Uncharged encrypted authoring draft. Local authoring is not an AI response. Provider generation happens only after a confirmed quote.')
+    endpoint('/generation/drafts/{id}','get','getGenerationDraft',ref('GenerationDraft'))
+    endpoint('/generation/drafts/{id}','patch','updateGenerationDraft',ref('GenerationDraft'),obj({'version':I,'title':S,'prompt':S,'source_text':S,'source_ids':arr(UUID),'output_locale':{'enum':['en','uz','ru']},'output_format':{'enum':['pdf','pptx','png']},'options':O,'content':ref('GenerationContent'),'outline':arr(obj({'id':S,'title':S,'body':S,'notes':S}))},['version']))
+    endpoint('/generation/drafts/{id}','delete','deleteGenerationDraft',deleted)
+    endpoint('/generation/drafts/{id}/outline','post','reviewGenerationOutline',ref('GenerationDraft'),version)
+    endpoint('/generation/drafts/{id}/quote','post','quoteGenerationDraft',ref('Quote'),obj({'version':I,'stage':{'enum':['document','outline']}},['version']),code='201')
+    endpoint('/generation/drafts/{id}/generate','post','generateDraft',ref('Job'),obj({'quote_id':UUID},['quote_id']),code='201')
+    for path,kind in [('/workflows','Workflow'),('/templates','Template'),('/editor/form-templates','FormTemplate')]:
+        listing=obj({'results':arr(ref('SavedDefinition')),'limit':I,'published':arr(template)},['results','limit','published'])
+        request=obj({'name':S,'steps':arr(ref('WorkflowStep')),'content':O,'output_locale':S},['name'])
+        endpoint(path,'get','list'+kind+'s',listing)
+        endpoint(path,'post','create'+kind,ref('SavedDefinition'),request,code='201')
+        endpoint(path+'/{id}','get','get'+kind,ref('SavedDefinition'))
+        endpoint(path+'/{id}','patch','update'+kind,ref('SavedDefinition'),obj({**request['properties'],'version':I},['name','version']))
+        endpoint(path+'/{id}','delete','delete'+kind,deleted)
+    endpoint('/workflows/{id}/quote','post','quoteWorkflow',ref('WorkflowQuote'),obj({'input_ids':arr(UUID)},['input_ids']))
+    endpoint('/workflows/{id}/run','post','runWorkflow',ref('WorkflowRun'),obj({'input_ids':arr(UUID),'version':I,'confirmed':{'const':True},'confirmation_token':S},['input_ids','version','confirmed','confirmation_token']),description='Each step consumes the previous result. Failure stops subsequent steps; successful steps remain charged.')
+    endpoint('/education/projects','get','listEducationProjects',obj({'results':arr(ref('EducationProject')),'limit':I,'retention_days':I},['results','limit','retention_days']))
+    endpoint('/education/projects','post','createEducationProject',ref('EducationProject'),obj({'draft_id':UUID,'title':S,'save_consent':{'const':True}},['draft_id','save_consent']),code='201')
+    endpoint('/education/projects/{id}','get','getEducationProject',ref('EducationProject'))
+    endpoint('/education/projects/{id}','patch','extendEducationProject',ref('EducationProject'),obj({'version':I,'save_consent':{'const':True}},['version','save_consent']))
+    endpoint('/education/projects/{id}','delete','deleteEducationProject',deleted)
+    endpoint('/education/projects/{id}/practice','post','submitPractice',ref('PracticeResult'),obj({'answers':{'type':'object','additionalProperties':S}},['answers']),description='Exact-match practice feedback; not a final grade.')
+    endpoint('/shares','get','listShares',obj({'results':arr(ref('ShareGrant'))},['results']))
+    endpoint('/shares','post','createShare',ref('ShareGrant'),obj({'artifact_id':UUID,'expires_hours':{'type':'integer','minimum':1,'maximum':24}},['artifact_id']),description='Only learner_material/public_preview artifacts from explicitly shareable teacher features may be shared. Teacher-only content is denied even for legacy incorrect roles or existing bearer links. The bearer URL is returned only when created.')
+    endpoint('/shares/{id}','get','getShare',ref('ShareGrant'))
+    endpoint('/shares/{id}','delete','revokeShare',ref('ShareGrant'))
+    endpoint('/shared/{token}','get','downloadSharedArtifact',S,public=True)
+    paths['/shared/{token}']['get']['parameters']=[{'name':'token','in':'path','required':True,'schema':S}]
+    paths['/shared/{token}']['get']['responses']['200']={'description':'Role-restricted bearer-link attachment, no-store','content':{'application/octet-stream':{'schema':{'type':'string','format':'binary'}}}}
+    endpoint('/editor/documents','get','listEditorDocuments',obj({'results':arr(ref('EditorDocument'))},['results']))
+    endpoint('/editor/documents','post','createEditorDocument',ref('EditorDocument'),obj({'file_id':UUID},['file_id']),code='201')
+    endpoint('/editor/documents/{id}','get','getEditorDocument',ref('EditorDocument'))
+    endpoint('/editor/documents/{id}','patch','updateEditorDocument',ref('EditorDocument'),obj({'version':I,'commands':arr(ref('EditorCommand')),'input_ids':arr(UUID)},['version','commands']))
+    endpoint('/editor/documents/{id}','delete','deleteEditorDocument',deleted)
+    endpoint('/editor/documents/{id}/quote','post','quoteEditorDocument',ref('Quote'),obj({'version':I,'accept_rasterization':B},['version']),code='201')
+    endpoint('/billing/offers','get','getBillingOffers',obj({'offers':arr(ref('BillingOffer')),'sandbox':B,'checkout_enabled':B,'currency':S,'billing_mode':{'enum':['sandbox','live','disabled']}},['offers','sandbox','checkout_enabled','currency','billing_mode']))
+    endpoint('/billing/invoices','get','getInvoices',obj({'results':arr(ref('Invoice'))},['results']))
+    endpoint('/billing/invoices','post','createInvoice',ref('Invoice'),obj({'offer_id':S},['offer_id']),code='201')
+    endpoint('/billing/invoices/{id}','get','getInvoice',ref('Invoice'))
+    endpoint('/billing/invoices/{id}','delete','cancelInvoice',ref('Invoice'))
+    endpoint('/billing/invoices/{id}/sandbox-pay','post','sandboxPayInvoice',obj({'payment':ref('Payment'),'invoice':ref('Invoice'),'subscription':{'anyOf':[ref('Subscription'),{'type':'null'}]},'plan':S,'sandbox':B,'created':B}),obj({}),description='Local payment simulator restricted to test accounts and explicit sandbox enablement.')
+    endpoint('/billing/subscription','get','getSubscription',ref('SubscriptionState'))
+    for suffix,operation in [('cancel-renewal','cancelRenewal'),('resume-renewal','resumeRenewal')]:
+        endpoint('/billing/subscription/'+suffix,'post',operation,ref('SubscriptionState'),obj({}))
+    endpoint('/billing/subscription/schedule-plan-change','post','schedulePlanChange',ref('SubscriptionState'),obj({'plan':{'enum':['free','plus','premium']}},['plan']))
+    endpoint('/billing/subscription/sandbox-renew','post','sandboxRenewSubscription',obj({'payment':ref('Payment'),'subscription':ref('Subscription'),'sandbox':B,'created':B}),obj({}))
+    endpoint('/billing/transactions','get','getTransactions',obj({'results':arr(ref('Payment'))},['results']))
+    endpoint('/billing/payments/{id}/sandbox-refund','post','sandboxRefundPayment',ref('Refund'),obj({'reason':S}))
+    endpoint('/billing/payments/{id}/refund-request','post','requestPaymentRefund',obj({'ticket_id':UUID,'status':S},['ticket_id','status']),obj({'reason':{'type':'string','minLength':3,'maxLength':4000}},['reason']))
+    endpoint('/referrals','get','getReferrals',obj({'code':S,'url':nullable_string,'rewards_count':I,'pending_count':I,'awarded_credits':I,'monthly_cap':I,'expires_in_days':I,'qualification':S,'sandbox':B}))
+    endpoint('/referrals','post','claimReferral',obj({'id':I,'status':S}),obj({'code':S},['code']))
+    message_list=obj({'ticket_id':UUID,'status':S,'messages':arr(ref('SupportMessage'))},['ticket_id','status','messages'])
+    endpoint('/support/{id}/messages','get','getSupportMessages',message_list)
+    endpoint('/support/{id}/messages','post','replySupportTicket',message_list,obj({'message':S},['message']))
+    endpoint('/artifacts/{id}/deliver','post','deliverArtifactToTelegram',ref('BotDelivery'),obj({}),code='201')
+    local_asset=obj({'id':UUID,'name':S,'mime_type':S,'size_bytes':I,'download_url':S,'preview_url':nullable_string,'expires_at':DT})
+    local_message=obj({'id':UUID,'direction':S,'text':S,'buttons':arr(arr(obj({'label':S,'callback_data':nullable_string,'url':nullable_string}))),'asset':{'anyOf':[local_asset,{'type':'null'}]},'created_at':DT},['id','direction','text','buttons','asset','created_at'])
+    local_history=obj({'sandbox':B,'transport':S,'messages':arr(local_message)},['sandbox','transport','messages'])
+    for method,operation in [('get','getLocalTelegram'),('post','sendLocalTelegram'),('delete','clearLocalTelegram')]:
+        endpoint('/telegram/local/messages',method,operation,local_history,obj({'text':S,'callback_data':S}) if method=='post' else None,description='Offline bot transport, only sandbox test accounts. No Telegram network message is sent.')
+    paths['/telegram/local/messages']['post']['requestBody']['content']['multipart/form-data']={'schema':obj({'file':{'type':'string','format':'binary'}},['file'])}
+    for path in ['/batches','/generation/drafts/{id}/generate','/workflows/{id}/run','/education/projects/{id}/practice','/billing/invoices','/billing/subscription/sandbox-renew','/artifacts/{id}/deliver']:
+        paths[path]['post']['parameters'].append({'name':'Idempotency-Key','in':'header','required':True,'schema':{'type':'string','minLength':8,'maxLength':128}})
+
+
 def schema():
     models={
         'User':obj({'id':UUID,'telegram_user_id':S,'display_name':S,'username':S,'locale':{'enum':['en','uz','ru']},'mode':{'enum':['general','student','school','teacher']},'time_zone':S,'timezone':S,'preferences':{'type':'object'},'plan':{'enum':['free','plus','premium']},'is_test':B,'created_at':DT},['id','display_name','locale','plan']),
@@ -75,7 +202,8 @@ def schema():
     endpoint('/support','get','listSupportTickets',obj({'results':arr(ref('Ticket'))},['results']))
     for path,operation in [('/billing/subscription','getSubscription'),('/billing/transactions','getTransactions'),('/billing/invoices','getInvoices')]:
         endpoint(path,'get',operation,obj({'checkout_enabled':B,'plan':S,'transactions':arr({'type':'object'}),'subscription':{'type':'null'},'reason':S}))
-    return {'openapi':'3.1.0','info':{'title':'PDF Master public API','version':'1.0.0','description':'Development beta. Staff operations are intentionally excluded. Paid checkout remains disabled.'},'servers':[{'url':'/api/v1'}],'paths':paths,'components':{'securitySchemes':{'customerSession':{'type':'apiKey','in':'cookie','name':'pdfmaster_session'}},'schemas':models}}
+    extend_schema(models,endpoint,paths)
+    return {'openapi':'3.1.0','info':{'title':'PDF Master public API','version':'1.1.0','description':'Local development beta. Studio, editor, document jobs and sandbox commerce are covered. Staff operations are excluded. Live providers require server configuration.'},'servers':[{'url':'/api/v1'}],'paths':paths,'components':{'securitySchemes':{'customerSession':{'type':'apiKey','in':'cookie','name':'pdfmaster_session'}},'schemas':models}}
 
 class Command(BaseCommand):
     help='Export immutable public OpenAPI 3.1 contract and checksum.'

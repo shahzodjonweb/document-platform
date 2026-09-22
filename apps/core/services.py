@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 import shutil
+import stat
 import tempfile
 import uuid
 from datetime import timedelta
@@ -83,11 +84,58 @@ def owned_assets(account, input_ids):
     if len(assets) != len(ids): raise DomainError('file_unavailable', 404)
     return [assets[v] for v in ids]
 
+def verify_input_files(job, assets):
+    """Verify quoted bytes with bounded reads before any engine/provider work.
+
+    Database fingerprints alone cannot detect an accidentally replaced private
+    object. Refuse non-regular files and size changes before reading; never hash
+    an unbounded stream or trust mutable database metadata over the quote.
+    """
+    from .policy import SEED
+    expected = job.quote.input_fingerprints
+    if [{'id':str(a.pk),'sha256':a.sha256} for a in assets] != expected:
+        raise DomainError('file_changed',409)
+    if not assets: return []
+    limits = job.policy.get('limits',{})
+    caps = {}
+    for key in ('max_file_mib','max_aggregate_input_mib'):
+        value = limits.get(key)
+        if type(value) is not int or value <= 0: raise DomainError('file_changed',409)
+        caps[key] = min(value,max(plan[key] for plan in SEED['plans'].values()))*1024*1024
+    if sum(a.size_bytes for a in assets) > caps['max_aggregate_input_mib']:
+        raise DomainError('file_changed',409)
+    paths = []
+    for asset, fingerprint in zip(assets,expected):
+        if not 0 < asset.size_bytes <= caps['max_file_mib']:
+            raise DomainError('file_changed',409)
+        path = storage_path(asset.object_key)
+        try:
+            flags = os.O_RDONLY | getattr(os,'O_NONBLOCK',0) | getattr(os,'O_NOFOLLOW',0)
+            with os.fdopen(os.open(path,flags),'rb') as source:
+                before = os.fstat(source.fileno())
+                if not stat.S_ISREG(before.st_mode) or before.st_size != asset.size_bytes:
+                    raise DomainError('file_changed',409)
+                digest, remaining = hashlib.sha256(), asset.size_bytes
+                while remaining:
+                    chunk = source.read(min(1024*1024,remaining))
+                    if not chunk: raise DomainError('file_changed',409)
+                    digest.update(chunk); remaining -= len(chunk)
+                if source.read(1): raise DomainError('file_changed',409)
+                after = os.fstat(source.fileno())
+                current = path.stat()
+                identity = lambda value:(value.st_dev,value.st_ino,value.st_size,value.st_mtime_ns,value.st_ctime_ns)
+                if identity(before) != identity(after) or identity(after) != identity(current) or digest.hexdigest() != fingerprint['sha256']:
+                    raise DomainError('file_changed',409)
+        except OSError:
+            raise DomainError('file_changed',409) from None
+        paths.append(path)
+    return paths
+
 def validate_inputs(account, feature_id, input_ids):
     require_feature(account, feature_id)
     assets = owned_assets(account, input_ids)
     limits = plan_limits(account)
-    multi = feature_id in ('pdf.merge','pdf.images_to_pdf')
+    multi = feature_id in ('pdf.merge','pdf.images_to_pdf') or feature_id.startswith('editor.')
     cap = limits['max_merge_input_files'] if multi else 1
     if len(assets) > cap: raise DomainError('input_count_exceeded')
     if feature_id == 'pdf.merge' and len(assets) < 2: raise DomainError('merge_needs_two_files')
@@ -95,6 +143,9 @@ def validate_inputs(account, feature_id, input_ids):
     if any(a.size_bytes > limits['max_file_mib']*1024*1024 for a in assets): raise DomainError('file_too_large', 413)
     if sum(a.page_count for a in assets) > limits['max_pages_per_job']: raise DomainError('page_limit_exceeded', 413)
     kinds = [a.metadata.get('kind') for a in assets]
+    if feature_id.startswith('editor.') and (kinds[0]!='pdf' or any(k!='image' for k in kinds[1:])): raise DomainError('unsupported_file')
+    if feature_id.startswith('ocr.') and any(k not in ('pdf','image') for k in kinds): raise DomainError('unsupported_file')
+    if feature_id in ('convert.pdf_to_docx','convert.pdf_to_xlsx') and kinds != ['pdf']: raise DomainError('unsupported_file')
     if feature_id == 'convert.word_to_pdf' and kinds != ['docx']: raise DomainError('unsupported_file')
     if feature_id == 'convert.pptx_to_pdf' and kinds != ['pptx']: raise DomainError('unsupported_file')
     if feature_id == 'pdf.images_to_pdf' and any(k != 'image' for k in kinds): raise DomainError('unsupported_file')
@@ -106,6 +157,9 @@ def create_quote(account, feature_id, input_ids, parameters, secret_id=None):
     if not isinstance(parameters,dict) or len(json.dumps(parameters)) > 10000: raise DomainError('invalid_parameters')
     if any(k.lower() in ('password','owner_password','user_password') for k in parameters): raise DomainError('feature_unavailable',409)
     assets = validate_inputs(account,feature_id,input_ids)
+    if feature_id.startswith('editor.'):
+        from apps.studio.editor_policy import validate_commands_access
+        validate_commands_access(account,parameters.get('commands',[]))
     if feature_id in ('pdf.protect','pdf.unlock_known'):
         from .secrets import get_secret
         if feature_id == 'pdf.unlock_known':
@@ -124,7 +178,8 @@ def create_quote(account, feature_id, input_ids, parameters, secret_id=None):
         from processors.engine import parse_pages
         pages = max(pages, sum(len(parse_pages(r, assets[0].page_count)) for r in normalized['ranges']))
     if pages > plan_limits(account)['max_pages_per_job']: raise DomainError('page_limit_exceeded',413)
-    meters = {'file_tasks':1,'file_page_units':pages,'ai_credits':0}
+    credits = 1 if feature_id.startswith('ocr.') else 2 if feature_id in ('convert.pdf_to_docx','convert.pdf_to_xlsx') else 0
+    meters = {'file_tasks':0 if credits else 1,'file_page_units':0 if credits else pages,'ai_credits':pages*credits}
     quote = Quote.objects.create(account=account,feature_id=feature_id,secret_id=secret_id,parameters=normalized,input_ids=[str(a.pk) for a in assets],input_fingerprints=[{'id':str(a.pk),'sha256':a.sha256} for a in assets],meters=meters,policy={'plan':account.plan,'version':POLICY_VERSION,'tariff_version':'file-v1','limits':plan_limits(account)},expires_at=timezone.now()+timedelta(minutes=10))
     record_event(account,'quote.created',properties={'pages':pages})
     return quote
@@ -153,7 +208,11 @@ def submit_job(account, quote_id, idempotency_key, origin='web'):
     except (Quote.DoesNotExist,ValueError,ValidationError): raise DomainError('not_found',404) from None
     if Job.objects.filter(quote=quote).exists(): raise DomainError('quote_already_submitted',409)
     if quote.expires_at <= timezone.now(): raise DomainError('quote_expired',409)
-    assets = validate_inputs(account,quote.feature_id,quote.input_ids)
+    from apps.studio.domain import GENERATION_IDS, validate_generation_quote
+    assets = validate_generation_quote(account,quote) if quote.feature_id in GENERATION_IDS else validate_inputs(account,quote.feature_id,quote.input_ids)
+    if quote.feature_id.startswith('editor.'):
+        from apps.studio.editor_policy import validate_commands_access
+        validate_commands_access(account,quote.parameters.get('commands',[]))
     if quote.policy['plan'] != account.plan or quote.policy['version'] != POLICY_VERSION: raise DomainError('quote_policy_changed',409)
     if [{'id':str(a.pk),'sha256':a.sha256} for a in assets] != quote.input_fingerprints: raise DomainError('file_changed',409)
     if Job.objects.filter(account=account,status__in=('queued','running','finalizing')).count() >= plan_limits(account)['concurrent_jobs']: raise DomainError('concurrency_limit',409,retryable=True)
@@ -211,8 +270,8 @@ def settle_job(job_id, status, actual=None, error_code='', outputs=None, warning
     for output in outputs or []:
         path = Path(output['path'])
         key = str(path.relative_to(settings.PRIVATE_STORAGE_ROOT.resolve()))
-        asset = FileAsset.objects.create(account=job.account,name=output['name'],object_key=key,mime_type=output['mime_type'],sha256=hashlib.sha256(path.read_bytes()).hexdigest(),size_bytes=path.stat().st_size,page_count=output.get('page_count',0),metadata={'kind':'pdf' if output['mime_type']=='application/pdf' else 'archive' if output['mime_type']=='application/zip' else 'image','mime_type':output['mime_type'],'page_count':output.get('page_count',0),'encrypted':job.feature_id=='pdf.protect'},expires_at=deadline)
-        Artifact.objects.create(account=job.account,job=job,file=asset)
+        asset = FileAsset.objects.create(account=job.account,name=output['name'],object_key=key,mime_type=output['mime_type'],sha256=hashlib.sha256(path.read_bytes()).hexdigest(),size_bytes=path.stat().st_size,page_count=output.get('page_count',0),metadata={**output.get('metadata',{}),'kind':{'application/pdf':'pdf','application/zip':'archive','application/vnd.openxmlformats-officedocument.wordprocessingml.document':'docx','application/vnd.openxmlformats-officedocument.presentationml.presentation':'pptx','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':'xlsx','text/plain':'text','application/json':'text'}.get(output['mime_type'],'image'),'mime_type':output['mime_type'],'page_count':output.get('page_count',0),'encrypted':job.feature_id=='pdf.protect'},expires_at=deadline)
+        Artifact.objects.create(account=job.account,job=job,file=asset,role=output.get("role","user_document"))
     FileAsset.objects.filter(account=job.account,id__in=job.input_ids).update(expires_at=deadline)
     job.status,job.error_code,job.completed_at,job.settled_meters = status,error_code,timezone.now(),actual if status=='succeeded' else {m:0 for m in job.meters}
     job.warnings,job.engine,job.lease_expires_at = warnings or [],engine,None
@@ -235,12 +294,18 @@ def execute_job(job_id):
     output_dir = storage_path(f'outputs/{job.account_id}/{job.id}')
     output_dir.mkdir(parents=True,exist_ok=True,mode=0o700)
     try:
-        assets = owned_assets(job.account,job.input_ids)
+        assets = owned_assets(job.account,job.input_ids) if job.input_ids else []
+        input_paths = verify_input_files(job,assets)
         secret=None
         if job.quote.secret_id:
             from .secrets import get_secret,decrypt
             secret=decrypt(get_secret(job.account,job.quote.secret_id,job=job))
-        result = execute(job.feature_id,[storage_path(a.object_key) for a in assets],job.parameters,output_dir,secret=secret)
+        from apps.studio.domain import GENERATION_IDS
+        if job.feature_id in GENERATION_IDS:
+            from apps.studio.execution import execute_generation
+            result = execute_generation(job,output_dir)
+        else:
+            result = execute(job.feature_id,input_paths,job.parameters,output_dir,secret=secret)
         secret=None
         no_op = result.get('no_op',False)
         outputs = result.get('artifacts',[]) if not no_op else []
@@ -248,7 +313,12 @@ def execute_job(job_id):
         for output in outputs:
             path = Path(output['path']).resolve()
             if not path.is_relative_to(output_dir) or not path.is_file() or path.stat().st_size == 0: raise DomainError('invalid_output')
-        actual = {'file_tasks':1,'file_page_units':max(sum(a.page_count for a in assets),int(result.get('actual_page_units',0))),'ai_credits':0}
+            if output['mime_type']=='application/pdf' and job.feature_id!='pdf.protect':
+                checked=engine_inspect(path)
+                if checked['page_count']!=output.get('page_count'):raise DomainError('invalid_output')
+                output['metadata']=checked
+        credits = 1 if job.feature_id.startswith('ocr.') else 2 if job.feature_id in ('convert.pdf_to_docx','convert.pdf_to_xlsx') else 0
+        actual = result.get('actual_meters',{'file_tasks':0 if credits else 1,'file_page_units':0 if credits else max(sum(a.page_count for a in assets),int(result.get('actual_page_units',0))),'ai_credits':sum(a.page_count for a in assets)*credits})
         job = settle_job(job.id,'no_op' if no_op else 'succeeded',actual=actual,outputs=outputs,warnings=result.get('metadata',{}).get('warnings',[]),engine=result.get('metadata',{}).get('engine','pypdf'))
         if no_op: shutil.rmtree(output_dir,ignore_errors=True)
         return job
@@ -281,6 +351,11 @@ def cleanup_expired():
         asset.save(update_fields=['state'])
         count += 1
     SecretHandle.objects.filter(expires_at__lte=now).delete()
+    from apps.studio.models import GenerationDraft, EducationProject, EditorDocument, ShareGrant
+    GenerationDraft.objects.filter(expires_at__lte=now).delete()
+    EducationProject.objects.filter(expires_at__lte=now).delete()
+    EditorDocument.objects.filter(file__expires_at__lte=now).delete()
+    ShareGrant.objects.filter(expires_at__lte=now).delete()
     # Crash backstop: delete unregistered private binaries older than retention.
     registered=set(FileAsset.objects.values_list('object_key',flat=True))
     cutoff=(now-timedelta(hours=24)).timestamp()

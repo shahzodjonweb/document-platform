@@ -215,6 +215,7 @@ def test_interactive_forms_fail_explicitly_instead_of_orphaning_fields(tmp_path)
     canvas.acroForm.textfield(name='customer', x=40, y=500, width=200, height=20)
     canvas.showPage()
     canvas.save()
+    assert inspect_file(source)['has_forms'] is True
     with pytest.raises(ProcessorError) as error:
-        inspect_file(source)
+        execute('pdf.rotate',[source],{},tmp_path/'rotated')
     assert error.value.code == 'interactive_pdf_unsupported'

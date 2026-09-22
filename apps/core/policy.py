@@ -13,7 +13,8 @@ METERS = ('file_tasks', 'file_page_units', 'ai_credits')
 POLICY_VERSION = 'draft-staging-v1'
 
 def plan_limits(account):
-    # Paid activation intentionally unavailable; a local admin cannot fabricate paid consideration.
+    from apps.commerce.services import refresh_account_entitlement
+    refresh_account_entitlement(account)
     return SEED['plans'].get(account.plan, SEED['plans']['free'])
 
 def cycle(account, at=None):
@@ -24,15 +25,14 @@ def cycle(account, at=None):
     return start, start + timedelta(seconds=seconds)
 
 def ensure_grants(account):
-    start, end = cycle(account)
-    for meter in METERS:
-        UsageGrant.objects.get_or_create(source_id=f'included:{account.id}:{start.isoformat()}:{meter}', defaults={'account': account, 'meter': meter, 'quantity': plan_limits(account)[meter], 'valid_from': start, 'expires_at': end})
-    return end
+    from apps.commerce.services import ensure_account_grants
+    return ensure_account_grants(account)
 
 def active_grants(account):
     from django.db.models import Q
     now = timezone.now()
-    return UsageGrant.objects.filter(account=account, valid_from__lte=now).filter(Q(expires_at__gt=now) | Q(expires_at__isnull=True))
+    from apps.commerce.services import eligible_grants
+    return eligible_grants(account, UsageGrant.objects.filter(account=account, valid_from__lte=now).filter(Q(expires_at__gt=now) | Q(expires_at__isnull=True)))
 
 def usage_snapshot(account):
     resets_at = ensure_grants(account)
@@ -55,6 +55,9 @@ def enabled_capabilities():
     return {key: value for key, value in caps.items() if key in FEATURES and value.get('available', value.get('enabled', True))}
 
 def catalog(account=None):
+    if account:
+        from apps.commerce.services import refresh_account_entitlement
+        refresh_account_entitlement(account)
     caps = enabled_capabilities()
     results = []
     for fid, capability in caps.items():
@@ -66,6 +69,8 @@ def catalog(account=None):
     return results
 
 def require_feature(account, feature_id):
+    from apps.commerce.services import refresh_account_entitlement
+    refresh_account_entitlement(account)
     if not settings.ENABLE_BETA_TOOLS or feature_id not in enabled_capabilities():
         raise DomainError('feature_unavailable', 409)
     feature = FEATURES[feature_id]

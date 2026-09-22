@@ -20,6 +20,17 @@ test('separate staff login and responsive multilingual reports',async({page})=>{
  await page.goto('/ops/plans?lang=en');
  await expect(page.getByText('Draft staging configuration',{exact:false})).toBeVisible();
  await page.goto('/ops/analytics/revenue?lang=en');
- await expect(page.getByRole('heading',{name:'Payments are not enabled'})).toBeVisible();
+ await expect(page.getByText('Stars collected',{exact:true})).toBeVisible();
+ for(const locale of ['en','uz','ru']){
+  for(const width of [1440,390]){
+   await page.setViewportSize({width,height:1000});
+   await page.goto(`/ops/integrations?lang=${locale}`);
+   await expect(page.locator('input[name=token]')).toHaveValue('');
+   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+   await page.screenshot({path:path.resolve(`docs/design/admin/integrations-${locale}-${width}.png`),fullPage:true});
+  }
+ }
+ await page.goto('/ops/staff?lang=en');
+ await expect(page.getByRole('heading',{name:'Create staff account'})).toBeVisible();
  expect(errors).toEqual([]);
 });

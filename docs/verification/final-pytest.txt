@@ -1,0 +1,12 @@
+........................................................................ [ 23%]
+........................................................................ [ 47%]
+........................................................................ [ 71%]
+........................................................................ [ 95%]
+...............                                                          [100%]
+=============================== warnings summary ===============================
+tests/test_processors.py::test_magic_corrupt_and_active_pdf
+  /Users/shakhzoduralov/Desktop/projects/pdf-master/document-platform/tests/test_processors.py:86: DeprecationWarning: add_js is deprecated and will be removed in pypdf 7.0.0. Use add_open_action instead.
+    writer.add_js('app.alert("unsafe")')
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+303 passed, 1 warning in 87.08s (0:01:27)

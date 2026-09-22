@@ -1,0 +1,49 @@
+{
+  "editor": {
+    "engine_versions": {
+      "pypdf": "6.19.0",
+      "Pillow": "12.3.0",
+      "pypdfium2": "5.13.0",
+      "reportlab": "5.0.1"
+    },
+    "engine": "pypdf/reportlab",
+    "warnings": [
+      "existing_text_simple_standard_fonts_only"
+    ],
+    "text_replacements": 1,
+    "command_features": [
+      "editor.add_text",
+      "editor.annotate",
+      "editor.existing_text",
+      "editor.fill_forms",
+      "editor.highlight"
+    ]
+  },
+  "redaction": {
+    "engine_versions": {
+      "pypdf": "6.19.0",
+      "Pillow": "12.3.0",
+      "pypdfium2": "5.13.0",
+      "reportlab": "5.0.1"
+    },
+    "engine": "pdfium/pillow/reportlab",
+    "warnings": [
+      "all_pages_rasterized_text_and_forms_removed",
+      "original_versions_may_still_exist"
+    ],
+    "redaction_mode": "rasterized_destructive"
+  },
+  "ocr": {
+    "engine_versions": {
+      "pypdf": "6.19.0",
+      "Pillow": "12.3.0",
+      "pypdfium2": "5.13.0",
+      "reportlab": "5.0.1"
+    },
+    "engine": "tesseract",
+    "warnings": [
+      "printed_text_ocr_review_required"
+    ]
+  },
+  "checks": "58 serialized processor tests pass; rendered source, edited and redacted examples reviewed."
+}

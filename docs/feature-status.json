@@ -1,9 +1,9 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "catalog_count": 128,
   "ticket_count": 48,
   "release_approval": "none",
-  "note": "Local capability is not production release approval. No completion is inferred from a menu or placeholder.",
+  "note": "Local capability, adapter presence, and production release are distinct. Original requirements are preserved unchanged.",
   "features": [
     {
       "id": "pdf.compress",
@@ -14,12 +14,13 @@
       "production_enabled": false,
       "evidence": [
         "processors/engine.py",
-        "apps/core/services.py",
+        "processors/advanced.py",
+        "processors/editor.py",
+        "tests/test_advanced_processors.py",
         "tests/test_processors.py",
-        "tests/test_platform.py",
-        "tests/test_adversarial.py"
+        "docs/processor-capabilities.md"
       ],
-      "gate": "Local artifact/API tests; production parser containment and cross-channel real-device gate pending."
+      "gate": "Real artifact tests. Supported encodings/layouts and raster-redaction limitations are explicit. Stable Office runtime, parser containment and production quality gates remain."
     },
     {
       "id": "pdf.compression_preview",
@@ -29,13 +30,14 @@
       "status": "implemented_local",
       "production_enabled": false,
       "evidence": [
-        "apps/core/services.py",
-        "apps/core/policy.py",
+        "apps/core",
+        "telegram",
         "tests/test_platform.py",
-        "../document-web/app",
+        "tests/test_adversarial.py",
+        "tests/test_bot_transport.py",
         "../document-web/docs/design/QA.md"
       ],
-      "gate": "Local behavior implemented; complete release gate remains pending."
+      "gate": "Local artifact/API/browser behavior verified; live Telegram and production infrastructure qualification remain."
     },
     {
       "id": "pdf.images_to_pdf",
@@ -46,12 +48,13 @@
       "production_enabled": false,
       "evidence": [
         "processors/engine.py",
-        "apps/core/services.py",
+        "processors/advanced.py",
+        "processors/editor.py",
+        "tests/test_advanced_processors.py",
         "tests/test_processors.py",
-        "tests/test_platform.py",
-        "tests/test_adversarial.py"
+        "docs/processor-capabilities.md"
       ],
-      "gate": "Local artifact/API tests; production parser containment and cross-channel real-device gate pending."
+      "gate": "Real artifact tests. Supported encodings/layouts and raster-redaction limitations are explicit. Stable Office runtime, parser containment and production quality gates remain."
     },
     {
       "id": "pdf.image_layout",
@@ -61,13 +64,14 @@
       "status": "implemented_local",
       "production_enabled": false,
       "evidence": [
-        "apps/core/services.py",
-        "apps/core/policy.py",
+        "apps/core",
+        "telegram",
         "tests/test_platform.py",
-        "../document-web/app",
+        "tests/test_adversarial.py",
+        "tests/test_bot_transport.py",
         "../document-web/docs/design/QA.md"
       ],
-      "gate": "Local behavior implemented; complete release gate remains pending."
+      "gate": "Local artifact/API/browser behavior verified; live Telegram and production infrastructure qualification remain."
     },
     {
       "id": "pdf.to_images",
@@ -78,12 +82,13 @@
       "production_enabled": false,
       "evidence": [
         "processors/engine.py",
-        "apps/core/services.py",
+        "processors/advanced.py",
+        "processors/editor.py",
+        "tests/test_advanced_processors.py",
         "tests/test_processors.py",
-        "tests/test_platform.py",
-        "tests/test_adversarial.py"
+        "docs/processor-capabilities.md"
       ],
-      "gate": "Local artifact/API tests; production parser containment and cross-channel real-device gate pending."
+      "gate": "Real artifact tests. Supported encodings/layouts and raster-redaction limitations are explicit. Stable Office runtime, parser containment and production quality gates remain."
     },
     {
       "id": "pdf.merge",
@@ -94,12 +99,13 @@
       "production_enabled": false,
       "evidence": [
         "processors/engine.py",
-        "apps/core/services.py",
+        "processors/advanced.py",
+        "processors/editor.py",
+        "tests/test_advanced_processors.py",
         "tests/test_processors.py",
-        "tests/test_platform.py",
-        "tests/test_adversarial.py"
+        "docs/processor-capabilities.md"
       ],
-      "gate": "Local artifact/API tests; production parser containment and cross-channel real-device gate pending."
+      "gate": "Real artifact tests. Supported encodings/layouts and raster-redaction limitations are explicit. Stable Office runtime, parser containment and production quality gates remain."
     },
     {
       "id": "pdf.split",
@@ -110,12 +116,13 @@
       "production_enabled": false,
       "evidence": [
         "processors/engine.py",
-        "apps/core/services.py",
+        "processors/advanced.py",
+        "processors/editor.py",
+        "tests/test_advanced_processors.py",
         "tests/test_processors.py",
-        "tests/test_platform.py",
-        "tests/test_adversarial.py"
+        "docs/processor-capabilities.md"
       ],
-      "gate": "Local artifact/API tests; production parser containment and cross-channel real-device gate pending."
+      "gate": "Real artifact tests. Supported encodings/layouts and raster-redaction limitations are explicit. Stable Office runtime, parser containment and production quality gates remain."
     },
     {
       "id": "pdf.extract_pages",
@@ -126,12 +133,13 @@
       "production_enabled": false,
       "evidence": [
         "processors/engine.py",
-        "apps/core/services.py",
+        "processors/advanced.py",
+        "processors/editor.py",
+        "tests/test_advanced_processors.py",
         "tests/test_processors.py",
-        "tests/test_platform.py",
-        "tests/test_adversarial.py"
+        "docs/processor-capabilities.md"
       ],
-      "gate": "Local artifact/API tests; production parser containment and cross-channel real-device gate pending."
+      "gate": "Real artifact tests. Supported encodings/layouts and raster-redaction limitations are explicit. Stable Office runtime, parser containment and production quality gates remain."
     },
     {
       "id": "pdf.delete_pages",
@@ -142,12 +150,13 @@
       "production_enabled": false,
       "evidence": [
         "processors/engine.py",
-        "apps/core/services.py",
+        "processors/advanced.py",
+        "processors/editor.py",
+        "tests/test_advanced_processors.py",
         "tests/test_processors.py",
-        "tests/test_platform.py",
-        "tests/test_adversarial.py"
+        "docs/processor-capabilities.md"
       ],
-      "gate": "Local artifact/API tests; production parser containment and cross-channel real-device gate pending."
+      "gate": "Real artifact tests. Supported encodings/layouts and raster-redaction limitations are explicit. Stable Office runtime, parser containment and production quality gates remain."
     },
     {
       "id": "pdf.reorder",
@@ -158,12 +167,13 @@
       "production_enabled": false,
       "evidence": [
         "processors/engine.py",
-        "apps/core/services.py",
+        "processors/advanced.py",
+        "processors/editor.py",
+        "tests/test_advanced_processors.py",
         "tests/test_processors.py",
-        "tests/test_platform.py",
-        "tests/test_adversarial.py"
+        "docs/processor-capabilities.md"
       ],
-      "gate": "Local artifact/API tests; production parser containment and cross-channel real-device gate pending."
+      "gate": "Real artifact tests. Supported encodings/layouts and raster-redaction limitations are explicit. Stable Office runtime, parser containment and production quality gates remain."
     },
     {
       "id": "pdf.rotate",
@@ -174,12 +184,13 @@
       "production_enabled": false,
       "evidence": [
         "processors/engine.py",
-        "apps/core/services.py",
+        "processors/advanced.py",
+        "processors/editor.py",
+        "tests/test_advanced_processors.py",
         "tests/test_processors.py",
-        "tests/test_platform.py",
-        "tests/test_adversarial.py"
+        "docs/processor-capabilities.md"
       ],
-      "gate": "Local artifact/API tests; production parser containment and cross-channel real-device gate pending."
+      "gate": "Real artifact tests. Supported encodings/layouts and raster-redaction limitations are explicit. Stable Office runtime, parser containment and production quality gates remain."
     },
     {
       "id": "convert.word_to_pdf",
@@ -190,12 +201,13 @@
       "production_enabled": false,
       "evidence": [
         "processors/engine.py",
-        "apps/core/services.py",
+        "processors/advanced.py",
+        "processors/editor.py",
+        "tests/test_advanced_processors.py",
         "tests/test_processors.py",
-        "tests/test_platform.py",
-        "tests/test_adversarial.py"
+        "docs/processor-capabilities.md"
       ],
-      "gate": "Local artifact/API tests; production parser containment and cross-channel real-device gate pending."
+      "gate": "Real artifact tests. Supported encodings/layouts and raster-redaction limitations are explicit. Stable Office runtime, parser containment and production quality gates remain."
     },
     {
       "id": "convert.pptx_to_pdf",
@@ -206,52 +218,81 @@
       "production_enabled": false,
       "evidence": [
         "processors/engine.py",
-        "apps/core/services.py",
+        "processors/advanced.py",
+        "processors/editor.py",
+        "tests/test_advanced_processors.py",
         "tests/test_processors.py",
-        "tests/test_platform.py",
-        "tests/test_adversarial.py"
+        "docs/processor-capabilities.md"
       ],
-      "gate": "Local artifact/API tests; production parser containment and cross-channel real-device gate pending."
+      "gate": "Real artifact tests. Supported encodings/layouts and raster-redaction limitations are explicit. Stable Office runtime, parser containment and production quality gates remain."
     },
     {
       "id": "convert.pdf_to_docx",
       "name": "PDF to editable Word",
       "release": "R1B",
       "ticket": "R1B-02",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R1A release gate, engine qualification, payment configuration, economics and financial integration."
+      "evidence": [
+        "processors/engine.py",
+        "processors/advanced.py",
+        "processors/editor.py",
+        "tests/test_advanced_processors.py",
+        "tests/test_processors.py",
+        "docs/processor-capabilities.md"
+      ],
+      "gate": "Real artifact tests. Supported encodings/layouts and raster-redaction limitations are explicit. Stable Office runtime, parser containment and production quality gates remain."
     },
     {
       "id": "convert.pdf_to_xlsx",
       "name": "PDF tables to Excel",
       "release": "R1B",
       "ticket": "R1B-02",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R1A release gate, engine qualification, payment configuration, economics and financial integration."
+      "evidence": [
+        "processors/engine.py",
+        "processors/advanced.py",
+        "processors/editor.py",
+        "tests/test_advanced_processors.py",
+        "tests/test_processors.py",
+        "docs/processor-capabilities.md"
+      ],
+      "gate": "Real artifact tests. Supported encodings/layouts and raster-redaction limitations are explicit. Stable Office runtime, parser containment and production quality gates remain."
     },
     {
       "id": "ocr.extract_text",
       "name": "Extract text from scans and photos",
       "release": "R1B",
       "ticket": "R1B-01",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R1A release gate, engine qualification, payment configuration, economics and financial integration."
+      "evidence": [
+        "processors/engine.py",
+        "processors/advanced.py",
+        "processors/editor.py",
+        "tests/test_advanced_processors.py",
+        "tests/test_processors.py",
+        "docs/processor-capabilities.md"
+      ],
+      "gate": "Real artifact tests. Supported encodings/layouts and raster-redaction limitations are explicit. Stable Office runtime, parser containment and production quality gates remain."
     },
     {
       "id": "ocr.searchable_pdf",
       "name": "Create searchable scanned PDF",
       "release": "R1B",
       "ticket": "R1B-01",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R1A release gate, engine qualification, payment configuration, economics and financial integration."
+      "evidence": [
+        "processors/engine.py",
+        "processors/advanced.py",
+        "processors/editor.py",
+        "tests/test_advanced_processors.py",
+        "tests/test_processors.py",
+        "docs/processor-capabilities.md"
+      ],
+      "gate": "Real artifact tests. Supported encodings/layouts and raster-redaction limitations are explicit. Stable Office runtime, parser containment and production quality gates remain."
     },
     {
       "id": "pdf.protect",
@@ -262,12 +303,13 @@
       "production_enabled": false,
       "evidence": [
         "processors/engine.py",
-        "apps/core/services.py",
+        "processors/advanced.py",
+        "processors/editor.py",
+        "tests/test_advanced_processors.py",
         "tests/test_processors.py",
-        "tests/test_platform.py",
-        "tests/test_adversarial.py"
+        "docs/processor-capabilities.md"
       ],
-      "gate": "Local artifact/API tests; production parser containment and cross-channel real-device gate pending."
+      "gate": "Real artifact tests. Supported encodings/layouts and raster-redaction limitations are explicit. Stable Office runtime, parser containment and production quality gates remain."
     },
     {
       "id": "pdf.unlock_known",
@@ -278,62 +320,98 @@
       "production_enabled": false,
       "evidence": [
         "processors/engine.py",
-        "apps/core/services.py",
+        "processors/advanced.py",
+        "processors/editor.py",
+        "tests/test_advanced_processors.py",
         "tests/test_processors.py",
-        "tests/test_platform.py",
-        "tests/test_adversarial.py"
+        "docs/processor-capabilities.md"
       ],
-      "gate": "Local artifact/API tests; production parser containment and cross-channel real-device gate pending."
+      "gate": "Real artifact tests. Supported encodings/layouts and raster-redaction limitations are explicit. Stable Office runtime, parser containment and production quality gates remain."
     },
     {
       "id": "batch.convert",
       "name": "Convert independent documents as a batch",
       "release": "R1B",
       "ticket": "R1B-03",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R1A release gate, engine qualification, payment configuration, economics and financial integration."
+      "evidence": [
+        "apps/studio",
+        "tests/test_studio.py",
+        "tests/test_studio_adversarial.py",
+        "tests/test_studio_branding_revisions.py",
+        "tests/test_batches.py",
+        "tests/test_batch_forms.py"
+      ],
+      "gate": "Local authoring/export, encrypted state and permission tests; provider output quality and multilingual human acceptance remain separate."
     },
     {
       "id": "batch.compress",
       "name": "Compress independent PDFs as a batch",
       "release": "R1B",
       "ticket": "R1B-03",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R1A release gate, engine qualification, payment configuration, economics and financial integration."
+      "evidence": [
+        "apps/studio",
+        "tests/test_studio.py",
+        "tests/test_studio_adversarial.py",
+        "tests/test_studio_branding_revisions.py",
+        "tests/test_batches.py",
+        "tests/test_batch_forms.py"
+      ],
+      "gate": "Local authoring/export, encrypted state and permission tests; provider output quality and multilingual human acceptance remain separate."
     },
     {
       "id": "batch.image_sets",
       "name": "Separate image sets to separate PDFs",
       "release": "R1B",
       "ticket": "R1B-03",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R1A release gate, engine qualification, payment configuration, economics and financial integration."
+      "evidence": [
+        "apps/studio",
+        "tests/test_studio.py",
+        "tests/test_studio_adversarial.py",
+        "tests/test_studio_branding_revisions.py",
+        "tests/test_batches.py",
+        "tests/test_batch_forms.py"
+      ],
+      "gate": "Local authoring/export, encrypted state and permission tests; provider output quality and multilingual human acceptance remain separate."
     },
     {
       "id": "workflow.saved",
       "name": "Save multistep processing workflows",
       "release": "R1B",
       "ticket": "R1B-03",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R1A release gate, engine qualification, payment configuration, economics and financial integration."
+      "evidence": [
+        "apps/studio",
+        "tests/test_studio.py",
+        "tests/test_studio_adversarial.py",
+        "tests/test_studio_branding_revisions.py",
+        "tests/test_batches.py",
+        "tests/test_batch_forms.py"
+      ],
+      "gate": "Local authoring/export, encrypted state and permission tests; provider output quality and multilingual human acceptance remain separate."
     },
     {
       "id": "workflow.reuse",
       "name": "Run saved workflow settings",
       "release": "R1B",
       "ticket": "R1B-03",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R1A release gate, engine qualification, payment configuration, economics and financial integration."
+      "evidence": [
+        "apps/studio",
+        "tests/test_studio.py",
+        "tests/test_studio_adversarial.py",
+        "tests/test_studio_branding_revisions.py",
+        "tests/test_batches.py",
+        "tests/test_batch_forms.py"
+      ],
+      "gate": "Local authoring/export, encrypted state and permission tests; provider output quality and multilingual human acceptance remain separate."
     },
     {
       "id": "capacity.file_size",
@@ -343,13 +421,14 @@
       "status": "implemented_local",
       "production_enabled": false,
       "evidence": [
-        "apps/core/services.py",
-        "apps/core/policy.py",
+        "apps/core",
+        "telegram",
         "tests/test_platform.py",
-        "../document-web/app",
+        "tests/test_adversarial.py",
+        "tests/test_bot_transport.py",
         "../document-web/docs/design/QA.md"
       ],
-      "gate": "Local behavior implemented; complete release gate remains pending."
+      "gate": "Local artifact/API/browser behavior verified; live Telegram and production infrastructure qualification remain."
     },
     {
       "id": "capacity.monthly",
@@ -359,788 +438,1370 @@
       "status": "implemented_local",
       "production_enabled": false,
       "evidence": [
-        "apps/core/services.py",
-        "apps/core/policy.py",
+        "apps/core",
+        "telegram",
         "tests/test_platform.py",
-        "../document-web/app",
+        "tests/test_adversarial.py",
+        "tests/test_bot_transport.py",
         "../document-web/docs/design/QA.md"
       ],
-      "gate": "Local behavior implemented; complete release gate remains pending."
+      "gate": "Local artifact/API/browser behavior verified; live Telegram and production infrastructure qualification remain."
     },
     {
       "id": "capacity.queue",
       "name": "Priority processing without starving standard queue",
       "release": "R1A",
       "ticket": "R1A-09",
-      "status": "partial",
+      "status": "implemented_local",
       "production_enabled": false,
       "evidence": [
         "apps/core",
         "telegram",
         "tests/test_platform.py",
-        "docs/backend-api.md"
+        "tests/test_adversarial.py",
+        "tests/test_bot_transport.py",
+        "../document-web/docs/design/QA.md"
       ],
-      "gate": "Protocol/domain implementation exists; full transport, preview or fairness acceptance pending."
+      "gate": "Local artifact/API/browser behavior verified; live Telegram and production infrastructure qualification remain."
     },
     {
       "id": "ai.pdf_topic",
       "name": "Generate PDF from topic",
       "release": "R2A",
       "ticket": "R2A-02",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R1B release gate, approved AI provider, structured generation and three-language artifact review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "ai.pdf_text",
       "name": "Generate formatted PDF from pasted content",
       "release": "R2A",
       "ticket": "R2A-02",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R1B release gate, approved AI provider, structured generation and three-language artifact review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "ai.pdf_sources",
       "name": "Generate document from uploaded sources",
       "release": "R2A",
       "ticket": "R2A-02",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R1B release gate, approved AI provider, structured generation and three-language artifact review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "ai.pptx",
       "name": "Generate editable PPTX",
       "release": "R2A",
       "ticket": "R2A-03",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R1B release gate, approved AI provider, structured generation and three-language artifact review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "ai.source_to_slides",
       "name": "Notes or uploaded document to slides",
       "release": "R2A",
       "ticket": "R2A-03",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R1B release gate, approved AI provider, structured generation and three-language artifact review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "ai.speaker_notes",
       "name": "Generate speaker notes",
       "release": "R2A",
       "ticket": "R2A-03",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R1B release gate, approved AI provider, structured generation and three-language artifact review."
+      "evidence": [
+        "apps/studio",
+        "tests/test_studio.py",
+        "tests/test_studio_adversarial.py",
+        "tests/test_studio_branding_revisions.py",
+        "tests/test_batches.py",
+        "tests/test_batch_forms.py"
+      ],
+      "gate": "Local authoring/export, encrypted state and permission tests; provider output quality and multilingual human acceptance remain separate."
     },
     {
       "id": "ai.language",
       "name": "Select output language",
       "release": "R2A",
       "ticket": "R2A-01",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R1B release gate, approved AI provider, structured generation and three-language artifact review."
+      "evidence": [
+        "apps/studio",
+        "tests/test_studio.py",
+        "tests/test_studio_adversarial.py",
+        "tests/test_studio_branding_revisions.py",
+        "tests/test_batches.py",
+        "tests/test_batch_forms.py"
+      ],
+      "gate": "Local authoring/export, encrypted state and permission tests; provider output quality and multilingual human acceptance remain separate."
     },
     {
       "id": "ai.length_style",
       "name": "Select length audience and style",
       "release": "R2A",
       "ticket": "R2A-01",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R1B release gate, approved AI provider, structured generation and three-language artifact review."
+      "evidence": [
+        "apps/studio",
+        "tests/test_studio.py",
+        "tests/test_studio_adversarial.py",
+        "tests/test_studio_branding_revisions.py",
+        "tests/test_batches.py",
+        "tests/test_batch_forms.py"
+      ],
+      "gate": "Local authoring/export, encrypted state and permission tests; provider output quality and multilingual human acceptance remain separate."
     },
     {
       "id": "ai.outline",
       "name": "Generate review and edit outline",
       "release": "R2A",
       "ticket": "R2A-01",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R1B release gate, approved AI provider, structured generation and three-language artifact review."
+      "evidence": [
+        "apps/studio",
+        "tests/test_studio.py",
+        "tests/test_studio_adversarial.py",
+        "tests/test_studio_branding_revisions.py",
+        "tests/test_batches.py",
+        "tests/test_batch_forms.py"
+      ],
+      "gate": "Local authoring/export, encrypted state and permission tests; provider output quality and multilingual human acceptance remain separate."
     },
     {
       "id": "template.basic",
       "name": "Basic document and slide templates",
       "release": "R2A",
       "ticket": "R2A-04",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R1B release gate, approved AI provider, structured generation and three-language artifact review."
+      "evidence": [
+        "apps/studio",
+        "tests/test_studio.py",
+        "tests/test_studio_adversarial.py",
+        "tests/test_studio_branding_revisions.py",
+        "tests/test_batches.py",
+        "tests/test_batch_forms.py"
+      ],
+      "gate": "Local authoring/export, encrypted state and permission tests; provider output quality and multilingual human acceptance remain separate."
     },
     {
       "id": "template.professional",
       "name": "Additional professional templates",
       "release": "R2A",
       "ticket": "R2A-04",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R1B release gate, approved AI provider, structured generation and three-language artifact review."
+      "evidence": [
+        "apps/studio",
+        "tests/test_studio.py",
+        "tests/test_studio_adversarial.py",
+        "tests/test_studio_branding_revisions.py",
+        "tests/test_batches.py",
+        "tests/test_batch_forms.py"
+      ],
+      "gate": "Local authoring/export, encrypted state and permission tests; provider output quality and multilingual human acceptance remain separate."
     },
     {
       "id": "template.branding",
       "name": "Custom logos colors and branding",
       "release": "R2A",
       "ticket": "R2A-04",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R1B release gate, approved AI provider, structured generation and three-language artifact review."
+      "evidence": [
+        "apps/studio",
+        "tests/test_studio.py",
+        "tests/test_studio_adversarial.py",
+        "tests/test_studio_branding_revisions.py",
+        "tests/test_batches.py",
+        "tests/test_batch_forms.py"
+      ],
+      "gate": "Local authoring/export, encrypted state and permission tests; provider output quality and multilingual human acceptance remain separate."
     },
     {
       "id": "ai.images",
       "name": "Generated supporting illustrations",
       "release": "R2A",
       "ticket": "R2A-04",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R1B release gate, approved AI provider, structured generation and three-language artifact review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "ai.rewrite",
       "name": "Rewrite simplify shorten or expand content",
       "release": "R2A",
       "ticket": "R2A-05",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R1B release gate, approved AI provider, structured generation and three-language artifact review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "ai.regenerate_slide",
       "name": "Regenerate selected slides",
       "release": "R2A",
       "ticket": "R2A-05",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R1B release gate, approved AI provider, structured generation and three-language artifact review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "export.generated_pdf",
       "name": "Download generated PDF",
       "release": "R2A",
       "ticket": "R2A-02",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R1B release gate, approved AI provider, structured generation and three-language artifact review."
+      "evidence": [
+        "apps/studio",
+        "tests/test_studio.py",
+        "tests/test_studio_adversarial.py",
+        "tests/test_studio_branding_revisions.py",
+        "tests/test_batches.py",
+        "tests/test_batch_forms.py"
+      ],
+      "gate": "Local authoring/export, encrypted state and permission tests; provider output quality and multilingual human acceptance remain separate."
     },
     {
       "id": "export.generated_pptx",
       "name": "Download editable generated PPTX",
       "release": "R2A",
       "ticket": "R2A-03",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R1B release gate, approved AI provider, structured generation and three-language artifact review."
+      "evidence": [
+        "apps/studio",
+        "tests/test_studio.py",
+        "tests/test_studio_adversarial.py",
+        "tests/test_studio_branding_revisions.py",
+        "tests/test_batches.py",
+        "tests/test_batch_forms.py"
+      ],
+      "gate": "Local authoring/export, encrypted state and permission tests; provider output quality and multilingual human acceptance remain separate."
     },
     {
       "id": "study.summary",
       "name": "Summarize lecture notes and chapters",
       "release": "R2B",
       "ticket": "R2B-01",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "study.definitions",
       "name": "Extract definitions and revision points",
       "release": "R2B",
       "ticket": "R2B-01",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "study.flashcards",
       "name": "Generate flashcards",
       "release": "R2B",
       "ticket": "R2B-01",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "study.quiz",
       "name": "Generate practice questions and quizzes",
       "release": "R2B",
       "ticket": "R2B-01",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "study.answer_key",
       "name": "Answer keys and explanations",
       "release": "R2B",
       "ticket": "R2B-01",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "study.exam_pack",
       "name": "Exam preparation pack",
       "release": "R2B",
       "ticket": "R2B-02",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "study.pdf_qa",
       "name": "PDF questions with source page references",
       "release": "R2B",
       "ticket": "R2B-01",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "study.handwriting",
       "name": "Readable handwritten notes to reviewed typed notes",
       "release": "R2B",
       "ticket": "R2B-02",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "study.report_format",
       "name": "Format supplied report with cover headings TOC page numbers",
       "release": "R2B",
       "ticket": "R2B-02",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "study.references",
       "name": "Format student supplied references",
       "release": "R2B",
       "ticket": "R2B-02",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "study.writing_feedback",
       "name": "Feedback on clarity structure and grammar",
       "release": "R2B",
       "ticket": "R2B-02",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "study.revision_plan",
       "name": "Study schedule from subjects dates and available time",
       "release": "R2B",
       "ticket": "R2B-02",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "school.explain",
       "name": "Grade appropriate lesson explanation",
       "release": "R2B",
       "ticket": "R2B-03",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "school.examples",
       "name": "Examples and understanding checks",
       "release": "R2B",
       "ticket": "R2B-03",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "school.hints",
       "name": "Hints and step by step guidance",
       "release": "R2B",
       "ticket": "R2B-03",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "school.check_attempt",
       "name": "Check learner attempt and explain mistakes",
       "release": "R2B",
       "ticket": "R2B-03",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "school.similar_problems",
       "name": "Generate similar practice problems",
       "release": "R2B",
       "ticket": "R2B-03",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "school.worksheets",
       "name": "Worksheets by subject grade and difficulty",
       "release": "R2B",
       "ticket": "R2B-03",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "school.reading",
       "name": "Reading passages and comprehension questions",
       "release": "R2B",
       "ticket": "R2B-03",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "school.vocabulary",
       "name": "Vocabulary exercises",
       "release": "R2B",
       "ticket": "R2B-03",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "school.weekly_pack",
       "name": "Weekly practice pack across selected subjects",
       "release": "R2B",
       "ticket": "R2B-04",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "school.adaptive",
       "name": "Follow up exercises from previous errors",
       "release": "R2B",
       "ticket": "R2B-04",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "school.results",
       "name": "Completed activities and practice results",
       "release": "R2B",
       "ticket": "R2B-04",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio",
+        "tests/test_studio.py",
+        "tests/test_studio_adversarial.py",
+        "tests/test_studio_branding_revisions.py",
+        "tests/test_batches.py",
+        "tests/test_batch_forms.py"
+      ],
+      "gate": "Local authoring/export, encrypted state and permission tests; provider output quality and multilingual human acceptance remain separate."
     },
     {
       "id": "school.weak_topics",
       "name": "Weak topic summary and follow up recommendations",
       "release": "R2B",
       "ticket": "R2B-04",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio",
+        "tests/test_studio.py",
+        "tests/test_studio_adversarial.py",
+        "tests/test_studio_branding_revisions.py",
+        "tests/test_batches.py",
+        "tests/test_batch_forms.py"
+      ],
+      "gate": "Local authoring/export, encrypted state and permission tests; provider output quality and multilingual human acceptance remain separate."
     },
     {
       "id": "school.project_outline",
       "name": "Project outline from learner ideas",
       "release": "R2B",
       "ticket": "R2B-05",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "school.project_slides",
       "name": "Project presentation and speaking notes",
       "release": "R2B",
       "ticket": "R2B-05",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "school.poster",
       "name": "Printable project poster",
       "release": "R2B",
       "ticket": "R2B-05",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "school.adult_mode",
       "name": "Adult selects grade and generates child materials",
       "release": "R2B",
       "ticket": "R2B-03",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio",
+        "tests/test_studio.py",
+        "tests/test_studio_adversarial.py",
+        "tests/test_studio_branding_revisions.py",
+        "tests/test_batches.py",
+        "tests/test_batch_forms.py"
+      ],
+      "gate": "Local authoring/export, encrypted state and permission tests; provider output quality and multilingual human acceptance remain separate."
     },
     {
       "id": "teacher.lesson_plan",
       "name": "Lesson plan from topic grade duration objectives",
       "release": "R2B",
       "ticket": "R2B-06",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "teacher.lesson_pack",
       "name": "Complete lesson pack",
       "release": "R2B",
       "ticket": "R2B-06",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "teacher.worksheet",
       "name": "Generate worksheets",
       "release": "R2B",
       "ticket": "R2B-06",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "teacher.homework",
       "name": "Generate homework activities",
       "release": "R2B",
       "ticket": "R2B-06",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "teacher.mcq",
       "name": "Multiple choice quiz generation",
       "release": "R2B",
       "ticket": "R2B-07",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "teacher.written_test",
       "name": "Short answer and written tests",
       "release": "R2B",
       "ticket": "R2B-07",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "teacher.answer_key",
       "name": "Marks answers and explanations in separate teacher artifact",
       "release": "R2B",
       "ticket": "R2B-07",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "teacher.variants",
       "name": "Test versions A B C",
       "release": "R2B",
       "ticket": "R2B-07",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "teacher.differentiated",
       "name": "Basic standard advanced worksheets together",
       "release": "R2B",
       "ticket": "R2B-07",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "teacher.reading_level",
       "name": "Rewrite for selected reading level",
       "release": "R2B",
       "ticket": "R2B-06",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "teacher.syllabus",
       "name": "Uploaded syllabus to weekly teaching outline",
       "release": "R2B",
       "ticket": "R2B-06",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "teacher.rubric",
       "name": "Generate assessment rubrics",
       "release": "R2B",
       "ticket": "R2B-07",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "teacher.feedback",
       "name": "Draft writing feedback",
       "release": "R2B",
       "ticket": "R2B-07",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "teacher.suggest_marks",
       "name": "Suggest marks against rubric for teacher review",
       "release": "R2B",
       "ticket": "R2B-07",
-      "status": "gated",
+      "status": "provider_dependent",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
     },
     {
       "id": "teacher.saved_templates",
       "name": "Save class level lesson structure and layouts",
       "release": "R2B",
       "ticket": "R2B-08",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio",
+        "tests/test_studio.py",
+        "tests/test_studio_adversarial.py",
+        "tests/test_studio_branding_revisions.py",
+        "tests/test_batches.py",
+        "tests/test_batch_forms.py"
+      ],
+      "gate": "Local authoring/export, encrypted state and permission tests; provider output quality and multilingual human acceptance remain separate."
     },
     {
       "id": "teacher.branding",
       "name": "Apply school branding",
       "release": "R2B",
       "ticket": "R2B-08",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio",
+        "tests/test_studio.py",
+        "tests/test_studio_adversarial.py",
+        "tests/test_studio_branding_revisions.py",
+        "tests/test_batches.py",
+        "tests/test_batch_forms.py"
+      ],
+      "gate": "Local authoring/export, encrypted state and permission tests; provider output quality and multilingual human acceptance remain separate."
     },
     {
       "id": "teacher.separate_exports",
       "name": "Separate learner artifacts from teacher answer keys",
       "release": "R2B",
       "ticket": "R2B-08",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio",
+        "tests/test_studio.py",
+        "tests/test_studio_adversarial.py",
+        "tests/test_studio_branding_revisions.py",
+        "tests/test_batches.py",
+        "tests/test_batch_forms.py"
+      ],
+      "gate": "Local authoring/export, encrypted state and permission tests; provider output quality and multilingual human acceptance remain separate."
     },
     {
       "id": "teacher.share_materials",
       "name": "Share generated materials with unpaid recipients",
       "release": "R2B",
       "ticket": "R2B-08",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+      "evidence": [
+        "apps/studio",
+        "tests/test_studio.py",
+        "tests/test_studio_adversarial.py",
+        "tests/test_studio_branding_revisions.py",
+        "tests/test_batches.py",
+        "tests/test_batch_forms.py"
+      ],
+      "gate": "Local authoring/export, encrypted state and permission tests; provider output quality and multilingual human acceptance remain separate."
     },
     {
       "id": "editor.visual",
       "name": "Page based editor linked to bot",
       "release": "R3",
       "ticket": "R3-01",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on prior release gates and qualified/licensed existing-content editor and recovery-proof redaction."
+      "evidence": [
+        "processors/engine.py",
+        "processors/advanced.py",
+        "processors/editor.py",
+        "tests/test_advanced_processors.py",
+        "tests/test_processors.py",
+        "docs/processor-capabilities.md"
+      ],
+      "gate": "Real artifact tests. Supported encodings/layouts and raster-redaction limitations are explicit. Stable Office runtime, parser containment and production quality gates remain."
     },
     {
       "id": "editor.add_text",
       "name": "Add new text",
       "release": "R3",
       "ticket": "R3-02",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on prior release gates and qualified/licensed existing-content editor and recovery-proof redaction."
+      "evidence": [
+        "processors/engine.py",
+        "processors/advanced.py",
+        "processors/editor.py",
+        "tests/test_advanced_processors.py",
+        "tests/test_processors.py",
+        "docs/processor-capabilities.md"
+      ],
+      "gate": "Real artifact tests. Supported encodings/layouts and raster-redaction limitations are explicit. Stable Office runtime, parser containment and production quality gates remain."
     },
     {
       "id": "editor.highlight",
       "name": "Highlight text",
       "release": "R3",
       "ticket": "R3-02",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on prior release gates and qualified/licensed existing-content editor and recovery-proof redaction."
+      "evidence": [
+        "processors/engine.py",
+        "processors/advanced.py",
+        "processors/editor.py",
+        "tests/test_advanced_processors.py",
+        "tests/test_processors.py",
+        "docs/processor-capabilities.md"
+      ],
+      "gate": "Real artifact tests. Supported encodings/layouts and raster-redaction limitations are explicit. Stable Office runtime, parser containment and production quality gates remain."
     },
     {
       "id": "editor.annotate",
       "name": "Notes drawings and annotations",
       "release": "R3",
       "ticket": "R3-02",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on prior release gates and qualified/licensed existing-content editor and recovery-proof redaction."
+      "evidence": [
+        "processors/engine.py",
+        "processors/advanced.py",
+        "processors/editor.py",
+        "tests/test_advanced_processors.py",
+        "tests/test_processors.py",
+        "docs/processor-capabilities.md"
+      ],
+      "gate": "Real artifact tests. Supported encodings/layouts and raster-redaction limitations are explicit. Stable Office runtime, parser containment and production quality gates remain."
     },
     {
       "id": "editor.fill_forms",
       "name": "Fill existing interactive forms",
       "release": "R3",
       "ticket": "R3-02",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on prior release gates and qualified/licensed existing-content editor and recovery-proof redaction."
+      "evidence": [
+        "processors/engine.py",
+        "processors/advanced.py",
+        "processors/editor.py",
+        "tests/test_advanced_processors.py",
+        "tests/test_processors.py",
+        "docs/processor-capabilities.md"
+      ],
+      "gate": "Real artifact tests. Supported encodings/layouts and raster-redaction limitations are explicit. Stable Office runtime, parser containment and production quality gates remain."
     },
     {
       "id": "editor.signature_image",
       "name": "Insert signature image",
       "release": "R3",
       "ticket": "R3-02",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on prior release gates and qualified/licensed existing-content editor and recovery-proof redaction."
+      "evidence": [
+        "processors/engine.py",
+        "processors/advanced.py",
+        "processors/editor.py",
+        "tests/test_advanced_processors.py",
+        "tests/test_processors.py",
+        "docs/processor-capabilities.md"
+      ],
+      "gate": "Real artifact tests. Supported encodings/layouts and raster-redaction limitations are explicit. Stable Office runtime, parser containment and production quality gates remain."
     },
     {
       "id": "editor.existing_text",
       "name": "Change existing PDF text",
       "release": "R3",
       "ticket": "R3-03",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on prior release gates and qualified/licensed existing-content editor and recovery-proof redaction."
+      "evidence": [
+        "processors/engine.py",
+        "processors/advanced.py",
+        "processors/editor.py",
+        "tests/test_advanced_processors.py",
+        "tests/test_processors.py",
+        "docs/processor-capabilities.md"
+      ],
+      "gate": "Real artifact tests. Supported encodings/layouts and raster-redaction limitations are explicit. Stable Office runtime, parser containment and production quality gates remain."
     },
     {
       "id": "editor.insert_images",
       "name": "Insert images",
       "release": "R3",
       "ticket": "R3-03",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on prior release gates and qualified/licensed existing-content editor and recovery-proof redaction."
+      "evidence": [
+        "processors/engine.py",
+        "processors/advanced.py",
+        "processors/editor.py",
+        "tests/test_advanced_processors.py",
+        "tests/test_processors.py",
+        "docs/processor-capabilities.md"
+      ],
+      "gate": "Real artifact tests. Supported encodings/layouts and raster-redaction limitations are explicit. Stable Office runtime, parser containment and production quality gates remain."
     },
     {
       "id": "editor.replace_images",
       "name": "Replace or remove existing images",
       "release": "R3",
       "ticket": "R3-03",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on prior release gates and qualified/licensed existing-content editor and recovery-proof redaction."
+      "evidence": [
+        "processors/engine.py",
+        "processors/advanced.py",
+        "processors/editor.py",
+        "tests/test_advanced_processors.py",
+        "tests/test_processors.py",
+        "docs/processor-capabilities.md"
+      ],
+      "gate": "Real artifact tests. Supported encodings/layouts and raster-redaction limitations are explicit. Stable Office runtime, parser containment and production quality gates remain."
     },
     {
       "id": "editor.redact",
       "name": "Permanently remove selected sensitive content",
       "release": "R3",
       "ticket": "R3-04",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on prior release gates and qualified/licensed existing-content editor and recovery-proof redaction."
+      "evidence": [
+        "processors/engine.py",
+        "processors/advanced.py",
+        "processors/editor.py",
+        "tests/test_advanced_processors.py",
+        "tests/test_processors.py",
+        "docs/processor-capabilities.md"
+      ],
+      "gate": "Real artifact tests. Supported encodings/layouts and raster-redaction limitations are explicit. Stable Office runtime, parser containment and production quality gates remain."
     },
     {
       "id": "editor.form_templates",
       "name": "Save reusable form filling templates",
       "release": "R3",
       "ticket": "R3-05",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on prior release gates and qualified/licensed existing-content editor and recovery-proof redaction."
+      "evidence": [
+        "apps/studio",
+        "tests/test_studio.py",
+        "tests/test_studio_adversarial.py",
+        "tests/test_studio_branding_revisions.py",
+        "tests/test_batches.py",
+        "tests/test_batch_forms.py"
+      ],
+      "gate": "Local authoring/export, encrypted state and permission tests; provider output quality and multilingual human acceptance remain separate."
     },
     {
       "id": "editor.batch_forms",
       "name": "Fill multiple documents with reusable data",
       "release": "R3",
       "ticket": "R3-05",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on prior release gates and qualified/licensed existing-content editor and recovery-proof redaction."
+      "evidence": [
+        "apps/studio",
+        "tests/test_studio.py",
+        "tests/test_studio_adversarial.py",
+        "tests/test_studio_branding_revisions.py",
+        "tests/test_batches.py",
+        "tests/test_batch_forms.py"
+      ],
+      "gate": "Local authoring/export, encrypted state and permission tests; provider output quality and multilingual human acceptance remain separate."
     },
     {
       "id": "editor.export",
       "name": "Download edited PDF",
       "release": "R3",
       "ticket": "R3-02",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on prior release gates and qualified/licensed existing-content editor and recovery-proof redaction."
+      "evidence": [
+        "processors/engine.py",
+        "processors/advanced.py",
+        "processors/editor.py",
+        "tests/test_advanced_processors.py",
+        "tests/test_processors.py",
+        "docs/processor-capabilities.md"
+      ],
+      "gate": "Real artifact tests. Supported encodings/layouts and raster-redaction limitations are explicit. Stable Office runtime, parser containment and production quality gates remain."
     },
     {
       "id": "bot.upload_forward",
@@ -1150,13 +1811,14 @@
       "status": "implemented_local",
       "production_enabled": false,
       "evidence": [
-        "apps/core/services.py",
-        "apps/core/policy.py",
+        "apps/core",
+        "telegram",
         "tests/test_platform.py",
-        "../document-web/app",
+        "tests/test_adversarial.py",
+        "tests/test_bot_transport.py",
         "../document-web/docs/design/QA.md"
       ],
-      "gate": "Local behavior implemented; complete release gate remains pending."
+      "gate": "Local artifact/API/browser behavior verified; live Telegram and production infrastructure qualification remain."
     },
     {
       "id": "auth.telegram",
@@ -1166,12 +1828,12 @@
       "status": "partial",
       "production_enabled": false,
       "evidence": [
+        "apps/studio",
         "apps/core",
         "telegram",
-        "tests/test_platform.py",
-        "docs/backend-api.md"
+        "tests"
       ],
-      "gate": "Protocol/domain implementation exists; full transport, preview or fairness acceptance pending."
+      "gate": "Telegram identity/replay/challenge protocols and offline bot behavior tested; real device continuity and live transport need credentials and HTTPS."
     },
     {
       "id": "bot.detect_actions",
@@ -1181,13 +1843,14 @@
       "status": "implemented_local",
       "production_enabled": false,
       "evidence": [
-        "apps/core/services.py",
-        "apps/core/policy.py",
+        "apps/core",
+        "telegram",
         "tests/test_platform.py",
-        "../document-web/app",
+        "tests/test_adversarial.py",
+        "tests/test_bot_transport.py",
         "../document-web/docs/design/QA.md"
       ],
-      "gate": "Local behavior implemented; complete release gate remains pending."
+      "gate": "Local artifact/API/browser behavior verified; live Telegram and production infrastructure qualification remain."
     },
     {
       "id": "profile.modes",
@@ -1197,13 +1860,14 @@
       "status": "implemented_local",
       "production_enabled": false,
       "evidence": [
-        "apps/core/services.py",
-        "apps/core/policy.py",
+        "apps/core",
+        "telegram",
         "tests/test_platform.py",
-        "../document-web/app",
+        "tests/test_adversarial.py",
+        "tests/test_bot_transport.py",
         "../document-web/docs/design/QA.md"
       ],
-      "gate": "Local behavior implemented; complete release gate remains pending."
+      "gate": "Local artifact/API/browser behavior verified; live Telegram and production infrastructure qualification remain."
     },
     {
       "id": "profile.locale",
@@ -1213,13 +1877,14 @@
       "status": "implemented_local",
       "production_enabled": false,
       "evidence": [
-        "apps/core/services.py",
-        "apps/core/policy.py",
+        "apps/core",
+        "telegram",
         "tests/test_platform.py",
-        "../document-web/app",
+        "tests/test_adversarial.py",
+        "tests/test_bot_transport.py",
         "../document-web/docs/design/QA.md"
       ],
-      "gate": "Local behavior implemented; complete release gate remains pending."
+      "gate": "Local artifact/API/browser behavior verified; live Telegram and production infrastructure qualification remain."
     },
     {
       "id": "profile.preferences",
@@ -1229,13 +1894,14 @@
       "status": "implemented_local",
       "production_enabled": false,
       "evidence": [
-        "apps/core/services.py",
-        "apps/core/policy.py",
+        "apps/core",
+        "telegram",
         "tests/test_platform.py",
-        "../document-web/app",
+        "tests/test_adversarial.py",
+        "tests/test_bot_transport.py",
         "../document-web/docs/design/QA.md"
       ],
-      "gate": "Local behavior implemented; complete release gate remains pending."
+      "gate": "Local artifact/API/browser behavior verified; live Telegram and production infrastructure qualification remain."
     },
     {
       "id": "files.previews",
@@ -1245,13 +1911,14 @@
       "status": "implemented_local",
       "production_enabled": false,
       "evidence": [
-        "apps/core/services.py",
-        "apps/core/policy.py",
+        "apps/core",
+        "telegram",
         "tests/test_platform.py",
-        "../document-web/app",
+        "tests/test_adversarial.py",
+        "tests/test_bot_transport.py",
         "../document-web/docs/design/QA.md"
       ],
-      "gate": "Local behavior implemented; complete release gate remains pending."
+      "gate": "Local artifact/API/browser behavior verified; live Telegram and production infrastructure qualification remain."
     },
     {
       "id": "jobs.progress",
@@ -1261,28 +1928,31 @@
       "status": "implemented_local",
       "production_enabled": false,
       "evidence": [
-        "apps/core/services.py",
-        "apps/core/policy.py",
+        "apps/core",
+        "telegram",
         "tests/test_platform.py",
-        "../document-web/app",
+        "tests/test_adversarial.py",
+        "tests/test_bot_transport.py",
         "../document-web/docs/design/QA.md"
       ],
-      "gate": "Local behavior implemented; complete release gate remains pending."
+      "gate": "Local artifact/API/browser behavior verified; live Telegram and production infrastructure qualification remain."
     },
     {
       "id": "jobs.errors_retry",
       "name": "Explain failures and retry safely",
       "release": "R1A",
       "ticket": "R1A-02",
-      "status": "partial",
+      "status": "implemented_local",
       "production_enabled": false,
       "evidence": [
         "apps/core",
         "telegram",
         "tests/test_platform.py",
-        "docs/backend-api.md"
+        "tests/test_adversarial.py",
+        "tests/test_bot_transport.py",
+        "../document-web/docs/design/QA.md"
       ],
-      "gate": "Protocol/domain implementation exists; full transport, preview or fairness acceptance pending."
+      "gate": "Local artifact/API/browser behavior verified; live Telegram and production infrastructure qualification remain."
     },
     {
       "id": "jobs.history",
@@ -1292,13 +1962,14 @@
       "status": "implemented_local",
       "production_enabled": false,
       "evidence": [
-        "apps/core/services.py",
-        "apps/core/policy.py",
+        "apps/core",
+        "telegram",
         "tests/test_platform.py",
-        "../document-web/app",
+        "tests/test_adversarial.py",
+        "tests/test_bot_transport.py",
         "../document-web/docs/design/QA.md"
       ],
-      "gate": "Local behavior implemented; complete release gate remains pending."
+      "gate": "Local artifact/API/browser behavior verified; live Telegram and production infrastructure qualification remain."
     },
     {
       "id": "files.no_watermark",
@@ -1308,13 +1979,14 @@
       "status": "implemented_local",
       "production_enabled": false,
       "evidence": [
-        "apps/core/services.py",
-        "apps/core/policy.py",
+        "apps/core",
+        "telegram",
         "tests/test_platform.py",
-        "../document-web/app",
+        "tests/test_adversarial.py",
+        "tests/test_bot_transport.py",
         "../document-web/docs/design/QA.md"
       ],
-      "gate": "Local behavior implemented; complete release gate remains pending."
+      "gate": "Local artifact/API/browser behavior verified; live Telegram and production infrastructure qualification remain."
     },
     {
       "id": "files.retention",
@@ -1324,13 +1996,14 @@
       "status": "implemented_local",
       "production_enabled": false,
       "evidence": [
-        "apps/core/services.py",
-        "apps/core/policy.py",
+        "apps/core",
+        "telegram",
         "tests/test_platform.py",
-        "../document-web/app",
+        "tests/test_adversarial.py",
+        "tests/test_bot_transport.py",
         "../document-web/docs/design/QA.md"
       ],
-      "gate": "Local behavior implemented; complete release gate remains pending."
+      "gate": "Local artifact/API/browser behavior verified; live Telegram and production infrastructure qualification remain."
     },
     {
       "id": "usage.balance",
@@ -1340,13 +2013,14 @@
       "status": "implemented_local",
       "production_enabled": false,
       "evidence": [
-        "apps/core/services.py",
-        "apps/core/policy.py",
+        "apps/core",
+        "telegram",
         "tests/test_platform.py",
-        "../document-web/app",
+        "tests/test_adversarial.py",
+        "tests/test_bot_transport.py",
         "../document-web/docs/design/QA.md"
       ],
-      "gate": "Local behavior implemented; complete release gate remains pending."
+      "gate": "Local artifact/API/browser behavior verified; live Telegram and production infrastructure qualification remain."
     },
     {
       "id": "billing.quote",
@@ -1356,13 +2030,14 @@
       "status": "implemented_local",
       "production_enabled": false,
       "evidence": [
-        "apps/core/services.py",
-        "apps/core/policy.py",
+        "apps/core",
+        "telegram",
         "tests/test_platform.py",
-        "../document-web/app",
+        "tests/test_adversarial.py",
+        "tests/test_bot_transport.py",
         "../document-web/docs/design/QA.md"
       ],
-      "gate": "Local behavior implemented; complete release gate remains pending."
+      "gate": "Local artifact/API/browser behavior verified; live Telegram and production infrastructure qualification remain."
     },
     {
       "id": "billing.failure_restore",
@@ -1372,53 +2047,78 @@
       "status": "implemented_local",
       "production_enabled": false,
       "evidence": [
-        "apps/core/services.py",
-        "apps/core/policy.py",
+        "apps/core",
+        "telegram",
         "tests/test_platform.py",
-        "../document-web/app",
+        "tests/test_adversarial.py",
+        "tests/test_bot_transport.py",
         "../document-web/docs/design/QA.md"
       ],
-      "gate": "Local behavior implemented; complete release gate remains pending."
+      "gate": "Local artifact/API/browser behavior verified; live Telegram and production infrastructure qualification remain."
     },
     {
       "id": "billing.stars",
       "name": "Telegram Stars checkout",
       "release": "R1B",
       "ticket": "R1B-05",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R1A release gate, engine qualification, payment configuration, economics and financial integration."
+      "evidence": [
+        "apps/commerce",
+        "telegram/billing.py",
+        "telegram/delivery.py",
+        "operations/commerce_views.py",
+        "apps/commerce/tests"
+      ],
+      "gate": "Server-priced state machine and sandbox tested. Real Stars provider, reviewed prices/economics and production financial reconciliation need configuration/signoff."
     },
     {
       "id": "billing.subscription",
       "name": "Monthly renewal details and cancellation",
       "release": "R1B",
       "ticket": "R1B-05",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R1A release gate, engine qualification, payment configuration, economics and financial integration."
+      "evidence": [
+        "apps/commerce",
+        "telegram/billing.py",
+        "telegram/delivery.py",
+        "operations/commerce_views.py",
+        "apps/commerce/tests"
+      ],
+      "gate": "Server-priced state machine and sandbox tested. Real Stars provider, reviewed prices/economics and production financial reconciliation need configuration/signoff."
     },
     {
       "id": "billing.task_pack",
       "name": "Purchase extra standard file operations",
       "release": "R1B",
       "ticket": "R1B-06",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R1A release gate, engine qualification, payment configuration, economics and financial integration."
+      "evidence": [
+        "apps/commerce",
+        "telegram/billing.py",
+        "telegram/delivery.py",
+        "operations/commerce_views.py",
+        "apps/commerce/tests"
+      ],
+      "gate": "Server-priced state machine and sandbox tested. Real Stars provider, reviewed prices/economics and production financial reconciliation need configuration/signoff."
     },
     {
       "id": "billing.ai_topup",
       "name": "Purchase extra AI credits",
       "release": "R2A",
       "ticket": "R2A-06",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R1B release gate, approved AI provider, structured generation and three-language artifact review."
+      "evidence": [
+        "apps/commerce",
+        "telegram/billing.py",
+        "telegram/delivery.py",
+        "operations/commerce_views.py",
+        "apps/commerce/tests"
+      ],
+      "gate": "Server-priced state machine and sandbox tested. Real Stars provider, reviewed prices/economics and production financial reconciliation need configuration/signoff."
     },
     {
       "id": "support.standard",
@@ -1428,63 +2128,94 @@
       "status": "implemented_local",
       "production_enabled": false,
       "evidence": [
-        "apps/core/services.py",
-        "apps/core/policy.py",
+        "apps/core",
+        "telegram",
         "tests/test_platform.py",
-        "../document-web/app",
+        "tests/test_adversarial.py",
+        "tests/test_bot_transport.py",
         "../document-web/docs/design/QA.md"
       ],
-      "gate": "Local behavior implemented; complete release gate remains pending."
+      "gate": "Local artifact/API/browser behavior verified; live Telegram and production infrastructure qualification remain."
     },
     {
       "id": "support.priority",
       "name": "Priority support queue",
       "release": "R1B",
       "ticket": "R1B-07",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R1A release gate, engine qualification, payment configuration, economics and financial integration."
+      "evidence": [
+        "apps/commerce",
+        "telegram/billing.py",
+        "telegram/delivery.py",
+        "operations/commerce_views.py",
+        "apps/commerce/tests"
+      ],
+      "gate": "Server-priced state machine and sandbox tested. Real Stars provider, reviewed prices/economics and production financial reconciliation need configuration/signoff."
     },
     {
       "id": "billing.trial",
       "name": "Shared monthly starter credit pool",
       "release": "R1B",
       "ticket": "R1B-06",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R1A release gate, engine qualification, payment configuration, economics and financial integration."
+      "evidence": [
+        "apps/commerce",
+        "telegram/billing.py",
+        "telegram/delivery.py",
+        "operations/commerce_views.py",
+        "apps/commerce/tests"
+      ],
+      "gate": "Server-priced state machine and sandbox tested. Real Stars provider, reviewed prices/economics and production financial reconciliation need configuration/signoff."
     },
     {
       "id": "growth.referral",
       "name": "Capped bonus operations for qualifying referrals",
       "release": "R1B",
       "ticket": "R1B-08",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R1A release gate, engine qualification, payment configuration, economics and financial integration."
+      "evidence": [
+        "apps/commerce",
+        "telegram/billing.py",
+        "telegram/delivery.py",
+        "operations/commerce_views.py",
+        "apps/commerce/tests"
+      ],
+      "gate": "Server-priced state machine and sandbox tested. Real Stars provider, reviewed prices/economics and production financial reconciliation need configuration/signoff."
     },
     {
       "id": "growth.sponsor",
       "name": "Optional labeled sponsor messages in general mode",
       "release": "R1B",
       "ticket": "R1B-08",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R1A release gate, engine qualification, payment configuration, economics and financial integration."
+      "evidence": [
+        "apps/commerce",
+        "telegram/billing.py",
+        "telegram/delivery.py",
+        "operations/commerce_views.py",
+        "apps/commerce/tests"
+      ],
+      "gate": "Server-priced state machine and sandbox tested. Real Stars provider, reviewed prices/economics and production financial reconciliation need configuration/signoff."
     },
     {
       "id": "growth.ad_free",
       "name": "Ad free experience when sponsors enabled",
       "release": "R1B",
       "ticket": "R1B-08",
-      "status": "gated",
+      "status": "implemented_local",
       "production_enabled": false,
-      "evidence": [],
-      "gate": "Depends on R1A release gate, engine qualification, payment configuration, economics and financial integration."
+      "evidence": [
+        "apps/commerce",
+        "telegram/billing.py",
+        "telegram/delivery.py",
+        "operations/commerce_views.py",
+        "apps/commerce/tests"
+      ],
+      "gate": "Server-priced state machine and sandbox tested. Real Stars provider, reviewed prices/economics and production financial reconciliation need configuration/signoff."
     }
   ]
 }

@@ -25,7 +25,7 @@ def _run(request: dict, timeout: int) -> dict:
     # Parser processes must not inherit database, Telegram, signing or provider
     # credentials from the API/worker environment.
     environment = {key: os.environ[key] for key in
-        ('PATH', 'LANG', 'LC_ALL', 'TMPDIR', 'TMP', 'TEMP', 'SYSTEMROOT', 'PDFMASTER_SOFFICE_BIN')
+        ('PATH', 'LANG', 'LC_ALL', 'TMPDIR', 'TMP', 'TEMP', 'SYSTEMROOT', 'PDFMASTER_SOFFICE_BIN','PDFMASTER_TESSERACT_BIN')
         if key in os.environ}
     environment['PYTHONDONTWRITEBYTECODE'] = '1'
     # No request file is written: secrets, if present, travel only over stdin.

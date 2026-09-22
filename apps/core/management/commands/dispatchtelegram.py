@@ -2,7 +2,6 @@ import asyncio
 from aiogram import Bot
 from aiogram.types import Update
 from asgiref.sync import sync_to_async
-from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from apps.core.models import WebhookReceipt
@@ -11,8 +10,10 @@ class Command(BaseCommand):
     help='Dispatch authenticated durable webhook receipts; retries share domain idempotency.'
     def handle(self,*args,**options): asyncio.run(self.dispatch())
     async def dispatch(self):
-        if not settings.TELEGRAM_BOT_TOKEN or not settings.TELEGRAM_WEBHOOK_SECRET: raise RuntimeError('Webhook token and secret required.')
-        bot=Bot(settings.TELEGRAM_BOT_TOKEN);dispatcher=build_dispatcher()
+        from apps.commerce.providers import telegram_config
+        config=await sync_to_async(telegram_config)()
+        if not config.get('token') or not config.get('webhook_secret'): raise RuntimeError('Webhook token and secret required in the admin configuration.')
+        bot=Bot(config['token']);dispatcher=build_dispatcher()
         try:
             receipts=await sync_to_async(lambda:list(WebhookReceipt.objects.filter(processed_at__isnull=True).order_by('update_id')[:100]))()
             for receipt in receipts:

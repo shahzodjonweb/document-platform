@@ -1,3 +1,4 @@
+from operations.integrations import telegram_config
 import hashlib
 import hmac
 import json
@@ -29,7 +30,7 @@ def resolve_account(user, channel='bot', is_test=False):
     return account
 
 def validate_init_data(raw, now=None):
-    if not settings.TELEGRAM_BOT_TOKEN or not isinstance(raw, str) or len(raw) > 16384:
+    if not telegram_config()['token'] or not isinstance(raw, str) or len(raw) > 16384:
         raise DomainError('invalid_telegram_data', 401)
     try:
         pairs = parse_qsl(raw, keep_blank_values=True, strict_parsing=True)
@@ -37,7 +38,7 @@ def validate_init_data(raw, now=None):
         if len(data) != len(pairs): raise ValueError('duplicate keys')
         received_hash = data.pop('hash')
         check = '\n'.join(f'{key}={value}' for key,value in sorted(data.items()))
-        key = hmac.new(b'WebAppData', settings.TELEGRAM_BOT_TOKEN.encode(), hashlib.sha256).digest()
+        key = hmac.new(b'WebAppData', telegram_config()['token'].encode(), hashlib.sha256).digest()
         expected = hmac.new(key, check.encode(), hashlib.sha256).hexdigest()
         if not hmac.compare_digest(received_hash, expected): raise ValueError('signature')
         age = (now if now is not None else time.time()) - int(data['auth_date'])
@@ -58,7 +59,7 @@ def exchange_miniapp(raw):
     return resolve_account(user, 'mini_app')
 
 def create_challenge(browser_hint):
-    if not settings.TELEGRAM_BOT_USERNAME:
+    if not telegram_config()['username']:
         raise DomainError('telegram_not_configured', 503)
     token, verifier = secrets.token_urlsafe(24), secrets.token_urlsafe(32)
     challenge = AuthChallenge.objects.create(token_hash=digest(token), verifier_hash=digest(verifier), browser_hint=browser_hint[:160], expires_at=timezone.now()+timedelta(minutes=5))

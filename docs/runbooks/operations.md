@@ -51,3 +51,13 @@ Billing is intentionally closed with null production Stars prices. Financial pag
 - Complete translated-copy, privacy/support contact, commercial price and provider/license reviews. Keep later release gates closed until their original backlog acceptance evidence exists.
 
 The supplied Compose file is a local integration scaffold with pinned public image digests. It was not run because Docker is absent on this host. Its development switches and shared parser host must not be presented as a completed production deployment.
+
+## Admin-managed integrations and extended workers
+
+Administrators configure Telegram token/username/web application URL and AI text/image models in `/ops/integrations`. Secrets are never redisplayed. Local Start/Stop controls are permitted only in the explicit loopback development realm. A production service manager runs `manage.py runbot` with the same database and encryption configuration; the runner reads the encrypted token from the database.
+
+Preserve `.private/integration.key` with the local database backup. In deployment, supply `INTEGRATION_ENCRYPTION_KEY` through managed secrets and test a restore before rotating it. Studio drafts and saved education content also use this cipher. Losing the key makes encrypted content unreadable.
+
+Use `runworker` for ordinary jobs and a separate `runbatches` process for long batch parents. This prevents a batch of 25 documents from blocking all ordinary work. `dispatchoutbox` is the alternate Celery publisher; do not run competing queue modes without a deliberate deployment topology. A published event remains undelivered until terminal settlement. Polling drains bot delivery retries; a webhook deployment requires `dispatchtelegram` and `deliverbot` workers. Configure recurring `cleanupfiles` and payment reconciliation explicitly in the deployment scheduler.
+
+Local authoring is available only in DEBUG. Production must select a configured AI provider or disabled mode. Live commerce separately requires reviewed, versioned offers and explicit activation. Sandbox test accounts and facts are excluded from production grants and reports even if copied from a development database.

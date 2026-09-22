@@ -2,7 +2,7 @@
 
 The real engine implementations below have local artifact tests. This is engine evidence, not an R1A/R1B release declaration. API policy and release flags are authoritative, including the optional Office runtime and production containment gates. All 128 catalog IDs remain tracked by the platform catalog; capabilities not listed here do not have a processor.
 
-`inspect_file_sandbox(path, password=None)` verifies private input and returns MIME, bytes, kind, pages, encryption state. Password-protected PDFs without a supplied password return `page_count=null` and `password_required=true`; do not quote unknown pages. `normalize_parameters(feature_id, parameters, input_metadata)` validates only metadata/settings and never opens files. `execute_sandbox(feature_id, input_paths, parameters, output_dir, secret=None)` returns a plain JSON-compatible manifest:
+`inspect_file_sandbox(path, password=None)` verifies private input and returns MIME, bytes, kind, pages, encryption state, displayed page_sizes, safe form_fields and image_counts. Password-protected PDFs without a supplied password return `page_count=null` and `password_required=true`; do not quote unknown pages. `normalize_parameters(feature_id, parameters, input_metadata)` validates only metadata/settings and never opens files. `execute_sandbox(feature_id, input_paths, parameters, output_dir, secret=None)` returns a plain JSON-compatible manifest:
 
 ```json
 {"artifacts":[{"path":"/private/attempt/result.pdf","name":"result.pdf","mime_type":"application/pdf","page_count":3,"size_bytes":2048}],"actual_page_units":3,"no_op":false,"metadata":{"engine_versions":{}}}
@@ -32,11 +32,11 @@ Page selections are one-based `1,3-5` strings or `all`; duplicates, descending/o
 
 ## Evidence and open qualification
 
-Run `DEBUG=1 .venv/bin/python -m pytest tests/test_processors.py tests/test_office_processors.py -q` from document-platform. Last local result: 37 passed (2026-09-22). Fixtures test actual page text/order, dimensions/rotation, selected ranges, compression/no-op exact bytes, pixel colors after image PDF rendering, reopened PNG/JPG ZIP members, corrupt/active documents, traversal/macros/archive bombs/pixel limits, secret non-disclosure and AES roundtrip, and child-process execution. Generated examples can be rendered with PDFium; tests assert pixels as well as PDF structure.
+Run `DEBUG=1 .venv/bin/python -m pytest tests/test_processors.py tests/test_office_processors.py tests/test_advanced_processors.py -q` from document-platform. Last local result: 58 passed (2026-09-23). Fixtures test actual page text/order, dimensions/rotation, selected ranges, compression/no-op exact bytes, pixel colors after image PDF rendering, reopened PNG/JPG ZIP members, corrupt/active documents, traversal/macros/archive bombs/pixel limits, secret non-disclosure and AES roundtrip, and child-process execution. Generated examples can be rendered with PDFium; tests assert pixels as well as PDF structure.
 
 A two-page [merge fixture](../processors/evidence/sample-merged.pdf) and its [first-page render](../processors/evidence/sample-merged.png) are retained as evidence. The Poppler render was visually inspected for complete text, spacing and absence of clipping. It contains only synthetic application test copy.
 
-Still gated: production containment, stable supported Office runtime qualification, OCR rus/uzb models/quality, editable PDF-to-DOCX/XLSX quality/license qualification, and all phase-2/phase-3 engines. Tesseract is detected locally but only English/OCR orientation/serial-number models are available, so OCR is not exposed.
+Production containment and supported stable Office qualification remain gated. OCR, editable text/table conversion and visual editor operations now have local artifact evidence and truthful quality limits below; API policy remains authoritative.
 
 ## Office preflight and local qualification
 
@@ -47,3 +47,86 @@ Inspection converts accepted DOCX/PPTX into a temporary private PDF, validates i
 Synthetic sources are retained at `processors/fixtures/office-multilingual.docx` and `.pptx`; each has three pages/slides for English, Uzbek Latin and Russian. Native editable PPTX text/shapes and DOCX paragraphs/table/page breaks were used, with bundled Noto Sans fonts. Actual converted PDFs and all six inspected page renders are under `processors/evidence/office/`. Independent concurrent conversions with separate profiles and real text/page-count checks pass. Password handle confidentiality, ownership, deletion and expiry restoration are additionally verified by the platform/adversarial suites.
 
 The committed DOCX/PPTX files are self-contained synthetic fixtures. The optional `processors/fixtures/build/create-slides.mjs` source used the Codex workspace's artifact-tool package to author editable slide objects; it is not a runtime dependency or a production generation adapter. Normal processor tests consume the committed fixture bytes and need only the locked Python packages plus an available Office binary for the optional conversion tests.
+
+## OCR and editable conversions
+
+The following engines are implemented locally. OCR uses installed Tesseract 5.5.2 and vendored official Apache-2.0 tessdata_fast English, Russian and Uzbek models at commit `87416418657359cb625c412a48b6e1d6d41c29bd`. Source URLs, full SHA-256 checksums and byte sizes are in `processors/assets/tessdata/manifest.json`; only trusted deployment configuration may choose the executable. Printed text is qualified; handwriting and arbitrary source quality are not promised.
+
+| Catalog ID | Parameters | Output and limitations |
+| --- | --- | --- |
+| `ocr.extract_text` | `language="eng"`, `pages="all"`, `dpi=200` | Actual recognized UTF-8 text. Languages eng/rus/uzb/eng+rus/eng+uzb/eng+rus+uzb; 150..300 dpi. Empty recognition fails without success settlement. |
+| `ocr.searchable_pdf` | same | Actual raster PDF with Tesseract searchable text layer; reopens and validates every generated page. |
+| `convert.pdf_to_docx` | `mode="text"`, `language="eng"`, `pages="all"` | Native text becomes editable paragraphs; explicit `mode="ocr"` for scans. Reflowed layout, no claim of source layout reproduction. Cyrillic paragraph roundtrip is tested. |
+| `convert.pdf_to_xlsx` | `strategy="lines"`, `pages="all"` | Native PDF tables via pdfplumber; `strategy="text"` also supported. Each table gets a worksheet, cells are literal strings to prevent spreadsheet formula injection. Scan/table-structure recognition is not implied. No detected tables fails explicitly. |
+
+Local tests check English, Russian and Uzbek OCR phrases, real searchable text plus page image, editable Cyrillic DOCX without screenshot substitution, and XLSX cells including formula-looking values reopened as strings. The long-term quality dataset and handwriting remain open qualification work.
+
+## Editor command contract
+
+All editor requests use `{commands:[...], accept_rasterization:false}` with at most 100 commands. Coordinates are PDF points from the **displayed top-left**; page indices start at 1. `page_sizes` metadata supplies displayed width/height. Cropped/nonzero-origin page geometry currently fails explicitly; ordinary rotations are normalized. Additional input images are ordered after the source PDF at `input_index` 1 and higher; existing page `image_index` starts at 0. There are no client filesystem paths or executable settings.
+
+| Catalog ID | Command types and main fields |
+| --- | --- |
+| `editor.visual` | Composes the supported commands below. Domain must authorize each `COMMAND_FEATURES` mapping, not just the visual-editor shell. |
+| `editor.add_text` | `add_text`: page,x,y,text,font_size=16,color="#000000". Unicode Noto Sans embedded. |
+| `editor.highlight` | `highlight`: page,x,y,width,height,color="#FFFF00". Native PDF highlight annotation. |
+| `editor.annotate` | `note`: page,x,y,text; `draw`: page,points=[[x,y],...],color,stroke_width=2. |
+| `editor.fill_forms` | `fill_form`: field,value. Keeps canonical editable AcroForm values with embedded Unicode text appearances; signed/XFA/password fields rejected. |
+| `editor.signature_image` | `signature`: page,x,y,width,height,input_index. Visible image placement, no cryptographic signature claim. |
+| `editor.insert_images` | `insert_image`: page,x,y,width,height,input_index. |
+| `editor.existing_text` | `replace_text`: page,find,replacement. Actually mutates text operators; current support is ASCII text using standard Type1 Helvetica/Times/Courier. Complex subset encodings and Unicode replacement fail explicitly. |
+| `editor.replace_images` | `replace_image`: page,image_index,input_index; `remove_image`: page,image_index. Mutates/removes real image XObjects; unsupported nested removals fail explicitly. |
+| `editor.redact` | `redact`: page,x,y,width,height. Requires `accept_rasterization=true`, cannot be mixed with other edits in one export. |
+
+Redaction rasterizes **every page** at 144 dpi, blacks out rectangles with a one-pixel edge expansion and creates a new PDF exclusively from the masked pixels. It copies no original content streams, forms, annotations, metadata trees or attachments. Reopened validation proves no recoverable PDF text/form tree; the fixture also reruns OCR and verifies the removed secret is absent while public text remains. This permanently sanitizes the exported PDF, while source uploads and earlier versions may still exist until explicitly deleted or retention expires. Every output reports that distinction. Rasterization loses editable text and forms; it is not hidden behind an overlay.
+
+Visually inspected synthetic examples are in `docs/verification/advanced/`: `edited.png` shows real NEW text, English/Uzbek/Russian addition, highlight, note, filled Unicode form and drawn path; `redacted.png` shows the removed secret and visible remaining field content; output PDFs and a searchable OCR example are retained alongside the source. Reproduce with `.venv/bin/python processors/fixtures/build/advanced-evidence.py`.
+
+## Handwritten-note provider boundary and generated layouts
+
+`study.handwriting` now takes exactly one owned PNG/JPEG or one-page unencrypted
+PDF. A bounded child produces a JPEG no larger than 1536 × 1536. The configured
+vision-capable Responses model receives the image only after a confirmed quote;
+local authoring does not claim handwriting recognition. Recognized model families
+use conservative image-token bounds from the [official vision documentation](https://developers.openai.com/api/docs/guides/images-vision)
+(checked 2026-09-23), added to the complete text/schema byte bound. Unknown model
+families require explicit qualification instead of guessing their image cost.
+The response must be a bounded transcription with explicit `[unclear]` markers
+where uncertainty is declared; the resulting draft is editable and always carries
+a human-review warning. Protocol tests use mocked provider responses with actual
+rasterized inputs. Handwriting accuracy, language quality and provider cost have
+not been evaluated against a live model.
+
+Published paid presets `executive_report`, `compact_brief`, and `study_notes`
+change real margins, typography, line spacing and page/slide decoration. The
+server enforces `template.professional` eligibility. Generated PPTX removes the
+unused binary printer-settings part inherited from python-pptx's template, so
+reupload and Office conversion preserve the strict binary/active-content policy.
+A real generated-PPTX → upload → PDF conversion test verifies multilingual text.
+
+Synthetic multilingual lesson-pack evidence is in `docs/verification/packs/`:
+English, Uzbek and Russian worksheet, private answer key, lesson plan, native
+editable PPTX, LibreOffice-rendered slide PDF and inspected page PNGs. These show
+provided text and questions; they are not provider-generated teaching material.
+The five composite pack operations enforce named material slots and private
+teacher-key roles. Local variants shuffle supplied items/options, differentiated
+materials apply explicit scaffolding to supplied questions, and weekly packs
+partition supplied questions; local mode does not invent a curriculum or infer
+question difficulty. Live pack content still requires teacher review.
+
+
+After a successful handwriting job, the server records encrypted source provenance.
+Saving reviewed content/outline for that unchanged source marks the draft reviewed.
+The next ordinary quote becomes a zero-AI-credit export of the saved text and never
+calls the provider; changing the source clears this state. Public read-only booleans
+`transcription_ready` and `transcription_reviewed` describe the state, and clients
+cannot set the private provenance marker. Vision rasters are padded to a square
+without cropping so extreme aspect ratios stay within the image-token bound.
+
+Study flashcards render paired questions/answers and explanations; study answer
+keys render answers, explanations and marks with a private user-document role.
+Teacher answer keys retain a private teacher-key role. Teacher feedback, suggested
+marks, rubrics, lesson plans and syllabi remain private, including when older
+artifacts were mislabeled or already shared. Quote and settlement use one metering
+helper: flashcards cost the configured per-started-ten-card tariff, and PDF Q&A
+includes the configured base credit charge. Source/page labels are localized.

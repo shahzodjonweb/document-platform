@@ -1,46 +1,51 @@
-"""Full catalog accountability; implementation presence never means release approval."""
+"""Per-feature accountability. A menu or provider adapter is not release approval."""
 import json
 import sys
 from pathlib import Path
 ROOT=Path(__file__).resolve().parent.parent
 catalog=json.loads((ROOT/'docs/product/feature_catalog.json').read_text())
 backlog=json.loads((ROOT/'docs/product/delivery_backlog.json').read_text())
-local_tools={'pdf.merge','pdf.compress','pdf.split','pdf.extract_pages','pdf.delete_pages','pdf.reorder','pdf.rotate','pdf.images_to_pdf','pdf.to_images','pdf.protect','pdf.unlock_known','convert.word_to_pdf','convert.pptx_to_pdf'}
-local_support={'pdf.image_layout','pdf.compression_preview','capacity.file_size','capacity.monthly','profile.modes','profile.locale','profile.preferences','jobs.progress','jobs.history','files.no_watermark','files.retention','usage.balance','billing.quote','billing.failure_restore','support.standard','files.previews','bot.upload_forward','bot.detect_actions'}
-partial={'auth.telegram','jobs.errors_retry','capacity.queue'}
+processors=set('''pdf.merge pdf.compress pdf.split pdf.extract_pages pdf.delete_pages pdf.reorder pdf.rotate pdf.images_to_pdf pdf.to_images pdf.protect pdf.unlock_known convert.word_to_pdf convert.pptx_to_pdf convert.pdf_to_docx convert.pdf_to_xlsx ocr.extract_text ocr.searchable_pdf editor.visual editor.add_text editor.highlight editor.annotate editor.fill_forms editor.signature_image editor.existing_text editor.insert_images editor.replace_images editor.redact editor.export'''.split())
+core=set('''capacity.queue pdf.image_layout pdf.compression_preview capacity.file_size capacity.monthly profile.modes profile.locale profile.preferences jobs.progress jobs.history jobs.errors_retry files.no_watermark files.retention usage.balance billing.quote billing.failure_restore support.standard files.previews bot.upload_forward bot.detect_actions'''.split())
+commerce=set('''billing.stars billing.subscription billing.task_pack billing.ai_topup billing.trial support.priority growth.referral growth.sponsor growth.ad_free'''.split())
+studio=set('''ai.outline template.professional batch.convert batch.compress batch.image_sets workflow.saved workflow.reuse ai.language ai.length_style ai.speaker_notes template.basic template.branding export.generated_pdf export.generated_pptx school.results school.weak_topics school.adult_mode teacher.saved_templates teacher.branding teacher.separate_exports teacher.share_materials editor.form_templates editor.batch_forms'''.split())
+partial={'auth.telegram':'Telegram identity/replay/challenge protocols and offline bot behavior tested; real device continuity and live transport need credentials and HTTPS.'}
+known=processors|core|commerce|studio|set(partial)
 by_feature={}
 for ticket in backlog['tickets']:
- for fid in ticket['feature_ids']:
-  assert fid not in by_feature, f'Duplicate ticket ownership for {fid}'
-  by_feature[fid]=ticket['id']
-assert len(catalog['features'])==128 and len(backlog['tickets'])==48
-assert set(by_feature)=={f['id'] for f in catalog['features']}
+    for fid in ticket['feature_ids']:
+        assert fid not in by_feature,f'Duplicate ticket ownership for {fid}'
+        by_feature[fid]=ticket['id']
+ids={f['id'] for f in catalog['features']}
+assert len(catalog['features'])==128 and len(backlog['tickets'])==48 and set(by_feature)==ids
+assert known<=ids
 rows=[]
 for feature in catalog['features']:
- fid=feature['id']
- status='implemented_local' if fid in local_tools|local_support else 'partial' if fid in partial else 'gated'
- if fid in local_tools:
-  evidence=['processors/engine.py','apps/core/services.py','tests/test_processors.py','tests/test_platform.py','tests/test_adversarial.py']
-  gate='Local artifact/API tests; production parser containment and cross-channel real-device gate pending.'
- elif fid in local_support:
-  evidence=['apps/core/services.py','apps/core/policy.py','tests/test_platform.py','../document-web/app','../document-web/docs/design/QA.md']
-  gate='Local behavior implemented; complete release gate remains pending.'
- elif fid in partial:
-  evidence=['apps/core','telegram','tests/test_platform.py','docs/backend-api.md']
-  gate='Protocol/domain implementation exists; full transport, preview or fairness acceptance pending.'
- else:
-  evidence=[]
-  gate={'R1A':'Office engine qualification and actual isolated conversion not yet completed.','R1B':'Depends on R1A release gate, engine qualification, payment configuration, economics and financial integration.','R2A':'Depends on R1B release gate, approved AI provider, structured generation and three-language artifact review.','R2B':'Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review.','R3':'Depends on prior release gates and qualified/licensed existing-content editor and recovery-proof redaction.'}.get(feature['release'],'Foundation acceptance pending.')
- rows.append({'id':fid,'name':feature['name'],'release':feature['release'],'ticket':by_feature[fid],'status':status,'production_enabled':False,'evidence':evidence,'gate':gate})
-report={'schema_version':'1.0','catalog_count':128,'ticket_count':48,'release_approval':'none','note':'Local capability is not production release approval. No completion is inferred from a menu or placeholder.','features':rows}
+    fid=feature['id']
+    if fid in partial:
+        status='partial';evidence=['apps/studio','apps/core','telegram','tests'];gate=partial[fid]
+    elif fid in processors:
+        status='implemented_local';evidence=['processors/engine.py','processors/advanced.py','processors/editor.py','tests/test_advanced_processors.py','tests/test_processors.py','docs/processor-capabilities.md'];gate='Real artifact tests. Supported encodings/layouts and raster-redaction limitations are explicit. Stable Office runtime, parser containment and production quality gates remain.'
+    elif fid in core:
+        status='implemented_local';evidence=['apps/core','telegram','tests/test_platform.py','tests/test_adversarial.py','tests/test_bot_transport.py','../document-web/docs/design/QA.md'];gate='Local artifact/API/browser behavior verified; live Telegram and production infrastructure qualification remain.'
+    elif fid in commerce:
+        status='implemented_local';evidence=['apps/commerce','telegram/billing.py','telegram/delivery.py','operations/commerce_views.py','apps/commerce/tests'];gate='Server-priced state machine and sandbox tested. Real Stars provider, reviewed prices/economics and production financial reconciliation need configuration/signoff.'
+    elif fid in studio:
+        status='implemented_local';evidence=['apps/studio','tests/test_studio.py','tests/test_studio_adversarial.py','tests/test_studio_branding_revisions.py','tests/test_batches.py','tests/test_batch_forms.py'];gate='Local authoring/export, encrypted state and permission tests; provider output quality and multilingual human acceptance remain separate.'
+    elif fid.startswith(('ai.','study.','school.','teacher.')):
+        status='provider_dependent';evidence=['apps/studio/domain.py','apps/studio/provider.py','apps/studio/execution.py','apps/studio/illustrations.py','apps/studio/packs.py','tests/test_studio_packs.py','tests/test_illustrations.py'];gate='Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation.'
+    else:
+        status='gated';evidence=[];gate='No implementation acceptance evidence recorded.'
+    rows.append({'id':fid,'name':feature['name'],'release':feature['release'],'ticket':by_feature[fid],'status':status,'production_enabled':False,'evidence':evidence,'gate':gate})
+report={'schema_version':'1.1','catalog_count':128,'ticket_count':48,'release_approval':'none','note':'Local capability, adapter presence, and production release are distinct. Original requirements are preserved unchanged.','features':rows}
 json_text=json.dumps(report,ensure_ascii=False,indent=2)+'\n'
-lines=['# Feature coverage','', 'All 128 IDs remain assigned to their original owner ticket. All production releases remain gated.','', '| Feature ID | Ticket | Local status | Production |','|---|---|---|---|']
+lines=['# Feature coverage','','All 128 IDs remain assigned to their original owner ticket. No production release is approved.','','- `implemented_local`: implemented behavior with local artifact/API/browser evidence.','- `provider_dependent`: implemented provider/authoring path; live task quality requires configuration and evaluation.','- `partial`: specific remaining behavior or acceptance limitation is recorded in the JSON report.','- `gated`: no implementation acceptance evidence recorded.','','| Feature ID | Ticket | Local status | Production |','|---|---|---|---|']
 lines.extend(f"| `{r['id']}` | {r['ticket']} | {r['status']} | disabled |" for r in rows)
-lines+=['','Detailed evidence and gates: [feature-status.json](feature-status.json).','']
-target=ROOT/'docs/feature-status.json'
+lines+=['','Detailed evidence and limitations: [feature-status.json](feature-status.json).','']
+target=ROOT/'docs/feature-status.json';markdown='\n'.join(lines)
 if '--check' in sys.argv:
- assert target.exists() and target.read_text()==json_text, 'Run python scripts/coverage_report.py and review the status changes'
+    assert target.exists() and target.read_text()==json_text,'Run python scripts/coverage_report.py and review status changes'
+    assert (ROOT/'docs/feature-coverage.md').read_text()==markdown,'Coverage markdown is stale'
 else:
- target.write_text(json_text)
- (ROOT/'docs/feature-coverage.md').write_text('\n'.join(lines))
-print(f"Tracked {len(rows)} features / {len(backlog['tickets'])} tickets; {sum(r['status']=='implemented_local' for r in rows)} local implementations; no production gates approved.")
+    target.write_text(json_text);(ROOT/'docs/feature-coverage.md').write_text(markdown)
+print(f"Tracked {len(rows)} features / {len(backlog['tickets'])} tickets; {sum(r['status']=='implemented_local' for r in rows)} local implementations, {sum(r['status']=='provider_dependent' for r in rows)} provider-dependent, {sum(r['status']=='partial' for r in rows)} partial; no production gates approved.")

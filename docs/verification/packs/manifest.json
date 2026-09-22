@@ -1,0 +1,68 @@
+{
+  "en": [
+    {
+      "name": "lesson-plan.pdf",
+      "role": "teacher_feedback",
+      "pages": 1
+    },
+    {
+      "name": "worksheet.pdf",
+      "role": "learner_material",
+      "pages": 1
+    },
+    {
+      "name": "worksheet-answers.pdf",
+      "role": "teacher_key",
+      "pages": 1
+    },
+    {
+      "name": "slides.pptx",
+      "role": "learner_material",
+      "pages": 1
+    }
+  ],
+  "uz": [
+    {
+      "name": "lesson-plan.pdf",
+      "role": "teacher_feedback",
+      "pages": 1
+    },
+    {
+      "name": "worksheet.pdf",
+      "role": "learner_material",
+      "pages": 1
+    },
+    {
+      "name": "worksheet-answers.pdf",
+      "role": "teacher_key",
+      "pages": 1
+    },
+    {
+      "name": "slides.pptx",
+      "role": "learner_material",
+      "pages": 1
+    }
+  ],
+  "ru": [
+    {
+      "name": "lesson-plan.pdf",
+      "role": "teacher_feedback",
+      "pages": 1
+    },
+    {
+      "name": "worksheet.pdf",
+      "role": "learner_material",
+      "pages": 1
+    },
+    {
+      "name": "worksheet-answers.pdf",
+      "role": "teacher_key",
+      "pages": 1
+    },
+    {
+      "name": "slides.pptx",
+      "role": "learner_material",
+      "pages": 1
+    }
+  ]
+}

@@ -73,6 +73,10 @@ PARAMETER_SCHEMAS = {
     'pdf.protect': _schema(), 'pdf.unlock_known': _schema(),
     'convert.word_to_pdf': _schema(), 'convert.pptx_to_pdf': _schema(),
 }
+from .advanced import SCHEMAS as ADVANCED_SCHEMAS
+from .editor import SCHEMAS as EDITOR_SCHEMAS
+PARAMETER_SCHEMAS.update(ADVANCED_SCHEMAS)
+PARAMETER_SCHEMAS.update(EDITOR_SCHEMAS)
 
 
 @lru_cache(maxsize=1)
@@ -97,7 +101,7 @@ def office_runtime() -> dict[str, Any]:
 def capabilities() -> dict[str, dict[str, Any]]:
     result = {}
     for feature, schema in PARAMETER_SCHEMAS.items():
-        office = feature.startswith('convert.')
+        office = feature in ('convert.word_to_pdf','convert.pptx_to_pdf')
         runtime = office_runtime() if office else {}
         available = not office or runtime['available']
         result[feature] = {'available': available, 'parameters': schema,
@@ -107,6 +111,12 @@ def capabilities() -> dict[str, dict[str, Any]]:
             'reason': None if available else 'engine_unavailable'}
         if office:
             result[feature].update({k: v for k, v in runtime.items() if k != 'executable'})
+        if feature.startswith('ocr.'):
+            from .advanced import tesseract_runtime
+            result[feature].update({k:v for k,v in tesseract_runtime().items() if k!='executable'})
+        if feature=='convert.pdf_to_docx':result[feature].update(engine='pypdf/python-docx',limitations=['editable_text_reflowed_layout_not_preserved'])
+        if feature=='convert.pdf_to_xlsx':result[feature].update(engine='pdfplumber/openpyxl',limitations=['native_tables_only_review_cells'])
+        if feature in EDITOR_SCHEMAS:result[feature].update(engine='pypdf/reportlab',coordinate_system='top_left_pdf_points')
     return result
 
 
@@ -119,13 +129,27 @@ def _regular_file(value: str | Path) -> Path:
     return path
 
 
-def _check_pdf_actions(reader: PdfReader) -> None:
+def _check_pdf_actions(reader: PdfReader, allow_forms=False) -> None:
     root = reader.root_object
     form = root.get('/AcroForm')
-    if form and form.get_object().get('/Fields'):
+    if form and form.get_object().get('/XFA'):
+        raise ProcessorError('active_content_unsupported')
+    if form and form.get_object().get('/Fields') and not allow_forms:
         # Page reconstruction must not silently orphan canonical field trees or
         # invalidate signatures. Qualify preservation before accepting forms.
         raise ProcessorError('interactive_pdf_unsupported')
+    if form and any(field.get('/FT')=='/Sig' and field.get('/V') for field in (reader.get_fields() or {}).values()):
+        raise ProcessorError('signed_pdf_unsupported')
+    if form:
+        pending=list(form.get_object().get('/Fields',[]));seen=set()
+        while pending:
+            node=pending.pop().get_object()
+            identity=id(node)
+            if identity in seen:continue
+            seen.add(identity)
+            if len(seen)>10000:raise ProcessorError('active_content_unsupported')
+            if '/AA' in node or '/A' in node:raise ProcessorError('active_content_unsupported')
+            pending.extend(node.get('/Kids',[]))
     names = root.get('/Names', {})
     if hasattr(names, 'get_object'):
         names = names.get_object()
@@ -139,11 +163,16 @@ def _check_pdf_actions(reader: PdfReader) -> None:
             if '/AA' in annotation or annotation.get('/Subtype') in ('/FileAttachment', '/RichMedia', '/Movie', '/Sound'):
                 raise ProcessorError('active_content_unsupported')
             action = annotation.get('/A')
-            if action and action.get_object().get('/S') not in ('/URI', '/GoTo'):
-                raise ProcessorError('active_content_unsupported')
+            if action:
+                from urllib.parse import urlsplit
+                action=action.get_object()
+                if action.get('/S') not in ('/URI','/GoTo') or '/Next' in action:
+                    raise ProcessorError('active_content_unsupported')
+                if action.get('/S')=='/URI' and urlsplit(str(action.get('/URI',''))).scheme.lower() not in ('http','https','mailto'):
+                    raise ProcessorError('active_content_unsupported')
 
 
-def _pdf_reader(path: Path, password: str | None = None, allow_locked=False):
+def _pdf_reader(path: Path, password: str | None = None, allow_locked=False, allow_forms=False):
     try:
         reader = PdfReader(path, strict=True)
         if reader.is_encrypted:
@@ -161,7 +190,7 @@ def _pdf_reader(path: Path, password: str | None = None, allow_locked=False):
             unit = float(page.get('/UserUnit', 1))
             if not all(math.isfinite(v) for v in (w, h, unit)) or min(w, h, unit) <= 0 or max(w * unit, h * unit) > 14_400:
                 raise ProcessorError('page_dimensions_invalid')
-        _check_pdf_actions(reader)
+        _check_pdf_actions(reader,allow_forms=allow_forms)
         return reader
     except ProcessorError:
         raise
@@ -218,16 +247,20 @@ def _office_inspect(path: Path) -> dict:
     raise ProcessorError('unsupported_type')
 
 
-def inspect_file(path: str | Path, password: str | None = None, *, office_preflight: bool = True) -> dict[str, Any]:
+def inspect_file(path: str | Path, password: str | None = None, *, office_preflight: bool = True, allow_forms: bool = True) -> dict[str, Any]:
     path = _regular_file(path)
     with path.open('rb') as stream:
         header = stream.read(16)
     base = {'size_bytes': path.stat().st_size, 'encrypted': False}
     if header.startswith(b'%PDF-'):
-        reader = _pdf_reader(path, password, allow_locked=True)
+        reader = _pdf_reader(path, password, allow_locked=True,allow_forms=allow_forms)
         if reader.is_encrypted and not password:
             return {**base, 'mime_type': 'application/pdf', 'page_count': None, 'encrypted': True, 'kind': 'pdf', 'password_required': True}
-        return {**base, 'mime_type': 'application/pdf', 'page_count': len(reader.pages), 'encrypted': reader.is_encrypted, 'kind': 'pdf'}
+        fields=reader.get_fields() or {}
+        return {**base, 'mime_type': 'application/pdf', 'page_count': len(reader.pages), 'encrypted': reader.is_encrypted, 'kind': 'pdf',
+            'has_forms':bool(fields),'form_fields':[{'name':name,'type':str(field.get('/FT',''))} for name,field in fields.items()],
+            'image_counts':[len(page.images) for page in reader.pages],
+            'page_sizes':[{'width':float(page.cropbox.height if page.rotation%180 else page.cropbox.width),'height':float(page.cropbox.width if page.rotation%180 else page.cropbox.height)} for page in reader.pages]}
     if header.startswith(b'PK\x03\x04'):
         metadata = {**base, **_office_inspect(path)}
         if office_preflight and office_runtime()['available']:
@@ -285,6 +318,12 @@ def normalize_parameters(feature_id: str, parameters: dict | None, input_metadat
     if feature_id not in PARAMETER_SCHEMAS:
         raise ProcessorError('feature_unavailable')
     parameters = {} if parameters is None else parameters
+    if feature_id in ADVANCED_SCHEMAS:
+        from .advanced import normalize
+        return normalize(feature_id,parameters,input_metadata)
+    if feature_id in EDITOR_SCHEMAS:
+        from .editor import normalize
+        return normalize(feature_id,parameters,input_metadata)
     if not isinstance(parameters, dict) or any(k not in PARAMETER_SCHEMAS[feature_id]['properties'] for k in parameters):
         raise ProcessorError('invalid_parameters')
     normalized = dict(parameters)
@@ -332,21 +371,21 @@ def normalize_parameters(feature_id: str, parameters: dict | None, input_metadat
     return normalized
 
 
-def _write_pdf(writer: PdfWriter, destination: Path, password=None):
+def _write_pdf(writer: PdfWriter, destination: Path, password=None, allow_forms=False):
     # Never retain source document info/XMP automatically in newly assembled files.
     writer.metadata = None
     writer.root_object.pop('/Metadata', None)
     with destination.open('xb') as stream:
         writer.write(stream)
     os.chmod(destination, 0o600)
-    return _artifact(destination, password=password)
+    return _artifact(destination, password=password,allow_forms=allow_forms)
 
 
-def _artifact(path: Path, page_count: int | None = None, password=None) -> dict:
+def _artifact(path: Path, page_count: int | None = None, password=None,allow_forms=False) -> dict:
     if path.stat().st_size > MAX_OUTPUT_BYTES:
         raise ProcessorError('output_size_limit')
     if path.suffix == '.pdf':
-        info = inspect_file(path, password)
+        info = inspect_file(path, password,allow_forms=allow_forms)
         if info.get('page_count') is None:
             raise ProcessorError('output_invalid')
     else:
@@ -413,6 +452,7 @@ def _pdf_images(path: Path, parameters: dict, out: Path, count: int):
     total_pixels = 0
     total_bytes = 0
     with pdfium.PdfDocument(str(path)) as document, zipfile.ZipFile(destination, 'x', compression=zipfile.ZIP_STORED) as archive:
+        document.init_forms()
         for index in indexes:
             with closing(document[index]) as page:
                 width, height = page.get_size()
@@ -474,7 +514,7 @@ def execute(feature_id: str, input_paths: list[str | Path], parameters: dict | N
     paths = [_regular_file(path) for path in input_paths]
     if sum(path.stat().st_size for path in paths) > MAX_INPUT_BYTES:
         raise ProcessorError('file_size_limit')
-    if feature_id not in ('pdf.merge', 'pdf.images_to_pdf') and len(paths) != 1:
+    if feature_id not in ('pdf.merge', 'pdf.images_to_pdf') and feature_id not in EDITOR_SCHEMAS and len(paths) != 1:
         raise ProcessorError('invalid_inputs')
     if feature_id == 'pdf.merge' and len(paths) < 2:
         raise ProcessorError('invalid_inputs')
@@ -489,6 +529,12 @@ def execute(feature_id: str, input_paths: list[str | Path], parameters: dict | N
     if feature_id == 'pdf.images_to_pdf':
         if any(m['kind'] != 'image' for m in metadata):
             raise ProcessorError('unsupported_type')
+    elif feature_id in EDITOR_SCHEMAS:
+        if metadata[0]['kind']!='pdf' or any(m['kind']!='image' for m in metadata[1:]):raise ProcessorError('unsupported_type')
+    elif feature_id.startswith('ocr.'):
+        if metadata[0]['kind'] not in ('pdf','image'):raise ProcessorError('unsupported_type')
+    elif feature_id in ('convert.pdf_to_docx','convert.pdf_to_xlsx'):
+        if metadata[0]['kind']!='pdf':raise ProcessorError('unsupported_type')
     elif not feature_id.startswith('convert.') and any(m['kind'] != 'pdf' for m in metadata):
         raise ProcessorError('unsupported_type')
     if any(m.get('password_required') for m in metadata):
@@ -502,10 +548,18 @@ def execute(feature_id: str, input_paths: list[str | Path], parameters: dict | N
     no_op = False
     details = {'engine_versions': {n: importlib.metadata.version(n) for n in ('pypdf', 'Pillow', 'pypdfium2', 'reportlab')}}
     details['engine'] = capabilities()[feature_id]['engine']
-    if feature_id.startswith('convert.') and office_runtime()['available']:
+    if feature_id in ('convert.word_to_pdf','convert.pptx_to_pdf') and office_runtime()['available']:
         details['engine_versions']['libreoffice'] = office_runtime()['version']
     try:
-        if feature_id == 'pdf.images_to_pdf':
+        if feature_id in ADVANCED_SCHEMAS:
+            from .advanced import execute as advanced_execute
+            artifacts,extra=advanced_execute(feature_id,paths,parameters,out,metadata)
+            details.update(extra)
+        elif feature_id in EDITOR_SCHEMAS:
+            from .editor import execute as editor_execute
+            artifacts,extra=editor_execute(feature_id,paths,parameters,out,metadata)
+            details.update(extra)
+        elif feature_id == 'pdf.images_to_pdf':
             artifacts = _image_pdf(paths, parameters, out)
         elif feature_id.startswith('convert.'):
             artifacts = _office_pdf(paths[0], feature_id, out, metadata[0])

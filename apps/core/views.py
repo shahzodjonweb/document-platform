@@ -1,3 +1,4 @@
+from operations.integrations import telegram_config
 import json
 import uuid
 from functools import wraps
@@ -19,7 +20,11 @@ from .serializers import account_data, asset_data, quote_data, job_data
 
 def current_account(request):
     account_id=request.session.get('customer_account_id')
-    return Account.objects.filter(pk=account_id,deletion_requested_at__isnull=True).first() if account_id else None
+    account=Account.objects.filter(pk=account_id,deletion_requested_at__isnull=True).first() if account_id else None
+    if account:
+        from apps.commerce.services import refresh_account_entitlement
+        refresh_account_entitlement(account)
+    return account
 
 def api(methods=('GET',), auth=True):
     def decorate(fn):
@@ -86,7 +91,7 @@ def challenges(request):
     throttle(request,'challenge',10)
     body(request)
     challenge,token,verifier=create_challenge(request.META.get('HTTP_USER_AGENT','Unknown browser'))
-    response=JsonResponse({'id':str(challenge.pk),'status':'pending','expires_at':challenge.expires_at,'telegram_url':f'https://t.me/{settings.TELEGRAM_BOT_USERNAME}?start=login_{token}','browser_hint':challenge.browser_hint},status=201)
+    response=JsonResponse({'id':str(challenge.pk),'status':'pending','expires_at':challenge.expires_at,'telegram_url':f'https://t.me/{telegram_config()['username']}?start=login_{token}','browser_hint':challenge.browser_hint},status=201)
     response.set_cookie('pdfmaster_challenge',verifier,max_age=300,httponly=True,secure=not settings.DEBUG,samesite='Lax',path='/api/v1/auth/browser/')
     return response
 
@@ -242,10 +247,14 @@ def health(request): return {'status':'ok','service':'pdfmaster-platform','api_v
 @api(('POST',),auth=False)
 def telegram_webhook(request):
     import hmac
-    if not settings.TELEGRAM_WEBHOOK_SECRET or not hmac.compare_digest(request.headers.get('X-Telegram-Bot-Api-Secret-Token',''),settings.TELEGRAM_WEBHOOK_SECRET): raise DomainError('authentication_required',401)
+    if not telegram_config()['webhook_secret'] or not hmac.compare_digest(request.headers.get('X-Telegram-Bot-Api-Secret-Token',''),telegram_config()['webhook_secret']): raise DomainError('authentication_required',401)
     data=body(request)
     update_id=data.get('update_id')
     if not isinstance(update_id,int): raise DomainError('invalid_request')
+    if 'pre_checkout_query' in data:
+        from telegram.billing import fast_precheckout
+        fast_precheckout(data)
+        return {'ok':True,'accepted':True}
     _,created=WebhookReceipt.objects.get_or_create(update_id=update_id,defaults={'payload':data})
     return {'ok':True,'accepted':created}
 

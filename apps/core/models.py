@@ -133,6 +133,9 @@ class OutboxEvent(models.Model):
     topic = models.CharField(max_length=32, default='job.execute')
     created_at = models.DateTimeField(default=timezone.now)
     delivered_at = models.DateTimeField(null=True)
+    published_at = models.DateTimeField(null=True)
+    publish_lease_until = models.DateTimeField(null=True)
+    publish_attempts = models.PositiveIntegerField(default=0, db_default=0)
     class Meta:
         constraints = [models.UniqueConstraint(fields=['job', 'topic'], name='outbox_job_topic')]
 

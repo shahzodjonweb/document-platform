@@ -4,11 +4,13 @@ from .models import FileAsset
 from .services import quote_affordable
 
 def account_data(a):
+    from apps.commerce.services import refresh_account_entitlement
+    refresh_account_entitlement(a)
     return {'id':str(a.id),'telegram_user_id':str(a.telegram_user_id),'display_name':a.display_name,'username':a.username,'locale':a.locale,'mode':a.mode,'time_zone':a.time_zone,'timezone':a.time_zone,'preferences':a.preferences,'plan':a.plan,'is_test':a.is_test,'created_at':a.created_at}
 
 def asset_data(a):
     state = 'expired' if a.expires_at<=timezone.now() else a.state
-    return {'id':str(a.id),'name':a.name,'size_bytes':a.size_bytes,'page_count':a.page_count,'mime_type':a.mime_type,'state':state,'expires_at':a.expires_at,'encrypted':bool(a.metadata.get('encrypted')),'password_secret_id':a.metadata.get('password_secret_id'),'preview_url':f'/api/v1/files/{a.id}/preview' if a.mime_type=='application/pdf' and (not a.metadata.get('encrypted') or a.metadata.get('password_secret_id')) else None}
+    return {'id':str(a.id),'name':a.name,'size_bytes':a.size_bytes,'page_count':a.page_count,'mime_type':a.mime_type,'state':state,'expires_at':a.expires_at,'page_sizes':a.metadata.get('page_sizes',[]),'form_fields':a.metadata.get('form_fields',[]),'image_counts':a.metadata.get('image_counts',[]),'encrypted':bool(a.metadata.get('encrypted')),'password_secret_id':a.metadata.get('password_secret_id'),'preview_url':f'/api/v1/files/{a.id}/preview' if a.mime_type=='application/pdf' and (not a.metadata.get('encrypted') or a.metadata.get('password_secret_id')) else None}
 
 def quote_data(q):
     affordable,usage=quote_affordable(q.account,q)

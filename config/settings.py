@@ -8,7 +8,7 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'development-only-change-this-key')
 if not DEBUG and SECRET_KEY == 'development-only-change-this-key':
     raise RuntimeError('Set a unique SECRET_KEY or DEBUG=1 for local development.')
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,testserver').split(',')
-INSTALLED_APPS = ['django.contrib.admin', 'django.contrib.auth', 'django.contrib.contenttypes', 'django.contrib.sessions', 'django.contrib.messages', 'django.contrib.staticfiles', 'rest_framework', 'drf_spectacular', 'apps.core', 'operations']
+INSTALLED_APPS = ['django.contrib.admin', 'django.contrib.auth', 'django.contrib.contenttypes', 'django.contrib.sessions', 'django.contrib.messages', 'django.contrib.staticfiles', 'rest_framework', 'drf_spectacular', 'apps.core', 'apps.commerce', 'apps.studio', 'operations']
 MIDDLEWARE = ['django.middleware.security.SecurityMiddleware', 'django.contrib.sessions.middleware.SessionMiddleware', 'django.middleware.common.CommonMiddleware', 'django.middleware.csrf.CsrfViewMiddleware', 'django.contrib.auth.middleware.AuthenticationMiddleware', 'django.contrib.messages.middleware.MessageMiddleware', 'django.middleware.clickjacking.XFrameOptionsMiddleware', 'apps.core.middleware.RequestIdMiddleware']
 ROOT_URLCONF = 'config.urls'
 TEMPLATES = [{'BACKEND': 'django.template.backends.django.DjangoTemplates', 'DIRS': [BASE_DIR / 'templates'], 'APP_DIRS': True, 'OPTIONS': {'context_processors': ['django.template.context_processors.request', 'django.contrib.auth.context_processors.auth', 'django.contrib.messages.context_processors.messages']}}]
@@ -52,3 +52,9 @@ CELERY_TASK_REJECT_ON_WORKER_LOST = True
 DEV_AUTH_ENABLED = DEVELOPMENT_LOGIN_ENABLED
 
 FILE_SECRET_KEY = os.getenv('FILE_SECRET_KEY', '')
+
+COMMERCE_SANDBOX_ENABLED = DEBUG and os.getenv("COMMERCE_SANDBOX_ENABLED", "0") == "1"
+COMMERCE_LIVE_ENABLED = os.getenv("COMMERCE_LIVE_ENABLED", "0") == "1"
+import json
+COMMERCE_LIVE_OFFERS = json.loads(os.getenv("COMMERCE_LIVE_OFFERS", "{}"))
+COMMERCE_OFFER_VERSION = os.getenv("COMMERCE_OFFER_VERSION", "1")

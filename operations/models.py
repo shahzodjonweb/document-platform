@@ -43,3 +43,13 @@ class AuditLog(models.Model):
 class LoginAttempt(models.Model):
     key = models.CharField(max_length=64, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+
+class IntegrationConfig(models.Model):
+    """Secrets are encrypted separately from non-sensitive integration settings."""
+    key = models.CharField(max_length=40, primary_key=True)
+    encrypted_secrets = models.BinaryField(default=bytes)
+    configuration = models.JSONField(default=dict)
+    checked_at = models.DateTimeField(null=True)
+    check_status = models.CharField(max_length=32, default='not_checked')
+    updated_at = models.DateTimeField(auto_now=True)

@@ -1,0 +1,12 @@
+
+> pdf-master-operations-qa@0.1.0 test:browser
+> playwright test -c tests/browser/playwright.config.cjs
+
+
+Running 3 tests using 1 worker
+
+  ✓  1 tests/browser/accessibility.spec.cjs:3:1 › staff overview has no automated WCAG 2 A/AA violations (1.4s)
+  ✓  2 tests/browser/extended-accessibility.spec.cjs:3:1 › extended staff surfaces remain readable in both themes (3.5s)
+  ✓  3 tests/browser/ops.spec.cjs:3:1 › separate staff login and responsive multilingual reports (2.4s)
+
+  3 passed (9.0s)

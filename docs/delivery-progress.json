@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "initial_implemented_count": 0,
   "release_approval": "none",
   "tickets": [
@@ -9,8 +9,8 @@
       "title": "Create two repositories and a runnable development baseline",
       "depends_on": [],
       "feature_ids": [],
-      "status": "implemented_local",
-      "evidence": "docs/progress.md"
+      "status": "partial",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R0-02",
@@ -24,7 +24,7 @@
         "profile.locale"
       ],
       "status": "implemented_local",
-      "evidence": "docs/progress.md"
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R0-03",
@@ -37,7 +37,7 @@
         "auth.telegram"
       ],
       "status": "partial",
-      "evidence": "docs/progress.md"
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R0-04",
@@ -48,8 +48,8 @@
         "R0-03"
       ],
       "feature_ids": [],
-      "status": "implemented_local",
-      "evidence": "docs/progress.md"
+      "status": "partial",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R0-05",
@@ -65,8 +65,8 @@
         "billing.quote",
         "billing.failure_restore"
       ],
-      "status": "partial",
-      "evidence": "docs/progress.md"
+      "status": "implemented_local",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R0-06",
@@ -77,8 +77,8 @@
         "R0-03"
       ],
       "feature_ids": [],
-      "status": "implemented_local",
-      "evidence": "docs/progress.md"
+      "status": "partial",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R0-07",
@@ -92,8 +92,8 @@
       "feature_ids": [
         "support.standard"
       ],
-      "status": "partial",
-      "evidence": "docs/progress.md"
+      "status": "implemented_local",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R1A-01",
@@ -106,8 +106,8 @@
         "files.previews",
         "files.retention"
       ],
-      "status": "partial",
-      "evidence": "docs/progress.md"
+      "status": "implemented_local",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R1A-02",
@@ -121,8 +121,8 @@
         "jobs.errors_retry",
         "jobs.history"
       ],
-      "status": "partial",
-      "evidence": "docs/progress.md"
+      "status": "implemented_local",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R1A-03",
@@ -140,7 +140,7 @@
         "pdf.rotate"
       ],
       "status": "implemented_local",
-      "evidence": "docs/progress.md"
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R1A-04",
@@ -155,7 +155,7 @@
         "pdf.to_images"
       ],
       "status": "implemented_local",
-      "evidence": "docs/progress.md"
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R1A-05",
@@ -169,7 +169,7 @@
         "pdf.compression_preview"
       ],
       "status": "implemented_local",
-      "evidence": "docs/progress.md"
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R1A-06",
@@ -185,7 +185,7 @@
         "pdf.unlock_known"
       ],
       "status": "implemented_local",
-      "evidence": "docs/progress.md"
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R1A-07",
@@ -201,8 +201,8 @@
         "bot.upload_forward",
         "bot.detect_actions"
       ],
-      "status": "partial",
-      "evidence": "docs/progress.md"
+      "status": "implemented_local",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R1A-08",
@@ -216,8 +216,8 @@
         "profile.preferences",
         "capacity.file_size"
       ],
-      "status": "partial",
-      "evidence": "docs/progress.md"
+      "status": "implemented_local",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R1A-09",
@@ -230,8 +230,8 @@
         "capacity.queue",
         "files.no_watermark"
       ],
-      "status": "partial",
-      "evidence": "docs/progress.md"
+      "status": "implemented_local",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R1A-10",
@@ -244,7 +244,7 @@
       ],
       "feature_ids": [],
       "status": "release_blocked",
-      "evidence": "docs/progress.md"
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R1B-01",
@@ -257,8 +257,8 @@
         "ocr.extract_text",
         "ocr.searchable_pdf"
       ],
-      "status": "not_started_gated",
-      "evidence": null
+      "status": "implemented_local",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R1B-02",
@@ -271,8 +271,8 @@
         "convert.pdf_to_docx",
         "convert.pdf_to_xlsx"
       ],
-      "status": "not_started_gated",
-      "evidence": null
+      "status": "implemented_local",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R1B-03",
@@ -288,8 +288,8 @@
         "workflow.saved",
         "workflow.reuse"
       ],
-      "status": "not_started_gated",
-      "evidence": null
+      "status": "implemented_local",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R1B-04",
@@ -299,8 +299,8 @@
         "R1A-10"
       ],
       "feature_ids": [],
-      "status": "not_started_gated",
-      "evidence": null
+      "status": "partial",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R1B-05",
@@ -314,8 +314,8 @@
         "billing.stars",
         "billing.subscription"
       ],
-      "status": "not_started_gated",
-      "evidence": null
+      "status": "implemented_local",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R1B-06",
@@ -328,8 +328,8 @@
         "billing.task_pack",
         "billing.trial"
       ],
-      "status": "not_started_gated",
-      "evidence": null
+      "status": "implemented_local",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R1B-07",
@@ -343,8 +343,8 @@
       "feature_ids": [
         "support.priority"
       ],
-      "status": "not_started_gated",
-      "evidence": null
+      "status": "implemented_local",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R1B-08",
@@ -359,8 +359,8 @@
         "growth.sponsor",
         "growth.ad_free"
       ],
-      "status": "not_started_gated",
-      "evidence": null
+      "status": "implemented_local",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R1B-09",
@@ -373,8 +373,8 @@
         "R1B-08"
       ],
       "feature_ids": [],
-      "status": "not_started_gated",
-      "evidence": null
+      "status": "release_blocked",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R2A-01",
@@ -388,8 +388,8 @@
         "ai.length_style",
         "ai.outline"
       ],
-      "status": "not_started_gated",
-      "evidence": null
+      "status": "implemented_local",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R2A-02",
@@ -404,8 +404,8 @@
         "ai.pdf_sources",
         "export.generated_pdf"
       ],
-      "status": "not_started_gated",
-      "evidence": null
+      "status": "provider_dependent",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R2A-03",
@@ -420,8 +420,8 @@
         "ai.speaker_notes",
         "export.generated_pptx"
       ],
-      "status": "not_started_gated",
-      "evidence": null
+      "status": "provider_dependent",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R2A-04",
@@ -437,8 +437,8 @@
         "template.branding",
         "ai.images"
       ],
-      "status": "not_started_gated",
-      "evidence": null
+      "status": "provider_dependent",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R2A-05",
@@ -452,8 +452,8 @@
         "ai.rewrite",
         "ai.regenerate_slide"
       ],
-      "status": "not_started_gated",
-      "evidence": null
+      "status": "provider_dependent",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R2A-06",
@@ -466,8 +466,8 @@
       "feature_ids": [
         "billing.ai_topup"
       ],
-      "status": "not_started_gated",
-      "evidence": null
+      "status": "implemented_local",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R2A-07",
@@ -479,8 +479,8 @@
         "R2A-06"
       ],
       "feature_ids": [],
-      "status": "not_started_gated",
-      "evidence": null
+      "status": "partial",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R2B-01",
@@ -497,8 +497,8 @@
         "study.answer_key",
         "study.pdf_qa"
       ],
-      "status": "not_started_gated",
-      "evidence": null
+      "status": "provider_dependent",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R2B-02",
@@ -515,8 +515,8 @@
         "study.writing_feedback",
         "study.revision_plan"
       ],
-      "status": "not_started_gated",
-      "evidence": null
+      "status": "provider_dependent",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R2B-03",
@@ -536,8 +536,8 @@
         "school.vocabulary",
         "school.adult_mode"
       ],
-      "status": "not_started_gated",
-      "evidence": null
+      "status": "provider_dependent",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R2B-04",
@@ -552,8 +552,8 @@
         "school.results",
         "school.weak_topics"
       ],
-      "status": "not_started_gated",
-      "evidence": null
+      "status": "provider_dependent",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R2B-05",
@@ -567,8 +567,8 @@
         "school.project_slides",
         "school.poster"
       ],
-      "status": "not_started_gated",
-      "evidence": null
+      "status": "provider_dependent",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R2B-06",
@@ -585,8 +585,8 @@
         "teacher.reading_level",
         "teacher.syllabus"
       ],
-      "status": "not_started_gated",
-      "evidence": null
+      "status": "provider_dependent",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R2B-07",
@@ -605,8 +605,8 @@
         "teacher.feedback",
         "teacher.suggest_marks"
       ],
-      "status": "not_started_gated",
-      "evidence": null
+      "status": "provider_dependent",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R2B-08",
@@ -621,8 +621,8 @@
         "teacher.separate_exports",
         "teacher.share_materials"
       ],
-      "status": "not_started_gated",
-      "evidence": null
+      "status": "implemented_local",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R2B-09",
@@ -635,8 +635,8 @@
         "R2B-08"
       ],
       "feature_ids": [],
-      "status": "not_started_gated",
-      "evidence": null
+      "status": "release_blocked",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R3-01",
@@ -648,8 +648,8 @@
       "feature_ids": [
         "editor.visual"
       ],
-      "status": "not_started_gated",
-      "evidence": null
+      "status": "implemented_local",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R3-02",
@@ -666,8 +666,8 @@
         "editor.signature_image",
         "editor.export"
       ],
-      "status": "not_started_gated",
-      "evidence": null
+      "status": "implemented_local",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R3-03",
@@ -681,8 +681,8 @@
         "editor.insert_images",
         "editor.replace_images"
       ],
-      "status": "not_started_gated",
-      "evidence": null
+      "status": "implemented_local",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R3-04",
@@ -694,8 +694,8 @@
       "feature_ids": [
         "editor.redact"
       ],
-      "status": "not_started_gated",
-      "evidence": null
+      "status": "implemented_local",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R3-05",
@@ -708,8 +708,8 @@
         "editor.form_templates",
         "editor.batch_forms"
       ],
-      "status": "not_started_gated",
-      "evidence": null
+      "status": "implemented_local",
+      "evidence": "docs/feature-status.json"
     },
     {
       "id": "R3-06",
@@ -721,8 +721,8 @@
         "R3-05"
       ],
       "feature_ids": [],
-      "status": "not_started_gated",
-      "evidence": null
+      "status": "release_blocked",
+      "evidence": "docs/feature-status.json"
     }
   ]
 }

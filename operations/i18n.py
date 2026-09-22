@@ -16,3 +16,23 @@ for locale, values in CATALOGS.items():
 def get_locale(request):
     locale = request.GET.get('lang', request.COOKIES.get('ops_locale', 'en'))
     return locale if locale in CATALOGS else 'en'
+
+CATALOGS["en"]["integrations"]="Integrations"
+CATALOGS["uz"]["integrations"]="Integratsiyalar"
+CATALOGS["ru"]["integrations"]="Интеграции"
+
+CATALOGS["en"]["theme"]="Dark theme"
+CATALOGS["uz"]["theme"]="Tungi mavzu"
+CATALOGS["ru"]["theme"]="Тёмная тема"
+
+CATALOGS["en"].update(reply="Reply to customer",send_reply="Save reply")
+CATALOGS["uz"].update(reply="Mijozga javob",send_reply="Javobni saqlash")
+CATALOGS["ru"].update(reply="Ответ клиенту",send_reply="Сохранить ответ")
+
+CATALOGS["en"]["days"]="days"
+CATALOGS["uz"]["days"]="kun"
+CATALOGS["ru"]["days"]="дней"
+
+CATALOGS["en"].update(grant_allowance="Grant exceptional allowance",grant_note="Adds a separately audited, non-expiring allowance. Does not change the plan or unlock features. Tasks require a page allowance.",cancel_task="Cancel queued task")
+CATALOGS["uz"].update(grant_allowance="Qo‘shimcha limit berish",grant_note="Auditda qayd etiladigan muddatsiz limit qo‘shadi. Tarifni o‘zgartirmaydi va funksiyalarni ochmaydi. Vazifalar uchun sahifa limiti kerak.",cancel_task="Navbatdagi vazifani bekor qilish")
+CATALOGS["ru"].update(grant_allowance="Выдать дополнительный лимит",grant_note="Добавляет бессрочный лимит с записью в аудит. Не меняет план и не открывает функции. Для задач нужен лимит страниц.",cancel_task="Отменить задачу в очереди")

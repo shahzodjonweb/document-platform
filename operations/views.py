@@ -2,6 +2,7 @@ import csv
 import hashlib
 import io
 import json
+import uuid
 from datetime import timedelta
 from functools import wraps
 from urllib.parse import urlencode
@@ -11,7 +12,7 @@ from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.models import Group
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q,Case,When,IntegerField,Value
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbidden, JsonResponse
 from django.middleware.csrf import rotate_token
 from django.shortcuts import get_object_or_404, redirect, render
@@ -30,14 +31,14 @@ PAGE_ROLES = {
     'analytics/features':['Analyst','Operations'], 'analytics/revenue':['Analyst','Finance'],
     'jobs':['Operations','Support'], 'plans':['Finance','Content manager'],
     'payments':['Finance'], 'support':['Support'], 'audit':[], 'system':['Operations'],
-    'localization':['Content manager'],
+    'localization':['Content manager'], 'integrations':[], 'staff':[],
 }
 PAGE_KEYS = {'overview':'overview','users':'users','analytics/acquisition':'acquisition',
              'analytics/engagement':'engagement','analytics/features':'features','analytics/revenue':'revenue',
              'jobs':'jobs','plans':'plans','payments':'payments','support':'support','audit':'audit','system':'system','localization':'localization'}
 NAV = [('analytics',[('overview','overview','▦'),('analytics/acquisition','acquisition','↗'),('analytics/engagement','engagement','◷'),('analytics/features','features','◇'),('analytics/revenue','revenue','◉')]),
        ('manage',[('users','users','♧'),('jobs','jobs','▤'),('support','support','♡'),('payments','payments','◎')]),
-       ('platform',[('plans','plans','☷'),('localization','localization','◎'),('audit','audit','☑'),('system','system','⌁')])]
+       ('platform',[('plans','plans','☷'),('localization','localization','◎'),('audit','audit','☑'),('system','system','⌁'),('integrations','integrations','⚙'),('staff','staff','♙')])]
 
 
 def landing(user):
@@ -145,6 +146,9 @@ def page(request, section='overview'):
         ]
         data['recent_jobs']=filters.jobs().order_by('-created_at')[:6]
         data['chart_total']=summary['totals']['new_users']
+    if section in {'analytics/acquisition','analytics/engagement'}:
+        from .analytics_extra import engagement
+        data['cohorts']=engagement(filters)
     if section in {'users','jobs','support','audit'}:
         if section=='users':
             rows=filters.accounts().order_by('-created_at')
@@ -158,7 +162,7 @@ def page(request, section='overview'):
             state=request.GET.get('status','')
             if state:rows=rows.filter(status=state)
         elif section=='support':
-            rows=SupportTicket.objects.filter(account__in=filters.accounts(False),created_at__gte=filters.bounds[0],created_at__lt=filters.bounds[1]).select_related('account').order_by('-created_at')
+            rows=SupportTicket.objects.filter(account__in=filters.accounts(False),created_at__gte=filters.bounds[0],created_at__lt=filters.bounds[1]).select_related('account').annotate(priority_rank=Case(When(account__plan='premium',then=Value(0)),default=Value(1),output_field=IntegerField())).order_by('priority_rank','created_at')
         else:
             rows=AuditLog.objects.select_related('actor').filter(created_at__gte=filters.bounds[0],created_at__lt=filters.bounds[1]).order_by('-created_at')
         data['pagination']=Paginator(rows,30).get_page(request.GET.get('p'))
@@ -176,6 +180,8 @@ def user_detail(request, pk):
     account=get_object_or_404(Account,pk=pk)
     data=context(request,'users');data.update({'account':account,'detail_type':'user','recent_jobs':account.jobs.order_by('-created_at')[:20],
         'ledger':UsageLedger.objects.filter(account=account).order_by('-created_at')[:50], 'grants':account.usage_grants.order_by('-valid_from')[:20]})
+    data['can_grant']=allowed(request.ops_user,[])
+    data['grant_key']=str(uuid.uuid4())
     audit(request.ops_user,'account.metadata_view',pk,'Staff inspected account metadata')
     return finish_render(request,'ops/detail.html',data)
 
@@ -183,7 +189,7 @@ def user_detail(request, pk):
 @require_staff('Operations','Support')
 def job_detail(request, pk):
     job=get_object_or_404(Job.objects.select_related('account'),pk=pk)
-    data=context(request,'jobs');data.update({'job':job,'detail_type':'job','ledger':UsageLedger.objects.filter(job=job).order_by('created_at')})
+    data=context(request,'jobs');data['can_cancel']=allowed(request.ops_user,['Operations']) and job.status=='queued';data.update({'job':job,'detail_type':'job','ledger':UsageLedger.objects.filter(job=job).order_by('created_at')})
     return finish_render(request,'ops/detail.html',data)
 
 
@@ -197,10 +203,18 @@ def support_detail(request, pk):
         if not 5 <= len(reason) <= 1000:
             data['error']=data['t']['reason_required']
         else:
+            reply=request.POST.get('reply','').strip()
+            if len(reply)>4000:
+                data['error']={'en':'Replies must contain at most 4,000 characters.','uz':'Javob 4 000 belgidan oshmasligi kerak.','ru':'Ответ должен содержать не более 4 000 символов.'}[data['lang']]
+                return finish_render(request,'ops/detail.html',data,400)
             with transaction.atomic():
                 ticket=SupportTicket.objects.select_for_update().get(pk=pk)
+                if reply:
+                    from apps.commerce.services import add_support_message
+                    add_support_message(ticket.account,ticket.pk,reply,staff=request.ops_user)
+                    audit(request.ops_user,'support.reply',pk,reason,after={'message_length':len(reply)})
                 before=ticket.status
-                ticket.status='resolved' if request.POST.get('status')=='resolved' else 'open'
+                ticket.status='waiting_customer' if reply else 'resolved' if request.POST.get('status')=='resolved' else 'open'
                 ticket.save(update_fields=['status','updated_at'])
                 audit(request.ops_user,'support.status_changed',pk,reason,{'status':before},{'status':ticket.status})
             return redirect(request.path+'?'+urlencode({'lang':data['lang'],'saved':'1'}))
