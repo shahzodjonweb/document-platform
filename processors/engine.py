@@ -1,0 +1,580 @@
+"""Bounded, real PDF operations; no database, transport or billing decisions.
+
+Paths are trusted private-storage paths supplied by the worker, never parameters
+accepted from a client. Every output is reopened before its manifest is returned.
+"""
+from __future__ import annotations
+
+import importlib.metadata
+from contextlib import closing
+import io
+import logging
+import math
+import os
+import re
+import secrets
+import shutil
+import stat
+import subprocess
+import tempfile
+import warnings
+import zipfile
+from functools import lru_cache
+from pathlib import Path, PurePosixPath
+from typing import Any
+from xml.etree import ElementTree
+
+from PIL import Image, ImageOps, UnidentifiedImageError
+from pypdf import PdfReader, PdfWriter
+from pypdf.errors import PdfReadError
+
+MAX_FILE_BYTES = 200 * 1024 * 1024
+MAX_PAGES = 1000
+MAX_INPUTS = 1000
+MAX_INPUT_BYTES = 512 * 1024 * 1024
+MAX_PIXELS = 40_000_000
+MAX_RENDER_PIXELS = 200_000_000
+MAX_OUTPUT_BYTES = 512 * 1024 * 1024
+MAX_ZIP_EXPANDED = 256 * 1024 * 1024
+MAX_ZIP_MEMBERS = 3000
+Image.MAX_IMAGE_PIXELS = MAX_PIXELS
+logging.getLogger('pypdf').setLevel(logging.CRITICAL)
+
+
+class ProcessorError(Exception):
+    """Stable safe codes. Never include filenames, content or passwords."""
+    def __init__(self, code: str, message: str | None = None):
+        self.code = code
+        self.message = message or code.replace('_', ' ').capitalize()
+        super().__init__(self.message)
+
+
+def _schema(properties=None, required=()):
+    return {'type': 'object', 'additionalProperties': False,
+            'properties': properties or {}, 'required': list(required)}
+
+
+PAGES = {'type': 'string', 'maxLength': 6000, 'description': 'One-based pages: 1,3-5 or all'}
+PARAMETER_SCHEMAS = {
+    'pdf.merge': _schema(),
+    'pdf.compress': _schema(),
+    'pdf.split': _schema({'ranges': {'type': 'array', 'items': PAGES, 'maxItems': MAX_PAGES}}),
+    'pdf.extract_pages': _schema({'pages': PAGES}, ('pages',)),
+    'pdf.delete_pages': _schema({'pages': PAGES}, ('pages',)),
+    'pdf.reorder': _schema({'order': {'type': 'array', 'items': {'type': 'integer', 'minimum': 1}, 'maxItems': MAX_PAGES}}, ('order',)),
+    'pdf.rotate': _schema({'pages': PAGES, 'angle': {'type': 'integer', 'enum': [90, 180, 270]}}),
+    'pdf.images_to_pdf': _schema({
+        'paper_size': {'type': 'string', 'enum': ['A4', 'Letter', 'original']},
+        'orientation': {'type': 'string', 'enum': ['auto', 'portrait', 'landscape']},
+        'margin': {'type': 'number', 'minimum': 0, 'maximum': 72}}),
+    'pdf.to_images': _schema({'pages': PAGES, 'format': {'type': 'string', 'enum': ['png', 'jpg']},
+        'dpi': {'type': 'integer', 'minimum': 72, 'maximum': 200}}),
+    # Password material is accepted ONLY as a separate in-memory secret argument.
+    'pdf.protect': _schema(), 'pdf.unlock_known': _schema(),
+    'convert.word_to_pdf': _schema(), 'convert.pptx_to_pdf': _schema(),
+}
+
+
+@lru_cache(maxsize=1)
+def office_runtime() -> dict[str, Any]:
+    """Probe the trusted deployment-configured executable, never client input."""
+    configured = os.environ.get('PDFMASTER_SOFFICE_BIN')
+    executable = configured or shutil.which('libreoffice') or shutil.which('soffice')
+    if not executable or not Path(executable).is_file() or not os.access(executable, os.X_OK):
+        return {'available': False, 'reason': 'engine_unavailable'}
+    try:
+        probe = subprocess.run([executable, '--version'], stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=8, check=False)
+        version = probe.stdout[:1024].decode('utf-8', errors='replace').strip()
+        if probe.returncode or not version.startswith(('LibreOffice', 'LibreOfficeDev')):
+            return {'available': False, 'reason': 'engine_unavailable'}
+        return {'available': True, 'executable': executable, 'version': version,
+                'development_only': any(part in version.lower() for part in ('alpha', 'beta', 'dev'))}
+    except (OSError, subprocess.TimeoutExpired):
+        return {'available': False, 'reason': 'engine_unavailable'}
+
+
+def capabilities() -> dict[str, dict[str, Any]]:
+    result = {}
+    for feature, schema in PARAMETER_SCHEMAS.items():
+        office = feature.startswith('convert.')
+        runtime = office_runtime() if office else {}
+        available = not office or runtime['available']
+        result[feature] = {'available': available, 'parameters': schema,
+            'engine': 'libreoffice' if office else ('pdfium' if feature == 'pdf.to_images' else ('reportlab/pillow' if feature == 'pdf.images_to_pdf' else 'pypdf')),
+            'requires_secret': feature in ('pdf.protect', 'pdf.unlock_known'),
+            'production_qualified': False,
+            'reason': None if available else 'engine_unavailable'}
+        if office:
+            result[feature].update({k: v for k, v in runtime.items() if k != 'executable'})
+    return result
+
+
+def _regular_file(value: str | Path) -> Path:
+    path = Path(value)
+    if path.is_symlink() or not path.is_file():
+        raise ProcessorError('invalid_file')
+    if path.stat().st_size <= 0 or path.stat().st_size > MAX_FILE_BYTES:
+        raise ProcessorError('file_size_limit')
+    return path
+
+
+def _check_pdf_actions(reader: PdfReader) -> None:
+    root = reader.root_object
+    form = root.get('/AcroForm')
+    if form and form.get_object().get('/Fields'):
+        # Page reconstruction must not silently orphan canonical field trees or
+        # invalidate signatures. Qualify preservation before accepting forms.
+        raise ProcessorError('interactive_pdf_unsupported')
+    names = root.get('/Names', {})
+    if hasattr(names, 'get_object'):
+        names = names.get_object()
+    if any(k in root for k in ('/OpenAction', '/AA')) or any(k in names for k in ('/JavaScript', '/EmbeddedFiles')):
+        raise ProcessorError('active_content_unsupported')
+    for page in reader.pages:
+        if '/AA' in page:
+            raise ProcessorError('active_content_unsupported')
+        for raw_annotation in page.get('/Annots', []):
+            annotation = raw_annotation.get_object()
+            if '/AA' in annotation or annotation.get('/Subtype') in ('/FileAttachment', '/RichMedia', '/Movie', '/Sound'):
+                raise ProcessorError('active_content_unsupported')
+            action = annotation.get('/A')
+            if action and action.get_object().get('/S') not in ('/URI', '/GoTo'):
+                raise ProcessorError('active_content_unsupported')
+
+
+def _pdf_reader(path: Path, password: str | None = None, allow_locked=False):
+    try:
+        reader = PdfReader(path, strict=True)
+        if reader.is_encrypted:
+            if not password:
+                if allow_locked:
+                    return reader
+                raise ProcessorError('password_required')
+            if not reader.decrypt(password):
+                raise ProcessorError('password_invalid')
+        count = len(reader.pages)
+        if not 0 < count <= MAX_PAGES:
+            raise ProcessorError('page_limit')
+        for page in reader.pages:
+            w, h = float(page.mediabox.width), float(page.mediabox.height)
+            unit = float(page.get('/UserUnit', 1))
+            if not all(math.isfinite(v) for v in (w, h, unit)) or min(w, h, unit) <= 0 or max(w * unit, h * unit) > 14_400:
+                raise ProcessorError('page_dimensions_invalid')
+        _check_pdf_actions(reader)
+        return reader
+    except ProcessorError:
+        raise
+    except Exception:
+        raise ProcessorError('invalid_pdf') from None
+
+
+def _office_inspect(path: Path) -> dict:
+    """Read-only OOXML preflight. Nothing is extracted to the filesystem."""
+    try:
+        with zipfile.ZipFile(path) as archive:
+            entries = archive.infolist()
+            if len(entries) > MAX_ZIP_MEMBERS:
+                raise ProcessorError('archive_limit')
+            names = set()
+            expanded = 0
+            for entry in entries:
+                name = entry.filename
+                pure = PurePosixPath(name)
+                mode = entry.external_attr >> 16
+                if '\\' in name or pure.is_absolute() or '..' in pure.parts or ':' in name or stat.S_ISLNK(mode) or name in names:
+                    raise ProcessorError('unsafe_archive')
+                names.add(name)
+                expanded += entry.file_size
+                if entry.flag_bits & 1 or entry.file_size > MAX_ZIP_EXPANDED or expanded > MAX_ZIP_EXPANDED or entry.file_size > max(1024 * 1024, entry.compress_size * 100):
+                    raise ProcessorError('archive_limit')
+                low = name.lower()
+                if any(x in low for x in ('vbaproject', 'activex', '/embeddings/')) or low.endswith('.bin'):
+                    raise ProcessorError('active_content_unsupported')
+            if '[Content_Types].xml' not in names:
+                raise ProcessorError('unsupported_type')
+            for entry in entries:
+                # DTD/entities are never needed for accepted Office XML.
+                if entry.filename.endswith(('.xml', '.rels')):
+                    payload = archive.read(entry)
+                    upper = payload.upper()
+                    if b'<!DOCTYPE' in upper or b'<!ENTITY' in upper or b'MACROENABLED' in upper:
+                        raise ProcessorError('active_content_unsupported')
+                    if entry.filename.endswith('.rels'):
+                        xml = ElementTree.fromstring(payload)
+                        if any(n.attrib.get('TargetMode') == 'External' for n in xml):
+                            raise ProcessorError('external_content_unsupported')
+            if 'word/document.xml' in names:
+                return {'mime_type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'page_count': None, 'kind': 'docx'}
+            if 'ppt/presentation.xml' in names:
+                pages = sum(bool(re.fullmatch(r'ppt/slides/slide\d+\.xml', n)) for n in names)
+                if not 0 < pages <= MAX_PAGES:
+                    raise ProcessorError('page_limit')
+                return {'mime_type': 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'page_count': pages, 'kind': 'pptx'}
+    except ProcessorError:
+        raise
+    except Exception:
+        raise ProcessorError('invalid_archive') from None
+    raise ProcessorError('unsupported_type')
+
+
+def inspect_file(path: str | Path, password: str | None = None, *, office_preflight: bool = True) -> dict[str, Any]:
+    path = _regular_file(path)
+    with path.open('rb') as stream:
+        header = stream.read(16)
+    base = {'size_bytes': path.stat().st_size, 'encrypted': False}
+    if header.startswith(b'%PDF-'):
+        reader = _pdf_reader(path, password, allow_locked=True)
+        if reader.is_encrypted and not password:
+            return {**base, 'mime_type': 'application/pdf', 'page_count': None, 'encrypted': True, 'kind': 'pdf', 'password_required': True}
+        return {**base, 'mime_type': 'application/pdf', 'page_count': len(reader.pages), 'encrypted': reader.is_encrypted, 'kind': 'pdf'}
+    if header.startswith(b'PK\x03\x04'):
+        metadata = {**base, **_office_inspect(path)}
+        if office_preflight and office_runtime()['available']:
+            feature = 'convert.word_to_pdf' if metadata['kind'] == 'docx' else 'convert.pptx_to_pdf'
+            # Temporary preflight PDFs are never exposed or persisted as assets.
+            with tempfile.TemporaryDirectory(prefix='pdfmaster-office-preflight-') as scratch:
+                artifacts = _office_pdf(path, feature, Path(scratch), metadata)
+                metadata.update({'page_count': artifacts[0]['page_count'],
+                    'preflight_kind': 'libreoffice_pdf', 'office_engine': office_runtime()['version'],
+                    'office_development_only': office_runtime()['development_only']})
+        return metadata
+    if header.startswith((b'\x89PNG\r\n\x1a\n', b'\xff\xd8\xff', b'RIFF')):
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter('error', Image.DecompressionBombWarning)
+                with Image.open(path, formats=['PNG', 'JPEG', 'WEBP']) as picture:
+                    width, height = picture.size
+                    if width * height > MAX_PIXELS or max(width, height) > 30_000 or getattr(picture, 'n_frames', 1) != 1:
+                        raise ProcessorError('image_pixel_limit')
+                    mime = Image.MIME[picture.format]
+                    picture.verify()
+            return {**base, 'mime_type': mime, 'page_count': 1, 'width': width, 'height': height, 'kind': 'image'}
+        except ProcessorError:
+            raise
+        except (Image.DecompressionBombError, Image.DecompressionBombWarning):
+            raise ProcessorError('image_pixel_limit') from None
+        except Exception:
+            raise ProcessorError('invalid_image') from None
+    raise ProcessorError('unsupported_type')
+
+
+def parse_pages(value: str, count: int, *, allow_all=True) -> list[int]:
+    """Return zero-based page indexes in supplied order; duplicates are invalid."""
+    if not isinstance(value, str) or not value or len(value) > 6000 or not 0 < count <= MAX_PAGES:
+        raise ProcessorError('invalid_pages')
+    if value.strip() == 'all' and allow_all:
+        return list(range(count))
+    indexes = []
+    for part in value.split(','):
+        match = re.fullmatch(r'\s*(\d{1,4})(?:\s*-\s*(\d{1,4}))?\s*', part)
+        if not match:
+            raise ProcessorError('invalid_pages')
+        first, last = int(match[1]), int(match[2] or match[1])
+        if not 1 <= first <= last <= count:
+            raise ProcessorError('invalid_pages')
+        indexes.extend(range(first - 1, last))
+        if len(indexes) > count:
+            raise ProcessorError('invalid_pages')
+    if len(indexes) != len(set(indexes)):
+        raise ProcessorError('invalid_pages')
+    return indexes
+
+
+def normalize_parameters(feature_id: str, parameters: dict | None, input_metadata: list[dict] | None = None) -> dict:
+    if feature_id not in PARAMETER_SCHEMAS:
+        raise ProcessorError('feature_unavailable')
+    parameters = {} if parameters is None else parameters
+    if not isinstance(parameters, dict) or any(k not in PARAMETER_SCHEMAS[feature_id]['properties'] for k in parameters):
+        raise ProcessorError('invalid_parameters')
+    normalized = dict(parameters)
+    count = (input_metadata[0].get('page_count') if input_metadata else None)
+    for field in PARAMETER_SCHEMAS[feature_id]['required']:
+        if field not in parameters:
+            raise ProcessorError('invalid_parameters')
+    if feature_id in ('pdf.rotate', 'pdf.to_images'):
+        normalized.setdefault('pages', 'all')
+    if 'pages' in normalized:
+        parse_pages(normalized['pages'], count or MAX_PAGES)
+        if feature_id == 'pdf.delete_pages' and count and len(parse_pages(normalized['pages'], count)) == count:
+            raise ProcessorError('empty_output')
+    if feature_id == 'pdf.split' and 'ranges' in normalized:
+        ranges = normalized['ranges']
+        if not isinstance(ranges, list) or not 1 <= len(ranges) <= MAX_PAGES:
+            raise ProcessorError('invalid_pages')
+        for pages in ranges:
+            parse_pages(pages, count or MAX_PAGES)
+    if feature_id == 'pdf.reorder':
+        order = normalized['order']
+        if not isinstance(order, list) or not order or len(order) > MAX_PAGES or any(type(v) is not int for v in order):
+            raise ProcessorError('invalid_pages')
+        expected = count or len(order)
+        if sorted(order) != list(range(1, expected + 1)):
+            raise ProcessorError('invalid_pages')
+    if feature_id == 'pdf.rotate':
+        normalized.setdefault('angle', 90)
+        if type(normalized['angle']) is not int or normalized['angle'] not in (90, 180, 270):
+            raise ProcessorError('invalid_parameters')
+    if feature_id == 'pdf.to_images':
+        normalized.setdefault('format', 'png')
+        normalized.setdefault('dpi', 96)
+        if normalized['format'] not in ('png', 'jpg') or type(normalized['dpi']) is not int or not 72 <= normalized['dpi'] <= 200:
+            raise ProcessorError('invalid_parameters')
+    if feature_id == 'pdf.images_to_pdf':
+        normalized.setdefault('paper_size', 'A4')
+        normalized.setdefault('orientation', 'auto')
+        normalized.setdefault('margin', 24)
+        if normalized['paper_size'] not in ('A4', 'Letter', 'original') or normalized['orientation'] not in ('auto', 'portrait', 'landscape'):
+            raise ProcessorError('invalid_parameters')
+        margin = normalized['margin']
+        if type(margin) not in (int, float) or not math.isfinite(margin) or not 0 <= margin <= 72:
+            raise ProcessorError('invalid_parameters')
+    return normalized
+
+
+def _write_pdf(writer: PdfWriter, destination: Path, password=None):
+    # Never retain source document info/XMP automatically in newly assembled files.
+    writer.metadata = None
+    writer.root_object.pop('/Metadata', None)
+    with destination.open('xb') as stream:
+        writer.write(stream)
+    os.chmod(destination, 0o600)
+    return _artifact(destination, password=password)
+
+
+def _artifact(path: Path, page_count: int | None = None, password=None) -> dict:
+    if path.stat().st_size > MAX_OUTPUT_BYTES:
+        raise ProcessorError('output_size_limit')
+    if path.suffix == '.pdf':
+        info = inspect_file(path, password)
+        if info.get('page_count') is None:
+            raise ProcessorError('output_invalid')
+    else:
+        info = {'mime_type': 'application/zip', 'page_count': page_count, 'size_bytes': path.stat().st_size}
+        with zipfile.ZipFile(path) as archive:
+            if archive.testzip() is not None:
+                raise ProcessorError('output_invalid')
+            if len(archive.infolist()) != page_count:
+                raise ProcessorError('output_invalid')
+            for entry in archive.infolist():
+                if not re.fullmatch(r'page-\d{4}\.(png|jpg)', entry.filename):
+                    raise ProcessorError('output_invalid')
+                with archive.open(entry) as member, Image.open(member, formats=['PNG', 'JPEG']) as picture:
+                    picture.verify()
+    return {'path': str(path.resolve()), 'name': path.name, 'mime_type': info['mime_type'],
+            'page_count': info['page_count'], 'size_bytes': info['size_bytes']}
+
+
+def _image_pdf(paths: list[Path], parameters: dict, out: Path):
+    from reportlab.lib.pagesizes import A4, letter
+    from reportlab.lib.utils import ImageReader
+    from reportlab.pdfgen.canvas import Canvas
+    destination = out / 'images.pdf'
+    canvas = Canvas(str(destination), pageCompression=1, invariant=1)
+    for path in paths:
+        with Image.open(path, formats=['PNG', 'JPEG', 'WEBP']) as raw:
+            picture = ImageOps.exif_transpose(raw)
+            # Composite alpha onto white and omit all EXIF/ICC metadata.
+            if picture.mode in ('RGBA', 'LA') or 'transparency' in picture.info:
+                rgba = picture.convert('RGBA')
+                rgb = Image.new('RGB', picture.size, 'white')
+                rgb.paste(rgba, mask=rgba.getchannel('A'))
+                picture = rgb
+            else:
+                picture = picture.convert('RGB')
+            iw, ih = picture.size
+            margin = parameters['margin']
+            if parameters['paper_size'] == 'original':
+                # Original means one image pixel per PDF point at 72 dpi.
+                width, height = iw + 2 * margin, ih + 2 * margin
+            else:
+                width, height = A4 if parameters['paper_size'] == 'A4' else letter
+                landscape = parameters['orientation'] == 'landscape' or (parameters['orientation'] == 'auto' and iw > ih)
+                if landscape:
+                    width, height = height, width
+            if max(width, height) > 14_400 or min(width - 2 * margin, height - 2 * margin) <= 0:
+                raise ProcessorError('page_dimensions_invalid')
+            scale = min((width - 2 * margin) / iw, (height - 2 * margin) / ih)
+            canvas.setPageSize((width, height))
+            canvas.drawImage(ImageReader(picture), (width - iw * scale) / 2, (height - ih * scale) / 2,
+                iw * scale, ih * scale, mask='auto')
+            canvas.showPage()
+    canvas.save()
+    os.chmod(destination, 0o600)
+    return [_artifact(destination)]
+
+
+def _pdf_images(path: Path, parameters: dict, out: Path, count: int):
+    import pypdfium2 as pdfium
+    indexes = parse_pages(parameters['pages'], count)
+    scale = parameters['dpi'] / 72
+    fmt = parameters['format']
+    destination = out / 'pages.zip'
+    total_pixels = 0
+    total_bytes = 0
+    with pdfium.PdfDocument(str(path)) as document, zipfile.ZipFile(destination, 'x', compression=zipfile.ZIP_STORED) as archive:
+        for index in indexes:
+            with closing(document[index]) as page:
+                width, height = page.get_size()
+                pixels = math.ceil(width * scale) * math.ceil(height * scale)
+                total_pixels += pixels
+                if pixels > MAX_PIXELS or total_pixels > MAX_RENDER_PIXELS:
+                    raise ProcessorError('render_pixel_limit')
+                bitmap = page.render(scale=scale, rev_byteorder=True)
+                try:
+                    picture = bitmap.to_pil().convert('RGB')
+                    buffer = io.BytesIO()
+                    picture.save(buffer, format='PNG' if fmt == 'png' else 'JPEG', quality=90)
+                    total_bytes += buffer.tell()
+                    if total_bytes > MAX_OUTPUT_BYTES:
+                        raise ProcessorError('output_size_limit')
+                    archive.writestr(f'page-{index + 1:04d}.{fmt}', buffer.getvalue())
+                finally:
+                    bitmap.close()
+    os.chmod(destination, 0o600)
+    return [_artifact(destination, len(indexes))]
+
+
+def _office_pdf(path: Path, feature_id: str, out: Path, metadata: dict):
+    runtime = office_runtime()
+    if not runtime['available']:
+        raise ProcessorError('engine_unavailable')
+    executable = runtime['executable']
+    expected = 'docx' if feature_id == 'convert.word_to_pdf' else 'pptx'
+    if metadata['kind'] != expected:
+        raise ProcessorError('unsupported_type')
+    # Caller must additionally provide OS-level no-network/read-only containment.
+    with tempfile.TemporaryDirectory(prefix='office-', dir=out) as scratch:
+        scratch = Path(scratch)
+        source = scratch / f'input.{expected}'
+        shutil.copyfile(path, source)
+        profile = scratch / 'profile'
+        try:
+            completed = subprocess.run([executable, '-env:UserInstallation=' + profile.as_uri(),
+                '--headless', '--nologo', '--nodefault', '--nofirststartwizard',
+                '--convert-to', 'pdf', '--outdir', str(scratch), str(source)],
+                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                timeout=60, check=False, env={**os.environ, 'HOME': str(scratch)})
+        except subprocess.TimeoutExpired:
+            raise ProcessorError('processor_timeout') from None
+        converted = scratch / 'input.pdf'
+        if completed.returncode != 0 or not converted.is_file():
+            raise ProcessorError('conversion_failed')
+        output = out / 'converted.pdf'
+        shutil.move(converted, output)
+        os.chmod(output, 0o600)
+        return [_artifact(output)]
+
+
+def execute(feature_id: str, input_paths: list[str | Path], parameters: dict | None,
+            output_dir: str | Path, *, secret: str | None = None) -> dict:
+    """Run one operation. Secret is ephemeral transport-only, never returned."""
+    if not isinstance(input_paths, (list, tuple)) or not 1 <= len(input_paths) <= MAX_INPUTS:
+        raise ProcessorError('invalid_inputs')
+    paths = [_regular_file(path) for path in input_paths]
+    if sum(path.stat().st_size for path in paths) > MAX_INPUT_BYTES:
+        raise ProcessorError('file_size_limit')
+    if feature_id not in ('pdf.merge', 'pdf.images_to_pdf') and len(paths) != 1:
+        raise ProcessorError('invalid_inputs')
+    if feature_id == 'pdf.merge' and len(paths) < 2:
+        raise ProcessorError('invalid_inputs')
+    if feature_id in ('pdf.protect', 'pdf.unlock_known') and (not isinstance(secret, str) or not 1 <= len(secret) <= 256):
+        raise ProcessorError('password_required')
+    metadata = [inspect_file(path, secret if feature_id == 'pdf.unlock_known' else None,
+                             office_preflight=False) for path in paths]
+    parameters = normalize_parameters(feature_id, parameters, metadata)
+    pages = sum(m['page_count'] or 0 for m in metadata)
+    if pages > MAX_PAGES:
+        raise ProcessorError('page_limit')
+    if feature_id == 'pdf.images_to_pdf':
+        if any(m['kind'] != 'image' for m in metadata):
+            raise ProcessorError('unsupported_type')
+    elif not feature_id.startswith('convert.') and any(m['kind'] != 'pdf' for m in metadata):
+        raise ProcessorError('unsupported_type')
+    if any(m.get('password_required') for m in metadata):
+        raise ProcessorError('password_required')
+    out = Path(output_dir)
+    if out.is_symlink():
+        raise ProcessorError('unsafe_path')
+    out.mkdir(parents=True, exist_ok=True, mode=0o700)
+    if any(out.iterdir()):
+        raise ProcessorError('output_directory_not_empty')
+    no_op = False
+    details = {'engine_versions': {n: importlib.metadata.version(n) for n in ('pypdf', 'Pillow', 'pypdfium2', 'reportlab')}}
+    details['engine'] = capabilities()[feature_id]['engine']
+    if feature_id.startswith('convert.') and office_runtime()['available']:
+        details['engine_versions']['libreoffice'] = office_runtime()['version']
+    try:
+        if feature_id == 'pdf.images_to_pdf':
+            artifacts = _image_pdf(paths, parameters, out)
+        elif feature_id.startswith('convert.'):
+            artifacts = _office_pdf(paths[0], feature_id, out, metadata[0])
+        elif feature_id == 'pdf.to_images':
+            artifacts = _pdf_images(paths[0], parameters, out, pages)
+        else:
+            readers = [_pdf_reader(path, secret if feature_id == 'pdf.unlock_known' else None) for path in paths]
+            if feature_id == 'pdf.split':
+                ranges = parameters.get('ranges') or [str(i + 1) for i in range(pages)]
+                if sum(len(parse_pages(r, pages)) for r in ranges) > MAX_PAGES:
+                    raise ProcessorError('page_limit')
+                artifacts = []
+                for i, value in enumerate(ranges):
+                    writer = PdfWriter()
+                    for index in parse_pages(value, pages):
+                        writer.add_page(readers[0].pages[index])
+                    artifacts.append(_write_pdf(writer, out / f'part-{i + 1:03d}.pdf'))
+            else:
+                writer = PdfWriter()
+                if feature_id == 'pdf.merge':
+                    for reader in readers:
+                        for page in reader.pages:
+                            writer.add_page(page)
+                else:
+                    reader = readers[0]
+                    indexes = list(range(pages))
+                    if feature_id == 'pdf.extract_pages':
+                        indexes = parse_pages(parameters['pages'], pages)
+                    elif feature_id == 'pdf.delete_pages':
+                        removed = set(parse_pages(parameters['pages'], pages))
+                        indexes = [i for i in indexes if i not in removed]
+                    elif feature_id == 'pdf.reorder':
+                        indexes = [i - 1 for i in parameters['order']]
+                    for index in indexes:
+                        writer.add_page(reader.pages[index])
+                    if feature_id == 'pdf.rotate':
+                        for index in parse_pages(parameters['pages'], pages):
+                            writer.pages[index].rotate(parameters['angle'])
+                    elif feature_id == 'pdf.compress':
+                        for page in writer.pages:
+                            page.compress_content_streams(level=9)
+                        writer.compress_identical_objects(remove_duplicates=True, remove_unreferenced=True)
+                    elif feature_id == 'pdf.protect':
+                        writer.encrypt(secret, owner_password=secrets.token_urlsafe(32), algorithm='AES-256')
+                    elif feature_id == 'pdf.unlock_known' and not reader.is_encrypted:
+                        raise ProcessorError('not_encrypted')
+                artifacts = [_write_pdf(writer, out / 'result.pdf', secret if feature_id == 'pdf.protect' else None)]
+                if feature_id == 'pdf.compress':
+                    original = paths[0].stat().st_size
+                    candidate = artifacts[0]['size_bytes']
+                    # A <1% reduction is not useful enough to charge for.
+                    no_op = candidate >= original * 0.99
+                    if no_op:
+                        shutil.copyfile(paths[0], out / 'result.pdf')
+                        artifacts = [_artifact(out / 'result.pdf')]
+                    details.update({'input_bytes': original, 'output_bytes': artifacts[0]['size_bytes'],
+                        'saved_bytes': original - artifacts[0]['size_bytes'], 'lossless': True})
+        output_pages = sum(a['page_count'] or 0 for a in artifacts)
+        if output_pages > MAX_PAGES or sum(a['size_bytes'] for a in artifacts) > MAX_OUTPUT_BYTES:
+            raise ProcessorError('output_size_limit')
+        return {'artifacts': artifacts, 'actual_page_units': max(pages, output_pages),
+                'no_op': no_op, 'metadata': details}
+    except ProcessorError:
+        for child in out.iterdir():
+            if child.is_file():
+                child.unlink()
+        raise
+    except Exception:
+        for child in out.iterdir():
+            if child.is_file():
+                child.unlink()
+        raise ProcessorError('processing_failed') from None

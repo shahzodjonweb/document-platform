@@ -1,0 +1,2720 @@
+{
+  "schema_version": "1.0",
+  "status": "planning_seed_not_live_billing",
+  "locales": [
+    "uz",
+    "en",
+    "ru"
+  ],
+  "plans": [
+    "free",
+    "plus",
+    "premium"
+  ],
+  "release_order": [
+    "R0",
+    "R1A",
+    "R1B",
+    "R2A",
+    "R2B",
+    "R3"
+  ],
+  "notes": [
+    "High priority is a hypothesis, not measured demand.",
+    "All sample features draw from one shared monthly starter pool.",
+    "Included bundle outputs are not separate free generation endpoints.",
+    "Eligibility requires account entitlement, global release availability, parameters and sufficient quota.",
+    "All user-visible text must have uz/en/ru translations.",
+    "The catalog describes product capabilities; internal admin is specified in the master plan."
+  ],
+  "features": [
+    {
+      "id": "pdf.compress",
+      "category": "Compression",
+      "release": "R1A",
+      "priority": "high",
+      "name": "Compress PDF",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "file",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.pdf.compress.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "pdf.compression_preview",
+      "category": "Compression",
+      "release": "R1A",
+      "priority": "support",
+      "name": "Compare resulting size and quality",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.pdf.compression_preview.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "pdf.images_to_pdf",
+      "category": "Conversion",
+      "release": "R1A",
+      "priority": "high",
+      "name": "Photos and images to PDF",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "file",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.pdf.images_to_pdf.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "pdf.image_layout",
+      "category": "Conversion",
+      "release": "R1A",
+      "priority": "support",
+      "name": "Image order orientation and paper size",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.pdf.image_layout.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "pdf.to_images",
+      "category": "Conversion",
+      "release": "R1A",
+      "priority": "standard",
+      "name": "PDF pages to JPG or PNG",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "file",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.pdf.to_images.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "pdf.merge",
+      "category": "Pages",
+      "release": "R1A",
+      "priority": "high",
+      "name": "Merge PDFs",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "file",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.pdf.merge.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "pdf.split",
+      "category": "Pages",
+      "release": "R1A",
+      "priority": "high",
+      "name": "Split PDF",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "file",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.pdf.split.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "pdf.extract_pages",
+      "category": "Pages",
+      "release": "R1A",
+      "priority": "standard",
+      "name": "Extract selected pages",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "file",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.pdf.extract_pages.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "pdf.delete_pages",
+      "category": "Pages",
+      "release": "R1A",
+      "priority": "standard",
+      "name": "Delete selected pages",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "file",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.pdf.delete_pages.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "pdf.reorder",
+      "category": "Pages",
+      "release": "R1A",
+      "priority": "standard",
+      "name": "Reorder pages",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "file",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.pdf.reorder.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "pdf.rotate",
+      "category": "Pages",
+      "release": "R1A",
+      "priority": "standard",
+      "name": "Rotate pages",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "file",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.pdf.rotate.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "convert.word_to_pdf",
+      "category": "Office conversion",
+      "release": "R1A",
+      "priority": "high",
+      "name": "Word to PDF",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "file",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.convert.word_to_pdf.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "convert.pptx_to_pdf",
+      "category": "Office conversion",
+      "release": "R1A",
+      "priority": "standard",
+      "name": "PowerPoint to PDF",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "file",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.convert.pptx_to_pdf.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "convert.pdf_to_docx",
+      "category": "Editable conversion",
+      "release": "R1B",
+      "priority": "high",
+      "name": "PDF to editable Word",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "conversion",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.convert.pdf_to_docx.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "convert.pdf_to_xlsx",
+      "category": "Editable conversion",
+      "release": "R1B",
+      "priority": "standard",
+      "name": "PDF tables to Excel",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "conversion",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.convert.pdf_to_xlsx.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "ocr.extract_text",
+      "category": "OCR",
+      "release": "R1B",
+      "priority": "high",
+      "name": "Extract text from scans and photos",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "higher"
+      },
+      "meter": "ocr",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.ocr.extract_text.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "ocr.searchable_pdf",
+      "category": "OCR",
+      "release": "R1B",
+      "priority": "standard",
+      "name": "Create searchable scanned PDF",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "higher"
+      },
+      "meter": "ocr",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.ocr.searchable_pdf.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "pdf.protect",
+      "category": "Passwords",
+      "release": "R1A",
+      "priority": "standard",
+      "name": "Password protect PDF",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "file",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.pdf.protect.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "pdf.unlock_known",
+      "category": "Passwords",
+      "release": "R1A",
+      "priority": "standard",
+      "name": "Remove password using supplied password",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "file",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.pdf.unlock_known.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "batch.convert",
+      "category": "Batch processing",
+      "release": "R1B",
+      "priority": "standard",
+      "name": "Convert independent documents as a batch",
+      "plans": {
+        "free": "none",
+        "plus": "limited",
+        "premium": "higher"
+      },
+      "meter": "children",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.batch.convert.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "batch.compress",
+      "category": "Batch processing",
+      "release": "R1B",
+      "priority": "standard",
+      "name": "Compress independent PDFs as a batch",
+      "plans": {
+        "free": "none",
+        "plus": "limited",
+        "premium": "higher"
+      },
+      "meter": "children",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.batch.compress.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "batch.image_sets",
+      "category": "Batch processing",
+      "release": "R1B",
+      "priority": "standard",
+      "name": "Separate image sets to separate PDFs",
+      "plans": {
+        "free": "none",
+        "plus": "limited",
+        "premium": "higher"
+      },
+      "meter": "children",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.batch.image_sets.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "workflow.saved",
+      "category": "Automation",
+      "release": "R1B",
+      "priority": "standard",
+      "name": "Save multistep processing workflows",
+      "plans": {
+        "free": "none",
+        "plus": "limited",
+        "premium": "higher"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.workflow.saved.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "workflow.reuse",
+      "category": "Automation",
+      "release": "R1B",
+      "priority": "standard",
+      "name": "Run saved workflow settings",
+      "plans": {
+        "free": "none",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "children",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.workflow.reuse.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "capacity.file_size",
+      "category": "Capacity",
+      "release": "R1A",
+      "priority": "support",
+      "name": "Tier specific file size and page caps",
+      "plans": {
+        "free": "limited",
+        "plus": "standard",
+        "premium": "higher"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.capacity.file_size.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "capacity.monthly",
+      "category": "Capacity",
+      "release": "R0",
+      "priority": "support",
+      "name": "Monthly task and page allowances",
+      "plans": {
+        "free": "limited",
+        "plus": "standard",
+        "premium": "higher"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.capacity.monthly.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "capacity.queue",
+      "category": "Capacity",
+      "release": "R1A",
+      "priority": "support",
+      "name": "Priority processing without starving standard queue",
+      "plans": {
+        "free": "standard",
+        "plus": "standard",
+        "premium": "priority"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.capacity.queue.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "ai.pdf_topic",
+      "category": "AI documents",
+      "release": "R2A",
+      "priority": "standard",
+      "name": "Generate PDF from topic",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "higher"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.ai.pdf_topic.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "ai.pdf_text",
+      "category": "AI documents",
+      "release": "R2A",
+      "priority": "standard",
+      "name": "Generate formatted PDF from pasted content",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "higher"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.ai.pdf_text.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "ai.pdf_sources",
+      "category": "AI documents",
+      "release": "R2A",
+      "priority": "standard",
+      "name": "Generate document from uploaded sources",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "higher"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.ai.pdf_sources.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "ai.pptx",
+      "category": "AI presentations",
+      "release": "R2A",
+      "priority": "high",
+      "name": "Generate editable PPTX",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "higher"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.ai.pptx.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "ai.source_to_slides",
+      "category": "AI presentations",
+      "release": "R2A",
+      "priority": "high",
+      "name": "Notes or uploaded document to slides",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "higher"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.ai.source_to_slides.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "ai.speaker_notes",
+      "category": "AI presentations",
+      "release": "R2A",
+      "priority": "standard",
+      "name": "Generate speaker notes",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.ai.speaker_notes.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "ai.language",
+      "category": "AI controls",
+      "release": "R2A",
+      "priority": "support",
+      "name": "Select output language",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.ai.language.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "ai.length_style",
+      "category": "AI controls",
+      "release": "R2A",
+      "priority": "support",
+      "name": "Select length audience and style",
+      "plans": {
+        "free": "limited",
+        "plus": "standard",
+        "premium": "higher"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.ai.length_style.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "ai.outline",
+      "category": "AI controls",
+      "release": "R2A",
+      "priority": "support",
+      "name": "Generate review and edit outline",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.ai.outline.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "template.basic",
+      "category": "Templates",
+      "release": "R2A",
+      "priority": "support",
+      "name": "Basic document and slide templates",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.template.basic.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "template.professional",
+      "category": "Templates",
+      "release": "R2A",
+      "priority": "standard",
+      "name": "Additional professional templates",
+      "plans": {
+        "free": "none",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.template.professional.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "template.branding",
+      "category": "Branding",
+      "release": "R2A",
+      "priority": "standard",
+      "name": "Custom logos colors and branding",
+      "plans": {
+        "free": "none",
+        "plus": "none",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.template.branding.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "ai.images",
+      "category": "AI visuals",
+      "release": "R2A",
+      "priority": "standard",
+      "name": "Generated supporting illustrations",
+      "plans": {
+        "free": "none",
+        "plus": "none",
+        "premium": "included"
+      },
+      "meter": "ai_image",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.ai.images.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "ai.rewrite",
+      "category": "AI revisions",
+      "release": "R2A",
+      "priority": "high",
+      "name": "Rewrite simplify shorten or expand content",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "higher"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.ai.rewrite.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "ai.regenerate_slide",
+      "category": "AI revisions",
+      "release": "R2A",
+      "priority": "standard",
+      "name": "Regenerate selected slides",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "higher"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.ai.regenerate_slide.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "export.generated_pdf",
+      "category": "Exports",
+      "release": "R2A",
+      "priority": "support",
+      "name": "Download generated PDF",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.export.generated_pdf.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "export.generated_pptx",
+      "category": "Exports",
+      "release": "R2A",
+      "priority": "support",
+      "name": "Download editable generated PPTX",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.export.generated_pptx.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "study.summary",
+      "category": "Student study",
+      "release": "R2B",
+      "priority": "high",
+      "name": "Summarize lecture notes and chapters",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "higher"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.study.summary.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "study.definitions",
+      "category": "Student study",
+      "release": "R2B",
+      "priority": "standard",
+      "name": "Extract definitions and revision points",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.study.definitions.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "study.flashcards",
+      "category": "Student study",
+      "release": "R2B",
+      "priority": "high",
+      "name": "Generate flashcards",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "higher"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.study.flashcards.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "study.quiz",
+      "category": "Student exams",
+      "release": "R2B",
+      "priority": "high",
+      "name": "Generate practice questions and quizzes",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "higher"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.study.quiz.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "study.answer_key",
+      "category": "Student exams",
+      "release": "R2B",
+      "priority": "standard",
+      "name": "Answer keys and explanations",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "bundle",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.study.answer_key.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "study.exam_pack",
+      "category": "Student exams",
+      "release": "R2B",
+      "priority": "high",
+      "name": "Exam preparation pack",
+      "plans": {
+        "free": "sample",
+        "plus": "basic_bundle",
+        "premium": "full_bundle"
+      },
+      "meter": "children",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.study.exam_pack.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "study.pdf_qa",
+      "category": "Student assistance",
+      "release": "R2B",
+      "priority": "high",
+      "name": "PDF questions with source page references",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "higher"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.study.pdf_qa.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "study.handwriting",
+      "category": "Student assistance",
+      "release": "R2B",
+      "priority": "standard",
+      "name": "Readable handwritten notes to reviewed typed notes",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "higher"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.study.handwriting.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "study.report_format",
+      "category": "Academic formatting",
+      "release": "R2B",
+      "priority": "standard",
+      "name": "Format supplied report with cover headings TOC page numbers",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.study.report_format.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "study.references",
+      "category": "Academic formatting",
+      "release": "R2B",
+      "priority": "standard",
+      "name": "Format student supplied references",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.study.references.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "study.writing_feedback",
+      "category": "Student assistance",
+      "release": "R2B",
+      "priority": "standard",
+      "name": "Feedback on clarity structure and grammar",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.study.writing_feedback.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "study.revision_plan",
+      "category": "Revision planning",
+      "release": "R2B",
+      "priority": "standard",
+      "name": "Study schedule from subjects dates and available time",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.study.revision_plan.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "school.explain",
+      "category": "School learning",
+      "release": "R2B",
+      "priority": "high",
+      "name": "Grade appropriate lesson explanation",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.school.explain.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "school.examples",
+      "category": "School learning",
+      "release": "R2B",
+      "priority": "standard",
+      "name": "Examples and understanding checks",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.school.examples.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "school.hints",
+      "category": "Homework support",
+      "release": "R2B",
+      "priority": "high",
+      "name": "Hints and step by step guidance",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "higher"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.school.hints.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "school.check_attempt",
+      "category": "Homework support",
+      "release": "R2B",
+      "priority": "standard",
+      "name": "Check learner attempt and explain mistakes",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "higher"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.school.check_attempt.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "school.similar_problems",
+      "category": "Homework support",
+      "release": "R2B",
+      "priority": "standard",
+      "name": "Generate similar practice problems",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.school.similar_problems.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "school.worksheets",
+      "category": "School practice",
+      "release": "R2B",
+      "priority": "high",
+      "name": "Worksheets by subject grade and difficulty",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "higher"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.school.worksheets.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "school.reading",
+      "category": "Reading practice",
+      "release": "R2B",
+      "priority": "standard",
+      "name": "Reading passages and comprehension questions",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.school.reading.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "school.vocabulary",
+      "category": "Vocabulary practice",
+      "release": "R2B",
+      "priority": "standard",
+      "name": "Vocabulary exercises",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.school.vocabulary.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "school.weekly_pack",
+      "category": "School practice",
+      "release": "R2B",
+      "priority": "standard",
+      "name": "Weekly practice pack across selected subjects",
+      "plans": {
+        "free": "none",
+        "plus": "none",
+        "premium": "included"
+      },
+      "meter": "children",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.school.weekly_pack.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "school.adaptive",
+      "category": "Adaptive practice",
+      "release": "R2B",
+      "priority": "standard",
+      "name": "Follow up exercises from previous errors",
+      "plans": {
+        "free": "none",
+        "plus": "none",
+        "premium": "included"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.school.adaptive.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "school.results",
+      "category": "Learning progress",
+      "release": "R2B",
+      "priority": "standard",
+      "name": "Completed activities and practice results",
+      "plans": {
+        "free": "limited",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.school.results.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "school.weak_topics",
+      "category": "Learning progress",
+      "release": "R2B",
+      "priority": "standard",
+      "name": "Weak topic summary and follow up recommendations",
+      "plans": {
+        "free": "none",
+        "plus": "none",
+        "premium": "included"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.school.weak_topics.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "school.project_outline",
+      "category": "School projects",
+      "release": "R2B",
+      "priority": "standard",
+      "name": "Project outline from learner ideas",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.school.project_outline.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "school.project_slides",
+      "category": "School projects",
+      "release": "R2B",
+      "priority": "standard",
+      "name": "Project presentation and speaking notes",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.school.project_slides.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "school.poster",
+      "category": "School projects",
+      "release": "R2B",
+      "priority": "standard",
+      "name": "Printable project poster",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "higher"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.school.poster.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "school.adult_mode",
+      "category": "Parent and teacher mode",
+      "release": "R2B",
+      "priority": "support",
+      "name": "Adult selects grade and generates child materials",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.school.adult_mode.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "teacher.lesson_plan",
+      "category": "Teacher preparation",
+      "release": "R2B",
+      "priority": "high",
+      "name": "Lesson plan from topic grade duration objectives",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.teacher.lesson_plan.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "teacher.lesson_pack",
+      "category": "Teacher preparation",
+      "release": "R2B",
+      "priority": "high",
+      "name": "Complete lesson pack",
+      "plans": {
+        "free": "none",
+        "plus": "basic_bundle",
+        "premium": "full_bundle"
+      },
+      "meter": "children",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.teacher.lesson_pack.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "teacher.worksheet",
+      "category": "Teacher materials",
+      "release": "R2B",
+      "priority": "high",
+      "name": "Generate worksheets",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "higher"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.teacher.worksheet.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "teacher.homework",
+      "category": "Teacher materials",
+      "release": "R2B",
+      "priority": "standard",
+      "name": "Generate homework activities",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.teacher.homework.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "teacher.mcq",
+      "category": "Teacher assessments",
+      "release": "R2B",
+      "priority": "high",
+      "name": "Multiple choice quiz generation",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "higher"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.teacher.mcq.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "teacher.written_test",
+      "category": "Teacher assessments",
+      "release": "R2B",
+      "priority": "standard",
+      "name": "Short answer and written tests",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "higher"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.teacher.written_test.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "teacher.answer_key",
+      "category": "Teacher assessments",
+      "release": "R2B",
+      "priority": "standard",
+      "name": "Marks answers and explanations in separate teacher artifact",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "bundle",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.teacher.answer_key.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "teacher.variants",
+      "category": "Teacher assessments",
+      "release": "R2B",
+      "priority": "standard",
+      "name": "Test versions A B C",
+      "plans": {
+        "free": "none",
+        "plus": "none",
+        "premium": "included"
+      },
+      "meter": "children",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.teacher.variants.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "teacher.differentiated",
+      "category": "Differentiated teaching",
+      "release": "R2B",
+      "priority": "standard",
+      "name": "Basic standard advanced worksheets together",
+      "plans": {
+        "free": "none",
+        "plus": "none",
+        "premium": "included"
+      },
+      "meter": "children",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.teacher.differentiated.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "teacher.reading_level",
+      "category": "Content adaptation",
+      "release": "R2B",
+      "priority": "high",
+      "name": "Rewrite for selected reading level",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.teacher.reading_level.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "teacher.syllabus",
+      "category": "Curriculum planning",
+      "release": "R2B",
+      "priority": "standard",
+      "name": "Uploaded syllabus to weekly teaching outline",
+      "plans": {
+        "free": "none",
+        "plus": "none",
+        "premium": "included"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.teacher.syllabus.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "teacher.rubric",
+      "category": "Marking assistance",
+      "release": "R2B",
+      "priority": "standard",
+      "name": "Generate assessment rubrics",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.teacher.rubric.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "teacher.feedback",
+      "category": "Teacher feedback",
+      "release": "R2B",
+      "priority": "high",
+      "name": "Draft writing feedback",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "higher"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.teacher.feedback.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "teacher.suggest_marks",
+      "category": "Marking assistance",
+      "release": "R2B",
+      "priority": "standard",
+      "name": "Suggest marks against rubric for teacher review",
+      "plans": {
+        "free": "none",
+        "plus": "none",
+        "premium": "included"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.teacher.suggest_marks.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "teacher.saved_templates",
+      "category": "Teacher templates",
+      "release": "R2B",
+      "priority": "standard",
+      "name": "Save class level lesson structure and layouts",
+      "plans": {
+        "free": "none",
+        "plus": "limited",
+        "premium": "higher"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.teacher.saved_templates.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "teacher.branding",
+      "category": "School branding",
+      "release": "R2B",
+      "priority": "standard",
+      "name": "Apply school branding",
+      "plans": {
+        "free": "none",
+        "plus": "none",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.teacher.branding.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "teacher.separate_exports",
+      "category": "Classroom distribution",
+      "release": "R2B",
+      "priority": "support",
+      "name": "Separate learner artifacts from teacher answer keys",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.teacher.separate_exports.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "teacher.share_materials",
+      "category": "Classroom distribution",
+      "release": "R2B",
+      "priority": "support",
+      "name": "Share generated materials with unpaid recipients",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.teacher.share_materials.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "editor.visual",
+      "category": "Visual editor",
+      "release": "R3",
+      "priority": "support",
+      "name": "Page based editor linked to bot",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "web",
+        "mini_app",
+        "bot_handoff"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.editor.visual.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "editor.add_text",
+      "category": "Text overlays",
+      "release": "R3",
+      "priority": "high",
+      "name": "Add new text",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "edit",
+      "channels": [
+        "web",
+        "mini_app",
+        "bot_handoff"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.editor.add_text.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "editor.highlight",
+      "category": "Annotations",
+      "release": "R3",
+      "priority": "standard",
+      "name": "Highlight text",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "edit",
+      "channels": [
+        "web",
+        "mini_app",
+        "bot_handoff"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.editor.highlight.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "editor.annotate",
+      "category": "Annotations",
+      "release": "R3",
+      "priority": "standard",
+      "name": "Notes drawings and annotations",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "edit",
+      "channels": [
+        "web",
+        "mini_app",
+        "bot_handoff"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.editor.annotate.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "editor.fill_forms",
+      "category": "Forms",
+      "release": "R3",
+      "priority": "high",
+      "name": "Fill existing interactive forms",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "edit",
+      "channels": [
+        "web",
+        "mini_app",
+        "bot_handoff"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.editor.fill_forms.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "editor.signature_image",
+      "category": "Signatures",
+      "release": "R3",
+      "priority": "standard",
+      "name": "Insert signature image",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "edit",
+      "channels": [
+        "web",
+        "mini_app",
+        "bot_handoff"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.editor.signature_image.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "editor.existing_text",
+      "category": "Existing content",
+      "release": "R3",
+      "priority": "high",
+      "name": "Change existing PDF text",
+      "plans": {
+        "free": "none",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "edit",
+      "channels": [
+        "web",
+        "mini_app",
+        "bot_handoff"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.editor.existing_text.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "editor.insert_images",
+      "category": "Images",
+      "release": "R3",
+      "priority": "standard",
+      "name": "Insert images",
+      "plans": {
+        "free": "none",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "edit",
+      "channels": [
+        "web",
+        "mini_app",
+        "bot_handoff"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.editor.insert_images.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "editor.replace_images",
+      "category": "Images",
+      "release": "R3",
+      "priority": "standard",
+      "name": "Replace or remove existing images",
+      "plans": {
+        "free": "none",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "edit",
+      "channels": [
+        "web",
+        "mini_app",
+        "bot_handoff"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.editor.replace_images.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "editor.redact",
+      "category": "Redaction",
+      "release": "R3",
+      "priority": "standard",
+      "name": "Permanently remove selected sensitive content",
+      "plans": {
+        "free": "none",
+        "plus": "none",
+        "premium": "included"
+      },
+      "meter": "edit",
+      "channels": [
+        "web",
+        "mini_app",
+        "bot_handoff"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.editor.redact.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "editor.form_templates",
+      "category": "Form automation",
+      "release": "R3",
+      "priority": "standard",
+      "name": "Save reusable form filling templates",
+      "plans": {
+        "free": "none",
+        "plus": "none",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "web",
+        "mini_app",
+        "bot_handoff"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.editor.form_templates.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "editor.batch_forms",
+      "category": "Form automation",
+      "release": "R3",
+      "priority": "standard",
+      "name": "Fill multiple documents with reusable data",
+      "plans": {
+        "free": "none",
+        "plus": "none",
+        "premium": "included"
+      },
+      "meter": "children",
+      "channels": [
+        "web",
+        "mini_app",
+        "bot_handoff"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.editor.batch_forms.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
+      "id": "editor.export",
+      "category": "Exports",
+      "release": "R3",
+      "priority": "support",
+      "name": "Download edited PDF",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "web",
+        "mini_app",
+        "bot_handoff"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.editor.export.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "bot.upload_forward",
+      "category": "Onboarding",
+      "release": "R1A",
+      "priority": "support",
+      "name": "Send or forward a file to begin",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.bot.upload_forward.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "auth.telegram",
+      "category": "Onboarding",
+      "release": "R0",
+      "priority": "support",
+      "name": "Telegram identity without separate signup form",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.auth.telegram.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "bot.detect_actions",
+      "category": "Navigation",
+      "release": "R1A",
+      "priority": "support",
+      "name": "Detect file type and relevant actions",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.bot.detect_actions.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "profile.modes",
+      "category": "Navigation",
+      "release": "R0",
+      "priority": "support",
+      "name": "General student school teacher modes",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.profile.modes.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "profile.locale",
+      "category": "Localization",
+      "release": "R0",
+      "priority": "support",
+      "name": "Uzbek English Russian interface selection",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.profile.locale.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "profile.preferences",
+      "category": "Preferences",
+      "release": "R1A",
+      "priority": "support",
+      "name": "Remember paper and processing preferences",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.profile.preferences.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "files.previews",
+      "category": "Previews",
+      "release": "R1A",
+      "priority": "support",
+      "name": "Page thumbnails and selection preview",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.files.previews.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "jobs.progress",
+      "category": "Processing",
+      "release": "R1A",
+      "priority": "support",
+      "name": "Upload queue processing completion states",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.jobs.progress.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "jobs.errors_retry",
+      "category": "Processing",
+      "release": "R1A",
+      "priority": "support",
+      "name": "Explain failures and retry safely",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.jobs.errors_retry.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "jobs.history",
+      "category": "History",
+      "release": "R1A",
+      "priority": "support",
+      "name": "Recent jobs and usage history",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.jobs.history.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "files.no_watermark",
+      "category": "Downloads",
+      "release": "R1A",
+      "priority": "support",
+      "name": "Usable outputs without platform watermark",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.files.no_watermark.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "files.retention",
+      "category": "Retention",
+      "release": "R1A",
+      "priority": "support",
+      "name": "Automatic deletion of temporary server files",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.files.retention.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "usage.balance",
+      "category": "Allowances",
+      "release": "R0",
+      "priority": "support",
+      "name": "Remaining operations and AI credit balances",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.usage.balance.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "billing.quote",
+      "category": "Billing",
+      "release": "R0",
+      "priority": "support",
+      "name": "Show credit cost before processing",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.billing.quote.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "billing.failure_restore",
+      "category": "Billing",
+      "release": "R0",
+      "priority": "support",
+      "name": "Release or restore charges for failed work",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.billing.failure_restore.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "billing.stars",
+      "category": "Payments",
+      "release": "R1B",
+      "priority": "support",
+      "name": "Telegram Stars checkout",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.billing.stars.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "billing.subscription",
+      "category": "Subscriptions",
+      "release": "R1B",
+      "priority": "support",
+      "name": "Monthly renewal details and cancellation",
+      "plans": {
+        "free": "none",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.billing.subscription.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "billing.task_pack",
+      "category": "Add ons",
+      "release": "R1B",
+      "priority": "support",
+      "name": "Purchase extra standard file operations",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.billing.task_pack.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "billing.ai_topup",
+      "category": "Add ons",
+      "release": "R2A",
+      "priority": "support",
+      "name": "Purchase extra AI credits",
+      "plans": {
+        "free": "none",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.billing.ai_topup.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "support.standard",
+      "category": "Support",
+      "release": "R0",
+      "priority": "support",
+      "name": "Processing and payment support",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.support.standard.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "support.priority",
+      "category": "Support",
+      "release": "R1B",
+      "priority": "support",
+      "name": "Priority support queue",
+      "plans": {
+        "free": "none",
+        "plus": "none",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.support.priority.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "billing.trial",
+      "category": "Trials",
+      "release": "R1B",
+      "priority": "support",
+      "name": "Shared monthly starter credit pool",
+      "plans": {
+        "free": "sample",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.billing.trial.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "growth.referral",
+      "category": "Referrals",
+      "release": "R1B",
+      "priority": "standard",
+      "name": "Capped bonus operations for qualifying referrals",
+      "plans": {
+        "free": "included",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.growth.referral.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "growth.sponsor",
+      "category": "Sponsorships",
+      "release": "R1B",
+      "priority": "optional",
+      "name": "Optional labeled sponsor messages in general mode",
+      "plans": {
+        "free": "optional",
+        "plus": "none",
+        "premium": "none"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.growth.sponsor.name",
+      "acceptance_gate": "common_ui_gate"
+    },
+    {
+      "id": "growth.ad_free",
+      "category": "Advertising",
+      "release": "R1B",
+      "priority": "support",
+      "name": "Ad free experience when sponsors enabled",
+      "plans": {
+        "free": "none",
+        "plus": "included",
+        "premium": "included"
+      },
+      "meter": "none",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.growth.ad_free.name",
+      "acceptance_gate": "common_ui_gate"
+    }
+  ]
+}

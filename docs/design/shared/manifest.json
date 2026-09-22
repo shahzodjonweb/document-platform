@@ -1,0 +1,7 @@
+{
+  "version": "0.1.0",
+  "source_repository": "document-web",
+  "source": "app/assets/css/main.css :root token block",
+  "sha256": "322d678eb8c5d70c600cc28bfa7473076e86a17f39c3f06164a6231546f213cb",
+  "note": "Vendored token artifact; operations applies denser layout and independently verified accessible label colors. No runtime dependency on customer repository."
+}

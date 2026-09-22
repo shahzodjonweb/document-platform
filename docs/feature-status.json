@@ -1,0 +1,1490 @@
+{
+  "schema_version": "1.0",
+  "catalog_count": 128,
+  "ticket_count": 48,
+  "release_approval": "none",
+  "note": "Local capability is not production release approval. No completion is inferred from a menu or placeholder.",
+  "features": [
+    {
+      "id": "pdf.compress",
+      "name": "Compress PDF",
+      "release": "R1A",
+      "ticket": "R1A-05",
+      "status": "implemented_local",
+      "production_enabled": false,
+      "evidence": [
+        "processors/engine.py",
+        "apps/core/services.py",
+        "tests/test_processors.py",
+        "tests/test_platform.py",
+        "tests/test_adversarial.py"
+      ],
+      "gate": "Local artifact/API tests; production parser containment and cross-channel real-device gate pending."
+    },
+    {
+      "id": "pdf.compression_preview",
+      "name": "Compare resulting size and quality",
+      "release": "R1A",
+      "ticket": "R1A-05",
+      "status": "implemented_local",
+      "production_enabled": false,
+      "evidence": [
+        "apps/core/services.py",
+        "apps/core/policy.py",
+        "tests/test_platform.py",
+        "../document-web/app",
+        "../document-web/docs/design/QA.md"
+      ],
+      "gate": "Local behavior implemented; complete release gate remains pending."
+    },
+    {
+      "id": "pdf.images_to_pdf",
+      "name": "Photos and images to PDF",
+      "release": "R1A",
+      "ticket": "R1A-04",
+      "status": "implemented_local",
+      "production_enabled": false,
+      "evidence": [
+        "processors/engine.py",
+        "apps/core/services.py",
+        "tests/test_processors.py",
+        "tests/test_platform.py",
+        "tests/test_adversarial.py"
+      ],
+      "gate": "Local artifact/API tests; production parser containment and cross-channel real-device gate pending."
+    },
+    {
+      "id": "pdf.image_layout",
+      "name": "Image order orientation and paper size",
+      "release": "R1A",
+      "ticket": "R1A-04",
+      "status": "implemented_local",
+      "production_enabled": false,
+      "evidence": [
+        "apps/core/services.py",
+        "apps/core/policy.py",
+        "tests/test_platform.py",
+        "../document-web/app",
+        "../document-web/docs/design/QA.md"
+      ],
+      "gate": "Local behavior implemented; complete release gate remains pending."
+    },
+    {
+      "id": "pdf.to_images",
+      "name": "PDF pages to JPG or PNG",
+      "release": "R1A",
+      "ticket": "R1A-04",
+      "status": "implemented_local",
+      "production_enabled": false,
+      "evidence": [
+        "processors/engine.py",
+        "apps/core/services.py",
+        "tests/test_processors.py",
+        "tests/test_platform.py",
+        "tests/test_adversarial.py"
+      ],
+      "gate": "Local artifact/API tests; production parser containment and cross-channel real-device gate pending."
+    },
+    {
+      "id": "pdf.merge",
+      "name": "Merge PDFs",
+      "release": "R1A",
+      "ticket": "R1A-03",
+      "status": "implemented_local",
+      "production_enabled": false,
+      "evidence": [
+        "processors/engine.py",
+        "apps/core/services.py",
+        "tests/test_processors.py",
+        "tests/test_platform.py",
+        "tests/test_adversarial.py"
+      ],
+      "gate": "Local artifact/API tests; production parser containment and cross-channel real-device gate pending."
+    },
+    {
+      "id": "pdf.split",
+      "name": "Split PDF",
+      "release": "R1A",
+      "ticket": "R1A-03",
+      "status": "implemented_local",
+      "production_enabled": false,
+      "evidence": [
+        "processors/engine.py",
+        "apps/core/services.py",
+        "tests/test_processors.py",
+        "tests/test_platform.py",
+        "tests/test_adversarial.py"
+      ],
+      "gate": "Local artifact/API tests; production parser containment and cross-channel real-device gate pending."
+    },
+    {
+      "id": "pdf.extract_pages",
+      "name": "Extract selected pages",
+      "release": "R1A",
+      "ticket": "R1A-03",
+      "status": "implemented_local",
+      "production_enabled": false,
+      "evidence": [
+        "processors/engine.py",
+        "apps/core/services.py",
+        "tests/test_processors.py",
+        "tests/test_platform.py",
+        "tests/test_adversarial.py"
+      ],
+      "gate": "Local artifact/API tests; production parser containment and cross-channel real-device gate pending."
+    },
+    {
+      "id": "pdf.delete_pages",
+      "name": "Delete selected pages",
+      "release": "R1A",
+      "ticket": "R1A-03",
+      "status": "implemented_local",
+      "production_enabled": false,
+      "evidence": [
+        "processors/engine.py",
+        "apps/core/services.py",
+        "tests/test_processors.py",
+        "tests/test_platform.py",
+        "tests/test_adversarial.py"
+      ],
+      "gate": "Local artifact/API tests; production parser containment and cross-channel real-device gate pending."
+    },
+    {
+      "id": "pdf.reorder",
+      "name": "Reorder pages",
+      "release": "R1A",
+      "ticket": "R1A-03",
+      "status": "implemented_local",
+      "production_enabled": false,
+      "evidence": [
+        "processors/engine.py",
+        "apps/core/services.py",
+        "tests/test_processors.py",
+        "tests/test_platform.py",
+        "tests/test_adversarial.py"
+      ],
+      "gate": "Local artifact/API tests; production parser containment and cross-channel real-device gate pending."
+    },
+    {
+      "id": "pdf.rotate",
+      "name": "Rotate pages",
+      "release": "R1A",
+      "ticket": "R1A-03",
+      "status": "implemented_local",
+      "production_enabled": false,
+      "evidence": [
+        "processors/engine.py",
+        "apps/core/services.py",
+        "tests/test_processors.py",
+        "tests/test_platform.py",
+        "tests/test_adversarial.py"
+      ],
+      "gate": "Local artifact/API tests; production parser containment and cross-channel real-device gate pending."
+    },
+    {
+      "id": "convert.word_to_pdf",
+      "name": "Word to PDF",
+      "release": "R1A",
+      "ticket": "R1A-06",
+      "status": "implemented_local",
+      "production_enabled": false,
+      "evidence": [
+        "processors/engine.py",
+        "apps/core/services.py",
+        "tests/test_processors.py",
+        "tests/test_platform.py",
+        "tests/test_adversarial.py"
+      ],
+      "gate": "Local artifact/API tests; production parser containment and cross-channel real-device gate pending."
+    },
+    {
+      "id": "convert.pptx_to_pdf",
+      "name": "PowerPoint to PDF",
+      "release": "R1A",
+      "ticket": "R1A-06",
+      "status": "implemented_local",
+      "production_enabled": false,
+      "evidence": [
+        "processors/engine.py",
+        "apps/core/services.py",
+        "tests/test_processors.py",
+        "tests/test_platform.py",
+        "tests/test_adversarial.py"
+      ],
+      "gate": "Local artifact/API tests; production parser containment and cross-channel real-device gate pending."
+    },
+    {
+      "id": "convert.pdf_to_docx",
+      "name": "PDF to editable Word",
+      "release": "R1B",
+      "ticket": "R1B-02",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R1A release gate, engine qualification, payment configuration, economics and financial integration."
+    },
+    {
+      "id": "convert.pdf_to_xlsx",
+      "name": "PDF tables to Excel",
+      "release": "R1B",
+      "ticket": "R1B-02",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R1A release gate, engine qualification, payment configuration, economics and financial integration."
+    },
+    {
+      "id": "ocr.extract_text",
+      "name": "Extract text from scans and photos",
+      "release": "R1B",
+      "ticket": "R1B-01",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R1A release gate, engine qualification, payment configuration, economics and financial integration."
+    },
+    {
+      "id": "ocr.searchable_pdf",
+      "name": "Create searchable scanned PDF",
+      "release": "R1B",
+      "ticket": "R1B-01",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R1A release gate, engine qualification, payment configuration, economics and financial integration."
+    },
+    {
+      "id": "pdf.protect",
+      "name": "Password protect PDF",
+      "release": "R1A",
+      "ticket": "R1A-06",
+      "status": "implemented_local",
+      "production_enabled": false,
+      "evidence": [
+        "processors/engine.py",
+        "apps/core/services.py",
+        "tests/test_processors.py",
+        "tests/test_platform.py",
+        "tests/test_adversarial.py"
+      ],
+      "gate": "Local artifact/API tests; production parser containment and cross-channel real-device gate pending."
+    },
+    {
+      "id": "pdf.unlock_known",
+      "name": "Remove password using supplied password",
+      "release": "R1A",
+      "ticket": "R1A-06",
+      "status": "implemented_local",
+      "production_enabled": false,
+      "evidence": [
+        "processors/engine.py",
+        "apps/core/services.py",
+        "tests/test_processors.py",
+        "tests/test_platform.py",
+        "tests/test_adversarial.py"
+      ],
+      "gate": "Local artifact/API tests; production parser containment and cross-channel real-device gate pending."
+    },
+    {
+      "id": "batch.convert",
+      "name": "Convert independent documents as a batch",
+      "release": "R1B",
+      "ticket": "R1B-03",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R1A release gate, engine qualification, payment configuration, economics and financial integration."
+    },
+    {
+      "id": "batch.compress",
+      "name": "Compress independent PDFs as a batch",
+      "release": "R1B",
+      "ticket": "R1B-03",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R1A release gate, engine qualification, payment configuration, economics and financial integration."
+    },
+    {
+      "id": "batch.image_sets",
+      "name": "Separate image sets to separate PDFs",
+      "release": "R1B",
+      "ticket": "R1B-03",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R1A release gate, engine qualification, payment configuration, economics and financial integration."
+    },
+    {
+      "id": "workflow.saved",
+      "name": "Save multistep processing workflows",
+      "release": "R1B",
+      "ticket": "R1B-03",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R1A release gate, engine qualification, payment configuration, economics and financial integration."
+    },
+    {
+      "id": "workflow.reuse",
+      "name": "Run saved workflow settings",
+      "release": "R1B",
+      "ticket": "R1B-03",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R1A release gate, engine qualification, payment configuration, economics and financial integration."
+    },
+    {
+      "id": "capacity.file_size",
+      "name": "Tier specific file size and page caps",
+      "release": "R1A",
+      "ticket": "R1A-08",
+      "status": "implemented_local",
+      "production_enabled": false,
+      "evidence": [
+        "apps/core/services.py",
+        "apps/core/policy.py",
+        "tests/test_platform.py",
+        "../document-web/app",
+        "../document-web/docs/design/QA.md"
+      ],
+      "gate": "Local behavior implemented; complete release gate remains pending."
+    },
+    {
+      "id": "capacity.monthly",
+      "name": "Monthly task and page allowances",
+      "release": "R0",
+      "ticket": "R0-05",
+      "status": "implemented_local",
+      "production_enabled": false,
+      "evidence": [
+        "apps/core/services.py",
+        "apps/core/policy.py",
+        "tests/test_platform.py",
+        "../document-web/app",
+        "../document-web/docs/design/QA.md"
+      ],
+      "gate": "Local behavior implemented; complete release gate remains pending."
+    },
+    {
+      "id": "capacity.queue",
+      "name": "Priority processing without starving standard queue",
+      "release": "R1A",
+      "ticket": "R1A-09",
+      "status": "partial",
+      "production_enabled": false,
+      "evidence": [
+        "apps/core",
+        "telegram",
+        "tests/test_platform.py",
+        "docs/backend-api.md"
+      ],
+      "gate": "Protocol/domain implementation exists; full transport, preview or fairness acceptance pending."
+    },
+    {
+      "id": "ai.pdf_topic",
+      "name": "Generate PDF from topic",
+      "release": "R2A",
+      "ticket": "R2A-02",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R1B release gate, approved AI provider, structured generation and three-language artifact review."
+    },
+    {
+      "id": "ai.pdf_text",
+      "name": "Generate formatted PDF from pasted content",
+      "release": "R2A",
+      "ticket": "R2A-02",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R1B release gate, approved AI provider, structured generation and three-language artifact review."
+    },
+    {
+      "id": "ai.pdf_sources",
+      "name": "Generate document from uploaded sources",
+      "release": "R2A",
+      "ticket": "R2A-02",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R1B release gate, approved AI provider, structured generation and three-language artifact review."
+    },
+    {
+      "id": "ai.pptx",
+      "name": "Generate editable PPTX",
+      "release": "R2A",
+      "ticket": "R2A-03",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R1B release gate, approved AI provider, structured generation and three-language artifact review."
+    },
+    {
+      "id": "ai.source_to_slides",
+      "name": "Notes or uploaded document to slides",
+      "release": "R2A",
+      "ticket": "R2A-03",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R1B release gate, approved AI provider, structured generation and three-language artifact review."
+    },
+    {
+      "id": "ai.speaker_notes",
+      "name": "Generate speaker notes",
+      "release": "R2A",
+      "ticket": "R2A-03",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R1B release gate, approved AI provider, structured generation and three-language artifact review."
+    },
+    {
+      "id": "ai.language",
+      "name": "Select output language",
+      "release": "R2A",
+      "ticket": "R2A-01",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R1B release gate, approved AI provider, structured generation and three-language artifact review."
+    },
+    {
+      "id": "ai.length_style",
+      "name": "Select length audience and style",
+      "release": "R2A",
+      "ticket": "R2A-01",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R1B release gate, approved AI provider, structured generation and three-language artifact review."
+    },
+    {
+      "id": "ai.outline",
+      "name": "Generate review and edit outline",
+      "release": "R2A",
+      "ticket": "R2A-01",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R1B release gate, approved AI provider, structured generation and three-language artifact review."
+    },
+    {
+      "id": "template.basic",
+      "name": "Basic document and slide templates",
+      "release": "R2A",
+      "ticket": "R2A-04",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R1B release gate, approved AI provider, structured generation and three-language artifact review."
+    },
+    {
+      "id": "template.professional",
+      "name": "Additional professional templates",
+      "release": "R2A",
+      "ticket": "R2A-04",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R1B release gate, approved AI provider, structured generation and three-language artifact review."
+    },
+    {
+      "id": "template.branding",
+      "name": "Custom logos colors and branding",
+      "release": "R2A",
+      "ticket": "R2A-04",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R1B release gate, approved AI provider, structured generation and three-language artifact review."
+    },
+    {
+      "id": "ai.images",
+      "name": "Generated supporting illustrations",
+      "release": "R2A",
+      "ticket": "R2A-04",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R1B release gate, approved AI provider, structured generation and three-language artifact review."
+    },
+    {
+      "id": "ai.rewrite",
+      "name": "Rewrite simplify shorten or expand content",
+      "release": "R2A",
+      "ticket": "R2A-05",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R1B release gate, approved AI provider, structured generation and three-language artifact review."
+    },
+    {
+      "id": "ai.regenerate_slide",
+      "name": "Regenerate selected slides",
+      "release": "R2A",
+      "ticket": "R2A-05",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R1B release gate, approved AI provider, structured generation and three-language artifact review."
+    },
+    {
+      "id": "export.generated_pdf",
+      "name": "Download generated PDF",
+      "release": "R2A",
+      "ticket": "R2A-02",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R1B release gate, approved AI provider, structured generation and three-language artifact review."
+    },
+    {
+      "id": "export.generated_pptx",
+      "name": "Download editable generated PPTX",
+      "release": "R2A",
+      "ticket": "R2A-03",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R1B release gate, approved AI provider, structured generation and three-language artifact review."
+    },
+    {
+      "id": "study.summary",
+      "name": "Summarize lecture notes and chapters",
+      "release": "R2B",
+      "ticket": "R2B-01",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "study.definitions",
+      "name": "Extract definitions and revision points",
+      "release": "R2B",
+      "ticket": "R2B-01",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "study.flashcards",
+      "name": "Generate flashcards",
+      "release": "R2B",
+      "ticket": "R2B-01",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "study.quiz",
+      "name": "Generate practice questions and quizzes",
+      "release": "R2B",
+      "ticket": "R2B-01",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "study.answer_key",
+      "name": "Answer keys and explanations",
+      "release": "R2B",
+      "ticket": "R2B-01",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "study.exam_pack",
+      "name": "Exam preparation pack",
+      "release": "R2B",
+      "ticket": "R2B-02",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "study.pdf_qa",
+      "name": "PDF questions with source page references",
+      "release": "R2B",
+      "ticket": "R2B-01",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "study.handwriting",
+      "name": "Readable handwritten notes to reviewed typed notes",
+      "release": "R2B",
+      "ticket": "R2B-02",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "study.report_format",
+      "name": "Format supplied report with cover headings TOC page numbers",
+      "release": "R2B",
+      "ticket": "R2B-02",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "study.references",
+      "name": "Format student supplied references",
+      "release": "R2B",
+      "ticket": "R2B-02",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "study.writing_feedback",
+      "name": "Feedback on clarity structure and grammar",
+      "release": "R2B",
+      "ticket": "R2B-02",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "study.revision_plan",
+      "name": "Study schedule from subjects dates and available time",
+      "release": "R2B",
+      "ticket": "R2B-02",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "school.explain",
+      "name": "Grade appropriate lesson explanation",
+      "release": "R2B",
+      "ticket": "R2B-03",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "school.examples",
+      "name": "Examples and understanding checks",
+      "release": "R2B",
+      "ticket": "R2B-03",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "school.hints",
+      "name": "Hints and step by step guidance",
+      "release": "R2B",
+      "ticket": "R2B-03",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "school.check_attempt",
+      "name": "Check learner attempt and explain mistakes",
+      "release": "R2B",
+      "ticket": "R2B-03",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "school.similar_problems",
+      "name": "Generate similar practice problems",
+      "release": "R2B",
+      "ticket": "R2B-03",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "school.worksheets",
+      "name": "Worksheets by subject grade and difficulty",
+      "release": "R2B",
+      "ticket": "R2B-03",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "school.reading",
+      "name": "Reading passages and comprehension questions",
+      "release": "R2B",
+      "ticket": "R2B-03",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "school.vocabulary",
+      "name": "Vocabulary exercises",
+      "release": "R2B",
+      "ticket": "R2B-03",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "school.weekly_pack",
+      "name": "Weekly practice pack across selected subjects",
+      "release": "R2B",
+      "ticket": "R2B-04",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "school.adaptive",
+      "name": "Follow up exercises from previous errors",
+      "release": "R2B",
+      "ticket": "R2B-04",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "school.results",
+      "name": "Completed activities and practice results",
+      "release": "R2B",
+      "ticket": "R2B-04",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "school.weak_topics",
+      "name": "Weak topic summary and follow up recommendations",
+      "release": "R2B",
+      "ticket": "R2B-04",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "school.project_outline",
+      "name": "Project outline from learner ideas",
+      "release": "R2B",
+      "ticket": "R2B-05",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "school.project_slides",
+      "name": "Project presentation and speaking notes",
+      "release": "R2B",
+      "ticket": "R2B-05",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "school.poster",
+      "name": "Printable project poster",
+      "release": "R2B",
+      "ticket": "R2B-05",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "school.adult_mode",
+      "name": "Adult selects grade and generates child materials",
+      "release": "R2B",
+      "ticket": "R2B-03",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "teacher.lesson_plan",
+      "name": "Lesson plan from topic grade duration objectives",
+      "release": "R2B",
+      "ticket": "R2B-06",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "teacher.lesson_pack",
+      "name": "Complete lesson pack",
+      "release": "R2B",
+      "ticket": "R2B-06",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "teacher.worksheet",
+      "name": "Generate worksheets",
+      "release": "R2B",
+      "ticket": "R2B-06",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "teacher.homework",
+      "name": "Generate homework activities",
+      "release": "R2B",
+      "ticket": "R2B-06",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "teacher.mcq",
+      "name": "Multiple choice quiz generation",
+      "release": "R2B",
+      "ticket": "R2B-07",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "teacher.written_test",
+      "name": "Short answer and written tests",
+      "release": "R2B",
+      "ticket": "R2B-07",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "teacher.answer_key",
+      "name": "Marks answers and explanations in separate teacher artifact",
+      "release": "R2B",
+      "ticket": "R2B-07",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "teacher.variants",
+      "name": "Test versions A B C",
+      "release": "R2B",
+      "ticket": "R2B-07",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "teacher.differentiated",
+      "name": "Basic standard advanced worksheets together",
+      "release": "R2B",
+      "ticket": "R2B-07",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "teacher.reading_level",
+      "name": "Rewrite for selected reading level",
+      "release": "R2B",
+      "ticket": "R2B-06",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "teacher.syllabus",
+      "name": "Uploaded syllabus to weekly teaching outline",
+      "release": "R2B",
+      "ticket": "R2B-06",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "teacher.rubric",
+      "name": "Generate assessment rubrics",
+      "release": "R2B",
+      "ticket": "R2B-07",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "teacher.feedback",
+      "name": "Draft writing feedback",
+      "release": "R2B",
+      "ticket": "R2B-07",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "teacher.suggest_marks",
+      "name": "Suggest marks against rubric for teacher review",
+      "release": "R2B",
+      "ticket": "R2B-07",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "teacher.saved_templates",
+      "name": "Save class level lesson structure and layouts",
+      "release": "R2B",
+      "ticket": "R2B-08",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "teacher.branding",
+      "name": "Apply school branding",
+      "release": "R2B",
+      "ticket": "R2B-08",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "teacher.separate_exports",
+      "name": "Separate learner artifacts from teacher answer keys",
+      "release": "R2B",
+      "ticket": "R2B-08",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "teacher.share_materials",
+      "name": "Share generated materials with unpaid recipients",
+      "release": "R2B",
+      "ticket": "R2B-08",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R2A release gate, education implementation, role-separated artifacts and educator/language review."
+    },
+    {
+      "id": "editor.visual",
+      "name": "Page based editor linked to bot",
+      "release": "R3",
+      "ticket": "R3-01",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on prior release gates and qualified/licensed existing-content editor and recovery-proof redaction."
+    },
+    {
+      "id": "editor.add_text",
+      "name": "Add new text",
+      "release": "R3",
+      "ticket": "R3-02",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on prior release gates and qualified/licensed existing-content editor and recovery-proof redaction."
+    },
+    {
+      "id": "editor.highlight",
+      "name": "Highlight text",
+      "release": "R3",
+      "ticket": "R3-02",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on prior release gates and qualified/licensed existing-content editor and recovery-proof redaction."
+    },
+    {
+      "id": "editor.annotate",
+      "name": "Notes drawings and annotations",
+      "release": "R3",
+      "ticket": "R3-02",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on prior release gates and qualified/licensed existing-content editor and recovery-proof redaction."
+    },
+    {
+      "id": "editor.fill_forms",
+      "name": "Fill existing interactive forms",
+      "release": "R3",
+      "ticket": "R3-02",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on prior release gates and qualified/licensed existing-content editor and recovery-proof redaction."
+    },
+    {
+      "id": "editor.signature_image",
+      "name": "Insert signature image",
+      "release": "R3",
+      "ticket": "R3-02",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on prior release gates and qualified/licensed existing-content editor and recovery-proof redaction."
+    },
+    {
+      "id": "editor.existing_text",
+      "name": "Change existing PDF text",
+      "release": "R3",
+      "ticket": "R3-03",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on prior release gates and qualified/licensed existing-content editor and recovery-proof redaction."
+    },
+    {
+      "id": "editor.insert_images",
+      "name": "Insert images",
+      "release": "R3",
+      "ticket": "R3-03",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on prior release gates and qualified/licensed existing-content editor and recovery-proof redaction."
+    },
+    {
+      "id": "editor.replace_images",
+      "name": "Replace or remove existing images",
+      "release": "R3",
+      "ticket": "R3-03",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on prior release gates and qualified/licensed existing-content editor and recovery-proof redaction."
+    },
+    {
+      "id": "editor.redact",
+      "name": "Permanently remove selected sensitive content",
+      "release": "R3",
+      "ticket": "R3-04",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on prior release gates and qualified/licensed existing-content editor and recovery-proof redaction."
+    },
+    {
+      "id": "editor.form_templates",
+      "name": "Save reusable form filling templates",
+      "release": "R3",
+      "ticket": "R3-05",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on prior release gates and qualified/licensed existing-content editor and recovery-proof redaction."
+    },
+    {
+      "id": "editor.batch_forms",
+      "name": "Fill multiple documents with reusable data",
+      "release": "R3",
+      "ticket": "R3-05",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on prior release gates and qualified/licensed existing-content editor and recovery-proof redaction."
+    },
+    {
+      "id": "editor.export",
+      "name": "Download edited PDF",
+      "release": "R3",
+      "ticket": "R3-02",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on prior release gates and qualified/licensed existing-content editor and recovery-proof redaction."
+    },
+    {
+      "id": "bot.upload_forward",
+      "name": "Send or forward a file to begin",
+      "release": "R1A",
+      "ticket": "R1A-07",
+      "status": "implemented_local",
+      "production_enabled": false,
+      "evidence": [
+        "apps/core/services.py",
+        "apps/core/policy.py",
+        "tests/test_platform.py",
+        "../document-web/app",
+        "../document-web/docs/design/QA.md"
+      ],
+      "gate": "Local behavior implemented; complete release gate remains pending."
+    },
+    {
+      "id": "auth.telegram",
+      "name": "Telegram identity without separate signup form",
+      "release": "R0",
+      "ticket": "R0-03",
+      "status": "partial",
+      "production_enabled": false,
+      "evidence": [
+        "apps/core",
+        "telegram",
+        "tests/test_platform.py",
+        "docs/backend-api.md"
+      ],
+      "gate": "Protocol/domain implementation exists; full transport, preview or fairness acceptance pending."
+    },
+    {
+      "id": "bot.detect_actions",
+      "name": "Detect file type and relevant actions",
+      "release": "R1A",
+      "ticket": "R1A-07",
+      "status": "implemented_local",
+      "production_enabled": false,
+      "evidence": [
+        "apps/core/services.py",
+        "apps/core/policy.py",
+        "tests/test_platform.py",
+        "../document-web/app",
+        "../document-web/docs/design/QA.md"
+      ],
+      "gate": "Local behavior implemented; complete release gate remains pending."
+    },
+    {
+      "id": "profile.modes",
+      "name": "General student school teacher modes",
+      "release": "R0",
+      "ticket": "R0-02",
+      "status": "implemented_local",
+      "production_enabled": false,
+      "evidence": [
+        "apps/core/services.py",
+        "apps/core/policy.py",
+        "tests/test_platform.py",
+        "../document-web/app",
+        "../document-web/docs/design/QA.md"
+      ],
+      "gate": "Local behavior implemented; complete release gate remains pending."
+    },
+    {
+      "id": "profile.locale",
+      "name": "Uzbek English Russian interface selection",
+      "release": "R0",
+      "ticket": "R0-02",
+      "status": "implemented_local",
+      "production_enabled": false,
+      "evidence": [
+        "apps/core/services.py",
+        "apps/core/policy.py",
+        "tests/test_platform.py",
+        "../document-web/app",
+        "../document-web/docs/design/QA.md"
+      ],
+      "gate": "Local behavior implemented; complete release gate remains pending."
+    },
+    {
+      "id": "profile.preferences",
+      "name": "Remember paper and processing preferences",
+      "release": "R1A",
+      "ticket": "R1A-08",
+      "status": "implemented_local",
+      "production_enabled": false,
+      "evidence": [
+        "apps/core/services.py",
+        "apps/core/policy.py",
+        "tests/test_platform.py",
+        "../document-web/app",
+        "../document-web/docs/design/QA.md"
+      ],
+      "gate": "Local behavior implemented; complete release gate remains pending."
+    },
+    {
+      "id": "files.previews",
+      "name": "Page thumbnails and selection preview",
+      "release": "R1A",
+      "ticket": "R1A-01",
+      "status": "implemented_local",
+      "production_enabled": false,
+      "evidence": [
+        "apps/core/services.py",
+        "apps/core/policy.py",
+        "tests/test_platform.py",
+        "../document-web/app",
+        "../document-web/docs/design/QA.md"
+      ],
+      "gate": "Local behavior implemented; complete release gate remains pending."
+    },
+    {
+      "id": "jobs.progress",
+      "name": "Upload queue processing completion states",
+      "release": "R1A",
+      "ticket": "R1A-02",
+      "status": "implemented_local",
+      "production_enabled": false,
+      "evidence": [
+        "apps/core/services.py",
+        "apps/core/policy.py",
+        "tests/test_platform.py",
+        "../document-web/app",
+        "../document-web/docs/design/QA.md"
+      ],
+      "gate": "Local behavior implemented; complete release gate remains pending."
+    },
+    {
+      "id": "jobs.errors_retry",
+      "name": "Explain failures and retry safely",
+      "release": "R1A",
+      "ticket": "R1A-02",
+      "status": "partial",
+      "production_enabled": false,
+      "evidence": [
+        "apps/core",
+        "telegram",
+        "tests/test_platform.py",
+        "docs/backend-api.md"
+      ],
+      "gate": "Protocol/domain implementation exists; full transport, preview or fairness acceptance pending."
+    },
+    {
+      "id": "jobs.history",
+      "name": "Recent jobs and usage history",
+      "release": "R1A",
+      "ticket": "R1A-02",
+      "status": "implemented_local",
+      "production_enabled": false,
+      "evidence": [
+        "apps/core/services.py",
+        "apps/core/policy.py",
+        "tests/test_platform.py",
+        "../document-web/app",
+        "../document-web/docs/design/QA.md"
+      ],
+      "gate": "Local behavior implemented; complete release gate remains pending."
+    },
+    {
+      "id": "files.no_watermark",
+      "name": "Usable outputs without platform watermark",
+      "release": "R1A",
+      "ticket": "R1A-09",
+      "status": "implemented_local",
+      "production_enabled": false,
+      "evidence": [
+        "apps/core/services.py",
+        "apps/core/policy.py",
+        "tests/test_platform.py",
+        "../document-web/app",
+        "../document-web/docs/design/QA.md"
+      ],
+      "gate": "Local behavior implemented; complete release gate remains pending."
+    },
+    {
+      "id": "files.retention",
+      "name": "Automatic deletion of temporary server files",
+      "release": "R1A",
+      "ticket": "R1A-01",
+      "status": "implemented_local",
+      "production_enabled": false,
+      "evidence": [
+        "apps/core/services.py",
+        "apps/core/policy.py",
+        "tests/test_platform.py",
+        "../document-web/app",
+        "../document-web/docs/design/QA.md"
+      ],
+      "gate": "Local behavior implemented; complete release gate remains pending."
+    },
+    {
+      "id": "usage.balance",
+      "name": "Remaining operations and AI credit balances",
+      "release": "R0",
+      "ticket": "R0-05",
+      "status": "implemented_local",
+      "production_enabled": false,
+      "evidence": [
+        "apps/core/services.py",
+        "apps/core/policy.py",
+        "tests/test_platform.py",
+        "../document-web/app",
+        "../document-web/docs/design/QA.md"
+      ],
+      "gate": "Local behavior implemented; complete release gate remains pending."
+    },
+    {
+      "id": "billing.quote",
+      "name": "Show credit cost before processing",
+      "release": "R0",
+      "ticket": "R0-05",
+      "status": "implemented_local",
+      "production_enabled": false,
+      "evidence": [
+        "apps/core/services.py",
+        "apps/core/policy.py",
+        "tests/test_platform.py",
+        "../document-web/app",
+        "../document-web/docs/design/QA.md"
+      ],
+      "gate": "Local behavior implemented; complete release gate remains pending."
+    },
+    {
+      "id": "billing.failure_restore",
+      "name": "Release or restore charges for failed work",
+      "release": "R0",
+      "ticket": "R0-05",
+      "status": "implemented_local",
+      "production_enabled": false,
+      "evidence": [
+        "apps/core/services.py",
+        "apps/core/policy.py",
+        "tests/test_platform.py",
+        "../document-web/app",
+        "../document-web/docs/design/QA.md"
+      ],
+      "gate": "Local behavior implemented; complete release gate remains pending."
+    },
+    {
+      "id": "billing.stars",
+      "name": "Telegram Stars checkout",
+      "release": "R1B",
+      "ticket": "R1B-05",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R1A release gate, engine qualification, payment configuration, economics and financial integration."
+    },
+    {
+      "id": "billing.subscription",
+      "name": "Monthly renewal details and cancellation",
+      "release": "R1B",
+      "ticket": "R1B-05",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R1A release gate, engine qualification, payment configuration, economics and financial integration."
+    },
+    {
+      "id": "billing.task_pack",
+      "name": "Purchase extra standard file operations",
+      "release": "R1B",
+      "ticket": "R1B-06",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R1A release gate, engine qualification, payment configuration, economics and financial integration."
+    },
+    {
+      "id": "billing.ai_topup",
+      "name": "Purchase extra AI credits",
+      "release": "R2A",
+      "ticket": "R2A-06",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R1B release gate, approved AI provider, structured generation and three-language artifact review."
+    },
+    {
+      "id": "support.standard",
+      "name": "Processing and payment support",
+      "release": "R0",
+      "ticket": "R0-07",
+      "status": "implemented_local",
+      "production_enabled": false,
+      "evidence": [
+        "apps/core/services.py",
+        "apps/core/policy.py",
+        "tests/test_platform.py",
+        "../document-web/app",
+        "../document-web/docs/design/QA.md"
+      ],
+      "gate": "Local behavior implemented; complete release gate remains pending."
+    },
+    {
+      "id": "support.priority",
+      "name": "Priority support queue",
+      "release": "R1B",
+      "ticket": "R1B-07",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R1A release gate, engine qualification, payment configuration, economics and financial integration."
+    },
+    {
+      "id": "billing.trial",
+      "name": "Shared monthly starter credit pool",
+      "release": "R1B",
+      "ticket": "R1B-06",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R1A release gate, engine qualification, payment configuration, economics and financial integration."
+    },
+    {
+      "id": "growth.referral",
+      "name": "Capped bonus operations for qualifying referrals",
+      "release": "R1B",
+      "ticket": "R1B-08",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R1A release gate, engine qualification, payment configuration, economics and financial integration."
+    },
+    {
+      "id": "growth.sponsor",
+      "name": "Optional labeled sponsor messages in general mode",
+      "release": "R1B",
+      "ticket": "R1B-08",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R1A release gate, engine qualification, payment configuration, economics and financial integration."
+    },
+    {
+      "id": "growth.ad_free",
+      "name": "Ad free experience when sponsors enabled",
+      "release": "R1B",
+      "ticket": "R1B-08",
+      "status": "gated",
+      "production_enabled": false,
+      "evidence": [],
+      "gate": "Depends on R1A release gate, engine qualification, payment configuration, economics and financial integration."
+    }
+  ]
+}

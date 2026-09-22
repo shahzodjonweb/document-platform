@@ -1,0 +1,2790 @@
+{
+  "components": {
+    "schemas": {
+      "Artifact": {
+        "properties": {
+          "download_url": {
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "mime_type": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "page_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "preview_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "role": {
+            "type": "string"
+          },
+          "size_bytes": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "state": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "size_bytes",
+          "mime_type",
+          "download_url"
+        ],
+        "type": "object"
+      },
+      "Asset": {
+        "properties": {
+          "encrypted": {
+            "type": "boolean"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "mime_type": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "page_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "password_secret_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "preview_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "size_bytes": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "state": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "size_bytes",
+          "page_count",
+          "mime_type",
+          "state",
+          "expires_at"
+        ],
+        "type": "object"
+      },
+      "Balances": {
+        "properties": {
+          "ai_credits": {
+            "$ref": "#/components/schemas/MeterBalance"
+          },
+          "file_page_units": {
+            "$ref": "#/components/schemas/MeterBalance"
+          },
+          "file_tasks": {
+            "$ref": "#/components/schemas/MeterBalance"
+          }
+        },
+        "required": [
+          "file_tasks",
+          "file_page_units",
+          "ai_credits"
+        ],
+        "type": "object"
+      },
+      "Error": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "field_errors": {
+            "type": "object"
+          },
+          "message": {
+            "type": "string"
+          },
+          "message_key": {
+            "type": "string"
+          },
+          "message_params": {
+            "type": "object"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "retryable": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "code",
+          "message_key",
+          "message",
+          "retryable"
+        ],
+        "type": "object"
+      },
+      "Feature": {
+        "properties": {
+          "capabilities": {
+            "type": "object"
+          },
+          "category": {
+            "type": "string"
+          },
+          "eligible": {
+            "type": "boolean"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "environment": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "label_key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "parameters": {
+            "type": "object"
+          },
+          "plans": {
+            "type": "object"
+          },
+          "release": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "enabled",
+          "eligible",
+          "parameters"
+        ],
+        "type": "object"
+      },
+      "Job": {
+        "properties": {
+          "artifacts": {
+            "items": {
+              "$ref": "#/components/schemas/Artifact"
+            },
+            "type": "array"
+          },
+          "completed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Error"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "feature_id": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "input_files": {
+            "items": {
+              "$ref": "#/components/schemas/Asset"
+            },
+            "type": "array"
+          },
+          "meters": {
+            "additionalProperties": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "object"
+          },
+          "origin_channel": {
+            "type": "string"
+          },
+          "parameters": {
+            "type": "object"
+          },
+          "settled_meters": {
+            "additionalProperties": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "object"
+          },
+          "started_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "finalizing",
+              "succeeded",
+              "failed",
+              "canceled",
+              "expired",
+              "no_op"
+            ]
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "feature_id",
+          "status",
+          "created_at",
+          "input_files",
+          "artifacts",
+          "meters",
+          "settled_meters",
+          "error",
+          "warnings"
+        ],
+        "type": "object"
+      },
+      "MeterBalance": {
+        "properties": {
+          "limit": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "remaining": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "reserved": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "used": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "limit",
+          "used",
+          "reserved",
+          "remaining"
+        ],
+        "type": "object"
+      },
+      "Plan": {
+        "properties": {
+          "checkout_enabled": {
+            "type": "boolean"
+          },
+          "features": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "limits": {
+            "type": "object"
+          },
+          "name": {
+            "type": "string"
+          },
+          "price_xtr": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "price_xtr",
+          "limits",
+          "checkout_enabled"
+        ],
+        "type": "object"
+      },
+      "Quote": {
+        "properties": {
+          "affordable": {
+            "type": "boolean"
+          },
+          "available_balances": {
+            "$ref": "#/components/schemas/Balances"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "feature_id": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "input_fingerprints": {
+            "items": {
+              "properties": {
+                "id": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "sha256": {
+                  "type": "string"
+                }
+              },
+              "required": [],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "meters": {
+            "items": {
+              "properties": {
+                "amount": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "meter": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "meter",
+                "amount"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "normalized_parameters": {
+            "type": "object"
+          },
+          "output_expectations": {
+            "type": "object"
+          },
+          "plan": {
+            "type": "string"
+          },
+          "plan_version_id": {
+            "type": "string"
+          },
+          "quote_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "quote_version": {
+            "type": "string"
+          },
+          "tariff_version_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "quote_id",
+          "feature_id",
+          "meters",
+          "affordable",
+          "expires_at",
+          "available_balances"
+        ],
+        "type": "object"
+      },
+      "Session": {
+        "properties": {
+          "authenticated": {
+            "type": "boolean"
+          },
+          "csrf_token": {
+            "type": "string"
+          },
+          "development_login_enabled": {
+            "type": "boolean"
+          },
+          "user": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/User"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "authenticated",
+          "user",
+          "csrf_token",
+          "development_login_enabled"
+        ],
+        "type": "object"
+      },
+      "Ticket": {
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "subject",
+          "status",
+          "created_at"
+        ],
+        "type": "object"
+      },
+      "Usage": {
+        "properties": {
+          "daily": {
+            "properties": {
+              "limit": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "remaining": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "reserved": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "resets_at": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "used": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [],
+            "type": "object"
+          },
+          "draft": {
+            "type": "boolean"
+          },
+          "meters": {
+            "$ref": "#/components/schemas/Balances"
+          },
+          "plan": {
+            "type": "string"
+          },
+          "resets_at": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan",
+          "meters",
+          "daily",
+          "resets_at"
+        ],
+        "type": "object"
+      },
+      "User": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "is_test": {
+            "type": "boolean"
+          },
+          "locale": {
+            "enum": [
+              "en",
+              "uz",
+              "ru"
+            ]
+          },
+          "mode": {
+            "enum": [
+              "general",
+              "student",
+              "school",
+              "teacher"
+            ]
+          },
+          "plan": {
+            "enum": [
+              "free",
+              "plus",
+              "premium"
+            ]
+          },
+          "preferences": {
+            "type": "object"
+          },
+          "telegram_user_id": {
+            "type": "string"
+          },
+          "time_zone": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "display_name",
+          "locale",
+          "plan"
+        ],
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "customerSession": {
+        "in": "cookie",
+        "name": "pdfmaster_session",
+        "type": "apiKey"
+      }
+    }
+  },
+  "info": {
+    "description": "Development beta. Staff operations are intentionally excluded. Paid checkout remains disabled.",
+    "title": "PDF Master public API",
+    "version": "1.0.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/artifacts/{id}/download": {
+      "get": {
+        "description": "",
+        "operationId": "downloadArtifact",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Private file, attachment; no-store"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    },
+    "/artifacts/{id}/preview": {
+      "get": {
+        "description": "",
+        "operationId": "previewArtifact",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/png": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Private single-page PNG preview, no task charge"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    },
+    "/auth/browser/challenges": {
+      "post": {
+        "description": "",
+        "operationId": "createLoginChallenge",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {},
+                "required": [],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "browser_hint": {
+                      "type": "string"
+                    },
+                    "expires_at": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "id": {
+                      "format": "uuid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "telegram_url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": []
+      }
+    },
+    "/auth/browser/challenges/{id}": {
+      "get": {
+        "description": "",
+        "operationId": "getLoginChallenge",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "browser_hint": {
+                      "type": "string"
+                    },
+                    "expires_at": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "id": {
+                      "format": "uuid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "telegram_url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": []
+      }
+    },
+    "/auth/browser/challenges/{id}/exchange": {
+      "post": {
+        "description": "",
+        "operationId": "exchangeLoginChallenge",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {},
+                "required": [],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": []
+      }
+    },
+    "/auth/dev-login": {
+      "post": {
+        "description": "Explicit loopback development-only login; unavailable outside DEBUG.",
+        "operationId": "developmentLogin",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "locale": {
+                    "type": "string"
+                  }
+                },
+                "required": [],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": []
+      }
+    },
+    "/auth/session": {
+      "delete": {
+        "description": "",
+        "operationId": "logout",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": []
+      },
+      "get": {
+        "description": "",
+        "operationId": "getSession",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": []
+      }
+    },
+    "/auth/telegram/miniapp": {
+      "post": {
+        "description": "",
+        "operationId": "exchangeMiniApp",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "init_data": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "init_data"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": []
+      }
+    },
+    "/billing/invoices": {
+      "get": {
+        "description": "",
+        "operationId": "getInvoices",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "checkout_enabled": {
+                      "type": "boolean"
+                    },
+                    "plan": {
+                      "type": "string"
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "subscription": {
+                      "type": "null"
+                    },
+                    "transactions": {
+                      "items": {
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    },
+    "/billing/subscription": {
+      "get": {
+        "description": "",
+        "operationId": "getSubscription",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "checkout_enabled": {
+                      "type": "boolean"
+                    },
+                    "plan": {
+                      "type": "string"
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "subscription": {
+                      "type": "null"
+                    },
+                    "transactions": {
+                      "items": {
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    },
+    "/billing/transactions": {
+      "get": {
+        "description": "",
+        "operationId": "getTransactions",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "checkout_enabled": {
+                      "type": "boolean"
+                    },
+                    "plan": {
+                      "type": "string"
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "subscription": {
+                      "type": "null"
+                    },
+                    "transactions": {
+                      "items": {
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    },
+    "/catalog": {
+      "get": {
+        "description": "",
+        "operationId": "getCatalog",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "draft": {
+                      "type": "boolean"
+                    },
+                    "features": {
+                      "items": {
+                        "$ref": "#/components/schemas/Feature"
+                      },
+                      "type": "array"
+                    },
+                    "release": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "features"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": []
+      }
+    },
+    "/files/uploads": {
+      "post": {
+        "description": "",
+        "operationId": "uploadFile",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "file": {
+                    "format": "binary",
+                    "type": "string"
+                  },
+                  "password": {
+                    "format": "password",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "file"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Asset"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    },
+    "/files/{id}": {
+      "delete": {
+        "description": "",
+        "operationId": "deleteFile",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Asset"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "getFile",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Asset"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    },
+    "/files/{id}/download": {
+      "get": {
+        "description": "",
+        "operationId": "downloadFile",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Private file, attachment; no-store"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    },
+    "/files/{id}/preview": {
+      "get": {
+        "description": "",
+        "operationId": "previewFile",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/png": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Private single-page PNG preview, no task charge"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    },
+    "/jobs": {
+      "get": {
+        "description": "",
+        "operationId": "listJobs",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "count": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "results": {
+                      "items": {
+                        "$ref": "#/components/schemas/Job"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "results",
+                    "count"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      },
+      "post": {
+        "description": "Returns 200 on identical retry. Same key with changed quote returns 409.",
+        "operationId": "submitJob",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "quote_id": {
+                    "format": "uuid",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "quote_id"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Job"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    },
+    "/jobs/{id}": {
+      "get": {
+        "description": "",
+        "operationId": "getJob",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Job"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    },
+    "/jobs/{id}/cancel": {
+      "post": {
+        "description": "",
+        "operationId": "cancelJob",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {},
+                "required": [],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Job"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    },
+    "/me": {
+      "delete": {
+        "description": "",
+        "operationId": "requestAccountDeletion",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "getProfile",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "updateProfile",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "locale": {
+                    "type": "string"
+                  },
+                  "mode": {
+                    "type": "string"
+                  },
+                  "preferences": {
+                    "type": "object"
+                  },
+                  "time_zone": {
+                    "type": "string"
+                  }
+                },
+                "required": [],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    },
+    "/plans": {
+      "get": {
+        "description": "",
+        "operationId": "getPlans",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "checkout_enabled": {
+                      "type": "boolean"
+                    },
+                    "currency": {
+                      "type": "string"
+                    },
+                    "draft": {
+                      "type": "boolean"
+                    },
+                    "period_seconds": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "plans": {
+                      "items": {
+                        "$ref": "#/components/schemas/Plan"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "plans",
+                    "draft",
+                    "checkout_enabled"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": []
+      }
+    },
+    "/quotes": {
+      "post": {
+        "description": "",
+        "operationId": "createQuote",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "feature_id": {
+                    "type": "string"
+                  },
+                  "input_ids": {
+                    "items": {
+                      "format": "uuid",
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "parameters": {
+                    "type": "object"
+                  },
+                  "secret_id": {
+                    "format": "uuid",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "feature_id",
+                  "input_ids"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Quote"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    },
+    "/secrets": {
+      "post": {
+        "description": "",
+        "operationId": "createPasswordHandle",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "password": {
+                    "format": "password",
+                    "maxLength": 256,
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "password"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "expires_at": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "id": {
+                      "format": "uuid",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "expires_at"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    },
+    "/support": {
+      "get": {
+        "description": "",
+        "operationId": "listSupportTickets",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "results": {
+                      "items": {
+                        "$ref": "#/components/schemas/Ticket"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "results"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "createSupportTicket",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "category": {
+                    "type": "string"
+                  },
+                  "job_id": {
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  },
+                  "subject": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "subject",
+                  "message"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ticket"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    },
+    "/usage": {
+      "get": {
+        "description": "",
+        "operationId": "getUsage",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Usage"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "/api/v1"
+    }
+  ]
+}

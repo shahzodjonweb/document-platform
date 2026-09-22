@@ -1,0 +1,23 @@
+name: Platform verification
+on: [push, pull_request]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      DEBUG: '1'
+      DEVELOPMENT_LOGIN_ENABLED: '1'
+      ENABLE_BETA_TOOLS: '1'
+      LOCAL_SYNC_JOBS: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: requirements.lock
+      - run: pip install -r requirements.lock
+      - run: python manage.py check
+      - run: python manage.py makemigrations --check --dry-run
+      - run: python -m pytest tests -q
+      - run: python scripts/coverage_report.py --check
+      - run: python scripts/verify_contract.py

@@ -1,0 +1,24 @@
+:root {
+  --canvas: #f7f8f5;
+  --surface: #fff;
+  --ink: #263c30;
+  --body: #667167;
+  --muted: #8b958b;
+  --border: #e3e8df;
+  --primary: #285f48;
+  --primary-hover: #1d4b37;
+  --sage: #edf3e9;
+  --soft: #f2f5ef;
+  --accent: #f0dda7;
+  --error: #a64541;
+  --radius: 13px;
+  --shadow: 0 4px 14px #23362704;
+  color-scheme: light;
+  font-family:
+    'DM Sans',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  font-synthesis: none;
+}

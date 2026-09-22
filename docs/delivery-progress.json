@@ -1,0 +1,728 @@
+{
+  "schema_version": "1.0",
+  "initial_implemented_count": 0,
+  "release_approval": "none",
+  "tickets": [
+    {
+      "id": "R0-01",
+      "release": "R0",
+      "title": "Create two repositories and a runnable development baseline",
+      "depends_on": [],
+      "feature_ids": [],
+      "status": "implemented_local",
+      "evidence": "docs/progress.md"
+    },
+    {
+      "id": "R0-02",
+      "release": "R0",
+      "title": "Approve the UI/UX foundation and localization model",
+      "depends_on": [
+        "R0-01"
+      ],
+      "feature_ids": [
+        "profile.modes",
+        "profile.locale"
+      ],
+      "status": "implemented_local",
+      "evidence": "docs/progress.md"
+    },
+    {
+      "id": "R0-03",
+      "release": "R0",
+      "title": "Implement canonical Telegram identity and secure sessions",
+      "depends_on": [
+        "R0-01"
+      ],
+      "feature_ids": [
+        "auth.telegram"
+      ],
+      "status": "partial",
+      "evidence": "docs/progress.md"
+    },
+    {
+      "id": "R0-04",
+      "release": "R0",
+      "title": "Build the customer shell and generated API integration",
+      "depends_on": [
+        "R0-02",
+        "R0-03"
+      ],
+      "feature_ids": [],
+      "status": "implemented_local",
+      "evidence": "docs/progress.md"
+    },
+    {
+      "id": "R0-05",
+      "release": "R0",
+      "title": "Implement versioned entitlements and transactional usage",
+      "depends_on": [
+        "R0-01",
+        "R0-03"
+      ],
+      "feature_ids": [
+        "capacity.monthly",
+        "usage.balance",
+        "billing.quote",
+        "billing.failure_restore"
+      ],
+      "status": "partial",
+      "evidence": "docs/progress.md"
+    },
+    {
+      "id": "R0-06",
+      "release": "R0",
+      "title": "Build staff shell, roles, audit log and new-user analytics",
+      "depends_on": [
+        "R0-02",
+        "R0-03"
+      ],
+      "feature_ids": [],
+      "status": "implemented_local",
+      "evidence": "docs/progress.md"
+    },
+    {
+      "id": "R0-07",
+      "release": "R0",
+      "title": "Add support, private diagnostics and foundation gate",
+      "depends_on": [
+        "R0-04",
+        "R0-05",
+        "R0-06"
+      ],
+      "feature_ids": [
+        "support.standard"
+      ],
+      "status": "partial",
+      "evidence": "docs/progress.md"
+    },
+    {
+      "id": "R1A-01",
+      "release": "R1A",
+      "title": "Implement private upload, preview and deletion lifecycle",
+      "depends_on": [
+        "R0-05"
+      ],
+      "feature_ids": [
+        "files.previews",
+        "files.retention"
+      ],
+      "status": "partial",
+      "evidence": "docs/progress.md"
+    },
+    {
+      "id": "R1A-02",
+      "release": "R1A",
+      "title": "Build durable jobs, status, history and safe delivery",
+      "depends_on": [
+        "R1A-01"
+      ],
+      "feature_ids": [
+        "jobs.progress",
+        "jobs.errors_retry",
+        "jobs.history"
+      ],
+      "status": "partial",
+      "evidence": "docs/progress.md"
+    },
+    {
+      "id": "R1A-03",
+      "release": "R1A",
+      "title": "Implement PDF page operations",
+      "depends_on": [
+        "R1A-02"
+      ],
+      "feature_ids": [
+        "pdf.merge",
+        "pdf.split",
+        "pdf.extract_pages",
+        "pdf.delete_pages",
+        "pdf.reorder",
+        "pdf.rotate"
+      ],
+      "status": "implemented_local",
+      "evidence": "docs/progress.md"
+    },
+    {
+      "id": "R1A-04",
+      "release": "R1A",
+      "title": "Implement image and PDF image conversions",
+      "depends_on": [
+        "R1A-02"
+      ],
+      "feature_ids": [
+        "pdf.images_to_pdf",
+        "pdf.image_layout",
+        "pdf.to_images"
+      ],
+      "status": "implemented_local",
+      "evidence": "docs/progress.md"
+    },
+    {
+      "id": "R1A-05",
+      "release": "R1A",
+      "title": "Implement honest compression and comparison",
+      "depends_on": [
+        "R1A-02"
+      ],
+      "feature_ids": [
+        "pdf.compress",
+        "pdf.compression_preview"
+      ],
+      "status": "implemented_local",
+      "evidence": "docs/progress.md"
+    },
+    {
+      "id": "R1A-06",
+      "release": "R1A",
+      "title": "Implement Office conversion and password operations",
+      "depends_on": [
+        "R1A-02"
+      ],
+      "feature_ids": [
+        "convert.word_to_pdf",
+        "convert.pptx_to_pdf",
+        "pdf.protect",
+        "pdf.unlock_known"
+      ],
+      "status": "implemented_local",
+      "evidence": "docs/progress.md"
+    },
+    {
+      "id": "R1A-07",
+      "release": "R1A",
+      "title": "Deliver complete Telegram file workflows",
+      "depends_on": [
+        "R1A-03",
+        "R1A-04",
+        "R1A-05",
+        "R1A-06"
+      ],
+      "feature_ids": [
+        "bot.upload_forward",
+        "bot.detect_actions"
+      ],
+      "status": "partial",
+      "evidence": "docs/progress.md"
+    },
+    {
+      "id": "R1A-08",
+      "release": "R1A",
+      "title": "Deliver web and Mini App file workspaces",
+      "depends_on": [
+        "R0-04",
+        "R1A-07"
+      ],
+      "feature_ids": [
+        "profile.preferences",
+        "capacity.file_size"
+      ],
+      "status": "partial",
+      "evidence": "docs/progress.md"
+    },
+    {
+      "id": "R1A-09",
+      "release": "R1A",
+      "title": "Finish capacity scheduling and clean output policy",
+      "depends_on": [
+        "R1A-02"
+      ],
+      "feature_ids": [
+        "capacity.queue",
+        "files.no_watermark"
+      ],
+      "status": "partial",
+      "evidence": "docs/progress.md"
+    },
+    {
+      "id": "R1A-10",
+      "release": "R1A",
+      "title": "Pass the free beta release gate",
+      "depends_on": [
+        "R0-07",
+        "R1A-08",
+        "R1A-09"
+      ],
+      "feature_ids": [],
+      "status": "release_blocked",
+      "evidence": "docs/progress.md"
+    },
+    {
+      "id": "R1B-01",
+      "release": "R1B",
+      "title": "Implement OCR with quality and credit metering",
+      "depends_on": [
+        "R1A-10"
+      ],
+      "feature_ids": [
+        "ocr.extract_text",
+        "ocr.searchable_pdf"
+      ],
+      "status": "not_started_gated",
+      "evidence": null
+    },
+    {
+      "id": "R1B-02",
+      "release": "R1B",
+      "title": "Qualify and implement editable Word and table conversion",
+      "depends_on": [
+        "R1B-01"
+      ],
+      "feature_ids": [
+        "convert.pdf_to_docx",
+        "convert.pdf_to_xlsx"
+      ],
+      "status": "not_started_gated",
+      "evidence": null
+    },
+    {
+      "id": "R1B-03",
+      "release": "R1B",
+      "title": "Implement batches and saved workflows",
+      "depends_on": [
+        "R1B-02"
+      ],
+      "feature_ids": [
+        "batch.convert",
+        "batch.compress",
+        "batch.image_sets",
+        "workflow.saved",
+        "workflow.reuse"
+      ],
+      "status": "not_started_gated",
+      "evidence": null
+    },
+    {
+      "id": "R1B-04",
+      "release": "R1B",
+      "title": "Provision larger Telegram transport and fallback paths",
+      "depends_on": [
+        "R1A-10"
+      ],
+      "feature_ids": [],
+      "status": "not_started_gated",
+      "evidence": null
+    },
+    {
+      "id": "R1B-05",
+      "release": "R1B",
+      "title": "Implement Stars subscriptions and financial reconciliation",
+      "depends_on": [
+        "R0-05",
+        "R1A-10"
+      ],
+      "feature_ids": [
+        "billing.stars",
+        "billing.subscription"
+      ],
+      "status": "not_started_gated",
+      "evidence": null
+    },
+    {
+      "id": "R1B-06",
+      "release": "R1B",
+      "title": "Implement task packs and shared starter credits",
+      "depends_on": [
+        "R1B-05"
+      ],
+      "feature_ids": [
+        "billing.task_pack",
+        "billing.trial"
+      ],
+      "status": "not_started_gated",
+      "evidence": null
+    },
+    {
+      "id": "R1B-07",
+      "release": "R1B",
+      "title": "Complete paid-user, revenue, retention and operations analytics",
+      "depends_on": [
+        "R0-06",
+        "R1B-05",
+        "R1B-06"
+      ],
+      "feature_ids": [
+        "support.priority"
+      ],
+      "status": "not_started_gated",
+      "evidence": null
+    },
+    {
+      "id": "R1B-08",
+      "release": "R1B",
+      "title": "Implement optional referrals and sponsorship controls",
+      "depends_on": [
+        "R1B-06",
+        "R1B-07"
+      ],
+      "feature_ids": [
+        "growth.referral",
+        "growth.sponsor",
+        "growth.ad_free"
+      ],
+      "status": "not_started_gated",
+      "evidence": null
+    },
+    {
+      "id": "R1B-09",
+      "release": "R1B",
+      "title": "Pass paid-launch economics and operational gates",
+      "depends_on": [
+        "R1B-03",
+        "R1B-04",
+        "R1B-07",
+        "R1B-08"
+      ],
+      "feature_ids": [],
+      "status": "not_started_gated",
+      "evidence": null
+    },
+    {
+      "id": "R2A-01",
+      "release": "R2A",
+      "title": "Build bounded AI providers, sources and outline pipeline",
+      "depends_on": [
+        "R1B-09"
+      ],
+      "feature_ids": [
+        "ai.language",
+        "ai.length_style",
+        "ai.outline"
+      ],
+      "status": "not_started_gated",
+      "evidence": null
+    },
+    {
+      "id": "R2A-02",
+      "release": "R2A",
+      "title": "Generate multilingual PDFs from topics, text and sources",
+      "depends_on": [
+        "R2A-01"
+      ],
+      "feature_ids": [
+        "ai.pdf_topic",
+        "ai.pdf_text",
+        "ai.pdf_sources",
+        "export.generated_pdf"
+      ],
+      "status": "not_started_gated",
+      "evidence": null
+    },
+    {
+      "id": "R2A-03",
+      "release": "R2A",
+      "title": "Generate editable presentations and speaker notes",
+      "depends_on": [
+        "R2A-01"
+      ],
+      "feature_ids": [
+        "ai.pptx",
+        "ai.source_to_slides",
+        "ai.speaker_notes",
+        "export.generated_pptx"
+      ],
+      "status": "not_started_gated",
+      "evidence": null
+    },
+    {
+      "id": "R2A-04",
+      "release": "R2A",
+      "title": "Implement templates, branding and optional images",
+      "depends_on": [
+        "R2A-02",
+        "R2A-03"
+      ],
+      "feature_ids": [
+        "template.basic",
+        "template.professional",
+        "template.branding",
+        "ai.images"
+      ],
+      "status": "not_started_gated",
+      "evidence": null
+    },
+    {
+      "id": "R2A-05",
+      "release": "R2A",
+      "title": "Implement targeted content and slide revisions",
+      "depends_on": [
+        "R2A-02",
+        "R2A-03"
+      ],
+      "feature_ids": [
+        "ai.rewrite",
+        "ai.regenerate_slide"
+      ],
+      "status": "not_started_gated",
+      "evidence": null
+    },
+    {
+      "id": "R2A-06",
+      "release": "R2A",
+      "title": "Add paid AI credit packs and cost reports",
+      "depends_on": [
+        "R1B-06",
+        "R2A-01"
+      ],
+      "feature_ids": [
+        "billing.ai_topup"
+      ],
+      "status": "not_started_gated",
+      "evidence": null
+    },
+    {
+      "id": "R2A-07",
+      "release": "R2A",
+      "title": "Complete generation wizard and release QA",
+      "depends_on": [
+        "R2A-04",
+        "R2A-05",
+        "R2A-06"
+      ],
+      "feature_ids": [],
+      "status": "not_started_gated",
+      "evidence": null
+    },
+    {
+      "id": "R2B-01",
+      "release": "R2B",
+      "title": "Implement core study tools and source-grounded Q&A",
+      "depends_on": [
+        "R2A-07"
+      ],
+      "feature_ids": [
+        "study.summary",
+        "study.definitions",
+        "study.flashcards",
+        "study.quiz",
+        "study.answer_key",
+        "study.pdf_qa"
+      ],
+      "status": "not_started_gated",
+      "evidence": null
+    },
+    {
+      "id": "R2B-02",
+      "release": "R2B",
+      "title": "Implement study packs, handwriting and writing tools",
+      "depends_on": [
+        "R2B-01"
+      ],
+      "feature_ids": [
+        "study.exam_pack",
+        "study.handwriting",
+        "study.report_format",
+        "study.references",
+        "study.writing_feedback",
+        "study.revision_plan"
+      ],
+      "status": "not_started_gated",
+      "evidence": null
+    },
+    {
+      "id": "R2B-03",
+      "release": "R2B",
+      "title": "Implement school learning and worksheet tools",
+      "depends_on": [
+        "R2B-01"
+      ],
+      "feature_ids": [
+        "school.explain",
+        "school.examples",
+        "school.hints",
+        "school.check_attempt",
+        "school.similar_problems",
+        "school.worksheets",
+        "school.reading",
+        "school.vocabulary",
+        "school.adult_mode"
+      ],
+      "status": "not_started_gated",
+      "evidence": null
+    },
+    {
+      "id": "R2B-04",
+      "release": "R2B",
+      "title": "Implement saved results and Premium adaptive practice",
+      "depends_on": [
+        "R2B-03"
+      ],
+      "feature_ids": [
+        "school.weekly_pack",
+        "school.adaptive",
+        "school.results",
+        "school.weak_topics"
+      ],
+      "status": "not_started_gated",
+      "evidence": null
+    },
+    {
+      "id": "R2B-05",
+      "release": "R2B",
+      "title": "Implement school project outputs",
+      "depends_on": [
+        "R2B-03"
+      ],
+      "feature_ids": [
+        "school.project_outline",
+        "school.project_slides",
+        "school.poster"
+      ],
+      "status": "not_started_gated",
+      "evidence": null
+    },
+    {
+      "id": "R2B-06",
+      "release": "R2B",
+      "title": "Implement lesson planning and teacher packs",
+      "depends_on": [
+        "R2B-01"
+      ],
+      "feature_ids": [
+        "teacher.lesson_plan",
+        "teacher.lesson_pack",
+        "teacher.worksheet",
+        "teacher.homework",
+        "teacher.reading_level",
+        "teacher.syllabus"
+      ],
+      "status": "not_started_gated",
+      "evidence": null
+    },
+    {
+      "id": "R2B-07",
+      "release": "R2B",
+      "title": "Implement assessments, variants, rubrics and feedback",
+      "depends_on": [
+        "R2B-06"
+      ],
+      "feature_ids": [
+        "teacher.mcq",
+        "teacher.written_test",
+        "teacher.answer_key",
+        "teacher.variants",
+        "teacher.differentiated",
+        "teacher.rubric",
+        "teacher.feedback",
+        "teacher.suggest_marks"
+      ],
+      "status": "not_started_gated",
+      "evidence": null
+    },
+    {
+      "id": "R2B-08",
+      "release": "R2B",
+      "title": "Implement teacher templates, branding and safe sharing",
+      "depends_on": [
+        "R2B-07"
+      ],
+      "feature_ids": [
+        "teacher.saved_templates",
+        "teacher.branding",
+        "teacher.separate_exports",
+        "teacher.share_materials"
+      ],
+      "status": "not_started_gated",
+      "evidence": null
+    },
+    {
+      "id": "R2B-09",
+      "release": "R2B",
+      "title": "Complete education UX and content-quality gate",
+      "depends_on": [
+        "R2B-02",
+        "R2B-04",
+        "R2B-05",
+        "R2B-08"
+      ],
+      "feature_ids": [],
+      "status": "not_started_gated",
+      "evidence": null
+    },
+    {
+      "id": "R3-01",
+      "release": "R3",
+      "title": "Qualify the PDF editor engine and workspace",
+      "depends_on": [
+        "R2B-09"
+      ],
+      "feature_ids": [
+        "editor.visual"
+      ],
+      "status": "not_started_gated",
+      "evidence": null
+    },
+    {
+      "id": "R3-02",
+      "release": "R3",
+      "title": "Implement basic PDF annotation and form editing",
+      "depends_on": [
+        "R3-01"
+      ],
+      "feature_ids": [
+        "editor.add_text",
+        "editor.highlight",
+        "editor.annotate",
+        "editor.fill_forms",
+        "editor.signature_image",
+        "editor.export"
+      ],
+      "status": "not_started_gated",
+      "evidence": null
+    },
+    {
+      "id": "R3-03",
+      "release": "R3",
+      "title": "Implement genuine existing content and image changes",
+      "depends_on": [
+        "R3-02"
+      ],
+      "feature_ids": [
+        "editor.existing_text",
+        "editor.insert_images",
+        "editor.replace_images"
+      ],
+      "status": "not_started_gated",
+      "evidence": null
+    },
+    {
+      "id": "R3-04",
+      "release": "R3",
+      "title": "Implement verified permanent redaction",
+      "depends_on": [
+        "R3-03"
+      ],
+      "feature_ids": [
+        "editor.redact"
+      ],
+      "status": "not_started_gated",
+      "evidence": null
+    },
+    {
+      "id": "R3-05",
+      "release": "R3",
+      "title": "Implement reusable and batch form filling",
+      "depends_on": [
+        "R3-02"
+      ],
+      "feature_ids": [
+        "editor.form_templates",
+        "editor.batch_forms"
+      ],
+      "status": "not_started_gated",
+      "evidence": null
+    },
+    {
+      "id": "R3-06",
+      "release": "R3",
+      "title": "Pass final roadmap acceptance and operational handoff",
+      "depends_on": [
+        "R3-03",
+        "R3-04",
+        "R3-05"
+      ],
+      "feature_ids": [],
+      "status": "not_started_gated",
+      "evidence": null
+    }
+  ]
+}

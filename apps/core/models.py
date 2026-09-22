@@ -1,0 +1,210 @@
+import uuid
+from django.db import models
+from django.db.models import Q
+from django.utils import timezone
+
+class Account(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    telegram_user_id = models.BigIntegerField(unique=True)
+    username = models.CharField(max_length=64, blank=True)
+    display_name = models.CharField(max_length=150, blank=True)
+    locale = models.CharField(max_length=2, default='en')
+    mode = models.CharField(max_length=16, default='general')
+    time_zone = models.CharField(max_length=64, default='UTC')
+    preferences = models.JSONField(default=dict)
+    plan = models.CharField(max_length=12, default='free')
+    is_test = models.BooleanField(default=False)
+    first_verified_channel = models.CharField(max_length=16, default='web')
+    created_at = models.DateTimeField(default=timezone.now)
+    deletion_requested_at = models.DateTimeField(null=True, blank=True)
+    def __str__(self): return self.display_name or str(self.id)
+
+class AuthChallenge(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    token_hash = models.CharField(max_length=64, unique=True)
+    verifier_hash = models.CharField(max_length=64)
+    browser_hint = models.CharField(max_length=160)
+    account = models.ForeignKey(Account, null=True, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(default=timezone.now)
+    expires_at = models.DateTimeField()
+    consumed_at = models.DateTimeField(null=True)
+    approved_at = models.DateTimeField(null=True)
+
+class AuthReceipt(models.Model):
+    digest = models.CharField(max_length=64, unique=True)
+    created_at = models.DateTimeField(default=timezone.now)
+
+class UsageGrant(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='usage_grants')
+    meter = models.CharField(max_length=24)
+    source = models.CharField(max_length=16, default='included')
+    source_id = models.CharField(max_length=160, unique=True)
+    quantity = models.PositiveIntegerField()
+    consumed = models.PositiveIntegerField(default=0)
+    reserved = models.PositiveIntegerField(default=0)
+    valid_from = models.DateTimeField()
+    expires_at = models.DateTimeField(null=True)
+    class Meta:
+        constraints = [models.CheckConstraint(condition=Q(quantity__gte=models.F('consumed') + models.F('reserved')), name='grant_no_overspend')]
+
+class FileAsset(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='files')
+    name = models.CharField(max_length=255)
+    object_key = models.CharField(max_length=180, unique=True)
+    mime_type = models.CharField(max_length=100)
+    sha256 = models.CharField(max_length=64)
+    size_bytes = models.PositiveBigIntegerField()
+    page_count = models.PositiveIntegerField()
+    state = models.CharField(max_length=16, default='ready')
+    metadata = models.JSONField(default=dict)
+    created_at = models.DateTimeField(default=timezone.now)
+    expires_at = models.DateTimeField()
+
+class Quote(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    account = models.ForeignKey(Account, on_delete=models.CASCADE)
+    feature_id = models.CharField(max_length=100)
+    parameters = models.JSONField(default=dict)
+    input_ids = models.JSONField(default=list)
+    input_fingerprints = models.JSONField(default=list)
+    secret_id = models.UUIDField(null=True)
+    meters = models.JSONField(default=dict)
+    policy = models.JSONField(default=dict)
+    created_at = models.DateTimeField(default=timezone.now)
+    expires_at = models.DateTimeField()
+
+class Job(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='jobs')
+    quote = models.OneToOneField(Quote, on_delete=models.PROTECT)
+    feature_id = models.CharField(max_length=100)
+    parameters = models.JSONField(default=dict)
+    input_ids = models.JSONField(default=list)
+    policy = models.JSONField(default=dict)
+    meters = models.JSONField(default=dict)
+    settled_meters = models.JSONField(default=dict)
+    idempotency_key = models.CharField(max_length=128)
+    request_hash = models.CharField(max_length=64)
+    status = models.CharField(max_length=24, default='queued')
+    origin_channel = models.CharField(max_length=16, default='web')
+    error_code = models.CharField(max_length=64, blank=True)
+    warnings = models.JSONField(default=list)
+    created_at = models.DateTimeField(default=timezone.now)
+    started_at = models.DateTimeField(null=True)
+    completed_at = models.DateTimeField(null=True)
+    lease_expires_at = models.DateTimeField(null=True)
+    attempt_count = models.PositiveSmallIntegerField(default=0)
+    engine = models.CharField(max_length=120, blank=True)
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['account', 'idempotency_key'], name='job_account_idempotency')]
+
+class Reservation(models.Model):
+    job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name='reservations')
+    grant = models.ForeignKey(UsageGrant, on_delete=models.PROTECT)
+    meter = models.CharField(max_length=24)
+    amount = models.PositiveIntegerField()
+    settled = models.BooleanField(default=False)
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['job', 'grant'], name='one_reservation_per_grant')]
+
+class UsageLedger(models.Model):
+    account = models.ForeignKey(Account, on_delete=models.CASCADE)
+    job = models.ForeignKey(Job, on_delete=models.PROTECT)
+    grant = models.ForeignKey(UsageGrant, on_delete=models.PROTECT)
+    meter = models.CharField(max_length=24)
+    kind = models.CharField(max_length=16)
+    amount = models.PositiveIntegerField()
+    created_at = models.DateTimeField(default=timezone.now)
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['job', 'grant', 'kind'], name='one_ledger_transition')]
+
+class Artifact(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    account = models.ForeignKey(Account, on_delete=models.CASCADE)
+    job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name='artifacts')
+    file = models.OneToOneField(FileAsset, on_delete=models.CASCADE)
+    role = models.CharField(max_length=24, default='user_document')
+
+class OutboxEvent(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    job = models.ForeignKey(Job, on_delete=models.CASCADE)
+    topic = models.CharField(max_length=32, default='job.execute')
+    created_at = models.DateTimeField(default=timezone.now)
+    delivered_at = models.DateTimeField(null=True)
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['job', 'topic'], name='outbox_job_topic')]
+
+class AnalyticsEvent(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    account = models.ForeignKey(Account, null=True, on_delete=models.SET_NULL)
+    event_type = models.CharField(max_length=64)
+    feature_id = models.CharField(max_length=100, blank=True)
+    job = models.ForeignKey(Job, null=True, on_delete=models.SET_NULL)
+    channel = models.CharField(max_length=16, default='web')
+    locale = models.CharField(max_length=2, default='en')
+    plan_at_event = models.CharField(max_length=12, default='free')
+    environment = models.CharField(max_length=16, default='development')
+    properties = models.JSONField(default=dict)
+    occurred_at = models.DateTimeField(default=timezone.now)
+
+class SupportTicket(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='support_tickets')
+    job = models.ForeignKey(Job, null=True, blank=True, on_delete=models.SET_NULL)
+    subject = models.CharField(max_length=160)
+    message = models.TextField()
+    category = models.CharField(max_length=24, default='general')
+    status = models.CharField(max_length=16, default='open')
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+class BotDraft(models.Model):
+    parameters = models.JSONField(default=dict)
+    version = models.PositiveIntegerField(default=1)
+    account = models.OneToOneField(Account, on_delete=models.CASCADE)
+    feature_id = models.CharField(max_length=100, default='pdf.merge')
+    input_ids = models.JSONField(default=list)
+    quote = models.ForeignKey(Quote, null=True, on_delete=models.SET_NULL)
+    state = models.CharField(max_length=24, default='collecting')
+    updated_at = models.DateTimeField(auto_now=True)
+
+class BotCallback(models.Model):
+    token = models.CharField(max_length=40, primary_key=True)
+    account = models.ForeignKey(Account, on_delete=models.CASCADE)
+    action = models.CharField(max_length=100)
+    payload = models.JSONField(default=dict)
+    expires_at = models.DateTimeField()
+
+class WebhookReceipt(models.Model):
+    update_id = models.BigIntegerField(unique=True)
+    payload = models.JSONField(default=dict)
+    created_at = models.DateTimeField(default=timezone.now)
+    processed_at = models.DateTimeField(null=True)
+
+class SecretHandle(models.Model):
+    """Short-lived ciphertext only; never expose values through admin/API/history."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    account = models.ForeignKey(Account, on_delete=models.CASCADE)
+    asset = models.ForeignKey(FileAsset, null=True, on_delete=models.CASCADE)
+    job = models.OneToOneField(Job, null=True, on_delete=models.CASCADE)
+    ciphertext = models.BinaryField()
+    created_at = models.DateTimeField(default=timezone.now)
+    expires_at = models.DateTimeField()
+
+class BotInputReceipt(models.Model):
+    account = models.ForeignKey(Account, on_delete=models.CASCADE)
+    chat_id = models.BigIntegerField()
+    message_id = models.BigIntegerField()
+    asset = models.ForeignKey(FileAsset, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(default=timezone.now)
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['account','chat_id','message_id'],name='one_bot_input_receipt')]
+
+class PagePreview(models.Model):
+    asset = models.ForeignKey(FileAsset, on_delete=models.CASCADE, related_name='page_previews')
+    page = models.PositiveIntegerField()
+    file = models.OneToOneField(FileAsset, on_delete=models.CASCADE, related_name='preview_for')
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['asset','page'],name='one_preview_per_page')]

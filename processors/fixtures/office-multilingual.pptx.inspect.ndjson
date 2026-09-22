@@ -1,0 +1,21 @@
+{"kind":"deck","id":"pr/ta5ip6","name":"Deck"}
+{"kind":"layout","layoutId":"3c87b25f-12bc-4126-b747-bd3f6064f906","name":"Master","type":"master"}
+{"kind":"layout","layoutId":"dcef3af5-8368-44f2-8a04-d824bcdaf4c2","name":"Title Slide","type":"title"}
+{"kind":"slide","id":"sl/h1la24","slide":1,"title":"Office conversion verification","textShapes":4}
+{"kind":"textbox","id":"sh/s72pszap","slide":1,"text":"Office conversion verification","textPreview":"Office conversion verification","textChars":30,"textLines":1,"bbox":[72,52,1136,115]}
+{"kind":"textbox","id":"sh/r6tozu94","slide":1,"text":"Document pages remain readable","textPreview":"Document pages remain readable","textChars":30,"textLines":1,"bbox":[72,226,1136,76]}
+{"kind":"textbox","id":"sh/650nq9sj","slide":1,"text":"This synthetic fixture checks English text, layout and editable slide shapes.","textPreview":"This synthetic fixture checks English text, layout and editable slide shapes.","textChars":77,"textLines":1,"bbox":[72,342,1070,145]}
+{"kind":"textbox","id":"sh/54r6x4ry","slide":1,"text":"PDF Master / en / 2026-09-22","textPreview":"PDF Master / en / 2026-09-22","textChars":28,"textLines":1,"bbox":[72,620,1136,40]}
+{"kind":"notes","id":"nt/h1la24","slide":1,"text":"Synthetic local software acceptance fixture. No customer information."}
+{"kind":"slide","id":"sl/aay5bo","slide":2,"title":"Office konvertatsiyasini tekshirish","textShapes":4}
+{"kind":"textbox","id":"sh/3e9sna94","slide":2,"text":"Office konvertatsiyasini tekshirish","textPreview":"Office konvertatsiyasini tekshirish","textChars":35,"textLines":1,"bbox":[72,52,1136,115]}
+{"kind":"textbox","id":"sh/4fi9gvq9","slide":2,"text":"Hujjat sahifalari aniq ko‘rinadi","textPreview":"Hujjat sahifalari aniq ko‘rinadi","textChars":32,"textLines":1,"bbox":[72,226,1136,76]}
+{"kind":"textbox","id":"sh/5grap0ru","slide":2,"text":"Bu sinov o‘zbekcha matn va tahrirlanadigan slayd obyektlarini tekshiradi.","textPreview":"Bu sinov o‘zbekcha matn va tahrirlanadigan slayd obyektlarini tekshiradi.","textChars":73,"textLines":1,"bbox":[72,342,1070,145]}
+{"kind":"textbox","id":"sh/up0ral87","slide":2,"text":"PDF Master / uz / 2026-09-22","textPreview":"PDF Master / uz / 2026-09-22","textChars":28,"textLines":1,"bbox":[72,620,1136,40]}
+{"kind":"notes","id":"nt/aay5bo","slide":2,"text":"Synthetic local software acceptance fixture. No customer information."}
+{"kind":"slide","id":"sl/g1mn9u","slide":3,"title":"Проверка преобразования Office","textShapes":4}
+{"kind":"textbox","id":"sh/p4nex8fm","slide":3,"text":"Проверка преобразования Office","textPreview":"Проверка преобразования Office","textChars":30,"textLines":1,"bbox":[72,52,1136,115]}
+{"kind":"textbox","id":"sh/21cvmdwv","slide":3,"text":"Страницы документа остаются читаемыми","textPreview":"Страницы документа остаются читаемыми","textChars":37,"textLines":1,"bbox":[72,226,1136,76]}
+{"kind":"textbox","id":"sh/325wvyxg","slide":3,"text":"Этот тест проверяет русский текст, разметку и редактируемые объекты слайда.","textPreview":"Этот тест проверяет русский текст, разметку и редактируемые объекты слайда.","textChars":75,"textLines":1,"bbox":[72,342,1070,145]}
+{"kind":"textbox","id":"sh/credsnex","slide":3,"text":"PDF Master / ru / 2026-09-22","textPreview":"PDF Master / ru / 2026-09-22","textChars":28,"textLines":1,"bbox":[72,620,1136,40]}
+{"kind":"notes","id":"nt/g1mn9u","slide":3,"text":"Synthetic local software acceptance fixture. No customer information."}

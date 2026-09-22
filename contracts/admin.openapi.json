@@ -1,0 +1,89 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "PDF Master staff API",
+    "version": "1.0.0",
+    "description": "Separate staff session and server role authorization; never distribute to the customer app."
+  },
+  "servers": [
+    {
+      "url": "/ops/api/v1"
+    }
+  ],
+  "paths": {
+    "/summary": {
+      "get": {
+        "operationId": "getOperationsSummary",
+        "security": [
+          {
+            "staffSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "date_from",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "date_to",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "timezone",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "locale",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "channel",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Definitions version, filters, freshness, totals, daily series, feature rows and mature cohort statistics."
+          },
+          "401": {
+            "description": "Staff authentication required"
+          },
+          "403": {
+            "description": "Role denied"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "staffSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "ops_session"
+      }
+    }
+  }
+}

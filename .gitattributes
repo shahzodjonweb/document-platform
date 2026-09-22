@@ -1,0 +1,8 @@
+*.pdf binary
+*.png binary
+*.docx binary
+*.pptx binary
+*.ttf binary
+# Keep original handoff and third-party license bytes unchanged.
+docs/product/** -whitespace
+operations/static/ops/fonts/* -whitespace

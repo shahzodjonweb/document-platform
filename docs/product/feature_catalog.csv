@@ -1,0 +1,129 @@
+﻿feature_id,category,release,priority,feature,free,plus,premium,meter
+pdf.compress,Compression,R1A,high,Compress PDF,included,included,included,file
+pdf.compression_preview,Compression,R1A,support,Compare resulting size and quality,included,included,included,none
+pdf.images_to_pdf,Conversion,R1A,high,Photos and images to PDF,included,included,included,file
+pdf.image_layout,Conversion,R1A,support,Image order orientation and paper size,included,included,included,none
+pdf.to_images,Conversion,R1A,standard,PDF pages to JPG or PNG,included,included,included,file
+pdf.merge,Pages,R1A,high,Merge PDFs,included,included,included,file
+pdf.split,Pages,R1A,high,Split PDF,included,included,included,file
+pdf.extract_pages,Pages,R1A,standard,Extract selected pages,included,included,included,file
+pdf.delete_pages,Pages,R1A,standard,Delete selected pages,included,included,included,file
+pdf.reorder,Pages,R1A,standard,Reorder pages,included,included,included,file
+pdf.rotate,Pages,R1A,standard,Rotate pages,included,included,included,file
+convert.word_to_pdf,Office conversion,R1A,high,Word to PDF,included,included,included,file
+convert.pptx_to_pdf,Office conversion,R1A,standard,PowerPoint to PDF,included,included,included,file
+convert.pdf_to_docx,Editable conversion,R1B,high,PDF to editable Word,sample,included,included,conversion
+convert.pdf_to_xlsx,Editable conversion,R1B,standard,PDF tables to Excel,sample,included,included,conversion
+ocr.extract_text,OCR,R1B,high,Extract text from scans and photos,sample,included,higher,ocr
+ocr.searchable_pdf,OCR,R1B,standard,Create searchable scanned PDF,sample,included,higher,ocr
+pdf.protect,Passwords,R1A,standard,Password protect PDF,included,included,included,file
+pdf.unlock_known,Passwords,R1A,standard,Remove password using supplied password,included,included,included,file
+batch.convert,Batch processing,R1B,standard,Convert independent documents as a batch,none,limited,higher,children
+batch.compress,Batch processing,R1B,standard,Compress independent PDFs as a batch,none,limited,higher,children
+batch.image_sets,Batch processing,R1B,standard,Separate image sets to separate PDFs,none,limited,higher,children
+workflow.saved,Automation,R1B,standard,Save multistep processing workflows,none,limited,higher,none
+workflow.reuse,Automation,R1B,standard,Run saved workflow settings,none,included,included,children
+capacity.file_size,Capacity,R1A,support,Tier specific file size and page caps,limited,standard,higher,none
+capacity.monthly,Capacity,R0,support,Monthly task and page allowances,limited,standard,higher,none
+capacity.queue,Capacity,R1A,support,Priority processing without starving standard queue,standard,standard,priority,none
+ai.pdf_topic,AI documents,R2A,standard,Generate PDF from topic,sample,included,higher,ai
+ai.pdf_text,AI documents,R2A,standard,Generate formatted PDF from pasted content,sample,included,higher,ai
+ai.pdf_sources,AI documents,R2A,standard,Generate document from uploaded sources,sample,included,higher,ai
+ai.pptx,AI presentations,R2A,high,Generate editable PPTX,sample,included,higher,ai
+ai.source_to_slides,AI presentations,R2A,high,Notes or uploaded document to slides,sample,included,higher,ai
+ai.speaker_notes,AI presentations,R2A,standard,Generate speaker notes,sample,included,included,ai
+ai.language,AI controls,R2A,support,Select output language,included,included,included,none
+ai.length_style,AI controls,R2A,support,Select length audience and style,limited,standard,higher,none
+ai.outline,AI controls,R2A,support,Generate review and edit outline,sample,included,included,ai
+template.basic,Templates,R2A,support,Basic document and slide templates,included,included,included,none
+template.professional,Templates,R2A,standard,Additional professional templates,none,included,included,none
+template.branding,Branding,R2A,standard,Custom logos colors and branding,none,none,included,none
+ai.images,AI visuals,R2A,standard,Generated supporting illustrations,none,none,included,ai_image
+ai.rewrite,AI revisions,R2A,high,Rewrite simplify shorten or expand content,sample,included,higher,ai
+ai.regenerate_slide,AI revisions,R2A,standard,Regenerate selected slides,sample,included,higher,ai
+export.generated_pdf,Exports,R2A,support,Download generated PDF,included,included,included,none
+export.generated_pptx,Exports,R2A,support,Download editable generated PPTX,included,included,included,none
+study.summary,Student study,R2B,high,Summarize lecture notes and chapters,sample,included,higher,ai
+study.definitions,Student study,R2B,standard,Extract definitions and revision points,sample,included,included,ai
+study.flashcards,Student study,R2B,high,Generate flashcards,sample,included,higher,ai
+study.quiz,Student exams,R2B,high,Generate practice questions and quizzes,sample,included,higher,ai
+study.answer_key,Student exams,R2B,standard,Answer keys and explanations,included,included,included,bundle
+study.exam_pack,Student exams,R2B,high,Exam preparation pack,sample,basic_bundle,full_bundle,children
+study.pdf_qa,Student assistance,R2B,high,PDF questions with source page references,sample,included,higher,ai
+study.handwriting,Student assistance,R2B,standard,Readable handwritten notes to reviewed typed notes,sample,included,higher,ai
+study.report_format,Academic formatting,R2B,standard,Format supplied report with cover headings TOC page numbers,sample,included,included,ai
+study.references,Academic formatting,R2B,standard,Format student supplied references,sample,included,included,ai
+study.writing_feedback,Student assistance,R2B,standard,Feedback on clarity structure and grammar,sample,included,included,ai
+study.revision_plan,Revision planning,R2B,standard,Study schedule from subjects dates and available time,sample,included,included,ai
+school.explain,School learning,R2B,high,Grade appropriate lesson explanation,sample,included,included,ai
+school.examples,School learning,R2B,standard,Examples and understanding checks,sample,included,included,ai
+school.hints,Homework support,R2B,high,Hints and step by step guidance,sample,included,higher,ai
+school.check_attempt,Homework support,R2B,standard,Check learner attempt and explain mistakes,sample,included,higher,ai
+school.similar_problems,Homework support,R2B,standard,Generate similar practice problems,sample,included,included,ai
+school.worksheets,School practice,R2B,high,Worksheets by subject grade and difficulty,sample,included,higher,ai
+school.reading,Reading practice,R2B,standard,Reading passages and comprehension questions,sample,included,included,ai
+school.vocabulary,Vocabulary practice,R2B,standard,Vocabulary exercises,sample,included,included,ai
+school.weekly_pack,School practice,R2B,standard,Weekly practice pack across selected subjects,none,none,included,children
+school.adaptive,Adaptive practice,R2B,standard,Follow up exercises from previous errors,none,none,included,ai
+school.results,Learning progress,R2B,standard,Completed activities and practice results,limited,included,included,none
+school.weak_topics,Learning progress,R2B,standard,Weak topic summary and follow up recommendations,none,none,included,ai
+school.project_outline,School projects,R2B,standard,Project outline from learner ideas,sample,included,included,ai
+school.project_slides,School projects,R2B,standard,Project presentation and speaking notes,sample,included,included,ai
+school.poster,School projects,R2B,standard,Printable project poster,sample,included,higher,ai
+school.adult_mode,Parent and teacher mode,R2B,support,Adult selects grade and generates child materials,included,included,included,none
+teacher.lesson_plan,Teacher preparation,R2B,high,Lesson plan from topic grade duration objectives,sample,included,included,ai
+teacher.lesson_pack,Teacher preparation,R2B,high,Complete lesson pack,none,basic_bundle,full_bundle,children
+teacher.worksheet,Teacher materials,R2B,high,Generate worksheets,sample,included,higher,ai
+teacher.homework,Teacher materials,R2B,standard,Generate homework activities,sample,included,included,ai
+teacher.mcq,Teacher assessments,R2B,high,Multiple choice quiz generation,sample,included,higher,ai
+teacher.written_test,Teacher assessments,R2B,standard,Short answer and written tests,sample,included,higher,ai
+teacher.answer_key,Teacher assessments,R2B,standard,Marks answers and explanations in separate teacher artifact,included,included,included,bundle
+teacher.variants,Teacher assessments,R2B,standard,Test versions A B C,none,none,included,children
+teacher.differentiated,Differentiated teaching,R2B,standard,Basic standard advanced worksheets together,none,none,included,children
+teacher.reading_level,Content adaptation,R2B,high,Rewrite for selected reading level,sample,included,included,ai
+teacher.syllabus,Curriculum planning,R2B,standard,Uploaded syllabus to weekly teaching outline,none,none,included,ai
+teacher.rubric,Marking assistance,R2B,standard,Generate assessment rubrics,sample,included,included,ai
+teacher.feedback,Teacher feedback,R2B,high,Draft writing feedback,sample,included,higher,ai
+teacher.suggest_marks,Marking assistance,R2B,standard,Suggest marks against rubric for teacher review,none,none,included,ai
+teacher.saved_templates,Teacher templates,R2B,standard,Save class level lesson structure and layouts,none,limited,higher,none
+teacher.branding,School branding,R2B,standard,Apply school branding,none,none,included,none
+teacher.separate_exports,Classroom distribution,R2B,support,Separate learner artifacts from teacher answer keys,included,included,included,none
+teacher.share_materials,Classroom distribution,R2B,support,Share generated materials with unpaid recipients,included,included,included,none
+editor.visual,Visual editor,R3,support,Page based editor linked to bot,included,included,included,none
+editor.add_text,Text overlays,R3,high,Add new text,included,included,included,edit
+editor.highlight,Annotations,R3,standard,Highlight text,included,included,included,edit
+editor.annotate,Annotations,R3,standard,Notes drawings and annotations,included,included,included,edit
+editor.fill_forms,Forms,R3,high,Fill existing interactive forms,included,included,included,edit
+editor.signature_image,Signatures,R3,standard,Insert signature image,included,included,included,edit
+editor.existing_text,Existing content,R3,high,Change existing PDF text,none,included,included,edit
+editor.insert_images,Images,R3,standard,Insert images,none,included,included,edit
+editor.replace_images,Images,R3,standard,Replace or remove existing images,none,included,included,edit
+editor.redact,Redaction,R3,standard,Permanently remove selected sensitive content,none,none,included,edit
+editor.form_templates,Form automation,R3,standard,Save reusable form filling templates,none,none,included,none
+editor.batch_forms,Form automation,R3,standard,Fill multiple documents with reusable data,none,none,included,children
+editor.export,Exports,R3,support,Download edited PDF,included,included,included,none
+bot.upload_forward,Onboarding,R1A,support,Send or forward a file to begin,included,included,included,none
+auth.telegram,Onboarding,R0,support,Telegram identity without separate signup form,included,included,included,none
+bot.detect_actions,Navigation,R1A,support,Detect file type and relevant actions,included,included,included,none
+profile.modes,Navigation,R0,support,General student school teacher modes,included,included,included,none
+profile.locale,Localization,R0,support,Uzbek English Russian interface selection,included,included,included,none
+profile.preferences,Preferences,R1A,support,Remember paper and processing preferences,included,included,included,none
+files.previews,Previews,R1A,support,Page thumbnails and selection preview,included,included,included,none
+jobs.progress,Processing,R1A,support,Upload queue processing completion states,included,included,included,none
+jobs.errors_retry,Processing,R1A,support,Explain failures and retry safely,included,included,included,none
+jobs.history,History,R1A,support,Recent jobs and usage history,included,included,included,none
+files.no_watermark,Downloads,R1A,support,Usable outputs without platform watermark,included,included,included,none
+files.retention,Retention,R1A,support,Automatic deletion of temporary server files,included,included,included,none
+usage.balance,Allowances,R0,support,Remaining operations and AI credit balances,included,included,included,none
+billing.quote,Billing,R0,support,Show credit cost before processing,included,included,included,none
+billing.failure_restore,Billing,R0,support,Release or restore charges for failed work,included,included,included,none
+billing.stars,Payments,R1B,support,Telegram Stars checkout,included,included,included,none
+billing.subscription,Subscriptions,R1B,support,Monthly renewal details and cancellation,none,included,included,none
+billing.task_pack,Add ons,R1B,support,Purchase extra standard file operations,included,included,included,none
+billing.ai_topup,Add ons,R2A,support,Purchase extra AI credits,none,included,included,none
+support.standard,Support,R0,support,Processing and payment support,included,included,included,none
+support.priority,Support,R1B,support,Priority support queue,none,none,included,none
+billing.trial,Trials,R1B,support,Shared monthly starter credit pool,sample,included,included,none
+growth.referral,Referrals,R1B,standard,Capped bonus operations for qualifying referrals,included,included,included,none
+growth.sponsor,Sponsorships,R1B,optional,Optional labeled sponsor messages in general mode,optional,none,none,none
+growth.ad_free,Advertising,R1B,support,Ad free experience when sponsors enabled,none,included,included,none
