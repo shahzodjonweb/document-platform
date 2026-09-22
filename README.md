@@ -53,7 +53,7 @@ For polling, set `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`, and an HTTPS `TE
 DEBUG=1 ENABLE_BETA_TOOLS=1 .venv/bin/python manage.py runbot
 ```
 
-For staff credentials, use `DEBUG=1 .venv/bin/python manage.py setup_staff your-name --role Administrator`. It prompts for a password and produces a one-time authenticator enrollment URI. Store it securely. Password+TOTP login is separate from customer sign-in; built-in Django sessions do not confer operations access.
+For staff credentials, use `DEBUG=1 .venv/bin/python manage.py setup_staff your-name --role Administrator`. Run management commands with the same `SECRET_KEY` environment as the API so encrypted MFA enrollment remains readable. It prompts for a password and produces a one-time authenticator enrollment URI. Store it securely. Password+TOTP login is separate from customer sign-in; built-in Django sessions do not confer operations access.
 
 For asynchronous local jobs, set `LOCAL_SYNC_JOBS=0` in the API process and run `DEBUG=1 ENABLE_BETA_TOOLS=1 .venv/bin/python manage.py runworker` in another terminal. Its durable outbox is retried without repeating settlement. The optional Celery publisher is `manage.py dispatchoutbox`; do not start multiple queue modes unintentionally.
 
