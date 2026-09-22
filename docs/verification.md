@@ -44,6 +44,14 @@ Processor fixtures are in `processors/fixtures` and `processors/evidence`. Addit
 
 ## External verification still required
 
+### GitHub Linux compatibility follow-up
+
+The first private GitHub Actions run passed 296 tests but found nine Office-related failures with Ubuntu's LibreOffice 24.2.7. That converter emits a default initial-page destination that the newer local development runtime omits. Fresh converter output now removes only the exact, validated in-document destination array before normal artifact validation. Uploaded PDFs retain the existing strict policy; action dictionaries, scripts, remote actions, malformed destinations and other active content still fail.
+
+The affected processor, advanced conversion, Office API and presentation roundtrip checks passed locally: **78 tests in 27.56 seconds**, including 12 new regressions. The complete Linux run is recorded in [platform GitHub Actions](https://github.com/shahzodjonweb/document-platform/actions/workflows/ci.yml).
+
+### Remaining external gates
+
 No live Telegram token or AI key was supplied. Enter credentials through **Admin → Integrations** to enable external connections. Image/handwriting generation requires an appropriate configured provider/model; local authoring is explicitly labeled and charges zero AI credits. Sandbox purchases do not spend real Telegram Stars.
 
 Docker is unavailable on this host, so Compose/PostgreSQL concurrent-load and restore drills remain unexecuted. Production Linux containment, a supported Office engine/license, live Telegram device continuity/delivery, live AI/payment quality and pricing, educational/language/legal review and operational SLOs remain release gates. See the per-feature acceptance ledger for exact qualification status. The local demonstration is not a production release approval.

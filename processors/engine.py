@@ -475,6 +475,45 @@ def _pdf_images(path: Path, parameters: dict, out: Path, count: int):
     return [_artifact(destination, len(indexes))]
 
 
+
+def _normalize_office_viewer_hint(path: Path) -> None:
+    """Remove only older LibreOffice's default initial-page viewer destination.
+
+    This runs exclusively on fresh converter output, never uploaded PDF inputs.
+    Legacy LibreOffice emits [page-ref /XYZ null null 0] for its default view;
+    this is a destination, not an action dictionary. Keep every other OpenAction
+    unsupported, including GoTo dictionaries, scripts, launch and remote actions.
+    """
+    from pypdf.generic import ArrayObject,IndirectObject,NameObject,NullObject,NumberObject,FloatObject
+    if path.stat().st_size>MAX_OUTPUT_BYTES:raise ProcessorError('output_size_limit')
+    try:
+        reader=PdfReader(path,strict=True)
+        root=reader.root_object
+        if '/OpenAction' not in root:return
+        destination=root['/OpenAction']
+        safe=(isinstance(destination,ArrayObject) and len(destination)==5
+              and isinstance(destination[0],IndirectObject)
+              and isinstance(destination[1],NameObject) and destination[1]=='/XYZ'
+              and isinstance(destination[2],NullObject) and isinstance(destination[3],NullObject)
+              and type(destination[4]) in (NumberObject,FloatObject) and destination[4]==0)
+        if safe:
+            safe=any(page.indirect_reference==destination[0] for page in reader.pages)
+        if not safe:raise ProcessorError('active_content_unsupported')
+        del root['/OpenAction']
+        # A harmless hint must not hide unrelated active content. Validate the
+        # complete remaining action policy before writing; _artifact reopens the
+        # serialized output and checks page/dimension/size limits afterward.
+        _check_pdf_actions(reader)
+        normalized=path.with_suffix('.normalized.pdf')
+        writer=PdfWriter(clone_from=reader)
+        with normalized.open('xb') as stream:writer.write(stream)
+        os.chmod(normalized,0o600)
+        os.replace(normalized,path)
+    except ProcessorError:
+        raise
+    except Exception:
+        raise ProcessorError('invalid_pdf') from None
+
 def _office_pdf(path: Path, feature_id: str, out: Path, metadata: dict):
     runtime = office_runtime()
     if not runtime['available']:
@@ -500,6 +539,7 @@ def _office_pdf(path: Path, feature_id: str, out: Path, metadata: dict):
         converted = scratch / 'input.pdf'
         if completed.returncode != 0 or not converted.is_file():
             raise ProcessorError('conversion_failed')
+        _normalize_office_viewer_hint(converted)
         output = out / 'converted.pdf'
         shutil.move(converted, output)
         os.chmod(output, 0o600)

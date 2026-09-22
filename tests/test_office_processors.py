@@ -70,3 +70,79 @@ def test_external_office_relationship_rejected_before_conversion(tmp_path):
     with pytest.raises(ProcessorError) as error:
         inspect_file(target)
     assert error.value.code == 'external_content_unsupported'
+
+
+def legacy_viewer_pdf(path, *, action=None, extra_action=False, indirect=False, invalid_page=False):
+    """Serialize the initial-view destination written by older LibreOffice."""
+    from pypdf import PdfWriter
+    from pypdf.generic import ArrayObject,DictionaryObject,NameObject,NullObject,NumberObject,TextStringObject
+    from tests.test_processors import pdf
+    source=pdf(path.with_name('source.pdf'),('English. Document pages remain readable.',))
+    writer=PdfWriter(clone_from=source)
+    reference=writer.pages[0].indirect_reference
+    if invalid_page:reference=writer._add_object(DictionaryObject({NameObject('/Type'):NameObject('/NotAPage')}))
+    destination=ArrayObject([reference,NameObject('/XYZ'),NullObject(),NullObject(),NumberObject(0)])
+    if action is not None:
+        destination=DictionaryObject({NameObject('/S'):NameObject(action),NameObject('/D'):destination,NameObject('/JS'):TextStringObject('app.alert("blocked")')})
+    if indirect:destination=writer._add_object(destination)
+    writer.root_object[NameObject('/OpenAction')]=destination
+    if extra_action:writer.root_object[NameObject('/AA')]=DictionaryObject({NameObject('/WC'):DictionaryObject({NameObject('/S'):NameObject('/JavaScript'),NameObject('/JS'):TextStringObject('app.alert("blocked")')})})
+    writer.write(path)
+    return path
+
+
+@pytest.mark.parametrize('indirect',[False,True])
+def test_only_converter_output_normalizes_legacy_initial_page_hint(tmp_path,indirect):
+    from processors.engine import _normalize_office_viewer_hint
+    path=legacy_viewer_pdf(tmp_path/'converted.pdf',indirect=indirect)
+    # The same uploaded PDF remains outside the accepted active-content policy.
+    with pytest.raises(ProcessorError) as error:inspect_file(path)
+    assert error.value.code=='active_content_unsupported'
+    _normalize_office_viewer_hint(path)
+    reader=PdfReader(path)
+    assert '/OpenAction' not in reader.root_object
+    assert 'Document pages remain readable.' in reader.pages[0].extract_text()
+    assert inspect_file(path)['page_count']==1
+
+
+@pytest.mark.parametrize('action',['/JavaScript','/Launch','/GoToR','/GoTo','/URI'])
+def test_converter_viewer_normalization_never_accepts_action_dictionaries(tmp_path,action):
+    from processors.engine import _normalize_office_viewer_hint
+    path=legacy_viewer_pdf(tmp_path/'converted.pdf',action=action)
+    original=path.read_bytes()
+    with pytest.raises(ProcessorError) as error:_normalize_office_viewer_hint(path)
+    assert error.value.code=='active_content_unsupported' and path.read_bytes()==original
+
+
+@pytest.mark.parametrize('malicious',['other_active_content','nonpage_destination','nested_dictionary','chained_destination'])
+def test_converter_viewer_hint_cannot_mask_active_or_malformed_content(tmp_path,malicious):
+    from pypdf import PdfWriter
+    from pypdf.generic import DictionaryObject,NameObject,TextStringObject
+    from processors.engine import _normalize_office_viewer_hint
+    path=legacy_viewer_pdf(tmp_path/'converted.pdf',extra_action=malicious=='other_active_content',invalid_page=malicious=='nonpage_destination')
+    if malicious in ('nested_dictionary','chained_destination'):
+        writer=PdfWriter(clone_from=path)
+        action=DictionaryObject({NameObject('/S'):NameObject('/JavaScript'),NameObject('/JS'):TextStringObject('blocked')})
+        if malicious=='nested_dictionary':writer.root_object['/OpenAction'][2]=action
+        else:writer.root_object['/OpenAction'].append(action)
+        writer.write(path)
+    with pytest.raises(ProcessorError) as error:_normalize_office_viewer_hint(path)
+    assert error.value.code=='active_content_unsupported'
+
+
+@REQUIRES_OFFICE
+def test_real_office_output_legacy_hint_normalized_before_artifact_validation(tmp_path,monkeypatch):
+    """Exercise the real converter entry point even on newer LibreOffice builds."""
+    import processors.engine as engine
+    from pypdf import PdfWriter
+    from pypdf.generic import ArrayObject,NameObject,NullObject,NumberObject
+    original=engine._normalize_office_viewer_hint
+    normalized=[]
+    def legacy_output(path):
+        writer=PdfWriter(clone_from=path)
+        writer.root_object[NameObject('/OpenAction')]=ArrayObject([writer.pages[0].indirect_reference,NameObject('/XYZ'),NullObject(),NullObject(),NumberObject(0)])
+        writer.write(path)
+        original(path);normalized.append(True)
+    monkeypatch.setattr(engine,'_normalize_office_viewer_hint',legacy_output)
+    metadata=inspect_file(FIXTURES/'office-multilingual.docx')
+    assert metadata['page_count']==3 and normalized==[True]
