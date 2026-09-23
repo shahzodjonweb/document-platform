@@ -61,6 +61,26 @@ def without_new_routes(config):
     return config
 
 
+def changed_paths(before, after, path='config'):
+    """Report structure only; never expose ACME email or other config values."""
+    if type(before) is not type(after):
+        return [path + ': type changed']
+    if isinstance(before, dict):
+        found = []
+        for key in sorted(before.keys() | after.keys()):
+            if key not in before or key not in after:
+                found.append(path + '.' + key + ': added/removed')
+            else:
+                found.extend(changed_paths(before[key], after[key], path + '.' + key))
+        return found
+    if isinstance(before, list):
+        if len(before) != len(after):
+            return [path + f': length {len(before)} -> {len(after)}']
+        return [change for index, (a, b) in enumerate(zip(before, after))
+                for change in changed_paths(a, b, path + f'[{index}]')]
+    return [path + ': value changed'] if before != after else []
+
+
 def main():
     mode = sys.argv[1]
     if mode not in {'prepare', 'publish'}:
@@ -93,6 +113,7 @@ def main():
     old_config = adapt(original)
     new_config = adapt(original + '\n' + SITES)
     if without_new_routes(new_config) != old_config:
+        print('CONFIG_STRUCTURE_DIFFERENCE', json.dumps(changed_paths(old_config, without_new_routes(new_config))), flush=True)
         raise RuntimeError('Proposed routing modifies an existing site')
     run([*docker_exec, 'caddy', 'validate', '--config', '-', '--adapter', 'caddyfile'], original + '\n' + SITES)
     root = Path.home() / 'pdf-master'
