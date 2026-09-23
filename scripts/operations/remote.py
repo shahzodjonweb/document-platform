@@ -6,7 +6,7 @@ import subprocess
 import tempfile
 
 operation = os.environ['OPERATION']
-if operation not in {'inventory'}:
+if operation not in {'inventory', 'public-key'}:
     raise SystemExit('Unsupported server operation')
 host = os.environ['DEPLOY_HOST'].strip()
 user = os.environ['DEPLOY_USER'].strip()
@@ -24,7 +24,11 @@ with tempfile.TemporaryDirectory() as folder:
     for args in (['ssh-keygen','-y','-P','','-f',str(key)], ['ssh-keygen','-F',target,'-f',str(known)]):
         if subprocess.run(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode:
             raise SystemExit('Invalid private key or missing pinned host entry.')
-    args = ['ssh','-F','/dev/null','-i',str(key),'-p',port,
+    if operation == 'public-key':
+        public = subprocess.check_output(['ssh-keygen','-y','-P','','-f',str(key)], text=True).strip()
+        print('PUBLIC_KEY_TO_AUTHORIZE: ' + public)
+        raise SystemExit(0)
+    args = ['ssh' ,'-F','/dev/null','-i',str(key),'-p',port,
             '-o','BatchMode=yes','-o','IdentitiesOnly=yes','-o','StrictHostKeyChecking=yes',
             '-o',f'UserKnownHostsFile={known}','-o','GlobalKnownHostsFile=/dev/null',
             '-o','ConnectTimeout=15','-o','ServerAliveInterval=15',f'{user}@{host}', 'python3 -']
