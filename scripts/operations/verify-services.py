@@ -46,7 +46,7 @@ for port, path in [(8310, '/en/app'), (8311, '/api/v1/health'), (8311, '/ops/log
             raise SystemExit('PDF Master gateway route failed')
 print('VERIFY_GATEWAYS_OK')
 source = 'deployment_commit = ' + repr(commit) + '''
-import io,time
+import io,time,uuid
 from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from pypdf import PdfReader,PdfWriter
@@ -55,7 +55,9 @@ from apps.core.services import upload_file,create_quote,submit_job,storage_path
 from operations.integrations import telegram_config
 assert not settings.DEBUG and not settings.DEV_AUTH_ENABLED and not settings.LOCAL_SYNC_JOBS
 print('VERIFY_WORKER_SETUP')
-account,created=Account.objects.get_or_create(telegram_user_id=-2026092401,
+# Each release gets a synthetic account so repeated deployment checks cannot
+# exhaust a shared free allowance. Retries of this release reuse the same job.
+account,created=Account.objects.get_or_create(pk=uuid.uuid5(uuid.NAMESPACE_URL,'https://pdfmaster.orderdesk.live/deployment-check/'+deployment_commit),
     defaults={'is_test':True,'display_name':'Deployment verification','locale':'en'})
 assert account.is_test
 key='deployment-smoke-'+deployment_commit
