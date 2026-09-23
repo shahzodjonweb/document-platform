@@ -34,6 +34,41 @@ def digest(path):
     return h.hexdigest()
 
 
+def image_config_id(stream, image):
+    """Canonical config digest from Docker's classic or OCI-backed save format.
+
+    Docker 29's containerd store reports a manifest digest as image inspect.Id;
+    the classic store reports the configuration digest. The config blob binds
+    the runtime configuration and uncompressed layer digests in both stores.
+    Read the archive without extracting paths or retaining layer contents.
+    """
+    configs, manifest = {}, None
+    with tarfile.open(fileobj=stream, mode='r|*') as archive:
+        for item in archive:
+            if not item.isfile() or item.size > 4 * 1024**2:
+                continue
+            if item.name != 'manifest.json' and not (item.name.endswith('.json') or item.name.startswith('blobs/sha256/')):
+                continue
+            raw = archive.extractfile(item).read()
+            try:
+                value = json.loads(raw)
+            except (ValueError, UnicodeDecodeError):
+                continue
+            if item.name == 'manifest.json':
+                if manifest is not None or not isinstance(value, list):
+                    raise DeploymentError('Invalid Docker save manifest.')
+                manifest = value
+            elif isinstance(value, dict) and 'architecture' in value and isinstance(value.get('rootfs', {}).get('diff_ids'), list):
+                if item.name in configs:
+                    raise DeploymentError('Duplicate image configuration blob.')
+                configs[item.name] = 'sha256:' + hashlib.sha256(raw).hexdigest()
+    matches = [entry for entry in (manifest or []) if isinstance(entry, dict) and
+               image in [tag.removeprefix('docker.io/library/') for tag in (entry.get('RepoTags') or [])]]
+    if len(matches) != 1 or matches[0].get('Config') not in configs:
+        raise DeploymentError('Cannot verify the saved image configuration identity.')
+    return configs[matches[0]['Config']]
+
+
 def read_json(path, default=None):
     return json.loads(path.read_text()) if path.exists() else default
 
@@ -269,6 +304,14 @@ class Deployer:
             with (staging / 'image.tar.gz').open('rb') as stream:
                 self.run(['docker', 'load'], input_stream=stream)
             identity = self.run(['docker', 'image', 'inspect', '--format', '{{.Id}}', meta['image']])
+            if identity != meta['image_id']:
+                # Different Docker stores can use different .Id representations.
+                # Re-export only this loaded image and verify its config blob;
+                # never relax verification to a mutable tag or skip the check.
+                with tempfile.TemporaryFile(dir=self.root) as exported:
+                    self.run(['docker', 'image', 'save', meta['image']], output_stream=exported)
+                    exported.seek(0)
+                    identity = image_config_id(exported, meta['image'])
             if identity != meta['image_id']:
                 raise DeploymentError('Loaded image identity mismatch.')
             if not existing:

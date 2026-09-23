@@ -10,7 +10,7 @@ import shutil
 import subprocess
 import tarfile
 import tempfile
-from server import digest, validate_manifest
+from server import digest, image_config_id, validate_manifest
 
 parser = argparse.ArgumentParser()
 parser.add_argument("component", choices=("platform", "web"))
@@ -36,10 +36,12 @@ with tempfile.TemporaryDirectory() as directory:
         saving.stdout.close()
         if compressed.returncode or saving.wait():
             raise SystemExit("Docker image export failed")
+    with archive.open('rb') as stream:
+        config_id = image_config_id(stream, image)
     meta = validate_manifest({
         "protocol": 2, "component": args.component, "commit": commit,
         "run_id": run, "run_attempt": attempt, "release_id": release_id,
-        "image": image, "image_id": info["Id"], "architecture": info["Architecture"],
+        "image": image, "image_id": config_id, "architecture": info["Architecture"],
         "archive_sha256": digest(archive), "contract_sha256": digest(schema),
     })
     (staging / "release.json").write_text(json.dumps(meta))

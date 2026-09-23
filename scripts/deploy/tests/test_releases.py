@@ -16,9 +16,20 @@ spec = importlib.util.spec_from_file_location('deployment_server', DIRECTORY / '
 server = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(server)
 
+def saved_image(image, marker, oci=False):
+    config=json.dumps({'architecture':'amd64','os':'linux','config':{'Labels':{'release':marker}},
+                       'rootfs':{'type':'layers','diff_ids':['sha256:'+'a'*64]}}).encode()
+    digest=hashlib.sha256(config).hexdigest()
+    name='blobs/sha256/'+digest if oci else digest+'.json'
+    stream=io.BytesIO()
+    with tarfile.open(fileobj=stream,mode='w') as archive:
+        for path,data in [(name,config),('manifest.json',json.dumps([{'Config':name,'RepoTags':[image],'Layers':[]}]).encode())]:
+            item=tarfile.TarInfo(path);item.size=len(data);archive.addfile(item,io.BytesIO(data))
+    return stream.getvalue(),'sha256:'+digest
+
 class Docker:
     def __init__(self):
-        self.calls=[]; self.images={}; self.fail_health=False; self.project_exists=False
+        self.calls=[]; self.images={}; self.exports={}; self.fail_health=False; self.project_exists=False
     def __call__(self,args,**kwargs):
         self.calls.append(args)
         if args[:3]==['docker','compose','version']:return '2.39.0'
@@ -26,6 +37,8 @@ class Docker:
         if args[:2]==['docker','ps']:return 'unmanaged-container' if self.project_exists else ''
         if args[:3]==['docker','volume','ls']:return ''
         if args[:3]==['docker','image','inspect']:return self.images[args[-1]]
+        if args[:3]==['docker','image','save']:
+            kwargs['output_stream'].write(self.exports[args[-1]]);return ''
         if 'pg_dump' in args:
             kwargs['output_stream'].write(b'PGDMP test backup');return ''
         if self.fail_health and 'up' in args and 'gateway' in args:
@@ -54,13 +67,15 @@ class Releases(unittest.TestCase):
     def bundle(self,component,run,*,contract='c'*64,architecture='amd64',attempt=1,corrupt=False):
         sha=hashlib.sha1((component+str(run)).encode()).hexdigest()
         release_id=f'{sha}-{run}-{attempt}'
-        image_bytes=b'opaque docker stream'
+        image=f'pdfmaster-{component}:{release_id}'
+        image_bytes,config_id=saved_image(image,release_id)
         meta={'protocol':2,'component':component,'commit':sha,'release_id':release_id,
               'run_id':run,'run_attempt':attempt,'image':f'pdfmaster-{component}:{release_id}',
-              'image_id':'sha256:'+hashlib.sha256(release_id.encode()).hexdigest(),
+              'image_id':config_id,
               'architecture':architecture,'contract_sha256':contract,
               'archive_sha256':hashlib.sha256(image_bytes if not corrupt else b'wrong').hexdigest()}
         self.docker.images[meta['image']]=meta['image_id']
+        self.docker.exports[meta['image']]=image_bytes
         members={'release.json':json.dumps(meta).encode(),'image.tar.gz':image_bytes,
                  'stack/compose.yaml':('name: pdfmaster-'+component+'\n').encode(),'stack/nginx.conf':b'server {}'}
         target=Path(self.temp.name)/(release_id+'.tgz')
@@ -198,9 +213,24 @@ class Releases(unittest.TestCase):
     def test_loaded_image_identity_must_match(self):
         bundle,meta=self.bundle('platform',10)
         self.docker.images[meta['image']]='sha256:'+'0'*64
+        self.docker.exports[meta['image']]=saved_image(meta['image'],'different-image',oci=True)[0]
         with self.assertRaisesRegex(server.DeploymentError,'identity mismatch'):
             self.deployer('platform').deploy(bundle)
         self.assertFalse((self.root/'platform/state.json').exists())
+
+    def test_containerd_manifest_id_verifies_the_original_config_digest(self):
+        bundle,meta=self.bundle('web',10)
+        self.docker.images[meta['image']]='sha256:'+'b'*64
+        self.docker.exports[meta['image']]=saved_image(meta['image'],meta['release_id'],oci=True)[0]
+        self.assertEqual(self.deployer('web').deploy(bundle)['status'],'deployed')
+        self.assert_only_project('web')
+
+    def test_config_identity_matches_classic_and_oci_archives_and_rejects_other_tags(self):
+        for oci in (False,True):
+            content,identity=saved_image('pdfmaster-web:test','release',oci=oci)
+            self.assertEqual(server.image_config_id(io.BytesIO(content),'pdfmaster-web:test'),identity)
+            with self.assertRaisesRegex(server.DeploymentError,'Cannot verify'):
+                server.image_config_id(io.BytesIO(content),'pdfmaster-web:other')
 
     def test_readiness_names_missing_settings_and_never_echoes_values(self):
         names=('DEPLOY_HOST','DEPLOY_USER','DEPLOY_SSH_KEY','DEPLOY_KNOWN_HOSTS')
