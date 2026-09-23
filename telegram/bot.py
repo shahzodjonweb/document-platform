@@ -13,12 +13,13 @@ from types import SimpleNamespace
 from datetime import timedelta
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command, CommandStart
+from aiogram.exceptions import TelegramAPIError
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, BufferedInputFile, BotCommand
 from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
-from apps.core.models import BotCallback, BotDraft, BotInputReceipt, AuthChallenge, FileAsset, Job, SupportTicket
+from apps.core.models import BotConversation, BotCallback, BotDraft, BotInputReceipt, AuthChallenge, FileAsset, Job, SupportTicket
 from apps.core.identity import resolve_account, approve_challenge_id
 from apps.core.policy import catalog, usage_snapshot
 from apps.core.services import upload_file, create_quote, submit_job, execute_job, storage_path, cancel_job
@@ -48,38 +49,132 @@ for locale,value in {
 }.items():COPY[locale]['terms']=value
 TOOL_NAMES.update({'convert.word_to_pdf':{'en':'Word to PDF','uz':'Word’dan PDF','ru':'Word в PDF'},'convert.pptx_to_pdf':{'en':'PowerPoint to PDF','uz':'PowerPoint’dan PDF','ru':'PowerPoint в PDF'}})
 
+
+from .ux_copy import UX, STATUS
+for locale, values in UX.items(): COPY[locale].update(values)
+
 def text(account,key): return COPY.get(account.locale,COPY['en'])[key]
 def user_dict(user): return {'id':user.id,'first_name':user.first_name,'username':user.username or '', 'language_code':user.language_code or 'en'}
 def sender_language(user):
-    # Authentication errors must not create a customer account as a side effect.
     locale=(user.language_code or 'en').split('-')[0]
     return SimpleNamespace(locale=locale if locale in COPY else 'en')
-async def account_for(user): return await sync_to_async(resolve_account)(user_dict(user),'bot')
+async def account_for(user):
+    from .onboarding import chosen_locale
+    data=user_dict(user)
+    locale=await sync_to_async(chosen_locale)(user.id)
+    data['language_code']=locale or data['language_code']
+    account=await sync_to_async(resolve_account)(data,'bot')
+    if locale and account.locale!=locale:
+        account.locale=locale
+        await sync_to_async(account.save)(update_fields=['locale'])
+    return account
 async def callback(account,action,payload=None):
     token=secrets.token_urlsafe(12)
-    await sync_to_async(BotCallback.objects.create)(token=token,account=account,action=action,payload=payload or {},expires_at=timezone.now()+timedelta(minutes=10))
+    await sync_to_async(BotCallback.objects.create)(token=token,account=account,action=action,payload=payload or {},expires_at=timezone.now()+timedelta(minutes=30))
     return token
+async def web_url(account,route=''):
+    from apps.commerce.providers import telegram_config
+    from urllib.parse import urlsplit,urlunsplit
+    config=await sync_to_async(telegram_config)()
+    url=urlsplit(config['webapp_url'])
+    parts=url.path.rstrip('/').split('/')
+    if len(parts)>1 and parts[1] in ('en','uz','ru'): parts[1]=account.locale
+    return urlunsplit((url.scheme,url.netloc,'/'.join(parts)+('/'+route if route else ''),'',''))
+async def button(account,label,action,payload=None):
+    return InlineKeyboardButton(text=text(account,label),callback_data=await callback(account,action,payload))
 async def safe_error(message,account,exc):
     key='secure' if exc.code in ('password_required','secure_password_entry_required') else 'controls_expired' if exc.code=='controls_expired' else None
-    from apps.commerce.providers import telegram_config
-    config=await sync_to_async(telegram_config)() if key=='secure' else {}
-    markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=text(account,'open'),url=config['webapp_url'])]]) if key=='secure' else None
-    await message.answer(text(account,key) if key else error_data(exc,account.locale)['message'],reply_markup=markup)
+    rows=[]
+    if key=='secure': rows.append([InlineKeyboardButton(text=text(account,'open'),url=await web_url(account))])
+    if getattr(account,'telegram_user_id',None):
+        rows.append([await button(account,'continue_task','controls'),await button(account,'home','home')])
+        if 'quota' in exc.code or 'balance' in exc.code or 'allowance' in exc.code or exc.code=='feature_not_in_plan':
+            rows.insert(0,[await button(account,'plans','plans')])
+    await message.answer(text(account,key) if key else error_data(exc,account.locale)['message'],reply_markup=InlineKeyboardMarkup(inline_keyboard=rows) if rows else None)
+
+def set_prompt(account,state='',prompt=None):
+    BotConversation.objects.filter(pk=account.telegram_user_id).update(state=state,prompt=prompt or {},updated_at=timezone.now())
+
+def option_summary(account,draft):
+    labels={'angle':'rotate_label','pages':'pages','order':'page_order','ranges':'split_groups','format':'format_label','dpi':None,'paper_size':'paper_label','orientation':None,'margin':'margin_button'}
+    result=[]
+    for key,value in draft.parameters.items():
+        label=text(account,labels[key]) if labels.get(key) else 'DPI' if key=='dpi' else ''
+        if key=='orientation': value=text(account,{'auto':'auto','portrait':'portrait','landscape':'landscape'}.get(value,'auto'))
+        if isinstance(value,list): value=', '.join(map(str,value))
+        if key=='angle': value=f'{value}°'
+        if value=='all': value=text(account,'all_pages')
+        value=str(value)
+        if len(value)>180: value=value[:177]+'…'
+        result.append(html.escape(f'{label}: {value}' if label else value))
+    return '\n'.join(result) or text(account,'options_default')
 
 def build_dispatcher():
-    from .workflows import draft_for,configure,snapshot,bound_draft,quote_draft,run_quote,attach_input,order_inputs
+    from .workflows import draft_for,configure,snapshot,bound_draft,quote_draft,run_quote,attach_input,order_inputs,discard_draft
+    from .onboarding import install_onboarding,show_language,chosen_locale
+    from .billing import register_billing_handlers,show_offers,show_subscription
     dp=Dispatcher()
-    from .billing import register_billing_handlers
     register_billing_handlers(dp)
 
-    async def controls(message,account,draft=None):
-        draft=draft or await sync_to_async(draft_for)(account)
-        binding=snapshot(draft)
-        async def choice(label,parameters):
-            return InlineKeyboardButton(text=label,callback_data=await callback(account,'settings',{**binding,'parameters':parameters}))
+    async def render(message,body,rows,edit=False):
+        from aiogram.exceptions import TelegramBadRequest
+        markup=InlineKeyboardMarkup(inline_keyboard=rows)
+        if edit:
+            try: return await message.edit_text(body,parse_mode='HTML',reply_markup=markup)
+            except TelegramBadRequest as exc:
+                if 'message is not modified' in str(exc): return None
+                # Old photo/document messages cannot be changed into text.
+                if not any(s in str(exc) for s in ('no text in the message','message to edit not found','message can\'t be edited')): raise
+        return await message.answer(body,parse_mode='HTML',reply_markup=markup)
+
+    async def nav(account):
+        return [await button(account,'back','controls'),await button(account,'home','home')]
+
+    async def home(message,account,edit=False,notice=''):
+        await sync_to_async(set_prompt)(account)
+        draft=await sync_to_async(lambda:BotDraft.objects.filter(account=account).first())()
         rows=[]
-        feature=draft.feature_id
-        hints=[]
+        if draft and draft.input_ids: rows.append([await button(account,'continue_task','controls')])
+        rows.extend([
+            [await button(account,'pdf_tools','menu',{'category':'pdf'}),await button(account,'convert_tools','menu',{'category':'convert'})],
+            [await button(account,'recent','recent'),await button(account,'account','account')],
+            [await button(account,'help_button','help'),await button(account,'language_button','language')],
+            [InlineKeyboardButton(text=text(account,'open'),url=await web_url(account))],
+        ])
+        await render(message,(html.escape(notice)+'\n\n' if notice else '')+f'<b>PDF Master</b>\n{text(account,"home_title")}\n\n{text(account,"home_body")}',rows,edit)
+
+    async def menu(message,account,page=0,category='pdf',edit=False):
+        await sync_to_async(set_prompt)(account)
+        ids=(['pdf.merge','pdf.compress','pdf.split','pdf.extract_pages','pdf.delete_pages','pdf.reorder','pdf.rotate'] if category=='pdf' else ['pdf.images_to_pdf','pdf.to_images','convert.word_to_pdf','convert.pptx_to_pdf'])
+        available={f['id'] for f in await sync_to_async(catalog)(account)}
+        ids=[key for key in ids if key in available]
+        page=max(0,min(int(page),max(0,(len(ids)-1)//6)))
+        draft=await sync_to_async(draft_for)(account)
+        rows=[[InlineKeyboardButton(text=TOOL_NAMES[key][account.locale],callback_data=await callback(account,'tool',{**snapshot(draft),'feature_id':key}))] for key in ids[page*6:(page+1)*6]]
+        paging=[]
+        if page: paging.append(await button(account,'back','menu',{'page':page-1,'category':category}))
+        if (page+1)*6<len(ids): paging.append(await button(account,'next','menu',{'page':page+1,'category':category}))
+        if paging: rows.append(paging)
+        rows.append([await button(account,'convert_tools' if category=='pdf' else 'pdf_tools','menu',{'category':'convert' if category=='pdf' else 'pdf'})])
+        rows.extend([[InlineKeyboardButton(text=text(account,'web_tools'),url=await web_url(account))],[await button(account,'home','home')]])
+        await render(message,text(account,'choose_tool'),rows,edit)
+
+    async def controls(message,account,draft=None,edit=False):
+        await sync_to_async(set_prompt)(account)
+        draft=draft or await sync_to_async(draft_for)(account)
+        binding=snapshot(draft);feature=draft.feature_id
+        async def choice(label,parameters,replace=False):
+            return InlineKeyboardButton(text=label,callback_data=await callback(account,'settings',{**binding,'parameters':parameters,'replace':replace}))
+        async def prompt(label,kind): return await button(account,label,'prompt',{**binding,'kind':kind})
+        rows=[]
+        files=await sync_to_async(lambda:{str(a.id):a for a in FileAsset.objects.filter(account=account,id__in=draft.input_ids)})()
+        title=TOOL_NAMES.get(feature,{}).get(account.locale,feature)
+        hint='upload_merge' if feature=='pdf.merge' else 'upload_images' if feature=='pdf.images_to_pdf' else 'upload_word' if feature=='convert.word_to_pdf' else 'upload_slides' if feature=='convert.pptx_to_pdf' else 'upload_pdf'
+        body=f'<b>{html.escape(title)}</b>\n\n{text(account,"options_title" if files else "upload_title")}\n{text(account,hint)}'
+        if feature not in ('pdf.merge','pdf.images_to_pdf') and len(files)>1: body+='\n'+text(account,'one_file_hint')
+        if files:
+            listing='\n'.join(f'{i+1}. {html.escape(files[k].name[:24])} · {files[k].page_count or "—"}' for i,k in enumerate(draft.input_ids) if k in files)
+            body+=f'\n\n{text(account,"files")}:\n{listing}\n\n{option_summary(account,draft)}'
         if feature=='pdf.rotate': rows.append([await choice(f'{angle}°',{'angle':angle}) for angle in (90,180,270)])
         if feature=='pdf.to_images':
             rows.append([await choice(value.upper(),{'format':value}) for value in ('png','jpg')])
@@ -87,57 +182,43 @@ def build_dispatcher():
         if feature=='pdf.images_to_pdf':
             rows.append([await choice(value,{'paper_size':value}) for value in ('A4','Letter','original')])
             rows.append([await choice(text(account,label),{'orientation':value}) for label,value in [('auto','auto'),('portrait','portrait'),('landscape','landscape')]])
-            hints.append(text(account,'image_hint'))
-        if feature in ('pdf.extract_pages','pdf.delete_pages','pdf.rotate','pdf.to_images'): hints.append(text(account,'pages_hint'))
-        if feature=='pdf.split': hints.append(text(account,'split_hint'))
-        if feature=='pdf.reorder': hints.append(text(account,'reorder_hint'))
-        if feature in ('pdf.merge','pdf.images_to_pdf'): hints.append(text(account,'merge_hint'))
-        rows.append([InlineKeyboardButton(text=text(account,'done_button'),callback_data=await callback(account,'done',binding))])
-        files=await sync_to_async(lambda:{str(a.id):a for a in FileAsset.objects.filter(account=account,id__in=draft.input_ids)})()
-        listing='\n'.join(f'{i+1}. {html.escape(files[k].name)} · {files[k].page_count}' for i,k in enumerate(draft.input_ids) if k in files)
-        if draft.input_ids and draft.input_ids[0] in files and files[draft.input_ids[0]].mime_type=='application/pdf':
-            rows.append([InlineKeyboardButton(text=text(account,'preview'),callback_data=await callback(account,'preview',{**binding,'asset_id':draft.input_ids[0],'page':1}))])
-        title=TOOL_NAMES.get(feature,{}).get(account.locale,feature)
-        params=html.escape(json.dumps(draft.parameters,ensure_ascii=False))
-        await message.answer(f'<b>{html.escape(title)}</b>\n{listing}\n\n{text(account,"parameters")}: {params}\n'+ '\n'.join(hints),parse_mode='HTML',reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
+            rows.append([await prompt('margin_button','margin')])
+        if feature in ('pdf.extract_pages','pdf.delete_pages','pdf.rotate','pdf.to_images'):
+            rows.append([await prompt('page_selection','pages')])
+            if feature in ('pdf.rotate','pdf.to_images'):
+                rows[-1].append(await choice(text(account,'all_pages'),{k:v for k,v in draft.parameters.items() if k!='pages'},True))
+        if feature=='pdf.split': rows.append([await prompt('split_groups','split'),await choice(text(account,'each_page'),{},True)])
+        if feature=='pdf.reorder': rows.append([await prompt('page_order','reorder')])
+        if files:
+            if len(files)>1: rows.append([await prompt('file_order','order')])
+            rows.append([await prompt('remove_file','remove')])
+            if draft.input_ids[0] in files and files[draft.input_ids[0]].mime_type=='application/pdf':
+                rows.append([await button(account,'preview','preview',{**binding,'asset_id':draft.input_ids[0],'page':1})])
+            rows.append([await button(account,'done_button','done',binding)])
+        rows.append([await button(account,'back','menu',{'category':'convert' if feature in ('pdf.images_to_pdf','pdf.to_images') or feature.startswith('convert.') else 'pdf'}),await button(account,'cancel_button','cancel',binding)])
+        rows.append([await button(account,'home','home')])
+        # Telegram caps message text at 4096 characters even for large drafts.
+        await render(message,body,rows,edit)
 
-    async def menu(message,account,page=0):
-        features=[f for f in await sync_to_async(catalog)(account) if not f.get('capabilities',{}).get('requires_secret')]
-        page=max(0,min(page,max(0,(len(features)-1)//6)))
-        draft=await sync_to_async(draft_for)(account)
-        rows=[]
-        for f in features[page*6:(page+1)*6]:
-            label=TOOL_NAMES.get(f['id'],{}).get(account.locale,f['name'])
-            rows.append([InlineKeyboardButton(text=label,callback_data=await callback(account,'tool',{**snapshot(draft),'feature_id':f['id']}))])
-        nav=[]
-        if page: nav.append(InlineKeyboardButton(text=text(account,'back'),callback_data=await callback(account,'menu',{'page':page-1})))
-        if (page+1)*6<len(features): nav.append(InlineKeyboardButton(text=text(account,'next'),callback_data=await callback(account,'menu',{'page':page+1})))
-        if nav: rows.append(nav)
-        from apps.commerce.providers import telegram_config
-        config=await sync_to_async(telegram_config)()
-        rows.append([InlineKeyboardButton(text=text(account,'open'),url=config['webapp_url'])])
-        await message.answer(text(account,'tools'),reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
-
-    async def quote_message(message,account,draft,quote):
+    async def quote_message(message,account,draft,quote,edit=False):
         names=await sync_to_async(lambda:{str(a.id):a.name for a in FileAsset.objects.filter(account=account,id__in=draft.input_ids)})()
-        listing='\n'.join(f'{i+1}. {html.escape(names.get(key,""))}' for i,key in enumerate(draft.input_ids))
-        summary=await sync_to_async(quote_data)(quote)
-        meters=quote.meters;balances=summary['available_balances']
-        run=InlineKeyboardButton(text=text(account,'run'),callback_data=await callback(account,'run',{**snapshot(draft),'quote_id':str(quote.id)}))
-        credits={'en':'AI credits / available','uz':'AI kredit / mavjud','ru':'AI-кредиты / доступно'}.get(account.locale,'AI credits / available')
-        credit_line=f'\n{credits}: {meters["ai_credits"]} / {balances["ai_credits"]["remaining"]}' if meters.get('ai_credits') else ''
-        await message.answer(f'{listing}\n\n{meters["file_tasks"]} / {meters["file_page_units"]} {text(account,"quote_cost")}\n{text(account,"balance")}: {balances["file_tasks"]["remaining"]} / {balances["file_page_units"]["remaining"]}{credit_line}\n{text(account,"expires")}: {quote.expires_at:%Y-%m-%d %H:%M}\n{text(account,"done")}',parse_mode='HTML',reply_markup=InlineKeyboardMarkup(inline_keyboard=[[run]]))
+        listing='\n'.join(f'{i+1}. {html.escape(names.get(key,"")[:24])}' for i,key in enumerate(draft.input_ids))
+        summary=await sync_to_async(quote_data)(quote);meters=quote.meters;balances=summary['available_balances']
+        rows=[[await button(account,'run','run',{**snapshot(draft),'quote_id':str(quote.id)})],[await button(account,'edit_settings','controls'),await button(account,'cancel_button','cancel',snapshot(draft))],[await button(account,'home','home')]]
+        usage='\n'.join(f'{text(account,label)}: {meters[key]} / {balances[key]["remaining"]}' for key,label in [('file_tasks','file_tasks'),('file_page_units','page_units'),('ai_credits','ai_credits')] if meters.get(key) or key=='file_tasks')
+        body=f'<b>{text(account,"review_title")}</b>\n{text(account,"review_hint")}\n\n{listing}\n\n{option_summary(account,draft)}\n\n{text(account,"cost")} / {text(account,"available")}:\n{usage}\n{text(account,"expires")}: {quote.expires_at:%Y-%m-%d %H:%M}'
+        await render(message,body,rows,edit)
 
-    async def review(message,account,binding=None):
+    async def review(message,account,binding=None,edit=False):
+        await sync_to_async(set_prompt)(account)
         draft,quote=await sync_to_async(quote_draft)(account,binding)
-        await quote_message(message,account,draft,quote)
+        await quote_message(message,account,draft,quote,edit)
 
-    async def deliver(message,account,job):
+    async def deliver(message,account,job,request_key=None):
         from .delivery import enqueue,attempt
         artifacts=await sync_to_async(lambda:list(job.artifacts.select_related('file','account')))()
-        requested_again=(message.text or '').startswith('/myfiles')
         for artifact in artifacts:
-            key=f'myfiles:{message.message_id}:{artifact.id}' if requested_again else f'job:{job.id}:{artifact.id}'
+            key=f'resend:{request_key}:{artifact.id}' if request_key else f'job:{job.id}:{artifact.id}'
             delivery=await sync_to_async(enqueue)(artifact,key)
             await attempt(delivery.id,message.bot)
 
@@ -147,112 +228,210 @@ def build_dispatcher():
         data=await sync_to_async(lambda:storage_path(preview.object_key).read_bytes())()
         await message.answer_document(BufferedInputFile(data,filename=preview.name))
 
+    async def job_status(message,account,job,edit=False):
+        rows=[]
+        body=f'<b>{html.escape(TOOL_NAMES.get(job.feature_id,{}).get(account.locale,job.feature_id))}</b>\n{text(account,"recent")}: {str(job.id)[:8]}\n{STATUS[account.locale].get(job.status,job.status)}'
+        if job.status in ('queued','running','finalizing'):
+            body+='\n\n'+text(account,'queued' if job.status=='queued' else 'processing')
+            rows.append([await button(account,'check_status','job',{'job_id':str(job.id)})])
+        elif job.status=='succeeded':
+            available=await sync_to_async(lambda:job.artifacts.filter(file__state='ready',file__expires_at__gt=timezone.now()).exists())()
+            body+='\n\n'+text(account,'result' if available else 'result_expired')
+            if available: rows.append([await button(account,'download','download',{'job_id':str(job.id)})])
+        elif job.status=='no_op': body+='\n\n'+text(account,'no_op')
+        elif job.status=='failed':
+            body+='\n\n'+error_data(DomainError(job.error_code or 'processing_failed'),account.locale)['message']
+            draft=await sync_to_async(lambda:BotDraft.objects.filter(account=account,quote_id=job.quote_id).first())()
+            if draft: rows.append([await button(account,'retry_task','retry',snapshot(draft))])
+        rows.extend([[await button(account,'new_task','new'),await button(account,'recent','recent')],[await button(account,'home','home')]])
+        await render(message,body,rows,edit)
+
+    async def recent(message,account,edit=False):
+        await sync_to_async(set_prompt)(account)
+        jobs=await sync_to_async(lambda:list(Job.objects.filter(account=account).order_by('-created_at')[:8]))()
+        rows=[]
+        for job in jobs:
+            title=TOOL_NAMES.get(job.feature_id,{}).get(account.locale,job.feature_id)
+            label=f'{STATUS[account.locale].get(job.status,job.status)} · {title} · {job.created_at:%m/%d %H:%M}'
+            rows.append([InlineKeyboardButton(text=label[:64],callback_data=await callback(account,'job',{'job_id':str(job.id)}))])
+        rows.extend([[await button(account,'new_task','new')],[await button(account,'home','home')]])
+        await render(message,text(account,'recent' if jobs else 'recent_empty'),rows,edit)
+
     async def run(message,account,quote_id):
         job,_=await sync_to_async(run_quote)(account,quote_id)
-        status=await message.answer(text(account,'working'))
-        job=await sync_to_async(execute_job)(job.id)
-        if job.status=='succeeded':
-            await status.edit_text(text(account,'result'))
-            await deliver(message,account,job)
-        elif job.status=='no_op': await status.edit_text(text(account,'no_op'))
-        elif job.status in ('queued','running','finalizing'): await status.edit_text(text(account,'working'))
-        else: await status.edit_text(error_data(DomainError(job.error_code or 'processing_failed'),account.locale)['message'])
+        if settings.LOCAL_SYNC_JOBS:
+            job=await sync_to_async(execute_job)(job.id)
+        await job_status(message,account,job)
+        if job.status=='succeeded': await deliver(message,account,job)
+
+    async def auth_prompt(message,user,challenge):
+        locale=await sync_to_async(chosen_locale)(user.id) or 'en'
+        if not challenge: return await safe_error(message,SimpleNamespace(locale=locale),DomainError('challenge_expired'))
+        data=user_dict(user);data['language_code']=locale
+        if challenge.intent=='link':
+            if message.chat.type!='private' or message.chat.id!=user.id or not challenge.link_account_id:
+                return await safe_error(message,SimpleNamespace(locale=locale),DomainError('invalid_telegram_data'))
+            account=challenge.link_account
+            # Language choice does not change an unrelated browser account.
+            account.locale=locale
+            ref=await callback(account,'link_login',{'challenge_id':str(challenge.id),'telegram_user_id':user.id})
+            key,label='link_login','link_confirm'
+        else:
+            account=await sync_to_async(resolve_account)(data,'web')
+            ref=await callback(account,'login',{'challenge_id':str(challenge.id)})
+            key,label='login','confirm'
+        await render(message,f'{text(account,key)}\n{html.escape(challenge.browser_hint)}',[[InlineKeyboardButton(text=text(account,label),callback_data=ref)]])
+
+    async def on_ready(message,user,locale,pending):
+        from .commands import install_chat_commands
+        await install_chat_commands(message.bot,user.id,locale)
+        if pending.get('auth_error'): return await safe_error(message,SimpleNamespace(locale=locale),DomainError('challenge_expired'))
+        if pending.get('challenge_id'):
+            challenge=await sync_to_async(lambda:AuthChallenge.objects.select_related('link_account').filter(pk=pending['challenge_id'],expires_at__gt=timezone.now(),consumed_at__isnull=True,approved_at__isnull=True).first())()
+            return await auth_prompt(message,user,challenge)
+        account=await account_for(user)
+        if pending.get('referral_code'):
+            from apps.commerce.services import claim_referral
+            try: await sync_to_async(claim_referral)(account,pending['referral_code'])
+            except DomainError as exc: await safe_error(message,account,exc)
+        await home(message,account,notice=text(account,'resend') if pending.get('resend_file') else '')
+    install_onboarding(dp,on_ready)
 
     @dp.message(CommandStart())
     async def start(message):
-        payload=(message.text or '').split(maxsplit=1)
-        if len(payload)>1 and payload[1].startswith('login_'):
-            token=payload[1][6:]
-            challenge=await sync_to_async(lambda:AuthChallenge.objects.select_related('link_account').filter(token_hash=hashlib.sha256(token.encode()).hexdigest(),expires_at__gt=timezone.now(),consumed_at__isnull=True,approved_at__isnull=True).first())()
-            if not challenge: return await safe_error(message,sender_language(message.from_user),DomainError('challenge_expired'))
-            if challenge.intent=='link':
-                if message.chat.type!='private' or message.chat.id!=message.from_user.id or not challenge.link_account_id:
-                    return await safe_error(message,sender_language(message.from_user),DomainError('invalid_telegram_data'))
-                account=challenge.link_account
-                ref=await callback(account,'link_login',{'challenge_id':str(challenge.id),'telegram_user_id':message.from_user.id})
-                return await message.answer(f'{text(account,"link_login")}\n{html.escape(challenge.browser_hint)}',parse_mode='HTML',reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=text(account,'link_confirm'),callback_data=ref)]]))
-            account=await sync_to_async(resolve_account)(user_dict(message.from_user),'web')
-            ref=await callback(account,'login',{'challenge_id':str(challenge.id)})
-            return await message.answer(f'{text(account,"login")}\n{html.escape(challenge.browser_hint)}',parse_mode='HTML',reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=text(account,'confirm'),callback_data=ref)]]))
-        account=await account_for(message.from_user)
-        if len(payload)>1 and payload[1].startswith('ref_'):
-            from apps.commerce.services import claim_referral
-            try: await sync_to_async(claim_referral)(account,payload[1][4:])
-            except DomainError as exc: await safe_error(message,account,exc)
-        await message.answer(text(account,'welcome'))
-        await menu(message,account)
+        parts=(message.text or '').split(maxsplit=1)
+        if len(parts)>1 and parts[1].startswith('login_'):
+            challenge=await sync_to_async(lambda:AuthChallenge.objects.select_related('link_account').filter(token_hash=hashlib.sha256(parts[1][6:].encode()).hexdigest(),expires_at__gt=timezone.now(),consumed_at__isnull=True,approved_at__isnull=True).first())()
+            return await auth_prompt(message,message.from_user,challenge)
+        pending={'referral_code':parts[1][4:]} if len(parts)>1 and parts[1].startswith('ref_') else {}
+        await on_ready(message,message.from_user,await sync_to_async(chosen_locale)(message.from_user.id),pending)
 
-    @dp.message(Command('menu','tools'))
+    @dp.message(Command('menu'))
+    async def menu_command(message): await home(message,await account_for(message.from_user))
+    @dp.message(Command('tools'))
     async def tools(message): await menu(message,await account_for(message.from_user))
-
     @dp.message(Command('settings'))
-    async def settings_command(message): await controls(message,await account_for(message.from_user))
-
-    @dp.message(Command('language'))
-    async def language(message):
+    async def settings_command(message):
         account=await account_for(message.from_user)
-        rows=[[InlineKeyboardButton(text=label,callback_data=await callback(account,'locale',{'locale':locale}))] for locale,label in [('uz','O‘zbekcha'),('en','English'),('ru','Русский')]]
-        await message.answer(text(account,'language'),reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
+        draft=await sync_to_async(lambda:BotDraft.objects.filter(account=account).first())()
+        await controls(message,account,draft) if draft else await account_view(message,account)
+
+    async def input_prompt(message,account,payload,edit=False):
+        from django.db import transaction
+        def prepare():
+            with transaction.atomic():
+                draft=bound_draft(account,payload)
+                set_prompt(account,'input',{**snapshot(draft),'kind':payload['kind']})
+        await sync_to_async(prepare)()
+        key={'pages':'pages_prompt','reorder':'reorder_prompt','split':'split_prompt','order':'order_prompt','remove':'remove_prompt','margin':'margin_prompt'}[payload['kind']]
+        await render(message,text(account,key),[await nav(account),[await button(account,'cancel_button','cancel',payload)]],edit)
+
+    async def cancel_prompt(message,account,new=False,edit=False,binding=None):
+        draft=await sync_to_async(draft_for)(account)
+        payload=binding or snapshot(draft)
+        await render(message,text(account,'new_question' if new else 'cancel_question'),[[await button(account,'new_confirm' if new else 'cancel_confirm','discard',{**payload,'new':new})],[await button(account,'keep_task','controls'),await button(account,'home','home')]],edit)
+
+    async def support_prompt(message,account,payment=False,edit=False):
+        await sync_to_async(set_prompt)(account,'support',{'payment':payment})
+        await render(message,text(account,'support_prompt'),[[await button(account,'home','home'),await button(account,'cancel_button','cancel')]],edit)
+
+    async def support_review(message,account,value,payment=False):
+        if not 5<=len(value)<=4000: return await message.answer(text(account,'support_prompt'))
+        nonce=secrets.token_urlsafe(12)
+        await sync_to_async(set_prompt)(account,'support_review',{'payment':payment,'message':value,'nonce':nonce})
+        await render(message,f'{text(account,"support_confirm")}\n\n{html.escape(value[:2800])}',[[await button(account,'support_send','support_send',{'nonce':nonce})],[await button(account,'support_edit','support',{'payment':payment}),await button(account,'home','home')]])
+
+    async def help_view(message,account,edit=False):
+        await sync_to_async(set_prompt)(account)
+        await render(message,text(account,'guide'),[[await button(account,'support_button','support'),await button(account,'payment_help','support',{'payment':True})],[InlineKeyboardButton(text=text(account,'open'),url=await web_url(account))],[await button(account,'home','home')]],edit)
+
+    async def account_view(message,account,edit=False):
+        await sync_to_async(set_prompt)(account)
+        usage=await sync_to_async(usage_snapshot)(account)
+        methods=['Telegram'] if account.telegram_user_id else []
+        if account.email: methods.append('Email')
+        if account.google_sub: methods.append('Google')
+        meters=usage['meters']
+        body=f'<b>{text(account,"account")}</b>\n{text(account,"plan_label")}: {html.escape(account.plan.title())}\n{text(account,"linked_methods")}: {", ".join(methods)}\n\n'+ '\n'.join(f'{text(account,label)}: {meters[key]["remaining"]} / {meters[key]["limit"]}' for key,label in [('file_tasks','file_tasks'),('file_page_units','page_units'),('ai_credits','ai_credits')])+f'\n{usage["resets_at"]:%Y-%m-%d %H:%M} UTC\n\n{text(account,"link_instructions")}'
+        await render(message,body,[[await button(account,'plans','plans'),await button(account,'subscription','subscription')],[InlineKeyboardButton(text=text(account,'link_methods'),url=await web_url(account,'settings'))],[await button(account,'language_button','language'),await button(account,'home','home')]],edit)
 
     @dp.callback_query()
     async def click(query):
-        # A linking sender may not have an Account yet. Bind this callback to the
-        # initiating Telegram user without calling account_for and creating one.
         ref=await sync_to_async(lambda:BotCallback.objects.select_related('account').filter(token=query.data,expires_at__gt=timezone.now()).first())()
-        if not ref:
-            return await query.answer(text(sender_language(query.from_user),'controls_expired'),show_alert=True)
+        if not ref: return await query.answer(text(sender_language(query.from_user),'controls_expired'),show_alert=True)
         if ref.action=='link_login':
             if ref.payload.get('telegram_user_id')!=query.from_user.id or not query.message or query.message.chat.type!='private' or query.message.chat.id!=query.from_user.id:
                 return await query.answer(text(sender_language(query.from_user),'controls_expired'),show_alert=True)
+            await query.answer()
             try:
                 account=await sync_to_async(approve_challenge_id)(ref.payload['challenge_id'],user_dict(query.from_user))
-                await query.message.answer(text(account,'link_approved'))
-            except DomainError as exc:
-                await safe_error(query.message,ref.account,exc)
-            return await query.answer()
-        if ref.account.telegram_user_id!=query.from_user.id:
-            return await query.answer(text(sender_language(query.from_user),'controls_expired'),show_alert=True)
-        account=await account_for(query.from_user)
+                locale=await sync_to_async(chosen_locale)(query.from_user.id)
+                await query.message.answer(text(SimpleNamespace(locale=locale or account.locale),'link_approved'))
+            except DomainError as exc: await safe_error(query.message,ref.account,exc)
+            return
+        if ref.account.telegram_user_id!=query.from_user.id: return await query.answer(text(sender_language(query.from_user),'controls_expired'),show_alert=True)
+        await query.answer()  # Stop Telegram's spinner before any costly action.
+        account=await account_for(query.from_user);message=query.message;p=ref.payload;action=ref.action
         try:
-            if ref.action=='login':
-                await sync_to_async(approve_challenge_id)(ref.payload['challenge_id'],user_dict(query.from_user))
-                await query.message.answer(text(account,'approved'))
-            elif ref.action=='locale':
-                account.locale=ref.payload['locale']
-                await sync_to_async(account.save)(update_fields=['locale'])
-                await controls(query.message,account)
-            elif ref.action=='menu': await menu(query.message,account,ref.payload['page'])
-            elif ref.action=='tool':
-                draft=await sync_to_async(configure)(account,feature_id=ref.payload['feature_id'],binding=ref.payload)
-                await controls(query.message,account,draft)
-            elif ref.action=='settings':
-                draft=await sync_to_async(configure)(account,parameters=ref.payload['parameters'],binding=ref.payload)
-                await controls(query.message,account,draft)
-            elif ref.action=='attach':
-                asset=await sync_to_async(lambda:FileAsset.objects.get(account=account,pk=ref.payload['asset_id']))()
-                draft,_=await sync_to_async(attach_input)(account,asset,ref.payload['chat_id'],ref.payload['message_id'],ref.payload['mode'],ref.payload)
-                await controls(query.message,account,draft)
-            elif ref.action=='preview':
-                def authorize_preview():
+            if action=='login':
+                await sync_to_async(approve_challenge_id)(p['challenge_id'],user_dict(query.from_user))
+                await message.answer(text(account,'approved'))
+            elif action=='home': await home(message,account,True)
+            elif action=='language': await show_language(message,query.from_user,{})
+            elif action=='menu': await menu(message,account,p.get('page',0),p.get('category','pdf'),True)
+            elif action=='controls': await controls(message,account,edit=True)
+            elif action=='tool':
+                draft=await sync_to_async(configure)(account,feature_id=p['feature_id'],binding=p)
+                await controls(message,account,draft,True)
+            elif action=='settings':
+                draft=await sync_to_async(configure)(account,parameters=p['parameters'],replace=p.get('replace',False),binding=p)
+                await controls(message,account,draft,True)
+            elif action=='prompt': await input_prompt(message,account,p,True)
+            elif action=='attach':
+                asset=await sync_to_async(lambda:FileAsset.objects.get(account=account,pk=p['asset_id']))()
+                draft,_=await sync_to_async(attach_input)(account,asset,p['chat_id'],p['message_id'],p['mode'],p)
+                await controls(message,account,draft,True)
+            elif action in ('preview','run'):
+                def authorize():
                     from django.db import transaction
                     with transaction.atomic():
-                        draft=bound_draft(account,ref.payload)
-                        if ref.payload['asset_id'] not in draft.input_ids: raise DomainError('controls_expired',409)
-                await sync_to_async(authorize_preview)()
-                await send_preview(query.message,account,ref.payload['asset_id'],ref.payload['page'])
-            elif ref.action=='done': await review(query.message,account,ref.payload)
-            elif ref.action=='run':
-                def authorize_run():
+                        draft=bound_draft(account,p)
+                        if action=='preview' and p['asset_id'] not in draft.input_ids: raise DomainError('controls_expired',409)
+                        if action=='run' and str(draft.quote_id)!=p['quote_id']: raise DomainError('controls_expired',409)
+                await sync_to_async(authorize)()
+                if action=='preview': await send_preview(message,account,p['asset_id'],p['page'])
+                else: await run(message,account,p['quote_id'])
+            elif action=='done': await review(message,account,p,True)
+            elif action=='retry':
+                draft=await sync_to_async(configure)(account,binding=p)
+                await controls(message,account,draft,True)
+            elif action in ('cancel','new'): await cancel_prompt(message,account,action=='new',True,p if 'draft_id' in p else None)
+            elif action=='discard':
+                await sync_to_async(discard_draft)(account,p)
+                await home(message,account,True,notice='' if p.get('new') else text(account,'cancel'))
+            elif action=='recent': await recent(message,account,True)
+            elif action in ('job','download'):
+                job=await sync_to_async(lambda:Job.objects.filter(account=account,pk=p['job_id']).first())()
+                if not job: raise DomainError('controls_expired',409)
+                await job_status(message,account,job,True)
+                if action=='download' and job.status=='succeeded': await deliver(message,account,job,ref.token)
+            elif action=='account': await account_view(message,account,True)
+            elif action=='plans': await show_offers(message,account)
+            elif action=='subscription': await show_subscription(message,account)
+            elif action=='help': await help_view(message,account,True)
+            elif action=='support': await support_prompt(message,account,p.get('payment',False),True)
+            elif action=='support_send':
+                def save_ticket():
                     from django.db import transaction
                     with transaction.atomic():
-                        draft=bound_draft(account,ref.payload)
-                        if str(draft.quote_id)!=ref.payload['quote_id']: raise DomainError('controls_expired',409)
-                await sync_to_async(authorize_run)()
-                await run(query.message,account,ref.payload['quote_id'])
-            await query.answer()
-        except DomainError as exc:
-            await safe_error(query.message,account,exc)
-            await query.answer()
+                        conversation=BotConversation.objects.select_for_update().get(pk=account.telegram_user_id)
+                        if conversation.state!='support_review' or conversation.prompt.get('nonce')!=p['nonce']: raise DomainError('controls_expired',409)
+                        ticket=SupportTicket.objects.create(account=account,subject='Telegram support',message=conversation.prompt['message'],category='payments' if conversation.prompt.get('payment') else 'general')
+                        set_prompt(account)
+                        return str(ticket.id)[:8]
+                reference=await sync_to_async(save_ticket)()
+                await home(message,account,True,notice=text(account,'support_saved').format(reference=reference))
+        except DomainError as exc: await safe_error(message,account,exc)
 
     @dp.message(F.document | F.photo)
     async def receive(message,bot):
@@ -261,22 +440,35 @@ def build_dispatcher():
         if duplicate: return await controls(message,account)
         doc=message.document or message.photo[-1]
         if (doc.file_size or 0)>20*1024*1024: return await safe_error(message,account,DomainError('bot_transport_limit'))
-        stream=io.BytesIO();await bot.download(doc,destination=stream)
-        name=message.document.file_name if message.document else 'photo.jpg'
+        name=(message.document.file_name or 'document') if message.document else 'photo.jpg'
+        ext=name.rsplit('.',1)[-1].lower()
+        if ext not in ('pdf','jpg','jpeg','png','docx','pptx'): return await message.answer(text(account,'unsupported'))
+        stream=io.BytesIO()
+        try:
+            await bot.download(doc,destination=stream)
+        except (TelegramAPIError,OSError,TimeoutError):
+            return await home(message,account,notice=text(account,'download_error'))
         try:
             asset=await sync_to_async(upload_file)(account,SimpleUploadedFile(name,stream.getvalue()),'bot')
             draft=await sync_to_async(draft_for)(account)
+            kind=asset.metadata.get('kind')
+            if not draft.input_ids and draft.feature_id=='pdf.merge' and kind!='pdf':
+                feature={'image':'pdf.images_to_pdf','docx':'convert.word_to_pdf','pptx':'convert.pptx_to_pdf'}.get(kind,'pdf.merge')
+                draft=await sync_to_async(configure)(account,feature_id=feature)
+            expected={'pdf.images_to_pdf':'image','convert.word_to_pdf':'docx','convert.pptx_to_pdf':'pptx'}.get(draft.feature_id,'pdf')
+            if kind!=expected:
+                await message.answer(text(account,'wrong_file'))
+                return await controls(message,account,draft)
             if draft.input_ids and draft.quote_id:
                 rows=[]
                 for mode,label in [('add','add'),('new','new')]:
-                    token=await callback(account,'attach',{**snapshot(draft),'asset_id':str(asset.id),'chat_id':message.chat.id,'message_id':message.message_id,'mode':mode})
-                    rows.append([InlineKeyboardButton(text=text(account,label),callback_data=token)])
-                await message.answer(text(account,'new_file'),reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
+                    rows.append([await button(account,label,'attach',{**snapshot(draft),'asset_id':str(asset.id),'chat_id':message.chat.id,'message_id':message.message_id,'mode':mode})])
+                await render(message,text(account,'new_file'),rows)
             else:
                 draft,_=await sync_to_async(attach_input)(account,asset,message.chat.id,message.message_id)
+                if message.photo: await message.answer(text(account,'photo_hint'))
                 await controls(message,account,draft)
         except DomainError as exc: await safe_error(message,account,exc)
-
     @dp.message(Command('order','remove'))
     async def order(message):
         account=await account_for(message.from_user)
@@ -340,61 +532,68 @@ def build_dispatcher():
             await run(message,account,str(draft.quote_id))
         except DomainError as exc: await safe_error(message,account,exc)
 
-    @dp.message(Command('myfiles'))
-    async def myfiles(message):
-        account=await account_for(message.from_user)
-        jobs=await sync_to_async(lambda:list(Job.objects.filter(account=account,status='succeeded').order_by('-created_at')[:3]))()
-        if not jobs: return await message.answer(text(account,'empty'))
-        for job in jobs: await deliver(message,account,job)
 
-    @dp.message(Command('plan','usage'))
-    async def plan(message):
-        account=await account_for(message.from_user)
-        usage=await sync_to_async(usage_snapshot)(account)
-        remaining=usage['meters']['file_tasks']['remaining']
-        await message.answer(f'{account.plan.title()} · {remaining} / {usage["meters"]["file_tasks"]["limit"]}\n{usage["resets_at"].isoformat()} UTC')
+    @dp.message(Command('myfiles'))
+    async def myfiles(message): await recent(message,await account_for(message.from_user))
+
+    @dp.message(Command('plan','usage','account'))
+    async def plan(message): await account_view(message,await account_for(message.from_user))
 
     @dp.message(Command('support','paysupport'))
     async def support(message):
         account=await account_for(message.from_user)
-        parts=message.text.split(maxsplit=1)
-        if len(parts)<2: return await message.answer(text(account,'support'))
-        await sync_to_async(SupportTicket.objects.create)(account=account,subject='Telegram support',message=parts[1][:4000],category='payments' if parts[0].startswith('/paysupport') else 'general')
-        await message.answer(text(account,'ticket'))
+        parts=message.text.split(maxsplit=1);payment=parts[0].startswith('/paysupport')
+        if len(parts)>1: return await support_review(message,account,parts[1],payment)
+        await support_prompt(message,account,payment)
 
     @dp.message(Command('cancel'))
-    async def cancel(message):
-        account=await account_for(message.from_user)
-        await sync_to_async(lambda:BotDraft.objects.filter(account=account).delete())()
-        await message.answer(text(account,'cancel'))
+    async def cancel(message): await cancel_prompt(message,await account_for(message.from_user))
 
-    @dp.message(Command('create','study','school','teach','editor'))
+    @dp.message(Command('web','create','study','school','teach','editor'))
     async def open_workspace_mode(message):
-        from apps.commerce.providers import telegram_config
         from urllib.parse import urlencode
         account=await account_for(message.from_user)
         command=message.text.split()[0].split('@')[0][1:]
-        cfg=await sync_to_async(telegram_config)()
-        labels={
-            'en':{'create':'Create a document or presentation','study':'Study workspace','school':'School practice','teach':'Teaching workspace','editor':'Open the PDF editor'},
-            'uz':{'create':'Hujjat yoki taqdimot yaratish','study':'O‘rganish maydoni','school':'Maktab mashqlari','teach':'O‘qituvchi maydoni','editor':'PDF tahrirchisini ochish'},
-            'ru':{'create':'Создать документ или презентацию','study':'Учебное пространство','school':'Школьная практика','teach':'Пространство учителя','editor':'Открыть редактор PDF'}}
-        title=labels.get(account.locale,labels['en'])[command]
-        url=cfg['webapp_url'].rstrip('/')+'/'+command
-        draft=await sync_to_async(draft_for)(account)
-        if draft.input_ids: url+='?'+urlencode({'file_id':draft.input_ids[0]})
-        await message.answer(title,reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=title,url=url)]]))
+        await sync_to_async(set_prompt)(account)
+        url=await web_url(account,'' if command=='web' else command)
+        draft=await sync_to_async(lambda:BotDraft.objects.filter(account=account).first())()
+        if draft and draft.input_ids and command!='web': url+='?'+urlencode({'file_id':draft.input_ids[0]})
+        await render(message,text(account,'web_hint'),[[InlineKeyboardButton(text=text(account,'open'),url=url)],[await button(account,'home','home')]])
 
     @dp.message(Command('help','terms','password'))
     async def help_(message):
         account=await account_for(message.from_user)
-        key='secure' if message.text.startswith('/password') else 'terms' if message.text.startswith('/terms') else 'help'
-        await message.answer(text(account,key))
+        if message.text.startswith('/password'): return await safe_error(message,account,DomainError('secure_password_entry_required'))
+        if message.text.startswith('/terms'): return await render(message,text(account,'terms'),[[await button(account,'payment_help','support',{'payment':True})],[await button(account,'home','home')]])
+        await help_view(message,account)
 
     @dp.message(F.text)
     async def fallback(message):
         account=await account_for(message.from_user)
-        await message.answer(text(account,'help'))
+        conversation=await sync_to_async(lambda:BotConversation.objects.get(pk=message.from_user.id))()
+        if conversation.updated_at<timezone.now()-timedelta(minutes=30):
+            await sync_to_async(set_prompt)(account)
+            return await home(message,account,notice=text(account,'controls_expired'))
+        value=(message.text or '').strip()
+        if conversation.state=='support': return await support_review(message,account,value,conversation.prompt.get('payment',False))
+        if conversation.state=='input':
+            p=conversation.prompt;kind=p.get('kind')
+            try:
+                if kind in ('order','remove'):
+                    draft=await sync_to_async(order_inputs)(account,[int(v.strip())-1 for v in value.split(',')] if kind=='order' else [],int(value)-1 if kind=='remove' else None,binding=p)
+                else:
+                    parameters={'pages':value} if kind=='pages' else {'order':[int(v.strip()) for v in value.split(',')]} if kind=='reorder' else {'ranges':[v.strip() for v in value.split(';')]} if kind=='split' else {'margin':float(value)}
+                    draft=await sync_to_async(configure)(account,parameters=parameters,binding=p)
+                return await controls(message,account,draft)
+            except (ValueError,IndexError):
+                await message.answer(text(account,'prompt_invalid'))
+            except DomainError as exc:
+                if exc.code=='controls_expired':
+                    await sync_to_async(set_prompt)(account)
+                    return await safe_error(message,account,exc)
+                await safe_error(message,account,exc)
+            return await input_prompt(message,account,p)
+        await home(message,account,notice=text(account,'fallback'))
     return dp
 
 async def run_polling():

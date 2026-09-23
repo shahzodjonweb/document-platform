@@ -8,7 +8,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
 from pypdf import PdfWriter,PdfReader
 from apps.core.identity import resolve_account
-from apps.core.models import Job,UsageLedger,BotDraft
+from apps.core.models import Job,UsageLedger,BotDraft,BotConversation
 from apps.core.services import storage_path,upload_file,create_quote,submit_job,execute_job
 from apps.commerce.models import Payment,LocalBotMessage,BotDelivery
 from apps.commerce.services import create_invoice,payload_for
@@ -18,6 +18,8 @@ pytestmark=pytest.mark.django_db(transaction=True)
 
 def principal(uid=910001):
     a=resolve_account({'id':uid,'first_name':'Local bot'},is_test=True)
+    # Commerce scenarios start after the language-first onboarding flow.
+    BotConversation.objects.update_or_create(telegram_user_id=uid,defaults={'locale':'en','language_selected_at':timezone.now()})
     c=Client();s=c.session;s['customer_account_id']=str(a.id);s.save();return a,c
 
 def command(c,text):
@@ -49,8 +51,14 @@ def test_local_bot_actual_billing_callbacks_activate_once_without_network(monkey
     assert Payment.objects.count()==0
     click(c,pay);click(c,pay)
     a.refresh_from_db();assert a.plan=='plus' and Payment.objects.count()==1
-    command(c,'/cancelrenewal');command(c,'/resumerenewal')
+    confirmation=command(c,'/cancelrenewal')
     assert a.subscription.renewal_enabled
+    click(c,token(confirmation,'Confirm change'))
+    a.subscription.refresh_from_db();assert not a.subscription.renewal_enabled
+    confirmation=command(c,'/resumerenewal')
+    a.subscription.refresh_from_db();assert not a.subscription.renewal_enabled
+    click(c,token(confirmation,'Confirm change'))
+    a.subscription.refresh_from_db();assert a.subscription.renewal_enabled
 
 def test_local_bot_file_upload_merge_download_and_durable_delivery():
     a,c=principal()
@@ -136,10 +144,11 @@ def test_local_browser_deliver_uses_simulator_and_command_menus_are_localized():
         response=c.post(url,{},content_type='application/json',HTTP_IDEMPOTENCY_KEY='browser-delivery-key')
         assert response.status_code in (200,201) and response.json()['status']=='delivered'
     assert LocalBotMessage.objects.filter(asset__isnull=False).count()==1
-    bot=Mock();bot.set_my_commands=AsyncMock()
+    bot=Mock();bot.set_my_commands=AsyncMock();bot.set_chat_menu_button=AsyncMock()
     asyncio.run(install_commands(bot))
-    assert [c.kwargs['language_code'] for c in bot.set_my_commands.await_args_list]==['en','uz','ru']
+    assert [c.kwargs['language_code'] for c in bot.set_my_commands.await_args_list]==['','en','uz','ru']
     assert all(any(v.command=='buy' for v in call.args[0]) for call in bot.set_my_commands.await_args_list)
+    assert bot.set_chat_menu_button.await_args.kwargs['menu_button'].type=='commands'
 
 def test_polling_process_lock_blocks_duplicates_and_does_not_store_tokens(settings):
     import os

@@ -224,12 +224,45 @@ class BotDraft(models.Model):
     state = models.CharField(max_length=24, default='collecting')
     updated_at = models.DateTimeField(auto_now=True)
 
+class BotConversation(models.Model):
+    """Telegram UI state without prematurely allocating a customer account.
+
+    Email/Google customers can enter through a linking deep link before their
+    Telegram identity is attached to their existing Account.
+    """
+    telegram_user_id = models.BigIntegerField(primary_key=True)
+    locale = models.CharField(max_length=2, blank=True, default='')
+    language_selected_at = models.DateTimeField(null=True, blank=True)
+    language_nonce = models.CharField(max_length=32, blank=True, default='')
+    language_expires_at = models.DateTimeField(null=True, blank=True)
+    pending = models.JSONField(default=dict)
+    state = models.CharField(max_length=32, blank=True, default='')
+    prompt = models.JSONField(default=dict)
+    updated_at = models.DateTimeField(auto_now=True)
+
 class BotCallback(models.Model):
     token = models.CharField(max_length=40, primary_key=True)
     account = models.ForeignKey(Account, on_delete=models.CASCADE)
     action = models.CharField(max_length=100)
     payload = models.JSONField(default=dict)
     expires_at = models.DateTimeField()
+
+
+class BotJobNotice(models.Model):
+    """Durable terminal-status outbox; populated only by new bot settlements."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    job = models.OneToOneField(Job, on_delete=models.CASCADE, related_name='bot_notice')
+    status = models.CharField(max_length=16, default='pending')
+    attempts = models.PositiveIntegerField(default=0)
+    next_attempt_at = models.DateTimeField(default=timezone.now)
+    lease_until = models.DateTimeField(null=True)
+    message_id = models.BigIntegerField(null=True)
+    error_code = models.CharField(max_length=64, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    delivered_at = models.DateTimeField(null=True)
+
+    class Meta:
+        indexes = [models.Index(fields=['status', 'next_attempt_at'], name='bot_notice_due')]
 
 class WebhookReceipt(models.Model):
     update_id = models.BigIntegerField(unique=True)

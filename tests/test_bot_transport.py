@@ -10,10 +10,11 @@ from aiogram.client.session.base import BaseSession
 from aiogram.methods import SendMessage,EditMessageText,SendDocument,AnswerCallbackQuery,GetFile
 from aiogram.types import Message,Chat,User,Document,Update,CallbackQuery,File
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.utils import timezone as django_timezone
 from pypdf import PdfReader,PdfWriter
 from PIL import Image
 from apps.core.identity import resolve_account
-from apps.core.models import Account,BotDraft,BotCallback,BotInputReceipt,Job,Quote,UsageLedger,AnalyticsEvent
+from apps.core.models import Account,BotConversation,BotDraft,BotCallback,BotInputReceipt,Job,Quote,UsageLedger,AnalyticsEvent
 from apps.core.services import upload_file,storage_path
 from telegram.bot import build_dispatcher
 from telegram.workflows import attach_input,configure
@@ -39,9 +40,18 @@ class OfflineSession(BaseSession):
         return Message(**values).as_(bot)
 
 class Harness:
-    def __init__(self):
+    def __init__(self,onboard=True):
+        self.onboard=onboard
         self.session=OfflineSession();self.bot=Bot('123456:OFFLINE_TEST_TOKEN',session=self.session);self.dispatcher=build_dispatcher();self.count=1
-    def user(self,uid=42,locale='en'): return User(id=uid,is_bot=False,first_name='Fixture',language_code=locale)
+    def user(self,uid=42,locale='en'):
+        # Legacy transport/domain tests begin after explicit language selection.
+        # This must not create an Account: linking tests prove that identity is
+        # created or attached only after the original browser finishes.
+        if self.onboard:
+            BotConversation.objects.get_or_create(telegram_user_id=uid,defaults={
+                'locale':locale,'language_selected_at':django_timezone.now(),
+            })
+        return User(id=uid,is_bot=False,first_name='Fixture',language_code=locale)
     def incoming(self,uid=42,locale='en',message_id=None,**kwargs):
         self.count+=1
         return Message(message_id=message_id or self.count,date=datetime.now(timezone.utc),chat=Chat(id=uid,type='private'),from_user=self.user(uid,locale),**kwargs)

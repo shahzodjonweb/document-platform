@@ -273,11 +273,20 @@ def settle_job(job_id, status, actual=None, error_code='', outputs=None, warning
         path = Path(output['path'])
         key = str(path.relative_to(settings.PRIVATE_STORAGE_ROOT.resolve()))
         asset = FileAsset.objects.create(account=job.account,name=output['name'],object_key=key,mime_type=output['mime_type'],sha256=hashlib.sha256(path.read_bytes()).hexdigest(),size_bytes=path.stat().st_size,page_count=output.get('page_count',0),metadata={**output.get('metadata',{}),'kind':{'application/pdf':'pdf','application/zip':'archive','application/vnd.openxmlformats-officedocument.wordprocessingml.document':'docx','application/vnd.openxmlformats-officedocument.presentationml.presentation':'pptx','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':'xlsx','text/plain':'text','application/json':'text'}.get(output['mime_type'],'image'),'mime_type':output['mime_type'],'page_count':output.get('page_count',0),'encrypted':job.feature_id=='pdf.protect'},expires_at=deadline)
-        Artifact.objects.create(account=job.account,job=job,file=asset,role=output.get("role","user_document"))
+        artifact = Artifact.objects.create(account=job.account,job=job,file=asset,role=output.get("role","user_document"))
+        if status == 'succeeded' and job.origin_channel == 'bot' and job.account.telegram_user_id is not None:
+            # Persist delivery in the settlement transaction: a worker can finish
+            # after the initiating bot update returns, or while the bot restarts.
+            # This only writes an outbox row; Telegram is contacted by the bot.
+            from telegram.delivery import enqueue
+            enqueue(artifact, f'job:{job.id}:{artifact.id}')
     FileAsset.objects.filter(account=job.account,id__in=job.input_ids).update(expires_at=deadline)
     job.status,job.error_code,job.completed_at,job.settled_meters = status,error_code,timezone.now(),actual if status=='succeeded' else {m:0 for m in job.meters}
     job.warnings,job.engine,job.lease_expires_at = warnings or [],engine,None
     job.save(update_fields=['status','error_code','completed_at','settled_meters','warnings','engine','lease_expires_at'])
+    if not settings.LOCAL_SYNC_JOBS:
+        from telegram.notifications import enqueue_notice
+        enqueue_notice(job)
     record_event(job.account,f'job.{status}',job=job,properties={'pages':actual.get('file_page_units',0)},channel=job.origin_channel)
     OutboxEvent.objects.filter(job=job,topic='job.execute').update(delivered_at=timezone.now())
     SecretHandle.objects.filter(job=job).delete()
@@ -353,9 +362,10 @@ def cleanup_expired():
         asset.save(update_fields=['state'])
         count += 1
     SecretHandle.objects.filter(expires_at__lte=now).delete()
-    from .models import EmailChallenge, GoogleChallenge, AuthRateLimit, AuthChallenge
-    for model in (EmailChallenge, GoogleChallenge, AuthRateLimit, AuthChallenge):
+    from .models import EmailChallenge, GoogleChallenge, AuthRateLimit, AuthChallenge, BotCallback, BotConversation
+    for model in (EmailChallenge, GoogleChallenge, AuthRateLimit, AuthChallenge, BotCallback):
         model.objects.filter(expires_at__lte=now).delete()
+    BotConversation.objects.filter(updated_at__lte=now-timedelta(minutes=30)).exclude(state='').update(state='',prompt={})
     from apps.studio.models import GenerationDraft, EducationProject, EditorDocument, ShareGrant
     GenerationDraft.objects.filter(expires_at__lte=now).delete()
     EducationProject.objects.filter(expires_at__lte=now).delete()

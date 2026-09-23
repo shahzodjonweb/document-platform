@@ -7,8 +7,8 @@ from datetime import datetime,timezone
 from asgiref.sync import sync_to_async,async_to_sync
 from aiogram import Bot
 from aiogram.client.session.base import BaseSession
-from aiogram.methods import SendMessage,EditMessageText,SendDocument,SendPhoto,AnswerCallbackQuery,GetFile
-from aiogram.types import Message,Chat,User,Document,Update,CallbackQuery,File
+from aiogram.methods import SendMessage,EditMessageText,EditMessageReplyMarkup,SendDocument,SendPhoto,AnswerCallbackQuery,GetFile,SetMyCommands,SetChatMenuButton
+from aiogram.types import Message,Chat,User,Document,Update,CallbackQuery,File,InlineKeyboardMarkup,ReplyKeyboardMarkup
 from django.utils import timezone as django_timezone
 from django.db.models import Max
 from apps.core.errors import DomainError
@@ -19,21 +19,33 @@ from apps.commerce.services import require_sandbox
 
 class LocalTelegramSession(BaseSession):
     def __init__(self,account):
-        super().__init__();self.account=account;self.files={};self.counter=100000
+        super().__init__();self.account=account;self.files={};self.counter=None
     async def close(self): pass
     async def stream_content(self,url,**kwargs):
         yield self.files[url.rsplit('/',1)[-1]]
     async def make_request(self,bot,method,timeout=None):
+        if isinstance(method,(SetMyCommands,SetChatMenuButton)):
+            # Native-menu metadata is not a chat message. Keep simulation local.
+            return True
         if isinstance(method,AnswerCallbackQuery):
-            if method.text: await self.save(method.text,[])
+            if method.text:
+                self.counter=await sync_to_async(lambda:LocalBotMessage.objects.filter(account=self.account,direction='outbound').aggregate(value=Max('telegram_message_id'))['value'] or 100000)()
+                self.counter+=1
+                await self.save(method.text,[])
             return True
         if isinstance(method,GetFile):
             if method.file_id not in self.files: raise DomainError('file_unavailable',404)
             return File(file_id=method.file_id,file_unique_id=method.file_id,file_size=len(self.files[method.file_id]),file_path=method.file_id)
-        self.counter+=1
+        if self.counter is None:
+            self.counter=await sync_to_async(lambda:LocalBotMessage.objects.filter(account=self.account,direction='outbound').aggregate(value=Max('telegram_message_id'))['value'] or 100000)()
+        editing=isinstance(method,(EditMessageText,EditMessageReplyMarkup))
+        if not editing:self.counter+=1
+        message_id=method.message_id if editing else self.counter
         buttons=[];markup=getattr(method,'reply_markup',None)
-        if markup:
+        if isinstance(markup,InlineKeyboardMarkup):
             buttons=[[{'label':button.text,'callback_data':button.callback_data,'url':button.url} for button in row] for row in markup.inline_keyboard]
+        elif isinstance(markup,ReplyKeyboardMarkup):
+            buttons=[[{'label':button.text,'callback_data':None,'url':None,'text':button.text} for button in row] for row in markup.keyboard]
         asset=None
         if isinstance(method,(SendDocument,SendPhoto)):
             document=method.document if isinstance(method,SendDocument) else method.photo
@@ -42,9 +54,19 @@ class LocalTelegramSession(BaseSession):
                 digest=hashlib.sha256(data).hexdigest()
                 asset=await sync_to_async(lambda:FileAsset.objects.filter(account=self.account,sha256=digest,state='ready').order_by('-created_at').first())()
         text=getattr(method,'text','') or getattr(method,'caption','') or ''
-        await self.save(text,buttons,asset)
-        values={'message_id':self.counter,'date':datetime.now(timezone.utc),'chat':Chat(id=self.account.telegram_user_id,type='private'),'from_user':User(id=123456,is_bot=True,first_name='PDF Master local simulator')}
-        if isinstance(method,(SendMessage,EditMessageText)): values.update(text=text,reply_markup=markup)
+        if editing:
+            previous=await sync_to_async(lambda:LocalBotMessage.objects.filter(account=self.account,direction='outbound',telegram_message_id=message_id).order_by('-created_at').first())()
+            if not previous:raise DomainError('controls_expired',409)
+            if isinstance(method,EditMessageReplyMarkup):text=previous.text
+            previous.text=text;previous.buttons=buttons
+            await sync_to_async(previous.save)(update_fields=['text','buttons'])
+        else:
+            await self.save(text,buttons,asset)
+        values={'message_id':message_id,'date':datetime.now(timezone.utc),'chat':Chat(id=self.account.telegram_user_id,type='private'),'from_user':User(id=123456,is_bot=True,first_name='PDF Master local simulator')}
+        if isinstance(method,(SendMessage,EditMessageText,EditMessageReplyMarkup)):
+            values.update(text=text)
+            # Telegram's returned Message includes inline keyboards only.
+            if isinstance(markup,InlineKeyboardMarkup):values['reply_markup']=markup
         if isinstance(method,SendDocument): values['document']=Document(file_id='local-result',file_unique_id='local-result',file_name=getattr(method.document,'filename','result.pdf'))
         return Message(**values).as_(bot)
     async def save(self,text,buttons,asset=None):
@@ -102,12 +124,20 @@ def dispatch_local(account,*,text=None,callback_data=None,uploaded=None):
         data['text']=text
         if text.startswith('/'): data['entities']=[{'type':'bot_command','offset':0,'length':len(text.split()[0])}]
     LocalBotMessage.objects.create(account=account,direction='inbound',text=stored,telegram_message_id=message_id)
+    callback_message=None
+    if callback_data:
+        # Preserve the originating bot message so inline edits behave exactly
+        # like Telegram instead of creating a second, misleading screen.
+        for candidate in LocalBotMessage.objects.filter(account=account,direction='outbound').order_by('-created_at')[:150]:
+            if any(button.get('callback_data')==callback_data for row in candidate.buttons for button in row):
+                callback_message=candidate
+                break
     async def run():
         from .bot import build_dispatcher
         bot=Bot('123456:LOCAL_SIMULATOR_NO_NETWORK',session=session)
         try:
             if callback_data:
-                message=Message(message_id=message_id,date=now,chat=data['chat'],from_user=User(id=123456,is_bot=True,first_name='PDF Master'),text='Local controls')
+                message=Message(message_id=callback_message.telegram_message_id if callback_message else message_id,date=now,chat=data['chat'],from_user=User(id=123456,is_bot=True,first_name='PDF Master'),text=callback_message.text if callback_message else 'Local controls')
                 update=Update(update_id=message_id,callback_query=CallbackQuery(id=str(message_id),from_user=user,chat_instance='local',message=message,data=callback_data))
             else: update=Update(update_id=message_id,message=Message(**data))
             await build_dispatcher().feed_update(bot,update)

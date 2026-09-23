@@ -79,7 +79,31 @@ print('VERIFY_OUTPUT_PAGES',pages)
 assert pages==3
 assert job.settled_meters=={'file_tasks':1,'file_page_units':3,'ai_credits':0}
 print('VERIFY_REAL_MERGE_OK',str(job.pk))
-print('VERIFY_TELEGRAM_CREDENTIALS', 'configured' if telegram_config()['token'] else 'awaiting_admin_configuration')
+cfg=telegram_config()
+print('VERIFY_TELEGRAM_CREDENTIALS', 'configured' if cfg['token'] else 'awaiting_admin_configuration')
+if cfg['token']:
+    # Read metadata only: never consume updates, change settings or send messages.
+    import json,urllib.request,urllib.parse
+    from telegram.commands import COMMANDS
+    def bot_metadata(method,params=None):
+        data=urllib.parse.urlencode(params or {}).encode()
+        try:
+            with urllib.request.urlopen(urllib.request.Request('https://api.telegram.org/bot'+cfg['token']+'/'+method,data=data),timeout=15) as response:
+                result=json.load(response)
+            assert result.get('ok')
+            return result['result']
+        except Exception:
+            raise RuntimeError('Telegram metadata verification failed; details suppressed') from None
+    identity=bot_metadata('getMe')
+    assert identity.get('is_bot')
+    print('VERIFY_BOT_USERNAME', identity['username'])
+    for locale,commands in COMMANDS.items():
+        installed=bot_metadata('getMyCommands',{'language_code':locale})
+        assert {row['command']:row['description'] for row in installed}==commands
+        print('VERIFY_BOT_COMMANDS',locale,len(installed))
+    webhook=bot_metadata('getWebhookInfo')
+    assert not webhook.get('url'), 'Expected polling configuration'
+    print('VERIFY_BOT_POLLING_CONFIGURATION_OK')
 '''
 output = command(['docker', 'exec', '-i', api, 'python', 'manage.py', 'shell', '-c',
                   'import sys; exec(sys.stdin.read())'], source)

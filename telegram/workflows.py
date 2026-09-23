@@ -2,7 +2,7 @@
 from django.db import transaction
 from django.utils import timezone
 from processors import normalize_parameters,ProcessorError
-from apps.core.models import Account,BotDraft,BotInputReceipt,FileAsset,Job
+from apps.core.models import Account,BotConversation,BotDraft,BotInputReceipt,FileAsset,Job
 from apps.core.errors import DomainError
 from apps.core.policy import require_feature
 from apps.core.services import create_quote,submit_job
@@ -66,9 +66,9 @@ def attach_input(account,asset,chat_id,message_id,mode='add',binding=None):
 
 
 @transaction.atomic
-def order_inputs(account,positions,remove=None):
+def order_inputs(account,positions,remove=None,binding=None):
     Account.objects.select_for_update().get(pk=account.pk)
-    draft=draft_for(account)
+    draft=bound_draft(account,binding) if binding else draft_for(account)
     if remove is not None:
         if not 0<=remove<len(draft.input_ids): raise DomainError('invalid_parameters')
         draft.input_ids=[v for i,v in enumerate(draft.input_ids) if i!=remove]
@@ -78,6 +78,14 @@ def order_inputs(account,positions,remove=None):
     draft.quote=None;draft.version+=1
     draft.save(update_fields=['input_ids','quote','version','updated_at'])
     return draft
+
+
+@transaction.atomic
+def discard_draft(account,binding):
+    Account.objects.select_for_update().get(pk=account.pk)
+    draft=bound_draft(account,binding)
+    draft.delete()
+    BotConversation.objects.filter(pk=account.telegram_user_id).update(state='',prompt={},updated_at=timezone.now())
 
 
 @transaction.atomic
