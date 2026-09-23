@@ -80,31 +80,13 @@ jobs:
   deploy:
     needs: [verify, package]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    concurrency:
-      group: pdfmaster-production
-      cancel-in-progress: false
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - name: Check all four deployment secrets
-        id: secrets
-        env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
-        run: python3 scripts/deploy/check_secrets.py
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        if: steps.secrets.outputs.configured == 'true'
-        with:
-          name: platform-release
-      - name: Deploy verified release over pinned SSH
-        if: steps.secrets.outputs.configured == 'true'
-        env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
-          DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
-        run: python3 scripts/deploy/client.py platform
+    uses: ./.github/workflows/deploy.yml
+    with:
+      component: platform
+    # Source all four values from Settings > Secrets and variables > Actions > Variables.
+    # The reusable workflow's secret inputs provide runner log masking only.
+    secrets:
+      DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+      DEPLOY_SSH_KEY: ${{ vars.DEPLOY_SSH_KEY }}
+      DEPLOY_KNOWN_HOSTS: ${{ vars.DEPLOY_KNOWN_HOSTS }}

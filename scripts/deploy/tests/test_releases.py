@@ -188,12 +188,12 @@ class Releases(unittest.TestCase):
                     with self.assertRaises(server.DeploymentError):
                         server.unpack(target,Path(destination))
 
-    def test_missing_secrets_are_explicitly_reported_without_values(self):
+    def test_missing_variables_are_explicitly_reported_without_values(self):
         with tempfile.TemporaryDirectory() as temp:
             output=Path(temp)/"out";summary=Path(temp)/"summary"
             env={key:value for key,value in os.environ.items() if not key.startswith("DEPLOY_")}
             env.update(GITHUB_OUTPUT=str(output),GITHUB_STEP_SUMMARY=str(summary))
-            result=subprocess.run([sys.executable,str(DIRECTORY/"check_secrets.py")],env=env,capture_output=True,check=True)
+            result=subprocess.run([sys.executable,str(DIRECTORY/"check_configuration.py")],env=env,capture_output=True,check=True)
             self.assertIn("configured=false",output.read_text())
             for name in ("DEPLOY_HOST","DEPLOY_USER","DEPLOY_SSH_KEY","DEPLOY_KNOWN_HOSTS"):
                 self.assertIn(name,summary.read_text())
@@ -214,12 +214,12 @@ class Releases(unittest.TestCase):
             self.deployer.deploy(bundle)
         self.assertFalse((self.root / "state.json").exists())
 
-    def test_ready_secret_check_never_echoes_values(self):
+    def test_ready_configuration_check_never_echoes_values(self):
         with tempfile.TemporaryDirectory() as temp:
             output=Path(temp)/"out";summary=Path(temp)/"summary"
             env={**os.environ,"GITHUB_OUTPUT":str(output),"GITHUB_STEP_SUMMARY":str(summary)}
             for name in ("DEPLOY_HOST","DEPLOY_USER","DEPLOY_SSH_KEY","DEPLOY_KNOWN_HOSTS"):
                 env[name]="sentinel-sensitive-value"
-            result=subprocess.run([sys.executable,str(DIRECTORY/"check_secrets.py")],env=env,capture_output=True,check=True)
+            result=subprocess.run([sys.executable,str(DIRECTORY/"check_configuration.py")],env=env,capture_output=True,check=True)
             self.assertIn("configured=true",output.read_text())
             self.assertNotIn("sentinel-sensitive-value",summary.read_text()+result.stdout.decode()+result.stderr.decode())

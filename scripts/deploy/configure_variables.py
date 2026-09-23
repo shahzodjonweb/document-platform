@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Set all four deployment secrets in both private repos, reading keys from files."""
+"""Set all four deployment Actions variables in both private repos, reading keys from files."""
 import argparse
 import json
 from pathlib import Path
@@ -34,10 +34,10 @@ for name in ("document-platform", "document-web"):
     if not details["isPrivate"]:
         raise SystemExit("Refusing to configure deployment credentials in a public repository: " + repo)
     for key, value in values.items():
-        subprocess.run(["gh", "secret", "set", key, "--repo", repo], input=value.encode(), check=True)
-    if args.port != 22:
-        subprocess.run(["gh", "variable", "set", "DEPLOY_PORT", "--repo", repo, "--body", str(args.port)], check=True)
-    actual = json.loads(subprocess.check_output(["gh", "secret", "list", "--repo", repo, "--json", "name"]))
+        subprocess.run(["gh", "variable", "set", key, "--repo", repo], input=value.encode(), check=True)
+    # Set the port even when it is 22, so a previous custom value cannot linger.
+    subprocess.run(["gh", "variable", "set", "DEPLOY_PORT", "--repo", repo, "--body", str(args.port)], check=True)
+    actual = json.loads(subprocess.check_output(["gh", "variable", "list", "--repo", repo, "--json", "name"]))
     if not set(values).issubset({item["name"] for item in actual}):
-        raise SystemExit("Secret-name verification failed: " + repo)
-    print(repo + ": all four deployment secret names verified.")
+        raise SystemExit("Variable-name verification failed: " + repo)
+    print(repo + ": all four deployment variable names verified.")

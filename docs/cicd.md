@@ -2,9 +2,9 @@
 
 Both private repositories deploy into one isolated Docker Compose project named `pdfmaster`. The platform image runs the API, admin panel, document workers and optional Telegram bot; the web image serves the customer application. GitHub builds and tests the images and transfers release archives over SSH. The server needs neither a GitHub token nor access to a private image registry.
 
-## Required GitHub Actions secrets
+## Required GitHub Actions variables
 
-Add these **repository secrets to both repositories**, using the same target server and account:
+Add these **repository variables to both repositories**, using the same target server and account:
 
 | Secret | Value |
 | --- | --- |
@@ -13,14 +13,16 @@ Add these **repository secrets to both repositories**, using the same target ser
 | `DEPLOY_SSH_KEY` | Complete private deployment key, usable without an interactive passphrase |
 | `DEPLOY_KNOWN_HOSTS` | Verified OpenSSH known-hosts entry for that host and SSH port |
 
-Settings: [platform secrets](https://github.com/shahzodjonweb/document-platform/settings/secrets/actions), [web secrets](https://github.com/shahzodjonweb/document-web/settings/secrets/actions).
+Settings: [platform variables](https://github.com/shahzodjonweb/document-platform/settings/variables/actions), [web variables](https://github.com/shahzodjonweb/document-web/settings/variables/actions).
+
+Use **Settings → Secrets and variables → Actions → Variables → New repository variable**. The source is `vars.DEPLOY_*` in `ci.yml`; no repository secret with those names is required. Values are passed into `deploy.yml` as reusable-workflow secret inputs so the runner masks them before logging step environments. This protects this deployment job's logs; it does not make values stored in GitHub Variables confidential. People with access to variable settings can read those values, including the SSH key. Keep access to these private repositories limited accordingly.
 
 Use a dedicated deployment key whose public half is installed in the server account's `authorized_keys`. Confirm the host fingerprint through your server provider's console or an existing trusted record before supplying the known-hosts file. An unverified `ssh-keyscan` result alone does not establish trust. Never commit or paste private keys into chat.
 
-With authenticated GitHub CLI access, this helper sets and verifies the four names in **both** private repositories. It reads key contents from files and sends secret values through standard input:
+With authenticated GitHub CLI access, this helper sets and verifies the four names in **both** private repositories. It reads key contents from files and sends values through standard input:
 
 ```sh
-python3 scripts/deploy/configure_secrets.py \
+python3 scripts/deploy/configure_variables.py \
   --host your-server.example --user deploy \
   --key-file /absolute/path/deployment-key \
   --known-hosts-file /absolute/path/verified-known-hosts
@@ -28,7 +30,7 @@ python3 scripts/deploy/configure_secrets.py \
 
 For a nonstandard SSH port add `--port 2222`; this also sets the normal Actions variable `DEPLOY_PORT`. Its known-hosts entry must match `[host]:2222`. Set the normal Actions variable `DEPLOY_PLATFORM=linux/arm64` in both repositories for an ARM server; the default is `linux/amd64`.
 
-Without all four secrets, CI still tests and packages the application, and the deployment job explicitly reports **Deployment not configured**. It does not connect to a server. A green CI run with that message does not mean the website was deployed.
+Without all four variables, CI still tests and packages the application, and the deployment job explicitly reports **Deployment not configured**. It does not connect to a server. A green CI run with that message does not mean the website was deployed.
 
 ## Pipeline behavior
 
@@ -77,7 +79,7 @@ For a reverse proxy already running in Docker, adapt [proxy-network.example.yaml
 
 ## Activate and administer
 
-After the server environment, HTTPS routing and four repository secrets are configured, run both workflows (or push to `main`):
+After the server environment, HTTPS routing and four repository variables are configured, run both workflows (or push to `main`):
 
 ```sh
 gh workflow run ci.yml --repo shahzodjonweb/document-platform --ref main
@@ -113,4 +115,4 @@ This restores the recorded previous images and staff assets. It does not restore
 
 The generic deployment helpers are intentionally duplicated in both repositories so each can deliver independently. Keep their protocol and tests synchronized when changing them. The platform repository alone owns the production Compose configuration.
 
-References: [GitHub Actions secrets](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets), [Compose in production](https://docs.docker.com/compose/how-tos/production/).
+References: [GitHub Actions variables](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-variables), [Compose in production](https://docs.docker.com/compose/how-tos/production/).

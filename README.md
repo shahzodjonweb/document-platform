@@ -90,4 +90,4 @@ Browser checks need the running API and installed Chrome. Regenerate the public 
 
 The [CI/CD runbook](docs/cicd.md) covers the separate production Docker stack, initial server setup, HTTPS routing alongside an existing project, encrypted application configuration, bot activation and rollback. GitHub Actions tests SQLite and PostgreSQL, builds and smoke-tests the production image, then deploys passing `main` releases over SSH.
 
-Both repositories require Actions secrets `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY` and `DEPLOY_KNOWN_HOSTS`. Without real values, the workflow explicitly reports **Deployment not configured** and makes no server connection. `scripts/deploy/configure_secrets.py` can populate and verify both repositories from local credential files.
+Both repositories require Actions variables `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY` and `DEPLOY_KNOWN_HOSTS`. Without real values, the workflow explicitly reports **Deployment not configured** and makes no server connection. `scripts/deploy/configure_variables.py` can populate and verify both repositories from local credential files.

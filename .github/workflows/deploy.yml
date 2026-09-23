@@ -1,0 +1,51 @@
+name: Deploy tested release
+# ci.yml reads repository Actions variables and passes them as workflow-call
+# secrets so the runner masks them before printing any step environment.
+on:
+  workflow_call:
+    inputs:
+      component:
+        required: true
+        type: string
+    secrets:
+      DEPLOY_HOST:
+        required: false
+      DEPLOY_USER:
+        required: false
+      DEPLOY_SSH_KEY:
+        required: false
+      DEPLOY_KNOWN_HOSTS:
+        required: false
+permissions:
+  contents: read
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: pdfmaster-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Check all four deployment variables
+        id: configuration
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: python3 scripts/deploy/check_configuration.py
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        if: steps.configuration.outputs.configured == 'true'
+        with:
+          name: ${{ inputs.component }}-release
+      - name: Deploy verified release over pinned SSH
+        if: steps.configuration.outputs.configured == 'true'
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          DEPLOY_COMPONENT: ${{ inputs.component }}
+          DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+        run: python3 scripts/deploy/client.py "$DEPLOY_COMPONENT"
