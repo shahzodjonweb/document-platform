@@ -23,7 +23,8 @@ DOMAINS = {'pdfmaster.orderdesk.live', 'pdfmaster-admin.orderdesk.live'}
 def run(args, data=None):
     result = subprocess.run(args, input=data, text=True, capture_output=True, timeout=60)
     if result.returncode:
-        raise RuntimeError('Proxy operation failed: ' + ' '.join(args[:3]))
+        label = args[4] if args[:3] == ['docker', 'exec', '-i'] else ' '.join(args[:2])
+        raise RuntimeError(f'Proxy operation failed: {label} (exit {result.returncode})')
     return result.stdout
 
 
@@ -164,8 +165,12 @@ networks:
         return
 
     # Activate only after both upstreams answer through the ingress network.
-    for alias, route in [('pdfmaster-web-gateway', '/en/app'), ('pdfmaster-platform-gateway', '/ops/login')]:
-        run([*docker_exec, 'wget', '-q', '-O', '/dev/null', 'http://' + alias + ':8080' + route])
+    for alias, host, route in [('pdfmaster-web-gateway', 'pdfmaster.orderdesk.live', '/en/app'),
+                              ('pdfmaster-platform-gateway', 'pdfmaster-admin.orderdesk.live', '/ops/login')]:
+        # Match Caddy's actual request Host; Django correctly rejects Docker DNS
+        # aliases that are not public application hostnames.
+        run([*docker_exec, 'wget', '-q', '--header', 'Host: ' + host, '-O', '/dev/null',
+             'http://' + alias + ':8080' + route])
     existing = subprocess.run([*docker_exec, 'cat', '/config/pdfmaster-sites/sites.caddy'],
                               text=True, capture_output=True, timeout=30)
     if existing.returncode == 0 and existing.stdout != SITES:
