@@ -1,6 +1,12 @@
 from django.urls import path
-from . import views
+from . import views, auth_views
 urlpatterns=[
+    path('auth/providers',auth_views.providers),
+    path('auth/email/register',auth_views.email_register),path('auth/email/verify',auth_views.email_verify),
+    path('auth/email/login',auth_views.email_login),path('auth/email/link',auth_views.email_link),
+    path('auth/email/reset',auth_views.email_reset),path('auth/email/reset/confirm',auth_views.email_reset_confirm),
+    path('auth/password',auth_views.password_change),
+    path('auth/google/start',auth_views.google_start),path('auth/google/callback',auth_views.google_callback),
     path('health',views.health),path('auth/session',views.session),path('auth/dev-login',views.dev_login),path('auth/telegram/miniapp',views.miniapp_login),
     path('auth/browser/challenges',views.challenges),path('auth/browser/challenges/<uuid:challenge_id>',views.challenge_status),path('auth/browser/challenges/<uuid:challenge_id>/exchange',views.challenge_exchange),
     path('me',views.me),path('catalog',views.catalog_view),path('plans',views.plans),path('usage',views.usage),

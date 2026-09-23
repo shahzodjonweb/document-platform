@@ -21,6 +21,9 @@ from .serializers import account_data, asset_data, quote_data, job_data
 def current_account(request):
     account_id=request.session.get('customer_account_id')
     account=Account.objects.filter(pk=account_id,deletion_requested_at__isnull=True).first() if account_id else None
+    if account and request.session.get('customer_auth_version', 0) != account.auth_version:
+        request.session.pop('customer_account_id', None)
+        account = None
     if account:
         from apps.commerce.services import refresh_account_entitlement
         refresh_account_entitlement(account)
@@ -53,6 +56,9 @@ def body(request):
     return value
 
 def throttle(request,key,limit=20):
+    if key in ('miniapp','challenge','exchange'):
+        from .auth_views import limit as auth_limit
+        return auth_limit(request, key, limit)
     identity=request.META.get('REMOTE_ADDR','unknown')
     cache_key=f'rate:{key}:{identity}'
     count=cache.get(cache_key,0)
@@ -62,6 +68,8 @@ def throttle(request,key,limit=20):
 def sign_in(request,account):
     request.session.cycle_key()
     request.session['customer_account_id']=str(account.id)
+    request.session['customer_auth_version']=account.auth_version
+    request.session.pop('google_browser', None)
     rotate_token(request)
     return {'authenticated':True,'user':account_data(account),'csrf_token':get_token(request),'development_login_enabled':settings.DEVELOPMENT_LOGIN_ENABLED}
 
@@ -69,6 +77,7 @@ def sign_in(request,account):
 def session(request):
     if request.method=='DELETE':
         request.session.pop('customer_account_id',None)
+        request.session.pop('google_browser',None)
         request.session.cycle_key()
         rotate_token(request)
         return {'authenticated':False,'user':None,'csrf_token':get_token(request)}
@@ -89,8 +98,12 @@ def miniapp_login(request):
 @api(('POST',),auth=False)
 def challenges(request):
     throttle(request,'challenge',10)
-    body(request)
-    challenge,token,verifier=create_challenge(request.META.get('HTTP_USER_AGENT','Unknown browser'))
+    data=body(request)
+    intent=data.get('intent','login')
+    if intent not in ('login','link'): raise DomainError('invalid_request')
+    if intent=='link' and not request.account: raise DomainError('authentication_required',401)
+    if intent=='link' and request.account.telegram_user_id: raise DomainError('telegram_already_linked',409)
+    challenge,token,verifier=create_challenge(request.META.get('HTTP_USER_AGENT','Unknown browser'), request.account if intent=='link' else None)
     response=JsonResponse({'id':str(challenge.pk),'status':'pending','expires_at':challenge.expires_at,'telegram_url':f'https://t.me/{telegram_config()['username']}?start=login_{token}','browser_hint':challenge.browser_hint},status=201)
     response.set_cookie('pdfmaster_challenge',verifier,max_age=300,httponly=True,secure=not settings.DEBUG,samesite='Lax',path='/api/v1/auth/browser/')
     return response
@@ -103,7 +116,7 @@ def challenge_status(request,challenge_id):
 @api(('POST',),auth=False)
 def challenge_exchange(request,challenge_id):
     throttle(request,'exchange')
-    response=JsonResponse(sign_in(request,exchange_challenge(challenge_id,request.COOKIES.get('pdfmaster_challenge',''))))
+    response=JsonResponse(sign_in(request,exchange_challenge(challenge_id,request.COOKIES.get('pdfmaster_challenge',''),link_account=request.account)))
     response.delete_cookie('pdfmaster_challenge',path='/api/v1/auth/browser/')
     return response
 

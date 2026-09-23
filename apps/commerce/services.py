@@ -121,6 +121,7 @@ def invoice_for_payload(payload):
 
 @transaction.atomic
 def create_invoice(account,offer_id,idempotency_key):
+    if account.telegram_user_id is None: raise DomainError('telegram_link_required',409)
     if not available_offers(account): raise DomainError('checkout_disabled',409)
     if not isinstance(idempotency_key,str) or not 8<=len(idempotency_key)<=128: raise DomainError('idempotency_key_required')
     account=Account.objects.select_for_update().get(pk=account.pk)
@@ -142,6 +143,7 @@ def create_invoice(account,offer_id,idempotency_key):
 
 
 def present_invoice(invoice):
+    if invoice.account.telegram_user_id is None: raise DomainError('telegram_link_required',409)
     if invoice.invoice_url or invoice.sandbox: return invoice
     if invoice.expires_at<=timezone.now(): raise DomainError('invoice_expired',409)
     url=provider_for(False).invoice_link(invoice,payload_for(invoice))
@@ -151,6 +153,7 @@ def present_invoice(invoice):
 
 @transaction.atomic
 def validate_precheckout(telegram_user_id,payload,currency,amount,sandbox=False):
+    if type(telegram_user_id) is not int or telegram_user_id<=0: raise DomainError('invalid_invoice',403)
     invoice=invoice_for_payload(payload)
     Account.objects.select_for_update().get(pk=invoice.account_id)
     invoice=Invoice.objects.select_for_update().select_related('account','offer').get(pk=invoice.pk)
@@ -169,6 +172,7 @@ def _issue(charge,kind,amount,invoice=None,occurred=None):
 
 @transaction.atomic
 def record_payment(telegram_user_id,payload,currency,amount,charge_id,*,provider_charge_id='',expiration_date=None,is_recurring=False,is_first_recurring=False,occurred_at=None,sandbox=False):
+    if type(telegram_user_id) is not int or telegram_user_id<=0: raise DomainError('invalid_invoice',403)
     invoice=invoice_for_payload(payload)
     account=Account.objects.select_for_update().get(pk=invoice.account_id)
     invoice=Invoice.objects.select_for_update().select_related('offer').get(pk=invoice.pk)

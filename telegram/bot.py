@@ -9,6 +9,7 @@ import io
 import json
 import secrets
 import uuid
+from types import SimpleNamespace
 from datetime import timedelta
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command, CommandStart
@@ -35,6 +36,11 @@ WORKFLOW_COPY={
 'uz':{'settings':'Vazifa sozlamalari','done_button':'Hisob-kitobni ko‘rish','back':'Orqaga','next':'Boshqa vositalar','pages_hint':'Sahifalarni tanlash uchun /pages 1,3-5 yuboring.','split_hint':'Oraliqlar uchun /split 1-2;3-4, har sahifani ajratish uchun /done yuboring.','reorder_hint':'Sahifalar tartibi uchun /pages 3,1,2 yuboring.','merge_hint':'Fayllar tartibi: /order 2,1. Faylni olib tashlash: /remove 2.','image_hint':'Qog‘oz va yo‘nalishni tanlang. Hoshiyani punktda belgilash uchun /margin 24 yuboring.','secure':'PDF parollarini faqat xavfsiz veb ish maydonida kiriting. Parollarni bu chatga yubormang.','rotate_label':'Aylantirish','format_label':'Rasm formati','paper_label':'Qog‘oz','portrait':'Tik','landscape':'Yotiq','auto':'Avtomatik','quote_cost':'vazifa / sahifa birligi','balance':'Mavjud vazifa / sahifa birligi','expires':'Hisob-kitob muddati (UTC)','parameters':'Sozlamalar','add':'Joriy vazifaga qo‘shish','new':'Yangi vazifa boshlash','new_file':'Joriy vazifa mavjud. Yangi faylni qayerga qo‘shishni tanlang.','controls_expired':'Bu boshqaruv tugmalari eskirdi. Davom etish uchun /settings yuboring.','help':'Fayl → /tools → /settings → /done → /run. /pages 1,3-5 sahifalarni tanlaydi; /split 1-2;3-4 guruhlaydi; /rotate 90 aylantiradi; /format png 96 rasmlarni sozlaydi; /order 2,1 fayllarni tartiblaydi. /remove 2 faylni olib tashlaydi. Natijalar: /myfiles.','no_preview':'Bu faylni oldindan ko‘rib bo‘lmaydi.','preview':'Birinchi sahifani ko‘rish'},
 'ru':{'settings':'Настройки задачи','done_button':'Проверить расчёт','back':'Назад','next':'Другие инструменты','pages_hint':'Выберите страницы командой /pages 1,3-5.','split_hint':'Используйте /split 1-2;3-4 для групп или /done для отдельного файла на страницу.','reorder_hint':'Задайте новый порядок всех страниц: /pages 3,1,2.','merge_hint':'Изменить порядок файлов: /order 2,1. Удалить файл: /remove 2.','image_hint':'Выберите бумагу и ориентацию. Поле в пунктах: /margin 24.','secure':'Вводите пароли PDF только в защищённом веб-интерфейсе. Не отправляйте пароли в этот чат.','rotate_label':'Поворот','format_label':'Формат изображения','paper_label':'Бумага','portrait':'Книжная','landscape':'Альбомная','auto':'Автоматически','quote_cost':'задача / единицы страниц','balance':'Доступно задач / единиц страниц','expires':'Расчёт действует до (UTC)','parameters':'Настройки','add':'Добавить к задаче','new':'Начать новую задачу','new_file':'У вас уже есть задача. Выберите, куда добавить новый файл.','controls_expired':'Эти кнопки устарели. Продолжите командой /settings.','help':'Файлы → /tools → /settings → /done → /run. /pages 1,3-5 выбирает страницы; /split 1-2;3-4 задаёт группы; /rotate 90 — поворот; /format png 96 — изображения; /order 2,1 меняет порядок файлов. /remove 2 удаляет файл. Результаты: /myfiles.','no_preview':'Предпросмотр этого файла недоступен.','preview':'Посмотреть первую страницу'}}
 for locale,values in WORKFLOW_COPY.items(): COPY[locale].update(values)
+for locale,values in {
+    'en':{'link_login':'Link this Telegram identity to your existing PDF Master account only if you started this request in account settings:','link_confirm':'Confirm Telegram link','link_approved':'Telegram link approved. Return to the initiating browser to finish linking your account.'},
+    'uz':{'link_login':'Faqat hisob sozlamalarida o‘zingiz boshlagan bo‘lsangiz, ushbu Telegram hisobini mavjud PDF Master hisobingizga ulashni tasdiqlang:','link_confirm':'Telegram ulanishini tasdiqlash','link_approved':'Telegram ulanishi tasdiqlandi. Hisobni ulashni tugatish uchun boshlang‘ich brauzerga qayting.'},
+    'ru':{'link_login':'Подтвердите привязку этого Telegram к существующему аккаунту PDF Master, только если вы начали её в настройках аккаунта:','link_confirm':'Подтвердить привязку Telegram','link_approved':'Привязка Telegram подтверждена. Вернитесь в исходный браузер, чтобы завершить её.'},
+}.items(): COPY[locale].update(values)
 for locale,value in {
     'en':'Server files expire after 24 hours. Purchases activate only after confirmed payment. Local simulation does not spend real Stars. /buy for offers; /paysupport for payment help.',
     'uz':'Server fayllari 24 soatdan keyin o‘chiriladi. Xaridlar faqat to‘lov tasdiqlangandan keyin faollashadi. Mahalliy sinov haqiqiy Stars sarflamaydi. Takliflar: /buy; to‘lov yordami: /paysupport.',
@@ -44,6 +50,10 @@ TOOL_NAMES.update({'convert.word_to_pdf':{'en':'Word to PDF','uz':'Word’dan PD
 
 def text(account,key): return COPY.get(account.locale,COPY['en'])[key]
 def user_dict(user): return {'id':user.id,'first_name':user.first_name,'username':user.username or '', 'language_code':user.language_code or 'en'}
+def sender_language(user):
+    # Authentication errors must not create a customer account as a side effect.
+    locale=(user.language_code or 'en').split('-')[0]
+    return SimpleNamespace(locale=locale if locale in COPY else 'en')
 async def account_for(user): return await sync_to_async(resolve_account)(user_dict(user),'bot')
 async def callback(account,action,payload=None):
     token=secrets.token_urlsafe(12)
@@ -153,9 +163,15 @@ def build_dispatcher():
         payload=(message.text or '').split(maxsplit=1)
         if len(payload)>1 and payload[1].startswith('login_'):
             token=payload[1][6:]
-            challenge=await sync_to_async(lambda:AuthChallenge.objects.filter(token_hash=hashlib.sha256(token.encode()).hexdigest(),expires_at__gt=timezone.now(),consumed_at__isnull=True,approved_at__isnull=True).first())()
+            challenge=await sync_to_async(lambda:AuthChallenge.objects.select_related('link_account').filter(token_hash=hashlib.sha256(token.encode()).hexdigest(),expires_at__gt=timezone.now(),consumed_at__isnull=True,approved_at__isnull=True).first())()
+            if not challenge: return await safe_error(message,sender_language(message.from_user),DomainError('challenge_expired'))
+            if challenge.intent=='link':
+                if message.chat.type!='private' or message.chat.id!=message.from_user.id or not challenge.link_account_id:
+                    return await safe_error(message,sender_language(message.from_user),DomainError('invalid_telegram_data'))
+                account=challenge.link_account
+                ref=await callback(account,'link_login',{'challenge_id':str(challenge.id),'telegram_user_id':message.from_user.id})
+                return await message.answer(f'{text(account,"link_login")}\n{html.escape(challenge.browser_hint)}',parse_mode='HTML',reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=text(account,'link_confirm'),callback_data=ref)]]))
             account=await sync_to_async(resolve_account)(user_dict(message.from_user),'web')
-            if not challenge: return await safe_error(message,account,DomainError('challenge_expired'))
             ref=await callback(account,'login',{'challenge_id':str(challenge.id)})
             return await message.answer(f'{text(account,"login")}\n{html.escape(challenge.browser_hint)}',parse_mode='HTML',reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=text(account,'confirm'),callback_data=ref)]]))
         account=await account_for(message.from_user)
@@ -180,9 +196,23 @@ def build_dispatcher():
 
     @dp.callback_query()
     async def click(query):
+        # A linking sender may not have an Account yet. Bind this callback to the
+        # initiating Telegram user without calling account_for and creating one.
+        ref=await sync_to_async(lambda:BotCallback.objects.select_related('account').filter(token=query.data,expires_at__gt=timezone.now()).first())()
+        if not ref:
+            return await query.answer(text(sender_language(query.from_user),'controls_expired'),show_alert=True)
+        if ref.action=='link_login':
+            if ref.payload.get('telegram_user_id')!=query.from_user.id or not query.message or query.message.chat.type!='private' or query.message.chat.id!=query.from_user.id:
+                return await query.answer(text(sender_language(query.from_user),'controls_expired'),show_alert=True)
+            try:
+                account=await sync_to_async(approve_challenge_id)(ref.payload['challenge_id'],user_dict(query.from_user))
+                await query.message.answer(text(account,'link_approved'))
+            except DomainError as exc:
+                await safe_error(query.message,ref.account,exc)
+            return await query.answer()
+        if ref.account.telegram_user_id!=query.from_user.id:
+            return await query.answer(text(sender_language(query.from_user),'controls_expired'),show_alert=True)
         account=await account_for(query.from_user)
-        ref=await sync_to_async(lambda:BotCallback.objects.filter(token=query.data,account=account,expires_at__gt=timezone.now()).first())()
-        if not ref: return await query.answer(text(account,'controls_expired'),show_alert=True)
         try:
             if ref.action=='login':
                 await sync_to_async(approve_challenge_id)(ref.payload['challenge_id'],user_dict(query.from_user))

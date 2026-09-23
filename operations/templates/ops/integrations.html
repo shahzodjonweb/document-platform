@@ -3,5 +3,38 @@
 {% if error %}<div role="alert" class="alert error">{{ error }} <small>{{ error_code }}</small></div>{% endif %}{% if notice %}<div role="status" class="alert success">{{ notice }}</div>{% endif %}
 <div class="integration-grid"><section class="panel info-panel"><div class="panel-heading"><h2>{{ i.telegram }}</h2><span class="badge">{{ bot.status }}</span></div><p>{{ i.token_status }}: {% if bot.configured %}{{ i.configured }}{% else %}{{ i.missing }}{% endif %}</p>
 <form method="post" class="integration-form" autocomplete="off">{% csrf_token %}<input type="hidden" name="integration" value="telegram"><label>{{ i.token }}<input type="password" name="token" autocomplete="new-password" placeholder="123456:…" maxlength="180"></label><small>{{ i.secret_hint }}</small><label>{{ i.username }}<input name="username" value="{{ bot.username }}" placeholder="pdfmaster_bot" maxlength="32"></label><label>{{ i.webapp }}<input type="url" name="webapp_url" value="{{ bot.webapp_url }}" required></label><label>{{ i.reason }}<input name="reason" required minlength="5" maxlength="1000"></label><div class="integration-actions"><button class="button primary" name="action" value="save">{{ i.save }}</button><button class="button secondary" name="action" value="test">{{ i.test }}</button></div>{% if local_controls %}<div class="integration-actions"><button class="button secondary" name="action" value="start">{{ i.start }}</button><button class="button secondary" name="action" value="stop">{{ i.stop }}</button></div>{% endif %}</form><p>{% if local_controls %}{{ i.local_note }}{% else %}{{ i.production_note }}{% endif %}</p>{% if local_controls %}<a class="button secondary" href="/ops/bot-simulator">{{ i.simulator }} ↗</a>{% endif %}</section>
-<section class="panel info-panel"><h2>{{ i.ai }}</h2><p>{{ i.provider_status }}: {% if ai.configured %}{{ i.configured }}{% else %}{{ i.missing }}{% endif %}</p><form method="post" class="integration-form" autocomplete="off">{% csrf_token %}<input type="hidden" name="integration" value="ai"><label>{{ i.mode }}<select name="mode"><option value="local_fixture" {% if ai.mode == 'local_fixture' %}selected{% endif %}>{{ i.local }}</option><option value="openai" {% if ai.mode == 'openai' %}selected{% endif %}>{{ i.live }}</option><option value="disabled" {% if ai.mode == 'disabled' %}selected{% endif %}>{{ i.disabled }}</option></select></label><label>{{ i.key }}<input type="password" name="api_key" autocomplete="new-password" maxlength="512"></label><small>{{ i.secret_hint }}</small><label>{{ i.model }}<input name="model" value="{{ ai.model }}" maxlength="100"></label><label>{{ i.image_model }}<input name="image_model" value="{{ ai.image_model }}" maxlength="100"></label><label>{{ i.reason }}<input name="reason" required minlength="5" maxlength="1000"></label><button class="button primary" name="action" value="save">{{ i.save }}</button></form></section></div>
+<section class="panel info-panel"><h2>{{ i.ai }}</h2><p>{{ i.provider_status }}: {% if ai.configured %}{{ i.configured }}{% else %}{{ i.missing }}{% endif %}</p><form method="post" class="integration-form" autocomplete="off">{% csrf_token %}<input type="hidden" name="integration" value="ai"><label>{{ i.mode }}<select name="mode"><option value="local_fixture" {% if ai.mode == 'local_fixture' %}selected{% endif %}>{{ i.local }}</option><option value="openai" {% if ai.mode == 'openai' %}selected{% endif %}>{{ i.live }}</option><option value="disabled" {% if ai.mode == 'disabled' %}selected{% endif %}>{{ i.disabled }}</option></select></label><label>{{ i.key }}<input type="password" name="api_key" autocomplete="new-password" maxlength="512"></label><small>{{ i.secret_hint }}</small><label>{{ i.model }}<input name="model" value="{{ ai.model }}" maxlength="100"></label><label>{{ i.image_model }}<input name="image_model" value="{{ ai.image_model }}" maxlength="100"></label><label>{{ i.reason }}<input name="reason" required minlength="5" maxlength="1000"></label><button class="button primary" name="action" value="save">{{ i.save }}</button></form></section>
+<section class="panel info-panel">
+  <div class="panel-heading"><h2>{{ i.google }}</h2><span class="badge">{% if google.ready %}{{ i.active }}{% elif google.enabled %}{{ i.setup_required }}{% else %}{{ i.inactive }}{% endif %}</span></div>
+  <p>{{ i.provider_status }}: {% if google.configured %}{{ i.configured }}{% else %}{{ i.missing }}{% endif %}</p>
+  <form method="post" class="integration-form" autocomplete="off">
+    {% csrf_token %}<input type="hidden" name="integration" value="google">
+    <input type="hidden" name="enabled" value="false"><label style="flex-direction:row;align-items:center"><input style="width:20px;flex-shrink:0" type="checkbox" name="enabled" value="true" {% if google.enabled %}checked{% endif %}> {{ i.google_enabled }}</label>
+    <label>{{ i.client_id }}<input name="client_id" value="{{ google.client_id }}" maxlength="255" placeholder="123456-example.apps.googleusercontent.com" spellcheck="false"></label>
+    <label>{{ i.client_secret }}<input type="password" name="client_secret" autocomplete="new-password" maxlength="1024"></label><small>{{ i.secret_hint }}</small>
+    <label>{{ i.redirect_uri }}<input type="url" name="redirect_uri" value="{{ google.redirect_uri }}" maxlength="2048" required spellcheck="false"></label>
+    <p>{{ i.google_hint }}</p>
+    <label>{{ i.reason }}<input name="reason" required minlength="5" maxlength="1000"></label>
+    <button class="button primary" name="action" value="save">{{ i.save }}</button>
+  </form>
+</section>
+<section class="panel info-panel">
+  <div class="panel-heading"><h2>{{ i.email }}</h2><span class="badge">{% if email.ready %}{{ i.active }}{% elif email.enabled %}{{ i.setup_required }}{% else %}{{ i.inactive }}{% endif %}</span></div>
+  <p>{{ i.provider_status }}: {% if email.configured %}{{ i.configured }}{% else %}{{ i.missing }}{% endif %}</p>
+  <form method="post" class="integration-form" autocomplete="off">
+    {% csrf_token %}<input type="hidden" name="integration" value="email">
+    <input type="hidden" name="enabled" value="false"><label style="flex-direction:row;align-items:center"><input style="width:20px;flex-shrink:0" type="checkbox" name="enabled" value="true" {% if email.enabled %}checked{% endif %}> {{ i.email_enabled }}</label>
+    <label>{{ i.smtp_host }}<input name="host" value="{{ email.host }}" maxlength="253" placeholder="smtp.example.com" spellcheck="false"></label>
+    <label>{{ i.smtp_port }}<input name="port" type="number" min="1" max="65535" value="{{ email.port }}" required></label>
+    <label>{{ i.smtp_username }}<input name="username" value="{{ email.username }}" maxlength="254" spellcheck="false"></label>
+    <label>{{ i.smtp_password }}<input type="password" name="password" autocomplete="new-password" maxlength="1024"></label><small>{{ i.secret_hint }}</small>
+    <label>{{ i.from_email }}<input type="email" name="from_email" value="{{ email.from_email }}" maxlength="254" placeholder="noreply@example.com"></label>
+    <input type="hidden" name="use_tls" value="false"><label style="flex-direction:row;align-items:center"><input style="width:20px;flex-shrink:0" type="checkbox" name="use_tls" value="true" {% if email.use_tls %}checked{% endif %}> {{ i.tls }}</label>
+    <input type="hidden" name="use_ssl" value="false"><label style="flex-direction:row;align-items:center"><input style="width:20px;flex-shrink:0" type="checkbox" name="use_ssl" value="true" {% if email.use_ssl %}checked{% endif %}> {{ i.ssl }}</label>
+    <p>{{ i.email_hint }}</p>
+    <label>{{ i.reason }}<input name="reason" required minlength="5" maxlength="1000"></label>
+    <div class="integration-actions"><button class="button primary" name="action" value="save">{{ i.save }}</button><button class="button secondary" name="action" value="test">{{ i.test }}</button></div>
+  </form>
+</section>
+</div>
 {% endblock %}

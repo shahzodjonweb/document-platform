@@ -11,4 +11,4 @@ COPY --chown=pdfmaster:pdfmaster . .
 RUN mkdir -p /data/private /data/static && chown -R pdfmaster:pdfmaster /data /app
 USER pdfmaster
 EXPOSE 8000
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2", "--timeout", "120", "--access-logfile", "-"]
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2", "--timeout", "120", "--access-logfile", "-", "--access-logformat", "%(h)s %(t)s %(m)s %(U)s %(s)s %(b)s"]

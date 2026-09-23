@@ -5,7 +5,13 @@ from django.utils import timezone
 
 class Account(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    telegram_user_id = models.BigIntegerField(unique=True)
+    telegram_user_id = models.BigIntegerField(unique=True, null=True, blank=True)
+    email = models.EmailField(max_length=254, unique=True, null=True, blank=True)
+    email_verified_at = models.DateTimeField(null=True, blank=True)
+    password_hash = models.CharField(max_length=256, blank=True)
+    google_sub = models.CharField(max_length=255, unique=True, null=True, blank=True)
+    google_email = models.EmailField(max_length=254, blank=True)
+    auth_version = models.PositiveIntegerField(default=0)
     username = models.CharField(max_length=64, blank=True)
     display_name = models.CharField(max_length=150, blank=True)
     locale = models.CharField(max_length=2, default='en')
@@ -29,6 +35,51 @@ class AuthChallenge(models.Model):
     expires_at = models.DateTimeField()
     consumed_at = models.DateTimeField(null=True)
     approved_at = models.DateTimeField(null=True)
+    intent = models.CharField(max_length=8, default='login')
+    link_account = models.ForeignKey(Account, null=True, on_delete=models.CASCADE, related_name='+')
+    link_auth_version = models.PositiveIntegerField(default=0)
+    telegram_user = models.JSONField(default=dict)
+
+
+class EmailChallenge(models.Model):
+    """One-use verification codes. Pending signups do not create accounts."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    email = models.EmailField(max_length=254)
+    code_hash = models.CharField(max_length=64)
+    purpose = models.CharField(max_length=16)
+    account = models.ForeignKey(Account, null=True, on_delete=models.CASCADE)
+    auth_version = models.PositiveIntegerField(default=0)
+    password_hash = models.CharField(max_length=256, blank=True)
+    display_name = models.CharField(max_length=150, blank=True)
+    locale = models.CharField(max_length=2, default='en')
+    eligible = models.BooleanField(default=True)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(default=timezone.now)
+    expires_at = models.DateTimeField(db_index=True)
+    consumed_at = models.DateTimeField(null=True)
+
+
+class GoogleChallenge(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    state_hash = models.CharField(max_length=64, unique=True)
+    browser_hash = models.CharField(max_length=64)
+    nonce = models.CharField(max_length=128)
+    verifier = models.CharField(max_length=128)
+    intent = models.CharField(max_length=8)
+    account = models.ForeignKey(Account, null=True, on_delete=models.CASCADE)
+    auth_version = models.PositiveIntegerField(default=0)
+    client_id = models.CharField(max_length=255)
+    redirect_uri = models.URLField(max_length=500)
+    locale = models.CharField(max_length=2, default='en')
+    expires_at = models.DateTimeField(db_index=True)
+    consumed_at = models.DateTimeField(null=True)
+
+
+class AuthRateLimit(models.Model):
+    """Shared between API processes; keys contain no raw IP or email."""
+    key = models.CharField(max_length=64, primary_key=True)
+    count = models.PositiveIntegerField(default=0)
+    expires_at = models.DateTimeField(db_index=True)
 
 class AuthReceipt(models.Model):
     digest = models.CharField(max_length=64, unique=True)

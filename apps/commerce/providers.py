@@ -27,10 +27,13 @@ class TelegramStarsProvider:
         except DomainError: raise
         except Exception: raise DomainError('payment_provider_unavailable',503,retryable=True) from None
     def invoice_link(self,invoice,payload):
+        if invoice.account.telegram_user_id is None: raise DomainError('telegram_link_required',409)
         return self.call('create_invoice_link',title=invoice.snapshot['name'][:32],description='PDF Master '+invoice.snapshot['name'],payload=payload,currency='XTR',provider_token='',prices=[LabeledPrice(label=invoice.snapshot['name'],amount=invoice.amount_xtr)],subscription_period=invoice.snapshot.get('period_seconds'))
     def set_renewal(self,subscription,enabled):
+        if subscription.account.telegram_user_id is None: raise DomainError('telegram_link_required',409)
         return self.call('edit_user_star_subscription',user_id=subscription.account.telegram_user_id,telegram_payment_charge_id=subscription.first_charge_id,is_canceled=not enabled)
     def refund(self,payment):
+        if payment.account.telegram_user_id is None: raise DomainError('telegram_link_required',409)
         return self.call('refund_star_payment',user_id=payment.account.telegram_user_id,telegram_payment_charge_id=payment.provider_charge_id)
     def transactions(self,offset=0,limit=100):
         result=self.call('get_star_transactions',offset=offset,limit=limit)

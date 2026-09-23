@@ -67,6 +67,7 @@ def history(account):
 
 def deliver_local(account,delivery):
     require_sandbox(account)
+    if account.telegram_user_id is None: raise DomainError('telegram_link_required',409)
     async def run():
         from .delivery import attempt
         bot=Bot('123456:LOCAL_SIMULATOR_NO_NETWORK',session=LocalTelegramSession(account))
@@ -79,6 +80,7 @@ def deliver_local(account,delivery):
 
 def dispatch_local(account,*,text=None,callback_data=None,uploaded=None):
     require_sandbox(account)
+    if account.telegram_user_id is None: raise DomainError('telegram_link_required',409)
     if not text and not callback_data and not uploaded: raise DomainError('invalid_request')
     if text and (not isinstance(text,str) or len(text)>4096): raise DomainError('invalid_request')
     message_id=secrets.randbelow(2_000_000_000)+1

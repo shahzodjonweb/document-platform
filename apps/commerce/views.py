@@ -132,6 +132,7 @@ def support_messages(request,ticket_id):
 def deliver_artifact(request,artifact_id):
     artifact=Artifact.objects.filter(pk=artifact_id,account=request.account).first()
     if not artifact: raise DomainError('not_found',404)
+    if request.account.telegram_user_id is None: raise DomainError('telegram_link_required',409)
     key=request.headers.get('Idempotency-Key','')
     if not 8<=len(key)<=128: raise DomainError('idempotency_key_required')
     if artifact.file.state!='ready' or artifact.file.expires_at<=timezone.now(): raise DomainError('file_expired',410)

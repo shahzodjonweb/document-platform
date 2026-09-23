@@ -14,6 +14,7 @@ from apps.commerce.providers import telegram_config
 
 
 def enqueue(artifact,key):
+    if artifact.account.telegram_user_id is None: raise DomainError('telegram_link_required',409)
     delivery,_=BotDelivery.objects.get_or_create(account=artifact.account,artifact=artifact,idempotency_key=key)
     return delivery
 
@@ -39,6 +40,8 @@ def finish(delivery_id,*,status,message_id=None,error='',delay=0):
 async def attempt(delivery_id,bot):
     delivery=await sync_to_async(claim)(delivery_id)
     if not delivery: return
+    if delivery.account.telegram_user_id is None:
+        return await sync_to_async(finish)(delivery.id,status='blocked',error='telegram_link_required')
     from aiogram.client.session.aiohttp import AiohttpSession
     if delivery.account.is_test and isinstance(getattr(bot,'session',None),AiohttpSession):
         return await sync_to_async(finish)(delivery.id,status='blocked',error='test_account_delivery')

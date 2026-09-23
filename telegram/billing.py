@@ -86,9 +86,11 @@ def register_billing_handlers(dp):
     async def commerce_callback(query):
         # Returning UNHANDLED allows the existing tool callback router to proceed.
         from aiogram.dispatcher.event.bases import SkipHandler
-        account=await account_for(query.from_user)
-        ref=await sync_to_async(lambda:BotCallback.objects.filter(token=query.data,account=account,action__startswith='commerce_',expires_at__gt=timezone.now()).first())()
+        # Look up the action first: identity-link callbacks must reach the auth
+        # router without registering a separate Telegram customer account.
+        ref=await sync_to_async(lambda:BotCallback.objects.filter(token=query.data,account__telegram_user_id=query.from_user.id,action__startswith='commerce_',expires_at__gt=timezone.now()).first())()
         if not ref: raise SkipHandler()
+        account=await account_for(query.from_user)
         try:
             if ref.action=='commerce_offer': await show_invoice(query.message,account,ref.payload['offer_id'],f'telegram:{ref.token}')
             elif ref.action=='commerce_pay':

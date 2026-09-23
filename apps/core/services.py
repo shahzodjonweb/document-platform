@@ -353,6 +353,9 @@ def cleanup_expired():
         asset.save(update_fields=['state'])
         count += 1
     SecretHandle.objects.filter(expires_at__lte=now).delete()
+    from .models import EmailChallenge, GoogleChallenge, AuthRateLimit, AuthChallenge
+    for model in (EmailChallenge, GoogleChallenge, AuthRateLimit, AuthChallenge):
+        model.objects.filter(expires_at__lte=now).delete()
     from apps.studio.models import GenerationDraft, EducationProject, EditorDocument, ShareGrant
     GenerationDraft.objects.filter(expires_at__lte=now).delete()
     EducationProject.objects.filter(expires_at__lte=now).delete()

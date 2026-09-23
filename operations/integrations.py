@@ -8,8 +8,11 @@ import subprocess
 import sys
 import threading
 import urllib.request
+from urllib.parse import urlsplit
 from cryptography.fernet import Fernet, MultiFernet
 from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from django.db import transaction
 from django.utils import timezone
 from apps.core.errors import DomainError
@@ -55,6 +58,109 @@ def ai_config():
             'image_model':cfg.get('image_model') or os.getenv('AI_IMAGE_MODEL',''),
             'api_key':secret.get('api_key') or os.getenv('OPENAI_API_KEY','')}
 
+def _boolean(value):
+    if value is True or value in ('true', '1', 'on'): return True
+    if value is False or value in ('false', '0', 'off', '', None): return False
+    raise DomainError('invalid_parameters')
+
+def _web_origin(url):
+    try:
+        parsed = urlsplit(url)
+        valid = (parsed.hostname and not parsed.username and not parsed.password
+                 and (parsed.port is None or 1 <= parsed.port <= 65535)
+                 and not any(ord(c) < 33 or ord(c) == 127 for c in url))
+        secure = parsed.scheme == 'https' or (settings.DEBUG and parsed.scheme == 'http'
+                                             and parsed.hostname in ('localhost', '127.0.0.1', '::1'))
+        if not valid or not secure: raise ValueError()
+        return parsed, (parsed.scheme, parsed.hostname.lower(), parsed.port or (443 if parsed.scheme == 'https' else 80))
+    except (ValueError, TypeError): raise DomainError('invalid_google_redirect') from None
+
+def _validate_google(cfg, secrets, webapp_url):
+    client_id = cfg.get('client_id', '')
+    if client_id and not re.fullmatch(r'[A-Za-z0-9_-]{1,220}\.apps\.googleusercontent\.com', client_id):
+        raise DomainError('invalid_google_client_id')
+    redirect = cfg.get('redirect_uri', '')
+    if redirect:
+        callback, origin = _web_origin(redirect)
+        _, web_origin = _web_origin(webapp_url)
+        if origin != web_origin or callback.path != '/api/v1/auth/google/callback' or callback.query or callback.fragment:
+            raise DomainError('invalid_google_redirect')
+    if cfg.get('enabled') and not (client_id and secrets.get('client_secret') and redirect):
+        raise DomainError('google_not_configured')
+
+def google_config():
+    cfg, secret = read_config('google')
+    webapp_url = telegram_config()['webapp_url']
+    parsed = urlsplit(webapp_url)
+    redirect_uri = cfg.get('redirect_uri') or f'{parsed.scheme}://{parsed.netloc}/api/v1/auth/google/callback'
+    result = {'enabled': cfg.get('enabled', False), 'client_id': cfg.get('client_id', ''),
+              'client_secret': secret.get('client_secret', ''), 'redirect_uri': redirect_uri,
+              'webapp_url': webapp_url}
+    configured = bool(result['client_id'] and result['client_secret'] and redirect_uri)
+    try: _validate_google(result, secret, webapp_url)
+    except DomainError: configured = False
+    return {**result, 'configured': configured, 'ready': bool(result['enabled'] and configured)}
+
+def email_config():
+    cfg, secret = read_config('email')
+    result = {'enabled': cfg.get('enabled', False), 'host': cfg.get('host', ''), 'port': cfg.get('port', 587),
+              'username': cfg.get('username', ''), 'password': secret.get('password', ''),
+              'use_tls': cfg.get('use_tls', True), 'use_ssl': cfg.get('use_ssl', False),
+              'from_email': cfg.get('from_email', '')}
+    configured = bool(result['host'] and result['from_email'] and (not result['username'] or result['password'])
+                      and not (result['use_tls'] and result['use_ssl'])
+                      and (settings.DEBUG or result['use_tls'] or result['use_ssl']))
+    return {**result, 'configured': configured, 'ready': bool(result['enabled'] and configured)}
+
+def _email_connection(cfg):
+    from django.core.mail import get_connection
+    # Only the memory backend can replace SMTP in development; codes never go to stdout.
+    backend = ('django.core.mail.backends.locmem.EmailBackend'
+               if settings.DEBUG and settings.EMAIL_BACKEND == 'django.core.mail.backends.locmem.EmailBackend'
+               else 'django.core.mail.backends.smtp.EmailBackend')
+    return get_connection(backend, host=cfg['host'], port=cfg['port'], username=cfg['username'],
+                          password=cfg['password'], use_tls=cfg['use_tls'], use_ssl=cfg['use_ssl'],
+                          timeout=10, fail_silently=False)
+
+def test_email():
+    cfg = email_config()
+    if not cfg['configured']: raise DomainError('email_not_configured', 409)
+    connection = _email_connection(cfg)
+    try:
+        # Opening SMTP performs TLS negotiation and authentication without sending mail.
+        connection.open()
+    except Exception: raise DomainError('email_connection_failed', 409) from None
+    finally:
+        try: connection.close()
+        except Exception: pass
+    row, _ = IntegrationConfig.objects.get_or_create(key='email')
+    row.checked_at = timezone.now(); row.check_status = 'connected'
+    row.save(update_fields=['checked_at', 'check_status'])
+
+def send_auth_email(recipient, code, purpose, locale='en'):
+    from django.core.mail import EmailMessage
+    cfg = email_config()
+    if not cfg['ready']: raise DomainError('email_not_configured', 503)
+    try: validate_email(recipient)
+    except (ValidationError, TypeError): raise DomainError('invalid_email') from None
+    if not isinstance(code, str) or not re.fullmatch(r'[A-Za-z0-9_-]{4,128}', code):
+        raise DomainError('invalid_parameters')
+    messages = {
+        'en': ('PDF Master verification code', 'Your PDF Master verification code is: {code}\n\nUse this code only in PDF Master. If you did not request it, you can ignore this email.', 'PDF Master password reset code'),
+        'uz': ('PDF Master tasdiqlash kodi', 'PDF Master tasdiqlash kodingiz: {code}\n\nKodni faqat PDF Master ilovasida kiriting. Agar so‘rov yubormagan bo‘lsangiz, xatni e’tiborsiz qoldiring.', 'PDF Master parolni tiklash kodi'),
+        'ru': ('Код подтверждения PDF Master', 'Ваш код подтверждения PDF Master: {code}\n\nИспользуйте код только в PDF Master. Если вы не запрашивали код, проигнорируйте письмо.', 'Код сброса пароля PDF Master'),
+    }
+    subject, body, reset_subject = messages.get(locale, messages['en'])
+    if purpose in ('reset_password', 'password_reset', 'reset'): subject = reset_subject
+    connection = _email_connection(cfg)
+    try:
+        sent = EmailMessage(subject, body.format(code=code), cfg['from_email'], [recipient], connection=connection).send()
+        if sent != 1: raise ValueError()
+    except Exception: raise DomainError('email_delivery_failed', 503) from None
+    finally:
+        try: connection.close()
+        except Exception: pass
+
 @transaction.atomic
 def save_config(key, values):
     cfg, secrets = read_config(key)
@@ -84,6 +190,49 @@ def save_config(key, values):
         image_model=values.get('image_model',cfg.get('image_model','')).strip()
         if image_model and not re.fullmatch(r'[A-Za-z0-9_.:-]{1,100}',image_model):raise DomainError('invalid_parameters')
         cfg.update(mode=mode,model=model[:100],image_model=image_model)
+    elif key == 'google':
+        client_secret = values.get('client_secret', '')
+        if client_secret.strip():
+            if len(client_secret) > 1024 or any(ord(c) < 33 or ord(c) == 127 for c in client_secret):
+                raise DomainError('invalid_parameters')
+            secrets['client_secret'] = client_secret
+        current = google_config()
+        cfg.update(enabled=_boolean(values.get('enabled', False)),
+                   client_id=values.get('client_id', cfg.get('client_id', '')).strip(),
+                   redirect_uri=values.get('redirect_uri', current['redirect_uri']).strip())
+        _validate_google(cfg, secrets, current['webapp_url'])
+    elif key == 'email':
+        password = values.get('password', '')
+        if password.strip():
+            if len(password) > 1024 or any(ord(c) < 32 or ord(c) == 127 for c in password):
+                raise DomainError('invalid_parameters')
+            secrets['password'] = password
+        raw_host = values.get('host', cfg.get('host', ''))
+        if any(ord(c) < 32 or ord(c) == 127 for c in raw_host): raise DomainError('invalid_smtp_host')
+        host = raw_host.strip()
+        username = values.get('username', cfg.get('username', '')).strip()
+        sender = values.get('from_email', cfg.get('from_email', '')).strip()
+        if len(sender) > 254: raise DomainError('invalid_email_sender')
+        if host and (len(host) > 253 or not re.fullmatch(r'[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?', host)):
+            raise DomainError('invalid_smtp_host')
+        if len(username) > 254 or any(ord(c) < 32 or ord(c) == 127 for c in username):
+            raise DomainError('invalid_parameters')
+        if sender:
+            try: validate_email(sender)
+            except ValidationError: raise DomainError('invalid_email_sender') from None
+        try:
+            port = int(values.get('port', cfg.get('port', 587)))
+            if not 1 <= port <= 65535: raise ValueError()
+        except (ValueError, TypeError): raise DomainError('invalid_smtp_port') from None
+        use_tls = _boolean(values.get('use_tls', cfg.get('use_tls', True)))
+        use_ssl = _boolean(values.get('use_ssl', cfg.get('use_ssl', False)))
+        enabled = _boolean(values.get('enabled', False))
+        if use_tls and use_ssl: raise DomainError('invalid_email_security')
+        if not settings.DEBUG and not (use_tls or use_ssl): raise DomainError('email_tls_required')
+        if enabled and (not host or not sender or (username and not secrets.get('password'))):
+            raise DomainError('email_not_configured')
+        cfg.update(enabled=enabled, host=host, port=port, username=username, from_email=sender,
+                   use_tls=use_tls, use_ssl=use_ssl)
     else: raise DomainError('invalid_parameters')
     return IntegrationConfig.objects.update_or_create(key=key,defaults={'configuration':cfg,'encrypted_secrets':cipher().encrypt(json.dumps(secrets).encode()),'check_status':'not_checked'})[0]
 

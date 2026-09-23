@@ -6,7 +6,7 @@ from .services import quote_affordable
 def account_data(a):
     from apps.commerce.services import refresh_account_entitlement
     refresh_account_entitlement(a)
-    return {'id':str(a.id),'telegram_user_id':str(a.telegram_user_id),'display_name':a.display_name,'username':a.username,'locale':a.locale,'mode':a.mode,'time_zone':a.time_zone,'timezone':a.time_zone,'preferences':a.preferences,'plan':a.plan,'is_test':a.is_test,'created_at':a.created_at}
+    return {'id':str(a.id),'telegram_user_id':str(a.telegram_user_id) if a.telegram_user_id is not None else None,'email':a.email,'email_verified':bool(a.email_verified_at),'google_email':a.google_email or None,'login_methods':{'email':bool(a.password_hash and a.email_verified_at),'google':bool(a.google_sub),'telegram':a.telegram_user_id is not None},'display_name':a.display_name,'username':a.username,'locale':a.locale,'mode':a.mode,'time_zone':a.time_zone,'timezone':a.time_zone,'preferences':a.preferences,'plan':a.plan,'is_test':a.is_test,'created_at':a.created_at}
 
 def asset_data(a):
     state = 'expired' if a.expires_at<=timezone.now() else a.state

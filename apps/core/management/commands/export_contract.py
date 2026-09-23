@@ -143,7 +143,7 @@ def extend_schema(models, endpoint, paths):
 
 def schema():
     models={
-        'User':obj({'id':UUID,'telegram_user_id':S,'display_name':S,'username':S,'locale':{'enum':['en','uz','ru']},'mode':{'enum':['general','student','school','teacher']},'time_zone':S,'timezone':S,'preferences':{'type':'object'},'plan':{'enum':['free','plus','premium']},'is_test':B,'created_at':DT},['id','display_name','locale','plan']),
+        'User':obj({'id':UUID,'telegram_user_id':{'type':['string','null']},'email':{'type':['string','null']},'email_verified':B,'google_email':{'type':['string','null']},'login_methods':obj({'email':B,'google':B,'telegram':B},['email','google','telegram']),'display_name':S,'username':S,'locale':{'enum':['en','uz','ru']},'mode':{'enum':['general','student','school','teacher']},'time_zone':S,'timezone':S,'preferences':{'type':'object'},'plan':{'enum':['free','plus','premium']},'is_test':B,'created_at':DT},['id','display_name','locale','plan']),
         'Session':obj({'authenticated':B,'user':{'anyOf':[ref('User'),{'type':'null'}]},'csrf_token':S,'development_login_enabled':B},['authenticated','user','csrf_token','development_login_enabled']),
         'MeterBalance':obj({'limit':I,'used':I,'reserved':I,'remaining':I},['limit','used','reserved','remaining']),
         'Balances':obj({name:ref('MeterBalance') for name in ('file_tasks','file_page_units','ai_credits')},['file_tasks','file_page_units','ai_credits']),
@@ -172,9 +172,24 @@ def schema():
     endpoint('/auth/dev-login','post','developmentLogin',ref('Session'),obj({'locale':S}),True,description='Explicit loopback development-only login; unavailable outside DEBUG.')
     endpoint('/auth/telegram/miniapp','post','exchangeMiniApp',ref('Session'),obj({'init_data':S},['init_data']),True)
     challenge=obj({'id':UUID,'status':S,'expires_at':DT,'telegram_url':S,'browser_hint':S})
-    endpoint('/auth/browser/challenges','post','createLoginChallenge',challenge,obj({}),True,'201')
+    endpoint('/auth/browser/challenges','post','createLoginChallenge',challenge,obj({'intent':{'enum':['login','link']}}),True,'201')
     endpoint('/auth/browser/challenges/{id}','get','getLoginChallenge',challenge,public=True)
     endpoint('/auth/browser/challenges/{id}/exchange','post','exchangeLoginChallenge',ref('Session'),obj({}),True)
+    provider=obj({'enabled':B,'configured':B},['enabled','configured'])
+    endpoint('/auth/providers','get','getAuthProviders',obj({'email':provider,'google':provider,'telegram':provider},['email','google','telegram']),public=True)
+    sent=obj({'status':{'const':'verification_sent'},'challenge_id':UUID},['status','challenge_id'])
+    password={'type':'string','minLength':12,'maxLength':128,'writeOnly':True}
+    email={'type':'string','format':'email','maxLength':254}
+    verification=obj({'challenge_id':UUID,'code':{'type':'string','pattern':'^[0-9]{8}$','writeOnly':True}},['challenge_id','code'])
+    endpoint('/auth/email/register','post','registerEmail',sent,obj({'email':email,'password':password,'display_name':S,'locale':S},['email','password']),public=True)
+    endpoint('/auth/email/verify','post','verifyEmail',ref('Session'),verification,public=True)
+    endpoint('/auth/email/link','post','linkEmail',sent,obj({'email':email,'password':password},['email','password']))
+    endpoint('/auth/email/login','post','loginEmail',ref('Session'),obj({'email':email,'password':{'type':'string','maxLength':128,'writeOnly':True}},['email','password']),public=True)
+    endpoint('/auth/email/reset','post','requestPasswordReset',sent,obj({'email':email,'locale':S},['email']),public=True)
+    endpoint('/auth/email/reset/confirm','post','confirmPasswordReset',obj({'status':{'const':'password_reset'}},['status']),obj({**verification['properties'],'password':password},['challenge_id','code','password']),public=True)
+    endpoint('/auth/password','post','changePassword',ref('Session'),obj({'current_password':{'type':'string','writeOnly':True},'password':password},['current_password','password']))
+    endpoint('/auth/google/start','post','startGoogleAuth',obj({'authorization_url':S},['authorization_url']),obj({'intent':{'enum':['login','link']},'locale':S}),public=True)
+    endpoint('/auth/google/callback','get','completeGoogleAuth',S,public=True,code='302',description='Consumes one-use browser-bound OAuth state and redirects to the configured web app; no tokens are returned to the frontend.')
     endpoint('/me','get','getProfile',ref('User'))
     endpoint('/me','patch','updateProfile',ref('User'),obj({'locale':S,'mode':S,'time_zone':S,'preferences':{'type':'object'}}))
     endpoint('/me','delete','requestAccountDeletion',obj({'status':S}))

@@ -6,7 +6,7 @@ from django.views.decorators.http import require_http_methods
 from apps.core.errors import DomainError
 from .auth import require_staff,audit,development_access
 from .views import context,finish_render
-from .integrations import telegram_config,ai_config,save_config,test_telegram,control_runner,runner_status
+from .integrations import telegram_config,ai_config,google_config,email_config,save_config,test_telegram,test_email,control_runner,runner_status
 from .models import IntegrationConfig
 
 LABELS={
@@ -23,8 +23,51 @@ for language, values in {
 }.items():
     LABELS[language].update(zip(('managed', 'waiting', 'production_note'), values))
 
+AUTH_LABELS = {
+    'en': {
+        'intro': 'Connect Telegram, Google sign-in, email delivery, and your document generation provider. Secrets are encrypted and never shown after saving.',
+        'google': 'Google sign-in', 'google_enabled': 'Enable Google sign-in', 'client_id': 'OAuth client ID',
+        'client_secret': 'OAuth client secret', 'redirect_uri': 'Authorized redirect URI',
+        'google_hint': 'Create a Web application OAuth client in Google Cloud and copy this exact redirect URI into its authorized redirect URIs. The callback must use the same origin as the web application URL above.',
+        'email': 'Email and password sign-in', 'email_enabled': 'Enable email registration and recovery',
+        'smtp_host': 'SMTP host', 'smtp_port': 'SMTP port', 'smtp_username': 'SMTP username',
+        'smtp_password': 'SMTP password', 'from_email': 'Sender email address',
+        'tls': 'STARTTLS (usually port 587)', 'ssl': 'Implicit TLS (usually port 465)',
+        'email_hint': 'Verification and password reset codes use this mailbox. Choose one TLS mode, save, then test the connection. The test authenticates with your saved settings without sending an email.',
+        'email_connected': 'SMTP connection and authentication succeeded. No email was sent.',
+        'active': 'Enabled', 'inactive': 'Disabled', 'setup_required': 'Setup required',
+    },
+    'uz': {
+        'intro': 'Telegram, Google orqali kirish, elektron pochta va hujjat yaratish provayderini sozlang. Maxfiy kalitlar shifrlanadi va saqlangandan keyin ko‘rsatilmaydi.',
+        'google': 'Google orqali kirish', 'google_enabled': 'Google orqali kirishni yoqish', 'client_id': 'OAuth mijoz identifikatori',
+        'client_secret': 'OAuth maxfiy kaliti', 'redirect_uri': 'Ruxsat etilgan qaytish manzili',
+        'google_hint': 'Google Cloud’da Web application turidagi OAuth mijozini yarating va ushbu manzilni ruxsat etilgan qaytish manzillari ro‘yxatiga aynan kiriting. Qaytish manzili yuqoridagi veb ilova bilan bir xil domen va protokoldan foydalanishi kerak.',
+        'email': 'Elektron pochta va parol bilan kirish', 'email_enabled': 'Pochta orqali ro‘yxatdan o‘tish va tiklashni yoqish',
+        'smtp_host': 'SMTP serveri', 'smtp_port': 'SMTP porti', 'smtp_username': 'SMTP foydalanuvchi nomi',
+        'smtp_password': 'SMTP paroli', 'from_email': 'Yuboruvchi pochta manzili',
+        'tls': 'STARTTLS (odatda 587-port)', 'ssl': 'Bevosita TLS (odatda 465-port)',
+        'email_hint': 'Tasdiqlash va parolni tiklash kodlari ushbu pochta orqali yuboriladi. Bitta TLS rejimini tanlang, saqlang va ulanishni tekshiring. Tekshirish saqlangan ma’lumotlar bilan xat yubormasdan amalga oshiriladi.',
+        'email_connected': 'SMTP ulanishi va autentifikatsiya muvaffaqiyatli. Xat yuborilmadi.',
+        'active': 'Yoqilgan', 'inactive': 'O‘chirilgan', 'setup_required': 'Sozlash kerak',
+    },
+    'ru': {
+        'intro': 'Настройте Telegram, вход через Google, отправку почты и генерацию документов. Секреты шифруются и не показываются после сохранения.',
+        'google': 'Вход через Google', 'google_enabled': 'Включить вход через Google', 'client_id': 'ID клиента OAuth',
+        'client_secret': 'Секрет клиента OAuth', 'redirect_uri': 'Разрешённый URI перенаправления',
+        'google_hint': 'Создайте OAuth-клиент типа Web application в Google Cloud и добавьте этот точный URI в разрешённые адреса перенаправления. Обратный адрес должен использовать тот же домен, протокол и порт, что и адрес веб-приложения выше.',
+        'email': 'Вход по почте и паролю', 'email_enabled': 'Включить регистрацию и восстановление по почте',
+        'smtp_host': 'Сервер SMTP', 'smtp_port': 'Порт SMTP', 'smtp_username': 'Имя пользователя SMTP',
+        'smtp_password': 'Пароль SMTP', 'from_email': 'Адрес отправителя',
+        'tls': 'STARTTLS (обычно порт 587)', 'ssl': 'Неявный TLS (обычно порт 465)',
+        'email_hint': 'Коды подтверждения и сброса пароля отправляются через этот почтовый ящик. Выберите один режим TLS, сохраните настройки и проверьте соединение. Проверка использует сохранённые настройки и не отправляет писем.',
+        'email_connected': 'Соединение и аутентификация SMTP проверены. Письмо не отправлялось.',
+        'active': 'Включено', 'inactive': 'Отключено', 'setup_required': 'Требуется настройка',
+    },
+}
+for language, labels in AUTH_LABELS.items(): LABELS[language].update(labels)
+
 @require_staff()
-@sensitive_post_parameters('token','api_key')
+@sensitive_post_parameters('token','api_key','client_secret','password')
 @require_http_methods(['GET','POST'])
 def integrations(request):
     data=context(request,'integrations');labels=LABELS[data['lang']];data['i']=labels;data['title']=labels['integrations']
@@ -34,9 +77,11 @@ def integrations(request):
         else:
             try:
                 key=request.POST.get('integration','telegram')
-                if action!='save' and key!='telegram':raise DomainError('invalid_parameters')
+                if action!='save' and key!='telegram' and not (key=='email' and action=='test'):raise DomainError('invalid_parameters')
                 if action=='save':save_config(key,request.POST);message='saved'
-                elif action=='test':test_telegram();message='connected'
+                elif action=='test':
+                    if key=='email':test_email();message='email_connected'
+                    else:test_telegram();message='connected'
                 elif action in ('start','stop'):
                     if not development_access(request):raise DomainError('local_control_only',403)
                     control_runner(action);message='action_done'
@@ -45,11 +90,13 @@ def integrations(request):
                 return redirect('/ops/integrations?lang='+data['lang']+'&notice='+message)
             except DomainError as e:
                 data['error']=labels['failure'];data['error_code']=e.code
-    bot=telegram_config();ai=ai_config()
+    bot=telegram_config();ai=ai_config();google=google_config();email=email_config()
     local_controls=development_access(request)
     # A container-managed bot has a different PID namespace from the API.
     # Do not misreport it as stopped using the local development PID check.
     status=labels[runner_status()] if local_controls else labels['managed' if bot['token'] else 'waiting']
     # Never include credentials in the template context.
     data.update(bot={'username':bot['username'],'webapp_url':bot['webapp_url'],'configured':bool(bot['token']),'status':status},ai={'mode':ai['mode'],'model':ai['model'],'image_model':ai['image_model'],'configured':bool(ai['api_key'])},local_controls=local_controls,notice=labels.get(request.GET.get('notice',''),''))
+    data['google'] = {key: google[key] for key in ('enabled','client_id','redirect_uri','configured','ready')}
+    data['email'] = {key: email[key] for key in ('enabled','host','port','username','use_tls','use_ssl','from_email','configured','ready')}
     return finish_render(request,'ops/integrations.html',data)
