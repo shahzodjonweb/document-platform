@@ -15,6 +15,7 @@ from types import SimpleNamespace
 from urllib.parse import urlencode, urlsplit
 
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.auth.password_validation import (
     CommonPasswordValidator, MinimumLengthValidator, NumericPasswordValidator,
@@ -53,7 +54,7 @@ def password_hash(password, email='', display_name=''):
     if not isinstance(password, str) or not 12 <= len(password) <= 128:
         raise DomainError('weak_password')
     try:
-        validate_password(password, SimpleNamespace(email=email, username=email.split('@')[0], first_name=display_name, last_name=''), PASSWORD_VALIDATORS)
+        validate_password(password, get_user_model()(email=email, username=email.split('@')[0], first_name=display_name), PASSWORD_VALIDATORS)
     except ValidationError:
         raise DomainError('weak_password') from None
     return make_password(password)

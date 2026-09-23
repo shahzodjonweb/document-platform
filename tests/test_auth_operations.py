@@ -41,3 +41,11 @@ def test_production_access_logs_omit_callback_query_strings(settings):
     config = (settings.BASE_DIR/'infra/production/nginx.conf').read_text()
     assert 'log_format pdfmaster_safe' in config and '$uri' in config
     assert '$request_uri' not in config and '$http_referer' not in config
+
+
+@pytest.mark.parametrize('password', ['owner@example.com', 'Example Customer'])
+def test_personal_details_are_rejected_as_passwords_without_server_error(password):
+    from apps.core.customer_auth import password_hash
+    from apps.core.errors import DomainError
+    with pytest.raises(DomainError, match='weak_password'):
+        password_hash(password, 'owner@example.com', 'Example Customer')
