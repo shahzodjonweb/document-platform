@@ -73,8 +73,10 @@ while job.status in ('queued','running','finalizing') and time.monotonic()<deadl
     time.sleep(1);job.refresh_from_db()
 print('VERIFY_WORKER_RESULT',job.status,job.error_code or 'none')
 assert job.status=='succeeded'
-artifact=Artifact.objects.get(job=job)
-assert len(PdfReader(storage_path(artifact.object_key)).pages)==3
+artifact=Artifact.objects.select_related('file').get(job=job)
+pages=len(PdfReader(storage_path(artifact.file.object_key)).pages)
+print('VERIFY_OUTPUT_PAGES',pages)
+assert pages==3
 assert job.settled_meters=={'file_tasks':1,'file_page_units':3,'ai_credits':0}
 print('VERIFY_REAL_MERGE_OK',str(job.pk))
 print('VERIFY_TELEGRAM_CREDENTIALS', 'configured' if telegram_config()['token'] else 'awaiting_admin_configuration')
