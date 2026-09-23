@@ -6,7 +6,7 @@ on:
         description: PDF Master operation
         required: true
         type: choice
-        options: [inventory, public-key]
+        options: [inventory, public-key, ssh-check]
 permissions:
   contents: read
 jobs:

@@ -6,7 +6,7 @@ import subprocess
 import tempfile
 
 operation = os.environ['OPERATION']
-if operation not in {'inventory', 'public-key'}:
+if operation not in {'inventory', 'public-key', 'ssh-check'}:
     raise SystemExit('Unsupported server operation')
 host = os.environ['DEPLOY_HOST'].strip()
 user = os.environ['DEPLOY_USER'].strip()
@@ -32,6 +32,19 @@ with tempfile.TemporaryDirectory() as folder:
             '-o','BatchMode=yes','-o','IdentitiesOnly=yes','-o','StrictHostKeyChecking=yes',
             '-o',f'UserKnownHostsFile={known}','-o','GlobalKnownHostsFile=/dev/null',
             '-o','ConnectTimeout=15','-o','ServerAliveInterval=15',f'{user}@{host}', 'python3 -']
+    if operation == 'ssh-check':
+        # These are the two accounts identified by the user and the existing
+        # project's deployment documentation. Check authentication only; never
+        # modify that project, authorize keys, or change the selected deploy user.
+        connected = False
+        for account in ('root', 'orderdesk-deploy'):
+            check = [*args[:-2], f'{account}@{host}', 'id -un']
+            result = subprocess.run(check, capture_output=True, text=True, timeout=30)
+            accepted = result.returncode == 0 and result.stdout.strip() == account
+            print(f'ACCOUNT_{account.upper().replace("-", "_")}: '
+                  + ('accepted' if accepted else 'rejected'), flush=True)
+            connected = connected or accepted
+        raise SystemExit(0 if connected else 1)
     with Path(__file__).with_name(operation+'.py').open('rb') as source:
         result = subprocess.run(args,stdin=source,timeout=800)
     raise SystemExit(result.returncode)
