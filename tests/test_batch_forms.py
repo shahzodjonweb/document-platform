@@ -88,13 +88,25 @@ def test_changed_template_rejects_confirmation_but_accepted_snapshot_survives_ed
     {'commands':[{'type':'redact','page':1,'x':0,'y':0,'width':10,'height':10}]},
     {'commands':[{'type':'fill_form','field':'customer','value':{'unexpected':'object'}}]},
     {'commands':[{'type':'fill_form','field':'customer','value':'a'},{'type':'fill_form','field':'customer','value':'b'}]},
-    {'commands':[{'type':'fill_form','field':'customer','value':'hidden\x00value'}]},
+    {'commands':[{'type':'fill_form','field':'customer','value':'hidden\x01value'}]},
 ])
 def test_malformed_or_mixed_saved_commands_are_rejected(content):
     with pytest.raises(DomainError):validate_form_template(content)
     a=paid(account(),'premium');saved=template(a);saved.definition['content']=content;saved.save(update_fields=['definition'])
     with pytest.raises(DomainError):form_quote(a,saved,[form_pdf(a)])
     assert not Quote.objects.exists() and not BatchRun.objects.exists()
+
+
+def test_null_character_is_rejected_before_json_storage():
+    # PostgreSQL jsonb cannot store NUL. Exercise the public boundary instead
+    # of seeding an impossible database row; other controls are tested above.
+    content={'commands':[{'type':'fill_form','field':'customer','value':'hidden\x00value'}]}
+    with pytest.raises(DomainError):validate_form_template(content)
+    a=paid(account(),'premium')
+    response=login_client(a).post('/api/v1/editor/form-templates',
+        {'name':'Invalid control character','content':content},content_type='application/json')
+    assert response.status_code==400
+    assert not SavedDefinition.objects.exists() and not Quote.objects.exists()
 
 
 def test_missing_fields_and_unqualified_control_types_rejected_before_reservation():

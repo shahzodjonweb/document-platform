@@ -222,7 +222,9 @@ def submit_job(account, quote_id, idempotency_key, origin='web'):
     job = Job.objects.create(account=account,quote=quote,feature_id=quote.feature_id,parameters=quote.parameters,input_ids=quote.input_ids,policy=quote.policy,meters=quote.meters,idempotency_key=idempotency_key,request_hash=request_hash,origin_channel=origin)
     for meter, amount in quote.meters.items():
         remaining = amount
-        grants = list(active_grants(account).filter(meter=meter).select_for_update())
+        # Eligibility includes an optional payment join. Lock the grant rows
+        # themselves; PostgreSQL cannot lock the nullable side of that join.
+        grants = list(active_grants(account).filter(meter=meter).select_for_update(of=('self',)))
         rank = {'included':0,'referral':1,'purchased':2}
         grants.sort(key=lambda g:(rank.get(g.source,9),g.expires_at or timezone.now()+timedelta(days=100000),str(g.pk)))
         for grant in grants:
