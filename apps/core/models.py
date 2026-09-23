@@ -8,10 +8,10 @@ class Account(models.Model):
     telegram_user_id = models.BigIntegerField(unique=True, null=True, blank=True)
     email = models.EmailField(max_length=254, unique=True, null=True, blank=True)
     email_verified_at = models.DateTimeField(null=True, blank=True)
-    password_hash = models.CharField(max_length=256, blank=True)
+    password_hash = models.CharField(max_length=256, blank=True, db_default='')
     google_sub = models.CharField(max_length=255, unique=True, null=True, blank=True)
-    google_email = models.EmailField(max_length=254, blank=True)
-    auth_version = models.PositiveIntegerField(default=0)
+    google_email = models.EmailField(max_length=254, blank=True, db_default='')
+    auth_version = models.PositiveIntegerField(default=0, db_default=0)
     username = models.CharField(max_length=64, blank=True)
     display_name = models.CharField(max_length=150, blank=True)
     locale = models.CharField(max_length=2, default='en')
@@ -35,10 +35,10 @@ class AuthChallenge(models.Model):
     expires_at = models.DateTimeField()
     consumed_at = models.DateTimeField(null=True)
     approved_at = models.DateTimeField(null=True)
-    intent = models.CharField(max_length=8, default='login')
+    intent = models.CharField(max_length=8, default='login', db_default='login')
     link_account = models.ForeignKey(Account, null=True, on_delete=models.CASCADE, related_name='+')
-    link_auth_version = models.PositiveIntegerField(default=0)
-    telegram_user = models.JSONField(default=dict)
+    link_auth_version = models.PositiveIntegerField(default=0, db_default=0)
+    telegram_user = models.JSONField(default=dict, db_default={})
 
 
 class EmailChallenge(models.Model):

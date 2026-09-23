@@ -24,7 +24,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='account',
             name='auth_version',
-            field=models.PositiveIntegerField(default=0),
+            field=models.PositiveIntegerField(default=0, db_default=0),
         ),
         migrations.AddField(
             model_name='account',
@@ -39,7 +39,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='account',
             name='google_email',
-            field=models.EmailField(blank=True, max_length=254),
+            field=models.EmailField(blank=True, max_length=254, db_default=''),
         ),
         migrations.AddField(
             model_name='account',
@@ -49,12 +49,12 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='account',
             name='password_hash',
-            field=models.CharField(blank=True, max_length=256),
+            field=models.CharField(blank=True, max_length=256, db_default=''),
         ),
         migrations.AddField(
             model_name='authchallenge',
             name='intent',
-            field=models.CharField(default='login', max_length=8),
+            field=models.CharField(default='login', max_length=8, db_default='login'),
         ),
         migrations.AddField(
             model_name='authchallenge',
@@ -64,12 +64,12 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='authchallenge',
             name='link_auth_version',
-            field=models.PositiveIntegerField(default=0),
+            field=models.PositiveIntegerField(default=0, db_default=0),
         ),
         migrations.AddField(
             model_name='authchallenge',
             name='telegram_user',
-            field=models.JSONField(default=dict),
+            field=models.JSONField(default=dict, db_default={}),
         ),
         migrations.AlterField(
             model_name='account',

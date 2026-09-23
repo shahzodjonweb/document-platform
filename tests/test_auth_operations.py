@@ -49,3 +49,22 @@ def test_personal_details_are_rejected_as_passwords_without_server_error(passwor
     from apps.core.errors import DomainError
     with pytest.raises(DomainError, match='weak_password'):
         password_hash(password, 'owner@example.com', 'Example Customer')
+
+
+@pytest.mark.django_db(transaction=True)
+def test_legacy_telegram_binary_can_insert_after_auth_migration():
+    # Historical ORM omits all new columns, as the old binary does during rollout
+    # or image rollback. Database defaults must make those writes safe.
+    from django.db import connection
+    from django.db.migrations.loader import MigrationLoader
+    state = MigrationLoader(connection).project_state([('core', '0006_alter_outboxevent_publish_attempts')])
+    LegacyAccount = state.apps.get_model('core', 'Account')
+    LegacyChallenge = state.apps.get_model('core', 'AuthChallenge')
+    old = LegacyAccount.objects.create(telegram_user_id=71421, display_name='Existing bot')
+    challenge = LegacyChallenge.objects.create(token_hash='legacy-token', verifier_hash='legacy-verifier', browser_hint='legacy browser', expires_at=timezone.now()+timedelta(minutes=5))
+    from apps.core.models import Account, AuthChallenge
+    current = Account.objects.get(pk=old.pk)
+    assert current.auth_version == 0 and current.password_hash == '' and current.google_email == ''
+    assert current.telegram_user_id == 71421
+    current_challenge = AuthChallenge.objects.get(pk=challenge.pk)
+    assert current_challenge.intent == 'login' and current_challenge.link_auth_version == 0 and current_challenge.telegram_user == {}
