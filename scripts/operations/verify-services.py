@@ -54,6 +54,7 @@ from apps.core.models import Account,Job,Artifact
 from apps.core.services import upload_file,create_quote,submit_job,storage_path
 from operations.integrations import telegram_config
 assert not settings.DEBUG and not settings.DEV_AUTH_ENABLED and not settings.LOCAL_SYNC_JOBS
+print('VERIFY_WORKER_SETUP')
 account,created=Account.objects.get_or_create(telegram_user_id=-2026092401,
     defaults={'is_test':True,'display_name':'Deployment verification','locale':'en'})
 assert account.is_test
@@ -67,6 +68,7 @@ if job is None:
         content=io.BytesIO();document.write(content)
         files.append(upload_file(account,SimpleUploadedFile(f'verification-{count}.pdf',content.getvalue(),content_type='application/pdf')))
     quote=create_quote(account,'pdf.merge',[str(asset.pk) for asset in files],{})
+    print('VERIFY_WORKER_SUBMIT')
     job,_=submit_job(account,quote.pk,key)
 deadline=time.monotonic()+90
 while job.status in ('queued','running','finalizing') and time.monotonic()<deadline:
@@ -106,7 +108,7 @@ if cfg['token']:
     print('VERIFY_BOT_POLLING_CONFIGURATION_OK')
 '''
 output = command(['docker', 'exec', '-i', api, 'python', 'manage.py', 'shell', '-c',
-                  'import sys; exec(sys.stdin.read())'], source)
+                  "import sys\ntry:\n exec(sys.stdin.read())\nexcept Exception as exc:\n print('VERIFY_FAILURE',type(exc).__name__,getattr(exc,'code','unspecified'))\n raise SystemExit(1)"], source)
 for line in output.splitlines():
     if line.startswith('VERIFY_'):
         print(line)
