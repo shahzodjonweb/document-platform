@@ -20,6 +20,7 @@ def routes(args):
         } or (isinstance(v,dict) and 'routes' in v)}
     return json.dumps(walk(value))
 print('ARCHITECTURE' ,output(['uname','-m']))
+print('ACCOUNT',output(['id','-un']))
 print('COMPOSE',output(['docker','compose','version','--short']))
 print('MEMORY',output(['free','-m']))
 print('DISK',output(['df','-h','/']))
@@ -36,9 +37,9 @@ if ids and ids!=['unavailable']:
             'mounts':[{'source':m['Source'],'target':m['Destination']} for m in c['Mounts']]}))
         if 'caddy' in c['Config']['Image'].lower():
             print('CADDY_ROUTES',routes(['docker','exec',c['Id'],'caddy','adapt','--config','/etc/caddy/Caddyfile','--pretty']))
-for path in ('/etc/caddy/Caddyfile','/root/pdf-master/state.json'):
+for path in ('/etc/caddy/Caddyfile',str(Path.home()/'pdf-master/state.json')):
     p=Path(path)
     if p.is_file():
         if path.endswith('state.json'):print('EXISTING_PDFMASTER_STATE',p.read_text())
         else:print('HOST_CADDY_ROUTES',routes(['caddy','adapt','--config',path,'--pretty']))
-print('PDFMASTER_PATH_EXISTS',Path('/root/pdf-master').exists())
+print('PDFMASTER_PATH_EXISTS',(Path.home()/'pdf-master').exists())
