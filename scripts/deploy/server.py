@@ -21,7 +21,7 @@ import time
 
 PROJECT = "pdfmaster"
 MAX_BUNDLE = 3 * 1024**3
-SERVICES = ["api", "worker", "batches", "cleanup", "web", "gateway"]
+SERVICES = ["api", "worker", "batches", "cleanup", "web"]
 
 
 class DeploymentError(Exception):
@@ -222,6 +222,9 @@ class Deployer:
                 self.compose(pair, "exec", "-T", "db", "pg_dump", "-U", "pdfmaster",
                              "-d", "pdfmaster", "-Fc", output_stream=stream)
         self.compose(pair, "run", "--rm", "--no-deps", "init")
+        self.start_services(pair)
+
+    def start_services(self, pair):
         services = SERVICES + (["bot"] if self.settings.get("COMPOSE_PROFILES") == "bot" else [])
         self.compose(pair, "up", "-d", "--wait", "--wait-timeout", "180", *services)
         if "bot" not in services:
@@ -229,6 +232,10 @@ class Deployer:
             # is absent from the default Compose model.
             if self.compose(pair, "--profile", "bot", "ps", "-q", "bot"):
                 self.compose(pair, "--profile", "bot", "stop", "bot")
+        # Nginx resolves upstream addresses on startup. Recreate the gateway
+        # after application replacements so it cannot retain an old container IP.
+        self.compose(pair, "up", "-d", "--no-deps", "--force-recreate", "--wait",
+                     "--wait-timeout", "120", "gateway")
         # Exercise routes through the gateway, not just container liveness.
         self.compose(pair, "exec", "-T", "gateway", "wget", "-q", "-O", "/dev/null",
                      "http://127.0.0.1:8080/api/v1/health")
@@ -239,8 +246,7 @@ class Deployer:
         # Restore matching staff assets; never run reverse database migrations.
         self.compose(pair, "run", "--rm", "--no-deps", "init",
                      "python", "manage.py", "collectstatic", "--noinput")
-        self.compose(pair, "up", "-d", "--wait", "--wait-timeout", "180",
-                     *(SERVICES + (["bot"] if self.settings.get("COMPOSE_PROFILES") == "bot" else [])))
+        self.start_services(pair)
 
     def deploy(self, bundle):
         self.preflight()

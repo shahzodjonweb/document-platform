@@ -93,6 +93,18 @@ class Releases(unittest.TestCase):
         self.assertTrue(all(x[x.index("--project-name")+1]=="pdfmaster"
                             for x in commands if "--project-name" in x))
 
+    def test_gateway_restarts_after_apps_and_rollback_checks_routes(self):
+        self.deploy("platform",10); self.deploy("web",11)
+        self.docker.calls.clear()
+        self.deploy("web",12)
+        application = next(i for i,c in enumerate(self.docker.calls) if "up" in c and "api" in c)
+        gateway = next(i for i,c in enumerate(self.docker.calls) if "up" in c and "gateway" in c)
+        self.assertLess(application, gateway)
+        self.assertIn("--force-recreate", self.docker.calls[gateway])
+        self.docker.calls.clear()
+        self.deployer.rollback()
+        self.assertTrue(any("http://127.0.0.1:8080/en/app" in c for c in self.docker.calls))
+
     def test_web_may_arrive_first(self):
         self.assertEqual(self.deploy("web", 2)[0]["status"],"staged_waiting_for_other_component")
         self.assertEqual(self.deploy("platform", 3)[0]["status"],"deployed")
