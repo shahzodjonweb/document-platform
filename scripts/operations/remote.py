@@ -6,7 +6,7 @@ import subprocess
 import tempfile
 
 operation = os.environ['OPERATION']
-if operation not in {'inventory', 'public-key', 'ssh-check'}:
+if operation not in {'inventory', 'public-key', 'ssh-check', 'proxy-prepare', 'proxy-publish'}:
     raise SystemExit('Unsupported server operation')
 host = os.environ['DEPLOY_HOST'].strip()
 user = os.environ['DEPLOY_USER'].strip()
@@ -45,6 +45,10 @@ with tempfile.TemporaryDirectory() as folder:
                   + ('accepted' if accepted else 'rejected'), flush=True)
             connected = connected or accepted
         raise SystemExit(0 if connected else 1)
-    with Path(__file__).with_name(operation+'.py').open('rb') as source:
+    script = operation + '.py'
+    if operation in {'proxy-prepare', 'proxy-publish'}:
+        script = 'proxy_setup.py'
+        args[-1] = 'python3 - ' + operation.removeprefix('proxy-')
+    with Path(__file__).with_name(script).open('rb') as source:
         result = subprocess.run(args,stdin=source,timeout=800)
     raise SystemExit(result.returncode)
