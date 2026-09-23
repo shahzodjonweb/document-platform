@@ -13,6 +13,7 @@ parser.add_argument("--key-file", type=Path, required=True)
 parser.add_argument("--known-hosts-file", type=Path, required=True)
 parser.add_argument("--port", type=int, default=22)
 parser.add_argument("--owner", default="shahzodjonweb")
+parser.add_argument("--storage", choices=("variables", "secrets"), default="variables")
 args = parser.parse_args()
 if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.:-]{0,253}", args.host) or not re.fullmatch(r"[a-z_][a-z0-9_-]{0,31}", args.user):
     parser.error("Invalid host/user")
@@ -28,16 +29,17 @@ for command in (
 values = {"DEPLOY_HOST": args.host, "DEPLOY_USER": args.user,
           "DEPLOY_SSH_KEY": args.key_file.read_text(),
           "DEPLOY_KNOWN_HOSTS": args.known_hosts_file.read_text()}
+storage = "variable" if args.storage == "variables" else "secret"
 for name in ("document-platform", "document-web"):
     repo = args.owner + "/" + name
     details = json.loads(subprocess.check_output(["gh", "repo", "view", repo, "--json", "isPrivate"]))
     if not details["isPrivate"]:
         raise SystemExit("Refusing to configure deployment credentials in a public repository: " + repo)
     for key, value in values.items():
-        subprocess.run(["gh", "variable", "set", key, "--repo", repo], input=value.encode(), check=True)
+        subprocess.run(["gh", storage, "set", key, "--repo", repo], input=value.encode(), check=True)
     # Set the port even when it is 22, so a previous custom value cannot linger.
     subprocess.run(["gh", "variable", "set", "DEPLOY_PORT", "--repo", repo, "--body", str(args.port)], check=True)
-    actual = json.loads(subprocess.check_output(["gh", "variable", "list", "--repo", repo, "--json", "name"]))
+    actual = json.loads(subprocess.check_output(["gh", storage, "list", "--repo", repo, "--json", "name"]))
     if not set(values).issubset({item["name"] for item in actual}):
         raise SystemExit("Variable-name verification failed: " + repo)
-    print(repo + ": all four deployment variable names verified.")
+    print(repo + ": all four deployment setting names verified.")

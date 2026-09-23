@@ -23,11 +23,13 @@ if not port.isdigit() or not 1 <= int(port) <= 65535:
 sha, run, attempt = os.environ["GITHUB_SHA"], os.environ["GITHUB_RUN_ID"], os.environ["GITHUB_RUN_ATTEMPT"]
 if not re.fullmatch(r"[a-f0-9]{40}", sha) or not run.isdigit() or not attempt.isdigit():
     raise SystemExit("Invalid release metadata")
-relative = f"pdf-master/incoming/{args.component}-{sha}-{run}-{attempt}"
+relative = f"pdf-master/{args.component}/incoming/{sha}-{run}-{attempt}"
 # Only validated identifiers enter the remote shell. User/host stay local argv.
 remote = (f'set -eu; umask 077; mkdir -p "$HOME/{relative}"; cd "$HOME/{relative}"; '
           "trap 'rm -f release.tar.gz' EXIT; tar -xf -; "
-          "python3 server.py deploy --bundle release.tar.gz")
+          f'if [ ! -e "$HOME/pdf-master/{args.component}/.env" ]; then '
+          f'python3 init_environment.py --component {args.component} --enable-document-tools; fi; '
+          f"python3 server.py deploy --component {args.component} --bundle release.tar.gz")
 with tempfile.TemporaryDirectory(prefix="pdfmaster-ssh-") as folder:
     key = Path(folder) / "key"
     known = Path(folder) / "known_hosts"
@@ -52,6 +54,7 @@ with tempfile.TemporaryDirectory(prefix="pdfmaster-ssh-") as folder:
             with tarfile.open(fileobj=process.stdin, mode="w|") as transport:
                 transport.add(args.bundle, arcname="release.tar.gz", recursive=False)
                 transport.add(Path(__file__).with_name("server.py"), arcname="server.py", recursive=False)
+                transport.add(Path(__file__).with_name("init_environment.py"), arcname="init_environment.py", recursive=False)
             process.stdin.close()
             code = process.wait(timeout=1500)
         except BaseException:
@@ -65,6 +68,5 @@ with tempfile.TemporaryDirectory(prefix="pdfmaster-ssh-") as folder:
     summary = Path(os.environ.get("GITHUB_STEP_SUMMARY", "/dev/null"))
     with summary.open("a") as stream:
         stream.write("\n## Server result\n\n" + result["status"].replace("_", " ") + "\n")
-        if result["status"].startswith("staged"):
-            stream.write("\nNo new stack was activated. Deploy the other repository with the matching API contract.\n")
+
     print(json.dumps(result))

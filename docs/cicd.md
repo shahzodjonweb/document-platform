@@ -1,118 +1,77 @@
-# CI/CD and server setup
+# Independent deployments on orderdesk.live
 
-Both private repositories deploy into one isolated Docker Compose project named `pdfmaster`. The platform image runs the API, admin panel, document workers and optional Telegram bot; the web image serves the customer application. GitHub builds and tests the images and transfers release archives over SSH. The server needs neither a GitHub token nor access to a private image registry.
+| Repository | URL | Docker project | Server directory | Loopback gateway |
+| --- | --- | --- | --- | --- |
+| document-platform | https://pdfmaster-admin.orderdesk.live/ops/login | pdfmaster-platform | ~/pdf-master/platform | 127.0.0.1:8311 |
+| document-web | https://pdfmaster.orderdesk.live/en/app | pdfmaster-web | ~/pdf-master/web | 127.0.0.1:8310 |
 
-## Required GitHub Actions variables
+The platform owns the API, admin, PostgreSQL, Redis, private files, workers and Telegram bot. The web project owns only its customer application and gateway. Each has its own Compose network, environment, deployment lock, release history and rollback. Web deployments never run platform migrations or touch its containers/volumes; platform deployments never change web containers. Neither deployer modifies other server projects or prunes Docker globally.
 
-Add these **repository variables to both repositories**, using the same target server and account:
+The customer app calls the API through its same-origin `/api` proxy to `https://pdfmaster-admin.orderdesk.live`. It shares no Docker network with the platform. API availability remains an application dependency; use backward-compatible API changes and migrations when releasing independently. A backend restart can briefly interrupt API requests, while the web container continues serving the interface.
 
-| Secret | Value |
+## GitHub credentials
+
+Both repositories accept the following settings from **Settings → Secrets and variables → Actions**. The existing SSH key can remain in Secrets; repository Variables are also supported. Values pass into a reusable workflow as masked secret inputs before any step environment is logged. A key stored as a Variable remains readable in variable settings; masking does not change that storage behavior.
+
+| Setting | Value |
 | --- | --- |
-| `DEPLOY_HOST` | Server hostname or IP address, without a URL scheme |
-| `DEPLOY_USER` | SSH account with Docker access |
-| `DEPLOY_SSH_KEY` | Complete private deployment key, usable without an interactive passphrase |
-| `DEPLOY_KNOWN_HOSTS` | Verified OpenSSH known-hosts entry for that host and SSH port |
+| DEPLOY_HOST | 77.42.34.241 |
+| DEPLOY_USER | root |
+| DEPLOY_SSH_KEY | Private deployment key whose public half is authorized for root on this server |
+| DEPLOY_KNOWN_HOSTS | Verified OpenSSH known-hosts entry for the host and SSH port |
 
-Settings: [platform variables](https://github.com/shahzodjonweb/document-platform/settings/variables/actions), [web variables](https://github.com/shahzodjonweb/document-web/settings/variables/actions).
+No SSH password, registry token, or server GitHub checkout is used. `DEPLOY_PORT` is an optional Actions Variable, default 22. `DEPLOY_PLATFORM` defaults to `linux/amd64`; use `linux/arm64` for an ARM host.
 
-Use **Settings → Secrets and variables → Actions → Variables → New repository variable**. The source is `vars.DEPLOY_*` in `ci.yml`; no repository secret with those names is required. Values are passed into `deploy.yml` as reusable-workflow secret inputs so the runner masks them before logging step environments. This protects this deployment job's logs; it does not make values stored in GitHub Variables confidential. People with access to variable settings can read those values, including the SSH key. Keep access to these private repositories limited accordingly.
-
-Use a dedicated deployment key whose public half is installed in the server account's `authorized_keys`. Confirm the host fingerprint through your server provider's console or an existing trusted record before supplying the known-hosts file. An unverified `ssh-keyscan` result alone does not establish trust. Never commit or paste private keys into chat.
-
-With authenticated GitHub CLI access, this helper sets and verifies the four names in **both** private repositories. It reads key contents from files and sends values through standard input:
+The configuration helper can populate both repositories from local key files without printing their contents:
 
 ```sh
-python3 scripts/deploy/configure_variables.py \
-  --host your-server.example --user deploy \
+python3 scripts/deploy/configure_variables.py --storage secrets \
+  --host 77.42.34.241 --user root \
   --key-file /absolute/path/deployment-key \
   --known-hosts-file /absolute/path/verified-known-hosts
 ```
 
-For a nonstandard SSH port add `--port 2222`; this also sets the normal Actions variable `DEPLOY_PORT`. Its known-hosts entry must match `[host]:2222`. Set the normal Actions variable `DEPLOY_PLATFORM=linux/arm64` in both repositories for an ARM server; the default is `linux/amd64`.
+Omit `--storage secrets` to store the values as Variables. Confirm the host fingerprint through an existing trusted record or the server provider's console; do not trust an unverified key scan. The matching public key must be installed in `/root/.ssh/authorized_keys`. A valid private key in GitHub alone does not authorize it on the server.
 
-Without all four variables, CI still tests and packages the application, and the deployment job explicitly reports **Deployment not configured**. It does not connect to a server. A green CI run with that message does not mean the website was deployed.
+## Build, activation and rollback
 
-## Pipeline behavior
+CI validates each repository, builds an immutable image and boots **its own complete production Compose stack**, including gateway routes. The platform runs all application tests on SQLite and PostgreSQL. Both run deployment tests covering independent updates, independent locks, failed release recovery, path traversal, archive tampering and stale workflow delivery.
 
-Pull requests run checks and build and smoke-test the real Docker images. Platform checks include SQLite and PostgreSQL application tests, schema consistency, migration checks and release transaction tests. Web checks include the API/catalog contract, type checking, production build and release transaction tests.
+Passing `main` releases transfer an image archive over host-pinned SSH. Release protocol v2 rejects component mismatches. Each repository deploys immediately without waiting for the other repository's image or API checksum. A delayed older run cannot supersede its newer release.
 
-On `main`, a passing build also produces an immutable release archive, retained in GitHub for one day, and deploys if credentials are configured. Deployments from the two repositories share a server-side lock. A delayed older workflow cannot replace a newer release. The first component waits for the other; changes to the public API checksum wait for a matching pair before activation. The last healthy pair remains active while a new pair is pending.
+On first delivery, `init_environment.py` creates only that component's environment, mode 600, without overwriting existing keys. Platform application and encryption keys are random. Development login, test synchronization and sandbox commerce remain disabled. The platform enables document tools and starts a bot process that waits for credentials in Admin Integrations.
 
-The deployer verifies archive checksums and image identity, starts only the `pdfmaster` database and Redis, backs up the database, runs migrations and collects static assets, starts services, then checks API and web routes through the gateway. A normal health or migration failure restores the previous images and static assets when a healthy previous release exists. The first deployment has no previous release to restore. Database migrations are never automatically reversed; use backward-compatible migrations.
-
-## Prepare the server once
-
-Requirements: Linux, Python 3.10+, Docker with Compose 2.24+, SSH, tar, and a deployment account with Docker access. Inspect free RAM, disk, ports and existing containers before activation. Document processing and LibreOffice need substantially more resources than a static website; the Compose file sets explicit per-service limits. Choose a free loopback port (default `8310`) and a new domain/subdomain.
-
-Copy `scripts/deploy/init_environment.py` to the server using your verified SSH connection, then run there:
+Only platform deployments back up PostgreSQL, run forward migrations and collect static assets. Each release starts its own services, refreshes only its own gateway and verifies its routes. A failed release restores the previous healthy image and, for the platform, static assets. Database migrations are never reversed automatically. Rollback is scoped explicitly:
 
 ```sh
-python3 /path/to/init_environment.py --domain pdf.your-domain.com --port 8310
+python3 ~/pdf-master/platform/incoming/RELEASE_DIRECTORY/server.py rollback --component platform
+python3 ~/pdf-master/web/incoming/RELEASE_DIRECTORY/server.py rollback --component web
 ```
 
-This creates `~/pdf-master/.env` with random application, database and encryption keys and mode `600`. It refuses to overwrite an existing environment. Keep this file on the server and preserve it with backups: encrypted data requires its original keys.
+The first release has no previous image to restore. The persistent directories contain `.env`, `.owner`, `state.json`, `deploy.lock`, `releases/` and `incoming/`. Platform database dumps are in `~/pdf-master/platform/backups/`. Images, previous releases and backups are retained; configure a scoped retention and off-server backup policy. Preserve the platform environment's encryption keys together with database and private-file backups.
 
-Development login, synchronous test jobs and sandbox commerce are forced off in production. Document tools start disabled; enable `ENABLE_DOCUMENT_TOOLS=1` in the server environment only when ready to offer the processing features (or use the initializer's explicit `--enable-document-tools` option). This switch does not enable development authentication. Configure provider credentials through the admin Integrations page. Enabling CI/CD does not complete live provider, payment, parser containment or production acceptance work.
+## HTTPS alongside existing projects
 
-Server layout:
+The host already serves other projects. Inspect the current TLS proxy and container inventory before integration. Keep their files, routes, container IDs and start times unchanged. Add only the two new PDF Master host routes; never replace the existing proxy configuration, stop its containers, or run a global Compose down/prune command.
 
-```text
-~/pdf-master/
-  .env                     # persistent application secrets, mode 600
-  compose.override.yaml    # optional server-owned proxy integration
-  deploy.lock              # shared deployment lock
-  state.json               # active, previous and pending release metadata
-  backups/                 # database dumps before deployments
-  releases/                # immutable component manifests and platform stack files
-  incoming/                # deployment helpers; image bundles removed after delivery
-```
+For a host Caddy instance, each repository supplies its own `infra/production/Caddyfile` site block pointing at its loopback gateway. Add those blocks through the server's existing include mechanism and validate/reload gracefully. Caddy can provision TLS for the two DNS hostnames once they resolve to this server. If Caddy is containerized, use the repository's `proxy-network.example.yaml` as that component's server-owned `compose.override.yaml`; attach only its gateway to the existing ingress network and route to `pdfmaster-platform-gateway:8080` or `pdfmaster-web-gateway:8080`. The database and application networks stay separate.
 
-This starts a fresh production database; local demonstration records are not copied. Database, private files, static assets and Redis use project-scoped Docker volumes. The scripts never prune Docker globally or remove production data volumes. Arrange retention, encrypted off-server backups and restore drills for the database, private files and encryption keys; old releases and backups are intentionally not deleted automatically.
+A server-owned override is read only by its own component's deployer. TLS proxy changes happen during site setup, not during routine image deployments. The deployers never reconfigure the shared proxy.
 
-## Route a separate domain alongside the existing project
+## Administration and Telegram
 
-Only the gateway publishes a port, bound to `127.0.0.1:8310`. Database, Redis, API and web ports stay inside Docker. Project-scoped resources keep this deployment separate from another Compose application.
-
-For a reverse proxy running on the host, adapt [host-nginx.example.conf](../infra/production/host-nginx.example.conf) as a **new** virtual host and configure its domain and TLS certificate. Preserve the existing project's configuration. The proxy must overwrite `X-Forwarded-Proto` with its actual connection scheme.
-
-For a reverse proxy already running in Docker, adapt [proxy-network.example.yaml](../infra/production/proxy-network.example.yaml) into `~/pdf-master/compose.override.yaml` and set `PDFMASTER_PROXY_NETWORK` in the server environment. Join only the gateway to the existing proxy network and route the new hostname to `http://pdfmaster-gateway:8080`. Keep the default PDF Master network. The proxy must terminate HTTPS and overwrite forwarded protocol headers. This optional override is owned by the server and is not replaced by releases.
-
-## Activate and administer
-
-After the server environment, HTTPS routing and four repository variables are configured, run both workflows (or push to `main`):
+On the server, select the platform release for management commands:
 
 ```sh
-gh workflow run ci.yml --repo shahzodjonweb/document-platform --ref main
-gh workflow run ci.yml --repo shahzodjonweb/document-web --ref main
-```
-
-The first delivery reports a staged release; the second matching component activates the stack. Verify the deployment job's server result and the public website. To run management commands against the active release, use this on the server:
-
-```sh
-cd ~/pdf-master
-platform_release=$(python3 -c 'import json; print(json.load(open("state.json"))["active"]["platform"]["release_id"])')
+cd ~/pdf-master/platform
+release=$(python3 -c 'import json; print(json.load(open("state.json"))["active"]["release_id"])')
 export PDFMASTER_ENV_FILE="$PWD/.env"
-export PLATFORM_IMAGE=$(python3 -c 'import json; print(json.load(open("state.json"))["active"]["platform"]["image"])')
-export WEB_IMAGE=$(python3 -c 'import json; print(json.load(open("state.json"))["active"]["web"]["image"])')
-docker compose -p pdfmaster --env-file .env \
-  -f "releases/platform/$platform_release/stack/compose.yaml" \
+export PDFMASTER_IMAGE=$(python3 -c 'import json; print(json.load(open("state.json"))["active"]["image"])')
+docker compose -p pdfmaster-platform --env-file .env \
+  -f "releases/$release/stack/compose.yaml" \
   exec api python manage.py setup_staff your-admin --role Administrator
 ```
 
-Include `-f "$PWD/compose.override.yaml"` before `exec` if using the optional override. Complete staff password/TOTP enrollment interactively over SSH, not in CI logs. The admin panel is at `https://YOUR_DOMAIN/ops/login`; the customer app is at `https://YOUR_DOMAIN/en/app`.
+Include an existing `compose.override.yaml` with another `-f` before `exec`. Enroll password and TOTP interactively over SSH; do not publish enrollment credentials in CI logs. Configure Telegram token/username and AI provider credentials in Admin Integrations. The bot container waits without contacting Telegram until polling credentials are configured, then starts automatically. If replacing an already-running bot's token, restart only the platform `bot` service. Provider/payment credentials and reviewed production offers remain separate configuration.
 
-Configure the Telegram token and username in **Admin → Integrations**. Then set `COMPOSE_PROFILES=bot` in the server environment and rerun a workflow to start the polling bot container. The local-development process controls remain disabled in production; Docker manages the bot lifecycle.
-
-## Rollback and investigation
-
-Use a delivered helper from `incoming/` on the server:
-
-```sh
-python3 ~/pdf-master/incoming/RELEASE_DIRECTORY/server.py rollback
-```
-
-This restores the recorded previous images and staff assets. It does not restore the database or undo migrations. Destructive schema changes require a separately planned data recovery procedure. Keep deploy logs and inspect service logs on the server; do not publish rendered Compose configuration or the environment file, which contain secrets. If a connection or runner is interrupted, inspect `state.json` and actual container health before retrying.
-
-The generic deployment helpers are intentionally duplicated in both repositories so each can deliver independently. Keep their protocol and tests synchronized when changing them. The platform repository alone owns the production Compose configuration.
-
-References: [GitHub Actions variables](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-variables), [Compose in production](https://docs.docker.com/compose/how-tos/production/).
+Manual operations use the `PDF Master server operations` workflow. Its inventory operation is read-only, uses the same pinned SSH credentials and prints routing/container metadata rather than environments or keys. A successful build with missing credentials is not a deployment; inspect the deployment job's final server result and public HTTPS routes.

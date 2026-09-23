@@ -8,8 +8,8 @@ missing = [name for name in required if not os.environ.get(name, "").strip()]
 ready = not missing
 with Path(os.environ["GITHUB_OUTPUT"]).open("a") as output:
     output.write("configured=" + str(ready).lower() + "\n")
-message = ("Deployment Actions variables are configured." if ready else
-           "Deployment is not configured. Add these repository Actions variables: " + ", ".join(missing) +
+message = ("Deployment settings are configured." if ready else
+           "Deployment is not configured. Add these repository Actions variables or secrets: " + ", ".join(missing) +
            ". CI and image checks still run; no server connection was attempted.")
 with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a") as summary:
     summary.write("## Deployment readiness\n\n" + message + "\n")

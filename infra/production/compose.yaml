@@ -1,6 +1,6 @@
-name: pdfmaster
+name: pdfmaster-platform
 x-platform: &platform
-  image: ${PLATFORM_IMAGE:?Missing platform image}
+  image: ${PDFMASTER_IMAGE:?Missing platform image}
   env_file: ${PDFMASTER_ENV_FILE:?Set absolute environment file}
   environment: &platform-env
     DEBUG: "0"
@@ -94,31 +94,12 @@ services:
   bot:
     <<: *platform
     profiles: [bot]
-    command: [python, manage.py, runbot]
+    command: [python, manage.py, runbot, --wait-for-config]
     mem_limit: 384m
     cpus: 0.5
-  web:
-    image: ${WEB_IMAGE:?Missing web image}
-    environment: {NITRO_HOST: 0.0.0.0, NITRO_PORT: "3000"}
-    restart: unless-stopped
-    init: true
-    read_only: true
-    tmpfs: [/tmp:size=32m]
-    mem_limit: 384m
-    cpus: 0.5
-    cap_drop: [ALL]
-    security_opt: [no-new-privileges:true]
-    pids_limit: 64
-    healthcheck:
-      test: [CMD, node, -e, "fetch('http://127.0.0.1:3000/en/app').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
-      interval: 10s
-      timeout: 5s
-      retries: 18
-    depends_on: {api: {condition: service_healthy}}
-    logging: *logging
   gateway:
     image: nginxinc/nginx-unprivileged:stable-alpine@sha256:4714e0b1b2577eaa1a6131d07c958b67f0eb68e6d0521e90c6e5287db8cf0bc5
-    ports: ["127.0.0.1:${PDFMASTER_HTTP_PORT:-8310}:8080"]
+    ports: ["127.0.0.1:${PDFMASTER_HTTP_PORT:-8311}:8080"]
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - static-files:/srv/static:ro
@@ -136,7 +117,6 @@ services:
       retries: 12
     depends_on:
       api: {condition: service_healthy}
-      web: {condition: service_healthy}
     logging: *logging
 volumes:
   database:

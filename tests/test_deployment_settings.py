@@ -41,3 +41,17 @@ def test_static_mount_and_proxy_trust_are_explicit_deployment_settings():
     assert result["static"] == "/data/static"
     assert result["proxy"] == ["HTTP_X_FORWARDED_PROTO", "https"]
     assert config()["proxy"] is None
+
+
+def test_batch_gate_uses_explicit_tool_opt_in_in_production(settings, monkeypatch):
+    from types import SimpleNamespace
+    import pytest
+    from apps.core.errors import DomainError
+    from apps.studio import batches
+    settings.DEBUG = False
+    settings.ENABLE_BETA_TOOLS = True
+    monkeypatch.setattr(batches, 'plan_limits', lambda account: {'batch_files': 10})
+    assert batches.require_batch(SimpleNamespace(plan='premium'), 'batch.compress')['batch_files'] == 10
+    settings.ENABLE_BETA_TOOLS = False
+    with pytest.raises(DomainError, match='feature_unavailable'):
+        batches.require_batch(SimpleNamespace(plan='premium'), 'batch.compress')

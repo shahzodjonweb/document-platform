@@ -27,7 +27,7 @@ DONE=('succeeded','partial','failed')
 
 def require_batch(account,feature_id):
     caps=plan_limits(account)
-    if not settings.DEBUG or not settings.ENABLE_BETA_TOOLS or feature_id not in CHILDREN:raise DomainError('feature_unavailable',409)
+    if not settings.ENABLE_BETA_TOOLS or feature_id not in CHILDREN:raise DomainError('feature_unavailable',409)
     if FEATURES[feature_id]['plans'][account.plan] in ('none','excluded','not_included','unavailable'):raise DomainError('feature_not_in_plan',403)
     return caps
 

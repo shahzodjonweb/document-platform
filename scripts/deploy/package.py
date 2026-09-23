@@ -37,18 +37,17 @@ with tempfile.TemporaryDirectory() as directory:
         if compressed.returncode or saving.wait():
             raise SystemExit("Docker image export failed")
     meta = validate_manifest({
-        "protocol": 1, "component": args.component, "commit": commit,
+        "protocol": 2, "component": args.component, "commit": commit,
         "run_id": run, "run_attempt": attempt, "release_id": release_id,
         "image": image, "image_id": info["Id"], "architecture": info["Architecture"],
         "archive_sha256": digest(archive), "contract_sha256": digest(schema),
     })
     (staging / "release.json").write_text(json.dumps(meta))
     names = ["release.json", "image.tar.gz"]
-    if args.component == "platform":
-        (staging / "stack").mkdir()
-        for name in ("compose.yaml", "nginx.conf"):
-            shutil.copyfile(root / "infra/production" / name, staging / "stack" / name)
-            names.append("stack/" + name)
+    (staging / "stack").mkdir()
+    for name in ("compose.yaml", "nginx.conf"):
+        shutil.copyfile(root / "infra/production" / name, staging / "stack" / name)
+        names.append("stack/" + name)
     with tarfile.open(args.output, "w:gz", compresslevel=1) as bundle:
         for name in names:
             bundle.add(staging / name, arcname=name, recursive=False)

@@ -23,11 +23,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     concurrency:
-      group: pdfmaster-production
+      group: pdfmaster-${{ inputs.component }}-production
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - name: Check all four deployment variables
+      - name: Check all four deployment settings
         id: configuration
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}

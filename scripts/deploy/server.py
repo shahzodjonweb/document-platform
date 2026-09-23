@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PDF Master release protocol v1; identical in both application repositories.
+"""PDF Master release protocol v2; identical in both application repositories.
 
 Receives only CI-built images over authenticated SSH. Never runs git on the
 server, edits another Compose project, prunes Docker, or deletes data volumes.
@@ -19,9 +19,7 @@ import tarfile
 import tempfile
 import time
 
-PROJECT = "pdfmaster"
 MAX_BUNDLE = 3 * 1024**3
-SERVICES = ["api", "worker", "batches", "cleanup", "web"]
 
 
 class DeploymentError(Exception):
@@ -63,10 +61,10 @@ def command(args, *, env=None, input_stream=None, output_stream=None):
     return result.stdout.decode().strip() if output_stream is None else ""
 
 
-def environment(root):
+def environment(root, component):
     path = root / ".env"
     if not path.is_file() or path.is_symlink():
-        raise DeploymentError("Create ~/pdf-master/.env with init_environment.py first.")
+        raise DeploymentError("Initialize this component environment with init_environment.py first.")
     if path.stat().st_mode & 0o077:
         raise DeploymentError("Set production .env permissions to 600.")
     values = {}
@@ -80,19 +78,23 @@ def environment(root):
         if key in values:
             raise DeploymentError("Production .env contains duplicate keys.")
         values[key] = value
-    for key in ("SECRET_KEY", "POSTGRES_PASSWORD", "FILE_SECRET_KEY", "INTEGRATION_ENCRYPTION_KEY"):
-        if len(values.get(key, "")) < 32 or "replace" in values[key].lower():
-            raise DeploymentError("Missing or placeholder production secret: " + key)
-    if not re.fullmatch(r"[A-Za-z0-9_-]+", values["POSTGRES_PASSWORD"]):
-        raise DeploymentError("POSTGRES_PASSWORD must be URL-safe letters, digits, _ or -.")
-    for key in ("DEBUG", "DEVELOPMENT_LOGIN_ENABLED", "LOCAL_SYNC_JOBS", "COMMERCE_SANDBOX_ENABLED"):
-        if values.get(key, "0") != "0":
-            raise DeploymentError("Development settings must remain disabled: " + key)
-    origins = values.get("CSRF_TRUSTED_ORIGINS", "").split(",")
-    if not origins or any(not re.fullmatch(r"https://[a-zA-Z0-9.-]+(?::[0-9]+)?", x) for x in origins):
-        raise DeploymentError("Set explicit HTTPS CSRF_TRUSTED_ORIGINS.")
-    if not values.get("ALLOWED_HOSTS") or "*" in values["ALLOWED_HOSTS"]:
-        raise DeploymentError("Set explicit ALLOWED_HOSTS.")
+    expected_domain = 'pdfmaster-admin.orderdesk.live' if component == 'platform' else 'pdfmaster.orderdesk.live'
+    if values.get('PUBLIC_DOMAIN') != expected_domain:
+        raise DeploymentError('PUBLIC_DOMAIN does not match this component domain.')
+    if component == 'platform':
+        for key in ("SECRET_KEY", "POSTGRES_PASSWORD", "FILE_SECRET_KEY", "INTEGRATION_ENCRYPTION_KEY"):
+            if len(values.get(key, "")) < 32 or "replace" in values[key].lower():
+                raise DeploymentError("Missing or placeholder production secret: " + key)
+        if not re.fullmatch(r"[A-Za-z0-9_-]+", values["POSTGRES_PASSWORD"]):
+            raise DeploymentError("POSTGRES_PASSWORD must be URL-safe letters, digits, _ or -.")
+        for key in ("DEBUG", "DEVELOPMENT_LOGIN_ENABLED", "LOCAL_SYNC_JOBS", "COMMERCE_SANDBOX_ENABLED"):
+            if values.get(key, "0") != "0":
+                raise DeploymentError("Development settings must remain disabled: " + key)
+        origins = values.get("CSRF_TRUSTED_ORIGINS", "").split(",")
+        if not origins or any(not re.fullmatch(r"https://[a-zA-Z0-9.-]+(?::[0-9]+)?", x) for x in origins):
+            raise DeploymentError("Set explicit HTTPS CSRF_TRUSTED_ORIGINS.")
+        if not values.get("ALLOWED_HOSTS") or "*" in values["ALLOWED_HOSTS"]:
+            raise DeploymentError("Set explicit ALLOWED_HOSTS.")
     port = values.get("PDFMASTER_HTTP_PORT", "8310")
     if not port.isdigit() or not 1024 <= int(port) <= 65535:
         raise DeploymentError("PDFMASTER_HTTP_PORT must be an unprivileged port.")
@@ -102,7 +104,7 @@ def environment(root):
 
 
 def validate_manifest(meta):
-    if meta.get("protocol") != 1 or meta.get("component") not in ("platform", "web"):
+    if meta.get("protocol") != 2 or meta.get("component") not in ("platform", "web"):
         raise DeploymentError("Unsupported release protocol/component.")
     if not re.fullmatch(r"[0-9a-f]{40}", meta.get("commit", "")):
         raise DeploymentError("Invalid commit.")
@@ -125,8 +127,8 @@ def validate_manifest(meta):
 
 
 def unpack(bundle, destination):
-    # The image is opaque Docker data; stack configuration is supplied only by
-    # the platform release. No links, path traversal, devices or duplicate names.
+    # Each component carries only its own stack. No links, path traversal,
+    # devices or duplicate names are accepted from the release archive.
     with tarfile.open(bundle, "r:gz") as archive:
         members = archive.getmembers()
         names = [x.name for x in members]
@@ -142,10 +144,8 @@ def unpack(bundle, destination):
                 shutil.copyfileobj(source, output)
             os.chmod(target, 0o600)
     meta = validate_manifest(read_json(destination / "release.json"))
-    has_stack = {"stack/compose.yaml", "stack/nginx.conf"}.issubset(names)
-    if has_stack != (meta["component"] == "platform") or (
-            meta["component"] == "web" and any(x.startswith("stack/") for x in names)):
-        raise DeploymentError("Only platform releases may carry the complete stack configuration.")
+    if set(names) != {'release.json', 'image.tar.gz', 'stack/compose.yaml', 'stack/nginx.conf'}:
+        raise DeploymentError('Each isolated release must carry its own complete stack configuration.')
     if digest(destination / "image.tar.gz") != meta["archive_sha256"]:
         raise DeploymentError("Image archive checksum mismatch.")
     return meta
@@ -168,181 +168,171 @@ def deployment_lock(root, timeout=600):
 
 
 class Deployer:
-    def __init__(self, root, runner=command):
+    def __init__(self, root, component, runner=command):
+        if component not in ('platform', 'web'):
+            raise DeploymentError('Unknown deployment component.')
         self.root = root.resolve()
+        self.component = component
+        self.project = 'pdfmaster-' + component
         self.run = runner
 
     def preflight(self):
-        self.settings = environment(self.root)
-        version = self.run(["docker", "compose", "version", "--short"]).lstrip("v").split(".")
+        self.settings = environment(self.root, self.component)
+        version = self.run(['docker', 'compose', 'version', '--short']).lstrip('v').split('.')
         if tuple(int(x) for x in version[:2]) < (2, 24):
-            raise DeploymentError("Docker Compose 2.24 or newer is required.")
-        self.architecture = self.run(["docker", "info", "--format", "{{.Architecture}}"])
-        self.architecture = {"x86_64": "amd64", "aarch64": "arm64"}.get(self.architecture, self.architecture)
-        marker = self.root / ".owner"
+            raise DeploymentError('Docker Compose 2.24 or newer is required.')
+        self.architecture = self.run(['docker', 'info', '--format', '{{.Architecture}}'])
+        self.architecture = {'x86_64': 'amd64', 'aarch64': 'arm64'}.get(self.architecture, self.architecture)
+        marker = self.root / '.owner'
+        owner = self.project + '-deploy-v2\n'
         if not marker.exists():
-            containers = self.run(["docker", "ps", "-aq", "--filter", "label=com.docker.compose.project=pdfmaster"])
-            volumes = self.run(["docker", "volume", "ls", "-q", "--filter", "label=com.docker.compose.project=pdfmaster"])
+            label = 'label=com.docker.compose.project=' + self.project
+            containers = self.run(['docker', 'ps', '-aq', '--filter', label])
+            volumes = self.run(['docker', 'volume', 'ls', '-q', '--filter', label])
             if containers or volumes:
-                raise DeploymentError("An unmanaged pdfmaster project already exists; inspect it before adoption.")
-            marker.write_text("pdfmaster-deploy-v1\n")
-        elif marker.read_text() != "pdfmaster-deploy-v1\n":
-            raise DeploymentError("Unexpected deployment ownership marker.")
+                raise DeploymentError('An unmanaged ' + self.project + ' project already exists; inspect it before adoption.')
+            marker.write_text(owner)
+        elif marker.read_text() != owner:
+            raise DeploymentError('Unexpected deployment ownership marker.')
         return self.settings
 
-    def compose(self, pair, *args, output_stream=None):
-        platform = pair["platform"]
-        config = self.root / "releases" / "platform" / platform["release_id"] / "stack" / "compose.yaml"
-        env = dict(os.environ)
-        # Avoid caller COMPOSE_* overrides and never print the rendered config.
-        for key in list(env):
-            if key.startswith("COMPOSE_"):
-                del env[key]
+    def compose(self, release, *args, output_stream=None):
+        config = self.root / 'releases' / release['release_id'] / 'stack' / 'compose.yaml'
+        env = {k: v for k, v in os.environ.items() if not k.startswith('COMPOSE_')}
         env.update(self.settings)
-        env.update(PLATFORM_IMAGE=platform["image"], WEB_IMAGE=pair["web"]["image"],
-                   PDFMASTER_ENV_FILE=str(self.root / ".env"))
-        compose = ["docker", "compose", "--project-name", PROJECT,
-                   "--env-file", str(self.root / ".env"), "-f", str(config)]
-        override = self.root / "compose.override.yaml"
+        env.update(PDFMASTER_IMAGE=release['image'], PDFMASTER_ENV_FILE=str(self.root / '.env'))
+        compose = ['docker', 'compose', '--project-name', self.project,
+                   '--env-file', str(self.root / '.env'), '-f', str(config)]
+        override = self.root / 'compose.override.yaml'
         if override.exists():
             if override.is_symlink() or not override.is_file():
-                raise DeploymentError("Invalid server-owned Compose override.")
-            compose += ["-f", str(override)]
+                raise DeploymentError('Invalid server-owned Compose override.')
+            compose += ['-f', str(override)]
         return self.run(compose + list(args), env=env, output_stream=output_stream)
 
-    def activate(self, pair, backup=True):
-        self.compose(pair, "config", "--quiet")
-        self.compose(pair, "up", "-d", "--wait", "--wait-timeout", "120", "db", "redis")
-        if backup:
-            directory = self.root / "backups"
+    def activate(self, release):
+        self.compose(release, 'config', '--quiet')
+        if self.component == 'platform':
+            self.compose(release, 'up', '-d', '--wait', '--wait-timeout', '120', 'db', 'redis')
+            directory = self.root / 'backups'
             directory.mkdir(exist_ok=True, mode=0o700)
-            path = directory / f"before-{time.time_ns()}.dump"
-            with path.open("xb") as stream:
+            path = directory / f'before-{time.time_ns()}.dump'
+            with path.open('xb') as stream:
                 os.chmod(path, 0o600)
-                self.compose(pair, "exec", "-T", "db", "pg_dump", "-U", "pdfmaster",
-                             "-d", "pdfmaster", "-Fc", output_stream=stream)
-        self.compose(pair, "run", "--rm", "--no-deps", "init")
-        self.start_services(pair)
+                self.compose(release, 'exec', '-T', 'db', 'pg_dump', '-U', 'pdfmaster',
+                             '-d', 'pdfmaster', '-Fc', output_stream=stream)
+            self.compose(release, 'run', '--rm', '--no-deps', 'init')
+        self.start_services(release)
 
-    def start_services(self, pair):
-        services = SERVICES + (["bot"] if self.settings.get("COMPOSE_PROFILES") == "bot" else [])
-        self.compose(pair, "up", "-d", "--wait", "--wait-timeout", "180", *services)
-        if "bot" not in services:
-            # Explicitly enable the profile for discovery; an unconfigured bot
-            # is absent from the default Compose model.
-            if self.compose(pair, "--profile", "bot", "ps", "-q", "bot"):
-                self.compose(pair, "--profile", "bot", "stop", "bot")
-        # Nginx resolves upstream addresses on startup. Recreate the gateway
-        # after application replacements so it cannot retain an old container IP.
-        self.compose(pair, "up", "-d", "--no-deps", "--force-recreate", "--wait",
-                     "--wait-timeout", "120", "gateway")
-        # Exercise routes through the gateway, not just container liveness.
-        self.compose(pair, "exec", "-T", "gateway", "wget", "-q", "-O", "/dev/null",
-                     "http://127.0.0.1:8080/api/v1/health")
-        self.compose(pair, "exec", "-T", "gateway", "wget", "-q", "-O", "/dev/null",
-                     "http://127.0.0.1:8080/en/app")
+    def start_services(self, release):
+        services = ['web'] if self.component == 'web' else ['api', 'worker', 'batches', 'cleanup']
+        if self.component == 'platform' and self.settings.get('COMPOSE_PROFILES') == 'bot':
+            services.append('bot')
+        self.compose(release, 'up', '-d', '--wait', '--wait-timeout', '180', *services)
+        if self.component == 'platform' and 'bot' not in services:
+            if self.compose(release, '--profile', 'bot', 'ps', '-q', 'bot'):
+                self.compose(release, '--profile', 'bot', 'stop', 'bot')
+        # Recreate only this project's gateway after replacing its upstream.
+        self.compose(release, 'up', '-d', '--no-deps', '--force-recreate', '--wait',
+                     '--wait-timeout', '120', 'gateway')
+        paths = ['/en/app'] if self.component == 'web' else ['/api/v1/health', '/ops/login', '/static/ops/main.css']
+        for path in paths:
+            self.compose(release, 'exec', '-T', 'gateway', 'wget', '-q', '-O', '/dev/null',
+                         'http://127.0.0.1:8080' + path)
 
-    def restore(self, pair):
-        # Restore matching staff assets; never run reverse database migrations.
-        self.compose(pair, "run", "--rm", "--no-deps", "init",
-                     "python", "manage.py", "collectstatic", "--noinput")
-        self.start_services(pair)
+    def restore(self, release):
+        if self.component == 'platform':
+            self.compose(release, 'run', '--rm', '--no-deps', 'init',
+                         'python', 'manage.py', 'collectstatic', '--noinput')
+        self.start_services(release)
 
     def deploy(self, bundle):
         self.preflight()
-        with tempfile.TemporaryDirectory(prefix="release-", dir=self.root) as temp:
+        with tempfile.TemporaryDirectory(prefix='release-', dir=self.root) as temp:
             staging = Path(temp)
             meta = unpack(bundle, staging)
-            if meta["architecture"] != self.architecture:
-                raise DeploymentError("Image/server architecture mismatch; set DEPLOY_PLATFORM in both repositories.")
-            state_path = self.root / "state.json"
-            state = read_json(state_path, {"active": {}, "pending": {}, "runs": {}})
-            component = meta["component"]
-            # A slow older build must never supersede a newer release.
-            if [meta["run_id"], meta["run_attempt"]] < state["runs"].get(component, [0, 0]):
-                return {"status": "ignored_stale_release", "component": component}
-            old = state.get("active", {})
-            if old.get(component, {}).get("release_id") == meta["release_id"]:
-                return {"status": "already_deployed", "component": component, "commit": meta["commit"]}
-            destination = self.root / "releases" / component / meta["release_id"]
-            existing = read_json(destination / "release.json")
-            if existing and existing["image_id"] != meta["image_id"]:
-                raise DeploymentError("This commit already has a different immutable image. Create a new commit.")
-            with (staging / "image.tar.gz").open("rb") as stream:
-                self.run(["docker", "load"], input_stream=stream)
-            identity = self.run(["docker", "image", "inspect", "--format", "{{.Id}}", meta["image"]])
-            if identity != meta["image_id"]:
-                raise DeploymentError("Loaded image identity mismatch.")
+            if meta['component'] != self.component:
+                raise DeploymentError('Release belongs to a different isolated project.')
+            if meta['architecture'] != self.architecture:
+                raise DeploymentError('Image/server architecture mismatch; set DEPLOY_PLATFORM.')
+            state_path = self.root / 'state.json'
+            state = read_json(state_path, {'active': None, 'previous': None, 'last_run': [0, 0]})
+            if [meta['run_id'], meta['run_attempt']] < state['last_run']:
+                return {'status': 'ignored_stale_release', 'component': self.component}
+            old = state.get('active')
+            if old and old['release_id'] == meta['release_id']:
+                return {'status': 'already_deployed', 'component': self.component, 'commit': meta['commit']}
+            destination = self.root / 'releases' / meta['release_id']
+            existing = read_json(destination / 'release.json')
+            if existing and existing['image_id'] != meta['image_id']:
+                raise DeploymentError('This release identifier already has a different immutable image.')
+            with (staging / 'image.tar.gz').open('rb') as stream:
+                self.run(['docker', 'load'], input_stream=stream)
+            identity = self.run(['docker', 'image', 'inspect', '--format', '{{.Id}}', meta['image']])
+            if identity != meta['image_id']:
+                raise DeploymentError('Loaded image identity mismatch.')
             if not existing:
                 destination.parent.mkdir(parents=True, exist_ok=True)
-                (staging / "image.tar.gz").unlink()
+                (staging / 'image.tar.gz').unlink()
                 shutil.move(str(staging), destination)
-                # Nginx's unprivileged uid must read this non-secret config.
-                if component == "platform":
-                    os.chmod(destination / "stack" / "nginx.conf", 0o644)
-            state["pending"][component] = meta
-            state["runs"][component] = [meta["run_id"], meta["run_attempt"]]
+                os.chmod(destination / 'stack' / 'nginx.conf', 0o644)
+            state['pending'] = meta
+            state['last_run'] = [meta['run_id'], meta['run_attempt']]
             write_json(state_path, state)
-            pair = {**old, **state["pending"]}
-            if set(pair) != {"platform", "web"}:
-                return {"status": "staged_waiting_for_other_component", "component": component}
-            if pair["platform"]["contract_sha256"] != pair["web"]["contract_sha256"]:
-                return {"status": "staged_waiting_for_matching_api_contract", "component": component}
             try:
-                self.activate(pair)
+                self.activate(meta)
             except Exception:
                 if old:
                     try:
                         self.restore(old)
                     except Exception:
-                        raise DeploymentError("Deployment and image rollback failed. Inspect server logs and backups.") from None
-                    state["pending"] = {}
+                        raise DeploymentError('Deployment and image rollback failed. Inspect this project logs and backups.') from None
+                    state['pending'] = None
                     write_json(state_path, state)
-                raise DeploymentError("Release failed health/migration checks; previous images restored when available. Database migrations were not reversed.") from None
-            state["previous"] = old
-            state["active"] = pair
-            state["pending"] = {}
+                raise DeploymentError('Release failed health/migration checks; previous image restored when available. Other projects were not changed. Database migrations were not reversed.') from None
+            state.update(previous=old, active=meta, pending=None)
             write_json(state_path, state)
-            return {"status": "deployed", "commits": {key: value["commit"] for key, value in pair.items()}}
+            return {'status': 'deployed', 'component': self.component, 'project': self.project,
+                    'commit': meta['commit'], 'url': 'https://' + self.settings['PUBLIC_DOMAIN']}
 
     def rollback(self):
         self.preflight()
-        path = self.root / "state.json"
+        path = self.root / 'state.json'
         state = read_json(path, {})
-        previous = state.get("previous")
+        previous = state.get('previous')
         if not previous:
-            raise DeploymentError("No previous healthy release is recorded.")
+            raise DeploymentError('No previous healthy release is recorded.')
         self.restore(previous)
-        state["active"], state["previous"] = previous, state["active"]
-        state["pending"] = {}
+        state['active'], state['previous'] = previous, state['active']
+        state['pending'] = None
         write_json(path, state)
-        return {"status": "rolled_back", "database": "unchanged"}
+        return {'status': 'rolled_back', 'component': self.component, 'database': 'unchanged'}
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("deploy", "rollback"))
-    parser.add_argument("--bundle", type=Path)
-    parser.add_argument("--root", type=Path, default=Path.home() / "pdf-master")
+    parser.add_argument('action', choices=('deploy', 'rollback'))
+    parser.add_argument('--component', required=True, choices=('platform', 'web'))
+    parser.add_argument('--bundle', type=Path)
+    parser.add_argument('--root', type=Path)
     args = parser.parse_args()
+    root = args.root or Path.home() / 'pdf-master' / args.component
     os.umask(0o077)
     try:
-        with deployment_lock(args.root):
-            deployer = Deployer(args.root)
-            if args.action == "deploy":
+        with deployment_lock(root):
+            deployer = Deployer(root, args.component)
+            if args.action == 'deploy':
                 if args.bundle is None:
-                    raise DeploymentError("--bundle is required.")
+                    raise DeploymentError('--bundle is required.')
                 result = deployer.deploy(args.bundle)
             else:
                 result = deployer.rollback()
         print(json.dumps(result))
     except (DeploymentError, OSError, ValueError, tarfile.TarError, subprocess.TimeoutExpired) as exc:
-        # Unexpected parse/OS messages can expose paths; only approved messages
-        # leave the host, never raw environment or subprocess stderr.
-        print(str(exc) if isinstance(exc, DeploymentError) else "Deployment failed; inspect the server locally.", file=sys.stderr)
+        print(str(exc) if isinstance(exc, DeploymentError) else 'Deployment failed; inspect the server locally.', file=sys.stderr)
         return 1
     return 0
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     sys.exit(main())
