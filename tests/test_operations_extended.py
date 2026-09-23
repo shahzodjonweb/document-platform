@@ -143,6 +143,22 @@ def test_ai_action_cannot_trigger_telegram_connection_test(monkeypatch):
     assert response.status_code==200 and b'invalid_parameters' in response.content and not request.called
 
 
+def test_production_bot_status_does_not_inspect_the_api_pid_namespace(settings,monkeypatch):
+    client,_=staff_client()
+    settings.DEBUG=False
+    status=Mock(side_effect=AssertionError('A service-managed bot has a separate PID namespace'))
+    monkeypatch.setattr('operations.integration_views.runner_status',status)
+    response=client.get('/ops/integrations')
+    assert response.status_code==200
+    assert b'Waiting for credentials' in response.content
+    assert b'The server starts the bot automatically' in response.content
+    assert b'Start local bot' not in response.content
+    save_config('telegram',{'token':'123456789:'+('A'*32),'username':'fixture_bot',
+                            'webapp_url':'https://pdfmaster.orderdesk.live/en/app'})
+    assert b'Managed by server' in client.get('/ops/integrations').content
+    assert not status.called
+
+
 def test_runner_status_requires_held_lock_and_current_project_command(settings,monkeypatch):
     import operations.integrations as integrations
     from telegram.locking import polling_lock

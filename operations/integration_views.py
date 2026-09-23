@@ -16,6 +16,13 @@ LABELS={
 
 for language,label in {'en':'Image model ID (optional)','uz':'Rasm modeli identifikatori (ixtiyoriy)','ru':'ID модели изображений (необязательно)'}.items():LABELS[language]['image_model']=label
 
+for language, values in {
+    'en': ('Managed by server', 'Waiting for credentials', 'Save your Telegram token and username here. The server starts the bot automatically; use Test connection to verify the credentials.'),
+    'uz': ('Server boshqaradi', 'Kirish ma’lumotlari kutilmoqda', 'Telegram tokeni va foydalanuvchi nomini shu yerda saqlang. Server botni avtomatik ishga tushiradi; ma’lumotlarni Ulanishni tekshirish orqali tekshiring.'),
+    'ru': ('Управляется сервером', 'Ожидание учётных данных', 'Сохраните токен Telegram и имя бота здесь. Сервер запустит бота автоматически; проверьте данные кнопкой «Проверить соединение».'),
+}.items():
+    LABELS[language].update(zip(('managed', 'waiting', 'production_note'), values))
+
 @require_staff()
 @sensitive_post_parameters('token','api_key')
 @require_http_methods(['GET','POST'])
@@ -39,6 +46,10 @@ def integrations(request):
             except DomainError as e:
                 data['error']=labels['failure'];data['error_code']=e.code
     bot=telegram_config();ai=ai_config()
+    local_controls=development_access(request)
+    # A container-managed bot has a different PID namespace from the API.
+    # Do not misreport it as stopped using the local development PID check.
+    status=labels[runner_status()] if local_controls else labels['managed' if bot['token'] else 'waiting']
     # Never include credentials in the template context.
-    data.update(bot={'username':bot['username'],'webapp_url':bot['webapp_url'],'configured':bool(bot['token']),'status':labels[runner_status()]},ai={'mode':ai['mode'],'model':ai['model'],'image_model':ai['image_model'],'configured':bool(ai['api_key'])},local_controls=development_access(request),notice=labels.get(request.GET.get('notice',''),''))
+    data.update(bot={'username':bot['username'],'webapp_url':bot['webapp_url'],'configured':bool(bot['token']),'status':status},ai={'mode':ai['mode'],'model':ai['model'],'image_model':ai['image_model'],'configured':bool(ai['api_key'])},local_controls=local_controls,notice=labels.get(request.GET.get('notice',''),''))
     return finish_render(request,'ops/integrations.html',data)
