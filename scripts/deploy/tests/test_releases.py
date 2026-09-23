@@ -216,3 +216,22 @@ class Releases(unittest.TestCase):
                 if not ready:
                     for name in names:self.assertIn(name,summary.read_text())
                     self.assertIn('no server connection was attempted',summary.read_text())
+
+    def test_rejected_ssh_does_not_dump_a_broken_pipe_traceback(self):
+        with tempfile.TemporaryDirectory() as temp:
+            folder=Path(temp)
+            for name,code in [('ssh',255),('ssh-keygen',0)]:
+                executable=folder/name
+                executable.write_text('#!/bin/sh\nexit '+str(code)+'\n')
+                executable.chmod(0o700)
+            bundle=folder/'release.tar.gz';bundle.write_bytes(b'x'*1024*1024)
+            env={**os.environ,'PATH':str(folder)+os.pathsep+os.environ['PATH'],
+                 'DEPLOY_HOST':'server.example','DEPLOY_USER':'root',
+                 'DEPLOY_SSH_KEY':'sentinel-private-value','DEPLOY_KNOWN_HOSTS':'sentinel-host-value',
+                 'GITHUB_SHA':'a'*40,'GITHUB_RUN_ID':'20','GITHUB_RUN_ATTEMPT':'1'}
+            result=subprocess.run([sys.executable,str(DIRECTORY/'client.py'),'web','--bundle',str(bundle)],
+                                  env=env,capture_output=True,text=True,timeout=10)
+            self.assertNotEqual(result.returncode,0)
+            self.assertIn('SSH connection closed before release delivery',result.stderr)
+            self.assertNotIn('Traceback',result.stderr)
+            self.assertNotIn('sentinel-private-value',result.stdout+result.stderr)

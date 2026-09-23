@@ -132,4 +132,5 @@ def test_expired_quote_changed_plan_and_production_fail_closed(settings):
     BatchQuote.objects.filter(pk=q.id).update(expires_at=timezone.now()-timedelta(seconds=1))
     with pytest.raises(DomainError,match='quote_expired'):submit_batch(a,q.id,'batch-expired-key')
     settings.DEBUG=False
+    settings.ENABLE_BETA_TOOLS=False  # Production remains closed without explicit tool opt-in.
     with pytest.raises(DomainError,match='feature_unavailable'):create_batch_quote(a,'batch.convert',groups(a,1))

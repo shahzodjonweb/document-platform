@@ -57,6 +57,9 @@ with tempfile.TemporaryDirectory(prefix="pdfmaster-ssh-") as folder:
                 transport.add(Path(__file__).with_name("init_environment.py"), arcname="init_environment.py", recursive=False)
             process.stdin.close()
             code = process.wait(timeout=1500)
+        except (BrokenPipeError, ConnectionResetError):
+            process.kill(); process.wait()
+            raise SystemExit("SSH connection closed before release delivery. Check the SSH authentication error above and authorize the deployment public key on the server.") from None
         except BaseException:
             process.kill(); process.wait()
             raise
