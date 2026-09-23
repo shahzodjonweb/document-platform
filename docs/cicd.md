@@ -16,8 +16,8 @@ Both repositories accept the following settings from **Settings → Secrets and 
 | Setting | Value |
 | --- | --- |
 | DEPLOY_HOST | 77.42.34.241 |
-| DEPLOY_USER | root |
-| DEPLOY_SSH_KEY | Private deployment key whose public half is authorized for root on this server |
+| DEPLOY_USER | orderdesk-deploy |
+| DEPLOY_SSH_KEY | Private deployment key whose public half is authorized for orderdesk-deploy on this server |
 | DEPLOY_KNOWN_HOSTS | Verified OpenSSH known-hosts entry for the host and SSH port |
 
 No SSH password, registry token, or server GitHub checkout is used. `DEPLOY_PORT` is an optional Actions Variable, default 22. `DEPLOY_PLATFORM` defaults to `linux/amd64`; use `linux/arm64` for an ARM host.
@@ -26,12 +26,12 @@ The configuration helper can populate both repositories from local key files wit
 
 ```sh
 python3 scripts/deploy/configure_variables.py --storage secrets \
-  --host 77.42.34.241 --user root \
+  --host 77.42.34.241 --user orderdesk-deploy \
   --key-file /absolute/path/deployment-key \
   --known-hosts-file /absolute/path/verified-known-hosts
 ```
 
-Omit `--storage secrets` to store the values as Variables. Confirm the host fingerprint through an existing trusted record or the server provider's console; do not trust an unverified key scan. The matching public key must be installed in `/root/.ssh/authorized_keys`. A valid private key in GitHub alone does not authorize it on the server.
+Omit `--storage secrets` to store the values as Variables. Confirm the host fingerprint through an existing trusted record or the server provider's console; do not trust an unverified key scan. The matching public key must be installed in the `orderdesk-deploy` account’s `~/.ssh/authorized_keys`. A valid private key in GitHub alone does not authorize it on the server.
 
 ## Build, activation and rollback
 
