@@ -84,4 +84,10 @@ npm run test:browser
 
 Browser checks need the running API and installed Chrome. Regenerate the public schema using `manage.py export_contract`, then update the customer copy, checksum and generated types together. The staff schema stays separate. [Verification](docs/verification.md) records current results and evidence.
 
-[Compose](infra/compose.yaml) and the [operations runbook](docs/runbooks/operations.md) describe deployment. Docker is unavailable on the implementation host, so Compose/PostgreSQL load and restore checks remain unexecuted. Production containment, stable Office runtime qualification, live Telegram/payment/AI verification, educational/language review and operational signoff remain release gates. The local demonstration is not a production release approval.
+[Development Compose](infra/compose.yaml) and the [operations runbook](docs/runbooks/operations.md) describe local operations. Production containment, stable Office runtime qualification, live Telegram/payment/AI verification, educational/language review and operational signoff remain release gates. The local demonstration is not a production release approval.
+
+## CI/CD
+
+The [CI/CD runbook](docs/cicd.md) covers the separate production Docker stack, initial server setup, HTTPS routing alongside an existing project, encrypted application configuration, bot activation and rollback. GitHub Actions tests SQLite and PostgreSQL, builds and smoke-tests the production image, then deploys passing `main` releases over SSH.
+
+Both repositories require Actions secrets `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY` and `DEPLOY_KNOWN_HOSTS`. Without real values, the workflow explicitly reports **Deployment not configured** and makes no server connection. `scripts/deploy/configure_secrets.py` can populate and verify both repositories from local credential files.

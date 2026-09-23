@@ -10,3 +10,8 @@ __pycache__
 staticfiles
 test-results
 playwright-report
+
+# Local deployment build artifacts and Python tooling.
+release.tar.gz
+image.tar.gz
+.deploy-output/

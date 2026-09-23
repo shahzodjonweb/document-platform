@@ -1,0 +1,14 @@
+# Optional server-owned ~/pdf-master/compose.override.yaml when the existing
+# reverse proxy runs in Docker. Set PDFMASTER_PROXY_NETWORK in server .env.
+# Configure that proxy to send this project's hostname to
+# http://pdfmaster-gateway:8080 and overwrite X-Forwarded-Proto.
+services:
+  gateway:
+    networks:
+      default:
+      proxy:
+        aliases: [pdfmaster-gateway]
+networks:
+  proxy:
+    external: true
+    name: ${PDFMASTER_PROXY_NETWORK:?Set the existing proxy network}

@@ -16,3 +16,8 @@ test-results/
 playwright-report/
 .DS_Store
 *.log
+
+# Local deployment build artifacts and Python tooling.
+release.tar.gz
+image.tar.gz
+.deploy-output/

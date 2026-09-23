@@ -23,7 +23,7 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_ROOT = Path(os.getenv('STATIC_ROOT', str(BASE_DIR / 'staticfiles')))
 STATICFILES_DIRS = [BASE_DIR / 'static'] if (BASE_DIR / 'static').exists() else []
 PRIVATE_STORAGE_ROOT = Path(os.getenv('PRIVATE_STORAGE_ROOT', str(BASE_DIR / '.private')))
 SESSION_COOKIE_NAME = 'pdfmaster_session'
@@ -39,7 +39,8 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 220 * 1024 * 1024
 FILE_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024
 DEVELOPMENT_LOGIN_ENABLED = DEBUG and os.getenv('DEVELOPMENT_LOGIN_ENABLED', '0') == '1'
 LOCAL_SYNC_JOBS = DEBUG and os.getenv('LOCAL_SYNC_JOBS', '0') == '1'
-ENABLE_BETA_TOOLS = DEBUG and os.getenv('ENABLE_BETA_TOOLS', '0') == '1'
+# Explicit deployment opt-in does not enable development authentication or mocks.
+ENABLE_BETA_TOOLS = os.getenv('ENABLE_DOCUMENT_TOOLS', '1' if DEBUG and os.getenv('ENABLE_BETA_TOOLS', '0') == '1' else '0') == '1'
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '')
 TELEGRAM_BOT_USERNAME = os.getenv('TELEGRAM_BOT_USERNAME', '')
 TELEGRAM_WEBHOOK_SECRET = os.getenv('TELEGRAM_WEBHOOK_SECRET', '')
@@ -50,6 +51,11 @@ CELERY_BROKER_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
 CELERY_TASK_ACKS_LATE = True
 CELERY_TASK_REJECT_ON_WORKER_LOST = True
 DEV_AUTH_ENABLED = DEVELOPMENT_LOGIN_ENABLED
+
+# Enable only behind a proxy that overwrites this header. The production stack
+# exposes only its loopback gateway; the public TLS proxy supplies this value.
+if os.getenv('TRUST_PROXY_HEADERS', '0') == '1':
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 FILE_SECRET_KEY = os.getenv('FILE_SECRET_KEY', '')
 
