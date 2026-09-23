@@ -58,6 +58,12 @@ def without_new_routes(config):
     for server in config['apps']['http']['servers'].values():
         server['routes'] = [r for r in server.get('routes', [])
                             if not any(set(m.get('host', [])) & DOMAINS for m in r.get('match', []))]
+    # Caddy extends the existing certificate policy's host list for the new
+    # sites. Preserve every other policy property, including the issuer.
+    policies = config.get('apps', {}).get('tls', {}).get('automation', {}).get('policies', [])
+    for policy in policies:
+        if 'subjects' in policy:
+            policy['subjects'] = [host for host in policy['subjects'] if host not in DOMAINS]
     return config
 
 
