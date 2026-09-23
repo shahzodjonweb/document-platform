@@ -1,0 +1,21 @@
+name: PDF Master server operations
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: PDF Master operation
+        required: true
+        type: choice
+        options: [inventory]
+permissions:
+  contents: read
+jobs:
+  operation:
+    uses: ./.github/workflows/server-operation-job.yml
+    with:
+      operation: ${{ inputs.operation }}
+    secrets:
+      DEPLOY_HOST: ${{ vars.DEPLOY_HOST || secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ vars.DEPLOY_USER || secrets.DEPLOY_USER }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY || vars.DEPLOY_SSH_KEY }}
+      DEPLOY_KNOWN_HOSTS: ${{ vars.DEPLOY_KNOWN_HOSTS || secrets.DEPLOY_KNOWN_HOSTS }}

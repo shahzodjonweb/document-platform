@@ -1,0 +1,36 @@
+name: Pinned SSH server operation
+on:
+  workflow_call:
+    inputs:
+      operation:
+        type: string
+        required: true
+    secrets:
+      DEPLOY_HOST:
+        required: true
+      DEPLOY_USER:
+        required: true
+      DEPLOY_SSH_KEY:
+        required: true
+      DEPLOY_KNOWN_HOSTS:
+        required: true
+permissions:
+  contents: read
+jobs:
+  operation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: pdfmaster-server-operations
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Execute scoped server operation
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+          OPERATION: ${{ inputs.operation }}
+        run: python3 scripts/operations/remote.py
