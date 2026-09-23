@@ -1,12 +1,13 @@
 """Run a reviewed PDF Master operation using credentials only on the Actions runner."""
 import os
+import json
 from pathlib import Path
 import re
 import subprocess
 import tempfile
 
 operation = os.environ['OPERATION']
-if operation not in {'inventory', 'public-key', 'ssh-check', 'proxy-prepare', 'proxy-publish'}:
+if operation not in {'inventory', 'public-key', 'ssh-check', 'proxy-prepare', 'proxy-publish', 'setup-admin'}:
     raise SystemExit('Unsupported server operation')
 host = os.environ['DEPLOY_HOST'].strip()
 user = os.environ['DEPLOY_USER'].strip()
@@ -49,6 +50,14 @@ with tempfile.TemporaryDirectory() as folder:
     if operation in {'proxy-prepare', 'proxy-publish'}:
         script = 'proxy_setup.py'
         args[-1] = 'python3 - ' + operation.removeprefix('proxy-')
-    with Path(__file__).with_name(script).open('rb') as source:
-        result = subprocess.run(args,stdin=source,timeout=800)
+    if operation == 'setup-admin':
+        payload = json.loads(os.environ.get('ADMIN_BOOTSTRAP', '{}'))
+        if set(payload) != {'username', 'password', 'totp_secret'}:
+            raise SystemExit('Missing complete private admin enrollment data')
+        script = 'setup_admin.py'
+        source = 'BOOTSTRAP = ' + repr(payload) + '\n' + Path(__file__).with_name(script).read_text()
+        result = subprocess.run(args,input=source.encode(),timeout=800)
+    else:
+        with Path(__file__).with_name(script).open('rb') as source:
+            result = subprocess.run(args,stdin=source,timeout=800)
     raise SystemExit(result.returncode)

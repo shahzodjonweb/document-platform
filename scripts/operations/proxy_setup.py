@@ -127,7 +127,11 @@ def main():
     directory.mkdir(parents=True, exist_ok=True, mode=0o700)
     ensure_file(directory / 'original.Caddyfile', original)
     ensure_file(directory / 'sites.caddy', SITES)
-    ensure_file(directory / 'baseline.json', json.dumps(baseline, indent=2) + '\n')
+    baseline_text = json.dumps(baseline, indent=2) + '\n'
+    # Keep each inventory; a user-initiated server resize can restart containers
+    # between preparation and publication without being caused by this script.
+    baseline_name = 'baseline-' + hashlib.sha256(baseline_text.encode()).hexdigest()[:12] + '.json'
+    ensure_file(directory / baseline_name, baseline_text)
     for component in ('platform', 'web'):
         own_root = root / component
         own_root.mkdir(exist_ok=True, mode=0o700)

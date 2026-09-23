@@ -6,7 +6,7 @@ on:
         description: PDF Master operation
         required: true
         type: choice
-        options: [inventory, public-key, ssh-check, proxy-prepare, proxy-publish]
+        options: [inventory, public-key, ssh-check, proxy-prepare, proxy-publish, setup-admin]
 permissions:
   contents: read
 jobs:
@@ -19,3 +19,4 @@ jobs:
       DEPLOY_USER: ${{ vars.DEPLOY_USER || secrets.DEPLOY_USER }}
       DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY || vars.DEPLOY_SSH_KEY }}
       DEPLOY_KNOWN_HOSTS: ${{ vars.DEPLOY_KNOWN_HOSTS || secrets.DEPLOY_KNOWN_HOSTS }}
+      ADMIN_BOOTSTRAP: ${{ secrets.ADMIN_BOOTSTRAP }}

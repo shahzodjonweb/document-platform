@@ -14,6 +14,8 @@ on:
         required: true
       DEPLOY_KNOWN_HOSTS:
         required: true
+      ADMIN_BOOTSTRAP:
+        required: false
 permissions:
   contents: read
 jobs:
@@ -33,4 +35,5 @@ jobs:
           DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
           DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
           OPERATION: ${{ inputs.operation }}
+          ADMIN_BOOTSTRAP: ${{ secrets.ADMIN_BOOTSTRAP }}
         run: python3 scripts/operations/remote.py
