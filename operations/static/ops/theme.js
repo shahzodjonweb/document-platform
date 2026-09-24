@@ -1,1 +1,26 @@
-(()=>{let theme=localStorage.getItem('pdfmaster-ops-theme')||'light';document.documentElement.dataset.theme=theme;document.addEventListener('DOMContentLoaded',()=>{const button=document.querySelector('[data-theme-switch]');if(!button)return;const update=()=>button.setAttribute('aria-pressed',String(theme==='dark'));update();button.addEventListener('click',()=>{theme=theme==='dark'?'light':'dark';document.documentElement.dataset.theme=theme;localStorage.setItem('pdfmaster-ops-theme',theme);update()})})})();
+(() => {
+  let theme = 'light';
+  try {
+    if (localStorage.getItem('pdfmaster-ops-theme') === 'dark') theme = 'dark';
+  } catch (_) { /* The theme switch also works when browser storage is disabled. */ }
+
+  const apply = () => {
+    document.documentElement.dataset.theme = theme;
+    document.querySelector('meta[name="theme-color"]')?.setAttribute(
+      'content', theme === 'dark' ? '#101925' : '#F5F7FB'
+    );
+    document.querySelector('[data-theme-switch]')?.setAttribute(
+      'aria-pressed', String(theme === 'dark')
+    );
+  };
+
+  apply();
+  document.addEventListener('DOMContentLoaded', () => {
+    apply();
+    document.querySelector('[data-theme-switch]')?.addEventListener('click', () => {
+      theme = theme === 'dark' ? 'light' : 'dark';
+      apply();
+      try { localStorage.setItem('pdfmaster-ops-theme', theme); } catch (_) { /* Optional persistence. */ }
+    });
+  });
+})();
