@@ -3,10 +3,11 @@ import json
 from pathlib import Path
 import subprocess
 import urllib.request
+import uuid
 
 
 def command(args, source=None):
-    result = subprocess.run(args, input=source, text=True, capture_output=True, timeout=180)
+    result = subprocess.run(args, input=source, text=True, capture_output=True, timeout=740)
     if result.returncode:
         # Runtime output can contain credentials; expose only controlled markers.
         for line in result.stdout.splitlines():
@@ -40,90 +41,74 @@ for component, expected in [('platform', {'api', 'db', 'redis', 'worker', 'batch
     if component == 'platform':
         api = services['api']['Id']
         commit = active['commit']
+        redis = services['redis']['Id']
 for port, path in [(8310, '/en/app'), (8311, '/api/v1/health'), (8311, '/ops/login'), (8311, '/static/ops/main.css')]:
     with urllib.request.urlopen(f'http://127.0.0.1:{port}{path}', timeout=15) as response:
         if response.status != 200:
             raise SystemExit('PDF Master gateway route failed')
 print('VERIFY_GATEWAYS_OK')
-source = 'deployment_commit = ' + repr(commit) + '''
-import io,time,uuid
+# The Redis key is unique to this audit and expires even if this process stops.
+redis_key = 'pdfmaster:service-audit:' + uuid.uuid4().hex
+assert command(['docker', 'exec', redis, 'redis-cli', 'PING']).strip() == 'PONG'
+assert command(['docker', 'exec', redis, 'redis-cli', 'SET', redis_key, 'probe', 'EX', '15']).strip() == 'OK'
+assert command(['docker', 'exec', redis, 'redis-cli', 'GET', redis_key]).strip() == 'probe'
+command(['docker', 'exec', redis, 'redis-cli', 'DEL', redis_key])
+print('VERIFY_REDIS_ROUNDTRIP_OK', flush=True)
+source = 'CHECK_SOURCES = ' + repr(CHECK_SOURCES) + '\n' + '''
+import json,time,uuid
 from django.conf import settings
-from django.core.files.uploadedfile import SimpleUploadedFile
-from pypdf import PdfReader,PdfWriter
-from apps.core.models import Account,Job,Artifact
-from apps.core.services import upload_file,create_quote,submit_job,storage_path
+from django.db import connection,transaction
+from django.db.migrations.executor import MigrationExecutor
 from operations.integrations import telegram_config,antibot_config
 assert not settings.DEBUG and not settings.DEV_AUTH_ENABLED and not settings.LOCAL_SYNC_JOBS
+with connection.cursor() as cursor:
+    cursor.execute('SELECT 1'); assert cursor.fetchone()[0]==1
+executor=MigrationExecutor(connection)
+assert not executor.migration_plan(executor.loader.graph.leaf_nodes())
+print('VERIFY_DATABASE_QUERY_MIGRATIONS_OK',flush=True)
+modules={}
+for name,code in CHECK_SOURCES.items():
+    namespace={'__name__':'service_audit_'+name.replace('.','_')}
+    exec(compile(code,name,'exec'),namespace);modules[name]=namespace
+background=modules['service_checks_background.py']
+started=time.monotonic()
+audit_id=str(uuid.uuid4())
+context=background['prepare_canaries'](audit_id)
+print('VERIFY_CANARIES_PREPARED',flush=True)
+results=[]
+def emit(category,result):
+    row={'check':category,**result};results.append(row)
+    print('VERIFY_CHECK',json.dumps(row,sort_keys=True),flush=True)
 ab=antibot_config()
 print('VERIFY_ANTIBOT_CONFIG', 'bot_enabled='+str(bool(ab['bot_enabled'])), 'web_enabled='+str(bool(ab['web_enabled'])), 'web_configured='+str(bool(ab['configured'])))
-# Exercise the durable bot proof without real Telegram traffic or persistent
-# customer data. Negative IDs cannot belong to real Telegram user accounts.
-from django.db import transaction
 from telegram.verification import prepare,consume
 with transaction.atomic():
-    synthetic_id=-int(uuid.uuid4().int % (2**62)) - 1
+    synthetic_id=-int(uuid.uuid4().int % (2**62))-1
     challenge=prepare(synthetic_id)
-    assert challenge['status']=='required'
-    assert len(challenge['challenge']['choices'])==8
+    assert challenge['status']=='required' and len(challenge['challenge']['choices'])==8
     callback='human:'+str(synthetic_id)+':'+challenge['nonce']+':'+challenge['challenge']['answer']
     assert consume(synthetic_id,callback)['status']=='verified'
     assert consume(synthetic_id,callback)['status']=='already_verified'
     transaction.set_rollback(True)
-print('VERIFY_BOT_VERIFICATION_OK')
-print('VERIFY_WORKER_SETUP')
-# Each release gets a synthetic account so repeated deployment checks cannot
-# exhaust a shared free allowance. Retries of this release reuse the same job.
-account,created=Account.objects.get_or_create(pk=uuid.uuid5(uuid.NAMESPACE_URL,'https://pdfmaster.orderdesk.live/deployment-check/'+deployment_commit),
-    defaults={'is_test':True,'display_name':'Deployment verification','locale':'en'})
-assert account.is_test
-key='deployment-smoke-'+deployment_commit
-job=Job.objects.filter(account=account,idempotency_key=key).first()
-if job is None:
-    files=[]
-    for count in (1,2):
-        document=PdfWriter()
-        for page in range(count):document.add_blank_page(width=300,height=400)
-        content=io.BytesIO();document.write(content)
-        files.append(upload_file(account,SimpleUploadedFile(f'verification-{count}.pdf',content.getvalue(),content_type='application/pdf')))
-    quote=create_quote(account,'pdf.merge',[str(asset.pk) for asset in files],{})
-    print('VERIFY_WORKER_SUBMIT')
-    job,_=submit_job(account,quote.pk,key)
-deadline=time.monotonic()+90
-while job.status in ('queued','running','finalizing') and time.monotonic()<deadline:
-    time.sleep(1);job.refresh_from_db()
-print('VERIFY_WORKER_RESULT',job.status,job.error_code or 'none')
-assert job.status=='succeeded'
-artifact=Artifact.objects.select_related('file').get(job=job)
-pages=len(PdfReader(storage_path(artifact.file.object_key)).pages)
-print('VERIFY_OUTPUT_PAGES',pages)
-assert pages==3
-assert job.settled_meters=={'file_tasks':1,'file_page_units':3,'ai_credits':0}
-print('VERIFY_REAL_MERGE_OK',str(job.pk))
-cfg=telegram_config()
-print('VERIFY_TELEGRAM_CREDENTIALS', 'configured' if cfg['token'] else 'awaiting_admin_configuration')
-if cfg['token']:
-    # Read metadata only: never consume updates, change settings or send messages.
-    import json,urllib.request,urllib.parse
-    from telegram.commands import COMMANDS
-    def bot_metadata(method,params=None):
-        data=urllib.parse.urlencode(params or {}).encode()
-        try:
-            with urllib.request.urlopen(urllib.request.Request('https://api.telegram.org/bot'+cfg['token']+'/'+method,data=data),timeout=15) as response:
-                result=json.load(response)
-            assert result.get('ok')
-            return result['result']
-        except Exception:
-            raise RuntimeError('Telegram metadata verification failed; details suppressed') from None
-    identity=bot_metadata('getMe')
-    assert identity.get('is_bot')
-    print('VERIFY_BOT_USERNAME', identity['username'])
-    for locale,commands in COMMANDS.items():
-        installed=bot_metadata('getMyCommands',{'language_code':locale})
-        assert {row['command']:row['description'] for row in installed}==commands
-        print('VERIFY_BOT_COMMANDS',locale,len(installed))
-    webhook=bot_metadata('getWebhookInfo')
-    assert not webhook.get('url'), 'Expected polling configuration'
-    print('VERIFY_BOT_POLLING_CONFIGURATION_OK')
+emit('bot_verification',{'status':'passed','scope':'rollback_only_native_challenge'})
+emit('bot_polling_process',background['polling_process_lock']())
+''' + "cfg=telegram_config()\nprint('VERIFY_TELEGRAM_CREDENTIALS', 'configured' if cfg['token'] else 'awaiting_admin_configuration')\nif cfg['token']:\n    # Read metadata only: never consume updates, change settings or send messages.\n    import json,urllib.request,urllib.parse\n    from telegram.commands import COMMANDS\n    def bot_metadata(method,params=None):\n        data=urllib.parse.urlencode(params or {}).encode()\n        try:\n            with urllib.request.urlopen(urllib.request.Request('https://api.telegram.org/bot'+cfg['token']+'/'+method,data=data),timeout=15) as response:\n                result=json.load(response)\n            assert result.get('ok')\n            return result['result']\n        except Exception:\n            raise RuntimeError('Telegram metadata verification failed; details suppressed') from None\n    identity=bot_metadata('getMe')\n    assert identity.get('is_bot')\n    print('VERIFY_BOT_USERNAME', identity['username'])\n    for locale,commands in COMMANDS.items():\n        installed=bot_metadata('getMyCommands',{'language_code':locale})\n        assert {row['command']:row['description'] for row in installed}==commands\n        print('VERIFY_BOT_COMMANDS',locale,len(installed))\n    webhook=bot_metadata('getWebhookInfo')\n    assert not webhook.get('url'), 'Expected polling configuration'\n    print('VERIFY_BOT_POLLING_CONFIGURATION_OK')\n" + '''
+modules['service_checks_documents.py']['check_documents'](audit_id,lambda row:emit('document',row))
+paid=modules['service_checks_paid.py']['check_paid_processors'](audit_id)
+for feature,result in paid.items():
+    emit('paid_processor',{'feature':feature,**result})
+while True:
+    observed=background['poll_background'](context)
+    if not any(r['status']=='pending' for r in observed.values()) or time.monotonic()-started>335:
+        break
+    time.sleep(2)
+for name,result in observed.items():
+    if result['status']=='pending':result={**result,'status':'failed','code':'scheduler_deadline'}
+    emit(name,result)
+print('VERIFY_CANARY_RETENTION',json.dumps(background['retire_canaries'](context)))
+failed=[r for r in results if r['status']!='passed']
+print('VERIFY_SUMMARY',json.dumps({'checks':len(results),'failed':len(failed),'seconds':round(time.monotonic()-started,1)}),flush=True)
+if failed:raise SystemExit(1)
 '''
 output = command(['docker', 'exec', '-i', api, 'python', 'manage.py', 'shell', '-c',
                   "import sys\ntry:\n exec(sys.stdin.read())\nexcept Exception as exc:\n print('VERIFY_FAILURE',type(exc).__name__,getattr(exc,'code','unspecified'))\n raise SystemExit(1)"], source)
