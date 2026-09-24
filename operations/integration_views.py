@@ -6,7 +6,7 @@ from django.views.decorators.http import require_http_methods
 from apps.core.errors import DomainError
 from .auth import require_staff,audit,development_access
 from .views import context,finish_render
-from .integrations import telegram_config,ai_config,google_config,email_config,save_config,test_telegram,test_email,control_runner,runner_status
+from .integrations import telegram_config,ai_config,google_config,email_config,antibot_config,save_config,test_telegram,test_email,control_runner,runner_status
 from .models import IntegrationConfig
 
 LABELS={
@@ -66,8 +66,57 @@ AUTH_LABELS = {
 }
 for language, labels in AUTH_LABELS.items(): LABELS[language].update(labels)
 
+ANTIBOT_LABELS = {
+    'en': {
+        'intro': 'Manage sign-in, bot protection, Telegram, email delivery, and document generation. Secrets are encrypted and never shown after saving.',
+        'antibot': 'Anti-bot verification', 'antibot_web': 'Web verification',
+        'antibot_web_enabled': 'Enable web verification', 'antibot_bot_enabled': 'Enable Telegram bot verification',
+        'antibot_site_key': 'Turnstile site key', 'antibot_secret_key': 'Turnstile secret key',
+        'antibot_hosts': 'Allowed hostnames', 'antibot_hosts_hint': 'One exact hostname per line, without https://, paths, or wildcards.',
+        'antibot_web_hint': 'Create a Managed Turnstile widget for these hostnames in Cloudflare. Save its site key and secret key here, then enable web verification.',
+        'antibot_setup': 'Open Cloudflare Turnstile',
+        'antibot_bot_hint': 'A quick emoji choice helps limit simple automated abuse in Telegram. No external keys are needed.',
+        'antibot_not_configured': 'Add both Turnstile keys and at least one hostname before enabling web verification.',
+        'invalid_antibot_hostnames': 'Use exact hostnames, such as pdfmaster.orderdesk.live. URLs, ports, and wildcards are not accepted.',
+        'invalid_antibot_site_key': 'Check the Turnstile site key and paste it again.',
+        'invalid_antibot_secret_key': 'Check the Turnstile secret key and paste it again.',
+        'antibot_test_keys_forbidden': 'Use real Turnstile credentials on the live website. Test keys only work in local development.',
+    },
+    'uz': {
+        'intro': 'Kirish, botlardan himoya, Telegram, pochta va hujjat yaratishni sozlang. Maxfiy kalitlar shifrlanadi va saqlangandan keyin ko‘rsatilmaydi.',
+        'antibot': 'Botlardan himoya', 'antibot_web': 'Veb tekshiruvi',
+        'antibot_web_enabled': 'Veb tekshiruvini yoqish', 'antibot_bot_enabled': 'Telegram botida tekshiruvni yoqish',
+        'antibot_site_key': 'Turnstile sayt kaliti', 'antibot_secret_key': 'Turnstile maxfiy kaliti',
+        'antibot_hosts': 'Ruxsat etilgan domenlar', 'antibot_hosts_hint': 'Har qatorga bitta aniq domen kiriting. https://, yo‘l va yulduzcha belgisi kerak emas.',
+        'antibot_web_hint': 'Cloudflare’da shu domenlar uchun Managed rejimidagi Turnstile vidjetini yarating. Sayt va maxfiy kalitlarni shu yerda saqlang, keyin veb tekshiruvini yoqing.',
+        'antibot_setup': 'Cloudflare Turnstile’ni ochish',
+        'antibot_bot_hint': 'Telegramda oddiy avtomatik so‘rovlarni kamaytirish uchun qisqa emoji tekshiruvi qo‘llanadi. Tashqi kalitlar kerak emas.',
+        'antibot_not_configured': 'Veb tekshiruvini yoqishdan oldin ikkala Turnstile kaliti va kamida bitta domenni kiriting.',
+        'invalid_antibot_hostnames': 'pdfmaster.orderdesk.live kabi aniq domen kiriting. URL, port va yulduzcha belgisi qabul qilinmaydi.',
+        'invalid_antibot_site_key': 'Turnstile sayt kalitini tekshirib, qayta kiriting.',
+        'invalid_antibot_secret_key': 'Turnstile maxfiy kalitini tekshirib, qayta kiriting.',
+        'antibot_test_keys_forbidden': 'Ishlayotgan saytda haqiqiy Turnstile kalitlaridan foydalaning. Sinov kalitlari faqat mahalliy muhitda ishlaydi.',
+    },
+    'ru': {
+        'intro': 'Настройте вход, защиту от ботов, Telegram, отправку почты и генерацию документов. Секреты шифруются и не показываются после сохранения.',
+        'antibot': 'Защита от ботов', 'antibot_web': 'Проверка на сайте',
+        'antibot_web_enabled': 'Включить проверку на сайте', 'antibot_bot_enabled': 'Включить проверку в Telegram-боте',
+        'antibot_site_key': 'Ключ сайта Turnstile', 'antibot_secret_key': 'Секретный ключ Turnstile',
+        'antibot_hosts': 'Разрешённые домены', 'antibot_hosts_hint': 'Один точный домен в строке, без https://, путей и звёздочек.',
+        'antibot_web_hint': 'Создайте виджет Turnstile в режиме Managed для этих доменов в Cloudflare. Сохраните здесь ключ сайта и секретный ключ, затем включите проверку на сайте.',
+        'antibot_setup': 'Открыть Cloudflare Turnstile',
+        'antibot_bot_hint': 'Быстрый выбор эмодзи помогает сдерживать простые автоматические запросы в Telegram. Внешние ключи не нужны.',
+        'antibot_not_configured': 'Перед включением проверки добавьте оба ключа Turnstile и хотя бы один домен.',
+        'invalid_antibot_hostnames': 'Укажите точный домен, например pdfmaster.orderdesk.live. URL, порты и звёздочки не допускаются.',
+        'invalid_antibot_site_key': 'Проверьте и вставьте ключ сайта Turnstile ещё раз.',
+        'invalid_antibot_secret_key': 'Проверьте и вставьте секретный ключ Turnstile ещё раз.',
+        'antibot_test_keys_forbidden': 'Для рабочего сайта нужны настоящие ключи Turnstile. Тестовые ключи доступны только при локальной разработке.',
+    },
+}
+for language, labels in ANTIBOT_LABELS.items(): LABELS[language].update(labels)
+
 @require_staff()
-@sensitive_post_parameters('token','api_key','client_secret','password')
+@sensitive_post_parameters('token','api_key','client_secret','password','secret_key')
 @require_http_methods(['GET','POST'])
 def integrations(request):
     data=context(request,'integrations');labels=LABELS[data['lang']];data['i']=labels;data['title']=labels['integrations']
@@ -89,8 +138,8 @@ def integrations(request):
                 audit(request.ops_user,'integration.'+action,key,reason,after={'configured':True})
                 return redirect('/ops/integrations?lang='+data['lang']+'&notice='+message)
             except DomainError as e:
-                data['error']=labels['failure'];data['error_code']=e.code
-    bot=telegram_config();ai=ai_config();google=google_config();email=email_config()
+                data['error']=labels.get(e.code,labels['failure']);data['error_code']=e.code
+    bot=telegram_config();ai=ai_config();google=google_config();email=email_config();antibot=antibot_config()
     local_controls=development_access(request)
     # A container-managed bot has a different PID namespace from the API.
     # Do not misreport it as stopped using the local development PID check.
@@ -99,4 +148,6 @@ def integrations(request):
     data.update(bot={'username':bot['username'],'webapp_url':bot['webapp_url'],'configured':bool(bot['token']),'status':status},ai={'mode':ai['mode'],'model':ai['model'],'image_model':ai['image_model'],'configured':bool(ai['api_key'])},local_controls=local_controls,notice=labels.get(request.GET.get('notice',''),''))
     data['google'] = {key: google[key] for key in ('enabled','client_id','redirect_uri','configured','ready')}
     data['email'] = {key: email[key] for key in ('enabled','host','port','username','use_tls','use_ssl','from_email','configured','ready')}
+    data['antibot'] = {key: antibot[key] for key in ('web_enabled','bot_enabled','site_key','allowed_hostnames','configured','ready')}
+    data['antibot']['hostnames_text'] = '\n'.join(antibot['allowed_hostnames'])
     return finish_render(request,'ops/integrations.html',data)

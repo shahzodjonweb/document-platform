@@ -23,7 +23,7 @@ from tests.test_bot_transport import Harness, pdf, prepare
 from tests.test_telegram_linking import challenge_for, email_account
 
 
-pytestmark = pytest.mark.django_db(transaction=True)
+pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.usefixtures('bot_verification_disabled')]
 
 
 def texts(harness):

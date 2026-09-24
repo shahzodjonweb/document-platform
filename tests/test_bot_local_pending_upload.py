@@ -20,7 +20,7 @@ from telegram.local import (
 
 from telegram.ux_copy import UX
 
-pytestmark = pytest.mark.django_db(transaction=True)
+pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.usefixtures('bot_verification_disabled')]
 
 
 @pytest.fixture

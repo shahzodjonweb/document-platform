@@ -139,5 +139,8 @@
   "email_delivery_failed": "Tasdiqlash xatini yuborib bo‘lmadi. Keyinroq urinib ko‘ring.",
   "google_login_failed": "Google orqali kirish tasdiqlanmadi. Qayta urinib ko‘ring.",
   "google_cancelled": "Google orqali kirish bekor qilindi.",
-  "invalid_oauth_state": "Google kirish muddati tugagan yoki boshqa brauzerga tegishli. Qaytadan boshlang."
+  "invalid_oauth_state": "Google kirish muddati tugagan yoki boshqa brauzerga tegishli. Qaytadan boshlang.",
+  "antibot_required": "Qisqa xavfsizlik tekshiruvidan o‘ting.",
+  "antibot_failed": "Tekshiruv eskirgan yoki o‘tmadi. Qayta urinib ko‘ring.",
+  "antibot_unavailable": "Xavfsizlik tekshiruvi hozir ishlamayapti. Birozdan so‘ng qayta urinib ko‘ring."
 }

@@ -12,7 +12,7 @@ from apps.core.models import Account, AuthChallenge, BotConversation
 from tests.test_bot_onboarding import GateHarness, challenge
 
 
-pytestmark = pytest.mark.django_db(transaction=True)
+pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.usefixtures('bot_verification_disabled')]
 
 
 def document(number=1, **kwargs):

@@ -362,9 +362,15 @@ def cleanup_expired():
         asset.save(update_fields=['state'])
         count += 1
     SecretHandle.objects.filter(expires_at__lte=now).delete()
-    from .models import EmailChallenge, GoogleChallenge, AuthRateLimit, AuthChallenge, BotCallback, BotConversation
+    from .models import EmailChallenge, GoogleChallenge, AuthRateLimit, AuthChallenge, BotCallback, BotConversation, AuthReceipt
     for model in (EmailChallenge, GoogleChallenge, AuthRateLimit, AuthChallenge, BotCallback):
         model.objects.filter(expires_at__lte=now).delete()
+    # Both Telegram and Turnstile proofs expire after five minutes. Keep receipt
+    # hashes for a day, then discard them so failed verification spam cannot grow
+    # the replay table indefinitely.
+    AuthReceipt.objects.filter(created_at__lte=now-timedelta(days=1)).delete()
+    from telegram.verification import cleanup_expired_pending
+    cleanup_expired_pending(now)
     BotConversation.objects.filter(updated_at__lte=now-timedelta(minutes=30)).exclude(state='').update(state='',prompt={})
     expired_uploads = BotConversation.objects.filter(language_expires_at__lte=now, pending__has_key='uploads')
     for conversation_id in expired_uploads.values_list('pk', flat=True).iterator():

@@ -10,3 +10,9 @@ def private_storage(settings,tmp_path):
     settings.ENABLE_BETA_TOOLS=True
     settings.LOCAL_SYNC_JOBS=True
     cache.clear()
+
+
+@pytest.fixture
+def bot_verification_disabled(monkeypatch):
+    """Legacy domain/transport tests start after the independently tested gate."""
+    monkeypatch.setattr('telegram.verification.enabled', lambda: False)

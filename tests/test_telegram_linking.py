@@ -22,7 +22,7 @@ from telegram.delivery import attempt, enqueue
 from telegram.local import dispatch_local
 from tests.test_bot_transport import Harness, pdf
 
-pytestmark = pytest.mark.django_db(transaction=True)
+pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.usefixtures('bot_verification_disabled')]
 
 
 def email_account(**values):

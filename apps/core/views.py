@@ -13,6 +13,7 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from .models import Account, FileAsset, Job, Quote, Artifact, SupportTicket, WebhookReceipt
 from .errors import DomainError, error_data
+from .antibot import require_web_verification
 from .identity import resolve_account, exchange_miniapp, create_challenge, get_bound_challenge, exchange_challenge
 from .policy import catalog, SEED, FEATURES, usage_snapshot
 from .services import upload_file, create_quote, submit_job, execute_job, cancel_job, storage_path, record_event
@@ -93,12 +94,15 @@ def dev_login(request):
 @api(('POST',),auth=False)
 def miniapp_login(request):
     throttle(request,'miniapp')
-    return sign_in(request,exchange_miniapp(body(request).get('init_data',body(request).get('initData',''))))
+    data=body(request)
+    require_web_verification(request,data)
+    return sign_in(request,exchange_miniapp(data.get('init_data',data.get('initData',''))))
 
 @api(('POST',),auth=False)
 def challenges(request):
     throttle(request,'challenge',10)
     data=body(request)
+    require_web_verification(request,data)
     intent=data.get('intent','login')
     if intent not in ('login','link'): raise DomainError('invalid_request')
     if intent=='link' and not request.account: raise DomainError('authentication_required',401)

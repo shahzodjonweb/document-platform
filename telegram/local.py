@@ -18,7 +18,7 @@ from django.conf import settings
 from django.utils import timezone as django_timezone
 from django.db.models import Max
 from apps.core.errors import DomainError
-from apps.core.models import BotConversation,FileAsset
+from apps.core.models import BotConversation,BotVerification,FileAsset
 from apps.core.services import storage_path
 from apps.commerce.models import LocalBotMessage
 from apps.commerce.services import require_sandbox
@@ -88,11 +88,13 @@ def _read_staged(account, file_id):
 
 def _pending_ids(account):
     conversation = BotConversation.objects.filter(pk=account.telegram_user_id).first()
-    if not conversation or not conversation.language_expires_at or conversation.language_expires_at <= django_timezone.now():
-        return set()
-    uploads = conversation.pending.get('uploads', [])
-    if not isinstance(uploads, list):
-        return set()
+    verification = BotVerification.objects.filter(pk=account.telegram_user_id).first()
+    uploads = []
+    now = django_timezone.now()
+    for state, expires in ((conversation, getattr(conversation, 'language_expires_at', None)),
+                           (verification, getattr(verification, 'expires_at', None))):
+        if state and expires and expires > now and isinstance(state.pending.get('uploads'), list):
+            uploads.extend(state.pending['uploads'])
     identifiers = set()
     for upload in uploads[:PENDING_UPLOAD_COUNT]:
         if not isinstance(upload, dict) or upload.get('user_id') != account.telegram_user_id or upload.get('chat_id') != account.telegram_user_id:

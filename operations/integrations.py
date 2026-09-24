@@ -112,6 +112,64 @@ def email_config():
                       and (settings.DEBUG or result['use_tls'] or result['use_ssl']))
     return {**result, 'configured': configured, 'ready': bool(result['enabled'] and configured)}
 
+# Cloudflare's published dummy credentials must never become production protection.
+# https://developers.cloudflare.com/turnstile/troubleshooting/testing/
+_TURNSTILE_TEST_SITE_KEYS = frozenset({
+    '1x00000000000000000000AA', '2x00000000000000000000AB',
+    '1x00000000000000000000BB', '2x00000000000000000000BB',
+    '3x00000000000000000000FF',
+})
+_TURNSTILE_TEST_SECRET_KEYS = frozenset({
+    '1x0000000000000000000000000000000AA',
+    '2x0000000000000000000000000000000AA',
+    '3x0000000000000000000000000000000AA',
+})
+_ANTIBOT_DEFAULT_HOSTS = ('pdfmaster.orderdesk.live',)
+
+
+def _antibot_hostnames(value):
+    if isinstance(value, str):
+        if len(value) > 6000: raise DomainError('invalid_antibot_hostnames')
+        value = re.split(r'[\s,]+', value.strip()) if value.strip() else []
+    if not isinstance(value, (list, tuple)) or len(value) > 20:
+        raise DomainError('invalid_antibot_hostnames')
+    hosts = []
+    for hostname in value:
+        if not isinstance(hostname, str) or not hostname or len(hostname) > 253:
+            raise DomainError('invalid_antibot_hostnames')
+        # Exact DNS names only: no schemes, ports, paths, credentials or wildcards.
+        hostname = hostname.lower()
+        if any(not re.fullmatch(r'[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?', label)
+               for label in hostname.split('.')):
+            raise DomainError('invalid_antibot_hostnames')
+        if hostname not in hosts: hosts.append(hostname)
+    return hosts
+
+
+def _validate_antibot(cfg, secrets):
+    site_key, secret_key = cfg.get('site_key', ''), secrets.get('secret_key', '')
+    if site_key and (not isinstance(site_key, str) or not re.fullmatch(r'[A-Za-z0-9_-]{10,256}', site_key)):
+        raise DomainError('invalid_antibot_site_key')
+    if secret_key and (not isinstance(secret_key, str) or not re.fullmatch(r'[A-Za-z0-9_-]{10,1024}', secret_key)):
+        raise DomainError('invalid_antibot_secret_key')
+    hosts = _antibot_hostnames(cfg.get('allowed_hostnames', list(_ANTIBOT_DEFAULT_HOSTS)))
+    if not settings.DEBUG and (site_key in _TURNSTILE_TEST_SITE_KEYS or secret_key in _TURNSTILE_TEST_SECRET_KEYS):
+        raise DomainError('antibot_test_keys_forbidden')
+    if cfg.get('web_enabled') and not (site_key and secret_key and hosts):
+        raise DomainError('antibot_not_configured')
+
+
+def antibot_config():
+    cfg, secret = read_config('antibot')
+    result = {'web_enabled': cfg.get('web_enabled', False),
+              'bot_enabled': cfg.get('bot_enabled', not settings.DEBUG),
+              'site_key': cfg.get('site_key', ''), 'secret_key': secret.get('secret_key', ''),
+              'allowed_hostnames': cfg.get('allowed_hostnames', list(_ANTIBOT_DEFAULT_HOSTS))}
+    configured = bool(result['site_key'] and result['secret_key'] and result['allowed_hostnames'])
+    try: _validate_antibot(result, secret)
+    except DomainError: configured = False
+    return {**result, 'configured': configured, 'ready': bool(result['web_enabled'] and configured)}
+
 def _email_connection(cfg):
     from django.core.mail import get_connection
     # Only the memory backend can replace SMTP in development; codes never go to stdout.
@@ -233,6 +291,17 @@ def save_config(key, values):
             raise DomainError('email_not_configured')
         cfg.update(enabled=enabled, host=host, port=port, username=username, from_email=sender,
                    use_tls=use_tls, use_ssl=use_ssl)
+    elif key == 'antibot':
+        secret_key = values.get('secret_key', '')
+        if not isinstance(secret_key, str): raise DomainError('invalid_antibot_secret_key')
+        if secret_key.strip(): secrets['secret_key'] = secret_key.strip()
+        site_key = values.get('site_key', cfg.get('site_key', ''))
+        if not isinstance(site_key, str): raise DomainError('invalid_antibot_site_key')
+        cfg.update(web_enabled=_boolean(values.get('web_enabled', False)),
+                   bot_enabled=_boolean(values.get('bot_enabled', not settings.DEBUG)),
+                   site_key=site_key.strip(),
+                   allowed_hostnames=_antibot_hostnames(values.get('allowed_hostnames', cfg.get('allowed_hostnames', list(_ANTIBOT_DEFAULT_HOSTS)))))
+        _validate_antibot(cfg, secrets)
     else: raise DomainError('invalid_parameters')
     return IntegrationConfig.objects.update_or_create(key=key,defaults={'configuration':cfg,'encrypted_secrets':cipher().encrypt(json.dumps(secrets).encode()),'check_status':'not_checked'})[0]
 

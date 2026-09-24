@@ -52,8 +52,24 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from pypdf import PdfReader,PdfWriter
 from apps.core.models import Account,Job,Artifact
 from apps.core.services import upload_file,create_quote,submit_job,storage_path
-from operations.integrations import telegram_config
+from operations.integrations import telegram_config,antibot_config
 assert not settings.DEBUG and not settings.DEV_AUTH_ENABLED and not settings.LOCAL_SYNC_JOBS
+ab=antibot_config()
+print('VERIFY_ANTIBOT_CONFIG', 'bot_enabled='+str(bool(ab['bot_enabled'])), 'web_enabled='+str(bool(ab['web_enabled'])), 'web_configured='+str(bool(ab['configured'])))
+# Exercise the durable bot proof without real Telegram traffic or persistent
+# customer data. Negative IDs cannot belong to real Telegram user accounts.
+from django.db import transaction
+from telegram.verification import prepare,consume
+with transaction.atomic():
+    synthetic_id=-int(uuid.uuid4().int % (2**62)) - 1
+    challenge=prepare(synthetic_id)
+    assert challenge['status']=='required'
+    assert len(challenge['challenge']['choices'])==8
+    callback='human:'+str(synthetic_id)+':'+challenge['nonce']+':'+challenge['challenge']['answer']
+    assert consume(synthetic_id,callback)['status']=='verified'
+    assert consume(synthetic_id,callback)['status']=='already_verified'
+    transaction.set_rollback(True)
+print('VERIFY_BOT_VERIFICATION_OK')
 print('VERIFY_WORKER_SETUP')
 # Each release gets a synthetic account so repeated deployment checks cannot
 # exhaust a shared free allowance. Retries of this release reuse the same job.

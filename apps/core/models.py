@@ -85,6 +85,20 @@ class AuthReceipt(models.Model):
     digest = models.CharField(max_length=64, unique=True)
     created_at = models.DateTimeField(default=timezone.now)
 
+
+class BotVerification(models.Model):
+    """Owner-bound bot abuse checks, independent of language and draft resets."""
+    telegram_user_id = models.BigIntegerField(primary_key=True)
+    nonce = models.CharField(max_length=32, blank=True, default='')
+    challenge = models.JSONField(default=dict)
+    pending = models.JSONField(default=dict)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    verified_until = models.DateTimeField(null=True, blank=True)
+    failures = models.PositiveSmallIntegerField(default=0)
+    cooldown_until = models.DateTimeField(null=True, blank=True)
+    prompt_sent_at = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
 class UsageGrant(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='usage_grants')

@@ -16,7 +16,7 @@ from apps.core.models import Account, AuthChallenge, BotCallback, BotConversatio
 from telegram.onboarding import LANGUAGES, LINK_RETURN_TEXT, chosen_locale, install_onboarding
 
 
-pytestmark = pytest.mark.django_db(transaction=True)
+pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.usefixtures('bot_verification_disabled')]
 
 
 class Session(BaseSession):

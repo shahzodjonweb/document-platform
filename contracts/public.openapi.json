@@ -2535,6 +2535,12 @@
             "application/json": {
               "schema": {
                 "properties": {
+                  "antibot_token": {
+                    "description": "Fresh Turnstile proof with action customer_auth; required when web anti-bot verification is enabled.",
+                    "maxLength": 2048,
+                    "type": "string",
+                    "writeOnly": true
+                  },
                   "intent": {
                     "enum": [
                       "login",
@@ -2848,6 +2854,12 @@
             "application/json": {
               "schema": {
                 "properties": {
+                  "antibot_token": {
+                    "description": "Fresh Turnstile proof with action customer_auth; required when web anti-bot verification is enabled.",
+                    "maxLength": 2048,
+                    "type": "string",
+                    "writeOnly": true
+                  },
                   "email": {
                     "format": "email",
                     "maxLength": 254,
@@ -2946,6 +2958,12 @@
             "application/json": {
               "schema": {
                 "properties": {
+                  "antibot_token": {
+                    "description": "Fresh Turnstile proof with action customer_auth; required when web anti-bot verification is enabled.",
+                    "maxLength": 2048,
+                    "type": "string",
+                    "writeOnly": true
+                  },
                   "email": {
                     "format": "email",
                     "maxLength": 254,
@@ -3026,6 +3044,12 @@
             "application/json": {
               "schema": {
                 "properties": {
+                  "antibot_token": {
+                    "description": "Fresh Turnstile proof with action customer_auth; required when web anti-bot verification is enabled.",
+                    "maxLength": 2048,
+                    "type": "string",
+                    "writeOnly": true
+                  },
                   "display_name": {
                     "type": "string"
                   },
@@ -3126,6 +3150,12 @@
             "application/json": {
               "schema": {
                 "properties": {
+                  "antibot_token": {
+                    "description": "Fresh Turnstile proof with action customer_auth; required when web anti-bot verification is enabled.",
+                    "maxLength": 2048,
+                    "type": "string",
+                    "writeOnly": true
+                  },
                   "email": {
                     "format": "email",
                     "maxLength": 254,
@@ -3433,6 +3463,12 @@
             "application/json": {
               "schema": {
                 "properties": {
+                  "antibot_token": {
+                    "description": "Fresh Turnstile proof with action customer_auth; required when web anti-bot verification is enabled.",
+                    "maxLength": 2048,
+                    "type": "string",
+                    "writeOnly": true
+                  },
                   "intent": {
                     "enum": [
                       "login",
@@ -3592,6 +3628,29 @@
               "application/json": {
                 "schema": {
                   "properties": {
+                    "antibot": {
+                      "properties": {
+                        "binding": {
+                          "type": "string"
+                        },
+                        "configured": {
+                          "type": "boolean"
+                        },
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "site_key": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "enabled",
+                        "configured",
+                        "site_key",
+                        "binding"
+                      ],
+                      "type": "object"
+                    },
                     "email": {
                       "properties": {
                         "configured": {
@@ -3641,7 +3700,8 @@
                   "required": [
                     "email",
                     "google",
-                    "telegram"
+                    "telegram",
+                    "antibot"
                   ],
                   "type": "object"
                 }
@@ -3793,6 +3853,12 @@
             "application/json": {
               "schema": {
                 "properties": {
+                  "antibot_token": {
+                    "description": "Fresh Turnstile proof with action customer_auth; required when web anti-bot verification is enabled.",
+                    "maxLength": 2048,
+                    "type": "string",
+                    "writeOnly": true
+                  },
                   "init_data": {
                     "type": "string"
                   }

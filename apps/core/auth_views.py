@@ -6,6 +6,7 @@ from django.http import HttpResponseRedirect
 from django.views.decorators.debug import sensitive_post_parameters, sensitive_variables
 from operations.integrations import email_config, google_config, telegram_config
 from . import customer_auth as auth
+from .antibot import public_config, require_web_verification
 from .errors import DomainError
 from .views import api, body, sign_in, current_account
 
@@ -26,7 +27,8 @@ def providers(request):
     email, google, telegram = email_config(), google_config(), telegram_config()
     return {'email': {'enabled': email['enabled'], 'configured': email['configured']},
             'google': {'enabled': google['enabled'], 'configured': google['configured']},
-            'telegram': {'enabled': bool(telegram['token'] and telegram['username']), 'configured': bool(telegram['token'] and telegram['username'])}}
+            'telegram': {'enabled': bool(telegram['token'] and telegram['username']), 'configured': bool(telegram['token'] and telegram['username'])},
+            'antibot': public_config(request)}
 
 
 @sensitive_post_parameters('password')
@@ -37,6 +39,7 @@ def email_register(request):
     if request.account:
         raise DomainError('session_changed', 409)
     data = body(request)
+    require_web_verification(request, data)
     challenge = auth.begin_email('register', data.get('email'), data.get('password'), data.get('display_name', ''), data.get('locale', 'en'))
     return {'status': 'verification_sent', 'challenge_id': str(challenge.pk)}
 
@@ -47,6 +50,7 @@ def email_register(request):
 def email_link(request):
     limit(request, 'email-link', 20)
     data = body(request)
+    require_web_verification(request, data)
     challenge = auth.begin_email('link', data.get('email'), data.get('password'), locale=request.account.locale, account=request.account)
     return {'status': 'verification_sent', 'challenge_id': str(challenge.pk)}
 
@@ -72,6 +76,7 @@ def email_verify(request):
 def email_login(request):
     limit(request, 'email-login', 60)
     data = body(request)
+    require_web_verification(request, data)
     account = auth.email_login(data.get('email'), data.get('password'))
     if request.account and request.account.pk != account.pk:
         raise DomainError('session_changed', 409)
@@ -83,6 +88,7 @@ def email_login(request):
 def email_reset(request):
     limit(request, 'email-reset', 30)
     data = body(request)
+    require_web_verification(request, data)
     challenge = auth.begin_email('reset', data.get('email'), locale=data.get('locale', 'en'))
     return {'status': 'verification_sent', 'challenge_id': str(challenge.pk)}
 
@@ -115,6 +121,7 @@ def password_change(request):
 def google_start(request):
     limit(request, 'google-start', 40)
     data = body(request)
+    require_web_verification(request, data)
     return {'authorization_url': auth.begin_google(request, data.get('intent', 'login'), data.get('locale', 'en'))}
 
 

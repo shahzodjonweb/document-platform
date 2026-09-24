@@ -17,6 +17,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.core.models import Account, AuthChallenge, BotCallback, BotConversation
+from .verification import PREFIX as VERIFICATION_PREFIX, answer_verification, require_verification
 
 
 LANGUAGES = (('uz', '🇺🇿 O‘zbekcha'), ('en', '🇬🇧 English'), ('ru', '🇷🇺 Русский'))
@@ -331,6 +332,17 @@ class LanguageGate(BaseMiddleware):
             return await message.answer(LINK_RETURN_TEXT[locale or 'en'])
         return await self.on_ready(message, user, locale, {'challenge_id': str(challenge.id)})
 
+    async def continue_ready(self, message, user, locale, pending):
+        active_link = await sync_to_async(_active_link)(user.id)
+        if active_link and active_link.approved_at:
+            from .commands import install_chat_commands
+            await install_chat_commands(message.bot, user.id, locale)
+            return await self.resume_link(message, user, locale, active_link)
+        if active_link:
+            pending = {'challenge_id': str(active_link.id),
+                       **({'resend_file': True} if pending.get('resend_file') or pending.get('uploads') else {})}
+        return await self.on_ready(message, user, locale, pending)
+
     async def __call__(self, handler, event, data):
         if isinstance(event, Message):
             # Settlement must be processed even if a customer has never used
@@ -343,13 +355,20 @@ class LanguageGate(BaseMiddleware):
             locale = await sync_to_async(chosen_locale)(user.id)
             if not _is_private(event, user):
                 return await event.answer(PRIVATE_TEXT[locale or 'en'])
-            pending = await sync_to_async(_pending_for)(event) if not locale or _command(event) == '/start' else None
+            pending = await sync_to_async(_pending_for)(event)
             await sync_to_async(_remember_link_start)(user.id, pending)
             active_link = await sync_to_async(_active_link)(user.id)
             if _command(event) == '/language':
                 return await show_language(event, user)
             if not locale:
                 return await show_language(event, user, pending)
+            verification_pending = pending
+            if active_link:
+                verification_pending = {'challenge_id': str(active_link.id)}
+                if pending and (pending.get('uploads') or pending.get('resend_file')):
+                    verification_pending['resend_file'] = True
+            if await require_verification(event, user, locale, verification_pending):
+                return None
             if active_link:
                 return await self.resume_link(event, user, locale, active_link)
             data['bot_locale'] = locale
@@ -366,18 +385,20 @@ class LanguageGate(BaseMiddleware):
                     return await event.answer(EXPIRED_TEXT[locale or 'en'], show_alert=True)
                 locale, pending = selected
                 await event.answer()
-                active_link = await sync_to_async(_active_link)(user.id)
-                if active_link and active_link.approved_at:
-                    from .commands import install_chat_commands
-                    await install_chat_commands(event.bot, user.id, locale)
-                    return await self.resume_link(event.message, user, locale, active_link)
+                if await require_verification(event.message, user, locale, pending):
+                    return None
                 # query.message.from_user is the bot; always supply the verified
                 # callback sender explicitly to the identity-resuming handler.
-                return await self.on_ready(event.message, user, locale, pending)
+                return await self.continue_ready(event.message, user, locale, pending)
             if not locale:
                 await event.answer()
                 return await show_language(event.message, user)
+            if (event.data or '').startswith(VERIFICATION_PREFIX):
+                return await answer_verification(event, locale, self.continue_ready)
             active_link = await sync_to_async(_active_link)(user.id)
+            pending = {'challenge_id': str(active_link.id)} if active_link else None
+            if await require_verification(event.message, user, locale, pending):
+                return await event.answer()
             if active_link:
                 allowed = (not active_link.approved_at and await sync_to_async(_is_link_confirmation)(user.id, event.data, active_link))
                 if not allowed:

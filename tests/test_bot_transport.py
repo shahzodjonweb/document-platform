@@ -19,7 +19,7 @@ from apps.core.services import upload_file,storage_path
 from telegram.bot import COPY, build_dispatcher
 from telegram.workflows import attach_input,configure
 
-pytestmark=pytest.mark.django_db(transaction=True)
+pytestmark=[pytest.mark.django_db(transaction=True), pytest.mark.usefixtures('bot_verification_disabled')]
 
 class OfflineSession(BaseSession):
     def __init__(self):

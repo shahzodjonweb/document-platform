@@ -13,7 +13,7 @@ from apps.core.models import BotCallback, BotConversation
 from telegram.billing import COPY
 from telegram.local import LocalTelegramSession, dispatch_local
 
-pytestmark = pytest.mark.django_db(transaction=True)
+pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.usefixtures('bot_verification_disabled')]
 
 
 @pytest.fixture
