@@ -53,7 +53,7 @@ def test_link_does_not_create_telegram_account_before_browser_finishes():
     challenge.refresh_from_db()
     assert challenge.approved_at is None
 
-    harness.click(harness.token('Confirm Telegram link'))
+    harness.click(harness.action('link_login'))
     account.refresh_from_db()
     challenge.refresh_from_db()
     assert challenge.approved_at is not None
@@ -71,7 +71,7 @@ def test_link_callback_rejects_another_telegram_sender_without_creating_account(
     challenge, token, _ = challenge_for(account)
     harness = Harness()
     harness.command('/start login_'+token)
-    button = harness.token('Confirm Telegram link')
+    button = harness.action('link_login')
     harness.click(button, uid=43)
     challenge.refresh_from_db()
     assert challenge.approved_at is None
@@ -102,7 +102,7 @@ def test_link_does_not_merge_another_existing_telegram_customer():
     challenge, token, _ = challenge_for(target)
     harness = Harness()
     harness.command('/start login_'+token)
-    harness.click(harness.token('Confirm Telegram link'))
+    harness.click(harness.action('link_login'))
     challenge.refresh_from_db()
     target.refresh_from_db()
     existing.refresh_from_db()
@@ -119,7 +119,7 @@ def test_expired_link_confirmation_and_invalid_start_have_no_account_side_effect
     account = email_account()
     challenge, token, _ = challenge_for(account)
     harness.command('/start login_'+token)
-    button = harness.token('Confirm Telegram link')
+    button = harness.action('link_login')
     BotCallback.objects.filter(token=button).update(expires_at=timezone.now()-timedelta(seconds=1))
     harness.click(button)
     challenge.refresh_from_db()

@@ -14,7 +14,7 @@ from datetime import timedelta
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command, CommandStart
 from aiogram.exceptions import TelegramAPIError
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, BufferedInputFile, BotCommand
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, BufferedInputFile, BotCommand, Message, Chat
 from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -26,32 +26,9 @@ from apps.core.services import upload_file, create_quote, submit_job, execute_jo
 from apps.core.serializers import quote_data
 from apps.core.errors import DomainError, error_data
 
-COPY={
- 'en':{'welcome':'Welcome to PDF Master. Send a PDF or image, then choose a tool. Files are retained for 24 hours after processing.','tools':'Choose a tool. Upload files in the requested order, then use /done.','received':'File received. Send more files or choose /tools, then /done.','done':'Review the file order below. Reply /order 2,1 to change it. Use /run to confirm this quote.','run':'Run task','empty':'Send a file first.','working':'Processing your task…','result':'Your result is ready. Server files expire after 24 hours; files delivered in Telegram remain in your chat.','no_op':'No useful size reduction was found. No allowance was charged.','support':'Use /support your message or /paysupport your message.','ticket':'Your support request was saved.','cancel':'The current input flow was canceled. Submitted tasks remain in task history.','help':'Send files → /tools → /done → /run. /order 2,1 sets input order. /parameters followed by a JSON object configures pages or rotation. Use /myfiles for results.','login':'Confirm sign-in for this browser only if you initiated it:','confirm':'Confirm sign-in','approved':'Sign-in approved. Return to the initiating browser.','language':'Choose your language.','open':'Open workspace','terms':'Local development beta. Paid checkout is disabled. Server binaries expire after 24 hours. /paysupport for purchase help.'},
- 'uz':{'welcome':'PDF Master’ga xush kelibsiz. PDF yoki rasm yuboring, so‘ng vositani tanlang. Fayllar qayta ishlangandan keyin 24 soat saqlanadi.','tools':'Vositani tanlang. Fayllarni kerakli tartibda yuboring, so‘ng /done buyrug‘ini bering.','received':'Fayl qabul qilindi. Yana fayl yuboring yoki /tools, so‘ng /done buyrug‘ini tanlang.','done':'Quyidagi fayllar tartibini tekshiring. O‘zgartirish uchun /order 2,1 yuboring. Narxni tasdiqlash uchun /run yuboring.','run':'Vazifani bajarish','empty':'Avval fayl yuboring.','working':'Vazifa bajarilmoqda…','result':'Natija tayyor. Serverdagi fayllar 24 soatdan keyin o‘chiriladi; Telegram’ga yuborilgan fayllar chatda qoladi.','no_op':'Fayl hajmi sezilarli kamaymadi. Limit sarflanmadi.','support':'/support xabaringiz yoki /paysupport xabaringiz shaklida yozing.','ticket':'Yordam so‘rovingiz saqlandi.','cancel':'Joriy kiritish bekor qilindi. Yuborilgan vazifalar tarixda qoladi.','help':'Fayl yuboring → /tools → /done → /run. /order 2,1 tartibni belgilaydi. /parameters buyrug‘idan keyin JSON obyektida parametrlarni yuboring. Natijalar: /myfiles.','login':'Faqat o‘zingiz boshlagan bo‘lsangiz, ushbu brauzer uchun kirishni tasdiqlang:','confirm':'Kirishni tasdiqlash','approved':'Kirish tasdiqlandi. Boshlang‘ich brauzerga qayting.','language':'Tilni tanlang.','open':'Ish maydonini ochish','terms':'Mahalliy beta versiya. To‘lovlar o‘chirilgan. Server fayllari 24 soatdan keyin o‘chiriladi. To‘lov yordami: /paysupport.'},
- 'ru':{'welcome':'Добро пожаловать в PDF Master. Отправьте PDF или изображение и выберите инструмент. Файлы хранятся 24 часа после обработки.','tools':'Выберите инструмент. Отправьте файлы в нужном порядке, затем нажмите /done.','received':'Файл получен. Отправьте ещё файлы или выберите /tools, затем /done.','done':'Проверьте порядок файлов. Для изменения отправьте /order 2,1. Подтвердите расчёт командой /run.','run':'Выполнить','empty':'Сначала отправьте файл.','working':'Обрабатываем задачу…','result':'Результат готов. Файлы на сервере истекают через 24 часа; отправленные в Telegram остаются в чате.','no_op':'Значимого уменьшения размера не найдено. Лимит не списан.','support':'Напишите /support ваш вопрос или /paysupport ваш вопрос.','ticket':'Обращение сохранено.','cancel':'Текущий ввод отменён. Отправленные задачи остаются в истории.','help':'Файлы → /tools → /done → /run. /order 2,1 меняет порядок. /parameters с JSON-объектом задаёт параметры. Результаты: /myfiles.','login':'Подтвердите вход в этом браузере, только если вы его инициировали:','confirm':'Подтвердить вход','approved':'Вход подтверждён. Вернитесь в исходный браузер.','language':'Выберите язык.','open':'Открыть рабочую область','terms':'Локальная бета-версия. Оплата отключена. Серверные файлы истекают через 24 часа. Помощь по оплате: /paysupport.'}}
-TOOL_NAMES={'pdf.merge':{'en':'Merge PDFs','uz':'PDF birlashtirish','ru':'Объединить PDF'},'pdf.compress':{'en':'Compress PDF','uz':'PDF siqish','ru':'Сжать PDF'},'pdf.split':{'en':'Split PDF','uz':'PDF ajratish','ru':'Разделить PDF'},'pdf.extract_pages':{'en':'Extract pages','uz':'Sahifalarni ajratish','ru':'Извлечь страницы'},'pdf.delete_pages':{'en':'Delete pages','uz':'Sahifalarni o‘chirish','ru':'Удалить страницы'},'pdf.reorder':{'en':'Reorder pages','uz':'Sahifalar tartibi','ru':'Порядок страниц'},'pdf.rotate':{'en':'Rotate pages','uz':'Sahifalarni aylantirish','ru':'Повернуть страницы'},'pdf.images_to_pdf':{'en':'Images to PDF','uz':'Rasmlardan PDF','ru':'Изображения в PDF'},'pdf.to_images':{'en':'PDF to images','uz':'PDF’dan rasmlar','ru':'PDF в изображения'}}
-
-WORKFLOW_COPY={
-'en':{'settings':'Task settings','done_button':'Review quote','back':'Back','next':'More tools','pages_hint':'Use /pages 1,3-5 to select pages.','split_hint':'Use /split 1-2;3-4 for ranges, or /done for one file per page.','reorder_hint':'Use /pages 3,1,2 to set every page’s new order.','merge_hint':'Use /order 2,1 to reorder files or /remove 2 to remove an input.','image_hint':'Choose paper and orientation below. Use /margin 24 to set a margin in points.','secure':'Enter PDF passwords only in the secure web workspace. Do not send passwords to this chat.','rotate_label':'Rotate','format_label':'Image format','paper_label':'Paper','portrait':'Portrait','landscape':'Landscape','auto':'Automatic','quote_cost':'task / page units','balance':'Available task / page units','expires':'Quote expires (UTC)','parameters':'Settings','add':'Add to this task','new':'Start a new task','new_file':'There is an existing task. Choose where this new file belongs.','controls_expired':'These controls have expired. Use /settings to continue.','help':'Send files → /tools → /settings → /done → /run. /pages 1,3-5 selects pages; /split 1-2;3-4 creates groups; /rotate 90 changes rotation; /format png 96 sets images; /order 2,1 changes file order. /remove 2 removes a file. /myfiles returns recent results.','no_preview':'A preview is unavailable for this file.','preview':'Preview first page'},
-'uz':{'settings':'Vazifa sozlamalari','done_button':'Hisob-kitobni ko‘rish','back':'Orqaga','next':'Boshqa vositalar','pages_hint':'Sahifalarni tanlash uchun /pages 1,3-5 yuboring.','split_hint':'Oraliqlar uchun /split 1-2;3-4, har sahifani ajratish uchun /done yuboring.','reorder_hint':'Sahifalar tartibi uchun /pages 3,1,2 yuboring.','merge_hint':'Fayllar tartibi: /order 2,1. Faylni olib tashlash: /remove 2.','image_hint':'Qog‘oz va yo‘nalishni tanlang. Hoshiyani punktda belgilash uchun /margin 24 yuboring.','secure':'PDF parollarini faqat xavfsiz veb ish maydonida kiriting. Parollarni bu chatga yubormang.','rotate_label':'Aylantirish','format_label':'Rasm formati','paper_label':'Qog‘oz','portrait':'Tik','landscape':'Yotiq','auto':'Avtomatik','quote_cost':'vazifa / sahifa birligi','balance':'Mavjud vazifa / sahifa birligi','expires':'Hisob-kitob muddati (UTC)','parameters':'Sozlamalar','add':'Joriy vazifaga qo‘shish','new':'Yangi vazifa boshlash','new_file':'Joriy vazifa mavjud. Yangi faylni qayerga qo‘shishni tanlang.','controls_expired':'Bu boshqaruv tugmalari eskirdi. Davom etish uchun /settings yuboring.','help':'Fayl → /tools → /settings → /done → /run. /pages 1,3-5 sahifalarni tanlaydi; /split 1-2;3-4 guruhlaydi; /rotate 90 aylantiradi; /format png 96 rasmlarni sozlaydi; /order 2,1 fayllarni tartiblaydi. /remove 2 faylni olib tashlaydi. Natijalar: /myfiles.','no_preview':'Bu faylni oldindan ko‘rib bo‘lmaydi.','preview':'Birinchi sahifani ko‘rish'},
-'ru':{'settings':'Настройки задачи','done_button':'Проверить расчёт','back':'Назад','next':'Другие инструменты','pages_hint':'Выберите страницы командой /pages 1,3-5.','split_hint':'Используйте /split 1-2;3-4 для групп или /done для отдельного файла на страницу.','reorder_hint':'Задайте новый порядок всех страниц: /pages 3,1,2.','merge_hint':'Изменить порядок файлов: /order 2,1. Удалить файл: /remove 2.','image_hint':'Выберите бумагу и ориентацию. Поле в пунктах: /margin 24.','secure':'Вводите пароли PDF только в защищённом веб-интерфейсе. Не отправляйте пароли в этот чат.','rotate_label':'Поворот','format_label':'Формат изображения','paper_label':'Бумага','portrait':'Книжная','landscape':'Альбомная','auto':'Автоматически','quote_cost':'задача / единицы страниц','balance':'Доступно задач / единиц страниц','expires':'Расчёт действует до (UTC)','parameters':'Настройки','add':'Добавить к задаче','new':'Начать новую задачу','new_file':'У вас уже есть задача. Выберите, куда добавить новый файл.','controls_expired':'Эти кнопки устарели. Продолжите командой /settings.','help':'Файлы → /tools → /settings → /done → /run. /pages 1,3-5 выбирает страницы; /split 1-2;3-4 задаёт группы; /rotate 90 — поворот; /format png 96 — изображения; /order 2,1 меняет порядок файлов. /remove 2 удаляет файл. Результаты: /myfiles.','no_preview':'Предпросмотр этого файла недоступен.','preview':'Посмотреть первую страницу'}}
-for locale,values in WORKFLOW_COPY.items(): COPY[locale].update(values)
-for locale,values in {
-    'en':{'link_login':'Link this Telegram identity to your existing PDF Master account only if you started this request in account settings:','link_confirm':'Confirm Telegram link','link_approved':'Telegram link approved. Return to the initiating browser to finish linking your account.'},
-    'uz':{'link_login':'Faqat hisob sozlamalarida o‘zingiz boshlagan bo‘lsangiz, ushbu Telegram hisobini mavjud PDF Master hisobingizga ulashni tasdiqlang:','link_confirm':'Telegram ulanishini tasdiqlash','link_approved':'Telegram ulanishi tasdiqlandi. Hisobni ulashni tugatish uchun boshlang‘ich brauzerga qayting.'},
-    'ru':{'link_login':'Подтвердите привязку этого Telegram к существующему аккаунту PDF Master, только если вы начали её в настройках аккаунта:','link_confirm':'Подтвердить привязку Telegram','link_approved':'Привязка Telegram подтверждена. Вернитесь в исходный браузер, чтобы завершить её.'},
-}.items(): COPY[locale].update(values)
-for locale,value in {
-    'en':'Server files expire after 24 hours. Purchases activate only after confirmed payment. Local simulation does not spend real Stars. /buy for offers; /paysupport for payment help.',
-    'uz':'Server fayllari 24 soatdan keyin o‘chiriladi. Xaridlar faqat to‘lov tasdiqlangandan keyin faollashadi. Mahalliy sinov haqiqiy Stars sarflamaydi. Takliflar: /buy; to‘lov yordami: /paysupport.',
-    'ru':'Файлы сервера истекают через 24 часа. Покупки активируются после подтверждённой оплаты. Локальная симуляция не тратит реальные Stars. Предложения: /buy; помощь по оплате: /paysupport.',
-}.items():COPY[locale]['terms']=value
-TOOL_NAMES.update({'convert.word_to_pdf':{'en':'Word to PDF','uz':'Word’dan PDF','ru':'Word в PDF'},'convert.pptx_to_pdf':{'en':'PowerPoint to PDF','uz':'PowerPoint’dan PDF','ru':'PowerPoint в PDF'}})
-
-
-from .ux_copy import UX, STATUS
-for locale, values in UX.items(): COPY[locale].update(values)
+from .ux_copy import UX, STATUS, LEGACY_COPY, TOOL_NAMES
+from .errors import bot_error
+COPY={locale:{**LEGACY_COPY[locale],**UX[locale]} for locale in UX}
 
 def text(account,key): return COPY.get(account.locale,COPY['en'])[key]
 def user_dict(user): return {'id':user.id,'first_name':user.first_name,'username':user.username or '', 'language_code':user.language_code or 'en'}
@@ -90,7 +67,7 @@ async def safe_error(message,account,exc):
         rows.append([await button(account,'continue_task','controls'),await button(account,'home','home')])
         if 'quota' in exc.code or 'balance' in exc.code or 'allowance' in exc.code or exc.code=='feature_not_in_plan':
             rows.insert(0,[await button(account,'plans','plans')])
-    await message.answer(text(account,key) if key else error_data(exc,account.locale)['message'],reply_markup=InlineKeyboardMarkup(inline_keyboard=rows) if rows else None)
+    await message.answer(text(account,key) if key else bot_error(exc,account.locale),reply_markup=InlineKeyboardMarkup(inline_keyboard=rows) if rows else None)
 
 def set_prompt(account,state='',prompt=None):
     BotConversation.objects.filter(pk=account.telegram_user_id).update(state=state,prompt=prompt or {},updated_at=timezone.now())
@@ -103,6 +80,7 @@ def option_summary(account,draft):
         if key=='orientation': value=text(account,{'auto':'auto','portrait':'portrait','landscape':'landscape'}.get(value,'auto'))
         if isinstance(value,list): value=', '.join(map(str,value))
         if key=='angle': value=f'{value}°'
+        if key=='paper_size' and value=='original': value=text(account,'original')
         if value=='all': value=text(account,'all_pages')
         value=str(value)
         if len(value)>180: value=value[:177]+'…'
@@ -110,7 +88,7 @@ def option_summary(account,draft):
     return '\n'.join(result) or text(account,'options_default')
 
 def build_dispatcher():
-    from .workflows import draft_for,configure,snapshot,bound_draft,quote_draft,run_quote,attach_input,order_inputs,discard_draft
+    from .workflows import draft_for,configure,snapshot,bound_draft,quote_draft,run_quote,attach_input,order_inputs,discard_draft,choose_tool,start_tool,discard_finished_draft,accept_upload
     from .onboarding import install_onboarding,show_language,chosen_locale
     from .billing import register_billing_handlers,show_offers,show_subscription
     dp=Dispatcher()
@@ -130,74 +108,108 @@ def build_dispatcher():
     async def nav(account):
         return [await button(account,'back','controls'),await button(account,'home','home')]
 
+    async def tool_button(account,draft,feature):
+        return InlineKeyboardButton(text=TOOL_NAMES[feature][account.locale],callback_data=await callback(account,'tool',{**snapshot(draft),'feature_id':feature}))
+
     async def home(message,account,edit=False,notice=''):
         await sync_to_async(set_prompt)(account)
-        draft=await sync_to_async(lambda:BotDraft.objects.filter(account=account).first())()
+        draft=await sync_to_async(draft_for)(account)
+        submitted=await sync_to_async(lambda:Job.objects.filter(account=account,quote_id=draft.quote_id).exists() if draft.quote_id else False)()
         rows=[]
-        if draft and draft.input_ids: rows.append([await button(account,'continue_task','controls')])
+        if draft.input_ids and not submitted: rows.append([await button(account,'continue_task','controls')])
+        available={f['id'] for f in await sync_to_async(catalog)(account)}
+        quick=[key for key in ('pdf.merge','pdf.compress','pdf.images_to_pdf','pdf.to_images') if key in available]
+        for index in range(0,len(quick),2): rows.append([await tool_button(account,draft,key) for key in quick[index:index+2]])
         rows.extend([
-            [await button(account,'pdf_tools','menu',{'category':'pdf'}),await button(account,'convert_tools','menu',{'category':'convert'})],
-            [await button(account,'recent','recent'),await button(account,'account','account')],
-            [await button(account,'help_button','help'),await button(account,'language_button','language')],
-            [InlineKeyboardButton(text=text(account,'open'),url=await web_url(account))],
+            [await button(account,'all_tools','menu'),await button(account,'recent','recent')],
+            [await button(account,'account','account'),await button(account,'help_button','help')],
+            [await button(account,'language_button','language'),InlineKeyboardButton(text=text(account,'open'),url=await web_url(account))],
         ])
-        await render(message,(html.escape(notice)+'\n\n' if notice else '')+f'<b>PDF Master</b>\n{text(account,"home_title")}\n\n{text(account,"home_body")}',rows,edit)
+        body=(html.escape(notice)+'\n\n' if notice else '')+f'<b>👋 PDF Master</b>\n{text(account,"home_body")}'
+        await render(message,body,rows,edit)
 
-    async def menu(message,account,page=0,category='pdf',edit=False):
+    async def menu(message,account,page=0,category='all',edit=False,pdf_only=False):
         await sync_to_async(set_prompt)(account)
-        ids=(['pdf.merge','pdf.compress','pdf.split','pdf.extract_pages','pdf.delete_pages','pdf.reorder','pdf.rotate'] if category=='pdf' else ['pdf.images_to_pdf','pdf.to_images','convert.word_to_pdf','convert.pptx_to_pdf'])
+        ids=['pdf.merge','pdf.compress','pdf.split','pdf.rotate','pdf.extract_pages','pdf.delete_pages','pdf.reorder']
+        if not pdf_only: ids+=['pdf.images_to_pdf','pdf.to_images','convert.word_to_pdf','convert.pptx_to_pdf']
+        else: ids+=['pdf.to_images']
         available={f['id'] for f in await sync_to_async(catalog)(account)}
         ids=[key for key in ids if key in available]
-        page=max(0,min(int(page),max(0,(len(ids)-1)//6)))
         draft=await sync_to_async(draft_for)(account)
-        rows=[[InlineKeyboardButton(text=TOOL_NAMES[key][account.locale],callback_data=await callback(account,'tool',{**snapshot(draft),'feature_id':key}))] for key in ids[page*6:(page+1)*6]]
-        paging=[]
-        if page: paging.append(await button(account,'back','menu',{'page':page-1,'category':category}))
-        if (page+1)*6<len(ids): paging.append(await button(account,'next','menu',{'page':page+1,'category':category}))
-        if paging: rows.append(paging)
-        rows.append([await button(account,'convert_tools' if category=='pdf' else 'pdf_tools','menu',{'category':'convert' if category=='pdf' else 'pdf'})])
-        rows.extend([[InlineKeyboardButton(text=text(account,'web_tools'),url=await web_url(account))],[await button(account,'home','home')]])
-        await render(message,text(account,'choose_tool'),rows,edit)
+        rows=[]
+        for index in range(0,len(ids),2): rows.append([await tool_button(account,draft,key) for key in ids[index:index+2]])
+        rows.append([await button(account,'home','home'),InlineKeyboardButton(text=text(account,'web_tools'),url=await web_url(account))])
+        body=text(account,'choose_pdf_action' if pdf_only else 'choose_tool')
+        if pdf_only:
+            names=await sync_to_async(lambda:list(FileAsset.objects.filter(account=account,id__in=draft.input_ids).values_list('name',flat=True)))()
+            body='📎 '+html.escape(names[0][:100] if names else '')+'\n'+body
+        await render(message,body,rows,edit)
 
-    async def controls(message,account,draft=None,edit=False):
+    async def controls(message,account,draft=None,edit=False,advanced=False):
         await sync_to_async(set_prompt)(account)
         draft=draft or await sync_to_async(draft_for)(account)
+        if draft.state=='choosing_tool' and draft.input_ids:
+            return await menu(message,account,edit=edit,pdf_only=True)
+        submitted=await sync_to_async(lambda:Job.objects.filter(account=account,quote_id=draft.quote_id).first() if draft.quote_id else None)()
+        if submitted: return await job_status(message,account,submitted,edit)
         binding=snapshot(draft);feature=draft.feature_id
         async def choice(label,parameters,replace=False):
-            return InlineKeyboardButton(text=label,callback_data=await callback(account,'settings',{**binding,'parameters':parameters,'replace':replace}))
+            selected=bool(parameters) and all(draft.parameters.get(key)==value for key,value in parameters.items())
+            return InlineKeyboardButton(text=('✅ ' if selected else '')+label,callback_data=await callback(account,'settings',{**binding,'parameters':parameters,'replace':replace,'advanced':advanced}))
         async def prompt(label,kind): return await button(account,label,'prompt',{**binding,'kind':kind})
         rows=[]
         files=await sync_to_async(lambda:{str(a.id):a for a in FileAsset.objects.filter(account=account,id__in=draft.input_ids)})()
         title=TOOL_NAMES.get(feature,{}).get(account.locale,feature)
         hint='upload_merge' if feature=='pdf.merge' else 'upload_images' if feature=='pdf.images_to_pdf' else 'upload_word' if feature=='convert.word_to_pdf' else 'upload_slides' if feature=='convert.pptx_to_pdf' else 'upload_pdf'
-        body=f'<b>{html.escape(title)}</b>\n\n{text(account,"options_title" if files else "upload_title")}\n{text(account,hint)}'
+        body=f'<b>{html.escape(title)}</b>'
+        if not files or (feature=='pdf.merge' and len(files)<2): body+='\n'+text(account,hint)
         if feature not in ('pdf.merge','pdf.images_to_pdf') and len(files)>1: body+='\n'+text(account,'one_file_hint')
         if files:
             listing='\n'.join(f'{i+1}. {html.escape(files[k].name[:24])} · {files[k].page_count or "—"}' for i,k in enumerate(draft.input_ids) if k in files)
-            body+=f'\n\n{text(account,"files")}:\n{listing}\n\n{option_summary(account,draft)}'
+            body+=f'\n{listing}\n\n{option_summary(account,draft)}'
+        quote=None;quote_error=None
+        if files:
+            required={'pdf.extract_pages':'pages','pdf.delete_pages':'pages','pdf.reorder':'order'}.get(feature)
+            ready=(not required or required in draft.parameters) and (feature!='pdf.merge' or len(files)>=2)
+            if ready:
+                try: draft,quote=await sync_to_async(quote_draft)(account,binding)
+                except DomainError as exc: quote_error=exc
+        if quote:
+            summary=await sync_to_async(quote_data)(quote)
+            usage=' · '.join(f'{text(account,label)}: {quote.meters[key]}' for key,label in [('file_tasks','file_tasks'),('file_page_units','page_units'),('ai_credits','ai_credits')] if quote.meters.get(key))
+            balance=' · '.join(f'{text(account,label)}: {summary["available_balances"][key]["remaining"]}' for key,label in [('file_tasks','file_tasks'),('file_page_units','page_units'),('ai_credits','ai_credits')] if quote.meters.get(key))
+            body+=f'\n\n{text(account,"cost")}: {usage}\n{text(account,"available")}: {balance}\n{text(account,"expires")}: {quote.expires_at:%H:%M}\n{text(account,"tap_to_run")}'
+            if summary['affordable']:
+                rows.append([await button(account,'run','run',{**snapshot(draft),'quote_id':str(quote.id)})])
+            else:
+                body+='\n'+text(account,'quota_hint')
+                rows.append([await button(account,'plans','plans')])
+        if quote_error:
+            body+='\n\n'+html.escape(bot_error(quote_error,account.locale))
+            if quote_error.code in ('password_required','unlock_first','secure_password_entry_required'):
+                rows.append([InlineKeyboardButton(text=text(account,'open'),url=await web_url(account))])
         if feature=='pdf.rotate': rows.append([await choice(f'{angle}°',{'angle':angle}) for angle in (90,180,270)])
-        if feature=='pdf.to_images':
+        if feature=='pdf.to_images' and advanced:
             rows.append([await choice(value.upper(),{'format':value}) for value in ('png','jpg')])
             rows.append([await choice(f'{dpi} DPI',{'dpi':dpi}) for dpi in (72,96,150,200)])
-        if feature=='pdf.images_to_pdf':
-            rows.append([await choice(value,{'paper_size':value}) for value in ('A4','Letter','original')])
+        if feature=='pdf.images_to_pdf' and advanced:
+            rows.append([await choice(text(account,'original') if value=='original' else value,{'paper_size':value}) for value in ('A4','Letter','original')])
             rows.append([await choice(text(account,label),{'orientation':value}) for label,value in [('auto','auto'),('portrait','portrait'),('landscape','landscape')]])
             rows.append([await prompt('margin_button','margin')])
-        if feature in ('pdf.extract_pages','pdf.delete_pages','pdf.rotate','pdf.to_images'):
+        if feature in ('pdf.extract_pages','pdf.delete_pages') or (feature in ('pdf.rotate','pdf.to_images') and advanced):
             rows.append([await prompt('page_selection','pages')])
             if feature in ('pdf.rotate','pdf.to_images'):
                 rows[-1].append(await choice(text(account,'all_pages'),{k:v for k,v in draft.parameters.items() if k!='pages'},True))
-        if feature=='pdf.split': rows.append([await prompt('split_groups','split'),await choice(text(account,'each_page'),{},True)])
+        if feature=='pdf.split' and advanced: rows.append([await prompt('split_groups','split'),await choice(text(account,'each_page'),{},True)])
         if feature=='pdf.reorder': rows.append([await prompt('page_order','reorder')])
-        if files:
-            if len(files)>1: rows.append([await prompt('file_order','order')])
-            rows.append([await prompt('remove_file','remove')])
+        if files and advanced:
+            if len(files)>1: rows.append([await prompt('file_order','order'),await prompt('remove_file','remove')])
+            else: rows.append([await prompt('remove_file','remove')])
             if draft.input_ids[0] in files and files[draft.input_ids[0]].mime_type=='application/pdf':
                 rows.append([await button(account,'preview','preview',{**binding,'asset_id':draft.input_ids[0],'page':1})])
-            rows.append([await button(account,'done_button','done',binding)])
-        rows.append([await button(account,'back','menu',{'category':'convert' if feature in ('pdf.images_to_pdf','pdf.to_images') or feature.startswith('convert.') else 'pdf'}),await button(account,'cancel_button','cancel',binding)])
-        rows.append([await button(account,'home','home')])
-        # Telegram caps message text at 4096 characters even for large drafts.
+        if files:
+            rows.append([await button(account,'back' if advanced else 'edit_options','controls',{'advanced':not advanced})])
+        rows.append([await button(account,'cancel_button' if advanced else 'all_tools','cancel' if advanced else 'menu'),await button(account,'home','home')])
         await render(message,body,rows,edit)
 
     async def quote_message(message,account,draft,quote,edit=False):
@@ -240,7 +252,7 @@ def build_dispatcher():
             if available: rows.append([await button(account,'download','download',{'job_id':str(job.id)})])
         elif job.status=='no_op': body+='\n\n'+text(account,'no_op')
         elif job.status=='failed':
-            body+='\n\n'+error_data(DomainError(job.error_code or 'processing_failed'),account.locale)['message']
+            body+='\n\n'+bot_error(DomainError(job.error_code or 'processing_failed'),account.locale)
             draft=await sync_to_async(lambda:BotDraft.objects.filter(account=account,quote_id=job.quote_id).first())()
             if draft: rows.append([await button(account,'retry_task','retry',snapshot(draft))])
         rows.extend([[await button(account,'new_task','new'),await button(account,'recent','recent')],[await button(account,'home','home')]])
@@ -257,12 +269,12 @@ def build_dispatcher():
         rows.extend([[await button(account,'new_task','new')],[await button(account,'home','home')]])
         await render(message,text(account,'recent' if jobs else 'recent_empty'),rows,edit)
 
-    async def run(message,account,quote_id):
-        job,_=await sync_to_async(run_quote)(account,quote_id)
+    async def run(message,account,quote_id,binding):
+        job,_=await sync_to_async(run_quote)(account,quote_id,binding)
         if settings.LOCAL_SYNC_JOBS:
             job=await sync_to_async(execute_job)(job.id)
-        await job_status(message,account,job)
         if job.status=='succeeded': await deliver(message,account,job)
+        else: await job_status(message,account,job)
 
     async def auth_prompt(message,user,challenge):
         locale=await sync_to_async(chosen_locale)(user.id) or 'en'
@@ -294,6 +306,23 @@ def build_dispatcher():
             from apps.commerce.services import claim_referral
             try: await sync_to_async(claim_referral)(account,pending['referral_code'])
             except DomainError as exc: await safe_error(message,account,exc)
+        uploads=pending.get('uploads',[])
+        if uploads:
+            resend=bool(pending.get('resend_file'))
+            for upload in uploads[:10]:
+                try:
+                    if upload['user_id']!=user.id or upload['chat_id']!=user.id: raise ValueError('ownership')
+                    age=timezone.now().timestamp()-int(upload['date'])
+                    if not -30<=age<=1800: raise ValueError('expired')
+                    values={key:upload[key] for key in ('document','photo') if key in upload}
+                    if len(values)!=1: raise ValueError('file')
+                    incoming=Message(message_id=upload['message_id'],date=upload['date'],chat=Chat(id=user.id,type='private'),from_user=user,**values).as_(message.bot)
+                except (KeyError,ValueError,TypeError):
+                    resend=True
+                    continue
+                await receive(incoming,message.bot)
+            if resend: await message.answer(text(account,'resend'))
+            return
         await home(message,account,notice=text(account,'resend') if pending.get('resend_file') else '')
     install_onboarding(dp,on_ready)
 
@@ -314,7 +343,7 @@ def build_dispatcher():
     async def settings_command(message):
         account=await account_for(message.from_user)
         draft=await sync_to_async(lambda:BotDraft.objects.filter(account=account).first())()
-        await controls(message,account,draft) if draft else await account_view(message,account)
+        await controls(message,account,draft,advanced=True) if draft else await account_view(message,account)
 
     async def input_prompt(message,account,payload,edit=False):
         from django.db import transaction
@@ -324,16 +353,23 @@ def build_dispatcher():
                 set_prompt(account,'input',{**snapshot(draft),'kind':payload['kind']})
         await sync_to_async(prepare)()
         key={'pages':'pages_prompt','reorder':'reorder_prompt','split':'split_prompt','order':'order_prompt','remove':'remove_prompt','margin':'margin_prompt'}[payload['kind']]
-        await render(message,text(account,key),[await nav(account),[await button(account,'cancel_button','cancel',payload)]],edit)
+        await render(message,text(account,key),[await nav(account),[await button(account,'cancel_step','cancel',payload)]],edit)
 
     async def cancel_prompt(message,account,new=False,edit=False,binding=None):
+        conversation=await sync_to_async(lambda:BotConversation.objects.filter(pk=account.telegram_user_id).first())()
+        if not new and conversation and conversation.state in ('input','support','support_review'):
+            await sync_to_async(set_prompt)(account)
+            if conversation.state=='input': return await controls(message,account,edit=edit)
+            return await home(message,account,edit)
         draft=await sync_to_async(draft_for)(account)
         payload=binding or snapshot(draft)
+        if await sync_to_async(discard_finished_draft)(account,payload):
+            return await home(message,account,edit)
         await render(message,text(account,'new_question' if new else 'cancel_question'),[[await button(account,'new_confirm' if new else 'cancel_confirm','discard',{**payload,'new':new})],[await button(account,'keep_task','controls'),await button(account,'home','home')]],edit)
 
     async def support_prompt(message,account,payment=False,edit=False):
         await sync_to_async(set_prompt)(account,'support',{'payment':payment})
-        await render(message,text(account,'support_prompt'),[[await button(account,'home','home'),await button(account,'cancel_button','cancel')]],edit)
+        await render(message,text(account,'support_prompt'),[[await button(account,'cancel_step','cancel'),await button(account,'home','home')]],edit)
 
     async def support_review(message,account,value,payment=False):
         if not 5<=len(value)<=4000: return await message.answer(text(account,'support_prompt'))
@@ -352,7 +388,7 @@ def build_dispatcher():
         if account.email: methods.append('Email')
         if account.google_sub: methods.append('Google')
         meters=usage['meters']
-        body=f'<b>{text(account,"account")}</b>\n{text(account,"plan_label")}: {html.escape(account.plan.title())}\n{text(account,"linked_methods")}: {", ".join(methods)}\n\n'+ '\n'.join(f'{text(account,label)}: {meters[key]["remaining"]} / {meters[key]["limit"]}' for key,label in [('file_tasks','file_tasks'),('file_page_units','page_units'),('ai_credits','ai_credits')])+f'\n{usage["resets_at"]:%Y-%m-%d %H:%M} UTC\n\n{text(account,"link_instructions")}'
+        body=f'<b>{text(account,"account")}</b>\n{text(account,"plan_label")}: {html.escape(text(account,'free_plan') if account.plan=='free' else account.plan.title())}\n{text(account,"linked_methods")}: {", ".join(methods)}\n\n'+ '\n'.join(f'{text(account,label)}: {meters[key]["remaining"]} / {meters[key]["limit"]}' for key,label in [('file_tasks','file_tasks'),('file_page_units','page_units'),('ai_credits','ai_credits')])+f'\n{text(account,"resets")}: {usage["resets_at"]:%Y-%m-%d %H:%M} UTC\n\n{text(account,"link_instructions")}'
         await render(message,body,[[await button(account,'plans','plans'),await button(account,'subscription','subscription')],[InlineKeyboardButton(text=text(account,'link_methods'),url=await web_url(account,'settings'))],[await button(account,'language_button','language'),await button(account,'home','home')]],edit)
 
     @dp.callback_query()
@@ -379,13 +415,28 @@ def build_dispatcher():
             elif action=='home': await home(message,account,True)
             elif action=='language': await show_language(message,query.from_user,{})
             elif action=='menu': await menu(message,account,p.get('page',0),p.get('category','pdf'),True)
-            elif action=='controls': await controls(message,account,edit=True)
+            elif action=='controls': await controls(message,account,edit=True,advanced=p.get('advanced',False))
             elif action=='tool':
-                draft=await sync_to_async(configure)(account,feature_id=p['feature_id'],binding=p)
+                try:
+                    draft=await sync_to_async(choose_tool)(account,p['feature_id'],p,p.get('asset_id'))
+                except DomainError as exc:
+                    if exc.code=='bot_tool_needs_new_files':
+                        body=text(account,'new_tool_question').format(tool=html.escape(TOOL_NAMES[p['feature_id']][account.locale]))
+                        return await render(message,body,[[await button(account,'new_confirm','start_tool',p)],[await button(account,'keep_task','controls')]],True)
+                    if exc.code=='bot_choose_one_file':
+                        draft=await sync_to_async(draft_for)(account)
+                        assets=await sync_to_async(lambda:{str(item.id):item for item in FileAsset.objects.filter(account=account,id__in=draft.input_ids)})()
+                        rows=[[InlineKeyboardButton(text='📎 '+assets[key].name[:40],callback_data=await callback(account,'tool',{**p,'asset_id':key}))] for key in draft.input_ids if key in assets]
+                        rows.append([await button(account,'keep_task','controls')])
+                        return await render(message,text(account,'choose_one_file'),rows,True)
+                    raise
+                await controls(message,account,draft,True)
+            elif action=='start_tool':
+                draft=await sync_to_async(start_tool)(account,p['feature_id'],p)
                 await controls(message,account,draft,True)
             elif action=='settings':
                 draft=await sync_to_async(configure)(account,parameters=p['parameters'],replace=p.get('replace',False),binding=p)
-                await controls(message,account,draft,True)
+                await controls(message,account,draft,True,advanced=p.get('advanced',False))
             elif action=='prompt': await input_prompt(message,account,p,True)
             elif action=='attach':
                 asset=await sync_to_async(lambda:FileAsset.objects.get(account=account,pk=p['asset_id']))()
@@ -398,9 +449,10 @@ def build_dispatcher():
                         draft=bound_draft(account,p)
                         if action=='preview' and p['asset_id'] not in draft.input_ids: raise DomainError('controls_expired',409)
                         if action=='run' and str(draft.quote_id)!=p['quote_id']: raise DomainError('controls_expired',409)
-                await sync_to_async(authorize)()
-                if action=='preview': await send_preview(message,account,p['asset_id'],p['page'])
-                else: await run(message,account,p['quote_id'])
+                if action=='preview':
+                    await sync_to_async(authorize)()
+                    await send_preview(message,account,p['asset_id'],p['page'])
+                else: await run(message,account,p['quote_id'],p)
             elif action=='done': await review(message,account,p,True)
             elif action=='retry':
                 draft=await sync_to_async(configure)(account,binding=p)
@@ -446,29 +498,18 @@ def build_dispatcher():
         stream=io.BytesIO()
         try:
             await bot.download(doc,destination=stream)
-        except (TelegramAPIError,OSError,TimeoutError):
+        except (TelegramAPIError,OSError,TimeoutError,DomainError):
             return await home(message,account,notice=text(account,'download_error'))
         try:
             asset=await sync_to_async(upload_file)(account,SimpleUploadedFile(name,stream.getvalue()),'bot')
-            draft=await sync_to_async(draft_for)(account)
-            kind=asset.metadata.get('kind')
-            if not draft.input_ids and draft.feature_id=='pdf.merge' and kind!='pdf':
-                feature={'image':'pdf.images_to_pdf','docx':'convert.word_to_pdf','pptx':'convert.pptx_to_pdf'}.get(kind,'pdf.merge')
-                draft=await sync_to_async(configure)(account,feature_id=feature)
-            expected={'pdf.images_to_pdf':'image','convert.word_to_pdf':'docx','convert.pptx_to_pdf':'pptx'}.get(draft.feature_id,'pdf')
-            if kind!=expected:
-                await message.answer(text(account,'wrong_file'))
-                return await controls(message,account,draft)
-            if draft.input_ids and draft.quote_id:
-                rows=[]
-                for mode,label in [('add','add'),('new','new')]:
-                    rows.append([await button(account,label,'attach',{**snapshot(draft),'asset_id':str(asset.id),'chat_id':message.chat.id,'message_id':message.message_id,'mode':mode})])
-                await render(message,text(account,'new_file'),rows)
-            else:
-                draft,_=await sync_to_async(attach_input)(account,asset,message.chat.id,message.message_id)
-                if message.photo: await message.answer(text(account,'photo_hint'))
-                await controls(message,account,draft)
-        except DomainError as exc: await safe_error(message,account,exc)
+            draft=await sync_to_async(accept_upload)(account,asset,message.chat.id,message.message_id)
+            await controls(message,account,draft)
+        except DomainError as exc:
+            if exc.code=='bot_replace_file':
+                draft=await sync_to_async(draft_for)(account)
+                payload={**snapshot(draft),'asset_id':str(asset.id),'chat_id':message.chat.id,'message_id':message.message_id,'mode':'replace'}
+                return await render(message,text(account,'replace_file_question')+'\n'+html.escape(asset.name[:100]),[[await button(account,'replace_file','attach',payload)],[await button(account,'keep_file','controls')]])
+            await safe_error(message,account,exc)
     @dp.message(Command('order','remove'))
     async def order(message):
         account=await account_for(message.from_user)
@@ -529,7 +570,7 @@ def build_dispatcher():
         draft=await sync_to_async(draft_for)(account)
         try:
             if not draft.quote_id: raise DomainError('quote_required')
-            await run(message,account,str(draft.quote_id))
+            await run(message,account,str(draft.quote_id),snapshot(draft))
         except DomainError as exc: await safe_error(message,account,exc)
 
 

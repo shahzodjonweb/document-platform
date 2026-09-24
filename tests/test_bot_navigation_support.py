@@ -90,7 +90,7 @@ def test_localized_offer_review_has_price_balance_and_safe_navigation(customer):
     assert all('tasks100' not in b['label'] and 'ai100' not in b['label'] for row in buttons for b in row)
     result = dispatch_local(customer, text='/buy tasks100')
     text = result['messages'][-1]['text']
-    assert '25 Telegram Stars' in text and 'Fayl vazifalari: 100' in text and 'Sahifa birliklari: 1,000' in text
+    assert '25 Telegram Stars' in text and f'{COPY["uz"]["file_tasks"]}: 100' in text and f'{COPY["uz"]["file_page_units"]}: 1,000' in text
     assert COPY['uz']['sandbox'] in text
     assert action_token(result, 'plans') and action_token(result, 'home')
 
@@ -123,7 +123,7 @@ def test_renewal_button_requires_confirmation_and_is_owner_scoped(customer):
 def test_plan_change_command_explains_and_confirms_before_mutating(customer):
     sub = purchase(customer)
     result = dispatch_local(customer, text='/changeplan premium')
-    assert 'separate checkout' in result['messages'][-1]['text']
+    assert COPY['en']['confirm_change'].split('\n')[1] in result['messages'][-1]['text']
     sub.refresh_from_db(); assert sub.scheduled_plan == '' and sub.renewal_enabled
     dispatch_local(customer, callback_data=action_token(result, 'commerce_plan_confirm'))
     sub.refresh_from_db(); assert sub.scheduled_plan == 'premium' and not sub.renewal_enabled

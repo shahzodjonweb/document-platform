@@ -18,19 +18,19 @@ from .ux_copy import UX
 
 RESULT_COPY = {
     'en': {
-        'ready': 'Your result is ready. Server files expire 24 hours after processing; the file delivered here remains in your Telegram chat.',
-        'large': 'Your result is ready. This file is too large to send in Telegram. Download it from Recent tasks in the web app. Server files expire 24 hours after processing.',
-        'open': 'Open web app',
+        'ready': '✅ Done! This copy stays in your Telegram chat. Server files expire 24 hours after processing.',
+        'large': '✅ Done! The file is too large for Telegram. Download it from Recent tasks on the web within 24 hours of processing.',
+        'open': '🌐 Open web app',
     },
     'uz': {
-        'ready': 'Natija tayyor. Server fayllari qayta ishlangandan 24 soat keyin o‘chiriladi; bu yerga yuborilgan fayl Telegram chattingizda qoladi.',
-        'large': 'Natija tayyor. Faylni Telegram orqali yuborish uchun hajmi juda katta. Uni veb ilovadagi So‘nggi vazifalardan yuklab oling. Server fayllari qayta ishlangandan 24 soat keyin o‘chiriladi.',
-        'open': 'Veb ilovani ochish',
+        'ready': '✅ Tayyor! Bu nusxa Telegram chattingizda qoladi. Serverdagi fayllar qayta ishlangach, 24 soatdan keyin o‘chadi.',
+        'large': '✅ Tayyor! Fayl Telegram uchun juda katta. Qayta ishlanganidan keyin 24 soat ichida veb ilovadagi So‘nggi vazifalardan yuklab oling.',
+        'open': '🌐 Veb ilova',
     },
     'ru': {
-        'ready': 'Результат готов. Файлы на сервере удаляются через 24 часа после обработки; отправленный сюда файл останется в вашем чате Telegram.',
-        'large': 'Результат готов. Файл слишком большой для отправки в Telegram. Скачайте его в разделе последних задач на сайте. Файлы на сервере удаляются через 24 часа после обработки.',
-        'open': 'Открыть веб-приложение',
+        'ready': '✅ Готово! Эта копия останется в чате. Файлы на сервере удаляются через 24 часа после обработки.',
+        'large': '✅ Готово! Файл слишком большой для Telegram. Скачайте его из последних задач на сайте в течение 24 часов после обработки.',
+        'open': '🌐 Открыть сайт',
     },
 }
 

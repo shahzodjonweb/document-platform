@@ -13,7 +13,7 @@ from django.utils import timezone
 
 from apps.core.identity import approve_challenge_id, exchange_challenge
 from apps.core.models import Account, AuthChallenge, BotCallback, BotConversation
-from telegram.onboarding import LINK_RETURN_TEXT, chosen_locale, install_onboarding
+from telegram.onboarding import LANGUAGES, LINK_RETURN_TEXT, chosen_locale, install_onboarding
 
 
 pytestmark = pytest.mark.django_db(transaction=True)
@@ -97,6 +97,9 @@ class GateHarness:
                             return button.callback_data
         raise AssertionError(f'Missing language button {label}')
 
+    def language(self, locale):
+        return self.button(dict(LANGUAGES)[locale])
+
 
 @pytest.mark.parametrize('first_text', ['/start', 'Hello', '/tools', '/cancel', '/help', '/language'])
 def test_first_private_contact_asks_for_language_before_account_or_handler(first_text):
@@ -107,12 +110,10 @@ def test_first_private_contact_asks_for_language_before_account_or_handler(first
     conversation = BotConversation.objects.get(pk=42)
     assert conversation.locale == '' and conversation.language_selected_at is None
     assert chosen_locale(42) is None
-    assert [row[0].text for row in h.session.calls[-1].reply_markup.inline_keyboard] == [
-        'O‘zbekcha', 'English', 'Русский',
-    ]
+    assert [row[0].text for row in h.session.calls[-1].reply_markup.inline_keyboard] == [label for _, label in LANGUAGES]
 
 
-@pytest.mark.parametrize(('label', 'locale'), [('O‘zbekcha', 'uz'), ('English', 'en'), ('Русский', 'ru')])
+@pytest.mark.parametrize(('locale', 'label'), LANGUAGES)
 def test_choice_persists_and_passes_real_callback_sender_to_ready(label, locale):
     h = GateHarness()
     h.message(text='/start', language='ru')
@@ -129,14 +130,20 @@ def test_choice_persists_and_passes_real_callback_sender_to_ready(label, locale)
     assert h.handled[0][1] == locale
 
 
-def test_first_file_is_not_downloaded_and_must_be_resent_after_choice():
+def test_first_file_is_held_as_metadata_without_download_until_language_choice():
     h = GateHarness()
-    h.message(document=Document(file_id='private', file_unique_id='private', file_name='sensitive.pdf'))
+    message = h.message(document=Document(file_id='private', file_unique_id='private', file_name='sensitive.pdf'), caption='Do not retain this caption')
     assert not h.handled
-    assert BotConversation.objects.get(pk=42).pending == {'resend_file': True}
-    assert 'private' not in json.dumps(BotConversation.objects.get(pk=42).pending)
-    h.click(h.button('English'))
-    assert h.ready[0][3] == {'resend_file': True}
+    pending = BotConversation.objects.get(pk=42).pending
+    assert len(pending['uploads']) == 1
+    upload = pending['uploads'][0]
+    assert upload['user_id'] == upload['chat_id'] == 42
+    assert upload['message_id'] == message.message_id
+    assert upload['document']['file_id'] == 'private'
+    assert 'caption' not in json.dumps(pending)
+    assert not Account.objects.exists()
+    h.click(h.language('en'))
+    assert h.ready[0][3] == pending
     assert Account.objects.count() == 0
 
 
@@ -161,7 +168,7 @@ def test_start_auth_preserves_only_challenge_id_without_creating_telegram_accoun
     assert state.pending == {'challenge_id': str(c.pk)}
     assert token not in json.dumps(state.pending)
     h.message(text='hello')  # A repeated greeting does not discard the pending link.
-    h.click(h.button('O‘zbekcha'))
+    h.click(h.language('uz'))
     assert h.ready[0][3] == {'challenge_id': str(c.pk)}
     assert Account.objects.count() == 1
     assert not Account.objects.filter(telegram_user_id=42).exists()
@@ -174,7 +181,7 @@ def test_upload_during_language_choice_does_not_discard_pending_account_link():
     h = GateHarness()
     h.message(text='/start login_link-token')
     h.message(document=Document(file_id='file', file_unique_id='file'))
-    h.click(h.button('English'))
+    h.click(h.language('en'))
     assert h.ready[0][3] == {'challenge_id': str(c.pk), 'resend_file': True}
     assert Account.objects.count() == 1
     assert not Account.objects.filter(telegram_user_id=42).exists()
@@ -187,7 +194,7 @@ def test_invalid_challenge_does_not_survive_language_choice(flags):
     c = challenge('expired-token', **flags)
     h = GateHarness()
     h.message(text='/start login_expired-token')
-    h.click(h.button('English'))
+    h.click(h.language('en'))
     assert h.ready[0][3] == {'auth_error': 'challenge_expired'}
     assert str(c.pk) not in json.dumps(h.ready[0][3])
     assert Account.objects.count() == 1
@@ -200,7 +207,7 @@ def test_invalid_challenge_does_not_survive_language_choice(flags):
 def test_referral_pending_is_bounded(payload, expected):
     h = GateHarness()
     h.message(text='/start ' + payload)
-    h.click(h.button('English'))
+    h.click(h.language('en'))
     assert h.ready[0][3] == expected
 
 
@@ -210,7 +217,7 @@ def test_language_change_updates_existing_identity_without_creating_another():
     h = GateHarness()
     h.message(text='/language')
     assert not h.handled
-    h.click(h.button('Русский'))
+    h.click(h.language('ru'))
     account.refresh_from_db()
     assert account.locale == chosen_locale(42) == 'ru'
     assert account.email == 'linked@example.test' and Account.objects.count() == 1
@@ -219,7 +226,7 @@ def test_language_change_updates_existing_identity_without_creating_another():
 def test_language_callbacks_bound_to_user_chat_nonce_and_single_use():
     h = GateHarness()
     h.message(text='/start')
-    token = h.button('English')
+    token = h.language('en')
     h.click(token, uid=43)
     h.click(token, uid=42, chat_id=43)
     h.click(token, uid=42, chat_id=-100, chat_type='group')
@@ -233,14 +240,14 @@ def test_language_callbacks_bound_to_user_chat_nonce_and_single_use():
 def test_language_menu_expiry_and_new_menu_invalidate_old_buttons():
     h = GateHarness()
     h.message(text='/start')
-    old_token = h.button('English')
+    old_token = h.language('en')
     BotConversation.objects.filter(pk=42).update(language_expires_at=timezone.now() - timedelta(seconds=1))
     h.click(old_token)
     assert not h.ready
     h.message(text='/language')
     h.click(old_token)
     assert not h.ready
-    h.click(h.button('O‘zbekcha'))
+    h.click(h.language('uz'))
     assert chosen_locale(42) == 'uz'
 
 
@@ -256,7 +263,7 @@ def test_old_action_before_onboarding_is_not_executed_or_replayed_after_choice()
     h = GateHarness()
     h.click('old-destructive-confirm-button')
     assert not h.handled and Account.objects.count() == 0
-    h.click(h.button('English'))
+    h.click(h.language('en'))
     assert not h.handled and h.ready[0][3] == {}
 
 
@@ -294,11 +301,11 @@ def test_linking_survives_language_and_start_before_and_after_approval_until_bro
     c = challenge('linking-token')
     h = GateHarness()
     h.message(text='/start login_linking-token')
-    h.click(h.button('English'))
+    h.click(h.language('en'))
     assert BotConversation.objects.get(pk=42).pending == {'challenge_id': str(c.id)}
     h.message(text='/start')
     h.message(text='/language')
-    h.click(h.button('Русский'))
+    h.click(h.language('ru'))
     h.message(document=Document(file_id='pending-file', file_unique_id='pending-file'))
     assert len(h.ready) == 4 and not h.handled
     assert all(row[3]['challenge_id'] == str(c.id) for row in h.ready)
@@ -314,7 +321,7 @@ def test_linking_survives_language_and_start_before_and_after_approval_until_bro
     assert len(h.handled) == 1 and len(h.ready) == 4
     assert h.session.calls[-1].text == LINK_RETURN_TEXT['ru']
     h.message(text='/language')
-    h.click(h.button('O‘zbekcha'))
+    h.click(h.language('uz'))
     assert h.session.calls[-1].text == LINK_RETURN_TEXT['uz']
     assert len(h.ready) == 4 and not Account.objects.filter(telegram_user_id=42).exists()
 
@@ -324,7 +331,7 @@ def test_linking_survives_language_and_start_before_and_after_approval_until_bro
     assert len(h.handled) == 2 and h.handled[-1][1] == 'uz'
     assert BotConversation.objects.get(pk=42).pending == {}
     h.message(text='/language')
-    h.click(h.button('English'))
+    h.click(h.language('en'))
     assert h.ready[-1][3] == {} and chosen_locale(42) == 'en'
     account.refresh_from_db()
     assert account.locale == 'en' and Account.objects.count() == 1
@@ -355,7 +362,7 @@ def test_expired_link_releases_gate_and_clears_stale_pending_state():
     c = challenge('expires-link-token')
     h = GateHarness()
     h.message(text='/start login_expires-link-token')
-    h.click(h.button('English'))
+    h.click(h.language('en'))
     link_button(c)
     AuthChallenge.objects.filter(pk=c.pk).update(expires_at=timezone.now() - timedelta(seconds=1))
     h.message(text='/start')
@@ -367,7 +374,7 @@ def test_link_confirmation_for_another_user_does_not_bypass_linking_gate():
     c = challenge('blocked-callback-token')
     h = GateHarness()
     h.message(text='/start login_blocked-callback-token')
-    h.click(h.button('English'))
+    h.click(h.language('en'))
     control = link_button(c, uid=43)
     h.click(control.token)
     assert not h.handled and len(h.ready) == 2
@@ -379,7 +386,7 @@ def test_link_expiring_during_first_language_choice_shows_error_instead_of_new_a
     h = GateHarness()
     h.message(text='/start login_expires-during-choice')
     AuthChallenge.objects.filter(pk=c.pk).update(expires_at=timezone.now() - timedelta(seconds=1))
-    h.click(h.button('English'))
+    h.click(h.language('en'))
     assert h.ready[-1][3] == {'auth_error': 'challenge_expired'}
     assert Account.objects.count() == 1 and not h.handled
 
@@ -391,14 +398,14 @@ def test_real_bot_repeated_start_and_language_do_not_split_account_during_linkin
     c, token, verifier = challenge_for(account)
     h = Harness(onboard=False)
     h.command('/start login_' + token)
-    h.click(h.token('English'))
+    h.click(h.language('en'))
     h.command('/language')
-    h.click(h.token('English'))
+    h.click(h.language('en'))
     h.command('/start')
     assert Account.objects.count() == 1 and not Account.objects.filter(telegram_user_id=42).exists()
-    h.click(h.token('Confirm Telegram link'))
+    h.click(h.action('link_login'))
     h.command('/language')
-    h.click(h.token('Русский'))
+    h.click(h.language('ru'))
     h.command('/start')
     assert Account.objects.count() == 1 and not Account.objects.filter(telegram_user_id=42).exists()
     assert h.session.calls[-1].text == LINK_RETURN_TEXT['ru']
@@ -416,8 +423,8 @@ def test_real_bot_repeated_expired_link_callbacks_never_create_telegram_account(
     c, token, _ = challenge_for(account)
     h = Harness(onboard=False)
     h.command('/start login_' + token)
-    h.click(h.token('English'))
-    confirmation = h.token('Confirm Telegram link')
+    h.click(h.language('en'))
+    confirmation = h.action('link_login')
     AuthChallenge.objects.filter(pk=c.pk).update(expires_at=timezone.now() - timedelta(seconds=1))
     h.click(confirmation)
     h.click(confirmation)

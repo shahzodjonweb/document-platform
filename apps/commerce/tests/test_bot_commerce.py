@@ -8,7 +8,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
 from pypdf import PdfWriter,PdfReader
 from apps.core.identity import resolve_account
-from apps.core.models import Job,UsageLedger,BotDraft,BotConversation
+from apps.core.models import Job,UsageLedger,BotDraft,BotConversation,BotCallback
 from apps.core.services import storage_path,upload_file,create_quote,submit_job,execute_job
 from apps.commerce.models import Payment,LocalBotMessage,BotDelivery
 from apps.commerce.services import create_invoice,payload_for
@@ -32,12 +32,12 @@ def click(c,token):
     assert r.status_code==200,r.content
     return r.json()
 
-def token(result,label):
+def token(result,action):
     for m in reversed(result['messages']):
         for row in m['buttons']:
             for button in row:
-                if button['label']==label:return button['callback_data']
-    raise AssertionError(label)
+                if button.get('callback_data') and BotCallback.objects.filter(pk=button['callback_data'],action=action).exists():return button['callback_data']
+    raise AssertionError(action)
 
 def pdf(width):
     out=io.BytesIO();w=PdfWriter();w.add_blank_page(width=width,height=400);w.write(out);return out.getvalue()
@@ -47,17 +47,17 @@ def test_local_bot_actual_billing_callbacks_activate_once_without_network(monkey
     # Any accidental use of the live provider fails the test.
     from apps.commerce.providers import TelegramStarsProvider
     monkeypatch.setattr(TelegramStarsProvider,'call',lambda *args,**kwargs:(_ for _ in ()).throw(AssertionError('Live Telegram called')))
-    response=command(c,'/buy plus');pay=token(response,'Simulate local payment')
+    response=command(c,'/buy plus');pay=token(response,'commerce_pay')
     assert Payment.objects.count()==0
     click(c,pay);click(c,pay)
     a.refresh_from_db();assert a.plan=='plus' and Payment.objects.count()==1
     confirmation=command(c,'/cancelrenewal')
     assert a.subscription.renewal_enabled
-    click(c,token(confirmation,'Confirm change'))
+    click(c,token(confirmation,'commerce_renewal_confirm'))
     a.subscription.refresh_from_db();assert not a.subscription.renewal_enabled
     confirmation=command(c,'/resumerenewal')
     a.subscription.refresh_from_db();assert not a.subscription.renewal_enabled
-    click(c,token(confirmation,'Confirm change'))
+    click(c,token(confirmation,'commerce_renewal_confirm'))
     a.subscription.refresh_from_db();assert a.subscription.renewal_enabled
 
 def test_local_bot_file_upload_merge_download_and_durable_delivery():
@@ -66,7 +66,7 @@ def test_local_bot_file_upload_merge_download_and_durable_delivery():
         r=c.post('/api/v1/telegram/local/messages',{'file':SimpleUploadedFile(f'{i}.pdf',pdf(width))})
         assert r.status_code==200,r.content
     command(c,'/order 2,1');review=command(c,'/done')
-    run=token(review,'Run task');click(c,run);click(c,run)
+    run=token(review,'run');click(c,run);click(c,run)
     assert Job.objects.count()==1
     job=Job.objects.get();assert job.status=='succeeded'
     assert [float(p.mediabox.width) for p in PdfReader(storage_path(job.artifacts.get().file.object_key)).pages]==[320,220]
@@ -76,7 +76,7 @@ def test_local_bot_file_upload_merge_download_and_durable_delivery():
 
 def test_local_bot_sessions_owner_scoped_passwords_omitted_and_fail_closed(settings):
     a,c=principal();b,other=principal(910002)
-    response=command(c,'/buy plus');payment_button=token(response,'Simulate local payment')
+    response=command(c,'/buy plus');payment_button=token(response,'commerce_pay')
     click(other,payment_button)
     assert Payment.objects.count()==0
     secret='never-store-password-test'

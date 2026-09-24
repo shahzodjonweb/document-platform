@@ -7,25 +7,25 @@ from aiogram.types import BotCommand, BotCommandScopeChat, MenuButtonCommands
 
 COMMANDS = {
     'en': {
-        'start': 'Main menu', 'tools': 'PDF and file tools', 'myfiles': 'Recent files and results',
-        'usage': 'Plan and remaining balance', 'buy': 'Plans and extra credits',
-        'subscription': 'Manage subscription', 'account': 'Account and linked logins',
-        'web': 'Open web app', 'settings': 'Settings', 'language': 'Change language',
-        'help': 'How it works', 'support': 'Contact support', 'cancel': 'Cancel current step',
+        'start': '🏠 Main menu', 'tools': '🛠 PDF & file tools', 'myfiles': '🗂 Recent tasks',
+        'usage': '📊 Plan & balance', 'buy': '⭐ Plans & packs',
+        'subscription': '💳 Subscription', 'account': '👤 Account & logins',
+        'web': '🌐 Open web app', 'settings': '⚙️ Settings', 'language': '🌐 Language',
+        'help': '💡 How it works', 'support': '💬 Contact support', 'cancel': '✖️ Cancel step',
     },
     'uz': {
-        'start': 'Bosh menyu', 'tools': 'PDF va fayl vositalari', 'myfiles': 'So‘nggi fayllar va natijalar',
-        'usage': 'Tarif va qolgan limitlar', 'buy': 'Tariflar va qo‘shimcha kreditlar',
-        'subscription': 'Obunani boshqarish', 'account': 'Hisob va kirish usullari',
-        'web': 'Veb ilovani ochish', 'settings': 'Sozlamalar', 'language': 'Tilni o‘zgartirish',
-        'help': 'Qanday ishlaydi', 'support': 'Yordamga murojaat', 'cancel': 'Joriy qadamni bekor qilish',
+        'start': '🏠 Bosh menyu', 'tools': '🛠 PDF va fayl vositalari', 'myfiles': '🗂 So‘nggi vazifalar',
+        'usage': '📊 Tarif va balans', 'buy': '⭐ Tariflar va paketlar',
+        'subscription': '💳 Obuna', 'account': '👤 Hisob va kirish usullari',
+        'web': '🌐 Veb ilova', 'settings': '⚙️ Sozlamalar', 'language': '🌐 Til',
+        'help': '💡 Qanday ishlaydi', 'support': '💬 Yordamga yozish', 'cancel': '✖️ Qadamni bekor qilish',
     },
     'ru': {
-        'start': 'Главное меню', 'tools': 'Инструменты PDF и файлов', 'myfiles': 'Последние файлы и результаты',
-        'usage': 'Тариф и остаток лимитов', 'buy': 'Тарифы и дополнительные кредиты',
-        'subscription': 'Управление подпиской', 'account': 'Аккаунт и способы входа',
-        'web': 'Открыть веб-приложение', 'settings': 'Настройки', 'language': 'Изменить язык',
-        'help': 'Как это работает', 'support': 'Связаться с поддержкой', 'cancel': 'Отменить текущий шаг',
+        'start': '🏠 Главное меню', 'tools': '🛠 Инструменты для файлов', 'myfiles': '🗂 Последние задачи',
+        'usage': '📊 Тариф и баланс', 'buy': '⭐ Тарифы и пакеты',
+        'subscription': '💳 Подписка', 'account': '👤 Аккаунт и способы входа',
+        'web': '🌐 Открыть сайт', 'settings': '⚙️ Настройки', 'language': '🌐 Язык',
+        'help': '💡 Как это работает', 'support': '💬 Поддержка', 'cancel': '✖️ Отменить шаг',
     },
 }
 

@@ -19,25 +19,27 @@ from django.utils import timezone
 from apps.core.models import Account, AuthChallenge, BotCallback, BotConversation
 
 
-LANGUAGES = (('uz', 'O‘zbekcha'), ('en', 'English'), ('ru', 'Русский'))
+LANGUAGES = (('uz', '🇺🇿 O‘zbekcha'), ('en', '🇬🇧 English'), ('ru', '🇷🇺 Русский'))
 LOCALES = frozenset(locale for locale, _ in LANGUAGES)
-PICKER_TEXT = 'Tilni tanlang · Choose your language · Выберите язык'
+PICKER_TEXT = '🌐 Tilni tanlang · Choose your language · Выберите язык'
 PRIVATE_TEXT = {
-    'en': 'Open a private chat with this bot to continue.',
-    'uz': 'Davom etish uchun bot bilan shaxsiy chatni oching.',
-    'ru': 'Чтобы продолжить, откройте личный чат с ботом.',
+    'en': '🔒 Open a private chat with me to continue.',
+    'uz': '🔒 Davom etish uchun menga shaxsiy chatda yozing.',
+    'ru': '🔒 Напишите мне в личный чат, чтобы продолжить.',
 }
 EXPIRED_TEXT = {
-    'en': 'This language menu has expired. Use /language to choose again.',
-    'uz': 'Bu til menyusi eskirdi. Qayta tanlash uchun /language yuboring.',
-    'ru': 'Это меню языка устарело. Выберите язык снова командой /language.',
+    'en': 'This menu has expired. Choose again with /language.',
+    'uz': 'Menyu eskirgan. /language orqali qayta tanlang.',
+    'ru': 'Меню устарело. Выберите язык снова: /language.',
 }
 LINK_RETURN_TEXT = {
-    'en': 'Telegram link approved. Return to the browser where you started to finish linking your account. Then come back here.',
-    'uz': 'Telegram ulanishi tasdiqlandi. Hisobni ulashni tugatish uchun boshlagan brauzeringizga qayting. So‘ng bu yerga qayting.',
-    'ru': 'Привязка Telegram подтверждена. Вернитесь в браузер, где вы начали, чтобы завершить привязку аккаунта. Затем возвращайтесь сюда.',
+    'en': '✅ Approved! Return to the browser where you started to finish linking. Then come back here.',
+    'uz': '✅ Tasdiqlandi! Ulashni tugatish uchun boshlagan brauzeringizga qayting. Keyin shu yerga qaytishingiz mumkin.',
+    'ru': '✅ Подтверждено! Завершите привязку в браузере, где вы её начали. Затем возвращайтесь сюда.',
 }
 LANGUAGE_PREFIX = 'lang:'
+MAX_PENDING_UPLOADS = 10
+PICKER_LIFETIME = timedelta(minutes=30)
 
 
 def chosen_locale(telegram_user_id):
@@ -60,8 +62,45 @@ def _command(message):
     return text.split(maxsplit=1)[0].split('@', 1)[0].lower() if text else ''
 
 
+def _upload_hint(message):
+    """Save only bounded Telegram handles, never file contents or captions."""
+    user = message.from_user
+    if not _is_private(message, user) or message.message_id <= 0:
+        return None
+    if message.date < timezone.now() - PICKER_LIFETIME:
+        return None
+    media = message.document or (message.photo[-1] if message.photo else None)
+    if not media:
+        return None
+    values = {}
+    for key, maximum in (('file_id', 1024), ('file_unique_id', 255), ('file_name', 255), ('mime_type', 128)):
+        value = getattr(media, key, None)
+        if value is not None:
+            if not isinstance(value, str) or not value or len(value) > maximum:
+                return None
+            values[key] = value
+    if 'file_id' not in values or 'file_unique_id' not in values:
+        return None
+    if media.file_size is not None:
+        if not 0 <= media.file_size < 2**63:
+            return None
+        values['file_size'] = media.file_size
+    envelope = {'user_id': user.id, 'chat_id': message.chat.id,
+                'message_id': message.message_id, 'date': int(message.date.timestamp())}
+    if message.document:
+        envelope['document'] = values
+    else:
+        if not 0 < media.width < 2**31 or not 0 < media.height < 2**31:
+            return None
+        values.update(width=media.width, height=media.height)
+        envelope['photo'] = [values]
+    return envelope
+
+
 def _pending_for(message):
-    """Retain safe resumption hints; never persist raw login tokens or files."""
+    """Retain safe resumption hints; never persist raw login tokens or bytes."""
+    if _command(message) == '/cancel':
+        return {'cancel_uploads': True}
     if _command(message) == '/start':
         parts = (message.text or '').split(maxsplit=1)
         payload = parts[1] if len(parts) == 2 else ''
@@ -82,7 +121,8 @@ def _pending_for(message):
                 return {'referral_code': code}
         return {}
     if message.document or message.photo:
-        return {'resend_file': True}
+        upload = _upload_hint(message)
+        return {'uploads': [upload]} if upload else {'resend_file': True}
     return None
 
 
@@ -143,7 +183,11 @@ def _active_link(telegram_user_id):
         except (ValueError, TypeError, ValidationError):
             was_link = True
         if was_link:
-            BotConversation.objects.filter(pk=telegram_user_id).update(pending={})
+            # Until language choice, an expired auth intent must not turn an
+            # accidental upload into a newly created Telegram account.
+            pending = ({'auth_error': 'challenge_expired'}
+                       if conversation and not conversation.language_selected_at else {})
+            BotConversation.objects.filter(pk=telegram_user_id).update(pending=pending)
     return challenge
 
 
@@ -169,32 +213,75 @@ def _is_link_confirmation(telegram_user_id, token, challenge):
 def _prepare_picker(telegram_user_id, pending):
     conversation, _ = BotConversation.objects.get_or_create(telegram_user_id=telegram_user_id)
     conversation = BotConversation.objects.select_for_update().get(pk=conversation.pk)
-    conversation.language_nonce = secrets.token_urlsafe(12)
-    conversation.language_expires_at = timezone.now() + timedelta(minutes=30)
+    now = timezone.now()
+    reuse = bool(not conversation.language_selected_at and conversation.language_nonce
+                 and conversation.language_expires_at and conversation.language_expires_at > now)
+    if not reuse:
+        conversation.language_nonce = secrets.token_urlsafe(12)
+        conversation.language_expires_at = now + PICKER_LIFETIME
     active_link = _active_link(telegram_user_id)
     conversation.refresh_from_db(fields=['pending'])
+    if pending and pending.get('cancel_uploads'):
+        conversation.pending.pop('uploads', None)
+        conversation.pending.pop('resend_file', None)
+        pending = None
+    if not reuse and conversation.pending.get('uploads'):
+        # Starting a fresh picker must not replay files from an expired one.
+        conversation.pending = {key: value for key, value in conversation.pending.items() if key != 'uploads'}
+        conversation.pending['resend_file'] = True
     if active_link:
-        resend = conversation.pending.get('resend_file') or (pending and pending.get('resend_file'))
+        resend = (conversation.pending.get('resend_file') or conversation.pending.get('uploads')
+                  or (pending and (pending.get('resend_file') or pending.get('uploads'))))
         conversation.pending = {'challenge_id': str(active_link.id)}
         if resend:
             conversation.pending['resend_file'] = True
     elif pending is not None:
-        # An accidental upload while choosing a language must not discard a
-        # pending account-link challenge and fall through to account creation.
-        conversation.pending = ({**conversation.pending, **pending}
-                                if pending == {'resend_file': True} else pending)
+        auth_keys = ('challenge_id', 'auth_error')
+        incoming_auth = any(key in pending for key in auth_keys)
+        current_auth = any(key in conversation.pending for key in auth_keys)
+        if incoming_auth:
+            conversation.pending = pending
+        elif current_auth:
+            # Authentication always wins: do not retain or replay uploads into
+            # a different account, even for an invalid/expired login link.
+            if pending.get('uploads') or pending.get('resend_file'):
+                conversation.pending['resend_file'] = True
+            conversation.pending.pop('uploads', None)
+        else:
+            uploads = list(conversation.pending.get('uploads', []))
+            identities = {(item['chat_id'], item['message_id']) for item in uploads}
+            overflow = False
+            for item in pending.get('uploads', []):
+                identity = (item['chat_id'], item['message_id'])
+                if identity in identities:
+                    continue
+                if len(uploads) >= MAX_PENDING_UPLOADS:
+                    overflow = True
+                    continue
+                uploads.append(item)
+                identities.add(identity)
+            conversation.pending.update({key: value for key, value in pending.items() if key != 'uploads'})
+            if uploads:
+                conversation.pending['uploads'] = uploads
+            if overflow:
+                conversation.pending['resend_file'] = True
     conversation.state, conversation.prompt = '', {}
     conversation.save(update_fields=[
         'language_nonce', 'language_expires_at', 'pending', 'state', 'prompt', 'updated_at',
     ])
-    return conversation.language_nonce
+    # A file album needs one picker, not a new message for every photo. The
+    # first picker remains usable because its nonce was deliberately retained.
+    silent = bool(reuse and pending and (pending.get('uploads') or pending.get('resend_file')))
+    return conversation.language_nonce, silent
 
 
 async def show_language(message, user, pending=None):
-    """Show a fresh one-use picker, including for an already onboarded user."""
+    """Show an owner-bound picker; preserve it while first uploads arrive."""
     if not _is_private(message, user):
         return
-    nonce = await sync_to_async(_prepare_picker)(user.id, pending)
+    nonce, silent = await sync_to_async(_prepare_picker)(user.id, pending)
+    if silent:
+        return None
     markup = InlineKeyboardMarkup(inline_keyboard=[[
         InlineKeyboardButton(text=label, callback_data=f'{LANGUAGE_PREFIX}{user.id}:{nonce}:{locale}')
     ] for locale, label in LANGUAGES])

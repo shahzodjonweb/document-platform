@@ -366,6 +366,21 @@ def cleanup_expired():
     for model in (EmailChallenge, GoogleChallenge, AuthRateLimit, AuthChallenge, BotCallback):
         model.objects.filter(expires_at__lte=now).delete()
     BotConversation.objects.filter(updated_at__lte=now-timedelta(minutes=30)).exclude(state='').update(state='',prompt={})
+    expired_uploads = BotConversation.objects.filter(language_expires_at__lte=now, pending__has_key='uploads')
+    for conversation_id in expired_uploads.values_list('pk', flat=True).iterator():
+        # Recheck under the same row lock as language choice: cleanup must not
+        # overwrite newly selected language state or a freshly opened picker.
+        with transaction.atomic():
+            conversation = BotConversation.objects.select_for_update().filter(
+                pk=conversation_id, language_expires_at__lte=now, pending__has_key='uploads',
+            ).first()
+            if conversation is None:
+                continue
+            pending = dict(conversation.pending)
+            pending.pop('uploads')
+            pending['resend_file'] = True
+            conversation.pending = pending
+            conversation.save(update_fields=['pending'])
     from apps.studio.models import GenerationDraft, EducationProject, EditorDocument, ShareGrant
     GenerationDraft.objects.filter(expires_at__lte=now).delete()
     EducationProject.objects.filter(expires_at__lte=now).delete()

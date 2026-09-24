@@ -14,36 +14,37 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
-from apps.core.errors import DomainError, error_data
+from apps.core.errors import DomainError
 from apps.core.models import BotCallback, BotJobNotice
 from .ux_copy import UX, STATUS
+from .errors import bot_error
 
 NOTICE_STATUSES = frozenset(('failed', 'no_op', 'canceled', 'expired'))
 MAX_ATTEMPTS = 5
 COPY = {
     'en': {
-        'failed': 'Your document task could not finish.',
-        'no_op': 'Your document is unchanged. No useful improvement was found.',
-        'canceled': 'Your document task was cancelled.',
-        'expired': 'Your document task has expired.',
-        'balance': 'No allowance was charged. Open the task details or start a new task below.',
-        'details': 'View task details',
+        'failed': 'We couldn’t finish this task.',
+        'no_op': 'No useful changes this time. Your file is unchanged.',
+        'canceled': 'Task cancelled.',
+        'expired': 'This task has expired.',
+        'balance': 'Your balance wasn’t charged.',
+        'details': '🔎 Task details',
     },
     'uz': {
-        'failed': 'Hujjat vazifasini yakunlab bo‘lmadi.',
-        'no_op': 'Hujjat o‘zgarmadi. Foydali yaxshilanish topilmadi.',
-        'canceled': 'Hujjat vazifasi bekor qilindi.',
-        'expired': 'Hujjat vazifasi muddati tugadi.',
-        'balance': 'Limit sarflanmadi. Quyida tafsilotlarni ko‘ring yoki yangi vazifa boshlang.',
-        'details': 'Vazifa tafsilotlari',
+        'failed': 'Bu vazifani yakunlay olmadik.',
+        'no_op': 'Faylni yaxshilay olmadik. O‘z holicha qoldi.',
+        'canceled': 'Vazifa bekor qilindi.',
+        'expired': 'Bu vazifaning muddati tugagan.',
+        'balance': 'Balansingizdan yechilmadi.',
+        'details': '🔎 Tafsilotlar',
     },
     'ru': {
-        'failed': 'Не удалось завершить задачу с документом.',
-        'no_op': 'Документ не изменился. Полезных улучшений не найдено.',
-        'canceled': 'Задача с документом отменена.',
-        'expired': 'Срок выполнения задачи истёк.',
-        'balance': 'Лимит не списан. Посмотрите подробности или начните новую задачу ниже.',
-        'details': 'Подробности задачи',
+        'failed': 'Не удалось завершить задачу.',
+        'no_op': 'Улучшить файл не удалось. Он остался без изменений.',
+        'canceled': 'Задача отменена.',
+        'expired': 'Срок этой задачи истёк.',
+        'balance': 'С баланса ничего не списано.',
+        'details': '🔎 Подробности',
     },
 }
 
@@ -116,7 +117,7 @@ async def attempt_notice(identifier, bot):
     copy = COPY[locale]
     lines = ['PDF Master · ' + STATUS[locale][job.status], copy[job.status]]
     if job.status == 'failed':
-        lines.append(error_data(DomainError(job.error_code or 'processing_failed'), locale)['message'])
+        lines.append(bot_error(DomainError(job.error_code or 'processing_failed'), locale))
     lines.extend(['', copy['balance']])
     try:
         controls = await sync_to_async(notice_controls)(notice)

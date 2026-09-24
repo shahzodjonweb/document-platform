@@ -16,7 +16,7 @@ from PIL import Image
 from apps.core.identity import resolve_account
 from apps.core.models import Account,BotConversation,BotDraft,BotCallback,BotInputReceipt,Job,Quote,UsageLedger,AnalyticsEvent
 from apps.core.services import upload_file,storage_path
-from telegram.bot import build_dispatcher
+from telegram.bot import COPY, build_dispatcher
 from telegram.workflows import attach_input,configure
 
 pytestmark=pytest.mark.django_db(transaction=True)
@@ -77,6 +77,22 @@ class Harness:
                         if button.text==label and button.callback_data: return button.callback_data
         raise AssertionError(f'Missing button {label}')
 
+    def action(self, action, **payload):
+        """Find a rendered control by its behavior, independent of translated copy."""
+        for call in reversed(self.session.calls):
+            markup = getattr(call, 'reply_markup', None)
+            if markup:
+                for row in markup.inline_keyboard:
+                    for button in row:
+                        ref = BotCallback.objects.filter(pk=button.callback_data, action=action).first()
+                        if ref and all(ref.payload.get(key) == value for key, value in payload.items()):
+                            return button.callback_data
+        raise AssertionError(f'Missing action {action}: {payload}')
+
+    def language(self, locale):
+        from telegram.onboarding import LANGUAGES
+        return self.token(dict(LANGUAGES)[locale])
+
 def pdf(widths=(210,310,410)):
     writer=PdfWriter()
     for width in widths: writer.add_blank_page(width=width,height=500)
@@ -102,7 +118,7 @@ def test_bot_file_first_upload_order_quote_and_repeat_run_do_not_duplicate():
     assert len(BotDraft.objects.get().input_ids)==2
     harness.command('/order 2,1')
     harness.command('/done')
-    token=harness.token('Run task')
+    token=harness.action('run')
     harness.click(token);harness.click(token)
     assert Job.objects.count()==1
     job=Job.objects.get();assert job.status=='succeeded',job.error_code
@@ -115,7 +131,7 @@ def test_bot_file_first_upload_order_quote_and_repeat_run_do_not_duplicate():
 def test_bot_callbacks_owner_bound_and_versioned():
     prepare('pdf.rotate')
     harness=Harness();harness.command('/settings')
-    token=harness.token('180°');draft=BotDraft.objects.get();version=draft.version
+    token=harness.action('settings', parameters={'angle': 180});draft=BotDraft.objects.get();version=draft.version
     harness.click(token,uid=43)
     draft.refresh_from_db();assert draft.version==version
     harness.click(token);draft.refresh_from_db()
@@ -140,8 +156,8 @@ def test_readable_bot_commands_preserve_exact_parameters_and_real_outputs(featur
 
 def test_image_layout_buttons_and_margin_command():
     prepare('pdf.images_to_pdf',image=True)
-    harness=Harness();harness.command('/settings');harness.click(harness.token('Letter'))
-    harness.click(harness.token('Landscape'));harness.command('/margin 12');harness.command('/done');harness.command('/run')
+    harness=Harness();harness.command('/settings');harness.click(harness.action('settings', parameters={'paper_size': 'Letter'}))
+    harness.click(harness.action('settings', parameters={'orientation': 'landscape'}));harness.command('/margin 12');harness.command('/done');harness.command('/run')
     job=Job.objects.get();assert job.status=='succeeded'
     assert job.parameters=={'paper_size':'Letter','orientation':'landscape','margin':12.0}
     page=PdfReader(storage_path(job.artifacts.get().file.object_key)).pages[0]
@@ -163,18 +179,24 @@ def test_password_parameters_never_enter_bot_draft_callback_quote_or_analytics()
     assert secret not in json.dumps(list(AnalyticsEvent.objects.values('properties')))
     assert Quote.objects.count()==0
     texts=[getattr(c,'text','') for c in harness.session.calls]
-    assert any('secure web' in text for text in texts)
+    assert any(COPY['en']['secure'] in text for text in texts)
     assert all(secret not in text for text in texts)
 
-def test_pending_quote_requires_explicit_new_upload_choice_and_replay_is_safe():
-    prepare('pdf.rotate')
-    harness=Harness();harness.command('/done')
+def test_quoted_draft_accepts_more_uploads_and_refreshes_preview_without_processing():
+    harness=Harness()
+    harness.document('first',pdf((210,)),message_id=10)
+    harness.document('second',pdf((310,)),message_id=11)
+    harness.command('/done')
+    old_run=harness.action('run')
     harness.document('new',pdf((600,)),message_id=22)
-    assert len(BotDraft.objects.get().input_ids)==1
-    token=harness.token('Start a new task');harness.click(token);harness.click(token)
-    assert len(BotDraft.objects.get().input_ids)==1
-    assert BotDraft.objects.get().quote_id is None
+    assert len(BotDraft.objects.get().input_ids)==3
     assert BotInputReceipt.objects.filter(message_id=22).count()==1
+    harness.document('new',pdf((600,)),message_id=22)
+    assert len(BotDraft.objects.get().input_ids)==3
+    assert BotInputReceipt.objects.filter(message_id=22).count()==1
+    harness.click(old_run)
+    assert not Job.objects.exists()
+    assert not UsageLedger.objects.exists()
 
 @pytest.mark.parametrize('locale',['en','uz','ru'])
 def test_bot_commands_locales_and_menu_has_maximum_six_tools(locale):
