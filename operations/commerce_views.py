@@ -37,7 +37,7 @@ def finance_page(request,section='payments'):
     data=context(request,section);data['f']=LABELS[data['lang']]
     try:filters=Filters.from_request(request)
     except ValueError as e:return HttpResponseBadRequest(str(e))
-    report=financial_report(filters);data.update(report);data['filters']=filters;data['query']=request.GET.urlencode();data['pagination']=Paginator(report['rows'],30).get_page(request.GET.get('p'));data['cards']=[{'label':data['f'][k],'value':v} for k,v in report['totals'].items()];data['now']=timezone.now()
+    report=financial_report(filters);data.update(report);data['filters']=filters;data['pagination']=Paginator(report['rows'],30).get_page(request.GET.get('p'));data['cards']=[{'label':data['f'][k],'value':v} for k,v in report['totals'].items()];data['now']=timezone.now()
     from .auth import allowed
     data['can_finance']=allowed(request.ops_user,['Finance'])
     return finish_render(request,'ops/finance.html',data)

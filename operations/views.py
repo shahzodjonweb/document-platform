@@ -49,10 +49,16 @@ def context(request, page='overview'):
     lang = get_locale(request)
     labels = CATALOGS[lang]
     user = getattr(request, 'ops_user', None)
+    # Replace old repeated language values rather than appending another one.
+    # Filters survive navigation; pagination restarts on the destination page.
+    params = request.GET.copy()
+    params['lang'] = lang
+    params.pop('p', None)
+    query = params.urlencode()
     nav = []
     if user:
         for group, items in NAV:
-            permitted = [{'path':path,'label':labels[key],'icon':icon,'active':page==path} for path,key,icon in items if allowed(user,PAGE_ROLES[path])]
+            permitted = [{'path':path,'url':'/ops/'+path+'?'+query,'label':labels[key],'icon':icon,'active':page==path} for path,key,icon in items if allowed(user,PAGE_ROLES[path])]
             if permitted:
                 nav.append({'label':labels[group],'items':permitted})
     params = request.GET.copy()
@@ -60,7 +66,7 @@ def context(request, page='overview'):
     for locale, name in [('en','English'),('uz','O‘zbekcha'),('ru','Русский')]:
         params['lang'] = locale
         locale_links.append({'label':name,'locale':locale,'url':'?'+params.urlencode()})
-    return {'t':labels,'lang':lang,'page':page,'page_key':PAGE_KEYS.get(page,page),
+    return {'t':labels,'lang':lang,'query':query,'page':page,'page_key':PAGE_KEYS.get(page,page),
             'title':labels.get(PAGE_KEYS.get(page,page),page),'nav':nav,'staff':user,
             'staff_role':user.groups.first().name if user and user.groups.exists() else labels['staff'],
             'locale_links':locale_links,'dev_enabled':development_access(request),
@@ -133,9 +139,7 @@ def page(request, section='overview'):
     except ValueError as error:
         return HttpResponseBadRequest(str(error))
     data['filters']=filters
-    params=request.GET.copy();params.pop('p',None)
-    data['query']=params.urlencode()
-    data['export_url']='/ops/export/'+ ('features' if section=='analytics/features' else 'jobs' if section=='jobs' else 'users')+'?'+params.urlencode()
+    data['export_url']='/ops/export/'+ ('features' if section=='analytics/features' else 'jobs' if section=='jobs' else 'users')+'?'+data['query']
     data['can_export']=section in {'users','jobs','analytics/features'}
     if section in {'overview','analytics/acquisition','analytics/engagement','analytics/features'}:
         summary=report(filters)
