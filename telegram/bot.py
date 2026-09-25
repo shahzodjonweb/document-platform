@@ -266,8 +266,8 @@ def build_dispatcher():
         title=TOOL_NAMES.get(feature_id,{}).get(account.locale,feature_id)
         staged=await sync_to_async(lambda:ai.sources(account,feature_id,draft_for(account).input_ids))()
         ask=('ai_ask_photo' if feature_id in ai.NEEDS_PHOTO
-             else 'ai_ask_file' if feature_id in ai.NEEDS_PDF and not staged
              else 'ai_ask_question' if feature_id=='study.pdf_qa'
+             else 'ai_ask_file' if feature_id in ai.PREFERS_PDF and not staged
              else 'ai_ask_topic')
         body=f'<b>{html.escape(title)}</b>\n{text(account,ask)}'
         if staged: body+=f'\n{text(account,"ai_sources")}: {len(staged)}'

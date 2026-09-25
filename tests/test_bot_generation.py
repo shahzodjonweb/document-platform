@@ -13,6 +13,7 @@ from apps.core.identity import resolve_account
 from apps.core.models import BotConversation, BotDraft, Job, Quote
 from apps.core.services import upload_file
 from apps.studio.domain import GENERATION_IDS
+from apps.studio.domain import unpack
 from apps.studio.models import GenerationDraft
 from operations.integrations import save_config
 from telegram import generation
@@ -110,23 +111,39 @@ def test_tapping_generate_twice_creates_one_job(customer):
     assert Job.objects.filter(account=customer).count() == 1, 'the quote-bound key holds'
 
 
-def test_a_tool_that_needs_a_document_says_so_and_then_works(customer):
+def test_no_tool_forces_an_upload(customer):
+    """A document is read when attached and never demanded."""
     documents = tap(customer, dispatch_local(customer, text='/ai'), 'Documents & slides')
     asked = tap(customer, documents, 'Document from sources')
-    assert 'Send a PDF first' in body(asked)
+    assert 'Paste or type your material' in body(asked)
 
-    # Without a document there is nothing to build from, and no draft is made.
-    dispatch_local(customer, text='Summarise these for me.')
-    assert not GenerationDraft.objects.filter(account=customer, feature_id='ai.pdf_sources').exists()
+    # Typed material alone is enough.
+    review = dispatch_local(customer, text='Tide tables list high and low water for each day.\n\n'
+                                          'They are published a year ahead for each port.')
+    draft = GenerationDraft.objects.get(account=customer, feature_id='ai.pdf_sources')
+    assert 'Ready to start' in body(review)
+    assert not unpack(draft.encrypted_data)['source_ids'], 'nothing was uploaded'
 
+    # And a document still works when there is one.
     stage_pdf(customer)
     documents = tap(customer, dispatch_local(customer, text='/ai'), 'Documents & slides')
     asked_again = tap(customer, documents, 'Document from sources')
     assert 'From your files: 1' in body(asked_again)
-    review = dispatch_local(customer, text='Summarise these for me.')
-    draft = GenerationDraft.objects.get(account=customer, feature_id='ai.pdf_sources')
-    assert 'Ready to start' in body(review)
-    assert generation.title_of(draft) == 'Summarise these for me.'
+    dispatch_local(customer, text='Summarise these for me.')
+    with_file = GenerationDraft.objects.filter(account=customer, feature_id='ai.pdf_sources').latest('created_at')
+    assert unpack(with_file.encrypted_data)['source_ids']
+
+
+def test_a_question_can_carry_its_own_material(customer):
+    """study.pdf_qa answers from pasted text when no PDF is attached."""
+    study = tap(customer, dispatch_local(customer, text='/study'), 'Questions about a PDF')
+    assert 'Or attach a PDF first' in body(study)
+
+    dispatch_local(customer, text='When is the spring tide?\n\nSpring tides follow the new and full moon.')
+    payload = unpack(GenerationDraft.objects.get(account=customer, feature_id='study.pdf_qa').encrypted_data)
+    assert payload['prompt'] == 'When is the spring tide?'
+    assert payload['source_text'] == 'Spring tides follow the new and full moon.'
+    assert not payload['source_ids']
 
 
 def test_features_that_need_the_web_app_say_so_instead_of_failing(customer):

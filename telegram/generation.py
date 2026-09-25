@@ -37,18 +37,18 @@ GROUPS = {
 # its sections, or a project with recorded practice. A chat has nowhere to pick
 # that from, so they are listed and explained rather than silently dropped.
 WEB_ONLY = {'ai.rewrite', 'ai.regenerate_slide', 'school.adaptive'}
-# A document is required, not merely useful.
-NEEDS_PDF = {'ai.pdf_sources', 'ai.source_to_slides', 'study.pdf_qa'}
+# These read a document when one is attached, and work from typed or pasted
+# material when it is not. Nothing here forces an upload.
+PREFERS_PDF = {'ai.pdf_sources', 'ai.source_to_slides', 'study.pdf_qa'}
+# Transcription is the exception: there is nothing to read without the picture.
 NEEDS_PHOTO = {'study.handwriting'}
-# The question is about the document, so ask for the document first.
-FILE_FIRST = NEEDS_PDF | NEEDS_PHOTO
 # Tools whose input is the customer's own writing rather than an instruction:
 # the message becomes source text, not a prompt. Mirrors `sourceFirst` in the
 # web app's StudioView so the same tool behaves the same on both surfaces.
-SOURCE_FIRST = {'ai.pdf_text', 'ai.source_to_slides', 'study.summary', 'study.definitions',
-                'study.answer_key', 'study.report_format', 'study.references',
-                'study.writing_feedback', 'study.flashcards', 'teacher.answer_key',
-                'teacher.syllabus', 'teacher.feedback'}
+SOURCE_FIRST = {'ai.pdf_text', 'ai.pdf_sources', 'ai.source_to_slides', 'study.summary',
+                'study.definitions', 'study.answer_key', 'study.report_format',
+                'study.references', 'study.writing_feedback', 'study.flashcards',
+                'teacher.answer_key', 'teacher.syllabus', 'teacher.feedback'}
 PAGE = 6
 
 
@@ -56,7 +56,9 @@ def source_first(feature_id, mode):
     """Local authoring has no model to write with, so the text must be yours."""
     if feature_id in SOURCE_FIRST:
         return True
-    return mode == 'local_fixture' and feature_id not in FILE_FIRST | WEB_ONLY
+    # A question is always an instruction, never the material, so pdf_qa is
+    # excluded here exactly as it is in the web app's StudioView.
+    return mode == 'local_fixture' and feature_id not in NEEDS_PHOTO | WEB_ONLY | {'study.pdf_qa'}
 
 
 def group_of(feature_id):
@@ -118,15 +120,24 @@ def build(account, feature_id, prompt, file_ids=()):
     ids = sources(account, feature_id, list(file_ids))
     if feature_id in NEEDS_PHOTO:
         ids = ids[-1:]  # One page at a time, as on the web.
-    if feature_id in FILE_FIRST and not ids:
-        raise DomainError('source_required')
-    if not text and feature_id not in NEEDS_PHOTO:
+        if not ids:
+            raise DomainError('source_required')
+    elif not text:
+        # Everything else works from a typed message alone.
         raise DomainError('prompt_required')
     throttle(account)
     from operations.integrations import ai_config
     written = source_first(feature_id, ai_config()['mode']) and feature_id not in NEEDS_PHOTO
+    question, material = text, ''
+    if feature_id == 'study.pdf_qa' and not ids:
+        # One message has to carry both halves the web asks for in two fields.
+        # The blank line people naturally type between them is the split; with
+        # no blank line the message serves as question and material alike.
+        question, _, rest = text.partition('\n\n')
+        material = rest.strip() or text
     data = {'feature_id': feature_id, 'source_ids': ids, 'output_locale': account.locale,
-            'prompt': '' if written else text, 'source_text': text if written else ''}
+            'prompt': '' if written else question,
+            'source_text': text if written else material}
     # Leave the title to the studio's own default when there is nothing to take
     # it from; an explicit None would be stringified into the document.
     if text:

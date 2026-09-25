@@ -39,8 +39,10 @@ def execute_generation(job,output_dir):
                 if not source or not ref.get('quote') or ref['quote'] not in source['text']:raise DomainError('invalid_source_citation')
                 references.append({k:ref[k] for k in ('asset_id','page','quote')})
             content['citations']=references
-            if job.feature_id=='study.pdf_qa' and (not raw.get('answer_supported') or not references):
-                labels={'en':'No supporting answer was found in the supplied source pages.','uz':'Berilgan manba sahifalarida tasdiqlovchi javob topilmadi.','ru':'На предоставленных страницах источника подтверждающий ответ не найден.'}
+            # Citations can only point at uploaded pages; a pasted source has
+            # none to cite, so only demand them when pages were supplied.
+            if job.feature_id=='study.pdf_qa' and (not raw.get('answer_supported') or (data['excerpts'] and not references)):
+                labels={'en':'No supporting answer was found in the material provided.','uz':'Berilgan materialda tasdiqlovchi javob topilmadi.','ru':'В предоставленном материале подтверждающий ответ не найден.'}
                 content['sections']=[{'id':'not_found','heading':'—','body':labels[data['output_locale']],'notes':''}]
                 content['questions']=[];content['citations']=[];warnings.append('source_answer_not_found')
             ProviderUsage.objects.create(job=job,provider='openai',model=cfg['model'],input_tokens=usage.get('input_tokens',0),output_tokens=usage.get('output_tokens',0),outcome='succeeded')

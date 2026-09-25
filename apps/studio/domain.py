@@ -101,7 +101,9 @@ def _prepare_draft(account,data,*,transcribed=False):
         excerpts=source_context(account,ids)
     else:excerpts=source_excerpts(account,ids)
     if len(text)+len(prompt)+sum(len(s['text']) for s in excerpts)>limits(account)['source_chars']:raise DomainError('generation_limit')
-    if fid=='study.pdf_qa' and (not excerpts or not any(s['text'].strip() for s in excerpts)):raise DomainError('source_required')
+    # A question still needs something to answer from, but pasted text is a
+    # source as much as an uploaded page is.
+    if fid=='study.pdf_qa' and not text.strip() and not any(s['text'].strip() for s in excerpts):raise DomainError('source_required')
     options=data.get('options',data.get('parameters',{}))
     if not isinstance(options,dict) or len(json.dumps(options))>4000 or set(options)&READONLY_FIELDS:raise DomainError('invalid_parameters')
     length=options.get('length',min(2,limits(account)['sections']))
