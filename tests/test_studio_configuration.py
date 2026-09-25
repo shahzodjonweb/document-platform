@@ -1,3 +1,4 @@
+import json
 import pytest
 from apps.studio.domain import GENERATION_IDS
 from operations.integrations import save_config
@@ -50,3 +51,39 @@ def test_density_applies_to_every_plan_and_only_changes_spacing(settings):
         create_draft(a,{**fields,'options':{'density':'enormous'}})
 
     assert density_style(None)=={}
+
+
+def test_density_and_tone_become_explicit_instructions_for_the_model():
+    """A bare enum means nothing to a model. Density and tone must reach the
+    request as instructions, and a long document at the densest setting must
+    not be told to write more than the response can hold."""
+    from apps.studio.provider import BODY_WORD_BUDGET,DENSITY_WORDS,request_body,writing_guidance
+
+    def draft(options,sections=2):
+        return {'output_locale':'en','prompt':'p','source_text':'','excerpts':[],
+                'options':options,
+                'content':{'title':'T','sections':[{'id':f's{i}','heading':'H','body':'B','notes':''}
+                                                   for i in range(sections)],'questions':[],'citations':[]}}
+
+    rich=writing_guidance({'density':'rich'},2)
+    airy=writing_guidance({'density':'airy'},2)
+    assert '170-260 words' in rich and 'fill the page' in rich
+    assert '30-70 words' in airy and 'leaving space' in airy
+
+    # Tone is appended; unknown free-text values from older drafts are ignored.
+    assert 'plain language' in writing_guidance({'density':'balanced','style':'simple'},2).lower()
+    assert writing_guidance({'density':'balanced','style':'whatever the user typed'},2).count('.')==2
+
+    # The guard: many sections must shrink the per-section target.
+    many=writing_guidance({'density':'rich'},40)
+    cap=BODY_WORD_BUDGET//40
+    assert cap<DENSITY_WORDS['rich'][0], 'this case must be tighter than the band'
+    assert f'about {cap} words' in many, many
+    assert 40*cap<=BODY_WORD_BUDGET, 'the whole document must fit the response budget'
+
+    body=request_body({'model':'m'},draft({'density':'rich','style':'formal'}),'ai.pdf_text')
+    assert 'writing_guidance' in json.loads(body['input'])
+    assert 'follow its body length and tone' in body['instructions']
+
+    # No density chosen still yields the balanced default, never nothing.
+    assert '80-140 words' in writing_guidance({},2)
