@@ -142,5 +142,7 @@
   "invalid_oauth_state": "This Google sign-in has expired or belongs to another browser. Start again.",
   "antibot_required": "Please complete the quick security check.",
   "antibot_failed": "That check expired or failed. Please try again.",
-  "antibot_unavailable": "The security check is unavailable. Please try again shortly."
+  "antibot_unavailable": "The security check is unavailable. Please try again shortly.",
+  "prompt_required": "Send a topic or instructions before generating.",
+  "generation_web_only": "This tool builds on work saved in the web app. Open it there to continue."
 }

@@ -89,6 +89,7 @@ def option_summary(account,draft):
 
 def build_dispatcher():
     from .workflows import draft_for,configure,snapshot,bound_draft,quote_draft,run_quote,attach_input,order_inputs,discard_draft,choose_tool,start_tool,discard_finished_draft,accept_upload
+    from . import generation as ai
     from .onboarding import install_onboarding,show_language,chosen_locale
     from .billing import register_billing_handlers,show_offers,show_subscription
     dp=Dispatcher()
@@ -121,6 +122,7 @@ def build_dispatcher():
         quick=[key for key in ('pdf.merge','pdf.compress','pdf.images_to_pdf','pdf.to_images') if key in available]
         for index in range(0,len(quick),2): rows.append([await tool_button(account,draft,key) for key in quick[index:index+2]])
         rows.extend([
+            [await button(account,'ai_button','ai_home')],
             [await button(account,'all_tools','menu'),await button(account,'recent','recent')],
             [await button(account,'account','account'),await button(account,'help_button','help')],
             [await button(account,'language_button','language'),InlineKeyboardButton(text=text(account,'open'),url=await web_url(account))],
@@ -225,6 +227,90 @@ def build_dispatcher():
         await sync_to_async(set_prompt)(account)
         draft,quote=await sync_to_async(quote_draft)(account,binding)
         await quote_message(message,account,draft,quote,edit)
+
+    # --- AI generation -------------------------------------------------------
+    # Menus, one prompt, a quote, then the same job pipeline as every other
+    # tool. Editing a PDF stays on the web; making one happens here.
+
+    async def ai_studio_url(account):
+        """The web studio, carrying whatever files are already in the chat."""
+        from urllib.parse import urlencode
+        url=await web_url(account,'create')
+        staged=await sync_to_async(lambda:draft_for(account).input_ids[:5])()
+        return url+('?'+urlencode({'file_id':staged},doseq=True) if staged else '')
+
+    async def ai_home(message,account,edit=False):
+        await sync_to_async(set_prompt)(account)
+        rows=[[await button(account,f'ai_group_{group}','ai_group',{'group':group})] for group in ai.GROUPS]
+        rows.append([await button(account,'home','home'),InlineKeyboardButton(text=text(account,'ai_open_web'),url=await ai_studio_url(account))])
+        await render(message,f'<b>{text(account,"ai_home")}</b>\n{text(account,"ai_choose_tool")}',rows,edit)
+
+    async def ai_group(message,account,group,page=0,edit=False):
+        await sync_to_async(set_prompt)(account)
+        features,more=await sync_to_async(ai.page_of)(account,group,page)
+        rows=[]
+        for feature_id,eligible,web_only in features:
+            label=TOOL_NAMES.get(feature_id,{}).get(account.locale,feature_id)
+            if web_only: label=f'🖥 {label}'
+            elif not eligible: label=f'🔒 {label}'
+            rows.append([InlineKeyboardButton(text=label,callback_data=await callback(account,'ai_tool',{'feature_id':feature_id,'group':group,'page':page}))])
+        tail=[await button(account,'ai_back','ai_home')]
+        if more: tail.append(await button(account,'ai_more','ai_group',{'group':group,'page':page+1}))
+        elif page: tail.append(await button(account,'ai_back','ai_group',{'group':group,'page':0}))
+        rows.append(tail)
+        rows.append([await button(account,'home','home')])
+        await render(message,f'<b>{text(account,f"ai_group_{group}")}</b>\n{text(account,"ai_choose_tool")}',rows,edit)
+
+    async def ai_prompt(message,account,feature_id,group,edit=False):
+        """Ask for the one thing this tool needs, then wait for a text reply."""
+        title=TOOL_NAMES.get(feature_id,{}).get(account.locale,feature_id)
+        staged=await sync_to_async(lambda:ai.sources(account,feature_id,draft_for(account).input_ids))()
+        ask=('ai_ask_photo' if feature_id in ai.NEEDS_PHOTO
+             else 'ai_ask_file' if feature_id in ai.NEEDS_PDF and not staged
+             else 'ai_ask_question' if feature_id=='study.pdf_qa'
+             else 'ai_ask_topic')
+        body=f'<b>{html.escape(title)}</b>\n{text(account,ask)}'
+        if staged: body+=f'\n{text(account,"ai_sources")}: {len(staged)}'
+        if ask=='ai_ask_topic': body+=f'\n\n<i>{text(account,"ai_topic_hint")}</i>'
+        await sync_to_async(set_prompt)(account,'ai_input',{'feature_id':feature_id,'group':group})
+        rows=[]
+        # A photo is the whole input here, so there is nothing left to type.
+        if staged and feature_id in ai.NEEDS_PHOTO:
+            rows.append([await button(account,'ai_continue','ai_go',{'feature_id':feature_id,'group':group})])
+        rows.append([await button(account,'ai_back','ai_group',{'group':group,'page':0})])
+        rows.append([await button(account,'home','home')])
+        await render(message,body,rows,edit)
+
+    async def ai_review(message,account,draft,quote,edit=False):
+        """Never submit without showing this: generating spends AI credits."""
+        title=TOOL_NAMES.get(draft.feature_id,{}).get(account.locale,draft.feature_id)
+        summary=await sync_to_async(quote_data)(quote)
+        balances=summary['available_balances']
+        usage='\n'.join(f'{text(account,label)}: {quote.meters[key]} / {balances[key]["remaining"]}'
+                        for key,label in (('ai_credits','ai_credits'),('file_tasks','file_tasks'))
+                        if quote.meters.get(key))
+        heading=await sync_to_async(ai.title_of)(draft)
+        body=(f'<b>{text(account,"review_title")}</b>\n{html.escape(title)}\n'
+              f'📄 {html.escape(heading)}\n\n{text(account,"ai_review_hint")}')
+        if usage: body+=f'\n\n{text(account,"cost")} / {text(account,"available")}:\n{usage}'
+        body+=f'\n{text(account,"expires")}: {quote.expires_at:%Y-%m-%d %H:%M}'
+        rows=[[await button(account,'ai_generate','ai_run',{'quote_id':str(quote.id),'draft_id':str(draft.id)})],
+              [await button(account,'ai_change_topic','ai_tool',{'feature_id':draft.feature_id,'group':ai.group_of(draft.feature_id)}),
+               await button(account,'cancel_button','ai_home')],
+              [await button(account,'home','home')]]
+        await render(message,body,rows,edit)
+
+    async def ai_start(message,account,feature_id,group,prompt,edit=False):
+        """One chat message in, a priced draft out. Nothing is charged yet."""
+        try:
+            file_ids=await sync_to_async(lambda:draft_for(account).input_ids)()
+            draft=await sync_to_async(ai.build)(account,feature_id,prompt,file_ids)
+            _,quote=await sync_to_async(ai.quote)(account,draft.id)
+        except DomainError as exc:
+            await safe_error(message,account,exc)
+            return await ai_prompt(message,account,feature_id,group)
+        await sync_to_async(set_prompt)(account)
+        await ai_review(message,account,draft,quote,edit)
 
     async def deliver(message,account,job,request_key=None):
         from .delivery import enqueue,attempt
@@ -416,6 +502,28 @@ def build_dispatcher():
             elif action=='language': await show_language(message,query.from_user,{})
             elif action=='menu': await menu(message,account,p.get('page',0),p.get('category','pdf'),True)
             elif action=='controls': await controls(message,account,edit=True,advanced=p.get('advanced',False))
+            elif action=='ai_home': await ai_home(message,account,True)
+            elif action=='ai_group': await ai_group(message,account,p['group'],p.get('page',0),True)
+            elif action=='ai_tool':
+                feature_id=p['feature_id']
+                if feature_id in ai.WEB_ONLY:
+                    rows=[[InlineKeyboardButton(text=text(account,'ai_open_web'),url=await ai_studio_url(account))],
+                          [await button(account,'ai_back','ai_group',{'group':p['group'],'page':p.get('page',0)})]]
+                    await render(message,text(account,'ai_web_only'),rows,True)
+                else:
+                    try: await sync_to_async(ai.available)(account,feature_id)
+                    except DomainError as exc: await safe_error(message,account,exc)
+                    else: await ai_prompt(message,account,feature_id,p['group'],True)
+            elif action=='ai_go':
+                await ai_start(message,account,p['feature_id'],p['group'],'',True)
+            elif action=='ai_run':
+                existing=await sync_to_async(ai.submitted)(account,p['quote_id'])
+                job=existing or await sync_to_async(ai.start)(account,p['quote_id'])
+                await sync_to_async(set_prompt)(account)
+                if settings.LOCAL_SYNC_JOBS and not existing:
+                    job=await sync_to_async(execute_job)(job.id)
+                if job.status=='succeeded': await deliver(message,account,job)
+                else: await job_status(message,account,job,True)
             elif action=='tool':
                 try:
                     draft=await sync_to_async(choose_tool)(account,p['feature_id'],p,p.get('asset_id'))
@@ -502,6 +610,13 @@ def build_dispatcher():
             return await home(message,account,notice=text(account,'download_error'))
         try:
             asset=await sync_to_async(upload_file)(account,SimpleUploadedFile(name,stream.getvalue()),'bot')
+            # A file sent while an AI tool is waiting belongs to that tool, not
+            # to the file-tool draft the upload would otherwise start.
+            conversation=await sync_to_async(lambda:BotConversation.objects.get(pk=message.from_user.id))()
+            if conversation.state=='ai_input':
+                pending=conversation.prompt
+                await sync_to_async(attach_input)(account,asset,message.chat.id,message.message_id)
+                return await ai_prompt(message,account,pending['feature_id'],pending['group'])
             draft=await sync_to_async(accept_upload)(account,asset,message.chat.id,message.message_id)
             await controls(message,account,draft)
         except DomainError as exc:
@@ -590,7 +705,19 @@ def build_dispatcher():
     @dp.message(Command('cancel'))
     async def cancel(message): await cancel_prompt(message,await account_for(message.from_user))
 
-    @dp.message(Command('web','create','study','school','teach','editor'))
+    # Making a document happens in the chat; editing a PDF is a canvas and
+    # stays on the web.
+    AI_COMMANDS={'create':'documents','study':'study','school':'school','teach':'teacher'}
+
+    @dp.message(Command('ai','create','study','school','teach'))
+    async def open_ai_mode(message):
+        account=await account_for(message.from_user)
+        command=message.text.split()[0].split('@')[0][1:]
+        group=AI_COMMANDS.get(command)
+        if not group: return await ai_home(message,account)
+        await ai_group(message,account,group)
+
+    @dp.message(Command('web','editor'))
     async def open_workspace_mode(message):
         from urllib.parse import urlencode
         account=await account_for(message.from_user)
@@ -598,12 +725,10 @@ def build_dispatcher():
         await sync_to_async(set_prompt)(account)
         url=await web_url(account,'' if command=='web' else command)
         draft=await sync_to_async(lambda:BotDraft.objects.filter(account=account).first())()
-        # Hand the files over so they are not uploaded a second time. The editor
-        # opens one document; generation accepts at most five sources, so a
-        # longer file-tool draft is truncated rather than rejected on arrival.
-        if draft and draft.input_ids and command!='web':
-            ids=draft.input_ids[:1 if command=='editor' else 5]
-            url+='?'+urlencode({'file_id':ids},doseq=True)
+        # Hand the file over so it is not uploaded a second time. The editor
+        # opens exactly one document; /web is the home page and carries nothing.
+        if draft and draft.input_ids and command=='editor':
+            url+='?'+urlencode({'file_id':draft.input_ids[:1]},doseq=True)
         await render(message,text(account,'web_hint'),[[InlineKeyboardButton(text=text(account,'open'),url=url)],[await button(account,'home','home')]])
 
     @dp.message(Command('help','terms','password'))
@@ -622,6 +747,11 @@ def build_dispatcher():
             return await home(message,account,notice=text(account,'controls_expired'))
         value=(message.text or '').strip()
         if conversation.state=='support': return await support_review(message,account,value,conversation.prompt.get('payment',False))
+        if conversation.state=='ai_input':
+            p=conversation.prompt
+            if not value: return await message.answer(text(account,'ai_topic_empty'))
+            await message.answer(text(account,'ai_preparing'))
+            return await ai_start(message,account,p['feature_id'],p['group'],value)
         if conversation.state=='input':
             p=conversation.prompt;kind=p.get('kind')
             try:

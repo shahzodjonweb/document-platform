@@ -1,9 +1,10 @@
 """Handing a Telegram draft's files to the web app.
 
-`/create`, `/study`, `/school`, `/teach` and `/editor` open the web workspace.
-Whatever the customer has already sent to the chat must travel with them, or
-they upload the same document twice. The web side reads these `file_id`
-parameters; this pins the half the bot is responsible for.
+Generation runs in the chat now, so the remaining hand-offs are `/editor`,
+which opens a PDF for editing, and the studio link beside the AI menu for
+anyone who prefers the fuller web form. Whatever the customer has already sent
+to the chat must travel with them, or they upload the same document twice. The
+web side reads these `file_id` parameters; this pins the bot's half.
 """
 from urllib.parse import parse_qs, urlsplit
 
@@ -43,25 +44,33 @@ def linked_files(customer, command):
     return parse_qs(urlsplit(workspace_link(customer, command)).query).get('file_id', [])
 
 
-def test_the_draft_files_travel_to_the_web_workspace(customer):
+def test_the_editor_opens_the_document_already_in_the_chat(customer):
     inputs = [f'00000000-0000-4000-8000-{i:012d}' for i in range(1, 8)]
     BotDraft.objects.create(account=customer, feature_id='pdf.merge', input_ids=inputs)
 
-    # Generation refuses more than five sources, so send what it can accept
-    # rather than a link that fails once the customer is already there.
-    assert linked_files(customer, 'create') == inputs[:5]
-    for command in ('study', 'school', 'teach'):
-        assert linked_files(customer, command) == inputs[:5], command
-
-    # The editor opens exactly one document.
+    # Editing a PDF is a canvas and stays on the web; it opens one document.
     assert linked_files(customer, 'editor') == inputs[:1]
+    assert urlsplit(workspace_link(customer, 'editor')).path == '/en/app/editor'
 
     # /web is the home page, not a tool; it carries nothing.
     assert linked_files(customer, 'web') == []
-    assert urlsplit(workspace_link(customer, 'study')).path == '/en/app/study'
 
 
 def test_an_empty_draft_links_to_a_clean_workspace(customer):
     BotDraft.objects.create(account=customer, feature_id='pdf.merge', input_ids=[])
-    assert linked_files(customer, 'create') == []
-    assert workspace_link(customer, 'create').endswith('/en/app/create')
+    assert linked_files(customer, 'editor') == []
+    assert workspace_link(customer, 'editor').endswith('/en/app/editor')
+
+
+def test_the_studio_link_beside_the_ai_menu_still_carries_the_files(customer):
+    """Generation now runs in the chat, but the richer web form is one tap away
+    and must not ask for the same upload twice."""
+    inputs = [f'00000000-0000-4000-8000-{i:012d}' for i in range(1, 8)]
+    BotDraft.objects.create(account=customer, feature_id='pdf.merge', input_ids=inputs)
+    result = dispatch_local(customer, text='/ai')
+    link = next(button['url'] for message in result['messages']
+                for row in message['buttons'] for button in row if button.get('url'))
+    # Generation accepts at most five sources, so a longer file-tool draft is
+    # truncated rather than producing a link that fails on arrival.
+    assert parse_qs(urlsplit(link).query)['file_id'] == inputs[:5]
+    assert urlsplit(link).path == '/en/app/create'

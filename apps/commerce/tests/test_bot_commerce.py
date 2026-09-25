@@ -106,10 +106,19 @@ def test_bot_workspace_commands_use_current_admin_url_and_keep_owned_input():
     from operations.integrations import save_config
     a,c=principal()
     save_config('telegram',{'webapp_url':'http://localhost:3000/en/app','username':''})
-    for command_name in ('create','study','school','teach','editor'):
+    # Editing a PDF is the remaining hand-off to the web app.
+    for command_name in ('editor','web'):
         result=command(c,'/'+command_name)
         button=result['messages'][-1]['buttons'][0][0]
-        assert button['url']==f'http://localhost:3000/en/app/{command_name}'
+        assert button['url']==f'http://localhost:3000/en/app'+(f'/{command_name}' if command_name!='web' else '')
+    # Generation runs in the chat; the studio link beside it uses the same URL.
+    for command_name in ('create','study','school','teach'):
+        result=command(c,'/'+command_name)
+        urls=[b['url'] for row in result['messages'][-1]['buttons'] for b in row if b.get('url')]
+        assert not urls, f'/{command_name} opens in the chat, not the browser'
+    menu=command(c,'/ai')
+    studio=[b['url'] for row in menu['messages'][-1]['buttons'] for b in row if b.get('url')]
+    assert studio==['http://localhost:3000/en/app/create']
 
 def test_fast_precheckout_answers_invalid_request_without_grant(monkeypatch):
     from telegram.billing import fast_precheckout
