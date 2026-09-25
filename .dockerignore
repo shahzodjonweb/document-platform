@@ -15,3 +15,6 @@ playwright-report
 release.tar.gz
 image.tar.gz
 .deploy-output/
+
+# Knowledge-graph index must stay out of the build context
+graphify-out/

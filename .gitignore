@@ -21,3 +21,7 @@ playwright-report/
 release.tar.gz
 image.tar.gz
 .deploy-output/
+
+# Local knowledge-graph index (graphify) — never shipped
+graphify-out/
+.graphifyignore
