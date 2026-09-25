@@ -598,7 +598,12 @@ def build_dispatcher():
         await sync_to_async(set_prompt)(account)
         url=await web_url(account,'' if command=='web' else command)
         draft=await sync_to_async(lambda:BotDraft.objects.filter(account=account).first())()
-        if draft and draft.input_ids and command!='web': url+='?'+urlencode({'file_id':draft.input_ids[0]})
+        # Hand the files over so they are not uploaded a second time. The editor
+        # opens one document; generation accepts at most five sources, so a
+        # longer file-tool draft is truncated rather than rejected on arrival.
+        if draft and draft.input_ids and command!='web':
+            ids=draft.input_ids[:1 if command=='editor' else 5]
+            url+='?'+urlencode({'file_id':ids},doseq=True)
         await render(message,text(account,'web_hint'),[[InlineKeyboardButton(text=text(account,'open'),url=url)],[await button(account,'home','home')]])
 
     @dp.message(Command('help','terms','password'))
