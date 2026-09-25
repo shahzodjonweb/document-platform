@@ -110,9 +110,12 @@ def _prepare_draft(account,data,*,transcribed=False):
     if type(question_count) is not int or not 0<=question_count<=limits(account)['questions']:raise DomainError('generation_limit')
     options={**options,'question_count':question_count}
     template_id=options.get('template_id','clean')
-    from .templates import style_for
+    from .templates import density_style,style_for
+    # Validated here so an unknown value fails at authoring time rather than
+    # silently rendering at the default spacing.
+    density=density_style(options.get('density'))
     template_style=style_for(account,template_id)
-    if template_style is not None:options['template_style']=template_style
+    if template_style is not None:options['template_style']={**template_style,**density}
     else:
         from .models import SavedDefinition
         import re
@@ -120,7 +123,7 @@ def _prepare_draft(account,data,*,transcribed=False):
         if not template:raise DomainError('not_found',404)
         accent=template.definition.get('content',{}).get('style',{}).get('accent','#255e49')
         if not isinstance(accent,str) or not re.fullmatch(r'#[0-9a-fA-F]{6}',accent):raise DomainError('invalid_parameters')
-        options['template_style']={'accent':accent}
+        options['template_style']={'accent':accent,**density}
     from .branding import prepare_branding
     options=prepare_branding(account,fid,options)
     if fid=='school.adaptive':

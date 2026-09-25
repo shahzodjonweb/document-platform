@@ -16,7 +16,7 @@ from operations.integrations import ai_config
 from .domain import GENERATION_IDS,allowed,create_draft,draft_data,update_draft,generation_quote,pack,unpack,limits
 from .models import GenerationDraft,SavedDefinition,EducationProject,PracticeAttempt,ShareGrant,EditorDocument,WorkflowRun
 
-from .templates import published
+from .templates import DENSITIES,published
 @api()
 def config(request):
     from .packs import slots
@@ -28,7 +28,7 @@ def config(request):
             try:require_configuration(cfg)
             except DomainError:available=False
         formats=['png'] if fid=='ai.images' else ['pdf'] if slots(fid) else ['pdf','pptx']
-        features.append({'id':fid,'name':FEATURES[fid]['name'],'surface':'generate' if fid.startswith('ai.') else 'education','eligible':settings.ENABLE_BETA_TOOLS and allowed(request.account,fid) and available,'requires_provider':fid in ('ai.images','study.handwriting') and not available,'parameter_schema':{'length':{'minimum':1,'maximum':limits(request.account)['sections']},'output_locale':{'enum':['en','uz','ru']},'output_format':{'enum':formats}},'locales':['en','uz','ru']})
+        features.append({'id':fid,'name':FEATURES[fid]['name'],'surface':'generate' if fid.startswith('ai.') else 'education','eligible':settings.ENABLE_BETA_TOOLS and allowed(request.account,fid) and available,'requires_provider':fid in ('ai.images','study.handwriting') and not available,'parameter_schema':{'length':{'minimum':1,'maximum':limits(request.account)['sections']},'output_locale':{'enum':['en','uz','ru']},'output_format':{'enum':formats},'density':{'enum':list(DENSITIES)}},'locales':['en','uz','ru']})
     return {'provider':{'id':cfg['mode'],'mode':cfg['mode'],'label':'Local authoring (no AI)' if cfg['mode']=='local_fixture' else 'OpenAI' if cfg['mode']=='openai' else 'Not configured','configured':cfg['mode']=='local_fixture' or bool(cfg['api_key'] and cfg['model']),'image_configured':cfg['mode']=='openai' and bool(cfg.get('api_key') and cfg.get('image_model')),'handwriting_configured':any(f['id']=='study.handwriting' and not f['requires_provider'] for f in features)},'features':features,'generation_features':features,'templates':published(request.account),'limits':limits(request.account)}
 
 @api(('GET','POST'))

@@ -23,3 +23,30 @@ def test_unreleased_generation_is_never_advertised_as_eligible(settings):
     data=login_client(account()).get('/api/v1/studio/config').json()
     assert len(data['features'])==len(GENERATION_IDS)
     assert not any(f['eligible'] for f in data['features'])
+
+
+def test_density_applies_to_every_plan_and_only_changes_spacing(settings):
+    """Density is a layout control, not a paid template: a free account gets it,
+    and it overrides spacing without replacing the template's own identity."""
+    settings.DEBUG=True
+    from apps.core.errors import DomainError
+    from apps.studio.domain import create_draft,unpack
+    from apps.studio.templates import DENSITIES,density_style
+
+    a=account(uid=910001)
+    fields={'feature_id':'ai.pdf_text','title':'Density','source_text':'Body text.'}
+
+    for value in ('rich','airy'):
+        draft=create_draft(a,{**fields,'options':{'density':value}})
+        style=unpack(draft.encrypted_data)['options']['template_style']
+        assert style['accent']=='#255e49', 'the template still supplies its own accent'
+        for key,expected in DENSITIES[value].items():
+            assert style[key]==expected, f'{value}.{key}'
+
+    balanced=create_draft(a,{**fields,'options':{'density':'balanced'}})
+    assert 'margin' not in unpack(balanced.encrypted_data)['options']['template_style']
+
+    with pytest.raises(DomainError,match='invalid_parameters'):
+        create_draft(a,{**fields,'options':{'density':'enormous'}})
+
+    assert density_style(None)=={}
