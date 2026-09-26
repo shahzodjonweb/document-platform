@@ -144,5 +144,6 @@
   "antibot_failed": "Tekshiruv eskirgan yoki o‘tmadi. Qayta urinib ko‘ring.",
   "antibot_unavailable": "Xavfsizlik tekshiruvi hozir ishlamayapti. Birozdan so‘ng qayta urinib ko‘ring.",
   "prompt_required": "Yaratishdan oldin mavzu yoki ko‘rsatma yuboring.",
-  "generation_web_only": "Bu vosita veb ilovada saqlangan ishga asoslanadi. Davom etish uchun o‘sha yerda oching."
+  "generation_web_only": "Bu vosita veb ilovada saqlangan ishga asoslanadi. Davom etish uchun o‘sha yerda oching.",
+  "revision_not_ready": "Bu hujjatda hali o‘zgartiradigan narsa yo‘q. Avval uni yarating, keyin o‘zgarish so‘rang."
 }

@@ -59,6 +59,21 @@ def finish(delivery_id,*,status,message_id=None,error='',delay=0):
     BotDelivery.objects.filter(pk=delivery_id,status='sending').update(**values)
 
 
+def revisable_draft(delivery):
+    """The draft behind a generated document, when there is one to change."""
+    from apps.studio.domain import GENERATION_IDS
+    job = delivery.artifact.job
+    if job.feature_id not in GENERATION_IDS:
+        return ''
+    identifier = (job.parameters or {}).get('generation_draft_id', '')
+    if not identifier:
+        return ''
+    from apps.studio.models import GenerationDraft
+    exists = GenerationDraft.objects.filter(account=delivery.account, id=identifier,
+                                            expires_at__gt=timezone.now()).exists()
+    return str(identifier) if exists else ''
+
+
 @transaction.atomic
 def result_controls(delivery):
     """Stable owner-bound navigation; retries reuse tokens instead of adding rows."""
@@ -66,6 +81,17 @@ def result_controls(delivery):
     locale = delivery.account.locale if delivery.account.locale in UX else 'en'
     rows = []
     payload = {'delivery_id': str(delivery.id)}
+    # A generated document can be changed by asking; a converted file cannot.
+    revise = revisable_draft(delivery)
+    if revise:
+        control = BotCallback.objects.filter(account=delivery.account, action='ai_revise',
+                                             payload={'draft_id': revise}).first()
+        if control is None:
+            control = BotCallback.objects.create(
+                token=secrets.token_urlsafe(12), account=delivery.account, action='ai_revise',
+                payload={'draft_id': revise}, expires_at=delivery.artifact.file.expires_at,
+            )
+        rows.append([InlineKeyboardButton(text=UX[locale]['ai_revise'], callback_data=control.token)])
     for action, label in (('home', 'home'), ('recent', 'recent'), ('new', 'new_task')):
         control = BotCallback.objects.filter(account=delivery.account, action=action, payload=payload).first()
         if control is None:

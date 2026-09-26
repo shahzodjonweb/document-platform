@@ -264,6 +264,29 @@ def build_dispatcher():
               [await button(account,'home','home')]]
         await render(message,body,rows,edit)
 
+    async def ai_revise_prompt(message,account,draft_id,edit=False):
+        """One screen: what should change? Everything unmentioned stays put."""
+        title=await sync_to_async(ai.revisable)(account,draft_id)
+        if title is None: return await safe_error(message,account,DomainError('revision_not_ready'))
+        await sync_to_async(set_prompt)(account,'ai_revise',{'draft_id':str(draft_id)})
+        body=(f'<b>{text(account,"ai_revise_title")}</b>\n'
+              f'{text(account,"ai_revise_of")}: {html.escape(title)}\n\n'
+              f'{text(account,"ai_revise_ask")}\n\n'
+              f'{text(account,"ai_examples")}:\n<code>{html.escape(text(account,"ai_revise_examples"))}</code>')
+        rows=[[await button(account,'ai_back','ai_home')],[await button(account,'home','home')]]
+        await render(message,body,rows,edit)
+
+    async def ai_revise_start(message,account,draft_id,request,edit=False):
+        """The change is priced and shown before anything is spent, as ever."""
+        try:
+            draft=await sync_to_async(ai.revise)(account,draft_id,request)
+            _,quote=await sync_to_async(ai.quote)(account,draft.id)
+        except DomainError as exc:
+            await safe_error(message,account,exc)
+            return await ai_revise_prompt(message,account,draft_id)
+        await sync_to_async(set_prompt)(account)
+        await ai_review(message,account,draft,quote,edit)
+
     async def ai_examples(message,account,feature_id=None,edit=False):
         """What a good description looks like, in the customer's language."""
         rows=[]
@@ -286,16 +309,23 @@ def build_dispatcher():
                         if quote.meters.get(key))
         heading=await sync_to_async(ai.title_of)(draft)
         given,asked=await sync_to_async(ai.summary)(draft)
+        change=await sync_to_async(ai.change_request)(draft)
         body=(f'<b>{text(account,"review_title")}</b>\n{html.escape(title)}\n'
-              f'📄 {html.escape(heading)}\n{text(account,"ai_pages")}: {given}')
+              f'📄 {html.escape(heading)}\n')
+        # A change says what is changing; a new document says what it is.
+        if change: body+=f'✏️ {html.escape(change)}\n'
+        body+=f'{text(account,"ai_pages")}: {given}'
         # A clamped request is said out loud rather than quietly honoured short.
         if asked and asked!=given: body+='\n'+text(account,'ai_pages_clamped').format(asked=asked,given=given)
         body+=f'\n\n{text(account,"ai_review_hint")}'
         if usage: body+=f'\n\n{text(account,"cost")} / {text(account,"available")}:\n{usage}'
         body+=f'\n{text(account,"expires")}: {quote.expires_at:%Y-%m-%d %H:%M}'
+        # Rewording a change goes back to the change, not to a blank document.
+        source=await sync_to_async(ai.revised_from)(draft)
+        reword=(await button(account,'ai_revise','ai_revise',{'draft_id':source}) if source
+                else await button(account,'ai_change_topic','ai_tool',{'feature_id':draft.feature_id}))
         rows=[[await button(account,'ai_generate','ai_run',{'quote_id':str(quote.id),'draft_id':str(draft.id)})],
-              [await button(account,'ai_change_topic','ai_tool',{'feature_id':draft.feature_id}),
-               await button(account,'cancel_button','ai_home')],
+              [reword,await button(account,'cancel_button','ai_home')],
               [await button(account,'home','home')]]
         await render(message,body,rows,edit)
 
@@ -503,6 +533,7 @@ def build_dispatcher():
             elif action=='controls': await controls(message,account,edit=True,advanced=p.get('advanced',False))
             elif action=='ai_home': await ai_home(message,account,True)
             elif action=='ai_examples': await ai_examples(message,account,p.get('feature_id'),True)
+            elif action=='ai_revise': await ai_revise_prompt(message,account,p['draft_id'],True)
             elif action=='ai_tool':
                 try: await sync_to_async(ai.available)(account,p['feature_id'])
                 except DomainError as exc: await safe_error(message,account,exc)
@@ -744,6 +775,11 @@ def build_dispatcher():
             if not value: return await message.answer(text(account,'ai_topic_empty'))
             await message.answer(text(account,'ai_preparing'))
             return await ai_start(message,account,p['feature_id'],value)
+        if conversation.state=='ai_revise':
+            p=conversation.prompt
+            if not value: return await message.answer(text(account,'ai_topic_empty'))
+            await message.answer(text(account,'ai_preparing'))
+            return await ai_revise_start(message,account,p['draft_id'],value)
         if conversation.state=='input':
             p=conversation.prompt;kind=p.get('kind')
             try:

@@ -144,5 +144,6 @@
   "antibot_failed": "That check expired or failed. Please try again.",
   "antibot_unavailable": "The security check is unavailable. Please try again shortly.",
   "prompt_required": "Send a topic or instructions before generating.",
-  "generation_web_only": "This tool builds on work saved in the web app. Open it there to continue."
+  "generation_web_only": "This tool builds on work saved in the web app. Open it there to continue.",
+  "revision_not_ready": "This document has nothing to change yet. Generate it first, then ask for changes."
 }

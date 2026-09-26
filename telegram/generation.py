@@ -68,6 +68,30 @@ def build(account, feature_id, description, file_ids=()):
     return create_draft(account, data)
 
 
+@transaction.atomic
+def revise(account, draft_id, request):
+    """Apply a change request to a document that has already been generated."""
+    text = (request or '').strip()
+    if not text:
+        raise DomainError('prompt_required')
+    from apps.studio.domain import revision_source
+    source, _ = revision_source(account, draft_id)
+    require(account, source.feature_id)
+    throttle(account)
+    return create_draft(account, {'prompt': text, 'options': {'revise_draft_id': str(source.id)}})
+
+
+def revisable(account, draft_id):
+    """The document a change would apply to, or None when there is none left."""
+    from apps.core.errors import DomainError as _DomainError
+    from apps.studio.domain import revision_source
+    try:
+        source, original = revision_source(account, draft_id)
+    except _DomainError:
+        return None
+    return original.get('title') or ''
+
+
 def title_of(draft):
     """Drafts are encrypted at rest; the review screen needs the title back."""
     from apps.studio.domain import unpack
@@ -79,6 +103,18 @@ def summary(draft):
     from apps.studio.domain import unpack
     options = unpack(draft.encrypted_data)['options']
     return options.get('length', 0), options.get('requested_pages')
+
+
+def change_request(draft):
+    """What this draft was asked to change, when it is a change at all."""
+    from apps.studio.domain import unpack
+    return (unpack(draft.encrypted_data).get('revision') or {}).get('request', '')
+
+
+def revised_from(draft):
+    """The document this draft changes, so a reword goes back to the change."""
+    from apps.studio.domain import unpack
+    return (unpack(draft.encrypted_data).get('revision') or {}).get('source_draft_id', '')
 
 
 def quote(account, draft_id):

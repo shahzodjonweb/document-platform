@@ -192,6 +192,44 @@ def test_a_service_outside_the_plan_cannot_be_started(customer):
         FEATURES[SLIDES]['plans']['premium'] = original
 
 
+def test_a_delivered_document_can_be_changed_by_asking(customer):
+    """The customer says what should change, in the same way they said what to make."""
+    material = ' '.join(['tide'] * 390)
+    review = describe(customer, f'A 1 page guide to tide tables.\n\n{material}')
+    delivered = tap(customer, review, 'Generate')
+    assert 'Make changes' in ' '.join(labels(delivered)), labels(delivered)
+
+    asked = tap(customer, delivered, 'Make changes')
+    assert 'What should change?' in body(asked)
+    assert 'stays exactly as it is' in body(asked)
+    conversation = BotConversation.objects.get(pk=customer.telegram_user_id)
+    assert conversation.state == 'ai_revise'
+
+    before = GenerationDraft.objects.filter(account=customer).count()
+    changed = dispatch_local(customer, text='Use a friendlier tone throughout.')
+    assert GenerationDraft.objects.filter(account=customer).count() == before + 1
+    assert 'Use a friendlier tone throughout.' in body(changed), 'the review names the change'
+    assert 'Pages: 1' in body(changed), 'a change keeps the length unless it asks otherwise'
+
+    jobs_before = Job.objects.filter(account=customer).count()
+    tap(customer, changed, 'Generate')
+    assert Job.objects.filter(account=customer).count() == jobs_before + 1
+
+
+def test_a_file_tool_result_offers_no_change_button(customer):
+    """There is nothing to reword in a merged PDF."""
+    from telegram.delivery import revisable_draft
+    from apps.core.models import Artifact
+    stage_pdf(customer)
+    describe(customer, 'A 1 page guide.')
+    artifact = Artifact.objects.filter(job__account=customer).first()
+    if artifact:
+        artifact.job.feature_id = 'pdf.merge'
+        artifact.job.save(update_fields=['feature_id'])
+        delivery = type('D', (), {'artifact': artifact, 'account': customer})()
+        assert revisable_draft(delivery) == ''
+
+
 def test_authoring_is_rate_limited_per_account(customer):
     from django.core.cache import cache
     cache.clear()

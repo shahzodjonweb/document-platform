@@ -80,6 +80,19 @@ def source_excerpts(account,ids):
     if sum(len(v['text']) for v in result)>limits(account)['source_chars']:raise DomainError('generation_limit')
     return result
 
+def revision_source(account,identifier):
+    """The document a change request is being applied to."""
+    import uuid as _uuid
+    try:identifier=_uuid.UUID(str(identifier))
+    except (ValueError,TypeError):raise DomainError('invalid_parameters') from None
+    source=GenerationDraft.objects.filter(account=account,id=identifier,expires_at__gt=timezone.now()).first()
+    if not source:raise DomainError('not_found',404)
+    original=unpack(source.encrypted_data)
+    if not any((section.get('body') or '').strip() for section in original['content']['sections']):
+        raise DomainError('revision_not_ready')
+    return source,original
+
+
 def _prepare_draft(account,data):
     if set(data)&READONLY_FIELDS:raise DomainError('invalid_parameters')
     fid=data.get('feature_id',DOCUMENT);require(account,fid)
@@ -99,6 +112,17 @@ def _prepare_draft(account,data):
     if len(text)+len(prompt)+sum(len(s['text']) for s in excerpts)>limits(account)['source_chars']:raise DomainError('generation_limit')
     options=data.get('options',data.get('parameters',{}))
     if not isinstance(options,dict) or len(json.dumps(options))>4000 or set(options)&READONLY_FIELDS:raise DomainError('invalid_parameters')
+    # A change request inherits the document it applies to: same service, same
+    # format, same sources. Only what the customer asks to change may change.
+    revising=options.get('revise_draft_id')
+    original=None
+    if revising:
+        source,original=revision_source(account,revising)
+        fid=source.feature_id;require(account,fid)
+        fmt=original['output_format'];locale=original['output_locale']
+        ids=original['source_ids'];excerpts=original['excerpts']
+        title=original['title'];text=''
+        if not prompt.strip():raise DomainError('prompt_required')
     # Length and question count are read out of the description rather than
     # asked for separately: one section is one page, and questions are priced,
     # so they appear only when the description asks for them. `requested_pages`
@@ -106,6 +130,8 @@ def _prepare_draft(account,data):
     from . import pages as paging
     brief=f'{prompt}\n{text}'
     length,asked=paging.resolve(account,brief,fmt)
+    # A change keeps the document's length unless the request names a new one.
+    if original is not None and asked is None:length=len(original['content']['sections'])
     # Local authoring has no model to write the pages, so an unasked-for default
     # would render as blank ones. Follow the material that was actually given.
     if asked is None and ai_config()['mode']=='local_fixture':
@@ -135,11 +161,21 @@ def _prepare_draft(account,data):
     if cfg['mode']=='disabled' or cfg['mode']=='openai' and (not cfg['api_key'] or not cfg['model']):raise DomainError('provider_not_configured',409)
     if not prompt.strip() and not text.strip() and not excerpts:raise DomainError('prompt_required')
     # Creation is uncharged authoring. Provider calls happen only after an accepted quote.
-    chunks=[p.strip() for p in (text or '\n\n'.join(x['text'] for x in excerpts)).split('\n\n') if p.strip()]
-    headings={'en':['Overview','Key ideas','Practice','Review'],'uz':['Umumiy ma’lumot','Asosiy fikrlar','Mashq','Takrorlash'],'ru':['Обзор','Основные идеи','Практика','Повторение']}[locale]
-    sections=[{'id':f's{i+1}','heading':headings[i%4], 'body':('\n\n'.join(chunks[i:]) if i==length-1 else chunks[i]) if i<len(chunks) else '', 'notes':''} for i in range(length)]
-    content=validate_content(account,{'title':title,'sections':sections,'questions':options.get('questions',[]),'citations':[{'asset_id':x['asset_id'],'page':x['page']} for x in excerpts]},fmt)
+    if original is not None:
+        # The model is handed the document as it stands so it can return it
+        # with only the requested changes applied.
+        sections=[dict(section) for section in original['content']['sections'][:length]]
+        while len(sections)<length:
+            sections.append({'id':f's{len(sections)+1}','heading':'','body':'','notes':''})
+        draft_content={**original['content'],'sections':sections}
+    else:
+        chunks=[p.strip() for p in (text or '\n\n'.join(x['text'] for x in excerpts)).split('\n\n') if p.strip()]
+        headings={'en':['Overview','Key ideas','Practice','Review'],'uz':['Umumiy ma’lumot','Asosiy fikrlar','Mashq','Takrorlash'],'ru':['Обзор','Основные идеи','Практика','Повторение']}[locale]
+        sections=[{'id':f's{i+1}','heading':headings[i%4], 'body':('\n\n'.join(chunks[i:]) if i==length-1 else chunks[i]) if i<len(chunks) else '', 'notes':''} for i in range(length)]
+        draft_content={'title':title,'sections':sections,'questions':options.get('questions',[]),'citations':[{'asset_id':x['asset_id'],'page':x['page']} for x in excerpts]}
+    content=validate_content(account,draft_content,fmt)
     payload={'title':title,'prompt':prompt,'source_text':text,'source_ids':ids,'excerpts':excerpts,'output_locale':locale,'output_format':fmt,'options':options,'content':content}
+    if original is not None:payload['revision']={'request':prompt,'source_draft_id':str(revising)}
     if len(payload['excerpts'])>plan_limits(account)['max_ai_source_pages']:raise DomainError('generation_limit')
     if payload['source_ids']:owned_assets(account,payload['source_ids'])
     if cfg['mode']=='openai':
