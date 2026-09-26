@@ -66,21 +66,27 @@ def test_each_service_builds_a_request_and_accepts_an_answer(feature, output_for
     _validate(model_answer(), schema_for(feature))
 
 
-def test_the_prompt_asks_for_pages_that_are_full_but_not_overfull():
-    """The number asked for is the target, and the page's capacity is the limit.
+def test_the_prompt_asks_for_length_in_units_a_model_can_count():
+    """Words, sentences and paragraphs — never characters.
 
-    Asking for the full capacity put every section on the spill threshold at
-    once, so the guidance names the lower target and states the hard stop.
+    A model cannot count characters. Asked for "about 2550 characters" it wrote
+    roughly twice that and every section spilled onto a second page, so the
+    target is given in words with a hard stop, and the page it has to fit named.
     """
     for output_format, unit in (('pdf', 'page'), ('pptx', 'slide')):
         sent = json.loads(request_body(CONFIG, draft(output_format=output_format), DOCUMENT)['input'])
         guidance = sent['writing_guidance']
-        assert f'about {pages.target_chars(output_format)} characters' in guidance, guidance
-        assert f'under {pages.chars_per_page(output_format)} characters' in guidance, guidance
-        assert pages.target_chars(output_format) < pages.chars_per_page(output_format)
-        assert f'own {unit}' in guidance, guidance
+        words = pages.target_words(output_format)
+        assert f'{words} words' in guidance, guidance
+        assert f'{pages.target_chars(output_format)} characters' not in guidance, \
+            f'a model cannot count characters, so it is never given a count of them: {guidance}'
+        assert f'never write more than {round(words * 1.3)} words' in guidance.lower(), guidance
+        assert f'one {unit}' in guidance, guidance
+        assert 'will be shortened' in guidance, guidance
         assert 'final section may be shorter' in guidance
         assert 'Write 5 sections' in guidance
+    # The target stays below what the page holds, so ordinary variance still fits.
+    assert pages.target_chars('pdf') < pages.chars_per_page('pdf')
 
 
 def test_the_response_ceiling_bounds_one_call_not_the_document():

@@ -71,6 +71,9 @@ def execute_generation(job,output_dir):
     # was asked for. It is delivered, said out loud, and charged at the quote.
     allowance=bounds.get('output_pages',limits(job.account)['slides' if data['output_format']=='pptx' else 'sections'])
     if any(a['page_count']>allowance for a in artifacts):warnings.append('longer_than_quoted')
+    # The renderer holds each section to its own page. When it had to shorten one
+    # to do that, the customer is told rather than left to notice.
+    if any(a.get('shortened') for a in artifacts):warnings.append('shortened_to_fit')
     question_count=len(content['questions'])
     actual=dict(job.meters)
     if cfg['mode']=='openai':

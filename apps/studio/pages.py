@@ -28,6 +28,13 @@ DEFAULT_PAGES = 5
 # pages (tests/test_page_fill.py measures this). Aiming at 85% of capacity keeps
 # the whole overshoot band on the page, so N sections really are N pages.
 FILL_RATIO = 0.85
+# Characters are the right unit for measuring a page and the wrong one for
+# asking a model to write: it cannot count them, and told "about 2550
+# characters" it writes whatever it considers a full page — twice the target,
+# in practice. Words it can approximate, sentences and paragraphs it can count,
+# so the guidance is given in those and derived from here. Averaged over the
+# three locales, a word and its space run about this wide.
+CHARS_PER_WORD = 6.5
 
 # A page of prose costs roughly this much of the response, taking the worst of
 # the three locales' tokenizers and leaving room for the heading and the JSON
@@ -133,6 +140,11 @@ def max_section_chars(output_format):
 def target_chars(output_format):
     """What to ask the model for, so its overshoot still fits the page."""
     return int(chars_per_page(output_format) * FILL_RATIO)
+
+
+def target_words(output_format):
+    """The same target in the unit the model is actually asked in."""
+    return max(20, round(target_chars(output_format) / CHARS_PER_WORD))
 
 
 def response_tokens(pages):

@@ -14,20 +14,31 @@ SYSTEM=('You write documents and slide decks from a description written by the c
 
 
 def writing_guidance(options, sections, output_format='pdf'):
-    """Tell the model how much prose fills one page of the chosen output.
+    """Tell the model how much prose fills one page, in units it can count.
 
-    The number given is `target_chars`, not the page's full capacity: asking for
-    exactly what the page holds puts every section on the spill threshold at
-    once. See apps/studio/pages.py.
+    Asked for a character count — which no model can measure — it wrote roughly
+    twice the target and every section spilled onto a second page. Paragraphs and
+    sentences it can count, and words it can approximate, so the target is given
+    in those. The renderer holds the page count regardless; this is what keeps it
+    from having to shorten anything.
     """
-    from .pages import chars_per_page, target_chars
-    target = target_chars(output_format)
+    from .pages import target_words
+    words = target_words(output_format)
     unit = 'slide' if output_format == 'pptx' else 'page'
+    ending = 's' if sections != 1 else ''
+    if output_format == 'pptx':
+        return (
+            f'Write {sections} section{ending}. Each section is one {unit}: about '
+            f'{max(3, round(words / 12))} short lines, {words} words in all. Never write more than '
+            f'{round(words * 1.3)} words in a section — a longer one does not fit its {unit} and will '
+            f'be shortened. Only the final section may be shorter.'
+        )
     return (
-        f'Write {sections} section{"s" if sections != 1 else ""}. Every section starts its own '
-        f'{unit}, so give each one about {target} characters of body text — that fills '
-        f'a {unit} at this size without running over. Stay under {chars_per_page(output_format)} '
-        f'characters so the section keeps to its own {unit}. Only the final section may be shorter.'
+        f'Write {sections} section{ending}. Each section is one {unit}: about '
+        f'{max(3, round(words / 105))} paragraphs of 4 to 5 sentences, {words} words in all — that is '
+        f'what fills a {unit} at this size. Count words, not characters, and never write more than '
+        f'{round(words * 1.3)} words in a section: a longer one does not fit its {unit} and will be '
+        f'shortened. Only the final section may be shorter.'
     )
 
 

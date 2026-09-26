@@ -10,6 +10,7 @@ from django.utils import timezone
 
 from apps.studio import pages
 from apps.studio.domain import DOCUMENT, SLIDES, create_draft, draft_data, generation_quote
+from pypdf import PdfReader
 from apps.studio.rendering import render_pdf, render_pptx
 from apps.core.services import execute_job, submit_job
 from tests.test_platform import account
@@ -193,33 +194,37 @@ def test_the_top_plan_gets_every_page_it_is_sold(settings, monkeypatch):
     assert job.artifacts.get().file.page_count == allowed
 
 
-def test_a_model_writing_well_over_the_target_still_delivers_and_bills_the_quote(settings, monkeypatch):
-    """The failure a paying customer hit, from the other side.
+@pytest.mark.parametrize('overshoot,shortening', [(1.5, False), (3.0, True)])
+def test_a_model_writing_over_the_target_still_gets_the_pages_that_were_asked_for(
+        settings, monkeypatch, overshoot, shortening):
+    """Five pages asked for is five pages delivered, whatever the model writes.
 
-    Told to fill a page, a model overshoots — and because every section gets the
-    same instruction they overshoot together, so a five-page document rendered as
-    ten and the whole paid job was destroyed with `generation_limit`. Now it is
-    delivered, said out loud, and billed at the quote rather than at the render.
+    A model told to fill a page overshoots, and because every section gets the
+    same instruction they overshoot together — so a five-page document came back
+    in ten, one section spilling onto a second page each time. The page count is
+    what was asked for and billed for, so the renderer holds it: the document is
+    set tighter, and only when that is not enough is a section shortened, which
+    the customer is told about.
     """
     from apps.core.models import UsageLedger
     from apps.studio import provider
     customer = live(settings)
-    # Half again as much prose as was asked for: every section spills.
     monkeypatch.setattr(provider, 'generate', lambda *args, **kwargs: (
-        filled(int(pages.CHARS_PER_PAGE * 1.5), 5) | {'answer_supported': True},
+        filled(int(pages.CHARS_PER_PAGE * overshoot), 5) | {'answer_supported': True},
         {'input_tokens': 100, 'output_tokens': 100}))
 
     draft = create_draft(customer, {'feature_id': DOCUMENT, 'prompt': 'A 5 page guide to tides.'})
     quote = generation_quote(customer, draft.id, draft.version)
-    job, _ = submit_job(customer, quote.id, f'overshoot-{draft.id}')
+    job, _ = submit_job(customer, quote.id, f'overshoot-{overshoot}-{draft.id}')
     job = execute_job(job.id)
 
     assert job.status == 'succeeded', job.error_code
-    assert job.artifacts.get().file.page_count > 5, 'the overshoot really did make it longer'
-    assert 'longer_than_quoted' in job.warnings, 'and the customer is told'
+    assert job.artifacts.get().file.page_count == 5, 'the count asked for is the count delivered'
+    assert ('shortened_to_fit' in job.warnings) is shortening, job.warnings
+    assert 'longer_than_quoted' not in job.warnings
     consumed = sum(UsageLedger.objects.filter(job=job, kind='consume', meter='ai_credits')
                    .values_list('amount', flat=True))
-    assert consumed == quote.meters['ai_credits'], 'billed at the quote, never above it'
+    assert consumed <= quote.meters['ai_credits'], 'billed at the quote, never above it'
 
 
 def test_a_long_document_is_given_a_lease_long_enough_to_finish_it(settings, monkeypatch):
@@ -288,3 +293,38 @@ def test_a_nonsense_lease_on_a_quote_cannot_park_a_worker(settings, monkeypatch)
         assert execute_job(job.id).status == 'succeeded'
         assert abs(seen['lease'] - expected) < 60, \
             f'a lease of {requested!r} must be held to {expected}s, not {seen["lease"]:.0f}s'
+
+
+@pytest.mark.parametrize('chars', [600, 2550, 4000, 8000, 16000])
+@pytest.mark.parametrize('profile', list(PROSE))
+def test_five_sections_are_five_pages_however_much_the_model_writes(tmp_path, chars, profile):
+    """The page count cannot depend on how much prose the model chose to write.
+
+    It is what the customer asked for and what they were billed for, so the
+    renderer holds it: the document is set tighter, and a section is shortened
+    only when the smallest readable setting still cannot hold it.
+    """
+    result = render_pdf(filled(chars, 5, profile), tmp_path / f'{profile}-{chars}.pdf')
+    assert result['page_count'] == 5, f'{chars} chars of {profile} prose did not keep to five pages'
+    # Shortening is the last resort, never the first: ordinary overshoot is absorbed.
+    assert result['shortened'] is (chars > 5000), result
+
+
+@pytest.mark.parametrize('chars', [200, 650, 1400, 8000])
+def test_five_sections_are_five_slides_however_much_the_model_writes(tmp_path, chars):
+    result = render_pptx(filled(chars, 5), tmp_path / f'{chars}.pptx')
+    assert result['page_count'] == 5, f'{chars} chars per section did not keep to five slides'
+
+
+def test_shortening_cuts_whole_sentences_and_says_so(tmp_path):
+    """A shortened section ends at a sentence, not mid-word, and shows it."""
+    from apps.studio.rendering import render_pdf as render
+    sentences = [f'This is sentence number {n} of a section far longer than its page.' for n in range(300)]
+    long_section = {'title': 'Measured', 'questions': [], 'citations': [],
+                    'sections': [{'id': 's1', 'heading': 'One', 'body': ' '.join(sentences), 'notes': ''}]}
+    result = render(long_section, tmp_path / 'cut.pdf')
+    assert result['page_count'] == 1 and result['shortened']
+    text = ''.join(page.extract_text() for page in PdfReader(tmp_path / 'cut.pdf').pages)
+    assert '…' in text, 'the reader can see the text was cut'
+    kept = text.split('…')[0].rstrip()
+    assert kept.endswith('page.'), f'cut mid-sentence: {kept[-60:]!r}'
