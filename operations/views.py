@@ -171,8 +171,20 @@ def page(request, section='overview'):
             rows=AuditLog.objects.select_related('actor').filter(created_at__gte=filters.bounds[0],created_at__lt=filters.bounds[1]).order_by('-created_at')
         data['pagination']=Paginator(rows,30).get_page(request.GET.get('p'))
     if section=='plans':
-        seed=json.loads((settings.BASE_DIR/'docs/product/plan_seed.json').read_text())
-        data['plan_rows']=[{'id':key,'title':key.capitalize(),**value} for key,value in seed['plans'].items()]
+        from . import plans as plan_settings
+        defaults=plan_settings.seed()['plans'];changed=plan_settings.overrides()
+        data['plan_rows']=[{'id':key,'title':key.capitalize(),'edited':bool(changed.get(key)),
+                            **plan_settings.limits_for(key,value)} for key,value in defaults.items()]
+        # Each field carries its seed value so an operator can see what they
+        # are changing it from, and its bounds so the form refuses nonsense.
+        data['plan_fields']=[{'name':name,'low':low,'high':high} for name,(low,high) in plan_settings.FIELDS.items()]
+        data['plan_edit_rows']=[{'id':row['id'],'title':row['title'],'edited':row['edited'],
+                                 'fields':[{'name':f['name'],'low':f['low'],'high':f['high'],
+                                            'nullable':f['name'] in plan_settings.NULLABLE,
+                                            'value':row.get(f['name']),'seed':defaults[row['id']].get(f['name'])}
+                                           for f in data['plan_fields'] if f['name'] in defaults[row['id']]]}
+                               for row in data['plan_rows']]
+        data['can_edit_plans']=allowed(request.ops_user,['Finance','Content manager'])
     if section=='system':data['system_cards']=[{'label':data['t'][key],'value':value} for key,value in system_snapshot(filters).items()]
     if section=='localization':data['locale_rows']=[{'id':key,'count':len(value),'coverage':'100%'} for key,value in CATALOGS.items()]
     data['now']=timezone.now()
@@ -181,11 +193,30 @@ def page(request, section='overview'):
 
 @require_staff('Support')
 def user_detail(request, pk):
+    from apps.core.models import FileAsset
+    from apps.core.policy import limits_for_plan,usage_snapshot
+    from apps.commerce.services import active_period,staff_plan
     account=get_object_or_404(Account,pk=pk)
     data=context(request,'users');data.update({'account':account,'detail_type':'user','recent_jobs':account.jobs.order_by('-created_at')[:20],
         'ledger':UsageLedger.objects.filter(account=account).order_by('-created_at')[:50], 'grants':account.usage_grants.order_by('-valid_from')[:20]})
     data['can_grant']=allowed(request.ops_user,[])
     data['grant_key']=str(uuid.uuid4())
+    # What the allowance actually is right now, so a grant is an informed one
+    # rather than a number typed into an empty box.
+    snapshot=usage_snapshot(account)['meters']
+    # Amounts staff actually reach for, so a top-up is one tap rather than a
+    # guess typed into an empty box.
+    presets={'file_tasks':(10,50,100),'file_page_units':(100,500,1000),'ai_credits':(100,500,2000)}
+    data['balances']=[{'meter':meter,'label':data['t'][label],'presets':presets[meter],**snapshot[meter]}
+                      for meter,label in (('file_tasks','tasks'),('file_page_units','pages'),('ai_credits','credits'))]
+    data['plan_options']=['free','plus','premium']
+    data['staff_plan']=staff_plan(account)
+    period=active_period(account)
+    data['paid_plan']=period.plan if period else ''
+    data['plan_limits']=[{'label':key.replace('_',' '),'value':value} for key,value in limits_for_plan(account.plan).items()]
+    # Customer documents, newest first. Opening one is a separate audited act.
+    data['files']=FileAsset.objects.filter(account=account).order_by('-created_at')[:50]
+    data['can_open_files']=allowed(request.ops_user,['Support','Operations'])
     audit(request.ops_user,'account.metadata_view',pk,'Staff inspected account metadata')
     return finish_render(request,'ops/detail.html',data)
 

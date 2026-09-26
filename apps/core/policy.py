@@ -15,7 +15,25 @@ POLICY_VERSION = 'draft-staging-v1'
 def plan_limits(account):
     from apps.commerce.services import refresh_account_entitlement
     refresh_account_entitlement(account)
-    return SEED['plans'].get(account.plan, SEED['plans']['free'])
+    return limits_for_plan(account.plan)
+
+def limits_for_plan(plan):
+    """Seed limits with any administrator changes applied on top.
+
+    The seed is the engineering default; an operator can raise or lower a plan
+    from the panel without a deploy, and the override lives in the database so
+    the next release does not silently undo it.
+    """
+    defaults = SEED['plans'].get(plan, SEED['plans']['free'])
+    try:
+        from operations.plans import limits_for
+    except Exception:
+        return defaults
+    try:
+        return limits_for(plan, defaults)
+    except Exception:
+        # A panel or database problem must never take pricing offline.
+        return defaults
 
 def cycle(account, at=None):
     at = at or timezone.now()

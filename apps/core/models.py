@@ -19,6 +19,10 @@ class Account(models.Model):
     time_zone = models.CharField(max_length=64, default='UTC')
     preferences = models.JSONField(default=dict)
     plan = models.CharField(max_length=12, default='free')
+    # A plan assigned by staff is not a purchase and must never enter revenue
+    # reporting, so it lives here rather than as a fabricated payment period.
+    staff_plan = models.CharField(max_length=12, blank=True, db_default='')
+    staff_plan_expires_at = models.DateTimeField(null=True, blank=True)
     is_test = models.BooleanField(default=False)
     first_verified_channel = models.CharField(max_length=16, default='web')
     created_at = models.DateTimeField(default=timezone.now)

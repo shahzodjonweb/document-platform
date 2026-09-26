@@ -161,7 +161,11 @@ def catalog_view(request): return {'features':catalog(request.account),'draft':T
 @api(auth=False)
 def plans(request):
     released={f['id'] for f in catalog(request.account)}
-    return {'draft':True,'checkout_enabled':False,'currency':'XTR','period_seconds':SEED['period_seconds'],'plans':[{'id':key,'name':key.title(),'price_xtr':limits['price_xtr'],'limits':limits,'checkout_enabled':False,'features':[fid for fid in released if FEATURES[fid]['plans'][key] not in ('none','excluded','not_included','unavailable')]} for key,limits in SEED['plans'].items()]}
+    # Administrator edits are what the platform enforces, so they are also what
+    # the pricing page advertises; reading the seed here would misstate it.
+    from .policy import limits_for_plan
+    rows=[(key,limits_for_plan(key)) for key in SEED['plans']]
+    return {'draft':True,'checkout_enabled':False,'currency':'XTR','period_seconds':SEED['period_seconds'],'plans':[{'id':key,'name':key.title(),'price_xtr':limits['price_xtr'],'limits':limits,'checkout_enabled':False,'features':[fid for fid in released if FEATURES[fid]['plans'][key] not in ('none','excluded','not_included','unavailable')]} for key,limits in rows]}
 
 @api()
 def usage(request): return usage_snapshot(request.account)

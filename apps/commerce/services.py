@@ -71,7 +71,19 @@ def active_period(account,at=None):
     return query.order_by('-ends_at').first()
 
 
+def staff_plan(account,at=None):
+    """A plan assigned by staff, while it is still in force."""
+    if not account.staff_plan:return ''
+    expiry=account.staff_plan_expires_at
+    return '' if expiry and expiry<=(at or timezone.now()) else account.staff_plan
+
+
 def effective_plan(account,at=None):
+    # A staff assignment wins outright: it is how support comps a plan and how
+    # abuse is contained, and both must work regardless of what was paid. The
+    # paid period is left untouched underneath and returns when it lapses.
+    assigned=staff_plan(account,at)
+    if assigned:return assigned
     period=active_period(account,at)
     return period.plan if period else 'free'
 

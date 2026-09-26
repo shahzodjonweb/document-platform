@@ -1,5 +1,5 @@
-import json
 import uuid
+from datetime import timedelta
 from django.db import transaction
 from django.http import HttpResponseBadRequest
 from django.shortcuts import redirect
@@ -47,3 +47,102 @@ def cancel(request,pk):
     except DomainError:return HttpResponseBadRequest('This task cannot be canceled in its current state.')
     audit(request.ops_user,'job.cancel',pk,reason,after={'status':result.status})
     return redirect(f'/ops/jobs/{pk}?saved=1')
+
+
+PLANS = ('free', 'plus', 'premium')
+
+
+@require_staff()
+@require_POST
+@transaction.atomic
+def set_plan(request, pk):
+    """Assign or clear a plan for one account.
+
+    This is not a purchase: it never creates a payment, never appears in
+    revenue, and leaves any paid period untouched underneath so it returns when
+    the assignment lapses.
+    """
+    reason = request.POST.get('reason', '').strip()
+    if not 5 <= len(reason) <= 1000:
+        return HttpResponseBadRequest('A specific reason is required.')
+    plan = request.POST.get('plan', '').strip()
+    if plan and plan not in PLANS:
+        return HttpResponseBadRequest('Unknown plan.')
+    days = request.POST.get('days', '').strip()
+    try:
+        expires = timezone.now() + timedelta(days=int(days)) if days else None
+        if expires and not 1 <= int(days) <= 3650:
+            raise ValueError()
+    except ValueError:
+        return HttpResponseBadRequest('Duration must be between 1 and 3650 days.')
+    account = Account.objects.select_for_update().filter(pk=pk).first()
+    if not account:
+        return HttpResponseBadRequest('Unknown account.')
+
+    before = {'staff_plan': account.staff_plan, 'effective': account.plan,
+              'expires_at': account.staff_plan_expires_at.isoformat() if account.staff_plan_expires_at else ''}
+    account.staff_plan = plan
+    account.staff_plan_expires_at = expires if plan else None
+    account.save(update_fields=['staff_plan', 'staff_plan_expires_at'])
+    from apps.commerce.services import refresh_account_entitlement
+    effective = refresh_account_entitlement(account)
+    audit(request.ops_user, 'account.plan_assign' if plan else 'account.plan_clear', pk, reason,
+          before=before, after={'staff_plan': plan, 'effective': effective,
+                                'expires_at': expires.isoformat() if expires else ''})
+    return redirect(f'/ops/users/{pk}?saved=1')
+
+
+@require_staff('Finance', 'Content manager')
+@require_POST
+@transaction.atomic
+def save_plan(request, plan_id):
+    """Change what a plan allows, for everyone on it, without a deploy."""
+    from . import plans as plan_settings
+    reason = request.POST.get('reason', '').strip()
+    if not 5 <= len(reason) <= 1000:
+        return HttpResponseBadRequest('A specific reason is required.')
+    if request.POST.get('reset'):
+        plan_settings.reset(plan_id)
+        audit(request.ops_user, 'plan.reset', plan_id, reason)
+        return redirect('/ops/plans?saved=1')
+    values = {field: request.POST[field] for field in plan_settings.FIELDS if field in request.POST}
+    try:
+        before, after = plan_settings.save(plan_id, values)
+    except plan_settings.PlanError as error:
+        return HttpResponseBadRequest(str(error))
+    if not after:
+        return redirect('/ops/plans?saved=1')
+    audit(request.ops_user, 'plan.limits', plan_id, reason, before=before, after=after)
+    return redirect('/ops/plans?saved=1')
+
+
+@require_staff('Support', 'Operations')
+def download_file(request, pk):
+    """Open one customer document, recording who opened which file and why.
+
+    Staff can reach customer documents so support can actually investigate a
+    report. Every access is written to the audit trail before the bytes are
+    served, and the reason travels with it.
+    """
+    from django.http import FileResponse
+    from apps.core.models import FileAsset
+    from apps.core.services import storage_path
+    reason = request.GET.get('reason', '').strip()
+    if not 5 <= len(reason) <= 1000:
+        return HttpResponseBadRequest('A specific reason is required to open a customer document.')
+    asset = FileAsset.objects.select_related('account').filter(pk=pk).first()
+    if not asset:
+        return HttpResponseBadRequest('Unknown file.')
+    if asset.state != 'ready' or asset.expires_at <= timezone.now():
+        return HttpResponseBadRequest('This file has expired or been removed.')
+    path = storage_path(asset.object_key)
+    if not path.is_file():
+        return HttpResponseBadRequest('This file is no longer stored.')
+    audit(request.ops_user, 'file.download', pk, reason,
+          after={'account': str(asset.account_id), 'name': asset.name, 'bytes': asset.size_bytes})
+    response = FileResponse(path.open('rb'), as_attachment=True, filename=asset.name,
+                            content_type=asset.mime_type)
+    response['Cache-Control'] = 'private, no-store'
+    response['Content-Security-Policy'] = "sandbox; default-src 'none'"
+    response['X-Robots-Tag'] = 'noindex, nofollow'
+    return response
