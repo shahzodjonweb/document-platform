@@ -8,8 +8,8 @@ the database, never prints it, and makes a small, fixed number of real calls.
       -f releases/<release>/stack/compose.yaml \
       exec api python scripts/operations/ai_smoke.py
 
-Cost: three requests by default (one probe, two short generations). Nothing is
-written to a customer account and no job or ledger row is created.
+Cost: three requests by default. Nothing is written to a customer account and
+no job or ledger row is created.
 """
 import os
 import sys
@@ -23,26 +23,28 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
 from apps.core.errors import DomainError  # noqa: E402
-from apps.studio.domain import GENERATION_IDS  # noqa: E402
+from apps.studio import pages  # noqa: E402
+from apps.studio.domain import DOCUMENT, SLIDES  # noqa: E402
 from apps.studio.provider import generate, writing_guidance  # noqa: E402
 from operations.integrations import ai_config  # noqa: E402
 
-PASS, FAIL, SKIP = 'PASS', 'FAIL', 'SKIP'
+PASS, FAIL = 'PASS', 'FAIL'
 results = []
 
 
 def report(name, status, detail=''):
     results.append((name, status, detail))
-    print(f'{status:4}  {name:34} {detail}')
+    print(f'{status:4}  {name:36} {detail}')
 
 
-def sample(options, sections=2):
+def sample(sections, output_format='pdf'):
     return {
         'output_locale': 'en',
         'prompt': 'Explain how tide tables are read, for a general audience.',
         'source_text': '',
         'excerpts': [],
-        'options': {'question_count': 0, **options},
+        'output_format': output_format,
+        'options': {'question_count': 0, 'length': sections},
         'content': {
             'title': 'Reading tide tables',
             'sections': [
@@ -55,59 +57,54 @@ def sample(options, sections=2):
     }
 
 
-def words(answer):
-    return sum(len((section.get('body') or '').split()) for section in answer['sections'])
+def characters(answer):
+    return [len(section.get('body') or '') for section in answer['sections']]
 
 
 config = ai_config()
 print(f'provider mode : {config["mode"]}')
 print(f'text model    : {config["model"] or "(none)"}')
-print(f'image model   : {config.get("image_model") or "(none)"}')
 print(f'api key       : {"configured" if config["api_key"] else "MISSING"}\n')
 
 if config['mode'] != 'openai' or not config['api_key'] or not config['model']:
     report('provider configured', FAIL, 'set mode, model and key in Admin → Integrations')
     sys.exit(1)
-report('provider configured', PASS, f'{len(GENERATION_IDS)} features enabled by this key')
+report('provider configured', PASS, 'two services enabled by this key')
 
 # 1. Credentials and model name, via the smallest real generation we can make.
 try:
-    answer, usage = generate(config, sample({'density': 'airy'}, sections=1), 'ai.pdf_text',
-                             'ai-smoke-probe', token_limit=24000)
-    report('credentials and model', PASS,
-           f'{usage["input_tokens"]}→{usage["output_tokens"]} tokens')
+    answer, usage = generate(config, sample(1), DOCUMENT, 'ai-smoke-probe', token_limit=24000)
+    report('credentials and model', PASS, f'{usage["input_tokens"]}→{usage["output_tokens"]} tokens')
     report('strict JSON schema honoured', PASS, f'{len(answer["sections"])} section(s) returned')
 except DomainError as error:
     report('credentials and model', FAIL,
            f'{error.code} — check the key and that "{config["model"]}" is a valid model id')
     sys.exit(1)
 
-# 2. Does the model actually obey the density instruction?
+# 2. Does it return the number of sections asked for? One section is one page,
+#    so this is what makes "a 4 page document" mean four pages.
 try:
-    airy = words(answer)
-    rich_answer, _ = generate(config, sample({'density': 'rich'}, sections=1), 'ai.pdf_text',
-                              'ai-smoke-rich', token_limit=24000)
-    rich = words(rich_answer)
-    detail = f'airy {airy} words vs rich {rich} words'
-    report('density changes written length', PASS if rich > airy * 1.5 else FAIL, detail)
-    if rich <= airy * 1.5:
-        print('       guidance sent:', writing_guidance({'density': 'rich'}, 1))
+    four, _ = generate(config, sample(4), DOCUMENT, 'ai-smoke-pages', token_limit=24000)
+    count = len(four['sections'])
+    report('one section per page requested', PASS if count == 4 else FAIL, f'asked 4, got {count}')
 except DomainError as error:
-    report('density changes written length', FAIL, error.code)
+    report('one section per page requested', FAIL, error.code)
+    four = None
 
-# 3. Config-level checks for the two features needing more than a text model.
-if config.get('image_model'):
-    report('image generation (ai.images)', PASS, f'image model {config["image_model"]} set')
-else:
-    report('image generation (ai.images)', SKIP, 'no image model configured — this feature stays off')
+# 3. Are those pages actually full? A short section renders as a half-empty page.
+if four:
+    lengths = characters(four)
+    target = pages.CHARS_PER_PAGE
+    full = [n for n in lengths[:-1] if n >= target * 0.6]
+    detail = f'target {target}, got {lengths} characters'
+    report('pages are filled, not sparse', PASS if len(full) == len(lengths) - 1 else FAIL, detail)
+    if len(full) != len(lengths) - 1:
+        print('       guidance sent:', writing_guidance({}, 4, 'pdf'))
 
-try:
-    from apps.studio.handwriting import image_token_bound
-    image_token_bound(config['model'])
-    report('handwriting vision model', PASS, f'{config["model"]} is qualified')
-except DomainError:
-    report('handwriting vision model', SKIP,
-           f'{config["model"]} is not in the qualified vision list — handwriting stays off')
+# 4. Slides ask for much less prose per section; confirm the model is told so.
+guidance = writing_guidance({}, 6, 'pptx')
+report('slides get their own target', PASS if str(pages.CHARS_PER_SLIDE) in guidance else FAIL,
+       f'{pages.CHARS_PER_SLIDE} characters per slide')
 
 failed = [name for name, status, _ in results if status == FAIL]
 print('\n' + ('FAILED: ' + ', '.join(failed) if failed else 'All checked paths are working.'))

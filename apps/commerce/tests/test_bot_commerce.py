@@ -112,7 +112,7 @@ def test_bot_workspace_commands_use_current_admin_url_and_keep_owned_input():
         button=result['messages'][-1]['buttons'][0][0]
         assert button['url']==f'http://localhost:3000/en/app'+(f'/{command_name}' if command_name!='web' else '')
     # Generation runs in the chat; the studio link beside it uses the same URL.
-    for command_name in ('create','study','school','teach'):
+    for command_name in ('create','document','slides'):
         result=command(c,'/'+command_name)
         urls=[b['url'] for row in result['messages'][-1]['buttons'] for b in row if b.get('url')]
         assert not urls, f'/{command_name} opens in the chat, not the browser'

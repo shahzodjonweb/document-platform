@@ -87,7 +87,7 @@ def test_generation_source_change_fails_before_provider(settings,monkeypatch):
     canvas.drawString(20,750,'Source evidence');canvas.save()
     asset=upload_file(owner,SimpleUploadedFile('evidence.pdf',raw.getvalue(),'application/pdf'))
     save_config('ai',{'mode':'openai','model':'test-model','api_key':'offline-fixture'})
-    draft=create_draft(owner,{'feature_id':'ai.pdf_text','source_ids':[str(asset.id)],'options':{'length':1}})
+    draft=create_draft(owner,{'feature_id':'ai.pdf_topic','source_ids':[str(asset.id)],'options':{'length':1}})
     quote=generation_quote(owner,draft.id,draft.version)
     job,_=submit_job(owner,quote.id,'source-mutation')
     storage_path(asset.object_key).write_bytes(pdf_bytes())

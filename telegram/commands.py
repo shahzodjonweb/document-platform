@@ -7,7 +7,8 @@ from aiogram.types import BotCommand, BotCommandScopeChat, MenuButtonCommands
 
 COMMANDS = {
     'en': {
-        'start': '🏠 Main menu', 'ai': '✨ Create with AI', 'tools': '🛠 PDF & file tools',
+        'start': '🏠 Main menu', 'ai': '✨ Create with AI', 'examples': '💡 How to describe it',
+        'tools': '🛠 PDF & file tools',
         'myfiles': '🗂 Recent tasks',
         'usage': '📊 Plan & balance', 'buy': '⭐ Plans & packs',
         'subscription': '💳 Subscription', 'account': '👤 Account & logins',
@@ -15,7 +16,8 @@ COMMANDS = {
         'help': '💡 How it works', 'support': '💬 Contact support', 'cancel': '✖️ Cancel step',
     },
     'uz': {
-        'start': '🏠 Bosh menyu', 'ai': '✨ AI bilan yaratish', 'tools': '🛠 PDF va fayl vositalari',
+        'start': '🏠 Bosh menyu', 'ai': '✨ AI bilan yaratish', 'examples': '💡 Qanday yozish kerak',
+        'tools': '🛠 PDF va fayl vositalari',
         'myfiles': '🗂 So‘nggi vazifalar',
         'usage': '📊 Tarif va balans', 'buy': '⭐ Tariflar va paketlar',
         'subscription': '💳 Obuna', 'account': '👤 Hisob va kirish usullari',
@@ -23,7 +25,8 @@ COMMANDS = {
         'help': '💡 Qanday ishlaydi', 'support': '💬 Yordamga yozish', 'cancel': '✖️ Qadamni bekor qilish',
     },
     'ru': {
-        'start': '🏠 Главное меню', 'ai': '✨ Создать с ИИ', 'tools': '🛠 Инструменты для файлов',
+        'start': '🏠 Главное меню', 'ai': '✨ Создать с ИИ', 'examples': '💡 Как описать',
+        'tools': '🛠 Инструменты для файлов',
         'myfiles': '🗂 Последние задачи',
         'usage': '📊 Тариф и баланс', 'buy': '⭐ Тарифы и пакеты',
         'subscription': '💳 Подписка', 'account': '👤 Аккаунт и способы входа',

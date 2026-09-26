@@ -26,7 +26,7 @@ from apps.core.services import upload_file, create_quote, submit_job, execute_jo
 from apps.core.serializers import quote_data
 from apps.core.errors import DomainError, error_data
 
-from .ux_copy import UX, STATUS, LEGACY_COPY, TOOL_NAMES
+from .ux_copy import UX, STATUS, LEGACY_COPY, TOOL_NAMES, PROMPT_EXAMPLES, LOCALES
 from .errors import bot_error
 COPY={locale:{**LEGACY_COPY[locale],**UX[locale]} for locale in UX}
 
@@ -229,8 +229,8 @@ def build_dispatcher():
         await quote_message(message,account,draft,quote,edit)
 
     # --- AI generation -------------------------------------------------------
-    # Menus, one prompt, a quote, then the same job pipeline as every other
-    # tool. Editing a PDF stays on the web; making one happens here.
+    # Two services and one message. Everything else — pages, tone, audience,
+    # questions — is read out of what the customer writes.
 
     async def ai_studio_url(account):
         """The web studio, carrying whatever files are already in the chat."""
@@ -239,76 +239,75 @@ def build_dispatcher():
         staged=await sync_to_async(lambda:draft_for(account).input_ids[:5])()
         return url+('?'+urlencode({'file_id':staged},doseq=True) if staged else '')
 
+    def ai_example(account,feature_id,index):
+        return PROMPT_EXAMPLES[feature_id][index][LOCALES.index(account.locale if account.locale in LOCALES else 'en')]
+
     async def ai_home(message,account,edit=False):
         await sync_to_async(set_prompt)(account)
-        rows=[[await button(account,f'ai_group_{group}','ai_group',{'group':group})] for group in ai.GROUPS]
+        rows=[[InlineKeyboardButton(text=TOOL_NAMES[fid][account.locale],callback_data=await callback(account,'ai_tool',{'feature_id':fid}))] for fid in ai.SERVICES]
+        rows.append([await button(account,'ai_guide','ai_examples')])
         rows.append([await button(account,'home','home'),InlineKeyboardButton(text=text(account,'ai_open_web'),url=await ai_studio_url(account))])
         await render(message,f'<b>{text(account,"ai_home")}</b>\n{text(account,"ai_choose_tool")}',rows,edit)
 
-    async def ai_group(message,account,group,page=0,edit=False):
-        await sync_to_async(set_prompt)(account)
-        features,more=await sync_to_async(ai.page_of)(account,group,page)
-        rows=[]
-        for feature_id,eligible,web_only in features:
-            label=TOOL_NAMES.get(feature_id,{}).get(account.locale,feature_id)
-            if web_only: label=f'🖥 {label}'
-            elif not eligible: label=f'🔒 {label}'
-            rows.append([InlineKeyboardButton(text=label,callback_data=await callback(account,'ai_tool',{'feature_id':feature_id,'group':group,'page':page}))])
-        tail=[await button(account,'ai_back','ai_home')]
-        if more: tail.append(await button(account,'ai_more','ai_group',{'group':group,'page':page+1}))
-        elif page: tail.append(await button(account,'ai_back','ai_group',{'group':group,'page':0}))
-        rows.append(tail)
-        rows.append([await button(account,'home','home')])
-        await render(message,f'<b>{text(account,f"ai_group_{group}")}</b>\n{text(account,"ai_choose_tool")}',rows,edit)
+    async def ai_prompt(message,account,feature_id,edit=False):
+        """One screen, one question: what do you want? Examples included."""
+        await sync_to_async(set_prompt)(account,'ai_input',{'feature_id':feature_id})
+        title=TOOL_NAMES[feature_id][account.locale]
+        sample=ai_example(account,feature_id,0)
+        body=(f'<b>{html.escape(title)}</b>\n{text(account,"ai_ask_topic")}\n'
+              f'<i>{text(account,"ai_pages_hint")}</i>\n\n'
+              f'{text(account,"ai_examples")}:\n<code>{html.escape(sample)}</code>')
+        staged=await sync_to_async(lambda:ai.sources(account,draft_for(account).input_ids))()
+        if staged: body+=f'\n\n📎 {len(staged)}'
+        rows=[[await button(account,'ai_examples','ai_examples',{'feature_id':feature_id})],
+              [await button(account,'ai_back','ai_home')],
+              [await button(account,'home','home')]]
+        await render(message,body,rows,edit)
 
-    async def ai_prompt(message,account,feature_id,group,edit=False):
-        """Ask for the one thing this tool needs, then wait for a text reply."""
-        title=TOOL_NAMES.get(feature_id,{}).get(account.locale,feature_id)
-        staged=await sync_to_async(lambda:ai.sources(account,feature_id,draft_for(account).input_ids))()
-        ask=('ai_ask_photo' if feature_id in ai.NEEDS_PHOTO
-             else 'ai_ask_question' if feature_id=='study.pdf_qa'
-             else 'ai_ask_file' if feature_id in ai.PREFERS_PDF and not staged
-             else 'ai_ask_topic')
-        body=f'<b>{html.escape(title)}</b>\n{text(account,ask)}'
-        if staged: body+=f'\n{text(account,"ai_sources")}: {len(staged)}'
-        if ask=='ai_ask_topic': body+=f'\n\n<i>{text(account,"ai_topic_hint")}</i>'
-        await sync_to_async(set_prompt)(account,'ai_input',{'feature_id':feature_id,'group':group})
+    async def ai_examples(message,account,feature_id=None,edit=False):
+        """What a good description looks like, in the customer's language."""
         rows=[]
-        # A photo is the whole input here, so there is nothing left to type.
-        if staged and feature_id in ai.NEEDS_PHOTO:
-            rows.append([await button(account,'ai_continue','ai_go',{'feature_id':feature_id,'group':group})])
-        rows.append([await button(account,'ai_back','ai_group',{'group':group,'page':0})])
-        rows.append([await button(account,'home','home')])
+        body=f'<b>{text(account,"ai_examples_title")}</b>'
+        for fid in ([feature_id] if feature_id else list(ai.SERVICES)):
+            body+=f'\n\n<b>{html.escape(TOOL_NAMES[fid][account.locale])}</b>'
+            for index in range(len(PROMPT_EXAMPLES[fid])):
+                body+=f'\n<code>{html.escape(ai_example(account,fid,index))}</code>'
+            rows.append([InlineKeyboardButton(text=TOOL_NAMES[fid][account.locale],callback_data=await callback(account,'ai_tool',{'feature_id':fid}))])
+        rows.append([await button(account,'ai_back','ai_home'),await button(account,'home','home')])
         await render(message,body,rows,edit)
 
     async def ai_review(message,account,draft,quote,edit=False):
         """Never submit without showing this: generating spends AI credits."""
-        title=TOOL_NAMES.get(draft.feature_id,{}).get(account.locale,draft.feature_id)
+        title=TOOL_NAMES[draft.feature_id][account.locale]
         summary=await sync_to_async(quote_data)(quote)
         balances=summary['available_balances']
         usage='\n'.join(f'{text(account,label)}: {quote.meters[key]} / {balances[key]["remaining"]}'
                         for key,label in (('ai_credits','ai_credits'),('file_tasks','file_tasks'))
                         if quote.meters.get(key))
         heading=await sync_to_async(ai.title_of)(draft)
+        given,asked=await sync_to_async(ai.summary)(draft)
         body=(f'<b>{text(account,"review_title")}</b>\n{html.escape(title)}\n'
-              f'📄 {html.escape(heading)}\n\n{text(account,"ai_review_hint")}')
+              f'📄 {html.escape(heading)}\n{text(account,"ai_pages")}: {given}')
+        # A clamped request is said out loud rather than quietly honoured short.
+        if asked and asked!=given: body+='\n'+text(account,'ai_pages_clamped').format(asked=asked,given=given)
+        body+=f'\n\n{text(account,"ai_review_hint")}'
         if usage: body+=f'\n\n{text(account,"cost")} / {text(account,"available")}:\n{usage}'
         body+=f'\n{text(account,"expires")}: {quote.expires_at:%Y-%m-%d %H:%M}'
         rows=[[await button(account,'ai_generate','ai_run',{'quote_id':str(quote.id),'draft_id':str(draft.id)})],
-              [await button(account,'ai_change_topic','ai_tool',{'feature_id':draft.feature_id,'group':ai.group_of(draft.feature_id)}),
+              [await button(account,'ai_change_topic','ai_tool',{'feature_id':draft.feature_id}),
                await button(account,'cancel_button','ai_home')],
               [await button(account,'home','home')]]
         await render(message,body,rows,edit)
 
-    async def ai_start(message,account,feature_id,group,prompt,edit=False):
+    async def ai_start(message,account,feature_id,description,edit=False):
         """One chat message in, a priced draft out. Nothing is charged yet."""
         try:
             file_ids=await sync_to_async(lambda:draft_for(account).input_ids)()
-            draft=await sync_to_async(ai.build)(account,feature_id,prompt,file_ids)
+            draft=await sync_to_async(ai.build)(account,feature_id,description,file_ids)
             _,quote=await sync_to_async(ai.quote)(account,draft.id)
         except DomainError as exc:
             await safe_error(message,account,exc)
-            return await ai_prompt(message,account,feature_id,group)
+            return await ai_prompt(message,account,feature_id)
         await sync_to_async(set_prompt)(account)
         await ai_review(message,account,draft,quote,edit)
 
@@ -503,19 +502,11 @@ def build_dispatcher():
             elif action=='menu': await menu(message,account,p.get('page',0),p.get('category','pdf'),True)
             elif action=='controls': await controls(message,account,edit=True,advanced=p.get('advanced',False))
             elif action=='ai_home': await ai_home(message,account,True)
-            elif action=='ai_group': await ai_group(message,account,p['group'],p.get('page',0),True)
+            elif action=='ai_examples': await ai_examples(message,account,p.get('feature_id'),True)
             elif action=='ai_tool':
-                feature_id=p['feature_id']
-                if feature_id in ai.WEB_ONLY:
-                    rows=[[InlineKeyboardButton(text=text(account,'ai_open_web'),url=await ai_studio_url(account))],
-                          [await button(account,'ai_back','ai_group',{'group':p['group'],'page':p.get('page',0)})]]
-                    await render(message,text(account,'ai_web_only'),rows,True)
-                else:
-                    try: await sync_to_async(ai.available)(account,feature_id)
-                    except DomainError as exc: await safe_error(message,account,exc)
-                    else: await ai_prompt(message,account,feature_id,p['group'],True)
-            elif action=='ai_go':
-                await ai_start(message,account,p['feature_id'],p['group'],'',True)
+                try: await sync_to_async(ai.available)(account,p['feature_id'])
+                except DomainError as exc: await safe_error(message,account,exc)
+                else: await ai_prompt(message,account,p['feature_id'],True)
             elif action=='ai_run':
                 existing=await sync_to_async(ai.submitted)(account,p['quote_id'])
                 job=existing or await sync_to_async(ai.start)(account,p['quote_id'])
@@ -616,7 +607,7 @@ def build_dispatcher():
             if conversation.state=='ai_input':
                 pending=conversation.prompt
                 await sync_to_async(attach_input)(account,asset,message.chat.id,message.message_id)
-                return await ai_prompt(message,account,pending['feature_id'],pending['group'])
+                return await ai_prompt(message,account,pending['feature_id'])
             draft=await sync_to_async(accept_upload)(account,asset,message.chat.id,message.message_id)
             await controls(message,account,draft)
         except DomainError as exc:
@@ -707,15 +698,16 @@ def build_dispatcher():
 
     # Making a document happens in the chat; editing a PDF is a canvas and
     # stays on the web.
-    AI_COMMANDS={'create':'documents','study':'study','school':'school','teach':'teacher'}
+    AI_COMMANDS={'create':ai.DOCUMENT,'document':ai.DOCUMENT,'slides':ai.SLIDES}
 
-    @dp.message(Command('ai','create','study','school','teach'))
+    @dp.message(Command('ai','create','document','slides','examples'))
     async def open_ai_mode(message):
         account=await account_for(message.from_user)
         command=message.text.split()[0].split('@')[0][1:]
-        group=AI_COMMANDS.get(command)
-        if not group: return await ai_home(message,account)
-        await ai_group(message,account,group)
+        if command=='examples': return await ai_examples(message,account)
+        feature_id=AI_COMMANDS.get(command)
+        if not feature_id: return await ai_home(message,account)
+        await ai_prompt(message,account,feature_id)
 
     @dp.message(Command('web','editor'))
     async def open_workspace_mode(message):
@@ -751,7 +743,7 @@ def build_dispatcher():
             p=conversation.prompt
             if not value: return await message.answer(text(account,'ai_topic_empty'))
             await message.answer(text(account,'ai_preparing'))
-            return await ai_start(message,account,p['feature_id'],p['group'],value)
+            return await ai_start(message,account,p['feature_id'],value)
         if conversation.state=='input':
             p=conversation.prompt;kind=p.get('kind')
             try:

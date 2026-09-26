@@ -1,9 +1,8 @@
-"""Making a document from the chat.
+"""Making a document or a deck from the chat.
 
-The bot used to hand every AI feature to the web app. It now runs them itself:
-one menu, one message, one priced review, then the same job pipeline every
-other tool uses. Editing a PDF is still web-only, and so are the three features
-that build on something already authored there.
+Two services and one message. The page count, the questions and the tone all
+come out of what the customer writes, so these tests are as much about what the
+bot stops asking for as about what it produces.
 """
 import pytest
 from django.utils import timezone
@@ -12,12 +11,14 @@ from apps.core.errors import DomainError
 from apps.core.identity import resolve_account
 from apps.core.models import BotConversation, BotDraft, Job, Quote
 from apps.core.services import upload_file
-from apps.studio.domain import GENERATION_IDS
-from apps.studio.domain import unpack
+from apps.studio.domain import DOCUMENT, GENERATION_IDS, SLIDES, unpack
 from apps.studio.models import GenerationDraft
+from apps.studio.pages import requested_pages
+from apps.commerce.services import create_invoice, sandbox_pay
 from operations.integrations import save_config
 from telegram import generation
 from telegram.local import dispatch_local
+from telegram.ux_copy import PROMPT_EXAMPLES
 
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.usefixtures('bot_verification_disabled')]
 
@@ -30,8 +31,11 @@ def customer(settings):
     account = resolve_account({'id': 980411, 'first_name': 'Generation test'}, is_test=True)
     BotConversation.objects.create(telegram_user_id=account.telegram_user_id, locale='en',
                                    language_selected_at=timezone.now())
-    account.plan = 'premium'
-    account.save(update_fields=['plan'])
+    # A bare plan field is reset by the entitlement refresh, so buy the period.
+    invoice, _ = create_invoice(account, 'premium', f'bot-generation-{account.id}')
+    sandbox_pay(account, invoice.id)
+    account.refresh_from_db()
+    assert account.plan == 'premium'
     return account
 
 
@@ -43,192 +47,149 @@ def labels(result):
     return [button['label'] for button in buttons(result)]
 
 
-def token_for(result, label_fragment):
+def tap(customer, result, fragment):
     for button in reversed(buttons(result)):
-        if label_fragment.lower() in button['label'].lower() and button.get('callback_data'):
-            return button['callback_data']
-    raise AssertionError(f'No button matching {label_fragment!r} in {labels(result)}')
-
-
-def tap(customer, result, label_fragment):
-    return dispatch_local(customer, callback_data=token_for(result, label_fragment))
+        if fragment.lower() in button['label'].lower() and button.get('callback_data'):
+            return dispatch_local(customer, callback_data=button['callback_data'])
+    raise AssertionError(f'No button matching {fragment!r} in {labels(result)}')
 
 
 def body(result):
     return '\n'.join(message['text'] for message in result['messages'])
 
 
-def test_the_menu_covers_every_generation_feature_exactly_once():
-    listed = [fid for ids in generation.GROUPS.values() for fid in ids]
-    assert sorted(listed) == sorted(GENERATION_IDS), 'every AI feature is reachable from a menu'
-    assert len(listed) == len(set(listed)), 'and appears in exactly one group'
+def latest(account, feature_id=DOCUMENT):
+    return unpack(GenerationDraft.objects.filter(account=account, feature_id=feature_id)
+                  .latest('created_at').encrypted_data)
 
 
-def test_a_document_is_made_from_one_chat_message(customer):
-    menu = dispatch_local(customer, text='/ai')
-    assert 'Documents & slides' in body(menu) + ' '.join(labels(menu))
+def describe(customer, description, service='PDF Document'):
+    tap(customer, dispatch_local(customer, text='/ai'), service)
+    return dispatch_local(customer, text=description)
 
-    documents = tap(customer, menu, 'Documents & slides')
-    assert 'Document from a topic' in ' '.join(labels(documents))
 
-    asked = tap(customer, documents, 'Document from a topic')
-    assert 'topic or instructions' in body(asked)
+def test_the_menu_is_two_services(customer):
+    tools = [label for label in labels(dispatch_local(customer, text='/ai'))
+             if label.startswith(('\U0001F4C4', '\U0001F4CA'))]
+    assert tools == ['\U0001F4C4 PDF Document', '\U0001F4CA PDF Slides']
+    assert set(generation.SERVICES) == GENERATION_IDS == {DOCUMENT, SLIDES}
+
+
+def test_one_message_is_the_whole_brief(customer):
+    asked = tap(customer, dispatch_local(customer, text='/ai'), 'PDF Document')
+    assert 'Describe what you want' in body(asked)
+    assert 'how many pages' in body(asked)
     conversation = BotConversation.objects.get(pk=customer.telegram_user_id)
     assert conversation.state == 'ai_input'
-    assert conversation.prompt['feature_id'] == 'ai.pdf_topic'
+    assert conversation.prompt['feature_id'] == DOCUMENT
 
-    # Authoring the draft is free; the review screen is what precedes any spend.
-    review = dispatch_local(customer, text='How tide tables are read, for a general audience.')
-    assert GenerationDraft.objects.filter(account=customer, feature_id='ai.pdf_topic').count() == 1
-    assert not Job.objects.filter(account=customer).exists(), 'nothing is submitted before the review'
-    assert 'Ready to start' in body(review)
-    assert 'Generate' in ' '.join(labels(review))
+    review = dispatch_local(customer, text='A 4 page introduction to tide tables for beginners.')
+    assert not Job.objects.filter(account=customer).exists(), 'nothing runs before the review'
+    assert 'Pages: 4' in body(review), body(review)[-300:]
 
     tap(customer, review, 'Generate')
     job = Job.objects.get(account=customer)
-    assert job.feature_id == 'ai.pdf_topic'
-    assert job.origin_channel == 'bot'
+    assert job.feature_id == DOCUMENT and job.origin_channel == 'bot'
 
 
-def test_the_finished_document_is_sent_back_into_the_chat(customer):
-    # conftest runs jobs synchronously, so the whole pipeline is exercised here.
-    review = _review_for(customer, 'ai.pdf_topic', 'Documents & slides', 'Document from a topic',
-                         'How tide tables are read, for a general audience.')
-    tap(customer, review, 'Generate')
-    job = Job.objects.get(account=customer)
-    assert job.status == 'succeeded', job.error_code
-    artifact = job.artifacts.select_related('file').first()
-    assert artifact and artifact.file.name.endswith('.pdf')
-    from apps.core.services import storage_path
-    assert storage_path(artifact.file.object_key).read_bytes()[:5] == b'%PDF-'
+@pytest.mark.parametrize('description,expected', [
+    ('A 7 page guide to tide tables', 7),
+    ('Tide tables explained simply', 5),
+    ('Suv qalqishi haqida 3 sahifa', 3),
+    ('Отчёт о приливах на 6 страниц', 6),
+])
+def test_the_page_count_comes_out_of_the_description(customer, description, expected):
+    # With a model to write them, an unasked-for count is the default of five.
+    save_config('ai', {'mode': 'openai', 'model': 'gpt-5.6-luna', 'api_key': 'sk-offline-test-only'})
+    review = describe(customer, description)
+    assert f'Pages: {expected}' in body(review), body(review)[-300:]
+    assert latest(customer)['options']['length'] == expected
+
+
+@pytest.fixture
+def free_customer(settings):
+    settings.DEBUG = True
+    settings.COMMERCE_SANDBOX_ENABLED = True
+    save_config('telegram', {'token': '', 'username': 'fixture_bot', 'webapp_url': 'https://pdfmaster.example/en/app'})
+    account = resolve_account({'id': 980412, 'first_name': 'Free plan'}, is_test=True)
+    BotConversation.objects.create(telegram_user_id=account.telegram_user_id, locale='en',
+                                   language_selected_at=timezone.now())
+    assert account.plan == 'free'
+    return account
+
+
+def test_a_request_beyond_the_plan_is_said_out_loud(free_customer):
+    review = describe(free_customer, 'A 20 page report on tide tables.')
+    assert 'Pages: 2' in body(review), 'the free plan allows two'
+    assert '20 asked for' in body(review), 'and the clamp is shown, not hidden'
+    assert latest(free_customer)['options']['requested_pages'] == 20
+
+
+def test_questions_are_only_priced_when_they_are_asked_for(customer):
+    save_config('ai', {'mode': 'openai', 'model': 'gpt-5.6-luna', 'api_key': 'sk-offline-test-only'})
+    describe(customer, 'A 3 page guide to tide tables.')
+    plain = Quote.objects.latest('created_at')
+    assert latest(customer)['options']['question_count'] == 0
+
+    describe(customer, 'A 3 page guide to tide tables with 10 questions at the end.')
+    assert latest(customer)['options']['question_count'] == 10
+    assert Quote.objects.latest('created_at').meters['ai_credits'] > plain.meters['ai_credits']
+
+
+def test_the_review_screen_shows_the_cost_before_anything_runs(customer):
+    save_config('ai', {'mode': 'openai', 'model': 'gpt-5.6-luna', 'api_key': 'sk-offline-test-only'})
+    review = describe(customer, 'A 5 page briefing on tide tables.')
+
+    quote = Quote.objects.get(account=customer)
+    assert quote.meters['ai_credits'] > 0, 'a real provider costs credits'
+    assert f"AI credits: {quote.meters['ai_credits']}" in body(review)
+    assert 'Will use' in body(review) and 'Available' in body(review)
+    assert not Job.objects.filter(account=customer).exists()
 
 
 def test_tapping_generate_twice_creates_one_job(customer):
-    review = _review_for(customer, 'ai.pdf_topic', 'Documents & slides', 'Document from a topic',
-                         'A short briefing about tide tables.')
+    review = describe(customer, 'A 2 page briefing on tide tables.')
     tap(customer, review, 'Generate')
     tap(customer, review, 'Generate')
     assert Job.objects.filter(account=customer).count() == 1, 'the quote-bound key holds'
 
 
-def test_no_tool_forces_an_upload(customer):
-    """A document is read when attached and never demanded."""
-    documents = tap(customer, dispatch_local(customer, text='/ai'), 'Documents & slides')
-    asked = tap(customer, documents, 'Document from sources')
-    assert 'Paste or type your material' in body(asked)
+def test_the_finished_pdf_is_really_produced(customer):
+    """conftest runs jobs synchronously, so this is the real pipeline."""
+    material = ' '.join(['tide'] * 390)
+    review = describe(customer, f'A 1 page guide to tide tables.\n\n{material}')
+    tap(customer, review, 'Generate')
 
-    # Typed material alone is enough.
-    review = dispatch_local(customer, text='Tide tables list high and low water for each day.\n\n'
-                                          'They are published a year ahead for each port.')
-    draft = GenerationDraft.objects.get(account=customer, feature_id='ai.pdf_sources')
-    assert 'Ready to start' in body(review)
-    assert not unpack(draft.encrypted_data)['source_ids'], 'nothing was uploaded'
-
-    # And a document still works when there is one.
-    stage_pdf(customer)
-    documents = tap(customer, dispatch_local(customer, text='/ai'), 'Documents & slides')
-    asked_again = tap(customer, documents, 'Document from sources')
-    assert 'From your files: 1' in body(asked_again)
-    dispatch_local(customer, text='Summarise these for me.')
-    with_file = GenerationDraft.objects.filter(account=customer, feature_id='ai.pdf_sources').latest('created_at')
-    assert unpack(with_file.encrypted_data)['source_ids']
+    job = Job.objects.get(account=customer)
+    assert job.status == 'succeeded', job.error_code
+    artifact = job.artifacts.select_related('file').get()
+    assert artifact.file.name.endswith('.pdf') and artifact.file.page_count == 1
 
 
-def test_a_question_can_carry_its_own_material(customer):
-    """study.pdf_qa answers from pasted text when no PDF is attached."""
-    study = tap(customer, dispatch_local(customer, text='/study'), 'Questions about a PDF')
-    assert 'Or attach a PDF first' in body(study)
+def test_examples_are_offered_in_every_language(customer):
+    listing = dispatch_local(customer, text='/examples')
+    assert 'Write it like this' in body(listing)
+    for feature_id in generation.SERVICES:
+        assert PROMPT_EXAMPLES[feature_id][0][0] in body(listing)
 
-    dispatch_local(customer, text='When is the spring tide?\n\nSpring tides follow the new and full moon.')
-    payload = unpack(GenerationDraft.objects.get(account=customer, feature_id='study.pdf_qa').encrypted_data)
-    assert payload['prompt'] == 'When is the spring tide?'
-    assert payload['source_text'] == 'Spring tides follow the new and full moon.'
-    assert not payload['source_ids']
+    # Every example is a real brief: each one names a page count in its own
+    # language, so a customer copying it gets exactly what it says.
+    for feature_id, rows in PROMPT_EXAMPLES.items():
+        for row in rows:
+            for sample in row:
+                assert requested_pages(sample), f'{feature_id}: "{sample[:44]}" names no page count'
 
 
-def test_features_that_need_the_web_app_say_so_instead_of_failing(customer):
-    documents = tap(customer, dispatch_local(customer, text='/ai'), 'Documents & slides')
-    # They are last in their group: least useful here, so never in the way.
-    rest = tap(customer, documents, 'More tools')
-    assert any(label.startswith('🖥') for label in labels(rest)), 'web-only tools are marked'
-
-    explained = tap(customer, rest, 'Rewrite content')
-    assert 'web app' in body(explained)
-    assert any(button.get('url') for button in buttons(explained)), 'and offer the link across'
-    assert not GenerationDraft.objects.filter(account=customer).exists()
-
-    for feature_id in generation.WEB_ONLY:
+def test_a_service_outside_the_plan_cannot_be_started(customer):
+    from apps.core.policy import FEATURES
+    original = FEATURES[SLIDES]['plans']['premium']
+    FEATURES[SLIDES]['plans']['premium'] = 'not_included'
+    try:
         with pytest.raises(DomainError) as caught:
-            generation.available(customer, feature_id)
-        assert caught.value.code == 'generation_web_only'
-
-
-def test_the_web_link_carries_the_files_already_in_the_chat(customer):
-    stage_pdf(customer)
-    menu = dispatch_local(customer, text='/ai')
-    link = next(button['url'] for button in buttons(menu) if button.get('url'))
-    assert f'file_id={BotDraft.objects.get(account=customer).input_ids[0]}' in link
-
-
-def test_a_tool_outside_the_plan_is_locked_rather_than_hidden(customer):
-    customer.plan = 'free'
-    customer.save(update_fields=['plan'])
-    documents = tap(customer, dispatch_local(customer, text='/ai'), 'Documents & slides')
-    locked = [label for label in labels(documents) if label.startswith('🔒')]
-    assert locked, f'expected a locked tool on the free plan, saw {labels(documents)}'
-
-    # Visible and explained, not hidden, and it cannot be started by tapping it.
-    blocked = tap(customer, documents, locked[0].removeprefix('🔒 '))
-    assert not GenerationDraft.objects.filter(account=customer).exists()
-    assert 'plan' in body(blocked).lower()
-
-
-def test_each_shortcut_opens_its_own_group_in_the_chat(customer):
-    for command, heading in (('/create', 'Documents & slides'), ('/study', 'Studying'),
-                             ('/school', 'Schoolwork'), ('/teach', 'Teaching')):
-        result = dispatch_local(customer, text=command)
-        assert heading in body(result), command
-        assert not any((button.get('url') or '').endswith('/app/study') for button in buttons(result))
-
-
-def test_long_menus_page_rather_than_truncate(customer):
-    study = tap(customer, dispatch_local(customer, text='/ai'), 'Studying')
-    first = [label for label in labels(study) if label not in ('◀️ Back', '▶️ More tools', '🏠 Main menu')]
-    assert len(first) == generation.PAGE
-    more = tap(customer, study, 'More tools')
-    second = [label for label in labels(more) if label not in ('◀️ Back', '▶️ More tools', '🏠 Main menu')]
-    assert second and not set(first) & set(second), 'the next page shows different tools'
-
-
-def test_a_photo_tool_offers_to_continue_without_a_typed_message(customer):
-    """Handwriting's whole input is the picture, so it must not wait for text."""
-    study = tap(customer, dispatch_local(customer, text='/study'), 'Review handwritten notes')
-    assert 'photo of the handwritten page' in body(study)
-    assert 'Use this photo' not in ' '.join(labels(study)), 'nothing staged yet'
-
-    stage_photo(customer)
-    study = tap(customer, dispatch_local(customer, text='/study'), 'Review handwritten notes')
-    assert 'Use this photo' in ' '.join(labels(study))
-
-    # Transcription needs a vision model. Without one it says so rather than
-    # leaving the customer on a screen with nothing that works.
-    answered = tap(customer, study, 'Use this photo')
-    assert 'Configure an AI provider' in body(answered)
-    assert not GenerationDraft.objects.filter(account=customer).exists()
-
-
-def test_the_review_screen_shows_the_cost_before_anything_runs(customer):
-    """Generating spends AI credits. The customer must see that first."""
-    save_config('ai', {'mode': 'openai', 'model': 'gpt-5.6-luna', 'api_key': 'sk-offline-test-only'})
-    documents = tap(customer, dispatch_local(customer, text='/ai'), 'Documents & slides')
-    tap(customer, documents, 'Document from a topic')
-    review = dispatch_local(customer, text='How tide tables are read, for a general audience.')
-
-    quote = Quote.objects.get(account=customer)
-    assert quote.meters['ai_credits'] > 0, 'a real provider costs credits'
-    assert f"AI credits: {quote.meters['ai_credits']}" in body(review), body(review)[-400:]
-    assert 'Will use' in body(review) and 'Available' in body(review)
-    assert not Job.objects.filter(account=customer).exists(), 'still nothing submitted'
+            generation.available(customer, SLIDES)
+        assert caught.value.code == 'feature_not_in_plan'
+    finally:
+        FEATURES[SLIDES]['plans']['premium'] = original
 
 
 def test_authoring_is_rate_limited_per_account(customer):
@@ -241,12 +202,23 @@ def test_authoring_is_rate_limited_per_account(customer):
     assert caught.value.code == 'rate_limited'
 
 
-# --- helpers ---------------------------------------------------------------
+def test_local_authoring_follows_the_material_instead_of_inventing_pages(customer):
+    """There is no model in local mode, so five pages would be four blank ones."""
+    review = describe(customer, 'Tide tables explained simply.')
+    assert 'Pages: 1' in body(review)
+    assert latest(customer)['options']['requested_pages'] is None
+
+
+def test_a_document_still_reads_a_pdf_when_one_is_sent(customer):
+    stage_pdf(customer)
+    describe(customer, 'A 2 page summary of the attached file.')
+    assert latest(customer)['source_ids'], 'the staged PDF is used'
+
 
 def stage_pdf(account):
-    from pypdf import PdfWriter
     import io
     from django.core.files.uploadedfile import SimpleUploadedFile
+    from pypdf import PdfWriter
     writer = PdfWriter()
     writer.add_blank_page(width=200, height=200)
     buffer = io.BytesIO()
@@ -256,23 +228,3 @@ def stage_pdf(account):
     draft.input_ids = [str(asset.id)]
     draft.save(update_fields=['input_ids'])
     return asset
-
-
-def stage_photo(account):
-    import io as _io
-    from django.core.files.uploadedfile import SimpleUploadedFile
-    from PIL import Image
-    buffer = _io.BytesIO()
-    Image.new('RGB', (64, 64), 'white').save(buffer, format='PNG')
-    asset = upload_file(account, SimpleUploadedFile('page.png', buffer.getvalue()), 'bot')
-    draft, _ = BotDraft.objects.get_or_create(account=account, defaults={'state': 'collecting'})
-    draft.input_ids = [str(asset.id)]
-    draft.save(update_fields=['input_ids'])
-    return asset
-
-
-def _review_for(account, feature_id, group_label, tool_label, prompt):
-    menu = dispatch_local(account, text='/ai')
-    group = tap(account, menu, group_label)
-    tap(account, group, tool_label)
-    return dispatch_local(account, text=prompt)

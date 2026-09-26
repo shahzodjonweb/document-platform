@@ -31,7 +31,7 @@ def test_local_outline_stage_creates_real_outline_and_updates_draft_without_ai_c
 
 def test_live_outline_separate_cost_source_integrity_and_version(settings,monkeypatch):
     a=paid(settings,account());save_config('ai',{'mode':'openai','model':'test-model','api_key':'sk-offline-test'})
-    d=create_draft(a,{'source_text':'Safe processing','options':{'length':1,'question_count':0}})
+    d=create_draft(a,{'source_text':'Safe processing, in 1 page.'})
     raw={'title':'Outline','answer_supported':True,'citations':[],'sections':[{'id':'s1','heading':'Introduction','body':'Cover safe document processing.','notes':''}],'questions':[]}
     calls=[]
     def generated(*args,**kwargs):calls.append(args[2]);return raw,{'input_tokens':1000,'output_tokens':100}
@@ -45,7 +45,7 @@ def test_live_outline_separate_cost_source_integrity_and_version(settings,monkey
 
 def test_outline_stage_api_and_oversized_output_release(settings,monkeypatch):
     a=paid(settings,account());save_config('ai',{'mode':'openai','model':'test-model','api_key':'sk-offline-test'})
-    d=create_draft(a,{'source_text':'Topic','options':{'length':1}});client=login_client(a)
+    d=create_draft(a,{'source_text':'Topic, in 1 page.'});client=login_client(a)
     q=client.post(f'/api/v1/generation/drafts/{d.id}/quote',{'version':1,'stage':'outline'},content_type='application/json')
     assert q.status_code==201 and next(m['amount'] for m in q.json()['meters'] if m['meter']=='ai_credits')==2
     raw={'title':'Overrun','sections':[{'id':'s1','heading':'Intro','body':'x'*501,'notes':''}],'questions':[]}

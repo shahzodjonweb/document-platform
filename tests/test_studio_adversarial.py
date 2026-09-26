@@ -114,20 +114,20 @@ def test_provider_exact_schema_token_budget_and_no_redirect(monkeypatch):
         def open(self,request,timeout):captured.update(request=request,timeout=timeout);return Response()
     monkeypatch.setattr(provider.urllib.request,'build_opener',lambda handler:Opener())
     cfg={'model':'mock-model','api_key':'never-log-this'}
-    value,usage=provider.generate(cfg,request_data(),'ai.pdf_text',uuid.uuid4(),token_limit=24000)
+    value,usage=provider.generate(cfg,request_data(),'ai.pdf_topic',uuid.uuid4(),token_limit=24000)
     request=json.loads(captured['request'].data)
     assert request['store'] is False and request['text']['format']['strict'] is True and 'tools' not in request
     assert captured['request'].full_url=='https://api.openai.com/v1/responses' and captured['read_limit']==2_000_001
     assert usage['output_tokens']==200 and value['title']=='Verified answer'
     payload['output'][0]['content'][0]['text']=json.dumps({**raw_content(),'unexpected':'private'})
-    with pytest.raises(DomainError,match='provider_failed'):provider.generate(cfg,request_data(),'ai.pdf_text','test',token_limit=24000)
+    with pytest.raises(DomainError,match='provider_failed'):provider.generate(cfg,request_data(),'ai.pdf_topic','test',token_limit=24000)
     with pytest.raises(ValueError):provider._NoRedirect().redirect_request(None,None,302,None,None,'https://evil.invalid')
     oversized=request_data();oversized['source_text']='Ж'*3000
-    with pytest.raises(DomainError,match='generation_limit'):provider.enforce_input_budget(cfg,oversized,'ai.pdf_text',4000)
+    with pytest.raises(DomainError,match='generation_limit'):provider.enforce_input_budget(cfg,oversized,'ai.pdf_topic',4000)
 
 
 def test_provider_question_overrun_releases_credits_and_hides_outputs(settings,monkeypatch):
-    a=paid(settings,account());live_configuration();draft=create_draft(a,{'feature_id':'ai.pdf_text','source_text':'Hello','options':{'length':1,'question_count':0}})
+    a=paid(settings,account());live_configuration();draft=create_draft(a,{'feature_id':'ai.pdf_topic','source_text':'Hello','options':{'length':1,'question_count':0}})
     quote=generation_quote(a,draft.id,draft.version)
     raw=raw_content();raw['questions']=[{'id':'q1','stem':'2+2?','options':['4'],'answer':'4','explanation':'Pairs','topic':'math','marks':1}]
     monkeypatch.setattr(provider,'generate',lambda *args,**kwargs:(raw,{'input_tokens':100,'output_tokens':100}))
@@ -137,17 +137,18 @@ def test_provider_question_overrun_releases_credits_and_hides_outputs(settings,m
 
 
 def test_provider_model_pin_rejects_changed_config(settings):
-    a=paid(settings,account());live_configuration();draft=create_draft(a,{'feature_id':'ai.pdf_text','source_text':'Hello','options':{'length':1}});quote=generation_quote(a,draft.id,1)
+    a=paid(settings,account());live_configuration();draft=create_draft(a,{'feature_id':'ai.pdf_topic','source_text':'Hello','options':{'length':1}});quote=generation_quote(a,draft.id,1)
     save_config('ai',{'mode':'openai','model':'different-model','api_key':''})
     with pytest.raises(DomainError,match='provider_changed'):submit_job(a,quote.id,'changed-provider-model')
 
 
 def test_patch_authoring_fields_and_foreign_source_isolation(settings):
-    a=account();other=account(43);foreign=upload(other);draft=create_draft(a,{'feature_id':'ai.pdf_text','source_text':'Original','options':{'length':1}})
+    a=account();other=account(43);foreign=upload(other);draft=create_draft(a,{'feature_id':'ai.pptx','source_text':'Original'})
     updated=update_draft(a,draft.id,{'version':1,'title':'Новый заголовок','source_text':'Новый текст','prompt':'Summarize','output_locale':'ru','output_format':'pptx','options':{'length':1,'template_id':'classroom'}})
     data=draft_data(updated)
     assert data['title']=='Новый заголовок' and data['content']['sections'][0]['body']=='Новый текст'
     assert data['output_format']=='pptx' and data['options']['template_style']['accent']=='#3b6588'
+    assert data['options']['length']==1, 'local authoring follows the material given'
     with pytest.raises(DomainError):update_draft(a,draft.id,{'version':2,'source_ids':[str(foreign.id)]})
     assert GenerationDraft.objects.count()==1
 
@@ -170,18 +171,6 @@ def test_editor_rejects_unsafe_and_unentitled_draft_commands():
     assert client.get(url).json()['commands']==[]
 
 
-def test_adaptive_context_uses_only_owned_saved_practice(settings):
-    a=paid(settings,account());other=account(43)
-    from apps.studio.domain import pack
-    project=EducationProject.objects.create(account=a,title='Math',encrypted_content=pack(content()),expires_at=timezone.now()+timedelta(days=90))
-    PracticeAttempt.objects.create(project=project,idempotency_key='first-practice',request_hash='a'*64,result={'weak_topics':['addition']})
-    draft=create_draft(a,{'feature_id':'school.adaptive','source_text':'Review weak topics','options':{'length':1,'project_id':str(project.id)}})
-    context=unpack(draft.encrypted_data)['options']['adaptive_context']
-    assert context['weak_topics']==['addition'] and context['review_questions'][0]['stem']=='2 + 2?'
-    foreign=EducationProject.objects.create(account=other,title='Private',encrypted_content=pack(content()),expires_at=timezone.now()+timedelta(days=90))
-    with pytest.raises(DomainError,match='not_found'):create_draft(a,{'feature_id':'school.adaptive','options':{'project_id':str(foreign.id)}})
-
-
 def test_expired_projects_are_inaccessible_and_cleaned():
     from apps.studio.domain import pack
     from apps.core.services import cleanup_expired
@@ -199,29 +188,27 @@ def source_document(a):
     return upload_file(a,SimpleUploadedFile('source.pdf',stream.getvalue(),'application/pdf'))
 
 
-@pytest.mark.parametrize('case',['supported','unsupported','forged'])
-def test_grounded_qa_validates_exact_owned_citations(settings,monkeypatch,case):
+@pytest.mark.parametrize('case',['supported','forged'])
+def test_a_document_built_from_a_source_must_quote_it_exactly(settings,monkeypatch,case):
     a=paid(settings,account());asset=source_document(a);live_configuration()
-    draft=create_draft(a,{'feature_id':'study.pdf_qa','prompt':'Where does the river flow?','source_ids':[str(asset.id)],'options':{'length':1,'question_count':0}})
+    draft=create_draft(a,{'feature_id':'ai.pdf_topic','prompt':'Summarise the river report.','source_ids':[str(asset.id)]})
     raw=raw_content();raw['sections'][0]['body']='The river flows north.'
     raw['citations']=[{'asset_id':str(asset.id),'page':1,'quote':'The river flows north.'}]
-    if case=='unsupported':raw['answer_supported']=False;raw['citations']=[];raw['sections'][0]['body']='A fabricated answer that must be discarded.'
     if case=='forged':raw['citations'][0]['quote']='A sentence absent from the source'
     monkeypatch.setattr(provider,'generate',lambda *args,**kwargs:(raw,{'input_tokens':100,'output_tokens':100}))
-    q=generation_quote(a,draft.id,1);job,_=submit_job(a,q.id,'source-qa-'+case);job=execute_job(job.id)
+    q=generation_quote(a,draft.id,1);job,_=submit_job(a,q.id,'source-cite-'+case);job=execute_job(job.id)
     if case=='forged':
         assert job.status=='failed' and job.error_code=='invalid_source_citation'
         assert not UsageLedger.objects.filter(job=job,kind='consume').exists()
     else:
         assert job.status=='succeeded',job.error_code
         text=''.join(p.extract_text() for p in PdfReader(storage_path(job.artifacts.get().file.object_key)).pages)
-        if case=='supported':assert 'north' in text and 'p. 1' in text
-        else:assert 'No supporting answer' in text and 'fabricated' not in text and job.warnings==['source_answer_not_found']
+        assert 'north' in text and 'p. 1' in text
         assert job.settled_meters['ai_credits']<=q.meters['ai_credits']
 
 
 def test_provider_completion_does_not_overwrite_concurrent_draft_edit(settings,monkeypatch):
-    a=paid(settings,account());live_configuration();draft=create_draft(a,{'feature_id':'ai.pdf_text','source_text':'Original','options':{'length':1}})
+    a=paid(settings,account());live_configuration();draft=create_draft(a,{'feature_id':'ai.pdf_topic','source_text':'Original','options':{'length':1}})
     quote=generation_quote(a,draft.id,1)
     def while_editing(*args,**kwargs):
         update_draft(a,draft.id,{'version':1,'title':'Customer new title','source_text':'Customer new body'})

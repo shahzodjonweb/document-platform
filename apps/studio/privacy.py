@@ -1,4 +1,9 @@
-"""Fail-closed teacher artifact roles, including older mislabeled outputs."""
+"""Fail-closed artifact roles for jobs made before the two-service catalogue.
+
+Teacher and school tools are retired, but their artifacts outlive them, and a
+role assigned by an older worker must never authorize sharing one. New jobs are
+all `user_document`.
+"""
 
 LEARNER_TEACHER_FEATURES=frozenset({
     'teacher.worksheet','teacher.homework','teacher.mcq',

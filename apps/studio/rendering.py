@@ -52,7 +52,11 @@ def render_pdf(content,path,locale='en',role='user_document',style=None):
             card=[Paragraph(escape(f"{details['card']} {index}"),styles['heading']),Paragraph(escape(details['question']),styles['small']),Paragraph(escape(q['stem']),styles['body']),Paragraph(escape(details['answer']),styles['small']),Paragraph(escape(q['answer']),styles['body']),Paragraph(escape(q['explanation']),styles['small']),Spacer(1,14)]
             story.append(KeepTogether(card))
     else:
-        for section in content['sections']:
+        # One section is one page. The writing guidance aims each section at a
+        # full page, but a model that writes short would otherwise silently
+        # merge two of them and hand back fewer pages than were asked for.
+        for index,section in enumerate(content['sections']):
+            if index:story.append(PageBreak())
             story.append(Paragraph(escape(section['heading']),styles['heading']))
             for line in (section['body'] or ' ').split('\n'):
                 story.append(Paragraph(escape(line) or '&#160;',styles['body']))

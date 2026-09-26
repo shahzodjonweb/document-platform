@@ -9,7 +9,6 @@ from operations.integrations import ai_config
 from .models import GenerationDraft,ProviderUsage
 from .domain import generation_quote,unpack,pack,validate_content
 
-UNSUPPORTED={'ai.images','study.handwriting','ai.rewrite','ai.regenerate_slide'}
 
 
 def _payload(data):
@@ -30,7 +29,6 @@ def create_outline_quote(account,draft_id,version):
     from django.db import transaction
     with transaction.atomic():
         quote=generation_quote(account,draft_id,version)
-        if quote.feature_id in UNSUPPORTED:raise DomainError('invalid_parameters')
         draft=GenerationDraft.objects.get(id=draft_id,account=account);data=unpack(draft.encrypted_data)
         cfg=ai_config()
         if cfg['mode']!=quote.policy['provider_mode'] or cfg['model']!=quote.policy['provider_model']:raise DomainError('provider_changed',409)
