@@ -43,15 +43,21 @@ def test_live_outline_separate_cost_source_integrity_and_version(settings,monkey
     execute_job(job.id);assert calls==['ai.outline']
 
 
-def test_outline_stage_api_and_oversized_output_release(settings,monkeypatch):
+def test_outline_stage_api_and_an_overlong_outline_is_cut_back_not_refused(settings,monkeypatch):
+    """An outline longer than an outline should be shortened, not thrown away."""
     a=paid(settings,account());save_config('ai',{'mode':'openai','model':'test-model','api_key':'sk-offline-test'})
     d=create_draft(a,{'source_text':'Topic, in 1 page.'});client=login_client(a)
     q=client.post(f'/api/v1/generation/drafts/{d.id}/quote',{'version':1,'stage':'outline'},content_type='application/json')
     assert q.status_code==201 and next(m['amount'] for m in q.json()['meters'] if m['meter']=='ai_credits')==2
-    raw={'title':'Overrun','sections':[{'id':'s1','heading':'Intro','body':'x'*501,'notes':''}],'questions':[]}
+    raw={'title':'Overrun','sections':[{'id':'s1','heading':'Intro','body':'x'*501,'notes':'aside'}],
+         'questions':[{'id':'q1','stem':'?','options':[],'answer':'a','explanation':'','topic':'t','marks':1}]}
     monkeypatch.setattr(provider,'generate',lambda *args,**kwargs:(raw,{'input_tokens':100,'output_tokens':100}))
     job,_=submit_job(a,q.json()['id'],'outline-overrun');job=execute_job(job.id)
-    assert job.status=='failed' and not job.artifacts.exists() and not UsageLedger.objects.filter(job=job,kind='consume').exists()
+    assert job.status=='succeeded',job.error_code
+    assert 'questions_trimmed' in job.warnings
+    result=json.loads(storage_path(job.artifacts.get().file.object_key).read_text())
+    assert len(result['sections'][0]['body'])==500 and not result['sections'][0]['notes']
+    assert result['questions']==[]
     assert client.post(f'/api/v1/generation/drafts/{d.id}/quote',{'version':1,'stage':'unknown'},content_type='application/json').status_code==400
 
 

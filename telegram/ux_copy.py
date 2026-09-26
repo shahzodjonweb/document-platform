@@ -137,7 +137,11 @@ MESSAGES = {
     'ai_revise_of': ('Changing', 'O‘zgartirilmoqda', 'Изменяем'),
     'ai_open_web': ('🌐 Open in web app', '🌐 Veb ilovada ochish', '🌐 Открыть в веб-приложении'),
     'ai_busy': ('⏳ One moment — still working on your last request.', '⏳ Bir lahza — oldingi so‘rovingiz ustida ishlanmoqda.', '⏳ Секунду — ещё обрабатываю прошлый запрос.'),
-    'ai_busy': ('⏳ One moment — still working on your last request.', '⏳ Bir lahza — oldingi so‘rovingiz ustida ishlanmoqda.', '⏳ Секунду — ещё обрабатываю прошлый запрос.'),
+    # A finished document can carry a note about what was adjusted to match what
+    # was asked for. These are keyed by the job's own warning codes.
+    'questions_trimmed': ('ℹ️ Questions you did not ask for were left out, and not charged for.', 'ℹ️ So‘ramagan savollar qo‘shilmadi va hisoblanmadi.', 'ℹ️ Вопросы, которые вы не запрашивали, не добавлены и не оплачены.'),
+    'sections_trimmed': ('ℹ️ The document was trimmed to the number of pages you asked for.', 'ℹ️ Hujjat siz so‘ragan sahifa soniga qisqartirildi.', 'ℹ️ Документ сокращён до запрошенного количества страниц.'),
+    'longer_than_quoted': ('ℹ️ This came out a little longer than estimated. You were charged for the pages you asked for, not the extra.', 'ℹ️ Hujjat taxmindan biroz uzunroq chiqdi. Siz so‘ragan sahifalar uchun hisoblandi, qo‘shimchasi uchun emas.', 'ℹ️ Документ вышел чуть длиннее, чем ожидалось. Оплачены страницы, которые вы запросили, а не лишние.'),
 }
 
 # Keep the older keys for commands, saved controls and transport compatibility.

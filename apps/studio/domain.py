@@ -33,21 +33,36 @@ def require(account,fid):
 
 def limits(account):
     seed=plan_limits(account)
-    return {'sections':seed['max_generated_pdf_pages'], 'slides':seed['max_generated_slides'], 'questions':{'free':5,'plus':30,'premium':100}[account.plan], 'source_chars':seed['max_ai_input_tokens']*3}
+    # Source text has to fit the request budget alongside the document itself, so
+    # it is half of it rather than three times it. Promising more source than a
+    # call can carry only moves the refusal later.
+    return {'sections':seed['max_generated_pdf_pages'], 'slides':seed['max_generated_slides'], 'questions':{'free':10,'plus':50,'premium':150}.get(account.plan,10), 'source_chars':seed['max_ai_input_tokens']//2}
 
 def validate_content(account,content,output_format='pdf'):
+    """Bring a model response inside the plan, trimming rather than refusing.
+
+    The page count was clamped to the plan before the model was ever asked, so
+    anything over it here is the model overrunning its brief. That is not the
+    customer's mistake and it costs them nothing: it is cut back to what was
+    quoted. Only content that is unusable — the wrong shape, or empty — is
+    refused.
+    """
     if not isinstance(content,dict): raise DomainError('invalid_parameters')
     caps=limits(account)
     title=str(content.get('title','Document'))[:160]
     sections=content.get('sections',[])
     max_sections=caps['slides'] if output_format=='pptx' else caps['sections']
-    if not isinstance(sections,list) or not 1<=len(sections)<=max_sections: raise DomainError('generation_limit')
+    if not isinstance(sections,list): raise DomainError('invalid_parameters')
+    if not sections: raise DomainError('content_required')
+    from . import pages as paging
+    body_cap=paging.max_section_chars(output_format)
     clean=[]
-    for i,s in enumerate(sections):
-        if not isinstance(s,dict) or len(str(s.get('body','')))>6000: raise DomainError('generation_limit')
-        clean.append({'id':str(s.get('id',f's{i+1}'))[:40],'heading':str(s.get('heading',s.get('title','')))[:160],'body':str(s.get('body','')),'notes':str(s.get('notes',''))[:2000]})
+    for i,s in enumerate(sections[:max_sections]):
+        if not isinstance(s,dict): raise DomainError('invalid_parameters')
+        clean.append({'id':str(s.get('id',f's{i+1}'))[:40],'heading':str(s.get('heading',s.get('title','')))[:160],'body':str(s.get('body',''))[:body_cap],'notes':str(s.get('notes',''))[:2000]})
     questions=content.get('questions',[])
-    if not isinstance(questions,list) or len(questions)>caps['questions']: raise DomainError('generation_limit')
+    if not isinstance(questions,list): raise DomainError('invalid_parameters')
+    questions=questions[:caps['questions']]
     qs=[]
     for i,q in enumerate(questions):
         if not isinstance(q,dict): raise DomainError('invalid_parameters')
@@ -246,7 +261,11 @@ def generation_quote(account,draft_id,version):
     snapshot=hashlib.sha256(bytes(d.encrypted_data)).hexdigest()
     from .branding import generation_inputs
     input_ids=generation_inputs(data)
-    return Quote.objects.create(account=account,feature_id=d.feature_id,input_ids=input_ids,input_fingerprints=[{'id':str(a.id),'sha256':a.sha256} for a in owned_assets(account,input_ids)] if input_ids else [],parameters={'generation_draft_id':str(d.id),'draft_version':d.version,'snapshot':snapshot},meters={'file_tasks':0,'file_page_units':0,'ai_credits':credits},policy={'plan':account.plan,'version':POLICY_VERSION,'tariff_version':'generation-draft-staging-v1','limits':plan_limits(account),'provider_mode':d.provider_mode,'provider_model':cfg['model'],'provider_image_model':cfg.get('image_model',''),'generation_bounds':{'question_cap':question_cap,'output_pages':output_cap,'key_pages':caps['sections'],'input_tokens':plan_limits(account)['max_ai_input_tokens'],'tariff':dict(tariff)}},expires_at=timezone.now()+timedelta(minutes=10))
+    # A long document is written in several provider calls and needs longer than
+    # the default lease to finish them. Rendering and settlement are on top.
+    from .provider import call_budget
+    lease_seconds=call_budget(len(data['content']['sections']))+240
+    return Quote.objects.create(account=account,feature_id=d.feature_id,input_ids=input_ids,input_fingerprints=[{'id':str(a.id),'sha256':a.sha256} for a in owned_assets(account,input_ids)] if input_ids else [],parameters={'generation_draft_id':str(d.id),'draft_version':d.version,'snapshot':snapshot},meters={'file_tasks':0,'file_page_units':0,'ai_credits':credits},policy={'plan':account.plan,'version':POLICY_VERSION,'tariff_version':'generation-draft-staging-v1','limits':plan_limits(account),'provider_mode':d.provider_mode,'provider_model':cfg['model'],'provider_image_model':cfg.get('image_model',''),'generation_bounds':{'question_cap':question_cap,'output_pages':output_cap,'key_pages':caps['sections'],'input_tokens':plan_limits(account)['max_ai_input_tokens'],'tariff':dict(tariff)},'lease_seconds':lease_seconds},expires_at=timezone.now()+timedelta(minutes=10))
 
 def validate_generation_quote(account,quote):
     require(account,quote.feature_id)

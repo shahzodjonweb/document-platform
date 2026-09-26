@@ -299,7 +299,12 @@ def execute_job(job_id):
         job = Job.objects.select_for_update().select_related('account').get(pk=job_id)
         if job.status!='queued': return job
         job.status,job.started_at = 'running',timezone.now()
-        job.lease_expires_at = timezone.now()+timedelta(minutes=10)
+        # Ten minutes suits a file task. Work that knows it needs longer — a
+        # document written in several provider calls — says so on its quote, and
+        # the bounds keep a bad value from parking a worker or losing a job.
+        requested = job.quote.policy.get('lease_seconds') if job.quote_id else None
+        lease = min(2400,max(600,int(requested))) if isinstance(requested,(int,float)) else 600
+        job.lease_expires_at = timezone.now()+timedelta(seconds=lease)
         job.attempt_count += 1
         job.save(update_fields=['status','started_at','lease_expires_at','attempt_count'])
     output_dir = storage_path(f'outputs/{job.account_id}/{job.id}')

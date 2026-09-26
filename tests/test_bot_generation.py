@@ -119,8 +119,11 @@ def free_customer(settings):
 
 
 def test_a_request_beyond_the_plan_is_said_out_loud(free_customer):
+    from apps.core.policy import plan_limits
+    allowed = plan_limits(free_customer)['max_generated_pdf_pages']
     review = describe(free_customer, 'A 20 page report on tide tables.')
-    assert 'Pages: 2' in body(review), 'the free plan allows two'
+    assert allowed < 20, 'this test needs a request the free plan has to clamp'
+    assert f'Pages: {allowed}' in body(review), 'the free plan gets what the free plan allows'
     assert '20 asked for' in body(review), 'and the clamp is shown, not hidden'
     assert latest(free_customer)['options']['requested_pages'] == 20
 

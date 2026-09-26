@@ -14,14 +14,20 @@ SYSTEM=('You write documents and slide decks from a description written by the c
 
 
 def writing_guidance(options, sections, output_format='pdf'):
-    """Tell the model how much prose fills one page of the chosen output."""
-    from .pages import chars_per_page
-    target = chars_per_page(output_format)
+    """Tell the model how much prose fills one page of the chosen output.
+
+    The number given is `target_chars`, not the page's full capacity: asking for
+    exactly what the page holds puts every section on the spill threshold at
+    once. See apps/studio/pages.py.
+    """
+    from .pages import chars_per_page, target_chars
+    target = target_chars(output_format)
     unit = 'slide' if output_format == 'pptx' else 'page'
     return (
         f'Write {sections} section{"s" if sections != 1 else ""}. Every section starts its own '
-        f'{unit}, so give each one about {target} characters of body text — that is what fills '
-        f'a {unit} at this size. Only the final section may be shorter.'
+        f'{unit}, so give each one about {target} characters of body text — that fills '
+        f'a {unit} at this size without running over. Stay under {chars_per_page(output_format)} '
+        f'characters so the section keeps to its own {unit}. Only the final section may be shorter.'
     )
 
 
@@ -29,19 +35,35 @@ def schema_for(feature):
     return SCHEMA
 
 
-def request_body(config,data,feature_id):
+def request_body(config,data,feature_id,span=None):
+    """One provider call. `span` asks for a slice of a long document's sections.
+
+    A document longer than `pages.PAGES_PER_CALL` is written in several calls so
+    the page count a plan offers is never limited by how much a model can say in
+    one response. Each call is given the whole plan as headings for context but
+    is asked to write only its own sections, and questions are asked for once,
+    with the final slice, so they are not produced several times over.
+    """
     outline=data['content']
-    user={'task':feature_id,'output_locale':data['output_locale'],'prompt':data['prompt'],'source_text':data['source_text'],'excerpts':data['excerpts'],'outline':outline,'options':data['options'],'max_sections':len(outline['sections']),'max_questions':max(len(data['content']['questions']),int(data['options'].get('question_count',5)))}
-    user['writing_guidance']=writing_guidance(data['options'],len(outline['sections']),data.get('output_format','pdf'))
+    sections=outline['sections']
+    first,last=span or (0,len(sections))
+    mine=sections[first:last]
+    final=last>=len(sections)
+    asked_questions=max(len(outline['questions']),int(data['options'].get('question_count',0)))
+    user={'task':feature_id,'output_locale':data['output_locale'],'prompt':data['prompt'],'source_text':data['source_text'],'excerpts':data['excerpts'],'outline':{**outline,'sections':mine},'options':data['options'],'max_sections':len(mine),'max_questions':asked_questions if final else 0}
+    if len(mine)!=len(sections):
+        user['document_plan']=[s['heading'] for s in sections]
+        user['writing_this_part']=f'sections {first+1}-{last} of {len(sections)}'
+    user['writing_guidance']=writing_guidance(data['options'],len(mine),data.get('output_format','pdf'))
     # A change request is a different instruction from a brief: the outline is
     # the finished document, not an empty structure to fill.
     if data.get('revision'):user['revision']={'request':data['revision']['request']}
     from .pages import response_tokens
-    return {'model':config['model'],'store':False,'instructions':SYSTEM,'input':json.dumps(user,ensure_ascii=False),'max_output_tokens':response_tokens(len(outline['sections'])),'text':{'format':{'type':'json_schema','name':'document','strict':True,'schema':schema_for(feature_id)}}}
+    return {'model':config['model'],'store':False,'instructions':SYSTEM,'input':json.dumps(user,ensure_ascii=False),'max_output_tokens':response_tokens(len(mine)),'text':{'format':{'type':'json_schema','name':'document','strict':True,'schema':schema_for(feature_id)}}}
 
 
-def enforce_input_budget(config,data,feature_id,token_limit):
-    body=request_body(config,data,feature_id)
+def enforce_input_budget(config,data,feature_id,token_limit,span=None):
+    body=request_body(config,data,feature_id,span)
     # Byte-level tokenizers cannot produce more ordinary tokens than input UTF-8
     # bytes. Count the complete serialized request, schema and instructions, plus
     # 512 tokens for message/protocol framing instead of estimating chars / 3.
@@ -67,15 +89,74 @@ def _validate(value,schema):
         if type(value) is not bool:raise ValueError()
 
 
+# A pessimistic output rate, so the timeout is generous rather than a second
+# failure mode on a slow but working call.
+TOKENS_PER_SECOND=40
+CALL_TIMEOUT_CEILING=300
+
+
+def call_budget(sections):
+    """Seconds the provider calls for a document of this many sections may take."""
+    from .pages import batches,response_tokens,PAGES_PER_CALL
+    per_call=min(CALL_TIMEOUT_CEILING,60+response_tokens(min(sections,PAGES_PER_CALL))//TOKENS_PER_SECOND)
+    return per_call*len(batches(sections))
+
+
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self,*args,**kwargs):raise ValueError('provider_redirect_rejected')
 
 
-def generate(config,data,feature_id,request_id,*,token_limit):
-    body=enforce_input_budget(config,data,feature_id,token_limit)
+def generate(config,data,feature_id,request_id,*,token_limit,deadline=None):
+    """The whole document, in as many provider calls as its length needs.
+
+    `deadline` is a monotonic clock reading the calls must finish by. It exists
+    because the worker holds a lease on the job: a batch that ran past it would
+    have its finished work thrown away by the reclaim sweep, so the calls are
+    held inside the budget the lease gives them.
+    """
+    from .pages import batches
+    spans=batches(len(data['content']['sections']))
+    if len(spans)<2:return _call(config,data,feature_id,str(request_id),token_limit=token_limit,deadline=deadline)
+    merged,totals=None,{'input_tokens':0,'output_tokens':0}
+    for index,span in enumerate(spans):
+        # A distinct key per call: the same key would make the provider replay
+        # the first slice for every one of them.
+        part,usage=_call(config,data,feature_id,f'{request_id}-{index}',token_limit=token_limit,span=span,deadline=deadline)
+        for key in totals:totals[key]+=usage.get(key,0)
+        # Identity belongs to the outline, not to the response. A model asked for
+        # one slice may still number its sections from one, and merging those
+        # would give the document duplicate ids and fail it on assembly.
+        expected=data['content']['sections'][span[0]:span[1]]
+        part['sections']=[{**section,'id':expected[position]['id']}
+                          for position,section in enumerate(part['sections'][:len(expected)])]
+        if merged is None:merged=part
+        else:
+            merged['sections']=merged['sections']+part['sections']
+            merged['citations']=merged['citations']+part['citations']
+            merged['questions']=part['questions'] or merged['questions']
+            merged['answer_supported']=merged['answer_supported'] and part['answer_supported']
+    return merged,totals
+
+
+def call_timeout(max_output_tokens,deadline=None,now=None):
+    """How long one call may take: the size it asked for, held inside the lease.
+
+    A batched document shares one lease between several calls, so an early call
+    running long has to leave the later ones time — otherwise the lease lapses
+    and the reclaim sweep discards work the customer has already paid for.
+    """
+    timeout=min(CALL_TIMEOUT_CEILING,60+max_output_tokens//TOKENS_PER_SECOND)
+    if deadline is None:return timeout
+    import time
+    return max(15,min(timeout,deadline-(now if now is not None else time.monotonic())))
+
+
+def _call(config,data,feature_id,idempotency_key,*,token_limit,span=None,deadline=None):
+    body=enforce_input_budget(config,data,feature_id,token_limit,span)
+    timeout=call_timeout(body['max_output_tokens'],deadline)
     try:
-        request=urllib.request.Request('https://api.openai.com/v1/responses',data=json.dumps(body,ensure_ascii=False).encode(),headers={'Authorization':'Bearer '+config['api_key'],'Content-Type':'application/json','Idempotency-Key':str(request_id)})
-        with urllib.request.build_opener(_NoRedirect).open(request,timeout=90) as response:
+        request=urllib.request.Request('https://api.openai.com/v1/responses',data=json.dumps(body,ensure_ascii=False).encode(),headers={'Authorization':'Bearer '+config['api_key'],'Content-Type':'application/json','Idempotency-Key':idempotency_key})
+        with urllib.request.build_opener(_NoRedirect).open(request,timeout=timeout) as response:
             raw=response.read(2_000_001)
         if len(raw)>2_000_000:raise ValueError()
         result=json.loads(raw)

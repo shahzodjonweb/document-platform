@@ -51,8 +51,17 @@ def execute_outline(job,draft,data,original,config,output_dir):
         try:
             raw,usage=generate(config,_payload(data),'ai.outline',job.id,token_limit=job.policy['generation_bounds']['input_tokens'])
             content=validate_content(job.account,raw,data['output_format'])
-            if content['questions'] or len(content['sections'])>len(data['content']['sections']) or any(len(s['body'])>500 or s['notes'] for s in content['sections']):raise DomainError('generation_limit')
-            if [s['id'] for s in content['sections']]!=[s['id'] for s in data['content']['sections']]:raise DomainError('invalid_parameters')
+            # An outline is headings and a sentence each. A model that writes more
+            # than that, or adds questions nobody asked for, is cut back to the
+            # shape of an outline — it does not cost the customer the job.
+            expected=data['content']['sections']
+            if content['questions']:content['questions']=[];warnings.append('questions_trimmed')
+            if len(content['sections'])>len(expected):
+                content['sections']=content['sections'][:len(expected)];warnings.append('sections_trimmed')
+            content['sections']=[{**s,'body':s['body'][:500],'notes':''} for s in content['sections']]
+            # Identity is not negotiable: a confirmed outline's sections may be
+            # rewritten but never replaced, reordered or dropped.
+            if [s['id'] for s in content['sections']]!=[s['id'] for s in expected]:raise DomainError('invalid_parameters')
             for ref in content['citations']:
                 source=next((s for s in data['excerpts'] if s['asset_id']==ref.get('asset_id') and s['page']==ref.get('page')),None)
                 if not source or not ref.get('quote') or ref['quote'] not in source['text']:raise DomainError('invalid_source_citation')

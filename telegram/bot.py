@@ -341,6 +341,15 @@ def build_dispatcher():
         await sync_to_async(set_prompt)(account)
         await ai_review(message,account,draft,quote,edit)
 
+    def notes(account,job):
+        """What was adjusted to match the request, in the customer's language.
+
+        A warning we have no wording for is dropped rather than shown as a bare
+        code — the codes are internal.
+        """
+        lines=[COPY.get(account.locale,COPY['en']).get(code) for code in (job.warnings or [])]
+        return '\n'.join(line for line in lines if line)
+
     async def deliver(message,account,job,request_key=None):
         from .delivery import enqueue,attempt
         artifacts=await sync_to_async(lambda:list(job.artifacts.select_related('file','account')))()
@@ -348,6 +357,8 @@ def build_dispatcher():
             key=f'resend:{request_key}:{artifact.id}' if request_key else f'job:{job.id}:{artifact.id}'
             delivery=await sync_to_async(enqueue)(artifact,key)
             await attempt(delivery.id,message.bot)
+        note=notes(account,job)
+        if note and not request_key: await message.answer(html.escape(note))
 
     async def send_preview(message,account,asset_id,page):
         from apps.core.previews import preview_asset
@@ -364,6 +375,8 @@ def build_dispatcher():
         elif job.status=='succeeded':
             available=await sync_to_async(lambda:job.artifacts.filter(file__state='ready',file__expires_at__gt=timezone.now()).exists())()
             body+='\n\n'+text(account,'result' if available else 'result_expired')
+            note=notes(account,job)
+            if note: body+='\n\n'+html.escape(note)
             if available: rows.append([await button(account,'download','download',{'job_id':str(job.id)})])
         elif job.status=='no_op': body+='\n\n'+text(account,'no_op')
         elif job.status=='failed':

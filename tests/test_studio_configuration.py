@@ -26,7 +26,10 @@ def test_the_page_ceiling_is_published_so_the_form_can_say_it(settings):
     for feature in data['features']:
         expected = ceiling(a, 'pptx' if feature['id'] == SLIDES else 'pdf')
         assert feature['max_pages'] == expected
-    assert data['features'][0]['max_pages'] == 2, 'a free account gets two pages'
+    from apps.core.policy import plan_limits
+    assert data['features'][0]['max_pages'] == plan_limits(a)['max_generated_pdf_pages'], \
+        'the form is told exactly what the free plan allows'
+
 
 
 def test_the_form_is_never_asked_for_what_the_description_carries(settings):

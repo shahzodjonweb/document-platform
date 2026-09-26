@@ -162,7 +162,8 @@ def test_referrals_are_unique_qualified_and_expire():
     assert services.qualify_referrals(inviter)==1 and services.qualify_referrals(inviter)==0
     referral.refresh_from_db();assert referral.grant.quantity==10
     assert timedelta(days=29)<referral.grant.expires_at-timezone.now()<timedelta(days=31)
-    assert usage_snapshot(inviter)['meters']['ai_credits']['remaining']==40
+    from apps.core.policy import plan_limits
+    assert usage_snapshot(inviter)['meters']['ai_credits']['remaining']==plan_limits(inviter)['ai_credits']+referral.grant.quantity
 
 def test_support_thread_owner_and_staff_boundaries():
     a=account();other=account(805);ticket=SupportTicket.objects.create(account=a,subject='Billing',message='Question')

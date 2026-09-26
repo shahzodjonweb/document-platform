@@ -126,14 +126,28 @@ def test_provider_exact_schema_token_budget_and_no_redirect(monkeypatch):
     with pytest.raises(DomainError,match='generation_limit'):provider.enforce_input_budget(cfg,oversized,'ai.pdf_topic',4000)
 
 
-def test_provider_question_overrun_releases_credits_and_hides_outputs(settings,monkeypatch):
+def test_a_question_nobody_asked_for_is_dropped_and_never_charged_for(settings,monkeypatch):
+    """An unasked-for question must not cost the customer their document.
+
+    This is the failure a paying customer actually hit: the description named no
+    questions, so none were quoted, the model added one anyway, and the whole
+    paid job was destroyed with `generation_limit`. The document is what was
+    bought — the extra question is dropped, said out loud, and not billed.
+    """
     a=paid(settings,account());live_configuration();draft=create_draft(a,{'feature_id':'ai.pdf_topic','source_text':'Hello','options':{'length':1,'question_count':0}})
     quote=generation_quote(a,draft.id,draft.version)
     raw=raw_content();raw['questions']=[{'id':'q1','stem':'2+2?','options':['4'],'answer':'4','explanation':'Pairs','topic':'math','marks':1}]
     monkeypatch.setattr(provider,'generate',lambda *args,**kwargs:(raw,{'input_tokens':100,'output_tokens':100}))
     job,_=submit_job(a,quote.id,'provider-overrun');job=execute_job(job.id)
-    assert job.status=='failed' and job.error_code=='generation_limit' and not job.artifacts.exists()
-    assert not UsageLedger.objects.filter(job=job,kind='consume').exists()
+    assert job.status=='succeeded',job.error_code
+    assert 'questions_trimmed' in job.warnings and job.artifacts.exists()
+    # Never more than was reserved, and nothing at all for the dropped question.
+    consumed=sum(UsageLedger.objects.filter(job=job,kind='consume',meter='ai_credits').values_list('amount',flat=True))
+    assert 0<consumed<=quote.meters['ai_credits']
+    assert consumed==job.settled_meters['ai_credits']
+    # And it is gone from the draft, so a later change request cannot resurrect it.
+    from apps.studio.domain import draft_data
+    draft.refresh_from_db();assert draft_data(draft)['content']['questions']==[]
 
 
 def test_provider_model_pin_rejects_changed_config(settings):

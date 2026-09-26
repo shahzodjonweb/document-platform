@@ -159,10 +159,17 @@ Internal operations features are specified in section 17 and are not paid custom
 Free is permanent basic access, Plus is regular document/AI use, Premium adds larger capacity and advanced workflows. Modes are independent of plans. All three plans share reliable output downloads, privacy controls and payment support.
 
 The attached plan_seed.json contains editable staging defaults:
-- Free: 90 standard tasks per 30 days, at most 3 included tasks daily; 500 processed-page units; 30 shared AI credits; 10 MiB/file; 50 pages/job; one running job.
-- Plus: 500 tasks, 10,000 page units, 500 AI credits; 50 MiB/file; 200 pages/job; batches of 5; two running jobs.
-- Premium: 2,000 tasks, 50,000 page units, 2,000 AI credits; 200 MiB/file; 1,000 pages/job; batches of 25; three running jobs.
-- Generation caps: Free sample 2 PDF pages or 5 slides; Plus 10 pages/20 slides; Premium 30 pages/50 slides, with source/token caps in the seed.
+- Free: 90 standard tasks per 30 days, at most 10 included tasks daily; 500 processed-page units; 150 shared AI credits; 10 MiB/file; 50 pages/job; one running job.
+- Plus: 500 tasks, 10,000 page units, 1,500 AI credits; 50 MiB/file; 200 pages/job; batches of 5; two running jobs.
+- Premium: 2,000 tasks, 50,000 page units, 6,000 AI credits; 200 MiB/file; 1,000 pages/job; batches of 25; three running jobs.
+- Generation caps: Free 7 PDF pages or 12 slides; Plus 15 pages/30 slides; Premium 35 pages/60 slides.
+  The page count is the limit customers are sold on, so it is the only thing that
+  bounds a document's length: a longer document is written in several provider
+  calls rather than being reduced to what one response can hold. The AI credit
+  allowance and `max_ai_input_tokens` are sized from it — enough credits to
+  produce a full-length document many times over, and enough input budget to send
+  one back for a change request. Changing a page cap without those two is what
+  makes a plan advertise pages it cannot actually deliver twice.
 - Saved workflows: 0/1/20. Saved teacher templates: 0/5/30.
 
 These numbers are proposed engineering defaults. Benchmark actual conversion/AI cost, completion rates and performance before publishing limits and prices. Production prices are intentionally null; keep live checkout disabled until configured. Sandbox invoice fixtures use test amounts and cannot become production prices accidentally.

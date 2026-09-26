@@ -79,15 +79,16 @@ def test_failure_releases_original_grants():
     assert UsageLedger.objects.filter(job=job,kind='release',meter='file_tasks').count()==1
 
 def test_daily_boundary_and_purchased_task_exception():
-    a=account();asset=upload(a)
-    for i in range(3):
+    from apps.core.policy import plan_limits
+    a=account();asset=upload(a);cap=plan_limits(a)['daily_file_tasks']
+    for i in range(cap):
         q=quote(a,asset);job,_=submit_job(a,q.id,f'daily-request-{i}');execute_job(job.id)
     q=quote(a,asset)
     with pytest.raises(DomainError,match='quota_exceeded'): submit_job(a,q.id,'daily-over-limit')
     UsageGrant.objects.create(account=a,meter='file_tasks',source='purchased',source_id='test-pack-task',quantity=1,valid_from=timezone.now())
     UsageGrant.objects.create(account=a,meter='file_page_units',source='purchased',source_id='test-pack-page',quantity=10,valid_from=timezone.now())
     job,_=submit_job(a,q.id,'daily-purchased');execute_job(job.id)
-    assert usage_snapshot(a)['daily']['used']==3
+    assert usage_snapshot(a)['daily']['used']==cap
     assert UsageLedger.objects.filter(job=job,meter='file_tasks',kind='consume').get().grant.source=='purchased'
 
 def test_quota_and_concurrency_do_not_overspend():
