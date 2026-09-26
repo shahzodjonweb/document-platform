@@ -198,3 +198,20 @@ def test_simulated_callback_targets_its_original_message_across_sessions(custome
     dispatch_local(customer, text='Another')
     identifiers = list(LocalBotMessage.objects.filter(direction='outbound').values_list('telegram_message_id', flat=True))
     assert len(identifiers) == len(set(identifiers))
+
+
+def test_the_native_menu_offers_both_services_and_no_folder():
+    """Telegram's own command list is a menu too, and had the folder's name in it.
+
+    A "Create with AI" entry there would still send people looking for a screen
+    that no longer exists, so it lists the two services instead.
+    """
+    from telegram.commands import COMMANDS
+    for locale, commands in COMMANDS.items():
+        assert 'document' in commands and 'slides' in commands, locale
+        assert 'ai' not in commands, f'{locale} still advertises the folder'
+        labels = ' '.join(commands.values()).lower()
+        for gone in ('create with ai', 'ai bilan yaratish', 'создать с ии'):
+            assert gone not in labels, f'{locale} still names the folder: {gone}'
+    # The two services come straight after the main menu, as they do in the chat.
+    assert list(COMMANDS['en'])[:3] == ['start', 'document', 'slides']

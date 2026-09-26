@@ -68,7 +68,7 @@ def describe(customer, description, service='PDF Document'):
     return dispatch_local(customer, text=description)
 
 
-SERVICE_LABELS = ['\U0001F4C4 PDF Document', '\U0001F4CA PDF Slides']
+SERVICE_LABELS = ['✨ PDF Document · AI', '✨ PDF Slides · AI']
 
 
 def test_the_two_services_lead_the_menus_with_no_folder_to_open(customer):
@@ -80,6 +80,12 @@ def test_the_two_services_lead_the_menus_with_no_folder_to_open(customer):
     start = dispatch_local(customer, text='/ai')
     assert labels(start)[:2] == SERVICE_LABELS, labels(start)
     assert not any('create with ai' in label.lower() for label in labels(start))
+    # Both say they are the AI feature. Without the folder that said it for them,
+    # nothing else on the menu distinguishes them from the file tools.
+    file_tools = [label for label in labels(start) if label not in SERVICE_LABELS]
+    for label in SERVICE_LABELS:
+        assert label.startswith('✨') and label.endswith('AI')
+    assert not any('✨' in label for label in file_tools), file_tools
     assert set(generation.SERVICES) == GENERATION_IDS == {DOCUMENT, SLIDES}
 
     tools = tap(customer, start, 'All tools')
