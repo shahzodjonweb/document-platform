@@ -202,6 +202,11 @@ def deployment_lock(root, timeout=600):
         yield
 
 
+# Pre-activation dumps worth keeping: enough to recover from a bad release
+# without letting a growing database fill the disk one deployment at a time.
+KEEP_BACKUPS = 5
+
+
 class Deployer:
     def __init__(self, root, component, runner=command):
         if component not in ('platform', 'web'):
@@ -281,8 +286,70 @@ class Deployer:
                          'python', 'manage.py', 'collectstatic', '--noinput')
         self.start_services(release)
 
+    def reclaim(self, state):
+        """Reclaim the disk that superseded releases hold, before unpacking.
+
+        Every deployment leaves behind a release directory, a loaded image and,
+        for the platform, a full pre-activation database dump. None of them was
+        ever removed, so the disk filled until an unpack failed — which is how a
+        healthy build comes to look like a broken release.
+
+        Strictly inside this component's own directory. The host serves other
+        projects, so nothing here prunes Docker globally, and no image any
+        surviving release still names is touched. The active release, the
+        previous one that rollback depends on, and any pending one are all kept.
+        Housekeeping never fails a deployment: a stale file that cannot be
+        removed is not a reason to refuse a release.
+        """
+        try:
+            keep_ids, keep_images = set(), set()
+            for slot in ('active', 'previous', 'pending'):
+                release = (state or {}).get(slot) or {}
+                keep_ids.add(release.get('release_id'))
+                keep_images.add(release.get('image'))
+            releases = self.root / 'releases'
+            if releases.is_dir():
+                for directory in sorted(releases.iterdir()):
+                    if directory.is_symlink() or not directory.is_dir() or directory.name in keep_ids:
+                        continue
+                    image = (read_json(directory / 'release.json') or {}).get('image')
+                    shutil.rmtree(directory, ignore_errors=True)
+                    if image and image not in keep_images:
+                        # Docker refuses an image a running container still
+                        # uses, which is exactly the guard we want here.
+                        try:
+                            self.run(['docker', 'image', 'rm', image])
+                        except Exception:
+                            pass
+            backups = self.root / 'backups'
+            if backups.is_dir():
+                dumps = sorted(p for p in backups.glob('before-*.dump')
+                               if p.is_file() and not p.is_symlink())
+                for path in dumps[:max(0, len(dumps) - KEEP_BACKUPS)]:
+                    try:
+                        path.unlink()
+                    except OSError:
+                        pass
+            # Each delivery leaves its unpacked scripts behind, and the
+            # documented manual rollback is run from one of them, so keep the
+            # most recent few rather than clearing them out.
+            incoming = self.root / 'incoming'
+            if incoming.is_dir():
+                arrivals = sorted((p for p in incoming.iterdir()
+                                   if p.is_dir() and not p.is_symlink()),
+                                  key=lambda p: p.stat().st_mtime)
+                for path in arrivals[:max(0, len(arrivals) - KEEP_BACKUPS)]:
+                    shutil.rmtree(path, ignore_errors=True)
+        except Exception:
+            return
+
     def deploy(self, bundle):
         self.preflight()
+        state_path = self.root / 'state.json'
+        state = read_json(state_path, {'active': None, 'previous': None, 'last_run': [0, 0]})
+        # Before anything is written: the incoming archive has to land on this
+        # disk, and a full disk is what stops a release, not a bad build.
+        self.reclaim(state)
         with tempfile.TemporaryDirectory(prefix='release-', dir=self.root) as temp:
             staging = Path(temp)
             meta = unpack(bundle, staging)
@@ -290,8 +357,6 @@ class Deployer:
                 raise DeploymentError('Release belongs to a different isolated project.')
             if meta['architecture'] != self.architecture:
                 raise DeploymentError('Image/server architecture mismatch; set DEPLOY_PLATFORM.')
-            state_path = self.root / 'state.json'
-            state = read_json(state_path, {'active': None, 'previous': None, 'last_run': [0, 0]})
             if [meta['run_id'], meta['run_attempt']] < state['last_run']:
                 return {'status': 'ignored_stale_release', 'component': self.component}
             old = state.get('active')
@@ -335,6 +400,9 @@ class Deployer:
                 raise DeploymentError('Release failed health/migration checks; previous image restored when available. Other projects were not changed. Database migrations were not reversed.') from None
             state.update(previous=old, active=meta, pending=None)
             write_json(state_path, state)
+            # Now that this release is active and the old one is the rollback
+            # target, whatever they displaced is genuinely finished with.
+            self.reclaim(state)
             return {'status': 'deployed', 'component': self.component, 'project': self.project,
                     'commit': meta['commit'], 'url': 'https://' + self.settings['PUBLIC_DOMAIN']}
 

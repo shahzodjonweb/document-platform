@@ -48,7 +48,9 @@ python3 ~/pdf-master/platform/incoming/RELEASE_DIRECTORY/server.py rollback --co
 python3 ~/pdf-master/web/incoming/RELEASE_DIRECTORY/server.py rollback --component web
 ```
 
-The first release has no previous image to restore. The persistent directories contain `.env`, `.owner`, `state.json`, `deploy.lock`, `releases/` and `incoming/`. Platform database dumps are in `~/pdf-master/platform/backups/`. Images, previous releases and backups are retained; configure a scoped retention and off-server backup policy. Preserve the platform environment's encryption keys together with database and private-file backups.
+The first release has no previous image to restore. The persistent directories contain `.env`, `.owner`, `state.json`, `deploy.lock`, `releases/` and `incoming/`. Platform database dumps are in `~/pdf-master/platform/backups/`.
+
+Each deployment reclaims its own disk before unpacking and again once the new release is active: it keeps the active release, the previous one rollback depends on, any pending one, and the five most recent database dumps and delivered script directories. Everything older is removed along with the image only that release named. This stays inside `~/pdf-master/<component>/` and never prunes Docker globally, so other projects on the host are untouched. An image a running container still uses is refused by Docker and left alone, and a housekeeping failure never fails a release. Off-server backup retention is still yours to configure — five pre-activation dumps is a rollback aid, not an archive. Preserve the platform environment's encryption keys together with database and private-file backups.
 
 ## HTTPS alongside existing projects
 

@@ -265,3 +265,118 @@ class Releases(unittest.TestCase):
             self.assertIn('SSH connection closed before release delivery',result.stderr)
             self.assertNotIn('Traceback',result.stderr)
             self.assertNotIn('sentinel-private-value',result.stdout+result.stderr)
+
+
+class Retention(Releases):
+    """Superseded releases, their images and old dumps must not fill the disk.
+
+    Every deployment used to leave all three behind for good, so the disk
+    filled until an unpack failed — a healthy build looking like a broken
+    release. Reclaiming happens before anything is written, because the
+    incoming archive has to fit.
+    """
+
+    def dumps(self, component='platform'):
+        return sorted(p.name for p in (self.root / component / 'backups').glob('before-*.dump'))
+
+    def releases(self, component='platform'):
+        directory = self.root / component / 'releases'
+        return sorted(p.name for p in directory.iterdir()) if directory.is_dir() else []
+
+    def test_superseded_releases_and_their_images_are_removed(self):
+        first = self.deploy('platform', 10)[1]
+        second = self.deploy('platform', 11)[1]
+        self.assertEqual(self.releases(), sorted([first['release_id'], second['release_id']]))
+
+        third = self.deploy('platform', 12)[1]
+        # The active release and the previous one rollback needs both survive.
+        self.assertEqual(self.releases(), sorted([second['release_id'], third['release_id']]))
+        self.assertNotIn(first['release_id'], self.releases())
+        self.assertIn(['docker', 'image', 'rm', first['image']], self.docker.calls)
+
+    def test_an_image_a_surviving_release_still_names_is_never_removed(self):
+        kept = [self.deploy('platform', run)[1] for run in (10, 11, 12)]
+        removals = [call[-1] for call in self.docker.calls if call[:3] == ['docker', 'image', 'rm']]
+        for release in kept[1:]:
+            self.assertNotIn(release['image'], removals, 'a live release lost its image')
+
+    def test_a_failed_release_still_has_something_to_fall_back_to(self):
+        """Reclaiming must never remove what a failed activation restores."""
+        self.deploy('platform', 10)
+        active = self.deploy('platform', 11)[1]
+        self.docker.fail_health = True
+        with self.assertRaisesRegex(server.DeploymentError, 'previous image restored'):
+            self.deploy('platform', 12)
+
+        self.assertEqual(self.state('platform')['active'], active)
+        self.assertIn(active['release_id'], self.releases(), 'the restored release is still on disk')
+        removals = [call[-1] for call in self.docker.calls if call[:3] == ['docker', 'image', 'rm']]
+        self.assertNotIn(active['image'], removals, 'the restored image was reclaimed')
+
+    def test_a_manual_rollback_still_has_its_target(self):
+        self.deploy('platform', 10)
+        self.deploy('platform', 11)
+        self.deploy('platform', 12)
+        target = self.state('platform')['previous']
+        self.assertIn(target['release_id'], self.releases())
+        result = self.deployer('platform').rollback()
+        self.assertEqual(result['status'], 'rolled_back')
+        self.assertEqual(self.state('platform')['active'], target)
+
+    def test_only_the_newest_pre_activation_dumps_are_kept(self):
+        for run in range(10, 10 + server.KEEP_BACKUPS + 3):
+            self.deploy('platform', run)
+        self.assertEqual(len(self.dumps()), server.KEEP_BACKUPS,
+                         'a dump per deployment is what fills the disk')
+        # The ones kept are the newest, not an arbitrary subset.
+        self.assertEqual(self.dumps(), sorted(self.dumps())[-server.KEEP_BACKUPS:])
+
+    def test_reclaiming_never_reaches_outside_this_component(self):
+        self.deploy('platform', 10)
+        self.deploy('web', 20)
+        self.deploy('web', 21)
+        web_releases, web_state = self.releases('web'), self.state('web')
+        self.docker.calls.clear()
+
+        for run in (11, 12, 13):
+            self.deploy('platform', run)
+        # The host serves other projects; this one only ever touches its own.
+        self.assertEqual(self.releases('web'), web_releases)
+        self.assertEqual(self.state('web'), web_state)
+        self.assert_only_project('platform')
+        self.assertFalse(any('prune' in call or 'system' in call for call in self.docker.calls))
+        removals = [call[-1] for call in self.docker.calls if call[:3] == ['docker', 'image', 'rm']]
+        self.assertTrue(removals, 'the platform did reclaim something')
+        self.assertFalse([image for image in removals if 'web' in image])
+
+    def test_a_deployment_survives_housekeeping_that_cannot_run(self):
+        """A stale file that will not delete is not a reason to refuse a release."""
+        self.deploy('platform', 10)
+        self.deploy('platform', 11)
+        broken = self.root / 'platform' / 'releases' / 'not-a-release'
+        broken.mkdir()
+        (broken / 'release.json').write_text('{ this is not json')
+        result, meta = self.deploy('platform', 12)
+        self.assertEqual(result['status'], 'deployed')
+        self.assertEqual(self.state('platform')['active'], meta)
+
+    def test_delivered_script_directories_are_bounded_but_kept(self):
+        """The documented manual rollback is run from one of these."""
+        root = self.root / 'platform' / 'incoming'
+        root.mkdir(parents=True, exist_ok=True)
+        for index in range(server.KEEP_BACKUPS + 4):
+            delivery = root / f'delivery-{index}'
+            delivery.mkdir()
+            (delivery / 'server.py').write_text('# delivered deploy script\n')
+            os.utime(delivery, (index, index))
+        self.deployer('platform').reclaim({'active': None, 'previous': None})
+
+        remaining = sorted(p.name for p in root.iterdir())
+        self.assertEqual(len(remaining), server.KEEP_BACKUPS)
+        self.assertIn(f'delivery-{server.KEEP_BACKUPS + 3}', remaining, 'the newest survived')
+        self.assertNotIn('delivery-0', remaining)
+
+    def test_nothing_is_reclaimed_on_a_first_deployment(self):
+        deployer = self.deployer('platform')
+        deployer.reclaim({'active': None, 'previous': None, 'last_run': [0, 0]})
+        self.assertFalse([c for c in self.docker.calls if c[:3] == ['docker', 'image', 'rm']])
