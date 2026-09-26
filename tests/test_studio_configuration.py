@@ -70,3 +70,34 @@ def test_the_page_style_is_fixed_at_what_the_fill_targets_were_measured_against(
         style = unpack(draft.encrypted_data)['options']['template_style']
         assert style == {'accent': '#255e49'}, f'{sent} must not change the page metrics'
         assert 'margin' not in style and 'body_size' not in style, 'the renderer default stands'
+
+
+def test_a_document_is_not_given_a_structure_nobody_asked_for(settings):
+    """The description is the whole brief, so the structure comes from it.
+
+    Every draft used to be seeded with a fixed Overview / Key ideas / Practice /
+    Review cycle and the model was told to use that outline — so every document
+    came back with a practice section of tasks and a review section the customer
+    never asked for, and on anything past four pages the four repeated.
+    """
+    from apps.studio.domain import create_draft, draft_data
+    settings.DEBUG = True
+    customer = account()
+    draft = create_draft(customer, {'feature_id': DOCUMENT,
+                                    'prompt': 'A 6 page guide to reading tide tables.'})
+    sections = draft_data(draft)['content']['sections']
+    assert len(sections) == 6
+    assert [section['heading'] for section in sections] == [''] * 6, \
+        'nothing is put in the outline that the description did not ask for'
+    assert draft_data(draft)['content']['questions'] == []
+
+
+def test_the_model_is_told_to_write_only_what_was_asked_for():
+    """The outline is empty now, so the instruction is what holds the line."""
+    from apps.studio.provider import SYSTEM
+    instructions = SYSTEM.lower()
+    for unasked in ('exercises', 'practice tasks', 'review', 'summaries', 'glossaries', 'appendices'):
+        assert unasked in instructions, f'the model is not told to leave out {unasked}'
+    assert 'unless the description asks for them' in instructions
+    # And it still has to name the sections it writes.
+    assert 'write a heading that fits the description wherever one is blank' in instructions

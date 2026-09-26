@@ -137,6 +137,7 @@ MESSAGES = {
     # was asked for. These are keyed by the job's own warning codes.
     'questions_trimmed': ('ℹ️ Questions you did not ask for were left out, and not charged for.', 'ℹ️ So‘ramagan savollar qo‘shilmadi va hisoblanmadi.', 'ℹ️ Вопросы, которые вы не запрашивали, не добавлены и не оплачены.'),
     'sections_trimmed': ('ℹ️ The document was trimmed to the number of pages you asked for.', 'ℹ️ Hujjat siz so‘ragan sahifa soniga qisqartirildi.', 'ℹ️ Документ сокращён до запрошенного количества страниц.'),
+    'citations_dropped': ('ℹ️ A source reference that did not match any file you sent was left out.', 'ℹ️ Siz yuborgan fayllarga mos kelmagan manba havolasi qo‘shilmadi.', 'ℹ️ Ссылка на источник, не совпавшая с вашими файлами, не добавлена.'),
     'longer_than_quoted': ('ℹ️ This came out a little longer than estimated. You were charged for the pages you asked for, not the extra.', 'ℹ️ Hujjat taxmindan biroz uzunroq chiqdi. Siz so‘ragan sahifalar uchun hisoblandi, qo‘shimchasi uchun emas.', 'ℹ️ Документ вышел чуть длиннее, чем ожидалось. Оплачены страницы, которые вы запросили, а не лишние.'),
 }
 

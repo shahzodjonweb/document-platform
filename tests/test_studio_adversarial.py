@@ -265,3 +265,21 @@ def test_how_many_files_a_document_can_be_built_from_follows_the_plan(settings):
     for asset in FileAsset.objects.filter(account=free_account):
         asset.account=premium;asset.save(update_fields=['account'])
     assert source_excerpts(premium,ids)
+
+
+def test_a_citation_on_a_document_with_nothing_to_cite_is_dropped_not_fatal(settings,monkeypatch):
+    """With no sources uploaded there is nothing to ground, so a reference the
+    model volunteers is decoration — it used to destroy the paid document."""
+    a=paid(settings,account());live_configuration()
+    draft=create_draft(a,{'feature_id':'ai.pdf_topic','prompt':'A 1 page guide to tide tables.'})
+    raw=raw_content()
+    raw['citations']=[{'asset_id':str(uuid.uuid4()),'page':1,'quote':'Invented from nowhere.'}]
+    monkeypatch.setattr(provider,'generate',lambda *args,**kwargs:(raw,{'input_tokens':100,'output_tokens':100}))
+    q=generation_quote(a,draft.id,1);job,_=submit_job(a,q.id,'cite-no-source');job=execute_job(job.id)
+
+    assert job.status=='succeeded',job.error_code
+    assert 'citations_dropped' in job.warnings
+    # And the unverifiable reference reaches neither the document nor the draft.
+    text=''.join(p.extract_text() for p in PdfReader(storage_path(job.artifacts.get().file.object_key)).pages)
+    assert 'Invented from nowhere' not in text and 'Source' not in text
+    draft.refresh_from_db();assert draft_data(draft)['content']['citations']==[]

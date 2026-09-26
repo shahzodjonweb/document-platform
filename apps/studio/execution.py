@@ -26,10 +26,20 @@ def execute_generation(job,output_dir):
         try:
             raw,usage=generate(cfg,data,job.feature_id,job.id,token_limit=job.quote.policy['generation_bounds']['input_tokens'],deadline=deadline)
             content=validate_content(job.account,raw,data['output_format'])
+            # A reference has to point at a real page of a real supplied source and
+            # quote it word for word. What an unusable one means depends on whether
+            # the customer supplied anything to cite: against their own sources it
+            # is a fabricated attribution and the document is not what they asked
+            # for, so the job fails. With nothing uploaded there is nothing to
+            # ground and the reference is only decoration, so it is dropped — it
+            # used to destroy the document instead.
             references=[]
             for ref in raw.get('citations',[]):
                 source=next((s for s in data['excerpts'] if s['asset_id']==ref.get('asset_id') and s['page']==ref.get('page')),None)
-                if not source or not ref.get('quote') or ref['quote'] not in source['text']:raise DomainError('invalid_source_citation')
+                if not source or not ref.get('quote') or ref['quote'] not in source['text']:
+                    if data['excerpts']:raise DomainError('invalid_source_citation')
+                    if 'citations_dropped' not in warnings:warnings.append('citations_dropped')
+                    continue
                 references.append({k:ref[k] for k in ('asset_id','page','quote')})
             content['citations']=references
             ProviderUsage.objects.create(job=job,provider='openai',model=cfg['model'],input_tokens=usage.get('input_tokens',0),output_tokens=usage.get('output_tokens',0),outcome='succeeded')

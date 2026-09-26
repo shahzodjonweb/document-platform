@@ -188,8 +188,12 @@ def _prepare_draft(account,data):
         draft_content={**original['content'],'sections':sections}
     else:
         chunks=[p.strip() for p in (text or '\n\n'.join(x['text'] for x in excerpts)).split('\n\n') if p.strip()]
-        headings={'en':['Overview','Key ideas','Practice','Review'],'uz':['Umumiy ma’lumot','Asosiy fikrlar','Mashq','Takrorlash'],'ru':['Обзор','Основные идеи','Практика','Повторение']}[locale]
-        sections=[{'id':f's{i+1}','heading':headings[i%4], 'body':('\n\n'.join(chunks[i:]) if i==length-1 else chunks[i]) if i<len(chunks) else '', 'notes':''} for i in range(length)]
+        # No headings. They used to be seeded with a fixed Overview / Key ideas /
+        # Practice / Review cycle, which handed every document a practice section
+        # and a review section nobody asked for — and repeated the four of them
+        # every four pages. The description is the brief, so the structure comes
+        # from the description.
+        sections=[{'id':f's{i+1}','heading':'', 'body':('\n\n'.join(chunks[i:]) if i==length-1 else chunks[i]) if i<len(chunks) else '', 'notes':''} for i in range(length)]
         draft_content={'title':title,'sections':sections,'questions':options.get('questions',[]),'citations':[{'asset_id':x['asset_id'],'page':x['page']} for x in excerpts]}
     content=validate_content(account,draft_content,fmt)
     payload={'title':title,'prompt':prompt,'source_text':text,'source_ids':ids,'excerpts':excerpts,'output_locale':locale,'output_format':fmt,'options':options,'content':content}
