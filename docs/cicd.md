@@ -50,7 +50,16 @@ python3 ~/pdf-master/web/incoming/RELEASE_DIRECTORY/server.py rollback --compone
 
 The first release has no previous image to restore. The persistent directories contain `.env`, `.owner`, `state.json`, `deploy.lock`, `releases/` and `incoming/`. Platform database dumps are in `~/pdf-master/platform/backups/`.
 
-Each deployment reclaims its own disk before unpacking and again once the new release is active: it keeps the active release, the previous one rollback depends on, any pending one, and the five most recent database dumps and delivered script directories. Everything older is removed along with the image only that release named. This stays inside `~/pdf-master/<component>/` and never prunes Docker globally, so other projects on the host are untouched. An image a running container still uses is refused by Docker and left alone, and a housekeeping failure never fails a release. Off-server backup retention is still yours to configure — five pre-activation dumps is a rollback aid, not an archive. Preserve the platform environment's encryption keys together with database and private-file backups.
+Each deployment reclaims its own disk before unpacking and again once the new release is active: it keeps the active release, the previous one rollback depends on, any pending one, and the five most recent database dumps and delivered script directories. Everything older is removed along with the image only that release named. This stays inside `~/pdf-master/<component>/` and never prunes Docker globally, so other projects on the host are untouched. An image a running container still uses is refused by Docker and left alone, and a housekeeping failure never fails a release. Off-server backup retention is still yours to configure — five pre-activation dumps is a rollback aid, not an archive.
+
+If a disk has already filled, that reclaim cannot save you: the deploy scripts have to land on the server before any of it runs, and a full disk stops even that. Break the deadlock once with `scripts/deploy/reclaim.py`, which applies the same policy by hand and reports before it removes anything.
+
+```
+python3 reclaim.py --component platform           # report only
+python3 reclaim.py --component platform --apply   # remove
+```
+
+Copy it next to the other deploy scripts, or paste it into a heredoc if there is no room to scp. After one run the protocol keeps the component bounded on its own. Preserve the platform environment's encryption keys together with database and private-file backups.
 
 ## HTTPS alongside existing projects
 

@@ -380,3 +380,89 @@ class Retention(Releases):
         deployer = self.deployer('platform')
         deployer.reclaim({'active': None, 'previous': None, 'last_run': [0, 0]})
         self.assertFalse([c for c in self.docker.calls if c[:3] == ['docker', 'image', 'rm']])
+
+
+class ManualReclaim(unittest.TestCase):
+    """The recovery tool for a disk that is already full.
+
+    The protocol reclaims on every deployment, but it runs on the server and
+    so needs room to land there first. This is what breaks that deadlock, and
+    it has to behave on a box where things are already broken.
+    """
+
+    def setUp(self):
+        spec = importlib.util.spec_from_file_location('deployment_reclaim', DIRECTORY / 'reclaim.py')
+        self.reclaim = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.reclaim)
+        self.temp = tempfile.TemporaryDirectory()
+        self.root = Path(self.temp.name) / 'platform'
+        for name in ('releases', 'backups', 'incoming'):
+            (self.root / name).mkdir(parents=True)
+        self.ids = [f'release{i}-{i}-1' for i in range(8)]
+        for release_id in self.ids:
+            directory = self.root / 'releases' / release_id
+            directory.mkdir()
+            (directory / 'release.json').write_text(
+                json.dumps({'release_id': release_id, 'image': f'pdfmaster-platform:{release_id}'}))
+            (directory / 'payload').write_bytes(b'x' * 2048)
+        for index in range(9):
+            path = self.root / 'backups' / f'before-{1000 + index:019d}.dump'
+            path.write_bytes(b'PGDMP' + b'y' * 4096)
+            os.utime(path, (index, index))
+        for index in range(7):
+            delivery = self.root / 'incoming' / f'delivery-{index}'
+            delivery.mkdir()
+            (delivery / 'server.py').write_bytes(b'z' * 1024)
+            os.utime(delivery, (index, index))
+        (self.root / 'state.json').write_text(json.dumps({
+            'active': {'release_id': self.ids[7], 'image': f'pdfmaster-platform:{self.ids[7]}'},
+            'previous': {'release_id': self.ids[6], 'image': f'pdfmaster-platform:{self.ids[6]}'},
+            'pending': None, 'last_run': [7, 1]}))
+
+    def tearDown(self):
+        self.temp.cleanup()
+
+    def run_tool(self, *extra):
+        sys.argv = ['reclaim.py', '--component', 'platform', '--root', str(self.root), *extra]
+        stdout, sys.stdout = sys.stdout, io.StringIO()
+        try:
+            self.reclaim.main()
+            return sys.stdout.getvalue()
+        finally:
+            sys.stdout = stdout
+
+    def names(self, folder):
+        return sorted(p.name for p in (self.root / folder).iterdir())
+
+    def test_reporting_removes_nothing(self):
+        output = self.run_tool()
+        self.assertIn('Would free', output)
+        self.assertIn('Re-run with --apply', output)
+        self.assertEqual(len(self.names('releases')), 8, 'a report must not delete')
+        self.assertEqual(len(self.names('backups')), 9)
+
+    def test_applying_keeps_exactly_what_a_rollback_needs(self):
+        self.run_tool('--apply')
+        self.assertEqual(self.names('releases'), sorted([self.ids[6], self.ids[7]]))
+        self.assertEqual(len(self.names('backups')), self.reclaim.KEEP)
+        self.assertEqual(len(self.names('incoming')), self.reclaim.KEEP)
+        # The newest are the ones kept, not an arbitrary subset.
+        self.assertEqual(self.names('backups')[-1], f'before-{1008:019d}.dump')
+        self.assertEqual(self.names('incoming')[-1], 'delivery-6')
+        self.assertTrue((self.root / 'state.json').is_file())
+
+    def test_an_unreachable_docker_still_frees_the_disk(self):
+        """Freeing space is the point; a stranded image is reported, not fatal."""
+        self.reclaim.subprocess.run = lambda *a, **k: (_ for _ in ()).throw(OSError('no docker'))
+        output = self.run_tool('--apply')
+        self.assertEqual(self.names('releases'), sorted([self.ids[6], self.ids[7]]))
+        self.assertIn('image(s) were left in place', output)
+
+    def test_running_it_twice_is_a_no_op(self):
+        self.run_tool('--apply')
+        self.assertIn('Nothing to reclaim', self.run_tool())
+
+    def test_it_refuses_a_directory_that_is_not_a_component(self):
+        with self.assertRaises(SystemExit):
+            sys.argv = ['reclaim.py', '--component', 'platform', '--root', str(self.root / 'nope')]
+            self.reclaim.main()
