@@ -29,13 +29,24 @@ def saved_image(image, marker, oci=False):
 
 class Docker:
     def __init__(self):
-        self.calls=[]; self.images={}; self.exports={}; self.fail_health=False; self.project_exists=False
+        # `images` is what the daemon holds; `loadable` is what a bundle would
+        # add once `docker load` runs, so a reclaim before unpacking sees the
+        # same thing it would on a real server.
+        self.calls=[]; self.images={}; self.loadable={}; self.exports={}
+        self.fail_health=False; self.project_exists=False
     def __call__(self,args,**kwargs):
         self.calls.append(args)
         if args[:3]==['docker','compose','version']:return '2.39.0'
         if args[:2]==['docker','info']:return 'x86_64'
         if args[:2]==['docker','ps']:return 'unmanaged-container' if self.project_exists else ''
         if args[:3]==['docker','volume','ls']:return ''
+        if args[:2]==['docker','load']:
+            self.images.update(self.loadable);self.loadable={};return ''
+        if args[:2]==['docker','images']:
+            prefix=args[args.index('--filter')+1].split('=',1)[1].rstrip('*')
+            return '\n'.join(sorted(t for t in self.images if t.startswith(prefix)))
+        if args[:3]==['docker','image','rm']:
+            self.images.pop(args[-1],None);return ''
         if args[:3]==['docker','image','inspect']:return self.images[args[-1]]
         if args[:3]==['docker','image','save']:
             kwargs['output_stream'].write(self.exports[args[-1]]);return ''
@@ -74,7 +85,7 @@ class Releases(unittest.TestCase):
               'image_id':config_id,
               'architecture':architecture,'contract_sha256':contract,
               'archive_sha256':hashlib.sha256(image_bytes if not corrupt else b'wrong').hexdigest()}
-        self.docker.images[meta['image']]=meta['image_id']
+        self.docker.loadable[meta['image']]=meta['image_id']
         self.docker.exports[meta['image']]=image_bytes
         members={'release.json':json.dumps(meta).encode(),'image.tar.gz':image_bytes,
                  'stack/compose.yaml':('name: pdfmaster-'+component+'\n').encode(),'stack/nginx.conf':b'server {}'}
@@ -212,7 +223,7 @@ class Releases(unittest.TestCase):
 
     def test_loaded_image_identity_must_match(self):
         bundle,meta=self.bundle('platform',10)
-        self.docker.images[meta['image']]='sha256:'+'0'*64
+        self.docker.loadable[meta['image']]='sha256:'+'0'*64
         self.docker.exports[meta['image']]=saved_image(meta['image'],'different-image',oci=True)[0]
         with self.assertRaisesRegex(server.DeploymentError,'identity mismatch'):
             self.deployer('platform').deploy(bundle)
@@ -220,7 +231,7 @@ class Releases(unittest.TestCase):
 
     def test_containerd_manifest_id_verifies_the_original_config_digest(self):
         bundle,meta=self.bundle('web',10)
-        self.docker.images[meta['image']]='sha256:'+'b'*64
+        self.docker.loadable[meta['image']]='sha256:'+'b'*64
         self.docker.exports[meta['image']]=saved_image(meta['image'],meta['release_id'],oci=True)[0]
         self.assertEqual(self.deployer('web').deploy(bundle)['status'],'deployed')
         self.assert_only_project('web')
@@ -360,6 +371,31 @@ class Retention(Releases):
         self.assertEqual(result['status'], 'deployed')
         self.assertEqual(self.state('platform')['active'], meta)
 
+    def test_an_image_whose_release_directory_is_gone_is_still_reclaimed(self):
+        """43 of these had piled up on the real server and filled the disk.
+
+        An image outlives its release directory when the directory is cleaned
+        up by hand or a deployment is interrupted, and nothing would ever have
+        removed it.
+        """
+        self.deploy('platform', 10)
+        self.deploy('platform', 11)
+        orphan = 'pdfmaster-platform:orphaned-9-1'
+        self.docker.images[orphan] = 'sha256:' + 'c' * 64
+        self.deploy('platform', 12)
+        self.assertNotIn(orphan, self.docker.images, 'an orphaned image was left behind')
+
+    def test_the_sweep_stays_inside_this_components_tags(self):
+        self.deploy('platform', 10)
+        self.deploy('platform', 11)
+        stranger = 'someone-elses-project:latest'
+        web_image = 'pdfmaster-web:not-this-component-1-1'
+        self.docker.images[stranger] = 'sha256:' + 'd' * 64
+        self.docker.images[web_image] = 'sha256:' + 'e' * 64
+        self.deploy('platform', 12)
+        self.assertIn(stranger, self.docker.images, 'another project lost an image')
+        self.assertIn(web_image, self.docker.images, 'the other component lost an image')
+
     def test_delivered_script_directories_are_bounded_but_kept(self):
         """The documented manual rollback is run from one of these."""
         root = self.root / 'platform' / 'incoming'
@@ -394,6 +430,10 @@ class ManualReclaim(unittest.TestCase):
         spec = importlib.util.spec_from_file_location('deployment_reclaim', DIRECTORY / 'reclaim.py')
         self.reclaim = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(self.reclaim)
+        # `self.reclaim.subprocess` is the one global subprocess module, so a
+        # patched `run` would leak into every later test in the process.
+        self.real_run = subprocess.run
+        self.addCleanup(setattr, subprocess, 'run', self.real_run)
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name) / 'platform'
         for name in ('releases', 'backups', 'incoming'):
@@ -457,6 +497,16 @@ class ManualReclaim(unittest.TestCase):
         output = self.run_tool('--apply')
         self.assertEqual(self.names('releases'), sorted([self.ids[6], self.ids[7]]))
         self.assertIn('image(s) were left in place', output)
+
+    def test_it_reports_unreferenced_images_in_our_own_namespace(self):
+        """The real server had 43 of these holding 30 GB."""
+        listing = 'pdfmaster-platform:orphan-1-1\t1.7GB\npdfmaster-platform:orphan-2-1\t1.7GB\n'
+        self.reclaim.subprocess.run = lambda *a, **k: type(
+            'R', (), {'stdout': listing if 'images' in a[0] else '', 'returncode': 0})()
+        output = self.run_tool()
+        self.assertIn('orphan', output)
+        self.assertIn('pdfmaster-platform:orphan-1-1', output)
+        self.assertIn('2 unreferenced image(s)', output)
 
     def test_running_it_twice_is_a_no_op(self):
         self.run_tool('--apply')

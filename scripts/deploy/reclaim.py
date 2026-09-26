@@ -91,17 +91,43 @@ def main():
             freed += size
             doomed.append((name, path, None, size))
 
-    if not doomed:
+    # An image can outlive the release directory that named it, and then
+    # nothing else would ever reclaim it. Only this component's own tags.
+    orphans = []
+    try:
+        listed = subprocess.run(
+            ['docker', 'images', '--filter', f'reference=pdfmaster-{args.component}:*',
+             '--format', '{{.Repository}}:{{.Tag}}\t{{.Size}}'],
+            capture_output=True, text=True, check=False).stdout
+    except OSError:
+        listed = ''
+    named = {image for _, _, image, _ in doomed if image} | keep_images
+    for line in listed.splitlines():
+        tag, _, size = line.partition('\t')
+        if tag and not tag.endswith(':<none>') and tag not in named:
+            orphans.append((tag, size.strip()))
+
+    if not doomed and not orphans:
         print('Nothing to reclaim.')
         return
     for kind, path, image, size in doomed:
         print(f'  {kind:9} {human(size):>9}  {path.name}' + (f'   (image {image})' if image else ''))
-    print(f'\n{"Would free" if not args.apply else "Freeing"}: {human(freed)} in {len(doomed)} items')
+    for tag, size in orphans:
+        print(f'  {"orphan":9} {size:>9}  {tag}')
+    print(f'\n{"Would free" if not args.apply else "Freeing"}: {human(freed)} on disk'
+          f' in {len(doomed)} items, plus {len(orphans)} unreferenced image(s)')
 
     if not args.apply:
         print('\nRe-run with --apply to remove these.')
         return
     stranded = 0
+    for tag, _ in orphans:
+        try:
+            result = subprocess.run(['docker', 'image', 'rm', tag], stdout=subprocess.DEVNULL,
+                                    stderr=subprocess.DEVNULL, check=False)
+            stranded += 1 if result.returncode else 0
+        except OSError:
+            stranded += 1
     for kind, path, image, _ in doomed:
         if path.is_dir():
             shutil.rmtree(path, ignore_errors=True)

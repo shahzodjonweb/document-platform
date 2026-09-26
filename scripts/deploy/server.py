@@ -321,6 +321,26 @@ class Deployer:
                             self.run(['docker', 'image', 'rm', image])
                         except Exception:
                             pass
+            # An image can outlive the release directory that named it — a
+            # cleaned-up directory, an interrupted deployment — and then
+            # nothing would ever reclaim it. Sweep our own tag namespace for
+            # any no surviving release still points at. Never forced, so an
+            # image a container is using is refused, and never wider than this
+            # component's own tags, because the host serves other projects.
+            try:
+                listed = self.run(['docker', 'images', '--filter',
+                                   f'reference=pdfmaster-{self.component}:*',
+                                   '--format', '{{.Repository}}:{{.Tag}}'])
+            except Exception:
+                listed = ''
+            for tag in (line.strip() for line in (listed or '').splitlines()):
+                if not tag or tag.endswith(':<none>') or tag in keep_images:
+                    continue
+                try:
+                    self.run(['docker', 'image', 'rm', tag])
+                except Exception:
+                    pass
+
             backups = self.root / 'backups'
             if backups.is_dir():
                 dumps = sorted(p for p in backups.glob('before-*.dump')
