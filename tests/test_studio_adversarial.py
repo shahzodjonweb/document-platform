@@ -11,7 +11,7 @@ from django.utils import timezone
 from pypdf import PdfReader
 from pptx import Presentation
 from apps.core.errors import DomainError
-from apps.core.models import Job,UsageLedger
+from apps.core.models import FileAsset,Job,UsageLedger
 from apps.core.services import submit_job,execute_job,storage_path
 from apps.studio import workflows,provider
 from apps.studio.domain import create_draft,update_draft,generation_quote,unpack,draft_data
@@ -240,3 +240,28 @@ def test_used_workflow_definition_can_be_deleted_without_erasing_history(setting
     response=login_client(a).delete(f'/api/v1/workflows/{row.id}')
     assert response.status_code==200,response.content
     run.refresh_from_db();assert run.definition_id is None and len(run.job_ids)==2 and run.snapshot['workflow_id']==str(row.id)
+
+
+def test_how_many_files_a_document_can_be_built_from_follows_the_plan(settings):
+    """Five sources was the same number for every plan, paid or not.
+
+    The cap is checked before any extraction, so this needs no real page content —
+    only that the number allowed comes from the plan and is enforced.
+    """
+    from apps.core.policy import plan_limits
+    from apps.studio.domain import source_excerpts
+    free_account=account();premium=paid(settings,account(91))
+    free_cap=plan_limits(free_account)['max_ai_source_files']
+    premium_cap=plan_limits(premium)['max_ai_source_files']
+    assert premium_cap>free_cap>0, 'a paid plan must allow more sources than a free one'
+    assert premium_cap>5, 'and more than the five every plan used to get'
+
+    ids=[str(upload(free_account,f'source-{i}.pdf').id) for i in range(free_cap+1)]
+    with pytest.raises(DomainError,match='generation_limit'):source_excerpts(free_account,ids)
+    # One fewer is within the plan and gets as far as reading the files.
+    assert source_excerpts(free_account,ids[:free_cap])
+
+    # The same number of files is not over the limit for a plan that allows more.
+    for asset in FileAsset.objects.filter(account=free_account):
+        asset.account=premium;asset.save(update_fields=['account'])
+    assert source_excerpts(premium,ids)

@@ -163,6 +163,8 @@ The attached plan_seed.json contains editable staging defaults:
 - Plus: 500 tasks, 10,000 page units, 1,500 AI credits; 50 MiB/file; 200 pages/job; batches of 5; two running jobs.
 - Premium: 2,000 tasks, 50,000 page units, 6,000 AI credits; 200 MiB/file; 1,000 pages/job; batches of 25; three running jobs.
 - Generation caps: Free 7 PDF pages or 12 slides; Plus 15 pages/30 slides; Premium 35 pages/60 slides.
+  Source files per AI document follow the plan too (5/15/40), alongside the
+  separate cap on their total pages.
   The page count is the limit customers are sold on, so it is the only thing that
   bounds a document's length: a longer document is written in several provider
   calls rather than being reduced to what one response can hold. The AI credit

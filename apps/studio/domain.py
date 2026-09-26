@@ -84,7 +84,10 @@ def draft_data(d):
 def source_excerpts(account,ids):
     if not ids:return []
     assets=owned_assets(account,ids)
-    if len(assets)>5 or sum(a.page_count for a in assets)>plan_limits(account)['max_ai_source_pages']:raise DomainError('generation_limit')
+    # How many files a document may be built from follows the plan rather than
+    # being the same five for everyone; total pages is capped separately.
+    caps=plan_limits(account)
+    if len(assets)>caps.get('max_ai_source_files',5) or sum(a.page_count for a in assets)>caps['max_ai_source_pages']:raise DomainError('generation_limit')
     # Extraction is performed in the bounded parser child, not inside the HTTP worker.
     result=[]
     for a in assets:

@@ -24,6 +24,7 @@ FIELDS = {
     'max_pages_per_job': (1, 10_000),
     'concurrent_jobs': (1, 64),
     'max_ai_source_pages': (1, 2_000),
+    'max_ai_source_files': (1, 100),
     'max_ai_input_tokens': (1_000, 2_000_000),
     'max_generated_pdf_pages': (1, 500),
     'max_generated_slides': (1, 500),
