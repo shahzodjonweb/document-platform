@@ -68,11 +68,28 @@ def describe(customer, description, service='PDF Document'):
     return dispatch_local(customer, text=description)
 
 
-def test_the_menu_is_two_services(customer):
-    tools = [label for label in labels(dispatch_local(customer, text='/ai'))
-             if label.startswith(('\U0001F4C4', '\U0001F4CA'))]
-    assert tools == ['\U0001F4C4 PDF Document', '\U0001F4CA PDF Slides']
+SERVICE_LABELS = ['\U0001F4C4 PDF Document', '\U0001F4CA PDF Slides']
+
+
+def test_the_two_services_lead_the_menus_with_no_folder_to_open(customer):
+    """They are two services, not a category worth a folder of its own.
+
+    A folder holding exactly two things costs a tap and hides them; both are
+    offered directly, at the top, on the main menu and in All tools.
+    """
+    start = dispatch_local(customer, text='/ai')
+    assert labels(start)[:2] == SERVICE_LABELS, labels(start)
+    assert not any('create with ai' in label.lower() for label in labels(start))
     assert set(generation.SERVICES) == GENERATION_IDS == {DOCUMENT, SLIDES}
+
+    tools = tap(customer, start, 'All tools')
+    assert labels(tools)[:2] == SERVICE_LABELS, labels(tools)
+
+    # And one tap reaches the description, not a menu of two.
+    asked = tap(customer, dispatch_local(customer, text='/ai'), 'PDF Document')
+    conversation = BotConversation.objects.get(pk=customer.telegram_user_id)
+    assert conversation.state == 'ai_input' and conversation.prompt['feature_id'] == DOCUMENT
+    assert 'Describe what you want' in body(asked)
 
 
 def test_one_message_is_the_whole_brief(customer):

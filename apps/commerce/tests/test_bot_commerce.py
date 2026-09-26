@@ -111,13 +111,14 @@ def test_bot_workspace_commands_use_current_admin_url_and_keep_owned_input():
         result=command(c,'/'+command_name)
         button=result['messages'][-1]['buttons'][0][0]
         assert button['url']==f'http://localhost:3000/en/app'+(f'/{command_name}' if command_name!='web' else '')
-    # Generation runs in the chat; the studio link beside it uses the same URL.
+    # Generation runs in the chat, so describing a document offers no way out of it.
     for command_name in ('create','document','slides'):
         result=command(c,'/'+command_name)
         urls=[b['url'] for row in result['messages'][-1]['buttons'] for b in row if b.get('url')]
         assert not urls, f'/{command_name} opens in the chat, not the browser'
-    menu=command(c,'/ai')
-    studio=[b['url'] for row in menu['messages'][-1]['buttons'] for b in row if b.get('url')]
+    # The studio link lives with the examples, and uses the same configured URL.
+    examples=command(c,'/examples')
+    studio=[b['url'] for row in examples['messages'][-1]['buttons'] for b in row if b.get('url')]
     assert studio==['http://localhost:3000/en/app/create']
 
 def test_fast_precheckout_answers_invalid_request_without_grant(monkeypatch):

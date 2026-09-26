@@ -1,8 +1,8 @@
 """Handing a Telegram draft's files to the web app.
 
 Generation runs in the chat now, so the remaining hand-offs are `/editor`,
-which opens a PDF for editing, and the studio link beside the AI menu for
-anyone who prefers the fuller web form. Whatever the customer has already sent
+which opens a PDF for editing, and the studio link on the describe-your-document
+screen for anyone who prefers the fuller web form. Whatever the customer has already sent
 to the chat must travel with them, or they upload the same document twice. The
 web side reads these `file_id` parameters; this pins the bot's half.
 """
@@ -62,12 +62,16 @@ def test_an_empty_draft_links_to_a_clean_workspace(customer):
     assert workspace_link(customer, 'editor').endswith('/en/app/editor')
 
 
-def test_the_studio_link_beside_the_ai_menu_still_carries_the_files(customer):
+def test_the_studio_link_on_the_examples_screen_still_carries_the_files(customer):
     """Generation now runs in the chat, but the richer web form is one tap away
-    and must not ask for the same upload twice."""
+    and must not ask for the same upload twice.
+
+    The link sits on the screen that asks for the description — the two services
+    are offered directly now, so there is no menu of two for it to sit beside.
+    """
     inputs = [f'00000000-0000-4000-8000-{i:012d}' for i in range(1, 8)]
     BotDraft.objects.create(account=customer, feature_id='pdf.merge', input_ids=inputs)
-    result = dispatch_local(customer, text='/ai')
+    result = dispatch_local(customer, text='/examples')
     link = next(button['url'] for message in result['messages']
                 for row in message['buttons'] for button in row if button.get('url'))
     # Generation accepts at most five sources, so a longer file-tool draft is

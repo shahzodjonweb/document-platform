@@ -112,17 +112,29 @@ def build_dispatcher():
     async def tool_button(account,draft,feature):
         return InlineKeyboardButton(text=TOOL_NAMES[feature][account.locale],callback_data=await callback(account,'tool',{**snapshot(draft),'feature_id':feature}))
 
+    async def ai_service_button(account,feature):
+        """One of the two generation services, offered directly.
+
+        They take a description rather than a file, so they carry their own
+        callback — but they are services like any other and belong in the list
+        beside the rest, not behind a folder of two.
+        """
+        return InlineKeyboardButton(text=TOOL_NAMES[feature][account.locale],callback_data=await callback(account,'ai_tool',{'feature_id':feature}))
+
+    async def ai_service_rows(account):
+        return [[await ai_service_button(account,feature)] for feature in ai.SERVICES]
+
     async def home(message,account,edit=False,notice=''):
         await sync_to_async(set_prompt)(account)
         draft=await sync_to_async(draft_for)(account)
         submitted=await sync_to_async(lambda:Job.objects.filter(account=account,quote_id=draft.quote_id).exists() if draft.quote_id else False)()
         rows=[]
         if draft.input_ids and not submitted: rows.append([await button(account,'continue_task','controls')])
+        rows.extend(await ai_service_rows(account))
         available={f['id'] for f in await sync_to_async(catalog)(account)}
         quick=[key for key in ('pdf.merge','pdf.compress','pdf.images_to_pdf','pdf.to_images') if key in available]
         for index in range(0,len(quick),2): rows.append([await tool_button(account,draft,key) for key in quick[index:index+2]])
         rows.extend([
-            [await button(account,'ai_button','ai_home')],
             [await button(account,'all_tools','menu'),await button(account,'recent','recent')],
             [await button(account,'account','account'),await button(account,'help_button','help')],
             [await button(account,'language_button','language'),InlineKeyboardButton(text=text(account,'open'),url=await web_url(account))],
@@ -138,7 +150,7 @@ def build_dispatcher():
         available={f['id'] for f in await sync_to_async(catalog)(account)}
         ids=[key for key in ids if key in available]
         draft=await sync_to_async(draft_for)(account)
-        rows=[]
+        rows=[] if pdf_only else await ai_service_rows(account)
         for index in range(0,len(ids),2): rows.append([await tool_button(account,draft,key) for key in ids[index:index+2]])
         rows.append([await button(account,'home','home'),InlineKeyboardButton(text=text(account,'web_tools'),url=await web_url(account))])
         body=text(account,'choose_pdf_action' if pdf_only else 'choose_tool')
@@ -242,13 +254,6 @@ def build_dispatcher():
     def ai_example(account,feature_id,index):
         return PROMPT_EXAMPLES[feature_id][index][LOCALES.index(account.locale if account.locale in LOCALES else 'en')]
 
-    async def ai_home(message,account,edit=False):
-        await sync_to_async(set_prompt)(account)
-        rows=[[InlineKeyboardButton(text=TOOL_NAMES[fid][account.locale],callback_data=await callback(account,'ai_tool',{'feature_id':fid}))] for fid in ai.SERVICES]
-        rows.append([await button(account,'ai_guide','ai_examples')])
-        rows.append([await button(account,'home','home'),InlineKeyboardButton(text=text(account,'ai_open_web'),url=await ai_studio_url(account))])
-        await render(message,f'<b>{text(account,"ai_home")}</b>\n{text(account,"ai_choose_tool")}',rows,edit)
-
     async def ai_prompt(message,account,feature_id,edit=False):
         """One screen, one question: what do you want? Examples included."""
         await sync_to_async(set_prompt)(account,'ai_input',{'feature_id':feature_id})
@@ -260,8 +265,7 @@ def build_dispatcher():
         staged=await sync_to_async(lambda:ai.sources(account,draft_for(account).input_ids))()
         if staged: body+=f'\n\n📎 {len(staged)}'
         rows=[[await button(account,'ai_examples','ai_examples',{'feature_id':feature_id})],
-              [await button(account,'ai_back','ai_home')],
-              [await button(account,'home','home')]]
+              [await button(account,'ai_back','home')]]
         await render(message,body,rows,edit)
 
     async def ai_revise_prompt(message,account,draft_id,edit=False):
@@ -273,7 +277,7 @@ def build_dispatcher():
               f'{text(account,"ai_revise_of")}: {html.escape(title)}\n\n'
               f'{text(account,"ai_revise_ask")}\n\n'
               f'{text(account,"ai_examples")}:\n<code>{html.escape(text(account,"ai_revise_examples"))}</code>')
-        rows=[[await button(account,'ai_back','ai_home')],[await button(account,'home','home')]]
+        rows=[[await button(account,'ai_back','home')]]
         await render(message,body,rows,edit)
 
     async def ai_revise_start(message,account,draft_id,request,edit=False):
@@ -296,7 +300,8 @@ def build_dispatcher():
             for index in range(len(PROMPT_EXAMPLES[fid])):
                 body+=f'\n<code>{html.escape(ai_example(account,fid,index))}</code>'
             rows.append([InlineKeyboardButton(text=TOOL_NAMES[fid][account.locale],callback_data=await callback(account,'ai_tool',{'feature_id':fid}))])
-        rows.append([await button(account,'ai_back','ai_home'),await button(account,'home','home')])
+        rows.append([await button(account,'ai_back','home'),
+                     InlineKeyboardButton(text=text(account,'ai_open_web'),url=await ai_studio_url(account))])
         await render(message,body,rows,edit)
 
     async def ai_review(message,account,draft,quote,edit=False):
@@ -325,8 +330,7 @@ def build_dispatcher():
         reword=(await button(account,'ai_revise','ai_revise',{'draft_id':source}) if source
                 else await button(account,'ai_change_topic','ai_tool',{'feature_id':draft.feature_id}))
         rows=[[await button(account,'ai_generate','ai_run',{'quote_id':str(quote.id),'draft_id':str(draft.id)})],
-              [reword,await button(account,'cancel_button','ai_home')],
-              [await button(account,'home','home')]]
+              [reword,await button(account,'cancel_button','home')]]
         await render(message,body,rows,edit)
 
     async def ai_start(message,account,feature_id,description,edit=False):
@@ -544,7 +548,6 @@ def build_dispatcher():
             elif action=='language': await show_language(message,query.from_user,{})
             elif action=='menu': await menu(message,account,p.get('page',0),p.get('category','pdf'),True)
             elif action=='controls': await controls(message,account,edit=True,advanced=p.get('advanced',False))
-            elif action=='ai_home': await ai_home(message,account,True)
             elif action=='ai_examples': await ai_examples(message,account,p.get('feature_id'),True)
             elif action=='ai_revise': await ai_revise_prompt(message,account,p['draft_id'],True)
             elif action=='ai_tool':
@@ -750,7 +753,7 @@ def build_dispatcher():
         command=message.text.split()[0].split('@')[0][1:]
         if command=='examples': return await ai_examples(message,account)
         feature_id=AI_COMMANDS.get(command)
-        if not feature_id: return await ai_home(message,account)
+        if not feature_id: return await home(message,account)
         await ai_prompt(message,account,feature_id)
 
     @dp.message(Command('web','editor'))
