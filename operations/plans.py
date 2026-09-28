@@ -25,6 +25,8 @@ FIELDS = {
     'concurrent_jobs': (1, 64),
     'max_ai_source_pages': (1, 2_000),
     'max_ai_source_files': (1, 100),
+    # Zero is meaningful here: a plan whose decks get no photos.
+    'max_deck_images': (0, 60),
     'max_ai_input_tokens': (1_000, 2_000_000),
     'max_generated_pdf_pages': (1, 500),
     'max_generated_slides': (1, 500),
@@ -90,7 +92,7 @@ def validate(plan_id, values, defaults):
     # Free must stay the floor: a free plan above a paid one would let anyone
     # take the paid allowance without paying for it.
     if plan_id == 'free':
-        for field in ('ai_credits', 'file_tasks', 'max_generated_pdf_pages'):
+        for field in ('ai_credits', 'file_tasks', 'max_generated_pdf_pages', 'max_deck_images'):
             if cleaned.get(field) is not None and field in cleaned and any(
                     cleaned[field] > (defaults[paid].get(field) or 0)
                     for paid in defaults if paid != 'free'):

@@ -13,7 +13,7 @@ from apps.core.serializers import asset_data,quote_data,job_data
 from apps.core.services import owned_assets,create_quote,submit_job,execute_job,record_event
 from apps.core.policy import FEATURES,plan_limits,require_feature
 from operations.integrations import ai_config
-from .domain import DOCUMENT,SLIDES,GENERATION_IDS,allowed,create_draft,draft_data,update_draft,generation_quote,pack,unpack,limits
+from .domain import DOCUMENT,SLIDES,GENERATION_IDS,_image_cap,allowed,create_draft,draft_data,update_draft,generation_quote,pack,unpack,limits
 from .models import GenerationDraft,SavedDefinition,EducationProject,PracticeAttempt,ShareGrant,EditorDocument,WorkflowRun
 
 @api()
@@ -28,6 +28,7 @@ def config(request):
                          'requires_provider':False,
                          'parameter_schema':{'output_locale':{'enum':['en','uz','ru']},'output_format':{'enum':formats}},
                          'max_pages':ceiling(request.account,'pptx' if fid==SLIDES else 'pdf'),
+                         'max_images':_image_cap(request.account,fid),
                          'locales':['en','uz','ru']})
     return {'provider':{'id':cfg['mode'],'mode':cfg['mode'],
                         'label':'Local authoring (no AI)' if cfg['mode']=='local_fixture' else 'OpenAI' if cfg['mode']=='openai' else 'Not configured',

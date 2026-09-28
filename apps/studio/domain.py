@@ -119,6 +119,17 @@ def revision_source(account,identifier):
     return source,original
 
 
+def _image_cap(account,fid):
+    """How many photo layouts a deck may ask for: the plan's allowance, when photos are on.
+
+    Set here rather than taken from the client, the same way the page and
+    question counts are.
+    """
+    if fid!=SLIDES:return 0
+    from operations.integrations import pixabay_config
+    if not pixabay_config()['ready']:return 0
+    return int(plan_limits(account).get('max_deck_images',0) or 0)
+
 def _deck_style(fid,brief):
     """A deck's look, read out of the description like its slide count.
 
@@ -183,7 +194,8 @@ def _prepare_draft(account,data):
         supplied=len([p for p in (text or '\n\n'.join(x['text'] for x in excerpts)).split('\n\n') if p.strip()])
         if supplied:length=min(supplied,paging.ceiling(account,fmt))
     question_count=min(paging.requested_questions(brief),limits(account)['questions'])
-    options={**options,'question_count':question_count,'length':length,'requested_pages':asked}
+    options={**options,'question_count':question_count,'length':length,'requested_pages':asked,
+             'image_cap':_image_cap(account,fid)}
     template_id=options.get('template_id','clean')
     from .templates import style_for
     # Density is fixed at the spacing the page-fill targets were measured
@@ -301,6 +313,9 @@ def generation_quote(account,draft_id,version):
     # the default lease to finish them. Rendering and settlement are on top.
     from .provider import call_budget
     lease_seconds=call_budget(len(data['content']['sections']))+240
+    if data['output_format']=='pptx':
+        from .photos import BUDGET_SECONDS
+        lease_seconds+=BUDGET_SECONDS
     return Quote.objects.create(account=account,feature_id=d.feature_id,input_ids=input_ids,input_fingerprints=[{'id':str(a.id),'sha256':a.sha256} for a in owned_assets(account,input_ids)] if input_ids else [],parameters={'generation_draft_id':str(d.id),'draft_version':d.version,'snapshot':snapshot},meters={'file_tasks':0,'file_page_units':0,'ai_credits':credits},policy={'plan':account.plan,'version':POLICY_VERSION,'tariff_version':'generation-draft-staging-v1','limits':plan_limits(account),'provider_mode':d.provider_mode,'provider_model':cfg['model'],'provider_image_model':cfg.get('image_model',''),'generation_bounds':{'question_cap':question_cap,'output_pages':output_cap,'key_pages':caps['sections'],'input_tokens':plan_limits(account)['max_ai_input_tokens'],'tariff':dict(tariff)},'lease_seconds':lease_seconds},expires_at=timezone.now()+timedelta(minutes=10))
 
 def validate_generation_quote(account,quote):

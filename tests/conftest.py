@@ -16,3 +16,12 @@ def private_storage(settings,tmp_path):
 def bot_verification_disabled(monkeypatch):
     """Legacy domain/transport tests start after the independently tested gate."""
     monkeypatch.setattr('telegram.verification.enabled', lambda: False)
+
+
+
+@pytest.fixture(autouse=True)
+def no_photo_network(monkeypatch):
+    """Nothing in the suite may reach Pixabay. Tests that exercise the fetcher replace this."""
+    def refuse(*args, **kwargs):
+        raise AssertionError('a test tried to reach the photo provider')
+    monkeypatch.setattr('apps.studio.photos._open', refuse)

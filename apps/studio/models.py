@@ -68,6 +68,18 @@ class ProviderUsage(models.Model):
     outcome=models.CharField(max_length=24)
     created_at=models.DateTimeField(default=timezone.now)
 
+class PhotoSearch(models.Model):
+    """A stock-photo search result, kept for the 24 hours Pixabay requires.
+
+    Keyed by a hash of the query so the search words themselves are never
+    stored. Empty results are cached too: asking again within the day would
+    only spend the rate limit on the same answer.
+    """
+    key=models.CharField(max_length=64,primary_key=True)
+    hits=models.JSONField(default=list)
+    expires_at=models.DateTimeField(db_index=True)
+
+
 class WorkflowRun(models.Model):
     id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
     account=models.ForeignKey('core.Account',on_delete=models.CASCADE)

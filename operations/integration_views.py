@@ -6,7 +6,7 @@ from django.views.decorators.http import require_http_methods
 from apps.core.errors import DomainError
 from .auth import require_staff,audit,development_access
 from .views import context,finish_render
-from .integrations import telegram_config,ai_config,google_config,email_config,antibot_config,save_config,test_telegram,test_email,control_runner,runner_status
+from .integrations import telegram_config,ai_config,google_config,email_config,antibot_config,pixabay_config,save_config,test_telegram,test_email,test_pixabay,control_runner,runner_status
 from .models import IntegrationConfig
 
 LABELS={
@@ -115,8 +115,33 @@ ANTIBOT_LABELS = {
 }
 for language, labels in ANTIBOT_LABELS.items(): LABELS[language].update(labels)
 
+PHOTO_LABELS = {
+    'en': {'pixabay': 'Stock photos (Pixabay)', 'pixabay_enabled': 'Add photos to AI slide decks',
+           'pixabay_key': 'Pixabay API key',
+           'pixabay_hint': 'Free key from pixabay.com/api/docs. Photos are searched only while a paid deck is being generated, cached for 24 hours as Pixabay requires, and downloaded into the deck — never hotlinked. How many photos a deck may use is the "max_deck_images" limit on each plan. Untick to stop all photo requests at once.',
+           'pixabay_connected': 'Pixabay answered a test search.',
+           'invalid_pixabay_key': 'That does not look like a Pixabay key (digits, a dash, then letters and digits).',
+           'pixabay_not_configured': 'Add a Pixabay key before turning photos on.',
+           'pixabay_connection_failed': 'Pixabay did not answer the test search. Check the key.'},
+    'uz': {'pixabay': 'Stok rasmlar (Pixabay)', 'pixabay_enabled': 'AI taqdimotlariga rasm qo‘shish',
+           'pixabay_key': 'Pixabay API kaliti',
+           'pixabay_hint': 'Bepul kalit: pixabay.com/api/docs. Rasmlar faqat pullik taqdimot yaratilayotganda qidiriladi, Pixabay talabi bo‘yicha 24 soat keshlanadi va taqdimotga yuklab olinadi. Bir taqdimotdagi rasmlar soni har bir tarifdagi "max_deck_images" chegarasi. Barcha so‘rovlarni to‘xtatish uchun belgini olib tashlang.',
+           'pixabay_connected': 'Pixabay sinov qidiruviga javob berdi.',
+           'invalid_pixabay_key': 'Bu Pixabay kalitiga o‘xshamaydi (raqamlar, chiziqcha, so‘ng harf va raqamlar).',
+           'pixabay_not_configured': 'Rasmlarni yoqishdan oldin Pixabay kalitini qo‘shing.',
+           'pixabay_connection_failed': 'Pixabay sinov qidiruviga javob bermadi. Kalitni tekshiring.'},
+    'ru': {'pixabay': 'Стоковые фото (Pixabay)', 'pixabay_enabled': 'Добавлять фото в ИИ-презентации',
+           'pixabay_key': 'API-ключ Pixabay',
+           'pixabay_hint': 'Бесплатный ключ: pixabay.com/api/docs. Фото ищутся только во время создания оплаченной презентации, кешируются на 24 часа, как требует Pixabay, и загружаются в файл. Сколько фото в одной презентации — лимит «max_deck_images» в каждом тарифе. Снимите флажок, чтобы сразу остановить все запросы.',
+           'pixabay_connected': 'Pixabay ответил на тестовый поиск.',
+           'invalid_pixabay_key': 'Это не похоже на ключ Pixabay (цифры, дефис, затем буквы и цифры).',
+           'pixabay_not_configured': 'Добавьте ключ Pixabay, прежде чем включать фото.',
+           'pixabay_connection_failed': 'Pixabay не ответил на тестовый поиск. Проверьте ключ.'},
+}
+for language, labels in PHOTO_LABELS.items(): LABELS[language].update(labels)
+
 @require_staff()
-@sensitive_post_parameters('token','api_key','client_secret','password','secret_key')
+@sensitive_post_parameters('token','api_key','client_secret','password','secret_key','pixabay_key')
 @require_http_methods(['GET','POST'])
 def integrations(request):
     data=context(request,'integrations');labels=LABELS[data['lang']];data['i']=labels;data['title']=labels['integrations']
@@ -126,10 +151,11 @@ def integrations(request):
         else:
             try:
                 key=request.POST.get('integration','telegram')
-                if action!='save' and key!='telegram' and not (key=='email' and action=='test'):raise DomainError('invalid_parameters')
+                if action!='save' and key!='telegram' and not (key in ('email','pixabay') and action=='test'):raise DomainError('invalid_parameters')
                 if action=='save':save_config(key,request.POST);message='saved'
                 elif action=='test':
                     if key=='email':test_email();message='email_connected'
+                    elif key=='pixabay':test_pixabay();message='pixabay_connected'
                     else:test_telegram();message='connected'
                 elif action in ('start','stop'):
                     if not development_access(request):raise DomainError('local_control_only',403)
@@ -150,4 +176,6 @@ def integrations(request):
     data['email'] = {key: email[key] for key in ('enabled','host','port','username','use_tls','use_ssl','from_email','configured','ready')}
     data['antibot'] = {key: antibot[key] for key in ('web_enabled','bot_enabled','site_key','allowed_hostnames','configured','ready')}
     data['antibot']['hostnames_text'] = '\n'.join(antibot['allowed_hostnames'])
+    photos=pixabay_config()
+    data['pixabay'] = {key: photos[key] for key in ('enabled','configured','ready')}
     return finish_render(request,'ops/integrations.html',data)

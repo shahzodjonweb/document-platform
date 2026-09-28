@@ -170,6 +170,30 @@ def antibot_config():
     except DomainError: configured = False
     return {**result, 'configured': configured, 'ready': bool(result['web_enabled'] and configured)}
 
+# Pixabay issues keys as "<account number>-<hex>". Anything else is a paste
+# error, and refusing it here beats discovering it inside a customer's job.
+_PIXABAY_KEY = re.compile(r'[0-9]{1,12}-[0-9a-f]{20,40}')
+
+
+def pixabay_config():
+    """Stock photos for slide decks. `enabled` is the kill switch."""
+    cfg, secret = read_config('pixabay')
+    api_key = secret.get('api_key') or os.getenv('PIXABAY_API_KEY', '')
+    enabled = bool(cfg.get('enabled', False))
+    return {'enabled': enabled, 'api_key': api_key, 'configured': bool(api_key),
+            'ready': bool(enabled and api_key)}
+
+
+def test_pixabay():
+    """One real search, so an operator knows the key works before a customer does."""
+    from apps.studio import photos
+    cfg = pixabay_config()
+    if not cfg['configured']: raise DomainError('pixabay_not_configured', 409)
+    try: photos.search('nature', cfg['api_key'], per_page=3)
+    except Exception: raise DomainError('pixabay_connection_failed', 409) from None
+    IntegrationConfig.objects.filter(pk='pixabay').update(check_status='connected', checked_at=timezone.now())
+
+
 def _email_connection(cfg):
     from django.core.mail import get_connection
     # Only the memory backend can replace SMTP in development; codes never go to stdout.
@@ -302,6 +326,16 @@ def save_config(key, values):
                    site_key=site_key.strip(),
                    allowed_hostnames=_antibot_hostnames(values.get('allowed_hostnames', cfg.get('allowed_hostnames', list(_ANTIBOT_DEFAULT_HOSTS)))))
         _validate_antibot(cfg, secrets)
+    elif key == 'pixabay':
+        api_key = values.get('pixabay_key', '')
+        if not isinstance(api_key, str): raise DomainError('invalid_pixabay_key')
+        if api_key.strip():
+            if not _PIXABAY_KEY.fullmatch(api_key.strip()): raise DomainError('invalid_pixabay_key')
+            secrets['api_key'] = api_key.strip()
+        enabled = _boolean(values.get('enabled', False))
+        if enabled and not (secrets.get('api_key') or os.getenv('PIXABAY_API_KEY', '')):
+            raise DomainError('pixabay_not_configured')
+        cfg.update(enabled=enabled)
     else: raise DomainError('invalid_parameters')
     return IntegrationConfig.objects.update_or_create(key=key,defaults={'configuration':cfg,'encrypted_secrets':cipher().encrypt(json.dumps(secrets).encode()),'check_status':'not_checked'})[0]
 

@@ -8,6 +8,27 @@ from .domain import unpack,pack,validate_content,validate_generation_quote,limit
 from .rendering import render_pdf
 from .slides import render_pptx
 
+def _photos(job,sections,warnings):
+    """Stock photos for the slides that asked for one, or none — never a failure.
+
+    The allowance is the plan's at the time the quote was made. Whatever goes
+    wrong here — the provider, the network, the bytes, this code — the slides
+    that wanted a photo are drawn as text and the customer is told.
+    """
+    from . import photos as stock
+    try:
+        cap=int((job.quote.policy.get('limits') or {}).get('max_deck_images',0) or 0)
+        left=(job.lease_expires_at-timezone.now()).total_seconds()-60 if job.lease_expires_at else stock.BUDGET_SECONDS
+        result=stock.fetch_for_deck(sections,cap=cap,budget=min(stock.BUDGET_SECONDS,left))
+    except Exception:
+        result=stock.PhotoResult(failed=len(stock.wanted(sections)))
+    warnings.extend(result.warnings)
+    if result.wanted or result.failed:
+        outcome='succeeded' if not result.failed else 'partial' if result.photos else 'failed'
+        ProviderUsage.objects.create(job=job,provider='pixabay',outcome=outcome)
+    return result.photos
+
+
 def execute_generation(job,output_dir):
     with transaction.atomic():
         draft=GenerationDraft.objects.select_for_update().get(id=job.parameters['generation_draft_id'],account=job.account)
@@ -65,9 +86,12 @@ def execute_generation(job,output_dir):
         content['sections']=content['sections'][:quoted_sections];warnings.append('sections_trimmed')
     from .branding import render_style
     style=render_style(job.account,data,feature_id=job.feature_id)
-    fn=render_pptx if data['output_format']=='pptx' else render_pdf
     ext=data['output_format']
-    artifacts=[fn(content,output_dir/f'document.{ext}',data['output_locale'],'user_document',style=style)]
+    if ext=='pptx':
+        photos=_photos(job,content['sections'],warnings)
+        artifacts=[render_pptx(content,output_dir/'document.pptx',data['output_locale'],'user_document',style=style,photos=photos)]
+    else:
+        artifacts=[render_pdf(content,output_dir/'document.pdf',data['output_locale'],'user_document',style=style)]
     # A document that renders longer than the estimate is still the document that
     # was asked for. It is delivered, said out loud, and charged at the quote.
     allowance=bounds.get('output_pages',limits(job.account)['slides' if data['output_format']=='pptx' else 'sections'])

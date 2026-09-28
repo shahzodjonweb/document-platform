@@ -53,5 +53,17 @@
     <button class="button primary" name="action" value="save">{{ i.save }}</button>
   </form>
 </section>
+<section class="panel info-panel" id="pixabay-settings">
+  <div class="panel-heading"><h2>{{ i.pixabay }}</h2><span class="badge">{% if pixabay.ready %}{{ i.active }}{% elif pixabay.enabled %}{{ i.setup_required }}{% else %}{{ i.inactive }}{% endif %}</span></div>
+  <p>{{ i.provider_status }}: {% if pixabay.configured %}{{ i.configured }}{% else %}{{ i.missing }}{% endif %}</p>
+  <form method="post" class="integration-form" autocomplete="off">
+    {% csrf_token %}<input type="hidden" name="integration" value="pixabay">
+    <input type="hidden" name="enabled" value="false"><label style="flex-direction:row;align-items:center"><input style="width:20px;flex-shrink:0" type="checkbox" name="enabled" value="true" {% if pixabay.enabled %}checked{% endif %}> {{ i.pixabay_enabled }}</label>
+    <label>{{ i.pixabay_key }}<input type="password" name="pixabay_key" autocomplete="new-password" maxlength="64" spellcheck="false"></label><small>{{ i.secret_hint }}</small>
+    <p>{{ i.pixabay_hint }}</p>
+    <label>{{ i.reason }}<input name="reason" required minlength="5" maxlength="1000"></label>
+    <div class="integration-actions"><button class="button primary" name="action" value="save">{{ i.save }}</button><button class="button secondary" name="action" value="test">{{ i.test }}</button></div>
+  </form>
+</section>
 </div>
 {% endblock %}
