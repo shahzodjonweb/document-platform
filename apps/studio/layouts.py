@@ -88,6 +88,19 @@ PHOTO_LAYOUTS = [layout.id for layout in CATALOGUE.values() if layout.needs_phot
 # ---------------------------------------------------------------- values
 
 
+_NUMBER_UNITS = {
+    unit: multiplier
+    for multiplier, units in (
+        (1e3, ('k', 'тыс', 'ming', 'thousand', 'thousands', 'тысяча', 'тысячи', 'тысяч')),
+        (1e6, ('m', 'млн', 'mln', 'million', 'millions', 'миллион', 'миллиона', 'миллионов')),
+        (1e9, ('b', 'млрд', 'mlrd', 'billion', 'billions', 'milliard', 'миллиард', 'миллиарда', 'миллиардов')),
+    )
+    for unit in units
+}
+_NUMBER = re.compile(r'(-?\d[\d ,.]*)\s*((?:'
+                     + '|'.join(sorted(_NUMBER_UNITS, key=len, reverse=True)) + r')(?!\w))?', re.IGNORECASE)
+
+
 def parse_number(value):
     """The first number in a figure such as "1,200", "3.5k", "$4.2m" or "18%".
 
@@ -95,7 +108,9 @@ def parse_number(value):
     comma is a decimal point, which is how Russian and Uzbek write them.
     """
     text = unicodedata.normalize('NFKC', str(value or '')).replace(' ', ' ').replace('\xa0', ' ')
-    match = re.search(r'(-?\d[\d ,.]*)\s*([kKmMbB]|тыс|млн|млрд|ming|mln|mlrd)?', text)
+    # Match a whole unit, longest first: `m` must not consume `ming`, `mlrd`
+    # or the beginning of an unrelated word such as `minutes`.
+    match = _NUMBER.search(text)
     if not match:
         return None
     raw, suffix = match.group(1).strip(' ,.'), (match.group(2) or '').lower()
@@ -108,8 +123,7 @@ def parse_number(value):
         number = float(raw)
     except ValueError:
         return None
-    number *= {'k': 1e3, 'тыс': 1e3, 'ming': 1e3, 'm': 1e6, 'млн': 1e6, 'mln': 1e6,
-               'b': 1e9, 'млрд': 1e9, 'mlrd': 1e9}.get(suffix, 1)
+    number *= _NUMBER_UNITS.get(suffix, 1)
     return number if math.isfinite(number) else None
 
 
@@ -214,7 +228,8 @@ def accepts(kind, section, lines, index, total, has_photo):
         return (2 <= len(items) <= 8 and all(n is not None and n >= 0 for n in numbers)
                 and max(numbers) > 0)
     if kind == 'table':
-        return 2 <= len(columns) <= 3 and 2 <= len(items) <= 6
+        maximum = MAX_ITEMS if section.get('layout') == 'chart' else 6
+        return 2 <= len(columns) <= 3 and 2 <= len(items) <= maximum
     if kind in PHOTO_LAYOUTS:
         return has_photo and (kind == 'image_full' or bool(lines or items))
     return False

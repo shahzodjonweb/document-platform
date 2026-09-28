@@ -32,6 +32,7 @@ jobs:
       DEVELOPMENT_LOGIN_ENABLED: "1"
       ENABLE_BETA_TOOLS: "1"
       LOCAL_SYNC_JOBS: "1"
+      PPTX_TEST_SOFFICE: "/usr/bin/soffice"
       DATABASE_URL: ${{ matrix.database == 'postgres' && 'postgresql://pdfmaster:ci-test-password@127.0.0.1:5432/pdfmaster' || 'sqlite:////tmp/pdfmaster-ci.sqlite3' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4

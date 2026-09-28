@@ -13,7 +13,7 @@ shortened, rather than being allowed to run off its box.
 """
 from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
-from pptx.util import Inches, Pt
+from pptx.util import Emu, Inches, Pt
 
 from . import slides as kit
 from .layouts import PRO, parse_number
@@ -68,12 +68,112 @@ def fit(text, size, zone, lines, floor):
     return size
 
 
+def _text_lines(text, size, width, *, bold=False):
+    """Count wrapped lines, including unused space at the end of each line.
+
+    Measuring the entire string and dividing by the width misses word breaks,
+    especially in a narrow card. The small extra width for bold text also
+    leaves room for Office's substituted heading font.
+    """
+    available = max(1, Emu(int(width)).pt / (1.06 if bold else 1))
+    total = 0
+    for line in str(text).split('\n'):
+        current = ''
+        count = 1
+        for word in line.split():
+            candidate = f'{current} {word}' if current else word
+            if current and kit._text_width(candidate, size) > available:
+                count += 1
+                current = ''
+            if kit._text_width(word, size) > available:
+                # Viewers break unspaced identifiers too. Count their actual
+                # character widths rather than treating a long token as one line.
+                for character in word:
+                    if current and kit._text_width(current + character, size) > available:
+                        count += 1
+                        current = ''
+                    current += character
+            else:
+                current = f'{current} {word}' if current else word
+        total += count
+    return total
+
+
+def _paragraph_height(paragraph, zone):
+    width = zone.width - (Pt(paragraph['size'] * 0.95) if paragraph.get('bullet') else 0)
+    width -= paragraph.get('inset_right', 0)
+    lines = _text_lines(paragraph['text'], paragraph['size'], width,
+                        bold=paragraph.get('bold', False))
+    return (lines * paragraph['size'] * paragraph.get('spacing', 1.15)
+            + paragraph.get('before', 0) + paragraph.get('after', 0))
+
+
+def _fit_paragraphs(ctx, zone, paragraphs, *, shorten=True):
+    """Fit a complete block with readable floors and explicit line leading.
+
+    Fonts shrink together before any content is removed. If even the floors
+    cannot hold unusually long fields, keep each paragraph, visibly elide the
+    longest one and report the existing shortened warning to the caller.
+    """
+    fitted = [dict(paragraph) for paragraph in paragraphs]
+    available = Emu(zone.height).pt - 3  # allow for glyph ascenders/descenders
+
+    def height():
+        return sum(_paragraph_height(paragraph, zone) for paragraph in fitted)
+
+    while height() > available:
+        reducible = [paragraph for paragraph in fitted
+                     if paragraph['size'] > paragraph.get('floor', paragraph['size'])]
+        if not reducible:
+            break
+        for paragraph in reducible:
+            paragraph['size'] = max(paragraph['floor'], paragraph['size'] - 1)
+    while shorten and height() > available:
+        candidates = [paragraph for paragraph in fitted if len(paragraph['text'].rstrip('…')) > 1]
+        if not candidates:
+            break
+        paragraph = max(candidates, key=lambda value: _paragraph_height(value, zone))
+        text = paragraph['text'].rstrip('…')
+        words = text.split()
+        paragraph['text'] = (' '.join(words[:-1]) if len(words) > 1 else text[:-1]).rstrip(',;:.') + '…'
+        ctx.shortened = True
+    return fitted
+
+
+def fit_text(ctx, text, zone, *, size, floor=12, spacing=1.15, bold=False):
+    """Fit one cell; draw it with exact point leading of ``size * spacing``."""
+    paragraph = _fit_paragraphs(ctx, zone, [dict(text=text, size=size, floor=floor,
+                                                spacing=spacing, bold=bold)])[0]
+    return paragraph['text'], paragraph['size']
+
+
+def _put_paragraphs(ctx, zone, paragraphs):
+    frame = kit._frame(ctx.slide.shapes.add_textbox(*zone.box()))
+    for index, values in enumerate(_fit_paragraphs(ctx, zone, paragraphs)):
+        paragraph = kit._write(kit._paragraph(frame, index), values['text'],
+                               font=values.get('font', kit.BODY_FONT), size=values['size'],
+                               colour=values['colour'], bold=values.get('bold', False),
+                               before=values.get('before', 0), after=values.get('after', 0))
+        # Relative line spacing is based on a viewer's font metrics, which can
+        # be considerably taller than the point size used by the estimator.
+        paragraph.line_spacing = Pt(values['size'] * values.get('spacing', 1.15))
+        if values.get('inset_right'):
+            paragraph._p.get_or_add_pPr().set('marR', str(int(values['inset_right'])))
+        if values.get('bullet'):
+            kit._bullet(paragraph, values['bullet_colour'], values['size'], values['bullet'])
+        else:
+            kit._no_bullet(paragraph)
+    return frame
+
+
 def put(ctx, zone, value, *, size, colour, font=None, bold=False, align=PP_ALIGN.LEFT,
-        anchor=MSO_ANCHOR.TOP, spacing=1.15):
+        anchor=MSO_ANCHOR.TOP, spacing=1.15, exact_spacing=False):
     """One paragraph of text in a zone, with wrapping left to the viewer."""
     frame = kit._frame(ctx.slide.shapes.add_textbox(*zone.box()), anchor)
     paragraph = kit._write(frame.paragraphs[0], value, font=font or kit.BODY_FONT, size=size,
                            colour=colour, bold=bold, align=align, spacing=spacing)
+    if exact_spacing:
+        paragraph.line_spacing = Pt(size * spacing)
     kit._no_bullet(paragraph)
     return frame
 
@@ -296,7 +396,7 @@ def table(ctx, section, lines):
     roles = ctx.roles
     header(ctx, section)
     columns = columns_of(section)[:3]
-    rows = items_of(section)[:6]
+    rows = items_of(section)
     height = min(BOTTOM - TOP, 0.62 * (len(rows) + 1))
     frame = ctx.slide.shapes.add_table(len(rows) + 1, len(columns), *Z(LEFT, TOP, WIDTH, height).box())
     grid = frame.table
@@ -310,9 +410,13 @@ def table(ctx, section, lines):
         target.margin_left = target.margin_right = Inches(0.12)
         target.margin_top = target.margin_bottom = Inches(0.06)
         target.vertical_anchor = MSO_ANCHOR.MIDDLE
+        zone = kit.Zone(0, 0, grid.columns[column].width - target.margin_left - target.margin_right,
+                        grid.rows[row].height - target.margin_top - target.margin_bottom)
+        value, size = fit_text(ctx, value, zone, size=16 if row == 0 else 15, bold=bold)
         paragraph = target.text_frame.paragraphs[0]
-        kit._write(paragraph, value, font=kit.BODY_FONT, size=16 if row == 0 else 15,
+        kit._write(paragraph, value, font=kit.BODY_FONT, size=size,
                    colour=colour, bold=bold)
+        paragraph.line_spacing = Pt(size * 1.15)
         kit._no_bullet(paragraph)
 
     for column, name in enumerate(columns):
@@ -320,6 +424,10 @@ def table(ctx, section, lines):
     for row, item in enumerate(rows, 1):
         fill, ink = (roles['surface'], roles['ink']) if row % 2 else (roles['card'], roles['card_ink'])
         values = [item.get('label', ''), item.get('text', ''), item.get('value', '')]
+        if section.get('layout') == 'chart' and len(columns) == 2:
+            # A chart's figure is its value, not its optional text. Keep any
+            # context alongside it when a chart falls back to two columns.
+            values = [values[0], ' — '.join(part for part in (values[2], values[1]) if part)]
         for column in range(len(columns)):
             cell(row, column, clip(ctx, values[column], 12), fill, ink, bold=column == 0)
 
@@ -335,23 +443,28 @@ def comparison(ctx, section, lines):
     b_left = a_left + column_width + 0.7
     for left, name in ((a_left, first), (b_left, second)):
         kit._shape(ctx.slide, Z(left, 2.7, column_width, 0.6), roles['accent'])
-        put(ctx, Z(left, 2.7, column_width, 0.6), clip(ctx, name, 5), size=18,
-            colour=roles['on_accent'], bold=True, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+        zone = Z(left, 2.7, column_width, 0.6)
+        value, size = fit_text(ctx, clip(ctx, name, 5), zone, size=18, bold=True)
+        put(ctx, zone, value, size=size, colour=roles['on_accent'], bold=True,
+            align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE, exact_spacing=True)
     kit._shape(ctx.slide, Z(a_left + column_width + 0.1, 2.73, 0.5, 0.5), roles['card'], MSO_SHAPE.OVAL)
     put(ctx, Z(a_left + column_width + 0.1, 2.73, 0.5, 0.5), LABELS['vs'][ctx.locale], size=12,
         colour=roles['card_accent'], bold=True, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
-    rows = [item for item in items_of(section) if item.get('label')][:5]
+    rows = items_of(section)
     row = min(0.75, (BOTTOM - 3.45) / len(rows))
     for position, item in enumerate(rows):
         y = 3.45 + position * row
         if position:
             kit._shape(ctx.slide, Z(LEFT, y, WIDTH, 0.015), roles['accent_soft'])
-        put(ctx, Z(LEFT, y, label_width - 0.2, row), clip(ctx, item['label'], 6), size=14,
-            colour=roles['muted'], bold=True, anchor=MSO_ANCHOR.MIDDLE)
-        put(ctx, Z(a_left, y, column_width, row), clip(ctx, item.get('text'), 14), size=15,
-            colour=roles['ink'], align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
-        put(ctx, Z(b_left, y, column_width, row), clip(ctx, item.get('value'), 14), size=15,
-            colour=roles['ink'], align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+        zone = Z(LEFT, y, label_width - 0.2, row)
+        value, size = fit_text(ctx, clip(ctx, item.get('label'), 6), zone, size=14, bold=True)
+        put(ctx, zone, value, size=size, colour=roles['muted'], bold=True,
+            anchor=MSO_ANCHOR.MIDDLE, exact_spacing=True)
+        for left, key in ((a_left, 'text'), (b_left, 'value')):
+            zone = Z(left, y, column_width, row)
+            value, size = fit_text(ctx, clip(ctx, item.get(key), 14), zone, size=15)
+            put(ctx, zone, value, size=size, colour=roles['ink'], align=PP_ALIGN.CENTER,
+                anchor=MSO_ANCHOR.MIDDLE, exact_spacing=True)
 
 
 # ---------------------------------------------------------------- structure
@@ -431,20 +544,33 @@ def pros_cons(ctx, section, lines):
         ([item for item in items_of(section) if item.get('value', '').strip().lower() not in PRO], '–',
          names[1] if len(names) > 1 else LABELS['cons'][ctx.locale]),
     )
-    width = WIDTH * 0.485
+    gap = 0.3
+    # A five-to-one split should give the longer argument more room. Keep both
+    # panels substantial while accounting for all accepted points on each side.
+    share = min(0.75, max(0.25, (len(groups[0][0]) + 0.5) / (sum(len(g[0]) for g in groups) + 1)))
+    widths = [(WIDTH - gap) * share, (WIDTH - gap) * (1 - share)]
+    blocks = []
     for position, (points, glyph, name) in enumerate(groups):
-        left = LEFT + position * (WIDTH - width)
+        width = widths[position]
+        left = LEFT if position == 0 else LEFT + widths[0] + gap
         kit._shape(ctx.slide, Z(left, TOP, width, BOTTOM - TOP), roles['card'])
         kit._shape(ctx.slide, Z(left, TOP, width, 0.07), roles['accent'])
-        frame = kit._frame(ctx.slide.shapes.add_textbox(*Z(left + 0.4, TOP + 0.35, width - 0.8,
-                                                             BOTTOM - TOP - 0.6).box()))
-        kit._no_bullet(kit._write(frame.paragraphs[0], clip(ctx, name, 5), font=kit.HEADING_FONT,
-                                  size=24, colour=roles['card_accent'], bold=True, after=14))
-        for item in points[:5]:
-            paragraph = kit._write(frame.add_paragraph(), clip(ctx, item.get('label') or item.get('text'), 14),
-                                   font=kit.BODY_FONT, size=19, colour=roles['card_ink'],
-                                   spacing=kit.LINE_MULTIPLE, before=12)
-            kit._bullet(paragraph, roles['card_accent'], 19, glyph)
+        paragraphs = [dict(text=clip(ctx, name, 5), font=kit.HEADING_FONT, size=24, floor=20,
+                           colour=roles['card_accent'], bold=True, after=8)]
+        paragraphs.extend(dict(text=clip(ctx, item.get('label') or item.get('text'), 14),
+                               size=19, floor=13, colour=roles['card_ink'], spacing=1.2,
+                               before=5 if index else 0, bullet=glyph,
+                               bullet_colour=roles['card_accent'])
+                          for index, item in enumerate(points))
+        zone = Z(left + 0.25, TOP + 0.25, width - 0.5, BOTTOM - TOP - 0.45)
+        blocks.append((zone, _fit_paragraphs(ctx, zone, paragraphs)))
+    # A short opposing argument still uses the same type scale as the long one.
+    heading_size = min(paragraphs[0]['size'] for _, paragraphs in blocks)
+    body_size = min(paragraph['size'] for _, paragraphs in blocks for paragraph in paragraphs[1:])
+    for zone, paragraphs in blocks:
+        for index, paragraph in enumerate(paragraphs):
+            paragraph['size'] = heading_size if index == 0 else body_size
+        _put_paragraphs(ctx, zone, paragraphs)
 
 
 @draws('cards')
@@ -454,28 +580,61 @@ def cards(ctx, section, lines):
     entries = [item for item in items_of(section) if item.get('label')][:6]
     per_row = 2 if len(entries) == 4 else 3 if len(entries) > 3 else len(entries)
     rows = -(-len(entries) // per_row)
-    gap = 0.3
+    gap = 0.2 if rows > 1 else 0.3
     width = (WIDTH - gap * (per_row - 1)) / per_row
-    height = (BOTTOM - TOP - gap * (rows - 1)) / rows
+    # Dense grids can use the space just below the rule and above the footer.
+    # This keeps six complete cards at readable sizes without adding a slide.
+    start, end = (2.6, 6.6) if rows > 1 else (TOP, BOTTOM)
+    height = (end - start - gap * (rows - 1)) / rows
+    blocks = []
     for position, item in enumerate(entries):
         row, column = divmod(position, per_row)
-        left, top = LEFT + column * (width + gap), TOP + row * (height + gap)
-        kit._shape(ctx.slide, Z(left, top, width, height), roles['card'])
-        frame = kit._frame(ctx.slide.shapes.add_textbox(*Z(left + 0.25, top + 0.2, width - 0.5,
-                                                             height - 0.4).box()))
-        first = True
+        left, top = LEFT + column * (width + gap), start + row * (height + gap)
+        paragraphs = []
         if item.get('value'):
-            kit._no_bullet(kit._write(frame.paragraphs[0], clip(ctx, item['value'], 3).upper(),
-                                      font=kit.BODY_FONT, size=11, colour=roles['card_accent'],
-                                      bold=True, after=4))
-            first = False
-        heading = frame.paragraphs[0] if first else frame.add_paragraph()
-        kit._no_bullet(kit._write(heading, clip(ctx, item['label'], 7), font=kit.HEADING_FONT,
-                                  size=19, colour=roles['card_ink'], bold=True, after=6))
+            paragraphs.append(dict(text=clip(ctx, item['value'], 3).upper(), size=11, floor=10,
+                                   colour=roles['card_accent'], bold=True, after=2))
+        paragraphs.append(dict(text=clip(ctx, item['label'], 7), font=kit.HEADING_FONT,
+                               size=19, floor=14, colour=roles['card_ink'], bold=True, after=3))
         if item.get('text'):
-            kit._no_bullet(kit._write(frame.add_paragraph(), clip(ctx, item['text'], 20 if rows == 1 else 14),
-                                      font=kit.BODY_FONT, size=14, colour=roles['card_muted'],
-                                      spacing=kit.LINE_MULTIPLE))
+            paragraphs.append(dict(text=clip(ctx, item['text'], 20 if rows == 1 else 14),
+                                   size=14, floor=12, colour=roles['card_muted'], spacing=1.15))
+        padding = 0.1 if rows > 1 else 0.2
+        zone = Z(left + 0.2, top + padding, width - 0.4, height - 2 * padding)
+        blocks.append((Z(left, top, width, height), zone, paragraphs))
+    # Long translated fields may not fit a six-card grid even at its readable
+    # floor. Wide rows make better use of the same slide before any clipping.
+    if any(sum(_paragraph_height(p, zone) for p in _fit_paragraphs(ctx, zone, paragraphs, shorten=False))
+           > Emu(zone.height).pt - 3 for _, zone, paragraphs in blocks):
+        _card_rows(ctx, entries)
+        return
+    for panel, zone, paragraphs in blocks:
+        kit._shape(ctx.slide, panel, roles['card'])
+        _put_paragraphs(ctx, zone, paragraphs)
+
+
+def _card_rows(ctx, entries):
+    """A compact card arrangement for complete, unusually verbose fields."""
+    gap = 2 / 72
+    height = (6.7 - 2.5 - gap * (len(entries) - 1)) / len(entries)
+    for index, item in enumerate(entries):
+        top = 2.5 + index * (height + gap)
+        kit._shape(ctx.slide, Z(LEFT, top, WIDTH, height), ctx.roles['card'])
+        zone = Z(LEFT + 0.2, top + 0.02, WIDTH - 0.4, height - 0.04)
+        tag = clip(ctx, item.get('value'), 3).upper()
+        tag_width = min(zone.width * 0.35, Pt(max(90, kit._text_width(tag, 10) + 8))) if tag else 0
+        paragraphs = [dict(text=clip(ctx, item['label'], 7), size=16, floor=14,
+                           font=kit.HEADING_FONT, colour=ctx.roles['card_ink'], bold=True,
+                           spacing=1.1, after=1, inset_right=tag_width)]
+        if item.get('text'):
+            paragraphs.append(dict(text=clip(ctx, item['text'], 20 if len(entries) <= 3 else 14), size=14, floor=12,
+                                   colour=ctx.roles['card_muted'], spacing=1.1))
+        _put_paragraphs(ctx, zone, paragraphs)
+        if tag:
+            tag_zone = kit.Zone(zone.left + zone.width - tag_width, zone.top, tag_width, Pt(18))
+            tag, size = fit_text(ctx, tag, tag_zone, size=10, floor=10, bold=True)
+            put(ctx, tag_zone, tag, size=size, colour=ctx.roles['card_accent'], bold=True,
+                align=PP_ALIGN.RIGHT, exact_spacing=True)
 
 
 @draws('matrix')
