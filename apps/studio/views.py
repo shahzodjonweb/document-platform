@@ -22,7 +22,7 @@ def config(request):
     from .pages import DEFAULT_PAGES, ceiling
     cfg=ai_config();features=[]
     for fid in (DOCUMENT,SLIDES):
-        formats=['pdf','pptx'] if fid==SLIDES else ['pdf']
+        formats=['pptx'] if fid==SLIDES else ['pdf']
         features.append({'id':fid,'name':FEATURES[fid]['name'],'surface':'generate',
                          'eligible':settings.ENABLE_BETA_TOOLS and allowed(request.account,fid),
                          'requires_provider':False,

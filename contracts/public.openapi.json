@@ -1107,8 +1107,7 @@
           "output_format": {
             "enum": [
               "pdf",
-              "pptx",
-              "png"
+              "pptx"
             ]
           },
           "output_locale": {
@@ -7342,8 +7341,7 @@
                   "output_format": {
                     "enum": [
                       "pdf",
-                      "pptx",
-                      "png"
+                      "pptx"
                     ]
                   },
                   "output_locale": {
@@ -7611,8 +7609,7 @@
                   "output_format": {
                     "enum": [
                       "pdf",
-                      "pptx",
-                      "png"
+                      "pptx"
                     ]
                   },
                   "output_locale": {

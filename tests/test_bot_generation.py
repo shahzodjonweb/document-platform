@@ -68,7 +68,7 @@ def describe(customer, description, service='PDF Document'):
     return dispatch_local(customer, text=description)
 
 
-SERVICE_LABELS = ['✨ PDF Document · AI', '✨ PDF Slides · AI']
+SERVICE_LABELS = ['✨ PDF Document · AI', '✨ PowerPoint Slides · AI']
 
 
 def test_the_two_services_lead_the_menus_with_no_folder_to_open(customer):

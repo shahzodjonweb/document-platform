@@ -17,8 +17,10 @@ from apps.studio.models import GenerationDraft
 SERVICES = (DOCUMENT, SLIDES)
 # Re-exported so bot.py can name them without a second import.
 __all__ = ['DOCUMENT', 'SLIDES', 'SERVICES']
-# Slides go out as PDF from the chat; an editable deck is a web choice.
-FORMAT = {DOCUMENT: 'pdf', SLIDES: 'pdf'}
+# A document is a PDF and a deck is an editable PowerPoint, in the chat as on
+# the web. The server forces this too; it is repeated here so the bot does not
+# describe an output it cannot produce.
+FORMAT = {DOCUMENT: 'pdf', SLIDES: 'pptx'}
 
 
 def available(account, feature_id):

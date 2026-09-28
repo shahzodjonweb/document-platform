@@ -114,10 +114,13 @@ def revision_source(account,identifier):
 def _prepare_draft(account,data):
     if set(data)&READONLY_FIELDS:raise DomainError('invalid_parameters')
     fid=data.get('feature_id',DOCUMENT);require(account,fid)
-    fmt=data.get('output_format','pdf')
-    if fmt not in ('pdf','pptx'):raise DomainError('invalid_parameters')
-    if fid==DOCUMENT:fmt='pdf'
-    if fmt=='pptx' and not allowed(account,SLIDES):raise DomainError('feature_not_in_plan',403)
+    # The service decides the format; the client does not get a say. A document
+    # is a PDF and a deck is a PowerPoint. The value is still validated so a
+    # malformed one is refused rather than silently ignored, and the forcing
+    # happens after the revision block below, which inherits the original's
+    # format — a change request against a draft made before slides became
+    # PowerPoint would otherwise come back as a PDF.
+    if data.get('output_format') not in (None,'pdf','pptx'):raise DomainError('invalid_parameters')
     locale=data.get('output_locale',account.locale)
     if locale not in ('en','uz','ru'):raise DomainError('invalid_locale')
     title=str(data.get('title',data.get('topic','Untitled document'))).strip()[:160] or 'Untitled document'
@@ -137,10 +140,11 @@ def _prepare_draft(account,data):
     if revising:
         source,original=revision_source(account,revising)
         fid=source.feature_id;require(account,fid)
-        fmt=original['output_format'];locale=original['output_locale']
+        locale=original['output_locale']
         ids=original['source_ids'];excerpts=original['excerpts']
         title=original['title'];text=''
         if not prompt.strip():raise DomainError('prompt_required')
+    fmt='pptx' if fid==SLIDES else 'pdf'
     # Length and question count are read out of the description rather than
     # asked for separately: one section is one page, and questions are priced,
     # so they appear only when the description asks for them. `requested_pages`

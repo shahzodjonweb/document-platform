@@ -94,7 +94,7 @@ MESSAGES = {
     'support_saved': ('✅ Message sent · #{reference}\nFollow up in the web app.', '✅ Xabar yuborildi · #{reference}\nSuhbatni veb ilovada davom ettiring.', '✅ Сообщение отправлено · #{reference}\nПродолжить переписку можно на сайте.'),
     'support_button': ('💬 Contact support', '💬 Yordamga yozish', '💬 Поддержка'),
     'payment_help': ('💳 Payment help', '💳 To‘lov bo‘yicha yordam', '💳 Помощь с оплатой'),
-    'guide': ('📎 Send a file → choose what to do → Start.\n✨ Or tap PDF Document or PDF Slides: describe what you want in one message, and check the cost before it runs.\n🔒 Enter PDF passwords and edit PDFs in the web app.', '📎 Fayl yuboring → amalni tanlang → Boshlash.\n✨ Yoki «PDF hujjat» yoki «PDF slaydlar»ni bosing: nima kerakligini bitta xabarda yozing va narxini tasdiqlang.\n🔒 PDF parollarini kiriting va PDF tahrirlashni veb ilovada bajaring.', '📎 Отправьте файл → выберите действие → Начать.\n✨ Или нажмите «PDF документ» или «PDF слайды»: опишите задачу одним сообщением и подтвердите стоимость.\n🔒 Пароли PDF вводите и редактируйте PDF на сайте.'),
+    'guide': ('📎 Send a file → choose what to do → Start.\n✨ Or tap PDF Document or PowerPoint Slides: describe what you want in one message, and check the cost before it runs.\n🔒 Enter PDF passwords and edit PDFs in the web app.', '📎 Fayl yuboring → amalni tanlang → Boshlash.\n✨ Yoki «PDF hujjat» yoki «PowerPoint slaydlar»ni bosing: nima kerakligini bitta xabarda yozing va narxini tasdiqlang.\n🔒 PDF parollarini kiriting va PDF tahrirlashni veb ilovada bajaring.', '📎 Отправьте файл → выберите действие → Начать.\n✨ Или нажмите «PDF документ» или «PowerPoint слайды»: опишите задачу одним сообщением и подтвердите стоимость.\n🔒 Пароли PDF вводите и редактируйте PDF на сайте.'),
     'fallback': ('📎 Send a file or use the buttons below.', '📎 Fayl yuboring yoki quyidagi tugmalardan foydalaning.', '📎 Отправьте файл или выберите кнопку ниже.'),
     'unsupported': ('📎 Please send a PDF, JPG, PNG, Word (.docx) or PowerPoint (.pptx) file.', '📎 PDF, JPG, PNG, Word (.docx) yoki PowerPoint (.pptx) fayli yuboring.', '📎 Отправьте PDF, JPG, PNG, Word (.docx) или PowerPoint (.pptx).'),
     'resend': ('✅ Language saved. Send your file again to begin.', '✅ Til saqlandi. Boshlash uchun faylni qayta yuboring.', '✅ Язык сохранён. Отправьте файл ещё раз, чтобы начать.'),
@@ -240,7 +240,7 @@ TOOL_LABELS = {
     'convert.pptx_to_pdf': ('📊 PowerPoint → PDF', '📊 PowerPoint → PDF', '📊 PowerPoint → PDF'),
     # The two AI services. Names are kept in step with the web app's locales.
     'ai.pdf_topic': ('✨ PDF Document · AI', '✨ PDF hujjat · AI', '✨ PDF документ · ИИ'),
-    'ai.pptx': ('✨ PDF Slides · AI', '✨ PDF slaydlar · AI', '✨ PDF слайды · ИИ'),
+    'ai.pptx': ('✨ PowerPoint Slides · AI', '✨ PowerPoint slaydlar · AI', '✨ PowerPoint слайды · ИИ'),
 }
 
 UX = {locale: {key: values[index] for key, values in MESSAGES.items()} for index, locale in enumerate(LOCALES)}

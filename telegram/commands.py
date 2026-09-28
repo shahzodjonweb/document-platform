@@ -8,7 +8,7 @@ from aiogram.types import BotCommand, BotCommandScopeChat, MenuButtonCommands
 COMMANDS = {
     'en': {
         'start': '🏠 Main menu',
-        'document': '✨ PDF Document · AI', 'slides': '✨ PDF Slides · AI',
+        'document': '✨ PDF Document · AI', 'slides': '✨ PowerPoint Slides · AI',
         'examples': '💡 How to describe it',
         'tools': '🛠 PDF & file tools',
         'myfiles': '🗂 Recent tasks',
@@ -19,7 +19,7 @@ COMMANDS = {
     },
     'uz': {
         'start': '🏠 Bosh menyu',
-        'document': '✨ PDF hujjat · AI', 'slides': '✨ PDF slaydlar · AI',
+        'document': '✨ PDF hujjat · AI', 'slides': '✨ PowerPoint slaydlar · AI',
         'examples': '💡 Qanday yozish kerak',
         'tools': '🛠 PDF va fayl vositalari',
         'myfiles': '🗂 So‘nggi vazifalar',
@@ -30,7 +30,7 @@ COMMANDS = {
     },
     'ru': {
         'start': '🏠 Главное меню',
-        'document': '✨ PDF документ · ИИ', 'slides': '✨ PDF слайды · ИИ',
+        'document': '✨ PDF документ · ИИ', 'slides': '✨ PowerPoint слайды · ИИ',
         'examples': '💡 Как описать',
         'tools': '🛠 Инструменты для файлов',
         'myfiles': '🗂 Последние задачи',
