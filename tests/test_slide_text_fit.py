@@ -118,7 +118,9 @@ def test_dense_translations_remain_complete(tmp_path, locale, title, body, argum
 
 
 @pytest.mark.parametrize('locale, title, body, argument', TRANSLATIONS)
-def test_native_render_keeps_dense_cards_and_arguments_inside_their_panels(tmp_path, locale, title, body, argument):
+@pytest.mark.parametrize('font_mode', ['office', 'dejavu'])
+def test_native_render_keeps_dense_cards_and_arguments_inside_their_panels(
+        tmp_path, monkeypatch, locale, title, body, argument, font_mode):
     """Optional integration test using a supplied headless LibreOffice binary.
 
     Set PPTX_TEST_SOFFICE to the bundled runtime's absolute soffice path. This
@@ -128,6 +130,12 @@ def test_native_render_keeps_dense_cards_and_arguments_inside_their_panels(tmp_p
     if not soffice:
         pytest.skip('Set PPTX_TEST_SOFFICE for native slide-fit verification')
     import pdfplumber
+    if font_mode == 'dejavu':
+        # Linux substitutes these wider faces for the Office fonts. Explicitly
+        # select them so the same regression runs on macOS as well as in CI.
+        from apps.studio import slides
+        monkeypatch.setattr(slides, 'BODY_FONT', 'DejaVu Sans')
+        monkeypatch.setattr(slides, 'HEADING_FONT', 'DejaVu Serif')
 
     path, result, presentation = render(tmp_path, [cards(label=title, text=body), arguments(label=argument)], locale)
     assert result['shortened'] is False
@@ -137,6 +145,8 @@ def test_native_render_keeps_dense_cards_and_arguments_inside_their_panels(tmp_p
                    check=True, capture_output=True, timeout=60)
     with pdfplumber.open(path.with_suffix('.pdf')) as document:
         assert len(document.pages) == 3
+        if font_mode == 'dejavu':
+            assert any('DejaVuSans' in char['fontname'] for char in document.pages[1].chars)
         for index, page in enumerate(document.pages[1:], 1):
             assert all(0 <= char['top'] < char['bottom'] <= page.height for char in page.chars)
             frames = body_frames(presentation.slides[index])

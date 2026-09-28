@@ -102,6 +102,7 @@ def _text_lines(text, size, width, *, bold=False):
 def _paragraph_height(paragraph, zone):
     width = zone.width - (Pt(paragraph['size'] * 0.95) if paragraph.get('bullet') else 0)
     width -= paragraph.get('inset_right', 0)
+    width /= paragraph.get('width_safety', 1)
     lines = _text_lines(paragraph['text'], paragraph['size'], width,
                         bold=paragraph.get('bold', False))
     return (lines * paragraph['size'] * paragraph.get('spacing', 1.15)
@@ -625,10 +626,13 @@ def _card_rows(ctx, entries):
         tag_width = min(zone.width * 0.35, Pt(max(90, kit._text_width(tag, 10) + 8))) if tag else 0
         paragraphs = [dict(text=clip(ctx, item['label'], 7), size=16, floor=14,
                            font=kit.HEADING_FONT, colour=ctx.roles['card_ink'], bold=True,
-                           spacing=1.1, after=1, inset_right=tag_width)]
+                           spacing=1.1, after=1, inset_right=tag_width, width_safety=1.1)]
         if item.get('text'):
+            # A compact row has no spare line. Corbel can substitute to the
+            # wider DejaVu Sans on Linux, so a line that only just fits Noto's
+            # measured width must be budgeted as wrapping before choosing size.
             paragraphs.append(dict(text=clip(ctx, item['text'], 20 if len(entries) <= 3 else 14), size=14, floor=12,
-                                   colour=ctx.roles['card_muted'], spacing=1.1))
+                                   colour=ctx.roles['card_muted'], spacing=1.1, width_safety=1.1))
         _put_paragraphs(ctx, zone, paragraphs)
         if tag:
             tag_zone = kit.Zone(zone.left + zone.width - tag_width, zone.top, tag_width, Pt(18))
