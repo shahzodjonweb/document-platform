@@ -49,7 +49,7 @@ def execute_generation(job,output_dir):
             raise
     else:
         warnings.append('local_fixture_not_ai_generated')
-        if not any(s['body'].strip() for s in content['sections']) and not content['questions']:
+        if not any(s['body'].strip() or s.get('items') for s in content['sections']) and not content['questions']:
             raise DomainError('content_required')
     bounds=job.quote.policy.get('generation_bounds',{})
     # Everything from here on trims the response to what was quoted instead of

@@ -301,3 +301,96 @@ def test_figures_are_read_the_way_people_write_them(value, number):
 ])
 def test_a_photo_search_is_only_ever_a_few_plain_english_words(raw, clean):
     assert layouts.clean_query(raw) == clean
+
+
+# ---------------------------------------------------------------- pipeline
+
+
+@pytest.fixture
+def live_customer(settings):
+    from tests.test_page_fill import live
+    return live(settings)
+
+
+def _answer(sections):
+    return ({'title': 'Deck', 'answer_supported': True, 'citations': [], 'questions': [],
+             'sections': sections}, {'input_tokens': 10, 'output_tokens': 10})
+
+
+@pytest.mark.django_db
+def test_a_layout_the_model_chose_survives_to_the_deck(live_customer, monkeypatch):
+    from apps.core.services import execute_job, storage_path, submit_job
+    from apps.studio import provider
+    from apps.studio.domain import SLIDES, create_draft, draft_data, generation_quote
+    chosen = [section(1, 'cover', 'Deck', 'Sub'), EVERY[8], EVERY[9], EVERY[15]]
+    for index, entry in enumerate(chosen):
+        entry = dict(entry)
+        chosen[index] = {**entry, 'id': f's{index + 1}'}
+    monkeypatch.setattr(provider, 'generate', lambda *args, **kwargs: _answer(chosen))
+    draft = create_draft(live_customer, {'feature_id': SLIDES, 'prompt': 'A 4 slide deck on results.'})
+    quote = generation_quote(live_customer, draft.id, draft.version)
+    job, _ = submit_job(live_customer, quote.id, f'layouts-{draft.id}')
+    job = execute_job(job.id)
+
+    assert job.status == 'succeeded', job.error_code
+    stored = draft_data(type(draft).objects.get(pk=draft.pk))['content']['sections']
+    assert [s['layout'] for s in stored] == ['cover', 'stats', 'timeline', 'chart']
+    presentation = Presentation(str(storage_path(job.artifacts.get().file.object_key)))
+    assert len(presentation.slides) == 4
+    assert any('118%' in s.text_frame.text or '+18%' in s.text_frame.text
+               for s in presentation.slides[1].shapes if s.has_text_frame)
+
+
+@pytest.mark.django_db
+def test_editing_a_deck_keeps_each_slide_layout(live_customer):
+    from apps.studio.domain import SLIDES, create_draft, draft_data, update_draft
+    draft = create_draft(live_customer, {'feature_id': SLIDES, 'prompt': 'A 3 slide deck.'})
+    content = draft_data(draft)['content']
+    content['sections'][1].update(layout='stats', items=[item('Revenue', '', '+18%'), item('Churn', '', '2%')])
+    updated = update_draft(live_customer, draft.id, {'version': draft.version, 'content': content})
+    kept = draft_data(updated)['content']['sections'][1]
+    assert kept['layout'] == 'stats' and kept['items'][0]['value'] == '+18%'
+    # The outline form of an edit keeps it too.
+    outline = [{'id': s['id'], 'title': s['heading'], 'body': s['body'], 'layout': 'cards' if i == 2 else s['layout'],
+                'items': s['items']} for i, s in enumerate(draft_data(updated)['content']['sections'])]
+    again = update_draft(live_customer, draft.id, {'version': updated.version, 'outline': outline})
+    assert draft_data(again)['content']['sections'][2]['layout'] == 'cards'
+
+
+@pytest.mark.django_db
+def test_a_layout_no_model_could_choose_is_refused_from_a_client(live_customer):
+    from apps.core.errors import DomainError
+    from apps.studio.domain import SLIDES, create_draft, draft_data, update_draft
+    draft = create_draft(live_customer, {'feature_id': SLIDES, 'prompt': 'A 3 slide deck.'})
+    content = draft_data(draft)['content']
+    content['sections'][1]['layout'] = 'hexagon'
+    with pytest.raises(DomainError, match='invalid_parameters'):
+        update_draft(live_customer, draft.id, {'version': draft.version, 'content': content})
+
+
+@pytest.mark.django_db
+def test_a_document_never_grows_slide_fields(live_customer):
+    from apps.studio.domain import DOCUMENT, create_draft, draft_data
+    draft = create_draft(live_customer, {'feature_id': DOCUMENT, 'prompt': 'A 2 page guide.'})
+    for entry in draft_data(draft)['content']['sections']:
+        assert set(entry) == {'id', 'heading', 'body', 'notes'}
+
+
+@pytest.mark.django_db
+def test_a_revision_sends_each_slide_back_with_its_layout(live_customer, monkeypatch):
+    import json as _json
+    from apps.studio import provider
+    from apps.studio.domain import SLIDES, create_draft, draft_data, pack, unpack
+    draft = create_draft(live_customer, {'feature_id': SLIDES, 'prompt': 'A 3 slide deck.'})
+    stored = unpack(draft.encrypted_data)
+    stored['content']['sections'][1].update(layout='stats', body='x',
+                                            items=[item('Revenue', '', '+18%'), item('Churn', '', '2%')])
+    draft.encrypted_data = pack(stored)
+    draft.save(update_fields=['encrypted_data'])
+    revised = create_draft(live_customer, {'prompt': 'Make slide two punchier.',
+                                           'options': {'revise_draft_id': str(draft.id)}})
+    sent = _json.loads(provider.request_body({'model': 'm', 'api_key': 'k'}, unpack(revised.encrypted_data),
+                                             SLIDES)['input'])
+    assert sent['outline']['sections'][1]['layout'] == 'stats'
+    assert sent['outline']['sections'][1]['items'][0]['value'] == '+18%'
+    assert draft_data(revised)['output_format'] == 'pptx'

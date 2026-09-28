@@ -13,15 +13,23 @@ DT={'type':'string','format':'date-time'}
 def obj(properties,required=()): return {'type':'object','properties':properties,'required':list(required)}
 def arr(items): return {'type':'array','items':items}
 def ref(name): return {'$ref':f'#/components/schemas/{name}'}
+def _slide_fields():
+    from apps.studio.layouts import AUTO, LAYOUT_IDS
+    return {'layout':{'type':'string','enum':[AUTO,*LAYOUT_IDS]},
+            'items':arr(obj({'label':{'type':'string'},'text':{'type':'string'},'value':{'type':'string'}})),
+            'columns':arr({'type':'string'}),'image_query':{'type':'string'}}
 
 def extend_schema(models, endpoint, paths):
     """Public studio and commerce schemas; staff configuration stays excluded."""
     O={'type':'object'}
+    SLIDE_FIELDS=_slide_fields()
     nullable_string={'type':['string','null']}
     version=obj({'version':I},['version'])
     deleted=obj({'deleted':B},['deleted'])
     models.update({
-        'GenerationSection':obj({'id':S,'heading':S,'body':S,'notes':S},['id','heading','body']),
+        # Slides also carry the layout they chose and what fills it. Optional:
+        # a document section never has them, and an older deck has `auto`.
+        'GenerationSection':obj({'id':S,'heading':S,'body':S,'notes':S,**SLIDE_FIELDS},['id','heading','body']),
         'GenerationQuestion':obj({'id':S,'stem':S,'options':arr(S),'answer':S,'explanation':S,'topic':S,'marks':I},['id','stem','answer','marks']),
         'GenerationContent':obj({'title':S,'sections':arr(ref('GenerationSection')),'questions':arr(ref('GenerationQuestion')),'citations':arr(obj({'asset_id':UUID,'page':I}))},['title','sections','questions']),
         'GenerationDraft':obj({'id':UUID,'feature_id':S,'version':I,'provider_mode':S,'expires_at':DT,'title':S,'prompt':S,'source_text':S,'source_ids':arr(UUID),'excerpts':arr(obj({'asset_id':UUID,'page':I,'text':S})),'output_locale':{'enum':['en','uz','ru']},'output_format':{'enum':['pdf','pptx']},'options':O,'content':ref('GenerationContent'),'outline':arr(obj({'id':S,'title':S,'body':S}))},['id','feature_id','version','provider_mode','expires_at','title','output_locale','output_format','content']),
@@ -77,7 +85,7 @@ def extend_schema(models, endpoint, paths):
     endpoint('/generation/drafts','get','listGenerationDrafts',obj({'results':arr(ref('GenerationDraft'))},['results']))
     endpoint('/generation/drafts','post','createGenerationDraft',ref('GenerationDraft'),create,code='201',description='Uncharged encrypted authoring draft. Local authoring is not an AI response. Provider generation happens only after a confirmed quote.')
     endpoint('/generation/drafts/{id}','get','getGenerationDraft',ref('GenerationDraft'))
-    endpoint('/generation/drafts/{id}','patch','updateGenerationDraft',ref('GenerationDraft'),obj({'version':I,'title':S,'prompt':S,'source_text':S,'source_ids':arr(UUID),'output_locale':{'enum':['en','uz','ru']},'output_format':{'enum':['pdf','pptx']},'options':O,'content':ref('GenerationContent'),'outline':arr(obj({'id':S,'title':S,'body':S,'notes':S}))},['version']))
+    endpoint('/generation/drafts/{id}','patch','updateGenerationDraft',ref('GenerationDraft'),obj({'version':I,'title':S,'prompt':S,'source_text':S,'source_ids':arr(UUID),'output_locale':{'enum':['en','uz','ru']},'output_format':{'enum':['pdf','pptx']},'options':O,'content':ref('GenerationContent'),'outline':arr(obj({'id':S,'title':S,'body':S,'notes':S,**SLIDE_FIELDS}))},['version']))
     endpoint('/generation/drafts/{id}','delete','deleteGenerationDraft',deleted)
     endpoint('/generation/drafts/{id}/outline','post','reviewGenerationOutline',ref('GenerationDraft'),version)
     endpoint('/generation/drafts/{id}/quote','post','quoteGenerationDraft',ref('Quote'),obj({'version':I,'stage':{'enum':['document','outline']}},['version']),code='201')

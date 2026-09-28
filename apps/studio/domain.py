@@ -60,6 +60,12 @@ def validate_content(account,content,output_format='pdf'):
     for i,s in enumerate(sections[:max_sections]):
         if not isinstance(s,dict): raise DomainError('invalid_parameters')
         clean.append({'id':str(s.get('id',f's{i+1}'))[:40],'heading':str(s.get('heading',s.get('title','')))[:160],'body':str(s.get('body',''))[:body_cap],'notes':str(s.get('notes',''))[:2000]})
+        # A slide also carries the layout it chose and what fills it. A document
+        # section keeps exactly its four keys: nothing about documents changes.
+        if output_format=='pptx':
+            from .layouts import clean_slide_fields
+            try:clean[-1].update(clean_slide_fields(s))
+            except ValueError:raise DomainError('invalid_parameters') from None
     questions=content.get('questions',[])
     if not isinstance(questions,list): raise DomainError('invalid_parameters')
     questions=questions[:caps['questions']]
@@ -106,7 +112,9 @@ def revision_source(account,identifier):
     source=GenerationDraft.objects.filter(account=account,id=identifier,expires_at__gt=timezone.now()).first()
     if not source:raise DomainError('not_found',404)
     original=unpack(source.encrypted_data)
-    if not any((section.get('body') or '').strip() for section in original['content']['sections']):
+    # A slide can be finished with nothing in its body — a stats slide is all
+    # items — so items count as content too.
+    if not any((section.get('body') or '').strip() or section.get('items') for section in original['content']['sections']):
         raise DomainError('revision_not_ready')
     return source,original
 
@@ -250,7 +258,9 @@ def update_draft(account,draft_id,data):
     if 'outline' in data:
         outline=data['outline']
         if not isinstance(outline,list) or any(not isinstance(s,dict) for s in outline):raise DomainError('invalid_parameters')
-        content={**content,'sections':[{'id':s.get('id',str(i)),'heading':s.get('title',''),'body':s.get('body',''),'notes':s.get('notes','')} for i,s in enumerate(outline)]}
+        slide_keys=('layout','items','columns','image_query')
+        content={**content,'sections':[{'id':s.get('id',str(i)),'heading':s.get('title',''),'body':s.get('body',''),'notes':s.get('notes',''),
+                                         **{key:s[key] for key in slide_keys if key in s}} for i,s in enumerate(outline)]}
     if 'title' in data and isinstance(content,dict):content={**content,'title':payload['title']}
     payload['content']=validate_content(account,content,payload['output_format'])
     payload['title']=payload['content']['title']

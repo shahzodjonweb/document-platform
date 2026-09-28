@@ -102,9 +102,12 @@ if four:
         print('       guidance sent:', writing_guidance({}, 4, 'pdf'))
 
 # 4. Slides ask for much less prose per section; confirm the model is told so.
+# A slide is asked for as a slide: a layout chosen from the catalogue, and a
+# list only when the layout is one. (This used to look for a character count,
+# which the guidance deliberately never contains, so it failed on every run.)
 guidance = writing_guidance({}, 6, 'pptx')
-report('slides get their own target', PASS if str(pages.CHARS_PER_SLIDE) in guidance else FAIL,
-       f'{pages.CHARS_PER_SLIDE} characters per slide')
+report('slides choose a layout', PASS if 'Choose a layout for every section' in guidance
+       and '3 to 5 bullets, one per line' in guidance else FAIL, 'layout guide and list rule present')
 
 failed = [name for name, status, _ in results if status == FAIL]
 print('\n' + ('FAILED: ' + ', '.join(failed) if failed else 'All checked paths are working.'))

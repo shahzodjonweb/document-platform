@@ -1275,10 +1275,63 @@
           "body": {
             "type": "string"
           },
+          "columns": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "heading": {
             "type": "string"
           },
           "id": {
+            "type": "string"
+          },
+          "image_query": {
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "string"
+                }
+              },
+              "required": [],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "layout": {
+            "enum": [
+              "auto",
+              "cover",
+              "agenda",
+              "section",
+              "bullets",
+              "two_column",
+              "statement",
+              "quote",
+              "big_number",
+              "stats",
+              "timeline",
+              "process",
+              "comparison",
+              "pros_cons",
+              "cards",
+              "matrix",
+              "chart",
+              "table",
+              "image_split",
+              "image_full",
+              "closing"
+            ],
             "type": "string"
           },
           "notes": {
@@ -7591,7 +7644,60 @@
                         "body": {
                           "type": "string"
                         },
+                        "columns": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
                         "id": {
+                          "type": "string"
+                        },
+                        "image_query": {
+                          "type": "string"
+                        },
+                        "items": {
+                          "items": {
+                            "properties": {
+                              "label": {
+                                "type": "string"
+                              },
+                              "text": {
+                                "type": "string"
+                              },
+                              "value": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "layout": {
+                          "enum": [
+                            "auto",
+                            "cover",
+                            "agenda",
+                            "section",
+                            "bullets",
+                            "two_column",
+                            "statement",
+                            "quote",
+                            "big_number",
+                            "stats",
+                            "timeline",
+                            "process",
+                            "comparison",
+                            "pros_cons",
+                            "cards",
+                            "matrix",
+                            "chart",
+                            "table",
+                            "image_split",
+                            "image_full",
+                            "closing"
+                          ],
                           "type": "string"
                         },
                         "notes": {

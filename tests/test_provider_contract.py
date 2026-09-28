@@ -109,9 +109,9 @@ def test_a_slide_is_asked_for_as_a_slide_not_as_a_short_page():
     # The title slide is named once, in the call that actually contains it.
     assert 'Section 1 is the title slide' in guidance, guidance
     later = writing_guidance({}, 4, 'pptx', first=8, total=12)
-    assert 'title slide' not in later, later
+    assert 'Section 1 is the title slide' not in later, later
     # A one-slide deck has nothing to introduce.
-    assert 'title slide' not in writing_guidance({}, 1, 'pptx', first=0, total=1)
+    assert 'Section 1 is the title slide' not in writing_guidance({}, 1, 'pptx', first=0, total=1)
 
 
 def test_the_response_ceiling_bounds_one_call_not_the_document():
@@ -246,3 +246,49 @@ def test_the_budget_a_document_is_given_covers_every_call_it_needs():
     for count in (1, 8, 9, 35):
         calls = len(pages.batches(count))
         assert provider.call_budget(count) >= calls * 60, f'{count} pages needs {calls} calls'
+
+
+
+def test_a_deck_is_asked_to_choose_a_layout_for_every_slide():
+    """The model picks from the twenty layouts; a document is never offered them."""
+    from apps.studio import layouts
+    from apps.studio.provider import SLIDE_SCHEMA
+    deck = json.loads(request_body(CONFIG, draft(output_format='pptx'), SLIDES)['input'])['writing_guidance']
+    for kind in layouts.LAYOUT_IDS:
+        if kind not in layouts.PHOTO_LAYOUTS:
+            assert f'- {kind}:' in deck, kind
+    assert 'Never invent figures' in deck and 'its layout is cover' in deck
+    assert len(deck) < 3500, 'the guide is sent on every call, so it stays short'
+    document = json.loads(request_body(CONFIG, draft(), DOCUMENT)['input'])['writing_guidance']
+    assert 'layout' not in document
+    # The schema follows the format, so the outline stage of a deck chooses too.
+    assert schema_for(SLIDES, 'pptx') is SLIDE_SCHEMA and schema_for('ai.outline', 'pptx') is SLIDE_SCHEMA
+    assert schema_for(DOCUMENT, 'pdf') is SCHEMA
+    section = SLIDE_SCHEMA['properties']['sections']['items']
+    assert section['properties']['layout']['enum'] == layouts.LAYOUT_IDS
+    assert set(section['required']) == set(section['properties']), 'strict mode needs every field required'
+
+
+def test_an_answer_using_every_layout_is_accepted():
+    from apps.studio import layouts
+    from apps.studio.provider import SLIDE_SCHEMA
+    answer = {'title': 'Deck', 'answer_supported': True, 'citations': [], 'questions': [],
+              'sections': [{'id': f's{i}', 'heading': 'H', 'body': '', 'notes': '', 'layout': kind,
+                            'items': [{'label': 'a', 'text': 'b', 'value': '1'}], 'columns': [],
+                            'image_query': ''} for i, kind in enumerate(layouts.LAYOUT_IDS)]}
+    _validate(answer, SLIDE_SCHEMA)
+    answer['sections'][0]['layout'] = 'hexagon'
+    with pytest.raises(ValueError):
+        _validate(answer, SLIDE_SCHEMA)
+
+
+@pytest.mark.parametrize('cap,total', [(2, 5), (6, 20), (12, 60), (0, 10), (3, 9)])
+def test_photos_are_shared_across_batches_without_exceeding_the_plan(cap, total):
+    """A long deck is written in several calls; together they may not use more photos than allowed."""
+    import re
+    shares = []
+    for first, last in pages.batches(total):
+        text = writing_guidance({'image_cap': cap}, last - first, 'pptx', first, total)
+        found = re.search(r'Use at most (\d+) photo', text)
+        shares.append(int(found.group(1)) if found else 0)
+    assert sum(shares) == cap, shares

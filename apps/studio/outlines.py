@@ -14,7 +14,10 @@ from .domain import generation_quote,unpack,pack,validate_content
 def _payload(data):
     value=copy.deepcopy(data)
     value['prompt']='Create a concise reviewable outline, not the full document. Each section body must be at most 500 characters describing what to cover. No questions or speaker notes. Preserve section IDs. Original request: '+data['prompt']
-    value['options']={'question_count':0,'length':len(data['content']['sections']),'outline_only':True}
+    # A deck's outline chooses its layouts, photos included, so the customer can
+    # review them before the paid run keeps them.
+    value['options']={'question_count':0,'length':len(data['content']['sections']),'outline_only':True,
+                      'image_cap':data['options'].get('image_cap',0)}
     value['content']['questions']=[]
     value.pop('revision',None)
     return value
