@@ -218,3 +218,62 @@ def test_every_language_survives_into_the_deck(tmp_path, locale, needle):
     text = ' '.join(s.text_frame.text for slide in presentation.slides
                     for s in slide.shapes if s.has_text_frame)
     assert needle in text
+
+
+# --------------------------------------------------------------- themes
+
+
+@pytest.mark.parametrize('brief,theme,accent', [
+    ('8 slides on Q3 results', None, None),
+    ('a dark deck about tide tables', 'dark', None),
+    ('10 slides in navy, minimal', 'light', '#16305C'),
+    ('bold 6 slide pitch in burgundy', 'bold', '#6E1230'),
+    ("qorong'i 8 ta slayd, ko'k rangda", 'dark', '#1F4E9C'),
+    ('тёмная презентация на 10 слайдов, зелёный', 'dark', '#1E6B45'),
+    ('a deck about the history of black holes', None, '#14171A'),
+])
+def test_the_look_is_read_out_of_the_description(brief, theme, accent):
+    """There is no theme picker: the brief is the brief, in all three languages."""
+    from apps.studio.pages import requested_accent, requested_theme
+    assert requested_theme(brief) == theme
+    assert requested_accent(brief) == accent
+
+
+@pytest.mark.parametrize('theme', ['light', 'dark', 'bold'])
+@pytest.mark.parametrize('accent', ACCENTS)
+def test_text_reads_in_every_theme_whatever_the_accent(theme, accent):
+    """An arbitrary accent on a dark ground is where a palette usually breaks."""
+    roles = palette(accent, theme)
+    assert contrast_ratio(roles['ink'], roles['surface']) >= 7.0
+    assert contrast_ratio(roles['muted'], roles['surface']) >= 4.5
+    assert contrast_ratio(roles['accent_text'], roles['surface']) >= 4.5
+    # A cover is set at 44pt and 18pt, which is large text: AAA is 4.5:1 there,
+    # where the 7:1 above applies to the body copy.
+    assert contrast_ratio(roles['cover_ink'], roles['cover_fill']) >= 4.5
+    assert contrast_ratio(roles['cover_muted'], roles['cover_fill']) >= 4.5
+    assert contrast_ratio(roles['on_accent'], roles['accent']) >= 4.5
+    assert contrast_ratio(roles['band_ink'], roles['band']) >= 4.5
+    assert roles['accent'] == accent.lstrip('#').upper(), 'the brand colour is never adjusted'
+
+
+@pytest.mark.parametrize('theme,dark_ground', [('light', False), ('dark', True), ('bold', False)])
+def test_a_theme_actually_changes_the_deck(tmp_path, theme, dark_ground):
+    from apps.studio.slides import _luminance
+    render_pptx(deck(CONTENT), tmp_path / f'{theme}.pptx',
+                style={'accent': '#1F4E9C', 'deck_theme': theme})
+    presentation = Presentation(str(tmp_path / f'{theme}.pptx'))
+    ground = str(presentation.slides[1].background.fill.fore_color.rgb)
+    assert (_luminance(ground) < 0.2) is dark_ground, f'{theme} ground {ground}'
+    # A bold deck puts the accent behind the cover; the others keep it quiet.
+    cover = str(presentation.slides[0].background.fill.fore_color.rgb)
+    assert (cover == '1F4E9C') is (theme == 'bold'), f'{theme} cover {cover}'
+
+
+def test_branding_beats_a_colour_named_in_the_description(settings, tmp_path):
+    """A brand colour is a fact about the customer, not a preference."""
+    style = {'accent': '#16305C', 'deck_theme': 'dark'}
+    # render_style puts the brand accent over whatever the description asked for.
+    style_with_brand = {**style, 'accent': '#285CFF', 'brand_name': 'Acme'}
+    render_pptx(deck(CONTENT), tmp_path / 'brand.pptx', style=style_with_brand)
+    presentation = Presentation(str(tmp_path / 'brand.pptx'))
+    assert str(presentation.slides[0].shapes[0].fill.fore_color.rgb) == '285CFF'

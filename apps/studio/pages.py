@@ -159,3 +159,47 @@ def batches(count, per_call=PAGES_PER_CALL):
     and it keeps every call's `max_output_tokens` inside RESPONSE_CEILING.
     """
     return [(start, min(start + per_call, count)) for start in range(0, max(1, count), per_call)]
+
+
+# What a deck should look like, read out of the description like everything
+# else. There is no theme picker: the brief is the brief.
+THEMES = ('light', 'dark', 'bold')
+THEME_WORDS = (
+    ('dark', r'dark|night\s*mode|qorong\'?i|tungi|т[ёе]мн\w*|ночн\w*'),
+    ('bold', r'bold|vivid|striking|punchy|high[-\s]?contrast|yorqin|jasur|ярк\w*|смел\w*|контрастн\w*'),
+    ('light', r'light\s*(?:theme|background)|minimal|oq\s*fon|св[ея]тл\w*|минималист\w*'),
+)
+# A colour named in the brief becomes the accent, and the palette derives the
+# rest from it. Account branding still wins: a brand colour is not a preference.
+COLOURS = (
+    ('#16305C', r'navy|dark\s*blue|to\'?q\s*ko\'?k|тёмно-син\w*|нав\w*'),
+    ('#1F4E9C', r'blue|ko\'?k|син\w*|голуб\w*'),
+    ('#146B6B', r'teal|turquoise|feruza|бирюз\w*'),
+    ('#1E6B45', r'green|emerald|yashil|зел[ёе]н\w*|изумруд\w*'),
+    ('#6E1230', r'burgundy|maroon|wine|bordo|бордов\w*'),
+    ('#9B1B1B', r'red|crimson|qizil|красн\w*|алы[йе]'),
+    ('#B2541A', r'orange|amber|to\'?q\s*sariq|оранжев\w*|янтарн\w*'),
+    ('#8A6A10', r'gold|mustard|oltin|sariq|золот\w*|горчичн\w*|ж[ёе]лт\w*'),
+    ('#4B2E83', r'purple|violet|indigo|binafsha|фиолетов\w*|сирен\w*|индиго'),
+    ('#A3246B', r'pink|magenta|pushti|розов\w*|пурпурн\w*'),
+    ('#2B2F33', r'charcoal|graphite|slate|grey|gray|kulrang|сер\w*|графит\w*'),
+    ('#14171A', r'black|qora|ч[ёе]рн\w*'),
+)
+
+
+def requested_theme(text):
+    """The deck style a description asks for, or None when it asks for none."""
+    body = _normalised(text).lower()
+    for name, pattern in THEME_WORDS:
+        if re.search(r'\b(?:' + pattern + r')', body, re.IGNORECASE | re.UNICODE):
+            return name
+    return None
+
+
+def requested_accent(text):
+    """A colour named in the description, as a hex accent, or None."""
+    body = _normalised(text).lower()
+    for value, pattern in COLOURS:
+        if re.search(r'\b(?:' + pattern + r')', body, re.IGNORECASE | re.UNICODE):
+            return value
+    return None

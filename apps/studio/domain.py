@@ -111,6 +111,21 @@ def revision_source(account,identifier):
     return source,original
 
 
+def _deck_style(fid,brief):
+    """A deck's look, read out of the description like its slide count.
+
+    There is no theme picker and no colour field: "a dark deck in navy" is the
+    brief saying so. Account branding still overrides the accent later, because
+    a brand colour is a fact about the customer rather than a preference. A
+    document has no deck theme, so it gets nothing and its style stays fixed.
+    """
+    if fid!=SLIDES:return {}
+    from . import pages as paging
+    style={'deck_theme':paging.requested_theme(brief) or 'light'}
+    accent=paging.requested_accent(brief)
+    if accent:style['accent']=accent
+    return style
+
 def _prepare_draft(account,data):
     if set(data)&READONLY_FIELDS:raise DomainError('invalid_parameters')
     fid=data.get('feature_id',DOCUMENT);require(account,fid)
@@ -167,7 +182,7 @@ def _prepare_draft(account,data):
     # against; a page that must be full has nothing left to choose.
     density={}
     template_style=style_for(account,template_id)
-    if template_style is not None:options['template_style']={**template_style,**density}
+    if template_style is not None:options['template_style']={**template_style,**density,**_deck_style(fid,brief)}
     else:
         from .models import SavedDefinition
         import re

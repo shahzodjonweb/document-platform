@@ -107,39 +107,78 @@ def contrast_ratio(one, other):
     return (high + 0.05) / (low + 0.05)
 
 
-def _darken_until(value, background, target):
-    """Darken a colour until it reads against the background, or run out of room."""
+def _reads_on(value, background, target):
+    """Move a colour away from its background until it reads, or run out of room.
+
+    Which way is away depends on the background, so this serves a light deck and
+    a dark one with the same call.
+    """
     hue, lightness, saturation = _hls(value)
-    while lightness > 0.02 and contrast_ratio(value, background) < target:
-        lightness -= 0.03
+    step = -0.03 if _luminance(background) > 0.18 else 0.03
+    for _ in range(40):
+        if contrast_ratio(value, background) >= target:
+            break
+        lightness += step
+        if not 0.0 <= lightness <= 1.0:
+            break
         value = _from_hls(hue, lightness, saturation)
     return value
 
 
-def palette(accent):
+# Surface, secondary surface and soft-tint lightnesses per theme. Everything
+# else is derived and contrast-corrected, so a theme is three numbers and a
+# decision about what the cover and the dividers are filled with.
+THEME_GROUND = {
+    'light': (0.975, 0.94, 0.86),
+    'dark': (0.11, 0.165, 0.26),
+    'bold': (0.975, 0.94, 0.86),
+}
+
+
+def palette(accent, theme='light'):
     """A small set of roles derived from the one colour a customer can choose.
 
     `accent` is returned untouched — it is the brand, and it is what fills the
     accent shape. Everything that carries text is contrast-corrected against the
     surface it sits on, which is most of what separates a designed deck from a
-    generated one.
+    generated one, and is what lets an arbitrary accent be safe.
     """
     accent = _hex(accent).upper()
+    theme = theme if theme in THEME_GROUND else 'light'
     hue, _, saturation = _hls(accent)
-    surface = _from_hls(hue, 0.975, min(saturation, 0.10))
+    ground, alt, soft = THEME_GROUND[theme]
+    dark = ground < 0.5
+    surface = _from_hls(hue, ground, min(saturation, 0.12 if dark else 0.10))
     roles = {
         'accent': accent,
+        'theme': theme,
         'surface': surface,
-        'surface_alt': _from_hls(hue, 0.94, min(saturation, 0.12)),
-        'accent_soft': _from_hls(hue, 0.86, min(saturation, 0.35)),
-        'ink': _from_hls(hue, 0.13, min(saturation, 0.25)),
-        'muted': _from_hls(hue, 0.45, min(saturation, 0.15)),
+        'surface_alt': _from_hls(hue, alt, min(saturation, 0.14)),
+        'accent_soft': _from_hls(hue, soft, min(saturation, 0.35)),
+        'ink': _from_hls(hue, 0.95 if dark else 0.13, min(saturation, 0.08 if dark else 0.25)),
+        'muted': _from_hls(hue, 0.66 if dark else 0.45, min(saturation, 0.15)),
         'accent_text': accent,
     }
-    roles['ink'] = _darken_until(roles['ink'], surface, 7.0)
-    roles['muted'] = _darken_until(roles['muted'], surface, 4.5)
-    roles['accent_text'] = _darken_until(roles['accent_text'], surface, 4.5)
-    roles['on_accent'] = 'FFFFFF' if contrast_ratio('FFFFFF', accent) >= contrast_ratio(roles['ink'], accent) else roles['ink']
+    roles['ink'] = _reads_on(roles['ink'], surface, 7.0)
+    roles['muted'] = _reads_on(roles['muted'], surface, 4.5)
+    roles['accent_text'] = _reads_on(roles['accent_text'], surface, 4.5)
+    # Text on the accent itself: start from whichever end already reads better,
+    # then push it until it does. Picking the better of black and white is not
+    # enough — a mid-tone accent is too far from both.
+    on_dark, on_light = _from_hls(hue, 0.13, min(saturation, 0.2)), 'FFFFFF'
+    best = on_light if contrast_ratio(on_light, accent) >= contrast_ratio(on_dark, accent) else on_dark
+    roles['on_accent'] = _reads_on(best, accent, 4.5)
+    # A bold deck puts the accent itself behind the cover and the dividers; the
+    # others keep them quiet, so the accent stays an accent.
+    if theme == 'bold':
+        roles['cover_fill'], roles['cover_ink'] = accent, roles['on_accent']
+        roles['band'], roles['band_ink'] = accent, roles['on_accent']
+    else:
+        roles['cover_fill'] = 'FFFFFF' if theme == 'light' else surface
+        roles['cover_ink'] = roles['ink'] if theme == 'dark' else _reads_on(roles['ink'], 'FFFFFF', 7.0)
+        roles['band'], roles['band_ink'] = roles['surface_alt'], roles['ink']
+    roles['cover_muted'] = (roles['cover_ink'] if theme == 'bold'
+                            else _reads_on(roles['muted'], roles['cover_fill'], 4.5))
     return roles
 
 
@@ -417,7 +456,7 @@ def _slide_number(slide, zone, roles):
 def _furniture(slide, roles, style, index, total, kind):
     """Everything every slide carries. The accent element is added first."""
     slide.background.fill.solid()
-    slide.background.fill.fore_color.rgb = _rgb(roles['surface'] if kind != 'cover' else 'FFFFFF')
+    slide.background.fill.fore_color.rgb = _rgb(roles['cover_fill'] if kind == 'cover' else roles['surface'])
     # shapes[0] is the accent element on every slide, filled with the brand
     # colour exactly as given. tests/test_slides_deck.py pins this.
     _shape(slide, ZONES['accent_bar'], roles['accent'])
@@ -471,19 +510,22 @@ def _draw(slide, kind, section, bullets, roles, style, index, total, size, local
     _furniture(slide, roles, style, index, total, kind)
     heading = section['heading'].strip() or section.get('_title', '')
     if kind == 'cover':
-        _headline(slide, ZONES['cover_title'], heading, roles, size=44, lines=3)
-        _shape(slide, ZONES['cover_rule'], roles['accent'])
+        _headline(slide, ZONES['cover_title'], heading, roles, size=44,
+                  colour=roles['cover_ink'], lines=3)
+        # On a bold deck the cover is the accent, so the rule has to be the ink.
+        _shape(slide, ZONES['cover_rule'],
+               roles['cover_ink'] if roles['theme'] == 'bold' else roles['accent'])
         subtitle = bullets[0] if bullets else ''
         if subtitle:
             frame = _frame(slide.shapes.add_textbox(*ZONES['cover_subtitle'].box()))
             _no_bullet(_write(frame.paragraphs[0], subtitle, font=BODY_FONT, size=18,
-                              colour=roles['muted'], spacing=1.25))
+                              colour=roles['cover_muted'], spacing=1.25))
         return
     if kind == 'divider':
-        _shape(slide, ZONES['divider_band'], roles['surface_alt'])
+        _shape(slide, ZONES['divider_band'], roles['band'])
         _eyebrow(slide, f'{index + 1:02d} / {total:02d}', roles)
         _headline(slide, ZONES['divider_title'], heading, roles, size=34,
-                  colour=roles['ink'], anchor=MSO_ANCHOR.TOP, lines=2)
+                  colour=roles['band_ink'], anchor=MSO_ANCHOR.TOP, lines=2)
         return
     _eyebrow(slide, f'{index + 1:02d} / {total:02d}', roles)
     if kind == 'statement':
@@ -536,7 +578,7 @@ def render_pptx(content, path, locale='en', role='user_document', style=None):
     single section there is nothing to introduce, so it stays a content slide.
     """
     style = style or {}
-    roles = palette(style.get('accent', '#255e49'))
+    roles = palette(style.get('accent', '#255e49'), style.get('deck_theme', 'light'))
     sections = [dict(section) for section in content['sections']]
     question_label = {'en': 'Question', 'uz': 'Savol', 'ru': 'Вопрос'}[locale]
     for number, question in enumerate(content.get('questions', []), 1):

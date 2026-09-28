@@ -115,7 +115,7 @@ MESSAGES = {
     'retention': ('🕒 Server files are stored for 24 hours. Copies sent here stay in your chat.', '🕒 Server fayllari 24 soat saqlanadi. Bu yerga yuborilgan nusxalar chatda qoladi.', '🕒 Файлы на сервере хранятся 24 часа. Отправленные сюда копии остаются в чате.'),
     # AI generation. The studio's own errors are translated in errors.py.
     'ai_ask_topic': ('✍️ Describe what you want. Say everything in one message: the subject, who it is for, the tone, and how many pages.', '✍️ Nima kerakligini yozing. Hammasini bitta xabarda ayting: mavzu, kim uchun, uslub va necha sahifa.', '✍️ Опишите, что нужно. Всё одним сообщением: тема, для кого, тон и сколько страниц.'),
-    'ai_pages_hint': ('No page count in your message means 5.', 'Xabarda sahifa soni bo‘lmasa, 5 ta bo‘ladi.', 'Если число страниц не указано, будет 5.'),
+    'ai_pages_hint': ('No page count in your message means 5. For slides you can also ask for a look: “dark”, “bold”, or a colour.', 'Xabarda sahifa soni bo‘lmasa, 5 ta bo‘ladi. Slaydlar uchun ko‘rinishni ham so‘rashingiz mumkin: «qorong‘i», «yorqin» yoki rang.', 'Если число страниц не указано, будет 5. Для слайдов можно попросить и вид: «тёмная», «ярко» или цвет.'),
     'ai_examples': ('💡 Example descriptions', '💡 Namuna tavsiflar', '💡 Примеры описаний'),
     'ai_examples_title': ('💡 Write it like this', '💡 Mana shunday yozing', '💡 Пишите вот так'),
     'ai_pages': ('Pages', 'Sahifalar', 'Страниц'),
@@ -217,6 +217,9 @@ PROMPT_EXAMPLES = {
         ('A 12 slide lesson on photosynthesis for a year 9 class, one idea per slide, ending with 5 review questions.',
          '9-sinf uchun fotosintez bo‘yicha 12 ta slayd, har slaydda bitta fikr, oxirida 5 ta takrorlash savoli.',
          'Урок о фотосинтезе на 12 слайдов для 9 класса, одна мысль на слайд, в конце 5 вопросов для повторения.'),
+        ('A dark 7 slide deck in navy on why our onboarding is too slow, for the leadership team.',
+         'Rahbariyat uchun ishga qabul jarayoni nega sekinligi haqida ko‘k rangdagi qorong‘i 7 ta slayd.',
+         'Тёмная презентация на 7 слайдов в синем: почему наш онбординг слишком медленный, для руководства.'),
         ('5 slides pitching a delivery app to investors: the problem, the market, how it works, the numbers, the ask.',
          'Investorlarga yetkazib berish ilovasini taqdim etuvchi 5 ta slayd: muammo, bozor, qanday ishlaydi, raqamlar, so‘rov.',
          '5 слайдов о приложении доставки для инвесторов: проблема, рынок, как работает, цифры, запрос.'),
