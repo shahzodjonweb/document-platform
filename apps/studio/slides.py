@@ -433,8 +433,13 @@ def _shape(slide, zone, colour, shape=MSO_SHAPE.RECTANGLE):
     return element
 
 
-def _slide_number(slide, zone, roles, colour=None):
-    """A real slide-number field, so deleting a slide renumbers the rest."""
+def _slide_number(slide, zone, roles, colour=None, number=1):
+    """A real slide-number field, so deleting a slide renumbers the rest.
+
+    PowerPoint recomputes the field, but a previewer that shows the stored text
+    instead (Quick Look, a chat thumbnail) would print "1" on every slide, so
+    the stored text is the right number too.
+    """
     colour = colour or roles['muted']
     frame = _frame(slide.shapes.add_textbox(*zone.box()))
     paragraph = frame.paragraphs[0]
@@ -449,7 +454,7 @@ def _slide_number(slide, zone, roles, colour=None):
     properties.append(latin)
     field.append(properties)
     text = field.makeelement(qn('a:t'), {})
-    text.text = '1'
+    text.text = str(number)
     field.append(text)
     paragraph._p.append(field)
 
@@ -474,7 +479,7 @@ def _ground(slide, roles, kind, has_photo=False):
         _shape(slide, ZONES['cover_mark'], roles['accent_soft'], MSO_SHAPE.OVAL)
 
 
-def _chrome(slide, roles, style, kind):
+def _chrome(slide, roles, style, kind, number=1):
     """Brand name, slide number and logo — the same on every slide."""
     quiet = roles['cover_muted'] if kind in FILLED else roles['muted']
     brand = (style or {}).get('brand_name', '')
@@ -483,7 +488,7 @@ def _chrome(slide, roles, style, kind):
         _write(frame.paragraphs[0], brand, font=BODY_FONT, size=10, colour=quiet)
         _no_bullet(frame.paragraphs[0])
     if kind != 'cover':
-        _slide_number(slide, ZONES['number'], roles, quiet)
+        _slide_number(slide, ZONES['number'], roles, quiet, number)
     logo = (style or {}).get('logo_png')
     if logo:
         from PIL import Image
@@ -620,7 +625,7 @@ def render_pptx(content, path, locale='en', role='user_document', style=None, ph
                 # layout rather than costing the customer the deck.
                 photo = None
                 kind = layouts.resolve(section, lines, index, total, False)
-        _chrome(slide, roles, style, kind)
+        _chrome(slide, roles, style, kind, index + 1)
         context = Ctx(slide, roles, style, index, total, size, locale, photo is not None)
         DRAW[kind](context, section, lines)
         shortened = shortened or context.shortened

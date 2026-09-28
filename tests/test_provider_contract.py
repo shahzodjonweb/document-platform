@@ -282,13 +282,30 @@ def test_an_answer_using_every_layout_is_accepted():
         _validate(answer, SLIDE_SCHEMA)
 
 
-@pytest.mark.parametrize('cap,total', [(2, 5), (6, 20), (12, 60), (0, 10), (3, 9)])
-def test_photos_are_shared_across_batches_without_exceeding_the_plan(cap, total):
-    """A long deck is written in several calls; together they may not use more photos than allowed."""
+@pytest.mark.parametrize('cap,total,expected', [
+    (2, 5, 2), (6, 20, 6), (12, 60, 12), (0, 10, 0), (3, 9, 3),
+    # A premium plan allows 12, but an 8-slide deck is asked for about a third.
+    (12, 8, 3), (12, 2, 1), (2, 1, 1),
+])
+def test_photos_are_asked_for_and_shared_across_batches_within_the_plan(cap, total, expected):
+    """A deck with photos available is asked for some — about a third of its slides — and a
+    long deck's batches together never ask for more than the plan allows."""
     import re
     shares = []
     for first, last in pages.batches(total):
         text = writing_guidance({'image_cap': cap}, last - first, 'pptx', first, total)
-        found = re.search(r'Use at most (\d+) photo', text)
+        found = re.search(r'Use (\d+) photo layout', text)
         shares.append(int(found.group(1)) if found else 0)
-    assert sum(shares) == cap, shares
+        if not found:
+            assert 'Do not use image_split or image_full' in text
+    assert sum(shares) == expected <= max(cap, 0), shares
+
+
+def test_photo_subjects_are_asked_for_in_english_whatever_the_deck_language():
+    """The search is English-only and the cleaner drops anything that is not a-z, so a
+    Russian subject would vanish and an Uzbek one would find nothing."""
+    from apps.studio.layouts import clean_query
+    text = writing_guidance({'image_cap': 6}, 8, 'pptx', 0, 8)
+    assert 'in English, even when the deck is in another language' in text
+    assert 'Use 3 photo layouts' in text and 'fewer or no photos' in text
+    assert clean_query('офисная команда') == ''

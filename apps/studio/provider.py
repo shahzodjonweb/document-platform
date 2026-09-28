@@ -44,10 +44,14 @@ def writing_guidance(options, sections, output_format='pdf', first=0, total=None
             'Section 1 is the title slide: its layout is cover, its heading is the title of the whole '
             'deck, at most 8 words, and its body is one short subtitle line. No bullets on it. '
         ) if titled else ''
-        # Photos are shared out across the batches of a long deck in proportion,
-        # so the model is never told it may use more than the plan allows.
+        # Photos are asked for, not only allowed: told "at most N", the model
+        # can reasonably use none, and a deck from a plan that includes photos
+        # then has not one. About one slide in three gets a photo, never more
+        # than the plan allows, shared out across the batches of a long deck in
+        # proportion.
         cap = int((options or {}).get('image_cap', 0) or 0)
-        photos = round(cap * (first + sections) / deck) - round(cap * first / deck) if deck else 0
+        wanted = min(cap, max(1, round(deck / 3))) if cap > 0 and deck else 0
+        photos = round(wanted * (first + sections) / deck) - round(wanted * first / deck) if deck else 0
         from .layouts import guide
         return (
             f'Write {sections} section{ending}. Each section is one {unit}. {cover}'

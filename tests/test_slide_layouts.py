@@ -253,6 +253,20 @@ def test_a_layout_the_content_cannot_fill_falls_back(tmp_path, chosen, content, 
     assert result['metadata']['layouts'][1] == expected
 
 
+def test_each_slide_number_field_stores_its_own_number(tmp_path):
+    """PowerPoint recomputes the field; a previewer that shows the stored text must not print 1 everywhere."""
+    from pptx.oxml.ns import qn
+    sections = [section(i, 'auto', f'H{i}', 'a\nb\nc') for i in range(5)]
+    _, _, presentation = render(tmp_path, sections)
+    stored = {}
+    for number, slide in enumerate(presentation.slides, 1):
+        for field in slide.shapes._spTree.iter(qn('a:fld')):
+            if field.get('type') == 'slidenum':
+                stored[number] = field.findtext(qn('a:t'))
+    # The cover carries no number; every other slide stores its own.
+    assert stored == {2: '2', 3: '3', 4: '4', 5: '5'}
+
+
 def test_a_deck_that_never_chose_is_drawn_exactly_as_before(tmp_path):
     legacy = [{'id': f's{i}', 'heading': f'H{i}', 'body': body, 'notes': ''}
               for i, body in enumerate(['Sub', 'a\nb\nc', '', 'One line.', 'a\nb\nc\nd\ne'])]

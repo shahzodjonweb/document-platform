@@ -257,9 +257,11 @@ def guide(photos=0):
     """What the model is told about layouts. Kept short: it is sent on every call."""
     lines = [f'- {layout.id}: {layout.guide}' for layout in CATALOGUE.values()
              if photos or not layout.needs_photo]
-    photo_rule = (f'Use at most {photos} photo layout{"s" if photos != 1 else ""} (image_split, '
-                  f'image_full, or cover with an image_query) in this part. image_query is 2-4 generic '
-                  f'English words for a stock photo, never a person, brand or company name. '
+    photo_rule = (f'Use {photos} photo layout{"s" if photos != 1 else ""} in this part: image_split or '
+                  f'image_full on slides a picture supports, and the cover counts when it has an '
+                  f'image_query. Use fewer only if the description asks for fewer or no photos. '
+                  f'image_query is 2-4 generic words in English, even when the deck is in another '
+                  f'language, for a stock photo; never a person, brand or company name. '
                   if photos else
                   'Do not use image_split or image_full, and leave image_query empty. ')
     return ('Choose a layout for every section from this list:\n' + '\n'.join(lines) + '\n'
