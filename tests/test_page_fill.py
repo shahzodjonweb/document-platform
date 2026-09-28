@@ -11,7 +11,8 @@ from django.utils import timezone
 from apps.studio import pages
 from apps.studio.domain import DOCUMENT, SLIDES, create_draft, draft_data, generation_quote
 from pypdf import PdfReader
-from apps.studio.rendering import render_pdf, render_pptx
+from apps.studio.rendering import render_pdf
+from apps.studio.slides import render_pptx
 from apps.core.services import execute_job, submit_job
 from tests.test_platform import account
 from tests.test_studio import paid

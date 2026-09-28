@@ -5,7 +5,8 @@ from apps.core.errors import DomainError
 from operations.integrations import ai_config
 from .models import GenerationDraft,ProviderUsage
 from .domain import unpack,pack,validate_content,validate_generation_quote,limits
-from .rendering import render_pdf,render_pptx
+from .rendering import render_pdf
+from .slides import render_pptx
 
 def execute_generation(job,output_dir):
     with transaction.atomic():

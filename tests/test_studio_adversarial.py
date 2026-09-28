@@ -16,7 +16,7 @@ from apps.core.services import submit_job,execute_job,storage_path
 from apps.studio import workflows,provider
 from apps.studio.domain import create_draft,update_draft,generation_quote,unpack,draft_data
 from apps.studio.models import SavedDefinition,WorkflowRun,GenerationDraft,EducationProject,PracticeAttempt,ProviderUsage
-from apps.studio.rendering import render_pptx
+from apps.studio.slides import render_pptx
 from operations.integrations import save_config
 from tests.test_platform import account,upload,login_client
 from tests.test_studio import paid,content

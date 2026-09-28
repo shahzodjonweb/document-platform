@@ -40,7 +40,6 @@ FRAME_PADDING = 6
 # Floors, not preferences: below these the document stops being comfortable to
 # read, and a shorter section is better than an unreadable one.
 MIN_BODY_SIZE = 9.0
-MIN_SLIDE_BODY_SIZE = 14
 MIN_BODY_LEADING = 12.5
 FIT_STEPS = 6
 SENTENCE = re.compile(r'((?<=[.!?…])\s+)')
@@ -201,101 +200,3 @@ def render_pdf(content,path,locale='en',role='user_document',style=None):
             canvas.setStrokeColor(colors.HexColor('#ddd6e8'));canvas.setLineWidth(.5);canvas.line(margin-13,45,margin-13,A4[1]-35)
     SimpleDocTemplate(str(path),pagesize=A4,rightMargin=margin,leftMargin=margin,topMargin=top_margin,bottomMargin=48,title=content['title'],author='PDF Master').build(story,onFirstPage=footer,onLaterPages=footer)
     return {'path':str(path),'name':path.name,'mime_type':'application/pdf','page_count':len(PdfReader(path).pages),'role':role,'shortened':shortened}
-
-def render_pptx(content,path,locale='en',role='user_document',style=None):
-    style=style or {};accent=style.get('accent','#255e49').lstrip('#')
-    layout=style.get('layout','clean');body_size=18 if layout=='compact' else 20
-    line_count=14 if layout=='compact' else 9 if layout=='notes' else 11
-    line_spacing=23 if layout=='compact' else 33 if layout=='notes' else 27
-    from pptx import Presentation
-    from pptx.util import Inches,Pt
-    from pptx.dml.color import RGBColor
-    if 'PDFMaster' not in pdfmetrics.getRegisteredFontNames():pdfmetrics.registerFont(TTFont('PDFMaster',str(font_path())))
-    def wrapped(text,size,width):
-        lines=[]
-        for paragraph in text.split('\n'):
-            current=''
-            for character in paragraph:
-                if current and pdfmetrics.stringWidth(current+character,'PDFMaster',size)>width:
-                    # Prefer a word break; very long tokens still wrap safely.
-                    before,separator,tail=current.rpartition(' ')
-                    if separator and before:lines.append(before);current=tail+character
-                    else:lines.append(current);current=character
-                else:current+=character
-            lines.append(current)
-        return lines
-    deck=Presentation();deck.slide_width=Inches(13.333);deck.slide_height=Inches(7.5)
-    shortened=False
-    content_layout=style.get('content_layout','answer_key' if role=='teacher_key' else 'document')
-    sections=[] if content_layout in ('answer_key','flashcards') else list(content['sections'])
-    # Questions are editable learner slide content. Answers never enter slides
-    # with a learner role; the teacher receives the separate PDF key.
-    for index,question in enumerate(content.get('questions',[]),1):
-        question_label={'en':'Question','uz':'Savol','ru':'Вопрос'}[locale]
-        if content_layout in ('answer_key','flashcards'):
-            answer_label={'en':'Answer','uz':'Javob','ru':'Ответ'}[locale]
-            marks_label={'en':'points','uz':'ball','ru':'баллы'}[locale]
-            label=({'en':'Card','uz':'Kartochka','ru':'Карточка'}[locale] if content_layout=='flashcards' else question_label)+' '+str(index)
-            body=question['stem']+(f" ({question['marks']} {marks_label})" if content_layout=='answer_key' else '')+'\n'+answer_label+': '+question['answer']+'\n'+question['explanation']
-        else:label=question_label+' '+str(index);body=question['stem']+'\n'+'\n'.join(question.get('options',[]))
-        sections.append({'heading':label,'body':body,'notes':''})
-    # One section is one slide. An over-long section used to be cut into chunks
-    # of `line_count` lines and given a slide each, so a deck asked for in five
-    # slides came back in ten — the same way a five-page document came back in
-    # ten pages. The deck is set tighter instead, uniformly so slides do not
-    # change size partway through, and a section is shortened only when the
-    # smallest readable size still cannot hold it.
-    prepared=[]
-    for section in sections:
-        heading_text=section['heading']
-        body_text=section['body']
-        if len(wrapped(heading_text,18,800))>2:
-            body_text=heading_text+'\n'+body_text
-            heading_text={'en':'Section','uz':'Bo‘lim','ru':'Раздел'}[locale]
-        prepared.append((heading_text,body_text,section))
-    for step in range(FIT_STEPS+1):
-        share=step/FIT_STEPS
-        size=body_size-(body_size-MIN_SLIDE_BODY_SIZE)*share
-        spacing=line_spacing*size/body_size
-        allowed=int(line_count*body_size/size)
-        if all(len(wrapped(body,size,790))<=allowed for _,body,_ in prepared):break
-    body_size,line_spacing=size,spacing
-    for heading_text,body_text,section in prepared:
-        lines=wrapped(body_text,body_size,790)
-        if len(lines)>allowed:
-            lines=lines[:allowed]
-            if lines:lines[-1]=lines[-1].rstrip()+'…'
-            shortened=True
-        for ci,chunk in enumerate([lines or ['']]):
-            slide=deck.slides.add_slide(deck.slide_layouts[6]);slide.background.fill.solid();slide.background.fill.fore_color.rgb=RGBColor.from_string('F5F7F1')
-            bar=slide.shapes.add_shape(1,0,0,deck.slide_width if layout=='executive' else Inches(.16),Inches(.16) if layout=='executive' else deck.slide_height);bar.fill.solid();bar.fill.fore_color.rgb=RGBColor.from_string(accent);bar.line.fill.background()
-            heading=slide.shapes.add_textbox(Inches(.7),Inches(.5),Inches(11.9),Inches(1.1)).text_frame
-            title=heading_text+(f' · {ci+1}' if ci else '')
-            size=30
-            while size>18 and len(wrapped(title,size,800))>2:size-=2
-            title_lines=wrapped(title,size,800)
-            heading.word_wrap=False
-            for j,line in enumerate(title_lines):
-                p=heading.paragraphs[0] if j==0 else heading.add_paragraph();p.text=line;p.font.name='Noto Sans';p.font.size=Pt(size);p.font.color.rgb=RGBColor.from_string(accent);p.space_after=Pt(0);p.line_spacing=Pt(size+3)
-            body=slide.shapes.add_textbox(Inches(.75),Inches(1.8),Inches(11.8),Inches(4.7)).text_frame;body.word_wrap=False
-            for j,line in enumerate(chunk):
-                p=body.paragraphs[0] if j==0 else body.add_paragraph();p.text=line;p.font.name='Noto Sans';p.font.size=Pt(body_size);p.space_after=Pt(0);p.line_spacing=Pt(line_spacing)
-            brand=(style or {}).get('brand_name','')
-            if brand:
-                label=slide.shapes.add_textbox(Inches(.75),Inches(6.95),Inches(9.6),Inches(.3)).text_frame
-                p=label.paragraphs[0];p.text=brand;p.font.name='Noto Sans';p.font.size=Pt(9);p.font.color.rgb=RGBColor.from_string(accent)
-            logo=(style or {}).get('logo_png')
-            if logo:
-                from PIL import Image
-                with Image.open(io.BytesIO(logo)) as picture:
-                    scale=min(1.5/picture.width,.48/picture.height)
-                    width,height=picture.width*scale,picture.height*scale
-                slide.shapes.add_picture(io.BytesIO(logo),Inches(12.65-width),Inches(7.15-height),width=Inches(width),height=Inches(height))
-            slide.notes_slide.notes_text_frame.text='' if role in ('learner_material','public_preview') else section.get('notes','')
-    # python-pptx's bundled blank template includes a binary printer settings
-    # part. Generated content does not need it; removing the relationship drops
-    # that part on save and keeps the strict Office binary-content policy intact.
-    for relationship in list(deck.part.rels.values()):
-        if relationship.reltype.endswith('/printerSettings'):deck.part.drop_rel(relationship.rId)
-    deck.save(str(path))
-    return {'path':str(path),'name':path.name,'mime_type':'application/vnd.openxmlformats-officedocument.presentationml.presentation','page_count':len(deck.slides),'role':role,'shortened':shortened}

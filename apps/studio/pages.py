@@ -4,8 +4,8 @@ The numbers here were measured against the renderers rather than estimated, and
 they are in characters rather than words on purpose: a page fills by character,
 and word length varies enough between English, Uzbek and Russian that a word
 target exact in one is a page out in another. A page holds about 3000 characters
-in all three, and a slide about 650 — but what the model is asked for is less
-than that, because sections overshoot together and so spill together.
+in all three, and a slide of bullets about 500 — but what the model is asked for
+is less than that, because sections overshoot together and so spill together.
 
 tests/test_page_fill.py renders for real and will fail if these drift.
 """
@@ -17,8 +17,9 @@ from apps.core.policy import plan_limits
 # What one page HOLDS, measured across short English, long English and Russian
 # prose: 2700-3000 characters is one page in all three.
 CHARS_PER_PAGE = 3000
-# A slide holds eleven lines; this is about what fills them.
-CHARS_PER_SLIDE = 650
+# A slide holds a headline and three to five bullets. This is about what fills
+# them — it was 650 when a slide was eleven wrapped lines of prose.
+CHARS_PER_SLIDE = 500
 DEFAULT_PAGES = 5
 
 # What we ASK the model for is deliberately less than the page holds. A model

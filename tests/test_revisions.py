@@ -153,5 +153,6 @@ def test_slides_are_revised_as_slides(premium):
     assert revised.feature_id == SLIDES and payload['output_format'] == 'pptx'
     # And the slide target, not the page one, still applies.
     from apps.studio.provider import writing_guidance
-    assert str(pages.target_words('pptx')) in writing_guidance({}, 3, 'pptx')
-    assert 'slide' in writing_guidance({}, 3, 'pptx')
+    guidance = writing_guidance({}, 3, 'pptx')
+    assert 'one slide' in guidance and 'bullets, one per line' in guidance
+    assert str(round(pages.target_words('pptx') * 1.3)) in guidance

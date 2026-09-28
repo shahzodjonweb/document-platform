@@ -9,7 +9,8 @@ from apps.core.errors import DomainError
 from apps.core.services import upload_file,storage_path,submit_job,execute_job
 from apps.studio.branding import prepare_branding,generation_inputs,render_style
 from apps.studio.domain import create_draft,update_draft,draft_data,generation_quote
-from apps.studio.rendering import render_pdf,render_pptx
+from apps.studio.rendering import render_pdf
+from apps.studio.slides import render_pptx
 from tests.test_platform import account
 from tests.test_studio import paid
 
