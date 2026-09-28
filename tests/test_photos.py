@@ -26,10 +26,14 @@ def jpeg(width=1600, height=1000, **kwargs):
     return buffer.getvalue()
 
 
-def hit(n, url=None):
-    return {'id': n, 'type': 'photo', 'imageWidth': 1920, 'imageHeight': 1280,
-            'pageURL': f'https://pixabay.com/photos/x-{n}/',
-            'largeImageURL': url or f'https://pixabay.com/get/img{n}_1280.jpg'}
+def hit(n, url=None, tags=None):
+    value = {'id': n, 'type': 'photo', 'imageWidth': 1920, 'imageHeight': 1280,
+             'pageURL': f'https://pixabay.com/photos/x-{n}/',
+             'largeImageURL': url or f'https://pixabay.com/get/img{n}_1280.jpg',
+             'webformatURL': f'https://pixabay.com/get/img{n}_640.jpg'}
+    if tags is not None:
+        value['tags'] = tags
+    return value
 
 
 class Response(io.BytesIO):
@@ -53,7 +57,11 @@ class Network:
         if self.fail:
             raise self.fail
         if request.full_url.startswith(photos.API):
-            return Response(json.dumps({'total': 99, 'totalHits': 99, 'hits': self.hits}).encode())
+            # Like Pixabay, a hit found for a search is tagged with its words,
+            # unless the test gave it tags of its own.
+            query = parse_qs(urlsplit(request.full_url).query)['q'][0]
+            answer = [{'tags': ', '.join(query.split()), **value} for value in self.hits]
+            return Response(json.dumps({'total': 99, 'totalHits': 99, 'hits': answer}).encode())
         return Response(self.image)
 
     @property
@@ -231,6 +239,155 @@ def test_the_shared_rate_limit_holds_calls_under_pixabays(pixabay, monkeypatch):
     monkeypatch.setattr('apps.core.customer_auth.auth_limit', exhausted)
     result = photos.fetch_for_deck(slides('office'), cap=6, budget=30)
     assert pixabay.searches == [] and result.warnings == ['images_skipped']
+
+
+# ---------------------------------------------------------------- relevance
+
+
+class Model:
+    """A stand-in for the model that chooses photos: answers `picks`, or fails."""
+
+    def __init__(self, picks=None, fail=None, status='completed', text=None):
+        self.picks, self.fail, self.status, self.text = picks, fail, status, text
+        self.requests = []
+
+    def __call__(self, request, timeout):
+        body = json.loads(request.data)
+        self.requests.append({'url': request.full_url, 'timeout': timeout, 'body': body,
+                              'headers': dict(request.header_items())})
+        if self.fail:
+            raise self.fail
+        text = self.text if self.text is not None else json.dumps({'picks': self.picks})
+        return Response(json.dumps({
+            'id': f'resp_{len(self.requests)}', 'model': 'test-model', 'status': self.status,
+            'output': [{'type': 'message', 'content': [{'type': 'output_text', 'text': text}]}],
+            'usage': {'input_tokens': 900, 'output_tokens': 40}}).encode())
+
+    def shown(self, slide):
+        """How many photos the model was shown for a slide."""
+        content = self.requests[-1]['body']['input'][0]['content']
+        return sum(1 for part in content if part['type'] == 'input_text'
+                   and part['text'].startswith(f'Slide {slide}, photo '))
+
+
+@pytest.fixture
+def model(monkeypatch, pixabay):
+    from apps.studio import photo_choice
+    save_config('ai', {'mode': 'openai', 'model': 'test-model', 'api_key': 'sk-offline-test'})
+    fake = Model()
+    monkeypatch.setattr(photo_choice, '_post', fake)
+    return fake
+
+
+def test_hits_sharing_no_word_with_the_subject_are_not_candidates():
+    hits = [photos._hit({**hit(n), 'tags': tags}) for n, tags in
+            enumerate(['sunset, beach, sea', 'forklift, truck, industry', 'warehouse, forklift, shelves',
+                       'warehouses, logistics'], 1)]
+    ranked = photos.rank(hits, 'warehouse forklift')
+    assert [h['id'] for h in ranked] == [3, 4, 2], 'both words first, the main subject next, the sunset never'
+    assert photos.rank(hits, '') == []
+
+
+def test_the_model_chooses_between_candidates_and_its_choice_is_used(model, pixabay):
+    pixabay.hits = [hit(1, tags='office, desk'), hit(2, tags='office, meeting, people')]
+    model.picks = [{'slide': 's2', 'photo': 2}]
+    result = photos.fetch_for_deck(slides('office meeting'), cap=6, budget=60)
+    # Ranked: hit 2 shares both words, so it is candidate 1; hit 1 is candidate 2.
+    assert result.photos['s2']['id'] == 1, 'the model picked candidate 2, not the best tag match'
+    assert model.shown('s2') == 2 and not result.warnings
+
+
+def test_the_model_is_shown_each_slide_text_and_small_previews_never_pixabay_urls(model, pixabay):
+    model.picks = [{'slide': 's2', 'photo': 1}]
+    sections = slides('office')
+    sections[1]['heading'], sections[1]['body'] = 'Quarterly sales review', 'Revenue grew\nTwo new clients'
+    photos.fetch_for_deck(sections, cap=6, budget=60)
+    request = model.requests[-1]
+    body = request['body']
+    assert request['url'] == 'https://api.openai.com/v1/responses' and body['store'] is False
+    assert body['text']['format']['strict'] is True and body['model'] == 'test-model'
+    text = json.dumps(body)
+    assert 'Quarterly sales review Revenue grew Two new clients' in text
+    images = [part for part in body['input'][0]['content'] if part['type'] == 'input_image']
+    assert len(images) == photos.CANDIDATES and all(part['detail'] == 'low' for part in images)
+    assert all(part['image_url'].startswith('data:image/jpeg;base64,') for part in images)
+    assert 'pixabay.com' not in text and KEY not in text, 'no Pixabay URL or key goes to the model'
+    previewed = [url for url, _, _ in pixabay.calls if url.endswith('_640.jpg')]
+    assert len(previewed) == photos.CANDIDATES
+
+
+def test_when_no_candidate_fits_the_slide_is_text_not_the_most_popular_photo(model, pixabay):
+    model.picks = [{'slide': 's2', 'photo': 0}]
+    result = photos.fetch_for_deck(slides('office'), cap=6, budget=60)
+    assert result.photos == {} and result.unmatched == 1 and result.warnings == ['images_skipped']
+    downloads = [url for url, _, _ in pixabay.calls if url.endswith('_1280.jpg')]
+    assert downloads == [], 'nothing is downloaded for a slide the model turned down'
+
+
+@pytest.mark.parametrize('answer', [
+    [],                                              # left the slide out
+    [{'slide': 's2', 'photo': 9}],                   # a photo it was not shown
+    [{'slide': 's9', 'photo': 1}],                   # a slide that does not exist
+])
+def test_an_answer_that_does_not_name_a_shown_photo_means_none(model, pixabay, answer):
+    model.picks = answer
+    result = photos.fetch_for_deck(slides('office'), cap=6, budget=60)
+    assert result.photos == {} and result.unmatched == 1
+
+
+@pytest.mark.parametrize('failure', [
+    {'fail': TimeoutError('slow')}, {'fail': OSError('down')}, {'status': 'incomplete'},
+    {'text': 'not json'}, {'text': json.dumps({'picks': [{'slide': 's2'}]})},
+])
+def test_a_choice_that_fails_falls_back_to_the_best_tag_match(model, pixabay, failure):
+    from apps.studio.models import ProviderAttempt
+    for field, value in failure.items():
+        setattr(model, field, value)
+    pixabay.hits = [hit(1, tags='sunset, sea'), hit(2, tags='office, desk')]
+    result = photos.fetch_for_deck(slides('office'), cap=6, budget=60)
+    assert result.photos['s2']['id'] == 2, 'the tag match, never the unrelated popular photo'
+    attempt = ProviderAttempt.objects.get(stage='photo_pick')
+    assert attempt.status in ('failed', 'rejected')
+
+
+def test_without_a_model_only_a_tag_match_is_used(pixabay):
+    pixabay.hits = [hit(1, tags='sunset, sea'), hit(2, tags='mountain, lake')]
+    result = photos.fetch_for_deck(slides('office'), cap=6, budget=30)
+    assert result.photos == {} and result.warnings == ['images_skipped']
+
+
+def test_the_same_photo_is_never_used_twice_even_if_the_model_picks_it_twice(model, pixabay):
+    model.picks = [{'slide': 's2', 'photo': 1}, {'slide': 's3', 'photo': 1}]
+    result = photos.fetch_for_deck(slides('office', 'office'), cap=6, budget=60)
+    assert list(result.photos) == ['s2'] and result.unmatched == 1
+
+
+def test_a_subject_too_narrow_to_find_is_searched_again_as_its_main_subject(pixabay):
+    pixabay.hits = [hit(1, tags='nothing, alike')]
+    photos.fetch_for_deck(slides('rusty harbour crane cargo'), cap=6, budget=30)
+    queries = [parse_qs(urlsplit(url).query)['q'][0] for url in pixabay.searches]
+    assert queries == ['rusty harbour crane cargo', 'rusty harbour']
+
+
+def test_the_choice_is_accounted_like_any_other_provider_call(model, pixabay):
+    from apps.studio.models import ProviderAttempt
+    model.picks = [{'slide': 's2', 'photo': 1}]
+    photos.fetch_for_deck(slides('office'), cap=6, budget=60)
+    attempt = ProviderAttempt.objects.get(stage='photo_pick')
+    assert attempt.status == 'succeeded' and attempt.input_tokens == 900 and attempt.output_tokens == 40
+    assert attempt.requested_model == 'test-model'
+
+
+def test_the_choice_is_skipped_when_too_little_time_is_left(model, pixabay):
+    result = photos.fetch_for_deck(slides('office'), cap=6, budget=photos.PICK_MIN_SECONDS)
+    assert model.requests == [] and set(result.photos) == {'s2'}, 'the tag match stands in'
+
+
+def test_the_model_is_asked_for_literal_photo_subjects():
+    from apps.studio.layouts import photo_guidance
+    text = photo_guidance(2)
+    assert 'literally shows' in text and 'main subject first' in text
+    assert 'Never an abstract idea' in text and 'in English, even when the deck is in another language' in text
 
 
 # ---------------------------------------------------------------- the job

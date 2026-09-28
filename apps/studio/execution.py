@@ -19,7 +19,7 @@ def _photos(job,sections,warnings):
     try:
         cap=int((job.quote.policy.get('limits') or {}).get('max_deck_images',0) or 0)
         left=(job.lease_expires_at-timezone.now()).total_seconds()-60 if job.lease_expires_at else stock.BUDGET_SECONDS
-        result=stock.fetch_for_deck(sections,cap=cap,budget=min(stock.BUDGET_SECONDS,left))
+        result=stock.fetch_for_deck(sections,cap=cap,budget=min(stock.BUDGET_SECONDS,left),job=job)
     except Exception:
         result=stock.PhotoResult(failed=len(stock.wanted(sections)))
     warnings.extend(result.warnings)

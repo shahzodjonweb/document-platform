@@ -284,8 +284,11 @@ def photo_guidance(photos=0):
     return (f'Use {photos} photo layout{"s" if photos != 1 else ""} in this part: image_split or '
                   f'image_full on slides a picture supports, and the cover counts when it has an '
                   f'image_query. Use fewer only if the description asks for fewer or no photos. '
-                  f'image_query is 2-4 generic words in English, even when the deck is in another '
-                  f'language, for a stock photo; never a person, brand or company name. '
+                  f'image_query names what the photo literally shows, for a stock photo search: 2-4 '
+                  f'plain words in English, even when the deck is in another language, main subject '
+                  f'first, a concrete thing, place or activity that matches this slide (e.g. '
+                  f'"warehouse forklift", "students science lab"). Never an abstract idea such as '
+                  f'success, growth or strategy; never a person, brand or company name. '
                   if photos else
                   'Do not use image_split or image_full, and leave image_query empty. ')
 
