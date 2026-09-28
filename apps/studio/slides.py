@@ -179,6 +179,16 @@ def palette(accent, theme='light'):
         roles['band'], roles['band_ink'] = roles['surface_alt'], roles['ink']
     roles['cover_muted'] = (roles['cover_ink'] if theme == 'bold'
                             else _reads_on(roles['muted'], roles['cover_fill'], 4.5))
+    roles['band_muted'] = (roles['band_ink'] if theme == 'bold'
+                           else _reads_on(roles['muted'], roles['band'], 4.5))
+    # Text that sits on a filled panel — a card, a tinted cell — is corrected
+    # against that panel rather than against the slide behind it.
+    roles['card'] = roles['surface_alt']
+    roles['card_ink'] = _reads_on(roles['ink'], roles['card'], 7.0)
+    roles['card_muted'] = _reads_on(roles['muted'], roles['card'], 4.5)
+    roles['card_accent'] = _reads_on(accent, roles['card'], 4.5)
+    roles['soft_ink'] = _reads_on(roles['ink'], roles['accent_soft'], 7.0)
+    roles['soft_muted'] = _reads_on(roles['muted'], roles['accent_soft'], 4.5)
     return roles
 
 
@@ -321,7 +331,7 @@ def _write(paragraph, text, *, font, size, colour, bold=False, spacing=1.15,
     return paragraph
 
 
-def _bullet(paragraph, colour, size):
+def _bullet(paragraph, colour, size, char='•'):
     """A real hanging bullet: the glyph sits outside the text, not above it.
 
     python-pptx has no bullet API. `marL` with a matching negative `indent` is
@@ -334,7 +344,7 @@ def _bullet(paragraph, colour, size):
     properties.set('indent', str(-int(hang)))
     for tag, attributes in ((qn('a:buClr'), None),
                             (qn('a:buFont'), {'typeface': BULLET_FONT, 'pitchFamily': '34', 'charset': '0'}),
-                            (qn('a:buChar'), {'char': '•'})):
+                            (qn('a:buChar'), {'char': char})):
         for existing in properties.findall(tag):
             properties.remove(existing)
         element = properties.makeelement(tag, attributes or {})
@@ -409,16 +419,9 @@ ZONES = {
 
 
 def layout_for(index, bullets, total):
-    """Which layout a slide gets. Deterministic: the same content is the same deck."""
-    if index == 0 and total >= 2:
-        return 'cover'
-    if not bullets:
-        return 'divider'
-    if len(bullets) == 1 and len(bullets[0]) <= 90:
-        return 'statement'
-    if len(bullets) >= 5:
-        return 'two_column'
-    return 'bullets'
+    """How a slide is laid out when it did not choose. See `layouts.legacy`."""
+    from .layouts import legacy
+    return legacy(index, bullets, total)
 
 
 def _shape(slide, zone, colour, shape=MSO_SHAPE.RECTANGLE):
@@ -430,16 +433,17 @@ def _shape(slide, zone, colour, shape=MSO_SHAPE.RECTANGLE):
     return element
 
 
-def _slide_number(slide, zone, roles):
+def _slide_number(slide, zone, roles, colour=None):
     """A real slide-number field, so deleting a slide renumbers the rest."""
+    colour = colour or roles['muted']
     frame = _frame(slide.shapes.add_textbox(*zone.box()))
     paragraph = frame.paragraphs[0]
-    _write(paragraph, '', font=BODY_FONT, size=10, colour=roles['muted'], align=PP_ALIGN.RIGHT)
+    _write(paragraph, '', font=BODY_FONT, size=10, colour=colour, align=PP_ALIGN.RIGHT)
     field = paragraph._p.makeelement(qn('a:fld'), {'id': '{B7A4E0C1-4C1E-4D3E-9F2A-0A1B2C3D4E5F}',
                                                    'type': 'slidenum'})
     properties = field.makeelement(qn('a:rPr'), {'lang': 'en-US'})
     fill = properties.makeelement(qn('a:solidFill'), {})
-    fill.append(fill.makeelement(qn('a:srgbClr'), {'val': _hex(roles['muted']).upper()}))
+    fill.append(fill.makeelement(qn('a:srgbClr'), {'val': _hex(colour).upper()}))
     properties.append(fill)
     latin = properties.makeelement(qn('a:latin'), {'typeface': BODY_FONT})
     properties.append(latin)
@@ -453,22 +457,33 @@ def _slide_number(slide, zone, roles):
 # ---------------------------------------------------------------- slides
 
 
-def _furniture(slide, roles, style, index, total, kind):
-    """Everything every slide carries. The accent element is added first."""
+FILLED = ('cover', 'closing')
+
+
+def _ground(slide, roles, kind, has_photo=False):
+    """The background, then the accent element — always `shapes[0]`.
+
+    The accent bar is filled with the brand colour exactly as given, on every
+    slide; tests/test_slides_deck.py pins it. A photo, if the layout has one, is
+    added straight after this and so always sits beneath the chrome and text.
+    """
     slide.background.fill.solid()
-    slide.background.fill.fore_color.rgb = _rgb(roles['cover_fill'] if kind == 'cover' else roles['surface'])
-    # shapes[0] is the accent element on every slide, filled with the brand
-    # colour exactly as given. tests/test_slides_deck.py pins this.
+    slide.background.fill.fore_color.rgb = _rgb(roles['cover_fill'] if kind in FILLED else roles['surface'])
     _shape(slide, ZONES['accent_bar'], roles['accent'])
-    if kind == 'cover':
+    if kind == 'cover' and not has_photo:
         _shape(slide, ZONES['cover_mark'], roles['accent_soft'], MSO_SHAPE.OVAL)
+
+
+def _chrome(slide, roles, style, kind):
+    """Brand name, slide number and logo — the same on every slide."""
+    quiet = roles['cover_muted'] if kind in FILLED else roles['muted']
     brand = (style or {}).get('brand_name', '')
     if brand:
         frame = _frame(slide.shapes.add_textbox(*ZONES['footer'].box()))
-        _write(frame.paragraphs[0], brand, font=BODY_FONT, size=10, colour=roles['muted'])
+        _write(frame.paragraphs[0], brand, font=BODY_FONT, size=10, colour=quiet)
         _no_bullet(frame.paragraphs[0])
     if kind != 'cover':
-        _slide_number(slide, ZONES['number'], roles)
+        _slide_number(slide, ZONES['number'], roles, quiet)
     logo = (style or {}).get('logo_png')
     if logo:
         from PIL import Image
@@ -506,50 +521,6 @@ def _eyebrow(slide, text, roles):
                       colour=roles['muted'], bold=True))
 
 
-def _draw(slide, kind, section, bullets, roles, style, index, total, size, locale):
-    _furniture(slide, roles, style, index, total, kind)
-    heading = section['heading'].strip() or section.get('_title', '')
-    if kind == 'cover':
-        _headline(slide, ZONES['cover_title'], heading, roles, size=44,
-                  colour=roles['cover_ink'], lines=3)
-        # On a bold deck the cover is the accent, so the rule has to be the ink.
-        _shape(slide, ZONES['cover_rule'],
-               roles['cover_ink'] if roles['theme'] == 'bold' else roles['accent'])
-        subtitle = bullets[0] if bullets else ''
-        if subtitle:
-            frame = _frame(slide.shapes.add_textbox(*ZONES['cover_subtitle'].box()))
-            _no_bullet(_write(frame.paragraphs[0], subtitle, font=BODY_FONT, size=18,
-                              colour=roles['cover_muted'], spacing=1.25))
-        return
-    if kind == 'divider':
-        _shape(slide, ZONES['divider_band'], roles['band'])
-        _eyebrow(slide, f'{index + 1:02d} / {total:02d}', roles)
-        _headline(slide, ZONES['divider_title'], heading, roles, size=34,
-                  colour=roles['band_ink'], anchor=MSO_ANCHOR.TOP, lines=2)
-        return
-    _eyebrow(slide, f'{index + 1:02d} / {total:02d}', roles)
-    if kind == 'statement':
-        # The headline steps back so the one idea can carry the slide. Setting
-        # the statement smaller than its own heading made it read as a subtitle.
-        _headline(slide, ZONES['headline'], heading, roles, size=20,
-                  colour=roles['muted'], anchor=MSO_ANCHOR.BOTTOM, lines=2)
-        _shape(slide, ZONES['rule'], roles['accent'])
-        frame = _frame(slide.shapes.add_textbox(*ZONES['statement'].box()), MSO_ANCHOR.TOP)
-        _no_bullet(_write(frame.paragraphs[0], bullets[0], font=HEADING_FONT,
-                          size=40 if len(bullets[0]) <= 52 else 32,
-                          colour=roles['ink'], spacing=1.14))
-        return
-    _headline(slide, ZONES['headline'], heading, roles, size=32)
-    _shape(slide, ZONES['rule'], roles['accent'])
-    if kind == 'two_column':
-        half = -(-len(bullets) // 2)
-        _bullet_block(slide, ZONES['body_left'], bullets[:half], roles, size)
-        _bullet_block(slide, ZONES['body_right'], bullets[half:], roles, size)
-        _shape(slide, ZONES['column_rule'], roles['accent_soft'])
-        return
-    _bullet_block(slide, ZONES['body'], bullets, roles, size)
-
-
 def _fits(bullets, size, zone):
     """Roughly how tall a bullet block runs, without wrapping anything for real."""
     height = 0
@@ -559,25 +530,51 @@ def _fits(bullets, size, zone):
     return height <= Emu(zone.height).pt
 
 
+# The layouts whose body is a list at the deck-wide size, and the zone it fills.
+# Every other layout sets its own type, so it does not pull the deck's size down.
+LIST_ZONES = {'bullets': 'body', 'two_column': 'body_left'}
+
+
 def _deck_size(prepared):
     """One body size for the whole deck, so slides do not change size partway."""
+    from .slide_layouts import Z, LEFT, TOP, BOTTOM
+    zones = {**{kind: ZONES[name] for kind, name in LIST_ZONES.items()},
+             'image_split': Z(LEFT, TOP, 13.333 * 0.52 - LEFT - 0.45, BOTTOM - TOP)}
+    lists = [(zones[kind], lines) for kind, lines, section in prepared
+             if kind in zones and not _titled_columns(kind, section)]
     for step in range(FIT_STEPS + 1):
         size = MAX_BODY_SIZE - (MAX_BODY_SIZE - MIN_BODY_SIZE) * step / FIT_STEPS
-        if all(kind in ('cover', 'divider', 'statement')
-               or _fits(bullets, size, ZONES['body_left' if kind == 'two_column' else 'body'])
-               for kind, bullets in prepared):
+        if all(_fits(lines, size, zone) for zone, lines in lists):
             return size
     return MIN_BODY_SIZE
 
 
-def render_pptx(content, path, locale='en', role='user_document', style=None):
+def _titled_columns(kind, section):
+    titled = [item for item in section.get('items') or [] if item.get('label') and item.get('text')]
+    return kind == 'two_column' and section.get('layout') == 'two_column' and len(titled) == 2
+
+
+# Layouts that draw the section's body as lines, so a cut there is a real cut.
+LINE_LAYOUTS = {'cover', 'section', 'bullets', 'two_column', 'statement', 'image_split',
+                'image_full', 'closing'}
+
+
+def render_pptx(content, path, locale='en', role='user_document', style=None, photos=None):
     """One section, one slide — with the first one as the deck's title slide.
 
     The cover is `sections[0]` rather than an extra slide, so the count the
     customer asked for is the count delivered and the price is unchanged. With a
     single section there is nothing to introduce, so it stays a content slide.
+
+    Each slide is drawn with the layout it chose, if its content can fill it,
+    and otherwise with that layout's fallback. `photos` maps a section id to an
+    already-fetched, already-validated picture; this function never touches the
+    network, so a deck renders the same with or without one.
     """
+    from . import layouts
+    from .slide_layouts import DRAW, PHOTO_ZONES, Ctx, place_photo
     style = style or {}
+    photos = photos or {}
     roles = palette(style.get('accent', '#255e49'), style.get('deck_theme', 'light'))
     sections = [dict(section) for section in content['sections']]
     question_label = {'en': 'Question', 'uz': 'Savol', 'ru': 'Вопрос'}[locale]
@@ -590,24 +587,44 @@ def render_pptx(content, path, locale='en', role='user_document', style=None):
     shortened = False
     prepared = []
     for index, section in enumerate(sections):
-        bullets, cut = bullets_of(section['body'])
-        shortened = shortened or cut
-        kind = layout_for(index, bullets, total)
+        lines, cut = bullets_of(section['body'])
+        if not lines and section.get('items'):
+            lines, cut = bullets_of('\n'.join(layouts.as_lines(section)))
+        has_photo = section.get('id') in photos
+        kind = layouts.resolve(section, lines, index, total, has_photo)
+        if kind in LINE_LAYOUTS:
+            shortened = shortened or cut
         if kind == 'cover':
             section = {**section, '_title': content['title']}
             if not section['heading'].strip():
                 section['heading'] = content['title']
-            bullets = bullets[:1]
-        prepared.append((kind, bullets, section))
+            lines = lines[:1]
+        prepared.append((kind, lines, section))
 
     deck = Presentation()
     deck.slide_width, deck.slide_height = SLIDE_WIDTH, SLIDE_HEIGHT
     apply_theme(deck, roles)
-    size = _deck_size([(kind, bullets) for kind, bullets, _ in prepared])
+    size = _deck_size(prepared)
+    drawn, pictured = [], []
 
-    for index, (kind, bullets, section) in enumerate(prepared):
+    for index, (kind, lines, section) in enumerate(prepared):
         slide = deck.slides.add_slide(deck.slide_layouts[6])
-        _draw(slide, kind, section, bullets, roles, style, index, total, size, locale)
+        photo = photos.get(section.get('id')) if kind in PHOTO_ZONES else None
+        _ground(slide, roles, kind, photo is not None)
+        if photo is not None:
+            try:
+                place_photo(slide, PHOTO_ZONES[kind], photo)
+                pictured.append({'slide': index + 1, **{key: photo[key] for key in photo if key != 'jpeg'}})
+            except Exception:
+                # A picture python-pptx cannot place leaves the slide to its text
+                # layout rather than costing the customer the deck.
+                photo = None
+                kind = layouts.resolve(section, lines, index, total, False)
+        _chrome(slide, roles, style, kind)
+        context = Ctx(slide, roles, style, index, total, size, locale, photo is not None)
+        DRAW[kind](context, section, lines)
+        shortened = shortened or context.shortened
+        drawn.append(kind)
         # The cover introduces the deck; there is nothing for a presenter to say
         # over it. Learner and public copies never carry notes at all.
         notes = '' if kind == 'cover' or role in ('learner_material', 'public_preview') else section.get('notes', '')
@@ -619,4 +636,5 @@ def render_pptx(content, path, locale='en', role='user_document', style=None):
     deck.save(str(path))
     return {'path': str(path), 'name': path.name,
             'mime_type': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-            'page_count': len(deck.slides), 'role': role, 'shortened': shortened}
+            'page_count': len(deck.slides), 'role': role, 'shortened': shortened,
+            'metadata': {'layouts': drawn, 'photos': pictured}}
