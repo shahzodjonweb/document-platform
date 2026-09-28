@@ -385,8 +385,11 @@ def build_dispatcher():
         elif job.status=='no_op': body+='\n\n'+text(account,'no_op')
         elif job.status=='failed':
             body+='\n\n'+bot_error(DomainError(job.error_code or 'processing_failed'),account.locale)
-            draft=await sync_to_async(lambda:BotDraft.objects.filter(account=account,quote_id=job.quote_id).first())()
-            if draft: rows.append([await button(account,'retry_task','retry',snapshot(draft))])
+            if job.feature_id in ai.SERVICES and job.parameters.get('stage')!='outline':
+                rows.append([await button(account,'retry_task','ai_retry',{'job_id':str(job.id)})])
+            else:
+                draft=await sync_to_async(lambda:BotDraft.objects.filter(account=account,quote_id=job.quote_id).first())()
+                if draft: rows.append([await button(account,'retry_task','retry',snapshot(draft))])
         rows.extend([[await button(account,'new_task','new'),await button(account,'recent','recent')],[await button(account,'home','home')]])
         await render(message,body,rows,edit)
 
@@ -550,6 +553,12 @@ def build_dispatcher():
             elif action=='controls': await controls(message,account,edit=True,advanced=p.get('advanced',False))
             elif action=='ai_examples': await ai_examples(message,account,p.get('feature_id'),True)
             elif action=='ai_revise': await ai_revise_prompt(message,account,p['draft_id'],True)
+            elif action=='ai_retry':
+                draft,quote=await sync_to_async(ai.retry)(account,ref.token)
+                existing=await sync_to_async(ai.submitted)(account,quote.id)
+                await sync_to_async(set_prompt)(account)
+                if existing: await job_status(message,account,existing,True)
+                else: await ai_review(message,account,draft,quote,True)
             elif action=='ai_tool':
                 try: await sync_to_async(ai.available)(account,p['feature_id'])
                 except DomainError as exc: await safe_error(message,account,exc)

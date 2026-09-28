@@ -4,7 +4,7 @@ from django.db.models import F
 from apps.core.errors import DomainError
 from operations.integrations import ai_config
 from .models import GenerationDraft,ProviderUsage
-from .domain import unpack,pack,validate_content,validate_generation_quote,limits
+from .domain import unpack,pack,validate_content,validate_generation_quote,limits,ensure_selected_preservation
 from .rendering import render_pdf
 from .slides import render_pptx
 
@@ -36,6 +36,11 @@ def execute_generation(job,output_dir):
         original=bytes(draft.encrypted_data)
         data=unpack(original)
     content=data['content'];cfg=ai_config();warnings=[]
+    if data.get('revision',{}).get('selected_section_ids'):
+        # Recheck mutable plan bounds before any paid provider request. The
+        # original quote cannot authorize losing untouched pages after a cap
+        # change or subscription expiry while the job waited in the queue.
+        ensure_selected_preservation(data,validate_content(job.account,content,data['output_format']))
     if job.parameters.get('stage')=='outline':
         from .outlines import execute_outline
         return execute_outline(job,draft,data,original,cfg,output_dir)
@@ -48,6 +53,9 @@ def execute_generation(job,output_dir):
         try:
             raw,usage=generate(cfg,data,job.feature_id,job.id,token_limit=job.quote.policy['generation_bounds']['input_tokens'],deadline=deadline)
             content=validate_content(job.account,raw,data['output_format'])
+            # Bounds can also change while the provider is running. Deliver
+            # only a result that still preserves everything outside its scope.
+            ensure_selected_preservation(data,content)
             # A reference has to point at a real page of a real supplied source and
             # quote it word for word. What an unusable one means depends on whether
             # the customer supplied anything to cite: against their own sources it
@@ -113,6 +121,7 @@ def execute_generation(job,output_dir):
         actual['ai_credits']=generation_credits(job.feature_id,len(data['excerpts']),question_count,output_credits,tariff)
     if any(actual.get(m,0)>job.meters.get(m,0) for m in actual):raise DomainError('quote_exceeded',409)
     data['content']=content
+    data.pop('_source_seed',None)
     # A customer may edit while the provider is running. Never overwrite that
     # newer draft with the completed response for the prior confirmed version.
     GenerationDraft.objects.filter(pk=draft.pk,version=draft.version,encrypted_data=original).update(encrypted_data=pack(data),version=F('version')+1)

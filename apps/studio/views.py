@@ -70,6 +70,12 @@ def draft_quote(request,pk):
     return JsonResponse(quote_data(quote),status=201)
 
 @api(('POST',))
+def retry_quote(request,pk):
+    from .checkpoints import retry_quote as prepare_retry
+    throttle(request,'generation_retry_quote',20)
+    return JsonResponse(quote_data(prepare_retry(request.account,pk)),status=201)
+
+@api(('POST',))
 def generate(request,pk):
     from apps.core.models import Quote
     data=body(request);q=Quote.objects.filter(pk=data.get('quote_id'),account=request.account,parameters__generation_draft_id=str(pk)).first()

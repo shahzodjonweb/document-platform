@@ -268,20 +268,28 @@ def resolve(section, lines, index, total, has_photo=False):
     return 'section'
 
 
-def guide(photos=0):
-    """What the model is told about layouts. Kept short: it is sent on every call."""
+def reference(photos=False):
+    """Stable layout rules, shared across the parts of a deck."""
     lines = [f'- {layout.id}: {layout.guide}' for layout in CATALOGUE.values()
              if photos or not layout.needs_photo]
-    photo_rule = (f'Use {photos} photo layout{"s" if photos != 1 else ""} in this part: image_split or '
+    return ('Choose a layout for every section from this list:\n' + '\n'.join(lines) + '\n'
+            'Vary the layouts to suit the content: never the same one more than twice in a row, and '
+            'bullets on at most a third of the slides. Fill only the fields the layout uses and leave '
+            'the others empty ("" or []). Never invent figures, dates or quotations: use numbers only '
+            'when the description or the sources give them, and quote only a real or sourced '
+            'quotation. ')
+
+
+def photo_guidance(photos=0):
+    return (f'Use {photos} photo layout{"s" if photos != 1 else ""} in this part: image_split or '
                   f'image_full on slides a picture supports, and the cover counts when it has an '
                   f'image_query. Use fewer only if the description asks for fewer or no photos. '
                   f'image_query is 2-4 generic words in English, even when the deck is in another '
                   f'language, for a stock photo; never a person, brand or company name. '
                   if photos else
                   'Do not use image_split or image_full, and leave image_query empty. ')
-    return ('Choose a layout for every section from this list:\n' + '\n'.join(lines) + '\n'
-            'Vary the layouts to suit the content: never the same one more than twice in a row, and '
-            'bullets on at most a third of the slides. Fill only the fields the layout uses and leave '
-            'the others empty ("" or []). Never invent figures, dates or quotations: use numbers only '
-            'when the description or the sources give them, and quote only a real or sourced '
-            'quotation. ' + photo_rule)
+
+
+def guide(photos=0):
+    """Compatibility combined guide; provider prefixes keep its stable part first."""
+    return reference(bool(photos)) + photo_guidance(photos)

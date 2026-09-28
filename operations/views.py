@@ -29,14 +29,15 @@ PAGE_ROLES = {
     'overview':['Analyst','Operations','Finance'], 'users':['Support'],
     'analytics/acquisition':['Analyst'], 'analytics/engagement':['Analyst'],
     'analytics/features':['Analyst','Operations'], 'analytics/revenue':['Analyst','Finance'],
+    'analytics/ai-usage':['Analyst','Operations','Finance'],
     'jobs':['Operations','Support'], 'plans':['Finance','Content manager'],
     'payments':['Finance'], 'support':['Support'], 'audit':[], 'system':['Operations'],
     'localization':['Content manager'], 'integrations':[], 'staff':[],
 }
 PAGE_KEYS = {'overview':'overview','users':'users','analytics/acquisition':'acquisition',
-             'analytics/engagement':'engagement','analytics/features':'features','analytics/revenue':'revenue',
+             'analytics/engagement':'engagement','analytics/features':'features','analytics/revenue':'revenue','analytics/ai-usage':'ai_usage',
              'jobs':'jobs','plans':'plans','payments':'payments','support':'support','audit':'audit','system':'system','localization':'localization'}
-NAV = [('analytics',[('overview','overview','▦'),('analytics/acquisition','acquisition','↗'),('analytics/engagement','engagement','◷'),('analytics/features','features','◇'),('analytics/revenue','revenue','◉')]),
+NAV = [('analytics',[('overview','overview','▦'),('analytics/acquisition','acquisition','↗'),('analytics/engagement','engagement','◷'),('analytics/features','features','◇'),('analytics/revenue','revenue','◉'),('analytics/ai-usage','ai_usage','✦')]),
        ('manage',[('users','users','♧'),('jobs','jobs','▤'),('support','support','♡'),('payments','payments','◎')]),
        ('platform',[('plans','plans','☷'),('localization','localization','◎'),('audit','audit','☑'),('system','system','⌁'),('integrations','integrations','⚙'),('staff','staff','♙')])]
 

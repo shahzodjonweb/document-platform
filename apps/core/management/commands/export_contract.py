@@ -89,6 +89,7 @@ def extend_schema(models, endpoint, paths):
     endpoint('/generation/drafts/{id}','delete','deleteGenerationDraft',deleted)
     endpoint('/generation/drafts/{id}/outline','post','reviewGenerationOutline',ref('GenerationDraft'),version)
     endpoint('/generation/drafts/{id}/quote','post','quoteGenerationDraft',ref('Quote'),obj({'version':I,'stage':{'enum':['document','outline']}},['version']),code='201')
+    endpoint('/generation/jobs/{id}/retry-quote','post','quoteGenerationRetry',ref('Quote'),obj({}),code='201',description='Review a fresh quote for an unchanged failed generation. Completed provider batches may be reused only within this explicit retry chain; confirmation and allowance checks still apply.')
     endpoint('/generation/drafts/{id}/generate','post','generateDraft',ref('Job'),obj({'quote_id':UUID},['quote_id']),code='201')
     for path,kind in [('/workflows','Workflow'),('/templates','Template'),('/editor/form-templates','FormTemplate')]:
         listing=obj({'results':arr(ref('SavedDefinition')),'limit':I,'published':arr(template)},['results','limit','published'])

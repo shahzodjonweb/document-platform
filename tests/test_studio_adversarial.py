@@ -104,7 +104,8 @@ def request_data():
 
 
 def test_provider_exact_schema_token_budget_and_no_redirect(monkeypatch):
-    payload={'status':'completed','output':[{'type':'message','content':[{'type':'output_text','text':json.dumps(raw_content())}]}],'usage':{'input_tokens':1200,'output_tokens':200}}
+    wire={'title':'Verified answer','answer_supported':True,'sections':[{'id':'s1','heading':'Answer','body':'A reviewed response.'}]}
+    payload={'status':'completed','output':[{'type':'message','content':[{'type':'output_text','text':json.dumps(wire)}]}],'usage':{'input_tokens':1200,'output_tokens':200}}
     captured={}
     class Response:
         def __enter__(self):return self
@@ -119,7 +120,8 @@ def test_provider_exact_schema_token_budget_and_no_redirect(monkeypatch):
     assert request['store'] is False and request['text']['format']['strict'] is True and 'tools' not in request
     assert captured['request'].full_url=='https://api.openai.com/v1/responses' and captured['read_limit']==2_000_001
     assert usage['output_tokens']==200 and value['title']=='Verified answer'
-    payload['output'][0]['content'][0]['text']=json.dumps({**raw_content(),'unexpected':'private'})
+    assert value['questions']==value['citations']==[] and value['sections'][0]['notes']==''
+    payload['output'][0]['content'][0]['text']=json.dumps({**wire,'unexpected':'private'})
     with pytest.raises(DomainError,match='provider_failed'):provider.generate(cfg,request_data(),'ai.pdf_topic','test',token_limit=24000)
     with pytest.raises(ValueError):provider._NoRedirect().redirect_request(None,None,302,None,None,'https://evil.invalid')
     oversized=request_data();oversized['source_text']='Ж'*3000

@@ -33,6 +33,8 @@ def create_outline_quote(account,draft_id,version):
     with transaction.atomic():
         quote=generation_quote(account,draft_id,version)
         draft=GenerationDraft.objects.get(id=draft_id,account=account);data=unpack(draft.encrypted_data)
+        if data.get('revision',{}).get('selected_section_ids'):
+            raise DomainError('invalid_parameters')
         cfg=ai_config()
         if cfg['mode']!=quote.policy['provider_mode'] or cfg['model']!=quote.policy['provider_model']:raise DomainError('provider_changed',409)
         if cfg['mode']=='openai':
@@ -77,5 +79,6 @@ def execute_outline(job,draft,data,original,config,output_dir):
         warnings.append('local_fixture_not_ai_generated')
     path=output_dir/'outline.json';path.write_text(json.dumps(content,ensure_ascii=False,indent=2),encoding='utf-8')
     data['content']={**content,'questions':data['content']['questions']}
+    data.pop('_source_seed',None)
     GenerationDraft.objects.filter(pk=draft.pk,version=draft.version,encrypted_data=original).update(encrypted_data=pack(data),version=F('version')+1)
     return {'artifacts':[{'path':str(path),'name':path.name,'mime_type':'application/json','page_count':1,'role':'user_document','metadata':{'kind':'text'}}], 'actual_meters':dict(job.meters),'metadata':{'engine':'outline-'+config['mode'],'warnings':warnings}}

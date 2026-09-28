@@ -9,7 +9,7 @@ from django.core.cache import cache
 from django.db import transaction
 from django.utils import timezone
 from apps.core.errors import DomainError
-from apps.core.models import FileAsset, Job
+from apps.core.models import BotCallback, FileAsset, Job, Quote
 from apps.core.services import submit_job
 from apps.studio.domain import DOCUMENT, SLIDES, create_draft, generation_quote, require
 from apps.studio.models import GenerationDraft
@@ -125,6 +125,31 @@ def quote(account, draft_id):
     if not draft:
         raise DomainError('controls_expired', 409)
     return draft, generation_quote(account, draft.id, draft.version)
+
+
+@transaction.atomic
+def retry(account, callback_token):
+    """One confirmation per owned Retry button; replays never create new work."""
+    from apps.studio.checkpoints import retry_quote
+    from apps.studio.domain import validate_generation_quote
+    control = BotCallback.objects.select_for_update().filter(
+        pk=callback_token, account=account, action='ai_retry', expires_at__gt=timezone.now()).first()
+    if not control:
+        raise DomainError('controls_expired', 409)
+    # The callback token represents this explicit retry, not permission to
+    # create another quote on every delivery or double tap.
+    if control.payload.get('quote_id'):
+        result = Quote.objects.filter(pk=control.payload['quote_id'], account=account,
+                                      expires_at__gt=timezone.now()).first()
+        if not result:
+            raise DomainError('controls_expired', 409)
+        validate_generation_quote(account, result)
+    else:
+        result = retry_quote(account, control.payload.get('job_id'))
+        control.payload = {**control.payload, 'quote_id': str(result.id)}
+        control.save(update_fields=['payload'])
+    draft = GenerationDraft.objects.get(pk=result.parameters['generation_draft_id'], account=account)
+    return draft, result
 
 
 def start(account, quote_id):

@@ -253,7 +253,11 @@ def test_a_deck_is_asked_to_choose_a_layout_for_every_slide():
     """The model picks from the twenty layouts; a document is never offered them."""
     from apps.studio import layouts
     from apps.studio.provider import SLIDE_SCHEMA
-    deck = json.loads(request_body(CONFIG, draft(output_format='pptx'), SLIDES)['input'])['writing_guidance']
+    body = request_body(CONFIG, draft(output_format='pptx'), SLIDES)
+    guidance = json.loads(body['input'])['writing_guidance']
+    deck = layouts.reference(False) + '\n' + guidance
+    assert layouts.reference(False) in body['instructions']
+    assert '- cover:' not in guidance, 'stable layout references are sent only once'
     for kind in layouts.LAYOUT_IDS:
         if kind not in layouts.PHOTO_LAYOUTS:
             assert f'- {kind}:' in deck, kind

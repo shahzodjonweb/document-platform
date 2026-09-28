@@ -1,5 +1,6 @@
 """Versioned authoring, encrypted drafts and role-aware generated artifacts."""
 import hashlib
+from copy import deepcopy
 import json
 from datetime import timedelta
 from django.conf import settings
@@ -21,7 +22,7 @@ DOCUMENT='ai.pdf_topic'
 SLIDES='ai.pptx'
 GENERATION_IDS={DOCUMENT,SLIDES}
 # Server-owned fields a client may never send.
-READONLY_FIELDS={'_transcription','transcription_ready','transcription_reviewed'}
+READONLY_FIELDS={'_transcription','transcription_ready','transcription_reviewed','_source_seed','revision'}
 
 def pack(value): return cipher().encrypt(json.dumps(value,ensure_ascii=False).encode())
 def unpack(value): return json.loads(cipher().decrypt(bytes(value)))
@@ -83,8 +84,29 @@ def validate_content(account,content,output_format='pdf'):
     if len({section['id'] for section in clean})!=len(clean):raise DomainError('invalid_parameters')
     return {'title':title,'sections':clean,'questions':qs,'citations':citations}
 
+def ensure_selected_preservation(data,normalized):
+    """Reject normalization that would silently alter an untouched selection.
+
+    Stored content was valid when authored, but an account downgrade or changed
+    plan limits can make today's normalizer trim it. A scoped revision must keep
+    the whole existing document; needing a smaller plan allowance is a refusal,
+    never permission to discard the other pages or questions.
+    """
+    selected=data.get('revision',{}).get('selected_section_ids')
+    if not selected:return
+    original=data['content']
+    if ([s['id'] for s in normalized['sections']]!=[s['id'] for s in original['sections']]
+            or normalized['title']!=original['title']
+            or normalized['questions']!=original.get('questions',[])
+            or [s for s in normalized['sections'] if s['id'] not in selected]
+               !=[s for s in original['sections'] if s['id'] not in selected]):
+        raise DomainError('generation_limit')
+
 def draft_data(d):
     data=unpack(d.encrypted_data)
+    data.pop('_source_seed',None)
+    if data.get('revision'):
+        data['revision']={key:value for key,value in data['revision'].items() if key!='base_content'}
     return {'id':str(d.id),'feature_id':d.feature_id,'version':d.version,'provider_mode':d.provider_mode,'expires_at':d.expires_at,**data,'outline':[{'id':s['id'],'title':s['heading'],'body':s['body']} for s in data['content']['sections']]}
 
 def source_excerpts(account,ids):
@@ -145,7 +167,7 @@ def _deck_style(fid,brief):
     if accent:style['accent']=accent
     return style
 
-def _prepare_draft(account,data):
+def _prepare_draft(account,data,revision_base=None):
     if set(data)&READONLY_FIELDS:raise DomainError('invalid_parameters')
     fid=data.get('feature_id',DOCUMENT);require(account,fid)
     # The service decides the format; the client does not get a say. A document
@@ -170,27 +192,58 @@ def _prepare_draft(account,data):
     # A change request inherits the document it applies to: same service, same
     # format, same sources. Only what the customer asks to change may change.
     revising=options.get('revise_draft_id')
+    saved_revision=(revision_base or {}).get('revision',{})
+    if saved_revision.get('selected_section_ids') and str(revising)!=saved_revision.get('source_draft_id'):
+        raise DomainError('invalid_parameters')
     original=None
+    selection=[]
+    source_version=None
+    if not revising and {'revise_section_ids','revise_base_version'} & set(options):raise DomainError('invalid_parameters')
     if revising:
-        source,original=revision_source(account,revising)
-        fid=source.feature_id;require(account,fid)
+        saved=(revision_base or {}).get('revision',{})
+        # Once created, a selected revision owns an immutable snapshot. Saving its
+        # wording cannot silently pick up later edits to the original document.
+        if saved.get('selected_section_ids') and str(revising)==saved.get('source_draft_id'):
+            original={**revision_base,'content':deepcopy(saved['base_content'])}
+            source_version=saved['base_version']
+        else:
+            source,original=revision_source(account,revising)
+            fid=source.feature_id
+            source_version=source.version
+        require(account,fid)
+        from .revisions import selected_ids
+        selection=selected_ids(options,original['content'],source_version)
+        if saved.get('selected_section_ids') and selection!=saved['selected_section_ids']:raise DomainError('invalid_parameters')
         locale=original['output_locale']
         ids=original['source_ids'];excerpts=original['excerpts']
-        title=original['title'];text=''
+        title=original['title'] if revision_base is None else title
+        text=original.get('source_text','')
         if not prompt.strip():raise DomainError('prompt_required')
+        # Revisions inherit the confirmed look as well as the document. A typo
+        # request has no template/theme instructions and must not reset either.
+        inherited=(revision_base or original).get('options',{})
+        for field,default in (('template_id','clean'),('branding',{})):
+            previous=inherited.get(field,default)
+            if selection and field in options and (options[field] or default)!=(previous or default):
+                raise DomainError('invalid_parameters')
+            if field not in options and (field in inherited or field=='template_id'):
+                options={**options,field:deepcopy(previous)}
     fmt='pptx' if fid==SLIDES else 'pdf'
     # Length and question count are read out of the description rather than
     # asked for separately: one section is one page, and questions are priced,
     # so they appear only when the description asks for them. `requested_pages`
     # is kept beside the resolved count so a clamp can be shown, not hidden.
     from . import pages as paging
-    brief=f'{prompt}\n{text}'
+    brief=prompt if original is not None else f'{prompt}\n{text}'
     length,asked=paging.resolve(account,brief,fmt)
     # A change keeps the document's length unless the request names a new one.
     if original is not None and asked is None:length=len(original['content']['sections'])
+    if selection:
+        if asked is not None and asked!=len(original['content']['sections']):raise DomainError('invalid_parameters')
+        length=len(original['content']['sections'])
     # Local authoring has no model to write the pages, so an unasked-for default
     # would render as blank ones. Follow the material that was actually given.
-    if asked is None and ai_config()['mode']=='local_fixture':
+    if original is None and asked is None and ai_config()['mode']=='local_fixture':
         supplied=len([p for p in (text or '\n\n'.join(x['text'] for x in excerpts)).split('\n\n') if p.strip()])
         if supplied:length=min(supplied,paging.ceiling(account,fmt))
     question_count=min(paging.requested_questions(brief),limits(account)['questions'])
@@ -202,15 +255,33 @@ def _prepare_draft(account,data):
     # against; a page that must be full has nothing left to choose.
     density={}
     template_style=style_for(account,template_id)
-    if template_style is not None:options['template_style']={**template_style,**density,**_deck_style(fid,brief)}
-    else:
+    if template_style is None:
         from .models import SavedDefinition
         import re
         template=SavedDefinition.objects.filter(account=account,id=template_id,kind='template').first()
         if not template:raise DomainError('not_found',404)
         accent=template.definition.get('content',{}).get('style',{}).get('accent','#255e49')
         if not isinstance(accent,str) or not re.fullmatch(r'#[0-9a-fA-F]{6}',accent):raise DomainError('invalid_parameters')
-        options['template_style']={'accent':accent,**density}
+        template_style={'accent':accent}
+    style={**template_style,**density}
+    if original is not None:
+        inherited=(revision_base or original).get('options',{})
+        previous_style=inherited.get('template_style',{})
+        if template_id==inherited.get('template_id','clean'):
+            # The saved style is server-authored. Still resolve the template
+            # above to recheck its ownership and current plan permission.
+            style=deepcopy(previous_style or style)
+        elif fid==SLIDES and previous_style.get('deck_theme'):
+            style['deck_theme']=previous_style['deck_theme']
+        if not selection and fid==SLIDES:
+            theme=paging.requested_theme(brief)
+            accent=paging.requested_accent(brief)
+            if theme:style['deck_theme']=theme
+            if accent:style['accent']=accent
+        # A selected-page revision never changes the whole document's style.
+    else:
+        style.update(_deck_style(fid,brief))
+    options['template_style']=style
     from .branding import prepare_branding
     options=prepare_branding(account,fid,options)
     options.pop('adaptive_context',None)
@@ -235,8 +306,19 @@ def _prepare_draft(account,data):
         sections=[{'id':f's{i+1}','heading':'', 'body':('\n\n'.join(chunks[i:]) if i==length-1 else chunks[i]) if i<len(chunks) else '', 'notes':''} for i in range(length)]
         draft_content={'title':title,'sections':sections,'questions':options.get('questions',[]),'citations':[{'asset_id':x['asset_id'],'page':x['page']} for x in excerpts]}
     content=validate_content(account,draft_content,fmt)
+    if selection:
+        ensure_selected_preservation({'content':draft_content,'revision':{'selected_section_ids':selection}},content)
     payload={'title':title,'prompt':prompt,'source_text':text,'source_ids':ids,'excerpts':excerpts,'output_locale':locale,'output_format':fmt,'options':options,'content':content}
-    if original is not None:payload['revision']={'request':prompt,'source_draft_id':str(revising)}
+    if original is not None:
+        payload['revision']={'request':prompt,'source_draft_id':str(revising),
+                             'original_prompt':original.get('revision',{}).get('original_prompt',original.get('prompt',''))}
+        if selection:
+            payload['revision'].update(selected_section_ids=selection,base_version=source_version,
+                                       base_content=deepcopy(original['content']))
+    else:
+        from .revisions import source_seed
+        seed=source_seed(payload)
+        if seed:payload['_source_seed']=seed
     if len(payload['excerpts'])>plan_limits(account)['max_ai_source_pages']:raise DomainError('generation_limit')
     if payload['source_ids']:owned_assets(account,payload['source_ids'])
     if cfg['mode']=='openai':
@@ -261,12 +343,12 @@ def update_draft(account,draft_id,data):
     if set(data)-allowed_keys:raise DomainError('invalid_parameters')
     fields={key:original[key] for key in ('title','prompt','source_text','source_ids','output_locale','output_format','options')}
     fields.update({key:value for key,value in data.items() if key in fields})
-    _,cfg,payload=_prepare_draft(account,{'feature_id':d.feature_id,**fields})
+    _,cfg,payload=_prepare_draft(account,{'feature_id':d.feature_id,**fields},revision_base=original)
     if cfg['mode']!=d.provider_mode:raise DomainError('provider_changed',409)
     # The page count lives in the description, so a reworded brief rebuilds the
     # outline the same way a changed source does.
     rebuild=any(key in data and data[key]!=original.get(key) for key in ('prompt','source_text','source_ids','output_format'))
-    content=data.get('content',payload['content'] if rebuild else original['content'])
+    content=data.get('content',payload['content'] if rebuild and not original.get('revision',{}).get('selected_section_ids') else original['content'])
     if 'outline' in data:
         outline=data['outline']
         if not isinstance(outline,list) or any(not isinstance(s,dict) for s in outline):raise DomainError('invalid_parameters')
@@ -276,6 +358,19 @@ def update_draft(account,draft_id,data):
     if 'title' in data and isinstance(content,dict):content={**content,'title':payload['title']}
     payload['content']=validate_content(account,content,payload['output_format'])
     payload['title']=payload['content']['title']
+    # Only server-authored, untouched source copies can be deduplicated. Sending
+    # content/outline is an explicit author edit, even if its text happens to match.
+    if 'content' in data or 'outline' in data:
+        payload.pop('_source_seed',None)
+    elif not rebuild:
+        payload.pop('_source_seed',None)
+        if original.get('_source_seed'):payload['_source_seed']=original['_source_seed']
+    if payload.get('revision',{}).get('selected_section_ids'):
+        # Selected revisions may edit content, but structural changes need the
+        # whole-document flow so selected identities cannot silently disappear.
+        base=payload['revision']['base_content']
+        if [s['id'] for s in payload['content']['sections']]!=[s['id'] for s in base['sections']]:
+            raise DomainError('invalid_parameters')
     # An edited outline is the page count now, so keep them in step.
     payload['options']={**payload['options'],'length':len(payload['content']['sections'])}
     if cfg['mode']=='openai':

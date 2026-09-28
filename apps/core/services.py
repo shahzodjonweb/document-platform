@@ -370,6 +370,10 @@ def cleanup_expired():
     from .models import EmailChallenge, GoogleChallenge, AuthRateLimit, AuthChallenge, BotCallback, BotConversation, AuthReceipt
     from apps.studio.models import PhotoSearch
     PhotoSearch.objects.filter(expires_at__lte=now).delete()
+    from apps.studio.checkpoints import cleanup_expired as cleanup_provider_checkpoints
+    cleanup_provider_checkpoints(now)
+    from apps.studio.provider_usage import cleanup_attempts
+    cleanup_attempts()
     for model in (EmailChallenge, GoogleChallenge, AuthRateLimit, AuthChallenge, BotCallback):
         model.objects.filter(expires_at__lte=now).delete()
     # Both Telegram and Turnstile proofs expire after five minutes. Keep receipt

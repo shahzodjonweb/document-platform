@@ -1,5 +1,8 @@
 """Bounded, tool-free structured provider boundary. No private content is logged."""
 import json
+import copy
+import time
+import uuid
 import urllib.request
 from apps.core.errors import DomainError
 
@@ -18,7 +21,7 @@ SYSTEM=('You write documents and slide decks from a description written by the c
 # page fills by character: see apps/studio/pages.py.
 
 
-def writing_guidance(options, sections, output_format='pdf', first=0, total=None):
+def writing_guidance(options, sections, output_format='pdf', first=0, total=None, *, include_layouts=True):
     """Tell the model what to write and how much, in units it can count.
 
     Asked for a character count — which no model can measure — it wrote roughly
@@ -52,7 +55,7 @@ def writing_guidance(options, sections, output_format='pdf', first=0, total=None
         cap = int((options or {}).get('image_cap', 0) or 0)
         wanted = min(cap, max(1, round(deck / 3))) if cap > 0 and deck else 0
         photos = round(wanted * (first + sections) / deck) - round(wanted * first / deck) if deck else 0
-        from .layouts import guide
+        from .layouts import guide, photo_guidance
         return (
             f'Write {sections} section{ending}. Each section is one {unit}. {cover}'
             f'For {"every other" if titled else "each"} section: the heading is a headline of at '
@@ -63,7 +66,7 @@ def writing_guidance(options, sections, output_format='pdf', first=0, total=None
             f'sentences, 40 to 80 words, never repeating a bullet word for word. Never write more '
             f'than 5 bullets or more than {round(words * 1.3)} words in a section — a longer one '
             f'does not fit its {unit} and will be shortened. Only the final section may be shorter.\n'
-            + guide(max(0, photos))
+            + (guide(max(0, photos)) if include_layouts else photo_guidance(max(0, photos)))
         )
     return (
         f'Write {sections} section{ending}. Each section is one {unit}: about '
@@ -84,30 +87,8 @@ def schema_for(feature, output_format='pdf'):
 
 
 def request_body(config,data,feature_id,span=None):
-    """One provider call. `span` asks for a slice of a long document's sections.
-
-    A document longer than `pages.PAGES_PER_CALL` is written in several calls so
-    the page count a plan offers is never limited by how much a model can say in
-    one response. Each call is given the whole plan as headings for context but
-    is asked to write only its own sections, and questions are asked for once,
-    with the final slice, so they are not produced several times over.
-    """
-    outline=data['content']
-    sections=outline['sections']
-    first,last=span or (0,len(sections))
-    mine=sections[first:last]
-    final=last>=len(sections)
-    asked_questions=max(len(outline['questions']),int(data['options'].get('question_count',0)))
-    user={'task':feature_id,'output_locale':data['output_locale'],'prompt':data['prompt'],'source_text':data['source_text'],'excerpts':data['excerpts'],'outline':{**outline,'sections':mine},'options':data['options'],'max_sections':len(mine),'max_questions':asked_questions if final else 0}
-    if len(mine)!=len(sections):
-        user['document_plan']=[s['heading'] for s in sections]
-        user['writing_this_part']=f'sections {first+1}-{last} of {len(sections)}'
-    user['writing_guidance']=writing_guidance(data['options'],len(mine),data.get('output_format','pdf'),first,len(sections))
-    # A change request is a different instruction from a brief: the outline is
-    # the finished document, not an empty structure to fill.
-    if data.get('revision'):user['revision']={'request':data['revision']['request']}
-    from .pages import response_tokens
-    return {'model':config['model'],'store':False,'instructions':SYSTEM,'input':json.dumps(user,ensure_ascii=False),'max_output_tokens':response_tokens(len(mine)),'text':{'format':{'type':'json_schema','name':'document','strict':True,'schema':schema_for(feature_id,data.get('output_format','pdf'))}}}
+    from .prompting import request_body as build
+    return build(config,data,feature_id,span)
 
 
 def enforce_input_budget(config,data,feature_id,token_limit,span=None):
@@ -130,7 +111,7 @@ def _validate(value,schema):
         if not isinstance(value,list) or len(value)>100:raise ValueError()
         for item in value:_validate(item,schema['items'])
     elif kind=='string':
-        if not isinstance(value,str) or len(value)>100000:raise ValueError()
+        if not isinstance(value,str) or len(value)>schema.get('maxLength',100000):raise ValueError()
     elif kind=='integer':
         if type(value) is not int:raise ValueError()
     elif kind=='boolean':
@@ -154,35 +135,54 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self,*args,**kwargs):raise ValueError('provider_redirect_rejected')
 
 
-def generate(config,data,feature_id,request_id,*,token_limit,deadline=None):
-    """The whole document, in as many provider calls as its length needs.
+def _job_context(request_id):
+    try:
+        identifier=uuid.UUID(str(request_id))
+    except (ValueError,TypeError,AttributeError):
+        return None,None
+    from apps.core.models import Job
+    from .models import GenerationDraft
+    job=Job.objects.select_related('account').filter(pk=identifier).first()
+    if job is None:return None,None
+    draft=GenerationDraft.objects.filter(pk=job.parameters.get('generation_draft_id'),account_id=job.account_id).first()
+    return job,draft
 
-    `deadline` is a monotonic clock reading the calls must finish by. It exists
-    because the worker holds a lease on the job: a batch that ran past it would
-    have its finished work thrown away by the reclaim sweep, so the calls are
-    held inside the budget the lease gives them.
-    """
+
+def generate(config,data,feature_id,request_id,*,token_limit,deadline=None):
+    """Generate bounded parts, recovering only explicitly retried completed work."""
     from .pages import batches
-    spans=batches(len(data['content']['sections']))
-    if len(spans)<2:return _call(config,data,feature_id,str(request_id),token_limit=token_limit,deadline=deadline)
+    from .prompting import selected
+    job,draft=_job_context(request_id)
+    effective=copy.deepcopy(data)
+    if job is not None:effective['_cache_scope']=str(job.account_id)
+    scoped=selected(data)
+    if scoped:
+        ids=data['revision']['selected_section_ids']
+        effective['_revision_context']=copy.deepcopy(data['content'])
+        effective['content']['sections']=[s for s in effective['content']['sections'] if s['id'] in ids]
+        if [s['id'] for s in effective['content']['sections']]!=ids:
+            raise DomainError('invalid_parameters')
+    spans=batches(len(effective['content']['sections']))
     merged,totals=None,{'input_tokens':0,'output_tokens':0}
     for index,span in enumerate(spans):
-        # A distinct key per call: the same key would make the provider replay
-        # the first slice for every one of them.
-        part,usage=_call(config,data,feature_id,f'{request_id}-{index}',token_limit=token_limit,span=span,deadline=deadline)
-        for key in totals:totals[key]+=usage.get(key,0)
-        # Identity belongs to the outline, not to the response. A model asked for
-        # one slice may still number its sections from one, and merging those
-        # would give the document duplicate ids and fail it on assembly.
-        expected=data['content']['sections'][span[0]:span[1]]
-        part['sections']=[{**section,'id':expected[position]['id']}
-                          for position,section in enumerate(part['sections'][:len(expected)])]
+        key=str(request_id) if len(spans)==1 else f'{request_id}-{index}'
+        part,usage=_call(config,effective,feature_id,key,token_limit=token_limit,
+                         span=None if len(spans)==1 else span,deadline=deadline,job=job,draft=draft)
+        for field in totals:totals[field]+=usage.get(field,0)
+        if len(spans)>1 and not scoped:
+            # Ordinary batched generation retains the historical outline IDs.
+            expected=effective['content']['sections'][span[0]:span[1]]
+            part['sections']=[{**section,'id':expected[position]['id']}
+                              for position,section in enumerate(part['sections'][:len(expected)])]
         if merged is None:merged=part
         else:
-            merged['sections']=merged['sections']+part['sections']
-            merged['citations']=merged['citations']+part['citations']
+            merged['sections']+=part['sections']
+            merged['citations']+=part['citations']
             merged['questions']=part['questions'] or merged['questions']
             merged['answer_supported']=merged['answer_supported'] and part['answer_supported']
+    if scoped:
+        from .revisions import merge_patch
+        merged=merge_patch(data,{k:merged[k] for k in ('sections','citations','answer_supported')})
     return merged,totals
 
 
@@ -199,22 +199,73 @@ def call_timeout(max_output_tokens,deadline=None,now=None):
     return max(15,min(timeout,deadline-(now if now is not None else time.monotonic())))
 
 
-def _call(config,data,feature_id,idempotency_key,*,token_limit,span=None,deadline=None):
+def _call(config,data,feature_id,idempotency_key,*,token_limit,span=None,deadline=None,job=None,draft=None):
+    from . import prompting,provider_usage
     body=enforce_input_budget(config,data,feature_id,token_limit,span)
     timeout=call_timeout(body['max_output_tokens'],deadline)
-    try:
-        request=urllib.request.Request('https://api.openai.com/v1/responses',data=json.dumps(body,ensure_ascii=False).encode(),headers={'Authorization':'Bearer '+config['api_key'],'Content-Type':'application/json','Idempotency-Key':idempotency_key})
-        with urllib.request.build_opener(_NoRedirect).open(request,timeout=timeout) as response:
-            raw=response.read(2_000_001)
-        if len(raw)>2_000_000:raise ValueError()
-        result=json.loads(raw)
-        if result.get('status')!='completed':raise ValueError()
-        parts=[part['text'] for output in result.get('output',[]) if output.get('type')=='message' for part in output.get('content',[]) if part.get('type')=='output_text']
-        content=json.loads(''.join(parts));_validate(content,schema_for(feature_id,data.get('output_format','pdf')))
-        usage=result.get('usage',{})
-        if not isinstance(usage,dict):raise ValueError()
-        usage={key:usage.get(key,0) for key in ('input_tokens','output_tokens')}
-        if any(type(value) is not int or value<0 or value>1_000_000 for value in usage.values()):raise ValueError()
-        if usage['output_tokens']>body['max_output_tokens'] or usage['input_tokens']>token_limit:raise ValueError()
-        return content,usage
-    except Exception:raise DomainError('provider_failed',502,retryable=True) from None
+    first,last=span or (0,len(data['content']['sections']))
+    expected=data['content']['sections'][first:last]
+    stage='outline' if prompting.is_outline(data,feature_id) else 'revision' if data.get('revision') else 'generate'
+
+    def validate(content):
+        _validate(content,schema_for(feature_id,data.get('output_format','pdf')))
+        if len(content['sections'])!=len(expected):raise ValueError('section_count')
+        ids=[s['id'] for s in content['sections']]
+        if prompting.selected(data) or stage=='outline' or span is None:
+            if ids!=[s['id'] for s in expected]:raise ValueError('section_identity')
+        elif len(set(ids))!=len(ids):raise ValueError('section_identity')
+        for ref in content['citations']:
+            source=next((s for s in data['excerpts'] if s['asset_id']==ref['asset_id'] and s['page']==ref['page']),None)
+            if not source or not ref['quote'] or ref['quote'] not in source['text']:
+                raise ValueError('source_citation')
+        if job is not None:
+            # Schema-valid JSON may still be unusable by the application (for
+            # example, duplicate question IDs or an out-of-range mark). Never
+            # checkpoint a response that every subsequent retry would reject.
+            # Keep the canonical provider shape, including answer_supported;
+            # the execution layer applies the existing plan-aware trimming.
+            from .domain import validate_content
+            validate_content(job.account,content,data.get('output_format','pdf'))
+        return content
+
+    def invoke():
+        started=time.monotonic()
+        attempt=provider_usage.start_attempt(idempotency_key,feature_id,config['model'],stage=stage,
+                                             span=(first,last),job=job,output_locale=data['output_locale'])
+        received=False
+        try:
+            request=urllib.request.Request('https://api.openai.com/v1/responses',
+                data=json.dumps(body,ensure_ascii=False,separators=(',',':')).encode(),
+                headers={'Authorization':'Bearer '+config['api_key'],'Content-Type':'application/json','Idempotency-Key':idempotency_key})
+            with urllib.request.build_opener(_NoRedirect).open(request,timeout=timeout) as response:
+                raw=response.read(2_000_001)
+            if len(raw)>2_000_000:raise ValueError()
+            result=json.loads(raw)
+            provider_usage.received(attempt,result,round((time.monotonic()-started)*1000))
+            received=True
+            if not isinstance(result,dict) or result.get('status')!='completed':raise ValueError()
+            parts=[part['text'] for output in result.get('output',[]) if output.get('type')=='message'
+                   for part in output.get('content',[]) if part.get('type')=='output_text']
+            content=json.loads(''.join(parts))
+            _validate(content,body['text']['format']['schema'])
+            content=prompting.canonical(content,data)
+            validate(content)
+            usage=result.get('usage')
+            if usage is None:usage={}
+            if not isinstance(usage,dict):raise ValueError()
+            # Missing counts are unknown in ProviderAttempt, already recorded
+            # above. Compatibility job totals use zero for these gaps; missing
+            # billing metadata alone must not discard a valid paid response.
+            usage={key:(0 if usage.get(key) is None else usage[key]) for key in ('input_tokens','output_tokens')}
+            if any(type(value) is not int or value<0 or value>1_000_000 for value in usage.values()):raise ValueError()
+            if usage['output_tokens']>body['max_output_tokens'] or usage['input_tokens']>token_limit:raise ValueError()
+            provider_usage.finish(attempt,'succeeded')
+            return content,usage
+        except Exception:
+            provider_usage.finish(attempt,'rejected' if received else 'failed',elapsed_ms=round((time.monotonic()-started)*1000))
+            raise DomainError('provider_failed',502,retryable=True) from None
+
+    if job is not None and draft is not None:
+        from .checkpoints import call
+        return call(job=job,draft=draft,body=body,stage=stage,span=(first,last),invoke=invoke,validate=validate)
+    return invoke()

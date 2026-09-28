@@ -36,3 +36,7 @@ CATALOGS["ru"]["days"]="дней"
 CATALOGS["en"].update(grant_allowance="Grant exceptional allowance",grant_note="Adds a separately audited, non-expiring allowance. Does not change the plan or unlock features. Tasks require a page allowance.",cancel_task="Cancel queued task")
 CATALOGS["uz"].update(grant_allowance="Qo‘shimcha limit berish",grant_note="Auditda qayd etiladigan muddatsiz limit qo‘shadi. Tarifni o‘zgartirmaydi va funksiyalarni ochmaydi. Vazifalar uchun sahifa limiti kerak.",cancel_task="Navbatdagi vazifani bekor qilish")
 CATALOGS["ru"].update(grant_allowance="Выдать дополнительный лимит",grant_note="Добавляет бессрочный лимит с записью в аудит. Не меняет план и не открывает функции. Для задач нужен лимит страниц.",cancel_task="Отменить задачу в очереди")
+
+CATALOGS['en']['ai_usage'] = 'AI token usage'
+CATALOGS['uz']['ai_usage'] = 'AI token sarfi'
+CATALOGS['ru']['ai_usage'] = 'Расход токенов ИИ'
