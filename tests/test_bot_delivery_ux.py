@@ -99,6 +99,69 @@ def test_result_caption_and_navigation_are_localized_and_owner_bound(locale):
     assert bot.send_document.await_count == 1
 
 
+def _deliver(monkeypatch, locale='en', username='PdfMasterTestBot'):
+    monkeypatch.setattr('telegram.delivery.telegram_config', lambda: {'username': username, 'webapp_url': ''})
+    account, job = completed_job(locale=locale)
+    delivery = BotDelivery.objects.get()
+    bot = Mock(send_document=AsyncMock(return_value=Mock(message_id=330)))
+    asyncio.run(attempt(delivery.id, bot))
+    delivery.refresh_from_db()
+    assert delivery.status == 'delivered'
+    return account, delivery, bot, bot.send_document.await_args.kwargs
+
+
+@pytest.mark.parametrize('locale', ['en', 'uz', 'ru'])
+def test_a_forwarded_file_carries_a_link_to_the_bot_with_its_owners_referral(monkeypatch, locale):
+    from apps.commerce.models import ReferralCode
+    account, _, _, sent = _deliver(monkeypatch, locale)
+    code = ReferralCode.objects.get(account=account).code
+    link = f'https://t.me/PdfMasterTestBot?start=ref_{code}'
+    assert sent['parse_mode'] == 'HTML'
+    assert sent['caption'].startswith(RESULT_COPY[locale]['ready'])
+    assert f'<a href="{link}">@PdfMasterTestBot</a>' in sent['caption']
+    before, after = RESULT_COPY[locale]['share'].split('{bot}')
+    assert before in sent['caption'] and after in sent['caption']
+    assert len(sent['caption']) <= 1024, 'Telegram caption limit'
+
+
+def test_the_forwarded_link_is_a_working_invitation(monkeypatch):
+    """Someone new who starts the bot from the link is counted as the owner's invitation."""
+    from apps.commerce.models import Referral
+    from apps.commerce.services import claim_referral
+    from types import SimpleNamespace
+    from telegram.onboarding import _pending_for
+    owner, _, _, sent = _deliver(monkeypatch)
+    start = sent['caption'].split('?start=', 1)[1].split('"', 1)[0]
+    # What Telegram sends the bot when the link is opened.
+    pending = _pending_for(SimpleNamespace(text=f'/start {start}', document=None, photo=None))
+    newcomer = resolve_account({'id': 991122, 'first_name': 'Friend', 'language_code': 'en'}, is_test=True)
+    claim_referral(newcomer, pending['referral_code'])
+    assert Referral.objects.get(invitee=newcomer).inviter_id == owner.pk
+
+
+def test_every_delivery_to_one_owner_uses_the_same_referral_code(monkeypatch):
+    from apps.commerce.models import ReferralCode
+    account, delivery, bot, first = _deliver(monkeypatch)
+    BotDelivery.objects.filter(pk=delivery.pk).update(status='retrying', next_attempt_at=timezone.now())
+    asyncio.run(attempt(delivery.id, bot))
+    assert bot.send_document.await_args.kwargs['caption'] == first['caption']
+    assert ReferralCode.objects.filter(account=account).count() == 1
+
+
+@pytest.mark.parametrize('username', ['', '@', 'bad name', 'x"><script>', 'abc', 'a' * 40])
+def test_without_a_valid_bot_username_the_caption_has_no_link(monkeypatch, username):
+    _, _, _, sent = _deliver(monkeypatch, username=username)
+    assert sent['caption'] == RESULT_COPY['en']['ready'] and '<' not in sent['caption']
+
+
+def test_a_referral_that_cannot_be_made_still_links_the_bot(monkeypatch):
+    def broken(account):
+        raise RuntimeError('database hiccup')
+    monkeypatch.setattr('apps.commerce.services.referral_code', broken)
+    _, _, _, sent = _deliver(monkeypatch, username='@PdfMasterTestBot')
+    assert '<a href="https://t.me/PdfMasterTestBot">@PdfMasterTestBot</a>' in sent['caption']
+
+
 def test_failed_send_reuses_navigation_tokens_and_does_not_recharge():
     _, job = completed_job()
     delivery = BotDelivery.objects.get()

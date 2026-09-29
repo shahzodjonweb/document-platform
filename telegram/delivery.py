@@ -1,5 +1,7 @@
 """Independent durable result delivery. Retrying never reprocesses or recharges a job."""
 import asyncio
+import html
+import re
 import secrets
 from datetime import timedelta
 from asgiref.sync import sync_to_async
@@ -21,18 +23,52 @@ RESULT_COPY = {
         'ready': '✅ Done! This copy stays in your Telegram chat. Server files expire 24 hours after processing.',
         'large': '✅ Done! The file is too large for Telegram. Download it from Recent tasks on the web within 24 hours of processing.',
         'open': '🌐 Open web app',
+        'share': '📎 Made with {bot} — try it free',
     },
     'uz': {
         'ready': '✅ Tayyor! Bu nusxa Telegram chattingizda qoladi. Serverdagi fayllar qayta ishlangach, 24 soatdan keyin o‘chadi.',
         'large': '✅ Tayyor! Fayl Telegram uchun juda katta. Qayta ishlanganidan keyin 24 soat ichida veb ilovadagi So‘nggi vazifalardan yuklab oling.',
         'open': '🌐 Veb ilova',
+        'share': '📎 {bot} yordamida tayyorlandi — bepul sinab ko‘ring',
     },
     'ru': {
         'ready': '✅ Готово! Эта копия останется в чате. Файлы на сервере удаляются через 24 часа после обработки.',
         'large': '✅ Готово! Файл слишком большой для Telegram. Скачайте его из последних задач на сайте в течение 24 часов после обработки.',
         'open': '🌐 Открыть сайт',
+        'share': '📎 Сделано в {bot} — попробуйте бесплатно',
     },
 }
+
+
+def share_link(account, username):
+    """(username, link) to the bot for whoever this file is forwarded to, or ('', '').
+
+    It carries the owner's referral code, so someone who starts the bot from a
+    forwarded file is counted as their invitation. Nothing here may stop a
+    delivery: without a configured username, or on any failure, the caption
+    simply has no link.
+    """
+    username = (username or '').strip().lstrip('@')
+    if not re.fullmatch(r'[A-Za-z0-9_]{5,32}', username):
+        return '', ''
+    link = f'https://t.me/{username}'
+    try:
+        from apps.commerce.services import referral_code
+        code = referral_code(account).code
+        if re.fullmatch(r'[A-Za-z0-9_-]{1,60}', code):
+            link += f'?start=ref_{code}'
+    except Exception:
+        pass
+    return username, link
+
+
+def ready_caption(copy, username, link):
+    """The result caption, with the bot's link under it when there is one."""
+    caption = html.escape(copy['ready'])
+    if link:
+        mention = f'<a href="{html.escape(link)}">@{html.escape(username)}</a>'
+        caption += '\n\n' + html.escape(copy['share']).replace('{bot}', mention)
+    return caption
 
 
 def enqueue(artifact,key):
@@ -124,7 +160,11 @@ async def attempt(delivery_id,bot):
             response=await bot.send_message(delivery.account.telegram_user_id,copy['large'],reply_markup=controls)
         else:
             payload=await sync_to_async(lambda:storage_path(asset.object_key).read_bytes())()
-            response=await bot.send_document(delivery.account.telegram_user_id,BufferedInputFile(payload,filename=asset.name),caption=copy['ready'],reply_markup=controls)
+            # The buttons belong to the owner; whoever the file is forwarded to
+            # finds the way to the bot in the caption itself.
+            cfg=await sync_to_async(telegram_config)()
+            username,link=await sync_to_async(share_link)(delivery.account,cfg.get('username',''))
+            response=await bot.send_document(delivery.account.telegram_user_id,BufferedInputFile(payload,filename=asset.name),caption=ready_caption(copy,username,link),parse_mode='HTML',reply_markup=controls)
         await sync_to_async(finish)(delivery.id,status='delivered',message_id=response.message_id)
     except TelegramRetryAfter as exc:
         await sync_to_async(finish)(delivery.id,status='retrying',error='telegram_rate_limited',delay=min(3600,max(1,exc.retry_after)))
