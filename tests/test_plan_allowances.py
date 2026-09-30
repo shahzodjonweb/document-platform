@@ -56,9 +56,9 @@ def test_a_raise_reaches_a_period_already_under_way():
     customer = account()
     usage_snapshot(customer)
     UsageGrant.objects.filter(account=customer, meter='ai_credits', source='included').update(consumed=100)
-    plan_settings.save('free', {'ai_credits': 2000})
+    plan_settings.save('free', {'ai_credits': 5000})
     after = credits(customer)
-    assert after['limit'] == 2000 and after['remaining'] == 1900, 'what was used stays used'
+    assert after['limit'] == 5000 and after['remaining'] == 4900, 'what was used stays used'
     assert UsageGrant.objects.filter(account=customer, meter='ai_credits').count() == 1
 
 
@@ -119,3 +119,51 @@ def test_the_file_size_limit_can_be_changed_by_an_administrator():
     assert limits_for_plan('free')['max_file_mib'] == 30
     assert 'max_file_mb' not in plan_settings.FIELDS
     assert set(plan_settings.FIELDS) <= set(SEED['plans']['free']), 'every editable field is a real plan field'
+
+
+# ---------------------------------------------------------------- AI credits tripled
+
+
+def _triple():
+    import importlib
+    from django.apps import apps as django_apps
+    importlib.import_module('apps.core.migrations.0013_triple_ai_credits').triple(django_apps, None)
+
+
+def test_the_free_plan_covers_three_ai_documents_a_day():
+    assert SEED['plans']['free']['ai_credits'] >= 90 * DOCUMENT_CREDITS
+
+
+def test_the_deploy_removes_an_override_holding_free_credits_down_and_audits_it():
+    from operations.models import AuditLog
+    customer = account()
+    usage_snapshot(customer)
+    plan_settings.save('free', {'ai_credits': 300, 'file_tasks': 250})
+    UsageGrant.objects.filter(account=customer, meter='ai_credits').update(quantity=300, consumed=20)
+    _triple()
+    assert plan_settings.overrides()['free'] == {'file_tasks': 250}, 'only the AI credit override goes'
+    assert limits_for_plan('free')['ai_credits'] == SEED['plans']['free']['ai_credits'] == 3150
+    grant = UsageGrant.objects.get(account=customer, meter='ai_credits')
+    assert (grant.quantity, grant.consumed) == (3150, 20), 'what was used stays used'
+    entry = AuditLog.objects.get(action='plan.limits', target='free')
+    assert entry.before == {'ai_credits': 300} and entry.after == {'ai_credits': 3150}
+    assert entry.actor is None and 'tripled' in entry.reason
+
+
+def test_the_deploy_keeps_an_override_at_or_above_the_new_figure():
+    from operations.models import AuditLog
+    plan_settings.save('free', {'ai_credits': 5000})
+    customer = account()
+    _triple()
+    assert plan_settings.overrides()['free'] == {'ai_credits': 5000}
+    assert credits(customer)['limit'] == 5000
+    assert not AuditLog.objects.exists()
+
+
+def test_the_deploy_without_overrides_only_raises_periods_under_way():
+    from operations.models import AuditLog
+    customer = account()
+    usage_snapshot(customer)
+    UsageGrant.objects.filter(account=customer, meter='ai_credits').update(quantity=1050)
+    _triple()
+    assert credits(customer)['limit'] == 3150 and not AuditLog.objects.exists()
