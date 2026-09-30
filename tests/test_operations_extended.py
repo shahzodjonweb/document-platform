@@ -42,8 +42,8 @@ def test_exceptional_grant_idempotency_keeps_feature_and_file_caps():
     for _ in range(2):assert client.post(url,body).status_code==302
     assert UsageGrant.objects.filter(source='adjustment').count()==3
     assert AuditLog.objects.filter(action='quota.grant').count()==1
-    assert usage_snapshot(account)['meters']['file_tasks']['limit']==97
-    assert account.plan=='free' and plan_limits(account)['max_file_mib']==10
+    assert usage_snapshot(account)['meters']['file_tasks']['limit']==307
+    assert account.plan=='free' and plan_limits(account)['max_file_mib']==25
     with pytest.raises(DomainError,match='feature_not_in_plan'):require_feature(account,'editor.redact')
     assert client.post(url,{**body,'file_tasks':8}).status_code==400
     assert UsageGrant.objects.filter(source='adjustment',meter='file_tasks').get().quantity==7

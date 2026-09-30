@@ -96,13 +96,37 @@ def refresh_account_entitlement(account):
 
 
 def ensure_account_grants(account):
+    """The free allowance for the current period, as the plan stands now.
+
+    It follows the administrator's plan edits, not only the seed: the pricing
+    page advertises the edited figure, so that is what has to be granted.
+    """
+    from apps.core.policy import limits_for_plan
     period=active_period(account)
     refresh_account_entitlement(account)
     if period: return period.ends_at
     start,end=cycle(account)
+    allowance=limits_for_plan('free')
     for meter in METERS:
-        UsageGrant.objects.get_or_create(source_id=f'included:{account.id}:{start.isoformat()}:{meter}',defaults={'account':account,'meter':meter,'quantity':SEED['plans']['free'][meter],'valid_from':start,'expires_at':end})
+        quantity=int(allowance.get(meter,SEED['plans']['free'][meter]) or 0)
+        UsageGrant.objects.get_or_create(source_id=f'included:{account.id}:{start.isoformat()}:{meter}',defaults={'account':account,'meter':meter,'quantity':quantity,'valid_from':start,'expires_at':end})
     return end
+
+
+def raise_current_free_allowances(values,now=None):
+    """Bring every free period under way up to a raised allowance.
+
+    Called when the free plan is raised, so the new figure is what customers
+    have today rather than at their next renewal. It never lowers a period: a
+    cut applies from the next one, and nothing a customer was given is taken
+    back. Paid and granted credit is untouched — only `included:` grants.
+    """
+    now=now or timezone.now();raised=0
+    for meter in METERS:
+        value=values.get(meter)
+        if not isinstance(value,int):continue
+        raised+=UsageGrant.objects.filter(source_id__startswith='included:',meter=meter,expires_at__gt=now,quantity__lt=value).update(quantity=value)
+    return raised
 
 
 def eligible_grants(account,queryset):

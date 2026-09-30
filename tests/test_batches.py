@@ -30,14 +30,14 @@ def test_quote_is_atomic_owner_scoped_and_paid_caps():
     a=account();g=groups(a)
     with pytest.raises(DomainError,match='feature_not_in_plan'):create_batch_quote(a,'batch.convert',g)
     a=paid(a)
-    with pytest.raises(DomainError,match='batch_limit'):create_batch_quote(a,'batch.convert',g*3)
+    with pytest.raises(DomainError,match='batch_limit'):create_batch_quote(a,'batch.convert',g*6)
     other=paid(account(43));bad=[g[0],{'feature_id':'pdf.to_images','input_ids':[str(upload(other).id)]}]
     before=Quote.objects.count()
     with pytest.raises(DomainError,match='file_unavailable'):create_batch_quote(a,'batch.convert',bad)
     assert Quote.objects.count()==before and BatchQuote.objects.count()==0
     q=create_batch_quote(a,'batch.convert',g)
     data=quote_data(q)
-    assert data['affordable'] and data['max_children']==5
+    assert data['affordable'] and data['max_children']==10
     assert q.meters=={'file_tasks':2,'file_page_units':4,'ai_credits':0}
     assert len(data['groups'])==2 and not UsageLedger.objects.exists()
 

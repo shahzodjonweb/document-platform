@@ -74,7 +74,7 @@ def test_failure_releases_original_grants():
     storage_path(asset.object_key).unlink()
     done=execute_job(job.id)
     assert done.status=='failed'
-    assert usage_snapshot(a)['meters']['file_tasks']=={'limit':90,'used':0,'reserved':0,'remaining':90}
+    assert usage_snapshot(a)['meters']['file_tasks']=={'limit':300,'used':0,'reserved':0,'remaining':300}
     settle_job(job.id,'failed',error_code='again')
     assert UsageLedger.objects.filter(job=job,kind='release',meter='file_tasks').count()==1
 

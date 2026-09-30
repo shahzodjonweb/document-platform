@@ -44,7 +44,7 @@ def test_invoice_quote_prices_server_owned_and_confirmed_once():
     assert second.status_code==200 and second.json()['payment']['id']==first.json()['payment']['id']
     assert Payment.objects.count()==SubscriptionPeriod.objects.count()==1
     assert PaymentGrant.objects.count()==3
-    assert usage_snapshot(a)['meters']['file_tasks']['limit']==500
+    assert usage_snapshot(a)['meters']['file_tasks']['limit']==1500
 
 def test_production_prices_null_and_sandbox_cannot_activate_real_account(settings):
     real=resolve_account({'id':802,'first_name':'Real user'},is_test=False)
@@ -80,13 +80,13 @@ def test_expired_invoice_and_wrong_successful_charge_are_rejected():
     assert Payment.objects.count()==0
 
 def test_grants_correct_across_tier_pack_expiry_and_shared_account():
-    a=account();free=usage_snapshot(a);assert free['meters']['file_tasks']['remaining']==90
+    a=account();free=usage_snapshot(a);assert free['meters']['file_tasks']['remaining']==300
     invoice,payment=purchase(a)
     purchase(a,'tasks100','tasks-after-upgrade')
-    paid=usage_snapshot(a);assert paid['meters']['file_tasks']['remaining']==600
-    assert plan_limits(a)['max_file_mib']==50
+    paid=usage_snapshot(a);assert paid['meters']['file_tasks']['remaining']==1600
+    assert plan_limits(a)['max_file_mib']==100
     SubscriptionPeriod.objects.filter(payment=payment).update(ends_at=timezone.now()-timedelta(seconds=1))
-    free_again=usage_snapshot(a);assert free_again['plan']=='free' and free_again['meters']['file_tasks']['remaining']==190
+    free_again=usage_snapshot(a);assert free_again['plan']=='free' and free_again['meters']['file_tasks']['remaining']==400
     pack=UsageGrant.objects.filter(account=a,source='purchased',meter='file_tasks').get();assert pack.expires_at is None
     assert resolve_account({'id':a.telegram_user_id,'first_name':'Same from bot'},'bot').id==a.id
 
@@ -109,7 +109,7 @@ def test_renewal_duplicate_grants_and_canceled_race_flag():
     assert not created and same.id==renewal.id
     assert Payment.objects.count()==2 and SubscriptionPeriod.objects.count()==2
     assert PaymentGrant.objects.count()==6
-    assert usage_snapshot(a)['meters']['file_tasks']['limit']==500
+    assert usage_snapshot(a)['meters']['file_tasks']['limit']==1500
     sub=services.set_renewal(a,False)
     later=int((sub.current_period_end+timedelta(seconds=services.PERIOD)).timestamp())
     # Authoritative unexpected renewal is recorded and flagged, never invented or dropped.
@@ -125,7 +125,7 @@ def test_refund_full_preserves_history_and_revokes_only_related_grants():
     adjustment=BalanceAdjustment.objects.filter(refund=refund,meter='file_tasks').get();assert adjustment.consumed_units==1
     services.refund_payment(payment,'Retry same confirmed refund',sandbox_account=a)
     assert Refund.objects.count()==1
-    assert usage_snapshot(a)['meters']['file_tasks']['remaining']==90
+    assert usage_snapshot(a)['meters']['file_tasks']['remaining']==300
 
 def test_refund_old_period_does_not_revoke_later_valid_payment():
     a=account();invoice,_=services.create_invoice(a,'plus','old-period-invoice');now=timezone.now()
@@ -142,7 +142,7 @@ def test_refund_unknown_provider_result_stays_pending(monkeypatch):
     monkeypatch.setattr(services,'provider_for',lambda _:provider)
     with pytest.raises(DomainError): services.refund_payment(payment,'Unknown refund response',sandbox_account=a)
     refund=Refund.objects.get(payment=payment);assert refund.status=='pending' and refund.error_code=='provider_result_unknown'
-    assert usage_snapshot(a)['meters']['file_tasks']['remaining']==190
+    assert usage_snapshot(a)['meters']['file_tasks']['remaining']==400
 
 def test_reconciliation_flags_orphans_and_deduplicates_without_fabricating_period():
     a=account();invoice,payment=purchase(a)
@@ -185,12 +185,12 @@ def test_sandbox_entitlements_and_packs_never_escape_enabled_development(setting
     a=resolve_account({'id':918181,'first_name':'Sandbox isolation'},is_test=True)
     invoice,_=services.create_invoice(a,'plus','isolation-plus-payment');services.sandbox_pay(a,invoice.id)
     invoice,_=services.create_invoice(a,'tasks100','isolation-pack-payment');services.sandbox_pay(a,invoice.id)
-    assert usage_snapshot(a)['meters']['file_tasks']['limit']==600
+    assert usage_snapshot(a)['meters']['file_tasks']['limit']==1600
     settings.DEBUG=False
     settings.COMMERCE_LIVE_ENABLED=True
     assert available_offers(a)==[]
     assert refresh_account_entitlement(a)=='free'
-    assert usage_snapshot(a)['meters']['file_tasks']['limit']==90
+    assert usage_snapshot(a)['meters']['file_tasks']['limit']==300
 
 def test_reconciliation_confirms_external_refund_and_checks_owner():
     a=account();invoice,payment=purchase(a)

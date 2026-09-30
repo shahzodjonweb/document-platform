@@ -20,7 +20,9 @@ FIELDS = {
     'file_tasks': (0, 1_000_000),
     'file_page_units': (0, 1_000_000),
     'ai_credits': (0, 1_000_000),
-    'max_file_mb': (1, 2_000),
+    # The seed's name for it; `max_file_mb` here once made the file size a
+    # field the panel showed but silently never saved.
+    'max_file_mib': (1, 2_000),
     'max_pages_per_job': (1, 10_000),
     'concurrent_jobs': (1, 64),
     'max_ai_source_pages': (1, 2_000),
@@ -112,6 +114,10 @@ def save(plan_id, values):
     configuration = {**current, plan_id: merged} if merged else {k: v for k, v in current.items() if k != plan_id}
     IntegrationConfig.objects.update_or_create(pk=KEY, defaults={'configuration': configuration})
     after = limits_for(plan_id, defaults[plan_id])
+    if plan_id == 'free':
+        # A raise is what customers have today, not at their next renewal.
+        from apps.commerce.services import raise_current_free_allowances
+        raise_current_free_allowances(after)
     return {k: v for k, v in before.items() if after.get(k) != v}, {k: v for k, v in after.items() if before.get(k) != v}
 
 
@@ -120,3 +126,7 @@ def reset(plan_id):
     if plan_id in current:
         IntegrationConfig.objects.update_or_create(
             pk=KEY, defaults={'configuration': {k: v for k, v in current.items() if k != plan_id}})
+    if plan_id == 'free':
+        # Going back to the seed can be a raise too.
+        from apps.commerce.services import raise_current_free_allowances
+        raise_current_free_allowances(limits_for('free', seed()['plans']['free']))
