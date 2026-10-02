@@ -179,6 +179,8 @@ async def drain(bot):
     for identifier in ids: await attempt(identifier,bot)
     from .notifications import drain_notices
     await drain_notices(bot)
+    from .payment_notices import drain as drain_payment_notices
+    await drain_payment_notices(bot)
 
 
 async def delivery_loop(bot):

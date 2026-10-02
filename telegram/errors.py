@@ -313,6 +313,31 @@ MESSAGES = {
         '⌛ Taklifni qo‘llash muddati tugagan. Botdan foydalanishda davom etishingiz mumkin.',
         '⌛ Срок применения приглашения истёк. Можно продолжать пользоваться ботом.',
     ),
+    'invalid_receipt': (
+        '🧾 Send the receipt as a photo or screenshot, or as a PDF.',
+        '🧾 Kvitansiyani rasm yoki skrinshot, yoxud PDF ko‘rinishida yuboring.',
+        '🧾 Отправьте квитанцию фото, скриншотом или PDF-файлом.',
+    ),
+    'receipt_too_large': (
+        '🧾 The receipt is too large. Send a screenshot under 10 MB.',
+        '🧾 Kvitansiya juda katta. 10 MB dan kichik skrinshot yuboring.',
+        '🧾 Квитанция слишком большая. Отправьте скриншот меньше 10 МБ.',
+    ),
+    'manual_payment_pending': (
+        '⏳ Your previous payment is still being checked. We’ll message you here.',
+        '⏳ Oldingi to‘lovingiz hali tekshirilmoqda. Natijani shu yerda yuboramiz.',
+        '⏳ Предыдущий платёж ещё проверяется. Мы напишем вам здесь.',
+    ),
+    'manual_payment_closed manual_payment_expired': (
+        '⌛ This payment is closed. Open Plans to start a new one: /plans',
+        '⌛ Bu to‘lov yopilgan. Yangisini boshlash uchun tariflarni oching: /plans',
+        '⌛ Этот платёж закрыт. Откройте тарифы, чтобы начать новый: /plans',
+    ),
+    'manual_subscription_not_renewable': (
+        '💳 A card payment covers 30 days and doesn’t renew by itself. Pay again to continue: /plans',
+        '💳 Karta orqali to‘lov 30 kunga amal qiladi va o‘zi uzaytirilmaydi. Davom etish uchun qayta to‘lang: /plans',
+        '💳 Оплата картой действует 30 дней и сама не продлевается. Чтобы продолжить, оплатите снова: /plans',
+    ),
 }
 
 COPY = {

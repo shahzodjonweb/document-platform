@@ -14,6 +14,21 @@ from apps.commerce.serializers import subscription_data
 
 COPY = {
     'en': {
+        "card_pay": "💳 {plan} · {price} so'm / 30 days",
+        "card_intro": "💳 Pay by card transfer\nPick a plan. You send the money from your bank app, send us the receipt, and we switch your plan on after checking it.",
+        "automatic_soon": "⚡ Automatic payment — coming soon",
+        "manual_screen": "<b>💳 {plan} — {price} so'm for 30 days</b>\n\n1. Send exactly <b>{price} so'm</b> to this card:\n<code>{card}</code>\n{holder}\n\n2. Tap «I've paid» and send the receipt here as a photo or PDF.\n\nPayment code: <code>{reference}</code>\nWe check every payment by hand, usually within a few hours, and message you here.",
+        "manual_waiting": "⏳ Payment {reference} ({plan}, {price} so'm) is waiting for our check. We'll message you here.",
+        "manual_paid": "📎 I've paid — send receipt",
+        "manual_resend": "📎 Send another receipt",
+        "manual_cancel": "✖ Cancel payment",
+        "manual_send_receipt": "📎 Send the receipt here as a photo or PDF. A screenshot from your bank app is fine.",
+        "manual_received": "✅ Receipt received. We'll check the transfer and message you here, usually within a few hours.",
+        "manual_cancelled": "Payment cancelled. Nothing was charged.",
+        "manual_approved": "✅ Payment confirmed! {plan} is active until {date}. Thank you!",
+        "manual_rejected": "⚠️ We couldn't confirm payment {reference}: {reason}\nIf you did pay, write to us: /paysupport",
+        "manual_reminder": "⏰ Your {plan} plan ends on {date}. To keep it, pay again: /plans",
+        "myid": "Your Telegram ID: <code>{id}</code>",
         'offers': '⭐ Plans & packs\nChoose one to see what’s included.',
         'sandbox': '🧪 Test payment — no real Telegram Stars spent.',
         'live': 'Pay with Telegram Stars. Your balance updates after confirmation.',
@@ -40,6 +55,21 @@ COPY = {
         'invalid_invoice': '⚠️ Couldn’t verify this payment. Try a new checkout or use /paysupport.',
     },
     'uz': {
+        "card_pay": "💳 {plan} · {price} so'm / 30 kun",
+        "card_intro": "💳 Karta orqali to‘lov\nTarifni tanlang. Pulni bank ilovangizdan o‘tkazasiz, kvitansiyani yuborasiz, tekshirgach tarifingizni yoqamiz.",
+        "automatic_soon": "⚡ Avtomatik to‘lov — tez orada",
+        "manual_screen": "<b>💳 {plan} — 30 kun uchun {price} so'm</b>\n\n1. Shu kartaga aynan <b>{price} so'm</b> o‘tkazing:\n<code>{card}</code>\n{holder}\n\n2. «To‘ladim» tugmasini bosing va kvitansiyani shu yerga rasm yoki PDF qilib yuboring.\n\nTo‘lov kodi: <code>{reference}</code>\nHar bir to‘lovni qo‘lda tekshiramiz, odatda bir necha soat ichida, va shu yerga yozamiz.",
+        "manual_waiting": "⏳ {reference} to‘lovi ({plan}, {price} so'm) tekshiruvni kutmoqda. Natijani shu yerga yozamiz.",
+        "manual_paid": "📎 To‘ladim — kvitansiya yuborish",
+        "manual_resend": "📎 Boshqa kvitansiya yuborish",
+        "manual_cancel": "✖ To‘lovni bekor qilish",
+        "manual_send_receipt": "📎 Kvitansiyani shu yerga rasm yoki PDF qilib yuboring. Bank ilovasidan skrinshot ham bo‘ladi.",
+        "manual_received": "✅ Kvitansiya qabul qilindi. O‘tkazmani tekshirib, odatda bir necha soat ichida shu yerga yozamiz.",
+        "manual_cancelled": "To‘lov bekor qilindi. Hech narsa yechilmadi.",
+        "manual_approved": "✅ To‘lov tasdiqlandi! {plan} tarifi {date} gacha faol. Rahmat!",
+        "manual_rejected": "⚠️ {reference} to‘lovini tasdiqlay olmadik: {reason}\nAgar to‘lagan bo‘lsangiz, bizga yozing: /paysupport",
+        "manual_reminder": "⏰ {plan} tarifingiz {date} kuni tugaydi. Davom ettirish uchun qayta to‘lang: /plans",
+        "myid": "Telegram ID: <code>{id}</code>",
         'offers': '⭐ Tariflar va paketlar\nTafsilotlarni ko‘rish uchun birini tanlang.',
         'sandbox': '🧪 Sinov to‘lovi — haqiqiy Telegram Stars sarflanmaydi.',
         'live': 'Telegram Stars bilan to‘lang. To‘lov tasdiqlangach, balans yangilanadi.',
@@ -66,6 +96,21 @@ COPY = {
         'invalid_invoice': '⚠️ To‘lovni tekshira olmadik. Yangi to‘lovni oching yoki /paysupport orqali yozing.',
     },
     'ru': {
+        "card_pay": "💳 {plan} · {price} сум / 30 дней",
+        "card_intro": "💳 Оплата переводом на карту\nВыберите тариф. Вы переводите деньги из своего банковского приложения, присылаете квитанцию, и после проверки мы включаем тариф.",
+        "automatic_soon": "⚡ Автоматическая оплата — скоро",
+        "manual_screen": "<b>💳 {plan} — {price} сум за 30 дней</b>\n\n1. Переведите ровно <b>{price} сум</b> на эту карту:\n<code>{card}</code>\n{holder}\n\n2. Нажмите «Я оплатил» и отправьте сюда квитанцию фото или PDF.\n\nКод платежа: <code>{reference}</code>\nМы проверяем каждый платёж вручную, обычно в течение нескольких часов, и напишем вам здесь.",
+        "manual_waiting": "⏳ Платёж {reference} ({plan}, {price} сум) ждёт проверки. Мы напишем вам здесь.",
+        "manual_paid": "📎 Я оплатил — отправить квитанцию",
+        "manual_resend": "📎 Отправить другую квитанцию",
+        "manual_cancel": "✖ Отменить платёж",
+        "manual_send_receipt": "📎 Отправьте сюда квитанцию фото или PDF. Скриншот из банковского приложения подойдёт.",
+        "manual_received": "✅ Квитанция получена. Проверим перевод и напишем вам здесь, обычно в течение нескольких часов.",
+        "manual_cancelled": "Платёж отменён. Ничего не списано.",
+        "manual_approved": "✅ Оплата подтверждена! Тариф {plan} действует до {date}. Спасибо!",
+        "manual_rejected": "⚠️ Не удалось подтвердить платёж {reference}: {reason}\nЕсли вы оплатили, напишите нам: /paysupport",
+        "manual_reminder": "⏰ Ваш тариф {plan} заканчивается {date}. Чтобы продолжить, оплатите снова: /plans",
+        "myid": "Ваш Telegram ID: <code>{id}</code>",
         'offers': '⭐ Тарифы и пакеты\nВыберите вариант, чтобы узнать подробности.',
         'sandbox': '🧪 Тестовая оплата — настоящие Telegram Stars не списываются.',
         'live': 'Оплата через Telegram Stars. Баланс обновится после подтверждения.',
@@ -124,11 +169,24 @@ async def leave_input_prompt(account):
     await sync_to_async(lambda: BotConversation.objects.filter(pk=account.telegram_user_id).update(state='', prompt={}, updated_at=timezone.now()))()
 
 
+def money(amount):
+    return f'{amount:,}'.replace(',', ' ')
+
+
 async def show_offers(message, account):
     from .bot import callback
+    from apps.commerce import manual
     await leave_input_prompt(account)
     offers = await sync_to_async(services.available_offers)(account)
+    cards = await sync_to_async(manual.options)()
     rows = []
+    # Card transfer first: it is the way to pay today. Automatic payment is
+    # announced, not offered, until it exists.
+    for item in cards['plans']:
+        rows.append([InlineKeyboardButton(
+            text=copy(account, 'card_pay').format(plan=item['plan'].title(), price=money(item['price'])),
+            callback_data=await callback(account, 'commerce_manual_plan', {'plan': item['plan']}),
+        )])
     for offer in offers:
         rows.append([InlineKeyboardButton(
             text=f'{offer_name(account, offer)} · ⭐ {offer.price_xtr}',
@@ -136,10 +194,55 @@ async def show_offers(message, account):
         )])
     rows.append([await button(account, 'subscription', 'subscription')])
     rows.extend(await navigation(account))
-    body = copy(account, 'offers' if offers else 'unavailable')
+    if cards['enabled']:
+        body = copy(account, 'card_intro') + '\n\n' + copy(account, 'automatic_soon')
+    else:
+        body = copy(account, 'offers' if offers else 'unavailable')
     if offers:
         body += '\n\n' + copy(account, 'sandbox' if offers[0].sandbox else 'live')
     await message.answer(body, reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
+
+
+async def show_manual(message, account, plan):
+    """The card, the price and the code for one plan, and how to send the receipt."""
+    from .bot import callback
+    from apps.commerce import manual
+    await leave_input_prompt(account)
+    payment, _ = await sync_to_async(manual.create)(account, plan, 'bot')
+    await show_manual_payment(message, account, payment)
+
+
+async def show_manual_payment(message, account, payment):
+    from .bot import callback
+    card = payment.card or {}
+    number = ' '.join(card.get('number', '')[i:i + 4] for i in range(0, len(card.get('number', '')), 4))
+    holder = html.escape(' · '.join(part for part in (card.get('holder', ''), card.get('label', '')) if part))
+    values = {'plan': payment.plan.title(), 'price': money(payment.amount), 'card': number,
+              'holder': holder, 'reference': payment.reference}
+    if payment.status == 'submitted':
+        body = copy(account, 'manual_waiting').format(**values)
+        send = 'manual_resend'
+    else:
+        body = copy(account, 'manual_screen').format(**values)
+        send = 'manual_paid'
+    rows = [
+        [InlineKeyboardButton(text=copy(account, send), callback_data=await callback(account, 'commerce_manual_receipt', {'payment_id': str(payment.id)}))],
+        [InlineKeyboardButton(text=copy(account, 'manual_cancel'), callback_data=await callback(account, 'commerce_manual_cancel', {'payment_id': str(payment.id)}))],
+        *(await navigation(account, 'plans')),
+    ]
+    await message.answer(body, parse_mode='HTML', reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
+
+
+async def receive_receipt(message, account, payment_id, raw):
+    """A photo or PDF sent while the bot waits for a receipt belongs to that payment."""
+    from apps.commerce import manual
+    from .bot import safe_error
+    try:
+        await sync_to_async(manual.attach_receipt)(account, payment_id, raw, '', 'bot')
+    except DomainError as exc:
+        return await safe_error(message, account, exc)
+    await leave_input_prompt(account)
+    await message.answer(copy(account, 'manual_received'), reply_markup=await payment_navigation(account))
 
 
 async def show_invoice(message, account, offer_id, key):
@@ -243,6 +346,11 @@ def register_billing_handlers(dp):
             await safe_error(message, account, exc)
             await message.answer(copy(account, 'support'), reply_markup=await payment_navigation(account))
 
+    @dp.message(Command('myid'))
+    async def my_id(message):
+        # The owner's ID is what Admin → Integrations needs for payment alerts.
+        await message.answer(copy(sender_language(message.from_user), 'myid').format(id=message.from_user.id), parse_mode='HTML')
+
     @dp.message(Command('buy', 'plans'))
     async def buy(message):
         account = await account_for(message.from_user)
@@ -283,6 +391,18 @@ def register_billing_handlers(dp):
         try:
             if ref.action == 'commerce_offer':
                 await show_invoice(query.message, account, ref.payload['offer_id'], f'telegram:{ref.token}')
+            elif ref.action == 'commerce_manual_plan':
+                await show_manual(query.message, account, ref.payload['plan'])
+            elif ref.action == 'commerce_manual_receipt':
+                from .bot import set_prompt
+                await sync_to_async(set_prompt)(account, 'payment_receipt', {'payment_id': ref.payload['payment_id']})
+                await query.message.answer(copy(account, 'manual_send_receipt'))
+            elif ref.action == 'commerce_manual_cancel':
+                from apps.commerce import manual
+                await sync_to_async(manual.cancel)(account, ref.payload['payment_id'])
+                await leave_input_prompt(account)
+                await query.message.answer(copy(account, 'manual_cancelled'))
+                await show_offers(query.message, account)
             elif ref.action == 'commerce_pay':
                 await sync_to_async(services.sandbox_pay)(account, ref.payload['invoice_id'])
                 await query.message.answer(copy(account, 'confirmed'), reply_markup=await payment_navigation(account))

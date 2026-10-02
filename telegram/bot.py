@@ -655,6 +655,12 @@ def build_dispatcher():
             await bot.download(doc,destination=stream)
         except (TelegramAPIError,OSError,TimeoutError,DomainError):
             return await home(message,account,notice=text(account,'download_error'))
+        # A receipt for a card payment is not a document for the PDF tools: it
+        # goes to the payment before it could become an ordinary upload.
+        waiting=await sync_to_async(lambda:BotConversation.objects.filter(pk=message.from_user.id,state='payment_receipt').values_list('prompt',flat=True).first())()
+        if waiting is not None:
+            from .billing import receive_receipt
+            return await receive_receipt(message,account,(waiting or {}).get('payment_id'),stream.getvalue())
         try:
             asset=await sync_to_async(upload_file)(account,SimpleUploadedFile(name,stream.getvalue()),'bot')
             # A file sent while an AI tool is waiting belongs to that tool, not
