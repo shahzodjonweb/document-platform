@@ -26,3 +26,24 @@ def subscription_data(account):
 
 def refund_data(refund):
     return {'id':str(refund.id),'payment_id':str(refund.payment_id),'status':refund.status,'amount_xtr':refund.amount_xtr,'confirmed_at':refund.confirmed_at,'error_code':refund.error_code or None}
+
+
+def manual_payment_data(payment):
+    """A card transfer as its customer sees it.
+
+    The full card number is shown only while the transfer is still to be made
+    or reviewed; afterwards the last four digits are enough. The owner's note on
+    an approval is internal; a rejection's reason is for the customer.
+    """
+    if payment is None: return None
+    card=payment.card or {}
+    open_=payment.status in ('awaiting','submitted')
+    number=str(card.get('number') or '')
+    period=getattr(payment.payment,'period',None) if payment.payment_id else None
+    return {'id':str(payment.id),'reference':payment.reference,'plan':payment.plan,'amount':payment.amount,'currency':payment.currency,
+            'status':payment.status,'channel':payment.channel,
+            'card':{'number':number if open_ else None,'last4':number[-4:],'holder':card.get('holder',''),'label':card.get('label','')},
+            'receipt_received':bool(payment.receipt_key or payment.receipt_deleted_at),'payer_note':payment.payer_note,
+            'created_at':payment.created_at,'expires_at':payment.expires_at,'submitted_at':payment.submitted_at,'decided_at':payment.decided_at,
+            'rejection_reason':payment.decision_note if payment.status=='rejected' else None,
+            'starts_at':period.starts_at if period else None,'active_until':period.ends_at if period else None}

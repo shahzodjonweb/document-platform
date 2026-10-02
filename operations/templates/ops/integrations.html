@@ -65,5 +65,20 @@
     <div class="integration-actions"><button class="button primary" name="action" value="save">{{ i.save }}</button><button class="button secondary" name="action" value="test">{{ i.test }}</button></div>
   </form>
 </section>
+<section class="panel info-panel" id="manual-payment-settings">
+  <div class="panel-heading"><h2>{{ i.manual }}</h2><span class="badge">{% if manual.ready %}{{ i.active }}{% elif manual.enabled %}{{ i.setup_required }}{% else %}{{ i.inactive }}{% endif %}</span></div>
+  <p>{{ i.card_on_file }}: {% if manual.configured %}<strong>{{ manual.card_display }}</strong> · {{ manual.card_holder }}{% if manual.card_label %} · {{ manual.card_label }}{% endif %}{% else %}{{ i.no_card }}{% endif %}</p>
+  <form method="post" class="integration-form" autocomplete="off">
+    {% csrf_token %}<input type="hidden" name="integration" value="manual_payments">
+    <input type="hidden" name="enabled" value="false"><label style="flex-direction:row;align-items:center"><input style="width:20px;flex-shrink:0" type="checkbox" name="enabled" value="true" {% if manual.enabled %}checked{% endif %}> {{ i.manual_enabled }}</label>
+    <label>{{ i.card_number }}<input name="card_number" inputmode="numeric" autocomplete="off" maxlength="23" spellcheck="false" value="{{ manual.card_display }}" placeholder="8600 0000 0000 0000"></label>
+    <label>{{ i.card_holder }}<input name="card_holder" maxlength="60" value="{{ manual.card_holder }}"></label>
+    <label>{{ i.card_label }}<select name="card_label"><option value="">—</option>{% for label in manual.labels %}<option value="{{ label }}" {% if manual.card_label == label %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+    <label>{{ i.alert_telegram_id }}<input name="alert_telegram_id" inputmode="numeric" maxlength="15" value="{{ manual.alert_telegram_id|default_if_none:'' }}"></label>
+    <p>{{ i.manual_hint }}</p>
+    <label>{{ i.reason }}<input name="reason" required minlength="5" maxlength="1000"></label>
+    <div class="integration-actions"><button class="button primary" name="action" value="save">{{ i.save }}</button></div>
+  </form>
+</section>
 </div>
 {% endblock %}

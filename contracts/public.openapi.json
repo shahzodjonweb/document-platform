@@ -1512,6 +1512,197 @@
         ],
         "type": "object"
       },
+      "ManualPayment": {
+        "properties": {
+          "active_until": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "amount": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "card": {
+            "properties": {
+              "holder": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "last4": {
+                "type": "string"
+              },
+              "number": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "number",
+              "last4",
+              "holder",
+              "label"
+            ],
+            "type": "object"
+          },
+          "channel": {
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "decided_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "expires_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "payer_note": {
+            "type": "string"
+          },
+          "plan": {
+            "enum": [
+              "plus",
+              "premium"
+            ]
+          },
+          "receipt_received": {
+            "type": "boolean"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "rejection_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "starts_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "enum": [
+              "awaiting",
+              "submitted",
+              "approved",
+              "rejected",
+              "cancelled",
+              "expired",
+              "refunded"
+            ]
+          },
+          "submitted_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "reference",
+          "plan",
+          "amount",
+          "currency",
+          "status",
+          "card",
+          "receipt_received",
+          "created_at",
+          "expires_at"
+        ],
+        "type": "object"
+      },
+      "ManualPaymentOptions": {
+        "properties": {
+          "automatic": {
+            "properties": {
+              "available": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "available"
+            ],
+            "type": "object"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "payment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ManualPayment"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "period_days": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "plans": {
+            "items": {
+              "properties": {
+                "plan": {
+                  "enum": [
+                    "plus",
+                    "premium"
+                  ]
+                },
+                "price": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "plan",
+                "price"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "enabled",
+          "currency",
+          "period_days",
+          "plans",
+          "automatic",
+          "payment"
+        ],
+        "type": "object"
+      },
       "MeterBalance": {
         "properties": {
           "limit": {
@@ -1571,6 +1762,9 @@
               "string",
               "null"
             ]
+          },
+          "provider": {
+            "type": "string"
           },
           "refund_status": {
             "type": [
@@ -1942,6 +2136,9 @@
             "type": "string"
           },
           "plan": {
+            "type": "string"
+          },
+          "provider": {
             "type": "string"
           },
           "renewal_enabled": {
@@ -4854,6 +5051,345 @@
                   },
                   "required": [],
                   "type": "object"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    },
+    "/billing/manual": {
+      "get": {
+        "description": "Card transfer to the owner, reviewed by hand. The card is shown only to signed-in customers.",
+        "operationId": "getManualPayment",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManualPaymentOptions"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "createManualPayment",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "plan": {
+                    "enum": [
+                      "plus",
+                      "premium"
+                    ]
+                  }
+                },
+                "required": [
+                  "plan"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManualPayment"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    },
+    "/billing/manual/{id}": {
+      "delete": {
+        "description": "",
+        "operationId": "cancelManualPayment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManualPayment"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "getManualPaymentDetail",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManualPayment"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    },
+    "/billing/manual/{id}/receipt": {
+      "post": {
+        "description": "The transfer receipt: a JPG/PNG photo or a PDF, at most 10 MB, with an optional note.",
+        "operationId": "uploadManualPaymentReceipt",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "file": {
+                    "format": "binary",
+                    "type": "string"
+                  },
+                  "note": {
+                    "maxLength": 120,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "file"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManualPayment"
                 }
               }
             },

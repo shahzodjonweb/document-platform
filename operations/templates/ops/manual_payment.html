@@ -1,0 +1,27 @@
+{% extends 'ops/base.html' %}{% block content %}<a class="back-link" href="/ops/payments?lang={{ lang }}">← {{ t.payments }}</a>
+<div class="page-heading"><div><p class="eyebrow">{{ f.manual_detail }}</p><h1>{{ manual.reference }} · {{ manual.plan|title }} · {{ amount }}</h1><p class="page-description">{{ status_label }}</p></div></div>
+{% if error %}<div class="alert error" role="alert">{{ error }}</div>{% endif %}
+{% if duplicates %}<div class="alert error" role="alert">{{ duplicates }}</div>{% endif %}
+<section class="panel info-panel"><dl>
+<dt>{{ f.account }}</dt><dd><a class="table-link" href="/ops/users/{{ manual.account_id }}?lang={{ lang }}">{{ manual.account.display_name }} ↗</a></dd>
+<dt>{{ f.plan }}</dt><dd>{{ manual.plan|title }}</dd>
+<dt>{{ f.amount }}</dt><dd><strong>{{ amount }}</strong></dd>
+<dt>{{ f.card_sent_to }}</dt><dd>•••• {{ card_last4 }} · {{ manual.card.holder }}</dd>
+<dt>{{ f.submitted }}</dt><dd>{{ manual.submitted_at|default:'—' }}</dd>
+<dt>{{ f.channel }}</dt><dd>{{ manual.channel }}</dd>
+<dt>{{ f.payer_note }}</dt><dd>{{ manual.payer_note|default:'—' }}</dd>
+{% if manual.decided_at %}<dt>{{ f.decided }}</dt><dd>{{ manual.decided_at }} · {{ manual.decided_by.username|default:'—' }} · {{ manual.decision_note }}</dd>{% endif %}
+{% if period %}<dt>{{ f.starts }}</dt><dd>{{ period.starts_at }}</dd><dt>{{ f.ends }}</dt><dd>{{ period.ends_at }}</dd>{% endif %}
+</dl></section>
+<section class="panel info-panel"><h2>{{ f.receipt }}</h2>
+{% if manual.receipt_key %}{% if manual.receipt_type == 'application/pdf' %}<p><a class="button secondary" href="/ops/payments/manual/{{ manual.id }}/receipt">{{ f.pdf_download }}</a></p>{% else %}<details><summary class="button secondary">{{ f.receipt_view }}</summary><img src="/ops/payments/manual/{{ manual.id }}/receipt" alt="{{ f.receipt }} {{ manual.reference }}" style="max-width:100%;max-height:80vh;margin-top:12px;border:1px solid var(--border);border-radius:8px"></details>{% endif %}
+{% elif manual.receipt_deleted_at %}<p>{{ f.receipt_deleted }}</p>{% else %}<p>{{ f.no_receipt }}</p>{% endif %}
+</section>
+{% if manual.status == 'submitted' or manual.status == 'awaiting' %}
+<div class="alert warning" role="note">{{ check }}</div>
+<section class="panel info-panel"><h2>{{ f.approve }}</h2><form method="post" class="integration-form">{% csrf_token %}<input type="hidden" name="action" value="approve"><label>{{ f.approve_note }}<input name="reason" required minlength="5" maxlength="500" value="{{ f.approve_default }}"></label><button class="button primary">{{ f.approve }}</button></form></section>
+<section class="panel info-panel"><h2>{{ f.reject }}</h2><form method="post" class="integration-form">{% csrf_token %}<input type="hidden" name="action" value="reject"><label>{{ f.reject_reason }}<textarea name="reason" required minlength="5" maxlength="500" rows="3"></textarea></label><button class="button secondary">{{ f.reject }}</button></form></section>
+{% elif manual.status == 'approved' %}
+<section class="panel info-panel"><h2>{{ f.refund_manual }}</h2><form method="post" class="integration-form">{% csrf_token %}<input type="hidden" name="action" value="refund"><label>{{ f.reason }}<textarea name="reason" required minlength="5" maxlength="500" rows="3"></textarea></label><button class="button secondary">{{ f.refund_manual }}</button></form></section>
+{% endif %}
+{% endblock %}

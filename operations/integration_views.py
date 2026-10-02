@@ -6,7 +6,7 @@ from django.views.decorators.http import require_http_methods
 from apps.core.errors import DomainError
 from .auth import require_staff,audit,development_access
 from .views import context,finish_render
-from .integrations import telegram_config,ai_config,google_config,email_config,antibot_config,pixabay_config,save_config,test_telegram,test_email,test_pixabay,control_runner,runner_status
+from .integrations import telegram_config,ai_config,google_config,email_config,antibot_config,pixabay_config,manual_payment_config,CARD_LABELS,save_config,test_telegram,test_email,test_pixabay,control_runner,runner_status
 from .models import IntegrationConfig
 
 LABELS={
@@ -139,6 +139,36 @@ PHOTO_LABELS = {
            'pixabay_connection_failed': 'Pixabay не ответил на тестовый поиск. Проверьте ключ.'},
 }
 for language, labels in PHOTO_LABELS.items(): LABELS[language].update(labels)
+CARD_SECTION_LABELS = {
+    'en': {'manual': 'Card transfer payments', 'manual_enabled': 'Let customers pay by card transfer',
+           'card_number': 'Card number', 'card_holder': 'Card holder (as the bank shows it)', 'card_label': 'Card type',
+           'alert_telegram_id': 'Your Telegram ID for new-payment alerts',
+           'manual_hint': 'Customers who start a payment see this card, the plan price and a reference, transfer the money, and upload the receipt. You approve or reject each one under Payments. Prices are set per plan under Plans (price_uzs). Send /myid to the bot to learn your Telegram ID. Untick to stop new card payments at once.',
+           'card_on_file': 'Card on file', 'no_card': 'No card yet',
+           'invalid_card_number': 'That card number has a wrong digit. Check it: customers will send money to it.',
+           'invalid_card_holder': 'Enter the holder name as letters only, 2 to 60 characters.',
+           'invalid_telegram_id': 'A Telegram ID is digits only. Send /myid to the bot to get yours.',
+           'manual_payments_not_configured': 'Add the card number and holder before switching card payments on.'},
+    'uz': {'manual': 'Karta orqali to‘lov', 'manual_enabled': 'Mijozlarga karta orqali to‘lashga ruxsat berish',
+           'card_number': 'Karta raqami', 'card_holder': 'Karta egasi (bank ko‘rsatgandek)', 'card_label': 'Karta turi',
+           'alert_telegram_id': 'Yangi to‘lovlar haqida xabar uchun Telegram ID',
+           'manual_hint': 'To‘lovni boshlagan mijoz shu kartani, tarif narxini va raqamni ko‘radi, pul o‘tkazadi va kvitansiyani yuboradi. Har birini To‘lovlar bo‘limida tasdiqlaysiz yoki rad etasiz. Narxlar Tariflar bo‘limida (price_uzs). Telegram ID ni bilish uchun botga /myid yuboring. Yangi to‘lovlarni darhol to‘xtatish uchun belgini olib tashlang.',
+           'card_on_file': 'Saqlangan karta', 'no_card': 'Karta hali yo‘q',
+           'invalid_card_number': 'Karta raqamida xato raqam bor. Tekshiring: mijozlar pulni shu kartaga yuboradi.',
+           'invalid_card_holder': 'Karta egasining ismini faqat harflar bilan, 2–60 belgi kiriting.',
+           'invalid_telegram_id': 'Telegram ID faqat raqamlardan iborat. Uni bilish uchun botga /myid yuboring.',
+           'manual_payments_not_configured': 'Karta orqali to‘lovni yoqishdan oldin karta raqami va egasini kiriting.'},
+    'ru': {'manual': 'Оплата переводом на карту', 'manual_enabled': 'Разрешить оплату переводом на карту',
+           'card_number': 'Номер карты', 'card_holder': 'Владелец карты (как в банке)', 'card_label': 'Тип карты',
+           'alert_telegram_id': 'Ваш Telegram ID для уведомлений о платежах',
+           'manual_hint': 'Клиент, начавший оплату, видит эту карту, цену тарифа и код платежа, переводит деньги и загружает квитанцию. Каждый платёж вы подтверждаете или отклоняете в разделе «Платежи». Цены задаются в «Тарифах» (price_uzs). Чтобы узнать свой Telegram ID, отправьте боту /myid. Снимите флажок, чтобы сразу остановить новые платежи.',
+           'card_on_file': 'Сохранённая карта', 'no_card': 'Карта ещё не указана',
+           'invalid_card_number': 'В номере карты ошибка. Проверьте: клиенты будут переводить деньги на эту карту.',
+           'invalid_card_holder': 'Введите имя владельца только буквами, от 2 до 60 символов.',
+           'invalid_telegram_id': 'Telegram ID состоит только из цифр. Отправьте боту /myid, чтобы узнать свой.',
+           'manual_payments_not_configured': 'Укажите номер и владельца карты, прежде чем включать оплату переводом.'},
+}
+for language, labels in CARD_SECTION_LABELS.items(): LABELS[language].update(labels)
 
 @require_staff()
 @sensitive_post_parameters('token','api_key','client_secret','password','secret_key','pixabay_key')
@@ -161,7 +191,11 @@ def integrations(request):
                     if not development_access(request):raise DomainError('local_control_only',403)
                     control_runner(action);message='action_done'
                 else:raise DomainError('invalid_parameters')
-                audit(request.ops_user,'integration.'+action,key,reason,after={'configured':True})
+                after={'configured':True}
+                # Who changed the card customers pay into, and to which one, must be traceable.
+                if key=='manual_payments':
+                    card=manual_payment_config();after.update(card_last4=card['card_number'][-4:],enabled=card['enabled'])
+                audit(request.ops_user,'integration.'+action,key,reason,after=after)
                 return redirect('/ops/integrations?lang='+data['lang']+'&notice='+message)
             except DomainError as e:
                 data['error']=labels.get(e.code,labels['failure']);data['error_code']=e.code
@@ -178,4 +212,7 @@ def integrations(request):
     data['antibot']['hostnames_text'] = '\n'.join(antibot['allowed_hostnames'])
     photos=pixabay_config()
     data['pixabay'] = {key: photos[key] for key in ('enabled','configured','ready')}
+    card=manual_payment_config()
+    data['manual'] = {**{key: card[key] for key in ('enabled','configured','ready','card_number','card_holder','card_label','alert_telegram_id')},
+                      'labels':CARD_LABELS,'card_display':' '.join(card['card_number'][i:i+4] for i in range(0,len(card['card_number']),4))}
     return finish_render(request,'ops/integrations.html',data)

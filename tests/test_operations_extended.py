@@ -201,7 +201,7 @@ def test_finance_refunds_use_own_period_and_production_excludes_every_test_dimen
     sub=Subscription.objects.create(account=account,invoice=current.invoice,offer=current.invoice.offer,plan='plus',first_charge_id=current.provider_charge_id,current_period_end=datetime(2026,10,5,tzinfo=utc.utc),sandbox=False)
     SubscriptionPeriod.objects.create(subscription=sub,payment=current,account=account,plan='plus',starts_at=current.occurred_at,ends_at=sub.current_period_end,revoked_at=datetime(2026,9,18,tzinfo=utc.utc),sandbox=False)
     report=financial_report(filter_for('2026-09-01','2026-10-01'))
-    assert report['totals']=={'gross':75,'refunds':50,'net':25,'payers':1,'paid':0,'renewals':0,'first':0,'run_rate':0}
+    assert report['totals']=={'gross':75,'refunds':50,'net':25,'payers':1,'paid':0,'renewals':0,'first':0,'run_rate':0,'uzs_gross':0,'uzs_refunds':0,'uzs_net':0,'manual_pending':0}
     assert financial_report(filter_for('2026-09-01','2026-09-15'))['totals']['paid']==1
     assert financial_report(filter_for('2026-08-01','2026-09-01'))['totals']['gross']==50
     assert financial_report(filter_for('2026-08-01','2026-09-01'))['totals']['refunds']==0

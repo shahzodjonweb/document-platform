@@ -365,3 +365,170 @@ def test_a_receipt_is_deleted_ninety_days_after_the_decision_and_not_before():
     payment.refresh_from_db()
     assert not path.exists() and payment.receipt_key == '' and payment.receipt_deleted_at
     assert payment.status == 'approved', 'the record of the payment stays'
+
+
+# ---------------------------------------------------------------- customer API
+
+
+def signed_in(account):
+    from django.test import Client
+    client = Client()
+    session = client.session
+    session['customer_account_id'] = str(account.id)
+    session['customer_auth_version'] = account.auth_version
+    session.save()
+    return client
+
+
+def test_the_api_offers_card_payment_and_walks_a_payment_to_review():
+    from django.core.files.uploadedfile import SimpleUploadedFile
+    configure()
+    account = customer()
+    client = signed_in(account)
+    offered = client.get('/api/v1/billing/manual').json()
+    assert offered['enabled'] and offered['payment'] is None and offered['automatic'] == {'available': False}
+    assert {plan['plan']: plan['price'] for plan in offered['plans']} == PRICES
+    created = client.post('/api/v1/billing/manual', {'plan': 'plus'}, content_type='application/json')
+    assert created.status_code == 201
+    payment = created.json()
+    assert payment['card']['number'] == CARD and payment['amount'] == 49_000 and payment['status'] == 'awaiting'
+    sent = client.post(f'/api/v1/billing/manual/{payment["id"]}/receipt',
+                       {'file': SimpleUploadedFile('r.jpg', png(), 'image/jpeg'), 'note': 'card 4421'})
+    assert sent.status_code == 200 and sent.json()['status'] == 'submitted' and sent.json()['receipt_received']
+    assert client.get('/api/v1/billing/manual').json()['payment']['id'] == payment['id']
+
+
+def test_the_card_number_is_shown_only_while_a_payment_is_open():
+    configure()
+    account = customer()
+    client = signed_in(account)
+    payment = manual.reject(submitted(account).id, finance(), 'No transfer arrived at all')
+    shown = client.get(f'/api/v1/billing/manual/{payment.id}').json()
+    assert shown['card']['number'] is None and shown['card']['last4'] == CARD[-4:]
+    assert shown['rejection_reason'] == 'No transfer arrived at all'
+
+
+def test_the_api_needs_a_signed_in_owner():
+    from django.test import Client
+    configure()
+    assert Client().get('/api/v1/billing/manual').status_code == 401
+    payment, _ = manual.create(customer(7001), 'plus')
+    stranger = signed_in(customer(7002))
+    assert stranger.get(f'/api/v1/billing/manual/{payment.id}').status_code == 404
+    assert stranger.delete(f'/api/v1/billing/manual/{payment.id}').status_code == 404
+
+
+def test_a_bad_receipt_gets_a_message_the_customer_can_act_on():
+    from django.core.files.uploadedfile import SimpleUploadedFile
+    configure()
+    account = customer()
+    client = signed_in(account)
+    payment, _ = manual.create(account, 'plus')
+    response = client.post(f'/api/v1/billing/manual/{payment.id}/receipt',
+                           {'file': SimpleUploadedFile('r.heic', b'not an image', 'image/heic')})
+    assert response.status_code == 400
+    assert 'JPG or PNG' in response.json()['error']['message']
+
+
+def test_the_contract_describes_card_payments():
+    import json
+    from django.conf import settings
+    contract = json.loads((settings.BASE_DIR / 'contracts' / 'public.openapi.json').read_text())
+    for path in ('/billing/manual', '/billing/manual/{id}', '/billing/manual/{id}/receipt'):
+        assert path in contract['paths']
+    assert 'multipart/form-data' in contract['paths']['/billing/manual/{id}/receipt']['post']['requestBody']['content']
+
+
+# ---------------------------------------------------------------- admin
+
+
+def staff_client(role):
+    from django.http import HttpResponse
+    from django.test import Client
+    from operations.auth import COOKIE, begin_session
+    user = finance(role, f'staff-{role.lower().replace(" ", "-")}')
+    client = Client()
+    client.cookies[COOKIE] = begin_session(HttpResponse(), user).cookies[COOKIE].value
+    return client, user
+
+
+def test_only_administrators_set_the_card_and_every_change_is_audited():
+    from operations.models import AuditLog
+    for role in ('Finance', 'Support', 'Operations'):
+        client, _ = staff_client(role)
+        response = client.post('/ops/integrations', {'integration': 'manual_payments', 'card_number': CARD,
+                                                     'card_holder': 'X Y', 'enabled': 'true', 'reason': 'Set the card'})
+        assert response.status_code in (302, 403) and manual_payment_config()['configured'] is False, role
+    client, _ = staff_client('Administrator')
+    response = client.post('/ops/integrations', {'integration': 'manual_payments', 'card_number': CARD,
+                                                 'card_holder': 'Shakhzod Uralov', 'card_label': 'Humo',
+                                                 'enabled': 'true', 'reason': 'Set the business card'})
+    assert response.status_code == 302 and manual_payment_config()['ready']
+    entry = AuditLog.objects.get(action='integration.save', target='manual_payments')
+    assert entry.after == {'configured': True, 'card_last4': CARD[-4:], 'enabled': True}
+    page = client.get('/ops/integrations').content.decode()
+    assert 'manual-payment-settings' in page and CARD[-4:] in page
+
+
+def test_finance_reviews_and_approves_from_the_payments_page():
+    from operations.models import AuditLog
+    configure()
+    account = customer()
+    payment = submitted(account)
+    client, _ = staff_client('Finance')
+    page = client.get('/ops/payments').content.decode()
+    assert payment.reference in page and 'nav-badge' in page
+    review = client.get(f'/ops/payments/manual/{payment.id}').content.decode()
+    assert '99 000 so&#x27;m' in review or "99 000 so'm" in review
+    assert 'bank app' in review
+    response = client.post(f'/ops/payments/manual/{payment.id}', {'action': 'approve', 'reason': 'Seen in bank app'})
+    assert response.status_code == 302
+    account.refresh_from_db()
+    assert account.plan == 'premium'
+    assert AuditLog.objects.filter(action='payment.manual_approve', target=str(payment.id)).exists()
+    report = client.get('/ops/payments').content.decode()
+    assert "So&#x27;m received" in report or "So'm received" in report
+
+
+def test_a_receipt_is_opened_only_by_finance_and_the_view_is_audited():
+    from operations.models import AuditLog
+    configure()
+    payment = submitted(customer())
+    support, _ = staff_client('Support')
+    assert support.get(f'/ops/payments/manual/{payment.id}/receipt').status_code in (302, 403)
+    assert not AuditLog.objects.filter(action='payment.receipt_view').exists()
+    client, _ = staff_client('Finance')
+    response = client.get(f'/ops/payments/manual/{payment.id}/receipt')
+    assert response.status_code == 200 and response['Content-Type'] == 'image/jpeg'
+    assert response['X-Content-Type-Options'] == 'nosniff' and 'no-store' in response['Cache-Control']
+    assert AuditLog.objects.filter(action='payment.receipt_view', target=str(payment.id)).count() == 1
+
+
+def test_a_pdf_receipt_is_only_ever_a_download():
+    configure()
+    payment = submitted(customer(), raw=pdf())
+    client, _ = staff_client('Finance')
+    response = client.get(f'/ops/payments/manual/{payment.id}/receipt')
+    assert response['Content-Disposition'].startswith('attachment')
+
+
+def test_rejecting_from_the_panel_tells_the_customer_why():
+    configure()
+    payment = submitted(customer())
+    client, _ = staff_client('Finance')
+    client.post(f'/ops/payments/manual/{payment.id}', {'action': 'reject', 'reason': 'Amount did not arrive'})
+    payment.refresh_from_db()
+    assert payment.status == 'rejected' and payment.decision_note == 'Amount did not arrive'
+
+
+def test_stars_totals_no_longer_count_card_payments():
+    from operations.commerce_views import financial_report
+    from operations.metrics import Filters
+    from django.test import RequestFactory
+    configure()
+    # A real customer: the production report leaves test accounts out.
+    real = resolve_account({'id': 7101, 'first_name': 'Real', 'language_code': 'en'}, is_test=False)
+    manual.approve(submitted(real).id, finance())
+    request = RequestFactory().get('/ops/payments', {'environment': 'production'})
+    totals = financial_report(Filters.from_request(request))['totals']
+    assert totals['gross'] == 0 and totals['uzs_gross'] == 99_000 and totals['uzs_net'] == 99_000

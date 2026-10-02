@@ -58,8 +58,13 @@ def context(request, page='overview'):
     query = params.urlencode()
     nav = []
     if user:
+        # Card transfers waiting for a decision show as a count beside Payments.
+        waiting = 0
+        if allowed(user, PAGE_ROLES['payments']):
+            from apps.commerce.models import ManualPayment
+            waiting = ManualPayment.objects.filter(status='submitted').count()
         for group, items in NAV:
-            permitted = [{'path':path,'url':'/ops/'+path+'?'+query,'label':labels[key],'icon':icon,'active':page==path} for path,key,icon in items if allowed(user,PAGE_ROLES[path])]
+            permitted = [{'path':path,'url':'/ops/'+path+'?'+query,'label':labels[key],'icon':icon,'active':page==path,'badge':waiting if path=='payments' else 0} for path,key,icon in items if allowed(user,PAGE_ROLES[path])]
             if permitted:
                 nav.append({'label':labels[group],'items':permitted})
     params = request.GET.copy()
