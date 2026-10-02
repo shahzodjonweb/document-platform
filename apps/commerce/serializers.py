@@ -11,7 +11,7 @@ def invoice_data(invoice):
 def payment_data(payment):
     refund=Refund.objects.filter(payment=payment).first()
     refunded=refund.amount_xtr if refund and refund.status=='confirmed' else 0
-    return {'id':str(payment.id),'invoice_id':str(payment.invoice_id),'kind':payment.kind,'plan':payment.plan or None,'amount_xtr':payment.amount_xtr,'currency':payment.currency,'sandbox':payment.sandbox,'occurred_at':payment.occurred_at,'is_renewal':payment.is_renewal,'refunded_xtr':refunded,'status':'refunded' if refunded else 'paid','refund_status':refund.status if refund else None}
+    return {'id':str(payment.id),'invoice_id':str(payment.invoice_id),'kind':payment.kind,'plan':payment.plan or None,'amount_xtr':payment.amount_xtr,'currency':payment.currency,'sandbox':payment.sandbox,'occurred_at':payment.occurred_at,'is_renewal':payment.is_renewal,'refunded_xtr':refunded,'status':'refunded' if refunded else 'paid','refund_status':refund.status if refund else None,'provider':payment.provider}
 
 
 def subscription_data(account):
@@ -20,7 +20,7 @@ def subscription_data(account):
     result=None
     if subscription:
         status=('active' if subscription.renewal_enabled else 'cancel_at_period_end') if period else ('expired' if subscription.current_period_end<=timezone.now() else subscription.status)
-        result={'id':str(subscription.id),'plan':subscription.plan,'status':status,'renewal_enabled':subscription.renewal_enabled,'current_period_end':subscription.current_period_end,'active_until':period.ends_at if period else None,'scheduled_plan':subscription.scheduled_plan or None,'scheduled_at':subscription.scheduled_at,'requires_new_checkout':bool(subscription.scheduled_plan and subscription.scheduled_plan!='free'),'sandbox':subscription.sandbox}
+        result={'id':str(subscription.id),'plan':subscription.plan,'status':status,'renewal_enabled':subscription.renewal_enabled,'current_period_end':subscription.current_period_end,'active_until':period.ends_at if period else None,'scheduled_plan':subscription.scheduled_plan or None,'scheduled_at':subscription.scheduled_at,'requires_new_checkout':bool(subscription.scheduled_plan and subscription.scheduled_plan!='free'),'sandbox':subscription.sandbox,'provider':subscription.provider}
     return {'plan':effective_plan(account),'subscription':result,'sandbox':sandbox_enabled(account),'checkout_enabled':bool(available_offers(account))}
 
 

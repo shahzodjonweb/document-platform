@@ -12,7 +12,7 @@ from django.utils import timezone
 from apps.core.errors import DomainError
 from apps.core.models import Account,UsageGrant,Job,SupportTicket
 from apps.core.policy import SEED,METERS,cycle
-from .models import OfferVersion,Invoice,Payment,Subscription,SubscriptionPeriod,PaymentGrant,Refund,BalanceAdjustment,CommerceAction,ReconciliationRun,ReconciliationIssue,ReferralCode,Referral,SupportMessage,BotDelivery
+from .models import OfferVersion,Invoice,Payment,Subscription,SubscriptionPeriod,PaymentGrant,Refund,BalanceAdjustment,CommerceAction,ReconciliationRun,ReconciliationIssue,ReferralCode,Referral,SupportMessage,BotDelivery,ManualPayment
 from .providers import provider_for
 
 PERIOD=2592000
@@ -193,6 +193,7 @@ def validate_precheckout(telegram_user_id,payload,currency,amount,sandbox=False)
     invoice=invoice_for_payload(payload)
     Account.objects.select_for_update().get(pk=invoice.account_id)
     invoice=Invoice.objects.select_for_update().select_related('account','offer').get(pk=invoice.pk)
+    if invoice.provider!='telegram_stars': raise DomainError('invalid_invoice',403)
     if invoice.account.telegram_user_id!=telegram_user_id or invoice.sandbox!=sandbox: raise DomainError('invalid_invoice',403)
     if currency!='XTR' or type(amount)is not int or amount!=invoice.amount_xtr: raise DomainError('payment_amount_mismatch')
     if invoice.status not in ('created','presented','pending') or invoice.expires_at<=timezone.now(): raise DomainError('invoice_expired',409)
@@ -212,6 +213,7 @@ def record_payment(telegram_user_id,payload,currency,amount,charge_id,*,provider
     invoice=invoice_for_payload(payload)
     account=Account.objects.select_for_update().get(pk=invoice.account_id)
     invoice=Invoice.objects.select_for_update().select_related('offer').get(pk=invoice.pk)
+    if invoice.provider!='telegram_stars': raise DomainError('invalid_invoice',403)
     if account.telegram_user_id!=telegram_user_id or invoice.sandbox!=sandbox: raise DomainError('invalid_invoice',403)
     if sandbox: require_sandbox(account)
     if currency!='XTR' or type(amount)is not int or amount!=invoice.amount_xtr: raise DomainError('payment_amount_mismatch')
@@ -282,6 +284,8 @@ def sandbox_renew(account,idempotency_key):
 def set_renewal(account,enabled):
     subscription=Subscription.objects.select_related('account').filter(account=account).first()
     if not subscription or not active_period(account): raise DomainError('subscription_not_active',409)
+    # A card transfer pays for one period; there is nothing to renew or cancel.
+    if subscription.provider=='manual': raise DomainError('manual_subscription_not_renewable',409)
     if subscription.sandbox: require_sandbox(account)
     if subscription.renewal_enabled==enabled and (not enabled or not subscription.scheduled_plan): return subscription
     if not provider_for(subscription.sandbox).set_renewal(subscription,enabled): raise DomainError('payment_provider_unavailable',503)
@@ -319,6 +323,7 @@ def confirm_refund(refund):
         link.revoked_at=now;link.save(update_fields=['revoked_at'])
     SubscriptionPeriod.objects.filter(payment=payment,revoked_at__isnull=True).update(revoked_at=now)
     refund.status='confirmed';refund.confirmed_at=now;refund.error_code='';refund.save(update_fields=['status','confirmed_at','error_code'])
+    ManualPayment.objects.filter(payment=payment).update(status='refunded')
     refresh_account_entitlement(payment.account)
     subscription=Subscription.objects.filter(account=payment.account).first()
     if subscription and not subscription.periods.filter(revoked_at__isnull=True,ends_at__gt=now).exists():
@@ -335,6 +340,9 @@ def refund_payment(payment,reason,actor=None,sandbox_account=None):
     elif not actor or not actor.is_staff or not (actor.is_superuser or actor.groups.filter(name__in=('Finance','Administrator')).exists()): raise DomainError('permission_denied',403)
     refund,created=Refund.objects.get_or_create(payment=payment,defaults={'amount_xtr':payment.amount_xtr,'reason':reason.strip(),'requested_by':actor})
     if refund.status=='confirmed': return refund
+    # A card transfer is returned by the owner from their own bank app; this
+    # records that it was, and takes the plan back. No provider is asked.
+    if payment.provider=='manual': return confirm_refund(refund)
     try:
         if not provider_for(payment.sandbox).refund(payment): raise DomainError('payment_provider_unavailable',503)
     except DomainError:

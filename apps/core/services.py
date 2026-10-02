@@ -415,4 +415,9 @@ def cleanup_expired():
                 if key not in registered: path.unlink(missing_ok=True)
     for job in Job.objects.filter(status__in=('failed','canceled','no_op','expired')):
         shutil.rmtree(storage_path(f'outputs/{job.account_id}/{job.id}'),ignore_errors=True)
+    # Card transfers: stale requests expire, renewals are reminded, and a
+    # receipt is deleted once its decision is old enough. Receipts live under
+    # their own prefix, outside the backstop above.
+    from apps.commerce.manual import housekeeping
+    housekeeping(now)
     return count

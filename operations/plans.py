@@ -16,6 +16,8 @@ KEY = 'plan_limits'
 # so the floors are one wherever the value is a per-job capability.
 FIELDS = {
     'price_xtr': (0, 1_000_000),
+    # So'm per 30 days for a card transfer; blank means not for sale.
+    'price_uzs': (1_000, 100_000_000),
     'daily_file_tasks': (1, 100_000),
     'file_tasks': (0, 1_000_000),
     'file_page_units': (0, 1_000_000),
@@ -37,9 +39,9 @@ FIELDS = {
 }
 
 
-# Blank is a real value for these two: no price means checkout is closed, and
+# Blank is a real value for these: no price means a plan is not for sale, and
 # no daily cap means the plan is limited only by its period allowance.
-NULLABLE = {'price_xtr', 'daily_file_tasks'}
+NULLABLE = {'price_xtr', 'price_uzs', 'daily_file_tasks'}
 
 
 class PlanError(ValueError):
@@ -91,6 +93,8 @@ def validate(plan_id, values, defaults):
         cleaned[field] = number
     if not cleaned:
         raise PlanError('Nothing to change.')
+    if plan_id == 'free' and cleaned.get('price_uzs') is not None:
+        raise PlanError('The free plan has no price.')
     # Free must stay the floor: a free plan above a paid one would let anyone
     # take the paid allowance without paying for it.
     if plan_id == 'free':

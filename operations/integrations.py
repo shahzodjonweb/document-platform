@@ -184,6 +184,40 @@ def pixabay_config():
             'ready': bool(enabled and api_key)}
 
 
+_CARD = re.compile(r'[0-9]{16}')
+CARD_LABELS = ('Uzcard', 'Humo', 'Visa', 'Mastercard')
+
+
+def _luhn(number):
+    """The card-number checksum, which catches nearly every mistyped digit."""
+    total = 0
+    for position, digit in enumerate(int(c) for c in reversed(number)):
+        if position % 2:
+            digit = digit * 2 - 9 if digit > 4 else digit * 2
+        total += digit
+    return total % 10 == 0
+
+
+def manual_payment_config():
+    """Card transfers the owner reviews by hand.
+
+    Not a secret: the card is shown to every customer who starts a payment, so
+    it lives in the plain configuration. `enabled` is the switch, and it starts
+    on, as the owner asked; customers see the option only when it is on, a valid
+    card and holder are set, and a plan has a price.
+    """
+    cfg, _ = read_config('manual_payments')
+    number = str(cfg.get('card_number') or '')
+    holder = str(cfg.get('card_holder') or '')
+    configured = bool(_CARD.fullmatch(number) and _luhn(number) and holder)
+    enabled = bool(cfg.get('enabled', True))
+    alert = cfg.get('alert_telegram_id')
+    return {'enabled': enabled, 'configured': configured, 'ready': enabled and configured,
+            'card_number': number, 'card_holder': holder,
+            'card_label': cfg.get('card_label', '') if cfg.get('card_label') in CARD_LABELS else '',
+            'alert_telegram_id': alert if type(alert) is int and alert > 0 else None}
+
+
 def test_pixabay():
     """One real search, so an operator knows the key works before a customer does."""
     from apps.studio import photos
@@ -326,6 +360,26 @@ def save_config(key, values):
                    site_key=site_key.strip(),
                    allowed_hostnames=_antibot_hostnames(values.get('allowed_hostnames', cfg.get('allowed_hostnames', list(_ANTIBOT_DEFAULT_HOSTS)))))
         _validate_antibot(cfg, secrets)
+    elif key == 'manual_payments':
+        number = re.sub(r'[\s-]', '', str(values.get('card_number', '') or ''))
+        if number:
+            # A wrong digit here sends customers' money to a stranger's card.
+            if not _CARD.fullmatch(number) or not _luhn(number): raise DomainError('invalid_card_number')
+            cfg['card_number'] = number
+        holder = ' '.join(str(values.get('card_holder', cfg.get('card_holder', '')) or '').split())
+        if holder and (not 2 <= len(holder) <= 60 or any(c.isdigit() or c in '<>' for c in holder)):
+            raise DomainError('invalid_card_holder')
+        if holder: cfg['card_holder'] = holder
+        label = str(values.get('card_label', cfg.get('card_label', '')) or '')
+        if label and label not in CARD_LABELS: raise DomainError('invalid_parameters')
+        cfg['card_label'] = label
+        alert = str(values.get('alert_telegram_id', '') or '').strip()
+        if alert and not re.fullmatch(r'[0-9]{1,15}', alert): raise DomainError('invalid_telegram_id')
+        cfg['alert_telegram_id'] = int(alert) if alert else None
+        enabled = _boolean(values.get('enabled', False))
+        if enabled and not (cfg.get('card_number') and cfg.get('card_holder')):
+            raise DomainError('manual_payments_not_configured')
+        cfg.update(enabled=enabled)
     elif key == 'pixabay':
         api_key = values.get('pixabay_key', '')
         if not isinstance(api_key, str): raise DomainError('invalid_pixabay_key')

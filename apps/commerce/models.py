@@ -30,6 +30,8 @@ class Invoice(models.Model):
     payload_hash=models.CharField(max_length=64)
     invoice_url=models.TextField(blank=True)
     sandbox=models.BooleanField(default=True)
+    # Who takes the money: Telegram Stars, or a card transfer the owner reviews.
+    provider=models.CharField(max_length=24,default='telegram_stars')
     created_at=models.DateTimeField(default=timezone.now)
     expires_at=models.DateTimeField()
     paid_at=models.DateTimeField(null=True)
@@ -48,6 +50,7 @@ class Payment(models.Model):
     plan=models.CharField(max_length=12,blank=True)
     is_renewal=models.BooleanField(default=False)
     sandbox=models.BooleanField(default=True)
+    provider=models.CharField(max_length=24,default='telegram_stars')
     occurred_at=models.DateTimeField(default=timezone.now)
     received_at=models.DateTimeField(default=timezone.now)
 
@@ -64,6 +67,8 @@ class Subscription(models.Model):
     scheduled_plan=models.CharField(max_length=12,blank=True)
     scheduled_at=models.DateTimeField(null=True)
     sandbox=models.BooleanField(default=True)
+    # A manual subscription never renews by itself; the customer pays again.
+    provider=models.CharField(max_length=24,default='telegram_stars')
     created_at=models.DateTimeField(default=timezone.now)
     updated_at=models.DateTimeField(auto_now=True)
 
@@ -180,3 +185,62 @@ class LocalBotMessage(models.Model):
     asset=models.ForeignKey('core.FileAsset',null=True,on_delete=models.SET_NULL)
     telegram_message_id=models.PositiveIntegerField()
     created_at=models.DateTimeField(default=timezone.now)
+
+
+class ManualPayment(models.Model):
+    """A card transfer to the owner's card, which the owner reviews by hand.
+
+    Nothing here grants a plan. Approval creates the same Invoice, Payment,
+    SubscriptionPeriod and grants a Telegram payment does, tagged `manual`, so
+    the plan behaves exactly like any other paid plan.
+    """
+    OPEN=('awaiting','submitted')
+    id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
+    reference=models.CharField(max_length=12,unique=True)
+    account=models.ForeignKey('core.Account',on_delete=models.PROTECT,related_name='manual_payments')
+    plan=models.CharField(max_length=12)
+    amount=models.PositiveIntegerField()
+    currency=models.CharField(max_length=3,default='UZS')
+    # The card the customer was told to pay, as it was then: the owner may
+    # change cards while a transfer is on its way.
+    card=models.JSONField(default=dict)
+    status=models.CharField(max_length=16,default='awaiting')
+    channel=models.CharField(max_length=8,default='web')
+    receipt_key=models.CharField(max_length=200,blank=True)
+    receipt_type=models.CharField(max_length=40,blank=True)
+    receipt_size=models.PositiveIntegerField(default=0)
+    receipt_sha256=models.CharField(max_length=64,blank=True,db_index=True)
+    receipt_deleted_at=models.DateTimeField(null=True)
+    payer_note=models.CharField(max_length=120,blank=True)
+    created_at=models.DateTimeField(default=timezone.now)
+    expires_at=models.DateTimeField()
+    submitted_at=models.DateTimeField(null=True)
+    decided_at=models.DateTimeField(null=True)
+    decided_by=models.ForeignKey(settings.AUTH_USER_MODEL,null=True,on_delete=models.SET_NULL)
+    decision_note=models.CharField(max_length=500,blank=True)
+    payment=models.OneToOneField(Payment,null=True,on_delete=models.PROTECT,related_name='manual')
+    class Meta:
+        indexes=[models.Index(fields=['status','submitted_at'],name='manual_payment_queue')]
+        constraints=[models.UniqueConstraint(fields=['account'],condition=models.Q(status__in=('awaiting','submitted')),name='one_open_manual_payment')]
+
+
+class PaymentNotice(models.Model):
+    """A bot message about a card transfer: to the customer, or to the owner.
+
+    Durable like BotDelivery, so a Telegram hiccup is retried rather than lost,
+    and one row per kind so nothing is ever sent twice.
+    """
+    id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
+    manual=models.ForeignKey(ManualPayment,on_delete=models.CASCADE,related_name='notices')
+    kind=models.CharField(max_length=24)
+    status=models.CharField(max_length=16,default='pending')
+    attempts=models.PositiveIntegerField(default=0)
+    next_attempt_at=models.DateTimeField(default=timezone.now)
+    lease_until=models.DateTimeField(null=True)
+    message_id=models.BigIntegerField(null=True)
+    error_code=models.CharField(max_length=64,blank=True)
+    created_at=models.DateTimeField(default=timezone.now)
+    delivered_at=models.DateTimeField(null=True)
+    class Meta:
+        constraints=[models.UniqueConstraint(fields=['manual','kind'],name='one_payment_notice')]
+        indexes=[models.Index(fields=['status','next_attempt_at'],name='payment_notice_due')]
