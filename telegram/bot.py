@@ -326,13 +326,22 @@ def build_dispatcher():
         return PROMPT_EXAMPLES[feature_id][index][LOCALES.index(account.locale if account.locale in LOCALES else 'en')]
 
     async def ai_prompt(message,account,feature_id,edit=False):
-        """One screen, one question: what do you want? Examples included."""
+        """One screen, one question: what do you want? Examples included.
+
+        One description is visible; the rest sit in an expandable blockquote,
+        so the screen stays the length of a single example until the customer
+        taps to open it. `<code>` is deliberately not nested inside the quote
+        — Telegram documents inline styling as quotable content, and the
+        first example stays tappable to copy where it matters most.
+        """
         await sync_to_async(set_prompt)(account,'ai_input',{'feature_id':feature_id})
         title=TOOL_NAMES[feature_id][account.locale]
-        sample=ai_example(account,feature_id,0)
+        samples=[ai_example(account,feature_id,index) for index in range(len(PROMPT_EXAMPLES[feature_id]))]
         body=(f'<b>{html.escape(title)}</b>\n{text(account,"ai_ask_topic")}\n'
               f'<i>{text(account,"ai_pages_hint")}</i>\n\n'
-              f'{text(account,"ai_examples")}:\n<code>{html.escape(sample)}</code>')
+              f'{text(account,"ai_examples")}:\n<code>{html.escape(samples[0])}</code>')
+        if samples[1:]:
+            body+='\n<blockquote expandable>'+'\n\n'.join(html.escape(s) for s in samples[1:])+'</blockquote>'
         staged=await sync_to_async(lambda:ai.sources(account,draft_for(account).input_ids))()
         if staged: body+=f'\n\n📎 {len(staged)}'
         rows=[[await button(account,'ai_examples','ai_examples',{'feature_id':feature_id})],
