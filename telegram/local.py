@@ -231,7 +231,7 @@ def deliver_local(account,delivery):
     return delivery
 
 
-def dispatch_local(account,*,text=None,callback_data=None,uploaded=None):
+def dispatch_local(account,*,text=None,callback_data=None,uploaded=None,media_group_id=None):
     require_sandbox(account)
     if account.telegram_user_id is None: raise DomainError('telegram_link_required',409)
     if not text and not callback_data and not uploaded: raise DomainError('invalid_request')
@@ -250,6 +250,7 @@ def dispatch_local(account,*,text=None,callback_data=None,uploaded=None):
         file_id=secrets.token_hex(12);session.files[file_id]=uploaded.read(PENDING_UPLOAD_BYTES+1)
         if len(session.files[file_id])>PENDING_UPLOAD_BYTES: raise DomainError('bot_transport_limit',413)
         data['document']=Document(file_id=file_id,file_unique_id=file_id,file_name=uploaded.name,file_size=len(session.files[file_id]))
+        if media_group_id: data['media_group_id']=str(media_group_id)
         stored=uploaded.name
     elif callback_data:
         stored='[Button selected]'

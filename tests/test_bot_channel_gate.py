@@ -67,8 +67,11 @@ def test_ive_joined_checks_again_and_goes_back_to_the_file(customer, telegram):
 def test_ive_joined_without_joining_says_which_channel_is_missing(customer, telegram):
     require_channels()
     gate = dispatch_local(customer, uploaded=SimpleUploadedFile('notes.pdf', pdf(), 'application/pdf'))
-    result = dispatch_local(customer, callback_data=token(gate, 'channels_check'))
-    assert "You haven't joined pdfmaster_news yet" in result['messages'][-1]['text']
+    dispatch_local(customer, callback_data=token(gate, 'channels_check'))
+    # The channel screen itself changes; nothing new is sent.
+    from apps.commerce.models import LocalBotMessage
+    screen = LocalBotMessage.objects.filter(account=customer, direction='outbound').order_by('-created_at').first()
+    assert "You haven't joined pdfmaster_news yet" in screen.text
 
 
 def test_members_and_paid_customers_go_straight_to_the_tools(customer, telegram):

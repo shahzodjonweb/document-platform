@@ -59,12 +59,16 @@ async def web_url(account,route=''):
     return urlunsplit((url.scheme,url.netloc,'/'.join(parts)+('/'+route if route else ''),'',''))
 async def button(account,label,action,payload=None):
     return InlineKeyboardButton(text=text(account,label),callback_data=await callback(account,action,payload))
+def own_message(message):
+    """A screen the bot sent — the one a button was tapped on — which can be changed in place."""
+    return bool(getattr(getattr(message,'from_user',None),'is_bot',False))
+
 async def safe_error(message,account,exc):
     # A free customer who has not joined the owner's channels is shown them,
     # not an error.
     if exc.code=='channels_required' and getattr(account,'telegram_user_id',None):
         from .channels import show_gate
-        return await show_gate(message,account)
+        return await show_gate(message,account,edit=own_message(message))
     key='secure' if exc.code in ('password_required','secure_password_entry_required') else 'controls_expired' if exc.code=='controls_expired' else None
     rows=[]
     if key=='secure': rows.append([InlineKeyboardButton(text=text(account,'open'),url=await web_url(account))])
@@ -72,7 +76,61 @@ async def safe_error(message,account,exc):
         rows.append([await button(account,'continue_task','controls'),await button(account,'home','home')])
         if 'quota' in exc.code or 'balance' in exc.code or 'allowance' in exc.code or exc.code in ('feature_not_in_plan','daily_ai_limit'):
             rows.insert(0,[await button(account,'plans','plans')])
-    await message.answer(text(account,key) if key else bot_error(exc,account.locale),reply_markup=InlineKeyboardMarkup(inline_keyboard=rows) if rows else None)
+    body=text(account,key) if key else bot_error(exc,account.locale)
+    markup=InlineKeyboardMarkup(inline_keyboard=rows) if rows else None
+    # After a button tap the error takes that screen's place: tapping again
+    # cannot stack up the same error.
+    if own_message(message):
+        # Best effort: a screen that is gone or cannot be changed gets a reply.
+        try: return await message.edit_text(body,reply_markup=markup)
+        except Exception as failure:
+            if 'message is not modified' in str(failure): return None
+    await message.answer(body,reply_markup=markup)
+
+# Files sent together (an album) arrive as separate messages a moment apart,
+# and each used to get its own screen. One screen answers the whole album: each
+# file waits briefly, only the newest draws the screen, and a screen already
+# shown for the album is edited. This works whether updates are handled one at
+# a time (webhook) or side by side (polling).
+ALBUM_SETTLE=0.8
+_albums={}
+
+class _Screen:
+    """A message already on screen, changed through the bot handling this update."""
+    def __init__(self,bot,chat_id,message_id):
+        self.bot,self.chat_id,self.message_id=bot,chat_id,message_id
+    async def edit_text(self,text,**kwargs):
+        return await self.bot.edit_message_text(text=text,chat_id=self.chat_id,message_id=self.message_id,**kwargs)
+    async def answer(self,text,**kwargs):
+        return await self.bot.send_message(self.chat_id,text,**kwargs)
+
+async def album_target(message,bot=None):
+    """(message to show the screen in, edit) for this file — or (None, False)
+    when a later file of the same album will show it."""
+    import time
+    group=getattr(message,'media_group_id',None)
+    if not group: return message,False
+    now=time.monotonic()
+    for stale in [key for key,value in _albums.items() if now-value['at']>120]: _albums.pop(stale,None)
+    entry=_albums.setdefault((message.chat.id,group),{'latest':0,'screen':None,'at':now,'said':set()})
+    # The last file to arrive answers, whatever its id; exactly one does.
+    entry['latest']=message.message_id;entry['at']=now
+    await asyncio.sleep(ALBUM_SETTLE)
+    if entry['latest']!=message.message_id: return None,False
+    return (_Screen(bot,*entry['screen']),True) if entry['screen'] is not None else (message,False)
+
+def album_shown(message,sent):
+    group=getattr(message,'media_group_id',None)
+    entry=_albums.get((message.chat.id,group)) if group else None
+    if entry is not None and entry['screen'] is None and getattr(sent,'message_id',None): entry['screen']=(sent.chat.id,sent.message_id)
+
+def album_first(message,what):
+    """True the first time `what` happens in this album: one question per album, not one per file."""
+    group=getattr(message,'media_group_id',None)
+    if not group: return True
+    entry=_albums.setdefault((message.chat.id,group),{'latest':message.message_id,'screen':None,'at':0,'said':set()})
+    if what in entry['said']: return False
+    entry['said'].add(what);return True
 
 def set_prompt(account,state='',prompt=None):
     BotConversation.objects.filter(pk=account.telegram_user_id).update(state=state,prompt=prompt or {},updated_at=timezone.now())
@@ -162,10 +220,16 @@ def build_dispatcher():
         if pdf_only:
             names=await sync_to_async(lambda:list(FileAsset.objects.filter(account=account,id__in=draft.input_ids).values_list('name',flat=True)))()
             body='📎 '+html.escape(names[0][:100] if names else '')+'\n'+body
-        await render(message,body,rows,edit)
+        return await render(message,body,rows,edit)
 
     async def controls(message,account,draft=None,edit=False,advanced=False):
         await sync_to_async(set_prompt)(account)
+        # Choosing a service, sending a file or changing an option all land here:
+        # a customer who still has channels to join is shown only those, in
+        # place of the service screen, and comes back to it after joining.
+        from .channels import blocked,show_gate
+        current=await blocked(account)
+        if current: return await show_gate(message,account,current,resume={'kind':'controls'},edit=edit)
         draft=draft or await sync_to_async(draft_for)(account)
         if draft.state=='choosing_tool' and draft.input_ids:
             return await menu(message,account,edit=edit,pdf_only=True)
@@ -203,6 +267,8 @@ def build_dispatcher():
             else:
                 body+='\n'+text(account,'quota_hint')
                 rows.append([await button(account,'plans','plans')])
+        if quote_error and quote_error.code=='channels_required':
+            return await show_gate(message,account,resume={'kind':'controls'},edit=edit)
         if quote_error:
             body+='\n\n'+html.escape(bot_error(quote_error,account.locale))
             if quote_error.code in ('password_required','unlock_first','secure_password_entry_required'):
@@ -229,7 +295,7 @@ def build_dispatcher():
         if files:
             rows.append([await button(account,'back' if advanced else 'edit_options','controls',{'advanced':not advanced})])
         rows.append([await button(account,'cancel_button' if advanced else 'all_tools','cancel' if advanced else 'menu'),await button(account,'home','home')])
-        await render(message,body,rows,edit)
+        return await render(message,body,rows,edit)
 
     async def quote_message(message,account,draft,quote,edit=False):
         names=await sync_to_async(lambda:{str(a.id):a.name for a in FileAsset.objects.filter(account=account,id__in=draft.input_ids)})()
@@ -271,7 +337,7 @@ def build_dispatcher():
         if staged: body+=f'\n\n📎 {len(staged)}'
         rows=[[await button(account,'ai_examples','ai_examples',{'feature_id':feature_id})],
               [await button(account,'ai_back','home')]]
-        await render(message,body,rows,edit)
+        return await render(message,body,rows,edit)
 
     async def ai_revise_prompt(message,account,draft_id,edit=False):
         """One screen: what should change? Everything unmentioned stays put."""
@@ -285,16 +351,39 @@ def build_dispatcher():
         rows=[[await button(account,'ai_back','home')]]
         await render(message,body,rows,edit)
 
-    async def ai_revise_start(message,account,draft_id,request,edit=False):
-        """The change is priced and shown before anything is spent, as ever."""
+    async def ai_refused(message,account,exc,resume,again):
+        """An AI request that could not be priced, said once.
+
+        `message` is the bot's own "Preparing…" line. Channels to join replace
+        it; the daily limit, or any other error, takes its place, and only an
+        error the customer can fix by writing again asks the question again.
+        """
+        if exc.code=='channels_required':
+            await sync_to_async(set_prompt)(account)
+            from .channels import show_gate
+            return await show_gate(message,account,resume=resume,edit=True)
+        body=html.escape(bot_error(exc,account.locale))
+        if exc.code=='daily_ai_limit':
+            # Nothing to rewrite: the limit and the way past it, in place of "Preparing…".
+            await sync_to_async(set_prompt)(account)
+            return await render(message,body,[[await button(account,'plans','plans')],[await button(account,'home','home')]],True)
+        await render(message,body,[],True)
+        return await again()
+
+    async def ai_revise_start(message,account,draft_id,request):
+        """The change is priced and shown before anything is spent, as ever.
+
+        `message` is the "Preparing…" line, which becomes the priced draft.
+        """
+        draft=None
         try:
             draft=await sync_to_async(ai.revise)(account,draft_id,request)
             _,quote=await sync_to_async(ai.quote)(account,draft.id)
         except DomainError as exc:
-            await safe_error(message,account,exc)
-            return await ai_revise_prompt(message,account,draft_id)
+            resume={'kind':'ai_draft','draft_id':str(draft.id)} if draft else {}
+            return await ai_refused(message,account,exc,resume,lambda:ai_revise_prompt(message,account,draft_id))
         await sync_to_async(set_prompt)(account)
-        await ai_review(message,account,draft,quote,edit)
+        await ai_review(message,account,draft,quote,True)
 
     async def ai_examples(message,account,feature_id=None,edit=False):
         """What a good description looks like, in the customer's language."""
@@ -338,17 +427,30 @@ def build_dispatcher():
               [reword,await button(account,'cancel_button','home')]]
         await render(message,body,rows,edit)
 
-    async def ai_start(message,account,feature_id,description,edit=False):
-        """One chat message in, a priced draft out. Nothing is charged yet."""
+    async def ai_start(message,account,feature_id,description):
+        """One chat message in, a priced draft out. Nothing is charged yet.
+
+        `message` is the "Preparing…" line, which becomes the priced draft.
+        """
+        draft=None
         try:
             file_ids=await sync_to_async(lambda:draft_for(account).input_ids)()
             draft=await sync_to_async(ai.build)(account,feature_id,description,file_ids)
             _,quote=await sync_to_async(ai.quote)(account,draft.id)
         except DomainError as exc:
-            await safe_error(message,account,exc)
-            return await ai_prompt(message,account,feature_id)
+            # The description is kept: after joining, the customer is shown its price.
+            resume={'kind':'ai_draft','draft_id':str(draft.id)} if draft else {'kind':'ai_prompt','feature_id':feature_id}
+            return await ai_refused(message,account,exc,resume,lambda:ai_prompt(message,account,feature_id))
         await sync_to_async(set_prompt)(account)
-        await ai_review(message,account,draft,quote,edit)
+        await ai_review(message,account,draft,quote,True)
+
+    async def ai_resume(message,account,draft_id):
+        """The description written before joining, priced now."""
+        from apps.studio.models import GenerationDraft
+        draft=await sync_to_async(lambda:GenerationDraft.objects.filter(pk=draft_id,account=account,expires_at__gt=timezone.now()).first())()
+        if draft is None: return await home(message,account)
+        _,quote=await sync_to_async(ai.quote)(account,draft.id)
+        await ai_review(message,account,draft,quote)
 
     def notes(account,job):
         """What was adjusted to match the request, in the customer's language.
@@ -567,7 +669,11 @@ def build_dispatcher():
             elif action=='ai_tool':
                 try: await sync_to_async(ai.available)(account,p['feature_id'])
                 except DomainError as exc: await safe_error(message,account,exc)
-                else: await ai_prompt(message,account,p['feature_id'],True)
+                else:
+                    from .channels import blocked,show_gate
+                    current=await blocked(account)
+                    if current: await show_gate(message,account,current,resume={'kind':'ai_prompt','feature_id':p['feature_id']},edit=True)
+                    else: await ai_prompt(message,account,p['feature_id'],True)
             elif action=='ai_run':
                 existing=await sync_to_async(ai.submitted)(account,p['quote_id'])
                 job=existing or await sync_to_async(ai.start)(account,p['quote_id'])
@@ -631,10 +737,15 @@ def build_dispatcher():
             elif action=='plans': await show_offers(message,account)
             elif action=='channels_check':
                 from .channels import check as check_channels
-                if await check_channels(message,account):
-                    # A file sent before joining is still waiting for its tool.
-                    draft=await sync_to_async(lambda:BotDraft.objects.filter(account=account).first())()
-                    await (controls(message,account,draft) if draft else home(message,account))
+                if await check_channels(message,account,p):
+                    kind=p.get('kind')
+                    if kind=='ai_draft': await ai_resume(message,account,p['draft_id'])
+                    elif kind=='ai_prompt': await ai_prompt(message,account,p['feature_id'])
+                    elif kind=='controls': await controls(message,account)
+                    else:
+                        # Refused somewhere else: a file task still waiting, or the menu.
+                        draft=await sync_to_async(draft_for)(account)
+                        await (controls(message,account,draft) if draft.input_ids else home(message,account))
             elif action=='subscription': await show_subscription(message,account)
             elif action=='help': await help_view(message,account,True)
             elif action=='support': await support_prompt(message,account,p.get('payment',False),True)
@@ -680,15 +791,17 @@ def build_dispatcher():
             if conversation.state=='ai_input':
                 pending=conversation.prompt
                 await sync_to_async(attach_input)(account,asset,message.chat.id,message.message_id)
-                return await ai_prompt(message,account,pending['feature_id'])
+                target,edit=await album_target(message,bot)
+                if target is None: return
+                return album_shown(message,await ai_prompt(target,account,pending['feature_id'],edit))
             draft=await sync_to_async(accept_upload)(account,asset,message.chat.id,message.message_id)
-            # The file is kept; a customer who still has channels to join sees
-            # them first, and "I've joined" brings them back to this file.
-            from .channels import blocked, show_gate
-            current=await blocked(account)
-            if current: return await show_gate(message,account,current)
-            await controls(message,account,draft)
+            # The file is kept either way. controls() shows the channels to join
+            # instead, when there are any, and "I've joined" comes back here.
+            target,edit=await album_target(message,bot)
+            if target is None: return
+            album_shown(message,await controls(target,account,None,edit))
         except DomainError as exc:
+            if not album_first(message,exc.code): return
             if exc.code=='bot_replace_file':
                 draft=await sync_to_async(draft_for)(account)
                 payload={**snapshot(draft),'asset_id':str(asset.id),'chat_id':message.chat.id,'message_id':message.message_id,'mode':'replace'}
@@ -820,13 +933,13 @@ def build_dispatcher():
         if conversation.state=='ai_input':
             p=conversation.prompt
             if not value: return await message.answer(text(account,'ai_topic_empty'))
-            await message.answer(text(account,'ai_preparing'))
-            return await ai_start(message,account,p['feature_id'],value)
+            waiting=await message.answer(text(account,'ai_preparing'))
+            return await ai_start(waiting,account,p['feature_id'],value)
         if conversation.state=='ai_revise':
             p=conversation.prompt
             if not value: return await message.answer(text(account,'ai_topic_empty'))
-            await message.answer(text(account,'ai_preparing'))
-            return await ai_revise_start(message,account,p['draft_id'],value)
+            waiting=await message.answer(text(account,'ai_preparing'))
+            return await ai_revise_start(waiting,account,p['draft_id'],value)
         if conversation.state=='input':
             p=conversation.prompt;kind=p.get('kind')
             try:
