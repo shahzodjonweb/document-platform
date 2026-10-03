@@ -19,6 +19,8 @@ LABELS={
 
 MANUAL_LABELS={'en': {'uzs_gross': "So'm received (card transfers)", 'uzs_refunds': "So'm refunded", 'uzs_net': "Net so'm", 'manual_pending': 'Card transfers to review', 'manual_queue': 'Card transfers to review', 'manual_none': 'Nothing to review.', 'awaiting_count': 'started, no receipt yet', 'reference': 'Reference', 'submitted': 'Sent', 'review': 'Review', 'manual_detail': 'Card transfer', 'check_bank': 'Before approving, open your bank app and check that {amount} arrived around {time}. A screenshot alone proves nothing.', 'duplicate': 'This exact receipt file was also sent for {references}. Check carefully.', 'receipt_view': 'Open receipt', 'pdf_download': 'Download PDF receipt', 'no_receipt': 'No receipt yet.', 'receipt_deleted': 'Receipt deleted after the retention period.', 'payer_note': 'Customer note', 'approve': 'Approve and start the plan', 'approve_note': 'Note (for the audit log)', 'approve_default': 'Transfer seen in the bank app', 'reject': 'Reject', 'reject_reason': 'Reason (the customer will see this)', 'refund_manual': 'Mark refunded (after you returned the money)', 'starts': 'Plan starts', 'ends': 'Paid until', 'decided': 'Decided', 'card_sent_to': 'Card it was sent to', 'channel': 'Channel', 'status_awaiting': 'Waiting for the transfer', 'status_submitted': 'Waiting for your review', 'status_approved': 'Approved', 'status_rejected': 'Rejected', 'status_cancelled': 'Cancelled by the customer', 'status_expired': 'Expired', 'status_refunded': 'Refunded'}, 'uz': {'uzs_gross': "Tushgan so'm (karta o‘tkazmalari)", 'uzs_refunds': "Qaytarilgan so'm", 'uzs_net': "Sof so'm", 'manual_pending': 'Tekshiriladigan karta to‘lovlari', 'manual_queue': 'Tekshiriladigan karta to‘lovlari', 'manual_none': 'Tekshiriladigan to‘lov yo‘q.', 'awaiting_count': 'boshlangan, kvitansiya hali yo‘q', 'reference': 'Raqam', 'submitted': 'Yuborilgan', 'review': 'Ko‘rib chiqish', 'manual_detail': 'Karta orqali to‘lov', 'check_bank': 'Tasdiqlashdan oldin bank ilovangizni oching va {time} atrofida {amount} kelganini tekshiring. Skrinshotning o‘zi hech narsani isbotlamaydi.', 'duplicate': 'Aynan shu kvitansiya fayli {references} uchun ham yuborilgan. Diqqat bilan tekshiring.', 'receipt_view': 'Kvitansiyani ochish', 'pdf_download': 'PDF kvitansiyani yuklab olish', 'no_receipt': 'Kvitansiya hali yo‘q.', 'receipt_deleted': 'Kvitansiya saqlash muddatidan keyin o‘chirildi.', 'payer_note': 'Mijoz izohi', 'approve': 'Tasdiqlash va tarifni yoqish', 'approve_note': 'Izoh (audit jurnali uchun)', 'approve_default': 'O‘tkazma bank ilovasida ko‘rildi', 'reject': 'Rad etish', 'reject_reason': 'Sabab (mijoz ko‘radi)', 'refund_manual': 'Qaytarildi deb belgilash (pulni qaytargandan keyin)', 'starts': 'Tarif boshlanishi', 'ends': 'To‘langan muddat', 'decided': 'Qaror', 'card_sent_to': 'Pul yuborilgan karta', 'channel': 'Kanal', 'status_awaiting': 'O‘tkazma kutilmoqda', 'status_submitted': 'Tekshiruvingiz kutilmoqda', 'status_approved': 'Tasdiqlangan', 'status_rejected': 'Rad etilgan', 'status_cancelled': 'Mijoz bekor qilgan', 'status_expired': 'Muddati o‘tgan', 'status_refunded': 'Qaytarilgan'}, 'ru': {'uzs_gross': 'Получено сумов (переводы на карту)', 'uzs_refunds': 'Возвращено сумов', 'uzs_net': 'Чистые сумы', 'manual_pending': 'Переводы на проверку', 'manual_queue': 'Переводы на проверку', 'manual_none': 'Проверять нечего.', 'awaiting_count': 'начато, квитанции ещё нет', 'reference': 'Код', 'submitted': 'Отправлено', 'review': 'Проверить', 'manual_detail': 'Перевод на карту', 'check_bank': 'Прежде чем подтвердить, откройте банковское приложение и проверьте, что {amount} поступили около {time}. Скриншот сам по себе ничего не доказывает.', 'duplicate': 'Точно такой же файл квитанции прислан и для {references}. Проверьте внимательно.', 'receipt_view': 'Открыть квитанцию', 'pdf_download': 'Скачать PDF-квитанцию', 'no_receipt': 'Квитанции ещё нет.', 'receipt_deleted': 'Квитанция удалена после срока хранения.', 'payer_note': 'Комментарий клиента', 'approve': 'Подтвердить и включить тариф', 'approve_note': 'Комментарий (для журнала аудита)', 'approve_default': 'Перевод виден в банковском приложении', 'reject': 'Отклонить', 'reject_reason': 'Причина (клиент её увидит)', 'refund_manual': 'Отметить возврат (после того как вернули деньги)', 'starts': 'Начало тарифа', 'ends': 'Оплачено до', 'decided': 'Решение', 'card_sent_to': 'Карта получателя', 'channel': 'Канал', 'status_awaiting': 'Ожидается перевод', 'status_submitted': 'Ожидает вашей проверки', 'status_approved': 'Подтверждён', 'status_rejected': 'Отклонён', 'status_cancelled': 'Отменён клиентом', 'status_expired': 'Истёк', 'status_refunded': 'Возвращён'}}
 for _lang,_labels in MANUAL_LABELS.items(): LABELS[_lang].update(_labels)
+REJECT_LABELS={'en':{'need_message':'Choose a message for the customer, or write your own.','reject_choice':'Message to the customer','choice_not_received':'Transfer not received','choice_amount_mismatch':"Amount doesn't match",'choice_unreadable':'Receipt unreadable','own_message':'Or write your own'},'uz':{'need_message':'Mijoz uchun xabarni tanlang yoki o‘zingiz yozing.','reject_choice':'Mijozga xabar','choice_not_received':'O‘tkazma kelmadi','choice_amount_mismatch':'Summa mos emas','choice_unreadable':'Kvitansiya o‘qilmaydi','own_message':'Yoki o‘zingiz yozing'},'ru':{'need_message':'Выберите сообщение для клиента или напишите своё.','reject_choice':'Сообщение клиенту','choice_not_received':'Перевод не поступил','choice_amount_mismatch':'Сумма не совпадает','choice_unreadable':'Квитанция нечитаема','own_message':'Или напишите своё'}}
+for _lang,_labels in REJECT_LABELS.items(): LABELS[_lang].update(_labels)
 
 def financial_report(filters):
     start,end=filters.bounds;as_of=min(end,timezone.now());sandbox=filters.environment=='development'
@@ -60,14 +62,11 @@ def payment_detail(request,pk):
     if not payment:return HttpResponseBadRequest('Unknown payment')
     data=context(request,'payments');data['f']=LABELS[data['lang']];data['payment']=payment;data['refund']=Refund.objects.filter(payment=payment).first()
     if request.method=='POST':
-        reason=request.POST.get('reason','').strip()
-        if len(reason)<5:data['error']=data['f']['no_reason']
-        else:
-            try:
-                refund_payment(payment,reason,actor=request.ops_user,sandbox_account=payment.account if payment.sandbox else None)
-                audit(request.ops_user,'payment.refund',payment.pk,reason,after={'sandbox':payment.sandbox})
-                return redirect(request.path+'?lang='+data['lang'])
-            except DomainError:data['error']=data['f']['failed']
+        try:
+            refund_payment(payment,'Refunded by staff',actor=request.ops_user,sandbox_account=payment.account if payment.sandbox else None)
+            audit(request.ops_user,'payment.refund',payment.pk,after={'sandbox':payment.sandbox})
+            return redirect(request.path+'?lang='+data['lang'])
+        except DomainError:data['error']=data['f']['failed']
     return finish_render(request,'ops/payment.html',data)
 
 
@@ -84,15 +83,18 @@ def manual_payment_detail(request,pk):
     if not payment:return HttpResponseBadRequest('Unknown payment')
     data=context(request,'payments');data['f']=LABELS[data['lang']]
     if request.method=='POST':
-        action=request.POST.get('action','');reason=' '.join(request.POST.get('reason','').split())
-        if not 5<=len(reason)<=500:data['error']=data['f']['no_reason']
+        action=request.POST.get('action','')
+        # Only a rejection needs words, and they are for the customer: a
+        # ready-made message in their language, or the owner's own.
+        message=manual.rejection_message(payment,request.POST.get('choice',''),request.POST.get('message','')) if action=='reject' else ''
+        if action=='reject' and not 5<=len(message)<=500:data['error']=data['f']['need_message']
         else:
             try:
-                if action=='approve':manual.approve(payment.pk,request.ops_user,reason)
-                elif action=='reject':manual.reject(payment.pk,request.ops_user,reason)
-                elif action=='refund':manual.refund(payment.pk,request.ops_user,reason)
+                if action=='approve':manual.approve(payment.pk,request.ops_user)
+                elif action=='reject':manual.reject(payment.pk,request.ops_user,message)
+                elif action=='refund':manual.refund(payment.pk,request.ops_user,'Refund recorded by staff')
                 else:raise DomainError('invalid_parameters')
-                audit(request.ops_user,'payment.manual_'+action,payment.pk,reason,
+                audit(request.ops_user,'payment.manual_'+action,payment.pk,message or None,
                       before={'status':payment.status},after={'reference':payment.reference,'plan':payment.plan,'amount':payment.amount})
                 return redirect(request.path+'?lang='+data['lang'])
             except DomainError:
@@ -101,6 +103,7 @@ def manual_payment_detail(request,pk):
     period=getattr(payment.payment,'period',None) if payment.payment_id else None
     f=data['f']
     duplicates=', '.join(manual.duplicates(payment).values_list('reference',flat=True))
+    data['reject_choices']=[{'key':key,'label':f['choice_'+key]} for key in manual.REJECTIONS]
     data.update(manual=payment,period=period,status_label=f.get('status_'+payment.status,payment.status),amount=_money(payment.amount,payment.currency),
                 duplicates=f['duplicate'].format(references=duplicates) if duplicates else '',
                 check=f['check_bank'].format(amount=_money(payment.amount,payment.currency),time=timezone.localtime(payment.submitted_at or payment.created_at).strftime('%d %b %H:%M')),

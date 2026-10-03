@@ -54,17 +54,16 @@ def test_staff_can_assign_and_remove_a_plan(settings):
     account = customer()
     assert account.plan == 'free'
 
-    response = client.post(f'/ops/users/{account.id}/plan',
-                           {'plan': 'premium', 'days': '30', 'reason': 'Comped for a support incident.'})
+    response = client.post(f'/ops/users/{account.id}/plan', {'plan': 'premium', 'days': '30'})
     assert response.status_code == 302
     account.refresh_from_db()
     assert account.staff_plan == 'premium' and account.plan == 'premium'
     assert account.staff_plan_expires_at > timezone.now()
     entry = AuditLog.objects.get(action='account.plan_assign')
-    assert entry.actor == user and 'support incident' in entry.reason
+    assert entry.actor == user and entry.reason == 'Assigned a plan'
     assert entry.before['effective'] == 'free' and entry.after['effective'] == 'premium'
 
-    client.post(f'/ops/users/{account.id}/plan', {'plan': '', 'reason': 'Incident closed, reverting.'})
+    client.post(f'/ops/users/{account.id}/plan', {'plan': ''})
     account.refresh_from_db()
     assert account.staff_plan == '' and account.plan == 'free'
     assert AuditLog.objects.filter(action='account.plan_clear').exists()
@@ -84,11 +83,10 @@ def test_an_assigned_plan_lapses_on_its_own(settings):
     assert refresh_account_entitlement(account) == 'free', 'the assignment expires without anyone acting'
 
 
-def test_assigning_a_plan_needs_a_reason_and_a_real_plan(settings):
+def test_assigning_a_plan_needs_a_real_plan_and_a_sane_duration(settings):
     settings.DEBUG = True
     client, _ = staff_client()
     account = customer()
-    assert client.post(f'/ops/users/{account.id}/plan', {'plan': 'premium', 'reason': 'no'}).status_code == 400
     assert client.post(f'/ops/users/{account.id}/plan',
                        {'plan': 'unlimited', 'reason': 'Trying an unknown plan.'}).status_code == 400
     assert client.post(f'/ops/users/{account.id}/plan',
@@ -144,23 +142,14 @@ def test_staff_can_open_a_customer_document_and_it_is_recorded(settings):
     listing = client.get(f'/ops/users/{account.id}').content.decode()
     assert 'contract.pdf' in listing, 'the account page lists what the customer has'
 
-    response = client.get(f'/ops/files/{asset.id}/download', {'reason': 'Investigating a reported bad export.'})
+    response = client.get(f'/ops/files/{asset.id}/download')
     assert response.status_code == 200
     assert b''.join(response.streaming_content).startswith(b'%PDF-')
     entry = AuditLog.objects.get(action='file.download')
     assert entry.actor == user and entry.target == str(asset.id)
     assert entry.after['account'] == str(account.id) and entry.after['name'] == 'contract.pdf'
-    assert 'reported bad export' in entry.reason
-
-
-def test_a_document_cannot_be_opened_without_a_reason(settings):
-    settings.DEBUG = True
-    client, _ = staff_client('Support')
-    account = customer()
-    asset = upload_file(account, SimpleUploadedFile('private.pdf', pdf_bytes(), 'application/pdf'))
-    assert client.get(f'/ops/files/{asset.id}/download').status_code == 400
-    assert client.get(f'/ops/files/{asset.id}/download', {'reason': 'why'}).status_code == 400
-    assert not AuditLog.objects.filter(action='file.download').exists()
+    assert entry.reason == 'Opened a customer document'
+    assert 'file-reason' not in listing, 'no reason is asked for'
 
 
 def test_an_expired_document_is_not_served(settings):
@@ -293,3 +282,12 @@ def test_a_broken_override_never_takes_pricing_offline(settings):
     settings.DEBUG = True
     IntegrationConfig.objects.update_or_create(pk='plan_limits', defaults={'configuration': 'not-a-dict'})
     assert limits_for_plan('premium')['ai_credits'] > 0
+
+
+def test_no_admin_form_asks_staff_for_a_reason():
+    """Every action is audited on its own (who, what, when, before → after);
+    staff are not asked to explain themselves in a text box."""
+    from django.conf import settings
+    templates = (settings.BASE_DIR / 'operations' / 'templates' / 'ops').glob('*.html')
+    asking = [path.name for path in templates if 'name="reason"' in path.read_text() or 'file-reason' in path.read_text()]
+    assert asking == []

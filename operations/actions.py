@@ -15,8 +15,6 @@ from .models import AuditLog
 @require_POST
 @transaction.atomic
 def grant(request,pk):
-    reason=request.POST.get('reason','').strip()
-    if not 5<=len(reason)<=1000:return HttpResponseBadRequest('A specific reason is required.')
     try:
         key=str(uuid.UUID(request.POST.get('idempotency_key','')))
         quantities={m:int(request.POST.get(m,'0') or '0') for m in ('file_tasks','file_page_units','ai_credits')}
@@ -33,19 +31,17 @@ def grant(request,pk):
     for meter,quantity in quantities.items():
         if quantity:
             UsageGrant.objects.create(account=account,meter=meter,source='adjustment',source_id=f'admin:{pk}:{key}:{meter}',quantity=quantity,valid_from=timezone.now())
-    audit(request.ops_user,'quota.grant',target,reason,after=quantities)
+    audit(request.ops_user,'quota.grant',target,after=quantities)
     return redirect(f'/ops/users/{pk}?saved=1')
 
 @require_staff('Operations')
 @require_POST
 def cancel(request,pk):
-    reason=request.POST.get('reason','').strip()
-    if not 5<=len(reason)<=1000:return HttpResponseBadRequest('A specific reason is required.')
     job=Job.objects.select_related('account').filter(pk=pk).first()
     if not job:return HttpResponseBadRequest('Unknown task.')
     try:result=cancel_job(job.account,pk)
     except DomainError:return HttpResponseBadRequest('This task cannot be canceled in its current state.')
-    audit(request.ops_user,'job.cancel',pk,reason,after={'status':result.status})
+    audit(request.ops_user,'job.cancel',pk,after={'status':result.status})
     return redirect(f'/ops/jobs/{pk}?saved=1')
 
 
@@ -62,9 +58,6 @@ def set_plan(request, pk):
     revenue, and leaves any paid period untouched underneath so it returns when
     the assignment lapses.
     """
-    reason = request.POST.get('reason', '').strip()
-    if not 5 <= len(reason) <= 1000:
-        return HttpResponseBadRequest('A specific reason is required.')
     plan = request.POST.get('plan', '').strip()
     if plan and plan not in PLANS:
         return HttpResponseBadRequest('Unknown plan.')
@@ -86,7 +79,7 @@ def set_plan(request, pk):
     account.save(update_fields=['staff_plan', 'staff_plan_expires_at'])
     from apps.commerce.services import refresh_account_entitlement
     effective = refresh_account_entitlement(account)
-    audit(request.ops_user, 'account.plan_assign' if plan else 'account.plan_clear', pk, reason,
+    audit(request.ops_user, 'account.plan_assign' if plan else 'account.plan_clear', pk,
           before=before, after={'staff_plan': plan, 'effective': effective,
                                 'expires_at': expires.isoformat() if expires else ''})
     return redirect(f'/ops/users/{pk}?saved=1')
@@ -98,12 +91,9 @@ def set_plan(request, pk):
 def save_plan(request, plan_id):
     """Change what a plan allows, for everyone on it, without a deploy."""
     from . import plans as plan_settings
-    reason = request.POST.get('reason', '').strip()
-    if not 5 <= len(reason) <= 1000:
-        return HttpResponseBadRequest('A specific reason is required.')
     if request.POST.get('reset'):
         plan_settings.reset(plan_id)
-        audit(request.ops_user, 'plan.reset', plan_id, reason)
+        audit(request.ops_user, 'plan.reset', plan_id)
         return redirect('/ops/plans?saved=1')
     values = {field: request.POST[field] for field in plan_settings.FIELDS if field in request.POST}
     try:
@@ -112,24 +102,21 @@ def save_plan(request, plan_id):
         return HttpResponseBadRequest(str(error))
     if not after:
         return redirect('/ops/plans?saved=1')
-    audit(request.ops_user, 'plan.limits', plan_id, reason, before=before, after=after)
+    audit(request.ops_user, 'plan.limits', plan_id, before=before, after=after)
     return redirect('/ops/plans?saved=1')
 
 
 @require_staff('Support', 'Operations')
 def download_file(request, pk):
-    """Open one customer document, recording who opened which file and why.
+    """Open one customer document, recording who opened which file and when.
 
     Staff can reach customer documents so support can actually investigate a
     report. Every access is written to the audit trail before the bytes are
-    served, and the reason travels with it.
+    served.
     """
     from django.http import FileResponse
     from apps.core.models import FileAsset
     from apps.core.services import storage_path
-    reason = request.GET.get('reason', '').strip()
-    if not 5 <= len(reason) <= 1000:
-        return HttpResponseBadRequest('A specific reason is required to open a customer document.')
     asset = FileAsset.objects.select_related('account').filter(pk=pk).first()
     if not asset:
         return HttpResponseBadRequest('Unknown file.')
@@ -138,7 +125,7 @@ def download_file(request, pk):
     path = storage_path(asset.object_key)
     if not path.is_file():
         return HttpResponseBadRequest('This file is no longer stored.')
-    audit(request.ops_user, 'file.download', pk, reason,
+    audit(request.ops_user, 'file.download', pk,
           after={'account': str(asset.account_id), 'name': asset.name, 'bytes': asset.size_bytes})
     response = FileResponse(path.open('rb'), as_attachment=True, filename=asset.name,
                             content_type=asset.mime_type)

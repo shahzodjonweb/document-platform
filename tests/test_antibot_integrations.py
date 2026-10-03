@@ -155,13 +155,15 @@ def test_only_administrators_can_manage_protection(role):
     assert not IntegrationConfig.objects.exists()
 
 
-def test_configuration_requires_staff_csrf_and_audit_reason():
+def test_configuration_requires_staff_and_csrf_but_no_reason_and_is_audited():
     assert post_config(Client(), CONFIG).status_code == 302
     client, _ = staff_client(csrf=True)
     assert post_config(client, CONFIG).status_code == 403
-    unguarded = Client(); unguarded.cookies = client.cookies
-    assert post_config(unguarded, {**CONFIG, 'reason': ''}).status_code == 200
     assert not IntegrationConfig.objects.exists()
+    unguarded = Client(); unguarded.cookies = client.cookies
+    assert post_config(unguarded, {k: v for k, v in CONFIG.items() if k != 'reason'}).status_code == 302
+    entry = AuditLog.objects.get(action='integration.save', target='antibot')
+    assert entry.reason == 'Saved integration settings'
 
 
 def test_invalid_secret_is_not_echoed_and_old_configuration_survives():

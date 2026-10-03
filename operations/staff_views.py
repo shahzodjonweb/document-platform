@@ -19,8 +19,8 @@ LABELS={
 def staff(request):
     data=context(request,'staff');t=LABELS[data['lang']];data.update(s=t,title=t['title'],roles=sorted(ROLES))
     if request.method=='POST':
-        reason=request.POST.get('reason','').strip();role=request.POST.get('role');username=request.POST.get('username','').strip();action=request.POST.get('action','create')
-        if not 5<=len(reason)<=1000 or role not in ROLES:data['error']=t['failed']
+        role=request.POST.get('role');username=request.POST.get('username','').strip();action=request.POST.get('action','create')
+        if role not in ROLES:data['error']=t['failed']
         elif action=='create':
             password=request.POST.get('password','')
             if not re.fullmatch(r'[A-Za-z0-9_.@-]{3,100}',username) or not 12<=len(password)<=256 or get_user_model().objects.filter(username=username).exists():data['error']=t['failed']
@@ -30,7 +30,7 @@ def staff(request):
                     user.groups.set([Group.objects.get_or_create(name=role)[0]])
                     secret=base64.b32encode(secrets.token_bytes(20)).decode()
                     StaffTOTP.objects.create(user=user,encrypted_secret=secret_cipher().encrypt(secret.encode()).decode())
-                    audit(request.ops_user,'staff.created',user.pk,reason,after={'role':role,'mfa':True})
+                    audit(request.ops_user,'staff.created',user.pk,after={'role':role,'mfa':True})
                 data['enrollment_secret']=secret;data['enrollment_user']=username
         elif action=='update':
             identifier=request.POST.get('user_id','')
@@ -48,7 +48,7 @@ def staff(request):
                     user.is_superuser=False
                     user.save(update_fields=['is_active','is_superuser'])
                     StaffSession.objects.filter(user=user).delete()
-                    audit(request.ops_user,'staff.access_changed',user.pk,reason,before,{'role':role,'active':user.is_active,'superuser':False})
+                    audit(request.ops_user,'staff.access_changed',user.pk,None,before,{'role':role,'active':user.is_active,'superuser':False})
         else:data['error']=t['failed']
     data['users']=get_user_model().objects.filter(is_staff=True).prefetch_related('groups').order_by('username')
     return finish_render(request,'ops/staff.html',data)

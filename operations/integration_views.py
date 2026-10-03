@@ -203,30 +203,28 @@ for language, labels in CHANNEL_SECTION_LABELS.items(): LABELS[language].update(
 def integrations(request):
     data=context(request,'integrations');labels=LABELS[data['lang']];data['i']=labels;data['title']=labels['integrations']
     if request.method=='POST':
-        action=request.POST.get('action','save');reason=request.POST.get('reason','').strip()
-        if not 5<=len(reason)<=1000:data['error']=labels['need_reason']
-        else:
-            try:
-                key=request.POST.get('integration','telegram')
-                if action!='save' and key!='telegram' and not (key in ('email','pixabay','channels') and action=='test'):raise DomainError('invalid_parameters')
-                if action=='save':save_config(key,request.POST);message='saved'
-                elif action=='test':
-                    if key=='email':test_email();message='email_connected'
-                    elif key=='pixabay':test_pixabay();message='pixabay_connected'
-                    elif key=='channels':test_channels();message='channels_connected'
-                    else:test_telegram();message='connected'
-                elif action in ('start','stop'):
-                    if not development_access(request):raise DomainError('local_control_only',403)
-                    control_runner(action);message='action_done'
-                else:raise DomainError('invalid_parameters')
-                after={'configured':True}
-                # Who changed the card customers pay into, and to which one, must be traceable.
-                if key=='manual_payments':
-                    card=manual_payment_config();after.update(card_last4=card['card_number'][-4:],enabled=card['enabled'])
-                audit(request.ops_user,'integration.'+action,key,reason,after=after)
-                return redirect('/ops/integrations?lang='+data['lang']+'&notice='+message)
-            except DomainError as e:
-                data['error']=labels.get(e.code,labels['failure']);data['error_code']=e.code
+        action=request.POST.get('action','save')
+        try:
+            key=request.POST.get('integration','telegram')
+            if action!='save' and key!='telegram' and not (key in ('email','pixabay','channels') and action=='test'):raise DomainError('invalid_parameters')
+            if action=='save':save_config(key,request.POST);message='saved'
+            elif action=='test':
+                if key=='email':test_email();message='email_connected'
+                elif key=='pixabay':test_pixabay();message='pixabay_connected'
+                elif key=='channels':test_channels();message='channels_connected'
+                else:test_telegram();message='connected'
+            elif action in ('start','stop'):
+                if not development_access(request):raise DomainError('local_control_only',403)
+                control_runner(action);message='action_done'
+            else:raise DomainError('invalid_parameters')
+            after={'configured':True}
+            # Who changed the card customers pay into, and to which one, must be traceable.
+            if key=='manual_payments':
+                card=manual_payment_config();after.update(card_last4=card['card_number'][-4:],enabled=card['enabled'])
+            audit(request.ops_user,'integration.'+action,key,after=after)
+            return redirect('/ops/integrations?lang='+data['lang']+'&notice='+message)
+        except DomainError as e:
+            data['error']=labels.get(e.code,labels['failure']);data['error_code']=e.code
     bot=telegram_config();ai=ai_config();google=google_config();email=email_config();antibot=antibot_config()
     local_controls=development_access(request)
     # A container-managed bot has a different PID namespace from the API.

@@ -98,6 +98,23 @@ def require_staff(*roles):
     return decorator
 
 
-def audit(user, action, target, reason, before=None, after=None):
-    return AuditLog.objects.create(actor=user, action=action, target=str(target), reason=reason,
+# Staff are not asked why they did something: every action is recorded with who,
+# what, when and before → after, and described in words here.
+DESCRIPTIONS = {
+    'quota.grant': 'Granted extra allowance', 'job.cancel': 'Cancelled a task',
+    'account.plan_assign': 'Assigned a plan', 'account.plan_clear': 'Removed an assigned plan',
+    'plan.limits': 'Changed plan limits', 'plan.reset': 'Reset a plan to its defaults',
+    'file.download': 'Opened a customer document',
+    'integration.save': 'Saved integration settings', 'integration.test': 'Tested an integration',
+    'integration.start': 'Started the local bot', 'integration.stop': 'Stopped the local bot',
+    'payment.refund': 'Refunded a payment', 'payment.manual_approve': 'Approved a card payment',
+    'payment.manual_reject': 'Rejected a card payment', 'payment.manual_refund': 'Recorded a card payment refund',
+    'staff.created': 'Added a staff member', 'staff.access_changed': 'Changed staff access',
+    'support.reply': 'Replied to a support request', 'support.status_changed': 'Changed a support request status',
+}
+
+
+def audit(user, action, target, reason=None, before=None, after=None):
+    reason = str(reason or '').strip() or DESCRIPTIONS.get(action, action.replace('.', ' ').replace('_', ' ').capitalize())
+    return AuditLog.objects.create(actor=user, action=action, target=str(target), reason=reason[:1000],
                                    before=before or {}, after=after or {})

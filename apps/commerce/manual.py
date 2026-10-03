@@ -331,6 +331,31 @@ def approve(payment_id, actor, note=''):
     return payment
 
 
+# Ready-made messages for a rejected transfer, sent in the customer's language.
+REJECTIONS = {
+    'not_received': {'en': "We didn't receive the transfer.",
+                     'uz': 'O‘tkazma bizga kelib tushmadi.',
+                     'ru': 'Перевод к нам не поступил.'},
+    'amount_mismatch': {'en': "The amount we received doesn't match the plan price.",
+                        'uz': 'Kelib tushgan summa tarif narxiga mos emas.',
+                        'ru': 'Полученная сумма не совпадает с ценой тарифа.'},
+    'unreadable': {'en': "We couldn't read the receipt. Please send a clearer one.",
+                   'uz': 'Kvitansiyani o‘qib bo‘lmadi. Aniqroq rasmini yuboring.',
+                   'ru': 'Не удалось прочитать квитанцию. Пришлите, пожалуйста, более чёткую.'},
+}
+
+
+def rejection_message(payment, choice='', custom=''):
+    """The owner's own words, or a ready-made message in the customer's language."""
+    custom = ' '.join(str(custom or '').split())
+    if custom:
+        return custom
+    texts = REJECTIONS.get(choice)
+    if not texts:
+        return ''
+    return texts.get(payment.account.locale, texts['en'])
+
+
 @transaction.atomic
 def reject(payment_id, actor, reason):
     """The money did not arrive, or not as described. The customer sees why."""

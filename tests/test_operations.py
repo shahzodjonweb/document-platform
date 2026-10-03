@@ -63,14 +63,13 @@ def test_local_staff_login_needs_flag_loopback_and_csrf(settings):
     assert r.status_code==302 and r.cookies[COOKIE]['httponly'] and r.cookies[COOKIE]['path']=='/ops/'
     assert 'customer_account_id' not in c.session
 
-def test_support_transition_needs_reason_and_audit_is_append_only():
+def test_support_transition_needs_no_reason_and_audit_is_append_only():
     a=Account.objects.create(telegram_user_id=103,is_test=True);t=SupportTicket.objects.create(account=a,subject='Question',message='Please investigate.')
     c,u=staff_client('Support');url=f'/ops/support/{t.id}'
-    assert c.post(url,{'status':'resolved','reason':''}).status_code==200
-    t.refresh_from_db();assert t.status=='open' and not AuditLog.objects.exists()
-    assert c.post(url,{'status':'resolved','reason':'Investigated and resolved the processing issue.'}).status_code==302
+    assert c.post(url,{'status':'resolved'}).status_code==302
     t.refresh_from_db();assert t.status=='resolved'
     e=AuditLog.objects.get();assert e.actor==u and e.before=={'status':'open'} and e.after=={'status':'resolved'}
+    assert e.reason=='Changed a support request status'
     e.reason='tampered'
     with pytest.raises(ValueError):e.save()
 

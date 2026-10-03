@@ -481,7 +481,7 @@ def test_finance_reviews_and_approves_from_the_payments_page():
     review = client.get(f'/ops/payments/manual/{payment.id}').content.decode()
     assert '99 000 so&#x27;m' in review or "99 000 so'm" in review
     assert 'bank app' in review
-    response = client.post(f'/ops/payments/manual/{payment.id}', {'action': 'approve', 'reason': 'Seen in bank app'})
+    response = client.post(f'/ops/payments/manual/{payment.id}', {'action': 'approve'})
     assert response.status_code == 302
     account.refresh_from_db()
     assert account.plan == 'premium'
@@ -516,9 +516,32 @@ def test_rejecting_from_the_panel_tells_the_customer_why():
     configure()
     payment = submitted(customer())
     client, _ = staff_client('Finance')
-    client.post(f'/ops/payments/manual/{payment.id}', {'action': 'reject', 'reason': 'Amount did not arrive'})
+    client.post(f'/ops/payments/manual/{payment.id}', {'action': 'reject', 'message': 'Amount did not arrive'})
     payment.refresh_from_db()
     assert payment.status == 'rejected' and payment.decision_note == 'Amount did not arrive'
+
+
+def test_a_ready_made_rejection_reaches_the_customer_in_their_language():
+    configure()
+    account = customer(7301)
+    account.locale = 'uz'
+    account.save(update_fields=['locale'])
+    payment = submitted(account)
+    client, _ = staff_client('Finance')
+    page = client.get(f'/ops/payments/manual/{payment.id}').content.decode()
+    assert 'name="reason"' not in page and 'value="not_received"' in page
+    client.post(f'/ops/payments/manual/{payment.id}', {'action': 'reject', 'choice': 'not_received'})
+    payment.refresh_from_db()
+    assert payment.decision_note == manual.REJECTIONS['not_received']['uz']
+
+
+def test_a_rejection_needs_a_message_for_the_customer():
+    configure()
+    payment = submitted(customer(7302))
+    client, _ = staff_client('Finance')
+    client.post(f'/ops/payments/manual/{payment.id}', {'action': 'reject'})
+    payment.refresh_from_db()
+    assert payment.status == 'submitted'
 
 
 def test_stars_totals_no_longer_count_card_payments():

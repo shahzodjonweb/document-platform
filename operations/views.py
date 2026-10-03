@@ -240,25 +240,21 @@ def support_detail(request, pk):
     ticket=get_object_or_404(SupportTicket.objects.select_related('account'),pk=pk)
     data=context(request,'support');data.update({'ticket':ticket,'detail_type':'support'})
     if request.method=='POST':
-        reason=request.POST.get('reason','').strip()
-        if not 5 <= len(reason) <= 1000:
-            data['error']=data['t']['reason_required']
-        else:
-            reply=request.POST.get('reply','').strip()
-            if len(reply)>4000:
-                data['error']={'en':'Replies must contain at most 4,000 characters.','uz':'Javob 4 000 belgidan oshmasligi kerak.','ru':'Ответ должен содержать не более 4 000 символов.'}[data['lang']]
-                return finish_render(request,'ops/detail.html',data,400)
-            with transaction.atomic():
-                ticket=SupportTicket.objects.select_for_update().get(pk=pk)
-                if reply:
-                    from apps.commerce.services import add_support_message
-                    add_support_message(ticket.account,ticket.pk,reply,staff=request.ops_user)
-                    audit(request.ops_user,'support.reply',pk,reason,after={'message_length':len(reply)})
-                before=ticket.status
-                ticket.status='waiting_customer' if reply else 'resolved' if request.POST.get('status')=='resolved' else 'open'
-                ticket.save(update_fields=['status','updated_at'])
-                audit(request.ops_user,'support.status_changed',pk,reason,{'status':before},{'status':ticket.status})
-            return redirect(request.path+'?'+urlencode({'lang':data['lang'],'saved':'1'}))
+        reply=request.POST.get('reply','').strip()
+        if len(reply)>4000:
+            data['error']={'en':'Replies must contain at most 4,000 characters.','uz':'Javob 4 000 belgidan oshmasligi kerak.','ru':'Ответ должен содержать не более 4 000 символов.'}[data['lang']]
+            return finish_render(request,'ops/detail.html',data,400)
+        with transaction.atomic():
+            ticket=SupportTicket.objects.select_for_update().get(pk=pk)
+            if reply:
+                from apps.commerce.services import add_support_message
+                add_support_message(ticket.account,ticket.pk,reply,staff=request.ops_user)
+                audit(request.ops_user,'support.reply',pk,after={'message_length':len(reply)})
+            before=ticket.status
+            ticket.status='waiting_customer' if reply else 'resolved' if request.POST.get('status')=='resolved' else 'open'
+            ticket.save(update_fields=['status','updated_at'])
+            audit(request.ops_user,'support.status_changed',pk,None,{'status':before},{'status':ticket.status})
+        return redirect(request.path+'?'+urlencode({'lang':data['lang'],'saved':'1'}))
     return finish_render(request,'ops/detail.html',data)
 
 

@@ -19,9 +19,17 @@
 </section>
 {% if manual.status == 'submitted' or manual.status == 'awaiting' %}
 <div class="alert warning" role="note">{{ check }}</div>
-<section class="panel info-panel"><h2>{{ f.approve }}</h2><form method="post" class="integration-form">{% csrf_token %}<input type="hidden" name="action" value="approve"><label>{{ f.approve_note }}<input name="reason" required minlength="5" maxlength="500" value="{{ f.approve_default }}"></label><button class="button primary">{{ f.approve }}</button></form></section>
-<section class="panel info-panel"><h2>{{ f.reject }}</h2><form method="post" class="integration-form">{% csrf_token %}<input type="hidden" name="action" value="reject"><label>{{ f.reject_reason }}<textarea name="reason" required minlength="5" maxlength="500" rows="3"></textarea></label><button class="button secondary">{{ f.reject }}</button></form></section>
+<section class="panel info-panel decision-panel">
+  <form method="post" class="decision-approve">{% csrf_token %}<input type="hidden" name="action" value="approve"><button class="button primary">{{ f.approve }}</button></form>
+  <form method="post" class="integration-form decision-reject">{% csrf_token %}<input type="hidden" name="action" value="reject">
+    <fieldset class="choice-group"><legend>{{ f.reject_choice }}</legend>
+      {% for choice in reject_choices %}<label class="choice"><input type="radio" name="choice" value="{{ choice.key }}"> {{ choice.label }}</label>{% endfor %}
+    </fieldset>
+    <label>{{ f.own_message }}<textarea name="message" maxlength="500" rows="2"></textarea></label>
+    <button class="button secondary">{{ f.reject }}</button>
+  </form>
+</section>
 {% elif manual.status == 'approved' %}
-<section class="panel info-panel"><h2>{{ f.refund_manual }}</h2><form method="post" class="integration-form">{% csrf_token %}<input type="hidden" name="action" value="refund"><label>{{ f.reason }}<textarea name="reason" required minlength="5" maxlength="500" rows="3"></textarea></label><button class="button secondary">{{ f.refund_manual }}</button></form></section>
+<section class="panel info-panel"><h2>{{ f.refund_manual }}</h2><form method="post" class="integration-form">{% csrf_token %}<input type="hidden" name="action" value="refund"><button class="button secondary">{{ f.refund_manual }}</button></form></section>
 {% endif %}
 {% endblock %}

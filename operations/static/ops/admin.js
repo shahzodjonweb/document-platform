@@ -1,9 +1,7 @@
 /**
  * Operations panel enhancements.
  *
- * Everything here is optional: without JavaScript the grant form still submits
- * and a document link still opens, it simply asks for the reason on the server
- * instead of collecting it first.
+ * Everything here is optional: without JavaScript the grant form still submits.
  */
 (() => {
   const ready = (fn) =>
@@ -35,22 +33,5 @@
         refresh(input);
       });
     });
-
-    // Opening a customer document is audited, so collect the reason first and
-    // carry it with the request rather than letting the server reject it.
-    const reason = document.getElementById('file-reason');
-    const links = document.querySelectorAll('[data-file-open]');
-    if (!reason || !links.length) return;
-    const sync = () => {
-      const value = reason.value.trim();
-      links.forEach((link) => {
-        const base = link.getAttribute('href').split('?')[0];
-        link.setAttribute('href', value.length >= 5 ? `${base}?reason=${encodeURIComponent(value)}` : base);
-        link.classList.toggle('disabled', value.length < 5);
-        link.setAttribute('aria-disabled', String(value.length < 5));
-      });
-    };
-    reason.addEventListener('input', sync);
-    sync();
   });
 })();

@@ -2,8 +2,8 @@
 <div class="page-heading"><div><p class="eyebrow">PDF Master / {{ t.platform }}</p><h1>{{ i.integrations }}</h1><p class="page-description">{{ i.intro }}</p></div></div>
 {% if error %}<div role="alert" class="alert error">{{ error }} <small>{{ error_code }}</small></div>{% endif %}{% if notice %}<div role="status" class="alert success">{{ notice }}</div>{% endif %}
 <div class="integration-grid"><section class="panel info-panel"><div class="panel-heading"><h2>{{ i.telegram }}</h2><span class="badge">{{ bot.status }}</span></div><p>{{ i.token_status }}: {% if bot.configured %}{{ i.configured }}{% else %}{{ i.missing }}{% endif %}</p>
-<form method="post" class="integration-form" autocomplete="off">{% csrf_token %}<input type="hidden" name="integration" value="telegram"><label>{{ i.token }}<input type="password" name="token" autocomplete="new-password" placeholder="123456:…" maxlength="180"></label><small>{{ i.secret_hint }}</small><label>{{ i.username }}<input name="username" value="{{ bot.username }}" placeholder="pdfmaster_bot" maxlength="32"></label><label>{{ i.webapp }}<input type="url" name="webapp_url" value="{{ bot.webapp_url }}" required></label><label>{{ i.reason }}<input name="reason" required minlength="5" maxlength="1000"></label><div class="integration-actions"><button class="button primary" name="action" value="save">{{ i.save }}</button><button class="button secondary" name="action" value="test">{{ i.test }}</button></div>{% if local_controls %}<div class="integration-actions"><button class="button secondary" name="action" value="start">{{ i.start }}</button><button class="button secondary" name="action" value="stop">{{ i.stop }}</button></div>{% endif %}</form><p>{% if local_controls %}{{ i.local_note }}{% else %}{{ i.production_note }}{% endif %}</p>{% if local_controls %}<a class="button secondary" href="/ops/bot-simulator">{{ i.simulator }} ↗</a>{% endif %}</section>
-<section class="panel info-panel"><h2>{{ i.ai }}</h2><p>{{ i.provider_status }}: {% if ai.configured %}{{ i.configured }}{% else %}{{ i.missing }}{% endif %}</p><form method="post" class="integration-form" autocomplete="off">{% csrf_token %}<input type="hidden" name="integration" value="ai"><label>{{ i.mode }}<select name="mode"><option value="local_fixture" {% if ai.mode == 'local_fixture' %}selected{% endif %}>{{ i.local }}</option><option value="openai" {% if ai.mode == 'openai' %}selected{% endif %}>{{ i.live }}</option><option value="disabled" {% if ai.mode == 'disabled' %}selected{% endif %}>{{ i.disabled }}</option></select></label><label>{{ i.key }}<input type="password" name="api_key" autocomplete="new-password" maxlength="512"></label><small>{{ i.secret_hint }}</small><label>{{ i.model }}<input name="model" value="{{ ai.model }}" maxlength="100"></label><label>{{ i.image_model }}<input name="image_model" value="{{ ai.image_model }}" maxlength="100"></label><label>{{ i.reason }}<input name="reason" required minlength="5" maxlength="1000"></label><button class="button primary" name="action" value="save">{{ i.save }}</button></form></section>
+<form method="post" class="integration-form" autocomplete="off">{% csrf_token %}<input type="hidden" name="integration" value="telegram"><label>{{ i.token }}<input type="password" name="token" autocomplete="new-password" placeholder="123456:…" maxlength="180"></label><small>{{ i.secret_hint }}</small><label>{{ i.username }}<input name="username" value="{{ bot.username }}" placeholder="pdfmaster_bot" maxlength="32"></label><label>{{ i.webapp }}<input type="url" name="webapp_url" value="{{ bot.webapp_url }}" required></label><div class="integration-actions"><button class="button primary" name="action" value="save">{{ i.save }}</button><button class="button secondary" name="action" value="test">{{ i.test }}</button></div>{% if local_controls %}<div class="integration-actions"><button class="button secondary" name="action" value="start">{{ i.start }}</button><button class="button secondary" name="action" value="stop">{{ i.stop }}</button></div>{% endif %}</form><p>{% if local_controls %}{{ i.local_note }}{% else %}{{ i.production_note }}{% endif %}</p>{% if local_controls %}<a class="button secondary" href="/ops/bot-simulator">{{ i.simulator }} ↗</a>{% endif %}</section>
+<section class="panel info-panel"><h2>{{ i.ai }}</h2><p>{{ i.provider_status }}: {% if ai.configured %}{{ i.configured }}{% else %}{{ i.missing }}{% endif %}</p><form method="post" class="integration-form" autocomplete="off">{% csrf_token %}<input type="hidden" name="integration" value="ai"><label>{{ i.mode }}<select name="mode"><option value="local_fixture" {% if ai.mode == 'local_fixture' %}selected{% endif %}>{{ i.local }}</option><option value="openai" {% if ai.mode == 'openai' %}selected{% endif %}>{{ i.live }}</option><option value="disabled" {% if ai.mode == 'disabled' %}selected{% endif %}>{{ i.disabled }}</option></select></label><label>{{ i.key }}<input type="password" name="api_key" autocomplete="new-password" maxlength="512"></label><small>{{ i.secret_hint }}</small><label>{{ i.model }}<input name="model" value="{{ ai.model }}" maxlength="100"></label><label>{{ i.image_model }}<input name="image_model" value="{{ ai.image_model }}" maxlength="100"></label><button class="button primary" name="action" value="save">{{ i.save }}</button></form></section>
 <section class="panel info-panel">
   <div class="panel-heading"><h2>{{ i.google }}</h2><span class="badge">{% if google.ready %}{{ i.active }}{% elif google.enabled %}{{ i.setup_required }}{% else %}{{ i.inactive }}{% endif %}</span></div>
   <p>{{ i.provider_status }}: {% if google.configured %}{{ i.configured }}{% else %}{{ i.missing }}{% endif %}</p>
@@ -14,7 +14,6 @@
     <label>{{ i.client_secret }}<input type="password" name="client_secret" autocomplete="new-password" maxlength="1024"></label><small>{{ i.secret_hint }}</small>
     <label>{{ i.redirect_uri }}<input type="url" name="redirect_uri" value="{{ google.redirect_uri }}" maxlength="2048" required spellcheck="false"></label>
     <p>{{ i.google_hint }}</p>
-    <label>{{ i.reason }}<input name="reason" required minlength="5" maxlength="1000"></label>
     <button class="button primary" name="action" value="save">{{ i.save }}</button>
   </form>
 </section>
@@ -32,7 +31,6 @@
     <input type="hidden" name="use_tls" value="false"><label style="flex-direction:row;align-items:center"><input style="width:20px;flex-shrink:0" type="checkbox" name="use_tls" value="true" {% if email.use_tls %}checked{% endif %}> {{ i.tls }}</label>
     <input type="hidden" name="use_ssl" value="false"><label style="flex-direction:row;align-items:center"><input style="width:20px;flex-shrink:0" type="checkbox" name="use_ssl" value="true" {% if email.use_ssl %}checked{% endif %}> {{ i.ssl }}</label>
     <p>{{ i.email_hint }}</p>
-    <label>{{ i.reason }}<input name="reason" required minlength="5" maxlength="1000"></label>
     <div class="integration-actions"><button class="button primary" name="action" value="save">{{ i.save }}</button><button class="button secondary" name="action" value="test">{{ i.test }}</button></div>
   </form>
 </section>
@@ -49,7 +47,6 @@
     <p>{{ i.antibot_web_hint }} <a href="https://dash.cloudflare.com/?to=/:account/turnstile" target="_blank" rel="noopener noreferrer">{{ i.antibot_setup }} ↗</a></p>
     <input type="hidden" name="bot_enabled" value="false"><label style="flex-direction:row;align-items:center"><input style="width:20px;flex-shrink:0" type="checkbox" name="bot_enabled" value="true" {% if antibot.bot_enabled %}checked{% endif %}> {{ i.antibot_bot_enabled }}</label>
     <p>{{ i.antibot_bot_hint }}</p>
-    <label>{{ i.reason }}<input name="reason" required minlength="5" maxlength="1000"></label>
     <button class="button primary" name="action" value="save">{{ i.save }}</button>
   </form>
 </section>
@@ -61,7 +58,6 @@
     <input type="hidden" name="enabled" value="false"><label style="flex-direction:row;align-items:center"><input style="width:20px;flex-shrink:0" type="checkbox" name="enabled" value="true" {% if pixabay.enabled %}checked{% endif %}> {{ i.pixabay_enabled }}</label>
     <label>{{ i.pixabay_key }}<input type="password" name="pixabay_key" autocomplete="new-password" maxlength="64" spellcheck="false"></label><small>{{ i.secret_hint }}</small>
     <p>{{ i.pixabay_hint }}</p>
-    <label>{{ i.reason }}<input name="reason" required minlength="5" maxlength="1000"></label>
     <div class="integration-actions"><button class="button primary" name="action" value="save">{{ i.save }}</button><button class="button secondary" name="action" value="test">{{ i.test }}</button></div>
   </form>
 </section>
@@ -73,7 +69,6 @@
     <input type="hidden" name="enabled" value="false"><label style="flex-direction:row;align-items:center"><input style="width:20px;flex-shrink:0" type="checkbox" name="enabled" value="true" {% if channels.enabled %}checked{% endif %}> {{ i.channels_enabled }}</label>
     <label>{{ i.channels_list }}<textarea name="channels" rows="4" spellcheck="false" placeholder="@pdfmaster_news">{{ channels.text }}</textarea></label>
     <p>{{ i.channels_hint }}</p>
-    <label>{{ i.reason }}<input name="reason" required minlength="5" maxlength="1000"></label>
     <div class="integration-actions"><button class="button primary" name="action" value="save">{{ i.save }}</button><button class="button secondary" name="action" value="test">{{ i.test }}</button></div>
   </form>
 </section>
@@ -88,7 +83,6 @@
     <label>{{ i.card_label }}<select name="card_label"><option value="">—</option>{% for label in manual.labels %}<option value="{{ label }}" {% if manual.card_label == label %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
     <label>{{ i.alert_telegram_id }}<input name="alert_telegram_id" inputmode="numeric" maxlength="15" value="{{ manual.alert_telegram_id|default_if_none:'' }}"></label>
     <p>{{ i.manual_hint }}</p>
-    <label>{{ i.reason }}<input name="reason" required minlength="5" maxlength="1000"></label>
     <div class="integration-actions"><button class="button primary" name="action" value="save">{{ i.save }}</button></div>
   </form>
 </section>

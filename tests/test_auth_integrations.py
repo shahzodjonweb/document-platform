@@ -81,13 +81,14 @@ def test_only_administrators_may_read_or_change_auth_configuration(role):
     assert not IntegrationConfig.objects.exists()
 
 
-def test_auth_config_requires_staff_csrf_and_audit_reason():
+def test_auth_config_requires_staff_and_csrf_but_no_reason_and_is_audited():
     assert post_config(Client(), 'google', GOOGLE).status_code == 302
     client, _ = staff_client(csrf=True)
     assert post_config(client, 'email', EMAIL).status_code == 403
-    unguarded = Client(); unguarded.cookies = client.cookies
-    assert post_config(unguarded, 'google', {**GOOGLE, 'reason': ''}).status_code == 200
     assert not IntegrationConfig.objects.exists()
+    unguarded = Client(); unguarded.cookies = client.cookies
+    assert post_config(unguarded, 'google', {k: v for k, v in GOOGLE.items() if k != 'reason'}).status_code == 302
+    assert AuditLog.objects.filter(action='integration.save', target='google', reason='Saved integration settings').exists()
 
 
 @pytest.mark.parametrize('redirect_uri', [
