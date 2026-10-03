@@ -47,6 +47,7 @@ COPY = {
         'price': 'Price', 'period': 'Renews every 30 days', 'once': 'One-time payment',
         'review': '🧾 Your purchase', 'expires': 'Checkout expires in 10 minutes.',
         'no_subscription': 'You’re on Free. No paid subscription to manage.',
+        'plan_without_subscription': 'Your plan: <b>{plan}</b>. It isn’t a paid subscription, so there is nothing to renew or cancel.',
         'expired': 'Your subscription has ended. Pick a plan to continue.',
         'confirm_off': '⏸ Turn renewal off?\nKeep your paid access until {date}. No charge for the next period.',
         'confirm_on': '🔄 Turn renewal on?\nTelegram will renew your plan at the end of each paid period. Any scheduled plan change will be cancelled.',
@@ -88,6 +89,7 @@ COPY = {
         'price': 'Narx', 'period': 'Har 30 kunda uzaytiriladi', 'once': 'Bir martalik to‘lov',
         'review': '🧾 Xaridingiz', 'expires': 'To‘lov havolasi 10 daqiqa amal qiladi.',
         'no_subscription': 'Siz Bepul tarifdasiz. Pulli obunangiz yo‘q.',
+        'plan_without_subscription': 'Tarifingiz: <b>{plan}</b>. Bu pullik obuna emas, shuning uchun uzaytirish yoki bekor qilish kerak emas.',
         'expired': 'Obunangiz tugagan. Davom etish uchun tarif tanlang.',
         'confirm_off': '⏸ Uzaytirish o‘chirilsinmi?\nPulli tarif {date} gacha saqlanadi. Keyingi davr uchun to‘lov olinmaydi.',
         'confirm_on': '🔄 Uzaytirish yoqilsinmi?\nTelegram har bir pulli davr oxirida tarifni uzaytiradi. Rejalangan tarif o‘zgarishi bekor qilinadi.',
@@ -129,6 +131,7 @@ COPY = {
         'price': 'Цена', 'period': 'Продление каждые 30 дней', 'once': 'Разовый платёж',
         'review': '🧾 Ваша покупка', 'expires': 'Ссылка на оплату действует 10 минут.',
         'no_subscription': 'У вас бесплатный тариф. Платной подписки нет.',
+        'plan_without_subscription': 'Ваш тариф: <b>{plan}</b>. Это не платная подписка, продлевать или отменять нечего.',
         'expired': 'Подписка закончилась. Выберите тариф, чтобы продолжить.',
         'confirm_off': '⏸ Отключить продление?\nОплаченный доступ сохранится до {date}. Следующего списания не будет.',
         'confirm_on': '🔄 Включить продление?\nTelegram будет продлевать тариф в конце каждого оплаченного периода. Запланированная смена тарифа отменится.',
@@ -169,11 +172,27 @@ async def leave_input_prompt(account):
     await sync_to_async(lambda: BotConversation.objects.filter(pk=account.telegram_user_id).update(state='', prompt={}, updated_at=timezone.now()))()
 
 
+async def show(message, body, rows, edit=False, parse_mode=None):
+    """A billing screen in place of the one whose button was tapped, or a new one.
+
+    Editing is best effort, as elsewhere in the bot: a message that cannot be
+    edited (too old, a photo, already gone) gets a fresh reply instead.
+    """
+    markup = InlineKeyboardMarkup(inline_keyboard=rows)
+    if edit:
+        try:
+            return await message.edit_text(body, parse_mode=parse_mode, reply_markup=markup)
+        except Exception as exc:
+            if 'message is not modified' in str(exc):
+                return None
+    return await message.answer(body, parse_mode=parse_mode, reply_markup=markup)
+
+
 def money(amount):
     return f'{amount:,}'.replace(',', ' ')
 
 
-async def show_offers(message, account):
+async def show_offers(message, account, edit=False):
     from .bot import callback
     from apps.commerce import manual
     await leave_input_prompt(account)
@@ -200,19 +219,19 @@ async def show_offers(message, account):
         body = copy(account, 'offers' if offers else 'unavailable')
     if offers:
         body += '\n\n' + copy(account, 'sandbox' if offers[0].sandbox else 'live')
-    await message.answer(body, reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
+    await show(message, body, rows, edit)
 
 
-async def show_manual(message, account, plan):
+async def show_manual(message, account, plan, edit=False):
     """The card, the price and the code for one plan, and how to send the receipt."""
     from .bot import callback
     from apps.commerce import manual
     await leave_input_prompt(account)
     payment, _ = await sync_to_async(manual.create)(account, plan, 'bot')
-    await show_manual_payment(message, account, payment)
+    await show_manual_payment(message, account, payment, edit)
 
 
-async def show_manual_payment(message, account, payment):
+async def show_manual_payment(message, account, payment, edit=False):
     from .bot import callback
     card = payment.card or {}
     number = ' '.join(card.get('number', '')[i:i + 4] for i in range(0, len(card.get('number', '')), 4))
@@ -230,7 +249,7 @@ async def show_manual_payment(message, account, payment):
         [InlineKeyboardButton(text=copy(account, 'manual_cancel'), callback_data=await callback(account, 'commerce_manual_cancel', {'payment_id': str(payment.id)}))],
         *(await navigation(account, 'plans')),
     ]
-    await message.answer(body, parse_mode='HTML', reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
+    await show(message, body, rows, edit, 'HTML')
 
 
 async def receive_receipt(message, account, payment_id, raw):
@@ -264,12 +283,16 @@ async def show_invoice(message, account, offer_id, key):
     await message.answer('\n'.join(lines), parse_mode='HTML', reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
 
 
-async def show_subscription(message, account):
+async def show_subscription(message, account, edit=False):
     await leave_input_prompt(account)
     data = await sync_to_async(subscription_data)(account)
     sub = data['subscription']
     rows = []
-    if not sub:
+    if not sub and data['plan'] != 'free':
+        # A plan the team gave, or one paid for outside a subscription: say so
+        # rather than claim the customer is on Free.
+        lines = [copy(account, 'plan_without_subscription').format(plan=html.escape(data['plan'].title()))]
+    elif not sub:
         lines = [copy(account, 'no_subscription')]
     else:
         lines = [f'<b>{html.escape(sub["plan"].title())}</b>']
@@ -287,7 +310,7 @@ async def show_subscription(message, account):
             lines.extend(['', copy(account, 'sandbox')])
     rows.append([await button(account, 'plans', 'plans')])
     rows.extend(await navigation(account))
-    await message.answer('\n'.join(lines), parse_mode='HTML', reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
+    await show(message, '\n'.join(lines), rows, edit, 'HTML')
 
 
 async def show_subscription_confirmation(message, account, *, enabled=None, plan=None, subscription_id=None):
@@ -392,7 +415,7 @@ def register_billing_handlers(dp):
             if ref.action == 'commerce_offer':
                 await show_invoice(query.message, account, ref.payload['offer_id'], f'telegram:{ref.token}')
             elif ref.action == 'commerce_manual_plan':
-                await show_manual(query.message, account, ref.payload['plan'])
+                await show_manual(query.message, account, ref.payload['plan'], edit=True)
             elif ref.action == 'commerce_manual_receipt':
                 from .bot import set_prompt
                 await sync_to_async(set_prompt)(account, 'payment_receipt', {'payment_id': ref.payload['payment_id']})
@@ -401,8 +424,7 @@ def register_billing_handlers(dp):
                 from apps.commerce import manual
                 await sync_to_async(manual.cancel)(account, ref.payload['payment_id'])
                 await leave_input_prompt(account)
-                await query.message.answer(copy(account, 'manual_cancelled'))
-                await show_offers(query.message, account)
+                await show(query.message, copy(account, 'manual_cancelled'), await navigation(account, 'plans'), edit=True)
             elif ref.action == 'commerce_pay':
                 await sync_to_async(services.sandbox_pay)(account, ref.payload['invoice_id'])
                 await query.message.answer(copy(account, 'confirmed'), reply_markup=await payment_navigation(account))

@@ -743,7 +743,7 @@ def build_dispatcher():
                 await job_status(message,account,job,True)
                 if action=='download' and job.status=='succeeded': await deliver(message,account,job,ref.token)
             elif action=='account': await account_view(message,account,True)
-            elif action=='plans': await show_offers(message,account)
+            elif action=='plans': await show_offers(message,account,True)
             elif action=='channels_check':
                 from .channels import check as check_channels
                 if await check_channels(message,account,p):
@@ -755,7 +755,7 @@ def build_dispatcher():
                         # Refused somewhere else: a file task still waiting, or the menu.
                         draft=await sync_to_async(draft_for)(account)
                         await (controls(message,account,draft) if draft.input_ids else home(message,account))
-            elif action=='subscription': await show_subscription(message,account)
+            elif action=='subscription': await show_subscription(message,account,True)
             elif action=='help': await help_view(message,account,True)
             elif action=='support': await support_prompt(message,account,p.get('payment',False),True)
             elif action=='support_send':

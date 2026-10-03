@@ -73,7 +73,8 @@
   </form>
 </section>
 <section class="panel info-panel" id="manual-payment-settings">
-  <div class="panel-heading"><h2>{{ i.manual }}</h2><span class="badge">{% if manual.ready %}{{ i.active }}{% elif manual.enabled %}{{ i.setup_required }}{% else %}{{ i.inactive }}{% endif %}</span></div>
+  <div class="panel-heading"><h2>{{ i.manual }}</h2><span class="badge">{% if manual.ready and manual.priced %}{{ i.active }}{% elif manual.enabled %}{{ i.setup_required }}{% else %}{{ i.inactive }}{% endif %}</span></div>
+  {% if manual.enabled and not manual.priced %}<p class="alert warning" role="status" data-testid="manual-no-prices">{{ i.no_prices }} <a href="/ops/plans?lang={{ lang }}">{{ i.open_plans }}</a></p>{% endif %}
   <p>{{ i.card_on_file }}: {% if manual.configured %}<strong>{{ manual.card_display }}</strong> · {{ manual.card_holder }}{% if manual.card_label %} · {{ manual.card_label }}{% endif %}{% else %}{{ i.no_card }}{% endif %}</p>
   <form method="post" class="integration-form" autocomplete="off">
     {% csrf_token %}<input type="hidden" name="integration" value="manual_payments">

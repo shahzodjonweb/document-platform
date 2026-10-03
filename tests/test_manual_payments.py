@@ -84,6 +84,8 @@ def test_nothing_is_offered_until_a_card_and_a_price_are_set():
     assert config['enabled'] is True, 'switched on from the start, as the owner asked'
     assert config['ready'] is False and manual.options()['enabled'] is False
     configure(prices=None)
+    for plan in ('plus', 'premium'):
+        plan_settings.save(plan, {'price_uzs': ''})  # Plus and Premium are priced by default
     assert manual.options()['enabled'] is False, 'a card without a price sells nothing'
     plan_settings.save('premium', {'price_uzs': 99_000})
     offered = manual.options()
@@ -555,3 +557,19 @@ def test_stars_totals_no_longer_count_card_payments():
     request = RequestFactory().get('/ops/payments', {'environment': 'production'})
     totals = financial_report(Filters.from_request(request))['totals']
     assert totals['gross'] == 0 and totals['uzs_gross'] == 99_000 and totals['uzs_net'] == 99_000
+
+
+def test_the_card_is_not_called_active_while_no_plan_has_a_price():
+    """A saved card alone offers nothing: customers see card payment only for a priced plan."""
+    configure(prices=None)
+    client, _ = staff_client('Administrator')
+    page = client.get('/ops/integrations').content.decode()
+    assert 'manual-no-prices' not in page, 'the default prices are on sale'
+    for plan in ('plus', 'premium'):
+        plan_settings.save(plan, {'price_uzs': ''})
+    page = client.get('/ops/integrations').content.decode()
+    assert 'manual-no-prices' in page and '/ops/plans' in page
+
+
+def test_plus_and_premium_are_on_sale_at_their_default_prices():
+    assert manual.prices() == {'plus': 60000, 'premium': 100000}

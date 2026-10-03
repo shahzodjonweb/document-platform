@@ -34,7 +34,7 @@
     },
     "plus": {
       "price_xtr": null,
-      "price_uzs": null,
+      "price_uzs": 60000,
       "file_tasks": 1500,
       "daily_file_tasks": null,
       "daily_ai_documents": null,
@@ -58,7 +58,7 @@
     },
     "premium": {
       "price_xtr": null,
-      "price_uzs": null,
+      "price_uzs": 100000,
       "file_tasks": 5000,
       "daily_file_tasks": null,
       "daily_ai_documents": null,

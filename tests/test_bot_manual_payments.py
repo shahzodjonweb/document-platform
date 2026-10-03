@@ -59,7 +59,8 @@ def test_choosing_a_plan_shows_the_card_the_price_and_the_code(customer):
     configure()
     result = dispatch_local(customer, callback_data=token(dispatch_local(customer, text='/plans'),
                                                           'commerce_manual_plan', plan='premium'))
-    text = result['messages'][-1]['text']
+    # The payment screen takes the place of the plans screen it was chosen from.
+    text = next(m['text'] for m in reversed(result['messages']) if 'so\'m' in m['text'] and 'PM-' in m['text'])
     payment = ManualPayment.objects.get()
     assert ' '.join(CARD[i:i + 4] for i in range(0, 16, 4)) in text
     assert "99 000 so'm" in text and payment.reference in text and 'Shakhzod Uralov' in text
@@ -183,3 +184,31 @@ def test_the_delivery_loop_drains_payment_messages_too(customer):
     bot = bot_mock()
     asyncio.run(drain(bot))
     assert PaymentNotice.objects.get().status == 'delivered'
+
+
+def test_the_default_prices_are_offered_as_soon_as_a_card_is_saved(customer):
+    configure(prices=None)
+    result = dispatch_local(customer, text='/plans')
+    assert "💳 Plus · 60 000 so'm / 30 days" in labels(result)
+    assert "💳 Premium · 100 000 so'm / 30 days" in labels(result)
+
+
+def test_plans_subscription_and_a_card_payment_replace_the_screen_they_were_opened_from(customer):
+    from tests.test_bot_no_flood import Chat
+    configure()
+    chat = Chat(customer)
+    assert chat.do(text='/plans') == 1, 'a typed command gets its own message'
+    assert chat.tap('subscription') == 0
+    assert chat.tap('plans') == 0
+    assert chat.tap('commerce_manual_plan', plan='plus') == 0
+    assert '49 000' in chat.last()
+    assert chat.tap('commerce_manual_cancel') == 0
+    assert chat.last() == COPY['en']['manual_cancelled']
+
+
+def test_a_plan_given_by_the_team_is_named_rather_than_called_free(customer):
+    from apps.core.models import Account
+    Account.objects.filter(pk=customer.pk).update(staff_plan='premium')
+    customer.refresh_from_db()
+    text = dispatch_local(customer, text='/subscription')['messages'][-1]['text']
+    assert 'Premium' in text and COPY['en']['no_subscription'] not in text

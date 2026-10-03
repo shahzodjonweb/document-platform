@@ -145,6 +145,8 @@ CARD_SECTION_LABELS = {
            'alert_telegram_id': 'Your Telegram ID for new-payment alerts',
            'manual_hint': 'Customers who start a payment see this card, the plan price and a reference, transfer the money, and upload the receipt. You approve or reject each one under Payments. Prices are set per plan under Plans (price_uzs). Send /myid to the bot to learn your Telegram ID. Untick to stop new card payments at once.',
            'card_on_file': 'Card on file', 'no_card': 'No card yet',
+           'no_prices': 'Customers can’t pay by card yet: Plus and Premium have no price in so‘m. Set their prices in Plans.',
+           'open_plans': 'Open Plans',
            'invalid_card_number': 'That card number has a wrong digit. Check it: customers will send money to it.',
            'invalid_card_holder': 'Enter the holder name as letters only, 2 to 60 characters.',
            'invalid_telegram_id': 'A Telegram ID is digits only. Send /myid to the bot to get yours.',
@@ -154,6 +156,8 @@ CARD_SECTION_LABELS = {
            'alert_telegram_id': 'Yangi to‘lovlar haqida xabar uchun Telegram ID',
            'manual_hint': 'To‘lovni boshlagan mijoz shu kartani, tarif narxini va raqamni ko‘radi, pul o‘tkazadi va kvitansiyani yuboradi. Har birini To‘lovlar bo‘limida tasdiqlaysiz yoki rad etasiz. Narxlar Tariflar bo‘limida (price_uzs). Telegram ID ni bilish uchun botga /myid yuboring. Yangi to‘lovlarni darhol to‘xtatish uchun belgini olib tashlang.',
            'card_on_file': 'Saqlangan karta', 'no_card': 'Karta hali yo‘q',
+           'no_prices': 'Mijozlar hali karta orqali to‘lay olmaydi: Plus va Premium uchun so‘mda narx yo‘q. Narxlarni Tariflar bo‘limida kiriting.',
+           'open_plans': 'Tariflarni ochish',
            'invalid_card_number': 'Karta raqamida xato raqam bor. Tekshiring: mijozlar pulni shu kartaga yuboradi.',
            'invalid_card_holder': 'Karta egasining ismini faqat harflar bilan, 2–60 belgi kiriting.',
            'invalid_telegram_id': 'Telegram ID faqat raqamlardan iborat. Uni bilish uchun botga /myid yuboring.',
@@ -163,6 +167,8 @@ CARD_SECTION_LABELS = {
            'alert_telegram_id': 'Ваш Telegram ID для уведомлений о платежах',
            'manual_hint': 'Клиент, начавший оплату, видит эту карту, цену тарифа и код платежа, переводит деньги и загружает квитанцию. Каждый платёж вы подтверждаете или отклоняете в разделе «Платежи». Цены задаются в «Тарифах» (price_uzs). Чтобы узнать свой Telegram ID, отправьте боту /myid. Снимите флажок, чтобы сразу остановить новые платежи.',
            'card_on_file': 'Сохранённая карта', 'no_card': 'Карта ещё не указана',
+           'no_prices': 'Клиенты пока не могут оплатить картой: у Plus и Premium нет цены в сумах. Укажите цены в разделе «Тарифы».',
+           'open_plans': 'Открыть тарифы',
            'invalid_card_number': 'В номере карты ошибка. Проверьте: клиенты будут переводить деньги на эту карту.',
            'invalid_card_holder': 'Введите имя владельца только буквами, от 2 до 60 символов.',
            'invalid_telegram_id': 'Telegram ID состоит только из цифр. Отправьте боту /myid, чтобы узнать свой.',
@@ -243,6 +249,10 @@ def integrations(request):
                       'text':'\n'.join(c['chat'] if c['url']=='https://t.me/'+c['chat'].lstrip('@') else c['url']+' '+c['chat'] for c in gate['channels']),
                       'rows':[{'title':c['title'],'url':c['url'],'state':'unchecked' if c['check']['ok'] is None else 'ok' if c['check']['ok'] else (c['check']['reason'] or 'bot_not_admin')} for c in gate['channels']]}
     card=manual_payment_config()
+    from apps.commerce.manual import prices as card_prices
+    # A saved card is not enough: customers are offered card payment only for a
+    # plan with a price in so'm, so without one the card is never shown.
     data['manual'] = {**{key: card[key] for key in ('enabled','configured','ready','card_number','card_holder','card_label','alert_telegram_id')},
+                      'priced':bool(card_prices()),
                       'labels':CARD_LABELS,'card_display':' '.join(card['card_number'][i:i+4] for i in range(0,len(card['card_number']),4))}
     return finish_render(request,'ops/integrations.html',data)
