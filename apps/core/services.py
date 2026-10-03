@@ -217,7 +217,10 @@ def submit_job(account, quote_id, idempotency_key, origin='web'):
     except (Quote.DoesNotExist,ValueError,ValidationError): raise DomainError('not_found',404) from None
     if Job.objects.filter(quote=quote).exists(): raise DomainError('quote_already_submitted',409)
     if quote.expires_at <= timezone.now(): raise DomainError('quote_expired',409)
-    from apps.studio.domain import GENERATION_IDS, validate_generation_quote
+    from apps.studio.domain import GENERATION_IDS, validate_generation_quote, require_daily_ai
+    # Counted under the account lock, so quick repeated submissions cannot
+    # each see room for one more.
+    if quote.feature_id in GENERATION_IDS and quote.parameters.get('stage')!='outline': require_daily_ai(account)
     assets = validate_generation_quote(account,quote) if quote.feature_id in GENERATION_IDS else validate_inputs(account,quote.feature_id,quote.input_ids)
     if quote.feature_id.startswith('editor.'):
         from apps.studio.editor_policy import validate_commands_access

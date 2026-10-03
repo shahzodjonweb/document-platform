@@ -70,7 +70,7 @@ async def safe_error(message,account,exc):
     if key=='secure': rows.append([InlineKeyboardButton(text=text(account,'open'),url=await web_url(account))])
     if getattr(account,'telegram_user_id',None):
         rows.append([await button(account,'continue_task','controls'),await button(account,'home','home')])
-        if 'quota' in exc.code or 'balance' in exc.code or 'allowance' in exc.code or exc.code=='feature_not_in_plan':
+        if 'quota' in exc.code or 'balance' in exc.code or 'allowance' in exc.code or exc.code in ('feature_not_in_plan','daily_ai_limit'):
             rows.insert(0,[await button(account,'plans','plans')])
     await message.answer(text(account,key) if key else bot_error(exc,account.locale),reply_markup=InlineKeyboardMarkup(inline_keyboard=rows) if rows else None)
 

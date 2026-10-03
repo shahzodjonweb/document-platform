@@ -313,6 +313,11 @@ MESSAGES = {
         '⌛ Taklifni qo‘llash muddati tugagan. Botdan foydalanishda davom etishingiz mumkin.',
         '⌛ Срок применения приглашения истёк. Можно продолжать пользоваться ботом.',
     ),
+    'daily_ai_limit': (
+        '⏳ You’ve made today’s AI documents on the free plan. Come back tomorrow, or choose a paid plan for no daily limit.',
+        '⏳ Bepul tarifdagi bugungi AI hujjatlar soni tugadi. Ertaga qayting yoki kunlik cheklovsiz pullik tarifni tanlang.',
+        '⏳ Лимит ИИ-документов на сегодня на бесплатном тарифе исчерпан. Возвращайтесь завтра или выберите платный тариф без дневного лимита.',
+    ),
     'invalid_receipt': (
         '🧾 Send the receipt as a photo or screenshot, or as a PDF.',
         '🧾 Kvitansiyani rasm yoki skrinshot, yoxud PDF ko‘rinishida yuboring.',

@@ -19,6 +19,8 @@ FIELDS = {
     # So'm per 30 days for a card transfer; blank means not for sale.
     'price_uzs': (1_000, 100_000_000),
     'daily_file_tasks': (1, 100_000),
+    # AI documents (PDF documents and decks) a day; blank is no daily limit.
+    'daily_ai_documents': (1, 1_000),
     'file_tasks': (0, 1_000_000),
     'file_page_units': (0, 1_000_000),
     'ai_credits': (0, 1_000_000),
@@ -41,7 +43,7 @@ FIELDS = {
 
 # Blank is a real value for these: no price means a plan is not for sale, and
 # no daily cap means the plan is limited only by its period allowance.
-NULLABLE = {'price_xtr', 'price_uzs', 'daily_file_tasks'}
+NULLABLE = {'price_xtr', 'price_uzs', 'daily_file_tasks', 'daily_ai_documents'}
 
 
 class PlanError(ValueError):

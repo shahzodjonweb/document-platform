@@ -28,6 +28,25 @@ def pack(value): return cipher().encrypt(json.dumps(value,ensure_ascii=False).en
 def unpack(value): return json.loads(cipher().decrypt(bytes(value)))
 def allowed(account,fid):
     return fid in FEATURES and FEATURES[fid]['plans'][account.plan] not in ('not_included','unavailable','none','excluded')
+def ai_documents_today(account,now=None):
+    """AI documents this account has started today (UTC), as the daily task cap counts days.
+
+    An outline is a step towards a document, not one; a job that failed,
+    was cancelled or expired produced nothing and is not counted.
+    """
+    from apps.core.models import Job
+    today=(now or timezone.now()).replace(hour=0,minute=0,second=0,microsecond=0)
+    started=Job.objects.filter(account=account,feature_id__in=GENERATION_IDS,created_at__gte=today).exclude(status__in=('failed','canceled','expired','no_op')).values_list('parameters',flat=True)
+    return sum(1 for parameters in started if (parameters or {}).get('stage')!='outline')
+
+def require_daily_ai(account):
+    """Free accounts make a few AI documents a day; paid plans have no daily limit."""
+    limit=plan_limits(account).get('daily_ai_documents')
+    if limit is None:return
+    if ai_documents_today(account)>=limit:
+        tomorrow=timezone.now().replace(hour=0,minute=0,second=0,microsecond=0)+timedelta(days=1)
+        raise DomainError('daily_ai_limit',429,{'limit':limit,'resets_at':tomorrow.isoformat()})
+
 def require(account,fid):
     if not settings.ENABLE_BETA_TOOLS or fid not in GENERATION_IDS: raise DomainError('feature_unavailable',409)
     if not allowed(account,fid): raise DomainError('feature_not_in_plan',403)
@@ -384,6 +403,8 @@ def generation_quote(account,draft_id,version):
     require(account,d.feature_id)
     from apps.core.channel_gate import require as require_channels
     require_channels(account)
+    # Said before the customer reviews the cost, not after they confirm it.
+    require_daily_ai(account)
     if version!=d.version:raise DomainError('version_conflict',409)
     data=unpack(d.encrypted_data)
     cfg=ai_config()

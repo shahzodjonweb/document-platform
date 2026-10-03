@@ -117,11 +117,11 @@ def test_a_forwarded_file_carries_a_link_to_the_bot_with_its_owners_referral(mon
     code = ReferralCode.objects.get(account=account).code
     link = f'https://t.me/PdfMasterTestBot?start=ref_{code}'
     assert sent['parse_mode'] == 'HTML'
-    assert sent['caption'].startswith(RESULT_COPY[locale]['ready'])
-    assert f'<a href="{link}">@PdfMasterTestBot</a>' in sent['caption']
-    before, after = RESULT_COPY[locale]['share'].split('{bot}')
-    assert before in sent['caption'] and after in sent['caption']
-    assert len(sent['caption']) <= 1024, 'Telegram caption limit'
+    # One short line and nothing else: who made it, linking to the bot.
+    expected = {'en': f'✅ 📎 Made with <a href="{link}">@PdfMasterTestBot</a>',
+                'uz': f'✅ 📎 <a href="{link}">@PdfMasterTestBot</a> yordamida tayyorlandi',
+                'ru': f'✅ 📎 Сделано в <a href="{link}">@PdfMasterTestBot</a>'}[locale]
+    assert sent['caption'] == expected
 
 
 def test_the_forwarded_link_is_a_working_invitation(monkeypatch):

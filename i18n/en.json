@@ -148,5 +148,6 @@
   "revision_not_ready": "This document has nothing to change yet. Generate it first, then ask for changes.",
   "channels_required": "PDF Master is free for members of our Telegram community. Join our channel, then try again.",
   "invalid_channel": "Each line must be @name, a t.me link, or a private invite link with its numeric chat ID.",
-  "too_many_channels": "Add at most 5 channels."
+  "too_many_channels": "Add at most 5 channels.",
+  "daily_ai_limit": "You've made today's AI documents on the free plan. More tomorrow, or choose a paid plan for no daily limit."
 }

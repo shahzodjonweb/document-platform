@@ -20,22 +20,22 @@ from .ux_copy import UX
 
 RESULT_COPY = {
     'en': {
-        'ready': '✅ Done! This copy stays in your Telegram chat. Server files expire 24 hours after processing.',
+        'ready': '✅ Done!',
         'large': '✅ Done! The file is too large for Telegram. Download it from Recent tasks on the web within 24 hours of processing.',
         'open': '🌐 Open web app',
-        'share': '📎 Made with {bot} — try it free',
+        'share': '✅ 📎 Made with {bot}',
     },
     'uz': {
-        'ready': '✅ Tayyor! Bu nusxa Telegram chattingizda qoladi. Serverdagi fayllar qayta ishlangach, 24 soatdan keyin o‘chadi.',
+        'ready': '✅ Tayyor!',
         'large': '✅ Tayyor! Fayl Telegram uchun juda katta. Qayta ishlanganidan keyin 24 soat ichida veb ilovadagi So‘nggi vazifalardan yuklab oling.',
         'open': '🌐 Veb ilova',
-        'share': '📎 {bot} yordamida tayyorlandi — bepul sinab ko‘ring',
+        'share': '✅ 📎 {bot} yordamida tayyorlandi',
     },
     'ru': {
-        'ready': '✅ Готово! Эта копия останется в чате. Файлы на сервере удаляются через 24 часа после обработки.',
+        'ready': '✅ Готово!',
         'large': '✅ Готово! Файл слишком большой для Telegram. Скачайте его из последних задач на сайте в течение 24 часов после обработки.',
         'open': '🌐 Открыть сайт',
-        'share': '📎 Сделано в {bot} — попробуйте бесплатно',
+        'share': '✅ 📎 Сделано в {bot}',
     },
 }
 
@@ -63,12 +63,14 @@ def share_link(account, username):
 
 
 def ready_caption(copy, username, link):
-    """The result caption, with the bot's link under it when there is one."""
-    caption = html.escape(copy['ready'])
-    if link:
-        mention = f'<a href="{html.escape(link)}">@{html.escape(username)}</a>'
-        caption += '\n\n' + html.escape(copy['share']).replace('{bot}', mention)
-    return caption
+    """One short line under the file: who made it, linking to the bot.
+
+    Without a bot to link to, just "Done!".
+    """
+    if not link:
+        return html.escape(copy['ready'])
+    mention = f'<a href="{html.escape(link)}">@{html.escape(username)}</a>'
+    return html.escape(copy['share']).replace('{bot}', mention)
 
 
 def enqueue(artifact,key):
