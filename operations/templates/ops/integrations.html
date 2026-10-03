@@ -65,6 +65,18 @@
     <div class="integration-actions"><button class="button primary" name="action" value="save">{{ i.save }}</button><button class="button secondary" name="action" value="test">{{ i.test }}</button></div>
   </form>
 </section>
+<section class="panel info-panel" id="channel-settings">
+  <div class="panel-heading"><h2>{{ i.channels }}</h2><span class="badge">{% if channels.ready %}{{ i.active }}{% elif channels.enabled %}{{ i.setup_required }}{% else %}{{ i.inactive }}{% endif %}</span></div>
+  {% if channels.rows %}<ul>{% for row in channels.rows %}<li><a href="{{ row.url }}" target="_blank" rel="noopener">{{ row.title }}</a> — {% if row.state == 'ok' %}{{ i.channel_ok }}{% elif row.state == 'chat_not_found' %}{{ i.channel_chat_not_found }}{% elif row.state == 'unchecked' %}{{ i.channel_unchecked }}{% else %}{{ i.channel_bot_not_admin }}{% endif %}</li>{% endfor %}</ul>{% endif %}
+  <form method="post" class="integration-form" autocomplete="off">
+    {% csrf_token %}<input type="hidden" name="integration" value="channels">
+    <input type="hidden" name="enabled" value="false"><label style="flex-direction:row;align-items:center"><input style="width:20px;flex-shrink:0" type="checkbox" name="enabled" value="true" {% if channels.enabled %}checked{% endif %}> {{ i.channels_enabled }}</label>
+    <label>{{ i.channels_list }}<textarea name="channels" rows="4" spellcheck="false" placeholder="@pdfmaster_news">{{ channels.text }}</textarea></label>
+    <p>{{ i.channels_hint }}</p>
+    <label>{{ i.reason }}<input name="reason" required minlength="5" maxlength="1000"></label>
+    <div class="integration-actions"><button class="button primary" name="action" value="save">{{ i.save }}</button><button class="button secondary" name="action" value="test">{{ i.test }}</button></div>
+  </form>
+</section>
 <section class="panel info-panel" id="manual-payment-settings">
   <div class="panel-heading"><h2>{{ i.manual }}</h2><span class="badge">{% if manual.ready %}{{ i.active }}{% elif manual.enabled %}{{ i.setup_required }}{% else %}{{ i.inactive }}{% endif %}</span></div>
   <p>{{ i.card_on_file }}: {% if manual.configured %}<strong>{{ manual.card_display }}</strong> · {{ manual.card_holder }}{% if manual.card_label %} · {{ manual.card_label }}{% endif %}{% else %}{{ i.no_card }}{% endif %}</p>

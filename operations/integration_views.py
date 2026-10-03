@@ -6,7 +6,7 @@ from django.views.decorators.http import require_http_methods
 from apps.core.errors import DomainError
 from .auth import require_staff,audit,development_access
 from .views import context,finish_render
-from .integrations import telegram_config,ai_config,google_config,email_config,antibot_config,pixabay_config,manual_payment_config,CARD_LABELS,save_config,test_telegram,test_email,test_pixabay,control_runner,runner_status
+from .integrations import telegram_config,ai_config,google_config,email_config,antibot_config,pixabay_config,manual_payment_config,channel_gate_config,test_channels,CARD_LABELS,save_config,test_telegram,test_email,test_pixabay,control_runner,runner_status
 from .models import IntegrationConfig
 
 LABELS={
@@ -169,6 +169,33 @@ CARD_SECTION_LABELS = {
            'manual_payments_not_configured': 'Укажите номер и владельца карты, прежде чем включать оплату переводом.'},
 }
 for language, labels in CARD_SECTION_LABELS.items(): LABELS[language].update(labels)
+CHANNEL_SECTION_LABELS = {
+    'en': {'bot_not_configured': 'Set the Telegram bot token above first.', 'channels': 'Required Telegram channels', 'channels_enabled': 'Free users must join these channels to use the services',
+           'channels_list': 'Channels, one per line',
+           'channels_hint': 'Write @name or https://t.me/name for a public channel. For a private channel or group, write its invite link and its numeric chat ID on one line, e.g. https://t.me/+AbCdEf123 -1001234567890. Add the bot as an administrator of each channel (or a member of each group), then press Check. Paid plans are never asked. If Telegram cannot be reached, customers are let through rather than locked out.',
+           'channels_connected': 'The bot can see who has joined every channel.',
+           'channel_ok': 'bot can check members', 'channel_bot_not_admin': 'make the bot an administrator', 'channel_chat_not_found': 'not found — check the link or ID', 'channel_unchecked': 'not checked yet',
+           'invalid_channel': 'A line is not a channel: use @name, a t.me link, or an invite link with its numeric chat ID.',
+           'too_many_channels': 'Add at most 5 channels.', 'channels_not_configured': 'Add at least one channel before switching this on.',
+           'channels_bot_not_admin': 'The bot cannot see the members of some channels. Make it an administrator there, then Check again.'},
+    'uz': {'bot_not_configured': 'Avval yuqorida Telegram bot tokenini kiriting.', 'channels': 'Majburiy Telegram kanallar', 'channels_enabled': 'Bepul foydalanuvchilar xizmatlardan foydalanish uchun shu kanallarga qo‘shilishi kerak',
+           'channels_list': 'Kanallar, har biri alohida qatorda',
+           'channels_hint': 'Ochiq kanal uchun @nom yoki https://t.me/nom yozing. Yopiq kanal yoki guruh uchun bir qatorda taklif havolasi va raqamli chat ID ni yozing, masalan https://t.me/+AbCdEf123 -1001234567890. Botni har bir kanalga administrator (guruhga a’zo) qilib qo‘shing, so‘ng «Tekshirish»ni bosing. Pullik tariflardan so‘ralmaydi. Telegram javob bermasa, mijozlar to‘xtatilmaydi.',
+           'channels_connected': 'Bot barcha kanallarda kim qo‘shilganini ko‘ra oladi.',
+           'channel_ok': 'bot a’zolarni tekshira oladi', 'channel_bot_not_admin': 'botni administrator qiling', 'channel_chat_not_found': 'topilmadi — havola yoki ID ni tekshiring', 'channel_unchecked': 'hali tekshirilmagan',
+           'invalid_channel': 'Qatordagi qiymat kanal emas: @nom, t.me havola yoki raqamli chat ID bilan taklif havolasini yozing.',
+           'too_many_channels': 'Ko‘pi bilan 5 ta kanal qo‘shing.', 'channels_not_configured': 'Yoqishdan oldin kamida bitta kanal qo‘shing.',
+           'channels_bot_not_admin': 'Bot ba’zi kanallar a’zolarini ko‘ra olmaydi. Uni u yerda administrator qiling va qayta tekshiring.'},
+    'ru': {'bot_not_configured': 'Сначала укажите токен Telegram-бота выше.', 'channels': 'Обязательные Telegram-каналы', 'channels_enabled': 'Бесплатные пользователи должны подписаться на эти каналы, чтобы пользоваться сервисами',
+           'channels_list': 'Каналы, по одному в строке',
+           'channels_hint': 'Для открытого канала напишите @имя или https://t.me/имя. Для закрытого канала или группы — ссылку-приглашение и числовой ID чата в одной строке, например https://t.me/+AbCdEf123 -1001234567890. Добавьте бота администратором каждого канала (или участником группы) и нажмите «Проверить». Платные тарифы не затрагиваются. Если Telegram недоступен, клиентов пропускают, а не блокируют.',
+           'channels_connected': 'Бот видит подписчиков во всех каналах.',
+           'channel_ok': 'бот может проверять подписку', 'channel_bot_not_admin': 'сделайте бота администратором', 'channel_chat_not_found': 'не найден — проверьте ссылку или ID', 'channel_unchecked': 'ещё не проверен',
+           'invalid_channel': 'Строка не похожа на канал: укажите @имя, ссылку t.me или ссылку-приглашение с числовым ID чата.',
+           'too_many_channels': 'Добавьте не больше 5 каналов.', 'channels_not_configured': 'Добавьте хотя бы один канал, прежде чем включать.',
+           'channels_bot_not_admin': 'Бот не видит подписчиков некоторых каналов. Сделайте его там администратором и проверьте снова.'},
+}
+for language, labels in CHANNEL_SECTION_LABELS.items(): LABELS[language].update(labels)
 
 @require_staff()
 @sensitive_post_parameters('token','api_key','client_secret','password','secret_key','pixabay_key')
@@ -181,11 +208,12 @@ def integrations(request):
         else:
             try:
                 key=request.POST.get('integration','telegram')
-                if action!='save' and key!='telegram' and not (key in ('email','pixabay') and action=='test'):raise DomainError('invalid_parameters')
+                if action!='save' and key!='telegram' and not (key in ('email','pixabay','channels') and action=='test'):raise DomainError('invalid_parameters')
                 if action=='save':save_config(key,request.POST);message='saved'
                 elif action=='test':
                     if key=='email':test_email();message='email_connected'
                     elif key=='pixabay':test_pixabay();message='pixabay_connected'
+                    elif key=='channels':test_channels();message='channels_connected'
                     else:test_telegram();message='connected'
                 elif action in ('start','stop'):
                     if not development_access(request):raise DomainError('local_control_only',403)
@@ -212,6 +240,10 @@ def integrations(request):
     data['antibot']['hostnames_text'] = '\n'.join(antibot['allowed_hostnames'])
     photos=pixabay_config()
     data['pixabay'] = {key: photos[key] for key in ('enabled','configured','ready')}
+    gate=channel_gate_config()
+    data['channels']={'enabled':gate['enabled'],'ready':gate['ready'],
+                      'text':'\n'.join(c['chat'] if c['url']=='https://t.me/'+c['chat'].lstrip('@') else c['url']+' '+c['chat'] for c in gate['channels']),
+                      'rows':[{'title':c['title'],'url':c['url'],'state':'unchecked' if c['check']['ok'] is None else 'ok' if c['check']['ok'] else (c['check']['reason'] or 'bot_not_admin')} for c in gate['channels']]}
     card=manual_payment_config()
     data['manual'] = {**{key: card[key] for key in ('enabled','configured','ready','card_number','card_holder','card_label','alert_telegram_id')},
                       'labels':CARD_LABELS,'card_display':' '.join(card['card_number'][i:i+4] for i in range(0,len(card['card_number']),4))}

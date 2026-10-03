@@ -60,6 +60,11 @@ async def web_url(account,route=''):
 async def button(account,label,action,payload=None):
     return InlineKeyboardButton(text=text(account,label),callback_data=await callback(account,action,payload))
 async def safe_error(message,account,exc):
+    # A free customer who has not joined the owner's channels is shown them,
+    # not an error.
+    if exc.code=='channels_required' and getattr(account,'telegram_user_id',None):
+        from .channels import show_gate
+        return await show_gate(message,account)
     key='secure' if exc.code in ('password_required','secure_password_entry_required') else 'controls_expired' if exc.code=='controls_expired' else None
     rows=[]
     if key=='secure': rows.append([InlineKeyboardButton(text=text(account,'open'),url=await web_url(account))])
@@ -624,6 +629,12 @@ def build_dispatcher():
                 if action=='download' and job.status=='succeeded': await deliver(message,account,job,ref.token)
             elif action=='account': await account_view(message,account,True)
             elif action=='plans': await show_offers(message,account)
+            elif action=='channels_check':
+                from .channels import check as check_channels
+                if await check_channels(message,account):
+                    # A file sent before joining is still waiting for its tool.
+                    draft=await sync_to_async(lambda:BotDraft.objects.filter(account=account).first())()
+                    await (controls(message,account,draft) if draft else home(message,account))
             elif action=='subscription': await show_subscription(message,account)
             elif action=='help': await help_view(message,account,True)
             elif action=='support': await support_prompt(message,account,p.get('payment',False),True)
@@ -671,6 +682,11 @@ def build_dispatcher():
                 await sync_to_async(attach_input)(account,asset,message.chat.id,message.message_id)
                 return await ai_prompt(message,account,pending['feature_id'])
             draft=await sync_to_async(accept_upload)(account,asset,message.chat.id,message.message_id)
+            # The file is kept; a customer who still has channels to join sees
+            # them first, and "I've joined" brings them back to this file.
+            from .channels import blocked, show_gate
+            current=await blocked(account)
+            if current: return await show_gate(message,account,current)
             await controls(message,account,draft)
         except DomainError as exc:
             if exc.code=='bot_replace_file':

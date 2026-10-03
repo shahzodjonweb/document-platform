@@ -145,5 +145,8 @@
   "antibot_unavailable": "The security check is unavailable. Please try again shortly.",
   "prompt_required": "Send a topic or instructions before generating.",
   "generation_web_only": "This tool builds on work saved in the web app. Open it there to continue.",
-  "revision_not_ready": "This document has nothing to change yet. Generate it first, then ask for changes."
+  "revision_not_ready": "This document has nothing to change yet. Generate it first, then ask for changes.",
+  "channels_required": "PDF Master is free for members of our Telegram community. Join our channel, then try again.",
+  "invalid_channel": "Each line must be @name, a t.me link, or a private invite link with its numeric chat ID.",
+  "too_many_channels": "Add at most 5 channels."
 }

@@ -382,6 +382,8 @@ def generation_quote(account,draft_id,version):
     d=GenerationDraft.objects.filter(account=account,id=draft_id,expires_at__gt=timezone.now()).first()
     if not d:raise DomainError('not_found',404)
     require(account,d.feature_id)
+    from apps.core.channel_gate import require as require_channels
+    require_channels(account)
     if version!=d.version:raise DomainError('version_conflict',409)
     data=unpack(d.encrypted_data)
     cfg=ai_config()

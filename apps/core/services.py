@@ -156,6 +156,10 @@ def create_quote(account, feature_id, input_ids, parameters, secret_id=None):
     from processors import normalize_parameters, ProcessorError
     if not isinstance(parameters,dict) or len(json.dumps(parameters)) > 10000: raise DomainError('invalid_parameters')
     if any(k.lower() in ('password','owner_password','user_password') for k in parameters): raise DomainError('feature_unavailable',409)
+    # A free account joins the owner's channels before using a service; asking
+    # here tells them before they have set the task up, not after.
+    from .channel_gate import require as require_channels
+    require_channels(account)
     assets = validate_inputs(account,feature_id,input_ids)
     if feature_id.startswith('editor.'):
         from apps.studio.editor_policy import validate_commands_access
@@ -197,6 +201,11 @@ def quote_affordable(account, quote):
 @transaction.atomic
 def submit_job(account, quote_id, idempotency_key, origin='web'):
     if not isinstance(idempotency_key,str) or not 8<=len(idempotency_key)<=128: raise DomainError('idempotency_key_required')
+    # The channel rule is checked before the row lock (it may ask Telegram), and
+    # never against a retry of a submission that already became a job.
+    if not Job.objects.filter(account=account,idempotency_key=idempotency_key).exists():
+        from .channel_gate import require as require_channels
+        require_channels(account)
     # Row lock serializes quota and concurrency decisions per canonical account.
     account = Account.objects.select_for_update().get(pk=account.pk)
     request_hash = hashlib.sha256(json.dumps({'quote_id':str(quote_id)},sort_keys=True).encode()).hexdigest()

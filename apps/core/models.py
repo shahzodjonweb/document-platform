@@ -313,3 +313,20 @@ class PagePreview(models.Model):
     file = models.OneToOneField(FileAsset, on_delete=models.CASCADE, related_name='preview_for')
     class Meta:
         constraints = [models.UniqueConstraint(fields=['asset','page'],name='one_preview_per_page')]
+
+
+class ChannelMembership(models.Model):
+    """Whether a customer has joined a required Telegram channel, as last seen.
+
+    Kept for a few hours when they have, for a minute when they haven't, so
+    every request does not become a call to Telegram and "I've joined" is
+    believed almost at once.
+    """
+    account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='channel_memberships')
+    chat = models.CharField(max_length=64)
+    is_member = models.BooleanField()
+    checked_at = models.DateTimeField(default=timezone.now)
+    expires_at = models.DateTimeField(db_index=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['account', 'chat'], name='one_channel_membership')]

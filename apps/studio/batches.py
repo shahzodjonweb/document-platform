@@ -84,6 +84,8 @@ def _quotes(row):
 @transaction.atomic
 def create_batch_quote(account,feature_id,groups=None,*,template_id=None,template_version=None,input_ids=None):
     caps=require_batch(account,feature_id)
+    from apps.core.channel_gate import require as require_channels
+    require_channels(account)
     template=None
     if feature_id=='editor.batch_forms':
         if groups is not None:raise DomainError('invalid_parameters')

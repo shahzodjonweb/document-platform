@@ -27,3 +27,5 @@ def no_photo_network(monkeypatch):
     monkeypatch.setattr('apps.studio.photos._open', refuse)
     # Nor the model that chooses between photos: that call is faked where it is tested.
     monkeypatch.setattr('apps.studio.photo_choice._post', refuse)
+    # Nor Telegram, when checking whether a customer joined the owner's channels.
+    monkeypatch.setattr('apps.core.channel_gate._call', refuse)

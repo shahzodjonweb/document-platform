@@ -218,6 +218,85 @@ def manual_payment_config():
             'alert_telegram_id': alert if type(alert) is int and alert > 0 else None}
 
 
+_PUBLIC_CHANNEL = re.compile(r'(?:https://)?(?:t\.me|telegram\.me)/([A-Za-z][A-Za-z0-9_]{3,31})/?|@([A-Za-z][A-Za-z0-9_]{3,31})')
+_INVITE_LINK = re.compile(r'https://t\.me/(?:\+|joinchat/)[A-Za-z0-9_-]{8,64}')
+_CHAT_ID = re.compile(r'-100[0-9]{6,15}')
+MAX_CHANNELS = 5
+
+
+def parse_channels(text):
+    """Required channels, one per line: `@name`, `https://t.me/name`, or for a
+    private channel or group its invite link and numeric chat ID together.
+
+    The chat is what the bot asks Telegram about; the link is what customers
+    tap to join. A public channel's username is both.
+    """
+    channels, seen = [], set()
+    for number, raw in enumerate(str(text or '').splitlines(), 1):
+        line = raw.strip()
+        if not line:
+            continue
+        parts = line.split()
+        public = _PUBLIC_CHANNEL.fullmatch(parts[0]) if len(parts) == 1 else None
+        if public:
+            name = public.group(1) or public.group(2)
+            if name.lower() in ('joinchat', 'share', 'addstickers', 'proxy', 'iv'):
+                raise DomainError('invalid_channel', 400, {'line': number})
+            chat, url = '@' + name, 'https://t.me/' + name
+        else:
+            invite = next((part for part in parts if _INVITE_LINK.fullmatch(part)), None)
+            chat = next((part for part in parts if _CHAT_ID.fullmatch(part)), None)
+            if len(parts) != 2 or not invite or not chat:
+                raise DomainError('invalid_channel', 400, {'line': number})
+            url = invite
+        if chat.lower() in seen:
+            continue
+        seen.add(chat.lower())
+        channels.append({'chat': chat, 'url': url})
+    if len(channels) > MAX_CHANNELS:
+        raise DomainError('too_many_channels', 400, {'max': MAX_CHANNELS})
+    return channels
+
+
+def channel_gate_config():
+    """Telegram channels a free account must join before using a service."""
+    cfg, _ = read_config('channels')
+    channels = [c for c in cfg.get('channels') or [] if isinstance(c, dict) and c.get('chat') and c.get('url')]
+    checks = cfg.get('checks') if isinstance(cfg.get('checks'), dict) else {}
+    for channel in channels:
+        check = checks.get(channel['chat']) or {}
+        channel['title'] = str(check.get('title') or '')[:80] or channel['chat'].lstrip('@')
+        channel['check'] = {'ok': check.get('ok'), 'reason': check.get('reason', ''), 'checked_at': check.get('checked_at')}
+    enabled = bool(cfg.get('enabled', False))
+    return {'enabled': enabled, 'channels': channels, 'ready': enabled and bool(channels)}
+
+
+def test_channels():
+    """Ask Telegram, for each channel, whether the bot can see who has joined.
+
+    A channel needs the bot as an administrator; a group needs it as a member.
+    The result and the channel's title are kept, so the panel can say which
+    channel needs fixing and customers see the real name.
+    """
+    from apps.core import channel_gate
+    config = channel_gate_config()
+    token = telegram_config()['token']
+    if not token: raise DomainError('bot_not_configured')
+    if not config['channels']: raise DomainError('channels_not_configured')
+    bot_id = int(token.split(':', 1)[0])
+    checks, problems = {}, []
+    for channel in config['channels']:
+        result = channel_gate.inspect(channel['chat'], bot_id, token)
+        checks[channel['chat']] = {**result, 'checked_at': timezone.now().isoformat()}
+        if not result['ok']: problems.append(channel['chat'])
+    row = IntegrationConfig.objects.get(pk='channels')
+    row.configuration = {**row.configuration, 'checks': checks}
+    row.check_status = 'connected' if not problems else 'attention'
+    row.checked_at = timezone.now()
+    row.save(update_fields=['configuration', 'check_status', 'checked_at'])
+    if problems: raise DomainError('channels_bot_not_admin', 409, {'channels': problems})
+
+
 def test_pixabay():
     """One real search, so an operator knows the key works before a customer does."""
     from apps.studio import photos
@@ -360,6 +439,14 @@ def save_config(key, values):
                    site_key=site_key.strip(),
                    allowed_hostnames=_antibot_hostnames(values.get('allowed_hostnames', cfg.get('allowed_hostnames', list(_ANTIBOT_DEFAULT_HOSTS)))))
         _validate_antibot(cfg, secrets)
+    elif key == 'channels':
+        channels = parse_channels(values.get('channels', ''))
+        enabled = _boolean(values.get('enabled', False))
+        if enabled and not channels: raise DomainError('channels_not_configured')
+        # Checks are kept only for channels still on the list.
+        kept = {c['chat'] for c in channels}
+        checks = {chat: value for chat, value in (cfg.get('checks') or {}).items() if chat in kept}
+        cfg.update(enabled=enabled, channels=channels, checks=checks)
     elif key == 'manual_payments':
         number = re.sub(r'[\s-]', '', str(values.get('card_number', '') or ''))
         if number:

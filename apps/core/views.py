@@ -170,6 +170,20 @@ def plans(request):
 @api()
 def usage(request): return usage_snapshot(request.account)
 
+@api()
+def channels(request):
+    """The Telegram channels this account must join to use the services, if any."""
+    from .channel_gate import status
+    return status(request.account)
+
+@api(('POST',))
+def channels_check(request):
+    """"I've joined": ask Telegram again instead of trusting the last answer."""
+    from .channel_gate import status
+    from .customer_auth import auth_limit
+    auth_limit('channel-check', str(request.account.pk), 10, 60)
+    return status(request.account, refresh=True)
+
 @api(('POST',))
 def uploads(request):
     throttle(request,'uploads',30)
