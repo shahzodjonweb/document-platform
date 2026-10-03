@@ -45,6 +45,18 @@ async def account_for(user):
         account.locale=locale
         await sync_to_async(account.save)(update_fields=['locale'])
     return account
+# A button stays valid for 30 minutes, but old messages stay in the chat for
+# good, and customers scroll back and tap them. These actions only open a screen,
+# or carry a snapshot of the task they act on and refuse when it has moved on,
+# so they keep working however old their message is. The others — starting a
+# paid task, signing in, paying, changing a renewal, sending a message,
+# discarding a task — must be fresh; an old one opens the menu instead.
+REUSABLE={'home','menu','account','plans','subscription','language','help','recent','controls','settings',
+          'prompt','attach','preview','done','retry','cancel','new','tool','start_tool','ai_tool','ai_examples',
+          'ai_revise','support','job','download','channels_check','commerce_manual_plan','commerce_manual_receipt'}
+def usable(ref,now=None):
+    """Whether a stored button may still be acted on."""
+    return bool(ref) and (ref.expires_at>(now or timezone.now()) or ref.action in REUSABLE)
 async def callback(account,action,payload=None):
     token=secrets.token_urlsafe(12)
     await sync_to_async(BotCallback.objects.create)(token=token,account=account,action=action,payload=payload or {},expires_at=timezone.now()+timedelta(minutes=30))
@@ -644,10 +656,9 @@ def build_dispatcher():
 
     @dp.callback_query()
     async def click(query):
-        ref=await sync_to_async(lambda:BotCallback.objects.select_related('account').filter(token=query.data,expires_at__gt=timezone.now()).first())()
-        if not ref: return await query.answer(text(sender_language(query.from_user),'controls_expired'),show_alert=True)
-        if ref.action=='link_login':
-            if ref.payload.get('telegram_user_id')!=query.from_user.id or not query.message or query.message.chat.type!='private' or query.message.chat.id!=query.from_user.id:
+        ref=await sync_to_async(lambda:BotCallback.objects.select_related('account').filter(token=query.data).first())()
+        if ref and ref.action=='link_login':
+            if ref.expires_at<=timezone.now() or ref.payload.get('telegram_user_id')!=query.from_user.id or not query.message or query.message.chat.type!='private' or query.message.chat.id!=query.from_user.id:
                 return await query.answer(text(sender_language(query.from_user),'controls_expired'),show_alert=True)
             await query.answer()
             try:
@@ -656,8 +667,15 @@ def build_dispatcher():
                 await query.message.answer(text(SimpleNamespace(locale=locale or account.locale),'link_approved'))
             except DomainError as exc: await safe_error(query.message,ref.account,exc)
             return
-        if ref.account.telegram_user_id!=query.from_user.id: return await query.answer(text(sender_language(query.from_user),'controls_expired'),show_alert=True)
+        if ref and ref.account.telegram_user_id!=query.from_user.id: return await query.answer(text(sender_language(query.from_user),'controls_expired'),show_alert=True)
         await query.answer()  # Stop Telegram's spinner before any costly action.
+        if not usable(ref):
+            # An old button for something that has to be fresh, or one no longer
+            # known: its message becomes the menu rather than a dead end.
+            account=await account_for(query.from_user)
+            await sync_to_async(set_prompt)(account)
+            try: return await home(query.message,account,True,notice=text(account,'stale_button'))
+            except Exception: return await home(query.message,account,notice=text(account,'stale_button'))
         account=await account_for(query.from_user);message=query.message;p=ref.payload;action=ref.action
         try:
             if action=='login':
@@ -934,9 +952,9 @@ def build_dispatcher():
     async def fallback(message):
         account=await account_for(message.from_user)
         conversation=await sync_to_async(lambda:BotConversation.objects.get(pk=message.from_user.id))()
-        if conversation.updated_at<timezone.now()-timedelta(minutes=30):
+        if conversation.state and conversation.updated_at<timezone.now()-timedelta(minutes=30):
             await sync_to_async(set_prompt)(account)
-            return await home(message,account,notice=text(account,'controls_expired'))
+            return await home(message,account,notice=text(account,'stale_reply'))
         value=(message.text or '').strip()
         if conversation.state=='support': return await support_review(message,account,value,conversation.prompt.get('payment',False))
         if conversation.state=='ai_input':

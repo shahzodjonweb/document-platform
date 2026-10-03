@@ -405,8 +405,11 @@ def register_billing_handlers(dp):
         from aiogram.dispatcher.event.bases import SkipHandler
         # Authentication-link callbacks must reach the auth router without
         # registering a duplicate Telegram customer account.
-        ref = await sync_to_async(lambda: BotCallback.objects.filter(token=query.data, account__telegram_user_id=query.from_user.id, action__startswith='commerce_', expires_at__gt=timezone.now()).first())()
-        if not ref:
+        from .bot import usable
+        ref = await sync_to_async(lambda: BotCallback.objects.filter(token=query.data, account__telegram_user_id=query.from_user.id, action__startswith='commerce_').first())()
+        # An old payment button that has to be fresh goes on to the general
+        # handler, which opens the menu in its place.
+        if not usable(ref):
             raise SkipHandler()
         # Stop the Telegram loading spinner before an invoice/provider request.
         await query.answer()
