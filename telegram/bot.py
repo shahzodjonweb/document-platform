@@ -351,9 +351,11 @@ def build_dispatcher():
         samples=[ai_example(account,feature_id,index) for index in range(len(PROMPT_EXAMPLES[feature_id]))]
         body=(f'<b>{html.escape(title)}</b>\n{text(account,"ai_ask_topic")}\n'
               f'<i>{text(account,"ai_pages_hint")}</i>\n\n'
-              f'{text(account,"ai_examples")}:\n<code>{html.escape(samples[0])}</code>')
+              f'{text(account,"ai_examples")}:\n\n1. <code>{html.escape(samples[0])}</code>')
         if samples[1:]:
-            body+='\n<blockquote expandable>'+'\n\n'.join(html.escape(s) for s in samples[1:])+'</blockquote>'
+            rest='\n\n'.join(f'{number}. {html.escape(sample)}'
+                              for number,sample in enumerate(samples[1:],2))
+            body+=f'\n\n<blockquote expandable>{rest}</blockquote>'
         staged=await sync_to_async(lambda:ai.sources(account,draft_for(account).input_ids))()
         if staged: body+=f'\n\n📎 {len(staged)}'
         rows=[[await button(account,'ai_examples','ai_examples',{'feature_id':feature_id})],
@@ -413,7 +415,7 @@ def build_dispatcher():
         for fid in ([feature_id] if feature_id else list(ai.SERVICES)):
             body+=f'\n\n<b>{html.escape(TOOL_NAMES[fid][account.locale])}</b>'
             for index in range(len(PROMPT_EXAMPLES[fid])):
-                body+=f'\n<code>{html.escape(ai_example(account,fid,index))}</code>'
+                body+=f'\n\n{index+1}. <code>{html.escape(ai_example(account,fid,index))}</code>'
             rows.append([InlineKeyboardButton(text=TOOL_NAMES[fid][account.locale],callback_data=await callback(account,'ai_tool',{'feature_id':fid}))])
         rows.append([await button(account,'ai_back','home'),
                      InlineKeyboardButton(text=text(account,'ai_open_web'),url=await ai_studio_url(account))])
