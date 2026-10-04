@@ -23,6 +23,7 @@ from apps.core.models import BotConversation, BotCallback, BotDraft, BotInputRec
 from apps.core.identity import resolve_account, approve_challenge_id
 from apps.core.policy import catalog, usage_snapshot
 from apps.core.services import upload_file, create_quote, submit_job, execute_job, storage_path, cancel_job
+from apps.core import storage
 from apps.core.serializers import quote_data
 from apps.core.errors import DomainError, error_data
 
@@ -500,7 +501,7 @@ def build_dispatcher():
     async def send_preview(message,account,asset_id,page):
         from apps.core.previews import preview_asset
         preview=await sync_to_async(preview_asset)(account,asset_id,page)
-        data=await sync_to_async(lambda:storage_path(preview.object_key).read_bytes())()
+        data=await sync_to_async(lambda:storage.read_bytes(preview.object_key))()
         await message.answer_document(BufferedInputFile(data,filename=preview.name))
 
     async def job_status(message,account,job,edit=False):

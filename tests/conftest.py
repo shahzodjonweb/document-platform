@@ -29,3 +29,16 @@ def no_photo_network(monkeypatch):
     monkeypatch.setattr('apps.studio.photo_choice._post', refuse)
     # Nor Telegram, when checking whether a customer joined the owner's channels.
     monkeypatch.setattr('apps.core.channel_gate._call', refuse)
+
+
+@pytest.fixture(autouse=True)
+def object_storage_isolated():
+    """Object storage settings are cached per process; never let one test's
+    bucket (or a fake one) reach the next."""
+    from apps.core import storage
+    storage.forget_config()
+    storage.client_factory = None
+    storage._last_sweep['at'] = 0.0
+    yield
+    storage.forget_config()
+    storage.client_factory = None

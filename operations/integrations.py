@@ -184,6 +184,35 @@ def pixabay_config():
             'ready': bool(enabled and api_key)}
 
 
+_BUCKET = re.compile(r'[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]')
+_STORAGE_KEY = re.compile(r'[A-Za-z0-9/+=_-]{8,128}')
+OBJECT_STORAGE_DEFAULTS = {'endpoint': 'https://usc1.contabostorage.com', 'bucket': 'pdfmaster', 'region': ''}
+
+
+def object_storage_config():
+    """The S3-compatible bucket files are kept in (Contabo Object Storage).
+
+    `enabled` sends new files there; reading files already there needs only the
+    credentials, so switching it off never strands what is stored.
+    """
+    cfg, secret = read_config('object_storage')
+    values = {key: cfg.get(key) or default for key, default in OBJECT_STORAGE_DEFAULTS.items()}
+    configured = bool(secret.get('access_key') and secret.get('secret_key'))
+    enabled = bool(cfg.get('enabled', False))
+    return {**values, 'enabled': enabled, 'configured': configured, 'ready': enabled and configured,
+            'access_key': secret.get('access_key', ''), 'secret_key': secret.get('secret_key', '')}
+
+
+def test_object_storage():
+    """Write, read back and delete a small object, so the keys are known to work."""
+    from apps.core import storage
+    cfg = object_storage_config()
+    if not cfg['configured']: raise DomainError('object_storage_not_configured', 409)
+    try: storage.check(cfg)
+    except Exception: raise DomainError('object_storage_connection_failed', 409) from None
+    IntegrationConfig.objects.filter(pk='object_storage').update(check_status='connected', checked_at=timezone.now())
+
+
 _CARD = re.compile(r'[0-9]{16}')
 CARD_LABELS = ('Uzcard', 'Humo', 'Visa', 'Mastercard')
 
@@ -477,8 +506,31 @@ def save_config(key, values):
         if enabled and not (secrets.get('api_key') or os.getenv('PIXABAY_API_KEY', '')):
             raise DomainError('pixabay_not_configured')
         cfg.update(enabled=enabled)
+    elif key == 'object_storage':
+        from urllib.parse import urlparse
+        endpoint = str(values.get('endpoint') or OBJECT_STORAGE_DEFAULTS['endpoint']).strip().rstrip('/')
+        parsed = urlparse(endpoint)
+        if parsed.scheme != 'https' or not parsed.hostname or parsed.path or parsed.query: raise DomainError('invalid_storage_endpoint')
+        bucket = str(values.get('bucket') or OBJECT_STORAGE_DEFAULTS['bucket']).strip()
+        if not _BUCKET.fullmatch(bucket): raise DomainError('invalid_storage_bucket')
+        region = str(values.get('region') or '').strip()
+        if region and not re.fullmatch(r'[a-z0-9-]{1,32}', region): raise DomainError('invalid_storage_region')
+        for field in ('access_key', 'secret_key'):
+            value = values.get(field, '')
+            if not isinstance(value, str): raise DomainError('invalid_storage_key')
+            if value.strip():
+                if not _STORAGE_KEY.fullmatch(value.strip()): raise DomainError('invalid_storage_key')
+                secrets[field] = value.strip()
+        enabled = _boolean(values.get('enabled', False))
+        if enabled and not (secrets.get('access_key') and secrets.get('secret_key')):
+            raise DomainError('object_storage_not_configured')
+        cfg.update(enabled=enabled, endpoint=endpoint, bucket=bucket, region=region)
     else: raise DomainError('invalid_parameters')
-    return IntegrationConfig.objects.update_or_create(key=key,defaults={'configuration':cfg,'encrypted_secrets':cipher().encrypt(json.dumps(secrets).encode()),'check_status':'not_checked'})[0]
+    row = IntegrationConfig.objects.update_or_create(key=key,defaults={'configuration':cfg,'encrypted_secrets':cipher().encrypt(json.dumps(secrets).encode()),'check_status':'not_checked'})[0]
+    if key == 'object_storage':
+        from apps.core import storage
+        storage.forget_config()  # this process; the others reread within half a minute
+    return row
 
 def test_telegram():
     cfg=telegram_config()

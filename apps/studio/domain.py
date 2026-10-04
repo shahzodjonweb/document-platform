@@ -9,7 +9,8 @@ from django.utils import timezone
 from apps.core.errors import DomainError
 from apps.core.models import Quote
 from apps.core.policy import FEATURES, POLICY_VERSION, plan_limits, SEED
-from apps.core.services import owned_assets, storage_path
+from apps.core.services import owned_assets
+from apps.core import storage
 from operations.integrations import cipher, ai_config
 from .models import GenerationDraft
 
@@ -140,7 +141,7 @@ def source_excerpts(account,ids):
     for a in assets:
         if a.mime_type!='application/pdf' or a.metadata.get('encrypted'):raise DomainError('unsupported_file')
         from .extraction import extract_pages
-        for page,text in extract_pages(storage_path(a.object_key)):
+        for page,text in extract_pages(storage.local(a.object_key)):
             result.append({'asset_id':str(a.id),'page':page,'text':text[:12000]})
     if sum(len(v['text']) for v in result)>limits(account)['source_chars']:raise DomainError('generation_limit')
     return result

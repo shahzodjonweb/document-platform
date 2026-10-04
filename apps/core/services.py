@@ -68,6 +68,8 @@ def upload_file(account, uploaded, channel='web', password=None):
             handle = create_secret(account,password,asset)
             asset.metadata['password_secret_id'] = str(handle.id)
             asset.save(update_fields=['metadata'])
+        from . import storage
+        storage.save(key, metadata['mime_type'])
         record_event(account, 'upload.accepted', properties={'bytes':size,'pages':pages}, channel=channel)
         return asset
     except Exception:
@@ -108,7 +110,8 @@ def verify_input_files(job, assets):
     for asset, fingerprint in zip(assets,expected):
         if not 0 < asset.size_bytes <= caps['max_file_mib']:
             raise DomainError('file_changed',409)
-        path = storage_path(asset.object_key)
+        from . import storage
+        path = storage.local(asset.object_key)
         try:
             flags = os.O_RDONLY | getattr(os,'O_NONBLOCK',0) | getattr(os,'O_NOFOLLOW',0)
             with os.fdopen(os.open(path,flags),'rb') as source:
@@ -289,6 +292,8 @@ def settle_job(job_id, status, actual=None, error_code='', outputs=None, warning
         key = str(path.relative_to(settings.PRIVATE_STORAGE_ROOT.resolve()))
         asset = FileAsset.objects.create(account=job.account,name=output['name'],object_key=key,mime_type=output['mime_type'],sha256=hashlib.sha256(path.read_bytes()).hexdigest(),size_bytes=path.stat().st_size,page_count=output.get('page_count',0),metadata={**output.get('metadata',{}),'kind':{'application/pdf':'pdf','application/zip':'archive','application/vnd.openxmlformats-officedocument.wordprocessingml.document':'docx','application/vnd.openxmlformats-officedocument.presentationml.presentation':'pptx','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':'xlsx','text/plain':'text','application/json':'text'}.get(output['mime_type'],'image'),'mime_type':output['mime_type'],'page_count':output.get('page_count',0),'encrypted':job.feature_id=='pdf.protect'},expires_at=deadline)
         artifact = Artifact.objects.create(account=job.account,job=job,file=asset,role=output.get("role","user_document"))
+        from . import storage
+        storage.save(key, output['mime_type'])
         if status == 'succeeded' and job.origin_channel == 'bot' and job.account.telegram_user_id is not None:
             # Persist delivery in the settlement transaction: a worker can finish
             # after the initiating bot update returns, or while the bot restarts.
@@ -380,7 +385,8 @@ def cleanup_expired():
             continue
         asset.state = 'expired'
         asset.save(update_fields=['state'])
-        storage_path(asset.object_key).unlink(missing_ok=True)
+        from . import storage
+        storage.delete(asset.object_key)
         asset.state = 'deleted'
         asset.save(update_fields=['state'])
         count += 1
@@ -440,4 +446,13 @@ def cleanup_expired():
     # their own prefix, outside the backstop above.
     from apps.commerce.manual import housekeeping
     housekeeping(now)
+    # Object storage: upload what is still only on the volume (new files whose
+    # upload failed, and files kept there before the bucket was connected),
+    # let go of working copies nobody is using, and remove bucket objects that
+    # nothing refers to any more.
+    from . import storage
+    storage.prune(now)
+    storage.sync()
+    storage.evict(now)
+    storage.sweep_if_due(now)
     return count

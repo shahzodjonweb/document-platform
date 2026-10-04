@@ -6,7 +6,7 @@ from django.views.decorators.http import require_http_methods
 from apps.core.errors import DomainError
 from .auth import require_staff,audit,development_access
 from .views import context,finish_render
-from .integrations import telegram_config,ai_config,google_config,email_config,antibot_config,pixabay_config,manual_payment_config,channel_gate_config,test_channels,CARD_LABELS,save_config,test_telegram,test_email,test_pixabay,control_runner,runner_status
+from .integrations import telegram_config,ai_config,google_config,email_config,antibot_config,pixabay_config,manual_payment_config,channel_gate_config,test_channels,CARD_LABELS,save_config,test_telegram,test_email,test_pixabay,control_runner,runner_status,object_storage_config,test_object_storage
 from .models import IntegrationConfig
 
 LABELS={
@@ -202,9 +202,46 @@ CHANNEL_SECTION_LABELS = {
            'channels_bot_not_admin': 'Бот не видит подписчиков некоторых каналов. Сделайте его там администратором и проверьте снова.'},
 }
 for language, labels in CHANNEL_SECTION_LABELS.items(): LABELS[language].update(labels)
+STORAGE_SECTION_LABELS = {
+    'en': {'object_storage': 'File storage (Contabo Object Storage)', 'storage_enabled': 'Keep files in the bucket',
+           'storage_endpoint': 'Endpoint', 'storage_bucket': 'Bucket', 'storage_region': 'Region (leave empty for Contabo)',
+           'storage_access_key': 'Access key', 'storage_secret_key': 'Secret key',
+           'storage_hint': 'In the Contabo panel: Object Storage → Security & Access → S3 credentials. Save the keys, press Test, then tick the box. New files go to the bucket from then on, and files already on the server are moved there by the cleanup job within minutes. The server keeps only a short-lived working copy.',
+           'storage_in_bucket': 'In the bucket', 'storage_waiting': 'Waiting to upload', 'storage_files': 'files',
+           'storage_connected': 'The bucket accepted a test file, returned it and deleted it.',
+           'invalid_storage_endpoint': 'The endpoint must be an https address with nothing after the domain, like https://usc1.contabostorage.com.',
+           'invalid_storage_bucket': 'That is not a valid bucket name.', 'invalid_storage_region': 'That is not a valid region name.',
+           'invalid_storage_key': 'That does not look like an S3 access or secret key.',
+           'object_storage_not_configured': 'Save the access key and secret key before turning file storage on.',
+           'object_storage_connection_failed': 'The bucket did not accept the test file. Check the keys, bucket name and endpoint.'},
+    'uz': {'object_storage': 'Fayl ombori (Contabo Object Storage)', 'storage_enabled': 'Fayllarni bucket’da saqlash',
+           'storage_endpoint': 'Endpoint', 'storage_bucket': 'Bucket', 'storage_region': 'Region (Contabo uchun bo‘sh qoldiring)',
+           'storage_access_key': 'Access key', 'storage_secret_key': 'Secret key',
+           'storage_hint': 'Contabo panelida: Object Storage → Security & Access → S3 credentials. Kalitlarni saqlang, «Tekshirish»ni bosing, keyin belgini qo‘ying. Shundan so‘ng yangi fayllar bucket’ga tushadi, serverdagi mavjud fayllar esa bir necha daqiqada tozalash jarayoni orqali ko‘chiriladi. Serverda faqat qisqa muddatli ishchi nusxa qoladi.',
+           'storage_in_bucket': 'Bucket’da', 'storage_waiting': 'Yuklanishni kutmoqda', 'storage_files': 'ta fayl',
+           'storage_connected': 'Bucket sinov faylini qabul qildi, qaytardi va o‘chirdi.',
+           'invalid_storage_endpoint': 'Endpoint https manzil bo‘lishi kerak va domendan keyin hech narsa bo‘lmasin, masalan https://usc1.contabostorage.com.',
+           'invalid_storage_bucket': 'Bucket nomi noto‘g‘ri.', 'invalid_storage_region': 'Region nomi noto‘g‘ri.',
+           'invalid_storage_key': 'Bu S3 access yoki secret key’ga o‘xshamaydi.',
+           'object_storage_not_configured': 'Fayl omborini yoqishdan oldin access key va secret key’ni saqlang.',
+           'object_storage_connection_failed': 'Bucket sinov faylini qabul qilmadi. Kalitlar, bucket nomi va endpoint’ni tekshiring.'},
+    'ru': {'object_storage': 'Хранилище файлов (Contabo Object Storage)', 'storage_enabled': 'Хранить файлы в бакете',
+           'storage_endpoint': 'Endpoint', 'storage_bucket': 'Бакет', 'storage_region': 'Регион (для Contabo оставьте пустым)',
+           'storage_access_key': 'Access key', 'storage_secret_key': 'Secret key',
+           'storage_hint': 'В панели Contabo: Object Storage → Security & Access → S3 credentials. Сохраните ключи, нажмите «Проверить», затем отметьте флажок. После этого новые файлы попадают в бакет, а файлы, уже лежащие на сервере, переносятся туда задачей очистки за несколько минут. На сервере остаётся только короткоживущая рабочая копия.',
+           'storage_in_bucket': 'В бакете', 'storage_waiting': 'Ждут загрузки', 'storage_files': 'файлов',
+           'storage_connected': 'Бакет принял тестовый файл, вернул его и удалил.',
+           'invalid_storage_endpoint': 'Endpoint должен быть https-адресом без пути после домена, например https://usc1.contabostorage.com.',
+           'invalid_storage_bucket': 'Некорректное имя бакета.', 'invalid_storage_region': 'Некорректное имя региона.',
+           'invalid_storage_key': 'Это не похоже на S3 access или secret key.',
+           'object_storage_not_configured': 'Сохраните access key и secret key, прежде чем включать хранилище.',
+           'object_storage_connection_failed': 'Бакет не принял тестовый файл. Проверьте ключи, имя бакета и endpoint.'},
+}
+for language, labels in STORAGE_SECTION_LABELS.items(): LABELS[language].update(labels)
+
 
 @require_staff()
-@sensitive_post_parameters('token','api_key','client_secret','password','secret_key','pixabay_key')
+@sensitive_post_parameters('token','api_key','client_secret','password','secret_key','pixabay_key','access_key')
 @require_http_methods(['GET','POST'])
 def integrations(request):
     data=context(request,'integrations');labels=LABELS[data['lang']];data['i']=labels;data['title']=labels['integrations']
@@ -212,11 +249,12 @@ def integrations(request):
         action=request.POST.get('action','save')
         try:
             key=request.POST.get('integration','telegram')
-            if action!='save' and key!='telegram' and not (key in ('email','pixabay','channels') and action=='test'):raise DomainError('invalid_parameters')
+            if action!='save' and key!='telegram' and not (key in ('email','pixabay','channels','object_storage') and action=='test'):raise DomainError('invalid_parameters')
             if action=='save':save_config(key,request.POST);message='saved'
             elif action=='test':
                 if key=='email':test_email();message='email_connected'
                 elif key=='pixabay':test_pixabay();message='pixabay_connected'
+                elif key=='object_storage':test_object_storage();message='storage_connected'
                 elif key=='channels':test_channels();message='channels_connected'
                 else:test_telegram();message='connected'
             elif action in ('start','stop'):
@@ -244,6 +282,10 @@ def integrations(request):
     data['antibot']['hostnames_text'] = '\n'.join(antibot['allowed_hostnames'])
     photos=pixabay_config()
     data['pixabay'] = {key: photos[key] for key in ('enabled','configured','ready')}
+    # The keys never reach the page: only whether they are saved.
+    from apps.core import storage
+    bucket=object_storage_config()
+    data['object_storage']={**{key: bucket[key] for key in ('enabled','configured','ready','endpoint','bucket','region')},**storage.health()}
     gate=channel_gate_config()
     data['channels']={'enabled':gate['enabled'],'ready':gate['ready'],
                       'text':'\n'.join(c['chat'] if c['url']=='https://t.me/'+c['chat'].lstrip('@') else c['url']+' '+c['chat'] for c in gate['channels']),

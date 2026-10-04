@@ -116,13 +116,13 @@ def download_file(request, pk):
     """
     from django.http import FileResponse
     from apps.core.models import FileAsset
-    from apps.core.services import storage_path
     asset = FileAsset.objects.select_related('account').filter(pk=pk).first()
     if not asset:
         return HttpResponseBadRequest('Unknown file.')
     if asset.state != 'ready' or asset.expires_at <= timezone.now():
         return HttpResponseBadRequest('This file has expired or been removed.')
-    path = storage_path(asset.object_key)
+    from apps.core import storage
+    path = storage.local(asset.object_key)
     if not path.is_file():
         return HttpResponseBadRequest('This file is no longer stored.')
     audit(request.ops_user, 'file.download', pk,

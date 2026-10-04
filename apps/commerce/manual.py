@@ -177,8 +177,8 @@ def _store(payment, data, extension):
 
 def attach_receipt(account, payment_id, raw, note='', channel=None):
     """Keep the customer's receipt and put the payment in front of the owner."""
+    from apps.core import storage
     from apps.core.customer_auth import auth_limit
-    from apps.core.services import storage_path
     from .models import ManualPayment
     payment = ManualPayment.objects.filter(pk=payment_id, account=account).first()
     if not payment:
@@ -195,7 +195,7 @@ def attach_receipt(account, payment_id, raw, note='', channel=None):
     with transaction.atomic():
         payment = ManualPayment.objects.select_for_update().get(pk=payment.pk)
         if payment.status not in ManualPayment.OPEN:
-            storage_path(key).unlink(missing_ok=True)
+            storage.delete(key)
             raise DomainError('manual_payment_closed', 409)
         replaced = payment.receipt_key
         payment.receipt_key, payment.receipt_type, payment.receipt_size = key, mime, len(data)
@@ -204,9 +204,10 @@ def attach_receipt(account, payment_id, raw, note='', channel=None):
         if channel in ('web', 'bot'):
             payment.channel = channel
         payment.save()
+        storage.save(key, mime)
         _notice(payment, 'staff_new')
     if replaced:
-        storage_path(replaced).unlink(missing_ok=True)
+        storage.delete(replaced)
     _action(account, None, 'manual_payment.submitted', payment, {'receipt_type': mime})
     return payment
 
@@ -405,7 +406,7 @@ def _action(account, actor, action, payment, metadata, reason=''):
 
 def housekeeping(now=None):
     """Expire stale requests, queue renewal reminders, delete old receipts."""
-    from apps.core.services import storage_path
+    from apps.core import storage
     from .models import ManualPayment, SubscriptionPeriod
     now = now or timezone.now()
     expired = ManualPayment.objects.filter(status='awaiting', expires_at__lte=now).update(status='expired')
@@ -423,7 +424,7 @@ def housekeeping(now=None):
     stale = ManualPayment.objects.filter(decided_at__lte=cutoff, receipt_deleted_at__isnull=True).exclude(receipt_key='')
     purged = 0
     for payment in stale.iterator():
-        storage_path(payment.receipt_key).unlink(missing_ok=True)
+        storage.delete(payment.receipt_key)
         ManualPayment.objects.filter(pk=payment.pk).update(receipt_key='', receipt_deleted_at=now)
         purged += 1
     return {'expired': expired, 'purged': purged}

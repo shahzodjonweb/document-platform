@@ -120,7 +120,8 @@ def manual_payment_receipt(request,pk):
     payment=ManualPayment.objects.filter(pk=pk).first()
     if not payment or not payment.receipt_key:raise Http404()
     audit(request.ops_user,'payment.receipt_view',payment.pk,f'Reviewing card transfer {payment.reference}')
-    path=storage_path(payment.receipt_key)
+    from apps.core import storage
+    path=storage.local(payment.receipt_key)
     if not path.exists():raise Http404()
     response=FileResponse(path.open('rb'),content_type=payment.receipt_type or 'application/octet-stream')
     kind='attachment' if payment.receipt_type=='application/pdf' else 'inline'

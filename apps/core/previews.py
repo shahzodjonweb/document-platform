@@ -14,6 +14,7 @@ from processors import ProcessorError
 from processors.sandbox import execute_sandbox
 from .models import FileAsset,PagePreview
 from .services import storage_path
+from . import storage
 from .errors import DomainError
 from .secrets import get_secret,decrypt
 
@@ -25,7 +26,7 @@ def preview_asset(account,asset_id,page=1,secret_id=None):
     if asset.state!='ready' or asset.expires_at<=timezone.now(): raise DomainError('file_expired',410)
     if type(page) is not int or page<1 or page>asset.page_count: raise DomainError('invalid_pages')
     if asset.mime_type!='application/pdf': raise DomainError('preview_unavailable',409)
-    path=storage_path(asset.object_key)
+    path=storage.local(asset.object_key)
     if not path.is_file(): raise DomainError('file_unavailable',404)
     deadline=asset.expires_at
     password=None
@@ -34,9 +35,9 @@ def preview_asset(account,asset_id,page=1,secret_id=None):
         password=decrypt(handle)
         deadline=min(deadline,handle.expires_at)
     cached=PagePreview.objects.select_related('file').filter(asset=asset,page=page).first()
-    if cached and cached.file.state=='ready' and cached.file.expires_at>timezone.now() and storage_path(cached.file.object_key).is_file(): return cached.file
+    if cached and cached.file.state=='ready' and cached.file.expires_at>timezone.now() and storage.exists(cached.file.object_key): return cached.file
     if cached:
-        storage_path(cached.file.object_key).unlink(missing_ok=True)
+        storage.delete(cached.file.object_key)
         cached.file.delete()
     scratch_root=storage_path('scratch');scratch_root.mkdir(parents=True,exist_ok=True,mode=0o700)
     with tempfile.TemporaryDirectory(prefix='preview-',dir=scratch_root) as scratch:
@@ -64,5 +65,6 @@ def preview_asset(account,asset_id,page=1,secret_id=None):
             shutil.copyfile(image,target);os.chmod(target,0o600)
             preview=FileAsset.objects.create(account=account,name=f'page-{page}.png',object_key=key,mime_type='image/png',size_bytes=target.stat().st_size,page_count=1,sha256=hashlib.sha256(target.read_bytes()).hexdigest(),metadata={'kind':'image','source_asset_id':str(asset.id),'page':page,'dpi':96},expires_at=deadline)
             PagePreview.objects.create(asset=asset,page=page,file=preview)
+            storage.save(key,'image/png')
             return preview
         except ProcessorError as exc: raise DomainError(exc.code) from None

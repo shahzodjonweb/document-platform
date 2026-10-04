@@ -330,3 +330,20 @@ class ChannelMembership(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=['account', 'chat'], name='one_channel_membership')]
+
+
+class StoredObject(models.Model):
+    """One file the platform keeps, by its key.
+
+    With object storage connected, the bucket is where the file lives and this
+    row says whether it has arrived there (`remote`). The shared volume keeps a
+    working copy only while a task, preview or download needs it. Other records
+    (a FileAsset, a receipt, an AI review copy) refer to the file by this key.
+    """
+    key = models.CharField(max_length=500, primary_key=True)
+    size = models.PositiveBigIntegerField(default=0)
+    content_type = models.CharField(max_length=120, blank=True, default='')
+    remote = models.BooleanField(default=False, db_index=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    uploaded_at = models.DateTimeField(null=True, blank=True)
+    used_at = models.DateTimeField(default=timezone.now, db_index=True)

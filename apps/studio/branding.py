@@ -4,7 +4,8 @@ import io
 import re
 from PIL import Image, ImageOps
 from apps.core.errors import DomainError
-from apps.core.services import owned_assets, storage_path
+from apps.core.services import owned_assets
+from apps.core import storage
 
 
 def prepare_branding(account, feature_id, options):
@@ -55,7 +56,7 @@ def render_style(account,data,feature_id="ai.pdf_text"):
     style.update(accent=brand['accent'],brand_name=brand['name'])
     if brand.get('logo_asset_id'):
         asset=_logo_asset(account,brand['logo_asset_id'])
-        path=storage_path(asset.object_key)
+        path=storage.local(asset.object_key)
         if path.stat().st_size>2*1024*1024:raise DomainError('invalid_image')
         with path.open('rb') as source:raw=source.read(2*1024*1024+1)
         if len(raw)>2*1024*1024:raise DomainError('invalid_image')

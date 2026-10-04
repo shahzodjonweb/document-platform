@@ -12,7 +12,8 @@ from django.utils import timezone
 from apps.core.errors import DomainError,error_data
 from apps.core.models import Account,Quote,Job
 from apps.core.policy import plan_limits,POLICY_VERSION,FEATURES
-from apps.core.services import create_quote,submit_job,execute_job,owned_assets,validate_inputs,quote_affordable,engine_inspect,storage_path,TERMINAL
+from apps.core.services import create_quote,submit_job,execute_job,owned_assets,validate_inputs,quote_affordable,engine_inspect,TERMINAL
+from apps.core import storage
 from apps.core.serializers import job_data
 from apps.core.views import api,body,throttle
 from .batch_models import BatchQuote,BatchRun,BatchItem
@@ -62,7 +63,7 @@ def _form_groups(account,template_id,template_version,input_ids):
         if 'form_fields' not in metadata:
             # Result files may predate richer inspection metadata. Never parse
             # untrusted PDF bytes inside the web process to discover fields.
-            metadata=engine_inspect(storage_path(asset.object_key))
+            metadata=engine_inspect(storage.local(asset.object_key))
         fields={f['name']:f['type'] for f in metadata.get('form_fields',[])}
         for command in parameters['commands']:
             if command['field'] not in fields:raise DomainError('form_field_not_found')

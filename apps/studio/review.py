@@ -67,6 +67,7 @@ def record_request(job):
 
 def keep_output(job):
     """Copy the document a recorded generation produced, out of the 24-hour files."""
+    from apps.core import storage
     from apps.core.services import storage_path
     from .models import GenerationRecord
     record = GenerationRecord.objects.filter(job=job).first()
@@ -78,7 +79,7 @@ def keep_output(job):
         if not artifact:
             return record
         asset = artifact.file
-        source = storage_path(asset.object_key)
+        source = storage.local(asset.object_key)
         suffix = SUFFIXES.get(asset.mime_type) or Path(asset.name).suffix[:8]
         key = f'{_folder(record)}/document{suffix}'
         target = storage_path(key)
@@ -89,6 +90,7 @@ def keep_output(job):
         record.output_size, record.output_pages = target.stat().st_size, asset.page_count or 0
         with transaction.atomic():
             record.save(update_fields=['output_key', 'output_name', 'output_mime', 'output_size', 'output_pages'])
+            storage.save(key, asset.mime_type)
         return record
     except Exception:
         logger.exception('Could not keep the AI document of job %s for review', job.pk)
@@ -105,25 +107,29 @@ def request_data(record):
 
 
 def output_path(record):
-    """The kept document, if it is still there."""
-    from apps.core.services import storage_path
+    """The kept document, if it is still there (fetched from the bucket if need be)."""
+    from apps.core import storage
     if not record.output_key:
         return None
-    path = storage_path(record.output_key)
+    path = storage.local(record.output_key)
     return path if path.is_file() else None
 
 
 def page_image(record, page):
     """One page of a kept PDF as a PNG, rendered once and cached beside it."""
     import tempfile
+    from apps.core import storage
     from apps.core.services import storage_path
     from processors.sandbox import execute_sandbox
     source = output_path(record)
     if not source or record.output_mime != 'application/pdf' or not 1 <= page <= max(record.output_pages, 1):
         return None
-    cached = storage_path(f'{_folder(record)}/pages/{page}.png')
-    if cached.is_file():
-        return cached
+    cached_key = f'{_folder(record)}/pages/{page}.png'
+    if storage.exists(cached_key):
+        cached = storage.local(cached_key)
+        if cached.is_file():
+            return cached
+    cached = storage_path(cached_key)
     scratch_root = storage_path('scratch')
     scratch_root.mkdir(parents=True, exist_ok=True, mode=0o700)
     with tempfile.TemporaryDirectory(prefix='review-', dir=scratch_root) as scratch:
@@ -139,16 +145,18 @@ def page_image(record, page):
     cached.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     cached.write_bytes(payload)
     cached.chmod(0o600)
+    storage.save(cached_key, 'image/png')
     return cached
 
 
 def cleanup(now=None):
     """Delete records past their review period, and folders no record owns."""
+    from apps.core import storage
     from apps.core.services import storage_path
     from .models import GenerationRecord
     now = now or timezone.now()
     for record in GenerationRecord.objects.filter(expires_at__lte=now).iterator():
-        shutil.rmtree(storage_path(_folder(record)), ignore_errors=True)
+        storage.delete_prefix(_folder(record) + '/')
         record.delete()
     root = storage_path(PREFIX)
     if not root.is_dir():

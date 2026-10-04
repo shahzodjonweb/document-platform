@@ -16,7 +16,7 @@ from .errors import DomainError, error_data
 from .antibot import require_web_verification
 from .identity import resolve_account, exchange_miniapp, create_challenge, get_bound_challenge, exchange_challenge
 from .policy import catalog, SEED, FEATURES, usage_snapshot
-from .services import upload_file, create_quote, submit_job, execute_job, cancel_job, storage_path, record_event
+from .services import upload_file, create_quote, submit_job, execute_job, cancel_job, record_event
 from .serializers import account_data, asset_data, quote_data, job_data
 
 def current_account(request):
@@ -199,16 +199,18 @@ def file_detail(request,asset_id):
         asset.state='revoked'
         asset.expires_at=timezone.now()
         asset.save(update_fields=['state','expires_at'])
-        storage_path(asset.object_key).unlink(missing_ok=True)
+        from . import storage
+        storage.delete(asset.object_key)
         for preview in asset.page_previews.select_related('file'):
             preview.file.state='revoked';preview.file.expires_at=timezone.now()
             preview.file.save(update_fields=['state','expires_at'])
-            storage_path(preview.file.object_key).unlink(missing_ok=True)
+            storage.delete(preview.file.object_key)
     return asset_data(asset)
 
 def download_asset(request,asset):
     if asset.state!='ready' or asset.expires_at<=timezone.now(): raise DomainError('file_expired',410)
-    path=storage_path(asset.object_key)
+    from . import storage
+    path=storage.local(asset.object_key)
     if not path.is_file(): raise DomainError('file_unavailable',404)
     response=FileResponse(path.open('rb'),as_attachment=True,filename=asset.name,content_type=asset.mime_type)
     response['Cache-Control']='private, no-store'

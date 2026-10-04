@@ -50,6 +50,22 @@
     <button class="button primary" name="action" value="save">{{ i.save }}</button>
   </form>
 </section>
+<section class="panel info-panel" id="object-storage-settings">
+  <div class="panel-heading"><h2>{{ i.object_storage }}</h2><span class="badge">{% if object_storage.ready %}{{ i.active }}{% elif object_storage.enabled %}{{ i.setup_required }}{% else %}{{ i.inactive }}{% endif %}</span></div>
+  <p>{{ i.provider_status }}: {% if object_storage.configured %}{{ i.configured }}{% else %}{{ i.missing }}{% endif %}</p>
+  {% if object_storage.configured %}<p>{{ i.storage_in_bucket }}: <strong>{{ object_storage.remote_files }}</strong> {{ i.storage_files }} · {{ object_storage.remote_bytes|filesizeformat }} · {{ i.storage_waiting }}: <strong>{{ object_storage.waiting_files }}</strong> {{ i.storage_files }}</p>{% endif %}
+  <form method="post" class="integration-form" autocomplete="off">
+    {% csrf_token %}<input type="hidden" name="integration" value="object_storage">
+    <input type="hidden" name="enabled" value="false"><label style="flex-direction:row;align-items:center"><input style="width:20px;flex-shrink:0" type="checkbox" name="enabled" value="true" {% if object_storage.enabled %}checked{% endif %}> {{ i.storage_enabled }}</label>
+    <label>{{ i.storage_endpoint }}<input name="endpoint" inputmode="url" maxlength="200" spellcheck="false" value="{{ object_storage.endpoint }}"></label>
+    <label>{{ i.storage_bucket }}<input name="bucket" maxlength="63" spellcheck="false" value="{{ object_storage.bucket }}"></label>
+    <label>{{ i.storage_region }}<input name="region" maxlength="32" spellcheck="false" value="{{ object_storage.region }}"></label>
+    <label>{{ i.storage_access_key }}<input type="password" name="access_key" autocomplete="new-password" maxlength="128" spellcheck="false"></label>
+    <label>{{ i.storage_secret_key }}<input type="password" name="secret_key" autocomplete="new-password" maxlength="128" spellcheck="false"></label><small>{{ i.secret_hint }}</small>
+    <p>{{ i.storage_hint }}</p>
+    <div class="integration-actions"><button class="button primary" name="action" value="save">{{ i.save }}</button><button class="button secondary" name="action" value="test">{{ i.test }}</button></div>
+  </form>
+</section>
 <section class="panel info-panel" id="pixabay-settings">
   <div class="panel-heading"><h2>{{ i.pixabay }}</h2><span class="badge">{% if pixabay.ready %}{{ i.active }}{% elif pixabay.enabled %}{{ i.setup_required }}{% else %}{{ i.inactive }}{% endif %}</span></div>
   <p>{{ i.provider_status }}: {% if pixabay.configured %}{{ i.configured }}{% else %}{{ i.missing }}{% endif %}</p>

@@ -185,7 +185,7 @@ def test_large_result_has_actionable_web_link_without_reading_the_file(monkeypat
     artifact.file.size_bytes = 51 * 1024 * 1024
     artifact.file.save(update_fields=['size_bytes'])
     monkeypatch.setattr('telegram.delivery.telegram_config', lambda: {'webapp_url': 'https://pdfmaster.example/uz/app'})
-    monkeypatch.setattr('telegram.delivery.storage_path', lambda key: (_ for _ in ()).throw(AssertionError('Large file must not be read')))
+    monkeypatch.setattr('apps.core.storage.read_bytes', lambda key: (_ for _ in ()).throw(AssertionError('Large file must not be read')))
     bot = Mock(send_message=AsyncMock(return_value=Mock(message_id=323)), send_document=AsyncMock())
     delivery = BotDelivery.objects.get()
     asyncio.run(attempt(delivery.id, bot))

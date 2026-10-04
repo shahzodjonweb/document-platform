@@ -12,7 +12,7 @@ from django.db import transaction
 from django.utils import timezone
 from apps.core.errors import DomainError
 from apps.core.models import BotCallback
-from apps.core.services import storage_path
+from apps.core import storage
 from apps.commerce.models import BotDelivery
 from apps.commerce.providers import telegram_config
 from .ux_copy import UX
@@ -161,7 +161,7 @@ async def attempt(delivery_id,bot):
             controls.inline_keyboard.insert(0, [InlineKeyboardButton(text=copy['open'], url=cfg['webapp_url'])])
             response=await bot.send_message(delivery.account.telegram_user_id,copy['large'],reply_markup=controls)
         else:
-            payload=await sync_to_async(lambda:storage_path(asset.object_key).read_bytes())()
+            payload=await sync_to_async(lambda:storage.read_bytes(asset.object_key))()
             # The buttons belong to the owner; whoever the file is forwarded to
             # finds the way to the bot in the caption itself.
             cfg=await sync_to_async(telegram_config)()
