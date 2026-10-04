@@ -142,6 +142,105 @@ COPY = {
 }
 
 
+# What each plan includes, written from the live plan settings so an edit in
+# the admin is what customers read. People choose a plan by what it gives them,
+# so the plans screen leads with this and only then says how to pay.
+PLAN_COPY = {
+    'en': {
+        'title': '<b>📋 Plans</b>',
+        'current': 'Your plan: <b>{plan}</b>',
+        'head_free': "<b>{icon} {name}</b> — 0 so'm",
+        'head': "<b>{icon} {name}</b> — {price} so'm / 30 days",
+        'yours': ' · ✅ yours',
+        'tasks': '{n} file tasks every 30 days',
+        'tasks_daily': ' (up to {n} a day)',
+        'ai_daily': 'Up to {n} AI documents or decks a day',
+        'ai_unlimited': 'AI documents and decks with no daily limit',
+        'ai_credits': '{n} AI credits',
+        'ai_size': 'AI documents up to {pages} pages, decks up to {slides} slides',
+        'files': 'Files up to {mib} MB, up to {pages} pages per task',
+        'parallel': '{n} tasks at once',
+        'workflows': '{n} saved workflows',
+        'how': '<b>How to pay</b>\n1. Choose a plan below.\n2. Send the amount from your bank app to the card shown.\n'
+               '3. Send the receipt here. We switch your plan on after checking, usually within a few hours.',
+    },
+    'uz': {
+        'title': '<b>📋 Tariflar</b>',
+        'current': 'Hozirgi tarifingiz: <b>{plan}</b>',
+        'head_free': "<b>{icon} {name}</b> — 0 so'm",
+        'head': "<b>{icon} {name}</b> — 30 kun uchun {price} so'm",
+        'yours': ' · ✅ sizniki',
+        'tasks': '30 kunda {n} ta fayl vazifasi',
+        'tasks_daily': ' (kuniga {n} tagacha)',
+        'ai_daily': 'Kuniga {n} tagacha AI hujjat yoki taqdimot',
+        'ai_unlimited': 'AI hujjat va taqdimotlar — kunlik cheklovsiz',
+        'ai_credits': '{n} AI kredit',
+        'ai_size': 'AI hujjat {pages} sahifagacha, taqdimot {slides} slaydgacha',
+        'files': 'Fayl {mib} MB gacha, bitta vazifada {pages} sahifagacha',
+        'parallel': 'Bir vaqtda {n} ta vazifa',
+        'workflows': '{n} ta saqlangan jarayon',
+        'how': '<b>Qanday to‘lanadi</b>\n1. Quyidan tarifni tanlang.\n2. Ko‘rsatilgan kartaga bank ilovangizdan pul o‘tkazing.\n'
+               '3. Kvitansiyani shu yerga yuboring. Tekshirgach tarifingizni yoqamiz, odatda bir necha soat ichida.',
+    },
+    'ru': {
+        'title': '<b>📋 Тарифы</b>',
+        'current': 'Ваш тариф: <b>{plan}</b>',
+        'head_free': '<b>{icon} {name}</b> — 0 сум',
+        'head': '<b>{icon} {name}</b> — {price} сум за 30 дней',
+        'yours': ' · ✅ ваш',
+        'tasks': '{n} задач с файлами за 30 дней',
+        'tasks_daily': ' (до {n} в день)',
+        'ai_daily': 'До {n} AI-документов или презентаций в день',
+        'ai_unlimited': 'AI-документы и презентации без дневного лимита',
+        'ai_credits': '{n} AI-кредитов',
+        'ai_size': 'AI-документ до {pages} страниц, презентация до {slides} слайдов',
+        'files': 'Файлы до {mib} МБ, до {pages} страниц в задаче',
+        'parallel': 'Одновременно задач: {n}',
+        'workflows': 'Сохранённых процессов: {n}',
+        'how': '<b>Как оплатить</b>\n1. Выберите тариф ниже.\n2. Переведите сумму из банковского приложения на указанную карту.\n'
+               '3. Отправьте сюда квитанцию. После проверки включим тариф, обычно в течение нескольких часов.',
+    },
+}
+PLAN_ICONS = {'free': '🆓', 'plus': '⭐', 'premium': '💎'}
+
+
+def plan_name(account, plan):
+    return copy(account, 'free') if plan == 'free' else plan.title()
+
+
+def plans_overview(account):
+    """Every plan on offer, what it includes, and which one the customer has."""
+    from apps.commerce.services import effective_plan
+    from apps.core.policy import limits_for_plan
+    words = PLAN_COPY.get(account.locale, PLAN_COPY['en'])
+    count = lambda value: money(int(value))
+    current = effective_plan(account)
+    blocks = [words['title'], words['current'].format(plan=html.escape(plan_name(account, current)))]
+    for plan in ('free', 'plus', 'premium'):
+        limits = limits_for_plan(plan)
+        price = limits.get('price_uzs')
+        if plan != 'free' and not (type(price) is int and price > 0):
+            continue  # not on sale
+        head = words['head_free' if plan == 'free' else 'head'].format(
+            icon=PLAN_ICONS[plan], name=html.escape(plan_name(account, plan)), price=money(price or 0))
+        if plan == current:
+            head += words['yours']
+        tasks = words['tasks'].format(n=count(limits['file_tasks']))
+        if limits.get('daily_file_tasks'):
+            tasks += words['tasks_daily'].format(n=count(limits['daily_file_tasks']))
+        daily_ai = limits.get('daily_ai_documents')
+        ai = words['ai_daily'].format(n=count(daily_ai)) if daily_ai else words['ai_unlimited']
+        lines = [tasks, f"{ai} · {words['ai_credits'].format(n=count(limits['ai_credits']))}",
+                 words['ai_size'].format(pages=limits['max_generated_pdf_pages'], slides=limits['max_generated_slides']),
+                 words['files'].format(mib=limits['max_file_mib'], pages=count(limits['max_pages_per_job']))]
+        extras = [words['parallel'].format(n=limits['concurrent_jobs'])] if limits.get('concurrent_jobs', 1) > 1 else []
+        if limits.get('saved_workflows'):
+            extras.append(words['workflows'].format(n=limits['saved_workflows']))
+        if extras:
+            lines.append(' · '.join(extras))
+        blocks.append(head + '\n' + '\n'.join(f'• {line}' for line in lines))
+    return '\n\n'.join(blocks)
+
 def copy(account, key):
     return COPY.get(account.locale, COPY['en'])[key]
 
@@ -213,13 +312,14 @@ async def show_offers(message, account, edit=False):
         )])
     rows.append([await button(account, 'subscription', 'subscription')])
     rows.extend(await navigation(account))
+    overview = await sync_to_async(plans_overview)(account)
     if cards['enabled']:
-        body = copy(account, 'card_intro') + '\n\n' + copy(account, 'automatic_soon')
+        tail = PLAN_COPY.get(account.locale, PLAN_COPY['en'])['how'] + '\n\n' + html.escape(copy(account, 'automatic_soon'))
     else:
-        body = copy(account, 'offers' if offers else 'unavailable')
+        tail = html.escape(copy(account, 'offers' if offers else 'unavailable'))
     if offers:
-        body += '\n\n' + copy(account, 'sandbox' if offers[0].sandbox else 'live')
-    await show(message, body, rows, edit)
+        tail += '\n\n' + html.escape(copy(account, 'sandbox' if offers[0].sandbox else 'live'))
+    await show(message, overview + '\n\n' + tail, rows, edit, 'HTML')
 
 
 async def show_manual(message, account, plan, edit=False):
