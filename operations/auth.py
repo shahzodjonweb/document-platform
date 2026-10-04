@@ -104,7 +104,7 @@ DESCRIPTIONS = {
     'quota.grant': 'Granted extra allowance', 'job.cancel': 'Cancelled a task',
     'account.plan_assign': 'Assigned a plan', 'account.plan_clear': 'Removed an assigned plan',
     'plan.limits': 'Changed plan limits', 'plan.reset': 'Reset a plan to its defaults',
-    'file.download': 'Opened a customer document',
+    'file.download': 'Opened a customer document', 'generation.view': 'Opened a customer’s AI request', 'generation.file': 'Opened a document the AI made for a customer',
     'integration.save': 'Saved integration settings', 'integration.test': 'Tested an integration',
     'integration.start': 'Started the local bot', 'integration.stop': 'Stopped the local bot',
     'payment.refund': 'Refunded a payment', 'payment.manual_approve': 'Approved a card payment',

@@ -158,3 +158,27 @@ class WorkflowRun(models.Model):
         constraints=[models.UniqueConstraint(fields=['account','idempotency_key'],name='one_workflow_run')]
 
 from .batch_models import BatchQuote,BatchRun,BatchItem
+
+
+class GenerationRecord(models.Model):
+    """What a customer asked the AI for and what it made, kept for staff review.
+
+    The customer's own copies expire with the rest of their files after 24
+    hours. This copy is the team's: kept for `review.REVIEW_DAYS` so staff can
+    check the quality of what was made and stop misuse, then deleted. The
+    request is encrypted like the draft it came from; the document is copied
+    under its own storage prefix, outside the customer-file backstop.
+    """
+    id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
+    account=models.ForeignKey('core.Account',on_delete=models.CASCADE,related_name='generation_records')
+    job=models.OneToOneField('core.Job',on_delete=models.CASCADE,related_name='generation_record')
+    feature_id=models.CharField(max_length=100)
+    channel=models.CharField(max_length=16,blank=True,default='')
+    encrypted_request=models.BinaryField()
+    output_key=models.CharField(max_length=500,blank=True,default='')
+    output_name=models.CharField(max_length=255,blank=True,default='')
+    output_mime=models.CharField(max_length=120,blank=True,default='')
+    output_size=models.PositiveBigIntegerField(default=0)
+    output_pages=models.PositiveIntegerField(default=0)
+    created_at=models.DateTimeField(default=timezone.now,db_index=True)
+    expires_at=models.DateTimeField(db_index=True)

@@ -78,3 +78,18 @@ def test_a_typed_message_after_a_pause_is_only_called_late_when_a_question_was_p
     dispatch_local(customer, text='1-3')
     assert any(EN['stale_reply'] in text for text in outbound_texts(customer))
     assert BotConversation.objects.get(pk=customer.telegram_user_id).state == ''
+
+
+def test_a_screen_button_outlives_the_cleanup_but_a_committing_one_does_not(customer):
+    from apps.core.services import cleanup_expired
+    chat = Chat(customer)
+    chat.do(text='/plans')
+    tokens = dict(BotCallback.objects.filter(account=customer).values_list('action', 'pk'))
+    BotCallback.objects.create(token='fresh-run', account=customer, action='run', payload={},
+                               expires_at=timezone.now() + timedelta(minutes=30))
+    with_time = timezone.now() + timedelta(hours=2)
+    from unittest import mock
+    with mock.patch('django.utils.timezone.now', return_value=with_time):
+        cleanup_expired()
+    assert BotCallback.objects.filter(pk=tokens['subscription']).exists(), 'screen buttons stay for weeks'
+    assert not BotCallback.objects.filter(pk='fresh-run').exists(), 'a run button still goes after 30 minutes'

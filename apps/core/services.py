@@ -256,6 +256,9 @@ def submit_job(account, quote_id, idempotency_key, origin='web'):
         handle.job=job
         handle.save(update_fields=['job'])
     OutboxEvent.objects.create(job=job)
+    if quote.feature_id in GENERATION_IDS:
+        from apps.studio.review import record_request
+        record_request(job)
     record_event(account,'job.accepted',job=job,channel=origin)
     return job,True
 
@@ -293,6 +296,9 @@ def settle_job(job_id, status, actual=None, error_code='', outputs=None, warning
             from telegram.delivery import enqueue
             enqueue(artifact, f'job:{job.id}:{artifact.id}')
     FileAsset.objects.filter(account=job.account,id__in=job.input_ids).update(expires_at=deadline)
+    if status == 'succeeded' and outputs:
+        from apps.studio.review import keep_output
+        keep_output(job)
     job.status,job.error_code,job.completed_at,job.settled_meters = status,error_code,timezone.now(),actual if status=='succeeded' else {m:0 for m in job.meters}
     job.warnings,job.engine,job.lease_expires_at = warnings or [],engine,None
     job.save(update_fields=['status','error_code','completed_at','settled_meters','warnings','engine','lease_expires_at'])
@@ -412,6 +418,8 @@ def cleanup_expired():
             conversation.save(update_fields=['pending'])
     from apps.studio.models import GenerationDraft, EducationProject, EditorDocument, ShareGrant
     GenerationDraft.objects.filter(expires_at__lte=now).delete()
+    from apps.studio.review import cleanup as cleanup_review
+    cleanup_review(now)
     EducationProject.objects.filter(expires_at__lte=now).delete()
     EditorDocument.objects.filter(file__expires_at__lte=now).delete()
     ShareGrant.objects.filter(expires_at__lte=now).delete()

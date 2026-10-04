@@ -1,0 +1,65 @@
+{% extends 'ops/base.html' %}
+{% load ops_labels %}
+{% block content %}
+<a class="back-link" href="/ops/generations?lang={{ lang }}">← {{ t.generations }}</a>
+<div class="page-heading">
+  <div>
+    <p class="eyebrow">{{ service }} · {{ record.created_at|date:'d M Y · H:i' }}</p>
+    <h1>{{ request_data.title|default:t.gen_request }}</h1>
+    <p class="page-description">{{ kept_until }}</p>
+  </div>
+</div>
+<section class="panel info-panel">
+  <dl>
+    <dt>{{ t.gen_customer }}</dt><dd><a class="table-link" href="/ops/users/{{ record.account_id }}?lang={{ lang }}">{{ record.account.display_name|default:record.account_id }} ↗</a></dd>
+    <dt>{{ t.gen_service }}</dt><dd>{{ service }}{% if request_data.output_format %} · {{ request_data.output_format|upper }}{% endif %}</dd>
+    <dt>{{ t.gen_language }}</dt><dd>{{ request_data.output_locale|upper|default:'—' }}</dd>
+    <dt>{{ t.gen_channel }}</dt><dd>{{ record.channel|default:'—' }}</dd>
+    <dt>{{ t.gen_task }}</dt><dd>{% if can_inspect_jobs %}<a class="mono table-link" href="/ops/jobs/{{ job.id }}?lang={{ lang }}">{{ job.id|stringformat:'s'|slice:':8' }} ↗</a>{% else %}<span class="mono">{{ job.id|stringformat:'s'|slice:':8' }}</span>{% endif %} <span class="badge status-{{ job.status }}">{% status_label job.status lang %}</span></dd>
+  </dl>
+</section>
+<section class="panel info-panel generation-request">
+  {% if request_data.revision %}
+  <h2>{{ t.gen_revision }}</h2>
+  <p class="request-text">{{ request_data.revision.request }}</p>
+  {% if request_data.revision.original_prompt %}<h3>{{ t.gen_original }}</h3><p class="request-text">{{ request_data.revision.original_prompt }}</p>{% endif %}
+  {% else %}
+  <h2>{{ t.gen_prompt }}</h2>
+  <p class="request-text">{{ request_data.prompt|default:'—' }}</p>
+  {% endif %}
+  {% if request_data.sources %}<h3>{{ t.gen_sources }}</h3><ul>{% for name in request_data.sources %}<li>{{ name }}</li>{% endfor %}</ul>{% endif %}
+  {% if request_data.questions %}<p class="muted">{{ t.gen_questions }}: {{ request_data.questions }}</p>{% endif %}
+</section>
+<section class="panel info-panel generation-result">
+  <h2>{{ t.gen_document_title }}</h2>
+  {% if kept %}
+    {% if is_pdf %}
+    <div class="page-viewer">
+      <img src="/ops/generations/{{ record.id }}/pages/{{ page }}" alt="{{ page_label }}">
+      <div class="pagination">
+        <span>{{ page_label }}</span>
+        <div>
+          {% if page > 1 %}<a href="?lang={{ lang }}&page={{ page|add:'-1' }}">← {{ t.gen_previous_page }}</a>{% endif %}
+          {% if page < pages %}<a href="?lang={{ lang }}&page={{ page|add:'1' }}">{{ t.gen_next_page }} →</a>{% endif %}
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <p class="muted">{{ t.gen_no_preview }}</p>
+    {% endif %}
+    <p><a class="button secondary" href="/ops/generations/{{ record.id }}/file">{{ t.gen_download }} · {{ record.output_name }}</a></p>
+  {% else %}
+  <p class="muted">{{ outcome }}</p>
+  {% endif %}
+</section>
+{% if request_data.sections %}
+<section class="panel info-panel generation-outline">
+  <h2>{{ t.gen_outline }}</h2>
+  <ol>
+    {% for section in request_data.sections %}
+    <li><strong>{{ section.heading|default:'—' }}</strong>{% if section.body %}<p class="request-text">{{ section.body }}</p>{% endif %}</li>
+    {% endfor %}
+  </ol>
+</section>
+{% endif %}
+{% endblock %}

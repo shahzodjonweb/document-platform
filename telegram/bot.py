@@ -45,8 +45,8 @@ async def account_for(user):
         account.locale=locale
         await sync_to_async(account.save)(update_fields=['locale'])
     return account
-# A button stays valid for 30 minutes, but old messages stay in the chat for
-# good, and customers scroll back and tap them. These actions only open a screen,
+# A button that commits something stays valid for 30 minutes, but old messages
+# stay in the chat for good, and customers scroll back and tap them. These actions only open a screen,
 # or carry a snapshot of the task they act on and refuse when it has moved on,
 # so they keep working however old their message is. The others — starting a
 # paid task, signing in, paying, changing a renewal, sending a message,
@@ -59,7 +59,10 @@ def usable(ref,now=None):
     return bool(ref) and (ref.expires_at>(now or timezone.now()) or ref.action in REUSABLE)
 async def callback(account,action,payload=None):
     token=secrets.token_urlsafe(12)
-    await sync_to_async(BotCallback.objects.create)(token=token,account=account,action=action,payload=payload or {},expires_at=timezone.now()+timedelta(minutes=30))
+    # Cleanup deletes a button once it expires, so one that opens a screen is
+    # given long enough to still be there when someone scrolls back to it.
+    lifetime=timedelta(days=30) if action in REUSABLE else timedelta(minutes=30)
+    await sync_to_async(BotCallback.objects.create)(token=token,account=account,action=action,payload=payload or {},expires_at=timezone.now()+lifetime)
     return token
 async def web_url(account,route=''):
     from apps.commerce.providers import telegram_config

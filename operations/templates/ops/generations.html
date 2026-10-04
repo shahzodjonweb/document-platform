@@ -1,0 +1,51 @@
+{% extends 'ops/base.html' %}
+{% load ops_labels %}
+{% block content %}
+<div class="page-heading">
+  <div>
+    <h1>{{ t.generations }}</h1>
+    <p class="page-description">{{ intro }}</p>
+  </div>
+</div>
+<section class="panel">
+  <form class="table-search generation-filters" method="get">
+    <input type="hidden" name="lang" value="{{ lang }}">
+    <input aria-label="{{ t.gen_who }}" name="q" placeholder="{{ t.gen_who }}" value="{{ who }}">
+    <input aria-label="{{ t.gen_words }}" name="text" placeholder="{{ t.gen_words }}" value="{{ words }}">
+    <select aria-label="{{ t.gen_service }}" name="service">
+      <option value="">{{ t.gen_all_services }}</option>
+      {% for key, label in services %}<option value="{{ key }}" {% if key == selected_service %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <button class="button secondary">{{ t.apply }}</button>
+  </form>
+  <div class="table-region" role="region" aria-label="{{ t.generations }}" tabindex="0">
+    <table>
+      <thead>
+        <tr><th>{{ t.gen_when }}</th><th>{{ t.gen_customer }}</th><th>{{ t.gen_service }}</th><th>{{ t.gen_request }}</th><th>{{ t.gen_result }}</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td class="muted">{{ row.record.created_at|date:'d M Y · H:i' }}</td>
+          <td><a class="table-link" href="/ops/users/{{ row.record.account_id }}?lang={{ lang }}">{{ row.record.account.display_name|default:row.record.account_id }}</a></td>
+          <td>{{ row.service }}{% if row.format %} <small class="muted">{{ row.format }}</small>{% endif %}</td>
+          <td class="request-cell">{% if row.revision %}<span class="badge">{{ t.gen_revised }}</span> {% endif %}<a class="table-link" href="/ops/generations/{{ row.record.id }}?lang={{ lang }}">{{ row.excerpt|default:'—' }}</a></td>
+          <td><span class="badge status-{{ row.status }}">{% status_label row.status lang %}</span>{% if row.record.output_pages %} <small class="muted">{{ row.record.output_pages }}</small>{% endif %}</td>
+          <td><a class="table-link" href="/ops/generations/{{ row.record.id }}?lang={{ lang }}">{{ t.gen_open }} ↗</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6"><div class="empty-state"><span class="empty-icon" aria-hidden="true">✎</span><h3>{{ t.gen_none }}</h3><p>{{ t.gen_none_desc }}</p></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="pagination">
+    <span>{{ pagination.paginator.count }} {{ t.rows }}</span>
+    <div>
+      {% if pagination.has_previous %}<a href="?{{ page_query }}&p={{ pagination.previous_page_number }}">← {{ t.previous }}</a>{% endif %}
+      <span>{{ pagination.number }} / {{ pagination.paginator.num_pages }}</span>
+      {% if pagination.has_next %}<a href="?{{ page_query }}&p={{ pagination.next_page_number }}">{{ t.next }} →</a>{% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}
