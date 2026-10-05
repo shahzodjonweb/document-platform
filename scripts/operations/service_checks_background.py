@@ -34,6 +34,18 @@ PREFIX = 'Background service verification '
 NAMESPACE = 'https://pdfmaster.orderdesk.live/background-service-check/'
 
 
+
+def _as_channel_member(account):
+    """Free accounts are asked to join the owner's Telegram channels before a
+    task runs. A synthetic account cannot join, so it is recorded as a member
+    for the hour of the audit; the rule stays on for everyone else."""
+    from apps.core.channel_gate import _config as channel_config
+    from apps.core.models import ChannelMembership
+    now = timezone.now()
+    for channel in channel_config()['channels']:
+        ChannelMembership.objects.update_or_create(account=account, chat=channel['chat'], defaults={
+            'is_member': True, 'checked_at': now, 'expires_at': now + timedelta(hours=1)})
+
 def _error(exc):
     code = getattr(exc, 'code', '')
     return {'status': 'failed', 'error': type(exc).__name__,
@@ -117,6 +129,7 @@ def prepare_canaries(audit_id):
     account, created = Account.objects.get_or_create(pk=identifier, defaults={
         'display_name': PREFIX + uuid.UUID(audit_id).hex, 'is_test': True, 'locale': 'en'})
     context = {'audit_id': audit_id, 'account_id': str(account.pk), 'created_at': timezone.now().isoformat()}
+    _as_channel_member(account)
     _account(context)
     if not created:
         raise ValueError('Use a fresh audit UUID; retain returned context to poll existing checks')

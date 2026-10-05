@@ -271,3 +271,13 @@ def test_the_admin_card_says_whether_storage_is_working(bucket, monkeypatch):
     monitor(timezone.now() + timedelta(hours=2))
     page = client.get('/ops/integrations').content.decode()
     assert 'storage-problems' in page and 'The hourly test could not write, read or delete a file' in page
+
+
+def test_one_failing_storage_step_does_not_stop_the_others(bucket, monkeypatch):
+    from apps.core import storage as module
+    ran = []
+    monkeypatch.setattr(module, 'prune', lambda now=None: (_ for _ in ()).throw(RuntimeError('prune broke')))
+    monkeypatch.setattr(module, 'sync', lambda limit=500: ran.append('sync') or 0)
+    monkeypatch.setattr('apps.core.storage_health.monitor', lambda now=None: ran.append('health'))
+    cleanup_expired()
+    assert ran == ['sync', 'health']

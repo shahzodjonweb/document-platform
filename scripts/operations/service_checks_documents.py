@@ -13,6 +13,8 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 from http.cookies import SimpleCookie
 
+from datetime import timedelta
+
 from django.conf import settings
 from django.utils import timezone
 from PIL import Image, ImageDraw, ImageFont
@@ -23,6 +25,18 @@ from apps.core.models import Account, FileAsset, Job
 
 API_URL = 'http://127.0.0.1:8000/api/v1/'
 
+
+
+def _as_channel_member(account):
+    """Free accounts are asked to join the owner's Telegram channels before a
+    task runs. A synthetic account cannot join, so it is recorded as a member
+    for the hour of the audit; the rule stays on for everyone else."""
+    from apps.core.channel_gate import _config as channel_config
+    from apps.core.models import ChannelMembership
+    now = timezone.now()
+    for channel in channel_config()['channels']:
+        ChannelMembership.objects.update_or_create(account=account, chat=channel['chat'], defaults={
+            'is_member': True, 'checked_at': now, 'expires_at': now + timedelta(hours=1)})
 
 class ProbeFailure(Exception):
     def __init__(self, code):
@@ -42,6 +56,7 @@ class Customer:
     """
     def __init__(self, audit_id, feature):
         self.account = Account.objects.create(is_test=True, display_name=f'Service audit {audit_id} {feature}')
+        _as_channel_member(self.account)
         self.session = import_module(settings.SESSION_ENGINE).SessionStore()
         self.session['customer_account_id'] = str(self.account.pk)
         self.session['customer_auth_version'] = self.account.auth_version

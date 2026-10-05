@@ -450,15 +450,15 @@ def cleanup_expired():
     # upload failed, and files kept there before the bucket was connected),
     # let go of working copies nobody is using, and remove bucket objects that
     # nothing refers to any more.
+    # Each step stands alone: one that fails is logged and the rest still run,
+    # so the health check always gets its turn to report the trouble.
+    import logging
     from . import storage
-    storage.prune(now)
-    storage.sync()
-    storage.evict(now)
-    storage.sweep_if_due(now)
     from .storage_health import monitor
-    try:
-        monitor(now)
-    except Exception:
-        import logging
-        logging.getLogger(__name__).exception('Storage health check failed')
+    for name, step in (('prune', lambda: storage.prune(now)), ('sync', storage.sync), ('evict', lambda: storage.evict(now)),
+                       ('sweep', lambda: storage.sweep_if_due(now)), ('health', lambda: monitor(now))):
+        try:
+            step()
+        except Exception:
+            logging.getLogger(__name__).exception('Storage %s step failed', name)
     return count
