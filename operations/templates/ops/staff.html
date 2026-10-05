@@ -1,2 +1,82 @@
-{% extends 'ops/base.html' %}{% block content %}<div class="page-heading"><div><h1>{{ s.title }}</h1><p class="page-description">{{ s.intro }}</p></div></div>{% if error %}<div class="alert error" role="alert">{{ error }}</div>{% endif %}{% if enrollment_secret %}<section class="panel info-panel"><h2>{{ s.enrollment }} · {{ enrollment_user }}</h2><p>{{ s.note }}</p><code style="overflow-wrap:anywhere">{{ enrollment_secret }}</code></section>{% endif %}
-<div class="integration-grid"><section class="panel info-panel"><h2>{{ s.create }}</h2><form method="post" class="integration-form" autocomplete="off">{% csrf_token %}<input type="hidden" name="action" value="create"><label>{{ s.username }}<input name="username" required minlength="3" maxlength="100" autocomplete="off"></label><label>{{ s.password }}<input name="password" type="password" required minlength="12" maxlength="256" autocomplete="new-password"></label><label>{{ s.role }}<select name="role">{% for role in roles %}<option>{{ role }}</option>{% endfor %}</select></label><button class="button primary">{{ s.create }}</button></form></section><section><h2>{{ s.title }}</h2>{% for user in users %}<section class="panel info-panel"><h3>{{ user.username }}</h3><form method="post" class="integration-form">{% csrf_token %}<input type="hidden" name="action" value="update"><input type="hidden" name="user_id" value="{{ user.pk }}"><label>{{ s.role }}<select name="role">{% for role in roles %}<option {% if user.groups.first.name == role %}selected{% endif %}>{{ role }}</option>{% endfor %}</select></label><label style="flex-direction:row;align-items:center"><input style="width:20px" type="checkbox" name="active" {% if user.is_active %}checked{% endif %}>{{ s.active }}</label><button class="button secondary">{{ s.change }}</button></form></section>{% endfor %}</section></div>{% endblock %}
+{% extends 'ops/base.html' %}{% load ops_ui tz %}
+{% block content %}{% timezone 'Asia/Tashkent' %}
+<div class="page-heading">
+  <div>
+    <h1>{{ s.title }}</h1>
+    <p class="page-description">{{ s.intro }}</p>
+  </div>
+  <div class="page-heading-actions">
+    <button type="button" class="button primary" data-dialog-open="add-staff">{% icon 'plus' 17 %}{{ s.add }}</button>
+  </div>
+</div>
+{% if error %}<div class="alert error" role="alert">{% icon 'alert' %}<span>{{ error }}</span></div>{% endif %}
+{% if enrollment_secret %}
+<section class="panel info-panel">
+  <h2>{{ s.enrollment }} · {{ enrollment_user }}</h2>
+  <p>{{ s.note }}</p>
+  <p><code class="secret-code">{{ enrollment_secret }}</code></p>
+</section>
+{% endif %}
+
+<section class="panel">
+  <div class="table-region" role="region" aria-label="{{ s.title }}" tabindex="0">
+    <table>
+      <thead><tr><th>{{ s.username }}</th><th>{{ s.role }}</th><th>{{ s.active }}</th><th>{{ s.last_login }}</th><th><span class="visually-hidden">{{ s.change }}</span></th></tr></thead>
+      <tbody>
+        {% for user in users %}
+        <tr>
+          <td>
+            <span class="cell-person">
+              <span class="avatar" aria-hidden="true">{{ user.username|initial }}</span>
+              <span><strong>{{ user.username }}</strong>{% if user.pk == staff.pk %} <small>{{ s.you }}</small>{% endif %}</span>
+            </span>
+          </td>
+          {% if user.pk == staff.pk %}
+          <td>{{ user.groups.first.name|default:'—' }}</td>
+          <td><span class="badge good">{{ s.active }}</span></td>
+          <td class="muted">{{ user.last_login|date:'d M Y · H:i'|default:s.never }}</td>
+          <td></td>
+          {% else %}
+          <td>
+            <select name="role" form="staff-{{ user.pk }}" aria-label="{{ s.role }} · {{ user.username }}">
+              {% for role in roles %}<option {% if user.groups.first.name == role %}selected{% endif %}>{{ role }}</option>{% endfor %}
+            </select>
+          </td>
+          <td><label><input type="checkbox" name="active" form="staff-{{ user.pk }}" {% if user.is_active %}checked{% endif %}> {{ s.active }}</label></td>
+          <td class="muted">{{ user.last_login|date:'d M Y · H:i'|default:s.never }}</td>
+          <td class="actions">
+            <form method="post" id="staff-{{ user.pk }}">
+              {% csrf_token %}<input type="hidden" name="action" value="update"><input type="hidden" name="user_id" value="{{ user.pk }}">
+              <button class="button secondary small">{{ s.change }}</button>
+            </form>
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<dialog class="dialog" id="add-staff" aria-labelledby="add-staff-title">
+  <form method="post" autocomplete="off">
+    {% csrf_token %}<input type="hidden" name="action" value="create">
+    <div class="dialog-head">
+      <div>
+        <h2 id="add-staff-title">{{ s.create }}</h2>
+        <p>{{ s.intro }}</p>
+      </div>
+      <button type="button" class="icon-button" data-dialog-close aria-label="{{ t.close }}">{% icon 'close' %}</button>
+    </div>
+    <div class="dialog-body integration-form">
+      <label>{{ s.username }}<input name="username" required minlength="3" maxlength="100" autocomplete="off"></label>
+      <label>{{ s.password }}<input name="password" type="password" required minlength="12" maxlength="256" autocomplete="new-password"></label>
+      <label>{{ s.role }}<select name="role">{% for role in roles %}<option>{{ role }}</option>{% endfor %}</select></label>
+    </div>
+    <div class="dialog-foot">
+      <button type="button" class="button secondary" data-dialog-close>{{ t.cancel }}</button>
+      <button class="button primary">{{ s.create }}</button>
+    </div>
+  </form>
+</dialog>
+{% endtimezone %}{% endblock %}

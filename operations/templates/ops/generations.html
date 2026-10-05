@@ -1,5 +1,5 @@
 {% extends 'ops/base.html' %}
-{% load ops_labels %}
+{% load ops_labels ops_ui %}
 {% block content %}
 <div class="page-heading">
   <div>
@@ -16,7 +16,7 @@
       <option value="">{{ t.gen_all_services }}</option>
       {% for key, label in services %}<option value="{{ key }}" {% if key == selected_service %}selected{% endif %}>{{ label }}</option>{% endfor %}
     </select>
-    <button class="button secondary">{{ t.apply }}</button>
+    <button class="button secondary">{% icon 'search' 16 %}{{ t.search_button }}</button>
   </form>
   <div class="table-region" role="region" aria-label="{{ t.generations }}" tabindex="0">
     <table>
@@ -31,10 +31,10 @@
           <td>{{ row.service }}{% if row.format %} <small class="muted">{{ row.format }}</small>{% endif %}</td>
           <td class="request-cell">{% if row.revision %}<span class="badge">{{ t.gen_revised }}</span> {% endif %}<a class="table-link" href="/ops/generations/{{ row.record.id }}?lang={{ lang }}">{{ row.excerpt|default:'—' }}</a></td>
           <td><span class="badge status-{{ row.status }}">{% status_label row.status lang %}</span>{% if row.record.output_pages %} <small class="muted">{{ row.record.output_pages }}</small>{% endif %}</td>
-          <td><a class="table-link" href="/ops/generations/{{ row.record.id }}?lang={{ lang }}">{{ t.gen_open }} ↗</a></td>
+          <td class="actions"><a class="button secondary small" href="/ops/generations/{{ row.record.id }}?lang={{ lang }}">{{ t.gen_open }}</a></td>
         </tr>
         {% empty %}
-        <tr><td colspan="6"><div class="empty-state"><span class="empty-icon" aria-hidden="true">✎</span><h3>{{ t.gen_none }}</h3><p>{{ t.gen_none_desc }}</p></div></td></tr>
+        <tr><td colspan="6">{% include 'ops/ui/empty.html' with icon='sparkle' title=t.gen_none text=t.gen_none_desc %}</td></tr>
         {% endfor %}
       </tbody>
     </table>

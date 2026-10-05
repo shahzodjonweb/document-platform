@@ -2126,6 +2126,89 @@ td.empty-state {
   margin-bottom: var(--space-3);
 }
 
+.integration-list {
+  display: grid;
+  gap: var(--space-3);
+}
+.integration-list > .panel {
+  margin: 0;
+}
+.integration-card > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  list-style: none;
+  cursor: pointer;
+  transition: background var(--duration) var(--ease);
+}
+.integration-card > summary::-webkit-details-marker {
+  display: none;
+}
+.integration-card > summary:hover {
+  background: color-mix(in srgb, var(--surface-sunken) 55%, transparent);
+}
+.integration-card .icon-tile {
+  margin: 0;
+}
+.integration-title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.integration-title strong {
+  color: var(--ink);
+  font: 750 var(--text-md) / 1.35 var(--font-display);
+}
+.integration-title small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.integration-toggle {
+  color: var(--muted);
+  transition: transform var(--duration) var(--ease);
+}
+.integration-card[open] .integration-toggle {
+  transform: rotate(180deg);
+}
+.integration-card[open] > summary {
+  border-bottom: 1px solid var(--hairline);
+}
+.integration-body {
+  max-width: 760px;
+  padding: var(--space-5) var(--space-6) var(--space-6) calc(var(--space-5) + 42px + var(--space-4));
+}
+.integration-body > p {
+  color: var(--muted);
+}
+.integration-body > p + p,
+.integration-body > * + form,
+.integration-body > form + * {
+  margin-top: var(--space-3);
+}
+.integration-body ul {
+  margin: var(--space-2) 0;
+  padding-left: var(--space-5);
+}
+
+/* ---- staff */
+
+.secret-code {
+  display: inline-block;
+  padding: var(--space-2) var(--space-3);
+  border: 1px dashed var(--hairline-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  color: var(--ink);
+  font-size: var(--text-md);
+  letter-spacing: 0.06em;
+  overflow-wrap: anywhere;
+}
+
 /* ---- AI requests */
 
 .generation-filters input,
@@ -2556,6 +2639,19 @@ main > *:nth-child(n + 4) {
   .engagement-panel {
     grid-template-columns: minmax(0, 1fr);
     gap: var(--space-6);
+  }
+  .integration-card > summary {
+    flex-wrap: wrap;
+    padding: var(--space-4);
+  }
+  .integration-card .integration-title {
+    flex-basis: calc(100% - 42px - var(--space-4) - 40px);
+  }
+  .integration-card > summary .badge {
+    margin-left: calc(42px + var(--space-4));
+  }
+  .integration-body {
+    padding: var(--space-4);
   }
   .message {
     max-width: 94%;

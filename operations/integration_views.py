@@ -282,6 +282,8 @@ def integrations(request):
             return redirect('/ops/integrations?lang='+data['lang']+'&notice='+message)
         except DomainError as e:
             data['error']=labels.get(e.code,labels['failure']);data['error_code']=e.code
+            # The card the problem belongs to stays open, with what was typed.
+            data['open_integration']=request.POST.get('integration','telegram')
     bot=telegram_config();ai=ai_config();google=google_config();email=email_config();antibot=antibot_config()
     local_controls=development_access(request)
     # A container-managed bot has a different PID namespace from the API.
