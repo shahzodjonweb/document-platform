@@ -79,6 +79,23 @@ results=[]
 def emit(category,result):
     row={'check':category,**result};results.append(row)
     print('VERIFY_CHECK',json.dumps(row,sort_keys=True),flush=True)
+# File storage: the bucket takes, returns and deletes a file, and nothing waits too long to upload.
+from datetime import timedelta
+from django.utils import timezone as dj_timezone
+from apps.core import storage
+from apps.core.models import StoredObject
+storage_settings=storage.config()
+print('VERIFY_STORAGE_CONFIG','ready='+str(bool(storage_settings.get('ready'))),'configured='+str(bool(storage_settings.get('configured'))),flush=True)
+storage_since=dj_timezone.now()
+if storage_settings.get('ready'):
+    try:
+        storage.check(storage_settings);roundtrip='passed'
+    except Exception:
+        roundtrip='failed'
+    totals=storage.health()
+    late=StoredObject.objects.filter(remote=False,created_at__lt=dj_timezone.now()-timedelta(minutes=15)).count()
+    emit('object_storage',{'status':'passed' if roundtrip=='passed' and not late else 'failed','roundtrip':roundtrip,
+                           'in_bucket':totals['remote_files'],'waiting':totals['waiting_files'],'late':late})
 ab=antibot_config()
 print('VERIFY_ANTIBOT_CONFIG', 'bot_enabled='+str(bool(ab['bot_enabled'])), 'web_enabled='+str(bool(ab['web_enabled'])), 'web_configured='+str(bool(ab['configured'])))
 from telegram.verification import prepare,consume
@@ -105,6 +122,16 @@ while True:
 for name,result in observed.items():
     if result['status']=='pending':result={**result,'status':'failed','code':'scheduler_deadline'}
     emit(name,result)
+if storage_settings.get('ready'):
+    # Every file this audit wrote (uploads, results, previews) must reach the bucket.
+    deadline=time.monotonic()+90
+    while True:
+        written=StoredObject.objects.filter(created_at__gte=storage_since)
+        pending=written.filter(remote=False).count()
+        if not pending or time.monotonic()>deadline:break
+        time.sleep(3)
+    emit('object_storage_audit_files',{'status':'passed' if not pending else 'failed',
+                                       'written':written.count(),'not_in_bucket':pending})
 print('VERIFY_CANARY_RETENTION',json.dumps(background['retire_canaries'](context)))
 failed=[r for r in results if r['status']!='passed']
 print('VERIFY_SUMMARY',json.dumps({'checks':len(results),'failed':len(failed),'seconds':round(time.monotonic()-started,1)}),flush=True)

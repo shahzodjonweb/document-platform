@@ -30,15 +30,22 @@ class FakeS3:
     """The bucket, in memory: the five calls the platform makes."""
 
     def __init__(self):
-        self.objects, self.failing = {}, False
+        self.objects, self.failing, self.corrupt, self.truncate = {}, False, False, False
 
     def put_object(self, Bucket, Key, Body, **extra):
+        import base64
+        import hashlib
         if self.failing:
             raise ConnectionError('bucket unreachable')
-        self.objects[(Bucket, Key)] = {'data': Body.read(), 'at': timezone.now(), **extra}
+        data = Body.read()
+        if 'ContentMD5' in extra and base64.b64decode(extra['ContentMD5']) != hashlib.md5(data).digest():
+            raise ValueError('BadDigest')
+        self.objects[(Bucket, Key)] = {'data': data, 'at': timezone.now(), **extra}
+        return {'ETag': '"%s"' % (hashlib.md5(b'other' if self.corrupt else data).hexdigest())}
 
     def get_object(self, Bucket, Key):
-        return {'Body': FakeBody(self.objects[(Bucket, Key)]['data'])}
+        data = self.objects[(Bucket, Key)]['data']
+        return {'Body': FakeBody(data[:-10] if self.truncate else data), 'ContentLength': len(data)}
 
     def delete_object(self, Bucket, Key):
         self.objects.pop((Bucket, Key), None)
@@ -183,3 +190,84 @@ def test_keys_are_required_before_turning_storage_on_and_never_shown_back():
         other, _ = staff_client(role)
         assert other.post('/ops/integrations', {'integration': 'object_storage', 'enabled': 'false'}).status_code in (302, 403)
     assert object_storage_config()['configured']
+
+
+def test_a_file_the_bucket_stored_differently_is_not_counted_as_uploaded(bucket):
+    bucket.corrupt = True
+    asset = upload(account())
+    assert not StoredObject.objects.get(key=asset.object_key).remote, 'retried by the sync instead'
+    bucket.corrupt = False
+    storage.sync()
+    assert StoredObject.objects.get(key=asset.object_key).remote
+
+
+def test_a_short_download_never_becomes_the_working_copy(bucket):
+    asset = upload(account())
+    evict_now()
+    bucket.truncate = True
+    assert not storage.local(asset.object_key).is_file()
+    bucket.truncate = False
+    assert storage.local(asset.object_key).is_file()
+
+
+def test_storage_trouble_is_told_to_the_owner_once_and_its_recovery_too(bucket, monkeypatch):
+    from apps.core.models import StaffAlert
+    from apps.core.storage_health import monitor, state
+    monkeypatch.setattr('apps.core.storage_health.pause', lambda seconds: None)
+    assert monitor()['healthy'] and StaffAlert.objects.count() == 0
+    bucket.failing = True
+    StoredObject.objects.all().delete()
+    later = timezone.now() + timedelta(hours=2)
+    assert not monitor(later)['healthy']
+    assert StaffAlert.objects.get().kind == 'storage_failing'
+    assert not monitor(later + timedelta(minutes=5))['healthy']
+    assert StaffAlert.objects.count() == 1, 'the same trouble is told once'
+    bucket.failing = False
+    assert monitor(later + timedelta(hours=2))['healthy']
+    assert list(StaffAlert.objects.order_by('created_at').values_list('kind', flat=True)) == ['storage_failing', 'storage_recovered']
+    assert state()['canary_ok'] is True
+
+
+def test_files_stuck_waiting_raise_the_alarm(bucket):
+    from apps.core.models import StaffAlert
+    from apps.core.storage_health import monitor
+    bucket.failing = True
+    asset = upload(account())
+    StoredObject.objects.filter(key=asset.object_key).update(created_at=timezone.now() - timedelta(minutes=20))
+    bucket.failing = False  # the hourly test passes; the backlog alone is the problem
+    result = monitor()
+    assert not result['healthy'] and result['problems'] == [{'code': 'upload_backlog', 'waiting': 1, 'minutes': 15}]
+    assert '1 files have waited more than 15 minutes' in StaffAlert.objects.get().text
+
+
+def test_the_alert_reaches_the_owners_telegram(bucket):
+    import asyncio
+    from apps.core.models import StaffAlert
+    from telegram.staff_alerts import drain
+    from tests.test_manual_payments import configure
+    configure()  # sets the alert Telegram ID 1234567
+    StaffAlert.objects.create(kind='storage_failing', text='⚠️ File storage needs attention.')
+
+    class Bot:
+        sent = []
+
+        async def send_message(self, chat, text, **kwargs):
+            self.sent.append((chat, text))
+    asyncio.run(drain(Bot()))
+    assert Bot.sent == [(1234567, '⚠️ File storage needs attention.')]
+    assert StaffAlert.objects.get().status == 'delivered'
+    asyncio.run(drain(Bot()))
+    assert len(Bot.sent) == 1, 'sent once'
+
+
+def test_the_admin_card_says_whether_storage_is_working(bucket, monkeypatch):
+    from apps.core.storage_health import monitor
+    monkeypatch.setattr('apps.core.storage_health.pause', lambda seconds: None)
+    from tests.test_manual_payments import staff_client
+    monitor()
+    client, _ = staff_client('Administrator')
+    assert 'storage-healthy' in client.get('/ops/integrations').content.decode()
+    bucket.failing = True
+    monitor(timezone.now() + timedelta(hours=2))
+    page = client.get('/ops/integrations').content.decode()
+    assert 'storage-problems' in page and 'The hourly test could not write, read or delete a file' in page

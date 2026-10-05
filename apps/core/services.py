@@ -455,4 +455,10 @@ def cleanup_expired():
     storage.sync()
     storage.evict(now)
     storage.sweep_if_due(now)
+    from .storage_health import monitor
+    try:
+        monitor(now)
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception('Storage health check failed')
     return count

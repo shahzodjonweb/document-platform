@@ -347,3 +347,18 @@ class StoredObject(models.Model):
     created_at = models.DateTimeField(default=timezone.now)
     uploaded_at = models.DateTimeField(null=True, blank=True)
     used_at = models.DateTimeField(default=timezone.now, db_index=True)
+
+
+class StaffAlert(models.Model):
+    """A Telegram message to the owner about the platform itself (file storage
+    stopped working, and when it recovers). Durable like the other outboxes:
+    retried when Telegram is unavailable, sent once."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    kind = models.CharField(max_length=40)
+    text = models.TextField()
+    status = models.CharField(max_length=16, default='pending')
+    attempts = models.PositiveIntegerField(default=0)
+    next_attempt_at = models.DateTimeField(default=timezone.now)
+    error_code = models.CharField(max_length=64, blank=True, default='')
+    created_at = models.DateTimeField(default=timezone.now)
+    delivered_at = models.DateTimeField(null=True, blank=True)

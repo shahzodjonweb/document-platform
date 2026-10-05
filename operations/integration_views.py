@@ -6,6 +6,7 @@ from django.views.decorators.http import require_http_methods
 from apps.core.errors import DomainError
 from .auth import require_staff,audit,development_access
 from .views import context,finish_render
+from datetime import datetime
 from .integrations import telegram_config,ai_config,google_config,email_config,antibot_config,pixabay_config,manual_payment_config,channel_gate_config,test_channels,CARD_LABELS,save_config,test_telegram,test_email,test_pixabay,control_runner,runner_status,object_storage_config,test_object_storage
 from .models import IntegrationConfig
 
@@ -142,7 +143,7 @@ for language, labels in PHOTO_LABELS.items(): LABELS[language].update(labels)
 CARD_SECTION_LABELS = {
     'en': {'manual': 'Card transfer payments', 'manual_enabled': 'Let customers pay by card transfer',
            'card_number': 'Card number', 'card_holder': 'Card holder (as the bank shows it)', 'card_label': 'Card type',
-           'alert_telegram_id': 'Your Telegram ID for new-payment alerts',
+           'alert_telegram_id': 'Your Telegram ID for alerts (new payments, file storage problems)',
            'manual_hint': 'Customers who start a payment see this card, the plan price and a reference, transfer the money, and upload the receipt. You approve or reject each one under Payments. Prices are set per plan under Plans (price_uzs). Send /myid to the bot to learn your Telegram ID. Untick to stop new card payments at once.',
            'card_on_file': 'Card on file', 'no_card': 'No card yet',
            'no_prices': 'Customers can’t pay by card yet: Plus and Premium have no price in so‘m. Set their prices in Plans.',
@@ -153,7 +154,7 @@ CARD_SECTION_LABELS = {
            'manual_payments_not_configured': 'Add the card number and holder before switching card payments on.'},
     'uz': {'manual': 'Karta orqali to‘lov', 'manual_enabled': 'Mijozlarga karta orqali to‘lashga ruxsat berish',
            'card_number': 'Karta raqami', 'card_holder': 'Karta egasi (bank ko‘rsatgandek)', 'card_label': 'Karta turi',
-           'alert_telegram_id': 'Yangi to‘lovlar haqida xabar uchun Telegram ID',
+           'alert_telegram_id': 'Xabarlar uchun Telegram ID (yangi to‘lovlar, fayl ombori muammolari)',
            'manual_hint': 'To‘lovni boshlagan mijoz shu kartani, tarif narxini va raqamni ko‘radi, pul o‘tkazadi va kvitansiyani yuboradi. Har birini To‘lovlar bo‘limida tasdiqlaysiz yoki rad etasiz. Narxlar Tariflar bo‘limida (price_uzs). Telegram ID ni bilish uchun botga /myid yuboring. Yangi to‘lovlarni darhol to‘xtatish uchun belgini olib tashlang.',
            'card_on_file': 'Saqlangan karta', 'no_card': 'Karta hali yo‘q',
            'no_prices': 'Mijozlar hali karta orqali to‘lay olmaydi: Plus va Premium uchun so‘mda narx yo‘q. Narxlarni Tariflar bo‘limida kiriting.',
@@ -164,7 +165,7 @@ CARD_SECTION_LABELS = {
            'manual_payments_not_configured': 'Karta orqali to‘lovni yoqishdan oldin karta raqami va egasini kiriting.'},
     'ru': {'manual': 'Оплата переводом на карту', 'manual_enabled': 'Разрешить оплату переводом на карту',
            'card_number': 'Номер карты', 'card_holder': 'Владелец карты (как в банке)', 'card_label': 'Тип карты',
-           'alert_telegram_id': 'Ваш Telegram ID для уведомлений о платежах',
+           'alert_telegram_id': 'Ваш Telegram ID для уведомлений (новые платежи, проблемы хранилища)',
            'manual_hint': 'Клиент, начавший оплату, видит эту карту, цену тарифа и код платежа, переводит деньги и загружает квитанцию. Каждый платёж вы подтверждаете или отклоняете в разделе «Платежи». Цены задаются в «Тарифах» (price_uzs). Чтобы узнать свой Telegram ID, отправьте боту /myid. Снимите флажок, чтобы сразу остановить новые платежи.',
            'card_on_file': 'Сохранённая карта', 'no_card': 'Карта ещё не указана',
            'no_prices': 'Клиенты пока не могут оплатить картой: у Plus и Premium нет цены в сумах. Укажите цены в разделе «Тарифы».',
@@ -203,7 +204,11 @@ CHANNEL_SECTION_LABELS = {
 }
 for language, labels in CHANNEL_SECTION_LABELS.items(): LABELS[language].update(labels)
 STORAGE_SECTION_LABELS = {
-    'en': {'object_storage': 'File storage (Contabo Object Storage)', 'storage_enabled': 'Keep files in the bucket',
+    'en': {'object_storage': 'File storage (Contabo Object Storage)',
+           'storage_problem_canary_failed': 'The hourly test could not write, read or delete a file in the bucket.',
+           'storage_problem_upload_backlog': '{waiting} files have waited more than {minutes} minutes to reach the bucket.',
+           'storage_working': 'Working', 'storage_last_test': 'Last test', 'storage_last_upload': 'Last upload', 'storage_never': 'not yet',
+           'storage_alerts': 'Problems are sent to the Telegram ID set under Card payments, and again when storage recovers.', 'storage_enabled': 'Keep files in the bucket',
            'storage_endpoint': 'Endpoint', 'storage_bucket': 'Bucket', 'storage_region': 'Region (leave empty for Contabo)',
            'storage_access_key': 'Access key', 'storage_secret_key': 'Secret key',
            'storage_hint': 'In the Contabo panel: Object Storage → Security & Access → S3 credentials. Save the keys, press Test, then tick the box. New files go to the bucket from then on, and files already on the server are moved there by the cleanup job within minutes. The server keeps only a short-lived working copy.',
@@ -214,7 +219,11 @@ STORAGE_SECTION_LABELS = {
            'invalid_storage_key': 'That does not look like an S3 access or secret key.',
            'object_storage_not_configured': 'Save the access key and secret key before turning file storage on.',
            'object_storage_connection_failed': 'The bucket did not accept the test file. Check the keys, bucket name and endpoint.'},
-    'uz': {'object_storage': 'Fayl ombori (Contabo Object Storage)', 'storage_enabled': 'Fayllarni bucket’da saqlash',
+    'uz': {'object_storage': 'Fayl ombori (Contabo Object Storage)',
+           'storage_problem_canary_failed': 'Soatlik sinov bucket’da faylni yoza, o‘qiy yoki o‘chira olmadi.',
+           'storage_problem_upload_backlog': '{waiting} ta fayl {minutes} daqiqadan ko‘proq bucket’ga yetib borolmayapti.',
+           'storage_working': 'Ishlayapti', 'storage_last_test': 'Oxirgi sinov', 'storage_last_upload': 'Oxirgi yuklash', 'storage_never': 'hali yo‘q',
+           'storage_alerts': 'Muammolar Karta to‘lovlari bo‘limidagi Telegram ID’ga yuboriladi, tiklanganda ham xabar keladi.', 'storage_enabled': 'Fayllarni bucket’da saqlash',
            'storage_endpoint': 'Endpoint', 'storage_bucket': 'Bucket', 'storage_region': 'Region (Contabo uchun bo‘sh qoldiring)',
            'storage_access_key': 'Access key', 'storage_secret_key': 'Secret key',
            'storage_hint': 'Contabo panelida: Object Storage → Security & Access → S3 credentials. Kalitlarni saqlang, «Tekshirish»ni bosing, keyin belgini qo‘ying. Shundan so‘ng yangi fayllar bucket’ga tushadi, serverdagi mavjud fayllar esa bir necha daqiqada tozalash jarayoni orqali ko‘chiriladi. Serverda faqat qisqa muddatli ishchi nusxa qoladi.',
@@ -225,7 +234,11 @@ STORAGE_SECTION_LABELS = {
            'invalid_storage_key': 'Bu S3 access yoki secret key’ga o‘xshamaydi.',
            'object_storage_not_configured': 'Fayl omborini yoqishdan oldin access key va secret key’ni saqlang.',
            'object_storage_connection_failed': 'Bucket sinov faylini qabul qilmadi. Kalitlar, bucket nomi va endpoint’ni tekshiring.'},
-    'ru': {'object_storage': 'Хранилище файлов (Contabo Object Storage)', 'storage_enabled': 'Хранить файлы в бакете',
+    'ru': {'object_storage': 'Хранилище файлов (Contabo Object Storage)',
+           'storage_problem_canary_failed': 'Ежечасная проверка не смогла записать, прочитать или удалить файл в бакете.',
+           'storage_problem_upload_backlog': '{waiting} файлов ждут загрузки в бакет дольше {minutes} минут.',
+           'storage_working': 'Работает', 'storage_last_test': 'Последняя проверка', 'storage_last_upload': 'Последняя загрузка', 'storage_never': 'ещё нет',
+           'storage_alerts': 'О проблемах сообщается в Telegram ID из раздела «Оплата картой», и ещё раз — когда хранилище восстановится.', 'storage_enabled': 'Хранить файлы в бакете',
            'storage_endpoint': 'Endpoint', 'storage_bucket': 'Бакет', 'storage_region': 'Регион (для Contabo оставьте пустым)',
            'storage_access_key': 'Access key', 'storage_secret_key': 'Secret key',
            'storage_hint': 'В панели Contabo: Object Storage → Security & Access → S3 credentials. Сохраните ключи, нажмите «Проверить», затем отметьте флажок. После этого новые файлы попадают в бакет, а файлы, уже лежащие на сервере, переносятся туда задачей очистки за несколько минут. На сервере остаётся только короткоживущая рабочая копия.',
@@ -285,7 +298,12 @@ def integrations(request):
     # The keys never reach the page: only whether they are saved.
     from apps.core import storage
     bucket=object_storage_config()
-    data['object_storage']={**{key: bucket[key] for key in ('enabled','configured','ready','endpoint','bucket','region')},**storage.health()}
+    from apps.core.storage_health import summary as storage_summary
+    health=storage_summary()
+    problems=[labels['storage_problem_'+p['code']].format(**p) for p in health['problems']] if bucket['ready'] else []
+    data['object_storage']={**{key: bucket[key] for key in ('enabled','configured','ready','endpoint','bucket','region')},**storage.health(),
+                            'healthy':not problems,'problems':problems,'last_upload':health['last_upload'],
+                            'canary_at':datetime.fromisoformat(health['canary_at']) if health['canary_at'] else None,'canary_ok':health['canary_ok']}
     gate=channel_gate_config()
     data['channels']={'enabled':gate['enabled'],'ready':gate['ready'],
                       'text':'\n'.join(c['chat'] if c['url']=='https://t.me/'+c['chat'].lstrip('@') else c['url']+' '+c['chat'] for c in gate['channels']),

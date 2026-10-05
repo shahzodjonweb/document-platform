@@ -56,6 +56,7 @@ def config():
 
 def forget_config():
     _config_cache['value'] = None
+    _buckets.clear()
 
 
 class Bucket:
@@ -76,15 +77,31 @@ class Bucket:
                           connect_timeout=10, read_timeout=120))
 
     def put(self, key, path, content_type=''):
+        """Upload one file. The bucket refuses it unless the bytes it received
+        match the MD5 sent with them, and the ETag it returns is checked too."""
+        import base64
+        import hashlib
+        digest = hashlib.md5(usedforsecurity=False)
+        with open(path, 'rb') as source:
+            for chunk in iter(lambda: source.read(1024 * 1024), b''):
+                digest.update(chunk)
         extra = {'ContentType': content_type} if content_type else {}
         with open(path, 'rb') as source:
-            self.client.put_object(Bucket=self.name, Key=key, Body=source, **extra)
+            response = self.client.put_object(Bucket=self.name, Key=key, Body=source,
+                                              ContentMD5=base64.b64encode(digest.digest()).decode(), **extra)
+        etag = str((response or {}).get('ETag', '')).strip('"')
+        if len(etag) == 32 and etag != digest.hexdigest():
+            raise IOError(f'Object storage stored different bytes for {key}')
 
     def get(self, key, path):
         response = self.client.get_object(Bucket=self.name, Key=key)
+        expected, written = response.get('ContentLength'), 0
         with open(path, 'wb') as target:
             for chunk in iter(lambda: response['Body'].read(1024 * 1024), b''):
                 target.write(chunk)
+                written += len(chunk)
+        if expected is not None and written != expected:
+            raise IOError(f'Object storage returned {written} of {expected} bytes for {key}')
 
     def delete(self, key):
         self.client.delete_object(Bucket=self.name, Key=key)
@@ -100,13 +117,24 @@ class Bucket:
             token = page.get('NextContinuationToken')
 
 
+_buckets = {}
+
+
 def bucket(for_writing=True):
     """The bucket to use, or None. Reading works whenever credentials are saved,
     so switching uploads off never strands files already in the bucket."""
+    import hashlib
     settings = config()
     if not settings.get('configured') or (for_writing and not settings.get('ready')):
         return None
-    return Bucket(settings)
+    fingerprint = hashlib.sha256(repr(sorted((k, str(v)) for k, v in settings.items())).encode()).hexdigest()
+    if client_factory or fingerprint not in _buckets:
+        made = Bucket(settings)
+        if client_factory:
+            return made
+        _buckets.clear()
+        _buckets[fingerprint] = made
+    return _buckets[fingerprint]
 
 
 def save(key, content_type=''):
