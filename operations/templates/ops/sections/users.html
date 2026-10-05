@@ -26,7 +26,13 @@
   <div class="table-region" role="region" aria-label="{{ t.users }}" tabindex="0">
     <table>
       <thead>
-        <tr><th>{{ t.account }}</th><th>{{ t.plan }}</th><th>{{ t.locale }}</th><th>{{ t.source }}</th><th>{{ t.created }}</th></tr>
+        <tr>
+          <th{% if sort == 'name' %} aria-sort="ascending"{% endif %}><a class="sort-link" href="?{% query_with sort='name' %}">{{ t.account }}{% if sort == 'name' %} {% icon 'chevron-down' 14 %}{% endif %}</a></th>
+          <th{% if sort == 'plan' %} aria-sort="descending"{% endif %}><a class="sort-link" href="?{% query_with sort='plan' %}">{{ t.plan }}{% if sort == 'plan' %} {% icon 'chevron-down' 14 %}{% endif %}</a></th>
+          <th>{{ t.locale }}</th>
+          <th>{{ t.source }}</th>
+          <th{% if sort == 'new' %} aria-sort="descending"{% elif sort == 'old' %} aria-sort="ascending"{% endif %}><a class="sort-link{% if sort == 'old' %} up{% endif %}" href="?{% if sort == 'new' %}{% query_with sort='old' %}{% else %}{% query_with sort=None %}{% endif %}">{{ t.created }}{% if sort == 'new' or sort == 'old' %} {% icon 'chevron-down' 14 %}{% endif %}</a></th>
+        </tr>
       </thead>
       <tbody>
         {% for row in pagination %}

@@ -115,3 +115,29 @@ def test_audit_table_shows_what_changed():
                             before={'ai_credits': 100}, after={'ai_credits': 200})
     page = client.get('/ops/audit').content.decode()
     assert '<del>100</del>' in page and '<ins>200</ins>' in page
+
+
+def test_customer_page_lists_their_payments_for_finance_and_their_cases_for_support():
+    from apps.commerce.models import ManualPayment
+    account = Account.objects.create(telegram_user_id=81006, display_name='Kamola')
+    case = ticket(account, subject='Where is my plan?')
+    transfer = ManualPayment.objects.create(account=account, plan='plus', amount=60000, currency='UZS',
+                                            reference='PM-TEST1', expires_at=timezone.now() + timedelta(hours=1))
+    admin, _ = staff_client()
+    page = admin.get(f'/ops/users/{account.id}').content.decode()
+    assert f'/ops/payments/manual/{transfer.id}' in page and f'/ops/support/{case.id}' in page
+    support, _ = staff_client('Support')
+    page = support.get(f'/ops/users/{account.id}').content.decode()
+    assert f'/ops/support/{case.id}' in page
+    assert f'/ops/payments/manual/{transfer.id}' not in page, 'card transfers are for Finance'
+
+
+def test_users_can_be_sorted():
+    client, _ = staff_client('Support')
+    Account.objects.create(telegram_user_id=81007, display_name='Zarina')
+    Account.objects.create(telegram_user_id=81008, display_name='Aziz')
+    by_name = client.get('/ops/users', {'sort': 'name'}).content.decode()
+    assert by_name.index('Aziz') < by_name.index('Zarina')
+    oldest = [row.display_name for row in client.get('/ops/users', {'sort': 'old'}).context['pagination']]
+    assert oldest == ['Zarina', 'Aziz']
+    assert client.get('/ops/users', {'sort': 'nonsense'}).status_code == 200

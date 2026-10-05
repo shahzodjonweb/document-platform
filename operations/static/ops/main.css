@@ -1291,6 +1291,21 @@ th {
   letter-spacing: 0.02em;
   white-space: nowrap;
 }
+.sort-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: inherit;
+}
+.sort-link:hover {
+  color: var(--ink);
+}
+th[aria-sort] .sort-link {
+  color: var(--ink);
+}
+.sort-link.up .icon {
+  transform: rotate(180deg);
+}
 td {
   padding: var(--space-3) var(--space-6);
   border-bottom: 1px solid var(--hairline);

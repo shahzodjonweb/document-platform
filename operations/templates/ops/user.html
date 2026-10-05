@@ -29,6 +29,8 @@
   <a href="#usage">{{ t.tab_usage }}</a>
   <a href="#files">{{ t.files }} <span class="count">{{ files|length }}</span></a>
   {% if generation_rows %}<a href="#ai">{{ t.gen_customer_recent }} <span class="count">{{ generation_rows|length }}</span></a>{% endif %}
+  {% if payment_rows is not None %}<a href="#payments">{{ t.payments }} <span class="count">{{ payment_rows|length }}</span></a>{% endif %}
+  {% if tickets %}<a href="#support">{{ t.nav_support }} <span class="count">{{ tickets|length }}</span></a>{% endif %}
 </nav>
 
 <div class="overview-grid" id="overview">
@@ -119,6 +121,50 @@
           <td class="muted">{{ row.record.created_at|date:'d M Y · H:i' }}</td>
           <td>{{ row.service }}</td>
           <td class="request-cell"><a class="table-link" href="/ops/generations/{{ row.record.id }}?lang={{ lang }}">{{ row.excerpt|default:'—' }}</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
+{% if payment_rows is not None %}
+<section class="panel" id="payments">
+  <div class="panel-heading"><h2>{{ t.payments }}</h2></div>
+  <div class="table-region" role="region" aria-label="{{ t.payments }}" tabindex="0">
+    <table>
+      <thead><tr><th>{{ t.created }}</th><th>{{ t.plan }}</th><th>{{ t.amount }}</th><th>{{ t.status }}</th><th><span class="visually-hidden">{{ t.gen_open }}</span></th></tr></thead>
+      <tbody>
+        {% for row in payment_rows %}
+        <tr>
+          <td class="muted">{{ row.payment.created_at|date:'d M Y · H:i' }}</td>
+          <td><span class="badge plan-{{ row.payment.plan }}">{{ row.payment.plan|capfirst }}</span></td>
+          <td>{{ row.payment.amount|money }} so'm</td>
+          <td><span class="badge status-{{ row.payment.status }}">{{ row.status }}</span></td>
+          <td class="actions"><a class="button secondary small" href="/ops/payments/manual/{{ row.payment.id }}?lang={{ lang }}">{{ t.gen_open }}</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="table-empty">{{ t.no_payments }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
+{% if tickets %}
+<section class="panel" id="support">
+  <div class="panel-heading"><h2>{{ t.nav_support }}</h2></div>
+  <div class="table-region" role="region" aria-label="{{ t.nav_support }}" tabindex="0">
+    <table>
+      <thead><tr><th>{{ t.subject }}</th><th>{{ t.status }}</th><th>{{ t.received }}</th></tr></thead>
+      <tbody>
+        {% for ticket in tickets %}
+        <tr>
+          <td class="wrap"><a class="table-link" href="/ops/support/{{ ticket.id }}?lang={{ lang }}">{{ ticket.subject }}</a></td>
+          <td><span class="badge status-{{ ticket.status }}">{% status_label ticket.status lang %}</span></td>
+          <td class="muted">{{ ticket.created_at|date:'d M Y · H:i' }}</td>
         </tr>
         {% endfor %}
       </tbody>

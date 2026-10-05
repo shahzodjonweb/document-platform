@@ -12,7 +12,25 @@
   </summary>
   <div class="integration-body">
     <p>{{ i.token_status }}: {% if bot.configured %}{{ i.configured }}{% else %}{{ i.missing }}{% endif %}</p>
-<form method="post" class="integration-form" autocomplete="off">{% csrf_token %}<input type="hidden" name="integration" value="telegram"><label>{{ i.token }}<input type="password" name="token" autocomplete="new-password" placeholder="123456:…" maxlength="180"></label><small>{{ i.secret_hint }}</small><label>{{ i.username }}<input name="username" value="{{ bot.username }}" placeholder="pdfmaster_bot" maxlength="32"></label><label>{{ i.webapp }}<input type="url" name="webapp_url" value="{{ bot.webapp_url }}" required></label><div class="integration-actions"><button class="button primary" name="action" value="save">{{ i.save }}</button><button class="button secondary" name="action" value="test">{{ i.test }}</button></div>{% if local_controls %}<div class="integration-actions"><button class="button secondary" name="action" value="start">{{ i.start }}</button><button class="button secondary" name="action" value="stop">{{ i.stop }}</button></div>{% endif %}</form><p>{% if local_controls %}{{ i.local_note }}{% else %}{{ i.production_note }}{% endif %}</p>{% if local_controls %}<a class="button secondary" href="/ops/bot-simulator">{{ i.simulator }} ↗</a>{% endif %}
+    <form method="post" class="integration-form" autocomplete="off">
+      {% csrf_token %}<input type="hidden" name="integration" value="telegram">
+      <label>{{ i.token }}<input type="password" name="token" autocomplete="new-password" placeholder="123456:…" maxlength="180"></label>
+      <small>{{ i.secret_hint }}</small>
+      <label>{{ i.username }}<input name="username" value="{{ bot.username }}" placeholder="pdfmaster_bot" maxlength="32"></label>
+      <label>{{ i.webapp }}<input type="url" name="webapp_url" value="{{ bot.webapp_url }}" required></label>
+      <div class="integration-actions">
+        <button class="button primary" name="action" value="save">{{ i.save }}</button>
+        <button class="button secondary" name="action" value="test">{{ i.test }}</button>
+      </div>
+      {% if local_controls %}
+      <div class="integration-actions">
+        <button class="button secondary" name="action" value="start">{{ i.start }}</button>
+        <button class="button secondary" name="action" value="stop">{{ i.stop }}</button>
+      </div>
+      {% endif %}
+    </form>
+    <p>{% if local_controls %}{{ i.local_note }}{% else %}{{ i.production_note }}{% endif %}</p>
+    {% if local_controls %}<a class="button secondary" href="/ops/bot-simulator">{{ i.simulator }} {% icon 'external' 15 %}</a>{% endif %}
   </div>
 </details>
 <details class="panel integration-card" id="ai-settings"{% if open_integration == 'ai' %} open{% endif %}>
@@ -23,7 +41,22 @@
     <span class="integration-toggle" aria-hidden="true">{% icon 'chevron-down' 18 %}</span>
   </summary>
   <div class="integration-body">
-    <p>{{ i.provider_status }}: {% if ai.configured %}{{ i.configured }}{% else %}{{ i.missing }}{% endif %}</p><form method="post" class="integration-form" autocomplete="off">{% csrf_token %}<input type="hidden" name="integration" value="ai"><label>{{ i.mode }}<select name="mode"><option value="local_fixture" {% if ai.mode == 'local_fixture' %}selected{% endif %}>{{ i.local }}</option><option value="openai" {% if ai.mode == 'openai' %}selected{% endif %}>{{ i.live }}</option><option value="disabled" {% if ai.mode == 'disabled' %}selected{% endif %}>{{ i.disabled }}</option></select></label><label>{{ i.key }}<input type="password" name="api_key" autocomplete="new-password" maxlength="512"></label><small>{{ i.secret_hint }}</small><label>{{ i.model }}<input name="model" value="{{ ai.model }}" maxlength="100"></label><label>{{ i.image_model }}<input name="image_model" value="{{ ai.image_model }}" maxlength="100"></label><button class="button primary" name="action" value="save">{{ i.save }}</button></form>
+    <p>{{ i.provider_status }}: {% if ai.configured %}{{ i.configured }}{% else %}{{ i.missing }}{% endif %}</p>
+    <form method="post" class="integration-form" autocomplete="off">
+      {% csrf_token %}<input type="hidden" name="integration" value="ai">
+      <label>{{ i.mode }}
+        <select name="mode">
+          <option value="local_fixture" {% if ai.mode == 'local_fixture' %}selected{% endif %}>{{ i.local }}</option>
+          <option value="openai" {% if ai.mode == 'openai' %}selected{% endif %}>{{ i.live }}</option>
+          <option value="disabled" {% if ai.mode == 'disabled' %}selected{% endif %}>{{ i.disabled }}</option>
+        </select>
+      </label>
+      <label>{{ i.key }}<input type="password" name="api_key" autocomplete="new-password" maxlength="512"></label>
+      <small>{{ i.secret_hint }}</small>
+      <label>{{ i.model }}<input name="model" value="{{ ai.model }}" maxlength="100"></label>
+      <label>{{ i.image_model }}<input name="image_model" value="{{ ai.image_model }}" maxlength="100"></label>
+      <div class="integration-actions"><button class="button primary" name="action" value="save">{{ i.save }}</button></div>
+    </form>
   </div>
 </details>
 <details class="panel integration-card" id="google-settings"{% if open_integration == 'google' %} open{% endif %}>
@@ -102,7 +135,20 @@
   </summary>
   <div class="integration-body">
     
-  {% if object_storage.ready %}{% if object_storage.problems %}<div class="alert warning" role="status" data-testid="storage-problems"><ul>{% for problem in object_storage.problems %}<li>{{ problem }}</li>{% endfor %}</ul></div>{% else %}<p data-testid="storage-healthy"><span class="badge status-succeeded">{{ i.storage_working }}</span> {{ i.storage_last_test }}: {% if object_storage.canary_at %}{{ object_storage.canary_at|date:'d M Y · H:i' }}{% else %}{{ i.storage_never }}{% endif %} · {{ i.storage_last_upload }}: {% if object_storage.last_upload %}{{ object_storage.last_upload|date:'d M Y · H:i' }}{% else %}{{ i.storage_never }}{% endif %}</p>{% endif %}<p class="muted">{{ i.storage_alerts }}</p>{% endif %}
+  {% if object_storage.ready %}
+    {% if object_storage.problems %}
+    <div class="alert warning" role="status" data-testid="storage-problems">
+      <ul>{% for problem in object_storage.problems %}<li>{{ problem }}</li>{% endfor %}</ul>
+    </div>
+    {% else %}
+    <p data-testid="storage-healthy">
+      <span class="badge status-succeeded">{{ i.storage_working }}</span>
+      {{ i.storage_last_test }}: {% if object_storage.canary_at %}{{ object_storage.canary_at|date:'d M Y · H:i' }}{% else %}{{ i.storage_never }}{% endif %}
+      · {{ i.storage_last_upload }}: {% if object_storage.last_upload %}{{ object_storage.last_upload|date:'d M Y · H:i' }}{% else %}{{ i.storage_never }}{% endif %}
+    </p>
+    {% endif %}
+    <p class="muted">{{ i.storage_alerts }}</p>
+  {% endif %}
   {% if object_storage.configured %}<p>{{ i.storage_in_bucket }}: <strong>{{ object_storage.remote_files }}</strong> {{ i.storage_files }} · {{ object_storage.remote_bytes|filesizeformat }} · {{ i.storage_waiting }}: <strong>{{ object_storage.waiting_files }}</strong> {{ i.storage_files }}</p>{% endif %}
   <form method="post" class="integration-form" autocomplete="off">
     {% csrf_token %}<input type="hidden" name="integration" value="object_storage">

@@ -210,3 +210,6 @@ CATALOGS['ru'].update(
 CATALOGS['en'].update(send_reply='Send reply', overview='Overview')
 CATALOGS['uz'].update(send_reply='Javob yuborish')
 CATALOGS['ru'].update(send_reply='Отправить ответ')
+CATALOGS['en'].update(no_payments='No card payments from this customer.')
+CATALOGS['uz'].update(no_payments='Bu mijozdan karta to‘lovlari yo‘q.')
+CATALOGS['ru'].update(no_payments='Платежей картой от этого клиента нет.')

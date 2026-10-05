@@ -54,6 +54,7 @@ SECTIONS = {'today':'today','overview':'analytics','analytics/acquisition':'anal
             'plans':'plans','system':'system','localization':'localization'}
 SUPPORT_STATES = ['open','waiting_customer','resolved']
 JOB_STATES = ['queued','running','succeeded','failed','canceled']
+USER_SORTS = {'new':'-created_at','old':'created_at','name':'display_name','plan':'-plan'}
 PLAN_GROUPS = [('group_price',['price_uzs','price_xtr']),
                ('group_allowance',['file_tasks','file_page_units','ai_credits']),
                ('group_daily',['daily_file_tasks','daily_ai_documents']),
@@ -208,10 +209,11 @@ def page(request, section='overview'):
         if section=='users':
             search=request.GET.get('q','').strip()[:150]
             # A search looks through every account; the plain list shows who joined in the period.
-            rows=account_search(filters,search).order_by('-created_at')
+            sort=request.GET.get('sort','new')
+            rows=account_search(filters,search).order_by(USER_SORTS.get(sort,'-created_at'),'id')
             plan=request.GET.get('plan','')
             if plan in {'free','plus','premium'}:rows=rows.filter(plan=plan)
-            data.update(search=search,plan_filter=plan,plan_tabs=['','free','plus','premium'])
+            data.update(search=search,plan_filter=plan,plan_tabs=['','free','plus','premium'],sort=sort if sort in USER_SORTS else 'new')
         elif section=='jobs':
             rows=filters.jobs().select_related('account').order_by('-created_at')
             state=request.GET.get('status','')
@@ -316,6 +318,14 @@ def user_detail(request, pk):
     if data['can_open_files']:
         from .generation_views import _rows
         data['generation_rows']=_rows(account.generation_records.select_related('job').order_by('-created_at')[:10],data['t'])
+    # Card transfers are Finance's to see; support cases are Support's.
+    if data['ok'](PAGE_ROLES['payments']):
+        from apps.commerce.models import ManualPayment
+        from .commerce_views import LABELS as MONEY_LABELS
+        money=MONEY_LABELS[data['lang']]
+        data['payment_rows']=[{'payment':row,'status':money.get('status_'+row.status,row.status)}
+                              for row in ManualPayment.objects.filter(account=account).order_by('-created_at')[:20]]
+    data['tickets']=account.support_tickets.order_by('-created_at')[:20] if data['ok'](PAGE_ROLES['support']) else []
     audit(request.ops_user,'account.metadata_view',pk,'Staff inspected account metadata')
     return finish_render(request,'ops/user.html',data)
 
