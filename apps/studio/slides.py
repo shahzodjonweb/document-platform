@@ -135,7 +135,13 @@ THEME_GROUND = {
 }
 
 
-def palette(accent, theme='light'):
+def _soft(accent, secondary, lightness):
+    """The quiet tint behind marks and cells: the accent's, or a design's second colour."""
+    hue, _, saturation = _hls(secondary or accent)
+    return _from_hls(hue, lightness, min(saturation, 0.45 if secondary else 0.35))
+
+
+def palette(accent, theme='light', secondary=None, paper=None, accent_headings=False):
     """A small set of roles derived from the one colour a customer can choose.
 
     `accent` is returned untouched — it is the brand, and it is what fills the
@@ -149,12 +155,18 @@ def palette(accent, theme='light'):
     ground, alt, soft = THEME_GROUND[theme]
     dark = ground < 0.5
     surface = _from_hls(hue, ground, min(saturation, 0.12 if dark else 0.10))
+    surface_alt = _from_hls(hue, alt, min(saturation, 0.14))
+    if paper and not dark:
+        # A design's own paper: cream, aqua, warm stone. Panels sit a step darker.
+        surface = _hex(paper).upper()
+        paper_hue, paper_light, paper_sat = _hls(surface)
+        surface_alt = _from_hls(paper_hue, paper_light - 0.045, min(paper_sat + 0.05, 0.4))
     roles = {
         'accent': accent,
         'theme': theme,
         'surface': surface,
-        'surface_alt': _from_hls(hue, alt, min(saturation, 0.14)),
-        'accent_soft': _from_hls(hue, soft, min(saturation, 0.35)),
+        'surface_alt': surface_alt,
+        'accent_soft': _soft(accent, secondary, soft),
         'ink': _from_hls(hue, 0.95 if dark else 0.13, min(saturation, 0.08 if dark else 0.25)),
         'muted': _from_hls(hue, 0.66 if dark else 0.45, min(saturation, 0.15)),
         'accent_text': accent,
@@ -174,7 +186,7 @@ def palette(accent, theme='light'):
         roles['cover_fill'], roles['cover_ink'] = accent, roles['on_accent']
         roles['band'], roles['band_ink'] = accent, roles['on_accent']
     else:
-        roles['cover_fill'] = 'FFFFFF' if theme == 'light' else surface
+        roles['cover_fill'] = 'FFFFFF' if theme == 'light' and not paper else surface
         roles['cover_ink'] = roles['ink'] if theme == 'dark' else _reads_on(roles['ink'], 'FFFFFF', 7.0)
         roles['band'], roles['band_ink'] = roles['surface_alt'], roles['ink']
     roles['cover_muted'] = (roles['cover_ink'] if theme == 'bold'
@@ -187,6 +199,9 @@ def palette(accent, theme='light'):
     roles['card_ink'] = _reads_on(roles['ink'], roles['card'], 7.0)
     roles['card_muted'] = _reads_on(roles['muted'], roles['card'], 4.5)
     roles['card_accent'] = _reads_on(accent, roles['card'], 4.5)
+    # Headlines in the accent are a design's choice; large text needs 3:1, and
+    # accent_text already reads at 4.5:1 on the surface.
+    roles['heading'] = roles['accent_text'] if accent_headings else roles['ink']
     roles['soft_ink'] = _reads_on(roles['ink'], roles['accent_soft'], 7.0)
     roles['soft_muted'] = _reads_on(roles['muted'], roles['accent_soft'], 4.5)
     return roles
@@ -233,7 +248,7 @@ def _theme_part(deck):
     return deck.slide_masters[0].part.part_related_by(RT.THEME)
 
 
-def apply_theme(deck, roles):
+def apply_theme(deck, roles, faces=(HEADING_FONT, BODY_FONT)):
     """Repaint the inherited Office theme so the deck is not stock Calibri blue.
 
     python-pptx has no theme API and loads `theme1.xml` as an opaque part, so
@@ -267,7 +282,7 @@ def apply_theme(deck, roles):
             srgb = slot.makeelement(qn('a:srgbClr'), {'val': value})
             slot.append(srgb)
     if fonts is not None:
-        for tag, face in (('a:majorFont', HEADING_FONT), ('a:minorFont', BODY_FONT)):
+        for tag, face in (('a:majorFont', faces[0]), ('a:minorFont', faces[1])):
             group = fonts.find(qn(tag))
             if group is None:
                 continue
@@ -292,6 +307,25 @@ def strip_binary_parts(deck):
     for relationship in list(package._rels.values()):
         if relationship.reltype.endswith('/thumbnail'):
             package.drop_rel(relationship.rId)
+
+
+def apply_fonts(deck, look):
+    """Put a design's fonts on every run the layouts wrote.
+
+    The layouts write the two house faces; a design swaps them here in one
+    pass, so no drawing function needs to know which design it is drawing.
+    """
+    faces = {HEADING_FONT: look['heading_font'], BODY_FONT: look['body_font']}
+    if faces == {HEADING_FONT: HEADING_FONT, BODY_FONT: BODY_FONT} and not look['heading_bold']:
+        return
+    for slide in deck.slides:
+        for latin in slide._element.iter(qn('a:latin')):
+            face = latin.get('typeface')
+            if face not in faces:
+                continue
+            latin.set('typeface', faces[face])
+            if face == HEADING_FONT and look['heading_bold']:
+                latin.getparent().set('b', '1')
 
 
 # ---------------------------------------------------------------- text
@@ -505,7 +539,7 @@ def _headline(slide, zone, text, roles, *, size, colour=None, anchor=MSO_ANCHOR.
         size -= 2
     frame = _frame(slide.shapes.add_textbox(*zone.box()), anchor)
     paragraph = _write(frame.paragraphs[0], text, font=HEADING_FONT, size=size,
-                       colour=colour or roles['ink'], spacing=1.08)
+                       colour=colour or roles.get('heading', roles['ink']), spacing=1.08)
     _no_bullet(paragraph)
     return paragraph
 
@@ -580,7 +614,10 @@ def render_pptx(content, path, locale='en', role='user_document', style=None, ph
     from .slide_layouts import DRAW, PHOTO_ZONES, Ctx, place_photo
     style = style or {}
     photos = photos or {}
-    roles = palette(style.get('accent', '#255e49'), style.get('deck_theme', 'light'))
+    from .deck_designs import look as design_look
+    look = design_look(style)
+    roles = palette(look['accent'], look['theme'], look['secondary'], look.get('paper'),
+                    look.get('accent_headings', False))
     sections = [dict(section) for section in content['sections']]
     question_label = {'en': 'Question', 'uz': 'Savol', 'ru': 'Вопрос'}[locale]
     for number, question in enumerate(content.get('questions', []), 1):
@@ -608,7 +645,7 @@ def render_pptx(content, path, locale='en', role='user_document', style=None, ph
 
     deck = Presentation()
     deck.slide_width, deck.slide_height = SLIDE_WIDTH, SLIDE_HEIGHT
-    apply_theme(deck, roles)
+    apply_theme(deck, roles, (look['heading_font'], look['body_font']))
     size = _deck_size(prepared)
     drawn, pictured = [], []
 
@@ -635,6 +672,7 @@ def render_pptx(content, path, locale='en', role='user_document', style=None, ph
         notes = '' if kind == 'cover' or role in ('learner_material', 'public_preview') else section.get('notes', '')
         slide.notes_slide.notes_text_frame.text = notes
 
+    apply_fonts(deck, look)
     deck.core_properties.title = content['title']
     deck.core_properties.author = 'PDF Master'
     strip_binary_parts(deck)
@@ -642,4 +680,4 @@ def render_pptx(content, path, locale='en', role='user_document', style=None, ph
     return {'path': str(path), 'name': path.name,
             'mime_type': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
             'page_count': len(deck.slides), 'role': role, 'shortened': shortened,
-            'metadata': {'layouts': drawn, 'photos': pictured}}
+            'metadata': {'layouts': drawn, 'photos': pictured, 'design': look['id']}}

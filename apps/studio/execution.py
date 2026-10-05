@@ -53,6 +53,10 @@ def execute_generation(job,output_dir):
         try:
             raw,usage=generate(cfg,data,job.feature_id,job.id,token_limit=job.quote.policy['generation_bounds']['input_tokens'],deadline=deadline)
             content=validate_content(job.account,raw,data['output_format'])
+            # The look the model chose is kept with the draft, so a later change
+            # request redraws the same deck rather than picking again.
+            from .deck_designs import remember
+            remember(data,raw)
             # Bounds can also change while the provider is running. Deliver
             # only a result that still preserves everything outside its scope.
             ensure_selected_preservation(data,content)

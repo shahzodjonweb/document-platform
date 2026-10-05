@@ -56,6 +56,9 @@ def execute_outline(job,draft,data,original,config,output_dir):
         try:
             raw,usage=generate(config,_payload(data),'ai.outline',job.id,token_limit=job.policy['generation_bounds']['input_tokens'])
             content=validate_content(job.account,raw,data['output_format'])
+            # A deck's look is chosen while it is planned; the paid run keeps it.
+            from .deck_designs import remember
+            remember(data,raw,replace=True)
             # An outline is headings and a sentence each. A model that writes more
             # than that, or adds questions nobody asked for, is cut back to the
             # shape of an outline — it does not cost the customer the job.

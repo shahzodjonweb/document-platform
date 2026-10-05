@@ -182,9 +182,13 @@ def _deck_style(fid,brief):
     """
     if fid!=SLIDES:return {}
     from . import pages as paging
-    style={'deck_theme':paging.requested_theme(brief) or 'light'}
+    # Only what the brief actually names is fixed; the rest is the design the
+    # model chooses (apps/studio/deck_designs.py).
+    style={}
+    theme=paging.requested_theme(brief)
+    if theme:style['deck_theme']=theme
     accent=paging.requested_accent(brief)
-    if accent:style['accent']=accent
+    if accent:style.update(accent=accent,accent_fixed=True)
     return style
 
 def _prepare_draft(account,data,revision_base=None):
@@ -282,7 +286,8 @@ def _prepare_draft(account,data,revision_base=None):
         if not template:raise DomainError('not_found',404)
         accent=template.definition.get('content',{}).get('style',{}).get('accent','#255e49')
         if not isinstance(accent,str) or not re.fullmatch(r'#[0-9a-fA-F]{6}',accent):raise DomainError('invalid_parameters')
-        template_style={'accent':accent}
+        # A customer's own saved template carries a colour they chose.
+        template_style={'accent':accent,'accent_fixed':True}
     style={**template_style,**density}
     if original is not None:
         inherited=(revision_base or original).get('options',{})
@@ -291,13 +296,14 @@ def _prepare_draft(account,data,revision_base=None):
             # The saved style is server-authored. Still resolve the template
             # above to recheck its ownership and current plan permission.
             style=deepcopy(previous_style or style)
-        elif fid==SLIDES and previous_style.get('deck_theme'):
-            style['deck_theme']=previous_style['deck_theme']
+        elif fid==SLIDES:
+            for key in ('deck_theme','deck_design'):
+                if previous_style.get(key):style[key]=previous_style[key]
         if not selection and fid==SLIDES:
             theme=paging.requested_theme(brief)
             accent=paging.requested_accent(brief)
             if theme:style['deck_theme']=theme
-            if accent:style['accent']=accent
+            if accent:style.update(accent=accent,accent_fixed=True)
         # A selected-page revision never changes the whole document's style.
     else:
         style.update(_deck_style(fid,brief))

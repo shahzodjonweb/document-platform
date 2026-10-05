@@ -42,10 +42,17 @@ def selected(data):
     return bool(data.get('revision', {}).get('selected_section_ids'))
 
 
-def schema(data, feature, *, final=True):
+def schema(data, feature, *, final=True, design=False):
     from .provider import schema_for, obj
     base = copy.deepcopy(schema_for(feature, data.get('output_format', 'pdf')))
     properties = base['properties']
+    if 'design' in properties:
+        # Only the call that chooses a deck's look sees the field, and it may
+        # not answer with the empty value the others are filled in with.
+        if design:
+            properties['design'] = {**properties['design'], 'enum': properties['design']['enum'][1:]}
+        else:
+            properties.pop('design')
     section = properties['sections']['items']['properties']
     outline = is_outline(data, feature)
     # Final slide notes are a deliverable. Document notes are only needed when
@@ -104,8 +111,13 @@ def request_body(config, data, feature, span=None):
             'or questions. Keep each selected section\'s existing layout and notes unless the '
             'change requires editing them. Include only source-grounded new citations.'
         )
+    from . import deck_designs
     if fmt == 'pptx' and not revision:
+        # The design list is in every deck call, so the cached prefix is the
+        # same across a long deck's batches; only the first call's schema asks.
         instructions += '\n' + layouts.reference(bool(options.get('image_cap')))
+        instructions += '\n' + deck_designs.reference()
+    design = deck_designs.wanted(data, first)
     # Stable source content comes before the varying slice and its instructions.
     # JSON separator whitespace is compacted, never whitespace inside user text.
     user = {'task': feature, 'output_locale': data['output_locale'],
@@ -150,7 +162,7 @@ def request_body(config, data, feature, span=None):
               'input': json.dumps(user, ensure_ascii=False, separators=(',', ':')),
               'max_output_tokens': output_budget(data, feature, len(mine)),
               'text': {'format': {'type': 'json_schema', 'name': 'document', 'strict': True,
-                                 'schema': schema(data, feature, final=final)}}}
+                                 'schema': schema(data, feature, final=final, design=design)}}}
     # Supported by Responses models. Stable across a user's related batches;
     # no raw account identifiers or source hashes leave the app in this key.
     scope = data.get('_cache_scope', '')
@@ -165,6 +177,8 @@ def canonical(raw, data):
     result.setdefault('title', data['content']['title'])
     result.setdefault('questions', [])
     result.setdefault('citations', [])
+    if data.get('output_format') == 'pptx':
+        result.setdefault('design', '')
     for section in result['sections']:
         section.setdefault('notes', '')
     return result

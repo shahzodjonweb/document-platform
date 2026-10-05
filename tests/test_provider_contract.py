@@ -276,12 +276,16 @@ def test_a_deck_is_asked_to_choose_a_layout_for_every_slide():
 def test_an_answer_using_every_layout_is_accepted():
     from apps.studio import layouts
     from apps.studio.provider import SLIDE_SCHEMA
-    answer = {'title': 'Deck', 'answer_supported': True, 'citations': [], 'questions': [],
+    answer = {'title': 'Deck', 'design': 'lagoon', 'answer_supported': True, 'citations': [], 'questions': [],
               'sections': [{'id': f's{i}', 'heading': 'H', 'body': '', 'notes': '', 'layout': kind,
                             'items': [{'label': 'a', 'text': 'b', 'value': '1'}], 'columns': [],
                             'image_query': ''} for i, kind in enumerate(layouts.LAYOUT_IDS)]}
     _validate(answer, SLIDE_SCHEMA)
     answer['sections'][0]['layout'] = 'hexagon'
+    with pytest.raises(ValueError):
+        _validate(answer, SLIDE_SCHEMA)
+    answer['sections'][0]['layout'] = layouts.LAYOUT_IDS[0]
+    answer['design'] = 'neon'
     with pytest.raises(ValueError):
         _validate(answer, SLIDE_SCHEMA)
 

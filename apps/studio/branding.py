@@ -53,7 +53,8 @@ def render_style(account,data,feature_id="ai.pdf_text"):
     if not brand:return style
     # Revalidate entitlement/expiry and immutable asset bytes after queuing.
     prepare_branding(account,feature_id,data['options'])
-    style.update(accent=brand['accent'],brand_name=brand['name'])
+    # A brand colour is a fact about the customer: it beats a deck design's accent.
+    style.update(accent=brand['accent'],brand_name=brand['name'],accent_fixed=True)
     if brand.get('logo_asset_id'):
         asset=_logo_asset(account,brand['logo_asset_id'])
         path=storage.local(asset.object_key)
