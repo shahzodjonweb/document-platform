@@ -101,8 +101,8 @@ def test_a_slide_is_asked_for_as_a_slide_not_as_a_short_page():
     """
     sent = json.loads(request_body(CONFIG, draft(output_format='pptx'), DOCUMENT)['input'])
     guidance = sent['writing_guidance']
-    assert '3 to 5 bullets, one per line' in guidance, guidance
-    assert 'at most 14 words' in guidance and 'at most 8 words' in guidance, guidance
+    assert '4 to 6 bullets, one per line' in guidance, guidance
+    assert 'at most 20 words' in guidance and 'at most 8 words' in guidance, guidance
     assert 'Do not start a line with a bullet character, dash or number' in guidance, guidance
     assert 'notes: 2 to 4 sentences' in guidance, guidance
     assert 'no markdown' in guidance, guidance

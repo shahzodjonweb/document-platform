@@ -51,10 +51,14 @@ SLIDE_WIDTH = Inches(13.333)
 SLIDE_HEIGHT = Inches(7.5)
 MARGIN = Inches(0.85)
 
-MAX_BULLETS = 5
-BULLET_WORDS = 14
-MIN_BODY_SIZE = 15
+# A list slide carries real explanation: up to six bullets, each a sentence.
+# They used to be five fragments of fourteen words, and decks read as empty.
+MAX_BULLETS = 6
+BULLET_WORDS = 20
+MIN_BODY_SIZE = 14
 MAX_BODY_SIZE = 20
+# The smallest a list may go on a slide that still does not fit the deck size.
+FLOOR_BODY_SIZE = 13
 # Measured metrics come from reportlab's Noto; the viewer renders Corbel. The
 # estimate only has to be close enough to choose a size, so it is padded rather
 # than made exact.
@@ -550,6 +554,10 @@ def _bullet_block(slide, zone, bullets, roles, size):
         paragraph = _write(_paragraph(frame, index), bullet, font=BODY_FONT, size=size,
                            colour=roles['ink'], spacing=LINE_MULTIPLE,
                            before=0 if index == 0 else size * 0.55)
+        # Exact leading, as `_fits` assumes. A relative 122% is 122% of the
+        # font's own line height — about a fifth taller than the estimate —
+        # which a full list of sentence-long bullets turns into an overflow.
+        paragraph.line_spacing = Pt(size * LINE_MULTIPLE)
         _bullet(paragraph, roles['accent_text'], size)
     return frame
 
@@ -634,7 +642,8 @@ def render_pptx(content, path, locale='en', role='user_document', style=None, ph
             lines, cut = bullets_of('\n'.join(layouts.as_lines(section)))
         has_photo = section.get('id') in photos
         kind = layouts.resolve(section, lines, index, total, has_photo)
-        if kind in LINE_LAYOUTS:
+        # Titled columns draw their items, not these lines: a cut here is no cut.
+        if kind in LINE_LAYOUTS and not _titled_columns(kind, section):
             shortened = shortened or cut
         if kind == 'cover':
             section = {**section, '_title': content['title']}

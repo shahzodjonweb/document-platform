@@ -62,13 +62,15 @@ def writing_guidance(options, sections, output_format='pdf', first=0, total=None
         return (
             f'Write {sections} section{ending}. Each section is one {unit}. {cover}'
             f'For {"every other" if titled else "each"} section: the heading is a headline of at '
-            f'most 8 words — a claim, not a label. When the layout is a list, the body is 3 to 5 '
-            f'bullets, one per line. Each bullet is one idea in at most 14 words. Do not start a '
-            f'line with a bullet character, dash or number: the line break is the bullet. No '
-            f'sub-bullets, no markdown, no bold. Put what the presenter would say in notes: 2 to 4 '
-            f'sentences, 40 to 80 words, never repeating a bullet word for word. Never write more '
-            f'than 5 bullets or more than {round(words * 1.3)} words in a section — a longer one '
-            f'does not fit its {unit} and will be shortened. Only the final section may be shorter.\n'
+            f'most 8 words — a claim, not a label. A slide should read on its own: explain with '
+            f'the reason, example or number, not a bare topic word. When the layout is a list, the '
+            f'body is 4 to 6 bullets, one per line. Each bullet is a full sentence of 12 to 20 words, '
+            f'at most 20 words; item texts are sentences too. Do not start a line with a bullet character, dash or number: the line '
+            f'break is the bullet. No sub-bullets, no markdown, no bold. Put what the presenter '
+            f'would say in notes: 2 to 4 sentences, 40 to 80 words, never repeating a bullet word '
+            f'for word. Never write more than 6 bullets or more than {round(words * 1.3)} words in a '
+            f'section — a longer one does not fit its {unit} and will be shortened. Only the final '
+            f'section may be shorter.\n'
             + (guide(max(0, photos)) if include_layouts else photo_guidance(max(0, photos)))
         )
     return (

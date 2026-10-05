@@ -154,7 +154,8 @@ def _put_paragraphs(ctx, zone, paragraphs):
         paragraph = kit._write(kit._paragraph(frame, index), values['text'],
                                font=values.get('font', kit.BODY_FONT), size=values['size'],
                                colour=values['colour'], bold=values.get('bold', False),
-                               before=values.get('before', 0), after=values.get('after', 0))
+                               before=values.get('before', 0), after=values.get('after', 0),
+                               align=values.get('align', PP_ALIGN.LEFT))
         # Relative line spacing is based on a viewer's font metrics, which can
         # be considerably taller than the point size used by the estimator.
         paragraph.line_spacing = Pt(values['size'] * values.get('spacing', 1.15))
@@ -177,6 +178,34 @@ def put(ctx, zone, value, *, size, colour, font=None, bold=False, align=PP_ALIGN
         paragraph.line_spacing = Pt(size * spacing)
     kit._no_bullet(paragraph)
     return frame
+
+
+def fitted(ctx, zone, text, *, size, colour, floor=12, bold=False, font=None, align=PP_ALIGN.LEFT,
+           spacing=1.15):
+    """One field that shrinks to its box, and only then is shortened."""
+    return _put_paragraphs(ctx, zone, [dict(text=text, size=size, floor=floor, colour=colour, bold=bold,
+                                            font=font or kit.BODY_FONT, align=align, spacing=spacing)])
+
+
+def fit_bullets(ctx, lines, zone):
+    """A list at the deck's size if it fits, else a little smaller, else shortened.
+
+    Sentence-long bullets make a full slide the normal case, so a slide whose
+    list still runs long steps down to the floor on its own, and only then
+    loses words from its longest bullet — the deck is marked shortened.
+    """
+    lines, size = list(lines), ctx.size
+    while size > kit.FLOOR_BODY_SIZE and not kit._fits(lines, size, zone):
+        size -= 0.5
+    while lines and not kit._fits(lines, size, zone):
+        longest = max(range(len(lines)), key=lambda index: len(lines[index]))
+        words = lines[longest].rstrip('…').split()
+        if len(words) > 6:
+            lines[longest] = ' '.join(words[:-2]).rstrip(',;:.') + '…'
+        else:
+            lines.pop(longest)
+        ctx.shortened = True
+    return lines, size
 
 
 def header(ctx, section, *, width=None, size=32):
@@ -254,7 +283,8 @@ def statement(ctx, section, lines):
 @draws('bullets')
 def bullets(ctx, section, lines):
     header(ctx, section)
-    kit._bullet_block(ctx.slide, kit.ZONES['body'], lines, ctx.roles, ctx.size)
+    lines, size = fit_bullets(ctx, lines, kit.ZONES['body'])
+    kit._bullet_block(ctx.slide, kit.ZONES['body'], lines, ctx.roles, size)
 
 
 @draws('two_column')
@@ -264,17 +294,16 @@ def two_column(ctx, section, lines):
     titled = [item for item in items_of(section) if item.get('label') and item.get('text')]
     if len(titled) == 2 and section.get('layout') == 'two_column':
         for zone, item in zip((kit.ZONES['body_left'], kit.ZONES['body_right']), titled):
-            frame = kit._frame(ctx.slide.shapes.add_textbox(*zone.box()))
-            kit._no_bullet(kit._write(frame.paragraphs[0], clip(ctx, item['label'], 8),
-                                      font=kit.HEADING_FONT, size=22, colour=roles['accent_text'],
-                                      bold=True, after=10))
-            kit._no_bullet(kit._write(frame.add_paragraph(), clip(ctx, item['text'], 40),
-                                      font=kit.BODY_FONT, size=16, colour=roles['ink'],
-                                      spacing=kit.LINE_MULTIPLE))
+            _put_paragraphs(ctx, zone, [
+                dict(text=clip(ctx, item['label'], 8), font=kit.HEADING_FONT, size=22, floor=18,
+                     colour=roles['accent_text'], bold=True, after=10),
+                dict(text=clip(ctx, item['text'], 60), size=17, floor=13, colour=roles['ink'],
+                     spacing=kit.LINE_MULTIPLE)])
     else:
         half = -(-len(lines) // 2)
-        kit._bullet_block(ctx.slide, kit.ZONES['body_left'], lines[:half], roles, ctx.size)
-        kit._bullet_block(ctx.slide, kit.ZONES['body_right'], lines[half:], roles, ctx.size)
+        for zone, part in ((kit.ZONES['body_left'], lines[:half]), (kit.ZONES['body_right'], lines[half:])):
+            part, size = fit_bullets(ctx, part, zone)
+            kit._bullet_block(ctx.slide, zone, part, roles, size)
     kit._shape(ctx.slide, kit.ZONES['column_rule'], roles['accent_soft'])
 
 
@@ -328,7 +357,7 @@ def big_number(ctx, section, lines):
     kit._no_bullet(kit._write(frame.paragraphs[0], clip(ctx, item.get('label'), 10),
                               font=kit.HEADING_FONT, size=28, colour=roles['ink'], after=8))
     if item.get('text'):
-        kit._no_bullet(kit._write(frame.add_paragraph(), clip(ctx, item['text'], 30),
+        kit._no_bullet(kit._write(frame.add_paragraph(), clip(ctx, item['text'], 40),
                                   font=kit.BODY_FONT, size=16, colour=roles['muted'],
                                   spacing=kit.LINE_MULTIPLE))
 
@@ -350,8 +379,8 @@ def stats(ctx, section, lines):
         put(ctx, Z(left, 4.4, width, 0.7), clip(ctx, item.get('label'), 8), size=18,
             colour=roles['ink'], bold=True)
         if item.get('text'):
-            put(ctx, Z(left, 5.1, width, 1.2), clip(ctx, item['text'], 18), size=14,
-                colour=roles['muted'])
+            fitted(ctx, Z(left, 5.1, width, 1.3), clip(ctx, item['text'], 20), size=14, floor=12,
+                   colour=roles['muted'])
 
 
 @draws('chart')
@@ -485,12 +514,12 @@ def agenda(ctx, section, lines):
         left, y = LEFT + column * (width + 0.5), TOP + line * row
         put(ctx, Z(left, y, 0.95, row), f'{position + 1:02d}', size=26, colour=roles['accent_text'],
             font=kit.HEADING_FONT)
-        frame = kit._frame(ctx.slide.shapes.add_textbox(*Z(left + 1.0, y + 0.02, width - 1.0, row).box()))
-        kit._no_bullet(kit._write(frame.paragraphs[0], clip(ctx, item['label'], 8), font=kit.BODY_FONT,
-                                  size=20, colour=roles['ink'], bold=True, after=2))
+        paragraphs = [dict(text=clip(ctx, item['label'], 8), size=20, floor=16, colour=roles['ink'],
+                           bold=True, after=2)]
         if item.get('text'):
-            kit._no_bullet(kit._write(frame.add_paragraph(), clip(ctx, item['text'], 14),
-                                      font=kit.BODY_FONT, size=14, colour=roles['muted']))
+            paragraphs.append(dict(text=clip(ctx, item['text'], 22), size=14, floor=12,
+                                   colour=roles['muted']))
+        _put_paragraphs(ctx, Z(left + 1.0, y + 0.02, width - 1.0, row - 0.04), paragraphs)
 
 
 @draws('timeline')
@@ -509,8 +538,8 @@ def timeline(ctx, section, lines):
         put(ctx, Z(left, 4.35, width, 0.7), clip(ctx, item.get('label'), 7), size=16,
             colour=roles['ink'], bold=True, align=PP_ALIGN.CENTER)
         if item.get('text'):
-            put(ctx, Z(left, 5.05, width, 1.3), clip(ctx, item['text'], 14), size=13,
-                colour=roles['muted'], align=PP_ALIGN.CENTER)
+            fitted(ctx, Z(left, 5.05, width, 1.5), clip(ctx, item['text'], 16), size=13, floor=12,
+                   colour=roles['muted'], align=PP_ALIGN.CENTER)
 
 
 @draws('process')
@@ -530,8 +559,9 @@ def process(ctx, section, lines):
         put(ctx, Z(left, 3.9, width, 0.7), clip(ctx, item['label'], 7), size=17, colour=roles['ink'],
             bold=True, align=PP_ALIGN.CENTER)
         if item.get('text'):
-            put(ctx, Z(left, 4.6, width, 1.7), clip(ctx, item['text'], 18), size=14,
-                colour=roles['muted'], align=PP_ALIGN.CENTER)
+            # Down to just above the footer band: a step's sentence needs the height.
+            fitted(ctx, Z(left, 4.6, width, 1.95), clip(ctx, item['text'], 22), size=14, floor=12,
+                   colour=roles['muted'], align=PP_ALIGN.CENTER)
 
 
 @draws('pros_cons')
@@ -558,7 +588,7 @@ def pros_cons(ctx, section, lines):
         kit._shape(ctx.slide, Z(left, TOP, width, 0.07), roles['accent'])
         paragraphs = [dict(text=clip(ctx, name, 5), font=kit.HEADING_FONT, size=24, floor=20,
                            colour=roles['card_accent'], bold=True, after=8)]
-        paragraphs.extend(dict(text=clip(ctx, item.get('label') or item.get('text'), 14),
+        paragraphs.extend(dict(text=clip(ctx, item.get('label') or item.get('text'), 20),
                                size=19, floor=13, colour=roles['card_ink'], spacing=1.2,
                                before=5 if index else 0, bullet=glyph,
                                bullet_colour=roles['card_accent'])
@@ -598,7 +628,7 @@ def cards(ctx, section, lines):
         paragraphs.append(dict(text=clip(ctx, item['label'], 7), font=kit.HEADING_FONT,
                                size=19, floor=14, colour=roles['card_ink'], bold=True, after=3))
         if item.get('text'):
-            paragraphs.append(dict(text=clip(ctx, item['text'], 20 if rows == 1 else 14),
+            paragraphs.append(dict(text=clip(ctx, item['text'], 28 if rows == 1 else 25),
                                    size=14, floor=12, colour=roles['card_muted'], spacing=1.15))
         padding = 0.1 if rows > 1 else 0.2
         zone = Z(left + 0.2, top + padding, width - 0.4, height - 2 * padding)
@@ -631,7 +661,7 @@ def _card_rows(ctx, entries):
             # A compact row has no spare line. Corbel can substitute to the
             # wider DejaVu Sans on Linux, so a line that only just fits Noto's
             # measured width must be budgeted as wrapping before choosing size.
-            paragraphs.append(dict(text=clip(ctx, item['text'], 20 if len(entries) <= 3 else 14), size=14, floor=12,
+            paragraphs.append(dict(text=clip(ctx, item['text'], 28 if len(entries) <= 3 else 25), size=14, floor=12,
                                    colour=ctx.roles['card_muted'], spacing=1.1, width_safety=1.1))
         _put_paragraphs(ctx, zone, paragraphs)
         if tag:
@@ -658,14 +688,12 @@ def matrix(ctx, section, lines):
         muted = roles['soft_muted'] if tinted else roles['card_muted']
         left, top = LEFT + column * (width + gap), TOP + row * (height + gap)
         kit._shape(ctx.slide, Z(left, top, width, height), fill)
-        frame = kit._frame(ctx.slide.shapes.add_textbox(*Z(left + 0.3, top + 0.2, width - 0.6,
-                                                             height - 0.4).box()))
-        kit._no_bullet(kit._write(frame.paragraphs[0], clip(ctx, item['label'], 6), font=kit.HEADING_FONT,
-                                  size=20, colour=ink, bold=True, after=6))
+        paragraphs = [dict(text=clip(ctx, item['label'], 6), font=kit.HEADING_FONT, size=20, floor=16,
+                           colour=ink, bold=True, after=6)]
         if item.get('text'):
-            kit._no_bullet(kit._write(frame.add_paragraph(), clip(ctx, item['text'], 18),
-                                      font=kit.BODY_FONT, size=14, colour=muted,
-                                      spacing=kit.LINE_MULTIPLE))
+            paragraphs.append(dict(text=clip(ctx, item['text'], 28), size=15, floor=12, colour=muted,
+                                   spacing=kit.LINE_MULTIPLE))
+        _put_paragraphs(ctx, Z(left + 0.3, top + 0.2, width - 0.6, height - 0.4), paragraphs)
     if axes:
         put(ctx, Z(LEFT, bottom + 0.05, WIDTH, 0.3), '  ·  '.join(clip(ctx, axis, 5) for axis in axes),
             size=12, colour=roles['muted'], align=PP_ALIGN.CENTER)
@@ -686,7 +714,9 @@ PHOTO_ZONES = {
 def image_split(ctx, section, lines):
     width = 13.333 * 0.52 - LEFT - 0.45
     header(ctx, section, width=width, size=30)
-    kit._bullet_block(ctx.slide, Z(LEFT, TOP, width, BOTTOM - TOP), lines, ctx.roles, ctx.size)
+    zone = Z(LEFT, TOP, width, BOTTOM - TOP)
+    lines, size = fit_bullets(ctx, lines, zone)
+    kit._bullet_block(ctx.slide, zone, lines, ctx.roles, size)
 
 
 @draws('image_full')
@@ -696,7 +726,8 @@ def image_full(ctx, section, lines):
                   size=26, anchor=MSO_ANCHOR.TOP, lines=1)
     caption = lines[0] if lines else ''
     if caption:
-        put(ctx, Z(LEFT, 6.1, WIDTH * 0.7, 0.55), clip(ctx, caption, 18), size=14, colour=roles['muted'])
+        fitted(ctx, Z(LEFT, 6.1, WIDTH * 0.7, 0.6), clip(ctx, caption, 24), size=14, floor=12,
+               colour=roles['muted'])
 
 
 def place_photo(slide, zone, photo):

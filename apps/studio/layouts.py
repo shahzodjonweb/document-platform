@@ -43,39 +43,39 @@ CATALOGUE = {layout.id: layout for layout in (
     Layout('cover', 'text', 'section',
            'title slide: heading is the deck title, body one subtitle line; image_query optional'),
     Layout('agenda', 'structure', 'bullets',
-           "what's coming: 3-6 items, label = topic, text optional"),
+           "what's coming: 3-6 items, label = topic, text = a sentence (≤15 words)"),
     Layout('section', 'text', 'section',
            'divider between parts: heading only, body an optional one-line kicker'),
     Layout('bullets', 'text', 'section',
-           'a list: body is 3-5 lines, one idea each'),
+           'a list: body is 4-6 lines, each a sentence of 12-20 words'),
     Layout('two_column', 'text', 'bullets',
-           'two ideas side by side: exactly 2 items, label = column title, text = up to 35 words'),
+           'two ideas side by side: exactly 2 items, label = column title, text = 30-50 words'),
     Layout('statement', 'text', 'bullets',
            'one idea set large: body is a single sentence of at most 20 words'),
     Layout('quote', 'text', 'statement',
            'a real or sourced quotation: body = the quote, items[0] label = who said it, text = role or source'),
     Layout('big_number', 'data', 'statement',
-           'one statistic: items[0] value = the figure (e.g. 118%), label = what it measures, text = context'),
+           'one statistic: items[0] value = the figure (e.g. 118%), label = what it measures, text = context (≤35 words)'),
     Layout('stats', 'data', 'bullets',
-           '2-4 figures: items with value = figure, label = what it measures'),
+           '2-4 figures: items with value = figure, label = what it measures, text = context (≤15 words)'),
     Layout('timeline', 'structure', 'bullets',
-           '3-6 dated events: items with value = date or period, label = event, text optional'),
+           '3-6 dated events: items with value = date or period, label = event, text = a sentence (≤12 words)'),
     Layout('process', 'structure', 'bullets',
-           '3-5 steps in order: items with label = step, text = one line'),
+           '3-5 steps in order: items with label = step, text = 1-2 sentences (≤18 words)'),
     Layout('comparison', 'data', 'table',
            'A versus B: columns = [A, B], items with label = criterion, text = A, value = B'),
     Layout('pros_cons', 'structure', 'two_column',
            'for and against: items with label = the point, value exactly "pro" or "con"'),
     Layout('cards', 'structure', 'bullets',
-           '3-6 features or options: items with label = name, text = one line, value optional tag'),
+           '3-6 features or options: items with label = name, text = 1-2 sentences (≤25 words), value optional tag'),
     Layout('matrix', 'structure', 'cards',
-           'a 2x2 grid such as SWOT: exactly 4 items with label and text; columns optional axis names'),
+           'a 2x2 grid such as SWOT: exactly 4 items with label and text (1-2 sentences, ≤22 words); columns optional axis names'),
     Layout('chart', 'data', 'table',
            'compare quantities: 2-8 items with label = category, value = a number; columns[0] optional unit'),
     Layout('table', 'data', 'bullets',
            'a small grid: columns = 2-3 headers, 2-6 items whose label, text, value are the cells'),
     Layout('image_split', 'photo', 'bullets',
-           'a photo beside 2-4 points: body lines + image_query', needs_photo=True),
+           'a photo beside 3-4 points: body lines (≤18 words each) + image_query', needs_photo=True),
     Layout('image_full', 'photo', 'statement',
            'a full-width photo with a caption: body = caption + image_query', needs_photo=True),
     Layout('closing', 'text', 'section',
@@ -273,8 +273,9 @@ def reference(photos=False):
     lines = [f'- {layout.id}: {layout.guide}' for layout in CATALOGUE.values()
              if photos or not layout.needs_photo]
     return ('Choose a layout for every section from this list:\n' + '\n'.join(lines) + '\n'
-            'Vary the layouts to suit the content: never the same one more than twice in a row, and '
-            'bullets on at most a third of the slides. Fill only the fields the layout uses and leave '
+            'Vary the layouts: never the same one more than twice in a row. Most slides should '
+            'carry several sentences of substance; use statement, quote, big_number and section '
+            'at most twice a deck. Fill only the fields the layout uses and leave '
             'the others empty ("" or []). Never invent figures, dates or quotations: use numbers only '
             'when the description or the sources give them, and quote only a real or sourced '
             'quotation. ')

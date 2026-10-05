@@ -17,9 +17,10 @@ from apps.core.policy import plan_limits
 # What one page HOLDS, measured across short English, long English and Russian
 # prose: 2700-3000 characters is one page in all three.
 CHARS_PER_PAGE = 3000
-# A slide holds a headline and three to five bullets. This is about what fills
-# them — it was 650 when a slide was eleven wrapped lines of prose.
-CHARS_PER_SLIDE = 500
+# A slide holds a headline and four to six sentence-long bullets. This is about
+# what fills them. It was 500 when bullets were fourteen-word fragments, and
+# customers found the decks too thin to present from.
+CHARS_PER_SLIDE = 850
 DEFAULT_PAGES = 5
 
 # What we ASK the model for is deliberately less than the page holds. A model
