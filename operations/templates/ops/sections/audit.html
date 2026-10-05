@@ -1,0 +1,40 @@
+{% load ops_ui %}
+<div class="page-heading">
+  <div>
+    <h1>{{ t.audit }}</h1>
+    <p class="page-description">{{ t.audit_desc }}</p>
+  </div>
+</div>
+{% filter_bar %}
+<section class="panel">
+  <div class="table-region" role="region" aria-label="{{ t.audit }}" tabindex="0">
+    <table>
+      <thead>
+        <tr><th>{{ t.created }}</th><th>{{ t.actor }}</th><th>{{ t.action }}</th><th>{{ t.changes }}</th></tr>
+      </thead>
+      <tbody>
+        {% for row in pagination %}
+        <tr>
+          <td class="muted">{{ row.created_at|date:'d M Y · H:i' }}</td>
+          <td>{{ row.actor.username|default:'—' }}</td>
+          <td class="wrap">
+            <span class="mono">{{ row.action }}</span>
+            {% if row.reason %}<small>{{ row.reason|truncatechars:120 }}</small>{% endif %}
+            {% if row.target %}<small class="mono">{{ row.target|truncatechars:40 }}</small>{% endif %}
+          </td>
+          <td class="wrap">
+            {% if row.changes %}
+            <div class="change-list">
+              {% for change in row.changes %}<div><span>{{ change.key }}:</span> {% if change.before is not None %}<del>{{ change.before }}</del> → {% endif %}{% if change.after is not None %}<ins>{{ change.after }}</ins>{% else %}—{% endif %}</div>{% endfor %}
+            </div>
+            {% else %}<span class="muted">—</span>{% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4">{% include 'ops/ui/empty.html' with icon='history' title=t.no_data text=t.no_data_desc %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include 'ops/ui/pagination.html' with q=query %}
+</section>

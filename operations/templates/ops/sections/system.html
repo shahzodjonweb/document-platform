@@ -1,0 +1,21 @@
+{% load ops_ui %}
+<div class="page-heading">
+  <div>
+    <h1>{{ t.system }}</h1>
+    <p class="page-description">{{ t.system_desc }}</p>
+  </div>
+</div>
+<section class="metrics-grid" aria-label="{{ t.system }}">
+  {% for card in system_cards %}
+  <div class="metric-card">
+    <div><span>{{ card.label }}</span></div>
+    <strong>{% if card.key == 'storage' %}{{ card.value|filesizeformat }}{% else %}{{ card.value }}{% endif %}</strong>
+    <small>{{ now|date:'d M Y · H:i' }}</small>
+  </div>
+  {% endfor %}
+</section>
+<section class="panel info-panel">
+  <h2>{{ t.retention }}</h2>
+  <p>{{ t.cleanup_note }}</p>
+  <p class="muted">{{ t.worker_note }}</p>
+</section>

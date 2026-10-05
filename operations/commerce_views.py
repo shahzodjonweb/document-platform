@@ -39,6 +39,14 @@ def financial_report(filters):
     runrate=renewing.aggregate(n=Sum('offer__price_xtr'))['n'] or 0
     return {'totals':{'gross':gross,'refunds':returned,'net':gross-returned,'payers':rows.values('account_id').distinct().count(),'paid':active.values('account_id').distinct().count(),'renewals':rows.filter(is_renewal=True).count(),'first':first,'run_rate':runrate,'uzs_gross':card_gross,'uzs_refunds':card_back,'uzs_net':card_gross-card_back,'manual_pending':ManualPayment.objects.filter(status='submitted').count()},'rows':every.filter(occurred_at__gte=start,occurred_at__lt=end).select_related('account').order_by('-occurred_at'),'as_of':as_of,'issues':ReconciliationIssue.objects.filter(status='open',invoice__sandbox=sandbox,invoice__account__in=filters.accounts(False)).order_by('-created_at')[:30]}
 
+def money_cards(totals,labels):
+    """So'm first; Telegram Stars only once there is Stars activity to show."""
+    keys=[key for key in ('uzs_gross','uzs_refunds','uzs_net','payers','paid','first') if key in totals]
+    if any(totals.get(key) for key in ('gross','refunds','run_rate')):
+        keys+=[key for key in ('gross','refunds','net','renewals','run_rate') if key in totals]
+    return [{'key':key,'label':labels[key],'value':totals[key],'money':key.startswith('uzs_')} for key in keys]
+
+
 @require_staff('Finance','Analyst')
 @require_http_methods(['GET'])
 def finance_page(request,section='payments'):
@@ -47,7 +55,7 @@ def finance_page(request,section='payments'):
     data=context(request,section);data['f']=LABELS[data['lang']]
     try:filters=Filters.from_request(request)
     except ValueError as e:return HttpResponseBadRequest(str(e))
-    report=financial_report(filters);data.update(report);data['filters']=filters;data['pagination']=Paginator(report['rows'],30).get_page(request.GET.get('p'));data['cards']=[{'label':data['f'][k],'value':v} for k,v in report['totals'].items()];data['now']=timezone.now()
+    report=financial_report(filters);data.update(report);data['filters']=filters;data['pagination']=Paginator(report['rows'],30).get_page(request.GET.get('p'));data['cards']=money_cards(report['totals'],data['f']);data['now']=timezone.now()
     from .auth import allowed
     data['can_finance']=allowed(request.ops_user,['Finance'])
     if data['can_finance']:

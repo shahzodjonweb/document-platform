@@ -1,0 +1,53 @@
+{% load ops_ui %}
+<div class="page-heading">
+  <div>
+    <h1>{{ t.users }}</h1>
+    <p class="page-description">{{ t.user_desc }}</p>
+  </div>
+  {% if can_export %}<div class="page-heading-actions"><a class="button secondary" href="{{ export_url }}">{% icon 'download' 17 %}{{ t.export }}</a></div>{% endif %}
+</div>
+{% if not search %}{% filter_bar %}{% endif %}
+
+<section class="panel">
+  <div class="panel-heading">
+    <div>
+      <h2>{% if search %}{{ t.results_for }} “{{ search }}”{% else %}{{ t.joined_in_period }}{% endif %}</h2>
+      <p>{{ pagination.paginator.count }} {{ t.rows }}{% if search %} · <a class="text-link" href="?{% query_with q=None %}">{{ t.clear_search }}</a>{% endif %}</p>
+    </div>
+    <nav class="segmented" aria-label="{{ t.plan }}">
+      {% for key in plan_tabs %}<a href="?{% query_with plan=key %}"{% if plan_filter == key %} aria-current="true"{% endif %}>{% if key %}{{ key|capfirst }}{% else %}{{ t.all }}{% endif %}</a>{% endfor %}
+    </nav>
+  </div>
+  <form class="table-search" method="get" role="search">
+    {% for key, value in request.GET.items %}{% if key != 'q' and key != 'p' %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endif %}{% endfor %}
+    <input type="search" aria-label="{{ t.find_customer }}" name="q" placeholder="{{ t.find_customer }}" value="{{ search }}">
+    <button class="button secondary">{% icon 'search' 16 %}{{ t.search_button }}</button>
+  </form>
+  <div class="table-region" role="region" aria-label="{{ t.users }}" tabindex="0">
+    <table>
+      <thead>
+        <tr><th>{{ t.account }}</th><th>{{ t.plan }}</th><th>{{ t.locale }}</th><th>{{ t.source }}</th><th>{{ t.created }}</th></tr>
+      </thead>
+      <tbody>
+        {% for row in pagination %}
+        <tr>
+          <td>
+            <a class="cell-person" href="/ops/users/{{ row.id }}?lang={{ lang }}">
+              <span class="avatar" aria-hidden="true">{{ row.display_name|default:row.username|initial }}</span>
+              <span><span class="table-link">{{ row.display_name|default:row.username|default:row.id }}</span>
+              <small>{% if row.username %}@{{ row.username }} · {% endif %}{% if row.telegram_user_id %}{{ row.telegram_user_id }}{% else %}{{ row.id|stringformat:'s'|slice:':8' }}{% endif %}</small></span>
+            </a>
+          </td>
+          <td><span class="badge plan-{{ row.plan }}">{{ row.plan|capfirst }}</span></td>
+          <td>{{ row.locale|upper }}</td>
+          <td>{{ row.first_verified_channel }}</td>
+          <td class="muted">{{ row.created_at|date:'d M Y · H:i' }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5">{% include 'ops/ui/empty.html' with icon='users' title=t.no_users text=t.no_users_desc %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include 'ops/ui/pagination.html' with q=query %}
+</section>

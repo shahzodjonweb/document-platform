@@ -12,7 +12,7 @@ from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.models import Group
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.db.models import Q,Case,When,IntegerField,Value
+from django.db.models import Q,Case,When,IntegerField,Value,Count,Max
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbidden, JsonResponse
 from django.middleware.csrf import rotate_token
 from django.shortcuts import get_object_or_404, redirect, render
@@ -26,6 +26,7 @@ from .metrics import DEFINITIONS_VERSION, Filters, report, system_snapshot
 from .models import AuditLog, LoginAttempt, StaffSession
 
 PAGE_ROLES = {
+    'today':['Analyst','Operations','Finance','Support','Content manager'],
     'overview':['Analyst','Operations','Finance'], 'users':['Support'],
     'analytics/acquisition':['Analyst'], 'analytics/engagement':['Analyst'],
     'analytics/features':['Analyst','Operations'], 'analytics/revenue':['Analyst','Finance'],
@@ -34,12 +35,40 @@ PAGE_ROLES = {
     'payments':['Finance'], 'support':['Support'], 'audit':[], 'system':['Operations'],
     'localization':['Content manager'], 'integrations':[], 'staff':[],
 }
-PAGE_KEYS = {'overview':'overview','users':'users','analytics/acquisition':'acquisition',
+PAGE_KEYS = {'today':'today','overview':'overview','users':'users','analytics/acquisition':'acquisition',
              'analytics/engagement':'engagement','analytics/features':'features','analytics/revenue':'revenue','analytics/ai-usage':'ai_usage',
              'jobs':'jobs','generations':'generations','plans':'plans','payments':'payments','support':'support','audit':'audit','system':'system','localization':'localization'}
-NAV = [('analytics',[('overview','overview','▦'),('analytics/acquisition','acquisition','↗'),('analytics/engagement','engagement','◷'),('analytics/features','features','◇'),('analytics/revenue','revenue','◉'),('analytics/ai-usage','ai_usage','✦')]),
-       ('manage',[('users','users','♧'),('jobs','jobs','▤'),('generations','generations','✎'),('support','support','♡'),('payments','payments','◎')]),
-       ('platform',[('plans','plans','☷'),('localization','localization','◎'),('audit','audit','☑'),('system','system','⌁'),('integrations','integrations','⚙'),('staff','staff','♙')])]
+# Sidebar: (group label key, [(page, label key, icon)]). The analytics reports
+# share one entry; their own tabs switch between them.
+NAV = [
+    ('', [('today','today','today')]),
+    ('customers', [('users','users','users'),('support','nav_support','support'),('generations','generations','sparkle')]),
+    ('money', [('payments','payments','card'),('analytics/revenue','revenue','trending')]),
+    ('product', [('overview','nav_analytics','chart'),('jobs','nav_tasks','list'),('analytics/ai-usage','ai_usage','cpu'),('plans','plans','layers')]),
+    ('settings', [('integrations','integrations','plug'),('staff','staff','shield'),('audit','audit','history'),('system','system','activity'),('localization','localization','globe')]),
+]
+ANALYTICS = ['overview','analytics/acquisition','analytics/engagement','analytics/features']
+# Each report page() renders lays itself out in one partial.
+SECTIONS = {'today':'today','overview':'analytics','analytics/acquisition':'analytics','analytics/engagement':'analytics',
+            'analytics/features':'analytics','users':'users','jobs':'jobs','support':'support','audit':'audit',
+            'plans':'plans','system':'system','localization':'localization'}
+SUPPORT_STATES = ['open','waiting_customer','resolved']
+JOB_STATES = ['queued','running','succeeded','failed','canceled']
+PLAN_GROUPS = [('group_price',['price_uzs','price_xtr']),
+               ('group_allowance',['file_tasks','file_page_units','ai_credits']),
+               ('group_daily',['daily_file_tasks','daily_ai_documents']),
+               ('group_task',['max_file_mib','max_pages_per_job','concurrent_jobs']),
+               ('group_ai',['max_ai_source_pages','max_ai_source_files','max_deck_images','max_ai_input_tokens',
+                            'max_generated_pdf_pages','max_generated_slides']),
+               ('group_saved',['saved_workflows','saved_teacher_templates'])]
+
+
+def role_check(user):
+    """allowed() for one request, with the staff member's groups read once."""
+    if not user:
+        return lambda roles: False
+    names = set(user.groups.values_list('name', flat=True))
+    return lambda roles: bool(user.is_superuser or names & (set(roles) | {'Administrator'}))
 
 
 def landing(user):
@@ -56,17 +85,22 @@ def context(request, page='overview'):
     params['lang'] = lang
     params.pop('p', None)
     query = params.urlencode()
+    ok = role_check(user)
     nav = []
     if user:
-        # Card transfers waiting for a decision show as a count beside Payments.
-        waiting = 0
-        if allowed(user, PAGE_ROLES['payments']):
+        # Work waiting for someone shows as a count beside its page.
+        badges = {}
+        if ok(PAGE_ROLES['payments']):
             from apps.commerce.models import ManualPayment
-            waiting = ManualPayment.objects.filter(status='submitted').count()
+            badges['payments'] = ManualPayment.objects.filter(status='submitted').count()
+        if ok(PAGE_ROLES['support']):
+            badges['support'] = SupportTicket.objects.filter(status='open').count()
         for group, items in NAV:
-            permitted = [{'path':path,'url':'/ops/'+path+'?'+query,'label':labels[key],'icon':icon,'active':page==path,'badge':waiting if path=='payments' else 0} for path,key,icon in items if allowed(user,PAGE_ROLES[path])]
+            permitted = [{'path':path,'url':'/ops/'+path+'?'+query,'label':labels[key],'icon':icon,
+                          'active':page==path or (path=='overview' and page in ANALYTICS),'badge':badges.get(path,0)}
+                         for path,key,icon in items if ok(PAGE_ROLES[path])]
             if permitted:
-                nav.append({'label':labels[group],'items':permitted})
+                nav.append({'label':labels[group] if group else '','items':permitted})
     params = request.GET.copy()
     locale_links = []
     for locale, name in [('en','English'),('uz','O‘zbekcha'),('ru','Русский')]:
@@ -76,7 +110,7 @@ def context(request, page='overview'):
             'title':labels.get(PAGE_KEYS.get(page,page),page),'nav':nav,'staff':user,
             'staff_role':user.groups.first().name if user and user.groups.exists() else labels['staff'],
             'locale_links':locale_links,'dev_enabled':development_access(request),
-            'can_inspect_jobs':bool(user and allowed(user,['Operations','Support']))}
+            'can_inspect_jobs':ok(['Operations','Support']),'can_search_users':ok(PAGE_ROLES['users']),'ok':ok}
 
 
 def finish_render(request, template, data, status=200):
@@ -122,7 +156,7 @@ def development_login(request):
     user.groups.add(Group.objects.get_or_create(name='Administrator')[0])
     rotate_token(request)
     audit(user,'staff.development_login',user.pk,'Explicit loopback development sign-in')
-    return begin_session(redirect('/ops/overview?environment=development'),user)
+    return begin_session(redirect('/ops/today?environment=development'),user)
 
 
 @require_POST
@@ -137,7 +171,7 @@ def logout(request):
 def page(request, section='overview'):
     if request.path in {'/ops','/ops/'}:
         return redirect(landing(request.ops_user))
-    if section not in PAGE_ROLES or not allowed(request.ops_user,PAGE_ROLES[section]):
+    if section not in SECTIONS or not allowed(request.ops_user,PAGE_ROLES[section]):
         return HttpResponseForbidden('Staff permission required')
     data=context(request,section)
     try:
@@ -159,23 +193,50 @@ def page(request, section='overview'):
     if section in {'analytics/acquisition','analytics/engagement'}:
         from .analytics_extra import engagement
         data['cohorts']=engagement(filters)
+    if section=='today':
+        from .today import summary as today_summary
+        data.update(today_summary(request,filters,data['t'],data['ok']))
+        # Today's cards lead to the same day on the pages behind them.
+        params=request.GET.copy();params.pop('p',None)
+        params['lang']=data['lang']
+        for key in ('date_from','date_to','timezone'):params[key]=getattr(data['today_filters'],key)
+        data['today_query']=params.urlencode()
+    if section in ANALYTICS:
+        data['analytics_tabs']=[{'label':data['t'][PAGE_KEYS[path]],'url':'/ops/'+path+'?'+data['query'],'active':path==section}
+                                for path in ANALYTICS if data['ok'](PAGE_ROLES[path])]
     if section in {'users','jobs','support','audit'}:
         if section=='users':
-            rows=filters.accounts().order_by('-created_at')
             search=request.GET.get('q','').strip()[:150]
-            if search:
-                query=Q(id__icontains=search)|Q(username__icontains=search)
-                if search.isdigit():query |= Q(telegram_user_id=int(search))
-                rows=rows.filter(query)
+            # A search looks through every account; the plain list shows who joined in the period.
+            rows=account_search(filters,search).order_by('-created_at')
+            plan=request.GET.get('plan','')
+            if plan in {'free','plus','premium'}:rows=rows.filter(plan=plan)
+            data.update(search=search,plan_filter=plan,plan_tabs=['','free','plus','premium'])
         elif section=='jobs':
             rows=filters.jobs().select_related('account').order_by('-created_at')
             state=request.GET.get('status','')
             if state:rows=rows.filter(status=state)
+            data.update(status_filter=state,job_states=JOB_STATES)
         elif section=='support':
-            rows=SupportTicket.objects.filter(account__in=filters.accounts(False),created_at__gte=filters.bounds[0],created_at__lt=filters.bounds[1]).select_related('account').annotate(priority_rank=Case(When(account__plan='premium',then=Value(0)),default=Value(1),output_field=IntegerField())).order_by('priority_rank','created_at')
+            # An inbox, not a report: every case of the chosen state, whenever it arrived.
+            state=request.GET.get('status','open')
+            tickets=SupportTicket.objects.filter(account__in=filters.accounts(False))
+            data['support_tabs']=[{'key':key,'label':data['t']['support_'+key],'active':state==key,
+                                   'count':tickets.filter(status=key).count() if key!='all' else None}
+                                  for key in SUPPORT_STATES+['all']]
+            if state in SUPPORT_STATES:tickets=tickets.filter(status=state)
+            tickets=tickets.select_related('account').annotate(replies=Count('messages'),last_reply=Max('messages__created_at'))
+            if state in {'open','waiting_customer'}:
+                # Premium customers first, then whoever has waited longest.
+                rows=tickets.annotate(priority_rank=Case(When(account__plan='premium',then=Value(0)),default=Value(1),output_field=IntegerField())).order_by('priority_rank','created_at')
+            else:
+                rows=tickets.order_by('-updated_at')
         else:
             rows=AuditLog.objects.select_related('actor').filter(created_at__gte=filters.bounds[0],created_at__lt=filters.bounds[1]).order_by('-created_at')
         data['pagination']=Paginator(rows,30).get_page(request.GET.get('p'))
+        if section=='audit':
+            for row in data['pagination']:
+                row.changes=audit_changes(row.before,row.after)
     if section=='plans':
         from . import plans as plan_settings
         defaults=plan_settings.seed()['plans'];changed=plan_settings.overrides()
@@ -184,17 +245,46 @@ def page(request, section='overview'):
         # Each field carries its seed value so an operator can see what they
         # are changing it from, and its bounds so the form refuses nonsense.
         data['plan_fields']=[{'name':name,'low':low,'high':high} for name,(low,high) in plan_settings.FIELDS.items()]
+        # Fields are grouped the way an operator thinks about a plan.
         data['plan_edit_rows']=[{'id':row['id'],'title':row['title'],'edited':row['edited'],
-                                 'fields':[{'name':f['name'],'low':f['low'],'high':f['high'],
-                                            'nullable':f['name'] in plan_settings.NULLABLE,
-                                            'value':row.get(f['name']),'seed':defaults[row['id']].get(f['name'])}
-                                           for f in data['plan_fields'] if f['name'] in defaults[row['id']]]}
+                                 'groups':[{'label':data['t'][group],
+                                            'fields':[{'name':name,'label':data['t'].get('field_'+name,name),
+                                                       'low':plan_settings.FIELDS[name][0],'high':plan_settings.FIELDS[name][1],
+                                                       'nullable':name in plan_settings.NULLABLE,
+                                                       'value':row.get(name),'seed':defaults[row['id']].get(name)}
+                                                      for name in names if name in plan_settings.FIELDS and name in defaults[row['id']]]}
+                                           for group,names in PLAN_GROUPS]}
                                for row in data['plan_rows']]
         data['can_edit_plans']=allowed(request.ops_user,['Finance','Content manager'])
-    if section=='system':data['system_cards']=[{'label':data['t'][key],'value':value} for key,value in system_snapshot(filters).items()]
-    if section=='localization':data['locale_rows']=[{'id':key,'count':len(value),'coverage':'100%'} for key,value in CATALOGS.items()]
+    if section=='system':data['system_cards']=[{'key':key,'label':data['t'][key],'value':value} for key,value in system_snapshot(filters).items()]
+    if section=='localization':data['locale_rows']=[{'id':key,'label':{'en':'English','uz':'O‘zbekcha','ru':'Русский'}.get(key,key),'count':len(value),'coverage':'100%'} for key,value in CATALOGS.items()]
     data['now']=timezone.now()
+    data['section_template']='ops/sections/'+SECTIONS[section]+'.html'
     return finish_render(request,'ops/page.html',data)
+
+
+def account_search(filters,search):
+    """Accounts matching a name, username, Telegram ID or account ID; or, with no search, those who joined in the period."""
+    rows=filters.accounts(in_period=not search)
+    if search:
+        query=Q(id__icontains=search)|Q(username__icontains=search.lstrip('@'))|Q(display_name__icontains=search)
+        if search.isdigit():query |= Q(telegram_user_id=int(search))
+        rows=rows.filter(query)
+    return rows
+
+
+def audit_changes(before,after):
+    """What an audited action changed, field by field, for the audit table."""
+    before=before if isinstance(before,dict) else {}
+    after=after if isinstance(after,dict) else {}
+    def short(value):
+        text=value if isinstance(value,str) else json.dumps(value,ensure_ascii=False,default=str)
+        return text if len(text)<=60 else text[:57]+'…'
+    rows=[]
+    for key in list(dict.fromkeys([*before,*after]))[:8]:
+        if key in before and key in after and before[key]==after[key]:continue
+        rows.append({'key':key,'before':short(before[key]) if key in before else None,'after':short(after[key]) if key in after else None})
+    return rows
 
 
 @require_staff('Support')
@@ -219,7 +309,7 @@ def user_detail(request, pk):
     data['staff_plan']=staff_plan(account)
     period=active_period(account)
     data['paid_plan']=period.plan if period else ''
-    data['plan_limits']=[{'label':key.replace('_',' '),'value':value} for key,value in limits_for_plan(account.plan).items()]
+    data['plan_limits']=[{'label':data['t'].get('field_'+key,key.replace('_',' ')),'value':value} for key,value in limits_for_plan(account.plan).items()]
     # Customer documents, newest first. Opening one is a separate audited act.
     data['files']=FileAsset.objects.filter(account=account).order_by('-created_at')[:50]
     data['can_open_files']=allowed(request.ops_user,['Support','Operations'])
@@ -227,14 +317,14 @@ def user_detail(request, pk):
         from .generation_views import _rows
         data['generation_rows']=_rows(account.generation_records.select_related('job').order_by('-created_at')[:10],data['t'])
     audit(request.ops_user,'account.metadata_view',pk,'Staff inspected account metadata')
-    return finish_render(request,'ops/detail.html',data)
+    return finish_render(request,'ops/user.html',data)
 
 
 @require_staff('Operations','Support')
 def job_detail(request, pk):
     job=get_object_or_404(Job.objects.select_related('account'),pk=pk)
     data=context(request,'jobs');data['can_cancel']=allowed(request.ops_user,['Operations']) and job.status=='queued';data.update({'job':job,'detail_type':'job','ledger':UsageLedger.objects.filter(job=job).order_by('created_at')})
-    return finish_render(request,'ops/detail.html',data)
+    return finish_render(request,'ops/job.html',data)
 
 
 @require_staff('Support')
@@ -246,7 +336,7 @@ def support_detail(request, pk):
         reply=request.POST.get('reply','').strip()
         if len(reply)>4000:
             data['error']={'en':'Replies must contain at most 4,000 characters.','uz':'Javob 4 000 belgidan oshmasligi kerak.','ru':'Ответ должен содержать не более 4 000 символов.'}[data['lang']]
-            return finish_render(request,'ops/detail.html',data,400)
+            return finish_render(request,'ops/support_ticket.html',data,400)
         with transaction.atomic():
             ticket=SupportTicket.objects.select_for_update().get(pk=pk)
             if reply:
@@ -258,7 +348,7 @@ def support_detail(request, pk):
             ticket.save(update_fields=['status','updated_at'])
             audit(request.ops_user,'support.status_changed',pk,None,{'status':before},{'status':ticket.status})
         return redirect(request.path+'?'+urlencode({'lang':data['lang'],'saved':'1'}))
-    return finish_render(request,'ops/detail.html',data)
+    return finish_render(request,'ops/support_ticket.html',data)
 
 
 @require_staff('Analyst','Operations','Finance')
@@ -284,12 +374,8 @@ def export(request, kind):
     for key,value in filters.__dict__.items():writer.writerow([key,csv_cell(value)])
     if kind=='users':
         fields=['id','telegram_user_id','display_name','locale','plan','first_verified_channel','created_at']
-        records=filters.accounts().order_by('-created_at')
-        search=request.GET.get('q','').strip()[:150]
-        if search:
-            query=Q(id__icontains=search)|Q(username__icontains=search)
-            if search.isdigit():query |= Q(telegram_user_id=int(search))
-            records=records.filter(query)
+        records=account_search(filters,request.GET.get('q','').strip()[:150]).order_by('-created_at')
+        if request.GET.get('plan','') in {'free','plus','premium'}:records=records.filter(plan=request.GET['plan'])
         if records.count()>10000:return HttpResponseBadRequest('Narrow filters to at most 10000 rows')
         rows=records.values_list(*fields)
     elif kind=='jobs':

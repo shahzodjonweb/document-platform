@@ -1,0 +1,54 @@
+{% load ops_ui %}
+<div class="page-heading">
+  <div>
+    <h1>{{ t.today }}</h1>
+    <p class="page-description">{{ now|date:'d.m.Y' }} · {{ t.today_desc }}</p>
+  </div>
+</div>
+{% if filters.environment == 'development' %}<p class="environment-note"><span class="status-dot"></span>{{ t.notice_test }}</p>{% endif %}
+
+<section class="metrics-grid" aria-label="{{ t.today }}">
+  {% for stat in stats %}
+  {% if stat.href %}<a class="metric-card" href="{{ stat.href }}?{{ today_query }}">{% else %}<div class="metric-card">{% endif %}
+    <div><span>{{ stat.label }}</span>{% if stat.href %}<span class="metric-arrow">{% icon 'right' 16 %}</span>{% endif %}</div>
+    <strong>{% if stat.key == 'received' %}{{ stat.value|money }} <small>so'm</small>{% else %}{{ stat.value }}{% endif %}</strong>
+    <small class="stat-delta">{{ t.yesterday }}: {% if stat.key == 'received' %}{{ stat.yesterday|money }}{% else %}{{ stat.yesterday }}{% endif %}</small>
+  {% if stat.href %}</a>{% else %}</div>{% endif %}
+  {% endfor %}
+</section>
+
+{% if actions %}
+<section class="action-cards" aria-label="{{ t.waiting }}">
+  {% for card in actions %}
+  <a class="action-card {% if card.count %}waiting{% else %}calm{% endif %}" href="{{ card.href }}">
+    <span class="icon-tile">{% icon card.icon 20 %}</span>
+    <div>
+      <strong>{{ card.title }}</strong>
+      <small>{% if not card.count %}{{ card.empty }}{% elif card.oldest %}{{ t.oldest_waiting }}: {% since card.oldest lang %}{% else %}{{ t.open_list }}{% endif %}</small>
+    </div>
+    <span class="action-count">{{ card.count }}</span>
+  </a>
+  {% endfor %}
+</section>
+{% endif %}
+
+<div class="health-line" role="status">
+  <span><span class="status-dot{% if health.queue > 20 %} attention{% endif %}"></span>{{ t.queue_now }}: <strong>{{ health.queue }}</strong></span>
+  <span><span class="status-dot{% if health.failed %} bad{% endif %}"></span>{{ t.today_failed }}: <strong>{{ health.failed }}</strong></span>
+  {% if health.storage %}<span><span class="status-dot{% if health.storage == 'problem' %} bad{% endif %}"></span>{{ t.file_storage }}: <strong>{% if health.storage == 'ok' %}{{ t.storage_ok }}{% else %}{{ t.storage_problem }}{% endif %}</strong></span>{% endif %}
+  <span class="muted">{{ t.updated }} {{ now|date:'H:i' }}</span>
+  {% if health.system_href %}<a class="text-link" href="{{ health.system_href }}?lang={{ lang }}">{{ t.system }} {% icon 'right' 15 %}</a>{% endif %}
+</div>
+
+{% if can_inspect_jobs %}
+<section class="panel">
+  <div class="panel-heading">
+    <div>
+      <h2>{{ t.today_tasks }}</h2>
+      <p>{{ t.activity_desc }}</p>
+    </div>
+    <a class="text-link" href="/ops/jobs?{{ today_query }}">{{ t.view_all }} {% icon 'right' 15 %}</a>
+  </div>
+  {% include 'ops/job_table.html' with show_customer=True %}
+</section>
+{% endif %}

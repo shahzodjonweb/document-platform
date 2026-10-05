@@ -1,0 +1,19 @@
+{% load ops_ui %}
+<div class="page-heading">
+  <div>
+    <h1>{{ t.localization }}</h1>
+    <p class="page-description">{{ t.locale_desc }}</p>
+  </div>
+</div>
+<section class="panel">
+  <div class="table-region">
+    <table>
+      <thead><tr><th>{{ t.language }}</th><th>{{ t.keys }}</th><th>{{ t.coverage }}</th><th>{{ t.review }}</th></tr></thead>
+      <tbody>
+        {% for row in locale_rows %}
+        <tr><td><strong>{{ row.label }}</strong> <span class="muted">{{ row.id|upper }}</span></td><td>{{ row.count }}</td><td><span class="badge good">{{ row.coverage }}</span></td><td class="muted">{{ t.pending_review }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>

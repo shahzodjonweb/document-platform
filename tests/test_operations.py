@@ -107,5 +107,5 @@ def test_password_login_rate_limit():
 
 def test_support_default_entry_is_role_appropriate():
     c,_=staff_client('Support')
-    assert c.get('/ops/').url=='/ops/users'
-    assert c.get('/ops/login').url=='/ops/users'
+    assert c.get('/ops/').url=='/ops/today'
+    assert c.get('/ops/login').url=='/ops/today'

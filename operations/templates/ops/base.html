@@ -1,8 +1,80 @@
-{% load static %}<!doctype html>
-<html lang="{{ lang }}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>{{ title }} · PDF Master</title>{% include 'ops/brand_head.html' %}<link rel="stylesheet" href="{% static 'ops/main.css' %}?v=ai-requests-20261004"><script src="{% static 'ops/theme.js' %}?v=brand-20260924"></script><script src="{% static 'ops/admin.js' %}?v=admin-20260926" defer></script></head>
-<body><a class="skip-link" href="#main">{{ t.skip }}</a><div class="app-shell">
-<aside class="sidebar"><a class="brand" href="/ops/overview?lang={{ lang }}">{% include 'ops/brand.html' %}<small>{{ t.workspace }}</small></a>
-<nav aria-label="{{ t.workspace }}">{% for group in nav %}<div class="nav-group"><p>{{ group.label }}</p>{% for item in group.items %}<a href="{{ item.url }}" class="nav-link {% if item.active %}active{% endif %}" {% if item.active %}aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">{{ item.icon }}</span>{{ item.label }}{% if item.badge %} <span class="badge nav-badge">{{ item.badge }}</span>{% endif %}</a>{% endfor %}</div>{% endfor %}</nav>
-<div class="sidebar-bottom"><div class="privacy-dot"></div><span>{{ t.private }}</span><small>PDF Master · v0.1</small></div></aside>
-<div class="app-body"><header class="topbar"><div class="breadcrumb">PDF Master <span>/</span> <strong>{{ title }}</strong></div><div class="topbar-actions"><button type="button" class="theme-switch" data-theme-switch aria-label="{{ t.theme }}" aria-pressed="false">◐</button><details class="language-menu"><summary>{{ lang|upper }} <span aria-hidden="true">⌄</span></summary><div>{% for item in locale_links %}<a href="{{ item.url }}" lang="{{ item.locale }}">{{ item.label }}</a>{% endfor %}</div></details><span class="topbar-divider"></span><div class="avatar">{{ staff.username|first|upper }}</div><div class="staff-name">{{ staff.username }}<small>{{ staff_role }}</small></div><form method="post" action="/ops/logout">{% csrf_token %}<button class="signout" aria-label="{{ t.signout }}" title="{{ t.signout }}">↗</button></form></div></header>
-<main id="main">{% block content %}{% endblock %}</main><footer class="footer"><span>PDF Master Operations</span><span>{{ t.definitions }} · {{ t.no_private }}</span></footer></div></div></body></html>
+{% load static ops_ui %}<!doctype html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>{{ title }} · PDF Master</title>
+  {% include 'ops/brand_head.html' %}
+  <link rel="stylesheet" href="{% static 'ops/main.css' %}?v=redesign-20261005">
+  <script src="{% static 'ops/theme.js' %}?v=redesign-20261005"></script>
+  <script src="{% static 'ops/admin.js' %}?v=redesign-20261005" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">{{ t.skip }}</a>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-inner">
+        <div class="sidebar-brand">
+          <a class="brand" href="/ops/today?lang={{ lang }}">{% include 'ops/brand.html' %}</a>
+          <button type="button" class="icon-button menu-close" data-nav-close aria-label="{{ t.close }}">{% icon 'close' %}</button>
+        </div>
+        <nav class="side-nav" aria-label="{{ t.workspace }}">
+          {% for group in nav %}
+          <div class="nav-group">
+            {% if group.label %}<p>{{ group.label }}</p>{% endif %}
+            {% for item in group.items %}
+            <a href="{{ item.url }}" class="nav-link{% if item.active %} active{% endif %}"{% if item.active %} aria-current="page"{% endif %}>
+              {% icon item.icon %}<span>{{ item.label }}</span>
+              {% if item.badge %}<span class="nav-badge" aria-label="{{ item.badge }} {{ t.waiting }}">{{ item.badge }}</span>{% endif %}
+            </a>
+            {% endfor %}
+          </div>
+          {% endfor %}
+        </nav>
+        <div class="sidebar-profile">
+          <span class="avatar" aria-hidden="true">{{ staff.username|initial }}</span>
+          <div class="staff-name"><span>{{ staff.username }}</span><small>{{ staff_role }}</small></div>
+          <form method="post" action="/ops/logout" class="signout">
+            {% csrf_token %}
+            <button class="icon-button" aria-label="{{ t.signout }}" title="{{ t.signout }}">{% icon 'logout' %}</button>
+          </form>
+        </div>
+      </div>
+    </aside>
+    <div class="nav-scrim" data-nav-close></div>
+
+    <div class="app-body">
+      <header class="topbar">
+        <button type="button" class="icon-button menu-button" data-nav-toggle aria-controls="sidebar" aria-expanded="false" aria-label="{{ t.menu }}">{% icon 'menu' 20 %}</button>
+        <a class="topbar-brand" href="/ops/today?lang={{ lang }}" aria-label="PDF Master"><img src="{% static 'ops/brand/pdf-master-icon.svg' %}" alt="" width="30" height="30"></a>
+        {% if can_search_users %}
+        <form class="topbar-search" method="get" action="/ops/users" role="search">
+          <input type="hidden" name="lang" value="{{ lang }}">
+          {% icon 'search' 17 %}
+          <input type="search" name="q" value="{% if page == 'users' %}{{ search }}{% endif %}" placeholder="{{ t.find_customer }}" aria-label="{{ t.find_customer }}" autocomplete="off">
+        </form>
+        {% endif %}
+        <div class="topbar-actions">
+          <button type="button" class="theme-switch" data-theme-switch aria-label="{{ t.theme }}" aria-pressed="false" title="{{ t.theme }}">
+            <span class="theme-light">{% icon 'moon' %}</span><span class="theme-dark">{% icon 'sun' %}</span>
+          </button>
+          <details class="language-menu">
+            <summary aria-label="{{ t.language }}">{% icon 'globe' 17 %}<span>{{ lang|upper }}</span></summary>
+            <div>
+              {% for item in locale_links %}<a href="{{ item.url }}" lang="{{ item.locale }}"{% if item.locale == lang %} aria-current="true"{% endif %}>{{ item.label }}</a>{% endfor %}
+            </div>
+          </details>
+        </div>
+      </header>
+
+      <main id="main" tabindex="-1">{% block content %}{% endblock %}</main>
+
+      <footer class="footer">
+        <span>PDF Master · {{ t.workspace }}</span>
+        <span>{{ t.definitions }} · {{ t.no_private }}</span>
+      </footer>
+    </div>
+  </div>
+</body>
+</html>

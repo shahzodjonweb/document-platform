@@ -1,0 +1,45 @@
+{% extends 'ops/base.html' %}{% load ops_ui ops_labels tz %}
+{% block content %}{% timezone 'Asia/Tashkent' %}
+<a class="back-link" href="/ops/support?lang={{ lang }}">{% icon 'left' 16 %}{{ t.nav_support }}</a>
+<div class="page-heading">
+  <div>
+    <h1>{{ ticket.subject }}</h1>
+    <div class="profile-meta">
+      <span class="badge status-{{ ticket.status }}">{% status_label ticket.status lang %}</span>
+      <a class="table-link" href="/ops/users/{{ ticket.account_id }}?lang={{ lang }}">{{ ticket.account.display_name|default:ticket.account.username|default:ticket.account_id }}</a>
+      <span class="badge plan-{{ ticket.account.plan }}">{{ ticket.account.plan|capfirst }}</span>
+      <span>{{ ticket.category }}</span>
+      {% if ticket.job_id and can_inspect_jobs %}<a class="table-link" href="/ops/jobs/{{ ticket.job_id }}?lang={{ lang }}">{{ t.task }} {{ ticket.job_id|stringformat:'s'|slice:':8' }}</a>{% endif %}
+    </div>
+  </div>
+</div>
+{% if error %}<p class="alert error" role="alert">{% icon 'alert' %}<span>{{ error }}</span></p>{% endif %}
+{% if request.GET.saved %}<p class="alert success" role="status">{% icon 'check' %}<span>{{ t.saved }}</span></p>{% endif %}
+
+<section class="panel">
+  <div class="thread" aria-label="{{ t.conversation }}">
+    <div class="message">
+      <div class="message-meta"><strong>{{ ticket.account.display_name|default:t.account }}</strong><span>{{ ticket.created_at|date:'d M Y · H:i' }}</span></div>
+      <div class="support-message">{{ ticket.message|linebreaksbr }}</div>
+    </div>
+    {% for message in ticket.messages.all %}
+    <div class="message{% if message.sender_staff_id %} staff{% endif %}">
+      <div class="message-meta"><strong>{% if message.sender_staff_id %}{{ t.staff }}{% else %}{{ ticket.account.display_name|default:t.account }}{% endif %}</strong><span>{{ message.created_at|date:'d M Y · H:i' }}</span></div>
+      <div class="support-message">{{ message.body|linebreaksbr }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  <form class="support-action" method="post">
+    {% csrf_token %}
+    <label>{{ t.reply }}<textarea name="reply" maxlength="4000" rows="4" placeholder="{{ t.reply_placeholder }}"></textarea></label>
+    <div class="form-actions">
+      {% if ticket.status == 'resolved' %}
+      <button class="button secondary" name="status" value="open">{{ t.reopen }}</button>
+      {% else %}
+      <button class="button secondary" name="status" value="resolved">{% icon 'check' 16 %}{{ t.resolve }}</button>
+      {% endif %}
+      <button class="button primary" name="status" value="reply">{% icon 'send' 16 %}{{ t.send_reply }}</button>
+    </div>
+  </form>
+</section>
+{% endtimezone %}{% endblock %}

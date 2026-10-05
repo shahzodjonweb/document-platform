@@ -1,0 +1,38 @@
+{% load ops_ui ops_labels %}
+<div class="page-heading">
+  <div>
+    <h1>{{ t.nav_support }}</h1>
+    <p class="page-description">{{ t.support_desc }}</p>
+  </div>
+</div>
+<div class="filterbar">
+  <nav class="segmented" aria-label="{{ t.status }}">
+    {% for tab in support_tabs %}<a href="?{% query_with status=tab.key %}"{% if tab.active %} aria-current="true"{% endif %}>{{ tab.label }}{% if tab.count is not None %} <span class="count">{{ tab.count }}</span>{% endif %}</a>{% endfor %}
+  </nav>
+</div>
+<section class="panel">
+  <div class="table-region" role="region" aria-label="{{ t.nav_support }}" tabindex="0">
+    <table>
+      <thead>
+        <tr><th>{{ t.subject }}</th><th>{{ t.account }}</th><th>{{ t.category }}</th><th>{{ t.status }}</th><th>{{ t.received }}</th></tr>
+      </thead>
+      <tbody>
+        {% for row in pagination %}
+        <tr>
+          <td class="wrap">
+            <a class="table-link" href="/ops/support/{{ row.id }}?lang={{ lang }}">{{ row.subject }}</a>
+            <small>{{ row.message|truncatechars:90 }}</small>
+          </td>
+          <td>{{ row.account.display_name|default:row.account.username|default:'—' }}{% if row.account.plan == 'premium' %} <span class="badge plan-premium">Premium</span>{% endif %}</td>
+          <td>{{ row.category }}</td>
+          <td><span class="badge status-{{ row.status }}">{% status_label row.status lang %}</span>{% if row.replies %}<small>{{ t.replies }}: {{ row.replies }}</small>{% endif %}</td>
+          <td class="muted" title="{{ row.created_at|date:'d M Y · H:i' }}">{% since row.created_at lang %}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5">{% include 'ops/ui/empty.html' with icon='inbox' title=t.support_none text=t.support_none_desc %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include 'ops/ui/pagination.html' with q=query %}
+</section>

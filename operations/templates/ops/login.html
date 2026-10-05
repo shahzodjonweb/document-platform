@@ -1,1 +1,65 @@
-{% load static %}<!doctype html><html lang="{{ lang }}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>{{ t.signin }} · PDF Master</title>{% include 'ops/brand_head.html' %}<link rel="stylesheet" href="{% static 'ops/main.css' %}?v=brand-20260924"><script src="{% static 'ops/theme.js' %}?v=brand-20260924"></script></head><body class="login-page"><div class="login-story"><a class="brand" href="/ops/login?lang={{ lang }}">{% include 'ops/brand.html' %}</a><div><span class="eyebrow">PDF MASTER OPERATIONS</span><h1>{{ t.login_title }}</h1><p>{{ t.login_desc }}</p><div class="document-art" aria-hidden="true"><div class="art-page art-back"></div><div class="art-page"><img class="art-mark" src="{% static 'ops/brand/pdf-master-icon.svg' %}" alt="" width="34" height="34"><i></i><i></i><i class="short"></i><div class="art-chart"><b></b><b></b><b></b><b></b></div><i></i><i class="short"></i></div><span class="art-seal">✓</span></div></div><small>{{ t.private }} · PDF Master</small></div><main class="login-form-panel"><div class="login-tools"><button type="button" class="theme-switch" data-theme-switch aria-label="{{ t.theme }}" aria-pressed="false">◐</button><div class="login-languages">{% for item in locale_links %}<a href="{{ item.url }}" lang="{{ item.locale }}" {% if item.locale == lang %}aria-current="true"{% endif %}>{{ item.label }}</a>{% endfor %}</div></div><div class="login-card"><a class="brand login-mobile-brand" href="/ops/login?lang={{ lang }}">{% include 'ops/brand.html' %}</a><span class="eyebrow">{{ t.workspace }}</span><h2>{{ t.signin }}</h2><p>{{ t.login_desc }}</p>{% if error %}<div role="alert" class="alert error">{{ error }}</div>{% endif %}<form method="post">{% csrf_token %}<label>{{ t.username }}<input name="username" autocomplete="username" required maxlength="150"></label><label>{{ t.password }}<input type="password" name="password" autocomplete="current-password" required maxlength="1024"></label><label>{{ t.code }}<input name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required></label><button class="button primary full">{{ t.signin }} <span>→</span></button></form>{% if dev_enabled %}<div class="dev-login"><p>{{ t.dev_note }}</p><form method="post" action="/ops/dev-login">{% csrf_token %}<button class="button secondary full">{{ t.dev_login }} <span>↗</span></button></form></div>{% endif %}</div></main></body></html>
+{% load static ops_ui %}<!doctype html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>{{ t.signin }} · PDF Master</title>
+  {% include 'ops/brand_head.html' %}
+  <link rel="stylesheet" href="{% static 'ops/main.css' %}?v=redesign-20261005">
+  <script src="{% static 'ops/theme.js' %}?v=redesign-20261005"></script>
+</head>
+<body class="login-page">
+  <div class="login-story">
+    <a class="brand" href="/ops/login?lang={{ lang }}">{% include 'ops/brand.html' %}</a>
+    <div>
+      <span class="eyebrow">PDF Master · {{ t.workspace }}</span>
+      <h1>{{ t.login_title }}</h1>
+      <p>{{ t.login_desc }}</p>
+      <div class="document-art" aria-hidden="true">
+        <div class="art-page art-back"></div>
+        <div class="art-page">
+          <img class="art-mark" src="{% static 'ops/brand/pdf-master-icon.svg' %}" alt="" width="34" height="34">
+          <i></i><i></i><i class="short"></i>
+          <div class="art-chart"><b></b><b></b><b></b><b></b></div>
+          <i></i><i class="short"></i>
+        </div>
+        <span class="art-seal">✓</span>
+      </div>
+    </div>
+    <small>{{ t.private }} · PDF Master</small>
+  </div>
+  <main class="login-form-panel">
+    <div class="login-tools">
+      <button type="button" class="theme-switch" data-theme-switch aria-label="{{ t.theme }}" aria-pressed="false" title="{{ t.theme }}">
+        <span class="theme-light">{% icon 'moon' %}</span><span class="theme-dark">{% icon 'sun' %}</span>
+      </button>
+      <div class="login-languages">
+        {% for item in locale_links %}<a href="{{ item.url }}" lang="{{ item.locale }}"{% if item.locale == lang %} aria-current="true"{% endif %}>{{ item.label }}</a>{% endfor %}
+      </div>
+    </div>
+    <div class="login-card">
+      <a class="brand login-mobile-brand" href="/ops/login?lang={{ lang }}">{% include 'ops/brand.html' %}</a>
+      <h2>{{ t.signin }}</h2>
+      <p>{{ t.login_desc }}</p>
+      {% if error %}<div role="alert" class="alert error">{% icon 'alert' %}<span>{{ error }}</span></div>{% endif %}
+      <form method="post">
+        {% csrf_token %}
+        <label>{{ t.username }}<input name="username" autocomplete="username" required maxlength="150"></label>
+        <label>{{ t.password }}<input type="password" name="password" autocomplete="current-password" required maxlength="1024"></label>
+        <label>{{ t.code }}<input name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required></label>
+        <button class="button primary full">{{ t.signin }} {% icon 'right' 17 %}</button>
+      </form>
+      {% if dev_enabled %}
+      <div class="dev-login">
+        <p>{{ t.dev_note }}</p>
+        <form method="post" action="/ops/dev-login">
+          {% csrf_token %}
+          <button class="button secondary full">{{ t.dev_login }}</button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+  </main>
+</body>
+</html>

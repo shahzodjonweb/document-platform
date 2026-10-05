@@ -1,0 +1,8 @@
+<div class="pagination">
+  <span>{{ pagination.paginator.count }} {{ t.rows }}</span>
+  <div>
+    {% if pagination.has_previous %}<a href="?{{ q }}&p={{ pagination.previous_page_number }}">← {{ t.previous }}</a>{% endif %}
+    <span>{{ pagination.number }} / {{ pagination.paginator.num_pages }}</span>
+    {% if pagination.has_next %}<a href="?{{ q }}&p={{ pagination.next_page_number }}">{{ t.next }} →</a>{% endif %}
+  </div>
+</div>

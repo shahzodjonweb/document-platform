@@ -40,7 +40,7 @@ def test_repeated_sidebar_navigation_retains_encoded_filters_and_one_language(lo
     expected = parse_qs(urlencode(FILTERS)) | {'lang': [locale]}
     # Start with a URL produced by the old sidebar, including an existing page.
     target = '/ops/overview?' + urlencode(FILTERS + [('lang', 'en'), ('lang', locale), ('lang', locale), ('p', '3')])
-    for destination in ('jobs', 'payments', 'integrations', 'analytics/acquisition', 'staff', 'overview'):
+    for destination in ('jobs', 'payments', 'integrations', 'analytics/ai-usage', 'staff', 'overview', 'today'):
         response = client.get(target)
         assert response.status_code == 200
         assert response.context['lang'] == locale

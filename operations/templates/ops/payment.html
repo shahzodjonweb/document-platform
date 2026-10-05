@@ -1,1 +1,31 @@
-{% extends 'ops/base.html' %}{% block content %}<a class="back-link" href="/ops/payments?lang={{ lang }}">← {{ t.payments }}</a><div class="page-heading"><h1>{{ f.detail }}</h1></div>{% if error %}<div class="alert error" role="alert">{{ error }}</div>{% endif %}{% if payment.sandbox %}<div class="alert warning">{{ f.sandbox }}</div>{% endif %}<section class="panel info-panel"><dl><dt>{{ f.receipt }}</dt><dd>{{ payment.id }}</dd><dt>{{ f.account }}</dt><dd>{{ payment.account.display_name }}</dd><dt>{{ f.amount }}</dt><dd>{{ payment.amount_xtr }} XTR</dd><dt>{{ f.kind }}</dt><dd>{{ payment.kind }}</dd><dt>{{ f.plan }}</dt><dd>{{ payment.plan|default:'—' }}</dd><dt>{{ f.date }}</dt><dd>{{ payment.occurred_at }}</dd></dl></section>{% if refund %}<section class="panel info-panel"><h2>{{ f.status }} · {{ refund.status }}</h2><p>{{ refund.reason }}</p></section>{% else %}<section class="panel info-panel"><h2>{{ f.refund }}</h2><form method="post" class="integration-form">{% csrf_token %}<button class="button primary">{{ f.refund }} · {{ payment.amount_xtr }} XTR</button></form></section>{% endif %}{% endblock %}
+{% extends 'ops/base.html' %}{% load ops_ui tz %}
+{% block content %}{% timezone 'Asia/Tashkent' %}
+<a class="back-link" href="/ops/payments?lang={{ lang }}">{% icon 'left' 16 %}{{ t.payments }}</a>
+<div class="page-heading"><div><h1>{{ f.detail }}</h1></div></div>
+{% if error %}<div class="alert error" role="alert">{% icon 'alert' %}<span>{{ error }}</span></div>{% endif %}
+{% if payment.sandbox %}<div class="alert warning">{% icon 'info' %}<span>{{ f.sandbox }}</span></div>{% endif %}
+<section class="panel info-panel">
+  <dl>
+    <dt>{{ f.receipt }}</dt><dd class="mono">{{ payment.id }}</dd>
+    <dt>{{ f.account }}</dt><dd><a class="table-link" href="/ops/users/{{ payment.account_id }}?lang={{ lang }}">{{ payment.account.display_name|default:payment.account_id }}</a></dd>
+    <dt>{{ f.amount }}</dt><dd><span class="amount">{{ payment.amount_xtr }} {{ payment.currency }}</span></dd>
+    <dt>{{ f.kind }}</dt><dd>{{ payment.kind }}</dd>
+    <dt>{{ f.plan }}</dt><dd>{{ payment.plan|default:'—' }}</dd>
+    <dt>{{ f.date }}</dt><dd>{{ payment.occurred_at|date:'d M Y · H:i' }}</dd>
+  </dl>
+</section>
+{% if refund %}
+<section class="panel info-panel">
+  <h2>{{ f.status }} · {{ refund.status }}</h2>
+  <p>{{ refund.reason }}</p>
+</section>
+{% else %}
+<section class="panel info-panel">
+  <h2>{{ f.refund }}</h2>
+  <form method="post" class="integration-form">
+    {% csrf_token %}
+    <div class="form-actions"><button class="button danger-outline">{{ f.refund }} · {{ payment.amount_xtr }} {{ payment.currency }}</button></div>
+  </form>
+</section>
+{% endif %}
+{% endtimezone %}{% endblock %}

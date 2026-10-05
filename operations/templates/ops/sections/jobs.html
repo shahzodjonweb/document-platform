@@ -1,0 +1,42 @@
+{% load ops_ui ops_labels %}
+<div class="page-heading">
+  <div>
+    <h1>{{ t.nav_tasks }}</h1>
+    <p class="page-description">{{ t.job_desc }}</p>
+  </div>
+  {% if can_export %}<div class="page-heading-actions"><a class="button secondary" href="{{ export_url }}">{% icon 'download' 17 %}{{ t.export }}</a></div>{% endif %}
+</div>
+{% filter_bar %}
+<section class="panel">
+  <div class="panel-heading">
+    <div>
+      <h2>{{ t.tasks_in_period }}</h2>
+      <p>{{ pagination.paginator.count }} {{ t.rows }}</p>
+    </div>
+    <nav class="segmented" aria-label="{{ t.status }}">
+      <a href="?{% query_with status=None %}"{% if not status_filter %} aria-current="true"{% endif %}>{{ t.all }}</a>
+      {% for key in job_states %}<a href="?{% query_with status=key %}"{% if status_filter == key %} aria-current="true"{% endif %}>{% status_label key lang %}</a>{% endfor %}
+    </nav>
+  </div>
+  <div class="table-region" role="region" aria-label="{{ t.nav_tasks }}" tabindex="0">
+    <table>
+      <thead>
+        <tr><th>{{ t.feature }}</th><th>{{ t.account }}</th><th>{{ t.status }}</th><th>{{ t.created }}</th><th><span class="visually-hidden">{{ t.task }}</span></th></tr>
+      </thead>
+      <tbody>
+        {% for row in pagination %}
+        <tr>
+          <td><span class="tool-symbol">{% icon 'file' 15 %}</span>{{ row.feature_id }}</td>
+          <td>{% if can_search_users %}<a class="table-link" href="/ops/users/{{ row.account_id }}?lang={{ lang }}">{{ row.account.display_name|default:row.account.username|default:'—' }}</a>{% else %}{{ row.account.display_name|default:'—' }}{% endif %}</td>
+          <td><span class="badge status-{{ row.status }}">{% status_label row.status lang %}</span>{% if row.error_code %}<small>{{ row.error_code }}</small>{% endif %}</td>
+          <td class="muted">{{ row.created_at|date:'d M Y · H:i' }}</td>
+          <td class="actions"><a class="table-link mono" href="/ops/jobs/{{ row.id }}?lang={{ lang }}">{{ row.id|stringformat:'s'|slice:':8' }}</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5">{% include 'ops/ui/empty.html' with icon='list' title=t.no_data text=t.no_data_desc %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include 'ops/ui/pagination.html' with q=query %}
+</section>

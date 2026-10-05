@@ -1,6 +1,6 @@
-{% extends 'ops/base.html' %}{% block content %}
-<div class="page-heading"><div><p class="eyebrow">PDF Master / {{ t.analytics }}</p><h1>{{ title }}</h1><p class="page-description">{{ a.basis }}</p></div></div>
-{% include 'ops/filters.html' %}
+{% extends 'ops/base.html' %}{% load ops_ui %}{% block content %}
+<div class="page-heading"><div><h1>{{ title }}</h1><p class="page-description">{{ a.basis }}</p></div></div>
+{% filter_bar %}
 <div class="metrics-grid">{% for card in cards %}<div class="metric-card"><div>{{ card.label }}</div><strong>{{ card.value }}</strong></div>{% endfor %}</div>
 <div class="metrics-grid">{% for card in token_cards %}<div class="metric-card"><div>{{ card.label }}</div><strong>{{ card.value|default_if_none:a.unknown }}</strong><small>{{ a.unreported }}: {{ card.unknown }}</small></div>{% endfor %}</div>
 <section class="panel info-panel"><p>{{ a.subsets }}</p><p>{{ a.retention }}</p>{% if unknown_environment %}<p>{{ a.unknown_environment }}: {{ unknown_environment }}</p>{% endif %}</section>

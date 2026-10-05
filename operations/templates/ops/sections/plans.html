@@ -1,0 +1,65 @@
+{% load ops_ui %}
+<div class="page-heading">
+  <div>
+    <h1>{{ t.plans }}</h1>
+    <p class="page-description">{{ t.plans_desc }}</p>
+  </div>
+</div>
+{% if request.GET.saved %}<p class="alert success" role="status">{% icon 'check' %}<span>{{ t.saved }}</span></p>{% endif %}
+
+<div class="plans-grid">
+  {% for plan in plan_rows %}
+  <section class="panel plan-panel">
+    <h2>{{ plan.title }}{% if plan.edited %} <span class="badge info">{{ t.edited }}</span>{% endif %}</h2>
+    <p class="plan-price">{% if plan.price_uzs %}{{ plan.price_uzs|money }} <span>so'm · 30 {{ t.days }}</span>{% elif plan.id == 'free' %}0 <span>so'm</span>{% else %}<span>{{ t.not_for_sale }}</span>{% endif %}</p>
+    <div class="health-row"><span>{{ t.field_file_tasks }}</span><strong>{{ plan.file_tasks|money }}</strong></div>
+    <div class="health-row"><span>{{ t.field_file_page_units }}</span><strong>{{ plan.file_page_units|money }}</strong></div>
+    <div class="health-row"><span>{{ t.field_ai_credits }}</span><strong>{{ plan.ai_credits|money }}</strong></div>
+    <div class="health-row"><span>{{ t.field_daily_ai_documents }}</span><strong>{{ plan.daily_ai_documents|default_if_none:'∞' }}</strong></div>
+    <div class="health-row"><span>{{ t.field_max_file_mib }}</span><strong>{{ plan.max_file_mib }}</strong></div>
+    <div class="health-row"><span>{{ t.field_max_generated_slides }}</span><strong>{{ plan.max_generated_slides }}</strong></div>
+    {% if can_edit_plans %}
+    <div class="plan-actions">
+      <button type="button" class="button secondary full" data-dialog-open="plan-{{ plan.id }}">{{ t.edit_plan }}</button>
+    </div>
+    {% endif %}
+  </section>
+  {% endfor %}
+</div>
+
+{% if can_edit_plans %}
+{% for plan in plan_edit_rows %}
+<dialog class="dialog wide" id="plan-{{ plan.id }}" aria-labelledby="plan-{{ plan.id }}-title">
+  <form method="post" action="/ops/plans/{{ plan.id }}">
+    {% csrf_token %}
+    <div class="dialog-head">
+      <div>
+        <h2 id="plan-{{ plan.id }}-title">{{ t.edit_plan }} · {{ plan.title }}</h2>
+        <p>{{ t.plan_edit_note }}</p>
+      </div>
+      <button type="button" class="icon-button" data-dialog-close aria-label="{{ t.close }}">{% icon 'close' %}</button>
+    </div>
+    <div class="dialog-body">
+      {% for group in plan.groups %}{% if group.fields %}
+      <fieldset class="field-group">
+        <legend>{{ group.label }}</legend>
+        <div class="limit-fields">
+          {% for field in group.fields %}
+          <label>{{ field.label }}
+            <input type="number" name="{{ field.name }}" value="{{ field.value|default_if_none:'' }}" min="{{ field.low }}" max="{{ field.high }}"{% if not field.nullable %} required{% endif %}{% if field.nullable %} placeholder="{{ t.no_limit }}"{% endif %}>
+            <small>{{ t.seed_value }}: {% if field.seed is None %}{{ t.no_limit }}{% else %}{{ field.seed }}{% endif %}</small>
+          </label>
+          {% endfor %}
+        </div>
+      </fieldset>
+      {% endif %}{% endfor %}
+    </div>
+    <div class="dialog-foot">
+      {% if plan.edited %}<button class="button quiet" name="reset" value="1" formnovalidate>{{ t.reset_plan }}</button>{% endif %}
+      <button type="button" class="button secondary" data-dialog-close>{{ t.cancel }}</button>
+      <button class="button primary">{{ t.save_changes }}</button>
+    </div>
+  </form>
+</dialog>
+{% endfor %}
+{% endif %}

@@ -1,0 +1,5 @@
+{% load ops_ui %}<div class="empty-state">
+  <span class="empty-icon">{% icon icon|default:'inbox' 20 %}</span>
+  <h3>{{ title|default:t.no_data }}</h3>
+  {% if text %}<p>{{ text }}</p>{% endif %}
+</div>

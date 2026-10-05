@@ -1,35 +1,78 @@
-{% extends 'ops/base.html' %}{% block content %}<a class="back-link" href="/ops/payments?lang={{ lang }}">← {{ t.payments }}</a>
-<div class="page-heading"><div><p class="eyebrow">{{ f.manual_detail }}</p><h1>{{ manual.reference }} · {{ manual.plan|title }} · {{ amount }}</h1><p class="page-description">{{ status_label }}</p></div></div>
-{% if error %}<div class="alert error" role="alert">{{ error }}</div>{% endif %}
-{% if duplicates %}<div class="alert error" role="alert">{{ duplicates }}</div>{% endif %}
-<section class="panel info-panel"><dl>
-<dt>{{ f.account }}</dt><dd><a class="table-link" href="/ops/users/{{ manual.account_id }}?lang={{ lang }}">{{ manual.account.display_name }} ↗</a></dd>
-<dt>{{ f.plan }}</dt><dd>{{ manual.plan|title }}</dd>
-<dt>{{ f.amount }}</dt><dd><strong>{{ amount }}</strong></dd>
-<dt>{{ f.card_sent_to }}</dt><dd>•••• {{ card_last4 }} · {{ manual.card.holder }}</dd>
-<dt>{{ f.submitted }}</dt><dd>{{ manual.submitted_at|default:'—' }}</dd>
-<dt>{{ f.channel }}</dt><dd>{{ manual.channel }}</dd>
-<dt>{{ f.payer_note }}</dt><dd>{{ manual.payer_note|default:'—' }}</dd>
-{% if manual.decided_at %}<dt>{{ f.decided }}</dt><dd>{{ manual.decided_at }} · {{ manual.decided_by.username|default:'—' }} · {{ manual.decision_note }}</dd>{% endif %}
-{% if period %}<dt>{{ f.starts }}</dt><dd>{{ period.starts_at }}</dd><dt>{{ f.ends }}</dt><dd>{{ period.ends_at }}</dd>{% endif %}
-</dl></section>
-<section class="panel info-panel"><h2>{{ f.receipt }}</h2>
-{% if manual.receipt_key %}{% if manual.receipt_type == 'application/pdf' %}<p><a class="button secondary" href="/ops/payments/manual/{{ manual.id }}/receipt">{{ f.pdf_download }}</a></p>{% else %}<details><summary class="button secondary">{{ f.receipt_view }}</summary><img src="/ops/payments/manual/{{ manual.id }}/receipt" alt="{{ f.receipt }} {{ manual.reference }}" style="max-width:100%;max-height:80vh;margin-top:12px;border:1px solid var(--border);border-radius:8px"></details>{% endif %}
-{% elif manual.receipt_deleted_at %}<p>{{ f.receipt_deleted }}</p>{% else %}<p>{{ f.no_receipt }}</p>{% endif %}
-</section>
-{% if manual.status == 'submitted' or manual.status == 'awaiting' %}
-<div class="alert warning" role="note">{{ check }}</div>
-<section class="panel info-panel decision-panel">
-  <form method="post" class="decision-approve">{% csrf_token %}<input type="hidden" name="action" value="approve"><button class="button primary">{{ f.approve }}</button></form>
-  <form method="post" class="integration-form decision-reject">{% csrf_token %}<input type="hidden" name="action" value="reject">
-    <fieldset class="choice-group"><legend>{{ f.reject_choice }}</legend>
-      {% for choice in reject_choices %}<label class="choice"><input type="radio" name="choice" value="{{ choice.key }}"> {{ choice.label }}</label>{% endfor %}
-    </fieldset>
-    <label>{{ f.own_message }}<textarea name="message" maxlength="500" rows="2"></textarea></label>
-    <button class="button secondary">{{ f.reject }}</button>
-  </form>
-</section>
-{% elif manual.status == 'approved' %}
-<section class="panel info-panel"><h2>{{ f.refund_manual }}</h2><form method="post" class="integration-form">{% csrf_token %}<input type="hidden" name="action" value="refund"><button class="button secondary">{{ f.refund_manual }}</button></form></section>
-{% endif %}
-{% endblock %}
+{% extends 'ops/base.html' %}{% load ops_ui tz %}
+{% block content %}{% timezone 'Asia/Tashkent' %}
+<a class="back-link" href="/ops/payments?lang={{ lang }}#review">{% icon 'left' 16 %}{{ t.payments }}</a>
+<div class="page-heading">
+  <div>
+    <p class="eyebrow">{{ f.manual_detail }}</p>
+    <h1>{{ manual.plan|title }} · {{ amount }}</h1>
+    <div class="profile-meta">
+      <span class="badge status-{{ manual.status }}">{{ status_label }}</span>
+      <span class="mono">{{ manual.reference }}</span>
+      {% if manual.submitted_at %}<span>{{ f.submitted }} {{ manual.submitted_at|date:'d M Y · H:i' }}</span>{% endif %}
+    </div>
+  </div>
+</div>
+{% if error %}<div class="alert error" role="alert">{% icon 'alert' %}<span>{{ error }}</span></div>{% endif %}
+{% if duplicates %}<div class="alert error" role="alert">{% icon 'alert' %}<span>{{ duplicates }}</span></div>{% endif %}
+
+<div class="review-layout">
+  <div>
+    <section class="panel info-panel">
+      <h2>{{ f.detail }}</h2>
+      <dl>
+        <dt>{{ f.account }}</dt><dd><a class="table-link" href="/ops/users/{{ manual.account_id }}?lang={{ lang }}">{{ manual.account.display_name|default:manual.account.username|default:manual.account_id }}</a></dd>
+        <dt>{{ f.plan }}</dt><dd>{{ manual.plan|title }}</dd>
+        <dt>{{ f.amount }}</dt><dd><span class="amount">{{ amount }}</span></dd>
+        <dt>{{ f.card_sent_to }}</dt><dd>•••• {{ card_last4 }} · {{ manual.card.holder }}</dd>
+        <dt>{{ f.submitted }}</dt><dd>{{ manual.submitted_at|date:'d M Y · H:i'|default:'—' }}</dd>
+        <dt>{{ f.channel }}</dt><dd>{{ manual.channel }}</dd>
+        <dt>{{ f.payer_note }}</dt><dd>{{ manual.payer_note|default:'—' }}</dd>
+        {% if manual.decided_at %}<dt>{{ f.decided }}</dt><dd>{{ manual.decided_at|date:'d M Y · H:i' }} · {{ manual.decided_by.username|default:'—' }}{% if manual.decision_note %} · {{ manual.decision_note }}{% endif %}</dd>{% endif %}
+        {% if period %}<dt>{{ f.starts }}</dt><dd>{{ period.starts_at|date:'d M Y · H:i' }}</dd><dt>{{ f.ends }}</dt><dd>{{ period.ends_at|date:'d M Y · H:i' }}</dd>{% endif %}
+      </dl>
+    </section>
+
+    {% if manual.status == 'submitted' or manual.status == 'awaiting' %}
+    <section class="panel info-panel decision-panel">
+      <div class="alert warning" role="note">{% icon 'alert' %}<span>{{ check }}</span></div>
+      <form method="post" class="decision-approve">
+        {% csrf_token %}<input type="hidden" name="action" value="approve">
+        <button class="button primary">{% icon 'check' 17 %}{{ f.approve }}</button>
+      </form>
+      <form method="post" class="integration-form decision-reject">
+        {% csrf_token %}<input type="hidden" name="action" value="reject">
+        <fieldset class="choice-group">
+          <legend>{{ f.reject_choice }}</legend>
+          {% for choice in reject_choices %}<label class="choice"><input type="radio" name="choice" value="{{ choice.key }}"> {{ choice.label }}</label>{% endfor %}
+        </fieldset>
+        <label>{{ f.own_message }}<textarea name="message" maxlength="500" rows="2"></textarea></label>
+        <div class="form-actions"><button class="button danger-outline">{% icon 'close' 16 %}{{ f.reject }}</button></div>
+      </form>
+    </section>
+    {% elif manual.status == 'approved' %}
+    <section class="panel info-panel">
+      <h2>{{ f.refund_manual }}</h2>
+      <form method="post" class="integration-form">
+        {% csrf_token %}<input type="hidden" name="action" value="refund">
+        <div class="form-actions"><button class="button secondary">{{ f.refund_manual }}</button></div>
+      </form>
+    </section>
+    {% endif %}
+  </div>
+
+  <section class="panel info-panel receipt-panel">
+    <div class="panel-heading">
+      <h2>{{ f.receipt }}</h2>
+      {% if manual.receipt_key %}<a class="text-link" href="/ops/payments/manual/{{ manual.id }}/receipt" target="_blank" rel="noopener">{% icon 'external' 15 %}{{ f.receipt_view }}</a>{% endif %}
+    </div>
+    {% if manual.receipt_key %}
+      {% if manual.receipt_type == 'application/pdf' %}
+      <p><a class="button secondary" href="/ops/payments/manual/{{ manual.id }}/receipt">{% icon 'download' 17 %}{{ f.pdf_download }}</a></p>
+      {% else %}
+      <div class="receipt-frame"><img src="/ops/payments/manual/{{ manual.id }}/receipt" alt="{{ f.receipt }} {{ manual.reference }}"></div>
+      {% endif %}
+    {% elif manual.receipt_deleted_at %}<p class="muted">{{ f.receipt_deleted }}</p>
+    {% else %}<p class="muted">{{ f.no_receipt }}</p>{% endif %}
+  </section>
+</div>
+{% endtimezone %}{% endblock %}

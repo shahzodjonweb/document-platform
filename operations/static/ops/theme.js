@@ -7,7 +7,7 @@
   const apply = () => {
     document.documentElement.dataset.theme = theme;
     document.querySelector('meta[name="theme-color"]')?.setAttribute(
-      'content', theme === 'dark' ? '#101925' : '#F5F7FB'
+      'content', theme === 'dark' ? '#0b111c' : '#f5f7fa'
     );
     document.querySelector('[data-theme-switch]')?.setAttribute(
       'aria-pressed', String(theme === 'dark')

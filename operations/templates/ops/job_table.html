@@ -1,2 +1,26 @@
-{% load ops_labels tz %}{% timezone filters.timezone|default:'UTC' %}<div class="table-region" role="region" aria-label="{{ t.jobs }}" tabindex="0"><table><thead><tr><th>{{ t.task }}</th><th>{{ t.feature }}</th><th>{{ t.status }}</th><th>{{ t.created }}</th></tr></thead><tbody>{% for job in recent_jobs %}<tr><td><a class="mono table-link" href="/ops/jobs/{{ job.id }}?lang={{ lang }}">{{ job.id|stringformat:'s'|slice:':8' }} ↗</a></td><td><span class="tool-symbol">▤</span>{{ job.feature_id }}</td><td><span class="badge status-{{ job.status }}">{% status_label job.status lang %}</span></td><td class="muted">{{ job.created_at|date:'d M Y · H:i' }} {{ filters.timezone|default:'UTC' }}</td></tr>{% empty %}<tr><td colspan="4"><div class="empty-state"><span class="empty-icon" aria-hidden="true">▤</span><h3>{{ t.no_data }}</h3><p>{{ t.no_data_desc }}</p></div></td></tr>{% endfor %}</tbody></table></div>
-{% endtimezone %}
+{% load ops_labels ops_ui %}<div class="table-region" role="region" aria-label="{{ t.jobs }}" tabindex="0">
+  <table>
+    <thead>
+      <tr>
+        <th>{{ t.feature }}</th>
+        {% if show_customer %}<th>{{ t.account }}</th>{% endif %}
+        <th>{{ t.status }}</th>
+        <th>{{ t.created }}</th>
+        <th><span class="visually-hidden">{{ t.task }}</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for job in recent_jobs %}
+      <tr>
+        <td><span class="tool-symbol">{% icon 'file' 15 %}</span>{{ job.feature_id }}</td>
+        {% if show_customer %}<td>{{ job.account.display_name|default:job.account.username|default:'—' }}</td>{% endif %}
+        <td><span class="badge status-{{ job.status }}">{% status_label job.status lang %}</span></td>
+        <td class="muted">{{ job.created_at|date:'d M Y · H:i' }}</td>
+        <td class="actions">{% if can_inspect_jobs %}<a class="table-link mono" href="/ops/jobs/{{ job.id }}?lang={{ lang }}">{{ job.id|stringformat:'s'|slice:':8' }}</a>{% else %}<span class="mono muted">{{ job.id|stringformat:'s'|slice:':8' }}</span>{% endif %}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5">{% include 'ops/ui/empty.html' with icon='list' title=t.no_data text=t.no_data_desc %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
