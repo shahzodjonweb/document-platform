@@ -281,3 +281,19 @@ def test_one_failing_storage_step_does_not_stop_the_others(bucket, monkeypatch):
     monkeypatch.setattr('apps.core.storage_health.monitor', lambda now=None: ran.append('health'))
     cleanup_expired()
     assert ran == ['sync', 'health']
+
+
+def test_the_download_link_serves_the_file_from_the_bucket(bucket):
+    """/api/v1/artifacts/<id>/download after the server's working copy is gone."""
+    from tests.test_platform import login_client
+    customer = account()
+    source = upload(customer, widths=(220, 330))
+    quote = create_quote(customer, 'pdf.rotate', [str(source.id)], {'angle': 90})
+    job, _ = submit_job(customer, quote.id, 'bucket-download-1')
+    artifact = execute_job(job.id).artifacts.get()
+    expected = bucket.objects[('pdfmaster', artifact.file.object_key)]['data']
+    evict_now()
+    assert not storage_path(artifact.file.object_key).exists()
+    response = login_client(customer).get(f'/api/v1/artifacts/{artifact.id}/download')
+    assert response.status_code == 200
+    assert b''.join(response.streaming_content) == expected, 'the bytes came back from the bucket'
