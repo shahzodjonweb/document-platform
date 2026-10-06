@@ -2,6 +2,7 @@
 import json
 from pathlib import Path
 import subprocess
+import time
 
 def output(args):
     result=subprocess.run(args,text=True,capture_output=True,timeout=30)
@@ -44,6 +45,20 @@ if ids and ids!=['unavailable']:
                 stats[filename] = value if all(part.isdigit() or part.replace('_', '').isalpha()
                     for part in value.split()) else 'unavailable'
             print('PDFMASTER_CLEANUP_MEMORY', json.dumps(stats))
+            # A restart recreates its cgroup and clears memory.events. Retain
+            # only controlled lifecycle markers from this one service's history.
+            history = output(['docker', 'events', '--since', '15m', '--until', str(int(time.time())),
+                              '--filter', 'container=' + c['Id'], '--format', '{{json .}}'])
+            markers = []
+            for line in history.splitlines():
+                try:
+                    event = json.loads(line)
+                except ValueError:
+                    continue
+                if event.get('Action') in {'oom', 'die', 'start', 'restart', 'kill'}:
+                    markers.append({'action': event['Action'], 'time': event.get('time'),
+                        'exit_code': event.get('Actor', {}).get('Attributes', {}).get('exitCode')})
+            print('PDFMASTER_CLEANUP_LIFECYCLE', json.dumps(markers[-30:]))
         if 'caddy' in c['Config']['Image'].lower():
             print('CADDY_ROUTES',routes(['docker','exec',c['Id'],'caddy','adapt','--config','/etc/caddy/Caddyfile','--pretty']))
 for path in ('/etc/caddy/Caddyfile',str(Path.home()/'pdf-master/state.json')):
