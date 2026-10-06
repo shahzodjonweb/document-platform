@@ -89,7 +89,8 @@ services:
   cleanup:
     <<: *platform
     command: [python, scripts/cleanup_loop.py]
-    mem_limit: 192m
+    # Telegram challenge housekeeping loads the Telegram SDK in this daemon.
+    mem_limit: 384m
     cpus: 0.25
   bot:
     <<: *platform

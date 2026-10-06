@@ -23,6 +23,8 @@ Rollback closes flags and restores prior application images. Do not destroy usag
 
 Default retention is 24 hours. Run `manage.py cleanupfiles` every five minutes. It revokes expired assets, deletes private files and password secrets, and sweeps old unregistered binaries. A stale lease is terminally released only when the maximum parser timeout guarantees it cannot still commit output. Current task status and artifact authorization checks prevent a stale worker from charging twice.
 
+The production cleanup daemon has a 384 MiB memory ceiling, including Telegram challenge housekeeping. A running container alone is insufficient: CI and live service verification require a full `Deleted N expired files.` cycle without a restart or OOM kill. The scoped `stabilize-cleanup` server operation can raise only this daemon's previous 192 MiB ceiling in place on the authorized 8 GB server; it never restarts containers or updates another service.
+
 `manage.py runworker` drains the durable database outbox. Use `--once` for a bounded operational pass. Do not combine the direct worker with the Celery dispatcher unless reviewing the at-least-once execution model. Duplicate attempts are safe at application claim/settlement boundaries, but production process death and PostgreSQL contention need the documented load gate.
 
 API metadata logs contain correlation IDs and stable errors. General logs and analytics must not contain document contents, filenames, user answers/prompts, passwords, raw session tokens or presigned links. Stored support messages are owner support data, not analytics.

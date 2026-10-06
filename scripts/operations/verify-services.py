@@ -1,6 +1,7 @@
 """Check only PDF Master services and process synthetic, explicitly test data."""
 import json
 from pathlib import Path
+import re
 import subprocess
 import urllib.request
 import uuid
@@ -17,7 +18,66 @@ def command(args, source=None):
     return result.stdout
 
 
+def cleanup_identity(container):
+    """Pin the cleanup incarnation and require a release without prior restarts."""
+    try:
+        state = container['State']
+        identifier = container['Id']
+        started = state['StartedAt']
+        restarts = container['RestartCount']
+    except (KeyError, TypeError):
+        raise SystemExit('Cleanup verification received an invalid container state.') from None
+    if (type(restarts) is not int or restarts != 0 or state.get('OOMKilled')
+            or state.get('Running') is not True or state.get('Status') != 'running'
+            or state.get('Restarting') or state.get('Dead')):
+        raise SystemExit('Cleanup verification failed: container stopped, restarted or was OOM-killed.')
+    if (not isinstance(identifier, str) or not re.fullmatch(r'[0-9a-f]{64}', identifier)
+            or not isinstance(started, str) or not started):
+        raise SystemExit('Cleanup verification received an invalid container identity.')
+    return {'id': identifier, 'started_at': started}
+
+
+def cleanup_command(args):
+    """Capture Docker output without forwarding potentially private log lines."""
+    try:
+        result = subprocess.run(args, text=True, capture_output=True, timeout=15)
+    except (OSError, subprocess.TimeoutExpired):
+        raise SystemExit('Cleanup verification could not read container state or logs.') from None
+    if result.returncode:
+        raise SystemExit('Cleanup verification could not read container state or logs.')
+    return result.stdout, result.stderr
+
+
+def verify_cleanup_cycle(baseline):
+    """Run after all probes, so a delayed startup OOM cannot pass verification."""
+    ids, _ = cleanup_command(['docker', 'ps', '-aq', '--no-trunc', '--filter',
+                              'label=com.docker.compose.project=pdfmaster-platform', '--filter',
+                              'label=com.docker.compose.service=cleanup'])
+    if ids.split() != [baseline['id']]:
+        raise SystemExit('Cleanup verification failed: the container changed during service checks.')
+    template = '{"Id":{{json .Id}},"RestartCount":{{.RestartCount}},"State":{{json .State}}}'
+
+    def state():
+        output, _ = cleanup_command(['docker', 'inspect', '--format', template, baseline['id']])
+        try:
+            container = json.loads(output)
+        except (ValueError, TypeError):
+            raise SystemExit('Cleanup verification received an invalid container state.') from None
+        if cleanup_identity(container) != baseline:
+            raise SystemExit('Cleanup verification failed: the container restarted during service checks.')
+
+    state()
+    output, error = cleanup_command(['docker', 'logs', '--since', baseline['started_at'],
+                                     '--tail', '200', baseline['id']])
+    if not re.search(r'^Deleted [0-9]+ expired files\.\r?$',
+                     output + '\n' + error, flags=re.MULTILINE):
+        raise SystemExit('Cleanup verification failed: the current container has not completed a cleanup cycle.')
+    state()
+    print('VERIFY_CLEANUP_CYCLE_OK', flush=True)
+
+
 api = None
+cleanup_baseline = None
 for component, expected in [('platform', {'api', 'db', 'redis', 'worker', 'batches', 'cleanup', 'bot', 'gateway'}),
                             ('web', {'web', 'gateway'})]:
     ids = command(['docker', 'ps', '-aq', '--filter', 'label=com.docker.compose.project=pdfmaster-' + component]).split()
@@ -42,6 +102,7 @@ for component, expected in [('platform', {'api', 'db', 'redis', 'worker', 'batch
         api = services['api']['Id']
         commit = active['commit']
         redis = services['redis']['Id']
+        cleanup_baseline = cleanup_identity(services['cleanup'])
 for port, path in [(8310, '/en/app'), (8311, '/api/v1/health'), (8311, '/ops/login'), (8311, '/static/ops/main.css')]:
     with urllib.request.urlopen(f'http://127.0.0.1:{port}{path}', timeout=15) as response:
         if response.status != 200:
@@ -153,3 +214,4 @@ output = command(['docker', 'exec', '-i', api, 'python', 'manage.py', 'shell', '
 for line in output.splitlines():
     if line.startswith('VERIFY_'):
         print(line)
+verify_cleanup_cycle(cleanup_baseline)

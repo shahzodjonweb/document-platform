@@ -6,7 +6,7 @@ on:
         description: PDF Master operation
         required: true
         type: choice
-        options: [inventory, public-key, ssh-check, proxy-prepare, proxy-publish, setup-admin, verify-services]
+        options: [inventory, public-key, ssh-check, proxy-prepare, proxy-publish, setup-admin, verify-services, stabilize-cleanup]
 permissions:
   contents: read
 jobs:
