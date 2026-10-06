@@ -41,8 +41,12 @@ inputs retain the existing 40 MP limit. The worker keeps its existing CPU, memor
 and timeout limits and uses one numeric processing thread. Uniform matte paper
 can be tinted or darker than its desk: independently supported luminance and
 material-color edges qualify it, while compact writing and visible-edge checks
-still exclude unmarked panels and internal printed frames. Exterior words veto
-an incomplete proposal, including filled tables on a larger written sheet;
+still exclude unmarked panels and internal printed frames. Dense forms and
+barcodes qualify through coherent matte material and numerous stroke-shaped
+glyphs; filled holes in a perforated panel do not count as written evidence.
+Exterior words on the connected surrounding matte surface veto an incomplete
+proposal, including filled tables on a larger written sheet. Unrelated labels
+across a dark background do not veto the page;
 ambiguous photos keep their pixels and do not receive whole-photo enhancement.
 Faint, gently curved outlines receive a bounded 512-pixel, three-iteration
 segmentation fallback when
@@ -54,7 +58,12 @@ boundary curves rectify gentle curl into a rectangle, with correction confined
 to the outer 20% so blank-margin curl does not bend straight central table rows.
 Compact writing guards reject an inner printed frame or shadow seam that would
 discard margin text. Uncertain refinement retains the conservative enclosing
-crop. Geometry stays within 1280 pixels; inverse geometry samples original RGB
+crop. A second material seam requires its own local transition, so an already
+removed desk cannot justify following a printed frame inward. Reduced-resolution
+photos can use lower-degree gentle curves only with the same edge-support and
+displacement bounds. Qualified visible corners constrain only unsupported curve
+tails that extrapolate outside the pose; additional writing guards veto any lost
+marks. Geometry stays within 1280 pixels; inverse geometry samples original RGB
 once in strips of at most one million pixels, averaging opposing edge lengths
 while enforcing the exact 16 MP output ceiling. Detection is conservative
 and may leave low-contrast, obscured or blank pages untouched. Writing-like marks
@@ -64,9 +73,14 @@ metadata contains only per-page outcome booleans and counts, without document te
 `tests/test_image_scanning_safety.py`, `tests/test_image_scanning_rectification.py`,
 `tests/test_image_scanning_tinted.py`,
 `tests/test_image_scanning_material_safety.py`,
-`tests/test_page_rectification_bounds.py`, `tests/test_image_scanning_api.py` and
+`tests/test_image_scanning_occluded.py`,
+`tests/test_image_scanning_dense_safety.py`,
+`tests/test_image_scanning_resolution.py`,
+`tests/test_page_rectification_bounds.py`, `tests/test_page_rectification_endpoints.py`,
+`tests/test_image_scanning_api.py` and
 `tests/test_bot_image_scanning.py` cover artifacts, quotes, jobs and bot switches.
-Service verification also processes anonymized curved gray and tinted paper through the
+Service verification also processes anonymized curved gray, tinted and dense
+shaded paper through the
 actual HTTP/queue/worker/download path and checks the resulting PDF pixels with
 defaults enabled, cropping alone and both effects disabled. The checks require
 a fitted borderless PDF canvas, physical desk removal and all corner/side writing.

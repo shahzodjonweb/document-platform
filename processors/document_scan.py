@@ -85,17 +85,30 @@ def _full_frame_document(rgb, gray, saturation, lab=None):
             return False
     ink = ((gray < paper - 45) & (saturation < 100)).astype(np.uint8)
     fraction = float(ink.mean())
-    if not .001 <= fraction <= .28:
+    if not .001 <= fraction <= .45:
         return False
     count, _, stats, _ = cv2.connectedComponentsWithStats(ink, connectivity=8)
     # Several small written marks, rather than one photograph or a lone frame.
     marks = sum(1 for x, y, w, h, area in stats[1:]
                 if 3 <= area <= height * width * .015 and 2 <= h <= height * .12
                 and w <= width * .75)
+    compact_marks = sum(1 for x, y, w, h, area in stats[1:]
+        if 3 <= area <= height * width * .015 and 3 <= h <= height * .12
+        and 3 <= w <= min(width * .15, h * 4) and h <= w * 5)
     if not conventional:
-        marks = sum(1 for x, y, w, h, area in stats[1:]
+        marks = compact_marks
+    if fraction > .28:
+        # Header bars, table rules and barcodes can occupy a third of a real
+        # form. Dense pixels alone are not written evidence: require many
+        # compact marks on a coherent matte material before treating it as a
+        # full-frame scan rather than an ordinary photograph.
+        glyphs = sum(1 for x, y, w, h, area in stats[1:]
             if 3 <= area <= height * width * .015 and 3 <= h <= height * .12
-            and 3 <= w <= min(width * .15, h * 4) and h <= w * 5)
+            and 3 <= w <= min(width * .15, h * 4) and h <= w * 5
+            and area / (w * h) < .70)
+        if lab is None or glyphs < 20 or _matte_material(
+                gray.ravel(), saturation.ravel(), lab[:, :, 1:].reshape(-1, 2)) is None:
+            return False
     return count > 5 and marks >= 5
 
 
@@ -129,11 +142,40 @@ def _exterior_writing(quad, gray, saturation):
     mask = cv2.dilate(mask, np.ones((13, 13), np.uint8))
     background = cv2.morphologyEx(gray, cv2.MORPH_CLOSE,
         cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (31, 31)))
+    # Margin writing is evidence of an internal printed block only when it
+    # belongs to the matte surface surrounding that block. Background labels
+    # on a separate surface, across a broad dark gap, must not veto a page.
+    # Closing bridges ordinary thin printed rules without crossing that gap.
+    surface = ((background >= 115) & (mask == 0)).astype(np.uint8)
+    components, surface_labels = cv2.connectedComponents(surface, connectivity=8)
+    side_support = np.zeros(components, np.uint8)
+    gap = max(8, min(gray.shape) * .0125)
+    for index in range(4):
+        start, end = quad[index], quad[(index + 1) % 4]
+        edge = end - start
+        outward = np.array([edge[1], -edge[0]]) / np.linalg.norm(edge)
+        middle = start + np.linspace(.15, .85, 40)[:, None] * edge
+        points = np.concatenate([middle + outward * gap, middle + outward * gap * 2])
+        points = np.round(points).astype(np.int32)
+        valid = ((points[:, 0] >= 0) & (points[:, 0] < gray.shape[1])
+                 & (points[:, 1] >= 0) & (points[:, 1] < gray.shape[0]))
+        points = points[valid]
+        if points.size == 0:
+            continue
+        counts = np.bincount(surface_labels[points[:, 1], points[:, 0]], minlength=components)
+        supported = counts >= len(points) * .30
+        supported[0] = False
+        side_support[supported] += 1
+    surrounding = side_support >= 1
+    surrounding[0] = False
+    if not np.any(surrounding):
+        return False
     # Deep print and colored pen strokes avoid counting pale flowers, cast
     # shadows, long desk patterns or isolated decorations as missing words.
     ink = ((background.astype(np.int16) - gray.astype(np.int16) > 35)
            & ((saturation < 45) | ((saturation > 65) & (gray > 8)))
-           & (background >= 115) & (mask == 0)).astype(np.uint8)
+           & (background >= 115) & (mask == 0)
+           & surrounding[surface_labels]).astype(np.uint8)
     _, _, stats, _ = cv2.connectedComponentsWithStats(ink, connectivity=8)
     limit = min(gray.shape) * .06
     marks = []
@@ -231,7 +273,7 @@ def _candidate(quad, gray, saturation, edges, *, compact_writing=False, lab=None
     ink = ((local_paper.astype(np.int16) - gray.astype(np.int16) > 25)
            & interior).astype(np.uint8)
     fraction = float(ink.sum()) / light.size
-    if not .0005 <= fraction <= .25:
+    if not .0005 <= fraction <= .45:
         return None
     _, _, stats, _ = cv2.connectedComponentsWithStats(ink, connectivity=8)
     marks = sum(1 for x, y, w, h, area in stats[1:]
@@ -242,6 +284,16 @@ def _candidate(quad, gray, saturation, edges, *, compact_writing=False, lab=None
     compact_marks = sum(1 for x, y, w, h, area in stats[1:]
         if 3 <= area <= light.size * .02 and 3 <= h <= height * .15
         and 3 <= w <= min(width * .15, h * 4) and h <= w * 5)
+    dense_print = fraction > .25
+    if dense_print:
+        # Filled vent holes and repeated solid dots are compact too. Written
+        # glyphs leave significant background inside their bounding boxes.
+        glyphs = sum(1 for x, y, w, h, area in stats[1:]
+            if 3 <= area <= light.size * .02 and 3 <= h <= height * .15
+            and 3 <= w <= min(width * .15, h * 4) and h <= w * 5
+            and area / (w * h) < .70)
+        if material is None or glyphs < 20:
+            return None
     if compact_writing or not conventional:
         # Weak-edge segmentation can also propose vented appliances. Border
         # fragments, long slots and a knob are not sufficient written evidence.
@@ -315,7 +367,7 @@ def _candidate(quad, gray, saturation, edges, *, compact_writing=False, lab=None
         material_edges = (float(np.linalg.norm(ring_color - material)) >= 5 or abs(contrast) >= 8)
     boundary = (mask > 0) & ~interior
     envelope = None
-    if not conventional_edges and material_edges and outline is not None:
+    if ((not conventional_edges and material_edges) or dense_print) and outline is not None:
         # A straight inscribed quad must not demand that genuinely bowed paper
         # sides appear in the wrong place. Validate the observed proposing
         # contour instead, with a strict bound on how far it can depart.
@@ -340,7 +392,7 @@ def _candidate(quad, gray, saturation, edges, *, compact_writing=False, lab=None
     if (not conventional_edges and not material_edges) or support < .30:
         return None
     candidate = {'quad': quad, 'mask': mask > 0, 'area': float(interior.sum()),
-            'material_edges': not conventional_edges,
+            'material_edges': not conventional_edges or dense_print,
             'score': float(interior.sum()) * (1 + min(abs(contrast), 100) / 300 + support / 5)}
     if envelope is not None:
         candidate['warp_quad'] = envelope

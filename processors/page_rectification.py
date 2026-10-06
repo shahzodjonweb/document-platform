@@ -81,38 +81,54 @@ def _trace_material_side(material, cv2, np):
                 continue
             score = (min(contrast, 35) * max(.15, min(float(derivative[depth]), 6))
                      / (1 + (depth / 12) ** 2))
+            # A second, inward seam needs its own local material transition.
+            # Its broad contrast window can otherwise include the already
+            # removed desk and make a thin printed rule look like another edge.
+            near_outside = np.median(profile[max(0, depth - 8):max(1, depth - 3)], axis=0)
+            near_inside = np.median(profile[depth + 3:depth + 8], axis=0)
+            near_outside_distance = float(np.linalg.norm((near_outside - reference) * material_weights))
+            near_inside_distance = float(np.linalg.norm((near_inside - reference) * material_weights))
+            local_transition = near_outside_distance >= max(8., near_inside_distance + 4.)
             peaks.append((depth, score, contrast, float(derivative[depth]),
-                          float(np.median(outside[:, 0]))))
+                          float(np.median(outside[:, 0])), float(local_transition)))
         rows.append(peaks)
     return positions, rows, limit
 
 
-def _select_curve(positions, rows, width, limit, np, *, inward_of=None, tight_edge=False):
+def _select_curve(positions, rows, width, limit, np, *, inward_of=None, tight_edge=False,
+                  stable_fit=False, endpoint_anchors=None):
     selected = []
     for position, peaks in zip(positions, rows):
         if inward_of is not None:
             separation = max(8, limit * .075)
             peaks = [peak for peak in peaks
-                     if peak[0] >= inward_of[int(position)] + separation and peak[4] >= 75]
+                     if peak[0] >= inward_of[int(position)] + separation and peak[4] >= 75
+                     and (len(peak) == 5 or peak[5])]
         if peaks:
             selected.append((position, *max(peaks, key=lambda peak: peak[1])))
     required = .75 if inward_of is not None else .55
     if len(selected) < len(positions) * required:
         return None
     points = np.asarray(selected, dtype=float)
-    keep = np.ones(len(points), bool)
-    for _ in range(5):
-        if keep.sum() < 8:
-            return None
-        coefficients = np.polyfit(points[keep, 0] / width, points[keep, 1], 4)
-        error = points[:, 1] - np.polyval(coefficients, points[:, 0] / width)
-        tolerance = max(3., float(np.median(np.abs(error[keep]))) * 3)
-        keep = np.abs(error) < tolerance
-    if (keep.sum() < len(positions) * (required - .05)
-            or np.median(points[keep, 3]) < 4 or np.median(points[keep, 4]) < .5):
-        return None
-    values = np.polyval(coefficients, np.arange(width) / width)
-    if np.any(values < -limit * .15) or np.any(values > limit * 1.15):
+    # A high-order fit can extrapolate wildly from a shorter run of visible
+    # edge samples on a reduced-resolution photo. Lower-order gentle curves
+    # must pass the same observed-support, contrast and displacement bounds.
+    for degree in ((4, 3, 2) if stable_fit else (4,)):
+        keep = np.ones(len(points), bool)
+        for _ in range(5):
+            if keep.sum() < 8:
+                break
+            coefficients = np.polyfit(points[keep, 0] / width, points[keep, 1], degree)
+            error = points[:, 1] - np.polyval(coefficients, points[:, 0] / width)
+            tolerance = max(3., float(np.median(np.abs(error[keep]))) * 3)
+            keep = np.abs(error) < tolerance
+        if (keep.sum() < max(8, len(positions) * (required - .05))
+                or np.median(points[keep, 3]) < 4 or np.median(points[keep, 4]) < .5):
+            continue
+        values = np.polyval(coefficients, np.arange(width) / width)
+        if not np.any(values < -limit * .15) and not np.any(values > limit * 1.15):
+            break
+    else:
         return None
     # Account for small observed tear/blur variations around a matte edge's
     # smooth fit, bounded to three geometry pixels. Never add a desk border.
@@ -120,7 +136,39 @@ def _select_curve(positions, rows, width, limit, np, *, inward_of=None, tight_ed
     if tight_edge:
         residual = points[keep, 1] - np.polyval(coefficients, points[keep, 0] / width)
         padding += min(3., max(0., float(np.percentile(residual, 90))))
-    return np.clip(values + padding, 0, limit).astype(np.float32)
+    curve = np.clip(values + padding, 0, limit).astype(np.float32)
+    if endpoint_anchors is not None:
+        columns = np.arange(width, dtype=float)
+        low, high = float(points[keep, 0].min()), float(points[keep, 0].max())
+        # Trust independently qualified corners only in unsupported tails
+        # where the fitted edge extrapolates outside the pose. Never change
+        # the observed body of the curve or infer a missing corner.
+        for x, depth in endpoint_anchors:
+            if not (0 <= x <= width - 1 and 0 <= depth <= limit):
+                continue
+            if x <= low and values[0] < 0 and low - x >= 1:
+                taper = np.clip((low - columns) / (low - x), 0, 1)
+            elif x >= high and values[-1] < 0 and x - high >= 1:
+                taper = np.clip((columns - high) / (x - high), 0, 1)
+            else:
+                continue
+            correction = min(width * .04, limit * .25,
+                max(0., depth + padding - float(np.interp(x, columns, curve))))
+            curve += (correction * taper).astype(np.float32)
+    return np.clip(curve, 0, limit).astype(np.float32)
+
+
+def _side_corner_anchors(corners, side, width, height, np):
+    """Project qualified corner evidence into the side's rotated pose."""
+    if side == 0:
+        oriented = corners
+    elif side == 1:
+        oriented = np.stack((corners[:, 1], width - 1 - corners[:, 0]), axis=1)
+    elif side == 2:
+        oriented = np.stack((width - 1 - corners[:, 0], height - 1 - corners[:, 1]), axis=1)
+    else:
+        oriented = np.stack((height - 1 - corners[:, 1], corners[:, 0]), axis=1)
+    return oriented[[side, (side + 1) % 4]]
 
 
 def _retains_writing(rgb, outer, inner, side, cv2, np, *, paper_mask=None, material_color=None):
@@ -269,6 +317,7 @@ def rectify_page(image, envelope, cv2, np, *, qualified_quad=None, material_edge
             material[:, :, channel] = cv2.GaussianBlur(
                 cv2.medianBlur(material[:, :, channel], 7), (5, 5), 0)
     paper_mask = None
+    qualified = None
     if qualified_quad is not None:
         # The validated four-corner interior distinguishes margin glyphs from
         # compact desk/shadow fragments in the enclosing geometry thumbnail.
@@ -284,22 +333,34 @@ def rectify_page(image, envelope, cv2, np, *, qualified_quad=None, material_edge
     curves = []
     for side in range(4):
         oriented = np.rot90(gray, side)
+        anchors = (None if material is None or qualified is None else
+                   _side_corner_anchors(qualified, side, width, height, np))
         if material is None:
             positions, rows, limit = _trace_side(oriented, cv2, np)
         else:
             positions, rows, limit = _trace_material_side(np.rot90(material, side), cv2, np)
-        outer = _select_curve(positions, rows, oriented.shape[1], limit, np)
+        outer = _select_curve(positions, rows, oriented.shape[1], limit, np,
+                               stable_fit=material is not None)
         if outer is None:
             return None
         if material is not None:
-            tightened = _select_curve(positions, rows, oriented.shape[1], limit, np, tight_edge=True)
+            if anchors is not None:
+                anchored = _select_curve(positions, rows, oriented.shape[1], limit, np,
+                                         stable_fit=True, endpoint_anchors=anchors)
+                if (anchored is not None and not np.array_equal(anchored, outer)
+                        and _retains_writing(pose, outer, anchored, side, cv2, np,
+                                             material_color=material_color)):
+                    outer = anchored
+            tightened = _select_curve(positions, rows, oriented.shape[1], limit, np,
+                                      tight_edge=True, stable_fit=True, endpoint_anchors=anchors)
             if tightened is not None and _retains_writing(pose, outer, tightened, side, cv2, np,
                                                          material_color=material_color):
                 outer = tightened
         if not _retains_writing(pose, np.zeros_like(outer), outer, side, cv2, np,
                                 paper_mask=paper_mask, material_color=material_color):
             return None  # A strong printed frame must not become the paper edge.
-        inner = _select_curve(positions, rows, oriented.shape[1], limit, np, inward_of=outer)
+        inner = _select_curve(positions, rows, oriented.shape[1], limit, np, inward_of=outer,
+                              stable_fit=material is not None)
         if inner is not None and _retains_writing(pose, outer, inner, side, cv2, np,
                                                  material_color=material_color):
             outer = inner
