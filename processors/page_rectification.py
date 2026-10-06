@@ -312,10 +312,13 @@ def rectify_page(image, envelope, cv2, np, *, qualified_quad=None, material_edge
     if material_edges:
         # This path is reserved for independently qualified, uniformly matte
         # paper. Keep geometry and all three color channels on the bounded pose.
-        material = cv2.cvtColor(pose, cv2.COLOR_RGB2LAB).astype(np.float32)
+        lab = cv2.cvtColor(pose, cv2.COLOR_RGB2LAB)
+        material = np.empty(lab.shape, np.float32)
         for channel in range(3):
+            # OpenCV's portable 7-pixel median kernel requires uint8 input.
+            # Convert afterwards so the Gaussian step retains fractional color.
             material[:, :, channel] = cv2.GaussianBlur(
-                cv2.medianBlur(material[:, :, channel], 7), (5, 5), 0)
+                cv2.medianBlur(lab[:, :, channel], 7).astype(np.float32), (5, 5), 0)
     paper_mask = None
     qualified = None
     if qualified_quad is not None:

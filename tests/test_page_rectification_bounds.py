@@ -25,9 +25,17 @@ def test_high_resolution_rectification_uses_original_source_and_bounded_maps(mon
     original_crop = Image.Image.crop
     original_remap = cv2.remap
     original_warp = cv2.warpPerspective
+    original_median = cv2.medianBlur
     source_crops = []
     sampling = []
     geometry = []
+
+    def portable_median(array, kernel, *args, **kwargs):
+        # Some macOS backends accept float32 with larger kernels, whereas the
+        # production Linux backend only supports uint8 for kernels above five.
+        if kernel > 5:
+            assert array.dtype == np.uint8, 'Use the portable OpenCV median input type'
+        return original_median(array, kernel, *args, **kwargs)
 
     def capture_crop(image, box=None):
         result = original_crop(image, box)
@@ -54,6 +62,7 @@ def test_high_resolution_rectification_uses_original_source_and_bounded_maps(mon
     monkeypatch.setattr(Image.Image, 'crop', capture_crop)
     monkeypatch.setattr(cv2, 'warpPerspective', capture_geometry)
     monkeypatch.setattr(cv2, 'remap', capture_sampling)
+    monkeypatch.setattr(cv2, 'medianBlur', portable_median)
     # Exercise the output cap with a smaller real bound, avoiding an expensive
     # giant fixture while retaining the exact production sizing/render path.
     monkeypatch.setattr(page_rectification, 'MAX_PIXELS', 2_000_000)
