@@ -133,7 +133,8 @@ def test_native_render_keeps_dense_cards_and_arguments_inside_their_panels(
     if font_mode == 'dejavu':
         # Linux substitutes these wider faces for the Office fonts. Explicitly
         # select them so the same regression runs on macOS as well as in CI.
-        from apps.studio import slides
+        from apps.studio import slides, deck_designs
+        monkeypatch.setattr(deck_designs, 'DEFAULT_FONTS', ('DejaVu Serif', 'DejaVu Sans'))
         monkeypatch.setattr(slides, 'BODY_FONT', 'DejaVu Sans')
         monkeypatch.setattr(slides, 'HEADING_FONT', 'DejaVu Serif')
 
