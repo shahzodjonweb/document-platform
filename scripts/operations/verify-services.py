@@ -116,7 +116,8 @@ assert command(['docker', 'exec', redis, 'redis-cli', 'GET', redis_key]).strip()
 command(['docker', 'exec', redis, 'redis-cli', 'DEL', redis_key])
 print('VERIFY_REDIS_ROUNDTRIP_OK', flush=True)
 source = 'CHECK_SOURCES = ' + repr(CHECK_SOURCES) + '\n' + '''
-import json,time,uuid
+import json,time,uuid,sys,types
+from pathlib import Path
 from django.conf import settings
 from django.db import connection,transaction
 from django.db.migrations.executor import MigrationExecutor
@@ -129,7 +130,11 @@ assert not executor.migration_plan(executor.loader.graph.leaf_nodes())
 print('VERIFY_DATABASE_QUERY_MIGRATIONS_OK',flush=True)
 modules={}
 for name,code in CHECK_SOURCES.items():
-    namespace={'__name__':'service_audit_'+name.replace('.','_')}
+    module_name='service_audit_'+name.replace('.','_')
+    module=types.ModuleType(module_name)
+    module.__file__=str(Path.cwd()/'scripts'/'operations'/name)
+    sys.modules[module_name]=module
+    namespace=module.__dict__
     exec(compile(code,name,'exec'),namespace);modules[name]=namespace
 background=modules['service_checks_background.py']
 started=time.monotonic()

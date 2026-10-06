@@ -1,7 +1,8 @@
 """Local, conservative paper scanning. Called only by the bounded image worker.
 
-Detection uses a thumbnail; uncertain, partial or competing page outlines leave
-the full image intact. No OCR, models, uploads or external services are involved.
+Detection uses a thumbnail; uncertain or competing outlines retain the image.
+Qualified clipped paper receives masked cleanup and verified empty-band trimming,
+without inventing missing corners. No OCR, uploads or external services are used.
 """
 from functools import lru_cache
 import math
@@ -509,6 +510,21 @@ def _detect(image, *, details=False):
     bright[saturation > 90] = 0
     bright = cv2.morphologyEx(bright, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
     candidates = []
+    partial_result = []
+    def partial_document():
+        # A clipped surface needs independent writing/material/contact evidence
+        # before using the clipped-page fallback's bounded mask initialization.
+        if partial_result:
+            return partial_result[0]
+        from processors.partial_document_scan import prequalify, refine
+        hint = prequalify(image)
+        if hint is None:
+            result = None, False
+        else:
+            refined = refine(hint)
+            result = (None if refined is None else {**refined, 'kind': 'partial'}), True
+        partial_result.append(result)
+        return result
     for source in (connected, bright):
         contours, _ = cv2.findContours(source, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
         for contour in sorted(contours, key=cv2.contourArea, reverse=True)[:40]:
@@ -533,9 +549,17 @@ def _detect(image, *, details=False):
                     duplicate.update(candidate)
                 break
     if not candidates:
+        # Preserve the established complete-page fallback before trying a
+        # clipped surface. A bright desk can touch the frame around a complete
+        # faint-edged page; it must not impersonate the page's clipped edge.
         candidates = _segmented_candidates(image, gray, saturation, lab)
-        if not candidates:
-            return None, frame_document
+    if not candidates:
+        partial, segmented = partial_document()
+        if partial is not None:
+            return (partial if details else None), True
+        if segmented:
+            return None, False  # Never retry a failed clipped-page model.
+        return None, frame_document
     candidates.sort(key=lambda item: item['score'], reverse=True)
     qualified = [candidate for candidate in candidates if not candidate.get('ambiguous', False)]
     for candidate in candidates:
@@ -546,6 +570,9 @@ def _detect(image, *, details=False):
                 and float(np.sum(other['mask'] & candidate['mask'])) /
                     float(candidate['mask'].sum()) >= .95 for other in qualified)
             if not enclosed:
+                partial, _ = partial_document()
+                if partial is not None:
+                    return (partial if details else None), True
                 return None, False
     candidates = qualified
     best = candidates[0]
@@ -586,17 +613,20 @@ def _warp(image, quad):
     return Image.fromarray(result)
 
 
-def _enhance(image, quad=None):
+def _enhance(image, quad=None, *, region_mask=None, neutralize_paper=False):
     """Normalize broad shadows in bounded strips while retaining colored ink."""
     cv2, np = _numeric()
     rgb = np.asarray(image, dtype=np.uint8)
     small = _thumbnail(image, 512)
-    small_gray = cv2.cvtColor(np.asarray(small), cv2.COLOR_RGB2GRAY)
-    background = cv2.morphologyEx(small_gray, cv2.MORPH_CLOSE,
-                                  cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (17, 17)))
-    background = cv2.GaussianBlur(background, (0, 0), 7)
-    background = cv2.resize(background, image.size, interpolation=cv2.INTER_LINEAR)
-    background = np.maximum(background, 75)
+    small_rgb = np.asarray(small)
+    gray_background = None
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (17, 17))
+    if not neutralize_paper:
+        small_gray = cv2.cvtColor(small_rgb, cv2.COLOR_RGB2GRAY)
+        gray_background = cv2.morphologyEx(small_gray, cv2.MORPH_CLOSE, kernel)
+        gray_background = cv2.GaussianBlur(gray_background, (0, 0), 7)
+        gray_background = np.maximum(cv2.resize(gray_background, image.size,
+                                               interpolation=cv2.INTER_LINEAR), 75)
     result = np.empty_like(rgb)
     values = np.arange(256, dtype=np.float32)
     table = np.clip((values - 25) * (255 / 220), 0, 255).astype(np.uint8)
@@ -604,14 +634,41 @@ def _enhance(image, quad=None):
     if quad is not None:
         mask = np.zeros((image.height, image.width), np.uint8)
         cv2.fillConvexPoly(mask, np.round(quad).astype(np.int32), 255)
+    region = None if region_mask is None else np.asarray(region_mask, dtype=np.uint8)
+    if region is not None:
+        # Fade inward from the conservative paper mask so a thumbnail boundary
+        # cannot leave a stair-stepped white edge. The exterior stays untouched.
+        distance = cv2.distanceTransform((region > 0).astype(np.uint8), cv2.DIST_L2, 3)
+        region = np.clip(distance * (255 / 3), 0, 255).astype(np.uint8)
+        columns = ((np.arange(image.width, dtype=np.float32) + .5)
+                   * region.shape[1] / image.width - .5)
     rows = max(1, 1_000_000 // image.width)
-    for first in range(0, image.height, rows):
-        last = min(image.height, first + rows)
-        for channel in range(3):
+    for channel in range(3):
+        background = gray_background
+        if neutralize_paper:
+            # A qualified clipped page can have a colored illuminant. Estimate
+            # each channel on the thumbnail, retaining only one full-size
+            # channel at a time and preserving colored writing under the mask.
+            field = cv2.morphologyEx(small_rgb[:, :, channel], cv2.MORPH_CLOSE, kernel)
+            field = cv2.GaussianBlur(field, (0, 0), 7)
+            background = np.maximum(cv2.resize(field, image.size,
+                                               interpolation=cv2.INTER_LINEAR), 75)
+        for first in range(0, image.height, rows):
+            last = min(image.height, first + rows)
             normalized = cv2.divide(rgb[first:last, :, channel], background[first:last], scale=245)
             adjusted = cv2.LUT(normalized, table)
             if mask is not None:
                 adjusted = np.where(mask[first:last] > 0, adjusted, rgb[first:last, :, channel])
+            if region is not None:
+                indices = ((np.arange(first, last, dtype=np.float32) + .5)
+                           * region.shape[0] / image.height - .5)
+                shape = (last - first, image.width)
+                alpha = cv2.remap(region, np.broadcast_to(columns, shape),
+                                  np.broadcast_to(indices[:, None], shape),
+                                  cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE).astype(np.uint16)
+                adjusted = ((adjusted.astype(np.uint16) * alpha
+                             + rgb[first:last, :, channel].astype(np.uint16) * (255 - alpha)
+                             + 127) // 255).astype(np.uint8)
             result[first:last, :, channel] = adjusted
     return Image.fromarray(result)
 
@@ -622,10 +679,24 @@ def prepare_image(image, *, auto_crop=True, enhance_text=True):
     if not auto_crop and not enhance_text or min(image.size) < 96:
         return image, metadata
     details, detected = _detect(image, details=True)
-    quad = None if details is None else details['envelope']
     metadata['document_detected'] = detected
     if not detected:
         return image, metadata
+    if details is not None and details.get('kind') == 'partial':
+        from processors.partial_document_scan import native_safe_crop_box
+        box = native_safe_crop_box(image, details) if auto_crop else None
+        if enhance_text:
+            image = _enhance(image, region_mask=details['partial_mask'], neutralize_paper=True)
+            metadata['enhanced'] = True
+        if box is not None and box != (0, 0, image.width, image.height):
+            image = image.crop(box)
+            if image.width * image.height > MAX_WARP_PIXELS:
+                scale = math.sqrt(MAX_WARP_PIXELS / (image.width * image.height))
+                width, height = max(2, int(image.width * scale)), max(2, int(image.height * scale))
+                image = image.resize((width, height), Image.Resampling.LANCZOS)
+            metadata['cropped'] = True
+        return image, metadata
+    quad = None if details is None else details['envelope']
     if auto_crop and quad is not None:
         from processors.page_rectification import rectify_page
         cv2, np = _numeric()

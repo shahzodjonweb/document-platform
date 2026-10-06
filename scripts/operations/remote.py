@@ -61,7 +61,7 @@ with tempfile.TemporaryDirectory() as folder:
         result = subprocess.run(args,input=source.encode(),timeout=800)
     elif operation == 'verify-services':
         helpers = {name: Path(__file__).with_name(name).read_text() for name in (
-            'service_checks_background.py', 'service_checks_documents.py', 'service_checks_paid.py',
+            'partial_scan_fixtures.py', 'service_checks_background.py', 'service_checks_documents.py', 'service_checks_paid.py',
             'service_checks_storage.py')}
         source = 'CHECK_SOURCES = ' + repr(helpers) + '\n' + Path(__file__).with_name(script).read_text()
         result = subprocess.run(args, input=source.encode(), timeout=800)

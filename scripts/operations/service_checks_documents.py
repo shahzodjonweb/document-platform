@@ -21,6 +21,12 @@ from PIL import Image, ImageDraw, ImageFont
 from pypdf import PdfReader, PdfWriter
 from reportlab.pdfgen.canvas import Canvas
 from apps.core.models import Account, FileAsset, Job
+try:
+    # The SSH audit supplies fresh anonymous fixtures, independently of the
+    # application's installed image. Ordinary local tests import the file.
+    from service_audit_partial_scan_fixtures_py import partial_document_fixture, validate_partial_output
+except ModuleNotFoundError:
+    from scripts.operations.partial_scan_fixtures import partial_document_fixture, validate_partial_output
 
 
 API_URL = 'http://127.0.0.1:8000/api/v1/'
@@ -786,6 +792,8 @@ def fixtures(folder):
     paths['held_dense_finger'] = folder / 'generic-held-finger-mask.png'
     Image.fromarray(paper_mask).save(paths['held_dense_mask'])
     Image.fromarray(finger_mask).save(paths['held_dense_finger'])
+    paths['partial_scan'] = folder / 'generic-clipped-shadowed-form.png'
+    partial_document_fixture().image.save(paths['partial_scan'])
     for language, text in [('eng', 'HELLO DOCUMENT 2026'), ('rus', 'ПРИВЕТ ДОКУМЕНТ 2026'), ('uzb', 'SALOM HUJJAT 2026')]:
         paths[language] = folder / (language + '.png')
         scan = Image.new('RGB', (1500, 320), 'white')
@@ -824,6 +832,8 @@ def cases():
         ('pdf.images_to_pdf', ['tinted_scan'], {'auto_crop': True, 'enhance_text': False}),
         ('pdf.images_to_pdf', ['held_dense_scan'], {}),
         ('pdf.images_to_pdf', ['held_dense_scan'], {'auto_crop': True, 'enhance_text': False}),
+        ('pdf.images_to_pdf', ['partial_scan'], {'auto_crop': True, 'enhance_text': False}),
+        ('pdf.images_to_pdf', ['partial_scan'], {}),
         ('pdf.protect', ['other'], {}), ('pdf.unlock_known', ['protected'], {}),
         ('convert.word_to_pdf', ['docx'], {}), ('convert.pptx_to_pdf', ['pptx'], {}),
         ('ocr.extract_text', ['eng'], {'language': 'eng'}), ('ocr.searchable_pdf', ['eng'], {'language': 'eng'}),
@@ -868,9 +878,9 @@ def validate_output(feature, outputs, parameters, inputs=None):
     if feature == 'pdf.rotate': require([page.rotation for page in pages] == [90, 0, 90], 'page_rotation')
     if feature == 'pdf.compress': require('Repeated readable text' in texts[0], 'compressed_text')
     if feature == 'pdf.images_to_pdf':
-        scan_case = inputs in (['scan'], ['curved_scan'], ['tinted_scan'], ['held_dense_scan']) or 'auto_crop' in parameters
+        scan_case = inputs in (['scan'], ['curved_scan'], ['tinted_scan'], ['held_dense_scan'], ['partial_scan']) or 'auto_crop' in parameters
         require(len(pages) == (1 if scan_case else 2) and all(len(p.images) > 0 for p in pages), 'image_pages')
-        if 'auto_crop' in parameters and inputs not in (['curved_scan'], ['tinted_scan'], ['held_dense_scan']):
+        if 'auto_crop' in parameters and inputs not in (['curved_scan'], ['tinted_scan'], ['held_dense_scan'], ['partial_scan']):
             picture = pages[0].images[0].image.convert('RGB')
             if parameters['auto_crop']:
                 require(picture.width < 650 and picture.height < 850, 'document_crop')
@@ -892,6 +902,7 @@ def validate_output(feature, outputs, parameters, inputs=None):
 
 def check_documents(audit_id, emit):
     results = []
+    partial_roi = None
     deadline = time.monotonic() + 410
     with tempfile.TemporaryDirectory(prefix='pdfmaster-service-audit-') as directory:
         paths = fixtures(Path(directory))
@@ -908,6 +919,8 @@ def check_documents(audit_id, emit):
                 row['variant'] = 'tinted_paper_defaults' if not parameters else 'tinted_paper_crop_only'
             if inputs == ['held_dense_scan']:
                 row['variant'] = 'held_dense_defaults' if not parameters else 'held_dense_crop_only'
+            if inputs == ['partial_scan']:
+                row['variant'] = 'clipped_page_defaults' if not parameters else 'clipped_page_crop_only'
             try:
                 require(time.monotonic() < deadline, 'audit_time_budget')
                 customer = Customer(audit_id, feature)
@@ -970,6 +983,23 @@ def check_documents(audit_id, emit):
                         row.update(validate_held_dense_scan(outputs[0], original.convert('RGB'),
                                                           np.asarray(mask), np.asarray(finger), enhanced=enhanced))
                 if feature == 'pdf.compress': require(len(outputs[0]) < paths['compress'].stat().st_size, 'compression_size')
+                if inputs == ['partial_scan']:
+                    enhanced = parameters.get('enhance_text', True)
+                    require(job.get('parameters', {}).get('auto_crop') is True
+                            and job.get('parameters', {}).get('enhance_text') is enhanced,
+                            'clipped_document_quoted_switches')
+                    require(all(job.get('parameters', {}).get(key) == value for key, value in
+                                {'paper_size': 'fit', 'orientation': 'auto', 'margin': 0}.items()),
+                            'clipped_document_quoted_layout')
+                    reader = PdfReader(io.BytesIO(outputs[0]))
+                    require(len(reader.pages) == 1 and len(reader.pages[0].images) == 1,
+                            'clipped_document_page')
+                    image = reader.pages[0].images[0].image.convert('RGB')
+                    row.update(validate_fit_canvas(reader, image))
+                    proof = validate_partial_output(partial_document_fixture(), image,
+                                                    enhanced=enhanced, roi=partial_roi)
+                    partial_roi = proof.pop('roi')
+                    row.update(proof)
                 if feature == 'pdf.merge':
                     preview = job['artifacts'][0]['preview_url']
                     status, body, _ = customer.request('GET', preview)

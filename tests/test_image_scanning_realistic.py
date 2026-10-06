@@ -277,8 +277,28 @@ def test_partial_gray_sheet_with_hidden_corner_is_preserved(corners):
     source = photographed_shipment_form(exposure=17, corners=corners)
     result, metadata = prepare_image(source)
     assert metadata['cropped'] is False
-    assert metadata['enhanced'] is False
-    assert result.size == source.size and result.tobytes() == source.tobytes()
+    assert result.size == source.size
+    crop_only, crop_flags = prepare_image(source, enhance_text=False)
+    assert crop_only.tobytes() == source.tobytes() and not crop_flags['cropped']
+    off, _ = prepare_image(source, auto_crop=False, enhance_text=False)
+    assert off.tobytes() == source.tobytes()
+    # A qualified clipped page may now receive cleanup. The independent camera
+    # alpha still requires that the desk and all visible margin ink survive.
+    _, alpha, margin = _curled(Image.new('RGB', PAGE_SIZE, 'white'))
+    width, height = PAGE_SIZE
+    pose = cv2.getPerspectiveTransform(np.array([
+        (margin, margin), (width - 1 + margin, margin),
+        (width - 1 + margin, height - 1 + margin), (margin, height - 1 + margin)
+    ], np.float32), np.array(corners, np.float32))
+    paper = cv2.warpPerspective(alpha, pose, source.size)
+    # Exclude the simulated camera's two-pixel antialias transition.
+    outside = cv2.dilate(paper, np.ones((5, 5), np.uint8)) == 0
+    assert np.array_equal(np.asarray(result)[outside], np.asarray(source)[outside])
+    for before, after in zip(_mid_edge_ink(source) + _corner_ink_survives(source),
+                             _mid_edge_ink(result) + _corner_ink_survives(result)):
+        assert after >= before * .7
+    if not metadata['enhanced']:
+        assert result.tobytes() == source.tobytes()
 
 
 def test_two_unequal_gray_sheets_are_both_preserved():

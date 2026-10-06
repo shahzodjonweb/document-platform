@@ -31,7 +31,13 @@ Page selections are one-based `1,3-5` strings or `all`; duplicates, descending/o
 `pdf.compression_preview` and `pdf.image_layout` are support/UI catalog IDs backed by the compress metadata and image-layout parameter schema, not independently billable processing endpoints. `files.no_watermark` is an output policy: no platform watermark is introduced. No overlay is represented as true editing or redaction.
 
 Images-to-PDF scanning runs locally with OpenCV, without an AI provider or OCR call.
-It crops only a confident, fully visible paper outline; incomplete outlines,
+It rectifies only a confident, fully visible paper outline. A clipped written
+page can receive masked shadow and color cleanup when coherent paper, observed
+boundaries and writing at a clipped edge independently qualify it. Missing
+corners are never invented: cropped-page geometry remains a literal source
+rectangle, removing only independently verified empty exterior bands (with
+downsampling only when the resulting crop exceeds the 16 MP output ceiling). Faint or
+colored exterior notes and other sheets veto band removal. Uncertain outlines,
 competing pages and ordinary photos keep the full image. Already full-frame scans
 can receive text enhancement without cropping to an inner table. Enhancement
 retains colored ink, and applies only inside a detected page when cropping is off.
@@ -52,7 +58,13 @@ Faint, gently curved outlines receive a bounded 512-pixel, three-iteration
 segmentation fallback when
 closed edge contours are unavailable. These proposals still require observed
 edges, paper/background contrast and compact writing; initialization borders,
-partial pages and competing sheets cannot supply a crop. An enclosing proposal
+competing sheets cannot supply a rectification. Clipped-page qualification uses
+a separate mask initialization after the established complete-page fallback.
+Each path has one 512-pixel/three-iteration attempt, executed sequentially (at
+most six iterations per image), within the existing worker timeout. Tentative empty
+bands are checked against source-resolution writing before removal. Clipped
+enhancement normalizes per-channel illumination only in the qualified region,
+preserving exterior RGB pixels exactly when their geometry is retained. An enclosing proposal
 supplies context for independently tracing each physical paper edge. Smooth
 boundary curves rectify gentle curl into a rectangle, with correction confined
 to the outer 20% so blank-margin curl does not bend straight central table rows.
@@ -76,14 +88,17 @@ metadata contains only per-page outcome booleans and counts, without document te
 `tests/test_image_scanning_occluded.py`,
 `tests/test_image_scanning_dense_safety.py`,
 `tests/test_image_scanning_resolution.py`,
+`tests/test_image_scanning_partial.py`,
 `tests/test_page_rectification_bounds.py`, `tests/test_page_rectification_endpoints.py`,
 `tests/test_image_scanning_api.py` and
 `tests/test_bot_image_scanning.py` cover artifacts, quotes, jobs and bot switches.
-Service verification also processes anonymized curved gray, tinted and dense
+Service verification also processes anonymized clipped, curved gray, tinted and dense
 shaded paper through the
 actual HTTP/queue/worker/download path and checks the resulting PDF pixels with
 defaults enabled, cropping alone and both effects disabled. The checks require
 a fitted borderless PDF canvas, physical desk removal and all corner/side writing.
+Clipped-page checks require an exact source crop rectangle, preservation of all
+visible paper and writing, untouched exterior pixels and measurable paper cleanup.
 Previously generated PDFs are
 immutable; scanning changes apply to new image conversions.
 
