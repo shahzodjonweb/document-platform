@@ -193,17 +193,10 @@ if storage_settings.get('ready'):
         time.sleep(3)
     emit('object_storage_audit_files',{'status':'passed' if not pending else 'failed',
                                        'written':written.count(),'not_in_bucket':pending})
-    # Downloads read from the bucket once the server's working copy is gone:
-    # drop the copies of a few audit files, fetch them back, compare checksums.
-    import hashlib
-    from apps.core.models import FileAsset
-    fetched,matched=0,0
-    for asset in FileAsset.objects.filter(object_key__in=written.filter(remote=True).values('key'))[:3]:
-        storage.storage_path(asset.object_key).unlink(missing_ok=True)
-        path=storage.local(asset.object_key)
-        fetched+=1
-        if path.is_file() and hashlib.sha256(path.read_bytes()).hexdigest()==asset.sha256:matched+=1
-    emit('object_storage_fetch_back',{'status':'passed' if fetched and matched==fetched else 'failed','fetched':fetched,'matched':matched})
+    # Keep the batch canaries alive until this check finishes. Document probes
+    # retire their own files immediately and can race the ordinary cleanup.
+    # A private audit cache exercises downloads without unlinking working copies.
+    emit('object_storage_fetch_back',modules['service_checks_storage.py']['check_fetch_back'](context))
 print('VERIFY_CANARY_RETENTION',json.dumps(background['retire_canaries'](context)))
 failed=[r for r in results if r['status']!='passed']
 print('VERIFY_SUMMARY',json.dumps({'checks':len(results),'failed':len(failed),'seconds':round(time.monotonic()-started,1)}),flush=True)
