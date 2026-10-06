@@ -63,12 +63,12 @@ def latest(account, feature_id=DOCUMENT):
                   .latest('created_at').encrypted_data)
 
 
-def describe(customer, description, service='PDF Document'):
+def describe(customer, description, service='PDF on a topic'):
     tap(customer, dispatch_local(customer, text='/ai'), service)
     return dispatch_local(customer, text=description)
 
 
-SERVICE_LABELS = ['✨ PDF Document · AI', '✨ PowerPoint Slides · AI']
+SERVICE_LABELS = ['✨ PDF on a topic · AI', '✨ Slides on a topic · AI']
 
 
 def test_the_two_services_lead_the_menus_with_no_folder_to_open(customer):
@@ -92,14 +92,14 @@ def test_the_two_services_lead_the_menus_with_no_folder_to_open(customer):
     assert labels(tools)[:2] == SERVICE_LABELS, labels(tools)
 
     # And one tap reaches the description, not a menu of two.
-    asked = tap(customer, dispatch_local(customer, text='/ai'), 'PDF Document')
+    asked = tap(customer, dispatch_local(customer, text='/ai'), 'PDF on a topic')
     conversation = BotConversation.objects.get(pk=customer.telegram_user_id)
     assert conversation.state == 'ai_input' and conversation.prompt['feature_id'] == DOCUMENT
     assert 'Describe what you want' in body(asked)
 
 
 def test_one_message_is_the_whole_brief(customer):
-    asked = tap(customer, dispatch_local(customer, text='/ai'), 'PDF Document')
+    asked = tap(customer, dispatch_local(customer, text='/ai'), 'PDF on a topic')
     assert 'Describe what you want' in body(asked)
     assert 'how many pages' in body(asked)
     conversation = BotConversation.objects.get(pk=customer.telegram_user_id)

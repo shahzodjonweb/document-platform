@@ -61,7 +61,7 @@ def test_first_visit_linking_resumes_original_browser_request_after_language_cho
 
 
 @pytest.mark.parametrize('locale', ['en', 'uz', 'ru'])
-def test_new_user_completes_localized_merge_in_four_actions_from_home(locale):
+def test_new_user_completes_localized_merge_in_five_actions_from_home(locale):
     harness = Harness(onboard=False)
     harness.command('/start')
     assert not Account.objects.exists()
@@ -69,7 +69,10 @@ def test_new_user_completes_localized_merge_in_four_actions_from_home(locale):
     account = Account.objects.get(telegram_user_id=42)
     assert account.locale == locale
 
-    # Exactly four actions after Home: tool, two files, Run. No category or Review.
+    # Five actions after Home: All tools, the tool, two files, Run. No category
+    # or Review. Home keeps its full-width buttons for the AI services, PDF from
+    # images and the plans; Merge is one tap away.
+    harness.click(harness.action('menu'))
     harness.click(harness.action('tool', feature_id='pdf.merge'))
     harness.document('first', pdf((220,)), name='first.pdf')
     harness.document('second', pdf((320,)), name='второй.pdf')
@@ -90,7 +93,7 @@ def test_new_user_completes_localized_merge_in_four_actions_from_home(locale):
     assert Job.objects.filter(account=account).count() == 1
     harness.dispatcher = build_dispatcher()
     harness.command('/start')
-    assert harness.action('tool', feature_id='pdf.merge')
+    assert harness.action('tool', feature_id='pdf.images_to_pdf')
     account.refresh_from_db()
     assert account.locale == locale
 

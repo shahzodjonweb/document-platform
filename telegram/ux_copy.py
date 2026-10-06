@@ -94,7 +94,7 @@ MESSAGES = {
     'support_saved': ('✅ Message sent · #{reference}\nFollow up in the web app.', '✅ Xabar yuborildi · #{reference}\nSuhbatni veb ilovada davom ettiring.', '✅ Сообщение отправлено · #{reference}\nПродолжить переписку можно на сайте.'),
     'support_button': ('💬 Contact support', '💬 Yordamga yozish', '💬 Поддержка'),
     'payment_help': ('💳 Payment help', '💳 To‘lov bo‘yicha yordam', '💳 Помощь с оплатой'),
-    'guide': ('📎 Send a file → choose what to do → Start.\n✨ Or tap PDF Document or PowerPoint Slides: describe what you want in one message, and check the cost before it runs.\n🔒 Enter PDF passwords and edit PDFs in the web app.', '📎 Fayl yuboring → amalni tanlang → Boshlash.\n✨ Yoki «PDF hujjat» yoki «PowerPoint slaydlar»ni bosing: nima kerakligini bitta xabarda yozing va narxini tasdiqlang.\n🔒 PDF parollarini kiriting va PDF tahrirlashni veb ilovada bajaring.', '📎 Отправьте файл → выберите действие → Начать.\n✨ Или нажмите «PDF документ» или «PowerPoint слайды»: опишите задачу одним сообщением и подтвердите стоимость.\n🔒 Пароли PDF вводите и редактируйте PDF на сайте.'),
+    'guide': ('📎 Send a file → choose what to do → Start.\n✨ Or tap PDF on a topic or Slides on a topic: describe what you want in one message, and check the cost before it runs.\n🔒 Enter PDF passwords and edit PDFs in the web app.', '📎 Fayl yuboring → amalni tanlang → Boshlash.\n✨ Yoki «Mavzuga oid PDF» yoki «Mavzuga oid Slayd»ni bosing: nima kerakligini bitta xabarda yozing va narxini tasdiqlang.\n🔒 PDF parollarini kiriting va PDF tahrirlashni veb ilovada bajaring.', '📎 Отправьте файл → выберите действие → Начать.\n✨ Или нажмите «PDF по теме» или «Слайды по теме»: опишите задачу одним сообщением и подтвердите стоимость.\n🔒 Пароли PDF вводите и редактируйте PDF на сайте.'),
     'fallback': ('📎 Send a file or use the buttons below.', '📎 Fayl yuboring yoki quyidagi tugmalardan foydalaning.', '📎 Отправьте файл или выберите кнопку ниже.'),
     'unsupported': ('📎 Please send a PDF, JPG, PNG, Word (.docx) or PowerPoint (.pptx) file.', '📎 PDF, JPG, PNG, Word (.docx) yoki PowerPoint (.pptx) fayli yuboring.', '📎 Отправьте PDF, JPG, PNG, Word (.docx) или PowerPoint (.pptx).'),
     'resend': ('✅ Language saved. Send your file again to begin.', '✅ Til saqlandi. Boshlash uchun faylni qayta yuboring.', '✅ Язык сохранён. Отправьте файл ещё раз, чтобы начать.'),
@@ -110,6 +110,8 @@ MESSAGES = {
     'plans': ('⭐ Plans & packs', '⭐ Tariflar va paketlar', '⭐ Тарифы и пакеты'),
     'usage_button': ('📊 My allowance', '📊 Limitlarim', '📊 Мои лимиты'),
     'subscription': ('💳 Subscription', '💳 Obuna', '💳 Подписка'),
+    # The home screen's way to the plans: an invitation, not a status page.
+    'subscribe_button': ('💎 Subscribe', '💎 Obuna bo‘lish', '💎 Оформить подписку'),
     'quota_hint': ('Your allowance isn’t enough for this task. Use fewer files or pages, or choose a plan.', 'Bu vazifaga limit yetmaydi. Kamroq fayl yoki sahifa tanlang, yoxud tarifni yangilang.', 'Лимита не хватает. Выберите меньше файлов или страниц либо другой тариф.'),
     'limits': ('📎 Bot limit: 20 MB per file. Use the website for larger files.', '📎 Botda: har fayl 20 MB gacha. Kattaroq fayl uchun saytdan foydalaning.', '📎 В боте: до 20 МБ на файл. Для больших файлов используйте сайт.'),
     'retention': ('🕒 Server files are stored for 24 hours. Copies sent here stay in your chat.', '🕒 Server fayllari 24 soat saqlanadi. Bu yerga yuborilgan nusxalar chatda qoladi.', '🕒 Файлы на сервере хранятся 24 часа. Отправленные сюда копии остаются в чате.'),
@@ -232,13 +234,13 @@ TOOL_LABELS = {
     'pdf.delete_pages': ('🗑 Delete pages', '🗑 Sahifalarni o‘chirish', '🗑 Удалить страницы'),
     'pdf.reorder': ('↕️ Reorder pages', '↕️ Sahifalar tartibi', '↕️ Порядок страниц'),
     'pdf.rotate': ('🔄 Rotate pages', '🔄 Sahifalarni aylantirish', '🔄 Повернуть страницы'),
-    'pdf.images_to_pdf': ('🖼 Images → PDF', '🖼 Rasmlar → PDF', '🖼 Фото → PDF'),
+    'pdf.images_to_pdf': ('🖼 PDF from images', '🖼 Rasmlardan PDF', '🖼 PDF из фото'),
     'pdf.to_images': ('🖼 PDF → images', '🖼 PDF → rasmlar', '🖼 PDF → изображения'),
     'convert.word_to_pdf': ('📝 Word → PDF', '📝 Word → PDF', '📝 Word → PDF'),
     'convert.pptx_to_pdf': ('📊 PowerPoint → PDF', '📊 PowerPoint → PDF', '📊 PowerPoint → PDF'),
     # The two AI services. Names are kept in step with the web app's locales.
-    'ai.pdf_topic': ('✨ PDF Document · AI', '✨ PDF hujjat · AI', '✨ PDF документ · ИИ'),
-    'ai.pptx': ('✨ PowerPoint Slides · AI', '✨ PowerPoint slaydlar · AI', '✨ PowerPoint слайды · ИИ'),
+    'ai.pdf_topic': ('✨ PDF on a topic · AI', '✨ Mavzuga oid PDF · AI', '✨ PDF по теме · ИИ'),
+    'ai.pptx': ('✨ Slides on a topic · AI', '✨ Mavzuga oid Slayd · AI', '✨ Слайды по теме · ИИ'),
 }
 
 UX = {locale: {key: values[index] for key, values in MESSAGES.items()} for index, locale in enumerate(LOCALES)}

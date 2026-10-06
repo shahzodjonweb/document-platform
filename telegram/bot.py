@@ -209,10 +209,12 @@ def build_dispatcher():
         submitted=await sync_to_async(lambda:Job.objects.filter(account=account,quote_id=draft.quote_id).exists() if draft.quote_id else False)()
         rows=[]
         if draft.input_ids and not submitted: rows.append([await button(account,'continue_task','controls')])
+        # Four full-width buttons for what people come for: the two AI services,
+        # PDF from images, and the plans. Every other tool is one tap away in All tools.
         rows.extend(await ai_service_rows(account))
         available={f['id'] for f in await sync_to_async(catalog)(account)}
-        quick=[key for key in ('pdf.merge','pdf.compress','pdf.images_to_pdf','pdf.to_images') if key in available]
-        for index in range(0,len(quick),2): rows.append([await tool_button(account,draft,key) for key in quick[index:index+2]])
+        if 'pdf.images_to_pdf' in available: rows.append([await tool_button(account,draft,'pdf.images_to_pdf')])
+        rows.append([await button(account,'subscribe_button','plans')])
         rows.extend([
             [await button(account,'all_tools','menu'),await button(account,'recent','recent')],
             [await button(account,'account','account'),await button(account,'help_button','help')],

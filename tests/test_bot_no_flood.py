@@ -72,11 +72,11 @@ def test_choosing_a_service_before_joining_turns_the_menu_into_the_channels(cust
     require_channels()
     chat = Chat(customer)
     chat.do(text='/start')
-    assert chat.tap('tool', feature_id='pdf.compress') == 0, 'the menu changes; nothing is added'
+    assert chat.tap('tool', feature_id='pdf.images_to_pdf') == 0, 'the menu changes; nothing is added'
     assert GATE['en']['gate_one'] in chat.last()
     telegram.statuses = {'@pdfmaster_news': 'member'}
     assert chat.tap('channels_check') == 1, 'thanks replaces the channels; the service is the one new screen'
-    assert 'Compress PDF' in chat.last() and 'Merge' not in chat.last()
+    assert 'PDF from images' in chat.last() and 'Merge' not in chat.last()
 
 
 def test_an_ai_service_asks_for_the_channels_before_the_description(customer, telegram):
@@ -87,7 +87,7 @@ def test_an_ai_service_asks_for_the_channels_before_the_description(customer, te
     assert GATE['en']['gate_one'] in chat.last()
     telegram.statuses = {'@pdfmaster_news': 'member'}
     chat.tap('channels_check')
-    assert 'PDF Document' in chat.last()
+    assert 'PDF on a topic' in chat.last()
     assert chat.do(text='A two page note about tides for students') == 1, '"Preparing…" becomes the priced draft'
     assert 'Ready to start' in chat.last()
 
@@ -153,7 +153,7 @@ def test_ive_joined_before_joining_changes_the_same_message(customer, telegram):
     require_channels()
     chat = Chat(customer)
     chat.do(text='/start')
-    chat.tap('tool', feature_id='pdf.compress')
+    chat.tap('tool', feature_id='pdf.images_to_pdf')
     assert chat.tap('channels_check') == 0 and chat.tap('channels_check') == 0
     assert "You haven't joined" in chat.last()
 
