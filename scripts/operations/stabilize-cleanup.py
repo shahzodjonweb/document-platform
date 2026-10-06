@@ -71,10 +71,12 @@ def inspect_all(*, timeout=20):
 
 
 def fingerprint(container):
-    """Only immutable identity and deployment isolation fields, never env."""
+    """Only lifecycle and deployment isolation fields, never env."""
     return copy.deepcopy({
         'id': container['Id'], 'name': container['Name'],
         'started': container['State']['StartedAt'],
+        'status': container['State']['Status'], 'running': container['State']['Running'],
+        'restarts': container['RestartCount'], 'oom_killed': container['State'].get('OOMKilled'),
         'image_id': container['Image'], 'image': container['Config']['Image'],
         'mounts': container['Mounts'],
         'networks': container['NetworkSettings']['Networks'],

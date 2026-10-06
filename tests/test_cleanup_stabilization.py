@@ -124,7 +124,8 @@ def test_unsafe_initial_selection_never_mutates(monkeypatch, capsys, change):
 
 @pytest.mark.parametrize('change', ['restart-count', 'started-at', 'oom', 'exited', 'memory', 'swap',
                                     'identity', 'other-started', 'other-image', 'other-mount',
-                                    'other-network', 'other-port', 'other-added', 'other-deleted'])
+                                    'other-network', 'other-port', 'other-added', 'other-deleted',
+                                    'other-exited', 'other-restarted'])
 def test_restart_oom_or_changed_isolation_cannot_report_success(monkeypatch, capsys, change):
     def alter(containers):
         selected, other = containers[:2]
@@ -142,6 +143,8 @@ def test_restart_oom_or_changed_isolation_cannot_report_success(monkeypatch, cap
         elif change == 'other-port': other['NetworkSettings']['Ports'] = {'80/tcp': []}
         elif change == 'other-added': containers.append(container('c' * 64))
         elif change == 'other-deleted': containers.pop()
+        elif change == 'other-exited': other['State']['Running'] = False
+        elif change == 'other-restarted': other['RestartCount'] += 1
     probe = Probe(after_logs=alter)
     probe.install(monkeypatch)
     with pytest.raises(operation.StabilizationError):
