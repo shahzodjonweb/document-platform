@@ -33,8 +33,17 @@ if ids and ids!=['unavailable']:
             'project':c['Config']['Labels'].get('com.docker.compose.project'),
             'config_files':c['Config']['Labels'].get('com.docker.compose.project.config_files'),
             'status':c['State']['Status'],'started':c['State'].get('StartedAt'),
+            'restarts':c['RestartCount'],'oom_killed':c['State'].get('OOMKilled'),
             'ports':c['NetworkSettings']['Ports'],'networks':list(c['NetworkSettings']['Networks']),
             'mounts':[{'source':m['Source'],'target':m['Destination']} for m in c['Mounts']]}))
+        if (c['Config']['Labels'].get('com.docker.compose.project') == 'pdfmaster-platform'
+                and c['Config']['Labels'].get('com.docker.compose.service') == 'cleanup'):
+            stats = {}
+            for filename in ('memory.events', 'memory.current', 'memory.peak', 'memory.max'):
+                value = output(['docker', 'exec', c['Id'], 'cat', '/sys/fs/cgroup/' + filename])
+                stats[filename] = value if all(part.isdigit() or part.replace('_', '').isalpha()
+                    for part in value.split()) else 'unavailable'
+            print('PDFMASTER_CLEANUP_MEMORY', json.dumps(stats))
         if 'caddy' in c['Config']['Image'].lower():
             print('CADDY_ROUTES',routes(['docker','exec',c['Id'],'caddy','adapt','--config','/etc/caddy/Caddyfile','--pretty']))
 for path in ('/etc/caddy/Caddyfile',str(Path.home()/'pdf-master/state.json')):
