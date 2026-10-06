@@ -66,7 +66,9 @@ PARAMETER_SCHEMAS = {
     'pdf.images_to_pdf': _schema({
         'paper_size': {'type': 'string', 'enum': ['A4', 'Letter', 'original']},
         'orientation': {'type': 'string', 'enum': ['auto', 'portrait', 'landscape']},
-        'margin': {'type': 'number', 'minimum': 0, 'maximum': 72}}),
+        'margin': {'type': 'number', 'minimum': 0, 'maximum': 72},
+        'auto_crop': {'type': 'boolean', 'default': True, 'description': 'Crop and straighten a confidently detected document; otherwise keep the full image.'},
+        'enhance_text': {'type': 'boolean', 'default': True, 'description': 'Reduce document shadows and improve text contrast; ordinary photos stay unchanged.'}}),
     'pdf.to_images': _schema({'pages': PAGES, 'format': {'type': 'string', 'enum': ['png', 'jpg']},
         'dpi': {'type': 'integer', 'minimum': 72, 'maximum': 200}}),
     # Password material is accepted ONLY as a separate in-memory secret argument.
@@ -363,6 +365,10 @@ def normalize_parameters(feature_id: str, parameters: dict | None, input_metadat
         normalized.setdefault('paper_size', 'A4')
         normalized.setdefault('orientation', 'auto')
         normalized.setdefault('margin', 24)
+        for field in ('auto_crop', 'enhance_text'):
+            normalized.setdefault(field, True)
+            if type(normalized[field]) is not bool:
+                raise ProcessorError('invalid_parameters')
         if normalized['paper_size'] not in ('A4', 'Letter', 'original') or normalized['orientation'] not in ('auto', 'portrait', 'landscape'):
             raise ProcessorError('invalid_parameters')
         margin = normalized['margin']
@@ -410,6 +416,7 @@ def _image_pdf(paths: list[Path], parameters: dict, out: Path):
     from reportlab.pdfgen.canvas import Canvas
     destination = out / 'images.pdf'
     canvas = Canvas(str(destination), pageCompression=1, invariant=1)
+    outcomes = []
     for path in paths:
         with Image.open(path, formats=['PNG', 'JPEG', 'WEBP']) as raw:
             picture = ImageOps.exif_transpose(raw)
@@ -421,6 +428,10 @@ def _image_pdf(paths: list[Path], parameters: dict, out: Path):
                 picture = rgb
             else:
                 picture = picture.convert('RGB')
+            from .document_scan import prepare_image
+            picture, outcome = prepare_image(picture, auto_crop=parameters['auto_crop'],
+                                               enhance_text=parameters['enhance_text'])
+            outcomes.append(outcome)
             iw, ih = picture.size
             margin = parameters['margin']
             if parameters['paper_size'] == 'original':
@@ -440,7 +451,11 @@ def _image_pdf(paths: list[Path], parameters: dict, out: Path):
             canvas.showPage()
     canvas.save()
     os.chmod(destination, 0o600)
-    return [_artifact(destination)]
+    return [_artifact(destination)], {'image_processing': {
+        'pages': outcomes,
+        'document_pages': sum(row['document_detected'] for row in outcomes),
+        'cropped_pages': sum(row['cropped'] for row in outcomes),
+        'enhanced_pages': sum(row['enhanced'] for row in outcomes)}}
 
 
 def _pdf_images(path: Path, parameters: dict, out: Path, count: int):
@@ -600,7 +615,9 @@ def execute(feature_id: str, input_paths: list[str | Path], parameters: dict | N
             artifacts,extra=editor_execute(feature_id,paths,parameters,out,metadata)
             details.update(extra)
         elif feature_id == 'pdf.images_to_pdf':
-            artifacts = _image_pdf(paths, parameters, out)
+            artifacts, extra = _image_pdf(paths, parameters, out)
+            details.update(extra)
+            details['engine_versions']['opencv-python-headless'] = importlib.metadata.version('opencv-python-headless')
         elif feature_id.startswith('convert.'):
             artifacts = _office_pdf(paths[0], feature_id, out, metadata[0])
         elif feature_id == 'pdf.to_images':

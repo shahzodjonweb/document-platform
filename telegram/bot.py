@@ -152,10 +152,12 @@ def set_prompt(account,state='',prompt=None):
     BotConversation.objects.filter(pk=account.telegram_user_id).update(state=state,prompt=prompt or {},updated_at=timezone.now())
 
 def option_summary(account,draft):
-    labels={'angle':'rotate_label','pages':'pages','order':'page_order','ranges':'split_groups','format':'format_label','dpi':None,'paper_size':'paper_label','orientation':None,'margin':'margin_button'}
+    labels={'angle':'rotate_label','pages':'pages','order':'page_order','ranges':'split_groups','format':'format_label','dpi':None,'paper_size':'paper_label','orientation':None,'margin':'margin_button','auto_crop':'auto_crop_label','enhance_text':'enhance_text_label'}
     result=[]
-    for key,value in draft.parameters.items():
+    parameters={'auto_crop':True,'enhance_text':True,**draft.parameters} if draft.feature_id=='pdf.images_to_pdf' else draft.parameters
+    for key,value in parameters.items():
         label=text(account,labels[key]) if labels.get(key) else 'DPI' if key=='dpi' else ''
+        if key in ('auto_crop','enhance_text'): value=text(account,'option_on' if value else 'option_off')
         if key=='orientation': value=text(account,{'auto':'auto','portrait':'portrait','landscape':'landscape'}.get(value,'auto'))
         if isinstance(value,list): value=', '.join(map(str,value))
         if key=='angle': value=f'{value}°'
@@ -257,6 +259,10 @@ def build_dispatcher():
         async def choice(label,parameters,replace=False):
             selected=bool(parameters) and all(draft.parameters.get(key)==value for key,value in parameters.items())
             return InlineKeyboardButton(text=('✅ ' if selected else '')+label,callback_data=await callback(account,'settings',{**binding,'parameters':parameters,'replace':replace,'advanced':advanced}))
+        async def image_toggle(key,label):
+            enabled=draft.parameters.get(key,True)
+            state=text(account,'option_on' if enabled else 'option_off')
+            return InlineKeyboardButton(text=f'{"✅" if enabled else "⬜"} {text(account,label)}: {state}',callback_data=await callback(account,'settings',{**binding,'parameters':{key:not enabled},'advanced':advanced}))
         async def prompt(label,kind): return await button(account,label,'prompt',{**binding,'kind':kind})
         rows=[]
         files=await sync_to_async(lambda:{str(a.id):a for a in FileAsset.objects.filter(account=account,id__in=draft.input_ids)})()
@@ -264,6 +270,7 @@ def build_dispatcher():
         hint='upload_merge' if feature=='pdf.merge' else 'upload_images' if feature=='pdf.images_to_pdf' else 'upload_word' if feature=='convert.word_to_pdf' else 'upload_slides' if feature=='convert.pptx_to_pdf' else 'upload_pdf'
         body=f'<b>{html.escape(title)}</b>'
         if not files or (feature=='pdf.merge' and len(files)<2): body+='\n'+text(account,hint)
+        if feature=='pdf.images_to_pdf': body+='\n'+html.escape(text(account,'document_scan_hint'))
         if feature not in ('pdf.merge','pdf.images_to_pdf') and len(files)>1: body+='\n'+text(account,'one_file_hint')
         if files:
             listing='\n'.join(f'{i+1}. {html.escape(files[k].name[:24])} · {files[k].page_count or "—"}' for i,k in enumerate(draft.input_ids) if k in files)
@@ -295,10 +302,13 @@ def build_dispatcher():
         if feature=='pdf.to_images' and advanced:
             rows.append([await choice(value.upper(),{'format':value}) for value in ('png','jpg')])
             rows.append([await choice(f'{dpi} DPI',{'dpi':dpi}) for dpi in (72,96,150,200)])
-        if feature=='pdf.images_to_pdf' and advanced:
-            rows.append([await choice(text(account,'original') if value=='original' else value,{'paper_size':value}) for value in ('A4','Letter','original')])
-            rows.append([await choice(text(account,label),{'orientation':value}) for label,value in [('auto','auto'),('portrait','portrait'),('landscape','landscape')]])
-            rows.append([await prompt('margin_button','margin')])
+        if feature=='pdf.images_to_pdf':
+            rows.append([await image_toggle('auto_crop','auto_crop_label')])
+            rows.append([await image_toggle('enhance_text','enhance_text_label')])
+            if advanced:
+                rows.append([await choice(text(account,'original') if value=='original' else value,{'paper_size':value}) for value in ('A4','Letter','original')])
+                rows.append([await choice(text(account,label),{'orientation':value}) for label,value in [('auto','auto'),('portrait','portrait'),('landscape','landscape')]])
+                rows.append([await prompt('margin_button','margin')])
         if feature in ('pdf.extract_pages','pdf.delete_pages') or (feature in ('pdf.rotate','pdf.to_images') and advanced):
             rows.append([await prompt('page_selection','pages')])
             if feature in ('pdf.rotate','pdf.to_images'):

@@ -159,7 +159,7 @@ def test_image_layout_buttons_and_margin_command():
     harness=Harness();harness.command('/settings');harness.click(harness.action('settings', parameters={'paper_size': 'Letter'}))
     harness.click(harness.action('settings', parameters={'orientation': 'landscape'}));harness.command('/margin 12');harness.command('/done');harness.command('/run')
     job=Job.objects.get();assert job.status=='succeeded'
-    assert job.parameters=={'paper_size':'Letter','orientation':'landscape','margin':12.0}
+    assert job.parameters=={'paper_size':'Letter','orientation':'landscape','margin':12.0,'auto_crop':True,'enhance_text':True}
     page=PdfReader(storage_path(job.artifacts.get().file.object_key)).pages[0]
     assert float(page.mediabox.width)>float(page.mediabox.height)
 

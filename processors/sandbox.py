@@ -28,6 +28,10 @@ def _run(request: dict, timeout: int) -> dict:
         ('PATH', 'LANG', 'LC_ALL', 'TMPDIR', 'TMP', 'TEMP', 'SYSTEMROOT', 'PDFMASTER_SOFFICE_BIN','PDFMASTER_TESSERACT_BIN')
         if key in os.environ}
     environment['PYTHONDONTWRITEBYTECODE'] = '1'
+    # Numeric image processing must fit the existing child-process budget.
+    # OpenBLAS otherwise allocates a thread pool before OpenCV can limit it.
+    environment['OPENBLAS_NUM_THREADS'] = '1'
+    environment['OMP_NUM_THREADS'] = '1'
     # No request file is written: secrets, if present, travel only over stdin.
     with tempfile.TemporaryFile() as report:
         process = subprocess.Popen([sys.executable, '-m', 'processors'],

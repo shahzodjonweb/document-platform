@@ -19,7 +19,7 @@ Paths are internal trusted worker values, never client parameters or public API 
 | `pdf.delete_pages` | `pages: "2,4-5"` | Remaining pages; deleting every page rejected. |
 | `pdf.reorder` | `order: [3,1,2]` | Exactly one instance of every input page required. |
 | `pdf.rotate` | `pages: "all"`, `angle: 90` | Angle 90/180/270 degrees; selected page rotations preserved otherwise. |
-| `pdf.images_to_pdf` | `paper_size: "A4"`, `orientation: "auto"`, `margin: 24` | PNG/JPEG/WebP in input order. Paper A4/Letter/original; orientation auto/portrait/landscape; margin 0..72 pt. Original means 72 dpi/pixel size plus margins. EXIF orientation and alpha handling. |
+| `pdf.images_to_pdf` | `paper_size: "A4"`, `orientation: "auto"`, `margin: 24`, `auto_crop: true`, `enhance_text: true` | PNG/JPEG/WebP in input order. Default document edge detection, perspective correction and shadow/contrast cleanup; each switch can be disabled independently. Paper A4/Letter/original; orientation auto/portrait/landscape; margin 0..72 pt. Original means 72 dpi/pixel size plus margins. EXIF orientation and alpha handling. |
 | `pdf.to_images` | `format: "png"`, `dpi: 96`, `pages: "all"` | PNG/JPG; 72..200 dpi. Safe ZIP in selected page order, each page decoded after rendering. |
 | `pdf.protect` | `{}` plus separate ephemeral secret | AES-256 using owner-scoped encrypted ten-minute handles; deletion on settlement/expiry is tested. |
 | `pdf.unlock_known` | `{}` plus separate ephemeral secret | Uses the supplied password through an encrypted short-lived handle; wrong password fails without disclosure. |
@@ -29,6 +29,21 @@ Paths are internal trusted worker values, never client parameters or public API 
 Page selections are one-based `1,3-5` strings or `all`; duplicates, descending/out-of-bound ranges and empty results are rejected. Split output page totals cannot exceed 1,000. Input/output page units equal `max(total input pages, total output pages)`. For no-op compression, the manifest still records processed pages for diagnostics but the domain MUST settle zero user units.
 
 `pdf.compression_preview` and `pdf.image_layout` are support/UI catalog IDs backed by the compress metadata and image-layout parameter schema, not independently billable processing endpoints. `files.no_watermark` is an output policy: no platform watermark is introduced. No overlay is represented as true editing or redaction.
+
+Images-to-PDF scanning runs locally with OpenCV, without an AI provider or OCR call.
+It crops only a confident, fully visible paper outline; incomplete outlines,
+competing pages and ordinary photos keep the full image. Already full-frame scans
+can receive text enhancement without cropping to an inner table. Enhancement
+retains colored ink, and applies only inside a detected page when cropping is off.
+Both disabled leaves the existing EXIF/alpha/layout conversion unchanged. Detection
+uses a 1280-pixel thumbnail; corrected pages are bounded to 16 MP, while original
+inputs retain the existing 40 MP limit. The worker keeps its existing CPU, memory
+and timeout limits and uses one numeric processing thread. Detection is conservative
+and may leave low-contrast, obscured or blank pages untouched. Writing-like marks
+are required to avoid cropping bright panels in ordinary photographs. Internal `image_processing`
+metadata contains only per-page outcome booleans and counts, without document text.
+`tests/test_image_scanning.py`, `tests/test_image_scanning_api.py` and
+`tests/test_bot_image_scanning.py` cover artifacts, quotes, jobs and bot switches.
 
 ## Evidence and open qualification
 
