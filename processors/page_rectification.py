@@ -40,7 +40,54 @@ def _trace_side(gray, cv2, np):
     return positions, rows, limit
 
 
-def _select_curve(positions, rows, width, limit, np, *, inward_of=None):
+def _trace_material_side(material, cv2, np):
+    """Trace a qualified matte sheet even when its desk is brighter.
+
+    Lab differences retain both luminance polarities and a tinted sheet's
+    chromatic edge. Prefer the observed outer boundary over strong printing
+    farther into the page; the independent writing guard still applies.
+    """
+    height, width = material.shape[:2]
+    limit = min(round(height * .13), max(30, round(width * .18)))
+    positions = np.linspace(width * .045, width * .955, 65).astype(int)
+    weights = np.array([1., 2., 2.], np.float32)
+    rows = []
+    for x in positions:
+        profile = np.median(material[:limit + 25, max(0, x - 5):min(width, x + 6)],
+                            axis=1).astype(np.float32)
+        profile = cv2.GaussianBlur(profile, (1, 5), 0)
+        derivative = np.linalg.norm(np.gradient(profile, axis=0) * weights, axis=1)
+        # Compare with nearby interior material, rather than a global color
+        # that changes under shade. A strong flower/desk seam in the context
+        # strip must not impersonate the paper's weaker physical perimeter.
+        reference_samples = profile[round(limit * .6):limit + 25]
+        reference_samples = reference_samples[
+            reference_samples[:, 0] >= np.percentile(reference_samples[:, 0], 60)]
+        reference = np.median(reference_samples, axis=0)
+        material_weights = np.array([.5, 2., 2.], np.float32)
+        peaks = []
+        for depth in range(2, limit):
+            outside = profile[max(0, depth - 16):max(1, depth - 6)]
+            inside = profile[depth + 6:depth + 16]
+            contrast = float(np.linalg.norm((np.median(inside, axis=0)
+                                            - np.median(outside, axis=0)) * weights))
+            inside_distance = float(np.linalg.norm((np.median(inside, axis=0)
+                                                     - reference) * material_weights))
+            outside_distance = float(np.linalg.norm((np.median(outside, axis=0)
+                                                      - reference) * material_weights))
+            if (contrast < 4 or derivative[depth] < .5
+                    or inside_distance > 12 or outside_distance < inside_distance + 2
+                    or derivative[depth] < max(derivative[depth - 1], derivative[depth + 1])):
+                continue
+            score = (min(contrast, 35) * max(.15, min(float(derivative[depth]), 6))
+                     / (1 + (depth / 12) ** 2))
+            peaks.append((depth, score, contrast, float(derivative[depth]),
+                          float(np.median(outside[:, 0]))))
+        rows.append(peaks)
+    return positions, rows, limit
+
+
+def _select_curve(positions, rows, width, limit, np, *, inward_of=None, tight_edge=False):
     selected = []
     for position, peaks in zip(positions, rows):
         if inward_of is not None:
@@ -67,12 +114,16 @@ def _select_curve(positions, rows, width, limit, np, *, inward_of=None):
     values = np.polyval(coefficients, np.arange(width) / width)
     if np.any(values < -limit * .15) or np.any(values > limit * 1.15):
         return None
-    # Move less than one geometry pixel into the sheet to remove the blended
-    # camera edge, rather than adding a uniform photographed safety border.
-    return np.clip(values + .8, 0, limit).astype(np.float32)
+    # Account for small observed tear/blur variations around a matte edge's
+    # smooth fit, bounded to three geometry pixels. Never add a desk border.
+    padding = .8
+    if tight_edge:
+        residual = points[keep, 1] - np.polyval(coefficients, points[keep, 0] / width)
+        padding += min(3., max(0., float(np.percentile(residual, 90))))
+    return np.clip(values + padding, 0, limit).astype(np.float32)
 
 
-def _retains_writing(rgb, outer, inner, side, cv2, np, *, paper_mask=None):
+def _retains_writing(rgb, outer, inner, side, cv2, np, *, paper_mask=None, material_color=None):
     """An inner shadow seam must never discard compact glyphs or colored ink."""
     oriented = np.rot90(rgb, side)
     gray = cv2.cvtColor(np.ascontiguousarray(oriented), cv2.COLOR_RGB2GRAY)
@@ -82,6 +133,13 @@ def _retains_writing(rgb, outer, inner, side, cv2, np, *, paper_mask=None):
     residual = background.astype(np.int16) - gray.astype(np.int16)
     chroma = oriented.max(axis=2).astype(np.int16) - oriented.min(axis=2).astype(np.int16)
     colored_ink = (saturation > 65) & (chroma > 25) & (residual > 12)
+    if material_color is not None:
+        # Warm paper and its camera-blended shadow have intrinsic saturation.
+        # They are not colored pen strokes; actual colored ink must depart from
+        # the independently qualified matte material as well as its luminance.
+        lab = cv2.cvtColor(np.ascontiguousarray(oriented), cv2.COLOR_RGB2LAB)
+        colored_ink &= np.linalg.norm(lab[:, :, 1:].astype(np.float32)
+                                      - material_color, axis=2) >= 10
     ink = ((residual > 25) | colored_ink).astype(np.uint8)
     trusted = None if paper_mask is None else np.rot90(paper_mask, side) > 0
     count, labels, stats, _ = cv2.connectedComponentsWithStats(ink, connectivity=8)
@@ -175,7 +233,7 @@ def _boundary_geometry(curves, width, height, np):
     return corners, donor
 
 
-def rectify_page(image, envelope, cv2, np, *, qualified_quad=None):
+def rectify_page(image, envelope, cv2, np, *, qualified_quad=None, material_edges=False):
     """Return a boundary-fitted image, or None when refinement is uncertain."""
     center = envelope.mean(axis=0)
     pose_quad = center + (envelope - center) * 1.012
@@ -202,6 +260,14 @@ def rectify_page(image, envelope, cv2, np, *, qualified_quad=None):
                                flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
     gray = cv2.cvtColor(pose, cv2.COLOR_RGB2GRAY)
     gray = cv2.GaussianBlur(cv2.medianBlur(gray, 7), (5, 5), 0)
+    material = None
+    if material_edges:
+        # This path is reserved for independently qualified, uniformly matte
+        # paper. Keep geometry and all three color channels on the bounded pose.
+        material = cv2.cvtColor(pose, cv2.COLOR_RGB2LAB).astype(np.float32)
+        for channel in range(3):
+            material[:, :, channel] = cv2.GaussianBlur(
+                cv2.medianBlur(material[:, :, channel], 7), (5, 5), 0)
     paper_mask = None
     if qualified_quad is not None:
         # The validated four-corner interior distinguishes margin glyphs from
@@ -209,18 +275,33 @@ def rectify_page(image, envelope, cv2, np, *, qualified_quad=None):
         paper_mask = np.zeros(gray.shape, np.uint8)
         qualified = cv2.perspectiveTransform(qualified_quad[None].astype(np.float32), transform)[0]
         cv2.fillConvexPoly(paper_mask, np.round(qualified).astype(np.int32), 255)
+    material_color = None
+    if material is not None:
+        interior = material if paper_mask is None else material[paper_mask > 0]
+        clean = interior[:, :, 0] if paper_mask is None else interior[:, 0]
+        colors = interior[:, :, 1:] if paper_mask is None else interior[:, 1:]
+        material_color = np.median(colors[clean >= np.percentile(clean, 75) - 35], axis=0)
     curves = []
     for side in range(4):
         oriented = np.rot90(gray, side)
-        positions, rows, limit = _trace_side(oriented, cv2, np)
+        if material is None:
+            positions, rows, limit = _trace_side(oriented, cv2, np)
+        else:
+            positions, rows, limit = _trace_material_side(np.rot90(material, side), cv2, np)
         outer = _select_curve(positions, rows, oriented.shape[1], limit, np)
         if outer is None:
             return None
+        if material is not None:
+            tightened = _select_curve(positions, rows, oriented.shape[1], limit, np, tight_edge=True)
+            if tightened is not None and _retains_writing(pose, outer, tightened, side, cv2, np,
+                                                         material_color=material_color):
+                outer = tightened
         if not _retains_writing(pose, np.zeros_like(outer), outer, side, cv2, np,
-                                paper_mask=paper_mask):
+                                paper_mask=paper_mask, material_color=material_color):
             return None  # A strong printed frame must not become the paper edge.
         inner = _select_curve(positions, rows, oriented.shape[1], limit, np, inward_of=outer)
-        if inner is not None and _retains_writing(pose, outer, inner, side, cv2, np):
+        if inner is not None and _retains_writing(pose, outer, inner, side, cv2, np,
+                                                 material_color=material_color):
             outer = inner
         curves.append(outer)
     geometry = _boundary_geometry(curves, width, height, np)

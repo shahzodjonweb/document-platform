@@ -42,7 +42,25 @@ def _order(points):
     return np.roll(points, -int(np.argmin(points.sum(axis=1))), axis=0)
 
 
-def _full_frame_document(rgb, gray, saturation):
+def _matte_material(light, saturation, chroma):
+    """A shaded/tinted sheet retains a coherent material color around its ink."""
+    _, np = _numeric()
+    if light.size < 100 or float(np.percentile(light, 75)) < 135:
+        return None
+    if float(np.median(saturation)) > 105 or float(np.mean(saturation > 140)) > .15:
+        return None
+    clean = light >= float(np.percentile(light, 75)) - 35
+    if float(clean.mean()) < .55:
+        return None
+    colors = chroma[clean].astype(np.float32)
+    material = np.median(colors, axis=0)
+    distances = np.linalg.norm(colors - material, axis=1)
+    if float(np.percentile(distances, 85)) > 12:
+        return None
+    return material
+
+
+def _full_frame_document(rgb, gray, saturation, lab=None):
     """A scan already filling the frame must not be cropped to an inner table."""
     cv2, np = _numeric()
     height, width = gray.shape
@@ -50,12 +68,21 @@ def _full_frame_document(rgb, gray, saturation):
     edges = [gray[:border], gray[-border:], gray[:, :border], gray[:, -border:]]
     colors = [saturation[:border], saturation[-border:], saturation[:, :border], saturation[:, -border:]]
     paper = float(np.percentile(gray, 90))
-    if paper < 165 or any(float(np.median(e)) < max(145, paper - 55) for e in edges):
-        return False
-    if any(float(np.percentile(s, 75)) > 50 for s in colors):
-        return False
-    if float(np.mean(saturation > 75)) > .12:
-        return False
+    conventional = (paper >= 165
+        and all(float(np.median(e)) >= max(145, paper - 55) for e in edges)
+        and all(float(np.percentile(s, 75)) <= 50 for s in colors)
+        and float(np.mean(saturation > 75)) <= .12)
+    if not conventional:
+        if lab is None:
+            return False
+        material = _matte_material(gray.ravel(), saturation.ravel(), lab[:, :, 1:].reshape(-1, 2))
+        if material is None or any(float(np.median(e)) < max(110, paper - 55) for e in edges):
+            return False
+        edge_materials = [lab[:border, :, 1:], lab[-border:, :, 1:],
+                          lab[:, :border, 1:], lab[:, -border:, 1:]]
+        if any(float(np.linalg.norm(np.median(e.reshape(-1, 2), axis=0) - material)) > 8
+               for e in edge_materials):
+            return False
     ink = ((gray < paper - 45) & (saturation < 100)).astype(np.uint8)
     fraction = float(ink.mean())
     if not .001 <= fraction <= .28:
@@ -65,6 +92,10 @@ def _full_frame_document(rgb, gray, saturation):
     marks = sum(1 for x, y, w, h, area in stats[1:]
                 if 3 <= area <= height * width * .015 and 2 <= h <= height * .12
                 and w <= width * .75)
+    if not conventional:
+        marks = sum(1 for x, y, w, h, area in stats[1:]
+            if 3 <= area <= height * width * .015 and 3 <= h <= height * .12
+            and 3 <= w <= min(width * .15, h * 4) and h <= w * 5)
     return count > 5 and marks >= 5
 
 
@@ -90,7 +121,89 @@ def _geometry(quad, width, height):
     return True
 
 
-def _candidate(quad, gray, saturation, edges, *, compact_writing=False):
+def _exterior_writing(quad, gray, saturation):
+    """Compact exterior words mean the proposed block is not the whole page."""
+    cv2, np = _numeric()
+    mask = np.zeros(gray.shape, np.uint8)
+    cv2.fillConvexPoly(mask, np.round(quad).astype(np.int32), 255)
+    mask = cv2.dilate(mask, np.ones((13, 13), np.uint8))
+    background = cv2.morphologyEx(gray, cv2.MORPH_CLOSE,
+        cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (31, 31)))
+    # Deep print and colored pen strokes avoid counting pale flowers, cast
+    # shadows, long desk patterns or isolated decorations as missing words.
+    ink = ((background.astype(np.int16) - gray.astype(np.int16) > 35)
+           & ((saturation < 45) | ((saturation > 65) & (gray > 8)))
+           & (background >= 115) & (mask == 0)).astype(np.uint8)
+    _, _, stats, _ = cv2.connectedComponentsWithStats(ink, connectivity=8)
+    limit = min(gray.shape) * .06
+    marks = []
+    for x, y, w, h, area in stats[1:]:
+        if not (area >= 5 and 3 <= w <= min(limit, h * 4)
+                and 3 <= h <= min(limit, w * 5)):
+            continue
+        # A fragment of a leaf or cast shadow can resemble a short glyph.
+        # Real margin print has a broad, locally uniform matte surface around
+        # it; use original pixels rather than the closing filter's invented
+        # light background to establish that context.
+        padding = max(8, round(max(w, h) * .5))
+        top, left = max(0, y - padding), max(0, x - padding)
+        context = gray[top:y + h + padding, left:x + w + padding]
+        context_ink = ink[top:y + h + padding, left:x + w + padding] > 0
+        surface = context[~context_ink]
+        if surface.size < 20:
+            continue
+        tone = float(np.median(surface))
+        if tone < 115 or float(np.percentile(np.abs(surface.astype(np.float32) - tone), 85)) > 15:
+            continue
+        marks.append((int(x), int(y), int(w), int(h)))
+        if len(marks) == 256:
+            break
+    if not marks:
+        return False
+    residual = background.astype(np.int16) - gray.astype(np.int16)
+    for x, y, w, h in marks:
+        pixels = ink[y:y + h, x:x + w] > 0
+        context = gray[max(0, y - 4):y + h + 4, max(0, x - 4):x + w + 4]
+        context_ink = ink[max(0, y - 4):y + h + 4, max(0, x - 4):x + w + 4] > 0
+        surface = context[~context_ink]
+        if (pixels.sum() >= 15 and float(pixels.mean()) <= .70
+                and float(np.median(residual[y:y + h, x:x + w][pixels])) >= 60
+                and surface.size >= 20
+                and float(np.median(np.abs(surface.astype(np.float32) - np.median(surface)))) <= 4):
+            return True  # A clear isolated margin glyph must also be retained.
+    if len(marks) < 2:
+        return False
+    parents = list(range(len(marks)))
+
+    def root(index):
+        while parents[index] != index:
+            parents[index] = parents[parents[index]]
+            index = parents[index]
+        return index
+
+    # Nearby glyphs form words/lines; unrelated compact photographic details
+    # distributed around a desk are insufficient evidence to veto the page.
+    for index, (x, y, w, h) in enumerate(marks):
+        for other in range(index):
+            ox, oy, ow, oh = marks[other]
+            row_overlap = min(y + h, oy + oh) - max(y, oy)
+            column_overlap = min(x + w, ox + ow) - max(x, ox)
+            row_gap = max(0, max(x, ox) - min(x + w, ox + ow))
+            column_gap = max(0, max(y, oy) - min(y + h, oy + oh))
+            same_row = (row_overlap >= min(h, oh) * .5 and row_gap <= max(h, oh)
+                        and max(h, oh) <= min(h, oh) * 2.5)
+            same_column = (column_overlap >= min(w, ow) * .5 and column_gap <= max(w, ow)
+                           and max(w, ow) <= min(w, ow) * 2.5)
+            if same_row or same_column:
+                parents[root(index)] = root(other)
+    groups = {}
+    for index in range(len(marks)):
+        identifier = root(index)
+        groups[identifier] = groups.get(identifier, 0) + 1
+    return max(groups.values()) >= 2
+
+
+def _candidate(quad, gray, saturation, edges, *, compact_writing=False, lab=None, outline=None):
     cv2, np = _numeric()
     height, width = gray.shape
     if not _geometry(quad, width, height):
@@ -100,9 +213,13 @@ def _candidate(quad, gray, saturation, edges, *, compact_writing=False):
     interior = cv2.erode(mask, np.ones((7, 7), np.uint8)) > 0
     light = gray[interior]
     colors = saturation[interior]
-    if light.size < 100 or float(np.percentile(light, 75)) < 160:
+    if light.size < 100:
         return None
-    if float(np.median(colors)) > 45 or float(np.mean(colors > 90)) > .18:
+    conventional = (float(np.percentile(light, 75)) >= 160
+                    and float(np.median(colors)) <= 45
+                    and float(np.mean(colors > 90)) <= .18)
+    material = None if lab is None else _matte_material(light, colors, lab[interior][:, 1:])
+    if not conventional and material is None:
         return None
     paper = float(np.percentile(light, 85))
     if float(np.mean(light >= paper - 55)) < .55:
@@ -122,12 +239,12 @@ def _candidate(quad, gray, saturation, edges, *, compact_writing=False):
                 and w <= width * .5)
     if marks < 5:
         return None
-    if compact_writing:
+    compact_marks = sum(1 for x, y, w, h, area in stats[1:]
+        if 3 <= area <= light.size * .02 and 3 <= h <= height * .15
+        and 3 <= w <= min(width * .15, h * 4) and h <= w * 5)
+    if compact_writing or not conventional:
         # Weak-edge segmentation can also propose vented appliances. Border
         # fragments, long slots and a knob are not sufficient written evidence.
-        compact_marks = sum(1 for x, y, w, h, area in stats[1:]
-            if 3 <= area <= light.size * .02 and 3 <= h <= height * .15
-            and 3 <= w <= min(width * .15, h * 4) and h <= w * 5)
         if compact_marks < 5:
             return None
     # Look beyond a printed frame/table stroke. Its dark outline is not evidence
@@ -142,6 +259,8 @@ def _candidate(quad, gray, saturation, edges, *, compact_writing=False):
     contrast = paper - float(np.median(gray[ring]))
     # Compare nearby paper and background along each edge, rather than allowing
     # a lighting gradient across the page to impersonate an internal boundary.
+    conventional_edges = True
+    material_edges = material is not None and compact_marks >= 5
     for index in range(4):
         start, end = quad[index], quad[(index + 1) % 4]
         edge = end - start
@@ -157,15 +276,76 @@ def _candidate(quad, gray, saturation, edges, *, compact_writing=False):
         if int(valid.sum()) < 8:
             return None
         inside, outside = inside[valid], outside[valid]
-        if float(np.median(gray[inside[:, 1], inside[:, 0]])) - float(np.median(gray[outside[:, 1], outside[:, 0]])) < 6:
-            return None
+        inside_light, outside_light = gray[inside[:, 1], inside[:, 0]], gray[outside[:, 1], outside[:, 0]]
+        signed_contrast = float(np.median(inside_light)) - float(np.median(outside_light))
+        if signed_contrast < 6:
+            conventional_edges = False
+            if material_edges:
+                # Small robust patches prevent a letter, stamp or thin floral
+                # stroke at one sample from impersonating the sheet material.
+                def sample_colors(points):
+                    return np.asarray([np.median(lab[max(0, y - 3):y + 4,
+                        max(0, x - 3):x + 4, 1:].reshape(-1, 2), axis=0)
+                        for x, y in points], np.float32)
+                inside_color, outside_color = sample_colors(inside), sample_colors(outside)
+                inside_distance = np.linalg.norm(inside_color - material, axis=1)
+                transition = np.median(inside_color - outside_color, axis=0)
+                separation = float(np.linalg.norm(transition))
+                # Shading can change a warm sheet's chroma along its length;
+                # require a coherent local material transition rather than
+                # forcing the whole perimeter to match one exact global tint.
+                direction = transition / max(1., separation)
+                support_color = (inside_color - outside_color) @ direction
+                chromatic_edge = (separation >= 5
+                    and float(np.median(inside_distance)) <= 8
+                    and float(np.mean(support_color >= 3)) >= .60)
+                # Dark neutral paper needs coherent reversed contrast, not an
+                # absolute contrast shortcut that could select a printed rule.
+                reversed_edge = (signed_contrast <= -8
+                    and float(np.mean(inside_light.astype(np.int16)
+                                      - outside_light.astype(np.int16) <= -6)) >= .70
+                    and float(np.median(inside_distance)) <= 8)
+                if not chromatic_edge and not reversed_edge:
+                    material_edges = False
+            if not material_edges and not conventional_edges:
+                return None
+    conventional_edges = conventional and conventional_edges and contrast >= 8
+    if material_edges:
+        ring_color = np.median(lab[ring][:, 1:].astype(np.float32), axis=0)
+        material_edges = (float(np.linalg.norm(ring_color - material)) >= 5 or abs(contrast) >= 8)
     boundary = (mask > 0) & ~interior
+    envelope = None
+    if not conventional_edges and material_edges and outline is not None:
+        # A straight inscribed quad must not demand that genuinely bowed paper
+        # sides appear in the wrong place. Validate the observed proposing
+        # contour instead, with a strict bound on how far it can depart.
+        points = np.asarray(outline, np.float32).reshape(-1, 2)
+        distances = []
+        for index in range(4):
+            start, end = quad[index], quad[(index + 1) % 4]
+            side = end - start
+            along = np.clip(((points - start) @ side) / float(side @ side), 0, 1)
+            distances.append(np.linalg.norm(points - (start + along[:, None] * side), axis=1))
+        shortest = min(np.linalg.norm(quad[(index + 1) % 4] - quad[index]) for index in range(4))
+        if float(np.max(np.min(distances, axis=0))) > shortest * .06:
+            return None
+        envelope = _circumscribed_quad(quad, cv2.convexHull(points))
+        if envelope is None or not _geometry(envelope, width, height):
+            return None
+        observed = np.zeros(gray.shape, np.uint8)
+        cv2.polylines(observed, [np.round(points).astype(np.int32)], True, 255, thickness=6)
+        boundary = observed > 0
     supported = cv2.dilate(edges, np.ones((5, 5), np.uint8)) > 0
     support = float(np.mean(supported[boundary]))
-    if contrast < 8 or support < .30:
+    if (not conventional_edges and not material_edges) or support < .30:
         return None
-    return {'quad': quad, 'mask': mask > 0, 'area': float(interior.sum()),
-            'score': float(interior.sum()) * (1 + min(contrast, 100) / 300 + support / 5)}
+    candidate = {'quad': quad, 'mask': mask > 0, 'area': float(interior.sum()),
+            'material_edges': not conventional_edges,
+            'score': float(interior.sum()) * (1 + min(abs(contrast), 100) / 300 + support / 5)}
+    if envelope is not None:
+        candidate['warp_quad'] = envelope
+    candidate['ambiguous'] = _exterior_writing(candidate.get('warp_quad', quad), gray, saturation)
+    return candidate
 
 
 def _circumscribed_quad(quad, hull):
@@ -197,7 +377,7 @@ def _circumscribed_quad(quad, hull):
     return result
 
 
-def _segmented_candidates(image, gray, saturation):
+def _segmented_candidates(image, gray, saturation, lab=None):
     """Bounded fallback for faint curved edges that cannot form closed contours.
 
     Segmentation only proposes outlines. Each still needs the same independent
@@ -246,7 +426,8 @@ def _segmented_candidates(image, gray, saturation):
                 continue
             quad = _order(polygon)
             candidate = _candidate(quad * validation_scale, gray, saturation, weak_edges,
-                                   compact_writing=True)
+                                   compact_writing=True, lab=lab,
+                                   outline=points.astype(np.float32) * validation_scale)
             if candidate is None:
                 continue
             envelope = _circumscribed_quad(quad, hull)
@@ -264,8 +445,11 @@ def _detect(image, *, details=False):
     rgb = np.asarray(small, dtype=np.uint8)
     gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY)
     saturation = cv2.cvtColor(rgb, cv2.COLOR_RGB2HSV)[:, :, 1]
-    if _full_frame_document(rgb, gray, saturation):
-        return None, True
+    lab = cv2.cvtColor(rgb, cv2.COLOR_RGB2LAB)
+    frame_document = _full_frame_document(rgb, gray, saturation, lab)
+    # Bright outer borders can also belong to a desk around one or several
+    # darker sheets. Evaluate complete outlines before accepting a full-frame
+    # scan; same-material internal tables fail independent candidate checks.
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
     edges = cv2.Canny(blurred, 35, 110)
     connected = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8), iterations=2)
@@ -283,7 +467,8 @@ def _detect(image, *, details=False):
                 polygon = cv2.approxPolyDP(contour, epsilon * perimeter, True)
                 if len(polygon) != 4 or not cv2.isContourConvex(polygon):
                     continue
-                candidate = _candidate(_order(polygon), gray, saturation, edges)
+                candidate = _candidate(_order(polygon), gray, saturation, edges, lab=lab,
+                                       outline=contour)
                 if candidate is None:
                     continue
                 # Canny produces inside/outside outlines of the same paper.
@@ -296,13 +481,24 @@ def _detect(image, *, details=False):
                     duplicate.update(candidate)
                 break
     if not candidates:
-        candidates = _segmented_candidates(image, gray, saturation)
+        candidates = _segmented_candidates(image, gray, saturation, lab)
         if not candidates:
-            return None, False
+            return None, frame_document
     candidates.sort(key=lambda item: item['score'], reverse=True)
+    qualified = [candidate for candidate in candidates if not candidate.get('ambiguous', False)]
+    for candidate in candidates:
+        if candidate.get('ambiguous', False):
+            # A safely qualified larger page may enclose its printed filled
+            # table. Otherwise exterior words make the photograph ambiguous.
+            enclosed = any(other['area'] > candidate['area'] * 1.20
+                and float(np.sum(other['mask'] & candidate['mask'])) /
+                    float(candidate['mask'].sum()) >= .95 for other in qualified)
+            if not enclosed:
+                return None, False
+    candidates = qualified
     best = candidates[0]
     if best['area'] < gray.size * .18:
-        return None, False  # Too little evidence for a main page crop.
+        return None, frame_document  # Too little evidence for a main page crop.
     for other in candidates[1:]:
         overlap = float(np.sum(best['mask'] & other['mask'])) / min(best['area'], other['area'])
         if other['area'] >= gray.size * .04 and overlap < .20:
@@ -312,7 +508,8 @@ def _detect(image, *, details=False):
     quad[:, 1] *= image.height / small.height
     if details:
         scale = np.array([image.width / small.width, image.height / small.height], np.float32)
-        return {'quad': best['quad'] * scale, 'envelope': quad}, True
+        return {'quad': best['quad'] * scale, 'envelope': quad,
+                'material_edges': best.get('material_edges', False)}, True
     return quad, True
 
 
@@ -380,7 +577,8 @@ def prepare_image(image, *, auto_crop=True, enhance_text=True):
     if auto_crop and quad is not None:
         from processors.page_rectification import rectify_page
         cv2, np = _numeric()
-        rectified = rectify_page(image, quad, cv2, np, qualified_quad=details['quad'])
+        rectified = rectify_page(image, quad, cv2, np, qualified_quad=details['quad'],
+                                 material_edges=details.get('material_edges', False))
         # If an edge cannot be traced reliably, retain the enclosing crop's
         # conservative behavior rather than guessing through possible writing.
         image = _warp(image, quad) if rectified is None else rectified

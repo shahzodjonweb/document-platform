@@ -10,7 +10,8 @@ from tests.test_image_scanning_rectification import source_and_paper_mask
 
 
 @pytest.mark.parametrize('curved', [False, True], ids=['flat', 'bowed'])
-def test_high_resolution_rectification_uses_original_source_and_bounded_maps(monkeypatch, curved):
+@pytest.mark.parametrize('material_edges', [False, True], ids=['luminance', 'material'])
+def test_high_resolution_rectification_uses_original_source_and_bounded_maps(monkeypatch, curved, material_edges):
     # Upscale a genuine known-boundary photograph. Output must require several
     # strips; a silently skipped refinement cannot satisfy this test.
     photograph, _ = source_and_paper_mask(curved=curved)
@@ -57,7 +58,7 @@ def test_high_resolution_rectification_uses_original_source_and_bounded_maps(mon
     # giant fixture while retaining the exact production sizing/render path.
     monkeypatch.setattr(page_rectification, 'MAX_PIXELS', 2_000_000)
     result = page_rectification.rectify_page(source, envelope, cv, np,
-                                            qualified_quad=qualified_quad)
+                                            qualified_quad=qualified_quad, material_edges=material_edges)
     assert result is not None, 'Bounded render must actually perform the curved-page correction'
     assert result.width * result.height <= page_rectification.MAX_PIXELS
     assert len(source_crops) == 1

@@ -38,8 +38,14 @@ retains colored ink, and applies only inside a detected page when cropping is of
 Both disabled leaves the existing EXIF/alpha/layout conversion unchanged. Detection
 uses a 1280-pixel thumbnail; corrected pages are bounded to 16 MP, while original
 inputs retain the existing 40 MP limit. The worker keeps its existing CPU, memory
-and timeout limits and uses one numeric processing thread. Faint, gently curved
-outlines receive a bounded 512-pixel, three-iteration segmentation fallback when
+and timeout limits and uses one numeric processing thread. Uniform matte paper
+can be tinted or darker than its desk: independently supported luminance and
+material-color edges qualify it, while compact writing and visible-edge checks
+still exclude unmarked panels and internal printed frames. Exterior words veto
+an incomplete proposal, including filled tables on a larger written sheet;
+ambiguous photos keep their pixels and do not receive whole-photo enhancement.
+Faint, gently curved outlines receive a bounded 512-pixel, three-iteration
+segmentation fallback when
 closed edge contours are unavailable. These proposals still require observed
 edges, paper/background contrast and compact writing; initialization borders,
 partial pages and competing sheets cannot supply a crop. An enclosing proposal
@@ -56,9 +62,11 @@ are required to avoid cropping bright panels in ordinary photographs. Internal `
 metadata contains only per-page outcome booleans and counts, without document text.
 `tests/test_image_scanning.py`, `tests/test_image_scanning_realistic.py`,
 `tests/test_image_scanning_safety.py`, `tests/test_image_scanning_rectification.py`,
+`tests/test_image_scanning_tinted.py`,
+`tests/test_image_scanning_material_safety.py`,
 `tests/test_page_rectification_bounds.py`, `tests/test_image_scanning_api.py` and
 `tests/test_bot_image_scanning.py` cover artifacts, quotes, jobs and bot switches.
-Service verification also processes anonymized curved gray paper through the
+Service verification also processes anonymized curved gray and tinted paper through the
 actual HTTP/queue/worker/download path and checks the resulting PDF pixels with
 defaults enabled, cropping alone and both effects disabled. The checks require
 a fitted borderless PDF canvas, physical desk removal and all corner/side writing.
