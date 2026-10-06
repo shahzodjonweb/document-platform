@@ -116,10 +116,56 @@ def _embedded_image(result, page=0):
 
 def test_defaults_enable_both_independent_document_options():
     normalized = normalize_parameters('pdf.images_to_pdf', {})
+    assert normalized['paper_size'] == 'fit'
+    assert normalized['orientation'] == 'auto'
+    assert normalized['margin'] == 0
     assert normalized['auto_crop'] is True
     assert normalized['enhance_text'] is True
     assert normalize_parameters('pdf.images_to_pdf', {'auto_crop': False})['enhance_text'] is True
     assert normalize_parameters('pdf.images_to_pdf', {'enhance_text': False})['auto_crop'] is True
+
+
+@pytest.mark.parametrize('parameters', [{}, {'auto_crop': False, 'enhance_text': False}])
+def test_default_fitted_pdf_has_no_added_border_and_keeps_sensible_print_size(tmp_path, parameters):
+    import pypdfium2 as pdfium
+    from contextlib import closing
+    source = tmp_path / 'photo.png'
+    color = (47, 63, 81)
+    Image.new('RGB', (500, 900), color).save(source)
+    result = execute_sandbox('pdf.images_to_pdf', [source], parameters, tmp_path / 'out')
+    page = PdfReader(result['artifacts'][0]['path']).pages[0]
+    width, height = float(page.mediabox.width), float(page.mediabox.height)
+    assert height == pytest.approx(842, abs=.001)
+    assert width / height == pytest.approx(500 / 900, abs=.00001)
+    assert page.images[0].image.size == (500, 900), 'Fit changes print dimensions, not image resolution'
+    with pdfium.PdfDocument(result['artifacts'][0]['path']) as document, closing(document[0]) as rendered_page:
+        bitmap = rendered_page.render(scale=.5)
+        try:
+            rendered = bitmap.to_pil().convert('RGB')
+            for position in ((2, 2), (rendered.width - 3, 2), (2, rendered.height - 3),
+                             (rendered.width - 3, rendered.height - 3)):
+                assert rendered.getpixel(position) == color, 'No white canvas should surround the image'
+        finally:
+            bitmap.close()
+
+
+@pytest.mark.parametrize('parameters,expected_size', [
+    ({'paper_size': 'A4', 'orientation': 'auto', 'margin': 24}, (595.275590551, 841.88976378)),
+    ({'paper_size': 'Letter', 'orientation': 'landscape', 'margin': 12}, (792, 612)),
+    ({'paper_size': 'original', 'orientation': 'auto', 'margin': 18}, (536, 936)),
+    ({'paper_size': 'fit', 'orientation': 'auto', 'margin': 12}, (500 / 900 * 842 + 24, 866)),
+    ({'paper_size': 'fit', 'orientation': 'landscape', 'margin': 0}, (842, 500 / 900 * 842)),
+])
+def test_fitted_default_preserves_explicit_and_legacy_layouts(tmp_path, parameters, expected_size):
+    source = tmp_path / 'photo.png'
+    original = Image.new('RGB', (500, 900), (47, 63, 81))
+    original.save(source)
+    result = execute('pdf.images_to_pdf', [source], parameters, tmp_path / 'out')
+    page = PdfReader(result['artifacts'][0]['path']).pages[0]
+    assert (float(page.mediabox.width), float(page.mediabox.height)) == pytest.approx(expected_size, abs=.001)
+    assert np.array_equal(np.asarray(page.images[0].image.convert('RGB')), np.asarray(original))
+    normalized = normalize_parameters('pdf.images_to_pdf', parameters)
+    assert all(normalized[key] == value for key, value in parameters.items())
 
 
 @pytest.mark.parametrize('field', ['auto_crop', 'enhance_text'])

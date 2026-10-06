@@ -258,7 +258,7 @@ def _segmented_candidates(image, gray, saturation):
     return candidates
 
 
-def _detect(image):
+def _detect(image, *, details=False):
     cv2, np = _numeric()
     small = _thumbnail(image)
     rgb = np.asarray(small, dtype=np.uint8)
@@ -310,6 +310,9 @@ def _detect(image):
     quad = best.get('warp_quad', best['quad']).copy()
     quad[:, 0] *= image.width / small.width
     quad[:, 1] *= image.height / small.height
+    if details:
+        scale = np.array([image.width / small.width, image.height / small.height], np.float32)
+        return {'quad': best['quad'] * scale, 'envelope': quad}, True
     return quad, True
 
 
@@ -325,6 +328,8 @@ def _warp(image, quad):
     height = max(np.linalg.norm(bl - tl), np.linalg.norm(br - tr))
     scale = min(1.0, math.sqrt(MAX_WARP_PIXELS / max(1, width * height)))
     width, height = max(2, round(width * scale)), max(2, round(height * scale))
+    if width * height > MAX_WARP_PIXELS:
+        height = max(2, MAX_WARP_PIXELS // width)
     destination = np.array([[0, 0], [width - 1, 0], [width - 1, height - 1], [0, height - 1]], np.float32)
     matrix = cv2.getPerspectiveTransform(padded.astype(np.float32), destination)
     result = cv2.warpPerspective(np.asarray(image), matrix, (width, height),
@@ -367,12 +372,18 @@ def prepare_image(image, *, auto_crop=True, enhance_text=True):
     metadata = {'document_detected': False, 'cropped': False, 'enhanced': False}
     if not auto_crop and not enhance_text or min(image.size) < 96:
         return image, metadata
-    quad, detected = _detect(image)
+    details, detected = _detect(image, details=True)
+    quad = None if details is None else details['envelope']
     metadata['document_detected'] = detected
     if not detected:
         return image, metadata
     if auto_crop and quad is not None:
-        image = _warp(image, quad)
+        from processors.page_rectification import rectify_page
+        cv2, np = _numeric()
+        rectified = rectify_page(image, quad, cv2, np, qualified_quad=details['quad'])
+        # If an edge cannot be traced reliably, retain the enclosing crop's
+        # conservative behavior rather than guessing through possible writing.
+        image = _warp(image, quad) if rectified is None else rectified
         metadata['cropped'] = True
         quad = None
     if enhance_text:

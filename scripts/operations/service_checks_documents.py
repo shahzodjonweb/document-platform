@@ -119,7 +119,7 @@ class Customer:
             FileAsset.objects.filter(account=self.account).exclude(state='deleted').update(expires_at=timezone.now())
 
 
-def curved_gray_document():
+def curved_gray_document(*, with_mask=False):
     """Generate generic print on bowed, shaded paper and a ribbed gray desk.
 
     This is independent of detector internals and contains no customer image,
@@ -162,6 +162,11 @@ def curved_gray_document():
             ('A1', 'B2', 'C3', 'D4'),
             ((110, 18, 21), (14, 88, 26), (17, 42, 119), (108, 21, 101))):
         draw.text(position, value, font=font(21), fill=color)
+    for position, value in zip(
+            ((4, height // 2 - 14), (width - 42, height // 2 - 14),
+             (width // 2 - 15, 2), (width // 2 - 15, height - 28)),
+            ('E5', 'F6', 'G7', 'H8')):
+        draw.text(position, value, font=font(21), fill=(108, 21, 101))
     margin = 26
     yy, xx = np.mgrid[:height + 2 * margin, :width + 2 * margin].astype(np.float32)
     normalized_x = (xx - margin) / (width - 1)
@@ -185,20 +190,102 @@ def curved_gray_document():
     background = np.repeat(desk[:, :, None], 3, axis=2)
     photographed = background * (1 - mask[:, :, None]) + warped * mask[:, :, None]
     photographed = cv2.GaussianBlur(np.clip(photographed, 0, 255).astype(np.uint8), (3, 3), .55)
-    return Image.fromarray(photographed)
+    image = Image.fromarray(photographed)
+    return (image, np.round(mask * 255).astype(np.uint8)) if with_mask else image
 
 
-def validate_curved_scan(output, original, *, enabled):
+def validate_fit_canvas(reader, image):
+    """Verify the actual PDF image placement fills a bounded, borderless page."""
+    from pypdf.generic import ContentStream
+    page = reader.pages[0]
+    width, height = float(page.mediabox.width), float(page.mediabox.height)
+    require(abs(max(width, height) - 842) < .001
+            and abs(width / height - image.width / image.height) < .00001,
+            'curved_document_fitted_page')
+    require(page.rotation % 360 == 0 and page.cropbox == page.mediabox,
+            'curved_document_page_viewport')
+    current = (1., 0., 0., 1., 0., 0.)
+    stack, placements = [], []
+    for operands, operator in ContentStream(page.get_contents(), reader).operations:
+        if operator == b'q':
+            stack.append(current)
+        elif operator == b'Q':
+            require(bool(stack), 'curved_document_canvas_state')
+            current = stack.pop()
+        elif operator == b'cm':
+            require(len(operands) == 6, 'curved_document_canvas_state')
+            a, b, c, d, e, f = current
+            x, y, z, w, u, v = map(float, operands)
+            current = (a*x + c*y, b*x + d*y, a*z + c*w, b*z + d*w,
+                       a*u + c*v + e, b*u + d*v + f)
+        elif operator == b'Do':
+            placements.append(current)
+    require(len(placements) == 1 and not stack, 'curved_document_canvas_state')
+    expected = (width, 0., 0., height, 0., 0.)
+    require(all(abs(actual - target) < .001 for actual, target in zip(placements[0], expected)),
+            'curved_document_borderless_image_placement')
+    return {'borderless_page_verified': True}
+
+
+def side_label_data(image):
+    """Count known purple writing and measure its distance from output edges."""
+    import numpy as np
+    pixels = np.asarray(image).astype(np.int16)
+    ink = (pixels[:, :, 0] > pixels[:, :, 1] + 35) & (pixels[:, :, 2] > pixels[:, :, 1] + 35)
+    height, width = ink.shape
+    regions = (ink[height // 3:2 * height // 3, :width // 4],
+               ink[height // 3:2 * height // 3, 3 * width // 4:],
+               ink[:height // 4, width // 3:2 * width // 3],
+               ink[3 * height // 4:, width // 3:2 * width // 3])
+    coordinates = [np.where(region) for region in regions]
+    counts = [len(y) for y, x in coordinates]
+    require(min(counts) > 45, 'curved_document_all_side_writing')
+    gaps = (int(coordinates[0][1].min()) / width,
+            (width - 1 - (3 * width // 4 + int(coordinates[1][1].max()))) / width,
+            int(coordinates[2][0].min()) / height,
+            (height - 1 - (3 * height // 4 + int(coordinates[3][0].max()))) / height)
+    return counts, gaps
+
+
+def validate_paper_boundary(original, true_paper_mask, image):
+    """Measure remaining desk using the generated paper alpha, not detector flags."""
+    import cv2
+    import numpy as np
+    source = np.asarray(original)
+    rgb = source.astype(np.int16)
+    gray = cv2.cvtColor(source, cv2.COLOR_RGB2GRAY)
+    neutral = rgb.max(axis=2) - rgb.min(axis=2) < 6
+    desk_values = gray[(true_paper_mask < 8) & neutral]
+    paper_values = gray[(true_paper_mask > 248) & neutral & (gray > 125)]
+    require(desk_values.size > 100 and paper_values.size > 100, 'curved_document_fixture_regions')
+    desk_top, paper_low = float(np.percentile(desk_values, 98)), float(np.percentile(paper_values, 2))
+    require(paper_low > desk_top + 8, 'curved_document_fixture_contrast')
+    threshold = (desk_top + paper_low) / 2
+    rgb = np.asarray(image).astype(np.int16)
+    gray = cv2.cvtColor(np.asarray(image), cv2.COLOR_RGB2GRAY)
+    desk = ((rgb.max(axis=2) - rgb.min(axis=2) < 6)
+            & (gray >= float(np.percentile(desk_values, 2)) - 12) & (gray < threshold))
+    band = max(2, round(min(image.size) * .025))
+    border = np.ones(gray.shape, dtype=bool)
+    border[band:-band, band:-band] = False
+    corners = (desk[:band, :band], desk[:band, -band:], desk[-band:, :band], desk[-band:, -band:])
+    require(float(desk[border].mean()) < .03 and max(float(corner.mean()) for corner in corners) < .08,
+            'curved_document_photographed_desk_removed')
+    return {'paper_boundary_verified': True}
+
+
+def validate_curved_scan(output, original, *, enabled, enhanced=True, true_paper_mask=None):
     """Check actual PDF pixels, rather than trusting an engine status flag."""
     import numpy as np
     reader = PdfReader(io.BytesIO(output))
     require(len(reader.pages) == 1 and len(reader.pages[0].images) == 1, 'curved_document_page')
     image = reader.pages[0].images[0].image.convert('RGB')
     pixels = np.asarray(image).astype(np.int16)
+    flags = validate_fit_canvas(reader, image)
     if not enabled:
         require(image.size == original.size and np.array_equal(np.asarray(image), np.asarray(original)),
                 'curved_document_opt_out_preserves_all_pixels')
-        return {'crop_verified': False, 'effect_verified': False, 'original_pixels_preserved': True}
+        return {**flags, 'crop_verified': False, 'effect_verified': False, 'original_pixels_preserved': True}
     require(image.width * image.height < original.width * original.height * .80,
             'curved_document_crop')
     require(1.15 < image.height / image.width < 1.8, 'curved_document_aspect')
@@ -212,13 +299,25 @@ def validate_curved_scan(output, original, *, enabled):
              lambda p: (p[:, :, 0] > p[:, :, 1] + 35) & (p[:, :, 2] > p[:, :, 1] + 35))
     require(all(int(rule(region).sum()) > 25 for rule, region in zip(rules, regions)),
             'curved_document_all_corner_writing')
-    neutral = (pixels.max(axis=2) - pixels.min(axis=2) < 10) & (pixels.min(axis=2) > 100)
-    require(float(neutral.mean()) > .5 and float(np.median(pixels[neutral])) > 210,
-            'curved_document_gray_paper_brightened')
+    before_counts, _ = side_label_data(original)
+    after_counts, gaps = side_label_data(image)
+    require(all(after >= before * .75 for before, after in zip(before_counts, after_counts)),
+            'curved_document_side_writing_preserved')
+    require(all(gap < limit for gap, limit in zip(gaps, (.03, .06, .025, .022))),
+            'curved_document_no_extra_image_padding')
+    if enhanced:
+        neutral = (pixels.max(axis=2) - pixels.min(axis=2) < 10) & (pixels.min(axis=2) > 100)
+        require(float(neutral.mean()) > .5 and float(np.median(pixels[neutral])) > 210,
+                'curved_document_gray_paper_brightened')
+    else:
+        require(true_paper_mask is not None, 'curved_document_fixture_regions')
+        flags.update(validate_paper_boundary(original, true_paper_mask, image))
     # Camera blur and perspective interpolation soften print edges. These
     # marks still have over 110 levels of contrast against the required paper.
     require(int((pixels.max(axis=2) < 100).sum()) > 3000, 'curved_document_print_preserved')
-    return {'crop_verified': True, 'effect_verified': True, 'all_corner_writing_preserved': True}
+    return {**flags, 'crop_verified': True, 'effect_verified': enhanced,
+            'all_corner_writing_preserved': True, 'all_side_writing_preserved': True,
+            'tight_page_edges_verified': True}
 
 
 def fixtures(folder):
@@ -247,7 +346,10 @@ def fixtures(folder):
     draw.text((150, 675), 'Blue note: keep this ink', font=font, fill=(20, 55, 145))
     scan.save(paths['scan'])
     paths['curved_scan'] = folder / 'curved-gray-document.png'
-    curved_gray_document().save(paths['curved_scan'])
+    curved, paper_mask = curved_gray_document(with_mask=True)
+    curved.save(paths['curved_scan'])
+    paths['curved_mask'] = folder / 'curved-gray-document-mask.png'
+    Image.fromarray(paper_mask).save(paths['curved_mask'])
     for language, text in [('eng', 'HELLO DOCUMENT 2026'), ('rus', 'ПРИВЕТ ДОКУМЕНТ 2026'), ('uzb', 'SALOM HUJJAT 2026')]:
         paths[language] = folder / (language + '.png')
         scan = Image.new('RGB', (1500, 320), 'white')
@@ -280,6 +382,7 @@ def cases():
         ('pdf.images_to_pdf', ['scan'], {'auto_crop': True, 'enhance_text': True}),
         ('pdf.images_to_pdf', ['scan'], {'auto_crop': False, 'enhance_text': False}),
         ('pdf.images_to_pdf', ['curved_scan'], {}),
+        ('pdf.images_to_pdf', ['curved_scan'], {'auto_crop': True, 'enhance_text': False}),
         ('pdf.images_to_pdf', ['curved_scan'], {'auto_crop': False, 'enhance_text': False}),
         ('pdf.protect', ['other'], {}), ('pdf.unlock_known', ['protected'], {}),
         ('convert.word_to_pdf', ['docx'], {}), ('convert.pptx_to_pdf', ['pptx'], {}),
@@ -359,7 +462,8 @@ def check_documents(audit_id, emit):
             if feature == 'pdf.images_to_pdf' and 'auto_crop' in parameters:
                 row['variant'] = 'scanning_on' if parameters['auto_crop'] else 'scanning_off'
             if inputs == ['curved_scan']:
-                row['variant'] = 'curved_gray_defaults' if not parameters else 'curved_gray_off'
+                row['variant'] = ('curved_gray_defaults' if not parameters else
+                                  'curved_gray_crop_only' if parameters['auto_crop'] else 'curved_gray_off')
             try:
                 require(time.monotonic() < deadline, 'audit_time_budget')
                 customer = Customer(audit_id, feature)
@@ -383,12 +487,18 @@ def check_documents(audit_id, emit):
                 require(bool(outputs), 'missing_output')
                 validate_output(feature, outputs, parameters, inputs)
                 if inputs == ['curved_scan']:
-                    enabled = not parameters
+                    enabled = parameters.get('auto_crop', True)
+                    enhanced = parameters.get('enhance_text', True)
                     require(job.get('parameters', {}).get('auto_crop') is enabled
-                            and job.get('parameters', {}).get('enhance_text') is enabled,
+                            and job.get('parameters', {}).get('enhance_text') is enhanced,
                             'curved_document_quoted_switches')
-                    with Image.open(paths['curved_scan']) as original:
-                        row.update(validate_curved_scan(outputs[0], original.convert('RGB'), enabled=enabled))
+                    require(all(job.get('parameters', {}).get(key) == value for key, value in
+                                {'paper_size': 'fit', 'orientation': 'auto', 'margin': 0}.items()),
+                            'curved_document_quoted_layout')
+                    with Image.open(paths['curved_scan']) as original, Image.open(paths['curved_mask']) as mask:
+                        import numpy as np
+                        row.update(validate_curved_scan(outputs[0], original.convert('RGB'), enabled=enabled,
+                                                        enhanced=enhanced, true_paper_mask=np.asarray(mask)))
                 if feature == 'pdf.compress': require(len(outputs[0]) < paths['compress'].stat().st_size, 'compression_size')
                 if feature == 'pdf.merge':
                     preview = job['artifacts'][0]['preview_url']

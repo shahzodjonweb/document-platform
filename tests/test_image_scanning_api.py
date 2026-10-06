@@ -54,6 +54,10 @@ def test_public_catalog_exposes_default_on_document_switches(client):
     features = {feature['id']: feature for feature in response.json()['features']}
     schema = features['pdf.images_to_pdf']['parameters']
     assert schema['additionalProperties'] is False
+    assert 'fit' in schema['properties']['paper_size']['enum']
+    assert schema['properties']['paper_size']['default'] == 'fit'
+    assert schema['properties']['orientation']['default'] == 'auto'
+    assert schema['properties']['margin']['default'] == 0
     for field in ('auto_crop', 'enhance_text'):
         assert schema['properties'][field]['type'] == 'boolean'
         assert schema['properties'][field]['default'] is True

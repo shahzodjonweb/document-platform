@@ -19,7 +19,7 @@ Paths are internal trusted worker values, never client parameters or public API 
 | `pdf.delete_pages` | `pages: "2,4-5"` | Remaining pages; deleting every page rejected. |
 | `pdf.reorder` | `order: [3,1,2]` | Exactly one instance of every input page required. |
 | `pdf.rotate` | `pages: "all"`, `angle: 90` | Angle 90/180/270 degrees; selected page rotations preserved otherwise. |
-| `pdf.images_to_pdf` | `paper_size: "A4"`, `orientation: "auto"`, `margin: 24`, `auto_crop: true`, `enhance_text: true` | PNG/JPEG/WebP in input order. Default document edge detection, perspective correction and shadow/contrast cleanup; each switch can be disabled independently. Paper A4/Letter/original; orientation auto/portrait/landscape; margin 0..72 pt. Original means 72 dpi/pixel size plus margins. EXIF orientation and alpha handling. |
+| `pdf.images_to_pdf` | `paper_size: "fit"`, `orientation: "auto"`, `margin: 0`, `auto_crop: true`, `enhance_text: true` | PNG/JPEG/WebP in input order. Default document edge detection, perspective correction and shadow/contrast cleanup; each switch can be disabled independently. Fit matches the processed image aspect ratio with an 842 pt long edge and no added border; explicit margins are added around it. Paper fit/A4/Letter/original; orientation auto/portrait/landscape; margin 0..72 pt. Original means 72 dpi/pixel size plus margins. Explicit saved paper, orientation and margin settings remain unchanged. EXIF orientation and alpha handling. |
 | `pdf.to_images` | `format: "png"`, `dpi: 96`, `pages: "all"` | PNG/JPG; 72..200 dpi. Safe ZIP in selected page order, each page decoded after rendering. |
 | `pdf.protect` | `{}` plus separate ephemeral secret | AES-256 using owner-scoped encrypted ten-minute handles; deletion on settlement/expiry is tested. |
 | `pdf.unlock_known` | `{}` plus separate ephemeral secret | Uses the supplied password through an encrypted short-lived handle; wrong password fails without disclosure. |
@@ -42,17 +42,27 @@ and timeout limits and uses one numeric processing thread. Faint, gently curved
 outlines receive a bounded 512-pixel, three-iteration segmentation fallback when
 closed edge contours are unavailable. These proposals still require observed
 edges, paper/background contrast and compact writing; initialization borders,
-partial pages and competing sheets cannot supply a crop. The corrected outline
-encloses bowed sides to retain writing near their edges. Detection is conservative
+partial pages and competing sheets cannot supply a crop. An enclosing proposal
+supplies context for independently tracing each physical paper edge. Smooth
+boundary curves rectify gentle curl into a rectangle, with correction confined
+to the outer 20% so blank-margin curl does not bend straight central table rows.
+Compact writing guards reject an inner printed frame or shadow seam that would
+discard margin text. Uncertain refinement retains the conservative enclosing
+crop. Geometry stays within 1280 pixels; inverse geometry samples original RGB
+once in strips of at most one million pixels, averaging opposing edge lengths
+while enforcing the exact 16 MP output ceiling. Detection is conservative
 and may leave low-contrast, obscured or blank pages untouched. Writing-like marks
 are required to avoid cropping bright panels in ordinary photographs. Internal `image_processing`
 metadata contains only per-page outcome booleans and counts, without document text.
 `tests/test_image_scanning.py`, `tests/test_image_scanning_realistic.py`,
-`tests/test_image_scanning_safety.py`, `tests/test_image_scanning_api.py` and
+`tests/test_image_scanning_safety.py`, `tests/test_image_scanning_rectification.py`,
+`tests/test_page_rectification_bounds.py`, `tests/test_image_scanning_api.py` and
 `tests/test_bot_image_scanning.py` cover artifacts, quotes, jobs and bot switches.
 Service verification also processes anonymized curved gray paper through the
 actual HTTP/queue/worker/download path and checks the resulting PDF pixels with
-defaults enabled and with both effects disabled. Previously generated PDFs are
+defaults enabled, cropping alone and both effects disabled. The checks require
+a fitted borderless PDF canvas, physical desk removal and all corner/side writing.
+Previously generated PDFs are
 immutable; scanning changes apply to new image conversions.
 
 ## Evidence and open qualification

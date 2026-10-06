@@ -51,6 +51,8 @@ def test_tool_screen_shows_both_enabled_switches_before_upload_without_another_s
     before = sum(isinstance(call, SendMessage) for call in harness.session.calls)
     harness.click(harness.action('tool', feature_id='pdf.images_to_pdf'))
     draft = BotDraft.objects.get()
+    assert draft.parameters['paper_size'] == 'fit' and draft.parameters['margin'] == 0
+    assert draft.parameters['orientation'] == 'auto'
     assert draft.parameters['auto_crop'] is True and draft.parameters['enhance_text'] is True
     assert draft.input_ids == [] and draft.quote_id is None
     assert sum(isinstance(call, SendMessage) for call in harness.session.calls) == before
@@ -80,6 +82,7 @@ def test_direct_photo_and_image_uploads_have_defaults_and_can_start_immediately(
         harness.document('image', payload, name='document.jpg')
     draft = BotDraft.objects.get()
     assert draft.feature_id == 'pdf.images_to_pdf'
+    assert draft.parameters['paper_size'] == 'fit' and draft.parameters['margin'] == 0
     assert draft.parameters['auto_crop'] is True and draft.parameters['enhance_text'] is True
     assert draft.quote.parameters['auto_crop'] is True and draft.quote.parameters['enhance_text'] is True
     assert switch(harness, 'auto_crop', False) and switch(harness, 'enhance_text', False)
@@ -90,6 +93,26 @@ def test_direct_photo_and_image_uploads_have_defaults_and_can_start_immediately(
     job = Job.objects.get()
     assert job.parameters['auto_crop'] is True and job.parameters['enhance_text'] is True
     assert job.origin_channel == 'bot' and job.status == 'queued'
+
+
+@pytest.mark.parametrize('locale', ['en', 'uz', 'ru'])
+def test_fit_page_choice_is_localized_and_preserves_explicit_margin(locale):
+    harness = ready(locale)
+    harness.document('image', picture(), name='document.jpg')
+    harness.command('/paper A4')
+    harness.command('/margin 24')
+    harness.command('/settings')
+    fit_button = harness.action('settings', parameters={'paper_size': 'fit'})
+    ref = BotCallback.objects.get(pk=fit_button)
+    label = next(button.text for row in screen(harness).reply_markup.inline_keyboard for button in row
+                 if button.callback_data == fit_button)
+    assert label == UX[locale]['fit_page']
+    harness.click(fit_button)
+    draft = BotDraft.objects.get()
+    assert draft.parameters['paper_size'] == 'fit' and draft.parameters['margin'] == 24
+    assert draft.quote.parameters == draft.parameters
+    assert UX[locale]['fit_page'] in html.unescape(option_summary(draft.account, draft))
+    assert ref.payload['draft_id'] == draft.id
 
 
 @pytest.mark.parametrize('locale', ['en', 'uz', 'ru'])

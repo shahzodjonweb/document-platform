@@ -161,7 +161,7 @@ def option_summary(account,draft):
         if key=='orientation': value=text(account,{'auto':'auto','portrait':'portrait','landscape':'landscape'}.get(value,'auto'))
         if isinstance(value,list): value=', '.join(map(str,value))
         if key=='angle': value=f'{value}°'
-        if key=='paper_size' and value=='original': value=text(account,'original')
+        if key=='paper_size' and value in ('fit','original'): value=text(account,'fit_page' if value=='fit' else 'original')
         if value=='all': value=text(account,'all_pages')
         value=str(value)
         if len(value)>180: value=value[:177]+'…'
@@ -306,7 +306,8 @@ def build_dispatcher():
             rows.append([await image_toggle('auto_crop','auto_crop_label')])
             rows.append([await image_toggle('enhance_text','enhance_text_label')])
             if advanced:
-                rows.append([await choice(text(account,'original') if value=='original' else value,{'paper_size':value}) for value in ('A4','Letter','original')])
+                for values in (('fit','original'),('A4','Letter')):
+                    rows.append([await choice(text(account,'fit_page' if value=='fit' else 'original') if value in ('fit','original') else value,{'paper_size':value}) for value in values])
                 rows.append([await choice(text(account,label),{'orientation':value}) for label,value in [('auto','auto'),('portrait','portrait'),('landscape','landscape')]])
                 rows.append([await prompt('margin_button','margin')])
         if feature in ('pdf.extract_pages','pdf.delete_pages') or (feature in ('pdf.rotate','pdf.to_images') and advanced):

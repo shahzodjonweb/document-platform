@@ -45,6 +45,7 @@ MESSAGES = {
     'files': ('Files', 'Fayllar', 'Файлы'),
     'pages': ('Pages', 'Sahifalar', 'Страницы'),
     'original': ('Original size', 'Asl o‘lcham', 'Исходный размер'),
+    'fit_page': ('Fit image', 'Rasmga mos', 'По размеру фото'),
     'options_default': ('Standard settings', 'Standart sozlamalar', 'Стандартные настройки'),
     'options_button': ('⚙️ Options', '⚙️ Sozlamalar', '⚙️ Настройки'),
     'edit_options': ('⚙️ Adjust options', '⚙️ Sozlash', '⚙️ Настроить'),

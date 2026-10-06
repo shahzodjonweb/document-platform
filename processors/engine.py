@@ -64,9 +64,9 @@ PARAMETER_SCHEMAS = {
     'pdf.reorder': _schema({'order': {'type': 'array', 'items': {'type': 'integer', 'minimum': 1}, 'maxItems': MAX_PAGES}}, ('order',)),
     'pdf.rotate': _schema({'pages': PAGES, 'angle': {'type': 'integer', 'enum': [90, 180, 270]}}),
     'pdf.images_to_pdf': _schema({
-        'paper_size': {'type': 'string', 'enum': ['A4', 'Letter', 'original']},
-        'orientation': {'type': 'string', 'enum': ['auto', 'portrait', 'landscape']},
-        'margin': {'type': 'number', 'minimum': 0, 'maximum': 72},
+        'paper_size': {'type': 'string', 'enum': ['fit', 'A4', 'Letter', 'original'], 'default': 'fit', 'description': 'Fit uses the image aspect ratio with an 842-point long edge, without adding a paper border.'},
+        'orientation': {'type': 'string', 'enum': ['auto', 'portrait', 'landscape'], 'default': 'auto'},
+        'margin': {'type': 'number', 'minimum': 0, 'maximum': 72, 'default': 0},
         'auto_crop': {'type': 'boolean', 'default': True, 'description': 'Crop and straighten a confidently detected document; otherwise keep the full image.'},
         'enhance_text': {'type': 'boolean', 'default': True, 'description': 'Reduce document shadows and improve text contrast; ordinary photos stay unchanged.'}}),
     'pdf.to_images': _schema({'pages': PAGES, 'format': {'type': 'string', 'enum': ['png', 'jpg']},
@@ -362,14 +362,14 @@ def normalize_parameters(feature_id: str, parameters: dict | None, input_metadat
         if normalized['format'] not in ('png', 'jpg') or type(normalized['dpi']) is not int or not 72 <= normalized['dpi'] <= 200:
             raise ProcessorError('invalid_parameters')
     if feature_id == 'pdf.images_to_pdf':
-        normalized.setdefault('paper_size', 'A4')
+        normalized.setdefault('paper_size', 'fit')
         normalized.setdefault('orientation', 'auto')
-        normalized.setdefault('margin', 24)
+        normalized.setdefault('margin', 0)
         for field in ('auto_crop', 'enhance_text'):
             normalized.setdefault(field, True)
             if type(normalized[field]) is not bool:
                 raise ProcessorError('invalid_parameters')
-        if normalized['paper_size'] not in ('A4', 'Letter', 'original') or normalized['orientation'] not in ('auto', 'portrait', 'landscape'):
+        if normalized['paper_size'] not in ('fit', 'A4', 'Letter', 'original') or normalized['orientation'] not in ('auto', 'portrait', 'landscape'):
             raise ProcessorError('invalid_parameters')
         margin = normalized['margin']
         if type(margin) not in (int, float) or not math.isfinite(margin) or not 0 <= margin <= 72:
@@ -437,6 +437,14 @@ def _image_pdf(paths: list[Path], parameters: dict, out: Path):
             if parameters['paper_size'] == 'original':
                 # Original means one image pixel per PDF point at 72 dpi.
                 width, height = iw + 2 * margin, ih + 2 * margin
+            elif parameters['paper_size'] == 'fit':
+                # Match the processed image's shape without making high-resolution
+                # uploads physically enormous. Explicit margins surround the image.
+                fit_scale = 842 / max(iw, ih)
+                width, height = iw * fit_scale + 2 * margin, ih * fit_scale + 2 * margin
+                if ((parameters['orientation'] == 'landscape' and width < height)
+                        or (parameters['orientation'] == 'portrait' and width > height)):
+                    width, height = height, width
             else:
                 width, height = A4 if parameters['paper_size'] == 'A4' else letter
                 landscape = parameters['orientation'] == 'landscape' or (parameters['orientation'] == 'auto' and iw > ih)
