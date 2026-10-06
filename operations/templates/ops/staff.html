@@ -10,13 +10,7 @@
   </div>
 </div>
 {% if error %}<div class="alert error" role="alert">{% icon 'alert' %}<span>{{ error }}</span></div>{% endif %}
-{% if enrollment_secret %}
-<section class="panel info-panel">
-  <h2>{{ s.enrollment }} · {{ enrollment_user }}</h2>
-  <p>{{ s.note }}</p>
-  <p><code class="secret-code">{{ enrollment_secret }}</code></p>
-</section>
-{% endif %}
+{% if created_user %}<div class="alert success" role="status">{% icon 'check' %}<span><strong>{{ created_user }}</strong> · {{ s.created }}</span></div>{% endif %}
 
 <section class="panel">
   <div class="table-region" role="region" aria-label="{{ s.title }}" tabindex="0">

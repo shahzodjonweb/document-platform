@@ -2210,20 +2210,6 @@ td.empty-state {
   padding-left: var(--space-5);
 }
 
-/* ---- staff */
-
-.secret-code {
-  display: inline-block;
-  padding: var(--space-2) var(--space-3);
-  border: 1px dashed var(--hairline-strong);
-  border-radius: var(--radius-sm);
-  background: var(--surface-sunken);
-  color: var(--ink);
-  font-size: var(--text-md);
-  letter-spacing: 0.06em;
-  overflow-wrap: anywhere;
-}
-
 /* ---- AI requests */
 
 .generation-filters input,

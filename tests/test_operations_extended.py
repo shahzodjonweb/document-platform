@@ -17,8 +17,8 @@ from apps.core.errors import DomainError
 from apps.core.models import Account,UsageGrant,SupportTicket,AnalyticsEvent
 from apps.core.policy import usage_snapshot,plan_limits,require_feature
 from apps.commerce.models import OfferVersion,Invoice,Payment,Refund,Subscription,SubscriptionPeriod,SupportMessage
-from operations.auth import COOKIE,begin_session,secret_cipher,totp_code
-from operations.models import AuditLog,StaffSession,StaffTOTP,IntegrationConfig
+from operations.auth import COOKIE,begin_session
+from operations.models import AuditLog,StaffSession,IntegrationConfig
 from operations.metrics import Filters
 from operations.commerce_views import financial_report
 from operations.analytics_extra import engagement
@@ -62,21 +62,17 @@ def test_new_mutations_require_csrf_before_side_effects():
     assert get_user_model().objects.count()==1 and not AuditLog.objects.exists() and not IntegrationConfig.objects.exists()
 
 
-def test_created_staff_requires_totp_and_secret_is_shown_once():
+def test_created_staff_signs_in_with_the_password_they_were_given():
     client,_=staff_client();password='a-unique-initial-password-929'
-    response=client.post('/ops/staff',{'action':'create','username':'new-support','password':password,'role':'Support','reason':'Onboard authorized customer support colleague'})
-    assert response.status_code==200
-    user=get_user_model().objects.get(username='new-support');device=StaffTOTP.objects.get(user=user)
-    secret=secret_cipher().decrypt(device.encrypted_secret.encode()).decode()
-    assert secret.encode() in response.content and password.encode() not in response.content
-    assert secret not in device.encrypted_secret and user.check_password(password)
+    response=client.post('/ops/staff',{'action':'create','username':'new-support','password':password,'role':'Support'})
+    assert response.status_code==200 and b'new-support' in response.content
+    user=get_user_model().objects.get(username='new-support')
+    assert password.encode() not in response.content and user.check_password(password)
     assert not user.is_superuser and list(user.groups.values_list('name',flat=True))==['Support']
-    assert secret.encode() not in client.get('/ops/staff').content
-    assert secret not in json.dumps(list(AuditLog.objects.values('before','after','reason')))
-    outsider=Client();assert outsider.post('/ops/login',{'username':user.username,'password':password,'code':''}).status_code==200
+    assert password not in json.dumps(list(AuditLog.objects.values('before','after','reason')))
+    outsider=Client();assert outsider.post('/ops/login',{'username':user.username,'password':'not-it'}).status_code==200
     assert COOKIE not in outsider.cookies
-    code=totp_code(secret,int(time.time())//30)
-    assert outsider.post('/ops/login',{'username':user.username,'password':password,'code':code}).status_code==302
+    assert outsider.post('/ops/login',{'username':user.username,'password':password}).status_code==302
     assert COOKIE in outsider.cookies
 
 

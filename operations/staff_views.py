@@ -1,18 +1,16 @@
-import base64
-import secrets
 import re
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.db import transaction
 from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_http_methods
-from .auth import require_staff,audit,ROLES,secret_cipher
-from .models import StaffSession,StaffTOTP
+from .auth import require_staff,audit,ROLES
+from .models import StaffSession
 from .views import context,finish_render
 LABELS={
-'en':{'title':'Staff access','intro':'Role-based staff accounts with mandatory authenticator codes.','username':'Username','password':'Initial password · minimum 12 characters','role':'Role','reason':'Reason','create':'Create staff account','active':'Active','change':'Update access','enrollment':'One-time authenticator setup','note':'Save this secret in the authenticator now. It is shown only once.','failed':'Check the username, password and role. Existing users cannot be overwritten.','add':'Add staff member','last_login':'Last sign-in','you':'you','never':'never','self':'Your current account cannot be changed here.'},
-'uz':{'title':'Xodimlar ruxsati','intro':'Rol va majburiy autentifikator kodi bilan xodim hisoblari.','username':'Foydalanuvchi nomi','password':'Boshlang‘ich parol · kamida 12 belgi','role':'Rol','reason':'Sabab','create':'Xodim yaratish','active':'Faol','change':'Ruxsatni yangilash','enrollment':'Autentifikatorni bir martalik sozlash','note':'Kalitni hozir autentifikatorga saqlang. U bir marta ko‘rsatiladi.','failed':'Nom, parol va rolni tekshiring. Mavjud hisobni almashtirib bo‘lmaydi.','add':'Xodim qo‘shish','last_login':'Oxirgi kirish','you':'siz','never':'hali yo‘q','self':'Joriy hisobingizni bu yerda o‘zgartirib bo‘lmaydi.'},
-'ru':{'title':'Доступ сотрудников','intro':'Аккаунты сотрудников с ролями и обязательным аутентификатором.','username':'Имя пользователя','password':'Начальный пароль · минимум 12 символов','role':'Роль','reason':'Причина','create':'Создать сотрудника','active':'Активен','change':'Изменить доступ','enrollment':'Одноразовая настройка аутентификатора','note':'Сохраните секрет в аутентификаторе сейчас. Он показан один раз.','failed':'Проверьте имя, пароль и роль. Существующий аккаунт нельзя перезаписать.','add':'Добавить сотрудника','last_login':'Последний вход','you':'вы','never':'ещё нет','self':'Текущий аккаунт нельзя изменить здесь.'}}
+'en':{'title':'Staff access','intro':'Staff accounts with a role. Each person signs in with their username and password.','username':'Username','password':'Initial password · minimum 12 characters','role':'Role','reason':'Reason','create':'Create staff account','active':'Active','change':'Update access','created':'Account created. Give them their username and password; they can sign in now.','failed':'Check the username, password and role. Existing users cannot be overwritten.','add':'Add staff member','last_login':'Last sign-in','you':'you','never':'never','self':'Your current account cannot be changed here.'},
+'uz':{'title':'Xodimlar ruxsati','intro':'Rolga ega xodim hisoblari. Har kim o‘z logini va paroli bilan kiradi.','username':'Foydalanuvchi nomi','password':'Boshlang‘ich parol · kamida 12 belgi','role':'Rol','reason':'Sabab','create':'Xodim yaratish','active':'Faol','change':'Ruxsatni yangilash','created':'Hisob yaratildi. Unga login va parolni bering — hozir kira oladi.','failed':'Nom, parol va rolni tekshiring. Mavjud hisobni almashtirib bo‘lmaydi.','add':'Xodim qo‘shish','last_login':'Oxirgi kirish','you':'siz','never':'hali yo‘q','self':'Joriy hisobingizni bu yerda o‘zgartirib bo‘lmaydi.'},
+'ru':{'title':'Доступ сотрудников','intro':'Аккаунты сотрудников с ролями. Каждый входит со своим логином и паролем.','username':'Имя пользователя','password':'Начальный пароль · минимум 12 символов','role':'Роль','reason':'Причина','create':'Создать сотрудника','active':'Активен','change':'Изменить доступ','created':'Аккаунт создан. Передайте логин и пароль — сотрудник может войти сразу.','failed':'Проверьте имя, пароль и роль. Существующий аккаунт нельзя перезаписать.','add':'Добавить сотрудника','last_login':'Последний вход','you':'вы','never':'ещё нет','self':'Текущий аккаунт нельзя изменить здесь.'}}
 @require_staff()
 @sensitive_post_parameters('password')
 @require_http_methods(['GET','POST'])
@@ -28,10 +26,8 @@ def staff(request):
                 with transaction.atomic():
                     user=get_user_model().objects.create_user(username=username,password=password,is_staff=True,is_active=True)
                     user.groups.set([Group.objects.get_or_create(name=role)[0]])
-                    secret=base64.b32encode(secrets.token_bytes(20)).decode()
-                    StaffTOTP.objects.create(user=user,encrypted_secret=secret_cipher().encrypt(secret.encode()).decode())
-                    audit(request.ops_user,'staff.created',user.pk,after={'role':role,'mfa':True})
-                data['enrollment_secret']=secret;data['enrollment_user']=username
+                    audit(request.ops_user,'staff.created',user.pk,after={'role':role})
+                data['created_user']=username
         elif action=='update':
             identifier=request.POST.get('user_id','')
             user=get_user_model().objects.filter(pk=int(identifier),is_staff=True).first() if identifier.isdigit() and len(identifier)<20 else None

@@ -52,8 +52,10 @@ with tempfile.TemporaryDirectory() as folder:
         args[-1] = 'python3 - ' + operation.removeprefix('proxy-')
     if operation == 'setup-admin':
         payload = json.loads(os.environ.get('ADMIN_BOOTSTRAP', '{}'))
-        if set(payload) != {'username', 'password', 'totp_secret'}:
+        # A stored secret may still carry the retired authenticator key; it is ignored.
+        if not {'username', 'password'} <= set(payload) or set(payload) - {'username', 'password', 'totp_secret'}:
             raise SystemExit('Missing complete private admin enrollment data')
+        payload = {key: payload[key] for key in ('username', 'password')}
         script = 'setup_admin.py'
         source = 'BOOTSTRAP = ' + repr(payload) + '\n' + Path(__file__).with_name(script).read_text()
         result = subprocess.run(args,input=source.encode(),timeout=800)

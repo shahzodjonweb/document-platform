@@ -20,7 +20,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 
 from apps.core.models import Account, Job, SupportTicket, UsageLedger
-from .auth import COOKIE, allowed, audit, begin_session, development_access, require_staff, staff_user, verify_totp
+from .auth import COOKIE, allowed, audit, begin_session, development_access, require_staff, staff_user
 from .i18n import CATALOGS, EN, get_locale
 from .metrics import DEFINITIONS_VERSION, Filters, report, system_snapshot
 from .models import AuditLog, LoginAttempt, StaffSession
@@ -136,10 +136,10 @@ def login(request):
             return finish_render(request,'ops/login.html',data,429)
         LoginAttempt.objects.create(key=key)
         user=authenticate(request,username=request.POST.get('username','')[:150],password=request.POST.get('password','')[:1024])
-        if user and user.is_active and user.is_staff and verify_totp(user,request.POST.get('code','')):
+        if user and user.is_active and user.is_staff:
             recent.delete()
             rotate_token(request)
-            audit(user,'staff.login',user.pk,'Password and authenticator verified')
+            audit(user,'staff.login',user.pk,'Password verified')
             return begin_session(redirect(landing(user)),user)
         data['error']=data['t']['invalid_login']
     return finish_render(request,'ops/login.html',data)

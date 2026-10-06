@@ -6,8 +6,8 @@
   <meta name="robots" content="noindex,nofollow">
   <title>{{ t.signin }} · PDF Master</title>
   {% include 'ops/brand_head.html' %}
-  <link rel="stylesheet" href="{% static 'ops/main.css' %}?v=redesign-8">
-  <script src="{% static 'ops/theme.js' %}?v=redesign-8"></script>
+  <link rel="stylesheet" href="{% static 'ops/main.css' %}?v=redesign-9">
+  <script src="{% static 'ops/theme.js' %}?v=redesign-9"></script>
 </head>
 <body class="login-page">
   <div class="login-story">
@@ -47,7 +47,6 @@
         {% csrf_token %}
         <label>{{ t.username }}<input name="username" autocomplete="username" required maxlength="150"></label>
         <label>{{ t.password }}<input type="password" name="password" autocomplete="current-password" required maxlength="1024"></label>
-        <label>{{ t.code }}<input name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required></label>
         <button class="button primary full">{{ t.signin }} {% icon 'right' 17 %}</button>
       </form>
       {% if dev_enabled %}

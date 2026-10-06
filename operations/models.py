@@ -11,12 +11,6 @@ class StaffSession(models.Model):
     expires_at = models.DateTimeField(db_index=True)
 
 
-class StaffTOTP(models.Model):
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    encrypted_secret = models.TextField()
-    last_counter = models.BigIntegerField(default=-1)
-
-
 class AuditLog(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     actor = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL)

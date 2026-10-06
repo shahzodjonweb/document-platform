@@ -1,51 +1,23 @@
-"""A staff-only authentication realm. Customer cookies confer no staff authority."""
-import base64
+"""A staff-only authentication realm. Customer cookies confer no staff authority.
+
+Staff sign in with a username and password. Authenticator codes were removed at
+the owner's request (2026-10-06); the per-address sign-in limit in views.login
+still applies.
+"""
 import hashlib
-import hmac
 import secrets
-import struct
-import time
 from datetime import timedelta
 from functools import wraps
 
-from cryptography.fernet import Fernet
 from django.conf import settings
-from django.db import transaction
 from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import redirect
 from django.utils import timezone
 
-from .models import AuditLog, StaffSession, StaffTOTP
+from .models import AuditLog, StaffSession
 
 COOKIE = "ops_session"
 ROLES = {"Analyst", "Support", "Operations", "Finance", "Content manager", "Administrator"}
-
-
-def secret_cipher():
-    key = hashlib.sha256((settings.SECRET_KEY + ":staff-totp-v1").encode()).digest()
-    return Fernet(base64.urlsafe_b64encode(key))
-
-
-def totp_code(secret, counter):
-    digest = hmac.new(base64.b32decode(secret, casefold=True), struct.pack(">Q", counter), hashlib.sha1).digest()
-    offset = digest[-1] & 15
-    code = (struct.unpack(">I", digest[offset:offset + 4])[0] & 0x7FFFFFFF) % 1000000
-    return f"{code:06d}"
-
-
-@transaction.atomic
-def verify_totp(user, code):
-    device = StaffTOTP.objects.select_for_update().filter(user=user).first()
-    if not device or not isinstance(code, str) or len(code) != 6 or not code.isdigit():
-        return False
-    secret = secret_cipher().decrypt(device.encrypted_secret.encode()).decode()
-    counter = int(time.time()) // 30
-    for candidate in (counter - 1, counter, counter + 1):
-        if candidate > device.last_counter and hmac.compare_digest(code, totp_code(secret, candidate)):
-            device.last_counter = candidate
-            device.save(update_fields=["last_counter"])
-            return True
-    return False
 
 
 def development_access(request):

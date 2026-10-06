@@ -1,4 +1,3 @@
-import base64, secrets, time
 from datetime import datetime, timedelta, timezone as tz
 import pytest
 from django.contrib.auth import get_user_model
@@ -7,10 +6,10 @@ from django.http import HttpResponse
 from django.test import Client, RequestFactory
 from django.utils import timezone
 from apps.core.models import Account, SupportTicket
-from operations.auth import COOKIE, begin_session, secret_cipher, totp_code, verify_totp
+from operations.auth import COOKIE, begin_session
 from operations.i18n import CATALOGS, EN
 from operations.metrics import Filters, report
-from operations.models import AuditLog, StaffSession, StaffTOTP
+from operations.models import AuditLog, StaffSession
 pytestmark=pytest.mark.django_db
 
 def staff_client(role='Administrator',csrf=False):
@@ -42,16 +41,20 @@ def test_expired_and_disabled_staff_sessions_rejected():
     c.cookies[COOKIE]=begin_session(HttpResponse(),u).cookies[COOKIE].value;u.is_active=False;u.save()
     assert c.get('/ops/api/v1/summary').status_code==401
 
-def test_totp_required_and_replay_rejected(settings):
+def test_staff_sign_in_with_username_and_password_alone(settings):
+    """No authenticator code: the password is the whole sign-in, for every role."""
     settings.DEBUG=False
-    u=get_user_model().objects.create_user('protected',password='long-staff-password',is_staff=True)
-    secret=base64.b32encode(secrets.token_bytes(20)).decode()
-    StaffTOTP.objects.create(user=u,encrypted_secret=secret_cipher().encrypt(secret.encode()).decode())
-    assert not verify_totp(u,'000')
-    code=totp_code(secret,int(time.time())//30);assert verify_totp(u,code);assert not verify_totp(u,code)
-    c=Client();r=c.post('/ops/login',{'username':'protected','password':'long-staff-password','code':''})
+    get_user_model().objects.create_user('protected',password='long-staff-password',is_staff=True,is_superuser=True)
+    c=Client();r=c.post('/ops/login',{'username':'protected','password':'wrong-password'})
     assert r.status_code==200 and COOKIE not in c.cookies
-    assert c.post('/ops/dev-login').status_code==403
+    r=c.post('/ops/login',{'username':'protected','password':'long-staff-password'})
+    assert r.status_code==302 and COOKIE in c.cookies
+    assert AuditLog.objects.get(action='staff.login').reason=='Password verified'
+    assert b'name="code"' not in Client().get('/ops/login').content
+    customer=get_user_model().objects.create_user('not-staff',password='long-staff-password')
+    r=Client().post('/ops/login',{'username':'not-staff','password':'long-staff-password'})
+    assert r.status_code==200, 'a non-staff account still cannot sign in'
+    assert Client().post('/ops/dev-login').status_code==403
 
 def test_local_staff_login_needs_flag_loopback_and_csrf(settings):
     settings.DEBUG=True;settings.DEV_AUTH_ENABLED=True;c=Client(enforce_csrf_checks=True)
@@ -102,8 +105,8 @@ def test_all_implemented_staff_routes_render_all_locales():
 
 def test_password_login_rate_limit():
     c=Client()
-    for _ in range(5):assert c.post('/ops/login',{'username':'missing','password':'bad','code':'000000'}).status_code==200
-    assert c.post('/ops/login',{'username':'missing','password':'bad','code':'000000'}).status_code==429
+    for _ in range(5):assert c.post('/ops/login',{'username':'missing','password':'bad'}).status_code==200
+    assert c.post('/ops/login',{'username':'missing','password':'bad'}).status_code==429
 
 def test_support_default_entry_is_role_appropriate():
     c,_=staff_client('Support')
