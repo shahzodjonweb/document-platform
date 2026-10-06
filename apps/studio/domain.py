@@ -82,11 +82,16 @@ def validate_content(account,content,output_format='pdf'):
         if not isinstance(s,dict): raise DomainError('invalid_parameters')
         clean.append({'id':str(s.get('id',f's{i+1}'))[:40],'heading':str(s.get('heading',s.get('title','')))[:160],'body':str(s.get('body',''))[:body_cap],'notes':str(s.get('notes',''))[:2000]})
         # A slide also carries the layout it chose and what fills it. A document
-        # section keeps exactly its four keys: nothing about documents changes.
-        if output_format=='pptx':
-            from .layouts import clean_slide_fields
-            try:clean[-1].update(clean_slide_fields(s))
-            except ValueError:raise DomainError('invalid_parameters') from None
+        # section does only when it is more than text (a table, a list, a photo);
+        # a plain one keeps exactly its four keys.
+        try:
+            if output_format=='pptx':
+                from .layouts import clean_slide_fields
+                clean[-1].update(clean_slide_fields(s))
+            else:
+                from .doc_designs import clean_fields
+                clean[-1].update(clean_fields(s))
+        except ValueError:raise DomainError('invalid_parameters') from None
     questions=content.get('questions',[])
     if not isinstance(questions,list): raise DomainError('invalid_parameters')
     questions=questions[:caps['questions']]
@@ -167,7 +172,7 @@ def _image_cap(account,fid):
     Set here rather than taken from the client, the same way the page and
     question counts are.
     """
-    if fid!=SLIDES:return 0
+    if fid not in GENERATION_IDS:return 0
     from operations.integrations import pixabay_config
     if not pixabay_config()['ready']:return 0
     return int(plan_limits(account).get('max_deck_images',0) or 0)
@@ -271,8 +276,22 @@ def _prepare_draft(account,data,revision_base=None):
         supplied=len([p for p in (text or '\n\n'.join(x['text'] for x in excerpts)).split('\n\n') if p.strip()])
         if supplied:length=min(supplied,paging.ceiling(account,fmt))
     question_count=min(paging.requested_questions(brief),limits(account)['questions'])
-    options={**options,'question_count':question_count,'length':length,'requested_pages':asked,
-             'image_cap':_image_cap(account,fid)}
+    # A document is plain prose in black and white unless its description asks
+    # for more: pictures, tables or lists (layouts), or a look or colours (design).
+    wants={}
+    if fid!=SLIDES:
+        from . import doc_designs
+        wants={'wants_layouts':doc_designs.asks_for_layouts(brief),'wants_design':doc_designs.asks_for_design(brief)}
+        if original is not None:
+            # A change request keeps what the document already had.
+            before=(revision_base or original).get('options',{})
+            wants={key:value or bool(before.get(key)) for key,value in wants.items()}
+    image_cap=_image_cap(account,fid)
+    if fid!=SLIDES and not doc_designs.asks_for_images(brief) and not (original is not None and (revision_base or original).get('options',{}).get('image_cap')):
+        image_cap=0
+    options={**{k:v for k,v in options.items() if k not in ('wants_layouts','wants_design')},
+             'question_count':question_count,'length':length,'requested_pages':asked,
+             'image_cap':image_cap,**wants}
     template_id=options.get('template_id','clean')
     from .templates import style_for
     # Density is fixed at the spacing the page-fill targets were measured

@@ -139,9 +139,16 @@ def max_section_chars(output_format):
     return chars_per_page(output_format) * 4
 
 
+# A document flows from one section into the next and is then held to its page
+# count as a whole (rendering.fit_document), so it is asked for nearly a full
+# page per section; a deck's slides still each hold their own.
+FLOW_FILL_RATIO = 0.95
+
+
 def target_chars(output_format):
     """What to ask the model for, so its overshoot still fits the page."""
-    return int(chars_per_page(output_format) * FILL_RATIO)
+    ratio = FILL_RATIO if output_format == 'pptx' else FLOW_FILL_RATIO
+    return int(chars_per_page(output_format) * ratio)
 
 
 def target_words(output_format):

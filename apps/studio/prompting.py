@@ -47,12 +47,17 @@ def schema(data, feature, *, final=True, design=False):
     base = copy.deepcopy(schema_for(feature, data.get('output_format', 'pdf')))
     properties = base['properties']
     if 'design' in properties:
-        # Only the call that chooses a deck's look sees the field, and it may
-        # not answer with the empty value the others are filled in with.
+        # Only the call that chooses a deck's or document's look sees the field,
+        # and it may not answer with the empty value the others are filled in with.
         if design:
             properties['design'] = {**properties['design'], 'enum': properties['design']['enum'][1:]}
         else:
             properties.pop('design')
+    if data.get('output_format') != 'pptx' and not data.get('options', {}).get('wants_layouts'):
+        # A plain document is headings and prose: no layout fields to fill.
+        from .provider import DOC_SECTION_FIELDS
+        for field in DOC_SECTION_FIELDS:
+            properties['sections']['items']['properties'].pop(field, None)
     section = properties['sections']['items']['properties']
     outline = is_outline(data, feature)
     # Final slide notes are a deliverable. Document notes are only needed when
@@ -111,13 +116,21 @@ def request_body(config, data, feature, span=None):
             'or questions. Keep each selected section\'s existing layout and notes unless the '
             'change requires editing them. Include only source-grounded new citations.'
         )
-    from . import deck_designs
+    from . import deck_designs, doc_designs
     if fmt == 'pptx' and not revision:
         # The design list is in every deck call, so the cached prefix is the
         # same across a long deck's batches; only the first call's schema asks.
         instructions += '\n' + layouts.reference(bool(options.get('image_cap')))
         instructions += '\n' + deck_designs.reference()
-    design = deck_designs.wanted(data, first)
+    if fmt != 'pptx':
+        every = data.get('options', {})
+        guide = doc_designs.reference(bool(every.get('wants_layouts')), bool(every.get('wants_design')),
+                                      int(options.get('image_cap', 0) or 0))
+        if guide:
+            instructions += '\n' + guide
+        design = doc_designs.wanted(data, first)
+    else:
+        design = deck_designs.wanted(data, first)
     # Stable source content comes before the varying slice and its instructions.
     # JSON separator whitespace is compacted, never whitespace inside user text.
     user = {'task': feature, 'output_locale': data['output_locale'],
@@ -177,8 +190,12 @@ def canonical(raw, data):
     result.setdefault('title', data['content']['title'])
     result.setdefault('questions', [])
     result.setdefault('citations', [])
-    if data.get('output_format') == 'pptx':
-        result.setdefault('design', '')
+    result.setdefault('design', '')
     for section in result['sections']:
+        if data.get('output_format') != 'pptx':
+            section.setdefault('layout', 'text')
+            section.setdefault('items', [])
+            section.setdefault('columns', [])
+            section.setdefault('image_query', '')
         section.setdefault('notes', '')
     return result

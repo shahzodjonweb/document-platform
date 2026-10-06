@@ -17,7 +17,10 @@ def _payload(data):
     # A deck's outline chooses its layouts, photos included, so the customer can
     # review them before the paid run keeps them.
     value['options']={'question_count':0,'length':len(data['content']['sections']),'outline_only':True,
-                      'image_cap':data['options'].get('image_cap',0)}
+                      'image_cap':data['options'].get('image_cap',0),
+                      # A document's look and layouts are planned with its outline.
+                      **{key:data['options'][key] for key in ('wants_layouts','wants_design','template_style')
+                         if key in data['options']}}
     value['content']['questions']=[]
     value.pop('revision',None)
     return value
@@ -57,8 +60,8 @@ def execute_outline(job,draft,data,original,config,output_dir):
             raw,usage=generate(config,_payload(data),'ai.outline',job.id,token_limit=job.policy['generation_bounds']['input_tokens'])
             content=validate_content(job.account,raw,data['output_format'])
             # A deck's look is chosen while it is planned; the paid run keeps it.
-            from .deck_designs import remember
-            remember(data,raw,replace=True)
+            from . import deck_designs,doc_designs
+            (deck_designs if data['output_format']=='pptx' else doc_designs).remember(data,raw,replace=True)
             # An outline is headings and a sentence each. A model that writes more
             # than that, or adds questions nobody asked for, is cut back to the
             # shape of an outline — it does not cost the customer the job.

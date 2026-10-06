@@ -63,7 +63,9 @@ def test_each_service_builds_a_request_and_accepts_an_answer(feature, output_for
     payload = json.loads(body['input'])
     assert payload['task'] == feature
     assert payload['max_sections'] == 5
-    _validate(model_answer(), schema_for(feature))
+    # The full schema is checked after the fields a call left out are filled in.
+    from apps.studio.prompting import canonical
+    _validate(canonical(model_answer(), draft()), schema_for(feature))
 
 
 def test_the_prompt_asks_for_length_in_units_a_model_can_count():

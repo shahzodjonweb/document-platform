@@ -55,8 +55,9 @@ def execute_generation(job,output_dir):
             content=validate_content(job.account,raw,data['output_format'])
             # The look the model chose is kept with the draft, so a later change
             # request redraws the same deck rather than picking again.
-            from .deck_designs import remember
-            remember(data,raw)
+            from . import deck_designs,doc_designs
+            if data['output_format']=='pptx':deck_designs.remember(data,raw)
+            else:doc_designs.remember(data,raw,replace=bool(data.get('revision')))
             # Bounds can also change while the provider is running. Deliver
             # only a result that still preserves everything outside its scope.
             ensure_selected_preservation(data,content)
@@ -103,7 +104,9 @@ def execute_generation(job,output_dir):
         photos=_photos(job,content['sections'],warnings)
         artifacts=[render_pptx(content,output_dir/'document.pptx',data['output_locale'],'user_document',style=style,photos=photos)]
     else:
-        artifacts=[render_pdf(content,output_dir/'document.pdf',data['output_locale'],'user_document',style=style)]
+        # A document only has photos when its description asked for pictures.
+        photos=_photos(job,content['sections'],warnings) if any(s.get('layout')=='image' for s in content['sections']) else {}
+        artifacts=[render_pdf(content,output_dir/'document.pdf',data['output_locale'],'user_document',style=style,photos=photos)]
     # A document that renders longer than the estimate is still the document that
     # was asked for. It is delivered, said out loud, and charged at the quote.
     allowance=bounds.get('output_pages',limits(job.account)['slides' if data['output_format']=='pptx' else 'sections'])

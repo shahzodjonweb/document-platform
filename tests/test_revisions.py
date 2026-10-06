@@ -99,7 +99,11 @@ def test_a_change_produces_a_new_document_of_the_same_length(premium):
     job, _ = submit_job(premium, quote.id, f'revision-{revised.id}')
     job = execute_job(job.id)
     assert job.status == 'succeeded', job.error_code
-    assert job.artifacts.get().file.page_count == 3
+    # Same length: the same three sections. A short document flows onto fewer
+    # pages rather than leaving the rest of each page empty.
+    revised.refresh_from_db()
+    assert len(unpack(revised.encrypted_data)['content']['sections']) == 3
+    assert job.artifacts.get().file.page_count <= 3
 
 
 def test_a_change_needs_something_to_change(premium):

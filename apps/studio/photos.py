@@ -244,7 +244,8 @@ def wanted(sections):
         if not section.get('image_query'):
             continue
         layout = section.get('layout')
-        if layout in PHOTO_LAYOUTS or (layout == 'cover' and index == 0 and len(sections) >= 2):
+        # `image` is a document section's photo layout; the rest are a deck's.
+        if layout in PHOTO_LAYOUTS or layout == 'image' or (layout == 'cover' and index == 0 and len(sections) >= 2):
             chosen.append(section)
     return chosen
 

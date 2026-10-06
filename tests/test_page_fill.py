@@ -66,10 +66,10 @@ def test_a_section_at_the_slide_target_is_exactly_one_slide(tmp_path, sections):
     assert result['page_count'] == sections
 
 
-def test_a_short_section_still_gets_its_own_page(tmp_path):
-    """The count is a promise: a model that writes short leaves whitespace,
-    it does not quietly hand back fewer pages than were asked for."""
-    assert render_pdf(filled(200, 5), tmp_path / 'sparse.pdf')['page_count'] == 5
+def test_short_sections_share_a_page_instead_of_leaving_it_empty(tmp_path):
+    """A document flows: a short section runs on into the next one rather than
+    leaving the rest of its page blank. A slide is still its own slide."""
+    assert render_pdf(filled(200, 5), tmp_path / 'sparse.pdf')['page_count'] == 1
     assert render_pptx(filled(60, 5), tmp_path / 'sparse.pptx')['page_count'] == 5
 
 
@@ -306,7 +306,11 @@ def test_five_sections_are_five_pages_however_much_the_model_writes(tmp_path, ch
     only when the smallest readable setting still cannot hold it.
     """
     result = render_pdf(filled(chars, 5, profile), tmp_path / f'{profile}-{chars}.pdf')
-    assert result['page_count'] == 5, f'{chars} chars of {profile} prose did not keep to five pages'
+    if chars < pages.CHARS_PER_PAGE * 0.8:
+        # Too little to fill five pages: it flows onto fewer, with no blank page ends.
+        assert result['page_count'] < 5, result
+    else:
+        assert result['page_count'] == 5, f'{chars} chars of {profile} prose did not keep to five pages'
     # Shortening is the last resort, never the first: ordinary overshoot is absorbed.
     assert result['shortened'] is (chars > 5000), result
 
