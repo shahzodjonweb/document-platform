@@ -11,6 +11,7 @@ from PIL import Image
 
 DETECTION_SIDE = 1280
 MAX_WARP_PIXELS = 16_000_000
+SEGMENTATION_SIDE = 512
 
 
 @lru_cache(maxsize=1)
@@ -89,7 +90,7 @@ def _geometry(quad, width, height):
     return True
 
 
-def _candidate(quad, gray, saturation, edges):
+def _candidate(quad, gray, saturation, edges, *, compact_writing=False):
     cv2, np = _numeric()
     height, width = gray.shape
     if not _geometry(quad, width, height):
@@ -121,6 +122,14 @@ def _candidate(quad, gray, saturation, edges):
                 and w <= width * .5)
     if marks < 5:
         return None
+    if compact_writing:
+        # Weak-edge segmentation can also propose vented appliances. Border
+        # fragments, long slots and a knob are not sufficient written evidence.
+        compact_marks = sum(1 for x, y, w, h, area in stats[1:]
+            if 3 <= area <= light.size * .02 and 3 <= h <= height * .15
+            and 3 <= w <= min(width * .15, h * 4) and h <= w * 5)
+        if compact_marks < 5:
+            return None
     # Look beyond a printed frame/table stroke. Its dark outline is not evidence
     # of a paper edge when the surrounding area is still the same sheet.
     gap = max(6, round(min(width, height) * .025))
@@ -157,6 +166,96 @@ def _candidate(quad, gray, saturation, edges):
         return None
     return {'quad': quad, 'mask': mask > 0, 'area': float(interior.sum()),
             'score': float(interior.sum()) * (1 + min(contrast, 100) / 300 + support / 5)}
+
+
+def _circumscribed_quad(quad, hull):
+    """Enclose bowed paper sides instead of cutting them with an inscribed quad."""
+    cv2, np = _numeric()
+    points = hull.reshape(-1, 2).astype(np.float32)
+    normals, constants, shifts = [], [], []
+    for index in range(4):
+        start, end = quad[index], quad[(index + 1) % 4]
+        edge = end - start
+        outward = np.array([edge[1], -edge[0]]) / np.linalg.norm(edge)
+        constant = float(np.max(points @ outward))
+        shifts.append(max(0., constant - float(start @ outward)))
+        normals.append(outward)
+        constants.append(constant)
+    shortest = min(np.linalg.norm(quad[(i + 1) % 4] - quad[i]) for i in range(4))
+    if max(shifts) > shortest * .06:
+        return None  # Large irregular foreground is not a gently bowed sheet.
+    result = []
+    for index in range(4):
+        previous = (index - 1) % 4
+        matrix = np.array([normals[previous], normals[index]])
+        if abs(np.linalg.det(matrix)) < .2:
+            return None
+        result.append(np.linalg.solve(matrix, [constants[previous], constants[index]]))
+    result = np.asarray(result, np.float32)
+    if abs(cv2.contourArea(result)) > abs(cv2.contourArea(quad)) * 1.15:
+        return None
+    return result
+
+
+def _segmented_candidates(image, gray, saturation):
+    """Bounded fallback for faint curved edges that cannot form closed contours.
+
+    Segmentation only proposes outlines. Each still needs the same independent
+    geometry, writing, paper/background contrast and observed-edge validation.
+    The initialization rectangle must never impersonate a visible paper edge.
+    """
+    cv2, np = _numeric()
+    scale = min(1., SEGMENTATION_SIDE / max(image.size))
+    width, height = max(2, round(image.width * scale)), max(2, round(image.height * scale))
+    rgb = cv2.resize(np.asarray(image), (width, height), interpolation=cv2.INTER_AREA)
+    x, y = max(2, int(width * .025)), max(2, int(height * .025))
+    rect_width, rect_height = int(width * .95), int(height * .95)
+    mask = np.zeros((height, width), np.uint8)
+    cv2.setRNGSeed(0)
+    try:
+        cv2.grabCut(rgb, mask, (x, y, rect_width, rect_height),
+                    np.zeros((1, 65)), np.zeros((1, 65)), 3, cv2.GC_INIT_WITH_RECT)
+    except cv2.error:
+        return []  # Solid/degenerate inputs may not support a foreground model.
+    foreground = ((mask == cv2.GC_FGD) | (mask == cv2.GC_PR_FGD)).astype(np.uint8) * 255
+    # Remove single-pixel desk/shadow spurs before fitting the outline. The
+    # enclosing crop and its safety padding preserve bowed sides and edge ink.
+    foreground = cv2.morphologyEx(foreground, cv2.MORPH_OPEN,
+                                 cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)))
+    contours, _ = cv2.findContours(foreground, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    weak_edges = cv2.Canny(cv2.GaussianBlur(gray, (5, 5), 0), 5, 15)
+    validation_scale = np.array([gray.shape[1] / width, gray.shape[0] / height], np.float32)
+    candidates = []
+    for contour in sorted(contours, key=cv2.contourArea, reverse=True)[:10]:
+        if cv2.contourArea(contour) < width * height * .04:
+            break
+        points = contour.reshape(-1, 2)
+        touching = (np.any(points[:, 0] <= x + 1)
+                    or np.any(points[:, 0] >= x + rect_width - 2)
+                    or np.any(points[:, 1] <= y + 1)
+                    or np.any(points[:, 1] >= y + rect_height - 2))
+        if touching:
+            return []  # A partial sheet must not be discarded beside another.
+        hull = cv2.convexHull(contour)
+        if cv2.contourArea(contour) / max(1, cv2.contourArea(hull)) < .94:
+            continue
+        perimeter = cv2.arcLength(hull, True)
+        for epsilon in (.015, .025, .035):
+            polygon = cv2.approxPolyDP(hull, epsilon * perimeter, True)
+            if len(polygon) != 4 or not cv2.isContourConvex(polygon):
+                continue
+            quad = _order(polygon)
+            candidate = _candidate(quad * validation_scale, gray, saturation, weak_edges,
+                                   compact_writing=True)
+            if candidate is None:
+                continue
+            envelope = _circumscribed_quad(quad, hull)
+            if envelope is None or not _geometry(envelope, width, height):
+                continue
+            candidate['warp_quad'] = envelope * validation_scale
+            candidates.append(candidate)
+            break
+    return candidates
 
 
 def _detect(image):
@@ -197,7 +296,9 @@ def _detect(image):
                     duplicate.update(candidate)
                 break
     if not candidates:
-        return None, False
+        candidates = _segmented_candidates(image, gray, saturation)
+        if not candidates:
+            return None, False
     candidates.sort(key=lambda item: item['score'], reverse=True)
     best = candidates[0]
     if best['area'] < gray.size * .18:
@@ -206,7 +307,7 @@ def _detect(image):
         overlap = float(np.sum(best['mask'] & other['mask'])) / min(best['area'], other['area'])
         if other['area'] >= gray.size * .04 and overlap < .20:
             return None, False  # More than one plausible page: retain both.
-    quad = best['quad'].copy()
+    quad = best.get('warp_quad', best['quad']).copy()
     quad[:, 0] *= image.width / small.width
     quad[:, 1] *= image.height / small.height
     return quad, True

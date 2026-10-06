@@ -38,12 +38,22 @@ retains colored ink, and applies only inside a detected page when cropping is of
 Both disabled leaves the existing EXIF/alpha/layout conversion unchanged. Detection
 uses a 1280-pixel thumbnail; corrected pages are bounded to 16 MP, while original
 inputs retain the existing 40 MP limit. The worker keeps its existing CPU, memory
-and timeout limits and uses one numeric processing thread. Detection is conservative
+and timeout limits and uses one numeric processing thread. Faint, gently curved
+outlines receive a bounded 512-pixel, three-iteration segmentation fallback when
+closed edge contours are unavailable. These proposals still require observed
+edges, paper/background contrast and compact writing; initialization borders,
+partial pages and competing sheets cannot supply a crop. The corrected outline
+encloses bowed sides to retain writing near their edges. Detection is conservative
 and may leave low-contrast, obscured or blank pages untouched. Writing-like marks
 are required to avoid cropping bright panels in ordinary photographs. Internal `image_processing`
 metadata contains only per-page outcome booleans and counts, without document text.
-`tests/test_image_scanning.py`, `tests/test_image_scanning_api.py` and
+`tests/test_image_scanning.py`, `tests/test_image_scanning_realistic.py`,
+`tests/test_image_scanning_safety.py`, `tests/test_image_scanning_api.py` and
 `tests/test_bot_image_scanning.py` cover artifacts, quotes, jobs and bot switches.
+Service verification also processes anonymized curved gray paper through the
+actual HTTP/queue/worker/download path and checks the resulting PDF pixels with
+defaults enabled and with both effects disabled. Previously generated PDFs are
+immutable; scanning changes apply to new image conversions.
 
 ## Evidence and open qualification
 
