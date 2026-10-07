@@ -89,8 +89,10 @@ def test_the_prompt_asks_for_length_in_units_a_model_can_count():
     # A document is asked for prose, measured in words.
     document = json.loads(request_body(CONFIG, draft(), DOCUMENT)['input'])['writing_guidance']
     assert f'{pages.target_words("pdf")} words' in document
-    # The target stays below what the page holds, so ordinary variance still fits.
-    assert pages.target_chars('pdf') < pages.chars_per_page('pdf')
+    # A document is asked for more than a page per section: the model writes
+    # about two thirds of what it is asked for, and the renderer absorbs the rest.
+    assert pages.target_chars('pdf') > pages.chars_per_page('pdf')
+    assert f'at least {round(pages.target_words("pdf") * 0.8)} words' in document
 
 
 def test_a_slide_is_asked_for_as_a_slide_not_as_a_short_page():

@@ -79,14 +79,14 @@ def schema(data, feature, *, final=True, design=False):
     return obj(properties)
 
 
-def output_budget(data, feature, sections):
-    from .pages import response_tokens, RESPONSE_CEILING
+def output_budget(data, feature, sections, questions=0):
+    from .pages import call_tokens, RESPONSE_CEILING
     if is_outline(data, feature):
         # Covers bounded coverage text, headings, source quotes and slide fields.
         # Final document/deck budgets remain unchanged.
         per_section = 700 if data.get('output_format') == 'pptx' else 450
         return min(RESPONSE_CEILING, 800 + per_section * sections)
-    return response_tokens(sections)
+    return call_tokens(sections, questions)
 
 
 def request_body(config, data, feature, span=None):
@@ -173,7 +173,8 @@ def request_body(config, data, feature, span=None):
             user['revision']['selected_section_ids'] = [s['id'] for s in mine]
     result = {'model': config['model'], 'store': False, 'instructions': instructions,
               'input': json.dumps(user, ensure_ascii=False, separators=(',', ':')),
-              'max_output_tokens': output_budget(data, feature, len(mine)),
+              'max_output_tokens': output_budget(data, feature, len(mine),
+                                                 user['max_questions']),
               'text': {'format': {'type': 'json_schema', 'name': 'document', 'strict': True,
                                  'schema': schema(data, feature, final=final, design=design)}}}
     # Supported by Responses models. Stable across a user's related batches;

@@ -40,14 +40,15 @@ CHARS_PER_WORD = 6.5
 
 # A page of prose costs roughly this much of the response, taking the worst of
 # the three locales' tokenizers and leaving room for the heading and the JSON
-# around it.
-PAGE_TOKENS = 1100
+# around it. A document's page is asked for at a page and a quarter (see
+# FLOW_FILL_RATIO), so this covers that.
+PAGE_TOKENS = 1500
 RESPONSE_BASE_TOKENS = 800
 # One response is asked for at most this much. It bounds a single call, not the
 # document: longer documents are written in several calls of PAGES_PER_CALL
 # sections each, so the page ceiling comes from the plan rather than from how
 # much a model can say in one breath.
-RESPONSE_CEILING = 16000
+RESPONSE_CEILING = 24000
 # Sections per call. Five pages short of what the ceiling would allow, because a
 # response that runs out of room mid-JSON is unparseable and loses the whole call
 # — the margin is worth more than the round trip it saves.
@@ -62,31 +63,80 @@ WORDS = {
     'один': 1, 'одна': 1, 'два': 2, 'две': 2, 'три': 3, 'четыре': 4, 'пять': 5,
     'шесть': 6, 'семь': 7, 'восемь': 8, 'девять': 9, 'десять': 10,
 }
-UNITS = (r'(?:pages?|slides?|sahifa\w*|bet(?:lik|lar|li)?|varaq\w*|slayd\w*'
-         r'|страниц\w*|стр|слайд\w*)\b')
+UNIT_WORDS = (r"pages?|slides?|sahifa\w*|bet(?:lik|lar|li|dan)?|var[ao]q\w*|slayd\w*"
+              r"|страниц\w*|стр|слайд\w*|лист(?:а|ов)?")
+UNITS = r'(?:' + UNIT_WORDS + r')\b'
 # Uzbek counts with a classifier between the number and the noun: "6 ta slayd".
 COUNTED = r'\s*[-–]?\s*(?:ta|dona)?\s*'
-NUMBER = re.compile(r'(\d{1,3})' + COUNTED + UNITS, re.IGNORECASE)
+NUMBER = re.compile(r'(\d{1,3})(' + COUNTED + r')(' + UNIT_WORDS + r')\b', re.IGNORECASE)
 SPELLED = re.compile(r"([\w'’]+)" + COUNTED + UNITS, re.IGNORECASE | re.UNICODE)
+# Uzbek numbers a page with a hyphen: "1-bet" is page one, "3-slayd" the third
+# slide. A pasted essay or slide plan is full of them, and each one read as a
+# count turned a whole essay into a one-slide deck. "10-betlik" and "12-page"
+# are still counts.
+ORDINAL_NOUN = re.compile(r"(?:bet|sahifa|slayd|var[ao]q)(?:da|ga|ning|dan|ni|si|i)?", re.IGNORECASE)
+# "har 1ta slaydga rasm", "har bir slaydda": something on every slide, not a count.
+EACH = re.compile(r"(?:\bhar|\beach|\bevery|\bper|кажд\w*)\s+(?:bir\s+)?$", re.IGNORECASE)
+# Nouns that a number counts instead of pages: "9 sinf", "5 ta savol", "4 ta rasm".
+COUNTED_NOUNS = (r"(?:savol|rasm|fikr|reja|misol|test|ball|bo'lim|qism|sinf|kurs|yil|asr|guruh|bob|mavzu"
+                 r"|daqiqa|minut|soat|kun|вопрос|класс|курс|минут|картин|фото)\w*")
+LETTERS = r"(?:[^\W\d_]|')"
+# One word between the count and the noun: "10 ta chiroyli slayd", "14tashlab slayd".
+LOOSE = re.compile(r"(\d{1,3})(?:\s*[-–]?\s*ta)?(" + LETTERS + r"*)\s+(?:(" + LETTERS + r"+)\s+)?" + UNITS,
+                   re.IGNORECASE | re.UNICODE)
+# The count after the noun: "Sahifalar soni 20 ta", "количество слайдов: 12".
+AFTER = re.compile(r"(?:sahifa|slayd|bet|var[ao]q|page|slide)\w*\s+(?:soni|sonini|miqdori)\s*[:\-–]?\s*(\d{1,3})"
+                   r"|количеств\w*\s+(?:слайд|страниц|лист)\w*\s*[:\-–]?\s*(\d{1,3})", re.IGNORECASE)
+# No noun at all, only when nothing else names a count: "15 ta bo'lsin".
+NOUNLESS = re.compile(r"(\d{1,3})\s*[-–]?\s*ta(?:dan)?\s+(?:bo'lsin|bolsin|bulsin|bo'lishi|kerak|qil\w*|tayyorla\w*)\b",
+                      re.IGNORECASE)
 
 
 def _normalised(text):
-    """Uzbek is written with several apostrophes; treat them as one."""
+    """Uzbek is written with several apostrophes, and some keyboards type o‘ as ó; treat them as one."""
     folded = unicodedata.normalize('NFKC', text or '')
-    return folded.replace('‘', "'").replace('’', "'").replace('ʻ', "'").replace('ʼ', "'")
+    for mark in ('‘', '’', 'ʻ', 'ʼ', '`', '´'):
+        folded = folded.replace(mark, "'")
+    folded = re.sub('[óòōŏ]', "o'", folded)
+    folded = re.sub('[ÓÒŌŎ]', "O'", folded)
+    return folded.replace('ğ', "g'").replace('Ğ', "G'")
+
+
+def _each(body, start):
+    return bool(EACH.search(body[max(0, start - 16):start]))
 
 
 def requested_pages(text):
     """The page count named in a description, or None when it names none."""
     body = _normalised(text)
-    match = NUMBER.search(body)
-    if match:
-        count = int(match.group(1))
-        return count if count > 0 else None
+    ordinals = set()
+    for match in NUMBER.finditer(body):
+        count, between, unit = int(match.group(1)), match.group(2), match.group(3)
+        if '-' in between.replace('–', '-') and 'ta' not in between.lower() and ORDINAL_NOUN.fullmatch(unit):
+            ordinals.add(count)
+        elif count > 0 and not _each(body, match.start()):
+            return count
+    after = AFTER.search(body)
+    if after:
+        count = int(after.group(1) or after.group(2))
+        if count > 0:
+            return count
+    # A pasted plan numbers its slides "1-slayd … 9-slayd": the last one is the count.
+    if len(ordinals) > 1:
+        return max(ordinals)
+    for match in LOOSE.finditer(body):
+        glued, filler = match.group(2), match.group(3) or ''
+        if (int(match.group(1)) > 0 and not _each(body, match.start())
+                and not re.fullmatch(COUNTED_NOUNS, glued, re.IGNORECASE)
+                and not re.fullmatch(COUNTED_NOUNS, filler, re.IGNORECASE)):
+            return int(match.group(1))
     for candidate in SPELLED.finditer(body):
         count = WORDS.get(candidate.group(1).lower())
-        if count:
+        if count and not _each(body, candidate.start()):
             return count
+    for match in NOUNLESS.finditer(body):
+        if int(match.group(1)) > 0 and not _each(body, match.start()):
+            return int(match.group(1))
     return None
 
 
@@ -140,9 +190,13 @@ def max_section_chars(output_format):
 
 
 # A document flows from one section into the next and is then held to its page
-# count as a whole (rendering.fit_document), so it is asked for nearly a full
-# page per section; a deck's slides still each hold their own.
-FLOW_FILL_RATIO = 0.95
+# count as a whole (rendering.fit_document): a section that runs long is set a
+# little tighter rather than spilling. So a document is asked for more than a
+# page per section. Measured in production, the model writes about two thirds of
+# what it is asked for: seven sections asked at 0.95 of a page came back as five
+# pages. What it overshoots, the renderer absorbs; what it still falls short of,
+# filling.top_up writes further. A deck's slides still each hold their own.
+FLOW_FILL_RATIO = 1.25
 
 
 def target_chars(output_format):
@@ -158,6 +212,20 @@ def target_words(output_format):
 
 def response_tokens(pages):
     return min(RESPONSE_CEILING, RESPONSE_BASE_TOKENS + pages * PAGE_TOKENS)
+
+
+# A reasoning model spends part of its output budget thinking before it writes.
+# The last call of a ten-slide deck covers slides 9-10 and was given 3000
+# tokens; the thinking used them up, the answer was cut off, and the whole deck
+# failed. No writing call is given less than this.
+MIN_CALL_TOKENS = 6000
+# The questions are written in the last call, so its budget grows with them.
+QUESTION_TOKENS = 200
+
+
+def call_tokens(pages, questions=0):
+    """What one writing call may spend: its pages, its questions, and room to think."""
+    return min(RESPONSE_CEILING, max(MIN_CALL_TOKENS, response_tokens(pages)) + QUESTION_TOKENS * questions)
 
 
 def batches(count, per_call=PAGES_PER_CALL):

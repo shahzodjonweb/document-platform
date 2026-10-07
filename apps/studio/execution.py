@@ -107,6 +107,14 @@ def execute_generation(job,output_dir):
         # A document only has photos when its description asked for pictures.
         photos=_photos(job,content['sections'],warnings) if any(s.get('layout')=='image' for s in content['sections']) else {}
         artifacts=[render_pdf(content,output_dir/'document.pdf',data['output_locale'],'user_document',style=style,photos=photos)]
+        # A document that came out short of the pages asked for is written
+        # further, once, and drawn again; the renderer still holds the count.
+        if cfg['mode']=='openai':
+            from .filling import top_up
+            longer=top_up(cfg,data,content,len(data['content']['sections']),artifacts[0]['page_count'],job=job,deadline=deadline)
+            if longer is not content:
+                content=longer
+                artifacts=[render_pdf(content,output_dir/'document.pdf',data['output_locale'],'user_document',style=style,photos=photos)]
     # A document that renders longer than the estimate is still the document that
     # was asked for. It is delivered, said out loud, and charged at the quote.
     allowance=bounds.get('output_pages',limits(job.account)['slides' if data['output_format']=='pptx' else 'sections'])

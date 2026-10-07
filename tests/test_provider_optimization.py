@@ -144,13 +144,14 @@ def test_failed_multi_batch_job_retries_only_missing_calls_through_api(settings,
     quote = generation_quote(customer, authored.id, authored.version)
     job, _ = submit_job(customer, quote.id, 'initial-offline-generation')
     def answer(body, number):
-        if number == 2: raise TimeoutError('offline simulated timeout')
+        # The second batch times out, and so does the one retry it gets.
+        if number in (2, 3): raise TimeoutError('offline simulated timeout')
         return pdf_answer(body)
     calls = transport(monkeypatch, answer)
     with pytest.raises(DomainError, match='provider_failed'):
         provider.generate(CONFIG, data, job.feature_id, job.id, token_limit=100_000)
     assert ProviderCheckpoint.objects.filter(status='completed').count() == 1
-    assert list(ProviderAttempt.objects.order_by('created_at').values_list('status', flat=True)) == ['succeeded','failed']
+    assert list(ProviderAttempt.objects.order_by('created_at').values_list('status', flat=True)) == ['succeeded','failed','failed']
     Job.objects.filter(pk=job.id).update(status='failed')
     client = login_client(customer)
     url = f'/api/v1/generation/jobs/{job.id}/retry-quote'
@@ -159,10 +160,10 @@ def test_failed_multi_batch_job_retries_only_missing_calls_through_api(settings,
     assert Job.objects.count() == 1, 'Reviewing cost cannot run the provider'
     retried, _ = submit_job(customer, reply.json()['id'], 'confirmed-offline-retry')
     result, usage = provider.generate(CONFIG, data, retried.feature_id, retried.id, token_limit=100_000)
-    assert len(calls) == 3, 'Retry should only call the missing second batch'
+    assert len(calls) == 4, 'Retry should only call the missing second batch'
     assert [s['id'] for s in result['sections']] == [s['id'] for s in data['content']['sections']]
     assert usage == {'input_tokens':120, 'output_tokens':80}
-    assert ProviderAttempt.objects.count() == 3
+    assert ProviderAttempt.objects.count() == 4
     assert ProviderCheckpoint.objects.filter(status='completed').count() == 2
     other = login_client(account(43))
     assert other.post(url, {}, content_type='application/json').status_code == 404

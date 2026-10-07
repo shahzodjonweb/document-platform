@@ -265,8 +265,11 @@ def _prepare_draft(account,data,revision_base=None):
     from . import pages as paging
     brief=prompt if original is not None else f'{prompt}\n{text}'
     length,asked=paging.resolve(account,brief,fmt)
-    # A change keeps the document's length unless the request names a new one.
-    if original is not None and asked is None:length=len(original['content']['sections'])
+    # A change keeps the document's length unless the request names a new total.
+    # A total of one is not taken from a change request: "har 1ta slaydga rasm"
+    # (a picture on every slide) once turned a nine-slide deck into one slide.
+    if original is not None and (asked is None or asked<2):
+        asked=None;length=len(original['content']['sections'])
     if selection:
         if asked is not None and asked!=len(original['content']['sections']):raise DomainError('invalid_parameters')
         length=len(original['content']['sections'])

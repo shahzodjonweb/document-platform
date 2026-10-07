@@ -111,9 +111,9 @@ def test_null_or_missing_usage_keeps_valid_output_and_unknown_ledger(request_cas
 
 @pytest.mark.parametrize('usage', [
     {'input_tokens':20001, 'output_tokens':50},
-    {'input_tokens':100, 'output_tokens':2000},
+    {'input_tokens':100, 'output_tokens':20000},
     {'input_tokens':20001, 'output_tokens':None},
-    {'input_tokens':None, 'output_tokens':2000},
+    {'input_tokens':None, 'output_tokens':20000},
 ])
 def test_known_reported_counts_still_enforce_request_budgets(request_case, usage):
     request_case[4]['usage'] = usage

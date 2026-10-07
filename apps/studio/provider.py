@@ -79,14 +79,16 @@ def writing_guidance(options, sections, output_format='pdf', first=0, total=None
             + (guide(max(0, photos)) if include_layouts else photo_guidance(max(0, photos)))
         )
     return (
-        f'Write {sections} section{ending}. Each section is one {unit} of text: about '
-        f'{max(3, round(words / 105))} paragraphs of 4 to 5 sentences, {words} words in all — that is '
-        f'what fills a {unit} at this size. Count words, not characters, and never write more than '
-        f'{round(words * 1.3)} words in a section: a longer one will be shortened. Only the final '
-        f'section may be shorter. The sections are read as one flowing document, not as separate '
-        f'pages: give a section a heading only where a new topic starts, and leave the heading '
-        f'empty when the section continues the previous one, so one topic with plenty to say runs '
-        f'under one heading for two or three sections. Separate paragraphs with a single line break.'
+        f'Write {sections} section{ending}. Each section is one {unit} of text: '
+        f'{max(4, round(words / 95))} paragraphs of 5 to 6 sentences, about {words} words in all and '
+        f'at least {round(words * 0.8)} words — that is what fills a {unit} at this size, and a section '
+        f'that is short leaves the document short of the pages the customer asked for. Count words, '
+        f'not characters, and never write more than {round(words * 1.3)} words in a section: a longer '
+        f'one will be shortened. Only the final section may be shorter. The sections are read as one '
+        f'flowing document, not as separate pages: give a section a heading only where a new topic '
+        f'starts, and leave the heading empty when the section continues the previous one, so one '
+        f'topic with plenty to say runs under one heading for two or three sections. Separate '
+        f'paragraphs with a single line break.'
     )
 
 
@@ -138,10 +140,16 @@ CALL_TIMEOUT_CEILING=300
 
 
 def call_budget(sections):
-    """Seconds the provider calls for a document of this many sections may take."""
-    from .pages import batches,response_tokens,PAGES_PER_CALL
-    per_call=min(CALL_TIMEOUT_CEILING,60+response_tokens(min(sections,PAGES_PER_CALL))//TOKENS_PER_SECOND)
-    return per_call*len(batches(sections))
+    """Seconds the provider calls for a document of this many sections may take.
+
+    A document written in several calls is given one call more: a reply that
+    comes back cut off is asked for once again (see _call), and that second
+    try has to fit too. A one-call document already fits in the ordinary lease.
+    """
+    from .pages import batches,call_tokens,PAGES_PER_CALL
+    per_call=min(CALL_TIMEOUT_CEILING,60+call_tokens(min(sections,PAGES_PER_CALL))//TOKENS_PER_SECOND)
+    calls=len(batches(sections))
+    return per_call*(calls+1 if calls>1 else 1)
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -212,10 +220,30 @@ def call_timeout(max_output_tokens,deadline=None,now=None):
     return max(15,min(timeout,deadline-(now if now is not None else time.monotonic())))
 
 
+class _CutOff(ValueError):
+    """The reply stopped at its token limit, so its JSON is unfinished."""
+
+
+# A second try is only worth starting with this long left on the lease.
+RETRY_MIN_SECONDS=45
+
+
+def _worth_retrying(failure):
+    """A cut-off reply, a lost connection or a server error can go right the second time.
+
+    An answer that arrived whole but is wrong (bad schema, impossible usage
+    counts) would only arrive wrong again, and a request refused as invalid
+    would be refused again.
+    """
+    import http.client,urllib.error
+    if isinstance(failure,urllib.error.HTTPError):
+        return failure.code>=500 or failure.code in (408,409,429)
+    return isinstance(failure,(_CutOff,json.JSONDecodeError,OSError,http.client.HTTPException))
+
+
 def _call(config,data,feature_id,idempotency_key,*,token_limit,span=None,deadline=None,job=None,draft=None):
     from . import prompting,provider_usage
     body=enforce_input_budget(config,data,feature_id,token_limit,span)
-    timeout=call_timeout(body['max_output_tokens'],deadline)
     first,last=span or (0,len(data['content']['sections']))
     expected=data['content']['sections'][first:last]
     stage='outline' if prompting.is_outline(data,feature_id) else 'revision' if data.get('revision') else 'generate'
@@ -241,26 +269,28 @@ def _call(config,data,feature_id,idempotency_key,*,token_limit,span=None,deadlin
             validate_content(job.account,content,data.get('output_format','pdf'))
         return content
 
-    def invoke():
+    def attempt(request_body,key):
         started=time.monotonic()
-        attempt=provider_usage.start_attempt(idempotency_key,feature_id,config['model'],stage=stage,
-                                             span=(first,last),job=job,output_locale=data['output_locale'])
+        record=provider_usage.start_attempt(key,feature_id,config['model'],stage=stage,
+                                            span=(first,last),job=job,output_locale=data['output_locale'])
         received=False
         try:
             request=urllib.request.Request('https://api.openai.com/v1/responses',
-                data=json.dumps(body,ensure_ascii=False,separators=(',',':')).encode(),
-                headers={'Authorization':'Bearer '+config['api_key'],'Content-Type':'application/json','Idempotency-Key':idempotency_key})
-            with urllib.request.build_opener(_NoRedirect).open(request,timeout=timeout) as response:
+                data=json.dumps(request_body,ensure_ascii=False,separators=(',',':')).encode(),
+                headers={'Authorization':'Bearer '+config['api_key'],'Content-Type':'application/json','Idempotency-Key':key})
+            with urllib.request.build_opener(_NoRedirect).open(request,timeout=call_timeout(request_body['max_output_tokens'],deadline)) as response:
                 raw=response.read(2_000_001)
             if len(raw)>2_000_000:raise ValueError()
             result=json.loads(raw)
-            provider_usage.received(attempt,result,round((time.monotonic()-started)*1000))
+            provider_usage.received(record,result,round((time.monotonic()-started)*1000))
             received=True
-            if not isinstance(result,dict) or result.get('status')!='completed':raise ValueError()
+            if not isinstance(result,dict):raise ValueError()
+            if result.get('status')=='incomplete':raise _CutOff()
+            if result.get('status')!='completed':raise ValueError()
             parts=[part['text'] for output in result.get('output',[]) if output.get('type')=='message'
                    for part in output.get('content',[]) if part.get('type')=='output_text']
             content=json.loads(''.join(parts))
-            _validate(content,body['text']['format']['schema'])
+            _validate(content,request_body['text']['format']['schema'])
             content=prompting.canonical(content,data)
             validate(content)
             usage=result.get('usage')
@@ -271,12 +301,31 @@ def _call(config,data,feature_id,idempotency_key,*,token_limit,span=None,deadlin
             # billing metadata alone must not discard a valid paid response.
             usage={key:(0 if usage.get(key) is None else usage[key]) for key in ('input_tokens','output_tokens')}
             if any(type(value) is not int or value<0 or value>1_000_000 for value in usage.values()):raise ValueError()
-            if usage['output_tokens']>body['max_output_tokens'] or usage['input_tokens']>token_limit:raise ValueError()
-            provider_usage.finish(attempt,'succeeded')
+            if usage['output_tokens']>request_body['max_output_tokens'] or usage['input_tokens']>token_limit:raise ValueError()
+            provider_usage.finish(record,'succeeded')
             return content,usage
         except Exception:
-            provider_usage.finish(attempt,'rejected' if received else 'failed',elapsed_ms=round((time.monotonic()-started)*1000))
-            raise DomainError('provider_failed',502,retryable=True) from None
+            provider_usage.finish(record,'rejected' if received else 'failed',elapsed_ms=round((time.monotonic()-started)*1000))
+            raise
+
+    def invoke():
+        """One call, asked once more when it fails in a way a second try can fix.
+
+        A reply cut off at its token limit is asked for again with twice the
+        room; a dropped connection or a server error is asked for again as it
+        was. The second try has to fit in the lease.
+        """
+        try:
+            return attempt(body,idempotency_key)
+        except Exception as failure:
+            if not _worth_retrying(failure) or (deadline is not None and deadline-time.monotonic()<RETRY_MIN_SECONDS):
+                raise DomainError('provider_failed',502,retryable=True) from None
+            from .pages import RESPONSE_CEILING
+            again=dict(body,max_output_tokens=min(RESPONSE_CEILING,body['max_output_tokens']*2)) if isinstance(failure,_CutOff) else body
+            try:
+                return attempt(again,idempotency_key+'-again')
+            except Exception:
+                raise DomainError('provider_failed',502,retryable=True) from None
 
     if job is not None and draft is not None:
         from .checkpoints import call
