@@ -2207,65 +2207,6 @@
         ],
         "type": "object"
       },
-      "SupportMessage": {
-        "properties": {
-          "created_at": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "id": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "message": {
-            "type": "string"
-          },
-          "sender": {
-            "enum": [
-              "customer",
-              "staff"
-            ]
-          }
-        },
-        "required": [
-          "id",
-          "message",
-          "sender",
-          "created_at"
-        ],
-        "type": "object"
-      },
-      "Ticket": {
-        "properties": {
-          "category": {
-            "type": "string"
-          },
-          "created_at": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "id": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "message": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string"
-          },
-          "subject": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "subject",
-          "status",
-          "created_at"
-        ],
-        "type": "object"
-      },
       "Usage": {
         "properties": {
           "daily": {
@@ -5507,106 +5448,6 @@
         ]
       }
     },
-    "/billing/payments/{id}/refund-request": {
-      "post": {
-        "description": "",
-        "operationId": "requestPaymentRefund",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-CSRFToken",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "properties": {
-                  "reason": {
-                    "maxLength": 4000,
-                    "minLength": 3,
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "reason"
-                ],
-                "type": "object"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "status": {
-                      "type": "string"
-                    },
-                    "ticket_id": {
-                      "format": "uuid",
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "ticket_id",
-                    "status"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Success"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/Error"
-                    }
-                  },
-                  "required": [],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Invalid request"
-          },
-          "401": {
-            "description": "Authentication required"
-          },
-          "403": {
-            "description": "Permission or CSRF validation failed"
-          },
-          "409": {
-            "description": "State conflict or quota unavailable"
-          }
-        },
-        "security": [
-          {
-            "customerSession": []
-          }
-        ]
-      }
-    },
     "/billing/payments/{id}/sandbox-refund": {
       "post": {
         "description": "",
@@ -6359,6 +6200,86 @@
             "customerSession": []
           }
         ]
+      }
+    },
+    "/contacts": {
+      "get": {
+        "description": "The Telegram accounts for support and for advertising or partnerships, as set in the admin. Empty when not set.",
+        "operationId": "getContacts",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "ads": {
+                      "properties": {
+                        "url": {
+                          "type": "string"
+                        },
+                        "username": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "username",
+                        "url"
+                      ],
+                      "type": "object"
+                    },
+                    "support": {
+                      "properties": {
+                        "url": {
+                          "type": "string"
+                        },
+                        "username": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "username",
+                        "url"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "support",
+                    "ads"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": []
       }
     },
     "/editor/documents": {
@@ -10306,332 +10227,6 @@
                     "generation_features",
                     "templates",
                     "limits"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Success"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/Error"
-                    }
-                  },
-                  "required": [],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Invalid request"
-          },
-          "401": {
-            "description": "Authentication required"
-          },
-          "403": {
-            "description": "Permission or CSRF validation failed"
-          },
-          "409": {
-            "description": "State conflict or quota unavailable"
-          }
-        },
-        "security": [
-          {
-            "customerSession": []
-          }
-        ]
-      }
-    },
-    "/support": {
-      "get": {
-        "description": "",
-        "operationId": "listSupportTickets",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "results": {
-                      "items": {
-                        "$ref": "#/components/schemas/Ticket"
-                      },
-                      "type": "array"
-                    }
-                  },
-                  "required": [
-                    "results"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Success"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/Error"
-                    }
-                  },
-                  "required": [],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Invalid request"
-          },
-          "401": {
-            "description": "Authentication required"
-          },
-          "403": {
-            "description": "Permission or CSRF validation failed"
-          },
-          "409": {
-            "description": "State conflict or quota unavailable"
-          }
-        },
-        "security": [
-          {
-            "customerSession": []
-          }
-        ]
-      },
-      "post": {
-        "description": "",
-        "operationId": "createSupportTicket",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "X-CSRFToken",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "properties": {
-                  "category": {
-                    "type": "string"
-                  },
-                  "job_id": {
-                    "format": "uuid",
-                    "type": "string"
-                  },
-                  "message": {
-                    "type": "string"
-                  },
-                  "subject": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "subject",
-                  "message"
-                ],
-                "type": "object"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Ticket"
-                }
-              }
-            },
-            "description": "Success"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/Error"
-                    }
-                  },
-                  "required": [],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Invalid request"
-          },
-          "401": {
-            "description": "Authentication required"
-          },
-          "403": {
-            "description": "Permission or CSRF validation failed"
-          },
-          "409": {
-            "description": "State conflict or quota unavailable"
-          }
-        },
-        "security": [
-          {
-            "customerSession": []
-          }
-        ]
-      }
-    },
-    "/support/{id}/messages": {
-      "get": {
-        "description": "",
-        "operationId": "getSupportMessages",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "messages": {
-                      "items": {
-                        "$ref": "#/components/schemas/SupportMessage"
-                      },
-                      "type": "array"
-                    },
-                    "status": {
-                      "type": "string"
-                    },
-                    "ticket_id": {
-                      "format": "uuid",
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "ticket_id",
-                    "status",
-                    "messages"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Success"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/Error"
-                    }
-                  },
-                  "required": [],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Invalid request"
-          },
-          "401": {
-            "description": "Authentication required"
-          },
-          "403": {
-            "description": "Permission or CSRF validation failed"
-          },
-          "409": {
-            "description": "State conflict or quota unavailable"
-          }
-        },
-        "security": [
-          {
-            "customerSession": []
-          }
-        ]
-      },
-      "post": {
-        "description": "",
-        "operationId": "replySupportTicket",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-CSRFToken",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "properties": {
-                  "message": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "message"
-                ],
-                "type": "object"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "messages": {
-                      "items": {
-                        "$ref": "#/components/schemas/SupportMessage"
-                      },
-                      "type": "array"
-                    },
-                    "status": {
-                      "type": "string"
-                    },
-                    "ticket_id": {
-                      "format": "uuid",
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "ticket_id",
-                    "status",
-                    "messages"
                   ],
                   "type": "object"
                 }

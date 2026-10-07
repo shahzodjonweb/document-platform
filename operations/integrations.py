@@ -184,6 +184,30 @@ def pixabay_config():
             'ready': bool(enabled and api_key)}
 
 
+# Telegram usernames: 5-32 characters, letters, digits and underscores, starting with a letter.
+_TELEGRAM_USERNAME = re.compile(r'[A-Za-z][A-Za-z0-9_]{4,31}')
+CONTACT_KINDS = ('support', 'ads')
+
+
+def contacts_config():
+    """The Telegram accounts customers are pointed to: support, and ads or partnerships."""
+    cfg, _ = read_config('contacts')
+    def one(kind):
+        username = str(cfg.get(kind) or '').strip()
+        return {'username': username, 'url': f'https://t.me/{username}' if username else ''}
+    return {kind: one(kind) for kind in CONTACT_KINDS}
+
+
+def _contact_username(value):
+    """@name, name or a t.me link, as the bare username; '' clears it."""
+    value = str(value or '').strip()
+    value = re.sub(r'^(?:https?://)?(?:www\.)?(?:t\.me|telegram\.me)/', '', value, flags=re.IGNORECASE)
+    value = value.lstrip('@').strip('/')
+    if value and not _TELEGRAM_USERNAME.fullmatch(value):
+        raise DomainError('invalid_contact_username')
+    return value
+
+
 _BUCKET = re.compile(r'[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]')
 _STORAGE_KEY = re.compile(r'[A-Za-z0-9/+=_-]{8,128}')
 OBJECT_STORAGE_DEFAULTS = {'endpoint': 'https://usc1.contabostorage.com', 'bucket': 'pdfmaster', 'region': ''}
@@ -496,6 +520,8 @@ def save_config(key, values):
         if enabled and not (cfg.get('card_number') and cfg.get('card_holder')):
             raise DomainError('manual_payments_not_configured')
         cfg.update(enabled=enabled)
+    elif key == 'contacts':
+        cfg.update({kind: _contact_username(values.get(kind, '')) for kind in CONTACT_KINDS})
     elif key == 'pixabay':
         api_key = values.get('pixabay_key', '')
         if not isinstance(api_key, str): raise DomainError('invalid_pixabay_key')

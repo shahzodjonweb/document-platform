@@ -49,7 +49,6 @@ def extend_schema(models, endpoint, paths):
         'ManualPaymentOptions':obj({'enabled':B,'currency':S,'period_days':I,'plans':arr(obj({'plan':{'enum':['plus','premium']},'price':I},['plan','price'])),'automatic':obj({'available':B},['available']),'payment':{'anyOf':[ref('ManualPayment'),{'type':'null'}]}},['enabled','currency','period_days','plans','automatic','payment']),
         'SubscriptionState':obj({'plan':S,'subscription':{'anyOf':[ref('Subscription'),{'type':'null'}]},'sandbox':B,'checkout_enabled':B},['plan','subscription','sandbox','checkout_enabled']),
         'Refund':obj({'id':UUID,'payment_id':UUID,'status':S,'amount_xtr':I,'confirmed_at':{'type':['string','null'],'format':'date-time'},'error_code':nullable_string},['id','payment_id','status','amount_xtr']),
-        'SupportMessage':obj({'id':UUID,'message':S,'sender':{'enum':['customer','staff']},'created_at':DT},['id','message','sender','created_at']),
         'BotDelivery':obj({'id':UUID,'status':S,'attempts':I},['id','status','attempts']),
     })
     models['GenerationMaterial']=obj({'key':S,'title':S,'sections':arr(ref('GenerationSection')),'questions':arr(ref('GenerationQuestion')),'citations':arr(obj({'asset_id':UUID,'page':I,'quote':S}))},['key','title','sections','questions'])
@@ -143,12 +142,10 @@ def extend_schema(models, endpoint, paths):
     endpoint('/billing/manual/{id}','delete','cancelManualPayment',ref('ManualPayment'))
     endpoint('/billing/manual/{id}/receipt','post','uploadManualPaymentReceipt',ref('ManualPayment'),obj({}),description='The transfer receipt: a JPG/PNG photo or a PDF, at most 10 MB, with an optional note.')
     endpoint('/billing/payments/{id}/sandbox-refund','post','sandboxRefundPayment',ref('Refund'),obj({'reason':S}))
-    endpoint('/billing/payments/{id}/refund-request','post','requestPaymentRefund',obj({'ticket_id':UUID,'status':S},['ticket_id','status']),obj({'reason':{'type':'string','minLength':3,'maxLength':4000}},['reason']))
+    contact=obj({'username':S,'url':S},['username','url'])
+    endpoint('/contacts','get','getContacts',obj({'support':contact,'ads':contact},['support','ads']),public=True,description='The Telegram accounts for support and for advertising or partnerships, as set in the admin. Empty when not set.')
     endpoint('/referrals','get','getReferrals',obj({'code':S,'url':nullable_string,'rewards_count':I,'pending_count':I,'awarded_credits':I,'monthly_cap':I,'expires_in_days':I,'qualification':S,'sandbox':B}))
     endpoint('/referrals','post','claimReferral',obj({'id':I,'status':S}),obj({'code':S},['code']))
-    message_list=obj({'ticket_id':UUID,'status':S,'messages':arr(ref('SupportMessage'))},['ticket_id','status','messages'])
-    endpoint('/support/{id}/messages','get','getSupportMessages',message_list)
-    endpoint('/support/{id}/messages','post','replySupportTicket',message_list,obj({'message':S},['message']))
     endpoint('/artifacts/{id}/deliver','post','deliverArtifactToTelegram',ref('BotDelivery'),obj({}),code='201')
     local_asset=obj({'id':UUID,'name':S,'mime_type':S,'size_bytes':I,'download_url':S,'preview_url':nullable_string,'expires_at':DT})
     local_message=obj({'id':UUID,'direction':S,'text':S,'buttons':arr(arr(obj({'label':S,'callback_data':nullable_string,'url':nullable_string}))),'asset':{'anyOf':[local_asset,{'type':'null'}]},'created_at':DT},['id','direction','text','buttons','asset','created_at'])
@@ -175,7 +172,6 @@ def schema():
         'Plan':obj({'id':S,'name':S,'price_xtr':{'type':['integer','null']},'limits':{'type':'object'},'checkout_enabled':B,'features':arr(S)},['id','name','price_xtr','limits','checkout_enabled']),
         'Quote':obj({'id':UUID,'quote_id':UUID,'quote_version':S,'feature_id':S,'plan_version_id':S,'tariff_version_id':S,'input_fingerprints':arr(obj({'id':UUID,'sha256':S})), 'normalized_parameters':{'type':'object'},'meters':arr(obj({'meter':S,'amount':I},['meter','amount'])),'available_balances':ref('Balances'),'affordable':B,'expires_at':DT,'output_expectations':{'type':'object'},'limitations':arr(S),'plan':S},['id','quote_id','feature_id','meters','affordable','expires_at','available_balances']),
         'Job':obj({'id':UUID,'feature_id':S,'status':{'enum':['queued','running','finalizing','succeeded','failed','canceled','expired','no_op']},'created_at':DT,'started_at':{'type':['string','null'],'format':'date-time'},'completed_at':{'type':['string','null'],'format':'date-time'},'input_files':arr(ref('Asset')),'artifacts':arr(ref('Artifact')),'meters':{'type':'object','additionalProperties':I},'settled_meters':{'type':'object','additionalProperties':I},'error':{'anyOf':[ref('Error'),{'type':'null'}]},'warnings':arr(S),'parameters':{'type':'object'},'origin_channel':S},['id','feature_id','status','created_at','input_files','artifacts','meters','settled_meters','error','warnings']),
-        'Ticket':obj({'id':UUID,'subject':S,'message':S,'status':S,'category':S,'created_at':DT},['id','subject','status','created_at']),
     }
     paths={}
     def endpoint(path,method,operation,response,request=None,public=False,code='200',description=''):
@@ -234,8 +230,6 @@ def schema():
         endpoint(path,'get',operation,S)
         paths[path]['get']['parameters'].append({'name':'page','in':'query','schema':{'type':'integer','minimum':1,'default':1}})
         paths[path]['get']['responses']['200']={'description':'Private single-page PNG preview, no task charge','content':{'image/png':{'schema':{'type':'string','format':'binary'}}}}
-    endpoint('/support','post','createSupportTicket',ref('Ticket'),obj({'subject':S,'message':S,'category':S,'job_id':UUID},['subject','message']),code='201')
-    endpoint('/support','get','listSupportTickets',obj({'results':arr(ref('Ticket'))},['results']))
     for path,operation in [('/billing/subscription','getSubscription'),('/billing/transactions','getTransactions'),('/billing/invoices','getInvoices')]:
         endpoint(path,'get',operation,obj({'checkout_enabled':B,'plan':S,'transactions':arr({'type':'object'}),'subscription':{'type':'null'},'reason':S}))
     extend_schema(models,endpoint,paths)

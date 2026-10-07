@@ -12,14 +12,14 @@ from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.models import Group
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.db.models import Q,Case,When,IntegerField,Value,Count,Max
+from django.db.models import Q
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbidden, JsonResponse
 from django.middleware.csrf import rotate_token
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 
-from apps.core.models import Account, Job, SupportTicket, UsageLedger
+from apps.core.models import Account, Job, UsageLedger
 from .auth import COOKIE, allowed, audit, begin_session, development_access, require_staff, staff_user
 from .i18n import CATALOGS, EN, get_locale
 from .metrics import DEFINITIONS_VERSION, Filters, report, system_snapshot
@@ -32,17 +32,17 @@ PAGE_ROLES = {
     'analytics/features':['Analyst','Operations'], 'analytics/revenue':['Analyst','Finance'],
     'analytics/ai-usage':['Analyst','Operations','Finance'],
     'jobs':['Operations','Support'], 'generations':['Support','Operations'], 'plans':['Finance','Content manager'],
-    'payments':['Finance'], 'support':['Support'], 'audit':[], 'system':['Operations'],
+    'payments':['Finance'], 'audit':[], 'system':['Operations'],
     'localization':['Content manager'], 'integrations':[], 'staff':[],
 }
 PAGE_KEYS = {'today':'today','overview':'overview','users':'users','analytics/acquisition':'acquisition',
              'analytics/engagement':'engagement','analytics/features':'features','analytics/revenue':'revenue','analytics/ai-usage':'ai_usage',
-             'jobs':'jobs','generations':'generations','plans':'plans','payments':'payments','support':'support','audit':'audit','system':'system','localization':'localization'}
+             'jobs':'jobs','generations':'generations','plans':'plans','payments':'payments','audit':'audit','system':'system','localization':'localization'}
 # Sidebar: (group label key, [(page, label key, icon)]). The analytics reports
 # share one entry; their own tabs switch between them.
 NAV = [
     ('', [('today','today','today')]),
-    ('customers', [('users','users','users'),('support','nav_support','support'),('generations','generations','sparkle')]),
+    ('customers', [('users','users','users'),('generations','generations','sparkle')]),
     ('money', [('payments','payments','card'),('analytics/revenue','revenue','trending')]),
     ('product', [('overview','nav_analytics','chart'),('jobs','nav_tasks','list'),('analytics/ai-usage','ai_usage','cpu'),('plans','plans','layers')]),
     ('settings', [('integrations','integrations','plug'),('staff','staff','shield'),('audit','audit','history'),('system','system','activity'),('localization','localization','globe')]),
@@ -50,9 +50,8 @@ NAV = [
 ANALYTICS = ['overview','analytics/acquisition','analytics/engagement','analytics/features']
 # Each report page() renders lays itself out in one partial.
 SECTIONS = {'today':'today','overview':'analytics','analytics/acquisition':'analytics','analytics/engagement':'analytics',
-            'analytics/features':'analytics','users':'users','jobs':'jobs','support':'support','audit':'audit',
+            'analytics/features':'analytics','users':'users','jobs':'jobs','audit':'audit',
             'plans':'plans','system':'system','localization':'localization'}
-SUPPORT_STATES = ['open','waiting_customer','resolved']
 JOB_STATES = ['queued','running','succeeded','failed','canceled']
 USER_SORTS = {'new':'-created_at','old':'created_at','name':'display_name','plan':'-plan'}
 PLAN_GROUPS = [('group_price',['price_uzs','price_xtr']),
@@ -94,8 +93,6 @@ def context(request, page='overview'):
         if ok(PAGE_ROLES['payments']):
             from apps.commerce.models import ManualPayment
             badges['payments'] = ManualPayment.objects.filter(status='submitted').count()
-        if ok(PAGE_ROLES['support']):
-            badges['support'] = SupportTicket.objects.filter(status='open').count()
         for group, items in NAV:
             permitted = [{'path':path,'url':'/ops/'+path+'?'+query,'label':labels[key],'icon':icon,
                           'active':page==path or (path=='overview' and page in ANALYTICS),'badge':badges.get(path,0)}
@@ -205,7 +202,7 @@ def page(request, section='overview'):
     if section in ANALYTICS:
         data['analytics_tabs']=[{'label':data['t'][PAGE_KEYS[path]],'url':'/ops/'+path+'?'+data['query'],'active':path==section}
                                 for path in ANALYTICS if data['ok'](PAGE_ROLES[path])]
-    if section in {'users','jobs','support','audit'}:
+    if section in {'users','jobs','audit'}:
         if section=='users':
             search=request.GET.get('q','').strip()[:150]
             # A search looks through every account; the plain list shows who joined in the period.
@@ -219,20 +216,6 @@ def page(request, section='overview'):
             state=request.GET.get('status','')
             if state:rows=rows.filter(status=state)
             data.update(status_filter=state,job_states=JOB_STATES)
-        elif section=='support':
-            # An inbox, not a report: every case of the chosen state, whenever it arrived.
-            state=request.GET.get('status','open')
-            tickets=SupportTicket.objects.filter(account__in=filters.accounts(False))
-            data['support_tabs']=[{'key':key,'label':data['t']['support_'+key],'active':state==key,
-                                   'count':tickets.filter(status=key).count() if key!='all' else None}
-                                  for key in SUPPORT_STATES+['all']]
-            if state in SUPPORT_STATES:tickets=tickets.filter(status=state)
-            tickets=tickets.select_related('account').annotate(replies=Count('messages'),last_reply=Max('messages__created_at'))
-            if state in {'open','waiting_customer'}:
-                # Premium customers first, then whoever has waited longest.
-                rows=tickets.annotate(priority_rank=Case(When(account__plan='premium',then=Value(0)),default=Value(1),output_field=IntegerField())).order_by('priority_rank','created_at')
-            else:
-                rows=tickets.order_by('-updated_at')
         else:
             rows=AuditLog.objects.select_related('actor').filter(created_at__gte=filters.bounds[0],created_at__lt=filters.bounds[1]).order_by('-created_at')
         data['pagination']=Paginator(rows,30).get_page(request.GET.get('p'))
@@ -318,14 +301,13 @@ def user_detail(request, pk):
     if data['can_open_files']:
         from .generation_views import _rows
         data['generation_rows']=_rows(account.generation_records.select_related('job').order_by('-created_at')[:10],data['t'])
-    # Card transfers are Finance's to see; support cases are Support's.
+    # Card transfers are Finance's to see.
     if data['ok'](PAGE_ROLES['payments']):
         from apps.commerce.models import ManualPayment
         from .commerce_views import LABELS as MONEY_LABELS
         money=MONEY_LABELS[data['lang']]
         data['payment_rows']=[{'payment':row,'status':money.get('status_'+row.status,row.status)}
                               for row in ManualPayment.objects.filter(account=account).order_by('-created_at')[:20]]
-    data['tickets']=account.support_tickets.order_by('-created_at')[:20] if data['ok'](PAGE_ROLES['support']) else []
     audit(request.ops_user,'account.metadata_view',pk,'Staff inspected account metadata')
     return finish_render(request,'ops/user.html',data)
 
@@ -335,30 +317,6 @@ def job_detail(request, pk):
     job=get_object_or_404(Job.objects.select_related('account'),pk=pk)
     data=context(request,'jobs');data['can_cancel']=allowed(request.ops_user,['Operations']) and job.status=='queued';data.update({'job':job,'detail_type':'job','ledger':UsageLedger.objects.filter(job=job).order_by('created_at')})
     return finish_render(request,'ops/job.html',data)
-
-
-@require_staff('Support')
-@require_http_methods(['GET','POST'])
-def support_detail(request, pk):
-    ticket=get_object_or_404(SupportTicket.objects.select_related('account'),pk=pk)
-    data=context(request,'support');data.update({'ticket':ticket,'detail_type':'support'})
-    if request.method=='POST':
-        reply=request.POST.get('reply','').strip()
-        if len(reply)>4000:
-            data['error']={'en':'Replies must contain at most 4,000 characters.','uz':'Javob 4 000 belgidan oshmasligi kerak.','ru':'Ответ должен содержать не более 4 000 символов.'}[data['lang']]
-            return finish_render(request,'ops/support_ticket.html',data,400)
-        with transaction.atomic():
-            ticket=SupportTicket.objects.select_for_update().get(pk=pk)
-            if reply:
-                from apps.commerce.services import add_support_message
-                add_support_message(ticket.account,ticket.pk,reply,staff=request.ops_user)
-                audit(request.ops_user,'support.reply',pk,after={'message_length':len(reply)})
-            before=ticket.status
-            ticket.status='waiting_customer' if reply else 'resolved' if request.POST.get('status')=='resolved' else 'open'
-            ticket.save(update_fields=['status','updated_at'])
-            audit(request.ops_user,'support.status_changed',pk,None,{'status':before},{'status':ticket.status})
-        return redirect(request.path+'?'+urlencode({'lang':data['lang'],'saved':'1'}))
-    return finish_render(request,'ops/support_ticket.html',data)
 
 
 @require_staff('Analyst','Operations','Finance')

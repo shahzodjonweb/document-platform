@@ -19,7 +19,7 @@ from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
-from apps.core.models import BotConversation, BotCallback, BotDraft, BotInputReceipt, AuthChallenge, FileAsset, Job, SupportTicket
+from apps.core.models import BotConversation, BotCallback, BotDraft, BotInputReceipt, AuthChallenge, FileAsset, Job
 from apps.core.identity import resolve_account, approve_challenge_id
 from apps.core.policy import catalog, usage_snapshot
 from apps.core.services import upload_file, create_quote, submit_job, execute_job, storage_path, cancel_job
@@ -54,7 +54,7 @@ async def account_for(user):
 # discarding a task — must be fresh; an old one opens the menu instead.
 REUSABLE={'home','menu','account','plans','subscription','language','help','recent','controls','settings',
           'prompt','attach','preview','done','retry','cancel','new','tool','start_tool','ai_tool','ai_examples',
-          'ai_revise','support','job','download','channels_check','commerce_manual_plan','commerce_manual_receipt'}
+          'ai_revise','support','contacts','job','download','channels_check','commerce_manual_plan','commerce_manual_receipt'}
 def usable(ref,now=None):
     """Whether a stored button may still be acted on."""
     return bool(ref) and (ref.expires_at>(now or timezone.now()) or ref.action in REUSABLE)
@@ -219,7 +219,7 @@ def build_dispatcher():
         rows.append([await button(account,'subscribe_button','plans')])
         rows.extend([
             [await button(account,'all_tools','menu'),await button(account,'recent','recent')],
-            [await button(account,'account','account'),await button(account,'help_button','help')],
+            [await button(account,'account','account'),await button(account,'contacts_button','contacts')],
             [await button(account,'language_button','language'),InlineKeyboardButton(text=text(account,'open'),url=await web_url(account))],
         ])
         body=(html.escape(notice)+'\n\n' if notice else '')+f'<b>👋 PDF Master</b>\n{text(account,"home_body")}'
@@ -649,19 +649,24 @@ def build_dispatcher():
             return await home(message,account,edit)
         await render(message,text(account,'new_question' if new else 'cancel_question'),[[await button(account,'new_confirm' if new else 'cancel_confirm','discard',{**payload,'new':new})],[await button(account,'keep_task','controls'),await button(account,'home','home')]],edit)
 
-    async def support_prompt(message,account,payment=False,edit=False):
-        await sync_to_async(set_prompt)(account,'support',{'payment':payment})
-        await render(message,text(account,'support_prompt'),[[await button(account,'cancel_step','cancel'),await button(account,'home','home')]],edit)
-
-    async def support_review(message,account,value,payment=False):
-        if not 5<=len(value)<=4000: return await message.answer(text(account,'support_prompt'))
-        nonce=secrets.token_urlsafe(12)
-        await sync_to_async(set_prompt)(account,'support_review',{'payment':payment,'message':value,'nonce':nonce})
-        await render(message,f'{text(account,"support_confirm")}\n\n{html.escape(value[:2800])}',[[await button(account,'support_send','support_send',{'nonce':nonce})],[await button(account,'support_edit','support',{'payment':payment}),await button(account,'home','home')]])
+    async def contacts_view(message,account,edit=False):
+        """Where to reach a person: the support account and the ads account, as set in the admin."""
+        from operations.integrations import contacts_config
+        await sync_to_async(set_prompt)(account)
+        people=await sync_to_async(contacts_config)()
+        lines=[f"<b>{text(account,'contacts_title')}</b>"]
+        rows=[]
+        for kind,label,opener in (('support','contacts_support','contacts_write_support'),('ads','contacts_ads','contacts_write_ads')):
+            if people[kind]['username']:
+                lines.append(f"{text(account,label)}: @{html.escape(people[kind]['username'])}")
+                rows.append([InlineKeyboardButton(text=text(account,opener),url=people[kind]['url'])])
+        if len(lines)==1: lines.append(text(account,'contacts_none'))
+        rows.append([await button(account,'how_it_works','help'),await button(account,'home','home')])
+        await render(message,'\n'.join(lines),rows,edit)
 
     async def help_view(message,account,edit=False):
         await sync_to_async(set_prompt)(account)
-        await render(message,text(account,'guide'),[[await button(account,'support_button','support'),await button(account,'payment_help','support',{'payment':True})],[InlineKeyboardButton(text=text(account,'open'),url=await web_url(account))],[await button(account,'home','home')]],edit)
+        await render(message,text(account,'guide'),[[await button(account,'contacts_button','contacts')],[InlineKeyboardButton(text=text(account,'open'),url=await web_url(account))],[await button(account,'home','home')]],edit)
 
     async def account_view(message,account,edit=False):
         await sync_to_async(set_prompt)(account)
@@ -794,18 +799,8 @@ def build_dispatcher():
                         await (controls(message,account,draft) if draft.input_ids else home(message,account))
             elif action=='subscription': await show_subscription(message,account,True)
             elif action=='help': await help_view(message,account,True)
-            elif action=='support': await support_prompt(message,account,p.get('payment',False),True)
-            elif action=='support_send':
-                def save_ticket():
-                    from django.db import transaction
-                    with transaction.atomic():
-                        conversation=BotConversation.objects.select_for_update().get(pk=account.telegram_user_id)
-                        if conversation.state!='support_review' or conversation.prompt.get('nonce')!=p['nonce']: raise DomainError('controls_expired',409)
-                        ticket=SupportTicket.objects.create(account=account,subject='Telegram support',message=conversation.prompt['message'],category='payments' if conversation.prompt.get('payment') else 'general')
-                        set_prompt(account)
-                        return str(ticket.id)[:8]
-                reference=await sync_to_async(save_ticket)()
-                await home(message,account,True,notice=text(account,'support_saved').format(reference=reference))
+            # `support` and `support_send` are buttons on messages from before tickets were retired.
+            elif action in ('contacts','support','support_send'): await contacts_view(message,account,True)
         except DomainError as exc: await safe_error(message,account,exc)
 
     @dp.message(F.document | F.photo)
@@ -923,12 +918,9 @@ def build_dispatcher():
     @dp.message(Command('plan','usage','account'))
     async def plan(message): await account_view(message,await account_for(message.from_user))
 
-    @dp.message(Command('support','paysupport'))
+    @dp.message(Command('support','paysupport','contacts'))
     async def support(message):
-        account=await account_for(message.from_user)
-        parts=message.text.split(maxsplit=1);payment=parts[0].startswith('/paysupport')
-        if len(parts)>1: return await support_review(message,account,parts[1],payment)
-        await support_prompt(message,account,payment)
+        await contacts_view(message,await account_for(message.from_user))
 
     @dp.message(Command('cancel'))
     async def cancel(message): await cancel_prompt(message,await account_for(message.from_user))
@@ -964,7 +956,7 @@ def build_dispatcher():
     async def help_(message):
         account=await account_for(message.from_user)
         if message.text.startswith('/password'): return await safe_error(message,account,DomainError('secure_password_entry_required'))
-        if message.text.startswith('/terms'): return await render(message,text(account,'terms'),[[await button(account,'payment_help','support',{'payment':True})],[await button(account,'home','home')]])
+        if message.text.startswith('/terms'): return await render(message,text(account,'terms'),[[await button(account,'contacts_button','contacts')],[await button(account,'home','home')]])
         await help_view(message,account)
 
     @dp.message(F.text)
@@ -975,7 +967,8 @@ def build_dispatcher():
             await sync_to_async(set_prompt)(account)
             return await home(message,account,notice=text(account,'stale_reply'))
         value=(message.text or '').strip()
-        if conversation.state=='support': return await support_review(message,account,value,conversation.prompt.get('payment',False))
+        # Someone who was writing a support message when tickets were retired.
+        if conversation.state in ('support','support_review'): return await contacts_view(message,account)
         if conversation.state=='ai_input':
             p=conversation.prompt
             if not value: return await message.answer(text(account,'ai_topic_empty'))

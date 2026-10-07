@@ -3,6 +3,24 @@
 {% if error %}<div role="alert" class="alert error">{% icon 'alert' %}<span>{{ error }} <small>{{ error_code }}</small></span></div>{% endif %}
 {% if notice %}<div role="status" class="alert success">{% icon 'check' %}<span>{{ notice }}</span></div>{% endif %}
 <div class="integration-list">
+<details class="panel integration-card" id="contact-settings"{% if open_integration == 'contacts' %} open{% endif %}>
+  <summary>
+    <span class="icon-tile">{% icon 'support' 20 %}</span>
+    <span class="integration-title"><strong>{{ i.contacts }}</strong><small>{% if contacts.support.username or contacts.ads.username %}{% if contacts.support.username %}@{{ contacts.support.username }}{% endif %}{% if contacts.support.username and contacts.ads.username %} · {% endif %}{% if contacts.ads.username %}@{{ contacts.ads.username }}{% endif %}{% else %}{{ i.contacts_none }}{% endif %}</small></span>
+    <span class="badge {% if contacts.support.username %}good{% else %}attention{% endif %}">{% if contacts.support.username %}{{ i.active }}{% else %}{{ i.setup_required }}{% endif %}</span>
+    <span class="integration-toggle" aria-hidden="true">{% icon 'chevron-down' 18 %}</span>
+  </summary>
+  <div class="integration-body">
+    <p>{{ i.contacts_intro }}</p>
+    <form method="post" class="integration-form" autocomplete="off">
+      {% csrf_token %}<input type="hidden" name="integration" value="contacts">
+      <label>{{ i.contact_support }}<input name="support" value="{% if contacts.support.username %}@{{ contacts.support.username }}{% endif %}" maxlength="80" spellcheck="false" autocapitalize="none" placeholder="@pdfmaster_support"></label>
+      <label>{{ i.contact_ads }}<input name="ads" value="{% if contacts.ads.username %}@{{ contacts.ads.username }}{% endif %}" maxlength="80" spellcheck="false" autocapitalize="none" placeholder="@pdfmaster_ads"></label>
+      <small>{{ i.contact_hint }}</small>
+      <div class="integration-actions"><button class="button primary" name="action" value="save">{{ i.save }}</button></div>
+    </form>
+  </div>
+</details>
 <details class="panel integration-card" id="telegram-settings"{% if open_integration == 'telegram' %} open{% endif %}>
   <summary>
     <span class="icon-tile">{% icon 'send' 20 %}</span>

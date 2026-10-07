@@ -8,7 +8,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from pypdf import PdfWriter
 from apps.core.identity import resolve_account
 from apps.core.errors import DomainError
-from apps.core.models import UsageGrant,UsageLedger,Account,SupportTicket
+from apps.core.models import UsageGrant,UsageLedger,Account
 from apps.core.policy import usage_snapshot,plan_limits
 from apps.core.services import upload_file,create_quote,submit_job,execute_job
 from apps.commerce import services
@@ -165,12 +165,11 @@ def test_referrals_are_unique_qualified_and_expire():
     from apps.core.policy import plan_limits
     assert usage_snapshot(inviter)['meters']['ai_credits']['remaining']==plan_limits(inviter)['ai_credits']+referral.grant.quantity
 
-def test_support_thread_owner_and_staff_boundaries():
-    a=account();other=account(805);ticket=SupportTicket.objects.create(account=a,subject='Billing',message='Question')
-    services.add_support_message(a,ticket.id,'My follow-up')
-    with pytest.raises(DomainError,match='not_found'): services.add_support_message(other,ticket.id,'Wrong owner')
-    response=client_for(a).get(f'/api/v1/support/{ticket.id}/messages');assert len(response.json()['messages'])==2
-    assert client_for(other).get(f'/api/v1/support/{ticket.id}/messages').status_code==404
+def test_support_tickets_are_retired():
+    """Customers reach a person on Telegram now; the ticket endpoints are gone."""
+    a=account()
+    assert client_for(a).get('/api/v1/support/00000000-0000-0000-0000-000000000000/messages').status_code==404
+    assert client_for(a).post('/api/v1/billing/payments/00000000-0000-0000-0000-000000000000/refund-request',{'reason':'Please'},content_type='application/json').status_code in (403,404)
 
 def test_commerce_api_csrf_and_closed_live_configuration(settings):
     a=account();client=client_for(a,True)

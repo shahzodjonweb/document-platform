@@ -251,6 +251,21 @@ STORAGE_SECTION_LABELS = {
            'object_storage_connection_failed': 'Бакет не принял тестовый файл. Проверьте ключи, имя бакета и endpoint.'},
 }
 for language, labels in STORAGE_SECTION_LABELS.items(): LABELS[language].update(labels)
+CONTACT_LABELS = {
+    'en': {'contacts': 'Contacts & support', 'contacts_intro': 'The Telegram accounts the bot and the web app point people to. Leave one empty to hide it.',
+           'contact_support': 'Support account', 'contact_ads': 'Advertising and partnerships account',
+           'contact_hint': '@username, username or a t.me link', 'contacts_none': 'Not set',
+           'invalid_contact_username': 'That is not a Telegram username: 5–32 letters, digits or underscores, starting with a letter.'},
+    'uz': {'contacts': 'Aloqa va yordam', 'contacts_intro': 'Bot va veb ilova odamlarni yo‘naltiradigan Telegram hisoblari. Ko‘rsatmaslik uchun bo‘sh qoldiring.',
+           'contact_support': 'Yordam hisobi', 'contact_ads': 'Reklama va hamkorlik hisobi',
+           'contact_hint': '@username, username yoki t.me havolasi', 'contacts_none': 'Belgilanmagan',
+           'invalid_contact_username': 'Bu Telegram username emas: harf bilan boshlanadigan 5–32 ta harf, raqam yoki pastki chiziq.'},
+    'ru': {'contacts': 'Контакты и поддержка', 'contacts_intro': 'Telegram-аккаунты, на которые бот и сайт направляют людей. Оставьте пустым, чтобы скрыть.',
+           'contact_support': 'Аккаунт поддержки', 'contact_ads': 'Аккаунт по рекламе и сотрудничеству',
+           'contact_hint': '@username, username или ссылка t.me', 'contacts_none': 'Не задан',
+           'invalid_contact_username': 'Это не имя пользователя Telegram: 5–32 буквы, цифры или подчёркивания, начиная с буквы.'},
+}
+for language, labels in CONTACT_LABELS.items(): LABELS[language].update(labels)
 
 
 @require_staff()
@@ -285,6 +300,8 @@ def integrations(request):
             # The card the problem belongs to stays open, with what was typed.
             data['open_integration']=request.POST.get('integration','telegram')
     bot=telegram_config();ai=ai_config();google=google_config();email=email_config();antibot=antibot_config()
+    from .integrations import contacts_config
+    data['contacts']=contacts_config()
     local_controls=development_access(request)
     # A container-managed bot has a different PID namespace from the API.
     # Do not misreport it as stopped using the local development PID check.

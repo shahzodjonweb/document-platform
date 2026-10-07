@@ -173,11 +173,6 @@ MESSAGES = {
         '⏳ So‘rovlar ko‘payib ketdi. Birozdan keyin urinib ko‘ring.',
         '⏳ Слишком много запросов. Попробуйте чуть позже.',
     ),
-    'invalid_support_ticket': (
-        '💬 Write your question in 5–4000 characters.',
-        '💬 Savolingizni 5–4000 belgida yozing.',
-        '💬 Напишите вопрос длиной от 5 до 4000 символов.',
-    ),
     'unsafe_archive unsafe_path active_content_unsupported external_content_unsupported': (
         '🔒 This file contains content we can’t safely process. Try a clean copy.',
         '🔒 Fayl tarkibini xavfsiz qayta ishlay olmaymiz. Toza nusxasini yuboring.',

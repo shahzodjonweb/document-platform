@@ -15,7 +15,7 @@ COMMANDS = {
         'usage': '📊 Plan & balance', 'buy': '⭐ Plans & packs',
         'subscription': '💳 Subscription', 'account': '👤 Account & logins',
         'web': '🌐 Open web app', 'settings': '⚙️ Settings', 'language': '🌐 Language',
-        'help': '💡 How it works', 'support': '💬 Contact support', 'cancel': '✖️ Cancel step',
+        'help': '💡 How it works', 'support': '📞 Contacts & support', 'cancel': '✖️ Cancel step',
     },
     'uz': {
         'start': '🏠 Bosh menyu',
@@ -26,7 +26,7 @@ COMMANDS = {
         'usage': '📊 Tarif va balans', 'buy': '⭐ Tariflar va paketlar',
         'subscription': '💳 Obuna', 'account': '👤 Hisob va kirish usullari',
         'web': '🌐 Veb ilova', 'settings': '⚙️ Sozlamalar', 'language': '🌐 Til',
-        'help': '💡 Qanday ishlaydi', 'support': '💬 Yordamga yozish', 'cancel': '✖️ Qadamni bekor qilish',
+        'help': '💡 Qanday ishlaydi', 'support': '📞 Aloqa va yordam', 'cancel': '✖️ Qadamni bekor qilish',
     },
     'ru': {
         'start': '🏠 Главное меню',
@@ -37,7 +37,7 @@ COMMANDS = {
         'usage': '📊 Тариф и баланс', 'buy': '⭐ Тарифы и пакеты',
         'subscription': '💳 Подписка', 'account': '👤 Аккаунт и способы входа',
         'web': '🌐 Открыть сайт', 'settings': '⚙️ Настройки', 'language': '🌐 Язык',
-        'help': '💡 Как это работает', 'support': '💬 Поддержка', 'cancel': '✖️ Отменить шаг',
+        'help': '💡 Как это работает', 'support': '📞 Контакты и поддержка', 'cancel': '✖️ Отменить шаг',
     },
 }
 

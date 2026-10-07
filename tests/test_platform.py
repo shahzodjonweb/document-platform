@@ -183,11 +183,14 @@ def test_localized_errors_have_identical_codes():
         assert data['code']=='quota_exceeded' and data['message_key']=='errors.quota_exceeded'
         assert data['message']
 
-def test_support_owner_scope_and_paid_checkout_disabled():
-    a=account();b=account(43);client=login_client(a)
-    response=client.post('/api/v1/support',{'subject':'Help','message':'A task failed.'},content_type='application/json')
-    assert response.status_code==201
-    assert login_client(b).get('/api/v1/support').json()['results']==[]
+def test_contacts_are_public_tickets_are_gone_and_paid_checkout_disabled():
+    from operations.integrations import save_config
+    a=account();client=login_client(a)
+    assert client.post('/api/v1/support',{'subject':'Help','message':'A task failed.'},content_type='application/json').status_code==404
+    assert Client().get('/api/v1/contacts').json()=={'support':{'username':'','url':''},'ads':{'username':'','url':''}}
+    save_config('contacts',{'support':'@pdfmaster_help','ads':'https://t.me/pdfmaster_ads'})
+    assert Client().get('/api/v1/contacts').json()=={'support':{'username':'pdfmaster_help','url':'https://t.me/pdfmaster_help'},
+                                                   'ads':{'username':'pdfmaster_ads','url':'https://t.me/pdfmaster_ads'}}
     response=client.post('/api/v1/billing/invoices',{'plan':'premium','price_xtr':1},content_type='application/json')
     assert response.status_code==409 and response.json()['error']['code']=='checkout_disabled'
 

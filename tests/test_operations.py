@@ -5,7 +5,7 @@ from django.contrib.auth.models import Group
 from django.http import HttpResponse
 from django.test import Client, RequestFactory
 from django.utils import timezone
-from apps.core.models import Account, SupportTicket
+from apps.core.models import Account
 from operations.auth import COOKIE, begin_session
 from operations.i18n import CATALOGS, EN
 from operations.metrics import Filters, report
@@ -30,7 +30,7 @@ def test_customer_session_cannot_authorize_staff_even_with_django_superuser():
 
 def test_analyst_cannot_inspect_identifiers_or_mutate():
     c,_=staff_client('Analyst')
-    for p in ['users','support','payments','audit','export/users','export/jobs']:
+    for p in ['users','generations','payments','audit','export/users','export/jobs']:
         assert c.get('/ops/'+p).status_code==403,p
     assert c.get('/ops/overview').status_code==200
     assert c.get('/ops/export/features').status_code==200
@@ -66,13 +66,11 @@ def test_local_staff_login_needs_flag_loopback_and_csrf(settings):
     assert r.status_code==302 and r.cookies[COOKIE]['httponly'] and r.cookies[COOKIE]['path']=='/ops/'
     assert 'customer_account_id' not in c.session
 
-def test_support_transition_needs_no_reason_and_audit_is_append_only():
-    a=Account.objects.create(telegram_user_id=103,is_test=True);t=SupportTicket.objects.create(account=a,subject='Question',message='Please investigate.')
-    c,u=staff_client('Support');url=f'/ops/support/{t.id}'
-    assert c.post(url,{'status':'resolved'}).status_code==302
-    t.refresh_from_db();assert t.status=='resolved'
-    e=AuditLog.objects.get();assert e.actor==u and e.before=={'status':'open'} and e.after=={'status':'resolved'}
-    assert e.reason=='Changed a support request status'
+def test_changes_need_no_reason_and_audit_is_append_only():
+    c,u=staff_client()
+    response=c.post('/ops/integrations',{'integration':'contacts','action':'save','support':'@pdfmaster_help','ads':''})
+    assert response.status_code==302
+    e=AuditLog.objects.get(action='integration.save');assert e.actor==u and e.target=='contacts'
     e.reason='tampered'
     with pytest.raises(ValueError):e.save()
 

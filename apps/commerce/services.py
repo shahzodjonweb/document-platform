@@ -10,9 +10,9 @@ from django.db import transaction
 from django.db.models import Q,Sum
 from django.utils import timezone
 from apps.core.errors import DomainError
-from apps.core.models import Account,UsageGrant,Job,SupportTicket
+from apps.core.models import Account,UsageGrant,Job
 from apps.core.policy import SEED,METERS,cycle
-from .models import OfferVersion,Invoice,Payment,Subscription,SubscriptionPeriod,PaymentGrant,Refund,BalanceAdjustment,CommerceAction,ReconciliationRun,ReconciliationIssue,ReferralCode,Referral,SupportMessage,BotDelivery,ManualPayment
+from .models import OfferVersion,Invoice,Payment,Subscription,SubscriptionPeriod,PaymentGrant,Refund,BalanceAdjustment,CommerceAction,ReconciliationRun,ReconciliationIssue,ReferralCode,Referral,BotDelivery,ManualPayment
 from .providers import provider_for
 
 PERIOD=2592000
@@ -429,12 +429,3 @@ def qualify_referrals(account=None):
         grant,_=UsageGrant.objects.get_or_create(source_id=f'referral:{referral.id}',defaults={'account':referral.inviter,'meter':'ai_credits','source':'referral','quantity':10,'valid_from':timezone.now(),'expires_at':timezone.now()+timedelta(days=30)})
         referral.grant=grant;referral.status='qualified';referral.qualified_at=timezone.now();referral.save(update_fields=['grant','status','qualified_at']);count+=1
     return count
-
-
-def add_support_message(account,ticket_id,body,staff=None):
-    ticket=SupportTicket.objects.filter(pk=ticket_id).first()
-    if not ticket or (not staff and ticket.account_id!=account.id): raise DomainError('not_found',404)
-    if staff and not(staff.is_staff and (staff.is_superuser or staff.groups.filter(name__in=('Support','Administrator')).exists())): raise DomainError('permission_denied',403)
-    if not isinstance(body,str) or not 1<=len(body.strip())<=4000: raise DomainError('invalid_support_ticket')
-    message=SupportMessage.objects.create(ticket=ticket,body=body.strip(),sender_account=None if staff else account,sender_staff=staff)
-    ticket.status='waiting_customer' if staff else 'open';ticket.save(update_fields=['status','updated_at']);return message

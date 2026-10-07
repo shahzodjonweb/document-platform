@@ -6,8 +6,8 @@ from django.http import JsonResponse
 from django.utils import timezone
 from apps.core.views import current_account,body,throttle
 from apps.core.errors import DomainError,error_data
-from apps.core.models import SupportTicket,Artifact
-from .models import Invoice,Payment,Referral,SupportMessage,BotDelivery
+from apps.core.models import Artifact
+from .models import Invoice,Payment,Referral,BotDelivery
 from . import services
 from .serializers import invoice_data,payment_data,subscription_data,refund_data,manual_payment_data
 from . import manual
@@ -97,16 +97,6 @@ def sandbox_refund(request,payment_id):
     refund=services.refund_payment(payment,body(request).get('reason','Local sandbox refund'),sandbox_account=request.account)
     return refund_data(refund)
 
-@endpoint(('POST',))
-def refund_request(request,payment_id):
-    payment=Payment.objects.filter(pk=payment_id,account=request.account).first()
-    if not payment: raise DomainError('not_found',404)
-    reason=body(request).get('reason','')
-    if not isinstance(reason,str) or not 3<=len(reason)<=4000: raise DomainError('invalid_support_ticket')
-    ticket=SupportTicket.objects.create(account=request.account,subject='Payment refund request',message=reason,category='payments')
-    services.CommerceAction.objects.create(account=request.account,action='refund.requested',target=str(payment.id),metadata={'ticket_id':str(ticket.id)})
-    return {'ticket_id':str(ticket.id),'status':'review_requested'}
-
 @endpoint(('GET','POST'))
 def referrals(request):
     if request.method=='POST':
@@ -119,15 +109,6 @@ def referrals(request):
     from .providers import telegram_config
     username=telegram_config().get('username')
     return {'code':code.code,'url':f'https://t.me/{username}?start=ref_{code.code}' if username else None,'rewards_count':qualified,'pending_count':sent.filter(status='pending').count(),'awarded_credits':qualified*10,'monthly_cap':5,'expires_in_days':30,'qualification':'first_successful_task','sandbox':request.account.is_test}
-
-@endpoint(('GET','POST'))
-def support_messages(request,ticket_id):
-    ticket=SupportTicket.objects.filter(pk=ticket_id,account=request.account).first()
-    if not ticket: raise DomainError('not_found',404)
-    if request.method=='POST': services.add_support_message(request.account,ticket_id,body(request).get('message',''))
-    rows=[{'id':str(ticket.id),'message':ticket.message,'sender':'customer','created_at':ticket.created_at}]
-    rows.extend({'id':str(m.id),'message':m.body,'sender':'staff' if m.sender_staff_id else 'customer','created_at':m.created_at} for m in ticket.messages.order_by('created_at'))
-    return {'ticket_id':str(ticket.id),'status':ticket.status,'messages':rows}
 
 @endpoint(('POST',))
 def deliver_artifact(request,artifact_id):

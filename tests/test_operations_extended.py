@@ -14,9 +14,9 @@ from django.http import HttpResponse
 from django.test import Client,RequestFactory
 from django.utils import timezone
 from apps.core.errors import DomainError
-from apps.core.models import Account,UsageGrant,SupportTicket,AnalyticsEvent
+from apps.core.models import Account,UsageGrant,AnalyticsEvent
 from apps.core.policy import usage_snapshot,plan_limits,require_feature
-from apps.commerce.models import OfferVersion,Invoice,Payment,Refund,Subscription,SubscriptionPeriod,SupportMessage
+from apps.commerce.models import OfferVersion,Invoice,Payment,Refund,Subscription,SubscriptionPeriod
 from operations.auth import COOKIE,begin_session
 from operations.models import AuditLog,StaffSession,IntegrationConfig
 from operations.metrics import Filters
@@ -86,7 +86,7 @@ def test_role_change_revokes_sessions_and_clears_legacy_superuser():
     assert not StaffSession.objects.filter(user=user).exists()
     assert old_client.get('/ops/integrations').status_code==302
     renewed=Client();renewed.cookies[COOKIE]=begin_session(HttpResponse(),user).cookies[COOKIE].value
-    assert renewed.get('/ops/integrations').status_code==403 and renewed.get('/ops/support').status_code==200
+    assert renewed.get('/ops/integrations').status_code==403 and renewed.get('/ops/users').status_code==200
     event=AuditLog.objects.get(action='staff.access_changed');assert event.before['superuser'] and event.after['superuser'] is False
     before=StaffSession.objects.filter(user=actor).count()
     response=admin.post('/ops/staff',{'action':'update','user_id':actor.id,'role':'Support','reason':'Self demotion must be blocked'})
@@ -94,14 +94,17 @@ def test_role_change_revokes_sessions_and_clears_legacy_superuser():
     assert StaffSession.objects.filter(user=actor).count()==before and AuditLog.objects.filter(action='staff.access_changed').count()==1
 
 
-def test_invalid_staff_identifier_and_support_reply_fail_safely():
+def test_invalid_staff_identifier_and_contact_username_fail_safely():
+    from operations.integrations import contacts_config
     admin,_=staff_client()
-    assert admin.post('/ops/staff',{'action':'update','user_id':'not-an-integer','role':'Support','reason':'Reject malformed user identifier'}).status_code==200
-    account=Account.objects.create(telegram_user_id=981717)
-    ticket=SupportTicket.objects.create(account=account,subject='Question',message='Investigate')
-    response=admin.post(f'/ops/support/{ticket.id}',{'reply':'x'*4001,'reason':'Attempt oversized support response'})
-    assert response.status_code==400
-    ticket.refresh_from_db();assert ticket.status=='open' and not SupportMessage.objects.exists() and not AuditLog.objects.exists()
+    assert admin.post('/ops/staff',{'action':'update','user_id':'not-an-integer','role':'Support'}).status_code==200
+    for bad in ('ab','has space','@1starts_with_digit','https://example.com/someone'):
+        response=admin.post('/ops/integrations',{'integration':'contacts','action':'save','support':bad,'ads':''})
+        assert response.status_code==200 and b'invalid_contact_username' in response.content, bad
+    assert contacts_config()['support']['username']=='' and not AuditLog.objects.exists()
+    assert admin.post('/ops/integrations',{'integration':'contacts','action':'save','support':'https://t.me/PdfMaster_Help','ads':'@pdfmaster_ads'}).status_code==302
+    assert contacts_config()=={'support':{'username':'PdfMaster_Help','url':'https://t.me/PdfMaster_Help'},
+                               'ads':{'username':'pdfmaster_ads','url':'https://t.me/pdfmaster_ads'}}
 
 
 def test_credentials_are_encrypted_never_rendered_or_audited(settings,monkeypatch):

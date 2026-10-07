@@ -135,19 +135,32 @@ def test_cancel_discards_only_current_draft_and_old_run_button_cannot_submit():
     assert texts(harness)
 
 
-def test_support_accepts_plain_reply_and_cancel_does_not_create_ticket():
+def latest_screen(harness):
+    return next(call for call in reversed(harness.session.calls) if getattr(call, 'reply_markup', None))
+
+
+def test_support_shows_the_contacts_and_never_creates_a_ticket():
+    from operations.integrations import save_config
+    save_config('contacts', {'support': '@pdfmaster_help', 'ads': 'pdfmaster_ads'})
     harness = Harness()
     harness.command('/support')
+    screen = latest_screen(harness)
+    assert '@pdfmaster_help' in screen.text and '@pdfmaster_ads' in screen.text
+    links = [button.url for row in screen.reply_markup.inline_keyboard for button in row if button.url]
+    assert links == ['https://t.me/pdfmaster_help', 'https://t.me/pdfmaster_ads']
+    # Writing afterwards is ordinary conversation, not a ticket.
     say(harness, 'My task completed but I cannot open the result.')
-    assert not SupportTicket.objects.exists()
-    harness.click(harness.action('support_send'))
-    ticket = SupportTicket.objects.get()
-    assert ticket.message == 'My task completed but I cannot open the result.'
-    assert ticket.category == 'general'
     harness.command('/paysupport')
-    harness.command('/cancel')
-    say(harness, 'This is ordinary conversation after cancel.')
-    assert SupportTicket.objects.count() == 1
+    assert '@pdfmaster_help' in latest_screen(harness).text
+    assert not SupportTicket.objects.exists()
+
+
+def test_contacts_not_yet_set_say_so():
+    harness = Harness()
+    harness.command('/support')
+    screen = latest_screen(harness)
+    assert UX['en']['contacts_none'] in screen.text
+    assert not [button.url for row in screen.reply_markup.inline_keyboard for button in row if button.url]
 
 
 def test_guided_page_selection_survives_restart_and_invalid_reply_then_rotates_only_selected_pages():
@@ -387,21 +400,16 @@ def test_new_task_guard_keeps_unsubmitted_files_and_stale_confirm_cannot_clear_l
 
 
 @pytest.mark.parametrize('command', ['/support', '/paysupport'])
-def test_cancel_support_exits_in_one_action_and_preserves_uploaded_work(command):
+def test_contacts_leave_uploaded_work_untouched(command):
     account, asset = prepare('pdf.rotate', {'angle': 180})
     harness = Harness()
     harness.command('/settings')
     quote_id = BotDraft.objects.get(account=account).quote_id
     harness.command(command)
-    say(harness, 'Please help me with this document.')
-    pending_send = harness.action('support_send')
-    harness.command('/cancel')
     draft = BotDraft.objects.get(account=account)
     assert draft.input_ids == [str(asset.id)] and draft.parameters['angle'] == 180
     assert draft.quote_id == quote_id
     assert BotConversation.objects.get(pk=42).state == ''
-    assert all(ref.action != 'discard' for ref in screen_actions(harness))
-    harness.click(pending_send)
     assert not SupportTicket.objects.exists()
     assert not Job.objects.exists() and not UsageLedger.objects.exists()
 

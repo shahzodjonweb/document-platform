@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 from django.db.models import Min, Sum
 from django.utils import timezone
 
-from apps.core.models import Job, SupportTicket
+from apps.core.models import Job
 
 # The business runs on Tashkent time; a report timezone in the URL wins.
 ZONE = 'Asia/Tashkent'
@@ -61,11 +61,6 @@ def summary(request, filters, labels, ok):
         actions.append({'key': 'payments', 'icon': 'card', 'count': waiting.count(), 'href': '/ops/payments#review',
                         'title': labels['today_payments'], 'oldest': waiting.aggregate(at=Min('submitted_at'))['at'],
                         'empty': labels['today_payments_none']})
-    if ok(['Support']):
-        open_cases = SupportTicket.objects.filter(status='open')
-        actions.append({'key': 'support', 'icon': 'support', 'count': open_cases.count(), 'href': '/ops/support?status=open',
-                        'title': labels['today_support'], 'oldest': open_cases.aggregate(at=Min('created_at'))['at'],
-                        'empty': labels['today_support_none']})
     if ok(['Operations']):
         failed = today.jobs().filter(status='failed')
         actions.append({'key': 'failed', 'icon': 'alert', 'count': failed.count(), 'href': '/ops/jobs?status=failed',

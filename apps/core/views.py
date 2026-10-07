@@ -11,7 +11,7 @@ from django.http import JsonResponse, FileResponse
 from django.middleware.csrf import get_token, rotate_token
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
-from .models import Account, FileAsset, Job, Quote, Artifact, SupportTicket, WebhookReceipt
+from .models import Account, FileAsset, Job, Quote, Artifact, WebhookReceipt
 from .errors import DomainError, error_data
 from .antibot import require_web_verification
 from .identity import resolve_account, exchange_miniapp, create_challenge, get_bound_challenge, exchange_challenge
@@ -256,21 +256,11 @@ def artifact_download(request,artifact_id):
     record_event(request.account,'artifact.downloaded',job=artifact.job)
     return response
 
-@api(('GET','POST'))
-def support(request):
-    if request.method=='POST':
-        throttle(request,'support',10)
-        data=body(request)
-        subject=str(data.get('subject','')).strip()
-        message=str(data.get('message','')).strip()
-        if not subject or len(subject)>160 or not message or len(message)>4000: raise DomainError('invalid_support_ticket')
-        job=None
-        if data.get('job_id'):
-            job=Job.objects.filter(pk=data['job_id'],account=request.account).first()
-            if not job: raise DomainError('not_found',404)
-        ticket=SupportTicket.objects.create(account=request.account,job=job,subject=subject,message=message,category=str(data.get('category','general'))[:24])
-        return JsonResponse({'id':str(ticket.id),'subject':ticket.subject,'status':ticket.status,'created_at':ticket.created_at},status=201)
-    return {'results':[{'id':str(t.id),'subject':t.subject,'message':t.message,'status':t.status,'category':t.category,'created_at':t.created_at} for t in SupportTicket.objects.filter(account=request.account).order_by('-created_at')[:100]]}
+@api(('GET',),auth=False)
+def contacts(request):
+    """Where customers reach a person: the support and the ads Telegram accounts."""
+    from operations.integrations import contacts_config
+    return contacts_config()
 
 @api(('GET','POST'))
 def billing(request):

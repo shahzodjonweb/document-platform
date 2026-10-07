@@ -9,7 +9,7 @@ urlpatterns = [path('users/<uuid:pk>/grants',actions.grant),path('users/<uuid:pk
     path('generations/<uuid:pk>/file', generation_views.generation_file),
     path('generations/<uuid:pk>/pages/<int:page>', generation_views.generation_page),
     path('',views.page), path('login',views.login),path('dev-login',views.development_login),path('logout',views.logout),
-    path('users/<uuid:pk>',views.user_detail),path('jobs/<uuid:pk>',views.job_detail),path('support/<uuid:pk>',views.support_detail),
+    path('users/<uuid:pk>',views.user_detail),path('jobs/<uuid:pk>',views.job_detail),
     path('api/v1/summary',views.api_summary),path('export/<str:kind>',views.export),
     *[path(section,views.page,{'section':section},name='ops-'+section.replace('/','-')) for section in views.PAGE_ROLES],
 ]

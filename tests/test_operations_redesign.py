@@ -5,7 +5,7 @@ from datetime import timedelta
 import pytest
 from django.utils import timezone
 
-from apps.core.models import Account, Job, Quote, SupportTicket
+from apps.core.models import Account, Job, Quote
 from operations.models import AuditLog
 from operations.views import audit_changes
 from tests.test_operations import staff_client
@@ -21,30 +21,23 @@ def failed_job(account):
                               request_hash=uuid.uuid4().hex, status='failed')
 
 
-def ticket(account, status='open', subject='Cannot download'):
-    return SupportTicket.objects.create(account=account, subject=subject, message='The file will not open.',
-                                        category='processing', status=status)
-
-
 def test_today_is_the_landing_page_and_shows_what_is_waiting():
     client, _ = staff_client()
     account = Account.objects.create(telegram_user_id=81001, display_name='Malika')
-    ticket(account)
     failed_job(account)
 
     assert client.get('/ops/').url == '/ops/today'
     response = client.get('/ops/today?lang=en')
     assert response.status_code == 200
     page = response.content.decode()
-    assert 'Support questions open' in page and 'Card payments to review' in page
+    assert 'Card payments to review' in page and 'Support questions open' not in page
     cards = {card['key']: card['count'] for card in response.context['actions']}
-    assert cards['support'] == 1 and cards['failed'] == 1
+    assert cards == {'payments': 0, 'failed': 1}
     stats = {stat['key']: stat['value'] for stat in response.context['stats']}
     assert stats['new_users'] == 1 and stats['tasks'] == 1
-    # Open support cases show as a count beside Support in the sidebar.
-    support = next(item for group in response.context['nav'] for item in group['items'] if item['path'] == 'support')
-    assert support['badge'] == 1
-
+    # The support inbox is gone: customers reach the team on Telegram.
+    paths = {item['path'] for group in response.context['nav'] for item in group['items']}
+    assert 'support' not in paths and client.get('/ops/support').status_code == 404
 
 def test_today_shows_each_role_only_the_cards_it_can_open():
     client, _ = staff_client('Analyst')
@@ -57,32 +50,6 @@ def test_today_shows_each_role_only_the_cards_it_can_open():
     support, _ = staff_client('Support')
     keys = {stat['key'] for stat in support.get('/ops/today').context['stats']}
     assert 'received' not in keys, "so'm totals are for Finance and Analysts"
-
-
-def test_support_inbox_opens_on_open_cases_whenever_they_arrived():
-    client, _ = staff_client('Support')
-    account = Account.objects.create(telegram_user_id=81002)
-    old = ticket(account, subject='An old question')
-    SupportTicket.objects.filter(pk=old.pk).update(created_at=timezone.now() - timedelta(days=200))
-    ticket(account, status='resolved', subject='Already answered')
-
-    page = client.get('/ops/support').content.decode()
-    assert 'An old question' in page and 'Already answered' not in page
-    resolved = client.get('/ops/support?status=resolved').content.decode()
-    assert 'Already answered' in resolved and 'An old question' not in resolved
-    everything = client.get('/ops/support?status=all').content.decode()
-    assert 'Already answered' in everything and 'An old question' in everything
-
-
-def test_support_conversation_reply_waits_for_the_customer():
-    client, _ = staff_client('Support')
-    case = ticket(Account.objects.create(telegram_user_id=81003))
-    page = client.get(f'/ops/support/{case.id}').content.decode()
-    assert 'The file will not open.' in page and 'name="reply"' in page
-    assert client.post(f'/ops/support/{case.id}', {'reply': 'Please try again now.', 'status': 'reply'}).status_code == 302
-    case.refresh_from_db()
-    assert case.status == 'waiting_customer'
-    assert 'Please try again now.' in client.get(f'/ops/support/{case.id}').content.decode()
 
 
 def test_customer_search_reaches_accounts_older_than_the_report_period():
@@ -117,20 +84,17 @@ def test_audit_table_shows_what_changed():
     assert '<del>100</del>' in page and '<ins>200</ins>' in page
 
 
-def test_customer_page_lists_their_payments_for_finance_and_their_cases_for_support():
+def test_customer_page_lists_their_payments_for_finance():
     from apps.commerce.models import ManualPayment
     account = Account.objects.create(telegram_user_id=81006, display_name='Kamola')
-    case = ticket(account, subject='Where is my plan?')
     transfer = ManualPayment.objects.create(account=account, plan='plus', amount=60000, currency='UZS',
                                             reference='PM-TEST1', expires_at=timezone.now() + timedelta(hours=1))
     admin, _ = staff_client()
     page = admin.get(f'/ops/users/{account.id}').content.decode()
-    assert f'/ops/payments/manual/{transfer.id}' in page and f'/ops/support/{case.id}' in page
+    assert f'/ops/payments/manual/{transfer.id}' in page and '/ops/support/' not in page
     support, _ = staff_client('Support')
     page = support.get(f'/ops/users/{account.id}').content.decode()
-    assert f'/ops/support/{case.id}' in page
     assert f'/ops/payments/manual/{transfer.id}' not in page, 'card transfers are for Finance'
-
 
 def test_users_can_be_sorted():
     client, _ = staff_client('Support')
