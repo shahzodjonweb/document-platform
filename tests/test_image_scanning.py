@@ -224,8 +224,10 @@ def test_ambiguous_document_is_not_cropped(factory):
         assert result.tobytes() == source.tobytes()
 
 
-def test_clipped_page_can_trim_only_empty_source_bands_and_keeps_visible_writing():
+def test_uncertain_partial_pose_fallback_keeps_every_visible_source_pixel(monkeypatch):
     from scripts.operations.partial_scan_fixtures import source_roi
+    from processors import partial_scan_rectification
+    monkeypatch.setattr(partial_scan_rectification, 'rectify_partial', lambda image, details: None)
     source = incomplete_paper()
     crop, metadata = prepare_image(source, enhance_text=False)
     left, top, right, bottom = source_roi(source, crop, white_canvas=True)

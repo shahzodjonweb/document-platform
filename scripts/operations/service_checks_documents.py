@@ -22,11 +22,10 @@ from pypdf import PdfReader, PdfWriter
 from reportlab.pdfgen.canvas import Canvas
 from apps.core.models import Account, FileAsset, Job
 try:
-    # The SSH audit supplies fresh anonymous fixtures, independently of the
-    # application's installed image. Ordinary local tests import the file.
-    from service_audit_partial_scan_fixtures_py import partial_document_fixture, validate_partial_output
+    # Supplied fresh by the SSH audit, independent of the deployed image.
+    from service_audit_rectified_partial_scan_fixtures_py import rectified_partial_fixture, validate_rectified_partial_output
 except ModuleNotFoundError:
-    from scripts.operations.partial_scan_fixtures import partial_document_fixture, validate_partial_output
+    from scripts.operations.rectified_partial_scan_fixtures import rectified_partial_fixture, validate_rectified_partial_output
 
 
 API_URL = 'http://127.0.0.1:8000/api/v1/'
@@ -200,15 +199,21 @@ def curved_gray_document(*, with_mask=False):
     return (image, np.round(mask * 255).astype(np.uint8)) if with_mask else image
 
 
-def validate_fit_canvas(reader, image):
-    """Verify the actual PDF image placement fills a bounded, borderless page."""
+def validate_fit_canvas(reader, image, *, expected_a4=True):
+    """Verify precise A4 (or an opt-out fit page) without stretching or clipping."""
     from pypdf.generic import ContentStream
     page = reader.pages[0]
     width, height = float(page.mediabox.width), float(page.mediabox.height)
-    require(abs(max(width, height) - 842) < .001
-            and abs(width / height - image.width / image.height) < .00001,
-            'curved_document_fitted_page')
-    require(page.rotation % 360 == 0 and page.cropbox == page.mediabox,
+    if expected_a4:
+        from reportlab.lib.pagesizes import A4
+        require(all(abs(actual - expected) < .001 for actual, expected in
+                    zip(sorted((width, height)), sorted(A4))), 'curved_document_a4_page')
+    else:
+        require(abs(max(width, height) - 842) < .001
+                and abs(width / height - image.width / image.height) < .00001,
+                'curved_document_fitted_page')
+    require(page.rotation % 360 == 0 and page.cropbox == page.mediabox
+            and tuple(map(float, page.mediabox.lower_left)) == (0., 0.),
             'curved_document_page_viewport')
     current = (1., 0., 0., 1., 0., 0.)
     stack, placements = [], []
@@ -227,10 +232,17 @@ def validate_fit_canvas(reader, image):
         elif operator == b'Do':
             placements.append(current)
     require(len(placements) == 1 and not stack, 'curved_document_canvas_state')
-    expected = (width, 0., 0., height, 0., 0.)
+    scale = min(width / image.width, height / image.height)
+    fitted_width, fitted_height = image.width * scale, image.height * scale
+    expected = (fitted_width, 0., 0., fitted_height,
+                (width - fitted_width) / 2, (height - fitted_height) / 2)
     require(all(abs(actual - target) < .001 for actual, target in zip(placements[0], expected)),
+            'curved_document_uniform_image_placement' if expected_a4 else
             'curved_document_borderless_image_placement')
-    return {'borderless_page_verified': True}
+    borderless = abs(width - fitted_width) < .001 and abs(height - fitted_height) < .001
+    return {'a4_page_verified': expected_a4, 'uniform_image_fit_verified': True,
+            'borderless_page_verified': borderless}
+
 
 
 def side_label_data(image):
@@ -287,7 +299,7 @@ def validate_curved_scan(output, original, *, enabled, enhanced=True, true_paper
     require(len(reader.pages) == 1 and len(reader.pages[0].images) == 1, 'curved_document_page')
     image = reader.pages[0].images[0].image.convert('RGB')
     pixels = np.asarray(image).astype(np.int16)
-    flags = validate_fit_canvas(reader, image)
+    flags = validate_fit_canvas(reader, image, expected_a4=enabled)
     if not enabled:
         require(image.size == original.size and np.array_equal(np.asarray(image), np.asarray(original)),
                 'curved_document_opt_out_preserves_all_pixels')
@@ -793,7 +805,7 @@ def fixtures(folder):
     Image.fromarray(paper_mask).save(paths['held_dense_mask'])
     Image.fromarray(finger_mask).save(paths['held_dense_finger'])
     paths['partial_scan'] = folder / 'generic-clipped-shadowed-form.png'
-    partial_document_fixture().image.save(paths['partial_scan'])
+    rectified_partial_fixture().image.save(paths['partial_scan'])
     for language, text in [('eng', 'HELLO DOCUMENT 2026'), ('rus', 'ПРИВЕТ ДОКУМЕНТ 2026'), ('uzb', 'SALOM HUJJAT 2026')]:
         paths[language] = folder / (language + '.png')
         scan = Image.new('RGB', (1500, 320), 'white')
@@ -882,6 +894,7 @@ def validate_output(feature, outputs, parameters, inputs=None):
         require(len(pages) == (1 if scan_case else 2) and all(len(p.images) > 0 for p in pages), 'image_pages')
         if 'auto_crop' in parameters and inputs not in (['curved_scan'], ['tinted_scan'], ['held_dense_scan'], ['partial_scan']):
             picture = pages[0].images[0].image.convert('RGB')
+            validate_fit_canvas(readers[0], picture, expected_a4=parameters['auto_crop'])
             if parameters['auto_crop']:
                 require(picture.width < 650 and picture.height < 850, 'document_crop')
                 require(sum(b > r + 35 and b > g + 25 for r, g, b in picture.get_flattened_data()) > 100, 'document_colored_ink')
@@ -902,7 +915,7 @@ def validate_output(feature, outputs, parameters, inputs=None):
 
 def check_documents(audit_id, emit):
     results = []
-    partial_roi = None
+    partial_crop_only = None
     deadline = time.monotonic() + 410
     with tempfile.TemporaryDirectory(prefix='pdfmaster-service-audit-') as directory:
         paths = fixtures(Path(directory))
@@ -996,13 +1009,10 @@ def check_documents(audit_id, emit):
                             'clipped_document_page')
                     image = reader.pages[0].images[0].image.convert('RGB')
                     row.update(validate_fit_canvas(reader, image))
-                    proof = validate_partial_output(partial_document_fixture(), image,
-                                                    enhanced=enhanced, roi=partial_roi,
-                                                    auto_crop=True)
-                    require(proof.get('white_canvas_verified') is True
-                            and proof.get('exterior_background_removed') is True,
-                            'clipped_document_background_white')
-                    partial_roi = proof.pop('roi')
+                    proof = validate_rectified_partial_output(rectified_partial_fixture(), image,
+                                                              enhanced=enhanced, crop_only=partial_crop_only)
+                    if not enhanced:
+                        partial_crop_only = image.copy()
                     row.update(proof)
                 if feature == 'pdf.merge':
                     preview = job['artifacts'][0]['preview_url']

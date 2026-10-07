@@ -31,20 +31,26 @@ Page selections are one-based `1,3-5` strings or `all`; duplicates, descending/o
 `pdf.compression_preview` and `pdf.image_layout` are support/UI catalog IDs backed by the compress metadata and image-layout parameter schema, not independently billable processing endpoints. `files.no_watermark` is an output policy: no platform watermark is introduced. No overlay is represented as true editing or redaction.
 
 Images-to-PDF scanning runs locally with OpenCV, without an AI provider or OCR call.
-It rectifies only a confident, fully visible paper outline. A clipped written
-page can receive masked shadow and color cleanup when coherent paper, observed
-boundaries and writing at a clipped edge independently qualify it. Missing
-corners are never invented: cropped-page geometry remains a literal source
-rectangle. With Auto crop enabled, a separately qualified native paper matte
-removes confirmed surrounding background onto a white canvas. Observed paper,
-its writing, additional visible paper and uncertain paper boundaries remain protected. The page is
-trimmed only around verified empty or removed exterior bands (with
-downsampling only when the resulting crop exceeds the 16 MP output ceiling).
-Unrelated off-paper text is part of the removed scene when Auto crop is on;
-turning it off preserves the entire scene. Uncertain outlines,
-competing pages and ordinary photos keep the full image. Already full-frame scans
-can receive text enhancement without cropping to an inner table. Enhancement
-retains colored ink, and applies only inside a detected page when cropping is off.
+A confident complete outline is cropped and straightened. Qualified clipped
+pages now also receive a rectangular scan: supported visible edge curves and
+side directions estimate page geometry, remove photographed paper-edge halos,
+and resample the visible sheet once. Geometric extensions beyond the camera
+remain white; missing writing is never reconstructed. The dominant observed
+sheet is selected; competing written pages and uncertain poses retain the safe
+conservative matte/crop fallback rather than losing visible content.
+
+With Auto crop on, detected document pages using the default `fit` layout are
+placed on exact ISO A4 in portrait or landscape, with uniform fitting and no
+added user margin. Aspect-required white paper padding preserves all visible
+content. Explicit A4, Letter, original, orientation and margin choices remain
+honored. Ordinary photos and Auto crop off retain the existing image-fit layout.
+Per-page effective layout and image-placement metadata describe the result.
+
+Enhance text cleans illumination and neutral paper texture while keeping fine
+print, signatures and colored ink. Auto crop off applies enhancement only inside
+the detected page and preserves the surrounding scene exactly. Off-paper scene
+text is removed with document cropping. Already full-frame scans are never
+cropped to an inner printed table.
 Both disabled leaves the existing EXIF/alpha/layout conversion unchanged. Detection
 uses a 1280-pixel thumbnail; corrected pages are bounded to 16 MP, while original
 inputs retain the existing 40 MP limit. The worker keeps its existing CPU, memory
@@ -71,7 +77,8 @@ enhancement estimates per-channel illumination from observed paper and boosts
 neutral fine strokes using native local contrast, without binarizing or erasing
 colored writing. All native matte and cleanup work tiles stay within one million
 pixels. Enhancement-only mode preserves exterior RGB exactly; crop-only mode
-preserves observed paper and its writing RGB while replacing confirmed background.
+preserves observed paper and its writing RGB at the matte stage before
+geometric resampling, while replacing confirmed background.
 An enclosing proposal
 supplies context for independently tracing each physical paper edge. Smooth
 boundary curves rectify gentle curl into a rectangle, with correction confined
@@ -88,7 +95,8 @@ once in strips of at most one million pixels, averaging opposing edge lengths
 while enforcing the exact 16 MP output ceiling. Detection is conservative
 and may leave low-contrast, obscured or blank pages untouched. Writing-like marks
 are required to avoid cropping bright panels in ordinary photographs. Internal `image_processing`
-metadata contains only per-page outcome booleans and counts, without document text.
+metadata contains per-page outcome booleans, counts, effective paper sizes and
+placement coordinates, without document text.
 `tests/test_image_scanning.py`, `tests/test_image_scanning_realistic.py`,
 `tests/test_image_scanning_safety.py`, `tests/test_image_scanning_rectification.py`,
 `tests/test_image_scanning_tinted.py`,
@@ -104,10 +112,11 @@ Service verification also processes anonymized clipped, curved gray, tinted and 
 shaded paper through the
 actual HTTP/queue/worker/download path and checks the resulting PDF pixels with
 defaults enabled, cropping alone and both effects disabled. The checks require
-a fitted borderless PDF canvas, physical desk removal and all corner/side writing.
-Clipped-page checks require an exact source crop rectangle, preservation of all
-visible paper and writing, verified white exterior canvas when cropping is on,
-untouched exterior when cropping is off and measurable paper/text cleanup.
+a uniformly fitted A4 PDF canvas, physical desk removal and all corner/side writing.
+Clipped-page checks require a flat rectangular scan, independent preservation
+of visible writing, exact A4 PDF placement and measurable paper/text cleanup.
+The uncertain-pose fallback retains separate strict source-pixel/matte guards;
+Auto crop off must keep exterior scene pixels untouched.
 Previously generated PDFs are
 immutable; scanning changes apply to new image conversions.
 

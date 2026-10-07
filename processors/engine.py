@@ -64,7 +64,7 @@ PARAMETER_SCHEMAS = {
     'pdf.reorder': _schema({'order': {'type': 'array', 'items': {'type': 'integer', 'minimum': 1}, 'maxItems': MAX_PAGES}}, ('order',)),
     'pdf.rotate': _schema({'pages': PAGES, 'angle': {'type': 'integer', 'enum': [90, 180, 270]}}),
     'pdf.images_to_pdf': _schema({
-        'paper_size': {'type': 'string', 'enum': ['fit', 'A4', 'Letter', 'original'], 'default': 'fit', 'description': 'Fit uses the image aspect ratio with an 842-point long edge, without adding a paper border.'},
+        'paper_size': {'type': 'string', 'enum': ['fit', 'A4', 'Letter', 'original'], 'default': 'fit', 'description': 'Fit uses ISO A4 for a detected document when auto-crop is on; other images keep their aspect with an 842-point long edge.'},
         'orientation': {'type': 'string', 'enum': ['auto', 'portrait', 'landscape'], 'default': 'auto'},
         'margin': {'type': 'number', 'minimum': 0, 'maximum': 72, 'default': 0},
         'auto_crop': {'type': 'boolean', 'default': True, 'description': 'Crop and straighten a confidently detected document; otherwise keep the full image.'},
@@ -417,6 +417,7 @@ def _image_pdf(paths: list[Path], parameters: dict, out: Path):
     destination = out / 'images.pdf'
     canvas = Canvas(str(destination), pageCompression=1, invariant=1)
     outcomes = []
+    layouts = []
     for path in paths:
         with Image.open(path, formats=['PNG', 'JPEG', 'WEBP']) as raw:
             picture = ImageOps.exif_transpose(raw)
@@ -434,10 +435,14 @@ def _image_pdf(paths: list[Path], parameters: dict, out: Path):
             outcomes.append(outcome)
             iw, ih = picture.size
             margin = parameters['margin']
-            if parameters['paper_size'] == 'original':
+            requested_paper = parameters['paper_size']
+            automatic_a4 = (requested_paper == 'fit' and parameters['auto_crop']
+                            and outcome['document_detected'])
+            effective_paper = 'A4' if automatic_a4 else requested_paper
+            if effective_paper == 'original':
                 # Original means one image pixel per PDF point at 72 dpi.
                 width, height = iw + 2 * margin, ih + 2 * margin
-            elif parameters['paper_size'] == 'fit':
+            elif effective_paper == 'fit':
                 # Match the processed image's shape without making high-resolution
                 # uploads physically enormous. Explicit margins surround the image.
                 fit_scale = 842 / max(iw, ih)
@@ -446,21 +451,27 @@ def _image_pdf(paths: list[Path], parameters: dict, out: Path):
                         or (parameters['orientation'] == 'portrait' and width > height)):
                     width, height = height, width
             else:
-                width, height = A4 if parameters['paper_size'] == 'A4' else letter
+                width, height = A4 if effective_paper == 'A4' else letter
                 landscape = parameters['orientation'] == 'landscape' or (parameters['orientation'] == 'auto' and iw > ih)
                 if landscape:
                     width, height = height, width
             if max(width, height) > 14_400 or min(width - 2 * margin, height - 2 * margin) <= 0:
                 raise ProcessorError('page_dimensions_invalid')
             scale = min((width - 2 * margin) / iw, (height - 2 * margin) / ih)
+            x, y = (width - iw * scale) / 2, (height - ih * scale) / 2
             canvas.setPageSize((width, height))
-            canvas.drawImage(ImageReader(picture), (width - iw * scale) / 2, (height - ih * scale) / 2,
+            canvas.drawImage(ImageReader(picture), x, y,
                 iw * scale, ih * scale, mask='auto')
+            layouts.append({'requested_paper_size': requested_paper,
+                'effective_paper_size': effective_paper, 'automatic_a4': automatic_a4,
+                'page_size_points': [width, height],
+                'image_placement_points': [x, y, iw * scale, ih * scale]})
             canvas.showPage()
     canvas.save()
     os.chmod(destination, 0o600)
     return [_artifact(destination)], {'image_processing': {
         'pages': outcomes,
+        'layouts': layouts,
         'document_pages': sum(row['document_detected'] for row in outcomes),
         'cropped_pages': sum(row['cropped'] for row in outcomes),
         'enhanced_pages': sum(row['enhanced'] for row in outcomes)}}

@@ -656,6 +656,17 @@ def prepare_image(image, *, auto_crop=True, enhance_text=True):
     if not detected:
         return image, metadata
     if details is not None and details.get('kind') == 'partial':
+        if auto_crop:
+            from processors.partial_scan_rectification import rectify_partial
+            rectified = rectify_partial(image, details)
+            if rectified is not None:
+                image, geometry = rectified
+                metadata.update(cropped=True, rectified=True, background_removed=True)
+                if enhance_text:
+                    from processors.partial_scan_cleanup import cleanup_paper
+                    image = cleanup_paper(image, paper_mask=geometry.get('paper_mask'))
+                    metadata['enhanced'] = True
+                return image, metadata
         from processors.partial_document_scan import native_safe_crop_box
         box = native_safe_crop_box(image, details) if auto_crop else None
         removed = False
@@ -693,6 +704,10 @@ def prepare_image(image, *, auto_crop=True, enhance_text=True):
         metadata['cropped'] = True
         quad = None
     if enhance_text:
-        image = _enhance(image, quad)
+        if auto_crop:
+            from processors.partial_scan_cleanup import cleanup_paper
+            image = cleanup_paper(image)
+        else:
+            image = _enhance(image, quad)
         metadata['enhanced'] = True
     return image, metadata

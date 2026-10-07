@@ -1,4 +1,8 @@
-"""Focused calibration of anonymous partial-page preservation properties."""
+"""Paper/ink safety of the conservative fallback before partial rectification.
+
+New rectangular output has independent tests in test_partial_scan_rectification.
+These strict source-pixel guards cover the fallback when pose is uncertain.
+"""
 import cv2
 import numpy as np
 import pytest
@@ -10,6 +14,13 @@ from scripts.operations.partial_scan_fixtures import (
     FONT, VARIANTS, partial_document_fixture, reference_modes, source_roi,
     validate_partial_modes, validate_partial_output,
 )
+
+
+@pytest.fixture(autouse=True)
+def uncertain_pose_fallback(monkeypatch):
+    # An uncertain geometric pose must fall back without losing source ink.
+    from processors import partial_scan_rectification
+    monkeypatch.setattr(partial_scan_rectification, 'rectify_partial', lambda image, details: None)
 
 
 @pytest.mark.parametrize('variant', list(VARIANTS))

@@ -7,6 +7,7 @@ import cv2
 import numpy as np
 import pytest
 from PIL import Image
+from reportlab.lib.pagesizes import A4
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen.canvas import Canvas
 
@@ -29,10 +30,13 @@ def known_flat_crop(source):
 
 
 def fitted_pdf(image):
-    width, height = image.width / max(image.size) * 842, image.height / max(image.size) * 842
+    width, height = A4[::-1] if image.width > image.height else A4
+    scale = min(width / image.width, height / image.height)
+    placed_width, placed_height = image.width * scale, image.height * scale
     stream = io.BytesIO()
     canvas = Canvas(stream, pagesize=(width, height), invariant=1)
-    canvas.drawImage(ImageReader(image), 0, 0, width, height)
+    canvas.drawImage(ImageReader(image), (width - placed_width) / 2, (height - placed_height) / 2,
+                     placed_width, placed_height)
     canvas.showPage(); canvas.save()
     return stream.getvalue()
 

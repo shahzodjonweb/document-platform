@@ -180,9 +180,11 @@ def test_long_faint_native_strokes_survive_all_tentative_band_orientations(side,
     ('signature', 2), ('underline', 1), ('review_signature', 3),
     ('review_signature', 5), ('review_signature', 7),
 ])
-def test_auto_crop_removes_off_paper_stroke_and_preserves_every_paper_rgb_pixel(kind, stroke_width):
+def test_uncertain_pose_fallback_removes_off_paper_stroke_and_preserves_paper_rgb(kind, stroke_width, monkeypatch):
     from processors.document_scan import prepare_image
     from scripts.operations.partial_scan_fixtures import partial_document_fixture, source_roi
+    from processors import partial_scan_rectification
+    monkeypatch.setattr(partial_scan_rectification, 'rectify_partial', lambda image, details: None)
 
     fixture = partial_document_fixture(scale=2)
     # Source-camera masks independently establish that these are exterior
