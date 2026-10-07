@@ -57,6 +57,7 @@ def compose(notice):
     from apps.commerce.models import SubscriptionPeriod
     from operations.integrations import manual_payment_config
     from .billing import COPY, money
+    from .clock import local_time
     payment = notice.manual
     account = payment.account
     if notice.kind == 'staff_new':
@@ -76,14 +77,14 @@ def compose(notice):
     copy = COPY.get(account.locale, COPY['en'])
     if notice.kind == 'approved':
         period = SubscriptionPeriod.objects.filter(payment=payment.payment).first()
-        date = timezone.localtime(period.ends_at).strftime('%d.%m.%Y') if period else ''
+        date = local_time(account, period.ends_at).strftime('%d.%m.%Y') if period else ''
         return account.telegram_user_id, copy['manual_approved'].format(plan=payment.plan.title(), date=date)
     if notice.kind == 'rejected':
         return account.telegram_user_id, copy['manual_rejected'].format(reference=payment.reference,
                                                                         reason=payment.decision_note)
     if notice.kind == 'renewal_reminder':
         period = SubscriptionPeriod.objects.filter(payment=payment.payment).first()
-        date = timezone.localtime(period.ends_at).strftime('%d.%m.%Y') if period else ''
+        date = local_time(account, period.ends_at).strftime('%d.%m.%Y') if period else ''
         return account.telegram_user_id, copy['manual_reminder'].format(plan=payment.plan.title(), date=date)
     return None, 'unknown_notice'
 

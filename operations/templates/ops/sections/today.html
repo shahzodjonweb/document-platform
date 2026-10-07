@@ -2,7 +2,7 @@
 <div class="page-heading">
   <div>
     <h1>{{ t.today }}</h1>
-    <p class="page-description">{{ now|date:'d.m.Y' }} · {{ t.today_desc }}</p>
+    <p class="page-description">{{ today_date|date:'d.m.Y' }} · {{ t.today_desc }}</p>
   </div>
 </div>
 {% if filters.environment == 'development' %}<p class="environment-note"><span class="status-dot"></span>{{ t.notice_test }}</p>{% endif %}

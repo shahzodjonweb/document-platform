@@ -1,4 +1,4 @@
-{% extends 'ops/base.html' %}{% load tz %}
-{% block content %}{% firstof today_filters.timezone filters.timezone as zone %}{% timezone zone %}
+{% extends 'ops/base.html' %}
+{% block content %}
 {% include section_template %}
-{% endtimezone %}{% endblock %}
+{% endblock %}

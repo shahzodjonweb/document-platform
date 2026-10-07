@@ -161,6 +161,30 @@ def test_csrf_and_customer_cannot_grant_staff_or_plan(settings):
     assert client.get('/api/v1/me').json()['plan']=='free'
     assert '_auth_user_id' not in client.session
 
+def test_profile_time_zone_accepts_device_zones_and_rejects_junk(settings):
+    settings.DEVELOPMENT_LOGIN_ENABLED=True;settings.DEBUG=True
+    client=Client()
+    token=client.post('/api/v1/auth/dev-login',{},content_type='application/json').json()['csrf_token']
+    for zone in ('Asia/Tashkent','Asia/Calcutta'):
+        response=client.patch('/api/v1/me',{'time_zone':zone},content_type='application/json',HTTP_X_CSRFTOKEN=token)
+        assert response.status_code==200 and response.json()['time_zone']==zone,response.content
+    for zone in ('Asia','Mars/Olympus','../etc/passwd','x'*300,5):
+        response=client.patch('/api/v1/me',{'time_zone':zone},content_type='application/json',HTTP_X_CSRFTOKEN=token)
+        assert response.status_code==400 and response.json()['error']['code']=='invalid_timezone',response.content
+    assert client.get('/api/v1/me').json()['time_zone']=='Asia/Calcutta'
+
+def test_settings_page_save_is_accepted(settings):
+    settings.DEVELOPMENT_LOGIN_ENABLED=True;settings.DEBUG=True
+    client=Client()
+    token=client.post('/api/v1/auth/dev-login',{},content_type='application/json').json()['csrf_token']
+    # The body SettingsView sends, school mode included.
+    body={'locale':'uz','mode':'school','preferences':{'theme':'dark','output_locale':'ru','paper_size':'Letter','adult_assistance':True}}
+    response=client.patch('/api/v1/me',body,content_type='application/json',HTTP_X_CSRFTOKEN=token)
+    assert response.status_code==200,response.content
+    assert client.get('/api/v1/me').json()['preferences']['adult_assistance'] is True
+    response=client.patch('/api/v1/me',{'preferences':{'adult_assistance':'yes'}},content_type='application/json',HTTP_X_CSRFTOKEN=token)
+    assert response.status_code==400 and response.json()['error']['code']=='invalid_profile_fields'
+
 def test_dev_login_and_features_fail_closed(settings):
     settings.DEBUG=False;settings.DEVELOPMENT_LOGIN_ENABLED=False;settings.ENABLE_BETA_TOOLS=False
     client=Client()

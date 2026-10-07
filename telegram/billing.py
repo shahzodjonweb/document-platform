@@ -12,6 +12,8 @@ from apps.core.models import BotCallback, BotConversation
 from apps.commerce import services
 from apps.commerce.serializers import subscription_data
 
+from .clock import stamp
+
 COPY = {
     'en': {
         "card_pay": "💳 {plan} · {price} so'm / 30 days",
@@ -398,7 +400,7 @@ async def show_subscription(message, account, edit=False):
         lines = [f'<b>{html.escape(sub["plan"].title())}</b>']
         if sub['active_until']:
             lines.extend([copy(account, 'renewal_on' if sub['renewal_enabled'] else 'renewal_off'),
-                          f'{copy(account, "active_until")}: {sub["current_period_end"]:%Y-%m-%d %H:%M} UTC'])
+                          f'{copy(account, "active_until")}: {stamp(account, sub["current_period_end"])}'])
             rows.append([await button(account, 'cancel' if sub['renewal_enabled'] else 'resume',
                                       'commerce_cancel' if sub['renewal_enabled'] else 'commerce_resume', {'subscription_id': sub['id']})])
         else:
@@ -427,12 +429,12 @@ async def show_subscription_confirmation(message, account, *, enabled=None, plan
         if plan == sub['plan']:
             raise DomainError('invalid_plan_change', 409)
         body = copy(account, 'confirm_change').format(
-            date=f'{sub["current_period_end"]:%Y-%m-%d %H:%M} UTC',
+            date=stamp(account, sub["current_period_end"]),
             plan=copy(account, 'free') if plan == 'free' else plan.title(),
         )
         action, payload = 'commerce_plan_confirm', {'subscription_id': sub['id'], 'plan': plan}
     else:
-        body = copy(account, 'confirm_on' if enabled else 'confirm_off').format(date=f'{sub["current_period_end"]:%Y-%m-%d %H:%M} UTC')
+        body = copy(account, 'confirm_on' if enabled else 'confirm_off').format(date=stamp(account, sub["current_period_end"]))
         action, payload = 'commerce_renewal_confirm', {'subscription_id': sub['id'], 'enabled': enabled}
     rows = [[await button(account, 'confirm', action, payload)],
             [await button(account, 'keep', 'subscription')], *(await navigation(account))]

@@ -205,7 +205,7 @@ LEGACY_MESSAGES = {
     'auto': ('✨ Auto', '✨ Avtomatik', '✨ Авто'),
     'quote_cost': ('Tasks / page units', 'Vazifa / sahifa birligi', 'Задачи / единицы страниц'),
     'balance': ('Available tasks / page units', 'Mavjud vazifa / sahifa birligi', 'Доступно задач / единиц страниц'),
-    'expires': ('Valid until (UTC)', 'Amal qiladi (UTC)', 'Действует до (UTC)'),
+    'expires': ('Valid until', 'Amal qiladi', 'Действует до'),
     'parameters': ('Options', 'Sozlamalar', 'Настройки'),
     'add': ('📎 Add to this task', '📎 Shu vazifaga qo‘shish', '📎 Добавить к задаче'),
     'new': ('➕ New task', '➕ Yangi vazifa', '➕ Новая задача'),

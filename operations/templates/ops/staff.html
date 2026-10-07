@@ -1,5 +1,5 @@
-{% extends 'ops/base.html' %}{% load ops_ui tz %}
-{% block content %}{% timezone 'Asia/Tashkent' %}
+{% extends 'ops/base.html' %}{% load ops_ui %}
+{% block content %}
 <div class="page-heading">
   <div>
     <h1>{{ s.title }}</h1>
@@ -73,4 +73,4 @@
     </div>
   </form>
 </dialog>
-{% endtimezone %}{% endblock %}
+{% endblock %}

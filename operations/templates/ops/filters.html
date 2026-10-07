@@ -13,10 +13,7 @@
       <label>{{ t.date_to }}<input name="date_to" type="date" value="{{ filters.date_to }}" required></label>
       <label>{{ t.timezone }}
         <select name="timezone">
-          {% if filters.timezone != 'UTC' and filters.timezone != 'Asia/Tashkent' and filters.timezone != 'Europe/Moscow' %}<option selected>{{ filters.timezone }}</option>{% endif %}
-          <option {% if filters.timezone == 'UTC' %}selected{% endif %}>UTC</option>
-          <option {% if filters.timezone == 'Asia/Tashkent' %}selected{% endif %}>Asia/Tashkent</option>
-          <option {% if filters.timezone == 'Europe/Moscow' %}selected{% endif %}>Europe/Moscow</option>
+          {% for zone in zones %}<option value="{{ zone }}"{% if zone == filters.timezone %} selected{% endif %}>{{ zone }}{% if zone == device_zone %} · {{ t.this_computer }}{% endif %}</option>{% endfor %}
         </select>
       </label>
       <label>{{ t.channel }}

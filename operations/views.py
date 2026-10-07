@@ -3,7 +3,7 @@ import hashlib
 import io
 import json
 import uuid
-from datetime import timedelta
+from datetime import datetime, timedelta
 from functools import wraps
 from urllib.parse import urlencode
 
@@ -17,12 +17,15 @@ from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbid
 from django.middleware.csrf import rotate_token
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.dateformat import format as date_format
+from django.utils.dateparse import parse_datetime
 from django.views.decorators.http import require_http_methods, require_POST
 
 from apps.core.models import Account, Job, UsageLedger
 from .auth import COOKIE, allowed, audit, begin_session, development_access, require_staff, staff_user
 from .i18n import CATALOGS, EN, get_locale
 from .metrics import DEFINITIONS_VERSION, Filters, report, system_snapshot
+from .middleware import viewer_zone
 from .models import AuditLog, LoginAttempt, StaffSession
 
 PAGE_ROLES = {
@@ -107,7 +110,7 @@ def context(request, page='overview'):
     return {'t':labels,'lang':lang,'query':query,'page':page,'page_key':PAGE_KEYS.get(page,page),
             'title':labels.get(PAGE_KEYS.get(page,page),page),'nav':nav,'staff':user,
             'staff_role':user.groups.first().name if user and user.groups.exists() else labels['staff'],
-            'locale_links':locale_links,'dev_enabled':development_access(request),
+            'locale_links':locale_links,'dev_enabled':development_access(request),'zone':viewer_zone(),
             'can_inspect_jobs':ok(['Operations','Support']),'can_search_users':ok(PAGE_ROLES['users']),'ok':ok}
 
 
@@ -264,6 +267,10 @@ def audit_changes(before,after):
     after=after if isinstance(after,dict) else {}
     def short(value):
         text=value if isinstance(value,str) else json.dumps(value,ensure_ascii=False,default=str)
+        # Saved times are UTC ISO strings: show them like every other time on the page.
+        try:moment=parse_datetime(text)
+        except ValueError:moment=None
+        if moment and timezone.is_aware(moment):text=date_format(timezone.localtime(moment),'d M Y · H:i')
         return text if len(text)<=60 else text[:57]+'…'
     rows=[]
     for key in list(dict.fromkeys([*before,*after]))[:8]:
@@ -338,7 +345,9 @@ def export(request, kind):
     try:filters=Filters.from_request(request)
     except ValueError as error:return HttpResponseBadRequest(str(error))
     output=io.StringIO();writer=csv.writer(output)
-    writer.writerow(['definitions_version',DEFINITIONS_VERSION]);writer.writerow(['generated_at',timezone.now().isoformat()])
+    # Times are in the viewer's zone, like on the page, and carry their UTC offset.
+    local=lambda value:timezone.localtime(value) if isinstance(value,datetime) and timezone.is_aware(value) else value
+    writer.writerow(['definitions_version',DEFINITIONS_VERSION]);writer.writerow(['generated_at',timezone.localtime().isoformat()]);writer.writerow(['times_timezone',viewer_zone()])
     for key,value in filters.__dict__.items():writer.writerow([key,csv_cell(value)])
     if kind=='users':
         fields=['id','telegram_user_id','display_name','locale','plan','first_verified_channel','created_at']
@@ -355,7 +364,7 @@ def export(request, kind):
     else:
         fields=['feature_id','attempts','succeeded','failed','canceled','no_op','users'];rows=([row[f] for f in fields] for row in report(filters)['feature_rows'])
     writer.writerow(fields)
-    for row in rows:writer.writerow([csv_cell(value) for value in row])
+    for row in rows:writer.writerow([csv_cell(local(value)) for value in row])
     audit(request.ops_user,'report.export',kind,'User-requested filtered CSV export',after=filters.__dict__)
     response=HttpResponse('\ufeff'+output.getvalue(),content_type='text/csv; charset=utf-8')
     response['Content-Disposition']=f'attachment; filename="pdf-master-{kind}.csv"'

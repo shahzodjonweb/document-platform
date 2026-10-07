@@ -1,5 +1,5 @@
-{% extends 'ops/base.html' %}{% load ops_ui tz %}
-{% block content %}{% timezone 'Asia/Tashkent' %}
+{% extends 'ops/base.html' %}{% load ops_ui %}
+{% block content %}
 <a class="back-link" href="/ops/payments?lang={{ lang }}#review">{% icon 'left' 16 %}{{ t.payments }}</a>
 <div class="page-heading">
   <div>
@@ -75,4 +75,4 @@
     {% else %}<p class="muted">{{ f.no_receipt }}</p>{% endif %}
   </section>
 </div>
-{% endtimezone %}{% endblock %}
+{% endblock %}

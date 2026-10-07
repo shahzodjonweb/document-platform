@@ -1,5 +1,5 @@
-{% extends 'ops/base.html' %}{% load ops_ui tz %}
-{% block content %}{% timezone 'Asia/Tashkent' %}
+{% extends 'ops/base.html' %}{% load ops_ui %}
+{% block content %}
 <div class="page-heading">
   <div>
     <h1>{{ title }}</h1>
@@ -79,4 +79,4 @@
   {% for issue in issues %}<div class="health-row"><span>{{ issue.kind }}</span><strong>{{ issue.amount_xtr }} XTR</strong></div>{% endfor %}
 </section>
 {% endif %}
-{% endtimezone %}{% endblock %}
+{% endblock %}

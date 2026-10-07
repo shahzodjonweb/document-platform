@@ -9,6 +9,7 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 from django.http import FileResponse, Http404, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 
 from apps.studio.models import GenerationRecord
 from apps.studio.review import REVIEW_DAYS, output_path, page_image, request_data
@@ -100,7 +101,7 @@ def generation_detail(request, pk):
                 is_pdf=record.output_mime == 'application/pdf', page=page, pages=pages,
                 page_label=t['gen_page'].format(n=page, count=pages),
                 service=t[SERVICES.get(record.feature_id, 'gen_document')],
-                kept_until=t['gen_kept_until'].format(date=record.expires_at.strftime('%d %b %Y')),
+                kept_until=t['gen_kept_until'].format(date=timezone.localtime(record.expires_at).strftime('%d %b %Y')),
                 can_inspect_jobs=allowed(request.ops_user, ['Operations', 'Support']))
     return finish_render(request, 'ops/generation.html', data)
 

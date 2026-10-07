@@ -1,11 +1,12 @@
 """Metric definitions v1.0: one set of filters feeds charts, rows and exports."""
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, timezone as dt_timezone
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+from zoneinfo import ZoneInfo
 from django.db.models import Count, Min, Q, Sum
 from django.db.models.functions import TruncDate
 from django.utils import timezone
 from apps.core.models import Account, Job, FileAsset, OutboxEvent
+from .middleware import known_zone, viewer_zone
 
 DEFINITIONS_VERSION = '1.0.0'
 
@@ -21,11 +22,11 @@ class Filters:
 
     @classmethod
     def from_request(cls, request):
-        tz_name = request.GET.get('timezone', 'UTC')
-        try:
-            tz = ZoneInfo(tz_name)
-        except (ZoneInfoNotFoundError, ValueError):
+        # Reports count days in the viewer's own zone unless they pick another.
+        tz_name = request.GET.get('timezone') or viewer_zone()
+        if not known_zone(tz_name):
             raise ValueError('Invalid report timezone')
+        tz = ZoneInfo(tz_name)
         today = timezone.now().astimezone(tz).date()
         try:
             start = date.fromisoformat(request.GET.get('date_from', str(today - timedelta(days=29))))

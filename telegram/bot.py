@@ -29,6 +29,7 @@ from apps.core.errors import DomainError, error_data
 
 from .ux_copy import UX, STATUS, LEGACY_COPY, TOOL_NAMES, PROMPT_EXAMPLES, LOCALES
 from .errors import bot_error
+from .clock import local_time, stamp
 COPY={locale:{**LEGACY_COPY[locale],**UX[locale]} for locale in UX}
 
 def text(account,key): return COPY.get(account.locale,COPY['en'])[key]
@@ -287,7 +288,7 @@ def build_dispatcher():
             summary=await sync_to_async(quote_data)(quote)
             usage=' · '.join(f'{text(account,label)}: {quote.meters[key]}' for key,label in [('file_tasks','file_tasks'),('file_page_units','page_units'),('ai_credits','ai_credits')] if quote.meters.get(key))
             balance=' · '.join(f'{text(account,label)}: {summary["available_balances"][key]["remaining"]}' for key,label in [('file_tasks','file_tasks'),('file_page_units','page_units'),('ai_credits','ai_credits')] if quote.meters.get(key))
-            body+=f'\n\n{text(account,"cost")}: {usage}\n{text(account,"available")}: {balance}\n{text(account,"expires")}: {quote.expires_at:%H:%M}\n{text(account,"tap_to_run")}'
+            body+=f'\n\n{text(account,"cost")}: {usage}\n{text(account,"available")}: {balance}\n{text(account,"expires")}: {stamp(account,quote.expires_at,"%H:%M")}\n{text(account,"tap_to_run")}'
             if summary['affordable']:
                 rows.append([await button(account,'run','run',{**snapshot(draft),'quote_id':str(quote.id)})])
             else:
@@ -333,7 +334,7 @@ def build_dispatcher():
         summary=await sync_to_async(quote_data)(quote);meters=quote.meters;balances=summary['available_balances']
         rows=[[await button(account,'run','run',{**snapshot(draft),'quote_id':str(quote.id)})],[await button(account,'edit_settings','controls'),await button(account,'cancel_button','cancel',snapshot(draft))],[await button(account,'home','home')]]
         usage='\n'.join(f'{text(account,label)}: {meters[key]} / {balances[key]["remaining"]}' for key,label in [('file_tasks','file_tasks'),('file_page_units','page_units'),('ai_credits','ai_credits')] if meters.get(key) or key=='file_tasks')
-        body=f'<b>{text(account,"review_title")}</b>\n{text(account,"review_hint")}\n\n{listing}\n\n{option_summary(account,draft)}\n\n{text(account,"cost")} / {text(account,"available")}:\n{usage}\n{text(account,"expires")}: {quote.expires_at:%Y-%m-%d %H:%M}'
+        body=f'<b>{text(account,"review_title")}</b>\n{text(account,"review_hint")}\n\n{listing}\n\n{option_summary(account,draft)}\n\n{text(account,"cost")} / {text(account,"available")}:\n{usage}\n{text(account,"expires")}: {stamp(account,quote.expires_at)}'
         await render(message,body,rows,edit)
 
     async def review(message,account,binding=None,edit=False):
@@ -472,7 +473,7 @@ def build_dispatcher():
         if other: body+='\n\n'+text(account,'ai_wrong_tool_slides' if other==ai.SLIDES else 'ai_wrong_tool_pdf')
         body+=f'\n\n{text(account,"ai_review_hint")}'
         if usage: body+=f'\n\n{text(account,"cost")} / {text(account,"available")}:\n{usage}'
-        body+=f'\n{text(account,"expires")}: {quote.expires_at:%Y-%m-%d %H:%M}'
+        body+=f'\n{text(account,"expires")}: {stamp(account,quote.expires_at)}'
         # Rewording a change goes back to the change, not to a blank document.
         source=await sync_to_async(ai.revised_from)(draft)
         reword=(await button(account,'ai_revise','ai_revise',{'draft_id':source}) if source
@@ -594,7 +595,7 @@ def build_dispatcher():
         rows=[]
         for job in jobs:
             title=TOOL_NAMES.get(job.feature_id,{}).get(account.locale,job.feature_id)
-            label=f'{STATUS[account.locale].get(job.status,job.status)} · {title} · {job.created_at:%m/%d %H:%M}'
+            label=f'{STATUS[account.locale].get(job.status,job.status)} · {title} · {local_time(account,job.created_at):%m/%d %H:%M}'
             rows.append([InlineKeyboardButton(text=label[:64],callback_data=await callback(account,'job',{'job_id':str(job.id)}))])
         rows.extend([[await button(account,'new_task','new')],[await button(account,'home','home')]])
         await render(message,text(account,'recent' if jobs else 'recent_empty'),rows,edit)
@@ -723,7 +724,7 @@ def build_dispatcher():
         if account.email: methods.append('Email')
         if account.google_sub: methods.append('Google')
         meters=usage['meters']
-        body=f'<b>{text(account,"account")}</b>\n{text(account,"plan_label")}: {html.escape(text(account,'free_plan') if account.plan=='free' else account.plan.title())}\n{text(account,"linked_methods")}: {", ".join(methods)}\n\n'+ '\n'.join(f'{text(account,label)}: {meters[key]["remaining"]} / {meters[key]["limit"]}' for key,label in [('file_tasks','file_tasks'),('file_page_units','page_units'),('ai_credits','ai_credits')])+f'\n{text(account,"resets")}: {usage["resets_at"]:%Y-%m-%d %H:%M} UTC\n\n{text(account,"link_instructions")}'
+        body=f'<b>{text(account,"account")}</b>\n{text(account,"plan_label")}: {html.escape(text(account,'free_plan') if account.plan=='free' else account.plan.title())}\n{text(account,"linked_methods")}: {", ".join(methods)}\n\n'+ '\n'.join(f'{text(account,label)}: {meters[key]["remaining"]} / {meters[key]["limit"]}' for key,label in [('file_tasks','file_tasks'),('file_page_units','page_units'),('ai_credits','ai_credits')])+f'\n{text(account,"resets")}: {stamp(account,usage["resets_at"])}\n\n{text(account,"link_instructions")}'
         await render(message,body,[[await button(account,'plans','plans'),await button(account,'subscription','subscription')],[InlineKeyboardButton(text=text(account,'link_methods'),url=await web_url(account,'settings'))],[await button(account,'language_button','language'),await button(account,'home','home')]],edit)
 
     @dp.callback_query()

@@ -1,5 +1,5 @@
-{% extends 'ops/base.html' %}{% load ops_ui ops_labels tz %}
-{% block content %}{% timezone 'Asia/Tashkent' %}
+{% extends 'ops/base.html' %}{% load ops_ui ops_labels %}
+{% block content %}
 <a class="back-link" href="/ops/users?lang={{ lang }}">{% icon 'left' 16 %}{{ t.users }}</a>
 <div class="page-heading">
   <div class="profile-head">
@@ -217,4 +217,4 @@
   </form>
 </dialog>
 {% endif %}
-{% endtimezone %}{% endblock %}
+{% endblock %}

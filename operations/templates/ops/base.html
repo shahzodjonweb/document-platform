@@ -1,14 +1,14 @@
 {% load static ops_ui %}<!doctype html>
-<html lang="{{ lang }}">
+<html lang="{{ lang }}" data-zone="{{ zone }}"{% if request.method == 'POST' %} data-posted{% endif %}>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
   <title>{{ title }} · PDF Master</title>
   {% include 'ops/brand_head.html' %}
-  <link rel="stylesheet" href="{% static 'ops/main.css' %}?v=redesign-9">
-  <script src="{% static 'ops/theme.js' %}?v=redesign-9"></script>
-  <script src="{% static 'ops/admin.js' %}?v=redesign-9" defer></script>
+  <link rel="stylesheet" href="{% static 'ops/main.css' %}?v=redesign-10">
+  <script src="{% static 'ops/theme.js' %}?v=redesign-10"></script>
+  <script src="{% static 'ops/admin.js' %}?v=redesign-10" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">{{ t.skip }}</a>

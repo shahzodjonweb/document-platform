@@ -1,8 +1,8 @@
 from operations.integrations import telegram_config
+from operations.middleware import known_zone
 import json
 import uuid
 from functools import wraps
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from django.conf import settings
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
@@ -145,12 +145,12 @@ def me(request):
             a.mode=data['mode']
         tz=data.get('time_zone',data.get('timezone'))
         if tz:
-            try: ZoneInfo(tz)
-            except (ZoneInfoNotFoundError,ValueError): raise DomainError('invalid_timezone') from None
+            if not known_zone(tz): raise DomainError('invalid_timezone')
             a.time_zone=tz
         if 'preferences' in data:
             preferences=data['preferences']
-            if not isinstance(preferences,dict) or set(preferences)-{'theme','paper_size','notifications','output_locale'}: raise DomainError('invalid_profile_fields')
+            if not isinstance(preferences,dict) or set(preferences)-{'theme','paper_size','notifications','output_locale','adult_assistance'}: raise DomainError('invalid_profile_fields')
+            if not isinstance(preferences.get('adult_assistance',False),bool): raise DomainError('invalid_profile_fields')
             a.preferences=preferences
         a.save(update_fields=['locale','mode','time_zone','preferences'])
     return account_data(a)

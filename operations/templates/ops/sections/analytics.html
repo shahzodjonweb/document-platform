@@ -61,7 +61,7 @@
     <div class="health-row"><span>{{ t.queued }}</span><strong>{{ totals.queued }}</strong></div>
     <div class="health-row"><span>{{ t.failed }}</span><strong>{{ totals.failed }}</strong></div>
     <div class="health-row"><span>{{ t.activated }}</span><strong>{% if totals.activated is not None %}{{ totals.activated }}%{% else %}—{% endif %}</strong></div>
-    <div class="health-foot"><span class="status-dot"></span>{{ t.updated }} {{ now|date:'H:i' }} {{ filters.timezone }}</div>
+    <div class="health-foot"><span class="status-dot"></span>{{ t.updated }} {{ now|date:'H:i' }} {{ zone }}</div>
   </section>
 </div>
 {% endif %}
@@ -146,4 +146,4 @@
 </section>
 {% endif %}
 {% endif %}
-<p class="freshness">{{ t.updated }} {{ now|date:'d M Y · H:i' }} {{ filters.timezone }} · {{ t.definitions }}</p>
+<p class="freshness">{{ t.updated }} {{ now|date:'d M Y · H:i' }} {{ zone }} · {{ t.definitions }}</p>

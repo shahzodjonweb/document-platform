@@ -60,7 +60,7 @@
   <div class="table-region" role="region" aria-label="{{ a.recent }}" tabindex="0">
     <table>
       <thead>
-        <tr><th>{{ t.created }} (UTC)</th><th>{{ t.feature }}</th><th>{{ a.stage }}</th><th>{{ t.status }}</th><th>{{ a.input_tokens }}</th><th>{{ a.output_tokens }}</th><th>{{ a.latency }}</th></tr>
+        <tr><th>{{ t.created }} ({{ zone }})</th><th>{{ t.feature }}</th><th>{{ a.stage }}</th><th>{{ t.status }}</th><th>{{ a.input_tokens }}</th><th>{{ a.output_tokens }}</th><th>{{ a.latency }}</th></tr>
       </thead>
       <tbody>
         {% for row in pagination %}

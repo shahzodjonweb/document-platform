@@ -4,7 +4,7 @@ Counts only: no customer content appears here, so every staff role can open
 it. Cards that lead somewhere a role cannot go are left out for that role.
 """
 from dataclasses import replace
-from datetime import timedelta
+from datetime import date, timedelta
 from zoneinfo import ZoneInfo
 
 from django.db.models import Min, Sum
@@ -12,15 +12,18 @@ from django.utils import timezone
 
 from apps.core.models import Job
 
-# The business runs on Tashkent time; a report timezone in the URL wins.
-ZONE = 'Asia/Tashkent'
+from .middleware import viewer_zone
 
 
 def day(filters, request, back=0):
-    """The filters narrowed to one calendar day (today, or `back` days ago)."""
-    zone = request.GET.get('timezone') or ZONE
-    date = timezone.now().astimezone(ZoneInfo(zone)).date() - timedelta(days=back)
-    return replace(filters, date_from=str(date), date_to=str(date + timedelta(days=1)), timezone=zone)
+    """The filters narrowed to one calendar day (today, or `back` days ago).
+
+    "Today" starts at midnight on the viewer's computer; a report timezone in
+    the URL wins.
+    """
+    zone = request.GET.get('timezone') or viewer_zone()
+    when = timezone.now().astimezone(ZoneInfo(zone)).date() - timedelta(days=back)
+    return replace(filters, date_from=str(when), date_to=str(when + timedelta(days=1)), timezone=zone)
 
 
 def counts(filters, money):
@@ -70,7 +73,8 @@ def summary(request, filters, labels, ok):
     health = {'queue': environment_jobs.filter(status__in=['queued', 'running']).count(),
               'failed': now['tasks'] and today.jobs().filter(status='failed').count(),
               'storage': storage_state(), 'system_href': '/ops/system' if ok(['Operations']) else ''}
-    return {'today_filters': today, 'stats': stats, 'actions': actions, 'health': health,
+    # The heading names the day being counted, which a report timezone in the URL can move.
+    return {'today_filters': today, 'today_date': date.fromisoformat(today.date_from), 'stats': stats, 'actions': actions, 'health': health,
             'recent_jobs': today.jobs().select_related('account').order_by('-created_at')[:8]
             if ok(['Operations', 'Support']) else []}
 

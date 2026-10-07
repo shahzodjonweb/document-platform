@@ -1,5 +1,5 @@
-{% extends 'ops/base.html' %}{% load ops_ui tz %}
-{% block content %}{% timezone 'Asia/Tashkent' %}
+{% extends 'ops/base.html' %}{% load ops_ui %}
+{% block content %}
 <a class="back-link" href="/ops/payments?lang={{ lang }}">{% icon 'left' 16 %}{{ t.payments }}</a>
 <div class="page-heading"><div><h1>{{ f.detail }}</h1></div></div>
 {% if error %}<div class="alert error" role="alert">{% icon 'alert' %}<span>{{ error }}</span></div>{% endif %}
@@ -28,4 +28,4 @@
   </form>
 </section>
 {% endif %}
-{% endtimezone %}{% endblock %}
+{% endblock %}

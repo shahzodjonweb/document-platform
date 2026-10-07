@@ -6,6 +6,8 @@ from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
+from operations.middleware import viewer_zone
+
 register = template.Library()
 
 # Line icons drawn on a 24px grid, stroked with the text colour.
@@ -156,11 +158,14 @@ def filter_bar(context, presets=True):
               if key in {'q', 'status', 'plan', 'text', 'service'}]
     # The summary says which narrowing filters are on, so nothing is hidden by surprise.
     active = []
+    device = viewer_zone()
     if filters:
         channels = {'web': 'Web', 'bot': 'Telegram Bot', 'mini_app': 'Mini App'}
         active = [value for value in (channels.get(filters.channel), filters.locale.upper(),
                                       context['t']['development'] if filters.environment == 'development' else '',
-                                      filters.timezone if filters.timezone != 'UTC' else '') if value]
+                                      filters.timezone if filters.timezone != device else '') if value]
+    # The viewer's own zone is always offered, so a report can go back to it.
+    zones = list(dict.fromkeys([device, filters.timezone if filters else device, 'UTC', 'Asia/Tashkent', 'Europe/Moscow']))
     return {'t': context['t'], 'lang': context.get('lang', 'en'), 'filters': filters, 'presets': links,
             'custom': filters and presets and not any(link['active'] for link in links), 'hidden': hidden,
-            'active': active}
+            'active': active, 'zones': zones, 'device_zone': device}

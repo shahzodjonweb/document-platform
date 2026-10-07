@@ -1,5 +1,5 @@
-{% extends 'ops/base.html' %}{% load ops_ui ops_labels tz %}
-{% block content %}{% timezone 'Asia/Tashkent' %}
+{% extends 'ops/base.html' %}{% load ops_ui ops_labels %}
+{% block content %}
 <a class="back-link" href="/ops/jobs?lang={{ lang }}">{% icon 'left' 16 %}{{ t.nav_tasks }}</a>
 <div class="page-heading">
   <div>
@@ -42,4 +42,4 @@
     </table>
   </div>
 </section>
-{% endtimezone %}{% endblock %}
+{% endblock %}
