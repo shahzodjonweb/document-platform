@@ -109,3 +109,28 @@ def test_a_retry_of_a_submission_already_accepted_is_not_a_new_document():
     made(customer, 2)
     again, created = submit_job(customer, quote.id, 'same-request')
     assert again.pk == job.pk and not created
+
+
+def test_a_change_to_a_document_does_not_use_up_the_day(monkeypatch):
+    """Free customers spent their day correcting what came back wrong.
+
+    A change still costs its credits; it just is not one of the three
+    documents a day.
+    """
+    from apps.studio import domain
+    from apps.studio.domain import unpack
+    customer = account()
+    made(customer, 3)
+    with pytest.raises(DomainError, match='daily_ai_limit'):
+        priced(customer)
+    original = create_draft(customer, {'feature_id': DOCUMENT, 'source_text': 'Tides rise twice a day.'})
+    data = unpack(original.encrypted_data)
+    monkeypatch.setattr(domain, 'revision_source', lambda account, identifier: (original, data))
+    change = create_draft(customer, {'prompt': 'Use a friendlier tone.', 'options': {'revise_draft_id': str(original.id)}})
+    quote = generation_quote(customer, change.id, change.version)
+    assert quote.parameters['revision'] is True
+    job, _ = submit_job(customer, quote.id, 'change-after-the-limit')
+    Job.objects.filter(pk=job.pk).update(status='succeeded')
+    assert ai_documents_today(customer) == 3, 'the change is not counted'
+    with pytest.raises(DomainError, match='daily_ai_limit'):
+        priced(customer)

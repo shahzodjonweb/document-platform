@@ -23,7 +23,7 @@ from apps.core.models import BotConversation, BotCallback, BotDraft, BotInputRec
 from apps.core.identity import resolve_account, approve_challenge_id
 from apps.core.policy import catalog, usage_snapshot
 from apps.core.services import upload_file, create_quote, submit_job, execute_job, storage_path, cancel_job
-from apps.core import storage
+from apps.core import funnel, storage
 from apps.core.serializers import quote_data
 from apps.core.errors import DomainError, error_data
 
@@ -207,6 +207,7 @@ def build_dispatcher():
 
     async def home(message,account,edit=False,notice=''):
         await sync_to_async(set_prompt)(account)
+        await sync_to_async(funnel.step)('bot.home',account=account)
         draft=await sync_to_async(draft_for)(account)
         submitted=await sync_to_async(lambda:Job.objects.filter(account=account,quote_id=draft.quote_id).exists() if draft.quote_id else False)()
         rows=[]
@@ -466,6 +467,9 @@ def build_dispatcher():
         names=dict(LANGUAGES)
         if locale in names: body+=f'\n{text(account,"ai_language")}: {names[locale]}'
         if wanted>cap>0: body+='\n'+text(account,'ai_images_capped').format(count=cap)
+        # A description asking for the other service is offered it, before anything is spent.
+        other=await sync_to_async(ai.other_service)(draft)
+        if other: body+='\n\n'+text(account,'ai_wrong_tool_slides' if other==ai.SLIDES else 'ai_wrong_tool_pdf')
         body+=f'\n\n{text(account,"ai_review_hint")}'
         if usage: body+=f'\n\n{text(account,"cost")} / {text(account,"available")}:\n{usage}'
         body+=f'\n{text(account,"expires")}: {quote.expires_at:%Y-%m-%d %H:%M}'
@@ -474,6 +478,9 @@ def build_dispatcher():
         reword=(await button(account,'ai_revise','ai_revise',{'draft_id':source}) if source
                 else await button(account,'ai_change_topic','ai_tool',{'feature_id':draft.feature_id}))
         rows=[[await button(account,'ai_generate','ai_run',{'quote_id':str(quote.id),'draft_id':str(draft.id)})]]
+        if other:
+            rows.insert(0,[await button(account,'ai_switch_slides' if other==ai.SLIDES else 'ai_switch_pdf','ai_switch',
+                                        {'draft_id':str(draft.id),'feature_id':other})])
         # The count can be put right here, before anything is charged. At the
         # plan's limit the "more" button becomes the plan that gives more.
         from apps.studio.pages import ceiling
@@ -508,9 +515,15 @@ def build_dispatcher():
         `message` is the "Preparing…" line, which becomes the priced draft.
         """
         draft=None
+        # Our own example sent back unchanged would make our example, not theirs.
+        if await sync_to_async(ai.is_example)(description):
+            return await render(message,text(account,'ai_example_copied'),
+                                [[await button(account,'ai_examples','ai_examples',{'feature_id':feature_id}),
+                                  await button(account,'cancel_button','home')]],True)
         try:
             file_ids=await sync_to_async(lambda:draft_for(account).input_ids)()
             draft=await sync_to_async(ai.build)(account,feature_id,description,file_ids)
+            await sync_to_async(funnel.step)('ai.described',account=account,feature=feature_id)
             _,quote=await sync_to_async(ai.quote)(account,draft.id)
         except DomainError as exc:
             # The description is kept: after joining, the customer is shown its price.
@@ -753,6 +766,7 @@ def build_dispatcher():
                 if existing: await job_status(message,account,existing,True)
                 else: await ai_review(message,account,draft,quote,True)
             elif action=='ai_tool':
+                await sync_to_async(funnel.step)('service.chosen',account=account,feature=p['feature_id'])
                 try: await sync_to_async(ai.available)(account,p['feature_id'])
                 except DomainError as exc: await safe_error(message,account,exc)
                 else:
@@ -760,6 +774,10 @@ def build_dispatcher():
                     current=await blocked(account)
                     if current: await show_gate(message,account,current,resume={'kind':'ai_prompt','feature_id':p['feature_id']},edit=True)
                     else: await ai_prompt(message,account,p['feature_id'],True)
+            elif action=='ai_switch':
+                try: draft,quote=await sync_to_async(ai.switch)(account,p['draft_id'],p['feature_id'])
+                except DomainError as exc: await safe_error(message,account,exc)
+                else: await ai_review(message,account,draft,quote,True)
             elif action in ('ai_length','ai_locale'):
                 change=ai.resize if action=='ai_length' else ai.relocale
                 value=p['pages'] if action=='ai_length' else p['locale']
@@ -775,6 +793,7 @@ def build_dispatcher():
                 if job.status=='succeeded': await deliver(message,account,job)
                 else: await job_status(message,account,job,True)
             elif action=='tool':
+                await sync_to_async(funnel.step)('service.chosen',account=account,feature=p['feature_id'])
                 try:
                     draft=await sync_to_async(choose_tool)(account,p['feature_id'],p,p.get('asset_id'))
                 except DomainError as exc:

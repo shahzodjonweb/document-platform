@@ -97,3 +97,25 @@ def test_pictures_beyond_the_plan_are_said_and_offered(free_customer):
     review = describe(free_customer, '10 ta slayd, har bir slaydda rasm bo‘lsin', service='Slides on a topic')
     assert f'your plan adds up to {cap}' in body(review), body(review)[-500:]
     assert any(label.startswith('💎') and 'pictures' in label for label in labels(review)), labels(review)
+
+
+def test_our_own_example_sent_back_is_caught(customer):
+    from apps.studio.models import GenerationDraft
+    from telegram.ux_copy import PROMPT_EXAMPLES
+    example = PROMPT_EXAMPLES['ai.pptx'][0][0]
+    caught = describe(customer, example, service='Slides on a topic')
+    assert 'That is one of our examples' in body(caught), body(caught)[-300:]
+    assert not GenerationDraft.objects.filter(account=customer).exists(), 'nothing is built from it'
+    # The question is still open: their own description goes straight through.
+    own = dispatch_local(customer, text='10 slides on volcanoes for year 8, 3 questions at the end.')
+    assert 'Slides: 10' in body(own), body(own)[-300:]
+
+
+def test_slides_asked_of_the_pdf_service_are_offered_as_slides(customer):
+    review = describe(customer, 'Mustaqil ish 10 ta slayd kerak — neft va gaz quduqlari')
+    assert 'You asked for slides' in body(review), body(review)[-400:]
+    switched = tap(customer, review, 'Make slides instead')
+    assert 'Slides: 10' in body(switched), body(switched)[-400:]
+    assert latest(customer, 'ai.pptx')['options']['length'] == 10
+    plain = describe(customer, 'A 3 page guide to tide tables.')
+    assert not any('instead' in label for label in labels(plain))

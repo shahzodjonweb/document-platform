@@ -16,6 +16,7 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
+from apps.core import funnel
 from apps.core.models import Account, AuthChallenge, BotCallback, BotConversation
 from .verification import PREFIX as VERIFICATION_PREFIX, answer_verification, require_verification
 
@@ -361,6 +362,7 @@ class LanguageGate(BaseMiddleware):
             if _command(event) == '/language':
                 return await show_language(event, user)
             if not locale:
+                await sync_to_async(funnel.step)('bot.start', telegram_user_id=user.id)
                 return await show_language(event, user, pending)
             verification_pending = pending
             if active_link:
@@ -385,6 +387,7 @@ class LanguageGate(BaseMiddleware):
                     return await event.answer(EXPIRED_TEXT[locale or 'en'], show_alert=True)
                 locale, pending = selected
                 await event.answer()
+                await sync_to_async(funnel.step)('bot.language', telegram_user_id=user.id)
                 if await require_verification(event.message, user, locale, pending):
                     return None
                 # query.message.from_user is the bot; always supply the verified

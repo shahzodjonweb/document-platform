@@ -134,5 +134,16 @@
   <h2>{{ t.acquisition }}</h2>
   {% for step in cohorts.funnel %}<div class="health-row"><span>{{ step.event }}</span><strong>{{ step.count }}</strong></div>{% endfor %}
 </section>
+{% if cohorts.bot_funnel %}
+<section class="panel" data-testid="bot-funnel">
+  <div class="panel-heading"><h2>{% if lang == 'uz' %}Botdagi yo‘l{% elif lang == 'ru' %}Путь в боте{% else %}The way through the bot{% endif %}</h2></div>
+  <div class="table-region" role="region" aria-label="{% if lang == 'uz' %}Botdagi yo‘l{% elif lang == 'ru' %}Путь в боте{% else %}The way through the bot{% endif %}" tabindex="0">
+    <table>
+      <thead><tr><th>{% if lang == 'uz' %}Qadam{% elif lang == 'ru' %}Шаг{% else %}Step{% endif %}</th><th>{{ t.users }}</th><th>{% if lang == 'uz' %}Oldingidan{% elif lang == 'ru' %}От предыдущего{% else %}Of the step before{% endif %}</th></tr></thead>
+      <tbody>{% for step in cohorts.bot_funnel %}<tr><td>{% if lang == 'uz' %}{{ step.label_uz }}{% elif lang == 'ru' %}{{ step.label_ru }}{% else %}{{ step.label_en }}{% endif %}</td><td>{{ step.count }}</td><td>{% if step.share is not None %}{{ step.share }}%{% else %}—{% endif %}</td></tr>{% endfor %}</tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
 {% endif %}
 <p class="freshness">{{ t.updated }} {{ now|date:'d M Y · H:i' }} {{ filters.timezone }} · {{ t.definitions }}</p>

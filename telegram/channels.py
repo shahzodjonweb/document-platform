@@ -68,6 +68,8 @@ async def show_gate(message, account, current=None, notice='', resume=None, edit
     from apps.core.channel_gate import status
     from .bot import callback
     current = current or await sync_to_async(status)(account)
+    from apps.core import funnel
+    await sync_to_async(funnel.step)('gate.shown', account=account)
     rows = [[InlineKeyboardButton(text=('✅ ' if channel['joined'] else '📢 ') + channel['title'], url=channel['url'])]
             for channel in current['channels']]
     rows.append([InlineKeyboardButton(text=copy(account, 'joined'),
@@ -86,6 +88,8 @@ async def check(message, account, resume=None):
     from apps.core.channel_gate import status
     current = await sync_to_async(status)(account, True)
     if current['joined']:
+        from apps.core import funnel
+        await sync_to_async(funnel.step)('gate.joined', account=account)
         await _show(message, copy(account, 'welcome'), None, True)
         return True
     missing = ', '.join(c['title'] for c in current['channels'] if not c['joined'])

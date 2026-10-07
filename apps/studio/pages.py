@@ -386,3 +386,18 @@ def requested_images(text):
     """How many pictures a description asks for by number ("4 ta rasm"), or None."""
     match = PICTURES.search(_normalised(text))
     return int(match.group(1)) if match and int(match.group(1)) > 0 else None
+
+
+# Which service a description is asking for, when it names one: a request
+# for slides sent to the PDF service came back as a seven-page PDF.
+SLIDE_WORDS = re.compile(r"slayd\w*|slide\w*|taqdimot\w*|prezentats\w*|презентац\w*|слайд\w*|pptx|power\s*point",
+                         re.IGNORECASE)
+DOCUMENT_WORDS = re.compile(r"\bpdf\b|referat\w*|hujjat\w*|реферат\w*|документ\w*|\bdocument\w*", re.IGNORECASE)
+
+
+def names_slides(text):
+    return bool(SLIDE_WORDS.search(_normalised(text)))
+
+
+def names_document(text):
+    return bool(DOCUMENT_WORDS.search(_normalised(text)))

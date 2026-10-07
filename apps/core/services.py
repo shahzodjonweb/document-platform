@@ -223,7 +223,7 @@ def submit_job(account, quote_id, idempotency_key, origin='web'):
     from apps.studio.domain import GENERATION_IDS, validate_generation_quote, require_daily_ai
     # Counted under the account lock, so quick repeated submissions cannot
     # each see room for one more.
-    if quote.feature_id in GENERATION_IDS and quote.parameters.get('stage')!='outline': require_daily_ai(account)
+    if quote.feature_id in GENERATION_IDS and quote.parameters.get('stage')!='outline' and not quote.parameters.get('revision'): require_daily_ai(account)
     assets = validate_generation_quote(account,quote) if quote.feature_id in GENERATION_IDS else validate_inputs(account,quote.feature_id,quote.input_ids)
     if quote.feature_id.startswith('editor.'):
         from apps.studio.editor_policy import validate_commands_access

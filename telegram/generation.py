@@ -184,6 +184,47 @@ def relocale(account, draft_id, locale):
         'output_locale': locale, 'options': {**data['options'], 'locale_chosen': True}})
 
 
+def is_example(description):
+    """Whether a description is one of the bot's own examples, sent back unchanged."""
+    import difflib
+    from .ux_copy import PROMPT_EXAMPLES
+    text = ' '.join((description or '').lower().split())
+    if len(text) < 40:
+        return False
+    for examples in PROMPT_EXAMPLES.values():
+        for translations in examples:
+            for example in translations:
+                if difflib.SequenceMatcher(None, text, ' '.join(example.lower().split())).ratio() >= 0.9:
+                    return True
+    return False
+
+
+def other_service(draft):
+    """The service the description names when it is not the one it was sent to, else None."""
+    from apps.studio.domain import unpack
+    from apps.studio.pages import names_document, names_slides
+    if (unpack(draft.encrypted_data).get('revision') or {}):
+        return None
+    prompt = unpack(draft.encrypted_data).get('prompt', '')
+    if draft.feature_id == DOCUMENT and names_slides(prompt):
+        return SLIDES
+    if draft.feature_id == SLIDES and names_document(prompt) and not names_slides(prompt):
+        return DOCUMENT
+    return None
+
+
+@transaction.atomic
+def switch(account, draft_id, feature_id):
+    """The same description, sent to the other service."""
+    from apps.studio.domain import unpack
+    draft = GenerationDraft.objects.filter(account=account, id=draft_id, expires_at__gt=timezone.now()).first()
+    if not draft or feature_id not in SERVICES:
+        raise DomainError('controls_expired', 409)
+    data = unpack(draft.encrypted_data)
+    rebuilt = build(account, feature_id, data.get('prompt') or data.get('source_text', ''), data.get('source_ids', []))
+    return rebuilt, generation_quote(account, rebuilt.id, rebuilt.version)
+
+
 def change_request(draft):
     """What this draft was asked to change, when it is a change at all."""
     from apps.studio.domain import unpack

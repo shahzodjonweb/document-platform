@@ -197,6 +197,8 @@ async def answer_verification(event, locale, on_verified):
     status = result['status']
     if status == 'verified':
         await event.answer(copy['verified'])
+        from apps.core import funnel
+        await sync_to_async(funnel.step)('bot.verified', telegram_user_id=event.from_user.id)
         return await on_verified(event.message, event.from_user, locale, result['pending'])
     if status == 'already_verified':
         return await event.answer(copy['verified'])

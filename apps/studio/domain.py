@@ -33,12 +33,14 @@ def ai_documents_today(account,now=None):
     """AI documents this account has started today (UTC), as the daily task cap counts days.
 
     An outline is a step towards a document, not one; a job that failed,
-    was cancelled or expired produced nothing and is not counted.
+    was cancelled or expired produced nothing and is not counted. Nor is a
+    change to a document already made: free customers spent their day
+    correcting what came back wrong, and a change still costs its credits.
     """
     from apps.core.models import Job
     today=(now or timezone.now()).replace(hour=0,minute=0,second=0,microsecond=0)
     started=Job.objects.filter(account=account,feature_id__in=GENERATION_IDS,created_at__gte=today).exclude(status__in=('failed','canceled','expired','no_op')).values_list('parameters',flat=True)
-    return sum(1 for parameters in started if (parameters or {}).get('stage')!='outline')
+    return sum(1 for parameters in started if (parameters or {}).get('stage')!='outline' and not (parameters or {}).get('revision'))
 
 def require_daily_ai(account):
     """Free accounts make a few AI documents a day; paid plans have no daily limit."""
@@ -482,10 +484,10 @@ def generation_quote(account,draft_id,version):
     require(account,d.feature_id)
     from apps.core.channel_gate import require as require_channels
     require_channels(account)
-    # Said before the customer reviews the cost, not after they confirm it.
-    require_daily_ai(account)
     if version!=d.version:raise DomainError('version_conflict',409)
     data=unpack(d.encrypted_data)
+    # Said before the customer reviews the cost, not after they confirm it.
+    if not data.get('revision'):require_daily_ai(account)
     cfg=ai_config()
     if cfg['mode']!=d.provider_mode:raise DomainError('provider_changed',409)
     # Sandbox is deterministic authoring; it never charges AI credits or pretends to call a model.
@@ -513,7 +515,7 @@ def generation_quote(account,draft_id,version):
     if data['output_format']=='pptx':
         from .photos import BUDGET_SECONDS
         lease_seconds+=BUDGET_SECONDS
-    return Quote.objects.create(account=account,feature_id=d.feature_id,input_ids=input_ids,input_fingerprints=[{'id':str(a.id),'sha256':a.sha256} for a in owned_assets(account,input_ids)] if input_ids else [],parameters={'generation_draft_id':str(d.id),'draft_version':d.version,'snapshot':snapshot},meters={'file_tasks':0,'file_page_units':0,'ai_credits':credits},policy={'plan':account.plan,'version':POLICY_VERSION,'tariff_version':'generation-draft-staging-v1','limits':plan_limits(account),'provider_mode':d.provider_mode,'provider_model':cfg['model'],'provider_image_model':cfg.get('image_model',''),'generation_bounds':{'question_cap':question_cap,'output_pages':output_cap,'key_pages':caps['sections'],'input_tokens':plan_limits(account)['max_ai_input_tokens'],'tariff':dict(tariff)},'lease_seconds':lease_seconds},expires_at=timezone.now()+timedelta(minutes=10))
+    return Quote.objects.create(account=account,feature_id=d.feature_id,input_ids=input_ids,input_fingerprints=[{'id':str(a.id),'sha256':a.sha256} for a in owned_assets(account,input_ids)] if input_ids else [],parameters={'generation_draft_id':str(d.id),'draft_version':d.version,'snapshot':snapshot,**({'revision':True} if data.get('revision') else {})},meters={'file_tasks':0,'file_page_units':0,'ai_credits':credits},policy={'plan':account.plan,'version':POLICY_VERSION,'tariff_version':'generation-draft-staging-v1','limits':plan_limits(account),'provider_mode':d.provider_mode,'provider_model':cfg['model'],'provider_image_model':cfg.get('image_model',''),'generation_bounds':{'question_cap':question_cap,'output_pages':output_cap,'key_pages':caps['sections'],'input_tokens':plan_limits(account)['max_ai_input_tokens'],'tariff':dict(tariff)},'lease_seconds':lease_seconds},expires_at=timezone.now()+timedelta(minutes=10))
 
 def validate_generation_quote(account,quote):
     require(account,quote.feature_id)
