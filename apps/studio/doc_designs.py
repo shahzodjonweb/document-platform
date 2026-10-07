@@ -58,7 +58,7 @@ _RICH = re.compile(
     r'выделен|ключев\w*\s+(?:мысл|момент|пункт))',
     re.IGNORECASE | re.UNICODE)
 _IMAGES = re.compile(
-    r'\b(?:image|picture|photo|illustrat|visual|rasm|surat|fotosurat|tasvir|illyustr|vizual|'
+    r'\b(?:image|picture|photo|illustrat|visual|rasm(?!iy|an)|surat|fotosurat|tasvir|illyustr|vizual|'
     r'изображ|картин|фото|иллюстрац|визуал|наглядн)',
     re.IGNORECASE | re.UNICODE)
 _STYLE = re.compile(

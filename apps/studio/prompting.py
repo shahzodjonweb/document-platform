@@ -33,6 +33,16 @@ REVISION_SYSTEM = (
 )
 
 
+# Said in every call: customers asked in Uzbek for English and got Uzbek, and
+# got Latin documents with Cyrillic words in them.
+LANGUAGE_RULE = (
+    'Write in the language given by output_locale, whatever language the description itself is '
+    'written in. Uzbek is written only in the alphabet given by output_script: Latin (oʻ, gʻ, sh, '
+    'ch, ʼ) or Cyrillic (ў, қ, ғ, ҳ). Never mix the two alphabets, not even within one word, and use '
+    'standard Uzbek spelling.'
+)
+
+
 def is_outline(data, feature):
     # Client options cannot silently select a different paid generation stage.
     return feature == 'ai.outline'
@@ -103,11 +113,14 @@ def request_body(config, data, feature, span=None):
     mine = sections[first:last]
     outline = is_outline(data, feature)
     fmt = data.get('output_format', 'pdf')
-    options = {k: data.get('options', {})[k] for k in ('length', 'question_count', 'image_cap')
+    options = {k: data.get('options', {})[k] for k in ('length', 'question_count', 'image_cap', 'images_wanted')
                if k in data.get('options', {})}
+    # The model writes the sections; a deck's question slides are drawn from the questions.
+    if 'length' in options:
+        options['length'] -= int(data.get('options', {}).get('question_slides', 0) or 0)
     questions = max(len(content.get('questions', [])), int(options.get('question_count', 0)))
     revision = data.get('revision')
-    instructions = OUTLINE_SYSTEM if outline else REVISION_SYSTEM if revision else SYSTEM
+    instructions = (OUTLINE_SYSTEM if outline else REVISION_SYSTEM if revision else SYSTEM) + ' ' + LANGUAGE_RULE
     if selected(data):
         instructions += (
             'This is a selected-section revision. Return only the selected sections, using '
@@ -134,6 +147,8 @@ def request_body(config, data, feature, span=None):
     # Stable source content comes before the varying slice and its instructions.
     # JSON separator whitespace is compacted, never whitespace inside user text.
     user = {'task': feature, 'output_locale': data['output_locale'],
+            **({'output_script': 'cyrillic' if data.get('options', {}).get('uz_script') == 'cyrl' else 'latin'}
+               if data['output_locale'] == 'uz' else {}),
             'prompt': data['prompt'], 'source_text': data['source_text'], 'excerpts': data['excerpts']}
     if revision:
         user['original_brief'] = revision.get('original_prompt', '')

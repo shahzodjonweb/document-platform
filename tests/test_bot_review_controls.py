@@ -85,3 +85,15 @@ def test_a_chosen_count_is_checked_and_held_to_the_plan(free_customer):
     for wrong in ('5', 0, 201, 2.5, True):
         with pytest.raises(DomainError, match='invalid_parameters'):
             create_draft(free_customer, {'prompt': 'A guide to tides', 'options': {'pages': wrong}})
+
+
+def test_pictures_beyond_the_plan_are_said_and_offered(free_customer):
+    from apps.core.policy import plan_limits
+    from operations.integrations import save_config as configure
+    from tests.test_photos import KEY
+    configure('pixabay', {'pixabay_key': KEY, 'enabled': 'true'})
+    cap = plan_limits(free_customer)['max_deck_images']
+    assert 0 < cap < 10, 'this test needs a plan that adds fewer pictures than slides'
+    review = describe(free_customer, '10 ta slayd, har bir slaydda rasm bo‘lsin', service='Slides on a topic')
+    assert f'your plan adds up to {cap}' in body(review), body(review)[-500:]
+    assert any(label.startswith('💎') and 'pictures' in label for label in labels(review)), labels(review)

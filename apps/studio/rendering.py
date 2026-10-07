@@ -286,6 +286,7 @@ def render_pdf(content,path,locale='en',role='user_document',style=None,photos=N
       'cell_head':ParagraphStyle('cell_head',fontName='PDFMaster',fontSize=max(8.5,body_size-1),leading=max(11,body_leading-4),textColor=colors.HexColor(INK if kind=='plain' else accent)),
       'small':ParagraphStyle('small',fontName='PDFMaster',fontSize=8,leading=12,textColor=colors.HexColor(MUTED),spaceAfter=9)}
     labels={'en':('Questions','Teacher answer key','Review before use'), 'uz':('Savollar','O‘qituvchi javoblari','Ishlatishdan oldin tekshiring'), 'ru':('Вопросы','Ответы для учителя','Проверьте перед использованием')}[locale]
+    if locale=='uz' and style.get('uz_script')=='cyrl':labels=('Саволлар','Ўқитувчи жавоблари','Ишлатишдан олдин текширинг')
     details={'en':{'key':'Answer key','card':'Card','question':'Question','answer':'Answer','marks':'points','source':'Source','page':'p.'},'uz':{'key':'Javoblar','card':'Kartochka','question':'Savol','answer':'Javob','marks':'ball','source':'Manba','page':'b.'},'ru':{'key':'Ответы','card':'Карточка','question':'Вопрос','answer':'Ответ','marks':'баллы','source':'Источник','page':'стр.'}}[locale]
     content_layout=style.get('content_layout','answer_key' if role=='teacher_key' else 'document')
     top_margin=50 if layout=='executive' else 38 if layout=='compact' else 45

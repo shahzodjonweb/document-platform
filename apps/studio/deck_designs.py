@@ -84,7 +84,7 @@ def look(style):
     chosen = DESIGNS.get(style.get('deck_design'))
     if chosen is None:
         return {'id': '', 'accent': style.get('accent', DEFAULT_ACCENT),
-                'theme': style.get('deck_theme', 'light'), 'secondary': None, 'paper': None,
+                'theme': style.get('deck_theme', 'light'), 'secondary': style.get('secondary'), 'paper': None,
                 'accent_headings': False, 'heading_font': DEFAULT_FONTS[0], 'body_font': DEFAULT_FONTS[1],
                 'heading_bold': False}
     fixed = bool(style.get('accent_fixed') and style.get('accent'))
@@ -94,7 +94,7 @@ def look(style):
             # A brand colour or one named in the brief is a fact, not a preference;
             # the design's second colour and paper were picked to go with its own.
             'accent': style['accent'] if fixed else chosen['accent'],
-            'secondary': None if fixed else chosen['secondary'],
+            'secondary': style.get('secondary') or (None if fixed else chosen['secondary']),
             'paper': None if fixed or theme != chosen['theme'] else chosen['paper'],
             'theme': theme}
 

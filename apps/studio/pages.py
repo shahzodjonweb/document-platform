@@ -145,6 +145,15 @@ QUESTIONS = re.compile(r'(\d{1,3})' + COUNTED + QUESTION_UNITS, re.IGNORECASE)
 SPELLED_QUESTIONS = re.compile(r"([\w'’]+)" + COUNTED + QUESTION_UNITS, re.IGNORECASE | re.UNICODE)
 
 
+# A deck's questions share slides, this many to a slide.
+QUESTIONS_PER_SLIDE = 5
+
+
+def question_slides(count):
+    """Slides a deck's questions take at the end."""
+    return -(-max(0, count) // QUESTIONS_PER_SLIDE)
+
+
 def requested_questions(text):
     """Questions are priced, so they are only included when they are asked for."""
     body = _normalised(text)
@@ -243,13 +252,17 @@ THEMES = ('light', 'dark', 'bold')
 THEME_WORDS = (
     ('dark', r'dark|night\s*mode|qorong\'?i|tungi|т[ёе]мн\w*|ночн\w*'),
     ('bold', r'bold|vivid|striking|punchy|high[-\s]?contrast|yorqin|jasur|ярк\w*|смел\w*|контрастн\w*'),
-    ('light', r'light\s*(?:theme|background)|minimal|oq\s*fon|св[ея]тл\w*|минималист\w*'),
+    ('light', r"light\s*(?:theme|background)|minimal|oq\s*fon|och\s*rang\w*|och\s*tus\w*|pastel\w*|пастел\w*"
+              r"|ko'zni\s*charchatmaydigan\w*|yumshoq\s*rang\w*|soft\s*colou?rs?|св[ея]тл\w*|минималист\w*"),
 )
 # A colour named in the brief becomes the accent, and the palette derives the
 # rest from it. Account branding still wins: a brand colour is not a preference.
 COLOURS = (
     ('#16305C', r'navy|dark\s*blue|to\'?q\s*ko\'?k|тёмно-син\w*|нав\w*'),
-    ('#1F4E9C', r'blue|ko\'?k|син\w*|голуб\w*'),
+    # Sky blue: "och havorang", "moviy", "zangori"; "savorang" is how it is often typed.
+    ('#2B7BB9', r"sky\s*blue|light\s*blue|och\s*ko'?k|havo\s*rang\w*|havorang\w*|savorang\w*|osmon\s*rang\w*"
+                r"|moviy\w*|zangori\w*|голуб\w*|небесн\w*"),
+    ('#1F4E9C', r'blue|ko\'?k|син\w*'),
     ('#146B6B', r'teal|turquoise|feruza|бирюз\w*'),
     ('#1E6B45', r'green|emerald|yashil|зел[ёе]н\w*|изумруд\w*'),
     ('#6E1230', r'burgundy|maroon|wine|bordo|бордов\w*'),
@@ -259,6 +272,7 @@ COLOURS = (
     ('#4B2E83', r'purple|violet|indigo|binafsha|фиолетов\w*|сирен\w*|индиго'),
     ('#A3246B', r'pink|magenta|pushti|розов\w*|пурпурн\w*'),
     ('#2B2F33', r'charcoal|graphite|slate|grey|gray|kulrang|сер\w*|графит\w*'),
+    ('#6B4423', r"brown|jigar\s*rang\w*|qo'ng'ir\w*|коричнев\w*"),
     ('#14171A', r'black|qora|ч[ёе]рн\w*'),
 )
 
@@ -272,10 +286,103 @@ def requested_theme(text):
     return None
 
 
-def requested_accent(text):
-    """A colour named in the description, as a hex accent, or None."""
+def requested_colours(text):
+    """The colours named in the description, as hex, in the order they are named."""
     body = _normalised(text).lower()
+    found = []
     for value, pattern in COLOURS:
-        if re.search(r'\b(?:' + pattern + r')', body, re.IGNORECASE | re.UNICODE):
-            return value
+        for match in re.finditer(r'\b(?:' + pattern + r')', body, re.IGNORECASE | re.UNICODE):
+            found.append((match.start(), -match.end(), value))
+    taken, ordered = [], []
+    # "to'q ko'k" is navy, not navy and blue: a name inside a longer one is part of it.
+    for start, end, value in sorted(found):
+        if any(first <= start < last for first, last in taken):
+            continue
+        taken.append((start, -end))
+        if value not in ordered:
+            ordered.append(value)
+    return ordered
+
+
+def requested_accent(text):
+    """The first colour named in the description, as a hex accent, or None."""
+    named = requested_colours(text)
+    return named[0] if named else None
+
+
+# The language a description asks for. "ingliz tilida" counts when it is how
+# the request ends or comes before what to do ("ingliz tilida tayyorla"), not
+# when it names the subject ("Xitoy tilida omonimlar", "rus tili fani").
+LANGUAGE_WORDS = {
+    'en': r"ingi?liz|english|англи\w*",
+    'ru': r"rus|russian|русск\w*",
+    'uz': r"o'zbek|uzbek|узбек\w*",
+}
+DOING = (r"(?:tayyorla\w*|yoz\w*|bo'lsin|bolsin|bo'lishi|qil\w*|kerak|chiqsin|chiqar\w*|ber\w*|ishla\w*"
+         r"|сделай\w*|напиши\w*|подготов\w*|нужн\w*)")
+
+
+def _language_patterns(words):
+    ends = r"(?=\s*(?:[.,!;:)\n]|$|(?:\S+\s+)?" + DOING + r"))"
+    return [
+        re.compile(r"\b(?:" + words + r")\s*(?:til(?:i|)da|tilda|language\w*|tilida)\b" + ends, re.IGNORECASE),
+        re.compile(r"\b(?:" + words + r")cha\b" + ends, re.IGNORECASE),
+        re.compile(r"\bin\s+(?:" + words + r")\b", re.IGNORECASE),
+        re.compile(r"(?:на|по-)\s*(?:" + words + r")", re.IGNORECASE),
+    ]
+
+
+LANGUAGE_PATTERNS = {code: _language_patterns(words) for code, words in LANGUAGE_WORDS.items()}
+CYRILLIC = re.compile(r'[Ѐ-ӿ]')
+LATIN = re.compile(r'[A-Za-z]')
+UZBEK_CYRILLIC = re.compile(r'[ЎўҚқҒғҲҳ]')
+RUSSIAN_WORDS = re.compile(r'(?<![\wЀ-ӿ])(?:и|в|на|о|об|с|для|по|не|что|как|это|из|к|у|от|при|или)'
+                           r'(?![\wЀ-ӿ])', re.IGNORECASE)
+UZBEK_WORDS = re.compile(r'(?<![\wЀ-ӿ])(?:ва|учун|билан|ҳақида|хақида|ҳам|хам|бу|мен|сен|керак|бўлсин)'
+                         r'(?![\wЀ-ӿ])|[Ѐ-ӿ]+(?:лари|ларни|нинг|даги|лик)\b', re.IGNORECASE)
+
+
+def _cyrillic_share(text):
+    cyrillic, latin = len(CYRILLIC.findall(text)), len(LATIN.findall(text))
+    return cyrillic / (cyrillic + latin) if cyrillic + latin else 0.0
+
+
+def requested_locale(text, *, explicit_only=False):
+    """The language a description asks the document to be written in, or None.
+
+    A language named as the output wins. Failing that, a description written
+    in Russian is answered in Russian (not for a change request, which may be
+    written in any language about a document that stays in its own).
+    """
+    body = _normalised(text)
+    found = []
+    for code, patterns in LANGUAGE_PATTERNS.items():
+        for pattern in patterns:
+            match = pattern.search(body)
+            if match:
+                found.append((match.start(), code))
+                break
+    if found:
+        return min(found)[1]
+    if explicit_only:
+        return None
+    if (_cyrillic_share(body) >= 0.6 and not UZBEK_CYRILLIC.search(body)
+            and len(RUSSIAN_WORDS.findall(body)) >= 2 and not UZBEK_WORDS.search(body)):
+        return 'ru'
     return None
+
+
+def requested_script(text):
+    """'cyrl' for a description written in Uzbek Cyrillic, else 'latn'."""
+    body = _normalised(text)
+    return 'cyrl' if _cyrillic_share(body) >= 0.5 and requested_locale(body) != 'ru' else 'latn'
+
+
+PICTURES = re.compile(r"(\d{1,2})\s*(?:[-–]?\s*ta)?\s*(?:rasm|surat|picture|image|photo|картин|фото|изображ)\w*",
+                      re.IGNORECASE)
+
+
+def requested_images(text):
+    """How many pictures a description asks for by number ("4 ta rasm"), or None."""
+    match = PICTURES.search(_normalised(text))
+    return int(match.group(1)) if match and int(match.group(1)) > 0 else None

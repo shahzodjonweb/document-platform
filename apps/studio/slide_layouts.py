@@ -522,6 +522,25 @@ def agenda(ctx, section, lines):
         _put_paragraphs(ctx, Z(left + 1.0, y + 0.02, width - 1.0, row - 0.04), paragraphs)
 
 
+@draws('questions')
+def questions(ctx, section, lines):
+    """Up to five questions: the number, the question, and its options on one line."""
+    roles = ctx.roles
+    header(ctx, section)
+    entries = section.get('_questions') or []
+    if not entries:
+        return
+    row = (BOTTOM - TOP + 0.3) / len(entries)
+    for position, entry in enumerate(entries):
+        y = TOP - 0.15 + position * row
+        put(ctx, Z(LEFT, y, 0.7, min(row, 0.5)), f'{entry["number"]}.', size=20,
+            colour=roles['accent_text'], font=kit.HEADING_FONT)
+        paragraphs = [dict(text=entry['stem'], size=18, floor=12, colour=roles['ink'], bold=True, after=2)]
+        if entry.get('options'):
+            paragraphs.append(dict(text='  ·  '.join(entry['options']), size=14, floor=11, colour=roles['muted']))
+        _put_paragraphs(ctx, Z(LEFT + 0.75, y + 0.02, WIDTH - 0.75, row - 0.06), paragraphs)
+
+
 @draws('timeline')
 def timeline(ctx, section, lines):
     roles = ctx.roles

@@ -53,6 +53,10 @@ def execute_generation(job,output_dir):
         try:
             raw,usage=generate(cfg,data,job.feature_id,job.id,token_limit=job.quote.policy['generation_bounds']['input_tokens'],deadline=deadline)
             content=validate_content(job.account,raw,data['output_format'])
+            # Uzbek in the one alphabet the customer wrote in.
+            if data['output_locale']=='uz':
+                from .uzbek import clean
+                content=clean(content,data['options'].get('uz_script','latn'),data.get('prompt',''))
             # The look the model chose is kept with the draft, so a later change
             # request redraws the same deck rather than picking again.
             from . import deck_designs,doc_designs
@@ -99,6 +103,8 @@ def execute_generation(job,output_dir):
         content['sections']=content['sections'][:quoted_sections];warnings.append('sections_trimmed')
     from .branding import render_style
     style=render_style(job.account,data,feature_id=job.feature_id)
+    # Labels the renderer writes itself ("Savollar") follow the document's alphabet.
+    style={**style,'uz_script':data['options'].get('uz_script','latn')}
     ext=data['output_format']
     if ext=='pptx':
         photos=_photos(job,content['sections'],warnings)
@@ -114,6 +120,9 @@ def execute_generation(job,output_dir):
             longer=top_up(cfg,data,content,len(data['content']['sections']),artifacts[0]['page_count'],job=job,deadline=deadline)
             if longer is not content:
                 content=longer
+                if data['output_locale']=='uz':
+                    from .uzbek import clean
+                    content=clean(content,data['options'].get('uz_script','latn'),data.get('prompt',''))
                 artifacts=[render_pdf(content,output_dir/'document.pdf',data['output_locale'],'user_document',style=style,photos=photos)]
     # A document that renders longer than the estimate is still the document that
     # was asked for. It is delivered, said out loud, and charged at the quote.

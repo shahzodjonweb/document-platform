@@ -606,6 +606,43 @@ LINE_LAYOUTS = {'cover', 'section', 'bullets', 'two_column', 'statement', 'image
                 'image_full', 'closing'}
 
 
+QUESTIONS_LABEL = {'en': 'Questions', 'uz': 'Savollar', 'ru': 'Вопросы', 'uz_cyrl': 'Саволлар'}
+ANSWERS_LABEL = {'en': 'Answers', 'uz': 'Javoblar', 'ru': 'Ответы', 'uz_cyrl': 'Жавоблар'}
+LETTERED = re.compile(r'^\s*\(?[A-Za-zА-Яа-я][).]\s')
+
+
+def question_sections(content, locale='en', script='latn'):
+    """The deck's questions as slides of their own, five to a slide.
+
+    Each question is numbered, with its options on one line beneath it. The
+    answers go in the speaker notes, where the presenter sees them and the
+    audience does not. One slide per question made decks of mostly empty
+    slides, and pushed "10 slides, 5 questions at the end" to fifteen.
+    """
+    from .pages import QUESTIONS_PER_SLIDE
+    questions = content.get('questions') or []
+    groups = [questions[start:start + QUESTIONS_PER_SLIDE]
+              for start in range(0, len(questions), QUESTIONS_PER_SLIDE)]
+    if locale == 'uz' and script == 'cyrl':
+        locale = 'uz_cyrl'
+    label = QUESTIONS_LABEL.get(locale, QUESTIONS_LABEL['en'])
+    sections = []
+    for group_index, group in enumerate(groups):
+        entries, answers = [], []
+        for offset, question in enumerate(group):
+            number = group_index * QUESTIONS_PER_SLIDE + offset + 1
+            options = [option if LETTERED.match(option) else f'{chr(65 + position)}) {option}'
+                       for position, option in enumerate(question.get('options') or [])]
+            entries.append({'number': number, 'stem': question['stem'], 'options': options})
+            if question.get('answer'):
+                answers.append(f'{number}. {question["answer"]}')
+        heading = label if len(groups) == 1 else f'{label} ({group_index + 1}/{len(groups)})'
+        notes = (ANSWERS_LABEL.get(locale, ANSWERS_LABEL['en']) + ': ' + '; '.join(answers)) if answers else ''
+        sections.append({'id': f'q{group_index + 1}', 'heading': heading, 'body': '', 'notes': notes,
+                         '_questions': entries})
+    return sections
+
+
 def render_pptx(content, path, locale='en', role='user_document', style=None, photos=None):
     """One section, one slide — with the first one as the deck's title slide.
 
@@ -626,17 +663,16 @@ def render_pptx(content, path, locale='en', role='user_document', style=None, ph
     look = design_look(style)
     roles = palette(look['accent'], look['theme'], look['secondary'], look.get('paper'),
                     look.get('accent_headings', False))
-    sections = [dict(section) for section in content['sections']]
-    question_label = {'en': 'Question', 'uz': 'Savol', 'ru': 'Вопрос'}[locale]
-    for number, question in enumerate(content.get('questions', []), 1):
-        sections.append({'id': f'q{number}', 'heading': f'{question_label} {number}',
-                         'body': '\n'.join([question['stem']] + list(question.get('options', []))),
-                         'notes': ''})
+    sections = [dict(section) for section in content['sections']] + question_sections(
+        content, locale, style.get('uz_script', 'latn'))
 
     total = len(sections)
     shortened = False
     prepared = []
     for index, section in enumerate(sections):
+        if section.get('_questions'):
+            prepared.append(('questions', [], section))
+            continue
         lines, cut = bullets_of(section['body'])
         if not lines and section.get('items'):
             lines, cut = bullets_of('\n'.join(layouts.as_lines(section)))

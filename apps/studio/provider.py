@@ -61,7 +61,8 @@ def writing_guidance(options, sections, output_format='pdf', first=0, total=None
         # than the plan allows, shared out across the batches of a long deck in
         # proportion.
         cap = int((options or {}).get('image_cap', 0) or 0)
-        wanted = min(cap, max(1, round(deck / 3))) if cap > 0 and deck else 0
+        asked = int((options or {}).get('images_wanted', 0) or 0)
+        wanted = min(cap, asked or max(1, round(deck / 3))) if cap > 0 and deck else 0
         photos = round(wanted * (first + sections) / deck) - round(wanted * first / deck) if deck else 0
         from .layouts import guide, photo_guidance
         return (

@@ -183,17 +183,21 @@ def _deck_style(fid,brief):
     There is no theme picker and no colour field: "a dark deck in navy" is the
     brief saying so. Account branding still overrides the accent later, because
     a brand colour is a fact about the customer rather than a preference. A
-    document has no deck theme, so it gets nothing and its style stays fixed.
+    document has no deck theme; it takes only the colour.
     """
-    if fid!=SLIDES:return {}
     from . import pages as paging
+    colours=paging.requested_colours(brief)
+    # A document takes a colour it is asked for too, over its design's own.
+    if fid!=SLIDES:
+        return {'accent':colours[0],'accent_fixed':True} if colours else {}
     # Only what the brief actually names is fixed; the rest is the design the
-    # model chooses (apps/studio/deck_designs.py).
+    # model chooses (apps/studio/deck_designs.py). A second colour named
+    # ("ko'k, yashil va qizil") becomes the deck's second colour.
     style={}
     theme=paging.requested_theme(brief)
     if theme:style['deck_theme']=theme
-    accent=paging.requested_accent(brief)
-    if accent:style.update(accent=accent,accent_fixed=True)
+    if colours:style.update(accent=colours[0],accent_fixed=True)
+    if len(colours)>1:style['secondary']=colours[1]
     return style
 
 def _prepare_draft(account,data,revision_base=None):
@@ -266,6 +270,19 @@ def _prepare_draft(account,data,revision_base=None):
     # is kept beside the resolved count so a clamp can be shown, not hidden.
     from . import pages as paging
     brief=prompt if original is not None else f'{prompt}\n{text}'
+    # The language the description asks for beats the account's, and one chosen
+    # on the review screen beats both. A change request names a language only in
+    # so many words ("ingliz tilida tayyorla"): it may be written in any language
+    # about a document that stays in its own.
+    if options.get('locale_chosen') is not True:
+        named=paging.requested_locale(prompt,explicit_only=original is not None)
+        if named:locale=named
+    # Uzbek is written in the alphabet the description was written in; a change
+    # keeps the document's.
+    if original is not None:
+        uz_script=(revision_base or original).get('options',{}).get('uz_script','latn')
+    else:
+        uz_script=paging.requested_script(prompt) if locale=='uz' else 'latn'
     # A count chosen on the review screen beats the one read from the
     # description: it is how a misread count gets put right before paying.
     chosen=options.get('pages')
@@ -288,6 +305,20 @@ def _prepare_draft(account,data,revision_base=None):
         supplied=len([p for p in (text or '\n\n'.join(x['text'] for x in excerpts)).split('\n\n') if p.strip()])
         if supplied:length=min(supplied,paging.ceiling(account,fmt))
     question_count=min(paging.requested_questions(brief),limits(account)['questions'])
+    # A deck's questions go on slides of their own at the end, five to a slide,
+    # and those slides are part of the count: "10 slides, 5 questions at the
+    # end" is ten slides, not fifteen. `length` is the whole deck; the sections
+    # are the slides the model writes.
+    question_slides=0
+    if fid==SLIDES:
+        if original is None:question_slides=paging.question_slides(question_count)
+        else:question_slides=int((revision_base or original).get('options',{}).get('question_slides',0) or 0)
+    if original is not None and (asked is None or selection):
+        sections_count=length
+    else:
+        question_slides=min(question_slides,max(0,length-1))
+        sections_count=length-question_slides
+    length=sections_count+question_slides
     # A document is plain prose in black and white unless its description asks
     # for more: pictures, tables or lists (layouts), or a look or colours (design).
     wants={}
@@ -299,10 +330,18 @@ def _prepare_draft(account,data,revision_base=None):
             before=(revision_base or original).get('options',{})
             wants={key:value or bool(before.get(key)) for key,value in wants.items()}
     image_cap=_image_cap(account,fid)
+    # A deck whose description asks for pictures gets as many as it names, or
+    # one a slide ("har bir slaydda rasm"), within what the plan adds; the review
+    # says so when the plan adds fewer.
+    images_wanted=0
+    if fid==SLIDES and original is None:
+        from .doc_designs import asks_for_images
+        if asks_for_images(brief):images_wanted=paging.requested_images(brief) or sections_count
     if fid!=SLIDES and not doc_designs.asks_for_images(brief) and not (original is not None and (revision_base or original).get('options',{}).get('image_cap')):
         image_cap=0
     options={**{k:v for k,v in options.items() if k not in ('wants_layouts','wants_design')},
-             'question_count':question_count,'length':length,'requested_pages':asked,
+             'question_count':question_count,'length':length,'requested_pages':asked,'question_slides':question_slides,
+             'uz_script':uz_script,**({'images_wanted':images_wanted} if images_wanted else {}),
              'image_cap':image_cap,**wants}
     template_id=options.get('template_id','clean')
     from .templates import style_for
@@ -349,8 +388,8 @@ def _prepare_draft(account,data,revision_base=None):
     if original is not None:
         # The model is handed the document as it stands so it can return it
         # with only the requested changes applied.
-        sections=[dict(section) for section in original['content']['sections'][:length]]
-        while len(sections)<length:
+        sections=[dict(section) for section in original['content']['sections'][:sections_count]]
+        while len(sections)<sections_count:
             sections.append({'id':f's{len(sections)+1}','heading':'','body':'','notes':''})
         draft_content={**original['content'],'sections':sections}
     else:
@@ -360,7 +399,7 @@ def _prepare_draft(account,data,revision_base=None):
         # and a review section nobody asked for — and repeated the four of them
         # every four pages. The description is the brief, so the structure comes
         # from the description.
-        sections=[{'id':f's{i+1}','heading':'', 'body':('\n\n'.join(chunks[i:]) if i==length-1 else chunks[i]) if i<len(chunks) else '', 'notes':''} for i in range(length)]
+        sections=[{'id':f's{i+1}','heading':'', 'body':('\n\n'.join(chunks[i:]) if i==sections_count-1 else chunks[i]) if i<len(chunks) else '', 'notes':''} for i in range(sections_count)]
         draft_content={'title':title,'sections':sections,'questions':options.get('questions',[]),'citations':[{'asset_id':x['asset_id'],'page':x['page']} for x in excerpts]}
     content=validate_content(account,draft_content,fmt)
     if selection:
@@ -431,7 +470,7 @@ def update_draft(account,draft_id,data):
         if [s['id'] for s in payload['content']['sections']]!=[s['id'] for s in base['sections']]:
             raise DomainError('invalid_parameters')
     # An edited outline is the page count now, so keep them in step.
-    payload['options']={**payload['options'],'length':len(payload['content']['sections'])}
+    payload['options']={**payload['options'],'length':len(payload['content']['sections'])+int(payload['options'].get('question_slides',0) or 0)}
     if cfg['mode']=='openai':
         enforce_budget(cfg,payload,d.feature_id,plan_limits(account)['max_ai_input_tokens'])
     d.encrypted_data=pack(payload);d.version+=1;d.save(update_fields=['encrypted_data','version'])
@@ -458,7 +497,7 @@ def generation_quote(account,draft_id,version):
     # page of headroom is reserved because a section written to fill its page
     # can spill onto the next; settlement consumes only what was produced, so
     # the headroom costs nothing unless it is used.
-    output_cap=len(data['content']['sections'])+1
+    output_cap=len(data['content']['sections'])+int(data['options'].get('question_slides',0) or 0)+1
     output_units=output_cap*tariff['pptx_output_credits_per_slide' if data['output_format']=='pptx' else 'pdf_output_credits_per_started_page']
     from .metering import generation_credits
     credits=0 if d.provider_mode=='local_fixture' else generation_credits(d.feature_id,len(data['excerpts']),question_cap,output_units,tariff)
