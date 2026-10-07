@@ -232,7 +232,7 @@ def _crop_box(hint, region, cv, np):
 
 
 
-def _supported_interior(mask, cv, np):
+def _supported_interior(mask, cv, np, *, outward=False):
     """Keep enhancement inside independently supported visible paper edges.
 
     Profiles use only actually observed, non-frame edges. Robust cubic fits
@@ -244,6 +244,15 @@ def _supported_interior(mask, cv, np):
     h, w = mask.shape
     present = mask > 0
     interior = mask.copy()
+    if outward:
+        # A protection envelope is not a transform or a proposed hidden page.
+        # Fill observed print notches, then constrain this region by the same
+        # visible, supported physical boundaries used for enhancement.
+        points = cv.findNonZero(mask)
+        if points is None:
+            return None
+        interior[:] = 0
+        cv.fillConvexPoly(interior, cv.convexHull(points), 255)
     tolerance = max(3., min(h, w) * .006)
     margin = max(3, round(min(h, w) * .008))
     rng = np.random.default_rng(0)
@@ -301,11 +310,12 @@ def _supported_interior(mask, cv, np):
                 coordinates.astype(np.float64) / max(1, pw - 1))
             target = interior.T if transposed else interior
             for coordinate, value in zip(coordinates, boundaries):
+                allowance = -tolerance if outward else tolerance
                 if reverse:
-                    cutoff = max(0, min(ph, int(np.floor(value - tolerance)) + 1))
+                    cutoff = max(0, min(ph, int(np.floor(value - allowance)) + 1))
                     target[cutoff:, coordinate] = 0
                 else:
-                    cutoff = max(0, min(ph, int(np.ceil(value + tolerance))))
+                    cutoff = max(0, min(ph, int(np.ceil(value + allowance))))
                     target[:cutoff, coordinate] = 0
             qualified += 1
     return interior if qualified > 0 else None
@@ -400,7 +410,29 @@ def refine(hint):
     conservative = (cv.resize(supported_interior, (sw, sh),
         interpolation=cv.INTER_AREA) >= 254).astype(np.uint8) * 255
     enhancement_mask = cv.erode(conservative, np.ones((5, 5), np.uint8))
-    return {'partial_mask': enhancement_mask, 'crop_box': crop, 'kind': 'partial',
+    supported_envelope = _supported_interior(refined, cv, np, outward=True)
+    if supported_envelope is None:
+        return None
+    visible_envelope = (cv.resize(supported_envelope, (sw, sh),
+        interpolation=cv.INTER_AREA) > 0).astype(np.uint8) * 255
+    # A narrow written secondary sheet is observed content, rather than a
+    # blank desk extension. Independently qualified glyphs protect its whole
+    # connected visible surface; gray/material-compatible blank outgrowths do
+    # not regain paper status merely because they touch the dominant sheet.
+    unsupported = ((foreground > 0) & (visible_envelope == 0)).astype(np.uint8)
+    _, components, stats, _ = cv.connectedComponentsWithStats(unsupported, connectivity=8)
+    for label, (x, y, cw, ch, area) in enumerate(stats[1:], 1):
+        component = components[y:y + ch, x:x + cw] == label
+        evidence = protected_ink[y:y + ch, x:x + cw] > 0
+        if int((component & evidence).sum()) >= 12:
+            visible_envelope[y:y + ch, x:x + cw][component] = 255
+    # Matting must never invert the deliberately inset enhancement region.
+    # Retain the independently segmented visible surface and mark evidence
+    # separately; the native matte still verifies its uncertain boundary.
+    return {'partial_mask': enhancement_mask, 'cleanup_foreground': conservative.copy(),
+            'paper_foreground': foreground.copy(),
+            'surface_envelope': visible_envelope,
+            'protected_evidence': protected_ink, 'crop_box': crop, 'kind': 'partial',
             'mask_size': (sw, sh), 'source_size': hint['image_size']}
 
 

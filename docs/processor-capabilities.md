@@ -35,9 +35,13 @@ It rectifies only a confident, fully visible paper outline. A clipped written
 page can receive masked shadow and color cleanup when coherent paper, observed
 boundaries and writing at a clipped edge independently qualify it. Missing
 corners are never invented: cropped-page geometry remains a literal source
-rectangle, removing only independently verified empty exterior bands (with
-downsampling only when the resulting crop exceeds the 16 MP output ceiling). Faint or
-colored exterior notes and other sheets veto band removal. Uncertain outlines,
+rectangle. With Auto crop enabled, a separately qualified native paper matte
+removes confirmed surrounding background onto a white canvas. Observed paper,
+its writing, additional visible paper and uncertain paper boundaries remain protected. The page is
+trimmed only around verified empty or removed exterior bands (with
+downsampling only when the resulting crop exceeds the 16 MP output ceiling).
+Unrelated off-paper text is part of the removed scene when Auto crop is on;
+turning it off preserves the entire scene. Uncertain outlines,
 competing pages and ordinary photos keep the full image. Already full-frame scans
 can receive text enhancement without cropping to an inner table. Enhancement
 retains colored ink, and applies only inside a detected page when cropping is off.
@@ -63,8 +67,12 @@ a separate mask initialization after the established complete-page fallback.
 Each path has one 512-pixel/three-iteration attempt, executed sequentially (at
 most six iterations per image), within the existing worker timeout. Tentative empty
 bands are checked against source-resolution writing before removal. Clipped
-enhancement normalizes per-channel illumination only in the qualified region,
-preserving exterior RGB pixels exactly when their geometry is retained. An enclosing proposal
+enhancement estimates per-channel illumination from observed paper and boosts
+neutral fine strokes using native local contrast, without binarizing or erasing
+colored writing. All native matte and cleanup work tiles stay within one million
+pixels. Enhancement-only mode preserves exterior RGB exactly; crop-only mode
+preserves observed paper and its writing RGB while replacing confirmed background.
+An enclosing proposal
 supplies context for independently tracing each physical paper edge. Smooth
 boundary curves rectify gentle curl into a rectangle, with correction confined
 to the outer 20% so blank-margin curl does not bend straight central table rows.
@@ -98,7 +106,8 @@ actual HTTP/queue/worker/download path and checks the resulting PDF pixels with
 defaults enabled, cropping alone and both effects disabled. The checks require
 a fitted borderless PDF canvas, physical desk removal and all corner/side writing.
 Clipped-page checks require an exact source crop rectangle, preservation of all
-visible paper and writing, untouched exterior pixels and measurable paper cleanup.
+visible paper and writing, verified white exterior canvas when cropping is on,
+untouched exterior when cropping is off and measurable paper/text cleanup.
 Previously generated PDFs are
 immutable; scanning changes apply to new image conversions.
 

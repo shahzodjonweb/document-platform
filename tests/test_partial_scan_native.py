@@ -180,7 +180,7 @@ def test_long_faint_native_strokes_survive_all_tentative_band_orientations(side,
     ('signature', 2), ('underline', 1), ('review_signature', 3),
     ('review_signature', 5), ('review_signature', 7),
 ])
-def test_real_partial_crop_preserves_long_faint_exterior_stroke(kind, stroke_width):
+def test_auto_crop_removes_off_paper_stroke_and_preserves_every_paper_rgb_pixel(kind, stroke_width):
     from processors.document_scan import prepare_image
     from scripts.operations.partial_scan_fixtures import partial_document_fixture, source_roi
 
@@ -194,6 +194,10 @@ def test_real_partial_crop_preserves_long_faint_exterior_stroke(kind, stroke_wid
     pixels[mask] = (33, 38, 43)
     original = Image.fromarray(pixels)
     output, flags = prepare_image(original, auto_crop=True, enhance_text=False)
-    roi = source_roi(original, output)
+    roi = source_roi(original, output, white_canvas=True)
     assert not flags['enhanced']
-    _assert_visible_source_ink_retained(original, roi, mask)
+    left, top, right, bottom = roi
+    visible = mask[top:bottom, left:right]
+    assert np.all(np.asarray(output)[visible] == 255), 'Document auto-crop removes off-paper scene strokes'
+    paper = fixture.all_paper[top:bottom, left:right] > 0
+    assert np.array_equal(np.asarray(output)[paper], pixels[top:bottom, left:right][paper]), 'Crop-only keeps all visible original paper RGB pixels'

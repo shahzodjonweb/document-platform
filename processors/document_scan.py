@@ -613,20 +613,20 @@ def _warp(image, quad):
     return Image.fromarray(result)
 
 
-def _enhance(image, quad=None, *, region_mask=None, neutralize_paper=False):
+def _enhance(image, quad=None, *, region_mask=None, neutralize_paper=False, feather=True):
     """Normalize broad shadows in bounded strips while retaining colored ink."""
     cv2, np = _numeric()
+    if neutralize_paper:
+        from processors.partial_scan_cleanup import enhance_paper
+        return enhance_paper(image, region_mask, cv2, np, feather=feather)
     rgb = np.asarray(image, dtype=np.uint8)
     small = _thumbnail(image, 512)
-    small_rgb = np.asarray(small)
-    gray_background = None
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (17, 17))
-    if not neutralize_paper:
-        small_gray = cv2.cvtColor(small_rgb, cv2.COLOR_RGB2GRAY)
-        gray_background = cv2.morphologyEx(small_gray, cv2.MORPH_CLOSE, kernel)
-        gray_background = cv2.GaussianBlur(gray_background, (0, 0), 7)
-        gray_background = np.maximum(cv2.resize(gray_background, image.size,
-                                               interpolation=cv2.INTER_LINEAR), 75)
+    small_gray = cv2.cvtColor(np.asarray(small), cv2.COLOR_RGB2GRAY)
+    background = cv2.morphologyEx(small_gray, cv2.MORPH_CLOSE,
+                                  cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (17, 17)))
+    background = cv2.GaussianBlur(background, (0, 0), 7)
+    background = cv2.resize(background, image.size, interpolation=cv2.INTER_LINEAR)
+    background = np.maximum(background, 75)
     result = np.empty_like(rgb)
     values = np.arange(256, dtype=np.float32)
     table = np.clip((values - 25) * (255 / 220), 0, 255).astype(np.uint8)
@@ -634,41 +634,14 @@ def _enhance(image, quad=None, *, region_mask=None, neutralize_paper=False):
     if quad is not None:
         mask = np.zeros((image.height, image.width), np.uint8)
         cv2.fillConvexPoly(mask, np.round(quad).astype(np.int32), 255)
-    region = None if region_mask is None else np.asarray(region_mask, dtype=np.uint8)
-    if region is not None:
-        # Fade inward from the conservative paper mask so a thumbnail boundary
-        # cannot leave a stair-stepped white edge. The exterior stays untouched.
-        distance = cv2.distanceTransform((region > 0).astype(np.uint8), cv2.DIST_L2, 3)
-        region = np.clip(distance * (255 / 3), 0, 255).astype(np.uint8)
-        columns = ((np.arange(image.width, dtype=np.float32) + .5)
-                   * region.shape[1] / image.width - .5)
     rows = max(1, 1_000_000 // image.width)
-    for channel in range(3):
-        background = gray_background
-        if neutralize_paper:
-            # A qualified clipped page can have a colored illuminant. Estimate
-            # each channel on the thumbnail, retaining only one full-size
-            # channel at a time and preserving colored writing under the mask.
-            field = cv2.morphologyEx(small_rgb[:, :, channel], cv2.MORPH_CLOSE, kernel)
-            field = cv2.GaussianBlur(field, (0, 0), 7)
-            background = np.maximum(cv2.resize(field, image.size,
-                                               interpolation=cv2.INTER_LINEAR), 75)
-        for first in range(0, image.height, rows):
-            last = min(image.height, first + rows)
+    for first in range(0, image.height, rows):
+        last = min(image.height, first + rows)
+        for channel in range(3):
             normalized = cv2.divide(rgb[first:last, :, channel], background[first:last], scale=245)
             adjusted = cv2.LUT(normalized, table)
             if mask is not None:
                 adjusted = np.where(mask[first:last] > 0, adjusted, rgb[first:last, :, channel])
-            if region is not None:
-                indices = ((np.arange(first, last, dtype=np.float32) + .5)
-                           * region.shape[0] / image.height - .5)
-                shape = (last - first, image.width)
-                alpha = cv2.remap(region, np.broadcast_to(columns, shape),
-                                  np.broadcast_to(indices[:, None], shape),
-                                  cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE).astype(np.uint16)
-                adjusted = ((adjusted.astype(np.uint16) * alpha
-                             + rgb[first:last, :, channel].astype(np.uint16) * (255 - alpha)
-                             + 127) // 255).astype(np.uint8)
             result[first:last, :, channel] = adjusted
     return Image.fromarray(result)
 
@@ -685,8 +658,20 @@ def prepare_image(image, *, auto_crop=True, enhance_text=True):
     if details is not None and details.get('kind') == 'partial':
         from processors.partial_document_scan import native_safe_crop_box
         box = native_safe_crop_box(image, details) if auto_crop else None
+        removed = False
+        if auto_crop:
+            from processors.partial_scan_matte import remove_exterior
+            image, removed = remove_exterior(image, details)
+            metadata['background_removed'] = removed
+            if removed:
+                matte_box = details.get('matte_crop_box')
+                if matte_box is not None:
+                    box = (max(box[0], matte_box[0]), max(box[1], matte_box[1]),
+                           min(box[2], matte_box[2]), min(box[3], matte_box[3]))
         if enhance_text:
-            image = _enhance(image, region_mask=details['partial_mask'], neutralize_paper=True)
+            region = details.get('cleanup_foreground', details['partial_mask']) if removed else details['partial_mask']
+            image = _enhance(image, region_mask=region, neutralize_paper=True,
+                             feather=not removed)
             metadata['enhanced'] = True
         if box is not None and box != (0, 0, image.width, image.height):
             image = image.crop(box)

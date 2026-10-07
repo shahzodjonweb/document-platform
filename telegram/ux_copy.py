@@ -31,7 +31,7 @@ MESSAGES = {
     'upload_pdf': ('Attach a PDF, up to 20 MB.', '20 MB gacha PDF yuboring.', 'Прикрепите PDF до 20 МБ.'),
     'upload_merge': ('Send 2 or more PDFs in the order you want. Up to 20 MB each.', 'Kamida 2 ta PDF’ni kerakli tartibda yuboring. Har biri 20 MB gacha.', 'Отправьте от 2 PDF в нужном порядке, до 20 МБ каждый.'),
     'upload_images': ('Send JPG or PNG images, up to 20 MB each. Attach as files for the best quality.', 'JPG yoki PNG yuboring, har biri 20 MB gacha. Sifatni saqlash uchun fayl sifatida yuboring.', 'Отправьте JPG или PNG до 20 МБ каждый. Для лучшего качества прикрепляйте как файлы.'),
-    'document_scan_hint': ('Crop & straighten finds paper edges. Enhance text makes writing clearer.', 'Kesish va tekislash qog‘oz chetlarini topadi. Matnni tiniqlash yozuvni ravshan qiladi.', 'Обрезка и выравнивание находят края листа. Улучшение текста делает надписи чётче.'),
+    'document_scan_hint': ('Crop & straighten removes the surrounding background. Enhance text makes writing clearer.', 'Kesish va tekislash qog‘oz atrofidagi fonni olib tashlaydi. Matnni tiniqlash yozuvni ravshan qiladi.', 'Обрезка и выравнивание убирают фон вокруг листа. Улучшение текста делает надписи чётче.'),
     'auto_crop_label': ('📐 Crop & straighten', '📐 Kesish va tekislash', '📐 Обрезка и выравнивание'),
     'enhance_text_label': ('✨ Enhance text', '✨ Matnni tiniqlash', '✨ Улучшение текста'),
     'option_on': ('On', 'Yoqilgan', 'Вкл.'),

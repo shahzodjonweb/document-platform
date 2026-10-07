@@ -997,7 +997,11 @@ def check_documents(audit_id, emit):
                     image = reader.pages[0].images[0].image.convert('RGB')
                     row.update(validate_fit_canvas(reader, image))
                     proof = validate_partial_output(partial_document_fixture(), image,
-                                                    enhanced=enhanced, roi=partial_roi)
+                                                    enhanced=enhanced, roi=partial_roi,
+                                                    auto_crop=True)
+                    require(proof.get('white_canvas_verified') is True
+                            and proof.get('exterior_background_removed') is True,
+                            'clipped_document_background_white')
                     partial_roi = proof.pop('roi')
                     row.update(proof)
                 if feature == 'pdf.merge':

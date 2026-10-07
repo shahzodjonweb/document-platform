@@ -228,13 +228,16 @@ def test_clipped_page_can_trim_only_empty_source_bands_and_keeps_visible_writing
     from scripts.operations.partial_scan_fixtures import source_roi
     source = incomplete_paper()
     crop, metadata = prepare_image(source, enhance_text=False)
-    left, top, right, bottom = source_roi(source, crop)
+    left, top, right, bottom = source_roi(source, crop, white_canvas=True)
     # This anonymous camera has an exactly known background. Every pixel of
     # visible paper, text, signature and edge marker must remain in the crop.
     written_page = np.any(np.asarray(source) != (46, 64, 54), axis=2)
     retained = np.zeros(written_page.shape, bool)
     retained[top:bottom, left:right] = True
     assert not np.any(written_page & ~retained)
+    region = written_page[top:bottom, left:right]
+    assert np.array_equal(np.asarray(crop)[region],
+                          np.asarray(source)[top:bottom, left:right][region])
     assert metadata['enhanced'] is False
     result, _ = prepare_image(source)
     assert result.size == crop.size

@@ -91,7 +91,8 @@ def _paper(*, shadow=True):
 
 
 def partial_document_fixture(*, clipped='left_right_bottom', bowed=True, shadow=True,
-                             exterior_note=False, secondary_note=False, rotation=None, scale=1.):
+                             exterior_note=False, secondary_note=False, rotation=None, scale=1.,
+                             exterior_note_kind='bright'):
     """A written matte page partly outside the camera, with exact visible masks."""
     camera_corners = {
         'left_right_bottom': ((-45, 181), (1008, 191), (1035, 1430), (-68, 1441)),
@@ -148,12 +149,22 @@ def partial_document_fixture(*, clipped='left_right_bottom', bowed=True, shadow=
         all_alpha = np.maximum(main_alpha, visible_secondary)
     if exterior_note:
         note = Image.new('L', PHOTO_SIZE, 0)
-        # A bright pen note on the dark scene: it must veto removal even though
-        # the substrate does not resemble white paper.
-        ImageDraw.Draw(note).text((45, 16), 'KEEP OUTSIDE NOTE', font=_font(25), fill=255)
+        # This annotation belongs to the scene. Auto-crop selects the document
+        # and removes it; enhancement-only keeps every scene pixel unchanged.
+        if exterior_note_kind not in ('bright', 'tiny_faint', 'tiny_blue', 'single_faint', 'short_blue'):
+            raise ValueError('Unknown anonymous exterior reference kind')
+        size = 25 if exterior_note_kind == 'bright' else 9
+        value = {'bright': 'KEEP OUTSIDE NOTE', 'tiny_faint': 'ID27',
+                 'tiny_blue': 'ID27', 'single_faint': 'X', 'short_blue': 'ID'}[exterior_note_kind]
+        ImageDraw.Draw(note).text((45, 16), value, font=_font(size), fill=255)
         note_array = np.asarray(note).astype(np.float32) / 255
+        if exterior_note_kind == 'bright':
+            note_color = np.array((231, 196, 142))
+        else:
+            increase = (0, 5, 22) if exterior_note_kind in ('tiny_blue', 'short_blue') else 8
+            note_color = np.minimum(background.astype(np.int16) + increase, 255)
         background = np.clip(background * (1 - note_array[:, :, None])
-                             + np.array((231, 196, 142)) * note_array[:, :, None], 0, 255).astype(np.uint8)
+                             + note_color * note_array[:, :, None], 0, 255).astype(np.uint8)
         projected_marks['exterior_note'] = np.round(np.asarray(note) * (1 - main)).astype(np.uint8)
     photo = background * (1 - main[:, :, None]) + warped * main[:, :, None]
     image = Image.fromarray(cv2.GaussianBlur(np.clip(photo, 0, 255).astype(np.uint8), (3, 3), .5))
@@ -176,38 +187,82 @@ def partial_document_fixture(*, clipped='left_right_bottom', bowed=True, shadow=
     return PartialFixture(image, main_alpha, all_alpha, blank, arrays, family)
 
 
-def source_roi(original, cropped):
-    """Find and verify a literal source rectangle; never accept resampling."""
+def source_roi(original, cropped, *, white_canvas=False):
+    """Verify original-coordinate translation; optionally permit pure-white matte.
+
+    White replacement alone cannot prove paper/note preservation. Callers that
+    permit a canvas must independently assert every known visible paper/mark
+    pixel, as the camera-ground-truth validators below do.
+    """
     source, target = np.asarray(original), np.asarray(cropped)
     height, width = target.shape[:2]
     assert height <= source.shape[0] and width <= source.shape[1], 'No new canvas or invented hidden content'
-    scores = cv2.matchTemplate(source, target, cv2.TM_SQDIFF)
+    retained = np.any(target != 255, axis=2)
+    assert retained.any(), 'An empty white canvas cannot prove an exact source ROI'
+    mask = retained.astype(np.uint8) * 255 if white_canvas else None
+    scores = cv2.matchTemplate(source, target, cv2.TM_SQDIFF, mask=mask)
     candidates = np.argsort(scores.ravel())[:min(8, scores.size)]
     for index in candidates:
         y, x = np.unravel_index(index, scores.shape)
-        if np.array_equal(source[y:y + height, x:x + width], target):
+        expected = source[y:y + height, x:x + width]
+        if np.array_equal(expected[retained] if white_canvas else expected,
+                          target[retained] if white_canvas else target):
             return int(x), int(y), int(x + width), int(y + height)
     raise AssertionError('Crop-only must be an exact source ROI translation, without a homography')
+
+
+def _assert_document_pixels_exact(fixture, output, roi):
+    x0, y0, x1, y1 = roi
+    before, after = np.asarray(fixture.image)[y0:y1, x0:x1], np.asarray(output)
+    assert after.shape == before.shape, 'Partial crop preserves original camera geometry'
+    retained = fixture.all_paper[y0:y1, x0:x1] > 0
+    assert np.array_equal(after[retained], before[retained]), 'Crop-only must preserve every visible paper and reference RGB pixel'
+
+
+def _assert_white_exterior(fixture, output, roi):
+    """Require useful scene removal, measured from independent camera alpha."""
+    x0, y0, x1, y1 = roi
+    paper = fixture.all_paper[y0:y1, x0:x1] > 0
+    after = np.asarray(output)
+    white = np.all(after >= 250, axis=2)
+    guard = max(8, round(min(fixture.image.size) * .01))
+    protected = cv2.dilate(paper.astype(np.uint8),
+                          np.ones((guard * 2 + 1, guard * 2 + 1), np.uint8)) > 0
+    clear = ~protected
+    assert int(clear.sum()) > 100, 'Camera fixture needs a known exterior region'
+    assert float(white[clear].mean()) >= .995, 'Auto-crop must remove known exterior to a white canvas'
+    exterior = ~paper
+    boundary = paper & (cv2.erode(paper.astype(np.uint8), np.ones((3, 3), np.uint8)) == 0)
+    # Equivalent residual halo thickness counts even irregular wedges, rather
+    # than allowing a large black corner to hide behind a global white average.
+    halo = float((exterior & ~white).sum()) / max(1, int(boundary.sum()))
+    assert halo <= max(6., min(fixture.image.size) * .008), 'Auto-crop must leave only a narrow conservative edge halo'
+    off_paper_ink = np.zeros(paper.shape, bool)
+    for mask in fixture.marks.values():
+        off_paper_ink |= mask[y0:y1, x0:x1] > 0
+    off_paper_ink &= clear
+    assert np.all(white[off_paper_ink]), 'Auto-crop removes unrelated off-paper references with the scene'
 
 
 def _assert_all_marks_retained(fixture, roi):
     x0, y0, x1, y1 = roi
     retained = np.zeros(fixture.main_paper.shape, bool)
     retained[y0:y1, x0:x1] = True
-    assert not np.any((fixture.all_paper >= 128) & ~retained), 'Only bands without proven paper may be removed'
+    assert not np.any((fixture.all_paper > 0) & ~retained), 'Only bands without proven paper may be removed'
     for name, mask in fixture.marks.items():
-        assert not np.any((mask >= 128) & ~retained), 'All visible marks must survive: ' + name
+        on_paper = (mask > 0) & (fixture.all_paper > 0)
+        assert not np.any(on_paper & ~retained), 'All visible on-paper marks must survive: ' + name
 
 
 
 def _assert_proven_empty_band_trimmed(fixture, roi):
     # Only the unambiguous primary scene has a large known blank exterior band.
-    # Notes/secondary sheets and other families can safely retain full geometry.
-    if fixture.family != 'left_right_bottom':
+    # Off-paper notes are scene content; secondary sheets remain documents.
+    if fixture.family not in ('left_right_bottom', 'left_right_bottom_exterior_note'):
         return
-    protected = fixture.all_paper >= 128
+    protected = fixture.all_paper > 0
     for mask in fixture.marks.values():
-        protected |= mask >= 128
+        protected |= (mask > 0) & (fixture.all_paper > 0)
     yy, xx = np.where(protected)
     original_area = fixture.image.width * fixture.image.height
     protected_bounds_area = (int(xx.max()) - int(xx.min()) + 1) * (int(yy.max()) - int(yy.min()) + 1)
@@ -220,13 +275,16 @@ def _assert_proven_empty_band_trimmed(fixture, roi):
     assert removed_area >= empty_band_area * .25, 'Auto-crop must remove a meaningful proven empty exterior band'
 
 
-def _assert_effect_quality(fixture, output, roi):
+def _assert_effect_quality(fixture, output, roi, *, white_canvas=False):
     x0, y0, x1, y1 = roi
     original = np.asarray(fixture.image)[y0:y1, x0:x1]
     after = np.asarray(output)
     assert after.shape == original.shape, 'Partial cleanup must not invent or stretch hidden page geometry'
     outside = fixture.all_paper[y0:y1, x0:x1] == 0
-    assert np.array_equal(after[outside], original[outside]), 'Exterior scene and exterior notes remain exact'
+    if white_canvas:
+        _assert_white_exterior(fixture, output, roi)
+    else:
+        assert np.array_equal(after[outside], original[outside]), 'Exterior scene and exterior notes remain exact'
     old_gray = cv2.cvtColor(original, cv2.COLOR_RGB2GRAY)
     new_gray = cv2.cvtColor(after, cv2.COLOR_RGB2GRAY)
     ink = np.maximum.reduce(list(fixture.marks.values()))[y0:y1, x0:x1]
@@ -256,14 +314,14 @@ def _assert_effect_quality(fixture, output, roi):
 
 
 
-def validate_partial_output(fixture, image, *, enhanced, roi=None):
+def validate_partial_output(fixture, image, *, enhanced, roi=None, auto_crop=True):
     """Check one worker output against anonymous camera ground truth.
 
     Enhanced output needs the independently proven crop-only source rectangle,
     since changed paper pixels cannot establish an exact template translation.
     """
     if not enhanced:
-        actual_roi = source_roi(fixture.image, image)
+        actual_roi = source_roi(fixture.image, image, white_canvas=auto_crop)
         if roi is not None:
             assert tuple(roi) == actual_roi, 'Crop-only must use the proven source ROI'
         roi = actual_roi
@@ -275,13 +333,19 @@ def validate_partial_output(fixture, image, *, enhanced, roi=None):
     assert 0 <= x0 < x1 <= fixture.image.width and 0 <= y0 < y1 <= fixture.image.height, 'Source ROI cannot invent hidden content'
     _assert_all_marks_retained(fixture, roi)
     if not enhanced:
-        _assert_proven_empty_band_trimmed(fixture, roi)
+        if auto_crop:
+            _assert_proven_empty_band_trimmed(fixture, roi)
+        _assert_document_pixels_exact(fixture, image, roi)
+        if auto_crop:
+            _assert_white_exterior(fixture, image, roi)
     if enhanced:
-        _assert_effect_quality(fixture, image, roi)
+        _assert_effect_quality(fixture, image, roi, white_canvas=auto_crop)
     return {'roi': tuple(int(value) for value in roi),
             'crop_verified': not enhanced, 'effect_verified': bool(enhanced),
             'source_geometry_preserved': True, 'visible_marks_preserved': True,
-            'exterior_pixels_preserved': True}
+            'exterior_pixels_preserved': not auto_crop,
+            'exterior_background_removed': bool(auto_crop),
+            'white_canvas_verified': bool(auto_crop)}
 
 
 def validate_partial_modes(fixture, results):
@@ -291,26 +355,29 @@ def validate_partial_modes(fixture, results):
     assert off.size == original.size and off.tobytes() == original.tobytes(), 'Both off preserve every source pixel'
     assert not off_flags['cropped'] and not off_flags['enhanced']
     crop, crop_flags = results[(True, False)]
-    roi = source_roi(original, crop)
+    roi = source_roi(original, crop, white_canvas=True)
     _assert_all_marks_retained(fixture, roi)
     _assert_proven_empty_band_trimmed(fixture, roi)
+    _assert_document_pixels_exact(fixture, crop, roi)
+    _assert_white_exterior(fixture, crop, roi)
     assert not crop_flags['enhanced'], 'Crop-only has no readability effect'
     effect, effect_flags = results[(False, True)]
     assert effect.size == original.size and not effect_flags['cropped'], 'Effect-only preserves source geometry'
     _assert_effect_quality(fixture, effect, (0, 0, original.width, original.height))
     default, default_flags = results[(True, True)]
     assert default.size == crop.size, 'Default and crop-only use the same proven source ROI'
-    _assert_effect_quality(fixture, default, roi)
+    _assert_effect_quality(fixture, default, roi, white_canvas=True)
     assert default_flags['enhanced'] and effect_flags['enhanced'], 'Configured default cleanup must be applied'
-    return {'roi': roi, 'visible_marks_preserved': True, 'exterior_pixels_preserved': True,
+    return {'roi': roi, 'visible_marks_preserved': True, 'exterior_pixels_preserved': False,
+            'exterior_background_removed': True, 'white_canvas_verified': True,
             'masked_readability_improved': True, 'source_geometry_preserved': True}
 
 
 def reference_modes(fixture):
     """Camera-ground-truth oracle used only to calibrate validation guards."""
-    protected = fixture.all_paper >= 128
+    protected = fixture.all_paper > 0
     for mask in fixture.marks.values():
-        protected |= mask >= 128
+        protected |= (mask > 0) & (fixture.all_paper > 0)
     y, x = np.where(protected)
     roi = (int(x.min()), int(y.min()), int(x.max()) + 1, int(y.max()) + 1)
     source = np.asarray(fixture.image).astype(np.float32)
@@ -318,12 +385,17 @@ def reference_modes(fixture):
     adjusted = np.clip(source / blank * 245, 0, 255).astype(np.uint8)
     adjusted = np.where((fixture.main_paper > 0)[:, :, None], adjusted, source.astype(np.uint8))
     effect = Image.fromarray(adjusted)
-    crop = fixture.image.crop(roi)
+    retained = fixture.all_paper > 0
+    canvas = np.full(source.shape, 255, np.uint8)
+    canvas[retained] = np.asarray(fixture.image)[retained]
+    adjusted_canvas = np.full(source.shape, 255, np.uint8)
+    adjusted_canvas[retained] = adjusted[retained]
+    crop = Image.fromarray(canvas).crop(roi)
     cropped = crop.size != fixture.image.size
     return {(False, False): (fixture.image, {'cropped': False, 'enhanced': False}),
             (True, False): (crop, {'cropped': cropped, 'enhanced': False}),
             (False, True): (effect, {'cropped': False, 'enhanced': True}),
-            (True, True): (effect.crop(roi), {'cropped': cropped, 'enhanced': True})}
+            (True, True): (Image.fromarray(adjusted_canvas).crop(roi), {'cropped': cropped, 'enhanced': True})}
 
 
 VARIANTS = {
