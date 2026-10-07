@@ -243,7 +243,9 @@ def _prepare_draft(account,data,revision_base=None):
         from .revisions import selected_ids
         selection=selected_ids(options,original['content'],source_version)
         if saved.get('selected_section_ids') and selection!=saved['selected_section_ids']:raise DomainError('invalid_parameters')
-        locale=original['output_locale']
+        # A change keeps the document's language unless one was chosen for it
+        # on the review screen.
+        locale=locale if options.get('locale_chosen') is True else original['output_locale']
         ids=original['source_ids'];excerpts=original['excerpts']
         title=original['title'] if revision_base is None else title
         text=original.get('source_text','')
@@ -264,12 +266,19 @@ def _prepare_draft(account,data,revision_base=None):
     # is kept beside the resolved count so a clamp can be shown, not hidden.
     from . import pages as paging
     brief=prompt if original is not None else f'{prompt}\n{text}'
-    length,asked=paging.resolve(account,brief,fmt)
-    # A change keeps the document's length unless the request names a new total.
-    # A total of one is not taken from a change request: "har 1ta slaydga rasm"
-    # (a picture on every slide) once turned a nine-slide deck into one slide.
-    if original is not None and (asked is None or asked<2):
-        asked=None;length=len(original['content']['sections'])
+    # A count chosen on the review screen beats the one read from the
+    # description: it is how a misread count gets put right before paying.
+    chosen=options.get('pages')
+    if chosen is not None:
+        if type(chosen) is not int or not 1<=chosen<=200:raise DomainError('invalid_parameters')
+        length,asked=min(chosen,paging.ceiling(account,fmt)),chosen
+    else:
+        length,asked=paging.resolve(account,brief,fmt)
+        # A change keeps the document's length unless the request names a new
+        # total. A total of one is not taken from a change request: "har 1ta
+        # slaydga rasm" (a picture on every slide) once made a nine-slide deck one.
+        if original is not None and (asked is None or asked<2):
+            asked=None;length=len(original['content']['sections'])
     if selection:
         if asked is not None and asked!=len(original['content']['sections']):raise DomainError('invalid_parameters')
         length=len(original['content']['sections'])
@@ -396,6 +405,8 @@ def update_draft(account,draft_id,data):
     # The page count lives in the description, so a reworded brief rebuilds the
     # outline the same way a changed source does.
     rebuild=any(key in data and data[key]!=original.get(key) for key in ('prompt','source_text','source_ids','output_format'))
+    # So does a count chosen on the review screen.
+    rebuild=rebuild or payload['options'].get('length')!=original.get('options',{}).get('length')
     content=data.get('content',payload['content'] if rebuild and not original.get('revision',{}).get('selected_section_ids') else original['content'])
     if 'outline' in data:
         outline=data['outline']

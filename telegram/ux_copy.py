@@ -129,6 +129,13 @@ MESSAGES = {
     'ai_examples_title': ('💡 Write it like this', '💡 Mana shunday yozing', '💡 Пишите вот так'),
     'ai_pages': ('Pages', 'Sahifalar', 'Страниц'),
     'ai_pages_clamped': ('{asked} asked for; {given} is the most your plan allows.', '{asked} so‘raldi; tarifingiz {given} tagacha ruxsat beradi.', 'Запрошено {asked}; тариф допускает {given}.'),
+    'ai_slides': ('Slides', 'Slaydlar', 'Слайдов'),
+    'ai_language': ('Language', 'Til', 'Язык'),
+    # The button where a limit is met: what the next plan would give.
+    'ai_more_pages': ('💎 Up to {count} pages with {plan}', '💎 {plan} bilan {count} sahifagacha', '💎 До {count} страниц с {plan}'),
+    'ai_more_slides': ('💎 Up to {count} slides with {plan}', '💎 {plan} bilan {count} slaydgacha', '💎 До {count} слайдов с {plan}'),
+    'ai_more_images': ('💎 Up to {count} pictures with {plan}', '💎 {plan} bilan {count} tagacha rasm', '💎 До {count} картинок с {plan}'),
+    'ai_images_capped': ('🖼 You asked for pictures; your plan adds up to {count} to a deck.', '🖼 Rasm so‘radingiz; tarifingiz bir taqdimotga {count} tagacha rasm qo‘shadi.', '🖼 Вы просили картинки; ваш тариф добавляет до {count} на презентацию.'),
     'ai_topic_empty': ('✍️ I need a description before I can start.', '✍️ Boshlashim uchun tavsif kerak.', '✍️ Чтобы начать, нужно описание.'),
     'ai_preparing': ('⏳ Preparing your draft…', '⏳ Qoralama tayyorlanmoqda…', '⏳ Готовлю черновик…'),
     'ai_generate': ('✨ Generate', '✨ Yaratish', '✨ Создать'),

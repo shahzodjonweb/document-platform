@@ -171,7 +171,7 @@ def option_summary(account,draft):
 def build_dispatcher():
     from .workflows import draft_for,configure,snapshot,bound_draft,quote_draft,run_quote,attach_input,order_inputs,discard_draft,choose_tool,start_tool,discard_finished_draft,accept_upload
     from . import generation as ai
-    from .onboarding import install_onboarding,show_language,chosen_locale
+    from .onboarding import install_onboarding,show_language,chosen_locale,LANGUAGES
     from .billing import register_billing_handlers,show_offers,show_subscription
     dp=Dispatcher()
     register_billing_handlers(dp)
@@ -449,13 +449,23 @@ def build_dispatcher():
         heading=await sync_to_async(ai.title_of)(draft)
         given,asked=await sync_to_async(ai.summary)(draft)
         change=await sync_to_async(ai.change_request)(draft)
+        before=await sync_to_async(ai.length_before)(draft)
+        locale=await sync_to_async(ai.language_of)(draft)
+        wanted,cap=await sync_to_async(ai.images_wanted)(draft)
+        deck=draft.feature_id==ai.SLIDES
+        unit='ai_slides' if deck else 'ai_pages'
         body=(f'<b>{text(account,"review_title")}</b>\n{html.escape(title)}\n'
               f'📄 {html.escape(heading)}\n')
         # A change says what is changing; a new document says what it is.
         if change: body+=f'✏️ {html.escape(change)}\n'
-        body+=f'{text(account,"ai_pages")}: {given}'
+        # A change that alters the count says so: 9 → 1 must never go unseen.
+        count=f'{before} → {given}' if before and before!=given else f'{given}'
+        body+=f'{text(account,unit)}: {count}'
         # A clamped request is said out loud rather than quietly honoured short.
-        if asked and asked!=given: body+='\n'+text(account,'ai_pages_clamped').format(asked=asked,given=given)
+        if asked and asked>given: body+='\n'+text(account,'ai_pages_clamped').format(asked=asked,given=given)
+        names=dict(LANGUAGES)
+        if locale in names: body+=f'\n{text(account,"ai_language")}: {names[locale]}'
+        if wanted>cap>0: body+='\n'+text(account,'ai_images_capped').format(count=cap)
         body+=f'\n\n{text(account,"ai_review_hint")}'
         if usage: body+=f'\n\n{text(account,"cost")} / {text(account,"available")}:\n{usage}'
         body+=f'\n{text(account,"expires")}: {quote.expires_at:%Y-%m-%d %H:%M}'
@@ -463,8 +473,33 @@ def build_dispatcher():
         source=await sync_to_async(ai.revised_from)(draft)
         reword=(await button(account,'ai_revise','ai_revise',{'draft_id':source}) if source
                 else await button(account,'ai_change_topic','ai_tool',{'feature_id':draft.feature_id}))
-        rows=[[await button(account,'ai_generate','ai_run',{'quote_id':str(quote.id),'draft_id':str(draft.id)})],
-              [reword,await button(account,'cancel_button','home')]]
+        rows=[[await button(account,'ai_generate','ai_run',{'quote_id':str(quote.id),'draft_id':str(draft.id)})]]
+        # The count can be put right here, before anything is charged. At the
+        # plan's limit the "more" button becomes the plan that gives more.
+        from apps.studio.pages import ceiling
+        top=await sync_to_async(ceiling)(account,'pptx' if deck else 'pdf')
+        stepper=[]
+        if given>1:
+            stepper.append(InlineKeyboardButton(text=f'➖ {given-1}',callback_data=await callback(account,'ai_length',{'draft_id':str(draft.id),'pages':given-1})))
+        if given<top:
+            stepper.append(InlineKeyboardButton(text=f'➕ {given+1}',callback_data=await callback(account,'ai_length',{'draft_id':str(draft.id),'pages':given+1})))
+        if stepper: rows.append(stepper)
+        upsell=[]
+        if given>=top or (asked and asked>given):
+            more=await sync_to_async(ai.next_plan)(account,'max_generated_slides' if deck else 'max_generated_pdf_pages',max(asked or 0,given+1))
+            if more: upsell.append(('ai_more_slides' if deck else 'ai_more_pages',more))
+        if wanted>cap>0:
+            more=await sync_to_async(ai.next_plan)(account,'max_deck_images',wanted)
+            if more: upsell.append(('ai_more_images',more))
+        from .billing import plan_name
+        for key,(plan,limit) in upsell[:1]:
+            rows.append([InlineKeyboardButton(text=text(account,key).format(count=limit,plan=plan_name(account,plan)),
+                                              callback_data=await callback(account,'plans'))])
+        # The language it will be written in, switchable in one tap.
+        rows.append([InlineKeyboardButton(text=('✅ ' if code==locale else '')+label.split(' ',1)[0],
+                                          callback_data=await callback(account,'ai_locale',{'draft_id':str(draft.id),'locale':code}))
+                     for code,label in LANGUAGES])
+        rows.append([reword,await button(account,'cancel_button','home')])
         await render(message,body,rows,edit)
 
     async def ai_start(message,account,feature_id,description):
@@ -725,6 +760,12 @@ def build_dispatcher():
                     current=await blocked(account)
                     if current: await show_gate(message,account,current,resume={'kind':'ai_prompt','feature_id':p['feature_id']},edit=True)
                     else: await ai_prompt(message,account,p['feature_id'],True)
+            elif action in ('ai_length','ai_locale'):
+                change=ai.resize if action=='ai_length' else ai.relocale
+                value=p['pages'] if action=='ai_length' else p['locale']
+                try: draft,quote=await sync_to_async(change)(account,p['draft_id'],value)
+                except DomainError as exc: await safe_error(message,account,exc)
+                else: await ai_review(message,account,draft,quote,True)
             elif action=='ai_run':
                 existing=await sync_to_async(ai.submitted)(account,p['quote_id'])
                 job=existing or await sync_to_async(ai.start)(account,p['quote_id'])

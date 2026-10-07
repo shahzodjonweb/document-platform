@@ -107,6 +107,83 @@ def summary(draft):
     return options.get('length', 0), options.get('requested_pages')
 
 
+def length_before(draft):
+    """For a change request, how many pages the document it changes has; else None."""
+    from apps.studio.domain import revision_source, unpack
+    source_id = (unpack(draft.encrypted_data).get('revision') or {}).get('source_draft_id')
+    if not source_id:
+        return None
+    try:
+        _, original = revision_source(draft.account, source_id)
+    except DomainError:
+        return None
+    return len(original['content']['sections'])
+
+
+def language_of(draft):
+    from apps.studio.domain import unpack
+    return unpack(draft.encrypted_data).get('output_locale', '')
+
+
+def images_wanted(draft):
+    """(pictures the description asks for, pictures the plan adds), for a deck; else (0, 0)."""
+    from apps.studio.domain import unpack
+    data = unpack(draft.encrypted_data)
+    options = data.get('options', {})
+    return int(options.get('images_wanted', 0) or 0), int(options.get('image_cap', 0) or 0)
+
+
+PLAN_ORDER = ('free', 'plus', 'premium')
+
+
+def next_plan(account, limit, needed):
+    """(plan, its `limit`) for the first plan above this one that covers `needed`,
+    or the biggest above it when none does; None when nothing above gives more."""
+    from apps.commerce.services import effective_plan
+    from apps.core.policy import limits_for_plan
+    current = effective_plan(account)
+    if current not in PLAN_ORDER:
+        return None
+    have = int(limits_for_plan(current).get(limit) or 0)
+    best = None
+    for plan in PLAN_ORDER[PLAN_ORDER.index(current) + 1:]:
+        value = int(limits_for_plan(plan).get(limit) or 0)
+        if value > have:
+            best = (plan, value)
+            if value >= needed:
+                return best
+    return best
+
+
+def _changed(account, draft_id, change):
+    """The draft redone with `change(data)` applied to its fields, and its new price."""
+    from apps.studio.domain import unpack, update_draft
+    draft = GenerationDraft.objects.filter(account=account, id=draft_id, expires_at__gt=timezone.now()).first()
+    if not draft:
+        raise DomainError('controls_expired', 409)
+    data = unpack(draft.encrypted_data)
+    fields = change(data)
+    draft = update_draft(account, draft.id, {'version': draft.version, **fields})
+    return draft, generation_quote(account, draft.id, draft.version)
+
+
+@transaction.atomic
+def resize(account, draft_id, pages):
+    """The same draft at another page or slide count, chosen on the review screen."""
+    if type(pages) is not int or pages < 1:
+        raise DomainError('invalid_parameters')
+    return _changed(account, draft_id, lambda data: {'options': {**data['options'], 'pages': pages}})
+
+
+@transaction.atomic
+def relocale(account, draft_id, locale):
+    """The same draft in another language, chosen on the review screen."""
+    if locale not in ('en', 'uz', 'ru'):
+        raise DomainError('invalid_locale')
+    return _changed(account, draft_id, lambda data: {
+        'output_locale': locale, 'options': {**data['options'], 'locale_chosen': True}})
+
+
 def change_request(draft):
     """What this draft was asked to change, when it is a change at all."""
     from apps.studio.domain import unpack
