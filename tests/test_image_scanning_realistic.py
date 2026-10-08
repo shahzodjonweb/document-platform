@@ -5,12 +5,13 @@ contain no customer image, address, identity, signature or shipment information.
 Geometry, illumination, paper curl and camera noise are independent of detector
 implementation details, so this remains a regression fixture across algorithms.
 """
+import io
 from pathlib import Path
 
 import cv2
 import numpy as np
 import pytest
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 from processors.document_scan import prepare_image
 
@@ -166,6 +167,28 @@ def photographed_gray_appliance():
     return Image.fromarray(np.clip(photographed, 0, 255).astype(np.uint8), 'RGB')
 
 
+def _scaled(image, scale):
+    """The same photograph as a smaller or larger phone upload."""
+    if scale == 1:
+        return image
+    return image.resize((round(image.width * scale), round(image.height * scale)),
+                        Image.Resampling.LANCZOS)
+
+
+def _sharpened(image):
+    """Camera-app sharpening leaves overshoot halos around every stroke and edge."""
+    return image.filter(ImageFilter.UnsharpMask(radius=2, percent=150, threshold=3))
+
+
+def _jpeg_uploaded(image):
+    """A messenger upload: 4:2:0 chroma, block noise and ringing at quality 75."""
+    buffer = io.BytesIO()
+    image.save(buffer, 'JPEG', quality=75)
+    uploaded = Image.open(io.BytesIO(buffer.getvalue()))
+    uploaded.load()
+    return uploaded.convert('RGB')
+
+
 def _corner_ink_survives(image):
     rgb = np.asarray(image).astype(np.int16)
     regions = [rgb[:image.height // 4, :image.width // 4],
@@ -244,8 +267,11 @@ def test_switches_remain_independent_for_realistic_dark_paper(auto_crop, enhance
 def test_bright_curved_surface_without_writing_is_not_a_document():
     source = photographed_shipment_form(blank_appliance=True)
     result, metadata = prepare_image(source)
-    assert metadata == {'document_detected': False, 'cropped': False, 'enhanced': False}
-    assert result.size == source.size and result.tobytes() == source.tobytes()
+    assert metadata == {'document_detected': False, 'cropped': False, 'enhanced': True}
+    assert result.size == source.size
+    crop_only, flags = prepare_image(source, enhance_text=False)
+    assert flags == {'document_detected': False, 'cropped': False, 'enhanced': False}
+    assert crop_only.tobytes() == source.tobytes()
 
 
 def test_gray_paper_on_light_desk_never_loses_corner_writing():
@@ -293,7 +319,9 @@ def test_partial_gray_sheet_with_hidden_corner_is_preserved(corners):
     paper = cv2.warpPerspective(alpha, pose, source.size)
     # Exclude the simulated camera's two-pixel antialias transition.
     outside = cv2.dilate(paper, np.ones((5, 5), np.uint8)) == 0
-    assert np.array_equal(np.asarray(result)[outside], np.asarray(source)[outside])
+    assert np.array_equal(np.asarray(crop_only)[outside], np.asarray(source)[outside])
+    # The effect may lift the desk a little but never paints it as white paper.
+    assert np.median(np.asarray(result)[outside]) < 200
     for before, after in zip(_mid_edge_ink(source) + _corner_ink_survives(source),
                              _mid_edge_ink(result) + _corner_ink_survives(result)):
         assert after >= before * .7
@@ -305,19 +333,70 @@ def test_two_unequal_gray_sheets_are_both_preserved():
     source = two_unequal_gray_sheets()
     result, metadata = prepare_image(source)
     assert metadata['cropped'] is False, 'A smaller second document must not be discarded'
-    assert metadata['enhanced'] is False
-    assert result.size == source.size and result.tobytes() == source.tobytes()
+    assert metadata['enhanced'] is True, 'The effect still lifts both sheets in place'
+    assert result.size == source.size
+    crop_only, flags = prepare_image(source, enhance_text=False)
+    assert flags['cropped'] is False and flags['enhanced'] is False
+    assert crop_only.tobytes() == source.tobytes()
 
 
 def test_ordinary_grayscale_photo_is_preserved():
     source = ordinary_gray_photo()
     result, metadata = prepare_image(source)
-    assert metadata == {'document_detected': False, 'cropped': False, 'enhanced': False}
-    assert result.size == source.size and result.tobytes() == source.tobytes()
+    assert metadata == {'document_detected': False, 'cropped': False, 'enhanced': True}
+    assert result.size == source.size
+    crop_only, flags = prepare_image(source, enhance_text=False)
+    assert flags == {'document_detected': False, 'cropped': False, 'enhanced': False}
+    assert crop_only.tobytes() == source.tobytes()
 
 
 def test_gray_curved_appliance_with_vents_and_knob_is_preserved():
     source = photographed_gray_appliance()
     result, metadata = prepare_image(source)
+    assert metadata == {'document_detected': False, 'cropped': False, 'enhanced': True}
+    assert result.size == source.size
+    crop_only, flags = prepare_image(source, enhance_text=False)
+    assert flags == {'document_detected': False, 'cropped': False, 'enhanced': False}
+    assert crop_only.tobytes() == source.tobytes()
+
+
+@pytest.mark.parametrize('scale,phone_processed', [(1.5, False), (2, False), (3, False), (1, True), (2, True)],
+                         ids=['1.5x', '2x', '3x', '1x-sharpened-jpeg', '2x-sharpened-jpeg'])
+def test_shipment_form_is_cropped_at_other_resolutions_and_after_camera_sharpening(scale, phone_processed):
+    source = _scaled(photographed_shipment_form(), scale)
+    if phone_processed:
+        source = _jpeg_uploaded(_sharpened(source))
+    result, metadata = prepare_image(source, enhance_text=False)
+    assert metadata == {'document_detected': True, 'cropped': True, 'enhanced': False}
+    assert result.width * result.height < source.width * source.height * .80
+    assert 1.15 < result.height / result.width < 1.8
+    # The 720x900 ink floors grow with the pixel count of a larger upload.
+    assert min(_corner_ink_survives(result)) > 25 * scale * scale, 'Writing near every outer corner must survive'
+    assert min(_mid_edge_ink(result)) > 45 * scale * scale, 'Writing midway along bowed outer sides must survive'
+
+
+@pytest.mark.parametrize('blank_appliance,scale,sharpened,jpeg', [
+    (False, .5, False, False), (False, 1.5, False, False), (False, 2, False, False),
+    (False, 2, False, True), (False, 1, False, True), (True, 2, True, False),
+], ids=['vents-half', 'vents-1.5x', 'vents-2x', 'vents-2x-jpeg', 'vents-1x-jpeg', 'blank-2x-sharpened'])
+def test_unwritten_curved_surfaces_are_never_cropped_at_other_resolutions(blank_appliance, scale, sharpened, jpeg):
+    source = photographed_shipment_form(blank_appliance=True) if blank_appliance else photographed_gray_appliance()
+    source = _scaled(source, scale)
+    if sharpened:
+        source = _sharpened(source)
+    if jpeg:
+        source = _jpeg_uploaded(source)
+    crop_only, flags = prepare_image(source, enhance_text=False)
+    assert flags == {'document_detected': False, 'cropped': False, 'enhanced': False}
+    assert crop_only.size == source.size and crop_only.tobytes() == source.tobytes()
+
+
+@pytest.mark.parametrize('quality', [50, 60, 70, 80, 90])
+@pytest.mark.parametrize('scale', [1, 2], ids=['full-size', 'double-size'])
+def test_unwritten_appliance_is_never_cropped_at_any_jpeg_quality(quality, scale):
+    buffer = io.BytesIO()
+    _scaled(photographed_gray_appliance(), scale).save(buffer, 'JPEG', quality=quality)
+    source = Image.open(io.BytesIO(buffer.getvalue())).convert('RGB')
+    result, metadata = prepare_image(source, enhance_text=False)
     assert metadata == {'document_detected': False, 'cropped': False, 'enhanced': False}
-    assert result.size == source.size and result.tobytes() == source.tobytes()
+    assert result.tobytes() == source.tobytes(), 'Block noise around vents is not writing'

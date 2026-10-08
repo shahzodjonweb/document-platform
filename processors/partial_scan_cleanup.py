@@ -80,7 +80,56 @@ def enhance_paper(image, region_mask, cv, np, *, feather=True):
     return Image.fromarray(result)
 
 
-def cleanup_paper(image, *, paper_mask=None, cv=None, np=None):
+def _frame_shadow(source, cv, np):
+    """Dark strips hugging the canvas frame of a full-frame page are desk or lid.
+
+    Cleanup would otherwise print them as a ragged black border. A strip
+    qualifies only when it is solid, neutral, at least a little thick, runs
+    along most of a frame edge and stays within a few percent of it. A title
+    tab, a coloured side band, a border rule or a header bar with white text
+    fails one of those tests and keeps its contrast.
+    """
+    gray = cv.cvtColor(source, cv.COLOR_RGB2GRAY)
+    saturation = cv.cvtColor(source, cv.COLOR_RGB2HSV)[:, :, 1]
+    height, width = gray.shape
+    paper = float(np.percentile(gray, 75))
+    # Any strip noticeably darker than the paper counts: a scanner lid is
+    # black, but the shading left by an earlier crop is only a little grey.
+    dark = (gray.astype(np.int16) < paper - 18).astype(np.uint8)
+    count, labels, stats, _ = cv.connectedComponentsWithStats(dark, connectivity=8)
+    short = min(height, width)
+    limit = max(2, round(short * .035))
+    yy, xx = np.mgrid[0:height, 0:width]
+    near_frame = (yy < limit) | (yy >= height - limit) | (xx < limit) | (xx >= width - limit)
+    shadow = np.zeros(gray.shape, bool)
+    for label in range(1, count):
+        x, y, w, h, area = stats[label]
+        if not (x == 0 or y == 0 or x + w == width or y + h == height):
+            continue
+        if area < short * .25 or area / max(w, h) < short * .012:
+            continue  # Specks, and rules thinner than a lid shadow.
+        component = labels == label
+        if int((component & ~near_frame).sum()) > area * .02:
+            continue
+        spans = (component[0].mean() if y == 0 else 0, component[-1].mean() if y + h == height else 0,
+                 component[:, 0].mean() if x == 0 else 0, component[:, -1].mean() if x + w == width else 0)
+        if max(spans) < .5:
+            continue  # A tab or a corner mark, not a lid along the whole edge.
+        if float(np.median(saturation[component])) >= 60:
+            continue  # A coloured band is print.
+        contours, hierarchy = cv.findContours(component.astype(np.uint8), cv.RETR_CCOMP,
+                                              cv.CHAIN_APPROX_SIMPLE)
+        holes = 0. if hierarchy is None else sum(cv.contourArea(contour)
+            for contour, link in zip(contours, hierarchy[0]) if link[3] != -1)
+        if holes > area * .01:
+            continue  # White text or a pattern inside the band is print.
+        shadow |= component
+    if shadow.any():
+        shadow = cv.dilate(shadow.astype(np.uint8), np.ones((5, 5), np.uint8)) > 0
+    return shadow
+
+
+def cleanup_paper(image, *, paper_mask=None, frame_guard=False, cv=None, np=None):
     """Clean a selected rectangular document without recreating its writing.
 
     Broad illumination and fine neutral paper texture become white. Dark and
@@ -99,6 +148,8 @@ def cleanup_paper(image, *, paper_mask=None, cv=None, np=None):
     source = np.asarray(small, np.uint8).copy()
     if paper_mask is None:
         region = np.full((small.height, small.width), 255, np.uint8)
+        if frame_guard:
+            region[_frame_shadow(source, cv, np)] = 0
     else:
         # Accept a native caller mask without passing its full canvas to an
         # OpenCV operation. Only the bounded selection is needed below.

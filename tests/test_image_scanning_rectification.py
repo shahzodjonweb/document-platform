@@ -158,8 +158,11 @@ def test_both_switches_off_preserve_source_pixels_and_layout():
 def test_rectification_does_not_activate_for_a_gray_appliance():
     source = photographed_gray_appliance()
     result, metadata = prepare_image(source)
-    assert metadata == {'document_detected': False, 'cropped': False, 'enhanced': False}
-    assert result.size == source.size and result.tobytes() == source.tobytes()
+    assert metadata == {'document_detected': False, 'cropped': False, 'enhanced': True}
+    assert result.size == source.size
+    crop_only, flags = prepare_image(source, enhance_text=False)
+    assert flags == {'document_detected': False, 'cropped': False, 'enhanced': False}
+    assert crop_only.tobytes() == source.tobytes()
 
 
 @pytest.mark.parametrize('border', [8, 14])

@@ -47,14 +47,29 @@ honored. Ordinary photos and Auto crop off retain the existing image-fit layout.
 Per-page effective layout and image-placement metadata describe the result.
 
 Enhance text cleans illumination and neutral paper texture while keeping fine
-print, signatures and colored ink. Auto crop off applies enhancement only inside
-the detected page and preserves the surrounding scene exactly. Off-paper scene
-text is removed with document cropping. Already full-frame scans are never
-cropped to an inner printed table.
-Both disabled leaves the existing EXIF/alpha/layout conversion unchanged. Detection
+print, signatures and colored ink. It runs on every page: a detected sheet is
+cleaned to white paper; with Auto crop off the detected sheet is lifted in place
+and the surrounding scene stays as photographed; a frame without a detected
+sheet receives a hue-preserving shadow lift of its paper-like, low-saturation
+surfaces only, so dark tones and coloured objects keep their colour. Off-paper
+scene text is removed with document cropping. Already full-frame scans are never
+cropped to an inner printed table; a thin neutral desk or lid strip along their
+frame is whitened rather than printed black.
+Both disabled leaves the existing EXIF/alpha/layout conversion unchanged, and an
+upright JPEG upload is embedded as its own DCT stream with every APP/COM segment
+removed. Pages that deflate well stay lossless Flate; pages with camera grain are
+embedded as a metadata-free JPEG (quality 88, full chroma). Detection
 uses a 1280-pixel thumbnail; corrected pages are bounded to 16 MP, while original
-inputs retain the existing 40 MP limit. The worker keeps its existing CPU, memory
-and timeout limits and uses one numeric processing thread. Uniform matte paper
+inputs retain the existing 40 MP limit. The worker's wall-clock and CPU budget
+scale with the number of photographs (60 s plus 10 s per image, capped at 450 s)
+and it uses one numeric processing thread. Detection holds across phone-camera
+resolutions, camera sharpening and JPEG re-encoding; a candidate must show
+written evidence (eight credible glyph boxes in an aligned line), and a second
+sheet that only segmentation reveals keeps the photograph uncropped. A sheet
+that fills most of the photograph, held by a hand or carrying a printed border,
+is proposed from its straight edges (`processors/line_outlines.py`) when no
+closed contour forms; a corner tip resting on the frame line still counts as
+visible, while anything clipped further goes to the clipped-page path. Uniform matte paper
 can be tinted or darker than its desk: independently supported luminance and
 material-color edges qualify it, while compact writing and visible-edge checks
 still exclude unmarked panels and internal printed frames. Dense forms and
@@ -63,7 +78,7 @@ glyphs; filled holes in a perforated panel do not count as written evidence.
 Exterior words on the connected surrounding matte surface veto an incomplete
 proposal, including filled tables on a larger written sheet. Unrelated labels
 across a dark background do not veto the page;
-ambiguous photos keep their pixels and do not receive whole-photo enhancement.
+ambiguous photos are never cropped and keep their geometry.
 Faint, gently curved outlines receive a bounded 512-pixel, three-iteration
 segmentation fallback when
 closed edge contours are unavailable. These proposals still require observed
@@ -76,9 +91,9 @@ bands are checked against source-resolution writing before removal. Clipped
 enhancement estimates per-channel illumination from observed paper and boosts
 neutral fine strokes using native local contrast, without binarizing or erasing
 colored writing. All native matte and cleanup work tiles stay within one million
-pixels. Enhancement-only mode preserves exterior RGB exactly; crop-only mode
-preserves observed paper and its writing RGB at the matte stage before
-geometric resampling, while replacing confirmed background.
+pixels. Enhancement-only mode preserves the exterior of a detected sheet
+exactly; crop-only mode preserves observed paper and its writing RGB at the
+matte stage before geometric resampling, while replacing confirmed background.
 An enclosing proposal
 supplies context for independently tracing each physical paper edge. Smooth
 boundary curves rectify gentle curl into a rectangle, with correction confined
@@ -116,7 +131,8 @@ a uniformly fitted A4 PDF canvas, physical desk removal and all corner/side writ
 Clipped-page checks require a flat rectangular scan, independent preservation
 of visible writing, exact A4 PDF placement and measurable paper/text cleanup.
 The uncertain-pose fallback retains separate strict source-pixel/matte guards;
-Auto crop off must keep exterior scene pixels untouched.
+Auto crop off must keep the exterior of a detected sheet untouched, and the
+effect must never crop or paint a non-document as white paper.
 Previously generated PDFs are
 immutable; scanning changes apply to new image conversions.
 

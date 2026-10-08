@@ -68,7 +68,7 @@ PARAMETER_SCHEMAS = {
         'orientation': {'type': 'string', 'enum': ['auto', 'portrait', 'landscape'], 'default': 'auto'},
         'margin': {'type': 'number', 'minimum': 0, 'maximum': 72, 'default': 0},
         'auto_crop': {'type': 'boolean', 'default': True, 'description': 'Crop and straighten a confidently detected document; otherwise keep the full image.'},
-        'enhance_text': {'type': 'boolean', 'default': True, 'description': 'Reduce document shadows and improve text contrast; ordinary photos stay unchanged.'}}),
+        'enhance_text': {'type': 'boolean', 'default': True, 'description': 'Reduce shadows and improve text contrast on every page; a detected document becomes clean white paper.'}}),
     'pdf.to_images': _schema({'pages': PAGES, 'format': {'type': 'string', 'enum': ['png', 'jpg']},
         'dpi': {'type': 'integer', 'minimum': 72, 'maximum': 200}}),
     # Password material is accepted ONLY as a separate in-memory secret argument.
@@ -410,17 +410,101 @@ def _artifact(path: Path, page_count: int | None = None, password=None,allow_for
             'page_count': info['page_count'], 'size_bytes': info['size_bytes']}
 
 
-def _image_pdf(paths: list[Path], parameters: dict, out: Path):
-    from reportlab.lib.pagesizes import A4, letter
+def _page_encoding(picture):
+    """Measure whether a page deflates well before choosing its PDF stream.
+
+    ReportLab Flate-encodes a Pillow image's raw pixels, so a 12-megapixel
+    camera photo became a 36 MB page. A cleaned document or a flat graphic
+    deflates to a fraction of its size and stays lossless; anything with camera
+    grain is re-encoded as a metadata-free JPEG stream instead.
+    """
+    import zlib
+    width, height = picture.size
+    rows = min(height, 48)
+    raw = compressed = 0
+    for fraction in (.12, .38, .62, .88):
+        top = max(0, min(height - rows, round(height * fraction)))
+        strip = picture.crop((0, top, width, top + rows)).tobytes()
+        raw += len(strip)
+        compressed += len(zlib.compress(strip, 1))
+    return 'flate' if compressed <= raw * .35 else 'jpeg'
+
+
+def _stripped_jpeg(data: bytes):
+    """The upload's own DCT stream without any APPn/COM segment, or None.
+
+    An untouched JPEG upload keeps every pixel this way, while EXIF, ICC,
+    XMP and comment segments never reach the PDF. Adobe-marked files can be
+    CMYK or inverted and are re-encoded instead.
+    """
+    if data[:2] != b'\xff\xd8':
+        return None
+    out = bytearray(b'\xff\xd8')
+    index = 2
+    while index + 4 <= len(data):
+        if data[index] != 0xFF:
+            return None
+        marker = data[index + 1]
+        if marker == 0xD9:
+            out += data[index:index + 2]
+            return bytes(out)
+        if marker == 0xD8 or 0xD0 <= marker <= 0xD7 or marker == 0x01:
+            index += 2
+            continue
+        length = int.from_bytes(data[index + 2:index + 4], 'big')
+        segment = data[index:index + 2 + length]
+        if marker == 0xEE and b'Adobe' in segment:
+            return None
+        if not (0xE0 <= marker <= 0xEF or marker == 0xFE):
+            out += segment
+        index += 2 + length
+        if marker == 0xDA:
+            out += data[index:]
+            return bytes(out)
+    return None
+
+
+def _page_image(picture, encoding, original=None):
+    """Return the ReportLab image source for one page."""
     from reportlab.lib.utils import ImageReader
+    if encoding != 'jpeg':
+        return ImageReader(picture)
+    if original is not None:
+        return ImageReader(io.BytesIO(original))
+    # Pillow copies a source comment into a new JPEG; drop every info field.
+    picture.info.clear()
+    buffer = io.BytesIO()
+    picture.save(buffer, 'JPEG', quality=88, subsampling=0)
+    buffer.seek(0)
+    return ImageReader(buffer)
+
+
+def _image_pdf(paths: list[Path], parameters: dict, out: Path):
+    from reportlab import rl_config
+    from reportlab.lib.pagesizes import A4, letter
     from reportlab.pdfgen.canvas import Canvas
+    # Binary image streams: ASCII85 would inflate every page by a quarter.
+    rl_config.useA85 = 0
     destination = out / 'images.pdf'
     canvas = Canvas(str(destination), pageCompression=1, invariant=1)
     outcomes = []
     layouts = []
     for path in paths:
         with Image.open(path, formats=['PNG', 'JPEG', 'WEBP']) as raw:
+            # A plain upright RGB JPEG can be embedded as its own pixels.
+            plain_jpeg = (raw.format == 'JPEG' and raw.mode == 'RGB'
+                          and raw.getexif().get(0x0112, 1) == 1)
             picture = ImageOps.exif_transpose(raw)
+            if picture.mode in ('I;16', 'I;16B', 'I;16L', 'I;16N', 'I'):
+                # Pillow clips 16-bit samples at 255 when converting to RGB,
+                # which turned a 16-bit scan into a white page. Rescale first:
+                # full-range 16-bit data by 257, narrower data by its peak.
+                import numpy as np
+                samples = np.asarray(picture).astype(np.float32)
+                peak = float(samples.max())
+                if peak > 255:
+                    samples = samples * (255 / (65535 if peak > 4095 else peak))
+                picture = Image.fromarray(np.clip(samples, 0, 255).astype(np.uint8), 'L')
             # Composite alpha onto white and omit all EXIF/ICC metadata.
             if picture.mode in ('RGBA', 'LA') or 'transparency' in picture.info:
                 rgba = picture.convert('RGBA')
@@ -440,8 +524,11 @@ def _image_pdf(paths: list[Path], parameters: dict, out: Path):
                             and outcome['document_detected'])
             effective_paper = 'A4' if automatic_a4 else requested_paper
             if effective_paper == 'original':
-                # Original means one image pixel per PDF point at 72 dpi.
-                width, height = iw + 2 * margin, ih + 2 * margin
+                # Original means one image pixel per PDF point at 72 dpi, held
+                # to the 200-inch PDF page limit for an unusually long panorama.
+                original_scale = min(1., (14_400 - 2 * margin) / max(iw, ih))
+                width = min(14_400., iw * original_scale + 2 * margin)
+                height = min(14_400., ih * original_scale + 2 * margin)
             elif effective_paper == 'fit':
                 # Match the processed image's shape without making high-resolution
                 # uploads physically enormous. Explicit margins surround the image.
@@ -460,10 +547,15 @@ def _image_pdf(paths: list[Path], parameters: dict, out: Path):
             scale = min((width - 2 * margin) / iw, (height - 2 * margin) / ih)
             x, y = (width - iw * scale) / 2, (height - ih * scale) / 2
             canvas.setPageSize((width, height))
-            canvas.drawImage(ImageReader(picture), x, y,
+            encoding = _page_encoding(picture)
+            original = None
+            if encoding == 'jpeg' and plain_jpeg and not outcome['cropped'] and not outcome['enhanced']:
+                original = _stripped_jpeg(path.read_bytes())
+            canvas.drawImage(_page_image(picture, encoding, original), x, y,
                 iw * scale, ih * scale, mask='auto')
             layouts.append({'requested_paper_size': requested_paper,
                 'effective_paper_size': effective_paper, 'automatic_a4': automatic_a4,
+                'image_encoding': encoding,
                 'page_size_points': [width, height],
                 'image_placement_points': [x, y, iw * scale, ih * scale]})
             canvas.showPage()

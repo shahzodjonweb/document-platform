@@ -5,6 +5,7 @@ document cleanup must preserve them when a safe paper boundary is unavailable.
 """
 from __future__ import annotations
 
+import io
 from pathlib import Path
 
 import cv2
@@ -199,6 +200,31 @@ def test_perspective_document_is_rectangular_and_preserves_writing():
         (3 * result.width // 4, 3 * result.height // 4, result.width, result.height)))
 
 
+def one_line_note(text):
+    """A mostly blank sheet whose only writing is one short line."""
+    paper = Image.new('RGB', (440, 640), (246, 246, 244))
+    ImageDraw.Draw(paper).text((40, 300), text, font=_font(24), fill=(30, 30, 30))
+    return _project(paper, [(150, 100), (595, 145), (615, 820), (85, 740)])
+
+
+@pytest.mark.parametrize('text,is_document', [
+    ('Total 42.00 paid', True),  # about a dozen glyphs in one aligned line
+    ('ABCDEFG', False),          # seven hollow glyphs: one short of the floor
+    ('O C U N', False),          # four marks are a logo or a label, not writing
+], ids=['one-line-note', 'seven-glyphs', 'four-glyphs'])
+def test_one_written_line_is_evidence_of_a_page_but_a_few_marks_are_not(text, is_document):
+    # The written-evidence floor is eight glyph-like marks in one aligned row:
+    # a receipt total is a document, a vent or a panel label is not.
+    source = one_line_note(text)
+    result, metadata = prepare_image(source, enhance_text=False)
+    assert metadata == {'document_detected': is_document, 'cropped': is_document, 'enhanced': False}
+    if is_document:
+        assert result.width * result.height < source.width * source.height * .85
+        assert 1.1 < result.height / result.width < 1.8
+    else:
+        assert result.size == source.size and result.tobytes() == source.tobytes()
+
+
 def test_readability_effect_reduces_shadow_and_keeps_colored_ink():
     source = perspective_paper(shaded=True)
     baseline, baseline_metadata = prepare_image(source, enhance_text=False)
@@ -220,8 +246,10 @@ def test_ambiguous_document_is_not_cropped(factory):
     assert metadata['cropped'] is False
     assert result.size == source.size
     if factory is ordinary_photo:
-        assert metadata['enhanced'] is False
-        assert result.tobytes() == source.tobytes()
+        assert metadata['enhanced'] is True, 'The effect runs on every page'
+        crop_only, flags = prepare_image(source, enhance_text=False)
+        assert flags == {'document_detected': False, 'cropped': False, 'enhanced': False}
+        assert crop_only.tobytes() == source.tobytes()
 
 
 def test_uncertain_partial_pose_fallback_keeps_every_visible_source_pixel(monkeypatch):
@@ -251,9 +279,9 @@ def test_solid_images_remain_unchanged_under_defaults(color):
     source = Image.new('RGB', (300, 150), color)
     result, metadata = prepare_image(source)
     assert metadata['cropped'] is False
-    assert metadata['enhanced'] is False
+    assert metadata['enhanced'] is True, 'The effect runs on every page'
     assert result.size == source.size
-    assert result.tobytes() == source.tobytes()
+    assert result.tobytes() == source.tobytes(), 'A flat colour has no shadow to lift'
 
 
 def test_full_frame_scan_does_not_crop_to_internal_table():
@@ -337,10 +365,9 @@ def test_real_sandbox_default_cleanup_preserves_page_order_and_reports_safe_meta
     first, second = _embedded_image(result), _embedded_image(result, 1)
     assert first.width * first.height < 720 * 900 * 0.85
     assert second.size == (720, 900)
-    assert second.getpixel((40, 40)) == ordinary_photo().getpixel((40, 40))
     metadata = result['metadata']['image_processing']
     assert metadata['cropped_pages'] == 1
-    assert metadata['enhanced_pages'] == 1
+    assert metadata['enhanced_pages'] == 2, 'The effect reaches the photo page too'
     assert metadata['document_pages'] == 1
     assert len(metadata['pages']) == 2
     for page in metadata['pages']:
@@ -364,3 +391,78 @@ def test_large_document_uses_bounded_warp_and_completes_in_real_sandbox(tmp_path
     assert result['metadata']['image_processing']['cropped_pages'] == 1
     assert result['metadata']['image_processing']['enhanced_pages'] == 1
     assert _blue_pixels(embedded).sum() > 10_000
+
+
+def test_untouched_jpeg_upload_is_embedded_as_its_own_pixels_without_metadata(tmp_path):
+    rng = np.random.default_rng(7)
+    photo = Image.fromarray(rng.integers(0, 255, (300, 400, 3), dtype=np.uint8))
+    source = tmp_path / 'photo.jpg'
+    photo.save(source, quality=85, comment=b'CAMERA SERIAL 12345', dpi=(300, 300))
+    result = execute('pdf.images_to_pdf', [source], {'auto_crop': False, 'enhance_text': False}, tmp_path / 'out')
+    pdf = Path(result['artifacts'][0]['path']).read_bytes()
+    assert b'CAMERA SERIAL' not in pdf, 'Upload comments never reach the PDF'
+    assert result['metadata']['image_processing']['layouts'][0]['image_encoding'] == 'jpeg'
+    assert result['artifacts'][0]['size_bytes'] < source.stat().st_size * 1.1, 'Grainy photos are not inflated'
+    # Compare the embedded DCT stream itself: pypdf's convenience decoder
+    # applies its own colour handling, Pillow decodes both sides the same way.
+    stream = PdfReader(result['artifacts'][0]['path']).pages[0].images[0].indirect_reference.get_object().get_data()
+    with Image.open(source) as original, Image.open(io.BytesIO(stream)) as embedded:
+        assert embedded.convert('RGB').tobytes() == original.convert('RGB').tobytes(), 'Both off keeps every pixel'
+    assert b'\xff\xfe' not in stream[:4096], 'No COM segment survives in the stream header'
+
+
+def test_grainy_processed_page_is_a_metadata_free_jpeg_stream(tmp_path):
+    rng = np.random.default_rng(11)
+    photo = Image.fromarray(rng.integers(40, 220, (300, 400, 3), dtype=np.uint8))
+    source = tmp_path / 'photo.jpg'
+    photo.save(source, quality=85, comment=b'CAMERA SERIAL 12345')
+    result = execute('pdf.images_to_pdf', [source], {}, tmp_path / 'out')
+    assert b'CAMERA SERIAL' not in Path(result['artifacts'][0]['path']).read_bytes()
+    assert result['metadata']['image_processing']['layouts'][0]['image_encoding'] == 'jpeg'
+    assert _embedded_image(result).size == photo.size
+
+
+def test_original_paper_holds_an_oversize_panorama_to_the_page_limit(tmp_path):
+    source = tmp_path / 'wide.png'
+    Image.new('RGB', (15000, 300), (200, 200, 200)).save(source)
+    result = execute('pdf.images_to_pdf', [source], {
+        'paper_size': 'original', 'margin': 12, 'auto_crop': False, 'enhance_text': False}, tmp_path / 'out')
+    page = PdfReader(result['artifacts'][0]['path']).pages[0]
+    assert float(page.mediabox.width) == pytest.approx(14400, abs=.001)
+    assert float(page.mediabox.height) == pytest.approx(300 * (14400 - 24) / 15000 + 24, abs=.01)
+
+
+def test_sixteen_bit_png_keeps_its_tones(tmp_path):
+    samples = np.linspace(0, 65535, 400, dtype=np.uint16)[None, :].repeat(300, 0)
+    source = tmp_path / 'gray16.png'
+    Image.fromarray(samples).save(source)
+    result = execute('pdf.images_to_pdf', [source], {'auto_crop': False, 'enhance_text': False}, tmp_path / 'out')
+    tones = np.asarray(_embedded_image(result).convert('L'))
+    assert tones[:, :10].mean() < 20 and tones[:, -10:].mean() > 235
+    assert 100 < tones.mean() < 150, 'A 16-bit gradient is rescaled, not clipped to white'
+
+
+def test_frame_guard_whitens_a_lid_strip_but_keeps_flush_print():
+    from processors.partial_scan_cleanup import cleanup_paper
+
+    def page(decorate):
+        image = Image.new('RGB', (600, 800), (246, 246, 244))
+        draw = ImageDraw.Draw(image)
+        for row, y in enumerate(range(120, 760, 40)):
+            draw.text((60, y), f'Line {row} of the scanned page', font=_font(22), fill=(30, 30, 30))
+        decorate(draw)
+        return image
+
+    lid = page(lambda d: (d.rectangle((0, 0, 18, 800), fill=(58, 58, 60)),
+                          d.rectangle((0, 782, 600, 800), fill=(58, 58, 60))))
+    cleaned = np.asarray(cleanup_paper(lid, frame_guard=True).convert('L'))
+    assert cleaned[:, :12].mean() > 240 and cleaned[-12:, :].mean() > 240, 'A neutral lid strip becomes white'
+    tab = page(lambda d: (d.rectangle((0, 0, 220, 26), fill=(20, 20, 20)),
+                          d.text((8, 0), 'ACME CORP', font=_font(22), fill='white')))
+    kept = np.asarray(cleanup_paper(tab, frame_guard=True).convert('L'))
+    before = (np.asarray(tab.convert('L'))[:26, :220] < 100).sum()
+    assert (kept[:26, :220] < 100).sum() > before * .8, 'A title tab with white text is print'
+    rule = page(lambda d: d.rectangle((0, 0, 599, 799), outline=(25, 25, 25), width=4))
+    ruled = np.asarray(cleanup_paper(rule, frame_guard=True).convert('L'))
+    assert (ruled[:5, :] < 100).mean() > .8, 'A border rule stays'
+    assert np.array_equal(np.asarray(cleanup_paper(lid)), np.asarray(cleanup_paper(lid, frame_guard=False)))

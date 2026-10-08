@@ -9,7 +9,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 import pytest
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 from pypdf import PdfReader
 
 from processors.document_scan import prepare_image
@@ -246,6 +246,26 @@ def test_small_blank_edge_occlusion_keeps_tight_page_boundary_and_all_writing(va
     assert result.width * result.height < source.width * source.height * .8
     if variant.get('rotation') is not None:
         result = result.transpose(Image.Transpose.ROTATE_270)
+    _assert_print_and_ink(result)
+
+
+@pytest.mark.parametrize('scale', [1, 1.5], ids=['full-size', '1.5x'])
+def test_camera_sharpening_halos_keep_the_held_page_crop_and_margin_labels(scale):
+    source, paper_mask, finger_mask = occluded_document_photo()
+    if scale != 1:
+        size = (round(source.width * scale), round(source.height * scale))
+        source = source.resize(size, Image.Resampling.LANCZOS)
+        paper_mask = np.asarray(Image.fromarray(paper_mask).resize(size, Image.Resampling.BOX))
+        finger_mask = np.asarray(Image.fromarray(finger_mask).resize(size, Image.Resampling.BOX))
+    # Camera-app sharpening rings every glyph with an overshoot halo. That halo
+    # must neither pass for the paper tone nor hide the small margin labels.
+    source = source.filter(ImageFilter.UnsharpMask(radius=2, percent=150, threshold=3))
+    result, metadata = prepare_image(source, enhance_text=False)
+    assert metadata == {'document_detected': True, 'cropped': True, 'enhanced': False}
+    metrics = _boundary_metrics(source, paper_mask, finger_mask, result)
+    assert metrics['border_desk_fraction'] < .04, metrics
+    assert max(metrics['corner_desk_fractions']) < .10, metrics
+    assert result.width * result.height < source.width * source.height * .8
     _assert_print_and_ink(result)
 
 

@@ -344,7 +344,8 @@ def execute_job(job_id):
             from apps.studio.execution import execute_generation
             result = execute_generation(job,output_dir)
         else:
-            result = execute(job.feature_id,input_paths,job.parameters,output_dir,secret=secret)
+            from processors.sandbox import execution_timeout
+            result = execute(job.feature_id,input_paths,job.parameters,output_dir,secret=secret,timeout=execution_timeout(job.feature_id,len(input_paths)))
         secret=None
         no_op = result.get('no_op',False)
         outputs = result.get('artifacts',[]) if not no_op else []
