@@ -21,8 +21,13 @@ def test_failed_partial_segmentation_does_not_loop_or_modify_the_photo(monkeypat
     for shape, iterations, mode in calls:
         assert max(shape[:2]) <= 512 and iterations <= 3
     assert len([call for call in calls if call[2] == cv2.GC_INIT_WITH_MASK]) <= 1
-    assert result.size == source.size and result.tobytes() == source.tobytes()
-    assert metadata == {'document_detected': False, 'cropped': False, 'enhanced': False}
+    assert result.size == source.size
+    assert metadata == {'document_detected': False, 'cropped': False, 'enhanced': True}
+    calls.clear()
+    crop_only, flags = prepare_image(source, enhance_text=False)
+    assert 1 <= len(calls) <= 2
+    assert crop_only.tobytes() == source.tobytes()
+    assert flags == {'document_detected': False, 'cropped': False, 'enhanced': False}
 
 
 def test_partial_cleanup_bounds_segmentation_and_full_resolution_work(monkeypatch):

@@ -157,7 +157,14 @@ def test_touching_gray_desk_patch_is_never_whitened_as_partial_paper(rectangle, 
 
     effect, effect_flags = prepare_image(original, auto_crop=False, enhance_text=True)
     assert effect.size == original.size and not effect_flags['cropped']
-    assert np.array_equal(np.asarray(effect)[exterior], pixels[exterior]), 'Exterior gray desk must stay pixel-exact'
+    # The effect reaches every page, but it lifts paper-like tones only: the
+    # dark desk stays pixel-exact and the grey patch is never painted as white
+    # paper canvas.
+    dark = pixels[exterior].max(axis=1) < 90
+    before, after = pixels[exterior][dark].astype(np.int16), np.asarray(effect)[exterior][dark].astype(np.int16)
+    assert int(after.max()) < 110, 'Dark desk must stay dark'
+    assert float((np.abs(after - before).max(axis=1) <= 4).mean()) > .9, 'Dark desk is left almost untouched'
+    assert float(np.all(np.asarray(effect)[patch] >= 250, axis=1).mean()) < .5, 'A grey desk patch is not white paper'
 
     off, off_flags = prepare_image(original, auto_crop=False, enhance_text=False)
     assert off.size == original.size and off.tobytes() == original.tobytes()

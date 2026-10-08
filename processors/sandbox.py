@@ -17,6 +17,18 @@ REPORT_LIMIT = 2 * 1024 * 1024
 REQUEST_LIMIT = 512 * 1024
 
 
+def execution_timeout(feature_id: str, input_count: int) -> int:
+    """Wall-clock budget for one sandbox run.
+
+    Document scanning costs a few seconds per photograph, so a job of fifty
+    photos cannot share the single-file budget. The job lease is ten minutes;
+    the cap leaves time to store the result.
+    """
+    if feature_id == 'pdf.images_to_pdf':
+        return min(450, 60 + 10 * max(1, int(input_count)))
+    return 90
+
+
 def _run(request: dict, timeout: int) -> dict:
     payload = json.dumps(request, ensure_ascii=False).encode('utf-8')
     if len(payload) > REQUEST_LIMIT:
@@ -32,6 +44,8 @@ def _run(request: dict, timeout: int) -> dict:
     # OpenBLAS otherwise allocates a thread pool before OpenCV can limit it.
     environment['OPENBLAS_NUM_THREADS'] = '1'
     environment['OMP_NUM_THREADS'] = '1'
+    # The child's CPU limit follows the wall-clock budget of this run.
+    environment['PDFMASTER_CPU_SECONDS'] = str(max(85, int(timeout) - 5))
     # No request file is written: secrets, if present, travel only over stdin.
     with tempfile.TemporaryFile() as report:
         process = subprocess.Popen([sys.executable, '-m', 'processors'],

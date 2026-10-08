@@ -13,6 +13,16 @@ from PIL import Image
 DETECTION_SIDE = 1280
 MAX_WARP_PIXELS = 16_000_000
 SEGMENTATION_SIDE = 512
+# Written evidence every candidate must show. Measured on the benchmark set:
+# documents carry 73-207 hollow glyph boxes in 5-18 aligned rows, the gray
+# appliance 3-8 boxes in 0-1 rows and tinted panels none, so the gate sits
+# well below the documents and above the appliance.
+GLYPHS_MIN = 8
+GLYPH_ROWS_MIN = 1
+RELAXED_GLYPHS = 20
+# A glyph box must also carry credible ink. JPEG block noise around a dark
+# panel feature measures 27-32 levels below its local paper, print 45-76.
+GLYPH_INK = 40
 
 
 @lru_cache(maxsize=1)
@@ -135,6 +145,23 @@ def _geometry(quad, width, height):
     return True
 
 
+def _glyph_rows(boxes, shape):
+    """Text lines: rows (or columns, for a quarter-turned page) of >= 3 glyph-like marks."""
+    cv2, np = _numeric()
+    if len(boxes) < 3:
+        return 0
+    height, width = shape
+    best = 0
+    for size, start, extent in ((height, 1, 3), (width, 0, 2)):
+        support = np.zeros(size, np.int32)
+        for box in boxes:
+            support[box[start]:box[start] + box[extent]] += 1
+        active = (support >= 3).astype(np.uint8)[:, None]
+        active = cv2.dilate(active, np.ones((5, 1), np.uint8))[:, 0] > 0
+        best = max(best, int((np.diff(np.r_[False, active, False].astype(np.int8)) == 1).sum()))
+    return best
+
+
 def _exterior_writing(quad, gray, saturation):
     """Compact exterior words mean the proposed block is not the whole page."""
     cv2, np = _numeric()
@@ -179,6 +206,9 @@ def _exterior_writing(quad, gray, saturation):
            & surrounding[surface_labels]).astype(np.uint8)
     _, _, stats, _ = cv2.connectedComponentsWithStats(ink, connectivity=8)
     limit = min(gray.shape) * .06
+    # Camera sharpening halos hug every glyph; they belong to the glyph, not
+    # to the surface whose uniformity establishes margin context.
+    halo = cv2.dilate(ink, np.ones((7, 7), np.uint8))
     marks = []
     for x, y, w, h, area in stats[1:]:
         if not (area >= 5 and 3 <= w <= min(limit, h * 4)
@@ -191,7 +221,7 @@ def _exterior_writing(quad, gray, saturation):
         padding = max(8, round(max(w, h) * .5))
         top, left = max(0, y - padding), max(0, x - padding)
         context = gray[top:y + h + padding, left:x + w + padding]
-        context_ink = ink[top:y + h + padding, left:x + w + padding] > 0
+        context_ink = halo[top:y + h + padding, left:x + w + padding] > 0
         surface = context[~context_ink]
         if surface.size < 20:
             continue
@@ -207,7 +237,7 @@ def _exterior_writing(quad, gray, saturation):
     for x, y, w, h in marks:
         pixels = ink[y:y + h, x:x + w] > 0
         context = gray[max(0, y - 4):y + h + 4, max(0, x - 4):x + w + 4]
-        context_ink = ink[max(0, y - 4):y + h + 4, max(0, x - 4):x + w + 4] > 0
+        context_ink = halo[max(0, y - 4):y + h + 4, max(0, x - 4):x + w + 4] > 0
         surface = context[~context_ink]
         if (pixels.sum() >= 15 and float(pixels.mean()) <= .70
                 and float(np.median(residual[y:y + h, x:x + w][pixels])) >= 60
@@ -269,14 +299,17 @@ def _candidate(quad, gray, saturation, edges, *, compact_writing=False, lab=None
         return None
     # A bright rectangular appliance/panel alone is ambiguous. Require some
     # writing-like marks before changing the image, including colored ink.
-    local_paper = cv2.morphologyEx(gray, cv2.MORPH_CLOSE,
+    # Unsharp-mask overshoot halos must not become the paper reference: a 5-px
+    # median removes them before the closing, while the ink test stays on the
+    # raw pixels so genuine thin strokes are still counted.
+    local_paper = cv2.morphologyEx(cv2.medianBlur(gray, 5), cv2.MORPH_CLOSE,
                                  cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (31, 31)))
     ink = ((local_paper.astype(np.int16) - gray.astype(np.int16) > 25)
            & interior).astype(np.uint8)
     fraction = float(ink.sum()) / light.size
     if not .0005 <= fraction <= .45:
         return None
-    _, _, stats, _ = cv2.connectedComponentsWithStats(ink, connectivity=8)
+    _, labels, stats, _ = cv2.connectedComponentsWithStats(ink, connectivity=8)
     marks = sum(1 for x, y, w, h, area in stats[1:]
                 if 3 <= area <= light.size * .02 and 2 <= h <= height * .15
                 and w <= width * .5)
@@ -285,6 +318,18 @@ def _candidate(quad, gray, saturation, edges, *, compact_writing=False, lab=None
     compact_marks = sum(1 for x, y, w, h, area in stats[1:]
         if 3 <= area <= light.size * .02 and 3 <= h <= height * .15
         and 3 <= w <= min(width * .15, h * 4) and h <= w * 5)
+    residual = local_paper.astype(np.int16) - gray.astype(np.int16)
+    glyph_boxes = []
+    for label, (x, y, w, h, area) in enumerate(stats[1:], 1):
+        if not (3 <= area <= light.size * .02 and 3 <= h <= height * .15
+                and 3 <= w <= min(width * .15, h * 4) and h <= w * 5
+                and area / (w * h) < .70):
+            continue
+        strokes = residual[y:y + h, x:x + w][labels[y:y + h, x:x + w] == label]
+        if float(np.median(strokes)) >= GLYPH_INK:
+            glyph_boxes.append((x, y, w, h))
+    if len(glyph_boxes) < GLYPHS_MIN or _glyph_rows(glyph_boxes, gray.shape) < GLYPH_ROWS_MIN:
+        return None  # Vents, knobs and lone dots are not written lines.
     dense_print = fraction > .25
     if dense_print:
         # Filled vent holes and repeated solid dots are compact too. Written
@@ -321,8 +366,19 @@ def _candidate(quad, gray, saturation, edges, *, compact_writing=False, lab=None
         positions = np.linspace(.2, .8, 25)[:, None]
         middle = start + positions * edge
         inside = np.round(middle - outward * gap).astype(np.int32)
-        outside = np.round(middle + outward * (gap + 3)).astype(np.int32)
-        valid = ((outside[:, 0] >= 0) & (outside[:, 0] < width)
+        # A sheet photographed close to the frame still shows a strip of
+        # background beyond its edge. Sample that strip where the full gap
+        # would leave the frame, never closer than 3 px to the edge itself.
+        reach = np.full(len(middle), float(gap + 3), np.float32)
+        for axis, size in ((0, width), (1, height)):
+            step = float(outward[axis])
+            if step > 1e-6:
+                reach = np.minimum(reach, (size - 1 - middle[:, axis]) / step)
+            elif step < -1e-6:
+                reach = np.minimum(reach, -middle[:, axis] / step)
+        reach = np.floor(reach)
+        outside = np.round(middle + outward * np.maximum(reach, 3)[:, None]).astype(np.int32)
+        valid = ((reach >= 3) & (outside[:, 0] >= 0) & (outside[:, 0] < width)
                  & (outside[:, 1] >= 0) & (outside[:, 1] < height)
                  & (inside[:, 0] >= 0) & (inside[:, 0] < width)
                  & (inside[:, 1] >= 0) & (inside[:, 1] < height))
@@ -368,10 +424,17 @@ def _candidate(quad, gray, saturation, edges, *, compact_writing=False, lab=None
         material_edges = (float(np.linalg.norm(ring_color - material)) >= 5 or abs(contrast) >= 8)
     boundary = (mask > 0) & ~interior
     envelope = None
-    if ((not conventional_edges and material_edges) or dense_print) and outline is not None:
-        # A straight inscribed quad must not demand that genuinely bowed paper
-        # sides appear in the wrong place. Validate the observed proposing
-        # contour instead, with a strict bound on how far it can depart.
+    strict = (not conventional_edges and material_edges) or dense_print
+    validate_outline = strict and outline is not None
+    if not strict and outline is not None:
+        straight_supported = cv2.dilate(edges, np.ones((5, 5), np.uint8)) > 0
+        if (float(np.mean(straight_supported[boundary])) < .30
+                and compact_marks >= 5 and len(glyph_boxes) >= RELAXED_GLYPHS):
+            # A straight inscribed quad sits off a bowed sheet's real edge, so
+            # its band finds no support; with strong written evidence validate
+            # the observed proposing contour instead, under the same bounds.
+            validate_outline = True
+    if validate_outline:
         points = np.asarray(outline, np.float32).reshape(-1, 2)
         distances = []
         for index in range(4):
@@ -394,6 +457,7 @@ def _candidate(quad, gray, saturation, edges, *, compact_writing=False, lab=None
         return None
     candidate = {'quad': quad, 'mask': mask > 0, 'area': float(interior.sum()),
             'material_edges': not conventional_edges or dense_print,
+            'outline': None if outline is None else np.asarray(outline, np.float32).reshape(-1, 2),
             'score': float(interior.sum()) * (1 + min(abs(contrast), 100) / 300 + support / 5)}
     if envelope is not None:
         candidate['warp_quad'] = envelope
@@ -548,11 +612,26 @@ def _detect(image, *, details=False):
                 elif candidate['area'] > duplicate['area']:
                     duplicate.update(candidate)
                 break
+    # Segmentation proposes outlines the contour sources missed. Without a
+    # contour-qualified page it is the established complete-page fallback,
+    # tried before a clipped surface: a bright desk can touch the frame around
+    # a complete faint-edged page and must not impersonate its clipped edge.
+    # Beside a qualified page it may only reveal a separate second sheet,
+    # which makes the photograph ambiguous rather than being silently
+    # discarded; a merged blob spanning several sheets never replaces one.
     if not candidates:
-        # Preserve the established complete-page fallback before trying a
-        # clipped surface. A bright desk can touch the frame around a complete
-        # faint-edged page; it must not impersonate the page's clipped edge.
-        candidates = _segmented_candidates(image, gray, saturation, lab)
+        # Straight sheet edges remain visible above and below a hand and
+        # outside a printed border even when no closed contour forms.
+        from processors.line_outlines import line_candidates
+        candidates = line_candidates(gray, saturation, edges, lab)
+    segmented = _segmented_candidates(image, gray, saturation, lab)
+    if not candidates:
+        candidates = segmented
+    else:
+        for candidate in segmented:
+            if all(float(np.sum(old['mask'] & candidate['mask']))
+                   / min(old['area'], candidate['area']) < .20 for old in candidates):
+                candidates.append(candidate)
     if not candidates:
         partial, segmented = partial_document()
         if partial is not None:
@@ -587,12 +666,14 @@ def _detect(image, *, details=False):
     quad[:, 1] *= image.height / small.height
     if details:
         scale = np.array([image.width / small.width, image.height / small.height], np.float32)
+        outline = best.get('outline')
         return {'quad': best['quad'] * scale, 'envelope': quad,
+                'outline': None if outline is None else outline * scale,
                 'material_edges': best.get('material_edges', False)}, True
     return quad, True
 
 
-def _warp(image, quad):
+def _warp(image, quad, *, with_mask=False, outline=None):
     cv2, np = _numeric()
     # Include a small safety border so edge writing is never deliberately cut.
     center = quad.mean(axis=0)
@@ -610,7 +691,45 @@ def _warp(image, quad):
     matrix = cv2.getPerspectiveTransform(padded.astype(np.float32), destination)
     result = cv2.warpPerspective(np.asarray(image), matrix, (width, height),
                                  flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+    if with_mask:
+        # Where the observed sheet lands in the output, at cleanup-mask scale,
+        # so the safety border of desk is whitened rather than printed black.
+        mask_scale = min(1., 512 / max(width, height))
+        mask = np.zeros((max(2, round(height * mask_scale)),
+                         max(2, round(width * mask_scale))), np.uint8)
+        if outline is not None and len(outline) >= 4:
+            points = cv2.perspectiveTransform(
+                np.asarray(outline, np.float32).reshape(1, -1, 2), matrix)[0] * mask_scale
+            # The proposing contour can detour inward around dark content
+            # flush with the sheet edge; its hull still encloses the sheet.
+            hull = cv2.convexHull(np.round(points).astype(np.int32))
+            cv2.fillConvexPoly(mask, hull.reshape(-1, 2), 255)
+            # The outline runs along the antialiased physical edge; step inside it.
+            mask = cv2.erode(mask, np.ones((3, 3), np.uint8))
+        else:
+            inner = cv2.perspectiveTransform(quad.astype(np.float32)[None], matrix)[0] * mask_scale
+            cv2.fillConvexPoly(mask, np.round(inner).astype(np.int32), 255)
+        return Image.fromarray(result), mask
     return Image.fromarray(result)
+
+
+def _paper_region(image, details):
+    """Mask of the observed sheet, at detection scale, for enhancement in place."""
+    cv2, np = _numeric()
+    ratio = min(1., DETECTION_SIDE / max(image.size))
+    width, height = max(1, round(image.width * ratio)), max(1, round(image.height * ratio))
+    scale = np.array([width / image.width, height / image.height], np.float32)
+    mask = np.zeros((height, width), np.uint8)
+    outline = details.get('outline')
+    if outline is not None and len(outline) >= 4:
+        hull = cv2.convexHull(np.round(outline * scale).astype(np.int32))
+        cv2.fillConvexPoly(mask, hull.reshape(-1, 2), 255)
+    else:
+        cv2.fillConvexPoly(mask, np.round(details['quad'] * scale).astype(np.int32), 255)
+    # Cover the antialiased physical edge without reaching the desk beyond it.
+    radius = max(1, round(min(width, height) * .004))
+    return cv2.dilate(mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE,
+                                                      (2 * radius + 1, 2 * radius + 1)))
 
 
 def _enhance(image, quad=None, *, region_mask=None, neutralize_paper=False, feather=True):
@@ -625,24 +744,43 @@ def _enhance(image, quad=None, *, region_mask=None, neutralize_paper=False, feat
     background = cv2.morphologyEx(small_gray, cv2.MORPH_CLOSE,
                                   cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (17, 17)))
     background = cv2.GaussianBlur(background, (0, 0), 7)
+    # Without a qualified sheet, lift only paper-like surfaces. A dark
+    # photograph, screenshot or desk keeps its own tones instead of being
+    # multiplied up to a washed-out grey by the shadow floor below.
+    paper_weight = np.clip((background.astype(np.float32) - 96) * (255 / 64),
+                           0, 255).astype(np.uint8)
     background = cv2.resize(background, image.size, interpolation=cv2.INTER_LINEAR)
     background = np.maximum(background, 75)
     result = np.empty_like(rgb)
-    values = np.arange(256, dtype=np.float32)
-    table = np.clip((values - 25) * (255 / 220), 0, 255).astype(np.uint8)
     mask = None
-    if quad is not None:
+    if region_mask is not None:
+        mask = cv2.resize(np.asarray(region_mask, np.uint8), image.size,
+                          interpolation=cv2.INTER_NEAREST)
+    elif quad is not None:
         mask = np.zeros((image.height, image.width), np.uint8)
         cv2.fillConvexPoly(mask, np.round(quad).astype(np.int32), 255)
+    weight = None if mask is not None else cv2.resize(
+        paper_weight, image.size, interpolation=cv2.INTER_LINEAR)
     rows = max(1, 1_000_000 // image.width)
     for first in range(0, image.height, rows):
         last = min(image.height, first + rows)
-        for channel in range(3):
-            normalized = cv2.divide(rgb[first:last, :, channel], background[first:last], scale=245)
-            adjusted = cv2.LUT(normalized, table)
-            if mask is not None:
-                adjusted = np.where(mask[first:last] > 0, adjusted, rgb[first:last, :, channel])
-            result[first:last, :, channel] = adjusted
+        pixels = rgb[first:last].astype(np.float32)
+        # One gain for all three channels, capped so no channel passes the
+        # 245 that the contrast stretch maps to white: shadows lift without
+        # clipping the hue out of skin, sky or coloured ink.
+        gain = 245. / background[first:last].astype(np.float32)
+        gain = np.minimum(gain, 245. / np.maximum(pixels.max(axis=2), 1.))
+        adjusted = np.clip((pixels * gain[:, :, None] - 25) * (255 / 220), 0, 255)
+        if mask is not None:
+            outside = mask[first:last] == 0
+            adjusted[outside] = pixels[outside]
+        else:
+            blend = weight[first:last].astype(np.float32) / 255
+            # Saturated colour is a shirt or a sky, not shaded paper.
+            chroma = pixels.max(axis=2) - pixels.min(axis=2)
+            blend = blend * np.clip((40 - chroma) / 20, 0, 1)
+            adjusted = adjusted * blend[:, :, None] + pixels * (1 - blend[:, :, None])
+        result[first:last] = np.clip(adjusted + .5, 0, 255).astype(np.uint8)
     return Image.fromarray(result)
 
 
@@ -654,6 +792,11 @@ def prepare_image(image, *, auto_crop=True, enhance_text=True):
     details, detected = _detect(image, details=True)
     metadata['document_detected'] = detected
     if not detected:
+        if enhance_text:
+            # The effect is a promise for every page, like a scanner app's
+            # filter: lift shadows and sharpen contrast across the whole frame.
+            image = _enhance(image)
+            metadata['enhanced'] = True
         return image, metadata
     if details is not None and details.get('kind') == 'partial':
         if auto_crop:
@@ -693,21 +836,33 @@ def prepare_image(image, *, auto_crop=True, enhance_text=True):
             metadata['cropped'] = True
         return image, metadata
     quad = None if details is None else details['envelope']
+    paper_mask = None
     if auto_crop and quad is not None:
         from processors.page_rectification import rectify_page
         cv2, np = _numeric()
         rectified = rectify_page(image, quad, cv2, np, qualified_quad=details['quad'],
                                  material_edges=details.get('material_edges', False))
-        # If an edge cannot be traced reliably, retain the enclosing crop's
-        # conservative behavior rather than guessing through possible writing.
-        image = _warp(image, quad) if rectified is None else rectified
+        if rectified is None:
+            # If an edge cannot be traced reliably, retain the enclosing crop's
+            # conservative behavior rather than guessing through possible
+            # writing. Its safety border of desk is whitened, never printed.
+            image, paper_mask = _warp(image, quad, with_mask=True,
+                                      outline=details.get('outline'))
+        else:
+            image = rectified
         metadata['cropped'] = True
-        quad = None
     if enhance_text:
         if auto_crop:
             from processors.partial_scan_cleanup import cleanup_paper
-            image = cleanup_paper(image)
+            # Only a full-frame page can still show the scanner lid or desk
+            # along the canvas edge; a rectified sheet's edge is its own.
+            image = cleanup_paper(image, paper_mask=paper_mask,
+                                  frame_guard=not metadata['cropped'])
+        elif quad is not None:
+            # Lift shadows on the observed sheet only; its straight envelope
+            # would also whiten the desk beside a bowed edge.
+            image = _enhance(image, region_mask=_paper_region(image, details))
         else:
-            image = _enhance(image, quad)
+            image = _enhance(image)
         metadata['enhanced'] = True
     return image, metadata

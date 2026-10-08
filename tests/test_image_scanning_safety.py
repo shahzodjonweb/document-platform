@@ -71,9 +71,11 @@ def test_white_rectangular_appliance_does_not_count_as_written_paper():
     result, metadata = prepare_image(source)
     assert metadata['document_detected'] is False
     assert metadata['cropped'] is False
-    assert metadata['enhanced'] is False
+    assert metadata['enhanced'] is True, 'The effect runs on every page'
     assert result.size == source.size
-    assert result.tobytes() == source.tobytes()
+    crop_only, flags = prepare_image(source, enhance_text=False)
+    assert flags == {'document_detected': False, 'cropped': False, 'enhanced': False}
+    assert crop_only.tobytes() == source.tobytes()
 
 
 def test_page_written_only_in_blue_is_detected_cropped_and_preserved():

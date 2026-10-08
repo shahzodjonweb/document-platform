@@ -29,8 +29,11 @@ def perforated_panel(*, full_frame=False):
 def test_perforated_panel_is_not_mistaken_for_dense_written_paper(full_frame, enhance_text):
     source = perforated_panel(full_frame=full_frame)
     result, metadata = prepare_image(source, enhance_text=enhance_text)
-    assert metadata == {'document_detected': False, 'cropped': False, 'enhanced': False}
-    assert result.size == source.size and result.tobytes() == source.tobytes()
+    # The effect is applied to every page; only the crop depends on detection.
+    assert metadata == {'document_detected': False, 'cropped': False, 'enhanced': enhance_text}
+    assert result.size == source.size
+    if not enhance_text:
+        assert result.tobytes() == source.tobytes()
 
 
 @pytest.mark.parametrize('exposure', [0, -22], ids=['normal', 'shaded'])

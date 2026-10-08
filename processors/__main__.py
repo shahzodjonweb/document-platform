@@ -7,16 +7,27 @@ import sys
 
 def apply_limits():
     try:
+        cpu_seconds = max(85, int(os.environ.get('PDFMASTER_CPU_SECONDS', '85')))
+    except ValueError:
+        cpu_seconds = 85
+    try:
         import resource
-        resource.setrlimit(resource.RLIMIT_CPU, (85, 90))
-        resource.setrlimit(resource.RLIMIT_FSIZE, (512 * 1024 * 1024,) * 2)
-        resource.setrlimit(resource.RLIMIT_NOFILE, (256, 256))
-        resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
-        if sys.platform.startswith('linux'):
-            resource.setrlimit(resource.RLIMIT_AS, (2 * 1024 * 1024 * 1024,) * 2)
-    except (ImportError, ValueError, OSError):
+    except ImportError:
         # Non-POSIX deployments are not qualified for the production release.
-        pass
+        resource = None
+    limits = [] if resource is None else [
+        (resource.RLIMIT_CPU, (cpu_seconds, cpu_seconds + 5)),
+        (resource.RLIMIT_FSIZE, (512 * 1024 * 1024,) * 2),
+        (resource.RLIMIT_NOFILE, (256, 256)),
+        (resource.RLIMIT_CORE, (0, 0))]
+    if resource is not None and sys.platform.startswith('linux'):
+        limits.append((resource.RLIMIT_AS, (2 * 1024 * 1024 * 1024,) * 2))
+    for name, value in limits:
+        # One limit the host refuses must not drop the others with it.
+        try:
+            resource.setrlimit(name, value)
+        except (ValueError, OSError):
+            pass
     os.umask(0o077)
 
 
