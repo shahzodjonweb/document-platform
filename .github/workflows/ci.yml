@@ -47,22 +47,42 @@ jobs:
           python-version: "3.13"
           cache: pip
           cache-dependency-path: requirements.lock
+      # The packages (~90 MB) come from the Actions cache, not Ubuntu's mirror:
+      # with sixteen runners, a slow or stalled mirror held shards for minutes.
+      - name: Restore cached system packages
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/apt-archives
+          key: apt-noble-runtimes-
+          restore-keys: apt-noble-runtimes-
       - name: Install document processing runtimes
-        # A stalled Ubuntu mirror once held a shard in apt-get update for 19
-        # minutes. Stalls now time out in seconds and are retried.
-        timeout-minutes: 8
+        id: runtimes
+        timeout-minutes: 12
         run: |
-          apt="-o Acquire::Retries=3 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20"
+          mkdir -p ~/apt-archives/partial
+          apt="-o Dir::Cache::Archives=$HOME/apt-archives -o Acquire::Retries=5 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30"
           for attempt in 1 2 3; do
-            timeout 120 sudo apt-get update $apt && break
-            echo "apt-get update attempt $attempt failed; retrying"
+            sudo apt-get update $apt && break
+            echo "apt-get update attempt $attempt failed; retrying"; sleep 5
           done
           for attempt in 1 2 3; do
-            timeout 240 sudo apt-get install -y --no-install-recommends $apt \
+            sudo apt-get install -y --no-install-recommends $apt \
               tesseract-ocr libreoffice-writer libreoffice-impress fonts-dejavu-core && break
-            echo "apt-get install attempt $attempt failed; retrying"
+            echo "apt-get install attempt $attempt failed; retrying"; sleep 5
             [ "$attempt" = 3 ] && exit 1
           done
+          sudo rm -rf ~/apt-archives/partial ~/apt-archives/lock
+          sudo chown -R "$(id -u):$(id -g)" ~/apt-archives
+          # The cache is keyed by the exact package versions installed, so a
+          # new LibreOffice or Tesseract release is cached once and reused.
+          echo "key=apt-noble-runtimes-$(ls ~/apt-archives | sort | sha256sum | cut -c1-16)" >> "$GITHUB_OUTPUT"
+      - name: Cache system packages
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        # The first shard to save a set of versions stores it; the rest find it taken.
+        continue-on-error: true
+        with:
+          path: ~/apt-archives
+          key: ${{ steps.runtimes.outputs.key }}
       - run: pip install -r requirements.lock
       - run: python manage.py check
       - run: python manage.py makemigrations --check --dry-run
