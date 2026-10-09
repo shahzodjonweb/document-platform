@@ -27,7 +27,7 @@ from apps.core import funnel, storage
 from apps.core.serializers import quote_data
 from apps.core.errors import DomainError, error_data
 
-from .ux_copy import UX, STATUS, LEGACY_COPY, TOOL_NAMES, PROMPT_EXAMPLES, LOCALES
+from .ux_copy import UX, STATUS, LEGACY_COPY, TOOL_NAMES, PROMPT_EXAMPLES, LOCALES, counted
 from .errors import bot_error
 from .clock import local_time, stamp
 COPY={locale:{**LEGACY_COPY[locale],**UX[locale]} for locale in UX}
@@ -55,7 +55,7 @@ async def account_for(user):
 # discarding a task — must be fresh; an old one opens the menu instead.
 REUSABLE={'home','menu','account','plans','subscription','language','help','recent','controls','settings',
           'prompt','attach','preview','done','retry','cancel','new','tool','start_tool','ai_tool','ai_examples',
-          'ai_revise','support','contacts','job','download','channels_check','commerce_manual_plan','commerce_manual_receipt'}
+          'ai_revise','ai_count','support','contacts','job','download','channels_check','commerce_manual_plan','commerce_manual_receipt'}
 def usable(ref,now=None):
     """Whether a stored button may still be acted on."""
     return bool(ref) and (ref.expires_at>(now or timezone.now()) or ref.action in REUSABLE)
@@ -223,12 +223,15 @@ async def review_screen(account,draft,quote):
     # plan's limit the "more" button becomes the plan that gives more.
     from apps.studio.pages import ceiling
     top=await sync_to_async(ceiling)(account,'pptx' if deck else 'pdf')
-    stepper=[]
+    # [➖] [10 slides] [➕]: the count between the buttons that change it. The
+    # middle one only shows it; a button at the limit is left out.
+    stepper=[InlineKeyboardButton(text=counted(account.locale,given,'slide' if deck else 'page'),
+                                  callback_data=await callback(account,'ai_count'))]
     if given>1:
-        stepper.append(InlineKeyboardButton(text=f'➖ {given-1}',callback_data=await callback(account,'ai_length',{'draft_id':str(draft.id),'pages':given-1})))
+        stepper.insert(0,InlineKeyboardButton(text='➖',callback_data=await callback(account,'ai_length',{'draft_id':str(draft.id),'pages':given-1})))
     if given<top:
-        stepper.append(InlineKeyboardButton(text=f'➕ {given+1}',callback_data=await callback(account,'ai_length',{'draft_id':str(draft.id),'pages':given+1})))
-    if stepper: rows.append(stepper)
+        stepper.append(InlineKeyboardButton(text='➕',callback_data=await callback(account,'ai_length',{'draft_id':str(draft.id),'pages':given+1})))
+    rows.append(stepper)
     # The design and the count together, on a screen of their own.
     if deck: rows.append([await setup_button(account,draft)])
     upsell=[]
@@ -854,6 +857,7 @@ def build_dispatcher():
                 try: draft,quote=await sync_to_async(ai.switch)(account,p['draft_id'],p['feature_id'])
                 except DomainError as exc: await safe_error(message,account,exc)
                 else: await ai_review(message,account,draft,quote,True)
+            elif action=='ai_count': pass  # The count on the stepper; the tap is already answered.
             elif action in ('ai_length','ai_locale'):
                 change=ai.resize if action=='ai_length' else ai.relocale
                 value=p['pages'] if action=='ai_length' else p['locale']

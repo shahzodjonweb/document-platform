@@ -21,15 +21,27 @@ def model():
     save_config('ai', {'mode': 'openai', 'model': 'gpt-5.6-luna', 'api_key': 'sk-offline-test-only'})
 
 
+def stepper(result):
+    """The last review's [➖] [count] [➕] row, as labels."""
+    screen = [message for message in result['messages'] if message.get('direction') != 'inbound'][-1]
+    return next([button['label'] for button in row] for row in screen['buttons']
+                if any(button['label'] in ('➖', '➕') for button in row))
+
+
 def test_the_count_can_be_changed_before_paying(customer):
     review = describe(customer, 'A 4 page introduction to tide tables.')
     assert 'Pages: 4' in body(review)
-    longer = tap(customer, review, '➕ 5')
+    assert stepper(review) == ['➖', '4 pages', '➕']
+    longer = tap(customer, review, '➕')
     assert 'Pages: 5' in body(longer), body(longer)[-400:]
+    assert stepper(longer) == ['➖', '5 pages', '➕']
     assert latest(customer)['options']['length'] == 5
     assert len(latest(customer)['content']['sections']) == 5
-    shorter = tap(customer, longer, '➖ 4')
+    shorter = tap(customer, longer, '➖')
     assert 'Pages: 4' in body(shorter)
+    # The count in the middle only shows it: a tap changes nothing.
+    same = tap(customer, shorter, '4 pages')
+    assert latest(customer)['options']['length'] == 4 and stepper(same) == ['➖', '4 pages', '➕']
     # The chosen count stays chosen: it is not read again from the description.
     assert latest(customer)['options']['pages'] == 4
 
@@ -37,6 +49,16 @@ def test_the_count_can_be_changed_before_paying(customer):
 def test_a_deck_is_counted_in_slides(customer):
     review = describe(customer, '6 ta slayd: suv aylanishi', service='Slides on a topic')
     assert 'Slides: 6' in body(review), body(review)[-400:]
+    assert stepper(review) == ['➖', '6 slides', '➕']
+
+
+def test_the_count_is_said_in_each_language():
+    from telegram.ux_copy import counted
+    assert [counted('en', n, 'slide') for n in (1, 10)] == ['1 slide', '10 slides']
+    assert [counted('uz', n, 'page') for n in (1, 10)] == ['1 sahifa', '10 sahifa']
+    assert [counted('ru', n, 'slide') for n in (1, 3, 5, 11, 12, 21, 22, 25)] == [
+        '1 слайд', '3 слайда', '5 слайдов', '11 слайдов', '12 слайдов', '21 слайд', '22 слайда', '25 слайдов']
+    assert counted('ru', 10, 'page') == '10 страниц' and counted('ru', 2, 'page') == '2 страницы'
 
 
 def test_at_the_plan_limit_more_means_a_bigger_plan(free_customer):
