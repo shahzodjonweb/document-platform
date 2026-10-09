@@ -13,7 +13,7 @@ from apps.core.serializers import asset_data,quote_data,job_data
 from apps.core.services import owned_assets,create_quote,submit_job,execute_job,record_event
 from apps.core.policy import FEATURES,plan_limits,require_feature
 from operations.integrations import ai_config
-from .domain import DOCUMENT,SLIDES,GENERATION_IDS,_image_cap,allowed,create_draft,draft_data,update_draft,generation_quote,pack,unpack,limits
+from .domain import DOCUMENT,SLIDES,GENERATION_IDS,_image_cap,allowed,create_draft,draft_data,draft_jobs,update_draft,generation_quote,pack,unpack,limits
 from .models import GenerationDraft,SavedDefinition,EducationProject,PracticeAttempt,ShareGrant,EditorDocument,WorkflowRun
 
 @api()
@@ -80,6 +80,9 @@ def draft_setup(request,pk):
     d=GenerationDraft.objects.filter(account=request.account,id=pk,expires_at__gt=timezone.now()).first()
     if not d:raise DomainError('not_found',404)
     if d.feature_id!=SLIDES:raise DomainError('invalid_parameters')
+    # A deck already made is changed with a new description, not by restyling
+    # its draft; one still being made is refused by update_draft.
+    if draft_jobs(request.account,d.id,('succeeded','no_op')):raise DomainError('generation_finished',409)
     d=update_draft(request.account,pk,{'version':d.version,'options':{**unpack(d.encrypted_data)['options'],**data}})
     quote=generation_quote(request.account,d.id,d.version)
     from telegram.bot import refresh_review

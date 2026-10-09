@@ -267,6 +267,29 @@ TOOL_LABELS = {
 }
 
 UX = {locale: {key: values[index] for key, values in MESSAGES.items()} for index, locale in enumerate(LOCALES)}
+
+# A count of pages or slides in each language's own plural forms, for the
+# review stepper's middle button: "10 slides", "10 slayd", "10 слайдов".
+COUNT_FORMS = {
+    'en': {'page': ('page', 'pages'), 'slide': ('slide', 'slides')},
+    'uz': {'page': ('sahifa',), 'slide': ('slayd',)},
+    'ru': {'page': ('страница', 'страницы', 'страниц'), 'slide': ('слайд', 'слайда', 'слайдов')},
+}
+
+
+def counted(locale, count, unit):
+    forms = COUNT_FORMS.get(locale, COUNT_FORMS['en'])[unit]
+    if len(forms) == 1:
+        form = forms[0]
+    elif len(forms) == 2:
+        form = forms[0] if count == 1 else forms[1]
+    elif count % 10 == 1 and count % 100 != 11:
+        form = forms[0]
+    elif 2 <= count % 10 <= 4 and not 12 <= count % 100 <= 14:
+        form = forms[1]
+    else:
+        form = forms[2]
+    return f'{count} {form}'
 LEGACY_COPY = {locale: {key: values[index] for key, values in LEGACY_MESSAGES.items()} for index, locale in enumerate(LOCALES)}
 TOOL_NAMES = {key: dict(zip(LOCALES, labels)) for key, labels in TOOL_LABELS.items()}
 STATUS = {

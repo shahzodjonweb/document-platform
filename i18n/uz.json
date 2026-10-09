@@ -149,5 +149,7 @@
   "channels_required": "PDF Master Telegram hamjamiyatimiz a’zolari uchun bepul. Kanalimizga qo‘shiling va qayta urinib ko‘ring.",
   "invalid_channel": "Har bir qator @nom, t.me havola yoki raqamli chat ID bilan yopiq taklif havolasi bo‘lishi kerak.",
   "too_many_channels": "Ko‘pi bilan 5 ta kanal qo‘shing.",
-  "daily_ai_limit": "Bepul tarifdagi bugungi AI hujjatlar soni tugadi. Ertaga yana yarata olasiz yoki kunlik cheklovsiz pullik tarifni tanlang."
+  "daily_ai_limit": "Bepul tarifdagi bugungi AI hujjatlar soni tugadi. Ertaga yana yarata olasiz yoki kunlik cheklovsiz pullik tarifni tanlang.",
+  "generation_running": "Bu allaqachon tayyorlanmoqda. Tugashini kuting yoki yangisini boshlang.",
+  "generation_finished": "Bu allaqachon tayyorlangan. O‘zgartirish uchun yangisini tasvirlab bering."
 }

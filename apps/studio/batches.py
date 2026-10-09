@@ -153,11 +153,14 @@ def claim(run_id):
     run.save(update_fields=['status','lease_token','lease_until'])
     return run
 
-def execute_batch(run_id):
+def execute_batch(run_id,stop=None):
     run=claim(run_id)
     if run is None:return BatchRun.objects.get(pk=run_id)
     for item in run.children.select_related('quote','job').order_by('index'):
         if item.status in TERMINAL:continue
+        # A stopping runner starts no further child; the batch goes back to
+        # the queue below and the next runner carries on from here.
+        if stop:break
         if not BatchRun.objects.filter(pk=run.id,lease_token=run.lease_token).update(lease_until=timezone.now()+timedelta(minutes=3)):break
         try:
             if item.job_id is None:
@@ -180,10 +183,12 @@ def execute_batch(run_id):
     BatchRun.objects.filter(pk=run.id,lease_token=run.lease_token).update(**values)
     return BatchRun.objects.get(pk=run.id)
 
-def drain_batches(limit=10):
+def drain_batches(limit=10,stop=None):
     from django.db.models import Q
     ids=BatchRun.objects.filter(status__in=('queued','running')).filter(Q(lease_until__isnull=True)|Q(lease_until__lte=timezone.now())).order_by('created_at').values_list('id',flat=True)[:limit]
-    for identifier in list(ids):execute_batch(identifier)
+    for identifier in list(ids):
+        if stop:break  # A stopping runner leaves the rest for the next one.
+        execute_batch(identifier,stop)
 
 def run_data(run):
     rows=[];settled={meter:0 for meter in run.quote.meters};counts={}

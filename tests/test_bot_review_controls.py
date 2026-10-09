@@ -21,15 +21,27 @@ def model():
     save_config('ai', {'mode': 'openai', 'model': 'gpt-5.6-luna', 'api_key': 'sk-offline-test-only'})
 
 
+def stepper(result):
+    """The last review's [➖] [count] [➕] row, as labels."""
+    screen = [message for message in result['messages'] if message.get('direction') != 'inbound'][-1]
+    return next([button['label'] for button in row] for row in screen['buttons']
+                if any(button['label'] in ('➖', '➕') for button in row))
+
+
 def test_the_count_can_be_changed_before_paying(customer):
     review = describe(customer, 'A 4 page introduction to tide tables.')
     assert 'Pages: 4' in body(review)
-    longer = tap(customer, review, '➕ 5')
+    assert stepper(review) == ['➖', '4 pages', '➕']
+    longer = tap(customer, review, '➕')
     assert 'Pages: 5' in body(longer), body(longer)[-400:]
+    assert stepper(longer) == ['➖', '5 pages', '➕']
     assert latest(customer)['options']['length'] == 5
     assert len(latest(customer)['content']['sections']) == 5
-    shorter = tap(customer, longer, '➖ 4')
+    shorter = tap(customer, longer, '➖')
     assert 'Pages: 4' in body(shorter)
+    # The count in the middle only shows it: a tap changes nothing.
+    same = tap(customer, shorter, '4 pages')
+    assert latest(customer)['options']['length'] == 4 and stepper(same) == ['➖', '4 pages', '➕']
     # The chosen count stays chosen: it is not read again from the description.
     assert latest(customer)['options']['pages'] == 4
 
@@ -37,6 +49,16 @@ def test_the_count_can_be_changed_before_paying(customer):
 def test_a_deck_is_counted_in_slides(customer):
     review = describe(customer, '6 ta slayd: suv aylanishi', service='Slides on a topic')
     assert 'Slides: 6' in body(review), body(review)[-400:]
+    assert stepper(review) == ['➖', '6 slides', '➕']
+
+
+def test_the_count_is_said_in_each_language():
+    from telegram.ux_copy import counted
+    assert [counted('en', n, 'slide') for n in (1, 10)] == ['1 slide', '10 slides']
+    assert [counted('uz', n, 'page') for n in (1, 10)] == ['1 sahifa', '10 sahifa']
+    assert [counted('ru', n, 'slide') for n in (1, 3, 5, 11, 12, 21, 22, 25)] == [
+        '1 слайд', '3 слайда', '5 слайдов', '11 слайдов', '12 слайдов', '21 слайд', '22 слайда', '25 слайдов']
+    assert counted('ru', 10, 'page') == '10 страниц' and counted('ru', 2, 'page') == '2 страницы'
 
 
 def test_at_the_plan_limit_more_means_a_bigger_plan(free_customer):
@@ -178,3 +200,54 @@ def test_the_setup_screen_refuses_what_it_does_not_offer(customer):
         assert response.status_code == 400, (payload, response.content)
     designs = client.get('/api/v1/studio/deck-designs?locale=ru').json()
     assert designs['default_pages'] == 7 and designs['categories'][0]['name'] == 'Классика'
+
+
+def test_once_generate_is_tapped_the_setup_screen_cannot_reopen_the_review(customer):
+    import json
+    from apps.core.services import submit_job
+    from apps.studio.domain import generation_quote
+    from tests.test_platform import login_client
+    save_config('ai', {'mode': 'local_fixture'})
+    review = describe(customer, 'Tides\n\nThe moon pulls the sea.\n\nIt happens twice a day.', service='Slides on a topic')
+    assert BotConversation.objects.get(telegram_user_id=customer.telegram_user_id).review
+    tap(customer, review, 'Generate')
+    # The review became the job's status; it is never redrawn as a review again.
+    assert BotConversation.objects.get(telegram_user_id=customer.telegram_user_id).review == {}
+    # A deck still queued runs from its draft as quoted: the setup screen may not change it.
+    describe(customer, 'Volcanoes\n\nMagma rises.\n\nIt erupts.', service='Slides on a topic')
+    draft = GenerationDraft.objects.filter(account=customer, feature_id=SLIDES).latest('created_at')
+    quote = generation_quote(customer, draft.id, draft.version)
+    submit_job(customer, quote.id, 'setup-while-queued', 'bot')
+    response = login_client(customer).post(f'/api/v1/generation/drafts/{draft.id}/setup',
+                                           data=json.dumps({'pages': 7, 'deck_design': 'royal'}),
+                                           content_type='application/json')
+    assert response.status_code == 409 and response.json()['error']['code'] == 'generation_running'
+    draft.refresh_from_db()
+    assert 'deck_design' not in latest(customer, SLIDES)['options']
+
+
+def test_a_queued_deck_cannot_be_changed_and_a_made_one_cannot_be_restyled(customer):
+    import json
+    from apps.core.services import submit_job
+    from apps.studio.domain import generation_quote
+    from telegram.bot import forget_review
+    from tests.test_platform import login_client
+    review = describe(customer, 'Volcanoes, 6 slides', service='Slides on a topic')
+    draft = GenerationDraft.objects.filter(account=customer, feature_id=SLIDES).latest('created_at')
+    job, _ = submit_job(customer, generation_quote(customer, draft.id, draft.version).id, 'queued-deck', 'bot')
+    # The review's count button cannot change a draft its queued job runs from.
+    refused = tap(customer, review, '➕')
+    assert 'already being made' in body(refused), body(refused)[-300:]
+    assert latest(customer, SLIDES)['options']['length'] == 6
+    # Once it is made, the setup screen does not restyle it either.
+    job.status = 'succeeded'
+    job.save(update_fields=['status'])
+    response = login_client(customer).post(f'/api/v1/generation/drafts/{draft.id}/setup',
+                                           data=json.dumps({'deck_design': 'royal'}), content_type='application/json')
+    assert response.status_code == 409 and response.json()['error']['code'] == 'generation_finished'
+    # Generating one draft does not forget the review since shown for another.
+    describe(customer, 'Rivers, 5 slides', service='Slides on a topic')
+    newer = BotConversation.objects.get(telegram_user_id=customer.telegram_user_id).review
+    assert newer['draft_id'] != str(draft.id)
+    forget_review(customer, draft.id)
+    assert BotConversation.objects.get(telegram_user_id=customer.telegram_user_id).review == newer
