@@ -160,11 +160,16 @@ def palette(accent, theme='light', secondary=None, paper=None, accent_headings=F
     dark = ground < 0.5
     surface = _from_hls(hue, ground, min(saturation, 0.12 if dark else 0.10))
     surface_alt = _from_hls(hue, alt, min(saturation, 0.14))
-    if paper and not dark:
+    if paper and _hls(paper)[1] >= 0.5 and not dark:
         # A design's own paper: cream, aqua, warm stone. Panels sit a step darker.
         surface = _hex(paper).upper()
         paper_hue, paper_light, paper_sat = _hls(surface)
         surface_alt = _from_hls(paper_hue, paper_light - 0.045, min(paper_sat + 0.05, 0.4))
+    elif paper and _hls(paper)[1] < 0.5 and dark:
+        # A dark design's own ground: a green board, deep navy. Panels a step lighter.
+        surface = _hex(paper).upper()
+        paper_hue, paper_light, paper_sat = _hls(surface)
+        surface_alt = _from_hls(paper_hue, paper_light + 0.055, min(paper_sat, 0.4))
     roles = {
         'accent': accent,
         'theme': theme,
@@ -503,18 +508,128 @@ def _slide_number(slide, zone, roles, colour=None, number=1):
 FILLED = ('cover', 'closing')
 
 
-def _ground(slide, roles, kind, has_photo=False):
+def _ground(slide, roles, kind, has_photo=False, mark=True):
     """The background, then the accent element — always `shapes[0]`.
 
     The accent bar is filled with the brand colour exactly as given, on every
     slide; tests/test_slides_deck.py pins it. A photo, if the layout has one, is
     added straight after this and so always sits beneath the chrome and text.
+    A design with art draws that instead of the cover's disc (`mark=False`).
     """
     slide.background.fill.solid()
     slide.background.fill.fore_color.rgb = _rgb(roles['cover_fill'] if kind in FILLED else roles['surface'])
     _shape(slide, ZONES['accent_bar'], roles['accent'])
-    if kind == 'cover' and not has_photo:
+    if kind == 'cover' and not has_photo and mark:
         _shape(slide, ZONES['cover_mark'], roles['accent_soft'], MSO_SHAPE.OVAL)
+
+
+# ---------------------------------------------------------------- art
+
+# Where a design's pattern goes, in inches, and which way it fades out: always
+# towards the text, so a pattern never reads as a box. Nothing here overlaps a
+# text zone, the footer or the logo, so text is never set over a picture.
+ART_PPI = 120
+ART_ZONES = {
+    ('cover', 'side'): ((10.15, 0, 3.183, 6.6), 'left'),
+    ('cover', 'top'): ((0.18, 0, 13.153, 2.05), 'down'),
+    ('cover', 'corner'): ((8.6, 0, 4.733, 2.2), 'corner'),
+    # A divider's band ends in the pattern, past the end of its title.
+    ('section', 'band'): ((10.45, 2.55, 2.883, 2.4), 'left'),
+    # A strip under the footer of every other slide, for designs with `edge`.
+    ('content', 'edge'): ((0.18, 7.26, 13.153, 0.24), 'ends'),
+}
+# A full-bleed cover photo, stopping above the footer, and the solid panel the
+# title is set on. The cover drawer's photo zones sit inside the panel.
+COVER_PHOTO_ZONE = (0.18, 0, 13.153, 6.55)
+COVER_PANEL_ZONE = (0.18, 1.75, 7.0, 4.8)
+
+
+def _art_mask(pattern):
+    from pathlib import Path
+    from PIL import Image
+    if pattern not in _ART_MASKS:
+        path = Path(__file__).resolve().parent / 'assets' / 'deck' / f'{pattern}.png'
+        with Image.open(path) as mask:
+            _ART_MASKS[pattern] = mask.convert('L')
+    return _ART_MASKS[pattern]
+
+
+_ART_MASKS = {}
+_ART_PNGS = {}
+
+
+def art_png(pattern, width, height, colour, strength, fade):
+    """A pattern cut to a zone, tinted, faded and with its strength as opacity.
+
+    The crop is taken from the mask's top-right corner at a fixed scale, so a
+    pattern is the same size on every zone and every deck. Kept per process:
+    identical pictures are also stored once in the file, which python-pptx
+    deduplicates by content.
+    """
+    key = (pattern, width, height, colour, strength, fade)
+    if key in _ART_PNGS:
+        return _ART_PNGS[key]
+    from PIL import Image, ImageChops
+    mask = _art_mask(pattern)
+    w, h = round(width * ART_PPI), round(height * ART_PPI)
+    alpha = mask.crop((mask.width - w, 0, mask.width, h)).point(lambda value: round(value * strength))
+    ramp = None
+    if fade == 'left':
+        ramp = Image.linear_gradient('L').rotate(90, expand=True)
+        ramp = ramp.resize((w, h)).point(lambda value: min(255, value * 2))
+    elif fade == 'down':
+        ramp = Image.linear_gradient('L').transpose(Image.FLIP_TOP_BOTTOM).resize((w, h))
+        ramp = ramp.point(lambda value: min(255, value * 2))
+    elif fade == 'corner':
+        ramp = Image.radial_gradient('L').point(lambda value: 255 - value)
+        ramp = ramp.crop((0, 128, 128, 256)).resize((w, h))
+        ramp = ramp.point(lambda value: min(255, value * 2))
+    elif fade == 'ends':
+        half = Image.linear_gradient('L').rotate(90, expand=True)
+        ramp = Image.new('L', (w, h))
+        ramp.paste(half.resize((w // 2, h)), (0, 0))
+        ramp.paste(half.transpose(Image.FLIP_LEFT_RIGHT).resize((w - w // 2, h)), (w // 2, 0))
+        ramp = ramp.point(lambda value: min(255, value * 4))
+    if ramp is not None:
+        alpha = ImageChops.multiply(alpha, ramp)
+    picture = Image.new('RGBA', (w, h), tuple(int(_hex(colour)[i:i + 2], 16) for i in (0, 2, 4)) + (0,))
+    picture.putalpha(alpha)
+    buffer = io.BytesIO()
+    picture.save(buffer, 'PNG', optimize=True)
+    _ART_PNGS[key] = buffer.getvalue()
+    return _ART_PNGS[key]
+
+
+def art_colour(look, roles, filled):
+    """The pattern's colour: the design's, or the ink that reads on a filled accent."""
+    if filled:
+        return roles['on_accent']
+    if look['art'].get('colour') == 'secondary' and look.get('secondary'):
+        return _hex(look['secondary']).upper()
+    return roles['accent']
+
+
+def _art(slide, roles, look, kind):
+    """A design's pattern on a slide that has room for one, or nothing."""
+    art = look.get('art')
+    if not art:
+        return None
+    if kind in FILLED:
+        place = ('cover', art['place'])
+    elif kind == 'section':
+        place = ('section', 'band')
+    elif art.get('edge'):
+        place = ('content', 'edge')
+    else:
+        return None
+    (left, top, width, height), fade = ART_ZONES[place]
+    # On a bold deck the cover and the band are the accent itself.
+    filled = roles['theme'] == 'bold' and kind in FILLED + ('section',)
+    # A thin pattern on a pale ground reads fainter than the same on a fill.
+    strength = art['strength'] * (1.4 if roles['theme'] == 'light' and not filled else 1.0)
+    strength = min(0.85, strength * (0.6 if place[0] == 'content' else 1.0))
+    data = art_png(art['pattern'], width, height, art_colour(look, roles, filled), strength, fade)
+    return slide.shapes.add_picture(io.BytesIO(data), Inches(left), Inches(top), Inches(width), Inches(height))
 
 
 def _chrome(slide, roles, style, kind, number=1):
@@ -697,10 +812,16 @@ def render_pptx(content, path, locale='en', role='user_document', style=None, ph
     for index, (kind, lines, section) in enumerate(prepared):
         slide = deck.slides.add_slide(deck.slide_layouts[6])
         photo = photos.get(section.get('id')) if kind in PHOTO_ZONES else None
-        _ground(slide, roles, kind, photo is not None)
+        _ground(slide, roles, kind, photo is not None, mark=not look['art'])
         if photo is not None:
             try:
-                place_photo(slide, PHOTO_ZONES[kind], photo)
+                if kind == 'cover' and look['cover_photo']:
+                    # A photo design's cover: the picture across the slide and
+                    # the title on a solid panel, never on the picture itself.
+                    place_photo(slide, Zone(*(Inches(value) for value in COVER_PHOTO_ZONE)), photo)
+                    _shape(slide, Zone(*(Inches(value) for value in COVER_PANEL_ZONE)), roles['cover_fill'])
+                else:
+                    place_photo(slide, PHOTO_ZONES[kind], photo)
                 pictured.append({'slide': index + 1, **{key: photo[key] for key in photo if key != 'jpeg'}})
             except Exception:
                 # A picture python-pptx cannot place leaves the slide to its text
@@ -710,6 +831,8 @@ def render_pptx(content, path, locale='en', role='user_document', style=None, ph
         _chrome(slide, roles, style, kind, index + 1)
         context = Ctx(slide, roles, style, index, total, size, locale, photo is not None)
         DRAW[kind](context, section, lines)
+        if not (kind == 'cover' and photo is not None):
+            _art(slide, roles, look, kind)
         shortened = shortened or context.shortened
         drawn.append(kind)
         # The cover introduces the deck; there is nothing for a presenter to say

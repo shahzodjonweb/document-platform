@@ -22,6 +22,9 @@ CHARS_PER_PAGE = 3000
 # customers found the decks too thin to present from.
 CHARS_PER_SLIDE = 850
 DEFAULT_PAGES = 5
+# What the deck setup screen (the bot's Mini App) starts at. What it sends is
+# an explicit count, so it beats the description's like the review stepper.
+SETUP_SLIDES = 7
 
 # What we ASK the model for is deliberately less than the page holds. A model
 # told "about 3000 characters" routinely lands 15-20% over, and because every
@@ -247,7 +250,7 @@ def batches(count, per_call=PAGES_PER_CALL):
 
 
 # What a deck should look like, read out of the description like everything
-# else. There is no theme picker: the brief is the brief.
+# else — unless a design was picked on the review screen, which wins.
 THEMES = ('light', 'dark', 'bold')
 THEME_WORDS = (
     ('dark', r'dark|night\s*mode|qorong\'?i|tungi|т[ёе]мн\w*|ночн\w*'),

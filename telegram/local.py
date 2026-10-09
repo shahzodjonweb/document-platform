@@ -174,7 +174,7 @@ class LocalTelegramSession(BaseSession):
         message_id=method.message_id if editing else self.counter
         buttons=[];markup=getattr(method,'reply_markup',None)
         if isinstance(markup,InlineKeyboardMarkup):
-            buttons=[[{'label':button.text,'callback_data':button.callback_data,'url':button.url} for button in row] for row in markup.inline_keyboard]
+            buttons=[[{'label':button.text,'callback_data':button.callback_data,'url':button.url or (button.web_app.url if button.web_app else None)} for button in row] for row in markup.inline_keyboard]
         elif isinstance(markup,ReplyKeyboardMarkup):
             buttons=[[{'label':button.text,'callback_data':None,'url':None,'text':button.text} for button in row] for row in markup.keyboard]
         asset=None

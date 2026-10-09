@@ -182,8 +182,9 @@ def _image_cap(account,fid):
 def _deck_style(fid,brief):
     """A deck's look, read out of the description like its slide count.
 
-    There is no theme picker and no colour field: "a dark deck in navy" is the
-    brief saying so. Account branding still overrides the accent later, because
+    There is no colour field: "a dark deck in navy" is the brief saying so. A
+    design picked on the review screen (`options.deck_design`) replaces all of
+    this in `_prepare_draft`. Account branding still overrides the accent later, because
     a brand colour is a fact about the customer rather than a preference. A
     document has no deck theme; it takes only the colour.
     """
@@ -288,6 +289,11 @@ def _prepare_draft(account,data,revision_base=None):
     # A count chosen on the review screen beats the one read from the
     # description: it is how a misread count gets put right before paying.
     chosen=options.get('pages')
+    # So does a design chosen there: "Auto" leaves it to the model, as before.
+    picked=options.get('deck_design')
+    if picked is not None:
+        from .deck_designs import DESIGNS
+        if fid!=SLIDES or picked!='auto' and picked not in DESIGNS:raise DomainError('invalid_parameters')
     if chosen is not None:
         if type(chosen) is not int or not 1<=chosen<=200:raise DomainError('invalid_parameters')
         length,asked=min(chosen,paging.ceiling(account,fmt)),chosen
@@ -379,6 +385,13 @@ def _prepare_draft(account,data,revision_base=None):
         # A selected-page revision never changes the whole document's style.
     else:
         style.update(_deck_style(fid,brief))
+    if picked and picked!='auto':
+        # A design picked on the review screen beats whatever look the
+        # description implies: its colours and its dark or bold are dropped,
+        # keeping only a saved template's own colour. Branding still wins below.
+        style={**{key:value for key,value in style.items() if key not in ('deck_theme','secondary','accent','accent_fixed')},
+               **{key:template_style[key] for key in ('accent','accent_fixed') if key in template_style},
+               'deck_design':picked}
     options['template_style']=style
     from .branding import prepare_branding
     options=prepare_branding(account,fid,options)

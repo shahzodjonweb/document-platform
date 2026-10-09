@@ -59,6 +59,33 @@ def outline(request,pk):
     if body(request).get('version')!=d.version:raise DomainError('version_conflict',409)
     return draft_data(d)
 
+@api(('GET',))
+def deck_designs(request):
+    """Every design a deck can wear, grouped, with the colours each renders in."""
+    from .deck_designs import catalogue
+    from .pages import SETUP_SLIDES
+    locale=request.GET.get('locale',request.account.locale)
+    return {'categories':catalogue(locale if locale in ('en','uz','ru') else 'en'),'default_pages':SETUP_SLIDES}
+
+@api(('POST',))
+def draft_setup(request,pk):
+    """A deck's slide count and design, chosen on the setup screen over what the description says.
+
+    One call changes both and returns the new price, and the review in the
+    bot's chat is redrawn with it, so its Generate button pays for this.
+    """
+    throttle(request,'generation_drafts',20)
+    data=body(request)
+    if not data or set(data)-{'pages','deck_design'}:raise DomainError('invalid_parameters')
+    d=GenerationDraft.objects.filter(account=request.account,id=pk,expires_at__gt=timezone.now()).first()
+    if not d:raise DomainError('not_found',404)
+    if d.feature_id!=SLIDES:raise DomainError('invalid_parameters')
+    d=update_draft(request.account,pk,{'version':d.version,'options':{**unpack(d.encrypted_data)['options'],**data}})
+    quote=generation_quote(request.account,d.id,d.version)
+    from telegram.bot import refresh_review
+    refresh_review(request.account,d,quote)
+    return {'draft':draft_data(d),'quote':quote_data(quote)}
+
 @api(('POST',))
 def draft_quote(request,pk):
     data=body(request);stage=data.get('stage','document')

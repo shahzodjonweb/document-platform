@@ -169,6 +169,145 @@ def option_summary(account,draft):
         result.append(html.escape(f'{label}: {value}' if label else value))
     return '\n'.join(result) or text(account,'options_default')
 
+async def review_screen(account,draft,quote):
+    """The review of a generation before it is paid for, as (body, rows).
+
+    Never submit without showing this: generating spends AI credits.
+    """
+    from . import generation as ai
+    from .onboarding import LANGUAGES
+    title=TOOL_NAMES[draft.feature_id][account.locale]
+    summary=await sync_to_async(quote_data)(quote)
+    balances=summary['available_balances']
+    usage='\n'.join(f'{text(account,label)}: {quote.meters[key]} / {balances[key]["remaining"]}'
+                    for key,label in (('ai_credits','ai_credits'),('file_tasks','file_tasks'))
+                    if quote.meters.get(key))
+    heading=await sync_to_async(ai.title_of)(draft)
+    given,asked=await sync_to_async(ai.summary)(draft)
+    change=await sync_to_async(ai.change_request)(draft)
+    before=await sync_to_async(ai.length_before)(draft)
+    locale=await sync_to_async(ai.language_of)(draft)
+    wanted,cap=await sync_to_async(ai.images_wanted)(draft)
+    deck=draft.feature_id==ai.SLIDES
+    unit='ai_slides' if deck else 'ai_pages'
+    body=(f'<b>{text(account,"review_title")}</b>\n{html.escape(title)}\n'
+          f'📄 {html.escape(heading)}\n')
+    # A change says what is changing; a new document says what it is.
+    if change: body+=f'✏️ {html.escape(change)}\n'
+    # A change that alters the count says so: 9 → 1 must never go unseen.
+    count=f'{before} → {given}' if before and before!=given else f'{given}'
+    body+=f'{text(account,unit)}: {count}'
+    # A clamped request is said out loud rather than quietly honoured short.
+    if asked and asked>given: body+='\n'+text(account,'ai_pages_clamped').format(asked=asked,given=given)
+    names=dict(LANGUAGES)
+    if locale in names: body+=f'\n{text(account,"ai_language")}: {names[locale]}'
+    if deck:
+        design=await sync_to_async(ai.design_of)(draft)
+        body+=f'\n{text(account,"ai_theme")}: '+(html.escape(design) if design else text(account,'ai_theme_auto'))
+    if wanted>cap>0: body+='\n'+text(account,'ai_images_capped').format(count=cap)
+    # A description asking for the other service is offered it, before anything is spent.
+    other=await sync_to_async(ai.other_service)(draft)
+    if other: body+='\n\n'+text(account,'ai_wrong_tool_slides' if other==ai.SLIDES else 'ai_wrong_tool_pdf')
+    body+=f'\n\n{text(account,"ai_review_hint")}'
+    if usage: body+=f'\n\n{text(account,"cost")} / {text(account,"available")}:\n{usage}'
+    body+=f'\n{text(account,"expires")}: {stamp(account,quote.expires_at)}'
+    # Rewording a change goes back to the change, not to a blank document.
+    source=await sync_to_async(ai.revised_from)(draft)
+    reword=(await button(account,'ai_revise','ai_revise',{'draft_id':source}) if source
+            else await button(account,'ai_change_topic','ai_tool',{'feature_id':draft.feature_id}))
+    rows=[[await button(account,'ai_generate','ai_run',{'quote_id':str(quote.id),'draft_id':str(draft.id)})]]
+    if other:
+        rows.insert(0,[await button(account,'ai_switch_slides' if other==ai.SLIDES else 'ai_switch_pdf','ai_switch',
+                                    {'draft_id':str(draft.id),'feature_id':other})])
+    # The count can be put right here, before anything is charged. At the
+    # plan's limit the "more" button becomes the plan that gives more.
+    from apps.studio.pages import ceiling
+    top=await sync_to_async(ceiling)(account,'pptx' if deck else 'pdf')
+    stepper=[]
+    if given>1:
+        stepper.append(InlineKeyboardButton(text=f'➖ {given-1}',callback_data=await callback(account,'ai_length',{'draft_id':str(draft.id),'pages':given-1})))
+    if given<top:
+        stepper.append(InlineKeyboardButton(text=f'➕ {given+1}',callback_data=await callback(account,'ai_length',{'draft_id':str(draft.id),'pages':given+1})))
+    if stepper: rows.append(stepper)
+    # The design and the count together, on a screen of their own.
+    if deck: rows.append([await setup_button(account,draft)])
+    upsell=[]
+    if given>=top or (asked and asked>given):
+        more=await sync_to_async(ai.next_plan)(account,'max_generated_slides' if deck else 'max_generated_pdf_pages',max(asked or 0,given+1))
+        if more: upsell.append(('ai_more_slides' if deck else 'ai_more_pages',more))
+    if wanted>cap>0:
+        more=await sync_to_async(ai.next_plan)(account,'max_deck_images',wanted)
+        if more: upsell.append(('ai_more_images',more))
+    from .billing import plan_name
+    for key,(plan,limit) in upsell[:1]:
+        rows.append([InlineKeyboardButton(text=text(account,key).format(count=limit,plan=plan_name(account,plan)),
+                                          callback_data=await callback(account,'plans'))])
+    # The language it will be written in, switchable in one tap.
+    rows.append([InlineKeyboardButton(text=('✅ ' if code==locale else '')+label.split(' ',1)[0],
+                                      callback_data=await callback(account,'ai_locale',{'draft_id':str(draft.id),'locale':code}))
+                 for code,label in LANGUAGES])
+    rows.append([reword,await button(account,'cancel_button','home')])
+    return body,rows
+
+async def setup_button(account,draft):
+    """Opens the deck setup screen: as a Mini App where Telegram allows one (https), else as a link."""
+    from aiogram.types import WebAppInfo
+    url=await web_url(account,f'deck-setup?draft={draft.id}')
+    if url.startswith('https://'):
+        return InlineKeyboardButton(text=text(account,'ai_theme_button'),web_app=WebAppInfo(url=url))
+    return InlineKeyboardButton(text=text(account,'ai_theme_button'),url=url)
+
+async def remember_review(account,draft,screen):
+    """Keep where a review is shown, so the setup screen can redraw it there."""
+    if screen is None: return
+    chat_id=getattr(screen,'chat_id',None) or getattr(getattr(screen,'chat',None),'id',None)
+    message_id=getattr(screen,'message_id',None)
+    if not chat_id or not message_id: return
+    from .local import LocalTelegramSession
+    local=isinstance(getattr(getattr(screen,'bot',None),'session',None),LocalTelegramSession)
+    shown={'draft_id':str(draft.id),'chat_id':chat_id,'message_id':message_id,'local':local}
+    await sync_to_async(BotConversation.objects.update_or_create)(telegram_user_id=account.telegram_user_id,
+                                                                 defaults={'review':shown})
+
+def refresh_review(account,draft,quote):
+    """Redraw the review in the chat after the draft changed elsewhere (the Mini App).
+
+    Best effort: the change is saved whatever happens here. The old screen's
+    Generate button carries the old quote, so it is replaced in place, or a new
+    review is sent if Telegram will no longer edit that message.
+    """
+    import logging
+    from asgiref.sync import async_to_sync
+    if account.telegram_user_id is None: return False
+    conversation=BotConversation.objects.filter(telegram_user_id=account.telegram_user_id).first()
+    shown=(conversation.review if conversation else None) or {}
+    if shown.get('draft_id')!=str(draft.id): return False
+    async def run():
+        if shown.get('local'):
+            from .local import LocalTelegramSession
+            bot=Bot('123456:LOCAL_SIMULATOR_NO_NETWORK',session=LocalTelegramSession(account))
+        else:
+            from apps.commerce.providers import telegram_config
+            token=(await sync_to_async(telegram_config)())['token']
+            if not token: return False
+            bot=Bot(token)
+        try:
+            body,rows=await review_screen(account,draft,quote)
+            markup=InlineKeyboardMarkup(inline_keyboard=rows)
+            screen=_Screen(bot,shown['chat_id'],shown['message_id'])
+            try: sent=await screen.edit_text(body,parse_mode='HTML',reply_markup=markup)
+            except Exception as exc:
+                if 'not modified' in str(exc): return True
+                sent=await screen.answer(body,parse_mode='HTML',reply_markup=markup)
+            if sent is not None and sent is not True:
+                await remember_review(account,draft,sent)
+            return True
+        finally: await bot.session.close()
+    try: return async_to_sync(run)()
+    except Exception:
+        logging.getLogger(__name__).warning('review refresh failed',exc_info=True)
+        return False
+
 def build_dispatcher():
     from .workflows import draft_for,configure,snapshot,bound_draft,quote_draft,run_quote,attach_input,order_inputs,discard_draft,choose_tool,start_tool,discard_finished_draft,accept_upload
     from . import generation as ai
@@ -442,73 +581,9 @@ def build_dispatcher():
 
     async def ai_review(message,account,draft,quote,edit=False):
         """Never submit without showing this: generating spends AI credits."""
-        title=TOOL_NAMES[draft.feature_id][account.locale]
-        summary=await sync_to_async(quote_data)(quote)
-        balances=summary['available_balances']
-        usage='\n'.join(f'{text(account,label)}: {quote.meters[key]} / {balances[key]["remaining"]}'
-                        for key,label in (('ai_credits','ai_credits'),('file_tasks','file_tasks'))
-                        if quote.meters.get(key))
-        heading=await sync_to_async(ai.title_of)(draft)
-        given,asked=await sync_to_async(ai.summary)(draft)
-        change=await sync_to_async(ai.change_request)(draft)
-        before=await sync_to_async(ai.length_before)(draft)
-        locale=await sync_to_async(ai.language_of)(draft)
-        wanted,cap=await sync_to_async(ai.images_wanted)(draft)
-        deck=draft.feature_id==ai.SLIDES
-        unit='ai_slides' if deck else 'ai_pages'
-        body=(f'<b>{text(account,"review_title")}</b>\n{html.escape(title)}\n'
-              f'📄 {html.escape(heading)}\n')
-        # A change says what is changing; a new document says what it is.
-        if change: body+=f'✏️ {html.escape(change)}\n'
-        # A change that alters the count says so: 9 → 1 must never go unseen.
-        count=f'{before} → {given}' if before and before!=given else f'{given}'
-        body+=f'{text(account,unit)}: {count}'
-        # A clamped request is said out loud rather than quietly honoured short.
-        if asked and asked>given: body+='\n'+text(account,'ai_pages_clamped').format(asked=asked,given=given)
-        names=dict(LANGUAGES)
-        if locale in names: body+=f'\n{text(account,"ai_language")}: {names[locale]}'
-        if wanted>cap>0: body+='\n'+text(account,'ai_images_capped').format(count=cap)
-        # A description asking for the other service is offered it, before anything is spent.
-        other=await sync_to_async(ai.other_service)(draft)
-        if other: body+='\n\n'+text(account,'ai_wrong_tool_slides' if other==ai.SLIDES else 'ai_wrong_tool_pdf')
-        body+=f'\n\n{text(account,"ai_review_hint")}'
-        if usage: body+=f'\n\n{text(account,"cost")} / {text(account,"available")}:\n{usage}'
-        body+=f'\n{text(account,"expires")}: {stamp(account,quote.expires_at)}'
-        # Rewording a change goes back to the change, not to a blank document.
-        source=await sync_to_async(ai.revised_from)(draft)
-        reword=(await button(account,'ai_revise','ai_revise',{'draft_id':source}) if source
-                else await button(account,'ai_change_topic','ai_tool',{'feature_id':draft.feature_id}))
-        rows=[[await button(account,'ai_generate','ai_run',{'quote_id':str(quote.id),'draft_id':str(draft.id)})]]
-        if other:
-            rows.insert(0,[await button(account,'ai_switch_slides' if other==ai.SLIDES else 'ai_switch_pdf','ai_switch',
-                                        {'draft_id':str(draft.id),'feature_id':other})])
-        # The count can be put right here, before anything is charged. At the
-        # plan's limit the "more" button becomes the plan that gives more.
-        from apps.studio.pages import ceiling
-        top=await sync_to_async(ceiling)(account,'pptx' if deck else 'pdf')
-        stepper=[]
-        if given>1:
-            stepper.append(InlineKeyboardButton(text=f'➖ {given-1}',callback_data=await callback(account,'ai_length',{'draft_id':str(draft.id),'pages':given-1})))
-        if given<top:
-            stepper.append(InlineKeyboardButton(text=f'➕ {given+1}',callback_data=await callback(account,'ai_length',{'draft_id':str(draft.id),'pages':given+1})))
-        if stepper: rows.append(stepper)
-        upsell=[]
-        if given>=top or (asked and asked>given):
-            more=await sync_to_async(ai.next_plan)(account,'max_generated_slides' if deck else 'max_generated_pdf_pages',max(asked or 0,given+1))
-            if more: upsell.append(('ai_more_slides' if deck else 'ai_more_pages',more))
-        if wanted>cap>0:
-            more=await sync_to_async(ai.next_plan)(account,'max_deck_images',wanted)
-            if more: upsell.append(('ai_more_images',more))
-        from .billing import plan_name
-        for key,(plan,limit) in upsell[:1]:
-            rows.append([InlineKeyboardButton(text=text(account,key).format(count=limit,plan=plan_name(account,plan)),
-                                              callback_data=await callback(account,'plans'))])
-        # The language it will be written in, switchable in one tap.
-        rows.append([InlineKeyboardButton(text=('✅ ' if code==locale else '')+label.split(' ',1)[0],
-                                          callback_data=await callback(account,'ai_locale',{'draft_id':str(draft.id),'locale':code}))
-                     for code,label in LANGUAGES])
-        rows.append([reword,await button(account,'cancel_button','home')])
-        await render(message,body,rows,edit)
+        body,rows=await review_screen(account,draft,quote)
+        sent=await render(message,body,rows,edit)
+        await remember_review(account,draft,sent or message)
 
     async def ai_start(message,account,feature_id,description):
         """One chat message in, a priced draft out. Nothing is charged yet.
