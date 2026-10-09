@@ -66,10 +66,18 @@ jobs:
             echo "apt-get update attempt $attempt failed; retrying"; sleep 5
           done
           for attempt in 1 2 3; do
-            sudo apt-get install -y --no-install-recommends $apt \
+            # A slow mirror never stalls long enough for apt's own timeout: cap
+            # each attempt, and retry from Ubuntu's main archive. apt resumes
+            # the partly downloaded packages rather than starting again.
+            timeout 180 sudo apt-get install -y --no-install-recommends $apt \
               tesseract-ocr libreoffice-writer libreoffice-impress fonts-dejavu-core && break
-            echo "apt-get install attempt $attempt failed; retrying"; sleep 5
+            echo "apt-get install attempt $attempt failed; retrying from archive.ubuntu.com"
             [ "$attempt" = 3 ] && exit 1
+            if [ -f /etc/apt/apt-mirrors.txt ]; then
+              { echo "http://archive.ubuntu.com/ubuntu/"; cat /etc/apt/apt-mirrors.txt; } > /tmp/apt-mirrors.txt
+              sudo cp /tmp/apt-mirrors.txt /etc/apt/apt-mirrors.txt
+            fi
+            sudo apt-get update $apt || true
           done
           sudo rm -rf ~/apt-archives/partial ~/apt-archives/lock
           sudo chown -R "$(id -u):$(id -g)" ~/apt-archives
