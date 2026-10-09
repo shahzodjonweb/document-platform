@@ -1,4 +1,4 @@
-"""Decks wear one of ten designs, chosen by the model; what the customer named still wins."""
+"""Decks wear one of over a hundred designs, chosen by the model or the customer; what the customer named still wins."""
 import copy
 import json
 
@@ -8,7 +8,8 @@ from pptx.oxml.ns import qn
 
 from apps.core.services import execute_job, submit_job
 from apps.studio import deck_designs, provider
-from apps.studio.deck_designs import DESIGN_IDS, DESIGNS, look, remember, wanted
+from apps.studio.deck_designs import (CATEGORIES, DESIGN_IDS, DESIGNS, FONTS, PLACES, catalogue, look,
+                                      reference, remember, wanted)
 from apps.studio.domain import create_draft, generation_quote, unpack
 from apps.studio.slides import _luminance, contrast_ratio, palette, render_pptx
 from operations.integrations import save_config
@@ -72,12 +73,59 @@ def test_every_design_keeps_text_readable(design):
         assert contrast_ratio(roles[text], roles[ground]) >= target - 0.05, (design, text, ground)
 
 
-def test_the_ten_designs_are_ten_different_looks():
-    signatures = {(d['accent'], d['theme'], d['paper'], d['heading_font'], d['body_font'])
+# The ten designs decks wore before categories, exactly as they were.
+CLASSIC = {'forest': ('#1E6B45', 'Cambria', 'Corbel'), 'boardroom': ('#1F3A68', 'Georgia', 'Calibri'),
+           'midnight': ('#4F8CFF', 'Trebuchet MS', 'Calibri'), 'scholar': ('#7A1F35', 'Constantia', 'Cambria'),
+           'spotlight': ('#D94A26', 'Arial', 'Arial'), 'lagoon': ('#0F766E', 'Candara', 'Candara'),
+           'royal': ('#5B2A86', 'Georgia', 'Corbel'), 'classroom': ('#D9661F', 'Trebuchet MS', 'Trebuchet MS'),
+           'graphite': ('#2B2F33', 'Arial', 'Arial'), 'gala': ('#D4A017', 'Georgia', 'Calibri')}
+
+
+def test_over_a_hundred_designs_in_categories_with_the_classic_ten_unchanged():
+    from pathlib import Path
+    import re
+    assert len(DESIGNS) >= 100 and len(CATEGORIES) >= 10
+    assert list(CATEGORIES)[0] == 'classic'
+    assert {key: (d['accent'], d['heading_font'], d['body_font']) for key, d in CATEGORIES['classic'][0].items()} == CLASSIC
+    assert all(d['art'] is None and not d['cover_photo'] for d in CATEGORIES['classic'][0].values())
+    signatures = {(d['accent'], d['theme'], d['paper'], d['heading_font'], d['body_font'], str(d['art']))
                   for d in DESIGNS.values()}
-    assert len(DESIGNS) == 10 and len(signatures) == 10
-    assert len({d['accent'] for d in DESIGNS.values()}) == 10
+    assert len(signatures) == len(DESIGNS), 'no two designs are the same look'
+    masks = Path(deck_designs.__file__).parent / 'assets' / 'deck'
+    for category, (designs, names) in CATEGORIES.items():
+        assert len(designs) >= 8 and len(names) == 3 and all(names), category
+        # Within a category every design is its own colour.
+        assert len({d['accent'].upper() for d in designs.values()}) == len(designs), category
+    for key, design in DESIGNS.items():
+        assert re.fullmatch(r'[a-z_]+', key) and design['category'] in CATEGORIES
+        assert {design['heading_font'], design['body_font']} <= FONTS, key
+        assert design['theme'] in ('light', 'dark', 'bold') and len(design['fits']) <= 120, key
+        if design['art']:
+            assert design['art']['place'] in PLACES and 0 < design['art']['strength'] <= 0.6, key
+            assert (masks / f"{design['art']['pattern']}.png").is_file(), key
     assert {d['theme'] for d in DESIGNS.values()} == {'light', 'dark', 'bold'}
+    assert all(DESIGNS[key]['cover_photo'] for key in CATEGORIES['photo'][0])
+
+
+def test_the_list_the_model_reads_is_grouped_and_stays_small():
+    full, plain = reference(), reference(photos=False)
+    # It is in every deck call's instructions: keep it to a couple of thousand tokens.
+    assert len(full) <= 9000
+    assert 'Business:\n- corporate:' in full and 'Classic:\n- forest:' in full
+    assert 'horizon:' in full and 'horizon:' not in plain and 'image_query' not in plain
+    data = draft(4, 'pptx')
+    assert 'horizon:' not in provider.request_body(CONFIG, data, 'ai.pptx')['instructions']
+
+
+def test_the_picker_gets_every_design_with_the_colours_it_renders():
+    groups = catalogue('uz')
+    assert [group['id'] for group in groups] == list(CATEGORIES)
+    assert groups[0]['name'] == 'Klassik'
+    entries = [entry for group in groups for entry in group['designs']]
+    assert [entry['id'] for entry in entries] == DESIGN_IDS
+    midnight = next(entry for entry in entries if entry['id'] == 'midnight')
+    assert midnight['colours']['accent'] == '#4F8CFF' and midnight['theme'] == 'dark'
+    assert next(entry for entry in entries if entry['id'] == 'sapphire_night')['name'] == 'Sapphire Night'
 
 
 def test_what_the_customer_named_wins_over_the_design(tmp_path):
@@ -178,3 +226,32 @@ def test_a_generated_deck_wears_the_design_the_model_chose(settings, monkeypatch
     presentation = Presentation(str(path))
     assert str(presentation.slides[0].shapes[0].fill.fore_color.rgb) == '0F766E'
     assert 'Candara' in faces(presentation)
+
+
+@pytest.mark.django_db
+def test_a_design_picked_on_the_review_screen_beats_the_brief(settings, tmp_path):
+    from apps.core.errors import DomainError
+    settings.DEBUG = True
+    customer = paid(settings, account())
+    brief = 'A dark deck in green, 12 slides about tides'
+    picked = unpack(create_draft(customer, {'feature_id': 'ai.pptx', 'prompt': brief,
+                                            'options': {'deck_design': 'royal', 'pages': 7}}).encrypted_data)
+    style = picked['options']['template_style']
+    assert style['deck_design'] == 'royal' and 'deck_theme' not in style and not style.get('accent_fixed')
+    assert picked['options']['length'] == 7 and picked['options']['deck_design'] == 'royal'
+    # The model is not asked for a design the customer already chose.
+    assert not wanted(picked)
+    path = tmp_path / 'deck.pptx'
+    render_pptx(deck(), path, style=style)
+    assert str(Presentation(str(path)).slides[0].shapes[0].fill.fore_color.rgb) == '5B2A86'
+    # "Auto" is the brief and the model, as before.
+    auto = unpack(create_draft(customer, {'feature_id': 'ai.pptx', 'prompt': brief,
+                                          'options': {'deck_design': 'auto'}}).encrypted_data)
+    assert auto['options']['template_style']['deck_theme'] == 'dark'
+    assert 'deck_design' not in auto['options']['template_style'] and wanted(auto)
+    for wrong in ('nope', '', 7):
+        with pytest.raises(DomainError, match='invalid_parameters'):
+            create_draft(customer, {'feature_id': 'ai.pptx', 'prompt': brief, 'options': {'deck_design': wrong}})
+    with pytest.raises(DomainError, match='invalid_parameters'):
+        create_draft(customer, {'prompt': 'A guide to tides', 'options': {'deck_design': 'royal'}})
+

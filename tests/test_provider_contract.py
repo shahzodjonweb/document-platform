@@ -289,7 +289,7 @@ def test_an_answer_using_every_layout_is_accepted():
     with pytest.raises(ValueError):
         _validate(answer, SLIDE_SCHEMA)
     answer['sections'][0]['layout'] = layouts.LAYOUT_IDS[0]
-    answer['design'] = 'neon'
+    answer['design'] = 'not_a_design'
     with pytest.raises(ValueError):
         _validate(answer, SLIDE_SCHEMA)
 

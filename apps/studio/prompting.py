@@ -134,7 +134,7 @@ def request_body(config, data, feature, span=None):
         # The design list is in every deck call, so the cached prefix is the
         # same across a long deck's batches; only the first call's schema asks.
         instructions += '\n' + layouts.reference(bool(options.get('image_cap')))
-        instructions += '\n' + deck_designs.reference()
+        instructions += '\n' + deck_designs.reference(bool(options.get('image_cap')))
     if fmt != 'pptx':
         every = data.get('options', {})
         guide = doc_designs.reference(bool(every.get('wants_layouts')), bool(every.get('wants_design')),

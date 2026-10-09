@@ -256,6 +256,9 @@ class BotConversation(models.Model):
     pending = models.JSONField(default=dict)
     state = models.CharField(max_length=32, blank=True, default='')
     prompt = models.JSONField(default=dict)
+    # The generation review on screen — {draft_id, chat_id, message_id, local} —
+    # so a change made in the Mini App can redraw it in the chat.
+    review = models.JSONField(default=dict)
     updated_at = models.DateTimeField(auto_now=True)
 
 class BotCallback(models.Model):

@@ -8718,6 +8718,106 @@
         ]
       }
     },
+    "/generation/drafts/{id}/setup": {
+      "post": {
+        "description": "A deck's slide count and design chosen over what its description says (`deck_design` is a design id or `auto`). Returns the new quote; the review in the Telegram chat is redrawn with it.",
+        "operationId": "setupGenerationDraft",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "deck_design": {
+                    "type": "string"
+                  },
+                  "pages": {
+                    "maximum": 200,
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "required": [],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "draft": {
+                      "$ref": "#/components/schemas/GenerationDraft"
+                    },
+                    "quote": {
+                      "$ref": "#/components/schemas/Quote"
+                    }
+                  },
+                  "required": [
+                    "draft",
+                    "quote"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    },
     "/generation/jobs/{id}/retry-quote": {
       "post": {
         "description": "Review a fresh quote for an unchanged failed generation. Completed provider batches may be reused only within this explicit retry chain; confirmation and allowance checks still apply.",
@@ -10227,6 +10327,141 @@
                     "generation_features",
                     "templates",
                     "limits"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    },
+    "/studio/deck-designs": {
+      "get": {
+        "description": "Every design a deck can wear, grouped by category, in the colours each renders in. `locale` (en, uz, ru) names the categories.",
+        "operationId": "listDeckDesigns",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "enum": [
+                "en",
+                "uz",
+                "ru"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "categories": {
+                      "items": {
+                        "properties": {
+                          "designs": {
+                            "items": {
+                              "properties": {
+                                "body_font": {
+                                  "type": "string"
+                                },
+                                "colours": {
+                                  "additionalProperties": {
+                                    "type": "string"
+                                  },
+                                  "type": "object"
+                                },
+                                "heading_font": {
+                                  "type": "string"
+                                },
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "pattern": {
+                                  "type": "string"
+                                },
+                                "photo": {
+                                  "type": "boolean"
+                                },
+                                "theme": {
+                                  "enum": [
+                                    "light",
+                                    "dark",
+                                    "bold"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "name",
+                                "theme",
+                                "colours"
+                              ],
+                              "type": "object"
+                            },
+                            "type": "array"
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "designs"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "default_pages": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "categories",
+                    "default_pages"
                   ],
                   "type": "object"
                 }

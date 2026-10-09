@@ -175,6 +175,13 @@ def resize(account, draft_id, pages):
     return _changed(account, draft_id, lambda data: {'options': {**data['options'], 'pages': pages}})
 
 
+def design_of(draft):
+    """The deck design's name if one is set — picked, or inherited by a change — else '' for auto."""
+    from apps.studio.domain import unpack
+    design = unpack(draft.encrypted_data).get('options', {}).get('template_style', {}).get('deck_design', '')
+    return design.replace('_', ' ').title()
+
+
 @transaction.atomic
 def relocale(account, draft_id, locale):
     """The same draft in another language, chosen on the review screen."""

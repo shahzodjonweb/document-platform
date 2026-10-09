@@ -6,6 +6,9 @@ shows the count, the language and the plan's limits, each fixable in one tap.
 """
 import pytest
 
+from apps.core.models import BotConversation
+from apps.studio.domain import DOCUMENT, SLIDES
+from apps.studio.models import GenerationDraft
 from operations.integrations import save_config
 from tests.test_bot_generation import body, buttons, customer, describe, free_customer, labels, latest, tap  # noqa: F401
 from telegram.local import dispatch_local
@@ -119,3 +122,59 @@ def test_slides_asked_of_the_pdf_service_are_offered_as_slides(customer):
     assert latest(customer, 'ai.pptx')['options']['length'] == 10
     plain = describe(customer, 'A 3 page guide to tide tables.')
     assert not any('instead' in label for label in labels(plain))
+
+
+def test_a_deck_review_opens_the_setup_screen(customer):
+    review = describe(customer, 'Tides for a school lesson', service='Slides on a topic')
+    assert 'Design: Auto' in body(review), body(review)[-400:]
+    draft = GenerationDraft.objects.filter(account=customer, feature_id=SLIDES).latest('created_at')
+    (setup,) = [button for button in buttons(review) if button['label'] == '🎨 Design and slides']
+    # An https Mini App: the simulator records its address as the button's link.
+    assert setup['url'] == f'https://pdfmaster.example/en/app/deck-setup?draft={draft.id}'
+    shown = BotConversation.objects.get(telegram_user_id=customer.telegram_user_id).review
+    assert shown['draft_id'] == str(draft.id) and shown['local'] is True
+    # A document has no design to choose.
+    document = describe(customer, 'A 3 page guide to tide tables.')
+    assert '🎨 Design and slides' not in labels(document)[-8:]
+
+
+def test_the_setup_screen_beats_the_description_and_redraws_the_review(customer):
+    import json
+    from tests.test_platform import login_client
+    review = describe(customer, 'A dark green deck, 12 slides about tides', service='Slides on a topic')
+    assert 'Slides: 12' in body(review)
+    draft = GenerationDraft.objects.filter(account=customer, feature_id=SLIDES).latest('created_at')
+    client = login_client(customer)
+    response = client.post(f'/api/v1/generation/drafts/{draft.id}/setup',
+                           data=json.dumps({'pages': 7, 'deck_design': 'midnight'}), content_type='application/json')
+    assert response.status_code == 200, response.content
+    result = response.json()
+    options = latest(customer, SLIDES)['options']
+    assert options['length'] == 7 and options['template_style']['deck_design'] == 'midnight'
+    assert 'deck_theme' not in options['template_style'] and not options['template_style'].get('accent_fixed')
+    assert result['draft']['options']['length'] == 7 and result['quote']['id']
+    # The review in the chat is the new one, edited in place, and pays for the new quote.
+    screen = BotConversation.objects.get(telegram_user_id=customer.telegram_user_id).review
+    from apps.commerce.models import LocalBotMessage
+    from apps.core.models import BotCallback
+    message = LocalBotMessage.objects.get(account=customer, direction='outbound', telegram_message_id=screen['message_id'])
+    assert 'Slides: 7' in message.text and 'Design: Midnight' in message.text, message.text
+    generate = [button for row in message.buttons for button in row if button['label'] == '✨ Generate']
+    assert BotCallback.objects.get(token=generate[0]['callback_data']).payload['quote_id'] == result['quote']['id']
+
+
+def test_the_setup_screen_refuses_what_it_does_not_offer(customer):
+    import json
+    from tests.test_platform import login_client
+    describe(customer, 'Tides', service='Slides on a topic')
+    deck = GenerationDraft.objects.filter(account=customer, feature_id=SLIDES).latest('created_at')
+    describe(customer, 'A 3 page guide to tide tables.')
+    document = GenerationDraft.objects.filter(account=customer, feature_id=DOCUMENT).latest('created_at')
+    client = login_client(customer)
+    for draft, payload in ((deck, {'deck_design': 'nope'}), (deck, {'pages': '7'}), (deck, {'colour': 'red'}),
+                           (deck, {}), (document, {'pages': 4})):
+        response = client.post(f'/api/v1/generation/drafts/{draft.id}/setup', data=json.dumps(payload),
+                               content_type='application/json')
+        assert response.status_code == 400, (payload, response.content)
+    designs = client.get('/api/v1/studio/deck-designs?locale=ru').json()
+    assert designs['default_pages'] == 7 and designs['categories'][0]['name'] == 'Классика'

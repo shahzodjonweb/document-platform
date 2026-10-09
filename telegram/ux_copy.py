@@ -131,6 +131,10 @@ MESSAGES = {
     'ai_pages_clamped': ('{asked} asked for; {given} is the most your plan allows.', '{asked} so‘raldi; tarifingiz {given} tagacha ruxsat beradi.', 'Запрошено {asked}; тариф допускает {given}.'),
     'ai_slides': ('Slides', 'Slaydlar', 'Слайдов'),
     'ai_language': ('Language', 'Til', 'Язык'),
+    # The deck's design and slide count, chosen in the Mini App over what the description says.
+    'ai_theme': ('Design', 'Dizayn', 'Дизайн'),
+    'ai_theme_auto': ('Auto — chosen for the topic', 'Avto — mavzuga qarab tanlanadi', 'Авто — по теме'),
+    'ai_theme_button': ('🎨 Design and slides', '🎨 Dizayn va slaydlar', '🎨 Дизайн и слайды'),
     # The button where a limit is met: what the next plan would give.
     'ai_more_pages': ('💎 Up to {count} pages with {plan}', '💎 {plan} bilan {count} sahifagacha', '💎 До {count} страниц с {plan}'),
     'ai_more_slides': ('💎 Up to {count} slides with {plan}', '💎 {plan} bilan {count} slaydgacha', '💎 До {count} слайдов с {plan}'),
