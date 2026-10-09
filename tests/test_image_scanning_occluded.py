@@ -329,9 +329,11 @@ def test_anonymous_held_document_in_actual_bounded_worker_pdf(tmp_path, paramete
     image = page.images[0].image.convert('RGB')
     width, height = float(page.mediabox.width), float(page.mediabox.height)
     from reportlab.lib.pagesizes import A4
-    from scripts.operations.service_checks_documents import validate_fit_canvas
+    from scripts.operations.service_checks_documents import SCAN_MARGIN, validate_fit_canvas
     assert (width, height) == pytest.approx(A4, abs=.001)
-    assert validate_fit_canvas(reader, image)['a4_page_verified']
+    # A cleaned sheet sits inside the scan margin; crop-only keeps the exact fit.
+    margin = 0. if parameters else SCAN_MARGIN
+    assert validate_fit_canvas(reader, image, scan_margin=margin)['a4_page_verified']
     _assert_print_and_ink(image)
     if parameters:
         metrics = _boundary_metrics(source, paper_mask, finger_mask, image)

@@ -152,6 +152,13 @@ def album_first(message,what):
 def set_prompt(account,state='',prompt=None):
     BotConversation.objects.filter(pk=account.telegram_user_id).update(state=state,prompt=prompt or {},updated_at=timezone.now())
 
+def note_photo_tip(account):
+    # Merge into the stored preferences, not the copy loaded with the message,
+    # so a settings change saved meanwhile on the web is not overwritten.
+    account.refresh_from_db(fields=['preferences'])
+    account.preferences={**account.preferences,'photo_quality_tip_shown':True}
+    account.save(update_fields=['preferences'])
+
 def option_summary(account,draft):
     labels={'angle':'rotate_label','pages':'pages','order':'page_order','ranges':'split_groups','format':'format_label','dpi':None,'paper_size':'paper_label','orientation':None,'margin':'margin_button','auto_crop':'auto_crop_label','enhance_text':'enhance_text_label'}
     result=[]
@@ -244,7 +251,7 @@ def build_dispatcher():
             body='📎 '+html.escape(names[0][:100] if names else '')+'\n'+body
         return await render(message,body,rows,edit)
 
-    async def controls(message,account,draft=None,edit=False,advanced=False):
+    async def controls(message,account,draft=None,edit=False,advanced=False,photo=False):
         await sync_to_async(set_prompt)(account)
         # Choosing a service, sending a file or changing an option all land here:
         # a customer who still has channels to join is shown only those, in
@@ -273,6 +280,11 @@ def build_dispatcher():
         body=f'<b>{html.escape(title)}</b>'
         if not files or (feature=='pdf.merge' and len(files)<2): body+='\n'+text(account,hint)
         if feature=='pdf.images_to_pdf': body+='\n'+html.escape(text(account,'document_scan_hint'))
+        if feature=='pdf.images_to_pdf' and photo and not account.preferences.get('photo_quality_tip_shown'):
+            # Telegram recompresses a photo; sent as a file it keeps its pixels.
+            # Said once per account, on the screen answering a photo, never a document.
+            body+='\n'+html.escape(text(account,'photo_hint'))
+            await sync_to_async(note_photo_tip)(account)
         if feature not in ('pdf.merge','pdf.images_to_pdf') and len(files)>1: body+='\n'+text(account,'one_file_hint')
         if files:
             listing='\n'.join(f'{i+1}. {html.escape(files[k].name[:24])} · {files[k].page_count or "—"}' for i,k in enumerate(draft.input_ids) if k in files)
@@ -901,7 +913,7 @@ def build_dispatcher():
             # instead, when there are any, and "I've joined" comes back here.
             target,edit=await album_target(message,bot)
             if target is None: return
-            album_shown(message,await controls(target,account,None,edit))
+            album_shown(message,await controls(target,account,None,edit,photo=not message.document))
         except DomainError as exc:
             if not album_first(message,exc.code): return
             if exc.code=='bot_replace_file':

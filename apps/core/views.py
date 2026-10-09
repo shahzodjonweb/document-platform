@@ -124,6 +124,10 @@ def challenge_exchange(request,challenge_id):
     response.delete_cookie('pdfmaster_challenge',path='/api/v1/auth/browser/')
     return response
 
+CLIENT_PREFERENCES={'theme','paper_size','notifications','output_locale','adult_assistance'}
+# Written by the platform itself (telegram.bot.note_photo_tip), never by the web.
+SERVER_PREFERENCES={'photo_quality_tip_shown'}
+
 @api(('GET','PATCH','DELETE'))
 def me(request):
     a=request.account
@@ -149,9 +153,13 @@ def me(request):
             a.time_zone=tz
         if 'preferences' in data:
             preferences=data['preferences']
-            if not isinstance(preferences,dict) or set(preferences)-{'theme','paper_size','notifications','output_locale','adult_assistance'}: raise DomainError('invalid_profile_fields')
+            if not isinstance(preferences,dict) or set(preferences)-CLIENT_PREFERENCES-SERVER_PREFERENCES: raise DomainError('invalid_profile_fields')
             if not isinstance(preferences.get('adult_assistance',False),bool): raise DomainError('invalid_profile_fields')
-            a.preferences=preferences
+            # /me serves server-owned flags with the rest, and the web echoes
+            # them back. The stored value wins, so a tab loaded before the bot
+            # set one can neither be rejected for it nor clear it on save.
+            kept={k:v for k,v in a.preferences.items() if k in SERVER_PREFERENCES}
+            a.preferences={**{k:v for k,v in preferences.items() if k not in SERVER_PREFERENCES},**kept}
         a.save(update_fields=['locale','mode','time_zone','preferences'])
     return account_data(a)
 

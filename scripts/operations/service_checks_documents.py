@@ -199,8 +199,37 @@ def curved_gray_document(*, with_mask=False):
     return (image, np.round(mask * 255).astype(np.uint8)) if with_mask else image
 
 
-def validate_fit_canvas(reader, image, *, expected_a4=True):
-    """Verify precise A4 (or an opt-out fit page) without stretching or clipping."""
+# The published scan contract, stated here rather than imported so the audit
+# stays independent of the engine it checks: a cleaned, cropped sheet on
+# automatic A4 sits inside 2.5% of the short page side of white, and is
+# rendered towards A4 at 200 dpi.
+SCAN_MARGIN = .025
+SCAN_LONG_EDGE = 2339
+
+
+def validate_scan_crop(image, original_size, code, *, enhanced):
+    """The photographed desk was cropped away, at either output density.
+
+    Crop-only output keeps the source density, so its sheet must cover clearly
+    fewer pixels than the photo. A cleaned sheet is rendered towards the scan
+    long edge (up to 3x, never shrunk), so its pixel count proves nothing; it
+    must instead land at scanner density with a sheet's own shape rather than
+    the photo's frame.
+    """
+    width, height = original_size
+    if not enhanced:
+        require(image.width * image.height < width * height * .80, code)
+        return
+    require(1600 <= max(image.size) <= SCAN_LONG_EDGE, code)
+    require(abs(image.height / image.width - height / width) > .05, code)
+
+
+def validate_fit_canvas(reader, image, *, expected_a4=True, scan_margin=0.):
+    """Verify precise A4 (or an opt-out fit page) without stretching or clipping.
+
+    ``scan_margin`` is the white inset expected around a cleaned sheet, as a
+    share of the short page side; zero demands the exact edge-to-edge fit.
+    """
     from pypdf.generic import ContentStream
     page = reader.pages[0]
     width, height = float(page.mediabox.width), float(page.mediabox.height)
@@ -232,7 +261,8 @@ def validate_fit_canvas(reader, image, *, expected_a4=True):
         elif operator == b'Do':
             placements.append(current)
     require(len(placements) == 1 and not stack, 'curved_document_canvas_state')
-    scale = min(width / image.width, height / image.height)
+    inset = scan_margin * min(width, height)
+    scale = min((width - 2 * inset) / image.width, (height - 2 * inset) / image.height)
     fitted_width, fitted_height = image.width * scale, image.height * scale
     expected = (fitted_width, 0., 0., fitted_height,
                 (width - fitted_width) / 2, (height - fitted_height) / 2)
@@ -241,7 +271,8 @@ def validate_fit_canvas(reader, image, *, expected_a4=True):
             'curved_document_borderless_image_placement')
     borderless = abs(width - fitted_width) < .001 and abs(height - fitted_height) < .001
     return {'a4_page_verified': expected_a4, 'uniform_image_fit_verified': True,
-            'borderless_page_verified': borderless}
+            'borderless_page_verified': borderless,
+            **({'scan_margin_verified': True} if scan_margin else {})}
 
 
 
@@ -299,13 +330,13 @@ def validate_curved_scan(output, original, *, enabled, enhanced=True, true_paper
     require(len(reader.pages) == 1 and len(reader.pages[0].images) == 1, 'curved_document_page')
     image = reader.pages[0].images[0].image.convert('RGB')
     pixels = np.asarray(image).astype(np.int16)
-    flags = validate_fit_canvas(reader, image, expected_a4=enabled)
+    flags = validate_fit_canvas(reader, image, expected_a4=enabled,
+                                scan_margin=SCAN_MARGIN if enabled and enhanced else 0.)
     if not enabled:
         require(image.size == original.size and np.array_equal(np.asarray(image), np.asarray(original)),
                 'curved_document_opt_out_preserves_all_pixels')
         return {**flags, 'crop_verified': False, 'effect_verified': False, 'original_pixels_preserved': True}
-    require(image.width * image.height < original.width * original.height * .80,
-            'curved_document_crop')
+    validate_scan_crop(image, original.size, 'curved_document_crop', enhanced=enhanced)
     require(1.15 < image.height / image.width < 1.8, 'curved_document_aspect')
     regions = (pixels[:image.height // 4, :image.width // 4],
                pixels[:image.height // 4, 3 * image.width // 4:],
@@ -526,9 +557,8 @@ def validate_tinted_scan(output, original, true_paper_mask, *, enhanced):
     reader = PdfReader(io.BytesIO(output))
     require(len(reader.pages) == 1 and len(reader.pages[0].images) == 1, 'tinted_document_page')
     image = reader.pages[0].images[0].image.convert('RGB')
-    flags = validate_fit_canvas(reader, image)
-    require(image.width * image.height < original.width * original.height * .80,
-            'tinted_document_crop')
+    flags = validate_fit_canvas(reader, image, scan_margin=SCAN_MARGIN if enhanced else 0.)
+    validate_scan_crop(image, original.size, 'tinted_document_crop', enhanced=enhanced)
     flags.update(validate_tinted_writing(original, image))
     if enhanced:
         gray = cv2.cvtColor(np.asarray(image), cv2.COLOR_RGB2GRAY)
@@ -733,8 +763,8 @@ def validate_held_dense_scan(output, original, paper_mask, finger_mask, *, enhan
     reader = PdfReader(io.BytesIO(output))
     require(len(reader.pages) == 1 and len(reader.pages[0].images) == 1, 'held_document_page')
     image = reader.pages[0].images[0].image.convert('RGB')
-    flags = validate_fit_canvas(reader, image)
-    require(image.width * image.height < original.width * original.height * .8, 'held_document_crop')
+    flags = validate_fit_canvas(reader, image, scan_margin=SCAN_MARGIN if enhanced else 0.)
+    validate_scan_crop(image, original.size, 'held_document_crop', enhanced=enhanced)
     writing = tinted_writing_metrics(image)
     require(min(writing['corner_counts']) > 20, 'held_document_all_corner_writing')
     require(all(gap < limit for gap, limit in zip(writing['side_gaps'], (.04, .06, .04, .035))),
@@ -894,9 +924,14 @@ def validate_output(feature, outputs, parameters, inputs=None):
         require(len(pages) == (1 if scan_case else 2) and all(len(p.images) > 0 for p in pages), 'image_pages')
         if 'auto_crop' in parameters and inputs not in (['curved_scan'], ['tinted_scan'], ['held_dense_scan'], ['partial_scan']):
             picture = pages[0].images[0].image.convert('RGB')
-            validate_fit_canvas(readers[0], picture, expected_a4=parameters['auto_crop'])
+            validate_fit_canvas(readers[0], picture, expected_a4=parameters['auto_crop'],
+                                scan_margin=SCAN_MARGIN if parameters['auto_crop']
+                                and parameters.get('enhance_text', True) else 0.)
             if parameters['auto_crop']:
-                require(picture.width < 650 and picture.height < 850, 'document_crop')
+                validate_scan_crop(picture, (700, 900), 'document_crop',
+                                   enhanced=parameters.get('enhance_text', True))
+                if not parameters.get('enhance_text', True):
+                    require(picture.width < 650 and picture.height < 850, 'document_crop')
                 require(sum(b > r + 35 and b > g + 25 for r, g, b in picture.get_flattened_data()) > 100, 'document_colored_ink')
             else:
                 require(picture.size == (700, 900) and picture.getpixel((20, 20)) == (46, 64, 54), 'document_opt_out')
@@ -1008,7 +1043,8 @@ def check_documents(audit_id, emit):
                     require(len(reader.pages) == 1 and len(reader.pages[0].images) == 1,
                             'clipped_document_page')
                     image = reader.pages[0].images[0].image.convert('RGB')
-                    row.update(validate_fit_canvas(reader, image))
+                    row.update(validate_fit_canvas(reader, image,
+                                                   scan_margin=SCAN_MARGIN if enhanced else 0.))
                     proof = validate_rectified_partial_output(rectified_partial_fixture(), image,
                                                               enhanced=enhanced, crop_only=partial_crop_only)
                     if not enhanced:

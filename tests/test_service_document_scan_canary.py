@@ -132,3 +132,45 @@ def test_a4_guard_rejects_a_misleading_visible_viewport(canary, viewport):
     with pytest.raises(canary.ProbeFailure) as error:
         canary.validate_fit_canvas(reader, image)
     assert error.value.code == 'curved_document_page_viewport'
+
+
+def margined_a4_pdf(margin):
+    from reportlab.lib.pagesizes import A4
+    image = Image.new('RGB', (450, 680), (150, 150, 150))
+    width, height = A4
+    inset = margin * min(width, height)
+    scale = min((width - 2 * inset) / image.width, (height - 2 * inset) / image.height)
+    placed_width, placed_height = image.width * scale, image.height * scale
+    stream = io.BytesIO()
+    canvas = Canvas(stream, pagesize=(width, height), invariant=1)
+    canvas.drawImage(ImageReader(image), (width - placed_width) / 2, (height - placed_height) / 2,
+                     placed_width, placed_height)
+    canvas.showPage(); canvas.save()
+    return PdfReader(io.BytesIO(stream.getvalue())), image
+
+
+def test_a4_guard_accepts_exactly_the_scan_margin_around_a_cleaned_sheet(canary):
+    reader, image = margined_a4_pdf(canary.SCAN_MARGIN)
+    assert canary.validate_fit_canvas(reader, image, scan_margin=canary.SCAN_MARGIN) == {
+        'a4_page_verified': True, 'uniform_image_fit_verified': True,
+        'borderless_page_verified': False, 'scan_margin_verified': True}
+
+
+@pytest.mark.parametrize('placed,expected', [(0., .025), (.025, 0.), (.05, .025)])
+def test_a4_guard_rejects_a_missing_or_wrong_scan_margin(canary, placed, expected):
+    reader, image = margined_a4_pdf(placed)
+    with pytest.raises(canary.ProbeFailure) as error:
+        canary.validate_fit_canvas(reader, image, scan_margin=expected)
+    assert error.value.code == 'curved_document_uniform_image_placement'
+
+
+def test_scan_crop_guard_checks_density_and_shape_of_a_cleaned_sheet(canary):
+    photo = (720, 900)
+    canary.validate_scan_crop(Image.new('RGB', (1410, 1995)), photo, 'crop', enhanced=True)
+    for size in ((470, 665), (1600, 2000), (1700, 2400)):
+        with pytest.raises(canary.ProbeFailure) as error:
+            canary.validate_scan_crop(Image.new('RGB', size), photo, 'crop', enhanced=True)
+        assert error.value.code == 'crop'
+    canary.validate_scan_crop(Image.new('RGB', (470, 665)), photo, 'crop', enhanced=False)
+    with pytest.raises(canary.ProbeFailure):
+        canary.validate_scan_crop(Image.new('RGB', photo), photo, 'crop', enhanced=False)
