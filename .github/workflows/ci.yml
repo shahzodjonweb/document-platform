@@ -2,25 +2,37 @@ name: Platform CI and deployment
 on:
   push:
     branches: [main]
-    paths-ignore: ["scripts/operations/**", ".github/workflows/server-operations.yml", ".github/workflows/server-operation-job.yml"]
+    paths-ignore: ["scripts/operations/**", ".github/workflows/server-operations.yml", ".github/workflows/server-operation-job.yml", "docs/**", "**/*.md"]
   pull_request:
     branches: [main]
+    paths-ignore: ["docs/**", "**/*.md"]
   workflow_dispatch:
+    inputs:
+      suite:
+        description: "Tests to run: core (the main cases, as on every push) or full (every test, on both databases, split over 16 runners)"
+        type: choice
+        options: [core, full]
+        default: core
 permissions:
   contents: read
+concurrency:
+  # A newer push to a pull request replaces its older run. Runs on main are
+  # never cancelled: one may be in the middle of a deploy.
+  group: platform-ci-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   verify:
+    name: ${{ format('verify ({0}{1}, {2})', matrix.tier, matrix.shard && format(' {0}', matrix.shard) || '', matrix.database) }}
     runs-on: ubuntu-latest
-    # The whole suite took 16 minutes on SQLite and 24 on Postgres on one
-    # 2-core runner. Each database's run is split over eight runners
-    # (conftest.py, PYTEST_SHARD), balanced by measured file times; every test
-    # still runs, once per database.
+    # Every push runs the main cases (tests/core_tests.txt, PYTEST_TIER=core) on
+    # Postgres, as production runs: about a minute of tests instead of the
+    # whole suite's 16 (SQLite) and 24 (Postgres). The full suite is one click
+    # away (Run workflow -> full), split over 16 runners (scripts/shards.py).
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        database: [sqlite, postgres]
-        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+        include: ${{ fromJSON(inputs.suite == 'full' && '[{"database":"sqlite","shard":"1/8","tier":"full","once":true},{"database":"sqlite","shard":"2/8","tier":"full","once":false},{"database":"sqlite","shard":"3/8","tier":"full","once":false},{"database":"sqlite","shard":"4/8","tier":"full","once":false},{"database":"sqlite","shard":"5/8","tier":"full","once":false},{"database":"sqlite","shard":"6/8","tier":"full","once":false},{"database":"sqlite","shard":"7/8","tier":"full","once":false},{"database":"sqlite","shard":"8/8","tier":"full","once":false},{"database":"postgres","shard":"1/8","tier":"full","once":false},{"database":"postgres","shard":"2/8","tier":"full","once":false},{"database":"postgres","shard":"3/8","tier":"full","once":false},{"database":"postgres","shard":"4/8","tier":"full","once":false},{"database":"postgres","shard":"5/8","tier":"full","once":false},{"database":"postgres","shard":"6/8","tier":"full","once":false},{"database":"postgres","shard":"7/8","tier":"full","once":false},{"database":"postgres","shard":"8/8","tier":"full","once":false}]' || '[{"database":"postgres","shard":"","tier":"core","once":true}]') }}
     services:
       postgres:
         image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
@@ -37,7 +49,8 @@ jobs:
       DEVELOPMENT_LOGIN_ENABLED: "1"
       ENABLE_BETA_TOOLS: "1"
       LOCAL_SYNC_JOBS: "1"
-      PYTEST_SHARD: ${{ matrix.shard }}/8
+      PYTEST_TIER: ${{ matrix.tier }}
+      PYTEST_SHARD: ${{ matrix.shard }}
       PPTX_TEST_SOFFICE: "/usr/bin/soffice"
       DATABASE_URL: ${{ matrix.database == 'postgres' && 'postgresql://pdfmaster:ci-test-password@127.0.0.1:5432/pdfmaster' || 'sqlite:////tmp/pdfmaster-ci.sqlite3' }}
     steps:
@@ -47,8 +60,8 @@ jobs:
           python-version: "3.13"
           cache: pip
           cache-dependency-path: requirements.lock
-      # The packages (~90 MB) come from the Actions cache, not Ubuntu's mirror:
-      # with sixteen runners, a slow or stalled mirror held shards for minutes.
+      # The packages (~90 MB) come from the Actions cache, not Ubuntu's mirror,
+      # which has stalled installs for many minutes.
       - name: Restore cached system packages
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -66,10 +79,18 @@ jobs:
             echo "apt-get update attempt $attempt failed; retrying"; sleep 5
           done
           for attempt in 1 2 3; do
-            sudo apt-get install -y --no-install-recommends $apt \
+            # A slow mirror never stalls long enough for apt's own timeout: cap
+            # each attempt, and retry from Ubuntu's main archive. apt resumes
+            # the partly downloaded packages rather than starting again.
+            timeout 180 sudo apt-get install -y --no-install-recommends $apt \
               tesseract-ocr libreoffice-writer libreoffice-impress fonts-dejavu-core && break
-            echo "apt-get install attempt $attempt failed; retrying"; sleep 5
+            echo "apt-get install attempt $attempt failed; retrying from archive.ubuntu.com"
             [ "$attempt" = 3 ] && exit 1
+            if [ -f /etc/apt/apt-mirrors.txt ]; then
+              { echo "http://archive.ubuntu.com/ubuntu/"; cat /etc/apt/apt-mirrors.txt; } > /tmp/apt-mirrors.txt
+              sudo cp /tmp/apt-mirrors.txt /etc/apt/apt-mirrors.txt
+            fi
+            sudo apt-get update $apt || true
           done
           sudo rm -rf ~/apt-archives/partial ~/apt-archives/lock
           sudo chown -R "$(id -u):$(id -g)" ~/apt-archives
@@ -78,7 +99,7 @@ jobs:
           echo "key=apt-noble-runtimes-$(ls ~/apt-archives | sort | sha256sum | cut -c1-16)" >> "$GITHUB_OUTPUT"
       - name: Cache system packages
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        # The first shard to save a set of versions stores it; the rest find it taken.
+        # The first runner to save a set of versions stores it; the rest find it taken.
         continue-on-error: true
         with:
           path: ~/apt-archives
@@ -86,13 +107,21 @@ jobs:
       - run: pip install -r requirements.lock
       - run: python manage.py check
       - run: python manage.py makemigrations --check --dry-run
-      - run: python -m pytest tests apps/commerce/tests -q
+      - name: Run tests
+        run: |
+          # Core collects only the files it names; full collects everything.
+          if [ "$PYTEST_TIER" = core ]; then
+            paths=$(grep "::" tests/core_tests.txt | cut -d: -f1 | sort -u)
+          else
+            paths="tests apps/commerce/tests"
+          fi
+          python -m pytest $paths -q
       # Checks that depend on neither the database nor the shard run once.
-      - if: matrix.shard == 1 && matrix.database == 'sqlite'
+      - if: matrix.once
         run: python -m unittest discover -s scripts/deploy/tests -v
-      - if: matrix.shard == 1 && matrix.database == 'sqlite'
+      - if: matrix.once
         run: python scripts/coverage_report.py --check
-      - if: matrix.shard == 1 && matrix.database == 'sqlite'
+      - if: matrix.once
         run: python scripts/verify_contract.py
   package:
     # Builds and smoke-tests the image while the suite runs. Deploy still

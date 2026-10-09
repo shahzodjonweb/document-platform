@@ -35,3 +35,27 @@ def test_without_timings_files_count_the_same_and_still_cover_everything():
     collected = items({f'tests/test_{n}.py': 2 for n in range(9)})
     result = shards(collected, 3, {})
     assert sorted(len(shard) for shard in result) == [6, 6, 6]
+
+
+def root_conftest():
+    import importlib.util
+    from pathlib import Path
+    path = Path(__file__).resolve().parent.parent / 'conftest.py'
+    spec = importlib.util.spec_from_file_location('root_conftest', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_the_core_list_reads_ids_with_hashes_and_drops_comments(tmp_path, monkeypatch):
+    conftest = root_conftest()
+    listed = tmp_path / 'core_tests.txt'
+    listed.write_text('# heading\n\ntests/test_a.py::test_one  # [tesseract]\n'
+                      'tests/test_b.py::test_two[#1F3A68-dark]\n')
+    monkeypatch.setattr(conftest, 'CORE', listed)
+    assert conftest.core_ids() == ['tests/test_a.py::test_one', 'tests/test_b.py::test_two[#1F3A68-dark]']
+
+
+def test_the_core_list_names_each_test_once():
+    ids = root_conftest().core_ids()
+    assert 50 <= len(ids) == len(set(ids))

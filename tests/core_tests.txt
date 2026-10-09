@@ -1,0 +1,277 @@
+# The main cases CI runs on every push (PYTEST_TIER=core; see conftest.py).
+#
+# One test per main path a customer relies on, and one per guard whose
+# regression would cost money, leak data or let someone in. Edge cases,
+# wording and layout details stay in the full suite, which runs by hand
+# (Actions -> Platform CI and deployment -> Run workflow -> full) or locally.
+# Tests marked [libreoffice] or [tesseract] need those installed.
+
+# PDF task lifecycle and billing
+tests/test_platform.py::test_real_merge_end_to_end_idempotency_and_meters
+tests/test_platform.py::test_failure_releases_original_grants
+
+# Account data isolation
+tests/test_adversarial.py::test_foreign_assets_quotes_jobs_and_downloads_are_inaccessible
+
+# File retention and expiry cleanup
+tests/test_platform.py::test_retention_revokes_before_download_and_deletes
+
+# Telegram Mini App sign-in
+tests/test_platform.py::test_miniapp_tamper_stale_future_duplicate_and_canonical
+
+# Browser sign-in via Telegram challenge
+tests/test_platform.py::test_browser_challenge_bound_and_one_use
+tests/test_platform.py::test_dev_login_and_features_fail_closed
+
+# Customer profile/session security
+tests/test_platform.py::test_csrf_and_customer_cannot_grant_staff_or_plan
+
+# Telegram webhook ingress
+tests/test_platform.py::test_webhook_secret_and_update_deduplication
+
+# Password protect / unlock PDFs
+tests/test_platform.py::test_password_handles_roundtrip_and_no_plaintext_persistence
+
+# PDF page tools
+tests/test_processors.py::test_split_and_rotate
+
+# PDF compression
+tests/test_processors.py::test_compression_and_no_op
+
+# Images to PDF
+tests/test_processors.py::test_images_pdf_layout_and_pixel_order
+
+# PDF to images
+tests/test_processors.py::test_pdf_images_reopenable_archive[png]
+
+# OCR text extraction
+tests/test_advanced_processors.py::test_printed_ocr_in_three_languages[eng-HELLO DOCUMENT 2026-HELLO]  # [tesseract]
+
+# PDF to Word
+tests/test_advanced_processors.py::test_pdf_to_editable_word_preserves_cyrillic
+
+# PDF to Excel
+tests/test_advanced_processors.py::test_pdf_tables_to_xlsx_neutralizes_formulas
+
+# PDF visual editor and redaction
+tests/test_advanced_processors.py::test_multilingual_text_highlight_and_note_are_serialized
+tests/test_advanced_processors.py::test_redaction_removes_recoverable_text_and_raster_pixels  # [tesseract]
+
+# Office
+tests/test_previews_office_api.py::test_office_upload_exact_preflight_quote_execute_and_download[docx-convert.word_to_pdf]  # [libreoffice]
+tests/test_office_processors.py::test_external_office_relationship_rejected_before_conversion
+
+# Page previews
+tests/test_previews_office_api.py::test_preview_is_real_png_cached_owner_scoped_and_free
+
+# Job dispatch: outbox publication and worker execution
+tests/test_scheduling.py::test_republication_then_worker_repeat_executes_and_settles_once
+
+# Object storage
+tests/test_object_storage.py::test_a_task_runs_on_inputs_that_live_only_in_the_bucket
+
+# Batch processing
+tests/test_batches.py::test_submit_and_resume_are_idempotent_and_real_jobs_charge_once
+tests/test_batches.py::test_quote_is_atomic_owner_scoped_and_paid_caps
+
+# Plan allowances and usage quotas
+tests/test_platform.py::test_quota_and_concurrency_do_not_overspend
+
+# Email sign-up, verification and login
+tests/test_customer_auth.py::test_email_signup_verification_login_preserves_customer_files_and_usage
+tests/test_customer_auth.py::test_email_verification_attempt_limit_persists_and_replay_is_rejected
+
+# Password reset
+tests/test_customer_auth.py::test_password_reset_revokes_every_existing_session_and_old_password
+
+# CSRF protection on the customer auth API
+tests/test_customer_auth.py::test_signup_with_same_origin_csrf_token_succeeds_and_bad_origin_does_not
+
+# Google sign-in
+tests/test_customer_auth.py::test_google_state_bound_to_browser_and_single_use
+tests/test_customer_auth.py::test_google_auth_verifies_real_rsa_signature_audience_issuer_and_time[signature]
+
+# Linking email, Google and Telegram into one account
+tests/test_customer_auth.py::test_email_google_and_telegram_share_one_uuid_documents_and_usage
+tests/test_customer_auth.py::test_existing_email_requires_explicit_authenticated_google_link_then_both_logins_match
+
+# Telegram bot link confirmation
+tests/test_telegram_linking.py::test_link_does_not_create_telegram_account_before_browser_finishes
+tests/test_telegram_linking.py::test_link_callback_rejects_another_telegram_sender_without_creating_account
+
+# Admin configuration of Google/SMTP auth integrations
+tests/test_auth_integrations.py::test_admin_saves_encrypted_secrets_without_echo_or_audit_leak
+
+# Production SMTP delivery of auth codes
+tests/test_auth_integrations.py::test_smtp_runtime_uses_explicit_saved_settings_and_timeout
+
+# Anti-bot
+tests/test_antibot.py::test_valid_proof_reaches_auth_service_and_never_exposes_secret
+tests/test_antibot.py::test_auth_initiation_cannot_skip_verification[email/register]
+
+# Channel-join gate for free accounts
+tests/test_channel_gate.py::test_the_api_says_what_to_join_and_refuses_a_task_with_the_same_list
+tests/test_channel_gate.py::test_a_paid_plan_is_never_asked
+
+# Daily AI document limit for free accounts
+tests/test_daily_ai_limit.py::test_a_free_account_makes_three_ai_documents_a_day_and_is_told_when
+tests/test_daily_ai_limit.py::test_a_quote_taken_earlier_cannot_slip_past_the_limit
+
+# Telegram Stars checkout
+apps/commerce/tests/test_commerce.py::test_invoice_quote_prices_server_owned_and_confirmed_once
+apps/commerce/tests/test_commerce.py::test_production_prices_null_and_sandbox_cannot_activate_real_account
+
+# Card payment request and receipt via web API
+tests/test_manual_payments.py::test_the_api_offers_card_payment_and_walks_a_payment_to_review
+tests/test_manual_payments.py::test_the_api_needs_a_signed_in_owner
+
+# Finance review and approval of card payments
+tests/test_manual_payments.py::test_finance_reviews_and_approves_from_the_payments_page
+tests/test_manual_payments.py::test_only_finance_staff_decide
+
+# Card payment settings
+tests/test_manual_payments.py::test_only_administrators_set_the_card_and_every_change_is_audited
+
+# Card payment refund
+tests/test_manual_payments.py::test_a_refund_takes_the_plan_back_without_asking_telegram
+
+# Card payment in the Telegram bot
+tests/test_bot_manual_payments.py::test_a_receipt_photo_goes_to_the_payment_not_to_the_pdf_tools
+
+# Payment notices to the owner
+tests/test_bot_manual_payments.py::test_the_owner_is_alerted_once_with_a_link_to_the_review_page
+
+# AI document
+tests/test_studio.py::test_generation_pdf_pptx_real_outputs_and_no_fake_ai_charge
+tests/test_studio.py::test_version_owner_and_quote_integrity
+
+# Paid AI generation
+tests/test_page_fill.py::test_a_model_writing_over_the_target_still_gets_the_pages_that_were_asked_for[1.5-False]
+tests/test_studio_adversarial.py::test_a_document_built_from_a_source_must_quote_it_exactly[forged]
+
+# Generation from uploaded sources
+tests/test_selected_revision_citations.py::test_uploaded_source_selected_revision_reaches_real_render_and_settlement
+tests/test_studio_adversarial.py::test_patch_authoring_fields_and_foreign_source_isolation
+
+# Revisions of generated documents
+tests/test_revisions.py::test_a_change_can_only_be_asked_for_on_your_own_document
+
+# Saved workflows
+tests/test_studio_adversarial.py::test_workflow_once_even_after_definition_changes
+tests/test_studio_adversarial.py::test_workflow_expired_tampered_and_foreign_confirmation
+
+# AI provider request boundary
+tests/test_studio_adversarial.py::test_provider_exact_schema_token_budget_and_no_redirect
+
+# Paid-job recovery
+tests/test_provider_optimization.py::test_failed_multi_batch_job_retries_only_missing_calls_through_api
+tests/test_provider_checkpoints.py::test_completed_result_is_encrypted_and_only_explicit_retry_reuses_it
+
+# Outline stage
+tests/test_outlines.py::test_live_outline_separate_cost_source_integrity_and_version
+
+# Branding
+tests/test_studio_branding.py::test_branding_real_logo_and_unicode_name_in_pdf_pptx
+tests/test_studio_branding.py::test_branding_owner_plan_and_bytes_are_verified
+
+# Studio config endpoint
+tests/test_studio_configuration.py::test_the_provider_key_is_never_published
+
+# Staff review records of AI requests
+tests/test_generation_review.py::test_an_ai_document_leaves_its_request_and_a_copy_for_review
+
+# Deck stock photos
+tests/test_photos.py::test_a_paid_deck_carries_its_photos_and_their_licence_record
+tests/test_photos.py::test_a_hit_pointing_anywhere_but_pixabay_is_dropped
+
+# AI slide-deck generation end to end
+tests/test_deck_designs.py::test_a_generated_deck_wears_the_design_the_model_chose
+
+# Slide rendering of every layout
+tests/test_slide_layouts.py::test_every_layout_draws_in_every_theme[#255e49-dark]
+
+# Deck sizing and pricing
+tests/test_deck_questions.py::test_question_slides_count_toward_the_slides_asked_for[12 ta slayd, oxirida 10 ta savol-12-10-2]
+
+# Bot file tools: onboarding to tool run to delivered result
+tests/test_bot_guided_ux.py::test_new_user_completes_localized_merge_in_five_actions_from_home[en]
+tests/test_bot_guided_ux.py::test_run_button_is_acknowledged_before_processing_and_replay_never_recharges
+
+# Production async path: queue, worker, delivery outbox
+tests/test_bot_guided_ux.py::test_production_run_returns_queued_then_worker_result_is_delivered_once
+
+# Failed-job notifications in Telegram
+tests/test_bot_terminal_notifications.py::test_real_worker_failure_atomically_enqueues_and_delivery_loop_notifies_once
+
+# AI PDF on a topic from the chat
+tests/test_bot_generation.py::test_the_finished_pdf_is_really_produced
+tests/test_bot_generation.py::test_tapping_generate_twice_creates_one_job
+
+# Deck setup Mini App from the bot review
+tests/test_bot_review_controls.py::test_the_setup_screen_beats_the_description_and_redraws_the_review
+
+# Anti-bot human verification gate
+tests/test_bot_verification.py::test_real_bot_defers_account_and_download_until_verified_then_resumes_first_file
+tests/test_bot_verification.py::test_direct_commands_uploads_and_old_callbacks_cannot_bypass_verification
+
+# Channel-subscription gate in the bot
+tests/test_bot_channel_gate.py::test_ive_joined_checks_again_and_goes_back_to_the_file
+
+# Private data handling in bot state
+tests/test_bot_transport.py::test_password_parameters_never_enter_bot_draft_callback_quote_or_analytics
+
+# Document scanning engine
+tests/test_image_scanning.py::test_real_sandbox_default_cleanup_preserves_page_order_and_reports_safe_metadata
+
+# Document scanning engine: privacy of uploaded photos
+tests/test_image_scanning.py::test_untouched_jpeg_upload_is_embedded_as_its_own_pixels_without_metadata
+
+# Public API quote -> confirmed job with scan switches
+tests/test_image_scanning_api.py::test_explicit_opt_out_is_frozen_in_confirmed_job[opt_out0-expected0]
+
+# Telegram bot photo scan flow
+tests/test_bot_image_scanning.py::test_direct_photo_and_image_uploads_have_defaults_and_can_start_immediately[True-en]
+
+# Admin panel pages render for staff
+tests/test_operations.py::test_all_implemented_staff_routes_render_all_locales
+
+# Staff sign-in
+tests/test_operations.py::test_staff_sign_in_with_username_and_password_alone
+tests/test_operations.py::test_customer_session_cannot_authorize_staff_even_with_django_superuser
+
+# Role-based staff access
+tests/test_operations_extended.py::test_sensitive_admin_actions_require_administrator[Support]
+
+# Staff assigns a plan to a customer
+tests/test_operations_admin.py::test_staff_can_assign_and_remove_a_plan
+
+# Staff grants usage allowance
+tests/test_operations_admin.py::test_a_grant_is_idempotent_and_audited
+
+# Staff opens a customer's document
+tests/test_operations_admin.py::test_staff_can_open_a_customer_document_and_it_is_recorded
+tests/test_operations_admin.py::test_an_analyst_cannot_reach_customer_documents
+
+# Plan limit editing
+tests/test_operations_admin.py::test_editing_a_plan_changes_what_it_allows
+
+# Integration credentials
+tests/test_operations_extended.py::test_credentials_are_encrypted_never_rendered_or_audited
+
+# Business metrics report
+tests/test_operations.py::test_counts_timezone_and_test_exclusion_are_consistent
+
+# Customer search
+tests/test_operations_redesign.py::test_customer_search_reaches_accounts_older_than_the_report_period
+
+# Production deployment settings
+tests/test_deployment_settings.py::test_production_tools_are_disabled_without_explicit_opt_in
+
+# Production bot startup
+tests/test_bot_deployment.py::test_production_bot_waits_for_admin_configuration_without_network_calls
+
+# File retention in the object-storage bucket
+tests/test_object_storage.py::test_an_expired_file_leaves_the_bucket
+
+# Form filling
+tests/test_advanced_processors.py::test_interactive_unicode_form_has_value_and_embedded_appearance
