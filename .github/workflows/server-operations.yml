@@ -15,8 +15,8 @@ jobs:
     with:
       operation: ${{ inputs.operation }}
     secrets:
-      DEPLOY_HOST: ${{ vars.DEPLOY_HOST || secrets.DEPLOY_HOST }}
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
       DEPLOY_USER: ${{ vars.DEPLOY_USER || secrets.DEPLOY_USER }}
-      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY || vars.DEPLOY_SSH_KEY }}
-      DEPLOY_KNOWN_HOSTS: ${{ vars.DEPLOY_KNOWN_HOSTS || secrets.DEPLOY_KNOWN_HOSTS }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
       ADMIN_BOOTSTRAP: ${{ secrets.ADMIN_BOOTSTRAP }}

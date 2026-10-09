@@ -157,10 +157,11 @@ jobs:
     uses: ./.github/workflows/deploy.yml
     with:
       component: platform
-    # Accept Actions Variables and Secrets; keep an existing SSH key in Secrets.
+    # Deploy credentials come only from Secrets: the repository is public, and
+    # Actions variables are not secret. Only the user name may be a variable.
     # The reusable workflow's secret inputs provide runner log masking only.
     secrets:
-      DEPLOY_HOST: ${{ vars.DEPLOY_HOST || secrets.DEPLOY_HOST }}
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
       DEPLOY_USER: ${{ vars.DEPLOY_USER || secrets.DEPLOY_USER }}
-      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY || vars.DEPLOY_SSH_KEY }}
-      DEPLOY_KNOWN_HOSTS: ${{ vars.DEPLOY_KNOWN_HOSTS || secrets.DEPLOY_KNOWN_HOSTS }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
