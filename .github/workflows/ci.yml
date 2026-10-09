@@ -11,12 +11,16 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    # The suite passed 20 minutes on Postgres once the image-scanning tests landed.
-    timeout-minutes: 35
+    # The whole suite took 16 minutes on SQLite and 24 on Postgres on one
+    # 2-core runner. Each database's run is split over eight runners
+    # (conftest.py, PYTEST_SHARD), balanced by measured file times; every test
+    # still runs, once per database.
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
         database: [sqlite, postgres]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
     services:
       postgres:
         image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
@@ -33,6 +37,7 @@ jobs:
       DEVELOPMENT_LOGIN_ENABLED: "1"
       ENABLE_BETA_TOOLS: "1"
       LOCAL_SYNC_JOBS: "1"
+      PYTEST_SHARD: ${{ matrix.shard }}/8
       PPTX_TEST_SOFFICE: "/usr/bin/soffice"
       DATABASE_URL: ${{ matrix.database == 'postgres' && 'postgresql://pdfmaster:ci-test-password@127.0.0.1:5432/pdfmaster' || 'sqlite:////tmp/pdfmaster-ci.sqlite3' }}
     steps:
@@ -50,11 +55,16 @@ jobs:
       - run: python manage.py check
       - run: python manage.py makemigrations --check --dry-run
       - run: python -m pytest tests apps/commerce/tests -q
-      - run: python -m unittest discover -s scripts/deploy/tests -v
-      - run: python scripts/coverage_report.py --check
-      - run: python scripts/verify_contract.py
+      # Checks that depend on neither the database nor the shard run once.
+      - if: matrix.shard == 1 && matrix.database == 'sqlite'
+        run: python -m unittest discover -s scripts/deploy/tests -v
+      - if: matrix.shard == 1 && matrix.database == 'sqlite'
+        run: python scripts/coverage_report.py --check
+      - if: matrix.shard == 1 && matrix.database == 'sqlite'
+        run: python scripts/verify_contract.py
   package:
-    needs: verify
+    # Builds and smoke-tests the image while the suite runs. Deploy still
+    # needs both to pass.
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
