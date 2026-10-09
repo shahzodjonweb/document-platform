@@ -11,12 +11,16 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    # The suite passed 20 minutes on Postgres once the image-scanning tests landed.
-    timeout-minutes: 35
+    # The whole suite took 16 minutes on SQLite and 24 on Postgres on one
+    # 2-core runner. Each database's run is split over eight runners
+    # (conftest.py, PYTEST_SHARD), balanced by measured file times; every test
+    # still runs, once per database.
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
         database: [sqlite, postgres]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
     services:
       postgres:
         image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
@@ -33,6 +37,7 @@ jobs:
       DEVELOPMENT_LOGIN_ENABLED: "1"
       ENABLE_BETA_TOOLS: "1"
       LOCAL_SYNC_JOBS: "1"
+      PYTEST_SHARD: ${{ matrix.shard }}/8
       PPTX_TEST_SOFFICE: "/usr/bin/soffice"
       DATABASE_URL: ${{ matrix.database == 'postgres' && 'postgresql://pdfmaster:ci-test-password@127.0.0.1:5432/pdfmaster' || 'sqlite:////tmp/pdfmaster-ci.sqlite3' }}
     steps:
@@ -42,19 +47,56 @@ jobs:
           python-version: "3.13"
           cache: pip
           cache-dependency-path: requirements.lock
+      # The packages (~90 MB) come from the Actions cache, not Ubuntu's mirror:
+      # with sixteen runners, a slow or stalled mirror held shards for minutes.
+      - name: Restore cached system packages
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/apt-archives
+          key: apt-noble-runtimes-
+          restore-keys: apt-noble-runtimes-
       - name: Install document processing runtimes
+        id: runtimes
+        timeout-minutes: 12
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends tesseract-ocr libreoffice-writer libreoffice-impress fonts-dejavu-core
+          mkdir -p ~/apt-archives/partial
+          apt="-o Dir::Cache::Archives=$HOME/apt-archives -o Acquire::Retries=5 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30"
+          for attempt in 1 2 3; do
+            sudo apt-get update $apt && break
+            echo "apt-get update attempt $attempt failed; retrying"; sleep 5
+          done
+          for attempt in 1 2 3; do
+            sudo apt-get install -y --no-install-recommends $apt \
+              tesseract-ocr libreoffice-writer libreoffice-impress fonts-dejavu-core && break
+            echo "apt-get install attempt $attempt failed; retrying"; sleep 5
+            [ "$attempt" = 3 ] && exit 1
+          done
+          sudo rm -rf ~/apt-archives/partial ~/apt-archives/lock
+          sudo chown -R "$(id -u):$(id -g)" ~/apt-archives
+          # The cache is keyed by the exact package versions installed, so a
+          # new LibreOffice or Tesseract release is cached once and reused.
+          echo "key=apt-noble-runtimes-$(ls ~/apt-archives | sort | sha256sum | cut -c1-16)" >> "$GITHUB_OUTPUT"
+      - name: Cache system packages
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        # The first shard to save a set of versions stores it; the rest find it taken.
+        continue-on-error: true
+        with:
+          path: ~/apt-archives
+          key: ${{ steps.runtimes.outputs.key }}
       - run: pip install -r requirements.lock
       - run: python manage.py check
       - run: python manage.py makemigrations --check --dry-run
       - run: python -m pytest tests apps/commerce/tests -q
-      - run: python -m unittest discover -s scripts/deploy/tests -v
-      - run: python scripts/coverage_report.py --check
-      - run: python scripts/verify_contract.py
+      # Checks that depend on neither the database nor the shard run once.
+      - if: matrix.shard == 1 && matrix.database == 'sqlite'
+        run: python -m unittest discover -s scripts/deploy/tests -v
+      - if: matrix.shard == 1 && matrix.database == 'sqlite'
+        run: python scripts/coverage_report.py --check
+      - if: matrix.shard == 1 && matrix.database == 'sqlite'
+        run: python scripts/verify_contract.py
   package:
-    needs: verify
+    # Builds and smoke-tests the image while the suite runs. Deploy still
+    # needs both to pass.
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
