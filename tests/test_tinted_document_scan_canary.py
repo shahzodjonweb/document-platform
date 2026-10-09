@@ -29,9 +29,10 @@ def known_flat_crop(source):
     return Image.fromarray(cv2.warpPerspective(np.asarray(source), transform, (450, 680)))
 
 
-def fitted_pdf(image):
+def fitted_pdf(image, margin=0.):
     width, height = A4[::-1] if image.width > image.height else A4
-    scale = min(width / image.width, height / image.height)
+    inset = margin * min(width, height)
+    scale = min((width - 2 * inset) / image.width, (height - 2 * inset) / image.height)
     placed_width, placed_height = image.width * scale, image.height * scale
     stream = io.BytesIO()
     canvas = Canvas(stream, pagesize=(width, height), invariant=1)
@@ -111,9 +112,11 @@ def test_small_camera_shear_tolerance_cannot_hide_a_missing_margin_letter(canary
 
 def test_worker_canary_rejects_a_missing_default_readability_effect(canary):
     source, mask = canary.tinted_document_photo(curved=False, with_mask=True)
+    # Placed and sized like a cleaned page, so only the missing effect fails.
     image = known_flat_crop(source)
+    image = image.resize((image.width * 3, image.height * 3), Image.Resampling.LANCZOS)
     with pytest.raises(canary.ProbeFailure) as error:
-        canary.validate_tinted_scan(fitted_pdf(image), source, mask, enhanced=True)
+        canary.validate_tinted_scan(fitted_pdf(image, canary.SCAN_MARGIN), source, mask, enhanced=True)
     assert error.value.code == 'tinted_document_readability_effect'
 
 

@@ -185,6 +185,24 @@ def test_settings_page_save_is_accepted(settings):
     response=client.patch('/api/v1/me',{'preferences':{'adult_assistance':'yes'}},content_type='application/json',HTTP_X_CSRFTOKEN=token)
     assert response.status_code==400 and response.json()['error']['code']=='invalid_profile_fields'
 
+def test_settings_save_keeps_the_bot_photo_tip_flag(settings):
+    from telegram.bot import note_photo_tip
+    settings.DEVELOPMENT_LOGIN_ENABLED=True;settings.DEBUG=True
+    client=Client()
+    token=client.post('/api/v1/auth/dev-login',{},content_type='application/json').json()['csrf_token']
+    stale=client.get('/api/v1/me').json()
+    note_photo_tip(Account.objects.get(pk=stale['id']))
+    fresh=client.get('/api/v1/me').json()
+    assert fresh['preferences']['photo_quality_tip_shown'] is True
+    # SettingsView spreads the served preferences back into its body; a tab
+    # loaded before the bot showed the tip sends them without the flag.
+    for served in (fresh['preferences'],stale['preferences'],{**fresh['preferences'],'photo_quality_tip_shown':False}):
+        body={'locale':'en','mode':'general','preferences':{**served,'theme':'dark','output_locale':'en','paper_size':'A4','adult_assistance':False}}
+        response=client.patch('/api/v1/me',body,content_type='application/json',HTTP_X_CSRFTOKEN=token)
+        assert response.status_code==200,response.content
+        assert response.json()['preferences']['photo_quality_tip_shown'] is True
+        assert response.json()['preferences']['theme']=='dark'
+
 def test_dev_login_and_features_fail_closed(settings):
     settings.DEBUG=False;settings.DEVELOPMENT_LOGIN_ENABLED=False;settings.ENABLE_BETA_TOOLS=False
     client=Client()

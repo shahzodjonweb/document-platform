@@ -202,3 +202,49 @@ def test_saved_image_drafts_with_missing_scan_flags_still_show_current_defaults(
     assert f'{UX[locale]["auto_crop_label"]}: {UX[locale]["option_on"]}' in summary
     assert f'{UX[locale]["enhance_text_label"]}: {UX[locale]["option_on"]}' in summary
     assert draft.parameters == {'paper_size': 'A4'}
+
+
+def send_photo(harness, key):
+    payload = picture()
+    harness.session.files[key] = payload
+    incoming = harness.incoming(photo=[PhotoSize(file_id=key, file_unique_id=key, width=90,
+                                                 height=130, file_size=len(payload))])
+    asyncio.run(harness.dispatcher.feed_update(harness.bot, Update(update_id=harness.count, message=incoming)))
+
+
+@pytest.mark.parametrize('locale', ['en', 'uz', 'ru'])
+def test_compressed_photo_shows_the_file_quality_tip_once_and_a_document_never_does(locale):
+    harness = ready(locale)
+    tip = UX[locale]['photo_hint']
+    account = Account.objects.get()
+    account.preferences = {'theme': 'dark'}
+    account.save(update_fields=['preferences'])
+
+    harness.document('scan', picture(), name='scan.jpg')
+    assert BotDraft.objects.get().feature_id == 'pdf.images_to_pdf'
+    assert tip not in html.unescape(screen(harness).text), 'A file already keeps its quality'
+    assert 'photo_quality_tip_shown' not in Account.objects.get().preferences
+
+    send_photo(harness, 'first')
+    assert tip in html.unescape(screen(harness).text)
+    ElementTree.fromstring('<root>' + screen(harness).text + '</root>')
+    assert Account.objects.get().preferences == {'theme': 'dark', 'photo_quality_tip_shown': True}
+
+    # Once per account: later photos, documents and option changes stay quiet.
+    send_photo(harness, 'second')
+    assert tip not in html.unescape(screen(harness).text)
+    harness.document('later', picture(), name='later.jpg')
+    harness.click(switch(harness, 'enhance_text', False)[0].callback_data)
+    shown = [call for call in harness.session.calls
+             if isinstance(call, (SendMessage, EditMessageText)) and tip in html.unescape(call.text or '')]
+    assert len(shown) == 1
+    assert len(BotDraft.objects.get().input_ids) == 4
+
+
+def test_documents_alone_never_mark_the_photo_tip():
+    harness = ready()
+    for index in range(3):
+        harness.document(f'file{index}', picture(), name=f'file{index}.jpg')
+    assert all(UX['en']['photo_hint'] not in html.unescape(getattr(call, 'text', None) or '')
+               for call in harness.session.calls)
+    assert 'photo_quality_tip_shown' not in Account.objects.get().preferences

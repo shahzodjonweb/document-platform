@@ -7,7 +7,7 @@ from processors import execute
 from scripts.operations.rectified_partial_scan_fixtures import (
     rectified_partial_fixture, validate_rectified_partial_output,
 )
-from scripts.operations.service_checks_documents import validate_fit_canvas
+from scripts.operations.service_checks_documents import SCAN_MARGIN, validate_fit_canvas
 
 
 def test_worker_rectifies_and_cleans_visible_partial_document_onto_actual_a4(tmp_path):
@@ -30,7 +30,9 @@ def test_worker_rectifies_and_cleans_visible_partial_document_onto_actual_a4(tmp
         page = reader.pages[0]
         assert (float(page.mediabox.width), float(page.mediabox.height)) == pytest.approx(A4, abs=.001)
         image = page.images[0].image.convert('RGB')
-        canvas_flags = validate_fit_canvas(reader, image)
+        # The cleaned page sits inside the scan margin; crop-only keeps the exact fit.
+        canvas_flags = validate_fit_canvas(
+            reader, image, scan_margin=SCAN_MARGIN if name == 'defaults' else 0.)
         assert canvas_flags['a4_page_verified'] and canvas_flags['uniform_image_fit_verified']
         proof = validate_rectified_partial_output(fixture, image, enhanced=name == 'defaults', crop_only=crop_only)
         assert proof['rectified_page_verified'] and proof['visible_marks_preserved']

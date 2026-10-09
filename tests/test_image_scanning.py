@@ -363,7 +363,11 @@ def test_real_sandbox_default_cleanup_preserves_page_order_and_reports_safe_meta
     assert result['artifacts'][0]['page_count'] == 2
     assert result['actual_page_units'] == 2
     first, second = _embedded_image(result), _embedded_image(result, 1)
-    assert first.width * first.height < 720 * 900 * 0.85
+    # The cleaned sheet is rendered towards A4 at 200 dpi (at most 3x), so its
+    # pixel count no longer shows the crop; its density and its own sheet
+    # shape, rather than the photo's frame, do.
+    assert 1600 <= max(first.size) <= 2339
+    assert abs(first.height / first.width - 900 / 720) > .05
     assert second.size == (720, 900)
     metadata = result['metadata']['image_processing']
     assert metadata['cropped_pages'] == 1
@@ -422,6 +426,17 @@ def test_grainy_processed_page_is_a_metadata_free_jpeg_stream(tmp_path):
     assert _embedded_image(result).size == photo.size
 
 
+def test_scanner_jpeg_of_a_high_entropy_page_falls_back_from_optimized_tables(tmp_path):
+    # Pillow gives an optimized JPEG save a buffer of one byte per pixel; a
+    # page of near-random content needs more and must still encode.
+    rng = np.random.default_rng(2)
+    source = tmp_path / 'noise.png'
+    Image.fromarray(rng.integers(0, 256, (1500, 1500, 3), dtype=np.uint8)).save(source)
+    result = execute('pdf.images_to_pdf', [source], {}, tmp_path / 'out')
+    assert result['metadata']['image_processing']['layouts'][0]['image_encoding'] == 'jpeg'
+    assert _embedded_image(result).size == (1500, 1500)
+
+
 def test_original_paper_holds_an_oversize_panorama_to_the_page_limit(tmp_path):
     source = tmp_path / 'wide.png'
     Image.new('RGB', (15000, 300), (200, 200, 200)).save(source)
@@ -466,3 +481,186 @@ def test_frame_guard_whitens_a_lid_strip_but_keeps_flush_print():
     ruled = np.asarray(cleanup_paper(rule, frame_guard=True).convert('L'))
     assert (ruled[:5, :] < 100).mean() > .8, 'A border rule stays'
     assert np.array_equal(np.asarray(cleanup_paper(lid)), np.asarray(cleanup_paper(lid, frame_guard=False)))
+
+
+def _cleaned_sheet(size, *, mottled=False, ink=None):
+    """A page as cleanup hands it over: text on white, or on paper still mottled.
+
+    `ink` adds a thin pen signature in that colour at the lower right.
+    """
+    if mottled:
+        # Soft blotches a few levels deep plus fine grain: what a phone photo's
+        # paper keeps after cleanup, and what Flate pays most for.
+        rng = np.random.default_rng(3)
+        blotches = cv2.resize(rng.normal(0, 1, (30, 22)).astype(np.float32), size, interpolation=cv2.INTER_CUBIC)
+        grain = rng.normal(0, 2.2, (size[1], size[0])).astype(np.float32)
+        paper = np.clip(247 + 5 * blotches + grain, 0, 255).astype(np.uint8)
+        image = Image.fromarray(np.repeat(paper[:, :, None], 3, axis=2), 'RGB')
+    else:
+        image = Image.new('RGB', size, 'white')
+    draw = ImageDraw.Draw(image)
+    for top in range(size[1] // 20, size[1] - size[1] // 20, max(40, size[1] // 36)):
+        draw.text((size[0] // 15, top), 'Consignee 4417 / shipment line entry and totals 2741.50',
+                  font=_font(max(14, size[0] // 48)), fill=(25, 25, 25))
+    if ink is not None:
+        width, height = size
+        points = [(round(width * (.55 + .04 * i)), round(height * (.86 + (.02 if i % 2 else -.02))))
+                  for i in range(9)]
+        draw.line(points, fill=ink, width=max(2, width // 550))
+    return image
+
+
+def _scan_engine(monkeypatch, page):
+    """Run the engine on a sheet that prepare_image reports as cropped and cleaned.
+
+    The fake accepts the resolution keyword, so the engine passes it, and
+    records it; the JPEG encoder is counted to prove a page is encoded once.
+    """
+    from processors import document_scan, engine
+    calls, encoded = [], []
+
+    def prepared(image, *, auto_crop=True, enhance_text=True, render_long_edge=None):
+        calls.append(render_long_edge)
+        return page.copy(), {'document_detected': True, 'cropped': auto_crop, 'enhanced': enhance_text}
+
+    jpeg_stream = engine._jpeg_stream
+
+    def counted(picture, *args, **kwargs):
+        encoded.append(picture.size)
+        return jpeg_stream(picture, *args, **kwargs)
+
+    monkeypatch.setattr(document_scan, 'prepare_image', prepared)
+    monkeypatch.setattr(engine, '_jpeg_stream', counted)
+    return calls, encoded
+
+
+def _first_stream(result):
+    image = PdfReader(result['artifacts'][0]['path']).pages[0].images[0]
+    return image.indirect_reference.get_object()
+
+
+def _quantization(quality):
+    """Pillow's quantization tables at a quality, to identify an embedded JPEG's."""
+    buffer = io.BytesIO()
+    Image.new('RGB', (16, 16), 'white').save(buffer, 'JPEG', quality=quality)
+    with Image.open(buffer) as reference:
+        return {index: list(table) for index, table in reference.quantization.items()}
+
+
+def _scan_jpeg(result, page):
+    """The embedded page's DCT stream, checked to be metadata-free and baseline."""
+    stream = _first_stream(result)
+    assert stream['/Filter'] in ('/DCTDecode', ['/DCTDecode'])
+    data = stream.get_data()
+    assert b'CAMERA SERIAL' not in data and b'\xff\xfe' not in data[:4096]
+    embedded = Image.open(io.BytesIO(data))
+    embedded.load()
+    assert embedded.size == page.size
+    assert not embedded.info.get('progressive') and b'\xff\xc0' in data, 'Baseline, as every PDF reader decodes'
+    assert {index: list(table) for index, table in embedded.quantization.items()} == _quantization(78)
+    return data, embedded
+
+
+def test_cleaned_mottled_page_over_two_megapixels_is_one_scanner_jpeg(tmp_path, monkeypatch):
+    import zlib
+    from PIL import JpegImagePlugin
+    page = _cleaned_sheet((1654, 2339), mottled=True)
+    page.info['comment'] = b'CAMERA SERIAL 12345'
+    calls, encoded = _scan_engine(monkeypatch, page)
+    source = tmp_path / 'sheet.png'
+    Image.new('RGB', (200, 280), 'white').save(source)
+    result = execute('pdf.images_to_pdf', [source], {}, tmp_path / 'out')
+    assert calls == [2339], 'A cleaned page is rendered for A4 at 200 dpi'
+    assert encoded == [page.size], 'The JPEG chosen is the JPEG measured: encoded once'
+    assert result['metadata']['image_processing']['layouts'][0]['image_encoding'] == 'jpeg'
+    data, embedded = _scan_jpeg(result, page)
+    assert JpegImagePlugin.get_sampling(embedded) == 2, 'A black-and-white sheet is 4:2:0, like a scanner app'
+    difference = np.abs(np.asarray(embedded.convert('L'), np.int16) - np.asarray(page.convert('L'), np.int16))
+    assert difference.mean() < 3, 'Quality 78 keeps the page'
+    flate = len(zlib.compress(page.tobytes(), 6))
+    assert result['artifacts'][0]['size_bytes'] < .8 * flate, 'The scan ships at a fraction of its Flate size'
+    photo = io.BytesIO()
+    page.save(photo, 'JPEG', quality=88, subsampling=0)
+    assert len(data) < .85 * photo.tell(), 'Smaller than the quality 88 full-chroma photo encoding'
+
+
+@pytest.mark.parametrize('ink,fringes,sampling', [
+    ((60, 40, 140), 0, 0),
+    ((185, 30, 40), 0, 0),
+    (None, 300, 2),
+])
+def test_scan_jpeg_keeps_full_chroma_only_for_coloured_ink(tmp_path, monkeypatch, ink, fringes, sampling):
+    from PIL import JpegImagePlugin
+    page = _cleaned_sheet((1654, 2339), mottled=True, ink=ink)
+    if fringes:
+        # Stray tinted pixels along black print, as a phone lens leaves them:
+        # far below a signature's share, so not a reason for full chroma.
+        rng = np.random.default_rng(5)
+        pixels = np.array(page)
+        pixels[rng.integers(0, 2339, fringes), rng.integers(0, 1654, fringes)] = (90, 60, 140)
+        page = Image.fromarray(pixels, 'RGB')
+    _, encoded = _scan_engine(monkeypatch, page)
+    source = tmp_path / 'sheet.png'
+    Image.new('RGB', (200, 280), 'white').save(source)
+    result = execute('pdf.images_to_pdf', [source], {}, tmp_path / 'out')
+    assert encoded == [page.size]
+    _, embedded = _scan_jpeg(result, page)
+    assert JpegImagePlugin.get_sampling(embedded) == sampling
+    if ink is not None:
+        before = np.asarray(page).astype(np.int16)
+        after = np.asarray(embedded.convert('RGB')).astype(np.int16)
+        stroke = np.all(before == ink, axis=2)
+        chroma = lambda rgb: (rgb.max(axis=2) - rgb.min(axis=2))[stroke].mean()
+        assert chroma(after) > .9 * chroma(before), 'A thin coloured stroke keeps its colour'
+
+
+def test_grainy_cleaned_page_over_two_megapixels_is_one_scanner_jpeg(tmp_path, monkeypatch):
+    from PIL import JpegImagePlugin
+    rng = np.random.default_rng(13)
+    grain = rng.normal(235, 18, (1300, 1700)).clip(0, 255).astype(np.uint8)
+    page = Image.fromarray(np.repeat(grain[:, :, None], 3, axis=2), 'RGB')
+    _, encoded = _scan_engine(monkeypatch, page)
+    source = tmp_path / 'sheet.png'
+    Image.new('RGB', (200, 280), 'white').save(source)
+    result = execute('pdf.images_to_pdf', [source], {}, tmp_path / 'out')
+    assert result['metadata']['image_processing']['layouts'][0]['image_encoding'] == 'jpeg'
+    assert encoded == [page.size], 'The grain gate takes the scanner JPEG already encoded'
+    _, embedded = _scan_jpeg(result, page)
+    assert JpegImagePlugin.get_sampling(embedded) == 2
+
+
+@pytest.mark.parametrize('size,jpeg_tried', [((700, 990), False), ((1654, 2339), True)])
+def test_cleaned_small_or_flat_page_stays_lossless_flate(tmp_path, monkeypatch, size, jpeg_tried):
+    page = _cleaned_sheet(size)
+    _, encoded = _scan_engine(monkeypatch, page)
+    source = tmp_path / 'sheet.png'
+    Image.new('RGB', (200, 280), 'white').save(source)
+    result = execute('pdf.images_to_pdf', [source], {}, tmp_path / 'out')
+    assert result['metadata']['image_processing']['layouts'][0]['image_encoding'] == 'flate'
+    # Only a large cleaned page is worth a trial JPEG; a flat one loses to Flate.
+    assert encoded == ([size] if jpeg_tried else [])
+    assert _first_stream(result)['/Filter'] in ('/FlateDecode', ['/FlateDecode'])
+    assert _embedded_image(result).tobytes() == page.tobytes(), 'Every cleaned pixel is kept'
+
+
+@pytest.mark.parametrize('parameters,rendered,margin', [
+    ({}, 2339, .025 * 595.2756),
+    ({'enhance_text': False}, None, 0),
+    ({'margin': 12}, 2339, 0),
+    ({'paper_size': 'A4'}, 2339, 0),
+    ({'paper_size': 'original'}, None, 0),
+    ({'auto_crop': False}, 2339, 0),
+])
+def test_scan_margin_and_resolution_follow_the_cleaned_automatic_a4_page(tmp_path, monkeypatch, parameters, rendered, margin):
+    calls, _ = _scan_engine(monkeypatch, _cleaned_sheet((700, 990)))
+    source = tmp_path / 'sheet.png'
+    Image.new('RGB', (200, 280), 'white').save(source)
+    result = execute('pdf.images_to_pdf', [source], parameters, tmp_path / 'out')
+    assert calls == [rendered]
+    layout = result['metadata']['image_processing']['layouts'][0]
+    assert layout['scan_margin_points'] == pytest.approx(margin, abs=1e-3)
+    x, y, width, height = layout['image_placement_points']
+    page_width, page_height = layout['page_size_points']
+    inset = margin + parameters.get('margin', 0)
+    assert min(x, y) == pytest.approx(inset, abs=1e-3)
+    assert x + width <= page_width - inset + 1e-3 and y + height <= page_height - inset + 1e-3

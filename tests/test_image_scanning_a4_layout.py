@@ -12,6 +12,9 @@ from processors import document_scan
 
 
 FONT = Path(__file__).resolve().parents[1] / 'processors/assets/fonts/NotoSans-Regular.ttf'
+# A cropped and cleaned sheet sits inside a scanner app's white margin:
+# 2.5% of the short A4 side, the same in portrait and landscape.
+SCAN_MARGIN = .025 * min(A4)
 
 
 def _picture(size):
@@ -38,7 +41,7 @@ def _convert(tmp_path, monkeypatch, sizes, parameters=None, detected=None):
         image.save(path)
         paths.append(path)
 
-    def prepared(image, *, auto_crop=True, enhance_text=True):
+    def prepared(image, *, auto_crop=True, enhance_text=True, render_long_edge=None):
         is_document = detected[len(calls)]
         calls.append((auto_crop, enhance_text))
         # Layout tests receive an already scanned/rectified image; detector and
@@ -78,20 +81,36 @@ def _assert_uniform_complete_fit(reader, page, image, margin=0):
 
 
 @pytest.mark.parametrize('size,expected', [((700, 990), A4), ((990, 700), tuple(reversed(A4)))])
-def test_default_detected_scan_has_exact_iso_a4_and_no_extra_photo_margin(tmp_path, monkeypatch, size, expected):
+def test_default_detected_scan_has_exact_iso_a4_and_only_the_scan_margin(tmp_path, monkeypatch, size, expected):
     result, reader, images, calls = _convert(tmp_path, monkeypatch, [size])
     page = reader.pages[0]
     assert (float(page.mediabox.width), float(page.mediabox.height)) == pytest.approx(expected, abs=1e-4)
-    placement = _assert_uniform_complete_fit(reader, page, images[0])
-    assert placement[:2] == pytest.approx([0, 0], abs=1e-4)
+    placement = _assert_uniform_complete_fit(reader, page, images[0], SCAN_MARGIN)
+    # 700x990 is A4-shaped: the margin is exact on the short side, and the long
+    # side only gains what an equal inset takes from the aspect ratio.
+    assert min(placement[:2]) == pytest.approx(SCAN_MARGIN, abs=1e-4)
+    assert max(placement[:2]) < 1.5 * SCAN_MARGIN
     assert calls == [(True, True)]
     processing = result['metadata']['image_processing']
     assert processing['pages'][0]['rectified'] is True
     layout = processing['layouts'][0]
     assert layout['requested_paper_size'] == 'fit' and layout['effective_paper_size'] == 'A4'
     assert layout['automatic_a4'] is True
+    assert layout['scan_margin_points'] == pytest.approx(SCAN_MARGIN)
     assert layout['page_size_points'] == pytest.approx(expected)
     assert layout['image_placement_points'] == pytest.approx(placement, abs=1e-4)
+
+
+def test_crop_without_cleanup_keeps_the_exact_a4_fit(tmp_path, monkeypatch):
+    # The margin belongs to a cleaned scan; a crop-only page stays edge to edge.
+    result, reader, images, calls = _convert(tmp_path, monkeypatch, [(700, 990)], {'enhance_text': False})
+    page = reader.pages[0]
+    assert (float(page.mediabox.width), float(page.mediabox.height)) == pytest.approx(A4, abs=1e-4)
+    placement = _assert_uniform_complete_fit(reader, page, images[0])
+    assert min(placement[:2]) == pytest.approx(0, abs=1e-4)
+    assert calls == [(True, False)]
+    layout = result['metadata']['image_processing']['layouts'][0]
+    assert layout['automatic_a4'] is True and layout['scan_margin_points'] == 0
 
 
 @pytest.mark.parametrize('size', [(600, 1000), (1000, 600)])
@@ -100,8 +119,9 @@ def test_a4_scan_fits_an_observed_non_a4_rectangle_without_stretching_or_clippin
     page = reader.pages[0]
     expected = A4 if size[0] < size[1] else tuple(reversed(A4))
     assert (float(page.mediabox.width), float(page.mediabox.height)) == pytest.approx(expected, abs=1e-4)
-    placement = _assert_uniform_complete_fit(reader, page, images[0])
-    assert max(placement[:2]) > 0, 'A4 aspect padding preserves the whole observed document'
+    placement = _assert_uniform_complete_fit(reader, page, images[0], SCAN_MARGIN)
+    assert min(placement[:2]) == pytest.approx(SCAN_MARGIN, abs=1e-4)
+    assert max(placement[:2]) > SCAN_MARGIN + 1, 'A4 aspect padding preserves the whole observed document'
 
 
 def test_auto_crop_off_keeps_detected_document_photo_fit_behavior(tmp_path, monkeypatch):
@@ -128,10 +148,11 @@ def test_mixed_batch_resolves_scan_a4_and_photo_fit_independently(tmp_path, monk
     assert len(reader.pages) == 2
     assert (float(reader.pages[0].mediabox.width), float(reader.pages[0].mediabox.height)) == pytest.approx(A4, abs=1e-4)
     assert (float(reader.pages[1].mediabox.width), float(reader.pages[1].mediabox.height)) == pytest.approx((842, 505.2), abs=1e-4)
-    for page, image in zip(reader.pages, images):
-        _assert_uniform_complete_fit(reader, page, image)
+    for page, image, margin in zip(reader.pages, images, (SCAN_MARGIN, 0)):
+        _assert_uniform_complete_fit(reader, page, image, margin)
     layouts = result['metadata']['image_processing']['layouts']
     assert [layout['effective_paper_size'] for layout in layouts] == ['A4', 'fit']
+    assert [layout['scan_margin_points'] for layout in layouts] == pytest.approx([SCAN_MARGIN, 0])
     assert result['metadata']['image_processing']['document_pages'] == 1
 
 
@@ -147,7 +168,7 @@ def test_explicit_paper_and_layout_choices_remain_honored_for_detected_documents
     _assert_uniform_complete_fit(reader, page, images[0], parameters['margin'])
     layout = result['metadata']['image_processing']['layouts'][0]
     assert layout['effective_paper_size'] == parameters['paper_size']
-    assert layout['automatic_a4'] is False
+    assert layout['automatic_a4'] is False and layout['scan_margin_points'] == 0
 
 
 def test_explicit_fit_orientation_and_margin_are_preserved_on_automatic_a4(tmp_path, monkeypatch):
@@ -155,7 +176,9 @@ def test_explicit_fit_orientation_and_margin_are_preserved_on_automatic_a4(tmp_p
     page = reader.pages[0]
     assert (float(page.mediabox.width), float(page.mediabox.height)) == pytest.approx(tuple(reversed(A4)), abs=1e-4)
     _assert_uniform_complete_fit(reader, page, images[0], margin=12)
-    assert result['metadata']['image_processing']['layouts'][0]['automatic_a4'] is True
+    layout = result['metadata']['image_processing']['layouts'][0]
+    assert layout['automatic_a4'] is True
+    assert layout['scan_margin_points'] == 0, 'A chosen margin replaces the scan margin, never adds to it'
 
 
 def test_real_written_full_frame_document_default_converts_to_a4(tmp_path):

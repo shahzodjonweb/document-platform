@@ -784,8 +784,13 @@ def _enhance(image, quad=None, *, region_mask=None, neutralize_paper=False, feat
     return Image.fromarray(result)
 
 
-def prepare_image(image, *, auto_crop=True, enhance_text=True):
-    """Return a new image and content-free outcome flags. Input is already RGB."""
+def prepare_image(image, *, auto_crop=True, enhance_text=True, render_long_edge=None):
+    """Return a new image and content-free outcome flags. Input is already RGB.
+
+    ``render_long_edge`` lets a rectified complete sheet be rendered larger,
+    towards that long side, so a small phone photo prints at scanner density;
+    every other path keeps the source's own resolution.
+    """
     metadata = {'document_detected': False, 'cropped': False, 'enhanced': False}
     if not auto_crop and not enhance_text or min(image.size) < 96:
         return image, metadata
@@ -836,28 +841,39 @@ def prepare_image(image, *, auto_crop=True, enhance_text=True):
             metadata['cropped'] = True
         return image, metadata
     quad = None if details is None else details['envelope']
-    paper_mask = None
+    paper_mask = exterior = None
+    scale = 1.
     if auto_crop and quad is not None:
-        from processors.page_rectification import rectify_page
+        from processors.page_rectification import rectify_document, upsampled_size
         cv2, np = _numeric()
-        rectified = rectify_page(image, quad, cv2, np, qualified_quad=details['quad'],
-                                 material_edges=details.get('material_edges', False))
+        # Upsampling only pays for itself when the page is about to be cleaned.
+        long_edge = render_long_edge if enhance_text else None
+        rectified = rectify_document(image, quad, cv2, np, qualified_quad=details['quad'],
+                                     material_edges=details.get('material_edges', False),
+                                     long_edge=long_edge)
         if rectified is None:
             # If an edge cannot be traced reliably, retain the enclosing crop's
             # conservative behavior rather than guessing through possible
             # writing. Its safety border of desk is whitened, never printed.
             image, paper_mask = _warp(image, quad, with_mask=True,
                                       outline=details.get('outline'))
+            size, _ = upsampled_size(image.size, long_edge)
+            if size != image.size:
+                # The paper mask is resized to the cleanup thumbnail anyway.
+                scale = max(size) / max(image.size)
+                image = image.resize(size, Image.Resampling.LANCZOS)
         else:
-            image = rectified
+            image, exterior, scale = rectified
         metadata['cropped'] = True
     if enhance_text:
         if auto_crop:
             from processors.partial_scan_cleanup import cleanup_paper
             # Only a full-frame page can still show the scanner lid or desk
-            # along the canvas edge; a rectified sheet's edge is its own.
+            # along the canvas edge; a rectified sheet's edge is its own, and
+            # any desk left outside its traced edge is masked, not printed.
             image = cleanup_paper(image, paper_mask=paper_mask,
-                                  frame_guard=not metadata['cropped'])
+                                  frame_guard=not metadata['cropped'],
+                                  exterior=exterior, scale=scale)
         elif quad is not None:
             # Lift shadows on the observed sheet only; its straight envelope
             # would also whiten the desk beside a bowed edge.

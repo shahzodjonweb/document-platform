@@ -37,6 +37,21 @@ MAX_RENDER_PIXELS = 200_000_000
 MAX_OUTPUT_BYTES = 512 * 1024 * 1024
 MAX_ZIP_EXPANDED = 256 * 1024 * 1024
 MAX_ZIP_MEMBERS = 3000
+# A cleaned sheet is rendered for A4 at 200 dpi like a scanner app's page, sits
+# inside a small white margin, and above this size its paper texture costs
+# Flate more than a JPEG of the same page.
+SCAN_LONG_EDGE = 2339
+SCAN_MARGIN = .025
+SCAN_JPEG_PIXELS = 2_000_000
+# That JPEG is encoded like a scanner app's page: quality 78, 4:2:0 chroma.
+# Coloured ink is a pixel with chroma (max - min channel) above 40 that is not
+# near-white paper. Above 0.02% of the page the sheet keeps full chroma, since
+# 4:2:0 greys a thin coloured stroke by about a fifth. Measured on cleaned A4
+# pages: a short pen signature covers 0.09%, a stamp 0.4%, while the colour
+# fringes left on a black-and-white phone photo measured 0.008%.
+SCAN_JPEG_QUALITY = 78
+SCAN_INK_CHROMA = 40
+SCAN_INK_SHARE = .0002
 Image.MAX_IMAGE_PIXELS = MAX_PIXELS
 logging.getLogger('pypdf').setLevel(logging.CRITICAL)
 
@@ -410,24 +425,90 @@ def _artifact(path: Path, page_count: int | None = None, password=None,allow_for
             'page_count': info['page_count'], 'size_bytes': info['size_bytes']}
 
 
-def _page_encoding(picture):
-    """Measure whether a page deflates well before choosing its PDF stream.
+def _page_encoding(picture, cleaned=False):
+    """Choose a page's PDF stream: (encoding, JPEG bytes when already encoded).
 
     ReportLab Flate-encodes a Pillow image's raw pixels, so a 12-megapixel
-    camera photo became a 36 MB page. A cleaned document or a flat graphic
-    deflates to a fraction of its size and stays lossless; anything with camera
-    grain is re-encoded as a metadata-free JPEG stream instead.
+    camera photo became a 36 MB page. A flat graphic deflates to a fraction of
+    its size and stays lossless; anything with camera grain is re-encoded as a
+    metadata-free JPEG stream instead. A cleaned sheet sits between the two:
+    its paper passes the grain gate yet keeps a texture that Flate spends
+    megabytes on at 200 dpi, so over two megapixels the scanner JPEG is encoded
+    here, once, and kept when the page is grainy or the JPEG clearly beats the
+    Flate estimate. Small and flat pages stay Flate, byte for byte.
     """
     import zlib
     width, height = picture.size
+    scan = cleaned and width * height > SCAN_JPEG_PIXELS
     rows = min(height, 48)
     raw = compressed = 0
     for fraction in (.12, .38, .62, .88):
         top = max(0, min(height - rows, round(height * fraction)))
         strip = picture.crop((0, top, width, top + rows)).tobytes()
         raw += len(strip)
-        compressed += len(zlib.compress(strip, 1))
-    return 'flate' if compressed <= raw * .35 else 'jpeg'
+        # ReportLab deflates at zlib's default level; the estimate must match it.
+        compressed += len(zlib.compress(strip, 6 if scan else 1))
+    grainy = compressed > raw * .35
+    if not scan:
+        return ('jpeg' if grainy else 'flate'), None
+    data = _jpeg_stream(picture, scan=True)
+    if grainy:
+        return 'jpeg', data
+    estimate = width * height * len(picture.getbands()) * compressed / raw
+    return ('jpeg', data) if len(data) < .8 * estimate else ('flate', None)
+
+
+def _coloured_ink(picture):
+    """Whether more than SCAN_INK_SHARE of the page is coloured ink.
+
+    Read in 256-row strips, so the page is never copied whole; luminance is
+    only computed for the few chromatic pixels, and the scan stops as soon as
+    the share is passed.
+    """
+    import numpy as np
+    if picture.mode != 'RGB':
+        return False
+    width, height = picture.size
+    limit = SCAN_INK_SHARE * width * height
+    weights = np.array((299, 587, 114), np.uint32)
+    found = 0
+    for top in range(0, height, 256):
+        rgb = np.asarray(picture.crop((0, top, width, min(height, top + 256))))
+        red, green, blue = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+        chroma = np.maximum(np.maximum(red, green), blue) - np.minimum(np.minimum(red, green), blue)
+        rows, columns = np.nonzero(chroma > SCAN_INK_CHROMA)
+        # Near-white paper (luminance 235 and up) is a tint, not ink.
+        found += int(np.count_nonzero(rgb[rows, columns].astype(np.uint32) @ weights < 235_000))
+        if found > limit:
+            return True
+    return False
+
+
+def _jpeg_stream(picture, scan=False):
+    """The page as a metadata-free JPEG stream.
+
+    A photo keeps quality 88 and full chroma. A cleaned scan is encoded like
+    a scanner app's page, at SCAN_JPEG_QUALITY with 4:2:0 chroma and
+    optimized Huffman tables (still baseline), unless it carries coloured ink,
+    which keeps full chroma so thin coloured strokes stay saturated and sharp.
+    """
+    # Pillow copies a source comment into a new JPEG; drop every info field.
+    picture.info.clear()
+    buffer = io.BytesIO()
+    if scan:
+        subsampling = 0 if _coloured_ink(picture) else 2
+        try:
+            picture.save(buffer, 'JPEG', quality=SCAN_JPEG_QUALITY, optimize=True,
+                         subsampling=subsampling)
+        except OSError:
+            # Pillow gives an optimized save a fixed buffer of one byte per
+            # pixel; a page that needs more (noise, glitter, film grain)
+            # fails there, and the plain streaming save always fits.
+            buffer = io.BytesIO()
+            picture.save(buffer, 'JPEG', quality=SCAN_JPEG_QUALITY, subsampling=subsampling)
+    else:
+        picture.save(buffer, 'JPEG', quality=88, subsampling=0)
+    return buffer.getvalue()
 
 
 def _stripped_jpeg(data: bytes):
@@ -464,19 +545,12 @@ def _stripped_jpeg(data: bytes):
     return None
 
 
-def _page_image(picture, encoding, original=None):
-    """Return the ReportLab image source for one page."""
+def _page_image(picture, encoding, data=None):
+    """Return the ReportLab image source for one page; `data` is a JPEG stream to embed as is."""
     from reportlab.lib.utils import ImageReader
     if encoding != 'jpeg':
         return ImageReader(picture)
-    if original is not None:
-        return ImageReader(io.BytesIO(original))
-    # Pillow copies a source comment into a new JPEG; drop every info field.
-    picture.info.clear()
-    buffer = io.BytesIO()
-    picture.save(buffer, 'JPEG', quality=88, subsampling=0)
-    buffer.seek(0)
-    return ImageReader(buffer)
+    return ImageReader(io.BytesIO(data if data is not None else _jpeg_stream(picture)))
 
 
 def _image_pdf(paths: list[Path], parameters: dict, out: Path):
@@ -514,8 +588,12 @@ def _image_pdf(paths: list[Path], parameters: dict, out: Path):
             else:
                 picture = picture.convert('RGB')
             from .document_scan import prepare_image
-            picture, outcome = prepare_image(picture, auto_crop=parameters['auto_crop'],
-                                               enhance_text=parameters['enhance_text'])
+            options = {'auto_crop': parameters['auto_crop'], 'enhance_text': parameters['enhance_text']}
+            if parameters['enhance_text'] and parameters['paper_size'] != 'original':
+                # A cleaned page is rendered for the paper at 200 dpi, like a
+                # scanner app; original paper keeps one pixel per point.
+                options['render_long_edge'] = SCAN_LONG_EDGE
+            picture, outcome = prepare_image(picture, **options)
             outcomes.append(outcome)
             iw, ih = picture.size
             margin = parameters['margin']
@@ -544,18 +622,23 @@ def _image_pdf(paths: list[Path], parameters: dict, out: Path):
                     width, height = height, width
             if max(width, height) > 14_400 or min(width - 2 * margin, height - 2 * margin) <= 0:
                 raise ProcessorError('page_dimensions_invalid')
-            scale = min((width - 2 * margin) / iw, (height - 2 * margin) / ih)
+            scan_margin = 0.
+            if automatic_a4 and margin == 0 and outcome['cropped'] and outcome['enhanced']:
+                # A scanner app leaves a little white around the cleaned sheet.
+                # A crop without cleanup, or any user margin, keeps the exact fit.
+                scan_margin = SCAN_MARGIN * min(width, height)
+            inset = margin + scan_margin
+            scale = min((width - 2 * inset) / iw, (height - 2 * inset) / ih)
             x, y = (width - iw * scale) / 2, (height - ih * scale) / 2
             canvas.setPageSize((width, height))
-            encoding = _page_encoding(picture)
-            original = None
+            encoding, data = _page_encoding(picture, outcome['enhanced'])
             if encoding == 'jpeg' and plain_jpeg and not outcome['cropped'] and not outcome['enhanced']:
-                original = _stripped_jpeg(path.read_bytes())
-            canvas.drawImage(_page_image(picture, encoding, original), x, y,
+                data = _stripped_jpeg(path.read_bytes())
+            canvas.drawImage(_page_image(picture, encoding, data), x, y,
                 iw * scale, ih * scale, mask='auto')
             layouts.append({'requested_paper_size': requested_paper,
                 'effective_paper_size': effective_paper, 'automatic_a4': automatic_a4,
-                'image_encoding': encoding,
+                'image_encoding': encoding, 'scan_margin_points': scan_margin,
                 'page_size_points': [width, height],
                 'image_placement_points': [x, y, iw * scale, ih * scale]})
             canvas.showPage()

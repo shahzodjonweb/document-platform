@@ -3,11 +3,15 @@
 Only an independently qualified, complete single page reaches this module.
 Geometry is estimated at at most 1280 pixels; full-resolution sampling uses
 bounded strips. Gentle curl correction is confined to the page's outer margin
-so a bowed blank edge does not bend otherwise straight printed table rows.
+so a bowed blank edge does not bend otherwise straight printed table rows; the
+interior is straightened separately by ``page_dewarp`` from the page's own
+printed rules and text lines, inside the same single sampling pass.
 """
 import math
 
 from PIL import Image
+
+from processors import page_dewarp
 
 POSE_SIDE = 1280
 MAX_PIXELS = 16_000_000
@@ -281,8 +285,13 @@ def _boundary_geometry(curves, width, height, np):
     return corners, donor
 
 
-def rectify_page(image, envelope, cv2, np, *, qualified_quad=None, material_edges=False):
-    """Return a boundary-fitted image, or None when refinement is uncertain."""
+def _fit(image, envelope, cv2, np, *, qualified_quad=None, material_edges=False):
+    """Fit the paper perimeter on a bounded pose; None when refinement is uncertain.
+
+    Everything needed to sample the original later is returned: the pose
+    quad and its transforms, the Coons donor, the natural output size and the
+    pose image itself, which the interior dewarp uses as its bounded preview.
+    """
     center = envelope.mean(axis=0)
     pose_quad = center + (envelope - center) * 1.012
     pose_quad[:, 0] = np.clip(pose_quad[:, 0], 0, image.width - 1)
@@ -382,10 +391,35 @@ def rectify_page(image, envelope, cv2, np, *, qualified_quad=None, material_edge
     output_height = max(2, round(output_height * scale))
     if output_width * output_height > MAX_PIXELS:
         output_height = max(2, MAX_PIXELS // output_width)
+    return {'pose_quad': pose_quad, 'inverse': inverse, 'donor': donor, 'pose': pose,
+            'size': (output_width, output_height), 'cv2': cv2, 'np': np}
+
+
+def _render(image, fit, size, *, field=None, interpolation=None):
+    """Sample the original once, in bounded strips, through the fitted map.
+
+    A dewarp field moves every output sample inside the unit square before the
+    Coons donor is asked where it lies on the pose, so the interior correction
+    costs no extra pass over the source and keeps the single-crop guarantee.
+    """
+    cv2, np = fit['cv2'], fit['np']
+    inverse, donor, pose_quad = fit['inverse'], fit['donor'], fit['pose_quad']
+    output_width, output_height = size
     # remap has a 32767 dimension limit for its source too. A source ROI keeps
     # sampling single-pass and bounded for an unusually long original image.
     low = np.maximum(0, np.floor(pose_quad.min(axis=0) - 4)).astype(int)
     high = np.minimum(image.size, np.ceil(pose_quad.max(axis=0) + 5)).astype(int)
+    if field is not None:
+        # A field may reach a few pixels past the pose near the traced edge;
+        # the one crop covers wherever the composite map lands.
+        grid = np.linspace(0, 1, 97, dtype=np.float32)
+        du, dv = field(grid[None, :], grid[:, None])
+        x, y = donor(page_dewarp.displaced(grid[None, :], du, np), page_dewarp.displaced(grid[:, None], dv, np))
+        denominator = inverse[2, 0] * x + inverse[2, 1] * y + inverse[2, 2]
+        reached = np.stack([(inverse[0, 0] * x + inverse[0, 1] * y + inverse[0, 2]) / denominator,
+                            (inverse[1, 0] * x + inverse[1, 1] * y + inverse[1, 2]) / denominator]).reshape(2, -1)
+        low = np.minimum(low, np.maximum(0, np.floor(reached.min(axis=1) - 4)).astype(int))
+        high = np.maximum(high, np.minimum(image.size, np.ceil(reached.max(axis=1) + 5)).astype(int))
     if max(high - low) >= 32767 or max(output_width, output_height) >= 32767:
         return None
     source = np.asarray(image.crop((int(low[0]), int(low[1]), int(high[0]), int(high[1]))))
@@ -395,10 +429,102 @@ def rectify_page(image, envelope, cv2, np, *, qualified_quad=None, material_edge
     for first in range(0, output_height, strip_rows):
         last = min(output_height, first + strip_rows)
         v = (np.arange(first, last, dtype=np.float32) / (output_height - 1))[:, None]
-        x, y = donor(u, v)
+        if field is None:
+            x, y = donor(u, v)
+        else:
+            du, dv = field(u, v)
+            x, y = donor(page_dewarp.displaced(u, du, np), page_dewarp.displaced(v, dv, np))
         denominator = inverse[2, 0] * x + inverse[2, 1] * y + inverse[2, 2]
         map_x = ((inverse[0, 0] * x + inverse[0, 1] * y + inverse[0, 2]) / denominator - low[0]).astype(np.float32)
         map_y = ((inverse[1, 0] * x + inverse[1, 1] * y + inverse[1, 2]) / denominator - low[1]).astype(np.float32)
-        result[first:last] = cv2.remap(source, map_x, map_y, cv2.INTER_CUBIC,
+        if field is not None:
+            # Past the photo's own border the nearest pixel is repeated, as
+            # the preview the field was validated on repeats the pose's.
+            map_x = np.clip(map_x, 0, source.shape[1] - 1)
+            map_y = np.clip(map_y, 0, source.shape[0] - 1)
+        result[first:last] = cv2.remap(source, map_x, map_y,
+                                       cv2.INTER_CUBIC if interpolation is None else interpolation,
                                        borderMode=cv2.BORDER_REPLICATE)
     return Image.fromarray(result)
+
+
+def _preview(fit, field=None):
+    """The fitted page at pose resolution: evidence for the dewarp, never output."""
+    cv2, np = fit['cv2'], fit['np']
+    output_width, output_height = fit['size']
+    scale = min(1., POSE_SIDE / max(output_width, output_height))
+    width = max(2, round(output_width * scale))
+    height = max(2, round(output_height * scale))
+    u = np.linspace(0, 1, width, dtype=np.float32)[None, :]
+    v = np.linspace(0, 1, height, dtype=np.float32)[:, None]
+    if field is not None:
+        du, dv = field(u, v)
+        u, v = page_dewarp.displaced(u, du, np), page_dewarp.displaced(v, dv, np)
+    x, y = fit['donor'](u, v)
+    return cv2.remap(fit['pose'], x.astype(np.float32), y.astype(np.float32),
+                     cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+
+
+def rectify_page(image, envelope, cv2, np, *, qualified_quad=None, material_edges=False):
+    """Return a boundary-fitted image, or None when refinement is uncertain."""
+    fit = _fit(image, envelope, cv2, np, qualified_quad=qualified_quad,
+               material_edges=material_edges)
+    if fit is None:
+        return None
+    return _render(image, fit, fit['size'])
+
+
+def upsampled_size(size, long_edge):
+    """The output size towards ``long_edge`` and the factor, never shrinking.
+
+    At most 3x, since detail a phone did not capture cannot be invented, and
+    within the pixel budget.
+    """
+    width, height = size
+    scale = 1.
+    if long_edge is not None:
+        scale = min(max(1., long_edge / max(width, height)),
+                    min(3., math.sqrt(MAX_PIXELS / max(1., width * height))))
+    upsampled = (max(2, round(width * scale)), max(2, round(height * scale)))
+    if upsampled[0] * upsampled[1] > MAX_PIXELS:
+        upsampled = (upsampled[0], max(2, MAX_PIXELS // upsampled[0]))
+    return upsampled, scale
+
+
+def rectify_document(image, envelope, cv2, np, *, qualified_quad=None, material_edges=False,
+                     long_edge=None):
+    """A boundary-fitted, interior-dewarped page and its desk-fringe mask.
+
+    Returns ``(image, exterior, scale)`` or None. ``exterior`` is a uint8 mask
+    at the output size marking the sliver of desk left along the traced edges,
+    or None when the edges are clean. ``long_edge`` asks for the output to be
+    upsampled towards that long side, within the pixel budget, so a small phone
+    photo is placed on the page at a scanner-like density; ``scale`` is the
+    factor actually used, which the cleanup needs to size its filters.
+    """
+    fit = _fit(image, envelope, cv2, np, qualified_quad=qualified_quad,
+               material_edges=material_edges)
+    if fit is None:
+        return None
+    preview = _preview(fit)
+    field, dewarped = page_dewarp.estimate_field(
+        preview, cv2, np, render=lambda candidate: _preview(fit, candidate),
+        donor=fit['donor'], pose_shape=fit['pose'].shape[:2])
+    if field is not None:
+        preview = dewarped
+    exterior = page_dewarp.edge_exterior(preview, cv2, np)
+    if field is not None:
+        # Desk the field reaches past the traced edge is masked whatever
+        # its colour, so a wooden desk cannot print as a wedge.
+        exposed = page_dewarp.exposed_exterior(preview, field, cv2, np)
+        if exposed is not None:
+            exterior = exposed if exterior is None else exterior | exposed
+    output_width, output_height = fit['size']
+    size, scale = upsampled_size(fit['size'], long_edge)
+    interpolation = cv2.INTER_LANCZOS4 if scale > 1.05 else cv2.INTER_CUBIC
+    rendered = _render(image, fit, size, field=field, interpolation=interpolation)
+    if rendered is None:
+        return None
+    if exterior is not None:
+        exterior = np.asarray(Image.fromarray(exterior).resize(size, Image.Resampling.NEAREST))
+    return rendered, exterior, max(size) / max(output_width, output_height)

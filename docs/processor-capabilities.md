@@ -19,7 +19,7 @@ Paths are internal trusted worker values, never client parameters or public API 
 | `pdf.delete_pages` | `pages: "2,4-5"` | Remaining pages; deleting every page rejected. |
 | `pdf.reorder` | `order: [3,1,2]` | Exactly one instance of every input page required. |
 | `pdf.rotate` | `pages: "all"`, `angle: 90` | Angle 90/180/270 degrees; selected page rotations preserved otherwise. |
-| `pdf.images_to_pdf` | `paper_size: "fit"`, `orientation: "auto"`, `margin: 0`, `auto_crop: true`, `enhance_text: true` | PNG/JPEG/WebP in input order. Default document edge detection, perspective correction and shadow/contrast cleanup; each switch can be disabled independently. Fit matches the processed image aspect ratio with an 842 pt long edge and no added border; explicit margins are added around it. Paper fit/A4/Letter/original; orientation auto/portrait/landscape; margin 0..72 pt. Original means 72 dpi/pixel size plus margins. Explicit saved paper, orientation and margin settings remain unchanged. EXIF orientation and alpha handling. |
+| `pdf.images_to_pdf` | `paper_size: "fit"`, `orientation: "auto"`, `margin: 0`, `auto_crop: true`, `enhance_text: true` | PNG/JPEG/WebP in input order. Default document edge detection, perspective correction and shadow/contrast cleanup; each switch can be disabled independently. Fit matches the processed image aspect ratio with an 842 pt long edge and no added border; explicit margins are added around it. With Enhance text on and any paper but original, a straightened sheet is rendered for A4 at 200 dpi (2339-pixel long edge), placed inside a 2.5% white scan margin and embedded as JPEG when that is clearly smaller. Paper fit/A4/Letter/original; orientation auto/portrait/landscape; margin 0..72 pt. Original means 72 dpi/pixel size plus margins. Explicit saved paper, orientation and margin settings remain unchanged. EXIF orientation and alpha handling. |
 | `pdf.to_images` | `format: "png"`, `dpi: 96`, `pages: "all"` | PNG/JPG; 72..200 dpi. Safe ZIP in selected page order, each page decoded after rendering. |
 | `pdf.protect` | `{}` plus separate ephemeral secret | AES-256 using owner-scoped encrypted ten-minute handles; deletion on settlement/expiry is tested. |
 | `pdf.unlock_known` | `{}` plus separate ephemeral secret | Uses the supplied password through an encrypted short-lived handle; wrong password fails without disclosure. |
@@ -41,10 +41,33 @@ conservative matte/crop fallback rather than losing visible content.
 
 With Auto crop on, detected document pages using the default `fit` layout are
 placed on exact ISO A4 in portrait or landscape, with uniform fitting and no
-added user margin. Aspect-required white paper padding preserves all visible
-content. Explicit A4, Letter, original, orientation and margin choices remain
-honored. Ordinary photos and Auto crop off retain the existing image-fit layout.
-Per-page effective layout and image-placement metadata describe the result.
+added user margin. A sheet that was both cropped and cleaned sits inside a white
+scan margin of 2.5% of the short page side (about 14.9 pt), as a scanner app
+leaves it; a crop without Enhance text, or any explicit margin, keeps the exact
+fit. Aspect-required white paper padding preserves all visible content.
+Explicit A4, Letter, original, orientation and margin choices remain honored.
+Ordinary photos and Auto crop off retain the existing image-fit layout.
+Per-page effective layout, image-placement and `scan_margin_points` metadata
+describe the result.
+
+With Enhance text on and any paper size but original, a straightened sheet is
+rendered for A4 at 200 dpi: its long edge is resampled towards 2339 pixels
+(Lanczos, never downscaled, at most 3x and within the 16 MP output bound), so a
+Telegram-sized photo prints near scanner resolution instead of about 110 dpi.
+Original paper keeps one pixel per point.
+
+The same render straightens the page interior (`processors/page_dewarp.py`).
+Long printed rules and text baselines measured on a bounded preview fit a
+smooth displacement grid that levels tilted rows, makes long verticals upright
+and flattens a fold, sampled together with the edge map in the single
+source pass. It runs only with enough agreeing structures, never moves content
+by more than 3% of the page, must reduce the measured deviation without losing
+ink, leaves deliberately sloped print (a rule bracketed by level ones, a chart)
+alone, and otherwise leaves the page byte-identical. Cleanup then treats each
+connected stroke consistently, so a faint rule prints as one continuous line and
+printed text as solid black with anti-aliased edges; it whitens the desk fringe
+along the traced edge, removes isolated dust and faint stray marks on blank
+paper, and keeps punctuation and dotted lines that share a text row.
 
 Enhance text cleans illumination and neutral paper texture while keeping fine
 print, signatures and colored ink. It runs on every page: a detected sheet is
@@ -58,7 +81,13 @@ frame is whitened rather than printed black.
 Both disabled leaves the existing EXIF/alpha/layout conversion unchanged, and an
 upright JPEG upload is embedded as its own DCT stream with every APP/COM segment
 removed. Pages that deflate well stay lossless Flate; pages with camera grain are
-embedded as a metadata-free JPEG (quality 88, full chroma). Detection
+embedded as a metadata-free JPEG (quality 88, full chroma). A cleaned page above
+2 MP keeps a paper texture that Flate pays megabytes for at 200 dpi, so it is
+encoded once as a scanner-style JPEG (quality 78, 4:2:0 chroma, baseline with
+optimized Huffman tables; full 4:4:4 chroma when coloured ink covers more than
+0.02% of the page) and embedded when that JPEG is under 80% of its Flate size,
+estimated from sample strips at zlib's default level, or directly when the page
+is grainy; smaller and flat cleaned pages stay lossless Flate. Detection
 uses a 1280-pixel thumbnail; corrected pages are bounded to 16 MP, while original
 inputs retain the existing 40 MP limit. The worker's wall-clock and CPU budget
 scale with the number of photographs (60 s plus 10 s per image, capped at 450 s)
