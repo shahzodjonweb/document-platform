@@ -13,7 +13,7 @@ parser.add_argument("--key-file", type=Path, required=True)
 parser.add_argument("--known-hosts-file", type=Path, required=True)
 parser.add_argument("--port", type=int, default=22)
 parser.add_argument("--owner", default="shahzodjonweb")
-parser.add_argument("--storage", choices=("variables", "secrets"), default="variables")
+parser.add_argument("--storage", choices=("variables", "secrets"), default="secrets")
 args = parser.parse_args()
 if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.:-]{0,253}", args.host) or not re.fullmatch(r"[a-z_][a-z0-9_-]{0,31}", args.user):
     parser.error("Invalid host/user")
