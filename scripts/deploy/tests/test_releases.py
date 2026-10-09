@@ -169,6 +169,23 @@ class Releases(unittest.TestCase):
         self.assertIn('--force-recreate',self.docker.calls[gateway])
         self.assertTrue(any('http://127.0.0.1:8080/en/app' in c for c in self.docker.calls))
 
+    def test_job_runners_roll_after_the_site_and_a_restore_does_not_wait_for_them(self):
+        # A runner finishes its job before stopping; in the API's command that
+        # drain would keep every replacement from starting.
+        self.deploy('platform',10)
+        ups=[c for c in self.docker.calls if 'up' in c]
+        site=next(i for i,c in enumerate(ups) if 'api' in c)
+        gateway=next(i for i,c in enumerate(ups) if 'gateway' in c)
+        runners=next(i for i,c in enumerate(ups) if 'worker' in c)
+        self.assertLess(site,gateway);self.assertLess(gateway,runners)
+        self.assertNotIn('worker',ups[site]);self.assertNotIn('batches',ups[site])
+        self.assertIn('batches',ups[runners]);self.assertNotIn('--timeout',ups[runners])
+        self.docker.calls.clear();self.docker.fail_health=True
+        with self.assertRaisesRegex(server.DeploymentError,'previous image restored'):
+            self.deploy('platform',11)
+        restored=[c for c in self.docker.calls if 'up' in c and 'worker' in c][-1]
+        self.assertEqual(restored[restored.index('--timeout')+1],'30')
+
     def test_older_run_cannot_override_newer_release(self):
         self.deploy('web',13);active=self.state('web')['active']
         self.assertEqual(self.deploy('web',12)[0]['status'],'ignored_stale_release')

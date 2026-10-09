@@ -272,6 +272,15 @@ async def remember_review(account,draft,screen):
     await sync_to_async(BotConversation.objects.update_or_create)(telegram_user_id=account.telegram_user_id,
                                                                  defaults={'review':shown})
 
+def forget_review(account,draft_id):
+    """Once Generate is tapped the review becomes the job's status: never redraw it as a review.
+
+    A redraw there would offer Generate again for a job already submitted. Only
+    that draft's review is forgotten; one shown since for another draft stays.
+    """
+    BotConversation.objects.filter(telegram_user_id=account.telegram_user_id,
+                                   review__draft_id=str(draft_id)).update(review={})
+
 def refresh_review(account,draft,quote):
     """Redraw the review in the chat after the draft changed elsewhere (the Mini App).
 
@@ -867,6 +876,7 @@ def build_dispatcher():
             elif action=='ai_run':
                 existing=await sync_to_async(ai.submitted)(account,p['quote_id'])
                 job=existing or await sync_to_async(ai.start)(account,p['quote_id'])
+                await sync_to_async(forget_review)(account,p['draft_id'])
                 await sync_to_async(set_prompt)(account)
                 if settings.LOCAL_SYNC_JOBS and not existing:
                     job=await sync_to_async(execute_job)(job.id)

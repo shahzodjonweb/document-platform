@@ -81,11 +81,16 @@ services:
     command: [python, manage.py, runworker]
     mem_limit: 2g
     cpus: 1.5
+    # On SIGTERM the loop finishes the job in hand before exiting
+    # (apps/core/shutdown.py). Ten minutes covers a 10-slide deck and stays
+    # inside the deploy's 900 s per-command limit with `--wait-timeout 180`.
+    stop_grace_period: 600s
   batches:
     <<: *platform
     command: [python, manage.py, runbatches]
     mem_limit: 384m
     cpus: 0.5
+    stop_grace_period: 600s
   cleanup:
     <<: *platform
     command: [python, scripts/cleanup_loop.py]

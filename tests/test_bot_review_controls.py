@@ -200,3 +200,54 @@ def test_the_setup_screen_refuses_what_it_does_not_offer(customer):
         assert response.status_code == 400, (payload, response.content)
     designs = client.get('/api/v1/studio/deck-designs?locale=ru').json()
     assert designs['default_pages'] == 7 and designs['categories'][0]['name'] == 'Классика'
+
+
+def test_once_generate_is_tapped_the_setup_screen_cannot_reopen_the_review(customer):
+    import json
+    from apps.core.services import submit_job
+    from apps.studio.domain import generation_quote
+    from tests.test_platform import login_client
+    save_config('ai', {'mode': 'local_fixture'})
+    review = describe(customer, 'Tides\n\nThe moon pulls the sea.\n\nIt happens twice a day.', service='Slides on a topic')
+    assert BotConversation.objects.get(telegram_user_id=customer.telegram_user_id).review
+    tap(customer, review, 'Generate')
+    # The review became the job's status; it is never redrawn as a review again.
+    assert BotConversation.objects.get(telegram_user_id=customer.telegram_user_id).review == {}
+    # A deck still queued runs from its draft as quoted: the setup screen may not change it.
+    describe(customer, 'Volcanoes\n\nMagma rises.\n\nIt erupts.', service='Slides on a topic')
+    draft = GenerationDraft.objects.filter(account=customer, feature_id=SLIDES).latest('created_at')
+    quote = generation_quote(customer, draft.id, draft.version)
+    submit_job(customer, quote.id, 'setup-while-queued', 'bot')
+    response = login_client(customer).post(f'/api/v1/generation/drafts/{draft.id}/setup',
+                                           data=json.dumps({'pages': 7, 'deck_design': 'royal'}),
+                                           content_type='application/json')
+    assert response.status_code == 409 and response.json()['error']['code'] == 'generation_running'
+    draft.refresh_from_db()
+    assert 'deck_design' not in latest(customer, SLIDES)['options']
+
+
+def test_a_queued_deck_cannot_be_changed_and_a_made_one_cannot_be_restyled(customer):
+    import json
+    from apps.core.services import submit_job
+    from apps.studio.domain import generation_quote
+    from telegram.bot import forget_review
+    from tests.test_platform import login_client
+    review = describe(customer, 'Volcanoes, 6 slides', service='Slides on a topic')
+    draft = GenerationDraft.objects.filter(account=customer, feature_id=SLIDES).latest('created_at')
+    job, _ = submit_job(customer, generation_quote(customer, draft.id, draft.version).id, 'queued-deck', 'bot')
+    # The review's count button cannot change a draft its queued job runs from.
+    refused = tap(customer, review, '➕')
+    assert 'already being made' in body(refused), body(refused)[-300:]
+    assert latest(customer, SLIDES)['options']['length'] == 6
+    # Once it is made, the setup screen does not restyle it either.
+    job.status = 'succeeded'
+    job.save(update_fields=['status'])
+    response = login_client(customer).post(f'/api/v1/generation/drafts/{draft.id}/setup',
+                                           data=json.dumps({'deck_design': 'royal'}), content_type='application/json')
+    assert response.status_code == 409 and response.json()['error']['code'] == 'generation_finished'
+    # Generating one draft does not forget the review since shown for another.
+    describe(customer, 'Rivers, 5 slides', service='Slides on a topic')
+    newer = BotConversation.objects.get(telegram_user_id=customer.telegram_user_id).review
+    assert newer['draft_id'] != str(draft.id)
+    forget_review(customer, draft.id)
+    assert BotConversation.objects.get(telegram_user_id=customer.telegram_user_id).review == newer

@@ -444,10 +444,23 @@ def create_draft(account,data):
     fid,cfg,payload=_prepare_draft(account,data)
     return GenerationDraft.objects.create(account=account,feature_id=fid,encrypted_data=pack(payload),provider_mode=cfg['mode'],expires_at=timezone.now()+timedelta(hours=24))
 
+def draft_jobs(account,draft_id,statuses):
+    """Whether a job in one of `statuses` was submitted for a quote of this draft."""
+    from apps.core.models import Job
+    return Job.objects.filter(account=account,status__in=statuses,
+                              quote__parameters__generation_draft_id=str(draft_id)).exists()
+
 @transaction.atomic
 def update_draft(account,draft_id,data):
     d=GenerationDraft.objects.select_for_update().filter(account=account,id=draft_id,expires_at__gt=timezone.now()).first()
     if not d:raise DomainError('not_found',404)
+    # A queued job checks, when it starts, that its draft is still the one it
+    # was quoted on (validate_generation_quote). Changing the draft before then
+    # — the review's count or language buttons, the deck setup screen, the web
+    # editor — would fail it. A running job has passed that check and works
+    # from its own snapshot, so edits while it runs stay allowed
+    # (tests/test_studio_adversarial.py).
+    if draft_jobs(account,d.id,('queued',)):raise DomainError('generation_running',409)
     if data.get('version')!=d.version:raise DomainError('version_conflict',409)
     original=unpack(d.encrypted_data)
     allowed_keys={'version','title','prompt','source_text','source_ids','output_locale','output_format','options','content','outline'}

@@ -264,8 +264,8 @@ class Deployer:
             self.compose(release, 'run', '--rm', '--no-deps', 'init')
         self.start_services(release)
 
-    def start_services(self, release):
-        services = ['web'] if self.component == 'web' else ['api', 'worker', 'batches', 'cleanup']
+    def start_services(self, release, drain=True):
+        services = ['web'] if self.component == 'web' else ['api', 'cleanup']
         if self.component == 'platform' and self.settings.get('COMPOSE_PROFILES') == 'bot':
             services.append('bot')
         self.compose(release, 'up', '-d', '--wait', '--wait-timeout', '180', *services)
@@ -279,12 +279,20 @@ class Deployer:
         for path in paths:
             self.compose(release, 'exec', '-T', 'gateway', 'wget', '-q', '-O', '/dev/null',
                          'http://127.0.0.1:8080' + path)
+        if self.component == 'platform':
+            # Job runners last, on their own. On SIGTERM a runner finishes the
+            # job in hand (stop_grace_period, apps/core/shutdown.py) and Compose
+            # starts no replacement until every old container has stopped, so
+            # in the same command as the API this would hold the site down for
+            # the drain. Restoring a failed release does not wait for its jobs.
+            stop = [] if drain else ['--timeout', '30']
+            self.compose(release, 'up', '-d', *stop, '--wait', '--wait-timeout', '180', 'worker', 'batches')
 
     def restore(self, release):
         if self.component == 'platform':
             self.compose(release, 'run', '--rm', '--no-deps', 'init',
                          'python', 'manage.py', 'collectstatic', '--noinput')
-        self.start_services(release)
+        self.start_services(release, drain=False)
 
     def reclaim(self, state):
         """Reclaim the disk that superseded releases hold, before unpacking.
