@@ -35,10 +35,11 @@ PLACES = ('side', 'top', 'corner')
 
 
 def _design(accent, second, ground, heading, body, fits, *, bold=False, paper=None, accent_headings=False,
-            art=None, cover_photo=False):
+            art=None, cover_photo=False, composition='classic'):
     return {'accent': accent, 'secondary': second, 'theme': ground, 'heading_font': heading,
             'body_font': body, 'heading_bold': bold, 'paper': paper,
-            'accent_headings': accent_headings, 'art': art, 'cover_photo': cover_photo, 'fits': fits}
+            'accent_headings': accent_headings, 'art': art, 'cover_photo': cover_photo,
+            'composition': composition, 'fits': fits}
 
 
 def _art(pattern, place='side', strength=0.3, *, colour='accent', edge=False):
@@ -483,7 +484,8 @@ def look(style):
         return {'id': '', 'accent': style.get('accent', DEFAULT_ACCENT),
                 'theme': style.get('deck_theme', 'light'), 'secondary': style.get('secondary'), 'paper': None,
                 'accent_headings': False, 'heading_font': DEFAULT_FONTS[0], 'body_font': DEFAULT_FONTS[1],
-                'heading_bold': False, 'art': None, 'cover_photo': False, 'category': ''}
+                'heading_bold': False, 'art': None, 'cover_photo': False, 'category': '',
+                'composition': 'classic'}
     fixed = bool(style.get('accent_fixed') and style.get('accent'))
     theme = style.get('deck_theme') or chosen['theme']
     return {**{key: value for key, value in chosen.items() if key != 'fits'},

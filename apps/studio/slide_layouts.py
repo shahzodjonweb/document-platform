@@ -40,12 +40,12 @@ def draws(*kinds):
 class Ctx:
     """What a drawer needs to know about the slide it is drawing."""
 
-    __slots__ = ('slide', 'roles', 'style', 'index', 'total', 'size', 'locale', 'photo', 'shortened')
+    __slots__ = ('slide', 'roles', 'style', 'index', 'total', 'size', 'locale', 'photo', 'shortened', 'plan')
 
-    def __init__(self, slide, roles, style, index, total, size, locale, photo=False):
+    def __init__(self, slide, roles, style, index, total, size, locale, photo=False, plan=None):
         self.slide, self.roles, self.style = slide, roles, style
         self.index, self.total, self.size, self.locale = index, total, size, locale
-        self.photo, self.shortened = photo, False
+        self.photo, self.shortened, self.plan = photo, False, plan
 
 
 def Z(left, top, width, height):
@@ -235,9 +235,41 @@ def body_text(section):
 # ---------------------------------------------------------------- existing
 
 
+ALIGN = {'left': PP_ALIGN.LEFT, 'center': PP_ALIGN.CENTER, 'right': PP_ALIGN.RIGHT}
+ANCHOR = {'top': MSO_ANCHOR.TOP, 'middle': MSO_ANCHOR.MIDDLE, 'bottom': MSO_ANCHOR.BOTTOM}
+
+
+def _planned(ctx, spec, text, words, *, headline):
+    """One piece of text where a composition's plan puts it (apps/studio/compositions)."""
+    value = clip(ctx, text, words)
+    if spec.upper:
+        value = value.upper()
+    colour = ctx.roles.get(spec.colour, spec.colour)
+    if headline:
+        kit._headline(ctx.slide, Z(*spec.box), value, ctx.roles, size=spec.size, colour=colour,
+                      anchor=ANCHOR[spec.anchor], lines=spec.lines, align=ALIGN[spec.align])
+    else:
+        frame = fitted(ctx, Z(*spec.box), value, size=spec.size, colour=colour, floor=min(12, spec.size),
+                       bold=spec.bold, align=ALIGN[spec.align])
+        frame.vertical_anchor = ANCHOR[spec.anchor]
+
+
+def _planned_cover(ctx, title, line):
+    """A cover or closing slide as its composition's plan lays it out."""
+    plan = ctx.plan
+    _planned(ctx, plan.title, title, 14, headline=True)
+    if plan.rule:
+        box, colour = plan.rule
+        kit._shape(ctx.slide, Z(*box), ctx.roles.get(colour, colour))
+    if line and plan.subtitle:
+        _planned(ctx, plan.subtitle, line, 24, headline=False)
+
+
 @draws('cover')
 def cover(ctx, section, lines):
     roles, photo = ctx.roles, ctx.photo
+    if ctx.plan:
+        return _planned_cover(ctx, section['heading'].strip() or section.get('_title', ''), lines[0] if lines else '')
     title = section['heading'].strip() or section.get('_title', '')
     zone = Z(LEFT, 2.35, WIDTH * 0.5, 2.1) if photo else kit.ZONES['cover_title']
     kit._headline(ctx.slide, zone, clip(ctx, title, 14), roles, size=44,
@@ -254,9 +286,19 @@ def cover(ctx, section, lines):
 @draws('section')
 def section_(ctx, section, lines):
     roles = ctx.roles
+    kicker = lines[0] if lines and section.get('layout') not in (None, '', 'auto') else ''
+    if ctx.plan:
+        plan = ctx.plan
+        if plan.eyebrow:
+            number = f'{ctx.index + 1:02d}' if plan.eyebrow.numeral else f'{ctx.index + 1:02d} / {ctx.total:02d}'
+            _planned(ctx, plan.eyebrow, number, 3, headline=False)
+        title = plan.title_with_kicker if kicker and plan.title_with_kicker else plan.title
+        _planned(ctx, title, section['heading'], 14, headline=True)
+        if kicker and plan.kicker:
+            _planned(ctx, plan.kicker, kicker, 20, headline=False)
+        return
     kit._shape(ctx.slide, kit.ZONES['divider_band'], roles['band'])
     kit._eyebrow(ctx.slide, f'{ctx.index + 1:02d} / {ctx.total:02d}', roles)
-    kicker = lines[0] if lines and section.get('layout') not in (None, '', 'auto') else ''
     zone = Z(LEFT, 2.95, WIDTH * 0.8, 1.2) if kicker else kit.ZONES['divider_title']
     kit._headline(ctx.slide, zone, clip(ctx, section['heading'], 14), roles, size=34,
                   colour=roles['band_ink'], anchor=MSO_ANCHOR.TOP, lines=2)
@@ -330,6 +372,8 @@ def quote(ctx, section, lines):
 @draws('closing')
 def closing(ctx, section, lines):
     roles = ctx.roles
+    if ctx.plan:
+        return _planned_cover(ctx, section['heading'], lines[0] if lines else '')
     kit._headline(ctx.slide, kit.ZONES['cover_title'], clip(ctx, section['heading'], 14), roles,
                   size=44, colour=roles['cover_ink'], lines=3)
     kit._shape(ctx.slide, kit.ZONES['cover_rule'],
