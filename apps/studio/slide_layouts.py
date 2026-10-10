@@ -247,7 +247,7 @@ def _planned(ctx, spec, text, words, *, headline):
     colour = ctx.roles.get(spec.colour, spec.colour)
     if headline:
         kit._headline(ctx.slide, Z(*spec.box), value, ctx.roles, size=spec.size, colour=colour,
-                      anchor=ANCHOR[spec.anchor], lines=spec.lines, align=ALIGN[spec.align])
+                      anchor=ANCHOR[spec.anchor], lines=spec.lines, align=ALIGN[spec.align], bold=spec.bold)
     else:
         frame = fitted(ctx, Z(*spec.box), value, size=spec.size, colour=colour, floor=min(12, spec.size),
                        bold=spec.bold, align=ALIGN[spec.align])

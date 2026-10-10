@@ -684,12 +684,12 @@ def _chrome(slide, roles, style, kind, number=1, quiet=None):
 
 
 def _headline(slide, zone, text, roles, *, size, colour=None, anchor=MSO_ANCHOR.BOTTOM, lines=2,
-              align=PP_ALIGN.LEFT):
+              align=PP_ALIGN.LEFT, bold=False):
     """A headline that shrinks to fit rather than being renamed "Section"."""
     while size > 18 and _wrapped_lines(text, size, zone.width) > lines:
         size -= 2
     frame = _frame(slide.shapes.add_textbox(*zone.box()), anchor)
-    paragraph = _write(frame.paragraphs[0], text, font=HEADING_FONT, size=size,
+    paragraph = _write(frame.paragraphs[0], text, font=HEADING_FONT, size=size, bold=bold,
                        colour=colour or roles.get('heading', roles['ink']), spacing=1.08, align=align)
     _no_bullet(paragraph)
     return paragraph

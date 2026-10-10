@@ -63,7 +63,14 @@ def render(slide, width=960):
                     paint = _gradient(image.size, (x0, y0, x1, y1), value, _angle(shape))
                 else:
                     paint = Image.new('RGBA', image.size, _hex(value) + (255,))
-                layer.paste(paint, (0, 0), mask.point(lambda v: round(v * alpha)))
+                # The paint's own alpha, cut to the shape and its transparency, composited
+                # once: pasting through a mask onto a clear layer would also darken the colour.
+                from PIL import ImageChops
+                coverage = mask.point(lambda v: round(v * alpha))
+                paint = paint.copy()
+                paint.putalpha(ImageChops.multiply(paint.getchannel('A'), coverage))
+                layer = Image.alpha_composite(layer, paint)
+                draw = ImageDraw.Draw(layer)
             outline = _outline(shape)
             if outline:
                 _geometry_mask(draw, described, scale, (x0, y0, x1, y1), shape,

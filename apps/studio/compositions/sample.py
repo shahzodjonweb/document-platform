@@ -70,10 +70,22 @@ def photos():
 
 
 def render(style, path, with_photos=False, locale='en'):
-    """Render the sample deck with `style` (a template_style) to `path`; render_pptx's result."""
+    """Render the sample deck with `style` (a template_style) to `path`; render_pptx's result.
+
+    A throwaway design made by `_style` is in the catalogue only while it renders.
+    """
+    from .. import deck_designs
     from ..slides import render_pptx
-    return render_pptx(deck(locale), Path(path), locale=locale, style={'brand_name': 'Acme Studio', **style},
-                       photos=photos() if with_photos else None)
+    style = dict(style)
+    sample_design = style.pop('_sample', None)
+    if sample_design:
+        deck_designs.DESIGNS[style['deck_design']] = sample_design
+    try:
+        return render_pptx(deck(locale), Path(path), locale=locale, style={'brand_name': 'Acme Studio', **style},
+                           photos=photos() if with_photos else None)
+    finally:
+        if sample_design:
+            deck_designs.DESIGNS.pop(style['deck_design'], None)
 
 
 def sheet(composition, out, accent='#1F3A68', secondary='#E0A458', themes=('light', 'dark', 'bold')):
@@ -97,10 +109,9 @@ def sheet(composition, out, accent='#1F3A68', secondary='#E0A458', themes=('ligh
 def _style(composition, accent, secondary, theme):
     """A template_style that wears `composition` with the given colours (a throwaway design)."""
     from .. import deck_designs
-    key = f'_sample_{composition}'
-    deck_designs.DESIGNS[key] = {**deck_designs._design(accent, secondary, theme, 'Georgia', 'Calibri', 'sample',
-                                                       composition=composition), 'category': 'sample'}
-    return {'deck_design': key}
+    design = {**deck_designs._design(accent, secondary, theme, 'Georgia', 'Calibri', 'sample',
+                                    composition=composition), 'category': 'sample'}
+    return {'deck_design': f'_sample_{composition}', '_sample': design}
 
 
 if __name__ == '__main__':
