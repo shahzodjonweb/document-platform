@@ -412,6 +412,14 @@ CATEGORIES = {
 DESIGNS = {key: {**value, 'category': category}
            for category, (designs, _) in CATEGORIES.items() for key, value in designs.items()}
 DESIGN_IDS = list(DESIGNS)
+# Designs taken out of the catalogue, and the design that replaces each: drafts
+# and revisions that remember a retired id keep a look of the same mood.
+RETIRED = {}
+
+
+def current(key):
+    """The design to use for `key`: itself, or the one that replaced it."""
+    return RETIRED.get(key, key)
 
 # The look a deck has when no design was chosen: what every deck looked like
 # before designs, so old drafts and local authoring render exactly as they did.
@@ -517,14 +525,15 @@ def thumbnail(key, locale='en', width=480):
 
 def chosen(options):
     """The design a customer picked on the review screen, or '' for the model's choice."""
-    picked = (options or {}).get('deck_design')
+    picked = current((options or {}).get('deck_design'))
     return picked if picked in DESIGNS else ''
 
 
 def look(style):
     """The design a deck is drawn with: the chosen one, with the customer's choices on top."""
     style = style or {}
-    chosen = DESIGNS.get(style.get('deck_design'))
+    design_id = current(style.get('deck_design'))
+    chosen = DESIGNS.get(design_id)
     if chosen is None:
         return {'id': '', 'accent': style.get('accent', DEFAULT_ACCENT),
                 'theme': style.get('deck_theme', 'light'), 'secondary': style.get('secondary'), 'paper': None,
@@ -534,7 +543,7 @@ def look(style):
     fixed = bool(style.get('accent_fixed') and style.get('accent'))
     theme = style.get('deck_theme') or chosen['theme']
     return {**{key: value for key, value in chosen.items() if key != 'fits'},
-            'id': style['deck_design'],
+            'id': design_id,
             # A brand colour or one named in the brief is a fact, not a preference;
             # the design's second colour and paper were picked to go with its own.
             'accent': style['accent'] if fixed else chosen['accent'],
