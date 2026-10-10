@@ -178,7 +178,8 @@ def resize(account, draft_id, pages):
 def design_of(draft):
     """The deck design's name if one is set — picked, or inherited by a change — else '' for auto."""
     from apps.studio.domain import unpack
-    design = unpack(draft.encrypted_data).get('options', {}).get('template_style', {}).get('deck_design', '')
+    from apps.studio.deck_designs import current
+    design = current(unpack(draft.encrypted_data).get('options', {}).get('template_style', {}).get('deck_design', ''))
     return design.replace('_', ' ').title()
 
 

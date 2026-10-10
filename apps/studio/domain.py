@@ -292,8 +292,11 @@ def _prepare_draft(account,data,revision_base=None):
     # So does a design chosen there: "Auto" leaves it to the model, as before.
     picked=options.get('deck_design')
     if picked is not None:
-        from .deck_designs import DESIGNS
+        from .deck_designs import DESIGNS,current
+        # A draft saved with a design since retired keeps working, as its replacement.
+        picked=current(picked)
         if fid!=SLIDES or picked!='auto' and picked not in DESIGNS:raise DomainError('invalid_parameters')
+        options={**options,'deck_design':picked}
     if chosen is not None:
         if type(chosen) is not int or not 1<=chosen<=200:raise DomainError('invalid_parameters')
         length,asked=min(chosen,paging.ceiling(account,fmt)),chosen

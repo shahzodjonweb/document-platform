@@ -58,8 +58,14 @@ def test_every_design_renders_its_own_colour_and_fonts(design, tmp_path):
     assert faces(presentation) <= {chosen['heading_font'], chosen['body_font']}
     assert chosen['body_font'] in faces(presentation)
     assert theme_fonts(presentation) == [chosen['heading_font'], chosen['body_font']]
-    ground = str(presentation.slides[1].background.fill.fore_color.rgb)
-    assert (_luminance(ground) < 0.1) == (chosen['theme'] == 'dark')
+    if chosen['composition'] == 'classic':
+        ground = str(presentation.slides[1].background.fill.fore_color.rgb)
+        assert (_luminance(ground) < 0.1) == (chosen['theme'] == 'dark')
+    else:
+        # A composition may set content on a panel over a coloured ground; the
+        # page the text sits on is still the surface, dark on a dark design.
+        roles = palette(chosen['accent'], chosen['theme'], chosen['secondary'], chosen['paper'])
+        assert (_luminance(roles['surface']) < 0.1) == (chosen['theme'] == 'dark')
 
 
 @pytest.mark.parametrize('design', DESIGN_IDS)
@@ -104,6 +110,12 @@ def test_over_a_hundred_designs_in_categories_with_the_classic_ten_unchanged():
             assert design['art']['place'] in PLACES and 0 < design['art']['strength'] <= 0.6, key
             assert (masks / f"{design['art']['pattern']}.png").is_file(), key
     assert {d['theme'] for d in DESIGNS.values()} == {'light', 'dark', 'bold'}
+    # Most designs are arranged by a composition of their own, not only recoloured.
+    from apps.studio.compositions import COMPOSITIONS, compose
+    compose('classic')
+    assert all(d['composition'] in COMPOSITIONS for d in DESIGNS.values())
+    assert sum(d['composition'] == 'classic' for d in DESIGNS.values()) <= 22
+    assert {d['composition'] for d in DESIGNS.values()} == set(COMPOSITIONS)
     assert all(DESIGNS[key]['cover_photo'] for key in CATEGORIES['photo'][0])
 
 
@@ -112,9 +124,9 @@ def test_the_list_the_model_reads_is_grouped_and_stays_small():
     # It is in every deck call's instructions: keep it to a couple of thousand tokens.
     assert len(full) <= 9000
     assert 'Business:\n- corporate:' in full and 'Classic:\n- forest:' in full
-    assert 'horizon:' in full and 'horizon:' not in plain and 'image_query' not in plain
+    assert 'postcard:' in full and 'postcard:' not in plain and 'image_query' not in plain
     data = draft(4, 'pptx')
-    assert 'horizon:' not in provider.request_body(CONFIG, data, 'ai.pptx')['instructions']
+    assert 'postcard:' not in provider.request_body(CONFIG, data, 'ai.pptx')['instructions']
 
 
 def test_the_picker_gets_every_design_with_the_colours_it_renders():
@@ -125,7 +137,9 @@ def test_the_picker_gets_every_design_with_the_colours_it_renders():
     assert [entry['id'] for entry in entries] == DESIGN_IDS
     midnight = next(entry for entry in entries if entry['id'] == 'midnight')
     assert midnight['colours']['accent'] == '#4F8CFF' and midnight['theme'] == 'dark'
-    assert next(entry for entry in entries if entry['id'] == 'sapphire_night')['name'] == 'Sapphire Night'
+    assert next(entry for entry in entries if entry['id'] == 'polar_night')['name'] == 'Polar Night'
+    assert all(entry['preview'].startswith(f"/api/v1/studio/deck-designs/{entry['id']}.png?locale=uz&v=")
+               for entry in entries)
 
 
 def test_what_the_customer_named_wins_over_the_design(tmp_path):
@@ -255,3 +269,24 @@ def test_a_design_picked_on_the_review_screen_beats_the_brief(settings, tmp_path
     with pytest.raises(DomainError, match='invalid_parameters'):
         create_draft(customer, {'prompt': 'A guide to tides', 'options': {'deck_design': 'royal'}})
 
+
+
+@pytest.mark.parametrize('design', DESIGN_IDS)
+def test_every_design_keeps_its_text_readable_and_in_place(design, tmp_path):
+    """The whole sample deck, with and without photos, through the composition checker."""
+    from apps.studio.compositions import sample
+    from apps.studio.compositions.check import problems
+    found = []
+    for with_photos in (False, True):
+        path = tmp_path / 'deck.pptx'
+        result = sample.render({'deck_design': design}, path, with_photos)
+        found += problems(path, result['metadata']['layouts'], DESIGNS[design]['accent'])
+    assert not found, '\n'.join(found)
+
+
+def test_retired_designs_wear_a_design_that_exists():
+    from apps.studio.deck_designs import RETIRED, current
+    assert all(old not in DESIGNS for old in RETIRED)
+    assert all(new in DESIGNS for new in RETIRED.values())
+    for old, new in RETIRED.items():
+        assert look({'deck_design': old})['id'] == new and current(old) == new

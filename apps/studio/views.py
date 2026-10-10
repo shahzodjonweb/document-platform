@@ -67,6 +67,18 @@ def deck_designs(request):
     locale=request.GET.get('locale',request.account.locale)
     return {'categories':catalogue(locale if locale in ('en','uz','ru') else 'en'),'default_pages':SETUP_SLIDES}
 
+@api(auth=False)
+def deck_design_preview(request,design):
+    """A design's cover as the theme picker shows it. No customer data: public and cacheable."""
+    from django.http import HttpResponse
+    from .deck_designs import DESIGNS,thumbnail
+    locale=request.GET.get('locale','en')
+    if design not in DESIGNS or locale not in ('en','uz','ru'):raise DomainError('not_found',404)
+    response=HttpResponse(thumbnail(design,locale),content_type='image/png')
+    # The URL carries the design's version, so a cached copy is never stale.
+    response['Cache-Control']='public, max-age=604800, immutable'
+    return response
+
 @api(('POST',))
 def draft_setup(request,pk):
     """A deck's slide count and design, chosen on the setup screen over what the description says.

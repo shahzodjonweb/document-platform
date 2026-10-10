@@ -212,8 +212,47 @@ def palette(accent, theme='light', secondary=None, paper=None, accent_headings=F
     # accent_text already reads at 4.5:1 on the surface.
     roles['heading'] = roles['accent_text'] if accent_headings else roles['ink']
     roles['soft_ink'] = _reads_on(roles['ink'], roles['accent_soft'], 7.0)
+    # A bright second colour (lime, aqua) makes a dark deck's tint too light for
+    # its near-white ink; darken the tint, keeping its hue, until the ink reads.
+    while dark and contrast_ratio(roles['soft_ink'], roles['accent_soft']) < 7.0:
+        tint_hue, tint_light, tint_saturation = _hls(roles['accent_soft'])
+        if tint_light <= 0.05:
+            break
+        roles['accent_soft'] = _from_hls(tint_hue, tint_light - 0.02, tint_saturation)
+        roles['soft_ink'] = _reads_on(roles['ink'], roles['accent_soft'], 7.0)
     roles['soft_muted'] = _reads_on(roles['muted'], roles['accent_soft'], 4.5)
+    # More fills a composition (apps/studio/compositions) can set text on, each
+    # with the ink that reads there. The design's second colour as a fill:
+    roles['secondary'] = _hex(secondary).upper() if secondary else roles['accent_soft']
+    roles['on_secondary'] = ink_on(roles['secondary'])
+    # A deep, near-black version of the accent for night panels and big grounds.
+    roles['deep'] = _from_hls(hue, 0.16 if not dark else 0.07, min(saturation, 0.6))
+    roles['on_deep'] = ink_on(roles['deep'], 7.0)
+    roles['deep_muted'] = _reads_on(_from_hls(hue, 0.72, min(saturation, 0.25)), roles['deep'], 4.5)
+    # A dark gradient from the accent to the second colour, darkened until white
+    # reads on both ends; and a light one from the surface to the soft tint,
+    # with ink that reads on its darker end.
+    roles['gradient'] = (_darken_for('FFFFFF', accent), _darken_for('FFFFFF', roles['secondary']))
+    roles['on_gradient'] = 'FFFFFF'
+    roles['gradient_light'] = (surface, roles['accent_soft'])
+    roles['on_gradient_light'] = roles['soft_ink']
     return roles
+
+
+def ink_on(fill, target=4.5):
+    """Text that reads on `fill`: from whichever end already reads better, pushed until it does."""
+    hue, _, saturation = _hls(fill)
+    light, dark = 'FFFFFF', _from_hls(hue, 0.12, min(saturation, 0.2))
+    best = light if contrast_ratio(light, fill) >= contrast_ratio(dark, fill) else dark
+    return _reads_on(best, fill, target)
+
+
+def _darken_for(text, fill, target=4.5):
+    """`fill` made darker, keeping its hue, until `text` reads on it."""
+    hue, lightness, saturation = _hls(fill)
+    while contrast_ratio(text, _from_hls(hue, lightness, saturation)) < target and lightness > 0.05:
+        lightness -= 0.02
+    return _from_hls(hue, lightness, saturation)
 
 
 # ---------------------------------------------------------------- content
@@ -632,9 +671,9 @@ def _art(slide, roles, look, kind):
     return slide.shapes.add_picture(io.BytesIO(data), Inches(left), Inches(top), Inches(width), Inches(height))
 
 
-def _chrome(slide, roles, style, kind, number=1):
+def _chrome(slide, roles, style, kind, number=1, quiet=None):
     """Brand name, slide number and logo — the same on every slide."""
-    quiet = roles['cover_muted'] if kind in FILLED else roles['muted']
+    quiet = roles.get(quiet, quiet) or (roles['cover_muted'] if kind in FILLED else roles['muted'])
     brand = (style or {}).get('brand_name', '')
     if brand:
         frame = _frame(slide.shapes.add_textbox(*ZONES['footer'].box()))
@@ -652,13 +691,14 @@ def _chrome(slide, roles, style, kind, number=1):
                                  width=Inches(width), height=Inches(height))
 
 
-def _headline(slide, zone, text, roles, *, size, colour=None, anchor=MSO_ANCHOR.BOTTOM, lines=2):
+def _headline(slide, zone, text, roles, *, size, colour=None, anchor=MSO_ANCHOR.BOTTOM, lines=2,
+              align=PP_ALIGN.LEFT, bold=False):
     """A headline that shrinks to fit rather than being renamed "Section"."""
     while size > 18 and _wrapped_lines(text, size, zone.width) > lines:
         size -= 2
     frame = _frame(slide.shapes.add_textbox(*zone.box()), anchor)
-    paragraph = _write(frame.paragraphs[0], text, font=HEADING_FONT, size=size,
-                       colour=colour or roles.get('heading', roles['ink']), spacing=1.08)
+    paragraph = _write(frame.paragraphs[0], text, font=HEADING_FONT, size=size, bold=bold,
+                       colour=colour or roles.get('heading', roles['ink']), spacing=1.08, align=align)
     _no_bullet(paragraph)
     return paragraph
 
@@ -758,6 +798,14 @@ def question_sections(content, locale='en', script='latn'):
     return sections
 
 
+def _within(zone, box):
+    """`zone` (EMU) cut down to `box` (inches): a photo kept inside a framing card."""
+    left, top = max(zone.left, Inches(box[0])), max(zone.top, Inches(box[1]))
+    right = min(zone.left + zone.width, Inches(box[0] + box[2]))
+    bottom = min(zone.top + zone.height, Inches(box[1] + box[3]))
+    return Zone(left, top, right - left, bottom - top)
+
+
 def render_pptx(content, path, locale='en', role='user_document', style=None, photos=None):
     """One section, one slide — with the first one as the deck's title slide.
 
@@ -809,13 +857,23 @@ def render_pptx(content, path, locale='en', role='user_document', style=None, ph
     size = _deck_size(prepared)
     drawn, pictured = [], []
 
+    from .compositions import Canvas, compose, zone as inch_zone
+    arrangement = compose(look.get('composition', 'classic'))
+    classic = arrangement.name == 'classic'
     for index, (kind, lines, section) in enumerate(prepared):
         slide = deck.slides.add_slide(deck.slide_layouts[6])
         photo = photos.get(section.get('id')) if kind in PHOTO_ZONES else None
-        _ground(slide, roles, kind, photo is not None, mark=not look['art'])
+        # The composition draws everything under the text and, for a cover,
+        # closing slide or divider, says where the text goes.
+        role_of = kind if kind in ('cover', 'closing', 'section') else 'content'
+        plan = arrangement.ground(Canvas(slide, roles, look, role_of), role_of, photo is not None)
         if photo is not None:
             try:
-                if kind == 'cover' and look['cover_photo']:
+                if plan is not None and plan.photo:
+                    place_photo(slide, inch_zone(plan.photo), photo)
+                elif not classic:
+                    place_photo(slide, _within(PHOTO_ZONES[kind], arrangement.content_box), photo)
+                elif kind == 'cover' and look['cover_photo']:
                     # A photo design's cover: the picture across the slide and
                     # the title on a solid panel, never on the picture itself.
                     place_photo(slide, Zone(*(Inches(value) for value in COVER_PHOTO_ZONE)), photo)
@@ -828,10 +886,12 @@ def render_pptx(content, path, locale='en', role='user_document', style=None, ph
                 # layout rather than costing the customer the deck.
                 photo = None
                 kind = layouts.resolve(section, lines, index, total, False)
-        _chrome(slide, roles, style, kind, index + 1)
-        context = Ctx(slide, roles, style, index, total, size, locale, photo is not None)
+        _chrome(slide, roles, style, kind, index + 1, quiet=plan.quiet if plan is not None else None)
+        context = Ctx(slide, roles, style, index, total, size, locale, photo is not None, plan)
         DRAW[kind](context, section, lines)
-        if not (kind == 'cover' and photo is not None):
+        # A classic design's pattern goes in its fixed places; a composition
+        # puts its own pattern where it has room.
+        if classic and not (kind == 'cover' and photo is not None):
             _art(slide, roles, look, kind)
         shortened = shortened or context.shortened
         drawn.append(kind)

@@ -1,4 +1,8 @@
-"""Designs carry decorative art and photo covers, and text is still never set on a picture."""
+"""Classic designs carry decorative art and photo covers, and text is still never set on a picture.
+
+Designs on other compositions place their own art; tests/test_compositions.py and
+tests/test_deck_designs.py check those.
+"""
 import io
 
 import pytest
@@ -41,7 +45,10 @@ def written(slide):
     return [shape for shape in slide.shapes if shape.has_text_frame and shape.text_frame.text.strip()]
 
 
-@pytest.mark.parametrize('design', DESIGN_IDS)
+CLASSIC = [key for key in DESIGN_IDS if DESIGNS[key]['composition'] == 'classic']
+
+
+@pytest.mark.parametrize('design', CLASSIC)
 def test_art_never_sits_under_text(design, tmp_path):
     path = tmp_path / 'deck.pptx'
     render_pptx(full_deck(), path, style={'deck_design': design})
@@ -85,9 +92,19 @@ def test_the_same_pattern_is_stored_once(tmp_path):
     assert len(media) == 2, media
 
 
-def test_a_photo_design_puts_the_picture_across_the_cover_and_the_title_on_a_panel(tmp_path):
+@pytest.fixture
+def classic_photo_design():
+    """A classic design with a full-bleed photo cover, as the old photo category had."""
+    from apps.studio.deck_designs import _art, _design
+    DESIGNS['_classic_photo'] = {**_design('#1F4E79', '#F4A261', 'light', 'Georgia', 'Calibri', 'navy; travel',
+                                    cover_photo=True, art=_art('waves', 'side', 0.25)), 'category': 'photo'}
+    yield '_classic_photo'
+    DESIGNS.pop('_classic_photo')
+
+
+def test_a_photo_design_puts_the_picture_across_the_cover_and_the_title_on_a_panel(tmp_path, classic_photo_design):
     path = tmp_path / 'deck.pptx'
-    result = render_pptx(full_deck(), path, style={'deck_design': 'horizon'}, photos={'s1': photo()})
+    result = render_pptx(full_deck(), path, style={'deck_design': classic_photo_design}, photos={'s1': photo()})
     assert result['metadata']['photos'][0]['slide'] == 1
     cover = Presentation(str(path)).slides[0]
     (picture,) = pictures(cover)
@@ -98,7 +115,7 @@ def test_a_photo_design_puts_the_picture_across_the_cover_and_the_title_on_a_pan
     filled = [shape for shape in shapes if shape.shape_type == MSO_SHAPE_TYPE.AUTO_SHAPE
               and abs(shape.left - panel[0]) < 2 and abs(shape.top - panel[1]) < 2]
     assert filled and shapes.index(filled[0]) > shapes.index(picture), 'the panel is drawn over the photo'
-    roles = palette(DESIGNS['horizon']['accent'], 'light')
+    roles = palette(DESIGNS[classic_photo_design]['accent'], 'light')
     assert str(filled[0].fill.fore_color.rgb) == roles['cover_fill']
     for text in written(cover):
         if text.top < Inches(6.55):
@@ -106,9 +123,9 @@ def test_a_photo_design_puts_the_picture_across_the_cover_and_the_title_on_a_pan
             assert panel[0] <= left and right <= panel[2] and panel[1] <= top and bottom <= panel[3], text.text_frame.text
 
 
-def test_without_a_picture_a_photo_design_has_its_ordinary_cover(tmp_path):
+def test_without_a_picture_a_photo_design_has_its_ordinary_cover(tmp_path, classic_photo_design):
     path = tmp_path / 'deck.pptx'
-    render_pptx(full_deck(), path, style={'deck_design': 'horizon'})
+    render_pptx(full_deck(), path, style={'deck_design': classic_photo_design})
     cover = Presentation(str(path)).slides[0]
     (art,) = pictures(cover)
     assert art.left > Inches(10), 'only the side pattern'

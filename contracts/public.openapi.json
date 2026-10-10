@@ -10405,6 +10405,9 @@
                                   },
                                   "type": "object"
                                 },
+                                "composition": {
+                                  "type": "string"
+                                },
                                 "heading_font": {
                                   "type": "string"
                                 },
@@ -10419,6 +10422,9 @@
                                 },
                                 "photo": {
                                   "type": "boolean"
+                                },
+                                "preview": {
+                                  "type": "string"
                                 },
                                 "theme": {
                                   "enum": [
@@ -10500,6 +10506,79 @@
             "customerSession": []
           }
         ]
+      }
+    },
+    "/studio/deck-designs/{design}.png": {
+      "get": {
+        "description": "A design's cover as the theme picker shows it, with a sample title in `locale`. Public and immutable: the catalogue's `preview` URL carries the design's version.",
+        "operationId": "getDeckDesignPreview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "design",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "enum": [
+                "en",
+                "uz",
+                "ru"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "v",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/png": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "PNG cover thumbnail"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": []
       }
     },
     "/telegram/local/messages": {
