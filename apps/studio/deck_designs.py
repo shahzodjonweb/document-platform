@@ -453,6 +453,7 @@ def catalogue(locale='en'):
     """
     from .slides import palette
     column = {'en': 0, 'uz': 1, 'ru': 2}.get(locale, 0)
+    stamp = version()
     groups = []
     for category, (designs, names) in CATEGORIES.items():
         entries = []
@@ -462,12 +463,56 @@ def catalogue(locale='en'):
                             shown['accent_headings'])
             entries.append({'id': key, 'name': key.replace('_', ' ').title(), 'theme': shown['theme'],
                             'photo': shown['cover_photo'], 'pattern': (shown['art'] or {}).get('pattern', ''),
+                            'composition': shown['composition'],
+                            'preview': f'/api/v1/studio/deck-designs/{key}.png?locale={locale}&v={stamp}',
                             'heading_font': shown['heading_font'], 'body_font': shown['body_font'],
                             'colours': {role: '#' + roles[role] for role in (
                                 'accent', 'surface', 'cover_fill', 'cover_ink', 'heading', 'ink', 'muted',
                                 'accent_soft', 'card')}})
         groups.append({'id': category, 'name': names[column], 'designs': entries})
     return groups
+
+
+# The cover a picker shows for each design, in the viewer's language.
+SAMPLE_COVER = {
+    'en': ('Your presentation title', 'A subtitle that says what it is about'),
+    'uz': ('Taqdimotingiz nomi', 'Mavzuni qisqacha tushuntiruvchi izoh'),
+    'ru': ('Название вашей презентации', 'Подзаголовок о том, о чём она'),
+}
+
+
+def version():
+    """Changes whenever a design or the code that draws one changes: thumbnails are cached by it."""
+    import hashlib
+    from pathlib import Path
+    digest = hashlib.sha256(repr(sorted((key, sorted(value.items())) for key, value in DESIGNS.items())).encode())
+    for source in sorted((Path(__file__).resolve().parent / 'compositions').glob('*.py')):
+        digest.update(source.read_bytes())
+    digest.update((Path(__file__).resolve().parent / 'slides.py').read_bytes())
+    return digest.hexdigest()[:12]
+
+
+@functools.lru_cache(maxsize=512)
+def thumbnail(key, locale='en', width=480):
+    """PNG of `key`'s cover with a sample title, as the theme picker shows it."""
+    import io
+    import tempfile
+    from pathlib import Path
+    from .compositions.preview import render
+    from .slides import render_pptx
+    from pptx import Presentation
+    title, subtitle = SAMPLE_COVER.get(locale, SAMPLE_COVER['en'])
+    section = lambda sid, heading, body, layout: {'id': sid, 'heading': heading, 'body': body, 'notes': '',
+                                                  'layout': layout, 'items': [], 'columns': [], 'image_query': ''}
+    content = {'title': title, 'questions': [], 'citations': [], 'sections': [
+        section('s1', title, subtitle, 'cover'), section('s2', title, subtitle, 'bullets')]}
+    with tempfile.TemporaryDirectory() as folder:
+        path = Path(folder) / 'thumbnail.pptx'
+        render_pptx(content, path, locale=locale, style={'deck_design': key})
+        image = render(Presentation(str(path)).slides[0], width)
+    buffer = io.BytesIO()
+    image.save(buffer, 'PNG', optimize=True)
+    return buffer.getvalue()
 
 
 def chosen(options):
