@@ -212,6 +212,14 @@ def palette(accent, theme='light', secondary=None, paper=None, accent_headings=F
     # accent_text already reads at 4.5:1 on the surface.
     roles['heading'] = roles['accent_text'] if accent_headings else roles['ink']
     roles['soft_ink'] = _reads_on(roles['ink'], roles['accent_soft'], 7.0)
+    # A bright second colour (lime, aqua) makes a dark deck's tint too light for
+    # its near-white ink; darken the tint, keeping its hue, until the ink reads.
+    while dark and contrast_ratio(roles['soft_ink'], roles['accent_soft']) < 7.0:
+        tint_hue, tint_light, tint_saturation = _hls(roles['accent_soft'])
+        if tint_light <= 0.05:
+            break
+        roles['accent_soft'] = _from_hls(tint_hue, tint_light - 0.02, tint_saturation)
+        roles['soft_ink'] = _reads_on(roles['ink'], roles['accent_soft'], 7.0)
     roles['soft_muted'] = _reads_on(roles['muted'], roles['accent_soft'], 4.5)
     # More fills a composition (apps/studio/compositions) can set text on, each
     # with the ink that reads there. The design's second colour as a fill:

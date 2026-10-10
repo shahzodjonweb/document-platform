@@ -114,10 +114,56 @@ def _style(composition, accent, secondary, theme):
     return {'deck_design': f'_sample_{composition}', '_sample': design}
 
 
+def design_from(spec):
+    """A catalogue design from a JSON spec (see `designs_sheet`)."""
+    from ..deck_designs import _art, _design
+    art = spec.get('art')
+    return _design(spec['accent'], spec['secondary'], spec['theme'], spec['heading'], spec['body'], spec['fits'],
+                   bold=spec.get('bold', False), paper=spec.get('paper'),
+                   accent_headings=spec.get('accent_headings', False),
+                   art=_art(art['pattern'], art.get('place', 'side'), art.get('strength', 0.3),
+                            colour=art.get('colour', 'accent'), edge=art.get('edge', False)) if art else None,
+                   cover_photo=spec.get('cover_photo', False), composition=spec['composition'])
+
+
+def designs_sheet(specs, out, slides=(0, 1, 2, 9)):
+    """Render each design in `specs` ({id: spec}) as cover, divider, content and closing; return problems.
+
+    A spec: {"accent": "#1F3A68", "secondary": "#E0A458", "theme": "light|dark|bold",
+    "heading": "Georgia", "body": "Calibri", "composition": "arch", "fits": "...",
+    optional "paper", "bold", "accent_headings", "cover_photo",
+    "art": {"pattern": "dots", "strength": 0.3}}.
+    The checker runs on the whole sample deck for each, with and without photos.
+    """
+    from . import preview
+    from .check import problems
+    images, labels, found = [], [], []
+    with tempfile.TemporaryDirectory() as folder:
+        for key, spec in specs.items():
+            design = {**design_from(spec), 'category': 'sample'}
+            for with_photos in (False, True):
+                path = Path(folder) / f'{key}-{with_photos}.pptx'
+                result = render({'deck_design': f'_sample_{key}', '_sample': design}, path, with_photos)
+                found += [f'{key} photos={with_photos}: {problem}'
+                          for problem in problems(path, result['metadata']['layouts'], spec['accent'])]
+                if not with_photos:
+                    pictures = preview.slide_images(path, width=420)
+                    for index in slides:
+                        images.append(pictures[index])
+                        labels.append(f'{key} · {spec["composition"]} · {spec["theme"]}')
+    preview.contact_sheet(images, columns=len(slides) * 2, labels=labels).save(out)
+    return found
+
+
 if __name__ == '__main__':
+    import json
     import os
     import sys
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
     import django
     django.setup()
-    print(sheet(sys.argv[1], sys.argv[2]))
+    if sys.argv[1] == '--designs':
+        problems_found = designs_sheet(json.loads(Path(sys.argv[2]).read_text()), sys.argv[3])
+        print('\n'.join(problems_found) or 'no problems')
+    else:
+        print(sheet(sys.argv[1], sys.argv[2]))
