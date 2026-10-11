@@ -1,5 +1,6 @@
-"""Public API boundaries for images-to-PDF: scanning has no switches, old ones are dropped."""
+"""Public API boundaries for images-to-PDF: scanning has no switches; old clients' ones are dropped and logged."""
 import io
+import logging
 
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -91,10 +92,14 @@ def test_image_quotes_normalize_to_the_layout_alone(image_client, parameters, om
     {'auto_crop': False, 'enhance_text': False, 'paper_size': 'A4'},
     {'auto_crop': 'yes', 'enhance_text': None},
 ], ids=['crop-off', 'enhance-off', 'both-off-with-a4', 'odd-values'])
-def test_legacy_scan_switches_are_dropped_from_confirmed_job(settings, image_client, scanner_models, legacy):
-    # A saved web draft or an old client still sends the retired switches.
-    response = request_quote(image_client, legacy)
+def test_legacy_scan_switches_are_dropped_from_confirmed_job(settings, image_client, scanner_models, legacy, caplog):
+    # A web tab opened before the switches were retired still sends them: the
+    # quote drops them and the log says so, so the guard can go once it is quiet.
+    with caplog.at_level(logging.WARNING, logger='apps.core.services'):
+        response = request_quote(image_client, legacy)
     assert response.status_code == 201, response.content
+    sent = ', '.join(key for key in ('auto_crop', 'enhance_text') if key in legacy)
+    assert f'dropped retired images-to-PDF settings ({sent}) sent by an out-of-date client' in caplog.text
     quote = response.json()
     expected = {**DEFAULTS, **{key: value for key, value in legacy.items() if key == 'paper_size'}}
     assert quote['normalized_parameters'] == expected
@@ -123,17 +128,22 @@ def test_legacy_scan_switches_are_dropped_from_confirmed_job(settings, image_cli
     assert Job.objects.count() == 1
 
 
-def test_queued_job_saved_with_switches_still_runs(settings, image_client, scanner_models):
-    # A job queued before the switches were retired is normalized again when it runs.
+def test_queued_job_saved_with_switches_runs_once_the_deploy_cleans_it(settings, image_client, scanner_models):
+    # A job queued before the switches were retired is cleaned by core 0018;
+    # the processor itself no longer knows them.
+    import importlib
+    from django.apps import apps as django_apps
     from apps.core.services import execute_job
     response = request_quote(image_client)
     assert response.status_code == 201, response.content
     confirmed = submit(image_client, response.json()['id'])
     job = Job.objects.get(pk=confirmed.json()['id'])
-    Job.objects.filter(pk=job.pk).update(parameters={**job.parameters, 'auto_crop': False, 'enhance_text': True})
+    Job.objects.filter(pk=job.pk).update(parameters={**job.parameters, 'auto_crop': True, 'enhance_text': True})
+    importlib.import_module('apps.core.migrations.0018_retire_scan_switch_keys').retire_scan_switches(django_apps, None)
     execute_job(job.id)
     job.refresh_from_db()
     assert job.status == 'succeeded', job.error_code
+    assert job.parameters == DEFAULTS
 
 
 def test_worker_logs_photos_whose_scan_failed(settings, image_client, monkeypatch, caplog):

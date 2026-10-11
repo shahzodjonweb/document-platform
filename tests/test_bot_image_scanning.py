@@ -1,7 +1,8 @@
 """Images to PDF in the bot: every photo is scanned, with no switches to set.
 
-Old scan-switch buttons stay in chats forever; tapping one, or running a draft
-saved with those switches, still works and simply drops them.
+Crop and enhance were switches from 6 to 11 October 2026. The deploy that
+retired them cleaned the drafts and marked the buttons still stored; tapping
+an old one explains that both are automatic now and redraws the task.
 """
 import asyncio
 import html
@@ -9,12 +10,14 @@ import io
 from xml.etree import ElementTree
 
 import pytest
-from aiogram.methods import EditMessageText, SendMessage
+from aiogram.methods import AnswerCallbackQuery, EditMessageText, SendMessage
 from aiogram.types import PhotoSize, Update
 from PIL import Image
 
+from apps.core.errors import DomainError
 from apps.core.models import Account, BotCallback, BotDraft, Job, UsageLedger
-from telegram.bot import callback, option_summary
+from telegram.bot import COPY, callback, option_summary
+from telegram.errors import bot_error
 from telegram.ux_copy import UX
 from tests.test_bot_transport import Harness
 
@@ -120,32 +123,87 @@ def test_fit_page_choice_is_localized_and_preserves_explicit_margin(locale):
     assert ref.payload['draft_id'] == draft.id
 
 
-@pytest.mark.parametrize('old', [{'auto_crop': False}, {'enhance_text': False}, {'auto_crop': True}])
-def test_an_old_switch_button_still_in_a_chat_is_accepted_and_dropped(settings, old):
+def deploy():
+    """Run the data migration that retired the scan switches' stored keys."""
+    import importlib
+    from django.apps import apps as django_apps
+    importlib.import_module('apps.core.migrations.0018_retire_scan_switch_keys').retire_scan_switches(django_apps, None)
+
+
+def old_switch_button(harness, key):
+    """A crop or enhance button as the bot drew it before the switches were retired."""
+    draft = BotDraft.objects.get()
+    binding = next(ref.payload for ref in settings_refs(harness))
+    return asyncio.run(callback(draft.account, 'settings', {'draft_id': binding['draft_id'], 'version': binding['version'],
+                                                          'parameters': {key: False}, 'advanced': False}))
+
+
+def answers(harness):
+    return [call for call in harness.session.calls if isinstance(call, AnswerCallbackQuery)]
+
+
+@pytest.mark.parametrize('locale', ['en', 'uz', 'ru'])
+@pytest.mark.parametrize('key', ['auto_crop', 'enhance_text'])
+@pytest.mark.parametrize('migrated', [True, False], ids=['migrated', 'unmigrated'])
+@pytest.mark.parametrize('moved_on', [False, True], ids=['same-screen', 'task-changed-since'])
+def test_an_old_crop_or_enhance_button_explains_and_redraws_the_task(settings, locale, key, migrated, moved_on):
     settings.LOCAL_SYNC_JOBS = False
-    harness = ready()
+    harness = ready(locale)
     harness.document('image', picture(), name='document.jpg')
     harness.command('/paper Letter')
     harness.command('/settings')
+    old_button = old_switch_button(harness, key)
+    if migrated:
+        deploy()
+        assert BotCallback.objects.get(pk=old_button).payload['retired'] == 'scan_switches'
+    expected = {**DEFAULTS, 'paper_size': 'Letter'}
+    if moved_on:
+        harness.command('/margin 12')
+        expected['margin'] = 12
     draft = BotDraft.objects.get()
-    # The button as the bot drew it before the switches were retired.
-    binding = next(ref.payload for ref in settings_refs(harness))
-    old_button = asyncio.run(callback(draft.account, 'settings',
-                                      {**binding, 'parameters': old, 'advanced': False}))
     harness.click(old_button)
+    answer = answers(harness)[-1]
+    assert (answer.text, answer.show_alert) == (UX[locale]['scan_switches_retired'], True)
     changed = BotDraft.objects.get()
-    assert changed.parameters == {**DEFAULTS, 'paper_size': 'Letter'}
-    assert changed.version == draft.version + 1 and changed.quote.parameters == changed.parameters
-    assert UX['en']['document_scan_hint'] in html.unescape(screen(harness).text)
+    assert changed.parameters == expected and changed.version == draft.version
+    redrawn = screen(harness)
+    assert isinstance(redrawn, EditMessageText) and redrawn.message_id == 100
+    assert_no_switches(harness, locale)
+    assert COPY[locale]['controls_expired'] not in html.unescape(redrawn.text)
     harness.click(harness.action('run'))
-    assert Job.objects.get().parameters == {**DEFAULTS, 'paper_size': 'Letter'}
+    assert Job.objects.get().parameters == expected
 
 
-def test_a_draft_saved_with_switches_runs_without_them(settings):
+@pytest.mark.parametrize('locale', ['en', 'uz', 'ru'])
+@pytest.mark.parametrize('gone', ['discarded', 'other-tool'])
+def test_an_old_switch_button_whose_task_is_gone_only_explains(locale, gone):
+    harness = ready(locale)
+    harness.document('image', picture(), name='document.jpg')
+    harness.command('/settings')
+    old_button = old_switch_button(harness, 'auto_crop')
+    deploy()
+    if gone == 'discarded':
+        BotDraft.objects.all().delete()
+    else:
+        BotDraft.objects.update(feature_id='pdf.compress', parameters={})
+    before = len(harness.session.calls)
+    harness.click(old_button)
+    after = harness.session.calls[before:]
+    assert [type(call) for call in after] == [AnswerCallbackQuery], 'only the notice; the message is left as it was'
+    assert after[0].text == UX[locale]['scan_switches_retired']
+
+
+def test_a_draft_saved_with_switches_is_cleaned_at_deploy_and_runs(settings):
     settings.LOCAL_SYNC_JOBS = False
     harness = ready()
     harness.document('image', picture(), name='document.jpg')
-    BotDraft.objects.update(parameters={**DEFAULTS, 'auto_crop': False, 'enhance_text': True})
+    BotDraft.objects.update(parameters={**DEFAULTS, 'auto_crop': True, 'enhance_text': True})
+    version = BotDraft.objects.get().version
+    deploy()
+    draft = BotDraft.objects.get()
+    assert draft.parameters == DEFAULTS and draft.version == version, 'the screen on show keeps working'
+    harness.command('/settings')
+    assert_no_switches(harness, 'en')
     harness.command('/margin 12')
     draft = BotDraft.objects.get()
     assert draft.parameters == {**DEFAULTS, 'margin': 12} and draft.quote.parameters == draft.parameters
@@ -153,13 +211,10 @@ def test_a_draft_saved_with_switches_runs_without_them(settings):
     assert Job.objects.get().parameters == {**DEFAULTS, 'margin': 12}
 
 
-@pytest.mark.parametrize('locale', ['en', 'uz', 'ru'])
-def test_summary_of_a_saved_draft_ignores_its_old_switches(locale):
-    from types import SimpleNamespace
-    draft = SimpleNamespace(feature_id='pdf.images_to_pdf',
-                            parameters={'paper_size': 'A4', 'auto_crop': False, 'enhance_text': True})
-    account = SimpleNamespace(locale=locale)
-    summary = html.unescape(option_summary(account, draft))
-    assert 'A4' in summary
-    assert 'True' not in summary and 'False' not in summary and 'auto_crop' not in summary
-    assert draft.parameters == {'paper_size': 'A4', 'auto_crop': False, 'enhance_text': True}
+def test_typed_scan_switches_are_an_unknown_setting(settings):
+    harness = ready()
+    harness.document('image', picture(), name='document.jpg')
+    draft = BotDraft.objects.get()
+    harness.command('/parameters {"auto_crop": false}')
+    assert BotDraft.objects.get().parameters == draft.parameters
+    assert bot_error(DomainError('invalid_parameters'), 'en') in html.unescape(screen(harness).text)

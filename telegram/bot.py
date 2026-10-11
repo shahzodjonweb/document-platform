@@ -22,11 +22,10 @@ from django.utils import timezone
 from apps.core.models import BotConversation, BotCallback, BotDraft, BotInputReceipt, AuthChallenge, FileAsset, Job
 from apps.core.identity import resolve_account, approve_challenge_id
 from apps.core.policy import catalog, usage_snapshot
-from apps.core.services import upload_file, create_quote, submit_job, execute_job, storage_path, cancel_job
+from apps.core.services import upload_file, create_quote, submit_job, execute_job, storage_path, cancel_job, RETIRED_IMAGE_SWITCHES
 from apps.core import funnel, storage
 from apps.core.serializers import quote_data
 from apps.core.errors import DomainError, error_data
-from processors.engine import LEGACY_IMAGE_SWITCHES
 
 from .ux_copy import UX, STATUS, LEGACY_COPY, TOOL_NAMES, PROMPT_EXAMPLES, LOCALES, counted
 from .errors import bot_error
@@ -60,6 +59,11 @@ REUSABLE={'home','menu','account','plans','subscription','language','help','rece
 def usable(ref,now=None):
     """Whether a stored button may still be acted on."""
     return bool(ref) and (ref.expires_at>(now or timezone.now()) or ref.action in REUSABLE)
+def retired_switch(ref):
+    """An old crop or enhance button from images to PDF (6-11 Oct 2026): core
+    0018 marked the stored ones; the keys themselves are checked as well."""
+    p=ref.payload if ref and ref.action=='settings' else {}
+    return p.get('retired')=='scan_switches' or bool(set(p.get('parameters') or {})&set(RETIRED_IMAGE_SWITCHES))
 async def callback(account,action,payload=None):
     token=secrets.token_urlsafe(12)
     # Cleanup deletes a button once it expires, so one that opens a screen is
@@ -157,8 +161,6 @@ def option_summary(account,draft):
     labels={'angle':'rotate_label','pages':'pages','order':'page_order','ranges':'split_groups','format':'format_label','dpi':None,'paper_size':'paper_label','orientation':None,'margin':'margin_button'}
     result=[]
     for key,value in draft.parameters.items():
-        # A draft saved before scanning lost its switches may still hold them.
-        if key in LEGACY_IMAGE_SWITCHES: continue
         label=text(account,labels[key]) if labels.get(key) else 'DPI' if key=='dpi' else ''
         if key=='orientation': value=text(account,{'auto':'auto','portrait':'portrait','landscape':'landscape'}.get(value,'auto'))
         if isinstance(value,list): value=', '.join(map(str,value))
@@ -822,7 +824,10 @@ def build_dispatcher():
             except DomainError as exc: await safe_error(query.message,ref.account,exc)
             return
         if ref and ref.account.telegram_user_id!=query.from_user.id: return await query.answer(text(sender_language(query.from_user),'controls_expired'),show_alert=True)
-        await query.answer()  # Stop Telegram's spinner before any costly action.
+        # Stop Telegram's spinner before any costly action. Crop and enhance
+        # are automatic now: their old buttons are answered with a notice.
+        retired=usable(ref) and retired_switch(ref)
+        await (query.answer(text(ref.account,'scan_switches_retired'),show_alert=True) if retired else query.answer())
         if not usable(ref):
             # An old button for something that has to be fresh, or one no longer
             # known: its message becomes the menu rather than a dead end.
@@ -895,6 +900,10 @@ def build_dispatcher():
             elif action=='start_tool':
                 draft=await sync_to_async(start_tool)(account,p['feature_id'],p)
                 await controls(message,account,draft,True)
+            elif action=='settings' and retired:
+                # The task they belong to, if still under way, is redrawn without them.
+                draft=await sync_to_async(lambda:BotDraft.objects.filter(account=account,pk=p.get('draft_id'),feature_id='pdf.images_to_pdf',state='collecting').first())()
+                if draft: await controls(message,account,draft,True,advanced=p.get('advanced',False))
             elif action=='settings':
                 draft=await sync_to_async(configure)(account,parameters=p['parameters'],replace=p.get('replace',False),binding=p)
                 await controls(message,account,draft,True,advanced=p.get('advanced',False))

@@ -230,8 +230,11 @@ tests/test_document_scanner.py::test_seven_phone_photos_fit_the_real_sandbox_mem
 # Document scanning engine: privacy of uploaded photos
 tests/test_image_scanning.py::test_untouched_jpeg_upload_is_embedded_as_its_own_pixels_without_metadata
 
-# Public API quote -> confirmed job: retired scan switches are dropped
+# Public API quote -> confirmed job: an out-of-date client's retired scan switches are dropped and logged
 tests/test_image_scanning_api.py::test_legacy_scan_switches_are_dropped_from_confirmed_job[crop-off]
+
+# Deploy that retired the scan switches: drafts, buttons and unfinished jobs cleaned, finished jobs kept
+tests/test_retire_scan_switch_keys.py::test_the_deploy_cleans_what_can_still_run_and_keeps_the_record
 
 # Telegram bot photo scan flow
 tests/test_bot_image_scanning.py::test_direct_photo_and_image_uploads_have_defaults_and_can_start_immediately[True-en]
