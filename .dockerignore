@@ -18,3 +18,7 @@ image.tar.gz
 
 # Knowledge-graph index must stay out of the build context
 graphify-out/
+
+# Scanner weights fetched on a dev machine; the image fetches its own.
+processors/scanner/models/*.onnx
+!processors/scanner/models/text_sr_x3.onnx

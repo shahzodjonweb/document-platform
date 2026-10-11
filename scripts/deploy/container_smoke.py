@@ -76,6 +76,42 @@ def wait_for_cleanup_cycle(compose, env, *, timeout=150, interval=2):
         time.sleep(min(interval, remaining))
 
 
+# One generated document photo through the real sandbox child, inside the
+# read-only worker with its production memory limit: the scanner's weights
+# must be in the image (nothing is downloaded) and a scan must fit.
+SCANNER_CHECK = """import tempfile
+from pathlib import Path
+from PIL import Image, ImageDraw, ImageFont
+from processors.scanner import load_models
+from processors.sandbox import execute_sandbox, execution_timeout
+load_models()
+photo = Image.new('RGB', (700, 900), (46, 64, 54))
+draw = ImageDraw.Draw(photo)
+draw.polygon(((130, 80), (570, 125), (590, 810), (70, 750)), fill=(244, 244, 242))
+font = ImageFont.truetype('processors/assets/fonts/NotoSans-Regular.ttf', 23)
+for number, top in enumerate(range(180, 600, 48), 1):
+    draw.text((155, top), f'{number}. Document scan 123', font=font, fill=(35, 35, 35))
+with tempfile.TemporaryDirectory() as folder:
+    source = Path(folder) / 'photo.png'
+    photo.save(source)
+    result = execute_sandbox('pdf.images_to_pdf', [source], {}, Path(folder) / 'out',
+                             timeout=execution_timeout('pdf.images_to_pdf', 1))
+processing = result['metadata']['image_processing']
+assert processing['document_pages'] == 1, 'the generated page was not scanned'
+assert processing['layouts'][0]['effective_paper_size'] in ('A4', 'Letter', 'Legal'), 'no sheet matched'
+print('Document scanner loaded its models and scanned a generated page in the read-only worker.')
+"""
+
+
+def check_scanner(compose, env):
+    run(compose + ['exec', '-T', 'worker', 'python', '-c', SCANNER_CHECK], env=env, timeout=300)
+    container = run(compose + ['ps', '-q', 'worker'], env=env, stdout=subprocess.PIPE, text=True).stdout.strip()
+    state = run(['docker', 'inspect', '--format', '{{.State.OOMKilled}} {{.RestartCount}} {{.State.Running}}',
+                 container], stdout=subprocess.PIPE, text=True).stdout.split()
+    if state != ['false', '0', 'true']:
+        raise RuntimeError('Scanner smoke failed: the worker was OOM-killed, restarted or stopped.')
+
+
 def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('component',choices=('platform','web'))
@@ -113,6 +149,7 @@ assert not settings.DEBUG and not settings.DEVELOPMENT_LOGIN_ENABLED and not set
 print('Production settings keep development features disabled.')
 """
                 run(compose+['exec','-T','api','python','-c',code],env=env)
+                check_scanner(compose, env)
                 wait_for_cleanup_cycle(compose, env)
             print('Isolated '+args.component+' production stack and gateway routes verified.')
         finally:

@@ -104,6 +104,27 @@ jobs:
         with:
           path: ~/apt-archives
           key: ${{ steps.runtimes.outputs.key }}
+      # The document scanner's weights (~126 MB, pinned in models.json) come
+      # from the Actions cache; runners download them only when it changes.
+      - name: Restore scanner models
+        id: scanner-models
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pdfmaster-scanner-models
+          key: scanner-models-${{ hashFiles('processors/scanner/models.json') }}
+      - name: Fetch scanner models
+        timeout-minutes: 10
+        run: |
+          echo "SCANNER_MODELS=$HOME/.cache/pdfmaster-scanner-models" >> "$GITHUB_ENV"
+          python scripts/fetch_scanner_models.py --dest "$HOME/.cache/pdfmaster-scanner-models"
+      - name: Cache scanner models
+        if: steps.scanner-models.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        # The first runner to save this model set stores it; the rest find it taken.
+        continue-on-error: true
+        with:
+          path: ~/.cache/pdfmaster-scanner-models
+          key: scanner-models-${{ hashFiles('processors/scanner/models.json') }}
       - run: pip install -r requirements.lock
       - run: python manage.py check
       - run: python manage.py makemigrations --check --dry-run
@@ -125,7 +146,8 @@ jobs:
         run: python scripts/verify_contract.py
   package:
     # Builds and smoke-tests the image while the suite runs. Deploy still
-    # needs both to pass.
+    # needs both to pass. The image build fetches the scanner models itself
+    # (infra/Dockerfile) and the smoke check scans a page in the worker.
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:

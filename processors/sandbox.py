@@ -23,10 +23,31 @@ def execution_timeout(feature_id: str, input_count: int) -> int:
     Document scanning costs a few seconds per photograph, so a job of fifty
     photos cannot share the single-file budget. The job lease is ten minutes;
     the cap leaves time to store the result.
+
+    Measured on an M2 Pro (two scanner threads, real sandbox): models load in
+    0.25 CPU-s; a 960x1280 photo takes 2.5 CPU-s, a 12 MP photo 3.8-4.1
+    CPU-s. Fifty photos (one in five 12 MP) took 62 s and 138 CPU-s, fifty
+    12 MP photos 81 s and 193 CPU-s. Under a CPU quota the wall time is at
+    least CPU-s / quota: 129 s at the worker's and batches' 1.5 CPUs for the
+    worst job, 387 s at 0.5, too close to the 450 s cap for slower cores.
     """
     if feature_id == 'pdf.images_to_pdf':
         return min(450, 60 + 10 * max(1, int(input_count)))
     return 90
+
+
+def child_limits(feature_id: str, timeout: int) -> dict:
+    """CPU seconds and address space (MiB) for one child (processors/__main__.py).
+
+    The document scanner runs two threads, so its CPU budget is twice the
+    wall-clock one. Its address space is 3 GiB instead of 2: a 12 MP photo
+    needs ~1.5 GB resident (macOS), and on Linux the libraries, thread stacks
+    and malloc arenas count as well. The containers' mem_limit bounds what is
+    really used.
+    """
+    if feature_id == 'pdf.images_to_pdf':
+        return {'cpu_seconds': 2 * max(85, int(timeout) - 5), 'address_space_mb': 3072}
+    return {'cpu_seconds': max(85, int(timeout) - 5), 'address_space_mb': 2048}
 
 
 def _run(request: dict, timeout: int) -> dict:
@@ -37,15 +58,24 @@ def _run(request: dict, timeout: int) -> dict:
     # Parser processes must not inherit database, Telegram, signing or provider
     # credentials from the API/worker environment.
     environment = {key: os.environ[key] for key in
-        ('PATH', 'LANG', 'LC_ALL', 'TMPDIR', 'TMP', 'TEMP', 'SYSTEMROOT', 'PDFMASTER_SOFFICE_BIN','PDFMASTER_TESSERACT_BIN')
+        ('PATH', 'LANG', 'LC_ALL', 'TMPDIR', 'TMP', 'TEMP', 'SYSTEMROOT', 'PDFMASTER_SOFFICE_BIN','PDFMASTER_TESSERACT_BIN',
+         'SCANNER_MODELS')
         if key in os.environ}
     environment['PYTHONDONTWRITEBYTECODE'] = '1'
     # Numeric image processing must fit the existing child-process budget.
     # OpenBLAS otherwise allocates a thread pool before OpenCV can limit it.
     environment['OPENBLAS_NUM_THREADS'] = '1'
     environment['OMP_NUM_THREADS'] = '1'
+    # The document scanner's networks and OpenCV run on two threads: the
+    # worker has 1.5 CPUs, a scan takes 2.0 s instead of 2.8 s (M2 Pro) and
+    # the pages are byte-identical to one thread. glibc would otherwise give
+    # each thread its own malloc arena under the address-space limit.
+    environment['SCANNER_THREADS'] = '2'
+    environment['MALLOC_ARENA_MAX'] = '2'
     # The child's CPU limit follows the wall-clock budget of this run.
-    environment['PDFMASTER_CPU_SECONDS'] = str(max(85, int(timeout) - 5))
+    limits = child_limits(request.get('feature_id', ''), timeout)
+    environment['PDFMASTER_CPU_SECONDS'] = str(limits['cpu_seconds'])
+    environment['PDFMASTER_ADDRESS_SPACE_MB'] = str(limits['address_space_mb'])
     # No request file is written: secrets, if present, travel only over stdin.
     with tempfile.TemporaryFile() as report:
         process = subprocess.Popen([sys.executable, '-m', 'processors'],

@@ -79,7 +79,17 @@ services:
   worker:
     <<: *platform
     command: [python, manage.py, runworker]
-    mem_limit: 2g
+    # The document scanner's child process (models loaded once per job)
+    # measured on macOS, which returns little freed memory: 1,432 MiB for one
+    # 12 MP photo, 1,570 MiB over the 7-photo test job and 2,347 MiB over 50
+    # mixed photos, on top of the worker itself. On Linux the child has its own
+    # 3 GiB address-space cap (processors/sandbox.child_limits), and the
+    # core test asserts the Linux peak stays under 2 GiB.
+    # The services' limits add up to 8,704 MiB (9,216 MiB while the one-shot
+    # init runs) on the 8 GB host: they are ceilings, not reservations. The
+    # worst real case, worker and batches both scanning, is ~4 GB for the
+    # two of them; the API, database, Redis and bot use well under 2 GB.
+    mem_limit: 3g
     cpus: 1.5
     # On SIGTERM the loop finishes the job in hand before exiting
     # (apps/core/shutdown.py). Ten minutes covers a 10-slide deck and stays
@@ -88,8 +98,11 @@ services:
   batches:
     <<: *platform
     command: [python, manage.py, runbatches]
-    mem_limit: 384m
-    cpus: 0.5
+    # Batch image sets run the same scanner child process as the worker,
+    # with its CPU: at 0.5 CPU fifty 12 MP photos need ~390 s of the 450 s
+    # budget on M2-class cores (processors/sandbox.execution_timeout).
+    mem_limit: 2560m
+    cpus: 1.5
     stop_grace_period: 600s
   cleanup:
     <<: *platform

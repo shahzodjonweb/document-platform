@@ -221,13 +221,17 @@ tests/test_bot_channel_gate.py::test_ive_joined_checks_again_and_goes_back_to_th
 tests/test_bot_transport.py::test_password_parameters_never_enter_bot_draft_callback_quote_or_analytics
 
 # Document scanning engine
-tests/test_image_scanning.py::test_real_sandbox_default_cleanup_preserves_page_order_and_reports_safe_metadata
+tests/test_image_scanning.py::test_real_sandbox_default_scan_preserves_page_order_and_reports_safe_metadata
+
+# Document scanner: pinned model files, and a multi-photo job inside the child's memory and time budget
+tests/test_document_scanner.py::test_every_pinned_model_file_matches_its_manifest
+tests/test_document_scanner.py::test_seven_phone_photos_fit_the_real_sandbox_memory_and_time_budget
 
 # Document scanning engine: privacy of uploaded photos
 tests/test_image_scanning.py::test_untouched_jpeg_upload_is_embedded_as_its_own_pixels_without_metadata
 
-# Public API quote -> confirmed job with scan switches
-tests/test_image_scanning_api.py::test_explicit_opt_out_is_frozen_in_confirmed_job[opt_out0-expected0]
+# Public API quote -> confirmed job: retired scan switches are dropped
+tests/test_image_scanning_api.py::test_legacy_scan_switches_are_dropped_from_confirmed_job[crop-off]
 
 # Telegram bot photo scan flow
 tests/test_bot_image_scanning.py::test_direct_photo_and_image_uploads_have_defaults_and_can_start_immediately[True-en]

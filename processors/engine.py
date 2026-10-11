@@ -8,6 +8,7 @@ from __future__ import annotations
 import importlib.metadata
 from contextlib import closing
 import io
+import json
 import logging
 import math
 import os
@@ -55,6 +56,9 @@ def _schema(properties=None, required=()):
 
 
 PAGES = {'type': 'string', 'maxLength': 6000, 'description': 'One-based pages: 1,3-5 or all'}
+# Retired pdf.images_to_pdf switches: every photo is now scanned, and only a
+# written page is changed.
+LEGACY_IMAGE_SWITCHES = ('auto_crop', 'enhance_text')
 PARAMETER_SCHEMAS = {
     'pdf.merge': _schema(),
     'pdf.compress': _schema(),
@@ -64,11 +68,9 @@ PARAMETER_SCHEMAS = {
     'pdf.reorder': _schema({'order': {'type': 'array', 'items': {'type': 'integer', 'minimum': 1}, 'maxItems': MAX_PAGES}}, ('order',)),
     'pdf.rotate': _schema({'pages': PAGES, 'angle': {'type': 'integer', 'enum': [90, 180, 270]}}),
     'pdf.images_to_pdf': _schema({
-        'paper_size': {'type': 'string', 'enum': ['fit', 'A4', 'Letter', 'original'], 'default': 'fit', 'description': 'Fit uses ISO A4 for a detected document when auto-crop is on; other images keep their aspect with an 842-point long edge.'},
+        'paper_size': {'type': 'string', 'enum': ['fit', 'A4', 'Letter', 'original'], 'default': 'fit', 'description': 'Fit gives a detected document its matched sheet size (A4, Letter or Legal); other images keep their shape with an 842-point long edge.'},
         'orientation': {'type': 'string', 'enum': ['auto', 'portrait', 'landscape'], 'default': 'auto'},
-        'margin': {'type': 'number', 'minimum': 0, 'maximum': 72, 'default': 0},
-        'auto_crop': {'type': 'boolean', 'default': True, 'description': 'Crop and straighten a confidently detected document; otherwise keep the full image.'},
-        'enhance_text': {'type': 'boolean', 'default': True, 'description': 'Reduce shadows and improve text contrast on every page; a detected document becomes clean white paper.'}}),
+        'margin': {'type': 'number', 'minimum': 0, 'maximum': 72, 'default': 0}}),
     'pdf.to_images': _schema({'pages': PAGES, 'format': {'type': 'string', 'enum': ['png', 'jpg']},
         'dpi': {'type': 'integer', 'minimum': 72, 'maximum': 200}}),
     # Password material is accepted ONLY as a separate in-memory secret argument.
@@ -107,7 +109,7 @@ def capabilities() -> dict[str, dict[str, Any]]:
         runtime = office_runtime() if office else {}
         available = not office or runtime['available']
         result[feature] = {'available': available, 'parameters': schema,
-            'engine': 'libreoffice' if office else ('pdfium' if feature == 'pdf.to_images' else ('reportlab/pillow' if feature == 'pdf.images_to_pdf' else 'pypdf')),
+            'engine': 'libreoffice' if office else ('pdfium' if feature == 'pdf.to_images' else ('reportlab/pillow/onnxruntime' if feature == 'pdf.images_to_pdf' else 'pypdf')),
             'requires_secret': feature in ('pdf.protect', 'pdf.unlock_known'),
             'production_qualified': False,
             'reason': None if available else 'engine_unavailable'}
@@ -326,6 +328,10 @@ def normalize_parameters(feature_id: str, parameters: dict | None, input_metadat
     if feature_id in EDITOR_SCHEMAS:
         from .editor import normalize
         return normalize(feature_id,parameters,input_metadata)
+    if feature_id == 'pdf.images_to_pdf' and isinstance(parameters, dict):
+        # Scanning used to have two switches. Saved drafts, old Telegram
+        # buttons and queued jobs still carry them: drop them, permanently.
+        parameters = {k: v for k, v in parameters.items() if k not in LEGACY_IMAGE_SWITCHES}
     if not isinstance(parameters, dict) or any(k not in PARAMETER_SCHEMAS[feature_id]['properties'] for k in parameters):
         raise ProcessorError('invalid_parameters')
     normalized = dict(parameters)
@@ -365,10 +371,6 @@ def normalize_parameters(feature_id: str, parameters: dict | None, input_metadat
         normalized.setdefault('paper_size', 'fit')
         normalized.setdefault('orientation', 'auto')
         normalized.setdefault('margin', 0)
-        for field in ('auto_crop', 'enhance_text'):
-            normalized.setdefault(field, True)
-            if type(normalized[field]) is not bool:
-                raise ProcessorError('invalid_parameters')
         if normalized['paper_size'] not in ('fit', 'A4', 'Letter', 'original') or normalized['orientation'] not in ('auto', 'portrait', 'landscape'):
             raise ProcessorError('invalid_parameters')
         margin = normalized['margin']
@@ -481,8 +483,9 @@ def _page_image(picture, encoding, original=None):
 
 def _image_pdf(paths: list[Path], parameters: dict, out: Path):
     from reportlab import rl_config
-    from reportlab.lib.pagesizes import A4, letter
+    from reportlab.lib.pagesizes import A4, legal, letter
     from reportlab.pdfgen.canvas import Canvas
+    sheets = {'A4': A4, 'Letter': letter, 'Legal': legal}
     # Binary image streams: ASCII85 would inflate every page by a quarter.
     rl_config.useA85 = 0
     destination = out / 'images.pdf'
@@ -513,16 +516,21 @@ def _image_pdf(paths: list[Path], parameters: dict, out: Path):
                 picture = rgb
             else:
                 picture = picture.convert('RGB')
-            from .document_scan import prepare_image
-            picture, outcome = prepare_image(picture, auto_crop=parameters['auto_crop'],
-                                               enhance_text=parameters['enhance_text'])
+            from .scanner import scan_photo
+            requested_paper = parameters['paper_size']
+            # Explicit A4/Letter shapes the scan to that sheet; otherwise the
+            # scanner matches A4, Letter or Legal itself, or keeps the shape.
+            picture, outcome = scan_photo(picture, paper=requested_paper if requested_paper in ('A4', 'Letter') else 'auto')
             outcomes.append(outcome)
             iw, ih = picture.size
             margin = parameters['margin']
-            requested_paper = parameters['paper_size']
-            automatic_a4 = (requested_paper == 'fit' and parameters['auto_crop']
-                            and outcome['document_detected'])
-            effective_paper = 'A4' if automatic_a4 else requested_paper
+            # A scanned page is printed on the sheet it was matched to, also
+            # under 'original': its pixel size is the scanner's, not the paper's
+            # (one point per pixel would make a 2200 px scan 30 inches long), so
+            # a scan that matches no sheet is fitted like 'fit'.
+            effective_paper = outcome['sheet'] or requested_paper
+            if outcome['document_detected'] and effective_paper == 'original':
+                effective_paper = 'fit'
             if effective_paper == 'original':
                 # Original means one image pixel per PDF point at 72 dpi, held
                 # to the 200-inch PDF page limit for an unusually long panorama.
@@ -538,7 +546,7 @@ def _image_pdf(paths: list[Path], parameters: dict, out: Path):
                         or (parameters['orientation'] == 'portrait' and width > height)):
                     width, height = height, width
             else:
-                width, height = A4 if effective_paper == 'A4' else letter
+                width, height = sheets[effective_paper]
                 landscape = parameters['orientation'] == 'landscape' or (parameters['orientation'] == 'auto' and iw > ih)
                 if landscape:
                     width, height = height, width
@@ -547,14 +555,22 @@ def _image_pdf(paths: list[Path], parameters: dict, out: Path):
             scale = min((width - 2 * margin) / iw, (height - 2 * margin) / ih)
             x, y = (width - iw * scale) / 2, (height - ih * scale) / 2
             canvas.setPageSize((width, height))
-            encoding = _page_encoding(picture)
+            # A plain JPEG that was not scanned is embedded as the upload's own
+            # stream: re-encoding it losslessly kept the same pixels at up to
+            # 5x the bytes. A scanned page is a photograph of paper at ~2200
+            # px: as JPEG it is a fraction of the lossless stream
+            # _page_encoding would pick.
             original = None
-            if encoding == 'jpeg' and plain_jpeg and not outcome['cropped'] and not outcome['enhanced']:
+            if plain_jpeg and not outcome['document_detected']:
                 original = _stripped_jpeg(path.read_bytes())
+            if original is not None or outcome['document_detected']:
+                encoding = 'jpeg'
+            else:
+                encoding = _page_encoding(picture)
             canvas.drawImage(_page_image(picture, encoding, original), x, y,
                 iw * scale, ih * scale, mask='auto')
             layouts.append({'requested_paper_size': requested_paper,
-                'effective_paper_size': effective_paper, 'automatic_a4': automatic_a4,
+                'effective_paper_size': effective_paper,
                 'image_encoding': encoding,
                 'page_size_points': [width, height],
                 'image_placement_points': [x, y, iw * scale, ih * scale]})
@@ -565,8 +581,8 @@ def _image_pdf(paths: list[Path], parameters: dict, out: Path):
         'pages': outcomes,
         'layouts': layouts,
         'document_pages': sum(row['document_detected'] for row in outcomes),
-        'cropped_pages': sum(row['cropped'] for row in outcomes),
-        'enhanced_pages': sum(row['enhanced'] for row in outcomes)}}
+        # Photos whose scan failed and were kept as uploaded (scan_photo).
+        'scan_failures': sum('scan_error' in row for row in outcomes)}}
 
 
 def _pdf_images(path: Path, parameters: dict, out: Path, count: int):
@@ -728,7 +744,11 @@ def execute(feature_id: str, input_paths: list[str | Path], parameters: dict | N
         elif feature_id == 'pdf.images_to_pdf':
             artifacts, extra = _image_pdf(paths, parameters, out)
             details.update(extra)
-            details['engine_versions']['opencv-python-headless'] = importlib.metadata.version('opencv-python-headless')
+            for package in ('opencv-python-headless', 'onnxruntime'):
+                details['engine_versions'][package] = importlib.metadata.version(package)
+            # The pinned weight set (processors/scanner/models.json).
+            manifest = json.loads((Path(__file__).parent / 'scanner' / 'models.json').read_text())
+            details['engine_versions']['scanner-models'] = manifest['version']
         elif feature_id.startswith('convert.'):
             artifacts = _office_pdf(paths[0], feature_id, out, metadata[0])
         elif feature_id == 'pdf.to_images':

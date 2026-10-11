@@ -5,11 +5,17 @@ import os
 import sys
 
 
-def apply_limits():
+def _setting(name, default, low, high):
     try:
-        cpu_seconds = max(85, int(os.environ.get('PDFMASTER_CPU_SECONDS', '85')))
+        return min(high, max(low, int(os.environ.get(name, default))))
     except ValueError:
-        cpu_seconds = 85
+        return default
+
+
+def apply_limits():
+    cpu_seconds = _setting('PDFMASTER_CPU_SECONDS', 85, 85, 2000)
+    # 2 GiB, 3 GiB for the document scanner (processors/sandbox.child_limits).
+    address_space = _setting('PDFMASTER_ADDRESS_SPACE_MB', 2048, 2048, 3072) * 1024 * 1024
     try:
         import resource
     except ImportError:
@@ -21,7 +27,7 @@ def apply_limits():
         (resource.RLIMIT_NOFILE, (256, 256)),
         (resource.RLIMIT_CORE, (0, 0))]
     if resource is not None and sys.platform.startswith('linux'):
-        limits.append((resource.RLIMIT_AS, (2 * 1024 * 1024 * 1024,) * 2))
+        limits.append((resource.RLIMIT_AS, (address_space,) * 2))
     for name, value in limits:
         # One limit the host refuses must not drop the others with it.
         try:
