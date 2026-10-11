@@ -43,14 +43,13 @@ def test_defaults_have_only_the_layout_and_no_scan_switches():
     assert normalize_parameters('pdf.images_to_pdf', {}) == DEFAULTS
 
 
-@pytest.mark.parametrize('legacy', [
-    {'auto_crop': False}, {'enhance_text': False}, {'auto_crop': True, 'enhance_text': True},
-    # Whatever an old client stored is dropped, never validated.
-    {'auto_crop': 'false', 'enhance_text': None},
-])
-def test_retired_scan_switches_are_dropped_silently(legacy):
-    assert normalize_parameters('pdf.images_to_pdf', legacy) == DEFAULTS
-    assert normalize_parameters('pdf.images_to_pdf', {**legacy, 'paper_size': 'Letter'}) == {**DEFAULTS, 'paper_size': 'Letter'}
+@pytest.mark.parametrize('legacy', [{'auto_crop': False}, {'enhance_text': True}, {'auto_crop': 'false', 'enhance_text': None}])
+def test_retired_scan_switches_are_an_unknown_setting_to_the_processor(legacy):
+    # Stored data was cleaned when they were retired; only create_quote still
+    # drops them, for web tabs opened before that (test_image_scanning_api.py).
+    with pytest.raises(ProcessorError) as error:
+        normalize_parameters('pdf.images_to_pdf', {**legacy, 'paper_size': 'Letter'})
+    assert error.value.code == 'invalid_parameters'
 
 
 @pytest.mark.parametrize('feature,parameters', [
@@ -65,14 +64,13 @@ def test_other_unknown_keys_and_values_are_still_rejected(feature, parameters):
     assert error.value.code == 'invalid_parameters'
 
 
-@pytest.mark.parametrize('parameters', [{}, {'auto_crop': False, 'enhance_text': False}])
-def test_default_fitted_pdf_has_no_added_border_and_keeps_sensible_print_size(tmp_path, scanner_models, parameters):
+def test_default_fitted_pdf_has_no_added_border_and_keeps_sensible_print_size(tmp_path, scanner_models):
     import pypdfium2 as pdfium
     from contextlib import closing
     source = tmp_path / 'photo.png'
     color = (47, 63, 81)
     Image.new('RGB', (500, 900), color).save(source)
-    result = execute_sandbox('pdf.images_to_pdf', [source], parameters, tmp_path / 'out')
+    result = execute_sandbox('pdf.images_to_pdf', [source], {}, tmp_path / 'out')
     page = PdfReader(result['artifacts'][0]['path']).pages[0]
     width, height = float(page.mediabox.width), float(page.mediabox.height)
     assert height == pytest.approx(842, abs=.001)

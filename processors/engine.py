@@ -56,9 +56,6 @@ def _schema(properties=None, required=()):
 
 
 PAGES = {'type': 'string', 'maxLength': 6000, 'description': 'One-based pages: 1,3-5 or all'}
-# Retired pdf.images_to_pdf switches: every photo is now scanned, and only a
-# written page is changed.
-LEGACY_IMAGE_SWITCHES = ('auto_crop', 'enhance_text')
 PARAMETER_SCHEMAS = {
     'pdf.merge': _schema(),
     'pdf.compress': _schema(),
@@ -328,10 +325,6 @@ def normalize_parameters(feature_id: str, parameters: dict | None, input_metadat
     if feature_id in EDITOR_SCHEMAS:
         from .editor import normalize
         return normalize(feature_id,parameters,input_metadata)
-    if feature_id == 'pdf.images_to_pdf' and isinstance(parameters, dict):
-        # Scanning used to have two switches. Saved drafts, old Telegram
-        # buttons and queued jobs still carry them: drop them, permanently.
-        parameters = {k: v for k, v in parameters.items() if k not in LEGACY_IMAGE_SWITCHES}
     if not isinstance(parameters, dict) or any(k not in PARAMETER_SCHEMAS[feature_id]['properties'] for k in parameters):
         raise ProcessorError('invalid_parameters')
     normalized = dict(parameters)

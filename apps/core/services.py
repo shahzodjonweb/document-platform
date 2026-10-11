@@ -155,9 +155,21 @@ def validate_inputs(account, feature_id, input_ids):
     if feature_id.startswith('pdf.') and feature_id != 'pdf.images_to_pdf' and any(k != 'pdf' for k in kinds): raise DomainError('unsupported_file')
     return assets
 
+# Images to PDF had two scan switches from 6 to 11 October 2026. Core 0018
+# removed them from stored drafts, buttons, quotes and jobs, and the processor
+# now rejects them. A web tab opened before 11 October and never reloaded still
+# sends them; create_quote drops them and logs it. Delete this once that log
+# line has been quiet for a few weeks.
+RETIRED_IMAGE_SWITCHES = ('auto_crop', 'enhance_text')
+
 def create_quote(account, feature_id, input_ids, parameters, secret_id=None):
     from processors import normalize_parameters, ProcessorError
     if not isinstance(parameters,dict) or len(json.dumps(parameters)) > 10000: raise DomainError('invalid_parameters')
+    retired = [key for key in RETIRED_IMAGE_SWITCHES if key in parameters] if feature_id == 'pdf.images_to_pdf' else []
+    if retired:
+        import logging
+        logging.getLogger(__name__).warning('Quote for account %s: dropped retired images-to-PDF settings (%s) sent by an out-of-date client', account.pk, ', '.join(retired))
+        parameters = {k: v for k, v in parameters.items() if k not in retired}
     if any(k.lower() in ('password','owner_password','user_password') for k in parameters): raise DomainError('feature_unavailable',409)
     # A free account joins the owner's channels before using a service; asking
     # here tells them before they have set the task up, not after.
