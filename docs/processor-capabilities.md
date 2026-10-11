@@ -19,7 +19,7 @@ Paths are internal trusted worker values, never client parameters or public API 
 | `pdf.delete_pages` | `pages: "2,4-5"` | Remaining pages; deleting every page rejected. |
 | `pdf.reorder` | `order: [3,1,2]` | Exactly one instance of every input page required. |
 | `pdf.rotate` | `pages: "all"`, `angle: 90` | Angle 90/180/270 degrees; selected page rotations preserved otherwise. |
-| `pdf.images_to_pdf` | `paper_size: "fit"`, `orientation: "auto"`, `margin: 0`, `auto_crop: true`, `enhance_text: true` | PNG/JPEG/WebP in input order. Default document edge detection, perspective correction and shadow/contrast cleanup; each switch can be disabled independently. Fit matches the processed image aspect ratio with an 842 pt long edge and no added border; explicit margins are added around it. Paper fit/A4/Letter/original; orientation auto/portrait/landscape; margin 0..72 pt. Original means 72 dpi/pixel size plus margins. Explicit saved paper, orientation and margin settings remain unchanged. EXIF orientation and alpha handling. |
+| `pdf.images_to_pdf` | `paper_size: "fit"`, `orientation: "auto"`, `margin: 0` | PNG/JPEG/WebP in input order. Every photo goes through the document scanner; only a written page is changed (no switches; legacy `auto_crop`/`enhance_text` keys are accepted and dropped). Fit gives a scanned page its matched sheet (A4, Letter or Legal) and other images an 842 pt long edge with no added border; explicit margins are added around it. Paper fit/A4/Letter/original; orientation auto/portrait/landscape; margin 0..72 pt. Original means 72 dpi/pixel size plus margins, except that a scanned page uses its matched sheet. EXIF orientation and alpha handling. |
 | `pdf.to_images` | `format: "png"`, `dpi: 96`, `pages: "all"` | PNG/JPG; 72..200 dpi. Safe ZIP in selected page order, each page decoded after rendering. |
 | `pdf.protect` | `{}` plus separate ephemeral secret | AES-256 using owner-scoped encrypted ten-minute handles; deletion on settlement/expiry is tested. |
 | `pdf.unlock_known` | `{}` plus separate ephemeral secret | Uses the supplied password through an encrypted short-lived handle; wrong password fails without disclosure. |
@@ -30,109 +30,61 @@ Page selections are one-based `1,3-5` strings or `all`; duplicates, descending/o
 
 `pdf.compression_preview` and `pdf.image_layout` are support/UI catalog IDs backed by the compress metadata and image-layout parameter schema, not independently billable processing endpoints. `files.no_watermark` is an output policy: no platform watermark is introduced. No overlay is represented as true editing or redaction.
 
-Images-to-PDF scanning runs locally with OpenCV, without an AI provider or OCR call.
-A confident complete outline is cropped and straightened. Qualified clipped
-pages now also receive a rectangular scan: supported visible edge curves and
-side directions estimate page geometry, remove photographed paper-edge halos,
-and resample the visible sheet once. Geometric extensions beyond the camera
-remain white; missing writing is never reconstructed. The dominant observed
-sheet is selected; competing written pages and uncertain poses retain the safe
-conservative matte/crop fallback rather than losing visible content.
+Images-to-PDF scanning runs locally in the sandbox child with ONNX Runtime and
+OpenCV (`processors/scanner/`, the code published as open-doc-scanner), without
+an AI provider or OCR call. One fixed chain runs on every photo:
 
-With Auto crop on, detected document pages using the default `fit` layout are
-placed on exact ISO A4 in portrait or landscape, with uniform fitting and no
-added user margin. Aspect-required white paper padding preserves all visible
-content. Explicit A4, Letter, original, orientation and margin choices remain
-honored. Ordinary photos and Auto crop off retain the existing image-fit layout.
-Per-page effective layout and image-placement metadata describe the result.
+1. Page detection: DocAligner's corner heatmap model, with tuned rules for
+   padded, cut-off, small and folded pages and a zoomed second look.
+2. Document check (`evidence.py`): only a written page is taken. A photo with
+   no writing inside the outline, an appliance or panel, the inner table of a
+   larger sheet (writing lost outside) or two sheets merged into one is
+   returned untouched.
+3. Dewarping with UVDoc; the page is snapped to A4, Letter or Legal when its
+   measured shape is within 7% (explicit A4/Letter forces that sheet). Corners
+   outside the photo are filled white; missing writing is never reconstructed.
+4. AI text upscaling (Intel text-image-super-resolution-0001) to about 2200 px
+   on the long side, at most 2x.
+5. Shadow removal with GC-Net, then the paper made neutral white, and a final
+   look (folds, thumbs, clarity, bold text, tone).
 
-Enhance text cleans illumination and neutral paper texture while keeping fine
-print, signatures and colored ink. It runs on every page: a detected sheet is
-cleaned to white paper; with Auto crop off the detected sheet is lifted in place
-and the surrounding scene stays as photographed; a frame without a detected
-sheet receives a hue-preserving shadow lift of its paper-like, low-saturation
-surfaces only, so dark tones and coloured objects keep their colour. Off-paper
-scene text is removed with document cropping. Already full-frame scans are never
-cropped to an inner printed table; a thin neutral desk or lid strip along their
-frame is whitened rather than printed black.
-Both disabled leaves the existing EXIF/alpha/layout conversion unchanged, and an
-upright JPEG upload is embedded as its own DCT stream with every APP/COM segment
-removed. Pages that deflate well stay lossless Flate; pages with camera grain are
-embedded as a metadata-free JPEG (quality 88, full chroma). Detection
-uses a 1280-pixel thumbnail; corrected pages are bounded to 16 MP, while original
-inputs retain the existing 40 MP limit. The worker's wall-clock and CPU budget
-scale with the number of photographs (60 s plus 10 s per image, capped at 450 s)
-and it uses one numeric processing thread. Detection holds across phone-camera
-resolutions, camera sharpening and JPEG re-encoding; a candidate must show
-written evidence (eight credible glyph boxes in an aligned line), and a second
-sheet that only segmentation reveals keeps the photograph uncropped. A sheet
-that fills most of the photograph, held by a hand or carrying a printed border,
-is proposed from its straight edges (`processors/line_outlines.py`) when no
-closed contour forms; a corner tip resting on the frame line still counts as
-visible, while anything clipped further goes to the clipped-page path. Uniform matte paper
-can be tinted or darker than its desk: independently supported luminance and
-material-color edges qualify it, while compact writing and visible-edge checks
-still exclude unmarked panels and internal printed frames. Dense forms and
-barcodes qualify through coherent matte material and numerous stroke-shaped
-glyphs; filled holes in a perforated panel do not count as written evidence.
-Exterior words on the connected surrounding matte surface veto an incomplete
-proposal, including filled tables on a larger written sheet. Unrelated labels
-across a dark background do not veto the page;
-ambiguous photos are never cropped and keep their geometry.
-Faint, gently curved outlines receive a bounded 512-pixel, three-iteration
-segmentation fallback when
-closed edge contours are unavailable. These proposals still require observed
-edges, paper/background contrast and compact writing; initialization borders,
-competing sheets cannot supply a rectification. Clipped-page qualification uses
-a separate mask initialization after the established complete-page fallback.
-Each path has one 512-pixel/three-iteration attempt, executed sequentially (at
-most six iterations per image), within the existing worker timeout. Tentative empty
-bands are checked against source-resolution writing before removal. Clipped
-enhancement estimates per-channel illumination from observed paper and boosts
-neutral fine strokes using native local contrast, without binarizing or erasing
-colored writing. All native matte and cleanup work tiles stay within one million
-pixels. Enhancement-only mode preserves the exterior of a detected sheet
-exactly; crop-only mode preserves observed paper and its writing RGB at the
-matte stage before geometric resampling, while replacing confirmed background.
-An enclosing proposal
-supplies context for independently tracing each physical paper edge. Smooth
-boundary curves rectify gentle curl into a rectangle, with correction confined
-to the outer 20% so blank-margin curl does not bend straight central table rows.
-Compact writing guards reject an inner printed frame or shadow seam that would
-discard margin text. Uncertain refinement retains the conservative enclosing
-crop. A second material seam requires its own local transition, so an already
-removed desk cannot justify following a printed frame inward. Reduced-resolution
-photos can use lower-degree gentle curves only with the same edge-support and
-displacement bounds. Qualified visible corners constrain only unsupported curve
-tails that extrapolate outside the pose; additional writing guards veto any lost
-marks. Geometry stays within 1280 pixels; inverse geometry samples original RGB
-once in strips of at most one million pixels, averaging opposing edge lengths
-while enforcing the exact 16 MP output ceiling. Detection is conservative
-and may leave low-contrast, obscured or blank pages untouched. Writing-like marks
-are required to avoid cropping bright panels in ordinary photographs. Internal `image_processing`
-metadata contains per-page outcome booleans, counts, effective paper sizes and
-placement coordinates, without document text.
-`tests/test_image_scanning.py`, `tests/test_image_scanning_realistic.py`,
-`tests/test_image_scanning_safety.py`, `tests/test_image_scanning_rectification.py`,
-`tests/test_image_scanning_tinted.py`,
-`tests/test_image_scanning_material_safety.py`,
-`tests/test_image_scanning_occluded.py`,
-`tests/test_image_scanning_dense_safety.py`,
-`tests/test_image_scanning_resolution.py`,
-`tests/test_image_scanning_partial.py`,
-`tests/test_page_rectification_bounds.py`, `tests/test_page_rectification_endpoints.py`,
-`tests/test_image_scanning_api.py` and
-`tests/test_bot_image_scanning.py` cover artifacts, quotes, jobs and bot switches.
-Service verification also processes anonymized clipped, curved gray, tinted and dense
-shaded paper through the
-actual HTTP/queue/worker/download path and checks the resulting PDF pixels with
-defaults enabled, cropping alone and both effects disabled. The checks require
-a uniformly fitted A4 PDF canvas, physical desk removal and all corner/side writing.
-Clipped-page checks require a flat rectangular scan, independent preservation
-of visible writing, exact A4 PDF placement and measurable paper/text cleanup.
-The uncertain-pose fallback retains separate strict source-pixel/matte guards;
-Auto crop off must keep the exterior of a detected sheet untouched, and the
-effect must never crop or paint a non-document as white paper.
+Photos longer than 3000 px are reduced to 3000 px (area resampling) before the
+scan; smaller ones are scanned as uploaded, and images under 96 px are never
+scanned. A photo that is not a written page gets no effect at all: an upright
+plain JPEG upload is embedded as its own DCT stream with every APP/COM segment
+removed, however well it would deflate, and other uploads keep their pixels.
+A scanned page is always embedded as a metadata-free JPEG (quality 88, full
+chroma); other pages that deflate well stay lossless Flate and pages with
+camera grain become JPEG. Original inputs keep the 40 MP limit. If the scan of
+a photo fails at run time (OpenCV, ONNX Runtime, a bad value or memory), that
+photo is kept as uploaded, the job still succeeds and the worker logs the
+count (`image_processing.scan_failures`); a missing model file fails the job.
+
+Under the default `fit` layout a scanned page is placed on its matched sheet in
+its own orientation with uniform fitting; a scanned page without a matched sheet
+and every other image keep the 842 pt fit. Explicit A4, Letter, orientation and
+margin choices remain honored. A runtime error inside the scan leaves that photo
+untouched and is logged; a missing model file fails the job as
+`processing_failed`, a deployment fault the container smoke check catches. The
+weights are pinned by size and SHA-256 in `processors/scanner/models.json`,
+fetched into the image at build time (`scripts/fetch_scanner_models.py`) and read
+from `SCANNER_MODELS`; nothing is downloaded at runtime. The child runs the
+networks and OpenCV on two threads (`SCANNER_THREADS`), with byte-identical
+pages to one thread; models load once per child, on the first photo. The
+worker's wall-clock and CPU budget scale with the number of photographs (60 s
+plus 10 s per image, capped at 450 s). Internal `image_processing` metadata holds
+per-page `document_detected` and matched `sheet`, the number of document pages,
+effective paper sizes and placement coordinates, without document text.
+
+`tests/test_document_scanner.py`, `tests/test_image_scanning.py`,
+`tests/test_image_scanning_a4_layout.py`, `tests/test_image_scanning_api.py` and
+`tests/test_bot_image_scanning.py` cover the scanner, artifacts, layouts, quotes,
+jobs and the bot. Service verification sends a generated document photo, an
+ordinary photo and anonymized curved gray, tinted and held dense paper through
+the actual HTTP/queue/worker/download path and checks the resulting PDF pixels:
+a uniformly fitted A4, Letter or Legal canvas, a sheet-shaped page rebuilt
+larger than photographed on white paper, all corner and side writing, the blue
+stamp, pen stroke and barcode, and the ordinary photo's pixels unchanged.
 Previously generated PDFs are
 immutable; scanning changes apply to new image conversions.
 

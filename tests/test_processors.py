@@ -10,6 +10,7 @@ from pypdf import PdfReader, PdfWriter
 from reportlab.pdfgen.canvas import Canvas
 from processors import ProcessorError, execute, inspect_file, normalize_parameters, parse_pages
 from processors.sandbox import execute_sandbox, inspect_file_sandbox
+from tests.scan_fixtures import scanner_models
 
 
 def pdf(path, labels=('first', 'second', 'third')):
@@ -105,7 +106,8 @@ def test_compression_and_no_op(tmp_path):
     assert Path(second['artifacts'][0]['path']).read_bytes() == Path(first['artifacts'][0]['path']).read_bytes()
 
 
-def test_images_pdf_layout_and_pixel_order(tmp_path):
+def test_images_pdf_layout_and_pixel_order(tmp_path, scanner_models):
+    # 300x150 is large enough to be scanned, so this needs the scanner models.
     sources = []
     for i, color in enumerate(('red', 'blue')):
         path = tmp_path / f'{i}.png'

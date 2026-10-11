@@ -1,0 +1,66 @@
+PDF Master document scanner: third-party notices
+=================================================
+
+The code in this folder is PDF Master's own, derived from open-doc-scanner
+(MIT) with memory-only changes: the text model runs in row strips, ONNX
+Runtime's memory arena is off, and the thread count and model folder come
+from SCANNER_THREADS and SCANNER_MODELS. Output pixels are the same. The
+models it runs and parts of its code come from these projects, each under
+its own terms. Model files are pinned by size and SHA-256 in
+models.json; all but text_sr_x3.onnx are fetched when the image is built
+(scripts/fetch_scanner_models.py) and are not part of this repository.
+
+DocAligner (page detection)
+  Source:   https://github.com/DocsaidLab/DocAligner (pip package docaligner-docsaid)
+  Licence:  Apache License 2.0, LICENSES/Apache-2.0.txt. Copyright DocsaidLab.
+  Files:    fastvit_sa24_h_e_bifpn_256_fp32.onnx (heatmap model) and
+            lcnet050_p_multi_decoder_l3_d64_256_fp32.onnx (point model),
+            unmodified, mirrored as release assets of
+            github.com/shahzodjonweb/document-platform (tag scanner-models-1).
+  Code:     aligner.py adapts DocAligner's preprocessing (a bilinear resize to
+            256x256, CHW, float32 / 255) and runs the networks with ONNX
+            Runtime in place of the docaligner-docsaid and capybara-docsaid
+            packages. Modified: rewritten; no weight download, no GPU runtime.
+
+Intel text-image-super-resolution-0001 (AI text upscaling)
+  Source:   https://github.com/openvinotoolkit/open_model_zoo/tree/master/models/intel/text-image-super-resolution-0001
+  Licence:  Apache License 2.0, LICENSES/Apache-2.0.txt.
+            Copyright (c) 2023-2024 Intel Corporation.
+  Files:    models/text_sr_x3.onnx (committed). Modified: rebuilt layer by
+            layer from the OpenVINO FP32 IR as ONNX (opset 17) with the same
+            weights and a dynamic input size; output verified equal to
+            OpenVINO's FP32 result.
+
+UVDoc (dewarping)
+  Source:   https://github.com/tanguymagne/UVDoc
+  Licence:  MIT, LICENSES/UVDoc-MIT.txt. Copyright (c) 2023 Tanguy MAGNE.
+  Files:    uvdoc.onnx, fetched from
+            github.com/shahzodjonweb/open-doc-scanner/releases/tag/v0.1.0.
+            Modified: the released PyTorch checkpoint exported to ONNX
+            (opset 17). Some of the images UVDoc was trained on have unclear
+            terms.
+
+GC-Net from GCDRNet (shadow removal)
+  Source:   https://github.com/ZZZHANG-jx/GCDRNet (code MIT, Copyright (c)
+            2024 Jiaxin Zhang); ONNX from the Hugging Face space
+            Joker1212/RapidUnwrap, pinned to commit
+            d82549af3513c389c3de7fcdfd9d7e84fa98bbb4.
+  Licence:  The weights carry no explicit licence. Asked whether they may be
+            used and redistributed (GCDRNet issue #8), the author answered by
+            adding the MIT licence to the repository. The file is therefore
+            fetched from its source when the image is built and is not
+            mirrored as a separate download by PDF Master. It is inside the
+            built image, which exists on the production host and, for one
+            day per main build, as the release.tar.gz Actions artifact of the
+            public repository, which signed-in GitHub users can download.
+            Written confirmation from the authors is still to be obtained.
+  Files:    gcnet.onnx.
+
+ONNX Runtime (inference)
+  Source:   https://github.com/microsoft/onnxruntime (pip package onnxruntime,
+            CPU build only)
+  Licence:  MIT. Copyright (c) Microsoft Corporation. Its installed licence
+            and third-party notices stay in the package's dist-info.
+
+No patent review has been done for document detection, dewarping or shadow
+removal.

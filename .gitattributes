@@ -3,6 +3,9 @@
 *.docx binary
 *.pptx binary
 *.ttf binary
+*.onnx binary
 # Keep original handoff and third-party license bytes unchanged.
 docs/product/** -whitespace
 operations/static/ops/fonts/* -whitespace
+processors/scanner/LICENSES/* -whitespace
+processors/scanner/NOTICE -whitespace

@@ -1,0 +1,41 @@
+{
+  "source": "open-doc-scanner model set; see NOTICE",
+  "version": "scanner-models-1",
+  "files": {
+    "fastvit_sa24_h_e_bifpn_256_fp32.onnx": {
+      "source": "DocAligner heatmap model (github.com/DocsaidLab/DocAligner), mirrored unchanged",
+      "license": "Apache-2.0",
+      "url": "https://github.com/shahzodjonweb/document-platform/releases/download/scanner-models-1/fastvit_sa24_h_e_bifpn_256_fp32.onnx",
+      "sha256": "7f9f5a8935b2eb22b3ee0245d34996063f54562df390d34714af2d76928695bc",
+      "bytes": 83084930
+    },
+    "lcnet050_p_multi_decoder_l3_d64_256_fp32.onnx": {
+      "source": "DocAligner point model (github.com/DocsaidLab/DocAligner), mirrored unchanged",
+      "license": "Apache-2.0",
+      "url": "https://github.com/shahzodjonweb/document-platform/releases/download/scanner-models-1/lcnet050_p_multi_decoder_l3_d64_256_fp32.onnx",
+      "sha256": "32d186080ce16442674d4c0eaaaaac878eea289b56a8d1284f05fff1ff42e220",
+      "bytes": 4911217
+    },
+    "uvdoc.onnx": {
+      "source": "UVDoc (github.com/tanguymagne/UVDoc) exported to ONNX",
+      "license": "MIT",
+      "url": "https://github.com/shahzodjonweb/open-doc-scanner/releases/download/v0.1.0/uvdoc.onnx",
+      "sha256": "3ca4e8f0522952edd784e591e786df272b8dbad0cc74ca1b83d27b0c6929e9b5",
+      "bytes": 32027614
+    },
+    "gcnet.onnx": {
+      "source": "GC-Net from GCDRNet, Hugging Face space Joker1212/RapidUnwrap at a fixed commit; fetched at build time, never mirrored",
+      "license": "unspecified; the author pointed to MIT in GCDRNet issue #8",
+      "url": "https://huggingface.co/spaces/Joker1212/RapidUnwrap/resolve/d82549af3513c389c3de7fcdfd9d7e84fa98bbb4/models/gcnet.onnx",
+      "sha256": "2eb69a0aa882069f9f6d874511f019428d814d5f3edfa4881dbd6ca7d5c068f9",
+      "bytes": 6078861
+    },
+    "text_sr_x3.onnx": {
+      "source": "Intel Open Model Zoo text-image-super-resolution-0001, rebuilt as ONNX; committed in processors/scanner/models/",
+      "license": "Apache-2.0",
+      "url": null,
+      "sha256": "a3c966b21ddf94a81d38d3311fa5e3e0cbed98c7821c49954d349eed3c81863b",
+      "bytes": 11300
+    }
+  }
+}

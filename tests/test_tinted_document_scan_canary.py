@@ -1,4 +1,4 @@
-"""The worker canary must reject desk, missing ink and a disabled effect."""
+"""The worker canary must reject desk, missing ink and a page that was not scanned."""
 import importlib.util
 import io
 from pathlib import Path
@@ -29,6 +29,24 @@ def known_flat_crop(source):
     return Image.fromarray(cv2.warpPerspective(np.asarray(source), transform, (450, 680)))
 
 
+def simulated_scan(source, size=(700, 990), *, whiten=True):
+    """What a scan of the ground-truth page looks like: A4-shaped, larger, white paper.
+
+    Built from the procedural camera's own corners, independently of the
+    scanner, so the validators are tested against a known-good page.
+    """
+    source_corners = np.array(((140, 90), (601, 143), (561, 819), (88, 746)), np.float32)
+    width, height = size
+    destination = np.array(((0, 0), (width - 1, 0), (width - 1, height - 1), (0, height - 1)), np.float32)
+    transform = cv2.getPerspectiveTransform(source_corners, destination)
+    page = cv2.warpPerspective(np.asarray(source), transform, size, flags=cv2.INTER_CUBIC).astype(np.float32)
+    if whiten:
+        # Divide out the paper's own colour, as the scanner's white balance does.
+        paper = np.percentile(page.reshape(-1, 3), 75, axis=0)
+        page = page * (255 / paper)
+    return Image.fromarray(np.clip(page, 0, 255).astype(np.uint8))
+
+
 def fitted_pdf(image):
     width, height = A4[::-1] if image.width > image.height else A4
     scale = min(width / image.width, height / image.height)
@@ -45,12 +63,18 @@ def fitted_pdf(image):
 def test_true_material_boundary_guard_accepts_ground_truth_crop(canary, paper_kind, desk_kind):
     source, mask = canary.tinted_document_photo(paper_kind=paper_kind, desk_kind=desk_kind,
                                                curved=False, with_mask=True)
-    image = known_flat_crop(source)
-    metrics = canary.tinted_boundary_metrics(source, mask, image)
+    metrics = canary.tinted_boundary_metrics(source, mask, known_flat_crop(source))
     assert metrics['border_desk_fraction'] < .04, metrics
     assert max(metrics['corner_desk_fractions']) < .10, metrics
-    flags = canary.validate_tinted_scan(fitted_pdf(image), source, mask, enhanced=False)
-    assert flags['paper_boundary_verified'] and flags['blue_stamp_and_handwriting_preserved']
+
+
+@pytest.mark.parametrize('paper_kind,desk_kind', [('yellow', 'bright'), ('dark', 'bright'), ('yellow', 'dark')])
+def test_worker_canary_accepts_a_whitened_a4_scan_of_the_true_page(canary, paper_kind, desk_kind):
+    source, mask = canary.tinted_document_photo(paper_kind=paper_kind, desk_kind=desk_kind,
+                                               curved=False, with_mask=True)
+    flags = canary.validate_tinted_scan(fitted_pdf(simulated_scan(source)), source, mask, enhanced=True)
+    assert flags['sheet_page_verified'] == 'A4' and flags['white_paper_verified']
+    assert flags['blue_stamp_and_handwriting_preserved'] and flags['effect_verified']
 
 
 @pytest.mark.parametrize('paper_kind,desk_kind', [('yellow', 'bright'), ('dark', 'bright'), ('yellow', 'dark')])
@@ -65,8 +89,8 @@ def test_material_boundary_guard_rejects_real_desk_at_output_edges(canary, paper
 def test_worker_canary_rejects_a_fitted_pdf_that_still_contains_the_full_photo(canary):
     source, mask = canary.tinted_document_photo(curved=False, with_mask=True)
     with pytest.raises(canary.ProbeFailure) as error:
-        canary.validate_tinted_scan(fitted_pdf(source), source, mask, enhanced=False)
-    assert error.value.code == 'tinted_document_crop'
+        canary.validate_tinted_scan(fitted_pdf(source), source, mask, enhanced=True)
+    assert error.value.code == 'scanned_document_sheet_aspect'
 
 
 def test_worker_canary_rejects_erased_blue_stamp_even_if_other_writing_survives(canary):
@@ -109,15 +133,20 @@ def test_small_camera_shear_tolerance_cannot_hide_a_missing_margin_letter(canary
     assert error.value.code == 'tinted_document_side_writing_preserved'
 
 
-def test_worker_canary_rejects_a_missing_default_readability_effect(canary):
+def test_worker_canary_rejects_a_page_that_was_not_cleaned(canary):
     source, mask = canary.tinted_document_photo(curved=False, with_mask=True)
-    image = known_flat_crop(source)
     with pytest.raises(canary.ProbeFailure) as error:
-        canary.validate_tinted_scan(fitted_pdf(image), source, mask, enhanced=True)
-    assert error.value.code == 'tinted_document_readability_effect'
+        canary.validate_tinted_scan(fitted_pdf(simulated_scan(source, whiten=False)), source, mask, enhanced=True)
+    assert error.value.code == 'scanned_document_white_paper'
 
 
-def test_live_audit_exercises_defaults_and_independent_crop_only_switch(canary):
+def test_worker_canary_rejects_a_page_that_was_not_rebuilt_larger(canary):
+    source, mask = canary.tinted_document_photo(curved=False, with_mask=True)
+    with pytest.raises(canary.ProbeFailure) as error:
+        canary.validate_tinted_scan(fitted_pdf(simulated_scan(source, (480, 679))), source, mask, enhanced=True)
+    assert error.value.code == 'scanned_document_resolution'
+
+
+def test_live_audit_scans_the_tinted_page_with_defaults_only(canary):
     cases = [(feature, parameters) for feature, inputs, parameters in canary.cases() if inputs == ['tinted_scan']]
-    assert cases == [('pdf.images_to_pdf', {}),
-                     ('pdf.images_to_pdf', {'auto_crop': True, 'enhance_text': False})]
+    assert cases == [('pdf.images_to_pdf', {})]

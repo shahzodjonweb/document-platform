@@ -25,3 +25,8 @@ image.tar.gz
 # Local knowledge-graph index (graphify) — never shipped
 graphify-out/
 .graphifyignore
+
+# Scanner weights are fetched (scripts/fetch_scanner_models.py), never committed;
+# only the 11 KB text model ships in the repository.
+processors/scanner/models/*.onnx
+!processors/scanner/models/text_sr_x3.onnx

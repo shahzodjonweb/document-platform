@@ -347,6 +347,13 @@ def execute_job(job_id):
             from processors.sandbox import execution_timeout
             result = execute(job.feature_id,input_paths,job.parameters,output_dir,secret=secret,timeout=execution_timeout(job.feature_id,len(input_paths)))
         secret=None
+        # A photo whose scan failed is kept as uploaded and the job succeeds;
+        # the child's own log is discarded, so the worker log records it.
+        scan_failures = result.get('metadata',{}).get('image_processing',{}).get('scan_failures',0)
+        if scan_failures:
+            import logging
+            errors = sorted({row['scan_error'] for row in result['metadata']['image_processing']['pages'] if 'scan_error' in row})
+            logging.getLogger(__name__).warning('Job %s: %s photo scan(s) failed (%s), kept as uploaded',job.id,scan_failures,', '.join(errors))
         no_op = result.get('no_op',False)
         outputs = result.get('artifacts',[]) if not no_op else []
         if not outputs and not no_op: raise DomainError('invalid_output')

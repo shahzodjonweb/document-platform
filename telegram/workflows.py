@@ -25,7 +25,9 @@ def snapshot(draft):
 def validate_parameters(draft,parameters):
     if not isinstance(parameters,dict) or any('password' in key.lower() or 'secret' in key.lower() for key in parameters): raise DomainError('secure_password_entry_required')
     # Required settings may still be missing in an in-progress draft.
-    from processors.engine import PARAMETER_SCHEMAS
+    from processors.engine import LEGACY_IMAGE_SWITCHES,PARAMETER_SCHEMAS
+    # Old scan switch buttons stay in chats forever: their keys are dropped.
+    if draft.feature_id=='pdf.images_to_pdf': parameters={k:v for k,v in parameters.items() if k not in LEGACY_IMAGE_SWITCHES}
     complete=dict(parameters)
     metadata=list(FileAsset.objects.filter(account=draft.account,id__in=draft.input_ids).values_list('metadata',flat=True))
     schema=PARAMETER_SCHEMAS.get(draft.feature_id,{})

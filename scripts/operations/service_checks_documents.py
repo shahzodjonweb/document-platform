@@ -21,14 +21,14 @@ from PIL import Image, ImageDraw, ImageFont
 from pypdf import PdfReader, PdfWriter
 from reportlab.pdfgen.canvas import Canvas
 from apps.core.models import Account, FileAsset, Job
-try:
-    # Supplied fresh by the SSH audit, independent of the deployed image.
-    from service_audit_rectified_partial_scan_fixtures_py import rectified_partial_fixture, validate_rectified_partial_output
-except ModuleNotFoundError:
-    from scripts.operations.rectified_partial_scan_fixtures import rectified_partial_fixture, validate_rectified_partial_output
 
 
 API_URL = 'http://127.0.0.1:8000/api/v1/'
+# Where the procedural cameras put the page (TL, TR, BR, BL photo pixels).
+SCAN_PAGE_CORNERS = ((130, 80), (570, 125), (590, 810), (70, 750))
+CAMERA_PAGE_CORNERS = ((140, 90), (601, 143), (561, 819), (88, 746))
+# Every sheet a scanned page can be printed on, long side / short side.
+SHEET_RATIOS = {'A4': 297 / 210, 'Letter': 11 / 8.5, 'Legal': 14 / 8.5}
 
 
 
@@ -124,6 +124,19 @@ class Customer:
             FileAsset.objects.filter(account=self.account).exclude(state='deleted').update(expires_at=timezone.now())
 
 
+def ordinary_photo():
+    """A landscape with camera grain and no paper in it: it must stay untouched."""
+    import numpy as np
+    image = Image.new('RGB', (720, 900), (75, 130, 183))
+    draw = ImageDraw.Draw(image)
+    draw.ellipse((-130, 430, 620, 1180), fill=(48, 99, 56))
+    draw.ellipse((330, 300, 1190, 1190), fill=(70, 122, 65))
+    draw.ellipse((160, 110, 430, 180), fill=(195, 209, 215))
+    draw.line((0, 680, 720, 730), fill=(109, 74, 49), width=21)
+    grain = np.random.default_rng(2026).normal(0, 6, (900, 720, 3))
+    return Image.fromarray(np.clip(np.asarray(image) + grain, 0, 255).astype(np.uint8))
+
+
 def curved_gray_document(*, with_mask=False):
     """Generate generic print on bowed, shaded paper and a ribbed gray desk.
 
@@ -182,7 +195,7 @@ def curved_gray_document(*, with_mask=False):
                     borderMode=cv2.BORDER_CONSTANT, borderValue=(0, 0, 0))
     alpha = cv2.remap(np.full((height, width), 255, np.uint8), map_x, map_y,
                       cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=0)
-    corners = np.array(((140, 90), (601, 143), (561, 819), (88, 746)), np.float32)
+    corners = np.array(CAMERA_PAGE_CORNERS, np.float32)
     source = np.array(((margin, margin), (width - 1 + margin, margin),
                        (width - 1 + margin, height - 1 + margin), (margin, height - 1 + margin)), np.float32)
     transform = cv2.getPerspectiveTransform(source, corners)
@@ -199,12 +212,24 @@ def curved_gray_document(*, with_mask=False):
     return (image, np.round(mask * 255).astype(np.uint8)) if with_mask else image
 
 
-def validate_fit_canvas(reader, image, *, expected_a4=True):
-    """Verify precise A4 (or an opt-out fit page) without stretching or clipping."""
+def validate_fit_canvas(reader, image, *, expected_a4=True, sheets=None):
+    """Verify a precise sheet without stretching or clipping.
+
+    By default the sheet is A4; ``sheets`` names the allowed sheets instead
+    (a scanned page is printed on the sheet the scanner matched). With
+    expected_a4=False the page is a fit page of the image's own shape.
+    """
     from pypdf.generic import ContentStream
     page = reader.pages[0]
     width, height = float(page.mediabox.width), float(page.mediabox.height)
-    if expected_a4:
+    sheet = None
+    if sheets:
+        from reportlab.lib.pagesizes import A4, legal, letter
+        sizes = {'A4': A4, 'Letter': letter, 'Legal': legal}
+        sheet = next((name for name in sheets if all(abs(actual - expected) < .001 for actual, expected in
+                                                     zip(sorted((width, height)), sorted(sizes[name])))), None)
+        require(sheet is not None, 'scanned_document_sheet_page')
+    elif expected_a4:
         from reportlab.lib.pagesizes import A4
         require(all(abs(actual - expected) < .001 for actual, expected in
                     zip(sorted((width, height)), sorted(A4))), 'curved_document_a4_page')
@@ -237,11 +262,53 @@ def validate_fit_canvas(reader, image, *, expected_a4=True):
     expected = (fitted_width, 0., 0., fitted_height,
                 (width - fitted_width) / 2, (height - fitted_height) / 2)
     require(all(abs(actual - target) < .001 for actual, target in zip(placements[0], expected)),
-            'curved_document_uniform_image_placement' if expected_a4 else
+            'curved_document_uniform_image_placement' if expected_a4 or sheets else
             'curved_document_borderless_image_placement')
     borderless = abs(width - fitted_width) < .001 and abs(height - fitted_height) < .001
+    if sheets:
+        return {'sheet_page_verified': sheet, 'uniform_image_fit_verified': True,
+                'borderless_page_verified': borderless}
     return {'a4_page_verified': expected_a4, 'uniform_image_fit_verified': True,
             'borderless_page_verified': borderless}
+
+
+def _long_side(corners):
+    return max(((x2 - x1) ** 2 + (y2 - y1) ** 2) ** .5
+               for (x1, y1), (x2, y2) in zip(corners, corners[1:] + corners[:1]))
+
+
+def validate_scanned_page(reader, image, source_corners):
+    """A scanned page: on its matched sheet, sheet-shaped, rebuilt larger, white.
+
+    The scanner rebuilds the print at up to twice the photographed size and
+    snaps the page to A4, Letter or Legal, so these hold for every document
+    fixture whatever sheet it matched.
+    """
+    import numpy as np
+    flags = validate_fit_canvas(reader, image, sheets=tuple(SHEET_RATIOS))
+    ratio = max(image.size) / min(image.size)
+    require(any(abs(ratio / target - 1) <= .02 for target in SHEET_RATIOS.values()),
+            'scanned_document_sheet_aspect')
+    require(max(image.size) >= 1.2 * _long_side(list(source_corners)), 'scanned_document_resolution')
+    require(float(np.median(np.asarray(image.convert('L')))) > 210, 'scanned_document_white_paper')
+    return {**flags, 'sheet_aspect_verified': True, 'upscaled_page_verified': True,
+            'white_paper_verified': True}
+
+
+def validate_untouched_photo(reader, original):
+    """A photo that is not a document keeps every pixel on a fit page."""
+    import numpy as np
+    require(len(reader.pages) == 1 and len(reader.pages[0].images) == 1, 'ordinary_photo_page')
+    image = reader.pages[0].images[0].image.convert('RGB')
+    stream = next(iter(reader.pages[0]['/Resources']['/XObject'].values())).get_object()
+    if '/DCTDecode' in str(stream.get('/Filter')):
+        # The upload's own JPEG stream: decode it as a JPEG file, as the
+        # original is decoded (pypdf's own conversion differs slightly).
+        image = Image.open(io.BytesIO(stream.get_data())).convert('RGB')
+    flags = validate_fit_canvas(reader, image, expected_a4=False)
+    require(image.size == original.size and np.array_equal(np.asarray(image), np.asarray(original)),
+            'ordinary_photo_pixels_preserved')
+    return {**flags, 'original_pixels_preserved': True}
 
 
 
@@ -292,20 +359,14 @@ def validate_paper_boundary(original, true_paper_mask, image):
     return {'paper_boundary_verified': True}
 
 
-def validate_curved_scan(output, original, *, enabled, enhanced=True, true_paper_mask=None):
+def validate_curved_scan(output, original, *, enhanced=True, true_paper_mask=None):
     """Check actual PDF pixels, rather than trusting an engine status flag."""
     import numpy as np
     reader = PdfReader(io.BytesIO(output))
     require(len(reader.pages) == 1 and len(reader.pages[0].images) == 1, 'curved_document_page')
     image = reader.pages[0].images[0].image.convert('RGB')
     pixels = np.asarray(image).astype(np.int16)
-    flags = validate_fit_canvas(reader, image, expected_a4=enabled)
-    if not enabled:
-        require(image.size == original.size and np.array_equal(np.asarray(image), np.asarray(original)),
-                'curved_document_opt_out_preserves_all_pixels')
-        return {**flags, 'crop_verified': False, 'effect_verified': False, 'original_pixels_preserved': True}
-    require(image.width * image.height < original.width * original.height * .80,
-            'curved_document_crop')
+    flags = validate_scanned_page(reader, image, CAMERA_PAGE_CORNERS)
     require(1.15 < image.height / image.width < 1.8, 'curved_document_aspect')
     regions = (pixels[:image.height // 4, :image.width // 4],
                pixels[:image.height // 4, 3 * image.width // 4:],
@@ -393,7 +454,7 @@ def tinted_document_photo(*, paper_kind='yellow', desk_kind='bright', curved=Tru
                           cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=0)
     else:
         rgb, alpha = np.asarray(paper), np.full((height, width), 255, np.uint8)
-    corners = np.array(((140, 90), (601, 143), (561, 819), (88, 746)), np.float32)
+    corners = np.array(CAMERA_PAGE_CORNERS, np.float32)
     source = np.array(((margin, margin), (width - 1 + margin, margin),
                        (width - 1 + margin, height - 1 + margin), (margin, height - 1 + margin)), np.float32)
     size = (720, 900)
@@ -470,6 +531,14 @@ def tinted_writing_metrics(image):
                  cyan_strength[3 * height // 4:, width // 3:2 * width // 3])
     coordinates, shapes, masses = [], [], []
     for region, strength in zip(regions, strengths):
+        # Measure the label itself: its letters joined into one cluster. A
+        # scan's blue pen strokes and stamp carry faint cyan fringes that
+        # would otherwise stretch the label's box over half the side.
+        joined = cv2.dilate(region.astype(np.uint8), np.ones((9, 9), np.uint8))
+        count, labels = cv2.connectedComponents(joined, connectivity=8)
+        if count > 1:
+            weight = np.bincount(labels.ravel(), weights=(strength * region).ravel(), minlength=count)
+            region = region & (labels == int(np.argmax(weight[1:])) + 1)
         y, x = np.where(region)
         require(len(y) > 35, 'tinted_document_all_side_writing')
         coordinates.append((y, x))
@@ -526,9 +595,7 @@ def validate_tinted_scan(output, original, true_paper_mask, *, enhanced):
     reader = PdfReader(io.BytesIO(output))
     require(len(reader.pages) == 1 and len(reader.pages[0].images) == 1, 'tinted_document_page')
     image = reader.pages[0].images[0].image.convert('RGB')
-    flags = validate_fit_canvas(reader, image)
-    require(image.width * image.height < original.width * original.height * .80,
-            'tinted_document_crop')
+    flags = validate_scanned_page(reader, image, CAMERA_PAGE_CORNERS)
     flags.update(validate_tinted_writing(original, image))
     if enhanced:
         gray = cv2.cvtColor(np.asarray(image), cv2.COLOR_RGB2GRAY)
@@ -733,8 +800,7 @@ def validate_held_dense_scan(output, original, paper_mask, finger_mask, *, enhan
     reader = PdfReader(io.BytesIO(output))
     require(len(reader.pages) == 1 and len(reader.pages[0].images) == 1, 'held_document_page')
     image = reader.pages[0].images[0].image.convert('RGB')
-    flags = validate_fit_canvas(reader, image)
-    require(image.width * image.height < original.width * original.height * .8, 'held_document_crop')
+    flags = validate_scanned_page(reader, image, DENSE_PAGE_CORNERS)
     writing = tinted_writing_metrics(image)
     require(min(writing['corner_counts']) > 20, 'held_document_all_corner_writing')
     require(all(gap < limit for gap, limit in zip(writing['side_gaps'], (.04, .06, .04, .035))),
@@ -781,7 +847,7 @@ def fixtures(folder):
     paths['scan'] = folder / 'document-photo.png'
     scan = Image.new('RGB', (700, 900), (46, 64, 54))
     draw = ImageDraw.Draw(scan)
-    draw.polygon([(130, 80), (570, 125), (590, 810), (70, 750)], fill=(244, 244, 242))
+    draw.polygon(SCAN_PAGE_CORNERS, fill=(244, 244, 242))
     font = ImageFont.truetype('processors/assets/fonts/NotoSans-Regular.ttf', 23)
     for number, top in enumerate(range(180, 600, 48), 1):
         draw.text((155, top), f'{number}. Document scan 123', font=font, fill=(35, 35, 35))
@@ -804,8 +870,8 @@ def fixtures(folder):
     paths['held_dense_finger'] = folder / 'generic-held-finger-mask.png'
     Image.fromarray(paper_mask).save(paths['held_dense_mask'])
     Image.fromarray(finger_mask).save(paths['held_dense_finger'])
-    paths['partial_scan'] = folder / 'generic-clipped-shadowed-form.png'
-    rectified_partial_fixture().image.save(paths['partial_scan'])
+    paths['photo'] = folder / 'ordinary-photo.jpg'
+    ordinary_photo().save(paths['photo'], quality=90)
     for language, text in [('eng', 'HELLO DOCUMENT 2026'), ('rus', 'ПРИВЕТ ДОКУМЕНТ 2026'), ('uzb', 'SALOM HUJJAT 2026')]:
         paths[language] = folder / (language + '.png')
         scan = Image.new('RGB', (1500, 320), 'white')
@@ -835,17 +901,11 @@ def cases():
         ('pdf.extract_pages', ['pdf'], {'pages': '3,1'}), ('pdf.delete_pages', ['pdf'], {'pages': '2'}),
         ('pdf.reorder', ['pdf'], {'order': [3, 2, 1]}), ('pdf.rotate', ['pdf'], {'pages': '1,3', 'angle': 90}),
         ('pdf.images_to_pdf', ['red', 'blue'], {}), ('pdf.to_images', ['pdf'], {'format': 'png', 'pages': '3,1', 'dpi': 72}),
-        ('pdf.images_to_pdf', ['scan'], {'auto_crop': True, 'enhance_text': True}),
-        ('pdf.images_to_pdf', ['scan'], {'auto_crop': False, 'enhance_text': False}),
+        ('pdf.images_to_pdf', ['scan'], {}),
+        ('pdf.images_to_pdf', ['photo'], {}),
         ('pdf.images_to_pdf', ['curved_scan'], {}),
-        ('pdf.images_to_pdf', ['curved_scan'], {'auto_crop': True, 'enhance_text': False}),
-        ('pdf.images_to_pdf', ['curved_scan'], {'auto_crop': False, 'enhance_text': False}),
         ('pdf.images_to_pdf', ['tinted_scan'], {}),
-        ('pdf.images_to_pdf', ['tinted_scan'], {'auto_crop': True, 'enhance_text': False}),
         ('pdf.images_to_pdf', ['held_dense_scan'], {}),
-        ('pdf.images_to_pdf', ['held_dense_scan'], {'auto_crop': True, 'enhance_text': False}),
-        ('pdf.images_to_pdf', ['partial_scan'], {'auto_crop': True, 'enhance_text': False}),
-        ('pdf.images_to_pdf', ['partial_scan'], {}),
         ('pdf.protect', ['other'], {}), ('pdf.unlock_known', ['protected'], {}),
         ('convert.word_to_pdf', ['docx'], {}), ('convert.pptx_to_pdf', ['pptx'], {}),
         ('ocr.extract_text', ['eng'], {'language': 'eng'}), ('ocr.searchable_pdf', ['eng'], {'language': 'eng'}),
@@ -890,16 +950,12 @@ def validate_output(feature, outputs, parameters, inputs=None):
     if feature == 'pdf.rotate': require([page.rotation for page in pages] == [90, 0, 90], 'page_rotation')
     if feature == 'pdf.compress': require('Repeated readable text' in texts[0], 'compressed_text')
     if feature == 'pdf.images_to_pdf':
-        scan_case = inputs in (['scan'], ['curved_scan'], ['tinted_scan'], ['held_dense_scan'], ['partial_scan']) or 'auto_crop' in parameters
-        require(len(pages) == (1 if scan_case else 2) and all(len(p.images) > 0 for p in pages), 'image_pages')
-        if 'auto_crop' in parameters and inputs not in (['curved_scan'], ['tinted_scan'], ['held_dense_scan'], ['partial_scan']):
+        single = inputs in (['scan'], ['photo'], ['curved_scan'], ['tinted_scan'], ['held_dense_scan'])
+        require(len(pages) == (1 if single else 2) and all(len(p.images) > 0 for p in pages), 'image_pages')
+        if inputs == ['scan']:
             picture = pages[0].images[0].image.convert('RGB')
-            validate_fit_canvas(readers[0], picture, expected_a4=parameters['auto_crop'])
-            if parameters['auto_crop']:
-                require(picture.width < 650 and picture.height < 850, 'document_crop')
-                require(sum(b > r + 35 and b > g + 25 for r, g, b in picture.get_flattened_data()) > 100, 'document_colored_ink')
-            else:
-                require(picture.size == (700, 900) and picture.getpixel((20, 20)) == (46, 64, 54), 'document_opt_out')
+            validate_scanned_page(readers[0], picture, SCAN_PAGE_CORNERS)
+            require(sum(b > r + 35 and b > g + 25 for r, g, b in picture.get_flattened_data()) > 100, 'document_colored_ink')
     if feature in ('convert.word_to_pdf', 'convert.pptx_to_pdf'):
         require(len(pages) == 3 and all(phrase in text for phrase, text in zip(
             ['Document pages remain readable', 'Hujjat sahifalari aniq ko‘rinadi', 'Страницы документа остаются читаемыми'], texts)), 'office_multilingual_pages')
@@ -915,7 +971,6 @@ def validate_output(feature, outputs, parameters, inputs=None):
 
 def check_documents(audit_id, emit):
     results = []
-    partial_crop_only = None
     deadline = time.monotonic() + 410
     with tempfile.TemporaryDirectory(prefix='pdfmaster-service-audit-') as directory:
         paths = fixtures(Path(directory))
@@ -923,17 +978,9 @@ def check_documents(audit_id, emit):
             customer = None
             start = time.monotonic()
             row = {'feature': feature, 'variant': parameters.get('language', 'default'), 'scope': 'http_queue_worker_download'}
-            if feature == 'pdf.images_to_pdf' and 'auto_crop' in parameters:
-                row['variant'] = 'scanning_on' if parameters['auto_crop'] else 'scanning_off'
-            if inputs == ['curved_scan']:
-                row['variant'] = ('curved_gray_defaults' if not parameters else
-                                  'curved_gray_crop_only' if parameters['auto_crop'] else 'curved_gray_off')
-            if inputs == ['tinted_scan']:
-                row['variant'] = 'tinted_paper_defaults' if not parameters else 'tinted_paper_crop_only'
-            if inputs == ['held_dense_scan']:
-                row['variant'] = 'held_dense_defaults' if not parameters else 'held_dense_crop_only'
-            if inputs == ['partial_scan']:
-                row['variant'] = 'clipped_page_defaults' if not parameters else 'clipped_page_crop_only'
+            row['variant'] = {'scan': 'document_photo', 'photo': 'ordinary_photo', 'curved_scan': 'curved_gray_defaults',
+                              'tinted_scan': 'tinted_paper_defaults',
+                              'held_dense_scan': 'held_dense_defaults'}.get(inputs[0], row['variant'])
             try:
                 require(time.monotonic() < deadline, 'audit_time_budget')
                 customer = Customer(audit_id, feature)
@@ -956,64 +1003,33 @@ def check_documents(audit_id, emit):
                     outputs.append(body)
                 require(bool(outputs), 'missing_output')
                 validate_output(feature, outputs, parameters, inputs)
+                if feature == 'pdf.images_to_pdf':
+                    # Scanning has no switches: the quote carries the layout only.
+                    quoted = job.get('parameters', {})
+                    require(not {'auto_crop', 'enhance_text'} & set(quoted) and all(
+                        quoted.get(key) == value for key, value in
+                        {'paper_size': 'fit', 'orientation': 'auto', 'margin': 0}.items()), 'image_pdf_quoted_layout')
+                if inputs == ['photo']:
+                    with Image.open(paths['photo']) as original:
+                        row.update(validate_untouched_photo(PdfReader(io.BytesIO(outputs[0])), original.convert('RGB')))
                 if inputs == ['curved_scan']:
-                    enabled = parameters.get('auto_crop', True)
-                    enhanced = parameters.get('enhance_text', True)
-                    require(job.get('parameters', {}).get('auto_crop') is enabled
-                            and job.get('parameters', {}).get('enhance_text') is enhanced,
-                            'curved_document_quoted_switches')
-                    require(all(job.get('parameters', {}).get(key) == value for key, value in
-                                {'paper_size': 'fit', 'orientation': 'auto', 'margin': 0}.items()),
-                            'curved_document_quoted_layout')
                     with Image.open(paths['curved_scan']) as original, Image.open(paths['curved_mask']) as mask:
                         import numpy as np
-                        row.update(validate_curved_scan(outputs[0], original.convert('RGB'), enabled=enabled,
-                                                        enhanced=enhanced, true_paper_mask=np.asarray(mask)))
+                        row.update(validate_curved_scan(outputs[0], original.convert('RGB'),
+                                                        true_paper_mask=np.asarray(mask)))
                 if inputs == ['tinted_scan']:
-                    enhanced = parameters.get('enhance_text', True)
-                    require(job.get('parameters', {}).get('auto_crop') is True
-                            and job.get('parameters', {}).get('enhance_text') is enhanced,
-                            'tinted_document_quoted_switches')
-                    require(all(job.get('parameters', {}).get(key) == value for key, value in
-                                {'paper_size': 'fit', 'orientation': 'auto', 'margin': 0}.items()),
-                            'tinted_document_quoted_layout')
                     with Image.open(paths['tinted_scan']) as original, Image.open(paths['tinted_mask']) as mask:
                         import numpy as np
                         row.update(validate_tinted_scan(outputs[0], original.convert('RGB'), np.asarray(mask),
-                                                        enhanced=enhanced))
+                                                        enhanced=True))
                 if inputs == ['held_dense_scan']:
-                    enhanced = parameters.get('enhance_text', True)
-                    require(job.get('parameters', {}).get('auto_crop') is True
-                            and job.get('parameters', {}).get('enhance_text') is enhanced,
-                            'held_document_quoted_switches')
-                    require(all(job.get('parameters', {}).get(key) == value for key, value in
-                                {'paper_size': 'fit', 'orientation': 'auto', 'margin': 0}.items()),
-                            'held_document_quoted_layout')
                     with (Image.open(paths['held_dense_scan']) as original,
                           Image.open(paths['held_dense_mask']) as mask,
                           Image.open(paths['held_dense_finger']) as finger):
                         import numpy as np
                         row.update(validate_held_dense_scan(outputs[0], original.convert('RGB'),
-                                                          np.asarray(mask), np.asarray(finger), enhanced=enhanced))
+                                                          np.asarray(mask), np.asarray(finger), enhanced=True))
                 if feature == 'pdf.compress': require(len(outputs[0]) < paths['compress'].stat().st_size, 'compression_size')
-                if inputs == ['partial_scan']:
-                    enhanced = parameters.get('enhance_text', True)
-                    require(job.get('parameters', {}).get('auto_crop') is True
-                            and job.get('parameters', {}).get('enhance_text') is enhanced,
-                            'clipped_document_quoted_switches')
-                    require(all(job.get('parameters', {}).get(key) == value for key, value in
-                                {'paper_size': 'fit', 'orientation': 'auto', 'margin': 0}.items()),
-                            'clipped_document_quoted_layout')
-                    reader = PdfReader(io.BytesIO(outputs[0]))
-                    require(len(reader.pages) == 1 and len(reader.pages[0].images) == 1,
-                            'clipped_document_page')
-                    image = reader.pages[0].images[0].image.convert('RGB')
-                    row.update(validate_fit_canvas(reader, image))
-                    proof = validate_rectified_partial_output(rectified_partial_fixture(), image,
-                                                              enhanced=enhanced, crop_only=partial_crop_only)
-                    if not enhanced:
-                        partial_crop_only = image.copy()
-                    row.update(proof)
                 if feature == 'pdf.merge':
                     preview = job['artifacts'][0]['preview_url']
                     status, body, _ = customer.request('GET', preview)

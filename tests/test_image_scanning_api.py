@@ -1,4 +1,4 @@
-"""Public API boundaries for the images-to-PDF document cleanup switches."""
+"""Public API boundaries for images-to-PDF: scanning has no switches, old ones are dropped."""
 import io
 
 import pytest
@@ -6,6 +6,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from PIL import Image
 
 from apps.core.models import Job, Quote, Reservation
+from tests.scan_fixtures import scanner_models
 from tests.test_platform import account, login_client
 
 
@@ -37,6 +38,9 @@ def request_quote(image_client, parameters=None, *, omit_parameters=False):
     return client.post('/api/v1/quotes', body, content_type='application/json', HTTP_X_CSRFTOKEN=csrf)
 
 
+DEFAULTS = {'paper_size': 'fit', 'orientation': 'auto', 'margin': 0}
+
+
 def submit(image_client, quote_id, *, extra=None):
     client, csrf, _ = image_client
     return client.post(
@@ -48,22 +52,18 @@ def submit(image_client, quote_id, *, extra=None):
     )
 
 
-def test_public_catalog_exposes_default_on_document_switches(client):
+def test_public_catalog_offers_the_layout_and_no_scan_switches(client):
     response = client.get('/api/v1/catalog')
     assert response.status_code == 200, response.content
     features = {feature['id']: feature for feature in response.json()['features']}
     schema = features['pdf.images_to_pdf']['parameters']
     assert schema['additionalProperties'] is False
-    assert 'fit' in schema['properties']['paper_size']['enum']
+    assert set(schema['properties']) == {'paper_size', 'orientation', 'margin'}
+    assert schema['properties']['paper_size']['enum'] == ['fit', 'A4', 'Letter', 'original']
     assert schema['properties']['paper_size']['default'] == 'fit'
+    assert 'Legal' in schema['properties']['paper_size']['description'], 'Fit may give a Legal page'
     assert schema['properties']['orientation']['default'] == 'auto'
     assert schema['properties']['margin']['default'] == 0
-    for field in ('auto_crop', 'enhance_text'):
-        assert schema['properties'][field]['type'] == 'boolean'
-        assert schema['properties'][field]['default'] is True
-        assert field not in schema['required'], 'Older clients may omit either switch'
-        assert 'document' in schema['properties'][field]['description'].lower()
-        assert field not in features['pdf.compress']['parameters']['properties']
 
 
 @pytest.mark.parametrize('parameters,omit_parameters', [
@@ -71,73 +71,98 @@ def test_public_catalog_exposes_default_on_document_switches(client):
     ({}, False),
     ({'paper_size': 'Letter', 'orientation': 'landscape', 'margin': 0}, False),
 ])
-def test_legacy_image_quotes_normalize_default_on_switches(image_client, parameters, omit_parameters):
+def test_image_quotes_normalize_to_the_layout_alone(image_client, parameters, omit_parameters):
     response = request_quote(image_client, parameters, omit_parameters=omit_parameters)
     assert response.status_code == 201, response.content
     body = response.json()
     normalized = body['normalized_parameters']
-    assert normalized['auto_crop'] is True
-    assert normalized['enhance_text'] is True
-    for field, value in parameters.items():
-        assert normalized[field] == value
-    quote = Quote.objects.get(pk=body['id'])
-    assert quote.parameters == normalized
-
+    assert normalized == {**DEFAULTS, **parameters}
+    assert Quote.objects.get(pk=body['id']).parameters == normalized
     confirmed = submit(image_client, body['id'])
     assert confirmed.status_code == 201, confirmed.content
     assert confirmed.json()['status'] == 'queued'
     assert confirmed.json()['parameters'] == normalized
-    job = Job.objects.get(pk=confirmed.json()['id'])
-    assert job.parameters['auto_crop'] is True
-    assert job.parameters['enhance_text'] is True
+    assert Job.objects.get(pk=confirmed.json()['id']).parameters == normalized
 
 
-@pytest.mark.parametrize('opt_out,expected', [
-    ({'auto_crop': False}, {'auto_crop': False, 'enhance_text': True}),
-    ({'enhance_text': False}, {'auto_crop': True, 'enhance_text': False}),
-    ({'auto_crop': False, 'enhance_text': False}, {'auto_crop': False, 'enhance_text': False}),
-])
-def test_explicit_opt_out_is_frozen_in_confirmed_job(image_client, opt_out, expected):
-    response = request_quote(image_client, opt_out)
+@pytest.mark.parametrize('legacy', [
+    {'auto_crop': False},
+    {'enhance_text': False},
+    {'auto_crop': False, 'enhance_text': False, 'paper_size': 'A4'},
+    {'auto_crop': 'yes', 'enhance_text': None},
+], ids=['crop-off', 'enhance-off', 'both-off-with-a4', 'odd-values'])
+def test_legacy_scan_switches_are_dropped_from_confirmed_job(settings, image_client, scanner_models, legacy):
+    # A saved web draft or an old client still sends the retired switches.
+    response = request_quote(image_client, legacy)
     assert response.status_code == 201, response.content
     quote = response.json()
-    for field, value in expected.items():
-        assert quote['normalized_parameters'][field] is value
+    expected = {**DEFAULTS, **{key: value for key, value in legacy.items() if key == 'paper_size'}}
+    assert quote['normalized_parameters'] == expected
 
-    # Confirmation identifies the reviewed quote. Extra client parameters cannot
-    # replace the reviewed settings, even when they try to turn an opt-out on.
+    # Confirmation identifies the reviewed quote. Extra client parameters,
+    # switches included, cannot replace the reviewed settings.
+    settings.LOCAL_SYNC_JOBS = True
     confirmed = submit(image_client, quote['id'], extra={
-        'parameters': {'auto_crop': True, 'enhance_text': True},
+        'parameters': {'auto_crop': True, 'paper_size': 'Letter'},
     })
     assert confirmed.status_code == 201, confirmed.content
     job_id = confirmed.json()['id']
-    normalized = quote['normalized_parameters']
-    assert confirmed.json()['parameters'] == normalized
-    assert Quote.objects.get(pk=quote['id']).parameters == normalized
-    assert Job.objects.get(pk=job_id).parameters == normalized
+    job = Job.objects.get(pk=job_id)
+    assert job.parameters == expected and Quote.objects.get(pk=quote['id']).parameters == expected
+    assert not {'auto_crop', 'enhance_text'} & set(job.parameters)
+    assert job.status == 'succeeded', job.error_code
 
     client, _, _ = image_client
     detail = client.get(f'/api/v1/jobs/{job_id}')
     assert detail.status_code == 200
-    assert detail.json()['parameters'] == normalized
-
-    later_quote = request_quote(image_client)
-    assert later_quote.status_code == 201, later_quote.content
-    assert later_quote.json()['normalized_parameters']['auto_crop'] is True
-    assert later_quote.json()['normalized_parameters']['enhance_text'] is True
-    assert Job.objects.get(pk=job_id).parameters == normalized
+    assert detail.json()['parameters'] == expected
 
     replay = submit(image_client, quote['id'], extra={'parameters': {}})
     assert replay.status_code == 200, replay.content
     assert replay.json()['id'] == job_id
-    assert replay.json()['parameters'] == normalized
     assert Job.objects.count() == 1
 
 
-@pytest.mark.parametrize('field', ['auto_crop', 'enhance_text'])
-@pytest.mark.parametrize('value', [None, 0, 1, 'true', 'false', [], {}])
-def test_public_quotes_reject_non_boolean_switches_before_reservation(image_client, field, value):
-    response = request_quote(image_client, {field: value})
+def test_queued_job_saved_with_switches_still_runs(settings, image_client, scanner_models):
+    # A job queued before the switches were retired is normalized again when it runs.
+    from apps.core.services import execute_job
+    response = request_quote(image_client)
+    assert response.status_code == 201, response.content
+    confirmed = submit(image_client, response.json()['id'])
+    job = Job.objects.get(pk=confirmed.json()['id'])
+    Job.objects.filter(pk=job.pk).update(parameters={**job.parameters, 'auto_crop': False, 'enhance_text': True})
+    execute_job(job.id)
+    job.refresh_from_db()
+    assert job.status == 'succeeded', job.error_code
+
+
+def test_worker_logs_photos_whose_scan_failed(settings, image_client, monkeypatch, caplog):
+    # The sandbox child's own log is discarded; the job's metadata carries the
+    # failures to the worker, which logs them. The job still succeeds.
+    import logging
+    import processors.scanner as scanner
+    from processors import engine, sandbox
+    from apps.core.services import execute_job
+
+    def no_memory(bgr, paper):
+        raise MemoryError
+    monkeypatch.setattr(scanner, 'load_models', lambda: None)
+    monkeypatch.setattr(scanner, 'scan', no_memory)
+    monkeypatch.setattr(sandbox, 'execute_sandbox', lambda feature, paths, parameters, out, **kwargs:
+                        engine.execute(feature, paths, parameters, out))
+    response = request_quote(image_client)
+    job = Job.objects.get(pk=submit(image_client, response.json()['id']).json()['id'])
+    with caplog.at_level(logging.WARNING, logger='apps.core.services'):
+        execute_job(job.id)
+    job.refresh_from_db()
+    assert job.status == 'succeeded', job.error_code
+    assert f'Job {job.id}: 1 photo scan(s) failed (MemoryError), kept as uploaded' in caplog.text
+
+
+@pytest.mark.parametrize('parameters', [{'auto_crop_page': True}, {'enhance': False}, {'scan': True},
+                                        {'paper_size': 'Legal'}])
+def test_public_quotes_reject_other_unknown_settings_before_reservation(image_client, parameters):
+    response = request_quote(image_client, parameters)
     assert response.status_code == 400, response.content
     assert response.json()['error']['code'] == 'invalid_parameters'
     assert Quote.objects.count() == 0
