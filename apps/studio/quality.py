@@ -10,6 +10,16 @@ empty section, a slide that repeats another — is sent back to the model once,
 for those sections only (`repair`), and the rest of the document is kept as it
 was. A change to selected pages never touches the others, not even to tidy them.
 
+A change request is also held to the model's own plan of it (`edit_plan`, a
+list of the parts of the request and the sections each goes in): a part whose
+sections all came back exactly as they were was not applied, and goes into the
+same one repair. Only parts a section's text shows are held to it: a new look,
+the kind of picture, the file format, the test, "keep the rest as it was" and
+spelling are done (or not) elsewhere. So do pictures the request asked for and
+the result lacks, when the plan can add any; pictures it asked to take away are
+taken away here, without the model, from the sections the plan or the request
+names — never from the whole document on a guess.
+
 Only codes, counts and section ids are ever logged: never the customer's text.
 """
 import copy
@@ -39,6 +49,8 @@ class Report:
     # continued_heading are recorded (the last is put right in finish()).
     issues: dict = field(default_factory=dict)
     missing_subtopics: list = field(default_factory=list)
+    # (section ids, instruction) for each part of a change request left undone.
+    unapplied: list = field(default_factory=list)
 
     def add(self, code, item):
         bucket = self.issues.setdefault(code, [])
@@ -51,7 +63,8 @@ class Report:
     def to_repair(self):
         """Section ids that only the model can put right (repair() puts them in document order)."""
         return list(dict.fromkeys(self.ids('wrong_language', 'empty_section', 'duplicate_section',
-                                           'duplicate_paragraph', 'repeated_heading')))
+                                           'duplicate_paragraph', 'repeated_heading', 'unapplied',
+                                           'pictures_missing')))
 
     def summary(self):
         """Codes and counts only — safe to log."""
@@ -309,6 +322,257 @@ def check(content, *, locale, fmt, prompt='', request=None, selected=None, expec
     return report
 
 
+# --- A change request -------------------------------------------------------------
+
+# What a reader sees of a section: a change that was applied differs in one of these.
+SEEN = ('heading', 'body', 'notes', 'items', 'columns', 'layout', 'image_query')
+# Parts of a change that leave a section as it was when done: keeping things
+# as they were, and spelling or the alphabet (put right by rule; a page
+# without a typo needs no change). "Copy it as is" is dictated text, not this.
+# Read after edits._text, so apostrophes are one and Uzbek Cyrillic is Latin.
+KEEP = re.compile(r"(?<![\w'])(?:avvalgidek|oldingidek|avvalgi\s+hol\w*|o'z\s+hol\w*|o'zgarishsiz|o'zgartirma\w*"
+                  r"|o'zgarmasin|tegma(?:ng|sin)?(?![\w'])|qolsin"
+                  r"|keep\s+(?:everything|all|the\s+rest|the\s+others?|it|them|the\s+same)(?![\w'])"
+                  r"|leave\s+(?:everything|all|the\s+rest|the\s+others?|it|them)(?![\w'])"
+                  r"|(?:don't|do\s+not|never)\s+change|unchanged|as\s+it\s+was(?![\w'])|as\s+before"
+                  r"|ничего\s+не\s+(?:меня|измен)\w*|не\s+(?:меняй|изменяй|трогай)\w*|без\s+изменений"
+                  r"|как\s+(?:было|раньше)(?![\w'])|остав\w*\s+(?:вс[её]|остальн\w*|как))", re.IGNORECASE)
+SPELLING = re.compile(r"(?<![\w'])(?:imlo\w*|xato\w*|grammati\w*|orfografi\w*|alifbo\w*|kiril\w*|kril\w*"
+                      r"|lotin(?:cha\w*|ga|da)(?![\w'])|lotin\s+(?:alifbo|harf|yozuv|grafika)\w*"
+                      r"|spelling|typos?(?![\w'])|misspel\w*|grammar|grammatical\w*|alphabet\w*|cyrillic"
+                      r"|latin\s+(?:alphabet|script|letters)|(?:fix|correct)\s+(?:the\s+|all\s+|any\s+)?(?:[\w']+\s+)?"
+                      r"(?:mistakes|errors)(?![\w'])"
+                      r"|ошибк\w*|опечат\w*|орфограф\w*|грамматик\w*|латиниц\w*|кириллиц\w*|алфавит\w*)", re.IGNORECASE)
+# The look named outright, held back only when the request asks for a new
+# look: "Registon dizayni haqida yoz" on its own is content.
+LOOK = re.compile(r"(?<![\w'])(?:dizayn\w*|fon(?:i|ni|ini|lar\w*|da|ga)?(?![\w'])|shablon\w*|design\w*|theme\w*"
+                  r"|background\w*|template\w*|дизайн\w*|фон(?:а|ы|ом|е)?(?![\w'])|оформлени\w*|шаблон\w*)",
+                  re.IGNORECASE)
+# Slide layouts a picture fits best; a document page's is plain text.
+TEXT_LAYOUTS = (None, '', 'auto', 'text', 'bullets', 'statement', 'two_column')
+# A picture layout drawn as text when its picture is taken away.
+WITHOUT_PICTURE = {'image_split': 'bullets', 'image_full': 'statement', 'image': 'text'}
+PLAN_ITEMS = 40
+INSTRUCTION_CHARACTERS = 300
+
+
+def _same(one, other):
+    """Whether two versions of a section read and look the same ('' and a missing field alike)."""
+    return all((one.get(key) or None) == (other.get(key) or None) for key in SEEN)
+
+
+def _count(value):
+    try:
+        return max(0, int(value or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def plan_items(plan):
+    """The model's plan of a change request as (instruction, [section ids]); a malformed item is left out."""
+    items = []
+    for item in (plan if isinstance(plan, list) else [])[:PLAN_ITEMS]:
+        if not isinstance(item, dict):
+            continue
+        instruction = ' '.join(str(item.get('instruction') or '').split())[:INSTRUCTION_CHARACTERS]
+        listed = item.get('sections')
+        listed = [str(sid) for sid in listed if isinstance(sid, (str, int))] if isinstance(listed, list) else []
+        if instruction:
+            items.append((instruction, list(dict.fromkeys(listed))))
+    return items
+
+
+def _about_pictures(text):
+    """Whether a part of the plan is about pictures, in the words the change request reader knows them by."""
+    from .edits import PICTURE, _text
+    return bool(PICTURE.search(_text(text)))
+
+
+def _held(instruction, edit, pictures):
+    """Whether a part of the plan is one a section's text shows done, so check_plan can hold the model to it.
+
+    Not the look, the kind of picture or the file format the request asks for
+    (the repair cannot choose a design and would only rewrite the content kept
+    for it), not the test (drawn from the questions, never a section), not
+    "keep the rest as it was", spelling or the alphabet, and not pictures when
+    the plan adds none: the model was told to use none.
+    """
+    from . import edits
+    text = edits._text(instruction)
+    if not pictures and edits.PICTURE.search(text):
+        return False
+    if any(pattern.search(text) for pattern in (edits.QUESTION, KEEP, SPELLING, edits.REDESIGN)):
+        return False
+    if edit.get('redesign') and LOOK.search(text):
+        return False
+    if edit.get('photo_style') and any(pattern.search(text) for pattern in (edits.DRAWN, edits.REAL, edits.CHILDISH)):
+        return False
+    named = {'pdf': edits.TO_PDF, 'pptx': edits.TO_PPTX}.get(edit.get('format'))
+    return not (named and named.search(text))
+
+
+def check_plan(report, content, before, plan, selected=None, *, edit=None, pictures=True):
+    """Record each part of the change request the model planned and left undone.
+
+    A part is undone when every section the plan puts it in reads exactly as
+    it did before the change ('unapplied'); a section that changed, a new one
+    and a removed one all count as done. A part placed nowhere cannot be
+    checked and is only counted ('unplaced'). In a change to selected pages
+    only those pages are held to it. `edit` is the change as edits.read read
+    it; `pictures` is False when the plan adds no pictures. Only parts a
+    section's text shows are held (`_held`), and in a whole-document change a
+    part listing every section (a cover, closing or divider aside) is one
+    about the whole (a tone, a look) unless it asks for more information,
+    which every section must then show.
+    """
+    edit = edit or {}
+    now = {section.get('id'): section for section in content.get('sections', [])}
+    was = {section.get('id'): section for section in (before or {}).get('sections', [])}
+    # A new look or another kind of picture leaves every section as it was:
+    # that is the change done, not a change missed.
+    if ((edit.get('redesign') or edit.get('photo_style')) and now.keys() == was.keys()
+            and all(_same(now[sid], was[sid]) for sid in now)):
+        return
+    whole = {sid for sid, section in was.items() if section.get('layout') not in STRUCTURAL}
+    for number, (instruction, listed) in enumerate(plan_items(plan)):
+        if not _held(instruction, edit, pictures):
+            continue
+        if not listed:
+            report.add('unplaced', number)
+            continue
+        if not selected and len(whole) >= 2 and whole <= set(listed) and not edit.get('expand'):
+            continue
+        listed = [sid for sid in listed if not selected or sid in selected]
+        if listed and all(sid in now and sid in was and _same(now[sid], was[sid]) for sid in listed):
+            report.unapplied.append((listed, instruction))
+            for sid in listed:
+                report.add('unapplied', sid)
+
+
+def _pictured(sections, fmt):
+    """The sections with a picture, a deck's cover left out: it keeps its photo whatever a change asks."""
+    from .photos import wanted
+    cover = sections[0] if fmt == 'pptx' and sections else None
+    return [section for section in wanted(sections) if section is not cover]
+
+
+def check_pictures(report, content, data):
+    """Record the sections to give pictures when the change request asked for them and the result lacks them.
+
+    Nothing is asked when the plan adds no pictures (no allowance, or photos
+    switched off): the model was told to use none, and a repair would only
+    shorten each slide for a picture that is never drawn. `images_wanted` is
+    the pictures the document should have after the change (domain.py): one
+    on each content page for 'every'; for 'add', those it had and the ones
+    added. So the result is short while it has fewer than that, within the
+    room the plan leaves beside a deck's cover photo: then it also has fewer
+    new pictures than were asked for. A deck's cover is left out of every
+    count, so a new picture there answers nothing. The sections chosen are
+    those a picture suits best (text layouts first), spread through the
+    document, never a deck's cover, a divider, the closing, or the title page
+    a change adds at the start of a document.
+    """
+    from .photos import wanted
+    revision = data.get('revision') or {}
+    edit = revision.get('edit') or {}
+    asked = edit.get('pictures')
+    if asked not in ('add', 'every'):
+        return
+    options = data.get('options') or {}
+    cap = _count(options.get('image_cap'))
+    if not cap:
+        return
+    sections, fmt = content.get('sections', []), data.get('output_format')
+    now = len(_pictured(sections, fmt))
+    room = cap - (len(wanted(sections)) - now)
+    total = _count(options.get('images_wanted'))
+    if not total:
+        # Asked for with no count kept: one more than the document had.
+        total = len(_pictured((revision.get('before') or data.get('content') or {}).get('sections', []), fmt)) + 1
+    short = min(total, room) - now
+    if short <= 0:
+        return
+    pictured = {section.get('id') for section in wanted(sections)}
+    # A deck's first slide is its cover, whatever layout it chose; a title
+    # page a change adds to a document is its first page, and only its lines.
+    first = 1 if fmt == 'pptx' or 'title_page' in (edit.get('parts') or []) else 0
+    free = [section for index, section in enumerate(sections)
+            if section.get('id') not in pictured and index >= first
+            and section.get('layout') not in ('cover', 'closing', 'section')
+            and (section.get('body') or section.get('items'))]
+    text = [section['id'] for section in free if section.get('layout') in TEXT_LAYOUTS]
+    rest = [section['id'] for section in free if section.get('layout') not in TEXT_LAYOUTS]
+    if short >= len(text):
+        chosen = text + rest[:short - len(text)]
+    else:
+        chosen = [text[int(step * len(text) / short)] for step in range(short)]
+    for section in sections:
+        if section.get('id') in chosen:
+            report.add('pictures_missing', section['id'])
+
+
+def named_slides(revision, fmt):
+    """Ids of the slides a change request names beside a picture: "3-slayddagi fotoni olib tashla" is s3's.
+
+    Only a deck's, whose slides are its sections (a document's sections flow
+    across its pages), and only when the change moves no slide, so the third
+    slide is still the third section. A number is read only in the part of a
+    sentence that names a picture, or a bare one listed beside it:
+    "2-slayddagi va 4-slayddagi rasmlarni olib tashla" names slides 2 and 4,
+    "3-slayddagi rasmni olib tashla va 5-slaydga matn qo'sh" slide 3 alone.
+    """
+    if fmt != 'pptx' or (revision.get('edit') or {}).get('structural'):
+        return []
+    from .edits import PICTURE, SEPARATOR, TARGET, _text
+    slides = (revision.get('before') or {}).get('sections', [])
+    ordinals = set()
+    for sentence in re.split(r'[.!?\n;]', _text(revision.get('request') or '')):
+        waiting, beside = set(), False
+        for piece in SEPARATOR.split(sentence):
+            found = {int(next(group for group in match.groups() if group)) for match in TARGET.finditer(piece)}
+            if PICTURE.search(piece):
+                ordinals |= waiting | found
+                waiting, beside = set(), True
+            elif found and not TARGET.sub('', piece).strip():
+                if beside:
+                    ordinals |= found
+                else:
+                    waiting |= found
+            else:
+                waiting, beside = set(), False
+    return [slides[number - 1].get('id') for number in sorted(ordinals) if 1 <= number <= len(slides)]
+
+
+def without_pictures(content, plan, selected=None, *, before=None, named=()):
+    """(`content` with the pictures the change request took away taken away, how many).
+
+    The sections are those the plan puts a picture instruction in. With no
+    plan, or none of its parts about pictures, the removal is never widened to
+    the whole document: it takes in the slides the request names (`named`, see
+    named_slides) and the sections whose picture the model itself took away
+    (`before` has one, the result's query is empty), and leaves every other
+    picture as the model returned it. A picture layout becomes its text layout
+    and the image query is emptied, so nothing is fetched or drawn.
+    """
+    listed = [sid for instruction, ids in plan_items(plan) if _about_pictures(instruction) for sid in ids]
+    if listed:
+        scope = set(listed)
+    else:
+        had = {section.get('id') for section in (before or {}).get('sections', []) if section.get('image_query')}
+        scope = set(named) | {section.get('id') for section in content.get('sections', [])
+                              if section.get('id') in had and not section.get('image_query')}
+    if selected:
+        scope &= set(selected)
+    removed, sections = 0, []
+    for section in content.get('sections', []):
+        if section.get('id') in scope and (section.get('image_query') or section.get('layout') in WITHOUT_PICTURE):
+            section = {**section, 'image_query': '',
+                       'layout': WITHOUT_PICTURE.get(section.get('layout'), section.get('layout'))}
+            removed += 1
+        sections.append(section)
+    return {**content, 'sections': sections}, removed
+
+
 # --- Repairing ------------------------------------------------------------------
 
 def request_text(report, locale, fmt, ids):
@@ -345,6 +609,20 @@ def request_text(report, locale, fmt, ids):
         lines.append(f'{", ".join(pick("repeated_heading"))}: the heading repeats an earlier one. If the page '
                      f'continues the topic of the page before it, return an empty heading; otherwise give it a '
                      f'heading that names what this page adds. Change nothing else.')
+    for listed, instruction in report.unapplied:
+        mine = [sid for sid in listed if sid in ids]
+        if mine:
+            lines.append(f'{", ".join(mine)}: this part of the change request is not applied yet: "{instruction}". '
+                         f'Apply it fully now.')
+    if pick('pictures_missing') and fmt == 'pptx':
+        lines.append(f'{", ".join(pick("pictures_missing"))}: the change request asks for pictures, and these slides '
+                     f'have none. Make each an image_split slide (its heading and 3-4 short body lines beside the '
+                     f'picture), or image_full when it is one sentence, with image_query: 2-4 plain English words '
+                     f'naming what the picture literally shows. Keep what each slide says.')
+    elif pick('pictures_missing'):
+        lines.append(f'{", ".join(pick("pictures_missing"))}: the change request asks for pictures, and these pages '
+                     f'have none. Give each the image layout with image_query: 2-4 plain English words naming what '
+                     f'the picture literally shows. Keep the text of each page.')
     return '\n'.join(lines)
 
 
@@ -407,12 +685,13 @@ def repair(config, data, content, report, *, job, deadline=None):
     return repaired, 'repaired'
 
 
-def finish(config, data, content, *, job, deadline=None, mode='openai'):
+def finish(config, data, content, *, job, deadline=None, mode='openai', plan=None):
     """The checked, corrected and (where needed) repaired content, ready to draw.
 
     Returns (content, summary) where summary holds codes and counts only. A
     change to selected sections is checked against the whole document but
     corrects only those sections; everything else goes out as it came in.
+    `plan` is a revision's edit_plan, as the model returned it.
     """
     locale, fmt = data['output_locale'], data.get('output_format', 'pdf')
     revision = data.get('revision') or {}
@@ -420,7 +699,24 @@ def finish(config, data, content, *, job, deadline=None, mode='openai'):
     prompt = revision.get('original_prompt') or data.get('prompt', '')
     scope = {'locale': locale, 'fmt': fmt, 'prompt': prompt, 'selected': selected,
              'request': revision.get('request', data.get('prompt', '')) if revision else None}
-    report = check(content, **scope, expected=None if selected else len(data['content']['sections']))
+    edit = revision.get('edit') or {}
+    # A whole-document change is compared with the document before it; a
+    # change to selected pages with the draft, which holds the pages as they were.
+    before = data['content'] if selected else revision.get('before') or data['content']
+    removed = 0
+    if edit.get('pictures') == 'remove':
+        content, removed = without_pictures(content, plan, selected, before=before,
+                                            named=named_slides({**revision, 'before': before}, fmt))
+    pictures = bool(_count((data.get('options') or {}).get('image_cap')))
+
+    def checked(content, **expected):
+        report = check(content, **scope, **expected)
+        if revision:
+            check_plan(report, content, before, plan, selected, edit=edit, pictures=pictures)
+            check_pictures(report, content, data)
+        return report
+
+    report = checked(content, expected=None if selected else len(data['content']['sections']))
     content = _continuing(content, report.ids('continued_heading'))
     content, _ = tidy(content, selected)
     content, fixed = enforce(content, locale, selected)
@@ -430,11 +726,13 @@ def finish(config, data, content, *, job, deadline=None, mode='openai'):
         if outcome == 'repaired':
             content, _ = tidy(content, selected)
             content, _ = enforce(content, locale, selected)
-            after = check(content, **scope)
+            after = checked(content)
             content = _continuing(content, after.ids('continued_heading'))
     summary = {'found': report.summary(), 'transliterated': len(fixed), 'repair': outcome,
                'left': {code: n for code, n in after.summary().items() if code not in ('script', 'continued_heading')}}
-    if report.summary() or outcome:
+    if removed:
+        summary['pictures_removed'] = removed
+    if report.summary() or outcome or removed:
         logger.info('Job %s quality: %s', getattr(job, 'id', None), summary)
     return content, summary
 

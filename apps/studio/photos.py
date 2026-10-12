@@ -119,9 +119,19 @@ class _PinnedRedirect(urllib.request.HTTPRedirectHandler):
         return super().redirect_request(request, fp, code, message, headers, newurl)
 
 
-def _hit(value):
+# What Pixabay is asked for: photographs, unless the customer asked for
+# drawings ("kitoblardagi rasmlardek", "illustrations"), which Pixabay calls
+# illustrations. Anything else is searched as photos.
+KINDS = ('photo', 'illustration')
+
+
+def _kind(style):
+    return style if style in KINDS else 'photo'
+
+
+def _hit(value, kind='photo'):
     """The few fields of a search hit worth keeping, or None if it is malformed."""
-    if not isinstance(value, dict) or value.get('type') != 'photo':
+    if not isinstance(value, dict) or value.get('type') != kind:
         return None
     identifier, width, height = value.get('id'), value.get('imageWidth'), value.get('imageHeight')
     url = value.get('largeImageURL')
@@ -142,10 +152,11 @@ def _hit(value):
             'tags': tags, 'preview': preview}
 
 
-def search(query, key, per_page=SEARCH_HITS):
-    """Up to `per_page` validated photo hits for an already-cleaned query."""
+def search(query, key, per_page=SEARCH_HITS, image_type='photo'):
+    """Up to `per_page` validated hits of that kind for an already-cleaned query."""
     from .provider import _NoRedirect
-    params = urlencode({'key': key, 'q': query, 'lang': 'en', 'image_type': 'photo',
+    image_type = _kind(image_type)
+    params = urlencode({'key': key, 'q': query, 'lang': 'en', 'image_type': image_type,
                         'orientation': 'horizontal', 'safesearch': 'true', 'per_page': per_page,
                         'min_width': 1200, 'order': 'popular'})
     request = urllib.request.Request(API + '?' + params, headers={'User-Agent': USER_AGENT})
@@ -153,7 +164,7 @@ def search(query, key, per_page=SEARCH_HITS):
         data = json.loads(_read(response, SEARCH_BYTES))
     if not isinstance(data, dict) or type(data.get('totalHits')) is not int or not isinstance(data.get('hits'), list):
         raise ValueError('shape')
-    return [hit for hit in (_hit(value) for value in data['hits'][:per_page]) if hit]
+    return [hit for hit in (_hit(value, image_type) for value in data['hits'][:per_page]) if hit]
 
 
 def prepare(raw, long_edge=LONG_EDGE, max_bytes=MAX_JPEG):
@@ -250,9 +261,12 @@ def wanted(sections):
     return chosen
 
 
-def _cache_key(query):
-    # v2: hits carry tags and a preview, which v1 answers did not keep.
-    return hashlib.sha256(('v2|' + query).encode()).hexdigest()
+def _cache_key(query, style='photo'):
+    # v2: hits carry tags and a preview, which v1 answers did not keep. Photos
+    # keep the key they always had, so the cache stays warm; drawings of the
+    # same subject are another answer.
+    kind = _kind(style)
+    return hashlib.sha256(('v2|' + query if kind == 'photo' else f'v2|{kind}|{query}').encode()).hexdigest()
 
 
 def _slide_text(section):
@@ -262,8 +276,11 @@ def _slide_text(section):
     return ' '.join(' '.join(str(part or '') for part in parts).split())[:400]
 
 
-def fetch_for_deck(sections, *, cap, budget, job=None):
+def fetch_for_deck(sections, *, cap, budget, job=None, style='photo'):
     """Photos for as many of the slides that want one as the plan allows.
+
+    `style` is the draft's photo_style: 'illustration' searches Pixabay for
+    drawings instead of photographs.
 
     Database work — the cache, the shared rate limit and the record of the
     model's choice — stays on this thread; the pool only does network and
@@ -296,7 +313,7 @@ def fetch_for_deck(sections, *, cap, budget, job=None):
         """Answers for these queries, from the cache or Pixabay, into `hits`."""
         searching = {}
         for query in sorted(wanted_queries):
-            row = PhotoSearch.objects.filter(key=_cache_key(query), expires_at__gt=now).first()
+            row = PhotoSearch.objects.filter(key=_cache_key(query, style), expires_at__gt=now).first()
             if row is not None:
                 hits[query] = row.hits
                 continue
@@ -304,7 +321,7 @@ def fetch_for_deck(sections, *, cap, budget, job=None):
                 auth_limit('pixabay-api', 'global', *RATE)
             except Exception:
                 continue
-            searching[pool.submit(search, query, config['api_key'])] = query
+            searching[pool.submit(search, query, config['api_key'], SEARCH_HITS, _kind(style))] = query
         done, _ = wait(searching, timeout=max(0, deadline - time.monotonic()))
         for future in done:
             try:
@@ -313,7 +330,7 @@ def fetch_for_deck(sections, *, cap, budget, job=None):
                 continue
             hits[searching[future]] = found
             PhotoSearch.objects.update_or_create(
-                key=_cache_key(searching[future]),
+                key=_cache_key(searching[future], style),
                 defaults={'hits': found, 'expires_at': now + timedelta(hours=CACHE_HOURS)})
 
     try:

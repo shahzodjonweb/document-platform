@@ -133,7 +133,7 @@ def draft_data(d):
     data=unpack(d.encrypted_data)
     data.pop('_source_seed',None)
     if data.get('revision'):
-        data['revision']={key:value for key,value in data['revision'].items() if key!='base_content'}
+        data['revision']={key:value for key,value in data['revision'].items() if key not in ('base_content','before')}
     return {'id':str(d.id),'feature_id':d.feature_id,'version':d.version,'provider_mode':d.provider_mode,'expires_at':d.expires_at,**data,'outline':[{'id':s['id'],'title':s['heading'],'body':s['body']} for s in data['content']['sections']]}
 
 def source_excerpts(account,ids):
@@ -178,6 +178,30 @@ def _image_cap(account,fid):
     from operations.integrations import pixabay_config
     if not pixabay_config()['ready']:return 0
     return int(plan_limits(account).get('max_deck_images',0) or 0)
+
+def _pictures_wanted(edit,before,sections_count,fmt,cap):
+    """The pictures a change that asks for them leaves the document with, within the plan's allowance.
+
+    `before` is the document's sections as they stand. Its content pages are
+    every page but a deck's cover, closing slide and section dividers, and a
+    title page the change adds to a document; a deck's cover photo is not one
+    of its pictures and takes one of the allowance. 'every' is a picture on
+    each content page; 'add' is the pictures it has and those added: as many
+    as it names, else about one content page in three, at least one. On a plan
+    that adds none the request's count is kept, so the review can say the plan
+    adds none and offer the one that does; the model is asked for none then.
+    """
+    from .photos import wanted
+    deck=fmt=='pptx'
+    cover=before[0] if deck and before else None
+    pictured=wanted(before)
+    had=[section for section in pictured if section is not cover]
+    fixed=sum(1 for section in before if section is cover or section.get('layout') in ('cover','closing','section'))
+    if not deck and 'title_page' in (edit.parts or []):fixed+=1
+    content=max(1,sections_count-fixed)
+    total=content if edit.pictures=='every' else len(had)+(edit.picture_count or max(1,round(content/3)))
+    if not cap:return total
+    return min(total,max(0,cap-(len(pictured)-len(had))))
 
 def _deck_style(fid,brief):
     """A deck's look, read out of the description like its slide count.
@@ -271,6 +295,26 @@ def _prepare_draft(account,data,revision_base=None):
     # is kept beside the resolved count so a clamp can be shown, not hidden.
     from . import pages as paging
     brief=prompt if original is not None else f'{prompt}\n{text}'
+    # What a change to the whole document asks for is read by rule before it is
+    # priced (apps/studio/edits.py): pages added or removed, a plan or a title
+    # page, pictures and their kind, a test added or taken away, a new look. The
+    # bot offers no count or design for a change: the request alone decides.
+    # A change to selected pages reads none of it; it may not resize or restyle.
+    edit=None
+    # What the document had, for a change to the whole of it. Rewording a change
+    # (the web saves it again) starts from the document, not from the first
+    # wording's draft: a design or a test that wording dropped is the
+    # document's again unless the new one drops it too. A selected change's
+    # `original` is already its snapshot.
+    before_options=original.get('options',{}) if original is not None else {}
+    if original is not None and not selection:
+        from . import edits as editing
+        edit=editing.read(prompt,fmt=fmt,sections=original['content']['sections'],
+                          questions=len(original['content'].get('questions',[])))
+        # Another file format is not a change to the document: the bot sends a
+        # deck to PowerPoint → PDF and offers a new deck for a document, and
+        # the web says so, rather than charging an edit that rewrites nothing.
+        if edit.format_only:raise DomainError('format_only_change')
     # One language for the whole document, decided here and stored with the
     # draft: a language picked for this request (the studio's menu, the bot's
     # review button), then one the description names, then — for a change —
@@ -314,13 +358,29 @@ def _prepare_draft(account,data,revision_base=None):
     if chosen is not None:
         if type(chosen) is not int or not 1<=chosen<=200:raise DomainError('invalid_parameters')
         length,asked=min(chosen,paging.ceiling(account,fmt)),chosen
+    elif edit is not None:
+        # A change keeps the document's length unless the request names a new
+        # total, which wins, or adds or removes pages or parts ("bitta sahifa
+        # qo'sh", "reja, kirish va xulosa ham bo'lsin"). A total of one is not
+        # taken from a change request: "har 1ta slaydga rasm" (a picture on every
+        # slide) once made a nine-slide deck one, and "add 1 page" is one more.
+        # A deck's title page is its cover and adds no slide: "Boshiga bitta
+        # sahifa qo'sh … deb yoz" writes the lines on the cover, where a second
+        # title slide once followed it.
+        if edit.total and edit.total>=2:
+            asked=edit.total;length=min(asked,paging.ceiling(account,fmt))
+        else:
+            added=editing.added_parts(edit.parts,fmt)
+            asked=None;length=max(1,len(original['content']['sections'])+edit.delta+len(added))
+    elif selection:
+        # A change to selected pages cannot resize the document: one that names
+        # a new size in so many words is refused below. Read as a change is, so
+        # "fix the typos on slide 2 and slide 6" names no size.
+        from . import edits as editing
+        asked=editing.read(prompt,fmt=fmt,sections=original['content']['sections']).total
+        length=len(original['content']['sections'])
     else:
         length,asked=paging.resolve(account,brief,fmt)
-        # A change keeps the document's length unless the request names a new
-        # total. A total of one is not taken from a change request: "har 1ta
-        # slaydga rasm" (a picture on every slide) once made a nine-slide deck one.
-        if original is not None and (asked is None or asked<2):
-            asked=None;length=len(original['content']['sections'])
     if selection:
         if asked is not None and asked!=len(original['content']['sections']):raise DomainError('invalid_parameters')
         length=len(original['content']['sections'])
@@ -330,6 +390,25 @@ def _prepare_draft(account,data,revision_base=None):
         supplied=len([p for p in (text or '\n\n'.join(x['text'] for x in excerpts)).split('\n\n') if p.strip()])
         if supplied:length=min(supplied,paging.ceiling(account,fmt))
     question_count=min(paging.requested_questions(brief),limits(account)['questions'])
+    # The questions a change leaves the document with: none once removed, the
+    # number asked for ("savollar slaydini 1 bet qil" is five), or a test of ten
+    # (five on a deck) when it asks for one without a number — "Test tuz" used to
+    # find no number and add nothing.
+    kept=None
+    if edit is not None:
+        existing=len(original['content'].get('questions',[]))
+        if edit.questions=='remove':question_count=kept=0
+        elif edit.questions=='add':
+            # "10 ta savol qo'sh" adds ten to those the document has; "savollar 5
+            # ta bo'lsin" and "leave only 5 questions" are the test's new size,
+            # and one smaller than it is cuts the test to it.
+            if edit.more_questions:question_count=existing+edit.question_count
+            else:question_count=edit.question_count or max(existing,5 if fid==SLIDES else 10)
+            if question_count<existing:kept=question_count
+        elif edit.question_count:question_count=kept=edit.question_count
+        else:question_count=0
+        question_count=min(question_count,limits(account)['questions'])
+        if kept is not None:kept=min(kept,existing)
     # A deck's questions go on slides of their own at the end, five to a slide,
     # and those slides are part of the count: "10 slides, 5 questions at the
     # end" is ten slides, not fifteen. `length` is the whole deck; the sections
@@ -337,9 +416,21 @@ def _prepare_draft(account,data,revision_base=None):
     question_slides=0
     if fid==SLIDES:
         if original is None:question_slides=paging.question_slides(question_count)
-        else:question_slides=int((revision_base or original).get('options',{}).get('question_slides',0) or 0)
+        else:question_slides=int(original.get('options',{}).get('question_slides',0) or 0)
+        if edit is not None and (edit.questions or edit.question_count):
+            # Removed, the deck loses its question slides; added, it gains them.
+            remaining=len(original['content'].get('questions',[])) if kept is None else kept
+            question_slides=paging.question_slides(max(remaining,question_count) if edit.questions!='remove' else 0)
     if original is not None and (asked is None or selection):
         sections_count=length
+        if edit is not None:
+            # Pages added are within the plan too, and so is a test added to a
+            # deck at its limit: the slides it would push out are cut. What was
+            # asked is kept so the review can say it was cut, not hide it.
+            top=paging.ceiling(account,fmt)
+            wanted=sections_count
+            sections_count=max(1,min(sections_count,top-question_slides))
+            if wanted!=len(original['content']['sections']) or sections_count<wanted:asked=wanted+question_slides
     else:
         question_slides=min(question_slides,max(0,length-1))
         sections_count=length-question_slides
@@ -352,8 +443,16 @@ def _prepare_draft(account,data,revision_base=None):
         wants={'wants_layouts':doc_designs.asks_for_layouts(brief),'wants_design':doc_designs.asks_for_design(brief)}
         if original is not None:
             # A change request keeps what the document already had.
-            before=(revision_base or original).get('options',{})
-            wants={key:value or bool(before.get(key)) for key,value in wants.items()}
+            wants={key:value or bool(before_options.get(key)) for key,value in wants.items()}
+        if edit is not None:
+            # What a change asks of a document's look is what edits.py read, not
+            # every word for one: "rasmsiz qil" names pictures to have none, and
+            # "dizaynni o'zgartirma" a design to keep. Pictures are a layout; the
+            # design is chosen again only for a new look. A colour named is the
+            # accent (below), on the design the document has: it chooses none.
+            wants={'wants_layouts':bool(edit.pictures in ('add','every') or before_options.get('wants_layouts')
+                                        or doc_designs.asks_for_layouts(editing.without_pictures(prompt))),
+                   'wants_design':bool(edit.redesign)}
     image_cap=_image_cap(account,fid)
     # A deck whose description asks for pictures gets as many as it names, or
     # one a slide ("har bir slaydda rasm"), within what the plan adds; the review
@@ -362,12 +461,34 @@ def _prepare_draft(account,data,revision_base=None):
     if fid==SLIDES and original is None:
         from .doc_designs import asks_for_images
         if asks_for_images(brief):images_wanted=paging.requested_images(brief) or sections_count
-    if fid!=SLIDES and not doc_designs.asks_for_images(brief) and not (original is not None and (revision_base or original).get('options',{}).get('image_cap')):
+    if edit is not None:
+        # A change asking for pictures gets the plan's allowance and asks for the
+        # pictures the document will have: one on every content page for "har
+        # bir slaydda rasm"; else those it has and the ones added, as many as
+        # it names or about one content page in three. Counted as a total, so a
+        # deck that already had its pictures is not told it is done, nor a part
+        # with a small share of them to take its own away. A deck's cover is
+        # not counted: it keeps its photo whatever the change asks. One that
+        # does not ask keeps the allowance the document had.
+        if edit.pictures in ('add','every'):
+            images_wanted=_pictures_wanted(edit,original['content']['sections'],sections_count,fmt,image_cap)
+        elif fid!=SLIDES or 'image_cap' in before_options:
+            image_cap=min(image_cap,int(before_options.get('image_cap',0) or 0))
+    elif fid!=SLIDES and not doc_designs.asks_for_images(brief) and not (original is not None and before_options.get('image_cap')):
         image_cap=0
-    options={**{k:v for k,v in options.items() if k not in ('wants_layouts','wants_design')},
+    # Photographs unless drawings are asked for ("kitoblardagi rasmlardek"):
+    # Pixabay is searched for that kind (apps/studio/photos.py). A change keeps
+    # the kind the document had unless it names another.
+    from .edits import photo_style
+    if edit is not None:kind=edit.photo_style or before_options.get('photo_style')
+    elif original is not None:kind=before_options.get('photo_style')
+    else:kind=photo_style(prompt)
+    # Pictures wanted and their kind are the server's reading, never the client's.
+    computed=('wants_layouts','wants_design','images_wanted','photo_style')
+    options={**{k:v for k,v in options.items() if k not in computed},
              'question_count':question_count,'length':length,'requested_pages':asked,'question_slides':question_slides,
              'uz_script':uz_script,**({'images_wanted':images_wanted} if images_wanted else {}),
-             'image_cap':image_cap,**wants}
+             'image_cap':image_cap,**wants,**({'photo_style':kind} if kind in ('photo','illustration') else {})}
     template_id=options.get('template_id','clean')
     from .templates import style_for
     # Density is fixed at the spacing the page-fill targets were measured
@@ -385,7 +506,11 @@ def _prepare_draft(account,data,revision_base=None):
         template_style={'accent':accent,'accent_fixed':True}
     style={**template_style,**density}
     if original is not None:
-        inherited=(revision_base or original).get('options',{})
+        # The look starts from the document's, unless this change picked another
+        # template: that look is the change's own until another is picked.
+        own=(revision_base or {}).get('options',{})
+        picked_own=revision_base is not None and own.get('template_id','clean')!=before_options.get('template_id','clean')
+        inherited=own if picked_own else before_options
         previous_style=inherited.get('template_style',{})
         if template_id==inherited.get('template_id','clean'):
             # The saved style is server-authored. Still resolve the template
@@ -394,8 +519,14 @@ def _prepare_draft(account,data,revision_base=None):
         elif fid==SLIDES:
             for key in ('deck_theme','deck_design'):
                 if previous_style.get(key):style[key]=previous_style[key]
-        if not selection and fid==SLIDES:
-            theme=paging.requested_theme(brief)
+        if edit is not None and edit.redesign:
+            # "Varoqlarni hammasini bir xil qil", "boshqa dizayn": the look is
+            # chosen again. A colour the request names still applies below.
+            for key in ('deck_design','deck_theme','doc_design'):style.pop(key,None)
+        if not selection:
+            # A colour named is the accent, for a document as for a deck, as it
+            # is in a new one ("yashil rangda qil"); a deck also takes a theme.
+            theme=paging.requested_theme(brief) if fid==SLIDES else None
             accent=paging.requested_accent(brief)
             if theme:style['deck_theme']=theme
             if accent:style.update(accent=accent,accent_fixed=True)
@@ -421,9 +552,20 @@ def _prepare_draft(account,data,revision_base=None):
         # The model is handed the document as it stands so it can return it
         # with only the requested changes applied.
         sections=[dict(section) for section in original['content']['sections'][:sections_count]]
+        # New pages take ids no page has: a document whose pages were removed
+        # may already use s4 with only three pages left.
+        taken={section['id'] for section in original['content']['sections']}
+        number=len(sections)
         while len(sections)<sections_count:
-            sections.append({'id':f's{len(sections)+1}','heading':'','body':'','notes':''})
+            number+=1
+            if f's{number}' not in taken:sections.append({'id':f's{number}','heading':'','body':'','notes':''})
         draft_content={**original['content'],'sections':sections}
+        if kept is not None:
+            # Removed, or cut to the number asked for: the model is not handed the
+            # rest. A question slide removed by its number takes its own questions.
+            gone=set(edit.removed_question_slides) if edit is not None else set()
+            draft_content['questions']=[question for number,question in enumerate(original['content'].get('questions',[]))
+                                        if number//paging.QUESTIONS_PER_SLIDE+1 not in gone][:kept]
     else:
         chunks=[p.strip() for p in (text or '\n\n'.join(x['text'] for x in excerpts)).split('\n\n') if p.strip()]
         # No headings. They used to be seeded with a fixed Overview / Key ideas /
@@ -443,6 +585,12 @@ def _prepare_draft(account,data,revision_base=None):
         if selection:
             payload['revision'].update(selected_section_ids=selection,base_version=source_version,
                                        base_content=deepcopy(original['content']),base_locale=locale)
+        else:
+            # What was read, for the model and the checks after it; and the
+            # document as it was, since a page added at the start or removed from
+            # the middle leaves the outline's slots out of step with it.
+            from dataclasses import asdict
+            payload['revision'].update(edit=asdict(edit),before=deepcopy(original['content']))
     else:
         from .revisions import source_seed
         seed=source_seed(payload)
@@ -454,8 +602,18 @@ def _prepare_draft(account,data,revision_base=None):
     return fid,cfg,payload
 
 def enforce_budget(config,payload,feature_id,token_limit):
-    from .provider import enforce_input_budget
-    return enforce_input_budget(config,payload,feature_id,token_limit)
+    """The draft held to the plan's input budget, when it is made and when it is quoted.
+
+    A change is held to the largest request its job sends (provider.largest_body):
+    a long document is written in parts, and one body holding every page, which
+    no job sends, refused a fifteen-page Russian change whose two calls both
+    fit. A new document is held to its whole body, as it always was.
+    """
+    from . import provider
+    body=(provider.largest_body(config,payload,feature_id) if payload.get('revision')
+          else provider.request_body(config,payload,feature_id))
+    if provider.body_tokens(body)>token_limit:raise DomainError('generation_limit')
+    return body
 
 def create_draft(account,data):
     fid,cfg,payload=_prepare_draft(account,data)

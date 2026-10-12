@@ -867,10 +867,11 @@ def render_pptx(content, path, locale='en', role='user_document', style=None, ph
         if kind in LINE_LAYOUTS and not _titled_columns(kind, section):
             shortened = shortened or cut
         if kind == 'cover':
+            # The drawer takes the lines under the title from the body as written
+            # (slide_layouts.title_lines): a title page's every line, or one subtitle.
             section = {**section, '_title': content['title']}
             if not section['heading'].strip():
                 section['heading'] = content['title']
-            lines = lines[:1]
         prepared.append((kind, lines, section))
 
     deck = Presentation()

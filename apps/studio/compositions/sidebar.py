@@ -222,6 +222,9 @@ class Sidebar(Composition):
                 title=Text((LEFT, 2.1, width, 2.4), inks['ink'], 36, anchor='bottom', lines=4),
                 rule=((LEFT, 4.74, 0.9, 0.06), inks['rule']),
                 subtitle=Text((LEFT, 5.0, width, 1.35), inks['muted'], 16, anchor='top'),
+                # A title page's lines, two of them long enough to wrap in the
+                # column: down to the sheet's foot, the title and rule lifted.
+                details=Text((LEFT, 4.7, width, 1.8), inks['muted'], 16, anchor='top'), lift=0.3,
                 quiet=inks['muted'],
                 photo=sheet)
         inks, sheet = self._frame(canvas, COVER)
@@ -259,6 +262,7 @@ class Sidebar(Composition):
             title=Text((LEFT, 1.85, 8.2, 3.4), inks['ink'], 54, anchor='bottom', lines=3),
             rule=((LEFT, 5.52, 1.1, 0.06), inks['rule']),
             subtitle=Text((LEFT, 5.76, 7.4, 0.8), inks['muted'], 18, anchor='top'),
+            details=Text((LEFT, 5.26, 7.4, 1.4), inks['muted'], 18, anchor='top'), lift=0.5,
             quiet=inks['muted'])
 
     def _content(self, canvas):

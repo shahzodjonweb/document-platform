@@ -342,18 +342,25 @@ class _Night:
 
     def rule(self, x, y, width=0.9, height=0.07):
         """The short rule under a title, in the lead light."""
-        self.canvas.rounded((x, y, width, height), self.scheme['lead'], radius=height / 2)
+        return self.canvas.rounded((x, y, width, height), self.scheme['lead'], radius=height / 2)
 
 
 # Cover: the title on the left of the night, the light gathered top right.
 TITLE = (0.85, 1.15, 6.35, 3.7)
 RULE_Y = 5.1
 SUBTITLE = (0.85, 5.38, 6.35, 1.0)
+# A title page's several lines: from under the rule, which rises LIFT with the
+# title's foot, down to the footer row, short of the stars on the right (x 7.0).
+# Without the lift, two long lines ("TAYYORLADI: 021-104-GURUH TALABASI …") wrapped
+# past the box and the student's name was cut.
+LIFT = 0.5
+DETAILS = (0.85, 5.38 - LIFT, 5.9, 1.32 + LIFT)
 
 # Photo cover: the picture glows on the right, an orb rising behind its corner.
 PHOTO = (7.65, 0.85, 4.83, 5.3)
 PHOTO_TITLE = (0.85, 1.0, 5.9, 3.85)
 PHOTO_SUBTITLE = (0.85, 5.38, 5.9, 1.0)
+PHOTO_DETAILS = (0.85, 5.38 - LIFT, 5.9, 1.32 + LIFT)
 
 # Divider: the eclipse on the right, its dark disc holding the number; the title on the left.
 ECLIPSE = ((9.55, 3.2), 1.95)
@@ -366,6 +373,7 @@ KICKER = (0.85, 4.35, 5.6, 1.0)
 CLOSING_TITLE = (2.4, 2.75, 8.533, 1.9)
 CLOSING_RULE_Y = 4.85
 CLOSING_SUBTITLE = (2.4, 5.1, 8.533, 0.8)
+CLOSING_DETAILS = (2.4, 5.1, 8.533, 1.55)
 
 # Content slides: the accent as a quarter orb in the top-right corner, its glow
 # kept right of the text (x 12.48) and of the eyebrow (from y 0.62).
@@ -390,30 +398,32 @@ class Glow(Composition):
     # ------------------------------------------------------------------ cover
 
     def _cover(self, canvas):
-        night = _Night(canvas, (TITLE, SUBTITLE) + CHROME)
+        night = _Night(canvas, (TITLE, SUBTITLE, DETAILS) + CHROME)
         night.orbs(((11.6, 2.0), 2.75, 'lead', 0.8, 1.45), ((9.5, 4.55), 1.35, 'second', 0.65, 0.75))
         night.moon((8.5, 0.9), 0.34)
         night.stars((7.0, 0.15, 6.2, 6.5), 12, 7)
         night.stars((0.3, 0.12, 6.9, 0.9), 4, 19)
-        night.rule(TITLE[0] + 0.02, RULE_Y)
+        rule = night.rule(TITLE[0] + 0.02, RULE_Y)
         scheme = night.scheme
         return Plan(
             title=Text(TITLE, scheme['ink'], 48, anchor='bottom', lines=4),
             subtitle=Text(SUBTITLE, scheme['muted'], 17, anchor='top', lines=2),
+            details=Text(DETAILS, scheme['muted'], 17, anchor='top'), lift=LIFT, rising=(rule,),
             quiet=scheme['quiet'])
 
     def _photo_cover(self, canvas):
-        night = _Night(canvas, (PHOTO_TITLE, PHOTO_SUBTITLE) + CHROME)
+        night = _Night(canvas, (PHOTO_TITLE, PHOTO_SUBTITLE, PHOTO_DETAILS) + CHROME)
         left, top, width, height = PHOTO
         night.orbs(((left + width - 0.15, top + 0.35), 1.9, 'lead', 0.8, 1.2))
         night.window(PHOTO)
         night.moon((7.15, 0.43), 0.22, reach=0.18)
         night.stars((6.9, 0.1, 6.4, 7.0), 10, 11, ((left - 0.5, top - 0.5, width + 1.0, height + 1.0),))
-        night.rule(PHOTO_TITLE[0] + 0.02, RULE_Y)
+        rule = night.rule(PHOTO_TITLE[0] + 0.02, RULE_Y)
         scheme = night.scheme
         return Plan(
             title=Text(PHOTO_TITLE, scheme['ink'], 42, anchor='bottom', lines=4),
             subtitle=Text(PHOTO_SUBTITLE, scheme['muted'], 17, anchor='top', lines=2),
+            details=Text(PHOTO_DETAILS, scheme['muted'], 17, anchor='top'), lift=LIFT, rising=(rule,),
             quiet=scheme['quiet'], photo=PHOTO)
 
     # ---------------------------------------------------------------- divider
@@ -436,7 +446,7 @@ class Glow(Composition):
     # ---------------------------------------------------------------- closing
 
     def _closing(self, canvas):
-        night = _Night(canvas, (CLOSING_TITLE, CLOSING_SUBTITLE) + CHROME)
+        night = _Night(canvas, (CLOSING_TITLE, CLOSING_SUBTITLE, CLOSING_DETAILS) + CHROME)
         night.orbs(((11.6, -0.8), 2.2, 'lead', 0.8, 1.15), ((-0.3, 3.9), 1.5, 'second', 0.65, 1.0))
         night.moon((9.3, 1.55), 0.32)
         night.stars((0.15, 0.1, 13.0, 6.6), 18, 5)
@@ -445,6 +455,7 @@ class Glow(Composition):
         return Plan(
             title=Text(CLOSING_TITLE, scheme['ink'], 54, align='center', anchor='bottom', lines=2),
             subtitle=Text(CLOSING_SUBTITLE, scheme['muted'], 18, align='center', anchor='top', lines=2),
+            details=Text(CLOSING_DETAILS, scheme['muted'], 18, align='center', anchor='top'),
             quiet=scheme['quiet'])
 
     # ---------------------------------------------------------------- content

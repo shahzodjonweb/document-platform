@@ -435,6 +435,7 @@ class Mosaic(Composition):
         return Plan(
             title=Text((0.85, 0.9, text_w, 3.55), ink, 46, anchor='bottom', lines=4),
             subtitle=Text((0.85, 5.4, text_w, 1.1), muted, 18, anchor='top'),
+            details=Text((0.85, 5.4, text_w, 1.3), muted, 18, anchor='top'),
             quiet=quiet,
             photo=_inset(picture) if photo else None)
 
@@ -450,6 +451,7 @@ class Mosaic(Composition):
         return Plan(
             title=Text((text_left, 0.9, text_w, 2.75), ink, 56, anchor='bottom', lines=3),
             subtitle=Text((text_left, 4.6, text_w, 1.1), muted, 18, anchor='top'),
+            details=Text((text_left, 4.6, text_w, 1.9), muted, 18, anchor='top'),
             quiet=quiet)
 
     # ------------------------------------------------------------ divider

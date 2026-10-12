@@ -151,5 +151,6 @@
   "too_many_channels": "Ko‘pi bilan 5 ta kanal qo‘shing.",
   "daily_ai_limit": "Bepul tarifdagi bugungi AI hujjatlar soni tugadi. Ertaga yana yarata olasiz yoki kunlik cheklovsiz pullik tarifni tanlang.",
   "generation_running": "Bu allaqachon tayyorlanmoqda. Tugashini kuting yoki yangisini boshlang.",
-  "generation_finished": "Bu allaqachon tayyorlangan. O‘zgartirish uchun yangisini tasvirlab bering."
+  "generation_finished": "Bu allaqachon tayyorlangan. O‘zgartirish uchun yangisini tasvirlab bering.",
+  "format_only_change": "Bu o‘zgartirish faqat boshqa fayl formatini so‘raydi. O‘zgartirish hujjat mazmunini qayta yozadi, formatini esa o‘zgartirmaydi: taqdimotni PDF qilish uchun «PowerPoint → PDF»dan foydalaning, hujjatdan slayd kerak bo‘lsa, shu mavzuda yangi taqdimot yarating."
 }

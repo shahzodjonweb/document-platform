@@ -45,16 +45,20 @@ PALE = 2.2        # an accent white reads on at less than this is too pale to be
 TITLE = (2.4, 1.88, 8.533, 2.62)
 PILL_Y = 4.76
 SUBTITLE = (2.4, 5.04, 8.533, 0.95)
+# A title page's several lines: the subtitle's box, down to the footer row.
+DETAILS = (2.4, 5.04, 8.533, 1.6)
 # The closing slide's title is short and larger, so its stack sits higher.
 CLOSING_TITLE = (2.4, 1.75, 8.533, 2.3)
 CLOSING_PILL_Y = 4.3
 CLOSING_SUBTITLE = (2.4, 4.58, 8.533, 0.95)
+CLOSING_DETAILS = (2.4, 4.58, 8.533, 1.9)
 
 # Photo cover: the title on the left, the picture as a floating card on the right.
 PHOTO = (7.55, 0.95, 4.95, 5.2)
 PHOTO_TITLE = (0.85, 0.85, 5.95, 3.45)
 PHOTO_PILL_Y = 4.58
 PHOTO_SUBTITLE = (0.85, 4.88, 5.95, 1.3)
+PHOTO_DETAILS = (0.85, 4.88, 5.95, 1.75)
 
 # Dividers: numeral, title and kicker on the left; an orb on the right.
 NUMERAL = (0.85, 0.5, 5.0, 2.45)
@@ -328,9 +332,9 @@ class Gradient(Composition):
     def _cover(self, canvas, scheme, mirrored):
         # The closing slide mirrors the cover: its gradient and its light come from the other side.
         _backdrop(canvas, scheme, 180 - ANGLE if mirrored else ANGLE)
-        title, pill, subtitle = ((CLOSING_TITLE, CLOSING_PILL_Y, CLOSING_SUBTITLE) if mirrored
-                                 else (TITLE, PILL_Y, SUBTITLE))
-        clear = (title, subtitle) + CHROME
+        title, pill, subtitle, details = ((CLOSING_TITLE, CLOSING_PILL_Y, CLOSING_SUBTITLE, CLOSING_DETAILS)
+                                          if mirrored else (TITLE, PILL_Y, SUBTITLE, DETAILS))
+        clear = (title, subtitle, details) + CHROME
         flip = (lambda x: SLIDE_W - x) if mirrored else (lambda x: x)
         strength = 0.7 if canvas.roles.get('theme') == 'bold' else 0.6
         # Light pours in from above the far corner: a large disc of the second colour
@@ -346,11 +350,12 @@ class Gradient(Composition):
         return Plan(
             title=Text(title, 'on_gradient', size, align='center', anchor='bottom', lines=2 if mirrored else 3),
             subtitle=Text(subtitle, 'on_gradient', 20, align='center', anchor='top'),
+            details=Text(details, 'on_gradient', 20, align='center', anchor='top'),
             quiet='on_gradient')
 
     def _photo_cover(self, canvas, scheme):
         _backdrop(canvas, scheme, ANGLE)
-        clear = (PHOTO_TITLE, PHOTO_SUBTITLE) + CHROME
+        clear = (PHOTO_TITLE, PHOTO_SUBTITLE, PHOTO_DETAILS) + CHROME
         left, top, width, height = PHOTO
         strength = 0.7 if canvas.roles.get('theme') == 'bold' else 0.6
         # Light behind the picture, so it floats in a glow: the far light over its top
@@ -364,6 +369,7 @@ class Gradient(Composition):
         return Plan(
             title=Text(PHOTO_TITLE, 'on_gradient', 44, anchor='bottom', lines=4),
             subtitle=Text(PHOTO_SUBTITLE, 'on_gradient', 18, anchor='top'),
+            details=Text(PHOTO_DETAILS, 'on_gradient', 18, anchor='top'),
             quiet='on_gradient',
             photo=PHOTO)
 

@@ -151,5 +151,6 @@
   "too_many_channels": "Add at most 5 channels.",
   "daily_ai_limit": "You've made today's AI documents on the free plan. More tomorrow, or choose a paid plan for no daily limit.",
   "generation_running": "This is already being made. Wait for it to finish, or start a new one.",
-  "generation_finished": "This has already been made. Describe a new one to change it."
+  "generation_finished": "This has already been made. Describe a new one to change it.",
+  "format_only_change": "This change only asks for another file format. A change rewrites what the document says and keeps its format: for a deck as a PDF, use PowerPoint → PDF; for slides from a document, make a new deck on its topic."
 }

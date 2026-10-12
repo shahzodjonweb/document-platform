@@ -70,14 +70,20 @@ UNIT_WORDS = (r"pages?|slides?|sahifa\w*|bet(?:lik|lar|li|dan)?|var[ao]q\w*|slay
               r"|страниц\w*|стр|слайд\w*|лист(?:а|ов)?")
 UNITS = r'(?:' + UNIT_WORDS + r')\b'
 # Uzbek counts with a classifier between the number and the noun: "6 ta slayd".
-COUNTED = r'\s*[-–]?\s*(?:ta|dona)?\s*'
+# Each run of spaces follows its own mark, so the pattern cannot split one run
+# of spaces three ways: "\s*[-–]?\s*(?:ta)?\s*" took minutes over a digit and
+# a few thousand spaces.
+COUNTED = r'\s*(?:[-–]\s*)?(?:(?:ta|dona)\s*)?'
 NUMBER = re.compile(r'(\d{1,3})(' + COUNTED + r')(' + UNIT_WORDS + r')\b', re.IGNORECASE)
-SPELLED = re.compile(r"([\w'’]+)" + COUNTED + UNITS, re.IGNORECASE | re.UNICODE)
+# From the start of a word only: started from every letter of a long word, the
+# search took quadratic time.
+SPELLED = re.compile(r"(?<![\w'’])([\w'’]+)" + COUNTED + UNITS, re.IGNORECASE | re.UNICODE)
 # Uzbek numbers a page with a hyphen: "1-bet" is page one, "3-slayd" the third
 # slide. A pasted essay or slide plan is full of them, and each one read as a
 # count turned a whole essay into a one-slide deck. "10-betlik" and "12-page"
-# are still counts.
-ORDINAL_NOUN = re.compile(r"(?:bet|sahifa|slayd|var[ao]q)(?:da|ga|ning|dan|ni|si|i)?", re.IGNORECASE)
+# are still counts; "3-slayddagi rasm" (the picture on slide three) is not.
+ORDINAL_NOUN = re.compile(r"(?:bet|sahifa|slayd|var[ao]q)(?:dagi|da|ga|gacha|ning|dan|ni|si|i|ini|iga|ida|idagi)?",
+                          re.IGNORECASE)
 # "har 1ta slaydga rasm", "har bir slaydda": something on every slide, not a count.
 EACH = re.compile(r"(?:\bhar|\beach|\bevery|\bper|кажд\w*)\s+(?:bir\s+)?$", re.IGNORECASE)
 # Nouns that a number counts instead of pages: "9 sinf", "5 ta savol", "4 ta rasm".
@@ -85,14 +91,14 @@ COUNTED_NOUNS = (r"(?:savol|rasm|fikr|reja|misol|test|ball|bo'lim|qism|sinf|kurs
                  r"|daqiqa|minut|soat|kun|вопрос|класс|курс|минут|картин|фото)\w*")
 LETTERS = r"(?:[^\W\d_]|')"
 # One word between the count and the noun: "10 ta chiroyli slayd", "14tashlab slayd".
-LOOSE = re.compile(r"(\d{1,3})(?:\s*[-–]?\s*ta)?(" + LETTERS + r"*)\s+(?:(" + LETTERS + r"+)\s+)?" + UNITS,
+LOOSE = re.compile(r"(\d{1,3})(?:\s*(?:[-–]\s*)?ta)?(" + LETTERS + r"*)\s+(?:(" + LETTERS + r"+)\s+)?" + UNITS,
                    re.IGNORECASE | re.UNICODE)
 # The count after the noun: "Sahifalar soni 20 ta", "количество слайдов: 12".
-AFTER = re.compile(r"(?:sahifa|slayd|bet|var[ao]q|page|slide)\w*\s+(?:soni|sonini|miqdori)\s*[:\-–]?\s*(\d{1,3})"
-                   r"|количеств\w*\s+(?:слайд|страниц|лист)\w*\s*[:\-–]?\s*(\d{1,3})", re.IGNORECASE)
+AFTER = re.compile(r"(?:sahifa|slayd|bet|var[ao]q|page|slide)\w*\s+(?:soni|sonini|miqdori)\s*(?:[:\-–]\s*)?(\d{1,3})"
+                   r"|количеств\w*\s+(?:слайд|страниц|лист)\w*\s*(?:[:\-–]\s*)?(\d{1,3})", re.IGNORECASE)
 # No noun at all, only when nothing else names a count: "15 ta bo'lsin".
-NOUNLESS = re.compile(r"(\d{1,3})\s*[-–]?\s*ta(?:dan)?\s+(?:bo'lsin|bolsin|bulsin|bo'lishi|kerak|qil\w*|tayyorla\w*)\b",
-                      re.IGNORECASE)
+NOUNLESS = re.compile(r"(\d{1,3})\s*(?:[-–]\s*)?ta(?:dan)?\s+"
+                      r"(?:bo'lsin|bolsin|bulsin|bo'lishi|kerak|qil\w*|tayyorla\w*)\b", re.IGNORECASE)
 
 
 def _normalised(text):
@@ -145,7 +151,7 @@ def requested_pages(text):
 
 QUESTION_UNITS = r'(?:questions?|savol\w*|вопрос\w*|тест\w*)\b'
 QUESTIONS = re.compile(r'(\d{1,3})' + COUNTED + QUESTION_UNITS, re.IGNORECASE)
-SPELLED_QUESTIONS = re.compile(r"([\w'’]+)" + COUNTED + QUESTION_UNITS, re.IGNORECASE | re.UNICODE)
+SPELLED_QUESTIONS = re.compile(r"(?<![\w'’])([\w'’]+)" + COUNTED + QUESTION_UNITS, re.IGNORECASE | re.UNICODE)
 
 
 # A deck's questions share slides, this many to a slide.
@@ -329,7 +335,7 @@ def requested_locale(text, *, explicit_only=False):
     return 'ru' if written_in_russian(text) else None
 
 
-PICTURES = re.compile(r"(\d{1,2})\s*(?:[-–]?\s*ta)?\s*(?:rasm|surat|picture|image|photo|картин|фото|изображ)\w*",
+PICTURES = re.compile(r"(\d{1,2})\s*(?:(?:[-–]\s*)?ta\s*)?(?:rasm|surat|picture|image|photo|картин|фото|изображ)\w*",
                       re.IGNORECASE)
 
 

@@ -164,6 +164,8 @@ class Diagonal(Composition):
         return Plan(
             title=Text((0.85, 0.6, width, 2.75), look['open_ink'], 44, anchor='bottom', lines=3),
             subtitle=Text((0.85, 3.6, 4.8, 0.8), look['open_soft'], 17, anchor='top'),
+            # Above the blade, which passes 4.6 under the box's right end.
+            details=Text((0.85, 3.0, 4.8, 1.5), look['open_soft'], 17, anchor='top'), lift=0.6,
             quiet=look['mass_soft'],
             photo=(PHOTO_LEFT, 0, W - PHOTO_LEFT, H) if photo else None)
 
@@ -182,6 +184,8 @@ class Diagonal(Composition):
             title=Text((left, 3.35, 12.48 - left, 2.05), look['mass_ink'], 56, anchor='bottom', lines=2,
                        align='right'),
             subtitle=Text((left, 5.55, 12.48 - left, 0.9), look['mass_soft'], 20, anchor='top', align='right'),
+            details=Text((left, 4.95, 12.48 - left, 1.55), look['mass_soft'], 20, anchor='top', align='right'),
+            lift=0.6,
             quiet=look['mass_soft'])
 
     # ------------------------------------------------------------ divider

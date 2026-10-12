@@ -189,6 +189,7 @@ class Card(Composition):
                 title=Text((left, 1.9, width, 2.25), 'heading', 34, align='center', anchor='bottom', lines=3),
                 rule=((left + width / 2 - 0.45, 4.38, 0.9, 0.06), 'accent_text'),
                 subtitle=Text((left + 0.3, 4.62, width - 0.6, 1.2), 'muted', 16, align='center', anchor='top'),
+                details=Text((left + 0.3, 4.62, width - 0.6, 1.58), 'muted', 16, align='center', anchor='top'),
                 quiet=tones['quiet'],
                 photo=picture)
         card = (1.45, 1.0, SLIDE_W - 2.9, 5.3)
@@ -202,6 +203,7 @@ class Card(Composition):
             title=Text((2.45, 1.6, SLIDE_W - 4.9, 2.45), 'heading', 44, align='center', anchor='bottom', lines=3),
             rule=((SLIDE_W / 2 - 0.45, 4.32, 0.9, 0.06), 'accent_text'),
             subtitle=Text((3.2, 4.6, SLIDE_W - 6.4, 1.2), 'muted', 17, align='center', anchor='top'),
+            details=Text((3.2, 4.6, SLIDE_W - 6.4, 1.6), 'muted', 17, align='center', anchor='top'),
             quiet=tones['quiet'])
 
     def _closing(self, canvas, tones):
@@ -216,6 +218,8 @@ class Card(Composition):
             title=Text((3.2, 1.9, SLIDE_W - 6.4, 1.85), 'heading', 44, align='center', anchor='bottom', lines=2),
             rule=((SLIDE_W / 2 - 0.45, 3.98, 0.9, 0.06), 'accent_text'),
             subtitle=Text((3.6, 4.25, SLIDE_W - 7.2, 1.0), 'muted', 17, align='center', anchor='top'),
+            # Inside the card, clear of the chip on its corner (to x 3.52).
+            details=Text((3.6, 3.85, SLIDE_W - 7.2, 1.9), 'muted', 17, align='center', anchor='top'), lift=0.4,
             quiet=tones['quiet'])
 
     def _divider(self, canvas, tones):

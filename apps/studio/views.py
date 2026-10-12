@@ -92,6 +92,9 @@ def draft_setup(request,pk):
     d=GenerationDraft.objects.filter(account=request.account,id=pk,expires_at__gt=timezone.now()).first()
     if not d:raise DomainError('not_found',404)
     if d.feature_id!=SLIDES:raise DomainError('invalid_parameters')
+    # A change is decided by its request alone. A setup screen still open on one
+    # would restyle it, and its count, which a change does not carry, defaults to 7.
+    if unpack(d.encrypted_data).get('revision'):raise DomainError('controls_expired',409)
     # A deck already made is changed with a new description, not by restyling
     # its draft; one still being made is refused by update_draft.
     if draft_jobs(request.account,d.id,('succeeded','no_op')):raise DomainError('generation_finished',409)
