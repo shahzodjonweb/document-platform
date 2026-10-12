@@ -227,6 +227,7 @@ class Arch(Composition):
         return Plan(
             title=Text((0.85, 1.25, 6.75, 3.50), scheme['ink'], 44, anchor='bottom', lines=4),
             subtitle=Text((0.85, 5.30, 6.40, 1.10), scheme['muted'], 17, anchor='top'),
+            details=Text((0.85, 5.30, 6.40, 1.40), scheme['muted'], 17, anchor='top'),
             quiet=scheme['quiet'],
             photo=picture)
 
@@ -248,6 +249,9 @@ class Arch(Composition):
             title=Text((4.97, 2.70, 3.40, 1.95), scheme['arch_ink'], 40, align='center', anchor='bottom',
                        lines=3),
             subtitle=Text((4.97, 4.80, 3.40, 1.10), scheme['arch_ink'], 17, align='center', anchor='top'),
+            # Inside the innermost arch, down to just above the floor.
+            details=Text((4.97, 4.30, 3.40, FLOOR - 0.1 - 4.30), scheme['arch_ink'], 17, align='center',
+                         anchor='top'), lift=0.5,
             quiet=scheme['quiet'])
 
     def _divider(self, canvas):

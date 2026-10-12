@@ -128,6 +128,7 @@ class Circles(Composition):
         return Plan(
             title=Text((0.85, 0.8, 6.05, 3.8), scheme['ink'], 52, anchor='bottom', lines=4, bold=True),
             subtitle=Text((0.85, 5.4, 5.6, 0.95), scheme['muted'], 17, anchor='top', lines=2),
+            details=Text((0.85, 5.3, 5.6, 1.4), scheme['muted'], 17, anchor='top'),
             quiet=scheme['quiet'])
 
     def _photo_cover(self, canvas):
@@ -145,6 +146,7 @@ class Circles(Composition):
         return Plan(
             title=Text((0.85, 0.8, 5.6, 3.8), scheme['ink'], 48, anchor='bottom', lines=4, bold=True),
             subtitle=Text((0.85, 5.4, 5.6, 0.95), scheme['muted'], 17, anchor='top', lines=2),
+            details=Text((0.85, 5.3, 5.6, 1.4), scheme['muted'], 17, anchor='top'),
             quiet=scheme['quiet'], photo=frame)
 
     # ---------------------------------------------------------------- closing
@@ -164,6 +166,8 @@ class Circles(Composition):
             title=Text((centre[0] - 2.1, 2.05, 4.2, 1.7), ink, 44, align='center', anchor='bottom', lines=2,
                        bold=True),
             subtitle=Text((centre[0] - 1.85, 3.95, 3.7, 0.8), ink, 16, align='center', anchor='top', lines=2),
+            # Inside the disc down to 5.4, where its chord is still wider than the box.
+            details=Text((centre[0] - 1.85, 3.6, 3.7, 1.8), ink, 16, align='center', anchor='top'), lift=0.35,
             quiet=scheme['quiet'])
 
     # ---------------------------------------------------------------- divider

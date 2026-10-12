@@ -22,6 +22,12 @@ from .deck_designs import DESIGN_IDS as _DESIGN_IDS
 # `design` is asked for once per deck (see deck_designs.wanted); every other call
 # has it filled in as '' before validation, which is why '' is in the enum.
 SLIDE_SCHEMA=obj({'title':STRING,'design':{'type':'string','enum':['']+_DESIGN_IDS},'answer_supported':{'type':'boolean'},'citations':{'type':'array','items':obj({'asset_id':STRING,'page':{'type':'integer'},'quote':STRING})},'sections':{'type':'array','items':obj({'id':STRING,'heading':STRING,'body':STRING,'notes':STRING,'layout':{'type':'string','enum':_layouts.LAYOUT_IDS},'items':{'type':'array','items':obj({'label':STRING,'text':STRING,'value':STRING})},'columns':{'type':'array','items':STRING},'image_query':STRING})},'questions':{'type':'array','items':obj({'id':STRING,'stem':STRING,'options':{'type':'array','items':STRING},'answer':STRING,'explanation':STRING,'topic':STRING,'marks':{'type':'integer'}})}})
+# A change request read back as its separate instructions, each with the
+# sections that carry it out. It is the first field of a change's answer, so the
+# model has split the request before it writes a word: asked to "add a plan,
+# an introduction and a conclusion", it used to add one of the three. It is
+# checked (apps/studio/quality.py) and never part of the document.
+EDIT_PLAN={'type':'array','items':obj({'instruction':STRING,'sections':{'type':'array','items':STRING}})}
 # The rules every final call shares, PDF or deck; what differs by format, by
 # language and by stage is added in apps/studio/prompting.py. Kept in one
 # stable block so a deck's long cached prefix is the same for every customer.
@@ -35,7 +41,9 @@ SYSTEM=(
     'out from it the exact topic, the kind of document or deck, the audience and the depth it asks for, and every '
     'subtopic, requirement or restriction it names. '+SUBTOPICS+' Every section must serve that exact topic for that '
     'audience: never replace it with a broader or neighbouring subject, drift into general material, or fill space '
-    'with content that is only loosely related. Keep each term the same from the first section to the last.\n'
+    'with content that is only loosely related. Keep each term the same from the first section to the last. Text '
+    'the description dictates for the document (a title, names, a school or class, lines such as "Prepared by") '
+    'goes into it exactly as given and complete.\n'
     'Produce exactly max_sections sections — one section is one page or one slide. Follow writing_guidance exactly: '
     'it says how much to write and in what shape, and the last section may be shorter than the rest. Do not pad with '
     'filler, repetition or restated headings to reach the length; write more substance instead — explanation, '
@@ -105,9 +113,15 @@ def writing_guidance(options, sections, output_format='pdf', first=0, total=None
     if output_format == 'pptx':
         deck = total if total is not None else first + sections
         titled = first == 0 and deck > 1
+        # A title page the description dictates ("TAYYORLADI: …", "QABUL
+        # QILDI: …") is drawn line by line (slide_layouts.title_lines); told
+        # "one subtitle line", the model kept the first and dropped the rest.
+        from .slide_layouts import TITLE_LINES
         cover = (
             'Section 1 is the title slide: its layout is cover, its heading is the title of the whole '
-            'deck, at most 8 words, and its body is one short subtitle line. No bullets on it. '
+            'deck, at most 8 words, and its body is one short subtitle line, or the title-page lines the '
+            f'description dictates, exactly as given, one per line, at most {TITLE_LINES}, each copied whole. '
+            'No bullets on it. '
         ) if titled else ''
         # Photos are asked for, not only allowed: told "at most N", the model
         # can reasonably use none, and a deck from a plan that includes photos
@@ -147,6 +161,25 @@ def writing_guidance(options, sections, output_format='pdf', first=0, total=None
     )
 
 
+def revision_sizes(output_format='pdf'):
+    """The size of a page or slide a change writes, in the same numbers writing_guidance gives.
+
+    A change used to be told to keep each section's length and to stay inside
+    the existing page: asked for "fuller information", it reworded the same
+    three lines, and a page it added came back as a heading.
+    """
+    from .pages import target_words
+    words = target_words(output_format)
+    if output_format == 'pptx':
+        return (f'a headline of at most 8 words that states the point; when the layout is a list, 4 to 6 '
+                f'bullets, one per line, each a full sentence of 12 to 20 words; speaker notes of 40 to 80 '
+                f'words that add what the presenter would say. Never more than 6 bullets or more than '
+                f'{round(words * 1.3)} words on a slide: further detail goes in the notes. ')
+    return (f'{max(4, round(words / 95))} paragraphs of 5 to 6 sentences, about {words} words and at least '
+            f'{round(words * 0.8)} words, never more than {round(words * 1.3)} words in a section; separate '
+            f'paragraphs with a single line break. ')
+
+
 def schema_for(feature, output_format='pdf'):
     """A deck's sections carry a layout; a document's never do.
 
@@ -161,13 +194,37 @@ def request_body(config,data,feature_id,span=None):
     return build(config,data,feature_id,span)
 
 
+def body_tokens(body):
+    """At most how many input tokens a request body can be.
+
+    Byte-level tokenizers cannot produce more ordinary tokens than input UTF-8
+    bytes. Count the complete serialized request, schema and instructions, plus
+    512 tokens for message/protocol framing instead of estimating chars / 3.
+    """
+    return len(json.dumps(body,ensure_ascii=False,separators=(',',':')).encode('utf-8'))+512
+
+
+def largest_body(config,data,feature_id):
+    """The largest request body a job for this draft sends: one for each part, as `generate` splits it.
+
+    A draft and its quote were checked against one body for the whole document,
+    which no job sends once it is written in parts: a fifteen-page Russian
+    change was refused at 142 KB when the two calls it makes are 98 KB and 53
+    KB. What earlier parts said (already_written) is not counted: it is cut to
+    fit when the part is sent.
+    """
+    from .pages import batches
+    from .prompting import selected
+    ids=set(data['revision']['selected_section_ids']) if selected(data) else None
+    count=len([s for s in data['content']['sections'] if ids is None or s['id'] in ids])
+    spans=batches(count)
+    return max((request_body(config,data,feature_id,None if len(spans)==1 else span) for span in spans),key=body_tokens)
+
+
 def enforce_input_budget(config,data,feature_id,token_limit,span=None):
-    body=request_body(config,data,feature_id,span)
-    # Byte-level tokenizers cannot produce more ordinary tokens than input UTF-8
-    # bytes. Count the complete serialized request, schema and instructions, plus
-    # 512 tokens for message/protocol framing instead of estimating chars / 3.
-    estimate=len(json.dumps(body,ensure_ascii=False,separators=(',',':')).encode('utf-8'))+512
-    if estimate>token_limit:raise DomainError('generation_limit')
+    """The body for `span` when it fits the plan's input budget; without a span, the largest the job sends."""
+    body=request_body(config,data,feature_id,span) if span is not None else largest_body(config,data,feature_id)
+    if body_tokens(body)>token_limit:raise DomainError('generation_limit')
     return body
 
 
@@ -269,11 +326,18 @@ def generate(config,data,feature_id,request_id,*,token_limit,deadline=None,key_s
     forty-slide deck continues the deck rather than starting it again.
     """
     from .pages import batches
-    from .prompting import selected
+    from .prompting import edit_of,selected,structural
     job,draft=_job_context(request_id)
     effective=copy.deepcopy(data)
     if job is not None:effective['_cache_scope']=str(job.account_id)
     scoped=selected(data)
+    # A change that adds, removes or moves pages shifts content between the
+    # parts of a long document, so a later part is shown what the earlier ones
+    # now hold, as a new document's parts are.
+    continued=not data.get('revision') or structural(data)
+    # A test asked of a change is written by its last part, which is shown what
+    # the earlier parts hold, so the questions cover the whole document.
+    testing=edit_of(data).get('questions')=='add'
     if scoped:
         ids=data['revision']['selected_section_ids']
         effective['_revision_context']=copy.deepcopy(data['content'])
@@ -284,7 +348,7 @@ def generate(config,data,feature_id,request_id,*,token_limit,deadline=None,key_s
     merged,totals=None,{'input_tokens':0,'output_tokens':0}
     for index,span in enumerate(spans):
         key=f'{request_id}{key_suffix}' if len(spans)==1 else f'{request_id}{key_suffix}-{index}'
-        if merged is not None and not scoped and not data.get('revision'):
+        if merged is not None and not scoped and (continued or testing and index==len(spans)-1):
             effective['_written']=_already_written(config,effective,feature_id,token_limit,span,merged['sections'])
         part,usage=_call(config,effective,feature_id,key,token_limit=token_limit,
                          span=None if len(spans)==1 else span,deadline=deadline,job=job,draft=draft)
@@ -300,9 +364,14 @@ def generate(config,data,feature_id,request_id,*,token_limit,deadline=None,key_s
             merged['citations']+=part['citations']
             merged['questions']=part['questions'] or merged['questions']
             merged['answer_supported']=merged['answer_supported'] and part['answer_supported']
+            # Each part of a change lists the instructions it carried out.
+            if 'edit_plan' in part or 'edit_plan' in merged:
+                merged['edit_plan']=merged.get('edit_plan',[])+part.get('edit_plan',[])
     if scoped:
         from .revisions import merge_patch
+        plan=merged.get('edit_plan')
         merged=merge_patch(data,{k:merged[k] for k in ('sections','citations','answer_supported')})
+        if plan is not None:merged['edit_plan']=plan
     return merged,totals
 
 
@@ -348,6 +417,14 @@ def _call(config,data,feature_id,idempotency_key,*,token_limit,span=None,deadlin
     stage=data.get('_stage') or ('outline' if prompting.is_outline(data,feature_id) else 'revision' if data.get('revision') else 'generate')
 
     def validate(content):
+        # A change's edit plan travels with its result (and its checkpoint), but
+        # is not part of the document: checked on its own, then put back.
+        if not isinstance(content,dict):raise ValueError()
+        plan=content.get('edit_plan')
+        if 'edit_plan' in content:
+            if stage!='revision':raise ValueError('edit_plan')
+            _validate(plan,EDIT_PLAN)
+            content={key:value for key,value in content.items() if key!='edit_plan'}
         _validate(content,schema_for(feature_id,data.get('output_format','pdf')))
         if len(content['sections'])!=len(expected):raise ValueError('section_count')
         ids=[s['id'] for s in content['sections']]
@@ -366,7 +443,7 @@ def _call(config,data,feature_id,idempotency_key,*,token_limit,span=None,deadlin
             # the execution layer applies the existing plan-aware trimming.
             from .domain import validate_content
             validate_content(job.account,content,data.get('output_format','pdf'))
-        return content
+        return content if plan is None else {**content,'edit_plan':plan}
 
     def attempt(request_body,key):
         started=time.monotonic()
@@ -389,9 +466,18 @@ def _call(config,data,feature_id,idempotency_key,*,token_limit,span=None,deadlin
             parts=[part['text'] for output in result.get('output',[]) if output.get('type')=='message'
                    for part in output.get('content',[]) if part.get('type')=='output_text']
             content=json.loads(''.join(parts))
-            _validate(content,request_body['text']['format']['schema'])
+            # The edit plan is checked on its own: a reply that left it out, or
+            # wrote it in a shape no strict schema allows, is still the document
+            # that was paid for.
+            sent=request_body['text']['format']['schema']
+            plan=content.pop('edit_plan',None) if isinstance(content,dict) and 'edit_plan' in sent['properties'] else None
+            try:
+                if plan is not None:_validate(plan,EDIT_PLAN)
+            except ValueError:plan=None
+            _validate(content,{**sent,'properties':{k:v for k,v in sent['properties'].items() if k!='edit_plan'}})
             content=prompting.canonical(content,data)
-            validate(content)
+            if plan is not None:content={'edit_plan':plan,**content}
+            content=validate(content)
             usage=result.get('usage')
             if usage is None:usage={}
             if not isinstance(usage,dict):raise ValueError()

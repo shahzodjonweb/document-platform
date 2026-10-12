@@ -120,7 +120,10 @@ def length_before(draft):
         _, original = revision_source(draft.account, source_id)
     except DomainError:
         return None
-    return len(original['content']['sections'])
+    # A deck's question slides are slides too: without them a twelve-slide deck
+    # whose change keeps every slide read "10 → 12".
+    questions = int(original.get('options', {}).get('question_slides', 0) or 0) if draft.feature_id == SLIDES else 0
+    return len(original['content']['sections']) + questions
 
 
 def language_of(draft):
@@ -129,11 +132,17 @@ def language_of(draft):
 
 
 def images_wanted(draft):
-    """(pictures the description asks for, pictures the plan adds), for a deck; else (0, 0)."""
+    """(pictures the description or the change asks for, pictures the plan adds); (0, cap) when none are asked."""
     from apps.studio.domain import unpack
     data = unpack(draft.encrypted_data)
     options = data.get('options', {})
     return int(options.get('images_wanted', 0) or 0), int(options.get('image_cap', 0) or 0)
+
+
+def pictures_on():
+    """Whether any plan can add pictures: none can while photo search is switched off."""
+    from operations.integrations import pixabay_config
+    return bool(pixabay_config()['ready'])
 
 
 PLAN_ORDER = ('free', 'plus', 'premium')
@@ -165,6 +174,10 @@ def _changed(account, draft_id, change):
     if not draft:
         raise DomainError('controls_expired', 409)
     data = unpack(draft.encrypted_data)
+    # A change is decided by its request alone. ➖/➕ and language buttons left
+    # on a review sent before they were taken off a change are old buttons.
+    if data.get('revision'):
+        raise DomainError('controls_expired', 409)
     fields = change(data)
     draft = update_draft(account, draft.id, {'version': draft.version, **fields})
     return draft, generation_quote(account, draft.id, draft.version)
@@ -224,6 +237,15 @@ def other_service(draft):
     return None
 
 
+def brief_of(data):
+    """What a document was described as. A change's own prompt is the change
+    ("slayd qilib ber"), so for a change it is the description it began from."""
+    revision = data.get('revision') or {}
+    if revision:
+        return revision.get('original_prompt') or data.get('source_text', '')
+    return data.get('prompt') or data.get('source_text', '')
+
+
 @transaction.atomic
 def switch(account, draft_id, feature_id):
     """The same description, sent to the other service."""
@@ -232,7 +254,7 @@ def switch(account, draft_id, feature_id):
     if not draft or feature_id not in SERVICES:
         raise DomainError('controls_expired', 409)
     data = unpack(draft.encrypted_data)
-    rebuilt = build(account, feature_id, data.get('prompt') or data.get('source_text', ''), data.get('source_ids', []))
+    rebuilt = build(account, feature_id, brief_of(data), data.get('source_ids', []))
     return rebuilt, generation_quote(account, rebuilt.id, rebuilt.version)
 
 
@@ -246,6 +268,80 @@ def revised_from(draft):
     """The document this draft changes, so a reword goes back to the change."""
     from apps.studio.domain import unpack
     return (unpack(draft.encrypted_data).get('revision') or {}).get('source_draft_id', '')
+
+
+# A change that asks only for the file in some format is not an AI edit: the
+# model would write the same document again and spend an edit doing it, and
+# the server refuses it (format_only_change). The chat answers it instead: a
+# deck asked for as a PDF goes to PowerPoint → PDF, a document asked for as
+# slides is offered a new deck on its subject, and a file asked for in the
+# format it already has is sent again.
+CONVERTER = 'convert.pptx_to_pdf'
+
+
+def asked_format(account, draft_id, request):
+    """(format, service) when a change to this document asks for nothing but
+    the file as 'pdf' or 'pptx'; (None, None) when it asks for anything more."""
+    import uuid
+    from apps.studio.edits import asks_only_for_format, read
+    try:
+        identifier = uuid.UUID(str(draft_id))
+    except ValueError:
+        return None, None
+    feature = GenerationDraft.objects.filter(account=account, id=identifier).values_list('feature_id', flat=True).first()
+    if feature not in SERVICES:
+        return None, None
+    kind = asks_only_for_format(request or '')
+    if kind is None:
+        # Read as the server reads it too, so nothing it would refuse is priced.
+        edit = read(request or '', fmt=FORMAT[feature], sections=[])
+        kind = edit.format if edit.format_only else None
+    return (kind, feature) if kind else (None, None)
+
+
+def delivered(account, draft_id):
+    """(job, file) last made from this draft, while the server still keeps the file; else (None, None)."""
+    now = timezone.now()
+    jobs = Job.objects.filter(account=account, feature_id__in=SERVICES, status='succeeded',
+                              parameters__generation_draft_id=str(draft_id)).order_by('-created_at')
+    for job in jobs:
+        for artifact in job.artifacts.select_related('file'):
+            asset = artifact.file
+            if (asset.state == 'ready' and asset.expires_at > now
+                    and asset.metadata.get('kind') == FORMAT[job.feature_id]):
+                return job, asset
+    return None, None
+
+
+def format_kept(draft):
+    """The other format a change names beside other changes, which it does not make; else ''."""
+    from apps.studio.domain import unpack
+    edit = (unpack(draft.encrypted_data).get('revision') or {}).get('edit') or {}
+    return edit.get('format') or ''
+
+
+@transaction.atomic
+def deck_to_pdf(account, draft_id):
+    """The PowerPoint → PDF tool set up on this draft's delivered deck; None when the file is gone.
+
+    The tool is checked first either way: where it is not offered, its refusal
+    is the answer, not an AI edit that cannot make a PDF of a deck.
+    """
+    from apps.core.models import Account, BotDraft
+    from apps.core.policy import require_feature
+    from .workflows import configure
+    Account.objects.select_for_update().get(pk=account.pk)
+    require_feature(account, CONVERTER)
+    job, asset = delivered(account, draft_id)
+    if asset is None or job.feature_id != SLIDES:
+        return None
+    # The customer asked for this file just now; a file task left waiting gives way to it.
+    BotDraft.objects.filter(account=account).delete()
+    draft = configure(account, feature_id=CONVERTER)
+    draft.input_ids = [str(asset.id)]
+    draft.version += 1
+    draft.save(update_fields=['input_ids', 'version', 'updated_at'])
+    return draft
 
 
 def quote(account, draft_id):

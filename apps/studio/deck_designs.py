@@ -669,6 +669,13 @@ def remember(data, raw, *, replace=False):
 
 def wanted(data, first=0):
     """Whether this provider call should choose a design."""
-    if data.get('output_format') != 'pptx' or data.get('revision') or first:
+    if data.get('output_format') != 'pptx' or first:
         return False
+    revision = data.get('revision')
+    if revision:
+        # A change keeps the deck's look, unless it asks the whole deck for a new
+        # one ("make every slide look the same"): apps/studio/edits.py reads that.
+        edit = revision.get('edit') if isinstance(revision.get('edit'), dict) else {}
+        return (bool(edit.get('redesign')) and not revision.get('selected_section_ids')
+                and data.get('_stage') != 'repair')
     return not (data.get('options') or {}).get('template_style', {}).get('deck_design')

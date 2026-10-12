@@ -119,6 +119,9 @@ class Brutalist(Composition):
             title=Text((1.4, 1.3, width, 3.1), ink, 40, anchor='bottom', lines=4, upper=True, bold=True),
             rule=((1.4, 4.66, 1.5, 0.14), 'accent_text'),
             subtitle=Text((1.4, 4.98, width, 0.72), muted, 17, anchor='top'),
+            # Down to the card's foot. Beside a photo the card is narrow, and two
+            # long title-page lines wrap: the box is as tall as they need.
+            details=Text((1.4, 4.38, width, 1.55), muted, 17, anchor='top'), lift=0.6,
             quiet=INK[scheme['ticker']][0],
             photo=picture)
 
@@ -141,6 +144,7 @@ class Brutalist(Composition):
                        upper=True, bold=True),
             rule=((SLIDE_W / 2 - 0.75, 3.72, 1.5, 0.14), 'accent_text'),
             subtitle=Text((left, 4.04, width, 0.8), muted, 18, align='center', anchor='top'),
+            details=Text((left, 4.04, width, 1.5), muted, 18, align='center', anchor='top'),
             quiet=INK[scheme['ticker']][0])
 
     # ------------------------------------------------------------ divider

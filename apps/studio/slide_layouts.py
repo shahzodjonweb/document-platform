@@ -11,7 +11,9 @@ surface or on a panel whose colour role was contrast-corrected for it — never
 over a photo. And every field is clipped to a word limit, marking the deck as
 shortened, rather than being allowed to run off its box.
 """
+import dataclasses
 import functools
+import re
 
 from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
@@ -341,29 +343,93 @@ def _planned(ctx, spec, text, words, *, headline):
         frame.vertical_anchor = ANCHOR[spec.anchor]
 
 
-def _planned_cover(ctx, title, line):
+def _planned_cover(ctx, title, lines):
     """A cover or closing slide as its composition's plan lays it out."""
     plan = ctx.plan
-    _planned(ctx, plan.title, title, 14, headline=True)
+    several = len(lines) > 1 and bool(plan.details or plan.subtitle)
+    # A title page's lines may need the room under the title: the title's box
+    # ends `lift` higher (it is set from its foot) and the rule goes up with it,
+    # the plan's or one the composition drew itself (`rising`).
+    lift = plan.lift if several and plan.details else 0
+    spec = plan.title
+    if lift:
+        spec = dataclasses.replace(spec, box=(*spec.box[:3], spec.box[3] - lift))
+        for shape in plan.rising:
+            shape.top = shape.top - Inches(lift)
+    _planned(ctx, spec, title, 14, headline=True)
     if plan.rule:
         box, colour = plan.rule
-        kit._shape(ctx.slide, Z(*box), ctx.roles.get(colour, colour))
-    if line and plan.subtitle:
-        _planned(ctx, plan.subtitle, line, 24, headline=False)
+        kit._shape(ctx.slide, Z(box[0], box[1] - lift, *box[2:]), ctx.roles.get(colour, colour))
+    if several:
+        spec = plan.details or plan.subtitle
+        byline(ctx, Z(*spec.box), lines, size=spec.size, colour=ctx.roles.get(spec.colour, spec.colour),
+               align=ALIGN[spec.align], anchor=ANCHOR[spec.anchor], upper=spec.upper, bold=spec.bold)
+    elif lines and plan.subtitle:
+        _planned(ctx, plan.subtitle, lines[0], 24, headline=False)
+
+
+# A title page carries what its writer dictated under the title — the school,
+# the kind of work, who prepared it, who accepts it, the group, the city and
+# year — one line each. Every line the box holds is drawn, up to eight: a cover
+# that kept only the first lost the student's name, and one that kept five lost
+# the city and year.
+TITLE_LINES = 8
+GLYPH = re.compile(r'^\s*[•·▪◦‣*\-–—]+\s*')
+
+
+def title_lines(section, lines):
+    """The lines under a cover's or closing slide's title.
+
+    A body written as several lines is drawn line by line, as written, up to
+    `TITLE_LINES` (only a list marker is taken off: "A. Karimov" keeps its
+    initial). A one-line subtitle is the first of `lines`, as it always was.
+    """
+    written = [GLYPH.sub('', line).strip() for line in str(section.get('body') or '').split('\n')]
+    written = [line for line in written if line]
+    return written if len(written) > 1 else lines[:1]
+
+
+def byline(ctx, zone, lines, *, size, colour, align=PP_ALIGN.LEFT, anchor=MSO_ANCHOR.TOP, upper=False, bold=False):
+    """Several title-page lines in one box, a paragraph each: smaller together first, then fewer.
+
+    As many whole lines as the box holds at its floor are drawn, up to
+    `TITLE_LINES`; the rest are left out and the deck is marked shortened.
+    """
+    floor = min(12, size)
+    paragraphs = [dict(text=clip(ctx, line.upper() if upper else line, 24), size=size, floor=floor,
+                       colour=colour, bold=bold, align=align, spacing=1.15)
+                  for line in lines[:TITLE_LINES]]
+    # Whole lines past what the box holds at its floor are left out: cutting
+    # each to fit would leave a column of initials ("M…", "T…") instead. A
+    # long line that wraps takes the room of two.
+    available, used, kept = Emu(zone.height).pt - 3, 0, 0
+    for paragraph in paragraphs:
+        used += _paragraph_height({**paragraph, 'size': floor}, zone)
+        if kept and used > available:
+            break
+        kept += 1
+    if kept < len(lines):
+        ctx.shortened = True
+    return _put_paragraphs(ctx, zone, paragraphs[:kept], anchor)
 
 
 @draws('cover')
 def cover(ctx, section, lines):
     roles, photo = ctx.roles, ctx.photo
+    lines = title_lines(section, lines)
     if ctx.plan:
-        return _planned_cover(ctx, section['heading'].strip() or section.get('_title', ''), lines[0] if lines else '')
+        return _planned_cover(ctx, section['heading'].strip() or section.get('_title', ''), lines)
     title = section['heading'].strip() or section.get('_title', '')
     zone = Z(LEFT, 2.35, WIDTH * 0.5, 2.1) if photo else kit.ZONES['cover_title']
     fit_headline(ctx, zone, clip(ctx, title, 14), size=44, colour=roles['cover_ink'], lines=3)
     # On a bold deck the cover is the accent, so the rule has to be the ink.
     kit._shape(ctx.slide, kit.ZONES['cover_rule'],
                roles['cover_ink'] if roles['theme'] == 'bold' else roles['accent'])
-    if lines:
+    if len(lines) > 1:
+        # Down to just above the footer; a photo design's title panel ends at 6.55.
+        byline(ctx, Z(LEFT, 4.95, WIDTH * 0.5, 1.55) if photo else Z(LEFT, 4.95, WIDTH * 0.7, 1.7), lines,
+               size=18, colour=roles['cover_muted'])
+    elif lines:
         subtitle_zone = Z(LEFT, 4.95, WIDTH * 0.5, 0.9) if photo else kit.ZONES['cover_subtitle']
         fitted(ctx, subtitle_zone, clip(ctx, lines[0], 24), size=18, floor=14, colour=roles['cover_muted'],
                spacing=1.25)
@@ -456,15 +522,17 @@ def quote(ctx, section, lines):
 @draws('closing')
 def closing(ctx, section, lines):
     roles = ctx.roles
+    lines = title_lines(section, lines)
     if ctx.plan:
-        return _planned_cover(ctx, section['heading'], lines[0] if lines else '')
+        return _planned_cover(ctx, section['heading'], lines)
     fit_headline(ctx, kit.ZONES['cover_title'], clip(ctx, section['heading'], 14), size=44,
                  colour=roles['cover_ink'], lines=3)
     kit._shape(ctx.slide, kit.ZONES['cover_rule'],
                roles['cover_ink'] if roles['theme'] == 'bold' else roles['accent'])
-    line = lines[0] if lines else ''
-    if line:
-        fitted(ctx, kit.ZONES['cover_subtitle'], clip(ctx, line, 24), size=18, floor=14,
+    if len(lines) > 1:
+        byline(ctx, Z(LEFT, 4.95, WIDTH * 0.7, 1.7), lines, size=18, colour=roles['cover_muted'])
+    elif lines:
+        fitted(ctx, kit.ZONES['cover_subtitle'], clip(ctx, lines[0], 24), size=18, floor=14,
                colour=roles['cover_muted'], spacing=1.25)
 
 

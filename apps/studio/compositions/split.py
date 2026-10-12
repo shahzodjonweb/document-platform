@@ -44,6 +44,7 @@ class Split(Composition):
             title=Text((text_left, 1.0, BLOCK - 1.3, 3.55), 'on_accent', 44, anchor='bottom', lines=4),
             rule=((text_left, 4.78, 1.1, 0.06), 'on_accent'),
             subtitle=Text((text_left, 5.0, BLOCK - 1.3, 1.25), 'on_accent', 17, anchor='top'),
+            details=Text((text_left, 4.6, BLOCK - 1.3, 1.92), 'on_accent', 17, anchor='top'), lift=0.4,
             quiet='muted',
             photo=(BLOCK, 0, SLIDE_W - BLOCK, BAND_END) if photo else None)
 

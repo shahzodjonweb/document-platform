@@ -38,9 +38,15 @@ DEFAULT_DESIGN = 'plain'
 # design it means "nobody picked a colour", so it renders plain.
 LEGACY_ACCENT = '#255e49'
 
+# A page with a photo holds this share of a full page's words. Told only
+# "paragraphs with one photo", the model kept each page's full text beside the
+# picture, and every page came out cut off ("…") to fit.
+IMAGE_TEXT = 0.62
 LAYOUTS = {
     'text': 'a heading (or none, when continuing the previous topic) and paragraphs; the default',
-    'image': 'paragraphs with one photo: image_query = 2-4 plain English words naming what the photo shows',
+    'image': ('paragraphs with one photo, which takes room: a page with it holds about {words} words of text, '
+              'so write that page to that length; image_query = 2-4 plain English words naming what the photo '
+              'shows'),
     'table': 'paragraphs and a table: columns = 2-3 headers, items = rows (label, text, value are the cells)',
     'list': 'paragraphs and a list: items with label = the point, text = one or two sentences',
     'callout': 'paragraphs and a highlighted box: items with label = key point, text = one sentence',
@@ -99,7 +105,8 @@ def reference(layouts=False, design=False, images=0):
             'a look or colours; when it names colours, choose a design other than plain.\n'
             + '\n'.join(f'- {key}: {value["fits"]}' for key, value in DESIGNS.items()))
     if layouts:
-        lines = [f'- {key}: {guide}' for key, guide in LAYOUTS.items() if key != 'image' or images]
+        lines = [f'- {key}: {guide.format(words=image_words()) if key == "image" else guide}'
+                 for key, guide in LAYOUTS.items() if key != 'image' or images]
         parts.append(
             'Choose a layout for every section from this list. Most sections are text; use table, '
             'list, callout' + (' or image' if images else '') + ' only where the description asks for '
@@ -136,15 +143,29 @@ def remember(data, raw, *, replace=False):
         style['doc_design'] = choice
 
 
+def image_words():
+    """About how many words a document page with a photo holds (the `image` layout)."""
+    from .pages import target_words
+    return round(target_words('pdf') * IMAGE_TEXT)
+
+
 def wanted(data, first=0):
-    """Whether this provider call should choose a document's design."""
+    """Whether this provider call should choose a document's design.
+
+    A change keeps the document's look unless it asks the whole document for a
+    new one (apps/studio/edits.py reads that), as a deck's does: asked to "make
+    a test", a document whose description once asked for a look chose plain,
+    and its look was gone. Never a change to selected pages or a repair.
+    """
     options = data.get('options') or {}
-    if data.get('output_format') == 'pptx' or not options.get('wants_design') or first:
+    if data.get('output_format') == 'pptx' or first:
         return False
-    if data.get('revision', {}).get('selected_section_ids'):
-        return False
-    # A change request that asks for a look may choose again; otherwise once.
-    return bool(data.get('revision')) or not options.get('template_style', {}).get('doc_design')
+    revision = data.get('revision')
+    if revision:
+        edit = revision.get('edit') if isinstance(revision.get('edit'), dict) else {}
+        return (bool(edit.get('redesign')) and not revision.get('selected_section_ids')
+                and data.get('_stage') != 'repair')
+    return bool(options.get('wants_design')) and not options.get('template_style', {}).get('doc_design')
 
 
 def clean_fields(section):

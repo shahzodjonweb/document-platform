@@ -184,12 +184,15 @@ class Stripes(Composition):
             return Plan(
                 title=Text((LEFT, 0.7, width, 2.4), scheme['title'], 36, anchor='bottom', lines=4),
                 subtitle=Text((LEFT, 3.25, width, 0.62), scheme['muted'], 16, anchor='top'),
+                details=Text((LEFT, 2.8, width, 1.45), scheme['muted'], 16, anchor='top'), lift=0.45,
                 quiet=scheme['quiet'],
                 photo=(left, 0, right - left, bottom))
         width = cx + inner - 0.7 - LEFT
         return Plan(
             title=Text((LEFT, 0.7, width, 2.3), scheme['title'], 44, anchor='bottom', lines=3),
             subtitle=Text((LEFT, 3.18, width, 0.62), scheme['muted'], 17, anchor='top'),
+            # Clear of the innermost band, whose run along the bottom starts at 4.35.
+            details=Text((LEFT, 2.73, width, 1.5), scheme['muted'], 17, anchor='top'), lift=0.45,
             quiet=scheme['quiet'])
 
     # ------------------------------------------------------------ closing
@@ -210,6 +213,9 @@ class Stripes(Composition):
             title=Text((1.2, 0.3, SLIDE_W - 2.4, 1.7), scheme['title'], 44, align='center', anchor='bottom',
                        lines=2),
             subtitle=Text((1.8, 2.08, SLIDE_W - 3.6, 0.5), scheme['muted'], 17, align='center', anchor='top'),
+            # Above the arch, whose top is at 3.02.
+            details=Text((1.8, 1.58, SLIDE_W - 3.6, 1.35), scheme['muted'], 16, align='center', anchor='top'),
+            lift=0.5,
             quiet=scheme['quiet'])
 
     # ------------------------------------------------------------ divider

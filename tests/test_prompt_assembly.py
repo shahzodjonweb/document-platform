@@ -96,13 +96,19 @@ def sent(body):
         SYSTEM, DOCUMENT_RULES, doc_designs.reference(True, True, 0), block]),
     ('outline', 'pdf', {'wants_layouts': True}, lambda block: [
         OUTLINE_SYSTEM, doc_designs.reference(True, False, 0), block]),
-    # A change keeps the document's shape: it is not told how to write one from scratch.
-    ('revision', 'pptx', {'image_cap': 6}, lambda block: [REVISION_SYSTEM, block]),
-    ('selected', 'pptx', {'image_cap': 6}, lambda block: [REVISION_SYSTEM, SELECTED_REVISION, block]),
+    # A change is told how a page or slide is written, and a deck's change the layouts it may use: told only
+    # to keep things as they were, it added a page as a heading and a picture nowhere.
+    ('revision', 'pptx', {'image_cap': 6}, lambda block: [
+        REVISION_SYSTEM, DECK_RULES, layouts.reference(True), block]),
+    ('selected', 'pptx', {'image_cap': 6}, lambda block: [
+        REVISION_SYSTEM, DECK_RULES, layouts.reference(True), SELECTED_REVISION, block]),
     ('revision', 'pdf', {'wants_layouts': True}, lambda block: [
-        REVISION_SYSTEM, doc_designs.reference(True, False, 0), block]),
+        REVISION_SYSTEM, DOCUMENT_RULES, doc_designs.reference(True, False, 0), block]),
+    # A change keeps the document's design unless it asks for a new look, so it is not shown the designs.
+    ('revision', 'pdf', {'wants_layouts': True, 'wants_design': True}, lambda block: [
+        REVISION_SYSTEM, DOCUMENT_RULES, doc_designs.reference(True, False, 0), block]),
     ('selected', 'pdf', {'wants_layouts': True}, lambda block: [
-        REVISION_SYSTEM, doc_designs.reference(True, False, 0), SELECTED_REVISION, block]),
+        REVISION_SYSTEM, DOCUMENT_RULES, doc_designs.reference(True, False, 0), SELECTED_REVISION, block]),
     # A repair writes flagged sections again, often whole, so it is told how one is written.
     ('repair', 'pptx', {'image_cap': 6}, lambda block: [
         REVISION_SYSTEM, DECK_RULES, layouts.reference(True), SELECTED_REVISION, block]),
@@ -157,13 +163,13 @@ def test_no_block_runs_into_the_next_without_a_break():
 def test_a_document_is_told_document_rules_and_a_deck_deck_rules_never_both():
     for locale in LOCALES:
         document, deck = bodies(locale, 'pdf'), bodies(locale, 'pptx')
-        for stage in ('final', 'repair'):
+        for stage in ('final', 'revision', 'selected', 'repair'):
             assert DOCUMENT_RULES in document[stage]['instructions'], stage
             assert DECK_RULES not in document[stage]['instructions'], stage
             assert DECK_RULES in deck[stage]['instructions'], stage
             assert DOCUMENT_RULES not in deck[stage]['instructions'], stage
-        # An outline, a change, a selected change and a top-up are told neither.
-        for stage in ('outline', 'revision', 'selected', 'expand'):
+        # An outline and a top-up are told neither.
+        for stage in ('outline', 'expand'):
             for both in (document, deck):
                 assert DOCUMENT_RULES not in both[stage]['instructions'] and \
                     DECK_RULES not in both[stage]['instructions'], stage
@@ -211,7 +217,7 @@ def test_the_cache_key_changes_with_the_prompt_version(monkeypatch):
     """New instructions must not be served a prefix cached for the old ones."""
     data = draft(5, 'pptx')
     before = provider.request_body(CONFIG, data, SLIDES)['prompt_cache_key']
-    assert prompting.VERSION not in ('studio-efficient-v1', 'studio-efficient-v2'), \
+    assert prompting.VERSION not in ('studio-efficient-v1', 'studio-efficient-v2', 'studio-efficient-v3'), \
         'the instructions changed, so the version did'
     assert before.startswith('pdfmaster:') and prompting.VERSION not in before
     monkeypatch.setattr(prompting, 'VERSION', prompting.VERSION + '-next')

@@ -41,7 +41,8 @@ class Layout:
 # `section`, which always accepts.
 CATALOGUE = {layout.id: layout for layout in (
     Layout('cover', 'text', 'section',
-           'title slide: heading is the deck title, body one subtitle line; image_query optional'),
+           'title slide: heading is the deck title, body one subtitle line or the lines the customer dictates '
+           '("Tayyorladi: …"), whole, one per line, at most 8; image_query optional'),
     Layout('agenda', 'structure', 'bullets',
            "what's coming: 3-6 items, label = topic, text = a sentence (≤15 words)"),
     Layout('section', 'text', 'section',
@@ -281,17 +282,54 @@ def reference(photos=False):
             'quote only a real, attributable quotation. ')
 
 
-def photo_guidance(photos=0):
+def _naming(document=False):
+    """How a picture is named for the stock photo search, the same wherever pictures are asked for."""
+    if document:
+        return ('image_query names what the photo literally shows, for a stock photo search: 2-4 plain words in '
+                'English, even when the document is in another language, main subject first, a concrete thing, '
+                'place or activity that matches this page. Never an abstract idea such as success, growth or '
+                'strategy; never a person, brand or company name. ')
+    return ('image_query names what the photo literally shows, for a stock photo search: 2-4 plain words in '
+            'English, even when the deck is in another language, main subject first, a concrete thing, place or '
+            'activity that matches this slide (e.g. "warehouse forklift", "students science lab"). Never an '
+            'abstract idea such as success, growth or strategy; never a person, brand or company name. ')
+
+
+def photo_guidance(photos=0, document=False):
+    """How many photos this part uses and how to name them for the stock search.
+
+    A document (a change asking a PDF for pictures) has one photo layout,
+    `image`, where a deck has two.
+    """
+    if document:
+        return (f'Use the image layout on {photos} section{"s" if photos != 1 else ""} in this part, on '
+                f'pages a picture supports. ' + _naming(True)
+                if photos else 'Do not use the image layout, and leave image_query empty. ')
     return (f'Use {photos} photo layout{"s" if photos != 1 else ""} in this part: image_split or '
-                  f'image_full on slides a picture supports, and the cover counts when it has an '
-                  f'image_query. Use fewer only if the description asks for fewer or no photos. '
-                  f'image_query names what the photo literally shows, for a stock photo search: 2-4 '
-                  f'plain words in English, even when the deck is in another language, main subject '
-                  f'first, a concrete thing, place or activity that matches this slide (e.g. '
-                  f'"warehouse forklift", "students science lab"). Never an abstract idea such as '
-                  f'success, growth or strategy; never a person, brand or company name. '
-                  if photos else
-                  'Do not use image_split or image_full, and leave image_query empty. ')
+            f'image_full on slides a picture supports, and the cover counts when it has an '
+            f'image_query. Use fewer only if the description asks for fewer or no photos. ' + _naming()
+            if photos else
+            'Do not use image_split or image_full, and leave image_query empty. ')
+
+
+def added_photo_guidance(added=0, every=False, document=False):
+    """The pictures a change adds in this part, on top of the ones it keeps.
+
+    Told a total ("use 2 photo layouts in this part"), a part that already had
+    two kept them and added none, and a part with a smaller share than it had
+    was told to use no photo layouts at all, and dropped the ones it had.
+    `every` is a picture on every page or slide of the part that has none.
+    """
+    unit, how = ('page', 'the image layout') if document else ('slide', 'image_split or image_full')
+    if not (added or every):
+        return f'Add no picture in this part, and keep every picture these {unit}s already have. '
+    if every:
+        lead = (f'Give a picture to every {unit} of this part that has none ({how})'
+                + ('' if document else ', the cover aside') + '; ')
+    else:
+        lead = (f'Add a picture to {added} more {unit}{"s" if added != 1 else ""} of this part that '
+                f'{"have" if added != 1 else "has"} none ({how}), on {unit}s a picture supports; ')
+    return lead + f'keep every picture these {unit}s already have. ' + _naming(document)
 
 
 def guide(photos=0):

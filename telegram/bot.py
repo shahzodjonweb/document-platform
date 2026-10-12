@@ -91,7 +91,7 @@ async def safe_error(message,account,exc):
     if exc.code=='channels_required' and getattr(account,'telegram_user_id',None):
         from .channels import show_gate
         return await show_gate(message,account,edit=own_message(message))
-    key='secure' if exc.code in ('password_required','secure_password_entry_required') else 'controls_expired' if exc.code=='controls_expired' else None
+    key='secure' if exc.code in ('password_required','secure_password_entry_required') else 'controls_expired' if exc.code=='controls_expired' else 'ai_format_only' if exc.code=='format_only_change' else None
     rows=[]
     if key=='secure': rows.append([InlineKeyboardButton(text=text(account,'open'),url=await web_url(account))])
     if getattr(account,'telegram_user_id',None):
@@ -204,10 +204,22 @@ async def review_screen(account,draft,quote):
     if asked and asked>given: body+='\n'+text(account,'ai_pages_clamped').format(asked=asked,given=given)
     names=dict(LANGUAGES)
     if locale in names: body+=f'\n{text(account,"ai_language")}: {names[locale]}'
-    if deck:
+    # A change is made from its request alone: there is no design to pick, the
+    # count and the language are only shown, and nothing on this screen alters them.
+    if deck and not change:
         design=await sync_to_async(ai.design_of)(draft)
         body+=f'\n{text(account,"ai_theme")}: '+(html.escape(design) if design else text(account,'ai_theme_auto'))
-    if wanted>cap>0: body+='\n'+text(account,'ai_images_capped').format(count=cap)
+    # Pictures the plan cannot add are said, never quietly left out. A change
+    # asking for them on a plan that adds none is told so too, unless photos are
+    # off altogether and no plan could add them.
+    short=wanted>cap and (cap>0 or bool(change) and await sync_to_async(ai.pictures_on)())
+    if short and cap: body+='\n'+text(account,'ai_images_capped' if deck else 'ai_images_capped_pdf').format(count=cap)
+    elif short: body+='\n'+text(account,'ai_images_none')
+    # A file format named beside other changes is not something a change makes:
+    # the file comes back in its own format, and the way to the other is said.
+    if change and await sync_to_async(ai.format_kept)(draft):
+        body+='\n'+html.escape(text(account,'ai_format_kept_deck' if deck else 'ai_format_kept_pdf').format(
+            button=text(account,'ai_revise'),service=TOOL_NAMES[ai.SLIDES][account.locale]))
     # A description asking for the other service is offered it, before anything is spent.
     other=await sync_to_async(ai.other_service)(draft)
     if other: body+='\n\n'+text(account,'ai_wrong_tool_slides' if other==ai.SLIDES else 'ai_wrong_tool_pdf')
@@ -226,22 +238,27 @@ async def review_screen(account,draft,quote):
     # plan's limit the "more" button becomes the plan that gives more.
     from apps.studio.pages import ceiling
     top=await sync_to_async(ceiling)(account,'pptx' if deck else 'pdf')
-    # [➖] [10 slides] [➕]: the count between the buttons that change it. The
-    # middle one only shows it; a button at the limit is left out.
-    stepper=[InlineKeyboardButton(text=counted(account.locale,given,'slide' if deck else 'page'),
-                                  callback_data=await callback(account,'ai_count'))]
-    if given>1:
-        stepper.insert(0,InlineKeyboardButton(text='➖',callback_data=await callback(account,'ai_length',{'draft_id':str(draft.id),'pages':given-1})))
-    if given<top:
-        stepper.append(InlineKeyboardButton(text='➕',callback_data=await callback(account,'ai_length',{'draft_id':str(draft.id),'pages':given+1})))
-    rows.append(stepper)
-    # The design and the count together, on a screen of their own.
-    if deck: rows.append([await setup_button(account,draft)])
+    # A change has none of the controls below: its request already says what
+    # to do, and a stepper or a theme beside it was read as part of the change.
+    if not change:
+        # [➖] [10 slides] [➕]: the count between the buttons that change it. The
+        # middle one only shows it; a button at the limit is left out.
+        stepper=[InlineKeyboardButton(text=counted(account.locale,given,'slide' if deck else 'page'),
+                                      callback_data=await callback(account,'ai_count'))]
+        if given>1:
+            stepper.insert(0,InlineKeyboardButton(text='➖',callback_data=await callback(account,'ai_length',{'draft_id':str(draft.id),'pages':given-1})))
+        if given<top:
+            stepper.append(InlineKeyboardButton(text='➕',callback_data=await callback(account,'ai_length',{'draft_id':str(draft.id),'pages':given+1})))
+        rows.append(stepper)
+        # The design and the count together, on a screen of their own.
+        if deck: rows.append([await setup_button(account,draft)])
     upsell=[]
-    if given>=top or (asked and asked>given):
+    # A new document at the plan's limit is offered more in place of ➕; a
+    # change only when it asks for more than the plan gives.
+    if (given>=top and not change) or (asked and asked>given):
         more=await sync_to_async(ai.next_plan)(account,'max_generated_slides' if deck else 'max_generated_pdf_pages',max(asked or 0,given+1))
         if more: upsell.append(('ai_more_slides' if deck else 'ai_more_pages',more))
-    if wanted>cap>0:
+    if short:
         more=await sync_to_async(ai.next_plan)(account,'max_deck_images',wanted)
         if more: upsell.append(('ai_more_images',more))
     from .billing import plan_name
@@ -249,9 +266,10 @@ async def review_screen(account,draft,quote):
         rows.append([InlineKeyboardButton(text=text(account,key).format(count=limit,plan=plan_name(account,plan)),
                                           callback_data=await callback(account,'plans'))])
     # The language it will be written in, switchable in one tap.
-    rows.append([InlineKeyboardButton(text=('✅ ' if code==locale else '')+label.split(' ',1)[0],
-                                      callback_data=await callback(account,'ai_locale',{'draft_id':str(draft.id),'locale':code}))
-                 for code,label in LANGUAGES])
+    if not change:
+        rows.append([InlineKeyboardButton(text=('✅ ' if code==locale else '')+label.split(' ',1)[0],
+                                          callback_data=await callback(account,'ai_locale',{'draft_id':str(draft.id),'locale':code}))
+                     for code,label in LANGUAGES])
     rows.append([reword,await button(account,'cancel_button','home')])
     return body,rows
 
@@ -398,7 +416,7 @@ def build_dispatcher():
             body='📎 '+html.escape(names[0][:100] if names else '')+'\n'+body
         return await render(message,body,rows,edit)
 
-    async def controls(message,account,draft=None,edit=False,advanced=False):
+    async def controls(message,account,draft=None,edit=False,advanced=False,notice=''):
         await sync_to_async(set_prompt)(account)
         # Choosing a service, sending a file or changing an option all land here:
         # a customer who still has channels to join is shown only those, in
@@ -420,7 +438,7 @@ def build_dispatcher():
         files=await sync_to_async(lambda:{str(a.id):a for a in FileAsset.objects.filter(account=account,id__in=draft.input_ids)})()
         title=TOOL_NAMES.get(feature,{}).get(account.locale,feature)
         hint='upload_merge' if feature=='pdf.merge' else 'upload_images' if feature=='pdf.images_to_pdf' else 'upload_word' if feature=='convert.word_to_pdf' else 'upload_slides' if feature=='convert.pptx_to_pdf' else 'upload_pdf'
-        body=f'<b>{html.escape(title)}</b>'
+        body=(html.escape(notice)+'\n\n' if notice else '')+f'<b>{html.escape(title)}</b>'
         if not files or (feature=='pdf.merge' and len(files)<2): body+='\n'+text(account,hint)
         if feature=='pdf.images_to_pdf': body+='\n'+html.escape(text(account,'document_scan_hint'))
         if feature not in ('pdf.merge','pdf.images_to_pdf') and len(files)>1: body+='\n'+text(account,'one_file_hint')
@@ -551,7 +569,8 @@ def build_dispatcher():
             await sync_to_async(set_prompt)(account)
             from .channels import show_gate
             return await show_gate(message,account,resume=resume,edit=True)
-        body=html.escape(bot_error(exc,account.locale))
+        # The shared error copy cannot say what the chat does with a file format.
+        body=html.escape(text(account,'ai_format_only') if exc.code=='format_only_change' else bot_error(exc,account.locale))
         if exc.code=='daily_ai_limit':
             # Nothing to rewrite: the limit and the way past it, in place of "Preparing…".
             await sync_to_async(set_prompt)(account)
@@ -564,6 +583,12 @@ def build_dispatcher():
 
         `message` is the "Preparing…" line, which becomes the priced draft.
         """
+        # A file format and nothing else is not an AI edit: the AI would only
+        # write the same document again and spend an edit on it.
+        kind,feature=await sync_to_async(ai.asked_format)(account,draft_id,request)
+        if kind=='pdf' and feature==ai.SLIDES: return await deck_as_pdf(message,account,draft_id)
+        if kind=='pptx' and feature==ai.DOCUMENT: return await document_as_slides(message,account,draft_id)
+        if kind: return await send_again(message,account,draft_id,kind)
         draft=None
         try:
             draft=await sync_to_async(ai.revise)(account,draft_id,request)
@@ -573,6 +598,36 @@ def build_dispatcher():
             return await ai_refused(message,account,exc,resume,lambda:ai_revise_prompt(message,account,draft_id))
         await sync_to_async(set_prompt)(account)
         await ai_review(message,account,draft,quote,True)
+
+    async def deck_as_pdf(message,account,draft_id):
+        """The delivered deck in PowerPoint → PDF, ready to start; or, once the
+        server no longer keeps it, the same tool offered for the copy in the chat."""
+        await sync_to_async(set_prompt)(account)
+        try: draft=await sync_to_async(ai.deck_to_pdf)(account,draft_id)
+        except DomainError as exc: return await safe_error(message,account,exc)
+        if draft: return await controls(message,account,draft,True,notice=text(account,'ai_deck_as_pdf'))
+        waiting=await sync_to_async(draft_for)(account)
+        rows=[[await tool_button(account,waiting,ai.CONVERTER)],[await button(account,'home','home')]]
+        await render(message,html.escape(text(account,'ai_deck_gone')),rows,True)
+
+    async def document_as_slides(message,account,draft_id):
+        """A change cannot make slides of a PDF: a new deck on the same subject
+        is offered instead, made from the description the document began with."""
+        await sync_to_async(set_prompt)(account)
+        rows=[[await button(account,'ai_as_slides','ai_switch',{'draft_id':str(draft_id),'feature_id':ai.SLIDES})],
+              [await button(account,'ai_revise','ai_revise',{'draft_id':str(draft_id)}),await button(account,'home','home')]]
+        await render(message,html.escape(text(account,'ai_doc_to_slides')),rows,True)
+
+    async def send_again(message,account,draft_id,kind):
+        """The file asked for in the format it already has: the same file, sent again."""
+        await sync_to_async(set_prompt)(account)
+        job,_=await sync_to_async(ai.delivered)(account,draft_id)
+        if job is None:
+            rows=[[await button(account,'ai_revise','ai_revise',{'draft_id':str(draft_id)}),await button(account,'home','home')]]
+            return await render(message,html.escape(text(account,'ai_file_gone')),rows,True)
+        name='PDF' if kind=='pdf' else 'PowerPoint'
+        await render(message,html.escape(text(account,'ai_same_format').format(format=name)),[],True)
+        await deliver(message,account,job,f'same-format:{secrets.token_urlsafe(9)}')
 
     async def ai_examples(message,account,feature_id=None,edit=False):
         """What a good description looks like, in the customer's language."""
@@ -870,7 +925,11 @@ def build_dispatcher():
                 change=ai.resize if action=='ai_length' else ai.relocale
                 value=p['pages'] if action=='ai_length' else p['locale']
                 try: draft,quote=await sync_to_async(change)(account,p['draft_id'],value)
-                except DomainError as exc: await safe_error(message,account,exc)
+                except DomainError as exc:
+                    # ➖/➕ or a language left on a change's old review, or on a
+                    # draft gone since: an old button, so the menu, said so.
+                    if exc.code=='controls_expired': await home(message,account,True,notice=text(account,'stale_button'))
+                    else: await safe_error(message,account,exc)
                 else: await ai_review(message,account,draft,quote,True)
             elif action=='ai_run':
                 existing=await sync_to_async(ai.submitted)(account,p['quote_id'])

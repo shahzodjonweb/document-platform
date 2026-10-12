@@ -150,12 +150,16 @@ class Frame(Composition):
         # so a two-line title leaves the same air on both sides as a three-line one.
         self._flourish(canvas, look, cx, top, reach=reach)
         title_top = top + 0.45
-        self._rule(canvas, look, cx, title_top + title_height + 0.45)
+        below = title_top + title_height + 0.7
+        self._rule(canvas, look, cx, below - 0.25)
         return Plan(
             title=Text((cx - width / 2, title_top, width, title_height), look['title'], size, align='center',
                        anchor='middle', lines=lines),
-            subtitle=Text((cx - subtitle / 2, title_top + title_height + 0.7, subtitle, 0.85), look['muted'],
-                          subtitle_size, align='center', anchor='top'),
+            subtitle=Text((cx - subtitle / 2, below, subtitle, 0.85), look['muted'], subtitle_size, align='center',
+                          anchor='top'),
+            # A title page's lines run down to the footer row.
+            details=Text((cx - subtitle / 2, below, subtitle, 6.7 - below), look['muted'], subtitle_size,
+                         align='center', anchor='top'),
             quiet=look['quiet'],
             photo=picture)
 
@@ -168,6 +172,7 @@ class Frame(Composition):
             title=Text((MIDDLE - width / 2, bottom - 2.2, width, 2.2), look['title'], 44, align='center',
                        anchor='bottom', lines=2),
             subtitle=Text((MIDDLE - 4.1, bottom + 0.75, 8.2, 0.85), look['muted'], 18, align='center', anchor='top'),
+            details=Text((MIDDLE - 4.1, bottom + 0.75, 8.2, 1.7), look['muted'], 18, align='center', anchor='top'),
             quiet=look['quiet'])
 
     def _divider(self, canvas, look):

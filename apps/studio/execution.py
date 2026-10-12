@@ -8,18 +8,19 @@ from .domain import unpack,pack,validate_content,validate_generation_quote,limit
 from .rendering import render_pdf
 from .slides import render_pptx
 
-def _photos(job,sections,warnings):
+def _photos(job,sections,warnings,style='photo'):
     """Stock photos for the slides that asked for one, or none — never a failure.
 
     The allowance is the plan's at the time the quote was made. Whatever goes
     wrong here — the provider, the network, the bytes, this code — the slides
-    that wanted a photo are drawn as text and the customer is told.
+    that wanted a photo are drawn as text and the customer is told. `style` is
+    'illustration' when the customer asked for drawings, not photographs.
     """
     from . import photos as stock
     try:
         cap=int((job.quote.policy.get('limits') or {}).get('max_deck_images',0) or 0)
         left=(job.lease_expires_at-timezone.now()).total_seconds()-60 if job.lease_expires_at else stock.BUDGET_SECONDS
-        result=stock.fetch_for_deck(sections,cap=cap,budget=min(stock.BUDGET_SECONDS,left),job=job)
+        result=stock.fetch_for_deck(sections,style=style,cap=cap,budget=min(stock.BUDGET_SECONDS,left),job=job)
     except Exception:
         result=stock.PhotoResult(failed=len(stock.wanted(sections)))
     warnings.extend(result.warnings)
@@ -54,15 +55,24 @@ def execute_generation(job,output_dir):
             raw,usage=generate(cfg,data,job.feature_id,job.id,token_limit=job.quote.policy['generation_bounds']['input_tokens'],deadline=deadline)
             content=validate_content(job.account,raw,data['output_format'])
             # The look the model chose is kept with the draft, so a later change
-            # request redraws the same deck rather than picking again.
+            # request redraws the same deck rather than picking again. Only a
+            # change asking for a new look replaces the one the document has:
+            # "Test tuz" on a designed document once came back plain. A design
+            # picked on the review screen is the customer's, and stays.
             from . import deck_designs,doc_designs
-            if data['output_format']=='pptx':deck_designs.remember(data,raw)
-            else:doc_designs.remember(data,raw,replace=bool(data.get('revision')))
+            revision=data.get('revision') or {}
+            redesign=bool((revision.get('edit') or {}).get('redesign')) and not revision.get('selected_section_ids')
+            if data['output_format']=='pptx':
+                picked=(data.get('options') or {}).get('deck_design') not in (None,'auto')
+                deck_designs.remember(data,raw,replace=redesign and not picked)
+            else:doc_designs.remember(data,raw,replace=redesign)
             # The whole document is checked before it is drawn: every field in
             # its language's alphabet, and a section in the wrong language, empty
             # or repeating another sent back to the model once (quality.py).
             from . import quality
-            content,_=quality.finish(cfg,data,content,job=job,deadline=deadline)
+            # A change request is checked against the model's own plan of it:
+            # a part it planned and left undone goes into the one repair.
+            content,_=quality.finish(cfg,data,content,job=job,deadline=deadline,plan=raw.get('edit_plan'))
             # Bounds can also change while the provider is running. Deliver
             # only a result that still preserves everything outside its scope,
             # exactly as it was: quality.finish never retouches those pages.
@@ -106,12 +116,13 @@ def execute_generation(job,output_dir):
     from .branding import render_style
     style=render_style(job.account,data,feature_id=job.feature_id)
     ext=data['output_format']
+    photo_style=(data.get('options') or {}).get('photo_style') or 'photo'
     if ext=='pptx':
-        photos=_photos(job,content['sections'],warnings)
+        photos=_photos(job,content['sections'],warnings,photo_style)
         artifacts=[render_pptx(content,output_dir/'document.pptx',data['output_locale'],'user_document',style=style,photos=photos)]
     else:
         # A document only has photos when its description asked for pictures.
-        photos=_photos(job,content['sections'],warnings) if any(s.get('layout')=='image' for s in content['sections']) else {}
+        photos=_photos(job,content['sections'],warnings,photo_style) if any(s.get('layout')=='image' for s in content['sections']) else {}
         artifacts=[render_pdf(content,output_dir/'document.pdf',data['output_locale'],'user_document',style=style,photos=photos)]
         # A document that came out short of the pages asked for is written
         # further, once, and drawn again; the renderer still holds the count.

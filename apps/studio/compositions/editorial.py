@@ -97,6 +97,8 @@ class Editorial(Composition):
         return Plan(
             title=Text((LEFT, 0.7, width, 4.56), scheme['ink'], size, anchor='top', lines=lines),
             subtitle=Text((LEFT, 5.46, measure, 1.0), scheme['muted'], 14, anchor='bottom'),
+            # A title page's lines stand on the foot rule too; the title's box gives up the room.
+            details=Text((LEFT, 4.56, measure, 1.9), scheme['muted'], 16, anchor='bottom'), lift=0.7,
             quiet=scheme['muted'],
             photo=picture)
 
@@ -109,6 +111,7 @@ class Editorial(Composition):
         return Plan(
             title=Text((LEFT, 0.9, NOTE - 0.75 - LEFT, 5.35), scheme['figure'], 110, anchor='bottom', lines=2),
             subtitle=Text((NOTE, 4.79, RIGHT - NOTE, 1.3), scheme['muted'], 15, anchor='bottom'),
+            details=Text((NOTE, 2.0, RIGHT - NOTE, 4.09), scheme['muted'], 15, anchor='bottom'),
             quiet=scheme['muted'])
 
     def _divider(self, canvas):

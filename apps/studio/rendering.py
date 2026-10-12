@@ -40,6 +40,9 @@ MIN_BODY_LEADING = 12.5
 FIT_STEPS = 6
 SENTENCE = re.compile(r'((?<=[.!?…])\s+)')
 BULLET = re.compile(r'^\s*(?:[•·▪◦‣*\-–—]\s+)')
+LISTED = re.compile(r'^\s*(?:[•·▪◦‣*\-–—]\s+|\d{1,2}[.)]\s)')
+# As many lines as a deck's title page draws (slide_layouts.TITLE_LINES).
+TITLE_PAGE_LINES = 8
 INK = '#1A1A1A'
 MUTED = '#5F6368'
 
@@ -195,6 +198,39 @@ def _callout(section, styles, look, width):
     return box
 
 
+class _Middle(Flowable):
+    """Space that sets the flowables after it in the middle of what is left of the page."""
+
+    def __init__(self, flowables):
+        super().__init__()
+        self.flowables = flowables
+
+    def wrap(self, width, height):
+        block = sum(flowable.wrap(width, height)[1] + flowable.getSpaceBefore() + flowable.getSpaceAfter()
+                    for flowable in self.flowables)
+        return width, max(0, (height - block) / 2)
+
+    def draw(self):
+        pass
+
+
+def _title_page(section, look, title):
+    """A title page's heading and dictated lines, centred and unnumbered, the document going on over the page."""
+    heading = (section.get('heading') or '').strip()
+    centred = dict(fontName='PDFMaster', alignment=TA_CENTER)
+    block = []
+    # The document's title is already over it; a heading that repeats it is left out.
+    if heading and ' '.join(heading.split()).casefold() != ' '.join(str(title or '').split()).casefold():
+        block.append(Paragraph(_markup(heading), ParagraphStyle(
+            'title_page_heading', fontSize=18, leading=24, spaceAfter=14,
+            textColor=colors.HexColor(look['accent']), **centred)))
+    line = ParagraphStyle('title_page_line', fontSize=12.5, leading=18, spaceAfter=3,
+                          textColor=colors.HexColor(INK), **centred)
+    block += [Paragraph(_markup(text.strip()), line) for text in (section.get('body') or '').split('\n')
+              if text.strip()]
+    return [_Middle(block), *block, PageBreak()]
+
+
 def _heading(text, number, styles, look):
     kind = look['style']
     label = f'{number}. {text}' if kind == 'numbered' else text
@@ -205,10 +241,18 @@ def _heading(text, number, styles, look):
     return paragraph
 
 
-def document_story(sections, styles, look, width, photos=None):
-    """The flowing text of a document: headings where topics start, then everything in between."""
+def document_story(sections, styles, look, width, photos=None, title=''):
+    """The flowing text of a document: headings where topics start, then everything in between.
+
+    A title page the document opens on is a page of its own, and its heading is
+    not numbered: added by a change ("Boshiga bitta sahifa qo'sh … deb yoz"), it
+    used to run into the introduction as "1. MUSTAQIL ISH".
+    """
     story, number = [], 0
     photos = photos or {}
+    if opens_on_title_page(sections):
+        story.extend(_title_page(sections[0], look, title))
+        sections = sections[1:]
     for section in sections:
         heading = (section.get('heading') or '').strip()
         if heading:
@@ -234,11 +278,43 @@ def document_story(sections, styles, look, width, photos=None):
     return story
 
 
+def _title_lines(body):
+    """Whether `body` is a title page's dictated lines: a few short lines, no running text.
+
+    "MUSTAQIL ISH / Tayyorladi: … / 021-104-guruh" has no sentence to cut at,
+    so a share of it is a share of its words — a student's name cut in half
+    to save a line the page did not need.
+    """
+    lines = [line.strip() for line in (body or '').split('\n') if line.strip()]
+    # One line is a title page's only when it is not a sentence: "Karimova
+    # Dilnoza Rustam qizi 021-104-guruh", not "Pedagogika — ta'lim haqidagi fan."
+    return (1 <= len(lines) <= TITLE_PAGE_LINES and all(len(line.split()) <= 12 for line in lines)
+            and (len(lines) > 1 or not lines[0].endswith(('.', '!', '?', '…'))))
+
+
+def opens_on_title_page(sections):
+    """Whether a document opens on a title page: a first section of dictated lines, more after it.
+
+    Read from the section itself, as a change writes it: plain text, a few
+    short lines, none of them a list item (a plan's "1. Kirish" is not a title
+    page).
+    """
+    if len(sections) < 2:
+        return False
+    first = sections[0]
+    lines = [line for line in (first.get('body') or '').split('\n') if line.strip()]
+    return ((first.get('layout') or 'text') == 'text' and _title_lines(first.get('body'))
+            and not any(LISTED.match(line) for line in lines))
+
+
 def _trimmed(sections, ratio):
-    """Every section's body cut to the same share of its sentences, marked where cut."""
+    """Every section's body cut to the same share of its sentences, marked where cut; a title page's lines whole."""
     import math
     result = []
     for section in sections:
+        if _title_lines(section.get('body')):
+            result.append(section)
+            continue
         units = _units(section.get('body') or '')
         keep = max(1, math.ceil(len(units) * ratio))
         body = section.get('body') or ''
@@ -329,7 +405,7 @@ def render_pdf(content,path,locale='en',role='user_document',style=None,photos=N
     sections=[dict(s) for s in content['sections']]
     if content_layout=='document' and sections:
         def count_pages(candidate):
-            buffer=io.BytesIO();build(opening()+document_story(candidate,styles,look,frame_width,photos),buffer)
+            buffer=io.BytesIO();build(opening()+document_story(candidate,styles,look,frame_width,photos,content['title']),buffer)
             return len(PdfReader(io.BytesIO(buffer.getvalue())).pages)
         sections,shortened=fit_document(sections,len(sections),styles,body_size,body_leading,count_pages)
     story=opening()
@@ -343,7 +419,7 @@ def render_pdf(content,path,locale='en',role='user_document',style=None,photos=N
             card=[Paragraph(escape(f"{details['card']} {index}"),styles['heading']),Paragraph(escape(details['question']),styles['small']),Paragraph(escape(q['stem']),styles['body']),Paragraph(escape(details['answer']),styles['small']),Paragraph(escape(q['answer']),styles['body']),Paragraph(escape(q['explanation']),styles['small']),Spacer(1,14)]
             story.append(KeepTogether(card))
     else:
-        story.extend(document_story(sections,styles,look,frame_width,photos))
+        story.extend(document_story(sections,styles,look,frame_width,photos,content['title']))
         if content.get('questions'):story.append(Paragraph(labels[0],styles['heading']))
         for i,q in enumerate(content.get('questions',[])):
             story.append(Paragraph(escape(f"{i+1}. {q['stem']} ({q['marks']})"),styles['body']))

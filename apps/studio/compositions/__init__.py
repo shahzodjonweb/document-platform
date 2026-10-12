@@ -69,6 +69,12 @@ class Plan:
     """Where a cover, closing slide or divider writes; None leaves a piece out."""
     title: Text = None
     subtitle: Text = None
+    # Where a title page's several lines go (who prepared it, for whom, the
+    # group): five lines at 12 pt or more, two of them long enough to wrap.
+    # None puts them in the subtitle's box.
+    details: Text = None
+    lift: float = 0.0               # how far the title's foot and the rule rise when details are drawn
+    rising: tuple = ()              # shapes the ground drew itself that rise with them (glow's rule)
     rule: tuple = None              # (box, colour)
     eyebrow: Text = None            # a divider's "02 / 07"
     kicker: Text = None             # a divider's one-line kicker

@@ -253,6 +253,61 @@ def test_the_budget_a_document_is_given_covers_every_call_it_needs():
 
 
 
+def russian_change(pages_, request, **edit):
+    """A finished Russian document of full pages, changed as a whole by `request`."""
+    import copy
+    data = draft(pages_)
+    data['output_locale'] = 'ru'
+    sentence = 'Древние государства Центральной Азии контролировали торговые пути и развивали ремесленные города.'
+    for number, section in enumerate(data['content']['sections'], 1):
+        section.update(heading=f'Раздел {number}', body='\n'.join(' '.join([sentence] * 6) for _ in range(9)))
+    before = copy.deepcopy(data['content'])
+    data['prompt'] = request
+    data['revision'] = {'request': request, 'original_prompt': 'Реферат о государствах Центральной Азии.',
+                        'before': before, 'edit': {'parts': [], 'delta': 0, 'structural': False, **edit}}
+    return data
+
+
+def size(body):
+    return provider.body_tokens(body)
+
+
+def test_a_change_is_held_to_the_largest_request_its_job_sends():
+    """"Сделай подробнее" on a fifteen-page Russian document was refused at 142 KB, the size of one body
+    holding every page, which no job sends: its two calls are about 98 and 53 KB."""
+    data = russian_change(15, 'Сделай подробнее', expand=True)
+    whole = request_body(CONFIG, data, DOCUMENT)
+    sent = [request_body(CONFIG, data, DOCUMENT, span) for span in pages.batches(15)]
+    largest = provider.largest_body(CONFIG, data, DOCUMENT)
+    assert largest == max(sent, key=size) and size(largest) < size(whole)
+    between = (size(largest) + size(whole)) // 2
+    assert provider.enforce_input_budget(CONFIG, data, DOCUMENT, between) == largest
+    with pytest.raises(provider.DomainError, match='generation_limit'):
+        provider.enforce_input_budget(CONFIG, data, DOCUMENT, size(largest) - 1)
+    # A span is checked as it is sent; a document of one call is one body.
+    assert provider.enforce_input_budget(CONFIG, data, DOCUMENT, between, (10, 15)) == sent[1]
+    short = russian_change(5, 'Сделай подробнее', expand=True)
+    assert provider.largest_body(CONFIG, short, DOCUMENT) == request_body(CONFIG, short, DOCUMENT)
+
+
+def test_each_part_of_a_long_structural_change_carries_whole_only_the_pages_that_can_land_in_it():
+    """A title page added to a thirty-five page document sent all thirty-five pages whole in each of its four
+    calls, 94% of the premium plan's input budget each."""
+    data = russian_change(35, 'Добавь в начало титульный лист: Выполнила Каримова Нодира', parts=['title_page'],
+                          structural=True)
+    data['content']['sections'].append({'id': 's36', 'heading': '', 'body': '', 'notes': ''})
+    spans = pages.batches(36)
+    for first, last in spans:
+        stands = json.loads(request_body(CONFIG, data, DOCUMENT, (first, last))['input'])['document_as_it_stands']
+        whole = [s['page'] for s in stands['sections'] if 'body' in s]
+        # Slot k holds page k - 1: the title page is slot 1.
+        assert whole == list(range(max(1, first), last)), (first, last, whole)
+        assert all(set(s) == {'page', 'heading', 'gist'} for s in stands['sections'] if 'body' not in s)
+    sent = [request_body(CONFIG, data, DOCUMENT, span) for span in spans]
+    assert size(max(sent, key=size)) < size(request_body(CONFIG, data, DOCUMENT)) / 2
+    assert provider.largest_body(CONFIG, data, DOCUMENT) == max(sent, key=size)
+
+
 def test_a_deck_is_asked_to_choose_a_layout_for_every_slide():
     """The model picks from the twenty layouts; a document is never offered them."""
     from apps.studio import layouts

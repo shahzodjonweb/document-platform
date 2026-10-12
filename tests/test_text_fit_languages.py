@@ -568,11 +568,14 @@ def test_the_limits_these_decks_are_built_at_are_the_platforms():
     assert look({'deck_design': 'samarkand'})['composition'] == 'mosaic'
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    'Left as it is: a cover, divider or closing slide draws only the first line of its body (render_pptx keeps '
-    'lines[:1] for a cover; slide_layouts.cover, section_ and closing use lines[0]) and render_pptx counts only '
-    'bullets_of\'s cut as shortening, so every further line is dropped with no ellipsis and shortened=False'))
-@pytest.mark.parametrize('layout', ['cover', 'section', 'closing'])
+@pytest.mark.parametrize('layout', [
+    # A cover and a closing slide draw every line of their body (slide_layouts.title_lines).
+    'cover', 'closing',
+    pytest.param('section', marks=pytest.mark.xfail(strict=True, reason=(
+        'Left as it is: a divider keeps one kicker line (slide_layouts.section_ uses lines[0]) and render_pptx '
+        'counts only bullets_of\'s cut as shortening, so a further line is dropped with no ellipsis and '
+        'shortened=False'))),
+])
 def test_a_body_line_a_one_line_slide_cannot_show_is_reported(tmp_path, layout):
     body = 'Hududiy bo‘linmalar muddatni qisqartirdi\nMahalliy haydovchilar taʼminotni mustahkamladi'
     sections = [slide(1, 'cover', 'Taʼminot', body if layout == 'cover' else 'Yo‘l xaritasi'),
