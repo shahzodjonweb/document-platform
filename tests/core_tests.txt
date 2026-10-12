@@ -184,6 +184,19 @@ tests/test_generation_review.py::test_an_ai_document_leaves_its_request_and_a_co
 tests/test_photos.py::test_a_paid_deck_carries_its_photos_and_their_licence_record
 tests/test_photos.py::test_a_hit_pointing_anywhere_but_pixabay_is_dropped
 
+# AI output language: a language named in the brief beats the app's, Uzbek is Latin
+tests/test_output_language.py::test_the_output_language_follows_the_owners_table[uzbek-app-asks-english]
+tests/test_output_language.py::test_the_output_language_follows_the_owners_table[uzbek-app-cyrillic-uzbek-prompt]
+tests/test_output_language.py::test_a_change_keeps_the_documents_language_unless_told_otherwise[app-language-sent]
+tests/test_output_language.py::test_reading_a_long_description_takes_linear_time[spaces-after-tilida]
+
+# AI output alphabet and quality: no Cyrillic delivered in Uzbek/English, flawed sections repaired once
+tests/test_script_policy.py::test_an_uzbek_deck_job_delivers_no_cyrillic_when_the_model_leaks_it
+tests/test_script_policy.py::test_a_file_that_still_has_cyrillic_is_never_delivered
+tests/test_generation_quality.py::test_a_flawed_document_is_repaired_once_for_the_flagged_sections_only[en-ai.pptx]
+tests/test_generation_quality.py::test_a_repair_that_fails_still_delivers_the_document[raises]
+tests/test_prompt_assembly.py::test_an_uzbek_brief_in_cyrillic_gives_every_stage_the_same_latin_language_block
+
 # AI slide-deck generation end to end
 tests/test_deck_designs.py::test_a_generated_deck_wears_the_design_the_model_chose
 

@@ -23,6 +23,8 @@ def _payload(data):
                          if key in data['options']}}
     value['content']['questions']=[]
     value.pop('revision',None)
+    # The brief as the customer wrote it, for what it lists (topics.required).
+    value['_brief']=data['prompt']
     return value
 
 
@@ -36,7 +38,10 @@ def create_outline_quote(account,draft_id,version):
     with transaction.atomic():
         quote=generation_quote(account,draft_id,version)
         draft=GenerationDraft.objects.get(id=draft_id,account=account);data=unpack(draft.encrypted_data)
-        if data.get('revision',{}).get('selected_section_ids'):
+        # A change request is planned from the document it changes, not from an
+        # outline of the request: an outline would replace the document's text
+        # with one-line summaries that the paid change is then told to keep.
+        if data.get('revision'):
             raise DomainError('invalid_parameters')
         cfg=ai_config()
         if cfg['mode']!=quote.policy['provider_mode'] or cfg['model']!=quote.policy['provider_model']:raise DomainError('provider_changed',409)
@@ -59,6 +64,9 @@ def execute_outline(job,draft,data,original,config,output_dir):
         try:
             raw,usage=generate(config,_payload(data),'ai.outline',job.id,token_limit=job.policy['generation_bounds']['input_tokens'])
             content=validate_content(job.account,raw,data['output_format'])
+            # The plan is in the document's language and alphabet, like the document.
+            from .quality import normalise
+            content=normalise(content,data['output_locale'])
             # A deck's look is chosen while it is planned; the paid run keeps it.
             from . import deck_designs,doc_designs
             (deck_designs if data['output_format']=='pptx' else doc_designs).remember(data,raw,replace=True)

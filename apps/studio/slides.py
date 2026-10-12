@@ -528,7 +528,9 @@ def _slide_number(slide, zone, roles, colour=None, number=1):
     _write(paragraph, '', font=BODY_FONT, size=10, colour=colour, align=PP_ALIGN.RIGHT)
     field = paragraph._p.makeelement(qn('a:fld'), {'id': '{B7A4E0C1-4C1E-4D3E-9F2A-0A1B2C3D4E5F}',
                                                    'type': 'slidenum'})
-    properties = field.makeelement(qn('a:rPr'), {'lang': 'en-US'})
+    # The size goes on the field itself: the paragraph has no run to carry it,
+    # and the template's 18 pt overflows a box made for the 10 pt footer.
+    properties = field.makeelement(qn('a:rPr'), {'lang': 'en-US', 'sz': '1000'})
     fill = properties.makeelement(qn('a:solidFill'), {})
     fill.append(fill.makeelement(qn('a:srgbClr'), {'val': _hex(colour).upper()}))
     properties.append(fill)
@@ -692,13 +694,30 @@ def _chrome(slide, roles, style, kind, number=1, quiet=None):
 
 
 def _headline(slide, zone, text, roles, *, size, colour=None, anchor=MSO_ANCHOR.BOTTOM, lines=2,
-              align=PP_ALIGN.LEFT, bold=False):
-    """A headline that shrinks to fit rather than being renamed "Section"."""
-    while size > 18 and _wrapped_lines(text, size, zone.width) > lines:
+              align=PP_ALIGN.LEFT, bold=False, ctx=None):
+    """A headline that shrinks to fit rather than being renamed "Section".
+
+    Measured by word wrap and by height, with the line spacing set in points so
+    a viewer's taller font metrics cannot push a long Russian or Uzbek headline
+    out of its box. Still too tall at 18 pt, it loses words from its end,
+    visibly, and the drawer's `ctx`, when there is one, reports the cut.
+    """
+    from .slide_layouts import _text_lines, cut
+    height = Emu(int(zone.height)).pt
+
+    def wrapped(value, points):
+        return _text_lines(value, points, zone.width, bold=bold)
+
+    while size > 18 and (wrapped(text, size) > lines or wrapped(text, size) * size * 1.08 > height):
         size -= 2
+    while wrapped(text, size) * size * 1.08 > height and len(text.rstrip('…')) > 1:
+        text = cut(text)
+        if ctx is not None:
+            ctx.shortened = True
     frame = _frame(slide.shapes.add_textbox(*zone.box()), anchor)
     paragraph = _write(frame.paragraphs[0], text, font=HEADING_FONT, size=size, bold=bold,
                        colour=colour or roles.get('heading', roles['ink']), spacing=1.08, align=align)
+    paragraph.line_spacing = Pt(size * 1.08)
     _no_bullet(paragraph)
     return paragraph
 
@@ -724,10 +743,15 @@ def _eyebrow(slide, text, roles):
 
 
 def _fits(bullets, size, zone):
-    """Roughly how tall a bullet block runs, without wrapping anything for real."""
+    """Whether a bullet block fits its zone, wrapped a word at a time as a viewer wraps it.
+
+    Total width over box width missed the room long words leave at line ends,
+    so six long Russian or Uzbek bullets settled a line taller than the box.
+    """
+    from .slide_layouts import _text_lines
     height = 0
     for index, bullet in enumerate(bullets):
-        lines = _wrapped_lines(bullet, size, zone.width - Pt(size))
+        lines = _text_lines(bullet, size, zone.width - Pt(size))
         height += lines * size * LINE_MULTIPLE + (0 if index == 0 else size * 0.55)
     return height <= Emu(zone.height).pt
 
@@ -761,12 +785,12 @@ LINE_LAYOUTS = {'cover', 'section', 'bullets', 'two_column', 'statement', 'image
                 'image_full', 'closing'}
 
 
-QUESTIONS_LABEL = {'en': 'Questions', 'uz': 'Savollar', 'ru': 'Вопросы', 'uz_cyrl': 'Саволлар'}
-ANSWERS_LABEL = {'en': 'Answers', 'uz': 'Javoblar', 'ru': 'Ответы', 'uz_cyrl': 'Жавоблар'}
+QUESTIONS_LABEL = {'en': 'Questions', 'uz': 'Savollar', 'ru': 'Вопросы'}
+ANSWERS_LABEL = {'en': 'Answers', 'uz': 'Javoblar', 'ru': 'Ответы'}
 LETTERED = re.compile(r'^\s*\(?[A-Za-zА-Яа-я][).]\s')
 
 
-def question_sections(content, locale='en', script='latn'):
+def question_sections(content, locale='en'):
     """The deck's questions as slides of their own, five to a slide.
 
     Each question is numbered, with its options on one line beneath it. The
@@ -778,8 +802,6 @@ def question_sections(content, locale='en', script='latn'):
     questions = content.get('questions') or []
     groups = [questions[start:start + QUESTIONS_PER_SLIDE]
               for start in range(0, len(questions), QUESTIONS_PER_SLIDE)]
-    if locale == 'uz' and script == 'cyrl':
-        locale = 'uz_cyrl'
     label = QUESTIONS_LABEL.get(locale, QUESTIONS_LABEL['en'])
     sections = []
     for group_index, group in enumerate(groups):
@@ -826,8 +848,8 @@ def render_pptx(content, path, locale='en', role='user_document', style=None, ph
     look = design_look(style)
     roles = palette(look['accent'], look['theme'], look['secondary'], look.get('paper'),
                     look.get('accent_headings', False))
-    sections = [dict(section) for section in content['sections']] + question_sections(
-        content, locale, style.get('uz_script', 'latn'))
+    # Labels follow the language; Uzbek is always Latin.
+    sections = [dict(section) for section in content['sections']] + question_sections(content, locale)
 
     total = len(sections)
     shortened = False
@@ -887,7 +909,8 @@ def render_pptx(content, path, locale='en', role='user_document', style=None, ph
                 photo = None
                 kind = layouts.resolve(section, lines, index, total, False)
         _chrome(slide, roles, style, kind, index + 1, quiet=plan.quiet if plan is not None else None)
-        context = Ctx(slide, roles, style, index, total, size, locale, photo is not None, plan)
+        context = Ctx(slide, roles, style, index, total, size, locale, photo is not None, plan,
+                      look['heading_bold'])
         DRAW[kind](context, section, lines)
         # A classic design's pattern goes in its fixed places; a composition
         # puts its own pattern where it has room.

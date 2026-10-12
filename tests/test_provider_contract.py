@@ -265,7 +265,7 @@ def test_a_deck_is_asked_to_choose_a_layout_for_every_slide():
     for kind in layouts.LAYOUT_IDS:
         if kind not in layouts.PHOTO_LAYOUTS:
             assert f'- {kind}:' in deck, kind
-    assert 'Never invent figures' in deck and 'its layout is cover' in deck
+    assert 'needs figures from the description or the sources' in deck and 'its layout is cover' in deck
     assert len(deck) < 3500, 'the guide is sent on every call, so it stays short'
     document = json.loads(request_body(CONFIG, draft(), DOCUMENT)['input'])['writing_guidance']
     assert 'layout' not in document

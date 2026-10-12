@@ -11,9 +11,12 @@ surface or on a panel whose colour role was contrast-corrected for it — never
 over a photo. And every field is clipped to a word limit, marking the deck as
 shortened, rather than being allowed to run off its box.
 """
+import functools
+
 from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.util import Emu, Inches, Pt
+from reportlab.pdfbase import pdfmetrics
 
 from . import slides as kit
 from .layouts import PRO, parse_number
@@ -38,14 +41,21 @@ def draws(*kinds):
 
 
 class Ctx:
-    """What a drawer needs to know about the slide it is drawing."""
+    """What a drawer needs to know about the slide it is drawing.
 
-    __slots__ = ('slide', 'roles', 'style', 'index', 'total', 'size', 'locale', 'photo', 'shortened', 'plan')
+    `heading_bold` is the design's: slides.apply_fonts sets the heading face
+    bold after drawing, so text in that face is measured bold from the start.
+    """
 
-    def __init__(self, slide, roles, style, index, total, size, locale, photo=False, plan=None):
+    __slots__ = ('slide', 'roles', 'style', 'index', 'total', 'size', 'locale', 'photo', 'shortened', 'plan',
+                 'heading_bold')
+
+    def __init__(self, slide, roles, style, index, total, size, locale, photo=False, plan=None,
+                 heading_bold=False):
         self.slide, self.roles, self.style = slide, roles, style
         self.index, self.total, self.size, self.locale = index, total, size, locale
         self.photo, self.shortened, self.plan = photo, False, plan
+        self.heading_bold = heading_bold
 
 
 def Z(left, top, width, height):
@@ -61,6 +71,13 @@ def clip(ctx, text, words):
     return ' '.join(parts[:words]).rstrip(',;:.') + '…'
 
 
+def cut(text):
+    """`text` one step shorter, visibly: its last word gone, or a lone word's last letter."""
+    text = text.rstrip('…')
+    words = text.split()
+    return (' '.join(words[:-1]) if len(words) > 1 else text[:-1]).rstrip(',;:.') + '…'
+
+
 def fit(text, size, zone, lines, floor):
     """The largest size up to `size` at which the text keeps to `lines` lines."""
     while size > floor and kit._wrapped_lines(text, size, zone.width) > lines:
@@ -68,33 +85,46 @@ def fit(text, size, zone, lines, floor):
     return size
 
 
+@functools.lru_cache(maxsize=50000)
+def _units(text):
+    """`text`'s width in the font's own units: whole numbers, so a line's is its words' sum."""
+    kit._register_font()
+    return pdfmetrics.stringWidth(text, 'PDFMaster', 1000)
+
+
 def _text_lines(text, size, width, *, bold=False):
     """Count wrapped lines, including unused space at the end of each line.
 
     Measuring the entire string and dividing by the width misses word breaks,
     especially in a narrow card. The small extra width for bold text also
-    leaves room for Office's substituted heading font.
+    leaves room for Office's substituted heading font. A line's width is added
+    up from its words' rather than measured again for every word, which made
+    fitting one long question take seconds.
     """
     available = max(1, Emu(int(width)).pt / (1.06 if bold else 1))
-    total = 0
+
+    def over(units):
+        # slides._text_width, in the order reportlab scales units to points.
+        return 0.001 * size * units * kit.WIDTH_SAFETY > available
+
+    space, total = _units(' '), 0
     for line in str(text).split('\n'):
-        current = ''
-        count = 1
+        current, count = None, 1  # the width of the line so far; None while it is empty
         for word in line.split():
-            candidate = f'{current} {word}' if current else word
-            if current and kit._text_width(candidate, size) > available:
+            units = _units(word)
+            if current is not None and over(current + space + units):
                 count += 1
-                current = ''
-            if kit._text_width(word, size) > available:
+                current = None
+            if over(units):
                 # Viewers break unspaced identifiers too. Count their actual
                 # character widths rather than treating a long token as one line.
                 for character in word:
-                    if current and kit._text_width(current + character, size) > available:
+                    if current is not None and over(current + _units(character)):
                         count += 1
-                        current = ''
-                    current += character
+                        current = None
+                    current = (current or 0) + _units(character)
             else:
-                current = f'{current} {word}' if current else word
+                current = units if current is None else current + space + units
         total += count
     return total
 
@@ -117,6 +147,11 @@ def _fit_paragraphs(ctx, zone, paragraphs, *, shorten=True):
     longest one and report the existing shortened warning to the caller.
     """
     fitted = [dict(paragraph) for paragraph in paragraphs]
+    for paragraph in fitted:
+        # A design with bold headings sets the heading face bold after drawing
+        # (slides.apply_fonts). Measured regular, its text ran out of the box.
+        if ctx.heading_bold and paragraph.get('font') == kit.HEADING_FONT:
+            paragraph['bold'] = True
     available = Emu(zone.height).pt - 3  # allow for glyph ascenders/descenders
 
     def height():
@@ -129,16 +164,58 @@ def _fit_paragraphs(ctx, zone, paragraphs, *, shorten=True):
             break
         for paragraph in reducible:
             paragraph['size'] = max(paragraph['floor'], paragraph['size'] - 1)
-    while shorten and height() > available:
-        candidates = [paragraph for paragraph in fitted if len(paragraph['text'].rstrip('…')) > 1]
+    while shorten:
+        heights = [_paragraph_height(paragraph, zone) for paragraph in fitted]
+        if sum(heights) <= available:
+            break
+        candidates = [index for index, paragraph in enumerate(fitted) if len(paragraph['text'].rstrip('…')) > 1]
         if not candidates:
             break
-        paragraph = max(candidates, key=lambda value: _paragraph_height(value, zone))
-        text = paragraph['text'].rstrip('…')
-        words = text.split()
-        paragraph['text'] = (' '.join(words[:-1]) if len(words) > 1 else text[:-1]).rstrip(',;:.') + '…'
+        # The tallest paragraph loses words until the block fits or another
+        # one is the tallest (the first of equals), which is then cut instead.
+        tallest = max(candidates, key=heights.__getitem__)
+        earlier = max([heights[index] for index in candidates if index < tallest], default=-1)
+        later = max([heights[index] for index in candidates if index > tallest], default=-1)
+        rest = sum(heights) - heights[tallest]
+
+        def done(text):
+            if len(text.rstrip('…')) <= 1:
+                return True
+            own = _paragraph_height({**fitted[tallest], 'text': text}, zone)
+            return (sum(own if index == tallest else value for index, value in enumerate(heights)) <= available
+                    or own <= earlier or own < later)
+
+        keep = max(available - rest, earlier, later) / heights[tallest]
+        fitted[tallest]['text'] = _cut_until(fitted[tallest]['text'], done, keep)
         ctx.shortened = True
     return fitted
+
+
+def _cut_until(text, done, keep):
+    """The longest visible cut of `text` that is `done`.
+
+    The cuts are a word at a time from the end, then a lone word's letters,
+    each ending in '…'. Every cut is shorter than the one before, so the right
+    one is found by halves from the share `keep` expected to fit. Measuring
+    after every word, as this used to, took seconds for one long question.
+    """
+    text = ' '.join(text.rstrip('…').split())
+    first = text.find(' ') if ' ' in text else len(text)
+    points = [index for index in range(len(text) - 1, 0, -1) if text[index] == ' ']
+    points = points + list(range(first - 1, -1, -1)) or [0]
+
+    def version(step):
+        return text[:points[step]].rstrip(',;:.') + '…'
+
+    low, high = 0, len(points) - 1  # the last cut leaves one letter at most, so it is done
+    step = next((index for index, point in enumerate(points) if point <= keep * len(text)), high)
+    while low < high:
+        if done(version(step)):
+            high = step
+        else:
+            low = step + 1
+        step = (low + high) // 2
+    return version(low)
 
 
 def fit_text(ctx, text, zone, *, size, floor=12, spacing=1.15, bold=False):
@@ -148,8 +225,8 @@ def fit_text(ctx, text, zone, *, size, floor=12, spacing=1.15, bold=False):
     return paragraph['text'], paragraph['size']
 
 
-def _put_paragraphs(ctx, zone, paragraphs):
-    frame = kit._frame(ctx.slide.shapes.add_textbox(*zone.box()))
+def _put_paragraphs(ctx, zone, paragraphs, anchor=MSO_ANCHOR.TOP):
+    frame = kit._frame(ctx.slide.shapes.add_textbox(*zone.box()), anchor)
     for index, values in enumerate(_fit_paragraphs(ctx, zone, paragraphs)):
         paragraph = kit._write(kit._paragraph(frame, index), values['text'],
                                font=values.get('font', kit.BODY_FONT), size=values['size'],
@@ -181,10 +258,21 @@ def put(ctx, zone, value, *, size, colour, font=None, bold=False, align=PP_ALIGN
 
 
 def fitted(ctx, zone, text, *, size, colour, floor=12, bold=False, font=None, align=PP_ALIGN.LEFT,
-           spacing=1.15):
-    """One field that shrinks to its box, and only then is shortened."""
+           spacing=1.15, anchor=MSO_ANCHOR.TOP):
+    """One field that shrinks to its box, and only then is shortened.
+
+    Every box a model's words go into is measured: Russian and Uzbek run a
+    third longer than English, and a label that fits in English overflowed
+    its box in both until it was.
+    """
     return _put_paragraphs(ctx, zone, [dict(text=text, size=size, floor=floor, colour=colour, bold=bold,
-                                            font=font or kit.BODY_FONT, align=align, spacing=spacing)])
+                                            font=font or kit.BODY_FONT, align=align, spacing=spacing)], anchor)
+
+
+def fit_headline(ctx, zone, text, *, size, bold=False, **options):
+    """`slides._headline` measured at the weight the design draws it in, with any cut reported."""
+    return kit._headline(ctx.slide, zone, text, ctx.roles, size=size, bold=bold or ctx.heading_bold, ctx=ctx,
+                         **options)
 
 
 def fit_bullets(ctx, lines, zone):
@@ -215,8 +303,7 @@ def header(ctx, section, *, width=None, size=32):
     # editing the deck can type into the whole box.
     put(ctx, Z(LEFT, 0.62, width, 0.3), f'{ctx.index + 1:02d} / {ctx.total:02d}', size=10,
         colour=ctx.roles['muted'], bold=True)
-    kit._headline(ctx.slide, Z(LEFT, 1.0, width, 1.25), clip(ctx, section['heading'], 14),
-                  ctx.roles, size=size)
+    fit_headline(ctx, Z(LEFT, 1.0, width, 1.25), clip(ctx, section['heading'], 14), size=size)
     kit._shape(ctx.slide, kit.ZONES['rule'], ctx.roles['accent'])
 
 
@@ -246,8 +333,8 @@ def _planned(ctx, spec, text, words, *, headline):
         value = value.upper()
     colour = ctx.roles.get(spec.colour, spec.colour)
     if headline:
-        kit._headline(ctx.slide, Z(*spec.box), value, ctx.roles, size=spec.size, colour=colour,
-                      anchor=ANCHOR[spec.anchor], lines=spec.lines, align=ALIGN[spec.align], bold=spec.bold)
+        fit_headline(ctx, Z(*spec.box), value, size=spec.size, colour=colour, anchor=ANCHOR[spec.anchor],
+                     lines=spec.lines, align=ALIGN[spec.align], bold=spec.bold)
     else:
         frame = fitted(ctx, Z(*spec.box), value, size=spec.size, colour=colour, floor=min(12, spec.size),
                        bold=spec.bold, align=ALIGN[spec.align])
@@ -272,15 +359,14 @@ def cover(ctx, section, lines):
         return _planned_cover(ctx, section['heading'].strip() or section.get('_title', ''), lines[0] if lines else '')
     title = section['heading'].strip() or section.get('_title', '')
     zone = Z(LEFT, 2.35, WIDTH * 0.5, 2.1) if photo else kit.ZONES['cover_title']
-    kit._headline(ctx.slide, zone, clip(ctx, title, 14), roles, size=44,
-                  colour=roles['cover_ink'], lines=3)
+    fit_headline(ctx, zone, clip(ctx, title, 14), size=44, colour=roles['cover_ink'], lines=3)
     # On a bold deck the cover is the accent, so the rule has to be the ink.
     kit._shape(ctx.slide, kit.ZONES['cover_rule'],
                roles['cover_ink'] if roles['theme'] == 'bold' else roles['accent'])
     if lines:
         subtitle_zone = Z(LEFT, 4.95, WIDTH * 0.5, 0.9) if photo else kit.ZONES['cover_subtitle']
-        put(ctx, subtitle_zone, clip(ctx, lines[0], 24), size=18, colour=roles['cover_muted'],
-            spacing=1.25)
+        fitted(ctx, subtitle_zone, clip(ctx, lines[0], 24), size=18, floor=14, colour=roles['cover_muted'],
+               spacing=1.25)
 
 
 @draws('section')
@@ -300,11 +386,11 @@ def section_(ctx, section, lines):
     kit._shape(ctx.slide, kit.ZONES['divider_band'], roles['band'])
     kit._eyebrow(ctx.slide, f'{ctx.index + 1:02d} / {ctx.total:02d}', roles)
     zone = Z(LEFT, 2.95, WIDTH * 0.8, 1.2) if kicker else kit.ZONES['divider_title']
-    kit._headline(ctx.slide, zone, clip(ctx, section['heading'], 14), roles, size=34,
-                  colour=roles['band_ink'], anchor=MSO_ANCHOR.TOP, lines=2)
+    fit_headline(ctx, zone, clip(ctx, section['heading'], 14), size=34, colour=roles['band_ink'],
+                 anchor=MSO_ANCHOR.TOP, lines=2)
     if kicker:
-        put(ctx, Z(LEFT, 4.2, WIDTH * 0.8, 0.6), clip(ctx, kicker, 20), size=16,
-            colour=roles['band_muted'])
+        fitted(ctx, Z(LEFT, 4.2, WIDTH * 0.8, 0.6), clip(ctx, kicker, 20), size=16, floor=12,
+               colour=roles['band_muted'])
 
 
 @draws('statement')
@@ -313,13 +399,12 @@ def statement(ctx, section, lines):
     kit._eyebrow(ctx.slide, f'{ctx.index + 1:02d} / {ctx.total:02d}', roles)
     # The headline steps back so the one idea can carry the slide. Setting the
     # statement smaller than its own heading made it read as a subtitle.
-    kit._headline(ctx.slide, kit.ZONES['headline'], section['heading'], roles, size=20,
-                  colour=roles['muted'], anchor=MSO_ANCHOR.BOTTOM, lines=2)
+    fit_headline(ctx, kit.ZONES['headline'], section['heading'], size=20, colour=roles['muted'],
+                 anchor=MSO_ANCHOR.BOTTOM, lines=2)
     kit._shape(ctx.slide, kit.ZONES['rule'], roles['accent'])
     line = lines[0] if lines else body_text(section)
-    frame = kit._frame(ctx.slide.shapes.add_textbox(*kit.ZONES['statement'].box()), MSO_ANCHOR.TOP)
-    kit._no_bullet(kit._write(frame.paragraphs[0], line, font=kit.HEADING_FONT,
-                              size=40 if len(line) <= 52 else 32, colour=roles['ink'], spacing=1.14))
+    fitted(ctx, kit.ZONES['statement'], line, font=kit.HEADING_FONT, size=40 if len(line) <= 52 else 32,
+           floor=24, colour=roles['ink'], spacing=1.14)
 
 
 @draws('bullets')
@@ -357,16 +442,15 @@ def quote(ctx, section, lines):
     roles = ctx.roles
     kit._eyebrow(ctx.slide, f'{ctx.index + 1:02d} / {ctx.total:02d}', roles)
     if section['heading'].strip():
-        kit._headline(ctx.slide, kit.ZONES['headline'], section['heading'], roles, size=20,
-                      colour=roles['muted'], lines=2)
+        fit_headline(ctx, kit.ZONES['headline'], section['heading'], size=20, colour=roles['muted'], lines=2)
     put(ctx, Z(LEFT, 2.25, 1.0, 1.4), '“', size=110, colour=roles['accent_text'],
         font=kit.HEADING_FONT, spacing=1.0)
     words = clip(ctx, body_text(section), 45)
-    put(ctx, Z(LEFT + 1.0, 2.7, WIDTH * 0.8, 2.6), words, size=30 if len(words) <= 140 else 25,
-        colour=roles['ink'], font=kit.HEADING_FONT, spacing=1.2)
+    fitted(ctx, Z(LEFT + 1.0, 2.7, WIDTH * 0.8, 2.6), words, size=30 if len(words) <= 140 else 25, floor=18,
+           colour=roles['ink'], font=kit.HEADING_FONT, spacing=1.2)
     who = items_of(section)[0]
     attribution = ', '.join(part for part in (clip(ctx, who.get('label'), 8), clip(ctx, who.get('text'), 12)) if part)
-    put(ctx, Z(LEFT + 1.0, 5.45, WIDTH * 0.8, 0.6), f'— {attribution}', size=16, colour=roles['muted'])
+    fitted(ctx, Z(LEFT + 1.0, 5.45, WIDTH * 0.8, 0.6), f'— {attribution}', size=16, floor=12, colour=roles['muted'])
 
 
 @draws('closing')
@@ -374,14 +458,14 @@ def closing(ctx, section, lines):
     roles = ctx.roles
     if ctx.plan:
         return _planned_cover(ctx, section['heading'], lines[0] if lines else '')
-    kit._headline(ctx.slide, kit.ZONES['cover_title'], clip(ctx, section['heading'], 14), roles,
-                  size=44, colour=roles['cover_ink'], lines=3)
+    fit_headline(ctx, kit.ZONES['cover_title'], clip(ctx, section['heading'], 14), size=44,
+                 colour=roles['cover_ink'], lines=3)
     kit._shape(ctx.slide, kit.ZONES['cover_rule'],
                roles['cover_ink'] if roles['theme'] == 'bold' else roles['accent'])
     line = lines[0] if lines else ''
     if line:
-        put(ctx, kit.ZONES['cover_subtitle'], clip(ctx, line, 24), size=18, colour=roles['cover_muted'],
-            spacing=1.25)
+        fitted(ctx, kit.ZONES['cover_subtitle'], clip(ctx, line, 24), size=18, floor=14,
+               colour=roles['cover_muted'], spacing=1.25)
 
 
 # ---------------------------------------------------------------- data
@@ -396,14 +480,12 @@ def big_number(ctx, section, lines):
     zone = Z(LEFT, 2.75, 5.6, 2.6)
     put(ctx, zone, value, size=fit(value, 110, zone, 1, 60), colour=roles['accent_text'],
         font=kit.HEADING_FONT, anchor=MSO_ANCHOR.MIDDLE, spacing=1.0)
-    frame = kit._frame(ctx.slide.shapes.add_textbox(*Z(LEFT + 6.0, 3.0, WIDTH - 6.0, 2.8).box()),
-                       MSO_ANCHOR.MIDDLE)
-    kit._no_bullet(kit._write(frame.paragraphs[0], clip(ctx, item.get('label'), 10),
-                              font=kit.HEADING_FONT, size=28, colour=roles['ink'], after=8))
+    paragraphs = [dict(text=clip(ctx, item.get('label'), 10), font=kit.HEADING_FONT, size=28, floor=18,
+                       colour=roles['ink'], after=8)]
     if item.get('text'):
-        kit._no_bullet(kit._write(frame.add_paragraph(), clip(ctx, item['text'], 40),
-                                  font=kit.BODY_FONT, size=16, colour=roles['muted'],
-                                  spacing=kit.LINE_MULTIPLE))
+        paragraphs.append(dict(text=clip(ctx, item['text'], 40), size=16, floor=12, colour=roles['muted'],
+                               spacing=kit.LINE_MULTIPLE))
+    _put_paragraphs(ctx, Z(LEFT + 6.0, 3.0, WIDTH - 6.0, 2.8), paragraphs, MSO_ANCHOR.MIDDLE)
 
 
 @draws('stats')
@@ -418,10 +500,13 @@ def stats(ctx, section, lines):
         kit._shape(ctx.slide, Z(left, 3.0, width, 0.06), roles['accent'])
         value = clip(ctx, item.get('value'), 3)
         zone = Z(left, 3.2, width, 1.1)
-        put(ctx, zone, value, size=fit(value, 52, zone, 1, 28), colour=roles['accent_text'],
-            font=kit.HEADING_FONT, spacing=1.0)
-        put(ctx, Z(left, 4.4, width, 0.7), clip(ctx, item.get('label'), 8), size=18,
-            colour=roles['ink'], bold=True)
+        # One line if a smaller size gets it there, and held to the box's height
+        # too: a value with words after its figure wrapped into the label below.
+        # Leading of 1.2 sets the figure where single spacing in this face did.
+        fitted(ctx, zone, value, size=fit(value, 52, zone, 1, 28), floor=20, colour=roles['accent_text'],
+               font=kit.HEADING_FONT, spacing=1.2)
+        fitted(ctx, Z(left, 4.4, width, 0.7), clip(ctx, item.get('label'), 8), size=18, floor=12,
+               colour=roles['ink'], bold=True)
         if item.get('text'):
             fitted(ctx, Z(left, 5.1, width, 1.3), clip(ctx, item['text'], 20), size=14, floor=12,
                    colour=roles['muted'])
@@ -451,8 +536,8 @@ def chart(ctx, section, lines):
     peak = max(numbers) or 1
     for position, (item, number) in enumerate(zip(bars, numbers)):
         y = top + position * row
-        put(ctx, Z(LEFT, y, label_width, row), clip(ctx, item.get('label'), 6), size=14,
-            colour=roles['ink'], align=PP_ALIGN.RIGHT, anchor=MSO_ANCHOR.MIDDLE)
+        fitted(ctx, Z(LEFT, y, label_width, row), clip(ctx, item.get('label'), 6), size=14, floor=10,
+               colour=roles['ink'], align=PP_ALIGN.RIGHT, anchor=MSO_ANCHOR.MIDDLE)
         length = max(0.04, area * number / peak)
         bar = kit._shape(ctx.slide, Z(LEFT + label_width + 0.15, y + row * 0.2, length, row * 0.6),
                          roles['accent'])
@@ -460,9 +545,11 @@ def chart(ctx, section, lines):
         bar.line.fill.solid()
         bar.line.fill.fore_color.rgb = kit._rgb(roles['accent_text'])
         bar.line.width = Pt(0.75)
-        put(ctx, Z(LEFT + label_width + 0.3 + length, y, value_width + (area - length), row),
-            clip(ctx, item.get('value'), 3), size=14, colour=roles['ink'], bold=True,
-            anchor=MSO_ANCHOR.MIDDLE)
+        # Measured like its label: with eight bars, words after the figure
+        # wrapped in the value column and ran past the row.
+        fitted(ctx, Z(LEFT + label_width + 0.3 + length, y, value_width + (area - length), row),
+               clip(ctx, item.get('value'), 3), size=14, floor=10, colour=roles['ink'], bold=True,
+               anchor=MSO_ANCHOR.MIDDLE)
 
 
 @draws('table')
@@ -596,10 +683,10 @@ def timeline(ctx, section, lines):
         centre = LEFT + slot * (position + 0.5)
         left, width = centre - slot / 2 + 0.06, slot - 0.12
         kit._shape(ctx.slide, Z(centre - 0.13, 3.89, 0.26, 0.26), roles['accent'], MSO_SHAPE.OVAL)
-        put(ctx, Z(left, 3.05, width, 0.7), clip(ctx, item.get('value'), 4), size=16,
-            colour=roles['accent_text'], bold=True, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.BOTTOM)
-        put(ctx, Z(left, 4.35, width, 0.7), clip(ctx, item.get('label'), 7), size=16,
-            colour=roles['ink'], bold=True, align=PP_ALIGN.CENTER)
+        fitted(ctx, Z(left, 3.05, width, 0.7), clip(ctx, item.get('value'), 4), size=16, floor=11,
+               colour=roles['accent_text'], bold=True, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.BOTTOM)
+        fitted(ctx, Z(left, 4.35, width, 0.7), clip(ctx, item.get('label'), 7), size=16, floor=11,
+               colour=roles['ink'], bold=True, align=PP_ALIGN.CENTER)
         if item.get('text'):
             fitted(ctx, Z(left, 5.05, width, 1.5), clip(ctx, item['text'], 16), size=13, floor=12,
                    colour=roles['muted'], align=PP_ALIGN.CENTER)
@@ -619,8 +706,8 @@ def process(ctx, section, lines):
         kit._shape(ctx.slide, Z(centre - 0.35, 3.0, 0.7, 0.7), roles['accent'], MSO_SHAPE.OVAL)
         put(ctx, Z(centre - 0.35, 3.0, 0.7, 0.7), str(position + 1), size=20, colour=roles['on_accent'],
             bold=True, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
-        put(ctx, Z(left, 3.9, width, 0.7), clip(ctx, item['label'], 7), size=17, colour=roles['ink'],
-            bold=True, align=PP_ALIGN.CENTER)
+        fitted(ctx, Z(left, 3.9, width, 0.7), clip(ctx, item['label'], 7), size=17, floor=11, colour=roles['ink'],
+               bold=True, align=PP_ALIGN.CENTER)
         if item.get('text'):
             # Down to just above the footer band: a step's sentence needs the height.
             fitted(ctx, Z(left, 4.6, width, 1.95), clip(ctx, item['text'], 22), size=14, floor=12,
@@ -758,8 +845,8 @@ def matrix(ctx, section, lines):
                                    spacing=kit.LINE_MULTIPLE))
         _put_paragraphs(ctx, Z(left + 0.3, top + 0.2, width - 0.6, height - 0.4), paragraphs)
     if axes:
-        put(ctx, Z(LEFT, bottom + 0.05, WIDTH, 0.3), '  ·  '.join(clip(ctx, axis, 5) for axis in axes),
-            size=12, colour=roles['muted'], align=PP_ALIGN.CENTER)
+        fitted(ctx, Z(LEFT, bottom + 0.05, WIDTH, 0.3), '  ·  '.join(clip(ctx, axis, 5) for axis in axes),
+               size=12, floor=9, colour=roles['muted'], align=PP_ALIGN.CENTER)
 
 
 # ---------------------------------------------------------------- photo
@@ -785,8 +872,8 @@ def image_split(ctx, section, lines):
 @draws('image_full')
 def image_full(ctx, section, lines):
     roles = ctx.roles
-    kit._headline(ctx.slide, Z(LEFT, 5.4, WIDTH * 0.7, 0.7), clip(ctx, section['heading'], 12), roles,
-                  size=26, anchor=MSO_ANCHOR.TOP, lines=1)
+    fit_headline(ctx, Z(LEFT, 5.4, WIDTH * 0.7, 0.7), clip(ctx, section['heading'], 12), size=26,
+                 anchor=MSO_ANCHOR.TOP, lines=1)
     caption = lines[0] if lines else ''
     if caption:
         fitted(ctx, Z(LEFT, 6.1, WIDTH * 0.7, 0.6), clip(ctx, caption, 24), size=14, floor=12,
