@@ -70,15 +70,17 @@ def test_the_language_asked_for_is_the_language_written(settings):
     assert english['output_locale'] == 'en'
     customer.locale = 'uz'
     customer.save(update_fields=['locale'])
+    # Uzbek written in Cyrillic is still Uzbek, and Uzbek is written in Latin only.
     uzbek = unpack(create_draft(customer, {'feature_id': SLIDES, 'prompt': 'НЕФТ ВА ГАЗ ҚУДУҚЛАРИ, 6 ta slayd'}).encrypted_data)
-    assert uzbek['output_locale'] == 'uz' and uzbek['options']['uz_script'] == 'cyrl'
+    assert uzbek['output_locale'] == 'uz' and uzbek['options']['uz_script'] == 'latn'
     sent = provider.request_body(CONFIG, uzbek, 'ai.pptx')
-    assert json.loads(sent['input'])['output_script'] == 'cyrillic'
-    assert 'Never mix the two alphabets' in sent['instructions']
+    assert json.loads(sent['input'])['output_script'] == 'latin'
+    assert 'Latin alphabet only' in sent['instructions'] and 'never a Cyrillic letter' in sent['instructions']
 
 
-def test_question_labels_follow_the_alphabet(tmp_path):
+def test_question_labels_are_latin_in_uzbek(tmp_path):
+    # A draft saved when Uzbek could be Cyrillic still gets Latin labels.
     result = render_pptx(deck(1, [question(1)]), tmp_path / 'c.pptx', 'uz', style={'uz_script': 'cyrl'})
     shown = Presentation(str(tmp_path / 'c.pptx'))
     text = '\n'.join(shape.text_frame.text for shape in shown.slides[-1].shapes if shape.has_text_frame)
-    assert 'Саволлар' in text and result['page_count'] == 2
+    assert 'Savollar' in text and 'Саволлар' not in text and result['page_count'] == 2

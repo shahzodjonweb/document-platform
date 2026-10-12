@@ -22,12 +22,18 @@ from tests.test_studio import paid
 pytestmark = pytest.mark.django_db
 
 
+def page(chars, n):
+    """`chars` of prose that no other page repeats, as a model's pages are."""
+    words = body_of(chars, 'long').split()
+    return ' '.join(word + 'abcdefghij'[n % 10] for word in words)[:chars]
+
+
 def written(chars):
     """A model's answer: every section of the outline holds `chars` of prose."""
     def answer(body):
         sent = json.loads(body['input'])
         return {'title': 'Tides', 'answer_supported': True, 'sections': [
-            {'id': s['id'], 'heading': 'Tides' if n == 0 else '', 'body': body_of(chars, 'long')}
+            {'id': s['id'], 'heading': 'Tides' if n == 0 else '', 'body': page(chars, n)}
             for n, s in enumerate(sent['outline']['sections'])]}
     return answer
 

@@ -53,17 +53,19 @@ def execute_generation(job,output_dir):
         try:
             raw,usage=generate(cfg,data,job.feature_id,job.id,token_limit=job.quote.policy['generation_bounds']['input_tokens'],deadline=deadline)
             content=validate_content(job.account,raw,data['output_format'])
-            # Uzbek in the one alphabet the customer wrote in.
-            if data['output_locale']=='uz':
-                from .uzbek import clean
-                content=clean(content,data['options'].get('uz_script','latn'),data.get('prompt',''))
             # The look the model chose is kept with the draft, so a later change
             # request redraws the same deck rather than picking again.
             from . import deck_designs,doc_designs
             if data['output_format']=='pptx':deck_designs.remember(data,raw)
             else:doc_designs.remember(data,raw,replace=bool(data.get('revision')))
+            # The whole document is checked before it is drawn: every field in
+            # its language's alphabet, and a section in the wrong language, empty
+            # or repeating another sent back to the model once (quality.py).
+            from . import quality
+            content,_=quality.finish(cfg,data,content,job=job,deadline=deadline)
             # Bounds can also change while the provider is running. Deliver
-            # only a result that still preserves everything outside its scope.
+            # only a result that still preserves everything outside its scope,
+            # exactly as it was: quality.finish never retouches those pages.
             ensure_selected_preservation(data,content)
             # A reference has to point at a real page of a real supplied source and
             # quote it word for word. What an unusable one means depends on whether
@@ -103,8 +105,6 @@ def execute_generation(job,output_dir):
         content['sections']=content['sections'][:quoted_sections];warnings.append('sections_trimmed')
     from .branding import render_style
     style=render_style(job.account,data,feature_id=job.feature_id)
-    # Labels the renderer writes itself ("Savollar") follow the document's alphabet.
-    style={**style,'uz_script':data['options'].get('uz_script','latn')}
     ext=data['output_format']
     if ext=='pptx':
         photos=_photos(job,content['sections'],warnings)
@@ -119,11 +119,26 @@ def execute_generation(job,output_dir):
             from .filling import top_up
             longer=top_up(cfg,data,content,len(data['content']['sections']),artifacts[0]['page_count'],job=job,deadline=deadline)
             if longer is not content:
-                content=longer
-                if data['output_locale']=='uz':
-                    from .uzbek import clean
-                    content=clean(content,data['options'].get('uz_script','latn'),data.get('prompt',''))
+                from . import quality
+                content=quality.normalise(longer,data['output_locale'])
                 artifacts=[render_pdf(content,output_dir/'document.pdf',data['output_locale'],'user_document',style=style,photos=photos)]
+    if cfg['mode']=='openai':
+        # The file itself, as delivered: no Cyrillic in an Uzbek or English
+        # document but the customer's own brand name. Never sent if it fails.
+        from .scripts import artifact_violations,fields
+        own=style.get('brand_name','')
+        selected=data.get('revision',{}).get('selected_section_ids')
+        if selected:
+            # A change to selected pages delivers the others as they were, with
+            # whatever the customer or an older version wrote on them; only the
+            # rewritten pages are held to the alphabet.
+            kept={**content,'sections':[s for s in content['sections'] if s['id'] not in selected]}
+            own='\n'.join([own]+[text for _,text in fields(kept) if isinstance(text,str)])
+        for artifact in artifacts:
+            if artifact_violations(artifact['path'],data['output_locale'],own):
+                import logging
+                logging.getLogger(__name__).error('Job %s: rendered %s has Cyrillic in a %s document',job.id,artifact['name'],data['output_locale'])
+                raise DomainError('script_policy',500)
     # A document that renders longer than the estimate is still the document that
     # was asked for. It is delivered, said out loud, and charged at the quote.
     allowance=bounds.get('output_pages',limits(job.account)['slides' if data['output_format']=='pptx' else 'sections'])

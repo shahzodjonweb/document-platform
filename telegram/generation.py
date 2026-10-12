@@ -12,6 +12,7 @@ from apps.core.errors import DomainError
 from apps.core.models import BotCallback, FileAsset, Job, Quote
 from apps.core.services import submit_job
 from apps.studio.domain import DOCUMENT, SLIDES, create_draft, generation_quote, require
+from apps.studio.language import settings_locale
 from apps.studio.models import GenerationDraft
 
 SERVICES = (DOCUMENT, SLIDES)
@@ -62,7 +63,9 @@ def build(account, feature_id, description, file_ids=()):
     from operations.integrations import ai_config
     # Local authoring has no model to write with, so the text has to be yours.
     written = ai_config()['mode'] == 'local_fixture'
-    data = {'feature_id': feature_id, 'source_ids': ids, 'output_locale': account.locale,
+    # The output language in the account's settings, then the chat's language,
+    # as the web sends it: the interface language alone would hide the setting.
+    data = {'feature_id': feature_id, 'source_ids': ids, 'output_locale': settings_locale(account),
             'output_format': FORMAT[feature_id],
             'prompt': '' if written else text, 'source_text': text if written else ''}
     if text:

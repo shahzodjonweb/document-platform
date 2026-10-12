@@ -276,9 +276,9 @@ def reference(photos=False):
             'Vary the layouts: never the same one more than twice in a row. Most slides should '
             'carry several sentences of substance; use statement, quote, big_number and section '
             'at most twice a deck. Fill only the fields the layout uses and leave '
-            'the others empty ("" or []). Never invent figures, dates or quotations: use numbers only '
-            'when the description or the sources give them, and quote only a real or sourced '
-            'quotation. ')
+            'the others empty ("" or []). A stats, big_number or chart slide needs figures from the '
+            'description or the sources; a timeline may use well-established dates you are certain of; '
+            'quote only a real, attributable quotation. ')
 
 
 def photo_guidance(photos=0):

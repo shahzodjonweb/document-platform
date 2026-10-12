@@ -1,16 +1,14 @@
-"""Uzbek in one alphabet, as the customer wrote it.
+"""Uzbek in the Latin alphabet, always.
 
 Customers complained that Latin documents came back with words in Cyrillic
 letters ("Krilcha harflarda yozilgan ayrim joylarda…", "Rus alifbosini
-ishlatma"). The model is told which alphabet to use; this catches what it still
-gets wrong: a Cyrillic word in a Latin document is transliterated, a word that
-mixes the two alphabets is put into the one the rest of it uses, and the
-several apostrophes of o‘ and g‘ become one.
-
-A document about Russian, or one whose description quotes Cyrillic, keeps its
-Cyrillic words: they are content there, not mistakes. Only words mixing both
-alphabets are fixed then.
+ishlatma"), and since 2026-10-12 Uzbek is written only in Latin, whatever
+alphabet the description used. The model is told so in every call; this
+catches what it still gets wrong: a Cyrillic word is transliterated, a word
+that mixes the two alphabets is put into Latin, and the several apostrophes of
+o‘ and g‘ become one. apps/studio/scripts.py applies it to every field.
 """
+import itertools
 import re
 
 LETTERS = {
@@ -27,12 +25,12 @@ TWINS = {'а': 'a', 'е': 'e', 'о': 'o', 'р': 'p', 'с': 'c', 'х': 'x', 'у':
          'А': 'A', 'В': 'B', 'Е': 'E', 'К': 'K', 'М': 'M', 'Н': 'H', 'О': 'O', 'Р': 'P', 'С': 'C',
          'Т': 'T', 'Х': 'X', 'У': 'Y', 'І': 'I'}
 LATIN_TWINS = {lat: cyr for cyr, lat in TWINS.items() if cyr not in 'іІ'}
-CYRILLIC = re.compile(r'[Ѐ-ӿ]')
+CYRILLIC = re.compile('[\u0400-\u052F\u1C80-\u1C8F\u2DE0-\u2DFF\uA640-\uA69F]')
+UZBEK_LETTERS = re.compile(r'[ЎўҚқҒғҲҳ]')
 LATIN = re.compile(r'[A-Za-z]')
-WORD = re.compile(r"[\wЀ-ӿ'‘’ʻʼ`]+")
+WORD = re.compile(r"[\w\u0400-\u052F'‘’ʻʼ`]+")
 # o‘ and g‘ are typed with whichever apostrophe is to hand; the house form is ‘.
 TURNED = re.compile(r"(?<=[oOgG])['’ʻ`´](?=\w)")
-RUSSIAN_TOPIC = re.compile(r'\brus\b|\brus\s*til|русск|kirill|кирилл', re.IGNORECASE)
 
 
 def to_latin(word):
@@ -54,20 +52,36 @@ def to_latin(word):
     return ''.join(out)
 
 
-def _mixed(word, script):
-    """A word that mixes the alphabets, put into the document's own."""
-    if script == 'cyrl':
-        return ''.join(LATIN_TWINS.get(letter, letter) for letter in word)
-    return ''.join(TWINS.get(letter) or to_latin(letter) for letter in word)
+def _alphabet(letter):
+    return 'cyrl' if CYRILLIC.match(letter) else 'latn' if LATIN.match(letter) else ''
+
+
+def settle(word):
+    """A word that mixes the alphabets, with its look-alikes in the one most of its letters use.
+
+    Mostly Cyrillic (a tie too): a Latin look-alike slipped in becomes its
+    Cyrillic twin, so "Тaққослаш" is then read by sound (Taqqoslash), not by
+    shape (Taqqoclash). A Latin run with other letters in it (Ўзбекистонcha,
+    Москва's) was written in Latin on purpose and stays. Mostly Latin: a lone
+    Cyrillic look-alike becomes its Latin twin (mаktab); two Cyrillic letters
+    or more are a real ending (talabaлар), left to be transliterated by sound.
+    """
+    if not (CYRILLIC.search(word) and LATIN.search(word)):
+        return word
+    runs = [(alphabet, ''.join(letters)) for alphabet, letters in itertools.groupby(word, _alphabet)]
+    cyrillic = sum(len(run) for alphabet, run in runs if alphabet == 'cyrl')
+    latin = sum(len(run) for alphabet, run in runs if alphabet == 'latn')
+    if cyrillic >= latin:
+        return ''.join(''.join(LATIN_TWINS[letter] for letter in run)
+                       if alphabet == 'latn' and all(letter in LATIN_TWINS for letter in run) else run
+                       for alphabet, run in runs)
+    return ''.join(TWINS.get(run, run) if alphabet == 'cyrl' else run for alphabet, run in runs)
 
 
 def clean_text(text, script='latn', *, keep_cyrillic=False):
     def fix(match):
-        word = match.group(0)
-        has_cyrillic, has_latin = bool(CYRILLIC.search(word)), bool(LATIN.search(word))
-        if has_cyrillic and has_latin:
-            word = _mixed(word, script)
-        elif has_cyrillic and script == 'latn' and not keep_cyrillic:
+        word = settle(match.group(0))
+        if script == 'latn' and not keep_cyrillic and CYRILLIC.search(word):
             word = to_latin(word)
         return word
 
@@ -76,11 +90,13 @@ def clean_text(text, script='latn', *, keep_cyrillic=False):
 
 
 def clean(content, script='latn', description=''):
-    """`content` with every field it shows written in one alphabet."""
-    keep = bool(CYRILLIC.search(description or '')) or bool(RUSSIAN_TOPIC.search(description or ''))
+    """`content` with every field it shows in the Latin alphabet.
 
+    `script` and `description` are accepted for older callers: there is no
+    Cyrillic Uzbek document any more, and no description keeps a Cyrillic word.
+    """
     def fix(value):
-        return clean_text(value, script, keep_cyrillic=keep) if isinstance(value, str) else value
+        return clean_text(value, 'latn') if isinstance(value, str) else value
 
     result = dict(content)
     result['title'] = fix(content.get('title', ''))

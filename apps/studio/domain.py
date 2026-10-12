@@ -213,8 +213,9 @@ def _prepare_draft(account,data,revision_base=None):
     # format — a change request against a draft made before slides became
     # PowerPoint would otherwise come back as a PDF.
     if data.get('output_format') not in (None,'pdf','pptx'):raise DomainError('invalid_parameters')
-    locale=data.get('output_locale',account.locale)
-    if locale not in ('en','uz','ru'):raise DomainError('invalid_locale')
+    from . import language
+    requested=data.get('output_locale')
+    if requested is not None and requested not in language.SUPPORTED:raise DomainError('invalid_locale')
     title=str(data.get('title',data.get('topic','Untitled document'))).strip()[:160] or 'Untitled document'
     text=data.get('source_text',data.get('text',''))
     prompt=data.get('prompt',title)
@@ -250,9 +251,6 @@ def _prepare_draft(account,data,revision_base=None):
         from .revisions import selected_ids
         selection=selected_ids(options,original['content'],source_version)
         if saved.get('selected_section_ids') and selection!=saved['selected_section_ids']:raise DomainError('invalid_parameters')
-        # A change keeps the document's language unless one was chosen for it
-        # on the review screen.
-        locale=locale if options.get('locale_chosen') is True else original['output_locale']
         ids=original['source_ids'];excerpts=original['excerpts']
         title=original['title'] if revision_base is None else title
         text=original.get('source_text','')
@@ -273,19 +271,35 @@ def _prepare_draft(account,data,revision_base=None):
     # is kept beside the resolved count so a clamp can be shown, not hidden.
     from . import pages as paging
     brief=prompt if original is not None else f'{prompt}\n{text}'
-    # The language the description asks for beats the account's, and one chosen
-    # on the review screen beats both. A change request names a language only in
-    # so many words ("ingliz tilida tayyorla"): it may be written in any language
-    # about a document that stays in its own.
-    if options.get('locale_chosen') is not True:
-        named=paging.requested_locale(prompt,explicit_only=original is not None)
-        if named:locale=named
-    # Uzbek is written in the alphabet the description was written in; a change
-    # keeps the document's.
-    if original is not None:
-        uz_script=(revision_base or original).get('options',{}).get('uz_script','latn')
+    # One language for the whole document, decided here and stored with the
+    # draft: a language picked for this request (the studio's menu, the bot's
+    # review button), then one the description names, then — for a change —
+    # the document's own, then Russian for a description written in Russian,
+    # then the request's, the account's settings and English. Every later
+    # stage reads the result; none reads the description for a language again
+    # (apps/studio/language.py).
+    picked=requested if options.get('locale_chosen') is True else None
+    previous=revision_base or {}
+    # The studio sends back the language it was shown. One that came from the
+    # description is not a request of its own, or rewording the description
+    # could never change it again.
+    if (picked is None and requested is not None and requested==previous.get('output_locale')
+            and previous.get('locale_source') in ('prompt','prompt_language','document')):
+        requested=None
+    # A selected-page change cannot translate the whole document, and the pages
+    # it leaves alone must not change: it keeps the source document's language,
+    # whatever it names or picks. That language is kept with the revision when
+    # it is created; a saved revision's own output_locale is only its last result.
+    base_locale=(saved_revision.get('base_locale') or original.get('output_locale')) if selection else None
+    if base_locale in language.SUPPORTED:
+        resolved=language.Resolution(base_locale,'document')
     else:
-        uz_script=paging.requested_script(prompt) if locale=='uz' else 'latn'
+        resolved=language.resolve(prompt,picked=picked,requested=requested,settings=language.settings_locale(account),
+                                  document=original['output_locale'] if original is not None else None)
+    locale=resolved.locale
+    # Uzbek is written only in the Latin alphabet (owner's rule, 2026-10-12),
+    # whatever alphabet the description used. The option stays for older clients.
+    uz_script='latn'
     # A count chosen on the review screen beats the one read from the
     # description: it is how a misread count gets put right before paying.
     chosen=options.get('pages')
@@ -422,13 +436,13 @@ def _prepare_draft(account,data,revision_base=None):
     content=validate_content(account,draft_content,fmt)
     if selection:
         ensure_selected_preservation({'content':draft_content,'revision':{'selected_section_ids':selection}},content)
-    payload={'title':title,'prompt':prompt,'source_text':text,'source_ids':ids,'excerpts':excerpts,'output_locale':locale,'output_format':fmt,'options':options,'content':content}
+    payload={'title':title,'prompt':prompt,'source_text':text,'source_ids':ids,'excerpts':excerpts,'output_locale':locale,'locale_source':resolved.source,'output_format':fmt,'options':options,'content':content}
     if original is not None:
         payload['revision']={'request':prompt,'source_draft_id':str(revising),
                              'original_prompt':original.get('revision',{}).get('original_prompt',original.get('prompt',''))}
         if selection:
             payload['revision'].update(selected_section_ids=selection,base_version=source_version,
-                                       base_content=deepcopy(original['content']))
+                                       base_content=deepcopy(original['content']),base_locale=locale)
     else:
         from .revisions import source_seed
         seed=source_seed(payload)

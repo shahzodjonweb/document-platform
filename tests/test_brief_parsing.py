@@ -76,13 +76,21 @@ def test_a_change_request_does_not_shrink_a_deck_to_one_slide(settings, monkeypa
     ('A 5 page guide in English about tides', 'en'),
     ('Документ на английском о приливах', 'en'),
     ("Hujjat ruscha bo'lsin", 'ru'),
+    # A count or a format word may end the request.
+    ('Iqtisodiyot haqida rus tilida 10 ta slayd', 'ru'),
+    ('Ingliz tiliga tarjima qiling', 'en'),
+    # A translation beside the text is not the language of the text.
+    ("Har bir atamaning inglizcha tarjimasini qo'shing", None),
     # Written in Russian, it is answered in Russian.
     ('История гласных среднего подъёма: вопрос о переходе [е] в [о] и аналогическом. 10ta slayd', 'ru'),
+    ('Напиши реферат об истории республик СССР', 'ru'),
     # A language that is the subject is not the language to write in.
     ('Xitoy tilida omonimlar', None),
     ("Rus tilida fe'l zamonlari haqida slayd", None),
     ('Ingliz tili fani uchun 6 ta slayd kerak', None),
     ("ruscha so'zlar haqida", None),
+    ('Rus tilida olmoshlar haqida', None),
+    ('Phrasal verbs in English', None),
     # Uzbek in Cyrillic is Uzbek.
     ('Ҳозирги замонавий жанговар ҳаракатларда артиллериянинг қўлланилиши', None),
     ('Мен жудаям кечиримли инсонман, базан сени хамма хатоларинг учун кечираман', None),
@@ -99,14 +107,15 @@ def test_a_change_request_names_its_language_in_so_many_words():
 
 
 @pytest.mark.parametrize('description,expected', [
-    ('НЕФТ ВА ГАЗ ҚУДУҚЛАРИНИ БУРҒИЛАШ 10 ta slayd kerak', 'cyrl'),
-    ('Ҳозирги замонавий жанговар ҳаракатларда', 'cyrl'),
-    ('Orol dengizi muammosi', 'latn'),
-    ('История гласных и фонем в языке', 'latn'),
+    ('НЕФТ ВА ГАЗ ҚУДУҚЛАРИНИ БУРҒИЛАШ 10 ta slayd kerak', ('uz', 'latin')),
+    ('Ҳозирги замонавий жанговар ҳаракатларда', ('uz', 'latin')),
+    ('Orol dengizi muammosi', ('uz', 'latin')),
+    ('История гласных и фонем в языке', ('ru', 'cyrillic')),
 ])
-def test_uzbek_is_written_in_the_alphabet_of_the_description(description, expected):
-    from apps.studio.pages import requested_script
-    assert requested_script(description) == expected
+def test_uzbek_is_written_in_latin_whatever_alphabet_the_description_used(description, expected):
+    from apps.studio.language import resolve
+    resolved = resolve(description, settings='uz')
+    assert (resolved.locale, resolved.script) == expected
 
 
 def test_a_latin_document_has_no_cyrillic_words_left_in_it():
@@ -121,9 +130,9 @@ def test_a_latin_document_has_no_cyrillic_words_left_in_it():
     cleaned = clean(content, 'latn', 'Pedagogika fanining rivojlanishi')
     assert cleaned['sections'][0]['heading'] == 'Tarix' and cleaned['sections'][0]['body'] == 'Bu muhim.'
     assert cleaned['questions'][0]['options'] == ['Ha', 'Yo‘q']
-    # About Russian, or quoting Cyrillic, a Cyrillic word is content and stays.
-    kept = clean(content, 'latn', 'Rus tilida fe’llar')
-    assert kept['sections'][0]['heading'] == 'Тарих'
+    # Uzbek is Latin only, even in a document about Russian or one quoting Cyrillic.
+    about_russian = clean(content, 'latn', 'Rus tilida fe’llar')
+    assert about_russian['sections'][0]['heading'] == 'Tarix'
 
 
 BLUE, NAVY, SKY, GREEN, RED, BROWN = '#1F4E9C', '#16305C', '#2B7BB9', '#1E6B45', '#9B1B1B', '#6B4423'

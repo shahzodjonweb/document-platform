@@ -313,43 +313,8 @@ def requested_accent(text):
     return named[0] if named else None
 
 
-# The language a description asks for. "ingliz tilida" counts when it is how
-# the request ends or comes before what to do ("ingliz tilida tayyorla"), not
-# when it names the subject ("Xitoy tilida omonimlar", "rus tili fani").
-LANGUAGE_WORDS = {
-    'en': r"ingi?liz|english|англи\w*",
-    'ru': r"rus|russian|русск\w*",
-    'uz': r"o'zbek|uzbek|узбек\w*",
-}
-DOING = (r"(?:tayyorla\w*|yoz\w*|bo'lsin|bolsin|bo'lishi|qil\w*|kerak|chiqsin|chiqar\w*|ber\w*|ishla\w*"
-         r"|сделай\w*|напиши\w*|подготов\w*|нужн\w*)")
-
-
-def _language_patterns(words):
-    ends = r"(?=\s*(?:[.,!;:)\n]|$|(?:\S+\s+)?" + DOING + r"))"
-    return [
-        re.compile(r"\b(?:" + words + r")\s*(?:til(?:i|)da|tilda|language\w*|tilida)\b" + ends, re.IGNORECASE),
-        re.compile(r"\b(?:" + words + r")cha\b" + ends, re.IGNORECASE),
-        re.compile(r"\bin\s+(?:" + words + r")\b", re.IGNORECASE),
-        re.compile(r"(?:на|по-)\s*(?:" + words + r")", re.IGNORECASE),
-    ]
-
-
-LANGUAGE_PATTERNS = {code: _language_patterns(words) for code, words in LANGUAGE_WORDS.items()}
-CYRILLIC = re.compile(r'[Ѐ-ӿ]')
-LATIN = re.compile(r'[A-Za-z]')
-UZBEK_CYRILLIC = re.compile(r'[ЎўҚқҒғҲҳ]')
-RUSSIAN_WORDS = re.compile(r'(?<![\wЀ-ӿ])(?:и|в|на|о|об|с|для|по|не|что|как|это|из|к|у|от|при|или)'
-                           r'(?![\wЀ-ӿ])', re.IGNORECASE)
-UZBEK_WORDS = re.compile(r'(?<![\wЀ-ӿ])(?:ва|учун|билан|ҳақида|хақида|ҳам|хам|бу|мен|сен|керак|бўлсин)'
-                         r'(?![\wЀ-ӿ])|[Ѐ-ӿ]+(?:лари|ларни|нинг|даги|лик)\b', re.IGNORECASE)
-
-
-def _cyrillic_share(text):
-    cyrillic, latin = len(CYRILLIC.findall(text)), len(LATIN.findall(text))
-    return cyrillic / (cyrillic + latin) if cyrillic + latin else 0.0
-
-
+# The language a description asks for lives in apps/studio/language.py, which
+# decides it once for every stage; these stay for older callers.
 def requested_locale(text, *, explicit_only=False):
     """The language a description asks the document to be written in, or None.
 
@@ -357,28 +322,11 @@ def requested_locale(text, *, explicit_only=False):
     in Russian is answered in Russian (not for a change request, which may be
     written in any language about a document that stays in its own).
     """
-    body = _normalised(text)
-    found = []
-    for code, patterns in LANGUAGE_PATTERNS.items():
-        for pattern in patterns:
-            match = pattern.search(body)
-            if match:
-                found.append((match.start(), code))
-                break
-    if found:
-        return min(found)[1]
-    if explicit_only:
-        return None
-    if (_cyrillic_share(body) >= 0.6 and not UZBEK_CYRILLIC.search(body)
-            and len(RUSSIAN_WORDS.findall(body)) >= 2 and not UZBEK_WORDS.search(body)):
-        return 'ru'
-    return None
-
-
-def requested_script(text):
-    """'cyrl' for a description written in Uzbek Cyrillic, else 'latn'."""
-    body = _normalised(text)
-    return 'cyrl' if _cyrillic_share(body) >= 0.5 and requested_locale(body) != 'ru' else 'latn'
+    from .language import explicit, written_in_russian
+    named = explicit(text)
+    if named or explicit_only:
+        return named
+    return 'ru' if written_in_russian(text) else None
 
 
 PICTURES = re.compile(r"(\d{1,2})\s*(?:[-–]?\s*ta)?\s*(?:rasm|surat|picture|image|photo|картин|фото|изображ)\w*",
