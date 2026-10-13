@@ -156,7 +156,7 @@ tests/test_bot_manual_payments.py::test_a_receipt_photo_goes_to_the_payment_not_
 tests/test_bot_manual_payments.py::test_the_owner_is_alerted_once_with_a_link_to_the_review_page
 
 # AI document
-tests/test_studio.py::test_generation_pdf_pptx_real_outputs_and_no_fake_ai_charge
+tests/test_studio.py::test_generation_pdf_pptx_real_outputs_each_one_document_of_the_week
 tests/test_studio.py::test_version_owner_and_quote_integrity
 
 # Paid AI generation
