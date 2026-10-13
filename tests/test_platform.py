@@ -13,7 +13,7 @@ from django.utils import timezone
 from pypdf import PdfReader,PdfWriter
 from apps.core.errors import DomainError
 from apps.core.identity import resolve_account,validate_init_data,exchange_miniapp,create_challenge,approve_challenge,exchange_challenge
-from apps.core.models import Account,UsageGrant,Job,UsageLedger,FileAsset,OutboxEvent,Artifact,Quote
+from apps.core.models import Account,UsageGrant,Job,FileAsset,OutboxEvent,Artifact,Quote
 from apps.core.policy import usage_snapshot
 from apps.core.services import upload_file,create_quote,submit_job,execute_job,settle_job,cleanup_expired,storage_path
 
@@ -41,11 +41,12 @@ def login_client(a,csrf=False):
     session=client.session;session['customer_account_id']=str(a.id);session.save()
     return client
 
-def test_real_merge_end_to_end_idempotency_and_meters():
+def test_real_merge_end_to_end_idempotency_and_weekly_count():
     a=account();first=upload(a,widths=(210,));second=upload(a,name='Второй.pdf',widths=(310,410))
     q=create_quote(a,'pdf.merge',[str(first.id),str(second.id)],{})
     job,created=submit_job(a,q.id,'meaningful-request-1')
-    assert created and usage_snapshot(a)['meters']['file_tasks']['reserved']==1
+    # A task counts from submission, so a second one cannot see its place free.
+    assert created and usage_snapshot(a)['file_jobs']['used']==1
     same,created=submit_job(a,q.id,'meaningful-request-1')
     assert same.id==job.id and not created
     done=execute_job(job.id)
@@ -53,10 +54,9 @@ def test_real_merge_end_to_end_idempotency_and_meters():
     result=done.artifacts.get().file
     reader=PdfReader(storage_path(result.object_key))
     assert [float(p.mediabox.width) for p in reader.pages]==[210,310,410]
-    execute_job(job.id);settle_job(job.id,'succeeded',actual=job.meters)
-    assert UsageLedger.objects.filter(job=job,kind='consume',meter='file_tasks').count()==1
-    assert usage_snapshot(a)['meters']['file_tasks']['used']==1
-    assert usage_snapshot(a)['meters']['file_page_units']['used']==3
+    execute_job(job.id);settle_job(job.id,'succeeded')
+    assert Job.objects.get(pk=job.id).status=='succeeded' and done.artifacts.count()==1
+    assert usage_snapshot(a)['file_jobs']=={'limit':15,'used':1,'remaining':14}
     assert OutboxEvent.objects.get(job=job).delivered_at
 
 def test_owner_isolation_for_assets_quotes_jobs_and_artifacts():
@@ -69,38 +69,37 @@ def test_owner_isolation_for_assets_quotes_jobs_and_artifacts():
         assert client.get(f'/api/v1/{path}').status_code==404,path
     assert client.get('/api/v1/jobs').json()['results']==[]
 
-def test_failure_releases_original_grants():
+def test_failure_gives_the_weeks_place_back():
     a=account();asset=upload(a);q=quote(a,asset);job,_=submit_job(a,q.id,'failure-request-key')
+    assert usage_snapshot(a)['file_jobs']['used']==1
     storage_path(asset.object_key).unlink()
     done=execute_job(job.id)
     assert done.status=='failed'
-    assert usage_snapshot(a)['meters']['file_tasks']=={'limit':300,'used':0,'reserved':0,'remaining':300}
-    settle_job(job.id,'failed',error_code='again')
-    assert UsageLedger.objects.filter(job=job,kind='release',meter='file_tasks').count()==1
+    assert usage_snapshot(a)['file_jobs']=={'limit':15,'used':0,'remaining':15}
+    assert settle_job(job.id,'failed',error_code='again').error_code==done.error_code,'settled once'
 
-def test_daily_boundary_and_purchased_task_exception():
-    from apps.core.policy import plan_limits
-    a=account();asset=upload(a);cap=plan_limits(a)['daily_file_tasks']
-    for i in range(cap):
-        q=quote(a,asset);job,_=submit_job(a,q.id,f'daily-request-{i}');execute_job(job.id)
+def test_the_weekly_file_limit_ignores_leftover_credits():
+    """Credits bought before weekly limits were dropped: a leftover pack buys nothing."""
+    a=account();asset=upload(a)
+    UsageGrant.objects.create(account=a,meter='file_tasks',source='purchased',source_id='leftover-pack',quantity=50,valid_from=timezone.now())
+    for i in range(15):
+        q=quote(a,asset);job,_=submit_job(a,q.id,f'weekly-request-{i}');execute_job(job.id)
     q=quote(a,asset)
-    with pytest.raises(DomainError,match='quota_exceeded'): submit_job(a,q.id,'daily-over-limit')
-    UsageGrant.objects.create(account=a,meter='file_tasks',source='purchased',source_id='test-pack-task',quantity=1,valid_from=timezone.now())
-    UsageGrant.objects.create(account=a,meter='file_page_units',source='purchased',source_id='test-pack-page',quantity=10,valid_from=timezone.now())
-    job,_=submit_job(a,q.id,'daily-purchased');execute_job(job.id)
-    assert usage_snapshot(a)['daily']['used']==cap
-    assert UsageLedger.objects.filter(job=job,meter='file_tasks',kind='consume').get().grant.source=='purchased'
+    with pytest.raises(DomainError,match='weekly_file_limit'): submit_job(a,q.id,'weekly-over-limit')
+    grant=UsageGrant.objects.get(source_id='leftover-pack')
+    assert (grant.consumed,grant.reserved)==(0,0)
 
-def test_quota_and_concurrency_do_not_overspend():
-    a=account();asset=upload(a);usage_snapshot(a)
-    UsageGrant.objects.filter(account=a,meter='file_tasks').update(quantity=1)
+def test_weekly_limit_and_concurrency_do_not_overspend():
+    from operations import plans as plan_settings
+    a=account();asset=upload(a)
+    plan_settings.save('free',{'weekly_file_jobs':2})
     q=quote(a,asset);job,_=submit_job(a,q.id,'quota-request-1')
-    q2=quote(a,asset)
+    q2=quote(a,asset);q3=quote(a,asset)
     with pytest.raises(DomainError,match='concurrency_limit'): submit_job(a,q2.id,'quota-request-2')
     execute_job(job.id)
-    with pytest.raises(DomainError,match='quota_exceeded'): submit_job(a,q2.id,'quota-request-2')
-    grant=UsageGrant.objects.get(account=a,meter='file_tasks')
-    assert grant.quantity==grant.consumed==1 and grant.reserved==0
+    job2,_=submit_job(a,q2.id,'quota-request-2');execute_job(job2.id)
+    with pytest.raises(DomainError,match='weekly_file_limit'): submit_job(a,q3.id,'quota-request-3')
+    assert Job.objects.filter(account=a).count()==2 and usage_snapshot(a)['file_jobs']['remaining']==0
 
 def test_duplicate_quote_and_changed_idempotency_conflict():
     a=account();asset=upload(a);q=quote(a,asset);submit_job(a,q.id,'same-request-key')
@@ -115,10 +114,11 @@ def test_stale_quote_and_changed_file_fail():
     q=quote(a,asset);asset.sha256='0'*64;asset.save()
     with pytest.raises(DomainError,match='file_changed'): submit_job(a,q.id,'changed-file-key')
 
-def test_charge_cannot_exceed_confirmed_quote():
-    a=account();asset=upload(a);q=quote(a,asset);job,_=submit_job(a,q.id,'quote-upper-bound')
-    with pytest.raises(DomainError,match='quote_exceeded'): settle_job(job.id,'succeeded',actual={'file_tasks':2})
-    assert usage_snapshot(a)['meters']['file_tasks']['reserved']==1
+def test_a_late_success_cannot_count_a_failed_task_again():
+    a=account();asset=upload(a);q=quote(a,asset);job,_=submit_job(a,q.id,'settled-once')
+    settle_job(job.id,'failed',error_code='processing_failed')
+    assert settle_job(job.id,'succeeded').status=='failed'
+    assert usage_snapshot(a)['file_jobs']['used']==0
 
 def test_retention_revokes_before_download_and_deletes():
     a=account();asset=upload(a);q=quote(a,asset);job,_=submit_job(a,q.id,'retention-request');execute_job(job.id)
@@ -198,14 +198,16 @@ def test_bad_pages_unsafe_parameters_and_invalid_files_rejected():
         with pytest.raises(DomainError): create_quote(a,'pdf.extract_pages',[str(asset.id)],params)
     for value in (b'not a PDF',b'%PDF-1.7\nmalformed'):
         with pytest.raises(DomainError): upload_file(a,SimpleUploadedFile('../../evil.pdf',value))
-    assert UsageLedger.objects.count()==0
+    assert not Quote.objects.exists() and not Job.objects.exists()
 
 def test_localized_errors_have_identical_codes():
+    from apps.core.allowance import LIMIT_CODES
     from apps.core.errors import error_data
     for locale in ('en','uz','ru'):
-        data=error_data(DomainError('quota_exceeded'),locale)
-        assert data['code']=='quota_exceeded' and data['message_key']=='errors.quota_exceeded'
-        assert data['message']
+        for code in LIMIT_CODES:
+            data=error_data(DomainError(code,429),locale)
+            assert data['code']==code and data['message_key']==f'errors.{code}'
+            assert data['message']
 
 def test_contacts_are_public_tickets_are_gone_and_paid_checkout_disabled():
     from operations.integrations import save_config
@@ -257,13 +259,12 @@ def test_password_handle_owner_expiry_and_wrong_password():
     SecretHandle.objects.filter(pk=handle.id).update(expires_at=timezone.now()-timedelta(seconds=1))
     with pytest.raises(DomainError,match='password_expired'): create_quote(a,'pdf.protect',[str(asset.id)],{},handle.id)
 
-def test_split_overlapping_output_quoted_and_charged_accurately():
+def test_split_overlapping_output_is_one_task():
     a=account();asset=upload(a)
     q=create_quote(a,'pdf.split',[str(asset.id)],{'ranges':['1-2','1-2']})
-    assert q.meters['file_page_units']==4
     job,_=submit_job(a,q.id,'split-overlap-key');job=execute_job(job.id)
-    assert job.status=='succeeded'
-    assert usage_snapshot(a)['meters']['file_page_units']['used']==4
+    assert job.status=='succeeded' and job.artifacts.count()==2
+    assert usage_snapshot(a)['file_jobs']['used']==1
 
 def test_bot_transport_registration_and_locale_parity():
     from telegram.bot import build_dispatcher,COPY,TOOL_NAMES

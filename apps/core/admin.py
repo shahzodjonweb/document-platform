@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.contrib import admin
-from .models import Account,FileAsset,Job,UsageGrant,UsageLedger,Quote,Artifact,SupportTicket,AnalyticsEvent
+from .models import Account,FileAsset,Job,Quote,Artifact,SupportTicket,AnalyticsEvent
 class RestrictedAdminSite(admin.AdminSite):
     site_header='PDF Master restricted administration'
     def has_permission(self,request):
@@ -11,4 +11,5 @@ class ReadOnly(admin.ModelAdmin):
     def has_add_permission(self,request): return False
     def has_change_permission(self,request,obj=None): return False
     def has_delete_permission(self,request,obj=None): return False
-for model in (Account,FileAsset,Job,UsageGrant,UsageLedger,Quote,Artifact,SupportTicket,AnalyticsEvent): restricted_admin.register(model,ReadOnly)
+# The credit tables (grants, ledger) are history now and are left out.
+for model in (Account,FileAsset,Job,Quote,Artifact,SupportTicket,AnalyticsEvent): restricted_admin.register(model,ReadOnly)

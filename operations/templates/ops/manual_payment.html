@@ -23,6 +23,8 @@
         <dt>{{ f.account }}</dt><dd><a class="table-link" href="/ops/users/{{ manual.account_id }}?lang={{ lang }}">{{ manual.account.display_name|default:manual.account.username|default:manual.account_id }}</a></dd>
         <dt>{{ f.plan }}</dt><dd>{{ manual.plan|title }}</dd>
         <dt>{{ f.amount }}</dt><dd><span class="amount">{{ amount }}</span></dd>
+        {% if current_price %}<dt>{{ f.current_price }}</dt><dd>{{ current_price }}</dd>{% endif %}
+        {% if period_days %}<dt>{{ f.period_label }}</dt><dd>{{ period_days }}</dd>{% endif %}
         <dt>{{ f.card_sent_to }}</dt><dd>•••• {{ card_last4 }} · {{ manual.card.holder }}</dd>
         <dt>{{ f.submitted }}</dt><dd>{{ manual.submitted_at|date:'d M Y · H:i'|default:'—' }}</dd>
         <dt>{{ f.channel }}</dt><dd>{{ manual.channel }}</dd>
@@ -34,6 +36,7 @@
 
     {% if manual.status == 'submitted' or manual.status == 'awaiting' %}
     <section class="panel info-panel decision-panel">
+      {% if price_note %}<div class="alert warning price-note" role="note">{% icon 'alert' %}<span>{{ price_note }}</span></div>{% endif %}
       <div class="alert warning" role="note">{% icon 'alert' %}<span>{{ check }}</span></div>
       <form method="post" class="decision-approve">
         {% csrf_token %}<input type="hidden" name="action" value="approve">

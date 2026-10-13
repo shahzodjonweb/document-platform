@@ -14,7 +14,8 @@ from django.utils import timezone as django_timezone
 from pypdf import PdfReader,PdfWriter
 from PIL import Image
 from apps.core.identity import resolve_account
-from apps.core.models import Account,BotConversation,BotDraft,BotCallback,BotInputReceipt,Job,Quote,UsageLedger,AnalyticsEvent
+from apps.core.allowance import file_jobs_this_week
+from apps.core.models import Account,BotConversation,BotDraft,BotCallback,BotInputReceipt,Job,Quote,AnalyticsEvent
 from apps.core.services import upload_file,storage_path
 from telegram.bot import COPY, build_dispatcher
 from telegram.workflows import attach_input,configure
@@ -125,7 +126,7 @@ def test_bot_file_first_upload_order_quote_and_repeat_run_do_not_duplicate():
     assert job.origin_channel=='bot'
     output=job.artifacts.get().file
     assert [float(p.mediabox.width) for p in PdfReader(storage_path(output.object_key)).pages]==[310,210]
-    assert UsageLedger.objects.filter(job=job,kind='consume',meter='file_tasks').count()==1
+    assert file_jobs_this_week(job.account)==1
     assert any(isinstance(call,SendDocument) for call in harness.session.calls)
 
 def test_bot_callbacks_owner_bound_and_versioned():
@@ -196,7 +197,6 @@ def test_quoted_draft_accepts_more_uploads_and_refreshes_preview_without_process
     assert BotInputReceipt.objects.filter(message_id=22).count()==1
     harness.click(old_run)
     assert not Job.objects.exists()
-    assert not UsageLedger.objects.exists()
 
 @pytest.mark.parametrize('locale',['en','uz','ru'])
 def test_bot_commands_locales_and_menu_has_maximum_six_tools(locale):
@@ -206,10 +206,10 @@ def test_bot_commands_locales_and_menu_has_maximum_six_tools(locale):
     assert tool_calls.count()<=6
     assert len({row['feature_id'] for row in tool_calls.values_list('payload',flat=True)})==tool_calls.count()
 
-def test_bot_preview_real_png_without_usage_charge():
+def test_bot_preview_real_png_is_not_a_task():
     prepare('pdf.rotate')
     harness=Harness();harness.command('/preview 2')
     sent=[call for call in harness.session.calls if isinstance(call,SendDocument)]
     assert len(sent)==1
     picture=Image.open(io.BytesIO(sent[0].document.data));assert picture.format=='PNG'
-    assert Job.objects.count()==UsageLedger.objects.count()==0
+    assert Job.objects.count()==0

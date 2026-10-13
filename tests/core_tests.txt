@@ -6,9 +6,9 @@
 # (Actions -> Platform CI and deployment -> Run workflow -> full) or locally.
 # Tests marked [libreoffice] or [tesseract] need those installed.
 
-# PDF task lifecycle and billing
-tests/test_platform.py::test_real_merge_end_to_end_idempotency_and_meters
-tests/test_platform.py::test_failure_releases_original_grants
+# PDF task lifecycle and the week's count
+tests/test_platform.py::test_real_merge_end_to_end_idempotency_and_weekly_count
+tests/test_platform.py::test_failure_gives_the_weeks_place_back
 
 # Account data isolation
 tests/test_adversarial.py::test_foreign_assets_quotes_jobs_and_downloads_are_inaccessible
@@ -71,11 +71,29 @@ tests/test_scheduling.py::test_republication_then_worker_repeat_executes_and_set
 tests/test_object_storage.py::test_a_task_runs_on_inputs_that_live_only_in_the_bucket
 
 # Batch processing
-tests/test_batches.py::test_submit_and_resume_are_idempotent_and_real_jobs_charge_once
+tests/test_batches.py::test_submit_and_resume_are_idempotent_and_real_jobs_count_once
 tests/test_batches.py::test_quote_is_atomic_owner_scoped_and_paid_caps
 
-# Plan allowances and usage quotas
-tests/test_platform.py::test_quota_and_concurrency_do_not_overspend
+# Weekly limits: concurrency and the week's file tasks
+tests/test_platform.py::test_weekly_limit_and_concurrency_do_not_overspend
+
+# File tools share one weekly counter, decided under the account lock
+tests/test_file_jobs_weekly.py::test_every_file_tool_draws_on_the_same_week
+tests/test_file_jobs_weekly.py::test_a_quote_taken_earlier_cannot_slip_past_the_limit
+tests/test_file_jobs_weekly.py::test_a_batch_that_does_not_fit_is_refused_whole
+
+# Weekly AI document limit
+tests/test_weekly_limits.py::test_a_free_account_makes_five_ai_documents_a_week_and_is_told_when
+tests/test_weekly_limits.py::test_a_quote_taken_earlier_cannot_slip_past_the_limit
+tests/test_weekly_limits.py::test_what_produced_nothing_does_not_count
+tests/test_weekly_limits.py::test_documents_either_side_of_the_reset
+
+# AI edits per generated file
+tests/test_edits_per_file.py::test_a_free_file_takes_three_edits_and_the_fourth_is_refused
+tests/test_edits_per_file.py::test_the_quote_names_the_first_file_through_a_chain_of_edits
+
+# Deploy that replaced credits with weekly limits: stale overrides and prices removed and audited
+tests/test_plan_limits.py::test_the_deploy_strips_retired_overrides_and_old_prices_and_audits_each_plan
 
 # Email sign-up, verification and login
 tests/test_customer_auth.py::test_email_signup_verification_login_preserves_customer_files_and_usage
@@ -109,13 +127,9 @@ tests/test_auth_integrations.py::test_smtp_runtime_uses_explicit_saved_settings_
 tests/test_antibot.py::test_valid_proof_reaches_auth_service_and_never_exposes_secret
 tests/test_antibot.py::test_auth_initiation_cannot_skip_verification[email/register]
 
-# Channel-join gate for free accounts
+# Channel-join gate for Free and Plus accounts
 tests/test_channel_gate.py::test_the_api_says_what_to_join_and_refuses_a_task_with_the_same_list
-tests/test_channel_gate.py::test_a_paid_plan_is_never_asked
-
-# Daily AI document limit for free accounts
-tests/test_daily_ai_limit.py::test_a_free_account_makes_three_ai_documents_a_day_and_is_told_when
-tests/test_daily_ai_limit.py::test_a_quote_taken_earlier_cannot_slip_past_the_limit
+tests/test_channel_gate.py::test_only_premium_is_never_asked
 
 # Telegram Stars checkout
 apps/commerce/tests/test_commerce.py::test_invoice_quote_prices_server_owned_and_confirmed_once
@@ -142,7 +156,7 @@ tests/test_bot_manual_payments.py::test_a_receipt_photo_goes_to_the_payment_not_
 tests/test_bot_manual_payments.py::test_the_owner_is_alerted_once_with_a_link_to_the_review_page
 
 # AI document
-tests/test_studio.py::test_generation_pdf_pptx_real_outputs_and_no_fake_ai_charge
+tests/test_studio.py::test_generation_pdf_pptx_real_outputs_each_one_document_of_the_week
 tests/test_studio.py::test_version_owner_and_quote_integrity
 
 # Paid AI generation
@@ -168,7 +182,7 @@ tests/test_provider_optimization.py::test_failed_multi_batch_job_retries_only_mi
 tests/test_provider_checkpoints.py::test_completed_result_is_encrypted_and_only_explicit_retry_reuses_it
 
 # Outline stage
-tests/test_outlines.py::test_live_outline_separate_cost_source_integrity_and_version
+tests/test_outlines.py::test_live_outline_source_integrity_and_version
 
 # Branding
 tests/test_studio_branding.py::test_branding_real_logo_and_unicode_name_in_pdf_pptx
@@ -217,7 +231,7 @@ tests/test_deck_questions.py::test_question_slides_count_toward_the_slides_asked
 
 # Bot file tools: onboarding to tool run to delivered result
 tests/test_bot_guided_ux.py::test_new_user_completes_localized_merge_in_five_actions_from_home[en]
-tests/test_bot_guided_ux.py::test_run_button_is_acknowledged_before_processing_and_replay_never_recharges
+tests/test_bot_guided_ux.py::test_run_button_is_acknowledged_before_processing_and_replay_never_counts_twice
 
 # Production async path: queue, worker, delivery outbox
 tests/test_bot_guided_ux.py::test_production_run_returns_queued_then_worker_result_is_delivered_once
@@ -273,9 +287,6 @@ tests/test_operations_extended.py::test_sensitive_admin_actions_require_administ
 
 # Staff assigns a plan to a customer
 tests/test_operations_admin.py::test_staff_can_assign_and_remove_a_plan
-
-# Staff grants usage allowance
-tests/test_operations_admin.py::test_a_grant_is_idempotent_and_audited
 
 # Staff opens a customer's document
 tests/test_operations_admin.py::test_staff_can_open_a_customer_document_and_it_is_recorded

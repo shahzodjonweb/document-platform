@@ -1,7 +1,7 @@
 """Durable, bounded notifications for asynchronous bot jobs without a result.
 
 Only settlement enqueues notices: there is no historical job scan or backfill.
-Sending cannot execute a job, consume credits, or modify its document draft.
+Sending cannot execute a job, use up a weekly allowance, or modify its document draft.
 """
 import secrets
 from datetime import timedelta
@@ -27,7 +27,8 @@ COPY = {
         'no_op': 'No useful changes this time. Your file is unchanged.',
         'canceled': 'Task cancelled.',
         'expired': 'This task has expired.',
-        'balance': 'Your balance wasn’t charged.',
+        'not_counted': 'It doesn’t count towards this week’s limit.',
+        'edit_not_counted': 'This edit isn’t counted against this file’s edits.',
         'details': '🔎 Task details',
     },
     'uz': {
@@ -35,7 +36,8 @@ COPY = {
         'no_op': 'Faylni yaxshilay olmadik. O‘z holicha qoldi.',
         'canceled': 'Vazifa bekor qilindi.',
         'expired': 'Bu vazifaning muddati tugagan.',
-        'balance': 'Balansingizdan yechilmadi.',
+        'not_counted': 'Bu haftalik limitingizga kirmaydi.',
+        'edit_not_counted': 'Bu tahrir fayl uchun ajratilgan AI tahrirlar soniga kirmaydi.',
         'details': '🔎 Tafsilotlar',
     },
     'ru': {
@@ -43,10 +45,30 @@ COPY = {
         'no_op': 'Улучшить файл не удалось. Он остался без изменений.',
         'canceled': 'Задача отменена.',
         'expired': 'Срок этой задачи истёк.',
-        'balance': 'С баланса ничего не списано.',
+        'not_counted': 'В недельный лимит это не засчитывается.',
+        'edit_not_counted': 'Эта правка не засчитывается в лимит правок файла.',
         'details': '🔎 Подробности',
     },
 }
+# Words an error message uses when it already says the task was not counted:
+# the shared messages for a failed AI step end that way (i18n provider_failed,
+# ocr_failed and others), and the notice should not say it twice.
+ALREADY_SAID = ("doesn't count", 'doesn’t count', 'hisoblanmaydi', 'kirmaydi', 'не засчитыва')
+
+
+def not_counted(job, locale):
+    """The line saying this task used nothing up, or '' when there is nothing to say.
+
+    It names the limit the task would have used: a file's edits for an AI edit,
+    the week otherwise. A plan without that limit is not told about one.
+    """
+    from apps.core.allowance import quote_kind
+    from apps.core.policy import plan_limits
+    kind = quote_kind(job)
+    key = {'edit': 'edits_per_file', 'file': 'weekly_file_jobs'}.get(kind, 'weekly_ai_documents')
+    if plan_limits(job.account).get(key) is None:
+        return ''
+    return COPY[locale]['edit_not_counted' if kind == 'edit' else 'not_counted']
 
 
 def enqueue_notice(job):
@@ -116,9 +138,14 @@ async def attempt_notice(identifier, bot):
     locale = account.locale if account.locale in COPY else 'en'
     copy = COPY[locale]
     lines = ['PDF Master · ' + STATUS[locale][job.status], copy[job.status]]
+    said = False
     if job.status == 'failed':
-        lines.append(bot_error(DomainError(job.error_code or 'processing_failed'), locale))
-    lines.extend(['', copy['balance']])
+        error = bot_error(DomainError(job.error_code or 'processing_failed'), locale)
+        lines.append(error)
+        said = any(words in error for words in ALREADY_SAID)
+    counted = '' if said else await sync_to_async(not_counted)(job, locale)
+    if counted:
+        lines.extend(['', counted])
     try:
         controls = await sync_to_async(notice_controls)(notice)
         response = await bot.send_message(account.telegram_user_id, '\n'.join(lines), reply_markup=controls)

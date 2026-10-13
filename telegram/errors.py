@@ -15,11 +15,6 @@ MESSAGES = {
     'authentication_required': (
         '🔒 Sign in to continue.', '🔒 Davom etish uchun hisobga kiring.', '🔒 Войдите, чтобы продолжить.',
     ),
-    'quota_exceeded': (
-        '⚠️ Not enough balance for this task. Check Plans & packs.',
-        '⚠️ Bu vazifa uchun balans yetmaydi. Tariflar va paketlarni ko‘ring.',
-        '⚠️ Для этой задачи не хватает лимита. Посмотрите тарифы и пакеты.',
-    ),
     'file_too_large file_size_limit': (
         '📦 This file is too large for your plan. Send a smaller file or choose another plan.',
         '📦 Fayl tarifingiz uchun juda katta. Kichikroq fayl yuboring yoki boshqa tarif tanlang.',
@@ -79,9 +74,9 @@ MESSAGES = {
         '🛠 Этот инструмент сейчас недоступен. Попробуйте позже.',
     ),
     'feature_not_in_plan': (
-        '⭐ This tool needs another plan. Check Plans & packs.',
-        '⭐ Bu vosita uchun boshqa tarif kerak. Tariflar va paketlarni ko‘ring.',
-        '⭐ Для этого инструмента нужен другой тариф. Посмотрите тарифы и пакеты.',
+        '⭐ This tool needs another plan. Check Plans.',
+        '⭐ Bu vosita uchun boshqa tarif kerak. Tariflarni ko‘ring.',
+        '⭐ Для этого инструмента нужен другой тариф. Посмотрите тарифы.',
     ),
     'checkout_disabled sandbox_disabled': (
         '⭐ Payments aren’t available right now. Your current plan still works.',
@@ -134,14 +129,14 @@ MESSAGES = {
         '⌛ Расчёт устарел. Проверьте задачу ещё раз перед запуском.',
     ),
     'quote_required confirmation_required': (
-        '🧾 Review the task and its cost before running it.',
-        '🧾 Boshlashdan oldin vazifa va sarflanadigan limitni tekshiring.',
-        '🧾 Проверьте задачу и расход лимита перед запуском.',
+        '🧾 Review the task before running it.',
+        '🧾 Boshlashdan oldin vazifani tekshiring.',
+        '🧾 Проверьте задачу перед запуском.',
     ),
     'quote_policy_changed provider_changed': (
-        '🧾 The task cost may have changed. Review it again before running.',
-        '🧾 Vazifa xarajati o‘zgargan bo‘lishi mumkin. Boshlashdan oldin qayta tekshiring.',
-        '🧾 Стоимость задачи могла измениться. Проверьте её ещё раз.',
+        '🧾 This task needs a fresh look. Review it again before running.',
+        '🧾 Vazifani qayta ko‘rib chiqish kerak. Boshlashdan oldin yana bir bor tekshiring.',
+        '🧾 Задачу нужно проверить заново. Посмотрите её ещё раз перед запуском.',
     ),
     'idempotency_conflict controls_expired version_conflict': (
         '⌛ These buttons are out of date. Open the current task from the menu.',
@@ -208,11 +203,6 @@ MESSAGES = {
         '⏳ Fayl hozir ishlatilmoqda. Vazifa tugashini kuting.',
         '⏳ Этот файл сейчас используется. Дождитесь завершения задачи.',
     ),
-    'quote_exceeded': (
-        '⚠️ This task exceeded its estimate and stopped. Review it again before retrying.',
-        '⚠️ Vazifa hisoblangan limitdan oshib, to‘xtadi. Qayta urinishdan oldin tekshiring.',
-        '⚠️ Задача превысила расчёт и остановилась. Проверьте её перед повтором.',
-    ),
     'not_encrypted': (
         '🔓 This PDF isn’t password-protected. No need to unlock it.',
         '🔓 Bu PDF parol bilan himoyalanmagan. Qulfini ochish shart emas.',
@@ -249,9 +239,9 @@ MESSAGES = {
         '⌛ Ссылка на оплату устарела. Выберите предложение заново.',
     ),
     'invoice_already_paid': (
-        '✅ This invoice is already paid. Check your balance in Account.',
-        '✅ Bu hisob allaqachon to‘langan. Balansni Hisob bo‘limida ko‘ring.',
-        '✅ Этот счёт уже оплачен. Проверьте баланс в аккаунте.',
+        '✅ This invoice is already paid and your plan is on. See Subscription for the details.',
+        '✅ Bu hisob allaqachon to‘langan, tarifingiz yoqilgan. Batafsil — Obuna bo‘limida.',
+        '✅ Этот счёт уже оплачен, тариф включён. Подробности — в разделе «Подписка».',
     ),
     'subscription_already_active': (
         '💳 You already have a paid plan. Manage it in Subscription.',
@@ -274,14 +264,14 @@ MESSAGES = {
         '⏸ Автопродление выключено. Настройте его в разделе «Подписка».',
     ),
     'invalid_plan invalid_plan_change': (
-        '⭐ Choose an available plan in Plans & packs.',
-        '⭐ Tariflar va paketlardan mavjud tarifni tanlang.',
-        '⭐ Выберите доступный вариант в тарифах и пакетах.',
+        '⭐ Choose an available plan in Plans.',
+        '⭐ Tariflardan mavjud tarifni tanlang.',
+        '⭐ Выберите доступный тариф в разделе «Тарифы».',
     ),
     'offer_version_conflict': (
-        '⭐ This offer has changed. Open Plans & packs to see the latest options.',
-        '⭐ Taklif o‘zgargan. Yangilangan variantlarni Tariflar va paketlarda ko‘ring.',
-        '⭐ Предложение изменилось. Откройте тарифы и пакеты для актуальных вариантов.',
+        '⭐ This offer has changed. Open Plans to see the latest options.',
+        '⭐ Taklif o‘zgargan. Yangilangan variantlarni Tariflar bo‘limida ko‘ring.',
+        '⭐ Предложение изменилось. Откройте тарифы, чтобы увидеть актуальные варианты.',
     ),
     'payment_provider_unavailable': (
         '⏳ Payment service isn’t responding. Try later or contact Payment support.',
@@ -308,10 +298,22 @@ MESSAGES = {
         '⌛ Taklifni qo‘llash muddati tugagan. Botdan foydalanishda davom etishingiz mumkin.',
         '⌛ Срок применения приглашения истёк. Можно продолжать пользоваться ботом.',
     ),
-    'daily_ai_limit': (
-        '⏳ You’ve made today’s AI documents on the free plan. Come back tomorrow, or choose a paid plan for no daily limit.',
-        '⏳ Bepul tarifdagi bugungi AI hujjatlar soni tugadi. Ertaga qayting yoki kunlik cheklovsiz pullik tarifni tanlang.',
-        '⏳ Лимит ИИ-документов на сегодня на бесплатном тарифе исчерпан. Возвращайтесь завтра или выберите платный тариф без дневного лимита.',
+    # A used-up limit: what was used, when it comes back, and the way past it.
+    # {limit} and {when} are filled in by bot_error from the error itself.
+    'weekly_ai_limit': (
+        '⏳ This week’s AI documents are used up ({limit} a week). New ones from {when}, or choose a plan with more.',
+        '⏳ Bu haftalik {limit} ta AI hujjat limitingiz tugadi. Limit yangilanadi: {when}. Ko‘proq kerak bo‘lsa, tarif tanlang.',
+        '⏳ ИИ-документы на эту неделю закончились — по тарифу их {limit}. Лимит обновится: {when}. Нужно больше — выберите тариф.',
+    ),
+    'weekly_file_limit': (
+        '⏳ This week’s file tasks are used up ({limit} a week). New ones from {when}, or choose a plan with unlimited file tools.',
+        '⏳ Bu haftalik {limit} ta fayl vazifasi limitingiz tugadi. Limit yangilanadi: {when}. Cheksiz fayl vositalari uchun tarif tanlang.',
+        '⏳ Задачи с файлами на эту неделю закончились — по тарифу их {limit}. Лимит обновится: {when}. Без ограничений — на другом тарифе.',
+    ),
+    'edit_limit': (
+        '✏️ This file’s AI edits are used up ({limit} per file). Choose a plan with more edits, or make a new document.',
+        '✏️ Bu fayl uchun {limit} ta AI tahrir ishlatib bo‘lindi. Ko‘proq tahrir uchun tarif tanlang yoki yangi hujjat yarating.',
+        '✏️ ИИ-правки этого файла закончились — по тарифу их {limit}. Выберите тариф с большим числом правок или создайте новый документ.',
     ),
     'invalid_receipt': (
         '🧾 Send the receipt as a photo or screenshot, or as a PDF.',
@@ -340,17 +342,44 @@ MESSAGES = {
     ),
 }
 
+LIMITS = ('weekly_ai_limit', 'weekly_file_limit', 'edit_limit')
 COPY = {
     locale: {code: values[index] for codes, values in MESSAGES.items() for code in codes.split()}
     for index, locale in enumerate(('en', 'uz', 'ru'))
 }
 
 
-def bot_error(error, locale='en'):
+# When a week starts again, for a reader whose own clock is not known
+# (telegram/clock.py week_reset): most bot customers never open the web app.
+WEEK_START = {'en': 'Monday 00:00, Tashkent time', 'uz': 'dushanba 00:00, Toshkent vaqti',
+              'ru': 'понедельник 00:00 по Ташкенту'}
+
+
+def _limit_text(error, locale, account):
+    """A used-up limit with its numbers, or None when the error does not carry them.
+
+    Only whole numbers and a time are put in the message, never other params.
+    """
+    params = error.params or {}
+    numbers = {key: params.get(key) for key in ('limit', 'used')}
+    if not all(type(value) is int for value in numbers.values()):
+        return None
+    from .clock import week_reset
+    when = week_reset(account, params.get('resets_at'), locale)
+    return COPY[locale][error.code].format(when=when, **numbers)
+
+
+def bot_error(error, locale='en', account=None):
+    """The bot's message for an error; `account` puts a reset time on its clock."""
     locale = locale if locale in COPY else 'en'
     if error.code == 'bot_wrong_file':
         from .ux_copy import UX
         return UX[locale]['wrong_file']
+    if error.code in LIMITS:
+        value = _limit_text(error, locale, account)
+        if value:
+            return value
+        return '⚠️ ' + error_data(error, locale)['message']
     if error.code in COPY[locale]:
         return COPY[locale][error.code]
     return '⚠️ ' + error_data(error, locale)['message']

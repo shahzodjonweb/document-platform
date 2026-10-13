@@ -14,10 +14,9 @@
       </div>
     </div>
   </div>
-  {% if can_grant %}
+  {% if can_assign_plan %}
   <div class="page-heading-actions">
-    <button type="button" class="button secondary" data-dialog-open="assign-plan">{% icon 'star' 17 %}{{ t.assign_plan }}</button>
-    <button type="button" class="button primary" data-dialog-open="grant">{% icon 'gift' 17 %}{{ t.grant_short }}</button>
+    <button type="button" class="button primary" data-dialog-open="assign-plan">{% icon 'star' 17 %}{{ t.assign_plan }}</button>
   </div>
   {% endif %}
 </div>
@@ -26,7 +25,6 @@
 <nav class="section-nav" aria-label="{{ t.profile }}">
   <a href="#overview">{{ t.tab_overview }}</a>
   <a href="#tasks">{{ t.tab_tasks }} <span class="count">{{ recent_jobs|length }}</span></a>
-  <a href="#usage">{{ t.tab_usage }}</a>
   <a href="#files">{{ t.files }} <span class="count">{{ files|length }}</span></a>
   {% if generation_rows %}<a href="#ai">{{ t.gen_customer_recent }} <span class="count">{{ generation_rows|length }}</span></a>{% endif %}
   {% if payment_rows is not None %}<a href="#payments">{{ t.payments }} <span class="count">{{ payment_rows|length }}</span></a>{% endif %}
@@ -46,15 +44,21 @@
     </dl>
   </section>
   <section class="panel info-panel">
-    <h2>{{ t.allowance_left }}</h2>
+    <h2>{{ t.week_left }}</h2>
     <div class="meter-list">
-      {% for row in balances %}
+      {% for row in week_rows %}
       <div>
+        {% if row.limit is None %}
+        <div class="meter-head"><span>{{ row.label }}</span><strong>{{ t.no_limit }} · {{ row.used_text }}</strong></div>
+        {% else %}
         <div class="meter-head"><span>{{ row.label }}</span><strong>{{ row.remaining }} / {{ row.limit }}</strong></div>
         <div class="meter-track"><i class="{{ row|meter_state }}" style="width:{{ row|meter_percent }}%"></i></div>
+        {% endif %}
       </div>
       {% endfor %}
+      <div><div class="meter-head"><span>{{ t.field_edits_per_file }}</span><strong>{% if edits_per_file is None %}{{ t.no_limit }}{% else %}{{ edits_per_file }}{% endif %}</strong></div></div>
     </div>
+    <p class="field-hint week-resets">{{ t.week_resets }} {{ week_resets_at|date:'d M Y · H:i' }}</p>
     <details class="plan-limit-details">
       <summary>{{ t.effective_limits }}</summary>
       <dl class="limit-grid">{% for row in plan_limits %}<dt>{{ row.label }}</dt><dd class="mono">{{ row.value|default_if_none:'∞' }}</dd>{% endfor %}</dl>
@@ -65,22 +69,6 @@
 <section class="panel" id="tasks">
   <div class="panel-heading"><h2>{{ t.tab_tasks }}</h2></div>
   {% include 'ops/job_table.html' %}
-</section>
-
-<section class="panel" id="usage">
-  <div class="panel-heading"><div><h2>{{ t.allowance }}</h2><p>{{ t.allowance_desc }}</p></div></div>
-  <div class="table-region" role="region" aria-label="{{ t.allowance }}" tabindex="0">
-    <table>
-      <thead><tr><th>{{ t.created }}</th><th>{{ t.meter }}</th><th>{{ t.kind }}</th><th>{{ t.amount }}</th></tr></thead>
-      <tbody>
-        {% for row in ledger %}
-        <tr><td class="muted">{{ row.created_at|date:'d M Y · H:i' }}</td><td>{{ row.meter }}</td><td>{{ row.kind }}</td><td>{{ row.amount }}</td></tr>
-        {% empty %}
-        <tr><td colspan="4" class="table-empty">{{ t.no_data }}</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
 </section>
 
 <section class="panel" id="files">
@@ -152,7 +140,7 @@
 </section>
 {% endif %}
 
-{% if can_grant %}
+{% if can_assign_plan %}
 <dialog class="dialog" id="assign-plan" aria-labelledby="assign-plan-title">
   <form method="post" action="/ops/users/{{ account.id }}/plan">
     {% csrf_token %}
@@ -181,38 +169,6 @@
       {% if staff_plan %}<button class="button quiet" name="plan" value="" formnovalidate>{{ t.clear_plan }}</button>{% endif %}
       <button type="button" class="button secondary" data-dialog-close>{{ t.cancel }}</button>
       <button class="button primary">{{ t.assign_plan }}</button>
-    </div>
-  </form>
-</dialog>
-
-<dialog class="dialog" id="grant" aria-labelledby="grant-title">
-  <form method="post" action="/ops/users/{{ account.id }}/grants" class="grant-form">
-    {% csrf_token %}<input type="hidden" name="idempotency_key" value="{{ grant_key }}">
-    <div class="dialog-head">
-      <div>
-        <h2 id="grant-title">{{ t.grant_allowance }}</h2>
-        <p>{{ t.grant_note }}</p>
-      </div>
-      <button type="button" class="icon-button" data-dialog-close aria-label="{{ t.close }}">{% icon 'close' %}</button>
-    </div>
-    <div class="dialog-body">
-      <div class="grant-meters">
-        {% for row in balances %}
-        <div class="grant-meter">
-          <div class="grant-meter-head"><strong>{{ row.label }}</strong><span class="balance">{{ t.balance }}: <b>{{ row.remaining }}</b> / {{ row.limit }}</span></div>
-          <input type="number" name="{{ row.meter }}" min="0" max="100000" value="0" data-remaining="{{ row.remaining }}" data-grant-input aria-label="{{ row.label }}">
-          <div class="quick-amounts" role="group" aria-label="{{ t.quick_amounts }}">
-            {% for amount in row.presets %}<button type="button" class="chip" data-grant-preset="{{ row.meter }}" data-amount="{{ amount }}">+{{ amount }}</button>{% endfor %}
-          </div>
-          <small class="after-grant" data-grant-after="{{ row.meter }}">{{ t.after_grant }}: {{ row.remaining }}</small>
-        </div>
-        {% endfor %}
-      </div>
-      <p class="field-hint grant-hint">{{ t.grant_pairing }}</p>
-    </div>
-    <div class="dialog-foot">
-      <button type="button" class="button secondary" data-dialog-close>{{ t.cancel }}</button>
-      <button class="button primary">{{ t.grant_allowance }}</button>
     </div>
   </form>
 </dialog>

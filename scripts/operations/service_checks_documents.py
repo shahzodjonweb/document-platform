@@ -1047,7 +1047,10 @@ def check_documents(audit_id, emit):
                             require(response.get('error', {}).get('code') == 'feature_not_in_plan', 'paid_access_boundary')
                     finally: other.retire()
                     row['access_idempotency_preview'] = 'passed'
-                require(job['settled_meters'] == job['meters'], 'usage_settlement')
+                # The finished job holds one place in the customer's week, once,
+                # however often it was submitted; one that made nothing holds none.
+                used = customer.json('GET', 'usage')['file_jobs']['used']
+                require(used == (0 if job['status'] == 'no_op' else 1), 'weekly_count')
                 row.update(status='passed', outputs=len(outputs))
             except Exception as exc:
                 code = getattr(exc, 'code', 'probe_failed')

@@ -2,8 +2,8 @@
 import os
 import pytest
 from pypdf import PdfReader
-from apps.core.models import UsageLedger, OutboxEvent
-from apps.core.policy import usage_snapshot
+from apps.core.allowance import ai_documents_this_week, file_jobs_this_week
+from apps.core.models import OutboxEvent
 from apps.core.services import create_quote,submit_job,execute_job,storage_path
 from tests.test_platform import account,upload,pdf_bytes
 
@@ -22,15 +22,14 @@ def pending_job():
     return owner,asset,job
 
 
-def assert_uncharged_failure(owner,job):
+def assert_uncounted_failure(owner,job):
+    assert file_jobs_this_week(owner)==1,'a submitted task holds its place'
     done=execute_job(job.id)
     assert done.status=='failed' and done.error_code=='file_changed'
     assert not done.artifacts.exists()
-    assert not UsageLedger.objects.filter(job=job,kind='consume').exists()
-    assert usage_snapshot(owner)['meters']['file_tasks']['reserved']==0
+    assert file_jobs_this_week(owner)==0,'and gives it back when it fails'
     assert OutboxEvent.objects.get(job=job).delivered_at
-    execute_job(job.id)
-    assert UsageLedger.objects.filter(job=job,kind='release',meter='file_tasks').count()==1
+    assert execute_job(job.id).status=='failed' and file_jobs_this_week(owner)==0
 
 
 def test_different_valid_pdf_of_same_length_never_reaches_engine(monkeypatch):
@@ -41,7 +40,7 @@ def test_different_valid_pdf_of_same_length_never_reaches_engine(monkeypatch):
     assert float(PdfReader(path).pages[0].mediabox.width)==201
     calls=[]
     monkeypatch.setattr('processors.sandbox.execute_sandbox',lambda *a,**kw:calls.append(a))
-    assert_uncharged_failure(owner,job)
+    assert_uncounted_failure(owner,job)
     assert calls==[]
 
 
@@ -50,7 +49,7 @@ def test_changed_database_fingerprint_cannot_replace_confirmed_quote():
     owner,asset,job=pending_job();replacement=pdf_bytes((205,300))
     storage_path(asset.object_key).write_bytes(replacement)
     asset.sha256=hashlib.sha256(replacement).hexdigest();asset.save(update_fields=['sha256'])
-    assert_uncharged_failure(owner,job)
+    assert_uncounted_failure(owner,job)
 
 
 def test_oversized_sparse_replacement_rejected_without_reading(monkeypatch):
@@ -64,14 +63,14 @@ def test_oversized_sparse_replacement_rejected_without_reading(monkeypatch):
         def fileno(self):return self.inner.fileno()
         def read(self,*args):raise AssertionError('An oversized replacement must not be read')
     monkeypatch.setattr('apps.core.services.os.fdopen',NoRead)
-    assert_uncharged_failure(owner,job)
+    assert_uncounted_failure(owner,job)
 
 
 @pytest.mark.skipif(not hasattr(os,'mkfifo'),reason='POSIX pipe fixture')
-def test_replaced_pipe_fails_without_blocking_or_charging():
+def test_replaced_pipe_fails_without_blocking_or_counting():
     owner,asset,job=pending_job();path=storage_path(asset.object_key)
     path.unlink();os.mkfifo(path,0o600)
-    assert_uncharged_failure(owner,job)
+    assert_uncounted_failure(owner,job)
 
 
 def test_generation_source_change_fails_before_provider(settings,monkeypatch):
@@ -94,5 +93,4 @@ def test_generation_source_change_fails_before_provider(settings,monkeypatch):
     calls=[];monkeypatch.setattr(provider,'generate',lambda *a,**kw:calls.append(a))
     done=execute_job(job.id)
     assert done.status=='failed' and done.error_code=='file_changed' and calls==[]
-    assert not UsageLedger.objects.filter(job=job,kind='consume').exists()
-    assert usage_snapshot(owner)['meters']['ai_credits']['reserved']==0
+    assert ai_documents_this_week(owner)==0

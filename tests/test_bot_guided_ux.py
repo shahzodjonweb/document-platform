@@ -14,7 +14,8 @@ from django.utils import timezone
 
 from apps.commerce.models import BotDelivery
 from apps.core.identity import exchange_challenge
-from apps.core.models import Account, BotCallback, BotConversation, BotDraft, BotInputReceipt, Job, Quote, SupportTicket, UsageLedger
+from apps.core.allowance import file_jobs_this_week
+from apps.core.models import Account, BotCallback, BotConversation, BotDraft, BotInputReceipt, Job, Quote, SupportTicket
 from apps.core.services import execute_job, settle_job, storage_path
 from telegram.bot import build_dispatcher
 from telegram.ux_copy import UX
@@ -28,6 +29,11 @@ pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.usefixtures('
 
 def texts(harness):
     return [call.text for call in harness.session.calls if isinstance(call, SendMessage)]
+
+
+def counted():
+    """File tasks the fixture accounts have used of this week."""
+    return sum(file_jobs_this_week(account) for account in Account.objects.all())
 
 
 def say(harness, text):
@@ -77,7 +83,6 @@ def test_new_user_completes_localized_merge_in_five_actions_from_home(locale):
     harness.document('first', pdf((220,)), name='first.pdf')
     harness.document('second', pdf((320,)), name='второй.pdf')
     assert not Job.objects.exists()
-    assert not UsageLedger.objects.exists()
     harness.click(harness.action('run'))
 
     job = Job.objects.get(account=account)
@@ -98,7 +103,7 @@ def test_new_user_completes_localized_merge_in_five_actions_from_home(locale):
     assert account.locale == locale
 
 
-def test_run_button_is_acknowledged_before_processing_and_replay_never_recharges():
+def test_run_button_is_acknowledged_before_processing_and_replay_never_counts_twice():
     prepare('pdf.rotate', {'angle': 90})
     harness = Harness()
     harness.command('/done')
@@ -117,7 +122,7 @@ def test_run_button_is_acknowledged_before_processing_and_replay_never_recharges
 
     assert Job.objects.count() == 1
     assert Job.objects.get().status == 'succeeded'
-    assert UsageLedger.objects.filter(kind='consume', meter='file_tasks').count() == 1
+    assert counted() == 1
     assert sum(isinstance(call, SendDocument) for call in harness.session.calls) == 1
 
 
@@ -130,7 +135,6 @@ def test_cancel_discards_only_current_draft_and_old_run_button_cannot_submit():
     harness.click(harness.action('discard', new=False))
     harness.click(old_run)
     assert not Job.objects.exists()
-    assert not UsageLedger.objects.exists()
     assert all(not draft.input_ids for draft in BotDraft.objects.all())
     assert texts(harness)
 
@@ -198,7 +202,7 @@ def test_production_run_returns_queued_then_worker_result_is_delivered_once(sett
     job = Job.objects.get()
     assert job.status == 'queued'
     assert not any(isinstance(call, SendDocument) for call in harness.session.calls)
-    assert not UsageLedger.objects.filter(kind='consume').exists()
+    assert counted() == 1, 'a queued task holds its place'
 
     finished = execute_job(job.id)
     assert finished.status == 'succeeded', finished.error_code
@@ -206,7 +210,7 @@ def test_production_run_returns_queued_then_worker_result_is_delivered_once(sett
     asyncio.run(drain(harness.bot))
     assert sum(isinstance(call, SendDocument) for call in harness.session.calls) == 1
     assert BotDelivery.objects.filter(status='delivered', artifact__job=job).count() == 1
-    assert UsageLedger.objects.filter(job=job, kind='consume', meter='file_tasks').count() == 1
+    assert counted() == 1
     job.refresh_from_db()
     assert job.attempt_count == 1
 
@@ -237,7 +241,7 @@ def test_history_is_owner_bound_and_expired_output_recovers_without_reprocessing
     assert not any(isinstance(call, SendDocument) for call in new_calls)
     assert any(UX[account.locale]['result_expired'] in (getattr(call, 'text', '') or '') for call in new_calls)
     assert Job.objects.count() == 1
-    assert UsageLedger.objects.filter(kind='consume', meter='file_tasks').count() == 1
+    assert counted() == 1
 
 
 def test_long_special_character_file_names_keep_telegram_screens_valid():
@@ -285,7 +289,7 @@ def test_upload_uses_inspected_kind_and_wrong_kind_preserves_current_draft():
     assert any(UX[account.locale]['wrong_file'] in value for value in texts(harness))
 
 
-def test_failed_telegram_download_recovers_without_losing_input_or_charging():
+def test_failed_telegram_download_recovers_without_losing_input_or_starting_a_task():
     account, asset = prepare('pdf.rotate', {'angle': 90})
     harness = Harness()
     harness.bot.download = AsyncMock(side_effect=TimeoutError('private transport failure'))
@@ -293,7 +297,6 @@ def test_failed_telegram_download_recovers_without_losing_input_or_charging():
     assert BotDraft.objects.get(account=account).input_ids == [str(asset.id)]
     assert not BotInputReceipt.objects.filter(account=account, message_id=76).exists()
     assert not Job.objects.exists()
-    assert not UsageLedger.objects.exists()
     assert all('private transport failure' not in value for value in texts(harness))
     assert harness.action('controls')
 
@@ -312,7 +315,7 @@ def test_failed_job_retry_requires_new_review_and_explicit_run(settings):
     assert BotDraft.objects.get(account=account).quote_id != failed.quote_id
     assert Job.objects.filter(account=account).count() == 1
     assert harness.action('run')
-    assert not UsageLedger.objects.filter(account=account, kind='consume').exists()
+    assert file_jobs_this_week(account) == 0, 'the failed task gave its place back'
 
 
 def screen_actions(harness):
@@ -335,7 +338,7 @@ def test_direct_image_completes_in_upload_and_run_only(locale):
     assert draft.feature_id == 'pdf.images_to_pdf'
     assert draft.quote_id is not None
     assert any(ref.action == 'run' for ref in screen_actions(harness))
-    assert not Job.objects.exists() and not UsageLedger.objects.exists()
+    assert not Job.objects.exists()
     harness.click(harness.action('run'))
     job = Job.objects.get()
     assert job.status == 'succeeded', job.error_code
@@ -362,7 +365,7 @@ def test_direct_pdf_offers_useful_actions_then_runs_without_review(locale):
     assert PdfReader(storage_path(job.artifacts.get().file.object_key)).pages[0].rotation == 90
 
 
-def test_edit_requotes_and_previous_run_is_rejected_without_charge():
+def test_edit_requotes_and_previous_run_is_rejected_without_starting_a_task():
     account, _ = prepare('pdf.rotate')
     harness = Harness()
     harness.command('/settings')
@@ -374,12 +377,12 @@ def test_edit_requotes_and_previous_run_is_rejected_without_charge():
     assert draft.quote.parameters['angle'] == 180
     new_run = harness.action('run')
     harness.click(first_run)
-    assert not Job.objects.exists() and not UsageLedger.objects.exists()
+    assert not Job.objects.exists()
     harness.click(new_run)
     harness.click(new_run)
     job = Job.objects.get()
     assert job.parameters['angle'] == 180 and job.status == 'succeeded'
-    assert UsageLedger.objects.filter(kind='consume', meter='file_tasks').count() == 1
+    assert counted() == 1
 
 
 def test_new_task_guard_keeps_unsubmitted_files_and_stale_confirm_cannot_clear_later_draft():
@@ -396,7 +399,7 @@ def test_new_task_guard_keeps_unsubmitted_files_and_stale_confirm_cannot_clear_l
     harness.click(stale_discard)
     current.refresh_from_db()
     assert current.input_ids == current_ids
-    assert not Job.objects.exists() and not UsageLedger.objects.exists()
+    assert not Job.objects.exists()
 
 
 @pytest.mark.parametrize('command', ['/support', '/paysupport'])
@@ -411,7 +414,7 @@ def test_contacts_leave_uploaded_work_untouched(command):
     assert draft.quote_id == quote_id
     assert BotConversation.objects.get(pk=42).state == ''
     assert not SupportTicket.objects.exists()
-    assert not Job.objects.exists() and not UsageLedger.objects.exists()
+    assert not Job.objects.exists()
 
 
 def test_cancel_page_prompt_preserves_options_and_rejects_later_plain_reply():
@@ -425,7 +428,7 @@ def test_cancel_page_prompt_preserves_options_and_rejects_later_plain_reply():
     say(harness, '1,3')
     draft = BotDraft.objects.get(account=account)
     assert draft.input_ids == [str(asset.id)] and draft.parameters == original_parameters
-    assert not Job.objects.exists() and not UsageLedger.objects.exists()
+    assert not Job.objects.exists()
 
 
 def test_upload_after_submission_starts_new_task_without_add_or_replace_dialogue(settings):
@@ -442,7 +445,7 @@ def test_upload_after_submission_starts_new_task_without_add_or_replace_dialogue
     assert not any(ref.action == 'attach' for ref in screen_actions(harness))
     old_job.refresh_from_db()
     assert old_job.status == 'queued'
-    assert Job.objects.count() == 1 and not UsageLedger.objects.filter(kind='consume').exists()
+    assert Job.objects.count() == 1 and counted() == 1
 
 
 @pytest.mark.parametrize('locale', ['en', 'uz', 'ru'])
@@ -459,10 +462,10 @@ def test_first_contact_image_needs_only_upload_language_and_start(locale):
     assert FileAsset.objects.filter(name='first.png').count() == 1
     assert BotInputReceipt.objects.count() == 1
     assert any(ref.action == 'run' for ref in screen_actions(harness))
-    assert not Job.objects.exists() and not UsageLedger.objects.exists()
+    assert not Job.objects.exists()
     harness.click(harness.action('run'))
     assert Job.objects.get().status == 'succeeded'
-    assert UsageLedger.objects.filter(kind='consume', meter='file_tasks').count() == 1
+    assert counted() == 1
 
 
 def test_first_contact_pdf_album_resumes_original_order_without_repeat_uploads():
@@ -514,7 +517,7 @@ def test_single_file_replacement_preserves_work_until_confirm_and_clears_old_pag
     harness.click(replacement)
     assert BotInputReceipt.objects.filter(account=account, message_id=90).count() == 1
     harness.click(old_run)
-    assert not Job.objects.exists() and not UsageLedger.objects.exists()
+    assert not Job.objects.exists()
     harness.click(harness.action('run', quote_id=str(updated.quote_id)))
     job = Job.objects.get(account=account)
     assert job.status == 'succeeded', job.error_code
@@ -557,7 +560,7 @@ def test_incompatible_tool_change_keeps_files_until_confirmation_and_stale_confi
     fresh.refresh_from_db()
     assert fresh.input_ids == fresh_ids and fresh.quote_id == fresh_quote
     harness.click(old_run)
-    assert not Job.objects.exists() and not UsageLedger.objects.exists()
+    assert not Job.objects.exists()
 
 
 def test_switch_from_merge_to_single_pdf_tool_chooses_existing_file_without_reupload():
@@ -586,7 +589,7 @@ def test_switch_from_merge_to_single_pdf_tool_chooses_existing_file_without_reup
     assert draft.quote_id and draft.quote_id != initial_quote
     assert BotInputReceipt.objects.count() == 2
     harness.click(old_run)
-    assert not Job.objects.exists() and not UsageLedger.objects.exists()
+    assert not Job.objects.exists()
     harness.click(harness.action('run', quote_id=str(draft.quote_id)))
     job = Job.objects.get()
     assert job.status == 'succeeded', job.error_code
@@ -607,7 +610,7 @@ def test_submission_rechecks_draft_binding_atomically_and_valid_quote_replay_is_
     with pytest.raises(DomainError) as rejected:
         run_quote(account, stale_quote.id, stale_binding)
     assert rejected.value.code == 'controls_expired'
-    assert not Job.objects.exists() and not UsageLedger.objects.exists()
+    assert not Job.objects.exists()
 
     current, valid_quote = quote_draft(account)
     valid_binding = snapshot(current)
@@ -615,9 +618,8 @@ def test_submission_rechecks_draft_binding_atomically_and_valid_quote_replay_is_
     replay, replay_created = run_quote(account, valid_quote.id, valid_binding)
     assert created and not replay_created and replay.id == job.id
     assert Job.objects.count() == 1 and job.parameters['angle'] == 180
-    assert UsageLedger.objects.filter(kind='reserve', meter='file_tasks').count() == 1
-    assert not UsageLedger.objects.filter(kind='consume').exists()
+    assert counted() == 1
     execute_job(job.id)
     replay, replay_created = run_quote(account, valid_quote.id, valid_binding)
     assert replay.id == job.id and not replay_created
-    assert UsageLedger.objects.filter(kind='consume', meter='file_tasks').count() == 1
+    assert Job.objects.get().status == 'succeeded' and counted() == 1

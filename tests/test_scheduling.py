@@ -6,7 +6,8 @@ import pytest
 from django.core.management import call_command
 from django.db import connection
 from django.utils import timezone
-from apps.core.models import Account,Quote,Job,OutboxEvent,UsageLedger
+from apps.core.allowance import file_jobs_this_week
+from apps.core.models import Account,Quote,Job,OutboxEvent
 from apps.core.services import create_quote,submit_job,execute_job
 from apps.core.scheduling import select_outbox,claim_publication,finish_publication,publish_pending,AGING_SECONDS,PUBLICATION_LEASE_SECONDS
 from tests.test_platform import account,upload
@@ -15,8 +16,8 @@ pytestmark=pytest.mark.django_db
 
 
 def queued(owner,plan,created,*,status='queued',topic='job.execute',delivered=False):
-    q=Quote.objects.create(account=owner,feature_id='pdf.rotate',parameters={},input_ids=[],meters={},policy={'plan':plan},expires_at=created+timedelta(hours=1))
-    j=Job.objects.create(account=owner,quote=q,feature_id='pdf.rotate',parameters={},input_ids=[],meters={},policy={'plan':plan},idempotency_key=uuid.uuid4().hex,request_hash=uuid.uuid4().hex,status=status,created_at=created)
+    q=Quote.objects.create(account=owner,feature_id='pdf.rotate',parameters={},input_ids=[],policy={'plan':plan},expires_at=created+timedelta(hours=1))
+    j=Job.objects.create(account=owner,quote=q,feature_id='pdf.rotate',parameters={},input_ids=[],policy={'plan':plan},idempotency_key=uuid.uuid4().hex,request_hash=uuid.uuid4().hex,status=status,created_at=created)
     return OutboxEvent.objects.create(job=j,topic=topic,created_at=created,delivered_at=created if delivered else None)
 
 
@@ -97,7 +98,7 @@ def test_republication_then_worker_repeat_executes_and_settles_once(monkeypatch)
     call_command('runworker',once=True);call_command('runworker',once=True);execute_job(job.id)
     job.refresh_from_db();event.refresh_from_db()
     assert job.status=='succeeded' and job.attempt_count==1 and event.delivered_at is not None
-    assert UsageLedger.objects.filter(job=job,kind='consume',meter='file_tasks').count()==1
+    assert Job.objects.count()==1 and file_jobs_this_week(a)==1
     assert not no_batch.called
 
 

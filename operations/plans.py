@@ -18,12 +18,12 @@ FIELDS = {
     'price_xtr': (0, 1_000_000),
     # So'm per 30 days for a card transfer; blank means not for sale.
     'price_uzs': (1_000, 100_000_000),
-    'daily_file_tasks': (1, 100_000),
-    # AI documents (PDF documents and decks) a day; blank is no daily limit.
-    'daily_ai_documents': (1, 1_000),
-    'file_tasks': (0, 1_000_000),
-    'file_page_units': (0, 1_000_000),
-    'ai_credits': (0, 1_000_000),
+    # AI documents (PDF documents and decks) a week; blank is unlimited.
+    'weekly_ai_documents': (1, 10_000),
+    # File tasks a week, every tool sharing one count; blank is unlimited.
+    'weekly_file_jobs': (1, 100_000),
+    # Zero is meaningful here: a plan whose files cannot be edited by prompt.
+    'edits_per_file': (0, 1_000),
     # The seed's name for it; `max_file_mb` here once made the file size a
     # field the panel showed but silently never saved.
     'max_file_mib': (1, 2_000),
@@ -42,8 +42,12 @@ FIELDS = {
 
 
 # Blank is a real value for these: no price means a plan is not for sale, and
-# no daily cap means the plan is limited only by its period allowance.
-NULLABLE = {'price_xtr', 'price_uzs', 'daily_file_tasks', 'daily_ai_documents'}
+# no limit means unlimited.
+NULLABLE = {'price_xtr', 'price_uzs', 'weekly_ai_documents', 'weekly_file_jobs', 'edits_per_file'}
+WEEKLY = ('weekly_ai_documents', 'weekly_file_jobs')
+# What the free plan may never leave unlimited, and what no paid plan may set
+# below the free plan's: each of them is AI or processing paid for per use.
+FLOOR = (*WEEKLY, 'edits_per_file')
 
 
 class PlanError(ValueError):
@@ -79,10 +83,13 @@ def validate(plan_id, values, defaults):
         if not text:
             if field not in NULLABLE:
                 raise PlanError(f'{field} needs a value.')
-            # The free plan must keep a daily cap; removing it would hand out
-            # unlimited daily processing to anyone who signs up.
-            if plan_id == 'free' and field == 'daily_file_tasks':
-                raise PlanError('The free plan must keep a daily limit.')
+            # The free plan must keep both weekly limits and its edits per file;
+            # removing one would hand out unlimited documents, file tasks or AI
+            # edits to anyone who signs up.
+            if plan_id == 'free' and field in WEEKLY:
+                raise PlanError('The free plan must keep both weekly limits.')
+            if plan_id == 'free' and field == 'edits_per_file':
+                raise PlanError('The free plan must keep a limit on AI edits per file.')
             cleaned[field] = None
             continue
         low, high = FIELDS[field]
@@ -98,13 +105,24 @@ def validate(plan_id, values, defaults):
     if plan_id == 'free' and cleaned.get('price_uzs') is not None:
         raise PlanError('The free plan has no price.')
     # Free must stay the floor: a free plan above a paid one would let anyone
-    # take the paid allowance without paying for it.
+    # take the paid allowance without paying for it, and a paid plan below free
+    # gives paying customers less. Both sides are compared as they stand, panel
+    # changes included; None is unlimited, which nothing exceeds. Only values
+    # this edit actually changes are compared: the form sends every field, and
+    # a plan left out of step earlier must not stop an unrelated change.
+    current = limits_for(plan_id, known)
+    changed = {field: value for field, value in cleaned.items() if current.get(field) != value}
     if plan_id == 'free':
-        for field in ('ai_credits', 'file_tasks', 'max_generated_pdf_pages', 'max_deck_images'):
-            if cleaned.get(field) is not None and field in cleaned and any(
-                    cleaned[field] > (defaults[paid].get(field) or 0)
-                    for paid in defaults if paid != 'free'):
-                raise PlanError(f'Free {field} cannot exceed every paid plan.')
+        paid_plans = [limits_for(paid, defaults[paid]) for paid in defaults if paid != 'free']
+        for field in (*FLOOR, 'max_generated_pdf_pages', 'max_deck_images'):
+            if changed.get(field) is not None and any(
+                    paid.get(field) is not None and changed[field] > paid[field] for paid in paid_plans):
+                raise PlanError(f'Free {field} cannot exceed a paid plan.')
+    elif 'free' in defaults:
+        free = limits_for('free', defaults['free'])
+        for field in FLOOR:
+            if changed.get(field) is not None and (free.get(field) is None or changed[field] < free[field]):
+                raise PlanError(f'{plan_id.title()} {field} cannot be below the free plan.')
     return cleaned
 
 
@@ -120,10 +138,6 @@ def save(plan_id, values):
     configuration = {**current, plan_id: merged} if merged else {k: v for k, v in current.items() if k != plan_id}
     IntegrationConfig.objects.update_or_create(pk=KEY, defaults={'configuration': configuration})
     after = limits_for(plan_id, defaults[plan_id])
-    if plan_id == 'free':
-        # A raise is what customers have today, not at their next renewal.
-        from apps.commerce.services import raise_current_free_allowances
-        raise_current_free_allowances(after)
     return {k: v for k, v in before.items() if after.get(k) != v}, {k: v for k, v in after.items() if before.get(k) != v}
 
 
@@ -132,7 +146,3 @@ def reset(plan_id):
     if plan_id in current:
         IntegrationConfig.objects.update_or_create(
             pk=KEY, defaults={'configuration': {k: v for k, v in current.items() if k != plan_id}})
-    if plan_id == 'free':
-        # Going back to the seed can be a raise too.
-        from apps.commerce.services import raise_current_free_allowances
-        raise_current_free_allowances(limits_for('free', seed()['plans']['free']))

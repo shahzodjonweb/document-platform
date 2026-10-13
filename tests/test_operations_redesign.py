@@ -62,14 +62,15 @@ def test_customer_search_reaches_accounts_older_than_the_report_period():
         assert 'Javlonbek' in client.get('/ops/users', {'q': query}).content.decode(), query
 
 
-def test_customer_page_offers_plan_and_credit_dialogs_to_administrators_only():
+def test_customer_page_offers_plan_assignment_to_administrators_only():
     account = Account.objects.create(telegram_user_id=81005, display_name='Sardor')
     admin, _ = staff_client()
     page = admin.get(f'/ops/users/{account.id}').content.decode()
-    assert 'id="assign-plan"' in page and 'id="grant"' in page
+    assert 'id="assign-plan"' in page
+    assert 'id="grant"' not in page, 'weekly limits have no credits to add'
     support, _ = staff_client('Support')
     page = support.get(f'/ops/users/{account.id}').content.decode()
-    assert 'id="assign-plan"' not in page and 'id="grant"' not in page
+    assert 'id="assign-plan"' not in page and 'Left this week' in page
 
 
 def test_audit_table_shows_what_changed():
@@ -79,7 +80,7 @@ def test_audit_table_shows_what_changed():
     assert audit_changes(None, 'not a dict') == []
     client, user = staff_client()
     AuditLog.objects.create(actor=user, action='plan.limits', target='plus', reason='Changed Plus plan limits',
-                            before={'ai_credits': 100}, after={'ai_credits': 200})
+                            before={'weekly_ai_documents': 100}, after={'weekly_ai_documents': 200})
     page = client.get('/ops/audit').content.decode()
     assert '<del>100</del>' in page and '<ins>200</ins>' in page
 
@@ -87,7 +88,7 @@ def test_audit_table_shows_what_changed():
 def test_customer_page_lists_their_payments_for_finance():
     from apps.commerce.models import ManualPayment
     account = Account.objects.create(telegram_user_id=81006, display_name='Kamola')
-    transfer = ManualPayment.objects.create(account=account, plan='plus', amount=60000, currency='UZS',
+    transfer = ManualPayment.objects.create(account=account, plan='premium', amount=60000, currency='UZS',
                                             reference='PM-TEST1', expires_at=timezone.now() + timedelta(hours=1))
     admin, _ = staff_client()
     page = admin.get(f'/ops/users/{account.id}').content.decode()

@@ -6,7 +6,7 @@ import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from PIL import Image
 
-from apps.core.models import Job, Quote, Reservation
+from apps.core.models import Job, Quote
 from tests.scan_fixtures import scanner_models
 from tests.test_platform import account, login_client
 
@@ -171,10 +171,9 @@ def test_worker_logs_photos_whose_scan_failed(settings, image_client, monkeypatc
 
 @pytest.mark.parametrize('parameters', [{'auto_crop_page': True}, {'enhance': False}, {'scan': True},
                                         {'paper_size': 'Legal'}])
-def test_public_quotes_reject_other_unknown_settings_before_reservation(image_client, parameters):
+def test_public_quotes_reject_other_unknown_settings_before_any_task(image_client, parameters):
     response = request_quote(image_client, parameters)
     assert response.status_code == 400, response.content
     assert response.json()['error']['code'] == 'invalid_parameters'
     assert Quote.objects.count() == 0
     assert Job.objects.count() == 0
-    assert Reservation.objects.count() == 0

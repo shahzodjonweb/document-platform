@@ -104,32 +104,10 @@
         ],
         "type": "object"
       },
-      "Balances": {
-        "properties": {
-          "ai_credits": {
-            "$ref": "#/components/schemas/MeterBalance"
-          },
-          "file_page_units": {
-            "$ref": "#/components/schemas/MeterBalance"
-          },
-          "file_tasks": {
-            "$ref": "#/components/schemas/MeterBalance"
-          }
-        },
-        "required": [
-          "file_tasks",
-          "file_page_units",
-          "ai_credits"
-        ],
-        "type": "object"
-      },
       "BatchQuote": {
         "properties": {
           "affordable": {
             "type": "boolean"
-          },
-          "available_balances": {
-            "$ref": "#/components/schemas/Balances"
           },
           "expires_at": {
             "format": "date-time",
@@ -155,13 +133,6 @@
                   },
                   "type": "array"
                 },
-                "meters": {
-                  "additionalProperties": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "type": "object"
-                },
                 "normalized_parameters": {
                   "type": "object"
                 }
@@ -184,22 +155,6 @@
           "max_children": {
             "minimum": 0,
             "type": "integer"
-          },
-          "meters": {
-            "items": {
-              "properties": {
-                "amount": {
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                "meter": {
-                  "type": "string"
-                }
-              },
-              "required": [],
-              "type": "object"
-            },
-            "type": "array"
           },
           "quote_id": {
             "format": "uuid",
@@ -235,7 +190,6 @@
           "quote_id",
           "feature_id",
           "groups",
-          "meters",
           "affordable",
           "expires_at",
           "reservation_mode",
@@ -315,23 +269,9 @@
             },
             "type": "array"
           },
-          "meters": {
-            "additionalProperties": {
-              "minimum": 0,
-              "type": "integer"
-            },
-            "type": "object"
-          },
           "quote_id": {
             "format": "uuid",
             "type": "string"
-          },
-          "settled_meters": {
-            "additionalProperties": {
-              "minimum": 0,
-              "type": "integer"
-            },
-            "type": "object"
           },
           "status": {
             "type": "string"
@@ -344,8 +284,6 @@
           "status",
           "children",
           "jobs",
-          "meters",
-          "settled_meters",
           "counts"
         ],
         "type": "object"
@@ -383,13 +321,6 @@
             "minimum": 0,
             "type": "integer"
           },
-          "quantities": {
-            "additionalProperties": {
-              "minimum": 0,
-              "type": "integer"
-            },
-            "type": "object"
-          },
           "sandbox": {
             "type": "boolean"
           },
@@ -404,7 +335,6 @@
           "name",
           "price_xtr",
           "currency",
-          "quantities",
           "sandbox",
           "checkout_enabled"
         ],
@@ -1452,24 +1382,10 @@
             },
             "type": "array"
           },
-          "meters": {
-            "additionalProperties": {
-              "minimum": 0,
-              "type": "integer"
-            },
-            "type": "object"
-          },
           "origin_channel": {
             "type": "string"
           },
           "parameters": {
-            "type": "object"
-          },
-          "settled_meters": {
-            "additionalProperties": {
-              "minimum": 0,
-              "type": "integer"
-            },
             "type": "object"
           },
           "started_at": {
@@ -1505,8 +1421,6 @@
           "created_at",
           "input_files",
           "artifacts",
-          "meters",
-          "settled_meters",
           "error",
           "warnings"
         ],
@@ -1703,33 +1617,6 @@
         ],
         "type": "object"
       },
-      "MeterBalance": {
-        "properties": {
-          "limit": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "remaining": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "reserved": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "used": {
-            "minimum": 0,
-            "type": "integer"
-          }
-        },
-        "required": [
-          "limit",
-          "used",
-          "reserved",
-          "remaining"
-        ],
-        "type": "object"
-      },
       "Payment": {
         "properties": {
           "amount_xtr": {
@@ -1892,9 +1779,6 @@
           "affordable": {
             "type": "boolean"
           },
-          "available_balances": {
-            "$ref": "#/components/schemas/Balances"
-          },
           "expires_at": {
             "format": "date-time",
             "type": "string"
@@ -1928,25 +1812,6 @@
             },
             "type": "array"
           },
-          "meters": {
-            "items": {
-              "properties": {
-                "amount": {
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                "meter": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "meter",
-                "amount"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
           "normalized_parameters": {
             "type": "object"
           },
@@ -1968,16 +1833,36 @@
           },
           "tariff_version_id": {
             "type": "string"
+          },
+          "usage": {
+            "properties": {
+              "ai_documents": {
+                "$ref": "#/components/schemas/WeeklyAllowance"
+              },
+              "edits_per_file": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "file_jobs": {
+                "$ref": "#/components/schemas/WeeklyAllowance"
+              },
+              "resets_at": {
+                "format": "date-time",
+                "type": "string"
+              }
+            },
+            "required": [],
+            "type": "object"
           }
         },
         "required": [
           "id",
           "quote_id",
           "feature_id",
-          "meters",
           "affordable",
-          "expires_at",
-          "available_balances"
+          "expires_at"
         ],
         "type": "object"
       },
@@ -2209,41 +2094,17 @@
       },
       "Usage": {
         "properties": {
-          "daily": {
-            "properties": {
-              "limit": {
-                "type": [
-                  "integer",
-                  "null"
-                ]
-              },
-              "remaining": {
-                "type": [
-                  "integer",
-                  "null"
-                ]
-              },
-              "reserved": {
-                "minimum": 0,
-                "type": "integer"
-              },
-              "resets_at": {
-                "format": "date-time",
-                "type": "string"
-              },
-              "used": {
-                "minimum": 0,
-                "type": "integer"
-              }
-            },
-            "required": [],
-            "type": "object"
+          "ai_documents": {
+            "$ref": "#/components/schemas/WeeklyAllowance"
           },
-          "draft": {
-            "type": "boolean"
+          "edits_per_file": {
+            "type": [
+              "integer",
+              "null"
+            ]
           },
-          "meters": {
-            "$ref": "#/components/schemas/Balances"
+          "file_jobs": {
+            "$ref": "#/components/schemas/WeeklyAllowance"
           },
           "plan": {
             "type": "string"
@@ -2251,12 +2112,35 @@
           "resets_at": {
             "format": "date-time",
             "type": "string"
+          },
+          "week": {
+            "properties": {
+              "resets_at": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "starts_at": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "time_zone": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "starts_at",
+              "resets_at",
+              "time_zone"
+            ],
+            "type": "object"
           }
         },
         "required": [
           "plan",
-          "meters",
-          "daily",
+          "week",
+          "ai_documents",
+          "file_jobs",
+          "edits_per_file",
           "resets_at"
         ],
         "type": "object"
@@ -2360,6 +2244,32 @@
         ],
         "type": "object"
       },
+      "WeeklyAllowance": {
+        "properties": {
+          "limit": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "remaining": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "used": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "limit",
+          "used",
+          "remaining"
+        ],
+        "type": "object"
+      },
       "WorkflowQuote": {
         "properties": {
           "confirmation_required": {
@@ -2385,25 +2295,6 @@
             },
             "type": "array"
           },
-          "meters": {
-            "items": {
-              "properties": {
-                "amount": {
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                "meter": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "meter",
-                "amount"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
           "steps": {
             "items": {
               "$ref": "#/components/schemas/WorkflowStep"
@@ -2424,7 +2315,6 @@
           "version",
           "input_ids",
           "steps",
-          "meters",
           "confirmation_required",
           "confirmation_token",
           "expires_at",
@@ -2459,9 +2349,6 @@
         "properties": {
           "feature_id": {
             "type": "string"
-          },
-          "meters": {
-            "type": "object"
           },
           "parameters": {
             "type": "object"
@@ -6016,7 +5903,7 @@
     },
     "/channels": {
       "get": {
-        "description": "Telegram channels a free account must join before using a service. When required and not joined, task requests fail with channels_required and the same channels in message_params.",
+        "description": "Telegram channels a Free or Plus account must join before using a service (Premium is never asked). When required and not joined, task requests fail with channels_required and the same channels in message_params.",
         "operationId": "getRequiredChannels",
         "responses": {
           "200": {
@@ -9606,10 +9493,6 @@
               "application/json": {
                 "schema": {
                   "properties": {
-                    "awarded_credits": {
-                      "minimum": 0,
-                      "type": "integer"
-                    },
                     "code": {
                       "type": "string"
                     },

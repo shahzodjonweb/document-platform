@@ -7,20 +7,18 @@ from datetime import datetime,timedelta,timezone as dt_timezone
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.db.models import Q,Sum
 from django.utils import timezone
 from apps.core.errors import DomainError
-from apps.core.models import Account,UsageGrant,Job
-from apps.core.policy import SEED,METERS,cycle
-from .models import OfferVersion,Invoice,Payment,Subscription,SubscriptionPeriod,PaymentGrant,Refund,BalanceAdjustment,CommerceAction,ReconciliationRun,ReconciliationIssue,ReferralCode,Referral,BotDelivery,ManualPayment
+from apps.core.models import Account,Job
+from .models import OfferVersion,Invoice,Payment,Subscription,SubscriptionPeriod,Refund,CommerceAction,ReconciliationRun,ReconciliationIssue,ReferralCode,Referral,BotDelivery,ManualPayment
 from .providers import provider_for
 
 PERIOD=2592000
+# Plans only: there are no credits or packs to sell, and a plan is its weekly
+# limits, read from the plan itself rather than copied into the offer.
 SANDBOX_OFFERS={
- 'plus':{'kind':'subscription','plan':'plus','name':'Plus · local sandbox','price_xtr':50,'quantities':{m:SEED['plans']['plus'][m] for m in METERS},'period_seconds':PERIOD},
- 'premium':{'kind':'subscription','plan':'premium','name':'Premium · local sandbox','price_xtr':150,'quantities':{m:SEED['plans']['premium'][m] for m in METERS},'period_seconds':PERIOD},
- 'tasks100':{'kind':'task_pack','plan':'','name':'100 tasks + 1,000 page units · local sandbox','price_xtr':25,'quantities':{'file_tasks':100,'file_page_units':1000,'ai_credits':0},'period_seconds':None},
- 'ai100':{'kind':'ai_pack','plan':'','name':'100 AI credits · local sandbox','price_xtr':30,'quantities':{'file_tasks':0,'file_page_units':0,'ai_credits':100},'period_seconds':None},
+ 'plus':{'kind':'subscription','plan':'plus','name':'Plus · local sandbox','price_xtr':50,'period_seconds':PERIOD},
+ 'premium':{'kind':'subscription','plan':'premium','name':'Premium · local sandbox','price_xtr':150,'period_seconds':PERIOD},
 }
 
 
@@ -33,13 +31,15 @@ def require_sandbox(account):
 
 
 def offer_data(offer):
-    return {'id':offer.offer_id,'version':offer.version,'kind':offer.kind,'plan':offer.plan or None,'name':offer.name,'price_xtr':offer.price_xtr,'currency':'XTR','quantities':offer.quantities,'period_seconds':offer.period_seconds,'sandbox':offer.sandbox,'checkout_enabled':offer.enabled and offer.price_xtr is not None}
+    return {'id':offer.offer_id,'version':offer.version,'kind':offer.kind,'plan':offer.plan or None,'name':offer.name,'price_xtr':offer.price_xtr,'currency':'XTR','period_seconds':offer.period_seconds,'sandbox':offer.sandbox,'checkout_enabled':offer.enabled and offer.price_xtr is not None}
 
 
 def available_offers(account):
     sandbox=sandbox_enabled(account)
     if account.is_test and not sandbox:return []
-    if sandbox: definitions=SANDBOX_OFFERS;version='sandbox-v1'
+    # sandbox-v2: the v1 offers carried credit quantities, and a stored
+    # version may never change what it sells.
+    if sandbox: definitions=SANDBOX_OFFERS;version='sandbox-v2'
     else:
         if not getattr(settings,'COMMERCE_LIVE_ENABLED',False): return []
         definitions=getattr(settings,'COMMERCE_LIVE_OFFERS',{})
@@ -50,16 +50,13 @@ def available_offers(account):
         if not isinstance(code,str) or not isinstance(value,dict) or not isinstance(value.get('name'),str):continue
         amount=value.get('price_xtr')
         if type(amount) is not int or not 1<=amount<=10000: continue
-        if value.get('kind') not in ('subscription','task_pack','ai_pack'): continue
-        if value['kind']=='subscription' and (value.get('plan') not in ('plus','premium') or value.get('period_seconds')!=PERIOD): continue
-        quantities=value.get('quantities',{})
-        if not isinstance(quantities,dict):continue
-        if set(quantities)-set(METERS) or any(type(n)is not int or n<0 for n in quantities.values()): continue
-        if value['kind']=='task_pack' and not (quantities.get('file_tasks',0)>0 and quantities.get('file_page_units',0)>0): continue
-        defaults={'offer_id':code,'version':version,'kind':value['kind'],'plan':value.get('plan',''),'name':value['name'],'price_xtr':amount,'period_seconds':value.get('period_seconds'),'quantities':{m:quantities.get(m,0) for m in METERS},'sandbox':sandbox,'enabled':True}
+        # Only plans are sold: a plan is its weekly limits, so there is nothing
+        # else to buy. A pack left in the live configuration is skipped.
+        if value.get('kind')!='subscription' or value.get('plan') not in ('plus','premium') or value.get('period_seconds')!=PERIOD: continue
+        defaults={'offer_id':code,'version':version,'kind':'subscription','plan':value['plan'],'name':value['name'],'price_xtr':amount,'period_seconds':PERIOD,'sandbox':sandbox,'enabled':True}
         offer,created=OfferVersion.objects.get_or_create(id=f'{"sandbox" if sandbox else "live"}:{version}:{code}',defaults=defaults)
-        # A published version cannot silently change price or quantity on deployment.
-        if any(getattr(offer,key)!=defaults[key] for key in ('price_xtr','kind','plan','quantities','period_seconds')): raise DomainError('offer_version_conflict',409)
+        # A published version cannot silently change price or plan on deployment.
+        if any(getattr(offer,key)!=defaults[key] for key in ('price_xtr','kind','plan','period_seconds')): raise DomainError('offer_version_conflict',409)
         if offer.enabled: offers.append(offer)
     return offers
 
@@ -93,50 +90,6 @@ def refresh_account_entitlement(account):
     if account.plan!=plan:
         Account.objects.filter(pk=account.pk).update(plan=plan);account.plan=plan
     return plan
-
-
-def ensure_account_grants(account):
-    """The free allowance for the current period, as the plan stands now.
-
-    It follows the administrator's plan edits, not only the seed: the pricing
-    page advertises the edited figure, so that is what has to be granted.
-    """
-    from apps.core.policy import limits_for_plan
-    period=active_period(account)
-    refresh_account_entitlement(account)
-    if period: return period.ends_at
-    start,end=cycle(account)
-    allowance=limits_for_plan('free')
-    for meter in METERS:
-        quantity=int(allowance.get(meter,SEED['plans']['free'][meter]) or 0)
-        UsageGrant.objects.get_or_create(source_id=f'included:{account.id}:{start.isoformat()}:{meter}',defaults={'account':account,'meter':meter,'quantity':quantity,'valid_from':start,'expires_at':end})
-    return end
-
-
-def raise_current_free_allowances(values,now=None):
-    """Bring every free period under way up to a raised allowance.
-
-    Called when the free plan is raised, so the new figure is what customers
-    have today rather than at their next renewal. It never lowers a period: a
-    cut applies from the next one, and nothing a customer was given is taken
-    back. Paid and granted credit is untouched — only `included:` grants.
-    """
-    now=now or timezone.now();raised=0
-    for meter in METERS:
-        value=values.get(meter)
-        if not isinstance(value,int):continue
-        raised+=UsageGrant.objects.filter(source_id__startswith='included:',meter=meter,expires_at__gt=now,quantity__lt=value).update(quantity=value)
-    return raised
-
-
-def eligible_grants(account,queryset):
-    if not sandbox_enabled(account):queryset=queryset.exclude(payment_source__payment__sandbox=True)
-    period=active_period(account)
-    # Included grants from the inactive tier cannot add a second allowance.
-    if period:
-        eligible=PaymentGrant.objects.filter(payment=period.payment,revoked_at__isnull=True).values('grant_id')
-        return queryset.filter(~Q(source='included')|Q(id__in=eligible)).exclude(payment_source__revoked_at__isnull=False)
-    return queryset.exclude(source_id__startswith='payment:').exclude(payment_source__revoked_at__isnull=False)|queryset.filter(source='purchased',payment_source__revoked_at__isnull=True)
 
 
 def payload_for(invoice):
@@ -197,7 +150,10 @@ def validate_precheckout(telegram_user_id,payload,currency,amount,sandbox=False)
     if invoice.account.telegram_user_id!=telegram_user_id or invoice.sandbox!=sandbox: raise DomainError('invalid_invoice',403)
     if currency!='XTR' or type(amount)is not int or amount!=invoice.amount_xtr: raise DomainError('payment_amount_mismatch')
     if invoice.status not in ('created','presented','pending') or invoice.expires_at<=timezone.now(): raise DomainError('invoice_expired',409)
-    if invoice.offer.kind=='subscription' and active_period(invoice.account): raise DomainError('subscription_already_active',409)
+    # A pack invoice made before plans replaced credits would buy nothing now,
+    # so it is refused before any money moves.
+    if invoice.offer.kind!='subscription': raise DomainError('checkout_disabled',409)
+    if active_period(invoice.account): raise DomainError('subscription_already_active',409)
     invoice.status='pending';invoice.save(update_fields=['status'])
     return invoice
 
@@ -246,13 +202,8 @@ def record_payment(telegram_user_id,payload,currency,amount,charge_id,*,provider
             subscription.current_period_end=end
             subscription.status='active' if subscription.renewal_enabled else 'cancel_at_period_end'
             subscription.save(update_fields=['current_period_end','status','updated_at'])
-        period=SubscriptionPeriod.objects.create(subscription=subscription,payment=payment,account=account,plan=invoice.offer.plan,starts_at=start,ends_at=end,sandbox=sandbox)
-        valid_from,expires_at,source=start,end,'included'
-    else: valid_from,expires_at,source=occurred,None,'purchased'
-    for meter,quantity in invoice.snapshot['quantities'].items():
-        if not quantity: continue
-        grant=UsageGrant.objects.create(account=account,meter=meter,source=source,source_id=f'payment:{charge_id}:{meter}',quantity=quantity,valid_from=valid_from,expires_at=expires_at)
-        PaymentGrant.objects.create(payment=payment,grant=grant)
+        # The period is the whole purchase: the plan's weekly limits follow from it.
+        SubscriptionPeriod.objects.create(subscription=subscription,payment=payment,account=account,plan=invoice.offer.plan,starts_at=start,ends_at=end,sandbox=sandbox)
     invoice.status='paid';invoice.paid_at=invoice.paid_at or occurred;invoice.save(update_fields=['status','paid_at'])
     refresh_account_entitlement(account)
     CommerceAction.objects.create(account=account,action='payment.confirmed',target=str(payment.id),metadata={'amount_xtr':amount,'sandbox':sandbox,'renewal':renewal})
@@ -265,9 +216,9 @@ def sandbox_pay(account,invoice_id):
     except Invoice.DoesNotExist: raise DomainError('not_found',404)
     existing=Payment.objects.filter(invoice=invoice,is_renewal=False).first()
     if existing: return existing,False
+    # Pre-checkout refuses anything but a plan, so this is always a first period.
     validate_precheckout(account.telegram_user_id,payload_for(invoice),'XTR',invoice.amount_xtr,True)
-    subscription=invoice.offer.kind=='subscription'
-    return record_payment(account.telegram_user_id,payload_for(invoice),'XTR',invoice.amount_xtr,f'sandbox:{invoice.id}',expiration_date=int((timezone.now()+timedelta(seconds=PERIOD)).timestamp()) if subscription else None,is_recurring=subscription,is_first_recurring=subscription,sandbox=True)
+    return record_payment(account.telegram_user_id,payload_for(invoice),'XTR',invoice.amount_xtr,f'sandbox:{invoice.id}',expiration_date=int((timezone.now()+timedelta(seconds=PERIOD)).timestamp()),is_recurring=True,is_first_recurring=True,sandbox=True)
 
 
 def sandbox_renew(account,idempotency_key):
@@ -314,13 +265,7 @@ def confirm_refund(refund):
     refund=Refund.objects.select_for_update().select_related('payment__account').get(pk=refund.pk)
     if refund.status=='confirmed': return refund
     payment=refund.payment;now=timezone.now()
-    for link in payment.grant_links.select_related('grant').all():
-        grant=UsageGrant.objects.select_for_update().get(pk=link.grant_id)
-        if grant.consumed or grant.reserved:
-            BalanceAdjustment.objects.get_or_create(account=payment.account,refund=refund,meter=grant.meter,defaults={'consumed_units':grant.consumed,'reserved_units':grant.reserved})
-        # Keep ledger history and reservation math intact; revoke future spendability.
-        grant.expires_at=now;grant.save(update_fields=['expires_at'])
-        link.revoked_at=now;link.save(update_fields=['revoked_at'])
+    # Revoking the period takes the plan back; there is no balance to claw back.
     SubscriptionPeriod.objects.filter(payment=payment,revoked_at__isnull=True).update(revoked_at=now)
     refund.status='confirmed';refund.confirmed_at=now;refund.error_code='';refund.save(update_fields=['status','confirmed_at','error_code'])
     ManualPayment.objects.filter(payment=payment).update(status='refunded')
@@ -426,6 +371,7 @@ def qualify_referrals(account=None):
         Account.objects.select_for_update().get(pk=referral.inviter_id)
         start=timezone.now().replace(day=1,hour=0,minute=0,second=0,microsecond=0)
         if Referral.objects.filter(inviter=referral.inviter,status='qualified',qualified_at__gte=start).count()>=5: continue
-        grant,_=UsageGrant.objects.get_or_create(source_id=f'referral:{referral.id}',defaults={'account':referral.inviter,'meter':'ai_credits','source':'referral','quantity':10,'valid_from':timezone.now(),'expires_at':timezone.now()+timedelta(days=30)})
-        referral.grant=grant;referral.status='qualified';referral.qualified_at=timezone.now();referral.save(update_fields=['grant','status','qualified_at']);count+=1
+        # Counted, not rewarded: there are no credits to give, and the reward
+        # that replaces them is still to come.
+        referral.status='qualified';referral.qualified_at=timezone.now();referral.save(update_fields=['status','qualified_at']);count+=1
     return count

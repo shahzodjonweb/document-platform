@@ -82,7 +82,7 @@ def initial(value):
 
 @register.filter
 def meter_state(row):
-    """How full an allowance is, as a CSS class for its bar."""
+    """How much of a weekly limit is left, as a CSS class for its bar."""
     remaining, limit = row.get('remaining') or 0, row.get('limit') or 0
     if not limit or remaining <= 0:
         return 'empty'

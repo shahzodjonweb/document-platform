@@ -10,15 +10,16 @@ from django.utils import timezone
 from PIL import Image
 
 from apps.commerce import manual
-from apps.commerce.models import ManualPayment, Payment, PaymentNotice, SubscriptionPeriod
+from apps.commerce.models import ManualPayment, Payment, PaymentGrant, PaymentNotice, SubscriptionPeriod
 from apps.core.errors import DomainError
 from apps.core.identity import resolve_account
+from apps.core.models import UsageGrant
 from apps.core.policy import limits_for_plan, usage_snapshot
 from operations import plans as plan_settings
 from operations.integrations import manual_payment_config, save_config
 
 pytestmark = pytest.mark.django_db
-PRICES = {'plus': 49_000, 'premium': 99_000}
+PRICES = {'plus': 20_000, 'premium': 60_000}  # the owner's prices, a month
 
 
 def card(prefix='860012345678901'):
@@ -87,9 +88,9 @@ def test_nothing_is_offered_until_a_card_and_a_price_are_set():
     for plan in ('plus', 'premium'):
         plan_settings.save(plan, {'price_uzs': ''})  # Plus and Premium are priced by default
     assert manual.options()['enabled'] is False, 'a card without a price sells nothing'
-    plan_settings.save('premium', {'price_uzs': 99_000})
+    plan_settings.save('premium', {'price_uzs': 65_000})
     offered = manual.options()
-    assert offered['enabled'] and offered['plans'] == [{'plan': 'premium', 'price': 99_000}]
+    assert offered['enabled'] and offered['plans'] == [{'plan': 'premium', 'price': 65_000}]
     assert offered['automatic'] == {'available': False}
     with pytest.raises(DomainError, match='checkout_disabled'):
         manual.create(customer(), 'plus')
@@ -130,7 +131,7 @@ def test_a_request_shows_the_card_and_the_price_and_is_reused():
     configure()
     account = customer()
     payment, created = manual.create(account, 'premium')
-    assert created and payment.amount == 99_000 and payment.currency == 'UZS' and payment.status == 'awaiting'
+    assert created and payment.amount == 60_000 and payment.currency == 'UZS' and payment.status == 'awaiting'
     assert payment.reference.startswith('PM-') and len(payment.reference) == 8
     assert payment.card == {'number': CARD, 'holder': 'Shakhzod Uralov', 'label': 'Uzcard'}
     again, created = manual.create(account, 'premium')
@@ -158,6 +159,36 @@ def test_an_expired_request_does_not_block_a_new_one():
     assert created and fresh.pk != old.pk
     with pytest.raises(DomainError, match='manual_payment_closed'):
         manual.attach_receipt(account, old.id, png())
+
+
+def opened_at(account, plan, old_price, today):
+    """A request opened while the plan cost `old_price`; the price is `today` now (a deploy, or the panel)."""
+    plan_settings.save(plan, {'price_uzs': old_price})
+    payment, _ = manual.create(account, plan)
+    plan_settings.save(plan, {'price_uzs': today})
+    assert payment.amount == old_price and manual.prices()[plan] == today
+    return payment
+
+
+def test_an_unpaid_request_at_an_old_price_is_opened_again_at_todays_price():
+    """The plans page says 20 000; the card screen must not ask for the 60 000 of before."""
+    configure()
+    account = customer()
+    old = opened_at(account, 'plus', 60_000, 20_000)
+    fresh, created = manual.create(account, 'plus')
+    old.refresh_from_db()
+    assert created and fresh.pk != old.pk and fresh.amount == 20_000 and old.status == 'cancelled'
+    again, created = manual.create(account, 'plus')
+    assert again.pk == fresh.pk and not created, 'a request at today\'s price is still reused'
+
+
+def test_a_receipt_already_sent_at_an_old_price_waits_for_the_owner():
+    configure()
+    account = customer()
+    old = opened_at(account, 'plus', 60_000, 20_000)
+    manual.attach_receipt(account, old.id, png())
+    kept, created = manual.create(account, 'plus')
+    assert kept.pk == old.pk and not created and kept.amount == 60_000 and kept.status == 'submitted'
 
 
 # ---------------------------------------------------------------- the receipt
@@ -221,17 +252,19 @@ def test_someone_elses_request_cannot_be_touched():
 # ---------------------------------------------------------------- the decision
 
 
-def test_approval_gives_the_plan_and_its_whole_allowance_for_thirty_days():
+def test_approval_gives_the_plan_and_its_weekly_limits_for_thirty_days():
     configure()
     account = customer()
-    usage_snapshot(account)
     payment = manual.approve(submitted(account).id, finance(), 'Seen in bank app')
     account.refresh_from_db()
     assert account.plan == 'premium' and payment.status == 'approved'
-    credits = usage_snapshot(account)['meters']['ai_credits']
-    assert credits['limit'] == limits_for_plan('premium')['ai_credits'], 'the full plan, not Free'
+    usage = usage_snapshot(account)
+    assert usage['plan'] == 'premium', 'the plan bought, not Free'
+    assert usage['ai_documents']['limit'] is usage['file_jobs']['limit'] is usage['edits_per_file'] is None
+    assert not UsageGrant.objects.exists() and not PaymentGrant.objects.exists(), 'there are no credits to grant'
     paid = Payment.objects.get()
-    assert (paid.provider, paid.currency, paid.amount_xtr, paid.sandbox) == ('manual', 'UZS', 99_000, False)
+    assert (paid.provider, paid.currency, paid.amount_xtr, paid.sandbox) == ('manual', 'UZS', 60_000, False)
+    assert 'quantities' not in paid.invoice.snapshot and paid.invoice.offer_id == 'manual:premium:60000'
     period = SubscriptionPeriod.objects.get()
     assert period.ends_at - period.starts_at == timedelta(days=30)
     assert account.subscription.provider == 'manual' and not account.subscription.renewal_enabled
@@ -240,13 +273,14 @@ def test_approval_gives_the_plan_and_its_whole_allowance_for_thirty_days():
     assert Payment.objects.count() == 1, 'approving twice changes nothing'
 
 
-def test_the_plan_bought_is_the_plan_as_it_stands_at_approval():
+def test_a_paid_plan_follows_the_owners_changes_to_its_limits():
+    """A payment buys the plan, not a copy of its numbers taken at approval."""
     configure()
     account = customer()
-    payment = submitted(account)
-    plan_settings.save('premium', {'ai_credits': 40_000})
-    manual.approve(payment.id, finance())
-    assert usage_snapshot(account)['meters']['ai_credits']['limit'] == 40_000
+    manual.approve(submitted(account, 'plus').id, finance())
+    assert usage_snapshot(account)['ai_documents']['limit'] == limits_for_plan('plus')['weekly_ai_documents'] == 20
+    plan_settings.save('plus', {'weekly_ai_documents': 30})
+    assert usage_snapshot(account)['ai_documents']['limit'] == 30
 
 
 def test_only_finance_staff_decide():
@@ -272,7 +306,32 @@ def test_paying_again_adds_thirty_days_and_a_higher_plan_starts_at_once():
     manual.approve(submitted(account, 'premium').id, staff)
     account.refresh_from_db()
     assert account.plan == 'premium'
-    assert usage_snapshot(account)['meters']['ai_credits']['limit'] == limits_for_plan('premium')['ai_credits']
+    assert usage_snapshot(account)['ai_documents']['limit'] is None, 'Premium is unlimited from the moment it starts'
+
+
+@pytest.mark.parametrize('old_price,days', [(60_000, 90), (50_000, 75), (25_000, 37), (20_000, 30), (15_000, 30)])
+def test_a_transfer_at_an_old_price_buys_time_at_todays(old_price, days):
+    """An overpayment becomes a longer period, in whole days; a price that rose
+    since never gives less than the 30 days the customer was promised."""
+    configure()
+    account = customer()
+    payment = opened_at(account, 'plus', old_price, 20_000)
+    payment = manual.attach_receipt(account, payment.id, png())
+    assert manual.period_days(payment) == days
+    manual.approve(payment.id, finance())
+    period = SubscriptionPeriod.objects.get()
+    assert period.ends_at - period.starts_at == timedelta(days=days)
+    assert Payment.objects.get().invoice.snapshot['period_days'] == days
+    from apps.commerce.models import CommerceAction
+    assert CommerceAction.objects.get(action='manual_payment.approved').metadata['days'] == days
+
+
+def test_a_plan_taken_off_sale_still_gives_the_promised_thirty_days():
+    configure()
+    account = customer()
+    payment = manual.attach_receipt(account, manual.create(account, 'premium')[0].id, png())
+    plan_settings.save('premium', {'price_uzs': ''})
+    assert 'premium' not in manual.prices() and manual.period_days(payment) == 30
 
 
 def test_a_rejection_needs_a_reason_and_gives_nothing():
@@ -281,7 +340,7 @@ def test_a_rejection_needs_a_reason_and_gives_nothing():
     payment = submitted(account)
     with pytest.raises(DomainError, match='audit_reason_required'):
         manual.reject(payment.id, finance(), 'no')
-    payment = manual.reject(payment.id, finance('Finance', 'f2'), 'No transfer of 99 000 arrived')
+    payment = manual.reject(payment.id, finance('Finance', 'f2'), 'No transfer of 60 000 arrived')
     account.refresh_from_db()
     assert payment.status == 'rejected' and account.plan == 'free' and not Payment.objects.exists()
     assert PaymentNotice.objects.filter(manual=payment, kind='rejected').count() == 1
@@ -393,7 +452,7 @@ def test_the_api_offers_card_payment_and_walks_a_payment_to_review():
     created = client.post('/api/v1/billing/manual', {'plan': 'plus'}, content_type='application/json')
     assert created.status_code == 201
     payment = created.json()
-    assert payment['card']['number'] == CARD and payment['amount'] == 49_000 and payment['status'] == 'awaiting'
+    assert payment['card']['number'] == CARD and payment['amount'] == 20_000 and payment['status'] == 'awaiting'
     sent = client.post(f'/api/v1/billing/manual/{payment["id"]}/receipt',
                        {'file': SimpleUploadedFile('r.jpg', png(), 'image/jpeg'), 'note': 'card 4421'})
     assert sent.status_code == 200 and sent.json()['status'] == 'submitted' and sent.json()['receipt_received']
@@ -481,7 +540,7 @@ def test_finance_reviews_and_approves_from_the_payments_page():
     page = client.get('/ops/payments').content.decode()
     assert payment.reference in page and 'nav-badge' in page
     review = client.get(f'/ops/payments/manual/{payment.id}').content.decode()
-    assert '99 000 so&#x27;m' in review or "99 000 so'm" in review
+    assert '60 000 so&#x27;m' in review or "60 000 so'm" in review
     assert 'bank app' in review
     response = client.post(f'/ops/payments/manual/{payment.id}', {'action': 'approve'})
     assert response.status_code == 302
@@ -490,6 +549,32 @@ def test_finance_reviews_and_approves_from_the_payments_page():
     assert AuditLog.objects.filter(action='payment.manual_approve', target=str(payment.id)).exists()
     report = client.get('/ops/payments').content.decode()
     assert "So&#x27;m received" in report or "So'm received" in report
+
+
+@pytest.mark.parametrize('lang,paid,today,note,days', [
+    ('en', "60 000 so", "20 000 so", 'opened at an older, higher price', '90 days of Plus'),
+    ('uz', "60 000 so", "20 000 so", 'avvalgi, qimmatroq narxda ochilgan', 'Plus tarifi, 90 kun'),
+    ('ru', "60 000 so", "20 000 so", 'по старой, более высокой цене', 'Plus на 90 дн.'),
+])
+def test_the_review_page_shows_an_old_price_beside_todays_and_the_days_approval_gives(lang, paid, today, note, days):
+    configure()
+    account = customer()
+    payment = opened_at(account, 'plus', 60_000, 20_000)
+    manual.attach_receipt(account, payment.id, png())
+    client, _ = staff_client('Finance')
+    review = client.get(f'/ops/payments/manual/{payment.id}?lang={lang}').content.decode().replace('&#x27;', "'")
+    assert paid in review and today in review and note in review and days in review, lang
+    assert client.post(f'/ops/payments/manual/{payment.id}', {'action': 'approve'}).status_code == 302
+    period = SubscriptionPeriod.objects.get()
+    assert period.ends_at - period.starts_at == timedelta(days=90), 'what the page said is what approval gave'
+
+
+def test_the_review_page_says_nothing_extra_when_the_price_is_unchanged():
+    configure()
+    payment = submitted(customer(), 'plus')
+    client, _ = staff_client('Finance')
+    review = client.get(f'/ops/payments/manual/{payment.id}?lang=en').content.decode()
+    assert '30 days of Plus' in review and 'price-note' not in review
 
 
 def test_a_receipt_is_opened_only_by_finance_and_the_view_is_audited():
@@ -556,7 +641,7 @@ def test_stars_totals_no_longer_count_card_payments():
     manual.approve(submitted(real).id, finance())
     request = RequestFactory().get('/ops/payments', {'environment': 'production'})
     totals = financial_report(Filters.from_request(request))['totals']
-    assert totals['gross'] == 0 and totals['uzs_gross'] == 99_000 and totals['uzs_net'] == 99_000
+    assert totals['gross'] == 0 and totals['uzs_gross'] == 60_000 and totals['uzs_net'] == 60_000
 
 
 def test_the_card_is_not_called_active_while_no_plan_has_a_price():
@@ -572,4 +657,4 @@ def test_the_card_is_not_called_active_while_no_plan_has_a_price():
 
 
 def test_plus_and_premium_are_on_sale_at_their_default_prices():
-    assert manual.prices() == {'plus': 60000, 'premium': 100000}
+    assert manual.prices() == {'plus': 20_000, 'premium': 60_000}

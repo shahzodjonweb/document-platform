@@ -1,9 +1,8 @@
 /**
  * Operations panel enhancements.
  *
- * The menu drawer on narrow screens, the dialogs for plan, credit and limit
- * changes, closing menus on an outside click, and the live balance in the
- * credit form.
+ * The menu drawer on narrow screens, the dialogs for plan and limit changes,
+ * and closing menus on an outside click.
  */
 (() => {
   const ready = (fn) =>
@@ -49,29 +48,6 @@
     document.addEventListener('click', (event) => {
       document.querySelectorAll('details.language-menu[open], details.more-filters[open]').forEach((menu) => {
         if (!menu.contains(event.target)) menu.removeAttribute('open');
-      });
-    });
-
-    // A top-up says what the balance will be, so nobody grants blind.
-    const refresh = (input) => {
-      const after = document.querySelector(`[data-grant-after="${input.name}"]`);
-      if (!after) return;
-      const remaining = Number(input.dataset.remaining || 0);
-      const added = Math.max(0, Number(input.value || 0));
-      const label = (after.textContent || '').split(':')[0];
-      after.textContent = `${label}: ${remaining + added}`;
-      after.classList.toggle('changed', added > 0);
-    };
-    document.querySelectorAll('[data-grant-input]').forEach((input) => {
-      input.addEventListener('input', () => refresh(input));
-      refresh(input);
-    });
-    document.querySelectorAll('[data-grant-preset]').forEach((button) => {
-      button.addEventListener('click', () => {
-        const input = document.querySelector(`[name="${button.dataset.grantPreset}"][data-grant-input]`);
-        if (!input) return;
-        input.value = String(Math.max(0, Number(input.value || 0)) + Number(button.dataset.amount || 0));
-        refresh(input);
       });
     });
   });

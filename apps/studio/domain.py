@@ -8,7 +8,7 @@ from django.db import transaction
 from django.utils import timezone
 from apps.core.errors import DomainError
 from apps.core.models import Quote
-from apps.core.policy import FEATURES, POLICY_VERSION, plan_limits, SEED
+from apps.core.policy import FEATURES, POLICY_VERSION, plan_limits
 from apps.core.services import owned_assets
 from apps.core import storage
 from operations.integrations import cipher, ai_config
@@ -29,27 +29,6 @@ def pack(value): return cipher().encrypt(json.dumps(value,ensure_ascii=False).en
 def unpack(value): return json.loads(cipher().decrypt(bytes(value)))
 def allowed(account,fid):
     return fid in FEATURES and FEATURES[fid]['plans'][account.plan] not in ('not_included','unavailable','none','excluded')
-def ai_documents_today(account,now=None):
-    """AI documents this account has started today (UTC), as the daily task cap counts days.
-
-    An outline is a step towards a document, not one; a job that failed,
-    was cancelled or expired produced nothing and is not counted. Nor is a
-    change to a document already made: free customers spent their day
-    correcting what came back wrong, and a change still costs its credits.
-    """
-    from apps.core.models import Job
-    today=(now or timezone.now()).replace(hour=0,minute=0,second=0,microsecond=0)
-    started=Job.objects.filter(account=account,feature_id__in=GENERATION_IDS,created_at__gte=today).exclude(status__in=('failed','canceled','expired','no_op')).values_list('parameters',flat=True)
-    return sum(1 for parameters in started if (parameters or {}).get('stage')!='outline' and not (parameters or {}).get('revision'))
-
-def require_daily_ai(account):
-    """Free accounts make a few AI documents a day; paid plans have no daily limit."""
-    limit=plan_limits(account).get('daily_ai_documents')
-    if limit is None:return
-    if ai_documents_today(account)>=limit:
-        tomorrow=timezone.now().replace(hour=0,minute=0,second=0,microsecond=0)+timedelta(days=1)
-        raise DomainError('daily_ai_limit',429,{'limit':limit,'resets_at':tomorrow.isoformat()})
-
 def require(account,fid):
     if not settings.ENABLE_BETA_TOOLS or fid not in GENERATION_IDS: raise DomainError('feature_unavailable',409)
     if not allowed(account,fid): raise DomainError('feature_not_in_plan',403)
@@ -153,6 +132,15 @@ def source_excerpts(account,ids):
     if sum(len(v['text']) for v in result)>limits(account)['source_chars']:raise DomainError('generation_limit')
     return result
 
+def edit_root(data,draft_id):
+    """The file a draft's edits are counted against: the first document of its chain.
+
+    An edit of an edit draws on the same file's edits as the first one did. A
+    change made before roots were recorded counts against the document it changed.
+    """
+    revision=data.get('revision') or {}
+    return str(revision.get('root_draft_id') or revision.get('source_draft_id') or draft_id)
+
 def revision_source(account,identifier):
     """The document a change request is being applied to."""
     import uuid as _uuid
@@ -165,6 +153,13 @@ def revision_source(account,identifier):
     # items — so items count as content too.
     if not any((section.get('body') or '').strip() or section.get('items') for section in original['content']['sections']):
         raise DomainError('revision_not_ready')
+    # Text alone does not make a file: a new draft holds its source text from
+    # the start. Only a file that was actually made can be edited, or an "edit"
+    # of a draft never generated would be a new document outside the week's
+    # limit (apps/core/allowance.py require_made). Quoting and submitting the
+    # edit ask again.
+    from apps.core.allowance import require_made
+    require_made(account,edit_root(original,source.id))
     return source,original
 
 
@@ -581,7 +576,8 @@ def _prepare_draft(account,data,revision_base=None):
     payload={'title':title,'prompt':prompt,'source_text':text,'source_ids':ids,'excerpts':excerpts,'output_locale':locale,'locale_source':resolved.source,'output_format':fmt,'options':options,'content':content}
     if original is not None:
         payload['revision']={'request':prompt,'source_draft_id':str(revising),
-                             'original_prompt':original.get('revision',{}).get('original_prompt',original.get('prompt',''))}
+                             'original_prompt':original.get('revision',{}).get('original_prompt',original.get('prompt','')),
+                             'root_draft_id':edit_root(original,revising)}
         if selection:
             payload['revision'].update(selected_section_ids=selection,base_version=source_version,
                                        base_content=deepcopy(original['content']),base_locale=locale)
@@ -687,23 +683,25 @@ def generation_quote(account,draft_id,version):
     require_channels(account)
     if version!=d.version:raise DomainError('version_conflict',409)
     data=unpack(d.encrypted_data)
-    # Said before the customer reviews the cost, not after they confirm it.
-    if not data.get('revision'):require_daily_ai(account)
+    # Said before the customer confirms, not after: an edit draws on the file's
+    # own edits, anything else on the week's documents (apps/core/allowance.py).
+    # Submission checks again under the account lock.
+    from apps.core.allowance import require_ai_document,require_edit,require_made
+    root=edit_root(data,d.id)
+    if data.get('revision'):
+        require_made(account,root)
+        require_edit(account,root)
+    else:require_ai_document(account)
     cfg=ai_config()
     if cfg['mode']!=d.provider_mode:raise DomainError('provider_changed',409)
-    # Sandbox is deterministic authoring; it never charges AI credits or pretends to call a model.
-    tariff=SEED['tariff_v0_staging'];caps=limits(account)
+    caps=limits(account)
     question_cap=max(len(data['content']['questions']),int(data['options'].get('question_count',0)))
     if not 0<=question_cap<=caps['questions']:raise DomainError('generation_limit')
-    # Pages are now an explicit, user-chosen number rather than a soft hint, so
-    # the price follows what was asked for instead of the plan's ceiling. One
-    # page of headroom is reserved because a section written to fill its page
-    # can spill onto the next; settlement consumes only what was produced, so
-    # the headroom costs nothing unless it is used.
+    # Pages are an explicit, user-chosen number rather than a soft hint, so the
+    # job is bounded by what was asked for instead of the plan's ceiling. One
+    # page of headroom is allowed because a section written to fill its page
+    # can spill onto the next.
     output_cap=len(data['content']['sections'])+int(data['options'].get('question_slides',0) or 0)+1
-    output_units=output_cap*tariff['pptx_output_credits_per_slide' if data['output_format']=='pptx' else 'pdf_output_credits_per_started_page']
-    from .metering import generation_credits
-    credits=0 if d.provider_mode=='local_fixture' else generation_credits(d.feature_id,len(data['excerpts']),question_cap,output_units,tariff)
     if cfg['mode']=='openai':
         enforce_budget(cfg,data,d.feature_id,plan_limits(account)['max_ai_input_tokens'])
     snapshot=hashlib.sha256(bytes(d.encrypted_data)).hexdigest()
@@ -716,7 +714,7 @@ def generation_quote(account,draft_id,version):
     if data['output_format']=='pptx':
         from .photos import BUDGET_SECONDS
         lease_seconds+=BUDGET_SECONDS
-    return Quote.objects.create(account=account,feature_id=d.feature_id,input_ids=input_ids,input_fingerprints=[{'id':str(a.id),'sha256':a.sha256} for a in owned_assets(account,input_ids)] if input_ids else [],parameters={'generation_draft_id':str(d.id),'draft_version':d.version,'snapshot':snapshot,**({'revision':True} if data.get('revision') else {})},meters={'file_tasks':0,'file_page_units':0,'ai_credits':credits},policy={'plan':account.plan,'version':POLICY_VERSION,'tariff_version':'generation-draft-staging-v1','limits':plan_limits(account),'provider_mode':d.provider_mode,'provider_model':cfg['model'],'provider_image_model':cfg.get('image_model',''),'generation_bounds':{'question_cap':question_cap,'output_pages':output_cap,'key_pages':caps['sections'],'input_tokens':plan_limits(account)['max_ai_input_tokens'],'tariff':dict(tariff)},'lease_seconds':lease_seconds},expires_at=timezone.now()+timedelta(minutes=10))
+    return Quote.objects.create(account=account,feature_id=d.feature_id,input_ids=input_ids,input_fingerprints=[{'id':str(a.id),'sha256':a.sha256} for a in owned_assets(account,input_ids)] if input_ids else [],parameters={'generation_draft_id':str(d.id),'draft_version':d.version,'snapshot':snapshot,**({'revision':True,'root_draft_id':root} if data.get('revision') else {})},policy={'plan':account.plan,'version':POLICY_VERSION,'tariff_version':'generation-draft-staging-v1','limits':plan_limits(account),'provider_mode':d.provider_mode,'provider_model':cfg['model'],'provider_image_model':cfg.get('image_model',''),'generation_bounds':{'question_cap':question_cap,'output_pages':output_cap,'key_pages':caps['sections'],'input_tokens':plan_limits(account)['max_ai_input_tokens']},'lease_seconds':lease_seconds},expires_at=timezone.now()+timedelta(minutes=10))
 
 def validate_generation_quote(account,quote):
     require(account,quote.feature_id)

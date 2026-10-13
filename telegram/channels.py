@@ -1,8 +1,10 @@
 """The bot's side of the channel rule: which channels to join, and "I've joined".
 
-A free customer who has not joined the owner's channels is shown them, with a
-button to each and one to say they have joined; paid plans are offered as the
-other way in. The rule itself lives in apps.core.channel_gate.
+A Free or Plus customer who has not joined the owner's channels is shown them,
+with a button to each and one to say they have joined; Premium, which is never
+asked, is offered as the other way in while it is on sale. Free is told the
+product is free for members; Plus has paid, so it is told its plan works for
+members instead. The rule itself lives in apps.core.channel_gate.
 """
 from asgiref.sync import sync_to_async
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
@@ -11,24 +13,33 @@ COPY = {
     'en': {
         'gate_one': "📢 PDF Master is free for members of our Telegram community.\nJoin our channel, then tap «I've joined».",
         'gate_many': "📢 PDF Master is free for members of our Telegram community.\nJoin our channels, then tap «I've joined».",
+        'gate_plus_one': "📢 Your Plus plan works for members of our Telegram community.\nJoin our channel, then tap «I've joined».",
+        'gate_plus_many': "📢 Your Plus plan works for members of our Telegram community.\nJoin our channels, then tap «I've joined».",
         'joined': "✅ I've joined",
-        'plans': '⭐ Or choose a paid plan',
+        'plans': '💎 Or choose Premium — no channels',
+        'plans_neutral': '⭐ Plans',
         'welcome': '✅ Thanks for joining! Every service is open to you now.',
         'not_yet': "You haven't joined {titles} yet. Join, then tap «I've joined» again.",
     },
     'uz': {
         'gate_one': '📢 PDF Master Telegram hamjamiyatimiz a’zolari uchun bepul.\nKanalimizga qo‘shiling, so‘ng «Qo‘shildim» tugmasini bosing.',
         'gate_many': '📢 PDF Master Telegram hamjamiyatimiz a’zolari uchun bepul.\nKanallarimizga qo‘shiling, so‘ng «Qo‘shildim» tugmasini bosing.',
+        'gate_plus_one': '📢 Plus tarifingiz Telegram hamjamiyatimiz a’zolari uchun ishlaydi.\nKanalimizga qo‘shiling, so‘ng «Qo‘shildim» tugmasini bosing.',
+        'gate_plus_many': '📢 Plus tarifingiz Telegram hamjamiyatimiz a’zolari uchun ishlaydi.\nKanallarimizga qo‘shiling, so‘ng «Qo‘shildim» tugmasini bosing.',
         'joined': '✅ Qo‘shildim',
-        'plans': '⭐ Yoki pullik tarifni tanlang',
+        'plans': '💎 Yoki Premium — kanallarsiz',
+        'plans_neutral': '⭐ Tariflar',
         'welcome': '✅ Qo‘shilganingiz uchun rahmat! Endi barcha xizmatlar siz uchun ochiq.',
         'not_yet': 'Siz hali {titles} ga qo‘shilmagansiz. Qo‘shiling va «Qo‘shildim»ni yana bosing.',
     },
     'ru': {
         'gate_one': '📢 PDF Master бесплатен для участников нашего Telegram-сообщества.\nПодпишитесь на канал и нажмите «Я подписался».',
         'gate_many': '📢 PDF Master бесплатен для участников нашего Telegram-сообщества.\nПодпишитесь на наши каналы и нажмите «Я подписался».',
+        'gate_plus_one': '📢 Тариф Plus действует для участников нашего Telegram-сообщества.\nПодпишитесь на канал и нажмите «Я подписался».',
+        'gate_plus_many': '📢 Тариф Plus действует для участников нашего Telegram-сообщества.\nПодпишитесь на наши каналы и нажмите «Я подписался».',
         'joined': '✅ Я подписался',
-        'plans': '⭐ Или выберите платный тариф',
+        'plans': '💎 Или Premium — без каналов',
+        'plans_neutral': '⭐ Тарифы',
         'welcome': '✅ Спасибо за подписку! Все сервисы теперь доступны.',
         'not_yet': 'Вы ещё не подписались на {titles}. Подпишитесь и снова нажмите «Я подписался».',
     },
@@ -37,6 +48,18 @@ COPY = {
 
 def copy(account, key):
     return COPY.get(getattr(account, 'locale', 'en'), COPY['en'])[key]
+
+
+def premium_on_sale(account):
+    """Whether Premium can be bought now: a card price set in the panel, or a Stars offer.
+
+    The gate's "Or choose Premium" would otherwise open a plans screen with no
+    Premium on it.
+    """
+    from apps.commerce import manual, services
+    if 'premium' in manual.prices():
+        return True
+    return any(offer.plan == 'premium' for offer in services.available_offers(account))
 
 
 async def blocked(account):
@@ -74,8 +97,12 @@ async def show_gate(message, account, current=None, notice='', resume=None, edit
             for channel in current['channels']]
     rows.append([InlineKeyboardButton(text=copy(account, 'joined'),
                                       callback_data=await callback(account, 'channels_check', resume or {}))])
-    rows.append([InlineKeyboardButton(text=copy(account, 'plans'), callback_data=await callback(account, 'plans'))])
-    body = copy(account, 'gate_one' if len(current['channels']) == 1 else 'gate_many')
+    premium = await sync_to_async(premium_on_sale)(account)
+    rows.append([InlineKeyboardButton(text=copy(account, 'plans' if premium else 'plans_neutral'),
+                                      callback_data=await callback(account, 'plans'))])
+    # status(), here or in blocked(), has brought account.plan up to date with what was paid.
+    kind = 'gate_plus_' if getattr(account, 'plan', '') == 'plus' else 'gate_'
+    body = copy(account, kind + ('one' if len(current['channels']) == 1 else 'many'))
     return await _show(message, (notice + '\n\n' if notice else '') + body, InlineKeyboardMarkup(inline_keyboard=rows), edit)
 
 

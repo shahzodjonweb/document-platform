@@ -8,7 +8,8 @@ from django.test import Client
 from django.utils import timezone
 from pypdf import PdfReader,PdfWriter
 from apps.core.identity import resolve_account
-from apps.core.models import FileAsset,Job,PagePreview,SecretHandle,UsageLedger
+from apps.core.allowance import file_jobs_this_week
+from apps.core.models import FileAsset,Job,PagePreview,SecretHandle
 from apps.core.services import storage_path,cleanup_expired
 from processors.engine import office_runtime
 
@@ -40,7 +41,7 @@ def test_preview_is_real_png_cached_owner_scoped_and_free():
         assert response['Content-Type']=='image/png'
         image=Image.open(io.BytesIO(content(response)));assert image.width>image.height
     assert PagePreview.objects.count()==1
-    assert UsageLedger.objects.count()==Job.objects.count()==0
+    assert Job.objects.count()==0 and file_jobs_this_week(owner)==0
     _,other=principal(110002)
     assert other.get(f'/api/v1/files/{asset["id"]}/preview').status_code==404
     assert c.get(f'/api/v1/files/{asset["id"]}/preview?page=0').status_code==400
@@ -68,7 +69,7 @@ def test_encrypted_preview_requires_live_handle_even_after_cache():
     assert preview.expires_at<=handle.expires_at
     SecretHandle.objects.filter(pk=handle.id).update(expires_at=timezone.now()-timedelta(seconds=1))
     assert c.get(f'/api/v1/files/{asset["id"]}/preview').status_code==409
-    assert UsageLedger.objects.count()==0
+    assert not Job.objects.exists()
 
 
 def test_expired_preview_not_recoverable_and_cleanup_removes_binary():
@@ -90,7 +91,7 @@ def test_office_upload_exact_preflight_quote_execute_and_download(extension,feat
     assert model.metadata['preflight_kind']=='libreoffice_pdf'
     response=c.post('/api/v1/quotes',{'feature_id':feature,'input_ids':[asset['id']]},content_type='application/json')
     assert response.status_code==201,response.content
-    quote=response.json();assert {v['meter']:v['amount'] for v in quote['meters']}=={'file_tasks':1,'file_page_units':3}
+    quote=response.json();assert quote['affordable'] and quote['usage']['file_jobs']['used']==0
     result=c.post('/api/v1/jobs',{'quote_id':quote['id']},content_type='application/json',HTTP_IDEMPOTENCY_KEY=f'office-api-{extension}')
     assert result.status_code==201,result.content
     job=result.json();assert job['status']=='succeeded',job
@@ -98,12 +99,12 @@ def test_office_upload_exact_preflight_quote_execute_and_download(extension,feat
     assert len(reader.pages)==3
     extracted='\n'.join(page.extract_text() or '' for page in reader.pages)
     assert 'Document pages remain readable' in extracted and 'Hujjat sahifalari aniq ko‘rinadi' in extracted and 'Страницы документа остаются читаемыми' in extracted
-    assert UsageLedger.objects.filter(job_id=job['id'],kind='consume',meter='file_page_units').get().amount==3
+    assert file_jobs_this_week(a)==1,'one task whatever its pages'
 
 
-def test_office_quote_rejects_incorrect_input_kind_before_reserving():
+def test_office_quote_rejects_incorrect_input_kind_before_any_task():
     _,c=principal();asset=upload(c)
     response=c.post('/api/v1/quotes',{'feature_id':'convert.word_to_pdf','input_ids':[asset['id']]},content_type='application/json')
     assert response.status_code==400,response.content
     assert response.json()['error']['code']=='unsupported_file'
-    assert UsageLedger.objects.count()==0
+    assert not Job.objects.exists()

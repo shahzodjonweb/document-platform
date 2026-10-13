@@ -82,13 +82,15 @@ def test_the_change_reaches_the_model_as_a_revision(premium):
     assert sent['outline']['sections'][0]['body'].strip(), 'the current text is what it revises'
 
 
-def test_a_change_costs_what_the_document_costs(premium):
+def test_a_change_is_bounded_like_the_document_and_names_its_file(premium):
     original = generated(premium)
     revised = create_draft(premium, {'prompt': 'Make it friendlier.',
                                      'options': {'revise_draft_id': str(original.id)}})
     quote = generation_quote(premium, revised.id, revised.version)
     assert quote.feature_id == original.feature_id
     assert quote.policy['generation_bounds']['output_pages'] == 4, 'three pages plus the headroom'
+    assert quote.parameters['revision'] is True and quote.parameters['root_draft_id'] == str(original.id)
+    assert not quote.meters and 'tariff' not in quote.policy['generation_bounds']
 
 
 def test_a_change_produces_a_new_document_of_the_same_length(premium):

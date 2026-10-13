@@ -7,7 +7,8 @@ from django.utils import timezone
 from PIL import Image
 from django.core.files.uploadedfile import SimpleUploadedFile
 from apps.core.errors import DomainError
-from apps.core.models import Job,UsageLedger,Quote,FileAsset
+from apps.core.allowance import file_jobs_this_week
+from apps.core.models import Job,Quote,FileAsset
 from apps.core.services import upload_file,submit_job,execute_job
 from apps.commerce.services import create_invoice,sandbox_pay
 from apps.studio.batches import create_batch_quote,submit_batch,execute_batch,quote_data,run_data
@@ -38,10 +39,10 @@ def test_quote_is_atomic_owner_scoped_and_paid_caps():
     q=create_batch_quote(a,'batch.convert',g)
     data=quote_data(q)
     assert data['affordable'] and data['max_children']==10
-    assert q.meters=={'file_tasks':2,'file_page_units':4,'ai_credits':0}
-    assert len(data['groups'])==2 and not UsageLedger.objects.exists()
+    assert not q.meters and not {'meters','available_balances'}&set(data)
+    assert len(data['groups'])==2 and file_jobs_this_week(a)==0,'a quote holds no places'
 
-def test_submit_and_resume_are_idempotent_and_real_jobs_charge_once():
+def test_submit_and_resume_are_idempotent_and_real_jobs_count_once():
     a=paid(account());q=create_batch_quote(a,'batch.convert',groups(a))
     run,created=submit_batch(a,q.id,'batch-once-key');assert created
     run=execute_batch(run.id)
@@ -49,13 +50,13 @@ def test_submit_and_resume_are_idempotent_and_real_jobs_charge_once():
     assert all(i.job.artifacts.exists() for i in run.children.select_related('job'))
     repeated,is_new=submit_batch(a,q.id,'batch-once-key');assert not is_new and repeated.id==run.id
     execute_batch(run.id)
-    assert Job.objects.count()==2 and UsageLedger.objects.filter(kind='consume',meter='file_tasks').count()==2
-    assert run_data(run)['settled_meters']==q.meters
+    assert Job.objects.count()==2 and file_jobs_this_week(a)==2
+    assert not {'meters','settled_meters'}&set(run_data(run)) and run_data(run)['counts']=={'succeeded':2}
     with pytest.raises(DomainError,match='quote_already_submitted'):submit_batch(a,q.id,'different-batch-key')
     q2=create_batch_quote(a,'batch.convert',groups(a,1))
     with pytest.raises(DomainError,match='idempotency_conflict'):submit_batch(a,q2.id,'batch-once-key')
 
-def test_partial_batch_only_successful_children_charge(monkeypatch):
+def test_partial_batch_gives_back_the_places_of_failed_children(monkeypatch):
     from processors import ProcessorError
     import processors.sandbox
     a=paid(account());g=groups(a,3);q=create_batch_quote(a,'batch.convert',g)
@@ -68,9 +69,7 @@ def test_partial_batch_only_successful_children_charge(monkeypatch):
     run,_=submit_batch(a,q.id,'partial-batch-key');run=execute_batch(run.id)
     assert run.status=='partial'
     assert list(run.children.values_list('status',flat=True))==['succeeded','failed','succeeded']
-    assert run_data(run)['settled_meters']['file_tasks']==2
-    assert UsageLedger.objects.filter(kind='consume',meter='file_tasks').count()==2
-    assert not run.children.get(index=1).job.reservations.filter(settled=False).exists()
+    assert file_jobs_this_week(a)==2,'the failed child is not counted'
     execute_batch(run.id);assert Job.objects.count()==3
 
 def test_worker_recovers_completed_unlinked_child_without_duplicate(settings):
@@ -83,9 +82,9 @@ def test_worker_recovers_completed_unlinked_child_without_duplicate(settings):
     call_command('runbatches',once=True);call_command('runbatches',once=True)
     run.refresh_from_db();assert run.status=='succeeded'
     assert Job.objects.count()==2 and run.children.first().job_id==job.id
-    assert UsageLedger.objects.filter(kind='consume',meter='file_tasks').count()==2
+    assert file_jobs_this_week(a)==2
 
-def test_noop_compression_zero_charge_and_image_sets_independent_pdfs(monkeypatch):
+def test_noop_compression_is_not_counted_and_image_sets_independent_pdfs(monkeypatch):
     import processors.sandbox
     original=processors.sandbox.execute_sandbox
     def compression_noop(feature,*args,**kwargs):
@@ -95,7 +94,7 @@ def test_noop_compression_zero_charge_and_image_sets_independent_pdfs(monkeypatc
     a=paid(account());q=create_batch_quote(a,'batch.compress',[{'input_ids':[str(upload(a).id)]}])
     run,_=submit_batch(a,q.id,'batch-compress-key');run=execute_batch(run.id)
     assert run.status=='succeeded' and run.children.get().status=='no_op'
-    assert not UsageLedger.objects.filter(kind='consume').exists()
+    assert file_jobs_this_week(a)==0,'a file that needed no change is not a task done'
     imgs=[]
     for color in ('red','blue'):
         buf=io.BytesIO();Image.new('RGB',(50,80),color).save(buf,format='PNG')

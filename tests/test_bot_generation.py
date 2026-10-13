@@ -151,7 +151,7 @@ def test_a_request_beyond_the_plan_is_said_out_loud(free_customer):
     assert latest(free_customer)['options']['requested_pages'] == 20
 
 
-def test_questions_are_only_priced_when_they_are_asked_for(customer):
+def test_questions_are_only_made_when_they_are_asked_for(customer):
     save_config('ai', {'mode': 'openai', 'model': 'gpt-5.6-luna', 'api_key': 'sk-offline-test-only'})
     describe(customer, 'A 3 page guide to tide tables.')
     plain = Quote.objects.latest('created_at')
@@ -159,17 +159,25 @@ def test_questions_are_only_priced_when_they_are_asked_for(customer):
 
     describe(customer, 'A 3 page guide to tide tables with 10 questions at the end.')
     assert latest(customer)['options']['question_count'] == 10
-    assert Quote.objects.latest('created_at').meters['ai_credits'] > plain.meters['ai_credits']
+    asked = Quote.objects.latest('created_at')
+    assert (plain.policy['generation_bounds']['question_cap'], asked.policy['generation_bounds']['question_cap']) == (0, 10)
 
 
-def test_the_review_screen_shows_the_cost_before_anything_runs(customer):
+def test_the_review_on_a_limited_plan_says_how_many_documents_the_week_has_left(free_customer):
+    """Free makes a few AI documents a week; the review says where the week stands."""
+    review = describe(free_customer, 'A 2 page briefing on tide tables.')
+    assert 'AI documents this week: 0 of 5' in body(review)
+    assert 'Will use' not in body(review) and 'credits' not in body(review).lower()
+    tap(free_customer, review, 'Generate')
+    assert 'AI documents this week: 1 of 5' in body(describe(free_customer, 'A 2 page note on river deltas.'))
+    assert Job.objects.filter(account=free_customer).count() == 1
+
+
+def test_an_unlimited_plan_is_not_told_a_number(customer):
     save_config('ai', {'mode': 'openai', 'model': 'gpt-5.6-luna', 'api_key': 'sk-offline-test-only'})
     review = describe(customer, 'A 5 page briefing on tide tables.')
-
-    quote = Quote.objects.get(account=customer)
-    assert quote.meters['ai_credits'] > 0, 'a real provider costs credits'
-    assert f"AI credits: {quote.meters['ai_credits']}" in body(review)
-    assert 'Will use' in body(review) and 'Available' in body(review)
+    assert 'Generate' in ' '.join(labels(review))
+    assert 'this week' not in body(review) and 'credits' not in body(review).lower()
     assert not Job.objects.filter(account=customer).exists()
 
 

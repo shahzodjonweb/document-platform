@@ -1,9 +1,13 @@
-"""Batch parents never consume allowances: each ordinary child settles once."""
+"""Batches of file tasks: one confirmation, each file its own child job.
+
+A batch of N files is N file tasks of the week. They are all checked when the
+batch is confirmed, and the children that have not started yet hold their
+places (apps/core/allowance.py), so a confirmed batch is never cut short by
+another task started meanwhile."""
 import hashlib
 import json
 import uuid
 from datetime import timedelta
-from types import SimpleNamespace
 from django.conf import settings
 from django.db import transaction
 from django.http import JsonResponse
@@ -104,18 +108,18 @@ def create_batch_quote(account,feature_id,groups=None,*,template_id=None,templat
         if total_bytes>caps['max_aggregate_input_mib']*1024*1024:raise DomainError('aggregate_size_exceeded',413)
         if total_pages>caps['max_pages_per_job']:raise DomainError('page_limit_exceeded',413)
         children.append(create_quote(account,child_id,group['input_ids'],group.get('parameters',{})))
-    meters={meter:sum(q.meters.get(meter,0) for q in children) for meter in ('file_tasks','file_page_units','ai_credits')}
     policy={'plan':account.plan,'version':POLICY_VERSION,'max_children':caps['batch_files'],'aggregate_bytes':total_bytes,'aggregate_pages':total_pages}
     if template:policy['template']=template
-    return BatchQuote.objects.create(account=account,feature_id=feature_id,child_quote_ids=[str(q.id) for q in children],meters=meters,policy=policy,expires_at=min(q.expires_at for q in children))
+    return BatchQuote.objects.create(account=account,feature_id=feature_id,child_quote_ids=[str(q.id) for q in children],policy=policy,expires_at=min(q.expires_at for q in children))
 
 def quote_data(row):
-    affordable,usage=quote_affordable(row.account,SimpleNamespace(meters=row.meters))
-    groups=[{'index':i,'feature_id':q.feature_id,'input_ids':q.input_ids,'normalized_parameters':q.parameters,'meters':q.meters} for i,q in enumerate(_quotes(row))]
-    result={'id':str(row.id),'quote_id':str(row.id),'feature_id':row.feature_id,'groups':groups,'meters':[{'meter':k,'amount':v} for k,v in row.meters.items() if v],'affordable':affordable,'available_balances':usage['meters'],'expires_at':row.expires_at,'max_children':row.policy['max_children'],'reservation_mode':'per_child','limitations':['Children reserve allowances when they start. Only successful children are charged. Unstarted children can expire or fail if allowances change.']}
+    children=_quotes(row)
+    affordable,_=quote_affordable(row.account,children[0],count=len(children))
+    groups=[{'index':i,'feature_id':q.feature_id,'input_ids':q.input_ids,'normalized_parameters':q.parameters} for i,q in enumerate(children)]
+    result={'id':str(row.id),'quote_id':str(row.id),'feature_id':row.feature_id,'groups':groups,'affordable':affordable,'expires_at':row.expires_at,'max_children':row.policy['max_children'],'reservation_mode':'per_child','limitations':['Each file is one file task of the week. The whole batch is checked when it is confirmed, and files that have not started yet keep their places. A failed file gives its place back.']}
     if 'template' in row.policy:
         result['template']={k:row.policy['template'][k] for k in ('id','name','version')}
-        result['limitations'].append('Reusable form batches fill existing text fields only. Each PDF must contain every saved field. Oversized values fail uncharged; successful outputs retain interactive form fields.')
+        result['limitations'].append('Reusable form batches fill existing text fields only. Each PDF must contain every saved field. Oversized values fail and give their place back; successful outputs retain interactive form fields.')
     return result
 
 @transaction.atomic
@@ -139,7 +143,10 @@ def submit_batch(account,quote_id,key):
     for child in children:
         assets=validate_inputs(account,child.feature_id,child.input_ids)
         if [{'id':str(a.id),'sha256':a.sha256} for a in assets]!=child.input_fingerprints:raise DomainError('file_changed',409)
-    if not quote_affordable(account,SimpleNamespace(meters=row.meters))[0]:raise DomainError('quota_exceeded',409)
+    # The whole batch fits the week or none of it starts, decided under the
+    # account lock like a single task (apps/core/services.py submit_job).
+    from apps.core.allowance import require_file_jobs
+    require_file_jobs(account,len(children))
     run=BatchRun.objects.create(account=account,quote=row,idempotency_key=key,request_hash=digest)
     BatchItem.objects.bulk_create([BatchItem(run=run,index=i,quote=q) for i,q in enumerate(children)])
     return run,True
@@ -191,15 +198,13 @@ def drain_batches(limit=10,stop=None):
         execute_batch(identifier,stop)
 
 def run_data(run):
-    rows=[];settled={meter:0 for meter in run.quote.meters};counts={}
+    rows=[];counts={}
     for item in run.children.select_related('quote','job','job__account').order_by('index'):
         status=item.job.status if item.job_id else item.status
         data=job_data(item.job) if item.job_id else None
         counts[status]=counts.get(status,0)+1
-        if data:
-            for k,v in data['settled_meters'].items():settled[k]=settled.get(k,0)+v
         rows.append({'index':item.index,'feature_id':item.quote.feature_id,'status':status,'job':data,'error':data['error'] if data else error_data(DomainError(item.error_code),run.account.locale) if item.error_code else None})
-    return {'id':str(run.id),'quote_id':str(run.quote_id),'feature_id':run.quote.feature_id,'status':run.status,'created_at':run.created_at,'completed_at':run.completed_at,'children':rows,'jobs':[r['job'] for r in rows if r['job']],'meters':run.quote.meters,'settled_meters':settled,'counts':counts}
+    return {'id':str(run.id),'quote_id':str(run.quote_id),'feature_id':run.quote.feature_id,'status':run.status,'created_at':run.created_at,'completed_at':run.completed_at,'children':rows,'jobs':[r['job'] for r in rows if r['job']],'counts':counts}
 
 @api(('POST',))
 def quotes(request):

@@ -1,8 +1,9 @@
-"""Free accounts join the owner's Telegram channels before using a service.
+"""Free and Plus accounts join the owner's Telegram channels before using a service.
 
-The owner lists the channels in the panel. A free account that has not joined
-every one of them cannot start a task — on the web, in the bot or in the mini
-app — and is shown the channels to join; paid plans are never asked.
+The owner lists the channels in the panel. A Free or Plus account that has not
+joined every one of them cannot start a task — on the web, in the bot or in the
+mini app — and is shown the channels to join. Not being asked is part of
+Premium.
 
 This is a growth rule, not a security boundary, so it fails open: when Telegram
 cannot be asked, or a channel is set up so the bot cannot see its members, the
@@ -91,13 +92,13 @@ def _token():
 
 
 def applies(account, config=None):
-    """Whether this account is asked to join: only free accounts, only when on."""
+    """Whether this account is asked to join: Free and Plus, never Premium, only when on."""
     from apps.commerce.services import refresh_account_entitlement
     config = config or _config()
     if not config['ready']:
         return False
     refresh_account_entitlement(account)
-    return account.plan == 'free'
+    return account.plan in ('free', 'plus')
 
 
 def status(account, refresh=False):

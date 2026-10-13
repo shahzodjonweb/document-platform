@@ -31,11 +31,11 @@ COPY = {
         "manual_rejected": "⚠️ We couldn't confirm payment {reference}: {reason}\nIf you did pay, write to us: /paysupport",
         "manual_reminder": "⏰ Your {plan} plan ends on {date}. To keep it, pay again: /plans",
         "myid": "Your Telegram ID: <code>{id}</code>",
-        'offers': '⭐ Plans & packs\nChoose one to see what’s included.',
+        'offers': '⭐ Plans\nChoose one to see what’s included.',
         'sandbox': '🧪 Test payment — no real Telegram Stars spent.',
-        'live': 'Pay with Telegram Stars. Your balance updates after confirmation.',
+        'live': 'Pay with Telegram Stars. Your plan switches on after confirmation.',
         'pay': '⭐ Pay in Telegram', 'simulate': '🧪 Try test payment',
-        'confirmed': '✅ Paid! Your plan and balance are ready.',
+        'confirmed': '✅ Paid! Your plan is on.',
         'unavailable': 'Payments aren’t ready yet. You can keep using your current plan.',
         'cancel': '⏸ Turn renewal off', 'resume': '▶️ Turn renewal on',
         'renewal_on': '🔄 Auto-renewal: on', 'renewal_off': '⏸ Auto-renewal: off',
@@ -43,10 +43,8 @@ COPY = {
         'updated': '✅ Updated. Your paid access stays the same.',
         'support': 'Need a hand with this payment? Tap Payment support.',
         'payment_support': '💬 Payment support', 'home': '🏠 Main menu', 'back': '← Back',
-        'plans': '⭐ Plans & packs', 'subscription': '💳 Subscription', 'balance': 'Included',
-        'file_tasks': 'File tasks', 'file_page_units': 'Page units', 'ai_credits': 'AI credits',
-        'task_pack': 'Extra file tasks', 'ai_pack': 'Extra AI credits', 'free': 'Free',
-        'price': 'Price', 'period': 'Renews every 30 days', 'once': 'One-time payment',
+        'plans': '⭐ Plans', 'subscription': '💳 Subscription', 'free': 'Free',
+        'price': 'Price', 'period': 'Renews every 30 days',
         'review': '🧾 Your purchase', 'expires': 'Checkout expires in 10 minutes.',
         'no_subscription': 'You’re on Free. No paid subscription to manage.',
         'plan_without_subscription': 'Your plan: <b>{plan}</b>. It isn’t a paid subscription, so there is nothing to renew or cancel.',
@@ -73,11 +71,11 @@ COPY = {
         "manual_rejected": "⚠️ {reference} to‘lovini tasdiqlay olmadik: {reason}\nAgar to‘lagan bo‘lsangiz, bizga yozing: /paysupport",
         "manual_reminder": "⏰ {plan} tarifingiz {date} kuni tugaydi. Davom ettirish uchun qayta to‘lang: /plans",
         "myid": "Telegram ID: <code>{id}</code>",
-        'offers': '⭐ Tariflar va paketlar\nTafsilotlarni ko‘rish uchun birini tanlang.',
+        'offers': '⭐ Tariflar\nTafsilotlarni ko‘rish uchun birini tanlang.',
         'sandbox': '🧪 Sinov to‘lovi — haqiqiy Telegram Stars sarflanmaydi.',
-        'live': 'Telegram Stars bilan to‘lang. To‘lov tasdiqlangach, balans yangilanadi.',
+        'live': 'Telegram Stars bilan to‘lang. To‘lov tasdiqlangach, tarifingiz yoqiladi.',
         'pay': '⭐ Telegram’da to‘lash', 'simulate': '🧪 Sinov to‘lovi',
-        'confirmed': '✅ To‘landi! Tarif va balansingiz tayyor.',
+        'confirmed': '✅ To‘landi! Tarifingiz yoqildi.',
         'unavailable': 'To‘lov hozircha ishlamayapti. Joriy tarifdan foydalanishingiz mumkin.',
         'cancel': '⏸ Uzaytirishni o‘chirish', 'resume': '▶️ Uzaytirishni yoqish',
         'renewal_on': '🔄 Avto-uzaytirish: yoqilgan', 'renewal_off': '⏸ Avto-uzaytirish: o‘chirilgan',
@@ -85,10 +83,8 @@ COPY = {
         'updated': '✅ Yangilandi. Pulli tarif muddati o‘zgarmadi.',
         'support': 'To‘lovda yordam kerakmi? «To‘lov bo‘yicha yordam»ni bosing.',
         'payment_support': '💬 To‘lov bo‘yicha yordam', 'home': '🏠 Bosh menyu', 'back': '← Orqaga',
-        'plans': '⭐ Tariflar va paketlar', 'subscription': '💳 Obuna', 'balance': 'Paketda',
-        'file_tasks': 'Fayl vazifalari', 'file_page_units': 'Sahifa birligi', 'ai_credits': 'AI kreditlari',
-        'task_pack': 'Qo‘shimcha fayl vazifalari', 'ai_pack': 'Qo‘shimcha AI kreditlari', 'free': 'Bepul',
-        'price': 'Narx', 'period': 'Har 30 kunda uzaytiriladi', 'once': 'Bir martalik to‘lov',
+        'plans': '⭐ Tariflar', 'subscription': '💳 Obuna', 'free': 'Bepul',
+        'price': 'Narx', 'period': 'Har 30 kunda uzaytiriladi',
         'review': '🧾 Xaridingiz', 'expires': 'To‘lov havolasi 10 daqiqa amal qiladi.',
         'no_subscription': 'Siz Bepul tarifdasiz. Pulli obunangiz yo‘q.',
         'plan_without_subscription': 'Tarifingiz: <b>{plan}</b>. Bu pullik obuna emas, shuning uchun uzaytirish yoki bekor qilish kerak emas.',
@@ -115,11 +111,11 @@ COPY = {
         "manual_rejected": "⚠️ Не удалось подтвердить платёж {reference}: {reason}\nЕсли вы оплатили, напишите нам: /paysupport",
         "manual_reminder": "⏰ Ваш тариф {plan} заканчивается {date}. Чтобы продолжить, оплатите снова: /plans",
         "myid": "Ваш Telegram ID: <code>{id}</code>",
-        'offers': '⭐ Тарифы и пакеты\nВыберите вариант, чтобы узнать подробности.',
+        'offers': '⭐ Тарифы\nВыберите тариф, чтобы узнать подробности.',
         'sandbox': '🧪 Тестовая оплата — настоящие Telegram Stars не списываются.',
-        'live': 'Оплата через Telegram Stars. Баланс обновится после подтверждения.',
+        'live': 'Оплата через Telegram Stars. Тариф включится после подтверждения.',
         'pay': '⭐ Оплатить в Telegram', 'simulate': '🧪 Тестовая оплата',
-        'confirmed': '✅ Оплачено! Тариф и баланс готовы.',
+        'confirmed': '✅ Оплачено! Тариф включён.',
         'unavailable': 'Оплата пока недоступна. Текущий тариф продолжает работать.',
         'cancel': '⏸ Отключить продление', 'resume': '▶️ Включить продление',
         'renewal_on': '🔄 Автопродление: включено', 'renewal_off': '⏸ Автопродление: выключено',
@@ -127,10 +123,8 @@ COPY = {
         'updated': '✅ Готово. Оплаченный срок не изменился.',
         'support': 'Нужна помощь? Нажмите «Помощь по оплате».',
         'payment_support': '💬 Помощь по оплате', 'home': '🏠 Главное меню', 'back': '← Назад',
-        'plans': '⭐ Тарифы и пакеты', 'subscription': '💳 Подписка', 'balance': 'Включено',
-        'file_tasks': 'Задачи с файлами', 'file_page_units': 'Единицы страниц', 'ai_credits': 'AI-кредиты',
-        'task_pack': 'Дополнительные задачи', 'ai_pack': 'Дополнительные AI-кредиты', 'free': 'Бесплатный',
-        'price': 'Цена', 'period': 'Продление каждые 30 дней', 'once': 'Разовый платёж',
+        'plans': '⭐ Тарифы', 'subscription': '💳 Подписка', 'free': 'Бесплатный',
+        'price': 'Цена', 'period': 'Продление каждые 30 дней',
         'review': '🧾 Ваша покупка', 'expires': 'Ссылка на оплату действует 10 минут.',
         'no_subscription': 'У вас бесплатный тариф. Платной подписки нет.',
         'plan_without_subscription': 'Ваш тариф: <b>{plan}</b>. Это не платная подписка, продлевать или отменять нечего.',
@@ -154,11 +148,13 @@ PLAN_COPY = {
         'head_free': "<b>{icon} {name}</b> — 0 so'm",
         'head': "<b>{icon} {name}</b> — {price} so'm / 30 days",
         'yours': ' · ✅ yours',
-        'tasks': '{n} file tasks every 30 days',
-        'tasks_daily': ' (up to {n} a day)',
-        'ai_daily': 'Up to {n} AI documents or decks a day',
-        'ai_unlimited': 'AI documents and decks with no daily limit',
-        'ai_credits': '{n} AI credits',
+        'ai_week': 'AI documents and decks: {n} a week',
+        'ai_unlimited': 'AI documents and decks: unlimited',
+        'edits': 'AI edits: {n} per file',
+        'edits_unlimited': 'AI edits: unlimited',
+        'files_week': 'File tools, Image → PDF included: {n} tasks a week',
+        'files_unlimited': 'File tools: unlimited',
+        'no_channels': 'No channel subscription needed',
         'ai_size': 'AI documents up to {pages} pages, decks up to {slides} slides',
         'files': 'Files up to {mib} MB, up to {pages} pages per task',
         'parallel': '{n} tasks at once',
@@ -172,11 +168,13 @@ PLAN_COPY = {
         'head_free': "<b>{icon} {name}</b> — 0 so'm",
         'head': "<b>{icon} {name}</b> — 30 kun uchun {price} so'm",
         'yours': ' · ✅ sizniki',
-        'tasks': '30 kunda {n} ta fayl vazifasi',
-        'tasks_daily': ' (kuniga {n} tagacha)',
-        'ai_daily': 'Kuniga {n} tagacha AI hujjat yoki taqdimot',
-        'ai_unlimited': 'AI hujjat va taqdimotlar — kunlik cheklovsiz',
-        'ai_credits': '{n} AI kredit',
+        'ai_week': 'AI hujjat va taqdimotlar: haftasiga {n} ta',
+        'ai_unlimited': 'AI hujjat va taqdimotlar: cheksiz',
+        'edits': 'AI tahrirlar: har bir faylga {n} ta',
+        'edits_unlimited': 'AI tahrirlar: cheksiz',
+        'files_week': 'Fayl vositalari, Rasmlardan PDF ham: haftasiga {n} ta vazifa',
+        'files_unlimited': 'Fayl vositalari: cheksiz',
+        'no_channels': 'Kanallarga obuna bo‘lish shart emas',
         'ai_size': 'AI hujjat {pages} sahifagacha, taqdimot {slides} slaydgacha',
         'files': 'Fayl {mib} MB gacha, bitta vazifada {pages} sahifagacha',
         'parallel': 'Bir vaqtda {n} ta vazifa',
@@ -190,12 +188,14 @@ PLAN_COPY = {
         'head_free': '<b>{icon} {name}</b> — 0 сум',
         'head': '<b>{icon} {name}</b> — {price} сум за 30 дней',
         'yours': ' · ✅ ваш',
-        'tasks': '{n} задач с файлами за 30 дней',
-        'tasks_daily': ' (до {n} в день)',
-        'ai_daily': 'До {n} AI-документов или презентаций в день',
-        'ai_unlimited': 'AI-документы и презентации без дневного лимита',
-        'ai_credits': '{n} AI-кредитов',
-        'ai_size': 'AI-документ до {pages} страниц, презентация до {slides} слайдов',
+        'ai_week': 'ИИ-документы и презентации: {n} в неделю',
+        'ai_unlimited': 'ИИ-документы и презентации: без ограничений',
+        'edits': 'ИИ-правки: {n} на каждый файл',
+        'edits_unlimited': 'ИИ-правки: без ограничений',
+        'files_week': 'Задачи с файлами, включая PDF из фото: {n} в неделю',
+        'files_unlimited': 'Задачи с файлами: без ограничений',
+        'no_channels': 'Без обязательной подписки на каналы',
+        'ai_size': 'ИИ-документ до {pages} страниц, презентация до {slides} слайдов',
         'files': 'Файлы до {mib} МБ, до {pages} страниц в задаче',
         'parallel': 'Одновременно задач: {n}',
         'workflows': 'Сохранённых процессов: {n}',
@@ -208,6 +208,10 @@ PLAN_ICONS = {'free': '🆓', 'plus': '⭐', 'premium': '💎'}
 
 def plan_name(account, plan):
     return copy(account, 'free') if plan == 'free' else plan.title()
+
+
+def weekly(words, key, unlimited, value):
+    return words[unlimited] if value is None else words[key].format(n=money(int(value)))
 
 
 def plans_overview(account):
@@ -227,12 +231,12 @@ def plans_overview(account):
             icon=PLAN_ICONS[plan], name=html.escape(plan_name(account, plan)), price=money(price or 0))
         if plan == current:
             head += words['yours']
-        tasks = words['tasks'].format(n=count(limits['file_tasks']))
-        if limits.get('daily_file_tasks'):
-            tasks += words['tasks_daily'].format(n=count(limits['daily_file_tasks']))
-        daily_ai = limits.get('daily_ai_documents')
-        ai = words['ai_daily'].format(n=count(daily_ai)) if daily_ai else words['ai_unlimited']
-        lines = [tasks, f"{ai} · {words['ai_credits'].format(n=count(limits['ai_credits']))}",
+        # The weekly limits first, as the owner's table puts them (a limit that
+        # is not set is unlimited), then the channels, which Premium never asks for.
+        lines = [weekly(words, 'ai_week', 'ai_unlimited', limits.get('weekly_ai_documents')),
+                 weekly(words, 'edits', 'edits_unlimited', limits.get('edits_per_file')),
+                 weekly(words, 'files_week', 'files_unlimited', limits.get('weekly_file_jobs')),
+                 *([words['no_channels']] if plan == 'premium' else []),
                  words['ai_size'].format(pages=limits['max_generated_pdf_pages'], slides=limits['max_generated_slides']),
                  words['files'].format(mib=limits['max_file_mib'], pages=count(limits['max_pages_per_job']))]
         extras = [words['parallel'].format(n=limits['concurrent_jobs'])] if limits.get('concurrent_jobs', 1) > 1 else []
@@ -249,9 +253,8 @@ def copy(account, key):
 
 def offer_name(account, offer):
     value = services.offer_data(offer) if not isinstance(offer, dict) else offer
-    if value.get('plan'):
-        return value['plan'].title()
-    return copy(account, 'ai_pack' if value['kind'] == 'ai_pack' else 'task_pack')
+    # Only plans are sold; an invoice for a pack made before then keeps its own name.
+    return value['plan'].title() if value.get('plan') else value.get('name', '')
 
 
 async def button(account, label, action, payload=None):
@@ -369,6 +372,12 @@ async def receive_receipt(message, account, payment_id, raw):
 async def show_invoice(message, account, offer_id, key):
     from .bot import callback
     await leave_input_prompt(account)
+    # Packs are no longer sold, but their old buttons stay in chats and people
+    # still type /buy ai100. Those open the plans on sale today rather than
+    # say payments are unavailable, which they are not.
+    offers = await sync_to_async(services.available_offers)(account)
+    if offer_id not in {offer.offer_id for offer in offers}:
+        return await show_offers(message, account)
     invoice, _ = await sync_to_async(services.create_invoice)(account, offer_id, key)
     invoice = await sync_to_async(services.present_invoice)(invoice)
     if invoice.sandbox:
@@ -376,11 +385,8 @@ async def show_invoice(message, account, offer_id, key):
     else:
         pay = InlineKeyboardButton(text=copy(account, 'pay'), url=invoice.invoice_url)
     lines = [f'<b>{copy(account, "review")}</b>', html.escape(offer_name(account, invoice.snapshot)),
-             f'{copy(account, "price")}: ⭐ {invoice.amount_xtr} Telegram Stars',
-             copy(account, 'period' if invoice.snapshot['kind'] == 'subscription' else 'once'),
-             '', copy(account, 'balance') + ':']
-    lines.extend(f'• {copy(account, meter)}: {quantity:,}' for meter, quantity in invoice.snapshot['quantities'].items() if quantity)
-    lines.extend(['', copy(account, 'sandbox' if invoice.sandbox else 'live'), copy(account, 'expires')])
+             f'{copy(account, "price")}: ⭐ {invoice.amount_xtr} Telegram Stars', copy(account, 'period'),
+             '', copy(account, 'sandbox' if invoice.sandbox else 'live'), copy(account, 'expires')]
     rows = [[pay], *(await navigation(account, 'plans'))]
     await message.answer('\n'.join(lines), parse_mode='HTML', reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
 

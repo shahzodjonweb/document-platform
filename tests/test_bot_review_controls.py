@@ -208,11 +208,15 @@ def test_once_generate_is_tapped_the_setup_screen_cannot_reopen_the_review(custo
     from apps.studio.domain import generation_quote
     from tests.test_platform import login_client
     save_config('ai', {'mode': 'local_fixture'})
+    from telegram.commands import COMMANDS_VERSION, MENU_KEY
     review = describe(customer, 'Tides\n\nThe moon pulls the sea.\n\nIt happens twice a day.', service='Slides on a topic')
-    assert BotConversation.objects.get(telegram_user_id=customer.telegram_user_id).review
+    shown = BotConversation.objects.get(telegram_user_id=customer.telegram_user_id).review
+    # The chat's menu version shares the field and survives the review being stored.
+    assert shown['draft_id'] and shown[MENU_KEY] == COMMANDS_VERSION
     tap(customer, review, 'Generate')
     # The review became the job's status; it is never redrawn as a review again.
-    assert BotConversation.objects.get(telegram_user_id=customer.telegram_user_id).review == {}
+    # Only the menu version stays.
+    assert BotConversation.objects.get(telegram_user_id=customer.telegram_user_id).review == {MENU_KEY: COMMANDS_VERSION}
     # A deck still queued runs from its draft as quoted: the setup screen may not change it.
     describe(customer, 'Volcanoes\n\nMagma rises.\n\nIt erupts.', service='Slides on a topic')
     draft = GenerationDraft.objects.filter(account=customer, feature_id=SLIDES).latest('created_at')
@@ -251,3 +255,34 @@ def test_a_queued_deck_cannot_be_changed_and_a_made_one_cannot_be_restyled(custo
     assert newer['draft_id'] != str(draft.id)
     forget_review(customer, draft.id)
     assert BotConversation.objects.get(telegram_user_id=customer.telegram_user_id).review == newer
+
+
+def compress(customer):
+    """A PDF sent and Compress chosen: the file task's screen, ready to start, as (text, labels)."""
+    from django.core.files.uploadedfile import SimpleUploadedFile
+    from tests.test_manual_payments import pdf
+    sent = dispatch_local(customer, uploaded=SimpleUploadedFile('notes.pdf', pdf(), 'application/pdf'))
+    result = tap(customer, sent, 'Compress')
+    shown = [message for message in result['messages'] if message.get('direction') != 'inbound'][-1]
+    return result, shown['text'], [button['label'] for row in shown['buttons'] for button in row]
+
+
+def test_a_file_task_on_free_says_where_the_week_stands(free_customer):
+    _, words, buttons_shown = compress(free_customer)
+    assert 'File tools this week: 0 of 15' in words, words
+    assert 'Will use' not in words and 'Page units' not in words
+    assert '▶️ Start' in buttons_shown
+
+
+def test_a_used_up_week_offers_the_plans_in_place_of_start(free_customer):
+    from operations import plans as plan_settings
+    plan_settings.save('free', {'weekly_file_jobs': 1})
+    tap(free_customer, compress(free_customer)[0], 'Start')
+    _, words, buttons_shown = compress(free_customer)
+    assert 'File tools this week: 1 of 1' in words and 'file tasks are used up' in words, words
+    assert '⭐ Plans' in buttons_shown and '▶️ Start' not in buttons_shown
+
+
+def test_unlimited_file_tools_show_no_count(customer):
+    _, words, buttons_shown = compress(customer)
+    assert 'File tools this week' not in words and '▶️ Start' in buttons_shown

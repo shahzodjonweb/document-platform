@@ -25,7 +25,7 @@ from google.auth.crypt import RSASigner
 from apps.core import customer_auth as auth
 from apps.core.errors import DomainError
 from apps.core.identity import approve_challenge, digest, resolve_account
-from apps.core.models import Account, AuthRateLimit, EmailChallenge, GoogleChallenge, UsageLedger
+from apps.core.models import Account, AuthRateLimit, EmailChallenge, GoogleChallenge
 from apps.core.services import create_quote, execute_job, submit_job
 from operations.integrations import save_config
 from tests.test_platform import upload
@@ -124,7 +124,7 @@ def test_email_signup_verification_login_preserves_customer_files_and_usage():
     job, _ = submit_job(account, quote.pk, 'verified-email-document-job')
     assert execute_job(job.pk).status == 'succeeded'
     before = client.get('/api/v1/usage').json()
-    assert UsageLedger.objects.filter(account=account, kind='consume').exists()
+    assert before['file_jobs']['used'] == 1
     client.delete('/api/v1/auth/session')
     assert client.get('/api/v1/me').status_code == 401
     login = post(client, 'email/login', {'email':'OWNER@example.com', 'password':PASSWORD})

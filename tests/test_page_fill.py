@@ -203,11 +203,10 @@ def test_a_model_writing_over_the_target_still_gets_the_pages_that_were_asked_fo
     A model told to fill a page overshoots, and because every section gets the
     same instruction they overshoot together — so a five-page document came back
     in ten, one section spilling onto a second page each time. The page count is
-    what was asked for and billed for, so the renderer holds it: the document is
+    what was asked for, so the renderer holds it: the document is
     set tighter, and only when that is not enough is a section shortened, which
     the customer is told about.
     """
-    from apps.core.models import UsageLedger
     from apps.studio import provider
     customer = live(settings)
     monkeypatch.setattr(provider, 'generate', lambda *args, **kwargs: (
@@ -223,9 +222,6 @@ def test_a_model_writing_over_the_target_still_gets_the_pages_that_were_asked_fo
     assert job.artifacts.get().file.page_count == 5, 'the count asked for is the count delivered'
     assert ('shortened_to_fit' in job.warnings) is shortening, job.warnings
     assert 'longer_than_quoted' not in job.warnings
-    consumed = sum(UsageLedger.objects.filter(job=job, kind='consume', meter='ai_credits')
-                   .values_list('amount', flat=True))
-    assert consumed <= quote.meters['ai_credits'], 'billed at the quote, never above it'
 
 
 def test_a_long_document_is_given_a_lease_long_enough_to_finish_it(settings, monkeypatch):

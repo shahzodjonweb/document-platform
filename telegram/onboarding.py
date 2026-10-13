@@ -18,6 +18,7 @@ from django.utils import timezone
 
 from apps.core import funnel
 from apps.core.models import Account, AuthChallenge, BotCallback, BotConversation
+from .commands import MENU_KEY, refresh_chat_commands
 from .verification import PREFIX as VERIFICATION_PREFIX, answer_verification, require_verification
 
 
@@ -44,13 +45,21 @@ MAX_PENDING_UPLOADS = 10
 PICKER_LIFETIME = timedelta(minutes=30)
 
 
-def chosen_locale(telegram_user_id):
-    """Return only a language explicitly selected in this bot, never a guess."""
-    return BotConversation.objects.filter(
+def chosen_chat(telegram_user_id):
+    """(the language explicitly selected in this bot or None, the menu version
+    this chat was last given or None), read together: the gate needs both on
+    every update, so the menu check costs no extra query."""
+    row = BotConversation.objects.filter(
         telegram_user_id=telegram_user_id,
         language_selected_at__isnull=False,
         locale__in=LOCALES,
-    ).values_list('locale', flat=True).first()
+    ).values_list('locale', f'review__{MENU_KEY}').first()
+    return row or (None, None)
+
+
+def chosen_locale(telegram_user_id):
+    """Return only a language explicitly selected in this bot, never a guess."""
+    return chosen_chat(telegram_user_id)[0]
 
 
 def _is_private(message, user):
@@ -353,7 +362,7 @@ class LanguageGate(BaseMiddleware):
             user = event.from_user
             if not user or user.is_bot:
                 return None
-            locale = await sync_to_async(chosen_locale)(user.id)
+            locale, menu = await sync_to_async(chosen_chat)(user.id)
             if not _is_private(event, user):
                 return await event.answer(PRIVATE_TEXT[locale or 'en'])
             pending = await sync_to_async(_pending_for)(event)
@@ -373,12 +382,13 @@ class LanguageGate(BaseMiddleware):
                 return None
             if active_link:
                 return await self.resume_link(event, user, locale, active_link)
+            await refresh_chat_commands(data.get('bot') or event.bot, user.id, locale, menu)
             data['bot_locale'] = locale
             return await handler(event, data)
 
         if isinstance(event, CallbackQuery):
             user = event.from_user
-            locale = await sync_to_async(chosen_locale)(user.id)
+            locale, menu = await sync_to_async(chosen_chat)(user.id)
             if not _is_private(event.message, user):
                 return await event.answer(PRIVATE_TEXT[locale or 'en'], show_alert=True)
             if (event.data or '').startswith(LANGUAGE_PREFIX):
@@ -407,6 +417,7 @@ class LanguageGate(BaseMiddleware):
                 if not allowed:
                     await event.answer()
                     return await self.resume_link(event.message, user, locale, active_link)
+            await refresh_chat_commands(data.get('bot') or event.bot, user.id, locale, menu)
             data['bot_locale'] = locale
             return await handler(event, data)
         return await handler(event, data)
