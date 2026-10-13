@@ -108,10 +108,10 @@ def test_a_refusal_after_the_description_is_said_once_and_the_description_is_kep
     assert 'Ready to start' in chat.last() and 'tides' in chat.last(), 'what they wrote is priced, not asked for again'
 
 
-def test_the_daily_ai_limit_is_said_once(customer, telegram, settings):
+def test_the_weekly_ai_limit_is_said_once(customer, telegram, settings):
     from operations import plans as plan_settings
     settings.ENABLE_BETA_TOOLS = True
-    plan_settings.save('free', {'daily_ai_documents': 1})
+    plan_settings.save('free', {'weekly_ai_documents': 1})
     chat = Chat(customer)
     chat.do(text='/start')
     chat.tap('ai_tool', feature_id='ai.pdf_topic')
@@ -120,7 +120,8 @@ def test_the_daily_ai_limit_is_said_once(customer, telegram, settings):
     chat.do(text='/start')
     chat.tap('ai_tool', feature_id='ai.pdf_topic')
     assert chat.do(text='Another two page note about the moon') == 1, 'one message: the limit, not the question again'
-    assert 'free plan' in chat.last()
+    # A Telegram-only account's clock is not known: the week's start is named.
+    assert 'This week’s AI documents are used up' in chat.last() and 'Monday 00:00, Tashkent time' in chat.last()
     assert BotConversation.objects.get(pk=customer.telegram_user_id).state == ''
 
 

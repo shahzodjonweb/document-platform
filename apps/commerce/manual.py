@@ -5,9 +5,9 @@ in their own bank app and uploads the receipt. The owner checks their bank app
 and approves or rejects. Nothing is granted until they approve.
 
 Approval writes the same records a Telegram payment does — Invoice, Payment,
-Subscription, SubscriptionPeriod and one grant per meter — tagged `manual`. So
-the plan, its full allowance, "paid until" and a refund that takes it back all
-work through the code every paid plan already uses.
+Subscription and SubscriptionPeriod — tagged `manual`. So the plan, its weekly
+limits, "paid until" and a refund that takes it back all work through the code
+every paid plan already uses.
 
 A receipt is evidence for a person to look at, not proof: the owner approves
 only after seeing the money arrive. What this module guarantees is narrower —
@@ -27,6 +27,7 @@ from apps.core.errors import DomainError
 
 PLANS = ('plus', 'premium')
 RANK = {'free': 0, 'plus': 1, 'premium': 2}
+PERIOD_DAYS = 30
 AWAIT_HOURS = 48
 RECEIPT_BYTES = 10 * 1024 * 1024
 RECEIPT_PIXELS = 40_000_000
@@ -57,7 +58,7 @@ def options():
     """What a customer may choose right now. Automatic payment is not built yet."""
     config = _config()
     offered = prices() if config['ready'] else {}
-    return {'enabled': bool(offered), 'currency': 'UZS', 'period_days': 30,
+    return {'enabled': bool(offered), 'currency': 'UZS', 'period_days': PERIOD_DAYS,
             'plans': [{'plan': plan, 'price': price} for plan, price in offered.items()],
             'automatic': {'available': False}}
 
@@ -96,7 +97,11 @@ def create(account, plan, channel='web'):
         existing.save(update_fields=['status'])
         existing = None
     if existing:
-        if existing.plan == plan:
+        # A request opened at another price, with nothing sent yet, is opened
+        # again at today's: the customer has just read the price on the plans
+        # page, and the card screen must not ask for a different one. A receipt
+        # already sent at the old price waits for the owner (period_days).
+        if existing.plan == plan and not (existing.status == 'awaiting' and existing.amount != offered[plan]):
             return existing, False
         # A receipt already sent waits for the owner: one payment at a time.
         if existing.status == 'submitted':
@@ -240,6 +245,21 @@ def _require_finance(actor):
         raise DomainError('permission_denied', 403)
 
 
+def period_days(payment):
+    """Whole days of the plan that approving this transfer gives: 30, or more.
+
+    A request opened before a price fell asked for the old amount, and the
+    customer may well have sent it. That money buys time at today's price
+    rather than one ordinary period, so an overpayment becomes a longer one.
+    A price that rose since, or a plan no longer on sale, never gives less
+    than the 30 days the customer was promised.
+    """
+    price = prices().get(payment.plan)
+    if not price or payment.amount <= price:
+        return PERIOD_DAYS
+    return max(PERIOD_DAYS, PERIOD_DAYS * payment.amount // price)
+
+
 def _period_start(account, plan, now):
     """When a newly paid period starts.
 
@@ -256,11 +276,9 @@ def _period_start(account, plan, now):
 
 @transaction.atomic
 def approve(payment_id, actor, note=''):
-    """The owner saw the money arrive: the plan starts, with its full allowance."""
-    from apps.core.models import Account, UsageGrant
-    from apps.core.policy import METERS, limits_for_plan
-    from .models import (Invoice, ManualPayment, OfferVersion, Payment, PaymentGrant, Subscription,
-                         SubscriptionPeriod)
+    """The owner saw the money arrive: the plan starts, with its weekly limits."""
+    from apps.core.models import Account
+    from .models import Invoice, ManualPayment, OfferVersion, Payment, Subscription, SubscriptionPeriod
     from .services import PERIOD, active_period, offer_data, refresh_account_entitlement
     _require_finance(actor)
     payment = ManualPayment.objects.select_for_update().filter(pk=payment_id).first()
@@ -272,24 +290,23 @@ def approve(payment_id, actor, note=''):
         raise DomainError('manual_payment_closed', 409)
     account = Account.objects.select_for_update().get(pk=payment.account_id)
     now = timezone.now()
-    # The plan as the owner has set it today is what this payment buys, and
-    # it is frozen here: a later change to the plan does not reach back.
-    allowance = limits_for_plan(payment.plan)
-    quantities = {meter: int(allowance.get(meter) or 0) for meter in METERS}
-    signature = hashlib.sha256(repr(sorted(quantities.items())).encode()).hexdigest()[:10]
+    # A payment buys the plan, not a copy of its numbers: the weekly limits are
+    # read from the plan as it stands, so one offer per plan and price is enough.
     offer, _ = OfferVersion.objects.get_or_create(
-        id=f'manual:{payment.plan}:{payment.amount}:{signature}',
-        defaults={'offer_id': f'manual_{payment.plan}', 'version': 'manual-v1', 'kind': 'subscription',
+        id=f'manual:{payment.plan}:{payment.amount}',
+        defaults={'offer_id': f'manual_{payment.plan}', 'version': 'manual-v2', 'kind': 'subscription',
                   'plan': payment.plan, 'name': f'{payment.plan.title()} · card transfer', 'price_xtr': None,
-                  'period_seconds': PERIOD, 'quantities': quantities, 'sandbox': False, 'enabled': False})
-    snapshot = {**offer_data(offer), 'currency': payment.currency, 'price': payment.amount, 'provider': 'manual'}
+                  'period_seconds': PERIOD, 'sandbox': False, 'enabled': False})
+    days = period_days(payment)
+    snapshot = {**offer_data(offer), 'currency': payment.currency, 'price': payment.amount, 'provider': 'manual',
+                'period_seconds': days * 86400, 'period_days': days}
     charge = f'manual:{payment.id}'
     invoice = Invoice.objects.create(
         account=account, offer=offer, snapshot=snapshot, amount_xtr=payment.amount, currency=payment.currency,
         status='paid', idempotency_key=charge, request_hash=hashlib.sha256(charge.encode()).hexdigest(),
         payload_hash='', sandbox=False, provider='manual', expires_at=now, paid_at=now)
     start, extension = _period_start(account, payment.plan, now)
-    end = start + timedelta(seconds=PERIOD)
+    end = start + timedelta(days=days)
     paid = Payment.objects.create(
         account=account, invoice=invoice, provider_charge_id=charge, amount_xtr=payment.amount,
         currency=payment.currency, kind='subscription', plan=payment.plan, is_renewal=extension,
@@ -303,13 +320,6 @@ def approve(payment_id, actor, note=''):
             provider='manual')
     period = SubscriptionPeriod.objects.create(subscription=subscription, payment=paid, account=account,
                                                plan=payment.plan, starts_at=start, ends_at=end, sandbox=False)
-    for meter, quantity in quantities.items():
-        if not quantity:
-            continue
-        grant = UsageGrant.objects.create(account=account, meter=meter, source='included',
-                                          source_id=f'payment:{charge}:{meter}', quantity=quantity,
-                                          valid_from=start, expires_at=end)
-        PaymentGrant.objects.create(payment=paid, grant=grant)
     current = active_period(account) or period
     # An earlier manual period may still run past this one's start; a lapsed
     # Telegram subscription's dates mean nothing to it.
@@ -327,7 +337,7 @@ def approve(payment_id, actor, note=''):
     refresh_account_entitlement(account)
     _notice(payment, 'approved')
     _action(account, actor, 'manual_payment.approved', payment,
-            {'plan': payment.plan, 'amount': payment.amount, 'currency': payment.currency,
+            {'plan': payment.plan, 'amount': payment.amount, 'currency': payment.currency, 'days': days,
              'starts_at': start.isoformat(), 'ends_at': end.isoformat()}, reason=note)
     return payment
 
@@ -381,7 +391,7 @@ def reject(payment_id, actor, reason):
 
 
 def refund(payment_id, actor, reason):
-    """The owner returned the money: the plan and its allowance are taken back."""
+    """The owner returned the money: the plan is taken back."""
     from .models import ManualPayment
     from .services import refund_payment
     payment = ManualPayment.objects.select_related('payment').filter(pk=payment_id).first()

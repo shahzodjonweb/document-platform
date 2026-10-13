@@ -137,6 +137,17 @@ def test_a_change_request_to_an_older_slides_draft_comes_back_as_a_deck(settings
                             for i, section in enumerate(stored['content']['sections'])]}
     draft.encrypted_data = pack({**stored, 'output_format': 'pdf', 'content': written})
     draft.save(update_fields=['encrypted_data'])
+    # Only a file that was actually made can be edited, so record the job that made it.
+    import uuid
+    from datetime import timedelta
+    from django.utils import timezone
+    from apps.core.models import Job, Quote
+    made = {'generation_draft_id': str(draft.id)}
+    quote = Quote.objects.create(account=customer, feature_id=SLIDES, parameters=made, input_ids=[],
+                                 policy={'plan': 'free'}, expires_at=timezone.now() + timedelta(hours=1))
+    Job.objects.create(account=customer, quote=quote, feature_id=SLIDES, parameters=made, input_ids=[],
+                       policy={'plan': 'free'}, idempotency_key=uuid.uuid4().hex,
+                       request_hash=uuid.uuid4().hex, status='succeeded')
 
     revised = create_draft(customer, {'prompt': 'Make slide two punchier.',
                                       'options': {'revise_draft_id': str(draft.id)}})

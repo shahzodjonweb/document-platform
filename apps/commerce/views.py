@@ -108,7 +108,7 @@ def referrals(request):
     qualified=sent.filter(status='qualified').count()
     from .providers import telegram_config
     username=telegram_config().get('username')
-    return {'code':code.code,'url':f'https://t.me/{username}?start=ref_{code.code}' if username else None,'rewards_count':qualified,'pending_count':sent.filter(status='pending').count(),'awarded_credits':qualified*10,'monthly_cap':5,'expires_in_days':30,'qualification':'first_successful_task','sandbox':request.account.is_test}
+    return {'code':code.code,'url':f'https://t.me/{username}?start=ref_{code.code}' if username else None,'rewards_count':qualified,'pending_count':sent.filter(status='pending').count(),'monthly_cap':5,'expires_in_days':30,'qualification':'first_successful_task','sandbox':request.account.is_test}
 
 @endpoint(('POST',))
 def deliver_artifact(request,artifact_id):

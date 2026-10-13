@@ -11,7 +11,8 @@ from django.utils import timezone
 from pypdf import PdfReader
 from pptx import Presentation
 from apps.core.errors import DomainError
-from apps.core.models import FileAsset,Job,UsageLedger
+from apps.core.allowance import ai_documents_this_week,file_jobs_this_week
+from apps.core.models import FileAsset,Job
 from apps.core.services import submit_job,execute_job,storage_path
 from apps.studio import workflows,provider
 from apps.studio.domain import create_draft,update_draft,generation_quote,unpack,draft_data
@@ -62,7 +63,7 @@ def test_workflow_once_even_after_definition_changes(settings):
     row.version+=1;row.save(update_fields=['version'])
     same,token=workflows.start(a,row.id,body,'once-workflow-key')
     assert same.id==run.id and token is None and Job.objects.count()==2
-    assert UsageLedger.objects.filter(kind='consume',meter='file_tasks').count()==2
+    assert file_jobs_this_week(a)==2,'each step is one file task, counted once'
     with pytest.raises(DomainError,match='idempotency_conflict'):
         workflows.start(a,row.id,{**body,'version':9},'once-workflow-key')
 
@@ -78,7 +79,7 @@ def test_workflow_crash_replays_existing_settled_child(settings,monkeypatch):
     monkeypatch.setattr(workflows,'execute_job',real)
     run,token=workflows.start(a,row.id,body,'crash-workflow-key');run=workflows.execute(run,token)
     assert run.status=='succeeded' and Job.objects.count()==2
-    assert UsageLedger.objects.filter(kind='consume',meter='file_tasks').count()==2
+    assert file_jobs_this_week(a)==2
 
 
 def test_workflow_expired_tampered_and_foreign_confirmation(settings,monkeypatch):
@@ -128,13 +129,13 @@ def test_provider_exact_schema_token_budget_and_no_redirect(monkeypatch):
     with pytest.raises(DomainError,match='generation_limit'):provider.enforce_input_budget(cfg,oversized,'ai.pdf_topic',4000)
 
 
-def test_a_question_nobody_asked_for_is_dropped_and_never_charged_for(settings,monkeypatch):
+def test_a_question_nobody_asked_for_is_dropped_not_fatal(settings,monkeypatch):
     """An unasked-for question must not cost the customer their document.
 
     This is the failure a paying customer actually hit: the description named no
     questions, so none were quoted, the model added one anyway, and the whole
     paid job was destroyed with `generation_limit`. The document is what was
-    bought — the extra question is dropped, said out loud, and not billed.
+    asked for — the extra question is dropped and said out loud.
     """
     a=paid(settings,account());live_configuration();draft=create_draft(a,{'feature_id':'ai.pdf_topic','source_text':'Hello','options':{'length':1,'question_count':0}})
     quote=generation_quote(a,draft.id,draft.version)
@@ -143,10 +144,8 @@ def test_a_question_nobody_asked_for_is_dropped_and_never_charged_for(settings,m
     job,_=submit_job(a,quote.id,'provider-overrun');job=execute_job(job.id)
     assert job.status=='succeeded',job.error_code
     assert 'questions_trimmed' in job.warnings and job.artifacts.exists()
-    # Never more than was reserved, and nothing at all for the dropped question.
-    consumed=sum(UsageLedger.objects.filter(job=job,kind='consume',meter='ai_credits').values_list('amount',flat=True))
-    assert 0<consumed<=quote.meters['ai_credits']
-    assert consumed==job.settled_meters['ai_credits']
+    # One document of the week, whatever the model added.
+    assert ai_documents_this_week(a)==1
     # And it is gone from the draft, so a later change request cannot resurrect it.
     from apps.studio.domain import draft_data
     draft.refresh_from_db();assert draft_data(draft)['content']['questions']==[]
@@ -215,12 +214,12 @@ def test_a_document_built_from_a_source_must_quote_it_exactly(settings,monkeypat
     q=generation_quote(a,draft.id,1);job,_=submit_job(a,q.id,'source-cite-'+case);job=execute_job(job.id)
     if case=='forged':
         assert job.status=='failed' and job.error_code=='invalid_source_citation'
-        assert not UsageLedger.objects.filter(job=job,kind='consume').exists()
+        assert ai_documents_this_week(a)==0,'a refused document gives its place back'
     else:
         assert job.status=='succeeded',job.error_code
         text=''.join(p.extract_text() for p in PdfReader(storage_path(job.artifacts.get().file.object_key)).pages)
         assert 'north' in text and 'p. 1' in text
-        assert job.settled_meters['ai_credits']<=q.meters['ai_credits']
+        assert ai_documents_this_week(a)==1
 
 
 def test_provider_completion_does_not_overwrite_concurrent_draft_edit(settings,monkeypatch):

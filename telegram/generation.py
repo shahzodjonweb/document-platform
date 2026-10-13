@@ -43,7 +43,7 @@ def sources(account, file_ids):
 
 
 def throttle(account, limit=10):
-    """Authoring is uncharged but not free of work; cap it per account."""
+    """Authoring counts against no limit but is not free of work; cap it per account."""
     key = f'rate:bot_generation:{account.pk}'
     count = cache.get(key, 0)
     if count >= limit:
@@ -53,7 +53,7 @@ def throttle(account, limit=10):
 
 @transaction.atomic
 def build(account, feature_id, description, file_ids=()):
-    """Author a draft from one chat message. Nothing is charged."""
+    """Author a draft from one chat message. Nothing is counted yet."""
     available(account, feature_id)
     text = (description or '').strip()
     ids = sources(account, list(file_ids))
@@ -79,11 +79,36 @@ def revise(account, draft_id, request):
     text = (request or '').strip()
     if not text:
         raise DomainError('prompt_required')
-    from apps.studio.domain import revision_source
-    source, _ = revision_source(account, draft_id)
+    source = editable(account, draft_id)
     require(account, source.feature_id)
     throttle(account)
     return create_draft(account, {'prompt': text, 'options': {'revise_draft_id': str(source.id)}})
+
+
+def editable(account, draft_id):
+    """The document a change would apply to; edit_limit when its file has no edits left.
+
+    Asked before a change is written and again before its draft is made, so a
+    file whose edits are used up never leaves a draft that cannot be generated.
+    """
+    from apps.core.allowance import require_edit
+    from apps.studio.domain import edit_root, revision_source
+    source, original = revision_source(account, draft_id)
+    require_edit(account, edit_root(original, source.id))
+    return source
+
+
+def edits_used(draft):
+    """(edits made to this draft's file, the plan's edits per file); None is unlimited.
+
+    For an edit, the file is the document it changes: the edit on screen is not
+    counted until it is generated.
+    """
+    from apps.core.allowance import edits_of
+    from apps.core.policy import plan_limits
+    from apps.studio.domain import edit_root, unpack
+    root = edit_root(unpack(draft.encrypted_data), draft.id)
+    return edits_of(draft.account, root), plan_limits(draft.account).get('edits_per_file')
 
 
 def revisable(account, draft_id):
@@ -168,7 +193,7 @@ def next_plan(account, limit, needed):
 
 
 def _changed(account, draft_id, change):
-    """The draft redone with `change(data)` applied to its fields, and its new price."""
+    """The draft redone with `change(data)` applied to its fields, and its new quote."""
     from apps.studio.domain import unpack, update_draft
     draft = GenerationDraft.objects.filter(account=account, id=draft_id, expires_at__gt=timezone.now()).first()
     if not draft:
@@ -378,7 +403,7 @@ def retry(account, callback_token):
 
 
 def start(account, quote_id):
-    """Quote-bound key, so a double tap on Generate cannot charge twice."""
+    """Quote-bound key, so a double tap on Generate cannot start, or count, twice."""
     job, _ = submit_job(account, quote_id, f'bot:quote:{quote_id}', 'bot')
     return job
 

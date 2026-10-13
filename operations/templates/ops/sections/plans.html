@@ -12,10 +12,9 @@
   <section class="panel plan-panel">
     <h2>{{ plan.title }}{% if plan.edited %} <span class="badge info">{{ t.edited }}</span>{% endif %}</h2>
     <p class="plan-price">{% if plan.price_uzs %}{{ plan.price_uzs|money }} <span>so'm · 30 {{ t.days }}</span>{% elif plan.id == 'free' %}0 <span>so'm</span>{% else %}<span>{{ t.not_for_sale }}</span>{% endif %}</p>
-    <div class="health-row"><span>{{ t.field_file_tasks }}</span><strong>{{ plan.file_tasks|money }}</strong></div>
-    <div class="health-row"><span>{{ t.field_file_page_units }}</span><strong>{{ plan.file_page_units|money }}</strong></div>
-    <div class="health-row"><span>{{ t.field_ai_credits }}</span><strong>{{ plan.ai_credits|money }}</strong></div>
-    <div class="health-row"><span>{{ t.field_daily_ai_documents }}</span><strong>{{ plan.daily_ai_documents|default_if_none:'∞' }}</strong></div>
+    <div class="health-row"><span>{{ t.field_weekly_ai_documents }}</span><strong>{{ plan.weekly_ai_documents|default_if_none:'∞' }}</strong></div>
+    <div class="health-row"><span>{{ t.field_weekly_file_jobs }}</span><strong>{{ plan.weekly_file_jobs|default_if_none:'∞' }}</strong></div>
+    <div class="health-row"><span>{{ t.field_edits_per_file }}</span><strong>{{ plan.edits_per_file|default_if_none:'∞' }}</strong></div>
     <div class="health-row"><span>{{ t.field_max_file_mib }}</span><strong>{{ plan.max_file_mib }}</strong></div>
     <div class="health-row"><span>{{ t.field_max_generated_slides }}</span><strong>{{ plan.max_generated_slides }}</strong></div>
     {% if can_edit_plans %}

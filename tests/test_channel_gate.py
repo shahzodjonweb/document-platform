@@ -84,13 +84,28 @@ def test_nobody_is_asked_while_it_is_off_or_empty(telegram):
     assert telegram.calls == []
 
 
-def test_a_paid_plan_is_never_asked(telegram, settings):
+def on_plan(customer, plan):
     from apps.core.models import Account
-    require_channels()
-    customer = account()
-    Account.objects.filter(pk=customer.pk).update(staff_plan='premium')
+    Account.objects.filter(pk=customer.pk).update(staff_plan=plan)
     customer.refresh_from_db()
+    return customer
+
+
+def test_plus_is_asked_to_join_like_free(telegram):
+    require_channels()
+    customer = on_plan(account(), 'plus')
+    asset = upload(customer)
+    with pytest.raises(DomainError, match='channels_required'):
+        quote(customer, asset)
+    assert channel_gate.status(customer)['required'] is True
+
+
+def test_only_premium_is_never_asked(telegram):
+    """Not being asked to join is part of what Premium buys."""
+    require_channels()
+    customer = on_plan(account(), 'premium')
     assert channel_gate.status(customer)['required'] is False and telegram.calls == []
+    assert quote(customer, upload(customer)).feature_id == 'pdf.rotate'
 
 
 def test_a_free_account_that_has_not_joined_cannot_start_a_task(telegram):

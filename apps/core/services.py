@@ -13,9 +13,9 @@ from django.db import transaction
 from django.core.exceptions import ValidationError
 from django.db.models import F
 from django.utils import timezone
-from .models import Account, FileAsset, Quote, Job, UsageGrant, Reservation, UsageLedger, Artifact, OutboxEvent, AnalyticsEvent, SecretHandle
+from .models import Account, FileAsset, Quote, Job, Artifact, OutboxEvent, AnalyticsEvent, SecretHandle
 from .errors import DomainError
-from .policy import plan_limits, require_feature, usage_snapshot, active_grants, ensure_grants, POLICY_VERSION
+from .policy import plan_limits, require_feature, usage_snapshot, POLICY_VERSION
 
 TERMINAL = ('succeeded', 'failed', 'canceled', 'no_op', 'expired')
 
@@ -197,21 +197,20 @@ def create_quote(account, feature_id, input_ids, parameters, secret_id=None):
         from processors.engine import parse_pages
         pages = max(pages, sum(len(parse_pages(r, assets[0].page_count)) for r in normalized['ranges']))
     if pages > plan_limits(account)['max_pages_per_job']: raise DomainError('page_limit_exceeded',413)
-    credits = 1 if feature_id.startswith('ocr.') else 2 if feature_id in ('convert.pdf_to_docx','convert.pdf_to_xlsx') else 0
-    meters = {'file_tasks':0 if credits else 1,'file_page_units':0 if credits else pages,'ai_credits':pages*credits}
-    quote = Quote.objects.create(account=account,feature_id=feature_id,secret_id=secret_id,parameters=normalized,input_ids=[str(a.pk) for a in assets],input_fingerprints=[{'id':str(a.pk),'sha256':a.sha256} for a in assets],meters=meters,policy={'plan':account.plan,'version':POLICY_VERSION,'tariff_version':'file-v1','limits':plan_limits(account)},expires_at=timezone.now()+timedelta(minutes=10))
+    quote = Quote.objects.create(account=account,feature_id=feature_id,secret_id=secret_id,parameters=normalized,input_ids=[str(a.pk) for a in assets],input_fingerprints=[{'id':str(a.pk),'sha256':a.sha256} for a in assets],policy={'plan':account.plan,'version':POLICY_VERSION,'tariff_version':'file-v1','limits':plan_limits(account)},expires_at=timezone.now()+timedelta(minutes=10))
     record_event(account,'quote.created',properties={'pages':pages})
     return quote
 
-def quote_affordable(account, quote):
+def quote_affordable(account, quote, count=1):
+    """Whether this week's allowance still has room for the quote (and `count` file tasks)."""
+    from .allowance import LIMIT_CODES, require_quote
     usage = usage_snapshot(account)
-    affordable = all(usage['meters'][m]['remaining']>=v for m,v in quote.meters.items())
-    daily = usage['daily']
-    if daily['limit'] is not None and daily['remaining'] < quote.meters.get('file_tasks',0):
-        purchased = active_grants(account).filter(meter='file_tasks').exclude(source='included')
-        available = sum(g.quantity-g.consumed-g.reserved for g in purchased)
-        affordable = affordable and available >= quote.meters.get('file_tasks',0)
-    return affordable,usage
+    try:
+        require_quote(account, quote, count)
+    except DomainError as exc:
+        if exc.code in LIMIT_CODES: return False, usage
+        raise
+    return True, usage
 
 @transaction.atomic
 def submit_job(account, quote_id, idempotency_key, origin='web'):
@@ -232,10 +231,11 @@ def submit_job(account, quote_id, idempotency_key, origin='web'):
     except (Quote.DoesNotExist,ValueError,ValidationError): raise DomainError('not_found',404) from None
     if Job.objects.filter(quote=quote).exists(): raise DomainError('quote_already_submitted',409)
     if quote.expires_at <= timezone.now(): raise DomainError('quote_expired',409)
-    from apps.studio.domain import GENERATION_IDS, validate_generation_quote, require_daily_ai
+    from apps.studio.domain import GENERATION_IDS, validate_generation_quote
+    from .allowance import require_quote
     # Counted under the account lock, so quick repeated submissions cannot
     # each see room for one more.
-    if quote.feature_id in GENERATION_IDS and quote.parameters.get('stage')!='outline' and not quote.parameters.get('revision'): require_daily_ai(account)
+    require_quote(account, quote)
     assets = validate_generation_quote(account,quote) if quote.feature_id in GENERATION_IDS else validate_inputs(account,quote.feature_id,quote.input_ids)
     if quote.feature_id.startswith('editor.'):
         from apps.studio.editor_policy import validate_commands_access
@@ -243,28 +243,7 @@ def submit_job(account, quote_id, idempotency_key, origin='web'):
     if quote.policy['plan'] != account.plan or quote.policy['version'] != POLICY_VERSION: raise DomainError('quote_policy_changed',409)
     if [{'id':str(a.pk),'sha256':a.sha256} for a in assets] != quote.input_fingerprints: raise DomainError('file_changed',409)
     if Job.objects.filter(account=account,status__in=('queued','running','finalizing')).count() >= plan_limits(account)['concurrent_jobs']: raise DomainError('concurrency_limit',409,retryable=True)
-    ensure_grants(account)
-    affordable, usage = quote_affordable(account,quote)
-    if not affordable: raise DomainError('quota_exceeded',409)
-    job = Job.objects.create(account=account,quote=quote,feature_id=quote.feature_id,parameters=quote.parameters,input_ids=quote.input_ids,policy=quote.policy,meters=quote.meters,idempotency_key=idempotency_key,request_hash=request_hash,origin_channel=origin)
-    for meter, amount in quote.meters.items():
-        remaining = amount
-        # Eligibility includes an optional payment join. Lock the grant rows
-        # themselves; PostgreSQL cannot lock the nullable side of that join.
-        grants = list(active_grants(account).filter(meter=meter).select_for_update(of=('self',)))
-        rank = {'included':0,'referral':1,'purchased':2}
-        grants.sort(key=lambda g:(rank.get(g.source,9),g.expires_at or timezone.now()+timedelta(days=100000),str(g.pk)))
-        for grant in grants:
-            if meter == 'file_tasks' and grant.source == 'included' and usage['daily']['limit'] is not None and usage['daily']['remaining'] < amount: continue
-            take = min(remaining, grant.quantity-grant.consumed-grant.reserved)
-            if take <= 0: continue
-            grant.reserved += take
-            grant.save(update_fields=['reserved'])
-            Reservation.objects.create(job=job,grant=grant,meter=meter,amount=take)
-            UsageLedger.objects.create(account=account,job=job,grant=grant,meter=meter,kind='reserve',amount=take)
-            remaining -= take
-            if not remaining: break
-        if remaining: raise DomainError('quota_exceeded',409)
+    job = Job.objects.create(account=account,quote=quote,feature_id=quote.feature_id,parameters=quote.parameters,input_ids=quote.input_ids,policy=quote.policy,idempotency_key=idempotency_key,request_hash=request_hash,origin_channel=origin)
     if quote.secret_id:
         from .secrets import get_secret
         handle=get_secret(account,quote.secret_id)
@@ -278,26 +257,9 @@ def submit_job(account, quote_id, idempotency_key, origin='web'):
     return job,True
 
 @transaction.atomic
-def settle_job(job_id, status, actual=None, error_code='', outputs=None, warnings=None, engine=''):
+def settle_job(job_id, status, error_code='', outputs=None, warnings=None, engine=''):
     job = Job.objects.select_for_update().select_related('account').get(pk=job_id)
     if job.status in TERMINAL: return job
-    actual = actual or {}
-    if any(not isinstance(v,int) or v<0 or v>job.meters.get(m,0) for m,v in actual.items()): raise DomainError('quote_exceeded',409)
-    left = dict(actual) if status=='succeeded' else {}
-    for reservation in job.reservations.select_for_update().select_related('grant').order_by('id'):
-        if reservation.settled: continue
-        grant = UsageGrant.objects.select_for_update().get(pk=reservation.grant_id)
-        consume = min(reservation.amount,left.get(reservation.meter,0))
-        release = reservation.amount-consume
-        grant.reserved -= reservation.amount
-        grant.consumed += consume
-        grant.save(update_fields=['reserved','consumed'])
-        for kind,amount in (('consume',consume),('release',release)):
-            if amount: UsageLedger.objects.create(account=job.account,job=job,grant=grant,meter=reservation.meter,kind=kind,amount=amount)
-        left[reservation.meter] = left.get(reservation.meter,0)-consume
-        reservation.settled=True
-        reservation.save(update_fields=['settled'])
-    if any(v>0 for v in left.values()): raise DomainError('quote_exceeded',409)
     deadline = timezone.now()+timedelta(hours=24)
     for output in outputs or []:
         path = Path(output['path'])
@@ -316,13 +278,13 @@ def settle_job(job_id, status, actual=None, error_code='', outputs=None, warning
     if status == 'succeeded' and outputs:
         from apps.studio.review import keep_output
         keep_output(job)
-    job.status,job.error_code,job.completed_at,job.settled_meters = status,error_code,timezone.now(),actual if status=='succeeded' else {m:0 for m in job.meters}
+    job.status,job.error_code,job.completed_at = status,error_code,timezone.now()
     job.warnings,job.engine,job.lease_expires_at = warnings or [],engine,None
-    job.save(update_fields=['status','error_code','completed_at','settled_meters','warnings','engine','lease_expires_at'])
+    job.save(update_fields=['status','error_code','completed_at','warnings','engine','lease_expires_at'])
     if not settings.LOCAL_SYNC_JOBS:
         from telegram.notifications import enqueue_notice
         enqueue_notice(job)
-    record_event(job.account,f'job.{status}',job=job,properties={'pages':actual.get('file_page_units',0)},channel=job.origin_channel)
+    record_event(job.account,f'job.{status}',job=job,properties={'pages':sum(int(o.get('page_count') or 0) for o in outputs or [])},channel=job.origin_channel)
     OutboxEvent.objects.filter(job=job,topic='job.execute').update(delivered_at=timezone.now())
     SecretHandle.objects.filter(job=job).delete()
     return job
@@ -376,9 +338,7 @@ def execute_job(job_id):
                 checked=engine_inspect(path)
                 if checked['page_count']!=output.get('page_count'):raise DomainError('invalid_output')
                 output['metadata']=checked
-        credits = 1 if job.feature_id.startswith('ocr.') else 2 if job.feature_id in ('convert.pdf_to_docx','convert.pdf_to_xlsx') else 0
-        actual = result.get('actual_meters',{'file_tasks':0 if credits else 1,'file_page_units':0 if credits else max(sum(a.page_count for a in assets),int(result.get('actual_page_units',0))),'ai_credits':sum(a.page_count for a in assets)*credits})
-        job = settle_job(job.id,'no_op' if no_op else 'succeeded',actual=actual,outputs=outputs,warnings=result.get('metadata',{}).get('warnings',[]),engine=result.get('metadata',{}).get('engine','pypdf'))
+        job = settle_job(job.id,'no_op' if no_op else 'succeeded',outputs=outputs,warnings=result.get('metadata',{}).get('warnings',[]),engine=result.get('metadata',{}).get('engine','pypdf'))
         if no_op: shutil.rmtree(output_dir,ignore_errors=True)
         return job
     except (DomainError,ProcessorError) as exc:

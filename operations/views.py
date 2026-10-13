@@ -2,7 +2,6 @@ import csv
 import hashlib
 import io
 import json
-import uuid
 from datetime import datetime, timedelta
 from functools import wraps
 from urllib.parse import urlencode
@@ -21,7 +20,7 @@ from django.utils.dateformat import format as date_format
 from django.utils.dateparse import parse_datetime
 from django.views.decorators.http import require_http_methods, require_POST
 
-from apps.core.models import Account, Job, UsageLedger
+from apps.core.models import Account, Job
 from .auth import COOKIE, allowed, audit, begin_session, development_access, require_staff, staff_user
 from .i18n import CATALOGS, EN, get_locale
 from .metrics import DEFINITIONS_VERSION, Filters, report, system_snapshot
@@ -58,8 +57,7 @@ SECTIONS = {'today':'today','overview':'analytics','analytics/acquisition':'anal
 JOB_STATES = ['queued','running','succeeded','failed','canceled']
 USER_SORTS = {'new':'-created_at','old':'created_at','name':'display_name','plan':'-plan'}
 PLAN_GROUPS = [('group_price',['price_uzs','price_xtr']),
-               ('group_allowance',['file_tasks','file_page_units','ai_credits']),
-               ('group_daily',['daily_file_tasks','daily_ai_documents']),
+               ('group_weekly',['weekly_ai_documents','weekly_file_jobs','edits_per_file']),
                ('group_task',['max_file_mib','max_pages_per_job','concurrent_jobs']),
                ('group_ai',['max_ai_source_pages','max_ai_source_files','max_deck_images','max_ai_input_tokens',
                             'max_generated_pdf_pages','max_generated_slides']),
@@ -285,18 +283,15 @@ def user_detail(request, pk):
     from apps.core.policy import limits_for_plan,usage_snapshot
     from apps.commerce.services import active_period,staff_plan
     account=get_object_or_404(Account,pk=pk)
-    data=context(request,'users');data.update({'account':account,'detail_type':'user','recent_jobs':account.jobs.order_by('-created_at')[:20],
-        'ledger':UsageLedger.objects.filter(account=account).order_by('-created_at')[:50], 'grants':account.usage_grants.order_by('-valid_from')[:20]})
-    data['can_grant']=allowed(request.ops_user,[])
-    data['grant_key']=str(uuid.uuid4())
-    # What the allowance actually is right now, so a grant is an informed one
-    # rather than a number typed into an empty box.
-    snapshot=usage_snapshot(account)['meters']
-    # Amounts staff actually reach for, so a top-up is one tap rather than a
-    # guess typed into an empty box.
-    presets={'file_tasks':(10,50,100),'file_page_units':(100,500,1000),'ai_credits':(100,500,2000)}
-    data['balances']=[{'meter':meter,'label':data['t'][label],'presets':presets[meter],**snapshot[meter]}
-                      for meter,label in (('file_tasks','tasks'),('file_page_units','pages'),('ai_credits','credits'))]
+    data=context(request,'users');data.update({'account':account,'detail_type':'user','recent_jobs':account.jobs.order_by('-created_at')[:20]})
+    data['can_assign_plan']=allowed(request.ops_user,[])
+    # This week as the customer sees it. There is nothing to top up: support
+    # helps a customer who ran out by assigning a plan.
+    usage=usage_snapshot(account)
+    data['week_resets_at']=usage['resets_at']
+    data['week_rows']=[{'label':data['t'][label],'used_text':data['t']['week_used'].format(n=usage[key]['used']),**usage[key]}
+                       for key,label in (('ai_documents','field_weekly_ai_documents'),('file_jobs','field_weekly_file_jobs'))]
+    data['edits_per_file']=usage['edits_per_file']
     data['plan_options']=['free','plus','premium']
     data['staff_plan']=staff_plan(account)
     period=active_period(account)
@@ -322,7 +317,7 @@ def user_detail(request, pk):
 @require_staff('Operations','Support')
 def job_detail(request, pk):
     job=get_object_or_404(Job.objects.select_related('account'),pk=pk)
-    data=context(request,'jobs');data['can_cancel']=allowed(request.ops_user,['Operations']) and job.status=='queued';data.update({'job':job,'detail_type':'job','ledger':UsageLedger.objects.filter(job=job).order_by('created_at')})
+    data=context(request,'jobs');data['can_cancel']=allowed(request.ops_user,['Operations']) and job.status=='queued';data.update({'job':job,'detail_type':'job'})
     return finish_render(request,'ops/job.html',data)
 
 

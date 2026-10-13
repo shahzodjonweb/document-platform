@@ -27,19 +27,4 @@
     <dt>{{ t.error }}</dt><dd>{{ job.error_code|default:'—' }}</dd>
   </dl>
 </section>
-<section class="panel">
-  <div class="panel-heading"><div><h2>{{ t.allowance }}</h2><p>{{ t.allowance_desc }}</p></div></div>
-  <div class="table-region" role="region" aria-label="{{ t.allowance }}" tabindex="0">
-    <table>
-      <thead><tr><th>{{ t.created }}</th><th>{{ t.meter }}</th><th>{{ t.kind }}</th><th>{{ t.amount }}</th></tr></thead>
-      <tbody>
-        {% for row in ledger %}
-        <tr><td class="muted">{{ row.created_at|date:'d M Y · H:i:s' }}</td><td>{{ row.meter }}</td><td>{{ row.kind }}</td><td>{{ row.amount }}</td></tr>
-        {% empty %}
-        <tr><td colspan="4" class="table-empty">{{ t.no_data }}</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</section>
 {% endblock %}

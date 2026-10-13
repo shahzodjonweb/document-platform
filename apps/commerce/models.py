@@ -12,6 +12,8 @@ class OfferVersion(models.Model):
     name=models.CharField(max_length=80)
     price_xtr=models.PositiveIntegerField(null=True)
     period_seconds=models.PositiveIntegerField(null=True)
+    # The credits an offer carried before weekly limits replaced them; kept on
+    # old offers as history, empty on every offer since.
     quantities=models.JSONField(default=dict)
     sandbox=models.BooleanField(default=True)
     enabled=models.BooleanField(default=False)
@@ -84,6 +86,8 @@ class SubscriptionPeriod(models.Model):
     sandbox=models.BooleanField(default=True)
 
 class PaymentGrant(models.Model):
+    """History: the credits a payment granted while plans were sold as credits.
+    Nothing writes these any more; a plan is its weekly limits."""
     payment=models.ForeignKey(Payment,on_delete=models.PROTECT,related_name='grant_links')
     grant=models.OneToOneField('core.UsageGrant',on_delete=models.PROTECT,related_name='payment_source')
     revoked_at=models.DateTimeField(null=True)
@@ -100,6 +104,8 @@ class Refund(models.Model):
     error_code=models.CharField(max_length=64,blank=True)
 
 class BalanceAdjustment(models.Model):
+    """History: credits already spent when their payment was refunded, from the
+    time plans were sold as credits. Nothing writes these any more."""
     account=models.ForeignKey('core.Account',on_delete=models.PROTECT)
     refund=models.ForeignKey(Refund,on_delete=models.PROTECT)
     meter=models.CharField(max_length=24)
@@ -150,6 +156,8 @@ class Referral(models.Model):
     status=models.CharField(max_length=16,default='pending')
     created_at=models.DateTimeField(default=timezone.now)
     qualified_at=models.DateTimeField(null=True)
+    # The credits a qualified referral once earned; referrals reward nothing
+    # for now, so this stays empty on new ones.
     grant=models.OneToOneField('core.UsageGrant',null=True,on_delete=models.PROTECT)
 
 class SupportMessage(models.Model):
@@ -190,9 +198,9 @@ class LocalBotMessage(models.Model):
 class ManualPayment(models.Model):
     """A card transfer to the owner's card, which the owner reviews by hand.
 
-    Nothing here grants a plan. Approval creates the same Invoice, Payment,
-    SubscriptionPeriod and grants a Telegram payment does, tagged `manual`, so
-    the plan behaves exactly like any other paid plan.
+    Nothing here grants a plan. Approval creates the same Invoice, Payment and
+    SubscriptionPeriod a Telegram payment does, tagged `manual`, so the plan
+    behaves exactly like any other paid plan.
     """
     OPEN=('awaiting','submitted')
     id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)

@@ -428,16 +428,14 @@ def test_a_paid_deck_carries_its_photos_and_their_licence_record(paid_deck, pixa
     assert 'images_skipped' not in job.warnings
 
 
-def test_a_paid_deck_whose_photos_fail_is_still_delivered_and_billed_the_same(paid_deck, pixabay):
-    from apps.core.models import UsageLedger
+def test_a_paid_deck_whose_photos_fail_is_still_delivered_and_counted_once(paid_deck, pixabay):
+    from apps.core.allowance import ai_documents_this_week
     pixabay.fail = OSError('down')
     quote, job = _run(paid_deck)
     assert job.status == 'succeeded', job.error_code
     assert job.artifacts.get().file.page_count == 3, 'the photo slides are drawn as text'
     assert 'images_skipped' in job.warnings
-    consumed = sum(UsageLedger.objects.filter(job=job, kind='consume', meter='ai_credits')
-                   .values_list('amount', flat=True))
-    assert 0 < consumed <= quote.meters['ai_credits']
+    assert ai_documents_this_week(job.account) == 1 and not job.settled_meters
     assert ProviderUsage.objects.get(job=job, provider='pixabay').outcome == 'failed'
 
 

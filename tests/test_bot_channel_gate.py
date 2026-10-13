@@ -74,8 +74,76 @@ def test_ive_joined_without_joining_says_which_channel_is_missing(customer, tele
     assert "You haven't joined pdfmaster_news yet" in screen.text
 
 
-def test_members_and_paid_customers_go_straight_to_the_tools(customer, telegram):
+def test_members_go_straight_to_the_tools(customer, telegram):
     require_channels()
     telegram.statuses = {'@pdfmaster_news': 'member'}
     result = dispatch_local(customer, uploaded=SimpleUploadedFile('notes.pdf', pdf(), 'application/pdf'))
     assert COPY['en']['gate_one'] not in result['messages'][-1]['text']
+
+
+def on_plan(customer, plan):
+    from apps.commerce.services import create_invoice, sandbox_pay
+    invoice, _ = create_invoice(customer, plan, f'gate-{plan}-{customer.id}')
+    sandbox_pay(customer, invoice.id)
+    customer.refresh_from_db()
+    assert customer.plan == plan
+    return customer
+
+
+def test_plus_is_asked_to_join_and_offered_premium_as_the_way_round(customer, telegram):
+    require_channels()
+    on_plan(customer, 'plus')
+    result = dispatch_local(customer, uploaded=SimpleUploadedFile('notes.pdf', pdf(), 'application/pdf'))
+    assert COPY['en']['gate_plus_one'] in result['messages'][-1]['text']
+    assert COPY['en']['plans'] in [button['label'] for button in buttons(result)]
+    assert 'Premium' in COPY['en']['plans'] and 'Premium' in COPY['uz']['plans'] and 'Premium' in COPY['ru']['plans']
+
+
+@pytest.mark.parametrize('locale', ['en', 'uz', 'ru'])
+def test_plus_is_never_told_the_product_is_free(customer, telegram, locale):
+    """Someone who has just paid for Plus was told "PDF Master is free for
+    members". Plus is told its plan works for members instead."""
+    require_channels('@pdfmaster_news\n@pdfmaster_tips')
+    on_plan(customer, 'plus')
+    customer.locale = locale
+    customer.save(update_fields=['locale'])
+    BotConversation.objects.filter(pk=customer.telegram_user_id).update(locale=locale)
+    text = dispatch_local(customer, uploaded=SimpleUploadedFile('notes.pdf', pdf(), 'application/pdf'))['messages'][-1]['text']
+    assert COPY[locale]['gate_plus_many'] in text
+    free = {'en': 'free', 'uz': 'bepul', 'ru': 'бесплатен'}[locale]
+    assert free not in text.lower()
+    for key in ('gate_plus_one', 'gate_plus_many'):
+        assert 'Plus' in COPY[locale][key] and free not in COPY[locale][key].lower()
+    assert free in COPY[locale]['gate_one'].lower(), 'Free is still told it is free'
+
+
+def test_the_premium_way_round_is_offered_only_while_premium_is_on_sale(customer, telegram, monkeypatch):
+    from apps.commerce import services
+    from operations import plans as plan_settings
+    require_channels()
+    offers = services.available_offers
+    no_premium_stars = lambda account: [offer for offer in offers(account) if offer.plan != 'premium']
+    monkeypatch.setattr(services, 'available_offers', no_premium_stars)
+    plan_settings.save('premium', {'price_uzs': ''})
+
+    def gate_buttons(name):
+        sent = dispatch_local(customer, uploaded=SimpleUploadedFile(name, pdf(), 'application/pdf'))
+        return [button['label'] for row in sent['messages'][-1]['buttons'] for button in row]
+
+    labels = gate_buttons('notes.pdf')
+    assert COPY['en']['plans'] not in labels, 'the plans screen it opens has no Premium to choose'
+    assert COPY['en']['plans_neutral'] in labels
+    # On sale again, by card transfer or by Stars, the way round is offered again.
+    plan_settings.save('premium', {'price_uzs': 60000})
+    assert COPY['en']['plans'] in gate_buttons('other.pdf')
+    plan_settings.save('premium', {'price_uzs': ''})
+    monkeypatch.setattr(services, 'available_offers', offers)
+    assert COPY['en']['plans'] in gate_buttons('third.pdf'), 'a Premium Stars offer is on sale too'
+
+
+def test_premium_is_never_asked(customer, telegram):
+    require_channels()
+    on_plan(customer, 'premium')
+    result = dispatch_local(customer, uploaded=SimpleUploadedFile('notes.pdf', pdf(), 'application/pdf'))
+    assert COPY['en']['gate_one'] not in result['messages'][-1]['text']
+    assert not BotCallback.objects.filter(account=customer, action='channels_check').exists()

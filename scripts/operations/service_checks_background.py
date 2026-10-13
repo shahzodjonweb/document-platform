@@ -24,6 +24,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import transaction
 from django.utils import timezone
 
+from apps.core.allowance import quote_kind
 from apps.core.models import Account, Artifact, FileAsset
 from apps.core.policy import POLICY_VERSION
 from apps.core.services import create_quote, storage_path, upload_file
@@ -99,16 +100,15 @@ def _prepare_batch(account, audit_id):
         asset = upload_file(account, SimpleUploadedFile(
             f'background-batch-{index + 1}.png', output.getvalue(), content_type='image/png'))
         child_quotes.append(create_quote(account, 'pdf.images_to_pdf', [str(asset.pk)], {}))
-    meters = {meter: sum(q.meters.get(meter, 0) for q in child_quotes)
-              for meter in ('file_tasks', 'file_page_units', 'ai_credits')}
-    if meters['ai_credits'] or meters['file_tasks'] != 2:
-        raise RuntimeError('Unexpected batch fixture cost')
+    # Two ordinary file tasks: no AI, and each child one place in the week.
+    if any(quote_kind(q) != 'file' for q in child_quotes):
+        raise RuntimeError('Unexpected batch fixture kind')
     # Publish the whole parent atomically, so runbatches cannot observe a parent
     # without its children. No execute_batch/drain_batches/execute_job call here.
     with transaction.atomic():
         parent_quote = BatchQuote.objects.create(
             account=account, feature_id='batch.image_sets',
-            child_quote_ids=[str(q.pk) for q in child_quotes], meters=meters,
+            child_quote_ids=[str(q.pk) for q in child_quotes],
             policy={'plan': account.plan, 'version': POLICY_VERSION, 'max_children': 2,
                     'infrastructure_canary': True}, expires_at=min(q.expires_at for q in child_quotes))
         run = BatchRun.objects.create(account=account, quote=parent_quote, idempotency_key=key,
@@ -178,9 +178,8 @@ def _poll_batch(account, spec):
     for child in children:
         job = child.job
         if (child.status != 'succeeded' or not job or job.status != 'succeeded'
-                or job.account_id != account.pk or job.attempt_count < 1
-                or job.settled_meters != child.quote.meters or job.settled_meters.get('ai_credits')):
-            raise RuntimeError('Batch child execution or settlement failed')
+                or job.account_id != account.pk or job.attempt_count < 1 or job.quote_id != child.quote_id):
+            raise RuntimeError('Batch child execution failed')
         artifacts = list(Artifact.objects.select_related('file').filter(job=job))
         if len(artifacts) != 1:
             raise RuntimeError('Expected one output per batch child')
@@ -195,7 +194,7 @@ def _poll_batch(account, spec):
             raise RuntimeError('Batch output page count failed')
         pages.append(page_count)
     return {'status': 'passed', 'parent_status': run.status, 'children_succeeded': len(children),
-            'output_pages': pages, 'ai_credits': 0, 'normal_daemon': True,
+            'output_pages': pages, 'normal_daemon': True,
             'scope': spec['scope']}
 
 

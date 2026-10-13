@@ -14,8 +14,7 @@ from django.http import HttpResponse
 from django.test import Client,RequestFactory
 from django.utils import timezone
 from apps.core.errors import DomainError
-from apps.core.models import Account,UsageGrant,AnalyticsEvent
-from apps.core.policy import usage_snapshot,plan_limits,require_feature
+from apps.core.models import Account,AnalyticsEvent
 from apps.commerce.models import OfferVersion,Invoice,Payment,Refund,Subscription,SubscriptionPeriod
 from operations.auth import COOKIE,begin_session
 from operations.models import AuditLog,StaffSession,IntegrationConfig
@@ -35,29 +34,16 @@ def isolated_admin(settings,monkeypatch):
     monkeypatch.setattr(operations.integrations,'_process',None)
 
 
-def test_exceptional_grant_idempotency_keeps_feature_and_file_caps():
-    account=Account.objects.create(telegram_user_id=717171,is_test=True)
-    client,staff=staff_client();url=f'/ops/users/{account.id}/grants'
-    body={'idempotency_key':str(uuid.uuid4()),'file_tasks':7,'file_page_units':300,'ai_credits':15,'reason':'Restore allowances after investigated service fault'}
-    for _ in range(2):assert client.post(url,body).status_code==302
-    assert UsageGrant.objects.filter(source='adjustment').count()==3
-    assert AuditLog.objects.filter(action='quota.grant').count()==1
-    assert usage_snapshot(account)['meters']['file_tasks']['limit']==307
-    assert account.plan=='free' and plan_limits(account)['max_file_mib']==25
-    with pytest.raises(DomainError,match='feature_not_in_plan'):require_feature(account,'editor.redact')
-    assert client.post(url,{**body,'file_tasks':8}).status_code==400
-    assert UsageGrant.objects.filter(source='adjustment',meter='file_tasks').get().quantity==7
-
 @pytest.mark.parametrize('role',['Analyst','Support','Operations','Finance','Content manager'])
 def test_sensitive_admin_actions_require_administrator(role):
     client,_=staff_client(role);a=Account.objects.create(telegram_user_id=991991)
-    for url in ('/ops/staff','/ops/integrations',f'/ops/users/{a.id}/grants'):
+    for url in ('/ops/staff','/ops/integrations',f'/ops/users/{a.id}/plan'):
         assert client.post(url,{'reason':'Attempt disallowed role change'}).status_code==403,url
 
 
 def test_new_mutations_require_csrf_before_side_effects():
     client,staff=staff_client(csrf=True);a=Account.objects.create(telegram_user_id=991991)
-    for url in ('/ops/staff','/ops/integrations',f'/ops/users/{a.id}/grants','/ops/jobs/'+str(uuid.uuid4())+'/cancel'):
+    for url in ('/ops/staff','/ops/integrations',f'/ops/users/{a.id}/plan','/ops/jobs/'+str(uuid.uuid4())+'/cancel'):
         assert client.post(url,{'reason':'A sufficiently clear reason'}).status_code==403
     assert get_user_model().objects.count()==1 and not AuditLog.objects.exists() and not IntegrationConfig.objects.exists()
 

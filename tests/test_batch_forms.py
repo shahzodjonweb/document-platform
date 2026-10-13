@@ -4,7 +4,8 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from pypdf import PdfReader
 from reportlab.pdfgen.canvas import Canvas
 from apps.core.errors import DomainError
-from apps.core.models import Quote,Job,UsageLedger
+from apps.core.allowance import file_jobs_this_week
+from apps.core.models import Quote,Job
 from apps.core.services import upload_file,storage_path
 from apps.studio.models import SavedDefinition,BatchQuote,BatchRun
 from apps.studio.batches import create_batch_quote,submit_batch,execute_batch,quote_data,validate_form_template
@@ -38,7 +39,7 @@ def test_real_form_batch_produces_one_filled_pdf_per_input_exactly_once():
     a=paid(account(),'premium');saved=template(a);files=[form_pdf(a,name=f'form-{i}.pdf') for i in range(2)]
     q=form_quote(a,saved,files);value=quote_data(q)
     assert value['template']=={'id':str(saved.id),'name':'Customer data','version':1}
-    assert len(value['groups'])==2 and q.meters=={'file_tasks':2,'file_page_units':2,'ai_credits':0}
+    assert len(value['groups'])==2 and not q.meters and 'meters' not in value
     assert all(g['feature_id']=='editor.fill_forms' for g in value['groups'])
     run,_=submit_batch(a,q.id,'two-form-batch-once');run=execute_batch(run.id)
     assert run.status=='succeeded'
@@ -49,8 +50,7 @@ def test_real_form_batch_produces_one_filled_pdf_per_input_exactly_once():
         widget=reader.pages[0]['/Annots'][0].get_object();assert widget['/AP']['/N'].get_object().get_data()
     for source in files:assert PdfReader(storage_path(source.object_key)).get_fields()['customer']['/V']==''
     repeated,created=submit_batch(a,q.id,'two-form-batch-once');execute_batch(repeated.id)
-    assert not created and Job.objects.count()==2
-    assert UsageLedger.objects.filter(kind='consume',meter='file_tasks').count()==2
+    assert not created and Job.objects.count()==2 and file_jobs_this_week(a)==2
 
 @pytest.mark.parametrize('plan',['free','plus'])
 def test_batch_forms_require_premium_even_though_individual_form_filling_is_free(plan):
@@ -109,11 +109,11 @@ def test_null_character_is_rejected_before_json_storage():
     assert not SavedDefinition.objects.exists() and not Quote.objects.exists()
 
 
-def test_missing_fields_and_unqualified_control_types_rejected_before_reservation():
+def test_missing_fields_and_unqualified_control_types_rejected_before_a_quote():
     a=paid(account(),'premium');saved=template(a);source=form_pdf(a)
     for bad,code in ((form_pdf(a,field='different'),'form_field_not_found'),(form_pdf(a,checkbox=True),'unsupported_form_field')):
         with pytest.raises(DomainError,match=code):form_quote(a,saved,[source,bad])
-    assert not Quote.objects.exists() and not UsageLedger.objects.exists()
+    assert not Quote.objects.exists() and file_jobs_this_week(a)==0
 
 
 def test_batch_form_http_contract_ignores_client_replacement_on_submit():
@@ -127,15 +127,14 @@ def test_batch_form_http_contract_ignores_client_replacement_on_submit():
     assert PdfReader(storage_path(output.object_key)).get_fields()['customer']['/V']=='Immutable API value'
 
 
-def test_real_field_overflow_is_partial_uncharged_failure_and_results_can_be_reused():
+def test_real_field_overflow_is_a_partial_uncounted_failure_and_results_can_be_reused():
     a=paid(account(),'premium');saved=template(a,'A medium length customer name')
     q=form_quote(a,saved,[form_pdf(a),form_pdf(a,width=20)])
     run,_=submit_batch(a,q.id,'overflow-form-batch');run=execute_batch(run.id)
     assert run.status=='partial'
     success,failed=list(run.children.select_related('job').order_by('index'))
     assert success.status=='succeeded' and failed.error_code=='form_value_overflow'
-    assert not UsageLedger.objects.filter(job=failed.job,kind='consume').exists()
-    assert UsageLedger.objects.filter(kind='consume',meter='file_tasks').count()==1
+    assert file_jobs_this_week(a)==1,'the overflowing file gives its place back'
     previous=success.job.artifacts.get().file
     saved.definition['content']['commands'][0]['value']='Updated result';saved.version+=1;saved.save()
     q=form_quote(a,saved,[previous]);run,_=submit_batch(a,q.id,'refill-previous-result');run=execute_batch(run.id)

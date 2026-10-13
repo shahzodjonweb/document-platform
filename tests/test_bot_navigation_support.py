@@ -73,6 +73,81 @@ def test_selected_language_menu_is_chat_scoped_and_safe_offline(customer):
     assert not LocalBotMessage.objects.filter(account=customer).exists()
 
 
+@pytest.fixture
+def menu_calls(monkeypatch):
+    """Every chat menu the local transport is asked to set (they are not chat messages)."""
+    from aiogram.methods import SetMyCommands
+    calls = []
+    original = LocalTelegramSession.make_request
+    async def record(self, bot, method, timeout=None):
+        if isinstance(method, SetMyCommands):
+            calls.append(method)
+        return await original(self, bot, method, timeout)
+    monkeypatch.setattr(LocalTelegramSession, 'make_request', record)
+    return calls
+
+
+def test_a_chat_menu_set_before_a_change_is_replaced_once(customer, menu_calls, monkeypatch):
+    """A chat's own menu outranks the menus runbot installs on deploy, so people
+    who picked a language before a change kept 'Plans & packs' for good."""
+    from telegram import commands
+    BotConversation.objects.filter(pk=customer.telegram_user_id).update(locale='uz')
+    outbound = lambda: LocalBotMessage.objects.filter(account=customer, direction='outbound').count()
+    before = outbound()
+    shown = dispatch_local(customer, text='/help')
+    assert outbound() == before + 1, 'the menu is set quietly, not sent as a message'
+    assert len(menu_calls) == 1
+    call = menu_calls[0]
+    assert call.scope.type == 'chat' and call.scope.chat_id == customer.telegram_user_id and call.language_code == ''
+    assert [(c.command, c.description) for c in call.commands] == list(commands.COMMANDS['uz'].items())
+    stored = BotConversation.objects.get(pk=customer.telegram_user_id).review
+    assert stored == {commands.MENU_KEY: commands.COMMANDS_VERSION}
+    # Messages and taps after that leave the menu alone.
+    dispatch_local(customer, text='/help')
+    dispatch_local(customer, callback_data=action_token(shown, 'home'))
+    assert len(menu_calls) == 1
+    # The next change of the menu reaches the same chat once more, on a tap too.
+    monkeypatch.setattr(commands, 'COMMANDS_VERSION', commands.COMMANDS_VERSION + 1)
+    later = dispatch_local(customer, callback_data=action_token(shown, 'home'))
+    dispatch_local(customer, callback_data=action_token(later, 'home'))
+    assert len(menu_calls) == 2 and menu_calls[1].scope.chat_id == customer.telegram_user_id
+    assert BotConversation.objects.get(pk=customer.telegram_user_id).review[commands.MENU_KEY] == commands.COMMANDS_VERSION
+
+
+def test_a_failed_menu_update_is_tried_again_on_the_next_update(customer, monkeypatch):
+    from aiogram.exceptions import TelegramNetworkError
+    from aiogram.methods import SetMyCommands
+    from telegram.commands import MENU_KEY
+    attempts = []
+    original = LocalTelegramSession.make_request
+    async def offline(self, bot, method, timeout=None):
+        if isinstance(method, SetMyCommands):
+            attempts.append(method)
+            if len(attempts) == 1:
+                raise TelegramNetworkError(method=method, message='Network unavailable')
+        return await original(self, bot, method, timeout)
+    monkeypatch.setattr(LocalTelegramSession, 'make_request', offline)
+    shown = dispatch_local(customer, text='/help')
+    assert shown['messages'][-1]['direction'] == 'outbound', 'the reply still comes'
+    assert MENU_KEY not in BotConversation.objects.get(pk=customer.telegram_user_id).review
+    dispatch_local(customer, text='/help')
+    dispatch_local(customer, text='/help')
+    assert len(attempts) == 2 and MENU_KEY in BotConversation.objects.get(pk=customer.telegram_user_id).review
+
+
+def test_choosing_a_language_records_the_menu_it_was_given(customer, menu_calls):
+    from telegram.commands import COMMANDS_VERSION, MENU_KEY
+    shown = dispatch_local(customer, text='/language')
+    pick = next(button['callback_data'] for row in shown['messages'][-1]['buttons'] for button in row
+                if button['callback_data'].endswith(':ru'))
+    dispatch_local(customer, callback_data=pick)
+    calls = len(menu_calls)
+    assert calls >= 1 and [c.description for c in menu_calls[-1].commands][0] == '🏠 Главное меню'
+    assert BotConversation.objects.get(pk=customer.telegram_user_id).review[MENU_KEY] == COMMANDS_VERSION
+    dispatch_local(customer, text='/help')
+    assert len(menu_calls) == calls, 'set once with the language, not again on the next message'
+
+
 def test_native_menu_provider_failure_does_not_block_onboarding():
     from aiogram.exceptions import TelegramNetworkError
     from aiogram.methods import SetMyCommands
@@ -81,16 +156,16 @@ def test_native_menu_provider_failure_does_not_block_onboarding():
     assert asyncio.run(install_chat_commands(bot, 980003, 'en')) is False
 
 
-def test_localized_offer_review_has_price_balance_and_safe_navigation(customer):
+def test_localized_offer_review_has_price_period_and_safe_navigation(customer):
     customer.locale = 'uz'; customer.save(update_fields=['locale'])
     BotConversation.objects.filter(pk=customer.telegram_user_id).update(locale='uz')
     result = dispatch_local(customer, text='/buy')
     buttons = result['messages'][-1]['buttons']
-    assert any('Qo‘shimcha fayl vazifalari' in b['label'] for row in buttons for b in row)
-    assert all('tasks100' not in b['label'] and 'ai100' not in b['label'] for row in buttons for b in row)
-    result = dispatch_local(customer, text='/buy tasks100')
+    assert any(b['label'] == 'Plus · ⭐ 50' for row in buttons for b in row), 'plans only: there are no packs to sell'
+    assert not any('paket' in b['label'].lower() or 'kredit' in b['label'].lower() for row in buttons for b in row)
+    result = dispatch_local(customer, text='/buy plus')
     text = result['messages'][-1]['text']
-    assert '25 Telegram Stars' in text and f'{COPY["uz"]["file_tasks"]}: 100' in text and f'{COPY["uz"]["file_page_units"]}: 1,000' in text
+    assert '50 Telegram Stars' in text and COPY['uz']['period'] in text and 'Plus' in text
     assert COPY['uz']['sandbox'] in text
     assert action_token(result, 'plans') and action_token(result, 'home')
 
@@ -215,3 +290,16 @@ def test_the_native_menu_offers_both_services_and_no_folder():
             assert gone not in labels, f'{locale} still names the folder: {gone}'
     # The two services come straight after the main menu, as they do in the chat.
     assert list(COMMANDS['en'])[:3] == ['start', 'document', 'slides']
+
+
+def test_the_native_menu_names_the_weekly_limits_screen_plainly():
+    """'Plan & this week' did not say what the screen shows; it shows the plan
+    and the week's limits, by the names the screen itself uses."""
+    from telegram.commands import COMMANDS
+    assert COMMANDS['en']['usage'] == '📊 Plan & weekly limits'
+    assert COMMANDS['uz']['usage'] == '📊 Tarif va haftalik limitlar'
+    assert COMMANDS['ru']['usage'] == '📊 Тариф и лимиты на неделю'
+    retired = ('balance', 'pack', 'balans', 'paket', 'баланс', 'пакет', 'this week', 'shu hafta', 'эта неделя')
+    for locale, commands in COMMANDS.items():
+        labels = ' '.join(commands.values()).lower()
+        assert not [word for word in retired if word in labels], locale

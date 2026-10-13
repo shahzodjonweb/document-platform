@@ -296,3 +296,37 @@ def test_the_setup_screen_cannot_resize_or_restyle_a_change(customer):
     assert response.status_code == 409 and response.json()['error']['code'] == 'controls_expired', response.content
     draft.refresh_from_db()
     assert unpack(draft.encrypted_data)['options'] == before
+
+
+def test_a_change_on_a_limited_plan_says_how_many_edits_its_file_has_used(free_customer):
+    """Free has three AI edits a file; the review of a change says where the file stands."""
+    delivered = made(free_customer)
+    words, labels = screen(change(free_customer, delivered, 'Use a friendlier tone throughout.'))
+    assert '✏️ Edits of this file: 0 of 3 used' in words, words
+    assert 'AI documents this week' not in words, 'an edit is not one of the week’s documents'
+    edited = tap(free_customer, change(free_customer, delivered, 'Use a friendlier tone throughout.'), 'Generate')
+    words, _ = screen(change(free_customer, edited, 'Make it shorter.'))
+    assert '✏️ Edits of this file: 1 of 3 used' in words, 'an edit of the edit counts against the same file'
+
+
+def test_an_unlimited_plan_is_not_counted_on_a_change(customer):
+    words, _ = screen(change(customer, made(customer), 'Use a friendlier tone throughout.'))
+    assert 'Edits of this file' not in words
+
+
+def test_a_file_with_no_edits_left_is_refused_before_the_change_is_written(free_customer):
+    from apps.core.errors import DomainError
+    from operations import plans as plan_settings
+    from telegram import generation
+    plan_settings.save('free', {'edits_per_file': 1})
+    delivered = made(free_customer)
+    original = GenerationDraft.objects.get(account=free_customer)
+    edited = tap(free_customer, change(free_customer, delivered, 'Use a friendlier tone throughout.'), 'Generate')
+    for screen_with_button in (edited, delivered):
+        words, labels = screen(tap(free_customer, screen_with_button, 'Make changes'))
+        assert 'AI edits are used up (1 per file)' in words, words
+        assert '⭐ Plans' in labels, 'the way past the limit is offered'
+    drafts = GenerationDraft.objects.count()
+    with pytest.raises(DomainError) as refused:
+        generation.revise(free_customer, original.id, 'Make it shorter.')
+    assert refused.value.code == 'edit_limit' and GenerationDraft.objects.count() == drafts, 'no draft left behind'

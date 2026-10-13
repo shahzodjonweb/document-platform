@@ -37,3 +37,37 @@ def stamp(account, value, fmt='%Y-%m-%d %H:%M'):
     """A time as the person should read it, with its zone: '2026-10-07 17:30 UTC+5'."""
     moment = local_time(account, value)
     return f'{moment:{fmt}} {offset_label(moment)}'
+
+
+def zone_known(account):
+    """Whether the account's clock is really its owner's.
+
+    Every account starts on UTC and only the web app moves it to the device's
+    zone, so UTC (or a name that cannot be read) says nothing about where a
+    Telegram-only customer is.
+    """
+    name = getattr(account, 'time_zone', '') or ''
+    if name in ('', 'UTC'):
+        return False
+    try:
+        ZoneInfo(name)
+    except (KeyError, ValueError, OSError):
+        return False
+    return True
+
+
+def week_reset(account, value, locale=None):
+    """When the week's limits come back, as this person should read it.
+
+    On a known clock, the moment itself ('2026-10-19 00:00 UTC+5'). Otherwise
+    the rule as the owner states it, Monday 00:00 in Tashkent: the same moment
+    stamped in UTC reads '2026-10-18 19:00 UTC', a Sunday evening.
+    """
+    from .errors import WEEK_START
+    if value and zone_known(account):
+        try:
+            return stamp(account, value)
+        except (TypeError, ValueError):
+            pass
+    locale = locale or getattr(account, 'locale', 'en')
+    return WEEK_START.get(locale, WEEK_START['en'])

@@ -1,7 +1,7 @@
 import json
 import pytest
 from apps.core.errors import DomainError
-from apps.core.models import UsageLedger
+from apps.core.allowance import ai_documents_this_week
 from apps.core.services import submit_job,execute_job,storage_path
 from apps.studio.domain import create_draft,draft_data,generation_quote
 from apps.studio.outlines import create_outline_quote
@@ -17,28 +17,28 @@ def local(settings):
     settings.DEBUG=True;settings.COMMERCE_SANDBOX_ENABLED=True;settings.ENABLE_BETA_TOOLS=True
 
 
-def test_local_outline_stage_creates_real_outline_and_updates_draft_without_ai_cost():
+def test_local_outline_stage_creates_real_outline_and_updates_draft_without_counting_a_document():
     a=account();d=create_draft(a,{'source_text':'A supplied paragraph about safe document processing.','options':{'length':1}})
-    q=create_outline_quote(a,d.id,1);assert q.meters['ai_credits']==0 and q.parameters['stage']=='outline'
+    q=create_outline_quote(a,d.id,1);assert not q.meters and q.parameters['stage']=='outline'
     job,_=submit_job(a,q.id,'outline-local');job=execute_job(job.id);assert job.status=='succeeded',job.error_code
     result=json.loads(storage_path(job.artifacts.get().file.object_key).read_text())
     assert result['sections'][0]['body']=='A supplied paragraph about safe document processing.'
     d.refresh_from_db();assert d.version==2 and draft_data(d)['content']['sections']==result['sections']
-    assert not UsageLedger.objects.filter(job=job,kind='consume').exists()
+    assert ai_documents_this_week(a)==0,'an outline is a step towards a document, not one'
     # The reviewed outline can proceed to ordinary full export with a new quote.
     full=generation_quote(a,d.id,d.version);assert full.parameters.get('stage') is None
 
 
-def test_live_outline_separate_cost_source_integrity_and_version(settings,monkeypatch):
+def test_live_outline_source_integrity_and_version(settings,monkeypatch):
     a=paid(settings,account());save_config('ai',{'mode':'openai','model':'test-model','api_key':'sk-offline-test'})
     d=create_draft(a,{'source_text':'Safe processing, in 1 page.'})
     raw={'title':'Outline','answer_supported':True,'citations':[],'sections':[{'id':'s1','heading':'Introduction','body':'Cover safe document processing.','notes':''}],'questions':[]}
     calls=[]
     def generated(*args,**kwargs):calls.append(args[2]);return raw,{'input_tokens':1000,'output_tokens':100}
     monkeypatch.setattr(provider,'generate',generated)
-    q=create_outline_quote(a,d.id,1);assert q.meters['ai_credits']==2
+    q=create_outline_quote(a,d.id,1);assert not q.meters and 'tariff' not in q.policy['generation_bounds']
     job,_=submit_job(a,q.id,'outline-paid');job=execute_job(job.id);assert job.status=='succeeded',job.error_code
-    assert calls==['ai.outline'] and sum(UsageLedger.objects.filter(job=job,kind='consume').values_list('amount',flat=True))==2
+    assert calls==['ai.outline'] and not job.settled_meters and ai_documents_this_week(a)==0
     d.refresh_from_db();assert draft_data(d)['content']['sections'][0]['heading']=='Introduction'
     execute_job(job.id);assert calls==['ai.outline']
 
@@ -48,7 +48,7 @@ def test_outline_stage_api_and_an_overlong_outline_is_cut_back_not_refused(setti
     a=paid(settings,account());save_config('ai',{'mode':'openai','model':'test-model','api_key':'sk-offline-test'})
     d=create_draft(a,{'source_text':'Topic, in 1 page.'});client=login_client(a)
     q=client.post(f'/api/v1/generation/drafts/{d.id}/quote',{'version':1,'stage':'outline'},content_type='application/json')
-    assert q.status_code==201 and next(m['amount'] for m in q.json()['meters'] if m['meter']=='ai_credits')==2
+    assert q.status_code==201 and q.json()['affordable'] is True and 'meters' not in q.json()
     raw={'title':'Overrun','sections':[{'id':'s1','heading':'Intro','body':'x'*501,'notes':'aside'}],
          'questions':[{'id':'q1','stem':'?','options':[],'answer':'a','explanation':'','topic':'t','marks':1}]}
     monkeypatch.setattr(provider,'generate',lambda *args,**kwargs:(raw,{'input_tokens':100,'output_tokens':100}))
@@ -72,7 +72,7 @@ def test_outline_cannot_replace_or_drop_confirmed_section_identity(settings,monk
     job,_=submit_job(a,quote.id,'outline-identity');done=execute_job(job.id)
     assert done.status=='failed' and done.error_code=='invalid_parameters'
     d.refresh_from_db();assert d.version==1 and draft_data(d)['content']==before
-    assert not done.artifacts.exists() and not UsageLedger.objects.filter(job=job,kind='consume').exists()
+    assert not done.artifacts.exists()
 
 
 def test_outline_quote_is_owner_version_and_expiry_bound(settings):

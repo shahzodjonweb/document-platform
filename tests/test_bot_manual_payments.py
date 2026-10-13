@@ -44,8 +44,8 @@ def labels(result):
 def test_plans_offer_card_payment_and_say_automatic_is_coming(customer):
     configure()
     result = dispatch_local(customer, text='/plans')
-    assert "💳 Plus · 49 000 so'm / 30 days" in labels(result)
-    assert "💳 Premium · 99 000 so'm / 30 days" in labels(result)
+    assert "💳 Plus · 20 000 so'm / 30 days" in labels(result)
+    assert "💳 Premium · 60 000 so'm / 30 days" in labels(result)
     assert COPY['en']['automatic_soon'] in result['messages'][-1]['text']
 
 
@@ -63,7 +63,7 @@ def test_choosing_a_plan_shows_the_card_the_price_and_the_code(customer):
     text = next(m['text'] for m in reversed(result['messages']) if 'so\'m' in m['text'] and 'PM-' in m['text'])
     payment = ManualPayment.objects.get()
     assert ' '.join(CARD[i:i + 4] for i in range(0, 16, 4)) in text
-    assert "99 000 so'm" in text and payment.reference in text and 'Shakhzod Uralov' in text
+    assert "60 000 so'm" in text and payment.reference in text and 'Shakhzod Uralov' in text
     assert payment.channel == 'bot' and payment.status == 'awaiting'
 
 
@@ -126,7 +126,7 @@ def test_the_owner_is_alerted_once_with_a_link_to_the_review_page(customer, sett
     run_notices(bot)
     assert bot.send_message.await_count == 1
     chat, text = bot.send_message.await_args.args
-    assert chat == 1234567 and payment.reference in text and "99 000 so'm" in text and 'card 4421' in text
+    assert chat == 1234567 and payment.reference in text and "60 000 so'm" in text and 'card 4421' in text
     assert f'https://pdfmaster-admin.example.live/ops/payments/manual/{payment.id}' in text
     assert PaymentNotice.objects.get(kind='staff_new').status == 'delivered'
 
@@ -189,8 +189,8 @@ def test_the_delivery_loop_drains_payment_messages_too(customer):
 def test_the_default_prices_are_offered_as_soon_as_a_card_is_saved(customer):
     configure(prices=None)
     result = dispatch_local(customer, text='/plans')
-    assert "💳 Plus · 60 000 so'm / 30 days" in labels(result)
-    assert "💳 Premium · 100 000 so'm / 30 days" in labels(result)
+    assert "💳 Plus · 20 000 so'm / 30 days" in labels(result)
+    assert "💳 Premium · 60 000 so'm / 30 days" in labels(result)
 
 
 def test_plans_subscription_and_a_card_payment_replace_the_screen_they_were_opened_from(customer):
@@ -201,7 +201,7 @@ def test_plans_subscription_and_a_card_payment_replace_the_screen_they_were_open
     assert chat.tap('subscription') == 0
     assert chat.tap('plans') == 0
     assert chat.tap('commerce_manual_plan', plan='plus') == 0
-    assert '49 000' in chat.last()
+    assert '20 000' in chat.last()
     assert chat.tap('commerce_manual_cancel') == 0
     assert chat.last() == COPY['en']['manual_cancelled']
 

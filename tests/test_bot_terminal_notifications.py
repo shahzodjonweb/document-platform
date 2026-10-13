@@ -8,7 +8,8 @@ from aiogram import Bot
 from django.db import transaction
 from django.utils import timezone
 
-from apps.core.models import Account, BotCallback, BotJobNotice, Job, UsageLedger
+from apps.core.allowance import file_jobs_this_week
+from apps.core.models import Account, BotCallback, BotJobNotice, Job
 from apps.core.services import execute_job, settle_job
 from telegram.notifications import (
     COPY, MAX_ATTEMPTS, attempt_notice, claim_notice, drain_notices,
@@ -29,7 +30,7 @@ def terminal_job(status='failed', *, origin='bot', locale='en', test=True):
 
 @pytest.mark.parametrize('status', ['failed', 'no_op', 'canceled', 'expired'])
 @pytest.mark.parametrize('locale', ['en', 'uz', 'ru'])
-def test_terminal_notice_is_localized_owner_bound_and_does_not_run_or_charge(status, locale):
+def test_terminal_notice_is_localized_owner_bound_and_does_not_run_or_count(status, locale):
     account, job = terminal_job(status, locale=locale)
     notice = enqueue_notice(job)
     assert enqueue_notice(job).id == notice.id
@@ -40,7 +41,7 @@ def test_terminal_notice_is_localized_owner_bound_and_does_not_run_or_charge(sta
     assert notice.status == 'delivered' and notice.message_id == 321 and bot.send_message.await_count == 1
     args = bot.send_message.await_args
     assert args.args[0] == account.telegram_user_id
-    assert COPY[locale][status] in args.args[1] and COPY[locale]['balance'] in args.args[1]
+    assert COPY[locale][status] in args.args[1] and COPY[locale]['not_counted'] in args.args[1]
     controls = [row[0] for row in args.kwargs['reply_markup'].inline_keyboard]
     assert len(controls) == 4
     for button, action in zip(controls, ('job', 'new', 'recent', 'home')):
@@ -50,7 +51,7 @@ def test_terminal_notice_is_localized_owner_bound_and_does_not_run_or_charge(sta
         if action == 'job': assert ref.payload['job_id'] == str(job.id)
     job.refresh_from_db()
     assert job.status == status and job.attempt_count == 0
-    assert not UsageLedger.objects.filter(kind='consume').exists()
+    assert file_jobs_this_week(account) == 0, 'a task that produced nothing gives its place back'
 
 
 def test_enqueue_is_transactional_and_does_not_backfill_historical_jobs():
@@ -74,7 +75,7 @@ def test_browser_terminal_jobs_never_create_telegram_notice(origin):
 
 
 def test_retries_are_bounded_and_reuse_same_controls():
-    _, job = terminal_job()
+    account, job = terminal_job()
     notice = enqueue_notice(job)
     bot = Mock(send_message=AsyncMock(side_effect=RuntimeError('Do not log raw provider error')))
     previous = None
@@ -89,7 +90,7 @@ def test_retries_are_bounded_and_reuse_same_controls():
     asyncio.run(attempt_notice(notice.id, bot))
     assert bot.send_message.await_count == MAX_ATTEMPTS
     assert BotCallback.objects.count() == 4
-    assert not UsageLedger.objects.filter(kind='consume').exists()
+    assert file_jobs_this_week(account) == 0
 
 
 def test_lease_prevents_parallel_claim_and_old_sender_cannot_finish_new_attempt():
@@ -160,13 +161,12 @@ def test_real_worker_failure_atomically_enqueues_and_delivery_loop_notifies_once
     assert bot.send_message.await_count == 1
     notice.refresh_from_db(); assert notice.status == 'delivered'
     job.refresh_from_db(); assert job.attempt_count == 1
-    assert not UsageLedger.objects.filter(job=job, kind='consume').exists()
+    assert file_jobs_this_week(job.account) == 0
 
 
 def test_async_settlement_and_notice_roll_back_together(settings):
     settings.LOCAL_SYNC_JOBS = False
-    _, job = completed_job(execute=False)
-    original_ledger = list(UsageLedger.objects.filter(job=job).values_list('id', 'kind', 'amount'))
+    account, job = completed_job(execute=False)
     with pytest.raises(RuntimeError):
         with transaction.atomic():
             settle_job(job.id, 'failed', error_code='processing_failed')
@@ -174,7 +174,7 @@ def test_async_settlement_and_notice_roll_back_together(settings):
             raise RuntimeError('rollback')
     job.refresh_from_db()
     assert job.status == 'queued' and not BotJobNotice.objects.filter(job=job).exists()
-    assert list(UsageLedger.objects.filter(job=job).values_list('id', 'kind', 'amount')) == original_ledger
+    assert file_jobs_this_week(account) == 1, 'the queued task still holds its place'
 
 
 def test_rate_limit_retries_are_also_bounded():
@@ -190,3 +190,50 @@ def test_rate_limit_retries_are_also_bounded():
     notice.refresh_from_db()
     assert notice.status == 'failed' and notice.error_code == 'telegram_rate_limited'
     assert notice.attempts == MAX_ATTEMPTS and bot.send_message.await_count == MAX_ATTEMPTS
+
+
+
+def sent_notice(job):
+    """The notice text for this job; a notice already sent for it is sent again."""
+    BotJobNotice.objects.filter(job=job).delete()
+    job.refresh_from_db()
+    notice = enqueue_notice(job)
+    bot = Mock(send_message=AsyncMock(return_value=Mock(message_id=77)))
+    asyncio.run(attempt_notice(notice.id, bot))
+    return bot.send_message.await_args.args[1]
+
+
+@pytest.mark.parametrize('locale', ['en', 'uz', 'ru'])
+def test_a_plan_without_the_limit_is_not_told_a_task_did_not_count(locale):
+    """Premium has no weekly limits, so "it doesn't count towards this week's
+    limit" says nothing true to it; Plus has none for file tools."""
+    account, job = terminal_job('failed', locale=locale)
+    assert COPY[locale]['not_counted'] in sent_notice(job), 'Free counts file tasks'
+    for plan in ('premium', 'plus'):
+        Account.objects.filter(pk=account.pk).update(staff_plan=plan)
+        text = sent_notice(job)
+        assert COPY[locale]['failed'] in text
+        assert COPY[locale]['not_counted'] not in text and COPY[locale]['edit_not_counted'] not in text, plan
+
+
+@pytest.mark.parametrize('locale', ['en', 'uz', 'ru'])
+def test_a_failed_ai_edit_names_the_files_edits_not_the_week(locale):
+    from apps.studio.domain import DOCUMENT
+    _, job = terminal_job('canceled', locale=locale)
+    Job.objects.filter(pk=job.pk).update(feature_id=DOCUMENT, parameters={'revision': True, 'root_draft_id': 'draft'})
+    text = sent_notice(job)
+    assert COPY[locale]['edit_not_counted'] in text and COPY[locale]['not_counted'] not in text
+
+
+@pytest.mark.parametrize('locale', ['en', 'uz', 'ru'])
+def test_an_error_that_already_says_it_did_not_count_is_not_followed_by_it_again(locale):
+    from apps.core.errors import DomainError, error_data
+    from apps.studio.domain import DOCUMENT
+    _, job = terminal_job('failed', locale=locale)
+    Job.objects.filter(pk=job.pk).update(feature_id=DOCUMENT, parameters={}, error_code='provider_failed')
+    text = sent_notice(job)
+    assert error_data(DomainError('provider_failed'), locale)['message'] in text
+    assert COPY[locale]['not_counted'] not in text, 'said once, by the error itself'
+    # A file error in the bot's own words does not say it, so the notice does.
+    Job.objects.filter(pk=job.pk).update(feature_id='pdf.rotate', error_code='processing_failed')
+    assert COPY[locale]['not_counted'] in sent_notice(job)

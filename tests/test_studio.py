@@ -9,7 +9,6 @@ from django.utils import timezone
 from pypdf import PdfReader
 from pptx import Presentation
 from apps.core.services import submit_job,execute_job,storage_path,create_quote
-from apps.core.models import UsageLedger
 from apps.core.errors import DomainError
 from apps.studio.domain import create_draft,update_draft,generation_quote,draft_data,unpack
 from apps.studio.models import EducationProject,GenerationDraft,ShareGrant
@@ -34,14 +33,15 @@ def paid(settings,a):
 def content():
     return {'title':'O‘zbekcha — Русский','sections':[{'heading':'Bo‘lim / Раздел','body':'O‘qituvchi bilim beradi. Учитель помогает учиться.'}],'questions':[{'id':'q1','stem':'2 + 2?','options':['3','4'],'answer':'4','explanation':'Two pairs make four.','topic':'addition','marks':2}]}
 
-def test_generation_pdf_pptx_real_outputs_and_no_fake_ai_charge(settings):
+def test_generation_pdf_pptx_real_outputs_each_one_document_of_the_week(settings):
     a=account();cfg={'title':'O‘zbekcha — Русский','source_text':'O‘qituvchi bilim beradi. Учитель помогает учиться.'}
-    for feature,fmt in (('ai.pdf_topic','pdf'),('ai.pptx','pptx')):
+    from apps.core.allowance import ai_documents_this_week
+    for made,(feature,fmt) in enumerate((('ai.pdf_topic','pdf'),('ai.pptx','pptx')),1):
         d=create_draft(a,{**cfg,'feature_id':feature,'output_format':fmt});q=generation_quote(a,d.id,d.version)
         job,_=submit_job(a,q.id,'studio-'+fmt);job=execute_job(job.id)
         assert job.status=='succeeded',job.error_code
         assert job.warnings==['local_fixture_not_ai_generated']
-        assert not UsageLedger.objects.filter(job=job,kind='consume').exists()
+        assert ai_documents_this_week(a)==made and not job.settled_meters
         asset=job.artifacts.get().file;path=storage_path(asset.object_key)
         if fmt=='pdf':assert 'Учитель' in ''.join(p.extract_text() for p in PdfReader(path).pages)
         else:

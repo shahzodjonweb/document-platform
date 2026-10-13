@@ -6,16 +6,14 @@
   "currency": "XTR",
   "retention_hours": 24,
   "quote_expiry_seconds": 600,
-  "config_note": "Proposed engineering limits, not validated commercial prices. Change in admin via versioned plan configuration after cost/load tests. Do not activate production billing with null prices.",
+  "config_note": "Weekly limits per plan (null = unlimited), counted from jobs; a week starts Monday 00:00 Asia/Tashkent. Change limits and prices in the admin panel; per-job caps stay engineering limits.",
   "plans": {
     "free": {
       "price_xtr": 0,
       "price_uzs": null,
-      "file_tasks": 300,
-      "daily_file_tasks": 20,
-      "daily_ai_documents": 3,
-      "file_page_units": 3000,
-      "ai_credits": 3150,
+      "weekly_ai_documents": 5,
+      "weekly_file_jobs": 15,
+      "edits_per_file": 3,
       "max_file_mib": 25,
       "max_pages_per_job": 100,
       "batch_files": 1,
@@ -34,12 +32,10 @@
     },
     "plus": {
       "price_xtr": null,
-      "price_uzs": 60000,
-      "file_tasks": 1500,
-      "daily_file_tasks": null,
-      "daily_ai_documents": null,
-      "file_page_units": 20000,
-      "ai_credits": 10500,
+      "price_uzs": 20000,
+      "weekly_ai_documents": 20,
+      "weekly_file_jobs": null,
+      "edits_per_file": 10,
       "max_file_mib": 100,
       "max_pages_per_job": 200,
       "batch_files": 10,
@@ -58,12 +54,10 @@
     },
     "premium": {
       "price_xtr": null,
-      "price_uzs": 100000,
-      "file_tasks": 5000,
-      "daily_file_tasks": null,
-      "daily_ai_documents": null,
-      "file_page_units": 100000,
-      "ai_credits": 30000,
+      "price_uzs": 60000,
+      "weekly_ai_documents": null,
+      "weekly_file_jobs": null,
+      "edits_per_file": null,
       "max_file_mib": 200,
       "max_pages_per_job": 1000,
       "batch_files": 25,
@@ -80,28 +74,5 @@
       "max_merge_input_files": 50,
       "max_aggregate_input_mib": 400
     }
-  },
-  "tariff_v0_staging": {
-    "ocr_credits_per_page": 1,
-    "editable_conversion_credits_per_page": 2,
-    "source_ingestion_credits_per_started_5_pages": 1,
-    "outline_credits": 2,
-    "pdf_output_credits_per_started_page": 3,
-    "pptx_output_credits_per_slide": 4,
-    "quiz_credits_per_started_5_questions": 2,
-    "flashcard_credits_per_started_10_cards": 2,
-    "qa_base_credits": 2,
-    "generated_image_credits": 20,
-    "rule": "Server creates a bounded, versioned quote from actual validated inputs; larger context and provider/model surcharges are separate tariff entries. These staging rates require a real cost benchmark before public use."
-  },
-  "purchased_pack_policy": {
-    "task_pack_meters": [
-      "file_tasks",
-      "file_page_units"
-    ],
-    "free_daily_cap_applies_to": "included_task_grants_only",
-    "purchased_grants_expire": false,
-    "overrides_feature_or_file_caps": false,
-    "note": "Pack task/page quantities and price are explicit versioned offers; anti-abuse and concurrent-job controls still apply."
   }
 }

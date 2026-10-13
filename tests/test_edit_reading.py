@@ -657,7 +657,7 @@ def test_a_long_change_is_held_to_the_calls_its_job_sends(customer, monkeypatch)
     # The quote holds it to the same calls, on a plan whose budget the whole body is over.
     real = domain.plan_limits
     monkeypatch.setattr(domain, 'plan_limits', lambda account: {**real(account), 'max_ai_input_tokens': max(calls)})
-    assert generation_quote(customer, draft.id, draft.version).meters['ai_credits'] > 0
+    assert generation_quote(customer, draft.id, draft.version).policy['generation_bounds']['input_tokens'] == max(calls)
     monkeypatch.setattr(domain, 'plan_limits', lambda account: {**real(account), 'max_ai_input_tokens': max(calls) - 1})
     with pytest.raises(DomainError):
         generation_quote(customer, draft.id, draft.version)

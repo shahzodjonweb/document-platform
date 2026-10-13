@@ -15,7 +15,7 @@ from aiogram.types import PhotoSize, Update
 from PIL import Image
 
 from apps.core.errors import DomainError
-from apps.core.models import Account, BotCallback, BotDraft, Job, UsageLedger
+from apps.core.models import Account, BotCallback, BotDraft, Job
 from telegram.bot import COPY, callback, option_summary
 from telegram.errors import bot_error
 from telegram.ux_copy import UX
@@ -76,7 +76,7 @@ def test_tool_screen_explains_scanning_before_upload_without_switches(locale):
     assert draft.input_ids == [] and draft.quote_id is None
     assert sum(isinstance(call, SendMessage) for call in harness.session.calls) == before
     assert_no_switches(harness, locale)
-    assert not Job.objects.exists() and not UsageLedger.objects.exists()
+    assert not Job.objects.exists()
 
 
 @pytest.mark.parametrize('locale', ['en', 'uz', 'ru'])
@@ -96,7 +96,7 @@ def test_direct_photo_and_image_uploads_have_defaults_and_can_start_immediately(
     assert draft.feature_id == 'pdf.images_to_pdf'
     assert draft.parameters == DEFAULTS and draft.quote.parameters == DEFAULTS
     assert_no_switches(harness, locale)
-    assert not Job.objects.exists() and not UsageLedger.objects.exists()
+    assert not Job.objects.exists()
     harness.click(harness.action('run'))
     job = Job.objects.get()
     assert job.parameters == DEFAULTS

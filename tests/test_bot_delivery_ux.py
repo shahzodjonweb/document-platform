@@ -12,7 +12,8 @@ from pypdf import PdfWriter
 
 from apps.commerce.models import BotDelivery
 from apps.core.identity import resolve_account
-from apps.core.models import Account, BotCallback, Job, UsageLedger
+from apps.core.allowance import file_jobs_this_week
+from apps.core.models import Account, BotCallback, Job
 from apps.core.services import create_quote, execute_job, settle_job, submit_job, upload_file
 from telegram.delivery import RESULT_COPY, attempt, enqueue
 from telegram.ux_copy import UX
@@ -48,7 +49,7 @@ def test_worker_completion_atomically_enqueues_one_delivery_without_transport(mo
     settle_job(job.id, 'succeeded')
     execute_job(job.id)
     assert BotDelivery.objects.count() == 1
-    assert UsageLedger.objects.filter(job=job, kind='consume', meter='file_tasks').count() == 1
+    assert Job.objects.get(pk=job.pk).attempt_count == 1 and file_jobs_this_week(account) == 1
 
 
 def test_delivery_and_settlement_roll_back_together():
@@ -61,7 +62,7 @@ def test_delivery_and_settlement_roll_back_together():
     job.refresh_from_db()
     assert job.status == 'queued' and not job.artifacts.exists()
     assert not BotDelivery.objects.exists()
-    assert not UsageLedger.objects.filter(job=job, kind='consume').exists()
+    assert file_jobs_this_week(account) == 1, 'the rolled back task is queued and holds its place'
 
 
 @pytest.mark.parametrize('origin', ['web', 'mini_app'])
@@ -162,8 +163,8 @@ def test_a_referral_that_cannot_be_made_still_links_the_bot(monkeypatch):
     assert '<a href="https://t.me/PdfMasterTestBot">@PdfMasterTestBot</a>' in sent['caption']
 
 
-def test_failed_send_reuses_navigation_tokens_and_does_not_recharge():
-    _, job = completed_job()
+def test_failed_send_reuses_navigation_tokens_and_does_not_recount():
+    account, job = completed_job()
     delivery = BotDelivery.objects.get()
     bot = Mock(send_document=AsyncMock(side_effect=RuntimeError('private transport failure')))
     asyncio.run(attempt(delivery.id, bot))
@@ -176,7 +177,7 @@ def test_failed_send_reuses_navigation_tokens_and_does_not_recharge():
     asyncio.run(attempt(delivery.id, bot))
     assert set(BotCallback.objects.values_list('token', flat=True)) == first_tokens
     assert Job.objects.get(pk=job.pk).attempt_count == 1
-    assert UsageLedger.objects.filter(job=job, kind='consume', meter='file_tasks').count() == 1
+    assert Job.objects.count() == 1 and file_jobs_this_week(account) == 1
 
 
 def test_large_result_has_actionable_web_link_without_reading_the_file(monkeypatch):

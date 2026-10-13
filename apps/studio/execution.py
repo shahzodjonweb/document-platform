@@ -106,7 +106,7 @@ def execute_generation(job,output_dir):
     # rejecting it. The customer chose a page count, it was clamped to their plan
     # before the model was asked, and they are owed that document: a model that
     # returns an extra section, or a question nobody asked for, is our estimate
-    # being off by a little, not a reason to destroy a paid job.
+    # being off by a little, not a reason to throw a finished job away.
     question_cap=bounds.get('question_cap',limits(job.account)['questions'])
     if len(content['questions'])>question_cap:
         content['questions']=content['questions'][:question_cap];warnings.append('questions_trimmed')
@@ -151,28 +151,15 @@ def execute_generation(job,output_dir):
                 logging.getLogger(__name__).error('Job %s: rendered %s has Cyrillic in a %s document',job.id,artifact['name'],data['output_locale'])
                 raise DomainError('script_policy',500)
     # A document that renders longer than the estimate is still the document that
-    # was asked for. It is delivered, said out loud, and charged at the quote.
+    # was asked for. It is delivered and said out loud, never refused.
     allowance=bounds.get('output_pages',limits(job.account)['slides' if data['output_format']=='pptx' else 'sections'])
     if any(a['page_count']>allowance for a in artifacts):warnings.append('longer_than_quoted')
     # The renderer holds each section to its own page. When it had to shorten one
     # to do that, the customer is told rather than left to notice.
     if any(a.get('shortened') for a in artifacts):warnings.append('shortened_to_fit')
-    question_count=len(content['questions'])
-    actual=dict(job.meters)
-    if cfg['mode']=='openai':
-        import math
-        from apps.core.policy import SEED
-        tariff=bounds.get('tariff',SEED['tariff_v0_staging'])
-        from .metering import generation_credits
-        # Never more than the pages that were quoted, and never more than were
-        # produced: the customer pays for what they agreed to or less, so a long
-        # render cannot turn into a surprise charge or a `quote_exceeded` failure.
-        output_credits=sum(min(a['page_count'],allowance)*(tariff['pptx_output_credits_per_slide'] if a['name'].endswith('.pptx') else tariff['pdf_output_credits_per_started_page']) for a in artifacts)
-        actual['ai_credits']=generation_credits(job.feature_id,len(data['excerpts']),question_count,output_credits,tariff)
-    if any(actual.get(m,0)>job.meters.get(m,0) for m in actual):raise DomainError('quote_exceeded',409)
     data['content']=content
     data.pop('_source_seed',None)
     # A customer may edit while the provider is running. Never overwrite that
     # newer draft with the completed response for the prior confirmed version.
     GenerationDraft.objects.filter(pk=draft.pk,version=draft.version,encrypted_data=original).update(encrypted_data=pack(data),version=F('version')+1)
-    return {'artifacts':artifacts,'actual_meters':actual,'metadata':{'engine':'structured-'+cfg['mode'],'warnings':warnings}}
+    return {'artifacts':artifacts,'metadata':{'engine':'structured-'+cfg['mode'],'warnings':warnings}}

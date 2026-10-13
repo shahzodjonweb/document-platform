@@ -8,7 +8,8 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
 from pypdf import PdfWriter,PdfReader
 from apps.core.identity import resolve_account
-from apps.core.models import Job,UsageLedger,BotDraft,BotConversation,BotCallback
+from apps.core.allowance import file_jobs_this_week
+from apps.core.models import Job,BotDraft,BotConversation,BotCallback
 from apps.core.services import storage_path,upload_file,create_quote,submit_job,execute_job
 from apps.commerce.models import Payment,LocalBotMessage,BotDelivery
 from apps.commerce.services import create_invoice,payload_for
@@ -70,7 +71,7 @@ def test_local_bot_file_upload_merge_download_and_durable_delivery():
     assert Job.objects.count()==1
     job=Job.objects.get();assert job.status=='succeeded'
     assert [float(p.mediabox.width) for p in PdfReader(storage_path(job.artifacts.get().file.object_key)).pages]==[320,220]
-    assert UsageLedger.objects.filter(job=job,kind='consume',meter='file_tasks').count()==1
+    assert file_jobs_this_week(a)==1,'tapped twice, counted once'
     assert BotDelivery.objects.filter(status='delivered').count()==1
     assert LocalBotMessage.objects.filter(asset__isnull=False,direction='outbound').count()==1
 
@@ -100,7 +101,7 @@ def test_failed_delivery_retry_does_not_reprocess_or_charge_twice():
     delivery.refresh_from_db();assert delivery.status=='delivered' and delivery.message_id==33
     assert bot.send_document.await_count==1
     assert Job.objects.get(pk=job.id).attempt_count==1
-    assert UsageLedger.objects.filter(job=job,kind='consume',meter='file_tasks').count()==1
+    assert file_jobs_this_week(a)==1,'a delivery retry is not another task'
 
 def test_bot_workspace_commands_use_current_admin_url_and_keep_owned_input():
     from operations.integrations import save_config
@@ -121,7 +122,7 @@ def test_bot_workspace_commands_use_current_admin_url_and_keep_owned_input():
     studio=[b['url'] for row in examples['messages'][-1]['buttons'] for b in row if b.get('url')]
     assert studio==['http://localhost:3000/en/app/create']
 
-def test_fast_precheckout_answers_invalid_request_without_grant(monkeypatch):
+def test_fast_precheckout_answers_invalid_request_without_payment(monkeypatch):
     from telegram.billing import fast_precheckout
     from apps.commerce.providers import TelegramStarsProvider
     calls=[]

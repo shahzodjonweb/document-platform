@@ -26,10 +26,11 @@ from apps.core.services import upload_file, create_quote, submit_job, execute_jo
 from apps.core import funnel, storage
 from apps.core.serializers import quote_data
 from apps.core.errors import DomainError, error_data
+from apps.core.allowance import LIMIT_CODES
 
 from .ux_copy import UX, STATUS, LEGACY_COPY, TOOL_NAMES, PROMPT_EXAMPLES, LOCALES, counted
 from .errors import bot_error
-from .clock import local_time, stamp
+from .clock import local_time, stamp, week_reset
 COPY={locale:{**LEGACY_COPY[locale],**UX[locale]} for locale in UX}
 
 def text(account,key): return COPY.get(account.locale,COPY['en'])[key]
@@ -86,7 +87,7 @@ def own_message(message):
     return bool(getattr(getattr(message,'from_user',None),'is_bot',False))
 
 async def safe_error(message,account,exc):
-    # A free customer who has not joined the owner's channels is shown them,
+    # A Free or Plus customer who has not joined the owner's channels is shown them,
     # not an error.
     if exc.code=='channels_required' and getattr(account,'telegram_user_id',None):
         from .channels import show_gate
@@ -96,9 +97,9 @@ async def safe_error(message,account,exc):
     if key=='secure': rows.append([InlineKeyboardButton(text=text(account,'open'),url=await web_url(account))])
     if getattr(account,'telegram_user_id',None):
         rows.append([await button(account,'continue_task','controls'),await button(account,'home','home')])
-        if 'quota' in exc.code or 'balance' in exc.code or 'allowance' in exc.code or exc.code in ('feature_not_in_plan','daily_ai_limit'):
+        if exc.code in ('feature_not_in_plan',*LIMIT_CODES):
             rows.insert(0,[await button(account,'plans','plans')])
-    body=text(account,key) if key else bot_error(exc,account.locale)
+    body=text(account,key) if key else bot_error(exc,account.locale,account)
     markup=InlineKeyboardMarkup(inline_keyboard=rows) if rows else None
     # After a button tap the error takes that screen's place: tapping again
     # cannot stack up the same error.
@@ -172,19 +173,20 @@ def option_summary(account,draft):
         result.append(html.escape(f'{label}: {value}' if label else value))
     return '\n'.join(result) or text(account,'options_default')
 
-async def review_screen(account,draft,quote):
-    """The review of a generation before it is paid for, as (body, rows).
+def week_line(account,summary):
+    """This week's file tasks beside a file task, on a plan that counts them; else nothing."""
+    week=summary['usage']['file_jobs']
+    return text(account,'files_week_used').format(used=week['used'],limit=week['limit'])+'\n' if week['limit'] is not None else ''
 
-    Never submit without showing this: generating spends AI credits.
+async def review_screen(account,draft,quote):
+    """The review of a generation before it is made, as (body, rows).
+
+    Never submit without showing this: making it uses one of the week's AI
+    documents, or one of the file's edits, and the customer sees which.
     """
     from . import generation as ai
     from .onboarding import LANGUAGES
     title=TOOL_NAMES[draft.feature_id][account.locale]
-    summary=await sync_to_async(quote_data)(quote)
-    balances=summary['available_balances']
-    usage='\n'.join(f'{text(account,label)}: {quote.meters[key]} / {balances[key]["remaining"]}'
-                    for key,label in (('ai_credits','ai_credits'),('file_tasks','file_tasks'))
-                    if quote.meters.get(key))
     heading=await sync_to_async(ai.title_of)(draft)
     given,asked=await sync_to_async(ai.summary)(draft)
     change=await sync_to_async(ai.change_request)(draft)
@@ -224,17 +226,24 @@ async def review_screen(account,draft,quote):
     other=await sync_to_async(ai.other_service)(draft)
     if other: body+='\n\n'+text(account,'ai_wrong_tool_slides' if other==ai.SLIDES else 'ai_wrong_tool_pdf')
     body+=f'\n\n{text(account,"ai_review_hint")}'
-    if usage: body+=f'\n\n{text(account,"cost")} / {text(account,"available")}:\n{usage}'
+    # What this uses on a plan with limits: an edit counts against its file, a
+    # new document against the week. Unlimited plans are not told a number.
+    source=await sync_to_async(ai.revised_from)(draft)
+    if source:
+        used,limit=await sync_to_async(ai.edits_used)(draft)
+        if limit is not None: body+='\n\n'+text(account,'ai_edits_used').format(used=used,limit=limit)
+    else:
+        week=(await sync_to_async(usage_snapshot)(account))['ai_documents']
+        if week['limit'] is not None: body+='\n\n'+text(account,'ai_week_used').format(used=week['used'],limit=week['limit'])
     body+=f'\n{text(account,"expires")}: {stamp(account,quote.expires_at)}'
     # Rewording a change goes back to the change, not to a blank document.
-    source=await sync_to_async(ai.revised_from)(draft)
     reword=(await button(account,'ai_revise','ai_revise',{'draft_id':source}) if source
             else await button(account,'ai_change_topic','ai_tool',{'feature_id':draft.feature_id}))
     rows=[[await button(account,'ai_generate','ai_run',{'quote_id':str(quote.id),'draft_id':str(draft.id)})]]
     if other:
         rows.insert(0,[await button(account,'ai_switch_slides' if other==ai.SLIDES else 'ai_switch_pdf','ai_switch',
                                     {'draft_id':str(draft.id),'feature_id':other})])
-    # The count can be put right here, before anything is charged. At the
+    # The count can be put right here, before anything is made. At the
     # plan's limit the "more" button becomes the plan that gives more.
     from apps.studio.pages import ceiling
     top=await sync_to_async(ceiling)(account,'pptx' if deck else 'pdf')
@@ -290,17 +299,28 @@ async def remember_review(account,draft,screen):
     from .local import LocalTelegramSession
     local=isinstance(getattr(getattr(screen,'bot',None),'session',None),LocalTelegramSession)
     shown={'draft_id':str(draft.id),'chat_id':chat_id,'message_id':message_id,'local':local}
-    await sync_to_async(BotConversation.objects.update_or_create)(telegram_user_id=account.telegram_user_id,
-                                                                 defaults={'review':shown})
+    def keep():
+        from django.db import transaction
+        from .commands import menu_mark
+        with transaction.atomic():
+            row,_=BotConversation.objects.select_for_update().get_or_create(telegram_user_id=account.telegram_user_id)
+            # The chat's menu version shares this field (telegram/commands.py);
+            # losing it would set the menu again on the next update.
+            row.review={**menu_mark(row.review),**shown}
+            row.save(update_fields=['review','updated_at'])
+    await sync_to_async(keep)()
 
 def forget_review(account,draft_id):
     """Once Generate is tapped the review becomes the job's status: never redraw it as a review.
 
     A redraw there would offer Generate again for a job already submitted. Only
     that draft's review is forgotten; one shown since for another draft stays.
+    The chat's menu version, kept in the same field, stays as well.
     """
-    BotConversation.objects.filter(telegram_user_id=account.telegram_user_id,
-                                   review__draft_id=str(draft_id)).update(review={})
+    from .commands import menu_mark
+    rows=BotConversation.objects.filter(telegram_user_id=account.telegram_user_id,review__draft_id=str(draft_id))
+    for review in rows.values_list('review',flat=True)[:1]:
+        rows.update(review=menu_mark(review))
 
 def refresh_review(account,draft,quote):
     """Redraw the review in the chat after the draft changed elsewhere (the Mini App).
@@ -454,18 +474,19 @@ def build_dispatcher():
                 except DomainError as exc: quote_error=exc
         if quote:
             summary=await sync_to_async(quote_data)(quote)
-            usage=' · '.join(f'{text(account,label)}: {quote.meters[key]}' for key,label in [('file_tasks','file_tasks'),('file_page_units','page_units'),('ai_credits','ai_credits')] if quote.meters.get(key))
-            balance=' · '.join(f'{text(account,label)}: {summary["available_balances"][key]["remaining"]}' for key,label in [('file_tasks','file_tasks'),('file_page_units','page_units'),('ai_credits','ai_credits')] if quote.meters.get(key))
-            body+=f'\n\n{text(account,"cost")}: {usage}\n{text(account,"available")}: {balance}\n{text(account,"expires")}: {stamp(account,quote.expires_at,"%H:%M")}\n{text(account,"tap_to_run")}'
+            body+='\n\n'+week_line(account,summary)+f'{text(account,"expires")}: {stamp(account,quote.expires_at,"%H:%M")}'
+            # "Nothing counts until you tap Start" only beside a Start button:
+            # at the limit Start becomes Plans.
             if summary['affordable']:
+                body+='\n'+text(account,'tap_to_run')
                 rows.append([await button(account,'run','run',{**snapshot(draft),'quote_id':str(quote.id)})])
             else:
-                body+='\n'+text(account,'quota_hint')
+                body+='\n'+text(account,'files_week_hint').format(when=week_reset(account,summary['usage']['resets_at']))
                 rows.append([await button(account,'plans','plans')])
         if quote_error and quote_error.code=='channels_required':
             return await show_gate(message,account,resume={'kind':'controls'},edit=edit)
         if quote_error:
-            body+='\n\n'+html.escape(bot_error(quote_error,account.locale))
+            body+='\n\n'+html.escape(bot_error(quote_error,account.locale,account))
             if quote_error.code in ('password_required','unlock_first','secure_password_entry_required'):
                 rows.append([InlineKeyboardButton(text=text(account,'open'),url=await web_url(account))])
         if feature=='pdf.rotate': rows.append([await choice(f'{angle}°',{'angle':angle}) for angle in (90,180,270)])
@@ -496,10 +517,12 @@ def build_dispatcher():
     async def quote_message(message,account,draft,quote,edit=False):
         names=await sync_to_async(lambda:{str(a.id):a.name for a in FileAsset.objects.filter(account=account,id__in=draft.input_ids)})()
         listing='\n'.join(f'{i+1}. {html.escape(names.get(key,"")[:24])}' for i,key in enumerate(draft.input_ids))
-        summary=await sync_to_async(quote_data)(quote);meters=quote.meters;balances=summary['available_balances']
-        rows=[[await button(account,'run','run',{**snapshot(draft),'quote_id':str(quote.id)})],[await button(account,'edit_settings','controls'),await button(account,'cancel_button','cancel',snapshot(draft))],[await button(account,'home','home')]]
-        usage='\n'.join(f'{text(account,label)}: {meters[key]} / {balances[key]["remaining"]}' for key,label in [('file_tasks','file_tasks'),('file_page_units','page_units'),('ai_credits','ai_credits')] if meters.get(key) or key=='file_tasks')
-        body=f'<b>{text(account,"review_title")}</b>\n{text(account,"review_hint")}\n\n{listing}\n\n{option_summary(account,draft)}\n\n{text(account,"cost")} / {text(account,"available")}:\n{usage}\n{text(account,"expires")}: {stamp(account,quote.expires_at)}'
+        summary=await sync_to_async(quote_data)(quote)
+        start=([await button(account,'run','run',{**snapshot(draft),'quote_id':str(quote.id)})] if summary['affordable']
+               else [await button(account,'plans','plans')])
+        rows=[start,[await button(account,'edit_settings','controls'),await button(account,'cancel_button','cancel',snapshot(draft))],[await button(account,'home','home')]]
+        body=f'<b>{text(account,"review_title")}</b>\n{text(account,"review_hint")}\n\n{listing}\n\n{option_summary(account,draft)}\n\n{week_line(account,summary)}{text(account,"expires")}: {stamp(account,quote.expires_at)}'
+        if not summary['affordable']: body+='\n'+text(account,'files_week_hint').format(when=week_reset(account,summary['usage']['resets_at']))
         await render(message,body,rows,edit)
 
     async def review(message,account,binding=None,edit=False):
@@ -550,6 +573,9 @@ def build_dispatcher():
         """One screen: what should change? Everything unmentioned stays put."""
         title=await sync_to_async(ai.revisable)(account,draft_id)
         if title is None: return await safe_error(message,account,DomainError('revision_not_ready'))
+        # A file with no edits left says so now, not after the change is written.
+        try: await sync_to_async(ai.editable)(account,draft_id)
+        except DomainError as exc: return await safe_error(message,account,exc)
         await sync_to_async(set_prompt)(account,'ai_revise',{'draft_id':str(draft_id)})
         body=(f'<b>{text(account,"ai_revise_title")}</b>\n'
               f'{text(account,"ai_revise_of")}: {html.escape(title)}\n\n'
@@ -562,7 +588,7 @@ def build_dispatcher():
         """An AI request that could not be priced, said once.
 
         `message` is the bot's own "Preparing…" line. Channels to join replace
-        it; the daily limit, or any other error, takes its place, and only an
+        it; a used-up limit, or any other error, takes its place, and only an
         error the customer can fix by writing again asks the question again.
         """
         if exc.code=='channels_required':
@@ -570,8 +596,8 @@ def build_dispatcher():
             from .channels import show_gate
             return await show_gate(message,account,resume=resume,edit=True)
         # The shared error copy cannot say what the chat does with a file format.
-        body=html.escape(text(account,'ai_format_only') if exc.code=='format_only_change' else bot_error(exc,account.locale))
-        if exc.code=='daily_ai_limit':
+        body=html.escape(text(account,'ai_format_only') if exc.code=='format_only_change' else bot_error(exc,account.locale,account))
+        if exc.code in ('weekly_ai_limit','edit_limit'):
             # Nothing to rewrite: the limit and the way past it, in place of "Preparing…".
             await sync_to_async(set_prompt)(account)
             return await render(message,body,[[await button(account,'plans','plans')],[await button(account,'home','home')]],True)
@@ -579,7 +605,7 @@ def build_dispatcher():
         return await again()
 
     async def ai_revise_start(message,account,draft_id,request):
-        """The change is priced and shown before anything is spent, as ever.
+        """The change is priced and shown before an edit is used, as ever.
 
         `message` is the "Preparing…" line, which becomes the priced draft.
         """
@@ -643,13 +669,13 @@ def build_dispatcher():
         await render(message,body,rows,edit)
 
     async def ai_review(message,account,draft,quote,edit=False):
-        """Never submit without showing this: generating spends AI credits."""
+        """Never submit without showing this: it says what the document uses of the plan."""
         body,rows=await review_screen(account,draft,quote)
         sent=await render(message,body,rows,edit)
         await remember_review(account,draft,sent or message)
 
     async def ai_start(message,account,feature_id,description):
-        """One chat message in, a priced draft out. Nothing is charged yet.
+        """One chat message in, a priced draft out. Nothing is counted yet.
 
         `message` is the "Preparing…" line, which becomes the priced draft.
         """
@@ -665,7 +691,7 @@ def build_dispatcher():
             await sync_to_async(funnel.step)('ai.described',account=account,feature=feature_id)
             _,quote=await sync_to_async(ai.quote)(account,draft.id)
         except DomainError as exc:
-            # The description is kept: after joining, the customer is shown its price.
+            # The description is kept: after joining, the customer is shown its review.
             resume={'kind':'ai_draft','draft_id':str(draft.id)} if draft else {'kind':'ai_prompt','feature_id':feature_id}
             return await ai_refused(message,account,exc,resume,lambda:ai_prompt(message,account,feature_id))
         await sync_to_async(set_prompt)(account)
@@ -861,8 +887,13 @@ def build_dispatcher():
         methods=['Telegram'] if account.telegram_user_id else []
         if account.email: methods.append('Email')
         if account.google_sub: methods.append('Google')
-        meters=usage['meters']
-        body=f'<b>{text(account,"account")}</b>\n{text(account,"plan_label")}: {html.escape(text(account,'free_plan') if account.plan=='free' else account.plan.title())}\n{text(account,"linked_methods")}: {", ".join(methods)}\n\n'+ '\n'.join(f'{text(account,label)}: {meters[key]["remaining"]} / {meters[key]["limit"]}' for key,label in [('file_tasks','file_tasks'),('file_page_units','page_units'),('ai_credits','ai_credits')])+f'\n{text(account,"resets")}: {stamp(account,usage["resets_at"])}\n\n{text(account,"link_instructions")}'
+        unlimited=text(account,'unlimited')
+        week='\n'.join(f'{text(account,label)}: '+(f'{usage[key]["used"]} / {usage[key]["limit"]}' if usage[key]['limit'] is not None else unlimited)
+                       for key,label in (('ai_documents','week_ai_documents'),('file_jobs','week_file_jobs')))
+        edits=usage['edits_per_file']
+        body=(f'<b>{text(account,"account")}</b>\n{text(account,"plan_label")}: {html.escape(text(account,'free_plan') if account.plan=='free' else account.plan.title())}\n{text(account,"linked_methods")}: {", ".join(methods)}\n\n'
+              f'{week}\n{text(account,"edits_per_file")}: {unlimited if edits is None else edits}\n'
+              f'{text(account,"resets")}: {week_reset(account,usage["resets_at"])}\n\n{text(account,"link_instructions")}')
         await render(message,body,[[await button(account,'plans','plans'),await button(account,'subscription','subscription')],[InlineKeyboardButton(text=text(account,'link_methods'),url=await web_url(account,'settings'))],[await button(account,'language_button','language'),await button(account,'home','home')]],edit)
 
     @dp.callback_query()

@@ -16,7 +16,6 @@ from processors.engine import parse_pages
 from .models import SavedDefinition,WorkflowRun
 
 SALT='pdfmaster.workflow.confirmation.v1'
-METERS=('file_tasks','file_page_units','ai_credits')
 KINDS={'convert.word_to_pdf':'docx','convert.pptx_to_pdf':'pptx','convert.pdf_to_docx':'pdf','convert.pdf_to_xlsx':'pdf'}
 
 def _access(account):
@@ -34,7 +33,7 @@ def quote(account,pk,ids):
     if len(assets)!=1:raise DomainError('input_count_exceeded')
     if assets[0].metadata.get('encrypted'):raise DomainError('unlock_first')
     kind=assets[0].metadata.get('kind');pages=assets[0].page_count
-    steps=[];meters={k:0 for k in METERS}
+    steps=[]
     for index,step in enumerate(row.definition['steps']):
         fid=step['feature_id'];require_feature(account,fid)
         if index==0:validate_inputs(account,fid,[str(assets[0].id)])
@@ -44,10 +43,7 @@ def quote(account,pk,ids):
         elif kind!=expected:raise DomainError('unsupported_file')
         try:parameters=normalize_parameters(fid,step.get('parameters',{}),[{'kind':kind,'page_count':pages}])
         except ProcessorError as error:raise DomainError(error.code) from None
-        rate=1 if fid.startswith('ocr.') else 2 if fid in ('convert.pdf_to_docx','convert.pdf_to_xlsx') else 0
-        amount={'file_tasks':0 if rate else 1,'file_page_units':0 if rate else pages,'ai_credits':pages*rate}
-        steps.append({'feature_id':fid,'parameters':parameters,'meters':amount})
-        for meter in METERS:meters[meter]+=amount[meter]
+        steps.append({'feature_id':fid,'parameters':parameters})
         if fid=='pdf.extract_pages':pages=len(parse_pages(parameters['pages'],pages))
         elif fid=='pdf.delete_pages':pages-=len(parse_pages(parameters['pages'],pages))
         elif fid=='convert.pdf_to_docx':kind='docx';pages=plan_limits(account)['max_pages_per_job']
@@ -57,8 +53,8 @@ def quote(account,pk,ids):
         elif fid.startswith('ocr.'):
             pages=len(parse_pages(parameters['pages'],pages));kind='pdf'
         else:kind='pdf'
-    payload={'workflow_id':str(row.id),'account_id':str(account.id),'version':row.version,'plan':account.plan,'policy_version':POLICY_VERSION,'input_ids':[str(a.id) for a in assets],'fingerprints':[{'id':str(a.id),'sha256':a.sha256} for a in assets],'steps':steps,'meters':meters}
-    return {'workflow_id':str(row.id),'version':row.version,'input_ids':payload['input_ids'],'steps':steps,'meters':[{'meter':k,'amount':v} for k,v in meters.items() if v],'confirmation_required':True,'confirmation_token':signing.dumps(payload,salt=SALT,compress=True),'expires_at':timezone.now()+timedelta(minutes=10),'limitations':['Each step uses the preceding result; failures stop the remaining steps. Successful steps remain charged.','After editable Word conversion, following steps use the plan page maximum as a conservative ceiling.']}
+    payload={'workflow_id':str(row.id),'account_id':str(account.id),'version':row.version,'plan':account.plan,'policy_version':POLICY_VERSION,'input_ids':[str(a.id) for a in assets],'fingerprints':[{'id':str(a.id),'sha256':a.sha256} for a in assets],'steps':steps}
+    return {'workflow_id':str(row.id),'version':row.version,'input_ids':payload['input_ids'],'steps':steps,'confirmation_required':True,'confirmation_token':signing.dumps(payload,salt=SALT,compress=True),'expires_at':timezone.now()+timedelta(minutes=10),'limitations':['Each step uses the preceding result and is one file task of the week; failures stop the remaining steps, and steps that did not run are not counted.','After editable Word conversion, following steps use the plan page maximum as a conservative ceiling.']}
 
 def data(run):
     jobs={str(j.id):j for j in Job.objects.filter(id__in=run.job_ids,account=run.account).select_related('account')}
@@ -84,6 +80,10 @@ def start(account,pk,request,key):
             if payload.get('plan')!=account.plan or payload.get('policy_version')!=POLICY_VERSION:raise DomainError('quote_policy_changed',409)
             assets=owned_assets(account,payload['input_ids'])
             if payload['fingerprints']!=[{'id':str(a.id),'sha256':a.sha256} for a in assets]:raise DomainError('file_changed',409)
+            # Every step is a file task: the week must have room for all of them
+            # before the first one starts. A resumed run was checked when it began.
+            from apps.core.allowance import require_file_jobs
+            require_file_jobs(account,len(payload['steps']))
             run=WorkflowRun.objects.create(account=account,definition=row,idempotency_key=key,request_hash=digest,snapshot=payload)
         token=uuid.uuid4();run.lease_token=token;run.lease_until=timezone.now()+timedelta(minutes=3);run.save(update_fields=['lease_token','lease_until'])
     return run,token
@@ -98,7 +98,6 @@ def execute(run,token):
             job=Job.objects.filter(account=run.account,idempotency_key=key).first()
             if job is None:
                 q=create_quote(run.account,step['feature_id'],ids,step['parameters'])
-                if any(q.meters.get(m,0)>step['meters'].get(m,0) for m in METERS):raise DomainError('quote_exceeded',409)
                 job,_=submit_job(run.account,q.id,key)
             if str(job.id) not in run.job_ids:
                 run.job_ids.append(str(job.id));WorkflowRun.objects.filter(pk=run.id,lease_token=token).update(job_ids=run.job_ids)

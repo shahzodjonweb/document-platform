@@ -13,7 +13,8 @@ from django.test import Client
 from django.utils import timezone
 from pypdf import PdfReader, PdfWriter
 from apps.core.identity import resolve_account
-from apps.core.models import AnalyticsEvent, Artifact, FileAsset, Job, Quote, Reservation, UsageLedger
+from apps.core.allowance import file_jobs_this_week
+from apps.core.models import AnalyticsEvent, Artifact, FileAsset, Job, Quote
 from apps.core.services import cleanup_expired, execute_job, storage_path
 
 pytestmark = pytest.mark.django_db
@@ -84,19 +85,19 @@ def test_signed_but_expired_or_future_auth_fails(settings, age):
     assert error.value.code == 'invalid_telegram_data'
 
 
-def test_overlapping_split_is_quoted_for_actual_page_units_or_rejected():
-    _, client = principal()
+def test_overlapping_split_is_one_task_or_rejected():
+    account, client = principal()
     asset = upload(client)
     response = client.post('/api/v1/quotes', {'feature_id': 'pdf.split', 'input_ids': [asset['id']], 'parameters': {'ranges': ['1-2', '1-2']}}, content_type='application/json')
     if response.status_code == 400:
         assert response.json()['error']['code'] in ('invalid_pages', 'invalid_parameters')
         return
     assert response.status_code == 201, response.content
-    meters = {m['meter']: m['amount'] for m in response.json()['meters']}
-    assert meters['file_page_units'] == 4
+    assert response.json()['affordable'] is True and 'meters' not in response.json()
     result = submit(client, response.json()['id'])
     assert result.status_code == 201 and result.json()['status'] == 'succeeded', result.content
     assert len(result.json()['artifacts']) == 2
+    assert file_jobs_this_week(account) == 1
 
 
 @pytest.mark.parametrize('value', ['definitely-not-a-uuid', {}, [], True, 42])
@@ -105,7 +106,7 @@ def test_invalid_quote_identifiers_return_safe_client_errors(value):
     response = client.post('/api/v1/jobs', {'quote_id': value}, content_type='application/json', HTTP_IDEMPOTENCY_KEY='invalid-uuid-key')
     assert response.status_code in (400, 404), response.content[:500]
     assert 'error' in response.json()
-    assert Job.objects.count() == 0 and Reservation.objects.count() == 0
+    assert Job.objects.count() == 0
 
 
 def test_foreign_assets_quotes_jobs_and_downloads_are_inaccessible():
@@ -125,14 +126,14 @@ def test_foreign_assets_quotes_jobs_and_downloads_are_inaccessible():
     assert set(Job.objects.values_list('account_id', flat=True)) == {owner.id}
 
 
-def test_expired_quote_and_idempotency_conflict_do_not_reserve(settings):
-    _, client = principal()
+def test_expired_quote_and_idempotency_conflict_do_not_count(settings):
+    account, client = principal()
     asset = upload(client)
     expired = quote(client, asset)
     Quote.objects.filter(pk=expired['id']).update(expires_at=timezone.now() - timedelta(seconds=1))
     response = submit(client, expired['id'])
     assert response.status_code == 409 and response.json()['error']['code'] == 'quote_expired'
-    assert Reservation.objects.count() == 0
+    assert not Job.objects.exists() and file_jobs_this_week(account) == 0
     valid = quote(client, asset)
     first = submit(client, valid['id'], 'stable-idempotency-key')
     assert first.status_code == 201
@@ -141,10 +142,10 @@ def test_expired_quote_and_idempotency_conflict_do_not_reserve(settings):
     other = quote(client, asset)
     conflict = submit(client, other['id'], 'stable-idempotency-key')
     assert conflict.status_code == 409 and conflict.json()['error']['code'] == 'idempotency_conflict'
-    assert UsageLedger.objects.filter(kind='consume', meter='file_tasks').count() == 1
+    assert Job.objects.count() == 1 and file_jobs_this_week(account) == 1
 
 
-def test_corrupt_after_reservation_releases_once_and_emits_no_private_data(settings):
+def test_corrupt_after_submission_fails_once_uncounted_and_emits_no_private_data(settings):
     settings.LOCAL_SYNC_JOBS = False
     account, client = principal()
     asset = upload(client, name='sensitive-customer-name.pdf')
@@ -152,15 +153,14 @@ def test_corrupt_after_reservation_releases_once_and_emits_no_private_data(setti
     response = submit(client, quoted['id'])
     job_id = response.json()['id']
     original = FileAsset.objects.get(pk=asset['id'])
-    storage_path(original.object_key).write_bytes(b'%PDF-1.7\ncorrupt-after-reservation')
+    storage_path(original.object_key).write_bytes(b'%PDF-1.7\ncorrupt-after-submission')
+    assert file_jobs_this_week(account) == 1, 'a queued task holds its place'
     result = execute_job(job_id)
     assert result.status == 'failed'
     execute_job(job_id)
-    assert UsageLedger.objects.filter(job_id=job_id, kind='consume').count() == 0
-    assert UsageLedger.objects.filter(job_id=job_id, kind='release', meter='file_tasks').count() == 1
-    assert all(grant.reserved == 0 for grant in account.usage_grants.all())
+    assert Job.objects.get(pk=job_id).attempt_count == 1 and file_jobs_this_week(account) == 0
     serialized = json.dumps(list(AnalyticsEvent.objects.values('properties')))
-    assert 'sensitive-customer-name' not in serialized and 'corrupt-after-reservation' not in serialized
+    assert 'sensitive-customer-name' not in serialized and 'corrupt-after-submission' not in serialized
 
 
 @pytest.mark.parametrize('params', [{'password': 'secret-fixture'}, {'output_dir': '/tmp/outside'}, {'pages': '../1'}, {'pages': {'password': 'secret-fixture'}}])
@@ -214,7 +214,7 @@ def test_interrupted_worker_reaper_removes_unregistered_private_outputs(settings
     call_command('runworker', once=True, verbosity=0)
     assert Job.objects.get(pk=job_id).status == 'failed'
     assert not output.exists(), 'Worker-interrupted outputs must not escape retention by lacking a FileAsset row'
-    assert all(grant.reserved == 0 for grant in owner.usage_grants.all())
+    assert file_jobs_this_week(owner) == 0
 
 
 def test_password_api_preserves_encryption_metadata_without_plaintext(settings):
@@ -241,7 +241,7 @@ def test_password_api_preserves_encryption_metadata_without_plaintext(settings):
     assert password not in json.dumps(list(Quote.objects.values('parameters')))
 
 
-def test_expired_password_handle_releases_queued_reservation(settings):
+def test_expired_password_handle_fails_the_queued_task_uncounted(settings):
     from apps.core.models import SecretHandle
     settings.LOCAL_SYNC_JOBS = False
     owner, client = principal()
@@ -255,8 +255,7 @@ def test_expired_password_handle_releases_queued_reservation(settings):
     done = execute_job(result.json()['id'])
     assert done.status == 'failed' and done.error_code == 'password_expired'
     assert not SecretHandle.objects.filter(pk=secret['id']).exists()
-    assert not UsageLedger.objects.filter(job=done, kind='consume').exists()
-    assert all(g.reserved == 0 for g in owner.usage_grants.all())
+    assert file_jobs_this_week(owner) == 0
 
 
 def test_orphan_sweep_respects_age_registration_and_symlinks(settings, tmp_path):

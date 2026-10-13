@@ -9,6 +9,7 @@ from django.http import HttpResponse
 from django.test import RequestFactory
 from django.utils import timezone
 
+from apps.core.allowance import week_bounds
 from apps.core.models import Account
 from operations.middleware import COOKIE, DeviceTimezoneMiddleware
 from operations.views import audit_changes
@@ -117,7 +118,7 @@ def test_a_page_answering_a_form_is_marked_so_theme_js_never_reloads_it():
 def test_detail_pages_and_labels_name_the_viewer_zone():
     from apps.commerce.models import ManualPayment
     account = Account.objects.create(telegram_user_id=93003, display_name='Bekzod')
-    transfer = ManualPayment.objects.create(account=account, plan='plus', amount=60000, currency='UZS', status='submitted',
+    transfer = ManualPayment.objects.create(account=account, plan='plus', amount=20000, currency='UZS', status='submitted',
                                             reference='PM-TZ1', submitted_at=JOINED, expires_at=JOINED)
     client, _ = device_client()
     page = client.get(f'/ops/payments/manual/{transfer.id}?lang=en').content.decode()
@@ -125,6 +126,10 @@ def test_detail_pages_and_labels_name_the_viewer_zone():
     assert '07 Oct 2026 · 16:30' in page and 'around 07 Oct 16:30' in page and '01:30' not in page
     page = client.get('/ops/analytics/ai-usage?lang=en').content.decode()
     assert f'({ZONE})</th>' in page and '(UTC)' not in page
+    # The week turns at Monday 00:00 in Tashkent for everyone: Sunday 15:00 here.
+    page = client.get(f'/ops/users/{account.id}?lang=en').content.decode()
+    resets = week_bounds()[1].astimezone(ZoneInfo(ZONE))
+    assert resets.weekday() == 6 and f'New week: {resets:%d %b %Y} · 15:00</p>' in page
 
 
 def test_today_heading_names_the_day_being_counted():

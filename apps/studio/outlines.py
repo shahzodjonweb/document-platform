@@ -1,10 +1,9 @@
 """Separately confirmed outline authoring before the full document generation."""
 import copy
 import json
-import math
 from django.db.models import F
 from apps.core.errors import DomainError
-from apps.core.policy import SEED,plan_limits
+from apps.core.policy import plan_limits
 from operations.integrations import ai_config
 from .models import GenerationDraft,ProviderUsage
 from .domain import generation_quote,unpack,pack,validate_content
@@ -32,8 +31,8 @@ def create_outline_quote(account,draft_id,version):
     from .domain import allowed
     plan_limits(account)
     if not allowed(account,'ai.outline'):raise DomainError('feature_not_in_plan',403)
-    # No reservation exists yet; the final immutable object is returned only after
-    # the stage, source costs and bounds have been set.
+    # The quote is returned only once its stage is set: an outline is checked
+    # against the week's documents but never counted as one (apps/core/allowance.py).
     from django.db import transaction
     with transaction.atomic():
         quote=generation_quote(account,draft_id,version)
@@ -48,12 +47,9 @@ def create_outline_quote(account,draft_id,version):
         if cfg['mode']=='openai':
             from .provider import enforce_input_budget
             enforce_input_budget(cfg,_payload(data),'ai.outline',plan_limits(account)['max_ai_input_tokens'])
-        tariff=quote.policy['generation_bounds']['tariff']
-        credits=0 if cfg['mode']=='local_fixture' else tariff['outline_credits']+math.ceil(len(data['excerpts'])/5)*tariff['source_ingestion_credits_per_started_5_pages']
         quote.parameters={**quote.parameters,'stage':'outline'}
-        quote.meters={'file_tasks':0,'file_page_units':0,'ai_credits':credits}
         quote.policy={**quote.policy,'tariff_version':'outline-draft-staging-v1'}
-        quote.save(update_fields=['parameters','meters','policy'])
+        quote.save(update_fields=['parameters','policy'])
         return quote
 
 
@@ -95,4 +91,4 @@ def execute_outline(job,draft,data,original,config,output_dir):
     data['content']={**content,'questions':data['content']['questions']}
     data.pop('_source_seed',None)
     GenerationDraft.objects.filter(pk=draft.pk,version=draft.version,encrypted_data=original).update(encrypted_data=pack(data),version=F('version')+1)
-    return {'artifacts':[{'path':str(path),'name':path.name,'mime_type':'application/json','page_count':1,'role':'user_document','metadata':{'kind':'text'}}], 'actual_meters':dict(job.meters),'metadata':{'engine':'outline-'+config['mode'],'warnings':warnings}}
+    return {'artifacts':[{'path':str(path),'name':path.name,'mime_type':'application/json','page_count':1,'role':'user_document','metadata':{'kind':'text'}}],'metadata':{'engine':'outline-'+config['mode'],'warnings':warnings}}

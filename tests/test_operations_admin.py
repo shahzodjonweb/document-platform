@@ -1,11 +1,11 @@
-"""Administrative control: plans, allowances and customer documents.
+"""Administrative control: plans, weekly limits and customer documents.
 
 Every capability here changes something a customer paid for or can read, so
 each one is reason-gated, role-gated and written to the audit trail. These
 tests are mostly about those three properties rather than the happy path.
 """
 import io
-from datetime import timedelta
+from datetime import timedelta, timezone as dt_timezone
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -16,7 +16,8 @@ from django.test import Client
 from django.utils import timezone
 from pypdf import PdfWriter
 
-from apps.core.models import Account, FileAsset, UsageGrant
+from apps.core.allowance import week_bounds
+from apps.core.models import Account, FileAsset, Job, Quote, UsageGrant
 from apps.core.policy import limits_for_plan
 from apps.core.services import upload_file
 from operations.auth import COOKIE, begin_session
@@ -107,28 +108,57 @@ def test_an_assignment_is_not_a_payment(settings):
     assert not SubscriptionPeriod.objects.exists()
 
 
-# --- granting allowance ----------------------------------------------------
+# --- this week -------------------------------------------------------------
 
-def test_the_account_page_shows_balances_before_a_grant(settings):
+def file_task(account, status='succeeded'):
+    quote = Quote.objects.create(account=account, feature_id='pdf.merge', expires_at=timezone.now())
+    return Job.objects.create(account=account, quote=quote, feature_id='pdf.merge', status=status,
+                              idempotency_key=str(quote.id), request_hash='x')
+
+
+def test_the_account_page_shows_this_week_instead_of_a_balance(settings):
     settings.DEBUG = True
     client, _ = staff_client()
     account = customer()
+    file_task(account), file_task(account), file_task(account, 'failed')
     page = client.get(f'/ops/users/{account.id}').content.decode()
-    assert 'Remaining now' in page, 'the current balance is shown beside the field'
-    assert 'data-grant-input' in page and 'data-grant-preset' in page
+    assert 'Left this week' in page and 'File tasks a week' in page
+    assert '<strong>13 / 15</strong>' in page, 'two tasks counted; the failed one gave its place back'
+    assert '<strong>5 / 5</strong>' in page and 'AI edits per file' in page
+    # Monday 00:00 in Tashkent, shown in the viewer's zone (UTC here): Sunday 19:00.
+    resets = week_bounds()[1].astimezone(dt_timezone.utc)
+    assert resets.weekday() == 6 and f'New week: {resets:%d %b %Y} · 19:00</p>' in page
+    assert 'id="grant"' not in page and 'data-grant' not in page, 'there is no balance to top up'
 
 
-def test_a_grant_is_idempotent_and_audited(settings):
+def test_an_unlimited_limit_shows_what_was_used(settings):
+    settings.DEBUG = True
+    client, _ = staff_client()
+    account = customer()
+    client.post(f'/ops/users/{account.id}/plan', {'plan': 'premium'})
+    file_task(account)
+    page = client.get(f'/ops/users/{account.id}').content.decode()
+    assert 'No limit · 1 used' in page and 'No limit · 0 used' in page
+    assert '/ 15' not in page
+
+
+def test_a_task_page_has_no_charges_to_show(settings):
+    settings.DEBUG = True
+    client, _ = staff_client('Operations')
+    job = file_task(customer())
+    page = client.get(f'/ops/jobs/{job.id}').content.decode()
+    assert 'pdf.merge' in page and 'Allowance ledger' not in page
+
+
+def test_the_old_grant_route_is_gone(settings):
+    """Support helps a customer who ran out by assigning a plan; nothing writes credits."""
     settings.DEBUG = True
     import uuid
     client, _ = staff_client()
     account = customer()
-    key = str(uuid.uuid4())
-    body = {'idempotency_key': key, 'ai_credits': '500', 'reason': 'Goodwill after an outage.'}
-    assert client.post(f'/ops/users/{account.id}/grants', body).status_code == 302
-    assert client.post(f'/ops/users/{account.id}/grants', body).status_code == 302
-    assert UsageGrant.objects.filter(account=account, meter='ai_credits').count() == 1
-    assert AuditLog.objects.filter(action='quota.grant').count() == 1
+    body = {'idempotency_key': str(uuid.uuid4()), 'ai_credits': '500'}
+    assert client.post(f'/ops/users/{account.id}/grants', body).status_code == 404
+    assert not UsageGrant.objects.exists() and not AuditLog.objects.filter(action='quota.grant').exists()
 
 
 # --- customer documents ----------------------------------------------------
@@ -178,6 +208,13 @@ def test_the_panel_no_longer_claims_documents_are_unreachable(settings):
         assert 'not accessible' not in labels['no_private'], locale
 
 
+def test_the_jobs_page_no_longer_speaks_of_charges():
+    from operations.i18n import CATALOGS
+    assert CATALOGS['en']['job_desc'] == 'Inspect task state without opening private files.'
+    for locale, word in (('en', 'charge'), ('uz', 'sarf'), ('ru', 'списан')):
+        assert word not in CATALOGS[locale]['job_desc'].lower(), locale
+
+
 # --- editing plan limits ---------------------------------------------------
 
 def test_editing_a_plan_changes_what_it_allows(settings):
@@ -203,6 +240,21 @@ def test_editing_a_plan_changes_what_it_allows(settings):
     assert plan_limits(account)['max_generated_pdf_pages'] == before + 5
 
 
+def test_the_plans_page_edits_the_weekly_limits(settings):
+    settings.DEBUG = True
+    client, _ = staff_client('Finance')
+    for lang, group in (('en', 'Weekly limits'), ('uz', 'Haftalik limitlar'), ('ru', 'Недельные лимиты')):
+        page = client.get(f'/ops/plans?lang={lang}').content.decode()
+        assert group in page, lang
+        for field in ('weekly_ai_documents', 'weekly_file_jobs', 'edits_per_file'):
+            assert f'name="{field}"' in page, (lang, field)
+        for retired in ('file_tasks', 'file_page_units', 'ai_credits', 'daily_ai_documents'):
+            assert f'name="{retired}"' not in page, (lang, retired)
+    from operations.templatetags.ops_ui import money
+    page = client.get('/ops/plans?lang=en').content.decode()
+    assert all(f'plan-price">{money(price)} <span>' in page for price in (20_000, 60_000)), 'the owner\'s prices'
+
+
 def test_a_plan_edit_is_bounded_and_reversible(settings):
     settings.DEBUG = True
     client, _ = staff_client('Finance')
@@ -212,7 +264,7 @@ def test_a_plan_edit_is_bounded_and_reversible(settings):
                                            'reason': 'Zero would break the plan.'}).status_code == 400
     assert client.post('/ops/plans/plus', {'max_generated_pdf_pages': 'lots',
                                            'reason': 'Not a number at all.'}).status_code == 400
-    assert client.post('/ops/plans/nonexistent', {'ai_credits': '10',
+    assert client.post('/ops/plans/nonexistent', {'weekly_ai_documents': '10',
                                                   'reason': 'No such plan exists.'}).status_code == 400
     assert limits_for_plan('plus')['max_generated_pdf_pages'] == seed
 
@@ -223,39 +275,66 @@ def test_a_plan_edit_is_bounded_and_reversible(settings):
     assert AuditLog.objects.filter(action='plan.reset').exists()
 
 
-def test_free_cannot_be_raised_above_every_paid_plan(settings):
+def test_free_cannot_be_raised_above_a_paid_plan(settings):
     settings.DEBUG = True
     client, _ = staff_client('Finance')
-    assert client.post('/ops/plans/free', {'ai_credits': '999999',
+    assert client.post('/ops/plans/free', {'weekly_ai_documents': '999',
                                            'reason': 'That would make paying pointless.'}).status_code == 400
-    assert limits_for_plan('free')['ai_credits'] < limits_for_plan('premium')['ai_credits']
+    assert limits_for_plan('free')['weekly_ai_documents'] == 5
+    # Plus lowered in the panel is the Plus Free is held under, not the seed's.
+    client.post('/ops/plans/plus', {'weekly_ai_documents': '8'})
+    assert client.post('/ops/plans/free', {'weekly_ai_documents': '9'}).status_code == 400
+    assert client.post('/ops/plans/free', {'weekly_ai_documents': '8'}).status_code == 302
 
 
-def test_a_plan_field_that_means_no_limit_can_be_left_blank(settings):
-    """`daily_file_tasks` is null on paid plans and that means no daily cap."""
+def test_a_weekly_limit_left_blank_means_unlimited(settings):
+    """File tasks are unlimited on Plus; staff can cap them and lift the cap again."""
     settings.DEBUG = True
     client, _ = staff_client('Finance')
-    assert limits_for_plan('plus')['daily_file_tasks'] is None
+    assert limits_for_plan('plus')['weekly_file_jobs'] is None
 
-    assert client.post('/ops/plans/plus', {'daily_file_tasks': '40',
+    assert client.post('/ops/plans/plus', {'weekly_file_jobs': '40',
                                            'reason': 'Capping Plus while we investigate abuse.'}).status_code == 302
-    assert limits_for_plan('plus')['daily_file_tasks'] == 40
+    assert limits_for_plan('plus')['weekly_file_jobs'] == 40
 
-    assert client.post('/ops/plans/plus', {'daily_file_tasks': '',
+    assert client.post('/ops/plans/plus', {'weekly_file_jobs': '',
                                            'reason': 'Lifting the cap again.'}).status_code == 302
-    assert limits_for_plan('plus')['daily_file_tasks'] is None
+    assert limits_for_plan('plus')['weekly_file_jobs'] is None
 
 
-def test_the_free_plan_cannot_have_its_daily_cap_removed(settings):
+def test_the_free_plan_keeps_both_weekly_limits(settings):
     settings.DEBUG = True
     client, _ = staff_client('Finance')
-    before = limits_for_plan('free')['daily_file_tasks']
-    assert client.post('/ops/plans/free', {'daily_file_tasks': '',
-                                           'reason': 'That would be unlimited free processing.'}).status_code == 400
-    assert limits_for_plan('free')['daily_file_tasks'] == before
+    for field, before in (('weekly_ai_documents', 5), ('weekly_file_jobs', 15)):
+        assert client.post('/ops/plans/free', {field: '',
+                                               'reason': 'That would be unlimited free use.'}).status_code == 400
+        assert limits_for_plan('free')[field] == before
     # And a field that is not nullable still needs a value.
-    assert client.post('/ops/plans/free', {'ai_credits': '',
-                                           'reason': 'Blank is not a credit allowance.'}).status_code == 400
+    assert client.post('/ops/plans/free', {'max_file_mib': '',
+                                           'reason': 'Blank is not a file size.'}).status_code == 400
+
+
+def test_the_free_plan_keeps_a_limit_on_ai_edits(settings):
+    settings.DEBUG = True
+    client, _ = staff_client('Finance')
+    response = client.post('/ops/plans/free', {'edits_per_file': '', 'reason': 'That would be unlimited AI edits.'})
+    assert response.status_code == 400 and 'edits per file' in response.content.decode()
+    assert limits_for_plan('free')['edits_per_file'] == 3
+
+
+def test_a_paid_plan_cannot_be_set_below_free_and_free_stays_editable(settings):
+    """Plus at 2 documents and 1 edit would give paying customers less than Free;
+    and the whole Free form must still save when only its file size changes."""
+    settings.DEBUG = True
+    client, _ = staff_client('Finance')
+    response = client.post('/ops/plans/plus', {'weekly_ai_documents': '2', 'edits_per_file': '1'})
+    assert response.status_code == 400 and 'below the free plan' in response.content.decode()
+    assert (limits_for_plan('plus')['weekly_ai_documents'], limits_for_plan('plus')['edits_per_file']) == (20, 10)
+    free = limits_for_plan('free')
+    form = {field: '' if free[field] is None else str(free[field]) for field in ('weekly_ai_documents', 'weekly_file_jobs',
+            'edits_per_file', 'max_file_mib', 'max_pages_per_job', 'max_generated_pdf_pages', 'max_deck_images')}
+    assert client.post('/ops/plans/free', {**form, 'max_file_mib': '30'}).status_code == 302
+    assert limits_for_plan('free')['max_file_mib'] == 30
 
 
 def test_an_edit_reaches_the_customer_pricing_page(settings):
@@ -272,16 +351,15 @@ def test_an_edit_reaches_the_customer_pricing_page(settings):
 def test_a_support_agent_cannot_edit_plan_limits(settings):
     settings.DEBUG = True
     client, _ = staff_client('Support')
-    before = limits_for_plan('plus')['ai_credits']
-    assert client.post('/ops/plans/plus', {'ai_credits': '1', 'reason': 'Not my role.'}).status_code == 403
-    assert limits_for_plan('plus')['ai_credits'] == before
+    assert client.post('/ops/plans/plus', {'weekly_ai_documents': '1', 'reason': 'Not my role.'}).status_code == 403
+    assert limits_for_plan('plus')['weekly_ai_documents'] == 20
 
 
 def test_a_broken_override_never_takes_pricing_offline(settings):
     """A bad stored value must fall back to the seed, not raise."""
     settings.DEBUG = True
     IntegrationConfig.objects.update_or_create(pk='plan_limits', defaults={'configuration': 'not-a-dict'})
-    assert limits_for_plan('premium')['ai_credits'] > 0
+    assert limits_for_plan('premium')['price_uzs'] == 60_000
 
 
 def test_no_admin_form_asks_staff_for_a_reason():

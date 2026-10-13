@@ -12,7 +12,7 @@ from PIL import Image
 
 from apps.commerce import manual
 from apps.commerce.models import PaymentNotice, Subscription, SubscriptionPeriod
-from apps.core.models import BotDraft, Job, Quote
+from apps.core.models import BotConversation, BotDraft, Job, Quote
 from apps.core.policy import usage_snapshot
 from apps.core.services import create_quote, submit_job, upload_file
 from telegram.clock import local_time, offset_label, stamp
@@ -92,6 +92,12 @@ def test_the_account_screen_shows_the_reset_on_the_customer_clock(customer):
     text = dispatch_local(customer, text='/account')['messages'][-1]['text']
     resets = usage_snapshot(customer)['resets_at']
     assert f'{resets.astimezone(TASHKENT):%Y-%m-%d %H:%M} UTC+5' in text and ' UTC\n' not in text
+    assert f'{resets.astimezone(TASHKENT):%H:%M}' == '00:00' and resets.astimezone(TASHKENT).weekday() == 0, 'Monday 00:00'
+    assert 'AI documents this week: 0 / 5' in text and 'File tools this week: 0 / 15' in text and 'Edits per file: 3' in text
+    customer.time_zone = 'Europe/London'
+    customer.save(update_fields=['time_zone'])
+    text = dispatch_local(customer, text='/account')['messages'][-1]['text']
+    assert f'{resets.astimezone(ZoneInfo("Europe/London")):%Y-%m-%d %H:%M}' in text, 'the same moment, on another clock'
 
 
 def test_a_quote_expiry_is_shown_on_the_customer_clock():
@@ -141,3 +147,52 @@ def test_an_ai_review_expiry_is_shown_on_the_customer_clock(writer):
     review = describe(writer, 'A one page introduction to tidal energy.')['messages'][-1]['text']
     quote = Quote.objects.filter(account=writer).latest('created_at')
     assert f'{quote.expires_at.astimezone(TASHKENT):%Y-%m-%d %H:%M} UTC+5' in review, review
+
+
+@pytest.mark.parametrize('name', ['UTC', '', 'Mars/Olympus'])
+@pytest.mark.parametrize('locale', ['en', 'uz', 'ru'])
+def test_a_reset_on_an_unknown_clock_reads_monday_in_tashkent(name, locale):
+    """Every account starts on UTC, and the web app is what moves it, so the
+    reset of a Telegram-only account was shown as '2026-10-18 19:00 UTC': a
+    Sunday evening, for a week that starts on Monday in Tashkent."""
+    from apps.core.allowance import week_bounds
+    from apps.core.errors import DomainError
+    from telegram.clock import week_reset, zone_known
+    from telegram.errors import WEEK_START, bot_error
+    resets = week_bounds()[1]
+    reader = SimpleNamespace(time_zone=name, locale=locale)
+    assert not zone_known(reader)
+    assert week_reset(reader, resets) == WEEK_START[locale]
+    refusal = bot_error(DomainError('weekly_ai_limit', 429, {'limit': 5, 'used': 5, 'resets_at': resets.isoformat()}),
+                        locale, reader)
+    assert WEEK_START[locale] in refusal and 'UTC' not in refusal
+    tashkent = SimpleNamespace(time_zone='Asia/Tashkent', locale=locale)
+    assert zone_known(tashkent) and week_reset(tashkent, resets) == f'{resets.astimezone(TASHKENT):%Y-%m-%d} 00:00 UTC+5'
+
+
+@pytest.mark.parametrize('locale', ['en', 'uz', 'ru'])
+def test_telegram_only_screens_show_the_week_start_rather_than_a_utc_time(customer, locale):
+    from operations import plans as plan_settings
+    from telegram.bot import COPY as BOT_COPY
+    from telegram.errors import WEEK_START
+    from tests.test_bot_generation import tap
+    customer.locale = locale
+    customer.save(update_fields=['locale'])
+    BotConversation.objects.filter(pk=customer.telegram_user_id).update(locale=locale)
+    assert customer.time_zone == 'UTC', 'never opened the web app'
+    account = dispatch_local(customer, text='/account')['messages'][-1]['text']
+    assert f'{BOT_COPY[locale]["resets"]}: {WEEK_START[locale]}' in account and ' UTC' not in account
+    # A file tool at the week's limit says when the week starts again, and
+    # does not say "nothing counts until you tap Start" with no Start to tap.
+    plan_settings.save('free', {'weekly_file_jobs': 1})
+    sent = dispatch_local(customer, uploaded=SimpleUploadedFile('notes.pdf', pdf(), 'application/pdf'))
+    screen = lambda result: [m for m in result['messages'] if m['direction'] == 'outbound'][-1]
+    ready = screen(tap(customer, sent, '🗜'))
+    assert BOT_COPY[locale]['tap_to_run'] in ready['text']
+    asset = upload_file(customer, SimpleUploadedFile('other.pdf', pdf(), 'application/pdf'))
+    submit_job(customer, create_quote(customer, 'pdf.compress', [str(asset.id)], {}).id, 'fills-the-week')
+    full = screen(dispatch_local(customer, text='/settings'))
+    hint = BOT_COPY[locale]['files_week_hint'].format(when=WEEK_START[locale])
+    assert hint in full['text']
+    assert BOT_COPY[locale]['tap_to_run'] not in full['text']
+    assert BOT_COPY[locale]['plans'] in [button['label'] for row in full['buttons'] for button in row]

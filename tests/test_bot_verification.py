@@ -96,7 +96,10 @@ def test_challenge_and_verified_state_survive_new_dispatcher():
     assert len(fresh.ready) == 1
     restarted = GateHarness()
     restarted.message(text='/tools')
-    assert len(restarted.handled) == 1 and not restarted.session.calls
+    # Nothing is asked again. The one call is the chat's command menu, which
+    # this harness's stand-in for on_ready never set (telegram/commands.py).
+    assert len(restarted.handled) == 1
+    assert [type(call).__name__ for call in restarted.session.calls] == ['SetMyCommands']
 
 
 @pytest.mark.skipif(connection.vendor != 'postgresql', reason='Production row-lock concurrency requires PostgreSQL')
