@@ -53,9 +53,20 @@ def test_real_form_batch_produces_one_filled_pdf_per_input_exactly_once():
     assert not created and Job.objects.count()==2 and file_jobs_this_week(a)==2
 
 @pytest.mark.parametrize('plan',['free','plus'])
-def test_batch_forms_require_premium_even_though_individual_form_filling_is_free(plan):
+def test_batch_forms_are_on_every_plan(plan):
+    """Batch form filling was Premium-only; every plan has every tool now."""
     a=account()
     if plan=='plus':a=paid(a,'plus')
+    saved=template(a);source=form_pdf(a)
+    assert len(quote_data(form_quote(a,saved,[source]))['groups'])==1
+
+
+@pytest.mark.parametrize('plan',['free','plus'])
+def test_a_plan_without_batch_forms_in_the_catalog_is_refused_before_any_quote(plan,hold_back):
+    # The refusal still works for a plan the catalog leaves the tool out of.
+    a=account()
+    if plan=='plus':a=paid(a,'plus')
+    hold_back('editor.batch_forms',plan)
     saved=template(a);source=form_pdf(a)
     with pytest.raises(DomainError,match='feature_not_in_plan'):form_quote(a,saved,[source])
     assert not BatchQuote.objects.exists() and not Quote.objects.exists()

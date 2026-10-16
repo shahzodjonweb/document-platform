@@ -3,7 +3,7 @@
 Never interpolate exception details, filenames, credentials, or payment data.
 Codes with the same recovery instruction share copy, not application behavior.
 """
-from apps.core.errors import error_data
+from apps.core.errors import error_data, page_limit_count
 
 
 MESSAGES = {
@@ -15,15 +15,26 @@ MESSAGES = {
     'authentication_required': (
         '🔒 Sign in to continue.', '🔒 Davom etish uchun hisobga kiring.', '🔒 Войдите, чтобы продолжить.',
     ),
+    # Sizes and page counts are the same on every plan, so another plan is no
+    # way past them and these never offer one.
     'file_too_large file_size_limit': (
-        '📦 This file is too large for your plan. Send a smaller file or choose another plan.',
-        '📦 Fayl tarifingiz uchun juda katta. Kichikroq fayl yuboring yoki boshqa tarif tanlang.',
-        '📦 Файл превышает лимит тарифа. Отправьте файл поменьше или смените тариф.',
+        '📦 This file is too large. Send a smaller file.',
+        '📦 Fayl juda katta. Kichikroq fayl yuboring.',
+        '📦 Файл слишком большой. Отправьте файл поменьше.',
     ),
-    'page_limit_exceeded page_limit': (
-        '📄 Too many pages for your plan. Use fewer pages or choose another plan.',
-        '📄 Sahifalar tarif limitidan oshdi. Kamroq sahifa yoki boshqa tarif tanlang.',
-        '📄 Страниц больше, чем позволяет тариф. Возьмите меньше страниц или смените тариф.',
+    # One file longer than any task may be, refused as it is uploaded: no tool
+    # takes it, our Split PDF included, so it is split before uploading.
+    # {limit} is the real figure, filled in by bot_error.
+    'page_limit': (
+        '📄 This file has more than {limit} pages. Split it into smaller files before you upload it.',
+        '📄 Bu faylda {limit} sahifadan ko‘p. Yuklashdan oldin uni kichikroq fayllarga bo‘lib oling.',
+        '📄 В этом файле больше {limit} страниц. Перед загрузкой разделите его на файлы поменьше.',
+    ),
+    # A task's files together, each of them fine on its own.
+    'page_limit_exceeded': (
+        '📄 Too many pages for one task. Remove a file or choose fewer pages.',
+        '📄 Bitta vazifa uchun sahifalar juda ko‘p. Bitta faylni olib tashlang yoki kamroq sahifa tanlang.',
+        '📄 Слишком много страниц для одной задачи. Уберите файл или выберите меньше страниц.',
     ),
     'file_unavailable not_found permission_denied': (
         '⚠️ This item isn’t available. Open your recent tasks or start again.',
@@ -78,15 +89,12 @@ MESSAGES = {
         '🔒 PDF parolini veb ilovada kiriting. Parolni chatga yubormang.',
         '🔒 Введите пароль PDF на сайте. Не отправляйте пароли в чат.',
     ),
-    'feature_unavailable engine_unavailable conversion_preflight_unavailable': (
+    # Every plan has every tool, so a tool held back is never a reason to
+    # change plan: should one be refused, it is said like one switched off.
+    'feature_unavailable engine_unavailable conversion_preflight_unavailable feature_not_in_plan': (
         '🛠 This tool isn’t available right now. Try again later.',
         '🛠 Bu vosita hozir ishlamayapti. Keyinroq urinib ko‘ring.',
         '🛠 Этот инструмент сейчас недоступен. Попробуйте позже.',
-    ),
-    'feature_not_in_plan': (
-        '⭐ This tool needs another plan. Check Plans.',
-        '⭐ Bu vosita uchun boshqa tarif kerak. Tariflarni ko‘ring.',
-        '⭐ Для этого инструмента нужен другой тариф. Посмотрите тарифы.',
     ),
     'checkout_disabled sandbox_disabled': (
         '⭐ Payments aren’t available right now. Your current plan still works.',
@@ -390,6 +398,8 @@ def bot_error(error, locale='en', account=None):
         if value:
             return value
         return '⚠️ ' + error_data(error, locale)['message']
+    if error.code == 'page_limit':
+        return COPY[locale][error.code].format(limit=page_limit_count(error))
     if error.code in COPY[locale]:
         return COPY[locale][error.code]
     return '⚠️ ' + error_data(error, locale)['message']

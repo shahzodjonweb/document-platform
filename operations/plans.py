@@ -47,7 +47,16 @@ NULLABLE = {'price_xtr', 'price_uzs', 'weekly_ai_documents', 'weekly_file_jobs',
 WEEKLY = ('weekly_ai_documents', 'weekly_file_jobs')
 # What the free plan may never leave unlimited, and what no paid plan may set
 # below the free plan's: each of them is AI or processing paid for per use.
+# These are also the only limits that differ by plan, at the owner's decision;
+# every other one is the same on every plan, so Free is held under a paid plan
+# only here.
 FLOOR = (*WEEKLY, 'edits_per_file')
+# What each plan sets for itself: its prices and the limits above. Every other
+# field is one value for all three plans, so a change made from any plan's
+# form is written to every plan (save, reset); a field edited per plan would
+# bring back the plan differences the owner removed.
+PER_PLAN = ('price_xtr', 'price_uzs', *FLOOR)
+SHARED = tuple(field for field in FIELDS if field not in PER_PLAN)
 
 
 class PlanError(ValueError):
@@ -104,17 +113,20 @@ def validate(plan_id, values, defaults):
         raise PlanError('Nothing to change.')
     if plan_id == 'free' and cleaned.get('price_uzs') is not None:
         raise PlanError('The free plan has no price.')
-    # Free must stay the floor: a free plan above a paid one would let anyone
-    # take the paid allowance without paying for it, and a paid plan below free
-    # gives paying customers less. Both sides are compared as they stand, panel
-    # changes included; None is unlimited, which nothing exceeds. Only values
-    # this edit actually changes are compared: the form sends every field, and
-    # a plan left out of step earlier must not stop an unrelated change.
+    # Free must stay the floor on what a payment buys: a free plan above a paid
+    # one would let anyone take the paid allowance without paying for it, and a
+    # paid plan below free gives paying customers less. Both sides are compared
+    # as they stand, panel changes included; None is unlimited, which nothing
+    # exceeds. Only values this edit actually changes are compared: the form
+    # sends every field, and a plan left out of step earlier must not stop an
+    # unrelated change. Page and photo ceilings were once held here too; now
+    # every plan has the same ones, and holding Free under Plus there would only
+    # refuse raising all three plans unless the paid ones went first.
     current = limits_for(plan_id, known)
     changed = {field: value for field, value in cleaned.items() if current.get(field) != value}
     if plan_id == 'free':
         paid_plans = [limits_for(paid, defaults[paid]) for paid in defaults if paid != 'free']
-        for field in (*FLOOR, 'max_generated_pdf_pages', 'max_deck_images'):
+        for field in FLOOR:
             if changed.get(field) is not None and any(
                     paid.get(field) is not None and changed[field] > paid[field] for paid in paid_plans):
                 raise PlanError(f'Free {field} cannot exceed a paid plan.')
@@ -126,23 +138,69 @@ def validate(plan_id, values, defaults):
     return cleaned
 
 
+def _stored(configuration, plan_id):
+    """One plan's stored overrides; a malformed entry counts as none, as pricing reads it."""
+    values = configuration.get(plan_id) if isinstance(configuration, dict) else None
+    return values if isinstance(values, dict) else {}
+
+
+def _commit(defaults, current, configuration):
+    """Store `configuration` and say what it changed on each plan: {plan: (before, after)}.
+
+    Only plans whose limits actually changed are listed, so each one gets one
+    audit row and an unchanged form gets none.
+    """
+    if configuration != current:
+        IntegrationConfig.objects.update_or_create(pk=KEY, defaults={'configuration': configuration})
+    changes = {}
+    for plan_id, seeded in defaults.items():
+        before = {**seeded, **_stored(current, plan_id)}
+        after = {**seeded, **_stored(configuration, plan_id)}
+        old = {k: v for k, v in before.items() if after.get(k) != v}
+        new = {k: v for k, v in after.items() if before.get(k) != v}
+        if old or new:
+            changes[plan_id] = (old, new)
+    return changes
+
+
+def _put(configuration, defaults, plan_id, values):
+    """Keep only the overrides that differ from the plan's seed; none left removes the entry."""
+    kept = {k: v for k, v in values.items() if defaults[plan_id].get(k) != v}
+    if kept:
+        configuration[plan_id] = kept
+    else:
+        configuration.pop(plan_id, None)
+
+
 def save(plan_id, values):
-    """Store an edit, keeping only the fields that differ from the seed."""
+    """Store an edit, keeping only the fields that differ from the seed.
+
+    The edited plan's prices and weekly limits are its own; every other field
+    is written to every plan, so the plans stay equal in everything else.
+    Returns {plan: (before, after)} for each plan the edit changed.
+    """
     defaults = seed()['plans']
     cleaned = validate(plan_id, values, defaults)
     current = overrides()
-    merged = {**current.get(plan_id, {}), **cleaned}
-    before = limits_for(plan_id, defaults[plan_id])
-    # A value put back to its seed default stops being an override.
-    merged = {k: v for k, v in merged.items() if defaults[plan_id].get(k) != v}
-    configuration = {**current, plan_id: merged} if merged else {k: v for k, v in current.items() if k != plan_id}
-    IntegrationConfig.objects.update_or_create(pk=KEY, defaults={'configuration': configuration})
-    after = limits_for(plan_id, defaults[plan_id])
-    return {k: v for k, v in before.items() if after.get(k) != v}, {k: v for k, v in after.items() if before.get(k) != v}
+    configuration = dict(current) if isinstance(current, dict) else {}
+    for plan in defaults:
+        edit = {k: v for k, v in cleaned.items()
+                if k in defaults[plan] and (k not in PER_PLAN or plan == plan_id)}
+        if edit:
+            _put(configuration, defaults, plan, {**_stored(current, plan), **edit})
+    return _commit(defaults, current, configuration)
 
 
 def reset(plan_id):
+    """Put a plan back to its seed. Its shared limits are every plan's, so they go back on every plan.
+
+    Returns {plan: (before, after)} for each plan that changed.
+    """
+    defaults = seed()['plans']
     current = overrides()
-    if plan_id in current:
-        IntegrationConfig.objects.update_or_create(
-            pk=KEY, defaults={'configuration': {k: v for k, v in current.items() if k != plan_id}})
+    configuration = dict(current) if isinstance(current, dict) else {}
+    configuration.pop(plan_id, None)
+    for plan in defaults:
+        if plan != plan_id and plan in configuration:
+            _put(configuration, defaults, plan, {k: v for k, v in _stored(current, plan).items() if k in PER_PLAN})
+    return _commit(defaults, current, configuration)

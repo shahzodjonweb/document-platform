@@ -12,7 +12,7 @@ from pypdf import PdfReader
 from pptx import Presentation
 from apps.core.errors import DomainError
 from apps.core.allowance import ai_documents_this_week,file_jobs_this_week
-from apps.core.models import FileAsset,Job
+from apps.core.models import Job
 from apps.core.services import submit_job,execute_job,storage_path
 from apps.studio import workflows,provider
 from apps.studio.domain import create_draft,update_draft,generation_quote,unpack,draft_data
@@ -177,8 +177,11 @@ def test_learner_pptx_never_contains_private_speaker_notes(tmp_path):
     assert any(shape.has_text_frame and 'Учитель' in shape.text for slide in deck.slides for shape in slide.shapes)
 
 
-def test_editor_rejects_unsafe_and_unentitled_draft_commands():
+def test_editor_rejects_unsafe_and_unentitled_draft_commands(hold_back):
+    # Every plan may redact now; leave it out of Free in the catalog so the
+    # second command is still one this account is not entitled to.
     a=account();asset=upload(a);client=login_client(a)
+    hold_back('editor.redact','free')
     created=client.post('/api/v1/editor/documents',{'file_id':str(asset.id)},content_type='application/json').json();url='/api/v1/editor/documents/'+created['id']
     for command in ({'type':'add_text','page':1,'x':1,'y':1,'text':'Hello','path':'/etc/passwd'},{'type':'redact','page':1,'x':1,'y':1,'width':10,'height':10}):
         response=client.patch(url,{'version':1,'commands':[command]},content_type='application/json')
@@ -244,28 +247,31 @@ def test_used_workflow_definition_can_be_deleted_without_erasing_history(setting
 
 
 def test_how_many_files_a_document_can_be_built_from_follows_the_plan(settings):
-    """Five sources was the same number for every plan, paid or not.
+    """Five sources was once a fixed number, whatever the plan said.
 
     The cap is checked before any extraction, so this needs no real page content —
     only that the number allowed comes from the plan and is enforced.
     """
     from apps.core.policy import plan_limits
     from apps.studio.domain import source_excerpts
+    from operations import plans as plan_settings
     free_account=account();premium=paid(settings,account(91))
+    # Every plan gets Premium's number of sources now.
+    assert plan_limits(free_account)['max_ai_source_files']==plan_limits(premium)['max_ai_source_files']>5
+    # An administrator lowering it is what every customer gets: it is one
+    # figure on every plan, whichever plan's form it is changed from.
+    plan_settings.save('free',{'max_ai_source_files':3})
     free_cap=plan_limits(free_account)['max_ai_source_files']
-    premium_cap=plan_limits(premium)['max_ai_source_files']
-    assert premium_cap>free_cap>0, 'a paid plan must allow more sources than a free one'
-    assert premium_cap>5, 'and more than the five every plan used to get'
+    assert free_cap==3==plan_limits(premium)['max_ai_source_files']
 
     ids=[str(upload(free_account,f'source-{i}.pdf').id) for i in range(free_cap+1)]
     with pytest.raises(DomainError,match='generation_limit'):source_excerpts(free_account,ids)
     # One fewer is within the plan and gets as far as reading the files.
     assert source_excerpts(free_account,ids[:free_cap])
 
-    # The same number of files is not over the limit for a plan that allows more.
-    for asset in FileAsset.objects.filter(account=free_account):
-        asset.account=premium;asset.save(update_fields=['account'])
-    assert source_excerpts(premium,ids)
+    # Raised again from Premium's form, the same number of files is within it.
+    plan_settings.save('premium',{'max_ai_source_files':free_cap+1})
+    assert source_excerpts(free_account,ids)
 
 
 def test_a_citation_on_a_document_with_nothing_to_cite_is_dropped_not_fatal(settings,monkeypatch):

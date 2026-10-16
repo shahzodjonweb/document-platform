@@ -13,13 +13,17 @@ from apps.core.serializers import job_data
 from apps.core.services import owned_assets,validate_inputs,create_quote,submit_job,execute_job,TERMINAL
 from processors import normalize_parameters,ProcessorError
 from processors.engine import parse_pages
+from .domain import allowed
 from .models import SavedDefinition,WorkflowRun
 
 SALT='pdfmaster.workflow.confirmation.v1'
 KINDS={'convert.word_to_pdf':'docx','convert.pptx_to_pdf':'pptx','convert.pdf_to_docx':'pdf','convert.pdf_to_xlsx':'pdf'}
 
 def _access(account):
-    if account.plan not in ('plus','premium'):raise DomainError('feature_not_in_plan',403)
+    # The catalog decides, as it does for every other tool. This used to name
+    # Plus and Premium outright, so Free stayed refused here after the catalog
+    # and its saved_workflows limit gave it saved workflows like every plan.
+    if not allowed(account,'workflow.saved'):raise DomainError('feature_not_in_plan',403)
 
 def _row(account,pk):
     row=SavedDefinition.objects.filter(account=account,id=pk,kind='workflow').first()

@@ -21,10 +21,16 @@ CHARS_PER_PAGE = 3000
 # what fills them. It was 500 when bullets were fourteen-word fragments, and
 # customers found the decks too thin to present from.
 CHARS_PER_SLIDE = 850
-DEFAULT_PAGES = 5
+# What a description that names no count is given, document or deck, on every
+# plan (owner's decision, 2026-10-16; it was 5). Ten is exactly one writing call
+# (PAGES_PER_CALL below), so the default never pays for a second round trip,
+# and it sits inside every plan's ceiling, which still clamps it.
+DEFAULT_PAGES = 10
 # What the deck setup screen (the bot's Mini App) starts at. What it sends is
-# an explicit count, so it beats the description's like the review stepper.
-SETUP_SLIDES = 7
+# an explicit count, so it beats the description's like the review stepper. It
+# is the default, so opening the screen and saving a design alone does not
+# change the length the review showed for a deck that named none.
+SETUP_SLIDES = DEFAULT_PAGES
 
 # What we ASK the model for is deliberately less than the page holds. A model
 # told "about 3000 characters" routinely lands 15-20% over, and because every

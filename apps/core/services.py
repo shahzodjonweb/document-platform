@@ -15,7 +15,7 @@ from django.db.models import F
 from django.utils import timezone
 from .models import Account, FileAsset, Quote, Job, Artifact, OutboxEvent, AnalyticsEvent, SecretHandle
 from .errors import DomainError
-from .policy import plan_limits, require_feature, usage_snapshot, POLICY_VERSION
+from .policy import page_cap, plan_limits, require_feature, usage_snapshot, POLICY_VERSION
 
 TERMINAL = ('succeeded', 'failed', 'canceled', 'no_op', 'expired')
 
@@ -54,12 +54,19 @@ def upload_file(account, uploaded, channel='web', password=None):
                 if size > limit: raise DomainError('file_too_large', 413)
                 hasher.update(chunk)
                 output.write(chunk)
-        metadata = engine_inspect(path, password=password)
+        # One file longer than a task may be is refused here, before any tool
+        # is picked, as 'page_limit' with the figure: no tool could take it, so
+        # the way past it is to split it before uploading. 'page_limit_exceeded'
+        # is a task's files together, which fewer files or pages put right.
+        try: metadata = engine_inspect(path, password=password)
+        except DomainError as exc:
+            if exc.code == 'page_limit': raise DomainError('page_limit', 413, {'limit': page_cap(account)}) from None
+            raise
         if metadata.get('password_required'): raise DomainError('password_required')
         if metadata.get('page_count') is None: raise DomainError('conversion_preflight_unavailable')
         pages = int(metadata['page_count'])
         if pages <= 0: raise DomainError('invalid_file')
-        if pages > plan_limits(account)['max_pages_per_job']: raise DomainError('page_limit_exceeded', 413)
+        if pages > page_cap(account): raise DomainError('page_limit', 413, {'limit': page_cap(account)})
         name = Path(uploaded.name.replace('\\','/')).name[:255]
         name = ''.join(c for c in name if ord(c) >= 32) or f'document{suffix}'
         asset = FileAsset.objects.create(account=account, name=name, object_key=key, mime_type=metadata['mime_type'], sha256=hasher.hexdigest(), size_bytes=size, page_count=pages, metadata=metadata, expires_at=timezone.now()+timedelta(hours=24))
@@ -144,7 +151,7 @@ def validate_inputs(account, feature_id, input_ids):
     if feature_id == 'pdf.merge' and len(assets) < 2: raise DomainError('merge_needs_two_files')
     if sum(a.size_bytes for a in assets) > limits['max_aggregate_input_mib']*1024*1024: raise DomainError('aggregate_size_exceeded', 413)
     if any(a.size_bytes > limits['max_file_mib']*1024*1024 for a in assets): raise DomainError('file_too_large', 413)
-    if sum(a.page_count for a in assets) > limits['max_pages_per_job']: raise DomainError('page_limit_exceeded', 413)
+    if sum(a.page_count for a in assets) > page_cap(account): raise DomainError('page_limit_exceeded', 413)
     kinds = [a.metadata.get('kind') for a in assets]
     if feature_id.startswith('editor.') and (kinds[0]!='pdf' or any(k!='image' for k in kinds[1:])): raise DomainError('unsupported_file')
     if feature_id.startswith('ocr.') and any(k not in ('pdf','image') for k in kinds): raise DomainError('unsupported_file')
@@ -196,7 +203,7 @@ def create_quote(account, feature_id, input_ids, parameters, secret_id=None):
     if feature_id == 'pdf.split' and normalized.get('ranges'):
         from processors.engine import parse_pages
         pages = max(pages, sum(len(parse_pages(r, assets[0].page_count)) for r in normalized['ranges']))
-    if pages > plan_limits(account)['max_pages_per_job']: raise DomainError('page_limit_exceeded',413)
+    if pages > page_cap(account): raise DomainError('page_limit_exceeded',413)
     quote = Quote.objects.create(account=account,feature_id=feature_id,secret_id=secret_id,parameters=normalized,input_ids=[str(a.pk) for a in assets],input_fingerprints=[{'id':str(a.pk),'sha256':a.sha256} for a in assets],policy={'plan':account.plan,'version':POLICY_VERSION,'tariff_version':'file-v1','limits':plan_limits(account)},expires_at=timezone.now()+timedelta(minutes=10))
     record_event(account,'quote.created',properties={'pages':pages})
     return quote

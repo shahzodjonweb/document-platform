@@ -124,21 +124,21 @@ MESSAGES = {
     'retention': ('🕒 Server files are stored for 24 hours. Copies sent here stay in your chat.', '🕒 Server fayllari 24 soat saqlanadi. Bu yerga yuborilgan nusxalar chatda qoladi.', '🕒 Файлы на сервере хранятся 24 часа. Отправленные сюда копии остаются в чате.'),
     # AI generation. The studio's own errors are translated in errors.py.
     'ai_ask_topic': ('✍️ Describe what you want. Say everything in one message: the subject, who it is for, the tone, and how many pages.', '✍️ Nima kerakligini yozing. Hammasini bitta xabarda ayting: mavzu, kim uchun, uslub va necha sahifa.', '✍️ Опишите, что нужно. Всё одним сообщением: тема, для кого, тон и сколько страниц.'),
-    'ai_pages_hint': ('No page count in your message means 5. For slides you can also ask for a look: “dark”, “bold”, or a colour.', 'Xabarda sahifa soni bo‘lmasa, 5 ta bo‘ladi. Slaydlar uchun ko‘rinishni ham so‘rashingiz mumkin: «qorong‘i», «yorqin» yoki rang.', 'Если число страниц не указано, будет 5. Для слайдов можно попросить и вид: «тёмная», «ярко» или цвет.'),
+    # The count a description that names none is given (apps/studio/pages.py
+    # DEFAULT_PAGES), the same for a document and a deck on every plan.
+    'ai_pages_hint': ('No page or slide count in your message means 10. For slides you can also ask for a look: “dark”, “bold”, or a colour.', 'Xabarda sahifa yoki slayd soni bo‘lmasa, 10 ta bo‘ladi. Slaydlar uchun ko‘rinishni ham so‘rashingiz mumkin: «qorong‘i», «yorqin» yoki rang.', 'Если число страниц или слайдов не указано, будет 10. Для слайдов можно попросить и вид: «тёмная», «ярко» или цвет.'),
     'ai_examples': ('💡 Example descriptions', '💡 Namuna tavsiflar', '💡 Примеры описаний'),
     'ai_examples_title': ('💡 Write it like this', '💡 Mana shunday yozing', '💡 Пишите вот так'),
     'ai_pages': ('Pages', 'Sahifalar', 'Страниц'),
-    'ai_pages_clamped': ('{asked} asked for; {given} is the most your plan allows.', '{asked} so‘raldi; tarifingiz {given} tagacha ruxsat beradi.', 'Запрошено {asked}; тариф допускает {given}.'),
+    # The ceiling is the same on every plan, so it is said as ours, not the plan's:
+    # naming the plan read as an offer to buy more pages.
+    'ai_pages_clamped': ('{asked} asked for; {given} is the most we make in one go.', '{asked} so‘raldi; bir safarda eng ko‘pi {given} ta tayyorlaymiz.', 'Запрошено {asked}; за один раз мы делаем не больше {given}.'),
     'ai_slides': ('Slides', 'Slaydlar', 'Слайдов'),
     'ai_language': ('Language', 'Til', 'Язык'),
     # The deck's design and slide count, chosen in the Mini App over what the description says.
     'ai_theme': ('Design', 'Dizayn', 'Дизайн'),
     'ai_theme_auto': ('Auto — chosen for the topic', 'Avto — mavzuga qarab tanlanadi', 'Авто — по теме'),
     'ai_theme_button': ('🎨 Design and slides', '🎨 Dizayn va slaydlar', '🎨 Дизайн и слайды'),
-    # The button where a limit is met: what the next plan would give.
-    'ai_more_pages': ('💎 Up to {count} pages with {plan}', '💎 {plan} bilan {count} sahifagacha', '💎 До {count} страниц с {plan}'),
-    'ai_more_slides': ('💎 Up to {count} slides with {plan}', '💎 {plan} bilan {count} slaydgacha', '💎 До {count} слайдов с {plan}'),
-    'ai_more_images': ('💎 Up to {count} pictures with {plan}', '💎 {plan} bilan {count} tagacha rasm', '💎 До {count} картинок с {plan}'),
     'ai_example_copied': ('✏️ That is one of our examples. Change the subject to yours and send it again.', '✏️ Bu bizning namunamiz. Mavzuni o‘zingiznikiga almashtirib, qayta yuboring.', '✏️ Это наш пример. Замените тему на свою и отправьте снова.'),
     # A description that names no topic ("12 ta slayd kk"): what was kept of it,
     # and the one thing still missing. The topic sent next is put in front of it.
@@ -161,9 +161,11 @@ MESSAGES = {
     'ai_pdf_anyway': ('📄 Make a PDF anyway', '📄 Baribir PDF tayyorlash', '📄 Всё равно сделать PDF'),
     'ai_slides_anyway': ('🖥 Make slides anyway', '🖥 Baribir slayd tayyorlash', '🖥 Всё равно сделать слайды'),
     'ai_review_hint_button': ('Nothing counts until you tap “{button}”.', '«{button}» tugmasini bosmaguningizcha hech narsa hisoblanmaydi.', 'Ничего не засчитывается, пока вы не нажмёте «{button}».'),
-    'ai_images_capped': ('🖼 You asked for pictures; your plan adds up to {count} to a deck.', '🖼 Rasm so‘radingiz; tarifingiz bir taqdimotga {count} tagacha rasm qo‘shadi.', '🖼 Вы просили картинки; ваш тариф добавляет до {count} на презентацию.'),
-    'ai_images_capped_pdf': ('🖼 You asked for pictures; your plan adds up to {count} to a document.', '🖼 Rasm so‘radingiz; tarifingiz bir hujjatga {count} tagacha rasm qo‘shadi.', '🖼 Вы просили картинки; ваш тариф добавляет до {count} в документ.'),
-    'ai_images_none': ('🖼 You asked for pictures, but your plan does not add them.', '🖼 Rasm so‘radingiz, lekin tarifingizda rasm qo‘shilmaydi.', '🖼 Вы просили картинки, но ваш тариф их не добавляет.'),
+    # Pictures asked for beyond what one document takes. The cap is the same on
+    # every plan, so these never say it is the plan's.
+    'ai_images_capped': ('🖼 You asked for pictures; a deck gets up to {count}.', '🖼 Rasm so‘radingiz; bir taqdimotga {count} tagacha rasm qo‘shiladi.', '🖼 Вы просили картинки; в презентацию добавляется до {count}.'),
+    'ai_images_capped_pdf': ('🖼 You asked for pictures; a document gets up to {count}.', '🖼 Rasm so‘radingiz; bir hujjatga {count} tagacha rasm qo‘shiladi.', '🖼 Вы просили картинки; в документ добавляется до {count}.'),
+    'ai_images_none': ('🖼 You asked for pictures, but none can be added to this one.', '🖼 Rasm so‘radingiz, lekin bunga rasm qo‘shib bo‘lmaydi.', '🖼 Вы просили картинки, но сюда их добавить нельзя.'),
     # A change that only asks for the deck as a PDF: the delivered file goes to
     # PowerPoint → PDF instead of spending an AI edit on the same slides.
     'ai_deck_as_pdf': ('📄 No AI edit needed: tap Start and your deck comes back as a PDF.', '📄 AI tahriri shart emas: «Boshlash»ni bosing — taqdimotingiz PDF bo‘lib keladi.', '📄 Редактировать через ИИ не нужно: нажмите «Начать», и презентация придёт в PDF.'),
@@ -200,7 +202,7 @@ MESSAGES = {
     'questions_trimmed': ('ℹ️ Questions you did not ask for were left out.', 'ℹ️ So‘ramagan savollar qo‘shilmadi.', 'ℹ️ Вопросы, которые вы не запрашивали, не добавлены.'),
     'sections_trimmed': ('ℹ️ The document was trimmed to the number of pages you asked for.', 'ℹ️ Hujjat siz so‘ragan sahifa soniga qisqartirildi.', 'ℹ️ Документ сокращён до запрошенного количества страниц.'),
     'images_skipped': ('ℹ️ A photo could not be added, so that slide was set as text.', 'ℹ️ Rasm qo‘shib bo‘lmadi, shuning uchun o‘sha slayd matn sifatida tayyorlandi.', 'ℹ️ Фото добавить не удалось, поэтому слайд оформлен текстом.'),
-    'images_limited': ('ℹ️ Your plan includes a set number of photos per deck; the other photo slides were set as text.', 'ℹ️ Tarifingizda bir taqdimot uchun rasmlar soni cheklangan; qolgan rasmli slaydlar matn sifatida tayyorlandi.', 'ℹ️ В вашем тарифе ограничено число фото на презентацию; остальные слайды с фото оформлены текстом.'),
+    'images_limited': ('ℹ️ A deck holds a set number of photos; the other photo slides were set as text.', 'ℹ️ Bir taqdimotdagi rasmlar soni cheklangan; qolgan rasmli slaydlar matn sifatida tayyorlandi.', 'ℹ️ Число фото в презентации ограничено; остальные слайды с фото оформлены текстом.'),
     'citations_dropped': ('ℹ️ A source reference that did not match any file you sent was left out.', 'ℹ️ Siz yuborgan fayllarga mos kelmagan manba havolasi qo‘shilmadi.', 'ℹ️ Ссылка на источник, не совпавшая с вашими файлами, не добавлена.'),
     'shortened_to_fit': ('ℹ️ A section was longer than its page, so its end was trimmed to keep the page count you asked for.', 'ℹ️ Bir bo‘lim sahifasiga sig‘madi, shuning uchun siz so‘ragan sahifa soni saqlanib, oxiri qisqartirildi.', 'ℹ️ Один раздел не помещался на страницу, поэтому его конец сокращён, чтобы сохранить запрошенное число страниц.'),
     'longer_than_quoted': ('ℹ️ This came out a little longer than estimated.', 'ℹ️ Hujjat taxmindan biroz uzunroq chiqdi.', 'ℹ️ Документ вышел чуть длиннее, чем ожидалось.'),

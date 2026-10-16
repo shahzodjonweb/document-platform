@@ -72,7 +72,7 @@ tests/test_object_storage.py::test_a_task_runs_on_inputs_that_live_only_in_the_b
 
 # Batch processing
 tests/test_batches.py::test_submit_and_resume_are_idempotent_and_real_jobs_count_once
-tests/test_batches.py::test_quote_is_atomic_owner_scoped_and_paid_caps
+tests/test_batches.py::test_quote_is_atomic_owner_scoped_and_capped
 
 # Weekly limits: concurrency and the week's file tasks
 tests/test_platform.py::test_weekly_limit_and_concurrency_do_not_overspend
@@ -356,3 +356,25 @@ tests/test_bot_prompt_feedback.py::test_an_old_switch_button_never_carries_a_new
 tests/test_provider_usage.py::test_the_rejection_column_keeps_its_database_default
 tests/test_topicless.py::test_a_description_the_customer_insists_on_is_made_as_it_is
 tests/test_bot_prompt_feedback.py::test_a_description_sent_again_is_taken_as_its_topic
+
+# Equal plans: every limit but the weekly ones is Premium's on every plan, every tool is on every plan,
+# and the deploy brings stored Free and Plus overrides in line with Premium's
+tests/test_plan_limits.py::test_every_other_limit_is_premiums_on_every_plan
+tests/test_plan_limits.py::test_a_free_account_may_use_every_released_tool
+tests/test_plan_limits.py::test_the_equal_limits_deploy_gives_free_and_plus_premiums_limits_and_audits_each_plan
+tests/test_operations_admin.py::test_every_seeded_form_saves_and_free_may_raise_a_shared_ceiling_first
+
+# Equal plans: a Free account saves and runs a workflow, and saves form templates
+# (both once named Plus or Premium outright)
+tests/test_plan_limits.py::test_a_free_account_saves_and_runs_a_workflow
+tests/test_plan_limits.py::test_every_plan_saves_form_templates[free]
+
+# A description with no count makes ten pages or ten slides, on every plan
+tests/test_default_length.py::test_a_description_without_a_count_gets_ten_on_every_plan[ai.pdf_topic-pdf-free]
+tests/test_default_length.py::test_a_description_without_a_count_gets_ten_on_every_plan[ai.pptx-pptx-free]
+
+# Equal plans: no plan jumps the queue, a limit every plan shares is written to every plan
+# from any plan's form, and a test at the question cap fits the last writing call
+tests/test_scheduling.py::test_a_newer_premium_job_is_not_dispatched_before_an_older_free_job
+tests/test_plan_limits.py::test_a_shared_limit_edited_on_one_plan_is_written_to_every_plan
+tests/test_plan_limits.py::test_a_test_at_the_question_cap_fits_beside_the_fullest_last_call

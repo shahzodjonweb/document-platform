@@ -140,7 +140,10 @@ COPY = {
 
 # What each plan includes, written from the live plan settings so an edit in
 # the admin is what customers read. People choose a plan by what it gives them,
-# so the plans screen leads with this and only then says how to pay.
+# so the plans screen leads with this and only then says how to pay. Plans
+# differ only in the three weekly counts and the channels: file sizes, page
+# and slide counts and the tools are the same on every plan, so a card never
+# lists them, and nobody is sold a plan on them.
 PLAN_COPY = {
     'en': {
         'title': '<b>📋 Plans</b>',
@@ -155,10 +158,7 @@ PLAN_COPY = {
         'files_week': 'File tools, Image → PDF included: {n} tasks a week',
         'files_unlimited': 'File tools: unlimited',
         'no_channels': 'No channel subscription needed',
-        'ai_size': 'AI documents up to {pages} pages, decks up to {slides} slides',
-        'files': 'Files up to {mib} MB, up to {pages} pages per task',
-        'parallel': '{n} tasks at once',
-        'workflows': '{n} saved workflows',
+        'every_tool': '✅ Every plan includes every tool.',
         'how': '<b>How to pay</b>\n1. Choose a plan below.\n2. Send the amount from your bank app to the card shown.\n'
                '3. Send the receipt here. We switch your plan on after checking, usually within a few hours.',
     },
@@ -175,10 +175,7 @@ PLAN_COPY = {
         'files_week': 'Fayl vositalari, Rasmlardan PDF ham: haftasiga {n} ta vazifa',
         'files_unlimited': 'Fayl vositalari: cheksiz',
         'no_channels': 'Kanallarga obuna bo‘lish shart emas',
-        'ai_size': 'AI hujjat {pages} sahifagacha, taqdimot {slides} slaydgacha',
-        'files': 'Fayl {mib} MB gacha, bitta vazifada {pages} sahifagacha',
-        'parallel': 'Bir vaqtda {n} ta vazifa',
-        'workflows': '{n} ta saqlangan jarayon',
+        'every_tool': '✅ Har bir tarifda barcha vositalar bor.',
         'how': '<b>Qanday to‘lanadi</b>\n1. Quyidan tarifni tanlang.\n2. Ko‘rsatilgan kartaga bank ilovangizdan pul o‘tkazing.\n'
                '3. Kvitansiyani shu yerga yuboring. Tekshirgach tarifingizni yoqamiz, odatda bir necha soat ichida.',
     },
@@ -195,10 +192,7 @@ PLAN_COPY = {
         'files_week': 'Задачи с файлами, включая PDF из фото: {n} в неделю',
         'files_unlimited': 'Задачи с файлами: без ограничений',
         'no_channels': 'Без обязательной подписки на каналы',
-        'ai_size': 'ИИ-документ до {pages} страниц, презентация до {slides} слайдов',
-        'files': 'Файлы до {mib} МБ, до {pages} страниц в задаче',
-        'parallel': 'Одновременно задач: {n}',
-        'workflows': 'Сохранённых процессов: {n}',
+        'every_tool': '✅ Все инструменты есть в каждом тарифе.',
         'how': '<b>Как оплатить</b>\n1. Выберите тариф ниже.\n2. Переведите сумму из банковского приложения на указанную карту.\n'
                '3. Отправьте сюда квитанцию. После проверки включим тариф, обычно в течение нескольких часов.',
     },
@@ -214,12 +208,21 @@ def weekly(words, key, unlimited, value):
     return words[unlimited] if value is None else words[key].format(n=money(int(value)))
 
 
+def every_tool_on_every_plan():
+    """Whether the tool catalog gives every plan the same access to every tool.
+
+    The cards say so under them only while it is true: a tool held back from
+    one plan would make the line a promise the plan does not keep.
+    """
+    from apps.core.policy import FEATURES
+    return all(len({feature['plans'].get(plan) for plan in PLAN_ICONS}) == 1 for feature in FEATURES.values())
+
+
 def plans_overview(account):
     """Every plan on offer, what it includes, and which one the customer has."""
     from apps.commerce.services import effective_plan
     from apps.core.policy import limits_for_plan
     words = PLAN_COPY.get(account.locale, PLAN_COPY['en'])
-    count = lambda value: money(int(value))
     current = effective_plan(account)
     blocks = [words['title'], words['current'].format(plan=html.escape(plan_name(account, current)))]
     for plan in ('free', 'plus', 'premium'):
@@ -231,20 +234,16 @@ def plans_overview(account):
             icon=PLAN_ICONS[plan], name=html.escape(plan_name(account, plan)), price=money(price or 0))
         if plan == current:
             head += words['yours']
-        # The weekly limits first, as the owner's table puts them (a limit that
-        # is not set is unlimited), then the channels, which Premium never asks for.
+        # The weekly limits, as the owner's table puts them (a limit that is not
+        # set is unlimited), then the channels, which Premium never asks for.
+        # That is all a card says: nothing else differs between plans.
         lines = [weekly(words, 'ai_week', 'ai_unlimited', limits.get('weekly_ai_documents')),
                  weekly(words, 'edits', 'edits_unlimited', limits.get('edits_per_file')),
                  weekly(words, 'files_week', 'files_unlimited', limits.get('weekly_file_jobs')),
-                 *([words['no_channels']] if plan == 'premium' else []),
-                 words['ai_size'].format(pages=limits['max_generated_pdf_pages'], slides=limits['max_generated_slides']),
-                 words['files'].format(mib=limits['max_file_mib'], pages=count(limits['max_pages_per_job']))]
-        extras = [words['parallel'].format(n=limits['concurrent_jobs'])] if limits.get('concurrent_jobs', 1) > 1 else []
-        if limits.get('saved_workflows'):
-            extras.append(words['workflows'].format(n=limits['saved_workflows']))
-        if extras:
-            lines.append(' · '.join(extras))
+                 *([words['no_channels']] if plan == 'premium' else [])]
         blocks.append(head + '\n' + '\n'.join(f'• {line}' for line in lines))
+    if every_tool_on_every_plan():
+        blocks.append(words['every_tool'])
     return '\n\n'.join(blocks)
 
 def copy(account, key):

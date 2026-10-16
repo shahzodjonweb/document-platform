@@ -56,8 +56,11 @@ def test_version_owner_and_quote_integrity():
     with pytest.raises(DomainError,match='version_conflict'):update_draft(a,d.id,{'version':1,'content':content()})
     assert login_client(other).get(f'/api/v1/generation/drafts/{d.id}').status_code==404
 
-def test_editor_command_cannot_bypass_plan():
+def test_editor_command_cannot_bypass_plan(hold_back):
+    # Redaction was Premium-only; every plan has it now, so the plan check is
+    # tested on a plan the catalog leaves it out of.
     a=account();asset=upload(a)
+    hold_back('editor.redact','free')
     with pytest.raises(DomainError,match='feature_not_in_plan'):
         create_quote(a,'editor.visual',[str(asset.id)],{'commands':[{'type':'redact','page':1,'x':0,'y':0,'width':10,'height':10}],'accept_rasterization':True})
 

@@ -36,16 +36,53 @@ def test_every_plan_says_what_it_includes_and_its_price(customer):
                  'Fayl vositalari, Rasmlardan PDF ham: haftasiga 15 ta vazifa'):
         assert line in free, line
     for line in ("Plus</b> — 30 kun uchun 20 000 so'm", 'AI hujjat va taqdimotlar: haftasiga 20 ta',
-                 'AI tahrirlar: har bir faylga 10 ta', 'Fayl vositalari: cheksiz', '5 ta saqlangan jarayon'):
+                 'AI tahrirlar: har bir faylga 10 ta', 'Fayl vositalari: cheksiz'):
         assert line in plus, line
     for line in ("Premium</b> — 30 kun uchun 60 000 so'm", 'AI hujjat va taqdimotlar: cheksiz', 'AI tahrirlar: cheksiz',
-                 'Fayl vositalari: cheksiz', 'Kanallarga obuna bo‘lish shart emas',
-                 'AI hujjat 35 sahifagacha, taqdimot 60 slaydgacha', 'Fayl 200 MB gacha, bitta vazifada 1 000 sahifagacha'):
+                 'Fayl vositalari: cheksiz', 'Kanallarga obuna bo‘lish shart emas'):
         assert line in premium, line
     assert 'Kanallarga' not in free + plus, 'only Premium skips the channels'
     assert 'kredit' not in text.lower() and 'paket' not in text.lower()
     assert text.index('Bepul</b>') < text.index('Plus</b>') < text.index('Premium</b>') < text.index('Qanday to‘lanadi')
     assert 'Hozirgi tarifingiz: <b>Bepul</b>' in text and "Bepul</b> — 0 so'm · ✅ sizniki" in text
+
+
+@pytest.mark.parametrize('locale', ['en', 'uz', 'ru'])
+def test_a_card_lists_only_the_weekly_limits_and_the_channels(customer, locale):
+    """Plans differ only in the three weekly counts and the channels (owner's
+    decision, 2026-10-16). File sizes, page and slide counts, tasks at once and
+    saved workflows are the same on every plan, so no card sells one on them."""
+    configure(prices=None)
+    Account.objects.filter(pk=customer.pk).update(locale=locale)
+    BotConversation.objects.filter(pk=customer.telegram_user_id).update(locale=locale)
+    customer.refresh_from_db()
+    text = screen(customer)
+    words = PLAN_COPY[locale]
+    shown = text[:text.index(words['every_tool'])]  # the cards, and the title over them
+    lines = [line[2:] for line in shown.splitlines() if line.startswith('• ')]
+    assert len(lines) == 3 + 3 + 4, lines  # Premium adds the channels
+    allowed = ('ai_week', 'ai_unlimited', 'edits', 'edits_unlimited', 'files_week', 'files_unlimited', 'no_channels')
+    starts = {words[key].split('{')[0] for key in allowed}
+    assert all(any(line.startswith(start) for start in starts) for line in lines), lines
+    for size in ('MB', 'МБ', 'sahifagacha', 'slaydgacha', 'страниц', 'слайдов', 'pages', 'slides',
+                 'saqlangan', 'Сохранённых', 'saved', 'at once', 'Bir vaqtda', 'Одновременно'):
+        assert size not in shown, size
+    for gone in ('ai_size', 'files', 'parallel', 'workflows'):
+        assert gone not in words, gone
+    # Said once, under every card and before how to pay.
+    assert text.count(words['every_tool']) == 1
+    assert text.index('Premium</b>') < text.index(words['every_tool']) < text.index(words['how'])
+
+
+def test_every_tool_is_said_only_while_every_plan_has_it(customer, monkeypatch):
+    from apps.core import policy
+    configure(prices=None)
+    assert PLAN_COPY['uz']['every_tool'] in screen(customer), 'the catalog gives every plan every tool'
+    held_back = {**policy.FEATURES, 'pdf.merge': {**policy.FEATURES['pdf.merge'],
+                                                  'plans': {'free': 'none', 'plus': 'included', 'premium': 'included'}}}
+    monkeypatch.setattr(policy, 'FEATURES', held_back)
+    text = screen(customer)
+    assert PLAN_COPY['uz']['every_tool'] not in text and 'Qanday to‘lanadi' in text
 
 
 def test_an_admin_change_is_what_customers_read(customer):
@@ -112,3 +149,12 @@ def test_russian_plan_cards_say_ii_like_every_other_russian_screen(customer):
     text = screen(customer)
     assert 'ИИ-документы и презентации: 5 в неделю' in text and 'ИИ-правки: 3 на каждый файл' in text
     assert 'AI-' not in text
+
+
+@pytest.mark.parametrize('locale', ['en', 'uz', 'ru'])
+def test_no_other_bot_line_puts_a_ceiling_on_the_plan(locale):
+    """Page, slide and picture ceilings are the same on every plan, so the lines
+    that say one was met name no plan: "your plan allows 7" read as an offer."""
+    from telegram.ux_copy import UX
+    for key in ('ai_pages_clamped', 'ai_images_capped', 'ai_images_capped_pdf', 'ai_images_none', 'images_limited'):
+        assert not any(word in UX[locale][key].lower() for word in ('plan', 'tarif', 'тариф')), (key, UX[locale][key])

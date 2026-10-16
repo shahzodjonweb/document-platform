@@ -61,16 +61,43 @@ def test_the_count_is_said_in_each_language():
     assert counted('ru', 10, 'page') == '10 страниц' and counted('ru', 2, 'page') == '2 страницы'
 
 
-def test_at_the_plan_limit_more_means_a_bigger_plan(free_customer):
+def test_at_the_page_ceiling_no_plan_is_sold_on_pages(free_customer):
+    """Every plan has the same page ceiling (owner's decision, 2026-10-16), so a
+    count past it is said as ours, and no bigger plan is offered for it."""
     from apps.core.policy import limits_for_plan, plan_limits
     allowed = plan_limits(free_customer)['max_generated_pdf_pages']
-    review = describe(free_customer, 'A 12 page report on tide tables.')
+    assert allowed == limits_for_plan('premium')['max_generated_pdf_pages'], 'Free has Premium’s ceiling'
+    review = describe(free_customer, f'A {allowed + 5} page report on tide tables.')
     assert f'Pages: {allowed}' in body(review)
-    assert not any(label.startswith('➕') for label in labels(review)), 'no more pages on this plan'
-    offer = [label for label in labels(review) if label.startswith('💎')]
-    assert offer == [f"💎 Up to {limits_for_plan('plus')['max_generated_pdf_pages']} pages with Plus"], labels(review)
-    plans = tap(free_customer, review, '💎 Up to')
-    assert 'Plus' in body(plans)
+    assert f'{allowed + 5} asked for; {allowed} is the most we make in one go.' in body(review), body(review)[-400:]
+    assert 'plan' not in body(review).split('Pages:')[1].split('Language:')[0].lower()
+    assert not any(label.startswith('➕') for label in labels(review)), 'no more pages than the ceiling'
+    assert not any(label.startswith('💎') for label in labels(review)), labels(review)
+
+
+def test_no_plan_is_offered_for_pages_slides_or_pictures_even_if_one_gives_more(free_customer):
+    """Plans differ only in their weekly limits, so the review never sells pages,
+    slides or pictures, not even when a stored override still gives Premium more."""
+    from apps.core.policy import limits_for_plan, plan_limits
+    from operations import plans as plan_settings
+    from operations.integrations import save_config as configure
+    from operations.models import IntegrationConfig
+    from tests.test_photos import KEY
+    import telegram.generation as generation
+    import telegram.ux_copy as ux_copy
+    configure('pixabay', {'pixabay_key': KEY, 'enabled': 'true'})
+    allowed, cap = plan_limits(free_customer)['max_generated_pdf_pages'], plan_limits(free_customer)['max_deck_images']
+    IntegrationConfig.objects.update_or_create(pk=plan_settings.KEY, defaults={'configuration': {'premium': {
+        'max_generated_pdf_pages': allowed + 20, 'max_generated_slides': 120, 'max_deck_images': 40}}})
+    assert limits_for_plan('premium')['max_generated_pdf_pages'] == allowed + 20
+    review = describe(free_customer, f'A {allowed + 10} page report on tide tables.')
+    assert f'Pages: {allowed}' in body(review), body(review)[-400:]
+    assert not any(label.startswith('💎') for label in labels(review)), labels(review)
+    deck = describe(free_customer, 'Vulqonlar haqida 30 ta slayd, har bir slaydda rasm bo‘lsin', service='Slides on a topic')
+    assert f'a deck gets up to {cap}' in body(deck), body(deck)[-500:]
+    assert not any(label.startswith('💎') for label in labels(deck)), labels(deck)
+    assert not hasattr(generation, 'next_plan')
+    assert not {'ai_more_pages', 'ai_more_slides', 'ai_more_images'} & set(ux_copy.MESSAGES)
 
 
 def test_the_language_is_shown_and_switched_in_one_tap(customer):
@@ -112,17 +139,19 @@ def test_a_chosen_count_is_checked_and_held_to_the_plan(free_customer):
             create_draft(free_customer, {'prompt': 'A guide to tides', 'options': {'pages': wrong}})
 
 
-def test_pictures_beyond_the_plan_are_said_and_offered(free_customer):
+def test_pictures_beyond_the_cap_are_said_but_no_plan_is_offered(free_customer):
+    """The picture cap is the same on every plan: it is said, never sold."""
     from apps.core.policy import plan_limits
     from operations.integrations import save_config as configure
     from tests.test_photos import KEY
     configure('pixabay', {'pixabay_key': KEY, 'enabled': 'true'})
     cap = plan_limits(free_customer)['max_deck_images']
-    assert 0 < cap < 10, 'this test needs a plan that adds fewer pictures than slides'
-    review = describe(free_customer, 'Vulqonlar haqida 10 ta slayd, har bir slaydda rasm bo‘lsin',
+    assert 0 < cap < 15, 'this test needs a cap below the slides asked for'
+    review = describe(free_customer, 'Vulqonlar haqida 15 ta slayd, har bir slaydda rasm bo‘lsin',
                       service='Slides on a topic')
-    assert f'your plan adds up to {cap}' in body(review), body(review)[-500:]
-    assert any(label.startswith('💎') and 'pictures' in label for label in labels(review)), labels(review)
+    assert f'You asked for pictures; a deck gets up to {cap}.' in body(review), body(review)[-500:]
+    assert 'your plan' not in body(review)
+    assert not any(label.startswith('💎') for label in labels(review)), labels(review)
 
 
 def test_our_own_example_sent_back_is_caught(customer):
@@ -200,7 +229,7 @@ def test_the_setup_screen_refuses_what_it_does_not_offer(customer):
                                content_type='application/json')
         assert response.status_code == 400, (payload, response.content)
     designs = client.get('/api/v1/studio/deck-designs?locale=ru').json()
-    assert designs['default_pages'] == 7 and designs['categories'][0]['name'] == 'Классика'
+    assert designs['default_pages'] == 10 and designs['categories'][0]['name'] == 'Классика'
 
 
 def test_once_generate_is_tapped_the_setup_screen_cannot_reopen_the_review(customer):

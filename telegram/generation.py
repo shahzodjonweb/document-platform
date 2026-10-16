@@ -195,28 +195,6 @@ def pictures_on():
     return bool(pixabay_config()['ready'])
 
 
-PLAN_ORDER = ('free', 'plus', 'premium')
-
-
-def next_plan(account, limit, needed):
-    """(plan, its `limit`) for the first plan above this one that covers `needed`,
-    or the biggest above it when none does; None when nothing above gives more."""
-    from apps.commerce.services import effective_plan
-    from apps.core.policy import limits_for_plan
-    current = effective_plan(account)
-    if current not in PLAN_ORDER:
-        return None
-    have = int(limits_for_plan(current).get(limit) or 0)
-    best = None
-    for plan in PLAN_ORDER[PLAN_ORDER.index(current) + 1:]:
-        value = int(limits_for_plan(plan).get(limit) or 0)
-        if value > have:
-            best = (plan, value)
-            if value >= needed:
-                return best
-    return best
-
-
 def _changed(account, draft_id, change):
     """The draft redone with `change(data)` applied to its fields, and its new quote."""
     from apps.studio.domain import unpack, update_draft

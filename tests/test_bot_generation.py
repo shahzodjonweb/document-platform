@@ -117,12 +117,12 @@ def test_one_message_is_the_whole_brief(customer):
 
 @pytest.mark.parametrize('description,expected', [
     ('A 7 page guide to tide tables', 7),
-    ('Tide tables explained simply', 5),
+    ('Tide tables explained simply', 10),
     ('Suv qalqishi haqida 3 sahifa', 3),
     ('Отчёт о приливах на 6 страниц', 6),
 ])
 def test_the_page_count_comes_out_of_the_description(customer, description, expected):
-    # With a model to write them, an unasked-for count is the default of five.
+    # With a model to write them, an unasked-for count is the default of ten.
     save_config('ai', {'mode': 'openai', 'model': 'gpt-5.6-luna', 'api_key': 'sk-offline-test-only'})
     review = describe(customer, description)
     assert f'Pages: {expected}' in body(review), body(review)[-300:]
@@ -141,14 +141,14 @@ def free_customer(settings):
     return account
 
 
-def test_a_request_beyond_the_plan_is_said_out_loud(free_customer):
+def test_a_request_beyond_the_ceiling_is_said_out_loud(free_customer):
     from apps.core.policy import plan_limits
     allowed = plan_limits(free_customer)['max_generated_pdf_pages']
-    review = describe(free_customer, 'A 20 page report on tide tables.')
-    assert allowed < 20, 'this test needs a request the free plan has to clamp'
-    assert f'Pages: {allowed}' in body(review), 'the free plan gets what the free plan allows'
-    assert '20 asked for' in body(review), 'and the clamp is shown, not hidden'
-    assert latest(free_customer)['options']['requested_pages'] == 20
+    asked = allowed + 5
+    review = describe(free_customer, f'A {asked} page report on tide tables.')
+    assert f'Pages: {allowed}' in body(review), 'the ceiling is what is given'
+    assert f'{asked} asked for' in body(review), 'and the clamp is shown, not hidden'
+    assert latest(free_customer)['options']['requested_pages'] == asked
 
 
 def test_questions_are_only_made_when_they_are_asked_for(customer):
@@ -275,7 +275,7 @@ def test_authoring_is_rate_limited_per_account(customer):
 
 
 def test_local_authoring_follows_the_material_instead_of_inventing_pages(customer):
-    """There is no model in local mode, so five pages would be four blank ones."""
+    """There is no model in local mode, so ten pages would be nine blank ones."""
     review = describe(customer, 'Tide tables explained simply.')
     assert 'Pages: 1' in body(review)
     assert latest(customer)['options']['requested_pages'] is None

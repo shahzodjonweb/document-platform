@@ -12,7 +12,7 @@ def test_the_catalogue_offered_is_two_services(settings):
     settings.DEBUG = True
     data = login_client(account()).get('/api/v1/studio/config').json()
     assert [f['id'] for f in data['features']] == [DOCUMENT, SLIDES]
-    assert data['default_pages'] == 5
+    assert data['default_pages'] == 10
     # A document is a PDF and a deck is a PowerPoint. Neither is a choice.
     assert next(f for f in data['features'] if f['id'] == DOCUMENT)['parameter_schema']['output_format']['enum'] == ['pdf']
     assert next(f for f in data['features'] if f['id'] == SLIDES)['parameter_schema']['output_format']['enum'] == ['pptx']

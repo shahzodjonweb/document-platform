@@ -24,12 +24,14 @@ def queued(owner,plan,created,*,status='queued',topic='job.execute',delivered=Fa
 def new_owner(number):return Account.objects.create(telegram_user_id=number,is_test=True)
 
 
-def test_catalog_priority_premium_only_and_standard_age_order():
+def test_a_newer_premium_job_is_not_dispatched_before_an_older_free_job():
+    # Every plan shares one queue: the plan never moves a job ahead of older work.
     now=timezone.now();free=queued(new_owner(501),'free',now-timedelta(seconds=40));plus=queued(new_owner(502),'plus',now-timedelta(seconds=20));premium=queued(new_owner(503),'premium',now-timedelta(seconds=1))
-    assert [r.id for r in select_outbox(now=now)]==[premium.id,free.id,plus.id]
-    # Mutable account labels cannot upgrade a previously accepted Free job.
-    Account.objects.filter(pk=free.job.account_id).update(plan='premium')
-    assert select_outbox(now=now)[0].id==premium.id
+    assert [r.id for r in select_outbox(now=now)]==[free.id,plus.id,premium.id]
+    assert select_outbox(limit=1,now=now)[0].id==free.id
+    # Nor does a plan label on the account move its accepted job.
+    Account.objects.filter(pk=premium.job.account_id).update(plan='premium')
+    assert select_outbox(limit=1,now=now)[0].id==free.id
 
 
 def test_age_override_prevents_free_starvation_under_new_premium_arrivals():

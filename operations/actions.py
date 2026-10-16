@@ -66,18 +66,23 @@ def set_plan(request, pk):
 def save_plan(request, plan_id):
     """Change what a plan allows, for everyone on it, without a deploy."""
     from . import plans as plan_settings
-    if request.POST.get('reset'):
-        plan_settings.reset(plan_id)
-        audit(request.ops_user, 'plan.reset', plan_id)
-        return redirect('/ops/plans?saved=1')
-    values = {field: request.POST[field] for field in plan_settings.FIELDS if field in request.POST}
-    try:
-        before, after = plan_settings.save(plan_id, values)
-    except plan_settings.PlanError as error:
-        return HttpResponseBadRequest(str(error))
-    if not after:
-        return redirect('/ops/plans?saved=1')
-    audit(request.ops_user, 'plan.limits', plan_id, before=before, after=after)
+    resetting = bool(request.POST.get('reset'))
+    if resetting:
+        changes = plan_settings.reset(plan_id)
+        before, after = changes.pop(plan_id, ({}, {}))
+        audit(request.ops_user, 'plan.reset', plan_id, before=before, after=after)
+    else:
+        values = {field: request.POST[field] for field in plan_settings.FIELDS if field in request.POST}
+        try:
+            changes = plan_settings.save(plan_id, values)
+        except plan_settings.PlanError as error:
+            return HttpResponseBadRequest(str(error))
+    # The limits every plan shares change on every plan: one audit row for
+    # each plan that changed, saying which plan's form it was made from.
+    for plan, (before, after) in changes.items():
+        reason = None if plan == plan_id else (
+            f'{"Restored" if resetting else "Changed"} the limits every plan shares, from the {plan_id.title()} plan')
+        audit(request.ops_user, 'plan.limits', plan, reason=reason, before=before, after=after)
     return redirect('/ops/plans?saved=1')
 
 

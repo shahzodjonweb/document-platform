@@ -93,7 +93,8 @@ def draft_setup(request,pk):
     if not d:raise DomainError('not_found',404)
     if d.feature_id!=SLIDES:raise DomainError('invalid_parameters')
     # A change is decided by its request alone. A setup screen still open on one
-    # would restyle it, and its count, which a change does not carry, defaults to 7.
+    # would restyle it, and its count, which a change does not carry, starts at
+    # the setup screen's default (pages.SETUP_SLIDES), not the deck's own length.
     if unpack(d.encrypted_data).get('revision'):raise DomainError('controls_expired',409)
     # A deck already made is changed with a new description, not by restyling
     # its draft; one still being made is refused by update_draft.
@@ -130,9 +131,17 @@ def generate(request,pk):
     return JsonResponse(job_data(job),status=201 if created else 200)
 
 def definition_data(row):return {'id':str(row.id),'name':row.name,'kind':row.kind,'version':row.version,**row.definition}
+# Saved form-filling templates an account may keep, on any plan that has them.
+FORM_TEMPLATES=30
+
 def definition_cap(account,kind):
     caps=plan_limits(account)
-    return caps['saved_workflows'] if kind=='workflow' else caps['saved_teacher_templates'] if kind=='template' else 30 if account.plan=='premium' else 0
+    if kind=='workflow':return caps['saved_workflows']
+    if kind=='template':return caps['saved_teacher_templates']
+    # Form templates follow the catalog like every other tool. This once named
+    # Premium outright, so Free and Plus were held at none after the catalog gave
+    # them the feature.
+    return FORM_TEMPLATES if allowed(account,'editor.form_templates') else 0
 def validate_definition(data,kind):
     name=str(data.get('name','')).strip()[:160]
     if not name:raise DomainError('name_required')

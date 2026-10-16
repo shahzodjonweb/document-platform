@@ -201,6 +201,20 @@ CATALOGS['ru'].update(
     field_max_generated_pdf_pages='Страниц PDF на выходе', field_max_generated_slides='Слайдов на выходе',
     field_saved_workflows='Сохранённые сценарии', field_saved_teacher_templates='Шаблоны учителя',
 )
+# Prices and the weekly limits are each plan's own; every other limit is one
+# value for all three plans, and the plan form says so beside those fields.
+CATALOGS['en'].update(
+    applies_to_every_plan='Applies to every plan',
+    plan_edit_note='Takes effect immediately, without a deploy. Prices and weekly limits are set for this plan only; '
+                   'every other limit applies to every plan.')
+CATALOGS['uz'].update(
+    applies_to_every_plan='Barcha tariflarga qo‘llanadi',
+    plan_edit_note='Darhol, deploysiz qo‘llanadi. Narx va haftalik limitlar faqat shu tarif uchun, qolgan limitlar '
+                   'esa barcha tariflarga qo‘llanadi.')
+CATALOGS['ru'].update(
+    applies_to_every_plan='Применяется ко всем тарифам',
+    plan_edit_note='Применяется сразу, без развёртывания. Цены и недельные лимиты задаются только для этого тарифа, '
+                   'остальные лимиты применяются ко всем тарифам.')
 CATALOGS['en'].update(send_reply='Send reply', overview='Overview')
 CATALOGS['uz'].update(send_reply='Javob yuborish')
 CATALOGS['ru'].update(send_reply='Отправить ответ')
