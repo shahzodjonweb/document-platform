@@ -378,3 +378,15 @@ tests/test_default_length.py::test_a_description_without_a_count_gets_ten_on_eve
 tests/test_scheduling.py::test_a_newer_premium_job_is_not_dispatched_before_an_older_free_job
 tests/test_plan_limits.py::test_a_shared_limit_edited_on_one_plan_is_written_to_every_plan
 tests/test_plan_limits.py::test_a_test_at_the_question_cap_fits_beside_the_fullest_last_call
+
+# Looks at the plans screen in the bot: each one counted with where it was opened,
+# an old button as 'other', counting never stops the screen, the renewal reminder's
+# Plans button never stops the reminder, test accounts stay out of production, and
+# the admin's numbers, with names only for staff who may open accounts
+tests/test_plans_view_analytics.py::test_every_way_to_the_plans_is_one_look_with_where_it_was_opened[menu]
+tests/test_plans_view_analytics.py::test_an_old_plans_button_without_a_source_counts_as_other
+tests/test_plans_view_analytics.py::test_the_plans_open_even_when_the_look_cannot_be_counted
+tests/test_plans_view_analytics.py::test_a_reminder_goes_out_even_when_its_button_cannot_be_made
+tests/test_plans_view_analytics.py::test_test_accounts_and_development_machines_stay_out_of_production
+tests/test_plans_view_analytics.py::test_the_report_counts_people_views_sources_plans_and_what_came_next
+tests/test_plans_view_analytics.py::test_the_plans_screen_is_for_staff_and_names_only_for_those_who_may_open_accounts

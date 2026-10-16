@@ -7,6 +7,7 @@ from aiogram.filters import Command
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from django.utils import timezone
 
+from apps.core import funnel
 from apps.core.errors import DomainError
 from apps.core.models import BotCallback, BotConversation
 from apps.commerce import services
@@ -261,10 +262,15 @@ async def button(account, label, action, payload=None):
     return InlineKeyboardButton(text=copy(account, label), callback_data=await callback(account, action, payload))
 
 
-async def navigation(account, back=None):
+# Back to the plans from a payment screen. Each plans button says where it is,
+# so the admin can count where the plans are opened from (funnel.PLAN_SOURCES).
+FROM_PAYMENT = {'from': 'payment'}
+
+
+async def navigation(account, back=None, payload=None):
     rows = []
     if back:
-        rows.append([await button(account, 'back', back)])
+        rows.append([await button(account, 'back', back, payload)])
     rows.append([await button(account, 'home', 'home')])
     return rows
 
@@ -295,7 +301,9 @@ def money(amount):
     return f'{amount:,}'.replace(',', ' ')
 
 
-async def show_offers(message, account, edit=False):
+async def show_offers(message, account, edit=False, source=None, tap=''):
+    """The plans screen. `source` is where it was opened from, and `tap` the
+    button tapped to open it, for the admin's count."""
     from .bot import callback
     from apps.commerce import manual
     await leave_input_prompt(account)
@@ -323,7 +331,14 @@ async def show_offers(message, account, edit=False):
         tail = html.escape(copy(account, 'offers' if offers else 'unavailable'))
     if offers:
         tail += '\n\n' + html.escape(copy(account, 'sandbox' if offers[0].sandbox else 'live'))
-    await show(message, overview + '\n\n' + tail, rows, edit, 'HTML')
+    shown = await show(message, overview + '\n\n' + tail, rows, edit, 'HTML')
+    # Counted once the screen is on its way: a screen that could not be sent
+    # raises before this, and is not a look. An edit Telegram turns down as
+    # unchanged is not one either, though the fresh buttons above make that
+    # rare; a double tap is caught by the button instead (funnel.plans_viewed).
+    # Counting never raises.
+    if shown is not None:
+        await sync_to_async(funnel.plans_viewed)(account, source, tap)
 
 
 async def show_manual(message, account, plan, edit=False):
@@ -351,7 +366,7 @@ async def show_manual_payment(message, account, payment, edit=False):
     rows = [
         [InlineKeyboardButton(text=copy(account, send), callback_data=await callback(account, 'commerce_manual_receipt', {'payment_id': str(payment.id)}))],
         [InlineKeyboardButton(text=copy(account, 'manual_cancel'), callback_data=await callback(account, 'commerce_manual_cancel', {'payment_id': str(payment.id)}))],
-        *(await navigation(account, 'plans')),
+        *(await navigation(account, 'plans', FROM_PAYMENT)),
     ]
     await show(message, body, rows, edit, 'HTML')
 
@@ -368,7 +383,7 @@ async def receive_receipt(message, account, payment_id, raw):
     await message.answer(copy(account, 'manual_received'), reply_markup=await payment_navigation(account))
 
 
-async def show_invoice(message, account, offer_id, key):
+async def show_invoice(message, account, offer_id, key, source=None):
     from .bot import callback
     await leave_input_prompt(account)
     # Packs are no longer sold, but their old buttons stay in chats and people
@@ -376,7 +391,7 @@ async def show_invoice(message, account, offer_id, key):
     # say payments are unavailable, which they are not.
     offers = await sync_to_async(services.available_offers)(account)
     if offer_id not in {offer.offer_id for offer in offers}:
-        return await show_offers(message, account)
+        return await show_offers(message, account, source=source)
     invoice, _ = await sync_to_async(services.create_invoice)(account, offer_id, key)
     invoice = await sync_to_async(services.present_invoice)(invoice)
     if invoice.sandbox:
@@ -386,7 +401,7 @@ async def show_invoice(message, account, offer_id, key):
     lines = [f'<b>{copy(account, "review")}</b>', html.escape(offer_name(account, invoice.snapshot)),
              f'{copy(account, "price")}: ⭐ {invoice.amount_xtr} Telegram Stars', copy(account, 'period'),
              '', copy(account, 'sandbox' if invoice.sandbox else 'live'), copy(account, 'expires')]
-    rows = [[pay], *(await navigation(account, 'plans'))]
+    rows = [[pay], *(await navigation(account, 'plans', FROM_PAYMENT))]
     await message.answer('\n'.join(lines), parse_mode='HTML', reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
 
 
@@ -415,7 +430,7 @@ async def show_subscription(message, account, edit=False):
             lines.append(f'{copy(account, "scheduled")}: {name}')
         if sub['sandbox']:
             lines.extend(['', copy(account, 'sandbox')])
-    rows.append([await button(account, 'plans', 'plans')])
+    rows.append([await button(account, 'plans', 'plans', {'from': 'subscription'})])
     rows.extend(await navigation(account))
     await show(message, '\n'.join(lines), rows, edit, 'HTML')
 
@@ -448,7 +463,7 @@ async def show_subscription_confirmation(message, account, *, enabled=None, plan
 
 async def payment_navigation(account):
     return InlineKeyboardMarkup(inline_keyboard=[
-        [await button(account, 'subscription', 'subscription'), await button(account, 'plans', 'plans')],
+        [await button(account, 'subscription', 'subscription'), await button(account, 'plans', 'plans', {'from': 'notice'})],
         [await button(account, 'payment_support', 'support', {'payment': True})],
         *(await navigation(account)),
     ])
@@ -486,9 +501,10 @@ def register_billing_handlers(dp):
         account = await account_for(message.from_user)
         try:
             values = message.text.split(maxsplit=1)
+            # Typed, or chosen from the command menu: Telegram sends the same text.
             if len(values) > 1:
-                return await show_invoice(message, account, values[1].strip(), f'telegram:{message.chat.id}:{message.message_id}')
-            await show_offers(message, account)
+                return await show_invoice(message, account, values[1].strip(), f'telegram:{message.chat.id}:{message.message_id}', 'command')
+            await show_offers(message, account, source='command')
         except DomainError as exc:
             await safe_error(message, account, exc)
 
@@ -534,7 +550,7 @@ def register_billing_handlers(dp):
                 from apps.commerce import manual
                 await sync_to_async(manual.cancel)(account, ref.payload['payment_id'])
                 await leave_input_prompt(account)
-                await show(query.message, copy(account, 'manual_cancelled'), await navigation(account, 'plans'), edit=True)
+                await show(query.message, copy(account, 'manual_cancelled'), await navigation(account, 'plans', FROM_PAYMENT), edit=True)
             elif ref.action == 'commerce_pay':
                 await sync_to_async(services.sandbox_pay)(account, ref.payload['invoice_id'])
                 await query.message.answer(copy(account, 'confirmed'), reply_markup=await payment_navigation(account))
