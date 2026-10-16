@@ -88,7 +88,8 @@ def test_expired_invoice_and_wrong_successful_charge_are_rejected():
 def test_weekly_limits_follow_the_paid_period_and_the_shared_account():
     a=account();assert weekly(a)==('free',5,15,3)
     invoice,payment=purchase(a)
-    assert weekly(a)==('plus',20,None,10) and plan_limits(a)['max_file_mib']==100
+    # Only the weekly limits come with the payment: the file size is the same on every plan.
+    assert weekly(a)==('plus',20,None,10) and plan_limits(a)['max_file_mib']==200
     SubscriptionPeriod.objects.filter(payment=payment).update(ends_at=timezone.now()-timedelta(seconds=1))
     assert weekly(a)==('free',5,15,3),'a lapsed period leaves nothing behind'
     assert resolve_account({'id':a.telegram_user_id,'first_name':'Same from bot'},'bot').id==a.id

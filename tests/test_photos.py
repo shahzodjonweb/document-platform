@@ -496,7 +496,12 @@ def test_photos_cannot_be_switched_on_without_a_key():
 def test_the_photo_allowance_is_an_editable_plan_limit():
     from operations import plans
     from apps.core.policy import limits_for_plan
-    assert [limits_for_plan(plan)['max_deck_images'] for plan in ('free', 'plus', 'premium')] == [4, 8, 12]
+    # Every plan gets Premium's twelve; only the weekly allowances differ by plan.
+    assert [limits_for_plan(plan)['max_deck_images'] for plan in ('free', 'plus', 'premium')] == [12, 12, 12]
     assert plans.FIELDS['max_deck_images'] == (0, 60)
+    # It is one figure for every plan, edited from any plan's form: a photo
+    # ceiling is no longer something a payment buys.
+    plans.save('free', {'max_deck_images': '40'})
+    assert [limits_for_plan(plan)['max_deck_images'] for plan in ('free', 'plus', 'premium')] == [40, 40, 40]
     with pytest.raises(plans.PlanError):
-        plans.save('free', {'max_deck_images': '40'})
+        plans.save('free', {'max_deck_images': '61'})

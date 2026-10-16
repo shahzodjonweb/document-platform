@@ -44,10 +44,14 @@ def test_branding_real_logo_and_unicode_name_in_pdf_pptx(settings,tmp_path):
     assert str(deck.slides[0].shapes[0].fill.fore_color.rgb)=='285CFF'
 
 
-def test_branding_owner_plan_and_bytes_are_verified(settings):
+def test_branding_owner_plan_and_bytes_are_verified(settings,hold_back):
     a=paid(settings,account());other=paid(settings,account(43));asset=logo(a)
     with pytest.raises(DomainError,match='file_unavailable'):branding(other,asset)
-    with pytest.raises(DomainError,match='feature_not_in_plan'):branding(account(44),asset)
+    # Branding was Premium-only. Every plan has it now: a Free account brands
+    # with its own logo, and is refused only where the catalog leaves it out.
+    free=account(44);assert branding(free,logo(free))['branding']['name']=='Школа · Maktab'
+    hold_back('template.branding','free')
+    with pytest.raises(DomainError,match='feature_not_in_plan'):branding(free,asset)
     options=branding(a,asset);storage_path(asset.object_key).write_bytes(b'changed-private-content')
     with pytest.raises(DomainError,match='file_changed'):render_style(a,{'options':options})
     with pytest.raises(DomainError,match='invalid_parameters'):prepare_branding(a,'ai.pdf_text',{'template_style':{'accent':'#000000'},'branding':{'logo_url':'https://example.invalid/private'}})

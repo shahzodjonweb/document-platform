@@ -5,6 +5,7 @@ each one is reason-gated, role-gated and written to the audit trail. These
 tests are mostly about those three properties rather than the happy path.
 """
 import io
+import re
 from datetime import timedelta, timezone as dt_timezone
 
 import pytest
@@ -226,9 +227,14 @@ def test_editing_a_plan_changes_what_it_allows(settings):
                                                'reason': 'Raising the page ceiling for Plus.'})
     assert response.status_code == 302
     assert limits_for_plan('plus')['max_generated_pdf_pages'] == before + 5
-    entry = AuditLog.objects.get(action='plan.limits')
-    assert entry.actor == user and entry.target == 'plus'
-    assert entry.before['max_generated_pdf_pages'] == before
+    entry = AuditLog.objects.get(action='plan.limits', target='plus')
+    assert entry.actor == user and entry.before['max_generated_pdf_pages'] == before
+    # The page ceiling is every plan's: one audit row for each plan it changed.
+    others = AuditLog.objects.filter(action='plan.limits').exclude(target='plus')
+    assert sorted(others.values_list('target', flat=True)) == ['free', 'premium']
+    assert all(row.actor == user and 'from the Plus plan' in row.reason
+               and row.after == {'max_generated_pdf_pages': before + 5} for row in others)
+    assert limits_for_plan('free')['max_generated_pdf_pages'] == limits_for_plan('premium')['max_generated_pdf_pages'] == before + 5
 
     # And an account on that plan sees the new ceiling immediately.
     account = customer(770002)
@@ -255,6 +261,23 @@ def test_the_plans_page_edits_the_weekly_limits(settings):
     assert all(f'plan-price">{money(price)} <span>' in page for price in (20_000, 60_000)), 'the owner\'s prices'
 
 
+def test_the_plan_form_marks_the_limits_every_plan_shares(settings):
+    """Saving a shared field from one plan's form changes all three, so the form says so beside them."""
+    from operations import plans as plan_settings
+    settings.DEBUG = True
+    client, _ = staff_client('Finance')
+    for lang, note in (('en', 'Applies to every plan'), ('uz', 'Barcha tariflarga qo‘llanadi'),
+                       ('ru', 'Применяется ко всем тарифам')):
+        page = client.get(f'/ops/plans?lang={lang}').content.decode()
+        fieldsets = [part.split('</fieldset>')[0] for part in page.split('<fieldset')[1:]]
+        assert len(fieldsets) == 15, 'five groups on each of the three plans'
+        for fieldset in fieldsets:
+            names = set(re.findall(r'name="(\w+)"', fieldset))
+            assert (note in fieldset) == (names <= set(plan_settings.SHARED)), (lang, names)
+        assert all(f'name="{field}"' not in fieldset for fieldset in fieldsets if note in fieldset
+                   for field in plan_settings.PER_PLAN)
+
+
 def test_a_plan_edit_is_bounded_and_reversible(settings):
     settings.DEBUG = True
     client, _ = staff_client('Finance')
@@ -271,8 +294,10 @@ def test_a_plan_edit_is_bounded_and_reversible(settings):
     client.post('/ops/plans/plus', {'max_generated_pdf_pages': str(seed + 1), 'reason': 'A real change.'})
     assert limits_for_plan('plus')['max_generated_pdf_pages'] == seed + 1
     client.post('/ops/plans/plus', {'reset': '1', 'reason': 'Putting it back.'})
-    assert limits_for_plan('plus')['max_generated_pdf_pages'] == seed
-    assert AuditLog.objects.filter(action='plan.reset').exists()
+    assert all(limits_for_plan(plan)['max_generated_pdf_pages'] == seed for plan in ('free', 'plus', 'premium'))
+    assert AuditLog.objects.get(action='plan.reset').target == 'plus'
+    restored = AuditLog.objects.filter(action='plan.limits', reason__startswith='Restored')
+    assert sorted(restored.values_list('target', flat=True)) == ['free', 'premium']
 
 
 def test_free_cannot_be_raised_above_a_paid_plan(settings):
@@ -335,6 +360,22 @@ def test_a_paid_plan_cannot_be_set_below_free_and_free_stays_editable(settings):
             'edits_per_file', 'max_file_mib', 'max_pages_per_job', 'max_generated_pdf_pages', 'max_deck_images')}
     assert client.post('/ops/plans/free', {**form, 'max_file_mib': '30'}).status_code == 302
     assert limits_for_plan('free')['max_file_mib'] == 30
+
+
+def test_every_seeded_form_saves_and_free_may_raise_a_shared_ceiling_first(settings):
+    """Free and Plus carry Premium's caps now. Each plan's form saved as it stands
+    must go through, and a page ceiling raised from Free's form is every plan's."""
+    from operations import plans as plan_settings
+    settings.DEBUG = True
+    client, _ = staff_client('Finance')
+    for plan in ('free', 'plus', 'premium'):
+        limits = limits_for_plan(plan)
+        form = {field: '' if limits[field] is None else str(limits[field]) for field in plan_settings.FIELDS}
+        assert client.post(f'/ops/plans/{plan}', form).status_code == 302, plan
+    assert not AuditLog.objects.filter(action='plan.limits').exists(), 'an unchanged form changes nothing'
+    assert client.post('/ops/plans/free', {'max_generated_pdf_pages': '40'}).status_code == 302
+    assert [limits_for_plan(plan)['max_generated_pdf_pages'] for plan in ('free', 'plus', 'premium')] == [40, 40, 40]
+    assert AuditLog.objects.filter(action='plan.limits').count() == 3
 
 
 def test_an_edit_reaches_the_customer_pricing_page(settings):

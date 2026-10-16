@@ -98,7 +98,10 @@ async def safe_error(message,account,exc):
     if key=='secure': rows.append([InlineKeyboardButton(text=text(account,'open'),url=await web_url(account))])
     if getattr(account,'telegram_user_id',None):
         rows.append([await button(account,'continue_task','controls'),await button(account,'home','home')])
-        if exc.code in ('feature_not_in_plan',*LIMIT_CODES):
+        # Only a used-up weekly allowance is something a plan buys. Every plan has
+        # every tool, so a tool refused for the plan reads as "not available right
+        # now", and a plans button under it would sell what no plan adds.
+        if exc.code in LIMIT_CODES:
             rows.insert(0,[await button(account,'plans','plans')])
     body=text(account,key) if key else bot_error(exc,account.locale,account)
     markup=InlineKeyboardMarkup(inline_keyboard=rows) if rows else None
@@ -291,8 +294,9 @@ async def review_screen(account,draft,quote):
     if other:
         rows.insert(0,[await button(account,'ai_switch_slides' if other==ai.SLIDES else 'ai_switch_pdf','ai_switch',
                                     {'draft_id':str(draft.id),'feature_id':other})])
-    # The count can be put right here, before anything is made. At the
-    # plan's limit the "more" button becomes the plan that gives more.
+    # The count can be put right here, before anything is made. Every plan has
+    # the same ceiling, so at it there is no "more" button and no plan offered
+    # in its place: only the weekly allowance differs by plan.
     from apps.studio.pages import ceiling
     top=await sync_to_async(ceiling)(account,'pptx' if deck else 'pdf')
     # A change has none of the controls below: its request already says what
@@ -309,19 +313,6 @@ async def review_screen(account,draft,quote):
         rows.append(stepper)
         # The design and the count together, on a screen of their own.
         if deck: rows.append([await setup_button(account,draft)])
-    upsell=[]
-    # A new document at the plan's limit is offered more in place of ➕; a
-    # change only when it asks for more than the plan gives.
-    if (given>=top and not change) or (asked and asked>given):
-        more=await sync_to_async(ai.next_plan)(account,'max_generated_slides' if deck else 'max_generated_pdf_pages',max(asked or 0,given+1))
-        if more: upsell.append(('ai_more_slides' if deck else 'ai_more_pages',more))
-    if short:
-        more=await sync_to_async(ai.next_plan)(account,'max_deck_images',wanted)
-        if more: upsell.append(('ai_more_images',more))
-    from .billing import plan_name
-    for key,(plan,limit) in upsell[:1]:
-        rows.append([InlineKeyboardButton(text=text(account,key).format(count=limit,plan=plan_name(account,plan)),
-                                          callback_data=await callback(account,'plans'))])
     # The language it will be written in, switchable in one tap.
     if not change:
         rows.append([InlineKeyboardButton(text=('✅ ' if code==locale else '')+label.split(' ',1)[0],

@@ -232,11 +232,15 @@ def page(request, section='overview'):
         # are changing it from, and its bounds so the form refuses nonsense.
         data['plan_fields']=[{'name':name,'low':low,'high':high} for name,(low,high) in plan_settings.FIELDS.items()]
         # Fields are grouped the way an operator thinks about a plan.
+        # A shared field is one value on every plan (plan_settings.SHARED): the
+        # form says so beside it, since saving it here changes all three.
         data['plan_edit_rows']=[{'id':row['id'],'title':row['title'],'edited':row['edited'],
                                  'groups':[{'label':data['t'][group],
+                                            'shared':all(name in plan_settings.SHARED for name in names),
                                             'fields':[{'name':name,'label':data['t'].get('field_'+name,name),
                                                        'low':plan_settings.FIELDS[name][0],'high':plan_settings.FIELDS[name][1],
                                                        'nullable':name in plan_settings.NULLABLE,
+                                                       'shared':name in plan_settings.SHARED,
                                                        'value':row.get(name),'seed':defaults[row['id']].get(name)}
                                                       for name in names if name in plan_settings.FIELDS and name in defaults[row['id']]]}
                                            for group,names in PLAN_GROUPS]}

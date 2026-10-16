@@ -92,7 +92,9 @@ def test_the_weekly_file_limit_ignores_leftover_credits():
 def test_weekly_limit_and_concurrency_do_not_overspend():
     from operations import plans as plan_settings
     a=account();asset=upload(a)
-    plan_settings.save('free',{'weekly_file_jobs':2})
+    # Every plan runs three tasks at once now; one makes the second submit race
+    # the first, which is the overspend this guards against.
+    plan_settings.save('free',{'weekly_file_jobs':2,'concurrent_jobs':1})
     q=quote(a,asset);job,_=submit_job(a,q.id,'quota-request-1')
     q2=quote(a,asset);q3=quote(a,asset)
     with pytest.raises(DomainError,match='concurrency_limit'): submit_job(a,q2.id,'quota-request-2')

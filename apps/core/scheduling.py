@@ -1,7 +1,8 @@
 """Bounded dispatch with aging, account rotation, and durable publication leases.
 
-The catalog grants Premium queue priority; Free and Plus share standard service.
-Waiting five minutes overrides tier priority. Publication is at-least-once;
+Every plan shares one queue. Accounts take turns, the one served longest ago
+first, and work that has waited five minutes goes ahead of the rest, oldest
+first. A job's plan never moves it ahead of older work. Publication is at-least-once;
 the ordinary job row lock and settlement ledger remain the exactly-once boundary.
 """
 from collections import defaultdict,deque
@@ -26,7 +27,7 @@ def select_outbox(*,limit=20,window=DEFAULT_WINDOW,for_publish=False,now=None):
     cutoff=now-timedelta(seconds=AGING_SECONDS)
     query=OutboxEvent.objects.filter(topic='job.execute',delivered_at__isnull=True,job__status='queued')
     if for_publish:query=query.filter(Q(publish_lease_until__isnull=True)|Q(publish_lease_until__lte=now))
-    rank=Case(When(created_at__lte=cutoff,then=Value(0)),When(job__policy__plan='premium',then=Value(1)),default=Value(2),output_field=IntegerField())
+    rank=Case(When(created_at__lte=cutoff,then=Value(0)),default=Value(1),output_field=IntegerField())
     candidates=list(query.annotate(queue_rank=rank).select_related('job').order_by('queue_rank','created_at','id')[:window])
     owners={row.job.account_id for row in candidates}
     served={row['account_id']:row['last'] for row in Job.objects.filter(account_id__in=owners,started_at__isnull=False).values('account_id').annotate(last=Max('started_at'))}

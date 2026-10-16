@@ -81,16 +81,17 @@ def test_a_deck_with_question_slides_keeps_its_count_through_a_change(customer):
     assert f'Slides: {slides}' in words and '→' not in words, words
 
 
-def test_pictures_a_plan_cannot_add_are_said_on_a_change(free_customer, monkeypatch):
+def test_pictures_that_cannot_be_added_are_said_on_a_change(free_customer, monkeypatch):
     from tests.test_photos import KEY
     from telegram import generation
     save_config('pixabay', {'pixabay_key': KEY, 'enabled': 'true'})
     delivered = made(free_customer, 'Tides\n\nThe moon pulls the sea.', service='PDF on a topic')
-    # The plan adds no pictures, and the change asks for three.
+    # None can be added, and the change asks for three.
     monkeypatch.setattr(generation, 'images_wanted', lambda draft: (3, 0))
     words, labels = screen(change(free_customer, delivered, 'Rasmlar qo‘shing'))
-    assert 'your plan does not add them' in words, words
-    assert any(label.startswith('💎') and 'pictures' in label for label in labels), labels
+    assert 'You asked for pictures, but none can be added to this one.' in words, words
+    # Every plan has the same picture cap, so no plan is offered for more.
+    assert 'your plan' not in words and not any(label.startswith('💎') for label in labels), (words, labels)
     # With photos switched off no plan could add them: nothing is offered.
     save_config('pixabay', {'pixabay_key': KEY, 'enabled': ''})
     words, labels = screen(change(free_customer, delivered, 'Rasmlar qo‘shing'))

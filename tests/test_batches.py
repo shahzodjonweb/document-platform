@@ -9,6 +9,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from apps.core.errors import DomainError
 from apps.core.allowance import file_jobs_this_week
 from apps.core.models import Job,Quote,FileAsset
+from apps.core.policy import plan_limits,limits_for_plan
 from apps.core.services import upload_file,submit_job,execute_job
 from apps.commerce.services import create_invoice,sandbox_pay
 from apps.studio.batches import create_batch_quote,submit_batch,execute_batch,quote_data,run_data
@@ -27,20 +28,25 @@ def paid(a,plan='plus'):
 def groups(a,count=2):
     return [{'feature_id':'pdf.to_images','input_ids':[str(upload(a).id)],'parameters':{'dpi':72}} for _ in range(count)]
 
-def test_quote_is_atomic_owner_scoped_and_paid_caps():
-    a=account();g=groups(a)
-    with pytest.raises(DomainError,match='feature_not_in_plan'):create_batch_quote(a,'batch.convert',g)
-    a=paid(a)
-    with pytest.raises(DomainError,match='batch_limit'):create_batch_quote(a,'batch.convert',g*6)
+def test_quote_is_atomic_owner_scoped_and_capped(hold_back):
+    # Batches were Plus and Premium only, with ten files on Plus. Every plan
+    # has them now, with Premium's number of files, so this is a Free account.
+    a=account();g=groups(a);cap=plan_limits(a)['batch_files']
+    assert cap==limits_for_plan('premium')['batch_files']==25
+    with pytest.raises(DomainError,match='batch_limit'):create_batch_quote(a,'batch.convert',g*(cap//2+1))
     other=paid(account(43));bad=[g[0],{'feature_id':'pdf.to_images','input_ids':[str(upload(other).id)]}]
     before=Quote.objects.count()
     with pytest.raises(DomainError,match='file_unavailable'):create_batch_quote(a,'batch.convert',bad)
     assert Quote.objects.count()==before and BatchQuote.objects.count()==0
     q=create_batch_quote(a,'batch.convert',g)
     data=quote_data(q)
-    assert data['affordable'] and data['max_children']==10
+    assert data['affordable'] and data['max_children']==cap
     assert not q.meters and not {'meters','available_balances'}&set(data)
     assert len(data['groups'])==2 and file_jobs_this_week(a)==0,'a quote holds no places'
+    # A plan the catalog leaves batches out of is still refused, with nothing held.
+    hold_back('batch.convert','free')
+    with pytest.raises(DomainError,match='feature_not_in_plan'):create_batch_quote(a,'batch.convert',g)
+    assert BatchQuote.objects.count()==1
 
 def test_submit_and_resume_are_idempotent_and_real_jobs_count_once():
     a=paid(account());q=create_batch_quote(a,'batch.convert',groups(a))
@@ -117,9 +123,11 @@ def test_api_owner_expiry_aggregate_caps_immutable_confirmation(settings):
     run=BatchRun.objects.get(pk=response.json()['id']);assert run.status=='queued' and run.children.count()==2 and Job.objects.count()==0
     assert other.get('/api/v1/batches/'+str(run.id)).status_code==404
     assert other.post('/api/v1/batches/'+str(run.id)+'/resume').status_code==404
-    FileAsset.objects.filter(pk=g[0]['input_ids'][0]).update(size_bytes=101*1024*1024)
+    # Just over the plan's batch size and page caps, whatever they are set to.
+    caps=plan_limits(a)
+    FileAsset.objects.filter(pk=g[0]['input_ids'][0]).update(size_bytes=caps['max_aggregate_input_mib']*1024*1024+1)
     with pytest.raises(DomainError,match='aggregate_size_exceeded'):create_batch_quote(a,'batch.convert',g)
-    FileAsset.objects.filter(pk=g[0]['input_ids'][0]).update(size_bytes=1000,page_count=201)
+    FileAsset.objects.filter(pk=g[0]['input_ids'][0]).update(size_bytes=1000,page_count=caps['max_pages_per_job']+1)
     with pytest.raises(DomainError,match='page_limit_exceeded'):create_batch_quote(a,'batch.convert',g)
     BatchQuote.objects.filter(pk=q.id).update(expires_at=timezone.now()-timedelta(seconds=1))
     execute_batch(run.id);run.refresh_from_db()

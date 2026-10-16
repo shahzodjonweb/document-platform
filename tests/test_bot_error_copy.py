@@ -58,3 +58,129 @@ def test_no_bot_error_sends_people_to_a_balance_that_no_longer_exists(locale):
         assert not any(word in words.lower() for word in ('balance', 'balans', 'баланс', 'credit', 'kredit', 'кредит'))
     paid = bot_error(DomainError('invoice_already_paid'), locale)
     assert {'en': 'Subscription', 'uz': 'Obuna', 'ru': 'Подписка'}[locale] in paid
+
+
+@pytest.mark.parametrize('locale', ['en', 'uz', 'ru'])
+def test_sizes_pages_and_tools_never_send_people_to_another_plan(locale):
+    """Every plan has the same sizes, page counts and tools (owner's decision,
+    2026-10-16): only the weekly limits are a reason to change plan. A file too
+    large used to say "choose another plan", which no plan would have fixed."""
+    plan_words = ('plan', 'tarif', 'тариф')
+    for code in ('file_too_large', 'file_size_limit', 'page_limit_exceeded', 'page_limit', 'feature_not_in_plan',
+                 'aggregate_size_exceeded', 'input_count_exceeded', 'concurrency_limit', 'output_size_limit'):
+        value = bot_error(DomainError(code), locale)
+        assert value == COPY[locale][code].replace('{limit}', '1 000')
+        assert not any(word in value.lower() for word in plan_words), (code, value)
+    # A tool held back reads like one switched off: there is no plan to buy it with.
+    assert bot_error(DomainError('feature_not_in_plan'), locale) == bot_error(DomainError('feature_unavailable'), locale)
+    # The weekly limits are the one place a plan is still offered.
+    for code in ('weekly_ai_limit', 'weekly_file_limit', 'edit_limit'):
+        assert any(word in COPY[locale][code].lower() for word in plan_words), code
+
+
+@pytest.mark.parametrize('code,offered', [('feature_not_in_plan', False), ('page_limit_exceeded', False),
+                                          ('weekly_ai_limit', True), ('weekly_file_limit', True), ('edit_limit', True)])
+def test_only_a_used_up_weekly_allowance_puts_the_plans_under_an_error(monkeypatch, code, offered):
+    """A tool refused for the plan reads "not available right now"; a plans
+    button under it would sell what no plan adds."""
+    import asyncio
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+    import telegram.bot as bot
+
+    async def button(account, label, action, payload=None):
+        return label
+    monkeypatch.setattr(bot, 'button', button)
+    monkeypatch.setattr(bot, 'InlineKeyboardMarkup', lambda inline_keyboard: inline_keyboard)
+    message = SimpleNamespace(from_user=SimpleNamespace(is_bot=False), edit_text=AsyncMock(), answer=AsyncMock())
+    asyncio.run(bot.safe_error(message, SimpleNamespace(locale='en', telegram_user_id=1), DomainError(code)))
+    rows = message.answer.await_args.kwargs['reply_markup']
+    assert (['plans'] in rows) is offered
+    assert ['continue_task', 'home'] in rows
+
+
+@pytest.mark.parametrize('locale', ['en', 'uz', 'ru'])
+def test_the_api_names_no_plan_for_a_limit_every_plan_shares(locale):
+    """The web shows these messages as the API sends them. "Your plan's size
+    limit" pointed at a plan that would have been no larger."""
+    plan_words = ('plan', 'tarif', 'тариф', 'план')
+    for code in ('file_too_large', 'page_limit_exceeded', 'saved_limit'):
+        message = error_data(DomainError(code), locale)['message']
+        assert message and not any(word in message.lower() for word in plan_words), (code, message)
+    # The weekly allowances still point at the plans.
+    assert any(word in error_data(DomainError('weekly_ai_limit'), locale)['message'].lower() for word in plan_words)
+
+
+# ---------------------------------------------------------------- pages: one file, or a task's files together
+
+UPLOAD = {'en': '📄 This file has more than {limit} pages. Split it into smaller files before you upload it.',
+          'uz': '📄 Bu faylda {limit} sahifadan ko‘p. Yuklashdan oldin uni kichikroq fayllarga bo‘lib oling.',
+          'ru': '📄 В этом файле больше {limit} страниц. Перед загрузкой разделите его на файлы поменьше.'}
+TOTAL = {'en': '📄 Too many pages for one task. Remove a file or choose fewer pages.',
+         'uz': '📄 Bitta vazifa uchun sahifalar juda ko‘p. Bitta faylni olib tashlang yoki kamroq sahifa tanlang.',
+         'ru': '📄 Слишком много страниц для одной задачи. Уберите файл или выберите меньше страниц.'}
+
+
+def _refused_upload(account, pages):
+    from django.core.files.uploadedfile import SimpleUploadedFile
+    from apps.core.services import upload_file
+    from tests.test_platform import pdf_bytes
+    with pytest.raises(DomainError) as refused:
+        upload_file(account, SimpleUploadedFile('long.pdf', pdf_bytes((72,) * pages), 'application/pdf'))
+    return refused.value
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize('plan', ['free', 'premium'])
+def test_a_file_too_long_for_any_task_is_told_to_be_split_before_upload(plan):
+    """No tool takes a file over the cap, our Split PDF included: it is split
+    before uploading, and the message names the real figure."""
+    from processors.engine import MAX_PAGES
+    from telegram.ux_copy import TOOL_NAMES
+    from tests.test_platform import account
+    customer = account(78100)
+    customer.plan = plan
+    customer.save(update_fields=['plan'])
+    error = _refused_upload(customer, MAX_PAGES + 1)
+    assert (error.code, error.params) == ('page_limit', {'limit': 1000})
+    for locale in ('en', 'uz', 'ru'):
+        told = bot_error(error, locale, customer)
+        assert told == UPLOAD[locale].format(limit='1 000'), told
+        assert TOOL_NAMES['pdf.split'][locale] not in told
+        assert error_data(error, locale)['message'] == UPLOAD[locale].format(limit='1 000')[2:]
+        assert told != bot_error(DomainError('page_limit_exceeded'), locale)
+
+
+@pytest.mark.django_db
+def test_the_upload_refusal_names_the_cap_the_panel_set():
+    from operations import plans as plan_settings
+    from tests.test_platform import account
+    plan_settings.save('premium', {'max_pages_per_job': '5'})
+    error = _refused_upload(account(78101), 6)
+    assert (error.code, error.params) == ('page_limit', {'limit': 5})
+    assert bot_error(error, 'en') == UPLOAD['en'].format(limit='5')
+    # A stored job's code carries no figure: it is the one in force.
+    assert bot_error(DomainError('page_limit'), 'ru') == UPLOAD['ru'].format(limit='5')
+
+
+@pytest.mark.django_db
+def test_a_task_over_the_cap_is_told_to_drop_a_file_or_pages_not_to_split():
+    from apps.core.services import create_quote
+    from operations import plans as plan_settings
+    from tests.test_platform import account, upload
+    customer = account(78102)
+    first, second = upload(customer, widths=(72,) * 3), upload(customer, widths=(72,) * 3)
+    plan_settings.save('free', {'max_pages_per_job': '5'})
+    with pytest.raises(DomainError) as refused:
+        create_quote(customer, 'pdf.merge', [str(first.id), str(second.id)], {})
+    assert refused.value.code == 'page_limit_exceeded'
+    for locale in ('en', 'uz', 'ru'):
+        assert bot_error(refused.value, locale) == TOTAL[locale]
+        assert error_data(refused.value, locale)['message'] == TOTAL[locale][2:]
+
+
+@pytest.mark.django_db
+def test_a_pdf_with_no_pages_is_unreadable_not_too_long():
+    from tests.test_platform import account
+    error = _refused_upload(account(78103), 0)
+    assert error.code == 'invalid_pdf'

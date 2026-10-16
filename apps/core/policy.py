@@ -30,6 +30,17 @@ def limits_for_plan(plan):
         # A panel or database problem must never take pricing offline.
         return defaults
 
+def page_cap(account=None):
+    """The most pages one file, or one task's files together, may have.
+
+    The plan's figure, which is the same on every plan, but never more than the
+    engine reads (processors.engine MAX_PAGES): a higher figure would accept a
+    file or a task that the engine then refuses.
+    """
+    from processors.engine import MAX_PAGES
+    limits = plan_limits(account) if account is not None else limits_for_plan('free')
+    return min(int(limits['max_pages_per_job']), MAX_PAGES)
+
 def usage_snapshot(account):
     """This week's allowance and what is left of it (apps/core/allowance.py)."""
     from .allowance import usage_snapshot as snapshot

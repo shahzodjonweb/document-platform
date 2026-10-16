@@ -33,12 +33,20 @@ def require(account,fid):
     if not settings.ENABLE_BETA_TOOLS or fid not in GENERATION_IDS: raise DomainError('feature_unavailable',409)
     if not allowed(account,fid): raise DomainError('feature_not_in_plan',403)
 
+# Questions a document may carry, the same on every plan (it was 10 on Free, 50
+# on Plus and 150 on Premium). The last writing call writes every question
+# beside up to PAGES_PER_CALL pages, and one reply is held to RESPONSE_CEILING
+# (pages.call_tokens): 41 fit beside ten pages, and a cut-off reply retried at
+# the same ceiling fails the same way. The provider's schema check also refuses
+# any array of more than 100 items. So the cap is 40, not what Premium had.
+MAX_QUESTIONS=40
+
 def limits(account):
     seed=plan_limits(account)
     # Source text has to fit the request budget alongside the document itself, so
     # it is half of it rather than three times it. Promising more source than a
     # call can carry only moves the refusal later.
-    return {'sections':seed['max_generated_pdf_pages'], 'slides':seed['max_generated_slides'], 'questions':{'free':10,'plus':50,'premium':150}.get(account.plan,10), 'source_chars':seed['max_ai_input_tokens']//2}
+    return {'sections':seed['max_generated_pdf_pages'], 'slides':seed['max_generated_slides'], 'questions':MAX_QUESTIONS, 'source_chars':seed['max_ai_input_tokens']//2}
 
 def validate_content(account,content,output_format='pdf'):
     """Bring a model response inside the plan, trimming rather than refusing.

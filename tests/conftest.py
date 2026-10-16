@@ -42,3 +42,19 @@ def object_storage_isolated():
     yield
     storage.forget_config()
     storage.client_factory = None
+
+
+@pytest.fixture
+def hold_back(monkeypatch):
+    """Take a tool away from some plans in the catalog, for this test only.
+
+    Every plan has every tool now, so a test of the refusal itself has to make a
+    plan lack one first. The catalog is the one place that decides, so that is
+    what changes; the entry is put back after the test.
+    """
+    from apps.core.policy import FEATURES
+
+    def take(feature_id, *plans):
+        for plan in plans:
+            monkeypatch.setitem(FEATURES[feature_id]['plans'], plan, 'none')
+    return take

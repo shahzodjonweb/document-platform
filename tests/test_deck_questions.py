@@ -43,7 +43,8 @@ def test_questions_are_grouped_five_to_a_slide(tmp_path, count, slides):
 @pytest.mark.parametrize('brief,total,written,question_slides', [
     ('Ochiq darsga 10 ta slayd kerak — Orol dengizi. Oxirida 5 ta savol.', 10, 9, 1),
     ('12 ta slayd, oxirida 10 ta savol', 12, 10, 2),
-    ('Suv aylanishi haqida slayd, 5 ta savol bilan', 5, 4, 1),
+    # No count: the default ten, and the question slide is one of them.
+    ('Suv aylanishi haqida slayd, 5 ta savol bilan', 10, 9, 1),
     ('8 ta slayd: suv aylanishi', 8, 8, 0),
 ])
 def test_question_slides_count_toward_the_slides_asked_for(settings, brief, total, written, question_slides):

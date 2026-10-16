@@ -184,7 +184,11 @@ def _pdf_reader(path: Path, password: str | None = None, allow_locked=False, all
             if not reader.decrypt(password):
                 raise ProcessorError('password_invalid')
         count = len(reader.pages)
-        if not 0 < count <= MAX_PAGES:
+        # 'page_limit' says the file is longer than we read; one with no pages
+        # is simply not a usable PDF.
+        if count <= 0:
+            raise ProcessorError('invalid_pdf')
+        if count > MAX_PAGES:
             raise ProcessorError('page_limit')
         for page in reader.pages:
             w, h = float(page.mediabox.width), float(page.mediabox.height)
@@ -238,7 +242,9 @@ def _office_inspect(path: Path) -> dict:
                 return {'mime_type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'page_count': None, 'kind': 'docx'}
             if 'ppt/presentation.xml' in names:
                 pages = sum(bool(re.fullmatch(r'ppt/slides/slide\d+\.xml', n)) for n in names)
-                if not 0 < pages <= MAX_PAGES:
+                if pages <= 0:
+                    raise ProcessorError('invalid_file')
+                if pages > MAX_PAGES:
                     raise ProcessorError('page_limit')
                 return {'mime_type': 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'page_count': pages, 'kind': 'pptx'}
     except ProcessorError:

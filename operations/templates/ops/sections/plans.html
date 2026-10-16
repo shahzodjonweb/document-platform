@@ -42,11 +42,13 @@
       {% for group in plan.groups %}{% if group.fields %}
       <fieldset class="field-group">
         <legend>{{ group.label }}</legend>
+        {% if group.shared %}<p class="field-hint">{{ t.applies_to_every_plan }}</p>{% endif %}
         <div class="limit-fields">
           {% for field in group.fields %}
           <label>{{ field.label }}
             <input type="number" name="{{ field.name }}" value="{{ field.value|default_if_none:'' }}" min="{{ field.low }}" max="{{ field.high }}"{% if not field.nullable %} required{% endif %}{% if field.nullable %} placeholder="{{ t.no_limit }}"{% endif %}>
             <small>{{ t.seed_value }}: {% if field.seed is None %}{{ t.no_limit }}{% else %}{{ field.seed }}{% endif %}</small>
+            {% if field.shared and not group.shared %}<small class="field-hint">{{ t.applies_to_every_plan }}</small>{% endif %}
           </label>
           {% endfor %}
         </div>
