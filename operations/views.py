@@ -190,8 +190,11 @@ def page(request, section='overview'):
         data['recent_jobs']=filters.jobs().order_by('-created_at')[:6]
         data['chart_total']=summary['totals']['new_users']
     if section in {'analytics/acquisition','analytics/engagement'}:
-        from .analytics_extra import engagement
+        from .analytics_extra import engagement,plans_screen
         data['cohorts']=engagement(filters)
+        # Beside the bot funnel. Its list names customers, so it is made only
+        # for staff who may open their accounts.
+        data['plans_screen']=plans_screen(filters,data['t'],with_viewers=data['can_search_users'])
     if section=='today':
         from .today import summary as today_summary
         data.update(today_summary(request,filters,data['t'],data['ok']))

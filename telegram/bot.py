@@ -83,6 +83,9 @@ async def web_url(account,route=''):
     return urlunsplit((url.scheme,url.netloc,'/'.join(parts)+('/'+route if route else ''),'',''))
 async def button(account,label,action,payload=None):
     return InlineKeyboardButton(text=text(account,label),callback_data=await callback(account,action,payload))
+# A plans button under a used-up weekly or edit limit. Each plans button says
+# where it is, so the admin can count where the plans are opened from.
+FROM_LIMIT={'from':'limit'}
 def own_message(message):
     """A screen the bot sent — the one a button was tapped on — which can be changed in place."""
     return bool(getattr(getattr(message,'from_user',None),'is_bot',False))
@@ -102,7 +105,7 @@ async def safe_error(message,account,exc):
         # every tool, so a tool refused for the plan reads as "not available right
         # now", and a plans button under it would sell what no plan adds.
         if exc.code in LIMIT_CODES:
-            rows.insert(0,[await button(account,'plans','plans')])
+            rows.insert(0,[await button(account,'plans','plans',FROM_LIMIT)])
     body=text(account,key) if key else bot_error(exc,account.locale,account)
     markup=InlineKeyboardMarkup(inline_keyboard=rows) if rows else None
     # After a button tap the error takes that screen's place: tapping again
@@ -449,7 +452,7 @@ def build_dispatcher():
         rows.extend(await ai_service_rows(account))
         available={f['id'] for f in await sync_to_async(catalog)(account)}
         if 'pdf.images_to_pdf' in available: rows.append([await tool_button(account,draft,'pdf.images_to_pdf')])
-        rows.append([await button(account,'subscribe_button','plans')])
+        rows.append([await button(account,'subscribe_button','plans',{'from':'menu'})])
         rows.extend([
             [await button(account,'all_tools','menu'),await button(account,'recent','recent')],
             [await button(account,'account','account'),await button(account,'contacts_button','contacts')],
@@ -521,7 +524,7 @@ def build_dispatcher():
                 rows.append([await button(account,'run','run',{**snapshot(draft),'quote_id':str(quote.id)})])
             else:
                 body+='\n'+text(account,'files_week_hint').format(when=week_reset(account,summary['usage']['resets_at']))
-                rows.append([await button(account,'plans','plans')])
+                rows.append([await button(account,'plans','plans',FROM_LIMIT)])
         if quote_error and quote_error.code=='channels_required':
             return await show_gate(message,account,resume={'kind':'controls'},edit=edit)
         if quote_error:
@@ -558,7 +561,7 @@ def build_dispatcher():
         listing='\n'.join(f'{i+1}. {html.escape(names.get(key,"")[:24])}' for i,key in enumerate(draft.input_ids))
         summary=await sync_to_async(quote_data)(quote)
         start=([await button(account,'run','run',{**snapshot(draft),'quote_id':str(quote.id)})] if summary['affordable']
-               else [await button(account,'plans','plans')])
+               else [await button(account,'plans','plans',FROM_LIMIT)])
         rows=[start,[await button(account,'edit_settings','controls'),await button(account,'cancel_button','cancel',snapshot(draft))],[await button(account,'home','home')]]
         body=f'<b>{text(account,"review_title")}</b>\n{text(account,"review_hint")}\n\n{listing}\n\n{option_summary(account,draft)}\n\n{week_line(account,summary)}{text(account,"expires")}: {stamp(account,quote.expires_at)}'
         if not summary['affordable']: body+='\n'+text(account,'files_week_hint').format(when=week_reset(account,summary['usage']['resets_at']))
@@ -679,7 +682,7 @@ def build_dispatcher():
         if exc.code in ('weekly_ai_limit','edit_limit'):
             # Nothing to rewrite: the limit and the way past it, in place of "Preparing…".
             await sync_to_async(set_prompt)(account)
-            return await render(message,body,[[await button(account,'plans','plans')],[await button(account,'home','home')]],True)
+            return await render(message,body,[[await button(account,'plans','plans',FROM_LIMIT)],[await button(account,'home','home')]],True)
         await render(message,body,[],True)
         return await again()
 
@@ -1000,7 +1003,7 @@ def build_dispatcher():
         body=(f'<b>{text(account,"account")}</b>\n{text(account,"plan_label")}: {html.escape(text(account,'free_plan') if account.plan=='free' else account.plan.title())}\n{text(account,"linked_methods")}: {", ".join(methods)}\n\n'
               f'{week}\n{text(account,"edits_per_file")}: {unlimited if edits is None else edits}\n'
               f'{text(account,"resets")}: {week_reset(account,usage["resets_at"])}\n\n{text(account,"link_instructions")}')
-        await render(message,body,[[await button(account,'plans','plans'),await button(account,'subscription','subscription')],[InlineKeyboardButton(text=text(account,'link_methods'),url=await web_url(account,'settings'))],[await button(account,'language_button','language'),await button(account,'home','home')]],edit)
+        await render(message,body,[[await button(account,'plans','plans',{'from':'account'}),await button(account,'subscription','subscription')],[InlineKeyboardButton(text=text(account,'link_methods'),url=await web_url(account,'settings'))],[await button(account,'language_button','language'),await button(account,'home','home')]],edit)
 
     @dp.callback_query()
     async def click(query):
@@ -1161,7 +1164,9 @@ def build_dispatcher():
                 await job_status(message,account,job,True)
                 if action=='download' and job.status=='succeeded': await deliver(message,account,job,ref.token)
             elif action=='account': await account_view(message,account,True)
-            elif action=='plans': await show_offers(message,account,True)
+            # Where the button was: a button from before sources were kept is
+            # 'other'. The button itself, so a double tap on it is one look.
+            elif action=='plans': await show_offers(message,account,True,source=p.get('from'),tap=ref.token)
             elif action=='channels_check':
                 from .channels import check as check_channels
                 if await check_channels(message,account,p):

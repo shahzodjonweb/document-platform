@@ -100,8 +100,9 @@ async def show_gate(message, account, current=None, notice='', resume=None, edit
     rows.append([InlineKeyboardButton(text=copy(account, 'joined'),
                                       callback_data=await callback(account, 'channels_check', resume or {}))])
     premium = await sync_to_async(premium_on_sale)(account)
+    # The admin counts the plans opened from here apart from the rest.
     rows.append([InlineKeyboardButton(text=copy(account, 'plans' if premium else 'plans_neutral'),
-                                      callback_data=await callback(account, 'plans'))])
+                                      callback_data=await callback(account, 'plans', {'from': 'channels'}))])
     # status(), here or in blocked(), has brought account.plan up to date with what was paid.
     kind = 'gate_plus_' if getattr(account, 'plan', '') == 'plus' else 'gate_'
     body = copy(account, kind + ('one' if len(current['channels']) == 1 else 'many'))

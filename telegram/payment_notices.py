@@ -89,6 +89,26 @@ def compose(notice):
     return None, 'unknown_notice'
 
 
+async def buttons(notice):
+    """A Plans button under the renewal reminder, or nothing.
+
+    The reminder is how a card customer comes back to pay, so its way to the
+    plans says where it is: the admin counts it as a message from the bot
+    (funnel.PLAN_SOURCES). The /plans in its text stays for anyone who taps
+    that instead, and is counted as the command it sends.
+    """
+    if notice.kind != 'renewal_reminder':
+        return None
+    try:
+        from aiogram.types import InlineKeyboardMarkup
+        from .billing import button
+        plans = await button(notice.manual.account, 'plans', 'plans', {'from': 'notice'})
+        return InlineKeyboardMarkup(inline_keyboard=[[plans]])
+    except Exception:
+        # The reminder matters more than its button.
+        return None
+
+
 async def attempt(notice_id, bot):
     notice = await sync_to_async(claim)(notice_id)
     if not notice:
@@ -99,9 +119,10 @@ async def attempt(notice_id, bot):
     chat, text = await sync_to_async(compose)(notice)
     if chat is None:
         return await sync_to_async(finish)(notice.id, status='skipped', error=text)
+    markup = await buttons(notice)
     try:
         # Plain text: a rejection carries the owner's own words.
-        response = await bot.send_message(chat, text, disable_web_page_preview=True)
+        response = await bot.send_message(chat, text, disable_web_page_preview=True, reply_markup=markup)
         await sync_to_async(finish)(notice.id, status='delivered', message_id=response.message_id)
     except TelegramRetryAfter as exc:
         await sync_to_async(finish)(notice.id, status='retrying', error='telegram_rate_limited',

@@ -146,4 +146,103 @@
 </section>
 {% endif %}
 {% endif %}
+
+{% if plans_screen %}
+{% with plans=plans_screen %}
+<section class="panel" data-testid="plans-screen">
+  <div class="panel-heading">
+    <div>
+      <h2>{{ t.plans_screen }}</h2>
+      <p>{{ t.plans_screen_desc }}</p>
+    </div>
+    <span class="badge">{{ filters.timezone }}</span>
+  </div>
+  {% if plans.views %}
+  <div class="info-panel">
+    <div class="metrics-grid">
+      <div class="metric-card" data-testid="plans-people"><div>{{ t.plans_people }}</div><strong>{{ plans.people }}</strong><small>{{ t.plans_people_definition }}</small></div>
+      <div class="metric-card" data-testid="plans-views"><div>{{ t.plans_views }}</div><strong>{{ plans.views }}</strong><small>{{ t.plans_views_definition }}</small></div>
+      <div class="metric-card" data-testid="plans-started" title="{{ t.plans_started_definition }}"><div>{{ t.plans_started }}</div><strong>{{ plans.started }}</strong><small>{{ plans.started_note }}</small></div>
+      <div class="metric-card" data-testid="plans-paid" title="{{ t.plans_paid_definition }}"><div>{{ t.plans_paid }}</div><strong>{{ plans.paid }}</strong><small>{{ plans.paid_note }}</small></div>
+    </div>
+  </div>
+  <div class="panel-heading"><h2>{{ t.plans_daily }}</h2></div>
+  <div class="bar-chart" role="img" aria-label="{{ t.plans_daily }}: {{ plans.views }}">
+    {% for point in plans.daily %}
+    <div class="bar-column" title="{{ point.date }}: {{ point.views }} · {{ point.people }}">
+      <div class="bar-space"><i style="height:{{ point.height }}%"></i></div>
+      {% if forloop.first or forloop.last or forloop.counter|divisibleby:7 %}<span>{{ point.label }}</span>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  <details class="chart-table">
+    <summary>{{ t.report_table }}</summary>
+    <div class="table-region" role="region" aria-label="{{ t.plans_daily }}" tabindex="0">
+      <table>
+        <thead><tr><th>{{ t.plans_day }}</th><th>{{ t.plans_views }}</th><th>{{ t.plans_people_col }}</th></tr></thead>
+        <tbody>{% for point in plans.daily %}<tr data-day="{{ point.date }}"><td>{{ point.date }}</td><td>{{ point.views }}</td><td>{{ point.people }}</td></tr>{% endfor %}</tbody>
+      </table>
+    </div>
+  </details>
+  {% else %}
+  {% include 'ops/ui/empty.html' with icon='chart' title=t.plans_none text=t.plans_none_desc %}
+  {% endif %}
+</section>
+{% if plans.views %}
+<div class="overview-grid">
+  <section class="panel" data-testid="plans-by-source">
+    <div class="panel-heading"><h2>{{ t.plans_by_source }}</h2></div>
+    <div class="table-region" role="region" aria-label="{{ t.plans_by_source }}" tabindex="0">
+      <table>
+        <thead><tr><th>{{ t.plans_last_source }}</th><th>{{ t.plans_views }}</th><th>{{ t.plans_people_col }}</th></tr></thead>
+        <tbody>{% for row in plans.by_source %}<tr data-source="{{ row.source }}"><td>{{ row.label }}</td><td>{{ row.views }}</td><td>{{ row.people }}</td></tr>{% endfor %}</tbody>
+      </table>
+    </div>
+  </section>
+  <section class="panel" data-testid="plans-by-plan">
+    <div class="panel-heading"><h2>{{ t.plans_by_plan }}</h2></div>
+    <div class="table-region" role="region" aria-label="{{ t.plans_by_plan }}" tabindex="0">
+      <table>
+        <thead><tr><th>{{ t.plan }}</th><th>{{ t.plans_views }}</th><th>{{ t.plans_people_col }}</th></tr></thead>
+        <tbody>{% for row in plans.by_plan %}<tr data-plan="{{ row.plan_at_event }}"><td><span class="badge plan-{{ row.plan_at_event }}">{{ row.plan_at_event|capfirst }}</span></td><td>{{ row.views }}</td><td>{{ row.people }}</td></tr>{% endfor %}</tbody>
+      </table>
+    </div>
+  </section>
+</div>
+<section class="panel" data-testid="plans-viewers">
+  <div class="panel-heading">
+    <div>
+      <h2>{{ t.plans_viewers }}</h2>
+      <p>{% if plans.with_viewers %}{{ t.plans_viewers_desc }}{% else %}{{ t.plans_identity_hidden }}{% endif %}</p>
+    </div>
+  </div>
+  {% if plans.with_viewers %}
+  <div class="table-region" role="region" aria-label="{{ t.plans_viewers }}" tabindex="0">
+    <table>
+      <thead><tr><th>{{ t.account }}</th><th>{{ t.plan }}</th><th>{{ t.plans_views }}</th><th>{{ t.plans_last_view }}</th><th>{{ t.plans_last_source }}</th><th>{{ t.plans_payment }}</th></tr></thead>
+      <tbody>
+        {% for row in plans.viewers %}
+        <tr data-account="{{ row.id }}">
+          <td>
+            <a class="cell-person" href="/ops/users/{{ row.id }}?lang={{ lang }}">
+              <span class="avatar" aria-hidden="true">{{ row.name|initial }}</span>
+              <span><span class="table-link">{{ row.name }}</span>
+              <small>{% if row.username %}@{{ row.username }} · {% endif %}{% if row.telegram_user_id %}{{ row.telegram_user_id }}{% else %}{{ row.id|stringformat:'s'|slice:':8' }}{% endif %}</small></span>
+            </a>
+          </td>
+          <td><span class="badge plan-{{ row.plan }}">{{ row.plan|capfirst }}</span></td>
+          <td>{{ row.views }}</td>
+          <td class="muted">{{ row.last_view|date:'d M Y · H:i' }}</td>
+          <td>{{ row.source }}</td>
+          <td>{% if row.paid %}<span class="badge good">{{ t.plans_payment_paid }}</span>{% elif row.started %}<span class="badge">{{ t.plans_payment_started }}</span>{% else %}—{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</section>
+{% endif %}
+{% endwith %}
+{% endif %}
 <p class="freshness">{{ t.updated }} {{ now|date:'d M Y · H:i' }} {{ zone }} · {{ t.definitions }}</p>
