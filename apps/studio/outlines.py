@@ -53,12 +53,13 @@ def create_outline_quote(account,draft_id,version):
         return quote
 
 
-def execute_outline(job,draft,data,original,config,output_dir):
+def execute_outline(job,draft,data,original,config,output_dir,deadline=None):
     from .provider import generate
     warnings=[]
     if config['mode']=='openai':
         try:
-            raw,usage=generate(config,_payload(data),'ai.outline',job.id,token_limit=job.policy['generation_bounds']['input_tokens'])
+            raw,usage=generate(config,_payload(data),'ai.outline',job.id,token_limit=job.policy['generation_bounds']['input_tokens'],
+                               deadline=deadline)
             content=validate_content(job.account,raw,data['output_format'])
             # The plan is in the document's language and alphabet, like the document.
             from .quality import normalise

@@ -58,6 +58,16 @@ MESSAGES = {
         '⚠️ Faylni qayta ishlay olmadik. Qayta urining yoki boshqa fayl yuboring.',
         '⚠️ Не удалось обработать файл. Попробуйте снова или отправьте другой.',
     ),
+    # The bot follows this with its own advice and a Retry button, so it does
+    # not say "try again" itself. It must keep saying the document was not
+    # counted: the notice leaves out its own line when it does (notifications.py).
+    # It comes under a "⚠️ Couldn’t finish" header, for a deck or a document,
+    # so it carries neither the sign again nor a noun.
+    'provider_failed': (
+        'The AI didn’t manage it this time. It doesn’t count towards your limits.',
+        'AI bu safar uddalay olmadi. Bu limitingizga hisoblanmaydi.',
+        'ИИ на этот раз не справился. В лимиты это не засчитывается.',
+    ),
     'processor_timeout worker_interrupted': (
         '⏳ Processing stopped before it finished. Please try again.',
         '⏳ Qayta ishlash oxiriga yetmadi. Qayta urinib ko‘ring.',

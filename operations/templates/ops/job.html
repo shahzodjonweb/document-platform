@@ -24,7 +24,7 @@
     <dt>{{ t.completed_at }}</dt><dd>{{ job.completed_at|date:'d M Y · H:i:s'|default:'—' }}</dd>
     <dt>{{ t.channel }}</dt><dd>{{ job.origin_channel|default:'—' }}</dd>
     <dt>{{ t.engine }}</dt><dd>{{ job.engine|default:'—' }}</dd>
-    <dt>{{ t.error }}</dt><dd>{{ job.error_code|default:'—' }}</dd>
+    <dt>{{ t.error }}</dt><dd>{{ job.error_code|default:'—' }}{% if failure_reason %} · {{ failure_reason }}{% endif %}</dd>
   </dl>
 </section>
 {% endblock %}

@@ -85,7 +85,9 @@ async def show_gate(message, account, current=None, notice='', resume=None, edit
     """The channels to join, and where "I've joined" should take the customer back to.
 
     `resume` is what they were doing: {'kind': 'controls'} for a file task,
-    {'kind': 'ai_prompt', 'feature_id': …} for an AI service they chose, or
+    {'kind': 'ai_prompt', 'feature_id': …} for an AI service they chose,
+    {'kind': 'ai_topic', 'feature_id': …} for one chosen while its topic was
+    asked for (what was written waits in the chat's state), or
     {'kind': 'ai_draft', 'draft_id': …} for a description already written.
     """
     from apps.core.channel_gate import status

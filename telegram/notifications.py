@@ -16,7 +16,7 @@ from django.utils import timezone
 
 from apps.core.errors import DomainError
 from apps.core.models import BotCallback, BotJobNotice
-from .ux_copy import UX, STATUS
+from .ux_copy import UX, STATUS, TOOL_NAMES
 from .errors import bot_error
 
 NOTICE_STATUSES = frozenset(('failed', 'no_op', 'canceled', 'expired'))
@@ -71,6 +71,19 @@ def not_counted(job, locale):
     return COPY[locale]['edit_not_counted' if kind == 'edit' else 'not_counted']
 
 
+def model_failed(job):
+    """Whether this is a new AI document the model could not finish.
+
+    Most of these were one reply our checks refused, and a short description
+    with no topic, audience or length makes that likelier. Its notice says so,
+    and offers Retry and a new description beside the usual buttons. An
+    outline or a change to a delivered document keeps the plain notice: the
+    advice is about describing a new document.
+    """
+    from apps.core.allowance import quote_kind
+    return job.status == 'failed' and job.error_code == 'provider_failed' and quote_kind(job) == 'ai_document'
+
+
 def enqueue_notice(job):
     """Call inside settlement after saving the terminal state; never sends."""
     if job.origin_channel != 'bot' or job.status not in NOTICE_STATUSES or job.account.telegram_user_id is None:
@@ -108,19 +121,30 @@ def finish_notice(notice, status, *, error='', message_id=None, delay=0):
 @transaction.atomic
 def notice_controls(notice):
     BotJobNotice.objects.select_for_update().get(pk=notice.pk)
-    account = notice.job.account
+    account, job = notice.job.account, notice.job
     locale = account.locale if account.locale in COPY else 'en'
+    layout = [[('job', COPY[locale]['details'])], [('new', UX[locale]['new_task'])],
+              [('recent', UX[locale]['recent'])], [('home', UX[locale]['home'])]]
+    if model_failed(job):
+        # The way forward first: the same description again (its review is
+        # shown before anything runs), or a new one. "New task" is the file
+        # tools' fresh start, so it gives way here.
+        layout = [[('ai_retry', UX[locale]['retry_task'])], [('ai_tool', UX[locale]['ai_change_topic'])],
+                  [('job', COPY[locale]['details']), ('recent', UX[locale]['recent'])], [('home', UX[locale]['home'])]]
     rows = []
-    for action, label in (('job', COPY[locale]['details']), ('new', UX[locale]['new_task']),
-                          ('recent', UX[locale]['recent']), ('home', UX[locale]['home'])):
-        payload = {'notice_id': str(notice.id)}
-        if action == 'job':
-            payload['job_id'] = str(notice.job_id)
-        control = BotCallback.objects.filter(account=account, action=action, payload=payload).first()
-        if control is None:
-            control = BotCallback.objects.create(token=secrets.token_urlsafe(12), account=account, action=action,
-                                                 payload=payload, expires_at=timezone.now() + timedelta(hours=24))
-        rows.append([InlineKeyboardButton(text=label, callback_data=control.token)])
+    for row in layout:
+        rows.append([])
+        for action, label in row:
+            payload = {'notice_id': str(notice.id)}
+            if action in ('job', 'ai_retry'):
+                payload['job_id'] = str(notice.job_id)
+            if action == 'ai_tool':
+                payload['feature_id'] = job.feature_id
+            control = BotCallback.objects.filter(account=account, action=action, payload=payload).first()
+            if control is None:
+                control = BotCallback.objects.create(token=secrets.token_urlsafe(12), account=account, action=action,
+                                                     payload=payload, expires_at=timezone.now() + timedelta(hours=24))
+            rows[-1].append(InlineKeyboardButton(text=label, callback_data=control.token))
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
@@ -138,6 +162,11 @@ async def attempt_notice(identifier, bot):
     locale = account.locale if account.locale in COPY else 'en'
     copy = COPY[locale]
     lines = ['PDF Master · ' + STATUS[locale][job.status], copy[job.status]]
+    advice = model_failed(job)
+    if advice:
+        # Which service failed, in place of "We couldn't finish this task":
+        # the error below already says it, and this is the AI's, not a file's.
+        lines[1] = TOOL_NAMES[job.feature_id][locale]
     said = False
     if job.status == 'failed':
         error = bot_error(DomainError(job.error_code or 'processing_failed'), locale)
@@ -146,6 +175,8 @@ async def attempt_notice(identifier, bot):
     counted = '' if said else await sync_to_async(not_counted)(job, locale)
     if counted:
         lines.extend(['', counted])
+    if advice:
+        lines.extend(['', UX[locale]['ai_failed_advice']])
     try:
         controls = await sync_to_async(notice_controls)(notice)
         response = await bot.send_message(account.telegram_user_id, '\n'.join(lines), reply_markup=controls)

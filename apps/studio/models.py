@@ -69,6 +69,25 @@ class ProviderUsage(models.Model):
     created_at=models.DateTimeField(default=timezone.now)
 
 
+class ProviderAttemptQuerySet(models.QuerySet):
+    # Calls whose failure never ends a job: the photo choice, the expand call
+    # and a quality repair each leave the document as it was.
+    BEST_EFFORT = ('photo_pick', 'expand', 'repair')
+
+    def final_rejection(self):
+        """Why the reply that ended these attempts was refused, or ''; shown beside a job's error.
+
+        Only the newest attempt counts, whatever its status. A long document is
+        written in several calls, so an earlier rejection may have been put
+        right by its corrected try, and a job can then fail on a timeout: that
+        rejection did not end it, and naming it would send the reader the
+        wrong way.
+        """
+        last = (self.exclude(stage__in=self.BEST_EFFORT).order_by('-created_at')
+                .values_list('status', 'rejection').first())
+        return last[1] if last is not None and last[0] == 'rejected' else ''
+
+
 class ProviderAttempt(models.Model):
     """Content-free provider accounting, retained independently of customer jobs.
 
@@ -90,6 +109,10 @@ class ProviderAttempt(models.Model):
     locale = models.CharField(max_length=2, blank=True)
     origin_channel = models.CharField(max_length=16, blank=True)
     status = models.CharField(max_length=16, default='started')
+    # Why a received reply was rejected: one of provider_usage.REJECTIONS, never its text.
+    # The database default lets code from before this column insert rows
+    # while a deploy migrates, and after a rollback.
+    rejection = models.CharField(max_length=24, blank=True, default='', db_default='')
     provider_status = models.CharField(max_length=24, blank=True)
     response_id = models.CharField(max_length=255, blank=True)
     response_key = models.CharField(max_length=64, unique=True, null=True)
@@ -105,6 +128,8 @@ class ProviderAttempt(models.Model):
     created_at = models.DateTimeField(default=timezone.now, db_index=True)
     received_at = models.DateTimeField(null=True)
     finished_at = models.DateTimeField(null=True)
+
+    objects = ProviderAttemptQuerySet.as_manager()
 
     class Meta:
         indexes = [models.Index(fields=['environment', 'created_at'], name='provider_attempt_env_date')]

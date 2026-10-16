@@ -96,7 +96,11 @@ def generation_detail(request, pk):
     elif job.status == 'succeeded':
         outcome = t['gen_no_output']
     else:
-        outcome = t['gen_failed'].format(code=job.error_code or job.status)
+        code = job.error_code or job.status
+        # Why the model's reply was refused, when one came back, was, and ended the job.
+        from .provider_usage import failure_reason
+        reason = failure_reason(job, data['lang'])
+        outcome = t['gen_failed'].format(code=f'{code} · {reason}' if reason else code)
     data.update(record=record, request_data=contents, job=job, kept=kept, outcome=outcome,
                 is_pdf=record.output_mime == 'application/pdf', page=page, pages=pages,
                 page_label=t['gen_page'].format(n=page, count=pages),

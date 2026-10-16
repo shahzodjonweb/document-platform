@@ -56,7 +56,8 @@ async def account_for(user):
 # discarding a task — must be fresh; an old one opens the menu instead.
 REUSABLE={'home','menu','account','plans','subscription','language','help','recent','controls','settings',
           'prompt','attach','preview','done','retry','cancel','new','tool','start_tool','ai_tool','ai_examples',
-          'ai_revise','ai_count','support','contacts','job','download','channels_check','commerce_manual_plan','commerce_manual_receipt'}
+          'ai_revise','ai_count','ai_retarget','support','contacts','job','download','channels_check',
+          'commerce_manual_plan','commerce_manual_receipt'}
 def usable(ref,now=None):
     """Whether a stored button may still be acted on."""
     return bool(ref) and (ref.expires_at>(now or timezone.now()) or ref.action in REUSABLE)
@@ -158,6 +159,47 @@ def album_first(message,what):
 def set_prompt(account,state='',prompt=None):
     BotConversation.objects.filter(pk=account.telegram_user_id).update(state=state,prompt=prompt or {},updated_at=timezone.now())
 
+# A question left open this long is not answered by the next message: it goes
+# to the menu instead (stale_reply).
+QUESTION_LIFETIME=timedelta(minutes=30)
+# A description that names no topic ("12 ta slayd kk") is refused before it is
+# made or counted (apps.studio.domain.require_topic). What the customer wrote
+# is kept in the chat's state, never in a button, while the topic is asked for,
+# and is joined to the topic they send next. A few pieces are kept at most, so
+# a customer who never names one cannot grow the description without end.
+BRIEF_PIECES,BRIEF_CHARS=3,1000
+
+def kept_brief(pieces):
+    """The pieces of a description kept while its topic is asked for, in the order written.
+
+    The first stays, as it usually says what to make and how long ("12 ta
+    slayd"); after it, the newest that fit.
+    """
+    pieces=[piece[:BRIEF_CHARS] for piece in pieces if piece]
+    if not pieces: return []
+    first,kept=pieces[0],[]
+    for piece in reversed(pieces[1:][-(BRIEF_PIECES-1):]):
+        if len(first)+sum(map(len,kept))+len(piece)>BRIEF_CHARS: break
+        kept.insert(0,piece)
+    return [first,*kept]
+
+def brief_quote(pieces,limit=160):
+    """What was kept, on one line, as the topic question quotes it back."""
+    said=' · '.join(' '.join(piece.split()) for piece in pieces)
+    return said if len(said)<=limit else said[:limit-1].rstrip()+'…'
+
+def pending_brief(account,question=None):
+    """What is kept of a description still waiting for its topic; [] once that question is closed or old.
+
+    `question` is the one a button was sent with (ai_topic_needed): a button
+    left on an older question never carries what a newer one kept.
+    """
+    row=BotConversation.objects.filter(pk=account.telegram_user_id,state='ai_input').first()
+    if row is None or row.updated_at<timezone.now()-QUESTION_LIFETIME: return []
+    prompt=row.prompt or {}
+    if question is not None and prompt.get('question')!=question: return []
+    return list(prompt.get('brief') or [])
+
 def option_summary(account,draft):
     labels={'angle':'rotate_label','pages':'pages','order':'page_order','ranges':'split_groups','format':'format_label','dpi':None,'paper_size':'paper_label','orientation':None,'margin':'margin_button'}
     result=[]
@@ -195,8 +237,14 @@ async def review_screen(account,draft,quote):
     wanted,cap=await sync_to_async(ai.images_wanted)(draft)
     deck=draft.feature_id==ai.SLIDES
     unit='ai_slides' if deck else 'ai_pages'
-    body=(f'<b>{text(account,"review_title")}</b>\n{html.escape(title)}\n'
-          f'📄 {html.escape(heading)}\n')
+    # A description asking for the other service is offered it, before anything
+    # is spent. Said first, in bold, with its button on top and Generate named
+    # for what it makes: as one line above the hint it went unread, and decks
+    # asked of the PDF service were made as PDFs.
+    other=await sync_to_async(ai.other_service)(draft)
+    body=(f'<b>{text(account,"ai_wrong_tool_slides" if other==ai.SLIDES else "ai_wrong_tool_pdf")}</b>\n\n' if other else '')
+    body+=(f'<b>{text(account,"review_title")}</b>\n{html.escape(title)}\n'
+           f'📄 {html.escape(heading)}\n')
     # A change says what is changing; a new document says what it is.
     if change: body+=f'✏️ {html.escape(change)}\n'
     # A change that alters the count says so: 9 → 1 must never go unseen.
@@ -222,10 +270,10 @@ async def review_screen(account,draft,quote):
     if change and await sync_to_async(ai.format_kept)(draft):
         body+='\n'+html.escape(text(account,'ai_format_kept_deck' if deck else 'ai_format_kept_pdf').format(
             button=text(account,'ai_revise'),service=TOOL_NAMES[ai.SLIDES][account.locale]))
-    # A description asking for the other service is offered it, before anything is spent.
-    other=await sync_to_async(ai.other_service)(draft)
-    if other: body+='\n\n'+text(account,'ai_wrong_tool_slides' if other==ai.SLIDES else 'ai_wrong_tool_pdf')
-    body+=f'\n\n{text(account,"ai_review_hint")}'
+    generate='ai_generate' if not other else 'ai_pdf_anyway' if other==ai.SLIDES else 'ai_slides_anyway'
+    hint=(text(account,'ai_review_hint_button').format(button=text(account,generate).split(' ',1)[1]) if other
+          else text(account,'ai_review_hint'))
+    body+=f'\n\n{hint}'
     # What this uses on a plan with limits: an edit counts against its file, a
     # new document against the week. Unlimited plans are not told a number.
     source=await sync_to_async(ai.revised_from)(draft)
@@ -239,7 +287,7 @@ async def review_screen(account,draft,quote):
     # Rewording a change goes back to the change, not to a blank document.
     reword=(await button(account,'ai_revise','ai_revise',{'draft_id':source}) if source
             else await button(account,'ai_change_topic','ai_tool',{'feature_id':draft.feature_id}))
-    rows=[[await button(account,'ai_generate','ai_run',{'quote_id':str(quote.id),'draft_id':str(draft.id)})]]
+    rows=[[await button(account,generate,'ai_run',{'quote_id':str(quote.id),'draft_id':str(draft.id)})]]
     if other:
         rows.insert(0,[await button(account,'ai_switch_slides' if other==ai.SLIDES else 'ai_switch_pdf','ai_switch',
                                     {'draft_id':str(draft.id),'feature_id':other})])
@@ -569,6 +617,46 @@ def build_dispatcher():
               [await button(account,'ai_back','home')]]
         return await render(message,body,rows,edit)
 
+    async def ai_topic_needed(message,account,feature_id,brief,other='',edit=True,question='',notice=''):
+        """A description that names no topic: what was kept of it, and the one thing missing.
+
+        `message` is the "Preparing…" line, which becomes this question: one
+        screen, not an error followed by the question again. What was written
+        waits in the chat's state for the topic. A description asking for the
+        other format is offered that service first, keeping what was written.
+        `question` names this question in the state and on its button, and is
+        kept while the same description is asked about again; `notice` is a
+        line about what was just sent.
+        """
+        question=question or secrets.token_urlsafe(6)
+        await sync_to_async(set_prompt)(account,'ai_input',{'feature_id':feature_id,'brief':brief,'question':question})
+        body=f'<b>{html.escape(TOOL_NAMES[feature_id][account.locale])}</b>\n'
+        if notice: body+=f'{html.escape(notice)}\n'
+        rows=[]
+        if other in ai.SERVICES and other!=feature_id:
+            body+=f'<b>{text(account,"ai_wrong_tool_slides" if other==ai.SLIDES else "ai_wrong_tool_pdf")}</b>\n'
+            rows.append([await button(account,'ai_switch_slides' if other==ai.SLIDES else 'ai_switch_pdf','ai_retarget',
+                                      {'feature_id':other,'question':question})])
+        sample=f'<code>{html.escape(text(account,"ai_topic_sample"))}</code>'
+        body+=(f'\n{text(account,"ai_topic_kept").format(brief=html.escape(brief_quote(brief)))}\n\n'
+               f'{text(account,"ai_topic_question")}\n{text(account,"ai_topic_example").format(example=sample)}\n'
+               f'{text(account,"ai_topic_again")}')
+        rows.append([await button(account,'ai_examples','ai_examples',{'feature_id':feature_id})])
+        rows.append([await button(account,'ai_back','home')])
+        return await render(message,body,rows,edit)
+
+    async def ai_convert(message,account,edit=True):
+        """A file conversion asked of an AI service ("pdf ga o‘tkaz", "convert to
+        pdf"): the file tools do it, so they are offered in place of the topic
+        question. The question is closed, so a file sent next starts a file task."""
+        await sync_to_async(set_prompt)(account)
+        draft=await sync_to_async(draft_for)(account)
+        available={f['id'] for f in await sync_to_async(catalog)(account)}
+        rows=[[await tool_button(account,draft,key)] for key in ('convert.word_to_pdf','convert.pptx_to_pdf','pdf.images_to_pdf')
+              if key in available]
+        rows.append([await button(account,'all_tools','menu'),await button(account,'home','home')])
+        return await render(message,html.escape(text(account,'ai_convert')),rows,edit)
+
     async def ai_revise_prompt(message,account,draft_id,edit=False):
         """One screen: what should change? Everything unmentioned stays put."""
         title=await sync_to_async(ai.revisable)(account,draft_id)
@@ -674,12 +762,27 @@ def build_dispatcher():
         sent=await render(message,body,rows,edit)
         await remember_review(account,draft,sent or message)
 
-    async def ai_start(message,account,feature_id,description):
+    async def ai_start(message,account,feature_id,description,brief=(),question=''):
         """One chat message in, a priced draft out. Nothing is counted yet.
 
         `message` is the "Preparing…" line, which becomes the priced draft.
+        `brief` is what was kept of an earlier description that named no topic:
+        this message is its topic, so it goes first and becomes the title. A
+        message that is a whole description of its own ("A 3 page PDF report
+        about volcanoes") replaces what was kept instead: joined on, an earlier
+        "10 slides please" would contradict it. `question` is the topic question
+        this answers, asked again under the same name if the topic is still missing.
         """
         draft=None
+        from apps.studio.topics import restates
+        if brief and await sync_to_async(restates)(description,list(brief)): brief=()
+        # The topic question answered with the same words again, or answered a
+        # second time, is taken as it is: the check reads words, and a topic it
+        # does not know ("Bahor") must not keep the customer asking.
+        said=lambda piece:' '.join(piece.casefold().split())
+        repeated=[piece for piece in brief if said(piece)==said(description)]
+        given=bool(repeated) or len(brief)>=2
+        brief=[piece for piece in brief if piece not in repeated]
         # Our own example sent back unchanged would make our example, not theirs.
         if await sync_to_async(ai.is_example)(description):
             return await render(message,text(account,'ai_example_copied'),
@@ -687,10 +790,16 @@ def build_dispatcher():
                                   await button(account,'cancel_button','home')]],True)
         try:
             file_ids=await sync_to_async(lambda:draft_for(account).input_ids)()
-            draft=await sync_to_async(ai.build)(account,feature_id,description,file_ids)
+            draft=await sync_to_async(ai.build)(account,feature_id,'\n'.join([description,*brief]),file_ids,given)
             await sync_to_async(funnel.step)('ai.described',account=account,feature=feature_id)
             _,quote=await sync_to_async(ai.quote)(account,draft.id)
         except DomainError as exc:
+            if exc.code=='convert_requested': return await ai_convert(message,account)
+            if exc.code=='topic_required':
+                # Still no topic: both pieces are kept, and the topic asked for again.
+                other=(exc.params or {}).get('service') or ''
+                return await ai_topic_needed(message,account,feature_id,kept_brief([*brief,description]),other,
+                                             question=question if brief else '')
             # The description is kept: after joining, the customer is shown its review.
             resume={'kind':'ai_draft','draft_id':str(draft.id)} if draft else {'kind':'ai_prompt','feature_id':feature_id}
             return await ai_refused(message,account,exc,resume,lambda:ai_prompt(message,account,feature_id))
@@ -747,6 +856,12 @@ def build_dispatcher():
             body+='\n\n'+bot_error(DomainError(job.error_code or 'processing_failed'),account.locale)
             if job.feature_id in ai.SERVICES and job.parameters.get('stage')!='outline':
                 rows.append([await button(account,'retry_task','ai_retry',{'job_id':str(job.id)})])
+                # A new document the AI could not finish: the advice the notice
+                # gave, and a new description beside Retry (notifications.py).
+                from .notifications import model_failed
+                if model_failed(job):
+                    body+='\n\n'+text(account,'ai_failed_advice')
+                    rows.append([await button(account,'ai_change_topic','ai_tool',{'feature_id':job.feature_id})])
             else:
                 draft=await sync_to_async(lambda:BotDraft.objects.filter(account=account,quote_id=job.quote_id).first())()
                 if draft: rows.append([await button(account,'retry_task','retry',snapshot(draft))])
@@ -947,9 +1062,36 @@ def build_dispatcher():
                     current=await blocked(account)
                     if current: await show_gate(message,account,current,resume={'kind':'ai_prompt','feature_id':p['feature_id']},edit=True)
                     else: await ai_prompt(message,account,p['feature_id'],True)
+            elif action=='ai_retarget':
+                # "Make slides instead" on the topic question: what was written,
+                # now for the other service, after the checks choosing it makes.
+                # Once that question is answered or old, it is a plain choice.
+                # A button from an older question carries nothing a newer one kept.
+                try: await sync_to_async(ai.available)(account,p['feature_id'])
+                except DomainError as exc: await safe_error(message,account,exc)
+                else:
+                    from .channels import blocked,show_gate
+                    current=await blocked(account)
+                    question=p.get('question','')
+                    brief=await sync_to_async(pending_brief)(account,question)
+                    if current:
+                        # Behind the channels, the topic typed next is for the service chosen.
+                        if brief: await sync_to_async(set_prompt)(account,'ai_input',{'feature_id':p['feature_id'],'brief':brief,'question':question})
+                        resume={'kind':'ai_topic','feature_id':p['feature_id'],'question':question} if brief else {'kind':'ai_prompt','feature_id':p['feature_id']}
+                        await show_gate(message,account,current,resume=resume,edit=True)
+                    elif brief: await ai_topic_needed(message,account,p['feature_id'],brief,question=question)
+                    else: await ai_prompt(message,account,p['feature_id'],True)
             elif action=='ai_switch':
                 try: draft,quote=await sync_to_async(ai.switch)(account,p['draft_id'],p['feature_id'])
-                except DomainError as exc: await safe_error(message,account,exc)
+                except DomainError as exc:
+                    # A draft accepted before descriptions were read for a topic, or
+                    # whose file has gone since: the topic is asked for, for the
+                    # service chosen, keeping the description.
+                    if exc.code=='topic_required':
+                        brief=await sync_to_async(ai.description_of)(account,p['draft_id'])
+                        await ai_topic_needed(message,account,p['feature_id'],kept_brief([brief]),(exc.params or {}).get('service') or '')
+                    elif exc.code=='convert_requested': await ai_convert(message,account)
+                    else: await safe_error(message,account,exc)
                 else: await ai_review(message,account,draft,quote,True)
             elif action=='ai_count': pass  # The count on the stepper; the tap is already answered.
             elif action in ('ai_length','ai_locale'):
@@ -1035,6 +1177,12 @@ def build_dispatcher():
                     kind=p.get('kind')
                     if kind=='ai_draft': await ai_resume(message,account,p['draft_id'])
                     elif kind=='ai_prompt': await ai_prompt(message,account,p['feature_id'])
+                    elif kind=='ai_topic':
+                        # The topic question again, for the service chosen, with what was kept.
+                        question=p.get('question','')
+                        brief=await sync_to_async(pending_brief)(account,question)
+                        if brief: await ai_topic_needed(message,account,p['feature_id'],brief,edit=False,question=question)
+                        else: await ai_prompt(message,account,p['feature_id'])
                     elif kind=='controls': await controls(message,account)
                     else:
                         # Refused somewhere else: a file task still waiting, or the menu.
@@ -1077,6 +1225,21 @@ def build_dispatcher():
                 await sync_to_async(attach_input)(account,asset,message.chat.id,message.message_id)
                 target,edit=await album_target(message,bot)
                 if target is None: return
+                brief=await sync_to_async(pending_brief)(account)
+                if brief:
+                    # The topic question is open, and what was written stays. A
+                    # PDF is what the document is about, so its review comes at
+                    # once; the AI services read nothing else, so after a photo,
+                    # Word or PowerPoint file the question is asked again.
+                    feature_id=pending['feature_id']
+                    staged=await sync_to_async(lambda:ai.sources(account,draft_for(account).input_ids))()
+                    if staged:
+                        waiting=target if edit else await target.answer(text(account,'ai_preparing'))
+                        return album_shown(message,await ai_start(waiting,account,feature_id,'\n'.join(brief)))
+                    from apps.studio.topics import asked_other_service
+                    other=await sync_to_async(asked_other_service)('\n'.join(brief),feature_id)
+                    return album_shown(message,await ai_topic_needed(target,account,feature_id,brief,other,edit,
+                                                                     pending.get('question',''),text(account,'ai_topic_pdf_only')))
                 return album_shown(message,await ai_prompt(target,account,pending['feature_id'],edit))
             draft=await sync_to_async(accept_upload)(account,asset,message.chat.id,message.message_id)
             # The file is kept either way. controls() shows the channels to join
@@ -1206,7 +1369,7 @@ def build_dispatcher():
     async def fallback(message):
         account=await account_for(message.from_user)
         conversation=await sync_to_async(lambda:BotConversation.objects.get(pk=message.from_user.id))()
-        if conversation.state and conversation.updated_at<timezone.now()-timedelta(minutes=30):
+        if conversation.state and conversation.updated_at<timezone.now()-QUESTION_LIFETIME:
             await sync_to_async(set_prompt)(account)
             return await home(message,account,notice=text(account,'stale_reply'))
         value=(message.text or '').strip()
@@ -1216,7 +1379,7 @@ def build_dispatcher():
             p=conversation.prompt
             if not value: return await message.answer(text(account,'ai_topic_empty'))
             waiting=await message.answer(text(account,'ai_preparing'))
-            return await ai_start(waiting,account,p['feature_id'],value)
+            return await ai_start(waiting,account,p['feature_id'],value,p.get('brief') or [],p.get('question',''))
         if conversation.state=='ai_revise':
             p=conversation.prompt
             if not value: return await message.answer(text(account,'ai_topic_empty'))

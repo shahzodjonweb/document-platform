@@ -318,6 +318,9 @@ def user_detail(request, pk):
 def job_detail(request, pk):
     job=get_object_or_404(Job.objects.select_related('account'),pk=pk)
     data=context(request,'jobs');data['can_cancel']=allowed(request.ops_user,['Operations']) and job.status=='queued';data.update({'job':job,'detail_type':'job'})
+    # Why the model's reply was refused, in the page's language, when that ended the job.
+    from .provider_usage import failure_reason
+    data['failure_reason']=failure_reason(job,data['lang'])
     return finish_render(request,'ops/job.html',data)
 
 

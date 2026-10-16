@@ -51,9 +51,27 @@ def throttle(account, limit=10):
     cache.set(key, count + 1, 60)
 
 
+def unthrottle(account):
+    """Give back the slot of a request refused by a rule before anything was made."""
+    key = f'rate:bot_generation:{account.pk}'
+    count = cache.get(key, 0)
+    if count:
+        cache.set(key, count - 1, 60)
+
+
+# Refused by reading the description alone, before a draft is made: a cheap
+# check, so it does not use one of the minute's builds.
+READ_REFUSALS = ('topic_required', 'convert_requested')
+
+
 @transaction.atomic
-def build(account, feature_id, description, file_ids=()):
-    """Author a draft from one chat message. Nothing is counted yet."""
+def build(account, feature_id, description, file_ids=(), topic_given=False):
+    """Author a draft from one chat message. Nothing is counted yet.
+
+    `topic_given` is the customer's answer to the topic question taken as it
+    is (apps.studio.domain.create_draft): a topic the check does not know
+    must not keep them asking.
+    """
     available(account, feature_id)
     text = (description or '').strip()
     ids = sources(account, list(file_ids))
@@ -70,7 +88,14 @@ def build(account, feature_id, description, file_ids=()):
             'prompt': '' if written else text, 'source_text': text if written else ''}
     if text:
         data['title'] = text.split('\n')[0][:160]
-    return create_draft(account, data)
+    if topic_given:
+        data['options'] = {'topic_given': True}
+    try:
+        return create_draft(account, data)
+    except DomainError as exc:
+        if exc.code in READ_REFUSALS:
+            unthrottle(account)
+        raise
 
 
 @transaction.atomic
@@ -249,17 +274,17 @@ def is_example(description):
 
 
 def other_service(draft):
-    """The service the description names when it is not the one it was sent to, else None."""
+    """The service the description names when it is not the one it was sent to, else None.
+
+    Read as the topic refusal reads it (topics.asked_other_service): a format
+    that is the topic ("PowerPoint haqida referat") asks for nothing.
+    """
     from apps.studio.domain import unpack
-    from apps.studio.pages import names_document, names_slides
-    if (unpack(draft.encrypted_data).get('revision') or {}):
+    from apps.studio.topics import asked_other_service
+    data = unpack(draft.encrypted_data)
+    if data.get('revision') or {}:
         return None
-    prompt = unpack(draft.encrypted_data).get('prompt', '')
-    if draft.feature_id == DOCUMENT and names_slides(prompt):
-        return SLIDES
-    if draft.feature_id == SLIDES and names_document(prompt) and not names_slides(prompt):
-        return DOCUMENT
-    return None
+    return asked_other_service(data.get('prompt', ''), draft.feature_id) or None
 
 
 def brief_of(data):
@@ -269,6 +294,13 @@ def brief_of(data):
     if revision:
         return revision.get('original_prompt') or data.get('source_text', '')
     return data.get('prompt') or data.get('source_text', '')
+
+
+def description_of(account, draft_id):
+    """What a draft was described as, or '' once it has gone."""
+    from apps.studio.domain import unpack
+    draft = GenerationDraft.objects.filter(account=account, id=draft_id).first()
+    return brief_of(unpack(draft.encrypted_data)) if draft else ''
 
 
 @transaction.atomic

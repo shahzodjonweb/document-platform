@@ -181,6 +181,14 @@ tests/test_studio_adversarial.py::test_provider_exact_schema_token_budget_and_no
 tests/test_provider_optimization.py::test_failed_multi_batch_job_retries_only_missing_calls_through_api
 tests/test_provider_checkpoints.py::test_completed_result_is_encrypted_and_only_explicit_retry_reuses_it
 
+# AI provider: a rejected reply keeps its reason (never its text) and is corrected once
+tests/test_provider_corrective_retry.py::test_too_few_sections_are_asked_for_again_with_a_note_and_the_second_reply_is_kept
+tests/test_provider_corrective_retry.py::test_two_rejections_still_fail_the_document_and_both_reasons_are_kept
+tests/test_provider_corrective_retry.py::test_a_refusal_is_asked_again_as_it_was_never_with_a_note
+tests/test_provider_corrective_retry.py::test_the_checkpoint_claim_is_renewed_before_the_second_try
+tests/test_provider_corrective_retry.py::test_an_outline_written_past_its_500_characters_is_cut_not_refused
+tests/test_provider_usage.py::test_arbitrary_payloads_and_metadata_are_not_stored
+
 # Outline stage
 tests/test_outlines.py::test_live_outline_source_integrity_and_version
 
@@ -315,3 +323,36 @@ tests/test_object_storage.py::test_an_expired_file_leaves_the_bucket
 
 # Form filling
 tests/test_advanced_processors.py::test_interactive_unicode_form_has_value_and_embedded_appearance
+
+# AI document: a description that names no topic is refused before anything is made or counted
+tests/test_topicless.py::test_a_new_document_without_a_topic_is_refused_and_nothing_is_counted
+tests/test_topicless.py::test_the_api_says_what_is_missing_in_the_customers_language[uz]
+tests/test_topicless.py::test_a_source_file_is_what_the_document_is_about
+tests/test_topicless.py::test_a_draft_already_made_is_never_refused_when_it_is_changed
+
+# Telegram AI: a description with no topic becomes one question that keeps what was written,
+# and a document the AI could not finish says what to try next
+tests/test_bot_prompt_feedback.py::test_a_description_with_no_topic_becomes_one_question_and_nothing_is_made
+tests/test_bot_prompt_feedback.py::test_slides_asked_of_the_pdf_service_without_a_topic_switch_and_keep_what_was_written
+tests/test_bot_prompt_feedback.py::test_a_failed_document_says_what_to_try_and_offers_retry_and_a_new_description
+
+# AI document: a subject is never refused for its words, a conversion goes to the file tools,
+# and the refusal fits slides as well as a document
+tests/test_topicless.py::test_a_description_with_a_subject_in_it_is_never_refused[Past simple slides]
+tests/test_topicless.py::test_a_description_with_a_subject_in_it_is_never_refused[PowerPoint haqida 10 ta slayd]
+tests/test_topicless.py::test_a_description_with_a_subject_in_it_is_never_refused[Havo\nslayd kerak]
+tests/test_topicless.py::test_a_conversion_is_sent_to_the_file_tools[convert to pdf]
+tests/test_topicless.py::test_the_message_fits_slides_as_well_as_a_document[uz]
+tests/test_topicless.py::test_content_or_an_outline_on_a_new_draft_does_not_excuse_it
+
+# Telegram AI: the answer to the topic question, a file sent then, and old buttons
+tests/test_bot_prompt_feedback.py::test_a_whole_description_sent_as_the_answer_replaces_what_was_kept
+tests/test_bot_prompt_feedback.py::test_a_pdf_sent_while_the_topic_is_asked_for_is_what_it_is_about
+tests/test_bot_prompt_feedback.py::test_a_conversion_asked_of_an_ai_service_is_sent_to_the_file_tools[uz-pdf ga otqaz]
+tests/test_bot_prompt_feedback.py::test_an_old_switch_button_never_carries_a_newer_question
+
+# AI replies: the rejection column keeps its database default (old workers still insert),
+# and a description the customer insists on is made as it is
+tests/test_provider_usage.py::test_the_rejection_column_keeps_its_database_default
+tests/test_topicless.py::test_a_description_the_customer_insists_on_is_made_as_it_is
+tests/test_bot_prompt_feedback.py::test_a_description_sent_again_is_taken_as_its_topic

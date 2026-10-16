@@ -69,7 +69,7 @@ def choose(config, title, slides, *, timeout, job=None):
     """
     from . import provider_usage
     from .domain import SLIDES
-    from .provider import _validate
+    from .provider import _CutOff, _Rejected, _close, _reply_text, _validate
     body = request_body(config, title, slides)
     key = f'{job.id}-photos' if job is not None else f'photos-{time.time_ns()}'
     attempt = provider_usage.start_attempt(key, SLIDES, config['model'], stage='photo_pick', job=job)
@@ -80,18 +80,22 @@ def choose(config, title, slides, *, timeout, job=None):
             headers={'Authorization': 'Bearer ' + config['api_key'], 'Content-Type': 'application/json'})
         with _post(request, timeout) as response:
             raw = response.read(MAX_RESPONSE + 1)
+        # A refused reply raises its code (provider_usage.REJECTIONS), so its row says why, as in provider._call.
         if len(raw) > MAX_RESPONSE:
-            raise ValueError('too_large')
+            raise _Rejected('oversized')
         result = json.loads(raw)
         provider_usage.received(attempt, result, round((time.monotonic() - started) * 1000))
         received = True
-        if not isinstance(result, dict) or result.get('status') != 'completed':
-            raise ValueError('status')
-        text = ''.join(part.get('text', '') for output in result.get('output', [])
-                       if isinstance(output, dict) and output.get('type') == 'message'
-                       for part in output.get('content', [])
-                       if isinstance(part, dict) and part.get('type') == 'output_text')
-        answer = json.loads(text)
+        if not isinstance(result, dict):
+            raise _Rejected('no_output')
+        if result.get('status') == 'incomplete':
+            raise _CutOff()
+        if result.get('status') != 'completed':
+            raise _Rejected('not_completed')
+        try:
+            answer = json.loads(_reply_text(result))
+        except json.JSONDecodeError:
+            raise _Rejected('not_json') from None
         _validate(answer, SCHEMA)
         shown = {slide['id']: len(slide['photos']) for slide in slides}
         picks = dict.fromkeys(shown, 0)
@@ -103,7 +107,6 @@ def choose(config, title, slides, *, timeout, job=None):
                 answered.add(sid)
         provider_usage.finish(attempt, 'succeeded')
         return picks
-    except Exception:
-        provider_usage.finish(attempt, 'rejected' if received else 'failed',
-                              elapsed_ms=round((time.monotonic() - started) * 1000))
+    except Exception as failure:
+        _close(attempt, failure, received, started)
         raise

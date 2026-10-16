@@ -42,15 +42,16 @@ def execute_generation(job,output_dir):
         # original quote cannot authorize losing untouched pages after a cap
         # change or subscription expiry while the job waited in the queue.
         ensure_selected_preservation(data,validate_content(job.account,content,data['output_format']))
+    # Finish the provider calls while the worker still holds the job: work
+    # completed after the lease lapses is thrown away by the reclaim sweep. An
+    # outline's calls are held to it too, second tries included.
+    import time
+    deadline=time.monotonic()+max(60,(job.lease_expires_at-timezone.now()).total_seconds()-120) if job.lease_expires_at else None
     if job.parameters.get('stage')=='outline':
         from .outlines import execute_outline
-        return execute_outline(job,draft,data,original,cfg,output_dir)
+        return execute_outline(job,draft,data,original,cfg,output_dir,deadline=deadline)
     if cfg['mode']=='openai':
         from .provider import generate
-        # Finish the provider calls while the worker still holds the job: work
-        # completed after the lease lapses is thrown away by the reclaim sweep.
-        import time
-        deadline=time.monotonic()+max(60,(job.lease_expires_at-timezone.now()).total_seconds()-120) if job.lease_expires_at else None
         try:
             raw,usage=generate(cfg,data,job.feature_id,job.id,token_limit=job.quote.policy['generation_bounds']['input_tokens'],deadline=deadline)
             content=validate_content(job.account,raw,data['output_format'])

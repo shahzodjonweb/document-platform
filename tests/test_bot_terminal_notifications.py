@@ -227,12 +227,14 @@ def test_a_failed_ai_edit_names_the_files_edits_not_the_week(locale):
 
 @pytest.mark.parametrize('locale', ['en', 'uz', 'ru'])
 def test_an_error_that_already_says_it_did_not_count_is_not_followed_by_it_again(locale):
-    from apps.core.errors import DomainError, error_data
+    from apps.core.errors import DomainError
     from apps.studio.domain import DOCUMENT
+    from telegram.errors import bot_error
     _, job = terminal_job('failed', locale=locale)
     Job.objects.filter(pk=job.pk).update(feature_id=DOCUMENT, parameters={}, error_code='provider_failed')
     text = sent_notice(job)
-    assert error_data(DomainError('provider_failed'), locale)['message'] in text
+    # The bot's own words for it (telegram/errors.py), which leave "try again" to the advice below them.
+    assert bot_error(DomainError('provider_failed'), locale) in text
     assert COPY[locale]['not_counted'] not in text, 'said once, by the error itself'
     # A file error in the bot's own words does not say it, so the notice does.
     Job.objects.filter(pk=job.pk).update(feature_id='pdf.rotate', error_code='processing_failed')

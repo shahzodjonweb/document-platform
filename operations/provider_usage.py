@@ -30,6 +30,15 @@ LABELS = {
         'generate': 'Generate', 'outline': 'Outline', 'revision': 'Revise', 'photo_pick': 'Photo choice', 'expand': 'Expand', 'repair': 'Repair',
         'replayed': 'Replay · excluded from token totals', 'span': 'Sections',
         'empty': 'No provider attempts in this period.',
+        'reasons': 'Rejected responses by reason', 'reason': 'Reason', 'count': 'Responses',
+        'rejection_': 'Reason not recorded',
+        'rejection_cut_off': 'Cut off at its token limit', 'rejection_not_completed': 'Not completed by the provider',
+        'rejection_refusal': 'The model refused', 'rejection_no_output': 'No text in the reply',
+        'rejection_not_json': 'Reply was not JSON', 'rejection_schema': 'Did not match the schema',
+        'rejection_section_count': 'Wrong number of sections', 'rejection_section_identity': 'Section ids did not match',
+        'rejection_source_citation': 'Citation not found in the sources', 'rejection_content': 'Content outside the limits',
+        'rejection_usage': 'Implausible token counts', 'rejection_oversized': 'Reply over 2 MB',
+        'rejection_unreadable': 'Reply could not be read',
     },
     'uz': {
         'basis': 'Haqiqiy provayder so‘rovlari, jumladan xato va rad etilgan javoblar. Har bir provayder javobining tokenlari bir marta sanaladi. Hisobotda hujjat mazmuni saqlanmaydi.',
@@ -49,6 +58,15 @@ LABELS = {
         'generate': 'Yaratish', 'outline': 'Reja', 'revision': 'Tahrirlash', 'photo_pick': 'Rasm tanlash', 'expand': 'To‘ldirish', 'repair': 'Tuzatish',
         'replayed': 'Takroriy · jami tokenlarga kiritilmaydi', 'span': 'Bo‘limlar',
         'empty': 'Bu davrda provayder so‘rovlari yo‘q.',
+        'reasons': 'Rad etilgan javoblar sababi bo‘yicha', 'reason': 'Sabab', 'count': 'Javoblar',
+        'rejection_': 'Sabab yozilmagan',
+        'rejection_cut_off': 'Token chegarasida uzilib qoldi', 'rejection_not_completed': 'Provayder javobni yakunlamadi',
+        'rejection_refusal': 'Model javob berishni rad etdi', 'rejection_no_output': 'Javobda matn yo‘q',
+        'rejection_not_json': 'Javob JSON emas', 'rejection_schema': 'Sxemaga mos kelmadi',
+        'rejection_section_count': 'Bo‘limlar soni noto‘g‘ri', 'rejection_section_identity': 'Bo‘lim IDlari mos kelmadi',
+        'rejection_source_citation': 'Iqtibos manbalarda topilmadi', 'rejection_content': 'Mazmun cheklovlardan tashqarida',
+        'rejection_usage': 'Token soni ishonchsiz', 'rejection_oversized': 'Javob 2 MB dan katta',
+        'rejection_unreadable': 'Javobni o‘qib bo‘lmadi',
     },
     'ru': {
         'basis': 'Фактические запросы к провайдеру, включая ошибки и отклонённые ответы. Токены каждого ответа учитываются один раз. Содержимое документов в отчёте не хранится.',
@@ -68,6 +86,15 @@ LABELS = {
         'generate': 'Создание', 'outline': 'План', 'revision': 'Редактирование', 'photo_pick': 'Выбор фото', 'expand': 'Дополнение', 'repair': 'Исправление',
         'replayed': 'Повтор · исключён из суммы токенов', 'span': 'Разделы',
         'empty': 'За этот период запросов к провайдеру нет.',
+        'reasons': 'Отклонённые ответы по причинам', 'reason': 'Причина', 'count': 'Ответы',
+        'rejection_': 'Причина не записана',
+        'rejection_cut_off': 'Обрезан на лимите токенов', 'rejection_not_completed': 'Провайдер не завершил ответ',
+        'rejection_refusal': 'Модель отказалась отвечать', 'rejection_no_output': 'В ответе нет текста',
+        'rejection_not_json': 'Ответ не в формате JSON', 'rejection_schema': 'Не соответствует схеме',
+        'rejection_section_count': 'Неверное число разделов', 'rejection_section_identity': 'ID разделов не совпали',
+        'rejection_source_citation': 'Цитата не найдена в источниках', 'rejection_content': 'Содержимое вне допустимых пределов',
+        'rejection_usage': 'Неправдоподобное число токенов', 'rejection_oversized': 'Ответ больше 2 МБ',
+        'rejection_unreadable': 'Не удалось прочитать ответ',
     },
 }
 
@@ -96,7 +123,27 @@ def usage_report(filters):
     return dict(totals=totals, counts=counts, unknown_environment=dated.filter(environment='unknown').count(),
                 model_rows=canonical.values('provider', 'feature_id', 'requested_model', 'resolved_model', 'stage')
                 .annotate(**aggregates).order_by('-responses', 'requested_model', 'stage'),
+                reason_rows=rows.filter(status='rejected').values('rejection')
+                .annotate(responses=Count('id')).order_by('-responses', 'rejection'),
                 rows=rows.order_by('-created_at', '-id'))
+
+
+def rejection_label(code, lang='en'):
+    """Why a reply was rejected, in words; '' when nothing was recorded."""
+    labels = LABELS.get(lang, LABELS['en'])
+    return labels.get('rejection_' + code, code) if code else ''
+
+
+def failure_reason(job, lang='en'):
+    """Why a job that failed on the provider ended, in words, or ''.
+
+    Named only when the reply that ended it came back and was refused
+    (ProviderAttemptQuerySet.final_rejection), never an earlier one that was
+    put right before something else failed.
+    """
+    if job.error_code != 'provider_failed':
+        return ''
+    return rejection_label(job.provider_attempts.final_rejection(), lang)
 
 
 @require_staff('Analyst', 'Operations', 'Finance')
@@ -116,7 +163,12 @@ def usage_page(request):
     data['pagination'] = Paginator(report['rows'], 30).get_page(request.GET.get('p'))
     data['model_rows'] = [{**row, 'stage_label': labels.get(row['stage'], row['stage']),
                           'input_tokens': row['input_sum'], 'output_tokens': row['output_sum']} for row in report['model_rows']]
+    # Every rejection now keeps a reason, so only rows from before reasons were
+    # kept have none: said so, not left blank.
+    data['reason_rows'] = [{'label': labels.get('rejection_' + row['rejection'], row['rejection']),
+                            'responses': row['responses']} for row in report['reason_rows']]
     for row in data['pagination']:
         row.status_label = labels.get('failed_status' if row.status == 'failed' else row.status, row.status)
         row.stage_label = labels.get(row.stage, row.stage)
+        row.rejection_label = rejection_label(row.rejection, data['lang']) if row.status == 'rejected' else ''
     return finish_render(request, 'ops/ai_usage.html', data)
