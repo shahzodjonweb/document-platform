@@ -49,7 +49,9 @@ def test_questions_are_grouped_five_to_a_slide(tmp_path, count, slides):
 def test_question_slides_count_toward_the_slides_asked_for(settings, brief, total, written, question_slides):
     settings.DEBUG = True
     customer = paid(settings, account())
-    draft = create_draft(customer, {'feature_id': SLIDES, 'prompt': brief})
+    # The subject is in the title field, as the web sends it: a brief that only
+    # sizes the deck names no topic and is refused on its own.
+    draft = create_draft(customer, {'feature_id': SLIDES, 'title': 'Orol dengizi', 'prompt': brief})
     data = unpack(draft.encrypted_data)
     assert data['options']['length'] == total
     assert data['options']['question_slides'] == question_slides

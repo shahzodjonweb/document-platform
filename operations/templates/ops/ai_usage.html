@@ -55,6 +55,22 @@
   </div>
 </section>
 
+{% if reason_rows %}
+<section class="panel">
+  <div class="panel-heading"><h2>{{ a.reasons }}</h2></div>
+  <div class="table-region" role="region" aria-label="{{ a.reasons }}" tabindex="0">
+    <table>
+      <thead><tr><th>{{ a.reason }}</th><th>{{ a.count }}</th></tr></thead>
+      <tbody>
+        {% for row in reason_rows %}
+        <tr><td>{{ row.label }}</td><td>{{ row.responses }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
 <section class="panel">
   <div class="panel-heading"><h2>{{ a.recent }}</h2></div>
   <div class="table-region" role="region" aria-label="{{ a.recent }}" tabindex="0">
@@ -68,7 +84,7 @@
           <td class="muted">{{ row.created_at|date:'Y-m-d H:i:s' }}</td>
           <td>{{ row.feature_id }}</td>
           <td>{{ row.stage_label }}{% if row.span_start != None %}<small>{{ a.span }} {{ row.span_start|add:1 }}–{{ row.span_end }}</small>{% endif %}</td>
-          <td>{{ row.status_label }}{% if row.duplicate_response %}<small>{{ a.replayed }}</small>{% endif %}</td>
+          <td>{{ row.status_label }}{% if row.rejection_label %}<small>{{ row.rejection_label }}</small>{% endif %}{% if row.duplicate_response %}<small>{{ a.replayed }}</small>{% endif %}</td>
           <td>{{ row.input_tokens|default_if_none:a.unknown }}</td>
           <td>{{ row.output_tokens|default_if_none:a.unknown }}</td>
           <td>{{ row.latency_ms|default_if_none:a.unknown }}</td>

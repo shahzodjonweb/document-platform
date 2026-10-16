@@ -611,8 +611,43 @@ def enforce_budget(config,payload,feature_id,token_limit):
     if provider.body_tokens(body)>token_limit:raise DomainError('generation_limit')
     return body
 
+def require_topic(data,fid,payload):
+    """Refuse a new document whose description names no topic ("12 ta slayd kk").
+
+    The model would make one up, spending a weekly document on a subject nobody
+    asked for, or fail on a reply too thin to pass the checks. Nothing is
+    counted yet: the customer is told what is missing and, when the description
+    asks for the other format, which tool makes it. A description asking only
+    for a file in another format ("pdf ga o‘tkaz") is the file tools' work, and
+    says so instead (convert_requested). Only a new document from a description
+    alone is read: a change request and a draft with source files or pasted
+    text (the web sends the service name as the description beside a file)
+    have something to work from, and update_draft never refuses a draft that
+    was already accepted. A new draft is made from its description whatever
+    content or outline the request carries, so neither excuses it.
+    """
+    if payload.get('revision') or payload['source_ids'] or payload['excerpts'] or payload['source_text'].strip():return
+    from .topics import asked_other_service,asks_to_convert,names_no_topic
+    # The web's title field can hold the topic; by default it is the description's first line.
+    title,prompt=payload['title'],payload['prompt']
+    words=prompt if title=='Untitled document' or title in prompt else f'{title}\n{prompt}'
+    if not names_no_topic(words):return
+    if asks_to_convert(words):raise DomainError('convert_requested',400,{'service':'','convert':True})
+    raise DomainError('topic_required',400,{'service':asked_other_service(words,fid)})
+
 def create_draft(account,data):
+    # `options.topic_given` is the customer answering the refusal: the bot's
+    # topic question answered a second time, or the web's "Continue anyway".
+    # The check reads words, and a topic it does not know ("Bahor") must never
+    # leave anyone stuck. It is a request, not a setting, so it is not kept.
+    key='options' if 'options' in data else 'parameters'
+    options=data.get(key)
+    given=isinstance(options,dict) and options.get('topic_given') is True
+    if isinstance(options,dict) and 'topic_given' in options:
+        data={**data,key:{k:v for k,v in options.items() if k!='topic_given'}}
     fid,cfg,payload=_prepare_draft(account,data)
+    # After _prepare_draft, so a malformed request keeps its own error.
+    if not given:require_topic(data,fid,payload)
     return GenerationDraft.objects.create(account=account,feature_id=fid,encrypted_data=pack(payload),provider_mode=cfg['mode'],expires_at=timezone.now()+timedelta(hours=24))
 
 def draft_jobs(account,draft_id,statuses):

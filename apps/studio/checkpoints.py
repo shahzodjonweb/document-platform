@@ -94,7 +94,7 @@ def request_hash(body, stage, span):
                                      separators=(',', ':'), allow_nan=False).encode()).hexdigest()
 
 
-def call(*, job, draft, body, stage, span, invoke, validate, on_reuse=None):
+def call(*, job, draft, body, stage, span, invoke, validate, on_reuse=None, on_claim=None):
     """Return one validated result, reusing only a completed matching checkpoint.
 
     ``invoke`` returns (content, usage). ``validate`` must check the response's
@@ -102,6 +102,12 @@ def call(*, job, draft, body, stage, span, invoke, validate, on_reuse=None):
     a canonical content object, or None to retain the validated input. Validation
     runs before writing and after decrypting, so stale validation assumptions
     cannot turn a checkpoint into a provider-validation bypass.
+
+    ``on_claim``, when given, is handed a function before ``invoke`` runs. It
+    holds the claim for another LEASE_SECONDS and says whether the claim is
+    still ours: ``invoke`` calls it before a second provider attempt, since two
+    long attempts can outlast one lease. An expired claim can be taken over by
+    another worker, which then makes the same paid call.
     """
     root = _root_job(job, draft)
     now = timezone.now()
@@ -145,7 +151,14 @@ def call(*, job, draft, body, stage, span, invoke, validate, on_reuse=None):
         if on_reuse is not None:
             on_reuse(result)
         return copy.deepcopy(result), {'input_tokens':0, 'output_tokens':0, 'checkpoint_reused':True}
+
+    def renew():
+        held = timezone.now()
+        return bool(ProviderCheckpoint.objects.filter(pk=row.pk, lease_token=token, expires_at__gt=held).update(
+            lease_until=min(expires, held + timedelta(seconds=LEASE_SECONDS))))
     try:
+        if on_claim is not None:
+            on_claim(renew)
         result, usage = invoke()
         canonical = validate(result)
         result = result if canonical is None else canonical

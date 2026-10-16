@@ -453,7 +453,7 @@ def test_the_model_is_told_the_plan_allowance_only_when_photos_are_on(settings):
     from tests.test_platform import account
     settings.DEBUG = True
     customer = account()
-    options = lambda: unpack(create_draft(customer, {'feature_id': SLIDES, 'prompt': 'A 4 slide deck.',
+    options = lambda: unpack(create_draft(customer, {'feature_id': SLIDES, 'prompt': 'A 4 slide deck on volcanoes.',
                                                      'options': {'image_cap': 99}}).encrypted_data)['options']
     assert options()['image_cap'] == 0, 'off by default, and a client cannot raise it'
     save_config('pixabay', {'pixabay_key': KEY, 'enabled': 'true'})

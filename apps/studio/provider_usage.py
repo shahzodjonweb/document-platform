@@ -12,6 +12,12 @@ from .models import ProviderAttempt
 TOKEN_FIELDS = ('input_tokens', 'output_tokens', 'total_tokens', 'cached_input_tokens',
                 'cache_write_input_tokens', 'reasoning_output_tokens')
 TERMINAL = {'succeeded', 'rejected', 'failed'}
+# Why a reply that arrived was refused (apps/studio/provider.py, also used by
+# the photo choice and the expand call). Only these fixed codes are kept, so
+# nothing the model or the customer wrote can be. 'unreadable' is anything
+# else that went wrong once a reply was in hand.
+REJECTIONS = frozenset({'cut_off', 'not_completed', 'refusal', 'no_output', 'not_json', 'schema', 'section_count',
+                        'section_identity', 'source_citation', 'content', 'usage', 'oversized', 'unreadable'})
 
 
 def _metadata(value, limit):
@@ -141,7 +147,8 @@ def received(attempt, result, elapsed_ms):
 
 
 @transaction.atomic
-def finish(attempt, status, *, elapsed_ms=None):
+def finish(attempt, status, *, elapsed_ms=None, reason=''):
+    """Close an attempt; `reason` says why a received reply was rejected, and is kept for nothing else."""
     if status not in TERMINAL:
         raise ValueError('Invalid provider attempt status')
     current = ProviderAttempt.objects.select_for_update().get(pk=attempt.pk)
@@ -150,7 +157,8 @@ def finish(attempt, status, *, elapsed_ms=None):
         current.finished_at = timezone.now()
         if elapsed_ms is not None:
             current.latency_ms = _count(elapsed_ms)
-        current.save(update_fields=['status', 'finished_at', 'latency_ms'])
+        current.rejection = reason if status == 'rejected' and isinstance(reason, str) and reason in REJECTIONS else ''
+        current.save(update_fields=['status', 'finished_at', 'latency_ms', 'rejection'])
     return current
 
 

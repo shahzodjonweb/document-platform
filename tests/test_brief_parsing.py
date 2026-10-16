@@ -180,9 +180,9 @@ def test_named_colours_and_pictures_reach_the_draft(settings):
     style = deck['options']['template_style']
     assert (style['accent'], style['secondary'], style['accent_fixed']) == (BLUE, GREEN, True)
     assert deck['options']['images_wanted'] == 8
-    counted = unpack(create_draft(customer, {'feature_id': SLIDES, 'prompt': '8 ta slayd, 3 ta rasm'}).encrypted_data)
+    counted = unpack(create_draft(customer, {'feature_id': SLIDES, 'prompt': 'Vulqonlar, 8 ta slayd, 3 ta rasm'}).encrypted_data)
     assert counted['options']['images_wanted'] == 3
-    plain = unpack(create_draft(customer, {'feature_id': SLIDES, 'prompt': '8 ta slayd'}).encrypted_data)
+    plain = unpack(create_draft(customer, {'feature_id': SLIDES, 'prompt': 'Vulqonlar, 8 ta slayd'}).encrypted_data)
     assert 'images_wanted' not in plain['options']
     document = unpack(create_draft(customer, {'feature_id': DOCUMENT, 'prompt': 'Sezgi azolari, och havorang, 3 bet'}).encrypted_data)
     assert document['options']['template_style']['accent'] == SKY and document['options']['wants_design']

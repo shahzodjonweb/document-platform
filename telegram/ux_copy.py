@@ -140,10 +140,27 @@ MESSAGES = {
     'ai_more_slides': ('💎 Up to {count} slides with {plan}', '💎 {plan} bilan {count} slaydgacha', '💎 До {count} слайдов с {plan}'),
     'ai_more_images': ('💎 Up to {count} pictures with {plan}', '💎 {plan} bilan {count} tagacha rasm', '💎 До {count} картинок с {plan}'),
     'ai_example_copied': ('✏️ That is one of our examples. Change the subject to yours and send it again.', '✏️ Bu bizning namunamiz. Mavzuni o‘zingiznikiga almashtirib, qayta yuboring.', '✏️ Это наш пример. Замените тему на свою и отправьте снова.'),
+    # A description that names no topic ("12 ta slayd kk"): what was kept of it,
+    # and the one thing still missing. The topic sent next is put in front of it.
+    'ai_topic_kept': ('📝 Noted: “{brief}”.', '📝 Yozib oldim: «{brief}».', '📝 Учту: «{brief}».'),
+    'ai_topic_question': ('✍️ Only the topic is missing — what should it be about? I’ll add it to what you wrote.', '✍️ Faqat mavzu yetishmayapti: nima haqida tayyorlaymiz? Mavzuni yuboring — uni avvalgi xabaringizga qo‘shaman.', '✍️ Не хватает только темы. На какую тему сделать? Я добавлю её к вашему сообщению.'),
+    # The way past a topic the check did not recognise: the same words again are taken as the topic.
+    'ai_topic_again': ('↩️ If that already is the topic, just send it again.', '↩️ Agar mavzu shu bo‘lsa, uni yana bir bor yuboring.', '↩️ Если это и есть тема, просто отправьте её ещё раз.'),
+    # A file sent while the topic is asked for: only a PDF is read as a source.
+    'ai_topic_pdf_only': ('📎 Only PDF files are read here — type the topic, or send a PDF.', '📎 Bu yerda faqat PDF fayl o‘qiladi — mavzuni yozing yoki PDF yuboring.', '📎 Здесь читаются только PDF-файлы — напишите тему или пришлите PDF.'),
+    # A file conversion asked of an AI service ("pdf ga o‘tkaz"): the file tools do it.
+    'ai_convert': ('🔄 To convert a file, just send it here — I’ll offer the right tool. This service makes something new on a topic you give.', '🔄 Faylni o‘girish uchun uni shu yerga yuboring — mos vositani taklif qilaman. Bu xizmat siz bergan mavzuda yangi material tayyorlaydi.', '🔄 Чтобы конвертировать файл, просто отправьте его сюда — я предложу нужный инструмент. Этот сервис создаёт новый материал на вашу тему.'),
+    'ai_topic_example': ('For example: {example}', 'Masalan: {example}', 'Например: {example}'),
+    'ai_topic_sample': ('The water cycle, for 6th grade', 'Tabiatda suvning aylanishi, 6-sinf uchun', 'Круговорот воды в природе, для 6 класса'),
     'ai_wrong_tool_slides': ('🖥 You asked for slides — this makes a PDF document.', '🖥 Siz slayd so‘radingiz — bu xizmat PDF hujjat tayyorlaydi.', '🖥 Вы просили слайды — этот сервис делает PDF-документ.'),
     'ai_switch_slides': ('🖥 Make slides instead', '🖥 Slayd qilib tayyorlash', '🖥 Сделать слайды'),
     'ai_wrong_tool_pdf': ('📄 You asked for a document — this makes slides.', '📄 Siz hujjat so‘radingiz — bu xizmat slayd tayyorlaydi.', '📄 Вы просили документ — этот сервис делает слайды.'),
     'ai_switch_pdf': ('📄 Make a PDF instead', '📄 PDF qilib tayyorlash', '📄 Сделать PDF'),
+    # With the other format asked for, Generate says which one it makes: a deck
+    # asked of the PDF service went through as a PDF beside a one-line warning.
+    'ai_pdf_anyway': ('📄 Make a PDF anyway', '📄 Baribir PDF tayyorlash', '📄 Всё равно сделать PDF'),
+    'ai_slides_anyway': ('🖥 Make slides anyway', '🖥 Baribir slayd tayyorlash', '🖥 Всё равно сделать слайды'),
+    'ai_review_hint_button': ('Nothing counts until you tap “{button}”.', '«{button}» tugmasini bosmaguningizcha hech narsa hisoblanmaydi.', 'Ничего не засчитывается, пока вы не нажмёте «{button}».'),
     'ai_images_capped': ('🖼 You asked for pictures; your plan adds up to {count} to a deck.', '🖼 Rasm so‘radingiz; tarifingiz bir taqdimotga {count} tagacha rasm qo‘shadi.', '🖼 Вы просили картинки; ваш тариф добавляет до {count} на презентацию.'),
     'ai_images_capped_pdf': ('🖼 You asked for pictures; your plan adds up to {count} to a document.', '🖼 Rasm so‘radingiz; tarifingiz bir hujjatga {count} tagacha rasm qo‘shadi.', '🖼 Вы просили картинки; ваш тариф добавляет до {count} в документ.'),
     'ai_images_none': ('🖼 You asked for pictures, but your plan does not add them.', '🖼 Rasm so‘radingiz, lekin tarifingizda rasm qo‘shilmaydi.', '🖼 Вы просили картинки, но ваш тариф их не добавляет.'),
@@ -175,6 +192,9 @@ MESSAGES = {
     'ai_revise_of': ('Changing', 'O‘zgartirilmoqda', 'Изменяем'),
     'ai_open_web': ('🌐 Open in web app', '🌐 Veb ilovada ochish', '🌐 Открыть в веб-приложении'),
     'ai_busy': ('⏳ One moment — still working on your last request.', '⏳ Bir lahza — oldingi so‘rovingiz ustida ishlanmoqda.', '⏳ Секунду — ещё обрабатываю прошлый запрос.'),
+    # After the AI could not finish a new document: most such failures were a
+    # reply our checks refused, which a fuller description makes less likely.
+    'ai_failed_advice': ('💡 Try again. If it fails again, write it all in one message: the topic, who it is for and the length.', '💡 Qayta urinib ko‘ring. Yana bo‘lmasa, hammasini bitta xabarda yozing: mavzu, kim uchun va hajmi.', '💡 Попробуйте ещё раз. Если снова не выйдет, напишите всё одним сообщением: тема, для кого и объём.'),
     # A finished document can carry a note about what was adjusted to match what
     # was asked for. These are keyed by the job's own warning codes.
     'questions_trimmed': ('ℹ️ Questions you did not ask for were left out.', 'ℹ️ So‘ramagan savollar qo‘shilmadi.', 'ℹ️ Вопросы, которые вы не запрашивали, не добавлены.'),

@@ -1,6 +1,7 @@
 """Bounded, tool-free structured provider boundary. No private content is logged."""
 import json
 import copy
+import re
 import time
 import uuid
 import urllib.request
@@ -228,21 +229,86 @@ def enforce_input_budget(config,data,feature_id,token_limit,span=None):
     return body
 
 
+class _Rejected(ValueError):
+    """A reply that arrived and was refused, and why: a short code and counts, never its text.
+
+    The code is kept on the attempt's row (provider_usage.finish), so a failed
+    document can be diagnosed instead of showing only "Response rejected", and
+    it decides whether a second try can put the reply right (invoke, in _call).
+    """
+    def __init__(self,reason,**facts):
+        super().__init__(reason)
+        self.reason=reason
+        # Counts only: nothing the model or the customer wrote travels with it.
+        self.facts={key:value for key,value in facts.items() if type(value) is int}
+
+
+def _reply_text(result):
+    """The text of a completed reply's message parts, joined.
+
+    A refusal raises 'refusal'; a reply with no text to read, including one
+    whose parts are not the shape the Responses API gives them, raises
+    'no_output'. The photo choice and the expand call read replies with it too.
+    """
+    outputs=result.get('output',[])
+    parts=[part for output in (outputs if isinstance(outputs,list) else [])
+           if isinstance(output,dict) and output.get('type')=='message'
+           for part in (output.get('content') if isinstance(output.get('content'),list) else [])
+           if isinstance(part,dict)]
+    # A refusal is a part of its own, with no output_text. It used to pass as
+    # "not JSON"; told apart, it is never answered with a note.
+    if any(part.get('type')=='refusal' for part in parts):raise _Rejected('refusal')
+    texts=[part['text'] for part in parts if part.get('type')=='output_text' and isinstance(part.get('text'),str)]
+    if not texts:raise _Rejected('no_output')
+    return ''.join(texts)
+
+
+def _close(record,failure,received,started):
+    """Close the attempt `record` after `failure`, saying why when a reply came back and was refused.
+
+    A _Rejected is a reply that arrived, so its attempt is rejected even when
+    it was refused before its usage could be read (one over the size limit).
+    Anything else raised once a reply was in hand is a reply this code could
+    not read: 'unreadable', never a rejection with no reason.
+    """
+    from . import provider_usage
+    reason=failure.reason if isinstance(failure,_Rejected) else 'unreadable' if received else ''
+    provider_usage.finish(record,'rejected' if reason else 'failed',
+                          elapsed_ms=round((time.monotonic()-started)*1000),reason=reason)
+
+
 def _validate(value,schema):
-    if 'enum' in schema and value not in schema['enum']:raise ValueError()
+    if 'enum' in schema and value not in schema['enum']:raise _Rejected('schema')
     kind=schema['type']
     if kind=='object':
-        if not isinstance(value,dict) or set(value)!=set(schema['properties']):raise ValueError()
+        if not isinstance(value,dict) or set(value)!=set(schema['properties']):raise _Rejected('schema')
         for key,definition in schema['properties'].items():_validate(value[key],definition)
     elif kind=='array':
-        if not isinstance(value,list) or len(value)>100:raise ValueError()
+        if not isinstance(value,list) or len(value)>100:raise _Rejected('schema')
         for item in value:_validate(item,schema['items'])
     elif kind=='string':
-        if not isinstance(value,str) or len(value)>schema.get('maxLength',100000):raise ValueError()
+        if not isinstance(value,str) or len(value)>schema.get('maxLength',100000):raise _Rejected('schema')
     elif kind=='integer':
-        if type(value) is not int:raise ValueError()
+        if type(value) is not int:raise _Rejected('schema')
     elif kind=='boolean':
-        if type(value) is not bool:raise ValueError()
+        if type(value) is not bool:raise _Rejected('schema')
+
+
+def _clip(value,schema):
+    """`value` with each string cut to the maxLength its schema gives it; nothing else changes.
+
+    Only an outline's coverage text has a maxLength (prompting.schema), and
+    execute_outline cuts it to that length anyway. Strict mode does not hold
+    the model to it, so a plan one sentence too long used to fail the outline
+    job here, before that cut could run.
+    """
+    kind=schema.get('type')
+    if kind=='string' and isinstance(value,str) and 'maxLength' in schema:return value[:schema['maxLength']]
+    if kind=='object' and isinstance(value,dict):
+        return {key:_clip(item,schema['properties'][key]) if key in schema.get('properties',{}) else item
+                for key,item in value.items()}
+    if kind=='array' and isinstance(value,list):return [_clip(item,schema['items']) for item in value]
+    return value
 
 
 # A pessimistic output rate, so the timeout is generous rather than a second
@@ -388,25 +454,79 @@ def call_timeout(max_output_tokens,deadline=None,now=None):
     return max(15,min(timeout,deadline-(now if now is not None else time.monotonic())))
 
 
-class _CutOff(ValueError):
+class _CutOff(_Rejected):
     """The reply stopped at its token limit, so its JSON is unfinished."""
+    def __init__(self):super().__init__('cut_off')
 
 
 # A second try is only worth starting with this long left on the lease.
 RETRY_MIN_SECONDS=45
+# Replies a second, identical request can put right: one that came back empty,
+# not JSON or refused. A refusal is asked once more as it was and never
+# pressed with a note: a note that talks a model past its refusal is not one
+# to send. A reply this code could not read ('unreadable') is not asked again:
+# the next one would meet the same code.
+ASK_AGAIN={'not_json','no_output','refusal'}
+# Replies that arrived whole but wrong in a way the model can be told about.
+# Most documents that failed in production were one such reply, refused once
+# and never asked again, and most came out right when the customer sent the
+# same request a second time. Impossible usage counts and a reply the provider
+# did not complete stay final: a note cannot fix either.
+CORRECTABLE={'section_count','section_identity','schema','source_citation','content'}
 
 
 def _worth_retrying(failure):
-    """A cut-off reply, a lost connection or a server error can go right the second time.
+    """A cut-off or empty reply, a lost connection or a server error can go right the second time.
 
-    An answer that arrived whole but is wrong (bad schema, impossible usage
-    counts) would only arrive wrong again, and a request refused as invalid
-    would be refused again.
+    An answer that arrived whole but is wrong is not asked again as it was: it
+    would only arrive wrong again (see CORRECTABLE for the ones that are asked
+    again with a note). A request refused as invalid would be refused again.
     """
     import http.client,urllib.error
     if isinstance(failure,urllib.error.HTTPError):
         return failure.code>=500 or failure.code in (408,409,429)
-    return isinstance(failure,(_CutOff,json.JSONDecodeError,OSError,http.client.HTTPException))
+    if isinstance(failure,_Rejected):
+        return isinstance(failure,_CutOff) or failure.reason in ASK_AGAIN
+    return isinstance(failure,(json.JSONDecodeError,OSError,http.client.HTTPException))
+
+
+# Section ids this app writes itself: s1, s2, … (domain.create_draft and
+# validate_content), or a bare position when an edited outline sent a section
+# with no id (update_draft). Only ids like these are named in a note.
+PLAIN_ID=re.compile(r's?[0-9]{1,4}')
+
+
+def _note(failure,ids):
+    """The fixed English note a corrected request carries: what was wrong, and its counts.
+
+    Nothing the customer or the model wrote goes into it. Section ids are named
+    only when every one is an id this app wrote itself (PLAIN_ID): an outline
+    the customer edited can carry any text of up to 40 characters in an id, and
+    a developer message would give that text more weight than the brief it came
+    with.
+    """
+    want=len(ids)
+    def sections(count):return f'{count} section{"" if count==1 else "s"}'
+    if failure.reason in ('section_count','section_identity'):
+        problem=(f'it had {sections(failure.facts.get("got",0))}, but exactly {want} {"is" if want==1 else "are"} required'
+                 if failure.reason=='section_count' else 'its section ids did not match the ids in outline')
+        if want<=30 and all(PLAIN_ID.fullmatch(str(i)) for i in ids):
+            order=f'the id {ids[0]}' if want==1 else f'these ids in this order: {", ".join(map(str,ids))}'
+        else:
+            order='the id of outline' if want==1 else 'the ids of outline in the same order'
+        fix=f'Return exactly {sections(want)}, written as the instructions ask, with {order}.'
+    elif failure.reason=='source_citation':
+        problem='a citation did not quote its source word for word'
+        fix=('Cite only an asset_id and page given in excerpts, with a short quote copied exactly from that page, '
+             'and leave out any citation you cannot quote exactly.')
+    elif failure.reason=='content':
+        problem='it broke a limit the schema does not show'
+        fix=('Give each question at most 8 options and marks from 1 to 100, give every section and every question '
+             'an id of its own of at most 40 characters, and give at most 100 citations.')
+    else:
+        problem='it did not match the required JSON schema'
+        fix='Return every required field, with the type the schema gives it, and no other field.'
+    return f'Your previous reply could not be used: {problem}. {fix}'
 
 
 def _call(config,data,feature_id,idempotency_key,*,token_limit,span=None,deadline=None,job=None,draft=None):
@@ -419,22 +539,25 @@ def _call(config,data,feature_id,idempotency_key,*,token_limit,span=None,deadlin
     def validate(content):
         # A change's edit plan travels with its result (and its checkpoint), but
         # is not part of the document: checked on its own, then put back.
-        if not isinstance(content,dict):raise ValueError()
+        if not isinstance(content,dict):raise _Rejected('schema')
         plan=content.get('edit_plan')
         if 'edit_plan' in content:
-            if stage!='revision':raise ValueError('edit_plan')
+            if stage!='revision':raise _Rejected('schema')
             _validate(plan,EDIT_PLAN)
             content={key:value for key,value in content.items() if key!='edit_plan'}
         _validate(content,schema_for(feature_id,data.get('output_format','pdf')))
-        if len(content['sections'])!=len(expected):raise ValueError('section_count')
+        # How many sections came back and how many were asked for: what a
+        # corrected try is told, and what its time is judged by (fix_seconds).
+        counts=dict(got=len(content['sections']),want=len(expected))
+        if len(content['sections'])!=len(expected):raise _Rejected('section_count',**counts)
         ids=[s['id'] for s in content['sections']]
         if prompting.selected(data) or stage=='outline' or span is None:
-            if ids!=[s['id'] for s in expected]:raise ValueError('section_identity')
-        elif len(set(ids))!=len(ids):raise ValueError('section_identity')
+            if ids!=[s['id'] for s in expected]:raise _Rejected('section_identity',**counts)
+        elif len(set(ids))!=len(ids):raise _Rejected('section_identity',**counts)
         for ref in content['citations']:
             source=next((s for s in data['excerpts'] if s['asset_id']==ref['asset_id'] and s['page']==ref['page']),None)
             if not source or not ref['quote'] or ref['quote'] not in source['text']:
-                raise ValueError('source_citation')
+                raise _Rejected('source_citation',**counts)
         if job is not None:
             # Schema-valid JSON may still be unusable by the application (for
             # example, duplicate question IDs or an out-of-range mark). Never
@@ -442,7 +565,9 @@ def _call(config,data,feature_id,idempotency_key,*,token_limit,span=None,deadlin
             # Keep the canonical provider shape, including answer_supported;
             # the execution layer applies the existing plan-aware trimming.
             from .domain import validate_content
-            validate_content(job.account,content,data.get('output_format','pdf'))
+            # Its code (nearly always invalid_parameters) would say no more than 'content'.
+            try:validate_content(job.account,content,data.get('output_format','pdf'))
+            except DomainError:raise _Rejected('content',**counts) from None
         return content if plan is None else {**content,'edit_plan':plan}
 
     def attempt(request_body,key):
@@ -456,16 +581,17 @@ def _call(config,data,feature_id,idempotency_key,*,token_limit,span=None,deadlin
                 headers={'Authorization':'Bearer '+config['api_key'],'Content-Type':'application/json','Idempotency-Key':key})
             with urllib.request.build_opener(_NoRedirect).open(request,timeout=call_timeout(request_body['max_output_tokens'],deadline)) as response:
                 raw=response.read(2_000_001)
-            if len(raw)>2_000_000:raise ValueError()
+            # Too large to read, so its usage is never known: rejected all the same.
+            if len(raw)>2_000_000:raise _Rejected('oversized')
             result=json.loads(raw)
             provider_usage.received(record,result,round((time.monotonic()-started)*1000))
             received=True
-            if not isinstance(result,dict):raise ValueError()
+            if not isinstance(result,dict):raise _Rejected('no_output')
             if result.get('status')=='incomplete':raise _CutOff()
-            if result.get('status')!='completed':raise ValueError()
-            parts=[part['text'] for output in result.get('output',[]) if output.get('type')=='message'
-                   for part in output.get('content',[]) if part.get('type')=='output_text']
-            content=json.loads(''.join(parts))
+            if result.get('status')!='completed':raise _Rejected('not_completed')
+            text=_reply_text(result)
+            try:content=json.loads(text)
+            except json.JSONDecodeError:raise _Rejected('not_json') from None
             # The edit plan is checked on its own: a reply that left it out, or
             # wrote it in a shape no strict schema allows, is still the document
             # that was paid for.
@@ -474,45 +600,92 @@ def _call(config,data,feature_id,idempotency_key,*,token_limit,span=None,deadlin
             try:
                 if plan is not None:_validate(plan,EDIT_PLAN)
             except ValueError:plan=None
+            if stage=='outline':content=_clip(content,sent)
             _validate(content,{**sent,'properties':{k:v for k,v in sent['properties'].items() if k!='edit_plan'}})
             content=prompting.canonical(content,data)
             if plan is not None:content={'edit_plan':plan,**content}
             content=validate(content)
             usage=result.get('usage')
             if usage is None:usage={}
-            if not isinstance(usage,dict):raise ValueError()
+            if not isinstance(usage,dict):raise _Rejected('usage')
             # Missing counts are unknown in ProviderAttempt, already recorded
             # above. Compatibility job totals use zero for these gaps; missing
             # billing metadata alone must not discard a valid paid response.
             usage={key:(0 if usage.get(key) is None else usage[key]) for key in ('input_tokens','output_tokens')}
-            if any(type(value) is not int or value<0 or value>1_000_000 for value in usage.values()):raise ValueError()
-            if usage['output_tokens']>request_body['max_output_tokens'] or usage['input_tokens']>token_limit:raise ValueError()
+            if any(type(value) is not int or value<0 or value>1_000_000 for value in usage.values()):raise _Rejected('usage')
+            if usage['output_tokens']>request_body['max_output_tokens'] or usage['input_tokens']>token_limit:raise _Rejected('usage')
             provider_usage.finish(record,'succeeded')
             return content,usage
-        except Exception:
-            provider_usage.finish(record,'rejected' if received else 'failed',elapsed_ms=round((time.monotonic()-started)*1000))
+        except Exception as failure:
+            _close(record,failure,received,started)
             raise
+
+    def fix_seconds(failure,took):
+        """About how long a corrected reply takes: all of what was asked, written again.
+
+        The wrong reply's own time is no guide when it was short because it was
+        wrong: one section of ten comes back in seconds. Its time is scaled up
+        to the sections asked for, and with no count to go by the request's own
+        size decides. Neither is more than the time the request is given
+        (call_timeout), since a reply that needs longer is cut off anyway.
+        """
+        budget=call_timeout(body['max_output_tokens'])
+        got,want=failure.facts.get('got'),failure.facts.get('want')
+        if got is None or want is None:return budget
+        return min(budget,took*want/max(got,1))
+
+    def second_try(failure,took):
+        """The request to send once more after `failure`, and its key; None when none is worth sending."""
+        left=None if deadline is None else deadline-time.monotonic()
+        if left is not None and left<RETRY_MIN_SECONDS:return None
+        if isinstance(failure,_Rejected) and failure.reason in CORRECTABLE:
+            # A corrected try that cannot finish before the lease runs out would
+            # be paid for and cut off, so it is only sent with room for all of it.
+            if left is not None and left<fix_seconds(failure,took)+RETRY_MIN_SECONDS:return None
+            # The request as it was, so its cached prefix still matches, and
+            # after it a note saying only what was wrong.
+            again={**body,'input':[{'role':'user','content':body['input']},
+                                   {'role':'developer','content':_note(failure,[s['id'] for s in expected])}]}
+            if body_tokens(again)>token_limit:return None
+            # Its own key: an idempotency key replays the reply it first got.
+            return again,f'{idempotency_key}-fix-{failure.reason}'
+        if not _worth_retrying(failure):return None
+        if isinstance(failure,_CutOff):
+            from .pages import RESPONSE_CEILING
+            return dict(body,max_output_tokens=min(RESPONSE_CEILING,body['max_output_tokens']*2)),idempotency_key+'-again'
+        return body,idempotency_key+'-again'
+
+    # Set by checkpoints.call once it holds this request's checkpoint.
+    claim={}
 
     def invoke():
         """One call, asked once more when it fails in a way a second try can fix.
 
         A reply cut off at its token limit is asked for again with twice the
-        room; a dropped connection or a server error is asked for again as it
-        was. The second try has to fit in the lease.
+        room; a dropped connection, a server error, or a reply that came back
+        empty, not JSON or refused is asked for again as it was. A reply that
+        arrived whole but wrong in a way the model can put right (CORRECTABLE)
+        is asked for again with a note that says what was wrong. Whatever the
+        reason there is one second try at most, and it has to fit in the lease.
         """
+        started=time.monotonic()
         try:
             return attempt(body,idempotency_key)
         except Exception as failure:
-            if not _worth_retrying(failure) or (deadline is not None and deadline-time.monotonic()<RETRY_MIN_SECONDS):
-                raise DomainError('provider_failed',502,retryable=True) from None
-            from .pages import RESPONSE_CEILING
-            again=dict(body,max_output_tokens=min(RESPONSE_CEILING,body['max_output_tokens']*2)) if isinstance(failure,_CutOff) else body
-            try:
-                return attempt(again,idempotency_key+'-again')
-            except Exception:
-                raise DomainError('provider_failed',502,retryable=True) from None
+            second=second_try(failure,time.monotonic()-started)
+            if second is None:raise DomainError('provider_failed',502,retryable=True) from None
+        # Two long attempts can outlast the claim on this request's checkpoint
+        # (checkpoints.LEASE_SECONDS), so it is renewed first. A claim another
+        # worker has taken over means that worker is making this call.
+        if 'renew' in claim and not claim['renew']():
+            raise DomainError('provider_failed',503,retryable=True)
+        try:
+            return attempt(*second)
+        except Exception:
+            raise DomainError('provider_failed',502,retryable=True) from None
 
     if job is not None and draft is not None:
         from .checkpoints import call
-        return call(job=job,draft=draft,body=body,stage=stage,span=(first,last),invoke=invoke,validate=validate)
+        return call(job=job,draft=draft,body=body,stage=stage,span=(first,last),invoke=invoke,validate=validate,
+                    on_claim=lambda renew:claim.update(renew=renew))
     return invoke()

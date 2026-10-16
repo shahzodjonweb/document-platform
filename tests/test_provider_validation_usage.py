@@ -74,17 +74,21 @@ def test_domain_invalid_response_is_not_checkpointed_and_retry_can_regenerate(re
     checkpoint = ProviderCheckpoint.objects.get()
     assert checkpoint.status == 'pending' and not bytes(checkpoint.encrypted_result)
     assert checkpoint.lease_token is None
-    rejected = ProviderAttempt.objects.get()
-    assert rejected.status == 'rejected' and rejected.input_tokens == 100 and rejected.output_tokens == 50
+    # Asked once more with a note on what was wrong; this fake answers the same.
+    assert len(state['calls']) == 2 and state['calls'][1]['input'][-1]['role'] == 'developer'
+    rejected = list(ProviderAttempt.objects.order_by('created_at'))
+    assert [(row.status, row.rejection) for row in rejected] == [('rejected', 'content')] * 2
+    assert all(row.input_tokens == 100 and row.output_tokens == 50 for row in rejected)
     Job.objects.filter(pk=job.pk).update(status='failed')
     retry_quote = checkpoints.retry_quote(customer, job.id)
     retried, _ = submit_job(customer, retry_quote.id, 'validation-retry-job')
     state['wire'] = valid
     result, usage = generate(request_case, job=retried)
     assert result['questions'] == valid['questions'] and usage['output_tokens'] == 50
-    assert len(state['calls']) == 2
+    assert len(state['calls']) == 3
     assert ProviderCheckpoint.objects.get().status == 'completed'
-    assert list(ProviderAttempt.objects.order_by('created_at').values_list('status', flat=True)) == ['rejected', 'succeeded']
+    assert list(ProviderAttempt.objects.order_by('created_at').values_list('status', flat=True)) == [
+        'rejected', 'rejected', 'succeeded']
 
 
 @pytest.mark.parametrize('usage,expected,recorded', [
@@ -120,7 +124,7 @@ def test_known_reported_counts_still_enforce_request_budgets(request_case, usage
     with pytest.raises(DomainError, match='provider_failed'):
         generate(request_case)
     attempt = ProviderAttempt.objects.get()
-    assert attempt.status == 'rejected'
+    assert attempt.status == 'rejected' and attempt.rejection == 'usage', 'never asked again'
     assert (attempt.input_tokens, attempt.output_tokens) == (usage['input_tokens'], usage['output_tokens'])
     assert ProviderCheckpoint.objects.get().status == 'pending'
 
@@ -132,4 +136,5 @@ def test_malformed_nonnull_usage_still_rejected_and_recorded_unknown(request_cas
         generate(request_case)
     attempt = ProviderAttempt.objects.get()
     assert attempt.input_tokens is None and attempt.output_tokens == 50 and attempt.status == 'rejected'
+    assert attempt.rejection == 'usage'
     assert ProviderCheckpoint.objects.get().status == 'pending'

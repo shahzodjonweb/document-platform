@@ -358,7 +358,7 @@ def test_a_layout_the_model_chose_survives_to_the_deck(live_customer, monkeypatc
 @pytest.mark.django_db
 def test_editing_a_deck_keeps_each_slide_layout(live_customer):
     from apps.studio.domain import SLIDES, create_draft, draft_data, update_draft
-    draft = create_draft(live_customer, {'feature_id': SLIDES, 'prompt': 'A 3 slide deck.'})
+    draft = create_draft(live_customer, {'feature_id': SLIDES, 'prompt': 'A 3 slide deck on results.'})
     content = draft_data(draft)['content']
     content['sections'][1].update(layout='stats', items=[item('Revenue', '', '+18%'), item('Churn', '', '2%')])
     updated = update_draft(live_customer, draft.id, {'version': draft.version, 'content': content})
@@ -375,7 +375,7 @@ def test_editing_a_deck_keeps_each_slide_layout(live_customer):
 def test_a_layout_no_model_could_choose_is_refused_from_a_client(live_customer):
     from apps.core.errors import DomainError
     from apps.studio.domain import SLIDES, create_draft, draft_data, update_draft
-    draft = create_draft(live_customer, {'feature_id': SLIDES, 'prompt': 'A 3 slide deck.'})
+    draft = create_draft(live_customer, {'feature_id': SLIDES, 'prompt': 'A 3 slide deck on results.'})
     content = draft_data(draft)['content']
     content['sections'][1]['layout'] = 'hexagon'
     with pytest.raises(DomainError, match='invalid_parameters'):
@@ -395,7 +395,7 @@ def test_a_revision_sends_each_slide_back_with_its_layout(live_customer, monkeyp
     import json as _json
     from apps.studio import provider
     from apps.studio.domain import SLIDES, create_draft, draft_data, pack, unpack
-    draft = create_draft(live_customer, {'feature_id': SLIDES, 'prompt': 'A 3 slide deck.'})
+    draft = create_draft(live_customer, {'feature_id': SLIDES, 'prompt': 'A 3 slide deck on results.'})
     stored = unpack(draft.encrypted_data)
     stored['content']['sections'][1].update(layout='stats', body='x',
                                             items=[item('Revenue', '', '+18%'), item('Churn', '', '2%')])

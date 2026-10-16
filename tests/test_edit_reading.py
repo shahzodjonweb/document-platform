@@ -787,7 +787,7 @@ def test_the_kind_of_picture_is_kept_with_the_draft(customer):
     new = unpack(create_draft(customer, {'feature_id': SLIDES, 'prompt': "8 ta slayd, rasmlar kitoblardagi "
                                                                          "rasmlardek bo'lsin"}).encrypted_data)
     assert new['options']['photo_style'] == 'illustration'
-    plain = unpack(create_draft(customer, {'feature_id': SLIDES, 'prompt': '8 ta slayd'}).encrypted_data)
+    plain = unpack(create_draft(customer, {'feature_id': SLIDES, 'prompt': 'Vulqonlar haqida 8 ta slayd'}).encrypted_data)
     assert 'photo_style' not in plain['options']
 
 
