@@ -11,10 +11,10 @@ from apps.core.allowance import file_jobs_this_week
 from apps.core.models import Job,Quote,FileAsset
 from apps.core.policy import plan_limits,limits_for_plan
 from apps.core.services import upload_file,submit_job,execute_job
-from apps.commerce.services import create_invoice,sandbox_pay
 from apps.studio.batches import create_batch_quote,submit_batch,execute_batch,quote_data,run_data
 from apps.studio.models import BatchRun,BatchItem,BatchQuote
 from tests.test_platform import account,upload,login_client
+from tests.test_manual_payments import paid as paid_by_card
 
 pytestmark=pytest.mark.django_db
 
@@ -23,7 +23,8 @@ def batch_local(settings):
     settings.DEBUG=True;settings.COMMERCE_SANDBOX_ENABLED=True
 
 def paid(a,plan='plus'):
-    inv,_=create_invoice(a,plan,'batch-plan-'+str(a.id));sandbox_pay(a,inv.id);a.refresh_from_db();return a
+    # The signature stays: test_batch_forms imports this helper.
+    return paid_by_card(a,plan)
 
 def groups(a,count=2):
     return [{'feature_id':'pdf.to_images','input_ids':[str(upload(a).id)],'parameters':{'dpi':72}} for _ in range(count)]

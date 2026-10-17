@@ -41,14 +41,13 @@ def extend_schema(models, endpoint, paths):
         'EducationProject':obj({'id':UUID,'title':S,'version':I,'expires_at':DT,'created_at':DT,'attempts':arr(ref('PracticeResult')),'content':ref('GenerationContent')},['id','title','version','expires_at','attempts']),
         'ShareGrant':obj({'id':UUID,'artifact_id':UUID,'url':S,'expires_at':DT,'revoked':B},['id','expires_at']),
         'EditorDocument':obj({'id':UUID,'version':I,'file':ref('Asset'),'pages':arr(obj({'width':{'type':'number'},'height':{'type':'number'}},['width','height'])),'form_fields':arr(obj({'name':S,'type':S},['name','type'])),'image_counts':arr(I),'commands':arr(ref('EditorCommand')),'input_ids':arr(UUID)},['id','version','file','pages','commands','input_ids']),
-        'BillingOffer':obj({'id':S,'version':S,'kind':S,'plan':nullable_string,'name':S,'price_xtr':I,'currency':S,'period_seconds':{'type':['integer','null']},'sandbox':B,'checkout_enabled':B},['id','version','kind','name','price_xtr','currency','sandbox','checkout_enabled']),
-        'Invoice':obj({'id':UUID,'offer_id':S,'kind':S,'plan':nullable_string,'status':S,'amount_xtr':I,'currency':S,'sandbox':B,'invoice_url':nullable_string,'created_at':DT,'expires_at':DT,'paid_at':{'type':['string','null'],'format':'date-time'}},['id','offer_id','kind','status','amount_xtr','currency','sandbox','expires_at']),
-        'Payment':obj({'id':UUID,'invoice_id':UUID,'kind':S,'plan':nullable_string,'amount_xtr':I,'currency':S,'sandbox':B,'occurred_at':DT,'is_renewal':B,'refunded_xtr':I,'status':S,'refund_status':nullable_string,'provider':S},['id','invoice_id','kind','amount_xtr','currency','sandbox','occurred_at','is_renewal','refunded_xtr','status']),
+        'Payment':obj({'id':UUID,'invoice_id':UUID,'kind':S,'plan':nullable_string,'amount':I,'currency':S,'sandbox':B,'occurred_at':DT,'is_renewal':B,'refunded':I,'status':S,'refund_status':nullable_string,'provider':S},['id','invoice_id','kind','amount','currency','sandbox','occurred_at','is_renewal','refunded','status']),
         'Subscription':obj({'id':UUID,'plan':S,'status':S,'renewal_enabled':B,'current_period_end':DT,'active_until':{'type':['string','null'],'format':'date-time'},'scheduled_plan':nullable_string,'scheduled_at':{'type':['string','null'],'format':'date-time'},'requires_new_checkout':B,'sandbox':B,'provider':S},['id','plan','status','renewal_enabled','current_period_end','sandbox']),
         'ManualPayment':obj({'id':UUID,'reference':S,'plan':{'enum':['plus','premium']},'amount':I,'currency':S,'status':{'enum':['awaiting','submitted','approved','rejected','cancelled','expired','refunded']},'channel':S,'card':obj({'number':nullable_string,'last4':S,'holder':S,'label':S},['number','last4','holder','label']),'receipt_received':B,'payer_note':S,'created_at':DT,'expires_at':DT,'submitted_at':{'type':['string','null'],'format':'date-time'},'decided_at':{'type':['string','null'],'format':'date-time'},'rejection_reason':nullable_string,'starts_at':{'type':['string','null'],'format':'date-time'},'active_until':{'type':['string','null'],'format':'date-time'}},['id','reference','plan','amount','currency','status','card','receipt_received','created_at','expires_at']),
-        'ManualPaymentOptions':obj({'enabled':B,'currency':S,'period_days':I,'plans':arr(obj({'plan':{'enum':['plus','premium']},'price':I},['plan','price'])),'automatic':obj({'available':B},['available']),'payment':{'anyOf':[ref('ManualPayment'),{'type':'null'}]}},['enabled','currency','period_days','plans','automatic','payment']),
-        'SubscriptionState':obj({'plan':S,'subscription':{'anyOf':[ref('Subscription'),{'type':'null'}]},'sandbox':B,'checkout_enabled':B},['plan','subscription','sandbox','checkout_enabled']),
-        'Refund':obj({'id':UUID,'payment_id':UUID,'status':S,'amount_xtr':I,'confirmed_at':{'type':['string','null'],'format':'date-time'},'error_code':nullable_string},['id','payment_id','status','amount_xtr']),
+        # `price` is what the customer sends today; `regular_price` is the plan's
+        # price before any discount, and `discount` the one running, if any.
+        'ManualPaymentOptions':obj({'enabled':B,'currency':S,'period_days':I,'plans':arr(obj({'plan':{'enum':['plus','premium']},'price':I,'regular_price':I,'discount':{'anyOf':[ref('PlanDiscount'),{'type':'null'}]}},['plan','price','regular_price','discount'])),'automatic':obj({'available':B},['available']),'payment':{'anyOf':[ref('ManualPayment'),{'type':'null'}]}},['enabled','currency','period_days','plans','automatic','payment']),
+        'SubscriptionState':obj({'plan':S,'subscription':{'anyOf':[ref('Subscription'),{'type':'null'}]},'sandbox':B},['plan','subscription','sandbox']),
         'BotDelivery':obj({'id':UUID,'status':S,'attempts':I},['id','status','attempts']),
     })
     models['GenerationMaterial']=obj({'key':S,'title':S,'sections':arr(ref('GenerationSection')),'questions':arr(ref('GenerationQuestion')),'citations':arr(obj({'asset_id':UUID,'page':I,'quote':S}))},['key','title','sections','questions'])
@@ -128,17 +127,7 @@ def extend_schema(models, endpoint, paths):
     endpoint('/editor/documents/{id}','patch','updateEditorDocument',ref('EditorDocument'),obj({'version':I,'commands':arr(ref('EditorCommand')),'input_ids':arr(UUID)},['version','commands']))
     endpoint('/editor/documents/{id}','delete','deleteEditorDocument',deleted)
     endpoint('/editor/documents/{id}/quote','post','quoteEditorDocument',ref('Quote'),obj({'version':I,'accept_rasterization':B},['version']),code='201')
-    endpoint('/billing/offers','get','getBillingOffers',obj({'offers':arr(ref('BillingOffer')),'sandbox':B,'checkout_enabled':B,'currency':S,'billing_mode':{'enum':['sandbox','live','disabled']}},['offers','sandbox','checkout_enabled','currency','billing_mode']))
-    endpoint('/billing/invoices','get','getInvoices',obj({'results':arr(ref('Invoice'))},['results']))
-    endpoint('/billing/invoices','post','createInvoice',ref('Invoice'),obj({'offer_id':S},['offer_id']),code='201')
-    endpoint('/billing/invoices/{id}','get','getInvoice',ref('Invoice'))
-    endpoint('/billing/invoices/{id}','delete','cancelInvoice',ref('Invoice'))
-    endpoint('/billing/invoices/{id}/sandbox-pay','post','sandboxPayInvoice',obj({'payment':ref('Payment'),'invoice':ref('Invoice'),'subscription':{'anyOf':[ref('Subscription'),{'type':'null'}]},'plan':S,'sandbox':B,'created':B}),obj({}),description='Local payment simulator restricted to test accounts and explicit sandbox enablement.')
     endpoint('/billing/subscription','get','getSubscription',ref('SubscriptionState'))
-    for suffix,operation in [('cancel-renewal','cancelRenewal'),('resume-renewal','resumeRenewal')]:
-        endpoint('/billing/subscription/'+suffix,'post',operation,ref('SubscriptionState'),obj({}))
-    endpoint('/billing/subscription/schedule-plan-change','post','schedulePlanChange',ref('SubscriptionState'),obj({'plan':{'enum':['free','plus','premium']}},['plan']))
-    endpoint('/billing/subscription/sandbox-renew','post','sandboxRenewSubscription',obj({'payment':ref('Payment'),'subscription':ref('Subscription'),'sandbox':B,'created':B}),obj({}))
     endpoint('/billing/transactions','get','getTransactions',obj({'results':arr(ref('Payment'))},['results']))
     channel_state=obj({'required':B,'joined':B,'channels':arr(obj({'title':S,'url':S,'joined':B},['title','url','joined']))},['required','joined','channels'])
     endpoint('/channels','get','getRequiredChannels',channel_state,description='Telegram channels a Free or Plus account must join before using a service (Premium is never asked). When required and not joined, task requests fail with channels_required and the same channels in message_params.')
@@ -148,7 +137,6 @@ def extend_schema(models, endpoint, paths):
     endpoint('/billing/manual/{id}','get','getManualPaymentDetail',ref('ManualPayment'))
     endpoint('/billing/manual/{id}','delete','cancelManualPayment',ref('ManualPayment'))
     endpoint('/billing/manual/{id}/receipt','post','uploadManualPaymentReceipt',ref('ManualPayment'),obj({}),description='The transfer receipt: a JPG/PNG photo or a PDF, at most 10 MB, with an optional note.')
-    endpoint('/billing/payments/{id}/sandbox-refund','post','sandboxRefundPayment',ref('Refund'),obj({'reason':S}))
     contact=obj({'username':S,'url':S},['username','url'])
     endpoint('/contacts','get','getContacts',obj({'support':contact,'ads':contact},['support','ads']),public=True,description='The Telegram accounts for support and for advertising or partnerships, as set in the admin. Empty when not set.')
     endpoint('/referrals','get','getReferrals',obj({'code':S,'url':nullable_string,'rewards_count':I,'pending_count':I,'monthly_cap':I,'expires_in_days':I,'qualification':S,'sandbox':B}))
@@ -161,7 +149,7 @@ def extend_schema(models, endpoint, paths):
         endpoint('/telegram/local/messages',method,operation,local_history,obj({'text':S,'callback_data':S}) if method=='post' else None,description='Offline bot transport, only sandbox test accounts. No Telegram network message is sent.')
     paths['/telegram/local/messages']['post']['requestBody']['content']['multipart/form-data']={'schema':obj({'file':{'type':'string','format':'binary'}},['file'])}
     paths['/billing/manual/{id}/receipt']['post']['requestBody']['content']={'multipart/form-data':{'schema':obj({'file':{'type':'string','format':'binary'},'note':{'type':'string','maxLength':120}},['file'])}}
-    for path in ['/batches','/generation/drafts/{id}/generate','/workflows/{id}/run','/education/projects/{id}/practice','/billing/invoices','/billing/subscription/sandbox-renew','/artifacts/{id}/deliver']:
+    for path in ['/batches','/generation/drafts/{id}/generate','/workflows/{id}/run','/education/projects/{id}/practice','/artifacts/{id}/deliver']:
         paths[path]['post']['parameters'].append({'name':'Idempotency-Key','in':'header','required':True,'schema':{'type':'string','minLength':8,'maxLength':128}})
 
 
@@ -176,7 +164,11 @@ def schema():
         'Artifact':obj({'id':UUID,'name':S,'size_bytes':I,'page_count':I,'mime_type':S,'state':S,'expires_at':DT,'role':S,'preview_url':{'type':['string','null']},'download_url':S},['id','name','size_bytes','mime_type','download_url']),
         'Error':obj({'code':S,'message_key':S,'message':S,'message_params':{'type':'object'},'request_id':S,'field_errors':{'type':'object'},'retryable':B},['code','message_key','message','retryable']),
         'Feature':obj({'id':S,'name':S,'label_key':S,'category':S,'release':S,'enabled':B,'eligible':B,'plans':{'type':'object'},'parameters':{'type':'object'},'capabilities':{'type':'object'},'environment':S},['id','name','enabled','eligible','parameters']),
-        'Plan':obj({'id':S,'name':S,'price_xtr':{'type':['integer','null']},'limits':{'type':'object'},'checkout_enabled':B,'features':arr(S)},['id','name','price_xtr','limits','checkout_enabled']),
+        # A discount while it runs: the lower price, the regular one it is
+        # taken from, the whole per cent off and its last day (Asia/Tashkent).
+        'PlanDiscount':obj({'price':I,'regular':I,'percent':I,'until':{'type':'string','format':'date'}},['price','regular','percent','until']),
+        # `price_uzs` is the regular so'm price, null when not for sale; `limits.price_uzs` carries it too.
+        'Plan':obj({'id':S,'name':S,'price_uzs':{'type':['integer','null']},'discount':{'anyOf':[ref('PlanDiscount'),{'type':'null'}]},'limits':{'type':'object'},'features':arr(S)},['id','name','price_uzs','discount','limits','features']),
         'Quote':obj({'id':UUID,'quote_id':UUID,'quote_version':S,'feature_id':S,'plan_version_id':S,'tariff_version_id':S,'input_fingerprints':arr(obj({'id':UUID,'sha256':S})), 'normalized_parameters':{'type':'object'},'affordable':B,'usage':obj({'ai_documents':ref('WeeklyAllowance'),'file_jobs':ref('WeeklyAllowance'),'edits_per_file':{'type':['integer','null']},'resets_at':DT}),'expires_at':DT,'output_expectations':{'type':'object'},'limitations':arr(S),'plan':S},['id','quote_id','feature_id','affordable','expires_at']),
         'Job':obj({'id':UUID,'feature_id':S,'status':{'enum':['queued','running','finalizing','succeeded','failed','canceled','expired','no_op']},'created_at':DT,'started_at':{'type':['string','null'],'format':'date-time'},'completed_at':{'type':['string','null'],'format':'date-time'},'input_files':arr(ref('Asset')),'artifacts':arr(ref('Artifact')),'error':{'anyOf':[ref('Error'),{'type':'null'}]},'warnings':arr(S),'parameters':{'type':'object'},'origin_channel':S},['id','feature_id','status','created_at','input_files','artifacts','error','warnings']),
     }
@@ -218,7 +210,7 @@ def schema():
     endpoint('/me','patch','updateProfile',ref('User'),obj({'locale':S,'mode':S,'time_zone':S,'preferences':{'type':'object'}}))
     endpoint('/me','delete','requestAccountDeletion',obj({'status':S}))
     endpoint('/catalog','get','getCatalog',obj({'features':arr(ref('Feature')),'draft':B,'release':S},['features']),public=True)
-    endpoint('/plans','get','getPlans',obj({'plans':arr(ref('Plan')),'draft':B,'checkout_enabled':B,'currency':S,'period_seconds':I},['plans','draft','checkout_enabled']),public=True)
+    endpoint('/plans','get','getPlans',obj({'plans':arr(ref('Plan')),'draft':B,'currency':{'const':'UZS'},'period_seconds':I},['plans','draft','currency','period_seconds']),public=True)
     endpoint('/usage','get','getUsage',ref('Usage'))
     endpoint('/files/uploads','post','uploadFile',ref('Asset'),code='201')
     paths['/files/uploads']['post']['requestBody']={'required':True,'content':{'multipart/form-data':{'schema':obj({'file':{'type':'string','format':'binary'},'password':{'type':'string','format':'password'}},['file'])}}}
@@ -237,10 +229,8 @@ def schema():
         endpoint(path,'get',operation,S)
         paths[path]['get']['parameters'].append({'name':'page','in':'query','schema':{'type':'integer','minimum':1,'default':1}})
         paths[path]['get']['responses']['200']={'description':'Private single-page PNG preview, no task charge','content':{'image/png':{'schema':{'type':'string','format':'binary'}}}}
-    for path,operation in [('/billing/subscription','getSubscription'),('/billing/transactions','getTransactions'),('/billing/invoices','getInvoices')]:
-        endpoint(path,'get',operation,obj({'checkout_enabled':B,'plan':S,'transactions':arr({'type':'object'}),'subscription':{'type':'null'},'reason':S}))
     extend_schema(models,endpoint,paths)
-    return {'openapi':'3.1.0','info':{'title':'PDF Master public API','version':'1.1.0','description':'Local development beta. Studio, editor, document jobs and sandbox commerce are covered. Staff operations are excluded. Live providers require server configuration.'},'servers':[{'url':'/api/v1'}],'paths':paths,'components':{'securitySchemes':{'customerSession':{'type':'apiKey','in':'cookie','name':'pdfmaster_session'}},'schemas':models}}
+    return {'openapi':'3.1.0','info':{'title':'PDF Master public API','version':'1.1.0','description':'Local development beta. Studio, editor, document jobs and card-transfer billing are covered. Staff operations are excluded. Live providers require server configuration.'},'servers':[{'url':'/api/v1'}],'paths':paths,'components':{'securitySchemes':{'customerSession':{'type':'apiKey','in':'cookie','name':'pdfmaster_session'}},'schemas':models}}
 
 class Command(BaseCommand):
     help='Export immutable public OpenAPI 3.1 contract and checksum.'

@@ -6,6 +6,7 @@ All 128 IDs remain assigned to their original owner ticket. No production releas
 - `provider_dependent`: implemented provider/authoring path; live task quality requires configuration and evaluation.
 - `partial`: specific remaining behavior or acceptance limitation is recorded in the JSON report.
 - `gated`: no implementation acceptance evidence recorded.
+- `retired`: taken out of the product at the owner's decision; the ID keeps its ticket and nothing implements it.
 
 | Feature ID | Ticket | Local status | Production |
 |---|---|---|---|
@@ -127,7 +128,7 @@ All 128 IDs remain assigned to their original owner ticket. No production releas
 | `usage.balance` | R0-05 | implemented_local | disabled |
 | `billing.quote` | R0-05 | implemented_local | disabled |
 | `billing.failure_restore` | R0-05 | implemented_local | disabled |
-| `billing.stars` | R1B-05 | implemented_local | disabled |
+| `billing.stars` | R1B-05 | retired | disabled |
 | `billing.subscription` | R1B-05 | implemented_local | disabled |
 | `billing.task_pack` | R1B-06 | implemented_local | disabled |
 | `billing.ai_topup` | R2A-06 | implemented_local | disabled |

@@ -181,13 +181,9 @@ def test_last_weeks_documents_do_not_count_this_week():
 # ---------------------------------------------------------------- plans
 
 
-def test_plus_makes_twenty_a_week(settings):
-    from apps.commerce.services import create_invoice, sandbox_pay
-    settings.COMMERCE_SANDBOX_ENABLED = True
-    customer = account()
-    invoice, _ = create_invoice(customer, 'plus', 'weekly-plus')
-    sandbox_pay(customer, invoice.id)
-    customer.refresh_from_db()
+def test_plus_makes_twenty_a_week():
+    from tests.test_manual_payments import paid
+    customer = paid(account(), 'plus')
     assert customer.plan == 'plus'
     made(customer, 20)
     with pytest.raises(DomainError) as refused:

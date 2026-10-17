@@ -1,16 +1,16 @@
 {
   "schema_version": "1.0",
   "status": "DRAFT_STAGING_ONLY",
-  "production_checkout_enabled": false,
   "period_seconds": 2592000,
-  "currency": "XTR",
+  "currency": "UZS",
   "retention_hours": 24,
   "quote_expiry_seconds": 600,
-  "config_note": "Weekly limits per plan (null = unlimited), counted from jobs; a week starts Monday 00:00 Asia/Tashkent. Only the weekly limits, AI edits per file and prices differ by plan: every other limit is the same on every plan, at the Premium figures. Change limits and prices in the admin panel.",
+  "config_note": "Weekly limits per plan (null = unlimited), counted from jobs; a week starts Monday 00:00 Asia/Tashkent. Only the weekly limits, AI edits per file, prices and discounts differ by plan: every other limit is the same on every plan, at the Premium figures. Prices are so'm per 30 days, paid by card transfer; a discount is a lower price (discount_price_uzs) valid through its last day (discount_until, YYYY-MM-DD, Asia/Tashkent), both blank when there is none. Change limits, prices and discounts in the admin panel.",
   "plans": {
     "free": {
-      "price_xtr": 0,
       "price_uzs": null,
+      "discount_price_uzs": null,
+      "discount_until": null,
       "weekly_ai_documents": 5,
       "weekly_file_jobs": 15,
       "edits_per_file": 3,
@@ -31,8 +31,9 @@
       "max_aggregate_input_mib": 400
     },
     "plus": {
-      "price_xtr": null,
       "price_uzs": 20000,
+      "discount_price_uzs": null,
+      "discount_until": null,
       "weekly_ai_documents": 20,
       "weekly_file_jobs": null,
       "edits_per_file": 10,
@@ -53,8 +54,9 @@
       "max_aggregate_input_mib": 400
     },
     "premium": {
-      "price_xtr": null,
       "price_uzs": 60000,
+      "discount_price_uzs": null,
+      "discount_until": null,
       "weekly_ai_documents": null,
       "weekly_file_jobs": null,
       "edits_per_file": null,

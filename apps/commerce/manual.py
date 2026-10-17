@@ -43,23 +43,29 @@ def _config():
     return manual_payment_config()
 
 
+def offers():
+    """{plan: pricing.plan_price(plan)} for every paid plan on sale by card transfer."""
+    from .pricing import offers as priced
+    return priced()
+
+
 def prices():
-    """{plan: so'm} for every paid plan on sale by card transfer."""
-    from apps.core.policy import limits_for_plan
-    offered = {}
-    for plan in PLANS:
-        price = limits_for_plan(plan).get('price_uzs')
-        if type(price) is int and price > 0:
-            offered[plan] = price
-    return offered
+    """{plan: so'm} the customer pays today for every paid plan on sale: the discount while one runs."""
+    return {plan: offer['price'] for plan, offer in offers().items()}
+
+
+def regular_prices():
+    """{plan: so'm} for the same plans, before any discount."""
+    return {plan: offer['regular'] for plan, offer in offers().items()}
 
 
 def options():
     """What a customer may choose right now. Automatic payment is not built yet."""
     config = _config()
-    offered = prices() if config['ready'] else {}
+    offered = offers() if config['ready'] else {}
     return {'enabled': bool(offered), 'currency': 'UZS', 'period_days': PERIOD_DAYS,
-            'plans': [{'plan': plan, 'price': price} for plan, price in offered.items()],
+            'plans': [{'plan': plan, 'price': offer['price'], 'regular_price': offer['regular'],
+                       'discount': offer['discount']} for plan, offer in offered.items()],
             'automatic': {'available': False}}
 
 
@@ -83,13 +89,15 @@ def create(account, plan, channel='web'):
     """A request to pay for `plan`, or the one already open for it."""
     from apps.core.customer_auth import auth_limit
     from apps.core.models import Account
-    from .models import ManualPayment, Subscription
-    from .services import active_period
+    from .models import ManualPayment
     if plan not in PLANS:
         raise DomainError('invalid_plan')
-    offered = prices() if _config()['ready'] else {}
+    offered = offers() if _config()['ready'] else {}
     if plan not in offered:
         raise DomainError('checkout_disabled', 409)
+    # Today's price, and the regular one it is set against: the request keeps
+    # both, so a request opened at a discount is known as one later on.
+    price, regular = offered[plan]['price'], offered[plan]['regular']
     account = Account.objects.select_for_update().get(pk=account.pk)
     existing = open_payment(account)
     if existing and existing.status == 'awaiting' and existing.expires_at <= timezone.now():
@@ -99,20 +107,17 @@ def create(account, plan, channel='web'):
     if existing:
         # A request opened at another price, with nothing sent yet, is opened
         # again at today's: the customer has just read the price on the plans
-        # page, and the card screen must not ask for a different one. A receipt
-        # already sent at the old price waits for the owner (period_days).
-        if existing.plan == plan and not (existing.status == 'awaiting' and existing.amount != offered[plan]):
+        # page, and the card screen must not ask for a different one. That
+        # covers a discount starting (down to it) and one ending (back up to
+        # the regular price). A receipt already sent at the old price waits
+        # for the owner (period_days).
+        if existing.plan == plan and not (existing.status == 'awaiting' and existing.amount != price):
             return existing, False
         # A receipt already sent waits for the owner: one payment at a time.
         if existing.status == 'submitted':
             raise DomainError('manual_payment_pending', 409)
         existing.status = 'cancelled'
         existing.save(update_fields=['status'])
-    # Telegram Stars is off in production, but a Stars subscription that renews
-    # by itself must not be paid for twice.
-    stars = Subscription.objects.filter(account=account, provider='telegram_stars', renewal_enabled=True).first()
-    if stars and active_period(account):
-        raise DomainError('subscription_already_active', 409)
     auth_limit('manual-payment', str(account.pk), 10, 86400)
     config = _config()
     card = {'number': config['card_number'], 'holder': config['card_holder'], 'label': config['card_label']}
@@ -120,8 +125,8 @@ def create(account, plan, channel='web'):
         try:
             with transaction.atomic():
                 payment = ManualPayment.objects.create(
-                    reference=_reference(), account=account, plan=plan, amount=offered[plan], card=card,
-                    channel=channel if channel in ('web', 'bot') else 'web',
+                    reference=_reference(), account=account, plan=plan, amount=price, regular_amount=regular,
+                    card=card, channel=channel if channel in ('web', 'bot') else 'web',
                     expires_at=timezone.now() + timedelta(hours=AWAIT_HOURS))
             break
         except IntegrityError:
@@ -253,8 +258,12 @@ def period_days(payment):
     rather than one ordinary period, so an overpayment becomes a longer one.
     A price that rose since, or a plan no longer on sale, never gives less
     than the 30 days the customer was promised.
+
+    "Today's price" here is the regular one, never a discount: a discount is
+    a lower price for the same 30 days, so the full price sent while one runs
+    buys 30 days, not 40, and a discounted receipt buys its 30.
     """
-    price = prices().get(payment.plan)
+    price = regular_prices().get(payment.plan)
     if not price or payment.amount <= price:
         return PERIOD_DAYS
     return max(PERIOD_DAYS, PERIOD_DAYS * payment.amount // price)
@@ -279,7 +288,7 @@ def approve(payment_id, actor, note=''):
     """The owner saw the money arrive: the plan starts, with its weekly limits."""
     from apps.core.models import Account
     from .models import Invoice, ManualPayment, OfferVersion, Payment, Subscription, SubscriptionPeriod
-    from .services import PERIOD, active_period, offer_data, refresh_account_entitlement
+    from .services import PERIOD, active_period, refresh_account_entitlement
     _require_finance(actor)
     payment = ManualPayment.objects.select_for_update().filter(pk=payment_id).first()
     if not payment:
@@ -292,14 +301,21 @@ def approve(payment_id, actor, note=''):
     now = timezone.now()
     # A payment buys the plan, not a copy of its numbers: the weekly limits are
     # read from the plan as it stands, so one offer per plan and price is enough.
+    # A discounted purchase and a full-price one are two offers, by the amount.
     offer, _ = OfferVersion.objects.get_or_create(
         id=f'manual:{payment.plan}:{payment.amount}',
         defaults={'offer_id': f'manual_{payment.plan}', 'version': 'manual-v2', 'kind': 'subscription',
-                  'plan': payment.plan, 'name': f'{payment.plan.title()} · card transfer', 'price_xtr': None,
+                  'plan': payment.plan, 'name': f'{payment.plan.title()} · card transfer',
                   'period_seconds': PERIOD, 'sandbox': False, 'enabled': False})
     days = period_days(payment)
-    snapshot = {**offer_data(offer), 'currency': payment.currency, 'price': payment.amount, 'provider': 'manual',
-                'period_seconds': days * 86400, 'period_days': days}
+    # What was bought, as it stood when the request was opened: the invoice
+    # keeps it after the prices and the discount have moved on. A request from
+    # before discounts carries no regular price of its own, and was not one.
+    regular = payment.regular_amount
+    snapshot = {'id': offer.id, 'offer_id': offer.offer_id, 'version': offer.version, 'kind': offer.kind,
+                'plan': payment.plan, 'name': offer.name, 'currency': payment.currency, 'price': payment.amount,
+                'regular_price': regular, 'discounted': regular is not None and payment.amount < regular,
+                'provider': 'manual', 'period_seconds': days * 86400, 'period_days': days}
     charge = f'manual:{payment.id}'
     invoice = Invoice.objects.create(
         account=account, offer=offer, snapshot=snapshot, amount_xtr=payment.amount, currency=payment.currency,

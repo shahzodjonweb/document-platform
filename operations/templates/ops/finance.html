@@ -73,10 +73,4 @@
   {% include 'ops/ui/pagination.html' with q=query %}
 </section>
 {% endif %}
-{% if issues and can_finance %}
-<section class="panel info-panel">
-  <h2>{{ f.issues }}</h2>
-  {% for issue in issues %}<div class="health-row"><span>{{ issue.kind }}</span><strong>{{ issue.amount_xtr }} XTR</strong></div>{% endfor %}
-</section>
-{% endif %}
 {% endblock %}

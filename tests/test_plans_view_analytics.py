@@ -16,7 +16,7 @@ from django.test import Client, RequestFactory
 from django.utils import timezone
 
 from apps.commerce import manual
-from apps.commerce.models import Invoice, ManualPayment, OfferVersion, Payment, PaymentNotice, Refund
+from apps.commerce.models import ManualPayment, PaymentNotice
 from apps.core import channel_gate, funnel
 from apps.core.identity import resolve_account
 from apps.core.models import Account, AnalyticsEvent, BotCallback, BotConversation
@@ -316,18 +316,6 @@ def card_request(account, created, status='awaiting'):
                                         expires_at=created + timedelta(hours=48))
 
 
-def stars_payment(account, when, *, renewal=False, sandbox=False):
-    key = uuid.uuid4().hex
-    offer = OfferVersion.objects.create(id=key, offer_id='fixture', version='fixture-v1', kind='subscription',
-                                        plan='plus', name='Fixture only', price_xtr=100, period_seconds=2592000,
-                                        sandbox=sandbox)
-    invoice = Invoice.objects.create(account=account, offer=offer, amount_xtr=100, idempotency_key=key,
-                                     request_hash=key, payload_hash=key, expires_at=when, sandbox=sandbox)
-    return Payment.objects.create(account=account, invoice=invoice, provider_charge_id='fixture:' + key,
-                                  amount_xtr=100, kind='subscription', plan='plus', occurred_at=when,
-                                  is_renewal=renewal, sandbox=sandbox)
-
-
 @pytest.fixture
 def september(settings):
     """Four people in production who looked at the plans in September 2026, and what they did."""
@@ -342,10 +330,9 @@ def september(settings):
     look(bekzod, at(6, 12), 'menu', plan='plus')
     card_request(bekzod, at(7))                                # asked, still waiting
     look(dilnoza, at(7), 'channels')
-    stars_payment(dilnoza, at(8))                              # paid with Stars
+    card_request(dilnoza, at(8), status='approved')           # paid by card the next day
     look(eldor, at(8, 20, 30), 'command', plan='premium')
     card_request(eldor, at(1), status='approved')             # before the look: not what it led to
-    stars_payment(eldor, at(9), renewal=True)                  # Telegram renewing: not a decision
     # Late on 31 August in UTC, which is already 1 September in Tashkent.
     look(aziza, datetime(2026, 8, 31, 23, 0, tzinfo=UTC), 'account')
     # A test account, which production never counts.
@@ -366,15 +353,15 @@ def test_the_report_counts_people_views_sources_plans_and_what_came_next(septemb
         ('menu', 2, 2), ('channels', 1, 1), ('command', 1, 1), ('limit', 1, 1)]
     assert [(row['plan_at_event'], row['views'], row['people']) for row in report['by_plan']] == [
         ('free', 3, 2), ('plus', 1, 1), ('premium', 1, 1)]
-    assert (report['started'], report['started_share'], report['paid'], report['paid_share']) == (2, 50, 2, 50)
-    assert report['started_note'] == '50% of the people who looked'
+    assert (report['started'], report['started_share'], report['paid'], report['paid_share']) == (3, 75, 2, 50)
+    assert report['started_note'] == '75% of the people who looked'
     daily = {row['date']: (row['views'], row['people']) for row in report['daily'] if row['views']}
     assert daily == {'2026-09-05': (1, 1), '2026-09-06': (2, 2), '2026-09-07': (1, 1), '2026-09-08': (1, 1)}
     assert len(report['daily']) == 30
     viewers = [(row['name'], row['plan'], row['views'], row['source'], row['started'], row['paid'])
                for row in report['viewers']]
     assert viewers == [('Eldor', 'premium', 1, '/plans or /buy, typed or a link in a message', False, False),
-                       ('Dilnoza', 'free', 1, 'Channel request', False, True),
+                       ('Dilnoza', 'free', 1, 'Channel request', True, True),
                        ('Bekzod', 'plus', 1, 'Main menu', True, False),
                        ('Aziza', 'free', 2, 'A used-up limit', True, True)]
     assert report['viewers'][0]['last_view'] == at(8, 20, 30)
@@ -397,22 +384,22 @@ def test_the_report_keeps_to_the_period_environment_channel_and_language(septemb
     assert plans_screen(filters_for(), CATALOGS['en'])['viewers'] == []
 
 
-def test_money_given_back_is_not_a_payment_whichever_way_it_came():
-    names = ('Stars back', 'Card back', 'Stars pending')
-    stars, card, pending = (Account.objects.create(telegram_user_id=986400 + i, display_name=name)
-                            for i, name in enumerate(names))
-    for person in (stars, card, pending):
+def test_only_an_approved_card_transfer_is_a_payment_and_money_given_back_is_not():
+    names = ('Card back', 'Card paid', 'Card waiting')
+    back, paid, waiting = (Account.objects.create(telegram_user_id=986400 + i, display_name=name)
+                           for i, name in enumerate(names))
+    for person in (back, paid, waiting):
         look(person, at(5), 'menu')
-    Refund.objects.create(payment=stars_payment(stars, at(5, 11)), amount_xtr=100, reason='Asked for it back',
-                          status='confirmed')
-    card_request(card, at(5, 11), status='refunded')
-    # A refund Telegram has not confirmed has not given anything back yet.
-    Refund.objects.create(payment=stars_payment(pending, at(5, 11)), amount_xtr=100, reason='Asked for it back')
+    card_request(back, at(5, 11), status='refunded')
+    card_request(paid, at(5, 11), status='approved')
+    # A receipt the owner has not approved has not paid for anything yet.
+    card_request(waiting, at(5, 11), status='submitted')
     report = plans_screen(filters_for(), CATALOGS['en'], with_viewers=True)
     assert {row['name']: (row['started'], row['paid']) for row in report['viewers']} == {
-        'Stars back': (False, False), 'Card back': (True, False), 'Stars pending': (False, True)}
-    assert (report['started'], report['paid']) == (1, 1)
+        'Card back': (True, False), 'Card paid': (True, True), 'Card waiting': (True, False)}
+    assert (report['started'], report['paid']) == (3, 1)
     assert 'Refunded payments are left out' in CATALOGS['en']['plans_paid_definition']
+    assert 'Stars' not in CATALOGS['en']['plans_paid_definition']
 
 
 def test_the_report_is_a_few_queries_however_many_people_looked(september, django_assert_max_num_queries):
@@ -441,7 +428,7 @@ def test_the_admin_shows_the_plans_screen_in_each_language(september, lang):
         assert t[key] in page, key
     shown = response.context['plans_screen']
     # The report's days, and the times shown, are the computer's own (Tashkent here).
-    assert (shown['views'], shown['people'], shown['started'], shown['paid']) == (6, 4, 2, 2)
+    assert (shown['views'], shown['people'], shown['started'], shown['paid']) == (6, 4, 3, 2)
     aziza = september['Aziza']
     assert f'href="/ops/users/{aziza.id}?lang={lang}"' in page and 'Dilnoza' in page and '@bekzod' in page
     assert '09 Sep 2026 · 01:30' in page, 'Eldor’s last look, 20:30 UTC, in Tashkent'

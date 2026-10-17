@@ -21,7 +21,7 @@ if not 1024 <= args.port <= 65535:
 args.root.mkdir(parents=True, exist_ok=True, mode=0o700)
 values = {
     "DEBUG": "0", "DEVELOPMENT_LOGIN_ENABLED": "0", "LOCAL_SYNC_JOBS": "0",
-    "COMMERCE_SANDBOX_ENABLED": "0", "COMMERCE_LIVE_ENABLED": "0",
+    "COMMERCE_SANDBOX_ENABLED": "0",
     "SECRET_KEY": secrets.token_urlsafe(64), "POSTGRES_PASSWORD": secrets.token_urlsafe(32),
     "FILE_SECRET_KEY": base64.urlsafe_b64encode(os.urandom(32)).decode(),
     "INTEGRATION_ENCRYPTION_KEY": base64.urlsafe_b64encode(os.urandom(32)).decode(),

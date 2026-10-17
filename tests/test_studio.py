@@ -12,10 +12,10 @@ from apps.core.services import submit_job,execute_job,storage_path,create_quote
 from apps.core.errors import DomainError
 from apps.studio.domain import create_draft,update_draft,generation_quote,draft_data,unpack
 from apps.studio.models import EducationProject,GenerationDraft,ShareGrant
-from apps.commerce.services import create_invoice,sandbox_pay
 from operations.integrations import save_config,telegram_config
 from operations.models import IntegrationConfig,AuditLog
 from tests.test_platform import account,upload,login_client
+from tests.test_manual_payments import paid as paid_by_card
 from operations.auth import begin_session,COOKIE
 from django.http import HttpResponse
 pytestmark=pytest.mark.django_db
@@ -27,8 +27,8 @@ def studio_local(settings):
 
 
 def paid(settings,a):
-    settings.COMMERCE_SANDBOX_ENABLED=True
-    inv,_=create_invoice(a,'premium','studio-premium-'+str(a.id));sandbox_pay(a,inv.id);a.refresh_from_db();return a
+    # The signature stays: a dozen test modules import this helper.
+    return paid_by_card(a,'premium')
 
 def content():
     return {'title':'O‘zbekcha — Русский','sections':[{'heading':'Bo‘lim / Раздел','body':'O‘qituvchi bilim beradi. Учитель помогает учиться.'}],'questions':[{'id':'q1','stem':'2 + 2?','options':['3','4'],'answer':'4','explanation':'Two pairs make four.','topic':'addition','marks':2}]}

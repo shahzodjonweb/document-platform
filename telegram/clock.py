@@ -39,6 +39,16 @@ def stamp(account, value, fmt='%Y-%m-%d %H:%M'):
     return f'{moment:{fmt}} {offset_label(moment)}'
 
 
+def day_label(value, locale):
+    """A calendar day as this language writes it: '31 Oct', '31-oktabr', '31 октября'.
+
+    Spelt by apps.commerce.pricing, where the plans' dates live, so the bot,
+    the admin panel and the web app write a discount's last day the same way.
+    """
+    from apps.commerce.pricing import day_label as spell
+    return spell(value, locale)
+
+
 def zone_known(account):
     """Whether the account's clock is really its owner's.
 

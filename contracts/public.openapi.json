@@ -288,58 +288,6 @@
         ],
         "type": "object"
       },
-      "BillingOffer": {
-        "properties": {
-          "checkout_enabled": {
-            "type": "boolean"
-          },
-          "currency": {
-            "type": "string"
-          },
-          "id": {
-            "type": "string"
-          },
-          "kind": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "period_seconds": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "plan": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "price_xtr": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "sandbox": {
-            "type": "boolean"
-          },
-          "version": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "version",
-          "kind",
-          "name",
-          "price_xtr",
-          "currency",
-          "sandbox",
-          "checkout_enabled"
-        ],
-        "type": "object"
-      },
       "BotDelivery": {
         "properties": {
           "attempts": {
@@ -1275,71 +1223,6 @@
         ],
         "type": "object"
       },
-      "Invoice": {
-        "properties": {
-          "amount_xtr": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "created_at": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "currency": {
-            "type": "string"
-          },
-          "expires_at": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "id": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "invoice_url": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "kind": {
-            "type": "string"
-          },
-          "offer_id": {
-            "type": "string"
-          },
-          "paid_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "plan": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "sandbox": {
-            "type": "boolean"
-          },
-          "status": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "offer_id",
-          "kind",
-          "status",
-          "amount_xtr",
-          "currency",
-          "sandbox",
-          "expires_at"
-        ],
-        "type": "object"
-      },
       "Job": {
         "properties": {
           "artifacts": {
@@ -1587,6 +1470,16 @@
           "plans": {
             "items": {
               "properties": {
+                "discount": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/PlanDiscount"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "plan": {
                   "enum": [
                     "plus",
@@ -1596,11 +1489,17 @@
                 "price": {
                   "minimum": 0,
                   "type": "integer"
+                },
+                "regular_price": {
+                  "minimum": 0,
+                  "type": "integer"
                 }
               },
               "required": [
                 "plan",
-                "price"
+                "price",
+                "regular_price",
+                "discount"
               ],
               "type": "object"
             },
@@ -1619,7 +1518,7 @@
       },
       "Payment": {
         "properties": {
-          "amount_xtr": {
+          "amount": {
             "minimum": 0,
             "type": "integer"
           },
@@ -1659,7 +1558,7 @@
               "null"
             ]
           },
-          "refunded_xtr": {
+          "refunded": {
             "minimum": 0,
             "type": "integer"
           },
@@ -1674,20 +1573,27 @@
           "id",
           "invoice_id",
           "kind",
-          "amount_xtr",
+          "amount",
           "currency",
           "sandbox",
           "occurred_at",
           "is_renewal",
-          "refunded_xtr",
+          "refunded",
           "status"
         ],
         "type": "object"
       },
       "Plan": {
         "properties": {
-          "checkout_enabled": {
-            "type": "boolean"
+          "discount": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlanDiscount"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "features": {
             "items": {
@@ -1704,7 +1610,7 @@
           "name": {
             "type": "string"
           },
-          "price_xtr": {
+          "price_uzs": {
             "type": [
               "integer",
               "null"
@@ -1714,9 +1620,37 @@
         "required": [
           "id",
           "name",
-          "price_xtr",
+          "price_uzs",
+          "discount",
           "limits",
-          "checkout_enabled"
+          "features"
+        ],
+        "type": "object"
+      },
+      "PlanDiscount": {
+        "properties": {
+          "percent": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "price": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "regular": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "until": {
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "price",
+          "regular",
+          "percent",
+          "until"
         ],
         "type": "object"
       },
@@ -1863,45 +1797,6 @@
           "feature_id",
           "affordable",
           "expires_at"
-        ],
-        "type": "object"
-      },
-      "Refund": {
-        "properties": {
-          "amount_xtr": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "confirmed_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "error_code": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "id": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "payment_id": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "status": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "payment_id",
-          "status",
-          "amount_xtr"
         ],
         "type": "object"
       },
@@ -2064,9 +1959,6 @@
       },
       "SubscriptionState": {
         "properties": {
-          "checkout_enabled": {
-            "type": "boolean"
-          },
           "plan": {
             "type": "string"
           },
@@ -2087,8 +1979,7 @@
         "required": [
           "plan",
           "subscription",
-          "sandbox",
-          "checkout_enabled"
+          "sandbox"
         ],
         "type": "object"
       },
@@ -2369,7 +2260,7 @@
     }
   },
   "info": {
-    "description": "Local development beta. Studio, editor, document jobs and sandbox commerce are covered. Staff operations are excluded. Live providers require server configuration.",
+    "description": "Local development beta. Studio, editor, document jobs and card-transfer billing are covered. Staff operations are excluded. Live providers require server configuration.",
     "title": "PDF Master public API",
     "version": "1.1.0"
   },
@@ -4543,380 +4434,6 @@
         ]
       }
     },
-    "/billing/invoices": {
-      "get": {
-        "description": "",
-        "operationId": "getInvoices",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "results": {
-                      "items": {
-                        "$ref": "#/components/schemas/Invoice"
-                      },
-                      "type": "array"
-                    }
-                  },
-                  "required": [
-                    "results"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Success"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/Error"
-                    }
-                  },
-                  "required": [],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Invalid request"
-          },
-          "401": {
-            "description": "Authentication required"
-          },
-          "403": {
-            "description": "Permission or CSRF validation failed"
-          },
-          "409": {
-            "description": "State conflict or quota unavailable"
-          }
-        },
-        "security": [
-          {
-            "customerSession": []
-          }
-        ]
-      },
-      "post": {
-        "description": "",
-        "operationId": "createInvoice",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "X-CSRFToken",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "Idempotency-Key",
-            "required": true,
-            "schema": {
-              "maxLength": 128,
-              "minLength": 8,
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "properties": {
-                  "offer_id": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "offer_id"
-                ],
-                "type": "object"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Invoice"
-                }
-              }
-            },
-            "description": "Success"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/Error"
-                    }
-                  },
-                  "required": [],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Invalid request"
-          },
-          "401": {
-            "description": "Authentication required"
-          },
-          "403": {
-            "description": "Permission or CSRF validation failed"
-          },
-          "409": {
-            "description": "State conflict or quota unavailable"
-          }
-        },
-        "security": [
-          {
-            "customerSession": []
-          }
-        ]
-      }
-    },
-    "/billing/invoices/{id}": {
-      "delete": {
-        "description": "",
-        "operationId": "cancelInvoice",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-CSRFToken",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Invoice"
-                }
-              }
-            },
-            "description": "Success"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/Error"
-                    }
-                  },
-                  "required": [],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Invalid request"
-          },
-          "401": {
-            "description": "Authentication required"
-          },
-          "403": {
-            "description": "Permission or CSRF validation failed"
-          },
-          "409": {
-            "description": "State conflict or quota unavailable"
-          }
-        },
-        "security": [
-          {
-            "customerSession": []
-          }
-        ]
-      },
-      "get": {
-        "description": "",
-        "operationId": "getInvoice",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Invoice"
-                }
-              }
-            },
-            "description": "Success"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/Error"
-                    }
-                  },
-                  "required": [],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Invalid request"
-          },
-          "401": {
-            "description": "Authentication required"
-          },
-          "403": {
-            "description": "Permission or CSRF validation failed"
-          },
-          "409": {
-            "description": "State conflict or quota unavailable"
-          }
-        },
-        "security": [
-          {
-            "customerSession": []
-          }
-        ]
-      }
-    },
-    "/billing/invoices/{id}/sandbox-pay": {
-      "post": {
-        "description": "Local payment simulator restricted to test accounts and explicit sandbox enablement.",
-        "operationId": "sandboxPayInvoice",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-CSRFToken",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "properties": {},
-                "required": [],
-                "type": "object"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "created": {
-                      "type": "boolean"
-                    },
-                    "invoice": {
-                      "$ref": "#/components/schemas/Invoice"
-                    },
-                    "payment": {
-                      "$ref": "#/components/schemas/Payment"
-                    },
-                    "plan": {
-                      "type": "string"
-                    },
-                    "sandbox": {
-                      "type": "boolean"
-                    },
-                    "subscription": {
-                      "anyOf": [
-                        {
-                          "$ref": "#/components/schemas/Subscription"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    }
-                  },
-                  "required": [],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Success"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/Error"
-                    }
-                  },
-                  "required": [],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Invalid request"
-          },
-          "401": {
-            "description": "Authentication required"
-          },
-          "403": {
-            "description": "Permission or CSRF validation failed"
-          },
-          "409": {
-            "description": "State conflict or quota unavailable"
-          }
-        },
-        "security": [
-          {
-            "customerSession": []
-          }
-        ]
-      }
-    },
     "/billing/manual": {
       "get": {
         "description": "Card transfer to the owner, reviewed by hand. The card is shown only to signed-in customers.",
@@ -5256,487 +4773,10 @@
         ]
       }
     },
-    "/billing/offers": {
-      "get": {
-        "description": "",
-        "operationId": "getBillingOffers",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "billing_mode": {
-                      "enum": [
-                        "sandbox",
-                        "live",
-                        "disabled"
-                      ]
-                    },
-                    "checkout_enabled": {
-                      "type": "boolean"
-                    },
-                    "currency": {
-                      "type": "string"
-                    },
-                    "offers": {
-                      "items": {
-                        "$ref": "#/components/schemas/BillingOffer"
-                      },
-                      "type": "array"
-                    },
-                    "sandbox": {
-                      "type": "boolean"
-                    }
-                  },
-                  "required": [
-                    "offers",
-                    "sandbox",
-                    "checkout_enabled",
-                    "currency",
-                    "billing_mode"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Success"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/Error"
-                    }
-                  },
-                  "required": [],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Invalid request"
-          },
-          "401": {
-            "description": "Authentication required"
-          },
-          "403": {
-            "description": "Permission or CSRF validation failed"
-          },
-          "409": {
-            "description": "State conflict or quota unavailable"
-          }
-        },
-        "security": [
-          {
-            "customerSession": []
-          }
-        ]
-      }
-    },
-    "/billing/payments/{id}/sandbox-refund": {
-      "post": {
-        "description": "",
-        "operationId": "sandboxRefundPayment",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-CSRFToken",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "properties": {
-                  "reason": {
-                    "type": "string"
-                  }
-                },
-                "required": [],
-                "type": "object"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Refund"
-                }
-              }
-            },
-            "description": "Success"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/Error"
-                    }
-                  },
-                  "required": [],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Invalid request"
-          },
-          "401": {
-            "description": "Authentication required"
-          },
-          "403": {
-            "description": "Permission or CSRF validation failed"
-          },
-          "409": {
-            "description": "State conflict or quota unavailable"
-          }
-        },
-        "security": [
-          {
-            "customerSession": []
-          }
-        ]
-      }
-    },
     "/billing/subscription": {
       "get": {
         "description": "",
         "operationId": "getSubscription",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SubscriptionState"
-                }
-              }
-            },
-            "description": "Success"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/Error"
-                    }
-                  },
-                  "required": [],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Invalid request"
-          },
-          "401": {
-            "description": "Authentication required"
-          },
-          "403": {
-            "description": "Permission or CSRF validation failed"
-          },
-          "409": {
-            "description": "State conflict or quota unavailable"
-          }
-        },
-        "security": [
-          {
-            "customerSession": []
-          }
-        ]
-      }
-    },
-    "/billing/subscription/cancel-renewal": {
-      "post": {
-        "description": "",
-        "operationId": "cancelRenewal",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "X-CSRFToken",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "properties": {},
-                "required": [],
-                "type": "object"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SubscriptionState"
-                }
-              }
-            },
-            "description": "Success"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/Error"
-                    }
-                  },
-                  "required": [],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Invalid request"
-          },
-          "401": {
-            "description": "Authentication required"
-          },
-          "403": {
-            "description": "Permission or CSRF validation failed"
-          },
-          "409": {
-            "description": "State conflict or quota unavailable"
-          }
-        },
-        "security": [
-          {
-            "customerSession": []
-          }
-        ]
-      }
-    },
-    "/billing/subscription/resume-renewal": {
-      "post": {
-        "description": "",
-        "operationId": "resumeRenewal",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "X-CSRFToken",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "properties": {},
-                "required": [],
-                "type": "object"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SubscriptionState"
-                }
-              }
-            },
-            "description": "Success"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/Error"
-                    }
-                  },
-                  "required": [],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Invalid request"
-          },
-          "401": {
-            "description": "Authentication required"
-          },
-          "403": {
-            "description": "Permission or CSRF validation failed"
-          },
-          "409": {
-            "description": "State conflict or quota unavailable"
-          }
-        },
-        "security": [
-          {
-            "customerSession": []
-          }
-        ]
-      }
-    },
-    "/billing/subscription/sandbox-renew": {
-      "post": {
-        "description": "",
-        "operationId": "sandboxRenewSubscription",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "X-CSRFToken",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "Idempotency-Key",
-            "required": true,
-            "schema": {
-              "maxLength": 128,
-              "minLength": 8,
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "properties": {},
-                "required": [],
-                "type": "object"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "created": {
-                      "type": "boolean"
-                    },
-                    "payment": {
-                      "$ref": "#/components/schemas/Payment"
-                    },
-                    "sandbox": {
-                      "type": "boolean"
-                    },
-                    "subscription": {
-                      "$ref": "#/components/schemas/Subscription"
-                    }
-                  },
-                  "required": [],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Success"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "error": {
-                      "$ref": "#/components/schemas/Error"
-                    }
-                  },
-                  "required": [],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Invalid request"
-          },
-          "401": {
-            "description": "Authentication required"
-          },
-          "403": {
-            "description": "Permission or CSRF validation failed"
-          },
-          "409": {
-            "description": "State conflict or quota unavailable"
-          }
-        },
-        "security": [
-          {
-            "customerSession": []
-          }
-        ]
-      }
-    },
-    "/billing/subscription/schedule-plan-change": {
-      "post": {
-        "description": "",
-        "operationId": "schedulePlanChange",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "X-CSRFToken",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "properties": {
-                  "plan": {
-                    "enum": [
-                      "free",
-                      "plus",
-                      "premium"
-                    ]
-                  }
-                },
-                "required": [
-                  "plan"
-                ],
-                "type": "object"
-              }
-            }
-          },
-          "required": true
-        },
         "responses": {
           "200": {
             "content": {
@@ -9332,11 +8372,8 @@
               "application/json": {
                 "schema": {
                   "properties": {
-                    "checkout_enabled": {
-                      "type": "boolean"
-                    },
                     "currency": {
-                      "type": "string"
+                      "const": "UZS"
                     },
                     "draft": {
                       "type": "boolean"
@@ -9355,7 +8392,8 @@
                   "required": [
                     "plans",
                     "draft",
-                    "checkout_enabled"
+                    "currency",
+                    "period_seconds"
                   ],
                   "type": "object"
                 }

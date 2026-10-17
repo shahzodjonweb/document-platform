@@ -131,9 +131,21 @@ tests/test_antibot.py::test_auth_initiation_cannot_skip_verification[email/regis
 tests/test_channel_gate.py::test_the_api_says_what_to_join_and_refuses_a_task_with_the_same_list
 tests/test_channel_gate.py::test_only_premium_is_never_asked
 
-# Telegram Stars checkout
-apps/commerce/tests/test_commerce.py::test_invoice_quote_prices_server_owned_and_confirmed_once
-apps/commerce/tests/test_commerce.py::test_production_prices_null_and_sandbox_cannot_activate_real_account
+# Card transfer is the only checkout; a sandbox period never reaches production
+apps/commerce/tests/test_commerce.py::test_the_stars_checkout_is_gone_from_the_api
+apps/commerce/tests/test_commerce.py::test_a_sandbox_period_never_leaves_enabled_development
+
+# Plan discounts: today's price in the bot, the web and the card-transfer screens,
+# never extra days, and an admin form that refuses a discount that makes no sense
+tests/test_manual_payments.py::test_a_discount_is_todays_price_and_never_changes_the_days
+tests/test_manual_payments.py::test_the_full_price_sent_during_a_discount_buys_thirty_days_not_forty
+tests/test_manual_payments.py::test_an_unpaid_request_follows_the_discount_in_and_out
+tests/test_manual_payments.py::test_a_discounted_receipt_approved_after_the_discount_ended_still_gives_thirty_days
+tests/test_plan_limits.py::test_a_discount_is_both_fields_under_a_regular_price_and_at_least_one_percent_off
+tests/test_plan_limits.py::test_an_expired_discount_left_in_the_form_never_blocks_another_edit
+tests/test_plan_limits.py::test_the_plans_page_advertises_a_discount_beside_the_regular_price
+tests/test_bot_plans_overview.py::test_a_discount_strikes_the_regular_price_through_and_says_until_when
+tests/test_bot_manual_payments.py::test_the_payment_screen_asks_for_the_discounted_amount_and_shows_the_regular_price
 
 # Card payment request and receipt via web API
 tests/test_manual_payments.py::test_the_api_offers_card_payment_and_walks_a_payment_to_review

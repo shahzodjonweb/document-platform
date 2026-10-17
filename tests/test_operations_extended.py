@@ -165,16 +165,17 @@ def test_runner_status_requires_held_lock_and_current_project_command(settings,m
 
 
 def payment_fixture(account,amount,occurred,*,sandbox=False):
+    """An approved card transfer of `amount` so'm, as manual.approve records one."""
     key=uuid.uuid4().hex
-    offer=OfferVersion.objects.create(id=key,offer_id='fixture',version='fixture-v1',kind='subscription',plan='plus',name='Fixture only',price_xtr=amount,period_seconds=2592000,sandbox=sandbox)
-    invoice=Invoice.objects.create(account=account,offer=offer,amount_xtr=amount,idempotency_key=key,request_hash=key,payload_hash=key,expires_at=occurred+timedelta(minutes=10),sandbox=sandbox)
-    return Payment.objects.create(account=account,invoice=invoice,provider_charge_id='fixture:'+key,amount_xtr=amount,kind='subscription',plan='plus',occurred_at=occurred,sandbox=sandbox)
+    offer=OfferVersion.objects.create(id=key,offer_id='manual_plus',version='manual-v2',kind='subscription',plan='plus',name='Plus · card transfer',period_seconds=2592000,sandbox=sandbox,enabled=False)
+    invoice=Invoice.objects.create(account=account,offer=offer,amount_xtr=amount,currency='UZS',provider='manual',idempotency_key=key,request_hash=key,payload_hash='',expires_at=occurred+timedelta(minutes=10),sandbox=sandbox)
+    return Payment.objects.create(account=account,invoice=invoice,provider_charge_id='manual:'+key,amount_xtr=amount,currency='UZS',provider='manual',kind='subscription',plan='plus',occurred_at=occurred,sandbox=sandbox)
 
 
 def filter_for(start,end,**extra):return Filters.from_request(RequestFactory().get('/',{'date_from':start,'date_to':end,**extra}))
 
 
-def test_finance_refunds_use_own_period_and_production_excludes_every_test_dimension(monkeypatch):
+def test_finance_totals_are_in_som_refunds_use_their_own_period_and_production_excludes_every_test_dimension(monkeypatch):
     now=datetime(2026,9,23,tzinfo=utc.utc);monkeypatch.setattr('operations.commerce_views.timezone.now',lambda:now)
     account=Account.objects.create(telegram_user_id=819191,display_name='SECRET-FINANCE-IDENTITY',created_at=datetime(2026,8,1,tzinfo=utc.utc))
     old=payment_fixture(account,50,datetime(2026,8,25,tzinfo=utc.utc))
@@ -186,16 +187,22 @@ def test_finance_refunds_use_own_period_and_production_excludes_every_test_dimen
     sub=Subscription.objects.create(account=account,invoice=current.invoice,offer=current.invoice.offer,plan='plus',first_charge_id=current.provider_charge_id,current_period_end=datetime(2026,10,5,tzinfo=utc.utc),sandbox=False)
     SubscriptionPeriod.objects.create(subscription=sub,payment=current,account=account,plan='plus',starts_at=current.occurred_at,ends_at=sub.current_period_end,revoked_at=datetime(2026,9,18,tzinfo=utc.utc),sandbox=False)
     report=financial_report(filter_for('2026-09-01','2026-10-01'))
-    assert report['totals']=={'gross':75,'refunds':50,'net':25,'payers':1,'paid':0,'renewals':0,'first':0,'run_rate':0,'uzs_gross':0,'uzs_refunds':0,'uzs_net':0,'manual_pending':0}
+    assert report['totals']=={'uzs_gross':75,'uzs_refunds':50,'uzs_net':25,'payers':1,'paid':0,'first':0,'manual_pending':0}
+    assert 'issues' not in report, 'nothing to reconcile with a provider'
     assert financial_report(filter_for('2026-09-01','2026-09-15'))['totals']['paid']==1
-    assert financial_report(filter_for('2026-08-01','2026-09-01'))['totals']['gross']==50
-    assert financial_report(filter_for('2026-08-01','2026-09-01'))['totals']['refunds']==0
-    assert financial_report(filter_for('2026-09-01','2026-10-01',environment='development'))['totals']['gross']==700
+    assert financial_report(filter_for('2026-08-01','2026-09-01'))['totals']['uzs_gross']==50
+    assert financial_report(filter_for('2026-08-01','2026-09-01'))['totals']['uzs_refunds']==0
+    assert financial_report(filter_for('2026-09-01','2026-10-01',environment='development'))['totals']['uzs_gross']==700
     analyst,_=staff_client('Analyst');url='/ops/analytics/revenue?date_from=2026-09-01&date_to=2026-10-01'
     response=analyst.get(url);assert response.status_code==200
     assert account.display_name.encode() not in response.content and str(account.id).encode() not in response.content and str(current.id).encode() not in response.content
     assert analyst.get('/ops/payments').status_code==403 and analyst.post('/ops/payments/'+str(current.id),{'reason':'Attempt disallowed refund'}).status_code==403
     finance,_=staff_client('Finance');assert account.display_name.encode() in finance.get(url).content
+    # A payment row is history to look at: there is no refund form on it to post
+    # (the frame's sign-out form is the only POST on the page).
+    detail=finance.get('/ops/payments/'+str(current.id))
+    assert detail.status_code==200 and detail.content.count(b'method="post"')==1 and b'/ops/logout' in detail.content
+    assert finance.post('/ops/payments/'+str(current.id),{}).status_code==405 and not Refund.objects.filter(payment=current).exists()
 
 
 def test_activity_uses_actual_event_channel_and_does_not_mark_immature_retention_zero(monkeypatch):

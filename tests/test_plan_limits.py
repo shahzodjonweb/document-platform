@@ -8,11 +8,13 @@ differences: every other limit and every tool is the same on every plan, at
 Premium's figures.
 """
 import importlib
+from datetime import timedelta
 
 import pytest
 from django.apps import apps as django_apps
 from django.test import Client
 
+from apps.commerce import pricing
 from apps.core.policy import FEATURES, POLICY_VERSION, SEED, limits_for_plan
 from apps.studio.domain import MAX_QUESTIONS
 from operations import plans as plan_settings
@@ -23,7 +25,7 @@ WEEKLY = ('weekly_ai_documents', 'weekly_file_jobs', 'edits_per_file')
 RETIRED = ('file_tasks', 'file_page_units', 'ai_credits', 'daily_file_tasks', 'daily_ai_documents')
 UNLIMITED = float('inf')
 # What still differs by plan; every other limit is shared.
-PER_PLAN = ('price_xtr', 'price_uzs', *WEEKLY)
+PER_PLAN = ('price_uzs', 'discount_price_uzs', 'discount_until', *WEEKLY)
 SHARED = [key for key in SEED['plans']['premium'] if key not in PER_PLAN]
 
 
@@ -41,7 +43,7 @@ def test_free_never_gives_more_than_a_paid_plan():
     plans = SEED['plans']
     value = lambda plan, key: UNLIMITED if plans[plan][key] is None else plans[plan][key]
     for key, free in plans['free'].items():
-        if key.startswith('price_') or not isinstance(free, (int, type(None))):
+        if key.startswith(('price_', 'discount_')) or not isinstance(free, (int, type(None))):
             continue
         for lower, higher in (('free', 'plus'), ('plus', 'premium')):
             assert value(higher, key) >= value(lower, key), (key, lower, higher)
@@ -119,16 +121,13 @@ def test_a_free_account_saves_and_runs_a_workflow(settings, hold_back):
 
 
 @pytest.mark.parametrize('plan', ['free', 'plus'])
-def test_every_plan_saves_form_templates(settings, plan, hold_back):
-    from apps.commerce.services import create_invoice, sandbox_pay
+def test_every_plan_saves_form_templates(plan, hold_back):
     from apps.studio.models import SavedDefinition
+    from tests.test_manual_payments import paid
     from tests.test_platform import account, login_client
-    settings.DEBUG = settings.COMMERCE_SANDBOX_ENABLED = True
     customer = account(77003)
     if plan == 'plus':
-        invoice, _ = create_invoice(customer, 'plus', 'form-templates-plus')
-        sandbox_pay(customer, invoice.id)
-        customer.refresh_from_db()
+        customer = paid(customer, 'plus')
     client = login_client(customer)
     template = {'name': 'Customer data', 'content': {'commands': [{'type': 'fill_form', 'field': 'customer', 'value': 'Ali'}]}}
     assert client.get('/api/v1/editor/form-templates').json()['limit'] == 30
@@ -142,15 +141,11 @@ def test_every_plan_saves_form_templates(settings, plan, hold_back):
     assert SavedDefinition.objects.filter(account=customer, kind='form').count() == 1
 
 
-def test_a_free_document_may_carry_as_many_questions_as_premium(settings):
-    from apps.commerce.services import create_invoice, sandbox_pay
+def test_a_free_document_may_carry_as_many_questions_as_premium():
     from apps.studio.domain import limits
+    from tests.test_manual_payments import paid
     from tests.test_platform import account
-    settings.DEBUG = settings.COMMERCE_SANDBOX_ENABLED = True
-    free, premium = account(77004), account(77005)
-    invoice, _ = create_invoice(premium, 'premium', 'questions-premium')
-    sandbox_pay(premium, invoice.id)
-    premium.refresh_from_db()
+    free, premium = account(77004), paid(account(77005), 'premium')
     assert premium.plan == 'premium'
     assert limits(free)['questions'] == limits(premium)['questions'] == MAX_QUESTIONS
 
@@ -321,6 +316,108 @@ def test_the_plans_page_advertises_the_weekly_limits_and_prices():
     assert listed['free']['weekly_file_jobs'] == 20, 'the panel\'s figure is the one advertised'
     assert (listed['plus']['price_uzs'], listed['premium']['price_uzs']) == (20_000, 60_000)
     assert listed['premium']['weekly_ai_documents'] is None and listed['plus']['edits_per_file'] == 10
+
+
+# ---------------------------------------------------------------- discounts
+
+
+def in_a_fortnight():
+    return (pricing.today() + timedelta(days=14)).isoformat()
+
+
+def discount(price='15000', until=None):
+    return {'discount_price_uzs': price, 'discount_until': until or in_a_fortnight()}
+
+
+def test_a_discount_is_both_fields_under_a_regular_price_and_at_least_one_percent_off():
+    plans = SEED['plans']
+    until = in_a_fortnight()
+    assert plan_settings.validate('plus', discount(until=until), plans) == {'discount_price_uzs': 15_000, 'discount_until': until}
+    assert plan_settings.validate('plus', discount('19800'), plans)['discount_price_uzs'] == 19_800, 'exactly 1% off'
+    with pytest.raises(plan_settings.PlanError, match='both a discounted price and its last day'):
+        plan_settings.validate('plus', {'discount_price_uzs': '15000'}, plans)
+    with pytest.raises(plan_settings.PlanError, match='both a discounted price and its last day'):
+        plan_settings.validate('plus', {'discount_until': until}, plans)
+    for price in ('20000', '25000', '19900'):
+        with pytest.raises(plan_settings.PlanError, match='at least 1% below the regular price'):
+            plan_settings.validate('plus', discount(price), plans)
+    with pytest.raises(plan_settings.PlanError, match='cannot be before today'):
+        plan_settings.validate('plus', discount(until=(pricing.today() - timedelta(days=1)).isoformat()), plans)
+    with pytest.raises(plan_settings.PlanError, match='must be a date, YYYY-MM-DD'):
+        plan_settings.validate('plus', discount(until='31.10.2026'), plans)
+    with pytest.raises(plan_settings.PlanError, match='between 2020-01-01 and 2099-12-31'):
+        plan_settings.validate('plus', discount(until='2100-01-01'), plans)
+    with pytest.raises(plan_settings.PlanError, match='needs a regular price'):
+        plan_settings.validate('plus', {'price_uzs': '', **discount()}, plans)
+    with pytest.raises(plan_settings.PlanError, match='free plan has no discount'):
+        plan_settings.validate('free', discount(), plans)
+    assert plan_settings.validate('plus', {'discount_price_uzs': '', 'discount_until': ''}, plans) == {
+        'discount_price_uzs': None, 'discount_until': None}, 'blank both is no discount'
+
+
+def test_a_discount_is_judged_against_the_price_the_plan_will_have():
+    """The form sends every field: a regular price typed beside the discount counts, and the stored one does too."""
+    plans = SEED['plans']
+    plan_settings.save('plus', {'price_uzs': '30000'})
+    assert plan_settings.validate('plus', discount('25000'), plans)['discount_price_uzs'] == 25_000
+    with pytest.raises(plan_settings.PlanError, match='at least 1% below'):
+        plan_settings.validate('plus', {'price_uzs': '15000', **discount()}, plans)
+
+
+def test_lowering_the_regular_price_under_a_live_discount_is_refused_for_the_regular_price():
+    """The owner touched the regular price, so the refusal names it and the
+    discount it would fall under, not the discounted price they left alone."""
+    plans = SEED['plans']
+    plan_settings.save('plus', discount())
+    for price in ('14000', '15000', '15100'):
+        with pytest.raises(plan_settings.PlanError,
+                           match=r'regular price must stay at least 1% above the discounted price \(15 000\)\. Clear the discount first\.'):
+            plan_settings.validate('plus', {'price_uzs': price}, plans)
+    assert plan_settings.validate('plus', {'price_uzs': '16000'}, plans) == {'price_uzs': 16_000}
+    # A discount touched in the same edit is judged from the discount's side.
+    with pytest.raises(plan_settings.PlanError, match='discounted price must be at least 1% below'):
+        plan_settings.validate('plus', {'price_uzs': '14000', 'discount_price_uzs': '14000'}, plans)
+
+
+def test_an_expired_discount_left_in_the_form_never_blocks_another_edit():
+    overridden({'plus': {'discount_price_uzs': 15_000, 'discount_until': '2024-01-01'}})
+    assert pricing.plan_price('plus')['discount'] is None, 'over, so ignored'
+    plus = limits_for_plan('plus')
+    form = {field: '' if plus[field] is None else str(plus[field]) for field in plan_settings.FIELDS}
+    assert plan_settings.save('plus', {**form, 'weekly_ai_documents': '25'}) == {
+        'plus': ({'weekly_ai_documents': 20}, {'weekly_ai_documents': 25})}
+    with pytest.raises(plan_settings.PlanError, match='cannot be before today'):
+        plan_settings.save('plus', {**form, 'discount_until': '2024-06-01'})
+    # A new price typed beside the last day already gone would go live as nothing at all.
+    with pytest.raises(plan_settings.PlanError, match='cannot be before today'):
+        plan_settings.save('plus', {**form, 'discount_price_uzs': '12000'})
+    assert plan_settings.overrides()['plus']['discount_price_uzs'] == 15_000, 'nothing saved'
+    plan_settings.save('plus', {**form, 'discount_until': in_a_fortnight()})
+    assert pricing.plan_price('plus')['price'] == 15_000
+    plan_settings.save('plus', {'discount_price_uzs': '', 'discount_until': ''})
+    assert pricing.plan_price('plus')['discount'] is None
+    assert 'discount_until' not in plan_settings.overrides().get('plus', {})
+
+
+def test_the_plans_page_advertises_a_discount_beside_the_regular_price():
+    until = in_a_fortnight()
+    plan_settings.save('plus', discount(until=until))
+    body = Client().get('/api/v1/plans').json()
+    listed = {plan['id']: plan for plan in body['plans']}
+    assert (listed['plus']['price_uzs'], listed['plus']['discount']) == (
+        20_000, {'price': 15_000, 'regular': 20_000, 'percent': 25, 'until': until})
+    assert listed['plus']['limits']['price_uzs'] == 20_000, 'the regular price, for readers written before discounts'
+    assert (listed['premium']['price_uzs'], listed['premium']['discount']) == (60_000, None)
+    assert (listed['free']['price_uzs'], listed['free']['discount']) == (None, None)
+    assert body['currency'] == 'UZS' and 'checkout_enabled' not in body
+    assert not {'price_xtr', 'checkout_enabled'} & set(listed['plus'])
+    # The discount as the owner typed it is theirs: `discount` says what is on
+    # today, and an expired one left in the panel is not for the public.
+    assert not {'discount_price_uzs', 'discount_until'} & set(listed['plus']['limits'])
+    overridden({'plus': {'discount_price_uzs': 15_000, 'discount_until': '2024-01-01'}})
+    plus = {plan['id']: plan for plan in Client().get('/api/v1/plans').json()['plans']}['plus']
+    assert plus['discount'] is None and plus['limits']['price_uzs'] == 20_000
+    assert not {'discount_price_uzs', 'discount_until'} & set(plus['limits'])
 
 
 # ---------------------------------------------------------------- the deploy (migration 0019)

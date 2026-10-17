@@ -246,60 +246,10 @@ MESSAGES = {
         '🔗 Avval veb ilovadagi hisob sozlamalarida Telegramni ulang.',
         '🔗 Сначала подключите Telegram в настройках аккаунта на сайте.',
     ),
-    'invalid_invoice payment_amount_mismatch': (
-        '⚠️ Couldn’t verify this payment. Open a new checkout or use /paysupport.',
-        '⚠️ To‘lovni tekshira olmadik. Yangi to‘lovni oching yoki /paysupport orqali yozing.',
-        '⚠️ Не удалось проверить платёж. Начните оплату заново или напишите в /paysupport.',
-    ),
-    'invoice_expired': (
-        '⌛ This checkout expired. Choose the offer again to pay.',
-        '⌛ To‘lov havolasi eskirgan. To‘lash uchun taklifni qayta tanlang.',
-        '⌛ Ссылка на оплату устарела. Выберите предложение заново.',
-    ),
-    'invoice_already_paid': (
-        '✅ This invoice is already paid and your plan is on. See Subscription for the details.',
-        '✅ Bu hisob allaqachon to‘langan, tarifingiz yoqilgan. Batafsil — Obuna bo‘limida.',
-        '✅ Этот счёт уже оплачен, тариф включён. Подробности — в разделе «Подписка».',
-    ),
-    'subscription_already_active': (
-        '💳 You already have a paid plan. Manage it in Subscription.',
-        '💳 Pulli tarifingiz bor. Uni Obuna bo‘limida boshqaring.',
-        '💳 У вас уже есть платный тариф. Управляйте им в разделе «Подписка».',
-    ),
-    'subscription_invoice_pending': (
-        '💳 A subscription checkout is already open. Finish it or wait for it to expire.',
-        '💳 Obuna uchun to‘lov ochilgan. Uni yakunlang yoki muddati tugashini kuting.',
-        '💳 Оплата подписки уже открыта. Завершите её или дождитесь истечения ссылки.',
-    ),
-    'subscription_not_active': (
-        '💳 No active paid subscription. Choose a plan to get started.',
-        '💳 Faol pulli obuna yo‘q. Boshlash uchun tarif tanlang.',
-        '💳 Активной платной подписки нет. Выберите тариф.',
-    ),
-    'renewal_disabled': (
-        '⏸ Auto-renewal is off. Manage it in Subscription.',
-        '⏸ Avto-uzaytirish o‘chirilgan. Uni Obuna bo‘limida boshqaring.',
-        '⏸ Автопродление выключено. Настройте его в разделе «Подписка».',
-    ),
-    'invalid_plan invalid_plan_change': (
+    'invalid_plan': (
         '⭐ Choose an available plan in Plans.',
         '⭐ Tariflardan mavjud tarifni tanlang.',
         '⭐ Выберите доступный тариф в разделе «Тарифы».',
-    ),
-    'offer_version_conflict': (
-        '⭐ This offer has changed. Open Plans to see the latest options.',
-        '⭐ Taklif o‘zgargan. Yangilangan variantlarni Tariflar bo‘limida ko‘ring.',
-        '⭐ Предложение изменилось. Откройте тарифы, чтобы увидеть актуальные варианты.',
-    ),
-    'payment_provider_unavailable': (
-        '⏳ Payment service isn’t responding. Try later or contact Payment support.',
-        '⏳ To‘lov xizmati javob bermayapti. Keyinroq urining yoki to‘lov bo‘yicha yordamga yozing.',
-        '⏳ Платёжный сервис не отвечает. Попробуйте позже или обратитесь в поддержку оплаты.',
-    ),
-    'invalid_charge charge_conflict subscription_period_required invalid_subscription_period renewal_contract_mismatch duplicate_subscription_period invalid_recurring_purchase': (
-        '⚠️ Couldn’t confirm the payment details. Contact Payment support with /paysupport.',
-        '⚠️ To‘lov tafsilotlarini tasdiqlay olmadik. /paysupport orqali yordamga yozing.',
-        '⚠️ Не удалось подтвердить данные платежа. Обратитесь за помощью через /paysupport.',
     ),
     'invalid_referral': (
         '⚠️ This invite link isn’t valid. You can still use the bot from the menu.',
@@ -352,11 +302,6 @@ MESSAGES = {
         '⌛ This payment is closed. Open Plans to start a new one: /plans',
         '⌛ Bu to‘lov yopilgan. Yangisini boshlash uchun tariflarni oching: /plans',
         '⌛ Этот платёж закрыт. Откройте тарифы, чтобы начать новый: /plans',
-    ),
-    'manual_subscription_not_renewable': (
-        '💳 A card payment covers 30 days and doesn’t renew by itself. Pay again to continue: /plans',
-        '💳 Karta orqali to‘lov 30 kunga amal qiladi va o‘zi uzaytirilmaydi. Davom etish uchun qayta to‘lang: /plans',
-        '💳 Оплата картой действует 30 дней и сама не продлевается. Чтобы продолжить, оплатите снова: /plans',
     ),
 }
 

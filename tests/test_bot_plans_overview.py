@@ -1,11 +1,16 @@
 """The plans screen says what each plan gives before it asks anyone to pay."""
+from datetime import datetime, timedelta
+
 import pytest
 from django.utils import timezone
 
+from apps.core.allowance import WEEK_ZONE
 from apps.core.identity import resolve_account
 from apps.core.models import Account, BotConversation
 from operations import plans as plan_settings
+from operations.models import IntegrationConfig
 from telegram.billing import PLAN_COPY
+from telegram.clock import day_label
 from telegram.local import dispatch_local
 from tests.test_manual_payments import configure
 
@@ -25,6 +30,27 @@ def customer(settings):
 
 def screen(account):
     return dispatch_local(account, text='/plans')['messages'][-1]['text']
+
+
+def discount(plan='plus', price=15_000, days=14):
+    """A discount on `plan` as the admin enters it: the price, and its last day
+    `days` from today in Tashkent. Returns that day, 'YYYY-MM-DD'."""
+    until = (datetime.now(WEEK_ZONE).date() + timedelta(days=days)).isoformat()
+    plan_settings.save(plan, {'discount_price_uzs': price, 'discount_until': until})
+    return until
+
+
+def ended_discount(plan='plus', price=15_000, until='2020-01-31'):
+    """A discount whose last day has passed, left in the panel.
+
+    The panel refuses a past date, so one can only be stored while still
+    live; this writes it as it then stands.
+    """
+    row, _ = IntegrationConfig.objects.get_or_create(pk=plan_settings.KEY, defaults={'configuration': {}})
+    stored = dict(row.configuration or {})
+    stored[plan] = {**stored.get(plan, {}), 'discount_price_uzs': price, 'discount_until': until}
+    row.configuration = stored
+    row.save(update_fields=['configuration'])
 
 
 def test_every_plan_says_what_it_includes_and_its_price(customer):
@@ -119,24 +145,25 @@ def test_each_language_gets_the_comparison_and_how_to_pay(customer, locale):
 
 
 def test_an_old_pack_button_or_pack_name_opens_the_plans(customer):
-    """Packs are retired, but their buttons stay in chats and people still type
-    /buy ai100. They were told payments are unavailable, which is not so."""
-    from datetime import timedelta
+    """Packs and the Stars checkout are retired, but their buttons stay in chats
+    and people still type /buy ai100 or /buy plus. They were told payments are
+    unavailable, which is not so: the plans on sale today open instead."""
     from apps.commerce.models import Invoice
     from apps.core.models import BotCallback
     configure(prices=None)
+    fresh = timezone.now() + timedelta(minutes=20)
     BotCallback.objects.create(token='old-pack-button', account=customer, action='commerce_offer',
-                               payload={'offer_id': 'tasks100'}, expires_at=timezone.now() + timedelta(minutes=20))
+                               payload={'offer_id': 'tasks100'}, expires_at=fresh)
+    BotCallback.objects.create(token='old-pay-button', account=customer, action='commerce_pay',
+                               payload={'invoice_id': 'gone'}, expires_at=fresh)
     for shown in (dispatch_local(customer, callback_data='old-pack-button'),
-                  dispatch_local(customer, text='/buy ai100')):
+                  dispatch_local(customer, callback_data='old-pay-button'),
+                  dispatch_local(customer, text='/buy ai100'),
+                  dispatch_local(customer, text='/buy plus')):
         text = shown['messages'][-1]['text']
         assert text.startswith(PLAN_COPY['uz']['title']), text
         assert 'Plus</b>' in text and 'Premium</b>' in text
     assert not Invoice.objects.filter(account=customer).exists()
-    # A plan on sale still goes straight to its checkout.
-    checkout = dispatch_local(customer, text='/buy plus')['messages'][-1]['text']
-    assert not checkout.startswith(PLAN_COPY['uz']['title'])
-    assert Invoice.objects.filter(account=customer).count() == 1
 
 
 def test_russian_plan_cards_say_ii_like_every_other_russian_screen(customer):
@@ -158,3 +185,57 @@ def test_no_other_bot_line_puts_a_ceiling_on_the_plan(locale):
     from telegram.ux_copy import UX
     for key in ('ai_pages_clamped', 'ai_images_capped', 'ai_images_capped_pdf', 'ai_images_none', 'images_limited'):
         assert not any(word in UX[locale][key].lower() for word in ('plan', 'tarif', 'тариф')), (key, UX[locale][key])
+
+
+# ---------------------------------------------------------------- discounts
+
+
+def test_a_discount_strikes_the_regular_price_through_and_says_until_when(customer):
+    """The owner enters a discounted price and its last day; the card shows the
+    regular price struck through, the price to pay, how much off and the day.
+    No countdown, no "last chance": the line is its own, not one of the bullets."""
+    configure(prices=None)
+    until = discount('plus')
+    text = screen(customer)
+    plus = text[text.index('Plus</b>'):text.index('Premium</b>')]
+    assert "Plus</b> — 30 kun uchun <s>20 000</s> <b>15 000</b> so'm" in plus
+    line = f'−25% chegirma, {day_label(until, "uz")}gacha'  # the affix joins the day: '31-oktabrgacha'
+    assert plus.splitlines()[1] == line, plus
+    assert "Premium</b> — 30 kun uchun 60 000 so'm" in text and '<s>' not in text[text.index('Premium</b>'):]
+    lines = [line for line in text.splitlines() if line.startswith('• ')]
+    assert len(lines) == 3 + 3 + 4, 'the discount line is not a bullet'
+    assert len(text) < 4096
+
+
+@pytest.mark.parametrize('locale', ['en', 'uz', 'ru'])
+def test_the_discount_reads_naturally_in_each_language(customer, locale):
+    configure(prices=None)
+    until = discount('premium', price=45_000)
+    Account.objects.filter(pk=customer.pk).update(locale=locale)
+    BotConversation.objects.filter(pk=customer.telegram_user_id).update(locale=locale)
+    customer.refresh_from_db()
+    text = screen(customer)
+    words = PLAN_COPY[locale]
+    head = words['head_discount'].format(icon='💎', name='Premium', regular='60 000', price='45 000')
+    assert head + '\n' + words['discount_line'].format(percent=25, until=day_label(until, locale)) in text
+    assert words['head'].format(icon='⭐', name='Plus', price='20 000') in text, 'Plus is at its regular price'
+    assert text.count('<s>') == 1 and len(text) < 4096
+
+
+def test_the_customers_own_discounted_plan_is_still_marked_on_the_head(customer):
+    configure(prices=None)
+    until = discount('plus')
+    Account.objects.filter(pk=customer.pk).update(staff_plan='plus')
+    customer.refresh_from_db()
+    text = screen(customer)
+    assert "<s>20 000</s> <b>15 000</b> so'm · ✅ sizniki\n−25% chegirma, " + day_label(until, 'uz') + 'gacha' in text
+
+
+def test_a_discount_whose_last_day_has_passed_is_not_shown(customer):
+    """It ends by itself at the end of its last day in Tashkent; a stored one
+    left in the panel after that is ignored, not shown as −0% or struck through."""
+    configure(prices=None)
+    ended_discount('plus')
+    text = screen(customer)
+    assert "Plus</b> — 30 kun uchun 20 000 so'm" in text
+    assert '<s>' not in text and 'chegirma' not in text and '%' not in text

@@ -6,7 +6,7 @@ tests are mostly about those three properties rather than the happy path.
 """
 import io
 import re
-from datetime import timedelta, timezone as dt_timezone
+from datetime import date, timedelta, timezone as dt_timezone
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -394,6 +394,50 @@ def test_a_support_agent_cannot_edit_plan_limits(settings):
     client, _ = staff_client('Support')
     assert client.post('/ops/plans/plus', {'weekly_ai_documents': '1', 'reason': 'Not my role.'}).status_code == 403
     assert limits_for_plan('plus')['weekly_ai_documents'] == 20
+
+
+def test_the_plans_page_shows_a_discount_while_it_runs_and_refuses_one_already_over(settings):
+    from apps.commerce import pricing
+    from operations import plans as plan_settings
+    from operations.templatetags.ops_ui import money
+    settings.DEBUG = True
+    client, _ = staff_client('Finance')
+    until = pricing.today() + timedelta(days=14)
+    assert client.post('/ops/plans/plus', {'discount_price_uzs': '15000', 'discount_until': until.isoformat()}).status_code == 302
+    entry = AuditLog.objects.get(action='plan.limits', target='plus')
+    assert entry.after == {'discount_price_uzs': 15000, 'discount_until': until.isoformat()}
+    # The card's numbers come through the `money` filter, thousands joined by a no-break space.
+    # The last day is written as the bot and the web write it: '31 Oct', '31-oktabrgacha', '31 октября'.
+    struck = f'<s class="muted">{money(20_000)}</s> {money(15_000)} <span>'
+    for lang, word in (('en', f'until {pricing.day_label(until, "en")}'), ('uz', f'{pricing.day_label(until, "uz")}gacha'),
+                       ('ru', f'до {pricing.day_label(until, "ru")}')):
+        page = client.get(f'/ops/plans?lang={lang}').content.decode()
+        assert struck in page and '−25%' in page and word in page, lang
+        assert f'plan-price">{money(60_000)} <span>' in page, 'Premium is not on discount'
+        assert 'type="date" name="discount_until"' in page and f'value="{until.isoformat()}"' in page, lang
+    # Into next year, the date carries the year as each language writes it.
+    far = date(until.year + 1, 1, 5)
+    assert client.post('/ops/plans/plus', {'discount_price_uzs': '15000', 'discount_until': far.isoformat()}).status_code == 302
+    for lang, word in (('en', f'until 5 Jan {far.year}'), ('uz', f'{far.year}-yil 5-yanvargacha'), ('ru', f'до 5 января {far.year}')):
+        assert word in client.get(f'/ops/plans?lang={lang}').content.decode(), lang
+    # A last day already gone is refused; one left in the panel after it passed is shown as over.
+    assert client.post('/ops/plans/plus', {'discount_price_uzs': '15000', 'discount_until': '2024-01-01'}).status_code == 400
+    IntegrationConfig.objects.update_or_create(pk=plan_settings.KEY, defaults={'configuration': {
+        'plus': {'discount_price_uzs': 15000, 'discount_until': '2024-01-01'}}})
+    page = client.get('/ops/plans?lang=en').content.decode()
+    assert f'plan-price">{money(20_000)} <span>' in page and 'Discount ended' in page and '<s class="muted">' not in page
+    # Blank both, and it is gone.
+    assert client.post('/ops/plans/plus', {'discount_price_uzs': '', 'discount_until': ''}).status_code == 302
+    page = client.get('/ops/plans?lang=en').content.decode()
+    assert 'Discount ended' not in page and plan_settings.overrides() == {}
+
+
+def test_the_panel_no_longer_speaks_of_stars():
+    from operations.i18n import CATALOGS
+    for locale, labels in CATALOGS.items():
+        assert not {'field_price_xtr', 'financial_gate', 'financial_gate_desc', 'price', 'staging'} & set(labels), locale
+        assert 'Stars' not in ' '.join(labels.values()), locale
+        assert '{date}' in labels['discount_until'] and labels['no_discount'] and labels['discount_ended']
 
 
 def test_a_broken_override_never_takes_pricing_offline(settings):

@@ -32,7 +32,8 @@ class Invoice(models.Model):
     payload_hash=models.CharField(max_length=64)
     invoice_url=models.TextField(blank=True)
     sandbox=models.BooleanField(default=True)
-    # Who takes the money: Telegram Stars, or a card transfer the owner reviews.
+    # Who took the money: 'manual' for a card transfer the owner reviewed. The
+    # 'telegram_stars' rows date from before Stars was removed and stay as history.
     provider=models.CharField(max_length=24,default='telegram_stars')
     created_at=models.DateTimeField(default=timezone.now)
     expires_at=models.DateTimeField()
@@ -208,6 +209,10 @@ class ManualPayment(models.Model):
     account=models.ForeignKey('core.Account',on_delete=models.PROTECT,related_name='manual_payments')
     plan=models.CharField(max_length=12)
     amount=models.PositiveIntegerField()
+    # The plan's regular price when the request was opened: a request opened
+    # at a discount stays one however the prices move afterwards. Null on
+    # requests from before discounts, which were all opened at the regular price.
+    regular_amount=models.PositiveIntegerField(null=True)
     currency=models.CharField(max_length=3,default='UZS')
     # The card the customer was told to pay, as it was then: the owner may
     # change cards while a transfer is on its way.

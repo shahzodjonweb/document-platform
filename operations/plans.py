@@ -5,6 +5,8 @@ authoritative for anything not overridden. Overrides live in the database
 because a file in the repository would be replaced by the next release, and
 because every change has to be attributable in the audit trail.
 """
+from datetime import date
+
 from django.conf import settings
 
 from .models import IntegrationConfig
@@ -15,9 +17,13 @@ KEY = 'plan_limits'
 # working. A limit of zero would make a plan unusable rather than restricted,
 # so the floors are one wherever the value is a per-job capability.
 FIELDS = {
-    'price_xtr': (0, 1_000_000),
     # So'm per 30 days for a card transfer; blank means not for sale.
     'price_uzs': (1_000, 100_000_000),
+    # A discount: the lower price, and the last day it is on (inclusive, in
+    # Asia/Tashkent). Both blank means no discount. The date bounds are ISO
+    # strings, which the form's date input takes as its min and max.
+    'discount_price_uzs': (1_000, 100_000_000),
+    'discount_until': ('2020-01-01', '2099-12-31'),
     # AI documents (PDF documents and decks) a week; blank is unlimited.
     'weekly_ai_documents': (1, 10_000),
     # File tasks a week, every tool sharing one count; blank is unlimited.
@@ -41,9 +47,13 @@ FIELDS = {
 }
 
 
-# Blank is a real value for these: no price means a plan is not for sale, and
-# no limit means unlimited.
-NULLABLE = {'price_xtr', 'price_uzs', 'weekly_ai_documents', 'weekly_file_jobs', 'edits_per_file'}
+# Stored as a date string rather than a number.
+DATES = ('discount_until',)
+# A discount is both of these or neither.
+DISCOUNT = ('discount_price_uzs', 'discount_until')
+# Blank is a real value for these: no price means a plan is not for sale, no
+# discount means the regular price, and no limit means unlimited.
+NULLABLE = {'price_uzs', *DISCOUNT, 'weekly_ai_documents', 'weekly_file_jobs', 'edits_per_file'}
 WEEKLY = ('weekly_ai_documents', 'weekly_file_jobs')
 # What the free plan may never leave unlimited, and what no paid plan may set
 # below the free plan's: each of them is AI or processing paid for per use.
@@ -51,11 +61,11 @@ WEEKLY = ('weekly_ai_documents', 'weekly_file_jobs')
 # every other one is the same on every plan, so Free is held under a paid plan
 # only here.
 FLOOR = (*WEEKLY, 'edits_per_file')
-# What each plan sets for itself: its prices and the limits above. Every other
-# field is one value for all three plans, so a change made from any plan's
-# form is written to every plan (save, reset); a field edited per plan would
-# bring back the plan differences the owner removed.
-PER_PLAN = ('price_xtr', 'price_uzs', *FLOOR)
+# What each plan sets for itself: its price, its discount and the limits above.
+# Every other field is one value for all three plans, so a change made from any
+# plan's form is written to every plan (save, reset); a field edited per plan
+# would bring back the plan differences the owner removed.
+PER_PLAN = ('price_uzs', *DISCOUNT, *FLOOR)
 SHARED = tuple(field for field in FIELDS if field not in PER_PLAN)
 
 
@@ -102,6 +112,17 @@ def validate(plan_id, values, defaults):
             cleaned[field] = None
             continue
         low, high = FIELDS[field]
+        if field in DATES:
+            try:
+                day = date.fromisoformat(text)
+            except ValueError:
+                raise PlanError(f'{field} must be a date, YYYY-MM-DD.') from None
+            # Stored as the ISO string it was typed as, so the bounds, the seed
+            # and the audit trail all compare it as plain text.
+            if not low <= day.isoformat() <= high:
+                raise PlanError(f'{field} must be between {low} and {high}.')
+            cleaned[field] = day.isoformat()
+            continue
         try:
             number = int(text)
         except (TypeError, ValueError):
@@ -124,6 +145,38 @@ def validate(plan_id, values, defaults):
     # refuse raising all three plans unless the paid ones went first.
     current = limits_for(plan_id, known)
     changed = {field: value for field, value in cleaned.items() if current.get(field) != value}
+    # A discount is judged as the plan will stand after this edit: the form
+    # sends every field, and a discounted price typed beside a regular price
+    # the plan already has is one edit, not two.
+    after = {**current, **cleaned}
+    lower, until = after.get('discount_price_uzs'), after.get('discount_until')
+    if plan_id == 'free' and (lower is not None or until is not None):
+        raise PlanError('The free plan has no discount.')
+    if (lower is None) != (until is None):
+        raise PlanError('A discount needs both a discounted price and its last day.')
+    if lower is not None:
+        from apps.commerce.pricing import percent_off, today
+        regular = after.get('price_uzs')
+        if regular is None:
+            raise PlanError('A discount needs a regular price.')
+        touched = any(field in changed for field in DISCOUNT)
+        # Below the regular price by a whole per cent at least: the customer
+        # is shown the percentage, and "−0%" is not a discount. Refused from
+        # the side this edit touched: a regular price lowered under a
+        # discount it left alone is the regular price's fault, not the discount's.
+        if lower >= regular or percent_off(regular, lower) < 1:
+            if 'price_uzs' in changed and not touched:
+                shown = f'{lower:,}'.replace(',', ' ')
+                raise PlanError(f'The regular price must stay at least 1% above the discounted price ({shown}). '
+                                'Clear the discount first.')
+            raise PlanError('The discounted price must be at least 1% below the regular price.')
+        # Only a discount this edit touches is held to today: a new price typed
+        # beside a last day already gone would go live as nothing at all. A
+        # discount that ended and is left in the form must not stop an
+        # unrelated change, the same way the floor rule below reads only
+        # what changed.
+        if touched and date.fromisoformat(until) < today():
+            raise PlanError("The discount's last day cannot be before today.")
     if plan_id == 'free':
         paid_plans = [limits_for(paid, defaults[paid]) for paid in defaults if paid != 'free']
         for field in FLOOR:
