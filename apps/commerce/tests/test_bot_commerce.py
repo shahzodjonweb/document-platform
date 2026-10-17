@@ -11,9 +11,9 @@ from apps.core.identity import resolve_account
 from apps.core.allowance import file_jobs_this_week
 from apps.core.models import Job,BotDraft,BotConversation,BotCallback
 from apps.core.services import storage_path,upload_file,create_quote,submit_job,execute_job
-from apps.commerce.models import Payment,LocalBotMessage,BotDelivery
-from apps.commerce.services import create_invoice,payload_for
+from apps.commerce.models import ManualPayment,LocalBotMessage,BotDelivery
 from telegram.delivery import enqueue,attempt
+from tests.test_manual_payments import configure
 
 pytestmark=pytest.mark.django_db(transaction=True)
 
@@ -43,24 +43,6 @@ def token(result,action):
 def pdf(width):
     out=io.BytesIO();w=PdfWriter();w.add_blank_page(width=width,height=400);w.write(out);return out.getvalue()
 
-def test_local_bot_actual_billing_callbacks_activate_once_without_network(monkeypatch):
-    a,c=principal()
-    # Any accidental use of the live provider fails the test.
-    from apps.commerce.providers import TelegramStarsProvider
-    monkeypatch.setattr(TelegramStarsProvider,'call',lambda *args,**kwargs:(_ for _ in ()).throw(AssertionError('Live Telegram called')))
-    response=command(c,'/buy plus');pay=token(response,'commerce_pay')
-    assert Payment.objects.count()==0
-    click(c,pay);click(c,pay)
-    a.refresh_from_db();assert a.plan=='plus' and Payment.objects.count()==1
-    confirmation=command(c,'/cancelrenewal')
-    assert a.subscription.renewal_enabled
-    click(c,token(confirmation,'commerce_renewal_confirm'))
-    a.subscription.refresh_from_db();assert not a.subscription.renewal_enabled
-    confirmation=command(c,'/resumerenewal')
-    a.subscription.refresh_from_db();assert not a.subscription.renewal_enabled
-    click(c,token(confirmation,'commerce_renewal_confirm'))
-    a.subscription.refresh_from_db();assert a.subscription.renewal_enabled
-
 def test_local_bot_file_upload_merge_download_and_durable_delivery():
     a,c=principal()
     for i,width in enumerate((220,320)):
@@ -76,10 +58,12 @@ def test_local_bot_file_upload_merge_download_and_durable_delivery():
     assert LocalBotMessage.objects.filter(asset__isnull=False,direction='outbound').count()==1
 
 def test_local_bot_sessions_owner_scoped_passwords_omitted_and_fail_closed(settings):
+    configure()
     a,c=principal();b,other=principal(910002)
-    response=command(c,'/buy plus');payment_button=token(response,'commerce_pay')
-    click(other,payment_button)
-    assert Payment.objects.count()==0
+    # A card-payment button from one chat starts nothing in another.
+    response=command(c,'/plans');choose=token(response,'commerce_manual_plan')
+    click(other,choose)
+    assert ManualPayment.objects.count()==0
     secret='never-store-password-test'
     command(c,'/password '+secret)
     assert not LocalBotMessage.objects.filter(text__contains=secret).exists()
@@ -121,15 +105,6 @@ def test_bot_workspace_commands_use_current_admin_url_and_keep_owned_input():
     examples=command(c,'/examples')
     studio=[b['url'] for row in examples['messages'][-1]['buttons'] for b in row if b.get('url')]
     assert studio==['http://localhost:3000/en/app/create']
-
-def test_fast_precheckout_answers_invalid_request_without_payment(monkeypatch):
-    from telegram.billing import fast_precheckout
-    from apps.commerce.providers import TelegramStarsProvider
-    calls=[]
-    monkeypatch.setattr(TelegramStarsProvider,'call',lambda _,method,**kwargs:calls.append((method,kwargs)) or True)
-    assert fast_precheckout({'pre_checkout_query':{'id':'query-1','from':{'id':123},'invoice_payload':'invalid','currency':'XTR','total_amount':100}})
-    assert calls[0][0]=='answer_pre_checkout_query' and calls[0][1]['ok'] is False
-    assert Payment.objects.count()==0
 
 def test_live_transport_cannot_deliver_test_account_files():
     from aiogram import Bot

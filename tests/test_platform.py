@@ -192,7 +192,10 @@ def test_dev_login_and_features_fail_closed(settings):
     client=Client()
     assert client.post('/api/v1/auth/dev-login',{},content_type='application/json').status_code==404
     assert client.get('/api/v1/catalog').json()['features']==[]
-    assert client.get('/api/v1/plans').json()['checkout_enabled'] is False
+    # The plans are public and priced in so'm; the Stars checkout flag is gone for good.
+    plans=client.get('/api/v1/plans').json()
+    assert plans['currency']=='UZS' and 'checkout_enabled' not in plans and [p['id'] for p in plans['plans']]==['free','plus','premium']
+    assert not any('checkout_enabled' in p or 'price_xtr' in p for p in plans['plans'])
 
 def test_bad_pages_unsafe_parameters_and_invalid_files_rejected():
     a=account();asset=upload(a)
@@ -219,8 +222,12 @@ def test_contacts_are_public_tickets_are_gone_and_paid_checkout_disabled():
     save_config('contacts',{'support':'@pdfmaster_help','ads':'https://t.me/pdfmaster_ads'})
     assert Client().get('/api/v1/contacts').json()=={'support':{'username':'pdfmaster_help','url':'https://t.me/pdfmaster_help'},
                                                    'ads':{'username':'pdfmaster_ads','url':'https://t.me/pdfmaster_ads'}}
-    response=client.post('/api/v1/billing/invoices',{'plan':'premium','price_xtr':1},content_type='application/json')
+    # No card configured: nothing is on sale, and a payment request is refused.
+    assert client.get('/api/v1/billing/manual').json()['plans']==[]
+    response=client.post('/api/v1/billing/manual',{'plan':'premium','amount':1},content_type='application/json')
     assert response.status_code==409 and response.json()['error']['code']=='checkout_disabled'
+    from apps.commerce.models import ManualPayment
+    assert not ManualPayment.objects.exists()
 
 def test_webhook_secret_and_update_deduplication(settings):
     from apps.core.models import WebhookReceipt

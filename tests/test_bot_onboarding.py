@@ -8,7 +8,7 @@ import pytest
 from aiogram import Bot, Dispatcher
 from aiogram.client.session.base import BaseSession
 from aiogram.methods import AnswerCallbackQuery, SendMessage, SetMyCommands
-from aiogram.types import CallbackQuery, Chat, Document, Message, PreCheckoutQuery, Update, User
+from aiogram.types import CallbackQuery, Chat, Document, Message, Update, User
 from django.utils import timezone
 
 from apps.core.identity import approve_challenge_id, exchange_challenge
@@ -60,7 +60,6 @@ class GateHarness:
 
         self.dispatcher.message.register(handle)
         self.dispatcher.callback_query.register(handle)
-        self.dispatcher.pre_checkout_query.register(handle)
         install_onboarding(self.dispatcher, ready)
 
     @staticmethod
@@ -275,18 +274,6 @@ def test_groups_cannot_create_customer_state_or_receive_files(chat_type):
     assert not h.handled and not h.ready
     assert Account.objects.count() == 0 and BotConversation.objects.count() == 0
     assert all('private chat' in call.text for call in h.session.calls)
-
-
-def test_successful_payment_and_precheckout_bypass_language_gate():
-    h = GateHarness()
-    h.message(successful_payment={
-        'currency': 'XTR', 'total_amount': 100, 'invoice_payload': 'invoice',
-        'telegram_payment_charge_id': 'charge', 'provider_payment_charge_id': 'provider',
-    })
-    query = PreCheckoutQuery(id='checkout', from_user=h.user(), currency='XTR', total_amount=100, invoice_payload='invoice')
-    asyncio.run(h.dispatcher.feed_update(h.bot, Update(update_id=999, pre_checkout_query=query)))
-    assert len(h.handled) == 2 and not h.session.calls and not h.ready
-    assert BotConversation.objects.count() == 0 and Account.objects.count() == 0
 
 
 def link_button(challenge, uid=42):

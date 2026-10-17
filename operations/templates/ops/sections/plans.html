@@ -11,7 +11,8 @@
   {% for plan in plan_rows %}
   <section class="panel plan-panel">
     <h2>{{ plan.title }}{% if plan.edited %} <span class="badge info">{{ t.edited }}</span>{% endif %}</h2>
-    <p class="plan-price">{% if plan.price_uzs %}{{ plan.price_uzs|money }} <span>so'm · 30 {{ t.days }}</span>{% elif plan.id == 'free' %}0 <span>so'm</span>{% else %}<span>{{ t.not_for_sale }}</span>{% endif %}</p>
+    <p class="plan-price">{% if plan.offer.discount %}<s class="muted">{{ plan.offer.regular|money }}</s> {{ plan.offer.price|money }} <span>so'm · 30 {{ t.days }}</span> <span class="badge good">−{{ plan.offer.discount.percent }}%</span>{% elif plan.price_uzs %}{{ plan.price_uzs|money }} <span>so'm · 30 {{ t.days }}</span>{% elif plan.id == 'free' %}0 <span>so'm</span>{% else %}<span>{{ t.not_for_sale }}</span>{% endif %}</p>
+    {% if plan.offer.discount %}<p class="plan-discount"><small class="muted">{{ plan.discount_label }}</small></p>{% elif plan.discount_ended %}<p class="plan-discount"><span class="badge info">{{ t.discount_ended }}</span></p>{% endif %}
     <div class="health-row"><span>{{ t.field_weekly_ai_documents }}</span><strong>{{ plan.weekly_ai_documents|default_if_none:'∞' }}</strong></div>
     <div class="health-row"><span>{{ t.field_weekly_file_jobs }}</span><strong>{{ plan.weekly_file_jobs|default_if_none:'∞' }}</strong></div>
     <div class="health-row"><span>{{ t.field_edits_per_file }}</span><strong>{{ plan.edits_per_file|default_if_none:'∞' }}</strong></div>
@@ -46,8 +47,8 @@
         <div class="limit-fields">
           {% for field in group.fields %}
           <label>{{ field.label }}
-            <input type="number" name="{{ field.name }}" value="{{ field.value|default_if_none:'' }}" min="{{ field.low }}" max="{{ field.high }}"{% if not field.nullable %} required{% endif %}{% if field.nullable %} placeholder="{{ t.no_limit }}"{% endif %}>
-            <small>{{ t.seed_value }}: {% if field.seed is None %}{{ t.no_limit }}{% else %}{{ field.seed }}{% endif %}</small>
+            <input type="{% if field.date %}date{% else %}number{% endif %}" name="{{ field.name }}" value="{{ field.value|default_if_none:'' }}" min="{{ field.low }}" max="{{ field.high }}"{% if not field.nullable %} required{% endif %}{% if field.nullable %} placeholder="{% if field.discount %}{{ t.no_discount }}{% else %}{{ t.no_limit }}{% endif %}"{% endif %}>
+            <small>{{ t.seed_value }}: {% if field.seed is None %}{% if field.discount %}{{ t.no_discount }}{% else %}{{ t.no_limit }}{% endif %}{% else %}{{ field.seed }}{% endif %}</small>
             {% if field.shared and not group.shared %}<small class="field-hint">{{ t.applies_to_every_plan }}</small>{% endif %}
           </label>
           {% endfor %}

@@ -355,10 +355,6 @@ class LanguageGate(BaseMiddleware):
 
     async def __call__(self, handler, event, data):
         if isinstance(event, Message):
-            # Settlement must be processed even if a customer has never used
-            # this version of onboarding, or their conversation state was reset.
-            if event.successful_payment:
-                return await handler(event, data)
             user = event.from_user
             if not user or user.is_bot:
                 return None

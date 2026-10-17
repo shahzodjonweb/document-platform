@@ -59,8 +59,6 @@ if os.getenv('TRUST_PROXY_HEADERS', '0') == '1':
 
 FILE_SECRET_KEY = os.getenv('FILE_SECRET_KEY', '')
 
+# The local bot simulator and test accounts; never a payment sandbox. Card
+# transfers are the only way to pay and are configured in the admin panel.
 COMMERCE_SANDBOX_ENABLED = DEBUG and os.getenv("COMMERCE_SANDBOX_ENABLED", "0") == "1"
-COMMERCE_LIVE_ENABLED = os.getenv("COMMERCE_LIVE_ENABLED", "0") == "1"
-import json
-COMMERCE_LIVE_OFFERS = json.loads(os.getenv("COMMERCE_LIVE_OFFERS", "{}"))
-COMMERCE_OFFER_VERSION = os.getenv("COMMERCE_OFFER_VERSION", "1")

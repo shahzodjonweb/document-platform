@@ -1,4 +1,4 @@
-"""Commerce confirmations and Telegram UI transport contracts."""
+"""Billing navigation and Telegram UI transport contracts."""
 import asyncio
 from unittest.mock import AsyncMock, Mock
 
@@ -10,7 +10,6 @@ from django.utils import timezone
 from apps.commerce.models import LocalBotMessage
 from apps.core.identity import resolve_account
 from apps.core.models import BotCallback, BotConversation
-from telegram.billing import COPY
 from telegram.local import LocalTelegramSession, dispatch_local
 
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.usefixtures('bot_verification_disabled')]
@@ -33,13 +32,6 @@ def action_token(result, action):
                 if token and BotCallback.objects.filter(pk=token, action=action).exists():
                     return token
     raise AssertionError(f'No button for {action}')
-
-
-def purchase(customer):
-    result = dispatch_local(customer, text='/buy plus')
-    dispatch_local(customer, callback_data=action_token(result, 'commerce_pay'))
-    customer.refresh_from_db()
-    return customer.subscription
 
 
 def test_native_menu_has_global_navigation_and_default_fallback():
@@ -156,20 +148,6 @@ def test_native_menu_provider_failure_does_not_block_onboarding():
     assert asyncio.run(install_chat_commands(bot, 980003, 'en')) is False
 
 
-def test_localized_offer_review_has_price_period_and_safe_navigation(customer):
-    customer.locale = 'uz'; customer.save(update_fields=['locale'])
-    BotConversation.objects.filter(pk=customer.telegram_user_id).update(locale='uz')
-    result = dispatch_local(customer, text='/buy')
-    buttons = result['messages'][-1]['buttons']
-    assert any(b['label'] == 'Plus · ⭐ 50' for row in buttons for b in row), 'plans only: there are no packs to sell'
-    assert not any('paket' in b['label'].lower() or 'kredit' in b['label'].lower() for row in buttons for b in row)
-    result = dispatch_local(customer, text='/buy plus')
-    text = result['messages'][-1]['text']
-    assert '50 Telegram Stars' in text and COPY['uz']['period'] in text and 'Plus' in text
-    assert COPY['uz']['sandbox'] in text
-    assert action_token(result, 'plans') and action_token(result, 'home')
-
-
 def test_billing_navigation_leaves_old_support_or_parameter_prompt(customer):
     BotConversation.objects.filter(pk=customer.telegram_user_id).update(state='support', prompt={'payment': False})
     dispatch_local(customer, text='/buy')
@@ -177,61 +155,45 @@ def test_billing_navigation_leaves_old_support_or_parameter_prompt(customer):
     assert conversation.state == '' and conversation.prompt == {}
 
 
-def test_renewal_button_requires_confirmation_and_is_owner_scoped(customer):
-    sub = purchase(customer)
-    result = dispatch_local(customer, text='/subscription')
-    result = dispatch_local(customer, callback_data=action_token(result, 'commerce_cancel'))
-    confirm = action_token(result, 'commerce_renewal_confirm')
-    sub.refresh_from_db(); assert sub.renewal_enabled
-    other = resolve_account({'id': 980002, 'first_name': 'Other'}, is_test=True)
-    BotConversation.objects.create(telegram_user_id=other.telegram_user_id, locale='en', language_selected_at=timezone.now())
-    dispatch_local(other, callback_data=confirm)
-    sub.refresh_from_db(); assert sub.renewal_enabled
-    dispatch_local(customer, callback_data=confirm)
-    sub.refresh_from_db(); assert not sub.renewal_enabled
-    result = dispatch_local(customer, text='/resumerenewal')
-    sub.refresh_from_db(); assert not sub.renewal_enabled
-    dispatch_local(customer, callback_data=action_token(result, 'commerce_renewal_confirm'))
-    sub.refresh_from_db(); assert sub.renewal_enabled
-
-
-def test_plan_change_command_explains_and_confirms_before_mutating(customer):
-    sub = purchase(customer)
-    result = dispatch_local(customer, text='/changeplan premium')
-    assert COPY['en']['confirm_change'].split('\n')[1] in result['messages'][-1]['text']
-    sub.refresh_from_db(); assert sub.scheduled_plan == '' and sub.renewal_enabled
-    dispatch_local(customer, callback_data=action_token(result, 'commerce_plan_confirm'))
-    sub.refresh_from_db(); assert sub.scheduled_plan == 'premium' and not sub.renewal_enabled
-
-
-def test_expired_confirmation_cannot_change_subscription(customer):
-    sub = purchase(customer)
-    result = dispatch_local(customer, text='/cancelrenewal')
-    token = action_token(result, 'commerce_renewal_confirm')
-    BotCallback.objects.filter(pk=token).update(expires_at=timezone.now())
-    dispatch_local(customer, callback_data=token)
-    sub.refresh_from_db(); assert sub.renewal_enabled
-
-
-def test_invoice_callback_is_acknowledged_before_provider_work(customer, monkeypatch):
+def test_a_card_button_is_acknowledged_before_the_payment_is_opened(customer, monkeypatch):
+    """Telegram shows a spinner until a button is answered; the answer goes
+    first, before the database work that opens the payment."""
     from aiogram.methods import AnswerCallbackQuery
-    from apps.commerce import services
+    from apps.commerce import manual
+    from tests.test_manual_payments import configure
+    configure()
     events = []
     original_request = LocalTelegramSession.make_request
-    original_present = services.present_invoice
+    original_create = manual.create
     async def tracked_request(self, bot, method, timeout=None):
         if isinstance(method, AnswerCallbackQuery):
             events.append('ack')
         return await original_request(self, bot, method, timeout)
-    def present(invoice):
+    def create(account, plan, channel='web'):
         assert events == ['ack']
-        events.append('provider')
-        return original_present(invoice)
+        events.append('payment')
+        return original_create(account, plan, channel)
     monkeypatch.setattr(LocalTelegramSession, 'make_request', tracked_request)
-    monkeypatch.setattr(services, 'present_invoice', present)
-    result = dispatch_local(customer, text='/buy')
-    dispatch_local(customer, callback_data=action_token(result, 'commerce_offer'))
-    assert events == ['ack', 'provider']
+    monkeypatch.setattr(manual, 'create', create)
+    result = dispatch_local(customer, text='/plans')
+    dispatch_local(customer, callback_data=action_token(result, 'commerce_manual_plan'))
+    assert events == ['ack', 'payment']
+
+
+def test_a_stars_payment_message_is_gated_like_any_other_first_message():
+    """Telegram Stars is gone. A successful_payment message once skipped the
+    language gate so that a settlement could never be lost to a reset
+    conversation; with nothing to settle any more, it is an ordinary first
+    message: the language prompt, and no handler."""
+    from telegram.onboarding import LANGUAGES
+    from tests.test_bot_onboarding import GateHarness
+    h = GateHarness()
+    h.message(successful_payment={
+        'currency': 'XTR', 'total_amount': 100, 'invoice_payload': 'invoice',
+        'telegram_payment_charge_id': 'charge', 'provider_payment_charge_id': 'provider',
+    })
+    assert not h.handled and not h.ready
+    assert [row[0].text for row in h.session.calls[-1].reply_markup.inline_keyboard] == [label for _, label in LANGUAGES]
 
 
 def test_simulator_supports_keyboard_types_and_edits_existing_message(customer):

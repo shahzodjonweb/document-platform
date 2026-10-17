@@ -11,8 +11,10 @@ from apps.commerce.models import ManualPayment, PaymentNotice
 from apps.core.identity import resolve_account
 from apps.core.models import BotCallback, BotConversation, FileAsset
 from telegram.billing import COPY
+from telegram.clock import day_label
 from telegram.local import dispatch_local
-from tests.test_manual_payments import CARD, configure, finance, png
+from tests.test_bot_plans_overview import discount, ended_discount
+from tests.test_manual_payments import CARD, configure, finance, paid, png
 
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.usefixtures('bot_verification_disabled')]
 
@@ -212,3 +214,95 @@ def test_a_plan_given_by_the_team_is_named_rather_than_called_free(customer):
     customer.refresh_from_db()
     text = dispatch_local(customer, text='/subscription')['messages'][-1]['text']
     assert 'Premium' in text and COPY['en']['no_subscription'] not in text
+
+
+def test_the_subscription_screen_says_until_when_and_has_no_renewal_to_switch(customer):
+    """A card transfer covers 30 days and never renews by itself. The screen
+    used to offer "Turn renewal on", which the service answered with an error."""
+    paid(customer, 'plus')
+    result = dispatch_local(customer, text='/subscription')
+    text = result['messages'][-1]['text']
+    assert text.startswith('<b>Plus</b>') and f"{COPY['en']['active_until']}: " in text
+    assert 'renew' not in text.lower() and not any('renew' in label.lower() for label in labels(result))
+    assert COPY['en']['plans'] in labels(result)
+    assert not BotCallback.objects.filter(account=customer, action__in=('commerce_cancel', 'commerce_resume')).exists()
+
+
+# ---------------------------------------------------------------- discounts
+
+
+def payment_screen(customer, plan):
+    shown = dispatch_local(customer, callback_data=token(dispatch_local(customer, text='/plans'),
+                                                         'commerce_manual_plan', plan=plan))
+    return next(m['text'] for m in reversed(shown['messages']) if 'PM-' in m['text'])
+
+
+def test_a_discounted_plan_is_offered_at_its_price_with_how_much_off(customer):
+    configure()
+    discount('plus')
+    result = dispatch_local(customer, text='/plans')
+    # The percentage leads: a narrow phone cuts a long button's tail, and what
+    # it must not cut is the discount.
+    assert "💳 Plus −25% · 15 000 so'm / 30 days" in labels(result)
+    assert "💳 Premium · 60 000 so'm / 30 days" in labels(result)
+
+
+def test_the_payment_screen_asks_for_the_discounted_amount_and_shows_the_regular_price(customer):
+    configure()
+    until = discount('plus')
+    text = payment_screen(customer, 'plus')
+    assert "Plus — 15 000 so'm for 30 days</b>" in text and "Send exactly <b>15 000 so'm</b>" in text
+    assert f"<s>20 000 so'm</s> · −25% until {day_label(until, 'en')}" in text
+    assert text.splitlines()[1].startswith('Regular price'), 'right under the title'
+    assert ManualPayment.objects.get().amount == 15000
+
+
+def test_a_plan_at_its_regular_price_has_nothing_to_strike_through(customer):
+    configure()
+    discount('plus')
+    text = payment_screen(customer, 'premium')
+    assert "Send exactly <b>60 000 so'm</b>" in text and '<s>' not in text and 'Regular price' not in text
+
+
+@pytest.mark.parametrize('locale,note', [
+    ('uz', "Odatdagi narx <s>20 000 so'm</s> · −25% chegirma, {until}gacha"),
+    ('ru', 'Обычная цена <s>20 000 сум</s> · −25% до {until}'),
+])
+def test_the_regular_price_note_is_in_the_customers_language(customer, locale, note):
+    configure()
+    until = discount('plus')
+    customer.locale = locale
+    customer.save(update_fields=['locale'])
+    BotConversation.objects.filter(pk=customer.telegram_user_id).update(locale=locale)
+    text = payment_screen(customer, 'plus')
+    assert note.format(until=day_label(until, locale)) in text and '15 000' in text
+
+
+def test_a_request_opened_during_a_discount_is_asked_at_the_regular_price_after_its_last_day(customer):
+    """Nothing sent yet, the discount over: the plans page shows the regular
+    price again, and the card screen must not ask for an amount it no longer
+    shows, nor strike a price through."""
+    configure()
+    discount('plus')
+    assert "15 000" in payment_screen(customer, 'plus')
+    ended_discount('plus')
+    text = payment_screen(customer, 'plus')
+    assert "Send exactly <b>20 000 so'm</b>" in text and '<s>' not in text and 'Regular price' not in text
+    assert ManualPayment.objects.get(status='awaiting').amount == 20000
+
+
+@pytest.mark.parametrize('locale,label', [('uz', "💳 Plus −25% · 15 000 so'm / 30 kun"), ('ru', '💳 Plus −25% · 15 000 сум / 30 дней')])
+def test_the_discount_button_leads_with_the_percentage_in_each_language(customer, locale, label):
+    configure()
+    discount('plus')
+    customer.locale = locale
+    customer.save(update_fields=['locale'])
+    BotConversation.objects.filter(pk=customer.telegram_user_id).update(locale=locale)
+    assert label in labels(dispatch_local(customer, text='/plans'))
+
+
+def test_uzbek_spells_pullik_one_way():
+    """'pullik' (pul + -lik), as the same screen's other line already had it:
+    'Pulli tarif' was a slip, and the subscription screen is now these two lines."""
+    assert COPY['uz']['active_until'] == 'Pullik tarif muddati' and 'Pullik obunangiz' in COPY['uz']['no_subscription']
+    assert 'pulli ' not in ' '.join(COPY['uz'].values()).lower()

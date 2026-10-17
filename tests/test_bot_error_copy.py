@@ -52,12 +52,20 @@ def test_a_used_up_limit_says_how_many_when_it_comes_back_and_offers_plans(local
 
 
 @pytest.mark.parametrize('locale', ['en', 'uz', 'ru'])
-def test_no_bot_error_sends_people_to_a_balance_that_no_longer_exists(locale):
-    """Plans are weekly limits now; an already-paid invoice points to the plan."""
+def test_no_bot_error_sends_people_to_a_balance_or_a_checkout_that_no_longer_exists(locale):
+    """Plans are weekly limits now, paid by card transfer: there is no balance
+    to top up and no Stars invoice to verify, expire or renew."""
     for words in COPY[locale].values():
-        assert not any(word in words.lower() for word in ('balance', 'balans', 'баланс', 'credit', 'kredit', 'кредит'))
-    paid = bot_error(DomainError('invoice_already_paid'), locale)
-    assert {'en': 'Subscription', 'uz': 'Obuna', 'ru': 'Подписка'}[locale] in paid
+        assert not any(word in words.lower() for word in ('balance', 'balans', 'баланс', 'credit', 'kredit', 'кредит',
+                                                           'stars', 'invoice', 'hisob-faktura'))
+    # Nor to a renewal switch: a card plan has none, so nothing raises manual_subscription_not_renewable.
+    for code in ('invalid_invoice', 'invoice_expired', 'invoice_already_paid', 'renewal_disabled',
+                 'subscription_not_active', 'invalid_plan_change', 'offer_version_conflict',
+                 'manual_subscription_not_renewable'):
+        assert code not in COPY[locale], code
+    # What a card transfer can still refuse keeps its words.
+    for code in ('checkout_disabled', 'invalid_plan', 'manual_payment_pending'):
+        assert bot_error(DomainError(code), locale) == COPY[locale][code]
 
 
 @pytest.mark.parametrize('locale', ['en', 'uz', 'ru'])

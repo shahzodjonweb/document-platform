@@ -1,7 +1,6 @@
 """Card transfers the owner reviews: what a customer gets, and when."""
 import io
 from datetime import timedelta
-from unittest.mock import Mock
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -9,7 +8,7 @@ from django.contrib.auth.models import Group
 from django.utils import timezone
 from PIL import Image
 
-from apps.commerce import manual
+from apps.commerce import manual, pricing
 from apps.commerce.models import ManualPayment, Payment, PaymentGrant, PaymentNotice, SubscriptionPeriod
 from apps.core.errors import DomainError
 from apps.core.identity import resolve_account
@@ -77,6 +76,22 @@ def submitted(account, plan='premium', raw=None):
     return manual.attach_receipt(account, payment.id, raw or png(), note='Card 4421, 14:05')
 
 
+def paid(account, plan='premium'):
+    """`account` on `plan`, paid for by card and approved: how a test puts
+    someone on a paid plan, the only way a customer can.
+
+    The card settings are put in place when a test never configured them, and
+    the Finance reviewer is made once.
+    """
+    if not manual_payment_config()['ready'] or plan not in manual.prices():
+        configure()
+    payment = submitted(account, plan)
+    reviewer = get_user_model().objects.filter(username='finance').first() or finance()
+    manual.approve(payment.id, reviewer)
+    account.refresh_from_db()
+    return account
+
+
 # ---------------------------------------------------------------- offered
 
 
@@ -90,7 +105,7 @@ def test_nothing_is_offered_until_a_card_and_a_price_are_set():
     assert manual.options()['enabled'] is False, 'a card without a price sells nothing'
     plan_settings.save('premium', {'price_uzs': 65_000})
     offered = manual.options()
-    assert offered['enabled'] and offered['plans'] == [{'plan': 'premium', 'price': 65_000}]
+    assert offered['enabled'] and offered['plans'] == [{'plan': 'premium', 'price': 65_000, 'regular_price': 65_000, 'discount': None}]
     assert offered['automatic'] == {'available': False}
     with pytest.raises(DomainError, match='checkout_disabled'):
         manual.create(customer(), 'plus')
@@ -348,9 +363,10 @@ def test_a_rejection_needs_a_reason_and_gives_nothing():
         manual.approve(payment.id, finance('Finance', 'f3'))
 
 
-def test_a_refund_takes_the_plan_back_without_asking_telegram(monkeypatch):
+def test_a_refund_takes_the_plan_back_without_asking_telegram():
     configure()
-    monkeypatch.setattr('apps.commerce.services.provider_for', Mock(side_effect=AssertionError('no provider')))
+    # The owner returns the money by bank transfer and records it here; there
+    # is no payment provider left to ask, so a refund is only a record.
     account = customer()
     payment = manual.approve(submitted(account).id, finance())
     manual.refund(payment.id, finance('Finance', 'f2'), 'Returned by bank transfer')
@@ -358,28 +374,195 @@ def test_a_refund_takes_the_plan_back_without_asking_telegram(monkeypatch):
     payment.refresh_from_db()
     assert account.plan == 'free' and payment.status == 'refunded'
     assert SubscriptionPeriod.objects.get().revoked_at is not None
+    assert not account.subscription.renewal_enabled, 'a card plan never renews by itself'
 
 
-def test_a_manual_subscription_has_no_renewal_to_switch(monkeypatch):
-    from apps.commerce.services import schedule_plan_change, set_renewal
+# ---------------------------------------------------------------- discounts
+
+
+def on_discount(plan='plus', price=15_000, until=None):
+    """The owner puts `plan` on discount at `price` until `until` (a fortnight away by default)."""
+    until = until or (pricing.today() + timedelta(days=14)).isoformat()
+    plan_settings.save(plan, {'discount_price_uzs': price, 'discount_until': until})
+    return until
+
+
+def discount_over(plan='plus'):
+    """The discount's last day has passed; the panel still holds it, as an owner who forgot it would."""
+    from operations.models import IntegrationConfig
+    stored = plan_settings.overrides()
+    stored[plan] = {**stored.get(plan, {}), 'discount_until': (pricing.today() - timedelta(days=1)).isoformat()}
+    IntegrationConfig.objects.update_or_create(pk=plan_settings.KEY, defaults={'configuration': stored})
+    assert pricing.plan_price(plan)['discount'] is None
+
+
+def test_a_discount_is_todays_price_and_never_changes_the_days():
+    configure()
+    until = on_discount()
+    assert manual.prices() == {'plus': 15_000, 'premium': 60_000}
+    assert manual.regular_prices() == {'plus': 20_000, 'premium': 60_000}
+    assert manual.options()['plans'] == [
+        {'plan': 'plus', 'price': 15_000, 'regular_price': 20_000,
+         'discount': {'price': 15_000, 'regular': 20_000, 'percent': 25, 'until': until}},
+        {'plan': 'premium', 'price': 60_000, 'regular_price': 60_000, 'discount': None}]
+    account = customer()
+    payment = submitted(account, 'plus')
+    assert payment.amount == 15_000 and manual.period_days(payment) == 30
+    manual.approve(payment.id, finance())
+    period = SubscriptionPeriod.objects.get()
+    assert period.ends_at - period.starts_at == timedelta(days=30)
+    paid = Payment.objects.get()
+    assert paid.amount_xtr == 15_000 and paid.invoice.offer_id == 'manual:plus:15000'
+    snapshot = paid.invoice.snapshot
+    assert (snapshot['price'], snapshot['regular_price'], snapshot['discounted'], snapshot['period_days']) == (15_000, 20_000, True, 30)
+
+
+def test_the_full_price_sent_during_a_discount_buys_thirty_days_not_forty():
+    """A discount is a lower price for the same 30 days, not a cheaper day."""
     configure()
     account = customer()
-    manual.approve(submitted(account).id, finance())
-    for action in (lambda: set_renewal(account, True), lambda: set_renewal(account, False),
-                   lambda: schedule_plan_change(account, 'plus')):
-        with pytest.raises(DomainError, match='manual_subscription_not_renewable'):
-            action()
+    payment = submitted(account, 'plus')
+    on_discount()
+    assert payment.amount == 20_000 and manual.period_days(payment) == 30
+    manual.approve(payment.id, finance())
+    period = SubscriptionPeriod.objects.get()
+    assert period.ends_at - period.starts_at == timedelta(days=30)
+    assert Payment.objects.get().invoice.snapshot['discounted'] is False
 
 
-def test_a_manual_invoice_can_never_be_paid_through_telegram():
-    from apps.commerce.models import Invoice
-    from apps.commerce.services import payload_for, validate_precheckout
+def test_an_unpaid_request_follows_the_discount_in_and_out():
+    """The plans page says 15 000 while the discount runs; the card screen must ask for the same."""
     configure()
     account = customer()
-    manual.approve(submitted(account).id, finance())
-    invoice = Invoice.objects.get()
-    with pytest.raises(DomainError, match='invalid_invoice'):
-        validate_precheckout(account.telegram_user_id, payload_for(invoice), 'XTR', invoice.amount_xtr)
+    before, _ = manual.create(account, 'plus')
+    on_discount()
+    during, created = manual.create(account, 'plus')
+    before.refresh_from_db()
+    assert created and during.amount == 15_000 and before.status == 'cancelled'
+    assert manual.create(account, 'plus')[0].pk == during.pk, 'reused while the price holds'
+    plan_settings.save('plus', {'discount_price_uzs': '', 'discount_until': ''})
+    after, created = manual.create(account, 'plus')
+    during.refresh_from_db()
+    assert created and after.amount == 20_000 and during.status == 'cancelled'
+
+
+def test_a_discounted_receipt_approved_after_the_discount_ended_still_gives_thirty_days():
+    configure()
+    on_discount()
+    account = customer()
+    payment = submitted(account, 'plus')
+    discount_over()
+    assert manual.prices()['plus'] == 20_000 and manual.period_days(payment) == 30
+    manual.approve(payment.id, finance())
+    period = SubscriptionPeriod.objects.get()
+    assert period.ends_at - period.starts_at == timedelta(days=30)
+    assert Payment.objects.get().invoice.snapshot['discounted'] is True, 'what was bought, not what it costs now'
+
+
+@pytest.mark.parametrize('lang,today,regular,now,over', [
+    ('en', "15 000 so'm (regular 20 000 so'm)", 'opened at the regular price', 'on discount today at 15 000', 'opened during a discount'),
+    ('uz', "15 000 so'm (odatdagi narx 20 000 so'm)", 'odatdagi narxda ochilgan', 'chegirma bilan 15 000', 'chegirma paytida ochilgan'),
+    ('ru', "15 000 so'm (обычная цена 20 000 so'm)", 'по обычной цене', 'со скидкой стоит 15 000', 'во время скидки'),
+])
+def test_the_review_page_names_the_discount(lang, today, regular, now, over):
+    configure()
+    client, _ = staff_client('Finance')
+    page = lambda payment: client.get(f'/ops/payments/manual/{payment.id}?lang={lang}').content.decode().replace('&#x27;', "'")
+    # Sent at the regular price, reviewed while the discount runs: 30 days, and the page says why.
+    full = submitted(customer(7401), 'plus')
+    on_discount()
+    review = page(full)
+    assert today in review and regular in review and now in review and '30' in review, lang
+    # Sent at the discounted price while it runs: nothing to explain.
+    cut = submitted(customer(7402), 'plus')
+    review = page(cut)
+    assert today in review and 'price-note' not in review, lang
+    # Reviewed once the discount is over: the page says it was opened during one.
+    discount_over()
+    review = page(cut)
+    assert "20 000 so'm" in review and '(' not in review.split('price-note')[0].split('</h1>')[-1][:0] and over in review, lang
+    assert 'odatdagi narx 20 000' not in review and 'regular 20 000' not in review and 'обычная цена 20 000' not in review
+
+
+def test_a_request_keeps_the_regular_price_it_was_opened_against():
+    """A discounted request stays one however the prices move afterwards, and
+    a full-price one never becomes one: the invoice says what was bought."""
+    import re
+    configure()
+    staff = finance()
+    full = submitted(customer(7411), 'plus')
+    assert (full.amount, full.regular_amount) == (20_000, 20_000)
+    on_discount()
+    cut = submitted(customer(7412), 'plus')
+    assert (cut.amount, cut.regular_amount) == (15_000, 20_000)
+    # The regular price rises: the full-price receipt was still a full-price one.
+    plan_settings.save('plus', {'price_uzs': 25_000, 'discount_price_uzs': '', 'discount_until': ''})
+    snapshot = manual.approve(full.id, staff).payment.invoice.snapshot
+    assert (snapshot['price'], snapshot['regular_price'], snapshot['discounted']) == (20_000, 20_000, False)
+    # The plan goes off sale: the discounted receipt was still a discounted one.
+    plan_settings.save('plus', {'price_uzs': ''})
+    snapshot = manual.approve(cut.id, staff).payment.invoice.snapshot
+    assert (snapshot['price'], snapshot['regular_price'], snapshot['discounted']) == (15_000, 20_000, True)
+    # A request from before discounts has no regular price of its own, and was not one.
+    old = submitted(customer(7413), 'premium')
+    ManualPayment.objects.filter(pk=old.pk).update(regular_amount=None)
+    snapshot = manual.approve(old.id, staff).payment.invoice.snapshot
+    assert (snapshot['price'], snapshot['regular_price'], snapshot['discounted']) == (60_000, None, False)
+    assert re.fullmatch(r'manual:\w+:\d+', snapshot['id'])
+
+
+def note_on(client, payment, lang='en'):
+    """The price note on the review page, as text, or ''."""
+    import re
+    page = client.get(f'/ops/payments/manual/{payment.id}?lang={lang}').content.decode().replace('&#x27;', "'")
+    if 'price-note' not in page:
+        return ''
+    inside = page.split('price-note', 1)[1].split('>', 1)[1].split('</div>', 1)[0]
+    return ' '.join(re.sub(r'<[^>]+>', ' ', inside).split())
+
+
+def test_the_review_page_says_what_the_request_was_opened_against():
+    """The note is read from the request's own regular price, not from what the
+    panel holds today: an earlier discount, deepened or withdrawn since, is
+    still "opened during a discount", and an overpayment quotes the regular
+    price the extra days are worked out on."""
+    configure()
+    client, _ = staff_client('Finance')
+    on_discount()
+    cut = submitted(customer(7421), 'plus')
+    assert note_on(client, cut) == ''
+    # Deepened since: it was opened during a discount, not at the regular price.
+    on_discount(price=10_000)
+    note = note_on(client, cut)
+    assert note.startswith('This request was opened during a discount') and "10 000 so'm today" in note, note
+    # Withdrawn since: the price did not rise, the discount ended.
+    plan_settings.save('plus', {'discount_price_uzs': '', 'discount_until': ''})
+    note = note_on(client, cut)
+    assert note.startswith('This request was opened during a discount') and "20 000 so'm today" in note, note
+    # An overpayment quotes the regular price, which the extra days are worked out on, in every language.
+    plan_settings.save('plus', {'price_uzs': 25_000})
+    over = submitted(customer(7422), 'plus')
+    plan_settings.save('plus', {'price_uzs': 20_000})
+    on_discount()
+    assert manual.period_days(over) == 37
+    for lang, words in (('en', 'the regular price is 20 000 so\'m today'), ('uz', 'odatdagi narxi esa bugun 20 000 so\'m'),
+                        ('ru', 'обычная цена тарифа сегодня — 20 000 so\'m')):
+        note = note_on(client, over, lang)
+        assert words in note and '37' in note and '15 000' not in note, (lang, note)
+    # Opened at the regular price, which rose since: before the price rose.
+    plan_settings.save('plus', {'discount_price_uzs': '', 'discount_until': ''})
+    full = submitted(customer(7423), 'plus')
+    plan_settings.save('plus', {'price_uzs': 30_000})
+    assert note_on(client, full).startswith('This request was opened before the price rose')
+    # The same request with the plan on discount today: opened at the regular price.
+    plan_settings.save('plus', {'price_uzs': 20_000})
+    on_discount()
+    assert note_on(client, full).startswith('This request was opened at the regular price')
+    # A request from before discounts was opened at the regular price, as they all were.
+    ManualPayment.objects.filter(pk=full.pk).update(regular_amount=None)
+    assert note_on(client, full).startswith('This request was opened at the regular price')
+    ManualPayment.objects.filter(pk=cut.pk).update(regular_amount=None)
+    assert note_on(client, cut) == '', 'asked for today\'s price: nothing to say'
 
 
 # ---------------------------------------------------------------- housekeeping
@@ -498,6 +681,10 @@ def test_the_contract_describes_card_payments():
     for path in ('/billing/manual', '/billing/manual/{id}', '/billing/manual/{id}/receipt'):
         assert path in contract['paths']
     assert 'multipart/form-data' in contract['paths']['/billing/manual/{id}/receipt']['post']['requestBody']['content']
+    # A payment's amounts are so'm in `currency`, and are not named after Stars.
+    payment = contract['components']['schemas']['Payment']
+    assert {'amount', 'refunded'} <= set(payment['properties']) and {'amount', 'refunded'} <= set(payment['required'])
+    assert not {'amount_xtr', 'refunded_xtr'} & set(payment['properties'])
 
 
 # ---------------------------------------------------------------- admin
@@ -631,8 +818,8 @@ def test_a_rejection_needs_a_message_for_the_customer():
     assert payment.status == 'submitted'
 
 
-def test_stars_totals_no_longer_count_card_payments():
-    from operations.commerce_views import financial_report
+def test_the_money_report_counts_card_payments_in_som_and_nothing_else():
+    from operations.commerce_views import financial_report, money_cards, LABELS
     from operations.metrics import Filters
     from django.test import RequestFactory
     configure()
@@ -641,7 +828,10 @@ def test_stars_totals_no_longer_count_card_payments():
     manual.approve(submitted(real).id, finance())
     request = RequestFactory().get('/ops/payments', {'environment': 'production'})
     totals = financial_report(Filters.from_request(request))['totals']
-    assert totals['gross'] == 0 and totals['uzs_gross'] == 60_000 and totals['uzs_net'] == 60_000
+    assert totals == {'uzs_gross': 60_000, 'uzs_refunds': 0, 'uzs_net': 60_000, 'payers': 1, 'paid': 1, 'first': 1, 'manual_pending': 0}
+    assert [card['key'] for card in money_cards(totals, LABELS['en'])] == ['uzs_gross', 'uzs_refunds', 'uzs_net', 'payers', 'paid', 'first']
+    assert not {'gross', 'run_rate', 'reconcile', 'issues', 'failed', 'initial', 'pending'} & set(LABELS['en']), 'no Stars-era labels'
+    assert LABELS['en'].keys() == LABELS['uz'].keys() == LABELS['ru'].keys()
 
 
 def test_the_card_is_not_called_active_while_no_plan_has_a_price():

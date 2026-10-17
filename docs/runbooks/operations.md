@@ -41,7 +41,7 @@ Acquisition: distinct canonical accounts created in `[date_from,date_to)` after 
 
 Job success: succeeded atomic tasks / (succeeded + failed tasks) in the accepted-task cohort. No-op and canceled tasks are excluded. Seven-day activation includes only mature signup cohorts; missing denominators display unavailable, not zero percent. Charts provide equivalent tables.
 
-Billing is intentionally closed with null production Stars prices. Financial pages disclose unavailable integration. Never create a payment/paid user from a UI success event or manual account plan field. R1B owns confirmed Stars payments, renewal/refund reconciliation, non-expiring purchased grants and complete revenue/retention definitions.
+Billing is a card transfer in so'm reviewed by hand: the card and prices are saved in the admin panel, and a plan starts only when Finance approves the receipt. Never create a payment or a paid user from a UI success event or from the account's plan field alone; a staff-assigned plan is a separate, audited action. Financial pages report so'm collected and refunded, paying accounts and the review queue.
 
 ## Before public release
 
@@ -60,6 +60,6 @@ Administrators configure Telegram token/username/web application URL and AI text
 
 Preserve `.private/integration.key` with the local database backup. In deployment, supply `INTEGRATION_ENCRYPTION_KEY` through managed secrets and test a restore before rotating it. Studio drafts and saved education content also use this cipher. Losing the key makes encrypted content unreadable.
 
-Use `runworker` for ordinary jobs and a separate `runbatches` process for long batch parents. This prevents a batch of 25 documents from blocking all ordinary work. `dispatchoutbox` is the alternate Celery publisher; do not run competing queue modes without a deliberate deployment topology. A published event remains undelivered until terminal settlement. Polling drains bot delivery retries; a webhook deployment requires `dispatchtelegram` and `deliverbot` workers. Configure recurring `cleanupfiles` and payment reconciliation explicitly in the deployment scheduler.
+Use `runworker` for ordinary jobs and a separate `runbatches` process for long batch parents. This prevents a batch of 25 documents from blocking all ordinary work. `dispatchoutbox` is the alternate Celery publisher; do not run competing queue modes without a deliberate deployment topology. A published event remains undelivered until terminal settlement. Polling drains bot delivery retries; a webhook deployment requires `dispatchtelegram` and `deliverbot` workers. Configure recurring `cleanupfiles` and `reconcilepayments` (it expires lapsed periods and qualifies referrals) explicitly in the deployment scheduler.
 
-Local authoring is available only in DEBUG. Production must select a configured AI provider or disabled mode. Live commerce separately requires reviewed, versioned offers and explicit activation. Sandbox test accounts and facts are excluded from production grants and reports even if copied from a development database.
+Local authoring is available only in DEBUG. Production must select a configured AI provider or disabled mode. Card payments need the card and the prices saved in the admin panel; nothing is on sale until they are. Sandbox test accounts and facts are excluded from production grants and reports even if copied from a development database.

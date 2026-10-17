@@ -51,7 +51,7 @@ Important implementation rules:
 - Treat webhook/queue delivery as at-least-once. Use database constraints and transactional idempotency to prevent duplicate users, payments, grants, reservations, jobs and settlements.
 - Use private files, owner checks, parser isolation, bounded resources, revocable download permissions and actual retention cleanup.
 - Verify Telegram initData server-side and bind ordinary browser login to the initiating browser. Keep staff MFA/session permissions separate.
-- Use Telegram Stars for the initial billing rail. Payment success must be server-confirmed. A UI callback cannot grant paid access.
+- The billing rail is a card transfer in so'm: the owner sets each plan's price and any discount in `/ops/plans`, the customer transfers the money and sends the receipt, and staff check it by hand. Paid access starts only on that approval; a UI callback cannot grant it. Telegram Stars was removed on 2026-10-17 at the owner's decision.
 - Keep live checkout off while prices are null. plan_seed.json numbers are staging defaults, not validated commercial promises.
 - Implement 30-day provider periods and the documented boundary-only plan-change policy. Do not silently invent proration, auto-charge an unconfirmed new plan or lose purchased credits.
 - Quotes have versioned policies/tariffs and a confirmed maximum. Exports/manual outline edits do not create hidden AI charges. No-op compression is uncharged.
@@ -99,4 +99,4 @@ The first useful result should let a user sign in, upload two PDFs, see a locali
 
 ## Configuration to collect when needed
 
-Brand/domains; bot token and local Bot API credentials; production Stars prices; provider credentials; hosting/storage settings; support contact; license choice for qualified converters/editor; reviewed public copy. Use environment examples and local fixtures until each integration is ready. Do not put any real secret in this package.
+Brand/domains; bot token and local Bot API credentials; the owner's card for transfers and the plan prices; provider credentials; hosting/storage settings; support contact; license choice for qualified converters/editor; reviewed public copy. Use environment examples and local fixtures until each integration is ready. Do not put any real secret in this package.

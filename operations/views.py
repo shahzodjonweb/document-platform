@@ -59,7 +59,7 @@ SECTIONS = {'today':'today','overview':'analytics','analytics/acquisition':'anal
             'plans':'plans','system':'system','localization':'localization'}
 JOB_STATES = ['queued','running','succeeded','failed','canceled']
 USER_SORTS = {'new':'-created_at','old':'created_at','name':'display_name','plan':'-plan'}
-PLAN_GROUPS = [('group_price',['price_uzs','price_xtr']),
+PLAN_GROUPS = [('group_price',['price_uzs','discount_price_uzs','discount_until']),
                ('group_weekly',['weekly_ai_documents','weekly_file_jobs','edits_per_file']),
                ('group_task',['max_file_mib','max_pages_per_job','concurrent_jobs']),
                ('group_ai',['max_ai_source_pages','max_ai_source_files','max_deck_images','max_ai_input_tokens',
@@ -235,8 +235,8 @@ def page(request, section='overview'):
     if section=='plans':
         from . import plans as plan_settings
         defaults=plan_settings.seed()['plans'];changed=plan_settings.overrides()
-        data['plan_rows']=[{'id':key,'title':key.capitalize(),'edited':bool(changed.get(key)),
-                            **plan_settings.limits_for(key,value)} for key,value in defaults.items()]
+        data['plan_rows']=[plan_row(key,plan_settings.limits_for(key,value),bool(changed.get(key)),data['t'],data['lang'])
+                           for key,value in defaults.items()]
         # Each field carries its seed value so an operator can see what they
         # are changing it from, and its bounds so the form refuses nonsense.
         data['plan_fields']=[{'name':name,'low':low,'high':high} for name,(low,high) in plan_settings.FIELDS.items()]
@@ -250,6 +250,7 @@ def page(request, section='overview'):
                                                        'low':plan_settings.FIELDS[name][0],'high':plan_settings.FIELDS[name][1],
                                                        'nullable':name in plan_settings.NULLABLE,
                                                        'shared':name in plan_settings.SHARED,
+                                                       'date':name in plan_settings.DATES,'discount':name in plan_settings.DISCOUNT,
                                                        'value':row.get(name),'seed':defaults[row['id']].get(name)}
                                                       for name in names if name in plan_settings.FIELDS and name in defaults[row['id']]]}
                                            for group,names in PLAN_GROUPS]}
@@ -260,6 +261,23 @@ def page(request, section='overview'):
     data['now']=timezone.now()
     data['section_template']='ops/sections/'+SECTIONS[section]+'.html'
     return finish_render(request,'ops/page.html',data)
+
+
+def plan_row(key,limits,edited,t,lang='en'):
+    """One plan's card: its limits, what it costs today, and whether a stored discount has run out.
+
+    An expired discount is left in the panel (it never blocks another edit) and
+    the card says so, so the owner can tell "ended" from "none". The last day
+    is written as the bot and the web write it (pricing.day_label).
+    """
+    from apps.commerce import pricing
+    offer=pricing.plan_price(key,limits)
+    until=pricing.parse_until(limits.get('discount_until'))
+    label=''
+    if offer and offer['discount']:
+        label=t['discount_until'].format(date=pricing.day_label(until,lang))
+    return {'id':key,'title':key.capitalize(),'edited':edited,**limits,'offer':offer,'discount_label':label,
+            'discount_ended':until is not None and pricing.ends_at(until)<=timezone.now()}
 
 
 def account_search(filters,search):
@@ -309,7 +327,10 @@ def user_detail(request, pk):
     data['staff_plan']=staff_plan(account)
     period=active_period(account)
     data['paid_plan']=period.plan if period else ''
-    data['plan_limits']=[{'label':data['t'].get('field_'+key,key.replace('_',' ')),'value':value} for key,value in limits_for_plan(account.plan).items()]
+    # A blank price or discount is "none", not "unlimited" as a blank limit is.
+    data['plan_limits']=[{'label':data['t'].get('field_'+key,key.replace('_',' ')),
+                          'value':'—' if value is None and key.startswith(('price_','discount_')) else value}
+                         for key,value in limits_for_plan(account.plan).items()]
     # Customer documents, newest first. Opening one is a separate audited act.
     data['files']=FileAsset.objects.filter(account=account).order_by('-created_at')[:50]
     data['can_open_files']=allowed(request.ops_user,['Support','Operations'])

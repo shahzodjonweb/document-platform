@@ -14,11 +14,11 @@ from apps.core.services import upload_file
 from apps.studio.domain import DOCUMENT, GENERATION_IDS, SLIDES, unpack
 from apps.studio.models import GenerationDraft
 from apps.studio.pages import requested_pages
-from apps.commerce.services import create_invoice, sandbox_pay
 from operations.integrations import save_config
 from telegram import generation
 from telegram.local import dispatch_local
 from telegram.ux_copy import PROMPT_EXAMPLES
+from tests.test_manual_payments import paid
 
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.usefixtures('bot_verification_disabled')]
 
@@ -31,10 +31,8 @@ def customer(settings):
     account = resolve_account({'id': 980411, 'first_name': 'Generation test'}, is_test=True)
     BotConversation.objects.create(telegram_user_id=account.telegram_user_id, locale='en',
                                    language_selected_at=timezone.now())
-    # A bare plan field is reset by the entitlement refresh, so buy the period.
-    invoice, _ = create_invoice(account, 'premium', f'bot-generation-{account.id}')
-    sandbox_pay(account, invoice.id)
-    account.refresh_from_db()
+    # A bare plan field is reset by the entitlement refresh, so pay for the period.
+    paid(account, 'premium')
     assert account.plan == 'premium'
     return account
 

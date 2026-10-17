@@ -43,7 +43,7 @@ Compression, images-to-PDF, merging, splitting and Word-to-PDF are the initial a
 
 ## Admin coverage
 
-The plan includes new-user trends, registration sources/locales/channels, activation and retention cohorts; current and first-time paid users; plan distribution, renewals, cancellation intent, expiry, churn and reactivation; Stars inflows/refunds and subscription run-rate; feature adoption, usage, provider cost and processing quality; support, referrals, worker health and cleanup.
+The plan includes new-user trends, registration sources/locales/channels, activation and retention cohorts; current and first-time paid users; plan distribution, renewals, cancellation intent, expiry, churn and reactivation; so'm collected and refunded, and the card-transfer review queue; feature adoption, usage, provider cost and processing quality; support, referrals, worker health and cleanup.
 
 Every KPI has a defined population/time window, consistent drilldowns/exports, test-data exclusions, role permissions and audit requirements. Paying once, having an active subscription and renewing are deliberately separate metrics.
 
@@ -51,9 +51,9 @@ Every KPI has a defined population/time window, consistent drilldowns/exports, t
 
 The 128-feature catalog describes the full roadmap. The pricing page must sell only enabled, completed features. All feature flags start disabled in this handoff.
 
-Staging quotas and credit tariffs are starting examples for engineering and cost tests. Production Plus/Premium prices are null, and live checkout is disabled. Set validated prices through versioned admin configuration before selling subscriptions.
+Staging quotas are starting examples for engineering and cost tests. Plus and Premium are sold by card transfer in so'm at the prices set in `/ops/plans`, where a discount with its last day can be entered; nothing is on sale until the card is saved in Admin → Integrations.
 
-Telegram digital purchases use Stars in the initial design. An ordinary browser uses the same Telegram checkout and canonical account. Processing limits must match the actual deployed Telegram transport; larger uploads have an authenticated web fallback when needed.
+The initial design paid with Telegram Stars; that was removed on 2026-10-17, and the bot and the browser both pay by card transfer on the same canonical account. Processing limits must match the actual deployed Telegram transport; larger uploads have an authenticated web fallback when needed.
 
 The biggest technical uncertainties are editable PDF-to-Word fidelity, multilingual content quality and genuine existing-content PDF editing/redaction. They have explicit engine/provider/license spikes and release gates instead of unsupported promises.
 

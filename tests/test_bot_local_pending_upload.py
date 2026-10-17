@@ -52,10 +52,7 @@ def file_id_for(customer):
     return BotConversation.objects.get(pk=customer.telegram_user_id).pending['uploads'][0]['document']['file_id']
 
 
-def test_first_upload_resumes_once_in_a_new_local_session(customer, monkeypatch):
-    # No external provider or real Telegram connection is involved.
-    from apps.commerce.providers import TelegramStarsProvider
-    monkeypatch.setattr(TelegramStarsProvider, 'call', lambda *args, **kwargs: pytest.fail('Live Telegram called'))
+def test_first_upload_resumes_once_in_a_new_local_session(customer):
     result = dispatch_local(customer, uploaded=pdf())
     token = language_token(result)
     identifier = file_id_for(customer)

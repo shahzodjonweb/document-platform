@@ -19,13 +19,5 @@
   <h2>{{ f.status }} · {{ refund.status }}</h2>
   <p>{{ refund.reason }}</p>
 </section>
-{% else %}
-<section class="panel info-panel">
-  <h2>{{ f.refund }}</h2>
-  <form method="post" class="integration-form">
-    {% csrf_token %}
-    <div class="form-actions"><button class="button danger-outline">{{ f.refund }} · {{ payment.amount_xtr }} {{ payment.currency }}</button></div>
-  </form>
-</section>
 {% endif %}
 {% endblock %}

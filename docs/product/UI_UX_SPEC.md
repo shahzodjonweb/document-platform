@@ -23,7 +23,7 @@ Use an explicit `uz`, `en`, or `ru` URL prefix for customer routes. Example: `/u
 | `/` | Public landing | Specific file-tool benefits, five active popular tools, short product demo, plan summary, language switch, Start in Telegram and Open web app. No fabricated customer counts or testimonials. |
 | `/tools` | Public tool directory | Categories, text search, output format, released features, plan labels. |
 | `/tools/:toolSlug` | Public tool page | What it does, input/output examples, limits, upload/open action, concise instructions. |
-| `/pricing` | Plan comparison | Free/Plus/Premium, current monthly allowances, Stars price, billing period, exclusions, trial rules, cancellation/refund links. |
+| `/pricing` | Plan comparison | Free/Plus/Premium, current allowances, price in so'm per 30 days; while a discount runs, the regular price struck through, the discounted price, the percentage and its last day; exclusions, cancellation/refund links. |
 | `/help` and `/help/:slug` | Help | Search, processing help, supported formats, payments, deletion and privacy, contact. |
 | `/legal/terms`, `/legal/privacy`, `/legal/refunds` | Legal information | Current versions and effective dates. |
 | `/auth/telegram` | Browser account entry | First-party Telegram confirmation link/QR, initiating browser/device description, pending/approved/expired states, clear cancel/back controls; no separate password account. |
@@ -42,7 +42,7 @@ Use an explicit `uz`, `en`, or `ru` URL prefix for customer routes. Example: `/u
 | `/app/editor/:id` | Visual PDF editor, P3 | Pages, canvas, tools, properties, versions, save/export state. |
 | `/app/templates` | Template library, P2 | Previews, filter by purpose/locale, saved preferences, premium distinctions. |
 | `/app/workflows` | Saved file workflows | Ordered operations, defaults, input/output compatibility, quote before each run. |
-| `/app/billing` | Subscription and usage | Plan, renewal/end date, balances, reset times, transaction history, cancellation, available top-ups. |
+| `/app/billing` | Subscription and usage | Plan, paid-until date, reset times, transaction history, card-transfer payment with the exact amount and receipt upload. |
 | `/app/settings` | Account preferences | UI/output language, timezone, display theme, paper size, notifications, linked Telegram identity. |
 | `/app/referrals` | Referral status | Share action initiated by user, qualifying rules, capped rewards, pending/earned status. |
 | `/app/support` | Support ticket | Category, optional job/payment reference, concise message, status. |
@@ -67,7 +67,7 @@ Persistent commands:
 | `/menu` | Main actions. |
 | `/tools` | Categorized tool picker. |
 | `/myfiles` | Recent tasks and available results; label clearly as temporary files. |
-| `/plan` | Plan, allowances, renewal/end date, upgrade or cancellation. |
+| `/plan` | Plan, allowances, paid-until date, card payment for a plan. |
 | `/language` | O‘zbekcha, English, Русский. |
 | `/help` | Examples and processing support. |
 | `/support` | Contact product support. |
@@ -111,7 +111,7 @@ Bot input behavior:
 
 Special states:
 
-- Too large: state actual size/pages and current limit; offer a smaller file, applicable plan, or supported upload path. Avoid an upgrade if the task exceeds every plan's limit.
+- Too large: state actual size/pages and current limit; offer a smaller file or a supported upload path. File size, pages, batches and tools are the same on every plan, so never offer an upgrade for them; only the weekly allowances and AI edits differ by plan.
 - Corrupt/unsupported file: explain what failed and suggest a supported input. Keep unaffected files in a multi-file draft.
 - Password required: ask for the supplied password only for that processing attempt, mask it in the UI, never put it in chat-history summaries or telemetry. Offer browser entry when appropriate.
 - No meaningful compression: retain the original and state that further reduction would reduce quality. A no-op compression is not charged; show that no allowance was consumed.
@@ -155,11 +155,11 @@ Use a four-step wizard: Content → Outline → Style → Generate. The first st
 - At a relevant limit, show the locked capability, the smallest eligible plan, actual 30-day/provider-period allowances, and whether that plan can become active now or only after the current paid period. A larger file that only needs Plus should recommend Plus. A top-up adds usage but cannot unlock a capability excluded from the current plan.
 - Plan cards show Free, Plus, Premium side by side on desktop and stacked on mobile. Avoid preselected Premium, fake urgency, crossed-out invented prices, or false popularity labels.
 - Preserve input and outline across checkout. A first paid subscription or eligible top-up becomes usable only after server confirmation, then the user can resume under a refreshed quote. Scheduled paid-plan changes do not activate early or unlock the preserved job. Never submit a previously quoted task twice automatically. If input expires before a scheduled change, keep metadata/settings and request re-upload.
-- Invoice states follow the master lifecycle: created, presented, pending, paid, canceled, expired, failed. Refunding/refunded are a linked refund lifecycle; subscription pending/active/cancel-at-period-end/expired/revoked are separate. A transient received/activating message may explain server synchronization but cannot grant access from a client success event.
+- A card-transfer request is awaiting (card and exact amount shown), submitted (receipt sent, under review), approved, rejected, cancelled or expired. Refunded is a linked state after the owner returns the money. Access starts only on approval; a client success event never grants it.
 - Billing page separates included standard operations, included AI credits, purchased top-ups, and referral rewards. Included grants expire at the period end; purchased top-ups do not expire in v1; referral grants expire after 30 days. Show the next reset, the actual provider period, and the disclosed Free-cycle/daily reset time in the user's timezone. Never label a 30-day period as a calendar-month boundary.
-- Renewal off: show Active until DATE. Do not label cancellation as immediate expiry. Failed renewal: state the actual entitlement end and what happens to new work. Never delete user content as an unannounced consequence of canceling.
-- In v1, changes between existing paid plans are scheduled at the current period boundary. Show the effective date, cancel the old renewal with provider confirmation, preserve paid access, and request a newly confirmed checkout for the new plan at expiry. A scheduled choice neither auto-debits a changed amount nor grants the new plan. Do not offer instant paid upgrades or proration without the separate tested billing ADR required by the master.
-- Staging plan values are labeled DRAFT; live checkout remains disabled while production Stars prices are null. The browser purchase action opens the same Telegram Stars invoice; a second payment provider is outside v1.
+- A paid period does not renew by itself: show Paid access until DATE and offer paying again. Never delete user content as an unannounced consequence of a lapsed period.
+- A higher plan paid for while a period runs starts at once; the same or a lower plan follows the running period, so nothing already paid for is cut short. No proration.
+- Prices come from the admin panel; nothing is on sale until the card is saved there. The bot and the browser show the same card, amount and discount; automatic payment is a later addition.
 - The product's Premium subscription is labeled Product Premium where necessary, so it is not confused with Telegram Premium.
 
 ### 4.5 Shared account and cross-channel continuity
@@ -230,8 +230,8 @@ Locale rules:
 - Use ICU-style messages/plurals with explicit variables. Russian requires its plural forms; do not construct sentences by concatenating translated fragments. Labels must support longer translated strings without shrinking the font.
 - Localize UI dates/numbers through standard locale formatting using a user-selected timezone; persist timestamps in UTC. The locale must not silently determine timezone. Show timezone in billing deadlines and admin reports.
 - Output language is separate from UI language and defaults to it. Show the output choice prominently before generation. Generated language should remain stable when the user switches interface locale mid-task.
-- Plan IDs remain `free`, `plus`, `premium`; display names may retain Free/Plus/Premium with localized explanations. Currency/Stars names and quota units use translation keys.
-- Display Telegram payments in Stars. A USD/UZS/RUB estimate, if ever added, must be clearly labeled and sourced; do not hard-code an exchange value.
+- Plan IDs remain `free`, `plus`, `premium`; display names may retain Free/Plus/Premium with localized explanations. Quota units and date phrases ("until 31 Oct") use translation keys; the currency is written `so'm` in every language.
+- Prices are in so'm. A discount shows the regular price struck through, today's price, the whole percent off (rounded down) and its last day in Tashkent; no countdowns, no invented prices.
 - UI filenames may be ellipsized visually but provide full accessible names and copy actions. File extensions remain intact. Do not use filenames as HTML or as the only download authorization mechanism.
 - Screenshots for acceptance include all three locales and long-content cases, not only English happy paths.
 
@@ -255,15 +255,15 @@ Admin lives at a separate staff origin or server route such as `admin.example.co
 
 | Staff route | Page | Main contents |
 |---|---|---|
-| `/ops/overview` | Business overview | New users, activated users, active paying users, first-time payers, renewals, Stars collected/refunded, successful tasks, success rate, queue status. |
+| `/ops/overview` | Business overview | New users, activated users, active paying users, first-time payers, so'm collected/refunded, successful tasks, success rate, queue status. |
 | `/ops/users` | User explorer | Search internal/Telegram ID, registration date, source, language, plan, active entitlement, last activity, first success/payment. |
 | `/ops/users/:id` | User detail | Profile summary, identity, plan lifecycle, allowance ledger, task metadata, payment ledger, support cases, audit history. |
 | `/ops/analytics/acquisition` | Acquisition | New accounts, verified/referral source, locale, platform, campaign, start→first successful job funnel. |
 | `/ops/analytics/engagement` | Usage and retention | DAU/WAU/MAU definitions, successful-task users, feature use, repeat use, signup cohorts, paid/free splits. |
-| `/ops/analytics/revenue` | Payments and subscriptions | Stars cash-flow metrics, current plan counts, first/renewal/top-up payments, churn, conversion, refunds, period comparisons. |
+| `/ops/analytics/revenue` | Payments and subscriptions | so'm cash-flow metrics, current plan counts, first and repeat payments, churn, conversion, refunds, period comparisons. |
 | `/ops/analytics/features` | Feature performance | Attempts, successes, failures, unique users, paid conversion after use, latency, cost/usage by tool and version. |
-| `/ops/subscriptions` | Subscription operations | Free/Plus/Premium states, renewal status, expiry dates, scheduled changes, provider references. |
-| `/ops/payments` | Payment ledger | Unique charges, invoices, payment kind, Stars amounts, state, refunds, webhook receipt status. |
+| `/ops/subscriptions` | Subscription operations | Free/Plus/Premium states, paid-until dates, card-transfer references. |
+| `/ops/payments` | Payment ledger | Card-transfer review queue, unique payments, plan, so'm amounts, state, refunds. |
 | `/ops/jobs` | Processing operations | Job stage, tool, user, age, attempt, worker/provider, queue, errors, safe retry/cancel. |
 | `/ops/jobs/:id` | Job inspection | Metadata, timeline, sanitized logs, charge reservation/settlement/release, delivery attempts, retention status. |
 | `/ops/plans` | Plan and quota versions | Effective dates, entitlements, limits, AI rate cards, draft/publish comparison; historical purchases retain their recorded version. |
@@ -280,10 +280,10 @@ Admin dashboard design:
 - 1440 px desktop: left navigation, shared filter bar, 6–8 meaningful KPI cards, two chart rows, then exception/task tables. Avoid a page of 40 competing numbers.
 - Shared filters: date range, report timezone, compare period, locale, current/at-event plan as explicitly labeled, bot/browser/Mini App channel, acquisition source, tool, production/test environment. Keep filters in the URL where safe.
 - Every card has a label, value, scope/denominator tooltip, period comparison when meaningful, updated-at timestamp, and click-through into a reconciled detail table.
-- Charts include new users by day, first-time payers by day, currently paid users over time, plan mix, payment-kind mix, successful tasks by tool, job success rate, and signup/payment cohorts. Do not combine counts and Stars on an unlabeled dual axis.
+- Charts include new users by day, first-time payers by day, currently paid users over time, plan mix, payment-kind mix, successful tasks by tool, job success rate, and signup/payment cohorts. Do not combine counts and so'm on an unlabeled dual axis.
 - Paid users view separates current paid entitlement from ever-paid accounts and from payments in the selected period. Grants/trials/test accounts must be identifiable and excluded from paid counts by default.
-- Payment amount uses Stars as the original unit. Show refunds separately and net Stars as a derived measure. Financial estimates, if enabled later, include the assumed reward rate and date and are not called cash received.
-- A recurring run-rate sums contractual XTR renewal prices for currently active renewing paid contracts and is labeled per 30 days. Exclude one-time packs, complimentary access, and renewal-off contracts; a separate active-service figure may include cancellation-at-end. Do not count renewed charges as newly acquired paying users.
+- Payment amount is in so'm, as transferred. Show refunds separately and net so'm as a derived measure.
+- There is no recurring run-rate: a card transfer buys one 30-day period and nothing renews by itself. A separate active-service figure counts paid periods covering the snapshot, excluding complimentary access. Do not count a repeat payment as a newly acquired paying user.
 - Cohort heatmaps have a table alternative. Cells after the observation window show Not yet observable, not 0%.
 - Zero means a measured zero. No data, delayed pipeline, disabled tracking, and permission denied have distinct states. Failed analytics queries must not show fake zeros.
 - CSV exports retain filter, timezone, generated-at, and metric definitions. Escape spreadsheet formula prefixes; audit exports containing user identifiers.
@@ -305,12 +305,12 @@ Operational metric definitions follow section 17.5 of the master specification:
 | 7/30-day conversion | Mature signup cohort with first paid charge within the chosen window / eligible mature signup cohort. |
 | Subscription churn | Accounts paid at period start whose paid access ended without continuation by cutoff / accounts paid at start; newly acquired-and-lost accounts are separate. |
 | Cancel intent | Renewal disabled; does not mean the paid entitlement has ended. |
-| Gross/net Stars | Successful charge amounts by occurrence time; net period cash-flow subtracts refunds occurring in that same period. |
+| Gross/net so'm | Successful charge amounts by occurrence time; net period cash-flow subtracts refunds occurring in that same period. |
 | Retained cohort revenue | Cohort charges less refunds linked to those charges regardless of refund date; distinct from period cash-flow. |
-| ARPPU | Chosen period net Stars / distinct paying accounts in that period; disclose cash-flow basis and handle a zero denominator explicitly. |
+| ARPPU | Chosen period net so'm / distinct paying accounts in that period; disclose cash-flow basis and handle a zero denominator explicitly. |
 | Task success rate | Succeeded atomic jobs / (succeeded + failed atomic jobs); cancellations and no-ops are excluded and shown separately. |
 | Batch success | Full/partial/failed parent counts shown separately; parent counts are never added to child throughput. |
-| Refund rate | Label transaction-based and Stars-based measures separately with their exact denominator; use matching purchase cohorts when evaluating acquisition quality. |
+| Refund rate | Label transaction-based and so'm-based measures separately with their exact denominator; use matching purchase cohorts when evaluating acquisition quality. |
 | Retention Dn | Signup cohort users with meaningful activity in the defined day bucket / mature eligible signup cohort. |
 | Cost per successful job | All direct costs in the selected job cohort, including failed attempts, / completed jobs; show the denominator and unallocated costs. |
 
@@ -368,7 +368,7 @@ P1 customer gate:
 
 - A new Uzbek-speaking user can send two PDFs, order them, see their allowance, merge, and receive a usable output through the bot; the same task can open in the Mini App without re-uploading.
 - A browser user can authenticate to the same account and see the same plan, balance, and job state without duplicate signup counts.
-- Free plan limits are clear before submission. Failed jobs and canceled invoices do not display successful charges or extra deductions.
+- Free plan limits are clear before submission. Failed jobs and cancelled payment requests do not display successful charges or extra deductions.
 - Reloading a processing page and tapping Start repeatedly do not produce duplicate jobs or charges.
 - Long filenames, 50-page preview grids, empty histories, password-protected files, and partial batch failures are understandable in all three locales.
 - Keyboard-only users can reorder pages, choose ranges, confirm processing, and retrieve results.
@@ -401,7 +401,7 @@ Admin gate:
 The design recommendations are proposed product decisions. Platform-specific facts were checked on 2026-09-22:
 
 - [S1] Telegram Mini Apps: https://core.telegram.org/bots/webapps — authentication data, theme, viewport, safe areas, native navigation/action capabilities, and feature compatibility.
-- [S2] Telegram digital-goods payments: https://core.telegram.org/bots/payments-stars — digital services inside Telegram use Stars (`XTR`); support, `/paysupport`, purchase terms, and successful-payment confirmation. The master specification additionally chooses the same Telegram Stars invoice for the initial browser checkout; a second payment system is outside v1.
+- [S2] Telegram digital-goods payments: https://core.telegram.org/bots/payments-stars — the master specification paid with Telegram Stars. Stars was removed on 2026-10-17 in favour of card transfers reviewed by hand, so this source no longer governs the product.
 - [S3] W3C WCAG 2.2 quick reference: https://www.w3.org/WAI/WCAG22/quickref/ — accessibility reference. The 44 px product touch-target goal is stricter than the AA minimum target-size rule; it is a chosen usability target, not a claim that all AA controls require 44 px.
 
 No popularity ranking, adoption forecast, revenue result, school-curriculum endorsement, or exact conversion accuracy is claimed by this specification.

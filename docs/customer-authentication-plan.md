@@ -19,7 +19,7 @@ One customer UUID owns files, jobs, usage, subscriptions and preferences. Option
 - Authentication limits use atomic database counters per normalized email/account and per server-issued browser identity. A low per-IP limit would combine all clients behind the two deployment proxies. Caller-supplied forwarded IP headers are never trusted.
 - Expired challenge/limiter rows are removed by the existing cleanup service; consumed email challenges immediately discard pending password hashes.
 - PDF Master access logs omit query strings and referrers to avoid retaining OAuth codes/state. Staff sessions remain separate from customer sessions.
-- Telegram Stars and Telegram document delivery require a linked Telegram identity. Other document processing works for email/Google customers.
+- Telegram document delivery requires a linked Telegram identity. Card payments and other document processing work for email/Google customers.
 
 ## Configuration
 

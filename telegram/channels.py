@@ -51,15 +51,13 @@ def copy(account, key):
 
 
 def premium_on_sale(account):
-    """Whether Premium can be bought now: a card price set in the panel, or a Stars offer.
+    """Whether Premium can be bought now: a card price set in the panel.
 
     The gate's "Or choose Premium" would otherwise open a plans screen with no
     Premium on it.
     """
-    from apps.commerce import manual, services
-    if 'premium' in manual.prices():
-        return True
-    return any(offer.plan == 'premium' for offer in services.available_offers(account))
+    from apps.commerce import manual
+    return 'premium' in manual.prices()
 
 
 async def blocked(account):

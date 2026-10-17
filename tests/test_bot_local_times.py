@@ -1,6 +1,6 @@
 """Bot times are shown on the clock of the person's own device (account.time_zone)."""
 import io
-from datetime import datetime, timedelta, timezone as dt_timezone
+from datetime import date, datetime, timedelta, timezone as dt_timezone
 from types import SimpleNamespace
 from zoneinfo import ZoneInfo
 
@@ -15,7 +15,7 @@ from apps.commerce.models import PaymentNotice, Subscription, SubscriptionPeriod
 from apps.core.models import BotConversation, BotDraft, Job, Quote
 from apps.core.policy import usage_snapshot
 from apps.core.services import create_quote, submit_job, upload_file
-from telegram.clock import local_time, offset_label, stamp
+from telegram.clock import day_label, local_time, offset_label, stamp
 from telegram.local import dispatch_local
 from tests.test_bot_generation import buttons, customer as writer, describe, tap  # noqa: F401
 from tests.test_bot_manual_payments import bot_mock, customer, run_notices  # noqa: F401
@@ -65,7 +65,6 @@ def test_subscription_screens_show_the_end_on_the_customer_clock(customer):
     local = f'{ends.astimezone(TASHKENT):%Y-%m-%d %H:%M} UTC+5'
     text = dispatch_local(customer, text='/subscription')['messages'][-1]['text']
     assert local in text and f'{ends:%Y-%m-%d %H:%M}' not in text
-    assert local in dispatch_local(customer, text='/changeplan free')['messages'][-1]['text']
 
 
 def test_an_unknown_zone_keeps_the_subscription_end_in_utc(customer):
@@ -114,14 +113,10 @@ def test_a_quote_expiry_is_shown_on_the_customer_clock():
     assert not any('(UTC)' in text for text in shown)
 
 
-def test_renewal_controls_and_the_reminder_date_the_end_on_the_customer_clock(customer):
+def test_the_renewal_reminder_dates_the_end_on_the_customer_clock(customer):
     customer.time_zone = 'Asia/Tashkent'
     customer.save(update_fields=['time_zone'])
     ends = approved(customer)
-    local = f'{ends.astimezone(TASHKENT):%Y-%m-%d %H:%M} UTC+5'
-    Subscription.objects.filter(account=customer).update(renewal_enabled=True)
-    confirm = tap(customer, dispatch_local(customer, text='/subscription'), 'renewal off')
-    assert local in confirm['messages'][-1]['text']
     PaymentNotice.objects.all().delete()
     manual.housekeeping(now=ends - timedelta(days=1))
     bot = bot_mock()
@@ -147,6 +142,31 @@ def test_an_ai_review_expiry_is_shown_on_the_customer_clock(writer):
     review = describe(writer, 'A one page introduction to tidal energy.')['messages'][-1]['text']
     quote = Quote.objects.filter(account=writer).latest('created_at')
     assert f'{quote.expires_at.astimezone(TASHKENT):%Y-%m-%d %H:%M} UTC+5' in review, review
+
+
+@pytest.mark.parametrize('locale,label,september,next_year', [
+    ('en', '31 Oct', '5 Sep', '5 Jan {y}'), ('uz', '31-oktabr', '5-sentabr', '{y}-yil 5-yanvar'),
+    ('ru', '31 октября', '5 сентября', '5 января {y}')])
+def test_a_day_is_named_as_the_language_writes_it_with_the_year_only_when_it_is_not_this_one(locale, label, september, next_year):
+    """A discount's last day on the plans and payment screens: '31 Oct',
+    '31-oktabr', '31 октября'. The year is added only when it is not the
+    current Tashkent year, each language its own way ('5 Jan 2027',
+    '2027-yil 5-yanvar', '5 января 2027'), so a discount ending this month
+    needs none. The bot spells it as apps.commerce.pricing does, the one
+    table the admin panel and the web app share; 'Sep', never 'Sept'."""
+    from apps.commerce import pricing
+    year = datetime.now(TASHKENT).year
+    assert day_label(f'{year}-10-31', locale) == label
+    assert day_label(date(year, 10, 31), locale) == label
+    assert day_label(date(year, 9, 5), locale) == september
+    assert day_label(date(year + 1, 1, 5), locale) == next_year.format(y=year + 1)
+    assert pricing.day_label(date(year + 1, 1, 5), locale) == day_label(date(year + 1, 1, 5), locale)
+    # A moment is read on the Tashkent clock: late evening in UTC is the next day there.
+    assert day_label(datetime(year, 10, 30, 20, 30, tzinfo=dt_timezone.utc), locale) == label
+    assert day_label(datetime(year, 10, 30, 20, 30), locale) == label, 'naive is UTC'
+    assert day_label(f'{year}-10-31', 'xx') == day_label(f'{year}-10-31', 'en')
+    with pytest.raises((TypeError, ValueError)):
+        day_label('31 Oct', locale)
 
 
 @pytest.mark.parametrize('name', ['UTC', '', 'Mars/Olympus'])

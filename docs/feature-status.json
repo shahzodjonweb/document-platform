@@ -2061,16 +2061,10 @@
       "name": "Telegram Stars checkout",
       "release": "R1B",
       "ticket": "R1B-05",
-      "status": "implemented_local",
+      "status": "retired",
       "production_enabled": false,
-      "evidence": [
-        "apps/commerce",
-        "telegram/billing.py",
-        "telegram/delivery.py",
-        "operations/commerce_views.py",
-        "apps/commerce/tests"
-      ],
-      "gate": "Server-priced state machine and sandbox tested. Real Stars provider, reviewed prices/economics and production financial reconciliation need configuration/signoff."
+      "evidence": [],
+      "gate": "Removed 2026-10-17 at the owner's decision; card transfer is the only checkout"
     },
     {
       "id": "billing.subscription",
@@ -2086,7 +2080,7 @@
         "operations/commerce_views.py",
         "apps/commerce/tests"
       ],
-      "gate": "Server-priced state machine and sandbox tested. Real Stars provider, reviewed prices/economics and production financial reconciliation need configuration/signoff."
+      "gate": "Card-transfer billing reviewed by hand: server-owned so'm prices, receipt review, approval and refunds are tested locally. Reviewed prices/economics and production financial sign-off remain."
     },
     {
       "id": "billing.task_pack",
@@ -2102,7 +2096,7 @@
         "operations/commerce_views.py",
         "apps/commerce/tests"
       ],
-      "gate": "Server-priced state machine and sandbox tested. Real Stars provider, reviewed prices/economics and production financial reconciliation need configuration/signoff."
+      "gate": "Card-transfer billing reviewed by hand: server-owned so'm prices, receipt review, approval and refunds are tested locally. Reviewed prices/economics and production financial sign-off remain."
     },
     {
       "id": "billing.ai_topup",
@@ -2118,7 +2112,7 @@
         "operations/commerce_views.py",
         "apps/commerce/tests"
       ],
-      "gate": "Server-priced state machine and sandbox tested. Real Stars provider, reviewed prices/economics and production financial reconciliation need configuration/signoff."
+      "gate": "Card-transfer billing reviewed by hand: server-owned so'm prices, receipt review, approval and refunds are tested locally. Reviewed prices/economics and production financial sign-off remain."
     },
     {
       "id": "support.standard",
@@ -2151,7 +2145,7 @@
         "operations/commerce_views.py",
         "apps/commerce/tests"
       ],
-      "gate": "Server-priced state machine and sandbox tested. Real Stars provider, reviewed prices/economics and production financial reconciliation need configuration/signoff."
+      "gate": "Card-transfer billing reviewed by hand: server-owned so'm prices, receipt review, approval and refunds are tested locally. Reviewed prices/economics and production financial sign-off remain."
     },
     {
       "id": "billing.trial",
@@ -2167,7 +2161,7 @@
         "operations/commerce_views.py",
         "apps/commerce/tests"
       ],
-      "gate": "Server-priced state machine and sandbox tested. Real Stars provider, reviewed prices/economics and production financial reconciliation need configuration/signoff."
+      "gate": "Card-transfer billing reviewed by hand: server-owned so'm prices, receipt review, approval and refunds are tested locally. Reviewed prices/economics and production financial sign-off remain."
     },
     {
       "id": "growth.referral",
@@ -2183,7 +2177,7 @@
         "operations/commerce_views.py",
         "apps/commerce/tests"
       ],
-      "gate": "Server-priced state machine and sandbox tested. Real Stars provider, reviewed prices/economics and production financial reconciliation need configuration/signoff."
+      "gate": "Card-transfer billing reviewed by hand: server-owned so'm prices, receipt review, approval and refunds are tested locally. Reviewed prices/economics and production financial sign-off remain."
     },
     {
       "id": "growth.sponsor",
@@ -2199,7 +2193,7 @@
         "operations/commerce_views.py",
         "apps/commerce/tests"
       ],
-      "gate": "Server-priced state machine and sandbox tested. Real Stars provider, reviewed prices/economics and production financial reconciliation need configuration/signoff."
+      "gate": "Card-transfer billing reviewed by hand: server-owned so'm prices, receipt review, approval and refunds are tested locally. Reviewed prices/economics and production financial sign-off remain."
     },
     {
       "id": "growth.ad_free",
@@ -2215,7 +2209,7 @@
         "operations/commerce_views.py",
         "apps/commerce/tests"
       ],
-      "gate": "Server-priced state machine and sandbox tested. Real Stars provider, reviewed prices/economics and production financial reconciliation need configuration/signoff."
+      "gate": "Card-transfer billing reviewed by hand: server-owned so'm prices, receipt review, approval and refunds are tested locally. Reviewed prices/economics and production financial sign-off remain."
     }
   ]
 }

@@ -71,12 +71,9 @@ def plans_screen(filters,t,with_viewers=False):
 
     A person is an account; every opening is a view, repeats included. What
     after: a card-transfer request opened, and a payment made, which is a card
-    transfer the owner approved or a Telegram Stars payment (a renewal Telegram
-    charges by itself is not someone deciding to pay). Money given back is not
-    a payment, whichever way it came: a refunded card transfer is no longer
-    'approved', and a refunded Stars payment keeps its row beside a confirmed
-    refund. Days are counted in the report's zone, the viewer's own unless they
-    pick another.
+    transfer the owner approved. Money given back is not a payment: a refunded
+    card transfer is no longer 'approved'. Days are counted in the report's
+    zone, the viewer's own unless they pick another.
 
     `t` is the admin's labels in the viewer's language. The list of who looked
     names customers, so it is only made when `with_viewers` says the viewer may
@@ -84,10 +81,10 @@ def plans_screen(filters,t,with_viewers=False):
     """
     from zoneinfo import ZoneInfo
     from datetime import date
-    from django.db.models import CharField,Exists,OuterRef,Q,Subquery,Value
+    from django.db.models import CharField,Exists,OuterRef,Subquery,Value
     from django.db.models.fields.json import KT
     from django.db.models.functions import Coalesce,TruncDate
-    from apps.commerce.models import ManualPayment,Payment
+    from apps.commerce.models import ManualPayment
     from apps.core.models import Account
     start,end=filters.bounds
     # Every view is the bot's, so a web or Mini App channel filter leaves none.
@@ -124,13 +121,9 @@ def plans_screen(filters,t,with_viewers=False):
     viewers=Account.objects.filter(pk__in=events.values('account_id')).annotate(
         first_view=Subquery(mine.order_by('occurred_at').values('occurred_at')[:1]))
     requested=ManualPayment.objects.filter(account_id=OuterRef('pk'),created_at__gte=OuterRef('first_view'))
-    stars=(Payment.objects.filter(account_id=OuterRef('pk'),occurred_at__gte=OuterRef('first_view'),is_renewal=False)
-           .exclude(provider='manual').exclude(refund__status='confirmed'))
-    if filters.environment=='production':stars=stars.filter(sandbox=False)
-    viewers=viewers.annotate(started=Exists(requested),paid_card=Exists(requested.filter(status='approved')),paid_stars=Exists(stars))
-    paid=Q(paid_card=True)|Q(paid_stars=True)
+    viewers=viewers.annotate(started=Exists(requested),paid=Exists(requested.filter(status='approved')))
     result['started']=viewers.filter(started=True).count()
-    result['paid']=viewers.filter(paid).count()
+    result['paid']=viewers.filter(paid=True).count()
     result['started_share'],result['paid_share']=share(result['started'],people),share(result['paid'],people)
     # "50% of the people who looked", worded for each language.
     for key in ('started','paid'):
@@ -147,5 +140,5 @@ def plans_screen(filters,t,with_viewers=False):
         result['viewers']=[{'id':row.pk,'name':row.display_name or row.username or str(row.pk),'username':row.username,
                             'telegram_user_id':row.telegram_user_id,'plan':row.last_plan,'views':row.view_count,
                             'last_view':row.last_view,'source':label(row.last_source),'started':row.started,
-                            'paid':row.paid_card or row.paid_stars} for row in recent]
+                            'paid':row.paid} for row in recent]
     return result

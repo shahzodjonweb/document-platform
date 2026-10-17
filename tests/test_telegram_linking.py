@@ -2,7 +2,6 @@
 import asyncio
 import hashlib
 from datetime import timedelta
-from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -11,9 +10,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import RequestFactory
 from django.utils import timezone
 
-from apps.commerce.models import BotDelivery, Invoice
-from apps.commerce.providers import TelegramStarsProvider
-from apps.commerce.services import create_invoice, record_payment, validate_precheckout
+from apps.commerce.models import BotDelivery
 from apps.core.errors import DomainError
 from apps.core.identity import exchange_challenge, resolve_account
 from apps.core.models import Account, AuthChallenge, BotCallback
@@ -128,28 +125,6 @@ def test_expired_link_confirmation_and_invalid_start_have_no_account_side_effect
     BotCallback.objects.filter(token=button).delete()
     harness.click(button)
     assert Account.objects.count() == 1
-
-
-def test_telegram_invoice_and_provider_calls_require_linked_identity():
-    account = email_account(is_test=True)
-    with pytest.raises(DomainError, match='telegram_link_required'):
-        create_invoice(account, 'plus', 'unlinked-invoice-key')
-    assert Invoice.objects.count() == 0
-    provider = TelegramStarsProvider()
-    provider.call = Mock(side_effect=AssertionError('Telegram must not be called'))
-    payment = SimpleNamespace(account=account)
-    for action in (
-        lambda: provider.invoice_link(payment, 'unused'),
-        lambda: provider.set_renewal(payment, True),
-        lambda: provider.refund(payment),
-    ):
-        with pytest.raises(DomainError, match='telegram_link_required'):
-            action()
-    provider.call.assert_not_called()
-    with pytest.raises(DomainError, match='invalid_invoice'):
-        validate_precheckout(None, 'unused', 'XTR', 50)
-    with pytest.raises(DomainError, match='invalid_invoice'):
-        record_payment(None, 'unused', 'XTR', 50, 'unused')
 
 
 def test_email_account_can_process_pdf_but_cannot_enqueue_telegram_delivery():

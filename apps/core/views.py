@@ -164,8 +164,18 @@ def plans(request):
     # Administrator edits are what the platform enforces, so they are also what
     # the pricing page advertises; reading the seed here would misstate it.
     from .policy import limits_for_plan
-    rows=[(key,limits_for_plan(key)) for key in SEED['plans']]
-    return {'draft':True,'checkout_enabled':False,'currency':'XTR','period_seconds':SEED['period_seconds'],'plans':[{'id':key,'name':key.title(),'price_xtr':limits['price_xtr'],'limits':limits,'checkout_enabled':False,'features':[fid for fid in released if FEATURES[fid]['plans'][key] not in ('none','excluded','not_included','unavailable')]} for key,limits in rows]}
+    from apps.commerce.pricing import plan_price
+    def row(key,limits):
+        # `price_uzs` is the regular price and `discount` today's, worked out
+        # once for every reader; `limits.price_uzs` stays the regular price
+        # for readers written before discounts. The discount as the owner
+        # typed it stays theirs: `discount` says what is on today, and an
+        # expired or half-filled one is not for the public.
+        offer=plan_price(key,limits)
+        public={field:value for field,value in limits.items() if field not in ('discount_price_uzs','discount_until')}
+        return {'id':key,'name':key.title(),'price_uzs':offer['regular'] if offer else None,'discount':offer['discount'] if offer else None,'limits':public,
+                'features':[fid for fid in released if FEATURES[fid]['plans'][key] not in ('none','excluded','not_included','unavailable')]}
+    return {'draft':True,'currency':'UZS','period_seconds':SEED['period_seconds'],'plans':[row(key,limits_for_plan(key)) for key in SEED['plans']]}
 
 @api()
 def usage(request): return usage_snapshot(request.account)
@@ -262,11 +272,6 @@ def contacts(request):
     from operations.integrations import contacts_config
     return contacts_config()
 
-@api(('GET','POST'))
-def billing(request):
-    if request.method=='POST': raise DomainError('checkout_disabled',409)
-    return {'checkout_enabled':False,'plan':request.account.plan,'transactions':[],'subscription':None,'reason':'production_prices_not_configured'}
-
 @api(auth=False)
 def health(request): return {'status':'ok','service':'pdfmaster-platform','api_version':'v1'}
 
@@ -278,10 +283,6 @@ def telegram_webhook(request):
     data=body(request)
     update_id=data.get('update_id')
     if not isinstance(update_id,int): raise DomainError('invalid_request')
-    if 'pre_checkout_query' in data:
-        from telegram.billing import fast_precheckout
-        fast_precheckout(data)
-        return {'ok':True,'accepted':True}
     _,created=WebhookReceipt.objects.get_or_create(update_id=update_id,defaults={'payload':data})
     return {'ok':True,'accepted':created}
 

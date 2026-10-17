@@ -29,7 +29,7 @@ Public API SHA-256:
 - Provider adapters enforce bounded input/output, model and source fingerprints, server pricing and reviewed quotes. Handwriting uncertainty survives review, and corrected transcription exports without a second provider call. Flashcard and answer-key exports include the answers.
 - Education project consent, persisted practice scores and weak topics, separate teacher learner/key exports. Public learner links download successfully and stop after revocation. Feedback, answer keys and legacy links with private content are rejected by share/download guards.
 - Independent file/form batches, immutable accepted template versions, per-child receipts and saved multi-step workflows. Unicode batch form values were independently read from the resulting PDFs.
-- Local Stars sandbox checkout, entitlement updates, cancel/resume renewal and durable payment/refund handling. Repeated quotes, callbacks, job requests and delivery retries cannot settle twice; failed/no-op work restores reservations.
+- Card-transfer payment requests, receipt review, approval, the paid period it starts and refunds taking it back, all priced by the server. Repeated quotes, callbacks, job requests and delivery retries cannot settle twice; failed/no-op work restores reservations.
 - Real aiogram handlers process local commands, inline actions and uploads, and deliver generated artifacts into the local conversation. This demonstrates bot logic with local transport, not delivery through Telegram servers.
 - Admin-managed encrypted Telegram credentials and AI provider configuration, bounded connection checks, local polling start/stop and duplicate-run protection. Staff sessions/roles, TOTP replay rejection, support replies, audit reasons, customer isolation and production/test analytics separation are covered.
 - Adversarial PDF/OOXML, source-byte mutation, symlink/FIFO/sparse-file boundaries, CSRF, cross-account access, Telegram authentication tampering/replay, worker lease recovery, queue fairness/backpressure and input/model/branding changes between quote and execution are covered.
@@ -52,6 +52,6 @@ The affected processor, advanced conversion, Office API and presentation roundtr
 
 ### Remaining external gates
 
-No live Telegram token or AI key was supplied. Enter credentials through **Admin → Integrations** to enable external connections. Image/handwriting generation requires an appropriate configured provider/model; local authoring is explicitly labeled and charges zero AI credits. Sandbox purchases do not spend real Telegram Stars.
+No live Telegram token or AI key was supplied. Enter credentials through **Admin → Integrations** to enable external connections. Image/handwriting generation requires an appropriate configured provider/model; local authoring is explicitly labeled and charges zero AI credits. Card transfers are reviewed by hand; no payment provider is called.
 
 Docker is unavailable on this host, so Compose/PostgreSQL concurrent-load and restore drills remain unexecuted. Production Linux containment, a supported Office engine/license, live Telegram device continuity/delivery, live AI/payment quality and pricing, educational/language/legal review and operational SLOs remain release gates. See the per-feature acceptance ledger for exact qualification status. The local demonstration is not a production release approval.

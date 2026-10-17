@@ -18,7 +18,7 @@ No token belongs in a chat message or committed file. Local encrypted configurat
 
 ## File processing and editor
 
-Open **All tools**, choose a processor, upload synthetic files and review the server quote. Submit and download the actual result from task history. For premium editor commands, use **Plan & usage** to make an explicitly labeled sandbox purchase. It does not spend Stars. In **PDF editor**, upload a PDF, select a page and add edits. Review the quote, export and inspect the PDF. Redaction requires an explicit rasterization acknowledgement and exports a new PDF without original text, forms or object streams.
+Open **All tools**, choose a processor, upload synthetic files and review the server quote. Submit and download the actual result from task history. To see a paid plan locally, choose one under **Plan & usage**, upload any image as the receipt and approve it from the staff Payments page (the card comes from Admin → Integrations, the prices from `/ops/plans`). No money moves. In **PDF editor**, upload a PDF, select a page and add edits. Review the quote, export and inspect the PDF. Redaction requires an explicit rasterization acknowledgement and exports a new PDF without original text, forms or object streams.
 
 OCR requires the detected Tesseract runtime. PDF-to-Word produces reflowed editable text; PDF-to-Excel extracts native tables. Unsupported complex text replacement fails with an explanation instead of covering the original text.
 

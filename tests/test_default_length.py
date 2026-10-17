@@ -10,11 +10,11 @@ import json
 
 import pytest
 
-from apps.commerce.services import create_invoice, sandbox_pay
 from apps.core.identity import resolve_account
 from apps.studio import pages
 from apps.studio.domain import DOCUMENT, SLIDES, create_draft, generation_quote, unpack
 from operations.integrations import save_config
+from tests.test_manual_payments import paid
 from tests.test_platform import login_client
 
 pytestmark = pytest.mark.django_db
@@ -36,9 +36,7 @@ def on_plan(plan):
     account = resolve_account({'id': 991100 + PLANS.index(plan), 'first_name': f'{plan} plan',
                                'language_code': 'en'}, is_test=True)
     if plan != 'free':
-        invoice, _ = create_invoice(account, plan, f'default-length-{plan}-{account.id}')
-        sandbox_pay(account, invoice.id)
-        account.refresh_from_db()
+        paid(account, plan)
     assert account.plan == plan
     return account
 

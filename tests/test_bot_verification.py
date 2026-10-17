@@ -7,7 +7,7 @@ from threading import Barrier
 
 import pytest
 from aiogram.methods import SendMessage
-from aiogram.types import Document, PreCheckoutQuery, Update
+from aiogram.types import Document, Update
 from django.utils import timezone
 from django.db import close_old_connections, connection
 
@@ -274,18 +274,6 @@ def test_local_simulator_preserves_staged_bytes_between_language_and_verificatio
     assert path.exists() and not FileAsset.objects.exists()
     dispatch_local(account, callback_data=verification_button(account.telegram_user_id))
     assert not path.exists() and FileAsset.objects.filter(account=account).count() == 1
-
-
-def test_native_payment_events_bypass_verification_without_creating_challenge_state():
-    h = GateHarness()
-    h.message(successful_payment={
-        'currency': 'XTR', 'total_amount': 100, 'invoice_payload': 'invoice',
-        'telegram_payment_charge_id': 'charge', 'provider_payment_charge_id': 'provider',
-    })
-    query = PreCheckoutQuery(id='checkout', from_user=h.user(), currency='XTR', total_amount=100, invoice_payload='invoice')
-    asyncio.run(h.dispatcher.feed_update(h.bot, Update(update_id=999, pre_checkout_query=query)))
-    assert len(h.handled) == 2 and not h.session.calls
-    assert not BotVerification.objects.exists() and not BotConversation.objects.exists()
 
 
 def test_cleanup_removes_expired_file_handles_but_preserves_auth_and_verification():
