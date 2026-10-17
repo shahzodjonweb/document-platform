@@ -424,7 +424,7 @@ def test_the_report_is_a_few_queries_however_many_people_looked(september, djang
     assert report['people'] == 64 and len(report['viewers']) == 50, 'the list stops at 50'
 
 
-PAGE = '/ops/analytics/engagement?date_from=2026-09-01&date_to=2026-10-01'
+PAGE = '/ops/analytics/plans?date_from=2026-09-01&date_to=2026-10-01'
 
 
 @pytest.mark.parametrize('lang', ['en', 'uz', 'ru'])
@@ -478,5 +478,21 @@ def test_the_plans_screen_is_for_staff_and_names_only_for_those_who_may_open_acc
     assert str(september['Aziza'].id) not in page
     admin, _ = staff_client()
     assert 'Aziza' in admin.get(PAGE + '&lang=en').content.decode()
-    # The acquisition report carries the same section beside the same funnel.
-    assert 'data-testid="plans-screen"' in admin.get(PAGE.replace('engagement', 'acquisition')).content.decode()
+    # Finance follows who pays after looking, as Analysts do.
+    finance, _ = staff_client('Finance')
+    assert finance.get(PAGE).status_code == 200
+
+
+def test_the_plans_screen_has_its_own_analytics_tab(september):
+    """Found at a glance beside the other reports, not at the foot of two of them."""
+    admin, _ = staff_client()
+    for lang in ('en', 'uz', 'ru'):
+        page = admin.get(f'{PAGE}&lang={lang}')
+        tabs = [(tab['label'], tab['url'].split('?')[0], tab['active']) for tab in page.context['analytics_tabs']]
+        assert (CATALOGS[lang]['plans_screen'], '/ops/analytics/plans', True) in tabs
+        assert [url for _, url, _ in tabs].index('/ops/analytics/plans') == 3, 'after Engagement'
+        assert CATALOGS[lang]['plans_screen_desc'] in page.content.decode(), 'the page says what it shows'
+    for other in ('engagement', 'acquisition'):
+        response = admin.get(PAGE.replace('/plans?', f'/{other}?'))
+        assert response.status_code == 200 and 'data-testid="plans-screen"' not in response.content.decode()
+        assert '/ops/analytics/plans?' in response.content.decode(), 'its tab is there to open'

@@ -31,6 +31,8 @@ PAGE_ROLES = {
     'today':['Analyst','Operations','Finance','Support','Content manager'],
     'overview':['Analyst','Operations','Finance'], 'users':['Support'],
     'analytics/acquisition':['Analyst'], 'analytics/engagement':['Analyst'],
+    # Who looks at the plans and who pays after: Finance follows it as well.
+    'analytics/plans':['Analyst','Finance'],
     'analytics/features':['Analyst','Operations'], 'analytics/revenue':['Analyst','Finance'],
     'analytics/ai-usage':['Analyst','Operations','Finance'],
     'jobs':['Operations','Support'], 'generations':['Support','Operations'], 'plans':['Finance','Content manager'],
@@ -38,7 +40,7 @@ PAGE_ROLES = {
     'localization':['Content manager'], 'integrations':[], 'staff':[],
 }
 PAGE_KEYS = {'today':'today','overview':'overview','users':'users','analytics/acquisition':'acquisition',
-             'analytics/engagement':'engagement','analytics/features':'features','analytics/revenue':'revenue','analytics/ai-usage':'ai_usage',
+             'analytics/engagement':'engagement','analytics/plans':'plans_screen','analytics/features':'features','analytics/revenue':'revenue','analytics/ai-usage':'ai_usage',
              'jobs':'jobs','generations':'generations','plans':'plans','payments':'payments','audit':'audit','system':'system','localization':'localization'}
 # Sidebar: (group label key, [(page, label key, icon)]). The analytics reports
 # share one entry; their own tabs switch between them.
@@ -49,9 +51,10 @@ NAV = [
     ('product', [('overview','nav_analytics','chart'),('jobs','nav_tasks','list'),('analytics/ai-usage','ai_usage','cpu'),('plans','plans','layers')]),
     ('settings', [('integrations','integrations','plug'),('staff','staff','shield'),('audit','audit','history'),('system','system','activity'),('localization','localization','globe')]),
 ]
-ANALYTICS = ['overview','analytics/acquisition','analytics/engagement','analytics/features']
+ANALYTICS = ['overview','analytics/acquisition','analytics/engagement','analytics/plans','analytics/features']
 # Each report page() renders lays itself out in one partial.
 SECTIONS = {'today':'today','overview':'analytics','analytics/acquisition':'analytics','analytics/engagement':'analytics',
+            'analytics/plans':'analytics',
             'analytics/features':'analytics','users':'users','jobs':'jobs','audit':'audit',
             'plans':'plans','system':'system','localization':'localization'}
 JOB_STATES = ['queued','running','succeeded','failed','canceled']
@@ -190,10 +193,13 @@ def page(request, section='overview'):
         data['recent_jobs']=filters.jobs().order_by('-created_at')[:6]
         data['chart_total']=summary['totals']['new_users']
     if section in {'analytics/acquisition','analytics/engagement'}:
-        from .analytics_extra import engagement,plans_screen
+        from .analytics_extra import engagement
         data['cohorts']=engagement(filters)
-        # Beside the bot funnel. Its list names customers, so it is made only
-        # for staff who may open their accounts.
+    if section=='analytics/plans':
+        from .analytics_extra import plans_screen
+        # Its own tab, so it is found without scrolling past the funnel. Its
+        # list names customers, so it is made only for staff who may open
+        # their accounts.
         data['plans_screen']=plans_screen(filters,data['t'],with_viewers=data['can_search_users'])
     if section=='today':
         from .today import summary as today_summary
