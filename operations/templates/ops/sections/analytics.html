@@ -2,7 +2,7 @@
 <div class="page-heading">
   <div>
     <h1>{% if page == 'overview' %}{{ t.nav_analytics }}{% else %}{{ title }}{% endif %}</h1>
-    <p class="page-description">{% if page == 'overview' %}{{ t.overview_desc }}{% elif page == 'analytics/acquisition' %}{{ t.acquisition_desc }}{% elif page == 'analytics/engagement' %}{{ t.engagement_desc }}{% else %}{{ t.feature_desc }}{% endif %}</p>
+    <p class="page-description">{% if page == 'overview' %}{{ t.overview_desc }}{% elif page == 'analytics/acquisition' %}{{ t.acquisition_desc }}{% elif page == 'analytics/engagement' %}{{ t.engagement_desc }}{% elif page == 'analytics/plans' %}{{ t.plans_screen_desc }}{% else %}{{ t.feature_desc }}{% endif %}</p>
   </div>
   {% if can_export %}<div class="page-heading-actions"><a class="button secondary" href="{{ export_url }}">{% icon 'download' 17 %}{{ t.export }}</a></div>{% endif %}
 </div>
