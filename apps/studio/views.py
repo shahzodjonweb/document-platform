@@ -79,6 +79,25 @@ def deck_design_preview(request,design):
     response['Cache-Control']='public, max-age=604800, immutable'
     return response
 
+@api(('GET',))
+def cv_templates(request):
+    """Every template a CV can wear, grouped, with the colours each renders in and the one Auto starts from."""
+    from .cv.templates import DEFAULT_TEMPLATE,catalogue
+    locale=request.GET.get('locale',request.account.locale)
+    return {'categories':catalogue(locale if locale in ('en','uz','ru') else 'en'),'default':DEFAULT_TEMPLATE}
+
+@api(auth=False)
+def cv_template_preview(request,template):
+    """A template's page 1 with the sample CV, as the picker shows it. No customer data: public and cacheable."""
+    from django.http import HttpResponse
+    from .cv.templates import TEMPLATES,thumbnail
+    locale=request.GET.get('locale','en')
+    if template not in TEMPLATES or locale not in ('en','uz','ru'):raise DomainError('not_found',404)
+    response=HttpResponse(thumbnail(template,locale),content_type='image/png')
+    # The URL carries the catalogue's version, so a cached copy is never stale.
+    response['Cache-Control']='public, max-age=604800, immutable'
+    return response
+
 @api(('POST',))
 def draft_setup(request,pk):
     """A deck's slide count and design, chosen on the setup screen over what the description says.

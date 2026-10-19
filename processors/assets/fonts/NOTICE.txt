@@ -1,0 +1,12 @@
+Bundled fonts, all under the SIL Open Font License 1.1 (OFL.txt in this folder).
+
+Noto Sans (Regular, Bold, Italic): notofonts/latin-greek-cyrillic release NotoSans-v2.015,
+  files NotoSans/full/ttf/NotoSans-{Regular,Bold,Italic}.ttf
+  https://github.com/notofonts/latin-greek-cyrillic/releases/tag/NotoSans-v2.015
+Noto Serif (Regular, Bold, Italic): notofonts/latin-greek-cyrillic release NotoSerif-v2.015,
+  files NotoSerif/unhinted/ttf/NotoSerif-{Regular,Bold,Italic}.ttf
+  https://github.com/notofonts/latin-greek-cyrillic/releases/tag/NotoSerif-v2.015
+
+Copyright 2022 The Noto Project Authors (https://github.com/notofonts/latin-greek-cyrillic).
+NotoSans-Regular.ttf was already used by the document renderer; the CV renderer
+(apps/studio/cv) uses all six faces.

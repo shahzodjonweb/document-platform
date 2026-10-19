@@ -309,6 +309,104 @@
         ],
         "type": "object"
       },
+      "CvTemplate": {
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "colours": {
+            "properties": {
+              "accent": {
+                "type": "string"
+              },
+              "fill": {
+                "type": "string"
+              },
+              "ink": {
+                "type": "string"
+              },
+              "secondary": {
+                "type": "string"
+              },
+              "tint": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "accent",
+              "secondary",
+              "tint",
+              "ink",
+              "fill"
+            ],
+            "type": "object"
+          },
+          "drawer": {
+            "enum": [
+              "column",
+              "sidebar_left",
+              "sidebar_right",
+              "band",
+              "centered",
+              "timeline",
+              "compact",
+              "executive"
+            ]
+          },
+          "fonts": {
+            "properties": {
+              "body": {
+                "enum": [
+                  "serif",
+                  "sans"
+                ]
+              },
+              "heading": {
+                "enum": [
+                  "serif",
+                  "sans"
+                ]
+              }
+            },
+            "required": [
+              "heading",
+              "body"
+            ],
+            "type": "object"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "photo": {
+            "type": "boolean"
+          },
+          "preview": {
+            "type": "string"
+          },
+          "tone": {
+            "enum": [
+              "light",
+              "dark",
+              "paper"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "category",
+          "drawer",
+          "photo",
+          "tone",
+          "preview",
+          "fonts",
+          "colours"
+        ],
+        "type": "object"
+      },
       "EditorCommand": {
         "description": "PDF points from displayed top-left, pages start at 1, image indices start at 0. Image input indices reference extra uploaded assets. Redaction requires explicit rasterization acknowledgement and a separate export.",
         "oneOf": [
@@ -9286,6 +9384,174 @@
             "customerSession": []
           }
         ]
+      }
+    },
+    "/studio/cv-templates": {
+      "get": {
+        "description": "Every template a CV can wear, grouped by category, in the colours each renders in. `locale` (en, uz, ru) names the categories; `default` is the template Auto starts from.",
+        "operationId": "listCvTemplates",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "enum": [
+                "en",
+                "uz",
+                "ru"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "categories": {
+                      "items": {
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "templates": {
+                            "items": {
+                              "$ref": "#/components/schemas/CvTemplate"
+                            },
+                            "type": "array"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "templates"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "default": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "categories",
+                    "default"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    },
+    "/studio/cv-templates/{template}.png": {
+      "get": {
+        "description": "A template's page 1 with a fictional sample CV in `locale`, 480 px wide. Public and immutable: the catalogue's `preview` URL carries the catalogue's version.",
+        "operationId": "getCvTemplatePreview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "template",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "enum": [
+                "en",
+                "uz",
+                "ru"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "v",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/png": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "PNG page thumbnail"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": []
       }
     },
     "/studio/deck-designs": {
