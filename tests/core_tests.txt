@@ -273,6 +273,10 @@ tests/test_bot_generation.py::test_tapping_generate_twice_creates_one_job
 # Deck setup Mini App from the bot review
 tests/test_bot_review_controls.py::test_the_setup_screen_beats_the_description_and_redraws_the_review
 
+# AI CV from the chat: one message to a priced review, and a photo sent there is the CV's portrait
+tests/test_bot_cv.py::test_one_message_becomes_a_priced_review_with_the_template_and_the_photo
+tests/test_bot_cv.py::test_a_photo_sent_in_the_chat_becomes_the_cvs_photo
+
 # Anti-bot human verification gate
 tests/test_bot_verification.py::test_real_bot_defers_account_and_download_until_verified_then_resumes_first_file
 tests/test_bot_verification.py::test_direct_commands_uploads_and_old_callbacks_cannot_bypass_verification

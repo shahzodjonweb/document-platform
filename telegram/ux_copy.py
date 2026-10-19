@@ -211,6 +211,35 @@ MESSAGES = {
     'cv_contact_dropped': ('ℹ️ A contact detail that was not in your message was left out.', 'ℹ️ Xabaringizda bo‘lmagan aloqa maʼlumoti CV’ga kiritilmadi.', 'ℹ️ Контакт, которого не было в вашем сообщении, не добавлен в резюме.'),
     'cv_photo_unusable': ('ℹ️ The photo could not be used, so the CV was made without it.', 'ℹ️ Rasmdan foydalanib bo‘lmadi, shuning uchun CV rasmsiz tayyorlandi.', 'ℹ️ Фото использовать не удалось, поэтому резюме сделано без него.'),
     'cv_photo_gone': ('ℹ️ The photo is no longer stored, so this version of the CV is without it.', 'ℹ️ Rasmning saqlanish muddati tugagani uchun CV’ning bu nusxasi rasmsiz tayyorlandi.', 'ℹ️ Срок хранения фото истёк, поэтому эта версия резюме — без него.'),
+    # The CV service in the chat. One message about yourself, as for the other
+    # two services; the bot asks only for what a CV cannot be made without,
+    # the name, and takes one photo for templates with a place for it.
+    'cv_ask': ('✍️ Tell me about yourself in one message: your full name, phone or email, city, the job you want, your work experience with dates, education, skills and languages.', '✍️ O‘zingiz haqingizda bitta xabarda yozing: ism-familiyangiz, telefon yoki email, shahringiz, qanday ish qidirayotganingiz, ish tajribangiz (yillari bilan), taʼlimingiz, ko‘nikmalaringiz va qaysi tillarni bilishingiz.', '✍️ Расскажите о себе одним сообщением: имя и фамилия, телефон или почта, город, какую работу ищете, опыт работы с датами, образование, навыки и языки.'),
+    'cv_photo_hint': ('📷 You can also send a photo, before or after the text: it goes on the CV if the template has a place for it.', '📷 Matndan oldin yoki keyin rasmingizni ham yuborishingiz mumkin: shablonda rasm uchun joy bo‘lsa, u CV’ga qo‘yiladi.', '📷 До или после текста можно прислать и фото: оно появится в резюме, если в шаблоне есть для него место.'),
+    'cv_photo_attached': ('📷 Photo attached. To replace it, send another one.', '📷 Rasm qabul qilindi. Almashtirish uchun boshqasini yuboring.', '📷 Фото получено. Чтобы заменить его, пришлите другое.'),
+    'cv_photo_only': ('📎 For a CV, send a photo (JPG or PNG) or write your details — PDF and Word files are not read here.', '📎 CV uchun rasm (JPG yoki PNG) yuboring yoki maʼlumotlaringizni yozing — PDF va Word fayllar bu yerda o‘qilmaydi.', '📎 Для резюме пришлите фото (JPG или PNG) или напишите о себе — PDF и Word здесь не читаются.'),
+    # A photo too large for a CV (apps/studio/cv/portrait.py: 6 megapixels):
+    # said when it arrives, so the description sent next is not refused for it.
+    'cv_photo_rejected': ('📷 This image can’t go on a CV: it has to be a JPG or PNG of up to 6 megapixels. Send it as a photo rather than a file — Telegram makes it smaller.', '📷 Bu rasmni CV’ga qo‘yib bo‘lmaydi: u 6 megapikselgacha bo‘lgan JPG yoki PNG bo‘lishi kerak. Uni fayl sifatida emas, rasm sifatida yuboring — Telegram uni kichraytiradi.', '📷 Это изображение не подходит для резюме: нужен JPG или PNG до 6 мегапикселей. Отправьте его как фото, а не файлом — Telegram сам его уменьшит.'),
+    # A description that names nobody: kept whole, and only the name asked for.
+    'cv_name_question': ('✍️ Only your name is missing — what is your full name? I’ll add it to what you wrote.', '✍️ Faqat ismingiz yetishmayapti: ism-familiyangizni to‘liq yozing — uni avvalgi xabaringizga qo‘shaman.', '✍️ Не хватает только имени. Как вас зовут — имя и фамилия? Я добавлю их к вашему сообщению.'),
+    'cv_name_sample': ('Dilnoza Karimova', 'Dilnoza Karimova', 'Дильноза Каримова'),
+    # The way past a name the check did not see: the same answer again is taken as it is.
+    'cv_name_again': ('↩️ If you already wrote your name, just send it again.', '↩️ Agar ismingizni yozgan bo‘lsangiz, uni yana bir bor yuboring.', '↩️ Если вы уже написали имя, просто отправьте его ещё раз.'),
+    'cv_example_copied': ('✏️ That is one of our examples. Write your own details the same way and send them.', '✏️ Bu bizning namunamiz. Xuddi shunday qilib, o‘zingiz haqingizda yozib yuboring.', '✏️ Это наш пример. Напишите так же, но о себе, и отправьте.'),
+    # The review of a CV: its length is the template's to decide, one page or two.
+    'cv_length': ('1–2', '1–2', '1–2'),
+    'cv_template': ('Template', 'Shablon', 'Шаблон'),
+    'cv_template_auto': ('Auto — classic unless you pick one', 'Avto — boshqasini tanlamasangiz, klassik', 'Авто — классический, если не выберете другой'),
+    'cv_template_button': ('🎨 CV template', '🎨 CV shabloni', '🎨 Шаблон резюме'),
+    'cv_photo_line': ('📷 Photo: attached', '📷 Rasm: qo‘shilgan', '📷 Фото: добавлено'),
+    'cv_photo_none': ('📷 Photo: none', '📷 Rasm: yo‘q', '📷 Фото: нет'),
+    # On a new CV's review a photo sent now still goes on it.
+    'cv_photo_none_add': ('📷 Photo: none — to add one, send it here', '📷 Rasm: yo‘q — qo‘shish uchun shu yerga yuboring', '📷 Фото: нет — чтобы добавить, пришлите его сюда'),
+    # Changes a CV takes, as the server reads them (apps/studio/edits.py):
+    # "Remove the photo" takes the portrait off, "another design" picks again.
+    'cv_revise_examples': ('Add IELTS 7.5 (2023) to the certificates · Make the profile shorter · Remove the photo · Use another design', 'Sertifikatlarga IELTS 7.5 (2023) ni qo‘shing · Profilni qisqartiring · Rasmsiz qiling · Boshqa dizayn qiling', 'Добавьте в сертификаты IELTS 7.5 (2023) · Сократите профиль · Уберите фото · Сделайте другой дизайн'),
+    'cv_failed_advice': ('💡 Try again. If it fails again, write it all in one message: your name, contacts, jobs with dates, education and skills.', '💡 Qayta urinib ko‘ring. Yana bo‘lmasa, hammasini bitta xabarda yozing: ism-familiya, aloqa maʼlumotlari, ish joylari (yillari bilan), taʼlim va ko‘nikmalar.', '💡 Попробуйте ещё раз. Если снова не выйдет, напишите всё одним сообщением: имя, контакты, места работы с датами, образование и навыки.'),
 }
 
 # Keep the older keys for commands, saved controls and transport compatibility.
@@ -289,6 +318,19 @@ PROMPT_EXAMPLES = {
          'Oylik yig‘ilishga 7 ta slayd: sotuv raqamlari, nima yaxshi ketdi, nima oqsadi, keyingi oy rejasi. Sotuvni diagramma qilib ko‘rsating.',
          '7 слайдов для месячного собрания: цифры продаж, что получилось, что нет, план на следующий месяц. Продажи покажите диаграммой.'),
     ),
+    # A CV is described, not sized: these name no page count. Everyone in them
+    # is made up, with example.com addresses and the sample number.
+    'ai.cv': (
+        ('Malika Yusupova, Tashkent, +998 90 123 45 67, malika.yusupova@example.com. I am applying for a marketing manager role. Since 2021 I have been a marketing specialist at Baraka Market: I run the Instagram and Telegram ads, grew online orders by 30% and manage a monthly budget of $5,000. 2018–2021: SMM specialist at Ipak Studio. Bachelor’s in marketing, Tashkent State University of Economics, 2018. Skills: Meta Ads, Google Analytics, copywriting, Canva. Languages: Uzbek, Russian, English (B2).',
+         'Malika Yusupova, Toshkent, +998 90 123 45 67, malika.yusupova@example.com. Marketing menejeri lavozimida ishlamoqchiman. 2021-yildan beri Baraka Market’da marketing mutaxassisiman: Instagram va Telegram’dagi reklamani yuritaman, onlayn buyurtmalarni 30% ga oshirdim, oylik 5 000 dollarlik byudjetni boshqaraman. 2018–2021-yillarda Ipak Studio’da SMM mutaxassisi bo‘lib ishlaganman. Toshkent davlat iqtisodiyot universiteti, marketing bakalavri, 2018. Ko‘nikmalar: Meta Ads, Google Analytics, kopirayting, Canva. Tillar: o‘zbek, rus, ingliz (B2).',
+         'Малика Юсупова, Ташкент, +998 90 123 45 67, malika.yusupova@example.com. Претендую на должность менеджера по маркетингу. С 2021 года работаю маркетологом в Baraka Market: веду рекламу в Instagram и Telegram, увеличила онлайн-заказы на 30%, управляю бюджетом 5 000 долларов в месяц. 2018–2021 — SMM-специалист в Ipak Studio. Ташкентский государственный экономический университет, бакалавр маркетинга, 2018. Навыки: Meta Ads, Google Analytics, копирайтинг, Canva. Языки: узбекский, русский, английский (B2).'),
+        ('Jasur Rahimov, Samarkand, jasur.rahimov@example.com. Looking for my first job as a junior Python developer. BSc in Computer Science, Samarkand State University, 2025. Internship at Zamon Soft, summer 2024: built a REST API in Django and covered it with tests. Projects: a Telegram bot for booking a barber (aiogram, PostgreSQL) and a website for the university library. Skills: Python, Django, SQL, Git, Docker. Languages: Uzbek (native), Russian (good), English (B1).',
+         'Jasur Rahimov, Samarqand, jasur.rahimov@example.com. Junior Python dasturchi sifatida birinchi ishimni qidiryapman. Samarqand davlat universiteti, kompyuter injiniringi bakalavri, 2025. 2024-yil yozida Zamon Soft’da amaliyot o‘taganman: Django’da REST API yozib, unga testlar qo‘shdim. Loyihalarim: sartaroshga navbat yozadigan Telegram bot (aiogram, PostgreSQL) va universitet kutubxonasi sayti. Ko‘nikmalar: Python, Django, SQL, Git, Docker. Tillar: o‘zbek (ona tilim), rus (yaxshi), ingliz (B1).',
+         'Жасур Рахимов, Самарканд, jasur.rahimov@example.com. Ищу первую работу — junior Python-разработчик. Самаркандский государственный университет, бакалавр компьютерных наук, 2025. Летом 2024 года стажировался в Zamon Soft: написал REST API на Django и покрыл его тестами. Проекты: Telegram-бот для записи к барберу (aiogram, PostgreSQL) и сайт университетской библиотеки. Навыки: Python, Django, SQL, Git, Docker. Языки: узбекский — родной, русский — хорошо, английский — B1.'),
+        ('Gulnora Saidova, Bukhara, gulnora.saidova@example.com. Registered nurse with 8 years of experience. Since 2019: ward nurse in the cardiology department of Bukhara Regional Hospital — patient care, IV therapy, ECGs, mentoring new nurses. 2016–2019: nurse at City Polyclinic No. 2. Bukhara Medical College, nursing, 2016. Certificates: Basic Life Support (2023), infection control course (2022). Languages: Uzbek, Russian, English (A2).',
+         'Gulnora Saidova, Buxoro, gulnora.saidova@example.com. Hamshiraman, 8 yillik tajribam bor. 2019-yildan beri Buxoro viloyat shifoxonasining kardiologiya bo‘limida palata hamshirasiman: bemorlarni parvarish qilaman, tomir ichiga dori yuboraman, EKG olaman, yangi hamshiralarga ustozlik qilaman. 2016–2019-yillarda 2-shahar poliklinikasida hamshira bo‘lib ishlaganman. Buxoro tibbiyot kolleji, hamshiralik ishi, 2016. Sertifikatlar: Basic Life Support (2023), infeksiya nazorati kursi (2022). Tillar: o‘zbek, rus, ingliz (A2).',
+         'Гульнора Саидова, Бухара, gulnora.saidova@example.com. Медсестра, стаж 8 лет. С 2019 года — палатная медсестра кардиологического отделения Бухарской областной больницы: уход за пациентами, внутривенные инфузии, ЭКГ, обучение новых медсестёр. 2016–2019 — медсестра городской поликлиники № 2. Бухарский медицинский колледж, сестринское дело, 2016. Сертификаты: Basic Life Support (2023), курс по инфекционному контролю (2022). Языки: узбекский, русский, английский (A2).'),
+    ),
 }
 
 TOOL_LABELS = {
@@ -303,9 +345,10 @@ TOOL_LABELS = {
     'pdf.to_images': ('🖼 PDF → images', '🖼 PDF → rasmlar', '🖼 PDF → изображения'),
     'convert.word_to_pdf': ('📝 Word → PDF', '📝 Word → PDF', '📝 Word → PDF'),
     'convert.pptx_to_pdf': ('📊 PowerPoint → PDF', '📊 PowerPoint → PDF', '📊 PowerPoint → PDF'),
-    # The two AI services. Names are kept in step with the web app's locales.
+    # The three AI services. Names are kept in step with the web app's locales.
     'ai.pdf_topic': ('✨ PDF on a topic · AI', '✨ Mavzuga oid PDF · AI', '✨ PDF по теме · ИИ'),
     'ai.pptx': ('✨ Slides on a topic · AI', '✨ Mavzuga oid Slayd · AI', '✨ Слайды по теме · ИИ'),
+    'ai.cv': ('✨ CV · AI', '✨ CV (rezyume) · AI', '✨ Резюме · ИИ'),
 }
 
 UX = {locale: {key: values[index] for key, values in MESSAGES.items()} for index, locale in enumerate(LOCALES)}

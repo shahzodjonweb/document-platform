@@ -176,7 +176,8 @@ async def attempt_notice(identifier, bot):
     if counted:
         lines.extend(['', counted])
     if advice:
-        lines.extend(['', UX[locale]['ai_failed_advice']])
+        # A CV is described by what it says about the person, not by a topic and a length.
+        lines.extend(['', UX[locale]['cv_failed_advice' if job.feature_id == 'ai.cv' else 'ai_failed_advice']])
     try:
         controls = await sync_to_async(notice_controls)(notice)
         response = await bot.send_message(account.telegram_user_id, '\n'.join(lines), reply_markup=controls)

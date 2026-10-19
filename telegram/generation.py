@@ -1,9 +1,11 @@
-"""Making a document or a deck from the chat.
+"""Making a document, a deck or a CV from the chat.
 
 Synchronous and transaction-safe, with no Telegram network calls, like
-workflows.py. There are two services and one input: what the customer wants,
+workflows.py. There are three services and one input: what the customer wants,
 written out. Page count, questions, tone and audience are all read from that
-description by apps.studio, which the web app uses identically.
+description by apps.studio, which the web app uses identically. A CV is
+written from what the customer says about themselves, and may carry the one
+photo they send in the chat.
 """
 from django.core.cache import cache
 from django.db import transaction
@@ -11,17 +13,17 @@ from django.utils import timezone
 from apps.core.errors import DomainError
 from apps.core.models import BotCallback, FileAsset, Job, Quote
 from apps.core.services import submit_job
-from apps.studio.domain import DOCUMENT, SLIDES, create_draft, generation_quote, require
+from apps.studio.domain import CV, DOCUMENT, SLIDES, create_draft, generation_quote, require
 from apps.studio.language import settings_locale
 from apps.studio.models import GenerationDraft
 
-SERVICES = (DOCUMENT, SLIDES)
+SERVICES = (DOCUMENT, SLIDES, CV)
 # Re-exported so bot.py can name them without a second import.
-__all__ = ['DOCUMENT', 'SLIDES', 'SERVICES']
-# A document is a PDF and a deck is an editable PowerPoint, in the chat as on
-# the web. The server forces this too; it is repeated here so the bot does not
-# describe an output it cannot produce.
-FORMAT = {DOCUMENT: 'pdf', SLIDES: 'pptx'}
+__all__ = ['CV', 'DOCUMENT', 'SLIDES', 'SERVICES']
+# A document and a CV are PDFs and a deck is an editable PowerPoint, in the
+# chat as on the web. The server forces this too; it is repeated here so the
+# bot does not describe an output it cannot produce.
+FORMAT = {DOCUMENT: 'pdf', SLIDES: 'pptx', CV: 'pdf'}
 
 
 def available(account, feature_id):
@@ -31,8 +33,14 @@ def available(account, feature_id):
     require(account, feature_id)
 
 
-def sources(account, file_ids):
-    """The PDFs staged in the chat, in the order they were sent."""
+def sources(account, file_ids, feature_id=None):
+    """The PDFs staged in the chat, in the order they were sent.
+
+    None for a CV: it is written from what the customer says about themselves,
+    and the server refuses one made from a file, whose facts nobody checks.
+    """
+    if feature_id == CV:
+        return []
     assets = {
         str(asset.id): asset
         for asset in FileAsset.objects.filter(account=account, id__in=file_ids, state='ready',
@@ -61,20 +69,21 @@ def unthrottle(account):
 
 # Refused by reading the description alone, before a draft is made: a cheap
 # check, so it does not use one of the minute's builds.
-READ_REFUSALS = ('topic_required', 'convert_requested')
+READ_REFUSALS = ('topic_required', 'convert_requested', 'cv_name_required')
 
 
 @transaction.atomic
-def build(account, feature_id, description, file_ids=(), topic_given=False):
+def build(account, feature_id, description, file_ids=(), topic_given=False, portrait_asset_id=''):
     """Author a draft from one chat message. Nothing is counted yet.
 
     `topic_given` is the customer's answer to the topic question taken as it
     is (apps.studio.domain.create_draft): a topic the check does not know
-    must not keep them asking.
+    must not keep them asking. For a CV it is the name question answered a
+    second time, and `portrait_asset_id` the photo sent for it in the chat.
     """
     available(account, feature_id)
     text = (description or '').strip()
-    ids = sources(account, list(file_ids))
+    ids = sources(account, list(file_ids), feature_id)
     if not text and not ids:
         raise DomainError('prompt_required')
     throttle(account)
@@ -86,10 +95,19 @@ def build(account, feature_id, description, file_ids=(), topic_given=False):
     data = {'feature_id': feature_id, 'source_ids': ids, 'output_locale': settings_locale(account),
             'output_format': FORMAT[feature_id],
             'prompt': '' if written else text, 'source_text': text if written else ''}
-    if text:
+    # A CV's title is the person's name, which the server finds in the
+    # description (apps/studio/cv/content.require_name): its first line is as
+    # often a phone number or "Hello", and would be the file's name. Only when
+    # the customer answered the name question twice and no name was seen is
+    # the first line, their own answer, the best there is.
+    if text and (feature_id != CV or topic_given):
         data['title'] = text.split('\n')[0][:160]
-    if topic_given:
-        data['options'] = {'topic_given': True}
+    options = {'topic_given': True} if topic_given else {}
+    if feature_id == CV and portrait_asset_id:
+        # The server checks it is the customer's own JPEG or PNG and pins it.
+        options['portrait_asset_id'] = str(portrait_asset_id)
+    if options:
+        data['options'] = options
     try:
         return create_draft(account, data)
     except DomainError as exc:
@@ -154,7 +172,11 @@ def title_of(draft):
 
 
 def summary(draft):
-    """Pages resolved, and pages asked for when the two differ."""
+    """Pages resolved, and pages asked for when the two differ.
+
+    Not shown for a CV: its length is its eight sections, which its template
+    lays out on one page or two (the review says "1–2").
+    """
     from apps.studio.domain import unpack
     options = unpack(draft.encrypted_data)['options']
     return options.get('length', 0), options.get('requested_pages')
@@ -217,6 +239,59 @@ def resize(account, draft_id, pages):
     if type(pages) is not int or pages < 1:
         raise DomainError('invalid_parameters')
     return _changed(account, draft_id, lambda data: {'options': {**data['options'], 'pages': pages}})
+
+
+def portrait_of(draft):
+    """The asset id of the photo a CV carries, or '' when it has none."""
+    from apps.studio.domain import unpack
+    return str(unpack(draft.encrypted_data).get('options', {}).get('portrait_asset_id') or '')
+
+
+def template_of(draft):
+    """The CV template's name if one is set — picked, or inherited by a change — else '' for Auto."""
+    from apps.studio.domain import unpack
+    from apps.studio.cv import templates
+    options = unpack(draft.encrypted_data).get('options', {})
+    key = templates.chosen(options) or templates.current((options.get('template_style') or {}).get('cv_template') or '')
+    names = {entry['id']: entry['name'] for group in templates.catalogue() for entry in group['templates']}
+    return names.get(key, '')
+
+
+def check_portrait(account, asset_id):
+    """Refuse a photo that cannot go on a CV, as the server will when the CV is described.
+
+    Asked as soon as the photo arrives, so a picture too large for a CV is
+    said then, not as the refusal of the description written after it.
+    """
+    from apps.studio.cv.portrait import prepare
+    prepare(account, CV, {'portrait_asset_id': str(asset_id)})
+
+
+def usable_portrait(account, asset_id):
+    """`asset_id` while it can still go on a CV, else '': a photo kept with an
+    old button or question may have expired since, and is then left out."""
+    if not asset_id:
+        return ''
+    try:
+        check_portrait(account, asset_id)
+    except DomainError:
+        return ''
+    return str(asset_id)
+
+
+def kept_portrait(account, draft_id):
+    """The photo of this account's CV draft, for its description written again; '' when there is none to keep."""
+    draft = GenerationDraft.objects.filter(account=account, id=draft_id, feature_id=CV).first()
+    return usable_portrait(account, portrait_of(draft)) if draft else ''
+
+
+@transaction.atomic
+def add_portrait(account, draft_id, asset_id):
+    """A new CV on the review screen with the photo sent after its description, and its new quote."""
+    if not GenerationDraft.objects.filter(account=account, id=draft_id, feature_id=CV).exists():
+        raise DomainError('controls_expired', 409)
+    return _changed(account, draft_id, lambda data: {
+        'options': {**data['options'], 'portrait_asset_id': str(asset_id)}})
 
 
 def design_of(draft):
@@ -314,23 +389,36 @@ def revised_from(draft):
 CONVERTER = 'convert.pptx_to_pdf'
 
 
-def asked_format(account, draft_id, request):
-    """(format, service) when a change to this document asks for nothing but
-    the file as 'pdf' or 'pptx'; (None, None) when it asks for anything more."""
+def service_of(account, draft_id):
+    """The service a draft of this account's belongs to, or '' when there is none."""
     import uuid
-    from apps.studio.edits import asks_only_for_format, read
     try:
         identifier = uuid.UUID(str(draft_id))
     except ValueError:
-        return None, None
+        return ''
     feature = GenerationDraft.objects.filter(account=account, id=identifier).values_list('feature_id', flat=True).first()
-    if feature not in SERVICES:
+    return feature if feature in SERVICES else ''
+
+
+def asked_format(account, draft_id, request):
+    """(format, service) when a change to this document asks for nothing but
+    the file as 'pdf' or 'pptx'; (None, None) when it asks for anything more.
+
+    A CV is only ever a PDF: asked for as one it is sent again, and asked for
+    as slides it goes to the server, which says a change does not convert
+    (format_only_change).
+    """
+    from apps.studio.edits import asks_only_for_format, read
+    feature = service_of(account, draft_id)
+    if not feature:
         return None, None
     kind = asks_only_for_format(request or '')
     if kind is None:
         # Read as the server reads it too, so nothing it would refuse is priced.
         edit = read(request or '', fmt=FORMAT[feature], sections=[])
         kind = edit.format if edit.format_only else None
+    if feature == CV and kind != 'pdf':
+        return None, None
     return (kind, feature) if kind else (None, None)
 
 

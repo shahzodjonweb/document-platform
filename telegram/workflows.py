@@ -139,6 +139,20 @@ def attach_input(account,asset,chat_id,message_id,mode='add',binding=None):
 
 
 @transaction.atomic
+def record_receipt(account,asset,chat_id,message_id):
+    """Note that a chat message's file was received, and nothing else: (receipt, created).
+
+    A CV's photo is kept with the CV question, not with the file tools: had it
+    gone on the file-tool draft as attach_input puts a file there, the menu
+    would offer to continue an images-to-PDF task nobody started. The receipt
+    still makes the same message, delivered twice, one photo.
+    """
+    Account.objects.select_for_update().get(pk=account.pk)
+    if asset.account_id!=account.id or asset.state!='ready' or asset.expires_at<=timezone.now(): raise DomainError('file_unavailable',404)
+    return BotInputReceipt.objects.get_or_create(account=account,chat_id=chat_id,message_id=message_id,defaults={'asset':asset})
+
+
+@transaction.atomic
 def order_inputs(account,positions,remove=None,binding=None):
     Account.objects.select_for_update().get(pk=account.pk)
     draft=bound_draft(account,binding) if binding else draft_for(account)

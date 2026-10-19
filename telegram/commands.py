@@ -14,7 +14,7 @@ from apps.core.models import BotConversation
 # language before a change would keep the old labels for good. Each chat
 # remembers the version it was given, and the language gate gives it the new
 # one once, on that person's next message or tap (refresh_chat_commands).
-COMMANDS_VERSION = 2
+COMMANDS_VERSION = 3
 # Where that version is kept, without a schema change: BotConversation.review,
 # beside the generation review on screen. The other JSON fields there, pending
 # and prompt, are replaced whole at every sign-in step and input prompt;
@@ -26,7 +26,7 @@ _refreshing = set()
 COMMANDS = {
     'en': {
         'start': '🏠 Main menu',
-        'document': '✨ PDF on a topic · AI', 'slides': '✨ Slides on a topic · AI',
+        'document': '✨ PDF on a topic · AI', 'slides': '✨ Slides on a topic · AI', 'cv': '✨ CV · AI',
         'examples': '💡 How to describe it',
         'tools': '🛠 PDF & file tools',
         'myfiles': '🗂 Recent tasks',
@@ -37,7 +37,7 @@ COMMANDS = {
     },
     'uz': {
         'start': '🏠 Bosh menyu',
-        'document': '✨ Mavzuga oid PDF · AI', 'slides': '✨ Mavzuga oid Slayd · AI',
+        'document': '✨ Mavzuga oid PDF · AI', 'slides': '✨ Mavzuga oid Slayd · AI', 'cv': '✨ CV (rezyume) · AI',
         'examples': '💡 Qanday yozish kerak',
         'tools': '🛠 PDF va fayl vositalari',
         'myfiles': '🗂 So‘nggi vazifalar',
@@ -48,7 +48,7 @@ COMMANDS = {
     },
     'ru': {
         'start': '🏠 Главное меню',
-        'document': '✨ PDF по теме · ИИ', 'slides': '✨ Слайды по теме · ИИ',
+        'document': '✨ PDF по теме · ИИ', 'slides': '✨ Слайды по теме · ИИ', 'cv': '✨ Резюме · ИИ',
         'examples': '💡 Как описать',
         'tools': '🛠 Инструменты для файлов',
         'myfiles': '🗂 Последние задачи',
