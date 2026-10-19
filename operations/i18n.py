@@ -236,6 +236,10 @@ CATALOGS['ru'].update(no_payments='Платежей картой от этого
 CATALOGS['en'].update(this_computer='this computer')
 CATALOGS['uz'].update(this_computer='shu kompyuter')
 CATALOGS['ru'].update(this_computer='этот компьютер')
+# The codes a finished task recorded, such as cv_contact_dropped or cv_trimmed.
+CATALOGS['en'].update(warnings='Warnings')
+CATALOGS['uz'].update(warnings='Ogohlantirishlar')
+CATALOGS['ru'].update(warnings='Предупреждения')
 
 # The plans screen in the bot: who opened it, from where, and what came next.
 CATALOGS['en'].update(
