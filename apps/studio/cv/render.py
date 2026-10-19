@@ -38,7 +38,7 @@ MAX_PAGES = 2
 WIDOW_CHARS = 300
 # The renderer cuts nothing until the tightest step still needs a third page.
 TIGHTEST = 4
-CONTACT_KEYS = ('phone', 'email', 'location', 'telegram', 'linkedin', 'website', 'github', 'birth')
+CONTACT_KEYS = ('phone', 'email', 'location', 'telegram', 'linkedin', 'website', 'github', 'birth', 'age')
 # Lengths at which `validate_content` and the CV clean cut a field. A field
 # exactly this long was probably cut, and probably mid-word. A CV's entries are
 # always held to 900 (cv/content.py LIMITS): a slide item's 600 is no cut here,
@@ -65,11 +65,14 @@ HEADINGS = {
 }
 CONTACT_LABELS = {
     'en': {'phone': 'Phone', 'email': 'Email', 'location': 'Location', 'telegram': 'Telegram',
-           'linkedin': 'LinkedIn', 'website': 'Website', 'github': 'GitHub', 'birth': 'Date of birth'},
+           'linkedin': 'LinkedIn', 'website': 'Website', 'github': 'GitHub', 'birth': 'Date of birth',
+           'age': 'Age'},
     'uz': {'phone': 'Telefon', 'email': 'Email', 'location': 'Manzil', 'telegram': 'Telegram',
-           'linkedin': 'LinkedIn', 'website': 'Veb-sayt', 'github': 'GitHub', 'birth': 'Tug‘ilgan sana'},
+           'linkedin': 'LinkedIn', 'website': 'Veb-sayt', 'github': 'GitHub', 'birth': 'Tug‘ilgan sana',
+           'age': 'Yosh'},
     'ru': {'phone': 'Телефон', 'email': 'Эл. почта', 'location': 'Город', 'telegram': 'Telegram',
-           'linkedin': 'LinkedIn', 'website': 'Сайт', 'github': 'GitHub', 'birth': 'Дата рождения'},
+           'linkedin': 'LinkedIn', 'website': 'Сайт', 'github': 'GitHub', 'birth': 'Дата рождения',
+           'age': 'Возраст'},
 }
 # What a model may write instead of a contact key.
 CONTACT_WORDS = {
@@ -79,6 +82,7 @@ CONTACT_WORDS = {
     'telegram': ('tg', 'телеграм'),
     'website': ('site', 'web', 'portfolio', 'veb-sayt', 'sayt', 'сайт'),
     'birth': ('birthday', 'date of birth', 'dob', 'tug‘ilgan sana', "tug'ilgan sana", 'дата рождения'),
+    'age': ('yosh', 'yoshi', 'возраст'),
 }
 # A bullet a model or a customer typed: a bullet sign, or a dash or star with a space after it.
 BULLET = re.compile(r'^\s*(?:[•·▪◦‣●○■□]\s*|[*\-–—]\s+)')

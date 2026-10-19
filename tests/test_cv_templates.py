@@ -11,7 +11,7 @@ from pypdf import PdfReader
 
 from apps.core.errors import DomainError
 from apps.studio.cv import check, fonts, portrait, sample, templates
-from apps.studio.cv.render import filename, render_cv
+from apps.studio.cv.render import CONTACT_LABELS, filename, render_cv
 from apps.studio.cv.templates import (CATEGORIES, DEFAULT_TEMPLATE, DRAWERS, FONT_PAIRS, PHOTO_DRAWERS, RETIRED,
                                       TEMPLATE_IDS, TEMPLATES, TONES, catalogue, current, look, reference, remember,
                                       wanted)
@@ -391,6 +391,16 @@ def test_headings_and_contact_labels_are_printed_in_the_cvs_language(tmp_path):
         path, _ = render(tmp_path, 'azure_side', sample.short(locale), locale)
         text = PdfReader(path).pages[0].extract_text()
         assert all(word in text for word in words), (locale, [word for word in words if word not in text])
+
+
+def test_an_age_is_printed_under_its_own_label_never_as_a_birth_date(tmp_path):
+    for locale, label in (('uz', 'Yosh'), ('ru', 'Возраст'), ('en', 'Age')):
+        content = sample.short(locale)
+        content['sections'][0]['items'].append({'label': 'age', 'text': '19', 'value': ''})
+        for key, shown in (('classic_navy', f'{label}: 19'), ('azure_side', label.upper())):
+            path, _ = render(tmp_path, key, content, locale)
+            text = PdfReader(path).pages[0].extract_text()
+            assert shown in text and CONTACT_LABELS[locale]['birth'].upper() not in text.upper(), (locale, key)
 
 
 def test_the_pdf_names_the_person_and_the_file_is_named_after_them(tmp_path):
