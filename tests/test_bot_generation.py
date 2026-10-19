@@ -1,6 +1,6 @@
-"""Making a document or a deck from the chat.
+"""Making a document, a deck or a CV from the chat.
 
-Two services and one message. The page count, the questions and the tone all
+Three services and one message. The page count, the questions and the tone all
 come out of what the customer writes, so these tests are as much about what the
 bot stops asking for as about what it produces.
 """
@@ -11,7 +11,7 @@ from apps.core.errors import DomainError
 from apps.core.identity import resolve_account
 from apps.core.models import BotConversation, BotDraft, Job, Quote
 from apps.core.services import upload_file
-from apps.studio.domain import DOCUMENT, GENERATION_IDS, SLIDES, unpack
+from apps.studio.domain import CV, DOCUMENT, GENERATION_IDS, SLIDES, unpack
 from apps.studio.models import GenerationDraft
 from apps.studio.pages import requested_pages
 from operations.integrations import save_config
@@ -66,17 +66,17 @@ def describe(customer, description, service='PDF on a topic'):
     return dispatch_local(customer, text=description)
 
 
-SERVICE_LABELS = ['✨ PDF on a topic · AI', '✨ Slides on a topic · AI']
+SERVICE_LABELS = ['✨ PDF on a topic · AI', '✨ Slides on a topic · AI', '✨ CV · AI']
 
 
-def test_the_two_services_lead_the_menus_with_no_folder_to_open(customer):
-    """They are two services, not a category worth a folder of its own.
+def test_the_three_services_lead_the_menus_with_no_folder_to_open(customer):
+    """They are three services, not a category worth a folder of its own.
 
-    A folder holding exactly two things costs a tap and hides them; both are
+    A folder holding a few things costs a tap and hides them; all three are
     offered directly, at the top, on the main menu and in All tools.
     """
     start = dispatch_local(customer, text='/ai')
-    assert labels(start)[:2] == SERVICE_LABELS, labels(start)
+    assert labels(start)[:3] == SERVICE_LABELS, labels(start)
     assert not any('create with ai' in label.lower() for label in labels(start))
     # Both say they are the AI feature. Without the folder that said it for them,
     # nothing else on the menu distinguishes them from the file tools.
@@ -84,10 +84,11 @@ def test_the_two_services_lead_the_menus_with_no_folder_to_open(customer):
     for label in SERVICE_LABELS:
         assert label.startswith('✨') and label.endswith('AI')
     assert not any('✨' in label for label in file_tools), file_tools
-    assert set(generation.SERVICES) == GENERATION_IDS == {DOCUMENT, SLIDES}
+    # Every service the server generates is offered in the chat.
+    assert set(generation.SERVICES) == GENERATION_IDS == {DOCUMENT, SLIDES, CV}
 
     tools = tap(customer, start, 'All tools')
-    assert labels(tools)[:2] == SERVICE_LABELS, labels(tools)
+    assert labels(tools)[:3] == SERVICE_LABELS, labels(tools)
 
     # And one tap reaches the description, not a menu of two.
     asked = tap(customer, dispatch_local(customer, text='/ai'), 'PDF on a topic')
@@ -205,11 +206,15 @@ def test_examples_are_offered_in_every_language(customer):
         assert PROMPT_EXAMPLES[feature_id][0][0] in body(listing)
 
     # Every example is a real brief: each one names a page count in its own
-    # language, so a customer copying it gets exactly what it says.
+    # language, so a customer copying it gets exactly what it says. A CV's
+    # names none: one page or two is its template's to decide.
     for feature_id, rows in PROMPT_EXAMPLES.items():
         for row in rows:
             for sample in row:
-                assert requested_pages(sample), f'{feature_id}: "{sample[:44]}" names no page count'
+                if feature_id == CV:
+                    assert requested_pages(sample) is None, f'{feature_id}: "{sample[:44]}" names a page count'
+                else:
+                    assert requested_pages(sample), f'{feature_id}: "{sample[:44]}" names no page count'
 
 
 def test_a_service_outside_the_plan_cannot_be_started(customer):

@@ -145,6 +145,7 @@
   "antibot_unavailable": "The security check is unavailable. Please try again shortly.",
   "prompt_required": "Send a topic or instructions before generating.",
   "topic_required": "Write what it should be about — for example: “The water cycle, for 6th grade”.",
+  "cv_name_required": "Write your full name — the CV is made for you, so it has to say who you are.",
   "convert_requested": "To convert a file, use the file tools: open All tools and choose a converter. This service makes something new on a topic you give.",
   "generation_web_only": "This tool builds on work saved in the web app. Open it there to continue.",
   "revision_not_ready": "This document has nothing to change yet. Generate it first, then ask for changes.",

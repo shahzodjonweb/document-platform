@@ -44,6 +44,9 @@ def generation_inputs(data):
     ids=list(data['source_ids'])
     logo=data['options'].get('branding',{}).get('logo_asset_id')
     if logo and logo not in ids:ids.append(logo)
+    # A CV's portrait is not: the draft pins its fingerprint and the quote the
+    # draft, and a photo that expires must leave the CV without it, not fail
+    # the quote or the job (apps/studio/cv/portrait.py).
     return ids
 
 

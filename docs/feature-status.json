@@ -1,7 +1,7 @@
 {
   "schema_version": "1.1",
-  "catalog_count": 128,
-  "ticket_count": 48,
+  "catalog_count": 129,
+  "ticket_count": 49,
   "release_approval": "none",
   "note": "Local capability, adapter presence, and production release are distinct. Original requirements are preserved unchanged.",
   "features": [
@@ -505,6 +505,24 @@
       "name": "Generate document from uploaded sources",
       "release": "R2A",
       "ticket": "R2A-02",
+      "status": "provider_dependent",
+      "production_enabled": false,
+      "evidence": [
+        "apps/studio/domain.py",
+        "apps/studio/provider.py",
+        "apps/studio/execution.py",
+        "apps/studio/illustrations.py",
+        "apps/studio/packs.py",
+        "tests/test_studio_packs.py",
+        "tests/test_illustrations.py"
+      ],
+      "gate": "Structured bounded provider adapter and local supplied-content authoring exist. Live credentials/model qualification, task-specific factual/pedagogical evaluation and native-speaker acceptance have not occurred. Images require the live image provider; no fake local generation."
+    },
+    {
+      "id": "ai.cv",
+      "name": "Generate CV (résumé) PDF",
+      "release": "R2A",
+      "ticket": "R2A-08",
       "status": "provider_dependent",
       "production_enabled": false,
       "evidence": [

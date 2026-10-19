@@ -1,21 +1,22 @@
-"""What the two services advertise, and what the page style is fixed at."""
+"""What the three services advertise, and what the page style is fixed at."""
 import pytest
 
-from apps.studio.domain import DOCUMENT, GENERATION_IDS, SLIDES
+from apps.studio.domain import CV, DOCUMENT, GENERATION_IDS, SLIDES
 from operations.integrations import save_config
 from tests.test_platform import account, login_client
 
 pytestmark = pytest.mark.django_db
 
 
-def test_the_catalogue_offered_is_two_services(settings):
+def test_the_catalogue_offered_is_three_services(settings):
     settings.DEBUG = True
     data = login_client(account()).get('/api/v1/studio/config').json()
-    assert [f['id'] for f in data['features']] == [DOCUMENT, SLIDES]
+    assert [f['id'] for f in data['features']] == [DOCUMENT, SLIDES, CV]
     assert data['default_pages'] == 10
-    # A document is a PDF and a deck is a PowerPoint. Neither is a choice.
+    # A document and a CV are PDFs and a deck is a PowerPoint. None is a choice.
     assert next(f for f in data['features'] if f['id'] == DOCUMENT)['parameter_schema']['output_format']['enum'] == ['pdf']
     assert next(f for f in data['features'] if f['id'] == SLIDES)['parameter_schema']['output_format']['enum'] == ['pptx']
+    assert next(f for f in data['features'] if f['id'] == CV)['parameter_schema']['output_format']['enum'] == ['pdf']
 
 
 def test_the_page_ceiling_is_published_so_the_form_can_say_it(settings):
@@ -25,7 +26,8 @@ def test_the_page_ceiling_is_published_so_the_form_can_say_it(settings):
     data = login_client(a).get('/api/v1/studio/config').json()
     for feature in data['features']:
         expected = ceiling(a, 'pptx' if feature['id'] == SLIDES else 'pdf')
-        assert feature['max_pages'] == expected
+        # A CV is one page or two whatever the plan allows a document.
+        assert feature['max_pages'] == (2 if feature['id'] == CV else expected)
     from apps.core.policy import plan_limits
     assert data['features'][0]['max_pages'] == plan_limits(a)['max_generated_pdf_pages'], \
         'the form is told exactly what the free plan allows'

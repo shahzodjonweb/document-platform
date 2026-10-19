@@ -25,6 +25,7 @@ import pytest
 
 from apps.studio import (deck_designs, doc_designs, filling, language, layouts, outlines, pages, prompting,
                          provider, topics)
+from apps.studio.cv import templates as cv_templates
 from apps.studio.domain import DOCUMENT, SLIDES
 from apps.studio.prompting import OUTLINE_SYSTEM, REVISION_SYSTEM, SELECTED_REVISION
 from apps.studio.provider import DECK_RULES, DOCUMENT_RULES, SYSTEM, writing_guidance
@@ -123,6 +124,51 @@ def test_instructions_are_the_stage_rules_catalogues_and_the_language_block_in_t
         stage, output_format, options, expected, locale):
     instructions = bodies(locale, output_format, **options)[stage]['instructions']
     assert instructions == '\n'.join(expected(language.instructions(locale)))
+
+
+def cv_bodies(locale, **options):
+    """The request body of a new CV and of a change to it, as the provider would be sent them."""
+    from tests.test_provider_contract import cv_draft
+    data = cv_draft(locale)
+    data['options'].update(options)
+    change = revised(data)
+    change['revision'].update(edit={'redesign': False}, before=copy.deepcopy(data['content']))
+    redesign = copy.deepcopy(change)
+    redesign['revision']['edit'] = {'redesign': True}
+    return {'final': provider.request_body(CONFIG, data, 'ai.cv'),
+            'revision': provider.request_body(CONFIG, change, 'ai.cv'),
+            'redesign': provider.request_body(CONFIG, redesign, 'ai.cv')}
+
+
+@pytest.mark.parametrize('stage,options,expected', [
+    # A new CV with no template picked chooses one, from the list for a CV with or without a portrait.
+    ('final', {}, lambda block: [provider.CV_SYSTEM, provider.CV_RULES, cv_templates.reference(False), block]),
+    ('final', {'portrait_asset_id': 'a1'}, lambda block: [
+        provider.CV_SYSTEM, provider.CV_RULES, cv_templates.reference(True), block]),
+    # One picked is not offered again.
+    ('final', {'template_style': {'cv_template': 'lab'}}, lambda block: [provider.CV_SYSTEM, provider.CV_RULES, block]),
+    # A change is a change, told what a CV may not have; only one asking for a new look sees the templates.
+    ('revision', {'template_style': {'cv_template': 'lab'}}, lambda block: [
+        REVISION_SYSTEM, provider.CV_REVISION_SYSTEM, provider.CV_RULES, block]),
+    ('redesign', {'template_style': {}}, lambda block: [
+        REVISION_SYSTEM, provider.CV_REVISION_SYSTEM, provider.CV_RULES, cv_templates.reference(False), block]),
+])
+@pytest.mark.parametrize('locale', LOCALES)
+def test_a_cv_is_told_its_own_rules_the_templates_once_and_the_language_block_last(stage, options, expected, locale):
+    instructions = cv_bodies(locale, **options)[stage]['instructions']
+    assert instructions == '\n'.join(expected(language.instructions(locale)))
+    # "One section is one page" is a document's rule, never a CV's.
+    assert SYSTEM not in instructions and DOCUMENT_RULES not in instructions and DECK_RULES not in instructions
+    assert '\n\n' not in instructions
+
+
+def test_a_new_cv_request_stays_under_ten_thousand_characters():
+    """The template list is the largest block, sent once, on the call that chooses."""
+    assert len(provider.CV_SYSTEM) + len(provider.CV_RULES) <= 3700
+    for locale in LOCALES:
+        for options in ({}, {'portrait_asset_id': 'a1'}):
+            instructions = cv_bodies(locale, **options)['final']['instructions']
+            assert len(instructions) < 10_000, (locale, options, len(instructions))
 
 
 def test_the_language_block_is_always_the_last_line():

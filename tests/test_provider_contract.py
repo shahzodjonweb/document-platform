@@ -1,4 +1,4 @@
-"""Both services must be able to ask the provider and accept its answer.
+"""Every service must be able to ask the provider and accept its answer.
 
 This exercises the request/response contract without calling a model: a broken
 schema or a guidance string that asks for more prose than the response can hold
@@ -11,7 +11,7 @@ import json
 import pytest
 
 from apps.studio import pages, provider
-from apps.studio.domain import DOCUMENT, GENERATION_IDS, SLIDES
+from apps.studio.domain import CV, DOCUMENT, GENERATION_IDS, SLIDES
 from apps.studio.provider import SCHEMA, _validate, request_body, schema_for, writing_guidance
 
 CONFIG = {'model': 'gpt-5.6-luna', 'api_key': 'not-used-offline'}
@@ -37,6 +37,39 @@ def draft(sections=5, output_format='pdf'):
     }
 
 
+def cv_draft(locale='en'):
+    """A new CV's draft as domain._prepare_draft makes one: the person's name and eight empty sections."""
+    from apps.studio.cv.content import seed
+    return {
+        'output_locale': locale,
+        'prompt': ('Dilnoza Karimova, data analyst in Tashkent. Phone +998 90 123 45 67. Senior data analyst at '
+                   'Example Retail since 03.2022. BSc Applied Mathematics, 2015 - 2019. SQL, Python, Power BI.'),
+        'source_text': '',
+        'excerpts': [],
+        'options': {'question_count': 0, 'length': 8, 'image_cap': 0, 'template_style': {'accent': '#255e49'}},
+        'output_format': 'pdf',
+        'content': seed('Dilnoza Karimova'),
+    }
+
+
+def cv_answer(body):
+    """What a model answers to a CV request: exactly the fields its wire schema asks for."""
+    properties = body['text']['format']['schema']['properties']
+    fields = properties['sections']['items']['properties']
+    written = {
+        'profile': {'heading': 'Data analyst', 'body': 'Data analyst with five years in retail.',
+                    'items': [{'label': 'phone', 'text': '+998 90 123 45 67', 'value': ''}]},
+        'experience': {'items': [{'label': 'Senior data analyst', 'text': 'Example Retail · Tashkent\nBuilt dashboards',
+                                  'value': '03.2022 – present'}]},
+    }
+    answer = {'title': 'Dilnoza Karimova', 'answer_supported': True, 'sections': [
+        {key: written.get(s['id'], {}).get(key, [] if key == 'items' else '') for key in fields} | {'id': s['id']}
+        for s in json.loads(body['input'])['outline']['sections']]}
+    if 'design' in properties:
+        answer['design'] = properties['design']['enum'][0]
+    return answer
+
+
 def model_answer():
     """A minimal response that satisfies the schema."""
     return {
@@ -49,23 +82,45 @@ def model_answer():
     }
 
 
-def test_the_catalogue_is_exactly_two_services():
-    assert GENERATION_IDS == {DOCUMENT, SLIDES}
+def test_the_catalogue_is_exactly_three_services():
+    assert GENERATION_IDS == {DOCUMENT, SLIDES, CV}
 
 
-@pytest.mark.parametrize('feature,output_format', [(DOCUMENT, 'pdf'), (SLIDES, 'pptx')])
+@pytest.mark.parametrize('feature,output_format', [(DOCUMENT, 'pdf'), (SLIDES, 'pptx'), (CV, 'pdf')])
 def test_each_service_builds_a_request_and_accepts_an_answer(feature, output_format):
-    body = request_body(CONFIG, draft(output_format=output_format), feature)
+    data = cv_draft() if feature == CV else draft(output_format=output_format)
+    body = request_body(CONFIG, data, feature)
 
     assert body['model'] == CONFIG['model']
     assert body['store'] is False, 'provider must not retain customer content'
     assert body['text']['format']['strict'] is True
     payload = json.loads(body['input'])
     assert payload['task'] == feature
-    assert payload['max_sections'] == 5
+    assert payload['max_sections'] == (8 if feature == CV else 5)
     # The full schema is checked after the fields a call left out are filled in.
     from apps.studio.prompting import canonical
-    _validate(canonical(model_answer(), draft()), schema_for(feature))
+    if feature == CV:
+        # The answer is first held to the schema the call was sent, then to the CV's whole one.
+        answer = cv_answer(body)
+        _validate(answer, body['text']['format']['schema'])
+        _validate(canonical(answer, data), schema_for(feature))
+    else:
+        _validate(canonical(model_answer(), draft()), schema_for(feature))
+
+
+def test_a_cv_request_carries_entries_and_a_template_choice_and_nothing_a_cv_has_not():
+    body = request_body(CONFIG, cv_draft(), CV)
+    properties = body['text']['format']['schema']['properties']
+    section = properties['sections']['items']['properties']
+    assert set(properties) == {'title', 'answer_supported', 'design', 'sections'}
+    assert set(section) == {'id', 'heading', 'body', 'items'}
+    assert set(section['items']['items']['properties']) == {'label', 'text', 'value'}
+    from apps.studio.cv.templates import TEMPLATE_IDS
+    assert properties['design']['enum'] == TEMPLATE_IDS
+    # A document's schema still has no CV templates, nor a CV's a document's designs.
+    assert schema_for(DOCUMENT) is SCHEMA and 'classic_navy' not in SCHEMA['properties']['design']['enum']
+    assert schema_for(CV)['properties']['design']['enum'] == [''] + TEMPLATE_IDS
+    assert set(schema_for(CV)['properties']) == set(SCHEMA['properties'])
 
 
 def test_the_prompt_asks_for_length_in_units_a_model_can_count():

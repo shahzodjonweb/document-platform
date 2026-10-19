@@ -109,3 +109,19 @@ def test_the_customer_page_lists_their_ai_requests(premium):
     client, _ = staff_client('Support')
     page = client.get(f'/ops/users/{premium.id}').content.decode()
     assert f'/ops/generations/{record.id}' in page
+
+
+def test_a_page_fetched_on_its_own_is_audited_and_one_on_the_opened_request_is_not_again(premium):
+    record = GenerationRecord.objects.get(job=make(premium))
+    support, _ = staff_client('Support')
+    support.get(f'/ops/generations/{record.id}')
+    assert support.get(f'/ops/generations/{record.id}/pages/1').status_code == 200
+    assert not AuditLog.objects.filter(action='generation.page').exists(), 'shown on the audited request page'
+    # Another member of staff fetching the page directly, without opening the request, leaves a row.
+    operations, _ = staff_client('Operations')
+    assert operations.get(f'/ops/generations/{record.id}/pages/1').status_code == 200
+    rows = AuditLog.objects.filter(action='generation.page', target=str(record.id))
+    assert rows.count() == 1 and rows.get().after == {'account': str(premium.id), 'page': 1}
+    # …once, not once per page image.
+    operations.get(f'/ops/generations/{record.id}/pages/1')
+    assert rows.count() == 1

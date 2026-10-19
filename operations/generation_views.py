@@ -5,6 +5,8 @@ only who, when, which service and the first words of the request; opening one
 shows the whole request and the document, and is written to the audit log
 first, as opening any customer document is.
 """
+from datetime import timedelta
+
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.http import FileResponse, Http404, HttpResponseBadRequest
@@ -17,7 +19,7 @@ from .auth import allowed, audit, require_staff
 from .views import context, finish_render
 
 ROLES = ('Support', 'Operations')
-SERVICES = {'ai.pdf_topic': 'gen_document', 'ai.pptx': 'gen_slides'}
+SERVICES = {'ai.pdf_topic': 'gen_document', 'ai.pptx': 'gen_slides', 'ai.cv': 'gen_cv'}
 # Prompts are encrypted, so a search for words in them reads the newest records
 # in turn; this bounds how many one search may open.
 TEXT_SEARCH_LIMIT = 3000
@@ -126,10 +128,25 @@ def generation_file(request, pk):
     return response
 
 
+# A page image fetched this soon after its request was opened is part of that
+# audited view (the review page shows its pages as images).
+PAGE_VIEW_WINDOW = timedelta(minutes=15)
+
+
 @require_staff(*ROLES)
 def generation_page(request, pk, page):
-    """One page of the kept PDF as an image, for reading it on the review page."""
+    """One page of the kept PDF as an image, for reading it on the review page.
+
+    Audited like the page it is shown on: a page fetched on its own, not just
+    after the request was opened (generation.view), writes its own row. A CV's
+    pages are the customer's photo, contacts and career.
+    """
     record = get_object_or_404(GenerationRecord, pk=pk)
+    from .models import AuditLog
+    viewed = AuditLog.objects.filter(actor=request.ops_user, action__in=('generation.view', 'generation.page'),
+                                     target=str(record.pk), created_at__gte=timezone.now() - PAGE_VIEW_WINDOW)
+    if not viewed.exists():
+        audit(request.ops_user, 'generation.page', record.pk, after={'account': str(record.account_id), 'page': page})
     try:
         image = page_image(record, page)
     except Exception:

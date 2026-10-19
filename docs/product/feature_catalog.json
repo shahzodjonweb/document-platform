@@ -659,6 +659,27 @@
       "acceptance_gate": "common_job_gate"
     },
     {
+      "id": "ai.cv",
+      "category": "AI documents",
+      "release": "R2A",
+      "priority": "standard",
+      "name": "Generate CV (r\u00e9sum\u00e9) PDF",
+      "plans": {
+        "free": "higher",
+        "plus": "higher",
+        "premium": "higher"
+      },
+      "meter": "ai",
+      "channels": [
+        "bot",
+        "web",
+        "mini_app"
+      ],
+      "enabled_by_default": false,
+      "label_key": "features.ai.cv.name",
+      "acceptance_gate": "common_job_gate"
+    },
+    {
       "id": "ai.pptx",
       "category": "AI presentations",
       "release": "R2A",

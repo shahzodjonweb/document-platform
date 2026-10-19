@@ -298,6 +298,12 @@ MESSAGES = {
         '⏳ Oldingi to‘lovingiz hali tekshirilmoqda. Natijani shu yerda yuboramiz.',
         '⏳ Предыдущий платёж ещё проверяется. Мы напишем вам здесь.',
     ),
+    # A CV is about one person: asked for before anything is made or counted.
+    'cv_name_required': (
+        '✍️ Write your full name — the CV is made for you, so it has to say who you are.',
+        '✍️ Ism va familiyangizni to‘liq yozing — CV siz uchun tayyorlanadi, unda kimligingiz ko‘rsatilishi kerak.',
+        '✍️ Напишите полностью имя и фамилию: резюме составляется о вас, и в нём должно быть указано, кто вы.',
+    ),
     'manual_payment_closed manual_payment_expired': (
         '⌛ This payment is closed. Open Plans to start a new one: /plans',
         '⌛ Bu to‘lov yopilgan. Yangisini boshlash uchun tariflarni oching: /plans',

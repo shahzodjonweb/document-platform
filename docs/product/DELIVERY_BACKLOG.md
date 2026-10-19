@@ -4,7 +4,7 @@ This is an ordered backlog, not a record of completed software. All tickets star
 
 Dependencies define the safe build order. Work in small reviewable commits, with backend contracts preceding client integration. Parallel work is optional after an interface is stable; the user specifically requested a UI/UX specialist. Do not create extra repositories.
 
-Each of the 128 feature IDs has exactly one owning implementation ticket below. A release gate verifies the combined behavior; it does not replace the feature tickets. delivery_backlog.json is the machine-readable counterpart.
+Each of the 129 feature IDs has exactly one owning implementation ticket below. A release gate verifies the combined behavior; it does not replace the feature tickets. delivery_backlog.json is the machine-readable counterpart.
 
 ## How to execute a ticket
 
@@ -24,7 +24,7 @@ No calendar promises are attached. Estimate each release after its engine/provid
 | R0 | 8 | 7 | Internal foundation |
 | R1A | 26 | 10 | Free file-tools beta |
 | R1B | 17 | 9 | Paid document-tools launch |
-| R2A | 18 | 7 | AI PDF/PPTX launch |
+| R2A | 19 | 8 | AI PDF/PPTX launch |
 | R2B | 46 | 9 | Education launch |
 | R3 | 13 | 6 | Content-editor launch |
 
@@ -335,6 +335,15 @@ Add AI-credit invoices for eligible paid plans, non-expiring purchased grants, p
 Build Content → Outline → Style → Generate, source upload, preview/revision, exact or bounded quotes, payment resume, bot entry and Mini App continuity. Resolve UI/UX findings on real devices.
 
 **Acceptance:** All R2A features pass output, entitlement and three-locale UI fixtures. Closing a view does not imply job cancellation. Drafts survive purchase/navigation. Publish real provider limitations and cost-calibrated allowances.
+
+### R2A-08 — Generate a CV from one message, in one of fifty templates
+
+**Repository:** document-platform, document-web. **Dependencies:** R2A-02, R2A-04.
+**Feature IDs:** ai.cv.
+
+Write a one- or two-page A4 CV from the customer's own description: eight fixed sections, the person's name required, facts taken only from what they wrote (contacts and dates checked against it), an optional JPG or PNG portrait, and fifty templates in six categories, picked on a setup screen or chosen by the model (classic by default). Bot, web Studio and the Mini App picker.
+
+**Acceptance:** Every template renders the short and long samples in en/uz/ru on one or two pages with no clipped, overlapping or low-contrast text and no Cyrillic in an Uzbek or English CV. A contact or date that is not in the description never reaches the PDF. A description without a name is asked for one before anything is counted; a CV is one of the week's AI documents and its changes use the file's edits.
 
 
 ## R2B — Education launch

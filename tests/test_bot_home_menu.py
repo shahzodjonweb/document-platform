@@ -1,4 +1,4 @@
-"""The bot's home screen leads with four full-width buttons for what people come for."""
+"""The bot's home screen leads with five full-width buttons for what people come for."""
 import pytest
 from django.utils import timezone
 
@@ -10,9 +10,9 @@ from telegram.local import dispatch_local
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.usefixtures('bot_verification_disabled')]
 
 HOME = {
-    'uz': ['✨ Mavzuga oid PDF · AI', '✨ Mavzuga oid Slayd · AI', '🖼 Rasmlardan PDF', '💎 Obuna bo‘lish'],
-    'ru': ['✨ PDF по теме · ИИ', '✨ Слайды по теме · ИИ', '🖼 PDF из фото', '💎 Оформить подписку'],
-    'en': ['✨ PDF on a topic · AI', '✨ Slides on a topic · AI', '🖼 PDF from images', '💎 Subscribe'],
+    'uz': ['✨ Mavzuga oid PDF · AI', '✨ Mavzuga oid Slayd · AI', '✨ CV (rezyume) · AI', '🖼 Rasmlardan PDF', '💎 Obuna bo‘lish'],
+    'ru': ['✨ PDF по теме · ИИ', '✨ Слайды по теме · ИИ', '✨ Резюме · ИИ', '🖼 PDF из фото', '💎 Оформить подписку'],
+    'en': ['✨ PDF on a topic · AI', '✨ Slides on a topic · AI', '✨ CV · AI', '🖼 PDF from images', '💎 Subscribe'],
 }
 
 
@@ -27,15 +27,15 @@ def customer(locale):
 
 
 @pytest.mark.parametrize('locale', list(HOME))
-def test_home_leads_with_four_full_width_buttons(settings, locale):
+def test_home_leads_with_five_full_width_buttons(settings, locale):
     settings.DEBUG = True
     settings.COMMERCE_SANDBOX_ENABLED = True
     account = customer(locale)
     result = dispatch_local(account, text='/start')
     rows = result['messages'][-1]['buttons']
-    assert [[button['label'] for button in row] for row in rows[:4]] == [[label] for label in HOME[locale]]
+    assert [[button['label'] for button in row] for row in rows[:5]] == [[label] for label in HOME[locale]]
     # Everything else is still reachable, two to a row underneath.
-    assert all(len(row) == 2 for row in rows[4:]) and len(rows) == 7
+    assert all(len(row) == 2 for row in rows[5:]) and len(rows) == 8
 
 
 def test_subscribe_opens_the_plans(settings):
@@ -43,7 +43,7 @@ def test_subscribe_opens_the_plans(settings):
     settings.COMMERCE_SANDBOX_ENABLED = True
     account = customer('uz')
     result = dispatch_local(account, text='/start')
-    button = result['messages'][-1]['buttons'][3][0]
+    button = result['messages'][-1]['buttons'][4][0]
     plans = dispatch_local(account, callback_data=button['callback_data'])
     text = '\n'.join(message['text'] for message in plans['messages'])
     assert 'Plus' in text and 'Premium' in text, text

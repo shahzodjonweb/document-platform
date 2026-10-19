@@ -1,6 +1,6 @@
 # Feature coverage
 
-All 128 IDs remain assigned to their original owner ticket. No production release is approved.
+All 129 IDs remain assigned to their original owner ticket. No production release is approved.
 
 - `implemented_local`: implemented behavior with local artifact/API/browser evidence.
 - `provider_dependent`: implemented provider/authoring path; live task quality requires configuration and evaluation.
@@ -40,6 +40,7 @@ All 128 IDs remain assigned to their original owner ticket. No production releas
 | `ai.pdf_topic` | R2A-02 | provider_dependent | disabled |
 | `ai.pdf_text` | R2A-02 | provider_dependent | disabled |
 | `ai.pdf_sources` | R2A-02 | provider_dependent | disabled |
+| `ai.cv` | R2A-08 | provider_dependent | disabled |
 | `ai.pptx` | R2A-03 | provider_dependent | disabled |
 | `ai.source_to_slides` | R2A-03 | provider_dependent | disabled |
 | `ai.speaker_notes` | R2A-03 | implemented_local | disabled |
