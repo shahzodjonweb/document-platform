@@ -17,7 +17,7 @@ from .auth import allowed, audit, require_staff
 from .views import context, finish_render
 
 ROLES = ('Support', 'Operations')
-SERVICES = {'ai.pdf_topic': 'gen_document', 'ai.pptx': 'gen_slides'}
+SERVICES = {'ai.pdf_topic': 'gen_document', 'ai.pptx': 'gen_slides', 'ai.cv': 'gen_cv'}
 # Prompts are encrypted, so a search for words in them reads the newest records
 # in turn; this bounds how many one search may open.
 TEXT_SEARCH_LIMIT = 3000

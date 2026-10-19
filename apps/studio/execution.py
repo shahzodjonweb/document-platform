@@ -37,11 +37,13 @@ def execute_generation(job,output_dir):
         original=bytes(draft.encrypted_data)
         data=unpack(original)
     content=data['content'];cfg=ai_config();warnings=[]
+    from .domain import CV
+    cv=job.feature_id==CV
     if data.get('revision',{}).get('selected_section_ids'):
         # Recheck mutable plan bounds before any paid provider request. The
         # original quote cannot authorize losing untouched pages after a cap
         # change or subscription expiry while the job waited in the queue.
-        ensure_selected_preservation(data,validate_content(job.account,content,data['output_format']))
+        ensure_selected_preservation(data,validate_content(job.account,content,data['output_format'],feature=job.feature_id))
     # Finish the provider calls while the worker still holds the job: work
     # completed after the lease lapses is thrown away by the reclaim sweep. An
     # outline's calls are held to it too, second tries included.
@@ -54,7 +56,7 @@ def execute_generation(job,output_dir):
         from .provider import generate
         try:
             raw,usage=generate(cfg,data,job.feature_id,job.id,token_limit=job.quote.policy['generation_bounds']['input_tokens'],deadline=deadline)
-            content=validate_content(job.account,raw,data['output_format'])
+            content=validate_content(job.account,raw,data['output_format'],feature=job.feature_id)
             # The look the model chose is kept with the draft, so a later change
             # request redraws the same deck rather than picking again. Only a
             # change asking for a new look replaces the one the document has:
@@ -66,14 +68,19 @@ def execute_generation(job,output_dir):
             if data['output_format']=='pptx':
                 picked=(data.get('options') or {}).get('deck_design') not in (None,'auto')
                 deck_designs.remember(data,raw,replace=redesign and not picked)
+            elif cv:
+                # A CV's template, the same way: picked on its setup screen, it stays.
+                from .cv import templates as cv_templates
+                cv_templates.remember(data,raw,replace=redesign and not cv_templates.chosen(data.get('options')))
             else:doc_designs.remember(data,raw,replace=redesign)
             # The whole document is checked before it is drawn: every field in
             # its language's alphabet, and a section in the wrong language, empty
             # or repeating another sent back to the model once (quality.py).
             from . import quality
             # A change request is checked against the model's own plan of it:
-            # a part it planned and left undone goes into the one repair.
-            content,_=quality.finish(cfg,data,content,job=job,deadline=deadline,plan=raw.get('edit_plan'))
+            # a part it planned and left undone goes into the one repair. A CV
+            # is only tidied and put in its alphabet: a repair could only invent.
+            content,_=quality.finish(cfg,data,content,job=job,deadline=deadline,plan=raw.get('edit_plan'),deterministic=cv)
             # Bounds can also change while the provider is running. Deliver
             # only a result that still preserves everything outside its scope,
             # exactly as it was: quality.finish never retouches those pages.
@@ -118,7 +125,28 @@ def execute_generation(job,output_dir):
     style=render_style(job.account,data,feature_id=job.feature_id)
     ext=data['output_format']
     photo_style=(data.get('options') or {}).get('photo_style') or 'photo'
-    if ext=='pptx':
+    if cv:
+        # Nothing on a CV the customer did not say: a contact detail or a date
+        # the model wrote that is not in their own words is taken out.
+        from .cv.content import fact_check,trusted_text
+        content,dropped=fact_check(content,trusted_text(data))
+        if any(code.startswith('contact:') for code in dropped):warnings.append('cv_contact_dropped')
+        if dropped:
+            import logging
+            logging.getLogger(__name__).info('Job %s: CV facts taken out: %s',job.id,dropped)
+        # The portrait is read again and must still be the file that was quoted;
+        # one that is not leaves the CV without it rather than failing the job.
+        from .cv import portrait
+        from .cv.render import filename,render_cv
+        photo,unusable=portrait.load(job.account,data)
+        artifacts=[render_cv(content,output_dir/filename(content),data['output_locale'],style=style,portrait=photo)]
+        for code in [*((data.get('options') or {}).get('cv_warnings') or []),*unusable,
+                     *artifacts[0]['metadata'].get('warnings',[])]:
+            if code not in warnings:warnings.append(code)
+        # Two pages hold any CV the customer can describe; when even the
+        # tightest setting needed a third, its least important lines were cut.
+        if artifacts[0].get('shortened'):warnings.append('cv_trimmed')
+    elif ext=='pptx':
         photos=_photos(job,content['sections'],warnings,photo_style)
         artifacts=[render_pptx(content,output_dir/'document.pptx',data['output_locale'],'user_document',style=style,photos=photos)]
     else:
@@ -157,7 +185,7 @@ def execute_generation(job,output_dir):
     if any(a['page_count']>allowance for a in artifacts):warnings.append('longer_than_quoted')
     # The renderer holds each section to its own page. When it had to shorten one
     # to do that, the customer is told rather than left to notice.
-    if any(a.get('shortened') for a in artifacts):warnings.append('shortened_to_fit')
+    if not cv and any(a.get('shortened') for a in artifacts):warnings.append('shortened_to_fit')
     data['content']=content
     data.pop('_source_seed',None)
     # A customer may edit while the provider is running. Never overwrite that

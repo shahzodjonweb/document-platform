@@ -13,21 +13,26 @@ from apps.core.serializers import asset_data,quote_data,job_data
 from apps.core.services import owned_assets,create_quote,submit_job,execute_job,record_event
 from apps.core.policy import FEATURES,plan_limits,require_feature
 from operations.integrations import ai_config
-from .domain import DOCUMENT,SLIDES,GENERATION_IDS,_image_cap,allowed,create_draft,draft_data,draft_jobs,update_draft,generation_quote,pack,unpack,limits
+from .domain import CV,DOCUMENT,SLIDES,GENERATION_IDS,_image_cap,allowed,create_draft,draft_data,draft_jobs,update_draft,generation_quote,pack,unpack,limits
 from .models import GenerationDraft,SavedDefinition,EducationProject,PracticeAttempt,ShareGrant,EditorDocument,WorkflowRun
 
 @api()
 def config(request):
-    """Two services, and what a description is allowed to ask them for."""
+    """Three services, and what a description is allowed to ask them for.
+
+    A CV is one page or two, whatever the plan's page cap: the renderer, not
+    the description, decides which.
+    """
+    from .cv.render import MAX_PAGES as CV_PAGES
     from .pages import DEFAULT_PAGES, ceiling
     cfg=ai_config();features=[]
-    for fid in (DOCUMENT,SLIDES):
+    for fid in (DOCUMENT,SLIDES,CV):
         formats=['pptx'] if fid==SLIDES else ['pdf']
         features.append({'id':fid,'name':FEATURES[fid]['name'],'surface':'generate',
                          'eligible':settings.ENABLE_BETA_TOOLS and allowed(request.account,fid),
                          'requires_provider':False,
                          'parameter_schema':{'output_locale':{'enum':['en','uz','ru']},'output_format':{'enum':formats}},
-                         'max_pages':ceiling(request.account,'pptx' if fid==SLIDES else 'pdf'),
+                         'max_pages':CV_PAGES if fid==CV else ceiling(request.account,'pptx' if fid==SLIDES else 'pdf'),
                          'max_images':_image_cap(request.account,fid),
                          'locales':['en','uz','ru']})
     return {'provider':{'id':cfg['mode'],'mode':cfg['mode'],
@@ -98,19 +103,23 @@ def cv_template_preview(request,template):
     response['Cache-Control']='public, max-age=604800, immutable'
     return response
 
+# What each service's setup screen may choose: a deck its slide count and
+# design, a CV its template. A document has no setup screen.
+SETUP_KEYS={SLIDES:{'pages','deck_design'},CV:{'cv_template'}}
+
 @api(('POST',))
 def draft_setup(request,pk):
-    """A deck's slide count and design, chosen on the setup screen over what the description says.
+    """A deck's slide count and design, or a CV's template, chosen on the setup screen over what the description says.
 
-    One call changes both and returns the new price, and the review in the
+    One call changes them and returns the new price, and the review in the
     bot's chat is redrawn with it, so its Generate button pays for this.
     """
     throttle(request,'generation_drafts',20)
     data=body(request)
-    if not data or set(data)-{'pages','deck_design'}:raise DomainError('invalid_parameters')
+    if not data or set(data)-set().union(*SETUP_KEYS.values()):raise DomainError('invalid_parameters')
     d=GenerationDraft.objects.filter(account=request.account,id=pk,expires_at__gt=timezone.now()).first()
     if not d:raise DomainError('not_found',404)
-    if d.feature_id!=SLIDES:raise DomainError('invalid_parameters')
+    if set(data)-SETUP_KEYS.get(d.feature_id,set()):raise DomainError('invalid_parameters')
     # A change is decided by its request alone. A setup screen still open on one
     # would restyle it, and its count, which a change does not carry, starts at
     # the setup screen's default (pages.SETUP_SLIDES), not the deck's own length.

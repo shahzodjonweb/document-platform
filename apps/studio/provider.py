@@ -20,6 +20,11 @@ SCHEMA=obj({'title':STRING,'design':{'type':'string','enum':['']+_DOC_DESIGN_IDS
 # every property required, and `_validate` has no path for nullable or anyOf.
 from . import layouts as _layouts
 from .deck_designs import DESIGN_IDS as _DESIGN_IDS
+# A CV is a document whose `design` is one of its templates (cv/templates.py):
+# the same keys, so canonical() and _validate read it as they read a document.
+from .cv.content import CV as CV_FEATURE
+from .cv.templates import TEMPLATE_IDS as _CV_TEMPLATE_IDS
+CV_SCHEMA={**SCHEMA,'properties':{**SCHEMA['properties'],'design':{'type':'string','enum':['']+_CV_TEMPLATE_IDS}}}
 # `design` is asked for once per deck (see deck_designs.wanted); every other call
 # has it filled in as '' before validation, which is why '' is in the enum.
 SLIDE_SCHEMA=obj({'title':STRING,'design':{'type':'string','enum':['']+_DESIGN_IDS},'answer_supported':{'type':'boolean'},'citations':{'type':'array','items':obj({'asset_id':STRING,'page':{'type':'integer'},'quote':STRING})},'sections':{'type':'array','items':obj({'id':STRING,'heading':STRING,'body':STRING,'notes':STRING,'layout':{'type':'string','enum':_layouts.LAYOUT_IDS},'items':{'type':'array','items':obj({'label':STRING,'text':STRING,'value':STRING})},'columns':{'type':'array','items':STRING},'image_query':STRING})},'questions':{'type':'array','items':obj({'id':STRING,'stem':STRING,'options':{'type':'array','items':STRING},'answer':STRING,'explanation':STRING,'topic':STRING,'marks':{'type':'integer'}})}})
@@ -69,6 +74,9 @@ SYSTEM=(
     'is blank — except that in a document (not slides) a section that continues the topic of the section before it '
     'keeps an empty heading.'
 )
+# A CV is told its own rules in place of SYSTEM and DOCUMENT_RULES, which say
+# one section is one page; they live with the rest of the CV (cv/content.py).
+from .cv.content import CV_GUIDANCE, CV_REVISION_GUIDANCE, CV_REVISION_SYSTEM, CV_RULES, CV_SYSTEM
 # How a document and a deck are written differ; each call is told only its own.
 DOCUMENT_RULES=(
     'This is a document to be read. Write developed paragraphs that explain, connect ideas and give concrete, '
@@ -185,8 +193,11 @@ def schema_for(feature, output_format='pdf'):
     """A deck's sections carry a layout; a document's never do.
 
     Chosen by output format rather than feature, so the outline stage of a deck
-    chooses layouts too and the customer can review them before paying.
+    chooses layouts too and the customer can review them before paying. A CV
+    is the one exception: a document whose design is a CV template.
     """
+    if feature == CV_FEATURE:
+        return CV_SCHEMA
     return SLIDE_SCHEMA if output_format == 'pptx' else SCHEMA
 
 
@@ -566,7 +577,7 @@ def _call(config,data,feature_id,idempotency_key,*,token_limit,span=None,deadlin
             # the execution layer applies the existing plan-aware trimming.
             from .domain import validate_content
             # Its code (nearly always invalid_parameters) would say no more than 'content'.
-            try:validate_content(job.account,content,data.get('output_format','pdf'))
+            try:validate_content(job.account,content,data.get('output_format','pdf'),feature=feature_id)
             except DomainError:raise _Rejected('content',**counts) from None
         return content if plan is None else {**content,'edit_plan':plan}
 

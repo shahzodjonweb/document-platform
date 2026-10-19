@@ -4,6 +4,9 @@ import hashlib
 import json
 import re
 
+# Part of every prompt cache key. A change to any fixed block a model is told —
+# these, provider.SYSTEM and the rules, or a CV's blocks in cv/content.py —
+# bumps it, so no call is served a prefix cached for the old wording.
 VERSION = 'studio-efficient-v4'
 # The list is read out of the description by a program (apps/studio/topics.py),
 # so it also catches requests about form: "with photos" must not become a section.
@@ -477,11 +480,15 @@ def schema(data, feature, *, final=True, design=False):
             properties['design'] = {**properties['design'], 'enum': properties['design']['enum'][1:]}
         else:
             properties.pop('design')
-    if data.get('output_format') != 'pptx' and not data.get('options', {}).get('wants_layouts'):
-        # A plain document is headings and prose: no layout fields to fill.
+    from .provider import CV_FEATURE
+    cv = feature == CV_FEATURE
+    if data.get('output_format') != 'pptx' and (cv or not data.get('options', {}).get('wants_layouts')):
+        # A plain document is headings and prose: no layout fields to fill. A
+        # CV is entries, so it keeps items and nothing else of a layout.
         from .provider import DOC_SECTION_FIELDS
         for field in DOC_SECTION_FIELDS:
-            properties['sections']['items']['properties'].pop(field, None)
+            if not (cv and field == 'items'):
+                properties['sections']['items']['properties'].pop(field, None)
     section = properties['sections']['items']['properties']
     outline = is_outline(data, feature)
     # Final slide notes are a deliverable. Document notes are only needed when
@@ -557,6 +564,12 @@ def request_body(config, data, feature, span=None):
     # The model writes the sections; a deck's question slides are drawn from the questions.
     if 'length' in options:
         options['length'] -= int(data.get('options', {}).get('question_slides', 0) or 0)
+    # A CV is written in one call from fixed sections: no page count, test or
+    # pictures to tell it about, no subtopics and nothing written before.
+    from .provider import CV_FEATURE
+    cv = feature == CV_FEATURE
+    if cv:
+        options = {}
     questions = asked_questions({**data, 'content': content})
     revision = data.get('revision')
     # A quality repair (apps/studio/quality.py) writes flagged sections again,
@@ -565,38 +578,51 @@ def request_body(config, data, feature, span=None):
     with_photos = bool(options.get('image_cap'))
     # A change that asks the whole document for a new look may choose one again.
     redesign = bool(edit_of(data).get('redesign'))
-    shifting = structural(data)
+    shifting = structural(data) and not cv
     shape = reshape(data) if shifting else None
     from . import deck_designs, doc_designs, language
     from .provider import DECK_RULES, DOCUMENT_RULES
     # Stable parts first, so a long deck's cached prefix is shared; what varies
     # by stage and by language comes last.
-    parts = [OUTLINE_SYSTEM if outline else REVISION_SYSTEM if revision else SYSTEM]
-    # An outline is told how to plan only: the writing rules ask for developed
-    # paragraphs where it asks for one or two sentences. A change is told how a
-    # page or slide is written: told only to keep things as they were, it added
-    # a page as a heading and a slide without the layout a picture needs.
-    if not outline:
-        parts.append(DECK_RULES if fmt == 'pptx' else DOCUMENT_RULES)
-    if fmt == 'pptx':
-        parts.append(layouts.reference(with_photos))
-        # Only a job that can choose a design reads the list (about 9k characters).
-        # The answer is the same for every batch of one job, so a long deck's
-        # cached prefix still is; only the first call's schema asks.
-        if deck_designs.wanted(data, 0):
-            parts.append(deck_designs.reference(with_photos))
-    if fmt != 'pptx':
-        every = data.get('options', {})
-        # A change reads the designs only when it asks for a new look, as a
-        # deck's does; a new document whenever its description asks for one.
-        guide = doc_designs.reference(bool(every.get('wants_layouts')),
-                                      redesign if revision else bool(every.get('wants_design')),
-                                      int(options.get('image_cap', 0) or 0))
-        if guide:
-            parts.append(guide)
-        design = doc_designs.wanted(data, first)
+    if cv:
+        # A CV is told its own rules instead of "one section is one page"; a
+        # change is still a change (REVISION_SYSTEM), with what a CV is not
+        # allowed after it. The templates are read only by the one call that
+        # chooses one: a new CV with none picked, or a change asking for a new
+        # look. Whether a portrait was sent is fixed for the draft.
+        from .cv import templates as cv_templates
+        from .provider import CV_REVISION_SYSTEM, CV_RULES, CV_SYSTEM
+        parts = ([REVISION_SYSTEM, CV_REVISION_SYSTEM] if revision else [CV_SYSTEM]) + [CV_RULES]
+        if cv_templates.wanted(data, 0):
+            parts.append(cv_templates.reference(bool(data.get('options', {}).get('portrait_asset_id'))))
+        design = cv_templates.wanted(data, first)
     else:
-        design = deck_designs.wanted(data, first)
+        parts = [OUTLINE_SYSTEM if outline else REVISION_SYSTEM if revision else SYSTEM]
+        # An outline is told how to plan only: the writing rules ask for developed
+        # paragraphs where it asks for one or two sentences. A change is told how a
+        # page or slide is written: told only to keep things as they were, it added
+        # a page as a heading and a slide without the layout a picture needs.
+        if not outline:
+            parts.append(DECK_RULES if fmt == 'pptx' else DOCUMENT_RULES)
+        if fmt == 'pptx':
+            parts.append(layouts.reference(with_photos))
+            # Only a job that can choose a design reads the list (about 9k characters).
+            # The answer is the same for every batch of one job, so a long deck's
+            # cached prefix still is; only the first call's schema asks.
+            if deck_designs.wanted(data, 0):
+                parts.append(deck_designs.reference(with_photos))
+        if fmt != 'pptx':
+            every = data.get('options', {})
+            # A change reads the designs only when it asks for a new look, as a
+            # deck's does; a new document whenever its description asks for one.
+            guide = doc_designs.reference(bool(every.get('wants_layouts')),
+                                          redesign if revision else bool(every.get('wants_design')),
+                                          int(options.get('image_cap', 0) or 0))
+            if guide:
+                parts.append(guide)
+            design = doc_designs.wanted(data, first)
+        else:
+            design = deck_designs.wanted(data, first)
     if selected(data):
         parts.append(SELECTED_REVISION)
     parts.append(language.instructions(locale_of(data)))
@@ -606,7 +632,8 @@ def request_body(config, data, feature, span=None):
     user = {'task': feature, **language.wire(locale_of(data)),
             'prompt': data['prompt'], 'source_text': data['source_text'], 'excerpts': data['excerpts']}
     from .topics import required
-    subtopics = required(data.get('_brief') or data.get('revision', {}).get('original_prompt') or data['prompt'])
+    subtopics = [] if cv else required(data.get('_brief') or data.get('revision', {}).get('original_prompt')
+                                       or data['prompt'])
     if subtopics and locale_of(data) == 'uz':
         # Read from normalised text, so o‘ and g‘ arrive as o' and g'; the model
         # copies what it is given, so it is given the house spelling.
@@ -656,6 +683,9 @@ def request_body(config, data, feature, span=None):
             wanted = min(cap, max(1, round(len(sections) / 3))) if cap else 0
             photos = round(wanted * last / len(sections)) - round(wanted * first / len(sections))
             user['writing_guidance'] += ' ' + layouts.photo_guidance(photos)
+    elif cv:
+        from .provider import CV_GUIDANCE, CV_REVISION_GUIDANCE
+        user['writing_guidance'] = CV_REVISION_GUIDANCE if revision else CV_GUIDANCE
     elif repair:
         # Sized like new sections, never as the cover: "preserve existing length"
         # means nothing for a page that came back empty.

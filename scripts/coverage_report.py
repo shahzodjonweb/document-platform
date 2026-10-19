@@ -19,7 +19,7 @@ for ticket in backlog['tickets']:
         assert fid not in by_feature,f'Duplicate ticket ownership for {fid}'
         by_feature[fid]=ticket['id']
 ids={f['id'] for f in catalog['features']}
-assert len(catalog['features'])==128 and len(backlog['tickets'])==48 and set(by_feature)==ids
+assert len(catalog['features'])==129 and len(backlog['tickets'])==49 and set(by_feature)==ids
 assert known<=ids
 rows=[]
 for feature in catalog['features']:
@@ -41,9 +41,9 @@ for feature in catalog['features']:
     else:
         status='gated';evidence=[];gate='No implementation acceptance evidence recorded.'
     rows.append({'id':fid,'name':feature['name'],'release':feature['release'],'ticket':by_feature[fid],'status':status,'production_enabled':False,'evidence':evidence,'gate':gate})
-report={'schema_version':'1.1','catalog_count':128,'ticket_count':48,'release_approval':'none','note':'Local capability, adapter presence, and production release are distinct. Original requirements are preserved unchanged.','features':rows}
+report={'schema_version':'1.1','catalog_count':129,'ticket_count':49,'release_approval':'none','note':'Local capability, adapter presence, and production release are distinct. Original requirements are preserved unchanged.','features':rows}
 json_text=json.dumps(report,ensure_ascii=False,indent=2)+'\n'
-lines=['# Feature coverage','','All 128 IDs remain assigned to their original owner ticket. No production release is approved.','','- `implemented_local`: implemented behavior with local artifact/API/browser evidence.','- `provider_dependent`: implemented provider/authoring path; live task quality requires configuration and evaluation.','- `partial`: specific remaining behavior or acceptance limitation is recorded in the JSON report.','- `gated`: no implementation acceptance evidence recorded.','- `retired`: taken out of the product at the owner\'s decision; the ID keeps its ticket and nothing implements it.','','| Feature ID | Ticket | Local status | Production |','|---|---|---|---|']
+lines=['# Feature coverage','','All 129 IDs remain assigned to their original owner ticket. No production release is approved.','','- `implemented_local`: implemented behavior with local artifact/API/browser evidence.','- `provider_dependent`: implemented provider/authoring path; live task quality requires configuration and evaluation.','- `partial`: specific remaining behavior or acceptance limitation is recorded in the JSON report.','- `gated`: no implementation acceptance evidence recorded.','- `retired`: taken out of the product at the owner\'s decision; the ID keeps its ticket and nothing implements it.','','| Feature ID | Ticket | Local status | Production |','|---|---|---|---|']
 lines.extend(f"| `{r['id']}` | {r['ticket']} | {r['status']} | disabled |" for r in rows)
 lines+=['','Detailed evidence and limitations: [feature-status.json](feature-status.json).','']
 target=ROOT/'docs/feature-status.json';markdown='\n'.join(lines)

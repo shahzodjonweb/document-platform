@@ -249,6 +249,10 @@ tests/test_slide_layouts.py::test_every_layout_draws_in_every_theme[#255e49-dark
 # CV templates: the default renders one and two pages in every language, reads back clean
 tests/test_cv_templates.py::test_every_template_renders_both_samples_in_every_language[classic_navy]
 
+# AI CV: a description without a name is asked for one, and one message becomes a delivered CV
+tests/test_cv_content.py::test_a_cv_without_a_name_is_refused_before_anything_is_counted
+tests/test_cv_content.py::test_one_message_becomes_a_cv_named_after_the_person
+
 # Deck sizing and pricing
 tests/test_deck_questions.py::test_question_slides_count_toward_the_slides_asked_for[12 ta slayd, oxirida 10 ta savol-12-10-2]
 

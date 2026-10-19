@@ -206,6 +206,11 @@ MESSAGES = {
     'citations_dropped': ('ℹ️ A source reference that did not match any file you sent was left out.', 'ℹ️ Siz yuborgan fayllarga mos kelmagan manba havolasi qo‘shilmadi.', 'ℹ️ Ссылка на источник, не совпавшая с вашими файлами, не добавлена.'),
     'shortened_to_fit': ('ℹ️ A section was longer than its page, so its end was trimmed to keep the page count you asked for.', 'ℹ️ Bir bo‘lim sahifasiga sig‘madi, shuning uchun siz so‘ragan sahifa soni saqlanib, oxiri qisqartirildi.', 'ℹ️ Один раздел не помещался на страницу, поэтому его конец сокращён, чтобы сохранить запрошенное число страниц.'),
     'longer_than_quoted': ('ℹ️ This came out a little longer than estimated.', 'ℹ️ Hujjat taxmindan biroz uzunroq chiqdi.', 'ℹ️ Документ вышел чуть длиннее, чем ожидалось.'),
+    # A CV's own notes: what was left out, and why.
+    'cv_trimmed': ('ℹ️ The CV was shortened to fit on two pages: a few of the least important lines were left out.', 'ℹ️ CV ikki sahifaga sig‘ishi uchun qisqartirildi: eng kam ahamiyatli bir nechta satr tushirib qoldirildi.', 'ℹ️ Резюме сокращено, чтобы уместиться на двух страницах: несколько наименее важных строк убраны.'),
+    'cv_contact_dropped': ('ℹ️ A contact detail that was not in your message was left out.', 'ℹ️ Xabaringizda bo‘lmagan aloqa maʼlumoti CV’ga kiritilmadi.', 'ℹ️ Контакт, которого не было в вашем сообщении, не добавлен в резюме.'),
+    'cv_photo_unusable': ('ℹ️ The photo could not be used, so the CV was made without it.', 'ℹ️ Rasmdan foydalanib bo‘lmadi, shuning uchun CV rasmsiz tayyorlandi.', 'ℹ️ Фото использовать не удалось, поэтому резюме сделано без него.'),
+    'cv_photo_gone': ('ℹ️ The photo is no longer stored, so this version of the CV is without it.', 'ℹ️ Rasmning saqlanish muddati tugagani uchun CV’ning bu nusxasi rasmsiz tayyorlandi.', 'ℹ️ Срок хранения фото истёк, поэтому эта версия резюме — без него.'),
 }
 
 # Keep the older keys for commands, saved controls and transport compatibility.

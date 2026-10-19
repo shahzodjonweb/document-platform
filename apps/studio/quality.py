@@ -185,9 +185,14 @@ def tidy(content, selected=None):
     return _within(content, selected, _tidy)
 
 
-def enforce(content, locale, selected=None):
-    """scripts.enforce, on the selected sections alone when there is a selection."""
-    return _within(content, selected, lambda part: scripts.enforce(part, locale))
+def enforce(content, locale, selected=None, skip=None):
+    """scripts.enforce, on the selected sections alone when there is a selection.
+
+    `skip`, given the content being corrected, says which of its fields to
+    leave alone (cv/content.py contact_field): asked of the part corrected,
+    whose fields are numbered as the part numbers them.
+    """
+    return _within(content, selected, lambda part: scripts.enforce(part, locale, skip(part) if skip else None))
 
 
 # --- Checking -------------------------------------------------------------------
@@ -673,7 +678,8 @@ def repair(config, data, content, report, *, job, deadline=None):
         returned = {s.get('id'): s for s in raw['sections'] if isinstance(s, dict)}
         # Title, questions and citations are not the repair's to change.
         part = validate_content(job.account, {'title': content.get('title', ''), 'sections': [returned[sid] for sid in ids],
-                                              'questions': [], 'citations': []}, data.get('output_format', 'pdf'))
+                                              'questions': [], 'citations': []}, data.get('output_format', 'pdf'),
+                                feature=job.feature_id)
         rewritten = {s['id']: s for s in part['sections']}
         repaired = {**content, 'sections': [rewritten.get(s['id'], s) for s in content['sections']]}
     except Exception as failure:
@@ -685,13 +691,18 @@ def repair(config, data, content, report, *, job, deadline=None):
     return repaired, 'repaired'
 
 
-def finish(config, data, content, *, job, deadline=None, mode='openai', plan=None):
+def finish(config, data, content, *, job, deadline=None, mode='openai', plan=None, deterministic=False):
     """The checked, corrected and (where needed) repaired content, ready to draw.
 
     Returns (content, summary) where summary holds codes and counts only. A
     change to selected sections is checked against the whole document but
     corrects only those sections; everything else goes out as it came in.
     `plan` is a revision's edit_plan, as the model returned it.
+
+    `deterministic` is a CV's: tidied and put in its alphabet, its links left
+    as written, and checked for the log only. Nothing is sent back to the
+    model: a CV section that came back empty is one the customer gave nothing
+    for, and a repair asked to fill it could only invent.
     """
     locale, fmt = data['output_locale'], data.get('output_format', 'pdf')
     revision = data.get('revision') or {}
@@ -699,6 +710,16 @@ def finish(config, data, content, *, job, deadline=None, mode='openai', plan=Non
     prompt = revision.get('original_prompt') or data.get('prompt', '')
     scope = {'locale': locale, 'fmt': fmt, 'prompt': prompt, 'selected': selected,
              'request': revision.get('request', data.get('prompt', '')) if revision else None}
+    if deterministic:
+        from .cv.content import contact_field
+        report = check(content, **scope, expected=None, subtopics=[])
+        content, _ = tidy(content, selected)
+        content, fixed = enforce(content, locale, selected, skip=contact_field)
+        summary = {'found': report.summary(), 'transliterated': len(fixed), 'repair': None,
+                   'left': {code: n for code, n in report.summary().items() if code not in ('script', 'continued_heading')}}
+        if report.summary():
+            logger.info('Job %s quality: %s', getattr(job, 'id', None), summary)
+        return content, summary
     edit = revision.get('edit') or {}
     # A whole-document change is compared with the document before it; a
     # change to selected pages with the draft, which holds the pages as they were.

@@ -44,6 +44,9 @@ def generation_inputs(data):
     ids=list(data['source_ids'])
     logo=data['options'].get('branding',{}).get('logo_asset_id')
     if logo and logo not in ids:ids.append(logo)
+    # A CV's portrait is one of its inputs: the quote pins it with the others.
+    portrait=data['options'].get('portrait_asset_id')
+    if portrait and portrait not in ids:ids.append(portrait)
     return ids
 
 

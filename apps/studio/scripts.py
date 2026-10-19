@@ -133,11 +133,16 @@ def fields(content):
                 yield ('questions', i, 'options', j), option
 
 
-def violations(content, locale):
-    """Paths of the fields written in the wrong alphabet (never their text)."""
+def violations(content, locale, skip=None):
+    """Paths of the fields written in the wrong alphabet (never their text).
+
+    `skip(path, text)` names fields that are left as they are (a CV's links,
+    cv/content.py contact_field); none by default.
+    """
     if locale not in ('uz', 'en'):
         return []
-    return [path for path, text in fields(content) if isinstance(text, str) and CYRILLIC.search(text)]
+    return [path for path, text in fields(content) if isinstance(text, str) and CYRILLIC.search(text)
+            and not (skip and skip(path, text))]
 
 
 def _set(content, path, value):
@@ -147,18 +152,24 @@ def _set(content, path, value):
     target[path[-1]] = value
 
 
-def enforce(content, locale):
-    """(content in its alphabet, paths that were corrected). Raises if any is still wrong."""
+def enforce(content, locale, skip=None):
+    """(content in its alphabet, paths that were corrected). Raises if any is still wrong.
+
+    A field `skip(path, text)` names is left exactly as it is: an address is
+    not text, and "o'tkir.uz" given the Uzbek ‘ is another address.
+    """
     import copy
     result = copy.deepcopy(content)
     fixed = []
     for path, text in list(fields(result)):
+        if skip and skip(path, text):
+            continue
         value = to_script(text, locale)
         if value != text:
             _set(result, path, value)
             if CYRILLIC.search(text or '') or locale == 'ru':
                 fixed.append(path)
-    left = violations(result, locale)
+    left = violations(result, locale, skip)
     if left:
         raise ScriptPolicyError(left)
     return result, fixed

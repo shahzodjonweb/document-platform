@@ -29,10 +29,27 @@ def _folder(record):
     return f'{PREFIX}/{record.account_id}/{record.id}'
 
 
+def _recorded(section):
+    """A section's text as staff read it: its body, then each entry as `label — text (value)`.
+
+    A CV is all entries (its jobs, degrees and contacts), so without them its
+    record would be eight empty sections.
+    """
+    lines = [section.get('body', '')] if section.get('body') else []
+    for item in section.get('items') or []:
+        if not isinstance(item, dict):
+            continue
+        label, text, value = (' '.join(str(item.get(key) or '').split()) for key in ('label', 'text', 'value'))
+        line = ' — '.join(part for part in (label, text) if part) + (f' ({value})' if value else '')
+        if line:
+            lines.append(line)
+    return '\n'.join(lines)
+
+
 def record_request(job):
     """Keep what was asked, when a generation (not an outline) becomes a task."""
     from apps.core.models import FileAsset
-    from .domain import GENERATION_IDS, unpack, pack
+    from .domain import CV, GENERATION_IDS, unpack, pack
     from .models import GenerationDraft, GenerationRecord
     if job.feature_id not in GENERATION_IDS or job.parameters.get('stage') == 'outline':
         return None
@@ -47,7 +64,8 @@ def record_request(job):
             'title': content.get('title') or data.get('title', ''),
             'output_locale': data.get('output_locale', ''),
             'output_format': data.get('output_format', ''),
-            'sections': [{'heading': s.get('heading', ''), 'body': s.get('body', '')} for s in content.get('sections', [])],
+            'sections': [{'heading': s.get('heading', ''), 'body': _recorded(s) if job.feature_id == CV else s.get('body', '')}
+                         for s in content.get('sections', [])],
             'questions': len(content.get('questions') or []),
             'sources': sources,
         }

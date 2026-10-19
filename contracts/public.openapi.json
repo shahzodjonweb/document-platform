@@ -7745,7 +7745,7 @@
     },
     "/generation/drafts/{id}/setup": {
       "post": {
-        "description": "A deck's slide count and design chosen over what its description says (`deck_design` is a design id or `auto`). Returns the new quote; the review in the Telegram chat is redrawn with it.",
+        "description": "A deck's slide count and design, or a CV's template, chosen over what its description says. A deck (`ai.pptx`) takes `pages` and `deck_design` (a design id or `auto`); a CV (`ai.cv`) takes `cv_template` (a template id or `auto`); anything else is refused. Returns the new quote; the review in the Telegram chat is redrawn with it.",
         "operationId": "setupGenerationDraft",
         "parameters": [
           {
@@ -7771,6 +7771,9 @@
             "application/json": {
               "schema": {
                 "properties": {
+                  "cv_template": {
+                    "type": "string"
+                  },
                   "deck_design": {
                     "type": "string"
                   },

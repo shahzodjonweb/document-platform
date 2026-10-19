@@ -130,7 +130,7 @@ def test_the_feature_report_retires_the_stars_checkout():
     report=json.loads((settings.BASE_DIR/'docs/feature-status.json').read_text())
     stars=next(f for f in report['features'] if f['id']=='billing.stars')
     assert stars['status']=='retired' and stars['evidence']==[] and 'card transfer is the only checkout' in stars['gate']
-    assert len(report['features'])==128 and '`retired`' in (settings.BASE_DIR/'docs/feature-coverage.md').read_text()
+    assert len(report['features'])==129 and '`retired`' in (settings.BASE_DIR/'docs/feature-coverage.md').read_text()
 
 def test_commerce_api_requires_csrf():
     a=account();client=client_for(a,True)

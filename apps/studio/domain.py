@@ -14,14 +14,17 @@ from apps.core import storage
 from operations.integrations import cipher, ai_config
 from .models import GenerationDraft
 
-# Two services: a document, or slides. Everything the retired features encoded
-# — audience, tone, subject, question count, structure — is said in the
+# Three services: a document, slides, or a CV. Everything the retired features
+# encoded — audience, tone, subject, question count, structure — is said in the
 # description instead, and the description is already the prompt. The retired
 # ids stay in FEATURES so drafts and jobs made before this still resolve their
-# names; they just cannot be authored any more.
+# names; they just cannot be authored any more. A CV is a PDF like a document,
+# and is counted, quoted, edited and reviewed like one; what makes it a CV is
+# keyed on its id (apps/studio/cv/).
 DOCUMENT='ai.pdf_topic'
 SLIDES='ai.pptx'
-GENERATION_IDS={DOCUMENT,SLIDES}
+CV='ai.cv'
+GENERATION_IDS={DOCUMENT,SLIDES,CV}
 # Server-owned fields a client may never send.
 READONLY_FIELDS={'_transcription','transcription_ready','transcription_reviewed','_source_seed','revision'}
 
@@ -48,7 +51,7 @@ def limits(account):
     # call can carry only moves the refusal later.
     return {'sections':seed['max_generated_pdf_pages'], 'slides':seed['max_generated_slides'], 'questions':MAX_QUESTIONS, 'source_chars':seed['max_ai_input_tokens']//2}
 
-def validate_content(account,content,output_format='pdf'):
+def validate_content(account,content,output_format='pdf',feature=None):
     """Bring a model response inside the plan, trimming rather than refusing.
 
     The page count was clamped to the plan before the model was ever asked, so
@@ -56,12 +59,19 @@ def validate_content(account,content,output_format='pdf'):
     customer's mistake and it costs them nothing: it is cut back to what was
     quoted. Only content that is unusable — the wrong shape, or empty — is
     refused.
+
+    A CV (`feature` CV) always has its eight sections, whatever the plan's page
+    cap says — they are parts of one or two pages, not pages — and its entries
+    are held to the CV's own lengths (cv/content.py clean_fields).
     """
     if not isinstance(content,dict): raise DomainError('invalid_parameters')
     caps=limits(account)
     title=str(content.get('title','Document'))[:160]
     sections=content.get('sections',[])
     max_sections=caps['slides'] if output_format=='pptx' else caps['sections']
+    if feature==CV:
+        from .cv.content import SECTION_IDS
+        max_sections=max(max_sections,len(SECTION_IDS))
     if not isinstance(sections,list): raise DomainError('invalid_parameters')
     if not sections: raise DomainError('content_required')
     from . import pages as paging
@@ -77,6 +87,9 @@ def validate_content(account,content,output_format='pdf'):
             if output_format=='pptx':
                 from .layouts import clean_slide_fields
                 clean[-1].update(clean_slide_fields(s))
+            elif feature==CV:
+                from .cv.content import clean_fields as clean_cv
+                clean[-1].update(clean_cv(s))
             else:
                 from .doc_designs import clean_fields
                 clean[-1].update(clean_fields(s))
@@ -177,7 +190,8 @@ def _image_cap(account,fid):
     Set here rather than taken from the client, the same way the page and
     question counts are.
     """
-    if fid not in GENERATION_IDS:return 0
+    # A CV's only picture is the customer's own portrait.
+    if fid not in GENERATION_IDS or fid==CV:return 0
     from operations.integrations import pixabay_config
     if not pixabay_config()['ready']:return 0
     return int(plan_limits(account).get('max_deck_images',0) or 0)
@@ -292,6 +306,10 @@ def _prepare_draft(account,data,revision_base=None):
             if field not in options and (field in inherited or field=='template_id'):
                 options={**options,field:deepcopy(previous)}
     fmt='pptx' if fid==SLIDES else 'pdf'
+    # A CV is written from what the customer says about themselves, in one
+    # message: there is nothing in a PDF for it to be made from.
+    cv=fid==CV
+    if cv and (ids or excerpts):raise DomainError('invalid_parameters')
     # Length and question count are read out of the description rather than
     # asked for separately: one section is one page, and questions are priced,
     # so they appear only when the description asks for them. `requested_pages`
@@ -304,6 +322,8 @@ def _prepare_draft(account,data,revision_base=None):
     # bot offers no count or design for a change: the request alone decides.
     # A change to selected pages reads none of it; it may not resize or restyle.
     edit=None
+    # A CV change that asks for no pictures ("rasmsiz") takes its portrait away.
+    portrait_removed=False
     # What the document had, for a change to the whole of it. Rewording a change
     # (the web saves it again) starts from the document, not from the first
     # wording's draft: a design or a test that wording dropped is the
@@ -312,12 +332,24 @@ def _prepare_draft(account,data,revision_base=None):
     before_options=original.get('options',{}) if original is not None else {}
     if original is not None and not selection:
         from . import edits as editing
-        edit=editing.read(prompt,fmt=fmt,sections=original['content']['sections'],
+        read=original['content']['sections']
+        if cv and before_options.get('portrait_asset_id'):
+            # A CV's one picture is its portrait, so "rasmsiz" has one to take away.
+            read=[{**section,'image_query':'portrait'} if section.get('id')=='profile' else section for section in read]
+        edit=editing.read(prompt,fmt=fmt,sections=read,
                           questions=len(original['content'].get('questions',[])))
         # Another file format is not a change to the document: the bot sends a
         # deck to PowerPoint → PDF and offers a new deck for a document, and
         # the web says so, rather than charging an edit that rewrites nothing.
         if edit.format_only:raise DomainError('format_only_change')
+        if cv:
+            # A change to a CV is a change to what it says. It has no pages to
+            # add or move, no test and no pictures but the portrait: "add a page
+            # for projects" is read as structural, and a structural change sends
+            # the model the CV as bare ids. Only a new look, more detail and the
+            # format are kept; the portrait rule is read first.
+            portrait_removed=edit.pictures=='remove'
+            edit=editing.Edit(redesign=edit.redesign,format=edit.format,format_only=edit.format_only,expand=edit.expand)
     # One language for the whole document, decided here and stored with the
     # draft: a language picked for this request (the studio's menu, the bot's
     # review button), then one the description names, then — for a change —
@@ -350,6 +382,10 @@ def _prepare_draft(account,data,revision_base=None):
     # A count chosen on the review screen beats the one read from the
     # description: it is how a misread count gets put right before paying.
     chosen=options.get('pages')
+    if cv:
+        # A CV is one page or two, and the renderer decides which: a count sent
+        # by an older client is dropped, not refused.
+        chosen=None;options={key:value for key,value in options.items() if key!='pages'}
     # So does a design chosen there: "Auto" leaves it to the model, as before.
     picked=options.get('deck_design')
     if picked is not None:
@@ -358,7 +394,19 @@ def _prepare_draft(account,data,revision_base=None):
         picked=current(picked)
         if fid!=SLIDES or picked!='auto' and picked not in DESIGNS:raise DomainError('invalid_parameters')
         options={**options,'deck_design':picked}
-    if chosen is not None:
+    # A CV's template, picked on its setup screen or in the studio; "auto" is the model's choice.
+    template=options.get('cv_template')
+    if template is not None:
+        from .cv.templates import TEMPLATES,current as current_template
+        if not cv or not isinstance(template,str):raise DomainError('invalid_parameters')
+        template=current_template(template)
+        if template!='auto' and template not in TEMPLATES:raise DomainError('invalid_parameters')
+        options={**options,'cv_template':template}
+    if cv:
+        # Its eight sections, always, for a new CV and a change alike.
+        from .cv.content import SECTION_IDS
+        length,asked=(len(original['content']['sections']) if original is not None else len(SECTION_IDS)),None
+    elif chosen is not None:
         if type(chosen) is not int or not 1<=chosen<=200:raise DomainError('invalid_parameters')
         length,asked=min(chosen,paging.ceiling(account,fmt)),chosen
     elif edit is not None:
@@ -389,7 +437,9 @@ def _prepare_draft(account,data,revision_base=None):
         length=len(original['content']['sections'])
     # Local authoring has no model to write the pages, so an unasked-for default
     # would render as blank ones. Follow the material that was actually given.
-    if original is None and asked is None and ai_config()['mode']=='local_fixture':
+    # A CV keeps its eight sections: the bot sends its description as source
+    # text locally, and its paragraphs are not sections.
+    if original is None and asked is None and not cv and ai_config()['mode']=='local_fixture':
         supplied=len([p for p in (text or '\n\n'.join(x['text'] for x in excerpts)).split('\n\n') if p.strip()])
         if supplied:length=min(supplied,paging.ceiling(account,fmt))
     question_count=min(paging.requested_questions(brief),limits(account)['questions'])
@@ -412,6 +462,8 @@ def _prepare_draft(account,data,revision_base=None):
         else:question_count=0
         question_count=min(question_count,limits(account)['questions'])
         if kept is not None:kept=min(kept,existing)
+    # A CV has no test, whatever its description says ("5 ta savolga javob").
+    if cv:question_count,kept=0,None
     # A deck's questions go on slides of their own at the end, five to a slide,
     # and those slides are part of the count: "10 slides, 5 questions at the
     # end" is ten slides, not fifteen. `length` is the whole deck; the sections
@@ -426,7 +478,7 @@ def _prepare_draft(account,data,revision_base=None):
             question_slides=paging.question_slides(max(remaining,question_count) if edit.questions!='remove' else 0)
     if original is not None and (asked is None or selection):
         sections_count=length
-        if edit is not None:
+        if edit is not None and not cv:
             # Pages added are within the plan too, and so is a test added to a
             # deck at its limit: the slides it would push out are cut. What was
             # asked is kept so the review can say it was cut, not hide it.
@@ -441,7 +493,7 @@ def _prepare_draft(account,data,revision_base=None):
     # A document is plain prose in black and white unless its description asks
     # for more: pictures, tables or lists (layouts), or a look or colours (design).
     wants={}
-    if fid!=SLIDES:
+    if fid not in (SLIDES,CV):
         from . import doc_designs
         wants={'wants_layouts':doc_designs.asks_for_layouts(brief),'wants_design':doc_designs.asks_for_design(brief)}
         if original is not None:
@@ -477,7 +529,7 @@ def _prepare_draft(account,data,revision_base=None):
             images_wanted=_pictures_wanted(edit,original['content']['sections'],sections_count,fmt,image_cap)
         elif fid!=SLIDES or 'image_cap' in before_options:
             image_cap=min(image_cap,int(before_options.get('image_cap',0) or 0))
-    elif fid!=SLIDES and not doc_designs.asks_for_images(brief) and not (original is not None and before_options.get('image_cap')):
+    elif fid not in (SLIDES,CV) and not doc_designs.asks_for_images(brief) and not (original is not None and before_options.get('image_cap')):
         image_cap=0
     # Photographs unless drawings are asked for ("kitoblardagi rasmlardek"):
     # Pixabay is searched for that kind (apps/studio/photos.py). A change keeps
@@ -486,6 +538,7 @@ def _prepare_draft(account,data,revision_base=None):
     if edit is not None:kind=edit.photo_style or before_options.get('photo_style')
     elif original is not None:kind=before_options.get('photo_style')
     else:kind=photo_style(prompt)
+    if cv:kind=None
     # Pictures wanted and their kind are the server's reading, never the client's.
     computed=('wants_layouts','wants_design','images_wanted','photo_style')
     options={**{k:v for k,v in options.items() if k not in computed},
@@ -519,14 +572,17 @@ def _prepare_draft(account,data,revision_base=None):
             # The saved style is server-authored. Still resolve the template
             # above to recheck its ownership and current plan permission.
             style=deepcopy(previous_style or style)
-        elif fid==SLIDES:
-            for key in ('deck_theme','deck_design'):
+        elif fid in (SLIDES,CV):
+            for key in ('deck_theme','deck_design','cv_template'):
                 if previous_style.get(key):style[key]=previous_style[key]
         if edit is not None and edit.redesign:
             # "Varoqlarni hammasini bir xil qil", "boshqa dizayn": the look is
             # chosen again. A colour the request names still applies below.
-            for key in ('deck_design','deck_theme','doc_design'):style.pop(key,None)
-        if not selection:
+            for key in ('deck_design','deck_theme','doc_design','cv_template'):style.pop(key,None)
+        # A CV takes no colour from words: "навыки", "сертификат", "Brown
+        # University" and "Qoraqalpog‘iston" all read as colours, and its look
+        # is its template's, or the account's brand colour.
+        if not selection and not cv:
             # A colour named is the accent, for a document as for a deck, as it
             # is in a new one ("yashil rangda qil"); a deck also takes a theme.
             theme=paging.requested_theme(brief) if fid==SLIDES else None
@@ -534,7 +590,7 @@ def _prepare_draft(account,data,revision_base=None):
             if theme:style['deck_theme']=theme
             if accent:style.update(accent=accent,accent_fixed=True)
         # A selected-page revision never changes the whole document's style.
-    else:
+    elif not cv:
         style.update(_deck_style(fid,brief))
     if picked and picked!='auto':
         # A design picked on the review screen beats whatever look the
@@ -543,9 +599,19 @@ def _prepare_draft(account,data,revision_base=None):
         style={**{key:value for key,value in style.items() if key not in ('deck_theme','secondary','accent','accent_fixed')},
                **{key:template_style[key] for key in ('accent','accent_fixed') if key in template_style},
                'deck_design':picked}
+    picked_template=options.get('cv_template') if cv else None
+    if picked_template and picked_template!='auto':
+        # The same for a CV's template: its colours are the template's, and a
+        # saved template's own colour and branding still win.
+        style={**{key:value for key,value in style.items() if key not in ('secondary','accent','accent_fixed')},
+               **{key:template_style[key] for key in ('accent','accent_fixed') if key in template_style},
+               'cv_template':picked_template}
     options['template_style']=style
     from .branding import prepare_branding
     options=prepare_branding(account,fid,options)
+    # A CV's portrait: the customer's own JPEG or PNG, pinned; any other service refuses one.
+    from .cv.portrait import prepare as prepare_portrait
+    options=prepare_portrait(account,fid,options,before_options if original is not None else None,portrait_removed)
     options.pop('adaptive_context',None)
     cfg=ai_config()
     if cfg['mode']=='disabled' or cfg['mode']=='openai' and (not cfg['api_key'] or not cfg['model']):raise DomainError('provider_not_configured',409)
@@ -569,6 +635,11 @@ def _prepare_draft(account,data,revision_base=None):
             gone=set(edit.removed_question_slides) if edit is not None else set()
             draft_content['questions']=[question for number,question in enumerate(original['content'].get('questions',[]))
                                         if number//paging.QUESTIONS_PER_SLIDE+1 not in gone][:kept]
+    elif cv:
+        # The eight sections the model fills. With no model, the description
+        # itself is the profile, so the CV still says what was written.
+        from .cv.content import seed
+        draft_content=seed(title,(text or prompt) if cfg['mode']=='local_fixture' else '')
     else:
         chunks=[p.strip() for p in (text or '\n\n'.join(x['text'] for x in excerpts)).split('\n\n') if p.strip()]
         # No headings. They used to be seeded with a fixed Overview / Key ideas /
@@ -578,7 +649,7 @@ def _prepare_draft(account,data,revision_base=None):
         # from the description.
         sections=[{'id':f's{i+1}','heading':'', 'body':('\n\n'.join(chunks[i:]) if i==sections_count-1 else chunks[i]) if i<len(chunks) else '', 'notes':''} for i in range(sections_count)]
         draft_content={'title':title,'sections':sections,'questions':options.get('questions',[]),'citations':[{'asset_id':x['asset_id'],'page':x['page']} for x in excerpts]}
-    content=validate_content(account,draft_content,fmt)
+    content=validate_content(account,draft_content,fmt,feature=fid)
     if selection:
         ensure_selected_preservation({'content':draft_content,'revision':{'selected_section_ids':selection}},content)
     payload={'title':title,'prompt':prompt,'source_text':text,'source_ids':ids,'excerpts':excerpts,'output_locale':locale,'locale_source':resolved.source,'output_format':fmt,'options':options,'content':content}
@@ -654,8 +725,13 @@ def create_draft(account,data):
     if isinstance(options,dict) and 'topic_given' in options:
         data={**data,key:{k:v for k,v in options.items() if k!='topic_given'}}
     fid,cfg,payload=_prepare_draft(account,data)
-    # After _prepare_draft, so a malformed request keeps its own error.
-    if not given:require_topic(data,fid,payload)
+    # After _prepare_draft, so a malformed request keeps its own error. A CV
+    # needs a name where a document needs a topic, and takes the name it
+    # finds as its title even when the customer insisted.
+    if fid==CV:
+        from .cv.content import require_name
+        require_name(data,fid,payload,refuse=not given)
+    elif not given:require_topic(data,fid,payload)
     return GenerationDraft.objects.create(account=account,feature_id=fid,encrypted_data=pack(payload),provider_mode=cfg['mode'],expires_at=timezone.now()+timedelta(hours=24))
 
 def draft_jobs(account,draft_id,statuses):
@@ -686,6 +762,11 @@ def update_draft(account,draft_id,data):
     # The page count lives in the description, so a reworded brief rebuilds the
     # outline the same way a changed source does.
     rebuild=any(key in data and data[key]!=original.get(key) for key in ('prompt','source_text','source_ids','output_format'))
+    if rebuild and d.feature_id==CV:
+        # A reworded CV description may name the person differently: the title
+        # follows it. An accepted draft is never refused here.
+        from .cv.content import require_name
+        require_name(data,CV,payload,refuse=False)
     # So does a count chosen on the review screen.
     rebuild=rebuild or payload['options'].get('length')!=original.get('options',{}).get('length')
     content=data.get('content',payload['content'] if rebuild and not original.get('revision',{}).get('selected_section_ids') else original['content'])
@@ -696,7 +777,7 @@ def update_draft(account,draft_id,data):
         content={**content,'sections':[{'id':s.get('id',str(i)),'heading':s.get('title',''),'body':s.get('body',''),'notes':s.get('notes',''),
                                          **{key:s[key] for key in slide_keys if key in s}} for i,s in enumerate(outline)]}
     if 'title' in data and isinstance(content,dict):content={**content,'title':payload['title']}
-    payload['content']=validate_content(account,content,payload['output_format'])
+    payload['content']=validate_content(account,content,payload['output_format'],feature=d.feature_id)
     payload['title']=payload['content']['title']
     # Only server-authored, untouched source copies can be deduplicated. Sending
     # content/outline is an explicit author edit, even if its text happens to match.

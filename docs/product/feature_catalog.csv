@@ -29,6 +29,7 @@ capacity.queue,Capacity,R1A,support,Priority processing without starving standar
 ai.pdf_topic,AI documents,R2A,standard,Generate PDF from topic,sample,included,higher,ai
 ai.pdf_text,AI documents,R2A,standard,Generate formatted PDF from pasted content,sample,included,higher,ai
 ai.pdf_sources,AI documents,R2A,standard,Generate document from uploaded sources,sample,included,higher,ai
+ai.cv,AI documents,R2A,standard,Generate CV (résumé) PDF,higher,higher,higher,ai
 ai.pptx,AI presentations,R2A,high,Generate editable PPTX,sample,included,higher,ai
 ai.source_to_slides,AI presentations,R2A,high,Notes or uploaded document to slides,sample,included,higher,ai
 ai.speaker_notes,AI presentations,R2A,standard,Generate speaker notes,sample,included,included,ai

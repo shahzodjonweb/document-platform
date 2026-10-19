@@ -145,6 +145,7 @@
   "antibot_unavailable": "Xavfsizlik tekshiruvi hozir ishlamayapti. Birozdan so‘ng qayta urinib ko‘ring.",
   "prompt_required": "Yaratishdan oldin mavzu yoki ko‘rsatma yuboring.",
   "topic_required": "Nima haqida bo‘lishini yozing — masalan: «Tabiatda suvning aylanishi, 6-sinf uchun».",
+  "cv_name_required": "Ism va familiyangizni to‘liq yozing — CV siz uchun tayyorlanadi, unda kimligingiz ko‘rsatilishi kerak.",
   "convert_requested": "Faylni o‘girish uchun fayl vositalaridan foydalaning: «Barcha vositalar»ni oching va kerakli vositani tanlang. Bu xizmat siz bergan mavzuda yangi material tayyorlaydi.",
   "generation_web_only": "Bu vosita veb ilovada saqlangan ishga asoslanadi. Davom etish uchun o‘sha yerda oching.",
   "revision_not_ready": "Bu hujjatda hali o‘zgartiradigan narsa yo‘q. Avval uni yarating, keyin o‘zgarish so‘rang.",

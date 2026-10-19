@@ -632,6 +632,25 @@
       "acceptance": "All R2A features pass output, entitlement and three-locale UI fixtures. Closing a view does not imply job cancellation. Drafts survive purchase/navigation. Publish real provider limitations and cost-calibrated allowances."
     },
     {
+      "id": "R2A-08",
+      "release": "R2A",
+      "title": "Generate a CV from one message, in one of fifty templates",
+      "repositories": [
+        "document-platform",
+        "document-web"
+      ],
+      "depends_on": [
+        "R2A-02",
+        "R2A-04"
+      ],
+      "feature_ids": [
+        "ai.cv"
+      ],
+      "status": "not_started",
+      "implementation": "Write a one- or two-page A4 CV from the customer's own description: eight fixed sections, the person's name required, facts taken only from what they wrote (contacts and dates checked against it), an optional JPG or PNG portrait, and fifty templates in six categories, picked on a setup screen or chosen by the model (classic by default). Bot, web Studio and the Mini App picker.",
+      "acceptance": "Every template renders the short and long samples in en/uz/ru on one or two pages with no clipped, overlapping or low-contrast text and no Cyrillic in an Uzbek or English CV. A contact or date that is not in the description never reaches the PDF. A description without a name is asked for one before anything is counted; a CV is one of the week's AI documents and its changes use the file's edits."
+    },
+    {
       "id": "R2B-01",
       "release": "R2B",
       "title": "Implement core study tools and source-grounded Q&A",

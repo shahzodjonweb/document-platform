@@ -40,7 +40,10 @@ def create_outline_quote(account,draft_id,version):
         # A change request is planned from the document it changes, not from an
         # outline of the request: an outline would replace the document's text
         # with one-line summaries that the paid change is then told to keep.
-        if data.get('revision'):
+        # A CV has nothing to plan: its eight sections are fixed and it is
+        # written from the customer's facts in one call.
+        from .domain import CV
+        if data.get('revision') or draft.feature_id==CV:
             raise DomainError('invalid_parameters')
         cfg=ai_config()
         if cfg['mode']!=quote.policy['provider_mode'] or cfg['model']!=quote.policy['provider_model']:raise DomainError('provider_changed',409)

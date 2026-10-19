@@ -11,7 +11,7 @@ from apps.core.errors import DomainError
 from apps.core.identity import resolve_account
 from apps.core.models import BotConversation, BotDraft, Job, Quote
 from apps.core.services import upload_file
-from apps.studio.domain import DOCUMENT, GENERATION_IDS, SLIDES, unpack
+from apps.studio.domain import CV, DOCUMENT, GENERATION_IDS, SLIDES, unpack
 from apps.studio.models import GenerationDraft
 from apps.studio.pages import requested_pages
 from operations.integrations import save_config
@@ -84,7 +84,8 @@ def test_the_two_services_lead_the_menus_with_no_folder_to_open(customer):
     for label in SERVICE_LABELS:
         assert label.startswith('✨') and label.endswith('AI')
     assert not any('✨' in label for label in file_tools), file_tools
-    assert set(generation.SERVICES) == GENERATION_IDS == {DOCUMENT, SLIDES}
+    # The server makes CVs too; the bot offers them once its CV screens are in.
+    assert set(generation.SERVICES) == {DOCUMENT, SLIDES} and GENERATION_IDS == {DOCUMENT, SLIDES, CV}
 
     tools = tap(customer, start, 'All tools')
     assert labels(tools)[:2] == SERVICE_LABELS, labels(tools)
