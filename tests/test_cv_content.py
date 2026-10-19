@@ -246,6 +246,12 @@ def test_the_cv_rules_forbid_invented_facts_and_placeholders():
                  'holds only what revision.request says, even if that is a single line'):
         assert rule in provider.CV_REVISION_SYSTEM, rule
     assert 'newest first' in provider.CV_RULES and 'at most' in provider.CV_RULES and '12 words' in provider.CV_RULES
+    # What real briefs give instead of dates and employers: an age, how long a job lasted, the job wanted.
+    assert 'a skill or a personal quality' in system
+    for rule in ('birth or age', 'for age the number only', 'or how long it lasted when only that is given',
+                 'A job or an employer the person only wants goes in the profile, never a role',
+                 'no date or length for has an empty value'):
+        assert rule in provider.CV_RULES, rule
     # Every block is fixed text in English and safe as a single-quoted literal.
     for block in (system, provider.CV_RULES, provider.CV_GUIDANCE, provider.CV_REVISION_SYSTEM,
                   provider.CV_REVISION_GUIDANCE):
@@ -624,6 +630,16 @@ def test_a_contact_is_checked_by_what_it_holds_whatever_its_label():
     # Of two numbers, the one the customer gave stays.
     result, dropped = fact_check(cv_with([('phone', '+998 71 999-99-99, +998 90 111-22-33')]), trusted)
     assert kept_contacts(result) == ['+998 90 111-22-33'] and dropped == ['contact:phone']
+
+
+def test_an_age_stays_only_when_the_customer_wrote_it():
+    """Briefs give an age where a form asks for a birth date: kept as written, never worked out from a year."""
+    for trusted in ('Yoshim: 19 yosh. Telefon: +998 90 123 45 67', 'Живу в Ташкенте, 19 лет'):
+        result, dropped = fact_check(cv_with([('age', '19')]), trusted)
+        assert kept_contacts(result) == ['19'] and dropped == [], trusted
+    for written in ('20', '29', 'twenty'):
+        result, dropped = fact_check(cv_with([('age', written)]), 'Dilnoza Karimova, 2005-yilda tug‘ilganman.')
+        assert kept_contacts(result) == [] and dropped == ['contact:age'], written
 
 
 def test_a_date_the_customer_never_gave_is_left_empty():

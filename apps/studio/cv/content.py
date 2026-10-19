@@ -19,7 +19,7 @@ import unicodedata
 CV = 'ai.cv'
 SECTION_IDS = ('profile', 'experience', 'education', 'skills', 'languages', 'projects', 'certificates', 'extra')
 # The contact labels the renderer knows (render.CONTACT_KEYS), in the order it prints them.
-CONTACT_KEYS = ('phone', 'email', 'location', 'telegram', 'linkedin', 'website', 'github', 'birth')
+CONTACT_KEYS = ('phone', 'email', 'location', 'telegram', 'linkedin', 'website', 'github', 'birth', 'age')
 # Contacts whose value is an address of some kind: left exactly as written, so
 # "o'tkir" in a link is never given the Uzbek ‘ (contact_field).
 LINKS = ('email', 'website', 'linkedin', 'github', 'telegram')
@@ -40,10 +40,10 @@ CV_SYSTEM = (
     'only.\n'
     'Use only facts the description gives: names, job titles, employers, schools, dates, places, contact details, '
     'skills, languages, certificates and achievements. Never invent, guess, estimate or round anything. Never add an '
-    'employer, a role, a date, a phone number, an email, a link, a grade, a figure or a skill that is not in the '
-    'description, and never make an achievement bigger than the description makes it. Leave out whatever it does '
-    'not give: never write N/A, ____, "not specified" or any placeholder, and never say that something is '
-    'missing.\n'
+    'employer, a role, a date, a phone number, an email, a link, a grade, a figure, a skill or a personal quality '
+    'that is not in the description, and never make an achievement bigger than the description makes it. Leave '
+    'out whatever it does not give: never write N/A, ____, "not specified" or any placeholder, and never say that '
+    'something is missing.\n'
     'Polish the wording as a professional CV writer would: concise lines that start with a strong verb, correct '
     'spelling, grammar and punctuation, no first person, present tense for the current role and past tense for '
     'earlier ones, and one date format throughout. Copy the names of people, employers, products and certificates '
@@ -61,11 +61,12 @@ CV_RULES = (
     'where said:\n'
     '- profile: heading = the role the person wants or holds, 2 to 6 words; body = a summary of 2 to 4 sentences, '
     'at most 80 words, built only from the facts given; items = the contact details, one each: label = phone, '
-    'email, location, telegram, linkedin, website, github or birth, text = the value exactly as given, value '
-    'empty.\n'
-    '- experience: one item per role, newest first: label = the job title; value = the dates; text = first line '
-    '"Organisation · City" (the city only when given), then up to 4 lines of the achievements and duties given, '
-    'each at most 12 words.\n'
+    'email, location, telegram, linkedin, website, github, birth or age, text = the value exactly as given (for '
+    'age the number only), value empty.\n'
+    '- experience: one item per role held, newest first: label = the job title; value = the dates, or how long it '
+    'lasted when only that is given; text = first line "Organisation · City" (the city only when given), then up '
+    'to 4 lines of the achievements and duties given, each at most 12 words. A job or an employer the person only '
+    'wants goes in the profile, never a role.\n'
     '- education: one item per degree or course, newest first: label = the degree and field; value = the years; '
     'text = "Institution · City", then one line of specialisation or honours only when given.\n'
     '- skills: the skills given, in up to 5 items: label = a group name, text = at most 8 skills separated by '
@@ -78,7 +79,7 @@ CV_RULES = (
     'references), items as in projects; only facts that fit no other section.\n'
     'Dates the same way everywhere: 03.2021 – 06.2024 when months are given, 2021 – 2024 when only years are, '
     'and a current role or study ends with the target language\'s word for present. An entry the description '
-    'gives no date for has an empty value.'
+    'gives no date or length for has an empty value.'
 )
 CV_GUIDANCE = (
     'Fill the 8 sections of outline in its order and keep every section id. At most 6 roles, the most recent '
@@ -675,6 +676,10 @@ def _checked(key, value, trusted, phones, years):
         alone = not emails and not links and not handles and not re.sub(r'[\s,;/]|\b(?:and|or|va|yoki|и|или)\b', '',
                                                                         PHONE.sub('', DATE.sub(' ', rest)))
         return ', '.join(number.strip() for number in given) if given and alone else ''
+    if key == 'age':
+        # A number of years the customer wrote ("20 лет", "19 yosh"), never one worked out from a birth year.
+        ages = re.findall(r'\d+', plain)
+        return value if ages and all(re.search(rf'(?<!\d){age}(?!\d)', trusted) for age in ages) else ''
     if key == 'email':
         return value if plain and _address_in(plain.strip('.'), trusted) else ''
     if key == 'phone' or key == 'telegram' and not re.search(r'[a-z_]', plain):

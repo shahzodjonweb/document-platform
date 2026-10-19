@@ -7,7 +7,7 @@ import re
 # Part of every prompt cache key. A change to any fixed block a model is told —
 # these, provider.SYSTEM and the rules, or a CV's blocks in cv/content.py —
 # bumps it, so no call is served a prefix cached for the old wording.
-VERSION = 'studio-efficient-v4'
+VERSION = 'studio-efficient-v5'
 # The list is read out of the description by a program (apps/studio/topics.py),
 # so it also catches requests about form: "with photos" must not become a section.
 SUBTOPICS = (
