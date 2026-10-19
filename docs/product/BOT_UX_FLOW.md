@@ -31,7 +31,7 @@ A malformed, expired or already-used login request has a clear recovery message.
 
 ## Main menu and navigation
 
-The main menu uses a short greeting and five full-width buttons for what people come for: the three AI services (**✨ PDF on a topic**, **✨ Slides on a topic** and **✨ CV**), **PDF from images** and **Subscribe**. Each AI service takes one message describing what is wanted (for a CV, the person's own details, plus an optional photo), shows a priced review with nothing counted until **Generate**, and asks only for what is missing: a topic, or for a CV the person's name. `/document`, `/slides` and `/cv` open them directly. Underneath, two to a row:
+The main menu uses a short greeting and five full-width buttons for what people come for: the three AI services (**✨ PDF on a topic**, **✨ Slides on a topic** and **✨ CV**), **PDF from images** and **Subscribe**. Each AI service takes one message describing what is wanted (for a CV, the person's own details, plus an optional photo), shows a priced review with nothing counted until **Generate**, and asks only for what is missing: a topic, or for a CV the person's name, or their work, studies and skills when the message is only a greeting or a name. `/document`, `/slides` and `/cv` open them directly. Underneath, two to a row:
 
 - **All tools**: the three AI services, then the file tools in a compact two-column menu, without pagination.
 - **Recent tasks**: submitted tasks, status and available results.

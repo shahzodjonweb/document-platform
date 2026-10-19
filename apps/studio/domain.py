@@ -322,7 +322,7 @@ def _prepare_draft(account,data,revision_base=None):
     # bot offers no count or design for a change: the request alone decides.
     # A change to selected pages reads none of it; it may not resize or restyle.
     edit=None
-    # A CV change that asks for no pictures ("rasmsiz") takes its portrait away.
+    # A CV change that asks for no photo ("rasmsiz") takes its portrait away.
     portrait_removed=False
     # What the document had, for a change to the whole of it. Rewording a change
     # (the web saves it again) starts from the document, not from the first
@@ -332,11 +332,7 @@ def _prepare_draft(account,data,revision_base=None):
     before_options=original.get('options',{}) if original is not None else {}
     if original is not None and not selection:
         from . import edits as editing
-        read=original['content']['sections']
-        if cv and before_options.get('portrait_asset_id'):
-            # A CV's one picture is its portrait, so "rasmsiz" has one to take away.
-            read=[{**section,'image_query':'portrait'} if section.get('id')=='profile' else section for section in read]
-        edit=editing.read(prompt,fmt=fmt,sections=read,
+        edit=editing.read(prompt,fmt=fmt,sections=original['content']['sections'],
                           questions=len(original['content'].get('questions',[])))
         # Another file format is not a change to the document: the bot sends a
         # deck to PowerPoint → PDF and offers a new deck for a document, and
@@ -347,8 +343,10 @@ def _prepare_draft(account,data,revision_base=None):
             # add or move, no test and no pictures but the portrait: "add a page
             # for projects" is read as structural, and a structural change sends
             # the model the CV as bare ids. Only a new look, more detail and the
-            # format are kept; the portrait rule is read first.
-            portrait_removed=edit.pictures=='remove'
+            # format are kept. The portrait goes only when the photo itself is
+            # asked away: "Уберите навык фотошоп" removes a skill, not the photo.
+            from .cv.portrait import asks_without_photo
+            portrait_removed=asks_without_photo(prompt)
             edit=editing.Edit(redesign=edit.redesign,format=edit.format,format_only=edit.format_only,expand=edit.expand)
     # One language for the whole document, decided here and stored with the
     # draft: a language picked for this request (the studio's menu, the bot's
@@ -373,8 +371,13 @@ def _prepare_draft(account,data,revision_base=None):
     if base_locale in language.SUPPORTED:
         resolved=language.Resolution(base_locale,'document')
     else:
+        # A CV's description names the languages the person speaks ("Chet tili:
+        # ingliz tili B2"): only one named for the CV itself is its language.
+        keep=None
+        if cv:
+            from .cv.content import names_the_cvs_language as keep
         resolved=language.resolve(prompt,picked=picked,requested=requested,settings=language.settings_locale(account),
-                                  document=original['output_locale'] if original is not None else None)
+                                  document=original['output_locale'] if original is not None else None,keep=keep)
     locale=resolved.locale
     # Uzbek is written only in the Latin alphabet (owner's rule, 2026-10-12),
     # whatever alphabet the description used. The option stays for older clients.
@@ -611,7 +614,9 @@ def _prepare_draft(account,data,revision_base=None):
     options=prepare_branding(account,fid,options)
     # A CV's portrait: the customer's own JPEG or PNG, pinned; any other service refuses one.
     from .cv.portrait import prepare as prepare_portrait
-    options=prepare_portrait(account,fid,options,before_options if original is not None else None,portrait_removed)
+    # The draft being updated is passed too: its own photo expiring is no reason to refuse the update.
+    options=prepare_portrait(account,fid,options,before_options if original is not None else None,portrait_removed,
+                             current=(revision_base or {}).get('options') if original is None else None)
     options.pop('adaptive_context',None)
     cfg=ai_config()
     if cfg['mode']=='disabled' or cfg['mode']=='openai' and (not cfg['api_key'] or not cfg['model']):raise DomainError('provider_not_configured',409)

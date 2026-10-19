@@ -6,9 +6,13 @@ customer's own facts. The renderer's job is to make it look finished whatever
 the model wrote:
 
 * **It never fails on content.** Leading bullet characters are stripped (the
-  renderer draws its own), characters no bundled face can draw are left out
-  and recorded (`metadata['dropped_chars']`), and an entry that was cut at a
-  length cap loses its trailing partial word instead of ending mid-word.
+  renderer draws its own), arrows and comparison signs the faces lack are
+  written as text (→ as –, ≈ as ~, ≥ as >=), other characters no bundled face
+  can draw are left out and recorded (`metadata['dropped_chars']`), an entry
+  that was cut at a length cap loses its trailing partial word instead of
+  ending mid-word, and the contacts are held to twelve of 160 characters.
+  A build that ReportLab cannot lay out at one setting is tried at a tighter
+  one, as a CV too long for it is.
 * **The page count is the renderer's, not the model's.** A CV is one page when
   it fits at a comfortable size and two when it does not (`fit`): a roomy
   two-pager reads better than a cramped one-pager. Only when even the tightest
@@ -36,8 +40,17 @@ WIDOW_CHARS = 300
 TIGHTEST = 4
 CONTACT_KEYS = ('phone', 'email', 'location', 'telegram', 'linkedin', 'website', 'github', 'birth')
 # Lengths at which `validate_content` and the CV clean cut a field. A field
-# exactly this long was probably cut, and probably mid-word.
-CAPS = {'title': (160,), 'heading': (160,), 'label': (160,), 'value': (160,), 'text': (600, 900)}
+# exactly this long was probably cut, and probably mid-word. A CV's entries are
+# always held to 900 (cv/content.py LIMITS): a slide item's 600 is no cut here,
+# and a role written to 600 characters keeps its last word.
+CAPS = {'title': (160,), 'heading': (160,), 'label': (160,), 'value': (160,), 'text': (900,)}
+# How many contacts a CV shows, and how long each may be: more of them, or one
+# longer, would run off a sidebar or fill a header.
+MAX_CONTACTS, CONTACT_CHARS = 12, 160
+# Signs a model or a customer writes that the faces cannot draw, as the text
+# that says the same: "с 10 → 15 млрд" must not become "с 10 15 млрд".
+SUBSTITUTES = {'→': '–', '⇒': '–', '⟶': '–', '➔': '–', '➝': '–', '↔': '–', '≈': '~', '∼': '~', '≃': '~',
+               '≥': '>=', '⩾': '>=', '≤': '<=', '⩽': '<=', '≠': '!='}
 
 HEADINGS = {
     'en': {'profile': 'Profile', 'experience': 'Experience', 'education': 'Education', 'skills': 'Skills',
@@ -100,6 +113,8 @@ class _Cleaner:
                 kept.append(' ')
             elif ord(char) in self.allowed:
                 kept.append(char)
+            elif char in SUBSTITUTES and all(ord(sub) in self.allowed for sub in SUBSTITUTES[char]):
+                kept.append(SUBSTITUTES[char])
             else:
                 self.dropped.add(char)
         text = '\n'.join(' '.join(line.split()) for line in ''.join(kept).split('\n')).strip()
@@ -111,6 +126,16 @@ def _uncut(text):
     if not text or text[-1] in '.!?…)»"' or ' ' not in text[-60:]:
         return text
     return text[:text.rfind(' ')].rstrip(' ,;:–—-·/(')
+
+
+def _bounded(text, limit):
+    """`text` at most `limit` characters, cut after a whole word when it has to be cut."""
+    if len(text) <= limit:
+        return text
+    cut = text[:limit]
+    if ' ' in cut:
+        cut = cut[:cut.rfind(' ')]
+    return cut.rstrip(' ,;:–—-·/(')
 
 
 def _lines(text):
@@ -146,13 +171,14 @@ def prepare(content, locale='en', look=None):
             continue
         key = _contact_key(clean(item.get('label'), CAPS['label']))
         value = clean(item.get('text') or item.get('value'), CAPS['text'])
-        value = ' '.join(value.split())
+        value = _bounded(' '.join(value.split()), CONTACT_CHARS)
         if not value:
             continue
-        label = contact_labels.get(key) or str(item.get('label') or '').strip() or key
+        label = contact_labels.get(key) or str(item.get('label') or '').strip()[:40] or key
         contacts.append((key, label, value))
     rank = {key: index for index, key in enumerate(CONTACT_KEYS)}
     contacts.sort(key=lambda contact: rank.get(contact[0], len(CONTACT_KEYS)))
+    contacts = contacts[:MAX_CONTACTS]
     sections = []
     summary = _lines(clean(profile.get('body')))
     if summary:
@@ -280,9 +306,14 @@ class Attempt:
 
 
 def _build(cv, look, step, photo, meta, breaks=0, balance=None):
+    """One real build. One ReportLab cannot lay out (a paragraph taller than a page) counts as too long."""
     from pypdf import PdfReader
+    from reportlab.platypus.doctemplate import LayoutError
     buffer = io.BytesIO()
-    sheet = Sheet(cv, look, step, photo, breaks=breaks, balance=balance, **meta).build(buffer)
+    try:
+        sheet = Sheet(cv, look, step, photo, breaks=breaks, balance=balance, **meta).build(buffer)
+    except LayoutError:
+        return Attempt(None, b'', MAX_PAGES + 1, None)
     data = buffer.getvalue()
     reader = PdfReader(io.BytesIO(data))
     pages = len(reader.pages)
@@ -383,11 +414,13 @@ def render_cv(content, path, locale='en', style=None, portrait=None):
     """Render `content` to `path` in the template `style` names; returns what was made.
 
     `portrait` is the placed photo from `portrait.load` (or raw image bytes); a
-    template without a photo slot ignores it. The result has `render_pdf`'s shape.
+    template without a photo slot leaves it out and says so (`cv_photo_no_slot`),
+    so the customer who sent one is told why it is not there. The result has
+    `render_pdf`'s shape.
     """
     path = Path(path)
     look = templates.look(style)
-    photo, warnings = _portrait(portrait) if look['photo'] else (None, [])
+    photo, warnings = _portrait(portrait) if look['photo'] else (None, ['cv_photo_no_slot'] if portrait else [])
     cv, dropped = prepare(content, locale, look)
     name = cv['name']
     meta = {'title': f'{name} — CV' if name else 'CV', 'author': name, 'subject': cv['headline'],

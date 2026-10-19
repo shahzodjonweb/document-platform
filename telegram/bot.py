@@ -9,6 +9,7 @@ import io
 import json
 import secrets
 import uuid
+import weakref
 from types import SimpleNamespace
 from datetime import timedelta
 from aiogram import Bot, Dispatcher, F
@@ -154,6 +155,36 @@ def album_shown(message,sent):
     entry=_albums.get((message.chat.id,group)) if group else None
     if entry is not None and entry['screen'] is None and getattr(sent,'message_id',None): entry['screen']=(sent.chat.id,sent.message_id)
 
+def album_caption(message):
+    """The caption of this file, or of the album it came in.
+
+    Telegram puts an album's caption on its first file, and only the newest
+    file answers (album_target): the caption waits in the album's entry for it.
+    Asked before album_target, to keep a caption; after it, to read the one kept.
+    """
+    import time
+    own=(message.caption or '').strip()
+    group=getattr(message,'media_group_id',None)
+    if not group: return own
+    entry=_albums.setdefault((message.chat.id,group),{'latest':0,'screen':None,'at':time.monotonic(),'said':set()})
+    if own and not entry.get('caption'): entry['caption']=own
+    return own or entry.get('caption','')
+
+# Polling handles updates side by side (aiogram's handle_as_tasks), so a photo
+# and a description sent together, or the two halves of a long description,
+# are worked on at once. A CV's are taken one at a time per chat, each reading
+# the chat's state afresh once it has its turn: the photo then goes on the CV
+# the description made, and the second half onto the first. Locks belong to
+# the event loop that made them, so there is one set per loop.
+_chat_locks=weakref.WeakKeyDictionary()
+
+def chat_lock(chat_id):
+    """The lock that keeps this chat's CV updates one at a time, in the running loop."""
+    locks=_chat_locks.setdefault(asyncio.get_running_loop(),{})
+    if len(locks)>500:
+        for key in [key for key,lock in locks.items() if not lock.locked()]: locks.pop(key,None)
+    return locks.setdefault(chat_id,asyncio.Lock())
+
 def album_first(message,what):
     """True the first time `what` happens in this album: one question per album, not one per file."""
     group=getattr(message,'media_group_id',None)
@@ -178,18 +209,24 @@ BRIEF_PIECES,BRIEF_CHARS=3,1000
 # waits whole while their name is asked for. A long one is a few hundred words
 # (Telegram sends at most 4096 characters at a time), far inside the plan's
 # input limit (apps.studio.domain.limits source_chars).
-CV_BRIEF_CHARS=6000
+CV_BRIEF_CHARS=12000
+# A CV's details may come a few at a time ("sotuvchiman", then the years, then
+# the languages) while the bot asks for them: more pieces are kept than for a topic.
+CV_BRIEF_PIECES=6
+# Text sent this soon after a new CV's review was drawn is the rest of its
+# description: Telegram sends one longer than 4096 characters as two messages.
+CV_APPEND_WINDOW=timedelta(minutes=2)
 
-def kept_brief(pieces,limit=BRIEF_CHARS):
+def kept_brief(pieces,limit=BRIEF_CHARS,count=BRIEF_PIECES):
     """The pieces of a description kept while its topic is asked for, in the order written.
 
     The first stays, as it usually says what to make and how long ("12 ta
-    slayd"); after it, the newest that fit in `limit` characters.
+    slayd"); after it, the newest that fit in `limit` characters, `count` pieces in all.
     """
     pieces=[piece[:limit] for piece in pieces if piece]
     if not pieces: return []
     first,kept=pieces[0],[]
-    for piece in reversed(pieces[1:][-(BRIEF_PIECES-1):]):
+    for piece in reversed(pieces[1:][-(count-1):]):
         if len(first)+sum(map(len,kept))+len(piece)>limit: break
         kept.insert(0,piece)
     return [first,*kept]
@@ -210,6 +247,13 @@ def pending_brief(account,question=None):
     prompt=row.prompt or {}
     if question is not None and prompt.get('question')!=question: return []
     return list(prompt.get('brief') or [])
+
+def pending_question(account,question):
+    """The open question named `question` with what it kept — {'brief', 'ask', …} — or None once it is closed or old."""
+    row=BotConversation.objects.filter(pk=account.telegram_user_id,state='ai_input').first()
+    if not question or row is None or row.updated_at<timezone.now()-QUESTION_LIFETIME: return None
+    prompt=row.prompt or {}
+    return prompt if prompt.get('question')==question and prompt.get('brief') else None
 
 def pending_portrait(account):
     """The photo sent for a CV still being described; '' once that question is closed or old.
@@ -298,7 +342,10 @@ async def review_screen(account,draft,quote):
             body+=f'\n{text(account,"cv_template")}: '+(html.escape(template) if template else text(account,'cv_template_auto'))
         # Whether the CV carries a photo, which a change keeps unless it asks
         # for none. A new CV's review still takes one sent now (receive()).
-        body+='\n'+text(account,'cv_photo_line' if photo else 'cv_photo_none' if change else 'cv_photo_none_add')
+        # A photo on a template picked without a place for it is said before paying.
+        slot=await sync_to_async(ai.photo_slot)(draft) if photo else True
+        body+='\n'+text(account,('cv_photo_line' if slot else 'cv_photo_no_slot_line') if photo
+                         else 'cv_photo_none' if change else 'cv_photo_none_add')
     # Pictures the plan cannot add are said, never quietly left out. A change
     # asking for them on a plan that adds none is told so too, unless photos are
     # off altogether and no plan could add them.
@@ -660,7 +707,7 @@ def build_dispatcher():
               [await button(account,'ai_back','home')]]
         return await render(message,body,rows,edit)
 
-    async def ai_topic_needed(message,account,feature_id,brief,other='',edit=True,question='',notice='',portrait=None):
+    async def ai_topic_needed(message,account,feature_id,brief,other='',edit=True,question='',notice='',portrait=None,ask='name'):
         """A description that names no topic: what was kept of it, and the one thing missing.
 
         `message` is the "Preparing…" line, which becomes this question: one
@@ -671,14 +718,17 @@ def build_dispatcher():
         kept while the same description is asked about again; `notice` is a
         line about what was just sent.
 
-        For a CV the one thing missing is the person's name, and no other
-        service is offered: a CV is about someone, not on a topic. Its photo
-        (`portrait`, or None for the one already waiting) waits with it.
+        For a CV what is missing is the person's name, or (`ask` 'details')
+        anything about them at all: a greeting or a name alone makes no CV. No
+        other service is offered: a CV is about someone, not on a topic. Its
+        photo (`portrait`, or None for the one already waiting) waits with it,
+        and the examples button comes back to this question, not a blank one.
         """
         cv=feature_id==ai.CV
         question=question or secrets.token_urlsafe(6)
         if portrait is None: portrait=await sync_to_async(pending_portrait)(account) if cv else ''
-        state={'feature_id':feature_id,'brief':brief,'question':question,**({'portrait_asset_id':portrait} if portrait else {})}
+        state={'feature_id':feature_id,'brief':brief,'question':question,**({'portrait_asset_id':portrait} if portrait else {}),
+               **({'ask':ask} if cv else {})}
         await sync_to_async(set_prompt)(account,'ai_input',state)
         body=f'<b>{html.escape(TOOL_NAMES[feature_id][account.locale])}</b>\n'
         if notice: body+=f'{html.escape(notice)}\n'
@@ -688,11 +738,13 @@ def build_dispatcher():
             body+=f'<b>{text(account,"ai_wrong_tool_slides" if other==ai.SLIDES else "ai_wrong_tool_pdf")}</b>\n'
             rows.append([await button(account,'ai_switch_slides' if other==ai.SLIDES else 'ai_switch_pdf','ai_retarget',
                                       {'feature_id':other,'question':question})])
-        sample=f'<code>{html.escape(text(account,"cv_name_sample" if cv else "ai_topic_sample"))}</code>'
-        body+=(f'\n{text(account,"ai_topic_kept").format(brief=html.escape(brief_quote(brief)))}\n\n'
-               f'{text(account,"cv_name_question" if cv else "ai_topic_question")}\n{text(account,"ai_topic_example").format(example=sample)}\n'
-               f'{text(account,"cv_name_again" if cv else "ai_topic_again")}')
-        rows.append([await button(account,'ai_examples','ai_examples',{'feature_id':feature_id})])
+        body+=f'\n{text(account,"ai_topic_kept").format(brief=html.escape(brief_quote(brief)))}\n\n'
+        if cv and ask=='details': body+=text(account,'cv_details_question')
+        else:
+            sample=f'<code>{html.escape(text(account,"cv_name_sample" if cv else "ai_topic_sample"))}</code>'
+            body+=(f'{text(account,"cv_name_question" if cv else "ai_topic_question")}\n{text(account,"ai_topic_example").format(example=sample)}\n'
+                   f'{text(account,"cv_name_again" if cv else "ai_topic_again")}')
+        rows.append([await button(account,'ai_examples','ai_examples',{'feature_id':feature_id,**({'question':question} if cv else {})})])
         rows.append([await button(account,'ai_back','home')])
         return await render(message,body,rows,edit)
 
@@ -708,8 +760,8 @@ def build_dispatcher():
         rows.append([await button(account,'all_tools','menu'),await button(account,'home','home')])
         return await render(message,html.escape(text(account,'ai_convert')),rows,edit)
 
-    async def ai_revise_prompt(message,account,draft_id,edit=False):
-        """One screen: what should change? Everything unmentioned stays put."""
+    async def ai_revise_prompt(message,account,draft_id,edit=False,notice=''):
+        """One screen: what should change? Everything unmentioned stays put. `notice` is a line about a file just sent."""
         title=await sync_to_async(ai.revisable)(account,draft_id)
         if title is None: return await safe_error(message,account,DomainError('revision_not_ready'))
         # A file with no edits left says so now, not after the change is written.
@@ -718,12 +770,12 @@ def build_dispatcher():
         await sync_to_async(set_prompt)(account,'ai_revise',{'draft_id':str(draft_id)})
         # A CV has no pages to resize: its examples are the changes a CV takes.
         examples='cv_revise_examples' if await sync_to_async(ai.service_of)(account,draft_id)==ai.CV else 'ai_revise_examples'
-        body=(f'<b>{text(account,"ai_revise_title")}</b>\n'
+        body=(f'{html.escape(notice)}\n\n' if notice else '')+(f'<b>{text(account,"ai_revise_title")}</b>\n'
               f'{text(account,"ai_revise_of")}: {html.escape(title)}\n\n'
               f'{text(account,"ai_revise_ask")}\n\n'
               f'{text(account,"ai_examples")}:\n<code>{html.escape(text(account,examples))}</code>')
         rows=[[await button(account,'ai_back','home')]]
-        await render(message,body,rows,edit)
+        return await render(message,body,rows,edit)
 
     async def ai_refused(message,account,exc,resume,again):
         """An AI request that could not be priced, said once.
@@ -796,26 +848,34 @@ def build_dispatcher():
         await render(message,html.escape(text(account,'ai_same_format').format(format=name)),[],True)
         await deliver(message,account,job,f'same-format:{secrets.token_urlsafe(9)}')
 
-    async def ai_examples(message,account,feature_id=None,edit=False):
-        """What a good description looks like, in the customer's language."""
+    async def ai_examples(message,account,feature_id=None,edit=False,question=''):
+        """What a good description looks like, in the customer's language.
+
+        Opened from a CV's open question (`question`), its service button goes
+        back to that question with what was written, not to a blank one.
+        """
         rows=[]
         body=f'<b>{text(account,"ai_examples_title")}</b>'
         for fid in ([feature_id] if feature_id else list(ai.SERVICES)):
             body+=f'\n\n<b>{html.escape(TOOL_NAMES[fid][account.locale])}</b>'
             for index in range(len(PROMPT_EXAMPLES[fid])):
                 body+=f'\n\n{index+1}. <code>{html.escape(ai_example(account,fid,index))}</code>'
-            rows.append([InlineKeyboardButton(text=TOOL_NAMES[fid][account.locale],callback_data=await callback(account,'ai_tool',{'feature_id':fid}))])
+            back={'feature_id':fid,**({'question':question} if question and fid==feature_id else {})}
+            rows.append([InlineKeyboardButton(text=TOOL_NAMES[fid][account.locale],callback_data=await callback(account,'ai_tool',back))])
         rows.append([await button(account,'ai_back','home'),
                      InlineKeyboardButton(text=text(account,'ai_open_web'),url=await ai_studio_url(account))])
         await render(message,body,rows,edit)
 
-    async def ai_review(message,account,draft,quote,edit=False):
+    async def ai_review(message,account,draft,quote,edit=False,notice=''):
         """Never submit without showing this: it says what the document uses of the plan.
 
         A new CV's review stays open to a photo: one sent while it is the
-        chat's screen goes on that CV (receive()), as its hint says.
+        chat's screen goes on that CV (receive()), as its hint says, and so
+        does the rest of a description Telegram split in two (fallback()).
+        `notice` is a line said above it.
         """
         body,rows=await review_screen(account,draft,quote)
+        if notice: body=html.escape(notice)+'\n\n'+body
         sent=await render(message,body,rows,edit)
         await remember_review(account,draft,sent or message)
         if draft.feature_id==ai.CV and not await sync_to_async(ai.revised_from)(draft):
@@ -833,10 +893,14 @@ def build_dispatcher():
         "10 slides please" would contradict it. `question` is the topic question
         this answers, asked again under the same name if the topic is still missing.
 
-        For a CV, `brief` is a description that named nobody and this message
-        the name, and `portrait` the photo sent for it. What was written is
-        always kept: a CV can only say what the customer told us, and a fact
-        said twice is better than one lost.
+        For a CV, `brief` is what was written before (a description that named
+        nobody, or a greeting), and `portrait` the photo sent for it. What was
+        written is always kept: a CV can only say what the customer told us,
+        and a fact said twice is better than one lost. A CV is not made of a
+        greeting or a name alone: the work, studies and skills are asked for
+        first. The name question answered a second time is taken as the name
+        only when the answer looks like one ("dilnoza karimova"), never a line
+        of the description sent again.
         """
         draft=None
         cv=feature_id==ai.CV
@@ -848,12 +912,24 @@ def build_dispatcher():
         said=lambda piece:' '.join(piece.casefold().split())
         repeated=[piece for piece in brief if said(piece)==said(description)]
         given=bool(repeated) or len(brief)>=2
+        # Asked twice already, and answered with something new: a CV goes ahead
+        # however little it says. The same words sent again never make one.
+        asked=len(brief)>=2 and not repeated
         brief=[piece for piece in brief if piece not in repeated]
         # Our own example sent back unchanged would make our example, not theirs.
         if await sync_to_async(ai.is_example)(description):
             return await render(message,text(account,'cv_example_copied' if cv else 'ai_example_copied'),
                                 [[await button(account,'ai_examples','ai_examples',{'feature_id':feature_id}),
                                   await button(account,'cancel_button','home')]],True)
+        if cv:
+            from apps.studio.cv.content import name_like,says_little
+            given=given and name_like(description)
+            # A photo that arrived while this was on its way is the CV's too.
+            portrait=portrait or await sync_to_async(pending_portrait)(account)
+            if not asked and await sync_to_async(says_little)('\n'.join([description,*brief])):
+                return await ai_topic_needed(message,account,feature_id,
+                                             kept_brief([*brief,description],CV_BRIEF_CHARS,CV_BRIEF_PIECES),
+                                             question=question if brief else '',portrait=portrait,ask='details')
         # A photo kept with the question may have expired since: the CV goes ahead without it.
         portrait=await sync_to_async(ai.usable_portrait)(account,portrait) if cv else ''
         try:
@@ -864,9 +940,13 @@ def build_dispatcher():
         except DomainError as exc:
             if exc.code=='convert_requested': return await ai_convert(message,account)
             if exc.code=='cv_name_required':
-                # No name yet: everything written is kept, and the name asked for.
-                return await ai_topic_needed(message,account,feature_id,kept_brief([*brief,description],CV_BRIEF_CHARS),
-                                             question=question if brief else '',portrait=portrait)
+                # No name yet: everything written is kept, and the name asked
+                # for — or, while it still says next to nothing, the rest.
+                kept=kept_brief([*brief,description],CV_BRIEF_CHARS,CV_BRIEF_PIECES)
+                from apps.studio.cv.content import says_little
+                thin=not asked and await sync_to_async(says_little)('\n'.join(kept))
+                return await ai_topic_needed(message,account,feature_id,kept,question=question if brief else '',
+                                             portrait=portrait,ask='details' if thin else 'name')
             if exc.code=='topic_required':
                 # Still no topic: both pieces are kept, and the topic asked for again.
                 other=(exc.params or {}).get('service') or ''
@@ -875,7 +955,10 @@ def build_dispatcher():
             # The description is kept: after joining, the customer is shown its review.
             resume={'kind':'ai_draft','draft_id':str(draft.id)} if draft else {'kind':'ai_prompt','feature_id':feature_id}
             return await ai_refused(message,account,exc,resume,lambda:ai_prompt(message,account,feature_id))
-        await sync_to_async(set_prompt)(account)
+        # A new CV's review takes a photo sent while it is drawn, so the chat
+        # says so from now on: never empty while the review is on its way.
+        if cv: await sync_to_async(set_prompt)(account,'cv_review',{'draft_id':str(draft.id)})
+        else: await sync_to_async(set_prompt)(account)
         await ai_review(message,account,draft,quote,True)
 
     async def ai_resume(message,account,draft_id):
@@ -1117,7 +1200,7 @@ def build_dispatcher():
             elif action=='language': await show_language(message,query.from_user,{})
             elif action=='menu': await menu(message,account,p.get('page',0),p.get('category','pdf'),True)
             elif action=='controls': await controls(message,account,edit=True,advanced=p.get('advanced',False))
-            elif action=='ai_examples': await ai_examples(message,account,p.get('feature_id'),True)
+            elif action=='ai_examples': await ai_examples(message,account,p.get('feature_id'),True,p.get('question',''))
             elif action=='ai_revise': await ai_revise_prompt(message,account,p['draft_id'],True)
             elif action=='ai_retry':
                 draft,quote=await sync_to_async(ai.retry)(account,ref.token)
@@ -1134,6 +1217,12 @@ def build_dispatcher():
                     current=await blocked(account)
                     if current: await show_gate(message,account,current,resume={'kind':'ai_prompt','feature_id':p['feature_id']},edit=True)
                     else:
+                        # Back from the examples to a CV's open question: what was
+                        # written, and the photo, are still waiting for the answer.
+                        waiting=await sync_to_async(pending_question)(account,p.get('question',''))
+                        if waiting and waiting.get('feature_id')==p['feature_id']:
+                            return await ai_topic_needed(message,account,p['feature_id'],list(waiting['brief']),'',True,
+                                                         p['question'],ask=waiting.get('ask','name'))
                         # A CV's description written again keeps the photo of the CV it rewrites.
                         portrait=await sync_to_async(ai.kept_portrait)(account,p['draft_id']) if p.get('draft_id') else None
                         await ai_prompt(message,account,p['feature_id'],True,portrait=portrait)
@@ -1275,48 +1364,68 @@ def build_dispatcher():
         """Whether the chat is asking for a CV's description (or its name) now."""
         return bool(conversation) and conversation.state=='ai_input' and (conversation.prompt or {}).get('feature_id')==ai.CV
 
-    async def cv_file(message,bot,account,conversation,name,raw):
-        """A file sent while a CV is described, or while a new CV's review is on screen.
+    async def cv_file(message,bot,account,name,raw):
+        """A file sent while a CV is described, or while a new CV's review is on screen; False when it is not the CV's.
 
         A JPG or PNG is the CV's photo. Sent with the question, it waits with
         it on a receipt, never on the file tools' draft (the menu would offer to
         continue an images-to-PDF task nobody started), and a caption sent with
-        it is the description. Sent on the review, it goes on that CV, which is
-        priced again. Of an album, only the newest photo counts. Any other file
-        is not read for a CV, and the question says so.
+        it, or with the album it came in, is the description. Sent on the
+        review, it goes on that CV, which is priced again; a caption sent with
+        it then is not read, and the customer is told. Of an album, only the
+        newest photo counts. Any other file is not read for a CV, and the
+        question says so.
+
+        The chat is read again once this file has its turn (chat_lock): a
+        description sent with the photo may have made its review meanwhile,
+        and the photo goes on that. A chat that has moved on from the CV by
+        then (False) takes the file as an ordinary one.
         """
+        album_caption(message)
         target,edit=await album_target(message,bot)
-        if target is None: return
-        pending=conversation.prompt or {}
+        if target is None: return True
         photo=name.rsplit('.',1)[-1].lower() in ('jpg','jpeg','png')
-        asset,notice=None,'' if photo else text(account,'cv_photo_only')
-        if photo:
-            try:
-                asset=await sync_to_async(upload_file)(account,SimpleUploadedFile(name,raw),'bot')
-                await sync_to_async(ai.check_portrait)(account,asset.id)
-                await sync_to_async(record_receipt)(account,asset,message.chat.id,message.message_id)
-            except DomainError as exc:
-                # Too large, or not really a JPEG or PNG: said now, so the
-                # description sent next is not refused for it.
-                if exc.code not in ('invalid_image','image_pixel_limit'): raise
-                asset,notice=None,text(account,'cv_photo_rejected')
-        if conversation.state=='cv_review':
-            if asset is None: return album_shown(message,await render(target,html.escape(notice),[],edit))
-            draft,quote=await sync_to_async(ai.add_portrait)(account,pending.get('draft_id',''),asset.id)
-            return album_shown(message,await ai_review(target,account,draft,quote,edit))
-        portrait=str(asset.id) if asset else None
-        brief=await sync_to_async(pending_brief)(account)
-        caption=(message.caption or '').strip()
-        if photo and caption:
-            # A photo and its caption are one message: the caption is the description.
-            if notice: await target.answer(html.escape(notice))
-            waiting=target if edit else await target.answer(text(account,'ai_preparing'))
-            return album_shown(message,await ai_start(waiting,account,ai.CV,caption,brief,pending.get('question',''),
-                                                      pending.get('portrait_asset_id','') if portrait is None else portrait))
-        if brief:
-            return album_shown(message,await ai_topic_needed(target,account,ai.CV,brief,'',edit,pending.get('question',''),
-                                                             notice or text(account,'cv_photo_attached'),portrait))
-        return album_shown(message,await ai_prompt(target,account,ai.CV,edit,notice,portrait))
+        async with chat_lock(message.chat.id):
+            conversation=await sync_to_async(lambda:BotConversation.objects.filter(pk=message.from_user.id).first())()
+            reviewing=(bool(conversation) and conversation.state=='cv_review'
+                       and bool(await sync_to_async(open_cv_review)(account)))
+            if not (reviewing and photo or cv_question(conversation)): return False
+            pending=conversation.prompt or {}
+            caption=album_caption(message)
+            asset,notice=None,'' if photo else text(account,'cv_photo_only')
+            if photo:
+                try:
+                    asset=await sync_to_async(upload_file)(account,SimpleUploadedFile(name,raw),'bot')
+                    await sync_to_async(ai.check_portrait)(account,asset.id)
+                    await sync_to_async(record_receipt)(account,asset,message.chat.id,message.message_id)
+                except DomainError as exc:
+                    # Too large, or not really a JPEG or PNG: said now, so the
+                    # description sent next is not refused for it.
+                    if exc.code not in ('invalid_image','image_pixel_limit'): raise
+                    asset,notice=None,text(account,'cv_photo_rejected')
+            if reviewing:
+                if asset is None:
+                    album_shown(message,await render(target,html.escape(notice),[],edit))
+                    return True
+                draft,quote=await sync_to_async(ai.add_portrait)(account,pending.get('draft_id',''),asset.id)
+                # Words sent with it would skip the name and detail checks: not added, and said so.
+                album_shown(message,await ai_review(target,account,draft,quote,edit,
+                                                    text(account,'cv_caption_not_added') if caption else ''))
+                return True
+            portrait=str(asset.id) if asset else None
+            brief=await sync_to_async(pending_brief)(account)
+            if photo and caption:
+                # A photo and its caption are one message: the caption is the description.
+                if notice: await target.answer(html.escape(notice))
+                waiting=target if edit else await target.answer(text(account,'ai_preparing'))
+                album_shown(message,await ai_start(waiting,account,ai.CV,caption,brief,pending.get('question',''),
+                                                   pending.get('portrait_asset_id','') if portrait is None else portrait))
+            elif brief:
+                album_shown(message,await ai_topic_needed(target,account,ai.CV,brief,'',edit,pending.get('question',''),
+                                                          notice or text(account,'cv_photo_attached'),portrait,
+                                                          pending.get('ask','name')))
+            else: album_shown(message,await ai_prompt(target,account,ai.CV,edit,notice,portrait))
+        return True
 
     @dp.message(F.document | F.photo)
     async def receive(message,bot):
@@ -1327,7 +1436,8 @@ def build_dispatcher():
             conversation=await sync_to_async(lambda:BotConversation.objects.filter(pk=message.from_user.id).first())()
             if cv_question(conversation):
                 brief=await sync_to_async(pending_brief)(account)
-                if brief: return await ai_topic_needed(message,account,ai.CV,brief,'',False,conversation.prompt.get('question',''))
+                if brief: return await ai_topic_needed(message,account,ai.CV,brief,'',False,conversation.prompt.get('question',''),
+                                                       ask=conversation.prompt.get('ask','name'))
                 return await ai_prompt(message,account,ai.CV)
             reviewed=await sync_to_async(open_cv_review)(account)
             if reviewed: return await ai_resume(message,account,reviewed)
@@ -1351,9 +1461,18 @@ def build_dispatcher():
         # A CV being described takes a file as its photo, and so does a new
         # CV's review on screen; anything else sent then is a file task's.
         conversation=await sync_to_async(lambda:BotConversation.objects.filter(pk=message.from_user.id).first())()
+        # A photo sent for a change to a finished CV: a change takes none, and
+        # the change question stays open rather than becoming a file task.
+        if (ext in ('jpg','jpeg','png') and conversation is not None and conversation.state=='ai_revise'
+                and conversation.updated_at>=timezone.now()-QUESTION_LIFETIME
+                and await sync_to_async(ai.service_of)(account,(conversation.prompt or {}).get('draft_id',''))==ai.CV):
+            target,edit=await album_target(message,bot)
+            if target is None: return
+            return album_shown(message,await ai_revise_prompt(target,account,conversation.prompt['draft_id'],edit,
+                                                              text(account,'cv_revise_photo')))
         cv_photo=cv_question(conversation) or ext in ('jpg','jpeg','png') and bool(await sync_to_async(open_cv_review)(account))
         try:
-            if cv_photo: return await cv_file(message,bot,account,conversation,name,stream.getvalue())
+            if cv_photo and await cv_file(message,bot,account,name,stream.getvalue()): return
             asset=await sync_to_async(upload_file)(account,SimpleUploadedFile(name,stream.getvalue()),'bot')
             # A file sent while an AI tool is waiting belongs to that tool, not
             # to the file-tool draft the upload would otherwise start.
@@ -1503,6 +1622,39 @@ def build_dispatcher():
         if message.text.startswith('/terms'): return await render(message,text(account,'terms'),[[await button(account,'contacts_button','contacts')],[await button(account,'home','home')]])
         await help_view(message,account)
 
+    async def ai_text(message,account,conversation,value):
+        """A description, or the answer to its question, for the AI service the chat is asking about."""
+        p=conversation.prompt
+        if not value: return await message.answer(text(account,'ai_topic_empty'))
+        waiting=await message.answer(text(account,'ai_preparing'))
+        return await ai_start(waiting,account,p['feature_id'],value,p.get('brief') or [],p.get('question',''),
+                              p.get('portrait_asset_id',''))
+
+    async def cv_review_text(message,account,conversation,value):
+        """Text sent while a new CV's review is on screen.
+
+        Within moments of the review it is the rest of the description:
+        Telegram sends one longer than 4096 characters as two messages, and the
+        second arrives on the review the first made. It is added to the CV and
+        the review drawn again. Later, it is not read as part of the CV, and
+        the customer is shown the review again with the way to change it.
+        """
+        from apps.studio.models import GenerationDraft
+        if not value: return await message.answer(text(account,'ai_topic_empty'))
+        draft_id=(conversation.prompt or {}).get('draft_id','')
+        try:
+            if conversation.updated_at>=timezone.now()-CV_APPEND_WINDOW:
+                draft,quote=await sync_to_async(ai.append_description)(account,draft_id,value)
+                notice='cv_description_added'
+            else:
+                draft=await sync_to_async(lambda:GenerationDraft.objects.filter(pk=draft_id,account=account,
+                                                                                expires_at__gt=timezone.now()).first())()
+                if draft is None: return await home(message,account,notice=text(account,'fallback'))
+                _,quote=await sync_to_async(ai.quote)(account,draft.id)
+                notice='cv_text_not_added'
+        except DomainError as exc: return await safe_error(message,account,exc)
+        return await ai_review(message,account,draft,quote,notice=text(account,notice))
+
     @dp.message(F.text)
     async def fallback(message):
         account=await account_for(message.from_user)
@@ -1513,12 +1665,15 @@ def build_dispatcher():
         value=(message.text or '').strip()
         # Someone who was writing a support message when tickets were retired.
         if conversation.state in ('support','support_review'): return await contacts_view(message,account)
-        if conversation.state=='ai_input':
-            p=conversation.prompt
-            if not value: return await message.answer(text(account,'ai_topic_empty'))
-            waiting=await message.answer(text(account,'ai_preparing'))
-            return await ai_start(waiting,account,p['feature_id'],value,p.get('brief') or [],p.get('question',''),
-                                  p.get('portrait_asset_id',''))
+        if conversation.state=='cv_review' or cv_question(conversation):
+            # A CV's messages one at a time, each reading the chat again once it
+            # has its turn: the second half of a long description finds the
+            # review the first half made, and a photo sent with it its CV.
+            async with chat_lock(message.chat.id):
+                conversation=await sync_to_async(lambda:BotConversation.objects.get(pk=message.from_user.id))()
+                if conversation.state=='cv_review': return await cv_review_text(message,account,conversation,value)
+                if cv_question(conversation): return await ai_text(message,account,conversation,value)
+        if conversation.state=='ai_input': return await ai_text(message,account,conversation,value)
         if conversation.state=='ai_revise':
             p=conversation.prompt
             if not value: return await message.answer(text(account,'ai_topic_empty'))

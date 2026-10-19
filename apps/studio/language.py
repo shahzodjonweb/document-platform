@@ -203,32 +203,37 @@ def _topic(body, match):
     return bool(_LIST_OF_ADJECTIVES.match(body, match.end()))
 
 
-def _first(pattern, body, checked):
+def _first(pattern, body, checked, keep=None):
     """Where the first naming of a language that is meant as one starts, or None."""
     for match in pattern.finditer(body):
-        if not _negated(body, match) and not (checked and _topic(body, match)):
+        if (not _negated(body, match) and not (checked and _topic(body, match))
+                and (keep is None or keep(body, match))):
             return match.start()
     return None
 
 
-def explicit(text):
+def explicit(text, keep=None):
     """The output language a description names, or None.
 
     The earliest one named wins. A language that is the subject — "Xitoy tilida
     omonimlar", "women in Russian history", "на русском рынке" — is not one,
-    and neither is one the description says it does not want.
+    and neither is one the description says it does not want. `keep(body,
+    match)`, when given, says which of the namings left count, read on the
+    normalised body: a CV's says a language the person speaks is not one
+    (apps/studio/cv/content.py names_the_cvs_language).
     """
     # A run of blank space reads as one space, so no pattern can backtrack over it.
     body = re.sub(r'[^\S\n]+', ' ', normalised(text))
     found = []
     for code, patterns in PATTERNS.items():
-        starts = [start for start in (_first(pattern, body, checked) for pattern, checked in patterns)
+        starts = [start for start in (_first(pattern, body, checked, keep) for pattern, checked in patterns)
                   if start is not None]
         if not starts:
             # "Ingliz tilida sun'iy intellekt haqida taqdimot" asks for English;
             # "Rus tilida fe'l zamonlari haqida" is about Russian verbs.
             about = next((about for about in _ABOUT[code].finditer(body)
-                          if not LINGUISTIC.search(about.group(1)) and not _negated(body, about)), None)
+                          if not LINGUISTIC.search(about.group(1)) and not _negated(body, about)
+                          and (keep is None or keep(body, about))), None)
             starts = [about.start()] if about else []
         if starts:
             found.append((min(starts), code))
@@ -334,11 +339,14 @@ def settings_locale(account):
     return None
 
 
-def resolve(prompt, *, picked=None, requested=None, settings=None, document=None):
-    """The language to write in, and what decided it."""
+def resolve(prompt, *, picked=None, requested=None, settings=None, document=None, keep=None):
+    """The language to write in, and what decided it.
+
+    `keep` narrows which languages the prompt names count (explicit).
+    """
     if picked in SUPPORTED:
         return Resolution(picked, 'picked')
-    named = explicit(prompt)
+    named = explicit(prompt, keep)
     if named:
         return Resolution(named, 'prompt')
     # A change request may be written in any language about a document that

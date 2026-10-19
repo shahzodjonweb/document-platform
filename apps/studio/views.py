@@ -48,12 +48,26 @@ def drafts(request):
         return JsonResponse(draft_data(create_draft(request.account,body(request))),status=201)
     return {'results':[draft_data(d) for d in GenerationDraft.objects.filter(account=request.account,expires_at__gt=timezone.now()).order_by('-created_at')[:100]]}
 
+# How often one account may reword a CV draft in a minute: each is read again
+# for the person's name. Counted per account, as every customer reaches us
+# through the same gateway address.
+CV_UPDATES_PER_MINUTE=30
+
+def _account_limit(account,key,limit):
+    from django.core.cache import cache
+    cache_key=f'rate:{key}:account:{account.id}'
+    count=cache.get(cache_key,0)
+    if count>=limit:raise DomainError('rate_limited',429,retryable=True)
+    cache.set(cache_key,count+1,60)
+
 @api(('GET','PATCH','DELETE'))
 def draft_detail(request,pk):
     d=GenerationDraft.objects.filter(account=request.account,id=pk,expires_at__gt=timezone.now()).first()
     if not d:raise DomainError('not_found',404)
     if request.method=='DELETE':d.delete();return {'deleted':True}
-    if request.method=='PATCH':d=update_draft(request.account,pk,body(request))
+    if request.method=='PATCH':
+        if d.feature_id==CV:_account_limit(request.account,'cv_draft_updates',CV_UPDATES_PER_MINUTE)
+        d=update_draft(request.account,pk,body(request))
     return draft_data(d)
 
 @api(('POST',))

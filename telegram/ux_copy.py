@@ -211,6 +211,7 @@ MESSAGES = {
     'cv_contact_dropped': ('ℹ️ A contact detail that was not in your message was left out.', 'ℹ️ Xabaringizda bo‘lmagan aloqa maʼlumoti CV’ga kiritilmadi.', 'ℹ️ Контакт, которого не было в вашем сообщении, не добавлен в резюме.'),
     'cv_photo_unusable': ('ℹ️ The photo could not be used, so the CV was made without it.', 'ℹ️ Rasmdan foydalanib bo‘lmadi, shuning uchun CV rasmsiz tayyorlandi.', 'ℹ️ Фото использовать не удалось, поэтому резюме сделано без него.'),
     'cv_photo_gone': ('ℹ️ The photo is no longer stored, so this version of the CV is without it.', 'ℹ️ Rasmning saqlanish muddati tugagani uchun CV’ning bu nusxasi rasmsiz tayyorlandi.', 'ℹ️ Срок хранения фото истёк, поэтому эта версия резюме — без него.'),
+    'cv_photo_no_slot': ('ℹ️ This template has no place for a photo, so the CV was made without it.', 'ℹ️ Bu shablonda rasm uchun joy yo‘q, shuning uchun CV rasmsiz tayyorlandi.', 'ℹ️ В этом шаблоне нет места для фото, поэтому резюме сделано без него.'),
     # The CV service in the chat. One message about yourself, as for the other
     # two services; the bot asks only for what a CV cannot be made without,
     # the name, and takes one photo for templates with a place for it.
@@ -221,11 +222,13 @@ MESSAGES = {
     # A photo too large for a CV (apps/studio/cv/portrait.py: 6 megapixels):
     # said when it arrives, so the description sent next is not refused for it.
     'cv_photo_rejected': ('📷 This image can’t go on a CV: it has to be a JPG or PNG of up to 6 megapixels. Send it as a photo rather than a file — Telegram makes it smaller.', '📷 Bu rasmni CV’ga qo‘yib bo‘lmaydi: u 6 megapikselgacha bo‘lgan JPG yoki PNG bo‘lishi kerak. Uni fayl sifatida emas, rasm sifatida yuboring — Telegram uni kichraytiradi.', '📷 Это изображение не подходит для резюме: нужен JPG или PNG до 6 мегапикселей. Отправьте его как фото, а не файлом — Telegram сам его уменьшит.'),
-    # A description that names nobody: kept whole, and only the name asked for.
-    'cv_name_question': ('✍️ Only your name is missing — what is your full name? I’ll add it to what you wrote.', '✍️ Faqat ismingiz yetishmayapti: ism-familiyangizni to‘liq yozing — uni avvalgi xabaringizga qo‘shaman.', '✍️ Не хватает только имени. Как вас зовут — имя и фамилия? Я добавлю их к вашему сообщению.'),
+    # A description that names nobody: kept whole, and the name asked for.
+    'cv_name_question': ('✍️ What is your full name? I’ll add it to what you wrote.', '✍️ Ism-familiyangizni to‘liq yozing — uni avvalgi xabaringizga qo‘shaman.', '✍️ Как вас зовут — имя и фамилия? Я добавлю их к вашему сообщению.'),
     'cv_name_sample': ('Dilnoza Karimova', 'Dilnoza Karimova', 'Дильноза Каримова'),
-    # The way past a name the check did not see: the same answer again is taken as it is.
-    'cv_name_again': ('↩️ If you already wrote your name, just send it again.', '↩️ Agar ismingizni yozgan bo‘lsangiz, uni yana bir bor yuboring.', '↩️ Если вы уже написали имя, просто отправьте его ещё раз.'),
+    # The way past a name the check did not see: the name alone, sent again, is taken as it is.
+    'cv_name_again': ('↩️ If you already wrote it, send just your full name again.', '↩️ Agar uni yozgan bo‘lsangiz, faqat ism-familiyangizni yana bir bor yuboring.', '↩️ Если вы уже написали его, отправьте ещё раз только имя и фамилию.'),
+    # A greeting, "I need a CV" or a name alone says nothing to make a CV of: kept, and the rest asked for.
+    'cv_details_question': ('✍️ Now tell me about your work, education, skills and languages — I’ll add it to what you wrote.', '✍️ Endi ish tajribangiz, taʼlimingiz, ko‘nikmalaringiz va qaysi tillarni bilishingiz haqida yozing — uni avvalgi xabaringizga qo‘shaman.', '✍️ Теперь расскажите о работе, образовании, навыках и языках — я добавлю это к вашему сообщению.'),
     'cv_example_copied': ('✏️ That is one of our examples. Write your own details the same way and send them.', '✏️ Bu bizning namunamiz. Xuddi shunday qilib, o‘zingiz haqingizda yozib yuboring.', '✏️ Это наш пример. Напишите так же, но о себе, и отправьте.'),
     # The review of a CV: its length is the template's to decide, one page or two.
     'cv_length': ('1–2', '1–2', '1–2'),
@@ -233,6 +236,15 @@ MESSAGES = {
     'cv_template_auto': ('Auto — classic unless you pick one', 'Avto — boshqasini tanlamasangiz, klassik', 'Авто — классический, если не выберете другой'),
     'cv_template_button': ('🎨 CV template', '🎨 CV shabloni', '🎨 Шаблон резюме'),
     'cv_photo_line': ('📷 Photo: attached', '📷 Rasm: qo‘shilgan', '📷 Фото: добавлено'),
+    # A photo on a template picked without a place for it: said before paying, with the way to one that has.
+    'cv_photo_no_slot_line': ('📷 Photo: attached, but this template has no place for it — pick one marked “Photo”', '📷 Rasm: qo‘shilgan, lekin bu shablonda unga joy yo‘q — «Foto» belgisi bor shablonni tanlang', '📷 Фото: добавлено, но в этом шаблоне для него нет места — выберите шаблон с пометкой «Фото»'),
+    # Text sent while a new CV's review is open: the second half of a long
+    # description Telegram split is added to it; anything later is not.
+    'cv_description_added': ('📝 Added to your description.', '📝 Tavsifingizga qo‘shildi.', '📝 Добавлено к вашему описанию.'),
+    'cv_text_not_added': ('ℹ️ That text was not added to the CV. To change what it says, tap ✏️ Change the description.', 'ℹ️ Bu matn CV’ga qo‘shilmadi. Undagi maʼlumotni o‘zgartirish uchun ✏️ Tavsifni o‘zgartirish tugmasini bosing.', 'ℹ️ Этот текст не добавлен в резюме. Чтобы изменить его содержание, нажмите ✏️ Изменить описание.'),
+    'cv_caption_not_added': ('ℹ️ The text sent with the photo was not added. To change what the CV says, tap ✏️ Change the description.', 'ℹ️ Rasm bilan yuborilgan matn qo‘shilmadi. CV’dagi maʼlumotni o‘zgartirish uchun ✏️ Tavsifni o‘zgartirish tugmasini bosing.', 'ℹ️ Текст, отправленный с фото, не добавлен. Чтобы изменить содержание резюме, нажмите ✏️ Изменить описание.'),
+    # A photo sent for a change to a finished CV: a change takes none.
+    'cv_revise_photo': ('📷 A new photo can’t be added to a finished CV. To use it, start a new CV with /cv and send the photo with your details.', '📷 Tayyor CV’ga yangi rasm qo‘shib bo‘lmaydi. Undan foydalanish uchun /cv orqali yangi CV boshlang va rasmni maʼlumotlaringiz bilan birga yuboring.', '📷 В готовое резюме нельзя добавить новое фото. Чтобы использовать его, начните новое резюме командой /cv и пришлите фото вместе с данными о себе.'),
     'cv_photo_none': ('📷 Photo: none', '📷 Rasm: yo‘q', '📷 Фото: нет'),
     # On a new CV's review a photo sent now still goes on it.
     'cv_photo_none_add': ('📷 Photo: none — to add one, send it here', '📷 Rasm: yo‘q — qo‘shish uchun shu yerga yuboring', '📷 Фото: нет — чтобы добавить, пришлите его сюда'),

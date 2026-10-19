@@ -32,6 +32,8 @@ TONES = ('light', 'dark', 'paper')
 INK = '#1A1A1A'
 WHITE = '#FFFFFF'
 DEFAULT_TEMPLATE = 'classic_navy'
+# What Auto comes to when the customer sent a photo: the classic look with a place for it.
+PHOTO_DEFAULT = 'slate_portrait'
 LOCALES = ('en', 'uz', 'ru')
 
 
@@ -207,20 +209,25 @@ def reference(photo=False):
 
     Grouped by category so fifty entries stay easy to choose from; the default
     is named first so a description that says nothing about looks gets the
-    calm classic one. The text depends only on whether the customer sent a
-    portrait, which is fixed for a draft.
+    calm classic one. With a portrait the default is the classic look with a
+    place for it, `slate_portrait`: the plain default has none, and a photo
+    the customer sent would be left out. The text depends only on whether the
+    customer sent a portrait, which is fixed for a draft.
     """
     blocks = []
     for category, (templates, names) in CATEGORIES.items():
         lines = '\n'.join(f'- {key}: {value["fits"]}' + (' (photo)' if value['photo'] else '')
                           for key, value in templates.items())
         blocks.append(f'{names[0]}:\n{lines}')
-    note = (' The customer sent a portrait: prefer a template marked (photo).' if photo else
-            ' A template marked (photo) has a place for a portrait; without one it still looks complete.')
+    if photo:
+        default = (f' The customer sent a portrait: choose `{PHOTO_DEFAULT}` (the classic look with a photo) unless '
+                   'another template marked (photo) clearly fits better, and never one without (photo).')
+    else:
+        default = (f' Choose `{DEFAULT_TEMPLATE}` unless another clearly fits better. A template marked (photo) has '
+                   'a place for a portrait; without one it still looks complete.')
     return (
         'When the response has a `design` field, choose the CV template by the profession, seniority and tone '
-        'the description shows. Choose `classic_navy` unless another clearly fits better.'
-        + note + '\n' + '\n'.join(blocks)
+        'the description shows.' + default + '\n' + '\n'.join(blocks)
     )
 
 

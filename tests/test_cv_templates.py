@@ -89,7 +89,11 @@ def test_the_list_the_model_reads_is_grouped_small_and_names_the_default():
     assert len(plain) <= 4500 and len(with_photo) <= 4500
     assert 'Classic:\n- classic_navy:' in plain and 'Choose `classic_navy` unless' in plain
     assert '- azure_side: blue sidebar with photo and skills; IT, product, marketing (photo)' in plain
-    assert 'prefer a template marked (photo)' in with_photo and 'prefer a template' not in plain
+    # With a portrait, Auto's default is the classic look with a place for it, never one without.
+    assert TEMPLATES['slate_portrait']['photo'] and templates.PHOTO_DEFAULT == 'slate_portrait'
+    assert 'choose `slate_portrait` (the classic look with a photo)' in with_photo
+    assert 'never one without (photo)' in with_photo and 'Choose `classic_navy`' not in with_photo
+    assert 'slate_portrait` (the classic' not in plain
     assert all(f'- {key}:' in plain for key in TEMPLATE_IDS)
 
 
@@ -175,6 +179,9 @@ def test_portraits_appear_only_on_templates_with_a_place_for_one(tmp_path):
         path, result = render(tmp_path, key, sample.short('en'), portrait=sample.portrait())
         images = sum(len(page.images) for page in PdfReader(path).pages)
         assert result['metadata']['portrait'] == TEMPLATES[key]['photo'] == (images == 1), key
+        # A photo sent for a template with no place for it is said, not quietly left out.
+        assert result['metadata']['warnings'] == ([] if TEMPLATES[key]['photo'] else ['cv_photo_no_slot']), key
+    assert render(tmp_path, 'classic_navy', sample.short('en'))[1]['metadata']['warnings'] == []
 
 
 def test_an_unreadable_portrait_leaves_the_cv_without_one(tmp_path):
@@ -203,6 +210,27 @@ def test_a_tall_photo_is_cropped_square_from_its_upper_part_and_keeps_no_metadat
     assert image.size == (400, 400) and not image.getexif()
     # The square starts above the middle, where a face is, so the red top is in it.
     assert image.getpixel((200, 5))[0] > 200 and image.getpixel((200, 5))[1] < 80
+
+
+def test_a_cut_out_portrait_is_laid_on_white_not_black(tmp_path):
+    def png(picture, **options):
+        raw = io.BytesIO()
+        picture.save(raw, 'PNG', **options)
+        return raw.getvalue()
+    rgba = Image.new('RGBA', (300, 300), (0, 0, 0, 0))
+    rgba.paste(Image.new('RGBA', (100, 100), (200, 40, 40, 255)), (100, 100))
+    grey = Image.new('LA', (300, 300), (0, 0))
+    grey.paste(Image.new('LA', (100, 100), (90, 255)), (100, 100))
+    palette = Image.new('P', (300, 300), 0)
+    palette.putpalette([0, 0, 0, 200, 40, 40] + [0] * 762)
+    palette.paste(1, (100, 100, 200, 200))
+    for raw in (png(rgba), png(grey), png(palette, transparency=0)):
+        image = Image.open(io.BytesIO(portrait.square(raw)['jpeg'])).convert('RGB')
+        assert min(image.getpixel((5, 5))) > 240, image.getpixel((5, 5))
+        assert image.getpixel((150, 150)) != image.getpixel((5, 5))
+    # A photo with no transparency is placed as it was.
+    solid = Image.new('RGB', (300, 300), (20, 30, 40))
+    assert max(Image.open(io.BytesIO(portrait.square(png(solid))['jpeg'])).convert('RGB').getpixel((5, 5))) < 60
 
 
 def test_twelve_roles_are_trimmed_to_two_pages_and_keep_every_contact_and_role(tmp_path):
@@ -254,6 +282,106 @@ def test_a_field_cut_at_its_cap_loses_its_partial_last_word(tmp_path):
     kept = cv['sections'][0]['items'][0]['lines'][0]
     assert cut.startswith(kept) and len(kept) < 900 and cut[len(kept)] == ' '
     assert cv['sections'][0]['items'][1]['lines'] == ['Ends with a full word']
+
+
+def test_a_role_written_to_600_characters_keeps_its_last_word():
+    from apps.studio.cv.render import prepare
+    # A slide item's cap is 600: a CV entry that long was not cut there (its cap is 900).
+    head, last = 'Registon Retail Group · Toshkent\n', 'Do‘konlar kesimidagi talab prognozi bilan isrofni 18% ga kamaytirdim'
+    text = head + ('Hisobotlar ' * 60)[:600 - len(head) - len(last) - 1].rstrip().ljust(600 - len(head) - len(last) - 1,
+                                                                                          'r') + '\n' + last
+    assert len(text) == 600 and text.endswith('kamaytirdim')
+    cv, _ = prepare({'title': 'A B', 'sections': [{'id': 'experience', 'items': [
+        {'label': 'Analitik', 'text': text, 'value': '2021 – 2024'}]}]}, 'uz')
+    assert cv['sections'][0]['items'][0]['lines'][-1].endswith('isrofni 18% ga kamaytirdim')
+
+
+def words_in(path):
+    return re.findall(r"[\wЀ-ӿ‘ʼ]+", ' '.join(page.extract_text() for page in PdfReader(path).pages))
+
+
+def with_dates(content, value):
+    content = {**content, 'sections': [dict(section) for section in content['sections']]}
+    experience = next(section for section in content['sections'] if section['id'] == 'experience')
+    experience['items'] = [{**experience['items'][0], 'value': value}, *experience['items'][1:]]
+    return content
+
+
+@pytest.mark.parametrize('key,locale,value,whole', [
+    ('oxford', 'ru', '09.2019 – по настоящее время', 'настоящее'),
+    ('teal_timeline', 'ru', '03.2021 – по настоящее время', 'настоящее'),
+    ('oxford', 'uz', '2019-yildan hozirgacha', 'hozirgacha'),
+    ('teal_timeline', 'en', 'since 2019 (part-time)', 'time'),
+    ('azure_side', 'ru', 'с 2019 года по настоящее время', 'время'),
+])
+def test_dates_too_wide_for_their_column_wrap_between_words_never_inside_one(tmp_path, key, locale, value, whole):
+    path, result = render(tmp_path, key, with_dates(sample.short(locale), value), locale)
+    found = words_in(path)
+    assert whole in found, [word for word in found if whole[:4] in word]
+    assert not [word for word in found if word != whole and (whole.startswith(word) or whole.endswith(word))
+                and len(word) >= 3], found
+
+
+def test_short_dates_still_wrap_only_after_the_dash():
+    from apps.studio.cv.layouts import dates
+    assert dates('01.2023 – наст. время', 'CVSans', 8.3, 85) == '01.2023\u00a0– наст.\u00a0время'
+    # A side too wide for the column keeps its spaces, so it wraps at one.
+    assert dates('09.2019 – по настоящее время', 'CVSans', 8.3, 40) == '09.2019\u00a0– по настоящее время'
+    assert dates('2021-2024') == '2021-2024'
+
+
+def test_a_profile_written_as_one_long_paragraph_still_fits_a_timeline(tmp_path):
+    content = sample.short('en')
+    profile = next(section for section in content['sections'] if section['id'] == 'profile')
+    content['sections'] = [{**profile, 'body': ' '.join(['Builds dashboards and forecasts for retail teams']
+                                                        * 110)}, *content['sections'][1:]]
+    for key in ('oxford', 'teal_timeline', 'scholar_cv'):
+        path, result = render(tmp_path, key, content)
+        assert result['page_count'] <= 2, key
+
+
+def test_a_long_heading_in_an_executive_margin_is_set_smaller_never_split(tmp_path):
+    content = sample.short('ru')
+    content['sections'] = [*[section for section in content['sections'] if section['id'] != 'extra'],
+                           {'id': 'extra', 'heading': 'Профессиональное развитие', 'body': '',
+                            'items': [{'label': 'Курс управления', 'text': '', 'value': '2023'}]}]
+    for key in ('boardroom_cv', 'onyx'):
+        path, _ = render(tmp_path, key, content, 'ru')
+        found = words_in(path)
+        assert 'ПРОФЕССИОНАЛЬНОЕ' in found and 'ПРОФЕССИОНАЛЬНО' not in found, key
+
+
+def test_arrows_and_comparison_signs_are_written_as_text_not_dropped():
+    from apps.studio.cv.render import prepare
+    cv, dropped = prepare({'title': 'A B', 'sections': [{'id': 'experience', 'items': [
+        {'label': 'Менеджер', 'value': '2020 – 2024',
+         'text': 'Пример · Ташкент\nРост выручки филиала с 10 → 15 млрд сум\nСократила списания ≈ на 18%\n'
+                 'Опыт ≥ 5 лет, ★ лучший сотрудник'}]}]}, 'ru')
+    lines = cv['sections'][0]['items'][0]['lines']
+    assert lines[1:] == ['Рост выручки филиала с 10 – 15 млрд сум', 'Сократила списания ~ на 18%',
+                         'Опыт >= 5 лет, лучший сотрудник']
+    assert dropped == ['★']
+
+
+def test_an_entry_with_only_its_dates_keeps_them_on_a_timeline(tmp_path):
+    content = sample.short('en')
+    experience = next(section for section in content['sections'] if section['id'] == 'experience')
+    experience['items'] = [*experience['items'], {'label': '', 'text': '', 'value': '2010 – 2012'}]
+    for key in ('oxford', 'classic_navy'):
+        path, _ = render(tmp_path, key, content)
+        assert '2010 – 2012' in ' '.join(page.extract_text() for page in PdfReader(path).pages), key
+
+
+@pytest.mark.parametrize('key', ['azure_side', 'lab', 'cobalt_right', 'classic_navy', 'nordic', 'boardroom_cv', 'oxford',
+                                 'coral_band'])
+def test_any_number_of_long_contacts_stays_on_the_page(tmp_path, key):
+    content = sample.short('en')
+    profile = next(section for section in content['sections'] if section['id'] == 'profile')
+    profile['items'] = [{'label': f'Extra {number}', 'text': f'Field {number} ' + 'detail ' * 60, 'value': ''}
+                        for number in range(16)]
+    path, result = render(tmp_path, key, content)
+    assert result['page_count'] <= 2
+    assert check.problems(path, result['metadata']['frames']) == [], key
 
 
 def test_headings_and_contact_labels_are_printed_in_the_cvs_language(tmp_path):

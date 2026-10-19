@@ -257,6 +257,36 @@ def template_of(draft):
     return names.get(key, '')
 
 
+def photo_slot(draft):
+    """Whether the CV's template has a place for a photo: False only when one without is picked or kept.
+
+    On Auto nobody knows yet, and the model is told to choose a template with
+    a place for the photo the customer sent (apps/studio/cv/templates.py).
+    """
+    from apps.studio.domain import unpack
+    from apps.studio.cv import templates
+    options = unpack(draft.encrypted_data).get('options', {})
+    key = templates.chosen(options) or templates.current((options.get('template_style') or {}).get('cv_template') or '')
+    return templates.TEMPLATES[key]['photo'] if key in templates.TEMPLATES else True
+
+
+@transaction.atomic
+def append_description(account, draft_id, more):
+    """A new CV on the review screen with `more` written after its description, and its new quote.
+
+    Telegram sends a description longer than one message as two: the second
+    part arrives on the review the first one led to, and belongs to that CV.
+    """
+    from apps.studio.domain import unpack
+    text = (more or '').strip()
+    draft = GenerationDraft.objects.filter(account=account, id=draft_id, feature_id=CV,
+                                           expires_at__gt=timezone.now()).first()
+    if not text or draft is None or unpack(draft.encrypted_data).get('revision'):
+        raise DomainError('controls_expired', 409)
+    field = 'prompt' if unpack(draft.encrypted_data).get('prompt') else 'source_text'
+    return _changed(account, draft_id, lambda data: {field: f"{data.get(field) or ''}\n{text}".strip()})
+
+
 def check_portrait(account, asset_id):
     """Refuse a photo that cannot go on a CV, as the server will when the CV is described.
 

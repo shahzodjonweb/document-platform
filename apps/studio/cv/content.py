@@ -87,10 +87,15 @@ CV_GUIDANCE = (
     'does not say.'
 )
 # Told after REVISION_SYSTEM, which is written for documents and decks: it
-# offers ____ for a missing name, keeps questions and adds pictures through
-# layouts. None of that is true of a CV, and this says so.
+# offers ____ for a missing name, keeps questions, adds pictures through
+# layouts, and asks for new facts and examples when more detail is wanted and
+# for a part of its own, never one line, when one is added. None of that is
+# true of a CV, and this says so.
 CV_REVISION_SYSTEM = (
-    'This document is a CV, and these rules replace anything above about pictures, layouts, questions or ____. '
+    'This document is a CV, and these rules replace anything above about more or fuller information, added parts, '
+    'facts and examples, pictures, layouts, questions or ____: more detail means fuller wording of the facts '
+    'already given, never new duties, achievements, figures or dates, and a part the request adds holds only what '
+    'revision.request says, even if that is a single line. '
     'Take every new fact only from revision.request, exactly as written there; never invent one, and never write '
     '____ or a placeholder for a name, date or detail that is not given: leave it out. A CV has no pictures and no '
     'questions: add neither. There are no pages to add, remove or move: keep exactly the sections of outline with '
@@ -143,23 +148,54 @@ def seed(title, text=''):
 # --- The person's name -------------------------------------------------------------
 
 # A word of a name: letters, with an apostrophe or a hyphen only between letters
-# (O‘tkir, Ma'ruf, Abdulla-Xo‘ja).
+# (O‘tkir, Ma'ruf, Abdulla-Xo‘ja). ʻ and ʼ are letters to Unicode, so Oʻtkir and
+# Maʼruf are one word whichever of them is typed.
 NAME_WORD = re.compile(r"[^\W\d_](?:[^\W\d_]|['’‘ʼʻ`\-](?=[^\W\d_]))*")
+# The modifier letters Uzbek writes o‘, g‘ and the tutuq with: not letters of a name's alphabet.
+MARKS = 'ʻʼ'
+# The longest name: four words, the patronymic after them (_named).
+NAME_WORDS = 4
 # What a name can follow: a label, or the way people introduce themselves. "Name:"
-# only starts a line: "Company name: Example Retail" names a company.
+# only starts a line: "Company name: Example Retail" names a company. A form's
+# labels name the parts in their own order ("Familiyasi, ismi, otasining ismi:"),
+# and a comma may follow an introduction ("Я, Салимова Гульнора, …").
+_A = "['’‘ʼʻ`]"
 NAME_LABEL = re.compile(r"^[ \t•*\-]*(?:full\s+)?name\s*[:\-–—]\s*", re.IGNORECASE | re.MULTILINE)
 LABEL = re.compile(
-    r"(?<![\w'’‘ʼʻ])(?:my\s+(?:full\s+)?name\s+is|i\s+am|i['’]m|mening\s+ismim"
-    r"|ism[\s\-]+(?:va\s+)?familiya(?:m)?|ism[\s\-]+sharif(?:im)?|ismim|ism|f\.?\s*i\.?\s*sh\.?|f\.?\s*i\.?\s*o\.?|men"
-    r"|меня\s+зовут|моё\s+имя|мое\s+имя|имя|ф\.?\s*и\.?\s*о\.?|фио|я)(?![\w'’‘ʼʻ])\s*[:\-–—]?\s*",
+    r"(?<![\w'’‘ʼʻ])(?:my\s+(?:full\s+)?name(?:\s+is)?|(?:full\s+)?name\s+and\s+surname|full\s+name"
+    r"|i\s+am|i['’]m|mening\s+ismim"
+    r"|ismi?[\s,\-]+(?:va\s+)?familiya(?:m|si)?|ismi?[\s\-]+sharif(?:im|i)?"
+    r"|familiya(?:si|m)?[\s,]+ismi?m?(?:[\s,]+(?:va\s+)?(?:otasining\s+ismi|sharifi?))?"
+    r"|to" + _A + r"?liq\s+ism(?:im|i)?|ismim|ismi|ism|f\.?\s*i\.?\s*sh\.?|f\.?\s*i\.?\s*o\.?|men"
+    r"|меня\s+зовут|мо[её]\s+имя|имя\s+и\s+фамилия|фамилия[\s,]+имя(?:[\s,]+(?:и\s+)?отчество)?|имя"
+    r"|ф\.?\s*и\.?\s*о\.?|фио"
+    r"|исми?[\s,\-]+(?:ва\s+)?фамилия(?:м|си)?|исми?[\s\-]+шариф(?:им|и)?"
+    r"|фамилия(?:си|м)?[\s,]+исми?м?(?:[\s,]+(?:ва\s+)?(?:отасининг\s+исми|шарифи?))?"
+    r"|тўлиқ\s+исм(?:им|и)?|исмим|исми|исм|мен|я)(?![\w'’‘ʼʻ])\s*[,:\-–—]?\s*",
     re.IGNORECASE)
-FIRST = re.compile(r"(?<![\w'’‘ʼʻ])(?:first\s+name|ism|имя)\s*[:\-–—]\s*", re.IGNORECASE)
-LAST = re.compile(r"(?<![\w'’‘ʼʻ])(?:last\s+name|surname|familiya|фамилия)\s*[:\-–—]\s*", re.IGNORECASE)
+# A first name and a surname given apart: "Ism: Dilnoza … Familiya: Karimova",
+# "Ismim Jasur, familiyam Aliyev". Never the father's name ("Otasining ismi").
+FIRST = re.compile(r"(?<![\w'’‘ʼʻ])(?<!otasining )(?<!отасининг )(?:(?:first\s+name|ismi?|исми?|имя)\s*[:\-–—]"
+                   r"|ismim|исмим)\s*", re.IGNORECASE)
+LAST = re.compile(r"(?<![\w'’‘ʼʻ])(?:(?:last\s+name|surname|familiya(?:si)?|фамилия(?:си)?)\s*[:\-–—]"
+                  r"|familiyam|фамилиям)\s*", re.IGNORECASE)
 # An Uzbek patronymic ends with o‘g‘li or qizi, written as its own word after the name.
 PATRONYMIC = re.compile(r"\s+(?:o['’‘ʼʻ`]?g['’‘ʼʻ`]?li|ugli|qizi|kizi|ўғли|угли|қизи|кизи|кызы)(?![\w'’‘ʼʻ])",
                         re.IGNORECASE)
 # What ends the run of words that is a name on a line of its own.
 AFTER = re.compile(r"\s*(?:$|[,;.:(|/]|[–—-]\s)")
+# An age or a birth year straight after the name on the first line: "Rahimov Otabek 25 yosh",
+# "Шарипов Тимур Маратович 1990 г.р.".
+NUMBER_AFTER = re.compile(r"\s+\d")
+# Dates from and to after the words: an employer's or a school's line ("UzAuto Motors, 2018-2022").
+SPAN_AFTER = re.compile(r"\s*[,;(]?\s*(?:\d{1,2}[./])?(?:19|20)\d{2}\s*[-–—]\s*(?:(?:\d{1,2}[./])?(?:19|20)?\d{2}(?!\d)"
+                        r"|hozir|present|now|current|наст|н\.\s*в)", re.IGNORECASE)
+# What makes the words before it an organisation: "Men Uzum Market kompaniyasida…", "Artel Electronics da".
+COMPANY_AFTER = re.compile(
+    r"\s*,?\s*(?:kompaniya\w*|firma\w*|korxona\w*|tashkilot\w*|mchj|xk|aj|ooo|ооо|оао|зао|ао|аж|llc|ltd|inc"
+    r"|компани\w*|фирм\w*|предприяти\w*|da|dan|ga)(?![\w'’‘ʼʻ])", re.IGNORECASE)
+# A title before a name, left out of it: "Dr. Anvar Usmonov".
+TITLE = re.compile(r"(?:dr|mr|mrs|ms|miss|prof|д-р)\.?\s+", re.IGNORECASE)
 # Capitalised words that are never a person's name in a CV brief: months,
 # places, the words of a heading, a job, an organisation or a language. Whole
 # words only, compared folded: Davlat, Ismoil and Rustam are names, and so are
@@ -205,7 +241,16 @@ NOT_NAMES = {
     'republic', 'respublika', 'республика', 'bank', 'банк', 'llc', 'mchj', 'ооо', 'ltd', 'inc', 'group', 'company',
     'center', 'centre', 'markaz', 'markazi', 'центр', 'school', 'maktab', 'школа', 'college', 'kollej', 'колледж',
     'lyceum', 'litsey', 'лицей', 'medical', 'tibbiyot', 'technical', 'texnika',
+    # The introductions themselves, so they never start a name: "Мен Каримов Акмал", "Ismim Jasur".
+    'men', 'мен', 'ismim', 'исмим', 'familiyam', 'фамилиям', 'ism', 'исм', 'ismi', 'исми',
+    # Jobs written with a capital, and the words of a brand or an organisation.
+    'bosh', 'hisobchi', 'kassir', 'кассир', 'operator', 'оператор', 'haydovchi', 'водитель', 'sotuvchi',
+    'продавец', 'oshpaz', 'повар', 'farrosh', 'qorovul', 'ofitsiant', 'официант', 'xalq', 'market', 'маркет',
+    'motors', 'systems', 'electronics', 'banki', 'банки', 'taxi', 'такси', 'group', 'холдинг', 'holding',
 }
+# Short answers that are no one's name: "ha", "ok", "rahmat".
+NOT_NAME_ANSWERS = {'ha', "yo'q", 'yoq', 'ok', 'okay', 'yes', 'no', 'да', 'нет', 'ха', "йўқ", 'rahmat', 'рахмат',
+                    'спасибо', 'thanks', 'thank', 'you', 'please', 'iltimos', 'пожалуйста', 'kerak', 'нужно'}
 # Stems long and specific enough that no first name or surname starts with them.
 NOT_NAME_STEMS = ('universit', 'университет', 'institut', 'институт', 'academ', 'akademi', 'академи',
                   'manager', 'menejer', 'менеджер', 'developer', 'dasturchi', 'разработчик', 'engineer', 'muhandis',
@@ -221,8 +266,12 @@ def _folded(text):
 
 
 def _capital(word):
-    """A word that can be part of a name: two or more Latin or Cyrillic letters, the first a capital."""
-    letters = [char for char in word if char.isalpha()]
+    """A word that can be part of a name: two or more Latin or Cyrillic letters, the first a capital.
+
+    ʻ and ʼ (Oʻtkir, Gʻaniyev, Maʼruf) are letters to Unicode but belong to
+    neither alphabet: they are marks between the letters, as ‘ and ' are.
+    """
+    letters = [char for char in word if char.isalpha() and char not in MARKS]
     return (len(letters) >= 2 and word[0].isupper()
             and all('LATIN' in unicodedata.name(char, '') or 'CYRILLIC' in unicodedata.name(char, '')
                     for char in letters))
@@ -237,7 +286,12 @@ def _excluded(word):
 
 
 def _run(text, start):
-    """The capitalised words from `start` on, one space apart, up to the first word that is not part of a name."""
+    """The capitalised words from `start` on, one space apart, up to the first word that is not part of a name.
+
+    At most one word more than a name has: a longer run is no name (_named),
+    and a description of "Men Men Men …" must not be read word by word from
+    every one of its labels.
+    """
     words = []
     position = start
     for match in NAME_WORD.finditer(text, start):
@@ -248,17 +302,29 @@ def _run(text, start):
             break
         words.append(match)
         position = match.end()
+        if len(words) > NAME_WORDS:
+            break
     return words
 
 
-def _named(text, words):
-    """The name `words` make, with a patronymic after them, or '' when they are too few or too many."""
-    if not 2 <= len(words) <= 4:
-        return ''
+def _end(text, words):
+    """Where the name `words` make ends: after its patronymic, when one follows."""
     end = words[-1].end()
     patronymic = PATRONYMIC.match(text, end)
-    if patronymic:
-        end = patronymic.end()
+    return patronymic.end() if patronymic else end
+
+
+def _named(text, words):
+    """The name `words` make, with a patronymic after them, or '' when they are too few or too many.
+
+    Words followed by what marks an organisation ("Uzum Market kompaniyasida")
+    are its name, not a person's.
+    """
+    if not 2 <= len(words) <= NAME_WORDS:
+        return ''
+    end = _end(text, words)
+    if COMPANY_AFTER.match(text, end):
+        return ''
     return ' '.join(text[words[0].start():end].split())
 
 
@@ -266,12 +332,15 @@ def name_in(text):
     """The person's full name in a CV description, or '' when it names nobody.
 
     A name is two to four capitalised Latin or Cyrillic words: after a label or
-    an introduction ("Name:", "Ism:", "F.I.Sh.", "ФИО", "Меня зовут", "Men",
-    "I am"), or at the start of a line that it fills or that goes on after a
-    comma or a dash ("Dilnoza Karimova, 28 yosh"). A first name and a surname
-    on lines of their own ("Ism: Dilnoza", "Familiya: Karimova") make one.
-    Months, places, the words of a heading, a job or an organisation, and page
-    counts are never part of a name.
+    an introduction ("Name:", "Ism:", "Ismi sharifi:", "F.I.Sh.", "ФИО",
+    "Меня зовут", "Men", "Я,", "I am"), or at the start of a line that it
+    fills or that goes on after a comma or a dash ("Dilnoza Karimova, 28 yosh",
+    "Kamolov Farrux Shavkat o‘g‘li"), on the first line also before an age or
+    a birth year ("Rahimov Otabek 25 yosh"). A title before it ("Dr.") is left
+    out. A first name and a surname given apart ("Ism: Dilnoza", "Familiya:
+    Karimova") make one. Months, places, the words of a heading, a job or an
+    organisation, a line that goes on with dates from and to, and page counts
+    are never part of a name.
     """
     text = unicodedata.normalize('NFC', str(text or ''))
     for label in sorted([*NAME_LABEL.finditer(text), *LABEL.finditer(text)], key=lambda match: match.start()):
@@ -282,13 +351,63 @@ def name_in(text):
     last = next((run for run in (_run(text, m.end()) for m in LAST.finditer(text)) if len(run) == 1), None)
     if first and last:
         return f'{first[0].group()} {last[0].group()}'
-    for line in text.split('\n'):
-        words = _run(line, len(line) - len(line.lstrip(' \t•·*-–—')))
-        if words and AFTER.match(line, words[-1].end()):
+    lines = text.split('\n')
+    opening = next((index for index, line in enumerate(lines) if line.strip()), 0)
+    for index, line in enumerate(lines):
+        start = len(line) - len(line.lstrip(' \t•·*-–—'))
+        title = TITLE.match(line, start)
+        words = _run(line, title.end() if title else start)
+        if not words:
+            continue
+        end = _end(line, words)
+        if SPAN_AFTER.match(line, end):
+            continue
+        if AFTER.match(line, end) or index == opening and NUMBER_AFTER.match(line, end):
             name = _named(line, words)
             if name:
                 return name
     return ''
+
+
+def name_like(text):
+    """Whether a short answer could be a full name the check did not see: "dilnoza karimova".
+
+    One to four words of letters (an apostrophe or a hyphen between them, a
+    dot after an initial), at most 60 characters, nothing else: no digit, no
+    address, no greeting or "yes". The bot takes such an answer to its name
+    question as the name once it has asked twice; anything else is asked again.
+    """
+    text = ' '.join(unicodedata.normalize('NFC', str(text or '')).split())
+    words = text.split(' ') if text else []
+    if not 1 <= len(words) <= NAME_WORDS or len(text) > 60:
+        return False
+    for word in words:
+        if not re.fullmatch(r"[^\W\d_](?:[^\W\d_]|['’‘ʼʻ`\-](?=[^\W\d_]))*\.?", word):
+            return False
+        plain = _folded(word).rstrip('.')
+        if plain in NOT_NAMES or plain in NOT_NAME_ANSWERS or plain in MONTHS:
+            return False
+    return True
+
+
+# Fewer words than this about a person, beside their name and with no contact
+# or year, make no CV: "Assalomu alaykum", "Мне нужно резюме", a name alone.
+FEW_WORDS = 12
+
+
+def says_little(text):
+    """Whether a CV description says next to nothing about the person but their name.
+
+    The bot asks for the work, studies and skills before it makes a CV of a
+    greeting ("Assalomu alaykum", "rezyume kerak") or of a name alone; a phone,
+    an email or a year is something to put on one.
+    """
+    text = unicodedata.normalize('NFC', str(text or ''))
+    name = name_in(text)
+    rest = text.replace(name, ' ', 1) if name else text
+    if EMAIL.search(rest) or PHONE.search(rest) or YEAR.search(rest):
+        return False
+    return len(re.findall(r"[^\W\d_]+", rest)) < FEW_WORDS
 
 
 def require_name(data, fid, payload, *, refuse=True):
@@ -319,21 +438,108 @@ def require_name(data, fid, payload, *, refuse=True):
         raise DomainError('cv_name_required', 400)
 
 
+# --- The language a CV is written in -------------------------------------------------
+# A CV's description nearly always says which languages the person speaks
+# ("Chet tili: ingliz tili B2", "Свободно говорю на английском", "Fluent in
+# Russian"), and each of those reads as a request to write in that language
+# (apps/studio/language.py explicit). For a CV a language named counts only
+# when it is about the CV: said beside the CV itself ("CV ingliz tilida
+# bo‘lsin", "резюме на английском"), or in a sentence that says nothing of
+# knowing a language ("Ingliz tilida yozing", "Translate it into Russian").
+# Read on language.normalised text: one apostrophe, blank space as one space.
+
+CV_WORDS = re.compile(r"(?<![\wЀ-ӿ'])(?:cv|rezyume\w*|резюме|résumé|resume|obyektivka\w*|объективк\w*)"
+                      r"(?![\wЀ-ӿ'])", re.IGNORECASE)
+# What says a sentence is about knowing a language: a languages heading, a level
+# or a test, speaking, working or negotiating in it, translating as a job.
+LANGUAGE_SKILL = re.compile(
+    r"(?<![\wЀ-ӿ'])(?:languages|foreign\s+language\w*|mother\s+tongue|native|fluent\w*|fluency|speak\w*|spoken"
+    r"|proficien\w*|intermediate|advanced|beginner|elementary|conversational|upper|level|ielts|toefl|toeic|cefr"
+    r"|cambridge|duolingo|topik|jlpt|hsk|delf|dalf|testdaf|goethe|[abcавс][12]|experience"
+    r"|i\s+(?:can|could|work|worked|translate|read|understand|use)|can\s+(?:work|speak|communicate|read|write"
+    r"|negotiate)|communicat\w*|negotiat\w*|translator\w*|interpreter\w*"
+    r"|chet\s+til\w*|xorijiy\s+til\w*|ona\s+til\w*|tillar\w*|erkin|a'lo|o'rta|boshlang'ich|daraja\w*|olaman"
+    r"|gaplash\w*|so'zlash\w*|bilaman|bilish\w*|biladi|bilim\w*|muloqot\w*|tajriba\w*|tarjimon\w*|muzokara\w*"
+    r"|tarjima\s+qila(?:man|di)\w*"
+    r"|чет\s+тил\w*|хорижий\s+тил\w*|она\s+тил\w*|тиллар\w*|эркин|даража\w*|гаплаш\w*|биламан|оламан|тажриба\w*"
+    r"|языки|иностранн\w*|родн\w*|свободн\w*|говор\w*|владе\w*|знани\w*|знаю|уровень|уровн\w*|разговорн\w*"
+    r"|переговор\w*|общени\w*|общать\w*|общаюсь|носител\w*|базов\w*|продвинут\w*|средн\w*|опыт\w*|могу|умею"
+    r"|работ(?:ать|аю|ал\w*)|переводчик\w*|перевож\w*)(?![\wЀ-ӿ'])", re.IGNORECASE)
+
+
+# How far either side of a naming its sentence is looked for, and where one ends.
+SENTENCE_REACH = 240
+SENTENCE_END = re.compile(r'\.(?=\s|$)')
+
+
+def names_the_cvs_language(body, match):
+    """Whether the language named at `match` in `body` is the one to write the CV in, not one the person knows.
+
+    Said beside the CV ("CV ingliz tilida bo‘lsin", "Rezyumeni rus tilida
+    tayyorlang", "My CV in English"), it is. Otherwise it is unless its
+    sentence is about knowing a language: a languages heading, a level or a
+    test, speaking, working or negotiating in it ("Chet tili: ingliz tili
+    B2", "Rus tilida ishlash tajribam bor", "Свободно говорю на английском",
+    "I can work in Russian", "Add that I am fluent in Russian").
+    """
+    # Read within a window around the naming, so a long description is read
+    # in time that grows with it, not its square.
+    start, end = match.span()
+    low, high = max(0, start - SENTENCE_REACH), min(len(body), end + SENTENCE_REACH)
+    clause = max([low, *(body.rfind(mark, low, start) + 1 for mark in '.,!?;:\n')])
+    stops = [found for found in (body.find(mark, end, high) for mark in '.,!?;\n') if found >= 0]
+    if CV_WORDS.search(body, clause, min(stops + [high])):
+        return True
+    sentence = max([low, *(body.rfind(mark, low, start) + 1 for mark in '!?;\n'),
+                    *(found.end() for found in SENTENCE_END.finditer(body, low, start))])
+    stops = [found for found in (body.find(mark, end, high) for mark in '!?;\n') if found >= 0]
+    after = SENTENCE_END.search(body, end, high)
+    if after:
+        stops.append(after.start())
+    return not LANGUAGE_SKILL.search(body, sentence, min(stops + [high]))
+
+
 # --- What the model wrote, against what the customer said ----------------------------
 
 APOSTROPHES = str.maketrans({char: "'" for char in '‘’ʻʼ`´'})
+# Spaces and dashes as Word, web pages and phones paste them: no-break, narrow
+# and thin spaces are spaces, every dash and the minus a hyphen, and the
+# invisible joiners nothing. "+998\u00a090\u00a0123…" is the number "+998 90 123…".
+UNIFIED = str.maketrans({**{char: ' ' for char in '\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006'
+                                                 '\u2007\u2008\u2009\u200a\u202f\u205f\u3000'},
+                         **{char: '-' for char in '\u2010\u2011\u2012\u2013\u2014\u2015\u2212'},
+                         **{char: None for char in '\u200b\u200c\u200d\u2060\ufeff'}})
 YEAR = re.compile(r'(?<!\d)(?:19|20)\d{2}(?!\d)')
 # "2019–21": the second year is the same century's.
 SHORT_RANGE = re.compile(r'(?<!\d)((?:19|20)\d)(\d)\s*[-–—/]\s*(\d{2})(?!\d|\.\d)')
 EMAIL = re.compile(r"[\w.+\-']+@[\w\-]+(?:\.[\w\-]+)+")
 PHONE = re.compile(r'\+?\d[\d \t().\-]{5,}\d')
 SCHEME = re.compile(r'https?://|(?<![\w.])www\.')
-SITES = {'linkedin': 'linkedin.com/', 'github': 'github.com/'}
+# What a contact may hold besides a phone number or an email, as both sides
+# read once folded: a link (domain.tld, maybe with a path) and an @handle.
+LINK = re.compile(r"(?<![\w@.'\-])(?:[^\W_][\w'\-]*\.)+[^\W\d_]{2,}(?![\w\-])(?:/[^\s,;]*)?")
+HANDLE = re.compile(r"(?<![\w.@])@(\w(?:[\w.]*\w)?)")
+# A date is not a phone number: 12.05.1996, 1996-05-12, 2015 - 2019. Four-digit years
+# only: a phone's "99-99-99" is no date.
+DATE = re.compile(r'(?<!\d)\d{1,2}[./-]\d{1,2}[./-](?:19|20)\d{2}(?!\d)|(?<!\d)(?:19|20)\d{2}[./-]\d{1,2}[./-]\d{1,2}'
+                  r'(?!\d)|(?<!\d)(?:19|20)\d{2}\s*-\s*(?:19|20)\d{2}(?!\d)')
+# Where a handle is written in a description: after @, a Telegram or Instagram
+# link, or the network's name.
+HANDLE_BEFORE = (r"(?:@|t\.me/|telegram\.me/|instagram\.com/|(?<![\w'])(?:telegram|tg|телеграм|instagram|insta"
+                 r"|инстаграм|twitter|threads)\s*[:\-]?\s*@?)")
+# A month and its year in an entry's dates ("03.2021"), and the words a
+# description gives a month in instead ("2021-yil martdan", "с марта 2021").
+MONTH_YEAR = re.compile(r'(?<![\d.])(\d{1,2})[./-]((?:19|20)\d{2})(?!\d)')
+MONTH_WORD = re.compile(
+    r"(?<![\wЀ-ӿ'])(?:january|february|march|april|may|june|july|august|september|october|november|december"
+    r"|(?:jan|feb|mar|apr|jun|jul|aug|sept?|oct|nov|dec)\.?(?![\w])|yanvar|fevral|mart|aprel|iyun|iyul|avgust"
+    r"|sentabr|sentyabr|oktabr|oktyabr|noyabr|dekabr|январ|феврал|март|апрел|ма[йяю]|июн|июл|август|сентябр"
+    r"|октябр|ноябр|декабр|spring|summer|autumn|winter|весн|осен|зим)", re.IGNORECASE)
 
 
 def _plain(text):
-    """Folded as both sides are compared: one apostrophe, lower case, no scheme or www."""
-    return SCHEME.sub('', _folded(text))
+    """Folded as both sides are compared: one apostrophe, spaces and dashes, lower case, no scheme or www."""
+    return SCHEME.sub('', _folded(unicodedata.normalize('NFKC', str(text or '')).translate(UNIFIED)))
 
 
 def _years(text):
@@ -343,47 +549,146 @@ def _years(text):
     return found
 
 
-def _word_in(token, text):
-    return re.search(r"(?<![\w'])" + re.escape(token) + r"(?![\w'])", text) is not None
-
-
 def _address_in(address, text):
     """Whether `address` (an email or a link) is in `text` whole: not the start of a longer one."""
     return re.search(r"(?<![\w.+\-'@/])" + re.escape(address) + r"(?![\w\-]|\.\w)", text) is not None
+
+
+def _handle_known(handle, trusted):
+    """Whether the @handle (without its @) is written as one in `trusted`, not merely as a word of it."""
+    handle = handle.lstrip('@').strip('/')
+    return bool(handle) and re.search(HANDLE_BEFORE + re.escape(handle) + r"(?![\w'\-]|\.\w)", trusted) is not None
+
+
+def _link_known(link, trusted):
+    """Whether a link is in `trusted`, or the account it names is: "GitHub: dilnozak" is github.com/dilnozak."""
+    link = link.rstrip('/.')
+    if not link:
+        return False
+    if _address_in(link, trusted):
+        return True
+    telegram = re.fullmatch(r"(?:t|telegram)\.me/([\w.]+)", link)
+    if telegram:
+        return _handle_known(telegram.group(1), trusted)
+    # The handle has to follow the site's name, or any word of the description would do.
+    site = re.fullmatch(r"(?:[\w\-]+\.)*?([\w\-]+)\.[^\W\d_]{2,}/(?:in/|company/)?([\w.\-]+)", link)
+    if not site or len(site.group(2)) < 3:
+        return False
+    name, tail = site.groups()
+    return re.search(r"(?<![\w'])" + re.escape(name) + r"(?:\.[^\W\d_]{2,})?(?:/in|/company)?/?\s*[:=\-]?\s*@?"
+                     + re.escape(tail) + r"(?![\w'\-]|\.\w)", trusted) is not None
+
+
+def _phones(text):
+    """Every phone number `text` may give, as digits.
+
+    A number runs on into what follows it when only a space or a full stop
+    is between ("Tel +998 90 111-22-33. 1996-yilda …"), so each run of a few
+    of its digit groups is a number it may give too.
+    """
+    found = set(re.findall(r'\d{7,}', text))
+    for match in PHONE.findall(text):
+        groups = re.findall(r'\d+', match)
+        found.add(''.join(groups))
+        for first in range(len(groups)):
+            for last in range(first + 1, min(len(groups), first + 6) + 1):
+                digits = ''.join(groups[first:last])
+                if len(digits) >= 7:
+                    found.add(digits)
+    return found
 
 
 def _phone_known(value, phones):
     digits = re.sub(r'\D', '', value)
     if len(digits) < 5:
         return False
-    # A country code added to a number given without one, or left off one given with it.
-    return any(digits == known or (len(known) >= 7 and digits.endswith(known))
-               or (len(digits) >= 7 and known.endswith(digits)) for known in phones)
-
-
-def _known(key, value, trusted, phones, years):
-    """Whether a contact detail the model wrote is one the customer gave."""
-    plain = _plain(value).strip()
-    if key == 'email':
-        return all(_address_in(email.strip('.'), trusted) for email in (EMAIL.findall(plain) or [plain]))
-    if key == 'phone' or key == 'telegram' and not re.search(r'[a-z_]', plain):
-        return _phone_known(plain, phones)
-    if key == 'telegram':
-        handle = re.sub(r'^(?:t\.me/|telegram\.me/|@)', '', plain.replace(' ', '')).strip('/')
-        return bool(handle) and _word_in(handle, trusted)
-    if key in ('website', 'linkedin', 'github'):
-        link = plain.rstrip('/.')
-        if link and _address_in(link, trusted):
+    for known in phones:
+        # A country code added to a number given without one, or left off one given with it.
+        if digits == known or (len(known) >= 7 and digits.endswith(known)) or (len(digits) >= 7 and known.endswith(digits)):
             return True
-        # "GitHub: dilnozak" written out as github.com/dilnozak is the same account: the
-        # handle has to follow the site's name, or any word of the description would do.
-        tail = link.rsplit('/', 1)[-1]
-        return bool(key in SITES and link.startswith(SITES[key]) and len(tail) >= 3 and re.search(
-            key + r"[^\n]{0,24}?(?<![\w'\-])" + re.escape(tail) + r"(?![\w'\-])", trusted))
-    if key == 'birth':
-        return _years(plain) <= years
-    # A place, or a label the renderer does not know: nothing to compare it with.
+        # A national number's trunk 0 or 8 written as its country code: 8 (916) … as +7 (916) ….
+        if value.lstrip().startswith('+') and known[:1] in '08' and len(known) >= 10 and digits.endswith(known[1:]):
+            return True
+    return False
+
+
+def _birth_known(value, trusted, years):
+    """A birth date's years given, and the day of a full date beside its year ("12.05.1996", "12-may 1996")."""
+    if not _years(value) <= years:
+        return False
+    for day, year in re.findall(r'(?<!\d)(\d{1,2})[./-]\d{1,2}[./-]((?:19|20)\d{2})(?!\d)', value):
+        near = rf"(?<!\d)0?{int(day)}(?!\d)[^\n]{{0,16}}?{year}|{year}[^\n]{{0,16}}?(?<!\d)0?{int(day)}(?!\d)"
+        if not re.search(near, trusted):
+            return False
     return True
+
+
+def _month_known(month, year, trusted):
+    """Whether `trusted` gives this month of `year`: as a number beside it, or as a month's name next to it.
+
+    Next to it is within a few words on either side, in the same sentence and
+    with no other year between: "2021-yil martdan", "с марта 2021", "March
+    2021", never the "march" of "2021-2024. Since march 2022".
+    """
+    month = int(month)
+    if re.search(rf"(?<![\d.])0?{month}[./-]{year}(?!\d)|(?<!\d){year}[./-]0?{month}(?!\d)", trusted):
+        return True
+    for found in re.finditer(rf'(?<!\d){year}(?!\d)', trusted):
+        start, end = found.span()
+        low, high = max(0, start - 14), end + 16
+        before = max([low, *(trusted.rfind(mark, low, start) + 1 for mark in '.;!?\n'),
+                      *(other.end() for other in YEAR.finditer(trusted, low, start))])
+        after = min([high, *(stop for stop in (trusted.find(mark, end, high) for mark in '.;!?\n') if stop >= 0),
+                     *(other.start() for other in YEAR.finditer(trusted, end, high))])
+        if MONTH_WORD.search(trusted, before, after):
+            return True
+    return False
+
+
+def _checked(key, value, trusted, phones, years):
+    """A contact detail the model wrote, as far as the customer gave it: itself, the numbers of it they gave, or ''.
+
+    Read by what it holds, whatever its label says: an email, a phone number,
+    a link or an @handle is checked as one under any label ('Telefon raqami',
+    'Электронная почта', 'Instagram'), and each number of several is checked
+    on its own. Only a value with none of those (a city, a nationality) is
+    checked by its label, or not at all.
+    """
+    plain = _plain(value).strip()
+    emails = EMAIL.findall(plain)
+    rest = EMAIL.sub(' ', plain)
+    links = LINK.findall(rest)
+    rest = LINK.sub(' ', rest)
+    handles = HANDLE.findall(rest)
+    rest = HANDLE.sub(' ', rest)
+    numbers = [number for number in PHONE.findall(DATE.sub(' ', rest)) if len(re.sub(r'\D', '', number)) >= 7]
+    if emails or links or handles or numbers:
+        if not (all(_address_in(email.strip('.'), trusted) for email in emails)
+                and all(_link_known(link, trusted) for link in links)
+                and all(_handle_known(handle, trusted) for handle in handles)
+                and (key != 'birth' or _birth_known(plain, trusted, years))):
+            return ''
+        given = [number for number in numbers if _phone_known(number, phones)]
+        if len(given) == len(numbers):
+            return value
+        # "+998 71 999-99-99, +998 90 111-22-33" when only the second was given: the second.
+        alone = not emails and not links and not handles and not re.sub(r'[\s,;/]|\b(?:and|or|va|yoki|и|или)\b', '',
+                                                                        PHONE.sub('', DATE.sub(' ', rest)))
+        return ', '.join(number.strip() for number in given) if given and alone else ''
+    if key == 'email':
+        return value if plain and _address_in(plain.strip('.'), trusted) else ''
+    if key == 'phone' or key == 'telegram' and not re.search(r'[a-z_]', plain):
+        return value if _phone_known(plain, phones) else ''
+    if key == 'telegram':
+        return value if _handle_known(plain.replace(' ', ''), trusted) else ''
+    if key in ('website', 'linkedin', 'github'):
+        bare = plain.replace(' ', '').strip('/')
+        link = bare if '.' in bare else f"{key}.com/{'in/' if key == 'linkedin' else ''}{bare}"
+        return value if key != 'website' and _link_known(link, trusted) else ''
+    if key == 'birth':
+        return value if _birth_known(plain, trusted, years) else ''
+    # A place, or a label the renderer does not know holding none of the above: nothing to compare it with.
+    return value
 
 
 def trusted_text(data):
@@ -405,40 +710,58 @@ def trusted_text(data):
 def fact_check(content, trusted):
     """(`content` without contact details or dates the customer never gave, what was taken out).
 
-    A contact whose email, phone number (digits only), link or @handle is not
-    in `trusted` is dropped; a date whose four-digit years are not all in it is
-    left empty. Both sides are compared folded: one apostrophe, lower case, no
-    scheme, www or trailing slash, phone numbers as digits. What was taken out
-    is a list of codes ('contact:phone', 'dates:experience'), never the text.
+    A contact holding an email, a phone number, a link or an @handle that is
+    not in `trusted` is dropped, whatever its label (`_checked`); of several
+    numbers only those given stay. An entry's date whose four-digit years are
+    not all in `trusted` is left empty, and a month it gives that `trusted`
+    does not keeps only its year. Both sides are compared folded: one
+    apostrophe, every space and dash alike, lower case, no scheme, www or
+    trailing slash, phone numbers as digits. What was taken out is a list of
+    codes ('contact:phone', 'dates:experience'), never the text.
     """
     import copy
     from .render import _contact_key
     plain = _plain(trusted)
-    phones = {re.sub(r'\D', '', match) for match in PHONE.findall(plain)} | set(re.findall(r'\d{7,}', plain))
+    phones = _phones(plain)
     years = _years(plain)
     result = copy.deepcopy(content)
     dropped = []
+
+    def taken(code):
+        if code not in dropped:
+            dropped.append(code)
     for section in result.get('sections') or []:
         items = section.get('items') or []
         if section.get('id') == 'profile':
             kept = []
             for item in items:
                 key = _contact_key(item.get('label'))
-                value = item.get('text') or item.get('value') or ''
-                if value and not _known(key, value, plain, phones, years):
-                    dropped.append(f'contact:{key if key in CONTACT_KEYS else "other"}')
+                field = 'text' if item.get('text') else 'value'
+                value = item.get(field) or ''
+                checked = _checked(key, value, plain, phones, years) if value else value
+                code = f'contact:{key if key in CONTACT_KEYS else "other"}'
+                if value and not checked:
+                    dropped.append(code)
                     continue
+                if checked != value:
+                    item[field] = checked
+                    dropped.append(code)
                 kept.append(item)
             if len(kept) != len(items):
                 section['items'] = kept
             continue
         for item in items:
-            given = _years(item.get('value') or '')
+            value = item.get('value') or ''
+            given = _years(value)
             if given and not given <= years:
                 item['value'] = ''
-                code = f'dates:{section.get("id")}'
-                if code not in dropped:
-                    dropped.append(code)
+                taken(f'dates:{section.get("id")}')
+                continue
+            months = MONTH_YEAR.sub(lambda m: m.group(0) if _month_known(m.group(1), m.group(2), plain) else m.group(2),
+                                    value)
+            if months != value:
+                item['value'] = months
+                taken(f'dates:{section.get("id")}')
     return result, dropped
 
 

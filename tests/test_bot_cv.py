@@ -159,7 +159,7 @@ def test_a_description_without_a_name_asks_only_for_the_name_and_keeps_every_wor
     assert UX['en']['cv_name_again'] in words and '📝 Noted: “Data analyst in Tashkent.' in words
     assert UX['en']['ai_topic_question'] not in words and UX['en']['ai_topic_again'] not in words
     assert actions(customer) == [['ai_examples'], ['home']], 'no other service is offered'
-    assert state(customer) == ('ai_input', {'feature_id': CV, 'brief': [long]})
+    assert state(customer) == ('ai_input', {'feature_id': CV, 'brief': [long], 'ask': 'name'})
     assert not GenerationDraft.objects.filter(account=customer).exists()
     assert not Quote.objects.filter(account=customer).exists()
 
@@ -191,7 +191,8 @@ def test_a_photo_sent_in_the_chat_becomes_the_cvs_photo(customer, model):
     assert '📷 Photo: attached' in words, words
     options = latest(customer, CV)['options']
     assert options['portrait_asset_id'] == str(asset.id) and options['portrait_sha256'] == asset.sha256
-    assert str(asset.id) in Quote.objects.filter(account=customer, feature_id=CV).latest('created_at').input_ids
+    # Pinned by the draft the quote pins, not as an input file whose expiry would fail the quote.
+    assert str(asset.id) not in Quote.objects.filter(account=customer, feature_id=CV).latest('created_at').input_ids
     # The menu offers no images-to-PDF task to continue.
     assert UX['en']['continue_task'] not in screen(dispatch_local(customer, text='/start'))[1]
 
@@ -202,7 +203,8 @@ def test_a_photo_sent_while_the_name_is_asked_for_waits_with_what_was_written(cu
     words, _ = screen(dispatch_local(customer, uploaded=image()))
     assert UX['en']['cv_photo_attached'] in words and UX['en']['cv_name_question'] in words, words
     asset = FileAsset.objects.get(account=customer, name='me.jpg')
-    assert state(customer) == ('ai_input', {'feature_id': CV, 'brief': [NAMELESS], 'portrait_asset_id': str(asset.id)})
+    assert state(customer) == ('ai_input', {'feature_id': CV, 'brief': [NAMELESS], 'portrait_asset_id': str(asset.id),
+                                            'ask': 'name'})
     words, _ = screen(dispatch_local(customer, text='Dilnoza Karimova'))
     assert '📷 Photo: attached' in words and latest(customer, CV)['options']['portrait_asset_id'] == str(asset.id)
 
@@ -228,7 +230,8 @@ def test_a_photo_sent_on_the_review_goes_on_that_cv(customer, model):
     # The new review's Generate pays for the CV with its photo.
     generate = result['messages'][-1]['buttons'][0][0]
     quote = Quote.objects.get(pk=BotCallback.objects.get(pk=generate['callback_data']).payload['quote_id'])
-    assert str(asset.id) in quote.input_ids
+    assert quote.parameters['generation_draft_id'] == str(draft.id)
+    assert quote.parameters['draft_version'] == cv(customer).version
     assert not file_task_waiting(customer)
     assert state(customer) == ('cv_review', {'draft_id': str(draft.id)})
     # Once the chat has moved on, a photo is a file task again.
@@ -371,3 +374,230 @@ def test_the_cv_words_say_the_same_in_every_language():
         assert '<' not in en + uz + ru and '&' not in en + uz + ru, f'{key} is shown as HTML'
     for row in PROMPT_EXAMPLES[CV]:
         assert not re.search('[а-яё]', row[1], re.IGNORECASE) and "'" not in row[1]
+
+
+# --- What a CV is not made of ----------------------------------------------------------------------
+
+@pytest.mark.parametrize('locale', LOCALES)
+def test_a_greeting_asks_for_the_details_not_the_name(customer, model, locale):
+    customer.locale = locale
+    customer.save(update_fields=['locale'])
+    BotConversation.objects.filter(pk=customer.telegram_user_id).update(locale=locale)
+    dispatch_local(customer, text='/cv')
+    words, _ = screen(dispatch_local(customer, text={'en': 'Hello', 'uz': 'Assalomu alaykum',
+                                                     'ru': 'Здравствуйте'}[locale]))
+    assert UX[locale]['cv_details_question'] in words and UX[locale]['cv_name_question'] not in words, words
+    assert not GenerationDraft.objects.filter(account=customer).exists()
+
+
+def test_a_name_alone_is_asked_for_the_rest_and_then_makes_the_cv(customer, model):
+    ask(customer)
+    words, _ = screen(dispatch_local(customer, text='Assalomu alaykum'))
+    assert UX['en']['cv_details_question'] in words, words
+    # A name says who, not what to put on the CV: the details are asked for again.
+    words, _ = screen(dispatch_local(customer, text='Dilnoza Karimova'))
+    assert UX['en']['cv_details_question'] in words and '📄' not in words, words
+    assert state(customer) == ('ai_input', {'feature_id': CV, 'brief': ['Assalomu alaykum', 'Dilnoza Karimova'],
+                                            'ask': 'details'})
+    words, _ = screen(dispatch_local(customer, text=NAMELESS))
+    assert '📄 Dilnoza Karimova' in words and 'Pages: 1–2' in words, words
+    assert latest(customer, CV)['prompt'] == f'{NAMELESS}\nAssalomu alaykum\nDilnoza Karimova'
+
+
+def test_a_first_message_that_is_only_a_name_asks_for_the_details(customer, model):
+    ask(customer)
+    words, _ = screen(dispatch_local(customer, text='Dilnoza Karimova'))
+    assert UX['en']['cv_details_question'] in words and not GenerationDraft.objects.filter(account=customer).exists()
+    # Sending the same again, however often, never makes a CV of a name alone.
+    for _ in range(3):
+        words, _ = screen(dispatch_local(customer, text='dilnoza karimova'))
+        assert UX['en']['cv_details_question'] in words, words
+    assert not GenerationDraft.objects.filter(account=customer).exists()
+
+
+def test_only_an_answer_that_looks_like_a_name_is_taken_as_one(customer, model):
+    ask(customer)
+    dispatch_local(customer, text=NAMELESS)
+    dispatch_local(customer, text='I also have a driving licence, category B.')
+    # Answered twice, but with no name: asked again, never made with "And I can work weekends." as its title.
+    words, _ = screen(dispatch_local(customer, text='And I can work weekends.'))
+    assert UX['en']['cv_name_question'] in words and not GenerationDraft.objects.filter(account=customer).exists()
+    words, _ = screen(dispatch_local(customer, text='Dilnoza Karimova'))
+    assert '📄 Dilnoza Karimova' in words, words
+
+
+def test_the_nameless_description_sent_again_is_asked_for_the_name_again(customer, model):
+    ask(customer)
+    dispatch_local(customer, text=NAMELESS)
+    words, _ = screen(dispatch_local(customer, text=NAMELESS))
+    assert UX['en']['cv_name_question'] in words and UX['en']['cv_name_again'] in words, words
+    assert not GenerationDraft.objects.filter(account=customer).exists()
+
+
+def test_the_examples_lead_back_to_the_open_question_with_what_was_written(customer, model):
+    ask(customer)
+    question = dispatch_local(customer, text=NAMELESS)
+    examples = tap(customer, question, UX['en']['ai_examples'])
+    words, _ = screen(tap(customer, examples, SERVICE))
+    assert UX['en']['cv_name_question'] in words and '📝 Noted: “Data analyst in Tashkent.' in words, words
+    assert state(customer)[1]['brief'] == [NAMELESS]
+    dispatch_local(customer, text='Dilnoza Karimova')
+    assert latest(customer, CV)['prompt'] == f'Dilnoza Karimova\n{NAMELESS}'
+
+
+# --- Sent together ----------------------------------------------------------------------------------
+
+def feed_together(account, items, gap=0.01):
+    """Messages fed to one dispatcher side by side, `gap` seconds apart, as polling (handle_as_tasks) feeds them.
+
+    Each item is text, or (upload, caption, album id) for a file.
+    """
+    import asyncio
+    import secrets
+    from datetime import datetime, timezone as tz
+    from aiogram import Bot
+    from aiogram.types import Chat, Document, Message, Update, User
+    from telegram.local import LocalTelegramSession
+    session = LocalTelegramSession(account)
+    user = User(id=account.telegram_user_id, is_bot=False, first_name='Sample', language_code=account.locale)
+    updates = []
+    base = secrets.randbelow(1_000_000) + 1000
+    for index, item in enumerate(items):
+        data = {'message_id': base + index, 'date': datetime.now(tz.utc),
+                'chat': Chat(id=account.telegram_user_id, type='private'), 'from_user': user}
+        if isinstance(item, str):
+            data['text'] = item
+        else:
+            upload, caption, group = item
+            file_id = secrets.token_hex(12)
+            session.files[file_id] = upload.read()
+            data['document'] = Document(file_id=file_id, file_unique_id=file_id, file_name=upload.name,
+                                        file_size=len(session.files[file_id]))
+            data.update({key: value for key, value in (('caption', caption), ('media_group_id', group)) if value})
+        LocalBotMessage.objects.create(account=account, direction='inbound', text='sample',
+                                       telegram_message_id=base + index)
+        updates.append(Update(update_id=base + index, message=Message(**data)))
+
+    async def run():
+        from telegram.bot import build_dispatcher
+        bot = Bot('123456:LOCAL_SIMULATOR_NO_NETWORK', session=session)
+        dispatcher = build_dispatcher()
+
+        async def one(update, delay):
+            await asyncio.sleep(delay)
+            await dispatcher.feed_update(bot, update)
+        try:
+            await asyncio.gather(*(one(update, gap * number) for number, update in enumerate(updates)))
+        finally:
+            await bot.session.close()
+    async_to_sync(run)()
+
+
+@pytest.fixture
+def slow_telegram(monkeypatch):
+    """Telegram over a network: each call and each file download takes a while."""
+    import asyncio
+    from telegram.local import LocalTelegramSession
+    stream, request = LocalTelegramSession.stream_content, LocalTelegramSession.make_request
+
+    def set_latency(api, download):
+        async def slow_stream(self, url, **kwargs):
+            await asyncio.sleep(download)
+            async for chunk in stream(self, url, **kwargs):
+                yield chunk
+
+        async def slow_request(self, bot, method, timeout=None):
+            await asyncio.sleep(api)
+            return await request(self, bot, method, timeout)
+        monkeypatch.setattr(LocalTelegramSession, 'stream_content', slow_stream)
+        monkeypatch.setattr(LocalTelegramSession, 'make_request', slow_request)
+    return set_latency
+
+
+@pytest.mark.parametrize('api,download,gap', [(0, 0, 0.01), (0.15, 0.3, 0.01), (0.15, 0.3, 0.3), (0.25, 0.1, 0.05)])
+@pytest.mark.parametrize('photo_first', [True, False])
+def test_a_photo_and_a_description_sent_together_make_one_cv_with_the_photo(customer, model, slow_telegram,
+                                                                              photo_first, api, download, gap,
+                                                                              monkeypatch):
+    monkeypatch.setattr('telegram.bot.ALBUM_SETTLE', 0)
+    ask(customer)
+    slow_telegram(api, download)
+    items = [(image(), '', ''), BRIEF]
+    feed_together(customer, items if photo_first else items[::-1], gap)
+    drafts = list(GenerationDraft.objects.filter(account=customer))
+    asset = FileAsset.objects.get(account=customer, name='me.jpg')
+    assert len(drafts) == 1 and latest(customer, CV)['options'].get('portrait_asset_id') == str(asset.id)
+    assert state(customer) == ('cv_review', {'draft_id': str(drafts[0].id)})
+    assert not file_task_waiting(customer)
+    newest = LocalBotMessage.objects.filter(account=customer, direction='outbound').order_by('-created_at').first()
+    assert '📄 Dilnoza Karimova' in newest.text and '📷 Photo: attached' in newest.text, newest.text
+
+
+def test_an_albums_caption_is_the_description_when_its_photos_arrive_together(customer, model, monkeypatch):
+    monkeypatch.setattr('telegram.bot.ALBUM_SETTLE', 0.2)
+    ask(customer)
+    feed_together(customer, [(image('a.jpg'), BRIEF, 'album-1'), (image('b.jpg'), '', 'album-1')], 0.02)
+    data = latest(customer, CV)
+    assert data['prompt'] == BRIEF and data['options']['portrait_asset_id'] == str(
+        FileAsset.objects.get(account=customer, name='b.jpg').id)
+
+
+def test_a_description_telegram_split_in_two_is_one_cv(customer, model):
+    more = 'Projects: a sales dashboard for 40 stores (2023), a churn model for Sample Bank (2021).'
+    describe(customer, BRIEF, service=SERVICE)
+    draft = cv(customer)
+    words, shown = screen(dispatch_local(customer, text=more))
+    assert words.startswith(UX['en']['cv_description_added']) and '📄 Dilnoza Karimova' in words, words
+    assert shown[0] == '✨ Generate' and cv(customer).id == draft.id
+    assert latest(customer, CV)['prompt'] == f'{BRIEF}\n{more}'
+    assert state(customer) == ('cv_review', {'draft_id': str(draft.id)})
+    # Much later, a message on the review is not taken into the CV, and the customer is told how to change it.
+    from datetime import timedelta
+    from django.utils import timezone
+    BotConversation.objects.filter(pk=customer.telegram_user_id).update(updated_at=timezone.now() - timedelta(minutes=5))
+    words, _ = screen(dispatch_local(customer, text='Is it ready?'))
+    assert words.startswith(UX['en']['cv_text_not_added']) and '📄 Dilnoza Karimova' in words, words
+    assert latest(customer, CV)['prompt'] == f'{BRIEF}\n{more}'
+
+
+def test_the_two_halves_of_a_description_sent_together_are_one_cv(customer, model, slow_telegram):
+    more = 'Projects: a sales dashboard for 40 stores (2023).'
+    ask(customer)
+    slow_telegram(0.15, 0)
+    feed_together(customer, [BRIEF, more], 0.01)
+    assert GenerationDraft.objects.filter(account=customer).count() == 1
+    assert latest(customer, CV)['prompt'] == f'{BRIEF}\n{more}'
+
+
+def test_a_caption_sent_with_a_photo_on_the_review_is_said_not_to_be_added(customer, model):
+    describe(customer, BRIEF, service=SERVICE)
+    words, _ = screen(dispatch_local(customer, uploaded=image(), caption='Also add: I speak Korean (TOPIK 3).'))
+    assert words.startswith(UX['en']['cv_caption_not_added']) and '📷 Photo: attached' in words, words
+    assert 'Korean' not in latest(customer, CV)['prompt']
+
+
+def test_a_photo_on_a_template_without_a_place_for_it_is_said_on_the_review(customer, model):
+    from tests.test_platform import login_client
+    ask(customer)
+    dispatch_local(customer, uploaded=image())
+    dispatch_local(customer, text=BRIEF)
+    draft = cv(customer)
+    assert not cv_templates_photo('indigo_band')
+    response = login_client(customer).post(f'/api/v1/generation/drafts/{draft.id}/setup',
+                                           data=json.dumps({'cv_template': 'indigo_band'}), content_type='application/json')
+    assert response.status_code == 200, response.content
+    shown = BotConversation.objects.get(telegram_user_id=customer.telegram_user_id).review
+    message = LocalBotMessage.objects.get(account=customer, direction='outbound', telegram_message_id=shown['message_id'])
+    assert UX['en']['cv_photo_no_slot_line'] in message.text and UX['en']['cv_photo_line'] + '\n' not in message.text
+
+
+def cv_templates_photo(key):
+    from apps.studio.cv.templates import TEMPLATES
+    return TEMPLATES[key]['photo']
+
+
+def test_a_photo_sent_for_a_change_to_a_finished_cv_keeps_the_change_question(customer, delivered):
+    tap(customer, delivered, 'Make changes')
+    words, _ = screen(dispatch_local(customer, uploaded=image()))
+    assert words.startswith(UX['en']['cv_revise_photo']) and UX['en']['cv_revise_examples'] in words, words
+    assert state(customer)[0] == 'ai_revise' and not file_task_waiting(customer)

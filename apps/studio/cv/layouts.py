@@ -215,10 +215,24 @@ def prose(text):
     return escape(' '.join(words))
 
 
-def dates(text):
-    """Escaped dates that, when they must wrap, wrap only after the dash: "01.2023 –" over "наст. время"."""
-    text = str(text or '').replace(' ', '\u00A0')
-    return escape(re.sub('\u00A0([–—-])\u00A0', '\u00A0\\1 ', text))
+def dates(text, font=None, size=None, width=None):
+    """Escaped dates that, when they must wrap, wrap only after the dash: "01.2023 –" over "наст. время".
+
+    Each side of the dash stays on one line while it fits `width` in `font`
+    at `size`. A side wider than that ("по настоящее время" in a timeline's
+    gutter, "2019-yildan hozirgacha") wraps between its words: kept whole, it
+    would be one word too long for the column, and cut in the middle.
+    """
+    parts = re.split(r'\s+([–—-])\s+', str(text or ''))
+
+    def bind(side):
+        if width and font and stringWidth(side, font, size) > width:
+            return side
+        return side.replace(' ', '\u00A0')
+    out = bind(parts[0])
+    for index in range(1, len(parts), 2):
+        out += '\u00A0' + parts[index] + ' ' + bind(parts[index + 1])
+    return escape(out)
 
 
 def unbroken(text):
@@ -264,7 +278,7 @@ class Heading(Flowable):
     def __init__(self, text, style, *, kind='rule', rule=None, rule_width=0.6, tracking=0.7, space_before=0,
                  gap=3.0, after=4.0):
         super().__init__()
-        self.text, self.style, self.kind = str(text or '').upper(), style, kind
+        self.text, self.style, self.base, self.kind = str(text or '').upper(), style, style, kind
         self.rule, self.rule_width, self.tracking, self.gap = rule, rule_width, tracking, gap
         self.spaceBefore, self.spaceAfter = space_before, after
         self.keepWithNext = True
@@ -277,10 +291,19 @@ class Heading(Flowable):
 
     def wrap(self, width, height):
         self.width = width
+        room = width - (56 if self.kind == 'centered' else 0)
+        # A word wider than the heading's room (the model's own "ПРОФЕССИОНАЛЬНОЕ
+        # РАЗВИТИЕ" in an executive margin) sets the heading smaller, rather than
+        # breaking the word in two.
+        base, self.style = self.base, self.base
+        widest = max((stringWidth(word, base.fontName, base.fontSize) + self.tracking * max(0, len(word) - 1)
+                      for word in self.text.split()), default=0)
+        if widest > room:
+            size = round(max(7.5, base.fontSize * room / widest * 0.98), 2)
+            self.style = ParagraphStyle(base.name + '_fit', parent=base, fontSize=size, leading=round(size * 1.25, 2))
         size = self.style.fontSize
         self.text_width = (stringWidth(self.text, self.style.fontName, size)
                            + self.tracking * max(0, len(self.text) - 1))
-        room = width - (56 if self.kind == 'centered' else 0)
         self.para = None
         if self.text_width > room:
             self.para = Paragraph(esc(self.text), self.style)
@@ -331,7 +354,8 @@ class TitleRow(Flowable):
         self.date_para = None
         if self.date_width > width * 0.42:
             self.date_width = width * 0.42
-            self.date_para = Paragraph(dates(self.date), self.date_style)
+            self.date_para = Paragraph(dates(self.date, self.date_style.fontName, size, self.date_width),
+                                       self.date_style)
             self.date_para.wrap(self.date_width, height)
         room = width - (self.date_width + 10 if self.date else 0)
         self.title_height = self.title.wrap(room, height)[1] if self.title else self.style.leading
@@ -396,7 +420,8 @@ class TimelineItem(Flowable):
         self.width = width
         self.stack = Stack(self.parts)
         _, text_height = self.stack.wrap(width - content, height)
-        self.label_para = Paragraph(dates(self.label), self.label_style) if self.label and not self.continued else None
+        self.label_para = (Paragraph(self.dated(gutter), self.label_style)
+                           if self.label and not self.continued else None)
         label_height = self.label_para.wrap(gutter, height)[1] if self.label_para else 0
         self.height = max(text_height, label_height) + self.gap
         return width, self.height
@@ -409,19 +434,26 @@ class TimelineItem(Flowable):
         gutter, line_x, content = self.geometry
         if self.label and not self.continued:
             # The dates stay with the first lines, so they must fit beside them.
-            if Paragraph(dates(self.label), self.label_style).wrap(gutter, 10 ** 6)[1] > height:
+            if Paragraph(self.dated(gutter), self.label_style).wrap(gutter, 10 ** 6)[1] > height:
                 return []
         room, used, head = height, 0, []
-        for index, part in enumerate(self.parts):
+        tail = list(self.parts)
+        while tail:
+            part = tail[0]
             _, h = part.wrap(width - content, 10 ** 6)
-            before = part.getSpaceBefore() if index else 0
+            before = part.getSpaceBefore() if head else 0
             if used + before + h > room:
+                # One part taller than the room left (a profile written as one
+                # long paragraph) goes on as far as it fits, as it would in a column.
+                pieces = part.split(width - content, room - used - before) if room - used - before > 0 else []
+                if len(pieces) == 2:
+                    head.append(pieces[0])
+                    tail[0] = pieces[1]
                 break
             used += before + h
-            head.append(part)
+            head.append(tail.pop(0))
         if not head:
             return []
-        tail = self.parts[len(head):]
         first = TimelineItem(self.label, head, geometry=self.geometry, colours=self.colours,
                              label_style=self.label_style, title_size=self.title_size, dot=self.dot,
                              line=self.line, first=self.first, last=False, gap=0, space_before=self.spaceBefore,
@@ -432,6 +464,9 @@ class TimelineItem(Flowable):
                             label_style=self.label_style, title_size=self.title_size, dot=False,
                             line=self.line, first=False, last=self.last, gap=self.gap, continued=True)
         return [first, rest]
+
+    def dated(self, gutter):
+        return dates(self.label, self.label_style.fontName, self.label_style.fontSize, gutter)
 
     def draw(self):
         canvas = self.canv
@@ -975,11 +1010,13 @@ class Sheet:
                                                     space_before=(scale.item + 1.5) if number else 0))
             else:
                 dated = kind in ('experience', 'education')
-                count = len(section['items'])
-                for number, item in enumerate(section['items']):
-                    parts = entry_parts(kind, item, st, date=False)
-                    if not parts:
-                        continue
+                # An entry with only its dates still prints them in the gutter,
+                # and the line ends at the last entry that is drawn.
+                kept = [(item, entry_parts(kind, item, st, date=False)) for item in section['items']]
+                kept = [(item, parts or [Spacer(1, st['title'].leading)]) for item, parts in kept
+                        if parts or item.get('value')]
+                count = len(kept)
+                for number, (item, parts) in enumerate(kept):
                     entries.append(TimelineItem(item.get('value', ''), parts, geometry=geometry, colours=colours,
                                                 label_style=self.st['date'], title_size=scale.title, dot=dated,
                                                 line=dated, first=number == 0, last=number == count - 1,
@@ -1006,9 +1043,17 @@ class Sheet:
         photo_d = 36 * MM
         side_top = H - (14 * MM + photo_d + 8 * MM if self.photo else top)
         room = side_top - bottom
-        blocks, self.moved = fit_side(side_blocks(self.cv, self.st, self.colours, inner_w), inner_w, room)
+        blocks = side_blocks(self.cv, self.st, self.colours, inner_w)
+        # Contacts too many for the strip on their own go under the name instead,
+        # as a contact line: drawn on the canvas, the strip cannot run on.
+        inline = bool(blocks) and blocks[0][0] == 'contacts' and measure(blocks[0][1], inner_w) > room
+        if inline:
+            blocks = side_blocks(self.cv, self.st, self.colours, inner_w, contacts=False)
+        blocks, self.moved = fit_side(blocks, inner_w, room)
+        if inline:
+            self.moved.insert(0, 'contacts')
         main_ids = [key for key in ORDER if key not in SIDE or key in self.moved]
-        header = Header(self.header_paragraphs(main_x1 - main_x0, contacts=False), rule=None,
+        header = Header(self.header_paragraphs(main_x1 - main_x0, contacts=inline), rule=None,
                         after=self.scale.section + 2)
         story = [header, *self.with_breaks(self.column_story(main_ids))]
         frame = (main_x0, bottom, main_x1 - main_x0, H - top - bottom)
