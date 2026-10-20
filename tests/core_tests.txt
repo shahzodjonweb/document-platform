@@ -280,6 +280,9 @@ tests/test_bot_review_controls.py::test_the_setup_screen_beats_the_description_a
 tests/test_bot_cv.py::test_one_message_becomes_a_priced_review_with_the_template_and_the_photo
 tests/test_bot_cv.py::test_a_photo_sent_in_the_chat_becomes_the_cvs_photo
 
+# AI CV from the chat, made from an old CV: the PDF sent on its screen to a review that names the file, then the CV
+tests/test_bot_cv_sources.py::test_an_old_cv_pdf_becomes_a_review_and_then_the_cv
+
 # Anti-bot human verification gate
 tests/test_bot_verification.py::test_real_bot_defers_account_and_download_until_verified_then_resumes_first_file
 tests/test_bot_verification.py::test_direct_commands_uploads_and_old_callbacks_cannot_bypass_verification
