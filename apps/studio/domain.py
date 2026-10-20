@@ -315,6 +315,7 @@ def _prepare_draft(account,data,revision_base=None):
     # from, and the way it was made, whatever the request sends: the files
     # may be gone by then.
     cv=fid==CV
+    unread=[]
     if cv:
         from .cv import sources as cv_sources
         if original is not None:
@@ -324,7 +325,7 @@ def _prepare_draft(account,data,revision_base=None):
         else:
             source=cv_sources.mode(options)
             if source!=cv_sources.TEXT and 'prompt' not in data:prompt=''
-            ids,excerpts=cv_sources.prepare(account,prompt,ids,options,revision_base)
+            ids,excerpts,unread=cv_sources.prepare(account,prompt,ids,options,revision_base)
             if len(text)+len(prompt)+sum(len(s['text']) for s in excerpts)>limits(account)['source_chars']:raise DomainError('generation_limit')
     elif 'cv_source' in options:raise DomainError('invalid_parameters')
     # Length and question count are read out of the description rather than
@@ -677,6 +678,8 @@ def _prepare_draft(account,data,revision_base=None):
     if selection:
         ensure_selected_preservation({'content':draft_content,'revision':{'selected_section_ids':selection}},content)
     payload={'title':title,'prompt':prompt,'source_text':text,'source_ids':ids,'excerpts':excerpts,'output_locale':locale,'locale_source':resolved.source,'output_format':fmt,'options':options,'content':content}
+    # What of a CV's files could not be read, said on its review: never left out unsaid (cv/sources.py).
+    if unread:payload['cv_unread']=unread
     if original is not None:
         payload['revision']={'request':prompt,'source_draft_id':str(revising),
                              'original_prompt':original.get('revision',{}).get('original_prompt',original.get('prompt','')),

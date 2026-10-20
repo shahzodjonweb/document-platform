@@ -47,7 +47,7 @@ def main():
             raise ProcessorError('invalid_parameters')
         request = json.loads(payload)
         if request.get('operation') == 'inspect':
-            result = inspect_file(request['path'], request.get('secret'))
+            result = inspect_file(request['path'], request.get('secret'), allow_links=request.get('allow_links') is True)
         elif request.get('operation') == 'execute':
             result = execute(request['feature_id'], request['input_paths'],
                 request.get('parameters', {}), request['output_dir'], secret=request.get('secret'))

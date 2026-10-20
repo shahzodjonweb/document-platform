@@ -198,7 +198,9 @@ def channels_check(request):
 def uploads(request):
     throttle(request,'uploads',30)
     if 'file' not in request.FILES: raise DomainError('file_required')
-    return JsonResponse(asset_data(upload_file(request.account,request.FILES['file'],password=request.POST.get('password'))),status=201)
+    # `purpose` 'cv_source' is a file a CV is made from: it may carry links (services.upload_file).
+    return JsonResponse(asset_data(upload_file(request.account,request.FILES['file'],password=request.POST.get('password'),
+                                               purpose=request.POST.get('purpose',''))),status=201)
 
 @api(('GET','DELETE'))
 def file_detail(request,asset_id):

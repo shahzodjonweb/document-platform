@@ -219,7 +219,7 @@ MESSAGES = {
     'cv_photo_hint': ('📷 You can also send a photo, before or after the text: it goes on the CV if the template has a place for it.', '📷 Matndan oldin yoki keyin rasmingizni ham yuborishingiz mumkin: shablonda rasm uchun joy bo‘lsa, u CV’ga qo‘yiladi.', '📷 До или после текста можно прислать и фото: оно появится в резюме, если в шаблоне есть для него место.'),
     'cv_photo_attached': ('📷 Photo attached. To replace it, send another one.', '📷 Rasm qabul qilindi. Almashtirish uchun boshqasini yuboring.', '📷 Фото получено. Чтобы заменить его, пришлите другое.'),
     # A PDF or Word file sent while the CV is being written about yourself: the way to the old-CV screen.
-    'cv_photo_only': ('📎 PDF and Word files aren’t read here: this CV is made from what you write. To make it from your old CV, tap ◀️ Back and choose 📄 From my old CV.', '📎 Bu yerda PDF va Word fayllar o‘qilmaydi: bu CV siz yozgan matndan tayyorlanadi. Uni eski CV’ingizdan tayyorlash uchun ◀️ Orqaga tugmasini bosing va «📄 Eski CV’imdan»ni tanlang.', '📎 PDF и Word здесь не читаются: это резюме составляется по вашему сообщению. Чтобы составить его из старого резюме, нажмите ◀️ Назад и выберите «📄 Из старого резюме».'),
+    'cv_photo_only': ('📎 PDF and Word files aren’t read here: this CV is made from what you write. To make it from your old CV, tap 📄 From my old CV below and send the file again.', '📎 Bu yerda PDF va Word fayllar o‘qilmaydi: bu CV siz yozgan matndan tayyorlanadi. Uni eski CV’ingizdan tayyorlash uchun pastdagi «📄 Eski CV’imdan» tugmasini bosing va faylni qayta yuboring.', '📎 PDF и Word здесь не читаются: это резюме составляется по вашему сообщению. Чтобы составить его из старого резюме, нажмите «📄 Из старого резюме» ниже и пришлите файл ещё раз.'),
     # A photo too large for a CV (apps/studio/cv/portrait.py: 6 megapixels):
     # said when it arrives, so the description sent next is not refused for it.
     'cv_photo_rejected': ('📷 This image can’t go on a CV: it has to be a JPG or PNG of up to 6 megapixels. Send it as a photo rather than a file — Telegram makes it smaller.', '📷 Bu rasmni CV’ga qo‘yib bo‘lmaydi: u 6 megapikselgacha bo‘lgan JPG yoki PNG bo‘lishi kerak. Uni fayl sifatida emas, rasm sifatida yuboring — Telegram uni kichraytiradi.', '📷 Это изображение не подходит для резюме: нужен JPG или PNG до 6 мегапикселей. Отправьте его как фото, а не файлом — Telegram сам его уменьшит.'),
@@ -286,6 +286,20 @@ MESSAGES = {
     'cv_notes_line': ('📝 Notes: “{notes}”', '📝 Istaklaringiz: «{notes}»', '📝 Пожелания: «{notes}»'),
     'cv_notes_added': ('📝 Added to your notes.', '📝 Istaklaringizga qo‘shildi.', '📝 Добавлено к вашим пожеланиям.'),
     # Screenshots sent one at a time, or the end of an album that came late: more of the CV's files.
+    # Pages past the OCR share or the time for one CV's files, and files that
+    # could not be read, said on its review (apps/studio/cv/sources.py). {what}
+    # is counted(): "1 file", "2 pages", joined by cv_unread_and.
+    'cv_unread': ('⚠️ Couldn’t read: {what}. The CV is made without it; to include it, send fewer pages or clearer photos.', '⚠️ O‘qib bo‘lmadi: {what}. CV usiz tayyorlanadi; uni ham qo‘shish uchun kamroq sahifa yoki aniqroq rasm yuboring.', '⚠️ Не удалось прочитать: {what}. Резюме составлено без этого; чтобы это учесть, пришлите меньше страниц или более чёткие фото.'),
+    'cv_unread_and': (' and ', ' va ', ' и '),
+    # A CV made from photos or screenshots: a photo sent on its review may be its portrait or one more page.
+    'cv_photo_none_add_pages': ('📷 Photo: none — to add one, send it here. More pages or screenshots? Send them together, as one album.', '📷 Rasm: yo‘q — qo‘shish uchun shu yerga yuboring. Yana sahifa yoki skrinshotlar bormi? Ularni birga, bitta albom qilib yuboring.', '📷 Фото: нет — чтобы добавить, пришлите его сюда. Есть ещё страницы или скриншоты? Пришлите их вместе, одним альбомом.'),
+    'cv_photo_or_page': ('📷 Is this your photo for the CV, or one more page or screenshot to read?', '📷 Bu CV uchun rasmingizmi yoki o‘qish uchun yana bir sahifa yoxud skrinshotmi?', '📷 Это ваше фото для резюме или ещё одна страница либо скриншот, которые нужно прочитать?'),
+    'cv_photo_is_portrait': ('📷 My photo for the CV', '📷 CV uchun rasmim', '📷 Моё фото для резюме'),
+    'cv_photo_is_page': ('📄 A page to read', '📄 O‘qish uchun sahifa', '📄 Страница для чтения'),
+    # A photo with nothing to read in it, sent before a way to make the CV was chosen: kept as its photo.
+    'cv_photo_kept_choose': ('📷 There’s no text to read in this photo, so it will go on your CV as your photo. If it’s a page of your old CV, choose 📄 From my old CV and send a clearer one.', '📷 Bu rasmda o‘qiladigan matn yo‘q, shuning uchun u CV’ga rasmingiz sifatida qo‘yiladi. Agar u eski CV’ingiz sahifasi bo‘lsa, «📄 Eski CV’imdan»ni tanlang va aniqroq rasm yuboring.', '📷 В этом фото нет текста, поэтому оно будет фотографией в резюме. Если это страница старого резюме, выберите «📄 Из старого резюме» и пришлите более чёткое фото.'),
+    # After a refusal that passes (too many at once): the CV made again from the files kept.
+    'cv_try_again': ('🔄 Try again', '🔄 Qayta urinish', '🔄 Попробовать снова'),
     'cv_files_added': ('📎 Added to the CV’s files.', '📎 CV fayllariga qo‘shildi.', '📎 Добавлено к файлам резюме.'),
 }
 

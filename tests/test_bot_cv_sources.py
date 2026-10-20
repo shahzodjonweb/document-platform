@@ -101,10 +101,15 @@ def word_pages(monkeypatch):
     from processors.engine import inspect_file
     real = services.engine_inspect
 
-    def inspect(path, password=None):
-        if str(path).endswith('.docx'):
-            return {**inspect_file(path, office_preflight=False), 'page_count': 1}
-        return real(path, password=password)
+    def inspect(path, password=None, allow_links=False):
+        from apps.core.errors import DomainError
+        from processors import ProcessorError
+        if not str(path).endswith('.docx'):
+            return real(path, password=password, allow_links=allow_links)
+        try:
+            return {**inspect_file(path, office_preflight=False, allow_links=allow_links), 'page_count': 1}
+        except ProcessorError as exc:
+            raise DomainError(exc.code) from None
     monkeypatch.setattr(services, 'engine_inspect', inspect)
 
 
@@ -238,7 +243,7 @@ def test_screenshots_sent_as_an_album_make_one_cv_from_all_of_them(customer, mod
 
 
 @needs_tesseract
-def test_the_end_of_an_album_that_came_late_joins_its_cv_and_a_photo_after_the_review_is_the_portrait(
+def test_the_end_of_an_album_that_came_late_joins_its_cv_and_a_photo_after_the_review_is_asked_about(
         customer, model, monkeypatch):
     monkeypatch.setattr('telegram.bot.ALBUM_SETTLE', 0)
     choose(customer, 'cv_mode_linkedin')
@@ -253,9 +258,15 @@ def test_the_end_of_an_album_that_came_late_joins_its_cv_and_a_photo_after_the_r
     assert outbound(customer) == before, 'the review is changed in place'
     assert GenerationDraft.objects.filter(account=customer).count() == 1 and cv(customer).id == draft.id
     assert latest(customer, CV)['source_ids'] == [str(top.id), str(education.id)]
-    # A photo sent once the review is on screen is the CV's portrait, as the review says.
-    words, _ = screen(dispatch_local(customer, uploaded=image()))
+    # Made from screenshots, the review says how more of them are sent; a photo
+    # sent on its own once it is on screen may be the portrait or one more page: asked.
+    assert EN['cv_photo_none_add_pages'] in words, words
+    question = dispatch_local(customer, uploaded=image())
+    words, shown = screen(question)
     me = FileAsset.objects.get(account=customer, name='me.jpg')
+    assert words == EN['cv_photo_or_page'] and shown == [EN['cv_photo_is_portrait'], EN['cv_photo_is_page']], words
+    assert 'portrait_asset_id' not in latest(customer, CV)['options']
+    words, _ = screen(tap(customer, question, EN['cv_photo_is_portrait']))
     data = latest(customer, CV)
     assert EN['cv_photo_line'] in words and data['options']['portrait_asset_id'] == str(me.id), words
     assert data['source_ids'] == [str(top.id), str(education.id)]
@@ -358,6 +369,12 @@ def test_the_ways_on_from_a_file_that_could_not_be_used(customer, model):
     words, _ = screen(tap(customer, send(customer, 'blank.pdf', blank_pdf()), EN['cv_send_another']))
     assert EN['cv_file_ask'] in words and '📝 Noted: “Lead engineer roles”.' in words, words
     assert state(customer)[1]['notes'] == ['Lead engineer roles']
+    # Writing about yourself instead keeps the notes as the start of the description, and asks for the rest.
+    words, _ = screen(tap(customer, send(customer, 'blank.pdf', blank_pdf()), EN['cv_write_instead']))
+    assert '📝 Noted: “Lead engineer roles”.' in words and EN['cv_details_question'] in words, words
+    assert state(customer)[0] == 'ai_input' and state(customer)[1]['brief'] == ['Lead engineer roles']
+    # With nothing written, it is the question about yourself as it always was.
+    choose(customer, 'cv_mode_file')
     words, _ = screen(tap(customer, send(customer, 'blank.pdf', blank_pdf()), EN['cv_write_instead']))
     assert words.startswith(f'<b>{TOOL_NAMES[CV]["en"]}</b>\n{EN["cv_ask"]}') and state(customer)[0] == 'ai_input'
 
@@ -460,3 +477,245 @@ def test_the_review_says_where_the_cv_came_from_in_every_language(customer, mode
     choose(customer, 'cv_mode_linkedin', locale)
     words, _ = screen(send(customer, 'Profile.pdf', linkedin_pdf()))
     assert f'\n{UX[locale]["cv_linkedin_title"]}\n' in words, words
+
+
+# --- Reading off the shared thread, and reading each file once ----------------------------------------
+
+def reading(pages=(('Timur Rakhimov', 'Lead engineer at Example Motors since 2020; MSc Mechanical Engineering.'),),
+            seconds=0.0, calls=None, ocr=False):
+    """extraction.read_cv as a fake: every file reads as `pages` (name, text) after `seconds`, noting the thread it ran on."""
+    import threading
+    import time
+
+    def read_cv(path, kind, *, ocr_pages, seconds=None, **_):
+        if calls is not None:
+            calls.append((threading.current_thread().name, kind))
+        time.sleep(reading_seconds)
+        return {'pages': [{'page': number, 'text': f'{name}\n{text}', **({'ocr': True} if ocr else {})}
+                          for number, (name, text) in enumerate(pages, 1)],
+                'names': [pages[0][0]], 'ocr_pages': len(pages) if ocr else 0, 'ocr_skipped': 0}
+    reading_seconds = seconds
+    return read_cv
+
+
+def another_customer():
+    from apps.core.identity import resolve_account
+    from tests.test_manual_payments import paid
+    other = resolve_account({'id': 980412, 'first_name': 'Another chat'}, is_test=True)
+    BotConversation.objects.create(telegram_user_id=other.telegram_user_id, locale='en',
+                                   language_selected_at=timezone.now())
+    paid(other, 'premium')
+    return other
+
+
+def feed_two(first, upload, second, text, delay):
+    """A file from one chat and, `delay` seconds later, a message from another, fed to one dispatcher as polling feeds
+    them (handle_as_tasks): how long after the start each was answered."""
+    import asyncio
+    import time
+    from datetime import datetime, timezone as tz
+    from aiogram import Bot
+    from aiogram.types import Chat, Document, Message, Update, User
+    from asgiref.sync import async_to_sync
+    from telegram.local import LocalTelegramSession
+
+    def update(account, number, **fields):
+        LocalBotMessage.objects.create(account=account, direction='inbound', text='sample', telegram_message_id=number)
+        return Update(update_id=number, message=Message(
+            message_id=number, date=datetime.now(tz.utc), chat=Chat(id=account.telegram_user_id, type='private'),
+            from_user=User(id=account.telegram_user_id, is_bot=False, first_name='Sample', language_code='en'), **fields))
+    sessions = {first.pk: LocalTelegramSession(first), second.pk: LocalTelegramSession(second)}
+    sessions[first.pk].files['f' * 24] = upload.read()
+    updates = [(first, update(first, 7001, document=Document(file_id='f' * 24, file_unique_id='f' * 24,
+                                                               file_name=upload.name, file_size=upload.size))),
+               (second, update(second, 7002, text=text, entities=[{'type': 'bot_command', 'offset': 0,
+                                                                  'length': len(text)}]))]
+    answered = {}
+
+    async def run():
+        from telegram.bot import build_dispatcher
+        bots = {pk: Bot('123456:LOCAL_SIMULATOR_NO_NETWORK', session=session) for pk, session in sessions.items()}
+        dispatcher = build_dispatcher()
+        begun = time.monotonic()
+
+        async def one(account, item, wait):
+            await asyncio.sleep(wait)
+            await dispatcher.feed_update(bots[account.pk], item)
+            answered[account.pk] = time.monotonic() - begun
+        try:
+            await asyncio.gather(one(*updates[0], 0), one(*updates[1], delay))
+        finally:
+            for bot in bots.values():
+                await bot.session.close()
+    async_to_sync(run)()
+    return answered[first.pk], answered[second.pk]
+
+
+def test_reading_a_cvs_files_never_holds_up_another_chat(customer, model, monkeypatch):
+    from apps.studio import extraction
+    monkeypatch.setattr('telegram.bot.ALBUM_SETTLE', 0)
+    calls = []
+    monkeypatch.setattr(extraction, 'read_cv', reading(seconds=3.0, calls=calls))
+    other = another_customer()
+    choose(customer, 'cv_mode_file')
+    cv_done, start_done = feed_two(customer, upload('old-cv.pdf', one_column_pdf()), other, '/start', 0.3)
+    # The other chat's menu came while the file was still being read (three seconds), not after it.
+    assert start_done < 2.5 < 3.0 < cv_done, (start_done, cv_done)
+    assert TOOL_NAMES[CV]['en'] in str(LocalBotMessage.objects.filter(account=other, direction='outbound').latest(
+        'created_at').buttons), 'the other chat was shown its menu'
+    # Read once, in the readers' own thread; the draft took what was read.
+    assert calls == [('cv-read_0', 'pdf')], calls
+    assert latest(customer, CV)['title'] == 'Timur Rakhimov'
+
+
+def test_a_file_that_names_nobody_is_read_once_however_the_name_is_answered(customer, model, monkeypatch):
+    from django.core.cache import cache
+    from apps.studio import extraction
+    calls = []
+    real = extraction.read_cv
+    monkeypatch.setattr(extraction, 'read_cv', lambda *args, **kwargs: calls.append(args[1]) or real(*args, **kwargs))
+    choose(customer, 'cv_mode_file')
+    send(customer, 'cv.pdf', nameless_pdf())
+    for answer in ('hello there', 'what do you mean'):
+        words, _ = screen(dispatch_local(customer, text=answer))
+        assert EN['cv_file_name_question'] in words, words
+    assert calls == ['pdf']
+    # Each answer is a build of the minute's ten: answers that name nobody cannot go on for ever.
+    assert cache.get(f'rate:bot_generation:{customer.pk}') == 3
+    words, _ = screen(dispatch_local(customer, text='Javlon Ergashev'))
+    assert '📄 Javlon Ergashev' in words and calls == ['pdf'], words
+
+
+def test_a_refusal_that_passes_keeps_the_files_to_try_again(customer, model):
+    from django.core.cache import cache
+    choose(customer, 'cv_mode_file')
+    cache.set(f'rate:bot_generation:{customer.pk}', 10, 60)
+    refused = send(customer, 'old-cv.pdf', one_column_pdf(), caption='Lead engineer roles')
+    words, shown = screen(refused)
+    old = FileAsset.objects.get(account=customer, name='old-cv.pdf')
+    assert words.startswith(ERRORS['en']['rate_limited']) and '📎 From: old-cv.pdf' in words, words
+    assert shown[0] == EN['cv_try_again']
+    assert state(customer) == ('cv_source', {'feature_id': CV, 'cv_source': 'file', 'notes': ['Lead engineer roles'],
+                                             'source_ids': [str(old.id)], 'ask': 'again'})
+    cache.delete(f'rate:bot_generation:{customer.pk}')
+    words, _ = screen(tap(customer, refused, EN['cv_try_again']))
+    assert '📄 Timur Rakhimov' in words and '📝 Notes: “Lead engineer roles”' in words, words
+    assert latest(customer, CV)['source_ids'] == [str(old.id)] and FileAsset.objects.filter(account=customer).count() == 1
+
+
+def test_a_pdf_sent_on_the_question_about_yourself_leads_to_the_old_cv_screen(customer, model):
+    choose(customer, 'cv_mode_text')
+    nameless = 'Data analyst with five years in retail; SQL and Power BI; English and Russian.'
+    words, _ = screen(dispatch_local(customer, text=nameless))
+    assert EN['cv_name_question'] in words, words
+    offered = send(customer, 'old-cv.pdf', one_column_pdf())
+    words, shown = screen(offered)
+    assert EN['cv_photo_only'] in words and EN['cv_mode_file'] in shown, (words, shown)
+    assert shown[-1] == EN['ai_back']
+    # The old-CV screen keeps what was written, as notes on top of the file.
+    words, _ = screen(tap(customer, offered, EN['cv_mode_file']))
+    assert EN['cv_file_ask'] in words and f'📝 Noted: “{nameless}”.' in words, words
+    assert state(customer)[1]['notes'] == [nameless] and state(customer)[1]['cv_source'] == 'file'
+    words, _ = screen(send(customer, 'old-cv.pdf', one_column_pdf()))
+    assert '📄 Timur Rakhimov' in words and latest(customer, CV)['prompt'] == nameless, words
+
+
+def test_a_photo_with_nothing_to_read_on_the_first_screen_is_the_cvs_photo(customer, model):
+    from tests.test_cv_content import BRIEF
+    dispatch_local(customer, text='/cv')
+    # With a description as its caption: the CV written from it, with the photo, as the question about yourself takes it.
+    words, _ = screen(dispatch_local(customer, uploaded=image(), caption=BRIEF))
+    me = FileAsset.objects.get(account=customer, name='me.jpg')
+    data = latest(customer, CV)
+    assert '📄 Dilnoza Karimova' in words and EN['cv_photo_line'] in words and '📎 From' not in words, words
+    assert data['options']['portrait_asset_id'] == str(me.id) and 'cv_source' not in data['options']
+    assert data['prompt'] == BRIEF and data['source_ids'] == []
+    # Without one: the first screen again, keeping the photo, saying how to send an old CV instead.
+    dispatch_local(customer, text='/cv')
+    kept = dispatch_local(customer, uploaded=image('portrait.jpg'))
+    words, _ = screen(kept)
+    portrait = FileAsset.objects.get(account=customer, name='portrait.jpg')
+    assert words.startswith(EN['cv_photo_kept_choose']) and EN['cv_choose_ask'] in words, words
+    assert state(customer) == ('cv_choose', {'feature_id': CV, 'portrait_asset_id': str(portrait.id)})
+    words, _ = screen(tap(customer, kept, EN['cv_mode_text']))
+    assert EN['cv_photo_attached'] in words and state(customer)[1]['portrait_asset_id'] == str(portrait.id), words
+
+
+def test_more_screenshots_after_the_review_are_more_of_its_pages(customer, model, monkeypatch):
+    from apps.studio import extraction
+    monkeypatch.setattr('telegram.bot.ALBUM_SETTLE', 0.3)
+    calls = []
+    monkeypatch.setattr(extraction, 'read_cv', reading(calls=calls, ocr=True, pages=(
+        ('Dilnoza Karimova', 'Senior Data Analyst at Example Retail since 2022; SQL, Power BI.'),)))
+    choose(customer, 'cv_mode_linkedin')
+    send(customer, 'top.png', shot(0))
+    first = FileAsset.objects.get(account=customer, name='top.png')
+    # A second album sent once the review is on screen: never a portrait, more of the profile.
+    group = secrets.token_hex(6)
+    feed_together(customer, [(upload('more-1.png', shot(1)), '', group), (upload('more-2.png', shot(0)), '', group)], 0.02)
+    more = [FileAsset.objects.get(account=customer, name=name) for name in ('more-1.png', 'more-2.png')]
+    data = latest(customer, CV)
+    assert data['source_ids'] == [str(first.id), *[str(asset.id) for asset in more]]
+    assert 'portrait_asset_id' not in data['options'] and GenerationDraft.objects.filter(account=customer).count() == 1
+    # Each file was read once, off the shared thread.
+    assert len(calls) == 3 and all(name.startswith('cv-read') for name, _ in calls), calls
+    # One photo on its own: asked about, and as a page it is read with the others.
+    question = dispatch_local(customer, uploaded=image('page-4.jpg'))
+    assert screen(question)[0] == EN['cv_photo_or_page']
+    words, _ = screen(tap(customer, question, EN['cv_photo_is_page']))
+    page = FileAsset.objects.get(account=customer, name='page-4.jpg')
+    data = latest(customer, CV)
+    assert words.startswith(EN['cv_files_added']) and EN['cv_photo_none_add_pages'] in words, words
+    assert data['source_ids'][-1] == str(page.id) and 'portrait_asset_id' not in data['options']
+    assert len(calls) == 4
+    assert not file_task_waiting(customer)
+
+
+def test_a_cv_made_from_a_pdf_still_takes_a_photo_after_the_review_as_its_portrait(customer, model):
+    choose(customer, 'cv_mode_file')
+    words, _ = screen(send(customer, 'old-cv.pdf', one_column_pdf()))
+    assert EN['cv_photo_none_add'] in words and EN['cv_photo_none_add_pages'] not in words, words
+    words, _ = screen(dispatch_local(customer, uploaded=image()))
+    me = FileAsset.objects.get(account=customer, name='me.jpg')
+    assert EN['cv_photo_line'] in words and latest(customer, CV)['options']['portrait_asset_id'] == str(me.id), words
+
+
+@pytest.mark.parametrize('locale', LOCALES)
+def test_the_review_says_what_of_the_files_could_not_be_read(customer, model, monkeypatch, locale):
+    from tests.test_cv_sources import scanned_pdf
+    monkeypatch.setattr('telegram.bot.ALBUM_SETTLE', 0.3)
+    monkeypatch.setattr('apps.studio.cv.sources.MAX_OCR_PAGES', 0)
+    speak(customer, locale)
+    choose(customer, 'cv_mode_file', locale)
+    group = secrets.token_hex(6)
+    feed_together(customer, [(upload('old-cv.pdf', one_column_pdf()), '', group),
+                             (upload('scan.pdf', scanned_pdf()), '', group)], 0.02)
+    newest = LocalBotMessage.objects.filter(account=customer, direction='outbound').order_by('-created_at').first()
+    from telegram.ux_copy import counted
+    said = UX[locale]['cv_unread'].format(what=counted(locale, 1, 'page'))
+    assert said in newest.text and '📄 Timur Rakhimov' in newest.text, newest.text
+    assert latest(customer, CV)['cv_unread'] == [{'asset_id': str(FileAsset.objects.get(account=customer, name='scan.pdf').id),
+                                                  'pages': 1}]
+
+
+def test_files_said_puts_how_many_more_beside_the_files_it_names(customer):
+    from telegram.bot import files_said, unread_said
+    assert files_said(customer, ['a.pdf', 'b.pdf', 'c.pdf', 'photo.jpg', 'photo.jpg']) == 'a.pdf, b.pdf +1, 2 photos'
+    assert files_said(customer, ['a.pdf', 'b.pdf']) == 'a.pdf, b.pdf'
+    assert files_said(customer, ['photo.jpg']) == '1 photo'
+    assert files_said(customer, ['', '']) == '2 files'
+    assert unread_said(customer, 0, 0) == ''
+    assert unread_said(customer, 1, 2) == EN['cv_unread'].format(what='1 file and 2 pages')
+
+
+def test_a_word_cv_with_its_email_as_a_link_is_read_and_still_no_file_tools_file(customer, model, word_pages):
+    from tests.test_cv_sources import docx_with_links
+    choose(customer, 'cv_mode_file')
+    words, _ = screen(send(customer, 'old-cv.docx', docx_with_links()))
+    assert '📄 Kamola Nazarova' in words and '📎 From: old-cv.docx' in words, words
+    assert 'kamola.nazarova@example.com' in latest(customer, CV)['excerpts'][0]['text']
+    # Sent for the file tools, the same file is refused as it always was.
+    dispatch_local(customer, text='/start')
+    words, _ = screen(send(customer, 'report.docx', docx_with_links()))
+    assert words == ERRORS['en']['external_content_unsupported'], words
+    assert not FileAsset.objects.filter(account=customer, name='report.docx').exists()

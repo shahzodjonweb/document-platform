@@ -124,7 +124,9 @@ def build(account, feature_id, description, file_ids=(), topic_given=False, port
     try:
         return create_draft(account, data)
     except DomainError as exc:
-        if exc.code in READ_REFUSALS:
+        # A CV from files asked for its name has had its files read: that build
+        # counts, so answers that name nobody cannot read them again and again.
+        if exc.code in READ_REFUSALS and not (files and exc.code == 'cv_name_required'):
             unthrottle(account)
         raise
 
@@ -334,6 +336,34 @@ def made_from(draft):
         return TEXT, [], ''
     notes = '' if data.get('revision') else (data.get('prompt') or '').strip()
     return way, file_names(draft.account, data.get('source_ids') or []), notes
+
+
+def unread_of(draft):
+    """What of a new CV's files could not be read (apps/studio/cv/sources.py): (files, pages).
+
+    Files not read at all, and the pages left out of the others: past the
+    pages OCR reads for one CV, or past the time its files are read in.
+    """
+    from apps.studio.domain import unpack
+    data = unpack(draft.encrypted_data)
+    if data.get('revision'):
+        return 0, 0
+    unread = [entry for entry in data.get('cv_unread') or [] if isinstance(entry, dict)]
+    return (sum(1 for entry in unread if entry.get('whole')),
+            sum(int(entry.get('pages') or 0) for entry in unread if not entry.get('whole')))
+
+
+def cv_files(account, draft_id):
+    """A new CV's way and files: {'way', 'source_ids', 'images'}, `images` when a photo or screenshot is one of them; None without it."""
+    from apps.studio.domain import unpack
+    draft = _cv_draft(account, draft_id, live=True)
+    if draft is None:
+        return None
+    data = unpack(draft.encrypted_data)
+    way = (data.get('options') or {}).get('cv_source') or TEXT
+    ids = [str(identifier) for identifier in data.get('source_ids') or []] if way in (LINKEDIN, FILE) else []
+    images = FileAsset.objects.filter(account=account, id__in=ids, mime_type__in=('image/jpeg', 'image/png')).exists()
+    return {'way': way, 'source_ids': ids, 'images': images, 'revision': bool(data.get('revision'))}
 
 
 def way_of(account, draft_id):

@@ -27,6 +27,16 @@ import time
 PAGE_CHARS = 12000
 # Pages read from one file: more than any CV has, fewer than would cost the request.
 MAX_PAGES = 30
+# A PDF page is read column by column (pdfplumber) only when that is cheap.
+# pdfplumber reads every character of a page before any of its text: a page
+# with more text than this in it is no CV page (three or four times one), and
+# is read by pypdf instead, which takes a tenth of the time. So are the pages
+# after the first LAYOUT_PAGES, which are read in plain order, and every page
+# once pdfplumber has had LAYOUT_SECONDS for the file. A small file of dense
+# pages would otherwise hold the request that reads it for over a minute.
+DENSE_CHARS = 15000
+LAYOUT_PAGES = 6
+LAYOUT_SECONDS = 20
 # A page with fewer letters than this in its text layer is a scan: it is read by OCR.
 SCANNED = 20
 # One OCR run, at most; a CV page takes a second or two.
@@ -56,6 +66,15 @@ def limits(seconds):
         try:
             resource.setrlimit(name, value)
         except (ValueError, OSError):
+            pass
+    # Short of memory, the kernel ends this reading (and the tesseract it
+    # starts, which inherits this) before the process that asked for it: in
+    # the bot's container that is the bot itself.
+    if sys.platform.startswith('linux'):
+        try:
+            with open('/proc/self/oom_score_adj', 'w') as score:
+                score.write('1000')
+        except OSError:
             pass
     os.umask(0o077)
 
@@ -89,14 +108,27 @@ def _chars(words):
     return sum(len(w['text']) for w in words)
 
 
+BOLD = re.compile(r'bold|black|heavy|semibold|demi', re.IGNORECASE)
+
+
+def _heading(line, usual):
+    """Whether a line is set as a heading: in bold, or in type larger than most of its side's."""
+    return (any(BOLD.search(str(w.get('fontname') or '')) for w in line)
+            or max(float(w.get('size') or 0) for w in line) >= usual + 1)
+
+
 def _columns(words, x):
     """Whether the gap at `x` parts two columns of text, not a line's words from its dates.
 
     Each side has three lines and a tenth of the text at least. A date or a
-    place set to the right of a role ("Analyst, Example Bank … 2019 – 2022")
-    leaves a gap too, but every line on that side shares its baseline with
-    one on the other; a sidebar's lines (Contact, Skills, a LinkedIn
-    export's Top Skills) run to their own spacing.
+    place set to the right of a role ("Analyst, Example Bank … 2019 – 2022"),
+    or to its left as a timeline sets it ("2019 – 2022   Analyst, Example
+    Bank"), leaves a gap too, but every line on that side shares its baseline
+    with one on the other; a sidebar's lines (Contact, Skills, a LinkedIn
+    export's Top Skills) run to their own spacing. A timeline's headings
+    (Experience, Education) stand on the dates' side with nothing beside
+    them, as a sidebar's do: a line in bold or larger type with no line
+    beside it is a heading, and is not counted either way.
     """
     left = [w for w in words if w['x1'] <= x]
     right = [w for w in words if w['x0'] >= x]
@@ -106,8 +138,13 @@ def _columns(words, x):
         return False
     small, other = sorted(sides, key=lambda lines: sum(_chars(line) for _, line in lines))
     tops = [top for top, _ in other]
-    aligned = sum(any(abs(top - known) <= 2.0 for known in tops) for top, _ in small)
-    return aligned < 0.75 * len(small)
+    paired = [(line, any(abs(top - known) <= 2.0 for known in tops)) for top, line in small]
+    sizes = sorted(max(float(w.get('size') or 0) for w in line) for line, _ in paired)
+    usual = sizes[len(sizes) // 2]
+    counted = [beside for line, beside in paired if beside or not _heading(line, usual)]
+    if len(counted) < 3:
+        counted = [beside for _, beside in paired]
+    return sum(counted) < 0.75 * len(counted)
 
 
 def _gaps(words, left, right):
@@ -162,7 +199,7 @@ def gutter(words, box):
 
 def page_text(page):
     """A PDF page's text, each column whole and in reading order: header, left, right, footer."""
-    words = page.extract_words(use_text_flow=False)
+    words = page.extract_words(use_text_flow=False, extra_attrs=['size', 'fontname'])
     box = tuple(float(v) for v in page.bbox)
     split = gutter(words, box)
     if not split:
@@ -226,15 +263,38 @@ def render(document, index):
     return _png(picture)
 
 
+def quick_text(path):
+    """Each page's text as pypdf reads it, in plain order and quickly: None for a page it cannot read."""
+    from pypdf import PdfReader
+    reader = PdfReader(path)
+    texts = []
+    for page in reader.pages[:MAX_PAGES]:
+        try:
+            texts.append(page.extract_text() or '')
+        except Exception:
+            texts.append(None)
+    return texts
+
+
 def read_pdf(path, ocr):
-    """Pages of text from a PDF: pdfplumber's columns, pypdf where it fails, OCR where there is no text."""
+    """Pages of text from a PDF: pdfplumber's columns, pypdf where it fails or would be slow, OCR where there is no text."""
+    try:
+        quick = quick_text(path)
+    except Exception:
+        quick = []
     pages, names = [], []
+    started = time.monotonic()
     try:
         import pdfplumber
         with pdfplumber.open(path) as pdf:
             for number, page in enumerate(pdf.pages[:MAX_PAGES], 1):
+                known = quick[number - 1] if number <= len(quick) else None
+                # Dense, or past pdfplumber's time: pypdf's text, read already.
+                if known is not None and (len(known) > DENSE_CHARS or time.monotonic() - started > LAYOUT_SECONDS):
+                    pages.append([number, known])
+                    continue
                 try:
-                    pages.append([number, page_text(page)])
+                    pages.append([number, page_text(page) if number <= LAYOUT_PAGES else page.extract_text() or ''])
                 except Exception:
                     pages.append([number, None])
                 if number == 1:
@@ -245,6 +305,8 @@ def read_pdf(path, ocr):
                 page.flush_cache()
     except Exception:
         pages = []
+    if not pages:
+        pages = [[number, text] for number, text in enumerate(quick, 1)]
     if not pages or any(text is None for _, text in pages):
         from pypdf import PdfReader
         reader = PdfReader(path)
@@ -278,8 +340,20 @@ def read_pdf(path, ocr):
 
 # --- Word ---------------------------------------------------------------------------
 
+# Word writes a text box or a shape's text twice, in mc:AlternateContent: as
+# a DrawingML shape (mc:Choice) and again as VML for older readers
+# (mc:Fallback). The fallback is not read. python-docx's qn() knows no 'mc'
+# prefix, so the tag is spelled out.
+FALLBACK = '{http://schemas.openxmlformats.org/markup-compatibility/2006}Fallback'
+
+
 def read_docx(path):
-    """The text of a Word file in document order: the header, paragraphs, tables, text boxes and content controls."""
+    """The text of a Word file in document order: the headers, paragraphs, tables, text boxes and content controls, the footers.
+
+    The first section's headers come first (its first-page header when it has
+    a different first page, where templates often put the name and contacts),
+    and its footers last; a line a header or footer repeats is read once.
+    """
     import zipfile
     with zipfile.ZipFile(path) as archive:
         parts = [name.lower() for name in archive.namelist()]
@@ -303,12 +377,16 @@ def read_docx(path):
     except (KeyError, ValueError, TypeError):
         pass
 
+    content = qn('w:txbxContent')
+
     def boxes(element, parent):
-        for box in element.iter(qn('w:txbxContent')):
+        # The text boxes in this paragraph, each once: not its VML fallback,
+        # and not a box inside another, which is read with the one it is in.
+        for box in element.iter(content):
             ancestor = box.getparent()
-            while ancestor is not None and ancestor.tag != qn('mc:Fallback'):
+            while ancestor is not None and ancestor is not element and ancestor.tag not in (FALLBACK, content):
                 ancestor = ancestor.getparent()
-            if ancestor is None:
+            if ancestor is None or ancestor is element:
                 walk(box, parent)
 
     def paragraph(element, parent):
@@ -355,10 +433,29 @@ def read_docx(path):
             if len(blocks) > 4000:
                 return
 
-    for section in document.sections[:1]:
-        if not section.header.is_linked_to_previous:
-            walk(section.header._element, section.header)
+    def story(part):
+        """A header or footer, without the lines read already."""
+        if part.is_linked_to_previous:
+            return
+        before = len(blocks)
+        walk(part._element, part)
+        seen, kept = set(blocks[:before]), []
+        for block in blocks[before:]:
+            if block not in seen:
+                seen.add(block)
+                kept.append(block)
+        blocks[before:] = kept
+
+    # Finding a document's sections reads its whole body: once.
+    section = next(iter(document.sections[:1]), None)
+    first = bool(section is not None and section.different_first_page_header_footer)
+    if section is not None:
+        for part in ([section.first_page_header] if first else []) + [section.header]:
+            story(part)
     walk(document.element.body, document)
+    if section is not None:
+        for part in ([section.first_page_footer] if first else []) + [section.footer]:
+            story(part)
     pages, page = [], ''
     for block in blocks:
         if page and len(page) + len(block) + 2 > PAGE_CHARS:

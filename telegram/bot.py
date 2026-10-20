@@ -10,6 +10,7 @@ import json
 import secrets
 import uuid
 import weakref
+from concurrent.futures import ThreadPoolExecutor
 from types import SimpleNamespace
 from datetime import timedelta
 from aiogram import Bot, Dispatcher, F
@@ -247,8 +248,44 @@ CV_APPEND_WINDOW=timedelta(minutes=2)
 CV_FILE_KINDS={'pdf':'pdf','docx':'docx','jpg':'image','jpeg':'image','png':'image'}
 # A PDF or Word file sent this soon after the last of a CV's files, by when
 # Telegram took each, is one more of them (cv_takes_more). A photo is one more
-# only while the review is not yet on screen: after that it is the portrait.
+# while the review is not yet on screen, or in an album: after that a photo
+# on its own is the portrait, or, on a CV made from photos or screenshots,
+# asked about (cv_file).
 CV_FILES_WINDOW=timedelta(seconds=30)
+# A CV's files are read off the bot's shared thread, one CV at a time (cv_read).
+# Every chat's handler and the delivery loop wait on that thread for the
+# database (sync_to_async), and OCR takes seconds a page: read there, one CV's
+# photos would hold up everyone. The bot's container is small, so one reading
+# runs at once; with CV_READS_WAITING more waiting, the next is asked to try
+# again shortly.
+CV_READS=ThreadPoolExecutor(max_workers=1,thread_name_prefix='cv-read')
+CV_READS_WAITING=3
+_cv_reads={'waiting':0}
+
+async def cv_read(account,way,ids):
+    """A CV's files read before its draft is made, in CV_READS: (files, readings), or None with nothing to read.
+
+    The draft made next takes what was read without reading again
+    (apps/studio/cv/sources.py read_entries), so building it on the shared
+    thread is quick. None when the files will be refused before any is read
+    (their kind, a password, too many): the draft says why. `rate_limited`
+    when too many CVs are being read.
+    """
+    from apps.studio.cv import sources as cv_sources
+    files=await sync_to_async(cv_sources.ahead)(account,[str(identifier) for identifier in ids],way)
+    if not files: return None
+    if _cv_reads['waiting']>CV_READS_WAITING: raise DomainError('rate_limited',429,retryable=True)
+    _cv_reads['waiting']+=1
+    try: return files,await asyncio.get_running_loop().run_in_executor(CV_READS,cv_sources.read_entries,files)
+    finally: _cv_reads['waiting']-=1
+
+def cv_readable(read):
+    """Whether files read by cv_read have words enough for a CV; True when nothing was read ahead."""
+    if read is None: return True
+    from apps.studio.cv import sources as cv_sources
+    try: cv_sources.excerpts_of(*read)
+    except DomainError: return False
+    return True
 
 def kept_brief(pieces,limit=BRIEF_CHARS,count=BRIEF_PIECES):
     """The pieces of a description kept while its topic is asked for, in the order written.
@@ -299,6 +336,13 @@ def pending_portrait(account):
     if row is None or row.updated_at<timezone.now()-QUESTION_LIFETIME: return ''
     prompt=row.prompt or {}
     return str(prompt.get('portrait_asset_id') or '') if prompt.get('feature_id')=='ai.cv' else ''
+
+def cv_brief(account):
+    """What is kept of a CV described about yourself while its name or details are asked for; [] with no such question."""
+    row=BotConversation.objects.filter(pk=account.telegram_user_id,state='ai_input').first()
+    if row is None or row.updated_at<timezone.now()-QUESTION_LIFETIME: return []
+    prompt=row.prompt or {}
+    return [str(piece) for piece in prompt.get('brief') or [] if piece] if prompt.get('feature_id')=='ai.cv' else []
 
 def cv_screen_open(conversation):
     """Whether the chat is on one of a CV's first screens (how to make it, or what to send for it) and it is not old.
@@ -366,15 +410,23 @@ def cv_takes_more(account,ext,sent,group=None):
     # Telegram dates a message in whole seconds: one dated the second the
     # review was drawn in may have been sent after it, and is not counted.
     if type(drawn) in (int,float) and sent<int(drawn): return True
-    return kind!='image' and sent-at<=CV_FILES_WINDOW.total_seconds()
+    # An album is never one portrait: more pages or screenshots of the CV.
+    if kind=='image': return bool(group)
+    return sent-at<=CV_FILES_WINDOW.total_seconds()
 
 def files_said(account,names):
-    """A CV's files on one line: their names, two at most, and how many photos — Telegram names each photo.jpg."""
+    """A CV's files on one line: their names, two at most and how many more, then how many photos — Telegram names each photo.jpg."""
     photos=sum(1 for name in names if name=='photo.jpg')
     named=[name if len(name)<=40 else name[:39]+'…' for name in names if name and name!='photo.jpg']
-    parts=named[:2]+([counted(account.locale,photos,'photo')] if photos else [])
-    if not parts: return counted(account.locale,len(names),'file')
-    return ', '.join(parts)+(f' +{len(named)-2}' if len(named)>2 else '')
+    shown=', '.join(named[:2])+(f' +{len(named)-2}' if len(named)>2 else '')
+    parts=[part for part in (shown,counted(account.locale,photos,'photo') if photos else '') if part]
+    return ', '.join(parts) if parts else counted(account.locale,len(names),'file')
+
+def unread_said(account,files,pages):
+    """What of a CV's files could not be read, as its review says it; '' when all of it was read."""
+    parts=([counted(account.locale,files,'file')] if files else [])+([counted(account.locale,pages,'page')] if pages else [])
+    if not parts: return ''
+    return text(account,'cv_unread').format(what=text(account,'cv_unread_and').join(parts))
 
 def option_summary(account,draft):
     labels={'angle':'rotate_label','pages':'pages','order':'page_order','ranges':'split_groups','format':'format_label','dpi':None,'paper_size':'paper_label','orientation':None,'margin':'margin_button'}
@@ -426,13 +478,20 @@ async def review_screen(account,draft,quote):
            f'📄 {html.escape(heading)}\n')
     # A change says what is changing; a new document says what it is.
     if change: body+=f'✏️ {html.escape(change)}\n'
+    pages_more=False
     if cv:
-        # A CV made from files says which, and the notes written on top of them.
+        # A CV made from files says which, what of them could not be read, and
+        # the notes written on top of them.
         way,names,notes=await sync_to_async(ai.made_from)(draft)
         if way==ai.LINKEDIN: body+=text(account,'cv_linkedin_title')+'\n'
         elif way==ai.FILE: body+=html.escape(text(account,'cv_from_files').format(files=files_said(account,names)))+'\n'
+        unread=unread_said(account,*await sync_to_async(ai.unread_of)(draft))
+        if unread: body+=html.escape(unread)+'\n'
         if notes: body+=html.escape(text(account,'cv_notes_line').format(notes=brief_quote(notes.split('\n'))))+'\n'
         body+=f'{text(account,unit)}: {text(account,"cv_length")}'
+        # Made from photos or screenshots, a photo sent now may be another page.
+        made=await sync_to_async(ai.cv_files)(account,draft.id) if way!=ai.TEXT and not change else None
+        pages_more=bool(made and made['images'])
     else:
         # A change that alters the count says so: 9 → 1 must never go unseen.
         count=f'{before} → {given}' if before and before!=given else f'{given}'
@@ -456,7 +515,7 @@ async def review_screen(account,draft,quote):
         # A photo on a template picked without a place for it is said before paying.
         slot=await sync_to_async(ai.photo_slot)(draft) if photo else True
         body+='\n'+text(account,('cv_photo_line' if slot else 'cv_photo_no_slot_line') if photo
-                         else 'cv_photo_none' if change else 'cv_photo_none_add')
+                         else 'cv_photo_none' if change else 'cv_photo_none_add_pages' if pages_more else 'cv_photo_none_add')
     # Pictures the plan cannot add are said, never quietly left out. A change
     # asking for them on a plan that adds none is told so too, unless photos are
     # off altogether and no plan could add them.
@@ -819,6 +878,9 @@ def build_dispatcher():
         # first screen, where the other ways to make a CV are.
         rows=[[await button(account,'ai_examples','ai_examples',{'feature_id':feature_id,**({'cv_source':'text'} if cv else {})})],
               [await button(account,'ai_back','cv_mode') if cv else await button(account,'ai_back','home')]]
+        # A PDF or Word file sent here was meant as the old CV: the way to that screen.
+        if cv and notice==text(account,'cv_photo_only'):
+            rows.insert(0,[await button(account,'cv_mode_file','cv_mode',{'cv_source':ai.FILE})])
         return await render(message,body,rows,edit)
 
     async def cv_choose(message,account,edit=False,notice=''):
@@ -840,7 +902,8 @@ def build_dispatcher():
               [await button(account,'ai_back','home')]]
         return await render(message,body,rows,edit)
 
-    async def cv_mode_screen(message,account,way,edit=False,notice='',notes=None,files=None,ask='file',asked=0,link=False,portrait=None):
+    async def cv_mode_screen(message,account,way,edit=False,notice='',notes=None,files=None,ask='file',asked=0,link=False,portrait=None,
+                             retry=False):
         """The LinkedIn or old-CV screen: what to send for a CV made from files, and what is kept for it.
 
         The file holds the facts; words sent before it, with it or just after
@@ -852,6 +915,8 @@ def build_dispatcher():
         or another file for the files kept, when a CV's description is written
         again. `link` says a LinkedIn link was sent instead of the profile:
         it is never opened, and the way to save the profile is said instead.
+        `retry` offers to make the CV again at once from the files kept, after
+        a refusal that passes (`rate_limited`).
         """
         kept=await sync_to_async(cv_kept)(account)
         notes=[note for note in (kept['notes'] if notes is None else notes) if note]
@@ -880,6 +945,8 @@ def build_dispatcher():
             else: body+=text(account,'cv_file_ask')
             body+=f'\n\n{noted}\n{text(account,"cv_send_file_now")}' if noted else f'\n\n<i>{text(account,"cv_notes_hint")}</i>'
         rows=[[await button(account,'ai_back','cv_mode'),await button(account,'home','home')]]
+        if files and ask=='again' and retry:
+            rows.insert(0,[await button(account,'cv_try_again','cv_retry',{'cv_source':way})])
         if files and ask=='name':
             # Like a file that could not be used: another file instead, or writing about yourself.
             rows[:0]=[[await button(account,'cv_send_another','cv_mode',{'cv_source':way})],
@@ -926,6 +993,8 @@ def build_dispatcher():
         notes=kept_brief([note for note in notes if note],CV_BRIEF_CHARS,CV_BRIEF_PIECES)
         draft=None
         try:
+            # Read off the shared thread first: the draft takes what was read.
+            await cv_read(account,way,files)
             draft=await sync_to_async(ai.build)(account,ai.CV,'\n'.join(notes),files,given,portrait,way)
             await sync_to_async(funnel.step)('ai.described',account=account,feature=ai.CV)
             _,quote=await sync_to_async(ai.quote)(account,draft.id)
@@ -940,6 +1009,11 @@ def build_dispatcher():
                 resume={'kind':'ai_draft','draft_id':str(draft.id)} if draft else {'kind':'cv_mode','cv_source':way}
                 return await show_gate(message,account,resume=resume,edit=True)
             if exc.code in ('weekly_ai_limit','edit_limit'): return await ai_refused(message,account,exc,{},None)
+            # A refusal that passes (too many at once) keeps the files, to make the CV from them again.
+            if exc.retryable and files:
+                said=await sync_to_async(cv_refusal_said)(account,exc)
+                return await cv_mode_screen(message,account,way,True,said,notes=notes,files=files,ask='again',portrait=portrait,
+                                            retry=True)
             return await cv_refused(message,account,way,notes,exc)
         # A file sent while the review is on its way is one more of its files.
         window={'files_at':at,'album':album}
@@ -960,7 +1034,9 @@ def build_dispatcher():
             kind=CV_FILE_KINDS.get(item['name'].rsplit('.',1)[-1].lower())
             try:
                 if item['raw'] is None or kind not in KINDS[way]: raise DomainError('cv_file_kind')
-                asset=await sync_to_async(upload_file)(account,SimpleUploadedFile(item['name'],item['raw']),'bot')
+                # A CV's own file: a Word CV with an email or LinkedIn link in it is read too.
+                asset=await sync_to_async(upload_file)(account,SimpleUploadedFile(item['name'],item['raw']),'bot',
+                                                       purpose='cv_source')
                 await sync_to_async(record_receipt)(account,asset,chat_id,item['message_id'])
                 ids.append(str(asset.id))
             except DomainError as exc: failure=failure or exc
@@ -1002,7 +1078,11 @@ def build_dispatcher():
                 ids,failure=await cv_upload(account,message.chat.id,files,way)
                 captions=' '.join(item['caption'] for item in files if item['caption'])
                 try:
-                    if ids: draft,quote=await sync_to_async(ai.add_sources)(account,draft_id,ids,captions)
+                    if ids:
+                        # Read off the shared thread first; the files read before are not read again.
+                        made=await sync_to_async(ai.cv_files)(account,draft_id)
+                        if made: await cv_read(account,way,[*made['source_ids'],*[i for i in ids if i not in made['source_ids']]])
+                        draft,quote=await sync_to_async(ai.add_sources)(account,draft_id,ids,captions)
                     else: draft,quote=await sync_to_async(ai.quote)(account,draft_id)
                 except DomainError as exc:
                     if exc.code=='controls_expired':
@@ -1024,11 +1104,42 @@ def build_dispatcher():
             if not ids:
                 album_shown(message,await cv_refused(waiting,account,way,notes,failure or DomainError('cv_file_kind')))
                 return True
+            # One photo on the first screen, before a way was chosen, with no text
+            # in it to read, is no old CV: it is the CV's photo, sent first as the
+            # question about yourself always took it, and its caption the description.
+            if state=='cv_choose' and len(files)==1 and len(ids)==1 and CV_FILE_KINDS.get(newest)=='image':
+                try: read=await cv_read(account,way,ids)
+                except DomainError: read=None
+                if not cv_readable(read):
+                    album_shown(message,await cv_portrait_first(waiting,account,ids[0],caption,notes))
+                    return True
             # Some files of an album could not be used: said above the review the others made.
             notice=await sync_to_async(cv_refusal_said)(account,failure) if failure else ''
             album_shown(message,await cv_build(waiting,account,way,notes,[*kept,*ids],asked=int(p.get('asked') or 0),
                                                notice=notice,at=sent,album=group))
         return True
+
+    async def cv_portrait_first(message,account,asset_id,caption,notes):
+        """A photo with nothing to read in it, sent on the first CV screen: the CV's portrait, not an old CV.
+
+        With a caption that says who the customer is, the CV is written from
+        it, as the question about yourself takes a photo and its caption; with
+        none, or one that says too little, the first screen again with the
+        photo kept (and the caption as notes), saying how to send an old CV
+        instead. A photo that cannot be a portrait either is a file with
+        nothing to read.
+        """
+        from apps.studio.cv.content import says_little
+        try: await sync_to_async(ai.check_portrait)(account,asset_id)
+        except DomainError as exc:
+            if exc.code not in ('invalid_image','image_pixel_limit'): raise
+            return await cv_refused(message,account,ai.FILE,notes,DomainError('cv_file_unreadable'))
+        if caption and not await sync_to_async(says_little)(caption):
+            await sync_to_async(set_prompt)(account,'ai_input',{'feature_id':ai.CV,'portrait_asset_id':str(asset_id)})
+            return await ai_start(message,account,ai.CV,caption,(),'',str(asset_id))
+        await sync_to_async(set_prompt)(account,'cv_choose',{'feature_id':ai.CV,'portrait_asset_id':str(asset_id),
+                                                              **({'notes':notes} if notes else {})})
+        return await cv_choose(message,account,True,notice=text(account,'cv_photo_kept_choose'))
 
     async def ai_topic_needed(message,account,feature_id,brief,other='',edit=True,question='',notice='',portrait=None,ask='name'):
         """A description that names no topic: what was kept of it, and the one thing missing.
@@ -1067,6 +1178,10 @@ def build_dispatcher():
             sample=f'<code>{html.escape(text(account,"cv_name_sample" if cv else "ai_topic_sample"))}</code>'
             body+=(f'{text(account,"cv_name_question" if cv else "ai_topic_question")}\n{text(account,"ai_topic_example").format(example=sample)}\n'
                    f'{text(account,"cv_name_again" if cv else "ai_topic_again")}')
+        # A PDF or Word file sent here was meant as the old CV: the way to that
+        # screen, which keeps what was written as its notes (cv_mode).
+        if cv and notice==text(account,'cv_photo_only'):
+            rows.append([await button(account,'cv_mode_file','cv_mode',{'cv_source':ai.FILE})])
         # A CV's examples come back to this question, or once it is closed to
         # the question about yourself, never to the first CV screen.
         rows.append([await button(account,'ai_examples','ai_examples',{'feature_id':feature_id,
@@ -1595,9 +1710,33 @@ def build_dispatcher():
                     from .channels import blocked,show_gate
                     current=await blocked(account)
                     if current: await show_gate(message,account,current,resume={'kind':'cv_mode','cv_source':way},edit=True)
-                    elif way==ai.TEXT: await ai_prompt(message,account,ai.CV,True)
-                    elif way in (ai.LINKEDIN,ai.FILE): await cv_mode_screen(message,account,way,True)
+                    elif way==ai.TEXT:
+                        # Notes written for a file are the start of the description, never lost.
+                        kept=await sync_to_async(cv_kept)(account)
+                        if kept['notes']:
+                            portrait=kept['portrait_asset_id']
+                            await sync_to_async(set_prompt)(account,'ai_input',{'feature_id':ai.CV,**({'portrait_asset_id':portrait} if portrait else {})})
+                            await render(message,text(account,'ai_preparing'),[],True)
+                            await ai_start(message,account,ai.CV,'\n'.join(kept['notes']),(),'',portrait)
+                        else: await ai_prompt(message,account,ai.CV,True)
+                    elif way in (ai.LINKEDIN,ai.FILE):
+                        # A description still waiting for its name becomes the notes on the file.
+                        brief=await sync_to_async(cv_brief)(account)
+                        await cv_mode_screen(message,account,way,True,notes=kept_brief(brief,CV_BRIEF_CHARS,CV_BRIEF_PIECES) if brief else None)
                     else: await cv_choose(message,account,True)
+            elif action=='cv_retry':
+                # The CV made again from the files kept after a refusal that passed (cv_build).
+                conversation=await sync_to_async(lambda:BotConversation.objects.filter(pk=account.telegram_user_id).first())()
+                kept=(conversation.prompt or {}) if cv_screen_open(conversation) and conversation.state=='cv_source' else {}
+                way=kept.get('cv_source')
+                if kept.get('source_ids') and kept.get('ask')=='again' and way in (ai.LINKEDIN,ai.FILE):
+                    await render(message,text(account,'ai_preparing'),[],True)
+                    await cv_build(message,account,way,[str(note) for note in kept.get('notes') or [] if note],
+                                   [str(identifier) for identifier in kept['source_ids']])
+                else: await cv_choose(message,account,True)
+            elif action=='cv_photo_as':
+                # A photo sent on a CV made from photos or screenshots: its portrait, or one more page (cv_file).
+                await cv_photo_as(message,account,p.get('draft_id',''),p.get('as',''))
             elif action=='ai_retarget':
                 # "Make slides instead" on the topic question: what was written,
                 # now for the other service, after the checks choosing it makes.
@@ -1754,9 +1893,12 @@ def build_dispatcher():
         continue an images-to-PDF task nobody started), and a caption sent with
         it, or with the album it came in, is the description. Sent on the
         review, it goes on that CV, which is priced again; a caption sent with
-        it then is not read, and the customer is told. Of an album, only the
-        newest photo counts. Any other file is not read for a CV, and the
-        question says so.
+        it then is not read, and the customer is told. On the review of a CV
+        made from photos or screenshots it may as well be one more page: the
+        customer is asked which (cv_photo_as). Of an album, only the newest
+        photo counts (on a CV made from files, an album is more of its files:
+        cv_takes_more). Any other file is not read for a CV, and the question
+        says so, with the way to the old-CV screen.
 
         The chat is read again once this file has its turn (chat_lock): a
         description sent with the photo may have made its review meanwhile,
@@ -1775,10 +1917,15 @@ def build_dispatcher():
             pending=conversation.prompt or {}
             caption=album_caption(message)
             asset,notice=None,'' if photo else text(account,'cv_photo_only')
+            # On a CV made from photos or screenshots, one photo on its own may
+            # be the portrait or one more page: asked (cv_photo_as), and only
+            # checked as a portrait once it is one.
+            made=await sync_to_async(ai.cv_files)(account,pending.get('draft_id','')) if reviewing and photo else None
+            asking=bool(made and made['images'] and not made['revision'] and not getattr(message,'media_group_id',None))
             if photo:
                 try:
                     asset=await sync_to_async(upload_file)(account,SimpleUploadedFile(name,raw),'bot')
-                    await sync_to_async(ai.check_portrait)(account,asset.id)
+                    if not asking: await sync_to_async(ai.check_portrait)(account,asset.id)
                     await sync_to_async(record_receipt)(account,asset,message.chat.id,message.message_id)
                 except DomainError as exc:
                     # Too large, or not really a JPEG or PNG: said now, so the
@@ -1788,6 +1935,15 @@ def build_dispatcher():
             if reviewing:
                 if asset is None:
                     album_shown(message,await render(target,html.escape(notice),[],edit))
+                    return True
+                if asking:
+                    # A caption sent with it waits too: notes on a page, never read with a portrait.
+                    await sync_to_async(set_prompt)(account,'cv_review',{**pending,'photo_asked':str(asset.id),
+                                                                         **({'photo_caption':caption} if caption else {})})
+                    draft_id=pending.get('draft_id','')
+                    rows=[[await button(account,'cv_photo_is_portrait','cv_photo_as',{'draft_id':draft_id,'as':'portrait'})],
+                          [await button(account,'cv_photo_is_page','cv_photo_as',{'draft_id':draft_id,'as':'page'})]]
+                    album_shown(message,await render(target,text(account,'cv_photo_or_page'),rows,edit))
                     return True
                 draft,quote=await sync_to_async(ai.add_portrait)(account,pending.get('draft_id',''),asset.id)
                 # Words sent with it would skip the name and detail checks: not added, and said so.
@@ -1808,6 +1964,47 @@ def build_dispatcher():
                                                           pending.get('ask','name')))
             else: album_shown(message,await ai_prompt(target,account,ai.CV,edit,notice,portrait))
         return True
+
+    async def cv_photo_as(message,account,draft_id,kind):
+        """The answer to whether a photo sent on a CV made from photos or screenshots is its portrait or one more page.
+
+        The photo waits in the review's state (cv_file), never in the button. A
+        page is read with the CV's other files and the review drawn again; a
+        portrait goes on the CV, as a photo sent on any other review does. An
+        answer for a review no longer on screen opens the one that is.
+        """
+        conversation=await sync_to_async(lambda:BotConversation.objects.filter(pk=account.telegram_user_id).first())()
+        pending=dict(conversation.prompt or {}) if conversation and conversation.state=='cv_review' else {}
+        asset_id=str(pending.pop('photo_asked','') or '')
+        caption=str(pending.pop('photo_caption','') or '')
+        if not asset_id or str(pending.get('draft_id') or '')!=str(draft_id) or kind not in ('portrait','page'):
+            reviewed=await sync_to_async(open_cv_review)(account)
+            if reviewed: return await ai_resume(message,account,reviewed)
+            return await home(message,account,True,notice=text(account,'stale_button'))
+        await sync_to_async(set_prompt)(account,'cv_review',pending)
+        await render(message,text(account,'ai_preparing'),[],True)
+        notice=''
+        try:
+            if kind=='page':
+                made=await sync_to_async(ai.cv_files)(account,draft_id)
+                if made: await cv_read(account,made['way'],[*made['source_ids'],asset_id])
+                draft,quote=await sync_to_async(ai.add_sources)(account,draft_id,[asset_id],caption)
+                notice=text(account,'cv_files_added')
+            else:
+                try:
+                    await sync_to_async(ai.check_portrait)(account,asset_id)
+                    draft,quote=await sync_to_async(ai.add_portrait)(account,draft_id,asset_id)
+                    # Words sent with it would skip the name and detail checks: not added, and said so.
+                    if caption: notice=text(account,'cv_caption_not_added')
+                except DomainError as exc:
+                    if exc.code not in ('invalid_image','image_pixel_limit'): raise
+                    draft,quote=await sync_to_async(ai.quote)(account,draft_id)
+                    notice=text(account,'cv_photo_rejected')
+        except DomainError as exc:
+            if exc.code=='controls_expired': return await home(message,account,True,notice=text(account,'stale_button'))
+            draft,quote=await sync_to_async(ai.quote)(account,draft_id)
+            notice=await sync_to_async(cv_refusal_said)(account,exc)
+        return await ai_review(message,account,draft,quote,True,notice)
 
     @dp.message(F.document | F.photo)
     async def receive(message,bot):

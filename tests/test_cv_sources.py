@@ -15,6 +15,7 @@ import functools
 import io
 import json
 from datetime import timedelta
+from pathlib import Path
 
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -167,6 +168,167 @@ def docx_cv():
     return raw.getvalue()
 
 
+HYPERLINK = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink'
+
+
+def _hyperlink(paragraph, address, shown):
+    """A clickable address in a Word paragraph, as Word makes one when an email or a URL is typed."""
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+    link = OxmlElement('w:hyperlink')
+    link.set(qn('r:id'), paragraph.part.relate_to(address, HYPERLINK, is_external=True))
+    run, text = OxmlElement('w:r'), OxmlElement('w:t')
+    text.text = shown
+    run.append(text)
+    link.append(run)
+    paragraph._p.append(link)
+
+
+def _saved(document):
+    raw = io.BytesIO()
+    document.save(raw)
+    return raw.getvalue()
+
+
+@functools.lru_cache(maxsize=None)
+def docx_with_box():
+    """A Word CV from a template: the education in a text box, which Word writes twice (DrawingML and its VML fallback)."""
+    from docx import Document
+    from docx.oxml import parse_xml
+    from docx.shared import Pt
+    document = Document()
+    run = document.add_paragraph().add_run('Kamola Nazarova')
+    run.font.size, run.bold = Pt(24), True
+    document.add_paragraph('HR Business Partner · Tashkent · +998 90 222 33 44')
+    document.add_paragraph('HR Business Partner, Example IT (2021 - present): hired 120 engineers in two years.')
+    lines = ('<w:p><w:r><w:t>EDUCATION</w:t></w:r></w:p>'
+             '<w:p><w:r><w:t>BA Psychology, National University of Uzbekistan, 2013 - 2017</w:t></w:r></w:p>')
+    box = (
+        '<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
+        'xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" '
+        'xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape" '
+        'xmlns:v="urn:schemas-microsoft-com:vml" '
+        'xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" '
+        'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><w:r><mc:AlternateContent>'
+        '<mc:Choice Requires="wps"><w:drawing><wp:anchor><a:graphic><a:graphicData '
+        'uri="http://schemas.microsoft.com/office/word/2010/wordprocessingShape"><wps:wsp><wps:txbx><w:txbxContent>'
+        f'{lines}</w:txbxContent></wps:txbx></wps:wsp></a:graphicData></a:graphic></wp:anchor></w:drawing></mc:Choice>'
+        f'<mc:Fallback><w:pict><v:shape><v:textbox><w:txbxContent>{lines}</w:txbxContent></v:textbox></v:shape>'
+        '</w:pict></mc:Fallback></mc:AlternateContent></w:r></w:p>')
+    document.element.body.insert(len(document.element.body) - 1, parse_xml(box))
+    document.add_paragraph('Skills: recruiting, labour law, HR analytics')
+    return _saved(document)
+
+
+@functools.lru_cache(maxsize=None)
+def docx_first_page_header():
+    """A Word CV whose name and contacts are in the first page's own header, and whose footer repeats the contacts."""
+    from docx import Document
+    from docx.shared import Pt
+    document = Document()
+    section = document.sections[0]
+    section.different_first_page_header_footer = True
+    run = section.first_page_header.paragraphs[0].add_run('Kamola Nazarova')
+    run.font.size, run.bold = Pt(24), True
+    section.first_page_header.add_paragraph('+998 90 222 33 44 · kamola.nazarova@example.com · Tashkent')
+    for footer in (section.first_page_footer, section.footer):
+        footer.paragraphs[0].text = 'kamola.nazarova@example.com · +998 90 222 33 44'
+    document.add_paragraph('Experience')
+    document.add_paragraph('HR Business Partner, Example IT (2021 - present): hired 120 engineers in two years.')
+    document.add_paragraph('Education: BA Psychology, National University of Uzbekistan, 2013 - 2017')
+    return _saved(document)
+
+
+@functools.lru_cache(maxsize=None)
+def docx_with_links():
+    """An old Word CV whose email and LinkedIn address Word made clickable as they were typed."""
+    from docx import Document
+    from docx.shared import Pt
+    document = Document()
+    run = document.add_paragraph().add_run('Kamola Nazarova')
+    run.font.size, run.bold = Pt(22), True
+    contacts = document.add_paragraph('HR Business Partner · Tashkent · ')
+    _hyperlink(contacts, 'mailto:kamola.nazarova@example.com', 'kamola.nazarova@example.com')
+    contacts.add_run(' · ')
+    _hyperlink(contacts, 'https://www.linkedin.com/in/kamola-nazarova', 'linkedin.com/in/kamola-nazarova')
+    document.add_paragraph('HR Business Partner, Example IT (2021 - present): hired 120 engineers in two years.')
+    document.add_paragraph('Education: BA Psychology, National University of Uzbekistan, 2013 - 2017')
+    return _saved(document)
+
+
+@functools.lru_cache(maxsize=None)
+def timeline_pdf():
+    """An old CV laid out as a timeline: each role's dates to its left, the headings above them, nothing beside a heading."""
+    def draw(page, _):
+        _lines(page, 50, 790, [('Helvetica-Bold', 22, 'Sardor Aliyev', 22),
+                               ('Helvetica', 10, '+998 90 765 43 21 · sardor.aliyev@example.com · Fergana', 34)])
+        y = 734
+        for heading, rows in (('Experience', (('2020 – 2024', 'Sales manager, Example Foods LLC',
+                                               ('Grew regional sales by 30% in two years.',)),
+                                              ('2017 – 2020', 'Sales representative, Sample Trade',
+                                               ('Opened 40 new retail accounts.',)),
+                                              ('2015 – 2017', 'Cashier, Example Market', ()))),
+                              ('Education', (('2011 – 2015', 'BSc Economics, Fergana State University', ()),)),
+                              ('Skills', (('', 'Negotiation, CRM (Bitrix24), Excel', ()),))):
+            page.setFont('Helvetica-Bold', 13)
+            page.drawString(50, y, heading)
+            y -= 20
+            for dates, role, lines in rows:
+                page.setFont('Helvetica', 10)
+                page.drawString(50, y, dates)
+                page.setFont('Helvetica-Bold', 10.5)
+                page.drawString(160, y, role)
+                y -= 14
+                for line in lines:
+                    page.setFont('Helvetica', 10)
+                    page.drawString(160, y, line)
+                    y -= 13
+                y -= 8
+            y -= 10
+    return _pdf(draw)
+
+
+@functools.lru_cache(maxsize=None)
+def table_pdf():
+    """An old CV with its jobs in a ruled table: Period, Position, Company."""
+    def draw(page, _):
+        _lines(page, 50, 790, [('Helvetica-Bold', 20, 'Sardor Aliyev', 22),
+                               ('Helvetica', 10, '+998 90 765 43 21 · sardor.aliyev@example.com · Fergana', 30)])
+        y = 720
+        page.setFont('Helvetica-Bold', 12)
+        page.drawString(50, y, 'Work history')
+        y -= 18
+        columns = (50, 160, 330, 545)
+        rows = (('Period', 'Position', 'Company'), ('2020 - 2024', 'Sales manager', 'Example Foods LLC'),
+                ('2017 - 2020', 'Sales representative', 'Sample Trade'), ('2015 - 2017', 'Cashier', 'Example Market'))
+        for number, row in enumerate(rows):
+            page.rect(columns[0], y - 6, columns[-1] - columns[0], 20, stroke=1, fill=0)
+            for left, cell in zip(columns, row):
+                page.setFont('Helvetica-Bold' if number == 0 else 'Helvetica', 10)
+                page.drawString(left + 4, y, cell)
+            y -= 20
+        page.setFont('Helvetica-Bold', 12)
+        page.drawString(50, y - 16, 'Education')
+        page.setFont('Helvetica', 10)
+        page.drawString(50, y - 32, 'Fergana State University, Economics, 2011 - 2015')
+    return _pdf(draw)
+
+
+@functools.lru_cache(maxsize=None)
+def dense_pdf(pages=30):
+    """A small file of pages packed with tiny text: no CV, and slow to read character by character."""
+    from reportlab.lib.pagesizes import A4
+
+    def draw(page, _):
+        page.setFont('Helvetica', 1)
+        text = page.beginText(5, A4[1] - 5)
+        text.setLeading(1.1)
+        for _ in range(760):
+            text.textLine('lorem ipsum dolor sit amet ' * 12)
+        page.drawText(text)
+    return _pdf(draw, pages)
+
+
 def picture(pdf, scale=2.0, fmt='PNG'):
     """The first page of `pdf` as an image, as a phone photographs or screenshots it."""
     import pypdfium2 as pdfium
@@ -306,6 +468,55 @@ def test_a_word_cv_is_read_in_order_with_its_table():
     assert lines[3:5] == ['2019 - 2024 | Chief accountant | Example Trade LLC', '2015 - 2019 | Accountant | Sample Foods']
     assert lines[-1] == 'Skills: 1C, Excel, IFRS reporting'
     assert result['names'] == ['Javlon Ergashev']
+
+
+def test_a_timeline_keeps_each_roles_dates_beside_it_and_a_table_its_rows():
+    # Dates on the left leave a gap too, with headings above them that have nothing beside them.
+    lines = lines_of(read(timeline_pdf(), 'pdf', '.pdf')['pages'][0]['text'])
+    assert lines[2:6] == ['Experience', '2020 – 2024 Sales manager, Example Foods LLC',
+                          'Grew regional sales by 30% in two years.', '2017 – 2020 Sales representative, Sample Trade']
+    assert '2011 – 2015 BSc Economics, Fergana State University' in lines
+    assert lines.index('Education') < lines.index('2011 – 2015 BSc Economics, Fergana State University')
+    rows = lines_of(read(table_pdf(), 'pdf', '.pdf')['pages'][0]['text'])
+    assert rows[2:7] == ['Work history', 'Period Position Company', '2020 - 2024 Sales manager Example Foods LLC',
+                         '2017 - 2020 Sales representative Sample Trade', '2015 - 2017 Cashier Example Market']
+    # A sidebar is still read whole beside them (test_a_sidebar_stays_whole_and_a_roles_dates_stay_beside_it).
+    sidebar = lines_of(read(sidebar_pdf(), 'pdf', '.pdf')['pages'][0]['text'])
+    assert sidebar.index('Russian - fluent') + 1 == sidebar.index('Malika Yusupova')
+
+
+@pytest.mark.django_db
+def test_a_word_cv_with_a_text_box_is_read_with_the_box_once(customer):
+    # Word's text boxes used to stop the reader (KeyError 'mc'): the file was "unreadable".
+    result = read(docx_with_box(), 'docx', '.docx')
+    text = result['pages'][0]['text']
+    assert result['names'] == ['Kamola Nazarova']
+    assert text.count('EDUCATION') == 1 and text.count('BA Psychology, National University of Uzbekistan') == 1
+    assert text.index('hired 120 engineers') < text.index('EDUCATION') < text.index('Skills: recruiting')
+    word = stored_docx(customer, docx_with_box())
+    data = unpack(create_draft(customer, {'feature_id': CV, 'source_ids': [str(word.id)],
+                                          'options': {'cv_source': 'file'}}).encrypted_data)
+    assert data['title'] == 'Kamola Nazarova' and 'cv_unread' not in data
+    assert ''.join(e['text'] for e in data['excerpts']).count('BA Psychology') == 1
+
+
+def test_a_word_cv_with_its_name_in_the_first_pages_header_and_a_footer():
+    result = read(docx_first_page_header(), 'docx', '.docx')
+    lines = lines_of(result['pages'][0]['text'])
+    assert result['names'] == ['Kamola Nazarova']
+    assert lines[:3] == ['Kamola Nazarova', '+998 90 222 33 44 · kamola.nazarova@example.com · Tashkent', 'Experience']
+    # The footer, the same on the first page as on the others, is read once, after the body.
+    assert lines[-1] == 'kamola.nazarova@example.com · +998 90 222 33 44'
+    assert lines.count('kamola.nazarova@example.com · +998 90 222 33 44') == 1
+
+
+def test_a_small_file_of_dense_pages_is_read_quickly(tmp_path):
+    import time
+    begun = time.monotonic()
+    result = read(dense_pdf(), 'pdf', '.pdf')
+    # Character by character it took over a minute and was killed; pypdf reads it in seconds.
+    assert time.monotonic() - begun < 20
+    assert len(result['pages']) == 30 and all(len(page['text']) == 12000 for page in result['pages'])
 
 
 def test_a_file_the_reader_cannot_parse_is_a_failure_with_nothing_of_the_file_in_it():
@@ -458,6 +669,254 @@ def test_the_studio_says_how_a_cv_can_be_made(settings):
     assert cv['source_kinds'] == {'linkedin': ['pdf', 'image'], 'file': ['pdf', 'docx', 'image']}
     assert cv['max_source_files'] == 10
     assert not {'source_modes', 'source_kinds', 'max_source_files'} & set(features[DOCUMENT])
+
+
+# --- Links in a Word CV ----------------------------------------------------------------------------
+
+@pytest.fixture
+def office_pages(monkeypatch):
+    """A Word file's page count without LibreOffice, which counts it on upload and which tests may not have."""
+    from apps.core import services
+    from processors.engine import inspect_file
+    real = services.engine_inspect
+
+    def inspect(path, password=None, allow_links=False):
+        from processors import ProcessorError
+        if not str(path).endswith('.docx'):
+            return real(path, password=password, allow_links=allow_links)
+        try:
+            return {**inspect_file(path, office_preflight=False, allow_links=allow_links), 'page_count': 1}
+        except ProcessorError as exc:
+            raise DomainError(exc.code) from None
+    monkeypatch.setattr(services, 'engine_inspect', inspect)
+
+
+@pytest.mark.django_db
+def test_a_word_cv_with_an_email_and_a_linkedin_link_is_read(customer, office_pages, monkeypatch):
+    from apps.core.services import upload_file, validate_inputs
+    # Word to PDF needs LibreOffice, which tests may not have: only the file is checked here.
+    monkeypatch.setattr('apps.core.services.require_feature', lambda account, feature_id: None)
+    raw = docx_with_links()
+    # For the file tools a file with any link in it is refused, as it always was.
+    with pytest.raises(DomainError, match='external_content_unsupported'):
+        upload_file(customer, SimpleUploadedFile('old-cv.docx', raw), 'bot')
+    # As a CV's own file it is taken, its links recorded, and read.
+    word = upload_file(customer, SimpleUploadedFile('old-cv.docx', raw), 'bot', purpose='cv_source')
+    assert word.metadata['external_hyperlinks'] is True and word.metadata['kind'] == 'docx'
+    draft = create_draft(customer, {'feature_id': CV, 'source_ids': [str(word.id)], 'options': {'cv_source': 'file'}})
+    data = unpack(draft.encrypted_data)
+    assert data['title'] == 'Kamola Nazarova'
+    assert 'kamola.nazarova@example.com' in data['excerpts'][0]['text']
+    assert 'linkedin.com/in/kamola-nazarova' in data['excerpts'][0]['text']
+    # It never reaches a file tool, which would convert it.
+    with pytest.raises(DomainError, match='external_content_unsupported'):
+        validate_inputs(customer, 'convert.word_to_pdf', [str(word.id)])
+    # Only the purpose a CV's file is uploaded for is taken.
+    with pytest.raises(DomainError, match='invalid_parameters'):
+        upload_file(customer, SimpleUploadedFile('old-cv.docx', raw), 'bot', purpose='anything')
+
+
+@pytest.mark.django_db
+def test_the_web_uploads_a_cvs_word_file_with_links_by_its_purpose(customer, office_pages):
+    client = login_client(customer)
+    refused = client.post('/api/v1/files/uploads', {'file': SimpleUploadedFile('old-cv.docx', docx_with_links())})
+    assert refused.status_code == 400 and refused.json()['error']['code'] == 'external_content_unsupported'
+    taken = client.post('/api/v1/files/uploads', {'file': SimpleUploadedFile('old-cv.docx', docx_with_links()),
+                                                  'purpose': 'cv_source'})
+    assert taken.status_code == 201, taken.content
+    assert 'external_hyperlinks' not in taken.json()
+
+
+def test_a_link_is_the_only_outside_reference_a_cvs_file_may_have(tmp_path):
+    import zipfile
+    from processors import ProcessorError
+    from processors.engine import inspect_file
+    from processors.sandbox import inspect_file_sandbox
+    linked = tmp_path / 'linked.docx'
+    linked.write_bytes(docx_with_links())
+    with pytest.raises(ProcessorError) as refused:
+        inspect_file(linked, office_preflight=False)
+    assert refused.value.code == 'external_content_unsupported'
+    assert inspect_file(linked, office_preflight=False, allow_links=True)['external_hyperlinks'] is True
+    # The sandbox the upload inspects in passes it on.
+    with pytest.raises(ProcessorError) as refused:
+        inspect_file_sandbox(linked)
+    assert refused.value.code == 'external_content_unsupported'
+    assert inspect_file_sandbox(linked, allow_links=True)['external_hyperlinks'] is True
+    # A file without one says nothing of links.
+    plain = tmp_path / 'plain.docx'
+    plain.write_bytes(docx_cv())
+    assert 'external_hyperlinks' not in inspect_file(plain, office_preflight=False, allow_links=True)
+    # An image, a template or a frame from outside would be fetched: refused whatever the file is for.
+    fetched = tmp_path / 'fetched.docx'
+    with zipfile.ZipFile(linked) as original, zipfile.ZipFile(fetched, 'w') as modified:
+        for entry in original.infolist():
+            payload = original.read(entry)
+            if entry.filename == 'word/_rels/document.xml.rels':
+                payload = payload.replace(b'</Relationships>', (
+                    b'<Relationship Id="rIdOutside" Type="http://schemas.openxmlformats.org/officeDocument/2006/'
+                    b'relationships/image" Target="https://example.invalid/private.png" TargetMode="External"/>'
+                    b'</Relationships>'))
+            modified.writestr(entry, payload)
+    with pytest.raises(ProcessorError) as refused:
+        inspect_file(fetched, office_preflight=False, allow_links=True)
+    assert refused.value.code == 'external_content_unsupported'
+
+
+# --- Reading each file once, and saying what could not be read ------------------------------------
+
+class FakeReader:
+    """extraction.read_cv for files named by what they hold: 'scan-N' pages to OCR, 'shot' one, 'text' none, 'bad' a failure."""
+
+    def __init__(self, seconds=0.0):
+        self.calls, self.seconds = [], seconds
+
+    def __call__(self, path, kind, *, ocr_pages, seconds):
+        import time
+        name = Path(str(path)).stem
+        self.calls.append((name, ocr_pages))
+        time.sleep(self.seconds)
+        if name == 'bad':
+            raise DomainError('source_extraction_failed')
+        if name == 'text':
+            return {'pages': [{'page': 1, 'text': 'Timur Rakhimov, lead engineer at Example Motors since 2020.'}],
+                    'names': ['Timur Rakhimov'], 'ocr_pages': 0, 'ocr_skipped': 0}
+        count = int(name.split('-')[1]) if name.startswith('scan-') else 1
+        done = min(count, ocr_pages)
+        pages = [{'page': number, 'text': f'{name} page {number} read by optical character recognition',
+                  **({'ocr': True} if number <= done else {})} for number in range(1, count + 1)]
+        for page in pages[done:]:
+            page['text'] = ''
+        return {'pages': pages, 'names': [], 'ocr_pages': done, 'ocr_skipped': count - done}
+
+
+def files_named(*names):
+    from pathlib import Path as P
+    return [{'account': '1', 'asset_id': name, 'sha256': 'f' * 64, 'kind': 'image' if name == 'shot' else 'pdf',
+             'pages': int(name.split('-')[1]) if name.startswith('scan-') else 1, 'scan': name != 'text',
+             'path': str(P('/nowhere') / f'{name}.pdf')} for name in names]
+
+
+def test_the_pages_ocr_reads_are_shared_so_every_file_is_read(monkeypatch):
+    from apps.studio.cv import sources
+    reader = FakeReader()
+    monkeypatch.setattr(extraction, 'read_cv', reader)
+    files = files_named('scan-10', 'shot')
+    excerpts, unread = sources.excerpts_of(files, sources.read_entries(files))
+    # A ten-page scan first used to take every page, and the screenshot after it was never read.
+    assert reader.calls == [('scan-10', 9), ('shot', 1)]
+    assert [e['asset_id'] for e in excerpts].count('shot') == 1
+    assert unread == [{'asset_id': 'scan-10', 'pages': 1}]
+    # The other way round, the screenshot takes its one page and the scan the rest.
+    sources.forget()
+    reader.calls.clear()
+    files = files_named('shot', 'scan-10')
+    _, unread = sources.excerpts_of(files, sources.read_entries(files))
+    assert reader.calls == [('shot', 9), ('scan-10', 9)] and unread == [{'asset_id': 'scan-10', 'pages': 1}]
+
+
+def test_a_file_that_fails_or_has_no_time_left_is_said_and_never_read_again(monkeypatch):
+    from apps.studio.cv import sources
+    reader = FakeReader(seconds=1.6)
+    monkeypatch.setattr(extraction, 'read_cv', reader)
+    # Time for two readings and a little: under five seconds is left for the third.
+    monkeypatch.setattr(sources, 'READ_SECONDS', 7.4)
+    files = files_named('text', 'bad', 'shot')
+    excerpts, unread = sources.excerpts_of(files, sources.read_entries(files))
+    # The last file had under five seconds left: not started, and said.
+    assert [name for name, _ in reader.calls] == ['text', 'bad']
+    assert unread == [{'asset_id': 'bad', 'pages': 1, 'whole': True}, {'asset_id': 'shot', 'pages': 1, 'whole': True}]
+    assert {e['asset_id'] for e in excerpts} == {'text'}
+    # With another file beside them, the one read and the one that failed are not read again.
+    reader.calls.clear()
+    monkeypatch.setattr(sources, 'READ_SECONDS', 75)
+    files = files_named('text', 'bad', 'shot', 'scan-2')
+    _, unread = sources.excerpts_of(files, sources.read_entries(files))
+    assert [name for name, _ in reader.calls] == ['shot', 'scan-2']
+    assert unread == [{'asset_id': 'bad', 'pages': 1, 'whole': True}]
+
+
+def test_one_cvs_files_are_read_at_a_time_and_another_is_asked_to_try_again(monkeypatch, tmp_path):
+    import subprocess
+    import sys
+    from apps.studio.cv import sources
+    monkeypatch.setattr(sources, 'SLOT', tmp_path / 'reading.lock')
+    monkeypatch.setattr(sources, 'SLOT_SECONDS', 0.5)
+    monkeypatch.setattr(extraction, 'read_cv', FakeReader())
+    # Another worker of the API holds the turn while it reads its own CV's files.
+    holder = subprocess.Popen([sys.executable, '-c', (
+        'import fcntl, sys, time\n'
+        f'handle = open({str(tmp_path / "reading.lock")!r}, "a")\n'
+        'fcntl.flock(handle, fcntl.LOCK_EX)\nprint("held", flush=True)\ntime.sleep(30)\n')],
+        stdout=subprocess.PIPE, text=True)
+    try:
+        assert holder.stdout.readline().strip() == 'held'
+        with pytest.raises(DomainError) as busy:
+            sources.read_entries(files_named('text'))
+        assert busy.value.code == 'rate_limited' and busy.value.status == 429 and busy.value.retryable
+    finally:
+        holder.kill()
+        holder.wait()
+    # Its turn come, it is read; what was read before needs no turn at all.
+    assert sources.read_entries(files_named('text'))[0]['names'] == ['Timur Rakhimov']
+    holder = subprocess.Popen([sys.executable, '-c', (
+        'import fcntl, time\n'
+        f'handle = open({str(tmp_path / "reading.lock")!r}, "a")\n'
+        'fcntl.flock(handle, fcntl.LOCK_EX)\nprint("held", flush=True)\ntime.sleep(30)\n')],
+        stdout=subprocess.PIPE, text=True)
+    try:
+        assert holder.stdout.readline().strip() == 'held'
+        sources.forget()
+        monkeypatch.setattr(sources, '_recall', lambda key: {'pages': [], 'names': [], 'ocr_pages': 0,
+                                                              'ocr_skipped': 0} if key[0] == 'file' else None)
+        assert sources.read_entries(files_named('text', 'shot'))[1] == {'pages': [], 'names': [], 'ocr_pages': 0,
+                                                                        'ocr_skipped': 0}
+    finally:
+        holder.kill()
+        holder.wait()
+
+
+@pytest.mark.django_db
+def test_a_cv_made_again_from_the_same_files_does_not_read_them_again(customer, monkeypatch):
+    calls = []
+    real = extraction.read_cv
+    monkeypatch.setattr(extraction, 'read_cv', lambda *args, **kwargs: calls.append(args[1]) or real(*args, **kwargs))
+    nameless = uploaded(customer, 'nameless.pdf', _pdf(lambda page, _: _lines(page, 60, 780, [
+        ('Helvetica', 11, 'Experience: accountant at Example Trade LLC, 2019 - 2024.', 16),
+        ('Helvetica', 11, 'Skills: 1C, Excel, IFRS reporting, payroll, tax returns.', 16)])))
+    request = {'feature_id': CV, 'source_ids': [str(nameless.id)], 'options': {'cv_source': 'file'}}
+    with pytest.raises(DomainError, match='cv_name_required'):
+        create_draft(customer, {**request, 'prompt': 'make it shorter'})
+    # The name answered: the file is not read a second time.
+    draft = create_draft(customer, {**request, 'prompt': 'Ismim Javlon Ergashev'})
+    assert calls == ['pdf'] and unpack(draft.encrypted_data)['title'] == 'Javlon Ergashev'
+    # A file added beside it is read, and only that one.
+    word = stored_docx(customer, docx_cv())
+    data = unpack(draft.encrypted_data)
+    again = update_draft(customer, draft.id, {'version': draft.version, 'source_ids': [str(nameless.id), str(word.id)]})
+    assert calls == ['pdf', 'docx']
+    assert [e['asset_id'] for e in unpack(again.encrypted_data)['excerpts']] == [
+        *[e['asset_id'] for e in data['excerpts']], str(word.id)]
+
+
+@pytest.mark.django_db
+def test_what_could_not_be_read_is_kept_with_the_draft_and_shown(customer, monkeypatch):
+    from apps.studio.cv import sources
+    monkeypatch.setattr(sources, 'MAX_OCR_PAGES', 0)
+    scan = uploaded(customer, 'scan.pdf', scanned_pdf())
+    old = uploaded(customer, 'old-cv.pdf', one_column_pdf())
+    draft = create_draft(customer, {'feature_id': CV, 'source_ids': [str(old.id), str(scan.id)],
+                                    'options': {'cv_source': 'file'}})
+    data = unpack(draft.encrypted_data)
+    assert data['cv_unread'] == [{'asset_id': str(scan.id), 'pages': 1}]
+    assert [e['asset_id'] for e in data['excerpts']] == [str(old.id)]
+    shown = login_client(customer).get(f'/api/v1/generation/drafts/{draft.id}').json()
+    assert shown['cv_unread'] == [{'asset_id': str(scan.id), 'pages': 1}]
+    # An update that keeps the files keeps what was said of them; a CV read whole says nothing.
+    kept = update_draft(customer, draft.id, {'version': draft.version, 'output_locale': 'ru'})
+    assert unpack(kept.encrypted_data)['cv_unread'] == data['cv_unread']
+    whole = create_draft(customer, {'feature_id': CV, 'source_ids': [str(old.id)], 'options': {'cv_source': 'file'}})
+    assert 'cv_unread' not in unpack(whole.encrypted_data)
 
 
 # --- The name, the facts and the request ------------------------------------------------------------
