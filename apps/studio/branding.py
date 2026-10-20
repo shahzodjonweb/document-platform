@@ -41,7 +41,9 @@ def _logo_asset(account,identifier):
 
 
 def generation_inputs(data):
-    ids=list(data['source_ids'])
+    # A CV's own files are not either: what was read from them is in the
+    # draft, which the quote pins, and a change is made after they are gone.
+    ids=[] if (data.get('options') or {}).get('cv_source') in ('linkedin','file') else list(data['source_ids'])
     logo=data['options'].get('branding',{}).get('logo_asset_id')
     if logo and logo not in ids:ids.append(logo)
     # A CV's portrait is not: the draft pins its fingerprint and the quote the

@@ -76,7 +76,7 @@ SYSTEM=(
 )
 # A CV is told its own rules in place of SYSTEM and DOCUMENT_RULES, which say
 # one section is one page; they live with the rest of the CV (cv/content.py).
-from .cv.content import CV_GUIDANCE, CV_REVISION_GUIDANCE, CV_REVISION_SYSTEM, CV_RULES, CV_SYSTEM
+from .cv.content import CV_GUIDANCE, CV_REVISION_GUIDANCE, CV_REVISION_SYSTEM, CV_RULES, CV_SOURCES, CV_SYSTEM
 # How a document and a deck are written differ; each call is told only its own.
 DOCUMENT_RULES=(
     'This is a document to be read. Write developed paragraphs that explain, connect ideas and give concrete, '

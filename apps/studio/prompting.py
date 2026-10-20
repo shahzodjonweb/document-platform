@@ -7,7 +7,7 @@ import re
 # Part of every prompt cache key. A change to any fixed block a model is told —
 # these, provider.SYSTEM and the rules, or a CV's blocks in cv/content.py —
 # bumps it, so no call is served a prefix cached for the old wording.
-VERSION = 'studio-efficient-v5'
+VERSION = 'studio-efficient-v6'
 # The list is read out of the description by a program (apps/studio/topics.py),
 # so it also catches requests about form: "with photos" must not become a section.
 SUBTOPICS = (
@@ -503,7 +503,8 @@ def schema(data, feature, *, final=True, design=False):
     # it never had; one that removes the test loses it, and the result has none.
     if outline or selected(data) or not asked_questions(data) or not final:
         properties.pop('questions', None)
-    if not data.get('excerpts'):
+    # A CV cites nothing: the files it is made from are its facts, not sources.
+    if cv or not data.get('excerpts'):
         properties.pop('citations', None)
     if selected(data):
         properties.pop('title', None)
@@ -591,8 +592,11 @@ def request_body(config, data, feature, span=None):
         # chooses one: a new CV with none picked, or a change asking for a new
         # look. Whether a portrait was sent is fixed for the draft.
         from .cv import templates as cv_templates
-        from .provider import CV_REVISION_SYSTEM, CV_RULES, CV_SYSTEM
+        from .provider import CV_REVISION_SYSTEM, CV_RULES, CV_SOURCES, CV_SYSTEM
         parts = ([REVISION_SYSTEM, CV_REVISION_SYSTEM] if revision else [CV_SYSTEM]) + [CV_RULES]
+        # Made from the customer's old CV or LinkedIn profile, it is told what its excerpts are.
+        if data.get('excerpts'):
+            parts.append(CV_SOURCES)
         if cv_templates.wanted(data, 0):
             parts.append(cv_templates.reference(bool(data.get('options', {}).get('portrait_asset_id'))))
         design = cv_templates.wanted(data, first)
@@ -629,8 +633,12 @@ def request_body(config, data, feature, span=None):
     instructions = '\n'.join(parts)
     # Stable source content comes before the varying slice and its instructions.
     # JSON separator whitespace is compacted, never whitespace inside user text.
+    excerpts = data['excerpts']
+    if cv:
+        from .cv.sources import for_model
+        excerpts = for_model(excerpts)
     user = {'task': feature, **language.wire(locale_of(data)),
-            'prompt': data['prompt'], 'source_text': data['source_text'], 'excerpts': data['excerpts']}
+            'prompt': data['prompt'], 'source_text': data['source_text'], 'excerpts': excerpts}
     from .topics import required
     subtopics = [] if cv else required(data.get('_brief') or data.get('revision', {}).get('original_prompt')
                                        or data['prompt'])
