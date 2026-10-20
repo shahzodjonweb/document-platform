@@ -63,18 +63,52 @@ def max_files(account):
     return min(MAX_FILES, int(plan_limits(account).get('max_ai_source_files', MAX_FILES) or MAX_FILES))
 
 
-def linkedin_link_only(text):
-    """Whether a description is a LinkedIn profile's link and next to nothing else.
+def max_pages(account):
+    """How many pages all of a CV's files may have: thirty, or fewer when the plan's source pages are fewer."""
+    from apps.core.policy import plan_limits
+    return min(MAX_PAGES, int(plan_limits(account).get('max_ai_source_pages', MAX_PAGES) or MAX_PAGES))
 
+
+# The words people ask with, greet with and point at their profile with, in
+# English, Uzbek and Russian. None of them is a fact about the person. The web
+# app stops a link-only description with the same set (document-web
+# app/composables/useCvSources.ts ASKING) and never with a word more: a word
+# only the web took for asking would stop a description this side makes a CV of.
+ASKING = frozenset(' '.join((
+    'hello hi here is my the a an at from for me it please make create professional good cv resume profile link page',
+    'thank thanks you very much this',
+    'assalomu alaykum salom mana mening shu shundan menga yaxshi rezyume profil profilim havola qilib bering iltimos',
+    'tayyorlab rahmat',
+    'здравствуйте привет вот ссылка на мой моя мне профиль в из него по моему сделайте сделать составьте пожалуйста',
+    'резюме спасибо',
+)).split())
+LETTERS = re.compile(r"[^\W\d_]+")
+
+
+def linkedin_link_only(text):
+    """Whether a description is a LinkedIn profile's link and no fact about the person.
+
+    A bare link, or one in a request ("Здравствуйте, вот ссылка на мой
+    профиль, сделайте резюме: …", "Please make my CV from my profile at …").
     It cannot be opened, so the customer is told how to save the profile as a
-    PDF instead (`cv_linkedin_link`). A link inside a description with a CV's
-    worth of facts is only a contact detail.
+    PDF instead (`cv_linkedin_link`). Any other word, an email, a phone number
+    or a year is a fact, however short the description ("Ali Valiyev, SMM
+    manager. linkedin.com/in/…"), and the CV is made from it. A name alone is
+    no CV: it is taken out before the words are read, so a request that gives
+    only the name and the link is still told how to save the profile.
     """
     text = str(text or '')
     if not LINKEDIN_LINK.search(text):
         return False
-    from .content import says_little
-    return says_little(LINKEDIN_LINK.sub(' ', text))
+    from .content import EMAIL, PHONE, YEAR, name_in
+    rest = LINKEDIN_LINK.sub(' ', text)
+    name = name_in(rest)
+    if name:
+        rest = rest.replace(name, ' ', 1)
+    if EMAIL.search(rest) or PHONE.search(rest) or YEAR.search(rest):
+        return False
+    words = [word.lower() for word in LETTERS.findall(rest)]
+    return all(word == 'linkedin' or word in ASKING for word in words)
 
 
 def checked(account, ids, source):
@@ -86,7 +120,6 @@ def checked(account, ids, source):
     """
     if len(ids) > max_files(account):
         raise DomainError('generation_limit')
-    from apps.core.policy import plan_limits
     from apps.core.services import owned_assets
     assets = owned_assets(account, ids)
     kinds = [MIME.get(asset.mime_type) if asset.metadata.get('kind') in ('pdf', 'docx', 'image') else None
@@ -95,7 +128,7 @@ def checked(account, ids, source):
         raise DomainError('cv_file_kind')
     if any(asset.metadata.get('encrypted') for asset in assets):
         raise DomainError('cv_file_unreadable')
-    if sum(asset.page_count for asset in assets) > min(MAX_PAGES, plan_limits(account)['max_ai_source_pages']):
+    if sum(asset.page_count for asset in assets) > max_pages(account):
         raise DomainError('generation_limit')
     return assets, kinds
 

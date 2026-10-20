@@ -1185,3 +1185,26 @@ def test_without_a_model_a_cv_from_a_file_says_what_the_file_says(settings):
     assert 'malika.yusupova@example.net' in data['content']['sections'][0]['body']
     job = made(owner, draft)
     assert job.warnings == ['local_fixture_not_ai_generated']
+
+
+@pytest.mark.parametrize('text,only', [
+    ('https://www.linkedin.com/in/ali-valiyev', True),
+    ('Здравствуйте, вот ссылка на мой профиль в LinkedIn, сделайте, пожалуйста, из него резюме: '
+     'https://www.linkedin.com/in/ali-valiyev', True),
+    ('Hello, here is my LinkedIn profile, please make a professional CV for me from it: '
+     'https://www.linkedin.com/in/ali-valiyev', True),
+    ('Assalomu alaykum, mana mening LinkedIn profilim, shundan menga yaxshi rezyume qilib bering iltimos: '
+     'linkedin.com/in/ali-valiyev', True),
+    # A name alone is no CV.
+    ('Ali Valiyev. Make my CV from my LinkedIn: linkedin.com/in/ali-valiyev', True),
+    # Any fact makes it a description, however short.
+    ('Ali Valiyev, SMM manager. linkedin.com/in/ali-valiyev', False),
+    ('Python developer at EPAM since 2021, linkedin.com/in/ali-valiyev', False),
+    ('ali.valiyev@example.com linkedin.com/in/ali-valiyev', False),
+    ('+998 90 111 22 33 linkedin.com/in/ali-valiyev', False),
+    ('Ali Valiyev, SMM menejer, Toshkent', False),
+])
+def test_a_link_with_no_fact_is_answered_with_the_steps_and_any_fact_is_a_description(text, only):
+    """The same rule as the web app's (useCvSources.linkedinLinkOnly): asking words never stop a description."""
+    from apps.studio.cv.sources import linkedin_link_only
+    assert linkedin_link_only(text) is only
