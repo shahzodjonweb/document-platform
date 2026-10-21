@@ -55,6 +55,13 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+  reader:
+    <<: *platform
+    # Reads the files CVs are made from (apps/studio/cv/reads.py).
+    command: [python, manage.py, runreader]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
   cleanup:
     <<: *platform
     command: [python, scripts/cleanup_loop.py]

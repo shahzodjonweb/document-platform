@@ -150,6 +150,8 @@
   "cv_file_unreadable": "We couldn’t read any text in this file. Send a clearer photo or scan, or a PDF without a password — or write your details in a message instead.",
   "cv_file_kind": "This kind of file can’t be used here. For an old CV, send a PDF, a Word file (.docx) or photos (JPG, PNG); for LinkedIn, your profile saved as a PDF or screenshots of it.",
   "cv_linkedin_link": "We can’t open LinkedIn links. On a computer, open your profile, choose More → Save to PDF and send us the file; on a phone, do the same with the browser’s desktop site on, or send screenshots of your profile.",
+  "cv_reading": "Your files are in the queue to be read — {ahead} ahead of them. This takes a moment; we’ll continue as soon as they’re read.",
+  "cv_reading_now": "Your files are being read. This takes a moment; we’ll continue as soon as they’re read.",
   "convert_requested": "To convert a file, use the file tools: open All tools and choose a converter. This service makes something new on a topic you give.",
   "generation_web_only": "This tool builds on work saved in the web app. Open it there to continue.",
   "revision_not_ready": "This document has nothing to change yet. Generate it first, then ask for changes.",

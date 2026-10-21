@@ -309,11 +309,13 @@ def _prepare_draft(account,data,revision_base=None):
     fmt='pptx' if fid==SLIDES else 'pdf'
     # A CV is made one of three ways, chosen first (cv/sources.py): from one
     # message about the customer, from their LinkedIn profile saved as a PDF
-    # or photographed, or from their old CV. Its files are read here, once;
-    # their text is the CV's excerpts, and what the customer writes beside
-    # them is notes on top of it. A change keeps the excerpts the CV was made
-    # from, and the way it was made, whatever the request sends: the files
-    # may be gone by then.
+    # or photographed, or from their old CV. Its files were read by the
+    # reader as they arrived (cv/reads.py), never here: what it kept is the
+    # CV's excerpts, and a draft whose files are still waiting for it is
+    # refused with `cv_reading`. What the customer writes beside them is
+    # notes on top of it. A change keeps the excerpts the CV was made from,
+    # and the way it was made, whatever the request sends: the files may be
+    # gone by then.
     cv=fid==CV
     unread=[]
     if cv:

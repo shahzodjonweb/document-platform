@@ -85,10 +85,11 @@ services:
     # mixed photos, on top of the worker itself. On Linux the child has its own
     # 3 GiB address-space cap (processors/sandbox.child_limits), and the
     # core test asserts the Linux peak stays under 2 GiB.
-    # The services' limits add up to 8,704 MiB (9,216 MiB while the one-shot
+    # The services' limits add up to 9,728 MiB (10,240 MiB while the one-shot
     # init runs) on the 8 GB host: they are ceilings, not reservations. The
     # worst real case, worker and batches both scanning, is ~4 GB for the
-    # two of them; the API, database, Redis and bot use well under 2 GB.
+    # two of them; the API, database, Redis, bot and CV reader use well
+    # under 2.5 GB.
     mem_limit: 3g
     cpus: 1.5
     # On SIGTERM the loop finishes the job in hand before exiting
@@ -104,6 +105,17 @@ services:
     mem_limit: 2560m
     cpus: 1.5
     stop_grace_period: 600s
+  reader:
+    <<: *platform
+    command: [python, manage.py, runreader]
+    # The files CVs are made from are read here, one at a time, never in the
+    # API or the bot (apps/studio/cv/reads.py): the reader child and the
+    # tesseract it starts measured ~450 MB beside a ~216 MB process.
+    mem_limit: 1g
+    cpus: 1
+    # On SIGTERM the reader finishes the file in hand: at most 60 s in the
+    # child and its grace, with time to fetch the file from the bucket.
+    stop_grace_period: 120s
   cleanup:
     <<: *platform
     command: [python, scripts/cleanup_loop.py]
@@ -114,11 +126,9 @@ services:
     <<: *platform
     profiles: [bot]
     command: [python, manage.py, runbot, --wait-for-config]
-    # A CV made from photos or scans is read here, one at a time: the reader
-    # and tesseract beside the bot (~216 MB) measured ~450 MB in all, past the
-    # 384 MB this once had. A ceiling, not a reservation: idle, it uses as before.
-    mem_limit: 1g
-    cpus: 1
+    # The bot reads no file: a CV's files are read by the reader.
+    mem_limit: 384m
+    cpus: 0.5
   gateway:
     image: nginxinc/nginx-unprivileged:stable-alpine@sha256:4714e0b1b2577eaa1a6131d07c958b67f0eb68e6d0521e90c6e5287db8cf0bc5
     ports: ["127.0.0.1:${PDFMASTER_HTTP_PORT:-8311}:8080"]

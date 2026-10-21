@@ -551,20 +551,33 @@ def feed_two(first, upload, second, text, delay):
     return answered[first.pk], answered[second.pk]
 
 
-def test_reading_a_cvs_files_never_holds_up_another_chat(customer, model, monkeypatch):
+def test_the_bot_reads_no_file_and_its_wait_for_the_reader_never_holds_up_another_chat(customer, model, monkeypatch,
+                                                                                          settings):
+    # A CV's files are read by the reader (apps/studio/cv/reads.py), never in the bot: the bot waits for
+    # them off its shared thread (sources.read_entries), and says they are still being read if the reader
+    # has not come to them yet. As in production: nothing is read as it is queued.
     from apps.studio import extraction
+    from apps.studio.cv import reads, sources
+    settings.LOCAL_SYNC_JOBS = False
     monkeypatch.setattr('telegram.bot.ALBUM_SETTLE', 0)
+    monkeypatch.setattr(sources, 'WAIT_SECONDS', 2.0)
+    monkeypatch.setattr(sources, 'POLL_SECONDS', 0.1)
     calls = []
-    monkeypatch.setattr(extraction, 'read_cv', reading(seconds=3.0, calls=calls))
+    monkeypatch.setattr(extraction, 'read_cv', reading(calls=calls))
     other = another_customer()
     choose(customer, 'cv_mode_file')
     cv_done, start_done = feed_two(customer, upload('old-cv.pdf', one_column_pdf()), other, '/start', 0.3)
-    # The other chat's menu came while the file was still being read (three seconds), not after it.
-    assert start_done < 2.5 < 3.0 < cv_done, (start_done, cv_done)
+    # The other chat's menu came while the CV waited for the reader (two seconds), not after it.
+    assert start_done < 1.5 < 2.0 < cv_done, (start_done, cv_done)
     assert TOOL_NAMES[CV]['en'] in str(LocalBotMessage.objects.filter(account=other, direction='outbound').latest(
         'created_at').buttons), 'the other chat was shown its menu'
-    # Read once, in the readers' own thread; the draft took what was read.
-    assert calls == [('cv-read_0', 'pdf')], calls
+    newest = LocalBotMessage.objects.filter(account=customer, direction='outbound').latest('created_at')
+    assert calls == [] and ERRORS['en']['cv_reading_now'] in newest.text, (calls, newest.text)
+    # The reader reads it once; the CV is made from what it kept.
+    assert reads.next_read() and calls == [('MainThread', 'pdf')]
+    again = next(button for row in newest.buttons for button in row if button['label'] == EN['cv_try_again'])
+    words, _ = screen(dispatch_local(customer, callback_data=again['callback_data']))
+    assert '📄 Timur Rakhimov' in words and calls == [('MainThread', 'pdf')], words
     assert latest(customer, CV)['title'] == 'Timur Rakhimov'
 
 
@@ -657,8 +670,8 @@ def test_more_screenshots_after_the_review_are_more_of_its_pages(customer, model
     data = latest(customer, CV)
     assert data['source_ids'] == [str(first.id), *[str(asset.id) for asset in more]]
     assert 'portrait_asset_id' not in data['options'] and GenerationDraft.objects.filter(account=customer).count() == 1
-    # Each file was read once, off the shared thread.
-    assert len(calls) == 3 and all(name.startswith('cv-read') for name, _ in calls), calls
+    # Each file was read once, by the reader (here as it was queued: settings.LOCAL_SYNC_JOBS).
+    assert len(calls) == 3, calls
     # One photo on its own: asked about, and as a page it is read with the others.
     question = dispatch_local(customer, uploaded=image('page-4.jpg'))
     assert screen(question)[0] == EN['cv_photo_or_page']

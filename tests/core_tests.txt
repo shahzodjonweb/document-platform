@@ -258,6 +258,15 @@ tests/test_cv_sources.py::test_a_linkedin_pdf_becomes_a_cv_whose_contacts_come_f
 # An old Word CV as templates make them (a text box, an email typed as a link) is read; links stay refused for file tools
 tests/test_cv_sources.py::test_a_word_cv_with_a_text_box_is_read_with_the_box_once
 tests/test_cv_sources.py::test_a_word_cv_with_an_email_and_a_linkedin_link_is_read
+# A CV's files wait their turn for the reader, never "try again": accounts take turns, a second
+# reader skips the rows the first holds (PostgreSQL), and a draft waits with how many are ahead
+tests/test_cv_read_queue.py::test_reads_are_first_in_first_out_and_the_accounts_take_turns
+tests/test_cv_read_queue.py::test_a_second_reader_passes_over_the_read_the_first_holds_without_waiting
+tests/test_cv_read_queue.py::test_a_read_lost_with_its_reader_is_read_again_and_failed_after_its_attempts
+tests/test_cv_read_queue.py::test_the_reader_finishes_the_read_in_hand_on_sigterm_and_takes_no_other
+tests/test_cv_read_queue.py::test_a_draft_waits_with_how_many_reads_are_ahead_and_is_made_at_once_when_they_are_done
+tests/test_cv_read_queue.py::test_what_a_file_gave_is_encrypted_at_rest
+tests/test_cv_read_queue.py::test_the_web_asks_how_the_reads_stand_for_the_customers_own_files
 
 # Deck sizing and pricing
 tests/test_deck_questions.py::test_question_slides_count_toward_the_slides_asked_for[12 ta slayd, oxirida 10 ta savol-12-10-2]
@@ -285,8 +294,8 @@ tests/test_bot_cv.py::test_a_photo_sent_in_the_chat_becomes_the_cvs_photo
 
 # AI CV from the chat, made from an old CV: the PDF sent on its screen to a review that names the file, then the CV
 tests/test_bot_cv_sources.py::test_an_old_cv_pdf_becomes_a_review_and_then_the_cv
-# Reading a CV's files never freezes the bot for everyone else (off the shared sync thread)
-tests/test_bot_cv_sources.py::test_reading_a_cvs_files_never_holds_up_another_chat
+# The bot reads no CV file, and waiting for the reader never freezes it for everyone else
+tests/test_bot_cv_sources.py::test_the_bot_reads_no_file_and_its_wait_for_the_reader_never_holds_up_another_chat
 
 # Anti-bot human verification gate
 tests/test_bot_verification.py::test_real_bot_defers_account_and_download_until_verified_then_resumes_first_file

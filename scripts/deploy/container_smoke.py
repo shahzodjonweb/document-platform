@@ -112,6 +112,41 @@ def check_scanner(compose, env):
         raise RuntimeError('Scanner smoke failed: the worker was OOM-killed, restarted or stopped.')
 
 
+# One generated screenshot of a fictional CV read by OCR through the real
+# bounded child, inside the read-only reader with its production memory
+# limit: tesseract and its languages must be in the image, and a page must
+# fit beside the reader.
+READER_CHECK = """import os
+import tempfile
+from pathlib import Path
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+import django
+django.setup()
+from PIL import Image, ImageDraw, ImageFont
+from apps.studio.extraction import read_cv
+shot = Image.new('RGB', (1000, 600), (255, 255, 255))
+draw = ImageDraw.Draw(shot)
+font = ImageFont.truetype('processors/assets/fonts/NotoSans-Regular.ttf', 34)
+for top, line in ((60, 'Dilnoza Karimova'), (140, 'Senior Data Analyst at Example Retail'), (220, 'SQL, Power BI, Python')):
+    draw.text((60, top), line, font=font, fill=(20, 20, 20))
+with tempfile.TemporaryDirectory() as folder:
+    source = Path(folder) / 'shot.png'
+    shot.save(source)
+    result = read_cv(source, 'image', ocr_pages=1, seconds=60)
+assert result['ocr_pages'] == 1 and 'Example Retail' in result['pages'][0]['text'], 'the screenshot was not read'
+print('The CV reader read a generated screenshot by OCR in the read-only reader container.')
+"""
+
+
+def check_reader(compose, env):
+    run(compose + ['exec', '-T', 'reader', 'python', '-c', READER_CHECK], env=env, timeout=180)
+    container = run(compose + ['ps', '-q', 'reader'], env=env, stdout=subprocess.PIPE, text=True).stdout.strip()
+    state = run(['docker', 'inspect', '--format', '{{.State.OOMKilled}} {{.RestartCount}} {{.State.Running}}',
+                 container], stdout=subprocess.PIPE, text=True).stdout.split()
+    if state != ['false', '0', 'true']:
+        raise RuntimeError('Reader smoke failed: the reader was OOM-killed, restarted or stopped.')
+
+
 def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('component',choices=('platform','web'))
@@ -132,7 +167,7 @@ def main():
             if args.component=='platform':
                 run(compose+['up','-d','--wait','--wait-timeout','120','db','redis'],env=env)
                 run(compose+['run','--rm','--no-deps','init'],env=env)
-                services=['api','worker','batches','cleanup','bot','gateway']
+                services=['api','worker','batches','reader','cleanup','bot','gateway']
             else:
                 services=['web','gateway']
             run(compose+['up','-d','--wait','--wait-timeout','180',*services],env=env)
@@ -150,6 +185,7 @@ print('Production settings keep development features disabled.')
 """
                 run(compose+['exec','-T','api','python','-c',code],env=env)
                 check_scanner(compose, env)
+                check_reader(compose, env)
                 wait_for_cleanup_cycle(compose, env)
             print('Isolated '+args.component+' production stack and gateway routes verified.')
         finally:

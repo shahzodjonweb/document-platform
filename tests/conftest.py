@@ -10,11 +10,6 @@ def private_storage(settings,tmp_path):
     settings.ENABLE_BETA_TOOLS=True
     settings.LOCAL_SYNC_JOBS=True
     cache.clear()
-    # What this process read of a CV's files is kept a while (apps/studio/cv/sources.py): never across
-    # tests. Their turn to read is taken on a file of each test's own, never another run's.
-    from apps.studio.cv import sources
-    sources.forget()
-    sources.SLOT = tmp_path / 'cv-reading.lock'
 
 
 @pytest.fixture

@@ -49,11 +49,25 @@ def config(request):
             'features':features,'generation_features':features,
             'default_pages':DEFAULT_PAGES,'limits':limits(request.account)}
 
+def _queue_cv_reads(account,data,options=None):
+    """The reads of a CV draft's files queued before the draft is made (cv/reads.py ensure_ids).
+
+    A file uploaded before reads were queued has none; one queued inside the
+    draft's own transaction would be taken back with a `cv_reading` refusal.
+    """
+    from .cv.sources import KINDS
+    options=options if options is not None else data.get('options',data.get('parameters',{}))
+    if isinstance(options,dict) and options.get('cv_source') in KINDS:
+        from .cv.reads import ensure_ids
+        ensure_ids(account,data.get('source_ids',data.get('input_ids')))
+
 @api(('GET','POST'))
 def drafts(request):
     if request.method=='POST':
         throttle(request,'generation_drafts',20)
-        return JsonResponse(draft_data(create_draft(request.account,body(request))),status=201)
+        data=body(request)
+        if data.get('feature_id')==CV:_queue_cv_reads(request.account,data)
+        return JsonResponse(draft_data(create_draft(request.account,data)),status=201)
     return {'results':[draft_data(d) for d in GenerationDraft.objects.filter(account=request.account,expires_at__gt=timezone.now()).order_by('-created_at')[:100]]}
 
 # How often one account may reword a CV draft in a minute: each is read again
@@ -74,9 +88,30 @@ def draft_detail(request,pk):
     if not d:raise DomainError('not_found',404)
     if request.method=='DELETE':d.delete();return {'deleted':True}
     if request.method=='PATCH':
-        if d.feature_id==CV:_account_limit(request.account,'cv_draft_updates',CV_UPDATES_PER_MINUTE)
-        d=update_draft(request.account,pk,body(request))
+        data=body(request)
+        if d.feature_id==CV:
+            _account_limit(request.account,'cv_draft_updates',CV_UPDATES_PER_MINUTE)
+            _queue_cv_reads(request.account,data,unpack(d.encrypted_data).get('options',{}))
+        d=update_draft(request.account,pk,data)
     return draft_data(d)
+
+# How often one account may ask how its CV's files are being read: the web
+# asks every two seconds while it waits, from a tab or two.
+CV_READS_PER_MINUTE=60
+
+@api(('GET',))
+def cv_reads(request):
+    """How the reading of a CV's files stands: each file's read, how many reads are ahead, and about how long.
+
+    `ids` names the files, the account's own, at most as many as a CV is made
+    from; an id that is no live file of theirs is `file_unavailable` (404).
+    A file with no read yet (uploaded before reads were queued) is queued.
+    """
+    from .cv import reads,sources as cv_sources
+    _account_limit(request.account,'cv_reads',CV_READS_PER_MINUTE)
+    ids=request.GET.getlist('ids')
+    if len(ids)>cv_sources.MAX_FILES:raise DomainError('invalid_inputs')
+    return reads.state(request.account,owned_assets(request.account,ids))
 
 @api(('POST',))
 def outline(request,pk):

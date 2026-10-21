@@ -150,6 +150,8 @@
   "cv_file_unreadable": "Fayldagi matnni o‘qib bo‘lmadi. Aniqroq rasm yoki skan, yoxud parolsiz PDF yuboring — yoki maʼlumotlaringizni xabar qilib yozing.",
   "cv_file_kind": "Bu turdagi faylni bu yerda ishlatib bo‘lmaydi. Eski CV uchun PDF, Word (.docx) yoki rasm (JPG, PNG), LinkedIn uchun esa PDF qilib saqlangan profil yoki uning skrinshotlarini yuboring.",
   "cv_linkedin_link": "LinkedIn havolalarini ocha olmaymiz. Kompyuterda profilingizni oching, More → Save to PDF ni bosing va faylni yuboring; telefonda brauzerda «Kompyuter versiyasi»ni yoqib, xuddi shunday qiling yoki profil skrinshotlarini yuboring.",
+  "cv_reading": "Fayllaringiz o‘qish navbatida: oldinda {ahead} ta fayl bor. Bu ko‘p vaqt olmaydi — o‘qib bo‘lishimiz bilan davom etamiz.",
+  "cv_reading_now": "Fayllaringizni o‘qiyapmiz. Bu ko‘p vaqt olmaydi — o‘qib bo‘lishimiz bilan davom etamiz.",
   "convert_requested": "Faylni o‘girish uchun fayl vositalaridan foydalaning: «Barcha vositalar»ni oching va kerakli vositani tanlang. Bu xizmat siz bergan mavzuda yangi material tayyorlaydi.",
   "generation_web_only": "Bu vosita veb ilovada saqlangan ishga asoslanadi. Davom etish uchun o‘sha yerda oching.",
   "revision_not_ready": "Bu hujjatda hali o‘zgartiradigan narsa yo‘q. Avval uni yarating, keyin o‘zgarish so‘rang.",

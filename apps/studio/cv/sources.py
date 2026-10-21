@@ -9,23 +9,20 @@ In those two the file holds the facts and what the customer writes is notes
 on top of it: the job they want now, what to change, what to add. A photo
 sent there is a page to read, never the portrait.
 
-The files are read once, when the draft is made (extraction.read_cv), and
-what they say is kept with the draft as its excerpts. Nothing reads them
-again: an update that keeps them keeps what was read, one that adds a file
-reads only that file, a CV made again from the same files soon after (its
-name asked for, new notes) takes what this process read of them, and a
-change to the CV is made from the excerpts it was made from, after the files
-themselves are gone (they are kept 24 hours). What could not be read (pages
-past the OCR share, a file that failed or had no time left) is kept with
-the draft as `cv_unread` and said on its review, never left out unsaid.
+Each file is read once, as it arrives: it is queued for the reader when it
+is uploaded (cv/reads.py), and `runreader` reads it in the bounded child
+(extraction.read_cv), never a request or the bot. A draft is made from what
+the reader kept, and what its files say is kept with the draft as its
+excerpts; while a file is still waiting for the reader, the draft is refused
+with `cv_reading`, which says how many reads are ahead, and the customer is
+told to wait, not to try again. An update that keeps the files keeps what
+was read, one that adds a file takes what the reader made of that file, and
+a change to the CV is made from the excerpts it was made from, after the
+files themselves are gone (they are kept 24 hours). What could not be read
+(pages past the OCR share, a file the reader failed on) is kept with the
+draft as `cv_unread` and said on its review, never left out unsaid.
 """
 import re
-import tempfile
-import threading
-import time
-from collections import OrderedDict
-from contextlib import contextmanager
-from pathlib import Path
 
 from apps.core.errors import DomainError
 
@@ -38,10 +35,10 @@ MIME = {'application/pdf': 'pdf', 'application/vnd.openxmlformats-officedocument
 # Ten files: an album of screenshots is at most ten. Pages are all the files' together.
 MAX_FILES = 10
 MAX_PAGES = 30
-# Pages read by OCR for one draft, and how long all its files may take to read:
-# the request that makes the draft has to answer well inside the proxy's 120 s.
+# Pages read by OCR for one draft, all its files together (shared), and so
+# for one file at most; and how long the reader may take over one file.
 MAX_OCR_PAGES = 10
-READ_SECONDS = 75
+READ_SECONDS = 60
 # Fewer words than this in all the files is a file with nothing to read in it.
 MIN_WORDS = 8
 # A LinkedIn profile's address: linkedin.com/in/…, an older /pub/ one, or a lnkd.in short link.
@@ -122,8 +119,7 @@ def checked(account, ids, source):
         raise DomainError('generation_limit')
     from apps.core.services import owned_assets
     assets = owned_assets(account, ids)
-    kinds = [MIME.get(asset.mime_type) if asset.metadata.get('kind') in ('pdf', 'docx', 'image') else None
-             for asset in assets]
+    kinds = [kind_of(asset) for asset in assets]
     if any(kind not in KINDS[source] for kind in kinds):
         raise DomainError('cv_file_kind')
     if any(asset.metadata.get('encrypted') for asset in assets):
@@ -134,15 +130,16 @@ def checked(account, ids, source):
 
 
 def prepare(account, prompt, ids, options, previous=None):
-    """The files of a new CV checked for its mode and read: (ids, excerpts, unread).
+    """The files of a new CV checked for its mode, and what the reader made of them: (ids, excerpts, unread).
 
     'text' takes none. 'linkedin' and 'file' take one to ten of the kinds
     their mode reads (KINDS). `previous` is the draft being updated: its
-    excerpts are kept when its files are, and a file it read whole is not
-    read again beside a new one. `unread` says what could not be read (read).
+    excerpts are kept when its files are, and a file it read whole needs no
+    read beside a new one. `unread` says what could not be read (read).
     Refused: `cv_file_required` with no file, `cv_linkedin_link` when the
-    description is only a LinkedIn link, the refusals of checked(), and
-    `cv_file_unreadable` for files with no text in them.
+    description is only a LinkedIn link, the refusals of checked(),
+    `cv_reading` while a file is still being read, and `cv_file_unreadable`
+    for files with no text in them.
     """
     source = mode(options)
     if not isinstance(ids, list):
@@ -167,93 +164,16 @@ def prepare(account, prompt, ids, options, previous=None):
 
 # --- Reading -------------------------------------------------------------------------------
 
-# What a file's reading gave, kept a while in this process so that it is read
-# once: a CV made again from it (its name asked for, new notes, a screenshot
-# sent after it) takes what it gave instead of reading it again, and so does
-# a draft whose files were read ahead (the bot reads them off its shared
-# thread first: read_entries). Kept by the file's id and checksum, at most
-# CACHE_SECONDS and CACHE_BYTES in all; the oldest goes first.
-CACHE_SECONDS = 30 * 60
-CACHE_BYTES = 8 * 1024 * 1024
-_cache = OrderedDict()
-_cache_lock = threading.Lock()
-_cache_size = [0]
-
-
-# One CV's files are read at a time on one machine: between the API's workers,
-# which are two (a reading holds one for as long as it takes, a minute at
-# most), and in the bot. Another waits SLOT_SECONDS for its turn and is then
-# asked to try again shortly (`rate_limited`), so a worker is always free for
-# everything else the API serves. Only reading takes the turn: what was read
-# before is taken at once.
-SLOT = Path(tempfile.gettempdir()) / 'pdfmaster-cv-reading.lock'
-SLOT_SECONDS = 4
-
-
-@contextmanager
-def _turn():
-    import fcntl
-    with open(SLOT, 'a') as handle:
-        deadline = time.monotonic() + SLOT_SECONDS
-        while True:
-            try:
-                fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                break
-            except BlockingIOError:
-                if time.monotonic() >= deadline:
-                    raise DomainError('rate_limited', 429, retryable=True) from None
-                time.sleep(0.2)
-        try:
-            yield
-        finally:
-            fcntl.flock(handle, fcntl.LOCK_UN)
-
-
-def _remember(key, value, size):
-    with _cache_lock:
-        if key in _cache:
-            _cache_size[0] -= _cache.pop(key)[2]
-        _cache[key] = (time.monotonic() + CACHE_SECONDS, value, size)
-        _cache_size[0] += size
-        while _cache and _cache_size[0] > CACHE_BYTES:
-            _cache_size[0] -= _cache.popitem(last=False)[1][2]
-
-
-def _recall(key):
-    with _cache_lock:
-        entry = _cache.get(key)
-        if entry is None:
-            return None
-        if entry[0] < time.monotonic():
-            _cache_size[0] -= _cache.pop(key)[2]
-            return None
-        _cache.move_to_end(key)
-        return entry[1]
-
-
-def forget():
-    """Drop everything read and kept (tests)."""
-    with _cache_lock:
-        _cache.clear()
-        _cache_size[0] = 0
-
-
-def _size(result):
-    return 256 + sum(len(page.get('text') or '') for page in (result or {}).get('pages') or [])
+def kind_of(asset):
+    """How a file is read: 'pdf', 'docx' or 'image'; None for a file no CV is made from."""
+    return MIME.get(asset.mime_type) if asset.metadata.get('kind') in ('pdf', 'docx', 'image') else None
 
 
 def entries(assets, kinds, account=None):
-    """The files as the reader takes them: one {'asset_id', 'sha256', 'kind', 'pages', 'scan', 'path'} each.
-
-    'scan' is whether it may need OCR: an image always, a PDF with a picture
-    on a page. The path is on this machine (storage.local), fetched if need be.
-    """
-    from apps.core import storage
+    """The files as their reads are taken: one {'account', 'asset_id', 'sha256', 'kind', 'pages'} each."""
     owner = str(getattr(account, 'pk', '') or '')
     return [{'account': owner, 'asset_id': str(asset.id), 'sha256': asset.sha256, 'kind': kind,
-             'pages': int(asset.page_count or 0),
-             'scan': kind == 'image' or kind == 'pdf' and any(asset.metadata.get('image_counts') or []),
-             'path': str(storage.local(asset.object_key))}
+             'pages': int(asset.page_count or 0)}
             for asset, kind in zip(assets, kinds)]
 
 
@@ -274,91 +194,59 @@ def results_of(excerpts, unread=None):
     return results
 
 
-def read_entries(files, known=None):
-    """Each file's reading, in order: the reader's result, or None for a file it could not read or had no time for.
+def _needs_ocr(result):
+    return bool(result['ocr_pages'] or result['ocr_skipped'])
 
-    Pages read by OCR are shared fairly: each file is allowed what is left of
-    MAX_OCR_PAGES less a page for every file after it that may need OCR, so
-    a long scan never leaves a screenshot after it unread; READ_SECONDS is the
-    time for them all. A file read before is not read again (its result is
-    kept: `known` from the draft, or this process's cache), and neither is the
-    same set of files (what the bot read ahead). Reading waits its turn
-    (_turn): `rate_limited` when another CV's files are read for longer.
-    Touches no database: the bot runs it off its shared thread.
+
+def shared(results):
+    """Each file's result held to its share of the MAX_OCR_PAGES one draft takes, in the files' order.
+
+    Each file is allowed what is left less a page for every file after it
+    that needed OCR, and one page at least while any is left, so a long scan
+    never leaves a screenshot after it unread. Every file was read with all
+    of MAX_OCR_PAGES (reads.read_file); the pages read by OCR past its share
+    are left out, and counted as not read (`ocr_skipped`), as are pages OCR
+    never reached.
     """
-    known = known or {}
-    together = ('set', files[0]['account'] if files else '',
-                tuple((entry['asset_id'], entry['sha256']) for entry in files))
-    kept = _recall(together)
-    if kept is not None:
-        return kept
-    results = [known.get(entry['asset_id']) for entry in files]
-    for index, entry in enumerate(files):
-        if results[index] is None:
-            cached = _recall(('file', entry['asset_id'], entry['sha256']))
-            if cached is not None and (cached.get('failed') or not cached['ocr_skipped']):
-                results[index] = cached
-    if all(result is not None for result in results):
-        _remember(together, results, sum(_size(result) for result in results))
-        return results
-    with _turn():
-        _read(files, results)
-    results = [None if result is not None and result.get('failed') else result for result in results]
-    _remember(together, results, sum(_size(result) for result in results))
-    return results
-
-
-def _read(files, results):
-    """The files in `files` with no result yet read in place, within MAX_OCR_PAGES and READ_SECONDS (read_entries)."""
-    from ..extraction import read_cv
-    deadline = time.monotonic() + READ_SECONDS
-    ocr_left = MAX_OCR_PAGES
-    for index, entry in enumerate(files):
-        if results[index] is not None:
+    left, held = MAX_OCR_PAGES, []
+    for index, result in enumerate(results):
+        if result is None:
+            held.append(None)
             continue
-        later = sum(1 for other, done in zip(files[index + 1:], results[index + 1:]) if done is None and other['scan'])
-        allowed = max(min(1, ocr_left) if entry['scan'] else 0, ocr_left - later)
-        key = ('file', entry['asset_id'], entry['sha256'])
-        cached = _recall(key)
-        if cached is not None and cached.get('allowed', 0) >= allowed:
-            results[index] = cached
-            continue
-        seconds = deadline - time.monotonic()
-        if seconds < 5:
-            break
-        begun = time.monotonic()
-        try:
-            result = read_cv(entry['path'], entry['kind'], ocr_pages=allowed, seconds=seconds)
-        except DomainError:
-            # A file the reader failed on is not tried again; one it ran out of time for may be.
-            if time.monotonic() - begun < seconds:
-                _remember(key, {'failed': True}, 256)
-                results[index] = {'failed': True}
-            continue
-        result = {'pages': [page for page in result['pages'] if isinstance(page, dict) and type(page.get('page')) is int],
-                  'names': [str(name)[:120] for name in result.get('names') or [] if isinstance(name, str)][:3],
-                  'ocr_pages': int(result.get('ocr_pages') or 0), 'ocr_skipped': int(result.get('ocr_skipped') or 0),
-                  'allowed': allowed}
-        ocr_left = max(0, ocr_left - result['ocr_pages'])
-        _remember(key, result, _size(result))
-        results[index] = result
+        later = sum(1 for other in results[index + 1:] if other is not None and _needs_ocr(other))
+        allowed = max(min(1, left) if _needs_ocr(result) else 0, left - later)
+        pages, used, dropped, first = [], 0, 0, False
+        for page in result['pages']:
+            if page.get('ocr') is True:
+                if used >= allowed:
+                    dropped += 1
+                    first = first or page.get('page') == 1
+                    continue
+                used += 1
+            pages.append(page)
+        left = max(0, left - used)
+        # Names read from a first page that is left out are not the file's to give.
+        held.append({**result, 'pages': pages, 'names': [] if first else list(result['names']),
+                     'ocr_pages': used, 'ocr_skipped': int(result['ocr_skipped']) + dropped})
+    return held
 
 
 def excerpts_of(files, results):
-    """The excerpts of files read (read_entries), and what of them was not read: (excerpts, unread).
+    """The excerpts of files read (as their reads kept them), and what of them was not read: (excerpts, unread).
 
-    Every page with text, in the files' order: {'asset_id', 'page', 'text'}
-    and, when it applies, 'ocr' and 'names'. 'ocr' marks a page read from an
-    image. 'names' are, on a file's first page with text, its largest lines
-    at the top: on a CV and a LinkedIn export, the person's name
-    (content.require_name). `unread` names each file not read whole:
-    {'asset_id', 'pages'} with how many of its pages were left out, and
-    'whole' when none was read (one that cannot be read, or no time was left
-    for it). Files that give fewer than MIN_WORDS words between them are
-    `cv_file_unreadable`.
+    Every page with text, in the files' order, within the draft's OCR pages
+    (shared): {'asset_id', 'page', 'text'} and, when it applies, 'ocr' and
+    'names'. 'ocr' marks a page read from an image. 'names' are, on a file's
+    first page with text, its largest lines at the top: on a CV and a
+    LinkedIn export, the person's name (content.require_name). `unread`
+    names each file not read whole: {'asset_id', 'pages'} with how many of
+    its pages were left out, and 'whole' when none was read (a result of
+    None: one the reader could not read). Files that give fewer than
+    MIN_WORDS words between them are `cv_file_unreadable`, unless one of
+    them is still waiting for the reader (`status` in its entry, the bot's).
     """
     excerpts, unread = [], []
-    for entry, result in zip(files, results):
+    for entry, result in zip(files, shared(list(results))):
         if result is None:
             unread.append({'asset_id': entry['asset_id'], 'pages': max(1, entry['pages']), 'whole': True})
             continue
@@ -375,29 +263,100 @@ def excerpts_of(files, results):
             if names:
                 excerpt['names'], names = names, []
             excerpts.append(excerpt)
-    if sum(len(re.findall(r'[^\W\d_]{2,}', excerpt['text'])) for excerpt in excerpts) < MIN_WORDS:
+    from .reads import WAITING
+    pending = any(entry.get('status') in WAITING for entry, result in zip(files, results) if result is None)
+    if not pending and sum(len(re.findall(r'[^\W\d_]{2,}', excerpt['text'])) for excerpt in excerpts) < MIN_WORDS:
         raise DomainError('cv_file_unreadable')
     return excerpts, unread
 
 
-def read(assets, kinds, known=None, *, account=None):
-    """Every page of text in `assets`, in their order, and what could not be read: (excerpts, unread) as excerpts_of says."""
+def read(assets, kinds, known=None, *, account):
+    """Every page of text in `assets` as the reader kept it, in their order, and what was not read: (excerpts, unread).
+
+    Nothing is read here, in a request or in the bot: each file is read once
+    by `runreader` (cv/reads.py), and a file still waiting for it refuses the
+    draft with `cv_reading` until it is read. A file the reader could not
+    read is a file not read whole (excerpts_of). `known` is what the draft's
+    files gave before, by file: a file in it needs no read, as the read may
+    be gone with the file.
+    """
+    from . import reads
+    known = known or {}
     files = entries(assets, kinds, account)
-    return excerpts_of(files, read_entries(files, known))
+    rows = reads.ensure(account, [asset for asset in assets if str(asset.id) not in known])
+    waiting = [row for row in rows.values() if row.status in reads.WAITING]
+    if waiting:
+        raise reads.refusal(waiting)
+    return excerpts_of(files, [known[entry['asset_id']] if entry['asset_id'] in known
+                               else reads.result_of(rows[entry['asset_id']]) for entry in files])
+
+
+# The bot read a CV's files itself, off its shared thread, before the draft
+# was made (telegram/bot.py cv_read). It still asks for them that way until
+# it waits on the queue itself: ahead() names the files and what the reader
+# made of them so far, and read_entries() waits for the rest in the bot's
+# reading thread, at most WAIT_SECONDS. The draft made next is made from what
+# was kept, or says the files are still being read (`cv_reading`).
+WAIT_SECONDS = 90
+POLL_SECONDS = 1
 
 
 def ahead(account, ids, source):
-    """The files a CV from files will read, as read_entries takes them; [] when it will be refused before reading any.
+    """The files of a CV from files as the bot waits for them (read_entries); [] when it will be refused before any is read.
 
-    The bot reads them with read_entries off its shared thread, and the draft
-    made next takes what was read (prepare).
+    Each entry carries its read ('read', 'status') and, once done, what it
+    gave ('result'). A file with no read is queued for one here, outside the
+    transaction the bot's draft is made in (reads.ensure_ids says why).
     """
     if source not in KINDS or not isinstance(ids, list) or not ids:
         return []
+    from . import reads
     try:
-        return entries(*checked(account, [str(identifier) for identifier in ids], source), account)
+        assets, kinds = checked(account, [str(identifier) for identifier in ids], source)
     except DomainError:
         return []
+    rows = reads.ensure(account, assets)
+    files = entries(assets, kinds, account)
+    for entry in files:
+        row = rows[entry['asset_id']]
+        entry.update(read=str(row.pk), status=row.status, result=reads.result_of(row))
+    return files
+
+
+def read_entries(files, known=None):
+    """What each file gave, in order, once the reader has read it: None for a file it could not read or has not yet.
+
+    Files ahead() found read need nothing more, and no database: the bot
+    runs this off its shared thread. The others are waited for, at most
+    WAIT_SECONDS, their entries' `status` kept up to date; the connection
+    this thread opened for them is closed again.
+    """
+    import threading
+    import time
+    known = known or {}
+    results = [known.get(entry['asset_id'], entry.get('result')) for entry in files]
+    from .reads import WAITING
+    left = {entry['read']: index for index, entry in enumerate(files)
+            if results[index] is None and entry.get('status') in WAITING and entry.get('read')}
+    if not left:
+        return results
+    from django.db import connection
+    from . import reads
+    from ..models import CvSourceRead
+    deadline = time.monotonic() + WAIT_SECONDS
+    try:
+        while left:
+            for row in CvSourceRead.objects.filter(pk__in=list(left)).exclude(status__in=WAITING):
+                index = left.pop(str(row.pk))
+                files[index]['status'] = row.status
+                results[index] = reads.result_of(row)
+            if not left or time.monotonic() >= deadline:
+                break
+            time.sleep(POLL_SECONDS)
+    finally:
+        if threading.current_thread() is not threading.main_thread():
+            connection.close()
+    return results
 
 
 def for_model(excerpts):

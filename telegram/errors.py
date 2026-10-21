@@ -3,7 +3,7 @@
 Never interpolate exception details, filenames, credentials, or payment data.
 Codes with the same recovery instruction share copy, not application behavior.
 """
-from apps.core.errors import error_data, page_limit_count
+from apps.core.errors import cv_reading_ahead, error_data, page_limit_count
 
 
 MESSAGES = {
@@ -326,6 +326,19 @@ MESSAGES = {
         '🔗 LinkedIn havolalarini ocha olmaymiz. Kompyuterda profilingizni oching, More → Save to PDF ni bosing va faylni shu yerga yuboring; telefonda brauzerda «Kompyuter versiyasi»ni yoqib, xuddi shunday qiling yoki profil skrinshotlarini yuboring.',
         '🔗 Ссылки LinkedIn мы открыть не можем. На компьютере откройте профиль, нажмите «Ещё» → «Сохранить в формате PDF» и пришлите файл сюда; на телефоне сделайте то же, включив в браузере «Версию для ПК», или пришлите скриншоты профиля.',
     ),
+    # A CV's files wait their turn to be read (apps/studio/cv/reads.py): how
+    # many reads are ahead, never "try again". {ahead} is filled in by bot_error;
+    # with none ahead, the files are being read now.
+    'cv_reading': (
+        '⏳ Your files are in the queue to be read — {ahead} ahead of them. This takes a moment; we’ll continue as soon as they’re read.',
+        '⏳ Fayllaringiz o‘qish navbatida: oldinda {ahead} ta fayl bor. Bu ko‘p vaqt olmaydi — o‘qib bo‘lishimiz bilan davom etamiz.',
+        '⏳ Ваши файлы в очереди на чтение, перед ними ещё {ahead}. Это недолго — продолжим, как только они будут прочитаны.',
+    ),
+    'cv_reading_now': (
+        '⏳ Your files are being read. This takes a moment; we’ll continue as soon as they’re read.',
+        '⏳ Fayllaringizni o‘qiyapmiz. Bu ko‘p vaqt olmaydi — o‘qib bo‘lishimiz bilan davom etamiz.',
+        '⏳ Читаем ваши файлы. Это недолго — продолжим, как только они будут прочитаны.',
+    ),
     'manual_payment_closed manual_payment_expired': (
         '⌛ This payment is closed. Open Plans to start a new one: /plans',
         '⌛ Bu to‘lov yopilgan. Yangisini boshlash uchun tariflarni oching: /plans',
@@ -373,6 +386,9 @@ def bot_error(error, locale='en', account=None):
         return '⚠️ ' + error_data(error, locale)['message']
     if error.code == 'page_limit':
         return COPY[locale][error.code].format(limit=page_limit_count(error))
+    if error.code == 'cv_reading':
+        ahead = cv_reading_ahead(error)
+        return COPY[locale]['cv_reading'].format(ahead=ahead) if ahead else COPY[locale]['cv_reading_now']
     if error.code in COPY[locale]:
         return COPY[locale][error.code]
     return '⚠️ ' + error_data(error, locale)['message']

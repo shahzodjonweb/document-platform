@@ -309,6 +309,53 @@
         ],
         "type": "object"
       },
+      "CvRead": {
+        "properties": {
+          "ahead": {
+            "description": "Reads that finish before this one is read: 0 once it is being read.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "asset_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "error": {
+            "description": "Why a failed read failed: `cv_file_kind`, `cv_file_unreadable`, `source_extraction_failed`, `read_timeout`, `file_unavailable`, `reader_interrupted` or `reader_error`. A failed file is a file not read: the CV says so (`cv_unread`), or is `cv_file_unreadable` when nothing at all was read.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ocr_pages": {
+            "description": "Of them, pages read by OCR.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "pages": {
+            "description": "Pages with text, once read.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "reading",
+              "done",
+              "failed"
+            ]
+          }
+        },
+        "required": [
+          "asset_id",
+          "status",
+          "ahead",
+          "pages",
+          "ocr_pages",
+          "error"
+        ],
+        "type": "object"
+      },
       "CvTemplate": {
         "properties": {
           "category": {
@@ -404,6 +451,35 @@
           "preview",
           "fonts",
           "colours"
+        ],
+        "type": "object"
+      },
+      "CvUploadRead": {
+        "properties": {
+          "ahead": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "error": {
+            "description": "Why a failed read failed: `cv_file_kind`, `cv_file_unreadable`, `source_extraction_failed`, `read_timeout`, `file_unavailable`, `reader_interrupted` or `reader_error`. A failed file is a file not read: the CV says so (`cv_unread`), or is `cv_file_unreadable` when nothing at all was read.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "reading",
+              "done",
+              "failed"
+            ]
+          }
+        },
+        "required": [
+          "status",
+          "ahead",
+          "error"
         ],
         "type": "object"
       },
@@ -6719,7 +6795,21 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Asset"
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Asset"
+                    },
+                    {
+                      "properties": {
+                        "cv_read": {
+                          "$ref": "#/components/schemas/CvUploadRead",
+                          "description": "Only for `purpose` `cv_source`: the file is queued for reading as it arrives, and this is how its read stands."
+                        }
+                      },
+                      "required": [],
+                      "type": "object"
+                    }
+                  ]
                 }
               }
             },
@@ -9381,6 +9471,96 @@
                     "generation_features",
                     "templates",
                     "limits"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    },
+    "/studio/cv-reads": {
+      "get": {
+        "description": "How the reading of a CV's files stands. A file uploaded with `purpose` `cv_source` is read once, in a queue the accounts take turns in, never while a draft is made: a CV draft (`ai.cv`, `cv_source` `linkedin` or `file`) whose files are still queued or being read is refused with `cv_reading` (409; `message_params.ahead` and `estimated_seconds` as here), to be made again once they are read. `ids` names the account's own files, at most ten; an id that is no live file of theirs is `file_unavailable` (404). A file with no read yet is queued. `ahead` is the most reads that finish before any of them is read, and `estimated_seconds` about how long until the last is read: 0 when none waits, null with no recent reads to tell it from. Asked every two seconds or so while waiting; more than 60 a minute is `rate_limited`.",
+        "operationId": "listCvReads",
+        "parameters": [
+          {
+            "explode": true,
+            "in": "query",
+            "name": "ids",
+            "required": true,
+            "schema": {
+              "items": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "maxItems": 10,
+              "minItems": 1,
+              "type": "array"
+            },
+            "style": "form"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "ahead": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "estimated_seconds": {
+                      "minimum": 0,
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "reads": {
+                      "items": {
+                        "$ref": "#/components/schemas/CvRead"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "reads",
+                    "ahead",
+                    "estimated_seconds"
                   ],
                   "type": "object"
                 }
