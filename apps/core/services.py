@@ -37,7 +37,8 @@ def engine_inspect(path, password=None, allow_links=False):
         raise
 
 # What a file may be uploaded for, beside any tool: 'cv_source' is a file a CV
-# is made from (apps/studio/cv/sources.py), whose text is read and never converted.
+# is made from (apps/studio/cv/sources.py), whose text is read, by the reader,
+# and never converted.
 UPLOAD_PURPOSES = ('', 'cv_source')
 
 def upload_file(account, uploaded, channel='web', password=None, purpose=''):
@@ -86,10 +87,15 @@ def upload_file(account, uploaded, channel='web', password=None, purpose=''):
         from . import storage
         storage.save(key, metadata['mime_type'])
         record_event(account, 'upload.accepted', properties={'bytes':size,'pages':pages}, channel=channel)
-        return asset
     except Exception:
         path.unlink(missing_ok=True)
         raise
+    if purpose == 'cv_source':
+        # Queued for the reader as it arrives, so the CV made from it seldom
+        # waits (apps/studio/cv/reads.py). The file is kept whatever happens here.
+        from apps.studio.cv.reads import enqueue
+        enqueue(asset)
+    return asset
 
 def owned_assets(account, input_ids):
     if not isinstance(input_ids, list) or not input_ids or len(input_ids) > 50 or len(set(map(str,input_ids))) != len(input_ids):
@@ -419,8 +425,10 @@ def cleanup_expired():
             pending['resend_file'] = True
             conversation.pending = pending
             conversation.save(update_fields=['pending'])
-    from apps.studio.models import GenerationDraft, EducationProject, EditorDocument, ShareGrant
+    from apps.studio.models import CvSourceRead, GenerationDraft, EducationProject, EditorDocument, ShareGrant
     GenerationDraft.objects.filter(expires_at__lte=now).delete()
+    # What a CV's file gave is the customer's text: it goes when the file does.
+    CvSourceRead.objects.filter(asset__expires_at__lte=now).delete()
     from apps.studio.review import cleanup as cleanup_review
     cleanup_review(now)
     EducationProject.objects.filter(expires_at__lte=now).delete()

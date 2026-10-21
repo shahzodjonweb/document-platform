@@ -1,5 +1,6 @@
 import uuid
 from django.db import models
+from django.db.models.functions import Now
 from django.utils import timezone
 
 class GenerationDraft(models.Model):
@@ -207,3 +208,31 @@ class GenerationRecord(models.Model):
     output_pages=models.PositiveIntegerField(default=0)
     created_at=models.DateTimeField(default=timezone.now,db_index=True)
     expires_at=models.DateTimeField(db_index=True)
+
+class CvSourceRead(models.Model):
+    """One file a CV is made from, waiting to be read or read: its place in the queue and what it gave.
+
+    Queued when the file is uploaded for a CV (purpose 'cv_source'), or when
+    a draft first asks for a file uploaded before reads were queued, and read
+    by `runreader`, never in a request (cv/reads.py). What the file gave is
+    the customer's text, encrypted as drafts are. It goes with its file:
+    deleted with the asset, and when the file expires (cleanup_expired).
+    """
+    STATUSES=[('queued','queued'),('reading','reading'),('done','done'),('failed','failed')]
+    id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
+    account=models.ForeignKey('core.Account',on_delete=models.CASCADE,related_name='+')
+    asset=models.OneToOneField('core.FileAsset',on_delete=models.CASCADE,related_name='cv_read')
+    status=models.CharField(max_length=8,choices=STATUSES,default='queued',db_default='queued')
+    # {'pages', 'names', 'ocr_pages', 'ocr_skipped'} as cv/sources.py takes them; empty until done.
+    encrypted_result=models.BinaryField(null=True)
+    # Pages with text and pages read by OCR: what the web shows while it waits, without the text.
+    pages=models.PositiveSmallIntegerField(default=0,db_default=0)
+    ocr_pages=models.PositiveSmallIntegerField(default=0,db_default=0)
+    error=models.CharField(max_length=40,blank=True,default='',db_default='')
+    attempts=models.PositiveSmallIntegerField(default=0,db_default=0)
+    created_at=models.DateTimeField(default=timezone.now,db_default=Now())
+    started_at=models.DateTimeField(null=True)
+    finished_at=models.DateTimeField(null=True)
+    lease_expires_at=models.DateTimeField(null=True)
+    class Meta:
+        indexes=[models.Index(fields=['status','created_at'],name='cv_read_queue')]

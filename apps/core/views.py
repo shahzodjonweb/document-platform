@@ -198,9 +198,16 @@ def channels_check(request):
 def uploads(request):
     throttle(request,'uploads',30)
     if 'file' not in request.FILES: raise DomainError('file_required')
-    # `purpose` 'cv_source' is a file a CV is made from: it may carry links (services.upload_file).
-    return JsonResponse(asset_data(upload_file(request.account,request.FILES['file'],password=request.POST.get('password'),
-                                               purpose=request.POST.get('purpose',''))),status=201)
+    # `purpose` 'cv_source' is a file a CV is made from: it may carry links
+    # (services.upload_file), and is queued for the reader at once. `cv_read`
+    # says how its reading stands (apps/studio/cv/reads.py upload_state).
+    purpose=request.POST.get('purpose','')
+    asset=upload_file(request.account,request.FILES['file'],password=request.POST.get('password'),purpose=purpose)
+    data=asset_data(asset)
+    if purpose=='cv_source':
+        from apps.studio.cv.reads import upload_state
+        data['cv_read']=upload_state(asset)
+    return JsonResponse(data,status=201)
 
 @api(('GET','DELETE'))
 def file_detail(request,asset_id):
@@ -213,6 +220,9 @@ def file_detail(request,asset_id):
         asset.save(update_fields=['state','expires_at'])
         from . import storage
         storage.delete(asset.object_key)
+        # What a CV's file gave goes with it.
+        from apps.studio.models import CvSourceRead
+        CvSourceRead.objects.filter(asset=asset).delete()
         for preview in asset.page_previews.select_related('file'):
             preview.file.state='revoked';preview.file.expires_at=timezone.now()
             preview.file.save(update_fields=['state','expires_at'])

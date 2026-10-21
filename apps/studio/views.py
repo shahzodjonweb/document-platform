@@ -49,11 +49,25 @@ def config(request):
             'features':features,'generation_features':features,
             'default_pages':DEFAULT_PAGES,'limits':limits(request.account)}
 
+def _queue_cv_reads(account,data,options=None):
+    """The reads of a CV draft's files queued before the draft is made (cv/reads.py ensure_ids).
+
+    A file uploaded before reads were queued has none; one queued inside the
+    draft's own transaction would be taken back with a `cv_reading` refusal.
+    """
+    from .cv.sources import KINDS
+    options=options if options is not None else data.get('options',data.get('parameters',{}))
+    if isinstance(options,dict) and options.get('cv_source') in KINDS:
+        from .cv.reads import ensure_ids
+        ensure_ids(account,data.get('source_ids',data.get('input_ids')))
+
 @api(('GET','POST'))
 def drafts(request):
     if request.method=='POST':
         throttle(request,'generation_drafts',20)
-        return JsonResponse(draft_data(create_draft(request.account,body(request))),status=201)
+        data=body(request)
+        if data.get('feature_id')==CV:_queue_cv_reads(request.account,data)
+        return JsonResponse(draft_data(create_draft(request.account,data)),status=201)
     return {'results':[draft_data(d) for d in GenerationDraft.objects.filter(account=request.account,expires_at__gt=timezone.now()).order_by('-created_at')[:100]]}
 
 # How often one account may reword a CV draft in a minute: each is read again
@@ -62,11 +76,21 @@ def drafts(request):
 CV_UPDATES_PER_MINUTE=30
 
 def _account_limit(account,key,limit):
+    """At most `limit` requests a minute for one account, the minute counted from its first request.
+
+    A fixed window: the count expires a minute after it began, whatever comes
+    after. Set again on every request, the expiry moved on with each, and a
+    tab asking every two seconds was refused after two minutes of waiting.
+    incr keeps the expiry (locmem and redis alike).
+    """
     from django.core.cache import cache
     cache_key=f'rate:{key}:account:{account.id}'
-    count=cache.get(cache_key,0)
-    if count>=limit:raise DomainError('rate_limited',429,retryable=True)
-    cache.set(cache_key,count+1,60)
+    cache.add(cache_key,0,60)
+    try:count=cache.incr(cache_key)
+    except ValueError:
+        # The minute ended between add and incr: this request begins the next.
+        cache.add(cache_key,0,60);count=cache.incr(cache_key)
+    if count>limit:raise DomainError('rate_limited',429,retryable=True)
 
 @api(('GET','PATCH','DELETE'))
 def draft_detail(request,pk):
@@ -74,9 +98,46 @@ def draft_detail(request,pk):
     if not d:raise DomainError('not_found',404)
     if request.method=='DELETE':d.delete();return {'deleted':True}
     if request.method=='PATCH':
-        if d.feature_id==CV:_account_limit(request.account,'cv_draft_updates',CV_UPDATES_PER_MINUTE)
-        d=update_draft(request.account,pk,body(request))
+        data=body(request)
+        if d.feature_id==CV:
+            _account_limit(request.account,'cv_draft_updates',CV_UPDATES_PER_MINUTE)
+            _queue_cv_reads(request.account,data,unpack(d.encrypted_data).get('options',{}))
+        d=update_draft(request.account,pk,data)
     return draft_data(d)
+
+# How often one account may ask how its CV's files are being read: the web
+# asks every two seconds while it waits, from a tab or two (60 a minute), and
+# again as a file is uploaded or a draft is refused while it is read.
+CV_READS_PER_MINUTE=120
+
+@api(('GET','DELETE'))
+def cv_reads(request):
+    """How the reading of a CV's files stands: each file's read, how many reads are ahead, and about how long.
+
+    `ids` names the files, the account's own, at most as many as a CV is made
+    from; an id that is no live file of theirs is `file_unavailable` (404).
+    A file with no read yet (uploaded before reads were queued) is queued.
+
+    DELETE takes files the customer removed from the form out of the line:
+    their reads still queued are dropped, so nobody waits behind a file no CV
+    will use. A read already started finishes; an id that is gone, or not the
+    account's, is passed over. A file dropped here and used after all is
+    queued again when a draft asks for it.
+    """
+    from .cv import reads,sources as cv_sources
+    ids=request.GET.getlist('ids')
+    if len(ids)>cv_sources.MAX_FILES:raise DomainError('invalid_inputs')
+    if request.method=='DELETE':
+        import uuid
+        from .models import CvSourceRead
+        valid=[]
+        for value in ids:
+            try:valid.append(uuid.UUID(str(value)))
+            except ValueError:continue
+        cancelled,_=CvSourceRead.objects.filter(account=request.account,asset_id__in=valid,status='queued').delete()
+        return {'cancelled':cancelled}
+    _account_limit(request.account,'cv_reads',CV_READS_PER_MINUTE)
+    return reads.state(request.account,owned_assets(request.account,ids))
 
 @api(('POST',))
 def outline(request,pk):

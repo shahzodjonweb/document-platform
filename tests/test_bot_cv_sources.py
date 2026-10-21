@@ -479,7 +479,7 @@ def test_the_review_says_where_the_cv_came_from_in_every_language(customer, mode
     assert f'\n{UX[locale]["cv_linkedin_title"]}\n' in words, words
 
 
-# --- Reading off the shared thread, and reading each file once ----------------------------------------
+# --- Reading each file once (the reader's queue in the chat: tests/test_bot_cv_read_queue.py) -----------
 
 def reading(pages=(('Timur Rakhimov', 'Lead engineer at Example Motors since 2020; MSc Mechanical Engineering.'),),
             seconds=0.0, calls=None, ocr=False):
@@ -549,23 +549,6 @@ def feed_two(first, upload, second, text, delay):
                 await bot.session.close()
     async_to_sync(run)()
     return answered[first.pk], answered[second.pk]
-
-
-def test_reading_a_cvs_files_never_holds_up_another_chat(customer, model, monkeypatch):
-    from apps.studio import extraction
-    monkeypatch.setattr('telegram.bot.ALBUM_SETTLE', 0)
-    calls = []
-    monkeypatch.setattr(extraction, 'read_cv', reading(seconds=3.0, calls=calls))
-    other = another_customer()
-    choose(customer, 'cv_mode_file')
-    cv_done, start_done = feed_two(customer, upload('old-cv.pdf', one_column_pdf()), other, '/start', 0.3)
-    # The other chat's menu came while the file was still being read (three seconds), not after it.
-    assert start_done < 2.5 < 3.0 < cv_done, (start_done, cv_done)
-    assert TOOL_NAMES[CV]['en'] in str(LocalBotMessage.objects.filter(account=other, direction='outbound').latest(
-        'created_at').buttons), 'the other chat was shown its menu'
-    # Read once, in the readers' own thread; the draft took what was read.
-    assert calls == [('cv-read_0', 'pdf')], calls
-    assert latest(customer, CV)['title'] == 'Timur Rakhimov'
 
 
 def test_a_file_that_names_nobody_is_read_once_however_the_name_is_answered(customer, model, monkeypatch):
@@ -657,8 +640,8 @@ def test_more_screenshots_after_the_review_are_more_of_its_pages(customer, model
     data = latest(customer, CV)
     assert data['source_ids'] == [str(first.id), *[str(asset.id) for asset in more]]
     assert 'portrait_asset_id' not in data['options'] and GenerationDraft.objects.filter(account=customer).count() == 1
-    # Each file was read once, off the shared thread.
-    assert len(calls) == 3 and all(name.startswith('cv-read') for name, _ in calls), calls
+    # Each file was read once, by the reader (here as it was queued: settings.LOCAL_SYNC_JOBS).
+    assert len(calls) == 3, calls
     # One photo on its own: asked about, and as a page it is read with the others.
     question = dispatch_local(customer, uploaded=image('page-4.jpg'))
     assert screen(question)[0] == EN['cv_photo_or_page']

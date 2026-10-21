@@ -791,89 +791,75 @@ class FakeReader:
 
 
 def files_named(*names):
-    from pathlib import Path as P
     return [{'account': '1', 'asset_id': name, 'sha256': 'f' * 64, 'kind': 'image' if name == 'shot' else 'pdf',
-             'pages': int(name.split('-')[1]) if name.startswith('scan-') else 1, 'scan': name != 'text',
-             'path': str(P('/nowhere') / f'{name}.pdf')} for name in names]
+             'pages': int(name.split('-')[1]) if name.startswith('scan-') else 1} for name in names]
 
 
-def test_the_pages_ocr_reads_are_shared_so_every_file_is_read(monkeypatch):
+def read_as_the_reader_does(reader, files):
+    """Each file read on its own, as the reader reads it (reads.read_file): what it gave, or None for a failure."""
+    from apps.studio.cv import sources
+    results = []
+    for entry in files:
+        try:
+            results.append(reader(Path('/nowhere') / f"{entry['asset_id']}.pdf", entry['kind'],
+                                  ocr_pages=sources.MAX_OCR_PAGES, seconds=sources.READ_SECONDS))
+        except DomainError:
+            results.append(None)
+    return results
+
+
+def test_the_pages_ocr_reads_are_shared_so_every_file_is_read():
     from apps.studio.cv import sources
     reader = FakeReader()
-    monkeypatch.setattr(extraction, 'read_cv', reader)
     files = files_named('scan-10', 'shot')
-    excerpts, unread = sources.excerpts_of(files, sources.read_entries(files))
+    excerpts, unread = sources.excerpts_of(files, read_as_the_reader_does(reader, files))
+    # Each file is read once, with all the OCR pages a draft takes; the draft shares them out.
+    assert reader.calls == [('scan-10', 10), ('shot', 10)]
     # A ten-page scan first used to take every page, and the screenshot after it was never read.
-    assert reader.calls == [('scan-10', 9), ('shot', 1)]
     assert [e['asset_id'] for e in excerpts].count('shot') == 1
+    assert [e['asset_id'] for e in excerpts].count('scan-10') == 9
     assert unread == [{'asset_id': 'scan-10', 'pages': 1}]
     # The other way round, the screenshot takes its one page and the scan the rest.
-    sources.forget()
-    reader.calls.clear()
     files = files_named('shot', 'scan-10')
-    _, unread = sources.excerpts_of(files, sources.read_entries(files))
-    assert reader.calls == [('shot', 9), ('scan-10', 9)] and unread == [{'asset_id': 'scan-10', 'pages': 1}]
+    excerpts, unread = sources.excerpts_of(files, read_as_the_reader_does(reader, files))
+    assert [e['asset_id'] for e in excerpts].count('shot') == 1 and unread == [{'asset_id': 'scan-10', 'pages': 1}]
+    # Pages OCR never reached are said with the pages left past the share.
+    files = files_named('scan-12', 'shot')
+    _, unread = sources.excerpts_of(files, read_as_the_reader_does(reader, files))
+    assert unread == [{'asset_id': 'scan-12', 'pages': 3}]
 
 
-def test_a_file_that_fails_or_has_no_time_left_is_said_and_never_read_again(monkeypatch):
+def test_a_file_the_reader_failed_on_is_said_and_the_others_still_make_the_cv():
     from apps.studio.cv import sources
-    reader = FakeReader(seconds=1.6)
-    monkeypatch.setattr(extraction, 'read_cv', reader)
-    # Time for two readings and a little: under five seconds is left for the third.
-    monkeypatch.setattr(sources, 'READ_SECONDS', 7.4)
+    reader = FakeReader()
     files = files_named('text', 'bad', 'shot')
-    excerpts, unread = sources.excerpts_of(files, sources.read_entries(files))
-    # The last file had under five seconds left: not started, and said.
-    assert [name for name, _ in reader.calls] == ['text', 'bad']
-    assert unread == [{'asset_id': 'bad', 'pages': 1, 'whole': True}, {'asset_id': 'shot', 'pages': 1, 'whole': True}]
-    assert {e['asset_id'] for e in excerpts} == {'text'}
-    # With another file beside them, the one read and the one that failed are not read again.
-    reader.calls.clear()
-    monkeypatch.setattr(sources, 'READ_SECONDS', 75)
-    files = files_named('text', 'bad', 'shot', 'scan-2')
-    _, unread = sources.excerpts_of(files, sources.read_entries(files))
-    assert [name for name, _ in reader.calls] == ['shot', 'scan-2']
+    excerpts, unread = sources.excerpts_of(files, read_as_the_reader_does(reader, files))
     assert unread == [{'asset_id': 'bad', 'pages': 1, 'whole': True}]
+    assert {e['asset_id'] for e in excerpts} == {'text', 'shot'}
+    # Nothing read at all is a file with nothing to read in it.
+    with pytest.raises(DomainError, match='cv_file_unreadable'):
+        sources.excerpts_of(files_named('bad'), [None])
 
 
-def test_one_cvs_files_are_read_at_a_time_and_another_is_asked_to_try_again(monkeypatch, tmp_path):
-    import subprocess
-    import sys
-    from apps.studio.cv import sources
-    monkeypatch.setattr(sources, 'SLOT', tmp_path / 'reading.lock')
-    monkeypatch.setattr(sources, 'SLOT_SECONDS', 0.5)
-    monkeypatch.setattr(extraction, 'read_cv', FakeReader())
-    # Another worker of the API holds the turn while it reads its own CV's files.
-    holder = subprocess.Popen([sys.executable, '-c', (
-        'import fcntl, sys, time\n'
-        f'handle = open({str(tmp_path / "reading.lock")!r}, "a")\n'
-        'fcntl.flock(handle, fcntl.LOCK_EX)\nprint("held", flush=True)\ntime.sleep(30)\n')],
-        stdout=subprocess.PIPE, text=True)
-    try:
-        assert holder.stdout.readline().strip() == 'held'
-        with pytest.raises(DomainError) as busy:
-            sources.read_entries(files_named('text'))
-        assert busy.value.code == 'rate_limited' and busy.value.status == 429 and busy.value.retryable
-    finally:
-        holder.kill()
-        holder.wait()
-    # Its turn come, it is read; what was read before needs no turn at all.
-    assert sources.read_entries(files_named('text'))[0]['names'] == ['Timur Rakhimov']
-    holder = subprocess.Popen([sys.executable, '-c', (
-        'import fcntl, time\n'
-        f'handle = open({str(tmp_path / "reading.lock")!r}, "a")\n'
-        'fcntl.flock(handle, fcntl.LOCK_EX)\nprint("held", flush=True)\ntime.sleep(30)\n')],
-        stdout=subprocess.PIPE, text=True)
-    try:
-        assert holder.stdout.readline().strip() == 'held'
-        sources.forget()
-        monkeypatch.setattr(sources, '_recall', lambda key: {'pages': [], 'names': [], 'ocr_pages': 0,
-                                                              'ocr_skipped': 0} if key[0] == 'file' else None)
-        assert sources.read_entries(files_named('text', 'shot'))[1] == {'pages': [], 'names': [], 'ocr_pages': 0,
-                                                                        'ocr_skipped': 0}
-    finally:
-        holder.kill()
-        holder.wait()
+@pytest.mark.django_db
+def test_a_cvs_files_are_never_read_in_the_request_and_nobody_is_asked_to_try_again(customer, settings, monkeypatch):
+    from apps.studio.cv import reads
+    from apps.studio.models import CvSourceRead
+    settings.LOCAL_SYNC_JOBS = False
+    monkeypatch.setattr(extraction, 'read_cv', lambda *args, **kwargs: pytest.fail('read in the request'))
+    old = uploaded(customer, 'old-cv.pdf', one_column_pdf())
+    request = {'feature_id': CV, 'source_ids': [str(old.id)], 'options': {'cv_source': 'file'}}
+    with pytest.raises(DomainError) as waiting:
+        create_draft(customer, request)
+    # Not `rate_limited`, and no lock to wait on: the file waits its turn in the reader's queue.
+    assert waiting.value.code == 'cv_reading' and waiting.value.status == 409
+    assert waiting.value.params == {'ahead': 0, 'estimated_seconds': None}
+    assert CvSourceRead.objects.get(asset=old).status == 'queued'
+    monkeypatch.setattr(reads, 'read_file', lambda asset: {
+        'pages': [{'page': 1, 'text': 'Timur Rakhimov, lead engineer at Example Motors since 2020.'}],
+        'names': ['Timur Rakhimov'], 'ocr_pages': 0, 'ocr_skipped': 0})
+    assert reads.next_read()
+    assert unpack(create_draft(customer, request).encrypted_data)['title'] == 'Timur Rakhimov'
 
 
 @pytest.mark.django_db

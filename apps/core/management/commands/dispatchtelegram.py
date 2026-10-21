@@ -20,4 +20,8 @@ class Command(BaseCommand):
                 await dispatcher.feed_update(bot,Update.model_validate(receipt.payload))
                 receipt.processed_at=timezone.now();receipt.payload={}
                 await sync_to_async(receipt.save)(update_fields=['processed_at','payload'])
+            # No polling loop here: each run looks once at the chats waiting for the CV reader (telegram/bot.py cv_wait_loop).
+            from telegram.bot import cv_waits_kept
+            await cv_waits_kept()
+            await dispatcher.cv_waits(bot)
         finally: await bot.session.close()

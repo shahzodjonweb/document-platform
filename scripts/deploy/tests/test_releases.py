@@ -34,11 +34,20 @@ class Docker:
         # same thing it would on a real server.
         self.calls=[]; self.images={}; self.loadable={}; self.exports={}
         self.fail_health=False; self.project_exists=False
+        # The services each release's stack defines, by a part of its release
+        # id; any other release has them all. A running reader's container.
+        self.stacks={}; self.reader=''
+    def services(self,args):
+        config=args[args.index('-f')+1]
+        named=[services for part,services in self.stacks.items() if part in config]
+        return named[0] if named else ['db','redis','init','api','worker','batches','reader','cleanup','bot','gateway']
     def __call__(self,args,**kwargs):
         self.calls.append(args)
         if args[:3]==['docker','compose','version']:return '2.39.0'
         if args[:2]==['docker','info']:return 'x86_64'
+        if args[:2]==['docker','ps'] and 'label=com.docker.compose.service=reader' in args:return self.reader
         if args[:2]==['docker','ps']:return 'unmanaged-container' if self.project_exists else ''
+        if args[:2]==['docker','compose'] and args[-2:]==['config','--services']:return '\n'.join(self.services(args))
         if args[:3]==['docker','volume','ls']:return ''
         if args[:2]==['docker','load']:
             self.images.update(self.loadable);self.loadable={};return ''
@@ -120,7 +129,7 @@ class Releases(unittest.TestCase):
         self.assertEqual(result['status'],'deployed')
         self.assertFalse((self.root/'platform/state.json').exists())
         self.assert_only_project('web')
-        self.assertFalse(any(x in c for c in self.docker.calls for x in ('db','redis','pg_dump','init','api','bot','worker')))
+        self.assertFalse(any(x in c for c in self.docker.calls for x in ('db','redis','pg_dump','init','api','bot','worker','reader')))
 
     def test_web_update_never_reads_or_changes_platform_state(self):
         self.deploy('platform',10);self.deploy('web',11)
@@ -185,6 +194,35 @@ class Releases(unittest.TestCase):
             self.deploy('platform',11)
         restored=[c for c in self.docker.calls if 'up' in c and 'worker' in c][-1]
         self.assertEqual(restored[restored.index('--timeout')+1],'30')
+
+    def test_the_cv_reader_rolls_on_its_own_after_the_site_and_before_the_job_runners(self):
+        # Beside the worker it would wait out a deck's drain with CV files unread.
+        self.deploy('platform',10)
+        ups=[c for c in self.docker.calls if 'up' in c]
+        gateway=next(i for i,c in enumerate(ups) if 'gateway' in c)
+        reader=next(i for i,c in enumerate(ups) if 'reader' in c)
+        runners=next(i for i,c in enumerate(ups) if 'worker' in c)
+        self.assertLess(gateway,reader);self.assertLess(reader,runners)
+        self.assertEqual(ups[reader][-1],'reader');self.assertNotIn('--timeout',ups[reader])
+        self.assertFalse(any('reader' in c for i,c in enumerate(ups) if i!=reader))
+        self.docker.calls.clear();self.docker.fail_health=True
+        with self.assertRaisesRegex(server.DeploymentError,'previous image restored'):
+            self.deploy('platform',11)
+        restored=[c for c in self.docker.calls if 'up' in c and 'reader' in c][-1]
+        self.assertEqual(restored[restored.index('--timeout')+1],'30')
+
+    def test_a_restored_release_from_before_the_reader_stops_the_newer_reader(self):
+        # Its stack has no reader to start, and the newer one would read for nobody.
+        _,old=self.deploy('platform',10)
+        self.docker.stacks[old['release_id']]=['db','redis','init','api','worker','batches','cleanup','bot','gateway']
+        self.docker.calls.clear();self.docker.fail_health=True;self.docker.reader='f'*12
+        with self.assertRaisesRegex(server.DeploymentError,'previous image restored'):
+            self.deploy('platform',11)
+        restored=self.docker.calls[next(i for i,c in enumerate(self.docker.calls) if 'up' in c and 'gateway' in c)+1:]
+        self.assertFalse(any('up' in c and 'reader' in c for c in restored))
+        self.assertIn(['docker','stop','--time','30','f'*12],restored)
+        self.assertTrue(any('up' in c and 'worker' in c for c in restored))
+        self.assertEqual(self.state('platform')['active'],old)
 
     def test_older_run_cannot_override_newer_release(self):
         self.deploy('web',13);active=self.state('web')['active']
