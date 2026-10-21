@@ -9512,6 +9512,87 @@
       }
     },
     "/studio/cv-reads": {
+      "delete": {
+        "description": "Takes files the customer removed from a CV out of the reading queue: their reads still queued are dropped. A read already started finishes; ids that are gone or not the account's are passed over. A file dropped here and used after all is queued again when a draft asks for it.",
+        "operationId": "cancelCvReads",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "explode": true,
+            "in": "query",
+            "name": "ids",
+            "required": true,
+            "schema": {
+              "items": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "maxItems": 10,
+              "minItems": 1,
+              "type": "array"
+            },
+            "style": "form"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "cancelled": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "cancelled"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      },
       "get": {
         "description": "How the reading of a CV's files stands. A file uploaded with `purpose` `cv_source` is read once, in a queue the accounts take turns in, never while a draft is made: a CV draft (`ai.cv`, `cv_source` `linkedin` or `file`) whose files are still queued or being read is refused with `cv_reading` (409; `message_params.ahead` and `estimated_seconds` as here), to be made again once they are read. `ids` names the account's own files, at most ten; an id that is no live file of theirs is `file_unavailable` (404). A file with no read yet is queued. `ahead` is how many reads of other customers' files finish before the first of these still queued is read (the account's own files are not ahead of it): 0 when none waits or one of them is being read; each read's own `ahead` counts every read before that file. `estimated_seconds` is about how long until the last is read, counting what is left of the reads in progress: 0 when none waits, null with no recent reads to tell it from or while no reader is taking the queued reads. Asked every two seconds or so while waiting; more than 120 in an account's minute (counted from its first request) is `rate_limited`.",
         "operationId": "listCvReads",

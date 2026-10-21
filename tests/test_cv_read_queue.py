@@ -683,3 +683,22 @@ def test_the_container_smoke_starts_the_reader_and_reads_a_page_in_it(monkeypatc
 def test_nothing_is_left_of_the_lock_that_asked_people_to_try_again():
     text = (ROOT / 'apps/studio/cv/sources.py').read_text()
     assert 'rate_limited' not in text and 'flock' not in text and not hasattr(sources, 'SLOT')
+
+
+
+def test_a_file_taken_off_the_form_leaves_the_line_and_a_started_read_finishes(queued, reader, customer):
+    """DELETE studio/cv-reads drops the account's queued reads of those files, and nothing else."""
+    import uuid
+    other = account(78)
+    mine = [cv_file(customer, f'shot-{number}.pdf') for number in range(3)]
+    theirs = cv_file(other, 'old-cv.pdf')
+    CvSourceRead.objects.filter(asset=mine[2]).update(status='reading')
+    query = '&'.join(f'ids={asset.id}' for asset in [*mine, theirs]) + f'&ids={uuid.uuid4()}&ids=not-a-uuid'
+    response = login_client(customer).delete(f'/api/v1/studio/cv-reads?{query}')
+    assert response.status_code == 200, response.content
+    assert response.json() == {'cancelled': 2}
+    left = {(row.asset_id, row.status) for row in CvSourceRead.objects.all()}
+    assert left == {(mine[2].id, 'reading'), (theirs.id, 'queued')}
+    # Used after all, a dropped file is queued again when a draft asks for it.
+    assert refused(customer, made_from(customer, mine[0])).code == 'cv_reading'
+    assert read_of(mine[0]).status == 'queued'

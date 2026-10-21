@@ -110,18 +110,33 @@ def draft_detail(request,pk):
 # again as a file is uploaded or a draft is refused while it is read.
 CV_READS_PER_MINUTE=120
 
-@api(('GET',))
+@api(('GET','DELETE'))
 def cv_reads(request):
     """How the reading of a CV's files stands: each file's read, how many reads are ahead, and about how long.
 
     `ids` names the files, the account's own, at most as many as a CV is made
     from; an id that is no live file of theirs is `file_unavailable` (404).
     A file with no read yet (uploaded before reads were queued) is queued.
+
+    DELETE takes files the customer removed from the form out of the line:
+    their reads still queued are dropped, so nobody waits behind a file no CV
+    will use. A read already started finishes; an id that is gone, or not the
+    account's, is passed over. A file dropped here and used after all is
+    queued again when a draft asks for it.
     """
     from .cv import reads,sources as cv_sources
-    _account_limit(request.account,'cv_reads',CV_READS_PER_MINUTE)
     ids=request.GET.getlist('ids')
     if len(ids)>cv_sources.MAX_FILES:raise DomainError('invalid_inputs')
+    if request.method=='DELETE':
+        import uuid
+        from .models import CvSourceRead
+        valid=[]
+        for value in ids:
+            try:valid.append(uuid.UUID(str(value)))
+            except ValueError:continue
+        cancelled,_=CvSourceRead.objects.filter(account=request.account,asset_id__in=valid,status='queued').delete()
+        return {'cancelled':cancelled}
+    _account_limit(request.account,'cv_reads',CV_READS_PER_MINUTE)
     return reads.state(request.account,owned_assets(request.account,ids))
 
 @api(('POST',))
