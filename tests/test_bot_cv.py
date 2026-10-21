@@ -1,6 +1,9 @@
 """A CV from the chat: one message about yourself, a photo if you like, a review, a PDF.
 
-The third AI service (`ai.cv`) works like the other two: one message in, a
+The third AI service (`ai.cv`) asks first how the CV is made; these tests
+follow the first way, written about yourself (tests/test_bot_cv_sources.py
+follows the LinkedIn profile and the old CV). From there it works like the
+other two: one message in, a
 priced review out, nothing counted until Generate. What differs is what it asks
 for and what it shows. It asks only for what a CV cannot be made without, the
 person's name, and keeps everything already written while it does. A photo sent
@@ -25,7 +28,7 @@ from telegram import generation
 from telegram.bot import CV_BRIEF_CHARS, review_screen
 from telegram.local import dispatch_local
 from telegram.ux_copy import LOCALES, MESSAGES, PROMPT_EXAMPLES, TOOL_NAMES, UX
-from tests.test_bot_generation import customer, describe, labels, latest, tap  # noqa: F401
+from tests.test_bot_generation import customer, labels, latest, tap  # noqa: F401
 from tests.test_cv_content import BRIEF
 from tests.test_manual_payments import pdf
 
@@ -69,8 +72,14 @@ def image(name='me.jpg', fmt='JPEG', size=(300, 400)):
 
 
 def ask(account):
-    """The CV service chosen from the menu: its question on screen."""
-    return tap(account, dispatch_local(account, text='/start'), SERVICE)
+    """The CV service chosen from the menu, written about yourself: its question on screen."""
+    return tap(account, tap(account, dispatch_local(account, text='/start'), SERVICE), UX['en']['cv_mode_text'])
+
+
+def write(account, description):
+    """A CV described in one message, as the menu leads to it."""
+    ask(account)
+    return dispatch_local(account, text=description)
 
 
 def cv(account):
@@ -91,13 +100,15 @@ def test_the_cv_is_the_third_service_on_the_home_screen(customer):
 
 
 def test_cv_opens_the_question_about_you(customer):
-    words, shown = screen(dispatch_local(customer, text='/cv'))
+    words, shown = screen(tap(customer, dispatch_local(customer, text='/cv'), UX['en']['cv_mode_text']))
     assert words.startswith('<b>✨ CV · AI</b>\n' + UX['en']['cv_ask']), words[:300]
     assert f'<i>{UX["en"]["cv_photo_hint"]}</i>' in words
     assert f'1. <code>{PROMPT_EXAMPLES[CV][0][0]}</code>' in words
     # No page count is asked for: one page or two is the template's to decide.
     assert 'how many pages' not in words and UX['en']['ai_pages_hint'] not in words
     assert shown == [UX['en']['ai_examples'], UX['en']['ai_back']]
+    # Back is the first CV screen, where the other ways to make one are.
+    assert actions(customer) == [['ai_examples'], ['cv_mode']]
     assert state(customer) == ('ai_input', {'feature_id': CV})
 
 
@@ -121,7 +132,7 @@ def test_every_cv_example_is_a_brief_that_reaches_a_review(customer, locale):
 
 
 def test_an_example_sent_back_unchanged_asks_for_your_own_details(customer):
-    caught = describe(customer, PROMPT_EXAMPLES[CV][1][0], service=SERVICE)
+    caught = write(customer, PROMPT_EXAMPLES[CV][1][0])
     assert screen(caught)[0] == UX['en']['cv_example_copied']
     assert not GenerationDraft.objects.filter(account=customer).exists()
 
@@ -129,7 +140,7 @@ def test_an_example_sent_back_unchanged_asks_for_your_own_details(customer):
 # --- One message to a review ----------------------------------------------------------------
 
 def test_one_message_becomes_a_priced_review_with_the_template_and_the_photo(customer, model):
-    review = describe(customer, BRIEF, service=SERVICE)
+    review = write(customer, BRIEF)
     words, shown = screen(review)
     draft = cv(customer)
     assert '📄 Dilnoza Karimova' in words and 'Pages: 1–2' in words, words
@@ -219,7 +230,7 @@ def test_a_photo_and_its_caption_are_one_message(customer, model):
 
 
 def test_a_photo_sent_on_the_review_goes_on_that_cv(customer, model):
-    describe(customer, BRIEF, service=SERVICE)
+    write(customer, BRIEF)
     draft = cv(customer)
     result = dispatch_local(customer, uploaded=image())
     words, shown = screen(result)
@@ -282,7 +293,7 @@ def test_writing_the_description_again_keeps_the_photo(customer, model):
 
 def test_the_template_picked_on_the_setup_screen_redraws_the_review(customer, model):
     from tests.test_platform import login_client
-    describe(customer, BRIEF, service=SERVICE)
+    write(customer, BRIEF)
     draft = cv(customer)
     client = login_client(customer)
     response = client.post(f'/api/v1/generation/drafts/{draft.id}/setup', data=json.dumps({'cv_template': 'lab'}),
@@ -308,7 +319,7 @@ def test_the_template_picked_on_the_setup_screen_redraws_the_review(customer, mo
 def delivered(customer):
     """A CV made without a model and sent to the chat, with its Make changes button."""
     save_config('ai', {'mode': 'local_fixture'})
-    return tap(customer, describe(customer, BRIEF, service=SERVICE), 'Generate')
+    return tap(customer, write(customer, BRIEF), 'Generate')
 
 
 def test_generate_sends_the_cv_named_after_the_person(customer, delivered):
@@ -383,7 +394,7 @@ def test_a_greeting_asks_for_the_details_not_the_name(customer, model, locale):
     customer.locale = locale
     customer.save(update_fields=['locale'])
     BotConversation.objects.filter(pk=customer.telegram_user_id).update(locale=locale)
-    dispatch_local(customer, text='/cv')
+    tap(customer, dispatch_local(customer, text='/cv'), UX[locale]['cv_mode_text'])
     words, _ = screen(dispatch_local(customer, text={'en': 'Hello', 'uz': 'Assalomu alaykum',
                                                      'ru': 'Здравствуйте'}[locale]))
     assert UX[locale]['cv_details_question'] in words and UX[locale]['cv_name_question'] not in words, words
@@ -544,7 +555,7 @@ def test_an_albums_caption_is_the_description_when_its_photos_arrive_together(cu
 
 def test_a_description_telegram_split_in_two_is_one_cv(customer, model):
     more = 'Projects: a sales dashboard for 40 stores (2023), a churn model for Sample Bank (2021).'
-    describe(customer, BRIEF, service=SERVICE)
+    write(customer, BRIEF)
     draft = cv(customer)
     words, shown = screen(dispatch_local(customer, text=more))
     assert words.startswith(UX['en']['cv_description_added']) and '📄 Dilnoza Karimova' in words, words
@@ -570,7 +581,7 @@ def test_the_two_halves_of_a_description_sent_together_are_one_cv(customer, mode
 
 
 def test_a_caption_sent_with_a_photo_on_the_review_is_said_not_to_be_added(customer, model):
-    describe(customer, BRIEF, service=SERVICE)
+    write(customer, BRIEF)
     words, _ = screen(dispatch_local(customer, uploaded=image(), caption='Also add: I speak Korean (TOPIK 3).'))
     assert words.startswith(UX['en']['cv_caption_not_added']) and '📷 Photo: attached' in words, words
     assert 'Korean' not in latest(customer, CV)['prompt']

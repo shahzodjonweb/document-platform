@@ -212,13 +212,14 @@ MESSAGES = {
     'cv_photo_unusable': ('ℹ️ The photo could not be used, so the CV was made without it.', 'ℹ️ Rasmdan foydalanib bo‘lmadi, shuning uchun CV rasmsiz tayyorlandi.', 'ℹ️ Фото использовать не удалось, поэтому резюме сделано без него.'),
     'cv_photo_gone': ('ℹ️ The photo is no longer stored, so this version of the CV is without it.', 'ℹ️ Rasmning saqlanish muddati tugagani uchun CV’ning bu nusxasi rasmsiz tayyorlandi.', 'ℹ️ Срок хранения фото истёк, поэтому эта версия резюме — без него.'),
     'cv_photo_no_slot': ('ℹ️ This template has no place for a photo, so the CV was made without it.', 'ℹ️ Bu shablonda rasm uchun joy yo‘q, shuning uchun CV rasmsiz tayyorlandi.', 'ℹ️ В этом шаблоне нет места для фото, поэтому резюме сделано без него.'),
-    # The CV service in the chat. One message about yourself, as for the other
-    # two services; the bot asks only for what a CV cannot be made without,
-    # the name, and takes one photo for templates with a place for it.
+    # The CV service in the chat, its first way: one message about yourself, as
+    # for the other two services; the bot asks only for what a CV cannot be
+    # made without, the name, and takes one photo for templates with a place for it.
     'cv_ask': ('✍️ Tell me about yourself in one message: your full name, phone or email, city, the job you want, your work experience with dates, education, skills and languages.', '✍️ O‘zingiz haqingizda bitta xabarda yozing: ism-familiyangiz, telefon yoki email, shahringiz, qanday ish qidirayotganingiz, ish tajribangiz (yillari bilan), taʼlimingiz, ko‘nikmalaringiz va qaysi tillarni bilishingiz.', '✍️ Расскажите о себе одним сообщением: имя и фамилия, телефон или почта, город, какую работу ищете, опыт работы с датами, образование, навыки и языки.'),
     'cv_photo_hint': ('📷 You can also send a photo, before or after the text: it goes on the CV if the template has a place for it.', '📷 Matndan oldin yoki keyin rasmingizni ham yuborishingiz mumkin: shablonda rasm uchun joy bo‘lsa, u CV’ga qo‘yiladi.', '📷 До или после текста можно прислать и фото: оно появится в резюме, если в шаблоне есть для него место.'),
     'cv_photo_attached': ('📷 Photo attached. To replace it, send another one.', '📷 Rasm qabul qilindi. Almashtirish uchun boshqasini yuboring.', '📷 Фото получено. Чтобы заменить его, пришлите другое.'),
-    'cv_photo_only': ('📎 For a CV, send a photo (JPG or PNG) or write your details — PDF and Word files are not read here.', '📎 CV uchun rasm (JPG yoki PNG) yuboring yoki maʼlumotlaringizni yozing — PDF va Word fayllar bu yerda o‘qilmaydi.', '📎 Для резюме пришлите фото (JPG или PNG) или напишите о себе — PDF и Word здесь не читаются.'),
+    # A PDF or Word file sent while the CV is being written about yourself: the way to the old-CV screen.
+    'cv_photo_only': ('📎 PDF and Word files aren’t read here: this CV is made from what you write. To make it from your old CV, tap 📄 From my old CV below and send the file again.', '📎 Bu yerda PDF va Word fayllar o‘qilmaydi: bu CV siz yozgan matndan tayyorlanadi. Uni eski CV’ingizdan tayyorlash uchun pastdagi «📄 Eski CV’imdan» tugmasini bosing va faylni qayta yuboring.', '📎 PDF и Word здесь не читаются: это резюме составляется по вашему сообщению. Чтобы составить его из старого резюме, нажмите «📄 Из старого резюме» ниже и пришлите файл ещё раз.'),
     # A photo too large for a CV (apps/studio/cv/portrait.py: 6 megapixels):
     # said when it arrives, so the description sent next is not refused for it.
     'cv_photo_rejected': ('📷 This image can’t go on a CV: it has to be a JPG or PNG of up to 6 megapixels. Send it as a photo rather than a file — Telegram makes it smaller.', '📷 Bu rasmni CV’ga qo‘yib bo‘lmaydi: u 6 megapikselgacha bo‘lgan JPG yoki PNG bo‘lishi kerak. Uni fayl sifatida emas, rasm sifatida yuboring — Telegram uni kichraytiradi.', '📷 Это изображение не подходит для резюме: нужен JPG или PNG до 6 мегапикселей. Отправьте его как фото, а не файлом — Telegram сам его уменьшит.'),
@@ -252,6 +253,54 @@ MESSAGES = {
     # "Remove the photo" takes the portrait off, "another design" picks again.
     'cv_revise_examples': ('Add IELTS 7.5 (2023) to the certificates · Make the profile shorter · Remove the photo · Use another design', 'Sertifikatlarga IELTS 7.5 (2023) ni qo‘shing · Profilni qisqartiring · Rasmsiz qiling · Boshqa dizayn qiling', 'Добавьте в сертификаты IELTS 7.5 (2023) · Сократите профиль · Уберите фото · Сделайте другой дизайн'),
     'cv_failed_advice': ('💡 Try again. If it fails again, write it all in one message: your name, contacts, jobs with dates, education and skills.', '💡 Qayta urinib ko‘ring. Yana bo‘lmasa, hammasini bitta xabarda yozing: ism-familiya, aloqa maʼlumotlari, ish joylari (yillari bilan), taʼlim va ko‘nikmalar.', '💡 Попробуйте ещё раз. Если снова не выйдет, напишите всё одним сообщением: имя, контакты, места работы с датами, образование и навыки.'),
+    # How a CV is made, asked first (apps/studio/cv/sources.py): written about
+    # yourself in one message, from the LinkedIn profile, or from an old CV.
+    'cv_choose_ask': ('How shall we make your CV?', 'CV’ni qanday tayyorlaymiz?', 'Как составим резюме?'),
+    'cv_choose_hint': ('✍️ About yourself: one message is enough\n🔗 LinkedIn: your profile as a PDF or screenshots\n📄 Old CV: a PDF, a Word file or photos of it', '✍️ O‘zingiz haqingizda: bitta xabar kifoya\n🔗 LinkedIn: profilingiz PDF yoki skrinshot ko‘rinishida\n📄 Eski CV: PDF, Word fayl yoki uning rasmlari', '✍️ О себе: достаточно одного сообщения\n🔗 LinkedIn: профиль в PDF или скриншотами\n📄 Старое резюме: PDF, файл Word или его фото'),
+    'cv_mode_text': ('✍️ Write about myself', '✍️ O‘zim haqimda yozaman', '✍️ Напишу о себе'),
+    'cv_mode_linkedin': ('🔗 From my LinkedIn', '🔗 LinkedIn profilimdan', '🔗 Из моего LinkedIn'),
+    'cv_mode_file': ('📄 From my old CV', '📄 Eski CV’imdan', '📄 Из старого резюме'),
+    # A greeting or a word or two sent on that screen, before any way was chosen.
+    'cv_choose_first': ('👇 First choose how to make your CV.', '👇 Avval CV’ni qanday tayyorlashni tanlang.', '👇 Сначала выберите, как составить резюме.'),
+    # LinkedIn needs a sign-in and forbids reading its pages by program: its own PDF export, or screenshots.
+    'cv_linkedin_title': ('🔗 From your LinkedIn profile', '🔗 LinkedIn profilingizdan', '🔗 Из профиля LinkedIn'),
+    'cv_linkedin_ask': ('LinkedIn doesn’t let us open profiles, so send yours as a file:', 'LinkedIn profillarni ochishga ruxsat bermaydi, shuning uchun profilingizni fayl qilib yuboring:', 'LinkedIn не даёт нам открывать профили, поэтому пришлите свой профиль файлом:'),
+    'cv_linkedin_link_sent': ('🔗 LinkedIn links can’t be opened here, so send your profile as a file:', '🔗 LinkedIn havolalarini bu yerda ochib bo‘lmaydi, shuning uchun profilingizni fayl qilib yuboring:', '🔗 Ссылки LinkedIn здесь не открываются, поэтому пришлите профиль файлом:'),
+    'cv_linkedin_computer': ('💻 On a computer: open your profile, click More → Save to PDF and send the file here.', '💻 Kompyuterda: profilingizni oching, «More» → «Save to PDF» tugmasini bosing va faylni shu yerga yuboring.', '💻 На компьютере: откройте профиль, нажмите «Ещё» → «Сохранить в формате PDF» (More → Save to PDF) и пришлите файл сюда.'),
+    'cv_linkedin_phone': ('📱 On a phone: open linkedin.com in the browser with “Desktop site” on and do the same — or send screenshots of your whole profile, all at once.', '📱 Telefonda: brauzerda «Kompyuter versiyasi»ni yoqib, linkedin.com saytida xuddi shunday qiling — yoki butun profilingiz skrinshotlarini birdaniga yuboring.', '📱 На телефоне: откройте linkedin.com в браузере с включённой «Версией для ПК» и сделайте то же самое — или пришлите скриншоты всего профиля, все сразу.'),
+    'cv_file_title': ('📄 From your old CV', '📄 Eski CV’ingizdan', '📄 Из старого резюме'),
+    'cv_file_ask': ('Send your old CV: a PDF, a Word file (.docx), or photos or scans of its pages — all at once. Every fact in it is kept and written up neatly, in the language you choose.', 'Eski CV’ingizni yuboring: PDF, Word fayl (.docx) yoki sahifalarining rasmi yoxud skanini — hammasini birdaniga. Undagi barcha maʼlumotlar saqlanadi va siz tanlagan tilda chiroyli qilib qayta yoziladi.', 'Пришлите старое резюме: PDF, файл Word (.docx) или фото либо сканы страниц — всё сразу. Все факты из него сохранятся и будут аккуратно изложены на выбранном вами языке.'),
+    # Words sent with the file, or before it, are notes on top of it, never its facts' place.
+    'cv_notes_hint': ('✏️ In the caption or a message you can add notes: the job you want now, what to change or add.', '✏️ Fayl izohida yoki alohida xabarda istaklaringizni yozishingiz mumkin: hozir qanday ish qidiryapsiz, nimani o‘zgartirish yoki qo‘shish kerak.', '✏️ В подписи к файлу или сообщением можно добавить пожелания: какую работу ищете сейчас, что изменить или добавить.'),
+    'cv_send_file_now': ('📎 Now send the file.', '📎 Endi faylni yuboring.', '📎 Теперь пришлите файл.'),
+    # The description of a CV made from files written again: its files are still kept.
+    'cv_files_kept': ('Write new notes to make the CV again from this file, or send another file to use instead.', 'CV’ni shu fayldan qayta tayyorlash uchun yangi istaklaringizni yozing yoki uning o‘rniga boshqa fayl yuboring.', 'Напишите новые пожелания, чтобы заново составить резюме из этого файла, или пришлите вместо него другой файл.'),
+    'cv_file_name_question': ('✍️ I couldn’t find your name in the file. What is your full name?', '✍️ Fayldan ismingizni topa olmadim. Ism-familiyangizni to‘liq yozing.', '✍️ Не удалось найти в файле ваше имя. Как вас зовут — имя и фамилия?'),
+    # A file the CV could not be made from: another one, or writing instead.
+    'cv_send_another': ('📎 Send another file', '📎 Boshqa fayl yuborish', '📎 Отправить другой файл'),
+    'cv_write_instead': ('✍️ Write about myself instead', '✍️ O‘rniga o‘zim haqimda yozaman', '✍️ Лучше напишу о себе'),
+    # Said with counted(): "10 files", "10 ta fayl", "10 файлов".
+    'cv_files_limit': ('📎 That’s too much for one CV: at most {files}, {pages} in all.', '📎 Bitta CV uchun bu juda ko‘p: ko‘pi bilan {files}, jami {pages}.', '📎 Для одного резюме это слишком много: максимум {files}, всего {pages}.'),
+    # The review of a CV made from files: where its facts come from, and the notes on top of them.
+    'cv_from_files': ('📎 From: {files}', '📎 Manba: {files}', '📎 Источник: {files}'),
+    'cv_notes_line': ('📝 Notes: “{notes}”', '📝 Istaklaringiz: «{notes}»', '📝 Пожелания: «{notes}»'),
+    'cv_notes_added': ('📝 Added to your notes.', '📝 Istaklaringizga qo‘shildi.', '📝 Добавлено к вашим пожеланиям.'),
+    # Screenshots sent one at a time, or the end of an album that came late: more of the CV's files.
+    # Pages past the OCR share or the time for one CV's files, and files that
+    # could not be read, said on its review (apps/studio/cv/sources.py). {what}
+    # is counted(): "1 file", "2 pages", joined by cv_unread_and.
+    'cv_unread': ('⚠️ Couldn’t read: {what}. The CV is made without it; to include it, send fewer pages or clearer photos.', '⚠️ O‘qib bo‘lmadi: {what}. CV usiz tayyorlanadi; uni ham qo‘shish uchun kamroq sahifa yoki aniqroq rasm yuboring.', '⚠️ Не удалось прочитать: {what}. Резюме составлено без этого; чтобы это учесть, пришлите меньше страниц или более чёткие фото.'),
+    'cv_unread_and': (' and ', ' va ', ' и '),
+    # A CV made from photos or screenshots: a photo sent on its review may be its portrait or one more page.
+    'cv_photo_none_add_pages': ('📷 Photo: none — to add one, send it here. More pages or screenshots? Send them together, as one album.', '📷 Rasm: yo‘q — qo‘shish uchun shu yerga yuboring. Yana sahifa yoki skrinshotlar bormi? Ularni birga, bitta albom qilib yuboring.', '📷 Фото: нет — чтобы добавить, пришлите его сюда. Есть ещё страницы или скриншоты? Пришлите их вместе, одним альбомом.'),
+    'cv_photo_or_page': ('📷 Is this your photo for the CV, or one more page or screenshot to read?', '📷 Bu CV uchun rasmingizmi yoki o‘qish uchun yana bir sahifa yoxud skrinshotmi?', '📷 Это ваше фото для резюме или ещё одна страница либо скриншот, которые нужно прочитать?'),
+    'cv_photo_is_portrait': ('📷 My photo for the CV', '📷 CV uchun rasmim', '📷 Моё фото для резюме'),
+    'cv_photo_is_page': ('📄 A page to read', '📄 O‘qish uchun sahifa', '📄 Страница для чтения'),
+    # A photo with nothing to read in it, sent before a way to make the CV was chosen: kept as its photo.
+    'cv_photo_kept_choose': ('📷 There’s no text to read in this photo, so it will go on your CV as your photo. If it’s a page of your old CV, choose 📄 From my old CV and send a clearer one.', '📷 Bu rasmda o‘qiladigan matn yo‘q, shuning uchun u CV’ga rasmingiz sifatida qo‘yiladi. Agar u eski CV’ingiz sahifasi bo‘lsa, «📄 Eski CV’imdan»ni tanlang va aniqroq rasm yuboring.', '📷 В этом фото нет текста, поэтому оно будет фотографией в резюме. Если это страница старого резюме, выберите «📄 Из старого резюме» и пришлите более чёткое фото.'),
+    # After a refusal that passes (too many at once): the CV made again from the files kept.
+    'cv_try_again': ('🔄 Try again', '🔄 Qayta urinish', '🔄 Попробовать снова'),
+    'cv_files_added': ('📎 Added to the CV’s files.', '📎 CV fayllariga qo‘shildi.', '📎 Добавлено к файлам резюме.'),
 }
 
 # Keep the older keys for commands, saved controls and transport compatibility.
@@ -368,9 +417,10 @@ UX = {locale: {key: values[index] for key, values in MESSAGES.items()} for index
 # A count of pages or slides in each language's own plural forms, for the
 # review stepper's middle button: "10 slides", "10 slayd", "10 слайдов".
 COUNT_FORMS = {
-    'en': {'page': ('page', 'pages'), 'slide': ('slide', 'slides')},
-    'uz': {'page': ('sahifa',), 'slide': ('slayd',)},
-    'ru': {'page': ('страница', 'страницы', 'страниц'), 'slide': ('слайд', 'слайда', 'слайдов')},
+    'en': {'page': ('page', 'pages'), 'slide': ('slide', 'slides'), 'photo': ('photo', 'photos'), 'file': ('file', 'files')},
+    'uz': {'page': ('sahifa',), 'slide': ('slayd',), 'photo': ('ta rasm',), 'file': ('ta fayl',)},
+    'ru': {'page': ('страница', 'страницы', 'страниц'), 'slide': ('слайд', 'слайда', 'слайдов'),
+           'photo': ('фото', 'фото', 'фото'), 'file': ('файл', 'файла', 'файлов')},
 }
 
 

@@ -304,6 +304,28 @@ MESSAGES = {
         '✍️ Ism va familiyangizni to‘liq yozing — CV siz uchun tayyorlanadi, unda kimligingiz ko‘rsatilishi kerak.',
         '✍️ Напишите полностью имя и фамилию: резюме составляется о вас, и в нём должно быть указано, кто вы.',
     ),
+    # A CV made from a LinkedIn profile or an old CV needs the file, one we can read, of a kind it takes.
+    'cv_file_required': (
+        '📎 Send the file to make the CV from: your old CV (PDF, Word or photos) or your LinkedIn profile saved as a PDF.',
+        '📎 CV tayyorlash uchun faylni yuboring: eski CV (PDF, Word yoki rasm) yoki PDF qilib saqlangan LinkedIn profilingiz.',
+        '📎 Пришлите файл, из которого составить резюме: старое резюме (PDF, Word или фото) или профиль LinkedIn, сохранённый в PDF.',
+    ),
+    'cv_file_unreadable': (
+        '🔍 We couldn’t read any text in this file. Send a clearer photo or scan, or a PDF without a password.',
+        '🔍 Fayldagi matnni o‘qib bo‘lmadi. Aniqroq rasm yoki skan, yoxud parolsiz PDF yuboring.',
+        '🔍 Не удалось прочитать текст в файле. Пришлите более чёткое фото или скан либо PDF без пароля.',
+    ),
+    'cv_file_kind': (
+        '📄 This file can’t be used here. Send a PDF, a Word file (.docx) or photos; for LinkedIn, the profile saved as a PDF or screenshots.',
+        '📄 Bu faylni ishlatib bo‘lmaydi. PDF, Word (.docx) yoki rasm yuboring; LinkedIn uchun PDF qilib saqlangan profil yoki skrinshotlar.',
+        '📄 Этот файл не подходит. Пришлите PDF, файл Word (.docx) или фото; для LinkedIn — профиль в PDF или скриншоты.',
+    ),
+    # LinkedIn needs a sign-in and forbids reading its pages: its own PDF export, or screenshots.
+    'cv_linkedin_link': (
+        '🔗 We can’t open LinkedIn links. On a computer, open your profile, choose More → Save to PDF and send the file here; on a phone, do the same with the browser’s desktop site on, or send screenshots of your profile.',
+        '🔗 LinkedIn havolalarini ocha olmaymiz. Kompyuterda profilingizni oching, More → Save to PDF ni bosing va faylni shu yerga yuboring; telefonda brauzerda «Kompyuter versiyasi»ni yoqib, xuddi shunday qiling yoki profil skrinshotlarini yuboring.',
+        '🔗 Ссылки LinkedIn мы открыть не можем. На компьютере откройте профиль, нажмите «Ещё» → «Сохранить в формате PDF» и пришлите файл сюда; на телефоне сделайте то же, включив в браузере «Версию для ПК», или пришлите скриншоты профиля.',
+    ),
     'manual_payment_closed manual_payment_expired': (
         '⌛ This payment is closed. Open Plans to start a new one: /plans',
         '⌛ Bu to‘lov yopilgan. Yangisini boshlash uchun tariflarni oching: /plans',

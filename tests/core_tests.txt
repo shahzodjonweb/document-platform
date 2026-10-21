@@ -253,6 +253,12 @@ tests/test_cv_templates.py::test_every_template_renders_both_samples_in_every_la
 tests/test_cv_content.py::test_a_cv_without_a_name_is_refused_before_anything_is_counted
 tests/test_cv_content.py::test_one_message_becomes_a_cv_named_after_the_person
 
+# AI CV from a LinkedIn "Save to PDF" export: read column by column, named and fact-checked from the file
+tests/test_cv_sources.py::test_a_linkedin_pdf_becomes_a_cv_whose_contacts_come_from_the_file
+# An old Word CV as templates make them (a text box, an email typed as a link) is read; links stay refused for file tools
+tests/test_cv_sources.py::test_a_word_cv_with_a_text_box_is_read_with_the_box_once
+tests/test_cv_sources.py::test_a_word_cv_with_an_email_and_a_linkedin_link_is_read
+
 # Deck sizing and pricing
 tests/test_deck_questions.py::test_question_slides_count_toward_the_slides_asked_for[12 ta slayd, oxirida 10 ta savol-12-10-2]
 
@@ -276,6 +282,11 @@ tests/test_bot_review_controls.py::test_the_setup_screen_beats_the_description_a
 # AI CV from the chat: one message to a priced review, and a photo sent there is the CV's portrait
 tests/test_bot_cv.py::test_one_message_becomes_a_priced_review_with_the_template_and_the_photo
 tests/test_bot_cv.py::test_a_photo_sent_in_the_chat_becomes_the_cvs_photo
+
+# AI CV from the chat, made from an old CV: the PDF sent on its screen to a review that names the file, then the CV
+tests/test_bot_cv_sources.py::test_an_old_cv_pdf_becomes_a_review_and_then_the_cv
+# Reading a CV's files never freezes the bot for everyone else (off the shared sync thread)
+tests/test_bot_cv_sources.py::test_reading_a_cvs_files_never_holds_up_another_chat
 
 # Anti-bot human verification gate
 tests/test_bot_verification.py::test_real_bot_defers_account_and_download_until_verified_then_resumes_first_file

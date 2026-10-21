@@ -109,8 +109,11 @@ def _run(request: dict, timeout: int) -> dict:
     return result['result']
 
 
-def inspect_file_sandbox(path: str | Path, *, password: str | None = None, timeout: int = 90) -> dict:
-    return _run({'operation': 'inspect', 'path': str(Path(path).absolute()), 'secret': password}, timeout)
+def inspect_file_sandbox(path: str | Path, *, password: str | None = None, timeout: int = 90, allow_links: bool = False) -> dict:
+    request = {'operation': 'inspect', 'path': str(Path(path).absolute()), 'secret': password}
+    if allow_links:
+        request['allow_links'] = True
+    return _run(request, timeout)
 
 
 def execute_sandbox(feature_id: str, input_paths: list[str | Path], parameters: dict,

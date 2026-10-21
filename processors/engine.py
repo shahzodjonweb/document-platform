@@ -203,8 +203,24 @@ def _pdf_reader(path: Path, password: str | None = None, allow_locked=False, all
         raise ProcessorError('invalid_pdf') from None
 
 
-def _office_inspect(path: Path) -> dict:
-    """Read-only OOXML preflight. Nothing is extracted to the filesystem."""
+# An external relationship of these types is a hyperlink: a mailto: or https:
+# address Word or PowerPoint makes clickable as it is typed. Nothing opens it
+# while a file is read or converted. Every other external relationship (an
+# image, a template, an OLE link, a frame) would be fetched, and is refused.
+HYPERLINK_RELATIONSHIPS = frozenset({
+    'http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink',
+    'http://purl.oclc.org/ooxml/officeDocument/relationships/hyperlink',
+})
+
+
+def _office_inspect(path: Path, allow_links: bool = False) -> dict:
+    """Read-only OOXML preflight. Nothing is extracted to the filesystem.
+
+    `allow_links` takes a file whose only external relationships are
+    hyperlinks, recorded as `external_hyperlinks`: a CV's source file, read
+    and never converted (core.services.upload_file). Otherwise any external
+    relationship is refused, as for every file tool.
+    """
     try:
         with zipfile.ZipFile(path) as archive:
             entries = archive.infolist()
@@ -227,6 +243,7 @@ def _office_inspect(path: Path) -> dict:
                     raise ProcessorError('active_content_unsupported')
             if '[Content_Types].xml' not in names:
                 raise ProcessorError('unsupported_type')
+            links = False
             for entry in entries:
                 # DTD/entities are never needed for accepted Office XML.
                 if entry.filename.endswith(('.xml', '.rels')):
@@ -236,17 +253,21 @@ def _office_inspect(path: Path) -> dict:
                         raise ProcessorError('active_content_unsupported')
                     if entry.filename.endswith('.rels'):
                         xml = ElementTree.fromstring(payload)
-                        if any(n.attrib.get('TargetMode') == 'External' for n in xml):
+                        external = [n for n in xml if n.attrib.get('TargetMode') == 'External']
+                        if external and not allow_links or any(n.attrib.get('Type') not in HYPERLINK_RELATIONSHIPS
+                                                               for n in external):
                             raise ProcessorError('external_content_unsupported')
+                        links = links or bool(external)
+            linked = {'external_hyperlinks': True} if links else {}
             if 'word/document.xml' in names:
-                return {'mime_type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'page_count': None, 'kind': 'docx'}
+                return {'mime_type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'page_count': None, 'kind': 'docx', **linked}
             if 'ppt/presentation.xml' in names:
                 pages = sum(bool(re.fullmatch(r'ppt/slides/slide\d+\.xml', n)) for n in names)
                 if pages <= 0:
                     raise ProcessorError('invalid_file')
                 if pages > MAX_PAGES:
                     raise ProcessorError('page_limit')
-                return {'mime_type': 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'page_count': pages, 'kind': 'pptx'}
+                return {'mime_type': 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'page_count': pages, 'kind': 'pptx', **linked}
     except ProcessorError:
         raise
     except Exception:
@@ -254,7 +275,8 @@ def _office_inspect(path: Path) -> dict:
     raise ProcessorError('unsupported_type')
 
 
-def inspect_file(path: str | Path, password: str | None = None, *, office_preflight: bool = True, allow_forms: bool = True) -> dict[str, Any]:
+def inspect_file(path: str | Path, password: str | None = None, *, office_preflight: bool = True, allow_forms: bool = True,
+                 allow_links: bool = False) -> dict[str, Any]:
     path = _regular_file(path)
     with path.open('rb') as stream:
         header = stream.read(16)
@@ -269,7 +291,7 @@ def inspect_file(path: str | Path, password: str | None = None, *, office_prefli
             'image_counts':[len(page.images) for page in reader.pages],
             'page_sizes':[{'width':float(page.cropbox.height if page.rotation%180 else page.cropbox.width),'height':float(page.cropbox.width if page.rotation%180 else page.cropbox.height)} for page in reader.pages]}
     if header.startswith(b'PK\x03\x04'):
-        metadata = {**base, **_office_inspect(path)}
+        metadata = {**base, **_office_inspect(path, allow_links)}
         if office_preflight and office_runtime()['available']:
             feature = 'convert.word_to_pdf' if metadata['kind'] == 'docx' else 'convert.pptx_to_pdf'
             # Temporary preflight PDFs are never exposed or persisted as assets.

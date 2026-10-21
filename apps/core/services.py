@@ -28,15 +28,20 @@ def storage_path(key):
     if not path.is_relative_to(root): raise DomainError('invalid_file', 400)
     return path
 
-def engine_inspect(path, password=None):
+def engine_inspect(path, password=None, allow_links=False):
     from processors.sandbox import inspect_file_sandbox as inspect_file
-    try: return inspect_file(path, password=password)
+    try: return inspect_file(path, password=password, **({'allow_links': True} if allow_links else {}))
     except Exception as exc:
         from processors import ProcessorError
         if isinstance(exc, ProcessorError): raise DomainError(exc.code) from None
         raise
 
-def upload_file(account, uploaded, channel='web', password=None):
+# What a file may be uploaded for, beside any tool: 'cv_source' is a file a CV
+# is made from (apps/studio/cv/sources.py), whose text is read and never converted.
+UPLOAD_PURPOSES = ('', 'cv_source')
+
+def upload_file(account, uploaded, channel='web', password=None, purpose=''):
+    if purpose not in UPLOAD_PURPOSES: raise DomainError('invalid_parameters')
     limit = plan_limits(account)['max_file_mib'] * 1024 * 1024
     if uploaded.size > limit: raise DomainError('file_too_large', 413, {'max_bytes':limit})
     suffix = Path(uploaded.name.replace('\\','/')).suffix.lower()
@@ -58,7 +63,10 @@ def upload_file(account, uploaded, channel='web', password=None):
         # is picked, as 'page_limit' with the figure: no tool could take it, so
         # the way past it is to split it before uploading. 'page_limit_exceeded'
         # is a task's files together, which fewer files or pages put right.
-        try: metadata = engine_inspect(path, password=password)
+        # A Word or PowerPoint file with a clickable link in it (an email, a
+        # LinkedIn address) is refused for the file tools, as it always was:
+        # only a CV's own files take one, as they are read and never converted.
+        try: metadata = engine_inspect(path, password=password, **({'allow_links': True} if purpose == 'cv_source' else {}))
         except DomainError as exc:
             if exc.code == 'page_limit': raise DomainError('page_limit', 413, {'limit': page_cap(account)}) from None
             raise
@@ -153,6 +161,8 @@ def validate_inputs(account, feature_id, input_ids):
     if any(a.size_bytes > limits['max_file_mib']*1024*1024 for a in assets): raise DomainError('file_too_large', 413)
     if sum(a.page_count for a in assets) > page_cap(account): raise DomainError('page_limit_exceeded', 413)
     kinds = [a.metadata.get('kind') for a in assets]
+    # A file uploaded for a CV may carry links (upload_file): never a file tool's.
+    if any(a.metadata.get('external_hyperlinks') for a in assets): raise DomainError('external_content_unsupported')
     if feature_id.startswith('editor.') and (kinds[0]!='pdf' or any(k!='image' for k in kinds[1:])): raise DomainError('unsupported_file')
     if feature_id.startswith('ocr.') and any(k not in ('pdf','image') for k in kinds): raise DomainError('unsupported_file')
     if feature_id in ('convert.pdf_to_docx','convert.pdf_to_xlsx') and kinds != ['pdf']: raise DomainError('unsupported_file')

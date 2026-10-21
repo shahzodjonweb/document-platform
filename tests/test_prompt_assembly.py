@@ -264,7 +264,7 @@ def test_the_cache_key_changes_with_the_prompt_version(monkeypatch):
     data = draft(5, 'pptx')
     before = provider.request_body(CONFIG, data, SLIDES)['prompt_cache_key']
     assert prompting.VERSION not in ('studio-efficient-v1', 'studio-efficient-v2', 'studio-efficient-v3',
-                                  'studio-efficient-v4'), \
+                                  'studio-efficient-v4', 'studio-efficient-v5'), \
         'the instructions changed, so the version did'
     assert before.startswith('pdfmaster:') and prompting.VERSION not in before
     monkeypatch.setattr(prompting, 'VERSION', prompting.VERSION + '-next')

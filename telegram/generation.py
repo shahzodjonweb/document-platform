@@ -4,15 +4,19 @@ Synchronous and transaction-safe, with no Telegram network calls, like
 workflows.py. There are three services and one input: what the customer wants,
 written out. Page count, questions, tone and audience are all read from that
 description by apps.studio, which the web app uses identically. A CV is
-written from what the customer says about themselves, and may carry the one
-photo they send in the chat.
+written from what the customer says about themselves, or made from their
+LinkedIn profile or old CV sent as files (apps/studio/cv/sources.py), and may
+carry the one photo they send in the chat as its portrait.
 """
+import uuid
+
 from django.core.cache import cache
 from django.db import transaction
 from django.utils import timezone
 from apps.core.errors import DomainError
 from apps.core.models import BotCallback, FileAsset, Job, Quote
 from apps.core.services import submit_job
+from apps.studio.cv.sources import FILE, LINKEDIN, TEXT
 from apps.studio.domain import CV, DOCUMENT, SLIDES, create_draft, generation_quote, require
 from apps.studio.language import settings_locale
 from apps.studio.models import GenerationDraft
@@ -36,8 +40,9 @@ def available(account, feature_id):
 def sources(account, file_ids, feature_id=None):
     """The PDFs staged in the chat, in the order they were sent.
 
-    None for a CV: it is written from what the customer says about themselves,
-    and the server refuses one made from a file, whose facts nobody checks.
+    None for a CV: the file tools' files are never its files. A CV made from
+    files takes the ones sent on its own screens, which never go on the file
+    tools' draft (build's `cv_source`).
     """
     if feature_id == CV:
         return []
@@ -67,29 +72,35 @@ def unthrottle(account):
         cache.set(key, count - 1, 60)
 
 
-# Refused by reading the description alone, before a draft is made: a cheap
-# check, so it does not use one of the minute's builds.
-READ_REFUSALS = ('topic_required', 'convert_requested', 'cv_name_required')
+# Refused by reading the description alone, or a CV's files' kinds, before a
+# draft is made: a cheap check, so it does not use one of the minute's builds.
+READ_REFUSALS = ('topic_required', 'convert_requested', 'cv_name_required', 'cv_file_required', 'cv_file_kind',
+                 'cv_linkedin_link')
 
 
 @transaction.atomic
-def build(account, feature_id, description, file_ids=(), topic_given=False, portrait_asset_id=''):
+def build(account, feature_id, description, file_ids=(), topic_given=False, portrait_asset_id='', cv_source=''):
     """Author a draft from one chat message. Nothing is counted yet.
 
     `topic_given` is the customer's answer to the topic question taken as it
     is (apps.studio.domain.create_draft): a topic the check does not know
     must not keep them asking. For a CV it is the name question answered a
     second time, and `portrait_asset_id` the photo sent for it in the chat.
+    A CV made from the customer's LinkedIn profile or old CV (`cv_source`
+    'linkedin' or 'file') is made from `file_ids`, the files sent for it,
+    and `description` is the notes on top of them, which may be empty.
     """
     available(account, feature_id)
     text = (description or '').strip()
-    ids = sources(account, list(file_ids), feature_id)
+    files = feature_id == CV and cv_source in (LINKEDIN, FILE)
+    ids = [str(identifier) for identifier in file_ids] if files else sources(account, list(file_ids), feature_id)
     if not text and not ids:
         raise DomainError('prompt_required')
     throttle(account)
     from operations.integrations import ai_config
     # Local authoring has no model to write with, so the text has to be yours.
-    written = ai_config()['mode'] == 'local_fixture'
+    # A CV made from files is the files' text there: the notes stay notes.
+    written = ai_config()['mode'] == 'local_fixture' and not files
     # The output language in the account's settings, then the chat's language,
     # as the web sends it: the interface language alone would hide the setting.
     data = {'feature_id': feature_id, 'source_ids': ids, 'output_locale': settings_locale(account),
@@ -103,6 +114,8 @@ def build(account, feature_id, description, file_ids=(), topic_given=False, port
     if text and (feature_id != CV or topic_given):
         data['title'] = text.split('\n')[0][:160]
     options = {'topic_given': True} if topic_given else {}
+    if files:
+        options['cv_source'] = cv_source
     if feature_id == CV and portrait_asset_id:
         # The server checks it is the customer's own JPEG or PNG and pins it.
         options['portrait_asset_id'] = str(portrait_asset_id)
@@ -111,7 +124,9 @@ def build(account, feature_id, description, file_ids=(), topic_given=False, port
     try:
         return create_draft(account, data)
     except DomainError as exc:
-        if exc.code in READ_REFUSALS:
+        # A CV from files asked for its name has had its files read: that build
+        # counts, so answers that name nobody cannot read them again and again.
+        if exc.code in READ_REFUSALS and not (files and exc.code == 'cv_name_required'):
             unthrottle(account)
         raise
 
@@ -276,6 +291,8 @@ def append_description(account, draft_id, more):
 
     Telegram sends a description longer than one message as two: the second
     part arrives on the review the first one led to, and belongs to that CV.
+    For a CV made from files it is more of the notes on top of them, which
+    are its prompt even when there were none before.
     """
     from apps.studio.domain import unpack
     text = (more or '').strip()
@@ -283,8 +300,123 @@ def append_description(account, draft_id, more):
                                            expires_at__gt=timezone.now()).first()
     if not text or draft is None or unpack(draft.encrypted_data).get('revision'):
         raise DomainError('controls_expired', 409)
-    field = 'prompt' if unpack(draft.encrypted_data).get('prompt') else 'source_text'
+    data = unpack(draft.encrypted_data)
+    files = (data.get('options') or {}).get('cv_source') in (LINKEDIN, FILE)
+    field = 'prompt' if data.get('prompt') or files else 'source_text'
     return _changed(account, draft_id, lambda data: {field: f"{data.get(field) or ''}\n{text}".strip()})
+
+
+def _cv_draft(account, draft_id, *, live=False):
+    """This account's CV draft `draft_id`, or None: also for an id that is no draft's id at all."""
+    try:
+        identifier = uuid.UUID(str(draft_id))
+    except ValueError:
+        return None
+    drafts = GenerationDraft.objects.filter(account=account, id=identifier, feature_id=CV)
+    return (drafts.filter(expires_at__gt=timezone.now()) if live else drafts).first()
+
+
+def file_names(account, ids):
+    """The names of these files of the account's, in the order given; '' for one no longer kept."""
+    names = {str(key): name for key, name in FileAsset.objects.filter(account=account, id__in=list(ids))
+             .values_list('id', 'name')}
+    return [names.get(str(identifier), '') for identifier in ids]
+
+
+def made_from(draft):
+    """How a CV was made: (way, the names of its files, the notes on top of them).
+
+    ('text', [], '') for one written in a message. A change keeps the way and
+    the files of the CV it changes; its prompt is the change, so it has no notes.
+    """
+    from apps.studio.domain import unpack
+    data = unpack(draft.encrypted_data)
+    way = (data.get('options') or {}).get('cv_source') or TEXT
+    if way not in (LINKEDIN, FILE):
+        return TEXT, [], ''
+    notes = '' if data.get('revision') else (data.get('prompt') or '').strip()
+    return way, file_names(draft.account, data.get('source_ids') or []), notes
+
+
+def unread_of(draft):
+    """What of a new CV's files could not be read (apps/studio/cv/sources.py): (files, pages).
+
+    Files not read at all, and the pages left out of the others: past the
+    pages OCR reads for one CV, or past the time its files are read in.
+    """
+    from apps.studio.domain import unpack
+    data = unpack(draft.encrypted_data)
+    if data.get('revision'):
+        return 0, 0
+    unread = [entry for entry in data.get('cv_unread') or [] if isinstance(entry, dict)]
+    return (sum(1 for entry in unread if entry.get('whole')),
+            sum(int(entry.get('pages') or 0) for entry in unread if not entry.get('whole')))
+
+
+def cv_files(account, draft_id):
+    """A new CV's way and files: {'way', 'source_ids', 'images'}, `images` when a photo or screenshot is one of them; None without it."""
+    from apps.studio.domain import unpack
+    draft = _cv_draft(account, draft_id, live=True)
+    if draft is None:
+        return None
+    data = unpack(draft.encrypted_data)
+    way = (data.get('options') or {}).get('cv_source') or TEXT
+    ids = [str(identifier) for identifier in data.get('source_ids') or []] if way in (LINKEDIN, FILE) else []
+    images = FileAsset.objects.filter(account=account, id__in=ids, mime_type__in=('image/jpeg', 'image/png')).exists()
+    return {'way': way, 'source_ids': ids, 'images': images, 'revision': bool(data.get('revision'))}
+
+
+def way_of(account, draft_id):
+    """The way a CV draft of this account's was made ('text', 'linkedin' or 'file'); '' when there is none."""
+    from apps.studio.domain import unpack
+    draft = _cv_draft(account, draft_id)
+    if draft is None:
+        return ''
+    return (unpack(draft.encrypted_data).get('options') or {}).get('cv_source') or TEXT
+
+
+def written_again(account, draft_id):
+    """What a CV's description written again starts from: None once the CV has gone.
+
+    {'cv_source', 'source_ids', 'notes', 'portrait_asset_id'}: the way it was
+    made, its files while the server still keeps them (24 hours), the notes
+    written on top of them, and its photo while it can still go on a CV.
+    """
+    from apps.studio.domain import unpack
+    draft = _cv_draft(account, draft_id)
+    if draft is None:
+        return None
+    data = unpack(draft.encrypted_data)
+    way = (data.get('options') or {}).get('cv_source') or TEXT
+    ids = [str(identifier) for identifier in data.get('source_ids') or []] if way in (LINKEDIN, FILE) else []
+    kept = {str(key) for key in FileAsset.objects.filter(account=account, id__in=ids, state='ready',
+                                                         expires_at__gt=timezone.now()).values_list('id', flat=True)}
+    notes = (data.get('prompt') or '').strip() if way in (LINKEDIN, FILE) and not data.get('revision') else ''
+    return {'cv_source': way, 'source_ids': [identifier for identifier in ids if identifier in kept],
+            'notes': [notes] if notes else [], 'portrait_asset_id': usable_portrait(account, portrait_of(draft))}
+
+
+@transaction.atomic
+def add_sources(account, draft_id, asset_ids, more=''):
+    """A new CV made from files with more of them, and its new quote.
+
+    Screenshots sent one at a time, or the end of an album that came late, are
+    its files too: all of them are read again together. `more` is a caption
+    sent with them, added to the notes.
+    """
+    from apps.studio.domain import unpack
+    draft = _cv_draft(account, draft_id, live=True)
+    if draft is None or unpack(draft.encrypted_data).get('revision'):
+        raise DomainError('controls_expired', 409)
+    text = (more or '').strip()
+
+    def change(data):
+        known = list(data.get('source_ids') or [])
+        fields = {'source_ids': [*known, *[str(identifier) for identifier in asset_ids if str(identifier) not in known]]}
+        if text:
+            fields['prompt'] = f"{data.get('prompt') or ''}\n{text}".strip()
+        return fields
+    return _changed(account, draft_id, change)
 
 
 def check_portrait(account, asset_id):

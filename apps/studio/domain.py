@@ -263,7 +263,8 @@ def _prepare_draft(account,data,revision_base=None):
     if not isinstance(text,str) or not isinstance(prompt,str):raise DomainError('invalid_parameters')
     if len(text)+len(prompt)>limits(account)['source_chars']:raise DomainError('generation_limit')
     ids=data.get('source_ids',data.get('input_ids',[]))
-    excerpts=source_excerpts(account,ids)
+    # A CV reads its files its own way, once its mode is known (below).
+    excerpts=[] if fid==CV else source_excerpts(account,ids)
     if len(text)+len(prompt)+sum(len(s['text']) for s in excerpts)>limits(account)['source_chars']:raise DomainError('generation_limit')
     options=data.get('options',data.get('parameters',{}))
     if not isinstance(options,dict) or len(json.dumps(options))>4000 or set(options)&READONLY_FIELDS:raise DomainError('invalid_parameters')
@@ -306,10 +307,27 @@ def _prepare_draft(account,data,revision_base=None):
             if field not in options and (field in inherited or field=='template_id'):
                 options={**options,field:deepcopy(previous)}
     fmt='pptx' if fid==SLIDES else 'pdf'
-    # A CV is written from what the customer says about themselves, in one
-    # message: there is nothing in a PDF for it to be made from.
+    # A CV is made one of three ways, chosen first (cv/sources.py): from one
+    # message about the customer, from their LinkedIn profile saved as a PDF
+    # or photographed, or from their old CV. Its files are read here, once;
+    # their text is the CV's excerpts, and what the customer writes beside
+    # them is notes on top of it. A change keeps the excerpts the CV was made
+    # from, and the way it was made, whatever the request sends: the files
+    # may be gone by then.
     cv=fid==CV
-    if cv and (ids or excerpts):raise DomainError('invalid_parameters')
+    unread=[]
+    if cv:
+        from .cv import sources as cv_sources
+        if original is not None:
+            made=original.get('options',{})
+            options={key:value for key,value in options.items() if key!='cv_source'}
+            if 'cv_source' in made:options['cv_source']=made['cv_source']
+        else:
+            source=cv_sources.mode(options)
+            if source!=cv_sources.TEXT and 'prompt' not in data:prompt=''
+            ids,excerpts,unread=cv_sources.prepare(account,prompt,ids,options,revision_base)
+            if len(text)+len(prompt)+sum(len(s['text']) for s in excerpts)>limits(account)['source_chars']:raise DomainError('generation_limit')
+    elif 'cv_source' in options:raise DomainError('invalid_parameters')
     # Length and question count are read out of the description rather than
     # asked for separately: one section is one page, and questions are priced,
     # so they appear only when the description asks for them. `requested_pages`
@@ -642,9 +660,11 @@ def _prepare_draft(account,data,revision_base=None):
                                         if number//paging.QUESTIONS_PER_SLIDE+1 not in gone][:kept]
     elif cv:
         # The eight sections the model fills. With no model, the description
-        # itself is the profile, so the CV still says what was written.
+        # itself is the profile, or the files' text when there is none, so
+        # the CV still says what was written.
         from .cv.content import seed
-        draft_content=seed(title,(text or prompt) if cfg['mode']=='local_fixture' else '')
+        given=text or prompt or '\n\n'.join(x['text'] for x in excerpts)
+        draft_content=seed(title,given if cfg['mode']=='local_fixture' else '')
     else:
         chunks=[p.strip() for p in (text or '\n\n'.join(x['text'] for x in excerpts)).split('\n\n') if p.strip()]
         # No headings. They used to be seeded with a fixed Overview / Key ideas /
@@ -658,6 +678,8 @@ def _prepare_draft(account,data,revision_base=None):
     if selection:
         ensure_selected_preservation({'content':draft_content,'revision':{'selected_section_ids':selection}},content)
     payload={'title':title,'prompt':prompt,'source_text':text,'source_ids':ids,'excerpts':excerpts,'output_locale':locale,'locale_source':resolved.source,'output_format':fmt,'options':options,'content':content}
+    # What of a CV's files could not be read, said on its review: never left out unsaid (cv/sources.py).
+    if unread:payload['cv_unread']=unread
     if original is not None:
         payload['revision']={'request':prompt,'source_draft_id':str(revising),
                              'original_prompt':original.get('revision',{}).get('original_prompt',original.get('prompt','')),
@@ -676,7 +698,9 @@ def _prepare_draft(account,data,revision_base=None):
         seed=source_seed(payload)
         if seed:payload['_source_seed']=seed
     if len(payload['excerpts'])>plan_limits(account)['max_ai_source_pages']:raise DomainError('generation_limit')
-    if payload['source_ids']:owned_assets(account,payload['source_ids'])
+    # A CV's files were checked when they were read, and its excerpts are what
+    # it is made from: they need not still be there (cv/sources.py).
+    if payload['source_ids'] and not cv:owned_assets(account,payload['source_ids'])
     if cfg['mode']=='openai':
         enforce_budget(cfg,payload,fid,plan_limits(account)['max_ai_input_tokens'])
     return fid,cfg,payload

@@ -91,9 +91,10 @@ def execute_generation(job,output_dir):
             # is a fabricated attribution and the document is not what they asked
             # for, so the job fails. With nothing uploaded there is nothing to
             # ground and the reference is only decoration, so it is dropped — it
-            # used to destroy the document instead.
+            # used to destroy the document instead. A CV cites nothing, and is
+            # never failed for it: its files are its facts (prompting.schema).
             references=[]
-            for ref in raw.get('citations',[]):
+            for ref in ([] if cv else raw.get('citations',[])):
                 source=next((s for s in data['excerpts'] if s['asset_id']==ref.get('asset_id') and s['page']==ref.get('page')),None)
                 if not source or not ref.get('quote') or ref['quote'] not in source['text']:
                     if data['excerpts']:raise DomainError('invalid_source_citation')

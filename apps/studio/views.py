@@ -21,8 +21,11 @@ def config(request):
     """Three services, and what a description is allowed to ask them for.
 
     A CV is one page or two, whatever the plan's page cap: the renderer, not
-    the description, decides which.
+    the description, decides which. It is made from one message, a LinkedIn
+    profile or an old CV (`source_modes`), each of the last two from files of
+    the kinds `source_kinds` names, at most `max_source_files` of them.
     """
+    from .cv import sources as cv_sources
     from .cv.render import MAX_PAGES as CV_PAGES
     from .pages import DEFAULT_PAGES, ceiling
     cfg=ai_config();features=[]
@@ -35,6 +38,11 @@ def config(request):
                          'max_pages':CV_PAGES if fid==CV else ceiling(request.account,'pptx' if fid==SLIDES else 'pdf'),
                          'max_images':_image_cap(request.account,fid),
                          'locales':['en','uz','ru']})
+        if fid==CV:
+            features[-1].update(source_modes=list(cv_sources.MODES),
+                                source_kinds={mode:list(kinds) for mode,kinds in cv_sources.KINDS.items()},
+                                max_source_files=cv_sources.max_files(request.account),
+                                max_source_pages=cv_sources.max_pages(request.account))
     return {'provider':{'id':cfg['mode'],'mode':cfg['mode'],
                         'label':'Local authoring (no AI)' if cfg['mode']=='local_fixture' else 'OpenAI' if cfg['mode']=='openai' else 'Not configured',
                         'configured':cfg['mode']=='local_fixture' or bool(cfg['api_key'] and cfg['model'])},

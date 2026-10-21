@@ -114,8 +114,11 @@ services:
     <<: *platform
     profiles: [bot]
     command: [python, manage.py, runbot, --wait-for-config]
-    mem_limit: 384m
-    cpus: 0.5
+    # A CV made from photos or scans is read here, one at a time: the reader
+    # and tesseract beside the bot (~216 MB) measured ~450 MB in all, past the
+    # 384 MB this once had. A ceiling, not a reservation: idle, it uses as before.
+    mem_limit: 1g
+    cpus: 1
   gateway:
     image: nginxinc/nginx-unprivileged:stable-alpine@sha256:4714e0b1b2577eaa1a6131d07c958b67f0eb68e6d0521e90c6e5287db8cf0bc5
     ports: ["127.0.0.1:${PDFMASTER_HTTP_PORT:-8311}:8080"]
