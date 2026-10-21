@@ -366,6 +366,68 @@ def cv_files(account, draft_id):
     return {'way': way, 'source_ids': ids, 'images': images, 'revision': bool(data.get('revision'))}
 
 
+def cv_reading(account, ids, way=''):
+    """Where a new CV's files stand with the reader while the chat waits for them: None once none of them waits.
+
+    Each file is read by `runreader` (apps/studio/cv/reads.py), never here.
+    {'reading': True, 'ahead': 0} while one of them is being read, else
+    {'reading': False, 'ahead': n}: the reads of other files that finish
+    before the first of them still queued, the accounts taking turns. Its
+    own files are not counted: they are not ahead of the customer. With
+    `way`, as the chat begins to wait, the files are checked for that way
+    and one without a read is queued for one (an upload from before the
+    queue). That is done here, outside the draft's transaction, which would
+    take a read queued in it back with its refusal (reads.ensure_ids). None
+    as well for files refused before any is read: the draft says why.
+    """
+    from apps.studio.cv import reads, sources as cv_sources
+    from apps.studio.models import CvSourceRead
+    try:
+        ids = [str(uuid.UUID(str(identifier))) for identifier in ids or []]
+    except ValueError:
+        return None
+    if not ids:
+        return None
+    if way:
+        if way not in cv_sources.KINDS:
+            return None
+        try:
+            assets, _ = cv_sources.checked(account, ids, way)
+        except DomainError:
+            return None
+        rows = list(reads.ensure(account, assets, results=False).values())
+    else:
+        rows = list(CvSourceRead.objects.filter(account=account, asset_id__in=ids).defer('encrypted_result'))
+    left = [row for row in rows if row.status in reads.WAITING]
+    if not left:
+        return None
+    if any(row.status == reads.READING for row in left):
+        return {'reading': True, 'ahead': 0}
+    order, reading = reads.queue()
+    place = reads.places(order, reading)
+    return {'reading': False, 'ahead': min(reads.ahead_of(row, place, len(order) + reading) for row in left)}
+
+
+def cv_readable(account, ids, way):
+    """Whether a new CV's files, as the reader read them, have words enough for a CV.
+
+    True when they will be refused for something else before any is read:
+    the draft says why. A file the reader could not read gives no words.
+    """
+    from apps.studio.cv import reads, sources as cv_sources
+    try:
+        assets, kinds = cv_sources.checked(account, [str(identifier) for identifier in ids], way)
+    except (DomainError, KeyError):
+        return True
+    rows = reads.ensure(account, assets)
+    try:
+        cv_sources.excerpts_of(cv_sources.entries(assets, kinds, account),
+                               [reads.result_of(rows[str(asset.id)]) for asset in assets])
+    except DomainError:
+        return False
+    return True
+
+
 def way_of(account, draft_id):
     """The way a CV draft of this account's was made ('text', 'linkedin' or 'file'); '' when there is none."""
     from apps.studio.domain import unpack

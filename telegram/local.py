@@ -283,3 +283,20 @@ def dispatch_local(account,*,text=None,callback_data=None,uploaded=None,media_gr
     finally:
         _sync_pending_files(account,session.files)
     return history(account)
+
+
+def look_local(account):
+    """One look at this chat's wait for its CV's files, as the bot's loop takes one every two seconds.
+
+    The real bot looks at its waiting chats on its own (telegram/bot.py
+    cv_wait_loop); the simulator has no loop, so it looks when asked.
+    """
+    require_sandbox(account)
+    if account.telegram_user_id is None: raise DomainError('telegram_link_required',409)
+    async def run():
+        from .bot import build_dispatcher
+        bot=Bot('123456:LOCAL_SIMULATOR_NO_NETWORK',session=LocalTelegramSession(account))
+        try: await build_dispatcher().cv_waits(bot,[account.telegram_user_id])
+        finally: await bot.session.close()
+    async_to_sync(run)()
+    return history(account)

@@ -328,7 +328,8 @@ MESSAGES = {
     ),
     # A CV's files wait their turn to be read (apps/studio/cv/reads.py): how
     # many reads are ahead, never "try again". {ahead} is filled in by bot_error;
-    # with none ahead, the files are being read now.
+    # with none ahead, the files are being read now. The chat itself waits on
+    # one message that becomes the review (telegram/bot.py cv_wait_start).
     'cv_reading': (
         '⏳ Your files are in the queue to be read — {ahead} ahead of them. This takes a moment; we’ll continue as soon as they’re read.',
         '⏳ Fayllaringiz o‘qish navbatida: oldinda {ahead} ta fayl bor. Bu ko‘p vaqt olmaydi — o‘qib bo‘lishimiz bilan davom etamiz.',

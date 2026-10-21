@@ -479,7 +479,7 @@ def test_the_review_says_where_the_cv_came_from_in_every_language(customer, mode
     assert f'\n{UX[locale]["cv_linkedin_title"]}\n' in words, words
 
 
-# --- Reading off the shared thread, and reading each file once ----------------------------------------
+# --- Reading each file once (the reader's queue in the chat: tests/test_bot_cv_read_queue.py) -----------
 
 def reading(pages=(('Timur Rakhimov', 'Lead engineer at Example Motors since 2020; MSc Mechanical Engineering.'),),
             seconds=0.0, calls=None, ocr=False):
@@ -549,36 +549,6 @@ def feed_two(first, upload, second, text, delay):
                 await bot.session.close()
     async_to_sync(run)()
     return answered[first.pk], answered[second.pk]
-
-
-def test_the_bot_reads_no_file_and_its_wait_for_the_reader_never_holds_up_another_chat(customer, model, monkeypatch,
-                                                                                          settings):
-    # A CV's files are read by the reader (apps/studio/cv/reads.py), never in the bot: the bot waits for
-    # them off its shared thread (sources.read_entries), and says they are still being read if the reader
-    # has not come to them yet. As in production: nothing is read as it is queued.
-    from apps.studio import extraction
-    from apps.studio.cv import reads, sources
-    settings.LOCAL_SYNC_JOBS = False
-    monkeypatch.setattr('telegram.bot.ALBUM_SETTLE', 0)
-    monkeypatch.setattr(sources, 'WAIT_SECONDS', 2.0)
-    monkeypatch.setattr(sources, 'POLL_SECONDS', 0.1)
-    calls = []
-    monkeypatch.setattr(extraction, 'read_cv', reading(calls=calls))
-    other = another_customer()
-    choose(customer, 'cv_mode_file')
-    cv_done, start_done = feed_two(customer, upload('old-cv.pdf', one_column_pdf()), other, '/start', 0.3)
-    # The other chat's menu came while the CV waited for the reader (two seconds), not after it.
-    assert start_done < 1.5 < 2.0 < cv_done, (start_done, cv_done)
-    assert TOOL_NAMES[CV]['en'] in str(LocalBotMessage.objects.filter(account=other, direction='outbound').latest(
-        'created_at').buttons), 'the other chat was shown its menu'
-    newest = LocalBotMessage.objects.filter(account=customer, direction='outbound').latest('created_at')
-    assert calls == [] and ERRORS['en']['cv_reading_now'] in newest.text, (calls, newest.text)
-    # The reader reads it once; the CV is made from what it kept.
-    assert reads.next_read() and calls == [('MainThread', 'pdf')]
-    again = next(button for row in newest.buttons for button in row if button['label'] == EN['cv_try_again'])
-    words, _ = screen(dispatch_local(customer, callback_data=again['callback_data']))
-    assert '📄 Timur Rakhimov' in words and calls == [('MainThread', 'pdf')], words
-    assert latest(customer, CV)['title'] == 'Timur Rakhimov'
 
 
 def test_a_file_that_names_nobody_is_read_once_however_the_name_is_answered(customer, model, monkeypatch):

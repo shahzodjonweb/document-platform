@@ -242,8 +242,7 @@ def excerpts_of(files, results):
     names each file not read whole: {'asset_id', 'pages'} with how many of
     its pages were left out, and 'whole' when none was read (a result of
     None: one the reader could not read). Files that give fewer than
-    MIN_WORDS words between them are `cv_file_unreadable`, unless one of
-    them is still waiting for the reader (`status` in its entry, the bot's).
+    MIN_WORDS words between them are `cv_file_unreadable`.
     """
     excerpts, unread = [], []
     for entry, result in zip(files, shared(list(results))):
@@ -263,9 +262,7 @@ def excerpts_of(files, results):
             if names:
                 excerpt['names'], names = names, []
             excerpts.append(excerpt)
-    from .reads import WAITING
-    pending = any(entry.get('status') in WAITING for entry, result in zip(files, results) if result is None)
-    if not pending and sum(len(re.findall(r'[^\W\d_]{2,}', excerpt['text'])) for excerpt in excerpts) < MIN_WORDS:
+    if sum(len(re.findall(r'[^\W\d_]{2,}', excerpt['text'])) for excerpt in excerpts) < MIN_WORDS:
         raise DomainError('cv_file_unreadable')
     return excerpts, unread
 
@@ -289,74 +286,6 @@ def read(assets, kinds, known=None, *, account):
         raise reads.refusal(waiting)
     return excerpts_of(files, [known[entry['asset_id']] if entry['asset_id'] in known
                                else reads.result_of(rows[entry['asset_id']]) for entry in files])
-
-
-# The bot read a CV's files itself, off its shared thread, before the draft
-# was made (telegram/bot.py cv_read). It still asks for them that way until
-# it waits on the queue itself: ahead() names the files and what the reader
-# made of them so far, and read_entries() waits for the rest in the bot's
-# reading thread, at most WAIT_SECONDS. The draft made next is made from what
-# was kept, or says the files are still being read (`cv_reading`).
-WAIT_SECONDS = 90
-POLL_SECONDS = 1
-
-
-def ahead(account, ids, source):
-    """The files of a CV from files as the bot waits for them (read_entries); [] when it will be refused before any is read.
-
-    Each entry carries its read ('read', 'status') and, once done, what it
-    gave ('result'). A file with no read is queued for one here, outside the
-    transaction the bot's draft is made in (reads.ensure_ids says why).
-    """
-    if source not in KINDS or not isinstance(ids, list) or not ids:
-        return []
-    from . import reads
-    try:
-        assets, kinds = checked(account, [str(identifier) for identifier in ids], source)
-    except DomainError:
-        return []
-    rows = reads.ensure(account, assets)
-    files = entries(assets, kinds, account)
-    for entry in files:
-        row = rows[entry['asset_id']]
-        entry.update(read=str(row.pk), status=row.status, result=reads.result_of(row))
-    return files
-
-
-def read_entries(files, known=None):
-    """What each file gave, in order, once the reader has read it: None for a file it could not read or has not yet.
-
-    Files ahead() found read need nothing more, and no database: the bot
-    runs this off its shared thread. The others are waited for, at most
-    WAIT_SECONDS, their entries' `status` kept up to date; the connection
-    this thread opened for them is closed again.
-    """
-    import threading
-    import time
-    known = known or {}
-    results = [known.get(entry['asset_id'], entry.get('result')) for entry in files]
-    from .reads import WAITING
-    left = {entry['read']: index for index, entry in enumerate(files)
-            if results[index] is None and entry.get('status') in WAITING and entry.get('read')}
-    if not left:
-        return results
-    from django.db import connection
-    from . import reads
-    from ..models import CvSourceRead
-    deadline = time.monotonic() + WAIT_SECONDS
-    try:
-        while left:
-            for row in CvSourceRead.objects.filter(pk__in=list(left)).exclude(status__in=WAITING):
-                index = left.pop(str(row.pk))
-                files[index]['status'] = row.status
-                results[index] = reads.result_of(row)
-            if not left or time.monotonic() >= deadline:
-                break
-            time.sleep(POLL_SECONDS)
-    finally:
-        if threading.current_thread() is not threading.main_thread():
-            connection.close()
-    return results
 
 
 def for_model(excerpts):

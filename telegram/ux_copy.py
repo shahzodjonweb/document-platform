@@ -298,9 +298,26 @@ MESSAGES = {
     'cv_photo_is_page': ('📄 A page to read', '📄 O‘qish uchun sahifa', '📄 Страница для чтения'),
     # A photo with nothing to read in it, sent before a way to make the CV was chosen: kept as its photo.
     'cv_photo_kept_choose': ('📷 There’s no text to read in this photo, so it will go on your CV as your photo. If it’s a page of your old CV, choose 📄 From my old CV and send a clearer one.', '📷 Bu rasmda o‘qiladigan matn yo‘q, shuning uchun u CV’ga rasmingiz sifatida qo‘yiladi. Agar u eski CV’ingiz sahifasi bo‘lsa, «📄 Eski CV’imdan»ni tanlang va aniqroq rasm yuboring.', '📷 В этом фото нет текста, поэтому оно будет фотографией в резюме. Если это страница старого резюме, выберите «📄 Из старого резюме» и пришлите более чёткое фото.'),
-    # After a refusal that passes (too many at once): the CV made again from the files kept.
+    # After a refusal that passes (too many at once), the CV made again from the
+    # files kept; after a wait for the reader that took too long, a look again.
     'cv_try_again': ('🔄 Try again', '🔄 Qayta urinish', '🔄 Попробовать снова'),
     'cv_files_added': ('📎 Added to the CV’s files.', '📎 CV fayllariga qo‘shildi.', '📎 Добавлено к файлам резюме.'),
+    # While a CV's files wait for the reader (apps/studio/cv/reads.py): one
+    # message, which becomes the review once they are read. Its line says
+    # where they are in the queue; {files} is counted(): "2 files". Only the
+    # files of others are ahead of the customer.
+    'cv_wait_one': ('⏳ Reading your file…', '⏳ Faylingizni o‘qiyapmiz…', '⏳ Читаем ваш файл…'),
+    'cv_wait_many': ('⏳ Reading your files…', '⏳ Fayllaringizni o‘qiyapmiz…', '⏳ Читаем ваши файлы…'),
+    'cv_wait_ahead': ('🕐 {files} ahead of you', '🕐 Sizdan oldin navbatda {files} bor', '🕐 Перед вами в очереди: {files}'),
+    'cv_wait_next': ('🕐 You’re next', '🕐 Keyingi navbat sizniki', '🕐 Ваша очередь следующая'),
+    'cv_wait_now': ('📖 Reading now', '📖 Hozir o‘qiyapmiz', '📖 Читаем прямо сейчас'),
+    'cv_wait_hint': ('Your CV’s review will appear right here as soon as reading is done. Meanwhile you can send more files or notes.',
+                     'O‘qib bo‘lishimiz bilan CV’ingiz tekshirish uchun shu yerda chiqadi. Bu orada yana fayl yoki istaklaringizni yuborishingiz mumkin.',
+                     'Как только дочитаем, здесь появится ваше резюме для проверки. А пока можно прислать ещё файлы или пожелания.'),
+    # A wait longer than ten minutes (telegram/bot.py CV_WAIT_LIMIT): Try again looks again; nothing is sent again.
+    'cv_wait_slow': ('⏳ Reading is taking longer than usual. Your files and notes are kept — tap 🔄 Try again in a minute and we’ll carry on from here.',
+                     '⏳ O‘qish odatdagidan uzoqroq cho‘zilyapti. Fayllaringiz va istaklaringiz saqlanib turibdi — bir daqiqadan keyin «🔄 Qayta urinish»ni bosing, shu yerdan davom etamiz.',
+                     '⏳ Чтение занимает больше времени, чем обычно. Файлы и пожелания сохранены — через минуту нажмите «🔄 Попробовать снова», и мы продолжим с этого места.'),
 }
 
 # Keep the older keys for commands, saved controls and transport compatibility.

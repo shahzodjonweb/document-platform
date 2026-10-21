@@ -7,10 +7,11 @@ import hashlib
 import html
 import io
 import json
+import logging
 import secrets
+import time
 import uuid
 import weakref
-from concurrent.futures import ThreadPoolExecutor
 from types import SimpleNamespace
 from datetime import timedelta
 from aiogram import Bot, Dispatcher, F
@@ -59,7 +60,7 @@ async def account_for(user):
 REUSABLE={'home','menu','account','plans','subscription','language','help','recent','controls','settings',
           'prompt','attach','preview','done','retry','cancel','new','tool','start_tool','ai_tool','ai_examples',
           'ai_revise','ai_count','ai_retarget','support','contacts','job','download','channels_check',
-          'commerce_manual_plan','commerce_manual_receipt','cv_mode'}
+          'commerce_manual_plan','commerce_manual_receipt','cv_mode','cv_wait_check'}
 def usable(ref,now=None):
     """Whether a stored button may still be acted on."""
     return bool(ref) and (ref.expires_at>(now or timezone.now()) or ref.action in REUSABLE)
@@ -252,40 +253,47 @@ CV_FILE_KINDS={'pdf':'pdf','docx':'docx','jpg':'image','jpeg':'image','png':'ima
 # on its own is the portrait, or, on a CV made from photos or screenshots,
 # asked about (cv_file).
 CV_FILES_WINDOW=timedelta(seconds=30)
-# A CV's files are read off the bot's shared thread, one CV at a time (cv_read).
-# Every chat's handler and the delivery loop wait on that thread for the
-# database (sync_to_async), and OCR takes seconds a page: read there, one CV's
-# photos would hold up everyone. The bot's container is small, so one reading
-# runs at once; with CV_READS_WAITING more waiting, the next is asked to try
-# again shortly.
-CV_READS=ThreadPoolExecutor(max_workers=1,thread_name_prefix='cv-read')
-CV_READS_WAITING=3
-_cv_reads={'waiting':0}
+# A CV's files are read by the reader (apps/studio/cv/reads.py), never by the
+# bot: each is queued for it as it is uploaded. While one is still waiting, the
+# chat waits too ('cv_wait'), holding what the CV is made of. One message says
+# where the files are in the queue, and becomes the review, or the question or
+# refusal in its place, once they are read; more files and notes sent meanwhile
+# join the CV. The bot looks at its waiting chats every CV_WAIT_POLL seconds
+# (cv_wait_loop, beside the delivery loop), and says a new place in the queue
+# at most every CV_WAIT_EDIT seconds, only when it moved. A wait longer than
+# CV_WAIT_LIMIT is said to take longer than usual, with a button to look again.
+CV_WAIT_POLL=2
+CV_WAIT_EDIT=5
+CV_WAIT_LIMIT=timedelta(minutes=10)
+# The chats this process waits for. The waits are kept in the database, so one
+# outlives a restart: the loop finds them there when it starts.
+CV_WAITING=set()
 
-async def cv_read(account,way,ids):
-    """A CV's files read before its draft is made, in CV_READS: (files, readings), or None with nothing to read.
+def cv_waiting(conversation):
+    """Whether the chat waits for its CV's files to be read, and the wait is not old (kept as long as a question)."""
+    return (bool(conversation) and conversation.state=='cv_wait'
+            and conversation.updated_at>=timezone.now()-QUESTION_LIFETIME)
 
-    The draft made next takes what was read without reading again
-    (apps/studio/cv/sources.py read_entries), so building it on the shared
-    thread is quick. None when the files will be refused before any is read
-    (their kind, a password, too many): the draft says why. `rate_limited`
-    when too many CVs are being read.
-    """
-    from apps.studio.cv import sources as cv_sources
-    files=await sync_to_async(cv_sources.ahead)(account,[str(identifier) for identifier in ids],way)
-    if not files: return None
-    if _cv_reads['waiting']>CV_READS_WAITING: raise DomainError('rate_limited',429,retryable=True)
-    _cv_reads['waiting']+=1
-    try: return files,await asyncio.get_running_loop().run_in_executor(CV_READS,cv_sources.read_entries,files)
-    finally: _cv_reads['waiting']-=1
+def cv_place(status):
+    """Where a CV's files are in the reader's queue, as the waiting message says it: 'now', 'next' or how many are ahead."""
+    if status.get('reading'): return 'now'
+    return int(status.get('ahead') or 0) or 'next'
 
-def cv_readable(read):
-    """Whether files read by cv_read have words enough for a CV; True when nothing was read ahead."""
-    if read is None: return True
-    from apps.studio.cv import sources as cv_sources
-    try: cv_sources.excerpts_of(*read)
-    except DomainError: return False
-    return True
+def wait_account(chat_id):
+    from apps.core.models import Account
+    return Account.objects.filter(telegram_user_id=chat_id).first()
+
+async def cv_waits_kept():
+    """The waits kept in the database, for a process that starts to look at: the polling bot, or a webhook run."""
+    CV_WAITING.update(await sync_to_async(lambda:list(BotConversation.objects.filter(state='cv_wait').values_list('pk',flat=True)))())
+
+async def cv_wait_loop(bot,dispatcher):
+    """The chats waiting for their CV's files, looked at every CV_WAIT_POLL seconds as long as the bot runs."""
+    await cv_waits_kept()
+    while True:
+        try: await dispatcher.cv_waits(bot)
+        except Exception: logging.getLogger(__name__).exception('The CV waits could not be looked at')
+        await asyncio.sleep(CV_WAIT_POLL)
 
 def kept_brief(pieces,limit=BRIEF_CHARS,count=BRIEF_PIECES):
     """The pieces of a description kept while its topic is asked for, in the order written.
@@ -330,9 +338,10 @@ def pending_portrait(account):
 
     Like what was written, it waits in the chat's state, never in a button.
     The CV's first screens keep it too, while the customer chooses how the CV
-    is made, for as long as a question is kept.
+    is made, and so does a wait for its files (cv_wait), for as long as a
+    question is kept.
     """
-    row=BotConversation.objects.filter(pk=account.telegram_user_id,state__in=('ai_input','cv_choose','cv_source')).first()
+    row=BotConversation.objects.filter(pk=account.telegram_user_id,state__in=('ai_input','cv_choose','cv_source','cv_wait')).first()
     if row is None or row.updated_at<timezone.now()-QUESTION_LIFETIME: return ''
     prompt=row.prompt or {}
     return str(prompt.get('portrait_asset_id') or '') if prompt.get('feature_id')=='ai.cv' else ''
@@ -984,21 +993,30 @@ def build_dispatcher():
         the review, or the question or refusal in its place: no name in the files
         or the notes asks for it, keeping both (`asked` times asked; `given` takes
         the answer as the name); a file that cannot be read offers another file
-        or writing instead. `at` is when Telegram took the newest file and
+        or writing instead. While a file is still waiting for the reader, it
+        becomes the wait for them (cv_wait_start), and this is done again once
+        they are read. `at` is when Telegram took the newest file and
         `album` the album they came in: the rest of it, or a file sent before
         the review is on screen, is another of its files (cv_takes_more).
         `notice` is a line about the files just sent, said above the review.
         """
         portrait=await sync_to_async(ai.usable_portrait)(account,(await sync_to_async(cv_kept)(account))['portrait_asset_id'])
         notes=kept_brief([note for note in notes if note],CV_BRIEF_CHARS,CV_BRIEF_PIECES)
+        wait={'then':'build','cv_source':way,'notes':notes,'source_ids':[str(identifier) for identifier in files],
+              'given':bool(given),'asked':int(asked or 0),'notice':notice,'files_at':at,'album':album,
+              **({'portrait_asset_id':portrait} if portrait else {})}
+        # The reader has the files: the draft is made once it has read them, never from half of them.
+        status=await sync_to_async(ai.cv_reading)(account,files,way)
+        if status: return await cv_wait_start(message,account,wait,status)
         draft=None
         try:
-            # Read off the shared thread first: the draft takes what was read.
-            await cv_read(account,way,files)
             draft=await sync_to_async(ai.build)(account,ai.CV,'\n'.join(notes),files,given,portrait,way)
             await sync_to_async(funnel.step)('ai.described',account=account,feature=ai.CV)
             _,quote=await sync_to_async(ai.quote)(account,draft.id)
         except DomainError as exc:
+            if exc.code=='cv_reading':
+                status=await sync_to_async(ai.cv_reading)(account,files,way)
+                return await cv_wait_start(message,account,wait,status or {'reading':True})
             if exc.code=='cv_name_required':
                 return await cv_mode_screen(message,account,way,True,notes=notes,files=files,ask='name',asked=asked,portrait=portrait)
             if exc.code=='channels_required':
@@ -1050,7 +1068,8 @@ def build_dispatcher():
         sent before it, are notes on top of it. A photo there is a page to
         read, never the portrait. On a new CV's review, the rest of its album,
         or a file sent before the review was on screen, is one more of its
-        files (cv_takes_more). Every file of an album is read, not only the
+        files (cv_takes_more), and so is any file sent while the chat waits for
+        the reader (cv_wait_join). Every file of an album is read, not only the
         newest (cv_stash). The chat is read again once these files have their
         turn (chat_lock): one sent just after another finds the review the
         first made, and joins its CV. Those screens are kept as long as a
@@ -1067,6 +1086,9 @@ def build_dispatcher():
         async with chat_lock(message.chat.id):
             conversation=await sync_to_async(lambda:BotConversation.objects.filter(pk=message.from_user.id).first())()
             state=conversation.state if conversation else ''
+            if cv_waiting(conversation):
+                album_shown(message,await cv_wait_join(bot,account,conversation,files,sent))
+                return True
             newest=files[-1]['name'].rsplit('.',1)[-1].lower()
             more=state=='cv_review' and await sync_to_async(cv_takes_more)(account,newest,sent,group)
             if not more and not cv_screen_open(conversation): return False
@@ -1077,22 +1099,19 @@ def build_dispatcher():
                 way=await sync_to_async(ai.way_of)(account,draft_id)
                 ids,failure=await cv_upload(account,message.chat.id,files,way)
                 captions=' '.join(item['caption'] for item in files if item['caption'])
-                try:
-                    if ids:
-                        # Read off the shared thread first; the files read before are not read again.
-                        made=await sync_to_async(ai.cv_files)(account,draft_id)
-                        if made: await cv_read(account,way,[*made['source_ids'],*[i for i in ids if i not in made['source_ids']]])
-                        draft,quote=await sync_to_async(ai.add_sources)(account,draft_id,ids,captions)
-                    else: draft,quote=await sync_to_async(ai.quote)(account,draft_id)
-                except DomainError as exc:
-                    if exc.code=='controls_expired':
-                        album_shown(message,await home(waiting,account,True,notice=text(account,'stale_button')))
-                        return True
-                    draft,quote=await sync_to_async(ai.quote)(account,draft_id)
-                    failure=exc
-                notice=await sync_to_async(cv_refusal_said)(account,failure) if failure else text(account,'cv_files_added')
                 window={'files_at':max(sent,p.get('files_at') or 0),'album':p.get('album') or group} if ids else None
-                album_shown(message,await ai_review(waiting,account,draft,quote,True,notice,files=window))
+                if ids:
+                    # The files the CV was made from and these: it waits for the reader to read them all.
+                    made=await sync_to_async(ai.cv_files)(account,draft_id)
+                    every=[*made['source_ids'],*[i for i in ids if i not in made['source_ids']]] if made else ids
+                    status=await sync_to_async(ai.cv_reading)(account,every,way)
+                    if status:
+                        notice=await sync_to_async(cv_refusal_said)(account,failure) if failure else ''
+                        album_shown(message,await cv_wait_start(waiting,account,{
+                            'then':'add','cv_source':way,'draft_id':draft_id,'added':ids,'more':[captions] if captions else [],
+                            'source_ids':every,'notice':notice,**(window or {})},status))
+                        return True
+                album_shown(message,await cv_add(waiting,account,draft_id,ids,captions,failure,window))
                 return True
             way=p.get('cv_source') if state=='cv_source' and p.get('cv_source') in (ai.LINKEDIN,ai.FILE) else ai.FILE
             notes=[str(note) for note in p.get('notes') or [] if note]
@@ -1107,10 +1126,15 @@ def build_dispatcher():
             # One photo on the first screen, before a way was chosen, with no text
             # in it to read, is no old CV: it is the CV's photo, sent first as the
             # question about yourself always took it, and its caption the description.
+            # Whether it has text is known once the reader has read it.
             if state=='cv_choose' and len(files)==1 and len(ids)==1 and CV_FILE_KINDS.get(newest)=='image':
-                try: read=await cv_read(account,way,ids)
-                except DomainError: read=None
-                if not cv_readable(read):
+                status=await sync_to_async(ai.cv_reading)(account,ids,way)
+                if status:
+                    album_shown(message,await cv_wait_start(waiting,account,{
+                        'then':'photo','cv_source':way,'notes':notes,'caption':caption,'source_ids':ids,
+                        'files_at':sent,'album':group},status))
+                    return True
+                if not await sync_to_async(ai.cv_readable)(account,ids,way):
                     album_shown(message,await cv_portrait_first(waiting,account,ids[0],caption,notes))
                     return True
             # Some files of an album could not be used: said above the review the others made.
@@ -1118,6 +1142,208 @@ def build_dispatcher():
             album_shown(message,await cv_build(waiting,account,way,notes,[*kept,*ids],asked=int(p.get('asked') or 0),
                                                notice=notice,at=sent,album=group))
         return True
+
+    async def cv_add(message,account,draft_id,ids,more='',failure=None,window=None,notice=''):
+        """Files added to a new CV made from files, its review drawn again with them (`message` becomes it).
+
+        `more` is what was written with them, added to the notes; `failure`
+        what was refused of the files sent, said above the review (or
+        `notice`, said already), as is a file that could not be added.
+        `window` is when Telegram took the newest of them and their album
+        (cv_takes_more). A CV no longer kept is the menu, said so.
+        """
+        try:
+            if ids: draft,quote=await sync_to_async(ai.add_sources)(account,draft_id,ids,more)
+            else: draft,quote=await sync_to_async(ai.quote)(account,draft_id)
+        except DomainError as exc:
+            if exc.code=='controls_expired': return await home(message,account,True,notice=text(account,'stale_button'))
+            draft,quote=await sync_to_async(ai.quote)(account,draft_id)
+            failure=exc
+        if failure: notice=await sync_to_async(cv_refusal_said)(account,failure)
+        return await ai_review(message,account,draft,quote,True,notice or text(account,'cv_files_added'),files=window)
+
+    # --- Waiting for the reader ----------------------------------------------
+    # A CV's files are read by the reader, in turn with everyone else's
+    # (apps/studio/cv/reads.py). Until they are, the chat waits ('cv_wait'):
+    # what the CV is made of waits in its state, never in a button, with what
+    # to do once they are read ('then'): make the CV ('build'), add them to the
+    # CV on review ('add'), or see whether a photo sent first has text in it
+    # ('photo'). Its message says where they are in the queue and becomes the
+    # review. The loop (cv_wait_loop) and every handler that touches a wait
+    # hold the chat's lock (chat_lock), and read the wait again under it.
+
+    async def cv_wait_start(message,account,wait,status):
+        """The chat waits for its CV's files: `message` (the "Preparing…" line) says where they are in the queue.
+
+        `wait` is what the CV is made of and what to do once they are read;
+        `status` where they stand (generation.cv_reading). Made again from a
+        wait whose files turned out to wait once more, it keeps that wait's
+        start, its Cancel button and what it last said.
+        """
+        from .local import LocalTelegramSession
+        current=await sync_to_async(lambda:BotConversation.objects.filter(pk=account.telegram_user_id,state='cv_wait')
+                                    .values_list('prompt',flat=True).first())() or {}
+        portrait=wait.get('portrait_asset_id') or await sync_to_async(pending_portrait)(account)
+        chat_id=getattr(message,'chat_id',None) or message.chat.id
+        local=isinstance(getattr(getattr(message,'bot',None),'session',None),LocalTelegramSession)
+        kept={key:current[key] for key in ('since','cancel','said') if key in current}
+        wait={'feature_id':ai.CV,'screen':[chat_id,message.message_id],'local':local,'since':time.time(),
+              **kept,**{key:value for key,value in wait.items() if value not in (None,'',[])},
+              **({'portrait_asset_id':portrait} if portrait else {})}
+        # Cancel goes to the menu, which ends the wait; its button is kept for every redraw.
+        if not wait.get('cancel'): wait['cancel']=await callback(account,'home',{'from':'cv_wait'})
+        return await cv_wait_screen(message,account,wait,status)
+
+    async def cv_wait_screen(message,account,wait,status):
+        """The waiting message drawn with where the files are now, and the wait kept with it."""
+        names=await sync_to_async(ai.file_names)(account,wait['source_ids'])
+        place=cv_place(status)
+        line=(text(account,'cv_wait_now') if place=='now' else text(account,'cv_wait_next') if place=='next'
+              else text(account,'cv_wait_ahead').format(files=counted(account.locale,place,'file')))
+        said=wait.get('said','')
+        body=(html.escape(said)+'\n\n' if said else '')+(
+            f'<b>{html.escape(TOOL_NAMES[ai.CV][account.locale])}</b>\n'
+            f'{text(account,"cv_wait_one" if len(names)==1 else "cv_wait_many")}\n'
+            f'{html.escape(text(account,"cv_from_files").format(files=files_said(account,names)))}\n{line}\n\n'
+            f'<i>{text(account,"cv_wait_hint")}</i>')
+        rows=[[InlineKeyboardButton(text=text(account,'cancel_button'),callback_data=wait['cancel'])]]
+        sent=await render(message,body,rows,True)
+        return await cv_wait_kept(account,{**wait,'shown':place,'shown_at':time.time(),'stalled':False},sent)
+
+    async def cv_wait_kept(account,wait,sent):
+        """The wait saved with the message it is on now: a new one when Telegram would no longer change the old."""
+        if getattr(sent,'message_id',None): wait['screen']=[wait['screen'][0],sent.message_id]
+        await sync_to_async(set_prompt)(account,'cv_wait',wait)
+        if wait.get('stalled'): CV_WAITING.discard(wait['screen'][0])
+        else: CV_WAITING.add(wait['screen'][0])
+        return sent
+
+    async def cv_wait_stalled(message,account,wait):
+        """A wait longer than CV_WAIT_LIMIT: said to take longer than usual, and Try again to look again."""
+        rows=[[await button(account,'cv_try_again','cv_wait_check')],
+              [InlineKeyboardButton(text=text(account,'cancel_button'),callback_data=wait['cancel'])]]
+        body=f'<b>{html.escape(TOOL_NAMES[ai.CV][account.locale])}</b>\n{text(account,"cv_wait_slow")}'
+        sent=await render(message,body,rows,True)
+        return await cv_wait_kept(account,{**wait,'stalled':True},sent)
+
+    async def cv_wait_look(screen,account,wait,again=False):
+        """One look at a chat's wait: once its files are read, what it waited for; else its place, said when it moved.
+
+        `screen` is its message. A place is said again only when it moved, and
+        at most every CV_WAIT_EDIT seconds. Past CV_WAIT_LIMIT the wait stops,
+        said so. `again` (Try again, or a file or a note sent to it) draws it
+        at once and starts it anew.
+        """
+        status=await sync_to_async(ai.cv_reading)(account,wait['source_ids'])
+        if status is None:
+            CV_WAITING.discard(wait['screen'][0])
+            return await cv_wait_done(screen,account,wait)
+        now=time.time()
+        if again: wait={**wait,'since':now}
+        elif now-float(wait.get('since') or 0)>CV_WAIT_LIMIT.total_seconds():
+            return await cv_wait_stalled(screen,account,wait)
+        moved=cv_place(status)!=wait.get('shown') and now-float(wait.get('shown_at') or 0)>=CV_WAIT_EDIT
+        if again or moved: return await cv_wait_screen(screen,account,wait,status)
+        return None
+
+    async def cv_wait_done(screen,account,wait):
+        """The files a chat waited for are read: what it waited for, in the waiting message's place."""
+        way=wait.get('cv_source') if wait.get('cv_source') in (ai.LINKEDIN,ai.FILE) else ai.FILE
+        notes=[str(note) for note in wait.get('notes') or [] if note]
+        ids=[str(identifier) for identifier in wait.get('source_ids') or []]
+        window={key:wait[key] for key in ('files_at','album') if wait.get(key)}
+        if wait.get('then')=='add':
+            return await cv_add(screen,account,wait.get('draft_id',''),list(wait.get('added') or []),
+                                ' '.join(str(piece) for piece in wait.get('more') or [] if piece),window=window,
+                                notice=wait.get('notice',''))
+        # A photo sent first with no text in it is the portrait, and what was written with it or since its description.
+        if wait.get('then')=='photo' and len(ids)==1 and not await sync_to_async(ai.cv_readable)(account,ids,way):
+            return await cv_portrait_first(screen,account,ids[0],wait.get('caption',''),notes)
+        return await cv_build(screen,account,way,notes,ids,given=bool(wait.get('given')),asked=int(wait.get('asked') or 0),
+                              notice=wait.get('notice',''),at=wait.get('files_at'),album=wait.get('album'))
+
+    def wait_screen(bot,wait):
+        return _Screen(bot,*wait['screen'])
+
+    async def cv_wait_join(bot,account,conversation,files,sent):
+        """Files sent while the chat waits for the reader: more of the same CV's files, read in their turn.
+
+        Their caption is more of its notes; a file its way does not take is said
+        on the waiting message. A photo sent first is no longer alone: the files
+        make the CV. A wait that had stopped starts anew.
+        """
+        wait=dict(conversation.prompt or {})
+        way=wait.get('cv_source') if wait.get('cv_source') in (ai.LINKEDIN,ai.FILE) else ai.FILE
+        ids,failure=await cv_upload(account,wait['screen'][0],files,way)
+        captions=[item['caption'] for item in files if item['caption']]
+        known=[str(identifier) for identifier in wait.get('source_ids') or []]
+        new=[identifier for identifier in ids if identifier not in known]
+        wait['source_ids']=[*known,*new]
+        if wait.get('then')=='add':
+            wait['added']=[*wait.get('added',[]),*new]
+            wait['more']=[*wait.get('more',[]),*captions]
+        else:
+            wait['notes']=kept_brief([*wait.get('notes',[]),*captions],CV_BRIEF_CHARS,CV_BRIEF_PIECES)
+            if new and wait.get('then')=='photo': wait['then']='build'
+        wait['files_at']=max(sent,float(wait.get('files_at') or 0))
+        wait['said']=await sync_to_async(cv_refusal_said)(account,failure) if failure else text(account,'cv_files_added')
+        # Their reads were queued as they were uploaded (cv_upload).
+        return await cv_wait_look(wait_screen(bot,wait),account,wait,again=True)
+
+    async def cv_wait_text(message,account,conversation,value):
+        """Words sent while the chat waits for the reader: more of the CV's notes, said so on the waiting message."""
+        if not value: return await message.answer(text(account,'ai_topic_empty'))
+        wait=dict(conversation.prompt or {})
+        if wait.get('then')=='add': wait['more']=[*wait.get('more',[]),value]
+        else: wait['notes']=kept_brief([*wait.get('notes',[]),value],CV_BRIEF_CHARS,CV_BRIEF_PIECES)
+        if wait.get('then')=='photo': wait['caption']='\n'.join(piece for piece in (wait.get('caption',''),value) if piece)[:CV_BRIEF_CHARS]
+        wait['said']=text(account,'cv_notes_added')
+        return await cv_wait_look(wait_screen(message.bot,wait),account,wait,again=True)
+
+    async def cv_waits(bot,chats=None):
+        """One look at every chat waiting for its CV's files (cv_wait_loop), or at `chats` (the local simulator's).
+
+        Each is looked at under its chat's lock, its wait read again there: a
+        file or a note may have joined it, or the customer moved on. A wait on
+        the local simulator is never the real bot's to look at.
+        """
+        for chat_id in list(CV_WAITING if chats is None else chats):
+            # A chat a handler is busy with is left to it: what it does looks at the wait, or the next turn will.
+            lock=chat_lock(chat_id)
+            if lock.locked(): continue
+            async with lock:
+                conversation=await sync_to_async(lambda:BotConversation.objects.filter(pk=chat_id,state='cv_wait').first())()
+                wait=dict(conversation.prompt or {}) if conversation else {}
+                if not wait.get('screen') or wait.get('stalled') or (chats is None and wait.get('local')):
+                    CV_WAITING.discard(chat_id)
+                    continue
+                account=await sync_to_async(wait_account)(chat_id)
+                if account is None:
+                    CV_WAITING.discard(chat_id)
+                    continue
+                screen=wait_screen(bot,wait)
+                try: await cv_wait_look(screen,account,wait)
+                except Exception as exc: await cv_wait_failed(screen,account,wait,exc)
+
+    async def cv_wait_failed(screen,account,wait,exc):
+        """A look at a wait that failed, which never stops the others or comes back every turn.
+
+        A refusal is said in the waiting message's place, and the wait is
+        over: looking again would not change it. Anything else (Telegram, or a
+        fault of ours) stops the wait as one that takes long, so Try again
+        looks again.
+        """
+        CV_WAITING.discard(wait['screen'][0])
+        if not isinstance(exc,DomainError):
+            logging.getLogger(__name__).error('A CV wait could not be looked at',exc_info=exc)
+        try:
+            if isinstance(exc,DomainError):
+                await sync_to_async(set_prompt)(account)
+                return await render(screen,html.escape(bot_error(exc,account.locale,account)),[[await button(account,'home','home')]],True)
+            return await cv_wait_stalled(screen,account,wait)
+        except Exception:
+            logging.getLogger(__name__).warning('A CV wait could not be said to have stopped',exc_info=True)
+            if not isinstance(exc,DomainError): await sync_to_async(set_prompt)(account,'cv_wait',{**wait,'stalled':True})
 
     async def cv_portrait_first(message,account,asset_id,caption,notes):
         """A photo with nothing to read in it, sent on the first CV screen: the CV's portrait, not an old CV.
@@ -1328,6 +1554,12 @@ def build_dispatcher():
         sent=await render(message,body,rows,edit)
         await remember_review(account,draft,sent or message)
         if draft.feature_id==ai.CV and not await sync_to_async(ai.revised_from)(draft):
+            # Files on their way to this CV (a wait to add them) go on waiting: a review drawn
+            # elsewhere meanwhile (a language tapped on it) is not the end of their wait.
+            going=await sync_to_async(lambda:BotConversation.objects.filter(pk=account.telegram_user_id,state='cv_wait')
+                                      .values_list('prompt',flat=True).first())() or {}
+            if (going.get('then')=='add' and going.get('draft_id')==str(draft.id)
+                    and (going.get('screen') or [0,0])[1]!=getattr(message,'message_id',None)): return sent
             if files is None:
                 shown=await sync_to_async(lambda:BotConversation.objects.filter(pk=account.telegram_user_id,state='cv_review')
                                           .values_list('prompt',flat=True).first())() or {}
@@ -1658,6 +1890,9 @@ def build_dispatcher():
             if action=='login':
                 await sync_to_async(approve_challenge_id)(p['challenge_id'],user_dict(query.from_user))
                 await message.answer(text(account,'approved'))
+            elif action=='home' and p.get('from')=='cv_wait':
+                # Cancel on the waiting message: the wait is ended under its lock, never turned into a review after.
+                async with chat_lock(message.chat.id): await home(message,account,True)
             elif action=='home': await home(message,account,True)
             elif action=='language': await show_language(message,query.from_user,{})
             elif action=='menu': await menu(message,account,p.get('page',0),p.get('category','pdf'),True)
@@ -1731,12 +1966,20 @@ def build_dispatcher():
                 way=kept.get('cv_source')
                 if kept.get('source_ids') and kept.get('ask')=='again' and way in (ai.LINKEDIN,ai.FILE):
                     await render(message,text(account,'ai_preparing'),[],True)
-                    await cv_build(message,account,way,[str(note) for note in kept.get('notes') or [] if note],
-                                   [str(identifier) for identifier in kept['source_ids']])
+                    async with chat_lock(message.chat.id):
+                        await cv_build(message,account,way,[str(note) for note in kept.get('notes') or [] if note],
+                                       [str(identifier) for identifier in kept['source_ids']])
                 else: await cv_choose(message,account,True)
             elif action=='cv_photo_as':
                 # A photo sent on a CV made from photos or screenshots: its portrait, or one more page (cv_file).
-                await cv_photo_as(message,account,p.get('draft_id',''),p.get('as',''))
+                async with chat_lock(message.chat.id): await cv_photo_as(message,account,p.get('draft_id',''),p.get('as',''))
+            elif action=='cv_wait_check':
+                # Try again on a wait that took too long: the files are looked at again, never sent again.
+                async with chat_lock(message.chat.id):
+                    conversation=await sync_to_async(lambda:BotConversation.objects.filter(pk=account.telegram_user_id,state='cv_wait').first())()
+                    if conversation and (conversation.prompt or {}).get('screen'):
+                        await cv_wait_look(message,account,dict(conversation.prompt),again=True)
+                    else: await home(message,account,True,notice=text(account,'stale_button'))
             elif action=='ai_retarget':
                 # "Make slides instead" on the topic question: what was written,
                 # now for the other service, after the checks choosing it makes.
@@ -1986,8 +2229,16 @@ def build_dispatcher():
         notice=''
         try:
             if kind=='page':
+                # Read with the CV's other files by the reader: the review waits for it if it has not had its turn.
                 made=await sync_to_async(ai.cv_files)(account,draft_id)
-                if made: await cv_read(account,made['way'],[*made['source_ids'],asset_id])
+                if made:
+                    every=[*made['source_ids'],*([asset_id] if asset_id not in made['source_ids'] else [])]
+                    status=await sync_to_async(ai.cv_reading)(account,every,made['way'])
+                    if status:
+                        window={key:pending[key] for key in ('files_at','album') if pending.get(key)}
+                        return await cv_wait_start(message,account,{
+                            'then':'add','cv_source':made['way'],'draft_id':draft_id,'added':[asset_id],
+                            'more':[caption] if caption else [],'source_ids':every,**window},status)
                 draft,quote=await sync_to_async(ai.add_sources)(account,draft_id,[asset_id],caption)
                 notice=text(account,'cv_files_added')
             else:
@@ -2013,6 +2264,8 @@ def build_dispatcher():
         if duplicate:
             # The same message delivered twice: the screen it led to, drawn again.
             conversation=await sync_to_async(lambda:BotConversation.objects.filter(pk=message.from_user.id).first())()
+            # A file that already joined a wait: its waiting message is the screen it led to.
+            if cv_waiting(conversation): return
             if conversation and conversation.state in ('cv_choose','cv_source'): return await cv_screen_again(message,account,conversation)
             if cv_question(conversation):
                 brief=await sync_to_async(pending_brief)(account)
@@ -2030,7 +2283,7 @@ def build_dispatcher():
         # a kind it does not read is said so there, never downloaded — and, on
         # its review, one more of its files sent moments after the last.
         conversation=await sync_to_async(lambda:BotConversation.objects.filter(pk=message.from_user.id).first())()
-        sources=cv_screen_open(conversation) or (bool(conversation) and conversation.state=='cv_review'
+        sources=cv_screen_open(conversation) or cv_waiting(conversation) or (bool(conversation) and conversation.state=='cv_review'
             and await sync_to_async(cv_takes_more)(account,ext,message.date.timestamp(),getattr(message,'media_group_id',None)))
         if sources and ext not in CV_FILE_KINDS and await cv_source_file(message,bot,account,name,None): return
         if ext not in ('pdf','jpg','jpeg','png','docx','pptx'): return await message.answer(text(account,'unsupported'))
@@ -2308,13 +2561,14 @@ def build_dispatcher():
         value=(message.text or '').strip()
         # Someone who was writing a support message when tickets were retired.
         if conversation.state in ('support','support_review'): return await contacts_view(message,account)
-        if conversation.state in ('cv_review','cv_choose','cv_source') or cv_question(conversation):
+        if conversation.state in ('cv_review','cv_choose','cv_source','cv_wait') or cv_question(conversation):
             # A CV's messages one at a time, each reading the chat again once it
             # has its turn: the second half of a long description finds the
             # review the first half made, a photo sent with it its CV, and notes
-            # sent with a file the CV the file made.
+            # sent with a file the CV the file made, or its wait for the reader.
             async with chat_lock(message.chat.id):
                 conversation=await sync_to_async(lambda:BotConversation.objects.get(pk=message.from_user.id))()
+                if conversation.state=='cv_wait': return await cv_wait_text(message,account,conversation,value)
                 if conversation.state=='cv_review': return await cv_review_text(message,account,conversation,value)
                 if conversation.state=='cv_choose': return await cv_choose_text(message,account,conversation,value)
                 if conversation.state=='cv_source': return await cv_source_text(message,account,conversation,value)
@@ -2343,6 +2597,9 @@ def build_dispatcher():
                 await safe_error(message,account,exc)
             return await input_prompt(message,account,p)
         await home(message,account,notice=text(account,'fallback'))
+    # The bot's loop looks at the chats waiting for the reader through the
+    # dispatcher that answers them (cv_wait_loop), with the same screens.
+    dp.cv_waits=cv_waits
     return dp
 
 async def run_polling():
@@ -2358,14 +2615,15 @@ async def _run_polling():
     bot=Bot(config['token'])
     from .commands import install_commands
     from .delivery import delivery_loop
-    deliveries=None
+    loops=[]
     try:
         await install_commands(bot)
-        deliveries=asyncio.create_task(delivery_loop(bot))
-        await build_dispatcher().start_polling(bot)
+        dispatcher=build_dispatcher()
+        loops=[asyncio.create_task(delivery_loop(bot)),asyncio.create_task(cv_wait_loop(bot,dispatcher))]
+        await dispatcher.start_polling(bot)
     finally:
-        if deliveries:
-            deliveries.cancel()
-            try: await deliveries
+        for task in loops:
+            task.cancel()
+            try: await task
             except asyncio.CancelledError: pass
         await bot.session.close()

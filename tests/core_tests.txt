@@ -295,7 +295,9 @@ tests/test_bot_cv.py::test_a_photo_sent_in_the_chat_becomes_the_cvs_photo
 # AI CV from the chat, made from an old CV: the PDF sent on its screen to a review that names the file, then the CV
 tests/test_bot_cv_sources.py::test_an_old_cv_pdf_becomes_a_review_and_then_the_cv
 # The bot reads no CV file, and waiting for the reader never freezes it for everyone else
-tests/test_bot_cv_sources.py::test_the_bot_reads_no_file_and_its_wait_for_the_reader_never_holds_up_another_chat
+tests/test_bot_cv_read_queue.py::test_the_bot_reads_no_file_and_waiting_for_the_reader_never_holds_up_another_chat
+# A CV's files waiting for the reader: one waiting message, which becomes the review once they are read
+tests/test_bot_cv_read_queue.py::test_files_waiting_for_the_reader_show_one_message_that_becomes_the_review
 
 # Anti-bot human verification gate
 tests/test_bot_verification.py::test_real_bot_defers_account_and_download_until_verified_then_resumes_first_file
