@@ -126,6 +126,40 @@ def test_the_account_served_longest_ago_goes_first_and_a_read_that_waited_long_g
     assert [row.asset_id for row in reads.queue()[0]] == [mine.id, theirs.id]
 
 
+def claimed_in_turn():
+    """Every queued read taken as the reader takes them, one after another: the files in the order they were read."""
+    taken = []
+    while True:
+        row = reads.claim()
+        if row is None:
+            return taken
+        taken.append(row.asset_id)
+        reads.perform(row)
+
+
+def test_the_place_said_is_the_place_read_in_when_reads_have_waited_long(queued, reader, customer):
+    other, third = account(77), account(78)
+    aged = timezone.now() - timedelta(seconds=reads.AGING_SECONDS + 60)
+    backlog = [cv_file(other, f'shot-{number}.pdf') for number in range(10)]
+    for number, asset in enumerate(backlog):
+        CvSourceRead.objects.filter(asset=asset).update(created_at=aged + timedelta(seconds=number))
+    mine = cv_file(customer, 'old-cv.pdf')
+    # Every read that waited long goes first, all ten: this one is told ten ahead, not one.
+    order, reading = reads.queue()
+    assert reads.places(order, reading)[read_of(mine).pk] == 10
+    assert reads.state(customer, [mine])['ahead'] == 10
+    assert refused(customer, made_from(customer, mine)).params['ahead'] == 10
+    # Some of a third account's reads aged too, some not: the order said is the order they are read in.
+    for number in range(2):
+        asset = cv_file(third, f'aged-{number}.pdf')
+        CvSourceRead.objects.filter(asset=asset).update(created_at=aged + timedelta(seconds=20 + number))
+    fresh = [cv_file(third, f'fresh-{number}.pdf') for number in range(3)]
+    said = [row.asset_id for row in reads.queue()[0]]
+    assert said[:12] == [*[asset.id for asset in backlog], *said[10:12]] and said.index(mine.id) == 12
+    assert said == claimed_in_turn()
+    assert said[12:] == [mine.id, *[asset.id for asset in fresh]]
+
+
 def test_a_read_taken_by_one_reader_is_never_taken_by_another(queued, customer):
     first, second = cv_file(customer, 'first.pdf'), cv_file(customer, 'second.pdf')
     row = reads.queue()[0][0]
@@ -270,9 +304,19 @@ def test_a_file_no_cv_reads_is_failed_at_once_and_never_waited_for(queued, custo
     webp = cv_file(customer, 'old-cv.webp', picture(one_column_pdf(), 1.0, 'WEBP'))
     locked = upload_file(customer, SimpleUploadedFile('locked.pdf', encrypted_pdf()), 'web', password='fictional-password',
                          purpose='cv_source')
+    # More pages than any CV is made from: refused at once, never read for the minute it would take.
+    long = cv_file(customer, 'long.pdf', _pdf(lambda page, number: _lines(page, 60, 780, [
+        ('Helvetica', 11, f'Page {number} of a long report, not a CV', 14)]), sources.MAX_PAGES + 10))
     assert (read_of(webp).status, read_of(webp).error) == ('failed', 'cv_file_kind')
     assert (read_of(locked).status, read_of(locked).error) == ('failed', 'cv_file_unreadable')
+    assert long.page_count == 40 and (read_of(long).status, read_of(long).error) == ('failed', 'generation_limit')
     assert reads.claim() is None
+    # Its draft is refused as before, at once.
+    assert refused(customer, made_from(customer, long)).code == 'generation_limit'
+    # A file of exactly the most pages is read.
+    whole = cv_file(customer, 'whole.pdf', _pdf(lambda page, number: _lines(page, 60, 780, [
+        ('Helvetica', 11, f'Page {number}', 14)]), sources.MAX_PAGES))
+    assert read_of(whole).status == 'queued'
 
 
 # --- Drafts made from what was read ---------------------------------------------------------------
@@ -287,7 +331,8 @@ def test_a_draft_waits_with_how_many_reads_are_ahead_and_is_made_at_once_when_th
     assert waiting.code == 'cv_reading' and waiting.status == 409 and waiting.retryable
     # The account never served goes before theirs: only the read in hand is ahead.
     assert waiting.params == {'ahead': 1, 'estimated_seconds': None}
-    assert refused(other, made_from(other, *theirs)).params['ahead'] == 3
+    # One of theirs is being read: none is ahead of them, as the bot says it (their own files never are).
+    assert refused(other, made_from(other, *theirs)).params['ahead'] == 0
     # Said as a wait, never as "try again".
     message = error_data(waiting, 'en')['message']
     assert '1 ahead' in message and 'try again' not in message.lower()
@@ -312,6 +357,70 @@ def test_how_long_the_reads_ahead_take_is_told_from_the_latest_reads(queued, rea
     mine = cv_file(customer, 'old-cv.pdf')
     # One read ahead and this one, four seconds each.
     assert refused(customer, made_from(customer, mine)).params == {'ahead': 1, 'estimated_seconds': 8}
+
+
+def test_a_customer_alone_in_the_queue_is_told_nobody_is_ahead_on_the_web_as_in_the_bot(queued, reader, customer):
+    from telegram.generation import cv_reading
+    shots = [cv_file(customer, f'shot-{number}.pdf') for number in range(4)]
+    ids = [str(asset.id) for asset in shots]
+    told = login_client(customer).get('/api/v1/studio/cv-reads', {'ids': ids}).json()
+    # Each file is told the files before it, the customer none of their own.
+    assert [entry['ahead'] for entry in told['reads']] == [0, 1, 2, 3]
+    assert told['ahead'] == 0 == cv_reading(customer, ids)['ahead']
+    assert refused(customer, made_from(customer, *shots)).params['ahead'] == 0
+    # Another customer's file in line before them is.
+    other = account(77)
+    theirs = cv_file(other, 'theirs.pdf')
+    CvSourceRead.objects.filter(asset=theirs).update(created_at=timezone.now() - timedelta(minutes=1))
+    assert reads.state(customer, shots)['ahead'] == 1 == cv_reading(customer, ids)['ahead']
+    # Once theirs is read, the first of the customer's is being read: none ahead, said as "reading now".
+    reads.perform(reads.claim())
+    reads.claim()
+    assert reads.state(customer, shots)['ahead'] == 0 and cv_reading(customer, ids) == {'reading': True, 'ahead': 0}
+
+
+def test_the_time_said_counts_what_is_left_of_the_reads_in_progress(queued, reader, customer):
+    other = account(77)
+    done = {'pages': [{'page': 1, 'text': TEXT}], 'names': [], 'ocr_pages': 0, 'ocr_skipped': 0}
+    for number in range(2):
+        cv_file(other, f'done-{number}.pdf')
+    call_command('runreader', '--once')
+    now = timezone.now()
+
+    def lately():
+        # Reads take ten seconds lately.
+        CvSourceRead.objects.filter(status='done').update(started_at=now - timedelta(seconds=20),
+                                                          finished_at=now - timedelta(seconds=10))
+    lately()
+    cv_file(other, 'reading.pdf')
+    theirs = reads.claim()
+    mine = cv_file(customer, 'old-cv.pdf')
+
+    def told():
+        return reads.state(customer, [mine])['estimated_seconds']
+    # What is left of theirs, then this one.
+    assert told() == 20
+    # Read for six seconds already: what is left of it is never less than as long again.
+    CvSourceRead.objects.filter(pk=theirs.pk).update(started_at=now - timedelta(seconds=6))
+    assert 16 <= told() <= 17
+    # Longer than reads take: the longer it takes, the longer the time said, never "about 5 seconds" for minutes.
+    CvSourceRead.objects.filter(pk=theirs.pk).update(started_at=now - timedelta(seconds=30))
+    assert 40 <= told() <= 41
+    # Past the time a read has, its reader stopped mid-read: read again once its lease lapses.
+    CvSourceRead.objects.filter(pk=theirs.pk).update(started_at=now - timedelta(seconds=100),
+                                                     lease_expires_at=now + timedelta(seconds=80))
+    assert 95 <= told() <= 101
+    # The customer's own file being read and one more of theirs behind it: what is left of it, and one more.
+    reads.finish(theirs, reads.DONE, result=done)
+    lately()
+    later = cv_file(customer, 'later.pdf')
+    first = reads.claim()
+    assert first.asset_id == mine.id and reads.state(customer, [mine, later])['estimated_seconds'] == 20
+    # No reader taking the queued reads: how long is not known, so no time is said.
+    reads.finish(first, reads.DONE, result=done)
+    CvSourceRead.objects.filter(asset=later).update(created_at=timezone.now() - timedelta(seconds=reads.IDLE_SECONDS + 5))
+    assert reads.state(customer, [later])['estimated_seconds'] is None
+    assert refused(customer, made_from(customer, later)).params['estimated_seconds'] is None
 
 
 def test_a_file_the_reader_failed_on_is_said_and_with_nothing_read_the_cv_is_refused(queued, reader, customer):
@@ -409,10 +518,11 @@ def test_the_web_asks_how_the_reads_stand_for_the_customers_own_files(queued, re
     reads.claim()
     response = client.get('/api/v1/studio/cv-reads', {'ids': [str(first.id), str(second.id)]})
     assert response.status_code == 200, response.content
+    # Each file says the reads before it; the customer, being read now, has none of others' ahead.
     assert response.json() == {'reads': [
         {'asset_id': str(first.id), 'status': 'reading', 'ahead': 0, 'pages': 0, 'ocr_pages': 0, 'error': None},
         {'asset_id': str(second.id), 'status': 'queued', 'ahead': 1, 'pages': 0, 'ocr_pages': 0, 'error': None},
-    ], 'ahead': 1, 'estimated_seconds': None}
+    ], 'ahead': 0, 'estimated_seconds': None}
     call_command('runreader', '--once')
     done = client.get('/api/v1/studio/cv-reads', {'ids': [str(second.id)]}).json()
     assert done == {'reads': [{'asset_id': str(second.id), 'status': 'done', 'ahead': 0, 'pages': 1, 'ocr_pages': 0,
@@ -431,14 +541,53 @@ def test_the_web_asks_how_the_reads_stand_for_the_customers_own_files(queued, re
     assert asked['reads'][0]['status'] == 'queued' and read_of(older).status == 'queued'
 
 
-def test_asking_every_two_seconds_is_allowed_and_more_than_a_minutes_worth_is_not(queued, customer):
+class Clock:
+    """The cache's clock, moved by hand: a minute of asking takes no minute."""
+
+    def __init__(self):
+        self.now = time.time()
+
+    def time(self):
+        return self.now
+
+
+@pytest.fixture
+def clock(monkeypatch):
+    from django.core.cache.backends import base, locmem
+    fake = Clock()
+    monkeypatch.setattr(locmem, 'time', fake)
+    monkeypatch.setattr(base, 'time', fake)
+    cache.clear()
+    yield fake
+    cache.clear()
+
+
+def test_asking_every_two_seconds_is_never_refused_however_long_the_wait(queued, customer, clock):
+    from apps.studio import views
     client = login_client(customer)
     asset = cv_file(customer)
-    for _ in range(30):
-        assert client.get('/api/v1/studio/cv-reads', {'ids': [str(asset.id)]}).status_code == 200
-    cache.set(f'rate:cv_reads:account:{customer.id}', 60, 60)
+    # Five minutes of a tab asking every two seconds, the files still waiting: the
+    # minute is counted from its first request, never pushed on by the next.
+    refused_at = []
+    for second in range(0, 300, 2):
+        clock.now += 2
+        if client.get('/api/v1/studio/cv-reads', {'ids': [str(asset.id)]}).status_code == 429:
+            refused_at.append(second)
+    assert refused_at == []
+    # Two tabs at once, a request a second, and a refresh now and then: still never refused.
+    for second in range(120):
+        clock.now += 1
+        for _ in range(2 if second % 10 == 0 else 1):
+            assert client.get('/api/v1/studio/cv-reads', {'ids': [str(asset.id)]}).status_code == 200, second
+    # More than CV_READS_PER_MINUTE in one minute is refused, until that minute is over.
+    clock.now += 61
+    statuses = [client.get('/api/v1/studio/cv-reads', {'ids': [str(asset.id)]}).status_code
+                for _ in range(views.CV_READS_PER_MINUTE + 1)]
+    assert statuses.count(200) == views.CV_READS_PER_MINUTE and statuses[-1] == 429
     limited = client.get('/api/v1/studio/cv-reads', {'ids': [str(asset.id)]})
     assert limited.status_code == 429 and limited.json()['error']['code'] == 'rate_limited'
+    clock.now += 61
+    assert client.get('/api/v1/studio/cv-reads', {'ids': [str(asset.id)]}).status_code == 200
 
 
 def test_a_draft_waiting_for_its_files_is_a_409_with_the_reads_ahead(queued, customer):

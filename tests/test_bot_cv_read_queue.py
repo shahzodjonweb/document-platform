@@ -6,8 +6,10 @@ CV's files still waits, the chat waits too ('cv_wait'). One message says where
 the files are in the queue ("2 files ahead of you", "You're next", "Reading
 now") and, once they are read, becomes the review, or the question or refusal
 in its place. Files and notes sent meanwhile join the same CV; /start or
-Cancel ends the wait; a wait past ten minutes says so, with Try again to look
-again. These tests run the reads as production does, queued and read only by
+Cancel ends the wait; a wait whose place has not moved for ten minutes says
+so, and still becomes the review by itself once read (Check now looks at
+once). A moment Telegram cannot be reached changes nothing: the chat is
+looked at again a little later. These tests run the reads as production does, queued and read only by
 the reader, which the test runs by hand (reads.next_read), and take the bot's
 looks by hand too (telegram.local.look_local, as the bot's loop takes one
 every two seconds). Jobs still run as they are submitted. Everyone in them is
@@ -27,7 +29,7 @@ from apps.studio.domain import CV
 from apps.studio.models import CvSourceRead, GenerationDraft
 from operations.integrations import save_config
 from telegram.errors import COPY as ERRORS
-from telegram.local import dispatch_local, look_local
+from telegram.local import LocalTelegramSession, dispatch_local, look_local
 from telegram.ux_copy import LOCALES, TOOL_NAMES, UX, counted
 from tests.test_bot_cv import cv, image, model, screen, state  # noqa: F401
 from tests.test_bot_cv_sources import (another_customer, choose, feed_two, nameless_pdf, outbound, reading, send,
@@ -39,6 +41,14 @@ from tests.test_cv_sources import blank_pdf, one_column_pdf
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.usefixtures('bot_verification_disabled')]
 
 EN = UX['en']
+
+
+@pytest.fixture(autouse=True)
+def fresh_loop(monkeypatch):
+    """The loop's own memory (paused chats, when a stalled wait was looked at) as a bot that has just started."""
+    from telegram import bot as telegram_bot
+    monkeypatch.setattr(telegram_bot, 'CV_WAIT_PAUSED', {})
+    monkeypatch.setattr(telegram_bot, 'CV_WAIT_LOOKED', {})
 
 
 @pytest.fixture
@@ -79,6 +89,42 @@ def wait_back(account, **seconds):
     for key, value in seconds.items():
         prompt[key] = float(prompt[key]) - value
     BotConversation.objects.filter(pk=account.telegram_user_id).update(prompt=prompt)
+
+
+class Unreachable(LocalTelegramSession):
+    """Telegram out of reach for the next `failures` requests (a network error, or too many requests), then the simulator."""
+
+    def __init__(self, account, failures, retry_after=None):
+        super().__init__(account)
+        self.failures, self.retry_after, self.calls = failures, retry_after, []
+
+    async def make_request(self, bot, method, timeout=None):
+        from aiogram.exceptions import TelegramNetworkError, TelegramRetryAfter
+        self.calls.append(type(method).__name__)
+        if self.failures > 0:
+            self.failures -= 1
+            if self.retry_after:
+                raise TelegramRetryAfter(method=method, message='Too Many Requests', retry_after=self.retry_after)
+            raise TelegramNetworkError(method=method, message='simulated network error')
+        return await super().make_request(bot, method, timeout)
+
+
+def turn(account, session=None):
+    """One turn of the bot's loop over this chat, its requests to Telegram through `session`."""
+    from aiogram import Bot
+    from asgiref.sync import async_to_sync
+    from telegram.bot import build_dispatcher
+
+    async def run():
+        bot = Bot('123456:LOCAL_SIMULATOR_NO_NETWORK', session=session or LocalTelegramSession(account))
+        await build_dispatcher().cv_waits(bot, [account.telegram_user_id])
+    async_to_sync(run)()
+    return session
+
+
+def unpause(account):
+    from telegram import bot as telegram_bot
+    telegram_bot.CV_WAIT_PAUSED.pop(account.telegram_user_id, None)
 
 
 def queued_for(owner, count):
@@ -265,6 +311,86 @@ def test_a_photo_sent_first_is_known_for_the_portrait_or_a_page_once_it_is_read(
     assert data['options']['portrait_asset_id'] == str(portrait.id) and data['prompt'] == BRIEF
 
 
+def test_generate_on_the_old_review_waits_for_the_file_added_to_it(customer, queued):
+    save_config('ai', {'mode': 'local_fixture'})
+    choose(customer, 'cv_mode_file')
+    send(customer, 'old-cv.pdf', one_column_pdf())
+    reads.next_read()
+    review = look(customer)
+    above = LocalBotMessage.objects.filter(account=customer, direction='outbound').latest('created_at')
+    send(customer, 'more.pdf', nameless_pdf())
+    # Generate on the review above, the added file still being read: not made without it, and said so there.
+    tap(customer, review, 'Generate')
+    above.refresh_from_db()
+    assert above.text.startswith(EN['cv_wait_adding']) and '📄 Timur Rakhimov' in above.text, above.text
+    assert '✨ Generate' in [button['label'] for row in above.buttons for button in row]
+    assert not Job.objects.filter(account=customer).exists()
+    assert state(customer)[0] == 'cv_wait' and wait(customer)['then'] == 'add'
+    reads.next_read()
+    words, _ = screen(look(customer))
+    old, more = (FileAsset.objects.get(account=customer, name=name) for name in ('old-cv.pdf', 'more.pdf'))
+    assert words.startswith(EN['cv_files_added']) and latest(customer, CV)['source_ids'] == [str(old.id), str(more.id)]
+    tap(customer, look(customer), 'Generate')
+    assert Job.objects.get(account=customer, feature_id=CV).status == 'succeeded'
+
+
+def test_files_past_what_one_cv_takes_are_left_out_of_the_wait_and_never_read(customer, model, queued, monkeypatch):
+    monkeypatch.setattr('apps.studio.cv.sources.MAX_FILES', 2)
+    choose(customer, 'cv_mode_file')
+    send(customer, 'a.pdf', one_column_pdf())
+    send(customer, 'b.pdf', nameless_pdf())
+    send(customer, 'c.pdf', nameless_pdf())
+    a, b, c = (FileAsset.objects.get(account=customer, name=name) for name in ('a.pdf', 'b.pdf', 'c.pdf'))
+    # The third is one too many: said on the waiting message, which goes on with the two.
+    assert wait(customer)['source_ids'] == [str(a.id), str(b.id)]
+    assert waiting(customer)[0].startswith('📎 That’s too much for one CV: at most 2 files'), waiting(customer)[0]
+    assert not CvSourceRead.objects.filter(asset=c).exists(), 'the reader never spends its time on it'
+    read = 0
+    while reads.next_read():
+        read += 1
+    words, _ = screen(look(customer))
+    assert read == 2 and '📄 Timur Rakhimov' in words and '📎 From: a.pdf, b.pdf' in words, words
+    assert latest(customer, CV)['source_ids'] == [str(a.id), str(b.id)]
+
+
+def test_words_sent_while_a_file_is_added_are_a_line_each_as_on_the_review(customer, queued):
+    save_config('ai', {'mode': 'local_fixture'})
+    choose(customer, 'cv_mode_file')
+    send(customer, 'old-cv.pdf', one_column_pdf(), caption='Lead engineer roles')
+    reads.next_read()
+    look(customer)
+    send(customer, 'more.pdf', nameless_pdf(), caption='Add the 2018 job')
+    dispatch_local(customer, text='Target employer: Example Motors')
+    dispatch_local(customer, text='Salary expectations: negotiable')
+    reads.next_read()
+    look(customer)
+    assert latest(customer, CV)['prompt'] == ('Lead engineer roles\nAdd the 2018 job\nTarget employer: Example Motors\n'
+                                              'Salary expectations: negotiable')
+
+
+def test_check_now_on_an_older_waiting_message_leaves_the_newer_wait_where_it_is(customer, model, queued):
+    choose(customer, 'cv_mode_file')
+    send(customer, 'old-cv.pdf', one_column_pdf())
+    wait_back(customer, moved_at=11 * 60)
+    stalled = look(customer)
+    old = LocalBotMessage.objects.filter(account=customer, direction='outbound').latest('created_at')
+    # The customer starts again, and a new wait is on a new message.
+    dispatch_local(customer, text='/start')
+    choose(customer, 'cv_mode_file')
+    send(customer, 'second.pdf', one_column_pdf())
+    new = LocalBotMessage.objects.filter(account=customer, direction='outbound').latest('created_at')
+    screen_then = wait(customer)['screen']
+    assert screen_then[1] == new.telegram_message_id != old.telegram_message_id
+    tap(customer, stalled, EN['cv_wait_check_now'])
+    old.refresh_from_db()
+    assert wait(customer)['screen'] == screen_then and old.text == EN['cv_wait_moved'] and old.buttons == []
+    while reads.next_read():
+        pass
+    look(customer)
+    new.refresh_from_db()
+    assert '📄 Timur Rakhimov' in new.text and 'second.pdf' in new.text, new.text
+
+
 # --- What the reader could not read ---------------------------------------------------------------
 
 def test_a_failed_read_is_a_file_not_read_and_nothing_read_is_said_so(customer, model, queued):
@@ -316,29 +442,52 @@ def test_start_or_cancel_ends_the_wait_and_the_read_makes_no_cv(customer, model,
     assert not GenerationDraft.objects.filter(account=customer).exists()
 
 
-def test_a_wait_past_ten_minutes_says_so_and_try_again_looks_again_without_sending_again(customer, model, queued):
+def test_a_wait_that_has_not_moved_for_ten_minutes_says_so_and_still_becomes_the_review_by_itself(customer, model, queued):
+    from telegram import bot as telegram_bot
     choose(customer, 'cv_mode_file')
     send(customer, 'old-cv.pdf', one_column_pdf())
-    wait_back(customer, since=11 * 60)
+    wait_back(customer, moved_at=11 * 60)
     words, shown = screen(look(customer))
-    assert words == f'<b>{TOOL_NAMES[CV]["en"]}</b>\n{EN["cv_wait_slow"]}' and shown == [EN['cv_try_again'], EN['cancel_button']]
-    assert wait(customer)['stalled'] is True
-    # A stopped wait is not looked at again by itself.
+    assert words == f'<b>{TOOL_NAMES[CV]["en"]}</b>\n{EN["cv_wait_slow"]}' and shown == [EN['cv_wait_check_now'], EN['cancel_button']]
+    assert wait(customer)['stalled'] is True and customer.telegram_user_id in telegram_bot.CV_WAITING
+    # Said once: looked at again while nothing moved, it is left as it is.
     stalled = look(customer)
     assert screen(stalled)[0] == words
-    # Try again while it still waits: the waiting message again, for another ten minutes.
-    again = tap(customer, stalled, EN['cv_try_again'])
+    # Check now while it still waits: the waiting message again, for another ten minutes.
+    again = tap(customer, stalled, EN['cv_wait_check_now'])
     assert EN['cv_wait_one'] in screen(again)[0] and wait(customer)['stalled'] is False
-    wait_back(customer, since=11 * 60)
-    stalled = look(customer)
+    wait_back(customer, moved_at=11 * 60)
+    look(customer)
+    assert wait(customer)['stalled'] is True
+    # Read meanwhile: a stalled wait is looked at less often, and becomes the review by itself, nothing tapped.
     reads.next_read()
-    words, _ = screen(tap(customer, stalled, EN['cv_try_again']))
+    assert screen(look(customer))[0] == words, 'looked at again only after CV_WAIT_STALLED_POLL'
+    telegram_bot.CV_WAIT_LOOKED[customer.telegram_user_id] -= telegram_bot.CV_WAIT_STALLED_POLL + 1
+    words, _ = screen(look(customer))
     assert '📄 Timur Rakhimov' in words and state(customer)[0] == 'cv_review', words
     assert FileAsset.objects.filter(account=customer).count() == 1, 'nothing was sent again'
     assert CvSourceRead.objects.filter(account=customer).count() == 1
 
 
+def test_a_file_being_read_or_a_place_that_moves_never_stalls_the_wait(customer, model, queued, monkeypatch):
+    monkeypatch.setattr('telegram.bot.CV_WAIT_EDIT', 0)
+    queued_for(another_customer(), 1)
+    choose(customer, 'cv_mode_file')
+    send(customer, 'old-cv.pdf', one_column_pdf())
+    # The wait began eleven minutes ago, but its place moved just now: its file is being read.
+    wait_back(customer, since=11 * 60, moved_at=11 * 60)
+    reads.next_read()
+    taken = reads.claim()
+    assert taken.asset.name == 'old-cv.pdf'
+    look(customer)
+    assert f'\n{EN["cv_wait_now"]}\n' in waiting(customer)[0] and not wait(customer)['stalled'], waiting(customer)
+    reads.perform(taken)
+    words, _ = screen(look(customer))
+    assert '📄 Timur Rakhimov' in words and state(customer)[0] == 'cv_review', words
+
+
 def test_a_look_that_fails_stops_the_wait_as_a_long_one_and_never_stops_the_others(customer, model, queued, monkeypatch):
+    from telegram import bot as telegram_bot
     choose(customer, 'cv_mode_file')
     send(customer, 'old-cv.pdf', one_column_pdf())
     reads.next_read()
@@ -346,10 +495,121 @@ def test_a_look_that_fails_stops_the_wait_as_a_long_one_and_never_stops_the_othe
     real = generation.build
     monkeypatch.setattr(generation, 'build', lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError('a fault')))
     words, shown = screen(look(customer))
-    assert words.endswith(EN['cv_wait_slow']) and shown[0] == EN['cv_try_again'], words
+    assert words.endswith(EN['cv_wait_slow']) and shown[0] == EN['cv_wait_check_now'], words
+    # Still looked at: once the fault is gone, the review comes by itself.
     monkeypatch.setattr(generation, 'build', real)
-    words, _ = screen(tap(customer, look(customer), EN['cv_try_again']))
+    telegram_bot.CV_WAIT_LOOKED.clear()
+    words, _ = screen(look(customer))
     assert '📄 Timur Rakhimov' in words, words
+    assert GenerationDraft.objects.filter(account=customer).count() == 1
+
+
+# --- Telegram out of reach for a moment ------------------------------------------------------------
+
+def test_telegram_out_of_reach_for_a_moment_changes_nothing_and_the_wait_goes_on(customer, model, queued, monkeypatch):
+    from telegram import bot as telegram_bot
+    monkeypatch.setattr('telegram.bot.CV_WAIT_EDIT', 0)
+    queued_for(another_customer(), 2)
+    choose(customer, 'cv_mode_file')
+    shown = screen(send(customer, 'old-cv.pdf', one_column_pdf()))[0]
+    assert '\n🕐 1 file ahead of you\n' in shown
+    # The queue moves, and the redraw and the first try after it both find Telegram out of reach.
+    reads.next_read()
+    session = turn(customer, Unreachable(customer, 2))
+    assert session.calls == ['EditMessageText']
+    assert waiting(customer)[0] == shown and state(customer)[0] == 'cv_wait' and not wait(customer)['stalled']
+    assert wait(customer)['shown'] == 1, 'what failed is drawn again'
+    # Left alone a moment: the next turn sends nothing.
+    assert turn(customer, Unreachable(customer, 0)).calls == []
+    unpause(customer)
+    turn(customer, Unreachable(customer, 1))
+    unpause(customer)
+    turn(customer)
+    assert f'\n{EN["cv_wait_next"]}\n' in waiting(customer)[0], waiting(customer)
+    # Too many requests: left alone as long as Telegram asks.
+    while reads.next_read():
+        pass
+    before = time.time()
+    turn(customer, Unreachable(customer, 1, retry_after=7))
+    assert telegram_bot.CV_WAIT_PAUSED[customer.telegram_user_id] >= before + 7
+    unpause(customer)
+    words, _ = screen(look(customer))
+    assert '📄 Timur Rakhimov' in words and state(customer)[0] == 'cv_review', words
+
+
+def test_a_review_telegram_did_not_take_is_drawn_again_never_made_again(customer, model, queued):
+    choose(customer, 'cv_mode_file')
+    send(customer, 'old-cv.pdf', one_column_pdf())
+    reads.next_read()
+    turn(customer, Unreachable(customer, 1))
+    draft = cv(customer)
+    # The CV is made and kept with the wait, to be drawn; the chat still waits on its message.
+    assert state(customer)[0] == 'cv_wait' and wait(customer)['then'] == 'show' and wait(customer)['draft_id'] == str(draft.id)
+    assert EN['cv_wait_one'] in waiting(customer)[0] and EN['cv_wait_slow'] not in waiting(customer)[0]
+    # A note sent meanwhile is added to it, as on its review.
+    dispatch_local(customer, text='Target employer: Example Motors')
+    words, _ = waiting(customer)
+    assert '📄 Timur Rakhimov' in words and state(customer)[0] == 'cv_review', words
+    assert GenerationDraft.objects.filter(account=customer).count() == 1 and cv(customer).id == draft.id
+    assert latest(customer, CV)['prompt'] == 'Target employer: Example Motors'
+    # Or drawn on the next turn, alone.
+    choose(customer, 'cv_mode_file')
+    send(customer, 'second.pdf', one_column_pdf())
+    reads.next_read()
+    turn(customer, Unreachable(customer, 1))
+    unpause(customer)
+    words, _ = screen(look(customer))
+    assert '📄 Timur Rakhimov' in words and state(customer)[0] == 'cv_review', words
+    assert GenerationDraft.objects.filter(account=customer).count() == 2
+
+
+def test_a_question_telegram_did_not_take_is_asked_on_a_later_turn(customer, model, queued):
+    choose(customer, 'cv_mode_file')
+    send(customer, 'cv.pdf', nameless_pdf())
+    reads.next_read()
+    # No name in the file: the question in the waiting message's place, which Telegram did not take.
+    turn(customer, Unreachable(customer, 1))
+    assert state(customer)[0] == 'cv_wait' and EN['cv_wait_one'] in waiting(customer)[0]
+    unpause(customer)
+    look(customer)
+    assert state(customer)[0] == 'cv_source' and state(customer)[1]['ask'] == 'name', state(customer)
+
+
+def test_the_customer_moving_on_while_the_loop_makes_the_cv_keeps_where_they_went(customer, model, queued, monkeypatch):
+    import asyncio
+    from datetime import datetime, timezone as dt_timezone
+    from aiogram import Bot
+    from aiogram.types import Chat, Message, Update, User
+    from asgiref.sync import async_to_sync
+    from telegram import generation
+    from telegram.bot import build_dispatcher
+    choose(customer, 'cv_mode_file')
+    send(customer, 'old-cv.pdf', one_column_pdf())
+    reads.next_read()
+    real = generation.build
+
+    def slow(*args, **kwargs):
+        time.sleep(0.6)
+        return real(*args, **kwargs)
+    monkeypatch.setattr(generation, 'build', slow)
+    LocalBotMessage.objects.create(account=customer, direction='inbound', text='/cv', telegram_message_id=7101)
+    command = Update(update_id=7101, message=Message(
+        message_id=7101, date=datetime.now(dt_timezone.utc), chat=Chat(id=customer.telegram_user_id, type='private'),
+        from_user=User(id=customer.telegram_user_id, is_bot=False, first_name='Sample', language_code='en'),
+        text='/cv', entities=[{'type': 'bot_command', 'offset': 0, 'length': 3}]))
+
+    async def run():
+        # /cv arrives while the loop is making the CV from the files just read.
+        bot = Bot('123456:LOCAL_SIMULATOR_NO_NETWORK', session=LocalTelegramSession(customer))
+        dispatcher = build_dispatcher()
+
+        async def later():
+            await asyncio.sleep(0.1)
+            await dispatcher.feed_update(bot, command)
+        await asyncio.gather(dispatcher.cv_waits(bot, [customer.telegram_user_id]), later())
+    async_to_sync(run)()
+    assert state(customer)[0] == 'cv_choose', state(customer)
+    assert waiting(customer)[0].startswith(f'<b>{TOOL_NAMES[CV]["en"]}</b>') and EN['cv_choose_ask'] in waiting(customer)[0]
 
 
 # --- The bot reads nothing, and reads inline as before where they are inline -------------------------
@@ -481,6 +741,57 @@ def test_the_wait_loop_finds_the_waits_kept_before_a_restart_and_outlives_a_fail
             pass
     async_to_sync(run)()
     assert turns[:3] == [True, True, True]
+
+
+def test_the_wait_loop_outlives_a_database_that_refuses_its_first_query(customer, monkeypatch):
+    import asyncio
+    from telegram import bot as telegram_bot
+    BotConversation.objects.filter(pk=customer.telegram_user_id).update(state='cv_wait', prompt={'screen': [1, 2]})
+    telegram_bot.CV_WAITING.discard(customer.telegram_user_id)
+    monkeypatch.setattr(telegram_bot, 'CV_WAIT_POLL', 0.01)
+    real, tries, turns = telegram_bot.cv_waits_kept, [], []
+
+    async def kept():
+        tries.append(1)
+        if len(tries) == 1:
+            raise RuntimeError('database briefly unreachable at start')
+        await real()
+    monkeypatch.setattr(telegram_bot, 'cv_waits_kept', kept)
+
+    class Dispatcher:
+        async def cv_waits(self, bot):
+            turns.append(customer.telegram_user_id in telegram_bot.CV_WAITING)
+
+    async def run():
+        task = asyncio.create_task(telegram_bot.cv_wait_loop(object(), Dispatcher()))
+        for _ in range(500):
+            if len(turns) >= 2:
+                break
+            await asyncio.sleep(0.01)
+        assert not task.done()
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+    from asgiref.sync import async_to_sync
+    async_to_sync(run)()
+    assert len(tries) == 2 and turns[:2] == [True, True]
+
+
+def test_the_local_simulator_looks_at_a_waiting_chat_as_the_page_asks(customer, model, queued):
+    from tests.test_platform import login_client
+    choose(customer, 'cv_mode_file')
+    send(customer, 'old-cv.pdf', one_column_pdf())
+    reads.next_read()
+    client = login_client(customer)
+    response = client.get('/api/v1/telegram/local/messages')
+    assert response.status_code == 200, response.content
+    words, _ = screen(response.json())
+    assert '📄 Timur Rakhimov' in words and state(customer)[0] == 'cv_review', words
+    # A chat that does not wait is only read.
+    before = outbound(customer)
+    assert client.get('/api/v1/telegram/local/messages').status_code == 200 and outbound(customer) == before
 
 
 def test_a_webhook_run_looks_once_at_the_chats_waiting_for_the_reader(customer, monkeypatch):

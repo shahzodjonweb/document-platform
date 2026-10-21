@@ -321,7 +321,7 @@
             "type": "string"
           },
           "error": {
-            "description": "Why a failed read failed: `cv_file_kind`, `cv_file_unreadable`, `source_extraction_failed`, `read_timeout`, `file_unavailable`, `reader_interrupted` or `reader_error`. A failed file is a file not read: the CV says so (`cv_unread`), or is `cv_file_unreadable` when nothing at all was read.",
+            "description": "Why a failed read failed: `cv_file_kind`, `cv_file_unreadable`, `generation_limit` (more pages than any CV is made from, failed as it is uploaded and never read), `source_extraction_failed`, `read_timeout`, `file_unavailable`, `reader_interrupted` or `reader_error`. A failed file is a file not read: the CV says so (`cv_unread`), or is `cv_file_unreadable` when nothing at all was read.",
             "type": [
               "string",
               "null"
@@ -461,7 +461,7 @@
             "type": "integer"
           },
           "error": {
-            "description": "Why a failed read failed: `cv_file_kind`, `cv_file_unreadable`, `source_extraction_failed`, `read_timeout`, `file_unavailable`, `reader_interrupted` or `reader_error`. A failed file is a file not read: the CV says so (`cv_unread`), or is `cv_file_unreadable` when nothing at all was read.",
+            "description": "Why a failed read failed: `cv_file_kind`, `cv_file_unreadable`, `generation_limit` (more pages than any CV is made from, failed as it is uploaded and never read), `source_extraction_failed`, `read_timeout`, `file_unavailable`, `reader_interrupted` or `reader_error`. A failed file is a file not read: the CV says so (`cv_unread`), or is `cv_file_unreadable` when nothing at all was read.",
             "type": [
               "string",
               "null"
@@ -9513,7 +9513,7 @@
     },
     "/studio/cv-reads": {
       "get": {
-        "description": "How the reading of a CV's files stands. A file uploaded with `purpose` `cv_source` is read once, in a queue the accounts take turns in, never while a draft is made: a CV draft (`ai.cv`, `cv_source` `linkedin` or `file`) whose files are still queued or being read is refused with `cv_reading` (409; `message_params.ahead` and `estimated_seconds` as here), to be made again once they are read. `ids` names the account's own files, at most ten; an id that is no live file of theirs is `file_unavailable` (404). A file with no read yet is queued. `ahead` is the most reads that finish before any of them is read, and `estimated_seconds` about how long until the last is read: 0 when none waits, null with no recent reads to tell it from. Asked every two seconds or so while waiting; more than 60 a minute is `rate_limited`.",
+        "description": "How the reading of a CV's files stands. A file uploaded with `purpose` `cv_source` is read once, in a queue the accounts take turns in, never while a draft is made: a CV draft (`ai.cv`, `cv_source` `linkedin` or `file`) whose files are still queued or being read is refused with `cv_reading` (409; `message_params.ahead` and `estimated_seconds` as here), to be made again once they are read. `ids` names the account's own files, at most ten; an id that is no live file of theirs is `file_unavailable` (404). A file with no read yet is queued. `ahead` is how many reads of other customers' files finish before the first of these still queued is read (the account's own files are not ahead of it): 0 when none waits or one of them is being read; each read's own `ahead` counts every read before that file. `estimated_seconds` is about how long until the last is read, counting what is left of the reads in progress: 0 when none waits, null with no recent reads to tell it from or while no reader is taking the queued reads. Asked every two seconds or so while waiting; more than 120 in an account's minute (counted from its first request) is `rate_limited`.",
         "operationId": "listCvReads",
         "parameters": [
           {

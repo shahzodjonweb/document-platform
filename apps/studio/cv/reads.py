@@ -15,13 +15,14 @@ queued, so nothing waits.
 
 Accounts take turns as jobs do (apps/core/scheduling.select_outbox): the one
 served longest ago goes first, so one customer's ten screenshots hold
-another's single PDF up for one read, not ten, and a read that has waited
+another's single PDF up for one read, not ten, and every read that has waited
 AGING_SECONDS goes ahead of the rest, oldest first. A reader takes its read
 under a lease: one that dies mid-read (its container killed) leaves the read
 to be taken again once the lease has lapsed, MAX_ATTEMPTS times in all, and
 then it is failed. Rows are locked with SKIP LOCKED and taken with a
 compare-and-set, so a second reader can run beside the first.
 """
+import heapq
 import logging
 import math
 import time
@@ -56,6 +57,10 @@ MAX_ATTEMPTS = 3
 # How long a read takes is told from the latest reads of the last few hours.
 HISTORY = 20
 HISTORY_HOURS = 6
+# Queued reads that nobody has taken for this long, while none is being read,
+# have no reader taking them (it sleeps a second between empty looks): how
+# long they wait is not known, and no time is said.
+IDLE_SECONDS = 30
 NEVER = datetime.min.replace(tzinfo=dt_timezone.utc)
 
 
@@ -69,16 +74,20 @@ def _model():
 def enqueue(asset):
     """The read of `asset`, queued if it has none yet.
 
-    A file no CV reads is failed at once (`cv_file_kind`, or
-    `cv_file_unreadable` for a protected PDF), so a customer never waits for
-    it. With settings.LOCAL_SYNC_JOBS the file is read here and now.
+    A file no CV reads is failed at once (`cv_file_kind`, `cv_file_unreadable`
+    for a protected PDF, or `generation_limit` for more pages than any CV is
+    made from), so a customer never waits for it and the reader never spends
+    its time on it. The page bound is sources.MAX_PAGES, not the plan's: a
+    failed read stays failed, and a plan's may be raised later.
+    With settings.LOCAL_SYNC_JOBS the file is read here and now.
     """
     CvSourceRead = _model()
     row = CvSourceRead.objects.filter(asset=asset).first()
     if row is not None:
         return row
     kind = sources.kind_of(asset)
-    error = 'cv_file_kind' if kind is None else 'cv_file_unreadable' if asset.metadata.get('encrypted') else ''
+    error = ('cv_file_kind' if kind is None else 'cv_file_unreadable' if asset.metadata.get('encrypted')
+             else 'generation_limit' if (asset.page_count or 0) > sources.MAX_PAGES else '')
     now = timezone.now()
     try:
         # A savepoint, so a read queued at the same moment elsewhere leaves the caller's transaction whole.
@@ -138,23 +147,34 @@ def fair_order(rows, served, now):
 
     `served` is when each account's last read began (None or missing for one
     never served); the account served longest ago goes first, and each takes
-    one read a round. The same rule as apps/core/scheduling.select_outbox.
+    one read a round. The same rule as apps/core/scheduling.select_outbox,
+    worked out the way claim() takes the reads one after another: every read
+    that has waited AGING_SECONDS goes before any other, and an account is
+    served by each read taken, so the one whose aged reads went first takes
+    its turn after the rest. A place said from this order (places) is the
+    place the read is taken in.
     """
     cutoff = now - timedelta(seconds=AGING_SECONDS)
+    ordered = sorted(rows, key=lambda row: (row.created_at, str(row.pk)))
+    order = [row for row in ordered if row.created_at <= cutoff]
     queues = defaultdict(deque)
-    for row in sorted(rows, key=lambda row: (row.created_at, str(row.pk))):
-        queues[row.account_id].append(row)
-
-    def owner_order(owner):
-        head = queues[owner][0]
-        aged = head.created_at <= cutoff
-        return (0 if aged else 1, head.created_at if aged else served.get(owner) or NEVER, head.created_at, str(owner))
-    order = []
-    while queues:
-        for owner in sorted(queues, key=owner_order):
-            order.append(queues[owner].popleft())
-            if not queues[owner]:
-                del queues[owner]
+    for row in ordered:
+        if row.created_at > cutoff:
+            queues[row.account_id].append(row)
+    # An account served by a read taken here is served after any real start: (1, turn) sorts after (0, time).
+    last = {owner: (0, served.get(owner) or NEVER) for owner in queues}
+    for turn, row in enumerate(order):
+        if row.account_id in last:
+            last[row.account_id] = (1, turn)
+    turns = [(last[owner], rows_of[0].created_at, str(owner), owner) for owner, rows_of in queues.items()]
+    heapq.heapify(turns)
+    turn = len(order)
+    while turns:
+        _, _, _, owner = heapq.heappop(turns)
+        order.append(queues[owner].popleft())
+        if queues[owner]:
+            heapq.heappush(turns, ((1, turn), queues[owner][0].created_at, str(owner), owner))
+        turn += 1
     return order
 
 
@@ -181,31 +201,89 @@ def ahead_of(row, place, beyond):
     return place.get(row.pk, beyond) if row.status == QUEUED else 0
 
 
-def estimate(ahead, reading, now=None):
-    """About how many seconds until `ahead` reads and one more are done, from how long the latest took; None with none to go by.
-
-    Readers side by side share the work: as many as are reading now.
-    """
-    now = now or timezone.now()
+def usual_seconds(now):
+    """How many seconds a read takes lately, from the latest reads of the last few hours; None with none to go by."""
     spans = (_model().objects.filter(status__in=(DONE, FAILED), started_at__isnull=False,
                                      finished_at__gte=now - timedelta(hours=HISTORY_HOURS))
              .exclude(error='reader_interrupted').order_by('-finished_at')
              .values_list('started_at', 'finished_at')[:HISTORY])
     seconds = [max(0.0, (end - start).total_seconds()) for start, end in spans]
-    if not seconds:
+    return sum(seconds) / len(seconds) if seconds else None
+
+
+def left_of(row, usual, now):
+    """About how many seconds the read in progress `row` still takes, when a read takes `usual`.
+
+    What is left of the usual time, and never less than as long again as it
+    has taken, so the time said grows with a read that takes long instead of
+    staying "a moment"; never past the time a read has (its child is stopped
+    then, and the read finished as `read_timeout`). One past that lost its
+    reader mid-read: it is read again once its lease lapses (sweep).
+    """
+    from ..extraction import CV_GRACE_SECONDS
+    spent = max(0.0, (now - row.started_at).total_seconds()) if row.started_at else 0.0
+    allowed = sources.READ_SECONDS + CV_GRACE_SECONDS
+    if spent < allowed:
+        return max(usual - spent, min(spent, allowed - spent))
+    lapses = (row.lease_expires_at - now).total_seconds() if row.lease_expires_at else 0.0
+    return max(0.0, lapses) + usual
+
+
+def estimate(rows, place, reading, now=None):
+    """About how many seconds until the last of `rows` (one customer's reads) is read; 0 when none waits.
+
+    `place` and `reading` are as places() took them. The reads being read
+    count for what is left of each (left_of), and the queued reads up to
+    the last of `rows` for as long as reads take lately; readers side by
+    side share the work. None with no reads to tell it from, and while
+    reads wait with none being read for IDLE_SECONDS: no reader is taking
+    them, and a short time said again and again would not be true.
+    """
+    now = now or timezone.now()
+    unfinished = [row for row in rows if row.status in WAITING]
+    if not unfinished:
+        return 0
+    usual = usual_seconds(now)
+    if usual is None:
         return None
-    return max(1, math.ceil(sum(seconds) / len(seconds) * (ahead + 1) / max(1, reading)))
+    CvSourceRead = _model()
+    taken = list(CvSourceRead.objects.filter(status=READING).only('id', 'started_at', 'lease_expires_at'))
+    if not taken:
+        oldest = CvSourceRead.objects.filter(status=QUEUED).order_by('created_at').values_list('created_at', flat=True).first()
+        if oldest is not None and (now - oldest).total_seconds() > IDLE_SECONDS:
+            return None
+    left = {row.pk: left_of(row, usual, now) for row in taken}
+    queued = [row for row in unfinished if row.status == QUEUED]
+    if not queued:
+        # Every one of them is being read: the one that takes longest.
+        return max(1, math.ceil(max(left.get(row.pk, usual) for row in unfinished)))
+    beyond = len(place) + reading
+    before = max(place.get(row.pk, beyond) for row in queued) - reading
+    return max(1, math.ceil((sum(left.values()) + usual * (before + 1)) / max(1, len(taken))))
 
 
 def waiting(rows, now=None):
-    """(ahead, estimated_seconds) for the last of `rows` to be read: how many reads finish before it, and about how long."""
+    """(ahead, estimated_seconds) for a customer's `rows`: how many reads of others come first, and about how long in all.
+
+    `ahead` is said as the bot says it (telegram/generation.cv_reading): the
+    reads of other files that finish before the first of `rows` still
+    queued, 0 once one of them is being read. The customer's own files are
+    not ahead of them. The time is until the last of them is read (estimate).
+    """
     unfinished = [row for row in rows if row.status in WAITING]
     if not unfinished:
         return 0, 0
     order, reading = queue(now)
     place = places(order, reading)
-    ahead = max(ahead_of(row, place, len(order) + reading) for row in unfinished)
-    return ahead, estimate(ahead, reading, now)
+    return first_place(unfinished, place, len(order) + reading), estimate(unfinished, place, reading, now)
+
+
+def first_place(rows, place, beyond):
+    """How many reads of other files finish before the first of a customer's `rows` still waiting: 0 while one is read."""
+    waiting_rows = [row for row in rows if row.status in WAITING]
+    if not waiting_rows or any(row.status == READING for row in waiting_rows):
+        return 0
+    return min(place.get(row.pk, beyond) for row in waiting_rows)
 
 
 def refusal(rows):
@@ -335,10 +413,12 @@ def state(account, assets):
     """How the reading of these files is going, as GET /studio/cv-reads says it.
 
     {'reads': [{'asset_id', 'status', 'ahead', 'pages', 'ocr_pages', 'error'}],
-    'ahead', 'estimated_seconds'}: `ahead` is the most reads that finish
-    before any of them is read (0 when none waits), and `estimated_seconds`
-    about how long until the last is read, 0 when none waits and None with no
-    reads to tell it from. A file that has no read yet is queued.
+    'ahead', 'estimated_seconds'}: each read's `ahead` is the reads that
+    finish before that file is read; the whole `ahead` is how many reads of
+    other files come before the customer's, as the bot says it (waiting): 0
+    when none waits or one of theirs is being read. `estimated_seconds` is
+    about how long until the last is read, 0 when none waits and None when
+    it cannot be told (estimate). A file that has no read yet is queued.
     """
     rows = ensure(account, assets, results=False)
     order, reading = queue()
@@ -348,9 +428,9 @@ def state(account, assets):
         row = rows[str(asset.pk)]
         listed.append({'asset_id': str(asset.pk), 'status': row.status, 'ahead': ahead_of(row, place, beyond),
                        'pages': row.pages, 'ocr_pages': row.ocr_pages, 'error': row.error or None})
-    unfinished = [entry['ahead'] for entry in listed if entry['status'] in WAITING]
-    ahead = max(unfinished, default=0)
-    return {'reads': listed, 'ahead': ahead, 'estimated_seconds': estimate(ahead, reading) if unfinished else 0}
+    mine = [rows[str(asset.pk)] for asset in assets]
+    return {'reads': listed, 'ahead': first_place(mine, place, beyond),
+            'estimated_seconds': estimate(mine, place, reading)}
 
 
 def upload_state(asset):

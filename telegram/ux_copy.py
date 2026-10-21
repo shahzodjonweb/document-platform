@@ -298,8 +298,7 @@ MESSAGES = {
     'cv_photo_is_page': ('📄 A page to read', '📄 O‘qish uchun sahifa', '📄 Страница для чтения'),
     # A photo with nothing to read in it, sent before a way to make the CV was chosen: kept as its photo.
     'cv_photo_kept_choose': ('📷 There’s no text to read in this photo, so it will go on your CV as your photo. If it’s a page of your old CV, choose 📄 From my old CV and send a clearer one.', '📷 Bu rasmda o‘qiladigan matn yo‘q, shuning uchun u CV’ga rasmingiz sifatida qo‘yiladi. Agar u eski CV’ingiz sahifasi bo‘lsa, «📄 Eski CV’imdan»ni tanlang va aniqroq rasm yuboring.', '📷 В этом фото нет текста, поэтому оно будет фотографией в резюме. Если это страница старого резюме, выберите «📄 Из старого резюме» и пришлите более чёткое фото.'),
-    # After a refusal that passes (too many at once), the CV made again from the
-    # files kept; after a wait for the reader that took too long, a look again.
+    # After a refusal that passes (too many at once), the CV made again from the files kept.
     'cv_try_again': ('🔄 Try again', '🔄 Qayta urinish', '🔄 Попробовать снова'),
     'cv_files_added': ('📎 Added to the CV’s files.', '📎 CV fayllariga qo‘shildi.', '📎 Добавлено к файлам резюме.'),
     # While a CV's files wait for the reader (apps/studio/cv/reads.py): one
@@ -314,10 +313,21 @@ MESSAGES = {
     'cv_wait_hint': ('Your CV’s review will appear right here as soon as reading is done. Meanwhile you can send more files or notes.',
                      'O‘qib bo‘lishimiz bilan CV’ingiz tekshirish uchun shu yerda chiqadi. Bu orada yana fayl yoki istaklaringizni yuborishingiz mumkin.',
                      'Как только дочитаем, здесь появится ваше резюме для проверки. А пока можно прислать ещё файлы или пожелания.'),
-    # A wait longer than ten minutes (telegram/bot.py CV_WAIT_LIMIT): Try again looks again; nothing is sent again.
-    'cv_wait_slow': ('⏳ Reading is taking longer than usual. Your files and notes are kept — tap 🔄 Try again in a minute and we’ll carry on from here.',
-                     '⏳ O‘qish odatdagidan uzoqroq cho‘zilyapti. Fayllaringiz va istaklaringiz saqlanib turibdi — bir daqiqadan keyin «🔄 Qayta urinish»ni bosing, shu yerdan davom etamiz.',
-                     '⏳ Чтение занимает больше времени, чем обычно. Файлы и пожелания сохранены — через минуту нажмите «🔄 Попробовать снова», и мы продолжим с этого места.'),
+    # A wait whose place has not moved for ten minutes (telegram/bot.py
+    # CV_WAIT_LIMIT): it goes on, and the review still comes by itself. Check
+    # now only looks at once; nothing is sent again.
+    'cv_wait_slow': ('⏳ Reading is taking longer than usual. Your files and notes are kept, and your CV’s review will still appear right here once they’re read — there’s no need to send anything again.',
+                     '⏳ O‘qish odatdagidan uzoqroq cho‘zilyapti. Fayllaringiz va istaklaringiz saqlanib turibdi: o‘qib bo‘lishimiz bilan CV tekshirish uchun shu yerda chiqadi — hech narsani qayta yuborishingiz shart emas.',
+                     '⏳ Чтение занимает больше времени, чем обычно. Файлы и пожелания сохранены: как только дочитаем, резюме для проверки появится здесь — ничего присылать заново не нужно.'),
+    'cv_wait_check_now': ('🔄 Check now', '🔄 Hozir tekshirish', '🔄 Проверить сейчас'),
+    # Check now on an older waiting message, while the chat waits in a newer one.
+    'cv_wait_moved': ('⏳ Your files are still being read — the review will appear in the newest message below.',
+                      '⏳ Fayllaringizni hali o‘qiyapmiz — CV tekshirish uchun pastdagi eng yangi xabarda chiqadi.',
+                      '⏳ Файлы ещё читаются — резюме для проверки появится в последнем сообщении ниже.'),
+    # Generate on a CV's review while a file added to it is still being read: said above the review.
+    'cv_wait_adding': ('⏳ Still reading the file you added. The CV with it will appear in the message below — make it from there.',
+                       '⏳ Qo‘shgan faylingizni hali o‘qiyapmiz. U qo‘shilgan CV pastdagi xabarda chiqadi — uni o‘sha yerdan tayyorlang.',
+                       '⏳ Ещё читаем добавленный файл. Резюме с ним появится в сообщении ниже — создайте его оттуда.'),
 }
 
 # Keep the older keys for commands, saved controls and transport compatibility.

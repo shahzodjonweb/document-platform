@@ -76,11 +76,21 @@ def drafts(request):
 CV_UPDATES_PER_MINUTE=30
 
 def _account_limit(account,key,limit):
+    """At most `limit` requests a minute for one account, the minute counted from its first request.
+
+    A fixed window: the count expires a minute after it began, whatever comes
+    after. Set again on every request, the expiry moved on with each, and a
+    tab asking every two seconds was refused after two minutes of waiting.
+    incr keeps the expiry (locmem and redis alike).
+    """
     from django.core.cache import cache
     cache_key=f'rate:{key}:account:{account.id}'
-    count=cache.get(cache_key,0)
-    if count>=limit:raise DomainError('rate_limited',429,retryable=True)
-    cache.set(cache_key,count+1,60)
+    cache.add(cache_key,0,60)
+    try:count=cache.incr(cache_key)
+    except ValueError:
+        # The minute ended between add and incr: this request begins the next.
+        cache.add(cache_key,0,60);count=cache.incr(cache_key)
+    if count>limit:raise DomainError('rate_limited',429,retryable=True)
 
 @api(('GET','PATCH','DELETE'))
 def draft_detail(request,pk):
@@ -96,8 +106,9 @@ def draft_detail(request,pk):
     return draft_data(d)
 
 # How often one account may ask how its CV's files are being read: the web
-# asks every two seconds while it waits, from a tab or two.
-CV_READS_PER_MINUTE=60
+# asks every two seconds while it waits, from a tab or two (60 a minute), and
+# again as a file is uploaded or a draft is refused while it is read.
+CV_READS_PER_MINUTE=120
 
 @api(('GET',))
 def cv_reads(request):
