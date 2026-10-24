@@ -197,6 +197,8 @@ def test_the_finished_pdf_is_really_produced(customer):
     assert job.status == 'succeeded', job.error_code
     artifact = job.artifacts.select_related('file').get()
     assert artifact.file.name.endswith('.pdf') and artifact.file.page_count == 1
+    # Named after the document's title, with the task's code: never just document.pdf.
+    assert artifact.file.name.endswith(f'-{job.id.hex[:6]}.pdf') and artifact.file.name[:-11] not in ('', 'document'), artifact.file.name
 
 
 def test_examples_are_offered_in_every_language(customer):

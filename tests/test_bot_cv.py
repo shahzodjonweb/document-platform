@@ -377,7 +377,7 @@ def test_generate_sends_the_cv_named_after_the_person(customer, delivered):
     job = Job.objects.get(account=customer, feature_id=CV)
     assert job.status == 'succeeded', job.error_code
     asset = job.artifacts.get().file
-    assert asset.name == 'Dilnoza Karimova CV.pdf' and asset.page_count in (1, 2)
+    assert asset.name == f'Dilnoza-Karimova-CV-{job.id.hex[:6]}.pdf' and asset.page_count in (1, 2)
     assert LocalBotMessage.objects.filter(account=customer, direction='outbound', asset=asset).exists()
     assert '✏️ Make changes' in labels(delivered), labels(delivered)
     assert state(customer) == ('', {}), 'the review is the job now: a photo sent next is a file task'

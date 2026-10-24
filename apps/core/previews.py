@@ -63,7 +63,8 @@ def preview_asset(account,asset_id,page=1,secret_id=None):
             key=f'previews/{account.id}/{asset.id}/{page}-{uuid.uuid4().hex}.png'
             target=storage_path(key);target.parent.mkdir(parents=True,exist_ok=True,mode=0o700)
             shutil.copyfile(image,target);os.chmod(target,0o600)
-            preview=FileAsset.objects.create(account=account,name=f'page-{page}.png',object_key=key,mime_type='image/png',size_bytes=target.stat().st_size,page_count=1,sha256=hashlib.sha256(target.read_bytes()).hexdigest(),metadata={'kind':'image','source_asset_id':str(asset.id),'page':page,'dpi':96},expires_at=deadline)
+            from .naming import preview_name
+            preview=FileAsset.objects.create(account=account,name=preview_name(asset,page),object_key=key,mime_type='image/png',size_bytes=target.stat().st_size,page_count=1,sha256=hashlib.sha256(target.read_bytes()).hexdigest(),metadata={'kind':'image','source_asset_id':str(asset.id),'page':page,'dpi':96},expires_at=deadline)
             PagePreview.objects.create(asset=asset,page=page,file=preview)
             storage.save(key,'image/png')
             return preview

@@ -648,7 +648,7 @@ def test_a_cv_made_without_a_model_has_its_sections_and_is_named_after_the_perso
     assert data['content']['sections'][0]['body'].startswith('Phone +998')
     job = made(customer, draft)
     assert job.warnings == ['local_fixture_not_ai_generated']
-    assert job.artifacts.get().file.name == 'Dilnoza Karimova CV.pdf'
+    assert job.artifacts.get().file.name == f'Dilnoza-Karimova-CV-{job.id.hex[:6]}.pdf'
 
 
 # --- Facts --------------------------------------------------------------------------------------
@@ -848,7 +848,9 @@ def test_one_message_becomes_a_cv_named_after_the_person(customer, monkeypatch):
     draft = create_draft(customer, {'feature_id': CV, 'prompt': BRIEF})
     job = made(customer, draft)
     asset = job.artifacts.get().file
-    assert asset.name == 'Dilnoza Karimova CV.pdf' and asset.page_count == 1
+    assert asset.name == f'Dilnoza-Karimova-CV-{job.id.hex[:6]}.pdf' and asset.page_count == 1
+    # The person's name is what the file is called, never part of where it is kept.
+    assert asset.object_key.endswith('/cv.pdf')
     assert ai_documents_this_week(customer) == 1
     data = unpack(GenerationDraft.objects.get(pk=draft.pk).encrypted_data)
     assert data['options']['template_style']['cv_template'] == 'lab'

@@ -35,6 +35,12 @@ tests/test_platform.py::test_password_handles_roundtrip_and_no_plaintext_persist
 # PDF page tools
 tests/test_processors.py::test_split_and_rotate
 
+# Result file names: after the customer's file or title, never the same twice, sent as is
+tests/test_file_names.py::test_real_pdf_tasks_name_their_results_after_the_upload
+tests/test_file_names.py::test_the_same_file_done_twice_gives_two_names_and_a_taken_name_grows_its_code
+tests/test_file_names.py::test_the_web_download_sends_the_name[cyrillic]
+tests/test_file_names.py::test_the_telegram_document_carries_the_name_as_utf8
+
 # PDF compression
 tests/test_processors.py::test_compression_and_no_op
 

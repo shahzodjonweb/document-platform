@@ -1091,7 +1091,7 @@ def test_a_linkedin_pdf_becomes_a_cv_whose_contacts_come_from_the_file(customer,
     assert sent(body)['prompt'] == 'I want a job as a lead data analyst'
     assert 'citations' not in body['text']['format']['schema']['properties']
     asset = job.artifacts.get().file
-    assert asset.name == 'Dilnoza Karimova CV.pdf'
+    assert asset.name == f'Dilnoza-Karimova-CV-{job.id.hex[:6]}.pdf'
     # Read back with its line breaks taken out: the sidebar breaks a long address.
     text = ''.join(artifact_text(storage.local(asset.object_key)).split())
     for given in ('Dilnoza Karimova', '+998 90 123 45 67', 'dilnoza.karimova@example.com',

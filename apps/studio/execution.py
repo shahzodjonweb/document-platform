@@ -2,6 +2,7 @@ from django.utils import timezone
 from django.db import transaction
 from django.db.models import F
 from apps.core.errors import DomainError
+from apps.core.models import FileAsset
 from operations.integrations import ai_config
 from .models import GenerationDraft,ProviderUsage
 from .domain import unpack,pack,validate_content,validate_generation_quote,limits,ensure_selected_preservation
@@ -138,9 +139,9 @@ def execute_generation(job,output_dir):
         # The portrait is read again and must still be the file that was quoted;
         # one that is not leaves the CV without it rather than failing the job.
         from .cv import portrait
-        from .cv.render import filename,render_cv
+        from .cv.render import render_cv
         photo,unusable=portrait.load(job.account,data)
-        artifacts=[render_cv(content,output_dir/filename(content),data['output_locale'],style=style,portrait=photo)]
+        artifacts=[render_cv(content,output_dir/'cv.pdf',data['output_locale'],style=style,portrait=photo)]
         for code in [*((data.get('options') or {}).get('cv_warnings') or []),*unusable,
                      *artifacts[0]['metadata'].get('warnings',[])]:
             if code not in warnings:warnings.append(code)
@@ -187,6 +188,10 @@ def execute_generation(job,output_dir):
     # The renderer holds each section to its own page. When it had to shorten one
     # to do that, the customer is told rather than left to notice.
     if not cv and any(a.get('shortened') for a in artifacts):warnings.append('shortened_to_fit')
+    # The file is named when the task settles (apps/core/naming.py): after its
+    # title — a CV's is the person's name — or else the first file it was made from.
+    source_name=FileAsset.objects.filter(account=job.account,pk__in=data.get('source_ids') or []).order_by('created_at').values_list('name',flat=True).first()
+    for artifact in artifacts:artifact.update(title=content.get('title',''),source_name=source_name or '')
     data['content']=content
     data.pop('_source_seed',None)
     # A customer may edit while the provider is running. Never overwrite that
