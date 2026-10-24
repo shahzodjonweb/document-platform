@@ -341,6 +341,21 @@ def test_the_cv_rules_forbid_invented_facts_and_placeholders():
     ('Резюме. Козлова Анна. Образование: ТГПУ', 'Козлова Анна'),
     ('CV for Laziz Umarov please\nemail: laziz@example.com', 'Laziz Umarov'),
     ('resume for Laziz Umarov', 'Laziz Umarov'),
+    # …a name starting a later sentence when a phone or an email follows it, a name with dates and a school or an
+    # employer after it on the first line when one of its words is a surname, and a name asked for in the genitive.
+    ('Хочу работать бухгалтером с 2025 года. Наталья Павлова, natalya.p@example.com', 'Наталья Павлова'),
+    ('Ищу работу водителем! Азиз Каримов +998 90 123 45 67', 'Азиз Каримов'),
+    ('Looking for a job as a cashier. Dilnoza Karimova, dilnoza@example.com', 'Dilnoza Karimova'),
+    ('Фарход Умаров, 2015–2019 Ташкентский финансовый институт, бакалавр. +998 97 123 45 00', 'Фарход Умаров'),
+    ("Rustam Ochilov, 2010–2020 Uzbekistan Airways'da muhandis, hozir nafaqada.", 'Rustam Ochilov'),
+    ('Karimova Dilnoza, 2019-2022 Korzinka, kassir', 'Karimova Dilnoza'),
+    ('Сделайте пожалуйста резюме для Тимура Сафарова: электрик 5 разряда', 'Тимур Сафаров'),
+    ('Нужно резюме для Дильнозы Каримовой, бухгалтер', 'Дильноза Каримова'),
+    ('резюме для Натальи Ивановой', 'Наталья Иванова'), ('резюме для Сергея Петрова', 'Сергей Петров'),
+    ('резюме для Игоря Достоевского', 'Игорь Достоевский'), ('резюме для Марии Ли', 'Мария Ли'),
+    ('резюме для Ольги Ким', 'Ольга Ким'), ('резюме для Виктора Цоя', 'Виктор Цой'),
+    ('резюме для Каримовой Дильнозы Алишеровны', 'Каримова Дильноза Алишеровна'),
+    ('CV для Азиза Каримова Бахтиёровича', 'Азиз Каримов Бахтиёрович'),
     # None of that makes a greeting, a city, a company or a job title a name.
     ('Good Morning!', ''), ('Hayrli Kun! Rezyume kerak', ''), ('Добрый День 🌸', ''), ('Toshkent Shahar 🏙', ''),
     ('Hello. Marketing Manager, Tashkent', ''), ('Salom, rezyume kerak. Toshkent Davlat Universiteti, 2018', ''),
@@ -352,6 +367,11 @@ def test_the_cv_rules_forbid_invented_facts_and_placeholders():
     ('Uzum Market +998 71 200 00 00', ''), ('Hamkor Bank kassir', ''), ('Xalq Banki kassir 2018-2020', ''),
     ('Uzum Marketda menejer, 2022-yildan', ''), ('Hamkor Bankda kassir 2019', ''), ('Yandex Go haydovchisi', ''),
     ('Nima Gap', ''), ('Как Дела', ''), ('Test Test', ''), ('Yaxshimisiz', ''), ('Здорово Пока', ''),
+    # …nor an employer's or a product's words in a later sentence or before dates, nor someone else's CV.
+    ('UzAuto Motors, 2018-2022, menejer', ''), ('Artel Electronics, 2015–2019, sotuvchi', ''),
+    ('Hamkor Bank, 2019-2022 kassir. +998 90 123 45 67', ''), ('Skills: Adobe Photoshop, +998 90 123 45 67', ''),
+    ('Ищу работу. Hamkor Bank, +998 71 200 00 00', ''), ('Работала в банке. Узум Маркет, +998 71 200 00 00', ''),
+    ('Ищу работу. Главный Бухгалтер', ''), ('резюме для меня, Азиз', ''), ('резюме для Microsoft Office', ''),
 ])
 def test_the_name_is_found_where_people_write_it(text, name):
     assert name_in(text) == name
@@ -364,7 +384,9 @@ def test_the_name_is_read_in_time_that_grows_with_the_description_not_its_square
     for text in ('Men ' * 20000, 'Ali Vali ' * 20000, 'I am Ali Vali Gani Soli Toli ' * 5000, 'Salom. ' * 20000,
                  'salom menga rezyume kerak. ali vali ' * 4000, 'CV for Ali Vali Gani Soli Toli ' * 5000,
                  'CV: ' * 30000, 'Ali Vali 🙂 ' * 20000, 'Ali Vali ' + ' ' * 120000 + 'x', 'Ali Vali +' * 20000,
-                 'Ali Vali a' + 'a' * 120000, '.' * 120000, '!' * 120000, 'Salom' + '.' * 120000 + ' Ali Vali'):
+                 'Ali Vali a' + 'a' * 120000, '.' * 120000, '!' * 120000, 'Salom' + '.' * 120000 + ' Ali Vali',
+                 '. ' * 60000, '! ' * 60000, 'a. ' * 40000, 'x. Ali Vali ' * 10000, 'резюме для ' * 12000,
+                 'резюме для 1' * 10000, 'Ali Valiyev, 2019-2020 ' * 6000):
         started = time.monotonic()
         name_in(text)
         assert time.monotonic() - started < 1.5, text[:20]

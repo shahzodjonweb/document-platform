@@ -221,6 +221,17 @@ SENTENCE_OPENS = re.compile(r"(?<![.!?:])[.!?:]+[ \t]+")
 CV_LABEL = re.compile(r"(?<![\w'’‘ʼʻ])(?:(?:cv|resume|résumé|rezyume|резюме|obyektivka)(?:[ \t]+(?:for|uchun))?"
                       r"[ \t]*:|(?:cv|resume|résumé)[ \t]+for)[ \t]*", re.IGNORECASE)
 CAPITAL_AFTER = re.compile(r"[ \t]+(?=[^\W\d_])")
+# A CV asked for in Russian for someone named after "для", in the genitive: "резюме для Тимура Сафарова".
+GENITIVE_FOR = re.compile(r"(?<![\w'’‘ʼʻ])(?:резюме|рез[юу]ме|cv|анкет[ау])[ \t]+для[ \t]+", re.IGNORECASE)
+# A later sentence of a line, after a full stop, "!" or "?" (not a colon: "Skills: Adobe Photoshop"), and what makes
+# the words it starts with a name: a phone or an email straight after them or after a comma ("Хочу работать
+# бухгалтером. Наталья Павлова, natalya@…").
+LATER_SENTENCE = re.compile(r"(?<![.!?])[.!?]+[ \t]+")
+CONTACT_CLOSE = re.compile(r"[ \t]*,?[ \t]*(?:\+?[ \t]?\(?\d[\d \t()\-]{6}|[\w.+\-']+@[\w\-]+\.\w)")
+# The ending of a surname, in the nominative: a name may go on with dates from and to on the first line ("Фарход
+# Умаров, 2015–2019 Ташкентский финансовый институт") where an employer's words ("UzAuto Motors, 2018-2022") may not.
+SURNAME_END = re.compile(r"(?:ov|ova|ev|eva|yev|yeva|ovich|evich|ovna|evna|in|ina|ов|ова|ев|ева|ёв|ёва|ин|ина"
+                         r"|ын|ына|ович|евич|овна|евна|ский|ская|цкий|цкая|ий|enko|енко|yan|ян|dze|дзе|shvili|швили)$")
 # Dates from and to after the words: an employer's or a school's line ("UzAuto Motors, 2018-2022").
 SPAN_AFTER = re.compile(r"\s*(?:[,;(]\s*)?(?:\d{1,2}[./])?(?:19|20)\d{2}\s*[-–—]\s*"
                         r"(?:(?:\d{1,2}[./])?(?:19|20)?\d{2}(?!\d)|hozir|present|now|current|наст|н\.\s*в)",
@@ -453,16 +464,102 @@ def _openings(line, start):
         yield position
 
 
+def _surnamed(words):
+    """Whether one of a name's `words` ends as a surname does (SURNAME_END): "Umarov", "Сафарова"."""
+    return any(SURNAME_END.search(_folded(word.group())) for word in words)
+
+
 def _line_name(line, start, opening):
-    """The name the words at `start` of `line` make (_ends), or ''."""
+    """The name the words at `start` of `line` make (_ends), or ''.
+
+    Words that go on with dates from and to are an employer's or a school's
+    line ("UzAuto Motors, 2018-2022"), unless on the first line one of them is
+    a surname (_surnamed): "Фарход Умаров, 2015–2019 Ташкентский …".
+    """
     title = TITLE.match(line, start)
     words = _run(line, title.end() if title else start)
     if not words:
         return ''
     end = _end(line, words)
-    if SPAN_AFTER.match(line, end) or not _ends(line, words, end, opening):
+    if SPAN_AFTER.match(line, end) and not (opening and _surnamed(words)):
+        return ''
+    if not _ends(line, words, end, opening):
         return ''
     return _named(line, words)
+
+
+def _later_name(line):
+    """The name that starts a later sentence of `line` (LATER_SENTENCE) and is followed by a phone or an email
+    (CONTACT_CLOSE), or '': "Хочу работать бухгалтером с 2025 года. Наталья Павлова, natalya@…"."""
+    for stop in LATER_SENTENCE.finditer(line):
+        # Only where a letter starts the sentence: _run looks ahead for its first word, and from every stop of a line
+        # of stops (". . . .") that read the line in its square.
+        if not line[stop.end():stop.end() + 1].isalpha():
+            continue
+        words = _run(line, stop.end())
+        if words and CONTACT_CLOSE.match(line, _end(line, words)):
+            name = _named(line, words)
+            if name:
+                return name
+    return ''
+
+
+# Russian genitive endings and their nominatives, longest first: a surname's, a woman's first name's and a man's.
+FEMALE_SURNAME = (('овой', 'ова'), ('евой', 'ева'), ('ёвой', 'ёва'), ('иной', 'ина'), ('ыной', 'ына'),
+                  ('ской', 'ская'), ('цкой', 'цкая'))
+MALE_SURNAME = (('ского', 'ский'), ('цкого', 'цкий'), ('ова', 'ов'), ('ева', 'ев'), ('ёва', 'ёв'), ('ина', 'ин'),
+                ('ына', 'ын'), ('оя', 'ой'))
+PATRONYMIC_GENITIVE = (('овича', 'ович'), ('евича', 'евич'), ('овны', 'овна'), ('евны', 'евна'))
+
+
+def _ending(word, endings):
+    """`word` with the first of `endings` it ends with replaced by its nominative, or None."""
+    for genitive, nominative in endings:
+        if word.lower().endswith(genitive) and len(word) > len(genitive):
+            return word[:-len(genitive)] + nominative
+    return None
+
+
+def _first_name(word, female):
+    """A Russian first name in the genitive, in the nominative: Тимура Тимур, Сергея Сергей, Игоря Игорь, Анны Анна,
+    Натальи Наталья, Марии Мария, Ольги Ольга."""
+    lower = word.lower()
+    if female:
+        if lower.endswith(('ии', 'ьи')):
+            return word[:-1] + 'я'
+        if lower.endswith('ы') or (lower.endswith('и') and lower[-2:-1] in 'гкхжшчщ'):
+            return word[:-1] + 'а'
+        return word[:-1] + 'я' if lower.endswith('и') else word
+    if lower.endswith(('ея', 'ия')):
+        return word[:-1] + 'й'
+    if lower.endswith('я'):
+        return word[:-1] + 'ь'
+    if lower.endswith('ы'):
+        return word[:-1] + 'а'
+    return word[:-1] if lower.endswith('а') else word
+
+
+def _nominative(words):
+    """A Russian name given in the genitive ("для Тимура Сафарова", "для Каримовой Дильнозы"), in the nominative.
+
+    The surname is the word with a surname's genitive ending; it says whether
+    the person is a woman (Каримовой) or a man (Сафарова), and the other words
+    are first names and a patronymic. A surname with no such ending (Ким, Ли)
+    is not declined: the first word is then the first name, read as a woman's
+    when it ends as a woman's does (Анны), and the rest are left as they are.
+    """
+    female = next((True for word in words if _ending(word, FEMALE_SURNAME)), None)
+    if female is None:
+        female = False if any(_ending(word, MALE_SURNAME) for word in words) else words[0].lower().endswith(('ы', 'и'))
+    surnames = FEMALE_SURNAME if female else MALE_SURNAME
+    declined = any(_ending(word, surnames) for word in words)
+    said = []
+    for index, word in enumerate(words):
+        nominative = _ending(word, PATRONYMIC_GENITIVE) or _ending(word, surnames)
+        if not nominative:
+            nominative = _first_name(word, female) if declined or index == 0 else word
+        said.append(nominative)
+    return ' '.join(said)
 
 
 def name_in(text, *, lines=True):
@@ -479,7 +576,13 @@ def name_in(text, *, lines=True):
     on the first line also before an age, a birth year or a job title in lower
     case ("Rahimov Otabek 25 yosh", "Aziz Karimov kassir"), and last after a
     label that names the CV with no capitalised word after the name ("CV for
-    Laziz Umarov please"). A title before it ("Dr.") is left out. A first
+    Laziz Umarov please"), after "резюме для" in the genitive, said in the
+    nominative ("резюме для Тимура Сафарова" names Тимур Сафаров), or at the
+    start of a later sentence of a line that goes on with a phone or an
+    email ("Хочу работать бухгалтером. Наталья Павлова,
+    natalya@…"). On the first line a name may go on with dates from and to
+    when one of its words is a surname ("Фарход Умаров, 2015–2019 …"). A
+    title before it ("Dr.") is left out. A first
     name and a surname given apart ("Ism: Dilnoza", "Familiya: Karimova")
     make one. Months, places, the words of a heading, a job or an
     organisation, a line that goes on with dates from and to, and page counts
@@ -512,6 +615,14 @@ def name_in(text, *, lines=True):
             name = _named(text, words)
             if name:
                 return name
+    for label in GENITIVE_FOR.finditer(text):
+        words = _run(text, label.end()) if text[label.end():label.end() + 1].isalpha() else []
+        if _named(text, words):
+            return _nominative([word.group() for word in words])
+    for line in lines:
+        name = _later_name(line)
+        if name:
+            return name
     return ''
 
 

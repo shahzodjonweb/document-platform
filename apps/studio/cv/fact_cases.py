@@ -384,6 +384,15 @@ BACKGROUNDS = [
 # --- Whole descriptions: (note, the required facts given as N, C and B, text) -----------------------
 
 BRIEFS = [
+    # The name after a sentence about the job wanted, before dates and a school or an employer, and in the genitive.
+    ('ru name after a wish', 'NC', 'Хочу работать бухгалтером с 2025 года. Наталья Павлова, natalya.p@example.com'),
+    ('ru name before dates', 'NCB',
+     'Фарход Умаров, 2015–2019 Ташкентский финансовый институт, бакалавр. +998 97 123 45 00'),
+    ('uz name before dates', 'NCB',
+     "Rustam Ochilov, 2010–2020 Uzbekistan Airways'da muhandis, hozir nafaqada. +998 71 140 00 00"),
+    ('ru name in the genitive', 'NCB', 'Добрый вечер. Сделайте пожалуйста резюме для Тимура Сафарова: электрик '
+                                       '5 разряда, стаж 15 лет, тел 99 765 43 21'),
+    ('employer before dates', 'CB', 'UzAuto Motors, 2018-2022, menejer. +998 90 123 45 67'),
     # Everything a CV needs: a name, a way to reach the person, a job or a school.
     ('en student', 'NCB',
      'Aziza Nazarova, student at Westminster International University in '
@@ -671,7 +680,7 @@ BRIEFS = [
     ('uz single name', 'CB',
      'Ismim Shoxruh. 25 yoshdaman. Mashina haydayman. 6 yildan beri taksida '
      'ishlayman. 998 93 111 22 33'),
-    ('ru student no name', 'CB', 'я студент, ищу подработку. Данияр Алиев +998901112233'),
+    ('ru student name after a sentence', 'NCB', 'я студент, ищу подработку. Данияр Алиев +998901112233'),
     ('ru driver licence years', 'CB',
      'Мужчина 35 лет, рост 180, водительский стаж 15 лет, права B C. Тел '
      '998977778899, Бахром Расулов'),
