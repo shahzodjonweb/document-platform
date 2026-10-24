@@ -284,10 +284,12 @@ def settle_job(job_id, status, error_code='', outputs=None, warnings=None, engin
     job = Job.objects.select_for_update().select_related('account').get(pk=job_id)
     if job.status in TERMINAL: return job
     deadline = timezone.now()+timedelta(hours=24)
-    for output in outputs or []:
+    from .naming import result_name
+    for index,output in enumerate(outputs or []):
         path = Path(output['path'])
         key = str(path.relative_to(settings.PRIVATE_STORAGE_ROOT.resolve()))
-        asset = FileAsset.objects.create(account=job.account,name=output['name'],object_key=key,mime_type=output['mime_type'],sha256=hashlib.sha256(path.read_bytes()).hexdigest(),size_bytes=path.stat().st_size,page_count=output.get('page_count',0),metadata={**output.get('metadata',{}),'kind':{'application/pdf':'pdf','application/zip':'archive','application/vnd.openxmlformats-officedocument.wordprocessingml.document':'docx','application/vnd.openxmlformats-officedocument.presentationml.presentation':'pptx','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':'xlsx','text/plain':'text','application/json':'text'}.get(output['mime_type'],'image'),'mime_type':output['mime_type'],'page_count':output.get('page_count',0),'encrypted':job.feature_id=='pdf.protect'},expires_at=deadline)
+        # The name the customer sees is made here, from what they gave; the key keeps the processor's fixed name.
+        asset = FileAsset.objects.create(account=job.account,name=result_name(job,output,index,len(outputs)),object_key=key,mime_type=output['mime_type'],sha256=hashlib.sha256(path.read_bytes()).hexdigest(),size_bytes=path.stat().st_size,page_count=output.get('page_count',0),metadata={**output.get('metadata',{}),'kind':{'application/pdf':'pdf','application/zip':'archive','application/vnd.openxmlformats-officedocument.wordprocessingml.document':'docx','application/vnd.openxmlformats-officedocument.presentationml.presentation':'pptx','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':'xlsx','text/plain':'text','application/json':'text'}.get(output['mime_type'],'image'),'mime_type':output['mime_type'],'page_count':output.get('page_count',0),'encrypted':job.feature_id=='pdf.protect'},expires_at=deadline)
         artifact = Artifact.objects.create(account=job.account,job=job,file=asset,role=output.get("role","user_document"))
         from . import storage
         storage.save(key, output['mime_type'])

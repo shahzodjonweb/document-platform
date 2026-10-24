@@ -347,7 +347,7 @@ def test_an_old_cv_pdf_becomes_a_review_and_then_the_cv(customer):
     job = Job.objects.get(account=customer, feature_id=CV)
     assert job.status == 'succeeded', job.error_code
     made = job.artifacts.get().file
-    assert made.name == 'Timur Rakhimov CV.pdf' and made.page_count in (1, 2)
+    assert made.name == f'Timur-Rakhimov-CV-{job.id.hex[:6]}.pdf' and made.page_count in (1, 2)
     assert LocalBotMessage.objects.filter(account=customer, direction='outbound', asset=made).exists()
     assert '✏️ Make changes' in [button['label'] for message in delivered['messages'] for row in message['buttons']
                                 for button in row]

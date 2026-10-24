@@ -11,7 +11,7 @@ from pypdf import PdfReader
 
 from apps.core.errors import DomainError
 from apps.studio.cv import check, fonts, portrait, sample, templates
-from apps.studio.cv.render import CONTACT_LABELS, filename, render_cv
+from apps.studio.cv.render import CONTACT_LABELS, render_cv
 from apps.studio.cv.templates import (CATEGORIES, DEFAULT_TEMPLATE, DRAWERS, FONT_PAIRS, PHOTO_DRAWERS, RETIRED,
                                       TEMPLATE_IDS, TEMPLATES, TONES, catalogue, current, look, reference, remember,
                                       wanted)
@@ -403,15 +403,11 @@ def test_an_age_is_printed_under_its_own_label_never_as_a_birth_date(tmp_path):
             assert shown in text and CONTACT_LABELS[locale]['birth'].upper() not in text.upper(), (locale, key)
 
 
-def test_the_pdf_names_the_person_and_the_file_is_named_after_them(tmp_path):
+def test_the_pdf_names_the_person(tmp_path):
     path, result = render(tmp_path, 'classic_navy', sample.short('ru'), 'ru')
     meta = PdfReader(path).metadata
     assert meta['/Title'] == 'Дильноза Каримова — CV' and meta['/Author'] == 'Дильноза Каримова'
     assert meta['/Subject'] == 'Старший аналитик данных' and meta['/Creator'] == 'PDF Master'
-    assert filename(sample.short('ru')) == 'Дильноза Каримова CV.pdf'
-    assert filename({'title': 'O‘tkir Ne’matov <script>'}) == 'O‘tkir Ne’matov script CV.pdf'
-    assert filename({'title': '***'}) == filename({}) == 'CV.pdf'
-    assert len(filename({'title': 'Abdulaziz ' * 20})) <= 60
 
 
 def test_thumbnails_are_480_wide_a4_pages(tmp_path):

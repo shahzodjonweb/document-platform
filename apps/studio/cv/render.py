@@ -438,13 +438,3 @@ def render_cv(content, path, locale='en', style=None, portrait=None):
                          'frames': frames, 'dropped_chars': dropped, 'sidebar_moved': list(attempt.sheet.moved),
                          'portrait': bool(photo), 'warnings': warnings}}
 
-
-def filename(content):
-    """'<name> CV.pdf': the person's name in letters, digits, spaces and name punctuation, at most 60 characters."""
-    name = str((content or {}).get('title') or '')
-    clean = ''.join(char for char in unicodedata.normalize('NFC', name) if char.isalnum() or char in " -'’‘ʼ.")
-    clean = ' '.join(clean.split())
-    if len(clean) > 53:
-        clean = clean[:53].rsplit(' ', 1)[0] if ' ' in clean[:53] else clean[:53]
-    clean = clean.strip(' .-')
-    return f'{clean} CV.pdf' if clean else 'CV.pdf'
