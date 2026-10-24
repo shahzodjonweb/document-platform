@@ -13,6 +13,7 @@ portrait, kept with the question and never as a file task. The review shows the
 template and the photo, not a page count to adjust. Everyone in these tests is
 made up (example.com contacts).
 """
+import html
 import io
 import json
 
@@ -106,12 +107,15 @@ def listed(words, locale='en'):
 
 
 def asks_for(locale='en'):
-    """What the CV question says before anything is written: what it needs, and what only adds to it, by the facts' labels."""
+    """What the CV question says before anything is written: what it needs, one fact to a line, and what only adds to
+    it on one line, all but the photo, which has a line of its own; by the facts' labels."""
     from apps.studio.cv.content import OPTIONAL_FACTS, REQUIRED_FACTS
     copy = UX[locale]
-    needs = copy['cv_required'].format(facts=' · '.join(copy[f'cv_fact_{fact}'] for fact in REQUIRED_FACTS))
-    adds = copy['cv_optional'].format(facts=', '.join(copy[f'cv_fact_{fact}'] for fact in OPTIONAL_FACTS))
-    return f'{copy["cv_ask"]}\n\n{needs}\n{adds}'
+    needs = '\n'.join([copy['cv_required'], *(f'• {copy[f"cv_fact_{fact}"][:1].upper()}{copy[f"cv_fact_{fact}"][1:]}'
+                                              for fact in REQUIRED_FACTS)])
+    adds = copy['cv_optional'].format(facts=', '.join(copy[f'cv_fact_{fact}'] for fact in OPTIONAL_FACTS
+                                                      if fact != 'photo'))
+    return f'{copy["cv_ask"]}\n\n{needs}\n\n{adds}'
 
 
 def example_of(fact, locale='en'):
@@ -139,10 +143,12 @@ def test_cv_opens_the_question_about_you(customer):
     assert words.startswith('<b>✨ CV · AI</b>\n' + UX['en']['cv_ask']), words[:300]
     # What a CV needs, and what only adds to it, are said before anything is written, by the facts' labels.
     assert f'{asks_for()}\n\n<i>{UX["en"]["cv_photo_hint"]}</i>' in words, words[:600]
-    assert '\n✅ Required: full name · phone or email · work experience (with years) or education\n' in words, words[:600]
-    assert ('\n➕ Optional: the job you want, city, birth date or age, skills, languages, certificates, projects, '
-            'LinkedIn or other links, photo\n') in words, words[:600]
-    assert f'1. <code>{PROMPT_EXAMPLES[CV][0][0]}</code>' in words
+    assert ('\n✅ Required:\n• Full name\n• Phone or email\n• Work experience (with years) or education\n\n'
+            '➕ Optional: the job you want, city, birth date or age, skills, languages, certificates, projects, '
+            'LinkedIn or other links\n\n') in words, words[:600]
+    # One example, whole CV as it is, in plain type in a quote that opens on a tap: never a wall of <code>.
+    assert words.endswith(f'{UX["en"]["cv_example"]}\n<blockquote expandable>{PROMPT_EXAMPLES[CV][0][0]}</blockquote>')
+    assert '<code>' not in words and PROMPT_EXAMPLES[CV][1][0] not in words, words
     # No page count is asked for: one page or two is the template's to decide.
     assert 'how many pages' not in words and UX['en']['ai_pages_hint'] not in words
     assert shown == [UX['en']['ai_examples'], UX['en']['ai_back']]
@@ -823,6 +829,16 @@ def test_the_nameless_description_sent_again_is_asked_for_the_name_again(custome
     assert not GenerationDraft.objects.filter(account=customer).exists()
 
 
+@pytest.mark.parametrize('locale', LOCALES)
+def test_the_cv_examples_read_as_text_in_quotes_that_open_on_a_tap(customer, locale):
+    speaks(customer, locale)
+    question = tap(customer, dispatch_local(customer, text='/cv'), UX[locale]['cv_mode_text'])
+    words, _ = screen(tap(customer, question, UX[locale]['ai_examples']))
+    for number, row in enumerate(PROMPT_EXAMPLES[CV], 1):
+        assert f'<blockquote expandable>{number}. {html.escape(row[LOCALES.index(locale)])}</blockquote>' in words
+    assert '<code>' not in words and len(words) < 4096, words
+
+
 def test_the_examples_lead_back_to_the_open_question_with_what_was_written(customer, model):
     ask(customer)
     question = dispatch_local(customer, text=NAMELESS)
@@ -986,8 +1002,8 @@ def test_each_fact_is_said_by_one_label_on_every_screen_of_the_cv(locale):
     account = SimpleNamespace(locale=locale)
     labels = {fact: copy[f'cv_fact_{fact}'] for fact in (*REQUIRED_FACTS, *OPTIONAL_FACTS)}
     # The first screen's lists are the labels, so the hint never drifts from what the review offers.
-    assert asks_for(locale).endswith(', '.join(labels[fact] for fact in OPTIONAL_FACTS))
-    assert ' · '.join(labels[fact] for fact in REQUIRED_FACTS) in asks_for(locale)
+    assert asks_for(locale).endswith(', '.join(labels[fact] for fact in OPTIONAL_FACTS if fact != 'photo'))
+    assert all(f'\n• {labels[fact][:1].upper()}{labels[fact][1:]}' in asks_for(locale) for fact in REQUIRED_FACTS)
     # The missing screen's 'already there' line names the same facts the same way.
     assert copy['cv_got'].format(facts=labels['name']) in missing_lines(account, ['contact', 'background'])
     assert can_add_line(account, {'missing': ['contact']}) == copy['cv_can_add'].format(facts=labels['contact'])
