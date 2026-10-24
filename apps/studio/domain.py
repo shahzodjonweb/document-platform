@@ -757,11 +757,12 @@ def create_draft(account,data):
         data={**data,key:{k:v for k,v in options.items() if k!='topic_given'}}
     fid,cfg,payload=_prepare_draft(account,data)
     # After _prepare_draft, so a malformed request keeps its own error. A CV
-    # needs a name where a document needs a topic, and takes the name it
-    # finds as its title even when the customer insisted.
+    # needs its name, a way to reach the person and a job or a school where a
+    # document needs a topic, and takes the name it finds as its title even
+    # when the customer insisted.
     if fid==CV:
-        from .cv.content import require_name
-        require_name(data,fid,payload,refuse=not given)
+        from .cv.content import require_facts
+        require_facts(data,fid,payload,refuse=not given)
     elif not given:require_topic(data,fid,payload)
     return GenerationDraft.objects.create(account=account,feature_id=fid,encrypted_data=pack(payload),provider_mode=cfg['mode'],expires_at=timezone.now()+timedelta(hours=24))
 
@@ -793,11 +794,13 @@ def update_draft(account,draft_id,data):
     # The page count lives in the description, so a reworded brief rebuilds the
     # outline the same way a changed source does.
     rebuild=any(key in data and data[key]!=original.get(key) for key in ('prompt','source_text','source_ids','output_format'))
-    if rebuild and d.feature_id==CV:
+    if d.feature_id==CV:
         # A reworded CV description may name the person differently: the title
-        # follows it. An accepted draft is never refused here.
-        from .cv.content import require_name
-        require_name(data,CV,payload,refuse=False)
+        # follows it. An accepted draft is never refused here. What the CV
+        # gives and lacks (`cv_facts`) is worked out again whatever changed, as
+        # the payload is rebuilt above and would lose it.
+        from .cv.content import require_facts
+        require_facts(data,CV,payload,refuse=False,retitle=rebuild)
     # So does a count chosen on the review screen.
     rebuild=rebuild or payload['options'].get('length')!=original.get('options',{}).get('length')
     content=data.get('content',payload['content'] if rebuild and not original.get('revision',{}).get('selected_section_ids') else original['content'])

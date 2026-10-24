@@ -32,8 +32,8 @@ from telegram.errors import COPY as ERRORS
 from telegram.local import LocalTelegramSession, dispatch_local, look_local
 from telegram.ux_copy import LOCALES, TOOL_NAMES, UX, counted
 from tests.test_bot_cv import cv, image, model, screen, state  # noqa: F401
-from tests.test_bot_cv_sources import (another_customer, choose, feed_two, nameless_pdf, outbound, reading, send,
-                                       speak, upload)
+from tests.test_bot_cv_sources import (another_customer, choose, feed_two, linkedin_without_contact, nameless_pdf, outbound,
+                                       reading, send, speak, upload)
 from tests.test_bot_generation import customer, latest, tap  # noqa: F401
 from tests.test_cv_content import BRIEF
 from tests.test_cv_sources import blank_pdf, one_column_pdf
@@ -167,6 +167,30 @@ def test_files_waiting_for_the_reader_show_one_message_that_becomes_the_review(c
     # The CV is made from it as from any review.
     tap(customer, look(customer), 'Generate')
     assert Job.objects.get(account=customer, feature_id=CV).status == 'succeeded'
+
+
+def test_a_linkedin_pdf_without_a_contact_waits_and_then_asks_for_the_contact_and_makes_the_cv(customer, model, queued):
+    choose(customer, 'cv_mode_linkedin')
+    before = outbound(customer)
+    words, _ = screen(send(customer, 'Profile.pdf', linkedin_without_contact()))
+    profile = FileAsset.objects.get(account=customer, name='Profile.pdf')
+    assert EN['cv_wait_one'] in words and state(customer)[0] == 'cv_wait' and not GenerationDraft.objects.filter(account=customer).exists()
+    assert reads.next_read()
+    # Read: the waiting message becomes the question for what the file did not give, and only that.
+    words, shown = screen(look(customer))
+    assert outbound(customer) == before + 1, 'the waiting message became the question'
+    assert EN['cv_file_missing_question'] in words and f'• {EN["cv_fact_contact"]} — e.g.' in words, words
+    assert f'• {EN["cv_fact_name"]} — ' not in words and f'• {EN["cv_fact_background"]} — ' not in words
+    assert EN['cv_got'].format(facts=f'{EN["cv_fact_name"]} · {EN["cv_fact_background"]}') in words
+    assert shown[:2] == [EN['cv_send_another'], EN['cv_write_instead']]
+    assert state(customer) == ('cv_source', {'feature_id': CV, 'cv_source': 'linkedin', 'notes': [],
+                                             'source_ids': [str(profile.id)], 'ask': 'missing', 'missing': ['contact']})
+    # The phone is the answer (the customer's own: the screen's sample number is ours): the file is not read
+    # again, and the review is made at once.
+    words, _ = screen(dispatch_local(customer, text='+998 91 234 56 78'))
+    assert '📄 Dilnoza Karimova' in words and EN['cv_missing_title'] not in words, words
+    assert latest(customer, CV)['source_ids'] == [str(profile.id)] and CvSourceRead.objects.filter(asset=profile).count() == 1
+    assert state(customer)[0] == 'cv_review'
 
 
 def test_the_waiting_message_says_where_the_files_are_in_the_queue_and_moves_with_it(customer, model, queued,
@@ -567,12 +591,13 @@ def test_a_question_telegram_did_not_take_is_asked_on_a_later_turn(customer, mod
     choose(customer, 'cv_mode_file')
     send(customer, 'cv.pdf', nameless_pdf())
     reads.next_read()
-    # No name in the file: the question in the waiting message's place, which Telegram did not take.
+    # No name in the file: the question for it in the waiting message's place, which Telegram did not take.
     turn(customer, Unreachable(customer, 1))
     assert state(customer)[0] == 'cv_wait' and EN['cv_wait_one'] in waiting(customer)[0]
     unpause(customer)
     look(customer)
-    assert state(customer)[0] == 'cv_source' and state(customer)[1]['ask'] == 'name', state(customer)
+    assert state(customer)[0] == 'cv_source' and state(customer)[1]['ask'] == 'missing', state(customer)
+    assert state(customer)[1]['missing'] == ['name']
 
 
 def test_the_customer_moving_on_while_the_loop_makes_the_cv_keeps_where_they_went(customer, model, queued, monkeypatch):

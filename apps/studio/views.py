@@ -23,9 +23,12 @@ def config(request):
     A CV is one page or two, whatever the plan's page cap: the renderer, not
     the description, decides which. It is made from one message, a LinkedIn
     profile or an old CV (`source_modes`), each of the last two from files of
-    the kinds `source_kinds` names, at most `max_source_files` of them.
+    the kinds `source_kinds` names, at most `max_source_files` of them. What it
+    is made of is `cv_facts`: the facts it is asked for when missing
+    (`required`) and the ones only offered (`optional`), in the order shown.
     """
     from .cv import sources as cv_sources
+    from .cv.content import OPTIONAL_FACTS,REQUIRED_FACTS
     from .cv.render import MAX_PAGES as CV_PAGES
     from .pages import DEFAULT_PAGES, ceiling
     cfg=ai_config();features=[]
@@ -42,7 +45,8 @@ def config(request):
             features[-1].update(source_modes=list(cv_sources.MODES),
                                 source_kinds={mode:list(kinds) for mode,kinds in cv_sources.KINDS.items()},
                                 max_source_files=cv_sources.max_files(request.account),
-                                max_source_pages=cv_sources.max_pages(request.account))
+                                max_source_pages=cv_sources.max_pages(request.account),
+                                cv_facts={'required':list(REQUIRED_FACTS),'optional':list(OPTIONAL_FACTS)})
     return {'provider':{'id':cfg['mode'],'mode':cfg['mode'],
                         'label':'Local authoring (no AI)' if cfg['mode']=='local_fixture' else 'OpenAI' if cfg['mode']=='openai' else 'Not configured',
                         'configured':cfg['mode']=='local_fixture' or bool(cfg['api_key'] and cfg['model'])},

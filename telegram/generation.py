@@ -74,7 +74,7 @@ def unthrottle(account):
 
 # Refused by reading the description alone, or a CV's files' kinds, before a
 # draft is made: a cheap check, so it does not use one of the minute's builds.
-READ_REFUSALS = ('topic_required', 'convert_requested', 'cv_name_required', 'cv_file_required', 'cv_file_kind',
+READ_REFUSALS = ('topic_required', 'convert_requested', 'cv_missing', 'cv_file_required', 'cv_file_kind',
                  'cv_linkedin_link')
 
 
@@ -84,8 +84,9 @@ def build(account, feature_id, description, file_ids=(), topic_given=False, port
 
     `topic_given` is the customer's answer to the topic question taken as it
     is (apps.studio.domain.create_draft): a topic the check does not know
-    must not keep them asking. For a CV it is the name question answered a
-    second time, and `portrait_asset_id` the photo sent for it in the chat.
+    must not keep them asking. For a CV it is the question for what is
+    missing answered a second time, and `portrait_asset_id` the photo sent for
+    it in the chat.
     A CV made from the customer's LinkedIn profile or old CV (`cv_source`
     'linkedin' or 'file') is made from `file_ids`, the files sent for it,
     and `description` is the notes on top of them, which may be empty.
@@ -107,10 +108,10 @@ def build(account, feature_id, description, file_ids=(), topic_given=False, port
             'output_format': FORMAT[feature_id],
             'prompt': '' if written else text, 'source_text': text if written else ''}
     # A CV's title is the person's name, which the server finds in the
-    # description (apps/studio/cv/content.require_name): its first line is as
+    # description (apps/studio/cv/content.require_facts): its first line is as
     # often a phone number or "Hello", and would be the file's name. Only when
-    # the customer answered the name question twice and no name was seen is
-    # the first line, their own answer, the best there is.
+    # the customer insisted and no name was seen is the first line, their own
+    # answer, the best there is.
     if text and (feature_id != CV or topic_given):
         data['title'] = text.split('\n')[0][:160]
     options = {'topic_given': True} if topic_given else {}
@@ -124,9 +125,9 @@ def build(account, feature_id, description, file_ids=(), topic_given=False, port
     try:
         return create_draft(account, data)
     except DomainError as exc:
-        # A CV from files asked for its name has had its files read: that build
-        # counts, so answers that name nobody cannot read them again and again.
-        if exc.code in READ_REFUSALS and not (files and exc.code == 'cv_name_required'):
+        # A CV from files asked for what it lacks has had its files read: that
+        # build counts, so answers that give nothing cannot read them again and again.
+        if exc.code in READ_REFUSALS and not (files and exc.code == 'cv_missing'):
             unthrottle(account)
         raise
 
@@ -260,6 +261,18 @@ def portrait_of(draft):
     """The asset id of the photo a CV carries, or '' when it has none."""
     from apps.studio.domain import unpack
     return str(unpack(draft.encrypted_data).get('options', {}).get('portrait_asset_id') or '')
+
+
+def facts_of(draft):
+    """What a new CV gives and lacks: {'given', 'missing', 'optional_missing'} (apps/studio/cv/content.require_facts).
+
+    {} for a change, which is decided by its request alone, and for a draft
+    made before this was kept.
+    """
+    from apps.studio.domain import unpack
+    data = unpack(draft.encrypted_data)
+    found = data.get('cv_facts')
+    return {} if data.get('revision') or not isinstance(found, dict) else found
 
 
 def template_of(draft):

@@ -232,13 +232,14 @@ QUESTION_LIFETIME=timedelta(minutes=30)
 # a customer who never names one cannot grow the description without end.
 BRIEF_PIECES,BRIEF_CHARS=3,1000
 # A CV's description is the CV: everything the customer wrote about themselves
-# waits whole while their name is asked for. A long one is a few hundred words
-# (Telegram sends at most 4096 characters at a time), far inside the plan's
-# input limit (apps.studio.domain.limits source_chars).
+# waits whole while what is missing from it is asked for. A long one is a few
+# hundred words (Telegram sends at most 4096 characters at a time), far inside
+# the plan's input limit (apps.studio.domain.limits source_chars).
 CV_BRIEF_CHARS=12000
-# A CV's details may come a few at a time ("sotuvchiman", then the years, then
-# the languages) while the bot asks for them: more pieces are kept than for a topic.
-CV_BRIEF_PIECES=6
+# A CV's facts may come a few at a time (a name, then a phone, then the job)
+# while the bot asks for what is missing: more pieces are kept than for a
+# topic, the first and the newest eleven.
+CV_BRIEF_PIECES=12
 # Text sent this soon after a new CV's review was drawn is the rest of its
 # description: Telegram sends one longer than 4096 characters as two messages.
 CV_APPEND_WINDOW=timedelta(minutes=2)
@@ -333,8 +334,8 @@ def cv_wait_shown(account,wait,draft_id,notice):
 def cv_wait_restored(account,wait,began):
     """A wait whose outcome Telegram did not take, put back so a later look does it again; whether it was.
 
-    Only when this look moved the chat on to one of a CV's screens (its name
-    question, a refusal, the first screen): the menu, or anything older than
+    Only when this look moved the chat on to one of a CV's screens (its question
+    for what is missing, a refusal, the first screen): the menu, or anything older than
     the look, is the customer's own doing and stays.
     """
     row=BotConversation.objects.filter(pk=account.telegram_user_id).values_list('state','updated_at').first()
@@ -409,11 +410,180 @@ def pending_portrait(account):
     return str(prompt.get('portrait_asset_id') or '') if prompt.get('feature_id')=='ai.cv' else ''
 
 def cv_brief(account):
-    """What is kept of a CV described about yourself while its name or details are asked for; [] with no such question."""
+    """What is kept of a CV described about yourself while what it lacks is asked for; [] with no such question."""
     row=BotConversation.objects.filter(pk=account.telegram_user_id,state='ai_input').first()
     if row is None or row.updated_at<timezone.now()-QUESTION_LIFETIME: return []
     prompt=row.prompt or {}
     return [str(piece) for piece in prompt.get('brief') or [] if piece] if prompt.get('feature_id')=='ai.cv' else []
+
+def cv_asked(prompt):
+    """The required facts a CV's open question asks for, from the state it was kept in; [] when it asks for none.
+
+    A question kept before they were listed is still answered for a while
+    (a state lives QUESTION_LIFETIME): `ask` 'name' asks for the name, and
+    'details', which was for a description that said next to nothing, for all of them.
+    """
+    from apps.studio.cv.content import REQUIRED_FACTS
+    prompt=prompt or {}
+    ask=prompt.get('ask')
+    if ask not in ('missing','name','details'): return []
+    asked=[fact for fact in REQUIRED_FACTS if fact in (prompt.get('missing') or ())]
+    return asked or (list(REQUIRED_FACTS) if ask=='details' else ['name'])
+
+# The example beside each required fact on a CV's missing screen (ux_copy cv_*_sample). One with
+# two ways of giving its fact has ' — ' between them, and each is shown as its own code.
+CV_SAMPLE_KEYS={'name':'cv_name_sample','contact':'cv_fact_contact_sample','background':'cv_fact_background_sample'}
+
+def compared(piece):
+    """Words as the bot compares them: the same whichever way they were typed (case, spaces, line breaks)."""
+    return ' '.join(str(piece or '').casefold().split())
+
+# Every dash one hyphen, every apostrophe one: a sample typed or copied either way is the same sample.
+SAMPLE_FOLDS=str.maketrans({**{char:'-' for char in '\u2010\u2011\u2012\u2013\u2014\u2015\u2212'},
+                            **{char:"'" for char in '\u2018\u2019\u02bc\u02bb`'}})
+
+def sample_form(piece):
+    """Words as the sample guard compares them: no case, space or line break, one kind of dash and apostrophe.
+
+    No space is compared at all, so "2021 - 2024", "Bahor Foods , 2021" and
+    "+998901234567" are the sample's own "2021–2024", "Bahor Foods, 2021" and "+998 90 123 45 67".
+    """
+    return ''.join(str(piece or '').translate(SAMPLE_FOLDS).casefold().split())
+
+def sample_ways(locale,fact):
+    """The values the missing screen shows beside `fact` in `locale`: one, or the two ways of giving it."""
+    return UX[locale][CV_SAMPLE_KEYS[fact]].split(' — ')
+
+# Every value a missing screen offers to copy, in every language: a message that is nothing but these is ours.
+CV_SAMPLES=frozenset(sample_form(way) for fact in CV_SAMPLE_KEYS for locale in LOCALES
+                     for way in sample_ways(locale,fact))
+# The phone, email, job and school the samples give, and each label of the screen's list with the word
+# its example follows ("full name — e.g.", "to‘liq ism-familiya — masalan", the dash there or not), in
+# every language: a message holding any of these holds our example, however often it is sent. Nobody
+# has the sample's phone, address, job or school, and only a copy of the screen says "full name — e.g.".
+# The name alone is ours only on its own, and only the first time (sent_back): a name like it may be the customer's.
+def sample_labels(locale):
+    """Each label of the missing screen's list with the word before its example, with the dash and without."""
+    item=UX[locale]['cv_missing_item']
+    word=item.split('{fact}',1)[1].split('{example}',1)[0].strip().lstrip('\u2014').strip().rstrip('.:')
+    for fact in CV_SAMPLE_KEYS:
+        label=UX[locale][f'cv_fact_{fact}']
+        yield sample_form(f'{label} \u2014 {word}')
+        yield sample_form(f'{label} {word}')
+
+CV_SAMPLES_HELD=frozenset([*(sample_form(way) for fact in ('contact','background') for locale in LOCALES
+                             for way in sample_ways(locale,fact)),
+                           *(label for locale in LOCALES for label in sample_labels(locale))])
+
+def sample_held(value):
+    """Whether a message holds a sample's phone, email, job or school (any language), or a label of the screen's list.
+
+    Always our example, sent once or again: never the customer's. Case,
+    spaces, line breaks and the kind of dash or apostrophe are not compared
+    (sample_form). A few fixed values looked for in the message, once each:
+    time that grows with the message.
+    """
+    said=sample_form(value)
+    return bool(said) and any(sample in said for sample in CV_SAMPLES_HELD)
+
+def sent_back(value):
+    """Whether a message is a sample a CV's missing screen shows, sent back: our example, not the customer's.
+
+    It holds one of our samples (sample_held), or it is nothing but the
+    sample name, line by line. Only the name is the customer's when sent again
+    at once (`copied` on the screens): someone may have that name, nobody has
+    the sample's phone, job or school.
+    """
+    if sample_held(value): return True
+    lines=[sample_form(line) for line in str(value or '').split('\n')]
+    lines=[line for line in lines if line]
+    return bool(lines) and all(line in CV_SAMPLES for line in lines)
+
+def tells_little(written):
+    """Whether what was written for a CV, read once, says nothing about the person but who and how to reach them.
+
+    says_little (apps/studio/cv/content.py) with every phone number and email
+    taken out first: they say how to reach someone, not what they did, so
+    "Dilnoza Karimova +998 90 123 45 67" tells as little as the name alone. A
+    year still says something (a job's or a school's the check did not see),
+    and so do a dozen words. `written` is the pieces, each once. A number
+    with a year in it and no + is a period ("2019-2024"), not a phone.
+    """
+    from apps.studio.cv.content import EMAIL,PHONE,YEAR,says_little
+    words=EMAIL.sub(' ','\n'.join(str(piece or '') for piece in written))
+    words=PHONE.sub(lambda number:number.group() if YEAR.search(number.group()) and number.group()[0]!='+' else ' ',
+                    words)
+    return says_little(words)
+
+def cv_insists(repeated,missing,written,answer=None):
+    """Whether words sent again make a CV as they are, though the check still finds `missing` missing.
+
+    The way past a check that does not see what is there, the same in a CV
+    written about yourself and one made from files: the words are `repeated`
+    (the same as words kept); while the name is missing, they look like a
+    name (`answer`; None for the name-like answer the screen asks for); and
+    while the job or school is missing, what was written (`written`, each
+    piece once) tells more than a name, a phone and an email (tells_little).
+    So a greeting, a name, or a name with a phone sent again never makes a CV,
+    and a real description the check missed, sent again, does.
+    """
+    from apps.studio.cv.content import name_like
+    return (bool(repeated) and ('name' not in missing or answer is None or name_like(answer))
+            and ('background' not in missing or not tells_little(written)))
+
+def facts_said(account,facts,between=' · '):
+    """CV facts (apps/studio/cv/content.py names) said by their labels, in the order given."""
+    return between.join(text(account,f'cv_fact_{fact}') for fact in facts)
+
+def sample_shown(account,fact):
+    """The example beside a missing fact: each of its values its own code, so a tap copies one, with 'or' between."""
+    return f' {text(account,"cv_or")} '.join(f'<code>{html.escape(way)}</code>' for way in text(account,CV_SAMPLE_KEYS[fact]).split(' — '))
+
+def missing_lines(account,missing,*,source=False,written=()):
+    """What a CV still lacks, as its question says it: what is there, each missing fact with an example, and the way on.
+
+    `missing` are the required facts (apps/studio/cv/content.py) the server
+    found missing; none, or none it knows, asks for all of them. An example is
+    code, to be copied. `source` is for a CV made from files: what is sent is
+    added to them. `written` is what the customer wrote already, each piece
+    once. The last line is the way past a check that did not see what is
+    there, only where sending again can make the CV (cv_insists): with the
+    name missing, the name alone, sent again; with only the phone or email
+    missing, the same message again, which makes the CV without one; else the
+    same message again. With nothing written (a file alone) no line says it
+    was, and only a missing contact has a way on: any message twice. Where no
+    message sent again can make it (the job or school missing, and what was
+    written tells next to nothing), the line asks for more about the work or studies.
+    """
+    from apps.studio.cv.content import REQUIRED_FACTS
+    asked=[fact for fact in REQUIRED_FACTS if fact in (missing or ())] or list(REQUIRED_FACTS)
+    have=[fact for fact in REQUIRED_FACTS if fact not in asked]
+    lines=[text(account,'cv_got').format(facts=facts_said(account,have))] if have else []
+    lines.append(text(account,'cv_missing_title'))
+    lines.extend(text(account,'cv_missing_item').format(fact=text(account,f'cv_fact_{fact}'),example=sample_shown(account,fact))
+                 for fact in asked)
+    lines.extend(['',text(account,'cv_missing_send_file' if source else 'cv_missing_send')])
+    contact=asked==['contact']
+    written=[piece for piece in written or () if piece]
+    if not cv_insists(True,asked,written): again='cv_missing_more'
+    elif written:
+        again='cv_name_again' if 'name' in asked else 'cv_missing_again_contact' if contact else 'cv_missing_again'
+    else: again='cv_missing_twice_contact' if contact else ''
+    if again: lines.append(text(account,again))
+    return '\n'.join(lines)
+
+def can_add_line(account,found):
+    """The line on a new CV's review for what it could still have: what it lacks, if the customer insisted, then what only adds to it.
+
+    `found` is what the draft gives and lacks (generation.facts_of). At most
+    four are named, the photo not among them (the review's own photo line
+    says it); '' when there is nothing to add.
+    """
+    from apps.studio.cv.content import OPTIONAL_FACTS,REQUIRED_FACTS
+    found=found or {}
+    facts=[*(fact for fact in REQUIRED_FACTS if fact in (found.get('missing') or ())),
+           *(fact for fact in OPTIONAL_FACTS if fact!='photo' and fact in (found.get('optional_missing') or ()))][:4]
+    return text(account,'cv_can_add').format(facts=facts_said(account,facts)) if facts else ''
 
 def cv_screen_open(conversation):
     """Whether the chat is on one of a CV's first screens (how to make it, or what to send for it) and it is not old.
@@ -587,6 +757,9 @@ async def review_screen(account,draft,quote):
         slot=await sync_to_async(ai.photo_slot)(draft) if photo else True
         body+='\n'+text(account,('cv_photo_line' if slot else 'cv_photo_no_slot_line') if photo
                          else 'cv_photo_none' if change else 'cv_photo_none_add_pages' if pages_more else 'cv_photo_none_add')
+        # What a new CV lacks, or could still have, is said before it is paid for: a line, no step.
+        adding=can_add_line(account,await sync_to_async(ai.facts_of)(draft)) if not change else ''
+        if adding: body+='\n'+adding
     # Pictures the plan cannot add are said, never quietly left out. A change
     # asking for them on a plan that adds none is told so too, unless photos are
     # off altogether and no plan could add them.
@@ -935,8 +1108,14 @@ def build_dispatcher():
         samples=[ai_example(account,feature_id,index) for index in range(len(PROMPT_EXAMPLES[feature_id]))]
         body=(html.escape(notice)+'\n\n' if notice else '')+f'<b>{html.escape(title)}</b>\n'
         if cv:
-            # No page count to ask for: one page or two is the template's to decide.
-            body+=f'{text(account,"cv_ask")}\n'+(text(account,'cv_photo_attached') if portrait else f'<i>{text(account,"cv_photo_hint")}</i>')
+            # No page count to ask for: one page or two is the template's to decide. What a CV
+            # needs and what only adds to it are said before the customer writes, by the labels
+            # the missing screen and the review use.
+            from apps.studio.cv.content import OPTIONAL_FACTS,REQUIRED_FACTS
+            needs=text(account,'cv_required').format(facts=facts_said(account,REQUIRED_FACTS))
+            adds=text(account,'cv_optional').format(facts=facts_said(account,OPTIONAL_FACTS,', '))
+            body+=(f'{text(account,"cv_ask")}\n\n{needs}\n{adds}\n\n'
+                   +(text(account,'cv_photo_attached') if portrait else f'<i>{text(account,"cv_photo_hint")}</i>'))
         else: body+=f'{text(account,"ai_ask_topic")}\n<i>{text(account,"ai_pages_hint")}</i>'
         body+=f'\n\n{text(account,"ai_examples")}:\n\n1. <code>{html.escape(samples[0])}</code>'
         if samples[1:]:
@@ -974,40 +1153,45 @@ def build_dispatcher():
         return await render(message,body,rows,edit)
 
     async def cv_mode_screen(message,account,way,edit=False,notice='',notes=None,files=None,ask='file',asked=0,link=False,portrait=None,
-                             retry=False):
+                             retry=False,missing=(),copied=''):
         """The LinkedIn or old-CV screen: what to send for a CV made from files, and what is kept for it.
 
         The file holds the facts; words sent before it, with it or just after
         it are notes on top of them. A photo sent here is a page to read, never
         the portrait, which is sent on the review. `notes` and `portrait` are
         None to keep what the CV's screens keep (cv_kept); `files` are files
-        kept for it. `ask` is what the screen waits for: 'file'; 'name', asked
-        `asked` times already, when the files name nobody; or 'again', new notes
-        or another file for the files kept, when a CV's description is written
-        again. `link` says a LinkedIn link was sent instead of the profile:
-        it is never opened, and the way to save the profile is said instead.
+        kept for it. `ask` is what the screen waits for: 'file'; 'missing', asked
+        `asked` times already, when the files and the notes do not give what a
+        CV needs (`missing` are the required facts that are not there, and the
+        answer goes before the notes); or 'again', new notes or another file
+        for the files kept, when a CV's description is written again. A screen
+        kept before 'missing' was listed has 'name' for it. `link` says a
+        LinkedIn link was sent instead of the profile: it is never opened, and
+        the way to save the profile is said instead.
         `retry` offers to make the CV again at once from the files kept, after
-        a refusal that passes (`rate_limited`).
+        a refusal that passes (`rate_limited`). `copied` is a sample of the
+        missing screen just sent back (as `compared` gives it): sent again at
+        once, it is the customer's own.
         """
         kept=await sync_to_async(cv_kept)(account)
         notes=[note for note in (kept['notes'] if notes is None else notes) if note]
         portrait=kept['portrait_asset_id'] if portrait is None else portrait
         files=[str(identifier) for identifier in files or []]
+        if ask in ('missing','name'): ask,missing='missing',cv_asked({'ask':ask,'missing':missing})
         state={'feature_id':ai.CV,'cv_source':way,'notes':notes,'source_ids':files,'ask':ask,
+               **({'missing':missing} if ask=='missing' else {}),**({'copied':copied} if copied and ask=='missing' else {}),
                **({'asked':asked} if asked else {}),**({'portrait_asset_id':portrait} if portrait else {})}
         await sync_to_async(set_prompt)(account,'cv_source',state)
         linkedin=way==ai.LINKEDIN
         body=(html.escape(notice)+'\n\n' if notice else '')+(f'<b>{html.escape(TOOL_NAMES[ai.CV][account.locale])}</b>\n'
               f'<b>{text(account,"cv_linkedin_title" if linkedin else "cv_file_title")}</b>\n')
         noted=text(account,'ai_topic_kept').format(brief=html.escape(brief_quote(notes))) if notes else ''
-        if files and ask in ('name','again'):
+        if files and ask in ('missing','again'):
             names=await sync_to_async(ai.file_names)(account,files)
             body+=html.escape(text(account,'cv_from_files').format(files=files_said(account,names)))+'\n'
             if noted: body+=noted+'\n'
-            if ask=='name':
-                sample=f'<code>{html.escape(text(account,"cv_name_sample"))}</code>'
-                body+=(f'\n{text(account,"cv_file_name_question")}\n{text(account,"ai_topic_example").format(example=sample)}\n'
-                       f'{text(account,"cv_name_again")}')
+            if ask=='missing':
+                body+=f'\n{text(account,"cv_file_missing_question")}\n{missing_lines(account,missing,source=True,written=notes)}'
             else: body+='\n'+text(account,'cv_files_kept')
         else:
             if linkedin:
@@ -1018,7 +1202,7 @@ def build_dispatcher():
         rows=[[await button(account,'ai_back','cv_mode'),await button(account,'home','home')]]
         if files and ask=='again' and retry:
             rows.insert(0,[await button(account,'cv_try_again','cv_retry',{'cv_source':way})])
-        if files and ask=='name':
+        if files and ask=='missing':
             # Like a file that could not be used: another file instead, or writing about yourself.
             rows[:0]=[[await button(account,'cv_send_another','cv_mode',{'cv_source':way})],
                       [await button(account,'cv_write_instead','cv_mode',{'cv_source':ai.TEXT})]]
@@ -1030,7 +1214,7 @@ def build_dispatcher():
         if conversation.state=='cv_choose': return await cv_choose(message,account)
         way=p.get('cv_source') if p.get('cv_source') in (ai.LINKEDIN,ai.FILE) else ai.FILE
         return await cv_mode_screen(message,account,way,notes=list(p.get('notes') or []),files=list(p.get('source_ids') or []),
-                                    ask=p.get('ask','file'),asked=int(p.get('asked') or 0))
+                                    ask=p.get('ask','file'),asked=int(p.get('asked') or 0),missing=p.get('missing') or ())
 
     async def cv_refused(message,account,way,notes,exc,edit=True):
         """A CV that could not be made from the files sent: why, and the ways on — another file, or writing instead.
@@ -1052,9 +1236,10 @@ def build_dispatcher():
         """A CV made from the customer's files and the notes on top of them, priced and on its review.
 
         Nothing is counted yet. `message` is the "Preparing…" line, which becomes
-        the review, or the question or refusal in its place: no name in the files
-        or the notes asks for it, keeping both (`asked` times asked; `given` takes
-        the answer as the name); a file that cannot be read offers another file
+        the review, or the question or refusal in its place: a name, a phone or
+        email, or a job or school that neither the files nor the notes give is
+        asked for, keeping both (`asked` times asked; `given` takes the answers
+        as they are); a file that cannot be read offers another file
         or writing instead. While a file is still waiting for the reader, it
         becomes the wait for them (cv_wait_start), and this is done again once
         they are read. `at` is when Telegram took the newest file and
@@ -1086,8 +1271,9 @@ def build_dispatcher():
             if exc.code=='cv_reading':
                 status=await sync_to_async(ai.cv_reading)(account,files,way)
                 return await cv_wait_start(message,account,wait,status or {'reading':True})
-            if exc.code=='cv_name_required':
-                return await cv_mode_screen(message,account,way,True,notes=notes,files=files,ask='name',asked=asked,portrait=portrait)
+            if exc.code=='cv_missing':
+                return await cv_mode_screen(message,account,way,True,notes=notes,files=files,ask='missing',asked=asked,portrait=portrait,
+                                            missing=(exc.params or {}).get('missing') or [])
             if exc.code=='channels_required':
                 # Behind the channels the files and the notes wait on this screen.
                 from .channels import show_gate
@@ -1189,8 +1375,8 @@ def build_dispatcher():
             notes=[str(note) for note in p.get('notes') or [] if note]
             caption=album_caption(message)
             if caption: notes.append(caption)
-            # The files the name was asked for stay beside these; any other screen's are replaced by them.
-            kept=[str(identifier) for identifier in p.get('source_ids') or []] if p.get('ask')=='name' else []
+            # The files that were asked about stay beside these; any other screen's are replaced by them.
+            kept=[str(identifier) for identifier in p.get('source_ids') or []] if p.get('ask') in ('missing','name') else []
             ids,failure=await cv_upload(account,message.chat.id,files,way)
             if not ids:
                 album_shown(message,await cv_refused(waiting,account,way,notes,failure or DomainError('cv_file_kind')))
@@ -1528,7 +1714,8 @@ def build_dispatcher():
                                                               **({'notes':notes} if notes else {})})
         return await cv_choose(message,account,True,notice=text(account,'cv_photo_kept_choose'))
 
-    async def ai_topic_needed(message,account,feature_id,brief,other='',edit=True,question='',notice='',portrait=None,ask='name'):
+    async def ai_topic_needed(message,account,feature_id,brief,other='',edit=True,question='',notice='',portrait=None,ask='missing',
+                              missing=(),copied=''):
         """A description that names no topic: what was kept of it, and the one thing missing.
 
         `message` is the "Preparing…" line, which becomes this question: one
@@ -1539,17 +1726,24 @@ def build_dispatcher():
         kept while the same description is asked about again; `notice` is a
         line about what was just sent.
 
-        For a CV what is missing is the person's name, or (`ask` 'details')
-        anything about them at all: a greeting or a name alone makes no CV. No
-        other service is offered: a CV is about someone, not on a topic. Its
-        photo (`portrait`, or None for the one already waiting) waits with it,
-        and the examples button comes back to this question, not a blank one.
+        For a CV what is missing is a name, a phone or email, or a job or
+        school (`missing`, the required facts the server found missing): all
+        are listed on one screen, each with an example, and answered in one
+        message or several. A greeting, or a name alone, misses all but the
+        name. A question kept before they were listed has `ask` 'name', or
+        'details' for all of them (cv_asked). No other service is offered: a
+        CV is about someone, not on a topic. Its photo (`portrait`, or None for
+        the one already waiting) waits with it, and the examples button comes
+        back to this question, not a blank one. `copied` is a sample of this
+        screen just sent back (as `compared` gives it): sent again at once, it
+        is the customer's own.
         """
         cv=feature_id==ai.CV
         question=question or secrets.token_urlsafe(6)
         if portrait is None: portrait=await sync_to_async(pending_portrait)(account) if cv else ''
+        asked=cv_asked({'ask':ask,'missing':missing}) if cv else []
         state={'feature_id':feature_id,'brief':brief,'question':question,**({'portrait_asset_id':portrait} if portrait else {}),
-               **({'ask':ask} if cv else {})}
+               **({'ask':'missing','missing':asked,**({'copied':copied} if copied else {})} if cv else {})}
         await sync_to_async(set_prompt)(account,'ai_input',state)
         body=f'<b>{html.escape(TOOL_NAMES[feature_id][account.locale])}</b>\n'
         if notice: body+=f'{html.escape(notice)}\n'
@@ -1560,11 +1754,11 @@ def build_dispatcher():
             rows.append([await button(account,'ai_switch_slides' if other==ai.SLIDES else 'ai_switch_pdf','ai_retarget',
                                       {'feature_id':other,'question':question})])
         body+=f'\n{text(account,"ai_topic_kept").format(brief=html.escape(brief_quote(brief)))}\n\n'
-        if cv and ask=='details': body+=text(account,'cv_details_question')
+        if cv: body+=missing_lines(account,asked,written=brief)
         else:
-            sample=f'<code>{html.escape(text(account,"cv_name_sample" if cv else "ai_topic_sample"))}</code>'
-            body+=(f'{text(account,"cv_name_question" if cv else "ai_topic_question")}\n{text(account,"ai_topic_example").format(example=sample)}\n'
-                   f'{text(account,"cv_name_again" if cv else "ai_topic_again")}')
+            sample=f'<code>{html.escape(text(account,"ai_topic_sample"))}</code>'
+            body+=(f'{text(account,"ai_topic_question")}\n{text(account,"ai_topic_example").format(example=sample)}\n'
+                   f'{text(account,"ai_topic_again")}')
         # A PDF or Word file sent here was meant as the old CV: the way to that
         # screen, which keeps what was written as its notes (cv_mode).
         if cv and notice==text(account,'cv_photo_only'):
@@ -1735,7 +1929,7 @@ def build_dispatcher():
             else: await sync_to_async(set_prompt)(account,'cv_review',shown)
         return sent
 
-    async def ai_start(message,account,feature_id,description,brief=(),question='',portrait=''):
+    async def ai_start(message,account,feature_id,description,brief=(),question='',portrait='',missing=(),copied=''):
         """One chat message in, a priced draft out. Nothing is counted yet.
 
         `message` is the "Preparing…" line, which becomes the priced draft.
@@ -1746,14 +1940,24 @@ def build_dispatcher():
         "10 slides please" would contradict it. `question` is the topic question
         this answers, asked again under the same name if the topic is still missing.
 
-        For a CV, `brief` is what was written before (a description that named
-        nobody, or a greeting), and `portrait` the photo sent for it. What was
-        written is always kept: a CV can only say what the customer told us,
-        and a fact said twice is better than one lost. A CV is not made of a
-        greeting or a name alone: the work, studies and skills are asked for
-        first. The name question answered a second time is taken as the name
-        only when the answer looks like one ("dilnoza karimova"), never a line
-        of the description sent again.
+        For a CV, `brief` is what was written before (a description that lacked
+        something, or a greeting), `missing` the required facts that question
+        asked for, and `portrait` the photo sent for it. What was written is
+        always kept: a CV can only say what the customer told us, and a fact
+        said twice is better than one lost. The server says what is missing
+        (name, phone or email, job or school) and the customer is asked for it,
+        in one message or several. Words sent again are the way past a check
+        that does not see what is there, but only a real description is made
+        into a CV that way (cv_insists), never a greeting, a name alone or a
+        name with a phone or email: while the name is missing, only an answer
+        that looks like one ("dilnoza karimova") counts, never a line of the
+        description sent again; while the job or school is missing, only a
+        description that says more about the person than who they are and how
+        to reach them. So a short bio with a name and a school is made without
+        the phone or email it lacks. A message holding a sample of the missing
+        screen, or a copy of its list, is ours, not theirs (sent_back): not
+        kept, and the screen says so, however often it is sent (sample_held);
+        only the sample name sent again at once (`copied`) is the customer's own.
         """
         draft=None
         cv=feature_id==ai.CV
@@ -1762,13 +1966,19 @@ def build_dispatcher():
         # The topic question answered with the same words again, or answered a
         # second time, is taken as it is: the check reads words, and a topic it
         # does not know ("Bahor") must not keep the customer asking.
-        said=lambda piece:' '.join(piece.casefold().split())
-        repeated=[piece for piece in brief if said(piece)==said(description)]
+        repeated=[piece for piece in brief if compared(piece)==compared(description)]
+        # A sample the missing screen shows, sent back as it is: the same screen, saying it is
+        # ours, and nothing kept. Only the sample name sent again at once is the customer's own;
+        # a sample phone, email, job or school, or the list's own labels, never are (sample_held).
+        if (cv and brief and missing and not repeated
+                and (sample_held(description) or (compared(description)!=copied and sent_back(description)))):
+            return await ai_topic_needed(message,account,feature_id,list(brief),question=question,
+                                         notice=text(account,'cv_example_copied'),portrait=portrait or None,missing=missing,
+                                         copied=compared(description))
         given=bool(repeated) or len(brief)>=2
-        # Asked twice already, and answered with something new: a CV goes ahead
-        # however little it says. The same words sent again never make one.
-        asked=len(brief)>=2 and not repeated
         brief=[piece for piece in brief if piece not in repeated]
+        # The words are the same whichever way they were typed: the first time is kept, as written then.
+        if repeated and cv: description=repeated[0]
         # Our own example sent back unchanged would make our example, not theirs.
         if await sync_to_async(ai.is_example)(description):
             return await render(message,text(account,'cv_example_copied' if cv else 'ai_example_copied'),
@@ -1776,18 +1986,16 @@ def build_dispatcher():
                                                                                     **({'cv_source':ai.TEXT} if cv else {})}),
                                   await button(account,'cancel_button','home')]],True)
         if cv:
-            from apps.studio.cv.content import name_like,says_little
             from apps.studio.cv.sources import linkedin_link_only
-            given=given and name_like(description)
+            # The same words sent again are taken as they are: while the name is missing, if
+            # they look like one; while the job or school is missing, if the description,
+            # read once, says more than a name, a phone and an email (cv_insists).
+            given=await sync_to_async(cv_insists)(repeated,missing,[description,*brief],description)
             # A photo that arrived while this was on its way is the CV's too.
             portrait=portrait or await sync_to_async(pending_portrait)(account)
             # A LinkedIn profile's link is never opened: the way to send the profile instead.
             if linkedin_link_only('\n'.join([description,*brief])):
                 return await cv_mode_screen(message,account,ai.LINKEDIN,True,link=True,portrait=portrait)
-            if not asked and await sync_to_async(says_little)('\n'.join([description,*brief])):
-                return await ai_topic_needed(message,account,feature_id,
-                                             kept_brief([*brief,description],CV_BRIEF_CHARS,CV_BRIEF_PIECES),
-                                             question=question if brief else '',portrait=portrait,ask='details')
         # A photo kept with the question may have expired since: the CV goes ahead without it.
         portrait=await sync_to_async(ai.usable_portrait)(account,portrait) if cv else ''
         try:
@@ -1798,14 +2006,12 @@ def build_dispatcher():
         except DomainError as exc:
             if exc.code=='convert_requested': return await ai_convert(message,account)
             if exc.code=='cv_linkedin_link': return await cv_mode_screen(message,account,ai.LINKEDIN,True,link=True,portrait=portrait)
-            if exc.code=='cv_name_required':
-                # No name yet: everything written is kept, and the name asked
-                # for — or, while it still says next to nothing, the rest.
-                kept=kept_brief([*brief,description],CV_BRIEF_CHARS,CV_BRIEF_PIECES)
-                from apps.studio.cv.content import says_little
-                thin=not asked and await sync_to_async(says_little)('\n'.join(kept))
-                return await ai_topic_needed(message,account,feature_id,kept,question=question if brief else '',
-                                             portrait=portrait,ask='details' if thin else 'name')
+            if exc.code=='cv_missing':
+                # Something a CV needs is not there yet: everything written is
+                # kept, and what is missing listed, with an example of each.
+                return await ai_topic_needed(message,account,feature_id,kept_brief([*brief,description],CV_BRIEF_CHARS,CV_BRIEF_PIECES),
+                                             question=question if brief else '',portrait=portrait,
+                                             missing=(exc.params or {}).get('missing') or [])
             if exc.code=='topic_required':
                 # Still no topic: both pieces are kept, and the topic asked for again.
                 other=(exc.params or {}).get('service') or ''
@@ -2086,7 +2292,7 @@ def build_dispatcher():
                         waiting=await sync_to_async(pending_question)(account,p.get('question',''))
                         if waiting and waiting.get('feature_id')==p['feature_id']:
                             return await ai_topic_needed(message,account,p['feature_id'],list(waiting['brief']),'',True,
-                                                         p['question'],ask=waiting.get('ask','name'))
+                                                         p['question'],ask=waiting.get('ask','missing'),missing=waiting.get('missing') or ())
                         # A CV is asked first how it is made. Its description written
                         # again goes back to the way it was made, keeping its photo and
                         # the files it was made from; back from the examples of the
@@ -2122,7 +2328,7 @@ def build_dispatcher():
                             await ai_start(message,account,ai.CV,'\n'.join(kept['notes']),(),'',portrait)
                         else: await ai_prompt(message,account,ai.CV,True)
                     elif way in (ai.LINKEDIN,ai.FILE):
-                        # A description still waiting for its name becomes the notes on the file.
+                        # A description still waiting for what it lacks becomes the notes on the file.
                         brief=await sync_to_async(cv_brief)(account)
                         await cv_mode_screen(message,account,way,True,notes=kept_brief(brief,CV_BRIEF_CHARS,CV_BRIEF_PIECES) if brief else None)
                     else: await cv_choose(message,account,True)
@@ -2300,7 +2506,7 @@ def build_dispatcher():
         except DomainError as exc: await safe_error(message,account,exc)
 
     def cv_question(conversation):
-        """Whether the chat is asking for a CV's description (or its name) now."""
+        """Whether the chat is asking for a CV's description (or what it lacks) now."""
         return bool(conversation) and conversation.state=='ai_input' and (conversation.prompt or {}).get('feature_id')==ai.CV
 
     async def cv_file(message,bot,account,name,raw):
@@ -2375,11 +2581,12 @@ def build_dispatcher():
                 if notice: await target.answer(html.escape(notice))
                 waiting=target if edit else await target.answer(text(account,'ai_preparing'))
                 album_shown(message,await ai_start(waiting,account,ai.CV,caption,brief,pending.get('question',''),
-                                                   pending.get('portrait_asset_id','') if portrait is None else portrait))
+                                                   pending.get('portrait_asset_id','') if portrait is None else portrait,
+                                                   cv_asked(pending),pending.get('copied','')))
             elif brief:
                 album_shown(message,await ai_topic_needed(target,account,ai.CV,brief,'',edit,pending.get('question',''),
                                                           notice or text(account,'cv_photo_attached'),portrait,
-                                                          pending.get('ask','name')))
+                                                          pending.get('ask','missing'),pending.get('missing') or ()))
             else: album_shown(message,await ai_prompt(target,account,ai.CV,edit,notice,portrait))
         return True
 
@@ -2445,7 +2652,8 @@ def build_dispatcher():
             if cv_question(conversation):
                 brief=await sync_to_async(pending_brief)(account)
                 if brief: return await ai_topic_needed(message,account,ai.CV,brief,'',False,conversation.prompt.get('question',''),
-                                                       ask=conversation.prompt.get('ask','name'))
+                                                       ask=conversation.prompt.get('ask','missing'),
+                                                       missing=conversation.prompt.get('missing') or ())
                 return await ai_prompt(message,account,ai.CV)
             reviewed=await sync_to_async(open_cv_review)(account)
             if reviewed: return await ai_resume(message,account,reviewed)
@@ -2646,7 +2854,7 @@ def build_dispatcher():
         if not value: return await message.answer(text(account,'ai_topic_empty'))
         waiting=await message.answer(text(account,'ai_preparing'))
         return await ai_start(waiting,account,p['feature_id'],value,p.get('brief') or [],p.get('question',''),
-                              p.get('portrait_asset_id',''))
+                              p.get('portrait_asset_id',''),cv_asked(p),p.get('copied',''))
 
     async def cv_review_text(message,account,conversation,value):
         """Text sent while a new CV's review is on screen.
@@ -2697,15 +2905,21 @@ def build_dispatcher():
     async def cv_source_text(message,account,conversation,value):
         """Words sent on the LinkedIn or old-CV screen.
 
-        Before the file they are notes, kept for it and said so. Asked for the
-        name the files did not give, the answer goes first, before the notes;
-        sent a second time, an answer that looks like a name is taken as it is,
-        as the question about yourself takes one. For the files a CV's
-        description written again kept, they are its new notes, and the CV is
-        made again. A LinkedIn profile's link is answered with the way to send
+        Before the file they are notes, kept for it and said so. Asked for what
+        the files and the notes did not give (a name, a phone or email, a job
+        or school), the answer goes first, before the notes; the same words
+        sent again (the same as any kept) are taken as they are by the rule the
+        question about yourself takes them by (cv_insists): while the name is
+        missing only if they look like one, and while the job or school is
+        missing only if the notes and the answer say more than a name, a phone
+        and an email. The newest answers are kept, and the first note: a
+        chatty customer's facts are never pushed out by older words. A sample of
+        the missing screen sent back is answered as one and not kept, as the
+        question about yourself answers it. Files are not read again for an
+        answer. For the files a CV's description written again kept, they are
+        its new notes, and the CV is made again. A LinkedIn profile's link is answered with the way to send
         the profile instead: it is never opened.
         """
-        from apps.studio.cv.content import name_like
         from apps.studio.cv.sources import linkedin_link_only
         p=conversation.prompt or {}
         way=p.get('cv_source') if p.get('cv_source') in (ai.LINKEDIN,ai.FILE) else ai.FILE
@@ -2713,10 +2927,26 @@ def build_dispatcher():
         files=[str(identifier) for identifier in p.get('source_ids') or []]
         ask=p.get('ask','file')
         if not value: return await message.answer(text(account,'ai_topic_empty'))
-        if ask=='name' and files:
+        if ask in ('missing','name') and files:
             asked=int(p.get('asked') or 0)
+            same=[note for note in notes if compared(note)==compared(value)]
+            repeated=bool(same)
+            # A sample the screen shows, sent back as it is: said so, nothing kept or counted. Only the
+            # sample name sent again at once is the customer's own, as in the question about yourself.
+            if not repeated and (sample_held(value) or (compared(value)!=p.get('copied','') and sent_back(value))):
+                return await cv_mode_screen(message,account,way,notice=text(account,'cv_example_copied'),notes=notes,files=files,
+                                            ask='missing',asked=asked,missing=cv_asked(p),copied=compared(value))
+            # The words are the same whichever way they were typed: the first time is kept, as written then.
+            if repeated: value,notes=same[0],[note for note in notes if note not in same]
+            # The answer goes first and the notes are newest first: the first note written and the
+            # newest are kept, CV_BRIEF_PIECES and CV_BRIEF_CHARS with the answer, so no answer is
+            # pushed out by older words (cv_build then keeps them all).
+            notes=kept_brief(notes[::-1],max(CV_BRIEF_CHARS-len(value),0),CV_BRIEF_PIECES-1)[::-1]
+            # Taken as they are by the same rule as the question about yourself (cv_insists): the
+            # notes and the answer, each once, are what the customer wrote.
+            given=await sync_to_async(cv_insists)(repeated,cv_asked(p),[value,*notes],value)
             waiting=await message.answer(text(account,'ai_preparing'))
-            return await cv_build(waiting,account,way,[value,*notes],files,given=asked>0 and name_like(value),asked=asked+1)
+            return await cv_build(waiting,account,way,[value,*notes],files,given=given,asked=asked+1)
         if linkedin_link_only(value):
             return await cv_mode_screen(message,account,ai.LINKEDIN,notes=notes,files=files if way==ai.LINKEDIN else [],
                                         ask=ask if files and way==ai.LINKEDIN else 'file',link=True)

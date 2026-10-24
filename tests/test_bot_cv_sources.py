@@ -25,11 +25,13 @@ from apps.core.models import BotCallback, BotConversation, BotInputReceipt, File
 from apps.studio.domain import CV
 from apps.studio.models import GenerationDraft
 from operations.integrations import save_config
+from telegram import generation
 from telegram.bot import COPY
 from telegram.errors import COPY as ERRORS
 from telegram.local import dispatch_local
 from telegram.ux_copy import LOCALES, TOOL_NAMES, UX
-from tests.test_bot_cv import FLAGS, actions, cv, feed_together, file_task_waiting, image, model, screen, state  # noqa: F401
+from tests.test_bot_cv import (FLAGS, PHONE, actions, asks_for, cv, feed_together, file_task_waiting, image, model,  # noqa: F401
+                                screen, state)
 from tests.test_bot_generation import customer, latest, tap  # noqa: F401
 from tests.test_cv_content import BRIEF
 from tests.test_cv_sources import (_lines, _pdf, blank_pdf, docx_cv, encrypted_pdf, linkedin_pdf, needs_tesseract,
@@ -88,10 +90,52 @@ def shot(index):
 
 @functools.lru_cache(maxsize=None)
 def nameless_pdf():
-    """An old CV that names nobody: what the person did, never who they are."""
+    """An old CV that names nobody: how to reach the person and what they did, never who they are."""
     return _pdf(lambda page, _: _lines(page, 60, 780, [
+        ('Helvetica', 11, 'Phone: +998 90 123 45 67', 16),
         ('Helvetica', 11, 'Experience: accountant at Example Trade LLC, 2019 - 2024.', 16),
         ('Helvetica', 11, 'Skills: 1C, Excel, IFRS reporting, payroll, tax returns.', 16)]))
+
+
+@functools.lru_cache(maxsize=None)
+def skills_only_pdf():
+    """An old CV with next to nothing in it: a line of skills, neither who the person is, nor how to reach them, nor a job."""
+    return _pdf(lambda page, _: _lines(page, 60, 780, [
+        ('Helvetica', 11, 'Skills: 1C, Excel, IFRS reporting, payroll, tax returns, budgeting, invoicing.', 16),
+        ('Helvetica', 11, 'Languages: Uzbek native, Russian fluent, English B1.', 16)]))
+
+
+@functools.lru_cache(maxsize=None)
+def jobless_pdf():
+    """An old CV that says who the person is and how to reach them, and nothing they did or studied."""
+    return _pdf(lambda page, _: _lines(page, 60, 780, [
+        ('Helvetica', 20, 'Dilnoza Karimova', 26),
+        ('Helvetica', 11, 'Phone: +998 91 234 56 78', 16),
+        ('Helvetica', 11, 'Skills: 1C, Excel, IFRS reporting, payroll, tax returns, budgeting, invoicing.', 16),
+        ('Helvetica', 11, 'Languages: Uzbek native, Russian fluent, English B1.', 16)]))
+
+
+@functools.lru_cache(maxsize=None)
+def linkedin_without_contact():
+    """A LinkedIn "Save to PDF" export of a profile that shows no contact details: the person and their jobs, not how to reach them."""
+    from reportlab.lib.pagesizes import letter
+
+    def draw(page, _):
+        page.setFillColorRGB(0.95, 0.95, 0.95)
+        page.rect(0, 0, 200, letter[1], stroke=0, fill=1)
+        _lines(page, 28, 740, [
+            ('Helvetica-Bold', 13, 'Top Skills', 20), ('Helvetica', 10, 'SQL', 13), ('Helvetica', 10, 'Power BI', 26),
+            ('Helvetica-Bold', 13, 'Languages', 20), ('Helvetica', 10, 'Uzbek (Native or Bilingual)', 13),
+            ('Helvetica', 10, 'English (Professional Working)', 13)])
+        _lines(page, 222, 735, [
+            ('Helvetica', 26, 'Dilnoza Karimova', 22), ('Helvetica', 12, 'Senior Data Analyst at Example Retail', 16),
+            ('Helvetica', 10, 'Tashkent, Uzbekistan', 30), ('Helvetica', 16, 'Experience', 22),
+            ('Helvetica-Bold', 12, 'Example Retail', 15), ('Helvetica', 11, 'Senior Data Analyst', 14),
+            ('Helvetica', 10, 'March 2022 - Present (2 years 8 months)', 14),
+            ('Helvetica', 11, 'Built weekly sales dashboards in Power BI for 40 stores.', 26),
+            ('Helvetica-Bold', 12, 'Sample Bank', 15), ('Helvetica', 11, 'Data Analyst', 14),
+            ('Helvetica', 10, 'July 2019 - February 2022 (2 years 8 months)', 14)])
+    return _pdf(draw, 1, letter)
 
 
 @pytest.fixture
@@ -153,7 +197,7 @@ def test_every_way_into_the_cv_service_asks_first(customer):
 
 def test_writing_about_yourself_is_the_question_it_always_was(customer, model):
     words, _ = screen(choose(customer, 'cv_mode_text'))
-    assert words.startswith(f'<b>{TOOL_NAMES[CV]["en"]}</b>\n{EN["cv_ask"]}\n<i>{EN["cv_photo_hint"]}</i>'), words
+    assert words.startswith(f'<b>{TOOL_NAMES[CV]["en"]}</b>\n{asks_for()}\n\n<i>{EN["cv_photo_hint"]}</i>'), words
     assert state(customer) == ('ai_input', {'feature_id': CV})
     words, _ = screen(dispatch_local(customer, text=BRIEF))
     assert '📄 Dilnoza Karimova' in words and EN['cv_linkedin_title'] not in words and '📎 From' not in words, words
@@ -371,8 +415,11 @@ def test_the_ways_on_from_a_file_that_could_not_be_used(customer, model):
     assert state(customer)[1]['notes'] == ['Lead engineer roles']
     # Writing about yourself instead keeps the notes as the start of the description, and asks for the rest.
     words, _ = screen(tap(customer, send(customer, 'blank.pdf', blank_pdf()), EN['cv_write_instead']))
-    assert '📝 Noted: “Lead engineer roles”.' in words and EN['cv_details_question'] in words, words
-    assert state(customer)[0] == 'ai_input' and state(customer)[1]['brief'] == ['Lead engineer roles']
+    assert '📝 Noted: “Lead engineer roles”.' in words and EN['cv_missing_title'] in words, words
+    for fact in ('name', 'contact', 'background'):
+        assert f'• {EN["cv_fact_" + fact]} — e.g.' in words, (fact, words)
+    assert state(customer) == ('ai_input', {'feature_id': CV, 'brief': ['Lead engineer roles'], 'ask': 'missing',
+                                            'missing': ['name', 'contact', 'background']})
     # With nothing written, it is the question about yourself as it always was.
     choose(customer, 'cv_mode_file')
     words, _ = screen(tap(customer, send(customer, 'blank.pdf', blank_pdf()), EN['cv_write_instead']))
@@ -396,16 +443,290 @@ def test_a_file_that_names_nobody_asks_for_the_name_and_keeps_the_file_and_the_n
     dispatch_local(customer, text='Make it one page')
     words, shown = screen(send(customer, 'cv.pdf', nameless_pdf()))
     nameless = FileAsset.objects.get(account=customer, name='cv.pdf')
-    assert EN['cv_file_name_question'] in words and '<code>Dilnoza Karimova</code>' in words, words
-    assert '📎 From: cv.pdf' in words and '📝 Noted: “Make it one page”.' in words and EN['cv_name_again'] in words
+    # The file gives a phone and a job: only the name is asked for, and what is there is said.
+    assert EN['cv_file_missing_question'] in words and EN['cv_missing_title'] in words, words
+    assert f'• {EN["cv_fact_name"]} — e.g. <code>Dilnoza Rahimova</code>' in words, words
+    assert EN['cv_got'].format(facts=f'{EN["cv_fact_contact"]} · {EN["cv_fact_background"]}') in words, words
+    assert '<code>+998 90 123 45 67</code>' not in words and 'Bahor Foods' not in words
+    assert '📎 From: cv.pdf' in words and '📝 Noted: “Make it one page”.' in words
+    # What is sent is added to the file; the customer wrote notes, so the way past an unseen name is said.
+    assert EN['cv_missing_send_file'] in words and EN['cv_missing_send'] not in words
+    assert words.endswith(EN['cv_name_again']) and EN['cv_missing_again'] not in words
     assert shown == [EN['cv_send_another'], EN['cv_write_instead'], EN['ai_back'], EN['home']]
     assert state(customer) == ('cv_source', {'feature_id': CV, 'cv_source': 'file', 'notes': ['Make it one page'],
-                                             'source_ids': [str(nameless.id)], 'ask': 'name'})
+                                             'source_ids': [str(nameless.id)], 'ask': 'missing', 'missing': ['name']})
     assert not GenerationDraft.objects.filter(account=customer).exists()
     words, _ = screen(dispatch_local(customer, text='Javlon Ergashev'))
     assert '📄 Javlon Ergashev' in words and '📎 From: cv.pdf' in words, words
     data = latest(customer, CV)
     assert data['prompt'] == 'Javlon Ergashev\nMake it one page' and data['source_ids'] == [str(nameless.id)]
+
+
+def facts_listed(words):
+    """The required facts a screen lists as missing, in the order it lists them."""
+    return [fact for fact in ('name', 'contact', 'background') if f'• {EN["cv_fact_" + fact]} — ' in words]
+
+
+def test_a_file_that_gives_no_contact_asks_for_it_and_is_read_once(customer, model, monkeypatch):
+    from django.core.cache import cache
+    from apps.studio import extraction
+    calls = []
+    real = extraction.read_cv
+    monkeypatch.setattr(extraction, 'read_cv', lambda *args, **kwargs: calls.append(args[1]) or real(*args, **kwargs))
+    choose(customer, 'cv_mode_linkedin')
+    words, shown = screen(send(customer, 'Profile.pdf', linkedin_without_contact()))
+    profile = FileAsset.objects.get(account=customer, name='Profile.pdf')
+    # Its name and its jobs are in the file: only how to reach the person is asked for.
+    assert facts_listed(words) == ['contact'] and EN['cv_file_missing_question'] in words, words
+    assert EN['cv_got'].format(facts=f'{EN["cv_fact_name"]} · {EN["cv_fact_background"]}') in words
+    # Nothing written, only the file: no line says the customer wrote something; how to go on without a contact is said.
+    assert words.endswith(f'{EN["cv_missing_send_file"]}\n{EN["cv_missing_twice_contact"]}'), words
+    assert EN['cv_name_again'] not in words and EN['cv_missing_again'] not in words and 'you wrote' not in words
+    assert '📎 From: Profile.pdf' in words and EN['cv_linkedin_title'] in words
+    assert shown == [EN['cv_send_another'], EN['cv_write_instead'], EN['ai_back'], EN['home']]
+    assert state(customer) == ('cv_source', {'feature_id': CV, 'cv_source': 'linkedin', 'notes': [],
+                                             'source_ids': [str(profile.id)], 'ask': 'missing', 'missing': ['contact']})
+    assert not GenerationDraft.objects.filter(account=customer).exists()
+    # The phone is the answer: the file is not read again, and the review follows at once.
+    words, _ = screen(dispatch_local(customer, text=PHONE))
+    assert '📄 Dilnoza Karimova' in words and EN['cv_linkedin_title'] in words and EN['cv_missing_title'] not in words, words
+    data = latest(customer, CV)
+    assert data['prompt'] == PHONE and data['source_ids'] == [str(profile.id)]
+    assert calls == ['pdf'] and cache.get(f'rate:bot_generation:{customer.pk}') == 2
+    assert generation.facts_of(cv(customer))['missing'] == []
+
+
+def test_what_a_file_and_its_notes_do_not_give_is_asked_for_together_and_answered_in_pieces(customer, model):
+    choose(customer, 'cv_mode_file')
+    words, _ = screen(send(customer, 'skills.pdf', skills_only_pdf()))
+    assert facts_listed(words) == ['name', 'contact', 'background'], words
+    # Nothing written, and no work or studies in the file: nothing sent again could make it, so more is asked for.
+    assert words.endswith(f'{EN["cv_missing_send_file"]}\n{EN["cv_missing_more"]}'), words
+    assert EN['cv_got'].split('{')[0] not in words
+    words, _ = screen(dispatch_local(customer, text='Dilnoza Karimova'))
+    assert facts_listed(words) == ['contact', 'background'] and EN['cv_got'].format(facts=EN['cv_fact_name']) in words, words
+    assert state(customer)[1]['notes'] == ['Dilnoza Karimova'] and state(customer)[1]['asked'] == 1
+    words, _ = screen(dispatch_local(customer, text=PHONE))
+    assert facts_listed(words) == ['background'], words
+    assert state(customer)[1]['notes'] == [PHONE, 'Dilnoza Karimova'] and state(customer)[1]['asked'] == 2
+    # A name and a phone sent again would make no CV: the screen asks for the work or studies instead.
+    assert state(customer)[1]['missing'] == ['background'] and words.endswith(EN['cv_missing_more']), words
+    assert EN['cv_missing_again'] not in words
+    words, _ = screen(dispatch_local(customer, text='Accountant, Example Trade LLC, 2019-2024'))
+    assert '📄 Dilnoza Karimova' in words and '📎 From: skills.pdf' in words, words
+    assert latest(customer, CV)['prompt'] == f'Accountant, Example Trade LLC, 2019-2024\n{PHONE}\nDilnoza Karimova'
+
+
+@pytest.mark.parametrize('locale', LOCALES)
+def test_a_file_alone_is_never_said_to_be_something_the_customer_wrote(customer, model, locale):
+    copy = UX[locale]
+    speak(customer, locale)
+    choose(customer, 'cv_mode_file', locale)
+    words, _ = screen(send(customer, 'skills.pdf', skills_only_pdf()))
+    assert [fact for fact in ('name', 'contact', 'background') if f'• {copy["cv_fact_" + fact]} — ' in words] == [
+        'name', 'contact', 'background'], words
+    # It asks for the work or studies the file lacks, never for something written again.
+    assert copy['cv_file_missing_question'] in words, words
+    assert words.endswith(f'{copy["cv_missing_send_file"]}\n{copy["cv_missing_more"]}'), words
+    for key in ('cv_missing_send', 'cv_name_again', 'cv_missing_again', 'cv_missing_again_contact'):
+        assert copy[key] not in words, key
+    assert len(words) < 4096
+
+
+def test_a_sample_sent_back_on_the_file_screen_is_answered_as_ours_and_not_counted(customer, model):
+    from django.core.cache import cache
+    choose(customer, 'cv_mode_linkedin')
+    send(customer, 'Profile.pdf', linkedin_without_contact())
+    builds = cache.get(f'rate:bot_generation:{customer.pk}')
+    # The sample number and address, tapped and sent: the same screen, saying so; nothing kept, read or counted.
+    for sample in ('+998 90 123 45 67', 'dilnoza@example.com\n+998 90 123 45 67'):
+        words, _ = screen(dispatch_local(customer, text=sample))
+        assert words.startswith(EN['cv_example_copied']) and facts_listed(words) == ['contact'], words
+        assert state(customer)[1]['notes'] == [] and 'asked' not in state(customer)[1]
+    assert cache.get(f'rate:bot_generation:{customer.pk}') == builds and not GenerationDraft.objects.filter(account=customer).exists()
+    # The customer's own number makes the CV.
+    words, _ = screen(dispatch_local(customer, text=PHONE))
+    assert '📄 Dilnoza Karimova' in words and latest(customer, CV)['prompt'] == PHONE, words
+
+
+def test_the_missing_screens_own_lines_copied_back_on_the_file_screen_are_answered_as_ours(customer, model):
+    import html
+    import re
+    from django.core.cache import cache
+    choose(customer, 'cv_mode_file')
+    shown = html.unescape(re.sub(r'<[^>]+>', '', screen(send(customer, 'skills.pdf', skills_only_pdf()))[0]))
+    bullets = '\n'.join(line for line in shown.split('\n') if line.startswith('• '))
+    builds = cache.get(f'rate:bot_generation:{customer.pk}')
+    for value in (bullets, shown):
+        words, _ = screen(dispatch_local(customer, text=value))
+        assert words.startswith(EN['cv_example_copied']), words
+        assert facts_listed(words) == ['name', 'contact', 'background'], words
+        assert state(customer)[1]['notes'] == [] and 'asked' not in state(customer)[1]
+    assert cache.get(f'rate:bot_generation:{customer.pk}') == builds
+    assert not GenerationDraft.objects.filter(account=customer).exists()
+
+
+@pytest.mark.parametrize('locale,name', [('en', 'Aziz Karimov'), ('uz', 'Aziz Karimov'), ('ru', 'Азиз Каримов')], ids=LOCALES)
+def test_the_copied_list_or_a_sample_phone_sent_again_on_the_file_screen_is_never_kept(customer, model, locale, name):
+    from django.core.cache import cache
+    from tests.test_bot_cv import OWN_IN_FORMAT, SAMPLE_PHONE, copied_list
+    copy = UX[locale]
+    speak(customer, locale)
+    choose(customer, 'cv_mode_file', locale)
+    bullets = copied_list(screen(send(customer, 'skills.pdf', skills_only_pdf()))[0])
+    assert bullets.count('• ') == 3, bullets
+    builds = cache.get(f'rate:bot_generation:{customer.pk}')
+
+    def listed(words):
+        return [fact for fact in ('name', 'contact', 'background') if f'• {copy["cv_fact_" + fact]} — ' in words]
+    # The list copied back, a name with the sample's number, or the list's labels with the customer's own details:
+    # our example however often it is sent; nothing kept, read or counted.
+    for value in (bullets, SAMPLE_PHONE[locale], OWN_IN_FORMAT[locale]):
+        for _ in range(3):
+            words, _ = screen(dispatch_local(customer, text=value))
+            assert words.startswith(copy['cv_example_copied']) and listed(words) == ['name', 'contact', 'background'], words
+            assert state(customer)[1]['notes'] == [] and 'asked' not in state(customer)[1], value
+    assert cache.get(f'rate:bot_generation:{customer.pk}') == builds
+    # The customer's own name after it: the phone and the work are still asked for, and no CV is made of our example.
+    cache.delete(f'rate:bot_generation:{customer.pk}')
+    words, _ = screen(dispatch_local(customer, text=name))
+    assert listed(words) == ['contact', 'background'] and copy['cv_example_copied'] not in words, words
+    assert state(customer)[1]['notes'] == [name]
+    assert not GenerationDraft.objects.filter(account=customer).exists()
+
+
+@pytest.mark.parametrize('locale,greeting', [('en', 'Good morning'), ('uz', 'Hayrli kun'), ('ru', 'Добрый день')],
+                         ids=LOCALES)
+def test_a_greeting_sent_again_on_the_file_screen_never_makes_a_cv(customer, model, locale, greeting):
+    from django.core.cache import cache
+    copy = UX[locale]
+    speak(customer, locale)
+    # A file with a name and a phone but nothing done: the name is there, so only the work or studies decide.
+    choose(customer, 'cv_mode_file', locale)
+    words, _ = screen(send(customer, 'cv.pdf', jobless_pdf()))
+    listed = [fact for fact in ('name', 'contact', 'background') if f'• {copy["cv_fact_" + fact]} — ' in words]
+    assert listed == ['background'], words
+    for _ in range(3):
+        cache.delete(f'rate:bot_generation:{customer.pk}')
+        words, _ = screen(dispatch_local(customer, text=greeting))
+        assert not GenerationDraft.objects.filter(account=customer).exists(), words
+        assert copy['cv_file_missing_question'] in words, words
+    assert state(customer)[1]['notes'] == [greeting], 'the same words are kept once'
+    # Sending it again cannot make the CV, so the screen never says to: it asks for the work or studies.
+    assert words.endswith(copy['cv_missing_more']) and copy['cv_missing_again'] not in words, words
+    # A file that gives nothing but skills, and the greeting sent again: all three are still missing, and no CV.
+    choose(customer, 'cv_mode_file', locale)
+    send(customer, 'skills.pdf', skills_only_pdf())
+    for _ in range(2):
+        cache.delete(f'rate:bot_generation:{customer.pk}')
+        words, _ = screen(dispatch_local(customer, text=greeting))
+    assert [fact for fact in ('name', 'contact', 'background') if f'• {copy["cv_fact_" + fact]} — ' in words] == [
+        'name', 'contact', 'background'], words
+    assert not GenerationDraft.objects.filter(account=customer).exists()
+
+
+def test_a_description_the_check_missed_is_made_from_the_file_when_sent_again(customer, model):
+    from django.core.cache import cache
+    choose(customer, 'cv_mode_file')
+    send(customer, 'cv.pdf', jobless_pdf())
+    bio = 'I keep the books for a family bakery and sell bread at the counter on weekends'
+    words, _ = screen(dispatch_local(customer, text=bio))
+    # It says more than a name, a phone and an email: the screen offers the same again, and that makes the CV.
+    assert facts_listed(words) == ['background'] and words.endswith(EN['cv_missing_again']), words
+    cache.delete(f'rate:bot_generation:{customer.pk}')
+    words, shown = screen(dispatch_local(customer, text=bio))
+    assert '📄 Dilnoza Karimova' in words and shown[0] == '✨ Generate', words
+    assert latest(customer, CV)['prompt'] == bio and generation.facts_of(cv(customer))['missing'] == ['background']
+
+
+def test_the_newest_answers_on_the_file_screen_are_never_pushed_out_by_older_notes(customer, model):
+    from django.core.cache import cache
+    choose(customer, 'cv_mode_file')
+    send(customer, 'skills.pdf', skills_only_pdf())
+
+    def answer(value):
+        # Answers spread over a few minutes, as a person types them: never the minute's limit.
+        cache.delete(f'rate:bot_generation:{customer.pk}')
+        return screen(dispatch_local(customer, text=value))[0]
+    for number in range(11):
+        answer(f'filler {number}')
+    words = answer(f'Dilnoza Karimova, {PHONE}')
+    assert facts_listed(words) == ['background'], words
+    # Twelve kept already: one more answer drops an old filler, never the name and the phone.
+    words = answer('ok thanks')
+    assert facts_listed(words) == ['background'], words
+    notes = state(customer)[1]['notes']
+    assert len(notes) == 12 and notes[:2] == ['ok thanks', f'Dilnoza Karimova, {PHONE}'] and notes[-1] == 'filler 0', notes
+    # Facts answered one by one still add up.
+    words = answer('Accountant, Example Trade LLC, 2019-2024')
+    assert '📄 Dilnoza Karimova' in words, words
+    prompt = latest(customer, CV)['prompt'].split('\n')
+    assert prompt[:3] == ['Accountant, Example Trade LLC, 2019-2024', 'ok thanks', f'Dilnoza Karimova, {PHONE}'], prompt
+    assert len(prompt) == 12 and prompt[-1] == 'filler 0'
+
+
+def test_long_notes_on_the_file_screen_make_room_for_the_newest_not_the_oldest(customer, model):
+    from telegram.bot import CV_BRIEF_CHARS
+    choose(customer, 'cv_mode_file')
+    send(customer, 'skills.pdf', skills_only_pdf())
+    # Three long answers that give nothing, as long as Telegram sends at once: together they nearly fill the CV's room.
+    first, second, third = (' '.join([word] + ['filler'] * 700)[:3999] + 'x' for word in ('first', 'second', 'third'))
+    assert len(first) == len(second) == len(third) == 4000
+    for value in (first, second, third):
+        screen(dispatch_local(customer, text=value))
+    assert state(customer)[1]['notes'] == [third, second, first]
+    answer = f'Dilnoza Karimova, {PHONE}'
+    assert len(answer) + len(first) + len(second) + len(third) > CV_BRIEF_CHARS
+    words, _ = screen(dispatch_local(customer, text=answer))
+    # The answer and the newest note are kept, and the first note; the one between makes room.
+    assert facts_listed(words) == ['background'], words
+    assert state(customer)[1]['notes'] == [answer, third, first]
+    assert sum(map(len, state(customer)[1]['notes'])) <= CV_BRIEF_CHARS
+
+
+def test_the_same_answer_sent_again_makes_the_cv_from_the_file_with_its_contact_missing(customer, model):
+    from django.core.cache import cache
+    choose(customer, 'cv_mode_linkedin')
+    send(customer, 'Profile.pdf', linkedin_without_contact())
+    words, _ = screen(dispatch_local(customer, text='Please write to me after six'))
+    assert facts_listed(words) == ['contact'] and not GenerationDraft.objects.filter(account=customer).exists(), words
+    # The same words again are taken as they are: made, once, with the lack said on the review.
+    words, shown = screen(dispatch_local(customer, text='please write to me after six'))
+    assert '📄 Dilnoza Karimova' in words and shown[0] == '✨ Generate', words
+    assert latest(customer, CV)['prompt'] == 'Please write to me after six'
+    assert '💡 You can still add: phone or email' in words and generation.facts_of(cv(customer))['missing'] == ['contact']
+    assert GenerationDraft.objects.filter(account=customer).count() == 1
+    assert cache.get(f'rate:bot_generation:{customer.pk}') == 3, 'each answer is a build of the minute'
+
+
+def test_a_name_missing_from_a_file_is_taken_when_sent_again_only_if_it_looks_like_one(customer, model):
+    choose(customer, 'cv_mode_file')
+    send(customer, 'cv.pdf', nameless_pdf())
+    words, _ = screen(dispatch_local(customer, text='what do you mean'))
+    assert facts_listed(words) == ['name'], words
+    words, _ = screen(dispatch_local(customer, text='what do you mean'))
+    assert facts_listed(words) == ['name'] and not GenerationDraft.objects.filter(account=customer).exists(), words
+    dispatch_local(customer, text='dilnoza karimova')
+    words, _ = screen(dispatch_local(customer, text='dilnoza karimova'))
+    assert '📄 dilnoza karimova' in words and 'full name' in words, words
+    assert latest(customer, CV)['prompt'] == 'dilnoza karimova\nwhat do you mean'
+
+
+def test_a_question_kept_before_the_facts_were_listed_is_answered_for_the_file_too(customer, model):
+    choose(customer, 'cv_mode_file')
+    send(customer, 'cv.pdf', nameless_pdf())
+    nameless = FileAsset.objects.get(account=customer, name='cv.pdf')
+    # The screen as an earlier release kept it: asking for the name, with no list.
+    BotConversation.objects.filter(pk=customer.telegram_user_id).update(
+        prompt={'feature_id': CV, 'cv_source': 'file', 'notes': [], 'source_ids': [str(nameless.id)], 'ask': 'name'})
+    words, _ = screen(dispatch_local(customer, text='Javlon Ergashev'))
+    assert '📄 Javlon Ergashev' in words and latest(customer, CV)['source_ids'] == [str(nameless.id)], words
+    BotConversation.objects.filter(pk=customer.telegram_user_id).update(
+        state='cv_source', prompt={'feature_id': CV, 'cv_source': 'file', 'notes': [], 'source_ids': [str(nameless.id)],
+                                   'ask': 'name'}, updated_at=timezone.now())
+    words, _ = screen(send(customer, 'more.pdf', one_column_pdf()))
+    # A file sent on that screen is read beside the first, and the answer is no longer asked for.
+    assert '📎 From: cv.pdf, more.pdf' in words and EN['cv_missing_title'] not in words, words
 
 
 def test_change_the_description_goes_back_to_the_file_the_cv_was_made_from(customer, model):
@@ -467,6 +788,16 @@ def test_the_same_file_delivered_twice_is_one_file(customer, model, monkeypatch)
     assert GenerationDraft.objects.filter(account=customer).count() == 1
 
 
+def test_the_same_file_delivered_twice_draws_the_same_question_for_what_it_lacks(customer, model, monkeypatch):
+    choose(customer, 'cv_mode_file')
+    monkeypatch.setattr('telegram.local.secrets.randbelow', lambda limit: 78)
+    first = screen(send(customer, 'skills.pdf', skills_only_pdf()))
+    again = screen(send(customer, 'skills.pdf', skills_only_pdf()))
+    assert facts_listed(first[0]) == facts_listed(again[0]) == ['name', 'contact', 'background']
+    assert state(customer)[1]['missing'] == ['name', 'contact', 'background']
+    assert FileAsset.objects.filter(account=customer).count() == 1
+
+
 @pytest.mark.parametrize('locale', LOCALES)
 def test_the_review_says_where_the_cv_came_from_in_every_language(customer, model, locale):
     speak(customer, locale)
@@ -481,7 +812,7 @@ def test_the_review_says_where_the_cv_came_from_in_every_language(customer, mode
 
 # --- Reading each file once (the reader's queue in the chat: tests/test_bot_cv_read_queue.py) -----------
 
-def reading(pages=(('Timur Rakhimov', 'Lead engineer at Example Motors since 2020; MSc Mechanical Engineering.'),),
+def reading(pages=(('Timur Rakhimov', '+998 90 123 45 67. Lead engineer at Example Motors since 2020; MSc Mechanical Engineering.'),),
             seconds=0.0, calls=None, ocr=False):
     """extraction.read_cv as a fake: every file reads as `pages` (name, text) after `seconds`, noting the thread it ran on."""
     import threading
@@ -561,7 +892,7 @@ def test_a_file_that_names_nobody_is_read_once_however_the_name_is_answered(cust
     send(customer, 'cv.pdf', nameless_pdf())
     for answer in ('hello there', 'what do you mean'):
         words, _ = screen(dispatch_local(customer, text=answer))
-        assert EN['cv_file_name_question'] in words, words
+        assert EN['cv_file_missing_question'] in words and f'• {EN["cv_fact_name"]} — e.g.' in words, words
     assert calls == ['pdf']
     # Each answer is a build of the minute's ten: answers that name nobody cannot go on for ever.
     assert cache.get(f'rate:bot_generation:{customer.pk}') == 3
@@ -590,7 +921,7 @@ def test_a_pdf_sent_on_the_question_about_yourself_leads_to_the_old_cv_screen(cu
     choose(customer, 'cv_mode_text')
     nameless = 'Data analyst with five years in retail; SQL and Power BI; English and Russian.'
     words, _ = screen(dispatch_local(customer, text=nameless))
-    assert EN['cv_name_question'] in words, words
+    assert EN['cv_missing_title'] in words and f'• {EN["cv_fact_name"]} — e.g.' in words, words
     offered = send(customer, 'old-cv.pdf', one_column_pdf())
     words, shown = screen(offered)
     assert EN['cv_photo_only'] in words and EN['cv_mode_file'] in shown, (words, shown)
@@ -629,7 +960,7 @@ def test_more_screenshots_after_the_review_are_more_of_its_pages(customer, model
     monkeypatch.setattr('telegram.bot.ALBUM_SETTLE', 0.3)
     calls = []
     monkeypatch.setattr(extraction, 'read_cv', reading(calls=calls, ocr=True, pages=(
-        ('Dilnoza Karimova', 'Senior Data Analyst at Example Retail since 2022; SQL, Power BI.'),)))
+        ('Dilnoza Karimova', '+998 90 123 45 67. Senior Data Analyst at Example Retail since 2022; SQL, Power BI.'),)))
     choose(customer, 'cv_mode_linkedin')
     send(customer, 'top.png', shot(0))
     first = FileAsset.objects.get(account=customer, name='top.png')
