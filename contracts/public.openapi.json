@@ -1104,6 +1104,35 @@
           "content": {
             "$ref": "#/components/schemas/GenerationContent"
           },
+          "cv_facts": {
+            "description": "A new CV (`ai.cv`): which of its facts the description and files give. `given` lists the facts found, `missing` the required ones not found (`name`, `contact`, `background`) and `optional_missing` the optional ones not found, each in the order of the feature's `cv_facts`. A draft made after the customer insisted can still have `missing` facts. Absent on a change.",
+            "properties": {
+              "given": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "missing": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "optional_missing": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "given",
+              "missing",
+              "optional_missing"
+            ],
+            "type": "object"
+          },
           "cv_unread": {
             "description": "A CV made from files (`ai.cv`): each file not read whole, with how many of its pages were left out; `whole` when none of it was read. Absent when everything was read.",
             "items": {
@@ -9334,6 +9363,28 @@
                     "features": {
                       "items": {
                         "properties": {
+                          "cv_facts": {
+                            "description": "Only for `ai.cv`: the facts a CV is made of, in the order they are shown. A new CV is refused with `cv_missing` (400; `message_params.missing` and `optional_missing` list the facts) while a `required` one is missing from what the customer gave and wrote, unless they insist (`options.topic_given`).",
+                            "properties": {
+                              "optional": {
+                                "items": {
+                                  "type": "string"
+                                },
+                                "type": "array"
+                              },
+                              "required": {
+                                "items": {
+                                  "type": "string"
+                                },
+                                "type": "array"
+                              }
+                            },
+                            "required": [
+                              "required",
+                              "optional"
+                            ],
+                            "type": "object"
+                          },
                           "eligible": {
                             "type": "boolean"
                           },
@@ -9371,6 +9422,28 @@
                     "generation_features": {
                       "items": {
                         "properties": {
+                          "cv_facts": {
+                            "description": "Only for `ai.cv`: the facts a CV is made of, in the order they are shown. A new CV is refused with `cv_missing` (400; `message_params.missing` and `optional_missing` list the facts) while a `required` one is missing from what the customer gave and wrote, unless they insist (`options.topic_given`).",
+                            "properties": {
+                              "optional": {
+                                "items": {
+                                  "type": "string"
+                                },
+                                "type": "array"
+                              },
+                              "required": {
+                                "items": {
+                                  "type": "string"
+                                },
+                                "type": "array"
+                              }
+                            },
+                            "required": [
+                              "required",
+                              "optional"
+                            ],
+                            "type": "object"
+                          },
                           "eligible": {
                             "type": "boolean"
                           },

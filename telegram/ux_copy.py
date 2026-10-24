@@ -212,10 +212,13 @@ MESSAGES = {
     'cv_photo_unusable': ('ℹ️ The photo could not be used, so the CV was made without it.', 'ℹ️ Rasmdan foydalanib bo‘lmadi, shuning uchun CV rasmsiz tayyorlandi.', 'ℹ️ Фото использовать не удалось, поэтому резюме сделано без него.'),
     'cv_photo_gone': ('ℹ️ The photo is no longer stored, so this version of the CV is without it.', 'ℹ️ Rasmning saqlanish muddati tugagani uchun CV’ning bu nusxasi rasmsiz tayyorlandi.', 'ℹ️ Срок хранения фото истёк, поэтому эта версия резюме — без него.'),
     'cv_photo_no_slot': ('ℹ️ This template has no place for a photo, so the CV was made without it.', 'ℹ️ Bu shablonda rasm uchun joy yo‘q, shuning uchun CV rasmsiz tayyorlandi.', 'ℹ️ В этом шаблоне нет места для фото, поэтому резюме сделано без него.'),
-    # The CV service in the chat, its first way: one message about yourself, as
-    # for the other two services; the bot asks only for what a CV cannot be
-    # made without, the name, and takes one photo for templates with a place for it.
-    'cv_ask': ('✍️ Tell me about yourself in one message: your full name, phone or email, city, the job you want, your work experience with dates, education, skills and languages.', '✍️ O‘zingiz haqingizda bitta xabarda yozing: ism-familiyangiz, telefon yoki email, shahringiz, qanday ish qidirayotganingiz, ish tajribangiz (yillari bilan), taʼlimingiz, ko‘nikmalaringiz va qaysi tillarni bilishingiz.', '✍️ Расскажите о себе одним сообщением: имя и фамилия, телефон или почта, город, какую работу ищете, опыт работы с датами, образование, навыки и языки.'),
+    # The CV service in the chat, its first way: one message about yourself, as for the other two
+    # services. The screen says what a CV needs (cv_required) and what only adds to it
+    # (cv_optional), each fact by its cv_fact_* label below, so the lists never drift from the
+    # labels; the bot asks for what is missing and takes one photo for templates with a place for it.
+    'cv_ask': ('✍️ Tell me about yourself in one message — I’ll turn it into a CV.', '✍️ O‘zingiz haqingizda bitta xabarda yozing — men uni CV’ga aylantiraman.', '✍️ Расскажите о себе одним сообщением — я превращу его в резюме.'),
+    'cv_required': ('✅ Required: {facts}', '✅ Majburiy: {facts}', '✅ Обязательно: {facts}'),
+    'cv_optional': ('➕ Optional: {facts}', '➕ Ixtiyoriy: {facts}', '➕ По желанию: {facts}'),
     'cv_photo_hint': ('📷 You can also send a photo, before or after the text: it goes on the CV if the template has a place for it.', '📷 Matndan oldin yoki keyin rasmingizni ham yuborishingiz mumkin: shablonda rasm uchun joy bo‘lsa, u CV’ga qo‘yiladi.', '📷 До или после текста можно прислать и фото: оно появится в резюме, если в шаблоне есть для него место.'),
     'cv_photo_attached': ('📷 Photo attached. To replace it, send another one.', '📷 Rasm qabul qilindi. Almashtirish uchun boshqasini yuboring.', '📷 Фото получено. Чтобы заменить его, пришлите другое.'),
     # A PDF or Word file sent while the CV is being written about yourself: the way to the old-CV screen.
@@ -223,14 +226,58 @@ MESSAGES = {
     # A photo too large for a CV (apps/studio/cv/portrait.py: 6 megapixels):
     # said when it arrives, so the description sent next is not refused for it.
     'cv_photo_rejected': ('📷 This image can’t go on a CV: it has to be a JPG or PNG of up to 6 megapixels. Send it as a photo rather than a file — Telegram makes it smaller.', '📷 Bu rasmni CV’ga qo‘yib bo‘lmaydi: u 6 megapikselgacha bo‘lgan JPG yoki PNG bo‘lishi kerak. Uni fayl sifatida emas, rasm sifatida yuboring — Telegram uni kichraytiradi.', '📷 Это изображение не подходит для резюме: нужен JPG или PNG до 6 мегапикселей. Отправьте его как фото, а не файлом — Telegram сам его уменьшит.'),
-    # A description that names nobody: kept whole, and the name asked for.
-    'cv_name_question': ('✍️ What is your full name? I’ll add it to what you wrote.', '✍️ Ism-familiyangizni to‘liq yozing — uni avvalgi xabaringizga qo‘shaman.', '✍️ Как вас зовут — имя и фамилия? Я добавлю их к вашему сообщению.'),
-    'cv_name_sample': ('Dilnoza Karimova', 'Dilnoza Karimova', 'Дильноза Каримова'),
+    # What a description or a file does not give: the facts that are missing, listed on one screen with an
+    # example each, and the required facts already there, by the same labels as a checklist would tick
+    # them. A test holds every example to the check that asks for it.
+    'cv_got': ('✅ Already there: {facts}', '✅ Allaqachon bor: {facts}', '✅ Уже есть: {facts}'),
+    'cv_missing_title': ('✍️ Still missing:', '✍️ Hali yetishmayapti:', '✍️ Ещё не хватает:'),
+    'cv_missing_item': ('• {fact} — e.g. {example}', '• {fact} — masalan: {example}', '• {fact} — например: {example}'),
+    # Between the two ways a sample gives one fact (a phone or an email; a job or a school), each its own code.
+    'cv_or': ('or', 'yoki', 'или'),
+    'cv_missing_send': ('Send the missing details in one or several messages — I’ll add them to what you wrote.', 'Yetishmayotgan maʼlumotni bitta yoki bir nechta xabarda yuboring — men uni avval yozganlaringizga qo‘shaman.', 'Пришлите недостающее одним или несколькими сообщениями — я добавлю это к тому, что вы уже написали.'),
+    # The same for a CV made from a file, where the customer may have written nothing at all.
+    'cv_missing_send_file': ('Send the missing details in one or several messages — I’ll add them to your file.', 'Yetishmayotgan maʼlumotni bitta yoki bir nechta xabarda yuboring — men uni faylingizga qo‘shaman.', 'Пришлите недостающее одним или несколькими сообщениями — я добавлю это к данным из вашего файла.'),
+    # Made up, as the web's own example is; sent back as it is, it is answered as an example (cv_example_copied).
+    'cv_name_sample': ('Dilnoza Rahimova', 'Dilnoza Rahimova', 'Дильноза Рахимова'),
     # The way past a name the check did not see: the name alone, sent again, is taken as it is.
-    'cv_name_again': ('↩️ If you already wrote it, send just your full name again.', '↩️ Agar uni yozgan bo‘lsangiz, faqat ism-familiyangizni yana bir bor yuboring.', '↩️ Если вы уже написали его, отправьте ещё раз только имя и фамилию.'),
-    # A greeting, "I need a CV" or a name alone says nothing to make a CV of: kept, and the rest asked for.
-    'cv_details_question': ('✍️ Now tell me about your work, education, skills and languages — I’ll add it to what you wrote.', '✍️ Endi ish tajribangiz, taʼlimingiz, ko‘nikmalaringiz va qaysi tillarni bilishingiz haqida yozing — uni avvalgi xabaringizga qo‘shaman.', '✍️ Теперь расскажите о работе, образовании, навыках и языках — я добавлю это к вашему сообщению.'),
+    'cv_name_again': ('↩️ If you already wrote your name, send just your full name again.', '↩️ Agar ismingizni allaqachon yozgan bo‘lsangiz, faqat ism-familiyangizni yana bir bor yuboring.', '↩️ Если имя уже есть в вашем сообщении, отправьте ещё раз только имя и фамилию.'),
+    # The way past a check that does not see what is there: the same message, sent again, is taken as it is.
+    # Shown only where sending it again can make the CV (telegram/bot.py cv_insists), else cv_missing_more.
+    'cv_missing_again': ('↩️ If you already wrote it, send the same message again.', '↩️ Agar buni allaqachon yozgan bo‘lsangiz, o‘sha xabarni yana bir bor yuboring.', '↩️ Если вы уже это написали, отправьте то же сообщение ещё раз.'),
+    # Only the phone or email missing: someone who has neither is told how the CV is made without them,
+    # by the same message sent again; or, on a file's screen with nothing written yet, any message twice.
+    'cv_missing_again_contact': ('↩️ No phone or email? Send the same message again and I’ll make the CV without one.', '↩️ Telefon yoki emailingiz bo‘lmasa, o‘sha xabarni yana bir bor yuboring — CV’ni ularsiz tayyorlayman.', '↩️ Нет ни телефона, ни почты? Отправьте то же сообщение ещё раз — я составлю резюме без них.'),
+    'cv_missing_twice_contact': ('↩️ No phone or email? Send the same message twice and I’ll make the CV without one.', '↩️ Telefon yoki emailingiz bo‘lmasa, bitta xabarni ikki marta yuboring — CV’ni ularsiz tayyorlayman.', '↩️ Нет ни телефона, ни почты? Отправьте одно и то же сообщение дважды — я составлю резюме без них.'),
+    # The job or school missing, and what was written tells next to nothing but a name, a phone or an email:
+    # sending it again would not make the CV, so the screen asks for more instead of offering that.
+    'cv_missing_more': ('💬 Tell me a little more about your work or studies.', '💬 Ishingiz yoki o‘qishingiz haqida biroz batafsilroq yozing.', '💬 Расскажите чуть подробнее о своей работе или учёбе.'),
     'cv_example_copied': ('✏️ That is one of our examples. Write your own details the same way and send them.', '✏️ Bu bizning namunamiz. Xuddi shunday qilib, o‘zingiz haqingizda yozib yuboring.', '✏️ Это наш пример. Напишите так же, но о себе, и отправьте.'),
+    # The facts a CV is made of, by their names in apps/studio/cv/content.py (REQUIRED_FACTS, then
+    # OPTIONAL_FACTS): the first three are asked for when they are missing, the rest only offered.
+    # One label per fact, the same on every screen and in the refusal (telegram/errors.py, i18n
+    # cv_missing). The samples go beside a missing fact; a test holds each to the check that asks for
+    # it. A sample with two ways of giving its fact has ' — ' between them: each is shown as its own
+    # code, so a tap copies one value, with cv_or between. Everyone and every employer in them is made up.
+    'cv_fact_name': ('full name', 'to‘liq ism-familiya', 'имя и фамилия'),
+    'cv_fact_contact': ('phone or email', 'telefon yoki email', 'телефон или почта'),
+    'cv_fact_background': ('work experience (with years) or education', 'ish tajribasi (yillari bilan) yoki taʼlim',
+                           'опыт работы (с годами) или образование'),
+    'cv_fact_target': ('the job you want', 'xohlagan lavozim', 'желаемая должность'),
+    'cv_fact_location': ('city', 'shahar', 'город'),
+    'cv_fact_birth': ('birth date or age', 'tug‘ilgan sana yoki yosh', 'дата рождения или возраст'),
+    'cv_fact_skills': ('skills', 'ko‘nikmalar', 'навыки'),
+    'cv_fact_languages': ('languages', 'tillar', 'языки'),
+    'cv_fact_certificates': ('certificates', 'sertifikatlar', 'сертификаты'),
+    'cv_fact_projects': ('projects', 'loyihalar', 'проекты'),
+    'cv_fact_links': ('LinkedIn or other links', 'LinkedIn yoki boshqa havolalar', 'LinkedIn или другие ссылки'),
+    'cv_fact_photo': ('photo', 'rasm', 'фото'),
+    'cv_fact_contact_sample': ('+998 90 123 45 67 — dilnoza@example.com', '+998 90 123 45 67 — dilnoza@example.com',
+                               '+998 90 123 45 67 — dilnoza@example.com'),
+    'cv_fact_background_sample': ('Sales manager, Bahor Foods, 2021–2024 — Tashkent State University of Economics, marketing, 2018',
+                                  'Sotuv menejeri, Bahor Foods, 2021–2024 — TDIU, marketing yo‘nalishi, 2018-yilda bitirganman',
+                                  'Менеджер по продажам, Bahor Foods, 2021–2024 — ТГЭУ, маркетинг, окончила в 2018 году'),
+    # On a new CV's review: what it still lacks, required facts first, and what only adds to it.
+    'cv_can_add': ('💡 You can still add: {facts}', '💡 Yana qo‘shishingiz mumkin: {facts}', '💡 Можно добавить ещё: {facts}'),
     # The review of a CV: its length is the template's to decide, one page or two.
     'cv_length': ('1–2', '1–2', '1–2'),
     'cv_template': ('Template', 'Shablon', 'Шаблон'),
@@ -252,7 +299,7 @@ MESSAGES = {
     # Changes a CV takes, as the server reads them (apps/studio/edits.py):
     # "Remove the photo" takes the portrait off, "another design" picks again.
     'cv_revise_examples': ('Add IELTS 7.5 (2023) to the certificates · Make the profile shorter · Remove the photo · Use another design', 'Sertifikatlarga IELTS 7.5 (2023) ni qo‘shing · Profilni qisqartiring · Rasmsiz qiling · Boshqa dizayn qiling', 'Добавьте в сертификаты IELTS 7.5 (2023) · Сократите профиль · Уберите фото · Сделайте другой дизайн'),
-    'cv_failed_advice': ('💡 Try again. If it fails again, write it all in one message: your name, contacts, jobs with dates, education and skills.', '💡 Qayta urinib ko‘ring. Yana bo‘lmasa, hammasini bitta xabarda yozing: ism-familiya, aloqa maʼlumotlari, ish joylari (yillari bilan), taʼlim va ko‘nikmalar.', '💡 Попробуйте ещё раз. Если снова не выйдет, напишите всё одним сообщением: имя, контакты, места работы с датами, образование и навыки.'),
+    'cv_failed_advice': ('💡 Try again. If it fails again, write it all in one message: your full name, phone or email, work experience (with years), education and skills.', '💡 Qayta urinib ko‘ring. Yana bo‘lmasa, hammasini bitta xabarda yozing: to‘liq ism-familiya, telefon yoki email, ish tajribasi (yillari bilan), taʼlim va ko‘nikmalar.', '💡 Попробуйте ещё раз. Если снова не выйдет, напишите всё одним сообщением: имя и фамилия, телефон или почта, опыт работы (с годами), образование и навыки.'),
     # How a CV is made, asked first (apps/studio/cv/sources.py): written about
     # yourself in one message, from the LinkedIn profile, or from an old CV.
     'cv_choose_ask': ('How shall we make your CV?', 'CV’ni qanday tayyorlaymiz?', 'Как составим резюме?'),
@@ -275,7 +322,7 @@ MESSAGES = {
     'cv_send_file_now': ('📎 Now send the file.', '📎 Endi faylni yuboring.', '📎 Теперь пришлите файл.'),
     # The description of a CV made from files written again: its files are still kept.
     'cv_files_kept': ('Write new notes to make the CV again from this file, or send another file to use instead.', 'CV’ni shu fayldan qayta tayyorlash uchun yangi istaklaringizni yozing yoki uning o‘rniga boshqa fayl yuboring.', 'Напишите новые пожелания, чтобы заново составить резюме из этого файла, или пришлите вместо него другой файл.'),
-    'cv_file_name_question': ('✍️ I couldn’t find your name in the file. What is your full name?', '✍️ Fayldan ismingizni topa olmadim. Ism-familiyangizni to‘liq yozing.', '✍️ Не удалось найти в файле ваше имя. Как вас зовут — имя и фамилия?'),
+    'cv_file_missing_question': ('📄 The file doesn’t give everything a CV needs.', '📄 Faylda CV uchun kerakli maʼlumotlar to‘liq emas.', '📄 В файле есть не всё, что нужно для резюме.'),
     # A file the CV could not be made from: another one, or writing instead.
     'cv_send_another': ('📎 Send another file', '📎 Boshqa fayl yuborish', '📎 Отправить другой файл'),
     'cv_write_instead': ('✍️ Write about myself instead', '✍️ O‘rniga o‘zim haqimda yozaman', '✍️ Лучше напишу о себе'),
@@ -406,8 +453,9 @@ PROMPT_EXAMPLES = {
          'Oylik yig‘ilishga 7 ta slayd: sotuv raqamlari, nima yaxshi ketdi, nima oqsadi, keyingi oy rejasi. Sotuvni diagramma qilib ko‘rsating.',
          '7 слайдов для месячного собрания: цифры продаж, что получилось, что нет, план на следующий месяц. Продажи покажите диаграммой.'),
     ),
-    # A CV is described, not sized: these name no page count. Everyone in them
-    # is made up, with example.com addresses and the sample number.
+    # A CV is described, not sized: these name no page count. Everyone in them,
+    # and every employer, is made up, with example.com addresses and the sample
+    # number; so is everything in the samples beside a missing fact (cv_*_sample).
     'ai.cv': (
         ('Kamila Yusupova\nMarketing manager in Tashkent, looking for a head of marketing role. Email kamila.yusupova@example.com. Since 03.2021 marketing manager at Bahor Foods: launched the online shop and grew online sales by 40% in two years; I lead a team of five. 2018–2021 SMM specialist at the Bright Media agency, running campaigns for 12 brands. Bachelor’s in marketing, Tashkent State University of Economics, 2014–2018. Skills: brand strategy, Google Ads, Meta Ads, Google Analytics, copywriting. Languages: Uzbek (native), Russian (fluent), English (IELTS 7.0).',
          'Kamila Yusupova\nToshkentda marketing menejeriman, marketing bo‘limi rahbari lavozimiga ish izlayapman. Email: kamila.yusupova@example.com. 2021-yil martdan beri Bahor Foods kompaniyasida marketing menejeri: onlayn do‘konni ishga tushirdim, ikki yilda onlayn savdoni 40% ga oshirdim, besh kishilik jamoaga rahbarlik qilaman. 2018–2021-yillarda Bright Media agentligida SMM mutaxassisi bo‘lib, 12 ta brendning reklama kampaniyalarini olib borganman. Toshkent davlat iqtisodiyot universiteti, marketing yo‘nalishi bo‘yicha bakalavr, 2014–2018. Ko‘nikmalar: brend strategiyasi, Google Ads, Meta Ads, Google Analytics, kopirayting. Tillar: o‘zbek (ona tili), rus (erkin), ingliz (IELTS 7.0).',

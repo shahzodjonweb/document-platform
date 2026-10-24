@@ -298,11 +298,13 @@ MESSAGES = {
         '⏳ Oldingi to‘lovingiz hali tekshirilmoqda. Natijani shu yerda yuboramiz.',
         '⏳ Предыдущий платёж ещё проверяется. Мы напишем вам здесь.',
     ),
-    # A CV is about one person: asked for before anything is made or counted.
-    'cv_name_required': (
-        '✍️ Write your full name — the CV is made for you, so it has to say who you are.',
-        '✍️ Ism va familiyangizni to‘liq yozing — CV siz uchun tayyorlanadi, unda kimligingiz ko‘rsatilishi kerak.',
-        '✍️ Напишите полностью имя и фамилию: резюме составляется о вас, и в нём должно быть указано, кто вы.',
+    # A CV needs its name, a way to reach the person and a job or a school: asked for before anything is
+    # made or counted. Each fact is said by its label on the bot's screens (ux_copy cv_fact_*), the same
+    # words as i18n cv_missing; bot_error adds what is missing, by that label, under it.
+    'cv_missing': (
+        '✍️ A CV needs your full name, a phone or email, and work experience (with years) or education. Add what is missing and try again.',
+        '✍️ CV uchun to‘liq ism-familiya, telefon yoki email hamda ish tajribasi (yillari bilan) yoki taʼlim kerak. Yetishmayotgan maʼlumotni qo‘shib, qayta urinib ko‘ring.',
+        '✍️ Для резюме нужны имя и фамилия, телефон или почта, а также опыт работы (с годами) или образование. Добавьте недостающее и попробуйте снова.',
     ),
     # A CV made from a LinkedIn profile or an old CV needs the file, one we can read, of a kind it takes.
     'cv_file_required': (
@@ -374,6 +376,21 @@ def _limit_text(error, locale, account):
     return COPY[locale][error.code].format(when=when, **numbers)
 
 
+def _missing_text(error, locale):
+    """What a CV lacks, said and listed by the name of each required fact it lacks.
+
+    Only the names in apps.studio.cv.content.REQUIRED_FACTS are looked up
+    (telegram/ux_copy.py cv_fact_*): whatever else the error carries is never
+    echoed.
+    """
+    from apps.studio.cv.content import REQUIRED_FACTS
+    from .ux_copy import UX
+    asked = (error.params or {}).get('missing')
+    asked = asked if isinstance(asked, (list, tuple)) else []
+    labels = [UX[locale][f'cv_fact_{fact}'] for fact in REQUIRED_FACTS if fact in asked]
+    return '\n'.join([COPY[locale]['cv_missing'], *(f'• {label}' for label in labels)])
+
+
 def bot_error(error, locale='en', account=None):
     """The bot's message for an error; `account` puts a reset time on its clock."""
     locale = locale if locale in COPY else 'en'
@@ -387,6 +404,8 @@ def bot_error(error, locale='en', account=None):
         return '⚠️ ' + error_data(error, locale)['message']
     if error.code == 'page_limit':
         return COPY[locale][error.code].format(limit=page_limit_count(error))
+    if error.code == 'cv_missing':
+        return _missing_text(error, locale)
     if error.code == 'cv_reading':
         ahead = cv_reading_ahead(error)
         return COPY[locale]['cv_reading'].format(ahead=ahead) if ahead else COPY[locale]['cv_reading_now']

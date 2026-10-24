@@ -605,10 +605,10 @@ def test_each_mode_takes_its_own_files_and_says_what_is_wrong(customer):
     assert refused({'prompt': f'Make my CV from my LinkedIn: {link}', 'options': {'cv_source': 'linkedin'}}) == \
         'cv_linkedin_link'
     assert refused({'prompt': 'linkedin.com/in/dilnoza-k', 'options': {'cv_source': 'file'}}) == 'cv_linkedin_link'
-    # Beside a CV's worth of facts it is only a contact detail.
+    # Beside a CV's worth of facts it is only a contact detail: a link is no way to reach the person.
     full = create_draft(customer, {'feature_id': CV, 'prompt': (
-        'Dilnoza Karimova, data analyst in Tashkent, ' + link + '. Senior data analyst at Example Retail since '
-        '03.2022, data analyst at Sample Bank 2019 - 2022. SQL, Python, Power BI.')})
+        'Dilnoza Karimova, data analyst in Tashkent, +998 90 123 45 67, ' + link + '. Senior data analyst at Example '
+        'Retail since 03.2022, data analyst at Sample Bank 2019 - 2022. SQL, Python, Power BI.')})
     assert unpack(full.encrypted_data)['title'] == 'Dilnoza Karimova'
     # A LinkedIn profile is its PDF or screenshots, never a Word file; WEBP is neither mode's.
     assert refused({'source_ids': [str(word.id)], 'options': {'cv_source': 'linkedin'}}) == 'cv_file_kind'
@@ -856,7 +856,7 @@ def test_a_cvs_files_are_never_read_in_the_request_and_nobody_is_asked_to_try_ag
     assert waiting.value.params == {'ahead': 0, 'estimated_seconds': None}
     assert CvSourceRead.objects.get(asset=old).status == 'queued'
     monkeypatch.setattr(reads, 'read_file', lambda asset: {
-        'pages': [{'page': 1, 'text': 'Timur Rakhimov, lead engineer at Example Motors since 2020.'}],
+        'pages': [{'page': 1, 'text': 'Timur Rakhimov, lead engineer at Example Motors since 2020. +998 91 765 43 21'}],
         'names': ['Timur Rakhimov'], 'ocr_pages': 0, 'ocr_skipped': 0})
     assert reads.next_read()
     assert unpack(create_draft(customer, request).encrypted_data)['title'] == 'Timur Rakhimov'
@@ -868,11 +868,14 @@ def test_a_cv_made_again_from_the_same_files_does_not_read_them_again(customer, 
     real = extraction.read_cv
     monkeypatch.setattr(extraction, 'read_cv', lambda *args, **kwargs: calls.append(args[1]) or real(*args, **kwargs))
     nameless = uploaded(customer, 'nameless.pdf', _pdf(lambda page, _: _lines(page, 60, 780, [
+        ('Helvetica', 11, 'Phone: +998 90 123 45 67', 16),
         ('Helvetica', 11, 'Experience: accountant at Example Trade LLC, 2019 - 2024.', 16),
         ('Helvetica', 11, 'Skills: 1C, Excel, IFRS reporting, payroll, tax returns.', 16)])))
     request = {'feature_id': CV, 'source_ids': [str(nameless.id)], 'options': {'cv_source': 'file'}}
-    with pytest.raises(DomainError, match='cv_name_required'):
+    with pytest.raises(DomainError) as asked:
         create_draft(customer, {**request, 'prompt': 'make it shorter'})
+    # Only the name is missing: the file gives a phone and a job.
+    assert asked.value.code == 'cv_missing' and asked.value.params['missing'] == ['name']
     # The name answered: the file is not read a second time.
     draft = create_draft(customer, {**request, 'prompt': 'Ismim Javlon Ergashev'})
     assert calls == ['pdf'] and unpack(draft.encrypted_data)['title'] == 'Javlon Ergashev'
@@ -936,11 +939,13 @@ def test_the_name_comes_from_the_file_and_without_one_the_customer_is_asked(cust
     assert shown['options']['cv_source'] == 'linkedin' and shown['source_ids'] == [str(profile.id)]
     # A file that names nobody, with notes that do not either, is asked for the name.
     nameless = uploaded(customer, 'nameless.pdf', _pdf(lambda page, _: _lines(page, 60, 780, [
+        ('Helvetica', 11, 'Phone: +998 90 123 45 67', 16),
         ('Helvetica', 11, 'Experience: accountant at Example Trade LLC, 2019 - 2024.', 16),
         ('Helvetica', 11, 'Skills: 1C, Excel, IFRS reporting, payroll, tax returns.', 16)])))
-    with pytest.raises(DomainError, match='cv_name_required'):
+    with pytest.raises(DomainError) as asked:
         create_draft(customer, {'feature_id': CV, 'prompt': 'make it shorter', 'source_ids': [str(nameless.id)],
                                 'options': {'cv_source': 'file'}})
+    assert asked.value.code == 'cv_missing' and asked.value.params['missing'] == ['name']
     named = create_draft(customer, {'feature_id': CV, 'prompt': 'Ismim Javlon Ergashev',
                                     'source_ids': [str(nameless.id)], 'options': {'cv_source': 'file'}})
     assert unpack(named.encrypted_data)['title'] == 'Javlon Ergashev'
@@ -948,24 +953,30 @@ def test_the_name_comes_from_the_file_and_without_one_the_customer_is_asked(cust
 
 @pytest.mark.parametrize('excerpts,name', [
     # A name with what LinkedIn may print after it, in the largest type.
-    ([{'text': 'Contact\nPower BI', 'names': ['Dilnoza Karimova (She/Her)', 'Summary']}], 'Dilnoza Karimova'),
+    ([{'text': 'Contact\n+998 90 123 45 67\nPower BI\nSenior Data Analyst at Example Retail 2022 - Present',
+       'names': ['Dilnoza Karimova (She/Her)', 'Summary']}], 'Dilnoza Karimova'),
     # No line stands out: a name the file labels, or the line it starts with.
-    ([{'text': 'Curriculum vitae\nF.I.Sh.: Kamolov Farrux Shavkat o‘g‘li\nTel: +998 90 000 00 00'}],
-     'Kamolov Farrux Shavkat o‘g‘li'),
-    ([{'text': 'Timur Rakhimov\nMechanical engineer, Samarkand'}], 'Timur Rakhimov'),
+    ([{'text': 'Curriculum vitae\nF.I.Sh.: Kamolov Farrux Shavkat o‘g‘li\nTel: +998 90 000 00 00\n'
+               'Engineer at Example Motors, 2018 - 2024'}], 'Kamolov Farrux Shavkat o‘g‘li'),
+    ([{'text': 'Timur Rakhimov\nMechanical engineer, Samarkand\n+998 91 765 43 21\nExample Motors 2020 - 2024'}],
+     'Timur Rakhimov'),
     # A sidebar's skills and products are no one's name.
-    ([{'text': 'CONTACT\n+998 93 222 11 00\nSKILLS\nAdobe Illustrator\nDemand Forecasting\nPower BI'}], ''),
+    ([{'text': 'CONTACT\n+998 93 222 11 00\nSKILLS\nAdobe Illustrator\nDemand Forecasting\nPower BI\n'
+               'Designer, Example Studio, 2019 - 2024'}], ''),
 ])
 def test_the_name_is_read_from_a_file_where_it_stands_never_from_its_skills(excerpts, name):
     payload = {'prompt': 'For a job in Dubai', 'source_text': '', 'title': 'Untitled document',
                'content': cv_content.seed('Untitled document'),
                'excerpts': [{'asset_id': 'a1', 'page': 1, **excerpt} for excerpt in excerpts]}
     if not name:
-        with pytest.raises(DomainError, match='cv_name_required'):
+        # The file gives a phone and a job: the name is all that is missing.
+        with pytest.raises(DomainError) as asked:
             cv_content.require_name({}, CV, payload)
+        assert asked.value.code == 'cv_missing' and asked.value.params['missing'] == ['name']
         return
     cv_content.require_name({}, CV, payload)
     assert payload['title'] == payload['content']['title'] == name
+    assert payload['cv_facts']['missing'] == []
 
 
 def test_contacts_and_dates_the_file_gives_survive_the_fact_check():

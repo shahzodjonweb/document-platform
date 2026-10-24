@@ -318,6 +318,40 @@ def test_the_cv_rules_forbid_invented_facts_and_placeholders():
     ('Xalq Banki, Kassir, 2018-2020', ''),
     ('Men Bosh Hisobchi bo‘lib ishlaganman', ''),
     ('Grand Hotel, 2019-2021, administrator', ''),
+    # A greeting written with capitals is no name, and the name on the line after it is the one.
+    ('Good Morning', ''), ('Hayrli Kun', ''), ('Добрый День', ''),
+    ('Good Evening\nDilnoza Karimova, +998 90 123 45 67', 'Dilnoza Karimova'),
+    # A name followed on its line by an emoji, "!" or a symbol, by a phone with its + or an email with no comma, and
+    # on the first line by a job title in lower case.
+    ('Madina Sultanova 👩‍💼\n📞 +998 33 456 78 90', 'Madina Sultanova'),
+    ('Сабина Хасанова 🌸\nМедсестра', 'Сабина Хасанова'),
+    ('Aziz Karimov 🙂', 'Aziz Karimov'), ('Aziz Karimov!', 'Aziz Karimov'), ('Aziz Karimov ★ kassir', 'Aziz Karimov'),
+    ('Dilnoza Karimova +998 90 123 45 67', 'Dilnoza Karimova'),
+    ('Дильноза Каримова +998 90 123 45 67', 'Дильноза Каримова'),
+    ('Dilnoza Karimova dilnoza@example.com', 'Dilnoza Karimova'),
+    ('Salom\nAziz Karimov +998 91 555 44 33', 'Aziz Karimov'),
+    ('Aziz Karimov kassir 2019-2022', 'Aziz Karimov'), ('Иван Петров программист 5 лет', 'Иван Петров'),
+    ('Petrova Olga kassir', 'Petrova Olga'),
+    # …the name starting the sentence after a greeting or a request the line opens with, and the labels of a CV.
+    ('Добрый день, нужно резюме. Шерзод Мирзаев, водитель категории C', 'Шерзод Мирзаев'),
+    ('salom menga rezyume kerak. Nilufar Rahimova, 26 yosh', 'Nilufar Rahimova'),
+    ('Xayrli kun! Rezyume uchun: Zuhra Islomova, tel 95 321 00 99', 'Zuhra Islomova'),
+    ('Hi, I need a CV. Bobur Mirzo, driver', 'Bobur Mirzo'), ('Me: Ziyoda Rahmonova, 23 y.o.', 'Ziyoda Rahmonova'),
+    ('Резюме: Лола Назарова, повар-кондитер', 'Лола Назарова'),
+    ('Резюме. Козлова Анна. Образование: ТГПУ', 'Козлова Анна'),
+    ('CV for Laziz Umarov please\nemail: laziz@example.com', 'Laziz Umarov'),
+    ('resume for Laziz Umarov', 'Laziz Umarov'),
+    # None of that makes a greeting, a city, a company or a job title a name.
+    ('Good Morning!', ''), ('Hayrli Kun! Rezyume kerak', ''), ('Добрый День 🌸', ''), ('Toshkent Shahar 🏙', ''),
+    ('Hello. Marketing Manager, Tashkent', ''), ('Salom, rezyume kerak. Toshkent Davlat Universiteti, 2018', ''),
+    ('Hi, I need a CV. Senior Python Developer', ''), ('Добрый день. Главный Бухгалтер, 10 лет', ''),
+    ('Xayrli kun! Rezyume uchun: Toshkent, kassir', ''), ('Salom. Hayrli Kun.', ''),
+    ('Hello! Have A Nice Day', ''), ('Ish tajribam bor. Uzum Market, 2019-2022', ''), ('CV: Full Stack Developer', ''),
+    ('Резюме: Python Developer', ''),
+    ('CV for Customer Service', ''), ('CV for Marketing Manager position', ''), ('About me: Team Player', ''),
+    ('Uzum Market +998 71 200 00 00', ''), ('Hamkor Bank kassir', ''), ('Xalq Banki kassir 2018-2020', ''),
+    ('Uzum Marketda menejer, 2022-yildan', ''), ('Hamkor Bankda kassir 2019', ''), ('Yandex Go haydovchisi', ''),
+    ('Nima Gap', ''), ('Как Дела', ''), ('Test Test', ''), ('Yaxshimisiz', ''), ('Здорово Пока', ''),
 ])
 def test_the_name_is_found_where_people_write_it(text, name):
     assert name_in(text) == name
@@ -326,7 +360,11 @@ def test_the_name_is_found_where_people_write_it(text, name):
 def test_the_name_is_read_in_time_that_grows_with_the_description_not_its_square():
     import time
     # Every "Men" is a label and a capitalised word: read from each label to the end, it took a minute.
-    for text in ('Men ' * 20000, 'Ali Vali ' * 20000, 'I am Ali Vali Gani Soli Toli ' * 5000):
+    # Nor may the sentences of greetings a line opens with, nor the labels of a CV, be read from each of them.
+    for text in ('Men ' * 20000, 'Ali Vali ' * 20000, 'I am Ali Vali Gani Soli Toli ' * 5000, 'Salom. ' * 20000,
+                 'salom menga rezyume kerak. ali vali ' * 4000, 'CV for Ali Vali Gani Soli Toli ' * 5000,
+                 'CV: ' * 30000, 'Ali Vali 🙂 ' * 20000, 'Ali Vali ' + ' ' * 120000 + 'x', 'Ali Vali +' * 20000,
+                 'Ali Vali a' + 'a' * 120000, '.' * 120000, '!' * 120000, 'Salom' + '.' * 120000 + ' Ali Vali'):
         started = time.monotonic()
         name_in(text)
         assert time.monotonic() - started < 1.5, text[:20]
@@ -336,6 +374,28 @@ def test_the_name_is_read_in_time_that_grows_with_the_description_not_its_square
     ('dilnoza karimova', True), ('Karimova D.', True), ('Abdulla-Xo‘ja', True),
     ('And I can work weekends.', False), ('Assalomu alaykum', False), ('ha', False), ('rahmat', False),
     ('Data analyst in Tashkent. Phone +998 90 123 45 67', False), ('a b c d e', False),
+    # Greetings, thanks, a call for help and the short replies people send a bot, in each language and alphabet:
+    # sent twice to the name question, none of them is taken for the name.
+    *((reply, False) for reply in (
+        'Good morning', 'Good evening', 'Good afternoon', 'Good Morning', 'Hello there', 'HELLO THERE', 'Hi', 'hi',
+        'Hey', 'Thanks', 'Thank you', 'Help', 'help', 'What', 'what', 'OK', 'Okay', 'Salom', 'Hayrli kun',
+        'Hayrli tong', 'Xayrli tun', 'Rahmat', 'Mayli', 'Xop', "Xo'p", 'Xo‘p', 'Yordam', 'Yaxshi', 'Tushunarli',
+        'Ассалому алайкум', 'Хайрли кун', 'Раҳмат', 'Майли', 'Хўп', 'Ёрдам', 'Привет', 'privet', 'Здравствуйте',
+        'Добрый день', 'Добрый вечер', 'Доброе утро', 'Спасибо', 'Помогите', 'Хорошо', 'Понятно', 'Ладно', 'Да',
+        'Нет', 'Окей', 'Конечно',
+        # The farewells, fillers and keyboard tests the bot was sent twice and took for the name.
+        'Have a nice day', 'Nima gap', 'Yaxshimisiz', 'Здорово', 'Хорошего дня', 'Пока', 'До свидания', 'Как дела',
+        'Не знаю', 'Салам', 'Приветик', 'Хай', 'Ку', 'Спасибки', 'Xayr', 'Hayr', 'Salomaleykum', 'Tushunmadim', 'Yo',
+        'Sup', 'Яхшимисиз', 'Нима гап', 'Хайр', 'Test', 'Тест', 'asd', 'Qwerty', 'qwerty', 'QWERTY', 'asdf', 'asdasd',
+        'qweqwe', 'йцукен', 'фыва', 'Test test', 'Testing', 'Пока-пока', 'Bye-bye', 'Ку-ку', 'Здарова', 'See you later',
+        'How are you', "I don't know", 'Nice to meet you', 'Ishlar qalay', 'Что нового', 'Как ты', 'Хорошего вечера',
+        'Всего доброго', 'Have a good day', 'Yo bro', 'Assalomualaykum', 'Bilmayman')),
+    # A real name in any letter case still is one, the names that are also words among them.
+    *((name, True) for name in (
+        'Dilnoza Karimova', 'DILNOZA KARIMOVA', 'Азиз Каримов', 'азиз каримов', 'АЗИЗ КАРИМОВ', 'Umid Karimov',
+        'Orzu Karimova', 'Grace Kim', 'Hope Lee', 'Doris Day', 'Tong Li', 'Kun Li', 'Rustam Ochilov', 'Salam Karimov',
+        'Nima Karimova', 'Ku Li', 'Day Kim', 'Джон Смит', 'Смит', 'Asadbek Karimov', 'Zuhra Islomova', 'Olga Petrova',
+        'ZUHRA ISLOMOVA', 'zuhra islomova')),
 ])
 def test_a_short_answer_looks_like_a_name_only_when_it_is_letters(text, looks):
     assert cv_content.name_like(text) is looks
@@ -351,29 +411,40 @@ def test_a_greeting_or_a_name_alone_says_too_little_for_a_cv(text, little):
 
 
 @pytest.mark.django_db
-def test_a_cv_without_a_name_is_refused_before_anything_is_counted(customer):
+def test_a_cv_without_a_required_fact_is_refused_before_anything_is_counted(customer):
     from apps.core.allowance import ai_documents_this_week
     from apps.studio.models import GenerationDraft
+    # A job and a length of service, but no name and no way to reach the person.
     nameless = 'marketing bo‘yicha 5 yillik tajribam bor, Artel kompaniyasida ishlaganman, ingliz tili B2'
     with pytest.raises(DomainError) as refused:
         create_draft(customer, {'feature_id': CV, 'prompt': nameless})
-    assert refused.value.code == 'cv_name_required' and refused.value.status == 400
+    assert refused.value.code == 'cv_missing' and refused.value.status == 400
+    assert refused.value.params['missing'] == ['name', 'contact']
+    optional = refused.value.params['optional_missing']
+    assert 'photo' in optional and 'languages' not in optional
     for locale in ('en', 'uz', 'ru'):
         message = error_data(refused.value, locale)['message']
         assert message and message != error_data(DomainError('invalid_request'), locale)['message']
     assert 'full name' in error_data(refused.value, 'en')['message']
-    # The API says it the same way, and nothing is made or counted.
+    # The API says it the same way, the facts in its params, and nothing is made or counted.
     response = login_client(customer).post('/api/v1/generation/drafts', data=json.dumps(
         {'feature_id': CV, 'prompt': nameless}), content_type='application/json')
-    assert response.status_code == 400 and response.json()['error']['code'] == 'cv_name_required'
+    assert response.status_code == 400 and response.json()['error']['code'] == 'cv_missing'
+    assert response.json()['error']['message_params']['missing'] == ['name', 'contact']
     assert not GenerationDraft.objects.filter(account=customer).exists()
     assert ai_documents_this_week(customer) == 0
-    # A customer who insists is not kept asking.
+    # A customer who insists is not kept asking, and the review still knows what was missing.
     insisted = create_draft(customer, {'feature_id': CV, 'prompt': nameless, 'options': {'topic_given': True}})
     assert insisted.feature_id == CV and 'topic_given' not in unpack(insisted.encrypted_data)['options']
+    assert unpack(insisted.encrypted_data)['cv_facts']['missing'] == ['name', 'contact']
     # A name given in the studio's title field counts too.
-    titled = create_draft(customer, {'feature_id': CV, 'prompt': nameless, 'title': 'Dilnoza Karimova'})
+    titled = create_draft(customer, {'feature_id': CV, 'prompt': nameless + ', +998 90 123 45 67',
+                                     'title': 'Dilnoza Karimova'})
     assert unpack(titled.encrypted_data)['title'] == 'Dilnoza Karimova'
+    # A name and a job, with no way to reach the person, is still asked for one.
+    with pytest.raises(DomainError) as nameonly:
+        create_draft(customer, {'feature_id': CV, 'prompt': nameless, 'title': 'Dilnoza Karimova'})
+    assert nameonly.value.params['missing'] == ['contact']
 
 
 @pytest.mark.django_db
@@ -420,8 +491,8 @@ def test_the_name_found_is_the_drafts_title_and_follows_a_reworded_description(c
 
 @pytest.mark.django_db
 def test_words_that_read_as_colours_never_colour_a_cv(customer):
-    brief = ('Dilnoza Karimova. Ключевые навыки: SQL, Python. Сертификат: Google Data Analytics. Born in '
-             'Qoraqalpog‘iston; MA from Brown University.')
+    brief = ('Dilnoza Karimova, +998 90 123 45 67. Ключевые навыки: SQL, Python. Сертификат: Google Data Analytics. '
+             'Born in Qoraqalpog‘iston; MA from Brown University, 2015.')
     # Each of these is a colour to the reader of a document's brief…
     assert len(pages.requested_colours(brief)) >= 3
     document = unpack(create_draft(customer, {'feature_id': DOCUMENT, 'prompt': brief}).encrypted_data)
@@ -431,9 +502,11 @@ def test_words_that_read_as_colours_never_colour_a_cv(customer):
     assert not style.get('accent_fixed') and 'secondary' not in style and 'cv_template' not in style
 
 
-RU_BRIEF = 'Меня зовут Иван Петров, инженер-программист. С 2019 года работаю в «Пример Софт» в Ташкенте. '
-UZ_BRIEF = 'Men Nodira Karimova, buxgalterman. 1C, Excel, 2018-yildan beri Toshkentda ishlayman. '
-EN_BRIEF = 'Dilnoza Karimova, data analyst in Tashkent since 2019, retail and banking. '
+RU_BRIEF = ('Меня зовут Иван Петров, инженер-программист. С 2019 года работаю в «Пример Софт» в Ташкенте. '
+            'Почта ivan.petrov@example.com. ')
+UZ_BRIEF = ('Men Nodira Karimova, buxgalterman. 1C, Excel, 2018-yildan beri Toshkentda ishlayman. '
+            'Email nodira.karimova@example.com. ')
+EN_BRIEF = 'Dilnoza Karimova, data analyst in Tashkent since 2019, retail and banking. dilnoza.karimova@example.com. '
 
 
 @pytest.mark.django_db

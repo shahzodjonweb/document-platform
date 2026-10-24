@@ -238,7 +238,7 @@ def excerpts_of(files, results):
     (shared): {'asset_id', 'page', 'text'} and, when it applies, 'ocr' and
     'names'. 'ocr' marks a page read from an image. 'names' are, on a file's
     first page with text, its largest lines at the top: on a CV and a
-    LinkedIn export, the person's name (content.require_name). `unread`
+    LinkedIn export, the person's name (content.found_name). `unread`
     names each file not read whole: {'asset_id', 'pages'} with how many of
     its pages were left out, and 'whole' when none was read (a result of
     None: one the reader could not read). Files that give fewer than

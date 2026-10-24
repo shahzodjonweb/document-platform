@@ -39,7 +39,7 @@ from tests.test_platform import account, login_client
 pytestmark = pytest.mark.django_db
 
 ROOT = Path(__file__).resolve().parents[1]
-TEXT = 'Timur Rakhimov, lead engineer at Example Motors since 2020; MSc Mechanical Engineering.'
+TEXT = 'Timur Rakhimov, +998 90 123 45 67, lead engineer at Example Motors since 2020; MSc Mechanical Engineering.'
 
 
 @pytest.fixture
@@ -485,7 +485,7 @@ def test_the_draft_shares_the_ocr_pages_its_files_were_read_with(queued, custome
     scan = cv_file(customer, 'scan.pdf', _pdf(lambda page, _: _lines(page, 60, 780, [('Helvetica', 11, 'x', 14)]), 10))
     shot = cv_file(customer, 'shot.pdf')
     call_command('runreader', '--once')
-    data = unpack(create_draft(customer, {**made_from(customer, scan, shot), 'prompt': 'Timur Rakhimov'}).encrypted_data)
+    data = unpack(create_draft(customer, {**made_from(customer, scan, shot), 'prompt': TEXT}).encrypted_data)
     # Ten OCR pages a draft: nine of the scan's and the screenshot, the scan's last said.
     assert [excerpt['asset_id'] for excerpt in data['excerpts']].count(str(scan.id)) == 9
     assert data['cv_unread'] == [{'asset_id': str(scan.id), 'pages': 1}]
