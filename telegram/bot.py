@@ -535,6 +535,18 @@ def facts_said(account,facts,between=' · '):
     """CV facts (apps/studio/cv/content.py names) said by their labels, in the order given."""
     return between.join(text(account,f'cv_fact_{fact}') for fact in facts)
 
+def facts_asked(account):
+    """What the CV question says a CV needs and what only adds to it, before anything is written.
+
+    The required facts one to a line, so each reads at a glance; the optional
+    ones on one line after them, all but the photo, which has a line of its own.
+    """
+    from apps.studio.cv.content import OPTIONAL_FACTS,REQUIRED_FACTS
+    needs=[text(account,'cv_required'),*(f'• {label[:1].upper()}{label[1:]}' for label in
+                                         (text(account,f'cv_fact_{fact}') for fact in REQUIRED_FACTS))]
+    adds=text(account,'cv_optional').format(facts=facts_said(account,[fact for fact in OPTIONAL_FACTS if fact!='photo'],', '))
+    return '\n'.join(needs)+'\n\n'+adds
+
 def sample_shown(account,fact):
     """The example beside a missing fact: each of its values its own code, so a tap copies one, with 'or' between."""
     return f' {text(account,"cv_or")} '.join(f'<code>{html.escape(way)}</code>' for way in text(account,CV_SAMPLE_KEYS[fact]).split(' — '))
@@ -1097,6 +1109,10 @@ def build_dispatcher():
         — Telegram documents inline styling as quotable content, and the
         first example stays tappable to copy where it matters most.
 
+        A CV's examples are whole CVs, hundreds of characters each: in `<code>`
+        they read as a wall of typewriter text. Its screen shows one, in plain
+        type in a quote that opens on a tap, and the button shows the others.
+
         A CV asks about the customer and takes a photo too: `portrait` is one
         just sent, or None to keep the one already waiting with this question.
         `notice` is a line about a file just sent.
@@ -1111,14 +1127,13 @@ def build_dispatcher():
             # No page count to ask for: one page or two is the template's to decide. What a CV
             # needs and what only adds to it are said before the customer writes, by the labels
             # the missing screen and the review use.
-            from apps.studio.cv.content import OPTIONAL_FACTS,REQUIRED_FACTS
-            needs=text(account,'cv_required').format(facts=facts_said(account,REQUIRED_FACTS))
-            adds=text(account,'cv_optional').format(facts=facts_said(account,OPTIONAL_FACTS,', '))
-            body+=(f'{text(account,"cv_ask")}\n\n{needs}\n{adds}\n\n'
-                   +(text(account,'cv_photo_attached') if portrait else f'<i>{text(account,"cv_photo_hint")}</i>'))
-        else: body+=f'{text(account,"ai_ask_topic")}\n<i>{text(account,"ai_pages_hint")}</i>'
-        body+=f'\n\n{text(account,"ai_examples")}:\n\n1. <code>{html.escape(samples[0])}</code>'
-        if samples[1:]:
+            body+=(f'{text(account,"cv_ask")}\n\n{facts_asked(account)}\n\n'
+                   +(text(account,'cv_photo_attached') if portrait else f'<i>{text(account,"cv_photo_hint")}</i>')
+                   +f'\n\n{text(account,"cv_example")}\n<blockquote expandable>{html.escape(samples[0])}</blockquote>')
+        else:
+            body+=(f'{text(account,"ai_ask_topic")}\n<i>{text(account,"ai_pages_hint")}</i>'
+                   f'\n\n{text(account,"ai_examples")}:\n\n1. <code>{html.escape(samples[0])}</code>')
+        if samples[1:] and not cv:
             rest='\n\n'.join(f'{number}. {html.escape(sample)}'
                               for number,sample in enumerate(samples[1:],2))
             body+=f'\n\n<blockquote expandable>{rest}</blockquote>'
@@ -1883,7 +1898,10 @@ def build_dispatcher():
         for fid in ([feature_id] if feature_id else list(ai.SERVICES)):
             body+=f'\n\n<b>{html.escape(TOOL_NAMES[fid][account.locale])}</b>'
             for index in range(len(PROMPT_EXAMPLES[fid])):
-                body+=f'\n\n{index+1}. <code>{html.escape(ai_example(account,fid,index))}</code>'
+                example=html.escape(ai_example(account,fid,index))
+                # A CV's example is a whole CV: plain type in a quote that opens on a tap, not a wall of code.
+                body+=(f'\n\n<blockquote expandable>{index+1}. {example}</blockquote>' if fid==ai.CV
+                       else f'\n\n{index+1}. <code>{example}</code>')
             back={'feature_id':fid,**({'question':question} if question and fid==feature_id else {}),
                   **({'cv_source':cv_source} if cv_source and fid==feature_id else {})}
             rows.append([InlineKeyboardButton(text=TOOL_NAMES[fid][account.locale],callback_data=await callback(account,'ai_tool',back))])
