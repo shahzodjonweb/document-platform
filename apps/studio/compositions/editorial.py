@@ -22,6 +22,8 @@ HAIR = 0.012                      # a hairline, about 0.9 pt
 HEAD = 0.42                       # the running head's hairline, above every slide's text
 TAB = (1.1, 0.055)                # the accent tab on the head rule's right end, about 4 pt thick
 FOOT = 6.58                       # the foot rule, above the folio line (6.82)
+# A content slide's foot rule sits under the variants' frame (variants/kit.FRAME ends at 6.65).
+CONTENT_FOOT = 6.72
 COLUMN = 7.75                     # where a divider's title column (and a cover photo) starts
 NOTE = 9.7                        # where the closing slide's note column starts
 
@@ -43,10 +45,10 @@ class Editorial(Composition):
         canvas.background('surface')
         rule = _rule(canvas)
         self._running_head(canvas, rule, 'accent_text')
-        # The foot rule frames the page as on every other slide. A photo slide
-        # skips it: image_full's caption box runs 6.1-6.7, across the rule.
-        if not photo:
-            canvas.rect((LEFT, FOOT, WIDTH, HAIR), rule)
+        # The foot rule frames the page as on every other slide, below
+        # everything a content layout writes: image_full's caption box runs to
+        # 6.7, and a variant to 6.65.
+        canvas.rect((LEFT, CONTENT_FOOT, WIDTH, HAIR), rule)
         return None
 
     # ------------------------------------------------------------ pieces

@@ -17,11 +17,13 @@ composition in every theme:
   role that reads on the fill under it (`ink` on `surface`, `on_accent` on
   `accent`, `card_ink` on `card` ...): the palette has corrected each pair.
   Nothing but that fill is under the text — no picture, no line, no edge.
-* **Content slides keep their text zones.** The eyebrow, headline, body and
-  footer of the 20-odd content layouts are fitted and tested where they are
-  (apps/studio/slide_layouts.py). A composition frames them — panels behind
-  the whole content area, bars, rules, marks and pattern outside it — and
-  never moves them. Covers, dividers and closing slides are its to arrange.
+* **Content slides keep their text frame.** The eyebrow, headline, body and
+  footer of the 20-odd content layouts are fitted and tested inside it
+  (apps/studio/slide_layouts.py, and the variants that rearrange them inside
+  the same frame, apps/studio/variants). A composition frames them — panels
+  behind the whole content area, bars, rules, marks and pattern outside it —
+  and never draws inside it. Covers, dividers and closing slides are its to
+  arrange.
 
 The first shape on every slide is the accent element, filled with the accent
 exactly as given (tests pin it): `Canvas.accent` must be the first thing drawn.

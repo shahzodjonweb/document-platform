@@ -10,6 +10,10 @@ Two rules hold for every drawer. Text is only ever written on the slide's own
 surface or on a panel whose colour role was contrast-corrected for it — never
 over a photo. And every field is clipped to a word limit, marking the deck as
 shortened, rather than being allowed to run off its box.
+
+These are the classic drawers. A designed deck draws its content slides in
+variants of them (apps/studio/variants) — other arrangements of the same
+fields — and falls back to these whenever a variant would not hold a slide.
 """
 import dataclasses
 import functools
@@ -50,7 +54,7 @@ class Ctx:
     """
 
     __slots__ = ('slide', 'roles', 'style', 'index', 'total', 'size', 'locale', 'photo', 'shortened', 'plan',
-                 'heading_bold')
+                 'heading_bold', 'squeezed')
 
     def __init__(self, slide, roles, style, index, total, size, locale, photo=False, plan=None,
                  heading_bold=False):
@@ -58,6 +62,9 @@ class Ctx:
         self.index, self.total, self.size, self.locale = index, total, size, locale
         self.photo, self.shortened, self.plan = photo, False, plan
         self.heading_bold = heading_bold
+        # Set by a variant whose list had to go well below the deck's size
+        # (apps/studio/variants/kit.bullets): it is then not used for the slide.
+        self.squeezed = False
 
 
 def Z(left, top, width, height):
