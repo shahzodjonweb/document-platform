@@ -1,4 +1,5 @@
-"""Matrix variants: the four cells round a centre disc, as letter tiles, across two axes, in tones and as tabbed rows."""
+"""Matrix variants: the four cells round a centre disc, as letter tiles, across two axes, in tones and as tabbed rows.
+"""
 from .. import slides as base
 from ..slide_layouts import _paragraph_height
 from ..slides import _text_width
@@ -130,7 +131,9 @@ def _palette(ctx, n):
 
 @variant('matrix', 'centre_disc', counts=FOUR)
 def centre_disc(ctx, section, lines):
-    """Four cells in card and soft tint round a strong disc where the gutters cross, the slide's number in it, under a centred heading."""
+    """Four cells in card and soft tint round a strong disc where the gutters cross, the slide's number in it, under a
+    centred heading.
+    """
     top = _heading(ctx, section, align='center')
     cells = entries('matrix', section)
     axes = _axes(ctx, section)
@@ -167,7 +170,9 @@ def centre_disc(ctx, section, lines):
 
 @variant('matrix', 'letter_tiles', counts=FOUR)
 def letter_tiles(ctx, section, lines):
-    """Each quadrant led by a large colour tile holding its name's first letter, SWOT style, the name and text beside it."""
+    """Each quadrant led by a large colour tile holding its name's first letter, SWOT style, the name and text beside
+    it.
+    """
     top = _heading(ctx, section) + 0.1
     cells = entries('matrix', section)
     axes = _axes(ctx, section)
@@ -193,7 +198,9 @@ def letter_tiles(ctx, section, lines):
 
 @variant('matrix', 'cross_axes', counts=FOUR)
 def cross_axes(ctx, section, lines):
-    """The heading in a column at the left; two thin accent bars cross beside it, arrowed like a chart's axes, with a numbered name and text in each quadrant."""
+    """The heading in a column at the left; two thin accent bars cross beside it, arrowed like a chart's axes, with a
+    numbered name and text in each quadrant.
+    """
     start = header_side(ctx, section, width=3.4, size=30)
     cells = entries('matrix', section)
     axes = _axes(ctx, section)
@@ -235,7 +242,9 @@ def cross_axes(ctx, section, lines):
 
 @variant('matrix', 'tone_grid', counts=FOUR)
 def tone_grid(ctx, section, lines):
-    """Four cells joined edge to edge in the accent's tones, darkest at the top left to lightest at the bottom right, under the slide's number large."""
+    """Four cells joined edge to edge in the accent's tones, darkest at the top left to lightest at the bottom right,
+    under the slide's number large.
+    """
     # header_number's number and heading end at 2.25 in; the grid starts a little under them.
     top = header_number(ctx, section) - 0.2
     cells = entries('matrix', section)
@@ -261,7 +270,9 @@ def tone_grid(ctx, section, lines):
 
 @variant('matrix', 'rows_four', counts=FOUR)
 def rows_four(ctx, section, lines):
-    """The heading on a band across the top; four full-width card rows below, each led by a coloured chevron tab holding its name, the text beside it."""
+    """The heading on a band across the top; four full-width card rows below, each led by a coloured chevron tab
+    holding its name, the text beside it.
+    """
     # A near-black band on a light deck. On a dark one strong() would pick the bright accent or second colour,
     # loud beside four coloured tabs; the soft tint keeps the band quiet there and leaves the colour to the tabs.
     band = 'deep' if strong(ctx) == 'deep' else 'accent_soft'

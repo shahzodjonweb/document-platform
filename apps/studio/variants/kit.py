@@ -26,9 +26,8 @@ from pptx.util import Inches, Pt
 from .. import slides as base
 from ..compositions import Canvas
 from ..layouts import PRO, parse_number
-from ..slide_layouts import (ALIGN, ANCHOR, BOTTOM, LABELS, LEFT, TOP, WIDTH, Z, _fit_paragraphs, _paragraph_height,
-                             _put_paragraphs, _text_lines, body_text, clip, columns_of, fit_headline, fitted, items_of,
-                             put)
+from ..slide_layouts import (ALIGN, ANCHOR, BOTTOM, LABELS, LEFT, TOP, WIDTH, Z, _paragraph_height, _put_paragraphs,
+                             _text_lines, _units, body_text, clip, columns_of, fit_headline, fitted, items_of, put)
 from ..slide_layouts import header as classic_header
 
 __all__ = ['ALIGN', 'ANCHOR', 'BOTTOM', 'LABELS', 'LEFT', 'TOP', 'WIDTH', 'Z', 'body_text', 'clip', 'columns_of',
@@ -99,15 +98,18 @@ def tones(ctx, n):
 def hues(ctx, n):
     """`n` distinct fills that start from the design's accent and second colour.
 
-    The rest are spaced round the colour wheel from the accent, at its
+    The rest are spaced round the colour wheel from the accent, at a calm
     strength, so a three-part slide can give each part its own colour and
-    still belong to the deck. A grey accent has no hue to turn; it gets tones.
+    still belong to the deck. Turned at a saturated accent's full strength the
+    greens and violets came out neon, so they are held to a middle strength,
+    and yellows and greens a step darker, where they glare most. A grey
+    accent has no hue to turn; it gets tones.
     """
     accent = ctx.roles['accent']
     hue, lightness, saturation = base._hls(accent)
     if saturation < 0.12:
         return tones(ctx, n)
-    lightness, saturation = min(0.56, max(0.36, lightness)), max(saturation, 0.45)
+    lightness, saturation = min(0.5, max(0.36, lightness)), min(0.58, max(saturation, 0.4))
     fills = [accent]
     secondary = ctx.roles.get('secondary')
     if secondary and secondary != ctx.roles.get('accent_soft') and _distance(hue, base._hls(secondary)[0]) > 0.06:
@@ -121,7 +123,8 @@ def hues(ctx, n):
         numerator = 2 * (step - denominator // 2) + 1
         turned = (hue + numerator / denominator) % 1.0
         if all(_distance(turned, other) > 0.07 for other in taken):
-            fills.append(base._from_hls(turned, lightness, saturation))
+            glaring = 0.1 < turned < 0.48
+            fills.append(base._from_hls(turned, lightness - (0.08 if glaring else 0), saturation))
             taken.append(turned)
     while len(fills) < n:
         fills.append(fills[len(fills) % max(1, len(taken))])
@@ -320,6 +323,26 @@ def _font(heading):
     return base.HEADING_FONT if heading else base.BODY_FONT
 
 
+def _whole_words(ctx, value, width, size, floor, bold):
+    """The largest size up to `size` at which `value`'s longest word fits a line `width` (EMU) wide.
+
+    The line counter wraps a word too long for its box letter by letter, as a
+    viewer does, so a long Russian or Uzbek word in a narrow box was set broken
+    in two. Below `floor` the slide is marked shortened instead, and the
+    variant is passed over for it.
+    """
+    words = str(value or '').split()
+    if not words:
+        return size
+    available = max(1, width / 12700) / (1.06 if bold else 1)
+    longest = max(_units(word) for word in words)
+    while size > floor and 0.001 * size * longest * base.WIDTH_SAFETY > available:
+        size -= 0.5
+    if 0.001 * size * longest * base.WIDTH_SAFETY > available:
+        ctx.shortened = True
+    return size
+
+
 def text(ctx, box, value, *, size, colour='ink', floor=12, bold=False, heading=False, align='left', anchor='top',
          spacing=1.15, words=None, upper=False):
     """One field in `box`, shrunk to fit down to `floor`, then cut (and the slide marked).
@@ -332,7 +355,9 @@ def text(ctx, box, value, *, size, colour='ink', floor=12, bold=False, heading=F
         return None
     if upper:
         value = value.upper()
-    return fitted(ctx, Z(*box), value, size=size, colour=hex_of(ctx, colour), floor=min(floor, size), bold=bold,
+    floor = min(floor, size)
+    size = _whole_words(ctx, value, Inches(box[2]), size, floor, bold or (heading and ctx.heading_bold))
+    return fitted(ctx, Z(*box), value, size=size, colour=hex_of(ctx, colour), floor=floor, bold=bold,
                   font=_font(heading), align=ALIGN[align], spacing=spacing, anchor=ANCHOR[anchor])
 
 
@@ -354,7 +379,11 @@ def block(ctx, box, paragraphs, anchor='top'):
             continue
         if paragraph.get('upper'):
             value = value.upper()
-        spec = dict(text=value, size=paragraph['size'], floor=paragraph.get('floor', min(12, paragraph['size'])),
+        floor = min(paragraph.get('floor', min(12, paragraph['size'])), paragraph['size'])
+        width = Inches(box[2]) - (Pt(paragraph['size'] * 0.95) if paragraph.get('bullet') else 0)
+        size = _whole_words(ctx, value, width, paragraph['size'], floor,
+                            paragraph.get('bold', False) or (paragraph.get('heading') and ctx.heading_bold))
+        spec = dict(text=value, size=size, floor=floor,
                     colour=hex_of(ctx, paragraph.get('colour', 'ink')), bold=paragraph.get('bold', False),
                     font=_font(paragraph.get('heading')), after=paragraph.get('after', 0),
                     before=paragraph.get('before', 0), spacing=paragraph.get('spacing', 1.15),
@@ -443,13 +472,13 @@ def bullets(ctx, box, lines, *, colour='ink', marker='accent_text', glyph='•',
 
     `glyph` None sets the lines without markers (a variant that numbers them
     itself). Returns (lines kept, size). A list more than `SQUEEZE` points
-    below the deck's own size marks the slide `squeezed`: the variant is then
-    passed over rather than set the slide in smaller type than its neighbours.
+    below the deck's own size marks the slide `squeezed` — whatever `size`
+    it started from — and the variant is then passed over rather than set the
+    slide in smaller type than its neighbours.
     """
     zone = Z(*box)
     lines = [' '.join(str(value).split()) for value in lines if str(value).strip()]
     size = size or ctx.size
-    start = size
     while size > base.FLOOR_BODY_SIZE and not _list_fits(lines, size, zone, gap, bool(glyph)):
         size -= 0.5
     while lines and not _list_fits(lines, size, zone, gap, bool(glyph)):
@@ -460,7 +489,7 @@ def bullets(ctx, box, lines, *, colour='ink', marker='accent_text', glyph='•',
         else:
             lines.pop(longest)
         ctx.shortened = True
-    if size < min(start, ctx.size) - SQUEEZE:
+    if size < ctx.size - SQUEEZE:
         ctx.squeezed = True
     frame = base._frame(ctx.slide.shapes.add_textbox(*zone.box()))
     for index, value in enumerate(lines):
@@ -497,7 +526,9 @@ def eyebrow(ctx, box=None, *, colour='muted', align='left'):
 
 def headline(ctx, section, box, *, size=32, lines=2, anchor='bottom', align='left', colour=None, words=14):
     """The slide's heading in `box`, shrunk to `lines` lines (to 18 pt), then cut and the slide marked."""
-    fit_headline(ctx, Z(*box), clip(ctx, section['heading'], words), size=size,
+    value = clip(ctx, section['heading'], words)
+    size = _whole_words(ctx, value, Inches(box[2]), size, min(18, size), bool(ctx.heading_bold))
+    fit_headline(ctx, Z(*box), value, size=size,
                  colour=hex_of(ctx, colour) if colour else None, anchor=ANCHOR[anchor], lines=lines,
                  align=ALIGN[align])
 
@@ -516,8 +547,9 @@ def header(ctx, section, *, width=WIDTH, size=32):
 def header_compact(ctx, section, *, size=28):
     """A shorter top that gives the body half an inch more. Returns where the body starts (2.2)."""
     eyebrow(ctx)
-    headline(ctx, section, (LEFT, 0.92, WIDTH, 0.98), size=size, lines=2)
-    rule(ctx, (LEFT, 1.98, 0.9, RULE))
+    # The rule stands clear of the heading's descenders, as the classic one does.
+    headline(ctx, section, (LEFT, 0.9, WIDTH, 0.96), size=size, lines=2)
+    rule(ctx, (LEFT, 2.0, 0.9, RULE))
     return 2.2
 
 
@@ -525,7 +557,8 @@ def header_center(ctx, section, *, size=32):
     """Eyebrow, heading and rule centred. Returns where the body starts (2.75)."""
     eyebrow(ctx, (LEFT, 0.62, WIDTH, 0.3), align='center')
     headline(ctx, section, (LEFT + 0.8, 1.0, WIDTH - 1.6, 1.25), size=size, align='center')
-    rule(ctx, (LEFT + WIDTH / 2 - 0.55, 2.38, 1.1, RULE))
+    # Lower and shorter than the classic rule: centred close under one line, it read as an underline.
+    rule(ctx, (LEFT + WIDTH / 2 - 0.45, 2.46, 0.9, RULE))
     return TOP
 
 
@@ -550,8 +583,8 @@ def header_band(ctx, section, *, fill='deep', height=1.7, size=30):
 def header_number(ctx, section, *, size=30):
     """The slide's number large in the accent, the heading beside it. Returns where the body starts (2.75)."""
     figure(ctx, (LEFT, 0.85, 1.6, 1.4), f'{ctx.index + 1:02d}', size=66, colour='accent_text', anchor='middle')
-    rect(ctx, (LEFT + 1.75, 1.0, 0.04, 1.25), 'accent_soft')
-    put(ctx, Z(LEFT + 2.05, 0.62, 3.0, 0.3), f'/ {ctx.total:02d}', size=10, colour=hex_of(ctx, 'muted'), bold=True)
+    # The divider is the soft tint where it shows; on a dark deck the tint is nearly the ground.
+    rect(ctx, (LEFT + 1.75, 1.0, 0.04, 1.25), readable(ctx, 'accent_soft', 'surface', 1.8))
     headline(ctx, section, (LEFT + 2.05, 1.0, WIDTH - 2.05, 1.25), size=size, lines=2, anchor='middle')
     return TOP
 

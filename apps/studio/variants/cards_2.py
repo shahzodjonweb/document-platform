@@ -527,7 +527,7 @@ def big_circles(ctx, section, lines):
 
     def inside(k, item, label):
         return [dict(text=_number(k), size=14, floor=14, colour='soft_muted', bold=True, align='center', after=2),
-                dict(text=item['label'], words=7, size=label, floor=min(label, 15), colour='soft_ink', bold=True,
+                dict(text=item['label'], words=7, size=label, floor=min(label, 13), colour='soft_ink', bold=True,
                      heading=True, align='center')]
 
     def below(item, body):

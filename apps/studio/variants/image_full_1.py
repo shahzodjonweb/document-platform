@@ -1,4 +1,5 @@
-"""Image_full variants: one large photo, its heading and caption set on a solid ground of their own beside or over it."""
+"""Image_full variants: one large photo, its heading and caption set on a solid ground of their own beside or over it.
+"""
 import colorsys
 
 from . import variant

@@ -318,8 +318,7 @@ def scoreboard(ctx, section, lines):
 def _number_header(ctx, section):
     """The slide's number large at the left, a bar, and the heading beside it: a compact header_number."""
     figure(ctx, (LEFT, 0.7, 1.45, 1.25), f'{ctx.index + 1:02d}', size=60, colour='accent_text', anchor='middle')
-    rect(ctx, (LEFT + 1.58, 0.85, 0.04, 0.95), 'accent_soft')
-    text(ctx, (LEFT + 1.85, 0.62, 3.0, 0.3), f'/ {ctx.total:02d}', size=10, colour='muted', bold=True)
+    rect(ctx, (LEFT + 1.58, 0.85, 0.04, 0.95), readable(ctx, 'accent_soft', 'surface', 1.8))
     headline(ctx, section, (LEFT + 1.85, 0.92, WIDTH - 1.85, 0.9), size=28, lines=2, anchor='middle')
     return 2.15
 

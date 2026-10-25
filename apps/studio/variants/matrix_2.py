@@ -1,4 +1,6 @@
-"""Matrix variants: the four quadrants set apart by shape rather than by the classic checker — tiles beside a title column, outlines with corner tabs, numbered quads, coloured columns and a cross of arrows."""
+"""Matrix variants: the four quadrants set apart by shape rather than by the classic checker — tiles beside a title
+column, outlines with corner tabs, numbered quads, coloured columns and a cross of arrows.
+"""
 import math
 
 from pptx.util import Inches
@@ -16,6 +18,8 @@ NUMERALS = ((60, 0.98), (46, 0.76), (32, 0.56))   # four_columns: a column's num
 # The classic drawer's word limits: a quadrant's name, its sentence, an axis.
 LABEL, BODY, AXIS = 6, 28, 5
 AXIS_SIZE = 12
+# The hub is narrow: a long one-word axis (Russian 'Внутренние') steps a little smaller to stay whole.
+HUB_AXIS_SIZE = 10
 # (name, sentence) sizes, largest first: a slide's quadrants all take the first pair every one of them holds.
 LADDER = ((20, 15), (19, 15), (19, 14), (18, 14), (18, 13), (17, 13), (16, 12))
 
@@ -143,7 +147,9 @@ def _caption(ctx, box, axes, colour):
 
 @variant('matrix', 'side_grid', counts=(4, 4))
 def side_grid(ctx, section, lines):
-    """The heading in a column down the left over the axes as pills; the quadrants as four numbered tiles beside it, parted by two crossing accent hairlines."""
+    """The heading in a column down the left over the axes as pills; the quadrants as four numbered tiles beside it,
+    parted by two crossing accent hairlines.
+    """
     side = 3.05
     x0 = header_side(ctx, section, width=side, size=_word_size(ctx, section['heading'], side, 30))
     axes = _axes(ctx, section)
@@ -181,7 +187,9 @@ def side_grid(ctx, section, lines):
 
 @variant('matrix', 'outlined_cells', counts=(4, 4))
 def outlined_cells(ctx, section, lines):
-    """Four quadrants drawn as accent outlines as tall as their text, each with a solid tab at its outer corner holding its number; the text beside the tab, mirrored round the centre."""
+    """Four quadrants drawn as accent outlines as tall as their text, each with a solid tab at its outer corner holding
+    its number; the text beside the tab, mirrored round the centre.
+    """
     # The axes as pills at the top right, on the eyebrow's line; a pill of two lines takes room from the heading.
     axes = _axes(ctx, section)
     pills, span = _pills(ctx, axes, 2.8) if axes else ([], 0)
@@ -229,7 +237,9 @@ def outlined_cells(ctx, section, lines):
 
 @variant('matrix', 'numbered_quads', counts=(4, 4))
 def numbered_quads(ctx, section, lines):
-    """Four quads numbered 01 to 04 in large numerals beside a short rule and their text, the first on a strong panel and the rest on cards."""
+    """Four quads numbered 01 to 04 in large numerals beside a short rule and their text, the first on a strong panel
+    and the rest on cards.
+    """
     top = header_compact(ctx, section)
     axes = _axes(ctx, section)
     if axes:
@@ -264,7 +274,9 @@ def numbered_quads(ctx, section, lines):
 
 @variant('matrix', 'four_columns', counts=(4, 4))
 def four_columns(ctx, section, lines):
-    """The heading on a soft band; the quadrants as four tall columns, each with a coloured head holding its name and a pointer down to its text on a card, its number set large at the foot."""
+    """The heading on a soft band; the quadrants as four tall columns, each with a coloured head holding its name and a
+    pointer down to its text on a card, its number set large at the foot.
+    """
     band = 'accent_soft'
     top = header_band(ctx, section, fill=band, height=1.45, size=28)
     axes = _axes(ctx, section)
@@ -317,7 +329,9 @@ def four_columns(ctx, section, lines):
 
 @variant('matrix', 'chevron_cross', counts=(4, 4))
 def chevron_cross(ctx, section, lines):
-    """Four chevrons in four colours spreading from a soft hub out to the corners, each holding its quadrant's initial; the names and texts in the corners around them."""
+    """Four chevrons in four colours spreading from a soft hub out to the corners, each holding its quadrant's initial;
+    the names and texts in the corners around them.
+    """
     eyebrow(ctx, (LEFT, TOP_EDGE, WIDTH, 0.3), align='center')
     headline(ctx, section, (LEFT + 1.2, 0.9, WIDTH - 2.4, 1.0), size=28, lines=2, align='center')
     rule(ctx, (LEFT + WIDTH / 2 - 0.45, 2.02, 0.9, RULE))
@@ -348,7 +362,7 @@ def chevron_cross(ctx, section, lines):
     oval(ctx, hub, 'accent_soft')
     axes = _axes(ctx, section)
     if len(axes) == 1:
-        text(ctx, inscribed(hub, 0.7), axes[0], size=13, floor=AXIS_SIZE, colour='soft_ink', bold=True,
+        text(ctx, inscribed(hub, 0.7), axes[0], size=13, floor=HUB_AXIS_SIZE, colour='soft_ink', bold=True,
              heading=True, align='center', anchor='middle', spacing=1.05)
     elif axes:
         # One axis over a short accent rule, the other under it; each may take three lines of the hub.
@@ -356,10 +370,10 @@ def chevron_cross(ctx, section, lines):
         # is a little below the middle of the gap between the two boxes, to look centred between the words.
         ix, iy, iw, ih = inscribed(hub, 0.7)
         above, below = 0.09, 0.07
-        text(ctx, (ix, iy, iw, ih / 2 - above), axes[0], size=13, floor=AXIS_SIZE, colour='soft_ink',
+        text(ctx, (ix, iy, iw, ih / 2 - above), axes[0], size=13, floor=HUB_AXIS_SIZE, colour='soft_ink',
              bold=True, heading=True, align='center', anchor='bottom', spacing=1.05)
         rect(ctx, (cx - 0.22, cy + 0.02 - RULE / 2, 0.44, RULE), readable(ctx, 'accent', 'accent_soft', 2.2))
-        text(ctx, (ix, cy + below, iw, ih / 2 - below), axes[1], size=13, floor=AXIS_SIZE, colour='soft_ink',
+        text(ctx, (ix, cy + below, iw, ih / 2 - below), axes[1], size=13, floor=HUB_AXIS_SIZE, colour='soft_ink',
              bold=True, heading=True, align='center', anchor='top', spacing=1.05)
     else:
         square, between = 0.3, 0.06

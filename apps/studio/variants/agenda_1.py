@@ -1,8 +1,7 @@
 """Agenda variants: numbered rows, tiles and columns, each item's number its own mark."""
 from . import variant
 from .kit import (FOOT, LEFT, RIGHT, RULE, WIDTH, badge, block, entries, eyebrow, figure, fits, header_band,
-                  header_side, headline, height, hues, inks, line, oval, rect, ring, rounded, rule, split, strong,
-                  text, tones)
+                  header_side, headline, height, hues, inks, line, rect, rounded, rule, split, strong, text, tones)
 
 LABEL_WORDS, TEXT_WORDS = 8, 22
 # (label, text) sizes tried in turn; every item of a slide is set at the first pair that holds them all.
@@ -91,13 +90,6 @@ def side_panel(ctx, section, lines):
     rule(ctx, (LEFT + pad, 1.4, 0.9, RULE), colour=panel['ink'])
     headline(ctx, section, (LEFT + pad, 1.62, width - 2 * pad, 3.75), size=30, lines=6, anchor='top',
              colour=panel['ink'])
-    # One dot for each item at the foot of the panel, the first filled.
-    for position in range(len(items)):
-        dot = (LEFT + pad + position * 0.3, FOOT - 0.62, 0.15, 0.15)
-        if position == 0:
-            oval(ctx, dot, panel['ink'])
-        else:
-            ring(ctx, dot, panel['ink'], width=1.0)
 
     x = LEFT + width + 0.6
     size = 0.62
