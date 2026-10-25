@@ -252,6 +252,10 @@ tests/test_deck_designs.py::test_a_generated_deck_wears_the_design_the_model_cho
 # Slide rendering of every layout
 tests/test_slide_layouts.py::test_every_layout_draws_in_every_theme[#255e49-dark]
 
+# A designed deck's page layouts (variants) never cost it a word, and one that would is passed over
+tests/test_slide_variants.py::test_a_full_designed_deck_keeps_every_word[ru]
+tests/test_slide_variants.py::test_a_variant_that_would_cut_or_fails_is_passed_over
+
 # CV templates: the default renders one and two pages in every language, reads back clean
 tests/test_cv_templates.py::test_every_template_renders_both_samples_in_every_language[classic_navy]
 

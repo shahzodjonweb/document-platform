@@ -344,15 +344,29 @@ def test_every_other_layout_keeps_guide_length_text_whole(tmp_path, locale):
     assert not overflowing(path, layouts), '\n'.join(overflowing(path, layouts))
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    'Left as it is: matrix (slide_layouts.matrix) gives axis names 0.35 in of the cells\' height, so four cells '
-    'of 22 words — what the matrix guide allows, with axes it calls optional — are cut in Russian and Uzbek'))
+def _axis_matrix(locale, **fields):
+    w = lambda count, offset=0: moderate_words(locale, count, offset)
+    return {**slide(2, 'matrix', w(6), items=[item(w(2, n), w(22, n)) for n in range(4)],
+                    columns=[w(2), w(2, 3)]), **fields}
+
+
 @pytest.mark.parametrize('locale', ['ru', 'uz'])
 def test_a_matrix_with_axis_names_keeps_guide_length_cells_whole(tmp_path, locale):
-    w = lambda count, offset=0: moderate_words(locale, count, offset)
-    matrix = slide(2, 'matrix', w(6), items=[item(w(2, n), w(22, n)) for n in range(4)],
-                   columns=[w(2), w(2, 3)])
-    path, result = render(tmp_path, deck([short_cover(locale), matrix]), locale, 'scholar')
+    """A designed deck draws it in a variant that holds it (apps/studio/variants); the classic drawer does not."""
+    path, result = render(tmp_path, deck([short_cover(locale), _axis_matrix(locale)]), locale, 'scholar')
+    assert result['metadata']['layouts'] == ['cover', 'matrix']
+    assert not result['shortened'], 'text the guide allows must not be cut'
+    assert result['metadata']['variants'][1] != 'matrix.classic'
+
+
+@pytest.mark.xfail(strict=True, reason=(
+    'Left as it is: matrix (slide_layouts.matrix) gives axis names 0.35 in of the cells\' height, so four cells '
+    'of 22 words — what the matrix guide allows, with axes it calls optional — are cut in Russian and Uzbek. '
+    'Only a deck without a design draws it, or one where no variant holds the slide'))
+@pytest.mark.parametrize('locale', ['ru', 'uz'])
+def test_the_classic_matrix_with_axis_names_keeps_guide_length_cells_whole(tmp_path, locale):
+    content = deck([short_cover(locale), _axis_matrix(locale, _variant='matrix.classic')])
+    path, result = render(tmp_path, content, locale, 'scholar')
     assert result['metadata']['layouts'] == ['cover', 'matrix']
     assert not result['shortened'], 'text the guide allows must not be cut'
 
@@ -520,8 +534,14 @@ def test_a_headline_still_too_tall_at_its_floor_is_cut_visibly_and_reported():
 
 
 @pytest.mark.parametrize('design', ['scholar', 'midnight'])
-def test_text_that_fits_keeps_the_sizes_it_always_had(tmp_path, design):
-    """Measuring by height, word wrap and weight changes nothing for text that already fit."""
+def test_text_that_fits_keeps_the_sizes_it_always_had(tmp_path, design, monkeypatch):
+    """Measuring by height, word wrap and weight changes nothing for text that already fit.
+
+    These are the classic drawers' sizes, so every slide is drawn by them; a
+    designed deck's variants set their own (tests/test_slide_variants.py).
+    """
+    from apps.studio import variants
+    monkeypatch.setattr(variants, 'choose', lambda kind, *args, **kwargs: variants.load(kind)[variants.CLASSIC])
     content = deck([
         slide(1, 'cover', 'Quarterly review', 'Results for the board'),
         slide(2, 'section', 'Results', 'What changed'),
