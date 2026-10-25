@@ -881,11 +881,36 @@ def render_pptx(content, path, locale='en', role='user_document', style=None, ph
     drawn, pictured = [], []
 
     from .compositions import Canvas, compose, zone as inch_zone
+    from . import variants
     arrangement = compose(look.get('composition', 'classic'))
     classic = arrangement.name == 'classic'
+    # A designed deck draws each content slide in one of its layout's variants
+    # (apps/studio/variants): tried on a scratch slide first, so one that would
+    # cut the slide's text is passed over. A deck without a design is drawn as
+    # it always was.
+    deck_seed, taken, scratch = variants.seed(look, content), {}, variants.Scratch(SLIDE_WIDTH, SLIDE_HEIGHT)
+    chosen_variants = []
+
+    def variant_for(kind, section, lines, index, has_photo):
+        forced = section.get('_variant')
+        if forced:
+            return variants.get(forced)
+        if not look['id'] or kind not in variants.KINDS:
+            return None
+
+        def trial(candidate):
+            context = Ctx(scratch.slide(), roles, style, index, total, size, locale, has_photo, None,
+                          look['heading_bold'])
+            candidate.draw(context, section, lines)
+            return not (context.shortened or context.squeezed)
+        return variants.choose(kind, section, lines, deck_seed=deck_seed, taken=taken, trial=trial)
+
     for index, (kind, lines, section) in enumerate(prepared):
         slide = deck.slides.add_slide(deck.slide_layouts[6])
         photo = photos.get(section.get('id')) if kind in PHOTO_ZONES else None
+        chosen = variant_for(kind, section, lines, index, photo is not None)
+        photo_zone = (Zone(*(Inches(value) for value in chosen.photo)) if chosen is not None and chosen.photo
+                      else PHOTO_ZONES.get(kind))
         # The composition draws everything under the text and, for a cover,
         # closing slide or divider, says where the text goes.
         role_of = kind if kind in ('cover', 'closing', 'section') else 'content'
@@ -895,24 +920,26 @@ def render_pptx(content, path, locale='en', role='user_document', style=None, ph
                 if plan is not None and plan.photo:
                     place_photo(slide, inch_zone(plan.photo), photo)
                 elif not classic:
-                    place_photo(slide, _within(PHOTO_ZONES[kind], arrangement.content_box), photo)
+                    place_photo(slide, _within(photo_zone, arrangement.content_box), photo)
                 elif kind == 'cover' and look['cover_photo']:
                     # A photo design's cover: the picture across the slide and
                     # the title on a solid panel, never on the picture itself.
                     place_photo(slide, Zone(*(Inches(value) for value in COVER_PHOTO_ZONE)), photo)
                     _shape(slide, Zone(*(Inches(value) for value in COVER_PANEL_ZONE)), roles['cover_fill'])
                 else:
-                    place_photo(slide, PHOTO_ZONES[kind], photo)
+                    place_photo(slide, photo_zone, photo)
                 pictured.append({'slide': index + 1, **{key: photo[key] for key in photo if key != 'jpeg'}})
             except Exception:
                 # A picture python-pptx cannot place leaves the slide to its text
                 # layout rather than costing the customer the deck.
                 photo = None
                 kind = layouts.resolve(section, lines, index, total, False)
+                chosen = variant_for(kind, {**section, '_variant': ''}, lines, index, False)
         _chrome(slide, roles, style, kind, index + 1, quiet=plan.quiet if plan is not None else None)
         context = Ctx(slide, roles, style, index, total, size, locale, photo is not None, plan,
                       look['heading_bold'])
-        DRAW[kind](context, section, lines)
+        (chosen.draw if chosen is not None else DRAW[kind])(context, section, lines)
+        chosen_variants.append(chosen.id if chosen is not None else '')
         # A classic design's pattern goes in its fixed places; a composition
         # puts its own pattern where it has room.
         if classic and not (kind == 'cover' and photo is not None):
@@ -932,4 +959,4 @@ def render_pptx(content, path, locale='en', role='user_document', style=None, ph
     return {'path': str(path), 'name': path.name,
             'mime_type': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
             'page_count': len(deck.slides), 'role': role, 'shortened': shortened,
-            'metadata': {'layouts': drawn, 'photos': pictured, 'design': look['id']}}
+            'metadata': {'layouts': drawn, 'variants': chosen_variants, 'photos': pictured, 'design': look['id']}}

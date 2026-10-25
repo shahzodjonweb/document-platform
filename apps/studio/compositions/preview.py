@@ -19,11 +19,12 @@ from pptx.oxml.ns import qn
 from .check import EMU, SLIDE_H, SLIDE_W, _background, _describe
 
 FONT = Path(__file__).resolve().parents[3] / 'processors' / 'assets' / 'fonts' / 'NotoSans-Regular.ttf'
+BOLD = FONT.with_name('NotoSans-Bold.ttf')
 
 
-@lru_cache(maxsize=64)
-def _font(size):
-    return ImageFont.truetype(str(FONT), max(6, int(round(size))))
+@lru_cache(maxsize=128)
+def _font(size, bold=False):
+    return ImageFont.truetype(str(BOLD if bold else FONT), max(6, int(round(size))))
 
 
 def _hex(value):
@@ -162,6 +163,7 @@ def _picture(layer, shape, box):
 
 
 def _text(draw, shape, box, scale):
+    """The frame's paragraphs as a viewer sets them: wrapped, with their leading, spacing and bullets."""
     x0, y0, x1, y1 = box
     frame = shape.text_frame
     anchor = frame._txBody.find(qn('a:bodyPr')).get('anchor', 't')
@@ -178,28 +180,53 @@ def _text(draw, shape, box, scale):
             solid = run.find(qn('a:solidFill'))
             if solid is not None and solid.find(qn('a:srgbClr')) is not None:
                 colour = solid.find(qn('a:srgbClr')).get('val')
-        align = (paragraph._p.pPr.get('algn') if paragraph._p.pPr is not None else None) or 'l'
+        properties = paragraph._p.pPr
+        align = (properties.get('algn') if properties is not None else None) or 'l'
         pixels = size / 72 * scale
-        font = _font(pixels)
-        lines = _wrap(text, font, (x1 - x0) - 0.1 * scale)
-        blocks.append((lines, font, pixels * 1.15, _hex(colour), align, bold))
-    total = sum(len(lines) * leading for lines, _, leading, *_ in blocks)
-    y = y0 + 0.05 * scale
+        font = _font(pixels, bold)
+        leading, before, after = pixels * 1.15, 0.0, 0.0
+        bullet, hang = None, 0.0
+        if properties is not None:
+            exact = properties.find(qn('a:lnSpc') + '/' + qn('a:spcPts'))
+            relative = properties.find(qn('a:lnSpc') + '/' + qn('a:spcPct'))
+            if exact is not None:
+                leading = int(exact.get('val')) / 100 / 72 * scale
+            elif relative is not None:
+                leading = pixels * 1.2 * int(relative.get('val')) / 100000
+            for tag, name in (('a:spcBef', 'before'), ('a:spcAft', 'after')):
+                points = properties.find(qn(tag) + '/' + qn('a:spcPts'))
+                if points is not None:
+                    value = int(points.get('val')) / 100 / 72 * scale
+                    before, after = (value, after) if name == 'before' else (before, value)
+            char = properties.find(qn('a:buChar'))
+            if char is not None:
+                tint = properties.find(qn('a:buClr') + '/' + qn('a:srgbClr'))
+                bullet = (char.get('char'), _hex(tint.get('val')) if tint is not None else _hex(colour))
+                hang = int(properties.get('marL', 0)) / EMU * scale
+        lines = _wrap(text, font, (x1 - x0) - hang)
+        blocks.append((lines, font, leading, _hex(colour), align, before, after, bullet, hang))
+    total = sum(before + len(lines) * leading + after for lines, _, leading, _, _, before, after, *_ in blocks)
+    y = y0
     if anchor == 'b':
-        y = y1 - total - 0.05 * scale
+        y = y1 - total
     elif anchor == 'ctr':
         y = y0 + ((y1 - y0) - total) / 2
-    for lines, font, leading, colour, align, bold in blocks:
-        for line in lines:
+    for lines, font, leading, colour, align, before, after, bullet, hang in blocks:
+        y += before
+        # Text sits in its line as a viewer sets it: the leading split above and below the glyphs.
+        offset = (leading - font.size * 1.18) / 2
+        for number, line in enumerate(lines):
             length = font.getlength(line)
-            x = x0 + 0.05 * scale
+            x = x0 + hang
             if align == 'ctr':
                 x = x0 + ((x1 - x0) - length) / 2
             elif align == 'r':
-                x = x1 - length - 0.05 * scale
-            draw.text((x, y), line, font=font, fill=colour + (255,), stroke_width=1 if bold else 0,
-                      stroke_fill=colour + (255,))
+                x = x1 - length
+            if bullet and number == 0:
+                draw.text((x0, y + offset), bullet[0], font=font, fill=bullet[1] + (255,))
+            draw.text((x, y + offset), line, font=font, fill=colour + (255,))
             y += leading
+        y += after
 
 
 def _wrap(text, font, width):
