@@ -2,6 +2,7 @@
 import csv
 import io
 from datetime import datetime, timezone as dt_timezone
+from unittest import mock
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -17,7 +18,7 @@ from tests.test_operations import staff_client
 
 pytestmark = pytest.mark.django_db
 
-ZONE = 'America/New_York'  # UTC-4 in October
+ZONE = 'America/New_York'  # UTC-4 on JOINED; UTC-5 from 1 Nov 2026, when its clocks go back
 JOINED = datetime(2026, 10, 7, 20, 30, tzinfo=dt_timezone.utc)
 
 
@@ -101,7 +102,10 @@ def test_audit_values_and_exports_use_the_viewer_zone():
     response = client.get('/ops/export/users?date_from=2026-10-01&date_to=2026-10-08')
     lines = list(csv.reader(io.StringIO(response.content.decode().lstrip('﻿'))))
     meta = {line[0]: line[1] for line in lines if len(line) == 2}
-    assert meta['times_timezone'] == ZONE and meta['timezone'] == ZONE and meta['generated_at'].endswith('-04:00')
+    # Stamped with New York's offset at that moment: -04:00 in summer, -05:00 in winter.
+    generated = datetime.fromisoformat(meta['generated_at'])
+    assert meta['times_timezone'] == ZONE and meta['timezone'] == ZONE
+    assert generated.utcoffset() == generated.astimezone(ZoneInfo(ZONE)).utcoffset()
     row = next(line for line in lines if '93002' in line)
     assert row[-1] == '2026-10-07 16:30:00-04:00'
 
@@ -126,10 +130,27 @@ def test_detail_pages_and_labels_name_the_viewer_zone():
     assert '07 Oct 2026 · 16:30' in page and 'around 07 Oct 16:30' in page and '01:30' not in page
     page = client.get('/ops/analytics/ai-usage?lang=en').content.decode()
     assert f'({ZONE})</th>' in page and '(UTC)' not in page
-    # The week turns at Monday 00:00 in Tashkent for everyone: Sunday 15:00 here.
+    # The week turns at Monday 00:00 in Tashkent for everyone: Sunday afternoon here,
+    # at 15:00 or 14:00 depending on New York's clocks (pinned in the test below).
     page = client.get(f'/ops/users/{account.id}?lang=en').content.decode()
     resets = week_bounds()[1].astimezone(ZoneInfo(ZONE))
-    assert resets.weekday() == 6 and f'New week: {resets:%d %b %Y} · 15:00</p>' in page
+    assert resets.weekday() == 6 and f'New week: {resets:%d %b %Y · %H:%M}</p>' in page
+
+
+@pytest.mark.parametrize('now, label', [
+    (datetime(2026, 10, 19, 12, tzinfo=dt_timezone.utc), '25 Oct 2026 · 15:00'),
+    # The clocks go back at 02:00 on Sunday 1 Nov, before the week turns at 19:00 UTC.
+    (datetime(2026, 10, 26, 12, tzinfo=dt_timezone.utc), '01 Nov 2026 · 14:00'),
+    (datetime(2027, 3, 1, 12, tzinfo=dt_timezone.utc), '07 Mar 2027 · 14:00'),
+    # And forward at 02:00 on Sunday 14 Mar.
+    (datetime(2027, 3, 8, 12, tzinfo=dt_timezone.utc), '14 Mar 2027 · 15:00'),
+])
+def test_the_new_week_is_shown_at_the_viewers_clock_time_across_daylight_saving(now, label):
+    account = Account.objects.create(telegram_user_id=93004, display_name='Malika')
+    with mock.patch('django.utils.timezone.now', return_value=now):
+        client, _ = device_client()
+        page = client.get(f'/ops/users/{account.id}?lang=en').content.decode()
+    assert f'New week: {label}</p>' in page
 
 
 def test_today_heading_names_the_day_being_counted():
