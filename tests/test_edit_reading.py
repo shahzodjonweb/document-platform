@@ -57,7 +57,8 @@ REAL = [
     (10, 'pptx', 9, 0, "Shunga boshidagi bir betga 45-maktab 7-B sinf oʻquvchisi Aliyev Sardorning \"Ustoz otangdek "
                        "ulugʻ\" maqoli boʻyicha tayyorlagan taqdimoti deb yoz va ustoz oʻquvchilarning rasmini kichik "
                        "kichik qilib toʻrtta qoʻy. Keyin hamma betda rasmlar boʻlsin",
-     {'pictures': 'every', 'total': None, 'delta': 0, 'parts': []}),
+     # The line it dictates goes on the cover, the deck's title page; no slide is added for it.
+     {'pictures': 'every', 'total': None, 'delta': 0, 'parts': ['title_page'], 'structural': False}),
     (11, 'pptx', 12, 0, "Reja ham bo'lsin kirish va xulosa qismi ham",
      {'parts': ['plan', 'introduction', 'conclusion'], 'structural': True}),
     (12, 'pptx', 12, 0, "Rasmlar tabiiyga o'xshash bo'lmasligi kerak kitoblarda beriladigan rasmga o'xshashi kerak",

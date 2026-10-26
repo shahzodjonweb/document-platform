@@ -248,6 +248,7 @@ tests/test_edit_verification.py::test_a_planned_part_left_undone_is_repaired_onc
 
 # AI slide-deck generation end to end
 tests/test_deck_designs.py::test_a_generated_deck_wears_the_design_the_model_chose
+tests/test_title_lines.py::test_names_reach_the_cover_of_a_deck_and_of_a_change_that_dictates_them
 
 # Slide rendering of every layout
 tests/test_slide_layouts.py::test_every_layout_draws_in_every_theme[#255e49-dark]

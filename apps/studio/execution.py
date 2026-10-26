@@ -111,6 +111,10 @@ def execute_generation(job,output_dir):
         warnings.append('local_fixture_not_ai_generated')
         if not any(s['body'].strip() or s.get('items') for s in content['sections']) and not content['questions']:
             raise DomainError('content_required')
+    # The lines the customer dictated for a deck's title slide, set on its
+    # cover as they wrote them, whatever the model did with them (title_lines.py).
+    from . import title_lines
+    content=title_lines.apply(data,content)
     bounds=job.quote.policy.get('generation_bounds',{})
     # Everything from here on trims the response to what was quoted instead of
     # rejecting it. The customer chose a page count, it was clamped to their plan

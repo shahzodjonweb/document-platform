@@ -632,7 +632,7 @@ def _describes(body, span, part):
     return (part[0] >= span[1] or part[1] <= span[0]) and len(gap) <= 15 and not SEPARATOR.search(gap)
 
 
-def _title_page(body, clause_start, clause, fmt):
+def _title_page(body, clause_start, clause, fmt, deck=False):
     """Whether pages added at the start of the document (`clause`, at `clause_start`) open on a title page.
 
     They do when lines are dictated for it, here or after it ("… deb yoz",
@@ -645,10 +645,16 @@ def _title_page(body, clause_start, clause, fmt):
     """
     if DICTATED.search(body, clause_start):
         return True
+    if deck:
+        # Lines dictated in its own sentence ("Boshiga bitta slayd qo'sh: Karimova Dilnoza 026-136-guruh") —
+        # not elsewhere in the request ("Boshiga kirish slaydini qo'sh. Tayyorladi: …").
+        from .title_lines import dictated
+        end = re.search(r"[.!?\n]", body[clause_start + len(clause):])
+        return bool(dictated(body[clause_start:clause_start + len(clause) + (end.start() if end else len(body))]))
     return fmt != 'pptx' and not ABOUT.search(clause)
 
 
-def _deltas(body, parts_at, most=60, fmt=None):
+def _deltas(body, parts_at, most=60, fmt=None, deck=False):
     """(pages added and removed, whether one was added at the start as its title page, the spans they were
     read from, the page numbers removed by name). One removal takes at most `most` pages."""
     delta, start_page, spans, named = 0, False, [], []
@@ -669,7 +675,7 @@ def _deltas(body, parts_at, most=60, fmt=None):
                     continue
                 spans.append(span)
                 near = clause[max(0, match.start() - 25):match.end() + 20]
-                if AT_START.search(near) and not start_page and _title_page(body, start, clause, fmt):
+                if AT_START.search(near) and not start_page and _title_page(body, start, clause, fmt, deck):
                     start_page, count = True, count - 1
                 delta += max(0, min(count, 20))
         for pattern in (REMOVE_UZ, REMOVE_EN, REMOVE_RU):
@@ -899,8 +905,15 @@ def read(request, *, fmt, sections, questions=0):
 
     # Parts, pages added and removed, characters.
     edit.parts, parts_at, gone = _parts(body, sections, fmt)
-    delta, start_page, spans, named = _deltas(body, parts_at, len(sections) or 60, fmt)
+    # Lines dictated for a deck's title slide however they are asked for ("Birinchi
+    # betiga: …", "сделала: …"): its cover, not a slide of its own (title_lines.py),
+    # even where the request also adds a slide at the start for them in that sentence.
+    deck = fmt == 'pptx' and bool(sections)
+    delta, start_page, spans, named = _deltas(body, parts_at, len(sections) or 60, fmt, deck)
     blank += spans
+    if deck and not start_page:
+        from .title_lines import dictated
+        start_page = bool(dictated(request))
     if start_page and 'title_page' not in edit.parts:
         # Read on a deck too, so the model is told the dictated lines go on its
         # cover; it adds no slide there (added_parts).

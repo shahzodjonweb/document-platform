@@ -267,7 +267,17 @@ def _prepare_draft(account,data,revision_base=None):
     excerpts=[] if fid==CV else source_excerpts(account,ids)
     if len(text)+len(prompt)+sum(len(s['text']) for s in excerpts)>limits(account)['source_chars']:raise DomainError('generation_limit')
     options=data.get('options',data.get('parameters',{}))
-    if not isinstance(options,dict) or len(json.dumps(options))>4000 or set(options)&READONLY_FIELDS:raise DomainError('invalid_parameters')
+    # Title lines are the server's own, bounded where they are read: eight long Cyrillic lines alone pass 4000.
+    if (not isinstance(options,dict) or len(json.dumps({k:v for k,v in options.items() if k!='title_lines'}))>4000
+            or set(options)&READONLY_FIELDS):raise DomainError('invalid_parameters')
+    # The lines a deck's title slide carries are read from what the customer
+    # wrote (title_lines.py), never taken from a client: one sent back as it
+    # was stored is kept, any other is dropped.
+    stored_lines=(revision_base or {}).get('options',{}).get('title_lines')
+    if 'title_lines' in options and (not isinstance(stored_lines,list) or options['title_lines']!=stored_lines
+                                     # A new document's lines were read from its description: reworded, they are read again.
+                                     or (not options.get('revise_draft_id') and prompt!=revision_base.get('prompt'))):
+        options={key:value for key,value in options.items() if key!='title_lines'}
     # A change request inherits the document it applies to: same service, same
     # format, same sources. Only what the customer asks to change may change.
     revising=options.get('revise_draft_id')
@@ -804,6 +814,8 @@ def update_draft(account,draft_id,data):
     # So does a count chosen on the review screen.
     rebuild=rebuild or payload['options'].get('length')!=original.get('options',{}).get('length')
     content=data.get('content',payload['content'] if rebuild and not original.get('revision',{}).get('selected_section_ids') else original['content'])
+    # A new deck's outline rebuilt from scratch no longer carries the title lines it was given: they are read again.
+    if content is payload['content'] and not payload['options'].get('revise_draft_id'):payload['options'].pop('title_lines',None)
     if 'outline' in data:
         outline=data['outline']
         if not isinstance(outline,list) or any(not isinstance(s,dict) for s in outline):raise DomainError('invalid_parameters')
