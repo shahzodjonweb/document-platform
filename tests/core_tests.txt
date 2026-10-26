@@ -88,6 +88,12 @@ tests/test_file_jobs_weekly.py::test_every_file_tool_draws_on_the_same_week
 tests/test_file_jobs_weekly.py::test_a_quote_taken_earlier_cannot_slip_past_the_limit
 tests/test_file_jobs_weekly.py::test_a_batch_that_does_not_fit_is_refused_whole
 
+# Photos made into one PDF are one file task, however many; the admin says what was used
+tests/test_images_to_pdf_weekly.py::test_an_album_of_photos_is_one_file_task
+tests/test_images_to_pdf_weekly.py::test_the_last_task_of_the_week_takes_any_number_of_photos
+tests/test_images_to_pdf_weekly.py::test_the_web_makes_one_task_of_many_photos
+tests/test_images_to_pdf_weekly.py::test_the_admin_says_what_was_used_not_only_what_is_left
+
 # Weekly AI document limit
 tests/test_weekly_limits.py::test_a_free_account_makes_five_ai_documents_a_week_and_is_told_when
 tests/test_weekly_limits.py::test_a_quote_taken_earlier_cannot_slip_past_the_limit

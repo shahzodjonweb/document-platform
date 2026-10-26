@@ -316,11 +316,16 @@ def user_detail(request, pk):
     account=get_object_or_404(Account,pk=pk)
     data=context(request,'users');data.update({'account':account,'detail_type':'user','recent_jobs':account.jobs.order_by('-created_at')[:20]})
     data['can_assign_plan']=allowed(request.ops_user,[])
-    # This week as the customer sees it. There is nothing to top up: support
-    # helps a customer who ran out by assigning a plan.
+    # This week as the customer sees it: used against the limit, as the bot and
+    # the web say it, then what is left ("14 / 15" alone was read as fourteen
+    # used). There is nothing to top up: support helps a customer who ran out
+    # by assigning a plan.
     usage=usage_snapshot(account)
     data['week_resets_at']=usage['resets_at']
-    data['week_rows']=[{'label':data['t'][label],'used_text':data['t']['week_used'].format(n=usage[key]['used']),**usage[key]}
+    def used_text(block):
+        if block['limit'] is None:return data['t']['week_used'].format(n=block['used'])
+        return data['t']['week_used_of'].format(used=block['used'],limit=block['limit'],left=block['remaining'])
+    data['week_rows']=[{'label':data['t'][label],'used_text':used_text(usage[key]),**usage[key]}
                        for key,label in (('ai_documents','field_weekly_ai_documents'),('file_jobs','field_weekly_file_jobs'))]
     data['edits_per_file']=usage['edits_per_file']
     data['plan_options']=['free','plus','premium']

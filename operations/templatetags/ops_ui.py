@@ -91,8 +91,9 @@ def meter_state(row):
 
 @register.filter
 def meter_percent(row):
-    remaining, limit = row.get('remaining') or 0, row.get('limit') or 0
-    return 0 if not limit else max(0, min(100, round(remaining * 100 / limit)))
+    """How much of a weekly limit was used: the bar fills as the week is used, as on the web."""
+    used, limit = row.get('used') or 0, row.get('limit') or 0
+    return 0 if not limit else max(0, min(100, round(used * 100 / limit)))
 
 
 @register.filter

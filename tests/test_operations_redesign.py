@@ -70,7 +70,7 @@ def test_customer_page_offers_plan_assignment_to_administrators_only():
     assert 'id="grant"' not in page, 'weekly limits have no credits to add'
     support, _ = staff_client('Support')
     page = support.get(f'/ops/users/{account.id}').content.decode()
-    assert 'id="assign-plan"' not in page and 'Left this week' in page
+    assert 'id="assign-plan"' not in page and '<h2>This week</h2>' in page
 
 
 def test_audit_table_shows_what_changed():

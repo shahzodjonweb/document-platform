@@ -123,9 +123,11 @@ def test_the_account_page_shows_this_week_instead_of_a_balance(settings):
     account = customer()
     file_task(account), file_task(account), file_task(account, 'failed')
     page = client.get(f'/ops/users/{account.id}').content.decode()
-    assert 'Left this week' in page and 'File tasks a week' in page
-    assert '<strong>13 / 15</strong>' in page, 'two tasks counted; the failed one gave its place back'
-    assert '<strong>5 / 5</strong>' in page and 'AI edits per file' in page
+    assert '<h2>This week</h2>' in page and 'File tasks a week' in page
+    assert '<strong>2 of 15 used · 13\u00a0left</strong>' in page, 'two tasks counted; the failed one gave its place back'
+    assert '<strong>0 of 5 used · 5\u00a0left</strong>' in page and 'AI edits per file' in page
+    # The bar fills with what was used, as on the web: nothing used is an empty bar.
+    assert 'style="width:13%"' in page and 'style="width:0%"' in page
     # Monday 00:00 in Tashkent, shown in the viewer's zone (UTC here): Sunday 19:00.
     resets = week_bounds()[1].astimezone(dt_timezone.utc)
     assert resets.weekday() == 6 and f'New week: {resets:%d %b %Y} · 19:00</p>' in page
@@ -140,7 +142,7 @@ def test_an_unlimited_limit_shows_what_was_used(settings):
     file_task(account)
     page = client.get(f'/ops/users/{account.id}').content.decode()
     assert 'No limit · 1 used' in page and 'No limit · 0 used' in page
-    assert '/ 15' not in page
+    assert 'of 15' not in page
 
 
 def test_a_task_page_has_no_charges_to_show(settings):

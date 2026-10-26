@@ -44,14 +44,14 @@
     </dl>
   </section>
   <section class="panel info-panel">
-    <h2>{{ t.week_left }}</h2>
+    <h2>{{ t.week_title }}</h2>
     <div class="meter-list">
       {% for row in week_rows %}
       <div>
         {% if row.limit is None %}
         <div class="meter-head"><span>{{ row.label }}</span><strong>{{ t.no_limit }} · {{ row.used_text }}</strong></div>
         {% else %}
-        <div class="meter-head"><span>{{ row.label }}</span><strong>{{ row.remaining }} / {{ row.limit }}</strong></div>
+        <div class="meter-head"><span>{{ row.label }}</span><strong>{{ row.used_text }}</strong></div>
         <div class="meter-track"><i class="{{ row|meter_state }}" style="width:{{ row|meter_percent }}%"></i></div>
         {% endif %}
       </div>
