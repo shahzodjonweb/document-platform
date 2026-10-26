@@ -91,6 +91,9 @@ def execute_outline(job,draft,data,original,config,output_dir,deadline=None):
     else:
         content={'title':data['content']['title'],'sections':[{**s,'body':s['body'][:500],'notes':''} for s in data['content']['sections']],'questions':[],'citations':data['content'].get('citations',[])}
         warnings.append('local_fixture_not_ai_generated')
+    # The plan the customer reviews already carries their title-slide lines, as the deck will.
+    from . import title_lines
+    content=title_lines.apply(data,content)
     path=output_dir/'outline.json';path.write_text(json.dumps(content,ensure_ascii=False,indent=2),encoding='utf-8')
     data['content']={**content,'questions':data['content']['questions']}
     data.pop('_source_seed',None)
