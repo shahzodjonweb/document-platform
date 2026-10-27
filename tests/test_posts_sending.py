@@ -289,10 +289,14 @@ def test_a_send_that_timed_out_is_not_sent_again_and_the_post_waits():
     assert post.paused_until > timezone.now() and fake.send_message.await_count == 1
 
 
-@pytest.mark.parametrize('error', [
-    TelegramServerError(method=Mock(), message='Bad Gateway'),
-    TelegramNetworkError(method=Mock(), message='ClientConnectorError: Cannot connect to host'),
-])
+def refused():
+    from aiohttp import ClientConnectorError
+    error = TelegramNetworkError(method=Mock(), message='ClientConnectorError: Cannot connect to host')
+    error.__cause__ = ClientConnectorError.__new__(ClientConnectorError)
+    return error
+
+
+@pytest.mark.parametrize('error', [TelegramServerError(method=Mock(), message='Bad Gateway'), refused()])
 def test_an_outage_pauses_the_post_and_costs_nobody_their_copy(error):
     post = sent(3)
     fake = bot()
@@ -403,24 +407,46 @@ def network(message, cause):
     return error
 
 
-def test_a_connect_that_never_finished_holds_the_post_and_loses_nobody():
-    from aiohttp import ConnectionTimeoutError
+def test_a_connect_that_never_finishes_holds_the_post_and_loses_nobody(monkeypatch):
+    # A real aiohttp session against a local socket that never answers: the
+    # TLS handshake hangs, as when Telegram's packets are dropped.
+    import socket
+    from aiohttp import ClientTimeout
+    from aiogram.client.session.aiohttp import AiohttpSession
+    from aiogram.client.telegram import TelegramAPIServer
+    monkeypatch.setattr(sender, 'SEND_TIMEOUT', ClientTimeout(total=3, connect=0.5))
     post = sent(2)
-    fake = bot()
-    fake.send_message = AsyncMock(side_effect=network('Request timeout error', ConnectionTimeoutError('to host')))
-    asyncio.run(sender.drain(fake))
+    silent = socket.socket()
+    silent.bind(('127.0.0.1', 0))
+    silent.listen(8)
+
+    async def run():
+        session = AiohttpSession(api=TelegramAPIServer.from_base(f'https://127.0.0.1:{silent.getsockname()[1]}'))
+        real = Bot('123456:TEST_DO_NOT_USE_NETWORK', session=session)
+        try:
+            await sender.drain(real)
+        finally:
+            await real.session.close()
+    try:
+        asyncio.run(run())
+    finally:
+        silent.close()
     head, other = rows(post)
     assert (head.status, head.error_code) == ('retrying', 'telegram_unavailable') and other.status == 'pending'
 
 
-def test_an_answer_cut_off_after_telegram_had_it_is_not_sent_again():
-    from aiohttp import ClientPayloadError
+@pytest.mark.parametrize('cause', ['payload', 'disconnected'])
+def test_a_connection_that_broke_after_the_request_went_out_is_not_sent_again(cause):
+    from aiohttp import ClientPayloadError, ServerDisconnectedError
+    error = ClientPayloadError('cut') if cause == 'payload' else ServerDisconnectedError()
     post = sent(2)
     fake = bot()
-    fake.send_message = AsyncMock(side_effect=network('ClientPayloadError: not completed', ClientPayloadError('cut')))
+    fake.send_message = AsyncMock(side_effect=network(f'{type(error).__name__}: lost', error))
     asyncio.run(sender.drain(fake))
     head, other = rows(post)
     assert (head.status, head.error_code) == ('failed', 'interrupted') and other.status == 'pending'
+    assert fake.send_message.await_count == 1
+    assert fake.send_message.await_args.kwargs['request_timeout'] is sender.SEND_TIMEOUT
 
 
 def test_a_proxys_error_page_holds_the_post_and_an_unreadable_ok_counts_as_delivered():

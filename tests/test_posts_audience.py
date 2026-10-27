@@ -290,3 +290,16 @@ def test_an_image_of_a_saved_post_stays_when_only_its_upload_fails(monkeypatch):
         posts.create(None, text='News', audience_kind='everyone', image=png((300, 200)))
     post = Post.objects.get()
     assert storage_path(post.image_key).is_file(), 'the sync uploads it later'
+
+
+def test_a_16_bit_grey_with_a_transparent_grey_whitens_exactly_that_grey():
+    import io
+    from PIL import Image
+    picture = Image.new('I;16', (4, 1))
+    picture.putdata([25900, 25957, 0, 51400])
+    out = io.BytesIO()
+    picture.save(out, 'PNG', transparency=25900)
+    with Image.open(io.BytesIO(posts.clean_image(out.getvalue()))) as clean:
+        clean = clean.convert('L')
+        transparent, near, black, light = (clean.getpixel((x, 0)) for x in range(4))
+    assert transparent > 240 and near < 130 and black < 20 and 180 < light < 220

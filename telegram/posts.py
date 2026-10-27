@@ -19,7 +19,7 @@ import logging
 import time
 from datetime import timedelta
 
-from aiohttp import ClientPayloadError, ConnectionTimeoutError
+from aiohttp import ClientConnectorError, ClientTimeout, ConnectionTimeoutError
 from asgiref.sync import sync_to_async
 from aiogram import BaseMiddleware
 from aiogram.exceptions import (
@@ -43,6 +43,10 @@ LEASE = 120
 # costs one person attempts, and only after an hour of them their copy.
 HOLD = 30
 HOLD_ATTEMPTS = 120
+# A send's own bound on reaching Telegram, so a connection that never opens is
+# told apart from one that opened and then went quiet (which may have arrived).
+# The bot's session keeps its plain number: polling adds to it.
+SEND_TIMEOUT = ClientTimeout(total=60, connect=10)
 PREFIX = 'post:'
 BUTTON_DEFAULT = {'en': '👌 Got it', 'uz': '👌 Tushunarli', 'ru': '👌 Понятно'}
 THANKS = {'en': 'Thanks!', 'uz': 'Rahmat!', 'ru': 'Спасибо!'}
@@ -164,13 +168,13 @@ async def attempt(recipient_id, bot):
         # Plain text, as written: no parse mode, so nothing in it is markup.
         if post.image_file_id:
             response = await bot.send_photo(chat, post.image_file_id, caption=post.text, parse_mode=None,
-                                            reply_markup=buttons)
+                                            reply_markup=buttons, request_timeout=SEND_TIMEOUT)
         elif data is not None:
             response = await bot.send_photo(chat, BufferedInputFile(data, filename='post.jpg'), caption=post.text,
-                                            parse_mode=None, reply_markup=buttons)
+                                            parse_mode=None, reply_markup=buttons, request_timeout=SEND_TIMEOUT)
         else:
             response = await bot.send_message(chat, post.text, parse_mode=None, disable_web_page_preview=True,
-                                              reply_markup=buttons)
+                                              reply_markup=buttons, request_timeout=SEND_TIMEOUT)
     except TelegramRetryAfter as exc:
         delay = min(3600, max(1, exc.retry_after))
         await sync_to_async(finish)(row.id, status='retrying', error='telegram_rate_limited', delay=delay)
@@ -183,17 +187,15 @@ async def attempt(recipient_id, bot):
         await sync_to_async(finish)(row.id, status='failed', error='telegram_rejected')
         return True
     except TelegramNetworkError as exc:
-        cause = exc.__cause__
-        answered = isinstance(cause, ClientPayloadError)
-        timed_out = 'timeout' in str(exc).lower() and not isinstance(cause, ConnectionTimeoutError)
-        if answered or timed_out:
-            # Telegram had it and its answer was cut off, or may have had it:
-            # not sent again (see the top of this module).
+        if isinstance(exc.__cause__, (ClientConnectorError, ConnectionTimeoutError)):
+            # No connection to Telegram (DNS, refused, TLS, the connect bound):
+            # nothing was sent.
+            await sync_to_async(hold)(row, 'telegram_unavailable')
+        else:
+            # The connection broke or went quiet after the request went out: it
+            # may have arrived, so it is not sent again (see the top of this module).
             await sync_to_async(finish)(row.id, status='failed', error='interrupted')
             await sync_to_async(pause)(post.id, HOLD)
-        else:
-            # Never reached Telegram.
-            await sync_to_async(hold)(row, 'telegram_unavailable')
         return False
     except ClientDecodeError as exc:
         if isinstance(exc.data, dict) and exc.data.get('ok') is True:

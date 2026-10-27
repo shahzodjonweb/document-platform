@@ -19,11 +19,16 @@ def clean_photo(raw, *, max_bytes, max_pixels, edge):
             picture.load()
             turned = ImageOps.exif_transpose(picture)
             if turned.mode.startswith('I'):
-                # 16-bit grey: scaled to 8 bits, not clipped to white.
+                # 16-bit grey: scaled to 8 bits, not clipped to white. A
+                # transparent grey is matched at full depth, before scaling.
+                import numpy
                 key = turned.info.get('transparency')
-                turned = turned.convert('I').point(lambda value: value / 257).convert('L')
+                wide = turned.convert('I')
+                turned = wide.point(lambda value: value / 257).convert('L')
+                turned.info.pop('transparency', None)
                 if isinstance(key, int):
-                    turned.info['transparency'] = round(key / 257)
+                    alpha = Image.fromarray(((numpy.asarray(wide) != key) * 255).astype('uint8'))
+                    turned = Image.merge('LA', (turned, alpha))
             if turned.mode in ('RGBA', 'LA', 'PA') or 'transparency' in turned.info:
                 # Transparent parts on white: dropping the alpha would turn them black.
                 turned = turned.convert('RGBA')
