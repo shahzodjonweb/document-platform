@@ -27,7 +27,7 @@ def clean_photo(raw, *, max_bytes, max_pixels, edge):
                 turned = wide.point(lambda value: value / 257).convert('L')
                 turned.info.pop('transparency', None)
                 if isinstance(key, int):
-                    alpha = Image.fromarray(((numpy.asarray(wide) != key) * 255).astype('uint8'))
+                    alpha = Image.fromarray((numpy.asarray(wide) != key).astype('uint8') * 255)
                     turned = Image.merge('LA', (turned, alpha))
             if turned.mode in ('RGBA', 'LA', 'PA') or 'transparency' in turned.info:
                 # Transparent parts on white: dropping the alpha would turn them black.
