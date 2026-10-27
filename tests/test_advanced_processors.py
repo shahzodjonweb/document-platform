@@ -62,6 +62,23 @@ def test_pdf_to_editable_word_preserves_cyrillic(tmp_path):
     assert 'editable_text_reflowed_layout_not_preserved' in result['metadata']['warnings']
 
 
+def test_pdf_to_word_takes_a_blank_page_without_contents(tmp_path):
+    # pypdf's layout extraction raised KeyError on a page with no /Contents,
+    # so one blank page failed the whole document as processing_failed.
+    from docx import Document
+    from pypdf import PdfWriter
+    writer=PdfWriter(clone_from=str(pdf(tmp_path/'text.pdf','First page text')))
+    writer.add_blank_page(612,792)
+    source=tmp_path/'source.pdf'
+    with source.open('wb') as stream:writer.write(stream)
+    result=execute_sandbox('convert.pdf_to_docx',[source],{'mode':'text'},tmp_path/'out')
+    assert any('First page text' in p.text for p in Document(output(result)).paragraphs)
+    blank=tmp_path/'blank.pdf';only=PdfWriter();only.add_blank_page(612,792)
+    with blank.open('wb') as stream:only.write(stream)
+    with pytest.raises(ProcessorError) as error:execute_sandbox('convert.pdf_to_docx',[blank],{'mode':'text'},tmp_path/'blank-out')
+    assert error.value.code=='scan_requires_ocr'
+
+
 def test_pdf_tables_to_xlsx_neutralizes_formulas(tmp_path):
     from openpyxl import load_workbook
     source=tmp_path/'table.pdf';canvas=Canvas(str(source),pagesize=(400,600))

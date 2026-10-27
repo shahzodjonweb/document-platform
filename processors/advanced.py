@@ -142,7 +142,8 @@ def execute(feature, paths, parameters, out, metadata):
                 warnings.append('printed_text_ocr_review_required')
             else:
                 reader=_pdf_reader(source)
-                texts=[(i,reader.pages[i].extract_text(extraction_mode='layout')) for i in parse_pages(parameters['pages'],len(reader.pages))]
+                # A blank page may have no /Contents at all, which layout mode raises on.
+                texts=[(i,reader.pages[i].extract_text(extraction_mode='layout') if '/Contents' in reader.pages[i] else '') for i in parse_pages(parameters['pages'],len(reader.pages))]
             if not any(text.strip() for _,text in texts):raise ProcessorError('scan_requires_ocr')
             if sum(len(text) for _,text in texts)>2_000_000:raise ProcessorError('output_size_limit')
             document=Document();normal=document.styles['Normal'];normal.font.name='Noto Sans';normal.font.size=Pt(11)

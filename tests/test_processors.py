@@ -106,6 +106,100 @@ def test_compression_and_no_op(tmp_path):
     assert Path(second['artifacts'][0]['path']).read_bytes() == Path(first['artifacts'][0]['path']).read_bytes()
 
 
+def receipt_with_images(path, images, blank_pages=0):
+    """Uncompressed text on page one, one image per entry of `images` (a
+    (stream dictionary, stored bytes) pair) on that page, then blank pages."""
+    from pypdf.generic import DictionaryObject, EncodedStreamObject, NameObject
+    canvas = Canvas(str(path.with_suffix('.text.pdf')), pageCompression=0, invariant=1)
+    for line in range(80):
+        canvas.drawString(20, 20 + line * 9, f'Transfer receipt line {line}: 125 000 UZS')
+    canvas.showPage()
+    canvas.save()
+    writer = PdfWriter(clone_from=str(path.with_suffix('.text.pdf')))
+    page = writer.pages[0]
+    names = DictionaryObject()
+    for i, (dictionary, stored) in enumerate(images):
+        image = EncodedStreamObject()
+        image.update({NameObject(k): v for k, v in dictionary.items()})
+        image._data = stored
+        names[NameObject(f'/Im{i}')] = writer._add_object(image)
+    page['/Resources'][NameObject('/XObject')] = names
+    content = page.get_contents()
+    content.set_data(content.get_data() + b''.join(b'\nq 100 0 0 100 %d 600 cm /Im%d Do Q' % (40 + 110 * i, i) for i in range(len(images))))
+    page.replace_contents(content)
+    for _ in range(blank_pages):
+        writer.add_blank_page(612, 792)
+    with path.open('wb') as stream:
+        writer.write(stream)
+    return path
+
+
+def image_entry(width, height, filters, stored, bits=8, colorspace='/DeviceRGB', parms=None):
+    from pypdf.generic import NameObject, NumberObject
+    entry = {'/Type': NameObject('/XObject'), '/Subtype': NameObject('/Image'), '/Width': NumberObject(width),
+             '/Height': NumberObject(height), '/BitsPerComponent': NumberObject(bits), '/ColorSpace': NameObject(colorspace),
+             '/Filter': filters}
+    if parms is not None:
+        entry['/DecodeParms'] = parms
+    return entry, stored
+
+
+def undecodable_image(kind):
+    """An image pypdf cannot decode in a file that opens, splits and rotates."""
+    import zlib
+    from pypdf.generic import ArrayObject, DictionaryObject, NameObject
+    if kind == 'jbig2':
+        # Production has no jbig2dec; where it is installed, these bytes do not decode either.
+        return image_entry(64, 64, NameObject('/JBIG2Decode'), b'\x00\x00\x00\x30' + bytes(28), 1, '/DeviceGray')
+    if kind == 'past_decode_limit':
+        # A flat 6000 x 4500 background: 81 MB decoded, ~80 KB stored; pypdf stops at 75 MB.
+        return image_entry(6000, 4500, NameObject('/FlateDecode'), zlib.compress(bytes(6000 * 4500 * 3), 9))
+    named = ArrayObject([DictionaryObject({NameObject('/Name'): NameObject('/Identity')})])
+    return image_entry(8, 8, ArrayObject([NameObject('/Crypt')]), bytes(8 * 8 * 3), parms=named)
+
+
+@pytest.mark.parametrize('kind', ['jbig2', 'past_decode_limit', 'crypt_filter'])
+def test_compression_keeps_an_image_it_cannot_decode(tmp_path, kind):
+    # Shared objects were found by hashing every stream's decoded data, so one
+    # image pypdf could not decode failed the task as processing_failed while
+    # split and rotate took the same file. Streams are now compared stored.
+    entry, stored = undecodable_image(kind)
+    source = receipt_with_images(tmp_path / 'receipt.pdf', [(entry, stored)])
+    assert execute_sandbox('pdf.split', [source], {}, tmp_path / 'split')['artifacts']
+    result = execute_sandbox('pdf.compress', [source], {}, tmp_path / 'out')
+    assert not result['no_op'] and result['metadata']['saved_bytes'] > 0
+    reader = result_reader(result)
+    assert 'Transfer receipt line 79' in reader.pages[0].extract_text()
+    images = [obj.get_object() for obj in reader.pages[0]['/Resources']['/XObject'].values()]
+    assert [image._data for image in images] == [stored]
+
+
+def test_editing_keeps_an_image_it_cannot_decode(tmp_path):
+    # The editor shared objects the same way after every edit.
+    entry, stored = undecodable_image('jbig2')
+    source = receipt_with_images(tmp_path / 'receipt.pdf', [(entry, stored)])
+    command = {'type': 'add_text', 'page': 1, 'x': 40, 'y': 40, 'text': 'PAID', 'font_size': 14, 'color': '#cc0000'}
+    result = execute_sandbox('editor.add_text', [source], {'commands': [command]}, tmp_path / 'out')
+    page = result_reader(result).pages[0]
+    assert 'PAID' in page.extract_text()
+    assert [obj.get_object()._data for obj in page['/Resources']['/XObject'].values()] == [stored]
+
+
+def test_compression_still_shares_identical_images_and_keeps_every_page(tmp_path):
+    from pypdf.generic import NameObject
+    picture = Image.effect_noise((120, 90), 50).convert('RGB').tobytes()
+    import zlib
+    stored = zlib.compress(picture)
+    same = image_entry(120, 90, NameObject('/FlateDecode'), stored)
+    source = receipt_with_images(tmp_path / 'receipt.pdf', [same, same, same], blank_pages=2)
+    result = execute('pdf.compress', [source], {}, tmp_path / 'out')
+    reader = result_reader(result)
+    images = {obj.idnum for obj in reader.pages[0]['/Resources']['/XObject'].values()}
+    assert len(images) == 1 and result['metadata']['saved_bytes'] > 2 * len(stored)
+    # The two blank pages are alike, and each stays a page of its own.
+    assert len(reader.pages) == 3 == len({page.indirect_reference.idnum for page in reader.pages})
+
+
 def test_images_pdf_layout_and_pixel_order(tmp_path, scanner_models):
     # 300x150 is large enough to be scanned, so this needs the scanner models.
     sources = []

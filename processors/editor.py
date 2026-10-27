@@ -257,7 +257,7 @@ def _redact(source,commands,out):
 
 
 def execute(feature,paths,parameters,out,metadata):
-    from .engine import _pdf_reader,_write_pdf,ProcessorError
+    from .engine import _pdf_reader,_share_identical_objects,_write_pdf,ProcessorError
     from pypdf.annotations import Highlight,Text
     commands=parameters['commands']
     if any(c['type']=='redact' for c in commands):return _redact(paths[0],commands,out)
@@ -281,7 +281,7 @@ def execute(feature,paths,parameters,out,metadata):
             x,y,w,h=command['x'],height-command['y'],command['width'],command['height']
             writer.add_annotation(command['page']-1,Highlight(rect=(x,y-h,x+w,y),quad_points=ArrayObject([FloatObject(v) for v in (x,y,x+w,y,x,y-h,x+w,y-h)]),highlight_color=command['color'][1:]))
     if form_values:_fill_forms(writer,form_values)
-    writer.compress_identical_objects(remove_duplicates=True,remove_unreferenced=True)
+    _share_identical_objects(writer)
     artifact=_write_pdf(writer,out/'edited.pdf',allow_forms=True)
     reopened=PdfReader(artifact['path'])
     for name,value in form_values.items():
