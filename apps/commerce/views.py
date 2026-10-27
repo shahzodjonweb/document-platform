@@ -86,9 +86,12 @@ def local_telegram(request):
         # The simulator has no loop of its own: a chat waiting for its CV's
         # files is looked at as the page asks, as the bot's loop looks at it.
         from apps.core.models import BotConversation
-        from telegram.local import look_local
+        from telegram.local import look_local,posts_local
+        from telegram.posts import due
         chat=request.account.telegram_user_id
         if chat is not None and BotConversation.objects.filter(pk=chat,state='cv_wait').exists(): return look_local(request.account)
+        # Posts from the admin arrive the same way: as the page asks.
+        if chat is not None and due(request.account,limit=1): return posts_local(request.account)
         return history(request.account)
     throttle(request,'telegram_local',60)
     if request.FILES.get('file'): return dispatch_local(request.account,uploaded=request.FILES['file'])

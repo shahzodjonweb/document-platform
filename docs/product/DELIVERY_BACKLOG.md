@@ -259,7 +259,7 @@ Implement every admin metric in master section 17, detail drilldowns, saved filt
 
 Implement user-initiated referral sharing, explicit reward qualification/caps, fraud-resistant unique grants and revocation policy. Add a separately disabled sponsor module restricted to eligible general-mode Free surfaces.
 
-**Acceptance:** No automatic invitations or promotional broadcasts occur. Plus/Premium and school/child flows do not show sponsors. Attribution is not presented as proven causation; disabled sponsorship does not create an empty ad placeholder.
+**Acceptance:** No automatic invitations or promotional broadcasts occur; an owner-written post sent from Admin → Posts (audited as `post.sent`, with delivered, viewed and not-reached counts per post) is the only message to many people. Plus/Premium and school/child flows do not show sponsors. Attribution is not presented as proven causation; disabled sponsorship does not create an empty ad placeholder.
 
 ### R1B-09 — Pass paid-launch economics and operational gates
 

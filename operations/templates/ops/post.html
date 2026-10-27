@@ -1,0 +1,148 @@
+{% extends 'ops/base.html' %}
+{% load ops_ui ops_labels %}
+{% block content %}
+<a class="back-link" href="/ops/posts?lang={{ lang }}">{% icon 'left' 16 %}{{ t.posts }}</a>
+<div class="page-heading">
+  <div>
+    <p class="eyebrow">{{ t.post_details }}</p>
+    <h1 class="post-title">{{ title }}</h1>
+    <div class="profile-meta">
+      <span class="badge status-{{ post.status }}">{{ status_label }}</span>
+      <span>{{ audience_label }}</span>
+      <span>{{ post.created_at|date:'d M Y · H:i' }}{% if post.created_by %} · {{ post.created_by.username }}{% endif %}</span>
+    </div>
+  </div>
+  <div class="page-heading-actions">
+    {% if post.status == 'draft' %}
+    <form method="post" action="/ops/posts/{{ post.id }}/discard?lang={{ lang }}">{% csrf_token %}<button class="button danger-outline">{{ t.post_discard }}</button></form>
+    <button type="button" class="button primary" data-dialog-open="send-post"{% if not preview.count %} disabled{% endif %}>{% icon 'send' 17 %}{{ t.post_send }}</button>
+    {% elif post.status == 'sending' %}
+    <form method="post" action="/ops/posts/{{ post.id }}/stop?lang={{ lang }}">{% csrf_token %}<button class="button danger-outline">{{ t.post_stop }}</button></form>
+    {% endif %}
+  </div>
+</div>
+{% if saved %}<p class="alert success" role="status">{% icon 'check' %}<span>{{ saved }}</span></p>{% endif %}
+{% if error %}<div class="alert error" role="alert">{% icon 'alert' %}<span>{{ error }}</span></div>{% endif %}
+{% if paused %}<div class="alert warning" role="status">{% icon 'clock' %}<span>{{ t.post_paused }} {{ post.paused_until|date:'H:i:s' }}</span></div>{% endif %}
+
+<section class="metrics-grid" aria-label="{{ t.post_details }}">
+  {% for tile in tiles %}
+  <div class="metric-card">
+    <div><span>{{ tile.label }}</span></div>
+    <strong>{{ tile.value }}</strong>
+    {% if tile.note %}<small class="stat-delta">{{ tile.note }}</small>{% endif %}
+  </div>
+  {% endfor %}
+</section>
+{% if post.status == 'sending' %}
+<section class="panel info-panel post-progress">
+  <div class="meter-head"><span>{{ t.post_progress }}</span><strong>{{ stats.progress }}%</strong></div>
+  <div class="meter-track"><i style="width:{{ stats.progress }}%"></i></div>
+</section>
+{% endif %}
+
+<div class="review-layout">
+  <section class="panel info-panel">
+    <h2>{{ t.post_text }}</h2>
+    {% if post.image_key %}<div class="receipt-frame post-image"><img src="/ops/posts/{{ post.id }}/image" alt="{{ t.post_image }}"></div>{% endif %}
+    <pre class="post-text">{{ post.text }}</pre>
+    <p class="post-button-preview"><span class="button secondary small" aria-hidden="true">{{ button_label }}</span></p>
+    <dl>
+      <dt>{{ t.post_audience }}</dt><dd>{{ audience_label }}</dd>
+      {% if post.started_at %}<dt>{{ t.post_started }}</dt><dd>{{ post.started_at|date:'d M Y · H:i' }}</dd>{% endif %}
+      {% if post.finished_at %}<dt>{{ t.post_finished }}</dt><dd>{{ post.finished_at|date:'d M Y · H:i' }}</dd>{% endif %}
+    </dl>
+  </section>
+
+  {% if preview %}
+  <div>
+    <section class="panel info-panel">
+      <h2>{{ t.post_preview_title }}</h2>
+      <p class="field-hint">{{ t.post_reach_desc }}</p>
+      {% if post.audience == 'usernames' %}
+      <div class="table-region" role="region" aria-label="{{ t.post_found }}" tabindex="0">
+        <table>
+          <thead><tr><th>{{ t.post_entry }}</th><th>{{ t.post_person }}</th></tr></thead>
+          <tbody>
+            {% for item in preview.found %}
+            <tr>
+              <td class="mono">{{ item.entry }}</td>
+              <td><a class="table-link" href="/ops/users/{{ item.account.id }}?lang={{ lang }}">{{ item.account.display_name|default:item.account.username|default:item.account.telegram_user_id }}</a>{% if item.ambiguous %} <span class="badge attention" title="{{ t.post_ambiguous }}">{{ t.post_ambiguous_short }}</span>{% endif %}</td>
+            </tr>
+            {% endfor %}
+            {% for entry in preview.not_found %}<tr><td class="mono">{{ entry }}</td><td><span class="badge bad">{{ t.post_not_found }}</span></td></tr>{% endfor %}
+            {% for entry in preview.invalid %}<tr><td class="mono">{{ entry }}</td><td><span class="badge bad">{{ t.post_invalid }}</span></td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if preview.ambiguous %}<p class="field-hint">{{ t.post_ambiguous }}</p>{% endif %}
+      {% endif %}
+    </section>
+    <section class="panel info-panel">
+      <h2>{{ t.post_test }}</h2>
+      <form method="post" action="/ops/posts/{{ post.id }}/test?lang={{ lang }}" class="integration-form" autocomplete="off">
+        {% csrf_token %}
+        <label>{{ t.post_test_person }}<input name="person" maxlength="200" required spellcheck="false" autocapitalize="none" placeholder="@username"><small>{{ t.post_test_hint }}</small></label>
+        <div class="form-actions"><button class="button secondary">{% icon 'send' 16 %}{{ t.post_test_button }}</button></div>
+      </form>
+      {% if tests %}
+      <ul class="post-tests">
+        {% for item in tests %}<li>{{ item.row.account.display_name|default:item.row.account.username|default:item.row.account.telegram_user_id }} · <span class="badge status-{{ item.row.status }}">{{ item.status }}</span>{% if item.row.viewed_at %} · {{ t.post_viewed }} {{ item.row.viewed_at|date:'H:i' }}{% endif %}</li>{% endfor %}
+      </ul>
+      {% endif %}
+    </section>
+  </div>
+  {% else %}
+  <section class="panel" id="people">
+    <div class="panel-heading"><h2>{{ t.post_people_title }}</h2></div>
+    <nav class="section-nav" aria-label="{{ t.post_people_title }}">
+      {% for key, label in shows %}<a href="/ops/posts/{{ post.id }}?lang={{ lang }}&show={{ key }}#people"{% if key == show %} aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
+    </nav>
+    <div class="table-region" role="region" aria-label="{{ t.post_people_title }}" tabindex="0">
+      <table>
+        <thead><tr><th>{{ t.post_person }}</th><th>{{ t.plan }}</th><th>{{ t.post_status }}</th><th>{% if show == 'viewed' %}{{ t.post_viewed_at }}{% else %}{{ t.post_delivered_at }}{% endif %}</th></tr></thead>
+        <tbody>
+          {% for item in rows %}
+          <tr>
+            <td>
+              <a class="cell-person" href="/ops/users/{{ item.row.account_id }}?lang={{ lang }}">
+                <span class="avatar" aria-hidden="true">{{ item.row.account.display_name|default:item.row.account.username|initial }}</span>
+                <span><span class="table-link">{{ item.row.account.display_name|default:item.row.account.username|default:item.row.account.telegram_user_id }}</span>
+                <small>{% if item.row.account.username %}@{{ item.row.account.username }} · {% endif %}{{ item.row.account.telegram_user_id }}</small></span>
+              </a>
+            </td>
+            <td><span class="badge plan-{{ item.row.plan_at_send }}">{{ item.row.plan_at_send|capfirst }}</span></td>
+            <td><span class="badge status-{{ item.row.status }}">{{ item.status }}</span></td>
+            <td class="muted">{% if show == 'viewed' %}{{ item.row.viewed_at|date:'d M Y · H:i' }}{% else %}{{ item.row.delivered_at|date:'d M Y · H:i'|default:'—' }}{% endif %}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" class="table-empty">{{ t.post_nobody }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if people.paginator.num_pages > 1 %}{% include 'ops/ui/pagination.html' with pagination=people %}{% endif %}
+  </section>
+  {% endif %}
+</div>
+
+{% if preview %}
+<dialog class="dialog" id="send-post" aria-labelledby="send-post-title">
+  <form method="post" action="/ops/posts/{{ post.id }}/send?lang={{ lang }}">
+    {% csrf_token %}
+    <div class="dialog-head">
+      <div>
+        <h2 id="send-post-title">{{ t.post_send }}</h2>
+        <p>{{ send_confirm }}</p>
+      </div>
+      <button type="button" class="icon-button" data-dialog-close aria-label="{{ t.close }}">{% icon 'close' %}</button>
+    </div>
+    <div class="dialog-body"><p class="field-hint">{{ t.post_send_note }}</p></div>
+    <div class="dialog-foot">
+      <button type="button" class="button secondary" data-dialog-close>{{ t.cancel }}</button>
+      <button class="button primary">{% icon 'send' 16 %}{{ t.post_send }}</button>
+    </div>
+  </form>
+</dialog>
+{% endif %}
+{% endblock %}

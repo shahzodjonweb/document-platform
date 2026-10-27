@@ -918,6 +918,8 @@ a.metric-card:hover .metric-arrow {
 .badge.status-resolved,
 .badge.status-approved,
 .badge.status-ready,
+.badge.status-sent,
+.badge.status-delivered,
 .badge.good {
   background: var(--success-tint);
   border-color: var(--success-border);
@@ -925,6 +927,7 @@ a.metric-card:hover .metric-arrow {
 }
 .badge.status-failed,
 .badge.status-rejected,
+.badge.status-blocked,
 .badge.bad {
   background: var(--error-tint);
   border-color: var(--error-border);
@@ -935,6 +938,9 @@ a.metric-card:hover .metric-arrow {
 .badge.status-submitted,
 .badge.status-open,
 .badge.status-awaiting,
+.badge.status-sending,
+.badge.status-pending,
+.badge.status-retrying,
 .badge.attention {
   background: var(--warning-tint);
   border-color: var(--warning-border);
@@ -942,6 +948,8 @@ a.metric-card:hover .metric-arrow {
 }
 .badge.status-no_op,
 .badge.status-waiting_customer,
+.badge.status-stopped,
+.badge.status-skipped,
 .badge.info {
   background: var(--info-tint);
   border-color: var(--info-border);
@@ -1958,6 +1966,38 @@ td.empty-state {
 .decision-panel {
   display: grid;
   gap: var(--space-5);
+}
+
+/* ---- posts */
+
+.post-title {
+  overflow-wrap: anywhere;
+}
+.post-text {
+  margin: var(--space-3) 0 0;
+  font: inherit;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.post-image img {
+  max-height: 360px;
+}
+.post-button-preview {
+  margin: var(--space-3) 0 var(--space-4);
+}
+.post-audiences {
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+}
+.post-progress {
+  display: grid;
+  gap: var(--space-2);
+}
+.post-tests {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
 }
 .decision-approve .button {
   width: 100%;

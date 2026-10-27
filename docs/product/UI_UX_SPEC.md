@@ -90,7 +90,7 @@ Bot input behavior:
 - Accept a file before an operation is selected; inspect it and show relevant tools. Accept operation-first and file-first paths.
 - When receiving several PDFs or an album, show a collected-file list with explicit Done/Continue. Arrival order is a proposed order, not a silent final choice. Allow removal and renumbering; offer Mini App thumbnails.
 - Give a short instruction when image quality may be affected by Telegram photo compression and offer sending as a file; do not block a valid photo input.
-- Edit the existing status message as a job progresses instead of sending one message per stage. Send one final result notification. Do not send promotional broadcasts by default.
+- Edit the existing status message as a job progresses instead of sending one message per stage. Send one final result notification. The bot sends no automatic or promotional broadcasts; the only message to many people is a post the owner writes and confirms in Admin → Posts (plain text, an optional image and one button whose tap counts as a view).
 - Callback buttons contain short opaque server references. Expired callbacks offer Resume task or Start again rather than a cryptic error.
 - A new upload during an unfinished task prompts Add to current task / Start new task. The current draft remains recoverable.
 - The language switch affects subsequent messages and the current available keyboard; it does not erase the task.

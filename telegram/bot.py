@@ -2174,6 +2174,9 @@ def build_dispatcher():
             if resend: await message.answer(text(account,'resend'))
             return
         await home(message,account,notice=text(account,'resend') if pending.get('resend_file') else '')
+    # A tap on a post's button is counted before onboarding can hold it.
+    from .posts import install_post_taps
+    install_post_taps(dp)
     install_onboarding(dp,on_ready)
 
     @dp.message(CommandStart())
@@ -3038,11 +3041,12 @@ async def _run_polling():
     bot=Bot(config['token'])
     from .commands import install_commands
     from .delivery import delivery_loop
+    from .posts import post_loop
     loops=[]
     try:
         await install_commands(bot)
         dispatcher=build_dispatcher()
-        loops=[asyncio.create_task(delivery_loop(bot)),asyncio.create_task(cv_wait_loop(bot,dispatcher))]
+        loops=[asyncio.create_task(delivery_loop(bot)),asyncio.create_task(cv_wait_loop(bot,dispatcher)),asyncio.create_task(post_loop(bot))]
         await dispatcher.start_polling(bot)
     finally:
         for task in loops:

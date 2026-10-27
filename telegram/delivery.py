@@ -197,5 +197,8 @@ async def standalone():
     cfg=await sync_to_async(telegram_config)()
     if not cfg.get('token'): raise RuntimeError('Configure the Telegram bot token in the admin panel.')
     bot=Bot(cfg['token'])
-    try: await drain(bot)
+    try:
+        await drain(bot)
+        from .posts import standalone_drain
+        await standalone_drain(bot)
     finally: await bot.session.close()

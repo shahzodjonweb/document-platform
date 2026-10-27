@@ -1,4 +1,5 @@
 import uuid
+from django.conf import settings
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone
@@ -365,3 +366,59 @@ class StaffAlert(models.Model):
     error_code = models.CharField(max_length=64, blank=True, default='')
     created_at = models.DateTimeField(default=timezone.now)
     delivered_at = models.DateTimeField(null=True, blank=True)
+
+
+class Post(models.Model):
+    """A message the owner writes in the admin and sends to the bot's users.
+
+    One text for everyone, plain, with an optional image and one button under
+    it: a tap on the button is how a view is counted, as Telegram tells a bot
+    nothing about who read its messages (apps/core/posts.py, telegram/posts.py).
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    created_at = models.DateTimeField(default=timezone.now)
+    text = models.TextField()
+    button_label = models.CharField(max_length=64, blank=True, default='')
+    image_key = models.CharField(max_length=180, blank=True, default='')
+    # Telegram's own name for the image once it has been sent: everyone after
+    # the first gets it by this, not by another upload.
+    image_file_id = models.CharField(max_length=200, blank=True, default='')
+    audience = models.CharField(max_length=16)
+    usernames = models.TextField(blank=True, default='')
+    audience_count = models.PositiveIntegerField(default=0)
+    status = models.CharField(max_length=16, default='draft')
+    # Telegram asked the bot to slow down: the whole post waits until then.
+    paused_until = models.DateTimeField(null=True, blank=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=['status', 'created_at'], name='post_list')]
+
+
+class PostRecipient(models.Model):
+    """One person a post goes to. Durable like the other outboxes: claimed under
+    a lease, sent once, retried when Telegram is unavailable; and where the tap
+    on its button is kept. Its id is the button's callback data."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='recipients')
+    account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='post_receipts')
+    plan_at_send = models.CharField(max_length=12, default='free')
+    # A test the owner sent to one person before the post went out: never counted.
+    is_test = models.BooleanField(default=False)
+    status = models.CharField(max_length=16, default='pending')
+    attempts = models.PositiveIntegerField(default=0)
+    next_attempt_at = models.DateTimeField(default=timezone.now)
+    lease_until = models.DateTimeField(null=True, blank=True)
+    message_id = models.BigIntegerField(null=True, blank=True)
+    error_code = models.CharField(max_length=64, blank=True, default='')
+    created_at = models.DateTimeField(default=timezone.now)
+    delivered_at = models.DateTimeField(null=True, blank=True)
+    viewed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['post', 'account'], name='one_post_recipient')]
+        indexes = [models.Index(fields=['status', 'next_attempt_at'], name='post_recipient_due'),
+                   models.Index(fields=['post', 'status'], name='post_recipient_stats'),
+                   models.Index(fields=['post', 'viewed_at'], name='post_recipient_viewed')]
