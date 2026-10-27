@@ -5,10 +5,14 @@ sent once, and retried with backoff when Telegram is unavailable. Unlike them a
 post can go to every user at once, so it is paced under Telegram's limit for a
 bot, and a request to slow down pauses the whole post, not one copy.
 
-A copy whose lease ran out was cut off between the send and keeping its result.
-It may well have arrived, so it is not sent again: a second copy is worse than
-one that is not counted. A tap on its button puts the count right
-(apps.core.posts.record_view).
+A copy whose lease ran out, or whose send timed out, was cut off between the
+send and its result. It may well have arrived, so it is not sent again: a
+second copy is worse than one that is not counted. A tap on its button puts the
+count right (apps.core.posts.record_view).
+
+What goes wrong for one person (blocked the bot, a chat Telegram refuses) is
+that person's; what goes wrong for everyone (Telegram down, the image not
+readable) pauses the post and costs nobody their copy.
 """
 import asyncio
 import logging
@@ -17,7 +21,10 @@ from datetime import timedelta
 
 from asgiref.sync import sync_to_async
 from aiogram import BaseMiddleware
-from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError, TelegramRetryAfter
+from aiogram.exceptions import (
+    TelegramBadRequest, TelegramEntityTooLarge, TelegramForbiddenError, TelegramNetworkError, TelegramNotFound,
+    TelegramRetryAfter, TelegramServerError, TelegramUnauthorizedError,
+)
 from aiogram.types import BufferedInputFile, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
 from django.db import transaction
 from django.db.models import Q
@@ -30,6 +37,11 @@ PACE = 1 / 20
 BATCH = 100
 MAX_ATTEMPTS = 5
 LEASE = 120
+# While Telegram or the image store cannot be reached, the whole post waits this
+# long between tries. Only the copy at the head of the line tries, so an outage
+# costs one person attempts, and only after an hour of them their copy.
+HOLD = 30
+HOLD_ATTEMPTS = 120
 PREFIX = 'post:'
 BUTTON_DEFAULT = {'en': '👌 Got it', 'uz': '👌 Tushunarli', 'ru': '👌 Понятно'}
 THANKS = {'en': 'Thanks!', 'uz': 'Rahmat!', 'ru': 'Спасибо!'}
@@ -49,6 +61,11 @@ def claim(recipient_id):
             row.save(update_fields=['status', 'error_code', 'lease_until'])
         return None
     if row.next_attempt_at > now:
+        return None
+    if row.account.deletion_requested_at:
+        # Asked to be deleted after the post went out.
+        row.status, row.error_code, row.lease_until = 'skipped', 'account_deleted', None
+        row.save(update_fields=['status', 'error_code', 'lease_until'])
         return None
     if not row.is_test and row.post.status != 'sending':
         return None
@@ -73,6 +90,13 @@ def pause(post_id, seconds):
     Post.objects.filter(pk=post_id).update(paused_until=timezone.now() + timedelta(seconds=seconds))
 
 
+def hold(row, error):
+    """Telegram or the image store is unavailable: the post pauses and the copy
+    waits at the head of the line."""
+    finish(row.id, status='failed' if row.attempts >= HOLD_ATTEMPTS else 'retrying', error=error, delay=HOLD)
+    pause(row.post_id, HOLD)
+
+
 def remember_photo(post_id, file_id):
     """Telegram's name for the image: everyone after the first gets it by this."""
     from apps.core.models import Post
@@ -92,8 +116,15 @@ def markup(row):
     return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=label, callback_data=PREFIX + row.id.hex)]])
 
 
+def stale_file(error):
+    """Telegram no longer knows the image by the name it gave it."""
+    message = str(error).lower()
+    return any(words in message for words in ('file identifier', 'file_id', 'remote file', 'file reference'))
+
+
 async def attempt(recipient_id, bot):
-    """Send one person's copy. False when Telegram asked the bot to slow down."""
+    """Send one person's copy. False when the post has to wait: Telegram asked
+    the bot to slow down, or Telegram or the image cannot be reached."""
     row = await sync_to_async(claim)(recipient_id)
     if not row:
         return True
@@ -105,24 +136,27 @@ async def attempt(recipient_id, bot):
     if account.is_test and isinstance(getattr(bot, 'session', None), AiohttpSession):
         await sync_to_async(finish)(row.id, status='blocked', error='test_account_delivery')
         return True
+    data = None
+    if post.image_key and not post.image_file_id:
+        from apps.core import storage
+        try:
+            data = await sync_to_async(storage.read_bytes)(post.image_key)
+        except Exception:
+            logging.getLogger(__name__).warning('The image of post %s could not be read', post.id, exc_info=True)
+            await sync_to_async(hold)(row, 'post_image_unavailable')
+            return False
     chat, buttons = account.telegram_user_id, markup(row)
     try:
         # Plain text, as written: no parse mode, so nothing in it is markup.
         if post.image_file_id:
             response = await bot.send_photo(chat, post.image_file_id, caption=post.text, parse_mode=None,
                                             reply_markup=buttons)
-        elif post.image_key:
-            from apps.core import storage
-            data = await sync_to_async(storage.read_bytes)(post.image_key)
+        elif data is not None:
             response = await bot.send_photo(chat, BufferedInputFile(data, filename='post.jpg'), caption=post.text,
                                             parse_mode=None, reply_markup=buttons)
-            photo = getattr(response, 'photo', None)
-            if photo:
-                await sync_to_async(remember_photo)(post.id, photo[-1].file_id)
         else:
             response = await bot.send_message(chat, post.text, parse_mode=None, disable_web_page_preview=True,
                                               reply_markup=buttons)
-        await sync_to_async(finish)(row.id, status='delivered', message_id=response.message_id)
     except TelegramRetryAfter as exc:
         delay = min(3600, max(1, exc.retry_after))
         await sync_to_async(finish)(row.id, status='retrying', error='telegram_rate_limited', delay=delay)
@@ -130,12 +164,39 @@ async def attempt(recipient_id, bot):
         return False
     except TelegramForbiddenError:
         await sync_to_async(finish)(row.id, status='blocked', error='telegram_blocked')
-    except Exception as exc:
-        if post.image_file_id and isinstance(exc, TelegramBadRequest):
-            # Telegram no longer knows the image by that name: upload it again.
+        return True
+    except TelegramEntityTooLarge:
+        await sync_to_async(finish)(row.id, status='failed', error='telegram_rejected')
+        return True
+    except TelegramNetworkError as exc:
+        if 'timeout' in str(exc).lower():
+            # It may have arrived: not sent again (see the top of this module).
+            await sync_to_async(finish)(row.id, status='failed', error='interrupted')
+            await sync_to_async(pause)(post.id, HOLD)
+        else:
+            await sync_to_async(hold)(row, 'telegram_unavailable')
+        return False
+    except (TelegramServerError, TelegramUnauthorizedError):
+        await sync_to_async(hold)(row, 'telegram_unavailable')
+        return False
+    except (TelegramBadRequest, TelegramNotFound) as exc:
+        if post.image_file_id and stale_file(exc):
             await sync_to_async(forget_photo)(post.id)
+            await sync_to_async(finish)(row.id, status='retrying', error='telegram_delivery_failed', delay=1)
+        else:
+            # Telegram refuses this chat (or this copy): asking again changes nothing.
+            await sync_to_async(finish)(row.id, status='failed', error='telegram_rejected')
+        return True
+    except Exception:
+        logging.getLogger(__name__).warning('A copy of post %s could not be sent', post.id, exc_info=True)
         await sync_to_async(finish)(row.id, status='failed' if row.attempts >= MAX_ATTEMPTS else 'retrying',
                                     error='telegram_delivery_failed', delay=min(3600, 2 ** row.attempts * 10))
+        return True
+    # Kept after the send, not inside it: a failure here must not send it again.
+    await sync_to_async(finish)(row.id, status='delivered', message_id=response.message_id)
+    photo = getattr(response, 'photo', None)
+    if data is not None and photo:
+        await sync_to_async(remember_photo)(post.id, photo[-1].file_id)
     return True
 
 
@@ -149,7 +210,7 @@ def due(account=None, limit=BATCH):
     rows = (PostRecipient.objects.filter(status__in=('pending', 'retrying', 'sending'), next_attempt_at__lte=now)
             .filter(Q(post__status='sending') | Q(is_test=True)).exclude(post__paused_until__gt=now))
     rows = rows.filter(account=account) if account else rows.filter(account__is_test=False)
-    return list(rows.order_by('-is_test', 'created_at').values_list('id', flat=True)[:limit])
+    return list(rows.order_by('-is_test', 'created_at', 'pk').values_list('id', flat=True)[:limit])
 
 
 async def drain(bot, account=None):

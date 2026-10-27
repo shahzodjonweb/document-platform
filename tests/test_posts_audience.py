@@ -120,7 +120,7 @@ def test_drafts_are_checked_before_anything_is_kept():
             make(**kwargs)
         assert error.value.code == code, kwargs
     assert not Post.objects.exists()
-    post = make(text='Line one\r\nLine two  ', button_label='  Seen   it ', usernames='ignored')
+    post = make(text='Line one\r\nLine two  ', button_label='  Seen   it ')
     assert (post.text, post.button_label, post.usernames, post.status) == ('Line one\nLine two', 'Seen it', '', 'draft')
 
 
@@ -206,3 +206,61 @@ def test_a_post_everyone_already_has_from_a_test_is_sent_at_once():
     PostRecipient.objects.filter(pk=test.pk).update(status='delivered', delivered_at=timezone.now())
     post = posts.start(post.pk)
     assert post.status == 'sent' and post.finished_at and posts.stats(post)['delivered'] == 1
+
+
+def png(size, mode='RGB', colour='teal'):
+    import io
+    from PIL import Image
+    out = io.BytesIO()
+    Image.new(mode, size, colour).save(out, 'PNG')
+    return out.getvalue()
+
+
+def test_people_typed_for_another_audience_are_refused_not_dropped():
+    with pytest.raises(DomainError, match='post_people_unused'):
+        posts.create(None, text='News', audience_kind='everyone', usernames='@crowd_one @crowd_two')
+    assert not Post.objects.exists()
+    assert posts.create(None, text='News', audience_kind='everyone', usernames=' \n ').usernames == ''
+
+
+@pytest.mark.parametrize('size,ok', [((2400, 100), False), ((100, 2100), False), ((2000, 100), True)])
+def test_an_image_telegram_would_refuse_for_its_shape_is_refused_at_once(size, ok):
+    if ok:
+        assert posts.create(None, text='News', audience_kind='everyone', image=png(size)).image_key
+    else:
+        with pytest.raises(DomainError, match='post_image_shape'):
+            posts.create(None, text='News', audience_kind='everyone', image=png(size))
+
+
+def test_a_transparent_background_comes_out_white_not_black():
+    import io
+    from PIL import Image, ImageDraw
+    picture = Image.new('RGBA', (200, 100), (0, 0, 0, 0))
+    ImageDraw.Draw(picture).rectangle((80, 30, 120, 70), fill=(0, 0, 0, 255))
+    out = io.BytesIO()
+    picture.save(out, 'PNG')
+    with Image.open(io.BytesIO(posts.clean_image(out.getvalue()))) as clean:
+        assert clean.getpixel((5, 5))[0] > 240 and clean.getpixel((100, 50))[0] < 20
+
+
+def test_an_image_whose_record_cannot_be_kept_is_not_left_on_the_volume(monkeypatch):
+    from apps.core.services import storage_path
+
+    def broken(key, content_type=''):
+        raise RuntimeError('database went away')
+    monkeypatch.setattr('apps.core.storage.save', broken)
+    with pytest.raises(RuntimeError):
+        posts.create(None, text='News', audience_kind='everyone', image=png((300, 200)))
+    assert not Post.objects.exists()
+    folder = storage_path('posts')
+    assert not folder.exists() or not any(path.is_file() for path in folder.rglob('*'))
+
+
+def test_a_test_on_its_way_is_not_reset_by_another_test(people):
+    post = posts.create(None, text='News', audience_kind='everyone')
+    row = posts.send_test(post.pk, 'free_one')
+    PostRecipient.objects.filter(pk=row.pk).update(status='sending', attempts=1)
+    again = posts.send_test(post.pk, 'free_one')
+    assert again.pk == row.pk
+    row.refresh_from_db()
+    assert (row.status, row.attempts) == ('sending', 1)

@@ -199,3 +199,34 @@ def test_a_posts_image_is_kept_while_the_draft_exists_and_removed_with_it(bucket
     assert not Post.objects.exists() and key not in bucket.keys() and not storage.storage_path(key).exists()
     assert AuditLog.objects.filter(action='post.discarded', target=str(post.pk)).exists()
     assert EN['post_saved_discarded'] in client.get(response['Location']).content.decode()
+
+
+def test_an_action_on_a_post_that_is_gone_goes_back_to_the_list_and_says_so():
+    client, _ = staff_client()
+    post = posts.create(None, text='Hello', audience_kind='everyone')
+    posts.discard(post.pk)
+    for action in ('send', 'test', 'stop', 'discard'):
+        response = client.post(f'/ops/posts/{post.pk}/{action}?lang=en', {'person': 'someone_here'})
+        assert response['Location'] == '/ops/posts?lang=en&error=not_found', action
+    assert EN['post_error_not_found'] in client.get('/ops/posts?lang=en&error=not_found').content.decode()
+
+
+def test_people_typed_for_another_audience_are_refused_on_the_form():
+    client, _ = staff_client()
+    page = client.post('/ops/posts/new?lang=en', {'text': 'Hello', 'audience': 'everyone',
+                                                  'usernames': '@crowd_one'}).content.decode()
+    assert EN['post_error_people_unused'] in page and '@crowd_one' in page and not Post.objects.exists()
+
+
+def test_every_person_is_listed_once_across_the_pages():
+    client, _ = staff_client()
+    for n in range(120):
+        reader(8000 + n, f'person_{n:03}')
+    post = posts.create(None, text='Hello', audience_kind='everyone')
+    posts.start(post.pk)
+    posts.stop(post.pk)
+    seen = []
+    for page in (1, 2, 3):
+        html = client.get(f'/ops/posts/{post.pk}?lang=en&show=not_reached&p={page}').content.decode()
+        seen += [line.split('@', 1)[1].split(' ', 1)[0] for line in html.splitlines() if '<small>@person_' in line]
+    assert len(seen) == 120 and len(set(seen)) == 120

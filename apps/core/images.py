@@ -5,8 +5,9 @@ import warnings
 
 def clean_photo(raw, *, max_bytes, max_pixels, edge):
     """A JPEG, PNG or WebP decoded and re-encoded as a JPEG no larger than
-    `edge` on either side. Re-encoding drops the location and every other piece
-    of metadata. Raises ValueError for anything that is not such a picture."""
+    `edge` on either side, transparency on white. Re-encoding drops the location
+    and every other piece of metadata. Raises ValueError for anything that is
+    not such a picture."""
     from PIL import Image, ImageOps
     if not raw or len(raw) > max_bytes:
         raise ValueError('size')
@@ -16,7 +17,14 @@ def clean_photo(raw, *, max_bytes, max_pixels, edge):
             if picture.width * picture.height > max_pixels:
                 raise ValueError('pixels')
             picture.load()
-            clean = ImageOps.exif_transpose(picture).convert('RGB')
+            turned = ImageOps.exif_transpose(picture)
+            if turned.mode in ('RGBA', 'LA', 'PA') or 'transparency' in turned.info:
+                # Transparent parts on white: dropping the alpha would turn them black.
+                turned = turned.convert('RGBA')
+                clean = Image.new('RGB', turned.size, (255, 255, 255))
+                clean.paste(turned, mask=turned.getchannel('A'))
+            else:
+                clean = turned.convert('RGB')
     clean.thumbnail((edge, edge))
     out = io.BytesIO()
     # No `exif=`: nothing from the sender's file survives but the pixels.

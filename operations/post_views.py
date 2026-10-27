@@ -6,7 +6,7 @@ how many it reached and who tapped its button (apps/core/posts.py,
 telegram/posts.py).
 """
 from django.core.paginator import Paginator
-from django.db.models import Count, Q
+from django.db.models import Count, F, Q
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect
 from django.utils import timezone
@@ -30,6 +30,12 @@ def _error(t, code):
     return t.get('post_error_' + code.removeprefix('post_'), t['post_error_generic'])
 
 
+def _failed(request, pk, error):
+    if error.code == 'not_found':
+        return redirect(f'/ops/posts?lang={get_locale(request)}&error=not_found')
+    return _page(request, pk, error=error.code)
+
+
 def _page(request, pk, **params):
     query = '&'.join(f'{key}={value}' for key, value in params.items())
     return redirect(f'/ops/posts/{pk}?lang={get_locale(request)}' + (f'&{query}' if query else ''))
@@ -51,10 +57,11 @@ def post_list(request):
         viewed=Count('recipients', filter=shown & Q(recipients__viewed_at__isnull=False)),
     ).order_by('-created_at')
     pagination = Paginator(rows, 30).get_page(request.GET.get('p'))
+    code = request.GET.get('error', '')
     data.update(pagination=pagination, q=f'lang={data["lang"]}',
                 rows=[{'post': post, 'title': _title(post), 'audience': t['post_audience_' + post.audience],
                        'status': t['post_status_' + post.status]} for post in pagination],
-                saved=t.get('post_saved_' + request.GET.get('saved', ''), ''))
+                saved=t.get('post_saved_' + request.GET.get('saved', ''), ''), error=_error(t, code) if code else '')
     return finish_render(request, 'ops/posts.html', data)
 
 
@@ -92,8 +99,10 @@ def post_detail(request, pk):
     stats = posts.stats(post)
     show = request.GET.get('show', 'viewed')
     show = show if show in SHOW else 'viewed'
+    # The id last, so pages never repeat or skip anyone (Postgres keeps no order among equals).
+    when = F('viewed_at' if show == 'viewed' else 'delivered_at').desc(nulls_last=True)
     people = (PostRecipient.objects.filter(post=post, is_test=False).filter(SHOW[show]).select_related('account')
-              .order_by('-viewed_at' if show == 'viewed' else '-delivered_at', 'created_at'))
+              .order_by(when, 'created_at', 'pk'))
     pagination = Paginator(people, 50).get_page(request.GET.get('p'))
     preview = posts.preview(post) if post.status == 'draft' else None
     tiles = [
@@ -134,7 +143,7 @@ def post_send(request, pk):
     try:
         post = posts.start(pk)
     except DomainError as error:
-        return _page(request, pk, error=error.code)
+        return _failed(request, pk, error)
     audit(request.ops_user, 'post.sent', post.pk,
           after={'audience': post.audience, 'count': post.audience_count, 'image': bool(post.image_key)})
     return _page(request, pk, saved='sent')
@@ -146,7 +155,7 @@ def post_test(request, pk):
     try:
         row = posts.send_test(pk, request.POST.get('person', '')[:200])
     except DomainError as error:
-        return _page(request, pk, error=error.code)
+        return _failed(request, pk, error)
     audit(request.ops_user, 'post.test', pk, after={'account': str(row.account_id)})
     return _page(request, pk, saved='test')
 
@@ -157,7 +166,7 @@ def post_stop(request, pk):
     try:
         post = posts.stop(pk)
     except DomainError as error:
-        return _page(request, pk, error=error.code)
+        return _failed(request, pk, error)
     audit(request.ops_user, 'post.stopped', post.pk, after=posts.stats(post))
     return _page(request, pk, saved='stopped')
 
@@ -168,7 +177,7 @@ def post_discard(request, pk):
     try:
         posts.discard(pk)
     except DomainError as error:
-        return _page(request, pk, error=error.code)
+        return _failed(request, pk, error)
     audit(request.ops_user, 'post.discarded', pk)
     return redirect(f'/ops/posts?lang={get_locale(request)}&saved=discarded')
 

@@ -135,26 +135,30 @@ def preview(post):
 
 
 def clean_image(raw):
+    import io
+    from PIL import Image
     from .images import clean_photo
     if len(raw) > IMAGE_BYTES:
         raise DomainError('post_image_too_large', 413)
     try:
-        return clean_photo(raw, max_bytes=IMAGE_BYTES, max_pixels=IMAGE_PIXELS, edge=IMAGE_EDGE)
+        data = clean_photo(raw, max_bytes=IMAGE_BYTES, max_pixels=IMAGE_PIXELS, edge=IMAGE_EDGE)
     except Exception:
         raise DomainError('post_image_invalid') from None
+    with Image.open(io.BytesIO(data)) as picture:
+        width, height = picture.size
+    # Telegram refuses a photo more than 20 times as long as it is wide.
+    if max(width, height) > 20 * min(width, height):
+        raise DomainError('post_image_shape')
+    return data
 
 
-def _store_image(post, data):
-    from . import storage
+def _write_image(key, data):
     from .services import storage_path
-    key = f'posts/{post.id}/{secrets.token_hex(8)}.jpg'
     path = storage_path(key)
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     with path.open('xb') as output:
         os.chmod(path, 0o600)
         output.write(data)
-    storage.save(key, 'image/jpeg')
-    return key
 
 
 def create(actor, *, text, audience_kind, usernames='', button_label='', image=None):
@@ -176,15 +180,28 @@ def create(actor, *, text, audience_kind, usernames='', button_label='', image=N
         if len(entries) + len(invalid) > PEOPLE_LIMIT:
             raise DomainError('post_people_too_many')
         usernames = '\n'.join(line.strip() for line in usernames.replace('\r\n', '\n').strip().split('\n'))
+    elif (usernames or '').strip():
+        # People typed in, but another audience chosen: never guess which was meant.
+        raise DomainError('post_people_unused')
     else:
         usernames = ''
     data = clean_image(image) if image else None
-    with transaction.atomic():
-        post = Post.objects.create(created_by=actor, text=text, button_label=button_label,
-                                   audience=audience_kind, usernames=usernames)
-        if data:
-            post.image_key = _store_image(post, data)
-            post.save(update_fields=['image_key'])
+    from . import storage
+    from .services import storage_path
+    post_id, key = uuid.uuid4(), ''
+    if data:
+        key = f'posts/{post_id}/{secrets.token_hex(8)}.jpg'
+        _write_image(key, data)
+    try:
+        with transaction.atomic():
+            post = Post.objects.create(id=post_id, created_by=actor, text=text, button_label=button_label,
+                                       audience=audience_kind, usernames=usernames, image_key=key)
+            if key:
+                storage.save(key, 'image/jpeg')
+    except BaseException:
+        if key:
+            storage_path(key).unlink(missing_ok=True)
+        raise
     return post
 
 
@@ -217,7 +234,10 @@ def send_test(post_id, entry):
     account = rows[0][1] if rows else None
     if not account:
         raise DomainError('post_test_not_found')
-    row = PostRecipient.objects.filter(post=post, account=account).first()
+    row = PostRecipient.objects.select_for_update().filter(post=post, account=account).first()
+    if row and row.status == 'sending':
+        # The last test is on its way; resetting it would send it twice.
+        return row
     if row:
         _reset(row, is_test=True)
     else:
@@ -233,10 +253,11 @@ def start(post_id):
     if not people:
         raise DomainError('post_audience_empty', 409)
     # Someone who already has the post from a test keeps that message: it is the
-    # same post, so it now counts, and they are not sent it twice. A test that
-    # did not arrive is sent again with everyone else's.
-    for row in PostRecipient.objects.filter(post=post, is_test=True, account_id__in=people):
-        if row.status == 'delivered':
+    # same post, so it now counts, and they are not sent it twice. So does a test
+    # on its way or cut off on the way (it may have arrived). A test that did not
+    # arrive is sent again with everyone else's.
+    for row in PostRecipient.objects.select_for_update().filter(post=post, is_test=True, account_id__in=people):
+        if row.status in ('delivered', 'sending') or (row.status, row.error_code) == ('failed', 'interrupted'):
             row.is_test, row.plan_at_send = False, people[row.account_id]
             row.save(update_fields=['is_test', 'plan_at_send'])
         else:
@@ -280,8 +301,16 @@ def discard(post_id):
 
 
 def settle(now=None):
-    """Posts with nothing left on its way are sent. Returns how many finished."""
+    """Posts with nothing left on its way are sent. Returns how many finished.
+
+    A stopped post's copy that was on its way when it stopped is put away too:
+    one that came back to be tried again is not sent, one cut off is counted as
+    cut off (a tap can still prove it arrived)."""
     now = now or timezone.now()
+    stopped = PostRecipient.objects.filter(post__status='stopped', is_test=False)
+    stopped.filter(status__in=('pending', 'retrying')).update(status='skipped', error_code='stopped', lease_until=None)
+    stopped.filter(status='sending', lease_until__lte=now).update(status='failed', error_code='interrupted',
+                                                                  lease_until=None)
     waiting = PostRecipient.objects.filter(status__in=WAITING, is_test=False)
     finished = 0
     for post in Post.objects.filter(status='sending').exclude(pk__in=waiting.values('post_id')).only('pk'):
@@ -301,10 +330,11 @@ def record_view(token, telegram_user_id):
         return None
     now = timezone.now()
     PostRecipient.objects.filter(pk=pk, viewed_at__isnull=True).update(viewed_at=now)
-    # A send cut off before its result was kept (see telegram/posts.py) did
-    # arrive after all: the tap proves it.
-    PostRecipient.objects.filter(pk=pk, status='failed', error_code='interrupted').update(
-        status='delivered', delivered_at=now, error_code='')
+    # The tap proves the copy arrived: one cut off on the way, or one waiting to
+    # be tried again after an error, is delivered and never sent again. One on
+    # its way now is left to its own result.
+    PostRecipient.objects.filter(pk=pk, status__in=('retrying', 'failed')).update(
+        status='delivered', delivered_at=now, error_code='', lease_until=None)
     return row
 
 

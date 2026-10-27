@@ -7,7 +7,10 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 from aiogram import Bot
-from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError, TelegramRetryAfter
+from aiogram.exceptions import (
+    TelegramBadRequest, TelegramForbiddenError, TelegramNetworkError, TelegramRetryAfter, TelegramServerError,
+)
+from asgiref.sync import sync_to_async
 from aiogram.types import BufferedInputFile
 from django.utils import timezone
 from PIL import Image
@@ -53,7 +56,8 @@ def bot(**methods):
 
 
 def rows(post):
-    return list(PostRecipient.objects.filter(post=post).order_by('created_at', 'account__telegram_user_id'))
+    # The order the sender takes them in.
+    return list(PostRecipient.objects.filter(post=post).order_by('created_at', 'pk'))
 
 
 def test_a_text_post_goes_to_everyone_once_as_plain_text_with_its_button(no_pause):
@@ -258,3 +262,136 @@ def test_the_polling_loop_survives_a_bad_turn(monkeypatch, no_pause):
     with pytest.raises(asyncio.CancelledError):
         asyncio.run(sender.post_loop(SimpleNamespace()))
     assert len(turns) == 3 and no_pause == [3, 3]
+
+
+def test_a_tap_on_a_copy_waiting_to_be_tried_again_stops_the_second_send():
+    post = sent(1)
+    fake = bot()
+    fake.send_message = AsyncMock(side_effect=[RuntimeError('reply lost'), Mock(message_id=9)])
+    asyncio.run(sender.drain(fake))
+    row = rows(post)[0]
+    assert row.status == 'retrying'
+    posts.record_view(row.id.hex, row.account.telegram_user_id)
+    PostRecipient.objects.filter(pk=row.pk).update(next_attempt_at=timezone.now())
+    asyncio.run(sender.drain(fake))
+    row.refresh_from_db()
+    assert row.status == 'delivered' and row.viewed_at and fake.send_message.await_count == 1
+
+
+def test_a_send_that_timed_out_is_not_sent_again_and_the_post_waits():
+    post = sent(2)
+    fake = bot()
+    fake.send_message = AsyncMock(side_effect=TelegramNetworkError(method=Mock(), message='Request timeout error'))
+    asyncio.run(sender.drain(fake))
+    first, second = rows(post)
+    assert (first.status, first.error_code) == ('failed', 'interrupted') and second.status == 'pending'
+    post.refresh_from_db()
+    assert post.paused_until > timezone.now() and fake.send_message.await_count == 1
+
+
+@pytest.mark.parametrize('error', [
+    TelegramServerError(method=Mock(), message='Bad Gateway'),
+    TelegramNetworkError(method=Mock(), message='ClientConnectorError: Cannot connect to host'),
+])
+def test_an_outage_pauses_the_post_and_costs_nobody_their_copy(error):
+    post = sent(3)
+    fake = bot()
+    fake.send_message = AsyncMock(side_effect=error)
+    for _ in range(sender.MAX_ATTEMPTS + 2):
+        Post.objects.filter(pk=post.pk).update(paused_until=None)
+        PostRecipient.objects.filter(post=post).update(next_attempt_at=timezone.now())
+        asyncio.run(sender.drain(fake))
+    head, *rest = rows(post)
+    assert (head.status, head.error_code) == ('retrying', 'telegram_unavailable')
+    assert [row.status for row in rest] == ['pending', 'pending'], 'only the head of the line tries'
+    assert fake.send_message.await_count == sender.MAX_ATTEMPTS + 2
+    fake.send_message = AsyncMock(return_value=Mock(message_id=5))
+    Post.objects.filter(pk=post.pk).update(paused_until=None)
+    PostRecipient.objects.filter(post=post).update(next_attempt_at=timezone.now())
+    asyncio.run(sender.drain(fake))
+    assert {row.status for row in rows(post)} == {'delivered'}
+
+
+def test_a_chat_telegram_refuses_fails_once_and_keeps_the_images_name():
+    post = sent(2, image=png())
+    Post.objects.filter(pk=post.pk).update(image_file_id='AgACknown')
+    fake = bot()
+    fake.send_photo = AsyncMock(side_effect=[TelegramBadRequest(method=Mock(), message='Bad Request: chat not found'),
+                                             Mock(message_id=3, photo=None)])
+    asyncio.run(sender.drain(fake))
+    refused, other = rows(post)
+    assert (refused.status, refused.error_code, refused.attempts) == ('failed', 'telegram_rejected', 1)
+    assert other.status == 'delivered'
+    post.refresh_from_db()
+    assert post.image_file_id == 'AgACknown', "one person's refusal does not cost everyone the image"
+
+
+def test_a_copy_on_its_way_when_the_post_stops_is_put_away():
+    post = sent(2)
+    fake = bot()
+
+    async def send(*args, **kwargs):
+        await sync_to_async(posts.stop)(post.pk)
+        raise RuntimeError('lost')
+    fake.send_message = AsyncMock(side_effect=send)
+    asyncio.run(sender.drain(fake))
+    asyncio.run(sender.drain(fake))
+    post.refresh_from_db()
+    assert post.status == 'stopped' and fake.send_message.await_count == 1
+    assert posts.stats(post)['waiting'] == 0 and {row.status for row in rows(post)} == {'skipped'}
+    # One cut off on a stopped post counts as cut off, and a tap still proves it.
+    other = sent(1)
+    cut = rows(other)[0]
+    posts.stop(other.pk)
+    PostRecipient.objects.filter(pk=cut.pk).update(status='sending', lease_until=timezone.now() - timedelta(seconds=1))
+    posts.settle()
+    cut.refresh_from_db()
+    assert (cut.status, cut.error_code) == ('failed', 'interrupted')
+
+
+def test_someone_who_asks_to_be_deleted_after_the_start_is_not_sent_it():
+    post = sent(2)
+    leaving = rows(post)[0]
+    Account.objects.filter(pk=leaving.account_id).update(deletion_requested_at=timezone.now())
+    fake = bot()
+    asyncio.run(sender.drain(fake))
+    leaving.refresh_from_db()
+    assert (leaving.status, leaving.error_code) == ('skipped', 'account_deleted')
+    assert fake.send_message.await_count == 1
+    post.refresh_from_db()
+    assert post.status == 'sent'
+
+
+def test_an_image_that_cannot_be_read_pauses_the_post_instead_of_failing_everyone(monkeypatch):
+    post = sent(2, image=png())
+
+    def unreadable(key):
+        raise FileNotFoundError(key)
+    monkeypatch.setattr('apps.core.storage.read_bytes', unreadable)
+    fake = bot()
+    asyncio.run(sender.drain(fake))
+    head, other = rows(post)
+    assert (head.status, head.error_code) == ('retrying', 'post_image_unavailable') and other.status == 'pending'
+    assert fake.send_photo.await_count == 0
+    post.refresh_from_db()
+    assert post.paused_until > timezone.now()
+
+
+def test_sending_the_post_while_its_test_is_on_the_way_does_not_send_it_twice():
+    people(2)
+    draft = posts.create(None, text='Draft', audience_kind='everyone')
+    test = posts.send_test(draft.pk, '5000')
+    fake = bot()
+
+    async def send(chat, *args, **kwargs):
+        if chat == 5000 and not getattr(send, 'started', False):
+            send.started = True
+            await sync_to_async(posts.start)(draft.pk)
+        return Mock(message_id=11)
+    fake.send_message = AsyncMock(side_effect=send)
+    asyncio.run(sender.attempt(test.pk, fake))
+    asyncio.run(sender.drain(fake))
+    chats = [call.args[0] for call in fake.send_message.await_args_list]
+    assert sorted(chats) == [5000, 5001]
+    test.refresh_from_db()
+    assert test.status == 'delivered' and not test.is_test

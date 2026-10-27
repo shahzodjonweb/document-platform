@@ -11,6 +11,7 @@
   </div>
 </div>
 {% if saved %}<p class="alert success" role="status">{% icon 'check' %}<span>{{ saved }}</span></p>{% endif %}
+{% if error %}<div class="alert error" role="alert">{% icon 'alert' %}<span>{{ error }}</span></div>{% endif %}
 <section class="panel">
   <div class="table-region" role="region" aria-label="{{ t.posts }}" tabindex="0">
     <table>
