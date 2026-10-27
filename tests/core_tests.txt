@@ -43,6 +43,10 @@ tests/test_file_names.py::test_the_telegram_document_carries_the_name_as_utf8
 
 # PDF compression
 tests/test_processors.py::test_compression_and_no_op
+tests/test_processors.py::test_compression_keeps_an_image_it_cannot_decode[jbig2]
+tests/test_processors.py::test_compression_keeps_an_image_it_cannot_decode[past_decode_limit]
+tests/test_processors.py::test_compression_keeps_an_image_it_cannot_decode[crypt_filter]
+tests/test_processors.py::test_compression_still_shares_identical_images_and_keeps_every_page
 
 # Images to PDF
 tests/test_processors.py::test_images_pdf_layout_and_pixel_order
@@ -61,6 +65,7 @@ tests/test_advanced_processors.py::test_pdf_tables_to_xlsx_neutralizes_formulas
 
 # PDF visual editor and redaction
 tests/test_advanced_processors.py::test_multilingual_text_highlight_and_note_are_serialized
+tests/test_processors.py::test_editing_keeps_an_image_it_cannot_decode
 tests/test_advanced_processors.py::test_redaction_removes_recoverable_text_and_raster_pixels  # [tesseract]
 
 # Office

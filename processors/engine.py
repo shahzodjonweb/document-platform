@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import importlib.metadata
 from contextlib import closing
+import hashlib
 import io
 import json
 import logging
@@ -398,6 +399,58 @@ def normalize_parameters(feature_id: str, parameters: dict | None, input_metadat
         if type(margin) not in (int, float) or not math.isfinite(margin) or not 0 <= margin <= 72:
             raise ProcessorError('invalid_parameters')
     return normalized
+
+
+def _share_identical_objects(writer: PdfWriter) -> None:
+    """Keep one copy of objects that are byte-for-byte the same; drop what nothing uses.
+
+    pypdf's compress_identical_objects does this, but hashes every stream by its
+    decoded data: one stream pypdf cannot decode (a JBIG2 image without jbig2dec,
+    a filter it lacks, a flat image past its 75 MB output limit) failed the whole
+    task as processing_failed, though the file opens, splits and rotates, and
+    every decoded image stayed in memory. Here a stream is compared by the bytes
+    it is stored as, which nothing decodes. Pages are never merged: one page
+    object listed twice in the page tree is not the file that was sent.
+    """
+    from pypdf.generic import ArrayObject, DictionaryObject, IndirectObject, StreamObject, is_null_or_none
+    objects = writer._objects
+    first: dict[bytes, IndirectObject] = {}
+    merged: dict[int, IndirectObject] = {}
+    for index, obj in enumerate(objects):
+        if is_null_or_none(obj) or isinstance(obj, DictionaryObject) and obj.get('/Type') == '/Page':
+            continue
+        stored = obj._data if isinstance(obj, StreamObject) else b''
+        key = hashlib.sha256(f'{type(obj).__name__}\0{obj!r}\0'.encode() + stored).digest()
+        if key in first:
+            merged[index + 1] = first[key]
+            objects[index] = None
+        else:
+            first[key] = IndirectObject(index + 1, 0, writer)
+    used = [False] * len(objects)
+
+    def relink(value):
+        entries = value.items() if isinstance(value, DictionaryObject) else enumerate(value)
+        for name, item in entries:
+            if isinstance(item, IndirectObject):
+                if item.pdf is not writer or not 0 < item.idnum <= len(objects):
+                    continue
+                if item.idnum in merged:
+                    item = value[name] = merged[item.idnum]
+                # The copy kept is in use, whichever copy was referred to.
+                used[item.idnum - 1] = True
+            elif isinstance(item, (DictionaryObject, ArrayObject)):
+                relink(item)
+
+    for obj in objects:
+        if isinstance(obj, (DictionaryObject, ArrayObject)):
+            relink(obj)
+    for trailer in (writer.root_object, writer._info, getattr(writer, '_ID', None)):
+        reference = getattr(trailer, 'indirect_reference', None)
+        if reference is not None:
+            used[reference.idnum - 1] = True
+    for index, in_use in enumerate(used):
+        if not in_use:
+            objects[index] = None
 
 
 def _write_pdf(writer: PdfWriter, destination: Path, password=None, allow_forms=False):
@@ -808,9 +861,10 @@ def execute(feature_id: str, input_paths: list[str | Path], parameters: dict | N
                         for index in parse_pages(parameters['pages'], pages):
                             writer.pages[index].rotate(parameters['angle'])
                     elif feature_id == 'pdf.compress':
+                        # Page contents were decoded once already, by inspect_file above.
                         for page in writer.pages:
                             page.compress_content_streams(level=9)
-                        writer.compress_identical_objects(remove_duplicates=True, remove_unreferenced=True)
+                        _share_identical_objects(writer)
                     elif feature_id == 'pdf.protect':
                         writer.encrypt(secret, owner_password=secrets.token_urlsafe(32), algorithm='AES-256')
                     elif feature_id == 'pdf.unlock_known' and not reader.is_encrypted:
