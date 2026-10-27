@@ -468,3 +468,60 @@ CATALOGS['ru'].update(
     post_error_not_found='Этого поста больше нет.', post_error_generic='Не получилось. Попробуйте ещё раз.',
 )
 assert CATALOGS['en'].keys() == CATALOGS['uz'].keys() == CATALOGS['ru'].keys()
+
+# Files refused at upload, on the tools page: how often, and why.
+CATALOGS['en'].update(
+    refusals='Files refused at upload',
+    refusals_desc='Uploads stopped before any tool could run, by reason. Only the reason is kept, never the file.',
+    refusals_since='Counted since', refusals_count='Refused', refusals_share='Of all uploads', refusals_reason='Reason',
+    refusals_people='People: {n}', refusals_tried='Uploads tried: {n}',
+    refusals_none='No upload was refused in this period',
+    refusals_none_desc='A refusal appears here as soon as a file is turned away at upload. Check the environment and channel filters.',
+    refused_file_too_large='Larger than the plan’s file size limit', refused_unsupported_file='A file type we don’t take',
+    refused_unsupported_type='Not a PDF, image or Office file inside', refused_page_limit='More pages than one task may have',
+    refused_password_required='Password-protected; the password was asked for', refused_password_invalid='Wrong password',
+    refused_active_content_unsupported='PDF viewer actions, scripts or attachments (even “open at page 1”); Office macros or embedded objects',
+    refused_external_content_unsupported='Office file with links or outside content', refused_interactive_pdf_unsupported='PDF with fillable fields',
+    refused_signed_pdf_unsupported='Digitally signed PDF', refused_invalid_pdf='Damaged or unreadable PDF',
+    refused_invalid_file='Empty or unreadable file', refused_invalid_image='Damaged or unreadable image',
+    refused_invalid_archive='Damaged or unreadable Office file', refused_image_pixel_limit='Image too large in pixels',
+    refused_page_dimensions_invalid='Page size too large or invalid', refused_conversion_preflight_unavailable='Office conversion was unavailable',
+    refused_processor_timeout='Reading the file took too long', refused_processor_failed='Reading the file failed',
+)
+CATALOGS['uz'].update(
+    refusals='Yuklashda rad etilgan fayllar',
+    refusals_desc='Hech bir vosita ishga tushmasidan oldin to‘xtatilgan yuklashlar, sababi bo‘yicha. Faqat sabab saqlanadi, fayl emas.',
+    refusals_since='Hisob boshlangan sana:', refusals_count='Rad etilgan', refusals_share='Barcha yuklashlardan', refusals_reason='Sabab',
+    refusals_people='Odamlar: {n}', refusals_tried='Urinilgan yuklashlar: {n}',
+    refusals_none='Bu davrda hech bir yuklash rad etilmadi',
+    refusals_none_desc='Fayl yuklashda rad etilishi bilan shu yerda ko‘rinadi. Muhit va kanal filtrlarini tekshiring.',
+    refused_file_too_large='Tarifdagi fayl hajmi limitidan katta', refused_unsupported_file='Biz qabul qilmaydigan fayl turi',
+    refused_unsupported_type='Ichi PDF, rasm yoki Office fayli emas', refused_page_limit='Bitta vazifaga ruxsat etilganidan ko‘p sahifa',
+    refused_password_required='Parol bilan himoyalangan; parol so‘raldi', refused_password_invalid='Parol noto‘g‘ri',
+    refused_active_content_unsupported='PDF’da ko‘ruvchi amallari, skriptlar yoki ilovalar (hatto “1-sahifada ochish”); Office’da makros yoki ichki obyektlar',
+    refused_external_content_unsupported='Havola yoki tashqi tarkibli Office fayli', refused_interactive_pdf_unsupported='To‘ldiriladigan maydonli PDF',
+    refused_signed_pdf_unsupported='Elektron imzoli PDF', refused_invalid_pdf='Buzilgan yoki o‘qib bo‘lmaydigan PDF',
+    refused_invalid_file='Bo‘sh yoki o‘qib bo‘lmaydigan fayl', refused_invalid_image='Buzilgan yoki o‘qib bo‘lmaydigan rasm',
+    refused_invalid_archive='Buzilgan yoki o‘qib bo‘lmaydigan Office fayli', refused_image_pixel_limit='Rasm piksellari juda ko‘p',
+    refused_page_dimensions_invalid='Sahifa o‘lchami juda katta yoki noto‘g‘ri', refused_conversion_preflight_unavailable='Office konvertatsiyasi ishlamayotgan edi',
+    refused_processor_timeout='Faylni o‘qish juda uzoq davom etdi', refused_processor_failed='Faylni o‘qib bo‘lmadi',
+)
+CATALOGS['ru'].update(
+    refusals='Файлы, отклонённые при загрузке',
+    refusals_desc='Загрузки, остановленные до запуска любого инструмента, по причинам. Хранится только причина, сам файл — нет.',
+    refusals_since='Учитываются с', refusals_count='Отклонено', refusals_share='От всех загрузок', refusals_reason='Причина',
+    refusals_people='Людей: {n}', refusals_tried='Попыток загрузки: {n}',
+    refusals_none='За этот период ни одна загрузка не отклонена',
+    refusals_none_desc='Отказ появится здесь, как только файл не примут при загрузке. Проверьте фильтры среды и канала.',
+    refused_file_too_large='Больше лимита размера файла по тарифу', refused_unsupported_file='Тип файла, который мы не принимаем',
+    refused_unsupported_type='Внутри не PDF, не изображение и не файл Office', refused_page_limit='Больше страниц, чем допускает одна задача',
+    refused_password_required='Защищён паролем; пароль запрошен', refused_password_invalid='Неверный пароль',
+    refused_active_content_unsupported='В PDF действия просмотрщика, скрипты или вложения (даже «открыть на 1-й странице»); в Office макросы или встроенные объекты',
+    refused_external_content_unsupported='Файл Office со ссылками или внешним содержимым', refused_interactive_pdf_unsupported='PDF с заполняемыми полями',
+    refused_signed_pdf_unsupported='PDF с электронной подписью', refused_invalid_pdf='Повреждённый или нечитаемый PDF',
+    refused_invalid_file='Пустой или нечитаемый файл', refused_invalid_image='Повреждённое или нечитаемое изображение',
+    refused_invalid_archive='Повреждённый или нечитаемый файл Office', refused_image_pixel_limit='Слишком много пикселей в изображении',
+    refused_page_dimensions_invalid='Размер страницы слишком большой или неверный', refused_conversion_preflight_unavailable='Конвертация Office была недоступна',
+    refused_processor_timeout='Чтение файла заняло слишком много времени', refused_processor_failed='Не удалось прочитать файл',
+)
+assert CATALOGS['en'].keys() == CATALOGS['uz'].keys() == CATALOGS['ru'].keys()

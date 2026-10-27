@@ -194,6 +194,10 @@ def page(request, section='overview'):
         ]
         data['recent_jobs']=filters.jobs().order_by('-created_at')[:6]
         data['chart_total']=summary['totals']['new_users']
+    if section=='analytics/features':
+        # A refused upload blocks every tool, so it is counted beside them.
+        from .analytics_extra import upload_refusals
+        data['upload_refusals']=upload_refusals(filters,data['t'])
     if section in {'analytics/acquisition','analytics/engagement'}:
         from .analytics_extra import engagement
         data['cohorts']=engagement(filters)

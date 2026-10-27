@@ -96,6 +96,36 @@
     </table>
   </div>
 </section>
+{% with refusals=upload_refusals %}
+<section class="panel" data-testid="upload-refusals">
+  <div class="panel-heading">
+    <div>
+      <h2>{{ t.refusals }}</h2>
+      <p>{{ t.refusals_desc }}{% if refusals.since %} {{ t.refusals_since }} {{ refusals.since|date:'d.m.Y' }}.{% endif %}</p>
+    </div>
+  </div>
+  {% if refusals.refused %}
+  <div class="info-panel">
+    <div class="metrics-grid">
+      <div class="metric-card" data-testid="refusals-count"><div>{{ t.refusals_count }}</div><strong>{{ refusals.refused }}</strong><small>{{ refusals.people_note }}</small></div>
+      <div class="metric-card" data-testid="refusals-share"><div>{{ t.refusals_share }}</div><strong>{{ refusals.share }}%</strong><small>{{ refusals.tried_note }}</small></div>
+    </div>
+  </div>
+  <div class="table-region" role="region" aria-label="{{ t.refusals }}" tabindex="0">
+    <table>
+      <thead><tr><th>{{ t.refusals_reason }}</th><th>{{ t.refusals_count }}</th><th>{{ t.users }}</th><th>{{ t.refusals_share }}</th></tr></thead>
+      <tbody>
+        {% for row in refusals.rows %}
+        <tr data-code="{{ row.code }}"><td class="wrap">{% if row.label %}{{ row.label }}<small>{{ row.code }}</small>{% else %}{{ row.code }}{% endif %}</td><td>{{ row.refusals }}</td><td>{{ row.people }}</td><td>{{ row.share }}%</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  {% include 'ops/ui/empty.html' with icon='chart' title=t.refusals_none text=t.refusals_none_desc %}
+  {% endif %}
+</section>
+{% endwith %}
 {% endif %}
 
 {% if page == 'analytics/engagement' %}

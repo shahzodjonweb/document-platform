@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime,timedelta,timezone as dt_timezone
 from dataclasses import replace
 from django.db.models import Count,Min
 from django.utils import timezone
@@ -142,3 +142,38 @@ def plans_screen(filters,t,with_viewers=False):
                             'last_view':row.last_view,'source':label(row.last_source),'started':row.started,
                             'paid':row.paid} for row in recent]
     return result
+
+
+# Refusals are kept from this moment (midnight 28 October 2026 in Tashkent,
+# just before they were first recorded): before it only accepted uploads were.
+REFUSALS_SINCE=datetime(2026,10,27,19,0,tzinfo=dt_timezone.utc)
+
+
+def upload_refusals(filters,t):
+    """How many uploads were refused in the period, why, and what share of all uploads that is.
+
+    A refusal is kept with its reason code alone (apps/core/services.upload_file),
+    never the file's name or contents. The share is of every upload tried,
+    accepted and refused, counted only from when refusals began to be kept, so
+    a period that starts earlier does not make it look smaller than it is.
+    """
+    from django.db.models import CharField,Value
+    from django.db.models.fields.json import KT
+    from django.db.models.functions import Coalesce
+    start,end=filters.bounds
+    events=AnalyticsEvent.objects.filter(occurred_at__gte=max(start,REFUSALS_SINCE),occurred_at__lt=end,
+                                         environment=filters.environment,event_type__in=('upload.accepted','upload.refused'))
+    if filters.channel:events=events.filter(channel=filters.channel)
+    if filters.locale:events=events.filter(locale=filters.locale)
+    refused=events.filter(event_type='upload.refused')
+    tried=events.count()
+    def share(part):return round(part*100/tried,1) if tried else None
+    rows=[{'code':row['code'],'label':t.get('refused_'+row['code'],''),'refusals':row['refusals'],'people':row['people'],
+           'share':share(row['refusals'])}
+          for row in refused.annotate(code=Coalesce(KT('properties__code'),Value('unknown'),output_field=CharField()))
+          .values('code').annotate(refusals=Count('id'),people=Count('account_id',distinct=True)).order_by('-refusals','code')]
+    count=sum(row['refusals'] for row in rows)
+    people=refused.values('account_id').distinct().count()
+    return {'tried':tried,'refused':count,'share':share(count),'people':people,'rows':rows,
+            'people_note':t['refusals_people'].format(n=people),'tried_note':t['refusals_tried'].format(n=tried),
+            'since':REFUSALS_SINCE if start<REFUSALS_SINCE else None}
