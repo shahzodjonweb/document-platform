@@ -27,7 +27,7 @@ from django.utils import timezone
 logger = logging.getLogger(__name__)
 
 # Prefixes this module manages in the bucket; the sweep touches nothing else.
-PREFIXES = ('inputs/', 'outputs/', 'previews/', 'receipts/', 'review/')
+PREFIXES = ('inputs/', 'outputs/', 'posts/', 'previews/', 'receipts/', 'review/')
 WORKING_COPY_HOURS = 2
 CONFIG_SECONDS = 30
 _config_cache = {'at': 0.0, 'value': None}
@@ -302,10 +302,11 @@ def unreferenced(keys):
     """Which of these stored files no record uses any more."""
     from apps.commerce.models import ManualPayment
     from apps.studio.models import GenerationRecord
-    from .models import FileAsset
+    from .models import FileAsset, Post
     keys = list(keys)
     used = set(FileAsset.objects.filter(object_key__in=keys).values_list('object_key', flat=True))
     used |= set(ManualPayment.objects.filter(receipt_key__in=keys).values_list('receipt_key', flat=True))
+    used |= set(Post.objects.filter(image_key__in=keys).values_list('image_key', flat=True))
     records = {key: key.split('/')[2] for key in keys if key.startswith('review/') and len(key.split('/')) > 2}
     alive = {str(pk) for pk in GenerationRecord.objects.filter(pk__in=set(records.values())).values_list('pk', flat=True)} if records else set()
     used |= {key for key, record in records.items() if record in alive}

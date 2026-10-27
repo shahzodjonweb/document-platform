@@ -83,6 +83,8 @@ DESCRIPTIONS = {
     'payment.manual_reject': 'Rejected a card payment', 'payment.manual_refund': 'Recorded a card payment refund',
     'staff.created': 'Added a staff member', 'staff.access_changed': 'Changed staff access',
     'support.reply': 'Replied to a support request', 'support.status_changed': 'Changed a support request status',
+    'post.created': 'Wrote a post draft', 'post.sent': 'Sent a post to bot users', 'post.test': 'Sent a test of a post',
+    'post.stopped': 'Stopped sending a post', 'post.discarded': 'Deleted a post draft',
 }
 
 

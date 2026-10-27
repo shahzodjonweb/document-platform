@@ -1,0 +1,28 @@
+{% extends 'ops/base.html' %}
+{% load ops_ui %}
+{% block content %}
+<a class="back-link" href="/ops/posts?lang={{ lang }}">{% icon 'left' 16 %}{{ t.posts }}</a>
+<div class="page-heading">
+  <div>
+    <h1>{{ t.post_new }}</h1>
+    <p class="page-description">{{ t.post_compose_intro }}</p>
+  </div>
+</div>
+{% if error %}<div class="alert error" role="alert">{% icon 'alert' %}<span>{{ error }}</span></div>{% endif %}
+<section class="panel post-compose">
+  <form method="post" enctype="multipart/form-data" class="integration-form" autocomplete="off">
+    {% csrf_token %}
+    <label>{{ t.post_text }}<textarea name="text" rows="10" maxlength="{{ text_limit }}" required>{{ form.text }}</textarea><small>{{ t.post_text_hint }}</small></label>
+    <label>{{ t.post_image }}<input type="file" name="image" accept="image/jpeg,image/png,image/webp"><small>{{ t.post_image_hint }}</small></label>
+    <label>{{ t.post_button }}<input name="button_label" value="{{ form.button_label }}" maxlength="{{ button_limit }}" placeholder="{{ t.post_button_default }}"><small>{{ t.post_button_hint }}</small></label>
+    <fieldset>
+      <legend>{{ t.post_audience }}</legend>
+      <div class="choice-group post-audiences">
+        {% for key, label in audiences %}<label class="choice"><input type="radio" name="audience" value="{{ key }}"{% if form.audience == key %} checked{% endif %} required><span>{{ label }}</span></label>{% endfor %}
+      </div>
+    </fieldset>
+    <label>{{ t.post_people }}<textarea name="usernames" rows="4" maxlength="20000" spellcheck="false" autocapitalize="none" placeholder="@username, 123456789">{{ form.usernames }}</textarea><small>{{ t.post_people_hint }}</small></label>
+    <div class="form-actions"><button class="button primary">{{ t.post_create }}</button><a class="button secondary" href="/ops/posts?lang={{ lang }}">{{ t.cancel }}</a></div>
+  </form>
+</section>
+{% endblock %}

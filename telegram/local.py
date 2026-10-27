@@ -285,6 +285,22 @@ def dispatch_local(account,*,text=None,callback_data=None,uploaded=None,media_gr
     return history(account)
 
 
+def posts_local(account):
+    """The posts due to this chat, sent as the bot's loop sends them (telegram/posts.py).
+
+    The bot's loop leaves test accounts to the simulator, which looks when the
+    page asks.
+    """
+    require_sandbox(account)
+    async def run():
+        from .posts import drain
+        bot=Bot('123456:LOCAL_SIMULATOR_NO_NETWORK',session=LocalTelegramSession(account))
+        try: await drain(bot,account)
+        finally: await bot.session.close()
+    async_to_sync(run)()
+    return history(account)
+
+
 def look_local(account):
     """One look at this chat's wait for its CV's files, as the bot's loop takes one every two seconds.
 

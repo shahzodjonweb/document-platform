@@ -17,7 +17,6 @@ no longer than needed.
 import hashlib
 import io
 import secrets
-import warnings
 from datetime import timedelta
 
 from django.db import IntegrityError, transaction
@@ -155,22 +154,12 @@ def _clean_receipt(raw):
         except Exception:
             raise DomainError('invalid_receipt') from None
         return raw, 'application/pdf', 'pdf'
-    from PIL import Image, ImageOps
+    from apps.core.images import clean_photo
     try:
-        with warnings.catch_warnings():
-            warnings.simplefilter('error', Image.DecompressionBombWarning)
-            with Image.open(io.BytesIO(raw), formats=['JPEG', 'PNG', 'WEBP']) as picture:
-                if picture.width * picture.height > RECEIPT_PIXELS:
-                    raise ValueError('pixels')
-                picture.load()
-                clean = ImageOps.exif_transpose(picture).convert('RGB')
+        data = clean_photo(raw, max_bytes=RECEIPT_BYTES, max_pixels=RECEIPT_PIXELS, edge=RECEIPT_EDGE)
     except Exception:
         raise DomainError('invalid_receipt') from None
-    clean.thumbnail((RECEIPT_EDGE, RECEIPT_EDGE))
-    out = io.BytesIO()
-    # No `exif=`: nothing from the customer's file survives but the pixels.
-    clean.save(out, 'JPEG', quality=85, optimize=True)
-    return out.getvalue(), 'image/jpeg', 'jpg'
+    return data, 'image/jpeg', 'jpg'
 
 
 def _store(payment, data, extension):

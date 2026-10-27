@@ -465,3 +465,12 @@ tests/test_plans_view_analytics.py::test_test_accounts_and_development_machines_
 tests/test_plans_view_analytics.py::test_the_report_counts_people_views_sources_plans_and_what_came_next
 tests/test_plans_view_analytics.py::test_the_plans_screen_is_for_staff_and_names_only_for_those_who_may_open_accounts
 tests/test_plans_view_analytics.py::test_the_plans_screen_has_its_own_analytics_tab
+
+# Owner posts: sent once to the audience as plain text with its button, paced and paused when
+# Telegram asks; a tap counts once and only for its own reader; Administrators only
+tests/test_posts_sending.py::test_a_text_post_goes_to_everyone_once_as_plain_text_with_its_button
+tests/test_posts_sending.py::test_slow_down_pauses_the_whole_post_and_it_carries_on_after
+tests/test_posts_sending.py::test_a_send_cut_off_mid_way_is_not_sent_again
+tests/test_posts_audience.py::test_audiences_follow_the_plan_in_force_not_the_cached_one
+tests/test_posts_taps.py::test_a_tap_is_counted_once_thanked_and_its_button_taken_away
+tests/test_operations_posts.py::test_only_administrators_reach_posts[Support]

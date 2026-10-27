@@ -45,6 +45,18 @@ def effective_plan(account,at=None):
     return period.plan if period else 'free'
 
 
+def annotate_effective_plan(queryset,at=None,name='current_plan'):
+    """effective_plan() for every account of a queryset in one query, as `name`.
+    Only real paid periods count: sandbox ones belong to the local simulator's
+    test accounts, and nothing that reads this many people serves those."""
+    from django.db.models import Case,CharField,F,OuterRef,Q,Subquery,Value,When
+    from django.db.models.functions import Coalesce
+    now=at or timezone.now()
+    paid=SubscriptionPeriod.objects.filter(account=OuterRef('pk'),starts_at__lte=now,ends_at__gt=now,revoked_at__isnull=True,sandbox=False).order_by('-ends_at').values('plan')[:1]
+    assigned=~Q(staff_plan='')&(Q(staff_plan_expires_at__isnull=True)|Q(staff_plan_expires_at__gt=now))
+    return queryset.annotate(**{name:Case(When(assigned,then=F('staff_plan')),default=Coalesce(Subquery(paid),Value('free')),output_field=CharField())})
+
+
 def refresh_account_entitlement(account):
     plan=effective_plan(account)
     if account.plan!=plan:

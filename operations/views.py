@@ -35,18 +35,18 @@ PAGE_ROLES = {
     'analytics/plans':['Analyst','Finance'],
     'analytics/features':['Analyst','Operations'], 'analytics/revenue':['Analyst','Finance'],
     'analytics/ai-usage':['Analyst','Operations','Finance'],
-    'jobs':['Operations','Support'], 'generations':['Support','Operations'], 'plans':['Finance','Content manager'],
+    'jobs':['Operations','Support'], 'generations':['Support','Operations'], 'posts':[], 'plans':['Finance','Content manager'],
     'payments':['Finance'], 'audit':[], 'system':['Operations'],
     'localization':['Content manager'], 'integrations':[], 'staff':[],
 }
 PAGE_KEYS = {'today':'today','overview':'overview','users':'users','analytics/acquisition':'acquisition',
              'analytics/engagement':'engagement','analytics/plans':'plans_screen','analytics/features':'features','analytics/revenue':'revenue','analytics/ai-usage':'ai_usage',
-             'jobs':'jobs','generations':'generations','plans':'plans','payments':'payments','audit':'audit','system':'system','localization':'localization'}
+             'jobs':'jobs','generations':'generations','posts':'posts','plans':'plans','payments':'payments','audit':'audit','system':'system','localization':'localization'}
 # Sidebar: (group label key, [(page, label key, icon)]). The analytics reports
 # share one entry; their own tabs switch between them.
 NAV = [
     ('', [('today','today','today')]),
-    ('customers', [('users','users','users'),('generations','generations','sparkle')]),
+    ('customers', [('users','users','users'),('generations','generations','sparkle'),('posts','posts','send')]),
     ('money', [('payments','payments','card'),('analytics/revenue','revenue','trending')]),
     ('product', [('overview','nav_analytics','chart'),('jobs','nav_tasks','list'),('analytics/ai-usage','ai_usage','cpu'),('plans','plans','layers')]),
     ('settings', [('integrations','integrations','plug'),('staff','staff','shield'),('audit','audit','history'),('system','system','activity'),('localization','localization','globe')]),
@@ -87,7 +87,9 @@ def context(request, page='overview'):
     # Filters survive navigation; pagination restarts on the destination page.
     params = request.GET.copy()
     params['lang'] = lang
-    params.pop('p', None)
+    # A page number or a one-time message is not carried to other pages.
+    for key in ('p', 'saved', 'error'):
+        params.pop(key, None)
     query = params.urlencode()
     ok = role_check(user)
     nav = []

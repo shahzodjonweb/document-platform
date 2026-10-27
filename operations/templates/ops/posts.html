@@ -1,0 +1,40 @@
+{% extends 'ops/base.html' %}
+{% load ops_ui %}
+{% block content %}
+<div class="page-heading">
+  <div>
+    <h1>{{ t.posts }}</h1>
+    <p class="page-description">{{ t.posts_intro }}</p>
+  </div>
+  <div class="page-heading-actions">
+    <a class="button primary" href="/ops/posts/new?lang={{ lang }}">{% icon 'plus' 17 %}{{ t.post_new }}</a>
+  </div>
+</div>
+{% if saved %}<p class="alert success" role="status">{% icon 'check' %}<span>{{ saved }}</span></p>{% endif %}
+{% if error %}<div class="alert error" role="alert">{% icon 'alert' %}<span>{{ error }}</span></div>{% endif %}
+<section class="panel">
+  <div class="table-region" role="region" aria-label="{{ t.posts }}" tabindex="0">
+    <table>
+      <thead>
+        <tr><th>{{ t.post_when }}</th><th>{{ t.post_text }}</th><th>{{ t.post_audience }}</th><th>{{ t.post_status }}</th><th>{{ t.post_delivered }}</th><th>{{ t.post_viewed }}</th><th><span class="visually-hidden">{{ t.post_open }}</span></th></tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td class="muted">{{ row.post.created_at|date:'d M Y · H:i' }}{% if row.post.created_by %}<br><small>{{ row.post.created_by.username }}</small>{% endif %}</td>
+          <td class="request-cell">{% if row.post.image_key %}<span class="tool-symbol" title="{{ t.post_image }}">{% icon 'image' 15 %}</span>{% endif %}<a class="table-link" href="/ops/posts/{{ row.post.id }}?lang={{ lang }}">{{ row.title }}</a></td>
+          <td>{{ row.audience }}</td>
+          <td><span class="badge status-{{ row.post.status }}">{{ row.status }}</span></td>
+          <td>{% if row.post.status == 'draft' %}—{% else %}{{ row.post.delivered }} <small class="muted">/ {{ row.post.audience_count }}</small>{% endif %}</td>
+          <td>{% if row.post.status == 'draft' %}—{% else %}{{ row.post.viewed }}{% endif %}</td>
+          <td class="actions"><a class="button secondary small" href="/ops/posts/{{ row.post.id }}?lang={{ lang }}">{{ t.post_open }}</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7">{% include 'ops/ui/empty.html' with icon='send' title=t.post_none text=t.post_none_desc %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include 'ops/ui/pagination.html' %}
+</section>
+{% endblock %}
