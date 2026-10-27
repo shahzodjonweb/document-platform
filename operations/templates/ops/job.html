@@ -25,6 +25,7 @@
     <dt>{{ t.channel }}</dt><dd>{{ job.origin_channel|default:'—' }}</dd>
     <dt>{{ t.engine }}</dt><dd>{{ job.engine|default:'—' }}</dd>
     <dt>{{ t.error }}</dt><dd>{{ job.error_code|default:'—' }}{% if failure_reason %} · {{ failure_reason }}{% endif %}</dd>
+    <dt>{{ t.warnings }}</dt><dd>{% if job.warnings %}<span class="mono">{{ job.warnings|join:', ' }}</span>{% else %}—{% endif %}</dd>
   </dl>
 </section>
 {% endblock %}
