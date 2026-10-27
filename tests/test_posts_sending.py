@@ -395,3 +395,77 @@ def test_sending_the_post_while_its_test_is_on_the_way_does_not_send_it_twice():
     assert sorted(chats) == [5000, 5001]
     test.refresh_from_db()
     assert test.status == 'delivered' and not test.is_test
+
+
+def network(message, cause):
+    error = TelegramNetworkError(method=Mock(), message=message)
+    error.__cause__ = cause
+    return error
+
+
+def test_a_connect_that_never_finished_holds_the_post_and_loses_nobody():
+    from aiohttp import ConnectionTimeoutError
+    post = sent(2)
+    fake = bot()
+    fake.send_message = AsyncMock(side_effect=network('Request timeout error', ConnectionTimeoutError('to host')))
+    asyncio.run(sender.drain(fake))
+    head, other = rows(post)
+    assert (head.status, head.error_code) == ('retrying', 'telegram_unavailable') and other.status == 'pending'
+
+
+def test_an_answer_cut_off_after_telegram_had_it_is_not_sent_again():
+    from aiohttp import ClientPayloadError
+    post = sent(2)
+    fake = bot()
+    fake.send_message = AsyncMock(side_effect=network('ClientPayloadError: not completed', ClientPayloadError('cut')))
+    asyncio.run(sender.drain(fake))
+    head, other = rows(post)
+    assert (head.status, head.error_code) == ('failed', 'interrupted') and other.status == 'pending'
+
+
+def test_a_proxys_error_page_holds_the_post_and_an_unreadable_ok_counts_as_delivered():
+    from aiogram.exceptions import ClientDecodeError
+    post = sent(2)
+    fake = bot()
+    page = '<html><head><title>502 Bad Gateway</title></head></html>'
+    fake.send_message = AsyncMock(side_effect=ClientDecodeError('Failed to decode object', ValueError(), page))
+    asyncio.run(sender.drain(fake))
+    head, other = rows(post)
+    assert (head.status, head.error_code) == ('retrying', 'telegram_unavailable') and other.status == 'pending'
+    post.refresh_from_db()
+    assert post.paused_until > timezone.now()
+    other_post = sent(1)
+    fake.send_message = AsyncMock(side_effect=ClientDecodeError('Failed to deserialize object', ValueError(),
+                                                                {'ok': True, 'result': {'message_id': 'x'}}))
+    Post.objects.filter(pk=post.pk).update(status='stopped')
+    asyncio.run(sender.drain(fake))
+    assert {row.status for row in rows(other_post)} == {'delivered'}
+    assert fake.send_message.await_count == len(rows(other_post)), 'each sent once'
+
+
+def test_a_tap_while_the_copy_is_on_its_way_keeps_it_from_being_sent_again():
+    post = sent(1)
+    row = rows(post)[0]
+    fake = bot()
+
+    async def send(chat, *args, **kwargs):
+        await sync_to_async(posts.record_view)(row.id.hex, chat)
+        raise TelegramServerError(method=Mock(), message='Bad Gateway')
+    fake.send_message = AsyncMock(side_effect=send)
+    asyncio.run(sender.drain(fake))
+    row.refresh_from_db()
+    assert row.status == 'delivered' and row.viewed_at
+    Post.objects.filter(pk=post.pk).update(paused_until=None)
+    asyncio.run(sender.drain(fake))
+    assert fake.send_message.await_count == 1
+
+
+def test_a_cut_off_copy_that_was_tapped_counts_as_delivered():
+    post = sent(1)
+    row = rows(post)[0]
+    PostRecipient.objects.filter(pk=row.pk).update(status='sending', viewed_at=timezone.now(),
+                                                   lease_until=timezone.now() - timedelta(seconds=1))
+    fake = bot()
+    asyncio.run(sender.drain(fake))
+    row.refresh_from_db()
+    assert row.status == 'delivered' and fake.send_message.await_count == 0

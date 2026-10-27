@@ -264,3 +264,29 @@ def test_a_test_on_its_way_is_not_reset_by_another_test(people):
     assert again.pk == row.pk
     row.refresh_from_db()
     assert (row.status, row.attempts) == ('sending', 1)
+
+
+def test_a_16_bit_grey_image_keeps_its_greys():
+    import io
+    from PIL import Image
+    picture = Image.new('I;16', (256, 20))
+    picture.putdata([x * 257 for _ in range(20) for x in range(256)])
+    out = io.BytesIO()
+    picture.save(out, 'PNG')
+    with Image.open(io.BytesIO(out.getvalue())) as check:
+        assert check.mode.startswith('I')
+    with Image.open(io.BytesIO(posts.clean_image(out.getvalue()))) as clean:
+        assert 100 < clean.getpixel((128, 10))[0] < 160
+
+
+@pytest.mark.django_db(transaction=True)
+def test_an_image_of_a_saved_post_stays_when_only_its_upload_fails(monkeypatch):
+    from apps.core.services import storage_path
+
+    def stalled(key):
+        raise RuntimeError('bucket stalled')
+    monkeypatch.setattr('apps.core.storage.upload', stalled)
+    with pytest.raises(RuntimeError):
+        posts.create(None, text='News', audience_kind='everyone', image=png((300, 200)))
+    post = Post.objects.get()
+    assert storage_path(post.image_key).is_file(), 'the sync uploads it later'

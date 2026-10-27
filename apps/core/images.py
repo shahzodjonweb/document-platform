@@ -18,6 +18,12 @@ def clean_photo(raw, *, max_bytes, max_pixels, edge):
                 raise ValueError('pixels')
             picture.load()
             turned = ImageOps.exif_transpose(picture)
+            if turned.mode.startswith('I'):
+                # 16-bit grey: scaled to 8 bits, not clipped to white.
+                key = turned.info.get('transparency')
+                turned = turned.convert('I').point(lambda value: value / 257).convert('L')
+                if isinstance(key, int):
+                    turned.info['transparency'] = round(key / 257)
             if turned.mode in ('RGBA', 'LA', 'PA') or 'transparency' in turned.info:
                 # Transparent parts on white: dropping the alpha would turn them black.
                 turned = turned.convert('RGBA')

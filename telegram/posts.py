@@ -19,11 +19,12 @@ import logging
 import time
 from datetime import timedelta
 
+from aiohttp import ClientPayloadError, ConnectionTimeoutError
 from asgiref.sync import sync_to_async
 from aiogram import BaseMiddleware
 from aiogram.exceptions import (
-    TelegramBadRequest, TelegramEntityTooLarge, TelegramForbiddenError, TelegramNetworkError, TelegramNotFound,
-    TelegramRetryAfter, TelegramServerError, TelegramUnauthorizedError,
+    ClientDecodeError, TelegramBadRequest, TelegramEntityTooLarge, TelegramForbiddenError, TelegramNetworkError,
+    TelegramNotFound, TelegramRetryAfter, TelegramServerError, TelegramUnauthorizedError,
 )
 from aiogram.types import BufferedInputFile, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
 from django.db import transaction
@@ -57,8 +58,17 @@ def claim(recipient_id):
         return None
     if row.status == 'sending':
         if not row.lease_until or row.lease_until <= now:
-            row.status, row.error_code, row.lease_until = 'failed', 'interrupted', None
-            row.save(update_fields=['status', 'error_code', 'lease_until'])
+            if row.viewed_at:
+                # Tapped while on its way: it arrived.
+                row.status, row.delivered_at, row.error_code = 'delivered', now, ''
+            else:
+                row.status, row.error_code = 'failed', 'interrupted'
+            row.lease_until = None
+            row.save(update_fields=['status', 'delivered_at', 'error_code', 'lease_until'])
+        return None
+    if row.status == 'retrying' and row.viewed_at:
+        row.status, row.delivered_at, row.error_code, row.lease_until = 'delivered', now, '', None
+        row.save(update_fields=['status', 'delivered_at', 'error_code', 'lease_until'])
         return None
     if row.next_attempt_at > now:
         return None
@@ -83,6 +93,10 @@ def finish(recipient_id, *, status, message_id=None, error='', delay=0):
     if status == 'delivered':
         values['delivered_at'] = timezone.now()
     PostRecipient.objects.filter(pk=recipient_id, status='sending').update(**values)
+    if status != 'delivered':
+        # Tapped while it was on its way: whatever the send said, it arrived.
+        PostRecipient.objects.filter(pk=recipient_id, viewed_at__isnull=False, status__in=('retrying', 'failed')).update(
+            status='delivered', delivered_at=timezone.now(), error_code='', lease_until=None)
 
 
 def pause(post_id, seconds):
@@ -169,12 +183,25 @@ async def attempt(recipient_id, bot):
         await sync_to_async(finish)(row.id, status='failed', error='telegram_rejected')
         return True
     except TelegramNetworkError as exc:
-        if 'timeout' in str(exc).lower():
-            # It may have arrived: not sent again (see the top of this module).
+        cause = exc.__cause__
+        answered = isinstance(cause, ClientPayloadError)
+        timed_out = 'timeout' in str(exc).lower() and not isinstance(cause, ConnectionTimeoutError)
+        if answered or timed_out:
+            # Telegram had it and its answer was cut off, or may have had it:
+            # not sent again (see the top of this module).
             await sync_to_async(finish)(row.id, status='failed', error='interrupted')
             await sync_to_async(pause)(post.id, HOLD)
         else:
+            # Never reached Telegram.
             await sync_to_async(hold)(row, 'telegram_unavailable')
+        return False
+    except ClientDecodeError as exc:
+        if isinstance(exc.data, dict) and exc.data.get('ok') is True:
+            # Telegram took it; only its answer could not be read.
+            await sync_to_async(finish)(row.id, status='delivered')
+            return True
+        # Not Telegram's answer (a proxy's error page): Telegram is unavailable.
+        await sync_to_async(hold)(row, 'telegram_unavailable')
         return False
     except (TelegramServerError, TelegramUnauthorizedError):
         await sync_to_async(hold)(row, 'telegram_unavailable')

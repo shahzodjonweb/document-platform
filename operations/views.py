@@ -87,7 +87,9 @@ def context(request, page='overview'):
     # Filters survive navigation; pagination restarts on the destination page.
     params = request.GET.copy()
     params['lang'] = lang
-    params.pop('p', None)
+    # A page number or a one-time message is not carried to other pages.
+    for key in ('p', 'saved', 'error'):
+        params.pop(key, None)
     query = params.urlencode()
     ok = role_check(user)
     nav = []

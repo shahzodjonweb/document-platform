@@ -192,14 +192,17 @@ def create(actor, *, text, audience_kind, usernames='', button_label='', image=N
     if data:
         key = f'posts/{post_id}/{secrets.token_hex(8)}.jpg'
         _write_image(key, data)
+    committed = []
     try:
         with transaction.atomic():
             post = Post.objects.create(id=post_id, created_by=actor, text=text, button_label=button_label,
                                        audience=audience_kind, usernames=usernames, image_key=key)
+            # Before the upload's own hook, so a failing upload cannot pass for a rollback.
+            transaction.on_commit(lambda: committed.append(True))
             if key:
                 storage.save(key, 'image/jpeg')
     except BaseException:
-        if key:
+        if key and not committed:
             storage_path(key).unlink(missing_ok=True)
         raise
     return post
@@ -309,8 +312,9 @@ def settle(now=None):
     now = now or timezone.now()
     stopped = PostRecipient.objects.filter(post__status='stopped', is_test=False)
     stopped.filter(status__in=('pending', 'retrying')).update(status='skipped', error_code='stopped', lease_until=None)
-    stopped.filter(status='sending', lease_until__lte=now).update(status='failed', error_code='interrupted',
-                                                                  lease_until=None)
+    cut = stopped.filter(status='sending', lease_until__lte=now)
+    cut.filter(viewed_at__isnull=False).update(status='delivered', delivered_at=now, error_code='', lease_until=None)
+    cut.update(status='failed', error_code='interrupted', lease_until=None)
     waiting = PostRecipient.objects.filter(status__in=WAITING, is_test=False)
     finished = 0
     for post in Post.objects.filter(status='sending').exclude(pk__in=waiting.values('post_id')).only('pk'):

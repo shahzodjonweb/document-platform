@@ -230,3 +230,13 @@ def test_every_person_is_listed_once_across_the_pages():
         html = client.get(f'/ops/posts/{post.pk}?lang=en&show=not_reached&p={page}').content.decode()
         seen += [line.split('@', 1)[1].split(' ', 1)[0] for line in html.splitlines() if '<small>@person_' in line]
     assert len(seen) == 120 and len(set(seen)) == 120
+
+
+def test_a_one_time_message_does_not_follow_the_owner_to_other_pages():
+    client, _ = staff_client()
+    post = posts.create(None, text='Hello', audience_kind='everyone')
+    import re
+    page = client.get(f'/ops/posts/{post.pk}?lang=en&error=post_audience_empty&saved=sent').content.decode()
+    links = re.findall(r'href="(/ops/[^"]*)"', page.split('<main', 1)[0])
+    assert '/ops/posts?lang=en' in links and '/ops/users?lang=en' in links
+    assert not [link for link in links if 'error=' in link or 'saved=' in link]
