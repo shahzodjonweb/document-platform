@@ -17,7 +17,7 @@ from pypdf.generic import ArrayObject, NameObject
 from apps.core.errors import DomainError
 from apps.core.models import Account, AnalyticsEvent, FileAsset
 from apps.core.services import upload_file
-from operations.analytics_extra import REFUSALS_SINCE, upload_refusals
+from operations.analytics_extra import upload_refusals
 from operations.i18n import CATALOGS
 from operations.middleware import COOKIE as ZONE_COOKIE
 from tests.test_adversarial import pdf_data, principal
@@ -115,7 +115,8 @@ def november():
     for day in (2, 3, 4, 5, 6, 7):
         event(aziza, 'upload.accepted', at(day))
     event(bekzod, 'upload.accepted', at(8), channel='bot')
-    event(aziza, 'upload.refused', at(3), 'active_content_unsupported')
+    # The first refusal recorded: counting began here, before the first upload.
+    event(aziza, 'upload.refused', at(2, 9), 'active_content_unsupported')
     event(bekzod, 'upload.refused', at(4), 'active_content_unsupported', channel='bot', locale='uz')
     event(bekzod, 'upload.refused', at(5), 'active_content_unsupported', channel='bot', locale='uz')
     event(dilnoza, 'upload.refused', at(6), 'file_too_large')
@@ -136,7 +137,8 @@ def test_the_report_counts_refusals_by_reason_people_and_share_of_all_uploads(no
         ('active_content_unsupported', 3, 2, 27.3), ('file_too_large', 1, 1, 9.1)]
     assert report['rows'][1]['label'] == 'Larger than the plan’s file size limit'
     assert (report['people_note'], report['tried_note']) == ('People: 3', 'Uploads tried: 11')
-    assert report['since'] is None, 'the whole period is after refusals began to be kept'
+    assert report['since'] == at(2, 9), 'the period began before the first refusal was kept'
+    assert upload_refusals(november_filters(date_from='2026-11-03'), CATALOGS['en'])['since'] is None
 
 
 def test_the_report_keeps_to_the_period_environment_channel_and_language(november):
@@ -152,10 +154,19 @@ def test_the_report_keeps_to_the_period_environment_channel_and_language(novembe
 
 def test_uploads_from_before_refusals_were_kept_do_not_shrink_the_share(november):
     aziza = november[0]
+    # Before the first refusal was recorded (a deploy that came late), and the same morning.
     event(aziza, 'upload.accepted', datetime(2026, 10, 20, tzinfo=UTC))
+    event(aziza, 'upload.accepted', at(2, 8))
     report = upload_refusals(filters_for(date_from='2026-10-01', date_to='2026-12-01'), CATALOGS['en'])
-    assert (report['tried'], report['refused']) == (11, 4), 'the October upload came before refusals were counted'
-    assert report['since'] == REFUSALS_SINCE
+    assert (report['tried'], report['refused']) == (11, 4), 'neither came after refusals began to be kept'
+    assert report['since'] == at(2, 9)
+
+
+def test_before_any_refusal_is_kept_every_upload_counts_and_none_is_refused():
+    person = Account.objects.create(telegram_user_id=88200)
+    event(person, 'upload.accepted', at(3))
+    report = upload_refusals(november_filters(), CATALOGS['en'])
+    assert (report['tried'], report['refused'], report['share'], report['rows'], report['since']) == (1, 0, 0.0, [], None)
 
 
 def test_a_reason_without_a_label_is_shown_as_its_code(november):
@@ -198,7 +209,7 @@ def test_the_tools_page_says_when_nothing_was_refused_and_when_counting_began(no
     client.cookies[ZONE_COOKIE] = 'Asia/Tashkent'
     page = client.get('/ops/analytics/features?date_from=2026-10-01&date_to=2026-10-20&lang=ru').content.decode()
     assert CATALOGS['ru']['refusals_none'] in page
-    assert f"{CATALOGS['ru']['refusals_since']} 28.10.2026." in page, 'midnight in Tashkent, the zone it is read in'
+    assert f"{CATALOGS['ru']['refusals_since']} 02.11.2026." in page, 'the first refusal, on the day it was in Tashkent'
 
 
 def test_refused_uploads_are_for_the_staff_who_see_the_tools(november):
