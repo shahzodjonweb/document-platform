@@ -43,6 +43,21 @@ UPLOAD_PURPOSES = ('', 'cv_source')
 
 def upload_file(account, uploaded, channel='web', password=None, purpose=''):
     if purpose not in UPLOAD_PURPOSES: raise DomainError('invalid_parameters')
+    # A refused file is counted by its reason alone, never its name or
+    # contents, so the admin shows how often each refusal happens
+    # (operations/analytics_extra.upload_refusals).
+    try: asset = _stored_upload(account, uploaded, channel, password, purpose)
+    except DomainError as exc:
+        record_event(account, 'upload.refused', properties={'code': exc.code}, channel=channel)
+        raise
+    if purpose == 'cv_source':
+        # Queued for the reader as it arrives, so the CV made from it seldom
+        # waits (apps/studio/cv/reads.py). The file is kept whatever happens here.
+        from apps.studio.cv.reads import enqueue
+        enqueue(asset)
+    return asset
+
+def _stored_upload(account, uploaded, channel, password, purpose):
     limit = plan_limits(account)['max_file_mib'] * 1024 * 1024
     if uploaded.size > limit: raise DomainError('file_too_large', 413, {'max_bytes':limit})
     suffix = Path(uploaded.name.replace('\\','/')).suffix.lower()
@@ -90,11 +105,6 @@ def upload_file(account, uploaded, channel='web', password=None, purpose=''):
     except Exception:
         path.unlink(missing_ok=True)
         raise
-    if purpose == 'cv_source':
-        # Queued for the reader as it arrives, so the CV made from it seldom
-        # waits (apps/studio/cv/reads.py). The file is kept whatever happens here.
-        from apps.studio.cv.reads import enqueue
-        enqueue(asset)
     return asset
 
 def owned_assets(account, input_ids):
