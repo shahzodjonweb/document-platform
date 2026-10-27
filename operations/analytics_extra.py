@@ -1,4 +1,4 @@
-from datetime import datetime,timedelta,timezone as dt_timezone
+from datetime import timedelta
 from dataclasses import replace
 from django.db.models import Count,Min
 from django.utils import timezone
@@ -144,24 +144,23 @@ def plans_screen(filters,t,with_viewers=False):
     return result
 
 
-# Refusals are kept from this moment (midnight 28 October 2026 in Tashkent,
-# just before they were first recorded): before it only accepted uploads were.
-REFUSALS_SINCE=datetime(2026,10,27,19,0,tzinfo=dt_timezone.utc)
-
-
 def upload_refusals(filters,t):
     """How many uploads were refused in the period, why, and what share of all uploads that is.
 
     A refusal is kept with its reason code alone (apps/core/services.upload_file),
     never the file's name or contents. The share is of every upload tried,
     accepted and refused, counted only from when refusals began to be kept, so
-    a period that starts earlier does not make it look smaller than it is.
+    a period that starts earlier does not make it look smaller than it is. That
+    moment is the first refusal recorded, not the date this shipped, which a
+    late deploy would have made wrong.
     """
     from django.db.models import CharField,Value
     from django.db.models.fields.json import KT
     from django.db.models.functions import Coalesce
     start,end=filters.bounds
-    events=AnalyticsEvent.objects.filter(occurred_at__gte=max(start,REFUSALS_SINCE),occurred_at__lt=end,
+    since=(AnalyticsEvent.objects.filter(event_type='upload.refused',environment=filters.environment)
+           .order_by('occurred_at').values_list('occurred_at',flat=True).first())
+    events=AnalyticsEvent.objects.filter(occurred_at__gte=max(start,since) if since else start,occurred_at__lt=end,
                                          environment=filters.environment,event_type__in=('upload.accepted','upload.refused'))
     if filters.channel:events=events.filter(channel=filters.channel)
     if filters.locale:events=events.filter(locale=filters.locale)
@@ -176,4 +175,4 @@ def upload_refusals(filters,t):
     people=refused.values('account_id').distinct().count()
     return {'tried':tried,'refused':count,'share':share(count),'people':people,'rows':rows,
             'people_note':t['refusals_people'].format(n=people),'tried_note':t['refusals_tried'].format(n=tried),
-            'since':REFUSALS_SINCE if start<REFUSALS_SINCE else None}
+            'since':since if since and start<since else None}
