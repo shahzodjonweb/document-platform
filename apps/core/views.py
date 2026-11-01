@@ -49,9 +49,9 @@ def api(methods=('GET',), auth=True):
         return wrapped
     return decorate
 
-def body(request):
+def body(request,limit=32768,too_large='invalid_request'):
     if request.content_type!='application/json': raise DomainError('invalid_content_type',415)
-    if len(request.body)>32768: raise DomainError('invalid_request',413)
+    if len(request.body)>limit: raise DomainError(too_large,413)
     value=json.loads(request.body or '{}')
     if not isinstance(value,dict): raise DomainError('invalid_request')
     return value

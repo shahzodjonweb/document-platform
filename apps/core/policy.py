@@ -7,6 +7,22 @@ SEED = json.loads((ROOT / 'plan_seed.json').read_text())
 FEATURES = {f['id']: f for f in json.loads((ROOT / 'feature_catalog.json').read_text())['features']}
 POLICY_VERSION = 'weekly-v1'
 
+# What a JSON payload may measure, always in payload_bytes. A PDF editor draft
+# is far larger than any other tool's settings, and its quote carries it whole
+# in a small wrapper: whatever saves can be quoted.
+PARAMETER_BYTES = 10_000
+EDITOR_LIMITS = {'commands': 100, 'bytes': 100_000}
+EDITOR_PARAMETER_BYTES = EDITOR_LIMITS['bytes'] + 1024
+
+def payload_bytes(value):
+    """A JSON value's size, the one unit every cap and the web's meter count.
+
+    The UTF-8 bytes of its compact form, which is what a browser sends: a
+    Cyrillic letter is 2, not the 6 of json.dumps's escape. A lone surrogate can
+    be neither sent to the worker nor stored, and raises ValueError.
+    """
+    return len(json.dumps(value, ensure_ascii=False, separators=(',', ':')).encode())
+
 def plan_limits(account):
     from apps.commerce.services import refresh_account_entitlement
     refresh_account_entitlement(account)

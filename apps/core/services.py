@@ -15,7 +15,7 @@ from django.db.models import F
 from django.utils import timezone
 from .models import Account, FileAsset, Quote, Job, Artifact, OutboxEvent, AnalyticsEvent, SecretHandle
 from .errors import DomainError
-from .policy import page_cap, plan_limits, require_feature, usage_snapshot, POLICY_VERSION
+from .policy import page_cap, plan_limits, require_feature, usage_snapshot, payload_bytes, EDITOR_PARAMETER_BYTES, PARAMETER_BYTES, POLICY_VERSION
 
 TERMINAL = ('succeeded', 'failed', 'canceled', 'no_op', 'expired')
 
@@ -197,7 +197,7 @@ RETIRED_IMAGE_SWITCHES = ('auto_crop', 'enhance_text')
 
 def create_quote(account, feature_id, input_ids, parameters, secret_id=None):
     from processors import normalize_parameters, ProcessorError
-    if not isinstance(parameters,dict) or len(json.dumps(parameters)) > 10000: raise DomainError('invalid_parameters')
+    if not isinstance(parameters,dict) or payload_bytes(parameters) > (EDITOR_PARAMETER_BYTES if str(feature_id).startswith('editor.') else PARAMETER_BYTES): raise DomainError('invalid_parameters')
     retired = [key for key in RETIRED_IMAGE_SWITCHES if key in parameters] if feature_id == 'pdf.images_to_pdf' else []
     if retired:
         import logging

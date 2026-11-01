@@ -67,6 +67,7 @@ tests/test_advanced_processors.py::test_pdf_tables_to_xlsx_neutralizes_formulas
 tests/test_advanced_processors.py::test_multilingual_text_highlight_and_note_are_serialized
 tests/test_processors.py::test_editing_keeps_an_image_it_cannot_decode
 tests/test_advanced_processors.py::test_redaction_removes_recoverable_text_and_raster_pixels  # [tesseract]
+tests/test_editor_documents.py::test_a_long_cyrillic_draft_saves_quotes_and_runs
 
 # Office
 tests/test_previews_office_api.py::test_office_upload_exact_preflight_quote_execute_and_download[docx-convert.word_to_pdf]  # [libreoffice]

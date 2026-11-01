@@ -113,6 +113,7 @@
   "name_required": "Nom kiriting.",
   "confirmation_required": "Ishga tushirishdan oldin vazifani tekshirib, tasdiqlang.",
   "invalid_editor_command": "Tahrir turi, sahifa, koordinata va matnni tekshiring.",
+  "payload_too_large": "Bu qoralama hajm chegarasidan oshdi va saqlanmadi. Matnni qisqartiring yoki bitta o‘zgarishni olib tashlang.",
   "pack_content_required": "Materiallar to‘plamini yaratishdan oldin savollar va manba matnini kiriting.",
   "variant_content_required": "Alohida variantlar uchun yetarli turli savollar kiriting.",
   "invalid_pack_content": "Yaratilgan to‘plam so‘ralgan materiallarga mos kelmadi. Bu limitingizga hisoblanmaydi.",

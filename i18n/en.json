@@ -113,6 +113,7 @@
   "name_required": "Enter a name.",
   "confirmation_required": "Review and confirm the task before running it.",
   "invalid_editor_command": "Check the edit type, page, coordinates and content.",
+  "payload_too_large": "This draft is over its size limit and was not saved. Shorten some text or remove a change.",
   "pack_content_required": "Add questions and source content before creating this material pack.",
   "variant_content_required": "Add enough distinct questions to create separate variants.",
   "invalid_pack_content": "The generated pack did not match the requested materials. It doesn't count towards your limits.",

@@ -1,4 +1,5 @@
 import io
+import json
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from pypdf import PdfReader
@@ -51,6 +52,12 @@ def test_real_form_batch_produces_one_filled_pdf_per_input_exactly_once():
     for source in files:assert PdfReader(storage_path(source.object_key)).get_fields()['customer']['/V']==''
     repeated,created=submit_batch(a,q.id,'two-form-batch-once');execute_batch(repeated.id)
     assert not created and Job.objects.count()==2 and file_jobs_this_week(a)==2
+
+def test_a_long_cyrillic_form_is_quoted_by_its_bytes_not_its_escapes():
+    a=paid(account(),'premium');value='я'*2000
+    assert len(json.dumps(value))>10000,'over the size quotes once had, in the unit they once counted'
+    q=form_quote(a,template(a,value),[form_pdf(a)])
+    assert quote_data(q)['groups'][0]['normalized_parameters']['commands'][0]['value']==value
 
 @pytest.mark.parametrize('plan',['free','plus'])
 def test_batch_forms_are_on_every_plan(plan):
