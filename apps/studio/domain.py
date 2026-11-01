@@ -25,6 +25,10 @@ DOCUMENT='ai.pdf_topic'
 SLIDES='ai.pptx'
 CV='ai.cv'
 GENERATION_IDS={DOCUMENT,SLIDES,CV}
+# A deck drawn again from its draft (render_export.py): a file task that no draft
+# is ever made for and no processor runs, gated by `require`, never validate_inputs.
+EXPORT='export.generated_pptx'
+RENDER_IDS={EXPORT}
 # Server-owned fields a client may never send.
 READONLY_FIELDS={'_transcription','transcription_ready','transcription_reviewed','_source_seed','revision','_render','_rebuilt_version'}
 
@@ -33,7 +37,7 @@ def unpack(value): return json.loads(cipher().decrypt(bytes(value)))
 def allowed(account,fid):
     return fid in FEATURES and FEATURES[fid]['plans'][account.plan] not in ('not_included','unavailable','none','excluded')
 def require(account,fid):
-    if not settings.ENABLE_BETA_TOOLS or fid not in GENERATION_IDS: raise DomainError('feature_unavailable',409)
+    if not settings.ENABLE_BETA_TOOLS or fid not in GENERATION_IDS|RENDER_IDS: raise DomainError('feature_unavailable',409)
     if not allowed(account,fid): raise DomainError('feature_not_in_plan',403)
 
 # Questions a document may carry, the same on every plan (it was 10 on Free, 50
@@ -257,6 +261,7 @@ def _deck_style(fid,brief):
 def _prepare_draft(account,data,revision_base=None):
     if set(data)&READONLY_FIELDS:raise DomainError('invalid_parameters')
     fid=data.get('feature_id',DOCUMENT);require(account,fid)
+    if fid in RENDER_IDS:raise DomainError('feature_unavailable',409)
     # The service decides the format; the client does not get a say. A document
     # is a PDF and a deck is a PowerPoint. The value is still validated so a
     # malformed one is refused rather than silently ignored, and the forcing

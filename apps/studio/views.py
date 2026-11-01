@@ -214,6 +214,28 @@ def draft_quote(request,pk):
     else:quote=generation_quote(request.account,pk,data.get('version'))
     return JsonResponse(quote_data(quote),status=201)
 
+# One draws every slide of a deck, up to two seconds of an API worker (render_export.MEASURE_SECONDS);
+# the other one slide in every layout, about 0.8 s at worst however long the deck (FIT_SECONDS and the slide itself). Counted per account,
+# as every customer reaches us through the same gateway address.
+EXPORT_QUOTES_PER_MINUTE=10
+FITS_PER_MINUTE=60
+
+@api(('POST',))
+def draft_export_quote(request,pk):
+    """The price of sending a deck again from its draft, with what Review says about it (render_export.py)."""
+    _account_limit(request.account,'deck_export_quotes',EXPORT_QUOTES_PER_MINUTE)
+    data=body(request)
+    from .render_export import export_quote,quote_summary
+    quote=export_quote(request.account,pk,data.get('version'),data.get('format'),data.get('deliver'))
+    return JsonResponse({**quote_data(quote),'summary':quote_summary(request.account,quote)},status=201)
+
+@api(('POST',))
+def draft_fit(request,pk):
+    """How one slide as it is being typed sits on the deck, and the layouts that would hold it whole. Nothing is saved."""
+    _account_limit(request.account,'deck_fits',FITS_PER_MINUTE)
+    from .render_export import fit_section
+    return fit_section(request.account,pk,body(request).get('section'))
+
 @api(('POST',))
 def retry_quote(request,pk):
     from .checkpoints import retry_quote as prepare_retry

@@ -731,7 +731,7 @@ def _normalize_office_viewer_hint(path: Path) -> None:
     except Exception:
         raise ProcessorError('invalid_pdf') from None
 
-def _office_pdf(path: Path, feature_id: str, out: Path, metadata: dict):
+def _office_pdf(path: Path, feature_id: str, out: Path, metadata: dict, timeout: int = 60):
     runtime = office_runtime()
     if not runtime['available']:
         raise ProcessorError('engine_unavailable')
@@ -750,7 +750,7 @@ def _office_pdf(path: Path, feature_id: str, out: Path, metadata: dict):
                 '--headless', '--nologo', '--nodefault', '--nofirststartwizard',
                 '--convert-to', 'pdf', '--outdir', str(scratch), str(source)],
                 stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                timeout=60, check=False, env={**os.environ, 'HOME': str(scratch)})
+                timeout=timeout, check=False, env={**os.environ, 'HOME': str(scratch)})
         except subprocess.TimeoutExpired:
             raise ProcessorError('processor_timeout') from None
         converted = scratch / 'input.pdf'
@@ -764,7 +764,7 @@ def _office_pdf(path: Path, feature_id: str, out: Path, metadata: dict):
 
 
 def execute(feature_id: str, input_paths: list[str | Path], parameters: dict | None,
-            output_dir: str | Path, *, secret: str | None = None) -> dict:
+            output_dir: str | Path, *, secret: str | None = None, office_timeout: int = 60) -> dict:
     """Run one operation. Secret is ephemeral transport-only, never returned."""
     if not isinstance(input_paths, (list, tuple)) or not 1 <= len(input_paths) <= MAX_INPUTS:
         raise ProcessorError('invalid_inputs')
@@ -825,7 +825,7 @@ def execute(feature_id: str, input_paths: list[str | Path], parameters: dict | N
             manifest = json.loads((Path(__file__).parent / 'scanner' / 'models.json').read_text())
             details['engine_versions']['scanner-models'] = manifest['version']
         elif feature_id.startswith('convert.'):
-            artifacts = _office_pdf(paths[0], feature_id, out, metadata[0])
+            artifacts = _office_pdf(paths[0], feature_id, out, metadata[0], timeout=office_timeout)
         elif feature_id == 'pdf.to_images':
             artifacts = _pdf_images(paths[0], parameters, out, pages)
         else:

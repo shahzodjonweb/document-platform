@@ -1856,12 +1856,16 @@ def build_dispatcher():
         await ai_review(message,account,draft,quote,True)
 
     async def deck_as_pdf(message,account,draft_id):
-        """The delivered deck in PowerPoint → PDF, ready to start; or, once the
-        server no longer keeps it, the same tool offered for the copy in the chat."""
+        """The PDF the deck was last sent as; else the delivered deck in PowerPoint
+        → PDF, ready to start; or, once the server no longer keeps it, the same
+        tool offered for the copy in the chat, unless that copy lacks an edit."""
+        job,_=await sync_to_async(ai.delivered)(account,draft_id,'pdf')
+        if job is not None: return await send_again(message,account,draft_id,'pdf')
         await sync_to_async(set_prompt)(account)
         try: draft=await sync_to_async(ai.deck_to_pdf)(account,draft_id)
         except DomainError as exc: return await safe_error(message,account,exc)
         if draft: return await controls(message,account,draft,True,notice=text(account,'ai_deck_as_pdf'))
+        if await sync_to_async(ai.sent_edited)(account,draft_id): return await send_again(message,account,draft_id,'pdf')
         waiting=await sync_to_async(draft_for)(account)
         rows=[[await tool_button(account,waiting,ai.CONVERTER)],[await button(account,'home','home')]]
         await render(message,html.escape(text(account,'ai_deck_gone')),rows,True)
@@ -1877,13 +1881,14 @@ def build_dispatcher():
     async def send_again(message,account,draft_id,kind):
         """The file asked for in the format it already has: the same file, sent again."""
         await sync_to_async(set_prompt)(account)
-        job,_=await sync_to_async(ai.delivered)(account,draft_id)
+        job,asset=await sync_to_async(ai.delivered)(account,draft_id,kind)
+        name='PDF' if kind=='pdf' else 'PowerPoint'
         if job is None:
             rows=[[await button(account,'ai_revise','ai_revise',{'draft_id':str(draft_id)}),await button(account,'home','home')]]
-            return await render(message,html.escape(text(account,'ai_file_gone')),rows,True)
-        name='PDF' if kind=='pdf' else 'PowerPoint'
+            edited=await sync_to_async(ai.sent_edited)(account,draft_id)
+            return await render(message,html.escape(text(account,'ai_edited_not_kept').format(format=name) if edited else text(account,'ai_file_gone')),rows,True)
         await render(message,html.escape(text(account,'ai_same_format').format(format=name)),[],True)
-        await deliver(message,account,job,f'same-format:{secrets.token_urlsafe(9)}')
+        await deliver(message,account,job,f'same-format:{secrets.token_urlsafe(9)}',file=asset)
 
     async def ai_examples(message,account,feature_id=None,edit=False,question='',cv_source=''):
         """What a good description looks like, in the customer's language.
@@ -2063,9 +2068,10 @@ def build_dispatcher():
         lines=[COPY.get(account.locale,COPY['en']).get(code) for code in (job.warnings or [])]
         return '\n'.join(line for line in lines if line)
 
-    async def deliver(message,account,job,request_key=None):
+    async def deliver(message,account,job,request_key=None,file=None):
+        """Every file of the job, or the one asked for."""
         from .delivery import enqueue,attempt
-        artifacts=await sync_to_async(lambda:list(job.artifacts.select_related('file','account')))()
+        artifacts=await sync_to_async(lambda:list((job.artifacts.filter(file=file) if file else job.artifacts).select_related('file','account')))()
         for artifact in artifacts:
             key=f'resend:{request_key}:{artifact.id}' if request_key else f'job:{job.id}:{artifact.id}'
             delivery=await sync_to_async(enqueue)(artifact,key)

@@ -36,7 +36,7 @@ DONE = {
     'editor.redact': 'redacted', 'ai.cv': 'CV',
 }
 # A result with no name of its own to go by, and nothing done to say.
-SERVICE = {'ai.pdf_topic': 'document', 'ai.pptx': 'slides', 'pdf.images_to_pdf': 'photos'}
+SERVICE = {'ai.pdf_topic': 'document', 'ai.pptx': 'slides', 'pdf.images_to_pdf': 'photos', 'export.generated_pptx': 'slides'}
 # The titles a document gets when nobody gave it one (apps/studio/domain.py).
 UNTITLED = {'untitled document', 'untitled', 'document'}
 EXTENSIONS = {
@@ -120,10 +120,10 @@ def _extension(output):
 
 def _parts(job, output, index, count):
     """The name's stem and what was done, before the code."""
-    from apps.studio.domain import GENERATION_IDS
+    from apps.studio.domain import GENERATION_IDS, RENDER_IDS
     from .models import FileAsset
     feature = job.feature_id
-    if feature in GENERATION_IDS:
+    if feature in GENERATION_IDS | RENDER_IDS:
         # A CV's title is the person's name. With no name, a CV made from an old
         # CV or a LinkedIn export goes by that file.
         title = str(output.get('title') or '').strip()
@@ -137,7 +137,8 @@ def _parts(job, output, index, count):
         first = next((assets[value] for value in ids if value in assets), None)
         stem = stem_of(first) if first else ''
         done = f'part-{index + 1}' if feature == 'pdf.split' else DONE.get(feature) or ('edited' if feature.startswith('editor.') else '')
-    if count > 1 and feature != 'pdf.split':
+    # A deck sent as PowerPoint and PDF is one file twice: its extension tells them apart.
+    if count > 1 and feature != 'pdf.split' and feature not in RENDER_IDS:
         done = '-'.join(filter(None, (done, str(index + 1))))
     if not stem and not done:
         stem = SERVICE.get(feature, 'result')

@@ -99,9 +99,9 @@ def finish(delivery_id,*,status,message_id=None,error='',delay=0):
 
 def revisable_draft(delivery):
     """The draft behind a generated document, when there is one to change."""
-    from apps.studio.domain import GENERATION_IDS
+    from apps.studio.domain import GENERATION_IDS, RENDER_IDS
     job = delivery.artifact.job
-    if job.feature_id not in GENERATION_IDS:
+    if job.feature_id not in GENERATION_IDS | RENDER_IDS:
         return ''
     identifier = (job.parameters or {}).get('generation_draft_id', '')
     if not identifier:
@@ -122,8 +122,10 @@ def result_controls(delivery):
     # A generated document can be changed by asking; a converted file cannot.
     revise = revisable_draft(delivery)
     if revise:
-        control = BotCallback.objects.filter(account=delivery.account, action='ai_revise',
-                                             payload={'draft_id': revise}).first()
+        controls = BotCallback.objects.filter(account=delivery.account, action='ai_revise', payload={'draft_id': revise})
+        # One button for a draft however often it is sent: it lasts as long as the newest file.
+        controls.filter(expires_at__lt=delivery.artifact.file.expires_at).update(expires_at=delivery.artifact.file.expires_at)
+        control = controls.first()
         if control is None:
             control = BotCallback.objects.create(
                 token=secrets.token_urlsafe(12), account=delivery.account, action='ai_revise',

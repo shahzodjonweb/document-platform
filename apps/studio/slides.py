@@ -834,6 +834,77 @@ def _within(zone, box):
     return Zone(left, top, right - left, bottom - top)
 
 
+def deck_look(style, pins):
+    """(style, look, roles) a deck is drawn in. The pinned design beats the style's (see render_pptx)."""
+    from .deck_designs import look as design_look
+    style = {**(style or {}), **({'deck_design': pins['design']} if 'design' in pins else {})}
+    look = design_look(style)
+    return style, look, palette(look['accent'], look['theme'], look['secondary'], look.get('paper'),
+                                look.get('accent_headings', False))
+
+
+def prepare_slides(content, locale, photos):
+    """Every slide of a deck as (layout, lines, section), and the indexes of those whose lines `bullets_of` cut.
+
+    `photos` need only answer whether a section has one.
+    """
+    from . import layouts
+    # Labels follow the language; Uzbek is always Latin.
+    sections = [dict(section) for section in content['sections']] + question_sections(content, locale)
+
+    total = len(sections)
+    cuts = set()
+    prepared = []
+    for index, section in enumerate(sections):
+        if section.get('_questions'):
+            prepared.append(('questions', [], section))
+            continue
+        lines, cut = bullets_of(section['body'])
+        if not lines and section.get('items'):
+            lines, cut = bullets_of('\n'.join(layouts.as_lines(section)))
+        has_photo = section.get('id') in photos
+        kind = layouts.resolve(section, lines, index, total, has_photo)
+        # Titled columns draw their items, not these lines: a cut here is no cut.
+        if cut and kind in LINE_LAYOUTS and not _titled_columns(kind, section):
+            cuts.add(index)
+        if kind == 'cover':
+            # The drawer takes the lines under the title from the body as written
+            # (slide_layouts.title_lines): a title page's every line, or one subtitle.
+            section = {**section, '_title': content['title']}
+            if not section['heading'].strip():
+                section['heading'] = content['title']
+        prepared.append((kind, lines, section))
+    return prepared, cuts
+
+
+def variant_chooser(look, roles, style, size, locale, total, deck_seed, pinned, scratch, taken=None):
+    """`variant_for(kind, section, lines, index, has_photo)`: the variant a slide is drawn with, or None.
+
+    A variant other than classic is only returned straight after a trial on
+    `scratch` that it passed, so that trial is what drawing it would come to.
+    `taken`: what the slides before have used, kept up to date; by default only what the pins hold.
+    """
+    from . import variants
+    from .slide_layouts import Ctx
+    taken = variants.taken_by(pinned.values()) if taken is None else taken
+
+    def variant_for(kind, section, lines, index, has_photo):
+        forced = section.get('_variant')
+        if forced:
+            return variants.get(forced)
+        if not look['id'] or kind not in variants.KINDS:
+            return None
+
+        def trial(candidate):
+            context = Ctx(scratch.slide(), roles, style, index, total, size, locale, has_photo, None,
+                          look['heading_bold'])
+            candidate.draw(context, section, lines)
+            return not (context.shortened or context.squeezed)
+        return (variants.keep(pinned.get(section.get('id')), kind, section, lines, trial=trial)
+                or variants.choose(kind, section, lines, deck_seed=deck_seed, taken=taken, trial=trial))
+    return variant_for
+
+
 def render_pptx(content, path, locale='en', role='user_document', style=None, photos=None, pins=None):
     """One section, one slide — with the first one as the deck's title slide.
 
@@ -855,45 +926,24 @@ def render_pptx(content, path, locale='en', role='user_document', style=None, ph
     tried on a scratch slide; one that no longer holds its slide gives way to
     `variants.choose`, and the slide is listed in metadata['repinned'].
 
+    metadata['shortened'] lists the slides whose text does not all show, each as
+    {id, index, words_over} (slide_fit.left_out), whatever cut it: a word limit,
+    a box, or a layout with no place for it.
+
     metadata['deck_seed'] carries the title in clear (variants.seed): it belongs
     in the encrypted draft, and is taken out before the metadata is kept with a
     file (execution._deck_pins).
     """
     from . import layouts
+    from .slide_fit import left_out
     from .slide_layouts import DRAW, PHOTO_ZONES, Ctx, place_photo
     pins = pins or {}
     pinned = pins.get('variants') or {}
-    style = {**(style or {}), **({'deck_design': pins['design']} if 'design' in pins else {})}
     photos = photos or {}
-    from .deck_designs import look as design_look
-    look = design_look(style)
-    roles = palette(look['accent'], look['theme'], look['secondary'], look.get('paper'),
-                    look.get('accent_headings', False))
-    # Labels follow the language; Uzbek is always Latin.
-    sections = [dict(section) for section in content['sections']] + question_sections(content, locale)
-
-    total = len(sections)
-    shortened = False
-    prepared = []
-    for index, section in enumerate(sections):
-        if section.get('_questions'):
-            prepared.append(('questions', [], section))
-            continue
-        lines, cut = bullets_of(section['body'])
-        if not lines and section.get('items'):
-            lines, cut = bullets_of('\n'.join(layouts.as_lines(section)))
-        has_photo = section.get('id') in photos
-        kind = layouts.resolve(section, lines, index, total, has_photo)
-        # Titled columns draw their items, not these lines: a cut here is no cut.
-        if kind in LINE_LAYOUTS and not _titled_columns(kind, section):
-            shortened = shortened or cut
-        if kind == 'cover':
-            # The drawer takes the lines under the title from the body as written
-            # (slide_layouts.title_lines): a title page's every line, or one subtitle.
-            section = {**section, '_title': content['title']}
-            if not section['heading'].strip():
-                section['heading'] = content['title']
-        prepared.append((kind, lines, section))
+    style, look, roles = deck_look(style, pins)
+    prepared, cuts = prepare_slides(content, locale, photos)
+    total = len(prepared)
+    shortened = bool(cuts)
 
     deck = Presentation()
     deck.slide_width, deck.slide_height = SLIDE_WIDTH, SLIDE_HEIGHT
@@ -911,23 +961,10 @@ def render_pptx(content, path, locale='en', role='user_document', style=None, ph
     # it always was. The seed is pinned too: it holds the title, and a slide that
     # chooses again must not walk another order because the title was edited.
     deck_seed = pins.get('deck_seed') or variants.seed(look, content)
-    taken, scratch = variants.taken_by(pinned.values()), variants.Scratch(SLIDE_WIDTH, SLIDE_HEIGHT)
+    variant_for = variant_chooser(look, roles, style, size, locale, total, deck_seed, pinned,
+                                  variants.Scratch(SLIDE_WIDTH, SLIDE_HEIGHT))
     chosen_variants = []
-
-    def variant_for(kind, section, lines, index, has_photo):
-        forced = section.get('_variant')
-        if forced:
-            return variants.get(forced)
-        if not look['id'] or kind not in variants.KINDS:
-            return None
-
-        def trial(candidate):
-            context = Ctx(scratch.slide(), roles, style, index, total, size, locale, has_photo, None,
-                          look['heading_bold'])
-            candidate.draw(context, section, lines)
-            return not (context.shortened or context.squeezed)
-        return (variants.keep(pinned.get(section.get('id')), kind, section, lines, trial=trial)
-                or variants.choose(kind, section, lines, deck_seed=deck_seed, taken=taken, trial=trial))
+    short = []
 
     for index, (kind, lines, section) in enumerate(prepared):
         slide = deck.slides.add_slide(deck.slide_layouts[6])
@@ -962,8 +999,13 @@ def render_pptx(content, path, locale='en', role='user_document', style=None, ph
         _chrome(slide, roles, style, kind, index + 1, quiet=plan.quiet if plan is not None else None)
         context = Ctx(slide, roles, style, index, total, size, locale, photo is not None, plan,
                       look['heading_bold'])
+        tree = slide.shapes._spTree
+        before = len(tree)
         (chosen.draw if chosen is not None else DRAW[kind])(context, section, lines)
         chosen_variants.append(chosen.id if chosen is not None else '')
+        words = left_out(kind, section, tree[before:], context.shortened)
+        if words:
+            short.append({'id': section.get('id'), 'index': index, 'words_over': words})
         # A classic design's pattern goes in its fixed places; a composition
         # puts its own pattern where it has room.
         if classic and not (kind == 'cover' and photo is not None):
@@ -988,4 +1030,4 @@ def render_pptx(content, path, locale='en', role='user_document', style=None, ph
             'mime_type': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
             'page_count': len(deck.slides), 'role': role, 'shortened': shortened,
             'metadata': {'layouts': drawn, 'variants': chosen_variants, 'photos': pictured, 'design': look['id'],
-                         'body_size': size, 'deck_seed': deck_seed, 'repinned': repinned}}
+                         'body_size': size, 'deck_seed': deck_seed, 'repinned': repinned, 'shortened': short}}

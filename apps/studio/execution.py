@@ -102,6 +102,7 @@ def _write_pins(job,draft_id,pins,version):
     them; left behind it would fail with version_conflict over nothing it can see.
     Only a save that rebuilt the outline since `version`, the one the job drew,
     gets none: those are other slides under the same ids, with nothing drawn yet.
+    `pins` may be a function that makes them from the ones the draft has now.
     """
     try:
         with transaction.atomic():
@@ -110,7 +111,7 @@ def _write_pins(job,draft_id,pins,version):
             before=hashlib.sha256(bytes(draft.encrypted_data)).hexdigest()
             data=unpack(draft.encrypted_data)
             if data.get('_rebuilt_version',0)>version:return
-            data['_render']=pins
+            data['_render']=pins(data['_render']) if callable(pins) else pins
             packed=pack(data)
             GenerationDraft.objects.filter(pk=draft.pk).update(encrypted_data=packed)
             after=hashlib.sha256(packed).hexdigest()

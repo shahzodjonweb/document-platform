@@ -264,12 +264,16 @@ def submit_job(account, quote_id, idempotency_key, origin='web'):
     except (Quote.DoesNotExist,ValueError,ValidationError): raise DomainError('not_found',404) from None
     if Job.objects.filter(quote=quote).exists(): raise DomainError('quote_already_submitted',409)
     if quote.expires_at <= timezone.now(): raise DomainError('quote_expired',409)
-    from apps.studio.domain import GENERATION_IDS, validate_generation_quote
+    from apps.studio.domain import GENERATION_IDS, RENDER_IDS, validate_generation_quote
     from .allowance import require_quote
     # Counted under the account lock, so quick repeated submissions cannot
     # each see room for one more.
     require_quote(account, quote)
-    assets = validate_generation_quote(account,quote) if quote.feature_id in GENERATION_IDS else validate_inputs(account,quote.feature_id,quote.input_ids)
+    if quote.feature_id in GENERATION_IDS: assets = validate_generation_quote(account,quote)
+    elif quote.feature_id in RENDER_IDS:
+        from apps.studio.render_export import validate_render_quote
+        assets = validate_render_quote(account,quote)
+    else: assets = validate_inputs(account,quote.feature_id,quote.input_ids)
     if quote.feature_id.startswith('editor.'):
         from apps.studio.editor_policy import validate_commands_access
         validate_commands_access(account,quote.parameters.get('commands',[]))
@@ -286,6 +290,8 @@ def submit_job(account, quote_id, idempotency_key, origin='web'):
     if quote.feature_id in GENERATION_IDS:
         from apps.studio.review import record_request
         record_request(job)
+    # A send accepted in a draft's last minutes must find it, and all it draws, when its turn comes.
+    if quote.feature_id in RENDER_IDS: _extend_draft(job, timezone.now()+timedelta(hours=1))
     record_event(account,'job.accepted',job=job,channel=origin)
     return job,True
 
@@ -293,16 +299,21 @@ def _extend_draft(job, deadline):
     """A generated result's draft, and the deck pictures its pins name, last as long as the result; never less than they already would.
 
     Only those: a picture from pins since replaced, or from an attempt that left none, goes by its own clock.
+    The files the draft stands on (its sources and logo) go with it unless already expired, as a save or a change
+    of it asks for them: a generation's result carries them on as its inputs, and a send has only its pictures.
     """
+    from apps.studio.branding import generation_inputs
     from apps.studio.domain import unpack
     from apps.studio.models import GenerationDraft
     draft_id = (job.parameters or {}).get('generation_draft_id')
     draft = GenerationDraft.objects.filter(pk=draft_id,account=job.account).first() if draft_id else None
     if not draft: return
     GenerationDraft.objects.filter(pk=draft.pk,expires_at__lt=deadline).update(expires_at=deadline)
-    photos = (unpack(draft.encrypted_data).get('_render') or {}).get('photos') or {}
+    data = unpack(draft.encrypted_data)
+    photos = (data.get('_render') or {}).get('photos') or {}
     pinned = [asset_id for photo in photos.values() for asset_id in (photo.get('asset_id'),*(c.get('asset_id') for c in photo.get('candidates') or [])) if asset_id]
     FileAsset.objects.filter(account=job.account,state='ready',metadata__kind='deck_photo',pk__in=pinned,expires_at__lt=deadline).update(expires_at=deadline)
+    FileAsset.objects.filter(account=job.account,state='ready',pk__in=generation_inputs(data),expires_at__gt=timezone.now(),expires_at__lt=deadline).update(expires_at=deadline)
 
 @transaction.atomic
 def settle_job(job_id, status, error_code='', outputs=None, warnings=None, engine=''):
@@ -324,10 +335,11 @@ def settle_job(job_id, status, error_code='', outputs=None, warnings=None, engin
             # This only writes an outbox row; Telegram is contacted by the bot.
             from telegram.delivery import enqueue
             enqueue(artifact, f'job:{job.id}:{artifact.id}')
-    FileAsset.objects.filter(account=job.account,id__in=job.input_ids).update(expires_at=deadline)
+    from apps.studio.domain import GENERATION_IDS, RENDER_IDS
+    # A send's inputs are its deck's pictures: they go with the deck, and only a file delivered moves it (_extend_draft).
+    if job.feature_id not in RENDER_IDS: FileAsset.objects.filter(account=job.account,id__in=job.input_ids).update(expires_at=deadline)
     if status == 'succeeded' and outputs:
-        from apps.studio.domain import GENERATION_IDS
-        if job.feature_id in GENERATION_IDS: _extend_draft(job,deadline)
+        if job.feature_id in GENERATION_IDS|RENDER_IDS: _extend_draft(job,deadline)
         from apps.studio.review import keep_output
         keep_output(job)
     job.status,job.error_code,job.completed_at = status,error_code,timezone.now()
@@ -359,16 +371,21 @@ def execute_job(job_id):
     output_dir = storage_path(f'outputs/{job.account_id}/{job.id}')
     output_dir.mkdir(parents=True,exist_ok=True,mode=0o700)
     try:
-        assets = owned_assets(job.account,job.input_ids) if job.input_ids else []
-        input_paths = verify_input_files(job,assets)
+        from apps.studio.domain import GENERATION_IDS, RENDER_IDS
+        if job.feature_id in RENDER_IDS:
+            from apps.studio.render_export import pinned_files
+            input_paths = pinned_files(job)
+        else: input_paths = verify_input_files(job,owned_assets(job.account,job.input_ids) if job.input_ids else [])
         secret=None
         if job.quote.secret_id:
             from .secrets import get_secret,decrypt
             secret=decrypt(get_secret(job.account,job.quote.secret_id,job=job))
-        from apps.studio.domain import GENERATION_IDS
         if job.feature_id in GENERATION_IDS:
             from apps.studio.execution import execute_generation
             result = execute_generation(job,output_dir)
+        elif job.feature_id in RENDER_IDS:
+            from apps.studio.render_export import execute_render
+            result = execute_render(job,output_dir)
         else:
             from processors.sandbox import execution_timeout
             result = execute(job.feature_id,input_paths,job.parameters,output_dir,secret=secret,timeout=execution_timeout(job.feature_id,len(input_paths)))
