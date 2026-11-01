@@ -350,7 +350,9 @@ def user_detail(request, pk):
                           'value':'—' if value is None and key.startswith(('price_','discount_')) else value}
                          for key,value in limits_for_plan(account.plan).items()]
     # Customer documents, newest first. Opening one is a separate audited act.
-    data['files']=FileAsset.objects.filter(account=account).order_by('-created_at')[:50]
+    # A deck's kept pictures are not documents: one deck has dozens of them. Spelled
+    # out, because exclude() on a JSON key also drops every file with no such key.
+    data['files']=FileAsset.objects.filter(Q(metadata__kind__isnull=True)|~Q(metadata__kind='deck_photo'),account=account).order_by('-created_at')[:50]
     data['can_open_files']=allowed(request.ops_user,['Support','Operations'])
     if data['can_open_files']:
         from .generation_views import _rows

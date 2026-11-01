@@ -483,6 +483,67 @@
         ],
         "type": "object"
       },
+      "DeckPins": {
+        "properties": {
+          "body_size": {
+            "type": "number"
+          },
+          "deck_seed": {
+            "type": "string"
+          },
+          "design": {
+            "type": "string"
+          },
+          "photos": {
+            "additionalProperties": {
+              "properties": {
+                "asset_id": {
+                  "format": "uuid",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "candidates": {
+                  "items": {
+                    "properties": {
+                      "asset_id": {
+                        "format": "uuid",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "asset_id"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "asset_id",
+                "candidates"
+              ],
+              "type": "object"
+            },
+            "type": "object"
+          },
+          "variants": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "design",
+          "deck_seed",
+          "body_size",
+          "variants",
+          "photos"
+        ],
+        "type": "object"
+      },
       "EditorCommand": {
         "description": "PDF points from displayed top-left, pages start at 1, image indices start at 0. Image input indices reference extra uploaded assets. Redaction requires explicit rasterization acknowledgement and a separate export. Every position is in source page numbers: `reorder.order` lists all source pages, deleted ones too, and the final order is that minus the deleted pages.",
         "oneOf": [
@@ -1435,6 +1496,11 @@
           },
           "provider_mode": {
             "type": "string"
+          },
+          "render": {
+            "$ref": "#/components/schemas/DeckPins",
+            "description": "A generated deck (`ai.pptx`): how it was drawn, so an edit changes only the slide it touches. `variants` and `photos` are by section id; a photo `asset_id` is the account's own file, null when none was kept, and `candidates` are small copies kept on offer for that slide, possibly none. `deck_seed` is opaque. Absent until a deck has been made.",
+            "readOnly": true
           },
           "revision": {
             "properties": {

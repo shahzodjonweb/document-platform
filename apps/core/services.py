@@ -289,6 +289,21 @@ def submit_job(account, quote_id, idempotency_key, origin='web'):
     record_event(account,'job.accepted',job=job,channel=origin)
     return job,True
 
+def _extend_draft(job, deadline):
+    """A generated result's draft, and the deck pictures its pins name, last as long as the result; never less than they already would.
+
+    Only those: a picture from pins since replaced, or from an attempt that left none, goes by its own clock.
+    """
+    from apps.studio.domain import unpack
+    from apps.studio.models import GenerationDraft
+    draft_id = (job.parameters or {}).get('generation_draft_id')
+    draft = GenerationDraft.objects.filter(pk=draft_id,account=job.account).first() if draft_id else None
+    if not draft: return
+    GenerationDraft.objects.filter(pk=draft.pk,expires_at__lt=deadline).update(expires_at=deadline)
+    photos = (unpack(draft.encrypted_data).get('_render') or {}).get('photos') or {}
+    pinned = [asset_id for photo in photos.values() for asset_id in (photo.get('asset_id'),*(c.get('asset_id') for c in photo.get('candidates') or [])) if asset_id]
+    FileAsset.objects.filter(account=job.account,state='ready',metadata__kind='deck_photo',pk__in=pinned,expires_at__lt=deadline).update(expires_at=deadline)
+
 @transaction.atomic
 def settle_job(job_id, status, error_code='', outputs=None, warnings=None, engine=''):
     job = Job.objects.select_for_update().select_related('account').get(pk=job_id)
@@ -311,6 +326,8 @@ def settle_job(job_id, status, error_code='', outputs=None, warnings=None, engin
             enqueue(artifact, f'job:{job.id}:{artifact.id}')
     FileAsset.objects.filter(account=job.account,id__in=job.input_ids).update(expires_at=deadline)
     if status == 'succeeded' and outputs:
+        from apps.studio.domain import GENERATION_IDS
+        if job.feature_id in GENERATION_IDS: _extend_draft(job,deadline)
         from apps.studio.review import keep_output
         keep_output(job)
     job.status,job.error_code,job.completed_at = status,error_code,timezone.now()
@@ -393,17 +410,24 @@ def cancel_job(account, job_id):
     raise DomainError('job_already_running',409)
 
 def cleanup_expired():
+    from . import storage
     now = timezone.now()
     count = 0
+    time_left = storage.time_limit()
     for asset in FileAsset.objects.filter(expires_at__lte=now).exclude(state='deleted').iterator():
+        # What is left waits for the next run: expired, it can no longer be opened.
+        if not time_left(): break
         if any(str(asset.pk) in j.input_ids for j in Job.objects.filter(account=asset.account,status__in=('running','queued','finalizing'))):
             continue
         asset.state = 'expired'
         asset.save(update_fields=['state'])
-        from . import storage
         storage.delete(asset.object_key)
-        asset.state = 'deleted'
-        asset.save(update_fields=['state'])
+        # A deck's kept pictures leave no row: up to sixty a deck, every key is read back below, and nothing asks after one that has gone.
+        if asset.metadata.get('kind') == 'deck_photo':
+            asset.delete()
+        else:
+            asset.state = 'deleted'
+            asset.save(update_fields=['state'])
         count += 1
     SecretHandle.objects.filter(expires_at__lte=now).delete()
     from .models import EmailChallenge, GoogleChallenge, AuthRateLimit, AuthChallenge, BotCallback, BotConversation, AuthReceipt
@@ -470,7 +494,6 @@ def cleanup_expired():
     # Each step stands alone: one that fails is logged and the rest still run,
     # so the health check always gets its turn to report the trouble.
     import logging
-    from . import storage
     from .storage_health import monitor
     for name, step in (('prune', lambda: storage.prune(now)), ('sync', storage.sync), ('evict', lambda: storage.evict(now)),
                        ('sweep', lambda: storage.sweep_if_due(now)), ('health', lambda: monitor(now))):

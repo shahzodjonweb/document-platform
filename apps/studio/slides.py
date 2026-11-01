@@ -761,8 +761,14 @@ def _fits(bullets, size, zone):
 LIST_ZONES = {'bullets': 'body', 'two_column': 'body_left'}
 
 
-def _deck_size(prepared):
-    """One body size for the whole deck, so slides do not change size partway."""
+def _deck_size(prepared, pinned=None):
+    """One body size for the whole deck, so slides do not change size partway.
+
+    A deck drawn before stays at the size it was drawn at (`pinned`): one slide
+    edited since must not move the type of all the others.
+    """
+    if pinned:
+        return pinned
     from .slide_layouts import Z, LEFT, TOP, BOTTOM
     zones = {**{kind: ZONES[name] for kind, name in LIST_ZONES.items()},
              'image_split': Z(LEFT, TOP, 13.333 * 0.52 - LEFT - 0.45, BOTTOM - TOP)}
@@ -828,7 +834,7 @@ def _within(zone, box):
     return Zone(left, top, right - left, bottom - top)
 
 
-def render_pptx(content, path, locale='en', role='user_document', style=None, photos=None):
+def render_pptx(content, path, locale='en', role='user_document', style=None, photos=None, pins=None):
     """One section, one slide — with the first one as the deck's title slide.
 
     The cover is `sections[0]` rather than an extra slide, so the count the
@@ -839,10 +845,25 @@ def render_pptx(content, path, locale='en', role='user_document', style=None, ph
     and otherwise with that layout's fallback. `photos` maps a section id to an
     already-fetched, already-validated picture; this function never touches the
     network, so a deck renders the same with or without one.
+
+    `pins` draws a deck again as it was drawn: {body_size, deck_seed, variants:
+    {section id: variant id}, design}, from what an earlier render returned.
+    Unedited slides then come out identical, whatever happened to another slide
+    or to the deck's title. The design beats the style's: the model's choice
+    reaches the draft only with the job's write-back, which a customer's edit
+    during the job skips (a new design takes new pins). A pinned variant is still
+    tried on a scratch slide; one that no longer holds its slide gives way to
+    `variants.choose`, and the slide is listed in metadata['repinned'].
+
+    metadata['deck_seed'] carries the title in clear (variants.seed): it belongs
+    in the encrypted draft, and is taken out before the metadata is kept with a
+    file (execution._deck_pins).
     """
     from . import layouts
     from .slide_layouts import DRAW, PHOTO_ZONES, Ctx, place_photo
-    style = style or {}
+    pins = pins or {}
+    pinned = pins.get('variants') or {}
+    style = {**(style or {}), **({'deck_design': pins['design']} if 'design' in pins else {})}
     photos = photos or {}
     from .deck_designs import look as design_look
     look = design_look(style)
@@ -877,7 +898,7 @@ def render_pptx(content, path, locale='en', role='user_document', style=None, ph
     deck = Presentation()
     deck.slide_width, deck.slide_height = SLIDE_WIDTH, SLIDE_HEIGHT
     apply_theme(deck, roles, (look['heading_font'], look['body_font']))
-    size = _deck_size(prepared)
+    size = _deck_size(prepared, pins.get('body_size'))
     drawn, pictured = [], []
 
     from .compositions import Canvas, compose, zone as inch_zone
@@ -887,8 +908,10 @@ def render_pptx(content, path, locale='en', role='user_document', style=None, ph
     # A designed deck draws each content slide in one of its layout's variants
     # (apps/studio/variants): tried on a scratch slide first, so one that would
     # cut the slide's text is passed over. A deck without a design is drawn as
-    # it always was.
-    deck_seed, taken, scratch = variants.seed(look, content), {}, variants.Scratch(SLIDE_WIDTH, SLIDE_HEIGHT)
+    # it always was. The seed is pinned too: it holds the title, and a slide that
+    # chooses again must not walk another order because the title was edited.
+    deck_seed = pins.get('deck_seed') or variants.seed(look, content)
+    taken, scratch = variants.taken_by(pinned.values()), variants.Scratch(SLIDE_WIDTH, SLIDE_HEIGHT)
     chosen_variants = []
 
     def variant_for(kind, section, lines, index, has_photo):
@@ -903,7 +926,8 @@ def render_pptx(content, path, locale='en', role='user_document', style=None, ph
                           look['heading_bold'])
             candidate.draw(context, section, lines)
             return not (context.shortened or context.squeezed)
-        return variants.choose(kind, section, lines, deck_seed=deck_seed, taken=taken, trial=trial)
+        return (variants.keep(pinned.get(section.get('id')), kind, section, lines, trial=trial)
+                or variants.choose(kind, section, lines, deck_seed=deck_seed, taken=taken, trial=trial))
 
     for index, (kind, lines, section) in enumerate(prepared):
         slide = deck.slides.add_slide(deck.slide_layouts[6])
@@ -951,6 +975,10 @@ def render_pptx(content, path, locale='en', role='user_document', style=None, ph
         notes = '' if kind == 'cover' or role in ('learner_material', 'public_preview') else section.get('notes', '')
         slide.notes_slide.notes_text_frame.text = notes
 
+    # A pin no longer drawn, for any reason: the slide did not hold it, its layout
+    # changed, or the variant is gone. A question slide is never pinned.
+    repinned = [section['id'] for (_, _, section), variant_id in zip(prepared, chosen_variants)
+                if not section.get('_questions') and pinned.get(section.get('id'), variant_id) != variant_id]
     apply_fonts(deck, look)
     deck.core_properties.title = content['title']
     deck.core_properties.author = 'PDF Master'
@@ -959,4 +987,5 @@ def render_pptx(content, path, locale='en', role='user_document', style=None, ph
     return {'path': str(path), 'name': path.name,
             'mime_type': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
             'page_count': len(deck.slides), 'role': role, 'shortened': shortened,
-            'metadata': {'layouts': drawn, 'variants': chosen_variants, 'photos': pictured, 'design': look['id']}}
+            'metadata': {'layouts': drawn, 'variants': chosen_variants, 'photos': pictured, 'design': look['id'],
+                         'body_size': size, 'deck_seed': deck_seed, 'repinned': repinned}}

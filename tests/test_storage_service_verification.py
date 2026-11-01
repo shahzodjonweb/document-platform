@@ -48,6 +48,30 @@ def canaries(monkeypatch):
     return account, bucket, assets, context
 
 
+def test_a_customers_deck_finishing_during_the_audit_does_not_fail_it(canaries):
+    """Its pictures wait for the cleanup loop's sync, up to five minutes; the audit waits ninety seconds."""
+    account, bucket, _, _ = canaries
+    since = timezone.now()
+    picture = f'inputs/{account.id}/{uuid.uuid4().hex}.jpg'
+    storage.write(picture, b'picture', 'image/jpeg', later=True)
+    FileAsset.objects.create(account=account, name='deck-photo.jpg', object_key=picture, mime_type='image/jpeg', sha256='0' * 64,
+                             size_bytes=7, page_count=1, metadata={'kind': 'deck_photo'}, expires_at=timezone.now() + timedelta(hours=24))
+    arrived = f'inputs/{account.id}/{uuid.uuid4().hex}.pdf'
+    storage.write(arrived, b'result', 'application/pdf')
+    bucket.failing = True
+    stuck = f'inputs/{account.id}/{uuid.uuid4().hex}.pdf'
+    storage.write(stuck, b'result', 'application/pdf')
+
+    written = checks.files_to_arrive(since)
+    assert set(written.values_list('key', flat=True)) == {arrived, stuck}
+    assert list(written.filter(remote=False).values_list('key', flat=True)) == [stuck], 'any other file still fails the audit'
+    assert not checks.files_to_arrive(timezone.now()).exists()
+    # It is what the audit asks, and the picture still counts for its 15 minute check, which reads every file.
+    audit = SCRIPT.with_name('verify-services.py').read_text()
+    assert "written=modules['service_checks_storage.py']['files_to_arrive'](storage_since)" in audit
+    assert 'late=StoredObject.objects.filter(remote=False,created_at__lt=' in audit
+
+
 def test_fetch_back_reads_bucket_into_private_cache_and_keeps_real_copies(canaries, monkeypatch, capsys):
     account, bucket, assets, context = canaries
     resolver = storage.storage_path

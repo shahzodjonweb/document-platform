@@ -232,6 +232,21 @@ tests/test_studio_configuration.py::test_the_provider_key_is_never_published
 # Staff review records of AI requests
 tests/test_generation_review.py::test_an_ai_document_leaves_its_request_and_a_copy_for_review
 
+# A generated deck keeps what draws it again: an edit moves only its own slide, and
+# keeping it never costs the deck, the customer's words or a picture's address
+tests/test_deck_pins.py::test_a_generated_deck_stores_what_draws_it_again
+tests/test_deck_pins.py::test_an_edit_redraws_only_the_slide_it_touches
+tests/test_deck_pins.py::test_a_customers_edit_during_the_job_keeps_their_words_and_the_pins
+tests/test_deck_pins.py::test_a_draft_shows_its_pins_without_any_address
+tests/test_deck_pins.py::test_storage_that_fails_altogether_does_not_fail_the_job
+tests/test_deck_pins.py::test_pictures_live_as_long_as_the_deck_and_a_later_result_extends_them
+tests/test_deck_pins.py::test_pictures_the_pins_no_longer_name_go_by_their_own_clock
+tests/test_deck_pins.py::test_a_change_after_a_save_keeps_the_design_the_model_chose[auto_on_setup_screen]
+tests/test_deck_pins.py::test_a_change_takes_the_design_from_the_pins_when_the_style_never_had_it
+tests/test_deck_pins.py::test_a_save_that_rebuilds_the_outline_leaves_the_deck_behind[reworded_brief]
+tests/test_deck_pins.py::test_a_save_during_the_job_that_rebuilds_the_outline_leaves_the_deck_behind[reworded_brief]
+tests/test_deck_pins.py::test_a_change_that_outlives_its_document_can_still_be_saved
+
 # Deck stock photos
 tests/test_photos.py::test_a_paid_deck_carries_its_photos_and_their_licence_record
 tests/test_photos.py::test_a_hit_pointing_anywhere_but_pixabay_is_dropped
@@ -400,6 +415,7 @@ tests/test_bot_deployment.py::test_production_bot_waits_for_admin_configuration_
 
 # File retention in the object-storage bucket
 tests/test_object_storage.py::test_an_expired_file_leaves_the_bucket
+tests/test_object_storage.py::test_a_bucket_that_stopped_answering_does_not_keep_the_alert_waiting
 
 # Form filling
 tests/test_advanced_processors.py::test_interactive_unicode_form_has_value_and_embedded_appearance

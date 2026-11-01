@@ -1,6 +1,7 @@
 """Files kept in the object storage bucket, with only their keys in the database."""
 import io
 from datetime import timedelta
+from types import SimpleNamespace
 
 import pytest
 from django.utils import timezone
@@ -69,6 +70,116 @@ def bucket():
 def evict_now():
     StoredObject.objects.update(used_at=timezone.now() - timedelta(hours=storage.WORKING_COPY_HOURS + 1))
     storage.evict()
+
+
+def test_bytes_are_kept_whole_or_not_at_all(bucket, monkeypatch):
+    key = 'inputs/account/whole.jpg'
+    storage.write(key, b'first', 'image/jpeg')
+    path = storage.storage_path(key)
+    assert path.read_bytes() == b'first' and path.stat().st_mode & 0o777 == 0o600
+    assert StoredObject.objects.get(key=key).size == 5
+
+    def refuse(*args):
+        raise OSError('disk full')
+    monkeypatch.setattr(storage.os, 'replace', refuse)
+    with pytest.raises(OSError):
+        storage.write('inputs/account/half.jpg', b'second', 'image/jpeg')
+    assert [item.name for item in path.parent.iterdir()] == ['whole.jpg'], 'no partial file left behind'
+    assert not StoredObject.objects.filter(key='inputs/account/half.jpg').exists()
+
+
+def test_a_file_kept_for_later_waits_for_the_sync(bucket, django_capture_on_commit_callbacks):
+    with django_capture_on_commit_callbacks(execute=True):
+        storage.write('inputs/account/now.jpg', b'now', 'image/jpeg')
+        storage.write('inputs/account/later.jpg', b'later', 'image/jpeg', later=True)
+    assert bucket.keys() == {'inputs/account/now.jpg'}
+    assert not StoredObject.objects.get(key='inputs/account/later.jpg').remote
+    assert storage.sync() == 1 and 'inputs/account/later.jpg' in bucket.keys()
+    assert StoredObject.objects.get(key='inputs/account/later.jpg').remote
+
+
+# A call to a bucket that does not answer: the client's timeouts and four tries.
+STALL = 47
+
+
+@pytest.fixture
+def stopped(bucket, monkeypatch):
+    """A bucket that can stop answering, each call then failing after what that costs on a clock of its own."""
+    state = SimpleNamespace(answering=True, now=0.0, calls=0)
+
+    def stalling(call):
+        def wrapped(*args, **kwargs):
+            if state.answering:
+                return call(*args, **kwargs)
+            state.now += STALL
+            state.calls += 1
+            raise ConnectionError('no answer')
+        return wrapped
+    for name in ('put_object', 'get_object', 'delete_object', 'list_objects_v2'):
+        monkeypatch.setattr(bucket, name, stalling(getattr(bucket, name)))
+    monkeypatch.setattr(storage, 'time', SimpleNamespace(monotonic=lambda: state.now))
+    monkeypatch.setattr('apps.core.storage_health.pause', lambda seconds: None)
+    monkeypatch.setitem(storage._last_sweep, 'at', 0.0)
+    return state
+
+
+def test_a_bucket_that_stopped_answering_holds_a_sync_for_minutes_and_the_next_goes_on(stopped, bucket):
+    keys = {f'inputs/account/{number}.jpg' for number in range(10)}
+    for key in keys:
+        storage.write(key, b'x', 'image/jpeg', later=True)
+    stopped.answering = False
+    assert storage.sync() == 0
+    assert stopped.calls == 3 and stopped.now <= storage.PASS_SECONDS + STALL
+    assert not StoredObject.objects.filter(remote=True).exists()
+    stopped.answering = True
+    assert storage.sync() == 10 and bucket.keys() == keys
+
+
+def test_a_bucket_that_stopped_answering_does_not_keep_the_alert_waiting(stopped, bucket):
+    """Pictures wait in dozens, and go in dozens: neither may hold the health check up behind them for hours."""
+    from apps.core.models import StaffAlert
+    customer = account()
+    for number in range(10):
+        key = f'inputs/{customer.id}/gone-{number}.jpg'
+        storage.write(key, b'x', 'image/jpeg')
+        FileAsset.objects.create(account=customer, name=f'{number}.jpg', object_key=key, mime_type='image/jpeg', sha256='0' * 64, size_bytes=1, page_count=1,
+                                 metadata={'kind': 'deck_photo'}, expires_at=timezone.now() - timedelta(minutes=1))
+        storage.write(f'inputs/{customer.id}/waiting-{number}.jpg', b'x', 'image/jpeg', later=True)
+    StoredObject.objects.filter(key__contains='waiting').update(created_at=timezone.now() - timedelta(minutes=20))
+    stopped.answering = False
+    cleanup_expired()
+    assert StaffAlert.objects.get().kind == 'storage_failing'
+    # Three bucket calls for the expired files, three for the sync, the sweep's one and the canary's two.
+    assert stopped.calls == 3 + 3 + 1 + 2 and stopped.now == stopped.calls * STALL
+    # What they had no time for is not lost: the next runs do it, once the bucket answers.
+    assert FileAsset.objects.filter(account=customer, metadata__kind='deck_photo').count() == 7
+    stopped.answering = True
+    assert cleanup_expired() == 7
+    assert not FileAsset.objects.filter(account=customer, metadata__kind='deck_photo').exists()
+    assert not StoredObject.objects.filter(key__contains='gone').exists()
+    assert {f'inputs/{customer.id}/waiting-{number}.jpg' for number in range(10)} <= bucket.keys()
+
+
+def test_rows_whose_files_have_gone_do_not_stop_every_sync_at_the_same_place(bucket):
+    for number in range(5):
+        storage.write(f'inputs/account/gone-{number}.jpg', b'x', 'image/jpeg', later=True)
+        storage.storage_path(f'inputs/account/gone-{number}.jpg').unlink()
+    storage.write('inputs/account/here.jpg', b'x', 'image/jpeg', later=True)
+    assert storage.sync() == 1 and bucket.keys() == {'inputs/account/here.jpg'}
+
+
+def test_files_the_bucket_refuses_do_not_keep_the_others_from_arriving(bucket, monkeypatch):
+    real = bucket.put_object
+
+    def refusing(**fields):
+        if 'refused' in fields['Key']:
+            raise ValueError('refused')
+        return real(**fields)
+    monkeypatch.setattr(bucket, 'put_object', refusing)
+    for number in range(5):
+        storage.write(f'inputs/account/refused-{number}.jpg', b'x', 'image/jpeg', later=True)
+    storage.write('inputs/account/taken.jpg', b'x', 'image/jpeg', later=True)
+    assert storage.sync() == 1 and bucket.keys() == {'inputs/account/taken.jpg'}
 
 
 def test_without_object_storage_files_stay_on_the_server_as_before():

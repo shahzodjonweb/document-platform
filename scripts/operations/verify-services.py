@@ -192,7 +192,7 @@ if storage_settings.get('ready'):
     # Every file this audit wrote (uploads, results, previews) must reach the bucket.
     deadline=time.monotonic()+90
     while True:
-        written=StoredObject.objects.filter(created_at__gte=storage_since)
+        written=modules['service_checks_storage.py']['files_to_arrive'](storage_since)
         pending=written.filter(remote=False).count()
         if not pending or time.monotonic()>deadline:break
         time.sleep(3)

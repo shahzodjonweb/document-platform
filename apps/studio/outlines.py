@@ -97,5 +97,7 @@ def execute_outline(job,draft,data,original,config,output_dir,deadline=None):
     path=output_dir/'outline.json';path.write_text(json.dumps(content,ensure_ascii=False,indent=2),encoding='utf-8')
     data['content']={**content,'questions':data['content']['questions']}
     data.pop('_source_seed',None)
+    # A new plan: the deck drawn before it is gone, and the document made from this draws its own.
+    data.pop('_render',None)
     GenerationDraft.objects.filter(pk=draft.pk,version=draft.version,encrypted_data=original).update(encrypted_data=pack(data),version=F('version')+1)
     return {'artifacts':[{'path':str(path),'name':path.name,'title':content['title'],'mime_type':'application/json','page_count':1,'role':'user_document','metadata':{'kind':'text'}}],'metadata':{'engine':'outline-'+config['mode'],'warnings':warnings}}

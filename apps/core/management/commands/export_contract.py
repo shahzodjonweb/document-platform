@@ -50,12 +50,16 @@ def extend_schema(models, endpoint, paths):
         'ManualPaymentOptions':obj({'enabled':B,'currency':S,'period_days':I,'plans':arr(obj({'plan':{'enum':['plus','premium']},'price':I,'regular_price':I,'discount':{'anyOf':[ref('PlanDiscount'),{'type':'null'}]}},['plan','price','regular_price','discount'])),'automatic':obj({'available':B},['available']),'payment':{'anyOf':[ref('ManualPayment'),{'type':'null'}]}},['enabled','currency','period_days','plans','automatic','payment']),
         'SubscriptionState':obj({'plan':S,'subscription':{'anyOf':[ref('Subscription'),{'type':'null'}]},'sandbox':B},['plan','subscription','sandbox']),
         'BotDelivery':obj({'id':UUID,'status':S,'attempts':I},['id','status','attempts']),
+        'DeckPins':obj({'design':S,'deck_seed':S,'body_size':{'type':'number'},'variants':{'type':'object','additionalProperties':S},
+                        'photos':{'type':'object','additionalProperties':obj({'asset_id':{'type':['string','null'],'format':'uuid'},'candidates':arr(obj({'asset_id':UUID},['asset_id']))},['asset_id','candidates'])}},
+                       ['design','deck_seed','body_size','variants','photos']),
     })
     models['GenerationMaterial']=obj({'key':S,'title':S,'sections':arr(ref('GenerationSection')),'questions':arr(ref('GenerationQuestion')),'citations':arr(obj({'asset_id':UUID,'page':I,'quote':S}))},['key','title','sections','questions'])
     models['GenerationContent']['properties']['materials']=arr(ref('GenerationMaterial'))
     models['GenerationContent']['properties']['citations']['items']['properties']['quote']=S
     for field in ('transcription_ready','transcription_reviewed'):models['GenerationDraft']['properties'][field]={'type':'boolean','readOnly':True}
     models['GenerationDraft']['properties']['revision']=obj({'source_draft_id':UUID,'source_version':I,'selected_section_ids':arr(S),'base_content':ref('GenerationContent')})
+    models['GenerationDraft']['properties']['render']={**ref('DeckPins'),'readOnly':True,'description':'A generated deck (`ai.pptx`): how it was drawn, so an edit changes only the slide it touches. `variants` and `photos` are by section id; a photo `asset_id` is the account\'s own file, null when none was kept, and `candidates` are small copies kept on offer for that slide, possibly none. `deck_seed` is opaque. Absent until a deck has been made.'}
     # Typed command alternatives exactly match the processor's strict allowlist.
     from processors.editor import FIELDS
     # What a field is, past a plain string. `original` and `text` carry the bound normalize holds them to.
