@@ -898,6 +898,24 @@
             },
             "type": "array"
           },
+          "limits": {
+            "description": "The most a draft holds: `commands` changes, measuring `bytes` as UTF-8 compact JSON with the defaults filled in, the count of `new TextEncoder().encode(JSON.stringify(commands)).length`.",
+            "properties": {
+              "bytes": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "commands": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "commands",
+              "bytes"
+            ],
+            "type": "object"
+          },
           "pages": {
             "items": {
               "properties": {
@@ -927,7 +945,8 @@
           "file",
           "pages",
           "commands",
-          "input_ids"
+          "input_ids",
+          "limits"
         ],
         "type": "object"
       },
@@ -5791,6 +5810,22 @@
           },
           "409": {
             "description": "State conflict or quota unavailable"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "`payload_too_large`: the draft measures over `limits.bytes`, or the body over 128 KiB. Nothing is saved."
           }
         },
         "security": [

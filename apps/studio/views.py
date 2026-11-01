@@ -11,7 +11,7 @@ from apps.core.errors import DomainError
 from apps.core.models import Artifact,FileAsset,Job
 from apps.core.serializers import asset_data,quote_data,job_data
 from apps.core.services import owned_assets,create_quote,submit_job,execute_job,record_event
-from apps.core.policy import FEATURES,plan_limits,require_feature
+from apps.core.policy import EDITOR_LIMITS,FEATURES,payload_bytes,plan_limits,require_feature
 from operations.integrations import ai_config
 from .domain import CV,DOCUMENT,SLIDES,GENERATION_IDS,_image_cap,allowed,create_draft,draft_data,draft_jobs,update_draft,generation_quote,pack,unpack,limits
 from .models import GenerationDraft,SavedDefinition,EducationProject,PracticeAttempt,ShareGrant,EditorDocument,WorkflowRun
@@ -398,7 +398,7 @@ def shared(request,token):
     return download_asset(request,s.artifact.file)
 
 def editor_data(e):
-    return {'id':str(e.id),'version':e.version,'file':asset_data(e.file),'pages':e.file.metadata.get('page_sizes',[]),'form_fields':e.file.metadata.get('form_fields',[]),'image_counts':e.file.metadata.get('image_counts',[]),'commands':e.commands,'input_ids':e.input_ids}
+    return {'id':str(e.id),'version':e.version,'file':asset_data(e.file),'pages':e.file.metadata.get('page_sizes',[]),'form_fields':e.file.metadata.get('form_fields',[]),'image_counts':e.file.metadata.get('image_counts',[]),'commands':e.commands,'input_ids':e.input_ids,'limits':EDITOR_LIMITS}
 @api(('GET','POST'))
 def editors(request):
     if request.method=='POST':
@@ -416,10 +416,10 @@ def editor_detail(request,pk):
         if e.file.state!='ready' or e.file.expires_at<=timezone.now():raise DomainError('file_expired',410)
         if request.method=='DELETE':e.delete();return {'deleted':True}
         if request.method=='PATCH':
-            data=body(request)
+            data=body(request,limit=131072,too_large='payload_too_large')
             if data.get('version')!=e.version:raise DomainError('version_conflict',409)
             commands=data.get('commands',[])
-            if not isinstance(commands,list) or len(commands)>100 or len(json.dumps(commands))>20000:raise DomainError('invalid_parameters')
+            if not isinstance(commands,list) or len(commands)>EDITOR_LIMITS['commands']:raise DomainError('invalid_parameters')
             ids=data.get('input_ids',e.input_ids)
             if not ids or str(ids[0])!=str(e.file_id):raise DomainError('invalid_inputs')
             from apps.core.services import validate_inputs
@@ -430,6 +430,8 @@ def editor_detail(request,pk):
             if commands:
                 try:commands=normalize_parameters('editor.visual',{'commands':commands,'accept_rasterization':True},[a.metadata for a in assets])['commands']
                 except ProcessorError as error:raise DomainError(error.code) from None
+            # Measured with the defaults filled in: this is what is stored, sent back and quoted.
+            if payload_bytes(commands)>EDITOR_LIMITS['bytes']:raise DomainError('payload_too_large',413)
             e.commands=commands;e.input_ids=ids;e.version+=1;e.save(update_fields=['commands','input_ids','version'])
         return editor_data(e)
 @api(('POST',))

@@ -121,7 +121,7 @@ Local tests check English, Russian and Uzbek OCR phrases, real searchable text p
 
 ## Editor command contract
 
-All editor requests use `{commands:[...], accept_rasterization:false}` with at most 100 commands. Coordinates are PDF points from the **displayed top-left**; page indices start at 1. `page_sizes` metadata supplies displayed width/height. Cropped/nonzero-origin page geometry currently fails explicitly; ordinary rotations are normalized. Additional input images are ordered after the source PDF at `input_index` 1 and higher; existing page `image_index` starts at 0. There are no client filesystem paths or executable settings.
+All editor requests use `{commands:[...], accept_rasterization:false}` with at most 100 commands; a saved draft measures at most 100,000 bytes of compact UTF-8 JSON (`payload_bytes`, `apps/core/policy.py`), and the document's `limits` says so to the client. Coordinates are PDF points from the **displayed top-left**; page indices start at 1. `page_sizes` metadata supplies displayed width/height. Cropped/nonzero-origin page geometry currently fails explicitly; ordinary rotations are normalized. Additional input images are ordered after the source PDF at `input_index` 1 and higher; existing page `image_index` starts at 0. There are no client filesystem paths or executable settings.
 
 | Catalog ID | Command types and main fields |
 | --- | --- |
