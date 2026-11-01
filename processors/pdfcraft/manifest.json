@@ -1,0 +1,17 @@
+{
+  "version": "0.16.1",
+  "license": "Apache-2.0 OR MIT",
+  "source": "https://github.com/storytold/pdfcraft",
+  "archives": {
+    "x86_64": {
+      "url": "https://github.com/shahzodjonweb/document-platform/releases/download/pdfcraft-cli-0.16.1/pdfcraft-cli-0.16.1-linux-x86_64.tar.gz",
+      "sha256": "5d4e64a13863d3540043a5544ded933c93ee4e700afe5021fca6425fa42a99eb",
+      "bytes": 41975181
+    },
+    "aarch64": {
+      "url": "https://github.com/shahzodjonweb/document-platform/releases/download/pdfcraft-cli-0.16.1/pdfcraft-cli-0.16.1-linux-aarch64.tar.gz",
+      "sha256": "f93eb3927fa6c0126d8efd1bbf4b661a38e32d3b12fb5ccecdb85f463cc4258c",
+      "bytes": 40384274
+    }
+  }
+}

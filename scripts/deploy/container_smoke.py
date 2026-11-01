@@ -112,6 +112,103 @@ def check_scanner(compose, env):
         raise RuntimeError('Scanner smoke failed: the worker was OOM-killed, restarted or stopped.')
 
 
+# A generated Cyrillic page edited by PdfCraft under the processor child's
+# limits, inside the read-only worker without any capability: the binary must
+# be in the image and start, change the text in place, and write only under
+# the root it is given. Its env is PATH plus HOME, TMPDIR and XDG_* at that root.
+# The listing covers $HOME and the container's tmpfs mounts, and nothing else
+# writes to those during the check.
+PDFCRAFT_CHECK = """import json
+import os
+import subprocess
+import tempfile
+from pathlib import Path
+from pypdf import PdfReader
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfgen import canvas
+from processors.__main__ import apply_limits
+apply_limits()
+binary = os.environ['PDFMASTER_PDFCRAFT_BIN']
+version = json.loads(Path('processors/pdfcraft/manifest.json').read_text())['version']
+
+def listing(skip):
+    seen = {}
+    for top in {str(Path.home()), '/tmp', tempfile.gettempdir(), '/run', '/dev/shm'}:
+        for folder, folders, files in os.walk(top):
+            folders[:] = [name for name in folders if os.path.join(folder, name) != skip]
+            for path in (folder, *(os.path.join(folder, name) for name in folders + files)):
+                state = os.lstat(path)
+                seen[path] = (state.st_mode, state.st_size, state.st_mtime_ns)
+    return seen
+
+def report_of(root, child, steps):
+    (root / 'steps.json').write_text(json.dumps(steps, ensure_ascii=False))
+    done = subprocess.run([binary, 'run', '--script', str(root / 'steps.json'), '--report', '--root', str(root)],
+                          stdin=subprocess.DEVNULL, capture_output=True, text=True, cwd=root, env=child, timeout=60)
+    try:
+        report = json.loads(done.stdout)
+    except ValueError:
+        report = {}  # a crash prints no report, and says why on stderr
+    failed = [step for step in report.get('steps', []) if step.get('status') != 'ok']
+    assert done.returncode == 0 and report.get('ok') is True and report.get('steps') and not failed, f'pdfcraft-cli run: {done.returncode} {failed} {done.stderr[-500:]}'
+    return report
+
+with tempfile.TemporaryDirectory(prefix='pdfcraft-check-') as folder:
+    root = Path(folder).resolve()
+    source, edited = root / 'source.pdf', root / 'edited.pdf'
+    pdfmetrics.registerFont(TTFont('Noto', 'processors/assets/fonts/NotoSans-Regular.ttf'))
+    page = canvas.Canvas(str(source), pagesize=(595, 842))
+    page.setFont('Noto', 12)
+    for top, line in ((770, 'Договор поставки учебников'), (730, 'Стороны договорились, что поставка'),
+                      (714, 'придёт в Ташкент до конца месяца.'), (670, 'Остальные условия остаются прежними.')):
+        page.drawString(72, top, line)
+    page.save()
+    child = {'PATH': os.environ['PATH'], **dict.fromkeys(('HOME', 'TMPDIR', 'XDG_CACHE_HOME', 'XDG_CONFIG_HOME',
+             'XDG_DATA_HOME', 'XDG_STATE_HOME', 'XDG_RUNTIME_DIR'), str(root))}
+    before = listing(str(root))
+    probe = subprocess.run([binary, '--version'], stdin=subprocess.DEVNULL, capture_output=True, text=True,
+                           cwd=root, env=child, timeout=30)
+    assert probe.returncode == 0 and f'pdfcraft-cli {version}' in probe.stdout, f'version probe: {probe.returncode} {probe.stderr[-500:]}'
+    opened = [{'tool': 'doc_open', 'args': {'path': str(source)}}, {'tool': 'text_paragraphs', 'args': {'doc': 1, 'page': 1}}]
+    listed = report_of(root, child, opened)['steps'][1]['result'][0]['paragraphs']
+    target = next(item for item in listed if 'Ташкент' in item['text'])
+    assert target['editor_text'].count('\\n') == 1, 'the two rows were not read as one paragraph with a row break'
+    report_of(root, child, [*opened, {'tool': 'text_edit', 'args': {'doc': 1, 'page': 1, 'paragraph': target['paragraph'],
+              'text': target['editor_text'].replace('Ташкент', 'Самарканд')}},
+              {'tool': 'doc_save', 'args': {'doc': 1, 'path': str(edited)}}])
+    after = listing(str(root))
+    outside = sorted(path for path in before.keys() | after.keys() if before.get(path) != after.get(path))
+    assert not outside, f'pdfcraft-cli wrote outside its root: {outside[:10]}'
+    text = ''.join(PdfReader(edited).pages[0].extract_text().split())
+    assert 'Самарканд' in text and 'Ташкент' not in text, 'the new word is not in the saved file'
+    assert all(line in text for line in ('Договорпоставкиучебников', 'Стороныдоговорились,чтопоставка', 'Остальныеусловияостаютсяпрежними.')), 'the other text changed'
+print(f'PdfCraft {version} edited a generated Cyrillic page in the read-only worker and wrote nothing outside its root.')
+"""
+
+
+def check_pdfcraft(compose, env):
+    run(compose + ['exec', '-T', 'worker', 'python', '-c', PDFCRAFT_CHECK], env=env, timeout=180)
+    container = run(compose + ['ps', '-q', 'worker'], env=env, stdout=subprocess.PIPE, text=True).stdout.strip()
+    state = run(['docker', 'inspect', '--format', '{{.State.OOMKilled}} {{.RestartCount}} {{.State.Running}}',
+                 container], stdout=subprocess.PIPE, text=True).stdout.split()
+    if state != ['false', '0', 'true']:
+        raise RuntimeError('PdfCraft smoke failed: the worker was OOM-killed, restarted or stopped.')
+
+
+# LibreOffice's numbers for the deck editor, in the log and never judged: a
+# failure here must not fail a build, and it runs last so that nothing it does
+# to the worker can touch another check. Pull requests only: it adds about three
+# minutes to the package job, and on main every deploy waits for that job.
+def office_timings(compose, env):
+    if env.get('GITHUB_EVENT_NAME') != 'pull_request':
+        return
+    try:
+        run(compose + ['exec', '-T', 'worker', 'python', 'scripts/deploy/office_timing.py'], env=env, timeout=210)
+    except Exception as error:
+        print(f'OFFICE-TIMING the probe did not finish: {type(error).__name__}')
+
+
 # One generated screenshot of a fictional CV read by OCR through the real
 # bounded child, inside the read-only reader with its production memory
 # limit: tesseract and its languages must be in the image, and a page must
@@ -185,8 +282,10 @@ print('Production settings keep development features disabled.')
 """
                 run(compose+['exec','-T','api','python','-c',code],env=env)
                 check_scanner(compose, env)
+                check_pdfcraft(compose, env)
                 check_reader(compose, env)
                 wait_for_cleanup_cycle(compose, env)
+                office_timings(compose, env)
             print('Isolated '+args.component+' production stack and gateway routes verified.')
         finally:
             # Only the uniquely named ephemeral CI project may have volumes removed.
