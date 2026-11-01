@@ -59,7 +59,7 @@ def _run(request: dict, timeout: int) -> dict:
     # credentials from the API/worker environment.
     environment = {key: os.environ[key] for key in
         ('PATH', 'LANG', 'LC_ALL', 'TMPDIR', 'TMP', 'TEMP', 'SYSTEMROOT', 'PDFMASTER_SOFFICE_BIN','PDFMASTER_TESSERACT_BIN',
-         'SCANNER_MODELS')
+         'PDFMASTER_PDFCRAFT_BIN','SCANNER_MODELS')
         if key in os.environ}
     environment['PYTHONDONTWRITEBYTECODE'] = '1'
     # Numeric image processing must fit the existing child-process budget.

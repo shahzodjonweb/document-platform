@@ -11,6 +11,15 @@ RUN python -I /tmp/scanner/fetch_scanner_models.py --manifest /tmp/scanner/model
         --dest /opt/pdfmaster/scanner-models \
     && chmod -R a=rX /opt/pdfmaster/scanner-models && rm -rf /tmp/scanner
 ENV SCANNER_MODELS=/opt/pdfmaster/scanner-models
+# The PdfCraft binary (~84 MB) and its licences, pinned by size and SHA-256 in
+# manifest.json and fetched for this image's architecture: the same rules as
+# the scanner weights. Nothing runs it until the editor's flags turn it on.
+COPY processors/pdfcraft/manifest.json /tmp/pdfcraft/manifest.json
+COPY scripts/fetch_pdfcraft.py /tmp/pdfcraft/fetch_pdfcraft.py
+RUN python -I /tmp/pdfcraft/fetch_pdfcraft.py --manifest /tmp/pdfcraft/manifest.json \
+        --dest /opt/pdfmaster/pdfcraft \
+    && rm -rf /tmp/pdfcraft
+ENV PDFMASTER_PDFCRAFT_BIN=/opt/pdfmaster/pdfcraft/pdfcraft-cli
 COPY requirements.lock ./
 # The scanner must run on the CPU build of onnxruntime and headless OpenCV;
 # the GPU wheel or another OpenCV build arriving through a dependency (names
