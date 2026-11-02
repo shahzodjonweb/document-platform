@@ -1,4 +1,4 @@
-from operations.integrations import telegram_config
+from operations.integrations import editor_flags, telegram_config
 from operations.middleware import known_zone
 import json
 import logging
@@ -289,6 +289,9 @@ def file_download(request,asset_id):
 def quotes(request):
     throttle(request,'quotes',60)
     data=body(request)
+    # Once the new editor is on, a draft goes by a pointer to it (POST /editor/documents/{id}/quote), not by carrying
+    # its marks here. Batches of forms call create_quote themselves and stay as they are.
+    if str(data.get('feature_id')).startswith('editor.') and editor_flags()['editor_v2']: raise DomainError('feature_unavailable',409)
     return JsonResponse(quote_data(create_quote(request.account,data.get('feature_id'),data.get('input_ids'),data.get('parameters',{}),data.get('secret_id'))),status=201)
 
 @api(('GET','POST'))
@@ -296,7 +299,9 @@ def jobs(request):
     if request.method=='POST':
         throttle(request,'jobs',60)
         data=body(request)
-        job,created=submit_job(request.account,data.get('quote_id'),request.headers.get('Idempotency-Key',''))
+        to_chat=data.get('deliver_to_chat',False)
+        if type(to_chat) is not bool: raise DomainError('invalid_request')
+        job,created=submit_job(request.account,data.get('quote_id'),request.headers.get('Idempotency-Key',''),'mini_app' if to_chat else 'web')
         if settings.LOCAL_SYNC_JOBS and created: job=execute_job(job.id)
         return JsonResponse(job_data(job),status=201 if created else 200)
     query=Job.objects.filter(account=request.account).order_by('-created_at')

@@ -1425,6 +1425,165 @@
         ],
         "type": "object"
       },
+      "EditorDocumentRow": {
+        "description": "A draft as a list shows it: without its marks, which only the draft itself answers with.",
+        "properties": {
+          "device": {
+            "description": "The device that last changed it, as it named itself; empty when it did not.",
+            "maxLength": 40,
+            "type": "string"
+          },
+          "file": {
+            "$ref": "#/components/schemas/Asset"
+          },
+          "form_fields": {
+            "items": {
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "type"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "image_counts": {
+            "items": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "input_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "limits": {
+            "description": "The most a draft holds: `commands` changes, measuring `bytes` as UTF-8 compact JSON with the defaults filled in, the count of `new TextEncoder().encode(JSON.stringify(commands)).length`.",
+            "properties": {
+              "bytes": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "commands": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "commands",
+              "bytes"
+            ],
+            "type": "object"
+          },
+          "pages": {
+            "items": {
+              "properties": {
+                "height": {
+                  "type": "number"
+                },
+                "width": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "width",
+                "height"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "updated_at": {
+            "description": "When the draft last changed; null until it first does.",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "version": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "file",
+          "pages",
+          "input_ids",
+          "limits",
+          "updated_at",
+          "device"
+        ],
+        "type": "object"
+      },
+      "EditorQuoteSummary": {
+        "properties": {
+          "changes_by_page": {
+            "additionalProperties": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "description": "How many changes each page holds, by its number in the file as uploaded. A form field or a new page order belongs to no page.",
+            "type": "object"
+          },
+          "cost": {
+            "$ref": "#/components/schemas/QuoteCost"
+          },
+          "kept_until": {
+            "description": "When a file made now would expire.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "pages_after": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "pages_before": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "raster_pages": {
+            "description": "The pages, numbered as uploaded, that will become pictures for their black-out. A page being deleted is not among them.",
+            "items": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "size_estimate": {
+            "description": "About how many bytes the file comes to. In a chat, a file over 50 MB arrives as a link.",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "changes_by_page",
+          "pages_before",
+          "pages_after",
+          "raster_pages",
+          "size_estimate",
+          "kept_until",
+          "cost"
+        ],
+        "type": "object"
+      },
       "EducationProject": {
         "properties": {
           "attempts": {
@@ -1997,6 +2156,43 @@
           "parameters": {
             "type": "object"
           },
+          "per_command": {
+            "description": "What a send from the editor did with each change, once it has run.",
+            "items": {
+              "properties": {
+                "engine": {
+                  "type": "string"
+                },
+                "index": {
+                  "description": "Its position in the draft's `commands`, from 0.",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "status": {
+                  "description": "`skipped`: its page was deleted in the same send.",
+                  "enum": [
+                    "applied",
+                    "skipped"
+                  ]
+                }
+              },
+              "required": [
+                "index",
+                "status",
+                "engine"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "rasterized_pages": {
+            "description": "The pages, numbered as uploaded, that became pictures in a send from the editor.",
+            "items": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "array"
+          },
           "started_at": {
             "format": "date-time",
             "type": [
@@ -2529,10 +2725,11 @@
       "QuoteCost": {
         "properties": {
           "kind": {
-            "description": "`file_task`: this send uses one of the week's file tasks. `included`: the plan has no weekly limit.",
+            "description": "`file_task`: this send uses one of the week's file tasks. `included`: the plan has no weekly limit. `none`: it uses nothing, as the same file already exists or is being made or, with `count_once` on, this draft has been counted this week.",
             "enum": [
               "file_task",
-              "included"
+              "included",
+              "none"
             ]
           },
           "left": {
@@ -5996,7 +6193,7 @@
                   "properties": {
                     "results": {
                       "items": {
-                        "$ref": "#/components/schemas/EditorDocument"
+                        "$ref": "#/components/schemas/EditorDocumentRow"
                       },
                       "type": "array"
                     }
@@ -6409,7 +6606,7 @@
     },
     "/editor/documents/{id}/quote": {
       "post": {
-        "description": "",
+        "description": "One send of the stored draft: one quote, one job, one file task. The marks are read again at submission and when the job runs; if they have changed since, that is `version_conflict` and nothing is counted. A send identical to the last file made, or to the one being made, returns that job rather than a new one.",
         "operationId": "quoteEditorDocument",
         "parameters": [
           {
@@ -6438,6 +6635,13 @@
                   "accept_rasterization": {
                     "type": "boolean"
                   },
+                  "deliver": {
+                    "description": "Where the file goes: this is a send of the stored draft, by a pointer to it. The Quote holds no marks and comes with `summary`. Left out by the web from before these sends, whose quote carries the marks.",
+                    "enum": [
+                      "chat",
+                      "download"
+                    ]
+                  },
                   "version": {
                     "minimum": 0,
                     "type": "integer"
@@ -6457,7 +6661,20 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Quote"
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Quote"
+                    },
+                    {
+                      "properties": {
+                        "summary": {
+                          "$ref": "#/components/schemas/EditorQuoteSummary"
+                        }
+                      },
+                      "required": [],
+                      "type": "object"
+                    }
+                  ]
                 }
               }
             },
@@ -6477,7 +6694,7 @@
                 }
               }
             },
-            "description": "Invalid request"
+            "description": "`rasterization_consent_required`: pages would become pictures and `accept_rasterization` was not true; `message_params.pages` lists them. `editor_text_overflow`: a text does not fit its page; `message_params.index` is its position in `commands`, counted from 0. `invalid_editor_command`, as on saving. Nothing is quoted."
           },
           "401": {
             "description": "Authentication required"
@@ -6499,7 +6716,23 @@
                 }
               }
             },
-            "description": "`version_conflict`: the draft changed elsewhere. `message_params` has `updated_at`, `device` and `theirs`, the marks it holds now; the request carries no marks, so the client counts its own. Nothing is quoted."
+            "description": "`version_conflict`: the draft changed elsewhere. `message_params` has `updated_at`, `device` and `theirs`, the marks it holds now; the request carries no marks, so the client counts its own. `telegram_link_required`: `deliver` is `chat` and the account has no Telegram. Nothing is quoted."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "`weekly_file_limit`: this week's file tasks are used up. `send_limit`: too many sends for now, `retryable`; `message_params` has `limit` and `per`, `day` for this draft or `hour` for the account. Nothing is quoted."
           }
         },
         "security": [
@@ -9345,7 +9578,7 @@
         ]
       },
       "post": {
-        "description": "Returns 200 on identical retry. Same key with changed quote returns 409.",
+        "description": "Returns 200 on identical retry, and for a send of a draft that already made this very file or is making it, with that job and with its file kept another 24 hours. Same key with changed quote returns 409, and so does a quote already sent under another key (`quote_already_submitted`). `telegram_link_required` (409) when the result is to go to a chat and the account has no Telegram; `send_limit` (429, retryable) when a draft has been sent too often. A failed black-out check is a job failed with `editor_check_failed`, `error.message_params.index` naming the change, and is not counted.",
         "operationId": "submitJob",
         "parameters": [
           {
@@ -9372,6 +9605,10 @@
             "application/json": {
               "schema": {
                 "properties": {
+                  "deliver_to_chat": {
+                    "description": "Send the result to the account's Telegram chat as well. A quote with `deliver` `chat` does so without asking.",
+                    "type": "boolean"
+                  },
                   "quote_id": {
                     "format": "uuid",
                     "type": "string"

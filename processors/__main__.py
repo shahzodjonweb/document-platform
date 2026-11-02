@@ -58,7 +58,7 @@ def main():
         json.dump({'ok': True, 'result': result}, sys.stdout)
         return 0
     except ProcessorError as error:
-        json.dump({'ok': False, 'error': error.code}, sys.stdout)
+        json.dump({'ok': False, 'error': error.code, 'index': error.index}, sys.stdout)
     except Exception:
         json.dump({'ok': False, 'error': 'processor_failed'}, sys.stdout)
     return 1

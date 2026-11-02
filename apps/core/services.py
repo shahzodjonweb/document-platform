@@ -19,8 +19,11 @@ from .policy import page_cap, plan_limits, require_feature, usage_snapshot, payl
 
 TERMINAL = ('succeeded', 'failed', 'canceled', 'no_op', 'expired')
 
-def record_event(account, event_type, job=None, properties=None, channel='web'):
-    return AnalyticsEvent.objects.create(account=account, event_type=event_type, feature_id=job.feature_id if job else '', job=job, channel=channel, locale=account.locale, plan_at_event=account.plan, environment='development' if settings.DEBUG or account.is_test else 'production', properties=properties or {})
+# Where a job's result goes back to the customer's chat: the bot's own, and the Mini App's Send to chat.
+TELEGRAM_ORIGINS = ('bot', 'mini_app')
+
+def record_event(account, event_type, job=None, properties=None, channel='web', feature_id=''):
+    return AnalyticsEvent.objects.create(account=account, event_type=event_type, feature_id=job.feature_id if job else feature_id, job=job, channel=channel, locale=account.locale, plan_at_event=account.plan, environment='development' if settings.DEBUG or account.is_test else 'production', properties=properties or {})
 
 def storage_path(key):
     root = settings.PRIVATE_STORAGE_ROOT.resolve()
@@ -204,6 +207,8 @@ def create_quote(account, feature_id, input_ids, parameters, secret_id=None):
         logging.getLogger(__name__).warning('Quote for account %s: dropped retired images-to-PDF settings (%s) sent by an out-of-date client', account.pk, ', '.join(retired))
         parameters = {k: v for k, v in parameters.items() if k not in retired}
     if any(k.lower() in ('password','owner_password','user_password') for k in parameters): raise DomainError('feature_unavailable',409)
+    # The combined job is a stored draft's (apps/studio/editor_domain.py), never a caller's to ask for.
+    if str(feature_id).startswith('editor.') and 'combined' in parameters: raise DomainError('invalid_parameters')
     # A free account joins the owner's channels before using a service; asking
     # here tells them before they have set the task up, not after.
     from .channel_gate import require as require_channels
@@ -231,7 +236,7 @@ def create_quote(account, feature_id, input_ids, parameters, secret_id=None):
         pages = max(pages, sum(len(parse_pages(r, assets[0].page_count)) for r in normalized['ranges']))
     if pages > page_cap(account): raise DomainError('page_limit_exceeded',413)
     quote = Quote.objects.create(account=account,feature_id=feature_id,secret_id=secret_id,parameters=normalized,input_ids=[str(a.pk) for a in assets],input_fingerprints=[{'id':str(a.pk),'sha256':a.sha256} for a in assets],policy={'plan':account.plan,'version':POLICY_VERSION,'tariff_version':'file-v1','limits':plan_limits(account)},expires_at=timezone.now()+timedelta(minutes=10))
-    record_event(account,'quote.created',properties={'pages':pages})
+    record_event(account,'quote.created',properties={'pages':pages},feature_id=feature_id)
     return quote
 
 def quote_affordable(account, quote, count=1):
@@ -249,8 +254,9 @@ def quote_affordable(account, quote, count=1):
 def submit_job(account, quote_id, idempotency_key, origin='web'):
     if not isinstance(idempotency_key,str) or not 8<=len(idempotency_key)<=128: raise DomainError('idempotency_key_required')
     # The channel rule is checked before the row lock (it may ask Telegram), and
-    # never against a retry of a submission that already became a job.
-    if not Job.objects.filter(account=account,idempotency_key=idempotency_key).exists():
+    # never against a retry of a submission that already became a job, or was answered with one.
+    answered = Quote.objects.filter(account=account,policy__reused__key=idempotency_key).exists()
+    if not answered and not Job.objects.filter(account=account,idempotency_key=idempotency_key).exists():
         from .channel_gate import require as require_channels
         require_channels(account)
     # Row lock serializes quota and concurrency decisions per canonical account.
@@ -263,9 +269,25 @@ def submit_job(account, quote_id, idempotency_key, origin='web'):
     try: quote = Quote.objects.select_for_update().get(pk=quote_id,account=account)
     except (Quote.DoesNotExist,ValueError,ValidationError): raise DomainError('not_found',404) from None
     if Job.objects.filter(quote=quote).exists(): raise DomainError('quote_already_submitted',409)
+    # A send answered with a job already there has no job of its own: its quote remembers it, as a Job row would.
+    reused = quote.policy.get('reused')
+    if reused:
+        if reused['key'] != idempotency_key: raise DomainError('quote_already_submitted',409)
+        return Job.objects.get(account=account,pk=reused['job']),False
+    if answered: raise DomainError('idempotency_conflict',409)
     if quote.expires_at <= timezone.now(): raise DomainError('quote_expired',409)
+    # Sent to the chat: asked for now, or when the send was reviewed.
+    if origin == 'web' and quote.parameters.get('deliver') == 'chat': origin = 'mini_app'
+    if origin == 'mini_app' and account.telegram_user_id is None: raise DomainError('telegram_link_required',409)
+    from .allowance import draft_pointer, quote_kind, require_quote
+    # An AI document also names its draft, and writing it again is the point of it.
+    pointer = draft_pointer(quote.parameters) if quote_kind(quote) == 'file' else None
+    if pointer:
+        # What a send points at, read under its own lock, and the job it need not repeat if nothing has changed.
+        from apps.studio.editor_domain import check_send
+        reused = check_send(account,quote,idempotency_key,origin)
+        if reused: return reused,False
     from apps.studio.domain import GENERATION_IDS, RENDER_IDS, validate_generation_quote
-    from .allowance import require_quote
     # Counted under the account lock, so quick repeated submissions cannot
     # each see room for one more.
     require_quote(account, quote)
@@ -274,12 +296,15 @@ def submit_job(account, quote_id, idempotency_key, origin='web'):
         from apps.studio.render_export import validate_render_quote
         assets = validate_render_quote(account,quote)
     else: assets = validate_inputs(account,quote.feature_id,quote.input_ids)
-    if quote.feature_id.startswith('editor.'):
+    if quote.feature_id.startswith('editor.') and not pointer:
         from apps.studio.editor_policy import validate_commands_access
         validate_commands_access(account,quote.parameters.get('commands',[]))
     if quote.policy['plan'] != account.plan or quote.policy['version'] != POLICY_VERSION: raise DomainError('quote_policy_changed',409)
     if [{'id':str(a.pk),'sha256':a.sha256} for a in assets] != quote.input_fingerprints: raise DomainError('file_changed',409)
     if Job.objects.filter(account=account,status__in=('queued','running','finalizing')).count() >= plan_limits(account)['concurrent_jobs']: raise DomainError('concurrency_limit',409,retryable=True)
+    if pointer:
+        from apps.studio.editor_domain import require_send_room
+        require_send_room(account,pointer)
     job = Job.objects.create(account=account,quote=quote,feature_id=quote.feature_id,parameters=quote.parameters,input_ids=quote.input_ids,policy=quote.policy,idempotency_key=idempotency_key,request_hash=request_hash,origin_channel=origin)
     if quote.secret_id:
         from .secrets import get_secret
@@ -327,11 +352,13 @@ def settle_job(job_id, status, error_code='', outputs=None, warnings=None, engin
         path = Path(output['path'])
         key = str(path.relative_to(settings.PRIVATE_STORAGE_ROOT.resolve()))
         # The name the customer sees is made here, from what they gave; the key keeps the processor's fixed name.
-        asset = FileAsset.objects.create(account=job.account,name=result_name(job,output,index,len(outputs)),object_key=key,mime_type=output['mime_type'],sha256=hashlib.sha256(path.read_bytes()).hexdigest(),size_bytes=path.stat().st_size,page_count=output.get('page_count',0),metadata={**output.get('metadata',{}),'kind':{'application/pdf':'pdf','application/zip':'archive','application/vnd.openxmlformats-officedocument.wordprocessingml.document':'docx','application/vnd.openxmlformats-officedocument.presentationml.presentation':'pptx','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':'xlsx','text/plain':'text','application/json':'text'}.get(output['mime_type'],'image'),'mime_type':output['mime_type'],'page_count':output.get('page_count',0),'encrypted':job.feature_id=='pdf.protect'},expires_at=deadline)
+        # Which draft made it: Edit under a result reopens that draft.
+        source = {name:(job.parameters or {})[name] for name in ('editor_document_id','generation_draft_id') if (job.parameters or {}).get(name)}
+        asset = FileAsset.objects.create(account=job.account,name=result_name(job,output,index,len(outputs)),object_key=key,mime_type=output['mime_type'],sha256=hashlib.sha256(path.read_bytes()).hexdigest(),size_bytes=path.stat().st_size,page_count=output.get('page_count',0),metadata={**output.get('metadata',{}),**source,'kind':{'application/pdf':'pdf','application/zip':'archive','application/vnd.openxmlformats-officedocument.wordprocessingml.document':'docx','application/vnd.openxmlformats-officedocument.presentationml.presentation':'pptx','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':'xlsx','text/plain':'text','application/json':'text'}.get(output['mime_type'],'image'),'mime_type':output['mime_type'],'page_count':output.get('page_count',0),'encrypted':job.feature_id=='pdf.protect'},expires_at=deadline)
         artifact = Artifact.objects.create(account=job.account,job=job,file=asset,role=output.get("role","user_document"))
         from . import storage
         storage.save(key, output['mime_type'])
-        if status == 'succeeded' and job.origin_channel == 'bot' and job.account.telegram_user_id is not None:
+        if status == 'succeeded' and job.origin_channel in TELEGRAM_ORIGINS and job.account.telegram_user_id is not None:
             # Persist delivery in the settlement transaction: a worker can finish
             # after the initiating bot update returns, or while the bot restarts.
             # This only writes an outbox row; Telegram is contacted by the bot.
@@ -377,12 +404,16 @@ def execute_job(job_id):
         job.save(update_fields=['status','started_at','lease_expires_at','attempt_count'])
     output_dir = storage_path(f'outputs/{job.account_id}/{job.id}')
     output_dir.mkdir(parents=True,exist_ok=True,mode=0o700)
+    # Only a send of a stored draft reports in numbers. Other rows stay strings, which the image before this one can read.
+    pointed = (job.parameters or {}).get('editor_document_id')
     try:
         from apps.studio.domain import GENERATION_IDS, RENDER_IDS
         if job.feature_id in RENDER_IDS:
             from apps.studio.render_export import pinned_files
             input_paths = pinned_files(job)
-        else: input_paths = verify_input_files(job,owned_assets(job.account,job.input_ids) if job.input_ids else [])
+        else:
+            assets = owned_assets(job.account,job.input_ids) if job.input_ids else []
+            input_paths = verify_input_files(job,assets)
         secret=None
         if job.quote.secret_id:
             from .secrets import get_secret,decrypt
@@ -395,7 +426,11 @@ def execute_job(job_id):
             result = execute_render(job,output_dir)
         else:
             from processors.sandbox import execution_timeout
-            result = execute(job.feature_id,input_paths,job.parameters,output_dir,secret=secret,timeout=execution_timeout(job.feature_id,len(input_paths)),deck_fonts=_is_our_deck(job))
+            parameters = job.parameters
+            if pointed:
+                from apps.studio.editor_domain import parameters_to_run
+                parameters = parameters_to_run(job,assets)
+            result = execute(job.feature_id,input_paths,parameters,output_dir,secret=secret,timeout=execution_timeout(job.feature_id,len(input_paths)),deck_fonts=_is_our_deck(job))
         secret=None
         # A photo whose scan failed is kept as uploaded and the job succeeds;
         # the child's own log is discarded, so the worker log records it.
@@ -413,13 +448,17 @@ def execute_job(job_id):
             if output['mime_type']=='application/pdf' and job.feature_id!='pdf.protect':
                 checked=engine_inspect(path)
                 if checked['page_count']!=output.get('page_count'):raise DomainError('invalid_output')
-                output['metadata']=checked
-        job = settle_job(job.id,'no_op' if no_op else 'succeeded',outputs=outputs,warnings=result.get('metadata',{}).get('warnings',[]),engine=result.get('metadata',{}).get('engine','pypdf'))
+                output['metadata']={**output.get('metadata',{}),**checked}
+        details = result.get('metadata',{})
+        # Numbers only, beside the codes: which change went how, and which pages became pictures.
+        notes = [*details.get('warnings',[]),*({name:details[name]} for name in ('per_command','rasterized_pages') if pointed and name in details)]
+        job = settle_job(job.id,'no_op' if no_op else 'succeeded',outputs=outputs,warnings=notes,engine=details.get('engine','pypdf'))
         if no_op: shutil.rmtree(output_dir,ignore_errors=True)
         return job
     except (DomainError,ProcessorError) as exc:
         shutil.rmtree(output_dir,ignore_errors=True)
-        return settle_job(job.id,'failed',error_code=exc.code)
+        index = getattr(exc,'index',None)
+        return settle_job(job.id,'failed',error_code=exc.code,warnings=[{'failed_command':index}] if pointed and index is not None else None)
     except Exception:
         # No exception text: engine errors may contain private paths or document data.
         shutil.rmtree(output_dir,ignore_errors=True)

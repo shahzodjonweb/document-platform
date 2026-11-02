@@ -130,7 +130,7 @@ def quote_summary(account,quote):
 
     `warnings` says now what the file will come without: a logo no longer stored.
     """
-    from apps.core.allowance import usage_snapshot
+    from apps.core.allowance import quote_cost
     from .branding import logo_kept
     from .slides import question_sections
     data=unpack(GenerationDraft.objects.get(account=account,pk=quote.parameters['generation_draft_id']).encrypted_data)
@@ -139,9 +139,8 @@ def quote_summary(account,quote):
     fmt=quote.parameters['format'];size=0
     if fmt!='pdf':size+=PPTX_BYTES+PPTX_BYTES_PER_SLIDE*slides+pictures
     if fmt!='pptx':size+=PDF_BYTES+PDF_BYTES_PER_SLIDE*slides+pictures
-    allowance=usage_snapshot(account)['file_jobs']
     return {'slides':slides,'format':fmt,'kept_until':timezone.now()+timedelta(hours=24),'size_estimate':size,
-            'cost':{'kind':'included','left':None,'limit':None} if allowance['limit'] is None else {'kind':'file_task','left':allowance['remaining'],'limit':allowance['limit']},
+            'cost':quote_cost(account,quote),
             'warnings':[] if logo_kept(account,data) else ['logo_left_out']}
 
 def fit_section(account,draft_id,section):

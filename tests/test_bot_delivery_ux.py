@@ -65,7 +65,7 @@ def test_delivery_and_settlement_roll_back_together():
     assert file_jobs_this_week(account) == 1, 'the rolled back task is queued and holds its place'
 
 
-@pytest.mark.parametrize('origin', ['web', 'mini_app'])
+@pytest.mark.parametrize('origin', ['web'])
 def test_browser_jobs_do_not_send_unsolicited_telegram_results(origin):
     _, job = completed_job(origin=origin)
     assert job.status == 'succeeded' and not BotDelivery.objects.exists()

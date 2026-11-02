@@ -4,6 +4,7 @@ import pytest
 from operations.editor_settings import EditorSettingsError,save,validate
 from operations.integrations import EDITOR_BUDGETS,EDITOR_FLAGS,editor_config,editor_flags
 from operations.models import AuditLog,IntegrationConfig
+from apps.core.services import create_quote
 from tests.test_editor_documents import NOTE,opened,quote,run,save as save_draft
 from tests.test_operations import staff_client
 from tests.test_platform import account,login_client
@@ -33,6 +34,20 @@ def test_editor_v2_off_leaves_everything_as_today(settings):
     assert save_draft(client,url,1,[NOTE]).status_code==200
     job=run(client,quote(client,url,2),'editor-flags-off-1')
     assert job.status=='succeeded' and job.feature_id=='editor.visual'
+
+
+def test_the_generic_route_refuses_an_inline_editor_quote_once_editor_v2_is_on(settings):
+    settings.DEBUG=True;settings.ENABLE_BETA_TOOLS=True;settings.LOCAL_SYNC_JOBS=True
+    a,asset,client,url=opened()
+    inline={'feature_id':'editor.visual','input_ids':[str(asset.id)],'parameters':{'commands':[NOTE]}}
+    assert client.post('/api/v1/quotes',inline,content_type='application/json').status_code==201
+    save({'editor_v2':'true'})
+    answer=client.post('/api/v1/quotes',inline,content_type='application/json')
+    assert answer.status_code==409 and answer.json()['error']['code']=='feature_unavailable'
+    assert client.post('/api/v1/quotes',{'feature_id':'pdf.rotate','input_ids':[str(asset.id)]},content_type='application/json').status_code==201
+    assert create_quote(a,'editor.visual',[str(asset.id)],{'commands':[NOTE]}),'batches of forms call it themselves'
+    assert save_draft(client,url,1,[NOTE]).status_code==200
+    assert client.post(url+'/quote',{'version':2,'deliver':'chat'},content_type='application/json').status_code==201,'a pointer is the way in'
 
 
 def test_the_environment_answers_until_something_is_saved(monkeypatch):

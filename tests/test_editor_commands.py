@@ -176,11 +176,11 @@ def test_redact_text_is_optional():
     refused({'type':'redact',**BOX,'text':7})
 
 
-@pytest.mark.parametrize('kind',['edit_text','whiteout','rotate_page','delete_page','reorder'])
+@pytest.mark.parametrize('kind',['edit_text'])
 def test_a_kind_no_worker_can_apply_yet_stops_the_job_before_anything_is_written(kind,tmp_path):
     with pytest.raises(ProcessorError) as caught:
         execute('editor.visual',[tmp_path/'never-opened.pdf'],{'commands':[EXAMPLES['note'],run(EXAMPLES[kind])[0]]},tmp_path,[])
-    assert caught.value.code=='invalid_editor_command' and not list(tmp_path.iterdir())
+    assert caught.value.code=='invalid_editor_command' and caught.value.index==1 and not list(tmp_path.iterdir())
 
 
 def test_validate_commands_access_knows_the_new_kinds(monkeypatch):
