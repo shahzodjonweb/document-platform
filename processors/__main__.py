@@ -51,7 +51,8 @@ def main():
         elif request.get('operation') == 'execute':
             result = execute(request['feature_id'], request['input_paths'],
                 request.get('parameters', {}), request['output_dir'], secret=request.get('secret'),
-                office_timeout=request.get('office_timeout', 60), deck_fonts=request.get('deck_fonts') is True)
+                office_timeout=request.get('office_timeout', 60), deck_fonts=request.get('deck_fonts') is True,
+                office_home=request.get('office_home'))
         else:
             raise ProcessorError('invalid_operation')
         json.dump({'ok': True, 'result': result}, sys.stdout)

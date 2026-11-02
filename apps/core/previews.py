@@ -19,9 +19,8 @@ from .errors import DomainError
 from .secrets import get_secret,decrypt
 
 
-@transaction.atomic
-def preview_asset(account,asset_id,page=1,secret_id=None):
-    asset=FileAsset.objects.select_for_update().filter(account=account,pk=asset_id).first()
+def _source(account,asset,page,secret_id):
+    """What a page of `asset` is drawn from, or why it may not be: (its path, its password, the preview's deadline)."""
     if not asset: raise DomainError('not_found',404)
     if asset.state!='ready' or asset.expires_at<=timezone.now(): raise DomainError('file_expired',410)
     if type(page) is not int or page<1 or page>asset.page_count: raise DomainError('invalid_pages')
@@ -34,8 +33,24 @@ def preview_asset(account,asset_id,page=1,secret_id=None):
         handle=get_secret(account,secret_id or asset.metadata.get('password_secret_id'),asset=asset)
         password=decrypt(handle)
         deadline=min(deadline,handle.expires_at)
+    return path,password,deadline
+
+def _usable(cached):
+    return cached and cached.file.state=='ready' and cached.file.expires_at>timezone.now() and storage.exists(cached.file.object_key)
+
+def cached_preview(account,asset_id,page=1,secret_id=None):
+    """The page's preview if it is drawn already, None if not, as `preview_asset` refuses it: nothing is drawn or changed."""
+    asset=FileAsset.objects.filter(account=account,pk=asset_id).first()
+    _source(account,asset,page,secret_id)
     cached=PagePreview.objects.select_related('file').filter(asset=asset,page=page).first()
-    if cached and cached.file.state=='ready' and cached.file.expires_at>timezone.now() and storage.exists(cached.file.object_key): return cached.file
+    return cached.file if _usable(cached) else None
+
+@transaction.atomic
+def preview_asset(account,asset_id,page=1,secret_id=None,timeout=90):
+    asset=FileAsset.objects.select_for_update().filter(account=account,pk=asset_id).first()
+    path,password,deadline=_source(account,asset,page,secret_id)
+    cached=PagePreview.objects.select_related('file').filter(asset=asset,page=page).first()
+    if _usable(cached): return cached.file
     if cached:
         storage.delete(cached.file.object_key)
         cached.file.delete()
@@ -45,9 +60,9 @@ def preview_asset(account,asset_id,page=1,secret_id=None):
         try:
             render_source=path
             if password:
-                decrypted=execute_sandbox('pdf.unlock_known',[path],{},scratch/'decrypted',secret=password)
+                decrypted=execute_sandbox('pdf.unlock_known',[path],{},scratch/'decrypted',secret=password,timeout=timeout)
                 render_source=Path(decrypted['artifacts'][0]['path'])
-            result=execute_sandbox('pdf.to_images',[render_source],{'pages':str(page),'format':'png','dpi':96},scratch/'render')
+            result=execute_sandbox('pdf.to_images',[render_source],{'pages':str(page),'format':'png','dpi':96},scratch/'render',timeout=timeout)
             image=Path(result['artifacts'][0]['path'])
             if not image.is_file() or not image.resolve().is_relative_to(scratch.resolve()): raise DomainError('invalid_output')
             if result['artifacts'][0]['mime_type']=='application/zip':

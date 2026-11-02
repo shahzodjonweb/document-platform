@@ -84,7 +84,14 @@ CV_UPDATES_PER_MINUTE=30
 def draft_detail(request,pk):
     d=GenerationDraft.objects.filter(account=request.account,id=pk,expires_at__gt=timezone.now()).first()
     if not d:raise DomainError('not_found',404)
-    if request.method=='DELETE':d.delete();return {'deleted':True}
+    if request.method=='DELETE':
+        from .tasks import drop_renders
+        # Under the draft's lock: a render storing its pictures finishes first and they are seen here, or it finds the draft gone.
+        with transaction.atomic():
+            GenerationDraft.objects.select_for_update().filter(pk=d.pk).first()
+            drop_renders(d)
+            d.delete()
+        return {'deleted':True}
     if request.method=='PATCH':
         data=body(request)
         if d.feature_id==CV:
@@ -240,6 +247,38 @@ def draft_fit(request,pk):
     account_limit(request.account,'deck_fits',FITS_PER_MINUTE)
     from .render_export import fit_section
     return fit_section(request.account,pk,body(request).get('section'))
+
+# How often one account may ask for its deck to be drawn (each field committed), ask how a drawing
+# stands (a tab asks about twice a second while it waits) and fetch its slides (a strip of 60, then a page of 60).
+RENDERS_PER_MINUTE=60
+RENDER_POLLS_PER_MINUTE=240
+SLIDE_IMAGES_PER_MINUTE=600
+
+@api(('GET','POST'))
+def draft_render(request,pk):
+    """The deck as slide pictures, drawn in the editor lane and never here: POST asks for a version, GET says how it stands."""
+    _require_deck_editor()
+    from . import tasks
+    if request.method=='POST':
+        account_limit(request.account,'deck_renders',RENDERS_PER_MINUTE)
+        status,task=tasks.request_render(request.account,pk,body(request).get('version'))
+        return JsonResponse({'task_id':str(task.pk),'status':status},status=202)
+    account_limit(request.account,'deck_render_polls',RENDER_POLLS_PER_MINUTE)
+    version=request.GET.get('version')
+    return tasks.render_state(request.account,pk,None if version is None else int(version))
+
+@api()
+def draft_slide(request,pk,key,thumb=False):
+    """One slide's picture as stored, inline. Nothing is ever drawn for this request: a slide not ready is not found."""
+    _require_deck_editor()
+    account_limit(request.account,'deck_slide_images',SLIDE_IMAGES_PER_MINUTE)
+    from .models import SlideRender
+    render=SlideRender.objects.select_related('file','thumb').filter(draft_id=pk,draft__account=request.account,draft__expires_at__gt=timezone.now(),key=key).first()
+    if not render:raise DomainError('not_found',404)
+    try:response=download_asset(request,render.thumb if thumb else render.file)
+    except DomainError:raise DomainError('not_found',404) from None
+    response['Content-Disposition']='inline; filename="slide.png"'
+    return response
 
 @api(('POST',))
 def retry_quote(request,pk):

@@ -341,6 +341,8 @@ def user_detail(request, pk):
     data['week_rows']=[{'label':data['t'][label],'used_text':used_text(usage[key]),**usage[key]}
                        for key,label in (('ai_documents','field_weekly_ai_documents'),('file_jobs','field_weekly_file_jobs'))]
     data['edits_per_file']=usage['edits_per_file']
+    from apps.studio.tasks import lane_rows
+    data['lane_rows']=[{'label':data['t']['editor_budget_'+row['kind']],'used_text':data['t']['lane_used'].format(seconds=row['seconds'],budget=row['budget']),'used':row['seconds'],'limit':row['budget']} for row in lane_rows(account)]
     data['plan_options']=['free','plus','premium']
     data['staff_plan']=staff_plan(account)
     period=active_period(account)
@@ -350,9 +352,9 @@ def user_detail(request, pk):
                           'value':'—' if value is None and key.startswith(('price_','discount_')) else value}
                          for key,value in limits_for_plan(account.plan).items()]
     # Customer documents, newest first. Opening one is a separate audited act.
-    # A deck's kept pictures are not documents: one deck has dozens of them. Spelled
+    # A deck's kept pictures and drawn slides are not documents: one deck has dozens of them. Spelled
     # out, because exclude() on a JSON key also drops every file with no such key.
-    data['files']=FileAsset.objects.filter(Q(metadata__kind__isnull=True)|~Q(metadata__kind='deck_photo'),account=account).order_by('-created_at')[:50]
+    data['files']=FileAsset.objects.filter(Q(metadata__kind__isnull=True)|~Q(metadata__kind__in=('deck_photo','deck_slide')),account=account).order_by('-created_at')[:50]
     data['can_open_files']=allowed(request.ops_user,['Support','Operations'])
     if data['can_open_files']:
         from .generation_views import _rows

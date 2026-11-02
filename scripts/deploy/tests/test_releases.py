@@ -36,16 +36,17 @@ class Docker:
         self.fail_health=False; self.project_exists=False
         # The services each release's stack defines, by a part of its release
         # id; any other release has them all. A running reader's container.
-        self.stacks={}; self.reader=''
+        self.stacks={}; self.reader=''; self.editor=''
     def services(self,args):
         config=args[args.index('-f')+1]
         named=[services for part,services in self.stacks.items() if part in config]
-        return named[0] if named else ['db','redis','init','api','worker','batches','reader','cleanup','bot','gateway']
+        return named[0] if named else ['db','redis','init','api','worker','batches','reader','editor','cleanup','bot','gateway']
     def __call__(self,args,**kwargs):
         self.calls.append(args)
         if args[:3]==['docker','compose','version']:return '2.39.0'
         if args[:2]==['docker','info']:return 'x86_64'
         if args[:2]==['docker','ps'] and 'label=com.docker.compose.service=reader' in args:return self.reader
+        if args[:2]==['docker','ps'] and 'label=com.docker.compose.service=editor' in args:return self.editor
         if args[:2]==['docker','ps']:return 'unmanaged-container' if self.project_exists else ''
         if args[:2]==['docker','compose'] and args[-2:]==['config','--services']:return '\n'.join(self.services(args))
         if args[:3]==['docker','volume','ls']:return ''
@@ -129,7 +130,7 @@ class Releases(unittest.TestCase):
         self.assertEqual(result['status'],'deployed')
         self.assertFalse((self.root/'platform/state.json').exists())
         self.assert_only_project('web')
-        self.assertFalse(any(x in c for c in self.docker.calls for x in ('db','redis','pg_dump','init','api','bot','worker','reader')))
+        self.assertFalse(any(x in c for c in self.docker.calls for x in ('db','redis','pg_dump','init','api','bot','worker','reader','editor')))
 
     def test_web_update_never_reads_or_changes_platform_state(self):
         self.deploy('platform',10);self.deploy('web',11)
@@ -210,6 +211,34 @@ class Releases(unittest.TestCase):
             self.deploy('platform',11)
         restored=[c for c in self.docker.calls if 'up' in c and 'reader' in c][-1]
         self.assertEqual(restored[restored.index('--timeout')+1],'30')
+
+    def test_the_editor_lane_rolls_on_its_own_before_the_job_runners(self):
+        # Its queue drains in two minutes at most, and customers are waiting on it; a deck's ten minutes are the worker's.
+        self.deploy('platform',10)
+        ups=[c for c in self.docker.calls if 'up' in c]
+        gateway=next(i for i,c in enumerate(ups) if 'gateway' in c)
+        editor=next(i for i,c in enumerate(ups) if 'editor' in c)
+        runners=next(i for i,c in enumerate(ups) if 'worker' in c)
+        self.assertLess(gateway,editor);self.assertLess(editor,runners)
+        self.assertEqual(ups[editor][-1],'editor');self.assertNotIn('--timeout',ups[editor])
+        self.assertFalse(any('editor' in c for i,c in enumerate(ups) if i!=editor))
+        self.docker.calls.clear();self.docker.fail_health=True
+        with self.assertRaisesRegex(server.DeploymentError,'previous image restored'):
+            self.deploy('platform',11)
+        restored=[c for c in self.docker.calls if 'up' in c and 'editor' in c][-1]
+        self.assertEqual(restored[restored.index('--timeout')+1],'30')
+
+    def test_a_restored_release_from_before_the_editor_lane_stops_the_newer_one(self):
+        _,old=self.deploy('platform',10)
+        self.docker.stacks[old['release_id']]=['db','redis','init','api','worker','batches','reader','cleanup','bot','gateway']
+        self.docker.calls.clear();self.docker.fail_health=True;self.docker.editor='e'*12
+        with self.assertRaisesRegex(server.DeploymentError,'previous image restored'):
+            self.deploy('platform',11)
+        restored=self.docker.calls[next(i for i,c in enumerate(self.docker.calls) if 'up' in c and 'gateway' in c)+1:]
+        self.assertFalse(any('up' in c and 'editor' in c for c in restored))
+        self.assertIn(['docker','stop','--time','30','e'*12],restored)
+        self.assertTrue(any('up' in c and 'reader' in c for c in restored))
+        self.assertEqual(self.state('platform')['active'],old)
 
     def test_a_restored_release_from_before_the_reader_stops_the_newer_reader(self):
         # Its stack has no reader to start, and the newer one would read for nobody.

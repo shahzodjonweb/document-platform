@@ -85,11 +85,12 @@ services:
     # mixed photos, on top of the worker itself. On Linux the child has its own
     # 3 GiB address-space cap (processors/sandbox.child_limits), and the
     # core test asserts the Linux peak stays under 2 GiB.
-    # The services' limits add up to 9,728 MiB (10,240 MiB while the one-shot
+    # The services' limits add up to 11,264 MiB (11,776 MiB while the one-shot
     # init runs) on the 8 GB host: they are ceilings, not reservations. The
     # worst real case, worker and batches both scanning, is ~4 GB for the
     # two of them; the API, database, Redis, bot and CV reader use well
-    # under 2.5 GB.
+    # under 2.5 GB, and the editor lane about 1 GB at most while it draws
+    # (its real peak is printed by check_editor in the container smoke).
     mem_limit: 3g
     cpus: 1.5
     # On SIGTERM the loop finishes the job in hand before exiting
@@ -116,6 +117,26 @@ services:
     # On SIGTERM the reader finishes the file in hand: at most 60 s in the
     # child and its grace, with time to fetch the file from the bucket.
     stop_grace_period: 120s
+  editor:
+    <<: *platform
+    command: [python, manage.py, runeditor]
+    # The editor's free work, one task at a time, never in the API and never
+    # behind a paid job (apps/studio/tasks.py). A deck is drawn in this process,
+    # then LibreOffice and pdfium run in bounded children: LibreOffice alone
+    # peaked at 475 MB on 60 photo slides.
+    mem_limit: 1536m
+    cpus: 1
+    pids_limit: 256
+    # On SIGTERM it finishes the task in hand: its children's timeouts for a
+    # deck of 60 slides come to under two minutes.
+    stop_grace_period: 120s
+    healthcheck:
+      # Touched between tasks (management/commands/runeditor.py). The longest task is under two minutes.
+      test: [CMD, python, -c, "import os,sys,time; sys.exit(time.time()-os.path.getmtime('/tmp/editor-heartbeat')>180)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
   cleanup:
     <<: *platform
     command: [python, scripts/cleanup_loop.py]

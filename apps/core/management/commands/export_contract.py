@@ -133,6 +133,25 @@ def extend_schema(models, endpoint, paths):
              description='The price of sending a generated deck again from its draft, as PowerPoint, PDF or both: no AI edit, one file task, submitted through `/jobs`. It holds nothing of the deck but ids and the format. Refused, with status 409, when: `version_conflict`; `generation_running`; `deck_not_editable` (not a deck, or none has been drawn from this draft yet); `pinned_asset_expired` (`message_params.sections`: [{id, index}], the slides whose picture is no longer stored); `slide_text_too_long` (`message_params.sections`: [{id, index, words_over}], the slides whose text would not all show).')
     endpoint('/generation/drafts/{id}/fit','post','measureDeckSlide',ref('DeckSlideFit'),obj({'section':ref('GenerationSection')},['section']),
              description='How one slide as it stands in the editor sits on this deck, and the layouts that would hold it whole. Nothing is saved or drawn into a file. A section whose id the deck does not have is measured as a slide added at the end. `deck_not_editable` as for the export quote.')
+    frame=obj({'field':{'enum':['heading','body','picture']},**{side:{'type':'number'} for side in 'xywh'}},['field','x','y','w','h'])
+    models.update({
+        'DeckRenderSlide':obj({'index':{**I,'description':'The slide\'s position in the deck, from 0.'},'key':{**S,'description':'What its picture is made from: the same key is the same picture.'},'url':{**S,'description':'The picture, 1280 by 720 px.'},'thumb_url':{**S,'description':'The picture, 96 by 54 px.'},
+                               'frames':{**arr(frame),'description':'Where the slide\'s heading, body and picture lie, as fractions of the slide.'},'fits':B,'letters_over':{**I,'description':'Letters of this slide that do not show.'}},
+                              ['index','key','url','thumb_url','frames','fits','letters_over']),
+        'DeckRender':obj({'status':{'enum':['none','queued','running','done','failed','stale'],'description':'`none`: nothing has been asked for, or it has gone; POST asks. `queued` and `running`: a task will draw this version or a later one. `done`: `slides` are this version. `failed`: see `error`. `stale`: this version was not drawn and the deck has moved on.'},
+                          'version':I,'slides':arr(ref('DeckRenderSlide')),'error':{**nullable_string,'description':'Why the last try failed: `render_deck_interrupted` is worth asking again, `pinned_asset_expired` is not until the picture is changed.'}},
+                         ['status','version','slides','error']),
+    })
+    endpoint('/generation/drafts/{id}/render','get','getDeckRender',ref('DeckRender'),
+             description='How the drawing of this version of the deck stands; the draft\'s current one without `version`. Reads only. Answers `feature_unavailable` with the deck editor off.')
+    paths['/generation/drafts/{id}/render']['get']['parameters'].append({'name':'version','in':'query','schema':{'type':'integer','minimum':1}})
+    endpoint('/generation/drafts/{id}/render','post','requestDeckRender',obj({'task_id':UUID,'status':{'enum':['queued','running','done','failed']}},['task_id','status']),obj({'version':I},['version']),code='202',
+             description='Have this version of the deck drawn, in a queue of its own and free, when a field is committed: not on every autosave. A newer ask replaces one still queued. Only the slides that changed are drawn. `version_conflict`; `deck_not_editable`; `lane_busy` (429, retryable) past the day\'s budget or with three tasks waiting.')
+    for suffix,operation,about in (('png','getDeckSlide','1280 by 720 px'),('thumb.png','getDeckSlideThumb','96 by 54 px')):
+        route=f'/generation/drafts/{{id}}/slides/{{key}}.{suffix}'
+        endpoint(route,'get',operation,S,description=f'A slide already drawn, {about}, inline. Nothing is drawn for this request: anything else is 404.')
+        paths[route]['get']['parameters'].append({'name':'key','in':'path','required':True,'schema':{'type':'string'}})
+        paths[route]['get']['responses']['200']={'description':'Private PNG; no-store','content':{'image/png':{'schema':{'type':'string','format':'binary'}}}}
     endpoint('/generation/jobs/{id}/retry-quote','post','quoteGenerationRetry',ref('Quote'),obj({}),code='201',description='Review a fresh quote for an unchanged failed generation. Completed provider batches may be reused only within this explicit retry chain; confirmation and allowance checks still apply.')
     endpoint('/generation/drafts/{id}/generate','post','generateDraft',ref('Job'),obj({'quote_id':UUID},['quote_id']),code='201')
     for path,kind in [('/workflows','Workflow'),('/templates','Template'),('/editor/form-templates','FormTemplate')]:
@@ -279,6 +298,7 @@ def schema():
         endpoint(path,'get',operation,S)
         paths[path]['get']['parameters'].append({'name':'page','in':'query','schema':{'type':'integer','minimum':1,'default':1}})
         paths[path]['get']['responses']['200']={'description':'Private single-page PNG preview, no task charge','content':{'image/png':{'schema':{'type':'string','format':'binary'}}}}
+        paths[path]['get']['responses']['202']={'description':'With the deck editor on, a page not drawn yet is being drawn: ask again. Refused with `lane_busy` (429, retryable) past the day\'s budget or with three tasks waiting.','content':{'application/json':{'schema':obj({'task_id':UUID},['task_id'])}}}
     extend_schema(models,endpoint,paths)
     return {'openapi':'3.1.0','info':{'title':'PDF Master public API','version':'1.1.0','description':'Local development beta. Studio, editor, document jobs and card-transfer billing are covered. Staff operations are excluded. Live providers require server configuration.'},'servers':[{'url':'/api/v1'}],'paths':paths,'components':{'securitySchemes':{'customerSession':{'type':'apiKey','in':'cookie','name':'pdfmaster_session'}},'schemas':models}}
 

@@ -732,7 +732,10 @@ def _normalize_office_viewer_hint(path: Path) -> None:
     except Exception:
         raise ProcessorError('invalid_pdf') from None
 
-def _office_pdf(path: Path, feature_id: str, out: Path, metadata: dict, timeout: int = 60, deck_fonts: bool = False):
+def _office_pdf(path: Path, feature_id: str, out: Path, metadata: dict, timeout: int = 60, deck_fonts: bool = False, office_home: str | None = None):
+    # The editor lane's warm profile (apps/studio/tasks.py) only ever draws our own decks, in our own faces.
+    if office_home and not deck_fonts:
+        raise ProcessorError('invalid_parameters')
     runtime = office_runtime()
     if not runtime['available']:
         raise ProcessorError('engine_unavailable')
@@ -745,16 +748,19 @@ def _office_pdf(path: Path, feature_id: str, out: Path, metadata: dict, timeout:
         scratch = Path(scratch)
         source = scratch / f'input.{expected}'
         shutil.copyfile(path, source)
-        profile = scratch / 'profile'
+        home = Path(office_home) if office_home else scratch
+        profile = home / 'profile'
         # A deck we drew gets the faces it was measured in. A customer's file keeps exactly today's
         # environment; the profile and fontconfig's cache die with this folder, so neither reaches another run.
-        fonts = {'FONTCONFIG_FILE': str(write_fontconfig(scratch))} if deck_fonts else {}
+        fonts = {'FONTCONFIG_FILE': str(write_fontconfig(home))} if deck_fonts else {}
+        # With a home that outlives this run, what a crash leaves in TMPDIR still goes with this folder.
+        fonts.update({'TMPDIR': str(scratch)} if office_home else {})
         try:
             completed = subprocess.run([executable, '-env:UserInstallation=' + profile.as_uri(),
                 '--headless', '--nologo', '--nodefault', '--nofirststartwizard',
                 '--convert-to', 'pdf', '--outdir', str(scratch), str(source)],
                 stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                timeout=timeout, check=False, env={**os.environ, 'HOME': str(scratch), **fonts})
+                timeout=timeout, check=False, env={**os.environ, 'HOME': str(home), **fonts})
         except subprocess.TimeoutExpired:
             raise ProcessorError('processor_timeout') from None
         converted = scratch / 'input.pdf'
@@ -768,7 +774,8 @@ def _office_pdf(path: Path, feature_id: str, out: Path, metadata: dict, timeout:
 
 
 def execute(feature_id: str, input_paths: list[str | Path], parameters: dict | None,
-            output_dir: str | Path, *, secret: str | None = None, office_timeout: int = 60, deck_fonts: bool = False) -> dict:
+            output_dir: str | Path, *, secret: str | None = None, office_timeout: int = 60, deck_fonts: bool = False,
+            office_home: str | None = None) -> dict:
     """Run one operation. Secret is ephemeral transport-only, never returned."""
     if not isinstance(input_paths, (list, tuple)) or not 1 <= len(input_paths) <= MAX_INPUTS:
         raise ProcessorError('invalid_inputs')
@@ -829,7 +836,7 @@ def execute(feature_id: str, input_paths: list[str | Path], parameters: dict | N
             manifest = json.loads((Path(__file__).parent / 'scanner' / 'models.json').read_text())
             details['engine_versions']['scanner-models'] = manifest['version']
         elif feature_id.startswith('convert.'):
-            artifacts = _office_pdf(paths[0], feature_id, out, metadata[0], timeout=office_timeout, deck_fonts=deck_fonts)
+            artifacts = _office_pdf(paths[0], feature_id, out, metadata[0], timeout=office_timeout, deck_fonts=deck_fonts, office_home=office_home)
         elif feature_id == 'pdf.to_images':
             artifacts = _pdf_images(paths[0], parameters, out, pages)
         else:
