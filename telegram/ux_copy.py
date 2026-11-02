@@ -490,6 +490,8 @@ TOOL_LABELS = {
     'ai.cv': ('✨ CV · AI', '✨ CV (rezyume) · AI', '✨ Резюме · ИИ'),
     # A deck sent again after the customer's own edits: ✏️, no AI edit is used.
     'export.generated_pptx': ('✏️ Edited slides', '✏️ Tahrirlangan slaydlar', '✏️ Изменённые слайды'),
+    # A notice about a send from the editor names it; no menu lists it.
+    'editor.visual': ('✏️ PDF editor', '✏️ PDF muharriri', '✏️ Редактор PDF'),
 }
 
 UX = {locale: {key: values[index] for key, values in MESSAGES.items()} for index, locale in enumerate(LOCALES)}

@@ -68,7 +68,7 @@ def test_enqueue_is_transactional_and_does_not_backfill_historical_jobs():
     assert not BotJobNotice.objects.exists()
 
 
-@pytest.mark.parametrize('origin', ['web', 'mini_app'])
+@pytest.mark.parametrize('origin', ['web'])
 def test_browser_terminal_jobs_never_create_telegram_notice(origin):
     _, job = terminal_job(origin=origin)
     assert enqueue_notice(job) is None and not BotJobNotice.objects.exists()

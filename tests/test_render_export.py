@@ -82,6 +82,20 @@ def send(customer, draft, fmt='pptx', origin='web'):  # noqa: F811
     return execute_job(job.id)
 
 
+def resend(customer, draft, origin='web'):  # noqa: F811
+    """The same draft sent again: nothing has changed, so the send is answered with the job that made its file."""
+    quote = quoted(customer, draft)
+    job, created = submit_job(customer, quote.id, f'send-{quote.id}', origin=origin)
+    assert not created
+    return job
+
+
+def drawn_again(customer, draft):  # noqa: F811
+    """A new drawing of the same draft, as when the earlier file has gone: what comes out is what a send would make."""
+    Job.objects.filter(account=customer, feature_id=EXPORT, status='succeeded').update(status='failed')
+    return send(customer, draft)
+
+
 def ticking(monkeypatch):
     """The measure's clock, a second on each time it is read: it stops at the same slide on any machine."""
     ticks = itertools.count()
@@ -180,7 +194,7 @@ def test_a_slide_added_since_is_drawn_and_comes_out_the_same_again(customer, sto
     held = bytes(added.encrypted_data)
     one = send(customer, added)
     assert one.status == 'succeeded', one.error_code
-    two = send(customer, added)
+    two = drawn_again(customer, added)
     assert slide_xml(delivered(one)) == slide_xml(delivered(two))
     assert 'added-later' not in pins_of(added)['variants'] and bytes(GenerationDraft.objects.get(pk=draft.pk).encrypted_data) == held, 'no pin it did not need'
     # Every other slide holds to its variant; each says one more in its '03 / 11', and nothing else moved.
@@ -518,6 +532,8 @@ def test_on_a_plan_with_a_weekly_limit_the_quote_says_what_is_left_and_refuses_p
     assert summary['cost'] == {'kind': 'file_task', 'left': 15, 'limit': 15}
     monkeypatch.setattr(allowance, '_limit', lambda account, key: 1 if key == 'weekly_file_jobs' else None)
     assert send(free, draft).status == 'succeeded'
+    assert quote_summary(free, quoted(free, draft))['cost']['kind'] == 'none', 'the same deck again makes nothing new'
+    edit_section(free, draft, CARDS, heading='Edited since')
     with pytest.raises(DomainError) as refused:
         quoted(free, draft)
     assert refused.value.code == 'weekly_file_limit' and refused.value.status == 429
@@ -836,7 +852,7 @@ def test_a_pin_that_no_longer_holds_its_slide_is_written_back_changing_nothing_e
     waiting, _ = submit_job(customer, other.id, 'a-send-after-a-repin')
     assert execute_job(waiting.id).status == 'succeeded'
     # And the next deck holds to the new pin.
-    assert send(customer, draft).artifacts.get().file.metadata['repinned'] == []
+    assert drawn_again(customer, draft).artifacts.get().file.metadata['repinned'] == []
 
 
 def test_a_draft_rebuilt_during_the_send_gets_no_pins_from_it(customer, stock_photos, monkeypatch):  # noqa: F811
@@ -876,8 +892,13 @@ def test_a_send_extends_the_draft_its_pictures_and_their_candidates_to_its_own_d
     clock(30)
     cleanup_expired()
     assert GenerationDraft.objects.filter(pk=draft.pk).exists() and all(FileAsset.objects.get(pk=picture_.pk).state == 'ready' for picture_ in pictures)
-    again = send(customer, draft)
-    assert again.status == 'succeeded' and media(delivered(again)) == as_delivered
+    again = resend(customer, draft)
+    assert again == job and media(delivered(again)) == as_delivered
+    later = job.artifacts.get().file
+    later.refresh_from_db()
+    draft.refresh_from_db()
+    assert later.expires_at > deadline and draft.expires_at == later.expires_at, 'the file sent again and what changes it end together'
+    assert all(FileAsset.objects.get(pk=picture_.pk).expires_at == later.expires_at for picture_ in pictures)
 
     clock(60)
     cleanup_expired()
@@ -1084,7 +1105,7 @@ def test_the_change_button_lives_as_long_as_the_newest_file(customer, stock_phot
         assert send(customer, draft).status == 'succeeded'
         assert row.get().expires_at == first_ends, 'a send to the web has no button to move'
     clock(sent_at)
-    job = send(customer, draft, origin='bot')
+    job = send(customer, draft, origin='bot') if sent_at <= 24 else resend(customer, draft, origin='bot')
     assert job.status == 'succeeded', job.error_code
     delivery = BotDelivery.objects.get(artifact__job=job)
     assert result_controls(delivery).inline_keyboard[0][0].callback_data == button

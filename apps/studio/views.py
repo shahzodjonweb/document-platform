@@ -14,6 +14,7 @@ from apps.core.services import owned_assets,create_quote,submit_job,execute_job,
 from apps.core.policy import EDITOR_LIMITS,FEATURES,payload_bytes,plan_limits,require_feature
 from operations.integrations import ai_config,editor_flags
 from .domain import CV,DOCUMENT,SLIDES,GENERATION_IDS,_image_cap,allowed,create_draft,draft_data,draft_jobs,update_draft,generation_quote,pack,unpack,limits
+from .editor_domain import file_gone,normalized_commands,quote_draft,version_conflict
 from .editor_policy import COMMAND_COLUMNS,store_commands,stored_commands
 from .models import GenerationDraft,SavedDefinition,EducationProject,PracticeAttempt,ShareGrant,EditorDocument,WorkflowRun
 
@@ -449,20 +450,17 @@ def shared(request,token):
     if not s or not may_share_artifact(s.artifact):raise DomainError('not_found',404)
     return download_asset(request,s.artifact.file)
 
+def editor_row(e):
+    """A draft in a list. Its marks are the customer's text, decrypted a row at a time, and a list has no use for them."""
+    return {'id':str(e.id),'version':e.version,'file':asset_data(e.file),'pages':e.file.metadata.get('page_sizes',[]),'form_fields':e.file.metadata.get('form_fields',[]),'image_counts':e.file.metadata.get('image_counts',[]),'input_ids':e.input_ids,'limits':EDITOR_LIMITS,'updated_at':e.updated_at,'device':e.device}
 def editor_data(e):
-    return {'id':str(e.id),'version':e.version,'file':asset_data(e.file),'pages':e.file.metadata.get('page_sizes',[]),'form_fields':e.file.metadata.get('form_fields',[]),'image_counts':e.file.metadata.get('image_counts',[]),'commands':stored_commands(e),'input_ids':e.input_ids,'limits':EDITOR_LIMITS,'updated_at':e.updated_at,'device':e.device}
-def _version_conflict(e,**mine):
-    """The draft moved on elsewhere: when, on which device, how many marks it holds, and how many the caller sent if it sent any."""
-    return DomainError('version_conflict',409,{'updated_at':e.updated_at,'device':e.device,'theirs':len(stored_commands(e)),**mine})
-def _file_gone(a):
-    """A file the customer deleted did not run out: telling them it did, and to send it again, would be false."""
-    return DomainError('file_unavailable',404) if a.metadata.get('deleted_by_customer') else DomainError('file_expired',410)
+    return {**editor_row(e),'commands':stored_commands(e)}
 def _file_to_open(account,fid):
     """A file that ran out says so, apart from one that was never this account's."""
     try:return owned_assets(account,[fid])[0]
     except DomainError as error:
         gone=FileAsset.objects.filter(account=account,id=fid,expires_at__lte=timezone.now()).first() if error.code=='file_unavailable' else None
-        if gone:raise _file_gone(gone) from None
+        if gone:raise file_gone(gone) from None
         raise
 def _refusal(a):
     """Why the editor cannot open a file, as the refusal says it, or None when it can."""
@@ -481,18 +479,18 @@ def editors(request):
         drafts=list(EditorDocument.objects.filter(account=request.account,file=a).order_by('-created_at','-pk'))
         if drafts:return JsonResponse(editor_data(next((d for d in drafts if stored_commands(d)),drafts[0])),status=200)
         return JsonResponse(editor_data(EditorDocument.objects.create(account=request.account,file=a,input_ids=[str(a.id)])),status=201)
-    return {'results':[editor_data(e) for e in EditorDocument.objects.filter(account=request.account,file__expires_at__gt=timezone.now(),file__state='ready').select_related('file')]}
+    return {'results':[editor_row(e) for e in EditorDocument.objects.filter(account=request.account,file__expires_at__gt=timezone.now(),file__state='ready').select_related('file')]}
 @api(('GET','PATCH','DELETE'))
 def editor_detail(request,pk):
     with transaction.atomic():
         e=EditorDocument.objects.select_for_update().select_related('file').filter(account=request.account,id=pk).first()
         if not e:raise DomainError('not_found',404)
-        if e.file.state!='ready' or e.file.expires_at<=timezone.now():raise _file_gone(e.file)
+        if e.file.state!='ready' or e.file.expires_at<=timezone.now():raise file_gone(e.file)
         if request.method=='DELETE':e.delete();return {'deleted':True}
         if request.method=='PATCH':
             data=body(request,limit=131072,too_large='payload_too_large')
             commands=data.get('commands',[])
-            if data.get('version')!=e.version:raise _version_conflict(e,mine=len(commands) if isinstance(commands,list) else 0)
+            if data.get('version')!=e.version:raise version_conflict(e,mine=len(commands) if isinstance(commands,list) else 0)
             if not isinstance(commands,list) or len(commands)>EDITOR_LIMITS['commands']:raise DomainError('invalid_parameters')
             device=data.get('device','')
             if not isinstance(device,str) or len(device)>40 or any(ord(c)<32 for c in device):raise DomainError('invalid_parameters')
@@ -500,13 +498,8 @@ def editor_detail(request,pk):
             if not ids or str(ids[0])!=str(e.file_id):raise DomainError('invalid_inputs')
             from apps.core.services import validate_inputs
             from .editor_policy import validate_commands_access
-            from processors import normalize_parameters,ProcessorError
             assets=validate_inputs(request.account,'editor.visual',ids)
-            if commands:
-                try:commands=normalize_parameters('editor.visual',{'commands':commands,'accept_rasterization':True},[a.metadata for a in assets])['commands']
-                except ProcessorError as error:
-                    if error.index is None:raise DomainError(error.code) from None
-                    raise DomainError('invalid_editor_command',params={'index':error.index,'code':error.code}) from None
+            if commands:commands=normalized_commands(commands,assets)
             validate_commands_access(request.account,commands)
             # Measured with the defaults filled in: this is what is stored, sent back and quoted.
             if payload_bytes(commands)>EDITOR_LIMITS['bytes']:raise DomainError('payload_too_large',413)
@@ -518,6 +511,11 @@ def editor_quote(request,pk):
     e=EditorDocument.objects.filter(account=request.account,id=pk).first()
     if not e:raise DomainError('not_found',404)
     data=body(request)
-    if data.get('version')!=e.version:raise _version_conflict(e)
+    # `deliver` is a send of the stored draft. Without it this is today's web, whose quote and job carry the marks, until it goes.
+    if 'deliver' in data:
+        throttle(request,'quotes',60)
+        q,summary=quote_draft(request.account,pk,data)
+        return JsonResponse({**quote_data(q),'summary':summary},status=201)
+    if data.get('version')!=e.version:raise version_conflict(e)
     q=create_quote(request.account,'editor.visual',e.input_ids,{'commands':stored_commands(e),'accept_rasterization':data.get('accept_rasterization',False)})
     return JsonResponse(quote_data(q),status=201)

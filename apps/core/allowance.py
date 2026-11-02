@@ -24,6 +24,7 @@ from .models import Job
 WEEK_ZONE = ZoneInfo('Asia/Tashkent')
 # Jobs that produced nothing do not use up a week's allowance.
 NOT_COUNTED = ('failed', 'canceled', 'expired', 'no_op')
+IN_FLIGHT = ('queued', 'running', 'finalizing')
 LIMIT_CODES = ('weekly_ai_limit', 'weekly_file_limit', 'edit_limit')
 
 
@@ -55,15 +56,81 @@ def ai_documents_this_week(account, now=None):
                if (parameters or {}).get('stage') != 'outline' and not (parameters or {}).get('revision'))
 
 
+def count_once():
+    from operations.integrations import editor_flags
+    return editor_flags()['count_once']
+
+
+def draft_pointer(parameters):
+    """('editor_document_id', id) or ('generation_draft_id', id): the stored draft a file task was made from, or None."""
+    for name in ('editor_document_id', 'generation_draft_id'):
+        if (parameters or {}).get(name):
+            return name, str(parameters[name])
+    return None
+
+
 def file_jobs_this_week(account, now=None):
     """File tasks started this week: every tool that is not AI generation.
 
     A confirmed batch holds a place for each of its files from the moment it is
-    confirmed, although its children become jobs one at a time.
+    confirmed, although its children become jobs one at a time. Behind the
+    count_once flag a stored draft is one task however often it is sent.
     """
     start, end = week_bounds(now)
-    jobs = _counted(account, start, end).exclude(feature_id__in=_generation_ids()).count()
+    rows = _counted(account, start, end).exclude(feature_id__in=_generation_ids())
+    if count_once():
+        # Only the two ids are read: an editor job from before pointers holds the customer's marks.
+        drafts = list(rows.values_list('parameters__editor_document_id', 'parameters__generation_draft_id'))
+        jobs = sum(1 for pair in drafts if not any(pair)) + len({pair for pair in drafts if any(pair)})
+    else:
+        jobs = rows.count()
     return jobs + _waiting_items().filter(run__account=account).count()
+
+
+def _counted_this_week(account, quote):
+    pointer = draft_pointer(quote.parameters)
+    if not pointer or not count_once():
+        return False
+    start, end = week_bounds()
+    return (_counted(account, start, end).exclude(feature_id__in=_generation_ids())
+            .filter(**{f'parameters__{pointer[0]}': pointer[1]}).exists())
+
+
+def same_result(account, quote):
+    """The last job of this quote's draft that made what this quote asks, or is making it: sending it again makes nothing new, whatever the count_once flag says.
+
+    A finished one is compared by what the draft holds, however often it was saved
+    since (`content`, which a deck's pointer does not have), and needs its file
+    still here. One still to run reads the draft again and fails if the version has moved,
+    so only the very same save (`snapshot`) can wait for it.
+    """
+    pointer = draft_pointer(quote.parameters)
+    if not pointer:
+        return None
+    job = (Job.objects.filter(account=account, feature_id=quote.feature_id, status__in=('succeeded', *IN_FLIGHT), **{f'parameters__{pointer[0]}': pointer[1]})
+           .order_by('-created_at').first())
+    if not job:
+        return None
+    held = 'content' if job.status == 'succeeded' and 'content' in quote.parameters else 'snapshot'
+    if any(job.parameters.get(name) != quote.parameters.get(name) for name in (held, 'format')):
+        return None
+    if job.status != 'succeeded':
+        return job
+    files = [artifact.file for artifact in job.artifacts.select_related('file')]
+    return job if files and all(file.state == 'ready' and file.expires_at > timezone.now() for file in files) else None
+
+
+def costs_nothing(account, quote):
+    """Whether a send takes no file task: its result is there or on its way, or its draft is already counted this week."""
+    return bool(same_result(account, quote)) or _counted_this_week(account, quote)
+
+
+def quote_cost(account, quote):
+    """What this send uses, as a quote's summary shows it."""
+    allowance = usage_snapshot(account)['file_jobs']
+    if allowance['limit'] is None:
+        return {'kind': 'included', 'left': None, 'limit': None}
+    return {'kind': 'none' if costs_nothing(account, quote) else 'file_task', 'left': allowance['remaining'], 'limit': allowance['limit']}
 
 
 def _waiting_items():
@@ -187,7 +254,7 @@ def require_quote(account, quote, count=1):
         require_edit(account, root)
     elif kind in ('ai_document', 'outline'):
         require_ai_document(account)
-    elif not _holds_place(quote):
+    elif not _holds_place(quote) and not costs_nothing(account, quote):
         require_file_jobs(account, count)
 
 

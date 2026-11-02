@@ -103,7 +103,7 @@ def _run(request: dict, timeout: int) -> dict:
         except (ValueError, UnicodeError):
             raise ProcessorError('processor_failed') from None
     if not result.get('ok'):
-        raise ProcessorError(result.get('error', 'processing_failed'))
+        raise ProcessorError(result.get('error', 'processing_failed'), index=result.get('index'))
     if process.returncode != 0:
         raise ProcessorError('processor_failed')
     return result['result']

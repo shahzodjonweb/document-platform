@@ -16,6 +16,7 @@ from django.utils import timezone
 
 from apps.core.errors import DomainError
 from apps.core.models import BotCallback, BotJobNotice
+from apps.core.services import TELEGRAM_ORIGINS
 from .ux_copy import UX, STATUS, TOOL_NAMES
 from .errors import bot_error
 
@@ -30,6 +31,7 @@ COPY = {
         'not_counted': 'It doesn’t count towards this week’s limit.',
         'edit_not_counted': 'This edit isn’t counted against this file’s edits.',
         'details': '🔎 Task details',
+        'draft_changed': 'This file changed while it was waiting, so nothing was sent. Open it and send it again.',
     },
     'uz': {
         'failed': 'Bu vazifani yakunlay olmadik.',
@@ -39,6 +41,7 @@ COPY = {
         'not_counted': 'Bu haftalik limitingizga kirmaydi.',
         'edit_not_counted': 'Bu tahrir fayl uchun ajratilgan AI tahrirlar soniga kirmaydi.',
         'details': '🔎 Tafsilotlar',
+        'draft_changed': 'Fayl navbat kutayotganda o‘zgardi, shuning uchun yuborilmadi. Uni oching va qayta yuboring.',
     },
     'ru': {
         'failed': 'Не удалось завершить задачу.',
@@ -48,6 +51,7 @@ COPY = {
         'not_counted': 'В недельный лимит это не засчитывается.',
         'edit_not_counted': 'Эта правка не засчитывается в лимит правок файла.',
         'details': '🔎 Подробности',
+        'draft_changed': 'Файл изменился, пока ждал очереди, поэтому ничего не отправлено. Откройте его и отправьте снова.',
     },
 }
 # Words an error message uses when it already says the task was not counted:
@@ -84,9 +88,16 @@ def model_failed(job):
     return job.status == 'failed' and job.error_code == 'provider_failed' and quote_kind(job) == 'ai_document'
 
 
+def failure_line(job, locale):
+    """Why a job failed, as the chat says it. The bot's own wording for a changed draft is about its buttons, and a send of a stored draft has none, wherever it was asked from."""
+    if (job.parameters or {}).get('editor_document_id') and job.error_code == 'version_conflict':
+        return COPY[locale if locale in COPY else 'en']['draft_changed']
+    return bot_error(DomainError(job.error_code or 'processing_failed'), locale)
+
+
 def enqueue_notice(job):
     """Call inside settlement after saving the terminal state; never sends."""
-    if job.origin_channel != 'bot' or job.status not in NOTICE_STATUSES or job.account.telegram_user_id is None:
+    if job.origin_channel not in TELEGRAM_ORIGINS or job.status not in NOTICE_STATUSES or job.account.telegram_user_id is None:
         return None
     notice, _ = BotJobNotice.objects.get_or_create(job=job)
     return notice
@@ -157,7 +168,7 @@ async def attempt_notice(identifier, bot):
         return await sync_to_async(finish_notice)(notice, 'blocked', error='telegram_link_required')
     if account.is_test and isinstance(getattr(bot, 'session', None), AiohttpSession):
         return await sync_to_async(finish_notice)(notice, 'blocked', error='test_account_delivery')
-    if job.origin_channel != 'bot' or job.status not in NOTICE_STATUSES:
+    if job.origin_channel not in TELEGRAM_ORIGINS or job.status not in NOTICE_STATUSES:
         return await sync_to_async(finish_notice)(notice, 'blocked', error='invalid_notice_job')
     locale = account.locale if account.locale in COPY else 'en'
     copy = COPY[locale]
@@ -169,7 +180,7 @@ async def attempt_notice(identifier, bot):
         lines[1] = TOOL_NAMES[job.feature_id][locale]
     said = False
     if job.status == 'failed':
-        error = bot_error(DomainError(job.error_code or 'processing_failed'), locale)
+        error = failure_line(job, locale)
         lines.append(error)
         said = any(words in error for words in ALREADY_SAID)
     counted = '' if said else await sync_to_async(not_counted)(job, locale)

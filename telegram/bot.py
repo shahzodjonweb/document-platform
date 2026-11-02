@@ -27,7 +27,7 @@ from apps.core.identity import resolve_account, approve_challenge_id
 from apps.core.policy import catalog, usage_snapshot
 from apps.core.services import upload_file, create_quote, submit_job, execute_job, storage_path, cancel_job, RETIRED_IMAGE_SWITCHES
 from apps.core import funnel, storage
-from apps.core.serializers import quote_data
+from apps.core.serializers import quote_data, warning_codes
 from apps.core.errors import DomainError, error_data
 from apps.core.allowance import LIMIT_CODES
 
@@ -2065,7 +2065,7 @@ def build_dispatcher():
         A warning we have no wording for is dropped rather than shown as a bare
         code — the codes are internal.
         """
-        lines=[COPY.get(account.locale,COPY['en']).get(code) for code in (job.warnings or [])]
+        lines=[COPY.get(account.locale,COPY['en']).get(code) for code in warning_codes(job)]
         return '\n'.join(line for line in lines if line)
 
     async def deliver(message,account,job,request_key=None,file=None):
@@ -2099,12 +2099,12 @@ def build_dispatcher():
             if available: rows.append([await button(account,'download','download',{'job_id':str(job.id)})])
         elif job.status=='no_op': body+='\n\n'+text(account,'no_op')
         elif job.status=='failed':
-            body+='\n\n'+bot_error(DomainError(job.error_code or 'processing_failed'),account.locale)
+            from .notifications import failure_line,model_failed
+            body+='\n\n'+failure_line(job,account.locale)
             if job.feature_id in ai.SERVICES and job.parameters.get('stage')!='outline':
                 rows.append([await button(account,'retry_task','ai_retry',{'job_id':str(job.id)})])
                 # A new document the AI could not finish: the advice the notice
                 # gave, and a new description beside Retry (notifications.py).
-                from .notifications import model_failed
                 if model_failed(job):
                     body+='\n\n'+text(account,'cv_failed_advice' if job.feature_id==ai.CV else 'ai_failed_advice')
                     rows.append([await button(account,'ai_change_topic','ai_tool',{'feature_id':job.feature_id})])
