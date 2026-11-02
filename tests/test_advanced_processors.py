@@ -193,6 +193,19 @@ def test_unsafe_editor_commands_rejected(command):
     with pytest.raises(ProcessorError):normalize_parameters('editor.visual',{'commands':[command]})
 
 
+def test_a_form_field_named_with_a_line_break_is_filled(tmp_path):
+    """A name made from a multi-line label is the PDF's own: what inspect offers has to fill."""
+    from pypdf import PdfWriter
+    from pypdf.generic import NameObject,TextStringObject
+    writer=PdfWriter(clone_from=pdf(tmp_path/'source.pdf',form=True))
+    writer.root_object['/AcroForm']['/Fields'][0].get_object()[NameObject('/T')]=TextStringObject('Ism\rFamiliya')
+    writer.write(tmp_path/'named.pdf')
+    name=inspect_file(tmp_path/'named.pdf')['form_fields'][0]['name']
+    assert name=='Ism\rFamiliya'
+    result=run('editor.fill_forms',tmp_path/'named.pdf',[{'type':'fill_form','field':name,'value':'Ali\r\nVali'}],tmp_path/'out')
+    assert PdfReader(output(result)).get_fields()[name]['/V']=='Ali\r\nVali'
+
+
 def test_parent_form_actions_are_rejected(tmp_path):
     from pypdf import PdfWriter
     from pypdf.generic import NameObject,DictionaryObject,TextStringObject

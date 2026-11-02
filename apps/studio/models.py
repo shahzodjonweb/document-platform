@@ -55,13 +55,24 @@ class EditorDocument(models.Model):
     account=models.ForeignKey('core.Account',on_delete=models.CASCADE)
     file=models.ForeignKey('core.FileAsset',on_delete=models.CASCADE)
     version=models.PositiveIntegerField(default=1)
+    # The draft's marks, through editor_policy only: stored_commands reads them, store_commands writes
+    # them. `commands` is kept beside encrypted_commands, for the image before this one, until 0012.
     commands=models.JSONField(default=list)
+    encrypted_commands=models.BinaryField(null=True)
+    # What the editor container read from the file, encrypted as field labels are customer text.
+    encrypted_inspection=models.BinaryField(null=True)
+    inspection_sha256=models.CharField(max_length=64,blank=True,default='',db_default='')
     input_ids=models.JSONField(default=list)
     created_at=models.DateTimeField(default=timezone.now)
+    # When and from which device the draft last changed: what a version conflict tells the other one.
+    updated_at=models.DateTimeField(null=True)
+    device=models.CharField(max_length=40,blank=True,default='',db_default='')
 
 class ProviderUsage(models.Model):
     id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
-    job=models.ForeignKey('core.Job',on_delete=models.CASCADE)
+    # A free editor task spends provider calls with no job to charge them to: one of the two is set.
+    job=models.ForeignKey('core.Job',on_delete=models.CASCADE,null=True)
+    task=models.ForeignKey('studio.EditorTask',on_delete=models.CASCADE,null=True)
     provider=models.CharField(max_length=24)
     model=models.CharField(max_length=100,blank=True)
     input_tokens=models.PositiveIntegerField(default=0)
@@ -208,6 +219,45 @@ class GenerationRecord(models.Model):
     output_pages=models.PositiveIntegerField(default=0)
     created_at=models.DateTimeField(default=timezone.now,db_index=True)
     expires_at=models.DateTimeField(db_index=True)
+
+class EditorTask(models.Model):
+    """A short piece of editor work done in the editor container, never in a request.
+
+    Claimed and leased as CvSourceRead is. Only one of a draft's renders waits
+    at a time: a newer payload replaces the queued one. Payload and result are
+    the customer's, encrypted as drafts are.
+    """
+    KINDS=[('inspect','inspect'),('text_check','text_check'),('preview','preview'),('render_deck','render_deck'),('photos','photos')]
+    STATUSES=[('queued','queued'),('running','running'),('done','done'),('failed','failed')]
+    id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
+    account=models.ForeignKey('core.Account',on_delete=models.CASCADE,related_name='+')
+    kind=models.CharField(max_length=12,choices=KINDS)
+    document=models.ForeignKey(EditorDocument,on_delete=models.CASCADE,null=True,related_name='+')
+    draft=models.ForeignKey(GenerationDraft,on_delete=models.CASCADE,null=True,related_name='+')
+    status=models.CharField(max_length=8,choices=STATUSES,default='queued',db_default='queued')
+    encrypted_payload=models.BinaryField(null=True)
+    encrypted_result=models.BinaryField(null=True)
+    error=models.CharField(max_length=40,blank=True,default='',db_default='')
+    attempts=models.PositiveSmallIntegerField(default=0,db_default=0)
+    lease_expires_at=models.DateTimeField(null=True)
+    created_at=models.DateTimeField(default=timezone.now,db_default=Now())
+    started_at=models.DateTimeField(null=True)
+    finished_at=models.DateTimeField(null=True)
+    class Meta:
+        indexes=[models.Index(fields=['status','created_at'],name='editor_task_queue'),models.Index(fields=['account','status'],name='editor_task_account')]
+        constraints=[models.UniqueConstraint(fields=['draft','kind'],condition=models.Q(status='queued'),name='editor_task_one_queued')]
+
+class SlideRender(models.Model):
+    """One slide of a draft as last drawn: the stored PNG and thumbnail, and where its layout's zones fall."""
+    id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
+    draft=models.ForeignKey(GenerationDraft,on_delete=models.CASCADE,related_name='+')
+    key=models.CharField(max_length=64)
+    file=models.OneToOneField('core.FileAsset',on_delete=models.CASCADE,related_name='+')
+    thumb=models.OneToOneField('core.FileAsset',on_delete=models.CASCADE,related_name='+')
+    frames=models.JSONField(default=list)
+    created_at=models.DateTimeField(default=timezone.now)
+    class Meta:
+        constraints=[models.UniqueConstraint(fields=['draft','key'],name='slide_render_once')]
 
 class CvSourceRead(models.Model):
     """One file a CV is made from, waiting to be read or read: its place in the queue and what it gave.

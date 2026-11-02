@@ -86,6 +86,22 @@ def save_plan(request, plan_id):
     return redirect('/ops/plans?saved=1')
 
 
+@require_staff('Operations')
+@require_POST
+@transaction.atomic
+def save_editor(request):
+    """Turn the new editors' parts on or off and set their budgets, without a deploy."""
+    from . import editor_settings
+    values = {name: request.POST[name] for name in request.POST if name != 'csrfmiddlewaretoken'}
+    try:
+        before, after = editor_settings.save(values)
+    except editor_settings.EditorSettingsError as error:
+        return HttpResponseBadRequest(str(error))
+    if after:
+        audit(request.ops_user, 'editor.settings', editor_settings.KEY, before=before, after=after)
+    return redirect('/ops/editor?saved=1')
+
+
 @require_staff('Support', 'Operations')
 def download_file(request, pk):
     """Open one customer document, recording who opened which file and when.

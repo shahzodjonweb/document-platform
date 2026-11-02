@@ -45,9 +45,10 @@ logging.getLogger('pypdf').setLevel(logging.CRITICAL)
 
 class ProcessorError(Exception):
     """Stable safe codes. Never include filenames, content or passwords."""
-    def __init__(self, code: str, message: str | None = None):
+    def __init__(self, code: str, message: str | None = None, index: int | None = None):
         self.code = code
         self.message = message or code.replace('_', ' ').capitalize()
+        self.index = index  # Which of a list of commands was at fault, when one was.
         super().__init__(self.message)
 
 

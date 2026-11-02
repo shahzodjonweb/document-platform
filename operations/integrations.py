@@ -51,6 +51,26 @@ def telegram_config():
             'webhook_secret':secret.get('webhook_secret') or settings.TELEGRAM_WEBHOOK_SECRET,
             'webapp_url':cfg.get('webapp_url') or settings.TELEGRAM_WEBAPP_URL}
 
+# What the new editors run on, all off until the owner turns them on, and the
+# seconds of free work one account may use a day. Editable at /ops/editor
+# (editor_settings.py); the environment answers until the first save there.
+EDITOR_FLAGS = ('editor_v2','pdfcraft','text_edit','deck_editor','edit_buttons','count_once','photos_task')
+EDITOR_BUDGETS = {'inspect':120,'text_check':90,'preview':120,'render_deck':300,'paid_multiplier':3}
+
+def _env_budget(name, default):
+    try: return int(os.getenv(f'EDITOR_BUDGET_{name.upper()}',''))
+    except ValueError: return default
+
+def editor_config():
+    cfg, _ = read_config('editor')
+    return {**{name:cfg[name] if isinstance(cfg.get(name),bool) else os.getenv(f'EDITOR_FLAG_{name.upper()}','0')=='1' for name in EDITOR_FLAGS},
+            **{name:cfg[name] if type(cfg.get(name)) is int else _env_budget(name,default) for name,default in EDITOR_BUDGETS.items()}}
+
+def editor_flags():
+    """The switches alone: what `/studio/config` tells the web. The budgets are the server's business."""
+    config = editor_config()
+    return {name:config[name] for name in EDITOR_FLAGS}
+
 def ai_config():
     cfg, secret = read_config('ai')
     return {'mode':cfg.get('mode','local_fixture' if settings.DEBUG else 'disabled'),

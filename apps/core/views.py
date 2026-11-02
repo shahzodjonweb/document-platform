@@ -1,12 +1,14 @@
 from operations.integrations import telegram_config
 from operations.middleware import known_zone
 import json
+import logging
+import secrets
 import uuid
 from functools import wraps
 from django.conf import settings
-from django.core.cache import cache
+from django.core.cache import caches
 from django.core.exceptions import ValidationError
-from django.db import transaction
+from django.db import DatabaseError, transaction
 from django.http import JsonResponse, FileResponse
 from django.middleware.csrf import get_token, rotate_token
 from django.utils import timezone
@@ -60,11 +62,47 @@ def throttle(request,key,limit=20):
     if key in ('miniapp','challenge','exchange'):
         from .auth_views import limit as auth_limit
         return auth_limit(request, key, limit)
-    identity=request.META.get('REMOTE_ADDR','unknown')
+    # Never REMOTE_ADDR: that is the gateway, for everyone at once.
+    account=getattr(request,'account',None)
+    if account: identity=f'account:{account.pk}'
+    else:
+        identity=request.session.get('rate_identity')
+        if not identity: identity=request.session['rate_identity']=secrets.token_urlsafe(32)
+        identity=f'session:{identity}'
+    count_request(key,identity,limit)
+
+def account_limit(account,key,limit):
+    """At most `limit` requests a minute for one account, as `throttle` counts them."""
+    count_request(key,f'account:{account.pk}',limit)
+
+def count_request(key,identity,limit):
+    """One more request in a minute counted from the first, on the store every process shares.
+
+    A fixed window: the count expires a minute after it began, whatever comes
+    after. Set again on every request, the expiry moved on with each, and a
+    tab asking every two seconds was refused after two minutes of waiting.
+    incr keeps the expiry (locmem and redis alike).
+
+    With that store away the same limit is counted in the database for this
+    call, slower but still shared: a Redis outage refuses nobody it should not.
+    """
     cache_key=f'rate:{key}:{identity}'
-    count=cache.get(cache_key,0)
-    if count>=limit: raise DomainError('rate_limited',429,retryable=True)
-    cache.set(cache_key,count+1,60)
+    try:
+        store=caches['limits']
+        store.add(cache_key,0,60)
+        try:count=store.incr(cache_key)
+        except ValueError:
+            # The minute ended between add and incr: this request begins the next.
+            store.add(cache_key,0,60);count=store.incr(cache_key)
+        # Redis checks the key, then counts: a key expiring between the two comes back with no expiry at all.
+        if count==1:store.touch(cache_key,60)
+    except Exception:
+        logging.getLogger(__name__).warning('Limiter store unavailable; counting %s in the database',key)
+        from .customer_auth import auth_limit
+        try:auth_limit(f'rate:{key}',identity,limit,60)
+        except DatabaseError:logging.getLogger(__name__).exception('Limiter could not count %s',key)
+        return
+    if count>limit:raise DomainError('rate_limited',429,retryable=True)
 
 def sign_in(request,account):
     request.session.cycle_key()
@@ -217,7 +255,9 @@ def file_detail(request,asset_id):
         if any(str(asset.id) in j.input_ids for j in Job.objects.filter(account=request.account,status__in=('queued','running','finalizing'))): raise DomainError('file_in_use',409)
         asset.state='revoked'
         asset.expires_at=timezone.now()
-        asset.save(update_fields=['state','expires_at'])
+        # Cleanup soon makes this row look like any file that ran out; the editor tells the two apart.
+        asset.metadata['deleted_by_customer']=True
+        asset.save(update_fields=['state','expires_at','metadata'])
         from . import storage
         storage.delete(asset.object_key)
         # What a CV's file gave goes with it.
@@ -254,6 +294,7 @@ def quotes(request):
 @api(('GET','POST'))
 def jobs(request):
     if request.method=='POST':
+        throttle(request,'jobs',60)
         data=body(request)
         job,created=submit_job(request.account,data.get('quote_id'),request.headers.get('Idempotency-Key',''))
         if settings.LOCAL_SYNC_JOBS and created: job=execute_job(job.id)

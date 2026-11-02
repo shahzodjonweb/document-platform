@@ -484,23 +484,37 @@
         "type": "object"
       },
       "EditorCommand": {
-        "description": "PDF points from displayed top-left, pages start at 1, image indices start at 0. Image input indices reference extra uploaded assets. Redaction requires explicit rasterization acknowledgement and a separate export.",
+        "description": "PDF points from displayed top-left, pages start at 1, image indices start at 0. Image input indices reference extra uploaded assets. Redaction requires explicit rasterization acknowledgement and a separate export. Every position is in source page numbers: `reorder.order` lists all source pages, deleted ones too, and the final order is that minus the deleted pages.",
         "oneOf": [
           {
             "additionalProperties": false,
             "properties": {
+              "bold": {
+                "type": "boolean"
+              },
               "color": {
+                "pattern": "^#[0-9A-Fa-f]{6}$",
                 "type": "string"
+              },
+              "font": {
+                "enum": [
+                  "sans",
+                  "serif"
+                ]
               },
               "font_size": {
                 "minimum": 0,
                 "type": "number"
+              },
+              "italic": {
+                "type": "boolean"
               },
               "page": {
                 "minimum": 1,
                 "type": "integer"
               },
               "text": {
+                "maxLength": 2000,
                 "type": "string"
               },
               "type": {
@@ -528,6 +542,7 @@
             "additionalProperties": false,
             "properties": {
               "color": {
+                "pattern": "^#[0-9A-Fa-f]{6}$",
                 "type": "string"
               },
               "height": {
@@ -572,6 +587,7 @@
                 "type": "integer"
               },
               "text": {
+                "maxLength": 2000,
                 "type": "string"
               },
               "type": {
@@ -599,6 +615,7 @@
             "additionalProperties": false,
             "properties": {
               "color": {
+                "pattern": "^#[0-9A-Fa-f]{6}$",
                 "type": "string"
               },
               "page": {
@@ -823,6 +840,10 @@
                 "minimum": 1,
                 "type": "integer"
               },
+              "text": {
+                "maxLength": 2000,
+                "type": "string"
+              },
               "type": {
                 "const": "redact"
               },
@@ -848,6 +869,159 @@
               "y"
             ],
             "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "height": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "original": {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              },
+              "page": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "text": {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              "type": {
+                "const": "edit_text"
+              },
+              "width": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "x": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "y": {
+                "minimum": 0,
+                "type": "number"
+              }
+            },
+            "required": [
+              "height",
+              "original",
+              "page",
+              "text",
+              "type",
+              "width",
+              "x",
+              "y"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "color": {
+                "pattern": "^#[0-9A-Fa-f]{6}$",
+                "type": "string"
+              },
+              "height": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "page": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "type": {
+                "const": "whiteout"
+              },
+              "width": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "x": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "y": {
+                "minimum": 0,
+                "type": "number"
+              }
+            },
+            "required": [
+              "height",
+              "page",
+              "type",
+              "width",
+              "x",
+              "y"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "angle": {
+                "enum": [
+                  90,
+                  180,
+                  270
+                ],
+                "type": "integer"
+              },
+              "page": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "type": {
+                "const": "rotate_page"
+              }
+            },
+            "required": [
+              "angle",
+              "page",
+              "type"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "page": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "type": {
+                "const": "delete_page"
+              }
+            },
+            "required": [
+              "page",
+              "type"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "order": {
+                "items": {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "minItems": 1,
+                "type": "array"
+              },
+              "type": {
+                "const": "reorder"
+              }
+            },
+            "required": [
+              "order",
+              "type"
+            ],
+            "type": "object"
           }
         ]
       },
@@ -858,6 +1032,11 @@
               "$ref": "#/components/schemas/EditorCommand"
             },
             "type": "array"
+          },
+          "device": {
+            "description": "The device that last changed it, as it named itself; empty when it did not.",
+            "maxLength": 40,
+            "type": "string"
           },
           "file": {
             "$ref": "#/components/schemas/Asset"
@@ -934,6 +1113,14 @@
             },
             "type": "array"
           },
+          "updated_at": {
+            "description": "When the draft last changed; null until it first does.",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "version": {
             "minimum": 0,
             "type": "integer"
@@ -946,7 +1133,9 @@
           "pages",
           "commands",
           "input_ids",
-          "limits"
+          "limits",
+          "updated_at",
+          "device"
         ],
         "type": "object"
       },
@@ -5514,7 +5703,7 @@
         ]
       },
       "post": {
-        "description": "",
+        "description": "One draft per account and file: 201 for a new one, 200 with the marks already there for a file opened before. A file the editor cannot open is `unsupported_file`, with `message_params.reason` one of `password`, `signed`, `pptx_upload`, `not_pdf` when it is known. A file of this account that has run out is `file_expired` (410); one the customer deleted, is unknown or belongs to another account is `file_unavailable` (404).",
         "operationId": "createEditorDocument",
         "parameters": [
           {
@@ -5546,6 +5735,16 @@
           "required": true
         },
         "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EditorDocument"
+                }
+              }
+            },
+            "description": "Success"
+          },
           "201": {
             "content": {
               "application/json": {
@@ -5580,6 +5779,22 @@
           },
           "409": {
             "description": "State conflict or quota unavailable"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "`file_expired`: the file has run out and has to be sent again."
           }
         },
         "security": [
@@ -5753,6 +5968,10 @@
                     },
                     "type": "array"
                   },
+                  "device": {
+                    "maxLength": 40,
+                    "type": "string"
+                  },
                   "input_ids": {
                     "items": {
                       "format": "uuid",
@@ -5800,7 +6019,7 @@
                 }
               }
             },
-            "description": "Invalid request"
+            "description": "Invalid request. `invalid_editor_command`: one change cannot be saved. `message_params` has `index`, its position in `commands` counted from 0, and `code`, why it was refused. Nothing is saved."
           },
           "401": {
             "description": "Authentication required"
@@ -5809,7 +6028,20 @@
             "description": "Permission or CSRF validation failed"
           },
           "409": {
-            "description": "State conflict or quota unavailable"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "`version_conflict`: the draft changed elsewhere. `message_params` has `updated_at`, `device` and the marks each side holds, `theirs` and `mine`. Nothing is saved."
           },
           "413": {
             "content": {
@@ -5914,7 +6146,20 @@
             "description": "Permission or CSRF validation failed"
           },
           "409": {
-            "description": "State conflict or quota unavailable"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "`version_conflict`: the draft changed elsewhere. `message_params` has `updated_at`, `device` and `theirs`, the marks it holds now; the request carries no marks, so the client counts its own. Nothing is quoted."
           }
         },
         "security": [
@@ -9514,6 +9759,44 @@
                       "type": "array"
                     },
                     "limits": {
+                      "properties": {
+                        "editor": {
+                          "description": "Which parts of the new editors are on. The web treats a missing one as off.",
+                          "properties": {
+                            "count_once": {
+                              "type": "boolean"
+                            },
+                            "deck_editor": {
+                              "type": "boolean"
+                            },
+                            "edit_buttons": {
+                              "type": "boolean"
+                            },
+                            "editor_v2": {
+                              "type": "boolean"
+                            },
+                            "pdfcraft": {
+                              "type": "boolean"
+                            },
+                            "photos_task": {
+                              "type": "boolean"
+                            },
+                            "text_edit": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "editor_v2",
+                            "pdfcraft",
+                            "text_edit",
+                            "deck_editor",
+                            "edit_buttons",
+                            "count_once",
+                            "photos_task"
+                          ],
+                          "type": "object"
+                        }
+                      },
                       "type": "object"
                     },
                     "provider": {

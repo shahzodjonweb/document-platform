@@ -18,6 +18,7 @@ while True:
     close_old_connections()
     try:
         call_command('cleanupfiles')
+        call_command('clearsessions')
     except Exception:
         logging.getLogger('cleanup').exception('Cleanup run failed; the next run is in five minutes')
     time.sleep(300)

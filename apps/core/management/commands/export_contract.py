@@ -21,6 +21,7 @@ def _slide_fields():
 
 def extend_schema(models, endpoint, paths):
     """Public studio and commerce schemas; staff configuration stays excluded."""
+    from operations.integrations import EDITOR_FLAGS
     O={'type':'object'}
     SLIDE_FIELDS=_slide_fields()
     nullable_string={'type':['string','null']}
@@ -40,7 +41,7 @@ def extend_schema(models, endpoint, paths):
         'PracticeResult':obj({'score':I,'max_score':I,'questions':arr(obj({'question_id':S,'correct':B,'expected_answer':S,'explanation':S,'marks':I})),'weak_topics':arr(S),'grading':S},['score','max_score','questions','weak_topics','grading']),
         'EducationProject':obj({'id':UUID,'title':S,'version':I,'expires_at':DT,'created_at':DT,'attempts':arr(ref('PracticeResult')),'content':ref('GenerationContent')},['id','title','version','expires_at','attempts']),
         'ShareGrant':obj({'id':UUID,'artifact_id':UUID,'url':S,'expires_at':DT,'revoked':B},['id','expires_at']),
-        'EditorDocument':obj({'id':UUID,'version':I,'file':ref('Asset'),'pages':arr(obj({'width':{'type':'number'},'height':{'type':'number'}},['width','height'])),'form_fields':arr(obj({'name':S,'type':S},['name','type'])),'image_counts':arr(I),'commands':arr(ref('EditorCommand')),'input_ids':arr(UUID),'limits':{**obj({'commands':I,'bytes':I},['commands','bytes']),'description':'The most a draft holds: `commands` changes, measuring `bytes` as UTF-8 compact JSON with the defaults filled in, the count of `new TextEncoder().encode(JSON.stringify(commands)).length`.'}},['id','version','file','pages','commands','input_ids','limits']),
+        'EditorDocument':obj({'id':UUID,'version':I,'file':ref('Asset'),'pages':arr(obj({'width':{'type':'number'},'height':{'type':'number'}},['width','height'])),'form_fields':arr(obj({'name':S,'type':S},['name','type'])),'image_counts':arr(I),'commands':arr(ref('EditorCommand')),'input_ids':arr(UUID),'limits':{**obj({'commands':I,'bytes':I},['commands','bytes']),'description':'The most a draft holds: `commands` changes, measuring `bytes` as UTF-8 compact JSON with the defaults filled in, the count of `new TextEncoder().encode(JSON.stringify(commands)).length`.'},'updated_at':{'type':['string','null'],'format':'date-time','description':'When the draft last changed; null until it first does.'},'device':{'type':'string','maxLength':40,'description':'The device that last changed it, as it named itself; empty when it did not.'}},['id','version','file','pages','commands','input_ids','limits','updated_at','device']),
         'Payment':obj({'id':UUID,'invoice_id':UUID,'kind':S,'plan':nullable_string,'amount':I,'currency':S,'sandbox':B,'occurred_at':DT,'is_renewal':B,'refunded':I,'status':S,'refund_status':nullable_string,'provider':S},['id','invoice_id','kind','amount','currency','sandbox','occurred_at','is_renewal','refunded','status']),
         'Subscription':obj({'id':UUID,'plan':S,'status':S,'renewal_enabled':B,'current_period_end':DT,'active_until':{'type':['string','null'],'format':'date-time'},'scheduled_plan':nullable_string,'scheduled_at':{'type':['string','null'],'format':'date-time'},'requires_new_checkout':B,'sandbox':B,'provider':S},['id','plan','status','renewal_enabled','current_period_end','sandbox']),
         'ManualPayment':obj({'id':UUID,'reference':S,'plan':{'enum':['plus','premium']},'amount':I,'currency':S,'status':{'enum':['awaiting','submitted','approved','rejected','cancelled','expired','refunded']},'channel':S,'card':obj({'number':nullable_string,'last4':S,'holder':S,'label':S},['number','last4','holder','label']),'receipt_received':B,'payer_note':S,'created_at':DT,'expires_at':DT,'submitted_at':{'type':['string','null'],'format':'date-time'},'decided_at':{'type':['string','null'],'format':'date-time'},'rejection_reason':nullable_string,'starts_at':{'type':['string','null'],'format':'date-time'},'active_until':{'type':['string','null'],'format':'date-time'}},['id','reference','plan','amount','currency','status','card','receipt_received','created_at','expires_at']),
@@ -57,17 +58,22 @@ def extend_schema(models, endpoint, paths):
     models['GenerationDraft']['properties']['revision']=obj({'source_draft_id':UUID,'source_version':I,'selected_section_ids':arr(S),'base_content':ref('GenerationContent')})
     # Typed command alternatives exactly match the processor's strict allowlist.
     from processors.editor import FIELDS
+    # What a field is, past a plain string. `original` and `text` carry the bound normalize holds them to.
+    TYPED={'angle':{'type':'integer','enum':[90,180,270]},'order':{'type':'array','minItems':1,'items':{'type':'integer','minimum':1}},
+           'bold':B,'italic':B,'font':{'enum':['sans','serif']},'color':{'type':'string','pattern':'^#[0-9A-Fa-f]{6}$'},
+           'text':{'type':'string','maxLength':2000},'original':{'type':'string','minLength':1,'maxLength':2000}}
+    OPTIONAL={'font_size','color','stroke_width','font','bold','italic'}
     commands=[]
     for kind,fields in FIELDS.items():
-        fieldspec={name:S for name in fields}
+        fieldspec={name:TYPED.get(name,S) for name in fields}
         fieldspec['type']={'const':kind}
         for name in ('page','input_index','image_index'):
             if name in fields:fieldspec[name]={'type':'integer','minimum':0 if name=='image_index' else 1}
         for name in ('x','y','width','height','font_size','stroke_width'):
             if name in fields:fieldspec[name]={'type':'number','minimum':0}
         if 'points' in fields:fieldspec['points']={'type':'array','minItems':2,'maxItems':200,'items':{'type':'array','minItems':2,'maxItems':2,'items':{'type':'number','minimum':0}}}
-        command=obj(fieldspec,sorted(fields-{'font_size','color','stroke_width'}));command['additionalProperties']=False;commands.append(command)
-    models['EditorCommand']={'oneOf':commands,'description':'PDF points from displayed top-left, pages start at 1, image indices start at 0. Image input indices reference extra uploaded assets. Redaction requires explicit rasterization acknowledgement and a separate export.'}
+        command=obj(fieldspec,sorted(fields-OPTIONAL-({'text'} if kind=='redact' else set())));command['additionalProperties']=False;commands.append(command)
+    models['EditorCommand']={'oneOf':commands,'description':'PDF points from displayed top-left, pages start at 1, image indices start at 0. Image input indices reference extra uploaded assets. Redaction requires explicit rasterization acknowledgement and a separate export. Every position is in source page numbers: `reorder.order` lists all source pages, deleted ones too, and the final order is that minus the deleted pages.'}
     studio_feature=obj({'id':S,'name':S,'surface':S,'eligible':B,'requires_provider':B,'parameter_schema':O,'locales':arr(S),'cv_facts':{**obj({'required':arr(S),'optional':arr(S)},['required','optional']),'description':'Only for `ai.cv`: the facts a CV is made of, in the order they are shown. A new CV is refused with `cv_missing` (400; `message_params.missing` and `optional_missing` list the facts) while a `required` one is missing from what the customer gave and wrote, unless they insist (`options.topic_given`).'}},['id','name','eligible'])
     template=obj({'id':S,'name':S,'locales':arr(S),'kind':S,'style':O,'eligible':B},['id','name'])
     models['BatchQuote']=obj({'id':UUID,'quote_id':UUID,'feature_id':S,'groups':arr(obj({'index':I,'feature_id':S,'input_ids':arr(UUID),'normalized_parameters':O})),'affordable':B,'expires_at':DT,'max_children':I,'reservation_mode':S,'template':obj({'id':UUID,'name':S,'version':I},['id','name','version']),'limitations':arr(S)},['id','quote_id','feature_id','groups','affordable','expires_at','reservation_mode','limitations'])
@@ -80,7 +86,7 @@ def extend_schema(models, endpoint, paths):
     endpoint('/batches/{id}','post','continueBatch',ref('BatchRun'),obj({}))
     endpoint('/batches/{id}/resume','post','resumeBatch',ref('BatchRun'),obj({}))
     endpoint('/batches/{id}/resume','get','getBatchResumeStatus',ref('BatchRun'))
-    endpoint('/studio/config','get','getStudioConfig',obj({'provider':obj({'id':S,'mode':S,'label':S,'configured':B},['id','mode','label','configured']),'features':arr(studio_feature),'generation_features':arr(studio_feature),'templates':arr(template),'limits':O},['provider','features','generation_features','templates','limits']))
+    endpoint('/studio/config','get','getStudioConfig',obj({'provider':obj({'id':S,'mode':S,'label':S,'configured':B},['id','mode','label','configured']),'features':arr(studio_feature),'generation_features':arr(studio_feature),'templates':arr(template),'limits':{**O,'properties':{'editor':{**obj({name:B for name in EDITOR_FLAGS},EDITOR_FLAGS),'description':'Which parts of the new editors are on. The web treats a missing one as off.'}}}},['provider','features','generation_features','templates','limits']))
     create=obj({'feature_id':S,'title':S,'prompt':S,'source_text':S,'source_ids':arr(UUID),'output_locale':{'enum':['en','uz','ru']},'output_format':{'enum':['pdf','pptx']},'options':O},['feature_id'])
     endpoint('/generation/drafts','get','listGenerationDrafts',obj({'results':arr(ref('GenerationDraft'))},['results']))
     endpoint('/generation/drafts','post','createGenerationDraft',ref('GenerationDraft'),create,code='201',description='Uncharged encrypted authoring draft. Local authoring is not an AI response. Provider generation happens only after a confirmed quote.')
@@ -134,12 +140,18 @@ def extend_schema(models, endpoint, paths):
     paths['/shared/{token}']['get']['parameters']=[{'name':'token','in':'path','required':True,'schema':S}]
     paths['/shared/{token}']['get']['responses']['200']={'description':'Role-restricted bearer-link attachment, no-store','content':{'application/octet-stream':{'schema':{'type':'string','format':'binary'}}}}
     endpoint('/editor/documents','get','listEditorDocuments',obj({'results':arr(ref('EditorDocument'))},['results']))
-    endpoint('/editor/documents','post','createEditorDocument',ref('EditorDocument'),obj({'file_id':UUID},['file_id']),code='201')
+    endpoint('/editor/documents','post','createEditorDocument',ref('EditorDocument'),obj({'file_id':UUID},['file_id']),code='201',description='One draft per account and file: 201 for a new one, 200 with the marks already there for a file opened before. A file the editor cannot open is `unsupported_file`, with `message_params.reason` one of `password`, `signed`, `pptx_upload`, `not_pdf` when it is known. A file of this account that has run out is `file_expired` (410); one the customer deleted, is unknown or belongs to another account is `file_unavailable` (404).')
+    paths['/editor/documents']['post']['responses']['200']=paths['/editor/documents']['post']['responses']['201']
+    paths['/editor/documents']['post']['responses']['410']={'description':'`file_expired`: the file has run out and has to be sent again.','content':{'application/json':{'schema':obj({'error':ref('Error')})}}}
     endpoint('/editor/documents/{id}','get','getEditorDocument',ref('EditorDocument'))
-    endpoint('/editor/documents/{id}','patch','updateEditorDocument',ref('EditorDocument'),obj({'version':I,'commands':arr(ref('EditorCommand')),'input_ids':arr(UUID)},['version','commands']))
+    endpoint('/editor/documents/{id}','patch','updateEditorDocument',ref('EditorDocument'),obj({'version':I,'commands':arr(ref('EditorCommand')),'input_ids':arr(UUID),'device':{'type':'string','maxLength':40}},['version','commands']))
+    conflict=lambda description:{'description':description,'content':{'application/json':{'schema':obj({'error':ref('Error')})}}}
+    paths['/editor/documents/{id}']['patch']['responses']['400']=conflict('Invalid request. `invalid_editor_command`: one change cannot be saved. `message_params` has `index`, its position in `commands` counted from 0, and `code`, why it was refused. Nothing is saved.')
+    paths['/editor/documents/{id}']['patch']['responses']['409']=conflict('`version_conflict`: the draft changed elsewhere. `message_params` has `updated_at`, `device` and the marks each side holds, `theirs` and `mine`. Nothing is saved.')
     paths['/editor/documents/{id}']['patch']['responses']['413']={'description':'`payload_too_large`: the draft measures over `limits.bytes`, or the body over 128 KiB. Nothing is saved.','content':{'application/json':{'schema':obj({'error':ref('Error')})}}}
     endpoint('/editor/documents/{id}','delete','deleteEditorDocument',deleted)
     endpoint('/editor/documents/{id}/quote','post','quoteEditorDocument',ref('Quote'),obj({'version':I,'accept_rasterization':B},['version']),code='201')
+    paths['/editor/documents/{id}/quote']['post']['responses']['409']=conflict('`version_conflict`: the draft changed elsewhere. `message_params` has `updated_at`, `device` and `theirs`, the marks it holds now; the request carries no marks, so the client counts its own. Nothing is quoted.')
     endpoint('/billing/subscription','get','getSubscription',ref('SubscriptionState'))
     endpoint('/billing/transactions','get','getTransactions',obj({'results':arr(ref('Payment'))},['results']))
     channel_state=obj({'required':B,'joined':B,'channels':arr(obj({'title':S,'url':S,'joined':B},['title','url','joined']))},['required','joined','channels'])
