@@ -45,6 +45,11 @@ from tests.test_studio import paid
 
 pytestmark = pytest.mark.django_db
 
+
+@pytest.fixture(autouse=True)
+def deck_editor_on(monkeypatch):
+    monkeypatch.setenv('EDITOR_FLAG_DECK_EDITOR', '1')
+
 TITLE = 'Harbour logistics review'
 DESIGN = 'midnight'
 # Slide ids in the deck below, by what they are.
@@ -207,6 +212,15 @@ def during_the_job(monkeypatch, *saves):
 
 
 # ---------------------------------------------------------------- written at generation
+
+
+def test_with_the_deck_editor_off_a_generated_deck_keeps_nothing(customer, stock_photos, monkeypatch):
+    monkeypatch.delenv('EDITOR_FLAG_DECK_EDITOR')
+    draft, job = generate(customer)
+    assert job.status == 'succeeded'
+    assert '_render' not in unpack(draft.encrypted_data) and not kept_pictures(customer).exists()
+    metadata = job.artifacts.get().file.metadata
+    assert 'deck_seed' not in metadata and 'render' not in metadata, 'the seed has the title in it'
 
 
 def test_a_generated_deck_stores_what_draws_it_again(customer, stock_photos, tmp_path):

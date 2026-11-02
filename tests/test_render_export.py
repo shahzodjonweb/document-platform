@@ -54,6 +54,11 @@ from tests.test_studio_branding import logo
 
 pytestmark = pytest.mark.django_db
 
+
+@pytest.fixture(autouse=True)
+def deck_editor_on(monkeypatch):
+    monkeypatch.setenv('EDITOR_FLAG_DECK_EDITOR', '1')
+
 REQUIRES_OFFICE = pytest.mark.skipif(not office_runtime()['available'], reason='No working configured LibreOffice runtime')
 PPTX_MIME = 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
 # Words that are in the deck and nowhere else, to look for where they must not be.
@@ -428,6 +433,15 @@ def test_a_pdf_is_refused_at_the_quote_where_there_is_no_office(customer, stock_
 
 
 # ---------------------------------------------------------------- the quote
+
+
+def test_with_the_deck_editor_off_a_deck_cannot_be_sent_again_or_measured(customer, stock_photos, monkeypatch):
+    draft, _ = generate(customer)
+    monkeypatch.delenv('EDITOR_FLAG_DECK_EDITOR')
+    for path, body in ((f'{draft.id}/export-quote', {'version': draft.version, 'format': 'pptx', 'deliver': 'download'}),
+                       (f'{draft.id}/fit', {'section': {'id': CARDS, 'heading': 'H', 'body': 'B'}})):
+        answer = api_post(customer, path, **body)
+        assert answer.status_code == 409 and answer.json()['error']['code'] == 'feature_unavailable'
 
 
 def test_a_quote_points_at_the_draft_and_lists_only_the_chosen_pictures(customer, stock_photos, office):  # noqa: F811

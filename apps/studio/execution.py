@@ -66,6 +66,9 @@ def _deck_pins(job,draft_id,content,locale,artifact,photos,candidates):
     try:
         metadata=artifact['metadata']
         seed=metadata.pop('deck_seed')
+        # Until the deck editor is on nothing can redraw a deck, so nothing is kept for one.
+        from operations.integrations import editor_config
+        if not editor_config()['deck_editor']:return None
         failures=[]
         def keep(section_id,source,jpeg,**facts):
             try:return _keep_picture(job,draft_id,section_id,source,jpeg,**facts)

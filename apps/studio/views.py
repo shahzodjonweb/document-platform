@@ -220,10 +220,14 @@ def draft_quote(request,pk):
 EXPORT_QUOTES_PER_MINUTE=10
 FITS_PER_MINUTE=60
 
+def _require_deck_editor():
+    if not editor_flags()['deck_editor']:raise DomainError('feature_unavailable',409)
+
 @api(('POST',))
 def draft_export_quote(request,pk):
     """The price of sending a deck again from its draft, with what Review says about it (render_export.py)."""
-    _account_limit(request.account,'deck_export_quotes',EXPORT_QUOTES_PER_MINUTE)
+    _require_deck_editor()
+    account_limit(request.account,'deck_export_quotes',EXPORT_QUOTES_PER_MINUTE)
     data=body(request)
     from .render_export import export_quote,quote_summary
     quote=export_quote(request.account,pk,data.get('version'),data.get('format'),data.get('deliver'))
@@ -232,7 +236,8 @@ def draft_export_quote(request,pk):
 @api(('POST',))
 def draft_fit(request,pk):
     """How one slide as it is being typed sits on the deck, and the layouts that would hold it whole. Nothing is saved."""
-    _account_limit(request.account,'deck_fits',FITS_PER_MINUTE)
+    _require_deck_editor()
+    account_limit(request.account,'deck_fits',FITS_PER_MINUTE)
     from .render_export import fit_section
     return fit_section(request.account,pk,body(request).get('section'))
 
