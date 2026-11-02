@@ -524,4 +524,36 @@ CATALOGS['ru'].update(
     refused_page_dimensions_invalid='Размер страницы слишком большой или неверный', refused_conversion_preflight_unavailable='Конвертация Office была недоступна',
     refused_processor_timeout='Чтение файла заняло слишком много времени', refused_processor_failed='Не удалось прочитать файл',
 )
+
+# The new editors' switches and budgets (editor_settings.py).
+CATALOGS['en'].update(
+    editor='Editor', editor_desc='Which parts of the new PDF and slide editors are on, and how much free work each account gets. Takes effect at once, without a deploy.',
+    editor_switches='Switches', editor_switches_note='All off by default. To go back to the old editor, turn off the new editor.',
+    editor_flag_editor_v2='New editor', editor_flag_pdfcraft='New PDF engine', editor_flag_text_edit='Editing text already in a PDF',
+    editor_flag_deck_editor='Slide editor', editor_flag_edit_buttons='Edit buttons under results', editor_flag_count_once='Count one task per draft',
+    editor_flag_photos_task='Fetching pictures outside an AI run',
+    editor_budgets='Free work per account per day', editor_budgets_note='Seconds of work on the Free plan; paid plans get that many times more.',
+    editor_budget_inspect='Reading a file', editor_budget_text_check='Checking a text edit', editor_budget_preview='Page previews',
+    editor_budget_render_deck='Drawing slides', editor_budget_paid_multiplier='Paid plan multiplier',
+)
+CATALOGS['uz'].update(
+    editor='Muharrir', editor_desc='Yangi PDF va slayd muharrirlarining qaysi qismlari yoqilgani va har bir hisobga qancha bepul ish berilishi. Darhol, deploysiz qo‘llanadi.',
+    editor_switches='Kalitlar', editor_switches_note='Hammasi dastlab o‘chirilgan. Eski muharrirga qaytish uchun yangi muharrirni o‘chiring.',
+    editor_flag_editor_v2='Yangi muharrir', editor_flag_pdfcraft='Yangi PDF mexanizmi', editor_flag_text_edit='PDF’dagi mavjud matnni tahrirlash',
+    editor_flag_deck_editor='Slayd muharriri', editor_flag_edit_buttons='Natijalar ostidagi tahrirlash tugmalari', editor_flag_count_once='Bitta qoralamani bitta vazifa deb hisoblash',
+    editor_flag_photos_task='Rasmlarni AI ishidan tashqari olish',
+    editor_budgets='Har bir hisobga kuniga bepul ish', editor_budgets_note='Free tarifidagi ish soniyalari; pullik tariflarga shuncha barobar ko‘p beriladi.',
+    editor_budget_inspect='Faylni o‘qish', editor_budget_text_check='Matn tahririni tekshirish', editor_budget_preview='Sahifalarni oldindan ko‘rish',
+    editor_budget_render_deck='Slaydlarni chizish', editor_budget_paid_multiplier='Pullik tarif ko‘paytmasi',
+)
+CATALOGS['ru'].update(
+    editor='Редактор', editor_desc='Какие части новых редакторов PDF и слайдов включены и сколько бесплатной работы получает каждая учётная запись. Применяется сразу, без развёртывания.',
+    editor_switches='Переключатели', editor_switches_note='По умолчанию всё выключено. Чтобы вернуться к старому редактору, выключите новый редактор.',
+    editor_flag_editor_v2='Новый редактор', editor_flag_pdfcraft='Новый механизм PDF', editor_flag_text_edit='Правка существующего текста в PDF',
+    editor_flag_deck_editor='Редактор слайдов', editor_flag_edit_buttons='Кнопки правки под результатами', editor_flag_count_once='Считать один черновик одной задачей',
+    editor_flag_photos_task='Подбор изображений вне запуска ИИ',
+    editor_budgets='Бесплатная работа на учётную запись в день', editor_budgets_note='Секунды работы на тарифе Free; на платных тарифах во столько раз больше.',
+    editor_budget_inspect='Чтение файла', editor_budget_text_check='Проверка правки текста', editor_budget_preview='Предпросмотр страниц',
+    editor_budget_render_deck='Отрисовка слайдов', editor_budget_paid_multiplier='Множитель платных тарифов',
+)
 assert CATALOGS['en'].keys() == CATALOGS['uz'].keys() == CATALOGS['ru'].keys()

@@ -47,7 +47,16 @@ TELEGRAM_WEBHOOK_SECRET = os.getenv('TELEGRAM_WEBHOOK_SECRET', '')
 TELEGRAM_WEBAPP_URL = os.getenv('TELEGRAM_WEBAPP_URL', 'http://localhost:3000/en/app')
 REST_FRAMEWORK = {'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema'}
 SPECTACULAR_SETTINGS = {'TITLE': 'PDF Master public API', 'VERSION': '1.0.0', 'OAS_VERSION': '3.1.0'}
-CELERY_BROKER_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+REDIS_URL = os.getenv('REDIS_URL', '')
+CELERY_BROKER_URL = REDIS_URL or 'redis://localhost:6379/0'
+# The limiters' counters live where every process sees them (apps/core/views.py
+# count_request), which alone may reach Redis: every other cache stays in the
+# process, so an outage has nothing else to break. Without Redis, `limits` is
+# the same local store as `default`. Short timeouts, as a request waits on this.
+LOCAL_CACHE = {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'}
+CACHES = {'default': LOCAL_CACHE,
+          'limits': {'BACKEND': 'django.core.cache.backends.redis.RedisCache', 'LOCATION': REDIS_URL,
+                     'OPTIONS': {'socket_connect_timeout': .25, 'socket_timeout': .25}} if REDIS_URL else LOCAL_CACHE}
 CELERY_TASK_ACKS_LATE = True
 CELERY_TASK_REJECT_ON_WORKER_LOST = True
 DEV_AUTH_ENABLED = DEVELOPMENT_LOGIN_ENABLED

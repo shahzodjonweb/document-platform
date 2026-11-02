@@ -6,14 +6,15 @@ from django.conf import settings
 from django.db import transaction
 from django.http import JsonResponse
 from django.utils import timezone
-from apps.core.views import api,body,download_asset,throttle
+from apps.core.views import account_limit,api,body,count_request,download_asset,throttle
 from apps.core.errors import DomainError
 from apps.core.models import Artifact,FileAsset,Job
 from apps.core.serializers import asset_data,quote_data,job_data
 from apps.core.services import owned_assets,create_quote,submit_job,execute_job,record_event
 from apps.core.policy import EDITOR_LIMITS,FEATURES,payload_bytes,plan_limits,require_feature
-from operations.integrations import ai_config
+from operations.integrations import ai_config,editor_flags
 from .domain import CV,DOCUMENT,SLIDES,GENERATION_IDS,_image_cap,allowed,create_draft,draft_data,draft_jobs,update_draft,generation_quote,pack,unpack,limits
+from .editor_policy import COMMAND_COLUMNS,store_commands,stored_commands
 from .models import GenerationDraft,SavedDefinition,EducationProject,PracticeAttempt,ShareGrant,EditorDocument,WorkflowRun
 
 @api()
@@ -51,7 +52,7 @@ def config(request):
                         'label':'Local authoring (no AI)' if cfg['mode']=='local_fixture' else 'OpenAI' if cfg['mode']=='openai' else 'Not configured',
                         'configured':cfg['mode']=='local_fixture' or bool(cfg['api_key'] and cfg['model'])},
             'features':features,'generation_features':features,
-            'default_pages':DEFAULT_PAGES,'limits':limits(request.account)}
+            'default_pages':DEFAULT_PAGES,'limits':{**limits(request.account),'editor':editor_flags()}}
 
 def _queue_cv_reads(account,data,options=None):
     """The reads of a CV draft's files queued before the draft is made (cv/reads.py ensure_ids).
@@ -79,23 +80,6 @@ def drafts(request):
 # through the same gateway address.
 CV_UPDATES_PER_MINUTE=30
 
-def _account_limit(account,key,limit):
-    """At most `limit` requests a minute for one account, the minute counted from its first request.
-
-    A fixed window: the count expires a minute after it began, whatever comes
-    after. Set again on every request, the expiry moved on with each, and a
-    tab asking every two seconds was refused after two minutes of waiting.
-    incr keeps the expiry (locmem and redis alike).
-    """
-    from django.core.cache import cache
-    cache_key=f'rate:{key}:account:{account.id}'
-    cache.add(cache_key,0,60)
-    try:count=cache.incr(cache_key)
-    except ValueError:
-        # The minute ended between add and incr: this request begins the next.
-        cache.add(cache_key,0,60);count=cache.incr(cache_key)
-    if count>limit:raise DomainError('rate_limited',429,retryable=True)
-
 @api(('GET','PATCH','DELETE'))
 def draft_detail(request,pk):
     d=GenerationDraft.objects.filter(account=request.account,id=pk,expires_at__gt=timezone.now()).first()
@@ -104,7 +88,7 @@ def draft_detail(request,pk):
     if request.method=='PATCH':
         data=body(request)
         if d.feature_id==CV:
-            _account_limit(request.account,'cv_draft_updates',CV_UPDATES_PER_MINUTE)
+            account_limit(request.account,'cv_draft_updates',CV_UPDATES_PER_MINUTE)
             _queue_cv_reads(request.account,data,unpack(d.encrypted_data).get('options',{}))
         d=update_draft(request.account,pk,data)
     return draft_data(d)
@@ -140,7 +124,7 @@ def cv_reads(request):
             except ValueError:continue
         cancelled,_=CvSourceRead.objects.filter(account=request.account,asset_id__in=valid,status='queued').delete()
         return {'cancelled':cancelled}
-    _account_limit(request.account,'cv_reads',CV_READS_PER_MINUTE)
+    account_limit(request.account,'cv_reads',CV_READS_PER_MINUTE)
     return reads.state(request.account,owned_assets(request.account,ids))
 
 @api(('POST',))
@@ -391,54 +375,83 @@ def share_detail(request,pk):
     return {'id':str(s.id),'revoked':bool(s.revoked_at),'expires_at':s.expires_at}
 @api(auth=False)
 def shared(request,token):
-    throttle(request,'shared',30)
-    s=ShareGrant.objects.select_related('artifact__file').filter(token_hash=hashlib.sha256(token.encode()).hexdigest(),expires_at__gt=timezone.now(),revoked_at__isnull=True,artifact__role__in=('learner_material','public_preview')).first()
+    token_hash=hashlib.sha256(token.encode()).hexdigest()
+    # Per link: whoever opens one mostly holds no cookie, and a session made for each would limit nothing and leave a row behind.
+    count_request('shared',token_hash,30)
+    s=ShareGrant.objects.select_related('artifact__file').filter(token_hash=token_hash,expires_at__gt=timezone.now(),revoked_at__isnull=True,artifact__role__in=('learner_material','public_preview')).first()
     from .privacy import may_share_artifact
     if not s or not may_share_artifact(s.artifact):raise DomainError('not_found',404)
     return download_asset(request,s.artifact.file)
 
 def editor_data(e):
-    return {'id':str(e.id),'version':e.version,'file':asset_data(e.file),'pages':e.file.metadata.get('page_sizes',[]),'form_fields':e.file.metadata.get('form_fields',[]),'image_counts':e.file.metadata.get('image_counts',[]),'commands':e.commands,'input_ids':e.input_ids,'limits':EDITOR_LIMITS}
+    return {'id':str(e.id),'version':e.version,'file':asset_data(e.file),'pages':e.file.metadata.get('page_sizes',[]),'form_fields':e.file.metadata.get('form_fields',[]),'image_counts':e.file.metadata.get('image_counts',[]),'commands':stored_commands(e),'input_ids':e.input_ids,'limits':EDITOR_LIMITS,'updated_at':e.updated_at,'device':e.device}
+def _version_conflict(e,**mine):
+    """The draft moved on elsewhere: when, on which device, how many marks it holds, and how many the caller sent if it sent any."""
+    return DomainError('version_conflict',409,{'updated_at':e.updated_at,'device':e.device,'theirs':len(stored_commands(e)),**mine})
+def _file_gone(a):
+    """A file the customer deleted did not run out: telling them it did, and to send it again, would be false."""
+    return DomainError('file_unavailable',404) if a.metadata.get('deleted_by_customer') else DomainError('file_expired',410)
+def _file_to_open(account,fid):
+    """A file that ran out says so, apart from one that was never this account's."""
+    try:return owned_assets(account,[fid])[0]
+    except DomainError as error:
+        gone=FileAsset.objects.filter(account=account,id=fid,expires_at__lte=timezone.now()).first() if error.code=='file_unavailable' else None
+        if gone:raise _file_gone(gone) from None
+        raise
+def _refusal(a):
+    """Why the editor cannot open a file, as the refusal says it, or None when it can."""
+    if a.metadata.get('encrypted'):return 'password'
+    if a.mime_type=='application/pdf':return None
+    return 'pptx_upload' if a.metadata.get('kind')=='pptx' else 'not_pdf'
 @api(('GET','POST'))
 def editors(request):
     if request.method=='POST':
         data=body(request);fid=data.get('file_id',data.get('input_id'))
-        a=owned_assets(request.account,[fid])[0]
-        if a.mime_type!='application/pdf' or a.metadata.get('encrypted'):raise DomainError('unsupported_file')
-        e=EditorDocument.objects.create(account=request.account,file=a,input_ids=[str(a.id)])
-        return JsonResponse(editor_data(e),status=201)
+        a=_file_to_open(request.account,fid)
+        reason=_refusal(a)
+        if reason:raise DomainError('unsupported_file',params={'reason':reason})
+        # One draft per file: opening it again comes back to the same marks. A file opened before this
+        # rule holds one draft per open until it expires; the newest with marks is the customer's work.
+        drafts=list(EditorDocument.objects.filter(account=request.account,file=a).order_by('-created_at','-pk'))
+        if drafts:return JsonResponse(editor_data(next((d for d in drafts if stored_commands(d)),drafts[0])),status=200)
+        return JsonResponse(editor_data(EditorDocument.objects.create(account=request.account,file=a,input_ids=[str(a.id)])),status=201)
     return {'results':[editor_data(e) for e in EditorDocument.objects.filter(account=request.account,file__expires_at__gt=timezone.now(),file__state='ready').select_related('file')]}
 @api(('GET','PATCH','DELETE'))
 def editor_detail(request,pk):
     with transaction.atomic():
         e=EditorDocument.objects.select_for_update().select_related('file').filter(account=request.account,id=pk).first()
         if not e:raise DomainError('not_found',404)
-        if e.file.state!='ready' or e.file.expires_at<=timezone.now():raise DomainError('file_expired',410)
+        if e.file.state!='ready' or e.file.expires_at<=timezone.now():raise _file_gone(e.file)
         if request.method=='DELETE':e.delete();return {'deleted':True}
         if request.method=='PATCH':
             data=body(request,limit=131072,too_large='payload_too_large')
-            if data.get('version')!=e.version:raise DomainError('version_conflict',409)
             commands=data.get('commands',[])
+            if data.get('version')!=e.version:raise _version_conflict(e,mine=len(commands) if isinstance(commands,list) else 0)
             if not isinstance(commands,list) or len(commands)>EDITOR_LIMITS['commands']:raise DomainError('invalid_parameters')
+            device=data.get('device','')
+            if not isinstance(device,str) or len(device)>40 or any(ord(c)<32 for c in device):raise DomainError('invalid_parameters')
             ids=data.get('input_ids',e.input_ids)
             if not ids or str(ids[0])!=str(e.file_id):raise DomainError('invalid_inputs')
             from apps.core.services import validate_inputs
             from .editor_policy import validate_commands_access
             from processors import normalize_parameters,ProcessorError
             assets=validate_inputs(request.account,'editor.visual',ids)
-            validate_commands_access(request.account,commands)
             if commands:
                 try:commands=normalize_parameters('editor.visual',{'commands':commands,'accept_rasterization':True},[a.metadata for a in assets])['commands']
-                except ProcessorError as error:raise DomainError(error.code) from None
+                except ProcessorError as error:
+                    if error.index is None:raise DomainError(error.code) from None
+                    raise DomainError('invalid_editor_command',params={'index':error.index,'code':error.code}) from None
+            validate_commands_access(request.account,commands)
             # Measured with the defaults filled in: this is what is stored, sent back and quoted.
             if payload_bytes(commands)>EDITOR_LIMITS['bytes']:raise DomainError('payload_too_large',413)
-            e.commands=commands;e.input_ids=ids;e.version+=1;e.save(update_fields=['commands','input_ids','version'])
+            store_commands(e,commands);e.input_ids=ids;e.updated_at=timezone.now();e.device=device
+            e.save(update_fields=[*COMMAND_COLUMNS,'input_ids','updated_at','device'])
         return editor_data(e)
 @api(('POST',))
 def editor_quote(request,pk):
     e=EditorDocument.objects.filter(account=request.account,id=pk).first()
     if not e:raise DomainError('not_found',404)
     data=body(request)
-    if data.get('version')!=e.version:raise DomainError('version_conflict',409)
-    q=create_quote(request.account,'editor.visual',e.input_ids,{'commands':e.commands,'accept_rasterization':data.get('accept_rasterization',False)})
+    if data.get('version')!=e.version:raise _version_conflict(e)
+    q=create_quote(request.account,'editor.visual',e.input_ids,{'commands':stored_commands(e),'accept_rasterization':data.get('accept_rasterization',False)})
     return JsonResponse(quote_data(q),status=201)

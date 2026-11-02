@@ -12,17 +12,20 @@ from pypdf import PdfReader,PdfWriter
 from pypdf.generic import ArrayObject,FloatObject,NameObject,NumberObject,TextStringObject,ContentStream,DictionaryObject,DecodedStreamObject
 
 FEATURE_COMMANDS={
- 'editor.visual':{'add_text','highlight','note','draw','fill_form','signature','insert_image','replace_text','replace_image','remove_image','redact'},
- 'editor.add_text':{'add_text'},'editor.highlight':{'highlight'},'editor.annotate':{'note','draw'},
- 'editor.fill_forms':{'fill_form'},'editor.signature_image':{'signature'},'editor.existing_text':{'replace_text'},
+ 'editor.visual':{'add_text','highlight','note','draw','fill_form','signature','insert_image','replace_text','replace_image','remove_image','redact','edit_text','whiteout','rotate_page','delete_page','reorder'},
+ 'editor.add_text':{'add_text','whiteout'},'editor.highlight':{'highlight'},'editor.annotate':{'note','draw'},
+ 'editor.fill_forms':{'fill_form'},'editor.signature_image':{'signature'},'editor.existing_text':{'replace_text','edit_text'},
  'editor.insert_images':{'insert_image'},'editor.replace_images':{'replace_image','remove_image'},'editor.redact':{'redact'},
 }
-COMMAND_FEATURES={command:feature for feature,commands in FEATURE_COMMANDS.items() if feature!='editor.visual' for command in commands}
+# A kind with no narrower feature of its own (the page operations) belongs to editor.visual.
+COMMAND_FEATURES={command:'editor.visual' for command in FEATURE_COMMANDS['editor.visual']}|{command:feature for feature,commands in FEATURE_COMMANDS.items() if feature!='editor.visual' for command in commands}
+# In the contract, and refused by execute until the combined job can apply them in order.
+UNAPPLIED_COMMANDS={'edit_text','whiteout','rotate_page','delete_page','reorder'}
 SCHEMAS={feature:{'type':'object','additionalProperties':False,'properties':{
  'commands':{'type':'array','minItems':1,'maxItems':100,'items':{'type':'object','description':'Validated PDF command; coordinates use top-left PDF points'}},
  'accept_rasterization':{'type':'boolean'}},'required':['commands']} for feature in FEATURE_COMMANDS}
 FIELDS={
- 'add_text':{'type','page','x','y','text','font_size','color'},
+ 'add_text':{'type','page','x','y','text','font_size','color','font','bold','italic'},
  'highlight':{'type','page','x','y','width','height','color'},
  'note':{'type','page','x','y','text'},
  'draw':{'type','page','points','color','stroke_width'},
@@ -32,7 +35,12 @@ FIELDS={
  'replace_text':{'type','page','find','replacement'},
  'replace_image':{'type','page','image_index','input_index'},
  'remove_image':{'type','page','image_index'},
- 'redact':{'type','page','x','y','width','height'},
+ 'redact':{'type','page','x','y','width','height','text'},
+ 'edit_text':{'type','page','x','y','width','height','original','text'},
+ 'whiteout':{'type','page','x','y','width','height','color'},
+ 'rotate_page':{'type','page','angle'},
+ 'delete_page':{'type','page'},
+ 'reorder':{'type','order'},
 }
 
 
@@ -42,48 +50,86 @@ def _number(value,minimum=0,maximum=14400):
     return value
 
 
+def _text(value,maximum,minimum=0,allowed='\n\t'):
+    from .engine import ProcessorError
+    if not isinstance(value,str) or not minimum<=len(value)<=maximum or any(ord(c)<32 and c not in allowed for c in value):raise ProcessorError('invalid_editor_command')
+
+
+def _pages(normalized,metadata):
+    """What holds across the page operations. All of them speak in source page numbers."""
+    from .engine import ProcessorError
+    count=metadata[0]['page_count'] if metadata else None
+    seen=set();deleted=0;ordered=False
+    for index,command in enumerate(normalized):
+        kind=command['type']
+        if kind in ('rotate_page','delete_page'):
+            if (kind,command['page']) in seen:raise ProcessorError('invalid_editor_command',index=index)
+            seen.add((kind,command['page']))
+        if kind=='delete_page':
+            deleted+=1
+            if count is not None and deleted>=count:raise ProcessorError('invalid_editor_command',index=index)
+        if kind=='reorder':
+            order=command.get('order')
+            # Every source page, deleted ones too, so a later delete never invalidates the order.
+            if ordered or not isinstance(order,list) or not 1<=len(order)<=(count or 1000) or any(type(page) is not int for page in order) or sorted(order)!=list(range(1,(count or len(order))+1)):raise ProcessorError('invalid_editor_command',index=index)
+            ordered=True
+
+
+def _command(feature,raw,metadata):
+    from .engine import ProcessorError
+    if not isinstance(raw,dict) or raw.get('type') not in FEATURE_COMMANDS[feature]:raise ProcessorError('invalid_editor_command')
+    command=dict(raw);kind=command['type']
+    if set(command)-FIELDS[kind]:raise ProcessorError('invalid_editor_command')
+    if kind not in ('fill_form','reorder'):
+        if type(command.get('page')) is not int or not 1<=command['page']<=(metadata[0]['page_count'] if metadata else 1000):raise ProcessorError('invalid_editor_command')
+    for axis in ('x','y'):
+        if axis in FIELDS[kind]:_number(command.get(axis))
+    for size in ('width','height'):
+        if size in FIELDS[kind]:_number(command.get(size),1)
+    if kind in ('add_text','note'):_text(command.get('text'),2000,1)
+    if kind=='add_text':
+        command.setdefault('font_size',16);_number(command['font_size'],6,96)
+        if command.get('font','sans') not in ('sans','serif'):raise ProcessorError('invalid_editor_command')
+        for style in ('bold','italic'):
+            if type(command.get(style,False)) is not bool:raise ProcessorError('invalid_editor_command')
+    if kind=='edit_text':
+        _text(command.get('original'),2000,1);_text(command.get('text'),2000)
+    if kind=='redact' and 'text' in command:_text(command['text'],2000)
+    if kind=='rotate_page' and (type(command.get('angle')) is not int or command['angle'] not in (90,180,270)):raise ProcessorError('invalid_editor_command')
+    if kind in ('add_text','highlight','draw','whiteout'):
+        command.setdefault('color',{'highlight':'#FFFF00','whiteout':'#FFFFFF'}.get(kind,'#000000'))
+        if not isinstance(command['color'],str) or not re.fullmatch(r'#[0-9A-Fa-f]{6}',command['color']):raise ProcessorError('invalid_editor_command')
+    if kind=='draw':
+        points=command.get('points')
+        if not isinstance(points,list) or not 2<=len(points)<=200:raise ProcessorError('invalid_editor_command')
+        for point in points:
+            if not isinstance(point,list) or len(point)!=2:raise ProcessorError('invalid_editor_command')
+            for coordinate in point:_number(coordinate)
+        command.setdefault('stroke_width',2);_number(command['stroke_width'],.5,12)
+    if kind=='fill_form':
+        # A field's name is the PDF's own, whatever it holds, and execute matches it against the real fields. Only NUL cannot be stored.
+        if not isinstance(command.get('field'),str) or not 1<=len(command['field'])<=200 or '\x00' in command['field']:raise ProcessorError('invalid_editor_command')
+        _text(command.get('value'),2000,allowed='\n\t\r')
+    if kind=='replace_text':
+        _text(command.get('find'),500,1);_text(command.get('replacement'),500)
+    if kind in ('insert_image','signature','replace_image'):
+        if type(command.get('input_index')) is not int or not 1<=command['input_index']<=(len(metadata)-1 if metadata else 25):raise ProcessorError('invalid_editor_command')
+        if metadata and metadata[command['input_index']]['kind']!='image':raise ProcessorError('unsupported_type')
+    if kind in ('replace_image','remove_image'):
+        if type(command.get('image_index')) is not int or not 0<=command['image_index']<1000:raise ProcessorError('invalid_editor_command')
+    return command
+
+
 def normalize(feature,parameters,metadata=None):
     from .engine import ProcessorError
     if not isinstance(parameters,dict) or set(parameters)-{'commands','accept_rasterization'}:raise ProcessorError('invalid_parameters')
     commands=parameters.get('commands')
     if not isinstance(commands,list) or not 1<=len(commands)<=100:raise ProcessorError('invalid_editor_command')
     normalized=[]
-    for raw in commands:
-        if not isinstance(raw,dict) or raw.get('type') not in FEATURE_COMMANDS[feature]:raise ProcessorError('invalid_editor_command')
-        command=dict(raw);kind=command['type']
-        if set(command)-FIELDS[kind]:raise ProcessorError('invalid_editor_command')
-        if kind!='fill_form':
-            if type(command.get('page')) is not int or not 1<=command['page']<=(metadata[0]['page_count'] if metadata else 1000):raise ProcessorError('invalid_editor_command')
-        for axis in ('x','y'):
-            if axis in FIELDS[kind]:_number(command.get(axis))
-        for size in ('width','height'):
-            if size in FIELDS[kind]:_number(command.get(size),1)
-        if kind in ('add_text','note'):
-            if not isinstance(command.get('text'),str) or not 1<=len(command['text'])<=2000 or any(ord(c)<32 and c not in '\n\t' for c in command['text']):raise ProcessorError('invalid_editor_command')
-        if kind=='add_text':
-            command.setdefault('font_size',16);_number(command['font_size'],6,96)
-        if kind in ('add_text','highlight','draw'):
-            command.setdefault('color','#FFFF00' if kind=='highlight' else '#000000')
-            if not isinstance(command['color'],str) or not re.fullmatch(r'#[0-9A-Fa-f]{6}',command['color']):raise ProcessorError('invalid_editor_command')
-        if kind=='draw':
-            points=command.get('points')
-            if not isinstance(points,list) or not 2<=len(points)<=200:raise ProcessorError('invalid_editor_command')
-            for point in points:
-                if not isinstance(point,list) or len(point)!=2:raise ProcessorError('invalid_editor_command')
-                for coordinate in point:_number(coordinate)
-            command.setdefault('stroke_width',2);_number(command['stroke_width'],.5,12)
-        if kind=='fill_form':
-            if not isinstance(command.get('field'),str) or not 1<=len(command['field'])<=200 or not isinstance(command.get('value'),str) or len(command['value'])>2000:raise ProcessorError('invalid_editor_command')
-        if kind=='replace_text':
-            for key in ('find','replacement'):
-                if not isinstance(command.get(key),str) or len(command[key])>500:raise ProcessorError('invalid_editor_command')
-            if not command['find']:raise ProcessorError('invalid_editor_command')
-        if kind in ('insert_image','signature','replace_image'):
-            if type(command.get('input_index')) is not int or not 1<=command['input_index']<=(len(metadata)-1 if metadata else 25):raise ProcessorError('invalid_editor_command')
-            if metadata and metadata[command['input_index']]['kind']!='image':raise ProcessorError('unsupported_type')
-        if kind in ('replace_image','remove_image'):
-            if type(command.get('image_index')) is not int or not 0<=command['image_index']<1000:raise ProcessorError('invalid_editor_command')
-        normalized.append(command)
+    for index,raw in enumerate(commands):
+        try:normalized.append(_command(feature,raw,metadata))
+        except ProcessorError as error:error.index=index;raise
+    _pages(normalized,metadata)
     accepted=parameters.get('accept_rasterization',False)
     if type(accepted) is not bool:raise ProcessorError('invalid_parameters')
     if any(c['type']=='redact' for c in normalized) and not accepted:raise ProcessorError('rasterization_consent_required')
@@ -260,6 +306,7 @@ def execute(feature,paths,parameters,out,metadata):
     from .engine import _pdf_reader,_share_identical_objects,_write_pdf,ProcessorError
     from pypdf.annotations import Highlight,Text
     commands=parameters['commands']
+    if any(c['type'] in UNAPPLIED_COMMANDS for c in commands):raise ProcessorError('invalid_editor_command')
     if any(c['type']=='redact' for c in commands):return _redact(paths[0],commands,out)
     reader=_pdf_reader(paths[0],allow_forms=True)
     writer=PdfWriter();writer.clone_document_from_reader(reader)
