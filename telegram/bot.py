@@ -31,7 +31,8 @@ from apps.core.serializers import quote_data, warning_codes
 from apps.core.errors import DomainError, error_data
 from apps.core.allowance import LIMIT_CODES
 
-from .ux_copy import UX, STATUS, LEGACY_COPY, TOOL_NAMES, PROMPT_EXAMPLES, LOCALES, counted
+from .ux_copy import UX, STATUS, LEGACY_COPY, TOOL_NAMES, PROMPT_EXAMPLES, LOCALES, EDIT_BUTTON_COPY, counted
+from .delivery import app_button, app_url, editable_pdf
 from .errors import bot_error
 from .clock import local_time, stamp, week_reset
 COPY={locale:{**LEGACY_COPY[locale],**UX[locale]} for locale in UX}
@@ -78,12 +79,23 @@ async def callback(account,action,payload=None):
     return token
 async def web_url(account,route=''):
     from apps.commerce.providers import telegram_config
-    from urllib.parse import urlsplit,urlunsplit
     config=await sync_to_async(telegram_config)()
-    url=urlsplit(config['webapp_url'])
-    parts=url.path.rstrip('/').split('/')
-    if len(parts)>1 and parts[1] in ('en','uz','ru'): parts[1]=account.locale
-    return urlunsplit((url.scheme,url.netloc,'/'.join(parts)+('/'+route if route else ''),'',''))
+    return app_url(config['webapp_url'],account.locale,route)
+async def edit_buttons_on():
+    from operations.integrations import editor_flags
+    return (await sync_to_async(editor_flags)())['edit_buttons']
+async def ai_change_copy(key):
+    """The key an AI change is worded by: once the Edit buttons are on, ✏️ is theirs."""
+    return EDIT_BUTTON_COPY[key] if await edit_buttons_on() else key
+def private_chat(message):
+    """Only there does Telegram take a web_app button; only private chats have positive ids."""
+    return (getattr(message,'chat_id',None) or getattr(getattr(message,'chat',None),'id',0))>0
+async def received_edit_rows(message,account,input_ids):
+    """✏️ Edit for the one PDF a draft holds, when the editor can open it."""
+    if len(input_ids)!=1 or not private_chat(message) or not await edit_buttons_on(): return []
+    asset=await sync_to_async(lambda:FileAsset.objects.filter(account=account,id=input_ids[0]).first())()
+    if not asset or not editable_pdf(asset): return []
+    return [[app_button(text(account,'edit'),await web_url(account,f'editor?file_id={asset.id}'))]]
 async def button(account,label,action,payload=None):
     return InlineKeyboardButton(text=text(account,label),callback_data=await callback(account,action,payload))
 # A plans button under a used-up weekly or edit limit. Each plans button says
@@ -783,7 +795,7 @@ async def review_screen(account,draft,quote):
     # A CV is only ever a PDF, and slides of one are no service of ours.
     if change and not cv and await sync_to_async(ai.format_kept)(draft):
         body+='\n'+html.escape(text(account,'ai_format_kept_deck' if deck else 'ai_format_kept_pdf').format(
-            button=text(account,'ai_revise'),service=TOOL_NAMES[ai.SLIDES][account.locale]))
+            button=text(account,await ai_change_copy('ai_revise')),service=TOOL_NAMES[ai.SLIDES][account.locale]))
     generate='ai_generate' if not other else 'ai_pdf_anyway' if other==ai.SLIDES else 'ai_slides_anyway'
     hint=(text(account,'ai_review_hint_button').format(button=text(account,generate).split(' ',1)[1]) if other
           else text(account,'ai_review_hint'))
@@ -793,7 +805,7 @@ async def review_screen(account,draft,quote):
     source=await sync_to_async(ai.revised_from)(draft)
     if source:
         used,limit=await sync_to_async(ai.edits_used)(draft)
-        if limit is not None: body+='\n\n'+text(account,'ai_edits_used').format(used=used,limit=limit)
+        if limit is not None: body+='\n\n'+text(account,await ai_change_copy('ai_edits_used')).format(used=used,limit=limit)
     else:
         week=(await sync_to_async(usage_snapshot)(account))['ai_documents']
         if week['limit'] is not None: body+='\n\n'+text(account,'ai_week_used').format(used=week['used'],limit=week['limit'])
@@ -802,7 +814,7 @@ async def review_screen(account,draft,quote):
     # CV's description written again goes back to the way it was made, with
     # the photo and the files sent for it (by the draft it is on: a button
     # never carries what the customer sent).
-    reword=(await button(account,'ai_revise','ai_revise',{'draft_id':source}) if source
+    reword=(await button(account,await ai_change_copy('ai_revise'),'ai_revise',{'draft_id':source}) if source
             else await button(account,'ai_change_topic','ai_tool',{'feature_id':draft.feature_id,**({'draft_id':str(draft.id)} if photo or cv else {})}))
     rows=[[await button(account,generate,'ai_run',{'quote_id':str(quote.id),'draft_id':str(draft.id)})]]
     if other:
@@ -837,12 +849,8 @@ async def review_screen(account,draft,quote):
 
 async def setup_button(account,draft):
     """Opens the deck's or the CV's setup screen: as a Mini App where Telegram allows one (https), else as a link."""
-    from aiogram.types import WebAppInfo
     route,label=('cv-setup','cv_template_button') if draft.feature_id=='ai.cv' else ('deck-setup','ai_theme_button')
-    url=await web_url(account,f'{route}?draft={draft.id}')
-    if url.startswith('https://'):
-        return InlineKeyboardButton(text=text(account,label),web_app=WebAppInfo(url=url))
-    return InlineKeyboardButton(text=text(account,label),url=url)
+    return app_button(text(account,label),await web_url(account,f'{route}?draft={draft.id}'))
 
 async def remember_review(account,draft,screen):
     """Keep where a review is shown, so the setup screen can redraw it there."""
@@ -982,7 +990,7 @@ def build_dispatcher():
         available={f['id'] for f in await sync_to_async(catalog)(account)}
         ids=[key for key in ids if key in available]
         draft=await sync_to_async(draft_for)(account)
-        rows=[] if pdf_only else await ai_service_rows(account)
+        rows=await received_edit_rows(message,account,draft.input_ids) if pdf_only else await ai_service_rows(account)
         for index in range(0,len(ids),2): rows.append([await tool_button(account,draft,key) for key in ids[index:index+2]])
         rows.append([await button(account,'home','home'),InlineKeyboardButton(text=text(account,'web_tools'),url=await web_url(account))])
         body=text(account,'choose_pdf_action' if pdf_only else 'choose_tool')
@@ -991,7 +999,7 @@ def build_dispatcher():
             body='📎 '+html.escape(names[0][:100] if names else '')+'\n'+body
         return await render(message,body,rows,edit)
 
-    async def controls(message,account,draft=None,edit=False,advanced=False,notice=''):
+    async def controls(message,account,draft=None,edit=False,advanced=False,notice='',received=False):
         await sync_to_async(set_prompt)(account)
         # Choosing a service, sending a file or changing an option all land here:
         # a customer who still has channels to join is shown only those, in
@@ -1064,6 +1072,8 @@ def build_dispatcher():
             else: rows.append([await prompt('remove_file','remove')])
             if draft.input_ids[0] in files and files[draft.input_ids[0]].mime_type=='application/pdf':
                 rows.append([await button(account,'preview','preview',{**binding,'asset_id':draft.input_ids[0],'page':1})])
+        # A PDF sent for a tool chosen first: the tool's own buttons stay on top.
+        if received and feature!='pdf.merge': rows.extend(await received_edit_rows(message,account,draft.input_ids))
         if files:
             rows.append([await button(account,'back' if advanced else 'edit_options','controls',{'advanced':not advanced})])
         rows.append([await button(account,'cancel_button' if advanced else 'all_tools','cancel' if advanced else 'menu'),await button(account,'home','home')])
@@ -1875,7 +1885,7 @@ def build_dispatcher():
         is offered instead, made from the description the document began with."""
         await sync_to_async(set_prompt)(account)
         rows=[[await button(account,'ai_as_slides','ai_switch',{'draft_id':str(draft_id),'feature_id':ai.SLIDES})],
-              [await button(account,'ai_revise','ai_revise',{'draft_id':str(draft_id)}),await button(account,'home','home')]]
+              [await button(account,await ai_change_copy('ai_revise'),'ai_revise',{'draft_id':str(draft_id)}),await button(account,'home','home')]]
         await render(message,html.escape(text(account,'ai_doc_to_slides')),rows,True)
 
     async def send_again(message,account,draft_id,kind):
@@ -1884,7 +1894,7 @@ def build_dispatcher():
         job,asset=await sync_to_async(ai.delivered)(account,draft_id,kind)
         name='PDF' if kind=='pdf' else 'PowerPoint'
         if job is None:
-            rows=[[await button(account,'ai_revise','ai_revise',{'draft_id':str(draft_id)}),await button(account,'home','home')]]
+            rows=[[await button(account,await ai_change_copy('ai_revise'),'ai_revise',{'draft_id':str(draft_id)}),await button(account,'home','home')]]
             edited=await sync_to_async(ai.sent_edited)(account,draft_id)
             return await render(message,html.escape(text(account,'ai_edited_not_kept').format(format=name) if edited else text(account,'ai_file_gone')),rows,True)
         await render(message,html.escape(text(account,'ai_same_format').format(format=name)),[],True)
@@ -2684,7 +2694,7 @@ def build_dispatcher():
                 return await ai_prompt(message,account,ai.CV)
             reviewed=await sync_to_async(open_cv_review)(account)
             if reviewed: return await ai_resume(message,account,reviewed)
-            return await controls(message,account)
+            return await controls(message,account,received=True)
         doc=message.document or message.photo[-1]
         if (doc.file_size or 0)>20*1024*1024: return await safe_error(message,account,DomainError('bot_transport_limit'))
         name=(message.document.file_name or 'document') if message.document else 'photo.jpg'
@@ -2754,7 +2764,7 @@ def build_dispatcher():
             # instead, when there are any, and "I've joined" comes back here.
             target,edit=await album_target(message,bot)
             if target is None: return
-            album_shown(message,await controls(target,account,None,edit))
+            album_shown(message,await controls(target,account,None,edit,received=True))
         except DomainError as exc:
             if not album_first(message,exc.code): return
             if exc.code=='bot_replace_file':
@@ -2839,8 +2849,7 @@ def build_dispatcher():
     @dp.message(Command('cancel'))
     async def cancel(message): await cancel_prompt(message,await account_for(message.from_user))
 
-    # Making a document, a deck or a CV happens in the chat; editing a PDF is a
-    # canvas and stays on the web.
+    # Making a document, a deck or a CV happens in the chat.
     AI_COMMANDS={'create':ai.DOCUMENT,'document':ai.DOCUMENT,'slides':ai.SLIDES,'cv':ai.CV}
 
     @dp.message(Command('ai','create','document','slides','cv','examples'))
@@ -2862,6 +2871,12 @@ def build_dispatcher():
         await sync_to_async(set_prompt)(account)
         url=await web_url(account,'' if command=='web' else command)
         draft=await sync_to_async(lambda:BotDraft.objects.filter(account=account).first())()
+        if command=='editor' and await edit_buttons_on():
+            # The file in the chat comes along when the editor can open it.
+            asset=await sync_to_async(lambda:FileAsset.objects.filter(account=account,id__in=draft.input_ids[:1]).first() if draft else None)()
+            if asset and editable_pdf(asset): url+=f'?file_id={asset.id}'
+            opener=app_button(text(account,'edit'),url) if private_chat(message) else InlineKeyboardButton(text=text(account,'edit'),url=url)
+            return await render(message,text(account,'editor_hint'),[[opener],[await button(account,'home','home')]])
         # Hand the file over so it is not uploaded a second time. The editor
         # opens exactly one document; /web is the home page and carries nothing.
         if draft and draft.input_ids and command=='editor':

@@ -37,6 +37,7 @@ from apps.studio.scripts import WORD, artifact_text, artifact_violations
 from apps.studio.slide_fit import left_out, measure_deck
 from apps.studio.slides import render_pptx
 from apps.studio.variants import fixtures
+from operations.integrations import save_config
 from processors import ProcessorError
 from processors import engine, sandbox
 from processors.engine import office_runtime
@@ -1158,6 +1159,22 @@ def test_the_bots_as_pdf_draws_our_deck_in_its_faces_and_the_same_bytes_uploaded
     copy_of_it = services.upload_file(customer, SimpleUploadedFile('deck.pptx', storage.read_bytes(deck.object_key), PPTX_MIME))
     assert as_a_job(customer, copy_of_it).status == 'succeeded'
     assert set(log.read_text().split()) == {'none'}
+
+
+def test_the_edit_button_goes_with_the_pins_of_a_rebuilt_draft(customer, stock_photos, monkeypatch):  # noqa: F811
+    monkeypatch.setenv('EDITOR_FLAG_EDIT_BUTTONS', '1')
+    monkeypatch.setenv('EDITOR_FLAG_DECK_EDITOR', '1')
+    save_config('telegram', {'token': '', 'username': 'fixture_bot', 'webapp_url': 'https://app.example.test/en/app'})
+    made, first = generate(customer)
+    enqueue(first.artifacts.get(), f'job:{first.id}')
+    delivery = BotDelivery.objects.get(artifact__job=first)
+    assert result_controls(delivery).inline_keyboard[0][0].web_app.url == f'https://app.example.test/en/app/editor/deck/{made.id}'
+
+    made.refresh_from_db()
+    rebuilt = update_draft(customer, made.id, {'version': made.version, 'prompt': 'Another deck altogether, about rivers.'})
+    assert '_render' not in unpack(rebuilt.encrypted_data)
+    labels = [button.text for row in result_controls(delivery).inline_keyboard for button in row]
+    assert UX['en']['edit'] not in labels, 'the old file sent again would open a deck that can only refuse'
 
 
 def test_the_change_button_and_the_labels_follow_a_sent_deck(customer, stock_photos, office):  # noqa: F811

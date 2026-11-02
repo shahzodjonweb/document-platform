@@ -48,7 +48,7 @@ def test_the_editor_opens_the_document_already_in_the_chat(customer):
     inputs = [f'00000000-0000-4000-8000-{i:012d}' for i in range(1, 8)]
     BotDraft.objects.create(account=customer, feature_id='pdf.merge', input_ids=inputs)
 
-    # Editing a PDF is a canvas and stays on the web; it opens one document.
+    # The editor opens one document.
     assert linked_files(customer, 'editor') == inputs[:1]
     assert urlsplit(workspace_link(customer, 'editor')).path == '/en/app/editor'
 

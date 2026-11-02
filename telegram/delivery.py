@@ -4,10 +4,12 @@ import html
 import re
 import secrets
 from datetime import timedelta
+from urllib.parse import urlsplit, urlunsplit
 from asgiref.sync import sync_to_async
 from aiogram import Bot
 from aiogram.exceptions import TelegramForbiddenError,TelegramRetryAfter
-from aiogram.types import BufferedInputFile,InlineKeyboardButton,InlineKeyboardMarkup
+from aiogram.types import BufferedInputFile,InlineKeyboardButton,InlineKeyboardMarkup,WebAppInfo
+from cryptography.fernet import InvalidToken
 from django.db import transaction
 from django.utils import timezone
 from apps.core.errors import DomainError
@@ -15,7 +17,7 @@ from apps.core.models import BotCallback
 from apps.core import storage
 from apps.commerce.models import BotDelivery
 from apps.commerce.providers import telegram_config
-from .ux_copy import UX
+from .ux_copy import EDIT_BUTTON_COPY, UX
 
 
 RESULT_COPY = {
@@ -112,13 +114,78 @@ def revisable_draft(delivery):
     return str(identifier) if exists else ''
 
 
+def app_url(webapp_url, locale, route=''):
+    """A page of the web app, in the customer's language."""
+    url = urlsplit(webapp_url)
+    parts = url.path.rstrip('/').split('/')
+    if len(parts) > 1 and parts[1] in ('en', 'uz', 'ru'):
+        parts[1] = locale
+    return urlunsplit((url.scheme, url.netloc, '/'.join(parts) + ('/' + route if route else ''), '', ''))
+
+
+def app_button(label, url):
+    """Opens a page as a Mini App where Telegram allows one (https), else as a link."""
+    if url.startswith('https://'):
+        return InlineKeyboardButton(text=label, web_app=WebAppInfo(url=url))
+    return InlineKeyboardButton(text=label, url=url)
+
+
+def editable_pdf(asset):
+    """A file the editor would open now: the same refusals as studio.views.editors."""
+    return (asset.mime_type == 'application/pdf' and not asset.metadata.get('encrypted')
+            and asset.state == 'ready' and asset.expires_at > timezone.now())
+
+
+def editable_deck(account, identifier):
+    """A deck the editor would draw now: the same refusal as render_export, as a live
+    draft can have no pins. One that cannot be read is no reason to hold the file back."""
+    from apps.studio.domain import unpack
+    from apps.studio.models import GenerationDraft
+    from apps.studio.render_export import _editable
+    draft = GenerationDraft.objects.filter(account=account, id=identifier, expires_at__gt=timezone.now()).first()
+    if draft is None:
+        return False
+    try:
+        _editable(draft, unpack(draft.encrypted_data))
+    except (DomainError, InvalidToken, ValueError):
+        return False
+    return True
+
+
+def edit_route(delivery, flags):
+    """Where ✏️ Edit takes this result, or '' when there is nothing to open.
+
+    An edited PDF goes back to the upload its marks are on, so it comes up with
+    them; all a deck makes, in either format, goes back to its slides.
+    """
+    from apps.studio.domain import RENDER_IDS, SLIDES
+    from apps.studio.models import EditorDocument
+    asset = delivery.artifact.file
+    document = asset.metadata.get('editor_document_id')
+    if document:
+        source = EditorDocument.objects.select_related('file').filter(account=delivery.account, id=document).first()
+        return f'editor?file_id={source.file_id}' if source and editable_pdf(source.file) else ''
+    if delivery.artifact.job.feature_id in RENDER_IDS | {SLIDES}:
+        draft = asset.metadata.get('generation_draft_id')
+        return f'editor/deck/{draft}' if flags['deck_editor'] and draft and editable_deck(delivery.account, draft) else ''
+    return f'editor?file_id={asset.id}' if editable_pdf(asset) else ''
+
+
 @transaction.atomic
 def result_controls(delivery):
     """Stable owner-bound navigation; retries reuse tokens instead of adding rows."""
     BotDelivery.objects.select_for_update().get(pk=delivery.pk)
     locale = delivery.account.locale if delivery.account.locale in UX else 'en'
+    from operations.integrations import editor_flags
+    flags = editor_flags()
     rows = []
     payload = {'delivery_id': str(delivery.id)}
+    # A link holds no token, so a retry draws the same button. Telegram refuses
+    # a message whose button has no address, and the file matters more.
+    route = edit_route(delivery, flags) if flags['edit_buttons'] else ''
+    url = app_url(telegram_config()['webapp_url'], locale, route) if route else ''
+    if url.startswith(('https://', 'http://')):
+        rows.append([app_button(UX[locale]['edit'], url)])
     # A generated document can be changed by asking; a converted file cannot.
     revise = revisable_draft(delivery)
     if revise:
@@ -131,7 +198,8 @@ def result_controls(delivery):
                 token=secrets.token_urlsafe(12), account=delivery.account, action='ai_revise',
                 payload={'draft_id': revise}, expires_at=delivery.artifact.file.expires_at,
             )
-        rows.append([InlineKeyboardButton(text=UX[locale]['ai_revise'], callback_data=control.token)])
+        label = EDIT_BUTTON_COPY['ai_revise'] if flags['edit_buttons'] else 'ai_revise'
+        rows.append([InlineKeyboardButton(text=UX[locale][label], callback_data=control.token)])
     for action, label in (('home', 'home'), ('recent', 'recent'), ('new', 'new_task')):
         control = BotCallback.objects.filter(account=delivery.account, action=action, payload=payload).first()
         if control is None:
