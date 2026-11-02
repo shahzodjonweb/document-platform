@@ -209,6 +209,20 @@ def office_timings(compose, env):
         print(f'OFFICE-TIMING the probe did not finish: {type(error).__name__}')
 
 
+# The fonts in decks drawn by the real LibreOffice, and those decks for whoever
+# reviews a font change: in the log and the deck-samples artifact, never judged,
+# and on pull requests only for the same reason.
+def deck_samples(compose, env):
+    if env.get('GITHUB_EVENT_NAME') != 'pull_request':
+        return
+    try:
+        run(compose + ['exec', '-T', 'worker', 'python', 'scripts/deploy/deck_samples.py'], env=env, timeout=190)
+        if env.get('DECK_SAMPLES_DIR'):
+            run(compose + ['cp', 'worker:/data/private/scratch/deck-samples/.', env['DECK_SAMPLES_DIR']], env=env, timeout=60)
+    except Exception as error:
+        print(f'DECK-FONTS the probe did not finish: {type(error).__name__}')
+
+
 # One generated screenshot of a fictional CV read by OCR through the real
 # bounded child, inside the read-only reader with its production memory
 # limit: tesseract and its languages must be in the image, and a page must
@@ -286,6 +300,7 @@ print('Production settings keep development features disabled.')
                 check_reader(compose, env)
                 wait_for_cleanup_cycle(compose, env)
                 office_timings(compose, env)
+                deck_samples(compose, env)
             print('Isolated '+args.component+' production stack and gateway routes verified.')
         finally:
             # Only the uniquely named ephemeral CI project may have volumes removed.

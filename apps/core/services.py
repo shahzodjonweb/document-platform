@@ -353,6 +353,11 @@ def settle_job(job_id, status, error_code='', outputs=None, warnings=None, engin
     SecretHandle.objects.filter(job=job).delete()
     return job
 
+def _is_our_deck(job):
+    """A PowerPoint → PDF of a deck this service drew, known by the job that made the file: it is drawn in the faces it was measured in. An upload has no such job, whatever it holds."""
+    from apps.studio.domain import EXPORT, SLIDES
+    return job.feature_id=='convert.pptx_to_pdf' and Artifact.objects.filter(account=job.account,file_id__in=job.input_ids,job__feature_id__in=(SLIDES,EXPORT)).exists()
+
 def execute_job(job_id):
     from processors.sandbox import execute_sandbox as execute
     from processors import ProcessorError
@@ -388,7 +393,7 @@ def execute_job(job_id):
             result = execute_render(job,output_dir)
         else:
             from processors.sandbox import execution_timeout
-            result = execute(job.feature_id,input_paths,job.parameters,output_dir,secret=secret,timeout=execution_timeout(job.feature_id,len(input_paths)))
+            result = execute(job.feature_id,input_paths,job.parameters,output_dir,secret=secret,timeout=execution_timeout(job.feature_id,len(input_paths)),deck_fonts=_is_our_deck(job))
         secret=None
         # A photo whose scan failed is kept as uploaded and the job succeeds;
         # the child's own log is discarded, so the worker log records it.

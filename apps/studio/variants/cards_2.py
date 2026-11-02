@@ -39,7 +39,7 @@ def _need(ctx, width, paragraphs):
             continue
         if paragraph.get('upper'):
             value = value.upper()
-        total += _paragraph_height(dict(text=value, size=paragraph['size'], bold=_bold(ctx, paragraph),
+        total += _paragraph_height(dict(text=value, size=paragraph['size'], bold=_bold(ctx, paragraph), heading=bool(paragraph.get('heading')),
                                         before=paragraph.get('before', 0), after=paragraph.get('after', 0),
                                         spacing=paragraph.get('spacing', 1.15)), zone)
     return (total + 3) / 72 if total else 0.0
@@ -54,7 +54,7 @@ def _whole(ctx, width, paragraphs):
         if paragraph.get('upper'):
             value = value.upper()
         for word in value.split():
-            if _text_lines(word, paragraph['size'], Inches(width), bold=_bold(ctx, paragraph)) > 1:
+            if _text_lines(word, paragraph['size'], Inches(width), bold=_bold(ctx, paragraph), heading=bool(paragraph.get('heading'))) > 1:
                 return False
     return True
 
@@ -82,7 +82,7 @@ def _settle(ctx, cards, make, width, height, ladder=LADDER):
 def _word_size(ctx, value, width, size, floor=18):
     """The largest size up to `size` at which the heading's longest word keeps to one line of `width`."""
     words = _plain(value, 14).split() or ['']
-    while size > floor and any(_text_lines(word, size, Inches(width), bold=ctx.heading_bold) > 1 for word in words):
+    while size > floor and any(_text_lines(word, size, Inches(width), bold=ctx.heading_bold, heading=True) > 1 for word in words):
         size -= 1
     return size
 
@@ -96,9 +96,9 @@ def _heading_fit(ctx, section, width, height, size, lines):
     value, zone = _plain(section.get('heading'), 14), Inches(width)
 
     def tall(points):
-        return _text_lines(value, points, zone, bold=ctx.heading_bold) * points * 1.08
+        return _text_lines(value, points, zone, bold=ctx.heading_bold, heading=True) * points * 1.08
 
-    while size > 18 and (_text_lines(value, size, zone, bold=ctx.heading_bold) > lines or tall(size) > height * 72):
+    while size > 18 and (_text_lines(value, size, zone, bold=ctx.heading_bold, heading=True) > lines or tall(size) > height * 72):
         size -= 2
     return size if tall(size) <= height * 72 else None
 
@@ -527,7 +527,7 @@ def big_circles(ctx, section, lines):
 
     def inside(k, item, label):
         return [dict(text=_number(k), size=14, floor=14, colour='soft_muted', bold=True, align='center', after=2),
-                dict(text=item['label'], words=7, size=label, floor=min(label, 13), colour='soft_ink', bold=True,
+                dict(text=item['label'], words=7, size=label, floor=min(label, 12.5), colour='soft_ink', bold=True,
                      heading=True, align='center')]
 
     def below(item, body):

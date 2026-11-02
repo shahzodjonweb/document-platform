@@ -79,7 +79,7 @@ def _need(ctx, width, paragraphs):
         value = _plain(paragraph.get('text'), paragraph.get('words') or 999)
         if not value:
             continue
-        total += _paragraph_height(dict(text=value, size=paragraph['size'], bold=_bold(ctx, paragraph),
+        total += _paragraph_height(dict(text=value, size=paragraph['size'], bold=_bold(ctx, paragraph), heading=bool(paragraph.get('heading')),
                                         before=paragraph.get('before', 0), after=paragraph.get('after', 0),
                                         spacing=paragraph.get('spacing', 1.15)), zone)
     return total / 72 + SLACK
@@ -115,7 +115,7 @@ def _heading_tall(ctx, section, width, size, most=3):
     value = _plain(section.get('heading'), 14)
     if not value:
         return 0.0, 0
-    count = min(most, _text_lines(value, size, Inches(width), bold=ctx.heading_bold))
+    count = min(most, _text_lines(value, size, Inches(width), bold=ctx.heading_bold, heading=True))
     return count * size * 1.08 / 72 + 0.06, count
 
 

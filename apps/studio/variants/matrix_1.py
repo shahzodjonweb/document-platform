@@ -40,7 +40,7 @@ def _need(ctx, width, paragraphs):
         if not value:
             continue
         bold = bool(paragraph.get('bold')) or bool(paragraph.get('heading') and ctx.heading_bold)
-        total += _paragraph_height(dict(text=value, size=paragraph['size'], bold=bold,
+        total += _paragraph_height(dict(text=value, size=paragraph['size'], bold=bold, heading=bool(paragraph.get('heading')),
                                         before=paragraph.get('before', 0), after=paragraph.get('after', 0),
                                         spacing=paragraph.get('spacing', 1.15)), zone)
     return (total + 4) / 72 if total else 0.0

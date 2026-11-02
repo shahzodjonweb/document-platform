@@ -316,7 +316,7 @@ def connected_cards(ctx, section, lines):
                     'accent_text')
 
 
-ROWS = ((17, 14), (16, 14), (16, 13), (15, 13), (15, 12))
+ROWS = ((17, 14), (16, 14), (16, 13), (15, 13), (15, 12), (14, 12))
 
 
 @variant('process', 'pipeline_rows', counts=(3, 5))

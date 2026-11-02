@@ -14,10 +14,12 @@ named in the description, or an account's brand colour, overrides that part of
 the design; the rest of the design stays.
 
 Fonts are faces that ship with Microsoft Office on Windows and macOS and cover
-Cyrillic. Text fitting is measured with Noto Sans plus a 10% margin
-(`slides.WIDTH_SAFETY`); every face here was measured at or under Noto's width,
-so a design cannot push a slide's text off its box. Verdana and Rockwell were
-measured wider and are left out on purpose.
+Cyrillic. Each has a stand-in we ship (`processors.deck_fonts.STAND_INS`) that
+measures its text, with a 10% margin (`slides.WIDTH_SAFETY`), and that LibreOffice
+draws it in; the real faces were measured within that margin on sentences and
+figures (the table in `processors.deck_fonts`), so a design cannot push a slide's
+text off its box. Verdana and Rockwell were measured wider than Noto and are left
+out on purpose.
 
 Art is a greyscale mask in `assets/deck/` tinted in the deck's own colour and
 placed only where no text is drawn (`slides.ART_ZONES`): the side, top or
@@ -527,10 +529,10 @@ def current(key):
     """The design to use for `key`: itself, or the one that replaced it."""
     return RETIRED.get(key, key)
 
-# The look a deck has when no design was chosen: what every deck looked like
-# before designs, so old drafts and local authoring render exactly as they did.
+# The look a deck has when no design was chosen: the house look from before
+# designs, whose body face went from Corbel to Calibri with the deck fonts.
 DEFAULT_ACCENT = '#255e49'
-DEFAULT_FONTS = ('Cambria', 'Corbel')
+DEFAULT_FONTS = ('Cambria', 'Calibri')
 
 
 def reference(photos=True):
@@ -598,10 +600,12 @@ def version():
     """Changes whenever a design or the code that draws one changes: thumbnails are cached by it."""
     import hashlib
     from pathlib import Path
+    from processors import deck_fonts
     digest = hashlib.sha256(repr(sorted((key, sorted(value.items())) for key, value in DESIGNS.items())).encode())
-    for source in sorted((Path(__file__).resolve().parent / 'compositions').glob('*.py')):
+    studio = Path(__file__).resolve().parent
+    for source in (*sorted((studio / 'compositions').glob('*.py')), *sorted((studio / 'variants').glob('*.py')),
+                   studio / 'slides.py', studio / 'slide_layouts.py', studio / 'layouts.py', Path(deck_fonts.__file__), *deck_fonts.font_files()):
         digest.update(source.read_bytes())
-    digest.update((Path(__file__).resolve().parent / 'slides.py').read_bytes())
     return digest.hexdigest()[:12]
 
 

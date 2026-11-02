@@ -39,7 +39,7 @@ def _need(ctx, width, paragraphs):
         if paragraph.get('upper'):
             value = value.upper()
         bold = bool(paragraph.get('bold')) or bool(paragraph.get('heading') and ctx.heading_bold)
-        total += _paragraph_height(dict(text=value, size=paragraph['size'], bold=bold,
+        total += _paragraph_height(dict(text=value, size=paragraph['size'], bold=bold, heading=bool(paragraph.get('heading')),
                                         before=paragraph.get('before', 0), after=paragraph.get('after', 0),
                                         spacing=paragraph.get('spacing', 1.15), bullet=paragraph.get('bullet')),
                                    zone)
@@ -59,7 +59,7 @@ def _whole(ctx, width, paragraphs):
         if paragraph.get('upper'):
             value = value.upper()
         bold = bool(paragraph.get('bold')) or bool(paragraph.get('heading') and ctx.heading_bold)
-        if any(_text_lines(word, paragraph['size'], Inches(width), bold=bold) > 1 for word in value.split()):
+        if any(_text_lines(word, paragraph['size'], Inches(width), bold=bold, heading=bool(paragraph.get('heading'))) > 1 for word in value.split()):
             return False
     return True
 
@@ -104,7 +104,7 @@ def _choose(fits, scales=SCALES):
 def _heading_size(ctx, section, width, size):
     """The largest size up to `size` (to 18) at which the heading's longest word keeps to one line of `width`."""
     words = _clean(section.get('heading'), 14).split()
-    while size > 18 and any(_text_lines(word, size, Inches(width), bold=ctx.heading_bold) > 1 for word in words):
+    while size > 18 and any(_text_lines(word, size, Inches(width), bold=ctx.heading_bold, heading=True) > 1 for word in words):
         size -= 1
     return size
 

@@ -48,7 +48,7 @@ def _need(ctx, width, paragraphs):
             continue
         if paragraph.get('upper'):
             value = value.upper()
-        total += _paragraph_height(dict(text=value, size=paragraph['size'], bold=_bold(ctx, paragraph),
+        total += _paragraph_height(dict(text=value, size=paragraph['size'], bold=_bold(ctx, paragraph), heading=bool(paragraph.get('heading')),
                                         before=paragraph.get('before', 0), after=paragraph.get('after', 0),
                                         spacing=paragraph.get('spacing', 1.15)), zone)
     return (total + 4) / 72 if total else 0.0
@@ -60,7 +60,7 @@ def _whole(ctx, width, paragraphs):
         if not paragraph:
             continue
         for word in _plain(paragraph.get('text'), paragraph.get('words')).split():
-            if _text_lines(word, paragraph['size'], Inches(width), bold=_bold(ctx, paragraph)) > 1:
+            if _text_lines(word, paragraph['size'], Inches(width), bold=_bold(ctx, paragraph), heading=bool(paragraph.get('heading'))) > 1:
                 return False
     return True
 
@@ -79,7 +79,7 @@ def _settle(ctx, items, make, width, room, ladder=LADDER):
 def _word_size(ctx, value, width, size, floor=18):
     """The largest size up to `size` at which the heading's longest word keeps to one line of `width`."""
     words = _plain(value, 14).split() or ['']
-    while size > floor and any(_text_lines(word, size, Inches(width), bold=ctx.heading_bold) > 1 for word in words):
+    while size > floor and any(_text_lines(word, size, Inches(width), bold=ctx.heading_bold, heading=True) > 1 for word in words):
         size -= 1
     return size
 

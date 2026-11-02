@@ -33,7 +33,7 @@ def _need(ctx, value, width, size, *, bold=False, heading=False):
 def _whole(ctx, value, width, size, *, bold=False, heading=False):
     """Whether every word of `value` keeps to one line `width` wide (none broken across lines)."""
     bold = bold or (heading and ctx.heading_bold)
-    return all(_text_lines(word, size, Inches(width), bold=bold) == 1 for word in _plain(value, LABEL).split())
+    return all(_text_lines(word, size, Inches(width), bold=bold, heading=bool(heading)) == 1 for word in _plain(value, LABEL).split())
 
 
 def _floor(value):
@@ -60,7 +60,7 @@ def _figure_size(ctx, values, width, start, floor=14):
     """The largest size up to `start` at which every figure keeps to one line `width` wide: one size a slide."""
     values = [_plain(value, VALUE) for value in values if _plain(value)]
     size = start
-    while size > floor and any(_text_lines(value, size, Inches(width), bold=ctx.heading_bold) > 1
+    while size > floor and any(_text_lines(value, size, Inches(width), bold=ctx.heading_bold, heading=True) > 1
                                for value in values):
         size -= 2
     return size
@@ -86,7 +86,7 @@ def _figure_width(ctx, values, size, least=0.8, most=3.0):
     """The narrowest width (inches) from `least` up to `most` that keeps every figure on one line at `size`."""
     values = [_plain(value, VALUE) for value in values if _plain(value)]
     width = least
-    while width < most and any(_text_lines(value, size, Inches(width), bold=ctx.heading_bold) > 1
+    while width < most and any(_text_lines(value, size, Inches(width), bold=ctx.heading_bold, heading=True) > 1
                                for value in values):
         width += 0.05
     return width
@@ -323,7 +323,7 @@ def scaled_circles(ctx, section, lines):
     def inside(d, value):
         box = inscribed(disc(0, 0, d))
         return (box[3] >= value_h and
-                _text_lines(_plain(value, VALUE), fsize, Inches(box[2]), bold=ctx.heading_bold) <= 1)
+                _text_lines(_plain(value, VALUE), fsize, Inches(box[2]), bold=ctx.heading_bold, heading=True) <= 1)
 
     def lay(largest):
         sizes = [max(0.2, largest * ratio) for ratio in ratios]

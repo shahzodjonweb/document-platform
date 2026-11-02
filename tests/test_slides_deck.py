@@ -6,6 +6,7 @@ before: the count was not the count, the text did not reflow when edited, the
 theme was stock Office, and the file carried a binary part the platform's own
 uploader refuses.
 """
+import re
 import zipfile
 
 import pytest
@@ -116,7 +117,8 @@ def test_the_deck_carries_its_own_theme_not_office_stock(built):
         theme = archive.read('ppt/theme/theme1.xml').decode()
     assert '255E49' in theme, 'the accent reaches the theme'
     assert slides.HEADING_FONT in theme and slides.BODY_FONT in theme
-    assert 'Calibri' not in theme, 'a deck that inherits Calibri reads as stock Office'
+    # Calibri is the body on purpose (its twin measures it exactly). Calibri headings too would be stock Office.
+    assert re.search(r'<a:majorFont><a:latin typeface="([^"]*)"', theme).group(1) == slides.HEADING_FONT != 'Calibri'
 
 
 def test_the_theme_hook_is_pinned_to_the_library_it_was_written_against():

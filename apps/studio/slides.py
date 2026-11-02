@@ -23,6 +23,9 @@ with `word_wrap=False`, which meant the "editable deck" fell apart the moment
 anyone edited it.
 """
 import colorsys
+import contextlib
+import contextvars
+import functools
 import io
 import re
 
@@ -33,18 +36,18 @@ from pptx.enum.text import MSO_ANCHOR, MSO_AUTO_SIZE, PP_ALIGN
 from pptx.opc.constants import RELATIONSHIP_TYPE as RT
 from pptx.oxml.ns import qn
 from pptx.util import Emu, Inches, Pt
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfbase.ttfonts import TTFontFace
 
-from .rendering import FIT_STEPS, SENTENCE, font_path
+from .rendering import FIT_STEPS, SENTENCE
 
 # python-pptx cannot embed fonts: `font.name` is a name the viewer resolves for
 # itself. So the deck names faces that ship with Microsoft Office on Windows and
 # macOS and cover Cyrillic, rather than the Noto Sans the server happens to have.
 # If these substitute badly in Google Slides or Keynote, Georgia/Verdana are the
-# duller but even safer fallback — two constants, nothing else changes.
+# duller but even safer fallback — two constants, nothing else changes. Calibri,
+# not Corbel, because it alone has a free twin of the same widths in every script.
 HEADING_FONT = 'Cambria'
-BODY_FONT = 'Corbel'
+BODY_FONT = 'Calibri'
 BULLET_FONT = 'Arial'
 
 SLIDE_WIDTH = Inches(13.333)
@@ -59,18 +62,65 @@ MIN_BODY_SIZE = 14
 MAX_BODY_SIZE = 20
 # The smallest a list may go on a slide that still does not fit the deck size.
 FLOOR_BODY_SIZE = 13
-# Measured metrics come from reportlab's Noto; the viewer renders Corbel. The
-# estimate only has to be close enough to choose a size, so it is padded rather
-# than made exact.
+# Text is measured in the faces LibreOffice draws it with (processors/deck_fonts),
+# but a viewer has kerning of its own and may have the real face, on sentences up
+# to 4.5% wider (Cambria), and figures held to their own floor there. So the
+# estimate is padded rather than taken as exact.
 WIDTH_SAFETY = 1.10
 LINE_MULTIPLE = 1.22
 
 MARKER = re.compile(r'^\s*(?:[•·▪◦‣*\-–—]+\s*|\(?[0-9]{1,2}[.)]\s+|\(?[a-zA-Z][.)]\s+)')
 
 
-def _register_font():
-    if 'PDFMaster' not in pdfmetrics.getRegisteredFontNames():
-        pdfmetrics.registerFont(TTFont('PDFMaster', str(font_path())))
+# (heading face, body face) of the deck being drawn or measured; the house faces outside one.
+_MEASURED_IN = contextvars.ContextVar('deck_faces', default=None)
+
+
+@contextlib.contextmanager
+def measured_in(look):
+    """Every width taken inside is taken in `look`'s faces, which apply_fonts puts on the slides only at the end."""
+    token = _MEASURED_IN.set((look['heading_font'], look['body_font']))
+    try:
+        yield
+    finally:
+        _MEASURED_IN.reset(token)
+
+
+@functools.lru_cache(maxsize=None)
+def _family_widths(family):
+    from processors.deck_fonts import FILES, FOLDER
+    face = TTFontFace(str(FOLDER / FILES[family]))
+    return face.charWidths, face.defaultWidth
+
+
+@functools.lru_cache(maxsize=50000)
+def _face_units(text, face):
+    """`text`'s width in thousandths of its size, each letter in the first of `face`'s stand-ins that has it."""
+    from processors.deck_fonts import DIGIT_FLOORS, stand_in
+    families = [_family_widths(family) for family in stand_in(face)]
+    floor = DIGIT_FLOORS.get(face, 0)
+    total = 0
+    for letter in map(ord, text):
+        for widths, _ in families:
+            if letter in widths:
+                total += max(widths[letter], floor) if 0x30 <= letter <= 0x39 else widths[letter]
+                break
+        else:
+            total += families[-1][1]
+    return total
+
+
+def _units(text, heading=None):
+    """`text`'s width in thousandths of its size. A line's is its words' sum.
+
+    `heading`: whether it is set in the deck's heading face or its body face.
+    Those differ most in Russian (Noto Serif against Carlito, a fifth), so a
+    caller that does not say gets the wider, and never a box too small for it.
+    """
+    heading_face, body_face = _MEASURED_IN.get() or (HEADING_FONT, BODY_FONT)
+    if heading is None:
+        return max(_face_units(text, heading_face), _face_units(text, body_face))
+    return _face_units(text, heading_face if heading else body_face)
 
 
 # ---------------------------------------------------------------- colour
@@ -443,14 +493,13 @@ def _no_bullet(paragraph):
     properties.append(properties.makeelement(qn('a:buNone'), {}))
 
 
-def _text_width(text, size):
-    _register_font()
-    return pdfmetrics.stringWidth(text, 'PDFMaster', size) * WIDTH_SAFETY
+def _text_width(text, size, heading=None):
+    return _units(text, heading) * 0.001 * size * WIDTH_SAFETY
 
 
-def _wrapped_lines(text, size, width_emu):
+def _wrapped_lines(text, size, width_emu, heading=None):
     width = Emu(int(width_emu)).pt
-    return max(1, -(-_text_width(text, size) // max(width, 1)))
+    return max(1, -(-_text_width(text, size, heading) // max(width, 1)))
 
 
 # ---------------------------------------------------------------- layout
@@ -706,7 +755,7 @@ def _headline(slide, zone, text, roles, *, size, colour=None, anchor=MSO_ANCHOR.
     height = Emu(int(zone.height)).pt
 
     def wrapped(value, points):
-        return _text_lines(value, points, zone.width, bold=bold)
+        return _text_lines(value, points, zone.width, bold=bold, heading=True)
 
     while size > 18 and (wrapped(text, size) > lines or wrapped(text, size) * size * 1.08 > height):
         size -= 2
@@ -751,7 +800,7 @@ def _fits(bullets, size, zone):
     from .slide_layouts import _text_lines
     height = 0
     for index, bullet in enumerate(bullets):
-        lines = _text_lines(bullet, size, zone.width - Pt(size))
+        lines = _text_lines(bullet, size, zone.width - Pt(size), heading=False)
         height += lines * size * LINE_MULTIPLE + (0 if index == 0 else size * 0.55)
     return height <= Emu(zone.height).pt
 
@@ -934,13 +983,17 @@ def render_pptx(content, path, locale='en', role='user_document', style=None, ph
     in the encrypted draft, and is taken out before the metadata is kept with a
     file (execution._deck_pins).
     """
+    pins = pins or {}
+    style, look, roles = deck_look(style, pins)
+    with measured_in(look):
+        return _draw_deck(content, path, locale, role, style, look, roles, photos or {}, pins)
+
+
+def _draw_deck(content, path, locale, role, style, look, roles, photos, pins):
     from . import layouts
     from .slide_fit import left_out
     from .slide_layouts import DRAW, PHOTO_ZONES, Ctx, place_photo
-    pins = pins or {}
     pinned = pins.get('variants') or {}
-    photos = photos or {}
-    style, look, roles = deck_look(style, pins)
     prepared, cuts = prepare_slides(content, locale, photos)
     total = len(prepared)
     shortened = bool(cuts)

@@ -28,7 +28,7 @@ from pptx.enum.shapes import MSO_SHAPE_TYPE
 from pptx.util import Emu, Inches, Pt
 from pypdf import PdfReader
 
-from apps.studio import pages
+from apps.studio import pages, slides
 from apps.studio.deck_designs import DESIGN_IDS, look
 from apps.studio.doc_designs import clean_fields
 from apps.studio.layouts import LIMITS, clean_slide_fields
@@ -69,8 +69,11 @@ def needed(paragraph, width):
     size = max(piece[1] for piece in drawn)
     props = paragraph._p.pPr
     inset = int(props.get('marL', 0)) + int(props.get('marR', 0)) if props is not None else 0
-    lines = _text_lines(''.join(piece[0] for piece in pieces), size, max(1, width - inset),
-                        bold=any(piece[2] for piece in drawn))
+    # A saved deck names its own faces (apply_fonts): measured in the face the box is set in.
+    face = next((latin.get('typeface') for latin in paragraph._p.iter(A + 'latin')), slides.BODY_FONT)
+    with slides.measured_in({'heading_font': face, 'body_font': face}):
+        lines = _text_lines(''.join(piece[0] for piece in pieces), size, max(1, width - inset),
+                            bold=any(piece[2] for piece in drawn))
     spacing = paragraph.line_spacing
     leading = spacing.pt if hasattr(spacing, 'pt') else (spacing or 1.0) * size * VIEWER_LEADING
     before = paragraph.space_before.pt if paragraph.space_before is not None else 0

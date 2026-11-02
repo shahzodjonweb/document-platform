@@ -260,7 +260,7 @@ def execute_render(job,output_dir):
     if fmt!='pptx':
         from processors.sandbox import execute_sandbox
         seconds=min(OFFICE_SECONDS_MOST,OFFICE_SECONDS+OFFICE_SECONDS_PER_SLIDE*deck['page_count'])
-        pdf=execute_sandbox('convert.pptx_to_pdf',[deck['path']],{},Path(output_dir)/'pdf',timeout=seconds+30,office_timeout=seconds)['artifacts'][0]
+        pdf=execute_sandbox('convert.pptx_to_pdf',[deck['path']],{},Path(output_dir)/'pdf',timeout=seconds+30,office_timeout=seconds,deck_fonts=True)['artifacts'][0]
         artifacts=[deck,pdf] if fmt=='both' else [pdf]
         if fmt=='pdf':Path(deck['path']).unlink()
     source_name=FileAsset.objects.filter(account=job.account,pk__in=data.get('source_ids') or []).order_by('created_at').values_list('name',flat=True).first()
