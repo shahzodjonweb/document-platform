@@ -41,7 +41,7 @@ def _need(ctx, width, paragraphs):
         if not value:
             continue
         bold = bool(paragraph.get('bold')) or bool(paragraph.get('heading') and ctx.heading_bold)
-        spec = dict(text=value, size=paragraph['size'], bold=bold, before=paragraph.get('before', 0),
+        spec = dict(text=value, size=paragraph['size'], bold=bold, heading=bool(paragraph.get('heading')), before=paragraph.get('before', 0),
                     after=paragraph.get('after', 0), spacing=paragraph.get('spacing', 1.15))
         if paragraph.get('bullet'):
             spec['bullet'] = paragraph['bullet']
@@ -104,7 +104,7 @@ def _whole(ctx, value, width, height, sizes):
     """The largest of `sizes` at which a name keeps every word on one line and fits `height` inches."""
     value = _clean(value, NAME)
     for size in sizes:
-        if (all(_text_lines(word, size, Inches(width), bold=True) == 1 for word in value.split())
+        if (all(_text_lines(word, size, Inches(width), bold=True, heading=True) == 1 for word in value.split())
                 and _need(ctx, width, [_name(value, size, 'ink')]) <= height):
             return size
     return sizes[-1]
@@ -222,7 +222,7 @@ def point_cards(ctx, section, lines):
     # that would set the points smaller than the slim band lets them be.
     heading = _clean(section.get('heading'), 14)
     band = 1.25
-    if _text_lines(heading, 24, Inches(WIDTH - 0.8), bold=ctx.heading_bold) > 1:
+    if _text_lines(heading, 24, Inches(WIDTH - 0.8), bold=ctx.heading_bold, heading=True) > 1:
         slim = _pick(ctx, lambda s: total(s) <= FOOT - below(1.25) - 0.05)
         deep = _pick(ctx, lambda s: total(s) <= FOOT - below(1.55) - 0.05)
         band = 1.55 if deep is not None and (slim is None or deep[1] >= slim[1]) else 1.25
@@ -283,7 +283,7 @@ def tone_columns(ctx, section, lines):
         return inner, label, head_h, sizes
     # A long heading gets a wider column to keep its size, unless that would set the points smaller.
     side, layout = 2.9, plan(2.9)
-    if _text_lines(heading, 26, Inches(2.9), bold=ctx.heading_bold) > 6:
+    if _text_lines(heading, 26, Inches(2.9), bold=ctx.heading_bold, heading=True) > 6:
         wide = plan(3.4)
         if wide[3] is not None and (layout[3] is None or wide[3][1] >= layout[3][1]):
             side, layout = 3.4, wide
@@ -295,7 +295,7 @@ def tone_columns(ctx, section, lines):
     used = max(_need(ctx, inner, paragraphs(k, sizes[1])) for k in range(2))
     # Short content: the panels close up round it and the whole page sits mid-frame, the heading level with
     # them. They stay as tall as the heading beside them (six lines at most: kit.headline shrinks it to that).
-    wrapped = _text_lines(heading, 30, Inches(side), bold=ctx.heading_bold)
+    wrapped = _text_lines(heading, 30, Inches(side), bold=ctx.heading_bold, heading=True)
     beside = 0.63 + min(6, wrapped) * 30 * 1.08 / 72 + 0.15
     tall = min(full, max(3.2, beside, 2 * pad + head_h + under + used))
     y = 0.62 + (full - tall) / 2

@@ -45,12 +45,12 @@ def _bold(ctx, bold, heading):
 
 
 def _lines(ctx, value, size, width, *, bold=False, heading=False):
-    return _text_lines(value, size, Inches(width), bold=_bold(ctx, bold, heading))
+    return _text_lines(value, size, Inches(width), bold=_bold(ctx, bold, heading), heading=bool(heading))
 
 
 def _wide(ctx, value, size, *, bold=False, heading=False):
     """Inches `value` takes on one line at `size` points, as the fitter measures it."""
-    return 0.001 * size * _units(value) * WIDTH_SAFETY * (1.06 if _bold(ctx, bold, heading) else 1) / 72 + 0.02
+    return 0.001 * size * _units(value, bool(heading)) * WIDTH_SAFETY * (1.06 if _bold(ctx, bold, heading) else 1) / 72 + 0.02
 
 
 def _settles(ctx, value, size, width, height, lines, *, bold, heading, spacing=1.15):

@@ -33,7 +33,7 @@ def _need(ctx, width, paragraphs):
         if not value:
             continue
         bold = bool(paragraph.get('bold')) or bool(paragraph.get('heading') and ctx.heading_bold)
-        total += _paragraph_height(dict(text=value, size=paragraph['size'], bold=bold,
+        total += _paragraph_height(dict(text=value, size=paragraph['size'], bold=bold, heading=bool(paragraph.get('heading')),
                                         before=paragraph.get('before', 0), after=paragraph.get('after', 0),
                                         spacing=paragraph.get('spacing', 1.15)), zone)
     return (total + 4) / 72 if total else 0.0
@@ -69,7 +69,7 @@ def _centred(top, room, used, bias=0.42):
 
 def _lines(text_value, size, width):
     """How many lines a column's text (held to its word limit) wraps to at `size` in `width` inches."""
-    return _text_lines(_clean(text_value, BODY), size, Inches(width))
+    return _text_lines(_clean(text_value, BODY), size, Inches(width), heading=False)
 
 
 def _visible(ctx, colour, ground):

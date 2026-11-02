@@ -56,7 +56,7 @@ def _span(ctx, value, size, bold=False, heading=False):
     if not value:
         return 0.0
     factor = 1.06 if _bold(ctx, bold, heading) else 1.0
-    return _units(value) * size / 1000 * WIDTH_SAFETY * factor / 72 + 0.03
+    return _units(value, bool(heading)) * size / 1000 * WIDTH_SAFETY * factor / 72 + 0.03
 
 
 def _word(ctx, value, size, bold=False, heading=False):
@@ -68,7 +68,7 @@ def _tall(ctx, value, width, size, bold=False, heading=False):
     """Inches `value` takes wrapped in `width`, at the leading kit.text sets it with."""
     if not value:
         return 0.0
-    return _text_lines(value, size, Inches(max(0.1, width)), bold=_bold(ctx, bold, heading)) * size * 1.15 / 72
+    return _text_lines(value, size, Inches(max(0.1, width)), bold=_bold(ctx, bold, heading), heading=bool(heading)) * size * 1.15 / 72
 
 
 def _widths(ctx, columns, room, inset, lead=0.0, least=0.2, steps=80):
@@ -178,7 +178,7 @@ def _plan(ctx, names, rows, *, width, room, gap=0.0, inset=0.0, lead=0.0, pad=0.
         x += value + gap
     plan.first_heading, plan.head_heading, plan.upper, plan.bolds = first_heading, head_heading, upper, bolds
     plan.wraps = any(_text_lines(row[k], plan.size, Inches(max(0.1, room_x[k])),
-                                 bold=_bold(ctx, bolds[k], k == 0 and first_heading)) > 1
+                                 bold=_bold(ctx, bolds[k], k == 0 and first_heading), heading=k == 0 and first_heading) > 1
                      for row in cells for k in range(n) if row[k])
     return plan
 

@@ -17,6 +17,7 @@ from datetime import datetime, timedelta
 from types import SimpleNamespace
 
 import pytest
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
 from pypdf import PdfReader, PdfWriter
 
@@ -114,6 +115,7 @@ while [ $# -gt 1 ]; do
   if [ "$1" = "--outdir" ]; then folder="$2"; fi
   shift
 done
+echo "${{FONTCONFIG_FILE:-none}}" >> "{tmp_path}/fontconfig.log"
 cp "{made}" "$folder/input.pdf"
 ''')
     binary.chmod(0o755)
@@ -236,6 +238,12 @@ def test_as_pdf_alone_only_the_pdf_is_left(customer, stock_photos, office):  # n
     assert not (folder / 'document.pptx').exists(), 'no second file behind the one that was asked for'
 
 
+def test_a_sent_deck_is_drawn_in_the_faces_it_was_measured_in(customer, stock_photos, office, tmp_path):  # noqa: F811
+    draft, _ = generate(customer)
+    assert send(customer, draft, 'pdf').status == 'succeeded'
+    assert (tmp_path / 'fontconfig.log').read_text().strip().endswith('/deck-fonts.conf')
+
+
 def test_as_both_it_is_two_files_of_one_job_and_one_task(customer, stock_photos, office):  # noqa: F811
     draft, first = generate(customer)
     job = send(customer, draft, 'both')
@@ -289,6 +297,7 @@ def test_the_office_timeout_is_a_parameter_and_stays_a_minute_by_default(tmp_pat
     sandbox.execute_sandbox('convert.pptx_to_pdf', [source], {}, tmp_path)
     sandbox.execute_sandbox('convert.pptx_to_pdf', [source], {}, tmp_path, timeout=210, office_timeout=180)
     assert [(request['office_timeout'], timeout) for request, timeout in requests] == [(60, 90), (180, 210)]
+    assert [request['deck_fonts'] for request, _ in requests] == [False, False], 'a conversion is a customer\'s unless it says otherwise'
 
 
 def test_the_customer_sees_the_decks_title_or_the_service_as_the_file_name(customer):  # noqa: F811
@@ -1105,6 +1114,29 @@ def test_the_bots_as_pdf_takes_the_deck_as_last_sent(customer, stock_photos, off
     alone = send(customer, edit_section(customer, draft, LIST, body='Edited once more'), 'pdf')
     assert alone.status == 'succeeded', alone.error_code
     assert ai.delivered(customer, draft.id) == (None, None) and ai.deck_to_pdf(customer, draft.id) is None
+
+
+def as_a_job(customer, asset):  # noqa: F811
+    from apps.core.services import create_quote
+    quote = create_quote(customer, ai.CONVERTER, [str(asset.id)], {})
+    job, _ = submit_job(customer, quote.id, f'tool-{quote.id}', origin='bot')
+    return execute_job(job.id)
+
+
+def test_the_bots_as_pdf_draws_our_deck_in_its_faces_and_the_same_bytes_uploaded_in_a_customers(customer, stock_photos, office, tmp_path):  # noqa: F811
+    draft, first = generate(customer)
+    deck = first.artifacts.get().file
+    tool = ai.deck_to_pdf(customer, draft.id)
+    assert tool.input_ids == [str(deck.id)]
+    assert as_a_job(customer, deck).status == 'succeeded'
+    log = tmp_path / 'fontconfig.log'
+    assert log.read_text().strip().endswith('/deck-fonts.conf')
+
+    # The file itself says nothing a customer could not write: only the job that made it does.
+    log.unlink()
+    copy_of_it = services.upload_file(customer, SimpleUploadedFile('deck.pptx', storage.read_bytes(deck.object_key), PPTX_MIME))
+    assert as_a_job(customer, copy_of_it).status == 'succeeded'
+    assert set(log.read_text().split()) == {'none'}
 
 
 def test_the_change_button_and_the_labels_follow_a_sent_deck(customer, stock_photos, office):  # noqa: F811

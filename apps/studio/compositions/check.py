@@ -17,7 +17,7 @@ from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
 from pptx.oxml.ns import qn
 
-from ..slides import _wrapped_lines, contrast_ratio
+from ..slides import _wrapped_lines, contrast_ratio, measured_in
 
 EMU = 914400
 SLIDE_W, SLIDE_H = 13.333, 7.5
@@ -69,7 +69,9 @@ def _slide(slide, kind, accent):
             if below['kind'] == 'line' and _segment_hits(below['segment'], _inset(text['box'], 0.02)):
                 yield f'{label} has a line across it'
         if kind in ('cover', 'closing', 'section') and text['paragraphs'] == 1 and text['size']:
-            lines = _wrapped_lines(text['text'], text['size'], int(width * EMU))
+            # The deck is finished: the box says which of its faces this is.
+            with measured_in({'heading_font': text['face'], 'body_font': text['face']}):
+                lines = _wrapped_lines(text['text'], text['size'], int(width * EMU), True)
             needed = lines * text['size'] * text['spacing'] / 72
             if needed > height + 0.04:
                 yield f'{label} needs {needed:.2f} in at {text["size"]} pt; its box is {height:.2f} in'
@@ -110,6 +112,7 @@ def _describe(shape):
         found['text'] = shape.text_frame.text.strip()
         found['colour'] = colours[0] if colours else '000000'
         found['size'] = max(sizes) if sizes else 0
+        found['face'] = next((latin.get('typeface') for latin in shape._element.iter(qn('a:latin'))), '')
         found['paragraphs'] = len([p for p in shape.text_frame.paragraphs if p.text.strip()])
         spacing = shape.text_frame.paragraphs[0].line_spacing
         found['spacing'] = (spacing.pt / found['size'] if hasattr(spacing, 'pt') and found['size']

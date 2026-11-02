@@ -39,7 +39,7 @@ def _need(ctx, width, paragraphs):
         value = _plain(paragraph.get('text'), paragraph.get('words'))
         if not value:
             continue
-        total += _paragraph_height(dict(text=value, size=paragraph['size'], bold=_bold(ctx, paragraph),
+        total += _paragraph_height(dict(text=value, size=paragraph['size'], bold=_bold(ctx, paragraph), heading=bool(paragraph.get('heading')),
                                         before=paragraph.get('before', 0), after=paragraph.get('after', 0),
                                         spacing=paragraph.get('spacing', 1.15)), zone)
     return (total + 4) / 72 if total else 0.0
@@ -51,7 +51,7 @@ def _whole(ctx, width, paragraphs):
         if not paragraph:
             continue
         for word in _plain(paragraph.get('text'), paragraph.get('words')).split():
-            if _text_lines(word, paragraph['size'], Inches(width), bold=_bold(ctx, paragraph)) > 1:
+            if _text_lines(word, paragraph['size'], Inches(width), bold=_bold(ctx, paragraph), heading=bool(paragraph.get('heading'))) > 1:
                 return False
     return True
 
@@ -78,7 +78,7 @@ def _name_lines(ctx, width, items, make, sizes):
         label = make(k, item, *sizes)[0]
         value = _plain(label.get('text'), label.get('words'))
         if value:
-            most = max(most, _text_lines(value, label['size'], Inches(width), bold=_bold(ctx, label)))
+            most = max(most, _text_lines(value, label['size'], Inches(width), bold=_bold(ctx, label), heading=bool(label.get('heading'))))
     return most
 
 
@@ -122,7 +122,7 @@ def _figure_size(ctx, items, width, start, least):
     """
     values = [_plain(item.get('value'), VALUE) for item in items]
     size = start
-    while size > 12 and any(_text_lines(value, size, Inches(width), bold=ctx.heading_bold) > 1
+    while size > 12 and any(_text_lines(value, size, Inches(width), bold=ctx.heading_bold, heading=True) > 1
                             for value in values if value):
         size -= 2
     if size < least:
@@ -176,10 +176,10 @@ def _compact_top(ctx, section, size=28):
 def _heading_fit(ctx, section, width, size, lines):
     """(size, height in inches) the slide's heading takes in `width` at most `lines` lines, as kit.headline sets it."""
     value = _plain(section.get('heading'), 14)
-    count = _text_lines(value, size, Inches(width), bold=ctx.heading_bold)
+    count = _text_lines(value, size, Inches(width), bold=ctx.heading_bold, heading=True)
     while size > 18 and count > lines:
         size -= 2
-        count = _text_lines(value, size, Inches(width), bold=ctx.heading_bold)
+        count = _text_lines(value, size, Inches(width), bold=ctx.heading_bold, heading=True)
     return size, max(1, count) * size * 1.08 / 72 + 0.08
 
 

@@ -144,7 +144,10 @@ def _lines_in(width, height, paragraphs):
         size = int(font.get('sz', 1800)) / 100
         properties = paragraph.find(qn('a:pPr'))
         inset = sum(int(properties.get(side, 0)) for side in ('marL', 'marR')) if properties is not None else 0
-        count = _text_lines(words, size, width - inset, bold=font.get('b') == '1')
+        latin = font.find(qn('a:latin'))
+        face = None if latin is None else latin.get('typeface')
+        count = _text_lines(words, size, width - inset, bold=font.get('b') == '1',
+                            heading={slides.HEADING_FONT: True, slides.BODY_FONT: False}.get(face))
         leading = _leading(properties, size)
         used += count
         tall += count * leading + _spacing(properties, 'a:spcBef') + _spacing(properties, 'a:spcAft')
@@ -237,10 +240,15 @@ def measure_deck(content, locale='en', style=None, pins=None, photos=(), only=No
     before that are cut short, and the slides asked about are still measured but
     say no layouts: a list that far along would be only part of the answer.
     """
-    from .compositions import Canvas, compose
     pins = pins or {}
-    pinned = pins.get('variants') or {}
     style, look, roles = slides.deck_look(style, pins)
+    with slides.measured_in(look):
+        return _measure_deck(content, locale, style, look, roles, pins, photos, only, seconds)
+
+
+def _measure_deck(content, locale, style, look, roles, pins, photos, only, seconds):
+    from .compositions import Canvas, compose
+    pinned = pins.get('variants') or {}
     prepared, _ = slides.prepare_slides(content, locale, photos)
     total, sheet = len(prepared), _Sheet(slides.SLIDE_WIDTH, slides.SLIDE_HEIGHT)
     size = slides._deck_size(prepared, pins.get('body_size'))

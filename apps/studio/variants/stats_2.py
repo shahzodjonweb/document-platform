@@ -35,7 +35,7 @@ def _need(ctx, width, paragraphs):
         value = _plain(paragraph.get('text'), paragraph.get('words'))
         if not value:
             continue
-        total += _paragraph_height(dict(text=value, size=paragraph['size'], bold=_bold(ctx, paragraph),
+        total += _paragraph_height(dict(text=value, size=paragraph['size'], bold=_bold(ctx, paragraph), heading=bool(paragraph.get('heading')),
                                         before=paragraph.get('before', 0), after=paragraph.get('after', 0),
                                         spacing=paragraph.get('spacing', 1.15)), zone)
     return (total + 3) / 72
@@ -45,7 +45,7 @@ def _whole(ctx, width, paragraphs):
     """Whether every word of `paragraphs` keeps to one line of `width` (no word broken across lines)."""
     for paragraph in paragraphs:
         for word in _plain(paragraph.get('text'), paragraph.get('words')).split():
-            if _text_lines(word, paragraph['size'], Inches(width), bold=_bold(ctx, paragraph)) > 1:
+            if _text_lines(word, paragraph['size'], Inches(width), bold=_bold(ctx, paragraph), heading=bool(paragraph.get('heading'))) > 1:
                 return False
     return True
 
@@ -66,7 +66,7 @@ def _tallest(ctx, stats, make, width, sizes):
 def _figure_size(ctx, stats, width, size, floor=28):
     """The largest size up to `size` at which every figure keeps to one line of `width`: one size for the slide."""
     values = [_plain(item.get('value'), 3) for item in stats if _plain(item.get('value'))]
-    while size > floor and any(_text_lines(value, size, Inches(width), bold=ctx.heading_bold) > 1
+    while size > floor and any(_text_lines(value, size, Inches(width), bold=ctx.heading_bold, heading=True) > 1
                                for value in values):
         size -= 2
     return size

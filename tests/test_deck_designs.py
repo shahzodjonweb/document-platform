@@ -156,13 +156,13 @@ def test_what_the_customer_named_wins_over_the_design(tmp_path):
     assert str(Presentation(str(path)).slides[0].shapes[0].fill.fore_color.rgb) == '9B1B1B'
 
 
-def test_a_deck_without_a_design_looks_exactly_as_before(tmp_path):
+def test_a_deck_without_a_design_keeps_the_house_look(tmp_path):
     path = tmp_path / 'deck.pptx'
     result = render_pptx(deck(), path, style={'accent': '#255e49'})
     presentation = Presentation(str(path))
     assert result['metadata']['design'] == ''
     assert str(presentation.slides[0].shapes[0].fill.fore_color.rgb) == '255E49'
-    assert faces(presentation) <= {'Cambria', 'Corbel'}
+    assert faces(presentation) <= {'Cambria', 'Calibri'}
 
 
 def test_the_model_is_asked_once_per_deck():

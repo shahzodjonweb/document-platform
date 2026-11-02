@@ -117,8 +117,9 @@ def inspect_file_sandbox(path: str | Path, *, password: str | None = None, timeo
 
 
 def execute_sandbox(feature_id: str, input_paths: list[str | Path], parameters: dict,
-                    output_dir: str | Path, *, secret: str | None = None, timeout: int = 90, office_timeout: int = 60) -> dict:
+                    output_dir: str | Path, *, secret: str | None = None, timeout: int = 90, office_timeout: int = 60,
+                    deck_fonts: bool = False) -> dict:
     return _run({'operation': 'execute', 'feature_id': feature_id,
         'input_paths': [str(Path(p).absolute()) for p in input_paths],
         'parameters': parameters, 'output_dir': str(Path(output_dir).absolute()),
-        'secret': secret, 'office_timeout': office_timeout}, timeout)
+        'secret': secret, 'office_timeout': office_timeout, 'deck_fonts': deck_fonts}, timeout)

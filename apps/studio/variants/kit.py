@@ -313,7 +313,7 @@ def grid(box, n, per_row, gap=0.2, row_gap=None):
 def height(ctx, text, width, size, *, bold=False, heading=False, spacing=1.15):
     """Inches `text` takes at `size` points in a box `width` inches wide."""
     bold = bold or (heading and ctx.heading_bold)
-    return _text_lines(text, size, Inches(width), bold=bold) * size * spacing / 72
+    return _text_lines(text, size, Inches(width), bold=bold, heading=bool(heading)) * size * spacing / 72
 
 
 # ---------------------------------------------------------------- text
@@ -323,7 +323,7 @@ def _font(heading):
     return base.HEADING_FONT if heading else base.BODY_FONT
 
 
-def _whole_words(ctx, value, width, size, floor, bold):
+def _whole_words(ctx, value, width, size, floor, bold, heading=None):
     """The largest size up to `size` at which `value`'s longest word fits a line `width` (EMU) wide.
 
     The line counter wraps a word too long for its box letter by letter, as a
@@ -335,7 +335,7 @@ def _whole_words(ctx, value, width, size, floor, bold):
     if not words:
         return size
     available = max(1, width / 12700) / (1.06 if bold else 1)
-    longest = max(_units(word) for word in words)
+    longest = max(_units(word, heading) for word in words)
     while size > floor and 0.001 * size * longest * base.WIDTH_SAFETY > available:
         size -= 0.5
     if 0.001 * size * longest * base.WIDTH_SAFETY > available:
@@ -356,7 +356,7 @@ def text(ctx, box, value, *, size, colour='ink', floor=12, bold=False, heading=F
     if upper:
         value = value.upper()
     floor = min(floor, size)
-    size = _whole_words(ctx, value, Inches(box[2]), size, floor, bold or (heading and ctx.heading_bold))
+    size = _whole_words(ctx, value, Inches(box[2]), size, floor, bold or (heading and ctx.heading_bold), bool(heading))
     return fitted(ctx, Z(*box), value, size=size, colour=hex_of(ctx, colour), floor=floor, bold=bold,
                   font=_font(heading), align=ALIGN[align], spacing=spacing, anchor=ANCHOR[anchor])
 
@@ -382,7 +382,8 @@ def block(ctx, box, paragraphs, anchor='top'):
         floor = min(paragraph.get('floor', min(12, paragraph['size'])), paragraph['size'])
         width = Inches(box[2]) - (Pt(paragraph['size'] * 0.95) if paragraph.get('bullet') else 0)
         size = _whole_words(ctx, value, width, paragraph['size'], floor,
-                            paragraph.get('bold', False) or (paragraph.get('heading') and ctx.heading_bold))
+                            paragraph.get('bold', False) or (paragraph.get('heading') and ctx.heading_bold),
+                            bool(paragraph.get('heading')))
         spec = dict(text=value, size=size, floor=floor,
                     colour=hex_of(ctx, paragraph.get('colour', 'ink')), bold=paragraph.get('bold', False),
                     font=_font(paragraph.get('heading')), after=paragraph.get('after', 0),
@@ -401,7 +402,7 @@ def fits(ctx, box, paragraphs):
     """Whether `paragraphs` (as for `block`) fit `box` at their sizes, without shrinking or cutting."""
     zone = Z(*box)
     specs = [dict(text=' '.join(str(p.get('text') or '').split()), size=p['size'],
-                  bold=p.get('bold', False) or (p.get('heading') and ctx.heading_bold),
+                  bold=p.get('bold', False) or (p.get('heading') and ctx.heading_bold), heading=bool(p.get('heading')),
                   before=p.get('before', 0), after=p.get('after', 0), spacing=p.get('spacing', 1.15))
              for p in paragraphs if p and str(p.get('text') or '').strip()]
     return sum(_paragraph_height(spec, zone) for spec in specs) <= zone.height / 12700 - 3
@@ -416,7 +417,7 @@ def figure(ctx, box, value, *, size, colour='accent_text', floor=None, words=3, 
     zone = Z(*box)
     points = size
     floor = floor or max(12, size // 2)
-    while points > floor and _text_lines(value, points, zone.width, bold=bold or (heading and ctx.heading_bold)) > 1:
+    while points > floor and _text_lines(value, points, zone.width, bold=bold or (heading and ctx.heading_bold), heading=bool(heading)) > 1:
         points -= 2
     return fitted(ctx, zone, value, size=points, colour=hex_of(ctx, colour), floor=min(floor, points), bold=bold,
                   font=_font(heading), align=ALIGN[align], spacing=1.1, anchor=ANCHOR[anchor])
@@ -452,7 +453,7 @@ def badge(ctx, box, value, *, fill='accent', ink='on_accent', shape='oval', size
     if value:
         zone = Z(*inner)
         points = size
-        while points > 9 and _text_lines(value, points, zone.width, bold=bold) > 1:
+        while points > 9 and _text_lines(value, points, zone.width, bold=bold, heading=bool(heading)) > 1:
             points -= 1
         fitted(ctx, zone, value, size=points, colour=hex_of(ctx, ink), floor=min(9, points), bold=bold,
                font=_font(heading), align=ALIGN['center'], spacing=1.0, anchor=ANCHOR['middle'])
@@ -462,7 +463,7 @@ def badge(ctx, box, value, *, fill='accent', ink='on_accent', shape='oval', size
 def _list_fits(lines, size, zone, gap, hang):
     total = 0
     for index, value in enumerate(lines):
-        rows = _text_lines(value, size, zone.width - (Pt(size * 0.95) if hang else 0))
+        rows = _text_lines(value, size, zone.width - (Pt(size * 0.95) if hang else 0), heading=False)
         total += rows * size * base.LINE_MULTIPLE + (0 if index == 0 else size * gap)
     return total <= zone.height / 12700 - 2
 
@@ -527,7 +528,7 @@ def eyebrow(ctx, box=None, *, colour='muted', align='left'):
 def headline(ctx, section, box, *, size=32, lines=2, anchor='bottom', align='left', colour=None, words=14):
     """The slide's heading in `box`, shrunk to `lines` lines (to 18 pt), then cut and the slide marked."""
     value = clip(ctx, section['heading'], words)
-    size = _whole_words(ctx, value, Inches(box[2]), size, min(18, size), bool(ctx.heading_bold))
+    size = _whole_words(ctx, value, Inches(box[2]), size, min(18, size), bool(ctx.heading_bold), True)
     fit_headline(ctx, Z(*box), value, size=size,
                  colour=hex_of(ctx, colour) if colour else None, anchor=ANCHOR[anchor], lines=lines,
                  align=ALIGN[align])

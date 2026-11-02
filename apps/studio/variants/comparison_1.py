@@ -35,7 +35,7 @@ def _need(ctx, width, paragraphs):
         if not value:
             continue
         bold = bool(paragraph.get('bold')) or bool(paragraph.get('heading') and ctx.heading_bold)
-        total += _paragraph_height(dict(text=value, size=paragraph['size'], bold=bold,
+        total += _paragraph_height(dict(text=value, size=paragraph['size'], bold=bold, heading=bool(paragraph.get('heading')),
                                         before=paragraph.get('before', 0), after=paragraph.get('after', 0),
                                         spacing=paragraph.get('spacing', 1.15)), zone)
     return (total + 4) / 72 if total else 0.0
@@ -58,7 +58,7 @@ def _name_fit(ctx, names, width, sizes=NAMES):
     """(size, height) for the two names: the largest size at which both take one line, else two lines."""
     def lines(value, size):
         value = _clean(value, NAME)
-        return _text_lines(value, size, Inches(width), bold=True) if value else 1
+        return _text_lines(value, size, Inches(width), bold=True, heading=True) if value else 1
     for size in sizes:
         if all(lines(value, size) <= 1 for value in names):
             return size, size * NAME_SPACING / 72 + 5 / 72
@@ -155,7 +155,7 @@ def _word_size(ctx, section, width, size, floor=20):
     a long Russian word ('Региональные' at 30 pt) would then split mid-word or run out of the box.
     """
     words = _clean(section.get('heading'), 14).split()
-    while size > floor and any(_text_lines(word, size, Inches(width), bold=ctx.heading_bold) > 1 for word in words):
+    while size > floor and any(_text_lines(word, size, Inches(width), bold=ctx.heading_bold, heading=True) > 1 for word in words):
         size -= 2
     return size
 

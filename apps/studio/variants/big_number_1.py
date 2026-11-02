@@ -42,20 +42,20 @@ def _need(ctx, width, paragraph):
     if not value:
         return 0.0
     bold = bool(paragraph.get('bold')) or bool(paragraph.get('heading') and ctx.heading_bold)
-    points = _paragraph_height(dict(text=value, size=paragraph['size'], bold=bold,
+    points = _paragraph_height(dict(text=value, size=paragraph['size'], bold=bold, heading=bool(paragraph.get('heading')),
                                     spacing=paragraph.get('spacing', 1.15)), Z(0, 0, width, 1))
     return (points + 5) / 72
 
 
 def _wide(ctx, value, size):
     """Inches a one-line figure takes at `size` in the heading face."""
-    return _text_width(value, size) * (1.06 if ctx.heading_bold else 1) / 72
+    return _text_width(value, size, True) * (1.06 if ctx.heading_bold else 1) / 72
 
 
 def _figure_size(ctx, value, width, start, floor=36, tall=None):
     """The largest size up to `start` at which the figure keeps to one line `width` wide (and `tall` high)."""
     size = start
-    while size > floor and value and (_text_lines(value, size, Inches(width), bold=ctx.heading_bold) > 1
+    while size > floor and value and (_text_lines(value, size, Inches(width), bold=ctx.heading_bold, heading=True) > 1
                                       or (tall and _figure_tall(size) > tall)):
         size -= 2
     return size
@@ -81,7 +81,7 @@ def _round_figure(ctx, value, cx, cy, radius, start, floor=36, margin=0.06):
         tall = _figure_tall(size)
         half = max(0.0, (radius - margin) ** 2 - (tall / 2 + _lift(size)) ** 2) ** 0.5
         box = (cx - half, cy - tall / 2 - _lift(size), 2 * half, tall)
-        if size <= floor or (half > 0 and _text_lines(value, size, Inches(2 * half), bold=ctx.heading_bold) <= 1):
+        if size <= floor or (half > 0 and _text_lines(value, size, Inches(2 * half), bold=ctx.heading_bold, heading=True) <= 1):
             return box, size
         size -= 2
 
@@ -95,10 +95,10 @@ def _head(ctx, section, width, size, lines):
     value = _plain(section.get('heading'), 14)
     if not value:
         return size, 0.0
-    count = _text_lines(value, size, Inches(width), bold=ctx.heading_bold)
+    count = _text_lines(value, size, Inches(width), bold=ctx.heading_bold, heading=True)
     while size > 18 and count > lines:
         size -= 2
-        count = _text_lines(value, size, Inches(width), bold=ctx.heading_bold)
+        count = _text_lines(value, size, Inches(width), bold=ctx.heading_bold, heading=True)
     return size, max(1, count) * size * HEAD_LEADING / 72 + 0.08
 
 

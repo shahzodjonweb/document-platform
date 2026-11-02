@@ -16,13 +16,11 @@ variants of them (apps/studio/variants) — other arrangements of the same
 fields — and falls back to these whenever a variant would not hold a slide.
 """
 import dataclasses
-import functools
 import re
 
 from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.util import Emu, Inches, Pt
-from reportlab.pdfbase import pdfmetrics
 
 from . import slides as kit
 from .layouts import PRO, parse_number
@@ -87,21 +85,17 @@ def cut(text):
     return (' '.join(words[:-1]) if len(words) > 1 else text[:-1]).rstrip(',;:.') + '…'
 
 
-def fit(text, size, zone, lines, floor):
+def fit(text, size, zone, lines, floor, heading=None):
     """The largest size up to `size` at which the text keeps to `lines` lines."""
-    while size > floor and kit._wrapped_lines(text, size, zone.width) > lines:
+    while size > floor and kit._wrapped_lines(text, size, zone.width, heading) > lines:
         size -= 2
     return size
 
 
-@functools.lru_cache(maxsize=50000)
-def _units(text):
-    """`text`'s width in the font's own units: whole numbers, so a line's is its words' sum."""
-    kit._register_font()
-    return pdfmetrics.stringWidth(text, 'PDFMaster', 1000)
+_units = kit._units
 
 
-def _text_lines(text, size, width, *, bold=False):
+def _text_lines(text, size, width, *, bold=False, heading=None):
     """Count wrapped lines, including unused space at the end of each line.
 
     Measuring the entire string and dividing by the width misses word breaks,
@@ -116,11 +110,11 @@ def _text_lines(text, size, width, *, bold=False):
         # slides._text_width, in the order reportlab scales units to points.
         return 0.001 * size * units * kit.WIDTH_SAFETY > available
 
-    space, total = _units(' '), 0
+    space, total = _units(' ', heading), 0
     for line in str(text).split('\n'):
         current, count = None, 1  # the width of the line so far; None while it is empty
         for word in line.split():
-            units = _units(word)
+            units = _units(word, heading)
             if current is not None and over(current + space + units):
                 count += 1
                 current = None
@@ -128,10 +122,10 @@ def _text_lines(text, size, width, *, bold=False):
                 # Viewers break unspaced identifiers too. Count their actual
                 # character widths rather than treating a long token as one line.
                 for character in word:
-                    if current is not None and over(current + _units(character)):
+                    if current is not None and over(current + _units(character, heading)):
                         count += 1
                         current = None
-                    current = (current or 0) + _units(character)
+                    current = (current or 0) + _units(character, heading)
             else:
                 current = units if current is None else current + space + units
         total += count
@@ -142,8 +136,9 @@ def _paragraph_height(paragraph, zone):
     width = zone.width - (Pt(paragraph['size'] * 0.95) if paragraph.get('bullet') else 0)
     width -= paragraph.get('inset_right', 0)
     width /= paragraph.get('width_safety', 1)
-    lines = _text_lines(paragraph['text'], paragraph['size'], width,
-                        bold=paragraph.get('bold', False))
+    # With no font it is drawn in the body face (_put_paragraphs).
+    lines = _text_lines(paragraph['text'], paragraph['size'], width, bold=paragraph.get('bold', False),
+                        heading=paragraph.get('heading', paragraph.get('font') == kit.HEADING_FONT))
     return (lines * paragraph['size'] * paragraph.get('spacing', 1.15)
             + paragraph.get('before', 0) + paragraph.get('after', 0))
 
@@ -228,7 +223,7 @@ def _cut_until(text, done, keep):
 
 
 def fit_text(ctx, text, zone, *, size, floor=12, spacing=1.15, bold=False):
-    """Fit one cell; draw it with exact point leading of ``size * spacing``."""
+    """Fit one cell, in the body face; draw it with exact point leading of ``size * spacing``."""
     paragraph = _fit_paragraphs(ctx, zone, [dict(text=text, size=size, floor=floor,
                                                 spacing=spacing, bold=bold)])[0]
     return paragraph['text'], paragraph['size']
@@ -553,7 +548,7 @@ def big_number(ctx, section, lines):
     item = items_of(section)[0]
     value = clip(ctx, item.get('value'), 3)
     zone = Z(LEFT, 2.75, 5.6, 2.6)
-    put(ctx, zone, value, size=fit(value, 110, zone, 1, 60), colour=roles['accent_text'],
+    put(ctx, zone, value, size=fit(value, 110, zone, 1, 60, heading=True), colour=roles['accent_text'],
         font=kit.HEADING_FONT, anchor=MSO_ANCHOR.MIDDLE, spacing=1.0)
     paragraphs = [dict(text=clip(ctx, item.get('label'), 10), font=kit.HEADING_FONT, size=28, floor=18,
                        colour=roles['ink'], after=8)]
@@ -578,7 +573,7 @@ def stats(ctx, section, lines):
         # One line if a smaller size gets it there, and held to the box's height
         # too: a value with words after its figure wrapped into the label below.
         # Leading of 1.2 sets the figure where single spacing in this face did.
-        fitted(ctx, zone, value, size=fit(value, 52, zone, 1, 28), floor=20, colour=roles['accent_text'],
+        fitted(ctx, zone, value, size=fit(value, 52, zone, 1, 28, heading=True), floor=20, colour=roles['accent_text'],
                font=kit.HEADING_FONT, spacing=1.2)
         fitted(ctx, Z(left, 4.4, width, 0.7), clip(ctx, item.get('label'), 8), size=18, floor=12,
                colour=roles['ink'], bold=True)
@@ -878,14 +873,13 @@ def _card_rows(ctx, entries):
         kit._shape(ctx.slide, Z(LEFT, top, WIDTH, height), ctx.roles['card'])
         zone = Z(LEFT + 0.2, top + 0.02, WIDTH - 0.4, height - 0.04)
         tag = clip(ctx, item.get('value'), 3).upper()
-        tag_width = min(zone.width * 0.35, Pt(max(90, kit._text_width(tag, 10) + 8))) if tag else 0
+        tag_width = min(zone.width * 0.35, Pt(max(90, kit._text_width(tag, 10, False) + 8))) if tag else 0
         paragraphs = [dict(text=clip(ctx, item['label'], 7), size=16, floor=14,
                            font=kit.HEADING_FONT, colour=ctx.roles['card_ink'], bold=True,
                            spacing=1.1, after=1, inset_right=tag_width, width_safety=1.1)]
         if item.get('text'):
-            # A compact row has no spare line. Corbel can substitute to the
-            # wider DejaVu Sans on Linux, so a line that only just fits Noto's
-            # measured width must be budgeted as wrapping before choosing size.
+            # A compact row has no spare line, so a line that only just fits
+            # is budgeted as wrapping before choosing a size.
             paragraphs.append(dict(text=clip(ctx, item['text'], 28 if len(entries) <= 3 else 25), size=14, floor=12,
                                    colour=ctx.roles['card_muted'], spacing=1.1, width_safety=1.1))
         _put_paragraphs(ctx, zone, paragraphs)

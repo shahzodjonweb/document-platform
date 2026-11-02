@@ -157,11 +157,23 @@ jobs:
       - uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
         if: env.DEPLOY_PLATFORM == 'linux/arm64'
       - name: Build immutable release image
+        env:
+          DECK_SAMPLES_DIR: ${{ runner.temp }}/deck-samples
         run: |
           case "$DEPLOY_PLATFORM" in linux/amd64|linux/arm64) ;; *) exit 1 ;; esac
           image="pdfmaster-platform:$GITHUB_SHA-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
           docker build --pull --platform "$DEPLOY_PLATFORM" -f infra/Dockerfile -t "$image" .
+          mkdir -p "$DECK_SAMPLES_DIR"
           python3 scripts/deploy/container_smoke.py platform "$image"
+      # Made-up decks through the real LibreOffice, for a person to review a font change (scripts/deploy/deck_samples.py).
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        with:
+          name: deck-samples
+          path: ${{ runner.temp }}/deck-samples
+          retention-days: 3
+          if-no-files-found: warn
       - name: Package main release
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         run: python3 scripts/deploy/package.py platform

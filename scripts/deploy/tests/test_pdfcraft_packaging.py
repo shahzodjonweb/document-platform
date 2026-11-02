@@ -217,13 +217,13 @@ class Image(unittest.TestCase):
                                                'python -I /tmp/pdfcraft/fetch_pdfcraft.py', 'ENV PDFMASTER_PDFCRAFT_BIN=/opt/pdfmaster/pdfcraft/pdfcraft-cli', 'COPY requirements.lock', 'USER pdfmaster')]
         self.assertEqual(order, sorted(order))
 
-    def test_the_deck_fonts_wait_for_the_font_switch(self):
+    def test_the_deck_fonts_are_never_installed_system_wide(self):
         # Installed, these move LibreOffice's stand-ins for Calibri, Cambria and Arial, which reflows
         # the Word and deck conversions customers get today and can change an upload's page count, and
-        # CI's apt line would not show it. Caladea also lists no Cyrillic: a Russian Cambria heading would mix faces.
-        text = (ROOT / 'infra/Dockerfile').read_text()
+        # CI's apt line would not show it. Decks get them from processors/assets/fonts (processors/deck_fonts.py).
+        text = (ROOT / 'infra/Dockerfile').read_text() + (ROOT / '.github/workflows/ci.yml').read_text()
         for package in ('fonts-crosextra-carlito', 'fonts-crosextra-caladea', 'fonts-liberation'):
-            self.assertNotIn(package, text, 'these land with the font switch, its re-pinned fit tests and reviewed Russian decks; that change removes this test')
+            self.assertNotIn(package, text)
 
     def test_the_image_never_takes_the_old_liberation_series(self):
         # bookworm's fonts-liberation is 1.07.4 and its fonts-liberation2 is 2.1.5. Noble's fonts-liberation
@@ -234,6 +234,11 @@ class Image(unittest.TestCase):
         rules = [line.strip() for line in (ROOT / '.dockerignore').read_text().splitlines() if line.strip() and not line.startswith('#')]
         for rule in rules:
             self.assertFalse(rule.startswith(('processors/pdfcraft', 'scripts', '*.json', '*.py')), rule)
+
+    def test_no_font_setting_can_reach_the_processor_child_from_outside(self):
+        # A deck's conversion sets its own for that one soffice, and every other conversion is left alone.
+        text = (ROOT / 'processors/sandbox.py').read_text()
+        self.assertNotIn('FONTCONFIG', text)
 
     def test_the_processor_child_may_see_the_binary_path(self):
         text = (ROOT / 'processors/sandbox.py').read_text()

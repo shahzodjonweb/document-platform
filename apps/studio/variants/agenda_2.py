@@ -10,7 +10,7 @@ from .kit import (FOOT, LEFT, RIGHT, RULE, WIDTH, Z, block, disc, entries, eyebr
 LABEL_WORDS, TEXT_WORDS = 8, 22  # the classic drawer's word limits
 EDGE = 0.62                      # the frame's top
 # (label, text) sizes, largest first: every item of a slide takes the first pair that all of them hold.
-LADDER = ((20, 15), (19, 15), (19, 14), (18, 14), (17, 14), (17, 13), (16, 13), (16, 12), (15, 12))
+LADDER = ((20, 15), (19, 15), (19, 14), (18, 14), (17, 14), (17, 13), (16, 13), (16, 12), (15, 12), (14, 12))
 
 
 # ---------------------------------------------------------------- measuring
@@ -33,7 +33,7 @@ def _need(ctx, width, paragraphs):
         value = _plain(paragraph.get('text'), paragraph.get('words'))
         if not value:
             continue
-        total += _paragraph_height(dict(text=value, size=paragraph['size'], bold=_bold(ctx, paragraph),
+        total += _paragraph_height(dict(text=value, size=paragraph['size'], bold=_bold(ctx, paragraph), heading=bool(paragraph.get('heading')),
                                         before=paragraph.get('before', 0), after=paragraph.get('after', 0),
                                         spacing=paragraph.get('spacing', 1.15)), zone)
     return (total + 3.5) / 72  # block keeps 3 pt spare; the half point covers rounding to whole EMU
@@ -43,7 +43,7 @@ def _whole(ctx, width, paragraphs):
     """Whether every word of `paragraphs` keeps to one line `width` wide (none is broken mid-word)."""
     for paragraph in paragraphs:
         for word in _plain(paragraph.get('text'), paragraph.get('words')).split():
-            if _text_lines(word, paragraph['size'], Inches(width), bold=_bold(ctx, paragraph)) > 1:
+            if _text_lines(word, paragraph['size'], Inches(width), bold=_bold(ctx, paragraph), heading=bool(paragraph.get('heading'))) > 1:
                 return False
     return True
 

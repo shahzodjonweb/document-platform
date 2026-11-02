@@ -7,7 +7,7 @@ from .kit import (FOOT, LEFT, RIGHT, WIDTH, arrow_points, block, chevron_points,
 # The classic drawer's word limits: date, event name, sentence.
 DATE, LABEL, BODY = 4, 7, 16
 # (name, sentence) sizes, largest first: every event of a slide is set at the first that holds them all.
-SCALES = ((17, 14), (16, 14), (16, 13), (15, 13), (15, 12), (14, 12))
+SCALES = ((17, 14), (16, 14), (16, 13), (15, 13), (15, 12), (14, 12), (13, 12))
 MARGIN = 4 / 72  # what a text box needs beyond its lines (kit.fits keeps 3 pt spare)
 
 

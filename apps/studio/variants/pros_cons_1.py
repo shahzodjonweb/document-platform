@@ -36,7 +36,7 @@ def _need(ctx, width, paragraphs):
         if not value:
             continue
         bold = bool(paragraph.get('bold')) or bool(paragraph.get('heading') and ctx.heading_bold)
-        spec = dict(text=value, size=paragraph['size'], bold=bold, before=paragraph.get('before', 0),
+        spec = dict(text=value, size=paragraph['size'], bold=bold, heading=bool(paragraph.get('heading')), before=paragraph.get('before', 0),
                     after=paragraph.get('after', 0), spacing=paragraph.get('spacing', 1.15))
         if paragraph.get('bullet'):
             spec['bullet'] = paragraph['bullet']
@@ -61,8 +61,8 @@ def _names(ctx, pairs, sizes, lines=2):
         for name, width in pairs:
             words = str(name or '').split()[:NAME]
             room = Inches(max(0.3, width))
-            rows = max(rows, _text_lines(' '.join(words), size, room, bold=True))
-            whole = whole and all(_text_lines(word, size, room, bold=True) == 1 for word in words)
+            rows = max(rows, _text_lines(' '.join(words), size, room, bold=True, heading=True))
+            whole = whole and all(_text_lines(word, size, room, bold=True, heading=True) == 1 for word in words)
         return rows, whole
     for size in sizes:
         rows, whole = measure(size)
