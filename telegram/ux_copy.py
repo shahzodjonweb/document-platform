@@ -174,6 +174,7 @@ MESSAGES = {
     'ai_doc_to_slides': ('🖥 A change can’t turn this PDF into slides. A deck on the same topic is made as a new one — you’ll check it before it is made.', '🖥 O‘zgartirish bu PDF’ni slaydga aylantira olmaydi. Shu mavzudagi taqdimot yangidan tayyorlanadi — uni tayyorlanishidan oldin tekshirasiz.', '🖥 Изменением этот PDF не превратить в слайды. Презентацию на ту же тему можно сделать заново — вы проверите её перед созданием.'),
     'ai_as_slides': ('🖥 Make slides on this topic', '🖥 Shu mavzuda slayd tayyorlash', '🖥 Сделать слайды на эту тему'),
     # A change that asks for the file in the format it already has: it is sent again.
+    'ai_edited_not_kept': ('✏️ Your edited slides have no {format} file on our server, and the older file in this chat doesn’t have your edits. Open the editor and send them again as {format}.', '✏️ Tahrirlangan slaydlaringizning {format} fayli serverda yo‘q, chatdagi eski faylda esa tahrirlaringiz yo‘q. Muharrirni oching va slaydlarni {format} sifatida qayta yuboring.', '✏️ Файла {format} с вашими правками на сервере нет, а в старом файле из этого чата правок нет. Откройте редактор и отправьте слайды ещё раз в формате {format}.'),
     'ai_same_format': ('📎 This file is already a {format} file — here it is again. Nothing was changed, and no edit was used.', '📎 Bu fayl allaqachon {format} formatida — mana, yana bir bor yubordim. Hech narsa o‘zgarmadi, tahrir ham ishlatilmadi.', '📎 Этот файл уже в формате {format} — отправляю его ещё раз. Ничего не изменено, правка не потрачена.'),
     'ai_file_gone': ('⌛ The file is no longer kept on our server, so it can’t be sent again. The copy sent earlier in this chat is the same file.', '⌛ Fayl serverda endi saqlanmaydi, shuning uchun uni qayta yuborib bo‘lmaydi. Chatda avval yuborilgan nusxa aynan shu fayl.', '⌛ Файл больше не хранится на сервере, поэтому отправить его снова нельзя. Копия, присланная ранее в этом чате, — тот же файл.'),
     # A format named beside other changes: the review says the file keeps its own.
@@ -202,6 +203,7 @@ MESSAGES = {
     'questions_trimmed': ('ℹ️ Questions you did not ask for were left out.', 'ℹ️ So‘ramagan savollar qo‘shilmadi.', 'ℹ️ Вопросы, которые вы не запрашивали, не добавлены.'),
     'sections_trimmed': ('ℹ️ The document was trimmed to the number of pages you asked for.', 'ℹ️ Hujjat siz so‘ragan sahifa soniga qisqartirildi.', 'ℹ️ Документ сокращён до запрошенного количества страниц.'),
     'images_skipped': ('ℹ️ A photo could not be added, so that slide was set as text.', 'ℹ️ Rasm qo‘shib bo‘lmadi, shuning uchun o‘sha slayd matn sifatida tayyorlandi.', 'ℹ️ Фото добавить не удалось, поэтому слайд оформлен текстом.'),
+    'logo_left_out': ('ℹ️ Your logo is no longer stored, so this copy of the slides is without it.', 'ℹ️ Logotipingiz endi saqlanmagan, shuning uchun slaydlarning bu nusxasi logotipsiz tayyorlandi.', 'ℹ️ Ваш логотип больше не хранится, поэтому эта копия слайдов без него.'),
     'images_limited': ('ℹ️ A deck holds a set number of photos; the other photo slides were set as text.', 'ℹ️ Bir taqdimotdagi rasmlar soni cheklangan; qolgan rasmli slaydlar matn sifatida tayyorlandi.', 'ℹ️ Число фото в презентации ограничено; остальные слайды с фото оформлены текстом.'),
     'citations_dropped': ('ℹ️ A source reference that did not match any file you sent was left out.', 'ℹ️ Siz yuborgan fayllarga mos kelmagan manba havolasi qo‘shilmadi.', 'ℹ️ Ссылка на источник, не совпавшая с вашими файлами, не добавлена.'),
     'shortened_to_fit': ('ℹ️ A section was longer than its page, so its end was trimmed to keep the page count you asked for.', 'ℹ️ Bir bo‘lim sahifasiga sig‘madi, shuning uchun siz so‘ragan sahifa soni saqlanib, oxiri qisqartirildi.', 'ℹ️ Один раздел не помещался на страницу, поэтому его конец сокращён, чтобы сохранить запрошенное число страниц.'),
@@ -486,6 +488,8 @@ TOOL_LABELS = {
     'ai.pdf_topic': ('✨ PDF on a topic · AI', '✨ Mavzuga oid PDF · AI', '✨ PDF по теме · ИИ'),
     'ai.pptx': ('✨ Slides on a topic · AI', '✨ Mavzuga oid Slayd · AI', '✨ Слайды по теме · ИИ'),
     'ai.cv': ('✨ CV · AI', '✨ CV (rezyume) · AI', '✨ Резюме · ИИ'),
+    # A deck sent again after the customer's own edits: ✏️, no AI edit is used.
+    'export.generated_pptx': ('✏️ Edited slides', '✏️ Tahrirlangan slaydlar', '✏️ Изменённые слайды'),
 }
 
 UX = {locale: {key: values[index] for key, values in MESSAGES.items()} for index, locale in enumerate(LOCALES)}

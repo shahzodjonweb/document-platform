@@ -64,12 +64,16 @@ RATE = (90, 60)
 
 
 class PhotoResult:
-    __slots__ = ('photos', 'wanted', 'limited', 'failed', 'unmatched')
+    __slots__ = ('photos', 'wanted', 'limited', 'failed', 'unmatched', 'candidates')
 
-    def __init__(self, photos=None, wanted=0, limited=0, failed=0, unmatched=0):
+    def __init__(self, photos=None, wanted=0, limited=0, failed=0, unmatched=0, candidates=None):
         self.photos, self.wanted, self.limited, self.failed = photos or {}, wanted, limited, failed
         # Of the failed: slides where no candidate fitted, as opposed to a fault.
         self.unmatched = unmatched
+        # Per slide, the best hits it could have had: {provider, id, preview, url,
+        # page_url}, and `jpeg` when the small copy was already fetched for the
+        # model. No model, too little time, or no hit means no bytes or no entry.
+        self.candidates = candidates or {}
 
     @property
     def warnings(self):
@@ -269,6 +273,14 @@ def _cache_key(query, style='photo'):
     return hashlib.sha256(('v2|' + query if kind == 'photo' else f'v2|{kind}|{query}').encode()).hexdigest()
 
 
+def _shortlist(options):
+    """A slide's best hits with a small copy to show: what the model sees, and what stays on offer.
+
+    The copies fetched to show the model are kept for this too; none is fetched for it alone.
+    """
+    return [hit for hit in options if hit.get('preview')][:CANDIDATES]
+
+
 def _slide_text(section):
     """What the model reads about a slide when choosing its photo."""
     parts = [section.get('heading', ''), section.get('body', '')]
@@ -347,7 +359,13 @@ def fetch_for_deck(sections, *, cap, budget, job=None, style='photo'):
         ranked = {sid: rank(hits.get(query, []), query) for sid, query in queries.items()}
 
         title = sections[0].get('heading', '') if sections else ''
-        picked = _ask_the_model(chosen, ranked, pool, deadline, ai_config(), job, title)
+        previews = {}
+        picked = _ask_the_model(chosen, ranked, pool, deadline, ai_config(), job, title, previews)
+        result.candidates = {
+            sid: [{'provider': 'pixabay', 'id': hit['id'], 'preview': hit['preview'], 'url': hit['url'],
+                   'page_url': hit['page_url'], **({'jpeg': previews[hit['id']]} if hit['id'] in previews else {})}
+                  for hit in _shortlist(options)]
+            for sid, options in ranked.items() if _shortlist(options)}
         # The model's choice is the only option it leaves a slide; when it could
         # not be asked, the tag ranking stands on its own, best first.
         options = ranked if picked is None else {sid: [hit] for sid, hit in picked.items()}
@@ -380,25 +398,25 @@ def fetch_for_deck(sections, *, cap, budget, job=None, style='photo'):
     return result
 
 
-def _ask_the_model(chosen, ranked, pool, deadline, ai, job, title):
+def _ask_the_model(chosen, ranked, pool, deadline, ai, job, title, previews):
     """The model's pick for each slide — a hit, or absent for "none fits".
 
     None when the model could not be asked at all: no provider, too little
-    time, no preview to show it, or any failure of the call itself.
+    time, no preview to show it, or any failure of the call itself. The small
+    copies fetched to show it go into `previews`, by hit id, whatever it says.
     """
     from . import photo_choice
     if ai.get('mode') != 'openai' or not ai.get('api_key') or not ai.get('model'):
         return None
     if deadline - time.monotonic() < PICK_MIN_SECONDS + 10:
         return None
-    shown = {sid: [hit for hit in options if hit.get('preview')][:CANDIDATES] for sid, options in ranked.items()}
+    shown = {sid: _shortlist(options) for sid, options in ranked.items()}
     unique = {hit['id']: hit['preview'] for options in shown.values() for hit in options}
     if not unique:
         return None
     loading = {pool.submit(preview, url): identifier for identifier, url in unique.items()}
     # Leave the model its time, and the chosen photos theirs.
     done, _ = wait(loading, timeout=max(0, min(DOWNLOAD_TIMEOUT, deadline - time.monotonic() - PICK_MIN_SECONDS - 5)))
-    previews = {}
     for future in done:
         try:
             previews[loading[future]] = future.result()

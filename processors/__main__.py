@@ -50,7 +50,8 @@ def main():
             result = inspect_file(request['path'], request.get('secret'), allow_links=request.get('allow_links') is True)
         elif request.get('operation') == 'execute':
             result = execute(request['feature_id'], request['input_paths'],
-                request.get('parameters', {}), request['output_dir'], secret=request.get('secret'))
+                request.get('parameters', {}), request['output_dir'], secret=request.get('secret'),
+                office_timeout=request.get('office_timeout', 60))
         else:
             raise ProcessorError('invalid_operation')
         json.dump({'ok': True, 'result': result}, sys.stdout)

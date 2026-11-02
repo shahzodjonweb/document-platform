@@ -1,21 +1,29 @@
+import hashlib
+import logging
+import uuid
+from datetime import timedelta
 from django.utils import timezone
 from django.db import transaction
 from django.db.models import F
+from apps.core import storage
 from apps.core.errors import DomainError
-from apps.core.models import FileAsset
+from apps.core.models import FileAsset,Job,Quote
 from operations.integrations import ai_config
 from .models import GenerationDraft,ProviderUsage
-from .domain import unpack,pack,validate_content,validate_generation_quote,limits,ensure_selected_preservation
+from .domain import unpack,pack,validate_content,validate_generation_quote,limits,ensure_selected_preservation,render_data
 from .rendering import render_pdf
-from .slides import render_pptx
+from .slides import question_sections,render_pptx
 
-def _photos(job,sections,warnings,style='photo'):
+logger=logging.getLogger(__name__)
+
+def _photos(job,sections,warnings,style='photo',candidates=None):
     """Stock photos for the slides that asked for one, or none — never a failure.
 
     The allowance is the plan's at the time the quote was made. Whatever goes
     wrong here — the provider, the network, the bytes, this code — the slides
     that wanted a photo are drawn as text and the customer is told. `style` is
-    'illustration' when the customer asked for drawings, not photographs.
+    'illustration' when the customer asked for drawings, not photographs. Given
+    `candidates`, each slide's shortlist goes there (PhotoResult.candidates).
     """
     from . import photos as stock
     try:
@@ -28,7 +36,94 @@ def _photos(job,sections,warnings,style='photo'):
     if result.wanted or result.failed:
         outcome='succeeded' if not result.failed else 'partial' if result.photos else 'failed'
         ProviderUsage.objects.create(job=job,provider='pixabay',outcome=outcome)
+    if candidates is not None:candidates.update(result.candidates)
     return result.photos
+
+
+def _keep_picture(job,draft_id,section_id,source,jpeg,**facts):
+    """One picture of a deck as a file of the account's, so a later redraw needs no network.
+
+    It expires by its own clock (cleanup_expired); settle_job moves that with
+    the deck while the pins name it. `later`: a job with sixty of these never
+    waits on the bucket.
+    """
+    name=uuid.uuid4().hex
+    key=f'inputs/{job.account_id}/{name}.jpg'
+    with transaction.atomic():
+        storage.write(key,jpeg,'image/jpeg',later=True)
+        return str(FileAsset.objects.create(account=job.account,name=f'deck-photo-{name[:12]}.jpg',object_key=key,mime_type='image/jpeg',sha256=hashlib.sha256(jpeg).hexdigest(),size_bytes=len(jpeg),page_count=1,metadata={'kind':'deck_photo','mime_type':'image/jpeg','draft_id':str(draft_id),'section_id':section_id,'provider':source['provider'],'id':source['id'],'page_url':source['page_url'],**facts},expires_at=timezone.now()+timedelta(hours=24)).pk)
+
+
+def _deck_pins(job,draft_id,content,locale,artifact,photos,candidates):
+    """What draws this deck again exactly (`_render`), with its pictures kept as files; None if it cannot be had.
+
+    Never fails the job, which has a finished deck to deliver: a picture that
+    cannot be kept is simply not pinned, and the failure is logged by its code
+    alone. The artifact's metadata, which is not encrypted, keeps a copy under
+    `render` for when the draft is gone, holding no customer text: the seed
+    has the title in it, so the copy carries only its hash.
+    """
+    try:
+        metadata=artifact['metadata']
+        seed=metadata.pop('deck_seed')
+        # Until the deck editor is on nothing can redraw a deck, so nothing is kept for one.
+        from operations.integrations import editor_config
+        if not editor_config()['deck_editor']:return None
+        failures=[]
+        def keep(section_id,source,jpeg,**facts):
+            try:return _keep_picture(job,draft_id,section_id,source,jpeg,**facts)
+            except Exception as exc:
+                failures.append(type(exc).__name__)
+                return None
+        pictures={}
+        for section in content['sections']:
+            sid=section['id'];photo=photos.get(sid)
+            kept=keep(sid,photo,photo['jpeg'],candidate=False,width=photo['width'],height=photo['height']) if photo else None
+            # A candidate with no bytes was never shown to the model: its address is all there is.
+            offered=[{'asset_id':keep(sid,hit,hit['jpeg'],candidate=True) if hit.get('jpeg') else None,'url':hit['url'],'id':hit['id'],'page_url':hit['page_url']}
+                     for hit in candidates.get(sid) or []]
+            if kept or offered:pictures[sid]={'asset_id':kept,'candidates':offered}
+        if failures:logger.warning('Job %s: %s deck pictures not kept (%s)',job.id,len(failures),','.join(sorted(set(failures))))
+        # metadata['variants'] is in slide order, and question slides are never pinned.
+        slides=[*content['sections'],*question_sections(content,locale)]
+        from .deck_designs import version
+        pins={'design':metadata['design'],'deck_seed':seed,'body_size':metadata['body_size'],'renderer_version':version(),
+              'variants':{slide['id']:variant for slide,variant in zip(slides,metadata['variants']) if not slide.get('_questions')},'photos':pictures}
+        metadata['render']={**render_data(pins),'deck_seed':hashlib.sha256(seed.encode()).hexdigest(),'renderer_version':pins['renderer_version']}
+        return pins
+    except Exception as exc:
+        logger.warning('Job %s: deck pins not made (%s)',job.id,type(exc).__name__)
+        return None
+
+
+def _write_pins(job,draft_id,pins,version):
+    """Put the pins in the draft as it is now, changing nothing else in it, and never failing the job.
+
+    A customer may have edited it during the job: their words stay, as does the
+    version their next save will name. Packing changes the bytes a quote is tied
+    to, so a quote made on this version, or a job queued on it, moves along with
+    them; left behind it would fail with version_conflict over nothing it can see.
+    Only a save that rebuilt the outline since `version`, the one the job drew,
+    gets none: those are other slides under the same ids, with nothing drawn yet.
+    `pins` may be a function that makes them from the ones the draft has now.
+    """
+    try:
+        with transaction.atomic():
+            draft=GenerationDraft.objects.select_for_update().filter(pk=draft_id,account=job.account).first()
+            if draft is None:return
+            before=hashlib.sha256(bytes(draft.encrypted_data)).hexdigest()
+            data=unpack(draft.encrypted_data)
+            if data.get('_rebuilt_version',0)>version:return
+            data['_render']=pins(data['_render']) if callable(pins) else pins
+            packed=pack(data)
+            GenerationDraft.objects.filter(pk=draft.pk).update(encrypted_data=packed)
+            after=hashlib.sha256(packed).hexdigest()
+            for quote in Quote.objects.select_for_update().filter(account=job.account,parameters__generation_draft_id=str(draft.pk),parameters__snapshot=before):
+                quote.parameters={**quote.parameters,'snapshot':after}
+                quote.save(update_fields=['parameters'])
+                Job.objects.filter(quote=quote).update(parameters=quote.parameters)
+    except Exception as exc:
+        logger.warning('Job %s: deck pins not written (%s)',job.id,type(exc).__name__)
 
 
 def execute_generation(job,output_dir):
@@ -153,7 +248,8 @@ def execute_generation(job,output_dir):
         # tightest setting needed a third, its least important lines were cut.
         if artifacts[0].get('shortened'):warnings.append('cv_trimmed')
     elif ext=='pptx':
-        photos=_photos(job,content['sections'],warnings,photo_style)
+        candidates={}
+        photos=_photos(job,content['sections'],warnings,photo_style,candidates)
         artifacts=[render_pptx(content,output_dir/'document.pptx',data['output_locale'],'user_document',style=style,photos=photos)]
     else:
         # A document only has photos when its description asked for pictures.
@@ -196,9 +292,15 @@ def execute_generation(job,output_dir):
     # title — a CV's is the person's name — or else the first file it was made from.
     source_name=FileAsset.objects.filter(account=job.account,pk__in=data.get('source_ids') or []).order_by('created_at').values_list('name',flat=True).first()
     for artifact in artifacts:artifact.update(title=content.get('title',''),source_name=source_name or '')
+    # Only now that the deck will be delivered: a job that fails leaves its draft
+    # byte for byte as it was, which is what a retry is checked against (checkpoints.py).
+    pins=_deck_pins(job,draft.pk,content,data['output_locale'],artifacts[0],photos,candidates) if ext=='pptx' and not cv else None
     data['content']=content
     data.pop('_source_seed',None)
+    data.pop('_render',None)
     # A customer may edit while the provider is running. Never overwrite that
     # newer draft with the completed response for the prior confirmed version.
     GenerationDraft.objects.filter(pk=draft.pk,version=draft.version,encrypted_data=original).update(encrypted_data=pack(data),version=F('version')+1)
+    # After that, and on its own: this update is the one that survives such an edit.
+    if pins:_write_pins(job,draft.pk,pins,draft.version)
     return {'artifacts':artifacts,'metadata':{'engine':'structured-'+cfg['mode'],'warnings':warnings}}

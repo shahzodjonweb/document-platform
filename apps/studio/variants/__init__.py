@@ -24,6 +24,10 @@ How a slide gets its variant (`choose`):
   the deck's size, or fail, the next one is tried, and the classic drawer —
   always in every pool, as the variant `classic` — is the last resort. A
   variant is never the reason a deck loses text.
+* **A deck drawn before keeps its variants.** Its pins (`keep`) go first, each
+  tried as `choose` tries a variant, so an edit changes only the slide it
+  touches. A pin that no longer holds its slide sends the slide to `choose`,
+  which leaves every other pin to its own slide (`taken_by`).
 
 Every variant draws only inside the content frame (`kit.FRAME`): the area
 between the eyebrow and the footer that every composition keeps on the surface
@@ -235,6 +239,41 @@ def choose(kind, section, lines, *, deck_seed, taken, trial):
     if chosen is not None:
         used.append(chosen.name)
     return chosen
+
+
+def keep(variant_id, kind, section, lines, *, trial):
+    """The variant a slide was pinned to, while it can still draw it; else None, for `choose`.
+
+    A pin is held to what `choose` holds a variant to, so it is never the reason
+    a slide loses text. One for another layout (the slide's layout changed) or
+    for a variant that no longer exists does not hold, and classic always does.
+    """
+    if not variant_id:
+        return None
+    try:
+        candidate = get(variant_id)
+    except KeyError:
+        return None
+    if candidate.kind != kind:
+        return None
+    if candidate.name == CLASSIC:
+        return candidate
+    try:
+        return candidate if candidate.holds(section, lines) and trial(candidate) else None
+    except Exception:  # a variant that cannot draw this slide never costs the deck
+        log.exception('Variant %s failed on a trial slide', candidate.id)
+        return None
+
+
+def taken_by(variant_ids):
+    """`choose`'s `taken` for a deck with these pins: all spoken for from its first slide, so a
+    slide that chooses again does not take the variant a later slide still holds."""
+    taken = {}
+    for variant_id in variant_ids:
+        kind, _, name = str(variant_id).partition('.')
+        if name:
+            taken.setdefault(kind, []).append(name)
+    return taken
 
 
 class Scratch:

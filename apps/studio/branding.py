@@ -52,6 +52,29 @@ def generation_inputs(data):
     return ids
 
 
+def drawn_style(data):
+    """A deck's look as the draft alone says it, its logo aside: all that measuring its slides needs."""
+    style=dict(data['options'].get('template_style',{}))
+    brand=data['options'].get('branding',{})
+    if brand:style.update(accent=brand['accent'],brand_name=brand['name'],accent_fixed=True)
+    return style
+
+
+def logo_kept(account,data):
+    """Whether the logo a draft names is still the account's file, as it was chosen. One never chosen is not missing."""
+    brand=data['options'].get('branding',{})
+    if not brand.get('logo_asset_id'):return True
+    try:asset=_logo_asset(account,brand['logo_asset_id'])
+    except DomainError:return False
+    return asset.sha256==brand.get('logo_sha256') and storage.exists(asset.object_key)
+
+
+def without_logo(data):
+    """The draft with its logo taken out of its branding, its colour and name left in."""
+    brand={key:value for key,value in data['options'].get('branding',{}).items() if key not in ('logo_asset_id','logo_sha256')}
+    return {**data,'options':{**data['options'],'branding':brand}}
+
+
 def render_style(account,data,feature_id="ai.pdf_text"):
     style=dict(data['options'].get('template_style',{}))
     brand=data['options'].get('branding',{})

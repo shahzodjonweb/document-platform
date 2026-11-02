@@ -21,7 +21,8 @@ def quote_data(q):
     return {'id':str(q.id),'quote_id':str(q.id),'quote_version':'1','feature_id':q.feature_id,'plan_version_id':q.policy['version'],'tariff_version_id':q.policy['tariff_version'],'input_fingerprints':q.input_fingerprints,'normalized_parameters':q.parameters,'affordable':affordable,'usage':usage_summary(usage),'expires_at':q.expires_at,'output_expectations':{'retention_hours':24},'limitations':['development_beta'],'plan':q.policy['plan']}
 
 def job_data(job):
-    files={str(a.pk):asset_data(a) for a in FileAsset.objects.filter(account=job.account,id__in=job.input_ids)}
+    # A send's pictures are the deck's own, not files the customer gave it.
+    files={str(a.pk):asset_data(a) for a in FileAsset.objects.filter(account=job.account,id__in=job.input_ids) if a.metadata.get('kind')!='deck_photo'}
     artifacts=[]
     for artifact in job.artifacts.select_related('file').all():
         row=asset_data(artifact.file)

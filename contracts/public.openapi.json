@@ -483,6 +483,179 @@
         ],
         "type": "object"
       },
+      "DeckExportSummary": {
+        "properties": {
+          "cost": {
+            "$ref": "#/components/schemas/QuoteCost"
+          },
+          "format": {
+            "enum": [
+              "pptx",
+              "pdf",
+              "both"
+            ]
+          },
+          "kept_until": {
+            "description": "When a file made now would expire.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "size_estimate": {
+            "description": "About how many bytes the files come to.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "slides": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "warnings": {
+            "description": "What the file would come without: `logo_left_out` when the logo is no longer stored.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "slides",
+          "format",
+          "kept_until",
+          "size_estimate",
+          "cost",
+          "warnings"
+        ],
+        "type": "object"
+      },
+      "DeckPins": {
+        "properties": {
+          "body_size": {
+            "type": "number"
+          },
+          "deck_seed": {
+            "type": "string"
+          },
+          "design": {
+            "type": "string"
+          },
+          "photos": {
+            "additionalProperties": {
+              "properties": {
+                "asset_id": {
+                  "format": "uuid",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "candidates": {
+                  "items": {
+                    "properties": {
+                      "asset_id": {
+                        "format": "uuid",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "asset_id"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "asset_id",
+                "candidates"
+              ],
+              "type": "object"
+            },
+            "type": "object"
+          },
+          "variants": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "design",
+          "deck_seed",
+          "body_size",
+          "variants",
+          "photos"
+        ],
+        "type": "object"
+      },
+      "DeckSlideFit": {
+        "properties": {
+          "fits": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "index": {
+            "description": "The slide's position in the deck, from 0.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "layouts_fitting": {
+            "description": "The layouts that can carry this slide and show all of it.",
+            "items": {
+              "enum": [
+                "cover",
+                "agenda",
+                "section",
+                "bullets",
+                "two_column",
+                "statement",
+                "quote",
+                "big_number",
+                "stats",
+                "timeline",
+                "process",
+                "comparison",
+                "pros_cons",
+                "cards",
+                "matrix",
+                "chart",
+                "table",
+                "image_split",
+                "image_full",
+                "closing"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "lines_max": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "lines_used": {
+            "description": "Lines its text takes at the sizes it is set in. Past `lines_max` whenever it does not fit.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "words_over": {
+            "description": "Words of this slide that would not show.",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "index",
+          "fits",
+          "words_over",
+          "lines_used",
+          "lines_max",
+          "layouts_fitting"
+        ],
+        "type": "object"
+      },
       "EditorCommand": {
         "description": "PDF points from displayed top-left, pages start at 1, image indices start at 0. Image input indices reference extra uploaded assets. Redaction requires explicit rasterization acknowledgement and a separate export. Every position is in source page numbers: `reorder.order` lists all source pages, deleted ones too, and the final order is that minus the deleted pages.",
         "oneOf": [
@@ -1436,6 +1609,11 @@
           "provider_mode": {
             "type": "string"
           },
+          "render": {
+            "$ref": "#/components/schemas/DeckPins",
+            "description": "A generated deck (`ai.pptx`): how it was drawn, so an edit changes only the slide it touches. `variants` and `photos` are by section id; a photo `asset_id` is the account's own file, null when none was kept, and `candidates` are small copies kept on offer for that slide, possibly none. `deck_seed` is opaque. Absent until a deck has been made.",
+            "readOnly": true
+          },
           "revision": {
             "properties": {
               "base_content": {
@@ -2232,6 +2410,36 @@
           "feature_id",
           "affordable",
           "expires_at"
+        ],
+        "type": "object"
+      },
+      "QuoteCost": {
+        "properties": {
+          "kind": {
+            "description": "`file_task`: this send uses one of the week's file tasks. `included`: the plan has no weekly limit.",
+            "enum": [
+              "file_task",
+              "included"
+            ]
+          },
+          "left": {
+            "description": "File tasks left this week, before this send; null when `included`.",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "limit": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "left",
+          "limit"
         ],
         "type": "object"
       },
@@ -7862,6 +8070,207 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/GenerationDraft"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    },
+    "/generation/drafts/{id}/export-quote": {
+      "post": {
+        "description": "The price of sending a generated deck again from its draft, as PowerPoint, PDF or both: no AI edit, one file task, submitted through `/jobs`. It holds nothing of the deck but ids and the format. Refused, with status 409, when: `version_conflict`; `generation_running`; `deck_not_editable` (not a deck, or none has been drawn from this draft yet); `pinned_asset_expired` (`message_params.sections`: [{id, index}], the slides whose picture is no longer stored); `slide_text_too_long` (`message_params.sections`: [{id, index, words_over}], the slides whose text would not all show).",
+        "operationId": "quoteDeckExport",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "deliver": {
+                    "enum": [
+                      "chat",
+                      "download"
+                    ]
+                  },
+                  "format": {
+                    "enum": [
+                      "pptx",
+                      "pdf",
+                      "both"
+                    ]
+                  },
+                  "version": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "version",
+                  "format",
+                  "deliver"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Quote"
+                    },
+                    {
+                      "properties": {
+                        "summary": {
+                          "$ref": "#/components/schemas/DeckExportSummary"
+                        }
+                      },
+                      "required": [
+                        "summary"
+                      ],
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    },
+    "/generation/drafts/{id}/fit": {
+      "post": {
+        "description": "How one slide as it stands in the editor sits on this deck, and the layouts that would hold it whole. Nothing is saved or drawn into a file. A section whose id the deck does not have is measured as a slide added at the end. `deck_not_editable` as for the export quote.",
+        "operationId": "measureDeckSlide",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "section": {
+                    "$ref": "#/components/schemas/GenerationSection"
+                  }
+                },
+                "required": [
+                  "section"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeckSlideFit"
                 }
               }
             },

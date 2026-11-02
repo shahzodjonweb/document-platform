@@ -21,6 +21,17 @@ NAMESPACE = 'https://pdfmaster.orderdesk.live/background-service-check/'
 COUNT = 3
 
 
+def files_to_arrive(since):
+    """The files written since then that the bucket should have by now.
+
+    Not a deck's kept pictures, from a customer's deck finishing during the
+    audit: those wait for the cleanup loop's sync (storage.save, `later`), which
+    can be five minutes away, and answer to the 15 minute `late` check instead.
+    """
+    kept = FileAsset.objects.filter(metadata__kind='deck_photo').values('object_key')
+    return StoredObject.objects.filter(created_at__gte=since).exclude(key__in=kept)
+
+
 def check_fetch_back(context):
     result = {'status': 'failed', 'scope': 'owned_canary_private_cache',
               'fetched': 0, 'matched': 0, 'missing': 0,

@@ -50,12 +50,16 @@ def extend_schema(models, endpoint, paths):
         'ManualPaymentOptions':obj({'enabled':B,'currency':S,'period_days':I,'plans':arr(obj({'plan':{'enum':['plus','premium']},'price':I,'regular_price':I,'discount':{'anyOf':[ref('PlanDiscount'),{'type':'null'}]}},['plan','price','regular_price','discount'])),'automatic':obj({'available':B},['available']),'payment':{'anyOf':[ref('ManualPayment'),{'type':'null'}]}},['enabled','currency','period_days','plans','automatic','payment']),
         'SubscriptionState':obj({'plan':S,'subscription':{'anyOf':[ref('Subscription'),{'type':'null'}]},'sandbox':B},['plan','subscription','sandbox']),
         'BotDelivery':obj({'id':UUID,'status':S,'attempts':I},['id','status','attempts']),
+        'DeckPins':obj({'design':S,'deck_seed':S,'body_size':{'type':'number'},'variants':{'type':'object','additionalProperties':S},
+                        'photos':{'type':'object','additionalProperties':obj({'asset_id':{'type':['string','null'],'format':'uuid'},'candidates':arr(obj({'asset_id':UUID},['asset_id']))},['asset_id','candidates'])}},
+                       ['design','deck_seed','body_size','variants','photos']),
     })
     models['GenerationMaterial']=obj({'key':S,'title':S,'sections':arr(ref('GenerationSection')),'questions':arr(ref('GenerationQuestion')),'citations':arr(obj({'asset_id':UUID,'page':I,'quote':S}))},['key','title','sections','questions'])
     models['GenerationContent']['properties']['materials']=arr(ref('GenerationMaterial'))
     models['GenerationContent']['properties']['citations']['items']['properties']['quote']=S
     for field in ('transcription_ready','transcription_reviewed'):models['GenerationDraft']['properties'][field]={'type':'boolean','readOnly':True}
     models['GenerationDraft']['properties']['revision']=obj({'source_draft_id':UUID,'source_version':I,'selected_section_ids':arr(S),'base_content':ref('GenerationContent')})
+    models['GenerationDraft']['properties']['render']={**ref('DeckPins'),'readOnly':True,'description':'A generated deck (`ai.pptx`): how it was drawn, so an edit changes only the slide it touches. `variants` and `photos` are by section id; a photo `asset_id` is the account\'s own file, null when none was kept, and `candidates` are small copies kept on offer for that slide, possibly none. `deck_seed` is opaque. Absent until a deck has been made.'}
     # Typed command alternatives exactly match the processor's strict allowlist.
     from processors.editor import FIELDS
     # What a field is, past a plain string. `original` and `text` carry the bound normalize holds them to.
@@ -114,6 +118,21 @@ def extend_schema(models, endpoint, paths):
     paths['/studio/cv-reads']['delete']['parameters']=paths['/studio/cv-reads']['delete'].get('parameters',[])+paths['/studio/cv-reads']['get']['parameters']
     endpoint('/generation/drafts/{id}/setup','post','setupGenerationDraft',obj({'draft':ref('GenerationDraft'),'quote':ref('Quote')},['draft','quote']),obj({'pages':{'type':'integer','minimum':1,'maximum':200},'deck_design':S,'cv_template':S},[]),description='A deck\'s slide count and design, or a CV\'s template, chosen over what its description says. A deck (`ai.pptx`) takes `pages` and `deck_design` (a design id or `auto`); a CV (`ai.cv`) takes `cv_template` (a template id or `auto`); anything else is refused. Returns the new quote; the review in the Telegram chat is redrawn with it.')
     endpoint('/generation/drafts/{id}/quote','post','quoteGenerationDraft',ref('Quote'),obj({'version':I,'stage':{'enum':['document','outline']}},['version']),code='201')
+    models.update({
+        'QuoteCost':obj({'kind':{'enum':['file_task','included'],'description':'`file_task`: this send uses one of the week\'s file tasks. `included`: the plan has no weekly limit.'},
+                         'left':{'type':['integer','null'],'description':'File tasks left this week, before this send; null when `included`.'},'limit':{'type':['integer','null']}},['kind','left','limit']),
+        'DeckExportSummary':obj({'slides':I,'format':{'enum':['pptx','pdf','both']},'kept_until':{**DT,'description':'When a file made now would expire.'},'size_estimate':{**I,'description':'About how many bytes the files come to.'},'cost':ref('QuoteCost'),
+                                 'warnings':{**arr(S),'description':'What the file would come without: `logo_left_out` when the logo is no longer stored.'}},['slides','format','kept_until','size_estimate','cost','warnings']),
+        'DeckSlideFit':obj({'id':S,'index':{**I,'description':'The slide\'s position in the deck, from 0.'},'fits':B,'words_over':{**I,'description':'Words of this slide that would not show.'},
+                            'lines_used':{**I,'description':'Lines its text takes at the sizes it is set in. Past `lines_max` whenever it does not fit.'},'lines_max':I,
+                            'layouts_fitting':{**arr({'type':'string','enum':_slide_fields()['layout']['enum'][1:]}),'description':'The layouts that can carry this slide and show all of it.'}},
+                           ['id','index','fits','words_over','lines_used','lines_max','layouts_fitting']),
+    })
+    endpoint('/generation/drafts/{id}/export-quote','post','quoteDeckExport',{'allOf':[ref('Quote'),obj({'summary':ref('DeckExportSummary')},['summary'])]},
+             obj({'version':I,'format':{'enum':['pptx','pdf','both']},'deliver':{'enum':['chat','download']}},['version','format','deliver']),code='201',
+             description='The price of sending a generated deck again from its draft, as PowerPoint, PDF or both: no AI edit, one file task, submitted through `/jobs`. It holds nothing of the deck but ids and the format. Refused, with status 409, when: `version_conflict`; `generation_running`; `deck_not_editable` (not a deck, or none has been drawn from this draft yet); `pinned_asset_expired` (`message_params.sections`: [{id, index}], the slides whose picture is no longer stored); `slide_text_too_long` (`message_params.sections`: [{id, index, words_over}], the slides whose text would not all show).')
+    endpoint('/generation/drafts/{id}/fit','post','measureDeckSlide',ref('DeckSlideFit'),obj({'section':ref('GenerationSection')},['section']),
+             description='How one slide as it stands in the editor sits on this deck, and the layouts that would hold it whole. Nothing is saved or drawn into a file. A section whose id the deck does not have is measured as a slide added at the end. `deck_not_editable` as for the export quote.')
     endpoint('/generation/jobs/{id}/retry-quote','post','quoteGenerationRetry',ref('Quote'),obj({}),code='201',description='Review a fresh quote for an unchanged failed generation. Completed provider batches may be reused only within this explicit retry chain; confirmation and allowance checks still apply.')
     endpoint('/generation/drafts/{id}/generate','post','generateDraft',ref('Job'),obj({'quote_id':UUID},['quote_id']),code='201')
     for path,kind in [('/workflows','Workflow'),('/templates','Template'),('/editor/form-templates','FormTemplate')]:

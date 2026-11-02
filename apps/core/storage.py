@@ -28,6 +28,10 @@ logger = logging.getLogger(__name__)
 
 # Prefixes this module manages in the bucket; the sweep touches nothing else.
 PREFIXES = ('inputs/', 'outputs/', 'posts/', 'previews/', 'receipts/', 'review/')
+# How long the cleanup loop goes through files one bucket call at a time before
+# moving on. A bucket that stopped answering costs about 45 s a file, and the
+# loop still has expiry to do and the health check that reports the outage.
+PASS_SECONDS = 120
 WORKING_COPY_HOURS = 2
 CONFIG_SECONDS = 30
 _config_cache = {'at': 0.0, 'value': None}
@@ -137,14 +141,35 @@ def bucket(for_writing=True):
     return _buckets[fingerprint]
 
 
-def save(key, content_type=''):
-    """Register a file just written at its key, and send it to the bucket."""
+def save(key, content_type='', later=False):
+    """Register a file just written at its key, and send it to the bucket.
+
+    `later` leaves the sending to the cleanup loop's sync, within minutes: a job
+    keeping dozens of small files must not wait on a slow bucket file by file
+    until its lease runs out.
+    """
     from .models import StoredObject
     path = storage_path(key)
     StoredObject.objects.update_or_create(key=key, defaults={
         'size': path.stat().st_size, 'content_type': content_type, 'remote': False,
         'uploaded_at': None, 'used_at': timezone.now()})
-    transaction.on_commit(lambda: upload(key))
+    if not later:
+        transaction.on_commit(lambda: upload(key))
+
+
+def write(key, data, content_type='', later=False):
+    """Keep these bytes at a key, private to the platform, and register them (`save`)."""
+    path = storage_path(key)
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    partial = path.with_name(f'.{path.name}.{os.getpid()}.part')
+    try:
+        partial.touch(mode=0o600)
+        partial.write_bytes(data)
+        os.replace(partial, path)
+    except Exception:
+        partial.unlink(missing_ok=True)
+        raise
+    save(key, content_type, later=later)
 
 
 def upload(key):
@@ -238,8 +263,19 @@ def _legacy_keys():
     yield from GenerationRecord.objects.exclude(output_key='').values_list('output_key', 'output_mime')
 
 
+def time_limit(seconds=PASS_SECONDS):
+    """A test that stays true for this many seconds from now."""
+    stop = time.monotonic() + seconds
+    return lambda: time.monotonic() < stop
+
+
 def sync(limit=500):
-    """Upload what is not in the bucket yet; returns how many arrived."""
+    """Upload what is not in the bucket yet; returns how many arrived.
+
+    What one run has no time for goes in the next. Timed, not counted in
+    failures: `upload` also fails for a row whose file has gone, and the oldest
+    files come first, so a few of those would stop every run at the same place.
+    """
     from .models import StoredObject
     try:
         if not bucket():
@@ -256,7 +292,11 @@ def sync(limit=500):
                                                                       'content_type': content_type or ''})
                 known.add(key)
     sent = 0
+    time_left = time_limit()
     for key in StoredObject.objects.filter(remote=False).order_by('created_at').values_list('key', flat=True)[:limit]:
+        if not time_left():
+            logger.warning('Object storage sync reached its time limit; the next run goes on')
+            break
         sent += upload(key)
     return sent
 

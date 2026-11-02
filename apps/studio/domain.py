@@ -25,15 +25,19 @@ DOCUMENT='ai.pdf_topic'
 SLIDES='ai.pptx'
 CV='ai.cv'
 GENERATION_IDS={DOCUMENT,SLIDES,CV}
+# A deck drawn again from its draft (render_export.py): a file task that no draft
+# is ever made for and no processor runs, gated by `require`, never validate_inputs.
+EXPORT='export.generated_pptx'
+RENDER_IDS={EXPORT}
 # Server-owned fields a client may never send.
-READONLY_FIELDS={'_transcription','transcription_ready','transcription_reviewed','_source_seed','revision'}
+READONLY_FIELDS={'_transcription','transcription_ready','transcription_reviewed','_source_seed','revision','_render','_rebuilt_version'}
 
 def pack(value): return cipher().encrypt(json.dumps(value,ensure_ascii=False).encode())
 def unpack(value): return json.loads(cipher().decrypt(bytes(value)))
 def allowed(account,fid):
     return fid in FEATURES and FEATURES[fid]['plans'][account.plan] not in ('not_included','unavailable','none','excluded')
 def require(account,fid):
-    if not settings.ENABLE_BETA_TOOLS or fid not in GENERATION_IDS: raise DomainError('feature_unavailable',409)
+    if not settings.ENABLE_BETA_TOOLS or fid not in GENERATION_IDS|RENDER_IDS: raise DomainError('feature_unavailable',409)
     if not allowed(account,fid): raise DomainError('feature_not_in_plan',403)
 
 # Questions a document may carry, the same on every plan (it was 10 on Free, 50
@@ -129,9 +133,19 @@ def ensure_selected_preservation(data,normalized):
                !=[s for s in original['sections'] if s['id'] not in selected]):
         raise DomainError('generation_limit')
 
+def render_data(pins):
+    """A deck's pins as they may be read outside the draft: its look and the account's own
+    files, never a picture's address. A candidate with no stored copy has nothing to show."""
+    return {**{key:pins.get(key) for key in ('design','deck_seed','body_size','variants')},
+            'photos':{sid:{'asset_id':photo.get('asset_id'),'candidates':[{'asset_id':c['asset_id']} for c in photo.get('candidates') or [] if c.get('asset_id')]}
+                      for sid,photo in (pins.get('photos') or {}).items()}}
+
 def draft_data(d):
     data=unpack(d.encrypted_data)
     data.pop('_source_seed',None)
+    data.pop('_rebuilt_version',None)
+    pins=data.pop('_render',None)
+    if pins:data['render']=render_data(pins)
     if data.get('revision'):
         data['revision']={key:value for key,value in data['revision'].items() if key not in ('base_content','before')}
     return {'id':str(d.id),'feature_id':d.feature_id,'version':d.version,'provider_mode':d.provider_mode,'expires_at':d.expires_at,**data,'outline':[{'id':s['id'],'title':s['heading'],'body':s['body']} for s in data['content']['sections']]}
@@ -247,6 +261,7 @@ def _deck_style(fid,brief):
 def _prepare_draft(account,data,revision_base=None):
     if set(data)&READONLY_FIELDS:raise DomainError('invalid_parameters')
     fid=data.get('feature_id',DOCUMENT);require(account,fid)
+    if fid in RENDER_IDS:raise DomainError('feature_unavailable',409)
     # The service decides the format; the client does not get a say. A document
     # is a PDF and a deck is a PowerPoint. The value is still validated so a
     # malformed one is refused rather than silently ignored, and the forcing
@@ -295,6 +310,12 @@ def _prepare_draft(account,data,revision_base=None):
         if saved.get('selected_section_ids') and str(revising)==saved.get('source_draft_id'):
             original={**revision_base,'content':deepcopy(saved['base_content'])}
             source_version=saved['base_version']
+        elif (saved.get('before') and str(revising)==saved.get('source_draft_id') and 'revise_section_ids' not in options
+              and not GenerationDraft.objects.filter(account=account,id=revising,expires_at__gt=timezone.now()).exists()):
+            # A change can outlive its document, which keeps its own clock. Saved
+            # then, it goes on from what it holds of the document: its copy of
+            # the pages and its own look. Picking pages needs the document itself.
+            original={**revision_base,'content':deepcopy(saved['before'])}
         else:
             source,original=revision_source(account,revising)
             fid=source.feature_id
@@ -608,6 +629,10 @@ def _prepare_draft(account,data,revision_base=None):
         elif fid in (SLIDES,CV):
             for key in ('deck_theme','deck_design','cv_template'):
                 if previous_style.get(key):style[key]=previous_style[key]
+        # The style may not say which design the deck was drawn with: a customer's
+        # edit during the job skips the write-back that would have put it there.
+        if fid==SLIDES and not style.get('deck_design') and (original.get('_render') or {}).get('design'):
+            style['deck_design']=original['_render']['design']
         if edit is not None and edit.redesign:
             # "Varoqlarni hammasini bir xil qil", "boshqa dizayn": the look is
             # chosen again. A colour the request names still applies below.
@@ -777,9 +802,13 @@ def create_draft(account,data):
     return GenerationDraft.objects.create(account=account,feature_id=fid,encrypted_data=pack(payload),provider_mode=cfg['mode'],expires_at=timezone.now()+timedelta(hours=24))
 
 def draft_jobs(account,draft_id,statuses):
-    """Whether a job in one of `statuses` was submitted for a quote of this draft."""
+    """Whether a generation in one of `statuses` was submitted for a quote of this draft.
+
+    Generations alone: a job that only draws the draft as it stands changes nothing
+    in it, so waiting for one never holds up an edit or the setup screen.
+    """
     from apps.core.models import Job
-    return Job.objects.filter(account=account,status__in=statuses,
+    return Job.objects.filter(account=account,status__in=statuses,feature_id__in=GENERATION_IDS,
                               quote__parameters__generation_draft_id=str(draft_id)).exists()
 
 @transaction.atomic
@@ -816,6 +845,7 @@ def update_draft(account,draft_id,data):
     content=data.get('content',payload['content'] if rebuild and not original.get('revision',{}).get('selected_section_ids') else original['content'])
     # A new deck's outline rebuilt from scratch no longer carries the title lines it was given: they are read again.
     if content is payload['content'] and not payload['options'].get('revise_draft_id'):payload['options'].pop('title_lines',None)
+    rebuilt=content is payload['content'] and 'outline' not in data
     if 'outline' in data:
         outline=data['outline']
         if not isinstance(outline,list) or any(not isinstance(s,dict) for s in outline):raise DomainError('invalid_parameters')
@@ -840,6 +870,20 @@ def update_draft(account,draft_id,data):
             raise DomainError('invalid_parameters')
     # An edited outline is the page count now, so keep them in step.
     payload['options']={**payload['options'],'length':len(payload['content']['sections'])+int(payload['options'].get('question_slides',0) or 0)}
+    # How the deck was drawn is the server's, and outlives every edit of what it
+    # says. An outline rebuilt from scratch is another deck, with nothing drawn
+    # yet: the model chooses its look again (execute_outline drops them the same way).
+    # A job running now is still drawing the old deck: this version tells it to keep its pins (_write_pins).
+    if rebuilt:payload['_rebuilt_version']=d.version+1
+    else:
+        for key in ('_render','_rebuilt_version'):
+            if original.get(key):payload[key]=original[key]
+        # The style was just made afresh, without the design the model chose. A
+        # pick left as it was keeps it; Auto asked for now, or any other pick, does not.
+        chosen=original['options'].get('template_style',{}).get('deck_design')
+        pick=payload['options'].get('deck_design')
+        if chosen and pick in (None,'auto') and pick==original['options'].get('deck_design'):
+            payload['options']['template_style']['deck_design']=chosen
     if cfg['mode']=='openai':
         enforce_budget(cfg,payload,d.feature_id,plan_limits(account)['max_ai_input_tokens'])
     d.encrypted_data=pack(payload);d.version+=1;d.save(update_fields=['encrypted_data','version'])

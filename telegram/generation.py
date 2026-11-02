@@ -17,7 +17,7 @@ from apps.core.errors import DomainError
 from apps.core.models import BotCallback, FileAsset, Job, Quote
 from apps.core.services import submit_job
 from apps.studio.cv.sources import FILE, LINKEDIN, TEXT
-from apps.studio.domain import CV, DOCUMENT, SLIDES, create_draft, generation_quote, require
+from apps.studio.domain import CV, DOCUMENT, EXPORT, RENDER_IDS, SLIDES, create_draft, generation_quote, require
 from apps.studio.language import settings_locale
 from apps.studio.models import GenerationDraft
 
@@ -659,18 +659,32 @@ def asked_format(account, draft_id, request):
     return (kind, feature) if kind else (None, None)
 
 
-def delivered(account, draft_id):
-    """(job, file) last made from this draft, while the server still keeps the file; else (None, None)."""
-    now = timezone.now()
-    jobs = Job.objects.filter(account=account, feature_id__in=SERVICES, status='succeeded',
+def _made_from(account, draft_id):
+    return Job.objects.filter(account=account, feature_id__in=(*SERVICES, *RENDER_IDS), status='succeeded',
                               parameters__generation_draft_id=str(draft_id)).order_by('-created_at')
-    for job in jobs:
+
+
+def delivered(account, draft_id, kind=None):
+    """(job, file) last made from this draft, as `kind` or else as its service makes it, while the server still keeps the file; else (None, None).
+
+    A deck sent again is the deck from then on, as PowerPoint when it was sent as
+    one. An older file lacks what was edited, so a send without one ends the search.
+    """
+    now = timezone.now()
+    for job in _made_from(account, draft_id):
+        made = FORMAT.get(job.feature_id, 'pptx')
         for artifact in job.artifacts.select_related('file'):
             asset = artifact.file
-            if (asset.state == 'ready' and asset.expires_at > now
-                    and asset.metadata.get('kind') == FORMAT[job.feature_id]):
+            if asset.state == 'ready' and asset.expires_at > now and asset.metadata.get('kind') == (kind or made):
                 return job, asset
+        if job.feature_id in RENDER_IDS or made != (kind or made):
+            break
     return None, None
+
+
+def sent_edited(account, draft_id):
+    """Whether the newest file of this draft is the customer's own edit sent again: a file older than it is not the same."""
+    return _made_from(account, draft_id).values_list('feature_id', flat=True).first() in RENDER_IDS
 
 
 def format_kept(draft):
@@ -693,7 +707,7 @@ def deck_to_pdf(account, draft_id):
     Account.objects.select_for_update().get(pk=account.pk)
     require_feature(account, CONVERTER)
     job, asset = delivered(account, draft_id)
-    if asset is None or job.feature_id != SLIDES:
+    if asset is None or job.feature_id not in (SLIDES, EXPORT):
         return None
     # The customer asked for this file just now; a file task left waiting gives way to it.
     BotDraft.objects.filter(account=account).delete()
