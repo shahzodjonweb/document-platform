@@ -243,6 +243,8 @@ class EditorTask(models.Model):
     created_at=models.DateTimeField(default=timezone.now,db_default=Now())
     started_at=models.DateTimeField(null=True)
     finished_at=models.DateTimeField(null=True)
+    # All its attempts' seconds, which the row's times cannot say: what the day's budget counts.
+    spent_seconds=models.FloatField(default=0,db_default=0)
     class Meta:
         indexes=[models.Index(fields=['status','created_at'],name='editor_task_queue'),models.Index(fields=['account','status'],name='editor_task_account')]
         constraints=[models.UniqueConstraint(fields=['draft','kind'],condition=models.Q(status='queued'),name='editor_task_one_queued')]
@@ -256,6 +258,8 @@ class SlideRender(models.Model):
     thumb=models.OneToOneField('core.FileAsset',on_delete=models.CASCADE,related_name='+')
     frames=models.JSONField(default=list)
     created_at=models.DateTimeField(default=timezone.now)
+    # When a render last used it, drawn or reused. Every slide of one render has the same time, so the latest time says which are current.
+    used_at=models.DateTimeField(default=timezone.now,db_default=Now())
     class Meta:
         constraints=[models.UniqueConstraint(fields=['draft','key'],name='slide_render_once')]
 

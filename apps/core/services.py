@@ -296,7 +296,7 @@ def submit_job(account, quote_id, idempotency_key, origin='web'):
     return job,True
 
 def _extend_draft(job, deadline):
-    """A generated result's draft, and the deck pictures its pins name, last as long as the result; never less than they already would.
+    """A generated result's draft, the deck pictures its pins name and its slides as last drawn, last as long as the result; never less than they already would.
 
     Only those: a picture from pins since replaced, or from an attempt that left none, goes by its own clock.
     The files the draft stands on (its sources and logo) go with it unless already expired, as a save or a change
@@ -314,6 +314,8 @@ def _extend_draft(job, deadline):
     pinned = [asset_id for photo in photos.values() for asset_id in (photo.get('asset_id'),*(c.get('asset_id') for c in photo.get('candidates') or [])) if asset_id]
     FileAsset.objects.filter(account=job.account,state='ready',metadata__kind='deck_photo',pk__in=pinned,expires_at__lt=deadline).update(expires_at=deadline)
     FileAsset.objects.filter(account=job.account,state='ready',pk__in=generation_inputs(data),expires_at__gt=timezone.now(),expires_at__lt=deadline).update(expires_at=deadline)
+    from apps.studio.tasks import current_pictures
+    FileAsset.objects.filter(account=job.account,state='ready',pk__in=current_pictures(draft),expires_at__lt=deadline).update(expires_at=deadline)
 
 @transaction.atomic
 def settle_job(job_id, status, error_code='', outputs=None, warnings=None, engine=''):
@@ -444,8 +446,8 @@ def cleanup_expired():
         asset.state = 'expired'
         asset.save(update_fields=['state'])
         storage.delete(asset.object_key)
-        # A deck's kept pictures leave no row: up to sixty a deck, every key is read back below, and nothing asks after one that has gone.
-        if asset.metadata.get('kind') == 'deck_photo':
+        # A deck's kept pictures and drawn slides leave no row: up to sixty a deck, every key is read back below, and nothing asks after one that has gone.
+        if asset.metadata.get('kind') in ('deck_photo', 'deck_slide'):
             asset.delete()
         else:
             asset.state = 'deleted'
@@ -491,6 +493,8 @@ def cleanup_expired():
     cleanup_review(now)
     EducationProject.objects.filter(expires_at__lte=now).delete()
     EditorDocument.objects.filter(file__expires_at__lte=now).delete()
+    from apps.studio.tasks import prune as prune_editor_tasks
+    prune_editor_tasks(now)
     ShareGrant.objects.filter(expires_at__lte=now).delete()
     # Crash backstop: delete unregistered private binaries older than retention.
     registered=set(FileAsset.objects.values_list('object_key',flat=True))

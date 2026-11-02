@@ -30,7 +30,9 @@ the one sequential worker.
 - **Decks are pinned at generation.** Design, seed, deck-wide body size, per-slide variants and photos are
   stored with the draft, so a manual edit redraws only what changed and never calls the model.
 - **Previews come from the real file.** Slide PNGs are LibreOffice renders of the real deck, in metric-compatible
-  fonts, through one resident soffice in the lane.
+  fonts: one process per conversion from a warm profile that only the lane's own decks pass through. A resident
+  soffice measured 0.8 s faster on small decks and no faster on large ones, for a long-lived process holding one
+  profile and fontconfig, so it waits until real decks miss the 2 s target (`apps/studio/tasks.py`).
 
 ## Consequences
 

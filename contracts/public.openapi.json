@@ -588,6 +588,119 @@
         ],
         "type": "object"
       },
+      "DeckRender": {
+        "properties": {
+          "error": {
+            "description": "Why the last try failed: `render_deck_interrupted` is worth asking again, `pinned_asset_expired` is not until the picture is changed.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "slides": {
+            "items": {
+              "$ref": "#/components/schemas/DeckRenderSlide"
+            },
+            "type": "array"
+          },
+          "status": {
+            "description": "`none`: nothing has been asked for, or it has gone; POST asks. `queued` and `running`: a task will draw this version or a later one. `done`: `slides` are this version. `failed`: see `error`. `stale`: this version was not drawn and the deck has moved on.",
+            "enum": [
+              "none",
+              "queued",
+              "running",
+              "done",
+              "failed",
+              "stale"
+            ]
+          },
+          "version": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "status",
+          "version",
+          "slides",
+          "error"
+        ],
+        "type": "object"
+      },
+      "DeckRenderSlide": {
+        "properties": {
+          "fits": {
+            "type": "boolean"
+          },
+          "frames": {
+            "description": "Where the slide's heading, body and picture lie, as fractions of the slide.",
+            "items": {
+              "properties": {
+                "field": {
+                  "enum": [
+                    "heading",
+                    "body",
+                    "picture"
+                  ]
+                },
+                "h": {
+                  "type": "number"
+                },
+                "w": {
+                  "type": "number"
+                },
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "field",
+                "x",
+                "y",
+                "w",
+                "h"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "index": {
+            "description": "The slide's position in the deck, from 0.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "key": {
+            "description": "What its picture is made from: the same key is the same picture.",
+            "type": "string"
+          },
+          "letters_over": {
+            "description": "Letters of this slide that do not show.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "thumb_url": {
+            "description": "The picture, 96 by 54 px.",
+            "type": "string"
+          },
+          "url": {
+            "description": "The picture, 1280 by 720 px.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "index",
+          "key",
+          "url",
+          "thumb_url",
+          "frames",
+          "fits",
+          "letters_over"
+        ],
+        "type": "object"
+      },
       "DeckSlideFit": {
         "properties": {
           "fits": {
@@ -3093,6 +3206,25 @@
               }
             },
             "description": "Private single-page PNG preview, no task charge"
+          },
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "task_id": {
+                      "format": "uuid",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "task_id"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "With the deck editor on, a page not drawn yet is being drawn: ask again. Refused with `lane_busy` (429, retryable) past the day's budget or with three tasks waiting."
           },
           "400": {
             "content": {
@@ -7585,6 +7717,25 @@
             },
             "description": "Private single-page PNG preview, no task charge"
           },
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "task_id": {
+                      "format": "uuid",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "task_id"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "With the deck editor on, a page not drawn yet is being drawn: ask again. Refused with `lane_busy` (429, retryable) past the day's budget or with three tasks waiting."
+          },
           "400": {
             "content": {
               "application/json": {
@@ -8583,6 +8734,175 @@
         ]
       }
     },
+    "/generation/drafts/{id}/render": {
+      "get": {
+        "description": "How the drawing of this version of the deck stands; the draft's current one without `version`. Reads only. Answers `feature_unavailable` with the deck editor off.",
+        "operationId": "getDeckRender",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "version",
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeckRender"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      },
+      "post": {
+        "description": "Have this version of the deck drawn, in a queue of its own and free, when a field is committed: not on every autosave. A newer ask replaces one still queued. Only the slides that changed are drawn. `version_conflict`; `deck_not_editable`; `lane_busy` (429, retryable) past the day's budget or with three tasks waiting.",
+        "operationId": "requestDeckRender",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "version": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "version"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "enum": [
+                        "queued",
+                        "running",
+                        "done",
+                        "failed"
+                      ]
+                    },
+                    "task_id": {
+                      "format": "uuid",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "task_id",
+                    "status"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    },
     "/generation/drafts/{id}/setup": {
       "post": {
         "description": "A deck's slide count and design, or a CV's template, chosen over what its description says. A deck (`ai.pptx`) takes `pages` and `deck_design` (a design id or `auto`); a CV (`ai.cv`) takes `cv_template` (a template id or `auto`); anything else is refused. Returns the new quote; the review in the Telegram chat is redrawn with it.",
@@ -8652,6 +8972,142 @@
               }
             },
             "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    },
+    "/generation/drafts/{id}/slides/{key}.png": {
+      "get": {
+        "description": "A slide already drawn, 1280 by 720 px, inline. Nothing is drawn for this request: anything else is 404.",
+        "operationId": "getDeckSlide",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/png": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Private PNG; no-store"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    },
+    "/generation/drafts/{id}/slides/{key}.thumb.png": {
+      "get": {
+        "description": "A slide already drawn, 96 by 54 px, inline. Nothing is drawn for this request: anything else is 404.",
+        "operationId": "getDeckSlideThumb",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/png": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Private PNG; no-store"
           },
           "400": {
             "content": {

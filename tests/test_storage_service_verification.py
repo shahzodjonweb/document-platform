@@ -56,6 +56,10 @@ def test_a_customers_deck_finishing_during_the_audit_does_not_fail_it(canaries):
     storage.write(picture, b'picture', 'image/jpeg', later=True)
     FileAsset.objects.create(account=account, name='deck-photo.jpg', object_key=picture, mime_type='image/jpeg', sha256='0' * 64,
                              size_bytes=7, page_count=1, metadata={'kind': 'deck_photo'}, expires_at=timezone.now() + timedelta(hours=24))
+    slide = f'previews/{account.id}/{uuid.uuid4().hex}.png'
+    storage.write(slide, b'slide', 'image/png', later=True)
+    FileAsset.objects.create(account=account, name='slide.png', object_key=slide, mime_type='image/png', sha256='0' * 64,
+                             size_bytes=5, page_count=1, metadata={'kind': 'deck_slide'}, expires_at=timezone.now() + timedelta(hours=24))
     arrived = f'inputs/{account.id}/{uuid.uuid4().hex}.pdf'
     storage.write(arrived, b'result', 'application/pdf')
     bucket.failing = True

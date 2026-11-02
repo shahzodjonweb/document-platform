@@ -122,7 +122,9 @@ class Smoke(unittest.TestCase):
 
     def test_it_runs_after_every_check_that_can_fail_the_build(self):
         text = (ROOT / 'scripts/deploy/container_smoke.py').read_text()
-        self.assertLess(text.index('wait_for_cleanup_cycle(compose, env)\n                office_timings'), text.index('office_timings(compose, env)\n                deck_samples(compose, env)'))
+        order = [text.index(name) for name in ('check_scanner(compose, env)\n                check_pdfcraft', 'check_pdfcraft(compose, env)\n                check_reader', 'check_reader(compose, env)\n                check_editor',
+                                               'check_editor(compose, env)\n                wait_for_cleanup_cycle', 'wait_for_cleanup_cycle(compose, env)\n                deck_samples(compose, env)')]
+        self.assertEqual(order, sorted(order))
 
     def test_the_artifact_is_for_pull_requests_and_short_lived(self):
         text = (ROOT / '.github/workflows/ci.yml').read_text()

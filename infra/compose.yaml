@@ -62,6 +62,13 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+  editor:
+    <<: *platform
+    # The editor's free work: slides drawn and pages previewed (apps/studio/tasks.py).
+    command: [python, manage.py, runeditor]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
   cleanup:
     <<: *platform
     command: [python, scripts/cleanup_loop.py]

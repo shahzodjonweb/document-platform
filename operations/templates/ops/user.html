@@ -59,6 +59,12 @@
       <div><div class="meter-head"><span>{{ t.field_edits_per_file }}</span><strong>{% if edits_per_file is None %}{{ t.no_limit }}{% else %}{{ edits_per_file }}{% endif %}</strong></div></div>
     </div>
     <p class="field-hint week-resets">{{ t.week_resets }} {{ week_resets_at|date:'d M Y · H:i' }}</p>
+    <h2>{{ t.lane_title }}</h2>
+    <div class="meter-list">
+      {% for row in lane_rows %}
+      <div><div class="meter-head"><span>{{ row.label }}</span><strong>{{ row.used_text }}</strong></div></div>
+      {% endfor %}
+    </div>
     <details class="plan-limit-details">
       <summary>{{ t.effective_limits }}</summary>
       <dl class="limit-grid">{% for row in plan_limits %}<dt>{{ row.label }}</dt><dd class="mono">{{ row.value|default_if_none:'∞' }}</dd>{% endfor %}</dl>

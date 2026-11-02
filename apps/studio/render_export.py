@@ -27,9 +27,9 @@ FORMATS=('pptx','pdf','both')
 DELIVERIES=('chat','download')
 # owned_assets takes no more, whatever a plan's allowance of pictures is set to.
 MAX_LISTED=50
-# LibreOffice's allowance for a deck: a cold start, then a little for each slide,
-# inside the ten minutes a job's lease leaves (services.execute_job).
-OFFICE_SECONDS,OFFICE_SECONDS_PER_SLIDE,OFFICE_SECONDS_MOST=60,2,420
+# LibreOffice's allowance for a deck, measured cold on CI at the worker's 1.5 CPUs (run 41329155494): 1.1 s for 12
+# slides of text, 5.1 s for 60 of photos. Sixty slides have about 18 times that. A hang holds up the whole worker.
+OFFICE_SECONDS,OFFICE_SECONDS_PER_SLIDE,OFFICE_SECONDS_MOST=30,1,120
 # Each holds an API worker, so the measure stops there whatever it has found (slide_fit.measure_deck). A quote that
 # saw only part of a deck is still safe: the job measures every slide as it draws it (execute_render), and
 # the next quote names the slides it failed on (_failed_on).
@@ -38,8 +38,9 @@ MEASURE_SECONDS=2
 # measured, which takes up to 0.3 s more; only the list of layouts is given up.
 FIT_SECONDS=0.5
 # What Review says about a file before it exists, on top of its pictures. A
-# PowerPoint of 60 slides of text is about 215 KB. The PDF's is a first guess:
-# nothing here has run LibreOffice; step 11's renders can put numbers to it.
+# PowerPoint of 60 slides of text is about 215 KB. The PDF's is still a first
+# guess: CI has timed LibreOffice but not weighed its PDFs. `check_editor` in the
+# container smoke prints one for a deck of 12 photos, to put a number to it.
 PPTX_BYTES,PPTX_BYTES_PER_SLIDE=40_000,3_000
 PDF_BYTES,PDF_BYTES_PER_SLIDE=150_000,12_000
 
@@ -203,7 +204,7 @@ def _pictures(account,chosen):
         found[section_id]={'jpeg':jpeg,**{key:asset.metadata.get(key) for key in ('width','height','provider','id','page_url')}}
     return found
 
-def _style(job,data,warnings):
+def _style(account,feature_id,data,warnings):
     """The look as a generation reads it (branding.render_style), but a logo no longer stored costs the send only the logo.
 
     The customer is told, at the quote and on the file. Refused, they would have
@@ -211,9 +212,9 @@ def _style(job,data,warnings):
     name. The bytes of a logo that is there are still held to what was chosen.
     """
     from .branding import logo_kept,render_style,without_logo
-    if logo_kept(job.account,data):return render_style(job.account,data,feature_id=job.feature_id)
+    if logo_kept(account,data):return render_style(account,data,feature_id=feature_id)
     warnings.append('logo_left_out')
-    return render_style(job.account,without_logo(data),feature_id=job.feature_id)
+    return render_style(account,without_logo(data),feature_id=feature_id)
 
 def own_words(texts):
     """The customer's words as a design may set them: in capitals, or as the initials it draws for a card or a name (one letter, or quote_1's two)."""
@@ -233,7 +234,7 @@ def execute_render(job,output_dir):
         data=unpack(draft.encrypted_data)
     content,locale,pins=data['content'],data['output_locale'],data['_render']
     warnings=[]
-    style=_style(job,data,warnings)
+    style=_style(job.account,job.feature_id,data,warnings)
     pictures=_pictures(job.account,chosen_photos(data))
     from .slides import render_pptx
     deck=render_pptx(content,Path(output_dir)/'document.pptx',locale,'user_document',style=style,photos=pictures,pins=pins)

@@ -349,12 +349,35 @@ def secret_create(request):
     handle=create_secret(request.account,data.get('password'))
     return JsonResponse({'id':str(handle.pk),'expires_at':handle.expires_at},status=201)
 
+# A page already drawn, or asked after while it is being drawn: the viewer of a long file asks for many.
+PREVIEWS_CACHED_PER_MINUTE=120
+# A page to be drawn: a task in the editor lane.
+PREVIEWS_UNCACHED_PER_MINUTE=10
+
+def _lane_preview(request,asset_id,page):
+    """With the deck editor on the API draws nothing: a page not drawn yet is the lane's, 202 {task_id}, and the client asks again."""
+    from .previews import cached_preview
+    from apps.studio import tasks
+    secret_id=request.GET.get('secret_id')
+    preview=cached_preview(request.account,asset_id,page,secret_id)
+    task=None if preview else tasks.waiting_preview(request.account,asset_id,page)
+    if preview or task:account_limit(request.account,'previews_cached',PREVIEWS_CACHED_PER_MINUTE)
+    else:
+        account_limit(request.account,'previews_uncached',PREVIEWS_UNCACHED_PER_MINUTE)
+        task=tasks.enqueue(request.account,tasks.PREVIEW,{'asset_id':str(asset_id),'page':page,'secret_id':secret_id})
+    return preview,task
+
 @api()
 def file_preview(request,asset_id):
     from .previews import preview_asset
-    throttle(request,'previews',30)
-    page=int(request.GET.get('page','1'))
-    preview=preview_asset(request.account,asset_id,page,request.GET.get('secret_id'))
+    from operations.integrations import editor_flags
+    if editor_flags()['deck_editor']:
+        preview,task=_lane_preview(request,asset_id,int(request.GET.get('page','1')))
+        if task:return JsonResponse({'task_id':str(task.pk)},status=202)
+    else:
+        throttle(request,'previews',30)
+        page=int(request.GET.get('page','1'))
+        preview=preview_asset(request.account,asset_id,page,request.GET.get('secret_id'))
     response=download_asset(request,preview)
     response['Content-Disposition']='inline; filename="preview.png"'
     return response

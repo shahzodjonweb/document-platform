@@ -286,23 +286,25 @@ class Deployer:
             # in the same command as the API this would hold the site down for
             # the drain. Restoring a failed release does not wait for its jobs.
             stop = [] if drain else ['--timeout', '30']
-            # The CV reader first, in a command of its own: it drains one
-            # file's reading (two minutes at most), and beside the worker it
-            # would wait out a deck's ten minutes with the queue unread.
-            if 'reader' in self.services(release):
-                self.compose(release, 'up', '-d', *stop, '--wait', '--wait-timeout', '180', 'reader')
-            else:
-                self.stop_reader()
+            # The CV reader and the editor lane first, each in a command of its
+            # own: each drains one short task (two minutes at most), and beside
+            # the worker it would wait out a deck's ten minutes with its queue unread.
+            defined = self.services(release)
+            for service in ('reader', 'editor'):
+                if service in defined:
+                    self.compose(release, 'up', '-d', *stop, '--wait', '--wait-timeout', '180', service)
+                else:
+                    self.stop_newer(service)
             self.compose(release, 'up', '-d', *stop, '--wait', '--wait-timeout', '180', 'worker', 'batches')
 
     def services(self, release):
         """The services this release's own stack defines: a release from before a service has none of it."""
         return set(self.compose(release, 'config', '--services').split())
 
-    def stop_reader(self):
-        """Stop a newer release's CV reader when a release from before it is restored: it reads for nobody there."""
+    def stop_newer(self, service):
+        """Stop a newer release's runner when a release from before it is restored: it works for nobody there."""
         listed = self.run(['docker', 'ps', '-q', '--filter', 'label=com.docker.compose.project=' + self.project,
-                           '--filter', 'label=com.docker.compose.service=reader'])
+                           '--filter', 'label=com.docker.compose.service=' + service])
         for container in (listed or '').split():
             self.run(['docker', 'stop', '--time', '30', container])
 

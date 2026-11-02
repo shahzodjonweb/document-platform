@@ -196,19 +196,6 @@ def check_pdfcraft(compose, env):
         raise RuntimeError('PdfCraft smoke failed: the worker was OOM-killed, restarted or stopped.')
 
 
-# LibreOffice's numbers for the deck editor, in the log and never judged: a
-# failure here must not fail a build, and it runs last so that nothing it does
-# to the worker can touch another check. Pull requests only: it adds about three
-# minutes to the package job, and on main every deploy waits for that job.
-def office_timings(compose, env):
-    if env.get('GITHUB_EVENT_NAME') != 'pull_request':
-        return
-    try:
-        run(compose + ['exec', '-T', 'worker', 'python', 'scripts/deploy/office_timing.py'], env=env, timeout=210)
-    except Exception as error:
-        print(f'OFFICE-TIMING the probe did not finish: {type(error).__name__}')
-
-
 # The fonts in decks drawn by the real LibreOffice, and those decks for whoever
 # reviews a font change: in the log and the deck-samples artifact, never judged,
 # and on pull requests only for the same reason.
@@ -258,6 +245,79 @@ def check_reader(compose, env):
         raise RuntimeError('Reader smoke failed: the reader was OOM-killed, restarted or stopped.')
 
 
+# A deck of 12 photo slides drawn as the editor lane draws one, inside the
+# read-only editor with its production memory limit, by the real LibreOffice and
+# pdfium: each slide comes out at its size and one edit converts one slide. Its
+# numbers and faces go in the log, to be read against the host's budget.
+EDITOR_CHECK = """import io
+import os
+import resource
+import tempfile
+import time
+from pathlib import Path
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+import django
+django.setup()
+from PIL import Image, ImageDraw
+from pypdf import PdfReader
+from apps.studio import tasks
+from apps.studio.variants import fixtures
+
+def photo(seed):
+    picture = Image.effect_noise((1600, 1000), 40 + seed).convert('RGB')
+    ImageDraw.Draw(picture).ellipse((200 + seed * 40, 200, 900, 800), fill=(30, 90 + seed, 140))
+    buffer = io.BytesIO()
+    picture.save(buffer, 'JPEG', quality=80)
+    return {'jpeg': buffer.getvalue(), 'width': 1600, 'height': 1000, 'provider': 'pixabay', 'id': seed, 'page_url': 'https://pixabay.com/photos/x/'}
+
+sections = [{**fixtures.light('image_split', 3), 'id': f's{number}'} for number in range(1, 13)]
+sections[0] = {**sections[0], 'heading': 'Port review', 'body': 'Spring', 'layout': 'cover'}
+content = {'title': 'Port review', 'questions': [], 'citations': [], 'sections': sections}
+pictures = {section['id']: photo(number) for number, section in enumerate(sections)}
+style = {'brand_name': 'Acme Studio', 'deck_design': 'midnight'}
+
+def draw(known):
+    began = time.monotonic()
+    with tempfile.TemporaryDirectory(prefix='editor-check-') as folder:
+        slides, images = tasks.draw_slides(content, 'ru', style, {}, pictures, known, Path(folder))
+        for png, thumb, frames in images.values():
+            with Image.open(png) as large, Image.open(thumb) as small:
+                assert large.size == (1280, 720) and small.size == (96, 54), 'a slide came out the wrong size'
+            assert frames, 'a slide has no frames'
+        made = sum(png.stat().st_size for png, _, _ in images.values())
+        pdf = Path(folder) / 'pdf' / 'converted.pdf'
+        weight = pdf.stat().st_size if pdf.exists() else 0
+        faces = {str(font.get_object()['/BaseFont']) for page in PdfReader(pdf).pages for font in page['/Resources'].get('/Font', {}).values()} if pdf.exists() else set()
+    return slides, images, time.monotonic() - began, made, weight, faces
+
+slides, images, first, made, weight, faces = draw(lambda keys: set())
+assert len(images) == 12, 'not every slide was drawn'
+assert faces, 'no fonts in the PDF'
+keys = {slide['key'] for slide in slides}
+sections[5] = {**sections[5], 'heading': 'Another heading'}
+_, again, second, _, _, _ = draw(lambda asked: asked & keys)
+assert len(again) == 1, f'one edit converted {len(again)} slides'
+rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss // 1024
+child = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss // 1024
+try:
+    peak = int(Path('/sys/fs/cgroup/memory.peak').read_text()) // 1024 // 1024
+except (OSError, ValueError):
+    peak = None
+print(f'EDITOR-RENDER 12 photo slides {first:.2f} s, one edited {second:.2f} s, PNGs {made // 1024} KB, PDF {weight // 1024} KB, faces {sorted(faces)}')
+print(f'EDITOR-RENDER peak MB: this process {rss}, largest child {child}, container {peak}')
+print('The editor lane drew a deck of photos in the read-only editor container.')
+"""
+
+
+def check_editor(compose, env):
+    run(compose + ['exec', '-T', 'editor', 'python', '-c', EDITOR_CHECK], env=env, timeout=180)
+    container = run(compose + ['ps', '-q', 'editor'], env=env, stdout=subprocess.PIPE, text=True).stdout.strip()
+    state = run(['docker', 'inspect', '--format', '{{.State.OOMKilled}} {{.RestartCount}} {{.State.Running}}',
+                 container], stdout=subprocess.PIPE, text=True).stdout.split()
+    if state != ['false', '0', 'true']:
+        raise RuntimeError('Editor smoke failed: the editor was OOM-killed, restarted or stopped.')
+
+
 def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('component',choices=('platform','web'))
@@ -278,7 +338,7 @@ def main():
             if args.component=='platform':
                 run(compose+['up','-d','--wait','--wait-timeout','120','db','redis'],env=env)
                 run(compose+['run','--rm','--no-deps','init'],env=env)
-                services=['api','worker','batches','reader','cleanup','bot','gateway']
+                services=['api','worker','batches','reader','editor','cleanup','bot','gateway']
             else:
                 services=['web','gateway']
             run(compose+['up','-d','--wait','--wait-timeout','180',*services],env=env)
@@ -298,8 +358,8 @@ print('Production settings keep development features disabled.')
                 check_scanner(compose, env)
                 check_pdfcraft(compose, env)
                 check_reader(compose, env)
+                check_editor(compose, env)
                 wait_for_cleanup_cycle(compose, env)
-                office_timings(compose, env)
                 deck_samples(compose, env)
             print('Isolated '+args.component+' production stack and gateway routes verified.')
         finally:

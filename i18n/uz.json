@@ -203,5 +203,10 @@
   "table_limit": "Bu jadval juda katta: ko‘pi bilan 20 000 qator va 100 ustun.",
   "redaction_validation_failed": "Yashirilgan matn olib tashlangani tasdiqlanmadi, shuning uchun fayl tayyorlanmadi. Qayta urinib ko‘ring.",
   "form_validation_failed": "Forma to‘g‘ri to‘ldirilmadi, shuning uchun fayl tayyorlanmadi. Maydonlarni tekshirib, qayta urinib ko‘ring.",
-  "signed_pdf_unsupported": "Bu PDF’da elektron imzo bor, uni o‘zgartirish imzoni buzadi. Imzosiz nusxadan foydalaning."
+  "signed_pdf_unsupported": "Bu PDF’da elektron imzo bor, uni o‘zgartirish imzoni buzadi. Imzosiz nusxadan foydalaning.",
+  "lane_busy": "Hozir hisobingizdan juda ko‘p ish navbatda turibdi. Birozdan keyin qayta urinib ko‘ring.",
+  "render_deck_interrupted": "Slaydlarni bu safar chizib bo‘lmadi. Qayta urinib ko‘ring.",
+  "preview_interrupted": "Sahifani bu safar ko‘rsatib bo‘lmadi. Qayta urinib ko‘ring.",
+  "editor_task_unsupported": "Bu hali mavjud emas.",
+  "editor_task_failed": "Buni yakunlab bo‘lmadi. Qayta urinib ko‘ring."
 }

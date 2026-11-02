@@ -564,6 +564,9 @@ def _shape(slide, zone, colour, shape=MSO_SHAPE.RECTANGLE):
     return element
 
 
+BRAND_BOX, NUMBER_BOX = 'Brand name', 'Slide number'
+
+
 def _slide_number(slide, zone, roles, colour=None, number=1):
     """A real slide-number field, so deleting a slide renumbers the rest.
 
@@ -572,7 +575,9 @@ def _slide_number(slide, zone, roles, colour=None, number=1):
     the stored text is the right number too.
     """
     colour = colour or roles['muted']
-    frame = _frame(slide.shapes.add_textbox(*zone.box()))
+    box = slide.shapes.add_textbox(*zone.box())
+    box.name = NUMBER_BOX
+    frame = _frame(box)
     paragraph = frame.paragraphs[0]
     _write(paragraph, '', font=BODY_FONT, size=10, colour=colour, align=PP_ALIGN.RIGHT)
     field = paragraph._p.makeelement(qn('a:fld'), {'id': '{B7A4E0C1-4C1E-4D3E-9F2A-0A1B2C3D4E5F}',
@@ -723,11 +728,13 @@ def _art(slide, roles, look, kind):
 
 
 def _chrome(slide, roles, style, kind, number=1, quiet=None):
-    """Brand name, slide number and logo — the same on every slide."""
+    """Brand name, slide number and logo — the same on every slide. Named, as nothing else is: their words can be a field's too."""
     quiet = roles.get(quiet, quiet) or (roles['cover_muted'] if kind in FILLED else roles['muted'])
     brand = (style or {}).get('brand_name', '')
     if brand:
-        frame = _frame(slide.shapes.add_textbox(*ZONES['footer'].box()))
+        box = slide.shapes.add_textbox(*ZONES['footer'].box())
+        box.name = BRAND_BOX
+        frame = _frame(box)
         _write(frame.paragraphs[0], brand, font=BODY_FONT, size=10, colour=quiet)
         _no_bullet(frame.paragraphs[0])
     if kind != 'cover':

@@ -108,10 +108,68 @@ def left_out(kind, section, shapes, marked=False, keeping=()):
     own `shortened` for a body of more than six lines: a title page draws its eight.
     `keeping`: fields that must show as well, those of the layout it would leave.
     """
+    return max(sum(_missing(kind, section, shapes, keeping).values()), 1 if marked else 0)
+
+
+def _missing(kind, section, shapes, keeping=()):
     wanted = Counter(word for field in _shown_fields(kind, section) for word in _keys(field))
     wanted |= Counter(word for field in keeping for word in _keys(field))
-    drawn = Counter(word for shape in shapes for text in shape.iter(_TEXT) for word in _keys(text.text))
-    return max(sum((wanted - drawn).values()), 1 if marked else 0)
+    return wanted - Counter(word for shape in shapes for text in shape.iter(_TEXT) for word in _keys(text.text))
+
+
+def _spread(shape, xfrm):
+    """Where `shape` lies, as fractions of the slide (its `xfrm` as written), or None if it has no place of its own."""
+    node = shape.find(xfrm)
+    offset, extent = (None, None) if node is None else (node.find(qn('a:off')), node.find(qn('a:ext')))
+    if offset is None or extent is None:
+        return None
+    width, height = int(slides.SLIDE_WIDTH), int(slides.SLIDE_HEIGHT)
+    return {'x': round(int(offset.get('x')) / width, 4), 'y': round(int(offset.get('y')) / height, 4),
+            'w': round(int(extent.get('cx')) / width, 4), 'h': round(int(extent.get('cy')) / height, 4)}
+
+
+def _own_shapes(slide):
+    """What was drawn on a slide but its brand name and number, which are the deck's whatever words they share with its fields."""
+    def chrome(shape):
+        name = shape.find(f"{qn('p:nvSpPr')}/{qn('p:cNvPr')}")
+        return name is not None and name.get('name') in (slides.BRAND_BOX, slides.NUMBER_BOX)
+    return [shape for shape in list(slide.shapes._spTree)[2:] if not chrome(shape)]
+
+
+def slide_frames(kind, section, slide, pictured=False):
+    """Where a drawn slide's heading, body and picture lie: [{field, x, y, w, h}], as fractions of the slide.
+
+    Told as `left_out` tells what shows, from what came out and whichever drawer
+    drew it: the box with the most of the heading's words and no others is the
+    heading, one holding only the fields' words is body, and the rest (a drawing
+    with no words) is nobody's to edit, as its number and a brand name never are.
+    `pictured`: the slide has its picture, the largest on it (a logo is the only
+    other). Holds no text.
+    """
+    fields = _shown_fields(kind, section)
+    heading, body = set(_keys(fields[0])), {word for field in fields[1:] for word in _keys(field)}
+    frames, pictures = [], []
+    worded = [(shape, {word for text in shape.iter(_TEXT) for word in _keys(text.text)}) for shape in _own_shapes(slide)]
+    title = max(((shape, words) for shape, words in worded if words and words <= heading), key=lambda box: len(box[1]), default=(None,))[0]
+    for shape, words in worded:
+        if shape.tag == qn('p:pic'):
+            spread = _spread(shape, f"{qn('p:spPr')}/{qn('a:xfrm')}")
+            if spread:
+                pictures.append(spread)
+            continue
+        field = 'heading' if shape is title else 'body' if words and words <= body else None
+        # A table sits in a frame of its own; every other shape in its properties.
+        spread = field and (_spread(shape, f"{qn('p:spPr')}/{qn('a:xfrm')}") or _spread(shape, qn('p:xfrm')))
+        if spread:
+            frames.append({'field': field, **spread})
+    if pictured and pictures:
+        frames.append({'field': 'picture', **max(pictures, key=lambda spread: spread['w'] * spread['h'])})
+    return frames
+
+
+def letters_left_out(kind, section, slide):
+    """How many letters of a drawn slide's words do not show, as the budget beside its fields counts them."""
+    return sum(len(word) * count for word, count in _missing(kind, section, _own_shapes(slide)).items())
 
 
 # ---------------------------------------------------------------- lines
