@@ -67,6 +67,8 @@ class EditorDocument(models.Model):
     # When and from which device the draft last changed: what a version conflict tells the other one.
     updated_at=models.DateTimeField(null=True)
     device=models.CharField(max_length=40,blank=True,default='',db_default='')
+    class Meta:
+        constraints=[models.UniqueConstraint(fields=['account','file'],name='editor_one_draft_per_file')]
 
 class ProviderUsage(models.Model):
     id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
