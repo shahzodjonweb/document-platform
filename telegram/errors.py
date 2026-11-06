@@ -279,9 +279,9 @@ MESSAGES = {
         '⏳ Задачи с файлами на эту неделю закончились — по тарифу их {limit}. Лимит обновится: {when}. Без ограничений — на другом тарифе.',
     ),
     'edit_limit': (
-        '✏️ This file’s AI edits are used up ({limit} per file). Choose a plan with more edits, or make a new document.',
-        '✏️ Bu fayl uchun {limit} ta AI tahrir ishlatib bo‘lindi. Ko‘proq tahrir uchun tarif tanlang yoki yangi hujjat yarating.',
-        '✏️ ИИ-правки этого файла закончились — по тарифу их {limit}. Выберите тариф с большим числом правок или создайте новый документ.',
+        '✨ This file’s AI edits are used up ({limit} per file). Choose a plan with more edits, or make a new document.',
+        '✨ Bu fayl uchun {limit} ta AI tahrir ishlatib bo‘lindi. Ko‘proq tahrir uchun tarif tanlang yoki yangi hujjat yarating.',
+        '✨ ИИ-правки этого файла закончились — по тарифу их {limit}. Выберите тариф с большим числом правок или создайте новый документ.',
     ),
     'invalid_receipt': (
         '🧾 Send the receipt as a photo or screenshot, or as a PDF.',
