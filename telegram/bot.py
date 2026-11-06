@@ -742,7 +742,7 @@ async def review_screen(account,draft,quote):
     body+=(f'<b>{text(account,"review_title")}</b>\n{html.escape(title)}\n'
            f'📄 {html.escape(heading)}\n')
     # A change says what is changing; a new document says what it is.
-    if change: body+=f'✏️ {html.escape(change)}\n'
+    if change: body+=f'{"✨" if await edit_buttons_on() else "✏️"} {html.escape(change)}\n'
     pages_more=False
     if cv:
         # A CV made from files says which, what of them could not be read, and
@@ -1817,7 +1817,7 @@ def build_dispatcher():
         await sync_to_async(set_prompt)(account,'ai_revise',{'draft_id':str(draft_id)})
         # A CV has no pages to resize: its examples are the changes a CV takes.
         examples='cv_revise_examples' if await sync_to_async(ai.service_of)(account,draft_id)==ai.CV else 'ai_revise_examples'
-        body=(f'{html.escape(notice)}\n\n' if notice else '')+(f'<b>{text(account,"ai_revise_title")}</b>\n'
+        body=(f'{html.escape(notice)}\n\n' if notice else '')+(f'<b>{text(account,await ai_change_copy("ai_revise_title"))}</b>\n'
               f'{text(account,"ai_revise_of")}: {html.escape(title)}\n\n'
               f'{text(account,"ai_revise_ask")}\n\n'
               f'{text(account,"ai_examples")}:\n<code>{html.escape(text(account,examples))}</code>')

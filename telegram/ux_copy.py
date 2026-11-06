@@ -74,7 +74,7 @@ MESSAGES = {
     'files_week_hint': ('This week’s file tasks are used up. New ones from {when}, or choose a plan with unlimited file tools.', 'Bu haftalik fayl vazifalari tugadi. Limit yangilanadi: {when}. Cheksiz fayl vositalari uchun tarif tanlang.', 'Задачи с файлами на эту неделю закончились. Лимит обновится: {when}. Без ограничений — на другом тарифе.'),
     'ai_week_used': ('AI documents this week: {used} of {limit}', 'Bu haftadagi AI hujjatlar: {limit} tadan {used} tasi', 'ИИ-документы на этой неделе: {used} из {limit}'),
     'ai_edits_used': ('✏️ Edits of this file: {used} of {limit} used', '✏️ Bu fayl tahrirlari: {limit} tadan {used} tasi ishlatilgan', '✏️ Правки этого файла: использовано {used} из {limit}'),
-    'ai_edits_used_plain': ('Edits of this file: {used} of {limit} used', 'Bu fayl tahrirlari: {limit} tadan {used} tasi ishlatilgan', 'Правки этого файла: использовано {used} из {limit}'),
+    'ai_edits_of_file': ('✨ AI edits of this file: {used} of {limit} used', '✨ Bu faylning AI tahrirlari: {limit} tadan {used} tasi ishlatilgan', '✨ ИИ-правки этого файла: использовано {used} из {limit}'),
     'edit_settings': ('⚙️ Edit options', '⚙️ Sozlash', '⚙️ Настроить'),
     'cancel_step': ('✖️ Cancel', '✖️ Bekor qilish', '✖️ Отмена'),
     'cancel_button': ('✖️ Cancel task', '✖️ Bekor qilish', '✖️ Отменить задачу'),
@@ -196,6 +196,7 @@ MESSAGES = {
     'send_to_chat': ('📤 Send to chat', '📤 Chatga yuborish', '📤 Отправить в чат'),
     'editor_hint': ('✏️ Edit your PDF right here in Telegram.', '✏️ PDF faylingizni shu yerda, Telegram ichida tahrirlang.', '✏️ Редактируйте PDF прямо здесь, в Telegram.'),
     'ai_revise_title': ('✏️ What should change?', '✏️ Nimani o‘zgartiramiz?', '✏️ Что изменить?'),
+    'ai_ask_title': ('✨ What should AI change?', '✨ AI nimani o‘zgartirsin?', '✨ Что изменить с ИИ?'),
     'ai_revise_ask': ('Describe the change in one message. Everything you do not mention stays exactly as it is.', 'O‘zgarishni bitta xabarda yozing. Siz aytmagan hamma narsa o‘z holicha qoladi.', 'Опишите изменение одним сообщением. Всё, о чём вы не упомянете, останется как есть.'),
     'ai_revise_examples': ('Make section 2 shorter · Use a friendlier tone · Add an example to each page · Same document in 8 pages', '2-bo‘limni qisqartiring · Do‘stona uslubda yozing · Har sahifaga misol qo‘shing · Xuddi shu hujjat 8 sahifada', 'Сократите раздел 2 · Сделайте тон дружелюбнее · Добавьте пример на каждую страницу · То же самое на 8 страницах'),
     'ai_revise_of': ('Changing', 'O‘zgartirilmoqda', 'Изменяем'),
@@ -503,7 +504,7 @@ TOOL_LABELS = {
 UX = {locale: {key: values[index] for key, values in MESSAGES.items()} for index, locale in enumerate(LOCALES)}
 # With the Edit buttons on, ✏️ opens the editor and uses no AI edit, and ✨ uses
 # one: an AI change is worded by these keys instead.
-EDIT_BUTTON_COPY = {'ai_revise': 'ai_ask_to_change', 'ai_edits_used': 'ai_edits_used_plain'}
+EDIT_BUTTON_COPY = {'ai_revise': 'ai_ask_to_change', 'ai_edits_used': 'ai_edits_of_file', 'ai_revise_title': 'ai_ask_title'}
 
 # A count of pages or slides in each language's own plural forms, for the
 # review stepper's middle button: "10 slides", "10 slayd", "10 слайдов".

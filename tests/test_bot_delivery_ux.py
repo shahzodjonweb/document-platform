@@ -484,12 +484,13 @@ def test_the_ai_wording_is_new_only_with_the_switch_on():
     assert UX['en']['ai_revise'] == '✏️ Make changes' and UX['en']['ai_edits_used'].startswith('✏️ ')
     for locale in UX:
         assert UX[locale][EDIT_BUTTON_COPY['ai_revise']].startswith('✨ ')
-        assert UX[locale][EDIT_BUTTON_COPY['ai_edits_used']] == UX[locale]['ai_edits_used'].removeprefix('✏️ ')
+        assert UX[locale][EDIT_BUTTON_COPY['ai_edits_used']].startswith('✨ ')
+        assert UX[locale][EDIT_BUTTON_COPY['ai_revise_title']].startswith('✨ ')
     assert (UX['uz']['ai_ask_to_change'], UX['ru']['ai_ask_to_change']) == ('✨ AI bilan o‘zgartirish', '✨ Изменить с ИИ')
 
 
 def test_the_new_copy_is_in_three_languages_and_uzbek_is_latin():
-    for key in ('edit', 'send_to_chat', 'editor_hint', 'ai_ask_to_change', 'ai_edits_used_plain'):
+    for key in ('edit', 'send_to_chat', 'editor_hint', 'ai_ask_to_change', 'ai_edits_of_file', 'ai_ask_title'):
         assert all(UX[locale][key] for locale in ('en', 'uz', 'ru'))
         assert not re.search('[А-Яа-яЁё\'’`]', UX['uz'][key]), UX['uz'][key]
         for locale in ('en', 'uz', 'ru'):
@@ -649,11 +650,13 @@ def test_a_document_delivered_in_the_chat_shows_the_row(chatting):
 
 
 @pytest.mark.usefixtures('bot_verification_disabled', 'edit_buttons')
-def test_the_review_of_a_change_counts_edits_without_the_pencil(free_customer):
+def test_an_ai_change_is_marked_with_sparkles_not_the_pencil(free_customer):
     plan_settings.save('free', {'edits_per_file': 3})
     delivered = made(free_customer)
-    tap(free_customer, delivered, 'Ask AI to change')
+    asked, _ = screen(tap(free_customer, delivered, 'Ask AI to change'))
+    assert '✨ What should AI change?' in asked and '✏️' not in asked, asked
     review = dispatch_local(free_customer, text='Use a friendlier tone throughout.')
     words, labels = screen(review)
-    assert '\nEdits of this file: 0 of 3 used' in words and '✏️ Edits of this file' not in words, words
+    assert '✨ Use a friendlier tone throughout.' in words, words
+    assert '\n✨ AI edits of this file: 0 of 3 used' in words and '✏️' not in words, words
     assert '✨ Ask AI to change' in labels, labels
