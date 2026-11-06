@@ -236,7 +236,7 @@ def schema():
         'WeeklyAllowance':obj({'limit':{'type':['integer','null']},'used':I,'remaining':{'type':['integer','null']}},['limit','used','remaining']),
         'Usage':obj({'plan':S,'week':obj({'starts_at':DT,'resets_at':DT,'time_zone':S},['starts_at','resets_at','time_zone']),'ai_documents':ref('WeeklyAllowance'),'file_jobs':ref('WeeklyAllowance'),'edits_per_file':{'type':['integer','null']},'resets_at':DT},['plan','week','ai_documents','file_jobs','edits_per_file','resets_at']),
         'Asset':obj({'id':UUID,'name':S,'size_bytes':I,'page_count':I,'mime_type':S,'state':S,'expires_at':DT,'encrypted':B,'preview_url':{'type':['string','null']},'password_secret_id':{'type':['string','null']}},['id','name','size_bytes','page_count','mime_type','state','expires_at']),
-        'Artifact':obj({'id':UUID,'name':S,'size_bytes':I,'page_count':I,'mime_type':S,'state':S,'expires_at':DT,'role':S,'preview_url':{'type':['string','null']},'download_url':S},['id','name','size_bytes','mime_type','download_url']),
+        'Artifact':obj({'id':UUID,'file_id':{**UUID,'description':'The stored file itself, as `POST /editor/documents` takes it.'},'name':S,'size_bytes':I,'page_count':I,'mime_type':S,'state':S,'expires_at':DT,'role':S,'preview_url':{'type':['string','null']},'download_url':S},['id','file_id','name','size_bytes','mime_type','download_url']),
         'Error':obj({'code':S,'message_key':S,'message':S,'message_params':{'type':'object'},'request_id':S,'field_errors':{'type':'object'},'retryable':B},['code','message_key','message','retryable']),
         'Feature':obj({'id':S,'name':S,'label_key':S,'category':S,'release':S,'enabled':B,'eligible':B,'plans':{'type':'object'},'parameters':{'type':'object'},'capabilities':{'type':'object'},'environment':S},['id','name','enabled','eligible','parameters']),
         # A discount while it runs: the lower price, the regular one it is
@@ -309,6 +309,11 @@ def schema():
     for path,operation in [('/files/{id}/download','downloadFile'),('/artifacts/{id}/download','downloadArtifact')]:
         endpoint(path,'get',operation,S)
         paths[path]['get']['responses']['200']={'description':'Private file, attachment; no-store','content':{'application/octet-stream':{'schema':{'type':'string','format':'binary'}}}}
+    download=paths['/files/{id}/download']['get']
+    download['parameters'].append({'name':'Range','in':'header','schema':S,'description':'One byte range: `bytes=0-99`, `bytes=100-` or `bytes=-500`. Several ranges, anything ill-formed, or an `If-Range` header answer with the whole file and 200.'})
+    download['responses']['200']['headers']={'Accept-Ranges':{'schema':{'const':'bytes'}}}
+    download['responses']['206']={'description':'The asked part of the private file, attachment; no-store','headers':{'Accept-Ranges':{'schema':{'const':'bytes'}},'Content-Range':{'description':'`bytes first-last/size`','schema':S}},'content':{'application/octet-stream':{'schema':{'type':'string','format':'binary'}}}}
+    download['responses']['416']={'description':'The range starts past the end of the file: refused with `range_not_satisfiable`.','headers':{'Content-Range':{'description':'`bytes */size`','schema':S}},'content':{'application/json':{'schema':obj({'error':ref('Error')})}}}
     for path,operation in [('/files/{id}/preview','previewFile'),('/artifacts/{id}/preview','previewArtifact')]:
         endpoint(path,'get',operation,S)
         paths[path]['get']['parameters'].append({'name':'page','in':'query','schema':{'type':'integer','minimum':1,'default':1}})

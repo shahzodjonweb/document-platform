@@ -2,6 +2,7 @@ from operations.integrations import editor_flags, telegram_config
 from operations.middleware import known_zone
 import json
 import logging
+import re
 import secrets
 import uuid
 from functools import wraps
@@ -269,12 +270,45 @@ def file_detail(request,asset_id):
             storage.delete(preview.file.object_key)
     return asset_data(asset)
 
-def download_asset(request,asset):
+# Eighteen digits pass every file there is; int() refuses a very long run of them.
+BYTE_RANGE=re.compile(r'bytes=([0-9]{0,18})-([0-9]{0,18})',re.IGNORECASE)
+
+def byte_range(header,size):
+    """What a Range header asks of `size` bytes: (first,last), False when nothing there can
+    answer it, None when the whole file does (ill-formed, another unit, several ranges)."""
+    found=BYTE_RANGE.fullmatch(header.strip())
+    if not found or not (found[1] or found[2]): return None
+    if not found[1]:
+        if not int(found[2]) or not size: return False
+        return max(size-int(found[2]),0),size-1
+    first=int(found[1]);last=int(found[2]) if found[2] else size-1
+    if found[2] and last<first: return None
+    return (first,min(last,size-1)) if first<size else False
+
+def download_asset(request,asset,ranges=False):
     if asset.state!='ready' or asset.expires_at<=timezone.now(): raise DomainError('file_expired',410)
     from . import storage
-    path=storage.local(asset.object_key)
-    if not path.is_file(): raise DomainError('file_unavailable',404)
-    response=FileResponse(path.open('rb'),as_attachment=True,filename=asset.name,content_type=asset.mime_type)
+    span=None
+    # This answer carries no validator, so an If-Range never matches it: that asks for the whole file.
+    if ranges and 'Range' in request.headers and 'If-Range' not in request.headers:
+        size=storage.size(asset.object_key)
+        if size is None: raise DomainError('file_unavailable',404)
+        span=byte_range(request.headers['Range'],size)
+        if span is False:
+            response=JsonResponse({'error':error_data(DomainError('range_not_satisfiable',416),request.account.locale,getattr(request,'request_id',''))},status=416)
+            response['Content-Range']=f'bytes */{size}'
+            return response
+    if span:
+        source=storage.open_range(asset.object_key,*span)
+        if not source: raise DomainError('file_unavailable',404)
+        response=FileResponse(source,as_attachment=True,filename=asset.name,content_type=asset.mime_type,status=206)
+        response['Content-Length']=span[1]-span[0]+1
+        response['Content-Range']=f'bytes {span[0]}-{span[1]}/{size}'
+    else:
+        path=storage.local(asset.object_key)
+        if not path.is_file(): raise DomainError('file_unavailable',404)
+        response=FileResponse(path.open('rb'),as_attachment=True,filename=asset.name,content_type=asset.mime_type)
+    if ranges: response['Accept-Ranges']='bytes'
     response['Cache-Control']='private, no-store'
     response['Content-Security-Policy']="sandbox; default-src 'none'"
     return response
@@ -283,7 +317,7 @@ def download_asset(request,asset):
 def file_download(request,asset_id):
     asset=FileAsset.objects.filter(pk=asset_id,account=request.account).first()
     if not asset: raise DomainError('not_found',404)
-    return download_asset(request,asset)
+    return download_asset(request,asset,ranges=True)
 
 @api(('POST',))
 def quotes(request):

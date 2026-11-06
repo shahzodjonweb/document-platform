@@ -10,6 +10,11 @@
             "format": "date-time",
             "type": "string"
           },
+          "file_id": {
+            "description": "The stored file itself, as `POST /editor/documents` takes it.",
+            "format": "uuid",
+            "type": "string"
+          },
           "id": {
             "format": "uuid",
             "type": "string"
@@ -43,6 +48,7 @@
         },
         "required": [
           "id",
+          "file_id",
           "name",
           "size_bytes",
           "mime_type",
@@ -7867,6 +7873,14 @@
               "format": "uuid",
               "type": "string"
             }
+          },
+          {
+            "description": "One byte range: `bytes=0-99`, `bytes=100-` or `bytes=-500`. Several ranges, anything ill-formed, or an `If-Range` header answer with the whole file and 200.",
+            "in": "header",
+            "name": "Range",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -7879,7 +7893,38 @@
                 }
               }
             },
-            "description": "Private file, attachment; no-store"
+            "description": "Private file, attachment; no-store",
+            "headers": {
+              "Accept-Ranges": {
+                "schema": {
+                  "const": "bytes"
+                }
+              }
+            }
+          },
+          "206": {
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The asked part of the private file, attachment; no-store",
+            "headers": {
+              "Accept-Ranges": {
+                "schema": {
+                  "const": "bytes"
+                }
+              },
+              "Content-Range": {
+                "description": "`bytes first-last/size`",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "400": {
             "content": {
@@ -7905,6 +7950,30 @@
           },
           "409": {
             "description": "State conflict or quota unavailable"
+          },
+          "416": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The range starts past the end of the file: refused with `range_not_satisfiable`.",
+            "headers": {
+              "Content-Range": {
+                "description": "`bytes */size`",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         },
         "security": [

@@ -41,7 +41,8 @@ def job_data(job):
     artifacts=[]
     for artifact in job.artifacts.select_related('file').all():
         row=asset_data(artifact.file)
-        row.update({'id':str(artifact.pk),'role':artifact.role,'download_url':f'/api/v1/artifacts/{artifact.pk}/download','preview_url':f'/api/v1/artifacts/{artifact.pk}/preview' if artifact.file.mime_type=='application/pdf' and not artifact.file.metadata.get('encrypted') else None})
+        # The file's own id as well: the editor opens a new draft on it, and Edit under a result needs it.
+        row.update({'id':str(artifact.pk),'file_id':str(artifact.file_id),'role':artifact.role,'download_url':f'/api/v1/artifacts/{artifact.pk}/download','preview_url':f'/api/v1/artifacts/{artifact.pk}/preview' if artifact.file.mime_type=='application/pdf' and not artifact.file.metadata.get('encrypted') else None})
         artifacts.append(row)
     notes=job_notes(job)
     error=error_data(DomainError(job.error_code,params={'index':notes['failed_command']} if 'failed_command' in notes else None),job.account.locale) if job.error_code else None

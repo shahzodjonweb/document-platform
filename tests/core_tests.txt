@@ -16,6 +16,10 @@ tests/test_adversarial.py::test_foreign_assets_quotes_jobs_and_downloads_are_ina
 # File retention and expiry cleanup
 tests/test_platform.py::test_retention_revokes_before_download_and_deletes
 
+# Part of a file, as a viewer reads a long PDF
+tests/test_file_ranges.py::test_a_part_of_a_file_comes_with_its_range
+tests/test_editor_documents.py::test_edit_under_a_sent_file_opens_it_or_the_draft_it_came_from
+
 # Telegram Mini App sign-in
 tests/test_platform.py::test_miniapp_tamper_stale_future_duplicate_and_canonical
 

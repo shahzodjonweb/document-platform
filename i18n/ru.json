@@ -210,5 +210,6 @@
   "render_deck_interrupted": "Не удалось отрисовать слайды. Попробуйте ещё раз.",
   "preview_interrupted": "Не удалось показать страницу. Попробуйте ещё раз.",
   "editor_task_unsupported": "Пока недоступно.",
-  "editor_task_failed": "Не удалось завершить. Попробуйте ещё раз."
+  "editor_task_failed": "Не удалось завершить. Попробуйте ещё раз.",
+  "range_not_satisfiable": "Такой части файла нет."
 }
