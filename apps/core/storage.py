@@ -260,7 +260,9 @@ def open_range(key, first, last):
     """These bytes of a file, both ends included, to read a block at a time; None when it is gone.
 
     A file that is only in the bucket stays there and only this part travels.
-    If the bucket will not send a part, the file comes to the volume as in `local`.
+    If the bucket answers but will not send a part, the file comes to the volume
+    as in `local`. A bucket that does not answer is not asked a second time: that
+    would wait out its retries twice before the same refusal.
     """
     from .models import StoredObject
     if not storage_path(key).is_file() and StoredObject.objects.filter(key=key, remote=True).exists():
@@ -269,7 +271,7 @@ def open_range(key, first, last):
             part = source.part(key, first, last) if source else None
         except Exception:
             logger.warning('Could not read part of %s from object storage', key, exc_info=True)
-            part = None
+            return None
         if part:
             return part
     path = local(key)

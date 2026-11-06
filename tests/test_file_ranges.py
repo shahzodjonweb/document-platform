@@ -160,6 +160,7 @@ def test_a_bucket_that_stopped_answering_is_a_file_unavailable_now(bucket):  # n
     bucket_only(asset)
     bucket.failing = True
     assert fetch(login_client(owner), asset, 'bytes=0-1')[0].status_code == 404
+    assert bucket.reads == ['bytes=0-1'], 'not asked again for the whole file'
 
 
 def test_a_file_on_the_volume_is_not_asked_of_the_bucket(bucket):  # noqa: F811
