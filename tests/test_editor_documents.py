@@ -263,21 +263,20 @@ def test_a_file_has_one_draft_and_opening_it_again_comes_back_to_the_marks():
     assert len(client.get('/api/v1/editor/documents').json()['results'])==1
 
 
-def test_a_file_opened_many_times_before_the_rule_reopens_the_newest_draft_with_marks():
+def test_two_opens_at_once_come_back_to_one_draft(monkeypatch):
     a,asset,client,url=opened()
-    assert save(client,url,1,[NOTE]).status_code==200
-    marked=EditorDocument.objects.get(file=asset)
-    EditorDocument.objects.create(account=a,file=asset,input_ids=[str(asset.id)])
+    from apps.studio.models import EditorDocument as Model
+    real=Model.objects.filter
+    calls={'n':0}
+    def first_misses(*args,**kwargs):
+        # The second open looks before the first has saved, as two phones at the same moment would.
+        calls['n']+=1
+        rows=real(*args,**kwargs)
+        return rows.none() if calls['n']==1 else rows
+    monkeypatch.setattr(Model.objects,'filter',first_misses)
     again=client.post('/api/v1/editor/documents',{'file_id':str(asset.id)},content_type='application/json')
-    assert again.status_code==200 and again.json()['id']==str(marked.id) and again.json()['commands']==[NOTE]
-    assert EditorDocument.objects.filter(account=a,file=asset).count()==2
-
-
-def test_a_file_whose_drafts_are_all_empty_reopens_the_newest():
-    a,asset,client,url=opened()
-    newest=EditorDocument.objects.create(account=a,file=asset,input_ids=[str(asset.id)],created_at=timezone.now()+timedelta(seconds=1))
-    again=client.post('/api/v1/editor/documents',{'file_id':str(asset.id)},content_type='application/json')
-    assert again.status_code==200 and again.json()['id']==str(newest.id)
+    assert again.status_code==200 and url.endswith(again.json()['id'])
+    assert real(account=a,file=asset).count()==1
 
 
 def test_two_accounts_cannot_share_a_draft_of_one_file():

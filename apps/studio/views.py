@@ -3,7 +3,7 @@ import json
 import secrets
 from datetime import timedelta
 from django.conf import settings
-from django.db import transaction
+from django.db import IntegrityError,transaction
 from django.http import JsonResponse
 from django.utils import timezone
 from apps.core.views import account_limit,api,body,count_request,download_asset,throttle
@@ -474,11 +474,16 @@ def editors(request):
         a=_file_to_open(request.account,fid)
         reason=_refusal(a)
         if reason:raise DomainError('unsupported_file',params={'reason':reason})
-        # One draft per file: opening it again comes back to the same marks. A file opened before this
-        # rule holds one draft per open until it expires; the newest with marks is the customer's work.
-        drafts=list(EditorDocument.objects.filter(account=request.account,file=a).order_by('-created_at','-pk'))
-        if drafts:return JsonResponse(editor_data(next((d for d in drafts if stored_commands(d)),drafts[0])),status=200)
-        return JsonResponse(editor_data(EditorDocument.objects.create(account=request.account,file=a,input_ids=[str(a.id)])),status=201)
+        # One draft per file (editor_one_draft_per_file): opening it again comes back to the same marks.
+        e=EditorDocument.objects.filter(account=request.account,file=a).first()
+        if e:return JsonResponse(editor_data(e),status=200)
+        try:
+            with transaction.atomic():
+                e=EditorDocument.objects.create(account=request.account,file=a,input_ids=[str(a.id)])
+        except IntegrityError:
+            # Two opens at once: the other made it, and both come back to it.
+            return JsonResponse(editor_data(EditorDocument.objects.get(account=request.account,file=a)),status=200)
+        return JsonResponse(editor_data(e),status=201)
     return {'results':[editor_row(e) for e in EditorDocument.objects.filter(account=request.account,file__expires_at__gt=timezone.now(),file__state='ready').select_related('file')]}
 @api(('GET','PATCH','DELETE'))
 def editor_detail(request,pk):
