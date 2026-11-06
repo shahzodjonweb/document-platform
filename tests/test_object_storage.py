@@ -26,12 +26,16 @@ class FakeBody:
     def read(self, size=-1):
         return self.stream.read(size)
 
+    def close(self):
+        self.stream.close()
+
 
 class FakeS3:
     """The bucket, in memory: the five calls the platform makes."""
 
     def __init__(self):
         self.objects, self.failing, self.corrupt, self.truncate = {}, False, False, False
+        self.reads, self.ignores_ranges = [], False
 
     def put_object(self, Bucket, Key, Body, **extra):
         import base64
@@ -44,8 +48,14 @@ class FakeS3:
         self.objects[(Bucket, Key)] = {'data': data, 'at': timezone.now(), **extra}
         return {'ETag': '"%s"' % (hashlib.md5(b'other' if self.corrupt else data).hexdigest())}
 
-    def get_object(self, Bucket, Key):
+    def get_object(self, Bucket, Key, Range=None):
         data = self.objects[(Bucket, Key)]['data']
+        self.reads.append(Range)
+        if self.failing:
+            raise ConnectionError('bucket unreachable')
+        if Range and not self.ignores_ranges:
+            first, last = map(int, Range.removeprefix('bytes=').split('-'))
+            data = data[first:last + 1]
         return {'Body': FakeBody(data[:-10] if self.truncate else data), 'ContentLength': len(data)}
 
     def delete_object(self, Bucket, Key):

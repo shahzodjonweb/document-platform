@@ -210,5 +210,6 @@
   "render_deck_interrupted": "Slaydlarni bu safar chizib bo‘lmadi. Qayta urinib ko‘ring.",
   "preview_interrupted": "Sahifani bu safar ko‘rsatib bo‘lmadi. Qayta urinib ko‘ring.",
   "editor_task_unsupported": "Bu hali mavjud emas.",
-  "editor_task_failed": "Buni yakunlab bo‘lmadi. Qayta urinib ko‘ring."
+  "editor_task_failed": "Buni yakunlab bo‘lmadi. Qayta urinib ko‘ring.",
+  "range_not_satisfiable": "Faylning bu qismi mavjud emas."
 }

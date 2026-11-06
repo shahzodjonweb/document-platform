@@ -63,6 +63,21 @@ def forget_config():
     _buckets.clear()
 
 
+class Slice:
+    """So many bytes of an open file or a bucket's answer, read a block at a time."""
+
+    def __init__(self, source, left):
+        self.source, self.left = source, left
+
+    def read(self, size=-1):
+        data = self.source.read(self.left if size < 0 else min(size, self.left)) if self.left else b''
+        self.left -= len(data)
+        return data
+
+    def close(self):
+        self.source.close()
+
+
 class Bucket:
     """The few S3 calls the platform makes, against one bucket."""
 
@@ -106,6 +121,14 @@ class Bucket:
                 written += len(chunk)
         if expected is not None and written != expected:
             raise IOError(f'Object storage returned {written} of {expected} bytes for {key}')
+
+    def part(self, key, first, last):
+        """These bytes of an object as they arrive, or None if the bucket would send something else."""
+        response = self.client.get_object(Bucket=self.name, Key=key, Range=f'bytes={first}-{last}')
+        if response.get('ContentLength') != last - first + 1:
+            response['Body'].close()
+            return None
+        return Slice(response['Body'], last - first + 1)
 
     def delete(self, key):
         self.client.delete_object(Bucket=self.name, Key=key)
@@ -221,6 +244,40 @@ def local(key):
 
 def read_bytes(key):
     return local(key).read_bytes()
+
+
+def size(key):
+    """How long a stored file is wherever it lives, or None when it is gone everywhere."""
+    from .models import StoredObject
+    path = storage_path(key)
+    if path.is_file():
+        return path.stat().st_size
+    row = StoredObject.objects.filter(key=key, remote=True).first()
+    return row.size if row else None
+
+
+def open_range(key, first, last):
+    """These bytes of a file, both ends included, to read a block at a time; None when it is gone.
+
+    A file that is only in the bucket stays there and only this part travels.
+    If the bucket will not send a part, the file comes to the volume as in `local`.
+    """
+    from .models import StoredObject
+    if not storage_path(key).is_file() and StoredObject.objects.filter(key=key, remote=True).exists():
+        try:
+            source = bucket(for_writing=False)
+            part = source.part(key, first, last) if source else None
+        except Exception:
+            logger.warning('Could not read part of %s from object storage', key, exc_info=True)
+            part = None
+        if part:
+            return part
+    path = local(key)
+    if not path.is_file():
+        return None
+    source = path.open('rb')
+    source.seek(first)
+    return Slice(source, last - first + 1)
 
 
 def exists(key):

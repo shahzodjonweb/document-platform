@@ -537,6 +537,18 @@ def test_the_fullest_draft_runs_by_pointer():
     assert job.status=='succeeded',job.error_code
 
 
+def test_edit_under_a_sent_file_opens_it_or_the_draft_it_came_from():
+    """A send's file names its draft, which Edit under it reopens; the file itself opens as a new draft too."""
+    a,asset,client,url=opened()
+    job=sent(client,url,1,[NOTE],'pointer-edit-under')
+    row=client.get(f'/api/v1/jobs/{job.id}').json()
+    made=job.artifacts.get()
+    assert row['parameters']['editor_document_id']==url.rsplit('/',1)[1]
+    assert row['artifacts'][0]['file_id']==str(made.file_id) and row['artifacts'][0]['id']==str(made.id)
+    again=client.post('/api/v1/editor/documents',{'file_id':row['artifacts'][0]['file_id']},content_type='application/json')
+    assert again.status_code==201 and again.json()['file']['id']==str(made.file_id) and again.json()['commands']==[]
+
+
 def test_todays_web_flow_is_as_it_was():
     """The calls the deployed web makes, with what it reads from each answer. It sends no `deliver` and gets no summary."""
     a,asset,client,url=opened()
