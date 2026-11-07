@@ -254,6 +254,14 @@ def test_the_native_menu_offers_every_service_and_no_folder():
     assert list(COMMANDS['en'])[:4] == ['start', 'document', 'slides', 'cv']
 
 
+def test_the_native_menu_names_the_info_screen_about_the_bot():
+    """The screen with the company's details is About the bot, as payment providers look for it."""
+    from telegram.commands import COMMANDS
+    from telegram.ux_copy import UX
+    assert [COMMANDS[locale]['help'] for locale in ('en', 'uz', 'ru')] == ['ℹ️ About the bot', 'ℹ️ Bot haqida', 'ℹ️ О боте']
+    assert [UX[locale]['about_bot'] for locale in ('en', 'uz', 'ru')] == [COMMANDS[locale]['help'] for locale in ('en', 'uz', 'ru')]
+
+
 def test_the_native_menu_names_the_weekly_limits_screen_plainly():
     """'Plan & this week' did not say what the screen shows; it shows the plan
     and the week's limits, by the names the screen itself uses."""

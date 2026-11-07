@@ -103,8 +103,10 @@ MESSAGES = {
     'contacts_write_support': ('💬 Write to support', '💬 Yordamga yozish', '💬 Написать в поддержку'),
     'contacts_write_ads': ('📣 Write about advertising', '📣 Reklama bo‘yicha yozish', '📣 Написать о рекламе'),
     'contacts_none': ('Contacts will appear here soon.', 'Aloqa ma’lumotlari tez orada shu yerda bo‘ladi.', 'Контакты скоро появятся здесь.'),
-    'how_it_works': ('💡 How it works', '💡 Qanday ishlaydi', '💡 Как это работает'),
-    # The company behind the bot, at the end of How it works: payment providers require it.
+    # About the bot (/help): what it is, how to use it (guide), then the company behind it,
+    # which payment providers require.
+    'about_bot': ('ℹ️ About the bot', 'ℹ️ Bot haqida', 'ℹ️ О боте'),
+    'about_intro': ('PDF Master: PDF and file tools, and AI documents — PDFs, slides and CVs on a topic. In Telegram and on the web.', 'PDF Master — PDF va fayl vositalari hamda AI hujjatlar: mavzuga oid PDF, slayd va CV. Telegram’da va veb-saytda.', 'PDF Master — инструменты для PDF и файлов и ИИ-документы: PDF, слайды и резюме по теме. В Telegram и на сайте.'),
     'company_title': ('🏢 Company details', '🏢 Rekvizitlar', '🏢 Реквизиты'),
     'company_name': ('Legal name', 'Yuridik nomi', 'Юридическое название'),
     'company_tin': ('TIN (STIR)', 'STIR (INN)', 'ИНН'),
