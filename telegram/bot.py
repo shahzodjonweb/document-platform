@@ -2248,16 +2248,17 @@ def build_dispatcher():
                 lines.append(f"{text(account,label)}: @{html.escape(people[kind]['username'])}")
                 rows.append([InlineKeyboardButton(text=text(account,opener),url=people[kind]['url'])])
         if len(lines)==1: lines.append(text(account,'contacts_none'))
-        rows.append([await button(account,'how_it_works','help'),await button(account,'home','home')])
+        rows.append([await button(account,'about_bot','help'),await button(account,'home','home')])
         await render(message,'\n'.join(lines),rows,edit)
 
     async def help_view(message,account,edit=False):
-        """How the bot works, then the company behind it, as payment providers require; an unset phone or email is left out."""
+        """About the bot: what it is and how it works, then the company behind it, as payment providers require; an unset phone or email is left out."""
         from operations.integrations import COMPANY_FIELDS,company_details
         await sync_to_async(set_prompt)(account)
         company=await sync_to_async(company_details)()
         details=[f"<b>{text(account,'company_title')}</b>"]+[f"{text(account,'company_'+field)}: {html.escape(company[field])}" for field in COMPANY_FIELDS if company[field]]
-        await render(message,text(account,'guide')+'\n\n'+'\n'.join(details),[[await button(account,'contacts_button','contacts')],[InlineKeyboardButton(text=text(account,'open'),url=await web_url(account))],[await button(account,'home','home')]],edit)
+        about=f"<b>{text(account,'about_bot')}</b>\n{text(account,'about_intro')}\n\n{text(account,'guide')}"
+        await render(message,about+'\n\n'+'\n'.join(details),[[await button(account,'contacts_button','contacts')],[InlineKeyboardButton(text=text(account,'open'),url=await web_url(account))],[await button(account,'home','home')]],edit)
 
     async def account_view(message,account,edit=False):
         await sync_to_async(set_prompt)(account)
