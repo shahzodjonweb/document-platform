@@ -2252,8 +2252,12 @@ def build_dispatcher():
         await render(message,'\n'.join(lines),rows,edit)
 
     async def help_view(message,account,edit=False):
+        """How the bot works, then the company behind it, as payment providers require; an unset phone or email is left out."""
+        from operations.integrations import COMPANY_FIELDS,company_details
         await sync_to_async(set_prompt)(account)
-        await render(message,text(account,'guide'),[[await button(account,'contacts_button','contacts')],[InlineKeyboardButton(text=text(account,'open'),url=await web_url(account))],[await button(account,'home','home')]],edit)
+        company=await sync_to_async(company_details)()
+        details=[f"<b>{text(account,'company_title')}</b>"]+[f"{text(account,'company_'+field)}: {html.escape(company[field])}" for field in COMPANY_FIELDS if company[field]]
+        await render(message,text(account,'guide')+'\n\n'+'\n'.join(details),[[await button(account,'contacts_button','contacts')],[InlineKeyboardButton(text=text(account,'open'),url=await web_url(account))],[await button(account,'home','home')]],edit)
 
     async def account_view(message,account,edit=False):
         await sync_to_async(set_prompt)(account)

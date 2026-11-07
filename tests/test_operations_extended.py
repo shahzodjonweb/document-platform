@@ -93,6 +93,28 @@ def test_invalid_staff_identifier_and_contact_username_fail_safely():
                                'ads':{'username':'pdfmaster_ads','url':'https://t.me/pdfmaster_ads'}}
 
 
+def test_company_details_are_the_certificates_until_changed_and_refuse_malformed_values():
+    from operations.integrations import COMPANY_DEFAULTS, company_details
+    admin,_=staff_client()
+    page=admin.get('/ops/integrations?lang=en').content.decode()
+    assert 'name="company_tin" value="313458514"' in page and 'name="company_phone" value=""' in page
+    form={'integration':'contacts','action':'save','support':'','ads':''}
+    for field,bad,code in (('company_tin','31345851','invalid_company_tin'),('company_tin','3134585141','invalid_company_tin'),
+                           ('company_phone','call us','invalid_company_phone'),('company_phone','+998 90','invalid_company_phone'),
+                           ('company_email','info@','invalid_company_email'),('company_name','<b>Arcanium</b>','invalid_parameters'),
+                           ('company_address','x'*301,'invalid_parameters')):
+        response=admin.post('/ops/integrations',{**form,field:bad})
+        assert response.status_code==200 and code.encode() in response.content, (field,bad)
+    assert company_details()==COMPANY_DEFAULTS and not AuditLog.objects.exists()
+    response=admin.post('/ops/integrations',{**form,'company_tin':'313 458 514','company_phone':' +998 (71) 200-00-00 ','company_email':'info@example.com'})
+    assert response.status_code==302
+    assert company_details()=={**COMPANY_DEFAULTS,'phone':'+998 (71) 200-00-00','email':'info@example.com'}
+    # A form without the company fields keeps them; a name, number or address emptied is the certificate's again.
+    assert admin.post('/ops/integrations',form).status_code==302 and company_details()['phone']=='+998 (71) 200-00-00'
+    assert admin.post('/ops/integrations',{**form,'company_name':'','company_tin':'','company_phone':''}).status_code==302
+    assert company_details()=={**COMPANY_DEFAULTS,'email':'info@example.com'}
+
+
 def test_credentials_are_encrypted_never_rendered_or_audited(settings,monkeypatch):
     client,_=staff_client();token='123456789:'+('A'*32);apikey='sk-unit-test-fixture-never-network'
     response=client.post('/ops/integrations',{'integration':'telegram','action':'save','token':token,'username':'fixture_bot','webapp_url':'http://localhost:3000/en/app','reason':'Configure isolated test fixture without external calls'})

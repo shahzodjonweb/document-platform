@@ -218,10 +218,14 @@ def test_contacts_are_public_tickets_are_gone_and_paid_checkout_disabled():
     from operations.integrations import save_config
     a=account();client=login_client(a)
     assert client.post('/api/v1/support',{'subject':'Help','message':'A task failed.'},content_type='application/json').status_code==404
-    assert Client().get('/api/v1/contacts').json()=={'support':{'username':'','url':''},'ads':{'username':'','url':''}}
-    save_config('contacts',{'support':'@pdfmaster_help','ads':'https://t.me/pdfmaster_ads'})
+    # The company's legal details are the registration certificate's until the admin sets a phone and an email.
+    certificate={'name':'"ARCANIUM TECHNOLOGIES" MCHJ','tin':'313458514',
+                                  'address':'Toshkent shahri, Yunusobod tumani, Qashqar MFY, Markaz 4 mavzesi, 25-uy','phone':'','email':''}
+    assert Client().get('/api/v1/contacts').json()=={'support':{'username':'','url':''},'ads':{'username':'','url':''},'company':certificate}
+    save_config('contacts',{'support':'@pdfmaster_help','ads':'https://t.me/pdfmaster_ads','company_phone':'+998 90 123 45 67','company_email':'info@example.com'})
     assert Client().get('/api/v1/contacts').json()=={'support':{'username':'pdfmaster_help','url':'https://t.me/pdfmaster_help'},
-                                                   'ads':{'username':'pdfmaster_ads','url':'https://t.me/pdfmaster_ads'}}
+                                                   'ads':{'username':'pdfmaster_ads','url':'https://t.me/pdfmaster_ads'},
+                                                   'company':{**certificate,'phone':'+998 90 123 45 67','email':'info@example.com'}}
     # No card configured: nothing is on sale, and a payment request is refused.
     assert client.get('/api/v1/billing/manual').json()['plans']==[]
     response=client.post('/api/v1/billing/manual',{'plan':'premium','amount':1},content_type='application/json')

@@ -228,6 +228,43 @@ def _contact_username(value):
     return value
 
 
+# The company behind the service, which payment providers require on the site
+# and in the bot. The name, taxpayer number (STIR) and address are the state
+# registration certificate's; the phone and the email are set in the admin.
+COMPANY_FIELDS = ('name', 'tin', 'address', 'phone', 'email')
+COMPANY_DEFAULTS = {
+    'name': '"ARCANIUM TECHNOLOGIES" MCHJ', 'tin': '313458514',
+    'address': 'Toshkent shahri, Yunusobod tumani, Qashqar MFY, Markaz 4 mavzesi, 25-uy',
+    'phone': '', 'email': '',
+}
+
+
+def company_details():
+    """The company's legal details, saved with the contacts; a name, number or address left empty is the certificate's."""
+    cfg, _ = read_config('contacts')
+    saved = cfg.get('company') if isinstance(cfg.get('company'), dict) else {}
+    return {field: str(saved.get(field) or COMPANY_DEFAULTS[field]) for field in COMPANY_FIELDS}
+
+
+def _company(values, saved):
+    """The company fields of the contacts form; a field not sent keeps what was saved."""
+    company = {field: ' '.join(str(values.get('company_' + field, saved.get(field, '')) or '').split())
+               for field in COMPANY_FIELDS}
+    company['tin'] = company['tin'].replace(' ', '')
+    # A company's taxpayer number (STIR) has 9 digits.
+    if company['tin'] and not re.fullmatch(r'[0-9]{9}', company['tin']):
+        raise DomainError('invalid_company_tin')
+    phone = company['phone']
+    if phone and not (re.fullmatch(r'\+?[0-9][0-9 ()-]{6,23}', phone) and 9 <= sum(c.isdigit() for c in phone) <= 15):
+        raise DomainError('invalid_company_phone')
+    if company['email']:
+        try: validate_email(company['email'])
+        except ValidationError: raise DomainError('invalid_company_email') from None
+    if len(company['name']) > 160 or len(company['address']) > 300 or any(c in '<>' for c in company['name'] + company['address']):
+        raise DomainError('invalid_parameters')
+    return company
+
+
 _BUCKET = re.compile(r'[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]')
 _STORAGE_KEY = re.compile(r'[A-Za-z0-9/+=_-]{8,128}')
 OBJECT_STORAGE_DEFAULTS = {'endpoint': 'https://usc1.contabostorage.com', 'bucket': 'pdfmaster', 'region': ''}
@@ -542,6 +579,7 @@ def save_config(key, values):
         cfg.update(enabled=enabled)
     elif key == 'contacts':
         cfg.update({kind: _contact_username(values.get(kind, '')) for kind in CONTACT_KINDS})
+        cfg['company'] = _company(values, cfg.get('company') if isinstance(cfg.get('company'), dict) else {})
     elif key == 'pixabay':
         api_key = values.get('pixabay_key', '')
         if not isinstance(api_key, str): raise DomainError('invalid_pixabay_key')

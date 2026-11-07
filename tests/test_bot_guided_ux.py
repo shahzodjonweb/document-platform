@@ -159,6 +159,20 @@ def test_support_shows_the_contacts_and_never_creates_a_ticket():
     assert not SupportTicket.objects.exists()
 
 
+def test_how_it_works_ends_with_the_company_details():
+    """Payment providers require the company's details in the bot: the certificate's, and a phone and an email once set."""
+    from operations.integrations import save_config
+    harness = Harness()
+    harness.command('/help')
+    screen = latest_screen(harness)
+    assert screen.text == UX['en']['guide'] + (
+        '\n\n<b>🏢 Company details</b>\nLegal name: &quot;ARCANIUM TECHNOLOGIES&quot; MCHJ\nTIN (STIR): 313458514\n'
+        'Legal address: Toshkent shahri, Yunusobod tumani, Qashqar MFY, Markaz 4 mavzesi, 25-uy')
+    save_config('contacts', {'company_phone': '+998 90 123 45 67', 'company_email': 'info@example.com'})
+    harness.command('/help')
+    assert latest_screen(harness).text.endswith('25-uy\nPhone: +998 90 123 45 67\nEmail: info@example.com')
+
+
 def test_contacts_not_yet_set_say_so():
     harness = Harness()
     harness.command('/support')

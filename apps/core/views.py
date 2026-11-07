@@ -360,9 +360,9 @@ def artifact_download(request,artifact_id):
 
 @api(('GET',),auth=False)
 def contacts(request):
-    """Where customers reach a person: the support and the ads Telegram accounts."""
-    from operations.integrations import contacts_config
-    return contacts_config()
+    """Where customers reach a person: the support and the ads Telegram accounts, and the company's legal details."""
+    from operations.integrations import company_details, contacts_config
+    return {**contacts_config(), 'company': company_details()}
 
 @api(auth=False)
 def health(request): return {'status':'ok','service':'pdfmaster-platform','api_version':'v1'}
