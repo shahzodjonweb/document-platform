@@ -266,6 +266,25 @@ CONTACT_LABELS = {
            'invalid_contact_username': 'Это не имя пользователя Telegram: 5–32 буквы, цифры или подчёркивания, начиная с буквы.'},
 }
 for language, labels in CONTACT_LABELS.items(): LABELS[language].update(labels)
+# The company's legal details, shown at the end of the web Help page and the bot's How it works.
+COMPANY_LABELS = {
+    'en': {'company': 'Company details', 'company_intro': 'Payment providers require these on the site and in the bot. An empty name, number or address shows the registration certificate’s; an empty phone or email is hidden.',
+           'company_name': 'Legal name', 'company_tin': 'Taxpayer number (STIR)', 'company_address': 'Legal address',
+           'company_phone': 'Phone', 'company_email': 'Email',
+           'invalid_company_tin': 'A STIR has 9 digits.', 'invalid_company_phone': 'That is not a phone number, for example +998 90 123 45 67.',
+           'invalid_company_email': 'That is not an email address.'},
+    'uz': {'company': 'Rekvizitlar', 'company_intro': 'To‘lov tizimlari ularni sayt va botda talab qiladi. Bo‘sh nom, raqam yoki manzil o‘rniga guvohnomadagisi ko‘rsatiladi; bo‘sh telefon yoki pochta ko‘rsatilmaydi.',
+           'company_name': 'Yuridik nomi', 'company_tin': 'STIR (INN)', 'company_address': 'Yuridik manzil',
+           'company_phone': 'Telefon', 'company_email': 'Elektron pochta',
+           'invalid_company_tin': 'STIR 9 ta raqamdan iborat.', 'invalid_company_phone': 'Bu telefon raqami emas, masalan +998 90 123 45 67.',
+           'invalid_company_email': 'Bu elektron pochta manzili emas.'},
+    'ru': {'company': 'Реквизиты', 'company_intro': 'Платёжные системы требуют их на сайте и в боте. Вместо пустого названия, номера или адреса показываются данные из свидетельства; пустые телефон и почта скрыты.',
+           'company_name': 'Юридическое название', 'company_tin': 'ИНН (STIR)', 'company_address': 'Юридический адрес',
+           'company_phone': 'Телефон', 'company_email': 'Эл. почта',
+           'invalid_company_tin': 'ИНН состоит из 9 цифр.', 'invalid_company_phone': 'Это не номер телефона, например +998 90 123 45 67.',
+           'invalid_company_email': 'Это не адрес электронной почты.'},
+}
+for language, labels in COMPANY_LABELS.items(): LABELS[language].update(labels)
 
 
 @require_staff()
@@ -300,8 +319,8 @@ def integrations(request):
             # The card the problem belongs to stays open, with what was typed.
             data['open_integration']=request.POST.get('integration','telegram')
     bot=telegram_config();ai=ai_config();google=google_config();email=email_config();antibot=antibot_config()
-    from .integrations import contacts_config
-    data['contacts']=contacts_config()
+    from .integrations import company_details, contacts_config
+    data['contacts']=contacts_config();data['company']=company_details()
     local_controls=development_access(request)
     # A container-managed bot has a different PID namespace from the API.
     # Do not misreport it as stopped using the local development PID check.

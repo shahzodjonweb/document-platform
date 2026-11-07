@@ -17,6 +17,12 @@
       <label>{{ i.contact_support }}<input name="support" value="{% if contacts.support.username %}@{{ contacts.support.username }}{% endif %}" maxlength="80" spellcheck="false" autocapitalize="none" placeholder="@pdfmaster_support"></label>
       <label>{{ i.contact_ads }}<input name="ads" value="{% if contacts.ads.username %}@{{ contacts.ads.username }}{% endif %}" maxlength="80" spellcheck="false" autocapitalize="none" placeholder="@pdfmaster_ads"></label>
       <small>{{ i.contact_hint }}</small>
+      <p><strong>{{ i.company }}</strong><br><small>{{ i.company_intro }}</small></p>
+      <label>{{ i.company_name }}<input name="company_name" value="{{ company.name }}" maxlength="160"></label>
+      <label>{{ i.company_tin }}<input name="company_tin" value="{{ company.tin }}" maxlength="11" inputmode="numeric"></label>
+      <label>{{ i.company_address }}<input name="company_address" value="{{ company.address }}" maxlength="300"></label>
+      <label>{{ i.company_phone }}<input name="company_phone" value="{{ company.phone }}" maxlength="24" type="tel" placeholder="+998 90 123 45 67"></label>
+      <label>{{ i.company_email }}<input name="company_email" value="{{ company.email }}" maxlength="254" type="email" spellcheck="false" autocapitalize="none"></label>
       <div class="integration-actions"><button class="button primary" name="action" value="save">{{ i.save }}</button></div>
     </form>
   </div>

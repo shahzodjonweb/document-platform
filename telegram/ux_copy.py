@@ -104,6 +104,13 @@ MESSAGES = {
     'contacts_write_ads': ('📣 Write about advertising', '📣 Reklama bo‘yicha yozish', '📣 Написать о рекламе'),
     'contacts_none': ('Contacts will appear here soon.', 'Aloqa ma’lumotlari tez orada shu yerda bo‘ladi.', 'Контакты скоро появятся здесь.'),
     'how_it_works': ('💡 How it works', '💡 Qanday ishlaydi', '💡 Как это работает'),
+    # The company behind the bot, at the end of How it works: payment providers require it.
+    'company_title': ('🏢 Company details', '🏢 Rekvizitlar', '🏢 Реквизиты'),
+    'company_name': ('Legal name', 'Yuridik nomi', 'Юридическое название'),
+    'company_tin': ('TIN (STIR)', 'STIR (INN)', 'ИНН'),
+    'company_address': ('Legal address', 'Yuridik manzil', 'Юридический адрес'),
+    'company_phone': ('Phone', 'Telefon', 'Телефон'),
+    'company_email': ('Email', 'Elektron pochta', 'Эл. почта'),
     'fallback': ('📎 Send a file or use the buttons below.', '📎 Fayl yuboring yoki quyidagi tugmalardan foydalaning.', '📎 Отправьте файл или выберите кнопку ниже.'),
     'unsupported': ('📎 Please send a PDF, JPG, PNG, Word (.docx) or PowerPoint (.pptx) file.', '📎 PDF, JPG, PNG, Word (.docx) yoki PowerPoint (.pptx) fayli yuboring.', '📎 Отправьте PDF, JPG, PNG, Word (.docx) или PowerPoint (.pptx).'),
     'resend': ('✅ Language saved. Send your file again to begin.', '✅ Til saqlandi. Boshlash uchun faylni qayta yuboring.', '✅ Язык сохранён. Отправьте файл ещё раз, чтобы начать.'),
