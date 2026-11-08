@@ -7,6 +7,7 @@ from pypdf import PdfReader,PdfWriter
 from pypdf.annotations import FreeText
 from pypdf.generic import ArrayObject,DecodedStreamObject,DictionaryObject,NameObject,NullObject,NumberObject,StreamObject,TextStringObject
 from reportlab.lib.colors import HexColor
+from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.lib.utils import ImageReader
 from processors import editor
@@ -293,6 +294,8 @@ KINDS={
  'replace_image':{'type':'replace_image','page':2,'image_index':0,'input_index':1},
  'remove_image':{'type':'remove_image','page':3,'image_index':0},
  'redact':{'type':'redact','page':6,**BOX},
+ # Over the page's own words, where the web puts a line's box (0.95 of the size above the baseline, 0.3 below).
+ 'edit_text':{'type':'edit_text','page':1,'x':25,'y':55-.95*14,'width':stringWidth('PAGE-1-WORDS','Helvetica',14),'height':1.25*14,'original':'PAGE-1-WORDS','text':'PAGE-1-EDITED'},
  'whiteout':{'type':'whiteout','page':1,'x':20,'y':400,'width':50,'height':20},
  'rotate_page':{'type':'rotate_page','page':1,'angle':90},
  'delete_page':{'type':'delete_page','page':5},
@@ -300,14 +303,15 @@ KINDS={
 }
 
 
-def test_the_table_covers_every_kind_but_the_one_that_waits():
-    assert set(KINDS)==set(FIELDS)-{'edit_text'}
+def test_the_table_covers_every_kind():
+    assert set(KINDS)==set(FIELDS)
 
 
 @pytest.mark.parametrize('kind',sorted(KINDS))
 def test_each_kind_alone_is_a_job(kind,tmp_path):
     result,reader=run(full_fixture(tmp_path),[KINDS[kind]],tmp_path,[photo(tmp_path)])
-    assert result['metadata']['per_command']==[{'index':0,'status':'applied','engine':'pdfium' if kind=='redact' else 'pypdf'}]
+    # With PdfCraft's switch off (as here) a change to the page's own words is covered and retyped.
+    assert result['metadata']['per_command']==[{'index':0,'status':'applied','engine':{'redact':'pdfium','edit_text':'covered'}.get(kind,'pypdf')}]
     assert len(reader.pages)==(5 if kind=='delete_page' else 6)
 
 
@@ -317,21 +321,25 @@ def test_every_kind_runs_in_one_job(tmp_path):
     assert len(reader.pages)==5 and result['metadata']['rasterized_pages']==[6]
     assert all(row['status']=='applied' for row in result['metadata']['per_command'])
     final=texts(reader)
-    assert final[0].strip()=='' and 'PAGE-4-WORDS' in final[1] and 'PAGE-1-WORDS' in final[4] and 'Yangi matn' in final[4]
+    assert final[0].strip()=='' and 'PAGE-4-WORDS' in final[1] and 'PAGE-1-EDITED' in final[4] and 'Yangi matn' in final[4]
     assert str(reader.get_fields()['name']['/V'])=='Ali' and reader.pages[4].rotation==90
     assert len(reader.pages[2].images)==0 and len(reader.pages[3].images)==1
     assert {str(annotation.get_object()['/Subtype']) for annotation in reader.pages[4]['/Annots']}=={'/Highlight','/Text'}
 
 
-def test_edit_text_waits_for_its_step_and_says_which_change(tmp_path):
-    commands=[KINDS['note'],{'type':'edit_text','page':1,'x':1,'y':1,'width':9,'height':9,'original':'a','text':'b'}]
-    out=tmp_path/'out'
+def test_edit_text_is_applied_and_a_bad_one_says_which_change(tmp_path):
+    commands=[KINDS['note'],KINDS['edit_text']]
+    result,reader=run(source(tmp_path),commands,tmp_path)
+    assert result['metadata']['per_command'][1]=={'index':1,'status':'applied','engine':'covered'} and 'PAGE-1-EDITED' in texts(reader)[0]
+    result=execute_sandbox('editor.visual',[source(tmp_path,name='again.pdf')],{'commands':commands,'combined':True},tmp_path/'sandboxed')
+    assert result['metadata']['per_command'][1]['engine']=='covered'
+    off=[KINDS['note'],{**KINDS['edit_text'],'x':W-5}];out=tmp_path/'off'
     with pytest.raises(ProcessorError) as caught:
-        execute('editor.visual',[source(tmp_path)],{'commands':commands,'combined':True},out)
-    assert caught.value.code=='invalid_editor_command' and caught.value.index==1 and not list(out.iterdir())
+        execute('editor.visual',[source(tmp_path,name='off.pdf')],{'commands':off,'combined':True},out)
+    assert caught.value.code=='editor_out_of_bounds' and caught.value.index==1 and not list(out.iterdir())
     with pytest.raises(ProcessorError) as caught:
-        execute_sandbox('editor.visual',[source(tmp_path,name='again.pdf')],{'commands':commands,'combined':True},tmp_path/'sandboxed')
-    assert caught.value.code=='invalid_editor_command' and caught.value.index==1,'the change at fault crosses out of the child process'
+        execute_sandbox('editor.visual',[source(tmp_path,name='off-again.pdf')],{'commands':off,'combined':True},tmp_path/'off-sandboxed')
+    assert caught.value.code=='editor_out_of_bounds' and caught.value.index==1,'the change at fault crosses out of the child process'
 
 
 @pytest.mark.parametrize('font,style,embedded',[('sans',{},'NotoSans-Regular'),('sans',{'bold':True},'NotoSans-Bold'),('sans',{'italic':True},'NotoSans-Italic'),('serif',{},'NotoSerif-Regular'),('serif',{'bold':True},'NotoSerif-Bold'),('serif',{'italic':True},'NotoSerif-Italic'),('serif',{'bold':True,'italic':True},'NotoSerif-Bold')])

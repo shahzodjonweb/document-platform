@@ -115,6 +115,8 @@
   "invalid_editor_command": "Check the edit type, page, coordinates and content.",
   "send_limit": "Too many sends for now. Please try again a little later.",
   "editor_check_failed": "We could not confirm that a blacked-out area is fully covered, so no file was made. Please try again.",
+  "editor_text_edit_unavailable": "Changing the document's own text is not available right now.",
+  "editor_text_too_long": "Too long for this line. Shorten it, or add the rest as new text.",
   "payload_too_large": "This draft is over its size limit and was not saved. Shorten some text or remove a change.",
   "pack_content_required": "Add questions and source content before creating this material pack.",
   "variant_content_required": "Add enough distinct questions to create separate variants.",

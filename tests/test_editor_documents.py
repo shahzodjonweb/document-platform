@@ -374,14 +374,22 @@ def test_the_web_on_phones_today_keeps_working_on_the_new_document():
     assert client.delete(url).json()=={'deleted':True}
 
 
-def test_a_kind_that_waits_for_its_step_saves_but_fails_the_job_whole():
+def test_a_change_to_the_documents_own_words_saves_and_is_sent_once_its_switch_is_on():
+    from operations.editor_settings import save as save_settings
     a,asset,client,url=opened()
-    commands=[NOTE,{'type':'edit_text','page':1,'x':1,'y':1,'width':9,'height':9,'original':'a','text':'b'}]
+    commands=[NOTE,{'type':'edit_text','page':1,'x':1,'y':1,'width':9,'height':9,'original':'Eski so‘z','text':'Yangi so‘z'}]
+    # Autosave never waits for the switch; the send does, naming the change.
     assert save(client,url,1,commands).status_code==200
+    answer=send(client,url,2)
+    assert refused(answer)==(409,'editor_text_edit_unavailable') and answer.json()['error']['message_params']=={'index':1}
+    save_settings({'text_edit':'true'})
     job=run(client,send(client,url,2),'editor-new-kind-1')
-    assert job.status=='failed' and job.error_code=='invalid_editor_command'
+    assert job.status=='succeeded'
     answer=client.get(f'/api/v1/jobs/{job.id}').json()
-    assert answer['error']['message_params']=={'index':1} and answer['warnings']==[]
+    # PdfCraft's switch is off: covered and retyped, and the job's rows hold numbers and engines, never the words.
+    assert answer['per_command']==[{'index':0,'status':'applied','engine':'pypdf'},{'index':1,'status':'applied','engine':'covered'}] and answer['warnings']==[]
+    held=json.dumps([job.parameters,job.warnings,Quote.objects.get(pk=job.quote_id).parameters],ensure_ascii=False)
+    assert 'so‘z' not in held and 'Eski' not in held
 
 
 def test_a_nul_in_a_field_is_refused_rather_than_breaking_the_database():

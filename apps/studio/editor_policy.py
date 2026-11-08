@@ -24,3 +24,15 @@ def validate_commands_access(account,commands):
         fid=COMMAND_FEATURES.get(command.get('type',command.get('action')))
         if not fid:raise DomainError('invalid_parameters')
         if not allowed(account,fid):raise DomainError('feature_not_in_plan',403)
+def require_text_edit(commands):
+    """Changing a document's own words waits for its switch (/ops/editor, text_edit): refused at a quote and when the job runs, naming the change.
+
+    Never at a save, so a draft's autosave outlives the switch being turned off.
+    The index also rides on the error, where execute_job reads a failed command's.
+    """
+    found=[index for index,command in enumerate(commands if isinstance(commands,list) else []) if isinstance(command,dict) and command.get('type')=='edit_text']
+    if not found:return
+    from operations.integrations import editor_flags
+    if editor_flags()['text_edit']:return
+    error=DomainError('editor_text_edit_unavailable',409,{'index':found[0]});error.index=found[0]
+    raise error

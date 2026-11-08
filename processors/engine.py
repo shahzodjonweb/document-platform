@@ -775,8 +775,11 @@ def _office_pdf(path: Path, feature_id: str, out: Path, metadata: dict, timeout:
 
 def execute(feature_id: str, input_paths: list[str | Path], parameters: dict | None,
             output_dir: str | Path, *, secret: str | None = None, office_timeout: int = 60, deck_fonts: bool = False,
-            office_home: str | None = None) -> dict:
-    """Run one operation. Secret is ephemeral transport-only, never returned."""
+            office_home: str | None = None, pdfcraft: bool = False) -> dict:
+    """Run one operation. Secret is ephemeral transport-only, never returned.
+
+    `pdfcraft` is the editor's switch, decided by the server: whether edit_text may ask PdfCraft.
+    """
     if not isinstance(input_paths, (list, tuple)) or not 1 <= len(input_paths) <= MAX_INPUTS:
         raise ProcessorError('invalid_inputs')
     paths = [_regular_file(path) for path in input_paths]
@@ -825,8 +828,11 @@ def execute(feature_id: str, input_paths: list[str | Path], parameters: dict | N
             details.update(extra)
         elif feature_id in EDITOR_SCHEMAS:
             from .editor import execute as editor_execute
-            artifacts,extra=editor_execute(feature_id,paths,parameters,out,metadata)
+            artifacts,extra=editor_execute(feature_id,paths,parameters,out,metadata,pdfcraft=pdfcraft)
             details.update(extra)
+            if 'pdfcraft' in details['engine']:
+                from .pdfcraft import version
+                details['engine_versions']['pdfcraft']=version()
         elif feature_id == 'pdf.images_to_pdf':
             artifacts, extra = _image_pdf(paths, parameters, out)
             details.update(extra)

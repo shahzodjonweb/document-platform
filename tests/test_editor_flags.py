@@ -4,8 +4,10 @@ import pytest
 from operations.editor_settings import EditorSettingsError,save,validate
 from operations.integrations import EDITOR_BUDGETS,EDITOR_FLAGS,editor_config,editor_flags
 from operations.models import AuditLog,IntegrationConfig
-from apps.core.services import create_quote
-from tests.test_editor_documents import NOTE,opened,quote,run,save as save_draft
+from apps.core.errors import DomainError
+from apps.core.models import Job
+from apps.core.services import create_quote,execute_job
+from tests.test_editor_documents import NOTE,opened,quote,run,save as save_draft,send
 from tests.test_operations import staff_client
 from tests.test_platform import account,login_client
 
@@ -48,6 +50,70 @@ def test_the_generic_route_refuses_an_inline_editor_quote_once_editor_v2_is_on(s
     assert create_quote(a,'editor.visual',[str(asset.id)],{'commands':[NOTE]}),'batches of forms call it themselves'
     assert save_draft(client,url,1,[NOTE]).status_code==200
     assert client.post(url+'/quote',{'version':2,'deliver':'chat'},content_type='application/json').status_code==201,'a pointer is the way in'
+
+
+EDIT={'type':'edit_text','page':1,'x':1,'y':1,'width':9,'height':9,'original':'Eski','text':'Yangi'}
+
+
+def test_text_edit_off_refuses_a_change_to_the_documents_words_at_the_quote_naming_it(settings):
+    settings.DEBUG=True;settings.ENABLE_BETA_TOOLS=True;settings.LOCAL_SYNC_JOBS=True
+    a,asset,client,url=opened()
+    assert save_draft(client,url,1,[NOTE,EDIT]).status_code==200,'a save never waits for the switch'
+    answer=quote(client,url,2)
+    assert answer.status_code==409 and answer.json()['error']['code']=='editor_text_edit_unavailable' and answer.json()['error']['message_params']=={'index':1}
+    answer=send(client,url,2)
+    assert answer.status_code==409 and answer.json()['error']['message_params']=={'index':1}
+    with pytest.raises(DomainError) as caught:create_quote(a,'editor.visual',[str(asset.id)],{'commands':[EDIT]})
+    assert caught.value.code=='editor_text_edit_unavailable' and caught.value.params=={'index':0}
+
+
+def test_text_edit_on_quotes_and_runs_and_off_again_fails_the_waiting_job_naming_the_change(settings):
+    settings.DEBUG=True;settings.ENABLE_BETA_TOOLS=True;settings.LOCAL_SYNC_JOBS=True
+    save({'text_edit':'true'})
+    a,asset,client,url=opened()
+    assert save_draft(client,url,1,[NOTE,EDIT]).status_code==200
+    job=run(client,send(client,url,2),'editor-text-edit-on')
+    assert job.status=='succeeded' and client.get(f'/api/v1/jobs/{job.id}').json()['per_command'][1]=={'index':1,'status':'applied','engine':'covered'}
+    # Quoted while on, run after it was turned off: the job fails whole and says which change.
+    assert save_draft(client,url,2,[EDIT,NOTE]).status_code==200
+    quoted=send(client,url,3)
+    assert quoted.status_code==201,quoted.content
+    settings.LOCAL_SYNC_JOBS=False
+    pending=client.post('/api/v1/jobs',{'quote_id':quoted.json()['id']},content_type='application/json',HTTP_IDEMPOTENCY_KEY='editor-text-edit-off')
+    save({'text_edit':'false'})
+    failed=execute_job(pending.json()['id'])
+    assert failed.status=='failed' and failed.error_code=='editor_text_edit_unavailable'
+    assert client.get(f'/api/v1/jobs/{failed.id}').json()['error']['message_params']=={'index':0}
+
+
+def test_a_job_that_carries_its_own_changes_waits_for_text_edit_when_it_runs_too(settings):
+    settings.DEBUG=True;settings.ENABLE_BETA_TOOLS=True;settings.LOCAL_SYNC_JOBS=False
+    save({'text_edit':'true'})
+    a,asset,client,url=opened()
+    assert save_draft(client,url,1,[NOTE,EDIT]).status_code==200
+    # Today's web: a quote with no `deliver` puts the changes in the job itself, with no stored draft to point at.
+    quoted=quote(client,url,2)
+    assert quoted.status_code==201,quoted.content
+    pending=client.post('/api/v1/jobs',{'quote_id':quoted.json()['id']},content_type='application/json',HTTP_IDEMPOTENCY_KEY='editor-inline-text-edit')
+    assert pending.status_code==201 and 'editor_document_id' not in Job.objects.get(pk=pending.json()['id']).parameters
+    save({'text_edit':'false'})
+    failed=execute_job(pending.json()['id'])
+    assert failed.status=='failed' and failed.error_code=='editor_text_edit_unavailable'
+
+
+def test_the_pdfcraft_switch_reaches_the_processor_and_nothing_else_does(settings,monkeypatch):
+    settings.DEBUG=True;settings.ENABLE_BETA_TOOLS=True;settings.LOCAL_SYNC_JOBS=True
+    from processors import sandbox
+    seen=[];real=sandbox.execute_sandbox
+    monkeypatch.setattr(sandbox,'execute_sandbox',lambda *args,**kwargs:seen.append(kwargs['pdfcraft']) or real(*args,**kwargs))
+    a,asset,client,url=opened()
+    assert save_draft(client,url,1,[NOTE]).status_code==200
+    assert run(client,quote(client,url,2),'editor-pdfcraft-off').status=='succeeded'
+    save({'pdfcraft':'true'})
+    assert save_draft(client,url,2,[NOTE,NOTE]).status_code==200
+    assert run(client,quote(client,url,3),'editor-pdfcraft-on').status=='succeeded'
+    assert run(client,client.post('/api/v1/quotes',{'feature_id':'pdf.rotate','input_ids':[str(asset.id)]},content_type='application/json'),'pdf-rotate-pdfcraft').status=='succeeded'
+    assert seen==[False,True,False],'only an editor job is told, and only what the switch says'
 
 
 def test_the_environment_answers_until_something_is_saved(monkeypatch):
