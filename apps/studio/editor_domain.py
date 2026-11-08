@@ -20,7 +20,7 @@ from apps.core.models import FileAsset,Job,Quote
 from apps.core.policy import POLICY_VERSION,plan_limits
 from apps.core.services import TELEGRAM_ORIGINS,record_event,validate_inputs
 from .domain import GENERATION_IDS,RENDER_IDS,pack,unpack
-from .editor_policy import stored_commands,validate_commands_access
+from .editor_policy import require_text_edit,stored_commands,validate_commands_access
 from .models import EditorDocument,GenerationDraft
 
 DELIVERIES=('chat','download')
@@ -97,6 +97,7 @@ def quote_draft(account,pk,data):
         if any(a.metadata.get('encrypted') for a in assets):raise DomainError('unlock_first')
         commands=normalized_commands(_sealed(e),assets)
         validate_commands_access(account,commands)
+        require_text_edit(commands)
         overflow=overflowing(commands,assets[0].metadata.get('page_sizes',[]))
         if overflow is not None:raise DomainError('editor_text_overflow',params={'index':overflow})
         raster=raster_pages(commands)
@@ -178,4 +179,5 @@ def parameters_to_run(job,assets):
     with transaction.atomic():
         commands=_pointed_marks(job.account,job.parameters)
     validate_commands_access(job.account,commands)
+    require_text_edit(commands)
     return {'commands':normalized_commands(commands,assets),'accept_rasterization':job.parameters.get('accept_rasterization') is True,'combined':True}

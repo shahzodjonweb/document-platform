@@ -1,6 +1,9 @@
 """Validated PDF editing commands. Coordinates are points from displayed top left.
 
-Existing-text mutation edits real PDF text operands, never draws over old text.
+replace_text edits real PDF text operands. edit_text changes a line in place
+through PdfCraft where a look at the result allows it, and otherwise draws the
+new words where the old stood (processors/text_edit.py): over the old ones,
+painted out, only when PdfCraft could not take them out.
 Redaction from a command list sent whole rasterizes every page and copies no
 original PDF objects; a stored draft's send (`combined`) rasterizes only the
 pages with a box and removes what else could carry them (see _pipeline).
@@ -22,8 +25,8 @@ FEATURE_COMMANDS={
 }
 # A kind with no narrower feature of its own (the page operations) belongs to editor.visual.
 COMMAND_FEATURES={command:'editor.visual' for command in FEATURE_COMMANDS['editor.visual']}|{command:feature for feature,commands in FEATURE_COMMANDS.items() if feature!='editor.visual' for command in commands}
-# In the contract, and refused by execute until a stage can apply it.
-UNAPPLIED_COMMANDS={'edit_text'}
+# In the contract, and refused by execute until a stage can apply it. None today.
+UNAPPLIED_COMMANDS=set()
 PAGE_COMMANDS={'rotate_page','delete_page','reorder'}
 SCHEMAS={feature:{'type':'object','additionalProperties':False,'properties':{
  'commands':{'type':'array','minItems':1,'maxItems':100,'items':{'type':'object','description':'Validated PDF command; coordinates use top-left PDF points'}},
@@ -227,6 +230,14 @@ def _overlay(page,command,image_path=None):
         for index,line in enumerate(lines):canvas.drawString(command['x'],height-command['y']-size-index*size*1.3,line)
     elif command['type']=='whiteout':
         canvas.setFillColor(HexColor(command['color']));canvas.rect(command['x'],height-command['y']-command['height'],command['width'],command['height'],fill=1,stroke=0)
+    elif command['type']=='retype':
+        # edit_text's words where the old stood (text_edit.overlay): never a caller's kind, so its baseline, size and face are exact.
+        if command['cover']:canvas.setFillColor(HexColor(command['cover']));canvas.rect(command['x'],height-command['y']-command['height'],command['width'],command['height'],fill=1,stroke=0)
+        if command['text']:
+            canvas.setFillColor(HexColor(command['color']));canvas.setFont(_font(command['font'],command['bold']),command['size'])
+            # Narrowed (below 1) only when even the smallest size would reach the next words.
+            words=canvas.beginText(command['left'],height-command['baseline']);words.setHorizScale(100*command['narrow']);words.textOut(command['text'])
+            canvas.saveState();canvas.drawText(words);canvas.restoreState()
     elif command['type']=='draw':
         canvas.setStrokeColor(HexColor(command['color']));canvas.setLineWidth(command['stroke_width'])
         path=canvas.beginPath();path.moveTo(command['points'][0][0],height-command['points'][0][1])
@@ -541,7 +552,7 @@ def _mark(writer,command,paths):
     """The pypdf stage for one mark, at the file's own page: returns how many words it replaced."""
     from pypdf.annotations import Highlight,Text
     kind=command['type'];page=writer.pages[command['page']-1];width,height=_geometry(page,command)
-    if kind in ('add_text','draw','whiteout'):_overlay(page,command)
+    if kind in ('add_text','draw','whiteout','retype'):_overlay(page,command)
     elif kind in ('insert_image','signature'):_overlay(page,command,paths[command['input_index']])
     elif kind=='replace_text':return _replace_text(page,command,writer)
     elif kind in ('replace_image','remove_image'):_replace_image(page,command,writer,paths[command['input_index']] if 'input_index' in command else None)
@@ -606,13 +617,15 @@ def _unturned(writer,page,seen,copies):
     page.transfer_rotation_to_content()
 
 
-def _pipeline(paths,commands,out):
+def _pipeline(paths,commands,out,edited=None):
     """One file from everything a draft holds. Every stage reads source page numbers: page operations come last.
 
-    (1) the pypdf stage draws each mark, (2) the raster stage turns the pages
-    with black-out boxes to pictures, (3) the page stage rotates, deletes and
-    orders. Then the file is written and looked at. A page blacked out or
-    deleted takes with it whatever else in the file could repeat it.
+    (0) the text stage (`edited`, text_edit.stage) has changed the document's own
+    words already, and `paths[0]` is its file; (1) the pypdf stage draws each
+    mark, the words it retyped or covered among them, (2) the raster stage turns
+    the pages with black-out boxes to pictures, (3) the page stage rotates,
+    deletes and orders. Then the file is written and looked at. A page blacked
+    out or deleted takes with it whatever else in the file could repeat it.
     """
     from .engine import _pdf_reader,_share_identical_objects,_write_pdf,ProcessorError
     reader=_pdf_reader(paths[0],allow_forms=True)
@@ -621,14 +634,18 @@ def _pipeline(paths,commands,out):
     for page in writer.pages:
         if page.rotation:_unturned(writer,page,seen,copies)
     deleted=_deleted(commands);raster=raster_pages(commands)
-    rows=[{'index':index,'status':'skipped' if command['type']!='delete_page' and command.get('page') in deleted else 'applied','engine':'pdfium' if command['type']=='redact' else 'pypdf'} for index,command in enumerate(commands)]
+    engines=edited.engines if edited else {}
+    rows=[{'index':index,'status':'skipped' if command['type']!='delete_page' and command.get('page') in deleted else 'applied','engine':'pdfium' if command['type']=='redact' else engines.get(index,'pypdf')} for index,command in enumerate(commands)]
     replacements=0;form_values={}
-    for command in commands:
+    for index,command in enumerate(commands):
         kind=command['type']
         if kind=='fill_form':form_values[command['field']]=command['value']
         elif kind in PAGE_COMMANDS or command['page'] in deleted:continue
         # A box is drawn at the raster stage, on a page that must be as simple as any mark asks.
         elif kind=='redact':_geometry(writer.pages[command['page']-1],command)
+        # The words themselves were changed by the text stage; what it retyped or covered is drawn here, in its turn.
+        elif kind=='edit_text':
+            for mark in edited.overlays.get(index,()):_mark(writer,mark,paths)
         else:replacements+=_mark(writer,command,paths)
     if form_values:_fill_forms(writer,form_values)
     # What each page to go could draw, read before it goes.
@@ -658,15 +675,23 @@ def _pipeline(paths,commands,out):
     warnings=[]
     if replacements:warnings.append('existing_text_simple_standard_fonts_only')
     engine='pypdf/reportlab/pdfium' if raster else 'pypdf/reportlab'
+    if edited and edited.pdfcraft:engine='pdfcraft/'+engine
     artifact['metadata']={'engine':engine,'rasterized_pages':raster}
     return [artifact],{'engine':engine,'warnings':warnings,'text_replacements':replacements,'command_features':sorted({COMMAND_FEATURES[c['type']] for c in commands}),'per_command':rows,'rasterized_pages':raster}
 
 
-def execute(feature,paths,parameters,out,metadata):
+def execute(feature,paths,parameters,out,metadata,pdfcraft=False):
+    """`pdfcraft` is the server's switch (/ops/editor), never a parameter: whether edit_text may ask PdfCraft at all."""
+    import tempfile
     from .engine import ProcessorError
+    from .text_edit import stage
     commands=parameters['commands']
     for index,command in enumerate(commands):
         if command['type'] in UNAPPLIED_COMMANDS:raise ProcessorError('invalid_editor_command',index=index)
     # A list sent whole holds nothing but black-out, and today's web has promised every page as a picture.
     if not parameters.get('combined') and any(c['type']=='redact' for c in commands):return _redact(paths[0],commands,out)
-    return _pipeline(paths,commands,out)
+    if not any(c['type']=='edit_text' for c in commands):return _pipeline(paths,commands,out)
+    # PdfCraft's root: the job's private output folder holds it, and it goes with the stage's working files once the file is written.
+    with tempfile.TemporaryDirectory(prefix='pdfcraft-',dir=out) as root:
+        edited=stage(paths[0],commands,Path(root),pdfcraft)
+        return _pipeline([edited.path,*paths[1:]],commands,out,edited)

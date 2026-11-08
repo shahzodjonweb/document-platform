@@ -115,6 +115,8 @@
   "invalid_editor_command": "Tahrir turi, sahifa, koordinata va matnni tekshiring.",
   "send_limit": "Hozircha juda ko‘p yuborildi. Birozdan keyin qayta urinib ko‘ring.",
   "editor_check_failed": "Qora bilan yopilgan joy to‘liq yopilganini tasdiqlay olmadik, shuning uchun fayl yaratilmadi. Qayta urinib ko‘ring.",
+  "editor_text_edit_unavailable": "Hujjatning o‘z matnini o‘zgartirish hozircha mavjud emas.",
+  "editor_text_too_long": "Bu qator uchun juda uzun. Qisqartiring yoki qolganini yangi matn sifatida qo‘shing.",
   "payload_too_large": "Bu qoralama hajm chegarasidan oshdi va saqlanmadi. Matnni qisqartiring yoki bitta o‘zgarishni olib tashlang.",
   "pack_content_required": "Materiallar to‘plamini yaratishdan oldin savollar va manba matnini kiriting.",
   "variant_content_required": "Alohida variantlar uchun yetarli turli savollar kiriting.",

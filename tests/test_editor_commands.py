@@ -1,5 +1,6 @@
 """The command contract: what normalize accepts of each kind, and that nothing half-applies a kind no worker can do yet."""
 import pytest
+from processors import editor
 from processors.editor import COMMAND_FEATURES,FEATURE_COMMANDS,FIELDS,execute,normalize
 from processors.engine import ProcessorError
 from apps.studio import editor_policy
@@ -176,10 +177,15 @@ def test_redact_text_is_optional():
     refused({'type':'redact',**BOX,'text':7})
 
 
-@pytest.mark.parametrize('kind',['edit_text'])
-def test_a_kind_no_worker_can_apply_yet_stops_the_job_before_anything_is_written(kind,tmp_path):
+def test_every_kind_in_the_contract_is_applied_now():
+    assert not editor.UNAPPLIED_COMMANDS
+
+
+def test_a_kind_no_worker_can_apply_yet_stops_the_job_before_anything_is_written(tmp_path,monkeypatch):
+    # The guard stays for the next kind the contract names before a stage can apply it.
+    monkeypatch.setattr(editor,'UNAPPLIED_COMMANDS',{'edit_text'})
     with pytest.raises(ProcessorError) as caught:
-        execute('editor.visual',[tmp_path/'never-opened.pdf'],{'commands':[EXAMPLES['note'],run(EXAMPLES[kind])[0]]},tmp_path,[])
+        execute('editor.visual',[tmp_path/'never-opened.pdf'],{'commands':[EXAMPLES['note'],run(EXAMPLES['edit_text'])[0]]},tmp_path,[])
     assert caught.value.code=='invalid_editor_command' and caught.value.index==1 and not list(tmp_path.iterdir())
 
 

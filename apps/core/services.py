@@ -215,8 +215,9 @@ def create_quote(account, feature_id, input_ids, parameters, secret_id=None):
     require_channels(account)
     assets = validate_inputs(account,feature_id,input_ids)
     if feature_id.startswith('editor.'):
-        from apps.studio.editor_policy import validate_commands_access
+        from apps.studio.editor_policy import require_text_edit,validate_commands_access
         validate_commands_access(account,parameters.get('commands',[]))
+        require_text_edit(parameters.get('commands',[]))
     if feature_id in ('pdf.protect','pdf.unlock_known'):
         from .secrets import get_secret
         if feature_id == 'pdf.unlock_known':
@@ -426,11 +427,18 @@ def execute_job(job_id):
             result = execute_render(job,output_dir)
         else:
             from processors.sandbox import execution_timeout
+            from operations.integrations import editor_flags
             parameters = job.parameters
             if pointed:
                 from apps.studio.editor_domain import parameters_to_run
                 parameters = parameters_to_run(job,assets)
-            result = execute(job.feature_id,input_paths,parameters,output_dir,secret=secret,timeout=execution_timeout(job.feature_id,len(input_paths)),deck_fonts=_is_our_deck(job))
+            elif job.feature_id.startswith('editor.'):
+                # A job that carries its changes itself (a quote without a stored draft) waits for the switch as a draft's send does.
+                from apps.studio.editor_policy import require_text_edit
+                require_text_edit(parameters.get('commands',[]))
+            # Whether edit_text may ask PdfCraft: the switch as it stands when the job runs.
+            pdfcraft = job.feature_id.startswith('editor.') and editor_flags()['pdfcraft']
+            result = execute(job.feature_id,input_paths,parameters,output_dir,secret=secret,timeout=execution_timeout(job.feature_id,len(input_paths)),deck_fonts=_is_our_deck(job),pdfcraft=pdfcraft)
         secret=None
         # A photo whose scan failed is kept as uploaded and the job succeeds;
         # the child's own log is discarded, so the worker log records it.

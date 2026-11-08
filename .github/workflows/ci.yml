@@ -125,6 +125,28 @@ jobs:
         with:
           path: ~/.cache/pdfmaster-scanner-models
           key: scanner-models-${{ hashFiles('processors/scanner/models.json') }}
+      # PdfCraft's Linux build (pinned in manifest.json), so the tests that edit
+      # real text run on the OS production runs it on. From the Actions cache;
+      # runners fetch it from our release mirror only when the manifest changes.
+      - name: Restore PdfCraft
+        id: pdfcraft
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pdfmaster-pdfcraft
+          key: pdfcraft-${{ hashFiles('processors/pdfcraft/manifest.json') }}
+      - name: Fetch PdfCraft
+        timeout-minutes: 10
+        run: |
+          echo "PDFMASTER_PDFCRAFT_BIN=$HOME/.cache/pdfmaster-pdfcraft/pdfcraft-cli" >> "$GITHUB_ENV"
+          python scripts/fetch_pdfcraft.py --dest "$HOME/.cache/pdfmaster-pdfcraft"
+      - name: Cache PdfCraft
+        if: steps.pdfcraft.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        # The first runner to save this release stores it; the rest find it taken.
+        continue-on-error: true
+        with:
+          path: ~/.cache/pdfmaster-pdfcraft
+          key: pdfcraft-${{ hashFiles('processors/pdfcraft/manifest.json') }}
       - run: pip install -r requirements.lock
       - run: python manage.py check
       - run: python manage.py makemigrations --check --dry-run
