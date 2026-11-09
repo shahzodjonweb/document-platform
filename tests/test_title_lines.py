@@ -147,6 +147,16 @@ ASKED = {
     'a block that ends where the request goes on': (
         "Inflyatsiya.\nBirinchi betiga:\nTayyorladi: Ergasheva Malika\nQabul qildi: Xolmatova Sevara\nIngliz tilida",
         ['Tayyorladi: Ergasheva Malika', 'Qabul qildi: Xolmatova Sevara']),
+    # A technical college and a gymnasium are schools as a "maktab" and a "лицей" are.
+    'a technical college under the byline': ('Fizika fanidan taqdimot. Titul sahifaga yoz:\nBajardi: Aliyev Vali\nToshkent 1-son texnikumi',
+                                             ['Bajardi: Aliyev Vali', 'Toshkent 1-son texnikumi']),
+    'a gymnasium under the byline': ('Презентация по физике. На титульный лист:\nВыполнила: Петрова А.\nГимназия №1',
+                                     ['Выполнила: Петрова А.', 'Гимназия №1']),
+    'a technical college student after the byline': ('Tayyorladi: Aliyev Vali, Samarqand pedagogika texnikumi talabasi',
+                                                     ['Tayyorladi: Aliyev Vali, Samarqand pedagogika texnikumi talabasi']),
+    'a technical college student after where it goes': ('Birinchi slaydga yoz: Aliyev Vali, Toshkent 1-son texnikumi talabasi',
+                                                        ['Aliyev Vali, Toshkent 1-son texnikumi talabasi']),
+    'a gymnasium pupil after the byline': ('Выполнил: Иванов И., ученик гимназии №1', ['Выполнил: Иванов И., ученик гимназии №1']),
 }
 
 # Roles with nothing saying "title page" are left to the model, as before: a cast, a fact list or a lesson
@@ -402,6 +412,104 @@ def test_the_models_own_version_of_a_line_is_never_doubled():
     data = created('Tarix 10 slayd. Tayyorladi: Karimova Dilnoza. Qabul qildi: Rashidova Malika')
     assert cover(title_lines.apply(data, deck('Tarix\nTayyorladi: Karimova Dilnoza va Rashidova Malika'))) == (
         'Tarix\nTayyorladi: Karimova Dilnoza\nQabul qildi: Rashidova Malika')
+
+
+def test_tuzdi_labels_who_made_it_as_tayyorladi_does():
+    # The model's "Tuzdi:" line is the customer's line for who made it, never a second byline beside it.
+    data = created("Tarix 10 slayd. Tayyorladi: Karimova Dilnoza")
+    for body in ('Tarix\nTuzdi: Karimova D.', 'Tarix\nTuzdi: ______', 'Tarix\nТузди: Каримова Д.'):
+        assert cover(title_lines.apply(data, deck(body))) == 'Tarix\nTayyorladi: Karimova Dilnoza', body
+    assert title_lines._role('Tuzdi: Aliyev Vali') == title_lines._role('Tayyorladi: Aliyev Vali') == 'made'
+
+
+def test_a_plural_label_before_its_colon_or_dash_says_who_as_the_singular_does():
+    # The web's Cover sheet reads these so (useDeckCover DASHED): the model's line is the customer's, never a second one.
+    data = created("Tarix 10 slayd. Tayyorladi: Karimova Dilnoza")
+    for body in ('Tarix\nTuzdilar: Karimova D.', 'Tarix\nTuzuvchilar: Karimova D.', 'Tarix\nIjrochilar – Karimova D.'):
+        assert cover(title_lines.apply(data, deck(body))) == 'Tarix\nTayyorladi: Karimova Dilnoza', body
+    for line in ('Tuzuvchilar – Aliyev Vali', 'Ijrochilar - Aliyev Vali', 'Tuzuvchisi: Aliyev Vali', 'Authors – A. Aliyev',
+                 'Authors: A. Aliyev'):
+        assert title_lines._role(line) == 'made', line
+    for line in ('Teachers – A. Aliyev', 'Supervisors - A. Aliyev', 'Instructors – A. Aliyev', 'Lecturers – A. Aliyev', 'Tutors - A. Aliyev'):
+        assert title_lines._role(line) == 'teacher', line
+    # A class or course noun before a teacher's is that teacher's label, as on the web, not the class.
+    for line in ('Sinf rahbari: Sobirova N.', 'Guruh rahbari: Sobirova N.', 'Kurs ishi rahbari: Sobirova N.', 'Class teacher: Ms. Brown',
+                 'Course instructor: Ms. Brown', 'Group supervisor: Ms. Brown'):
+        assert title_lines._role(line) == 'teacher', line
+    assert [title_lines._role(line) for line in ('Guruh: 305-22', 'Sinf: 9-B', 'Course: 2')] == ['group', 'class', 'course']
+    # Before a space, or made into another word, they are words of a subtitle, which a change naming who did it leaves as it is.
+    for line in ('Ijrochilik sanʼati', 'Authority of the state', 'Tutorial on cells', 'School Year 2025-2026', 'Tutorial: Cells and tissues',
+                 'Excel Tutorial: Pivot tables', 'Tutorial – Cells', 'Authorities – who makes the law', 'Authorship: a history'):
+        assert title_lines._role(line) is None, line
+    for request, line in (('Teacher: Fixture Teacher', 'Tutorial on cells'), ('Prepared by: Fixture Pupil', 'Authority of the state'),
+                          ('Teacher: Fixture Teacher', 'Excel Tutorial: Pivot tables'),
+                          ('Prepared by: Fixture Pupil', 'Authorities – who makes the law')):
+        data = changed(f'Write on the first slide: {request}', locale='en')
+        assert cover(title_lines.apply(data, deck(f'Photosynthesis\n{line}'))) == f'Photosynthesis\n{line}\n{request}'
+    # A person noun's possessive is its label too; a piece of work named after a class noun is no class.
+    for line, role in (("Teacher's name: Ms. Brown", 'teacher'), ('Supervisor’s name: Ms. Brown', 'teacher'),
+                       ("Student's full name: A. Aliyev", 'student'), ("Author's name: A. Aliyev", 'made'),
+                       ('KURS ISHI', None), ('Kurs ishi mavzusi: Bozor iqtisodiyoti', None), ('Group project: Solar system', None),
+                       ('Kurs ishi rahbari: Sobirova N.', 'teacher'), ('Kurs: 2', 'course')):
+        assert title_lines._role(line) == role, line
+
+
+def test_a_change_naming_a_teacher_again_takes_a_line_for_that_post_that_names_someone():
+    # A class's own teacher is not the subject's: a change adding one keeps the other, either way round.
+    data = changed('Titul sahifaga yoz:\nSinf rahbari: Sobirova N.')
+    assert cover(title_lines.apply(data, deck('Tarix\nBajardi: Karimova Dilnoza\nFan oʻqituvchisi: Rasulova M.'))) == (
+        'Tarix\nBajardi: Karimova Dilnoza\nFan oʻqituvchisi: Rasulova M.\nSinf rahbari: Sobirova N.')
+    data = changed('Titul sahifaga yoz:\nO‘qituvchi: Saidova N.')
+    assert cover(title_lines.apply(data, deck('Tarix\nBajardi: Karimova Dilnoza\nSinf rahbari: Sobirova N.'))) == (
+        'Tarix\nBajardi: Karimova Dilnoza\nSinf rahbari: Sobirova N.\nO‘qituvchi: Saidova N.')
+    # The same post is still that person's line, and a course paper's supervisor is a subject's.
+    data = changed('Titul sahifaga yoz:\nIlmiy rahbar: Saidova N.')
+    assert cover(title_lines.apply(data, deck('Tarix\nBajardi: Karimova Dilnoza\nKurs ishi rahbari: Rasulova M.'))) == (
+        'Tarix\nBajardi: Karimova Dilnoza\nIlmiy rahbar: Saidova N.')
+    # A title that only opens with the noun names no one, so it stays: "Sinf rahbari soati", "Authors – …".
+    data = changed('Titul sahifaga yoz:\nSinf rahbari: Sobirova N.')
+    assert cover(title_lines.apply(data, deck('Sinf rahbari soati\n9-B sinf'))) == (
+        'Sinf rahbari soati\n9-B sinf\nSinf rahbari: Sobirova N.')
+    data = changed('Write on the first slide:\nPrepared by: Fixture Pupil', locale='en')
+    assert cover(title_lines.apply(data, deck('Authors – voices of the 20th century\nPrepared by: Karimova Dilnoza'))) == (
+        'Authors – voices of the 20th century\nPrepared by: Fixture Pupil')
+    # A labelled line for the post is that person's whatever its words: a name the reader knows or not, or none.
+    model = 'Photosynthesis\nPrepared by: Emily Brown\nTeacher: Ms. Green'
+    data = changed('Write on the first slide:\nPrepared by: Fixture Pupil', locale='en')
+    assert cover(title_lines.apply(data, deck(model))) == 'Photosynthesis\nPrepared by: Fixture Pupil\nTeacher: Ms. Green'
+    data = changed('Write on the first slide:\nTeacher: Fixture Teacher', locale='en')
+    assert cover(title_lines.apply(data, deck(model))) == 'Photosynthesis\nPrepared by: Emily Brown\nTeacher: Fixture Teacher'
+    data = changed('Titul sahifaga yoz:\nTayyorladi: Karimova Dilnoza')
+    assert cover(title_lines.apply(data, deck('Tarix\nTayyorladi: 9-B sinf oʻquvchisi\nQabul qildi: Rasulova M.'))) == (
+        'Tarix\nTayyorladi: Karimova Dilnoza\nQabul qildi: Rasulova M.')
+    # A noun label may be whom the deck is about, not who made it: the byline goes, the author stays.
+    data = changed('Titul sahifaga yoz:\nTayyorladi: Karimova Dilnoza')
+    assert cover(title_lines.apply(data, deck('Abdulla Qodiriy ijodi\nMuallif: Abdulla Qodiriy\nBajardi: Aliyev Vali'))) == (
+        'Abdulla Qodiriy ijodi\nMuallif: Abdulla Qodiriy\nTayyorladi: Karimova Dilnoza')
+    data = changed('Write on the first slide:\nPrepared by: Fixture Pupil', locale='en')
+    assert cover(title_lines.apply(data, deck('Matilda\nAuthor: Roald Dahl'))) == (
+        'Matilda\nAuthor: Roald Dahl\nPrepared by: Fixture Pupil')
+    assert cover(title_lines.apply(data, deck('Matilda\nAuthor: Roald Dahl\nDone by: Emily Brown'))) == (
+        'Matilda\nAuthor: Roald Dahl\nPrepared by: Fixture Pupil')
+    data = changed('Titul sahifaga yoz:\nO‘qituvchi: Saidova N.')
+    assert cover(title_lines.apply(data, deck('Amir Temur davlati\nDavlat rahbari: Amir Temur\nBajardi: Karimova Dilnoza'))) == (
+        'Amir Temur davlati\nDavlat rahbari: Amir Temur\nBajardi: Karimova Dilnoza\nO‘qituvchi: Saidova N.')
+    # Another word for the same post is still that person's line: "Ustoz:" for "O‘qituvchi:", "Reviewed by" for "Checked by".
+    assert cover(title_lines.apply(data, deck('Fizika\nBajardi: Karimova Dilnoza\nUstoz: Kim Viktoriya'))) == (
+        'Fizika\nBajardi: Karimova Dilnoza\nO‘qituvchi: Saidova N.')
+    data = changed('Write on the first slide:\nChecked by: Fixture Teacher', locale='en')
+    assert cover(title_lines.apply(data, deck('Photosynthesis\nCompleted by: Emily Brown\nReviewed by: Ms. Green'))) == (
+        'Photosynthesis\nCompleted by: Emily Brown\nChecked by: Fixture Teacher')
+    # Of two, the one with the same label goes, wherever it stands.
+    data = changed('Write on the first slide:\nPrepared by: Fixture Pupil', locale='en')
+    assert cover(title_lines.apply(data, deck('Photosynthesis\nCompleted by: Emily Brown\nPrepared by: James Lee'))) == (
+        'Photosynthesis\nCompleted by: Emily Brown\nPrepared by: Fixture Pupil')
+
+
+def test_an_academy_named_on_the_title_page_is_a_line_of_its_own():
+    for prompt in ('Physics deck, 8 slides. Title page: Tashkent Medical Academy, Prepared by: Fixture Pupil',
+                   'Physics deck, 8 slides.\nTitle page:\nTashkent Medical Academy\nPrepared by: Fixture Pupil'):
+        assert dictated(prompt) == ['Tashkent Medical Academy', 'Prepared by: Fixture Pupil'], prompt
 
 
 def test_a_dictated_title_page_keeps_its_order_around_the_models_lines():

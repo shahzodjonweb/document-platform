@@ -186,12 +186,19 @@ def me(request):
         if tz:
             if not known_zone(tz): raise DomainError('invalid_timezone')
             a.time_zone=tz
+        fields=['locale','mode','time_zone']
         if 'preferences' in data:
             preferences=data['preferences']
             if not isinstance(preferences,dict) or set(preferences)-{'theme','paper_size','notifications','output_locale','adult_assistance'}: raise DomainError('invalid_profile_fields')
             if not isinstance(preferences.get('adult_assistance',False),bool): raise DomainError('invalid_profile_fields')
-            a.preferences=preferences
-        a.save(update_fields=['locale','mode','time_zone','preferences'])
+            # The cover lines kept for the next decks are no setting (apps/studio/cover_lines.py): a settings save keeps them,
+            # read under the lock remember and forget take, and a save that sends no preferences leaves them all alone.
+            with transaction.atomic():
+                current=Account.objects.select_for_update().filter(pk=a.pk).values_list('preferences',flat=True).first()
+                kept={k:v for k,v in (current if isinstance(current,dict) else {}).items() if k=='cover_lines'}
+                a.preferences={**preferences,**kept}
+                a.save(update_fields=fields+['preferences'])
+        else:a.save(update_fields=fields)
     return account_data(a)
 
 @api(auth=False)

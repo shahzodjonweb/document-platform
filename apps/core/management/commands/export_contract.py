@@ -150,6 +150,19 @@ def extend_schema(models, endpoint, paths):
         endpoint(route,'get',operation,S,description=f'A slide already drawn, {about}, inline. Nothing is drawn for this request: anything else is 404.')
         paths[route]['get']['parameters'].append({'name':'key','in':'path','required':True,'schema':{'type':'string'}})
         paths[route]['get']['responses']['200']={'description':'Private PNG; no-store','content':{'image/png':{'schema':{'type':'string','format':'binary'}}}}
+    cover_lines={**arr({'type':'string','maxLength':160}),'maxItems':8,'description':'Lines as they go on a title slide, label and all ("Tayyorladi: …").'}
+    deck_locale={'enum':['en','uz','ru'],'description':'The language of the deck the lines were written for: their labels are in it.'}
+    cover_roles={**arr({'anyOf':[{'enum':['made','checked','group','school']},{'type':'null'}]}),'maxItems':8}
+    models.update({
+        'CoverLines':obj({'lines':cover_lines,'locale':{'anyOf':[deck_locale,{'type':'null'}],'description':'The language of the deck the lines were written for; null when the client did not say.'},
+                          'roles':{**cover_roles,'description':'One per line, in step with `lines`: the Cover sheet row it was kept from, null where the client did not say.'}},['lines','locale','roles']),
+        'LatinPreview':obj({'texts':arr(S),'changed':B},['texts','changed']),
+    })
+    endpoint('/studio/cover-lines','get','getCoverLines',ref('CoverLines'),description='The cover lines this account asked to keep for its next decks, their language and the row of each; [], null and [] when none. New decks in that language also carry them on their title slide for what neither their description nor their own cover says (who made it, who checks it, the class, the school), in the room the description leaves: a line with a row says that row, one without says what its words do. `feature_unavailable` with the deck editor off.')
+    endpoint('/studio/cover-lines','post','rememberCoverLines',ref('CoverLines'),obj({'lines':cover_lines,'locale':deck_locale,'roles':{**cover_roles,'description':'The Cover sheet row of each line: who made it, who checks it, the class or group, the school; null for a line it does not say. One per line given, a blank line\'s included (it goes with its line); all null without it.'}},['lines']),description='Keep these 1–8 lines of ≤160 characters (packed at rest) for the next decks, with the language of the deck they were written for and the row of each. `invalid_parameters` otherwise, for a language not listed, or for roles that are not one per line or not one of those.')
+    endpoint('/studio/cover-lines','delete','forgetCoverLines',ref('CoverLines'),description='Forget the kept cover lines: answers as a GET with none kept, `{"lines": [], "locale": null, "roles": []}`.')
+    endpoint('/studio/latin','post','previewLatin',ref('LatinPreview'),obj({'texts':{**arr(S),'minItems':1,'maxItems':40}},['texts']),description='Each text in Uzbek Latin letters as a send keeps it (scripts.to_script), at most 12 000 characters in all. Saves nothing.')
+    paths['/generation/drafts/{id}']['patch']['responses']['413']={'description':'`payload_too_large`: a deck draft body over 128 KiB (other drafts: `invalid_request` over 32 KiB). Nothing is saved.','content':{'application/json':{'schema':obj({'error':ref('Error')})}}}
     endpoint('/generation/jobs/{id}/retry-quote','post','quoteGenerationRetry',ref('Quote'),obj({}),code='201',description='Review a fresh quote for an unchanged failed generation. Completed provider batches may be reused only within this explicit retry chain; confirmation and allowance checks still apply.')
     endpoint('/generation/drafts/{id}/generate','post','generateDraft',ref('Job'),obj({'quote_id':UUID},['quote_id']),code='201')
     for path,kind in [('/workflows','Workflow'),('/templates','Template'),('/editor/form-templates','FormTemplate')]:

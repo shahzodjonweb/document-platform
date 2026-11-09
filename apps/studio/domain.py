@@ -30,7 +30,7 @@ GENERATION_IDS={DOCUMENT,SLIDES,CV}
 EXPORT='export.generated_pptx'
 RENDER_IDS={EXPORT}
 # Server-owned fields a client may never send.
-READONLY_FIELDS={'_transcription','transcription_ready','transcription_reviewed','_source_seed','revision','_render','_rebuilt_version'}
+READONLY_FIELDS={'_transcription','transcription_ready','transcription_reviewed','_source_seed','revision','_render','_rebuilt_version','_cover_lines'}
 
 def pack(value): return cipher().encrypt(json.dumps(value,ensure_ascii=False).encode())
 def unpack(value): return json.loads(cipher().decrypt(bytes(value)))
@@ -144,6 +144,7 @@ def draft_data(d):
     data=unpack(d.encrypted_data)
     data.pop('_source_seed',None)
     data.pop('_rebuilt_version',None)
+    data.pop('_cover_lines',None)
     pins=data.pop('_render',None)
     if pins:data['render']=render_data(pins)
     if data.get('revision'):
@@ -262,6 +263,9 @@ def _prepare_draft(account,data,revision_base=None):
     if set(data)&READONLY_FIELDS:raise DomainError('invalid_parameters')
     fid=data.get('feature_id',DOCUMENT);require(account,fid)
     if fid in RENDER_IDS:raise DomainError('feature_unavailable',409)
+    # A deck already drawn (its pins kept) is saved as the deck it is, from what its draft holds: the files it was
+    # made from and its logo are not read or looked for again, and may since have gone (the deck editor's autosave).
+    drawn=revision_base is not None and bool(revision_base.get('_render'))
     # The service decides the format; the client does not get a say. A document
     # is a PDF and a deck is a PowerPoint. The value is still validated so a
     # malformed one is refused rather than silently ignored, and the forcing
@@ -279,7 +283,8 @@ def _prepare_draft(account,data,revision_base=None):
     if len(text)+len(prompt)>limits(account)['source_chars']:raise DomainError('generation_limit')
     ids=data.get('source_ids',data.get('input_ids',[]))
     # A CV reads its files its own way, once its mode is known (below).
-    excerpts=[] if fid==CV else source_excerpts(account,ids)
+    same_sources=drawn and list(ids or [])==list(revision_base.get('source_ids') or [])
+    excerpts=[] if fid==CV else (deepcopy(revision_base.get('excerpts') or []) if same_sources else source_excerpts(account,ids))
     if len(text)+len(prompt)+sum(len(s['text']) for s in excerpts)>limits(account)['source_chars']:raise DomainError('generation_limit')
     options=data.get('options',data.get('parameters',{}))
     # Title lines are the server's own, bounded where they are read: eight long Cyrillic lines alone pass 4000.
@@ -666,7 +671,13 @@ def _prepare_draft(account,data,revision_base=None):
                'cv_template':picked_template}
     options['template_style']=style
     from .branding import prepare_branding
-    options=prepare_branding(account,fid,options)
+    stored_brand=(revision_base or {}).get('options',{}).get('branding') if drawn else None
+    if stored_brand and options.get('branding')==stored_brand:
+        # A drawn deck keeps its logo as it was: a logo deleted since only leaves the logo out of the next file (logo_left_out).
+        from .branding import without_logo
+        checked=prepare_branding(account,fid,without_logo({'options':options})['options'])
+        options={**checked,'branding':{**checked.get('branding',{}),**{k:stored_brand[k] for k in ('logo_asset_id','logo_sha256') if k in stored_brand}}}
+    else:options=prepare_branding(account,fid,options)
     # A CV's portrait: the customer's own JPEG or PNG, pinned; any other service refuses one.
     from .cv.portrait import prepare as prepare_portrait
     # The draft being updated is passed too: its own photo expiring is no reason to refuse the update.
@@ -737,7 +748,8 @@ def _prepare_draft(account,data,revision_base=None):
     if len(payload['excerpts'])>plan_limits(account)['max_ai_source_pages']:raise DomainError('generation_limit')
     # A CV's files were checked when they were read, and its excerpts are what
     # it is made from: they need not still be there (cv/sources.py).
-    if payload['source_ids'] and not cv:owned_assets(account,payload['source_ids'])
+    if payload['source_ids'] and not cv and not (drawn and list(payload['source_ids'])==list(revision_base.get('source_ids') or [])):
+        owned_assets(account,payload['source_ids'])
     if cfg['mode']=='openai':
         enforce_budget(cfg,payload,fid,plan_limits(account)['max_ai_input_tokens'])
     return fid,cfg,payload
@@ -799,6 +811,14 @@ def create_draft(account,data):
         from .cv.content import require_facts
         require_facts(data,fid,payload,refuse=not given)
     elif not given:require_topic(data,fid,payload)
+    if fid==SLIDES and not payload['options'].get('revise_draft_id'):
+        # The lines the customer keeps for their decks' covers go with a new deck, packed with it, for its cover
+        # (title_lines.place, a deck in the language they were kept in): a quote is tied to them as to the rest, and
+        # a change keeps the cover it had. Only while the deck editor is on: its Cover sheet is where they are seen and forgotten.
+        from operations.integrations import editor_flags
+        from .cover_lines import remembered
+        kept=remembered(account)
+        if kept['lines'] and editor_flags()['deck_editor']:payload['_cover_lines']=kept
     return GenerationDraft.objects.create(account=account,feature_id=fid,encrypted_data=pack(payload),provider_mode=cfg['mode'],expires_at=timezone.now()+timedelta(hours=24))
 
 def draft_jobs(account,draft_id,statuses):
@@ -840,8 +860,11 @@ def update_draft(account,draft_id,data):
         # the payload is rebuilt above and would lose it.
         from .cv.content import require_facts
         require_facts(data,CV,payload,refuse=False,retitle=rebuild)
-    # So does a count chosen on the review screen.
-    rebuild=rebuild or payload['options'].get('length')!=original.get('options',{}).get('length')
+    # So does a count chosen on the review screen. A deck already drawn is rebuilt only for a count asked for anew:
+    # its length is the slides it has now, which a count read again from its description is not once slides were
+    # added or removed, and a title or options save would blank it.
+    rebuild=rebuild or (payload['options'].get('length')!=original.get('options',{}).get('length')
+                        and (not original.get('_render') or payload['options'].get('pages')!=original.get('options',{}).get('pages')))
     content=data.get('content',payload['content'] if rebuild and not original.get('revision',{}).get('selected_section_ids') else original['content'])
     # A new deck's outline rebuilt from scratch no longer carries the title lines it was given: they are read again.
     if content is payload['content'] and not payload['options'].get('revise_draft_id'):payload['options'].pop('title_lines',None)
@@ -862,9 +885,10 @@ def update_draft(account,draft_id,data):
     elif not rebuild:
         payload.pop('_source_seed',None)
         if original.get('_source_seed'):payload['_source_seed']=original['_source_seed']
-    if payload.get('revision',{}).get('selected_section_ids'):
+    if payload.get('revision',{}).get('selected_section_ids') and not original.get('_render'):
         # Selected revisions may edit content, but structural changes need the
         # whole-document flow so selected identities cannot silently disappear.
+        # Once drawn, the change is made and the deck is an ordinary one to edit.
         base=payload['revision']['base_content']
         if [s['id'] for s in payload['content']['sections']]!=[s['id'] for s in base['sections']]:
             raise DomainError('invalid_parameters')
@@ -874,6 +898,7 @@ def update_draft(account,draft_id,data):
     # says. An outline rebuilt from scratch is another deck, with nothing drawn
     # yet: the model chooses its look again (execute_outline drops them the same way).
     # A job running now is still drawing the old deck: this version tells it to keep its pins (_write_pins).
+    if original.get('_cover_lines'):payload['_cover_lines']=original['_cover_lines']
     if rebuilt:payload['_rebuilt_version']=d.version+1
     else:
         for key in ('_render','_rebuilt_version'):
