@@ -12,77 +12,109 @@ from aiogram.types import InlineKeyboardButton
 from asgiref.sync import sync_to_async
 from django.utils import timezone
 
+# The rules read as three steps and a ladder of rewards: 1, 2, 3 months for each
+# next five friends (apps/commerce/referrals.months_for). Uzbek says "Plus tarifi",
+# with the month as "1 oylik" before it (months_label).
 COPY = {
     'en': {
         'invite_button': '🎁 Invite friends',
-        'title': '🎁 <b>Invite friends — get Plus free</b>',
-        'rules': 'A friend counts when they open the bot with your link and finish their first task. '
-                 'Every {step} friends earn Plus: 1 month for the first {step}, 2 months for the next {step}, '
-                 'then 3, and so on. Up to {cap} friends count each month.',
-        'link': 'Your link:',
-        'code': 'Your invitation code: <code>{code}</code>',
-        'progress': 'Next reward: <b>{have} of {step}</b> friends → <b>{months}</b> of Plus',
-        'month_full': 'This month’s {cap} friends are counted. New friends count from {day}.',
-        'waiting_month': 'Waiting for next month: {count}',
-        'waiting': 'Joined, no task finished yet: {count}',
-        'earned': 'Earned so far:',
+        'gift_button': '🎁 Free gift',
+        'referrals_button': '👥 My referrals',
+        'title': '🎁 <b>Invite friends — get Plus free!</b>',
+        'rules': '<b>How it works</b>\n'
+                 '1️⃣ Send your link to friends.\n'
+                 '2️⃣ A friend counts once they open the bot with your link and finish their first task.\n'
+                 '3️⃣ Every {step} friends earn you Plus free — and the gift grows each time:\n\n'
+                 '🥉 First {step} friends → <b>1 month</b> of Plus\n'
+                 '🥈 Next {step} friends → <b>2 months</b> of Plus\n'
+                 '🥇 The {step} after that → <b>3 months</b> of Plus\n'
+                 '…and so on!\n\n'
+                 'ℹ️ Up to {cap} friends count each month. The rest count next month — none are lost.',
+        'link': '🔗 <b>Your link:</b>',
+        'code': '🔑 Your invitation code: <code>{code}</code>',
+        'progress': '📊 Next gift: <b>{have} of {step}</b> friends → <b>{months} of Plus</b>',
+        'month_full': '⏳ This month’s {cap} friends are counted. New friends count from {day}.',
+        'waiting_month': '🕓 Counting next month: {count}',
+        'waiting': '👋 Joined, no task finished yet: {count}',
+        'earned': '🏆 <b>Earned so far:</b>',
         'reward_line': '• {months} of Plus — until {date}',
         'share': '📤 Share link',
         'share_text': 'Make PDFs, slides and CVs right in Telegram:',
-        'rewarded': '🎉 {count} friends joined through your link — you get <b>{months} of Plus</b> free!',
+        'rewarded': '🎉 <b>Congratulations!</b> {count} friends joined through your link — '
+                    'you get <b>{months} of Plus</b> free!',
         'active_until': 'Plus is active until {date}.',
         'extended_until': 'Your Plus is extended until {date}.',
         'starts_later': 'It starts after your current plan, on {start}, and lasts until {date}.',
-        'next': 'Invite {step} more friends to get {months}.',
-        'from_invites': '🎁 From inviting friends',
+        'next': '👉 Invite {step} more friends — the next gift is <b>{months} of Plus</b>!',
+        'from_invites': '🎁 A gift for inviting friends',
         'active_label': 'Active until',
     },
     'uz': {
         'invite_button': '🎁 Do‘stlarni taklif qilish',
-        'title': '🎁 <b>Do‘stlarni taklif qiling — Plus bepul</b>',
-        'rules': 'Do‘stingiz botni havolangiz orqali ochib, birinchi vazifasini bajarganda hisobga olinadi. '
-                 'Har {step} do‘st uchun Plus beriladi: birinchi {step} tasi uchun 1 oy, keyingi {step} tasi uchun '
-                 '2 oy, keyin 3 oy va hokazo. Bir oyda {cap} tagacha do‘st hisobga olinadi.',
-        'link': 'Havolangiz:',
-        'code': 'Taklif kodingiz: <code>{code}</code>',
-        'progress': 'Keyingi sovg‘a: <b>{have}/{step}</b> do‘st → <b>{months}</b> Plus',
-        'month_full': 'Bu oy {cap} ta do‘st hisobga olindi. Yangi do‘stlar {day}dan hisoblanadi.',
-        'waiting_month': 'Keyingi oyni kutmoqda: {count}',
-        'waiting': 'Qo‘shilgan, hali vazifa bajarmagan: {count}',
-        'earned': 'Olingan sovg‘alar:',
-        'reward_line': '• {months} Plus — {date} gacha',
-        'share': '📤 Havolani ulashish',
-        'share_text': 'PDF, slayd va rezyumelarni Telegramda tayyorlang:',
-        'rewarded': '🎉 Havolangiz orqali {count} ta do‘st qo‘shildi — sizga <b>{months} Plus</b> bepul!',
-        'active_until': 'Plus {date} gacha faol.',
+        'gift_button': '🎁 Bepul sovg‘a',
+        'referrals_button': '👥 Referallarim',
+        'title': '🎁 <b>Do‘stlaringizni taklif qiling va Plus tarifini bepul oling!</b>',
+        'rules': '<b>Qanday ishlaydi?</b>\n'
+                 '1️⃣ Havolangizni do‘stlaringizga yuboring.\n'
+                 '2️⃣ Do‘stingiz botni shu havola orqali ochib, birinchi vazifasini bajarsa, u hisobga olinadi.\n'
+                 '3️⃣ Har {step} ta do‘st uchun Plus tarifini bepul olasiz — sovg‘a har safar kattaroq:\n\n'
+                 '🥉 Dastlabki {step} ta do‘st → <b>1 oylik</b> Plus tarifi\n'
+                 '🥈 Keyingi {step} ta do‘st → <b>2 oylik</b> Plus tarifi\n'
+                 '🥇 Undan keyingi {step} ta do‘st → <b>3 oylik</b> Plus tarifi\n'
+                 '…va hokazo!\n\n'
+                 'ℹ️ Har oy {cap} tagacha do‘st hisobga olinadi. Qolganlari keyingi oyga o‘tadi — '
+                 'hech biri behuda ketmaydi.',
+        'link': '🔗 <b>Sizning havolangiz:</b>',
+        'code': '🔑 Taklif kodingiz: <code>{code}</code>',
+        'progress': '📊 Keyingi sovg‘a: <b>{have}/{step}</b> do‘st → <b>{months} Plus tarifi</b>',
+        'month_full': '⏳ Bu oy uchun {cap} ta o‘rin to‘ldi. Yangi do‘stlar {day}dan boshlab hisobga olinadi.',
+        'waiting_month': '🕓 Keyingi oyda hisobga olinadi: {count} ta do‘st',
+        'waiting': '👋 Qo‘shildi, lekin hali vazifa bajarmadi: {count} ta do‘st',
+        'earned': '🏆 <b>Olgan sovg‘alaringiz:</b>',
+        'reward_line': '• {months} Plus tarifi — {date} gacha',
+        'share': '📤 Do‘stlarga ulashish',
+        'share_text': 'PDF, slayd va rezyumelarni to‘g‘ridan-to‘g‘ri Telegramda tayyorlang:',
+        'rewarded': '🎉 <b>Tabriklaymiz!</b> Havolangiz orqali {count} ta do‘st qo‘shildi — '
+                    'sizga <b>{months} Plus tarifi</b> sovg‘a qilindi!',
+        'active_until': 'Plus tarifi {date} gacha faol.',
         'extended_until': 'Plus tarifingiz {date} gacha uzaytirildi.',
-        'starts_later': 'U joriy tarifingizdan keyin, {start} kuni boshlanadi va {date} gacha davom etadi.',
-        'next': 'Yana {step} ta do‘st taklif qiling va {months} oling.',
-        'from_invites': '🎁 Do‘stlarni taklif qilganingiz uchun',
-        'active_label': 'Faol muddati',
+        'starts_later': 'Sovg‘a joriy tarifingiz tugagach, {start} kuni boshlanadi va {date} gacha amal qiladi.',
+        'next': '👉 Yana {step} ta do‘st taklif qiling — keyingi sovg‘a: <b>{months} Plus tarifi</b>!',
+        'from_invites': '🎁 Do‘stlarni taklif qilganingiz uchun sovg‘a',
+        'active_label': 'Amal qilish muddati',
     },
     'ru': {
         'invite_button': '🎁 Пригласить друзей',
-        'title': '🎁 <b>Пригласите друзей — получите Plus бесплатно</b>',
-        'rules': 'Друг засчитывается, когда откроет бота по вашей ссылке и выполнит первую задачу. '
-                 'Каждые {step} друзей дают Plus: 1 месяц за первых {step}, 2 месяца за следующих {step}, '
-                 'затем 3 и так далее. В месяц засчитывается до {cap} друзей.',
-        'link': 'Ваша ссылка:',
-        'code': 'Ваш код приглашения: <code>{code}</code>',
-        'progress': 'Следующая награда: <b>{have} из {step}</b> друзей → <b>{months}</b> Plus',
-        'month_full': 'В этом месяце засчитано {cap} друзей. Новые друзья засчитаются с {day}.',
-        'waiting_month': 'Ждут следующего месяца: {count}',
-        'waiting': 'Присоединились, но ещё не выполнили задачу: {count}',
-        'earned': 'Уже получено:',
-        'reward_line': '• {months} Plus — до {date}',
+        'gift_button': '🎁 Бесплатный подарок',
+        'referrals_button': '👥 Мои рефералы',
+        'title': '🎁 <b>Приглашайте друзей — получайте тариф Plus бесплатно!</b>',
+        'rules': '<b>Как это работает</b>\n'
+                 '1️⃣ Отправьте свою ссылку друзьям.\n'
+                 '2️⃣ Друг засчитывается, когда откроет бота по вашей ссылке и выполнит первую задачу.\n'
+                 '3️⃣ За каждых {step} друзей — тариф Plus бесплатно, и с каждым разом подарок больше:\n\n'
+                 '🥉 Первые {step} друзей → <b>1 месяц</b> тарифа Plus\n'
+                 '🥈 Следующие {step} друзей → <b>2 месяца</b> тарифа Plus\n'
+                 '🥇 Ещё {step} друзей → <b>3 месяца</b> тарифа Plus\n'
+                 '…и так далее!\n\n'
+                 'ℹ️ В месяц засчитывается до {cap} друзей. Остальные засчитаются в следующем месяце — '
+                 'никто не потеряется.',
+        'link': '🔗 <b>Ваша ссылка:</b>',
+        'code': '🔑 Ваш код приглашения: <code>{code}</code>',
+        'progress': '📊 Следующий подарок: <b>{have} из {step}</b> друзей → <b>{months} тарифа Plus</b>',
+        'month_full': '⏳ В этом месяце уже засчитано {cap} друзей. Новые друзья засчитаются с {day}.',
+        'waiting_month': '🕓 Засчитаются в следующем месяце: {count}',
+        'waiting': '👋 Пришли, но ещё не выполнили задачу: {count}',
+        'earned': '🏆 <b>Ваши подарки:</b>',
+        'reward_line': '• {months} тарифа Plus — до {date}',
         'share': '📤 Поделиться ссылкой',
         'share_text': 'PDF, слайды и резюме прямо в Telegram:',
-        'rewarded': '🎉 По вашей ссылке пришли {count} друзей — вам <b>{months} Plus</b> бесплатно!',
-        'active_until': 'Plus действует до {date}.',
-        'extended_until': 'Ваш Plus продлён до {date}.',
-        'starts_later': 'Он начнётся после текущего тарифа, {start}, и продлится до {date}.',
-        'next': 'Пригласите ещё {step} друзей и получите {months}.',
-        'from_invites': '🎁 За приглашённых друзей',
+        'rewarded': '🎉 <b>Поздравляем!</b> По вашей ссылке пришли {count} друзей — '
+                    'дарим вам <b>{months} тарифа Plus</b>!',
+        'active_until': 'Тариф Plus действует до {date}.',
+        'extended_until': 'Ваш тариф Plus продлён до {date}.',
+        'starts_later': 'Подарок начнётся после текущего тарифа, {start}, и продлится до {date}.',
+        'next': '👉 Пригласите ещё {step} друзей — следующий подарок: <b>{months} тарифа Plus</b>!',
+        'from_invites': '🎁 Подарок за приглашённых друзей',
         'active_label': 'Действует до',
     },
 }
@@ -93,9 +125,9 @@ def copy(locale, key):
 
 
 def months_label(months, locale):
-    """'1 month' / '2 months', '1 oy', '1 месяц' / '2 месяца' / '5 месяцев'."""
+    """'1 month' / '2 months'; Uzbek '1 oylik', said before "Plus tarifi"; '1 месяц' / '2 месяца' / '5 месяцев'."""
     if locale == 'uz':
-        return f'{months} oy'
+        return f'{months} oylik'
     if locale == 'ru':
         if months % 10 == 1 and months % 100 != 11:
             word = 'месяц'
@@ -149,6 +181,8 @@ def body(account, data, link, code):
         lines += [c['code'].format(code=html.escape(code)), '']
     nxt = data['next_reward']
     lines.append(c['progress'].format(have=nxt['have'], step=step, months=months_label(nxt['months'], locale)))
+    have = max(0, min(nxt['have'], step))
+    lines.append('🟩' * have + '⬜' * (step - have))
     if data['month_full']:
         lines.append(c['month_full'].format(cap=cap, day=month_start_label(data['next_month'], locale)))
     if data['waiting_next_month']:
@@ -175,9 +209,14 @@ async def screen(account):
     return body(account, data, link, code), rows
 
 
-async def invite_button(account):
+async def invite_button(account, label='invite_button'):
     from .bot import callback
-    return InlineKeyboardButton(text=copy(account.locale, 'invite_button'), callback_data=await callback(account, 'invite'))
+    return InlineKeyboardButton(text=copy(account.locale, label), callback_data=await callback(account, 'invite'))
+
+
+async def home_row(account):
+    """Free gift and My referrals on the main menu: two ways into the same invite screen."""
+    return [await invite_button(account, 'gift_button'), await invite_button(account, 'referrals_button')]
 
 
 def reward_message(reward, now=None):
