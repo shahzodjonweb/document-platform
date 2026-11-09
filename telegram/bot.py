@@ -977,7 +977,10 @@ def build_dispatcher():
         available={f['id'] for f in await sync_to_async(catalog)(account)}
         if 'pdf.images_to_pdf' in available: rows.append([await tool_button(account,draft,'pdf.images_to_pdf')])
         rows.append([await button(account,'subscribe_button','plans',{'from':'menu'})])
+        # Free gift and My referrals both open Invite friends (telegram/invites.py).
+        from .invites import home_row
         rows.extend([
+            await home_row(account),
             [await button(account,'all_tools','menu'),await button(account,'recent','recent')],
             [await button(account,'account','account'),await button(account,'contacts_button','contacts')],
             [await button(account,'language_button','language'),InlineKeyboardButton(text=text(account,'open'),url=await web_url(account))],

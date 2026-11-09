@@ -231,9 +231,9 @@ def test_the_cleanup_counts_friends_and_gives_the_months():
 
 
 @pytest.mark.parametrize('locale, months, more', [
-    ('en', '1 month of Plus', 'Invite 5 more friends to get 2 months.'),
-    ('uz', '1 oy Plus', 'Yana 5 ta do‘st taklif qiling va 2 oy oling.'),
-    ('ru', '1 месяц Plus', 'Пригласите ещё 5 друзей и получите 2 месяца.'),
+    ('en', '<b>1 month of Plus</b>', 'Invite 5 more friends — the next gift is <b>2 months of Plus</b>!'),
+    ('uz', '<b>1 oylik Plus tarifi</b>', 'Yana 5 ta do‘st taklif qiling — keyingi sovg‘a: <b>2 oylik Plus tarifi</b>!'),
+    ('ru', '<b>1 месяц тарифа Plus</b>', 'Пригласите ещё 5 друзей — следующий подарок: <b>2 месяца тарифа Plus</b>!'),
 ])
 def test_the_reward_message_in_each_language(locale, months, more):
     inviter = account(locale=locale)
@@ -247,10 +247,15 @@ def test_the_reward_message_in_each_language(locale, months, more):
     assert months in text and more in text and ends in text and '5' in text
 
 
-def test_russian_and_english_months_agree_with_their_number():
+def test_months_agree_with_their_number_in_each_language():
     assert [invites.months_label(n, 'ru') for n in (1, 2, 5, 11, 21, 22)] == [
         '1 месяц', '2 месяца', '5 месяцев', '11 месяцев', '21 месяц', '22 месяца']
     assert [invites.months_label(n, 'en') for n in (1, 3)] == ['1 month', '3 months']
+    # Uzbek says the plan's name in full, the months before it as "1 oylik Plus tarifi".
+    assert [invites.months_label(n, 'uz') for n in (1, 3)] == ['1 oylik', '3 oylik']
+    uz = ' '.join(invites.COPY['uz'].values())
+    assert 'Plus tarifi' in invites.COPY['uz']['rules'] and 'Plus tarifi' in invites.COPY['uz']['title']
+    assert ' oy Plus' not in uz and 'Plus beriladi' not in uz
 
 
 @pytest.mark.django_db(transaction=True)
@@ -304,6 +309,7 @@ def test_the_invite_screen_in_the_bot(chat, monkeypatch):
     code = services.referral_code(chat).code
     assert f'https://t.me/pdfmaster_test_bot?start=ref_{code}' in shown['text']
     assert '3 of 5' in shown['text'] and '1 month' in shown['text'] and 'no task finished yet: 1' in shown['text']
+    assert '🟩🟩🟩⬜⬜' in shown['text'], 'three of five, as a bar'
     labels = [button['label'] for row in shown['buttons'] for button in row]
     assert labels[0] == '📤 Share link'
     share = shown['buttons'][0][0]['url']
@@ -321,7 +327,7 @@ def test_the_invite_screen_in_the_bot(chat, monkeypatch):
     assert 'Earned so far:' in shown and '1 month of Plus — until' in shown
     assert 'This month’s 5 friends are counted.' in shown
     subscription = dispatch_local(chat, text='/subscription')['messages'][-1]['text']
-    assert 'Active until' in subscription and '🎁 From inviting friends' in subscription
+    assert 'Active until' in subscription and '🎁 A gift for inviting friends' in subscription
     assert 'Paid access until' not in subscription
 
 
