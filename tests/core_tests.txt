@@ -183,6 +183,13 @@ tests/test_manual_payments.py::test_only_administrators_set_the_card_and_every_c
 # Card payment refund
 tests/test_manual_payments.py::test_a_refund_takes_the_plan_back_without_asking_telegram
 
+# Invite friends, earn Plus: five friends a step, one month more each step, five a
+# month, a reward never cut short by a paid plan, and never counted as money
+tests/test_referral_rewards.py::test_five_friends_who_finished_a_task_earn_a_month_of_plus
+tests/test_referral_rewards.py::test_each_step_earns_a_month_more_and_five_friends_count_a_month
+tests/test_referral_rewards.py::test_a_reward_follows_paid_plus_and_waits_for_paid_premium
+tests/test_referral_rewards.py::test_free_months_are_never_money
+
 # Card payment in the Telegram bot
 tests/test_bot_manual_payments.py::test_a_receipt_photo_goes_to_the_payment_not_to_the_pdf_tools
 

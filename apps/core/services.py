@@ -560,6 +560,14 @@ def cleanup_expired():
     # their own prefix, outside the backstop above.
     from apps.commerce.manual import housekeeping
     housekeeping(now)
+    # Invitations: friends who finished a first task are counted, and the Plus
+    # months they earn are given. A failure here never stops the cleanup.
+    try:
+        from apps.commerce.referrals import qualify_referrals
+        qualify_referrals(now=now)
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception('Counting invitations failed; the next cleanup tries again')
     # Object storage: upload what is still only on the volume (new files whose
     # upload failed, and files kept there before the bucket was connected),
     # let go of working copies nobody is using, and remove bucket objects that

@@ -25,7 +25,6 @@ from django.utils import timezone
 from apps.core.errors import DomainError
 
 PLANS = ('plus', 'premium')
-RANK = {'free': 0, 'plus': 1, 'premium': 2}
 PERIOD_DAYS = 30
 AWAIT_HOURS = 48
 RECEIPT_BYTES = 10 * 1024 * 1024
@@ -258,26 +257,13 @@ def period_days(payment):
     return max(PERIOD_DAYS, PERIOD_DAYS * payment.amount // price)
 
 
-def _period_start(account, plan, now):
-    """When a newly paid period starts.
-
-    The same plan or a lower one bought while a paid period runs follows it,
-    so nothing already paid for is cut short. A higher plan starts at once.
-    """
-    from .models import SubscriptionPeriod
-    latest = SubscriptionPeriod.objects.filter(account=account, ends_at__gt=now, revoked_at__isnull=True,
-                                               sandbox=False).order_by('-ends_at').first()
-    if latest and RANK.get(plan, 0) <= RANK.get(latest.plan, 0):
-        return latest.ends_at, True
-    return now, False
-
-
 @transaction.atomic
 def approve(payment_id, actor, note=''):
     """The owner saw the money arrive: the plan starts, with its weekly limits."""
     from apps.core.models import Account
-    from .models import Invoice, ManualPayment, OfferVersion, Payment, Subscription, SubscriptionPeriod
-    from .services import PERIOD, active_period, refresh_account_entitlement
+    from .models import ManualPayment, OfferVersion
+    from .periods import grant
+    from .services import PERIOD
     _require_finance(actor)
     payment = ManualPayment.objects.select_for_update().filter(pk=payment_id).first()
     if not payment:
@@ -305,41 +291,13 @@ def approve(payment_id, actor, note=''):
                 'plan': payment.plan, 'name': offer.name, 'currency': payment.currency, 'price': payment.amount,
                 'regular_price': regular, 'discounted': regular is not None and payment.amount < regular,
                 'provider': 'manual', 'period_seconds': days * 86400, 'period_days': days}
-    charge = f'manual:{payment.id}'
-    invoice = Invoice.objects.create(
-        account=account, offer=offer, snapshot=snapshot, amount_xtr=payment.amount, currency=payment.currency,
-        status='paid', idempotency_key=charge, request_hash=hashlib.sha256(charge.encode()).hexdigest(),
-        payload_hash='', sandbox=False, provider='manual', expires_at=now, paid_at=now)
-    start, extension = _period_start(account, payment.plan, now)
-    end = start + timedelta(days=days)
-    paid = Payment.objects.create(
-        account=account, invoice=invoice, provider_charge_id=charge, amount_xtr=payment.amount,
-        currency=payment.currency, kind='subscription', plan=payment.plan, is_renewal=extension,
-        sandbox=False, provider='manual', occurred_at=payment.submitted_at or now)
-    subscription = Subscription.objects.select_for_update().filter(account=account).first()
-    was_manual = subscription is not None and subscription.provider == 'manual'
-    if subscription is None:
-        subscription = Subscription.objects.create(
-            account=account, invoice=invoice, offer=offer, plan=payment.plan, status='active',
-            renewal_enabled=False, first_charge_id=charge, current_period_end=end, sandbox=False,
-            provider='manual')
-    period = SubscriptionPeriod.objects.create(subscription=subscription, payment=paid, account=account,
-                                               plan=payment.plan, starts_at=start, ends_at=end, sandbox=False)
-    current = active_period(account) or period
-    # An earlier manual period may still run past this one's start; a lapsed
-    # Telegram subscription's dates mean nothing to it.
-    subscription.current_period_end = max(subscription.current_period_end, end) if was_manual else end
-    if not was_manual:
-        subscription.first_charge_id = charge
-    subscription.invoice, subscription.offer = invoice, offer
-    subscription.plan, subscription.status = current.plan, 'active'
-    subscription.renewal_enabled, subscription.provider, subscription.sandbox = False, 'manual', False
-    subscription.scheduled_plan, subscription.scheduled_at = '', None
-    subscription.save()
+    paid, period = grant(account, payment.plan, days, provider='manual', charge=f'manual:{payment.id}',
+                         amount=payment.amount, currency=payment.currency, offer=offer, snapshot=snapshot,
+                         occurred_at=payment.submitted_at or now, now=now)
+    start, end = period.starts_at, period.ends_at
     payment.status, payment.decided_at, payment.decided_by = 'approved', now, actor
     payment.decision_note, payment.payment = str(note or '').strip()[:500], paid
     payment.save()
-    refresh_account_entitlement(account)
     _notice(payment, 'approved')
     _action(account, actor, 'manual_payment.approved', payment,
             {'plan': payment.plan, 'amount': payment.amount, 'currency': payment.currency, 'days': days,

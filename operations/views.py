@@ -366,6 +366,16 @@ def user_detail(request, pk):
         money=MONEY_LABELS[data['lang']]
         data['payment_rows']=[{'payment':row,'status':money.get('status_'+row.status,row.status)}
                               for row in ManualPayment.objects.filter(account=account).order_by('-created_at')[:20]]
+    # Invitations: what the customer sees in the bot and on the web, and the
+    # Plus months they were given. Read only; nothing is counted from here.
+    from apps.commerce.referrals import progress as invite_progress
+    from apps.commerce.models import ReferralReward
+    invites=invite_progress(account)
+    invites['before']=invites['qualified_total']-invites['counted']
+    invites['next_days']=30*invites['next_reward']['months']
+    invites['next_text']=data['t']['invites_next_value'].format(have=invites['next_reward']['have'],step=invites['step'],days=invites['next_days'])
+    invites['reward_rows']=ReferralReward.objects.filter(inviter=account).select_related('period').order_by('tier')
+    data['invites']=invites
     audit(request.ops_user,'account.metadata_view',pk,'Staff inspected account metadata')
     return finish_render(request,'ops/user.html',data)
 

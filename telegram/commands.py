@@ -14,7 +14,7 @@ from apps.core.models import BotConversation
 # language before a change would keep the old labels for good. Each chat
 # remembers the version it was given, and the language gate gives it the new
 # one once, on that person's next message or tap (refresh_chat_commands).
-COMMANDS_VERSION = 4
+COMMANDS_VERSION = 5
 # Where that version is kept, without a schema change: BotConversation.review,
 # beside the generation review on screen. The other JSON fields there, pending
 # and prompt, are replaced whole at every sign-in step and input prompt;
@@ -32,6 +32,7 @@ COMMANDS = {
         'myfiles': '🗂 Recent tasks',
         'usage': '📊 Plan & weekly limits', 'buy': '⭐ Plans',
         'subscription': '💳 Subscription', 'account': '👤 Account & logins',
+        'invite': '🎁 Invite friends · free Plus',
         'web': '🌐 Open web app', 'settings': '⚙️ Settings', 'language': '🌐 Language',
         'help': 'ℹ️ About the bot', 'support': '📞 Contacts & support', 'cancel': '✖️ Cancel step',
     },
@@ -43,6 +44,7 @@ COMMANDS = {
         'myfiles': '🗂 So‘nggi vazifalar',
         'usage': '📊 Tarif va haftalik limitlar', 'buy': '⭐ Tariflar',
         'subscription': '💳 Obuna', 'account': '👤 Hisob va kirish usullari',
+        'invite': '🎁 Do‘stlarni taklif qilish · bepul Plus',
         'web': '🌐 Veb ilova', 'settings': '⚙️ Sozlamalar', 'language': '🌐 Til',
         'help': 'ℹ️ Bot haqida', 'support': '📞 Aloqa va yordam', 'cancel': '✖️ Qadamni bekor qilish',
     },
@@ -54,6 +56,7 @@ COMMANDS = {
         'myfiles': '🗂 Последние задачи',
         'usage': '📊 Тариф и лимиты на неделю', 'buy': '⭐ Тарифы',
         'subscription': '💳 Подписка', 'account': '👤 Аккаунт и способы входа',
+        'invite': '🎁 Пригласить друзей · Plus бесплатно',
         'web': '🌐 Открыть сайт', 'settings': '⚙️ Настройки', 'language': '🌐 Язык',
         'help': 'ℹ️ О боте', 'support': '📞 Контакты и поддержка', 'cancel': '✖️ Отменить шаг',
     },

@@ -560,3 +560,33 @@ CATALOGS['ru'].update(
     editor_budget_render_deck='Отрисовка слайдов', editor_budget_paid_multiplier='Множитель платных тарифов',
 )
 assert CATALOGS['en'].keys() == CATALOGS['uz'].keys() == CATALOGS['ru'].keys()
+
+# Invitations on the account page: friends counted toward Plus months, and the months given.
+CATALOGS['en'].update(
+    invites_title='Invitations', invites_counted='Friends counted toward Plus',
+    invites_this_month='Counted this month (Tashkent)', invites_pending='Joined, not counted yet',
+    invites_before='Counted before invitations earned Plus', invites_next='Next reward',
+    invites_next_value='{have} of {step} friends → Plus for {days} days',
+    invites_rewards='Plus earned by inviting', invites_step='Step', invites_friends='Friends',
+    invites_days='Days', invites_from='From', invites_until='Until', invites_message='Bot message',
+    invites_none='No Plus earned by inviting yet.',
+    invites_note='Free Plus months are never revenue. To stop a misused reward, assign a plan: it wins over every period.')
+CATALOGS['uz'].update(
+    invites_title='Takliflar', invites_counted='Plus uchun hisoblangan do‘stlar',
+    invites_this_month='Bu oy hisoblangan (Toshkent)', invites_pending='Qo‘shilgan, hali hisoblanmagan',
+    invites_before='Takliflar Plus bermasdan oldin hisoblangan', invites_next='Keyingi sovg‘a',
+    invites_next_value='{step} tadan {have} ta do‘st → {days} kunlik Plus',
+    invites_rewards='Taklif uchun olingan Plus', invites_step='Bosqich', invites_friends='Do‘stlar',
+    invites_days='Kun', invites_from='Boshlanishi', invites_until='Tugashi', invites_message='Bot xabari',
+    invites_none='Taklif uchun hali Plus olinmagan.',
+    invites_note='Bepul Plus oylari daromad emas. Suiiste’mol qilingan sovg‘ani to‘xtatish uchun tarif belgilang: u har qanday muddatdan ustun.')
+CATALOGS['ru'].update(
+    invites_title='Приглашения', invites_counted='Друзей засчитано для Plus',
+    invites_this_month='Засчитано в этом месяце (Ташкент)', invites_pending='Присоединились, ещё не засчитаны',
+    invites_before='Засчитано до того, как приглашения давали Plus', invites_next='Следующая награда',
+    invites_next_value='{have} из {step} друзей → Plus на {days} дн.',
+    invites_rewards='Plus за приглашения', invites_step='Шаг', invites_friends='Друзей',
+    invites_days='Дней', invites_from='С', invites_until='До', invites_message='Сообщение в боте',
+    invites_none='Plus за приглашения пока не получен.',
+    invites_note='Бесплатные месяцы Plus не являются доходом. Чтобы остановить злоупотребление, назначьте тариф: он важнее любого периода.')
+assert CATALOGS['en'].keys() == CATALOGS['uz'].keys() == CATALOGS['ru'].keys()

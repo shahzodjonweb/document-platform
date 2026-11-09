@@ -157,9 +157,41 @@ class Referral(models.Model):
     status=models.CharField(max_length=16,default='pending')
     created_at=models.DateTimeField(default=timezone.now)
     qualified_at=models.DateTimeField(null=True)
-    # The credits a qualified referral once earned; referrals reward nothing
-    # for now, so this stays empty on new ones.
+    # The credits a qualified referral once earned, from before invitations
+    # earned Plus; empty on every referral since.
     grant=models.OneToOneField('core.UsageGrant',null=True,on_delete=models.PROTECT)
+    # Whether this friend counts toward Plus months (apps/commerce/referrals.py).
+    # False only on friends counted before invitations earned Plus: they stay
+    # in the totals as history and never toward a reward.
+    # A database default too: migrations run while the old code still serves,
+    # and it creates referrals without this column.
+    counts_toward_reward=models.BooleanField(default=True,db_default=True)
+
+
+class ReferralReward(models.Model):
+    """Plus months earned by inviting friends, and the bot message that says so.
+
+    The n-th five counted friends earn n months (30 days each), written as an
+    ordinary Plus period (provider 'referral') by apps/commerce/periods.py. One
+    row per step, so a step is never rewarded twice. The message is durable
+    like PaymentNotice: claimed under a lease, sent once, retried with backoff.
+    """
+    inviter=models.ForeignKey('core.Account',on_delete=models.PROTECT,related_name='referral_rewards')
+    tier=models.PositiveIntegerField()
+    invites=models.PositiveIntegerField()
+    days=models.PositiveIntegerField()
+    period=models.OneToOneField(SubscriptionPeriod,null=True,on_delete=models.PROTECT,related_name='referral_reward')
+    created_at=models.DateTimeField(default=timezone.now)
+    status=models.CharField(max_length=16,default='pending')
+    attempts=models.PositiveIntegerField(default=0)
+    next_attempt_at=models.DateTimeField(default=timezone.now)
+    lease_until=models.DateTimeField(null=True)
+    message_id=models.BigIntegerField(null=True)
+    error_code=models.CharField(max_length=64,blank=True)
+    delivered_at=models.DateTimeField(null=True)
+    class Meta:
+        constraints=[models.UniqueConstraint(fields=['inviter','tier'],name='one_referral_reward_per_tier')]
+        indexes=[models.Index(fields=['status','next_attempt_at'],name='referral_reward_due')]
 
 class SupportMessage(models.Model):
     id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)

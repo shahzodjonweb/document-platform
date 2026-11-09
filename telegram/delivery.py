@@ -273,6 +273,8 @@ async def drain(bot):
     await drain_notices(bot)
     from .payment_notices import drain as drain_payment_notices
     await drain_payment_notices(bot)
+    from .referral_notices import drain as drain_referral_notices
+    await drain_referral_notices(bot)
     from .staff_alerts import drain as drain_staff_alerts
     await drain_staff_alerts(bot)
 

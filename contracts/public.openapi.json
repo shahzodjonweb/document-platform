@@ -10343,7 +10343,7 @@
     },
     "/referrals": {
       "get": {
-        "description": "",
+        "description": "Invite friends, earn Plus. A friend counts after opening the bot with `url` and finishing a first task, at most `monthly_cap` a calendar month (Tashkent). Every `step` counted friends earn Plus, one month more each time: 1 month, then 2, then 3. The months follow any paid period. Reading this counts the friends who are due.",
         "operationId": "getReferrals",
         "responses": {
           "200": {
@@ -10354,36 +10354,163 @@
                     "code": {
                       "type": "string"
                     },
-                    "expires_in_days": {
+                    "counted": {
+                      "description": "Friends counted toward Plus months.",
                       "minimum": 0,
                       "type": "integer"
+                    },
+                    "counted_this_month": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "month_full": {
+                      "description": "This month's friends are all counted; new ones count from `next_month`.",
+                      "type": "boolean"
                     },
                     "monthly_cap": {
                       "minimum": 0,
                       "type": "integer"
                     },
+                    "next_month": {
+                      "description": "The start of the next calendar month, Tashkent time.",
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "next_reward": {
+                      "properties": {
+                        "have": {
+                          "description": "Friends counted toward this reward so far, 0 to `step`.",
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "invites": {
+                          "description": "Counted friends this reward needs in all.",
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "months": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "remaining": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "tier": {
+                          "minimum": 0,
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "tier",
+                        "months",
+                        "invites",
+                        "have",
+                        "remaining"
+                      ],
+                      "type": "object"
+                    },
                     "pending_count": {
+                      "description": "Friends who joined with the link and have not been counted yet.",
                       "minimum": 0,
                       "type": "integer"
                     },
                     "qualification": {
                       "type": "string"
                     },
+                    "rewards": {
+                      "items": {
+                        "properties": {
+                          "created_at": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "days": {
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "ends_at": {
+                            "format": "date-time",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "invites": {
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "months": {
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "starts_at": {
+                            "format": "date-time",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "tier": {
+                            "minimum": 0,
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "tier",
+                          "months",
+                          "invites",
+                          "days",
+                          "starts_at",
+                          "ends_at",
+                          "created_at"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
                     "rewards_count": {
+                      "description": "Every friend ever counted, including those from before invitations earned Plus.",
                       "minimum": 0,
                       "type": "integer"
                     },
                     "sandbox": {
                       "type": "boolean"
                     },
+                    "step": {
+                      "description": "Counted friends per reward.",
+                      "minimum": 0,
+                      "type": "integer"
+                    },
                     "url": {
                       "type": [
                         "string",
                         "null"
                       ]
+                    },
+                    "waiting_next_month": {
+                      "description": "Friends who finished a task but wait for next month's room.",
+                      "minimum": 0,
+                      "type": "integer"
                     }
                   },
-                  "required": [],
+                  "required": [
+                    "code",
+                    "url",
+                    "rewards_count",
+                    "pending_count",
+                    "monthly_cap",
+                    "qualification",
+                    "sandbox",
+                    "step",
+                    "counted",
+                    "counted_this_month",
+                    "month_full",
+                    "next_month",
+                    "waiting_next_month",
+                    "next_reward",
+                    "rewards"
+                  ],
                   "type": "object"
                 }
               }

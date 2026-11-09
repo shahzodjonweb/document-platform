@@ -389,6 +389,13 @@ async def receive_receipt(message, account, payment_id, raw):
     await message.answer(copy(account, 'manual_received'), reply_markup=await payment_navigation(account))
 
 
+def _invite_months_ahead(account):
+    """Whether Plus months earned by inviting friends are running or still to come."""
+    from apps.commerce.models import SubscriptionPeriod
+    return SubscriptionPeriod.objects.filter(account=account, payment__provider='referral', revoked_at__isnull=True,
+                                             ends_at__gt=timezone.now()).exists()
+
+
 async def show_subscription(message, account, edit=False):
     """The plan, and until when it is paid for. A card transfer covers 30 days
     and never renews by itself, so there is no renewal to switch, only the
@@ -403,11 +410,17 @@ async def show_subscription(message, account, edit=False):
     elif not sub:
         lines = [copy(account, 'no_subscription')]
     else:
+        from .invites import copy as invite_copy
+        rewarded = await sync_to_async(_invite_months_ahead)(account)
         lines = [f'<b>{html.escape(sub["plan"].title())}</b>']
         if sub['active_until']:
-            lines.append(f'{copy(account, "active_until")}: {stamp(account, sub["current_period_end"])}')
+            # Months earned by inviting friends were not paid for: say what they are.
+            label = invite_copy(account.locale, 'active_label') if sub['provider'] == 'referral' else copy(account, 'active_until')
+            lines.append(f'{label}: {stamp(account, sub["current_period_end"])}')
         else:
             lines.append(copy(account, 'expired'))
+        if rewarded:
+            lines.append(invite_copy(account.locale, 'from_invites'))
     rows = [[await button(account, 'plans', 'plans', {'from': 'subscription'})], *(await navigation(account))]
     await show(message, '\n'.join(lines), rows, edit, 'HTML')
 

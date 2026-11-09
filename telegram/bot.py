@@ -61,7 +61,7 @@ async def account_for(user):
 REUSABLE={'home','menu','account','plans','subscription','language','help','recent','controls','settings',
           'prompt','attach','preview','done','retry','cancel','new','tool','start_tool','ai_tool','ai_examples',
           'ai_revise','ai_count','ai_retarget','support','contacts','job','download','channels_check',
-          'commerce_manual_plan','commerce_manual_receipt','cv_mode','cv_wait_check'}
+          'commerce_manual_plan','commerce_manual_receipt','cv_mode','cv_wait_check','invite'}
 def usable(ref,now=None):
     """Whether a stored button may still be acted on."""
     return bool(ref) and (ref.expires_at>(now or timezone.now()) or ref.action in REUSABLE)
@@ -2276,7 +2276,15 @@ def build_dispatcher():
         body=(f'<b>{text(account,"account")}</b>\n{text(account,"plan_label")}: {html.escape(text(account,'free_plan') if account.plan=='free' else account.plan.title())}\n{text(account,"linked_methods")}: {", ".join(methods)}\n\n'
               f'{week}\n{text(account,"edits_per_file")}: {unlimited if edits is None else edits}\n'
               f'{text(account,"resets")}: {week_reset(account,usage["resets_at"])}\n\n{text(account,"link_instructions")}')
-        await render(message,body,[[await button(account,'plans','plans',{'from':'account'}),await button(account,'subscription','subscription')],[InlineKeyboardButton(text=text(account,'link_methods'),url=await web_url(account,'settings'))],[await button(account,'language_button','language'),await button(account,'home','home')]],edit)
+        from .invites import invite_button
+        await render(message,body,[[await button(account,'plans','plans',{'from':'account'}),await button(account,'subscription','subscription')],[await invite_button(account)],[InlineKeyboardButton(text=text(account,'link_methods'),url=await web_url(account,'settings'))],[await button(account,'language_button','language'),await button(account,'home','home')]],edit)
+
+    async def invite_view(message,account,edit=False):
+        """Invite friends: the link, how far to the next Plus months, and what was earned (telegram/invites.py)."""
+        from .invites import screen
+        await sync_to_async(set_prompt)(account)
+        body,share=await screen(account)
+        await render(message,body,[*share,[await button(account,'account','account'),await button(account,'home','home')]],edit)
 
     @dp.callback_query()
     async def click(query):
@@ -2516,6 +2524,7 @@ def build_dispatcher():
                 await job_status(message,account,job,True)
                 if action=='download' and job.status=='succeeded': await deliver(message,account,job,ref.token)
             elif action=='account': await account_view(message,account,True)
+            elif action=='invite': await invite_view(message,account,True)
             # Where the button was: a button from before sources were kept is
             # 'other'. The button itself, so a double tap on it is one look.
             elif action=='plans': await show_offers(message,account,True,source=p.get('from'),tap=ref.token)
@@ -2851,6 +2860,9 @@ def build_dispatcher():
 
     @dp.message(Command('plan','usage','account'))
     async def plan(message): await account_view(message,await account_for(message.from_user))
+
+    @dp.message(Command('invite','invites','referral'))
+    async def invite_command(message): await invite_view(message,await account_for(message.from_user))
 
     @dp.message(Command('support','paysupport','contacts'))
     async def support(message):
