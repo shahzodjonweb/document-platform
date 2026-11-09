@@ -32,7 +32,7 @@ from apps.core.errors import DomainError, error_data
 from apps.core.allowance import LIMIT_CODES
 
 from .ux_copy import UX, STATUS, LEGACY_COPY, TOOL_NAMES, PROMPT_EXAMPLES, LOCALES, EDIT_BUTTON_COPY, counted
-from .delivery import app_button, app_url, editable_pdf
+from .delivery import app_button, app_url, deck_change_label, editable_pdf
 from .errors import bot_error
 from .clock import local_time, stamp, week_reset
 COPY={locale:{**LEGACY_COPY[locale],**UX[locale]} for locale in UX}
@@ -87,6 +87,9 @@ async def edit_buttons_on():
 async def ai_change_copy(key):
     """The key an AI change is worded by: once the Edit buttons are on, ✏️ is theirs."""
     return EDIT_BUTTON_COPY[key] if await edit_buttons_on() else key
+async def deck_change_button(account,draft_id):
+    """The label of the button under a made deck's file that changes it: the one delivery.result_controls draws."""
+    return text(account,await sync_to_async(deck_change_label)(account,draft_id))
 def private_chat(message):
     """Only there does Telegram take a web_app button; only private chats have positive ids."""
     return (getattr(message,'chat_id',None) or getattr(getattr(message,'chat',None),'id',0))>0
@@ -2438,6 +2441,8 @@ def build_dispatcher():
                     # ➖/➕ or a language left on a change's old review, or on a
                     # draft gone since: an old button, so the menu, said so.
                     if exc.code=='controls_expired': await home(message,account,True,notice=text(account,'stale_button'))
+                    # On a deck already made: the menu, naming the button under its file that changes it.
+                    elif exc.code=='generation_finished': await home(message,account,True,notice=text(account,'ai_deck_made').format(button=await deck_change_button(account,p['draft_id'])))
                     else: await safe_error(message,account,exc)
                 else: await ai_review(message,account,draft,quote,True)
             elif action=='ai_run':

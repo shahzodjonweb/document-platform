@@ -270,6 +270,20 @@ tests/test_render_export.py::test_a_customers_own_cyrillic_in_an_uzbek_deck_pass
 tests/test_render_export.py::test_the_initials_a_variant_makes_of_a_customers_own_cyrillic_pass_too[quote_speaker]
 tests/test_render_export.py::test_a_deck_that_fits_where_every_slide_tries_many_variants_holds_the_worker_only_so_long[stats-34]
 
+# Deck editor helpers: a Latin preview saves nothing, kept cover lines stay private, survive a settings save and go on new
+# decks, a long deck saves whole, and a drawn deck's saves never blank it, drop its pins or ask for files it was made from
+tests/test_deck_editor_api.py::test_latin_writes_an_uzbek_deck_s_cyrillic_in_latin_letters_and_saves_nothing
+tests/test_deck_editor_api.py::test_cover_lines_never_reach_the_profile_and_survive_a_settings_save
+tests/test_deck_editor_api.py::test_cover_lines_are_the_accounts_own
+tests/test_deck_editor_api.py::test_cover_lines_refuse_more_than_eight_lines_or_a_long_one
+tests/test_deck_editor_api.py::test_a_long_deck_saves_whole_up_to_128_kib_and_is_refused_past_it
+tests/test_deck_editor_api.py::test_a_drawn_deck_saves_after_its_source_file_is_read_no_more_or_deleted
+tests/test_deck_editor_api.py::test_an_options_only_save_after_slides_were_added_keeps_the_deck_and_its_pins
+tests/test_deck_editor_api.py::test_a_deck_changed_on_one_slide_by_ai_can_be_restructured_once_drawn
+tests/test_deck_editor_api.py::test_the_editors_saves_keep_the_pins_after_slides_are_added_and_removed
+tests/test_deck_editor_api.py::test_an_old_reviews_count_and_language_buttons_leave_a_made_deck_as_it_is
+tests/test_deck_editor_api.py::test_the_button_their_refusal_names_is_the_one_under_the_file
+
 # Deck stock photos
 tests/test_photos.py::test_a_paid_deck_carries_its_photos_and_their_licence_record
 tests/test_photos.py::test_a_hit_pointing_anywhere_but_pixabay_is_dropped
@@ -299,6 +313,7 @@ tests/test_edit_verification.py::test_a_planned_part_left_undone_is_repaired_onc
 # AI slide-deck generation end to end
 tests/test_deck_designs.py::test_a_generated_deck_wears_the_design_the_model_chose
 tests/test_title_lines.py::test_names_reach_the_cover_of_a_deck_and_of_a_change_that_dictates_them
+tests/test_title_lines.py::test_a_plural_label_before_its_colon_or_dash_says_who_as_the_singular_does
 
 # Slide rendering of every layout
 tests/test_slide_layouts.py::test_every_layout_draws_in_every_theme[#255e49-dark]

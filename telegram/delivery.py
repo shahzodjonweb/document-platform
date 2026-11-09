@@ -152,6 +152,11 @@ def editable_deck(account, identifier):
     return True
 
 
+def deck_route(account, draft, flags):
+    """Where ✏️ Edit takes a deck's file: back to its slides, while the deck editor is on and the deck is drawn."""
+    return f'editor/deck/{draft}' if flags['deck_editor'] and draft and editable_deck(account, draft) else ''
+
+
 def edit_route(delivery, flags):
     """Where ✏️ Edit takes this result, or '' when there is nothing to open.
 
@@ -166,9 +171,26 @@ def edit_route(delivery, flags):
         source = EditorDocument.objects.select_related('file').filter(account=delivery.account, id=document).first()
         return f'editor?file_id={source.file_id}' if source and editable_pdf(source.file) else ''
     if delivery.artifact.job.feature_id in RENDER_IDS | {SLIDES}:
-        draft = asset.metadata.get('generation_draft_id')
-        return f'editor/deck/{draft}' if flags['deck_editor'] and draft and editable_deck(delivery.account, draft) else ''
+        return deck_route(delivery.account, asset.metadata.get('generation_draft_id'), flags)
     return f'editor?file_id={asset.id}' if editable_pdf(asset) else ''
+
+
+def edit_url(account, route):
+    """The page ✏️ Edit opens for `route`, or '' when no button is drawn: Telegram refuses
+    a message whose button has no address, and the file matters more."""
+    locale = account.locale if account.locale in UX else 'en'
+    url = app_url(telegram_config()['webapp_url'], locale, route) if route else ''
+    return url if url.startswith(('https://', 'http://')) else ''
+
+
+def deck_change_label(account, draft):
+    """The UX key of the button under a deck's file that changes it, as result_controls draws them:
+    ✏️ Edit where it is drawn, else the AI change, which every deck made from a draft has."""
+    from operations.integrations import editor_flags
+    flags = editor_flags()
+    if flags['edit_buttons'] and edit_url(account, deck_route(account, draft, flags)):
+        return 'edit'
+    return EDIT_BUTTON_COPY['ai_revise'] if flags['edit_buttons'] else 'ai_revise'
 
 
 @transaction.atomic
@@ -180,11 +202,9 @@ def result_controls(delivery):
     flags = editor_flags()
     rows = []
     payload = {'delivery_id': str(delivery.id)}
-    # A link holds no token, so a retry draws the same button. Telegram refuses
-    # a message whose button has no address, and the file matters more.
-    route = edit_route(delivery, flags) if flags['edit_buttons'] else ''
-    url = app_url(telegram_config()['webapp_url'], locale, route) if route else ''
-    if url.startswith(('https://', 'http://')):
+    # A link holds no token, so a retry draws the same button.
+    url = edit_url(delivery.account, edit_route(delivery, flags) if flags['edit_buttons'] else '')
+    if url:
         rows.append([app_button(UX[locale]['edit'], url)])
     # A generated document can be changed by asking; a converted file cannot.
     revise = revisable_draft(delivery)

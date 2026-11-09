@@ -260,7 +260,7 @@ def test_once_generate_is_tapped_the_setup_screen_cannot_reopen_the_review(custo
     assert 'deck_design' not in latest(customer, SLIDES)['options']
 
 
-def test_a_queued_deck_cannot_be_changed_and_a_made_one_cannot_be_restyled(customer):
+def test_a_queued_deck_cannot_be_changed_and_a_made_one_cannot_be_restyled(customer, monkeypatch):
     import json
     from apps.core.services import submit_job
     from apps.studio.domain import generation_quote
@@ -279,6 +279,28 @@ def test_a_queued_deck_cannot_be_changed_and_a_made_one_cannot_be_restyled(custo
     response = login_client(customer).post(f'/api/v1/generation/drafts/{draft.id}/setup',
                                            data=json.dumps({'deck_design': 'royal'}), content_type='application/json')
     assert response.status_code == 409 and response.json()['error']['code'] == 'generation_finished'
+    # Nor does the ➖/➕ or language of a review still in the chat (a second one, sent after a setup change), which
+    # last 30 minutes: they would build the deck anew, over any edits made since. The menu names the button under
+    # the file that changes it.
+    from tests.test_bot_edit_review import old_button
+    language = latest(customer, SLIDES)['output_locale']
+    for action, payload in (('ai_length', {'pages': 7}), ('ai_length', {'pages': 5}), ('ai_locale', {'locale': 'ru'})):
+        refused = dispatch_local(customer, callback_data=old_button(customer, draft, action, payload))
+        shown = [message['text'] for message in refused['messages'] if message.get('direction') != 'inbound'][-1]
+        assert shown.startswith('🖥 This deck is already made') and 'tap ✏️ Make changes under the file' in shown, shown[:300]
+    assert latest(customer, SLIDES)['options']['length'] == 6 and latest(customer, SLIDES)['output_locale'] == language
+    # With the deck editor on, ✏️ Edit is the button named once it is under the file: when the deck was drawn.
+    monkeypatch.setenv('EDITOR_FLAG_EDIT_BUTTONS', '1')
+    monkeypatch.setenv('EDITOR_FLAG_DECK_EDITOR', '1')
+    from apps.studio.domain import pack, unpack
+    for pins, button in ((None, '✨ Ask AI to change'), ({'layouts': {}}, '✏️ Edit')):
+        if pins:
+            data = unpack(GenerationDraft.objects.get(pk=draft.pk).encrypted_data)
+            GenerationDraft.objects.filter(pk=draft.pk).update(encrypted_data=pack({**data, '_render': pins}))
+        refused = dispatch_local(customer, callback_data=old_button(customer, draft, 'ai_length', {'pages': 7}))
+        shown = [message['text'] for message in refused['messages'] if message.get('direction') != 'inbound'][-1]
+        assert f'tap {button} under the file' in shown, shown[:300]
+    assert latest(customer, SLIDES)['options']['length'] == 6
     # Generating one draft does not forget the review since shown for another.
     describe(customer, 'Rivers, 5 slides', service='Slides on a topic')
     newer = BotConversation.objects.get(telegram_user_id=customer.telegram_user_id).review

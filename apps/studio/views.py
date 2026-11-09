@@ -80,6 +80,8 @@ def drafts(request):
 # for the person's name. Counted per account, as every customer reaches us
 # through the same gateway address.
 CV_UPDATES_PER_MINUTE=30
+# The deck editor saves a deck whole on every edit: a long one in Cyrillic, two bytes a letter, passes 32 KiB well inside its caps.
+DECK_PATCH_BYTES=131072
 
 @api(('GET','PATCH','DELETE'))
 def draft_detail(request,pk):
@@ -94,7 +96,7 @@ def draft_detail(request,pk):
             d.delete()
         return {'deleted':True}
     if request.method=='PATCH':
-        data=body(request)
+        data=body(request,limit=DECK_PATCH_BYTES,too_large='payload_too_large') if d.feature_id==SLIDES else body(request)
         if d.feature_id==CV:
             account_limit(request.account,'cv_draft_updates',CV_UPDATES_PER_MINUTE)
             _queue_cv_reads(request.account,data,unpack(d.encrypted_data).get('options',{}))
@@ -280,6 +282,39 @@ def draft_slide(request,pk,key,thumb=False):
     except DomainError:raise DomainError('not_found',404) from None
     response['Content-Disposition']='inline; filename="slide.png"'
     return response
+
+# The Cover sheet reads its lines as it opens and saves them on "Remember", now and then.
+COVER_LINES_PER_MINUTE=30
+
+@api(('GET','POST','DELETE'))
+def cover_lines(request):
+    """The lines a customer keeps for their next decks' title slides (who made it, who checks it, class, school), with
+    the language of the deck they come from and the Cover sheet row of each. Packed; Forget deletes them."""
+    _require_deck_editor()
+    account_limit(request.account,'cover_lines',COVER_LINES_PER_MINUTE)
+    from . import cover_lines as kept
+    if request.method=='POST':
+        data=body(request)
+        return kept.remember(request.account,data.get('lines'),data.get('locale'),data.get('roles'))
+    if request.method=='DELETE':
+        kept.forget(request.account)
+    return kept.remembered(request.account)
+
+# Asked after each field a customer finishes in an Uzbek deck that still has Cyrillic in it, not on every key.
+LATIN_PER_MINUTE=60
+LATIN_TEXTS,LATIN_CHARS=40,12000
+
+@api(('POST',))
+def latin(request):
+    """Uzbek text in Latin letters, as the house writes it (o‘ g‘ with U+2018, ʼ U+02BC): a free preview, nothing saved."""
+    _require_deck_editor()
+    account_limit(request.account,'studio_latin',LATIN_PER_MINUTE)
+    texts=body(request,limit=65536).get('texts')
+    if (not isinstance(texts,list) or not 1<=len(texts)<=LATIN_TEXTS or any(not isinstance(text,str) for text in texts)
+            or sum(map(len,texts))>LATIN_CHARS):raise DomainError('invalid_parameters')
+    from .scripts import to_script
+    out=[to_script(text,'uz') for text in texts]
+    return {'texts':out,'changed':out!=texts}
 
 @api(('POST',))
 def retry_quote(request,pk):

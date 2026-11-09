@@ -315,6 +315,61 @@
         ],
         "type": "object"
       },
+      "CoverLines": {
+        "properties": {
+          "lines": {
+            "description": "Lines as they go on a title slide, label and all (\"Tayyorladi: …\").",
+            "items": {
+              "maxLength": 160,
+              "type": "string"
+            },
+            "maxItems": 8,
+            "type": "array"
+          },
+          "locale": {
+            "anyOf": [
+              {
+                "description": "The language of the deck the lines were written for: their labels are in it.",
+                "enum": [
+                  "en",
+                  "uz",
+                  "ru"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The language of the deck the lines were written for; null when the client did not say."
+          },
+          "roles": {
+            "description": "One per line, in step with `lines`: the Cover sheet row it was kept from, null where the client did not say.",
+            "items": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "made",
+                    "checked",
+                    "group",
+                    "school"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "maxItems": 8,
+            "type": "array"
+          }
+        },
+        "required": [
+          "lines",
+          "locale",
+          "roles"
+        ],
+        "type": "object"
+      },
       "CvRead": {
         "properties": {
           "ahead": {
@@ -2234,6 +2289,24 @@
           "artifacts",
           "error",
           "warnings"
+        ],
+        "type": "object"
+      },
+      "LatinPreview": {
+        "properties": {
+          "changed": {
+            "type": "boolean"
+          },
+          "texts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "texts",
+          "changed"
         ],
         "type": "object"
       },
@@ -8580,6 +8653,22 @@
           },
           "409": {
             "description": "State conflict or quota unavailable"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "`payload_too_large`: a deck draft body over 128 KiB (other drafts: `invalid_request` over 32 KiB). Nothing is saved."
           }
         },
         "security": [
@@ -11101,6 +11190,218 @@
         ]
       }
     },
+    "/studio/cover-lines": {
+      "delete": {
+        "description": "Forget the kept cover lines: answers as a GET with none kept, `{\"lines\": [], \"locale\": null, \"roles\": []}`.",
+        "operationId": "forgetCoverLines",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoverLines"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      },
+      "get": {
+        "description": "The cover lines this account asked to keep for its next decks, their language and the row of each; [], null and [] when none. New decks in that language also carry them on their title slide for what neither their description nor their own cover says (who made it, who checks it, the class, the school), in the room the description leaves: a line with a row says that row, one without says what its words do. `feature_unavailable` with the deck editor off.",
+        "operationId": "getCoverLines",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoverLines"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      },
+      "post": {
+        "description": "Keep these 1–8 lines of ≤160 characters (packed at rest) for the next decks, with the language of the deck they were written for and the row of each. `invalid_parameters` otherwise, for a language not listed, or for roles that are not one per line or not one of those.",
+        "operationId": "rememberCoverLines",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "lines": {
+                    "description": "Lines as they go on a title slide, label and all (\"Tayyorladi: …\").",
+                    "items": {
+                      "maxLength": 160,
+                      "type": "string"
+                    },
+                    "maxItems": 8,
+                    "type": "array"
+                  },
+                  "locale": {
+                    "description": "The language of the deck the lines were written for: their labels are in it.",
+                    "enum": [
+                      "en",
+                      "uz",
+                      "ru"
+                    ]
+                  },
+                  "roles": {
+                    "description": "The Cover sheet row of each line: who made it, who checks it, the class or group, the school; null for a line it does not say. One per line given, a blank line's included (it goes with its line); all null without it.",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "enum": [
+                            "made",
+                            "checked",
+                            "group",
+                            "school"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "maxItems": 8,
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "lines"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoverLines"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    },
     "/studio/cv-reads": {
       "delete": {
         "description": "Takes files the customer removed from a CV out of the reading queue: their reads still queued are dropped. A read already started finishes; ids that are gone or not the account's are passed over. A file dropped here and used after all is queued again when a draft asks for it.",
@@ -11652,6 +11953,87 @@
           }
         },
         "security": []
+      }
+    },
+    "/studio/latin": {
+      "post": {
+        "description": "Each text in Uzbek Latin letters as a send keeps it (scripts.to_script), at most 12 000 characters in all. Saves nothing.",
+        "operationId": "previewLatin",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "texts": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "maxItems": 40,
+                    "minItems": 1,
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "texts"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LatinPreview"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
       }
     },
     "/telegram/local/messages": {

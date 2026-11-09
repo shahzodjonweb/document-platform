@@ -235,7 +235,7 @@ def pictures_on():
 
 def _changed(account, draft_id, change):
     """The draft redone with `change(data)` applied to its fields, and its new quote."""
-    from apps.studio.domain import unpack, update_draft
+    from apps.studio.domain import draft_jobs, unpack, update_draft
     draft = GenerationDraft.objects.filter(account=account, id=draft_id, expires_at__gt=timezone.now()).first()
     if not draft:
         raise DomainError('controls_expired', 409)
@@ -244,6 +244,10 @@ def _changed(account, draft_id, change):
     # on a review sent before they were taken off a change are old buttons.
     if data.get('revision'):
         raise DomainError('controls_expired', 409)
+    # A deck already made is changed with ✏️ Edit under its file. A review of it
+    # still in the chat would build it anew, over the slides edited since.
+    if draft.feature_id == SLIDES and (data.get('_render') or draft_jobs(account, draft.id, ('succeeded', 'no_op'))):
+        raise DomainError('generation_finished', 409)
     fields = change(data)
     draft = update_draft(account, draft.id, {'version': draft.version, **fields})
     return draft, generation_quote(account, draft.id, draft.version)

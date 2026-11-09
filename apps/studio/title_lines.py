@@ -371,20 +371,23 @@ def _clause(folded, start, end, marks='.!?\n;'):
 
 
 DESIGNATION_WORDS = re.compile(
-    r"(?:va|and|и|ham|hamda|shahar\w*|tuman\w*|viloyat\w*|maktab\w*|litsey\w*|kollej\w*|universitet\w*|institut\w*"
-    r"|akademiya\w*|fakultet\w*|kafedra\w*|yo'nalish\w*|kurs\w*|sinf\w*|guruh\w*|o'?quvchi\w*|talaba\w*|bitiruvchi\w*"
+    r"(?:va|and|и|ham|hamda|shahar\w*|tuman\w*|viloyat\w*|maktab\w*|litsey\w*|kollej\w*|texnikum\w*|tekhnikum\w*"
+    r"|gimnazi\w*|universitet\w*|institut\w*|akademiya\w*|fakultet\w*|kafedra\w*|yo'nalish\w*|kurs\w*|sinf\w*|guruh\w*"
+    r"|o'?quvchi\w*|talaba\w*|bitiruvchi\w*"
     r"|dotsent\w*|professor\w*|katta|o'qituvchi\w*|assistent\w*|magistr\w*|bakalavr\w*|PhD|bosqich\w*|mudir\w*|fan"
     r"|магистр\w*|босқич\w*|мудир\w*|фан"
-    r"|мактаб\w*|синф\w*|гуруҳ\w*|ўқувчи\w*|талаба\w*|курс\w*|школ\w*|лице\w*|колледж\w*|университет\w*|институт\w*"
-    r"|академи\w*|факультет\w*|кафедр\w*|направлени\w*|групп\w*|класс\w*|студент\w*|учени\w*|доцент\w*|профессор\w*"
-    r"|преподаватель\w*|старш\w*|город\w*|г|school|university|institute|college|faculty|department|group|class|grade"
+    r"|мактаб\w*|синф\w*|гуруҳ\w*|ўқувчи\w*|талаба\w*|курс\w*|школ\w*|лице\w*|колледж\w*|техникум\w*|гимнази\w*"
+    r"|университет\w*|институт\w*|академи\w*|факультет\w*|кафедр\w*|направлени\w*|групп\w*|класс\w*|студент\w*"
+    r"|учени\w*|доцент\w*|профессор\w*|преподаватель\w*|старш\w*|город\w*|г|school|university|institute|college"
+    r"|lyceum|gymnasium|academy|academies|faculty|department|group|class|grade"
     r"|year|student|pupil|associate|assistant|senior|lecturer|professor)", I)
 
 
 YEAR = re.compile(r"(?<![\d\-–])(?:1[5-9]|20)\d\d(?![\d\-–])")
-INSTITUTION = re.compile(r"(?:maktab\w*|litsey\w*|kollej\w*|universitet\w*|institut\w*|akademiya\w*|fakultet\w*|kafedra\w*"
-                         r"|мактаб\w*|школ\w*|лице\w*|колледж\w*|университет\w*|институт\w*|академи\w*|факультет\w*"
-                         r"|кафедр\w*|school|university|institute|college|faculty|department)", I)
+INSTITUTION = re.compile(r"(?:maktab\w*|litsey\w*|kollej\w*|texnikum\w*|tekhnikum\w*|gimnazi\w*|universitet\w*|institut\w*"
+                         r"|akademiya\w*|fakultet\w*|kafedra\w*|мактаб\w*|школ\w*|лице\w*|колледж\w*|техникум\w*|гимнази\w*"
+                         r"|университет\w*|институт\w*|академи\w*|факультет\w*|кафедр\w*|school|university|institute|college"
+                         r"|lyceum|gymnasium|academy|academies|faculty|department)", I)
 
 
 def _designation(folded, start, end):
@@ -1127,10 +1130,11 @@ def _block_header(folded, match):
 
 
 # A row of a title page that is neither a label nor a name: the institution, the ministry, the city and year.
-PLACE_ROW = re.compile(r"(?:maktab\w*|litsey\w*|kollej\w*|universitet\w*|institut\w*|akademiya\w*|fakultet\w*|kafedra\w*"
-                       r"|yo'nalish\w*|vazirlig\w*|мактаб\w*|университет\w*|институт\w*|факультет\w*|кафедр\w*|министерств\w*"
-                       r"|направлени\w*|школ\w*|лице\w*|колледж\w*|академи\w*|school|university|institute|college|faculty"
-                       r"|department|ministry)", I)
+PLACE_ROW = re.compile(r"(?:maktab\w*|litsey\w*|kollej\w*|texnikum\w*|tekhnikum\w*|gimnazi\w*|universitet\w*|institut\w*"
+                       r"|akademiya\w*|fakultet\w*|kafedra\w*|yo'nalish\w*|vazirlig\w*|мактаб\w*|университет\w*|институт\w*"
+                       r"|факультет\w*|кафедр\w*|министерств\w*|направлени\w*|школ\w*|лице\w*|колледж\w*|техникум\w*|гимнази\w*"
+                       r"|академи\w*|school|university|institute|college|lyceum|gymnasium|academy|academies|faculty|department"
+                       r"|ministry)", I)
 CITY_YEAR = re.compile(r"[ \t]*[A-ZА-ЯЁЎҚҒҲ][\w'-]+,?[ \t]+(?:19|20)\d\d(?:[ \t]?-?[ \t]?(?:yil|год|г)\.?)?[ \t]*")
 # A title page's own "Key: value" rows: "Mavzu: …", "Fan: …".
 TITLE_KEY_ROW = re.compile(r"[ \t•\-–]*(?:mavzu\w*|мавзу\w*|тема|topic|subject|fan|фан|предмет|kafedra\w*|yo'nalish\w*|id"
@@ -1385,7 +1389,7 @@ def dictated(text):
 
 # The role a title line's label gives it, read in Latin so a line and its translation have the same one.
 ROLES = (
-    ('made', r"tayyorl|bajar|topshir|tuzuvchi|muallif|ijrochi|taqdim etdi|v[iy]poln|sdela|podgotov|avtor|prepared"
+    ('made', r"tayyorl|bajar|topshir|tuzuvchi|tuzdi|muallif|ijrochi|taqdim etdi|v[iy]poln|sdela|podgotov|avtor|prepared"
              r"|done by|made by|presented|submitted by|completed by|created by|author"),
     ('student', r"talaba|o'?quvchi|student|uchen|pupil|f\.?i\.?sh|fio"),
     ('checked', r"qabul|tekshir|prover|prinya|checked|reviewed|submitted to|accepted"),
@@ -1396,14 +1400,30 @@ ROLES = (
     ('university', r"universitet|institut|akademi|university|institute|academy"),
     ('direction', r"yo'nalish|napravleni|direction|specialty"),
 )
+# A noun's plural or possessive, as a label before its colon or dash ("Ijrochilar –", "Authors:", "Tuzuvchisi:"), as the
+# web's Cover sheet reads one. Before a space it is no label, nor is another word made from it: "Ijrochilik sanʼati",
+# "Authority of the state", "Tutorial: Cells", "Authorities – who makes the law".
+AS_LABEL = r"(?=(?:\([a-z]{1,2}\))?[ \t]*[:\-–—])"
+FORMED = rf"(?:s{AS_LABEL})?"
+FORMED_UZ = rf"(?:(?:lar(?:i|ning)?|si){AS_LABEL})?"
+# A class or course noun that opens a teacher's label ("Sinf rahbari:", "Kurs ishi rahbari:", "Class teacher:") is not the label.
+NOT_TEACHER = (r"(?![ \t]+(?:ishi[ \t]+)?(?:rahbar\w*|o'?qituvchi\w*|teacher|instructor|supervisor|lecturer|tutor"
+               r"|rukovoditel\w*|prepodavatel\w*))")
+# Nor is one that names a piece of work: "KURS ISHI" heads a course paper's cover, "Group project:" is no group.
+NOT_WORK = r"(?![ \t]+(?:ishi|loyihasi|work|project|paper)(?![\w']))"
+# A person noun's possessive before its colon is the same label: "Teacher's name:", "Student's full name:".
+OWN = r"(?:'s(?:[ \t]+(?:full[ \t]+)?name)?(?=[ \t]*:))?"
 # A label as a line opens with it, in Latin: "Tayyorladi:", "Vypolnila:", "Prepared by", "Fan o'qituvchisi:".
 LATIN_LABEL = re.compile(r"^[ \t•\-–]*(?:[\w'.]+[ \t]+){0,2}?(?:tayyorl\w*|bajar\w*|qabul[ \t]+qil\w*|tekshir\w*|topshir\w*"
-                         r"|tuzuvchi|muallif\w*|ijrochi|taqdim[ \t]+etdi|v[iy]poln\w*|sdelal\w*|podgotovil\w*|proveril\w*"
-                         r"|prinyal\w*|avtor\w*|prepodavatel\w*|uchitel\w*|rukovoditel\w*|student\w*|uchenik\w*|uchenitsa"
-                         r"|talaba\w*|o'?quvchi\w*|o'?qituvchi\w*|ustoz\w*|rahbar\w*|f\.?i\.?sh\.?|fio|ism[ \t]+familiya"
-                         r"|guruh|gruppa|group|sinf|klass|class|kurs|course|fakultet|faculty|kafedra|department|maktab|school"
-                         r"|universitet|university|(?:prepared|done|made|presented|submitted|completed|checked|reviewed)[ \t]+(?:by|to)"
-                         r"|created[ \t]+by|accepted[ \t]+by|author|teacher|supervisor|instructor|lecturer|tutor|pupil)"
+                         rf"|tuzuvchi{FORMED_UZ}|tuzdi\w*|muallif\w*|ijrochi{FORMED_UZ}|taqdim[ \t]+etdi|v[iy]poln\w*|sdelal\w*"
+                         rf"|podgotovil\w*|proveril\w*|prinyal\w*|avtor\w*|prepodavatel\w*|uchitel\w*|rukovoditel\w*|student\w*{OWN}"
+                         r"|uchenik\w*|uchenitsa|talaba\w*|o'?quvchi\w*|o'?qituvchi\w*|ustoz\w*|rahbar\w*|f\.?i\.?sh\.?|fio"
+                         rf"|ism[ \t]+familiya|(?:guruh|gruppa|group|sinf|klass|class|kurs|course){NOT_TEACHER}{NOT_WORK}"
+                         r"|fakultet|faculty|kafedra|department"
+                         r"|maktab|school(?![ \t]+year)|universitet|university"
+                         r"|(?:prepared|done|made|presented|submitted|completed|checked|reviewed)[ \t]+(?:by|to)"
+                         rf"|created[ \t]+by|accepted[ \t]+by|author{FORMED}{OWN}|teacher{FORMED}{OWN}|supervisor{FORMED}{OWN}"
+                         rf"|instructor{FORMED}{OWN}|lecturer{FORMED}{OWN}|tutor{FORMED}{OWN}|pupil{OWN})"
                          r"(?:\([a-z]{1,2}\))?(?:[ \t]*[:\-–—]|(?=[ \t]))", I)
 LATIN_VERB = re.compile(r"(?:tayyorladi|bajardi|qabul qildi|tekshirdi|v[iy]polnil\w*|sdelal\w*|podgotovil\w*"
                         r"|proveril\w*|prepared by|submitted by|checked by|made by|done by|presented by)")
@@ -1514,6 +1534,33 @@ def _only_people(line):
     left = [word for word in _leftover(rest, folded, 0, len(rest))
             if not (DESIGNATION_WORDS.fullmatch(word) or INSTITUTION.fullmatch(word) or ABBREVIATION.fullmatch(word))]
     return bool(WORD.search(rest)) and not left
+
+
+def _post(line):
+    """Whether a teacher's label names a class's or group's own teacher ("Sinf rahbari:", "Class teacher:"), not a subject's.
+
+    A course paper's supervisor ("Kurs ishi rahbari:") is a subject's, as "Ilmiy rahbar:" is.
+    """
+    return bool(re.match(rf"[ \t]*(?:guruh|gruppa|group|sinf|klass|class|kurs|course)(?![\w']){NOT_WORK}", _latin(line), I))
+
+
+def _label_stems(line):
+    """A written label's longer words by their first six letters, in Latin: "Выполнил(а)" and "Vypolnila" share "vypoln",
+    "Fan o'qituvchisi" and "O'qituvchi" share "o'qitu"."""
+    return {word[:6] for word in _key(_label(line)[1]).split() if len(word) >= 4}
+
+
+# Bylines LABEL's verbs leave out, in Latin: "Completed by", "Reviewed by", "Tuzdi", "Taqdim etdi", "Vypolnila".
+BYLINE = re.compile(r"(?:(?:completed|reviewed|accepted)[ \t]+by|tuzdi|tuzuvchi\w*|taqdim[ \t]+etdi|v[iy]polnil\w*|podgotovil\w*"
+                    r"|sdelal\w*|proveril\w*|prinyal\w*)$", I)
+
+
+def _byline(line):
+    """Whether a line's label says who did the deck or teaches it ("Prepared by:", "Bajardi:", "Completed by:",
+    "Ustoz:", "Instructor:"), not a noun that may be whom it is about ("Author:", "Muallif:", "Автор:", "Davlat rahbari:")."""
+    found = LABEL.match(_fold(line).lstrip())
+    return bool(found and (found.group('verb') or (found.group('person') and _role(line) in ('checked', 'teacher')))
+                or BYLINE.match(_key(_label(line)[1])))
 
 
 def _corrections(request):
@@ -1676,8 +1723,16 @@ def place(data, content):
                  or next((entry for entry in candidates if _role(line) and _role(entry[0]) == _role(line)
                           and _placeholder(entry[0])), None))
         if entry is None and revision and not adding and _role(line) in ('made', 'checked', 'teacher'):
-            # A change that dictates who did it again means that person, not another beside them.
-            entry = next((entry for entry in candidates if _role(entry[0]) == _role(line) and not _people(entry[0]) & people), None)
+            # A change that dictates who did it again means that person, not another beside them, for the same post
+            # ("Sinf rahbari:" is not the subject teacher): first a line with the same label ("Prepared by: Emily
+            # Brown"), then one that names someone, then one labelled as doing it — not "Author: Roald Dahl" or
+            # "Muallif: Abdulla Qodiriy", which may be whom the deck is about, nor a title ("Teachers – …").
+            fits = [entry for entry in candidates if _role(entry[0]) == _role(line) and not _people(entry[0]) & people
+                    and (_role(line) != 'teacher' or _post(entry[0]) == _post(line))]
+            stems = _label_stems(line)
+            entry = (next((entry for entry in fits if stems & _label_stems(entry[0])), None)
+                     or next((entry for entry in fits if _people(entry[0])), None)
+                     or next((entry for entry in fits if _byline(entry[0])), None))
         if entry is not None:
             entry[:] = [line, 'new']
             # And the model's lines it now says in full: "026-136-guruh" alone under "Karimova Dilnoza 026-136-guruh".
