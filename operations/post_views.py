@@ -70,22 +70,26 @@ def post_list(request):
 def post_compose(request):
     data = context(request, 'posts')
     t = data['t']
-    form = {'text': '', 'button_label': '', 'audience': 'everyone', 'usernames': ''}
+    form = {'text': '', 'button_label': '', 'button_action': 'thanks', 'audience': 'everyone', 'usernames': ''}
     if request.method == 'POST':
         form = {key: request.POST.get(key, '') for key in form}
+        # A form opened before the choice existed sends none: it meant the old button.
+        form['button_action'] = form['button_action'] or 'thanks'
         upload = request.FILES.get('image')
         try:
             # One byte over the limit is enough to refuse it.
             raw = upload.read(posts.IMAGE_BYTES + 1) if upload else None
             post = posts.create(request.ops_user, text=form['text'], audience_kind=form['audience'],
-                                usernames=form['usernames'], button_label=form['button_label'], image=raw)
+                                usernames=form['usernames'], button_label=form['button_label'],
+                                button_action=form['button_action'], image=raw)
         except DomainError as error:
             data['error'] = _error(t, error.code)
         else:
             audit(request.ops_user, 'post.created', post.pk,
-                  after={'audience': post.audience, 'image': bool(post.image_key)})
+                  after={'audience': post.audience, 'image': bool(post.image_key), 'button': post.button_action})
             return _page(request, post.pk, saved='created')
     data.update(form=form, audiences=[(key, t['post_audience_' + key]) for key in posts.AUDIENCES],
+                button_actions=[(key, t['post_button_action_' + key]) for key in posts.BUTTON_ACTIONS],
                 text_limit=posts.TEXT_LIMIT, button_limit=posts.BUTTON_LIMIT)
     return finish_render(request, 'ops/post_compose.html', data)
 
@@ -128,7 +132,9 @@ def post_detail(request, pk):
                for row in PostRecipient.objects.filter(post=post, is_test=True).select_related('account')
                .order_by('-created_at')],
         audience_label=t['post_audience_' + post.audience], status_label=t['post_status_' + post.status],
-        button_label=post.button_label or t['post_button_default'],
+        button_label=post.button_label or t['post_button_default_invite' if post.button_action == 'invite'
+                                            else 'post_button_default'],
+        button_action_label=t.get('post_button_action_' + post.button_action, ''),
         paused=post.status == 'sending' and post.paused_until and post.paused_until > timezone.now(),
         saved=t.get('post_saved_' + request.GET.get('saved', ''), ''),
         error=_error(t, code) if code else '',

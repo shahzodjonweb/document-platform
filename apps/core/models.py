@@ -380,6 +380,9 @@ class Post(models.Model):
     created_at = models.DateTimeField(default=timezone.now)
     text = models.TextField()
     button_label = models.CharField(max_length=64, blank=True, default='')
+    # What a tap on the button does besides counting the view: 'thanks' says
+    # thanks and takes the button away; 'invite' opens Invite friends and keeps it.
+    button_action = models.CharField(max_length=16, default='thanks', db_default='thanks')
     image_key = models.CharField(max_length=180, blank=True, default='')
     # Telegram's own name for the image once it has been sent: everyone after
     # the first gets it by this, not by another upload.

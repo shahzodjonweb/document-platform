@@ -94,6 +94,15 @@ def test_a_chosen_button_label_is_used_for_everyone():
     assert fake.send_message.await_args.kwargs['reply_markup'].inline_keyboard[0][0].text == 'Seen it ✅'
 
 
+@pytest.mark.parametrize('locale,label', [('en', '🎁 Invite friends'), ('uz', '🎁 Do‘stlarni taklif qilish'),
+                                          ('ru', '🎁 Пригласить друзей')])
+def test_a_post_that_opens_invite_friends_says_so_on_its_button(locale, label):
+    sent(1, locale=locale, button_action='invite')
+    fake = bot()
+    asyncio.run(sender.drain(fake))
+    assert fake.send_message.await_args.kwargs['reply_markup'].inline_keyboard[0][0].text == label
+
+
 def test_an_image_is_uploaded_once_and_then_sent_by_telegrams_name_for_it():
     post = sent(3, image=png(), text='Caption')
     first = Mock(message_id=1, photo=[Mock(file_id='small'), Mock(file_id='AgACbig')])

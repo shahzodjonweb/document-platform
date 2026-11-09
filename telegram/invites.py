@@ -209,6 +209,14 @@ async def screen(account):
     return body(account, data, link, code), rows
 
 
+async def view(account):
+    """(text, rows): the whole Invite friends screen with its Account and Home
+    buttons. /invite, the menus' buttons and a post's button all show this one."""
+    from .bot import button
+    body, share = await screen(account)
+    return body, [*share, [await button(account, 'account', 'account'), await button(account, 'home', 'home')]]
+
+
 async def invite_button(account, label='invite_button'):
     from .bot import callback
     return InlineKeyboardButton(text=copy(account.locale, label), callback_data=await callback(account, 'invite'))

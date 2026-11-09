@@ -192,6 +192,7 @@
   "post_text_required": "Write the text of the post.",
   "post_text_too_long": "The post is too long for Telegram: 4,096 characters at most, or 1,024 with a picture.",
   "post_button_too_long": "The button text is too long: 64 characters at most.",
+  "post_button_action_invalid": "Choose what the button does.",
   "post_audience_invalid": "Choose who the post goes to.",
   "post_people_required": "Add the people the post goes to.",
   "post_people_too_many": "That is too many people for one post: 500 at most.",

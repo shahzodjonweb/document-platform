@@ -82,7 +82,7 @@ def test_writing_a_post_keeps_a_draft_and_sends_nothing():
     assert (post.text, post.button_label, post.status, post.created_by) == ('Hello all\nSecond line', 'Seen it', 'draft', staff)
     assert post.image_key.startswith(f'posts/{post.pk}/') and post.image_key.endswith('.jpg')
     assert not PostRecipient.objects.exists()
-    assert AuditLog.objects.get(action='post.created').after == {'audience': 'everyone', 'image': True}
+    assert AuditLog.objects.get(action='post.created').after == {'audience': 'everyone', 'image': True, 'button': 'thanks'}
     page = client.get(response['Location']).content.decode()
     assert EN['post_saved_created'] in page and 'Hello all\nSecond line' in page and 'Seen it' in page
     image = client.get(f'/ops/posts/{post.pk}/image')
@@ -92,11 +92,25 @@ def test_writing_a_post_keeps_a_draft_and_sends_nothing():
     assert client.get(f'/ops/posts/{posts.create(None, text="No image", audience_kind="free").pk}/image').status_code == 404
 
 
+def test_a_post_can_open_invite_friends_and_its_page_says_so():
+    client, _ = staff_client()
+    form = client.get('/ops/posts/new?lang=uz').content.decode()
+    assert 'name="button_action" value="thanks" checked' in form and 'value="invite"' in form
+    response = client.post('/ops/posts/new?lang=en', {'text': 'Free Plus for friends', 'audience': 'everyone',
+                                                      'button_label': '', 'button_action': 'invite', 'usernames': ''})
+    post = Post.objects.get()
+    assert post.button_action == 'invite'
+    assert AuditLog.objects.get(action='post.created').after['button'] == 'invite'
+    page = client.get(response['Location']).content.decode()
+    assert EN['post_button_action_invite'] in page and EN['post_button_default_invite'] in page
+
+
 @pytest.mark.parametrize('fields,key', [
     ({'text': '   '}, 'post_error_text_required'),
     ({'text': 'x' * 4097}, 'post_error_text_too_long'),
     ({'text': 'x' * 1025, 'image': 'picture'}, 'post_error_text_too_long'),
     ({'button_label': 'x' * 65}, 'post_error_button_too_long'),
+    ({'button_action': 'open_url'}, 'post_error_button_action_invalid'),
     ({'audience': 'vip'}, 'post_error_audience_invalid'),
     ({'audience': 'usernames', 'usernames': ''}, 'post_error_people_required'),
     ({'image': 'pdf'}, 'post_error_image_invalid'),
