@@ -2284,10 +2284,10 @@ def build_dispatcher():
 
     async def invite_view(message,account,edit=False):
         """Invite friends: the link, how far to the next Plus months, and what was earned (telegram/invites.py)."""
-        from .invites import screen
+        from .invites import view
         await sync_to_async(set_prompt)(account)
-        body,share=await screen(account)
-        await render(message,body,[*share,[await button(account,'account','account'),await button(account,'home','home')]],edit)
+        body,rows=await view(account)
+        await render(message,body,rows,edit)
 
     @dp.callback_query()
     async def click(query):

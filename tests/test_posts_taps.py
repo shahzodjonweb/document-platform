@@ -5,8 +5,10 @@ import pytest
 from aiogram.methods import AnswerCallbackQuery, EditMessageReplyMarkup, EditMessageText, SendMessage
 
 from apps.core import posts
-from apps.core.models import Account, BotConversation, PostRecipient
+from apps.core.models import Account, BotConversation, Post, PostRecipient
 from telegram.bot import COPY
+from telegram.invites import COPY as INVITES
+from operations.integrations import save_config
 from tests.test_bot_transport import Harness
 
 pytestmark = pytest.mark.django_db(transaction=True)
@@ -44,6 +46,31 @@ def test_a_tap_is_counted_once_thanked_and_its_button_taken_away(delivered):
     harness.click(f'post:{delivered.id.hex}', uid=42)
     delivered.refresh_from_db()
     assert delivered.viewed_at == seen and len(calls(harness, AnswerCallbackQuery)) == 2
+
+
+def test_a_tap_on_an_invite_post_opens_invite_friends_and_keeps_its_button(delivered):
+    save_config('telegram', {'token': '', 'username': 'fixture_bot', 'webapp_url': 'https://pdfmaster.example/en/app'})
+    Post.objects.filter(pk=delivered.post_id).update(button_action='invite')
+    BotConversation.objects.create(telegram_user_id=42, state='cv_wait_check', prompt={'asked': True})
+    harness = Harness(onboard=False)
+    harness.click(f'post:{delivered.id.hex}', uid=42)
+    delivered.refresh_from_db()
+    seen = delivered.viewed_at
+    assert seen, 'the tap is still the view'
+    [answer] = calls(harness, AnswerCallbackQuery)
+    assert not answer.text and not answer.show_alert
+    assert not calls(harness, EditMessageReplyMarkup), 'the post stays a way in'
+    [screen] = calls(harness, SendMessage)
+    assert screen.chat_id == 42 and screen.parse_mode == 'HTML'
+    assert INVITES['ru']['title'] in screen.text and 'https://t.me/fixture_bot?start=ref_' in screen.text
+    keyboard = screen.reply_markup.inline_keyboard
+    assert keyboard[0][0].text == INVITES['ru']['share'] and keyboard[0][0].url.startswith('https://t.me/share/url?')
+    assert [button.text for button in keyboard[-1]] == [COPY['ru']['account'], COPY['ru']['home']]
+    conversation = BotConversation.objects.get(pk=42)
+    assert (conversation.state, conversation.prompt) == ('', {}), 'an old question is not answered by what comes next'
+    harness.click(f'post:{delivered.id.hex}', uid=42)
+    delivered.refresh_from_db()
+    assert delivered.viewed_at == seen and len(calls(harness, SendMessage)) == 2
 
 
 @pytest.mark.parametrize('token', ['mine', f'post:{uuid.uuid4().hex}', 'post:not-a-row'])

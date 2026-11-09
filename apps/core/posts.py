@@ -31,6 +31,9 @@ IMAGE_BYTES = 5 * 1024 * 1024
 IMAGE_PIXELS = 40_000_000
 IMAGE_EDGE = 2400
 PEOPLE_LIMIT = 500
+# What the button does besides counting the view (telegram/posts.py): says
+# thanks, or opens Invite friends (telegram/invites.py).
+BUTTON_ACTIONS = ('thanks', 'invite')
 # Telegram usernames; collectible ones can be four characters long.
 NAME = re.compile(r'[A-Za-z][A-Za-z0-9_]{3,31}')
 LINK = re.compile(r'(?:https?://)?(?:t\.me|telegram\.me)/', re.IGNORECASE)
@@ -161,7 +164,7 @@ def _write_image(key, data):
         output.write(data)
 
 
-def create(actor, *, text, audience_kind, usernames='', button_label='', image=None):
+def create(actor, *, text, audience_kind, usernames='', button_label='', button_action='thanks', image=None):
     """A draft: nothing is sent until the owner confirms it on its page."""
     text = (text or '').replace('\r\n', '\n').strip()
     button_label = ' '.join((button_label or '').split())
@@ -171,6 +174,8 @@ def create(actor, *, text, audience_kind, usernames='', button_label='', image=N
         raise DomainError('post_text_too_long')
     if len(button_label) > BUTTON_LIMIT:
         raise DomainError('post_button_too_long')
+    if button_action not in BUTTON_ACTIONS:
+        raise DomainError('post_button_action_invalid')
     if audience_kind not in AUDIENCES:
         raise DomainError('post_audience_invalid')
     if audience_kind == 'usernames':
@@ -196,7 +201,7 @@ def create(actor, *, text, audience_kind, usernames='', button_label='', image=N
     try:
         with transaction.atomic():
             post = Post.objects.create(id=post_id, created_by=actor, text=text, button_label=button_label,
-                                       audience=audience_kind, usernames=usernames, image_key=key)
+                                       button_action=button_action, audience=audience_kind, usernames=usernames, image_key=key)
             # Before the upload's own hook, so a failing upload cannot pass for a rollback.
             transaction.on_commit(lambda: committed.append(True))
             if key:
@@ -329,7 +334,7 @@ def record_view(token, telegram_user_id):
         pk = uuid.UUID(hex=token)
     except (TypeError, ValueError):
         return None
-    row = PostRecipient.objects.select_related('account').filter(pk=pk).first()
+    row = PostRecipient.objects.select_related('account', 'post').filter(pk=pk).first()
     if not row or row.account.telegram_user_id != telegram_user_id:
         return None
     now = timezone.now()

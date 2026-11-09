@@ -16,6 +16,12 @@
     <label>{{ t.post_image }}<input type="file" name="image" accept="image/jpeg,image/png,image/webp"><small>{{ t.post_image_hint }}</small></label>
     <label>{{ t.post_button }}<input name="button_label" value="{{ form.button_label }}" maxlength="{{ button_limit }}" placeholder="{{ t.post_button_default }}"><small>{{ t.post_button_hint }}</small></label>
     <fieldset>
+      <legend>{{ t.post_button_action }}</legend>
+      <div class="choice-group">
+        {% for key, label in button_actions %}<label class="choice"><input type="radio" name="button_action" value="{{ key }}"{% if form.button_action == key %} checked{% endif %} required><span>{{ label }}</span></label>{% endfor %}
+      </div>
+    </fieldset>
+    <fieldset>
       <legend>{{ t.post_audience }}</legend>
       <div class="choice-group post-audiences">
         {% for key, label in audiences %}<label class="choice"><input type="radio" name="audience" value="{{ key }}"{% if form.audience == key %} checked{% endif %} required><span>{{ label }}</span></label>{% endfor %}

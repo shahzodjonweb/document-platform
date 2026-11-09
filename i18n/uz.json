@@ -192,6 +192,7 @@
   "post_text_required": "Post matnini yozing.",
   "post_text_too_long": "Post Telegram uchun juda uzun: ko‘pi bilan 4 096 belgi, rasm bilan esa 1 024 belgi.",
   "post_button_too_long": "Tugma matni juda uzun: ko‘pi bilan 64 belgi.",
+  "post_button_action_invalid": "Tugma nima qilishini tanlang.",
   "post_audience_invalid": "Post kimga yuborilishini tanlang.",
   "post_people_required": "Post yuboriladigan odamlarni qo‘shing.",
   "post_people_too_many": "Bitta post uchun odamlar juda ko‘p: ko‘pi bilan 500 ta.",

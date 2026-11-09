@@ -110,6 +110,7 @@ def test_drafts_are_checked_before_anything_is_kept():
                          # Telegram counts an emoji as two.
                          ({'text': '🙂' * 2049}, 'post_text_too_long'),
                          ({'button_label': 'x' * 65}, 'post_button_too_long'),
+                         ({'button_action': 'open_url'}, 'post_button_action_invalid'),
                          ({'audience_kind': 'vip'}, 'post_audience_invalid'),
                          ({'audience_kind': 'usernames', 'usernames': ' \n '}, 'post_people_required'),
                          ({'audience_kind': 'usernames', 'usernames': ' '.join(f'user_{n:04}' for n in range(501))},
@@ -122,6 +123,7 @@ def test_drafts_are_checked_before_anything_is_kept():
     assert not Post.objects.exists()
     post = make(text='Line one\r\nLine two  ', button_label='  Seen   it ')
     assert (post.text, post.button_label, post.usernames, post.status) == ('Line one\nLine two', 'Seen it', '', 'draft')
+    assert post.button_action == 'thanks'
 
 
 def test_sending_snapshots_the_audience_and_its_plans(people):

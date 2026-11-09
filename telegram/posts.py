@@ -130,7 +130,13 @@ def markup(row):
     """The one button under a post. Its data is the row's own id: the tap is
     checked against the row's account, so no token rows are kept for it."""
     locale = row.account.locale if row.account.locale in BUTTON_DEFAULT else 'en'
-    label = row.post.button_label or BUTTON_DEFAULT[locale]
+    if row.post.button_label:
+        label = row.post.button_label
+    elif row.post.button_action == 'invite':
+        from .invites import copy
+        label = copy(locale, 'invite_button')
+    else:
+        label = BUTTON_DEFAULT[locale]
     return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=label, callback_data=PREFIX + row.id.hex)]])
 
 
@@ -287,6 +293,17 @@ class PostTaps(BaseMiddleware):
         if row is None:
             from .bot import sender_language, text
             return await event.answer(text(sender_language(event.from_user), 'controls_expired'), show_alert=True)
+        if row.post.button_action == 'invite':
+            # The post stays a way in: its button is kept, and the screen comes
+            # as a new message under it, as /invite would show it.
+            await event.answer()
+            from .bot import set_prompt
+            from .invites import view
+            await sync_to_async(set_prompt)(row.account)
+            body, rows = await view(row.account)
+            await data['bot'].send_message(row.account.telegram_user_id, body, parse_mode='HTML',
+                                           reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
+            return
         locale = row.account.locale if row.account.locale in THANKS else 'en'
         await event.answer(THANKS[locale])
         if event.message:

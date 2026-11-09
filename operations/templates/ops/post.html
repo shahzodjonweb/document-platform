@@ -49,6 +49,7 @@
     <p class="post-button-preview"><span class="button secondary small" aria-hidden="true">{{ button_label }}</span></p>
     <dl>
       <dt>{{ t.post_audience }}</dt><dd>{{ audience_label }}</dd>
+      <dt>{{ t.post_button_action }}</dt><dd>{{ button_action_label }}</dd>
       {% if post.started_at %}<dt>{{ t.post_started }}</dt><dd>{{ post.started_at|date:'d M Y · H:i' }}</dd>{% endif %}
       {% if post.finished_at %}<dt>{{ t.post_finished }}</dt><dd>{{ post.finished_at|date:'d M Y · H:i' }}</dd>{% endif %}
     </dl>
