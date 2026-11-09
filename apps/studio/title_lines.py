@@ -1630,6 +1630,178 @@ def _joined(lines):
     return out
 
 
+# What a cover says once, however a line labels it: who made it, who checks it, the class, the school. A student
+# is who made it and a teacher who checks it, as the web's Cover sheet reads them (useDeckCover.ts).
+FAMILIES = {'made': 'made', 'student': 'made', 'checked': 'checked', 'teacher': 'checked', 'group': 'class',
+            'class': 'class', 'course': 'class', 'school': 'school', 'university': 'school', 'faculty': 'school',
+            'department': 'school', 'direction': 'school'}
+# The Cover sheet's rows a kept line comes from (cover_lines.ROLES), as the one of those each says.
+ROW_FAMILIES = {'made': 'made', 'checked': 'checked', 'group': 'class', 'school': 'school'}
+PUPIL = re.compile(rf"(?<![\w']){CONNECTOR.pattern}(?![\w'])", I)
+CLASS_WORD = re.compile(rf"(?<![\w']){GROUP_NOUN.pattern}(?![\w'])", I)
+SCHOOL_WORD = re.compile(rf"(?<![\w']){INSTITUTION.pattern}(?![ \t]+year(?![\w']))", I)  # not "School year 2025-2026"
+# A class or a group as a line says it alone, with no word for it: "9-B", "10 «A»", "305-22". Never a date, a year,
+# a page or a name: a class is a number up to 12 with one letter, a group three digits and two.
+CLASS_CODE = re.compile(r"(?:1[0-2]|[1-9])[ \t]?(?:[-–][ \t]?[«\"“]?[a-zа-яё][»\"”]?|[«\"“][a-zа-яё][»\"”])"
+                        r"|\d{3}[ \t]?[-–][ \t]?\d{2}", I)
+# "Year 10", "Form 10"; never "Year 2026", "Academic year 25-26" or "School Year 24/25".
+YEAR_CLASS = re.compile(r"(?<![\w'])(?:year|form)[ \t]{0,2}\d{1,2}(?![\w'])(?![ \t]*[-–/][ \t]*\d)", I)
+
+
+def _families(line):
+    """Which of those a cover line says: by its label, and by a class, a school or a pupil it names without one.
+
+    "9-B sinf", "10-A", "Year 10", "Form 10", "12-maktab", "Toshkent davlat
+    texnika universiteti", "302-guruh talabasi Aliyev Vali". A name alone may
+    be who made it or who checks it, so it is both.
+    """
+    folded = _fold(line)
+    role = _role(line)
+    found = {FAMILIES[role]} if role in FAMILIES else set()
+    if (GROUP.search(folded) or CLASS.search(folded) or (CLASS_WORD.search(folded) and re.search(r"\d", folded))
+            or CLASS_CODE.fullmatch(folded.strip()) or YEAR_CLASS.search(folded)):
+        found.add('class')
+    if any(not _surname(word.group(0)) for word in SCHOOL_WORD.finditer(folded)):  # not "Maktabova"
+        found.add('school')
+    if not role and PUPIL.search(folded):
+        found.add('made')
+    if not role and not found and _people(line) and _only_people(line):
+        found |= {'made', 'checked'}
+    return found
+
+
+FACULTY_WORD = re.compile(r"(?:fakultet\w*|kafedra\w*|факультет\w*|кафедр\w*|faculty|department)", I)
+
+
+def _named(line, other, told):
+    """What a kept line's words say beside its row that `other` may say otherwise. A faculty or a department is part of
+    the school beside it, not another: "Bajardi: Iqtisodiyot fakulteti talabasi …" goes on under "Toshkent davlat
+    iqtisodiyot universiteti" and "TDIU Iqtisodiyot fakulteti", but not beside "Moliya fakulteti" — unless the cover
+    names its own faculty too, when "Moliya kafedrasi" is a department of it."""
+    found = _families(line)
+    schools = [word.group(0) for word in SCHOOL_WORD.finditer(_fold(line)) if not _surname(word.group(0))]
+    if schools and all(FACULTY_WORD.fullmatch(word) for word in schools) and (
+            not FACULTY_WORD.search(_fold(other)) or any(_own_faculty(line, said) for said in told)):
+        found = found - {'school'}
+    return found
+
+
+PLACE_NOUN = re.compile(r"(?:sinf|klass|class|grade|guruh|gruppa|group|kurs|course|maktab|shkol|school)\w*", I)
+# Words that end a faculty's own name: the nouns for a faculty, a department, a place and a student.
+NOT_A_NAME = re.compile(r"(?:fakul|kafed|facul|depar|talab|stude|o'quv|oquv|uchen|pupil)", I)
+LATIN_FACULTY = re.compile(r"(?:fakul\w*|kafedr\w*|facult\w*|depart\w*)", I)
+
+
+def _faculty_names(line):
+    """Each faculty or department a line names, as the stems of its own name: the words beside the noun, before it
+    ("Iqtisodiyot fakulteti", "Экономический факультет") or after it ("Faculty of Economics", "Кафедра общей физики"),
+    up to a comma, a university's word, an abbreviation, a person or a student noun. A line opening with its own noun
+    ("Faculty of Economics", "Кафедра финансов", "Fakultet: Moliya") keeps it, and in a line in capitals ("IQTISODIYOT
+    FAKULTETI") only a short word is an abbreviation and no word reads as a surname."""
+    latin = _latin(line)
+    label = LATIN_LABEL.match(latin)
+    tokens = re.findall(r"[\w']+|,", latin[label.end():] if label and _role(line) not in ('faculty', 'department') else latin)
+    capitals = not re.search(r"[a-z]", latin)
+    people = set() if capitals else _names(line)
+    found = []
+    for at, token in enumerate(tokens):
+        if not LATIN_FACULTY.fullmatch(token):
+            continue
+        stems = set()
+        for step, start in ((-1, at - 1), (1, at + 1)):
+            index = start
+            while 0 <= index < len(tokens):
+                word = tokens[index]
+                if step == 1 and index == at + 1 and word.lower() in ('of', 'po'):
+                    index += step
+                    continue
+                if (word == ',' or INSTITUTION.fullmatch(word) or LATIN_FACULTY.fullmatch(word)
+                        or (len(word) > 1 and word.isupper() and (not capitals or len(word) <= 4)) or word.lower() in people or NOT_A_NAME.match(word) or PLACE_NOUN.fullmatch(word) or re.search(r"\d", word)):
+                    break
+                if len(word) >= 4:
+                    stems.add(word.lower()[:5])
+                index += step
+        if stems:
+            found.append(stems)
+    return found
+
+
+def _own_faculty(line, other):
+    """Whether `other` names a faculty or a department by its own name, as `line` names it: "TDIU Iqtisodiyot fakulteti"
+    or "Экономический факультет" beside "… Iqtisodiyot fakulteti talabasi …" or "… экономического факультета …", but
+    not "… Moliya fakulteti" under "Toshkent davlat iqtisodiyot universiteti", nor "Umumiy kimyo kafedrasi" beside
+    "… Umumiy fizika kafedrasi …"."""
+    mine = set().union(*_faculty_names(line))
+    return bool(FACULTY_WORD.search(_fold(other)) and any(stems <= mine for stems in _faculty_names(other)))
+
+
+def _parts(line):
+    """A line's words with digits apart from letters, the nouns for a class or a school aside: "9Б" as "9" and "б"."""
+    return [part for word in _words(line) if not PLACE_NOUN.fullmatch(word) for part in re.findall(r"\d+|\D+", word)]
+
+
+def _same_place(line, other):
+    """Whether `line` names word for word the class or school `other` names, labels and the nouns for them aside: "Sinf: 9-B"
+    beside "Tayyorladi: 9-B sinf o'quvchisi …", "9 «Б» класс" or "9Б класс" beside "ученица 9 «Б» класса …". Never by an
+    initial: "10-A sinf" is not the class of "… 10-B sinf o'quvchisi Aliyeva G.", nor "2-maktab" the school of "21-maktab"."""
+    mine = _parts(line)
+    words = _parts(other)
+    return bool(words) and all(any(word == own or (len(word) >= 3 and own.startswith(word) and own[len(word):] in WORD_ENDINGS)
+                                   for own in mine) for word in words)
+
+
+def _kept(data, wanted, cover, written):
+    """The lines the customer keeps for their decks' covers (cover_lines.py) that a new deck takes beside its own.
+
+    Only on a deck in the language they were kept in: their labels are that
+    language's. Not one for what the description or the model's own cover
+    already says, however it labels it: "Talaba: Aliyev Vali" is who made this
+    deck, whoever made the last, and "10-A sinf" its class. A line kept with
+    its Cover sheet row says that row as well as what its words say: "TATU"
+    from the School row is a school, and a byline that names its class stays
+    off a cover that names another class. After an outline they are among the
+    lines it carried, and one the customer deleted there stays deleted.
+    """
+    kept = data.get('_cover_lines') if isinstance(data.get('_cover_lines'), dict) else {}
+    if not kept.get('locale') or kept['locale'] != data.get('output_locale'):
+        return []
+    told = [*wanted, *(line for line in cover if not _placeholder(line))]
+    said = set().union(*(_families(other) for other in told))
+    given = kept.get('lines') if isinstance(kept.get('lines'), list) else []
+    roles = kept['roles'] if isinstance(kept.get('roles'), list) and len(kept['roles']) == len(given) else [None] * len(given)
+    own, rows = [], []
+    for line, role in zip(given, roles):
+        line = written(line) if isinstance(line, str) else ''
+        if line:
+            own.append(line)
+            rows.append(ROW_FAMILIES.get(role) if isinstance(role, str) else None)
+    # A row adds to what the words say: "Tayyorladi: 9-B sinf o'quvchisi …" from the made row names a class too.
+    families = [{row} | _families(line) if row else _families(line) for line, row in zip(own, rows)]
+    # Kept with no row (the client did not say): a line with no label and nothing that says what it is ("TATU", "21") is
+    # the Cover sheet's class or school, typed bare: its rows for who made and who checks it always carry a label
+    # (useDeckCover.roleLines), and any words before a colon are one there. They are kept in that order, so of two
+    # such lines the first is the class; one beside a line for either is the other.
+    bare = [number for number, line in enumerate(own) if not rows[number] and not families[number]
+            and not _label(line)[1] and not re.match(r"[^:]{1,40}:", line.strip())]
+    unsaid = {'class', 'school'} - set().union(*families)
+    for order, number in enumerate(bare):
+        families[number] = ({('class', 'school')[order]} if len(bare) == 2 and len(unsaid) == 2
+                            else unsaid or {'class', 'school'})
+    lines = []
+    for line, says, row in zip(own, families, rows):
+        # A row is enough to leave its line off. A class or school its words name beside the row only clashes with a line
+        # that says another: "9-B sinf" beside "Tayyorladi: 9-B sinf o'quvchisi …" is the same class.
+        if row and (row in said or any(family in _families(other) and not _same_place(line, other)
+                                         for other in told for family in _named(line, other, told) - {row})):
+            continue
+        if not row and says & said:
+            continue
+        if any(_key(other) == _key(line) or _covers(other, line) or _same_person(line, other) for other in [*wanted, *cover, *lines]):
+            continue
+        lines.append(line)
+    return lines
+
+
 def place(data, content):
     """Put the lines the customer dictates for a deck's title slide on its cover, taking nothing else off it; the content.
 
@@ -1680,6 +1852,11 @@ def place(data, content):
         wanted = mine + [line for line in wanted if not any(
             _key(line) == _key(other) or _covers(other, line) or _same_person(line, other) for other in outlined)]
     body = [[line, 'model'] for line in _joined([line for line in str(cover.get('body') or '').split('\n') if line.strip()])]
+    if not revision and (had is None or seen is None):
+        # Before who checks it, as a cover lists them: "Tayyorladi: …", "9-B sinf", then "Qabul qildi: …". Only in
+        # the room the description's own lines leave: none of them is ever cut for a line kept from another deck.
+        at = next((number for number, line in enumerate(wanted) if _role(line) in ('checked', 'teacher')), len(wanted))
+        wanted[at:at] = _kept(data, wanted, [line for line, _ in body], written)[:max(0, TITLE_LINES - len(wanted))]
     # "Sobirova Madina o'rniga Sobirova Mohinur deb yoz": corrected in the model's line for it.
     for old, right in _corrections(request) if revision else []:
         for entry in body:

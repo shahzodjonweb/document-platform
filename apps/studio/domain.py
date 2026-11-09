@@ -30,7 +30,7 @@ GENERATION_IDS={DOCUMENT,SLIDES,CV}
 EXPORT='export.generated_pptx'
 RENDER_IDS={EXPORT}
 # Server-owned fields a client may never send.
-READONLY_FIELDS={'_transcription','transcription_ready','transcription_reviewed','_source_seed','revision','_render','_rebuilt_version'}
+READONLY_FIELDS={'_transcription','transcription_ready','transcription_reviewed','_source_seed','revision','_render','_rebuilt_version','_cover_lines'}
 
 def pack(value): return cipher().encrypt(json.dumps(value,ensure_ascii=False).encode())
 def unpack(value): return json.loads(cipher().decrypt(bytes(value)))
@@ -144,6 +144,7 @@ def draft_data(d):
     data=unpack(d.encrypted_data)
     data.pop('_source_seed',None)
     data.pop('_rebuilt_version',None)
+    data.pop('_cover_lines',None)
     pins=data.pop('_render',None)
     if pins:data['render']=render_data(pins)
     if data.get('revision'):
@@ -810,6 +811,14 @@ def create_draft(account,data):
         from .cv.content import require_facts
         require_facts(data,fid,payload,refuse=not given)
     elif not given:require_topic(data,fid,payload)
+    if fid==SLIDES and not payload['options'].get('revise_draft_id'):
+        # The lines the customer keeps for their decks' covers go with a new deck, packed with it, for its cover
+        # (title_lines.place, a deck in the language they were kept in): a quote is tied to them as to the rest, and
+        # a change keeps the cover it had. Only while the deck editor is on: its Cover sheet is where they are seen and forgotten.
+        from operations.integrations import editor_flags
+        from .cover_lines import remembered
+        kept=remembered(account)
+        if kept['lines'] and editor_flags()['deck_editor']:payload['_cover_lines']=kept
     return GenerationDraft.objects.create(account=account,feature_id=fid,encrypted_data=pack(payload),provider_mode=cfg['mode'],expires_at=timezone.now()+timedelta(hours=24))
 
 def draft_jobs(account,draft_id,statuses):
@@ -889,6 +898,7 @@ def update_draft(account,draft_id,data):
     # says. An outline rebuilt from scratch is another deck, with nothing drawn
     # yet: the model chooses its look again (execute_outline drops them the same way).
     # A job running now is still drawing the old deck: this version tells it to keep its pins (_write_pins).
+    if original.get('_cover_lines'):payload['_cover_lines']=original['_cover_lines']
     if rebuilt:payload['_rebuilt_version']=d.version+1
     else:
         for key in ('_render','_rebuilt_version'):

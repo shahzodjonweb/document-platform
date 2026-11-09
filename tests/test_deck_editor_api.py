@@ -396,3 +396,301 @@ def test_the_editors_saves_keep_the_pins_after_slides_are_added_and_removed(cust
         assert data['options']['length'] == len(ids) + data['options']['question_slides']
     assert stored(draft)['content']['sections'][1]['heading'] == 'Only the heading changed'
 
+
+# ---------------------------------------------------------------- kept cover lines on new decks
+
+
+def made_from(customer, prompt, locale='uz', cover='Spring review'):  # noqa: F811
+    """A new deck from a description, made, and the lines on its cover; `cover` is the model's own."""
+    from tests.test_deck_pins import DESIGN, deck_sections
+    sections = deck_sections()
+    sections[0] = {**sections[0], 'body': cover}
+    draft = create_draft(customer, {'feature_id': SLIDES, 'title': 'Fizika', 'prompt': prompt, 'source_text': 'Notes about the harbour.',
+                                    'output_locale': locale, 'options': {'pages': len(sections), 'deck_design': DESIGN}})
+    draft = update_draft(customer, draft.id, {'version': draft.version, 'content': {'title': 'Fizika', 'sections': sections, 'questions': [], 'citations': []}})
+    assert run(customer, draft).status == 'succeeded'
+    return draft, stored(draft)['content']['sections'][0]['body'].split('\n')
+
+
+def keep(customer, lines, locale='uz', roles=None):  # noqa: F811
+    assert post(customer, 'studio/cover-lines', {'lines': lines, 'locale': locale, **({'roles': roles} if roles else {})}).status_code == 200
+    customer.refresh_from_db()  # as every request reads its account afresh
+
+
+def test_kept_cover_lines_go_on_a_new_decks_cover_unless_its_description_names_them(customer, stock_photos):  # noqa: F811
+    keep(customer, LINES)
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot. Qabul qildi: Rasulova M.')
+    assert {'Qabul qildi: Rasulova M.', *LINES} <= set(cover) and 'Spring review' in cover
+    assert stored(draft)['options']['title_lines'] == [*LINES, 'Qabul qildi: Rasulova M.']
+    assert '_cover_lines' not in draft_data(GenerationDraft.objects.get(pk=draft.pk))
+    # Who made this deck is who its description says.
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot. Tayyorladi: Aliyev Vali')
+    assert 'Tayyorladi: Aliyev Vali' in cover and '9-B sinf' in cover and not any('Karimova' in line for line in cover)
+    # A change keeps the cover it had, and takes none of them.
+    change = create_draft(customer, {'prompt': 'Ikkinchi slaydni qisqartir.', 'options': {'revise_draft_id': str(draft.id)}})
+    assert '_cover_lines' not in stored(change)
+    assert run(customer, change).status == 'succeeded'
+    assert not any('Karimova' in line for line in stored(change)['content']['sections'][0]['body'].split('\n'))
+    # Forgotten, they go on no new deck.
+    login_client(customer).delete('/api/v1/studio/cover-lines')
+    customer.refresh_from_db()
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot.')
+    assert not set(LINES) & set(cover) and '_cover_lines' not in stored(draft)
+    for body in ({'feature_id': SLIDES, 'prompt': 'Fizika fanidan taqdimot.', 'options': {'_cover_lines': LINES}},
+                 {'feature_id': SLIDES, 'prompt': 'Fizika fanidan taqdimot.', '_cover_lines': LINES}):
+        answer = post(customer, 'generation/drafts', body)
+        assert answer.status_code == 400 and error(answer) == 'invalid_parameters'
+
+
+SCHOOL_LINES = ['Tayyorladi: Karimova Dilnoza', '9-B sinf', 'Qabul qildi: Rasulova M.', '12-maktab']
+
+
+def test_a_kept_line_never_goes_beside_another_who_or_class_however_the_cover_labels_it(customer, stock_photos):  # noqa: F811
+    keep(customer, SCHOOL_LINES)
+    # A student is who made it and a teacher who checks it, as the web's Cover sheet reads them.
+    draft, cover = made_from(customer, "Fizika fanidan taqdimot.\nTitul sahifaga yoz:\nTalaba: Aliyev Vali\nO'qituvchi: Saidova N.")
+    assert {'Talaba: Aliyev Vali', 'O‘qituvchi: Saidova N.', '9-B sinf', '12-maktab'} <= set(cover)
+    assert not any('Karimova' in line or 'Rasulova' in line for line in cover)
+    # A class dictated is this deck's class, whatever the last one's was.
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot.\nTitul sahifaga yoz:\nTalaba: Aliyev Vali\n10-A sinf')
+    assert {'Talaba: Aliyev Vali', '10-A sinf', 'Qabul qildi: Rasulova M.', '12-maktab'} <= set(cover) and '9-B sinf' not in cover
+    # Nor beside the model's own cover naming another teacher; its blanks are filled.
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot.', cover='Spring review\nO‘qituvchi: Saidova N.')
+    assert {'O‘qituvchi: Saidova N.', 'Tayyorladi: Karimova Dilnoza', '9-B sinf', '12-maktab'} <= set(cover)
+    assert not any('Rasulova' in line for line in cover)
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot.', cover='Spring review\nTayyorladi: ______\nQabul qildi: ______')
+    assert cover == ['Spring review', 'Tayyorladi: Karimova Dilnoza', '9-B sinf', 'Qabul qildi: Rasulova M.', '12-maktab']
+
+
+def test_kept_lines_take_only_the_room_the_description_leaves(customer, stock_photos):  # noqa: F811
+    keep(customer, [*LINES, 'Fan: Fizika', 'Loyiha: Ilmiy ish'])
+    mine = ['O‘zbekiston Respublikasi Oliy taʼlim vazirligi', 'Toshkent davlat texnika universiteti', 'Energetika fakulteti',
+            'Bajardi: Aliyev Vali', 'Guruh: 302-21', 'Qabul qildi: Saidova N.', 'Toshkent 2026']
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot.\nTitul sahifaga yozing:\n' + '\n'.join(mine))
+    lines = stored(draft)['options']['title_lines']
+    # Every line of the customer's own is there; one kept line fits the eight, and the others give way.
+    assert set(mine) <= set(cover) and set(mine) <= set(lines) and len(cover) == 8
+    assert 'Fan: Fizika' in cover and 'Loyiha: Ilmiy ish' not in cover and not set(LINES) & set(cover)
+
+
+def test_kept_lines_go_only_on_a_deck_in_their_language_while_the_deck_editor_is_on(customer, stock_photos, monkeypatch):  # noqa: F811
+    keep(customer, LINES)
+    draft, cover = made_from(customer, 'Physics for grade 9.', locale='ru')
+    assert not set(LINES) & set(cover) and stored(draft)['output_locale'] == 'ru'
+    draft, cover = made_from(customer, 'Physics for grade 9.', locale='en')
+    assert not set(LINES) & set(cover)
+    keep(customer, ['Выполнила: Каримова Дилноза'], locale='ru')
+    draft, cover = made_from(customer, 'Физика для 9 класса.', locale='ru')
+    assert 'Выполнила: Каримова Дилноза' in cover
+    # Its Cover sheet is where they are seen and forgotten: with the deck editor off, no new deck takes them.
+    monkeypatch.delenv('EDITOR_FLAG_DECK_EDITOR')
+    draft, cover = made_from(customer, 'Физика для 9 класса.', locale='ru')
+    assert not any('Каримова' in line for line in cover) and '_cover_lines' not in stored(draft)
+
+
+# The Cover sheet's rows as it keeps them (useDeckCover.roleLines): who made it and who checks it with their labels,
+# the group and the school as the customer typed them, bare.
+BARE_LINES = ['Tayyorladi: Karimova Dilnoza', 'Qabul qildi: Rasulova M.', '302-21', 'TATU']
+
+
+def test_a_kept_class_or_school_typed_bare_never_goes_beside_another(customer, stock_photos):  # noqa: F811
+    keep(customer, BARE_LINES)
+    # Nothing says who made it, a group or a school: the kept lines go on, as kept.
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot.')
+    assert cover == ['Spring review', *BARE_LINES]
+    # The group dictated is this deck's: the kept one stays off, and "TATU" beside it is the school.
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot. Titul sahifaga yoz:\nBajardi: Aliyev Vali\nGuruh: 305-22')
+    assert cover == ['Spring review', 'Bajardi: Aliyev Vali', 'Guruh: 305-22', 'Qabul qildi: Rasulova M.', 'TATU']
+    # Nor beside the model's own group and school.
+    model = ['Bajardi: Aliyev Vali', 'Guruh: 305-22', 'Toshkent axborot texnologiyalari universiteti']
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot.', cover='\n'.join(['Spring review', *model]))
+    assert cover == ['Spring review', *model, 'Qabul qildi: Rasulova M.']
+    # A class dictated with a school: neither kept one goes on.
+    keep(customer, ['Tayyorladi: Karimova Dilnoza', '9-B', 'Prezident maktabi'])
+    draft, cover = made_from(customer, 'Tarix fanidan taqdimot. Titul sahifaga yozing:\nTayyorladi: Aliyev Vali\n10-A sinf\n21-maktab')
+    assert cover == ['Spring review', 'Tayyorladi: Aliyev Vali', '10-A sinf', '21-maktab']
+    # The model's pupil of another class: "9-B" is a class, so "21" kept beside it is the school, and goes on.
+    keep(customer, ['9-B', '21'])
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot.', cover='Spring review\n10-A sinf o‘quvchisi Aliyev Vali')
+    assert cover == ['Spring review', '10-A sinf o‘quvchisi Aliyev Vali', '21']
+    # With no class or school said, a bare class and school go on; with only a school said, only the class.
+    keep(customer, ['Tayyorladi: Karimova Dilnoza', '9-B', 'TATU'])
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot. Tayyorladi: Aliyev Vali')
+    assert cover == ['Spring review', 'Tayyorladi: Aliyev Vali', '9-B', 'TATU']
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot. Titul sahifaga yoz:\nBajardi: Aliyev Vali\n21-maktab')
+    assert cover == ['Spring review', 'Bajardi: Aliyev Vali', '21-maktab', '9-B']
+
+
+def test_tuzdi_a_class_code_and_year_10_say_who_made_it_and_the_class(customer, stock_photos):  # noqa: F811
+    keep(customer, ['Tayyorladi: Karimova Dilnoza', '9-B sinf'])
+    # "Tuzdi" is who made it, as "Tayyorladi" and "Bajardi" are (useDeckCover reads it so too).
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot.', cover='Spring review\nTuzdi: Aliyev Vali')
+    assert cover == ['Spring review', 'Tuzdi: Aliyev Vali', '9-B sinf']
+    # A class dictated as its code alone is the class.
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot. Titul sahifaga yoz:\nBajardi: Aliyev Vali\n10-A')
+    assert cover == ['Spring review', 'Bajardi: Aliyev Vali', '10-A']
+    # "Year 10" is an English deck's class, as "Grade 10" is.
+    keep(customer, ['Checked by: Fixture Teacher', '9-B class'], locale='en')
+    for year in ('Year 10', 'Grade 10'):
+        draft, cover = made_from(customer, 'Physics deck.', locale='en', cover=f'Spring review\nPrepared by: Fixture Pupil\n{year}')
+        assert cover == ['Spring review', 'Prepared by: Fixture Pupil', year, 'Checked by: Fixture Teacher']
+    # "Tuzdilar" and "Tuzuvchilar" are who made it, as "Tayyorladilar" is.
+    keep(customer, ['Tayyorladi: Karimova Dilnoza'])
+    for label in ('Tuzdilar', 'Tuzuvchilar'):
+        draft, cover = made_from(customer, 'Fizika fanidan taqdimot.', cover=f'Spring review\n{label}: Aliyev Vali, Sobirova Nilufar')
+        assert cover == ['Spring review', f'{label}: Aliyev Vali, Sobirova Nilufar']
+
+
+# The Cover sheet's rows as it keeps them, each with its row (useDeckCover.roleLines): only the School row filled.
+ROW_LINES = ['Tayyorladi: Karimova Dilnoza', 'Qabul qildi: Rasulova M.', 'TATU']
+ROWS = ['made', 'checked', 'school']
+
+
+def test_a_kept_line_with_its_row_says_that_row_whatever_its_words(customer, stock_photos):  # noqa: F811
+    keep(customer, ROW_LINES, roles=ROWS)
+    # "TATU" is the school: the group dictated leaves it on, and the draft carries the row with the line.
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot. Titul sahifaga yoz:\nBajardi: Aliyev Vali\nGuruh: 305-22')
+    assert cover == ['Spring review', 'Bajardi: Aliyev Vali', 'Guruh: 305-22', 'Qabul qildi: Rasulova M.', 'TATU']
+    assert stored(draft)['_cover_lines'] == {'lines': ROW_LINES, 'locale': 'uz', 'roles': ROWS}
+    # A school named leaves it off.
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot.', cover='Spring review\nToshkent axborot texnologiyalari universiteti')
+    assert cover == ['Spring review', 'Toshkent axborot texnologiyalari universiteti', 'Tayyorladi: Karimova Dilnoza', 'Qabul qildi: Rasulova M.']
+    # Kept with no rows, the lone bare line may be either, so a group said leaves it off.
+    keep(customer, ROW_LINES)
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot. Titul sahifaga yoz:\nBajardi: Aliyev Vali\nGuruh: 305-22')
+    assert cover == ['Spring review', 'Bajardi: Aliyev Vali', 'Guruh: 305-22', 'Qabul qildi: Rasulova M.']
+    # A group kept beside a school named, and a school beside a class, in every language.
+    keep(customer, ['Tayyorladi: Karimova Dilnoza', 'MT-21'], roles=['made', 'group'])
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot.', cover='Spring review\nToshkent axborot texnologiyalari universiteti')
+    assert cover == ['Spring review', 'Toshkent axborot texnologiyalari universiteti', 'Tayyorladi: Karimova Dilnoza', 'MT-21']
+    keep(customer, ['Выполнил: Иванов И.', 'Проверил: Петров П.', 'МБОУ СОШ №5'], locale='ru', roles=ROWS)
+    draft, cover = made_from(customer, 'Физика.', locale='ru', cover='Spring review\n10 «Б» класс')
+    assert cover == ['Spring review', '10 «Б» класс', 'Выполнил: Иванов И.', 'Проверил: Петров П.', 'МБОУ СОШ №5']
+    keep(customer, ['Prepared by: Fixture Pupil', 'Westminster'], locale='en', roles=['made', 'school'])
+    draft, cover = made_from(customer, 'Physics deck.', locale='en', cover='Spring review\nYear 10')
+    assert cover == ['Spring review', 'Year 10', 'Prepared by: Fixture Pupil', 'Westminster']
+    # A row adds to what the words say: a byline naming its class never goes beside another class.
+    keep(customer, ['Tayyorladi: 9-B sinf o‘quvchisi Karimova Dilnoza', 'Qabul qildi: Rasulova M.'], roles=['made', 'checked'])
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot. Titul sahifaga yoz:\nQabul qildi: Sobirova N.\n10-A sinf')
+    assert cover == ['Spring review', 'Qabul qildi: Sobirova N.', '10-A sinf']
+    # The model's class teacher is who checks it, not the class: the kept class goes on, the kept teacher does not.
+    keep(customer, ['Tayyorladi: Karimova Dilnoza', 'Qabul qildi: Rasulova M.', '9-B'], roles=['made', 'checked', 'group'])
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot.', cover='Spring review\nBajardi: Aliyev Vali\nSinf rahbari: Sobirova N.')
+    assert cover == ['Spring review', 'Bajardi: Aliyev Vali', 'Sinf rahbari: Sobirova N.', '9-B']
+    # The class it names said again is the same class, not a second one: the byline goes on.
+    keep(customer, ['Tayyorladi: 9-B sinf o‘quvchisi Karimova Dilnoza', 'Qabul qildi: Rasulova M.'], roles=['made', 'checked'])
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot.', cover='Spring review\n9-B sinf')
+    assert cover == ['Spring review', '9-B sinf', 'Tayyorladi: 9-B sinf o‘quvchisi Karimova Dilnoza', 'Qabul qildi: Rasulova M.']
+    # So is a labelled class line, and a Russian class said in another case.
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot.', cover='Spring review\nSinf: 9-B')
+    assert cover == ['Spring review', 'Sinf: 9-B', 'Tayyorladi: 9-B sinf o‘quvchisi Karimova Dilnoza', 'Qabul qildi: Rasulova M.']
+    keep(customer, ['Выполнила: ученица 9 «Б» класса Петрова А.'], locale='ru', roles=['made'])
+    draft, cover = made_from(customer, 'Физика.', locale='ru', cover='Spring review\n9 «Б» класс')
+    assert cover == ['Spring review', '9 «Б» класс', 'Выполнила: ученица 9 «Б» класса Петрова А.']
+    draft, cover = made_from(customer, 'Физика.', locale='ru', cover='Spring review\n9Б класс')
+    assert cover == ['Spring review', '9Б класс', 'Выполнила: ученица 9 «Б» класса Петрова А.']
+    # Word for word, never by an initial: "10-A" is not the class of "… Aliyeva …", nor "9V" of "9-B".
+    keep(customer, ['Tayyorladi: 10-B sinf o‘quvchisi Aliyeva Dilnoza'], roles=['made'])
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot.', cover='Spring review\n10-A sinf')
+    assert cover == ['Spring review', '10-A sinf']
+    keep(customer, ['Tayyorladi: 9-B sinf o‘quvchisi Karimova Dilnoza'], roles=['made'])
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot.', cover='Spring review\n9V sinf')
+    assert cover == ['Spring review', '9V sinf']
+    # A faculty or a department is part of the university the model names; another school is a second one.
+    faculty = ['Bajardi: Iqtisodiyot fakulteti talabasi Karimova Dilnoza', 'Qabul qildi: Oliy matematika kafedrasi dotsenti Rasulova M.']
+    keep(customer, faculty, roles=['made', 'checked'])
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot.', cover='Spring review\nToshkent davlat iqtisodiyot universiteti')
+    assert cover == ['Spring review', 'Toshkent davlat iqtisodiyot universiteti', *faculty]
+    # Its own faculty is the same place; another faculty, or another department, is not.
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot.', cover='Spring review\nIqtisodiyot fakulteti')
+    assert cover == ['Spring review', 'Iqtisodiyot fakulteti', faculty[0]]
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot.', cover='Spring review\nMoliya fakulteti')
+    assert cover == ['Spring review', 'Moliya fakulteti']
+    # By the faculty's own name, never a word of the university's beside it, nor one two departments share.
+    model = 'Spring review\nToshkent davlat iqtisodiyot universiteti Moliya fakulteti'
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot.', cover=model)
+    assert cover == model.split('\n')
+    keep(customer, ['Qabul qildi: Umumiy fizika kafedrasi dotsenti Rasulova M.'], roles=['checked'])
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot.', cover='Spring review\nUmumiy kimyo kafedrasi')
+    assert cover == ['Spring review', 'Umumiy kimyo kafedrasi']
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot.', cover='Spring review\nUmumiy fizika kafedrasi')
+    assert cover == ['Spring review', 'Umumiy fizika kafedrasi', 'Qabul qildi: Umumiy fizika kafedrasi dotsenti Rasulova M.']
+    keep(customer, faculty, roles=['made', 'checked'])
+    # Its own faculty however the cover names it: with the university's, or with a department of it beside.
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot.', cover='Spring review\nTDIU Iqtisodiyot fakulteti')
+    assert cover == ['Spring review', 'TDIU Iqtisodiyot fakulteti', faculty[0]]
+    model = 'Spring review\nToshkent davlat iqtisodiyot universiteti Iqtisodiyot fakulteti'
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot.', cover=model)
+    assert cover == [*model.split('\n'), faculty[0]]
+    model = 'Toshkent davlat iqtisodiyot universiteti\nIqtisodiyot fakulteti\nMoliya kafedrasi\nSpring review'
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot.', cover=model)
+    assert cover == [*model.split('\n'), faculty[0]]
+    # In capitals, as a title page writes it, or with the faculty's own noun first.
+    model = 'TOSHKENT DAVLAT IQTISODIYOT UNIVERSITETI\nIQTISODIYOT FAKULTETI\nMOLIYA KAFEDRASI\nMUSTAQIL ISH'
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot.', cover=model)
+    assert cover == [*model.split('\n'), faculty[0]]
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot.', cover='Spring review\nMOLIYA FAKULTETI')
+    assert cover == ['Spring review', 'MOLIYA FAKULTETI']
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot.', cover='Spring review\nFakultet: Iqtisodiyot')
+    assert cover == ['Spring review', 'Fakultet: Iqtisodiyot', faculty[0]]
+    keep(customer, ['Выполнила: студентка экономического факультета Петрова А.'], locale='ru', roles=['made'])
+    draft, cover = made_from(customer, 'Физика.', locale='ru', cover='Spring review\nЭкономический факультет')
+    assert cover == ['Spring review', 'Экономический факультет', 'Выполнила: студентка экономического факультета Петрова А.']
+    draft, cover = made_from(customer, 'Физика.', locale='ru', cover='Spring review\nЭКОНОМИЧЕСКИЙ ФАКУЛЬТЕТ')
+    assert cover == ['Spring review', 'ЭКОНОМИЧЕСКИЙ ФАКУЛЬТЕТ', 'Выполнила: студентка экономического факультета Петрова А.']
+    english = ['Prepared by: Olivia Smith, Faculty of Economics', 'Checked by: Fixture Teacher, Department of Finance']
+    keep(customer, english, locale='en', roles=['made', 'checked'])
+    model = 'Riverside University\nFaculty of Economics\nDepartment of Finance\nCoursework'
+    draft, cover = made_from(customer, 'Physics deck.', locale='en', cover=model)
+    assert cover == [*model.split('\n'), *english]
+    model = 'Riverside University\nFaculty of Law\nDepartment of Finance\nCoursework'
+    draft, cover = made_from(customer, 'Physics deck.', locale='en', cover=model)
+    assert cover == [*model.split('\n'), english[1]]
+    keep(customer, ['Tayyorladi: 21-maktab o‘quvchisi Karimova Dilnoza'], roles=['made'])
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot.', cover='Spring review\n45-maktab')
+    assert cover == ['Spring review', '45-maktab']
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot.', cover='Spring review\n2-maktab')
+    assert cover == ['Spring review', '2-maktab']
+    # "KURS ISHI" heads a course paper's cover: it names no class, so the kept group goes on.
+    keep(customer, ['Bajardi: Karimova Dilnoza', 'Qabul qildi: Rasulova M.', '302-21'], roles=['made', 'checked', 'group'])
+    draft, cover = made_from(customer, 'Iqtisodiyot fanidan taqdimot.', cover='Spring review\nKURS ISHI')
+    assert cover == ['Spring review', 'KURS ISHI', 'Bajardi: Karimova Dilnoza', 'Qabul qildi: Rasulova M.', '302-21']
+    # "Teacher's name:" is who checks it, as on the web: the kept teacher stays off.
+    keep(customer, ['Prepared by: Fixture Pupil', 'Checked by: Fixture Teacher'], locale='en', roles=['made', 'checked'])
+    draft, cover = made_from(customer, 'Physics deck.', locale='en', cover="Spring review\nTeacher's name: Fixture Teacher Two")
+    assert cover == ['Spring review', "Teacher's name: Fixture Teacher Two", 'Prepared by: Fixture Pupil']
+
+
+def test_plural_labels_a_year_range_and_more_schools_read_as_the_web_reads_them(customer, stock_photos):  # noqa: F811
+    # "Ijrochilar – …" and "Authors – …" are who made it: never a bare class or school.
+    keep(customer, ['Ijrochilar – Aliyev Vali, Karimova Dilnoza', 'Qabul qildi: Rasulova M.', '9-B', 'TATU'])
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot.', cover='Spring review\nToshkent axborot texnologiyalari universiteti')
+    assert cover == ['Spring review', 'Toshkent axborot texnologiyalari universiteti', 'Ijrochilar – Aliyev Vali, Karimova Dilnoza',
+                     'Qabul qildi: Rasulova M.', '9-B']
+    keep(customer, ['Authors – A. Aliyev, D. Karimova', 'Grade 9', 'Westminster'], locale='en')
+    model = 'Westminster International University in Tashkent'
+    draft, cover = made_from(customer, 'Physics deck.', locale='en', cover=f'Spring review\n{model}')
+    assert cover == ['Spring review', model, 'Authors – A. Aliyev, D. Karimova', 'Grade 9']
+    # A school year is no class, nor a school.
+    keep(customer, ['Prepared by: Fixture Pupil', '9-B class'], locale='en')
+    draft, cover = made_from(customer, 'Physics deck.', locale='en', cover='Spring review\nAcademic year 25-26')
+    assert cover == ['Spring review', 'Academic year 25-26', 'Prepared by: Fixture Pupil', '9-B class']
+    keep(customer, ['Prepared by: Fixture Pupil', 'Grade 9', 'School No. 99'], locale='en')
+    draft, cover = made_from(customer, 'Physics deck.', locale='en', cover='Spring review\nSchool Year 24/25')
+    assert cover == ['Spring review', 'School Year 24/25', 'Prepared by: Fixture Pupil', 'Grade 9', 'School No. 99']
+    # "Form 10" is a class; a lyceum, a gymnasium and a technical college are schools.
+    draft, cover = made_from(customer, 'Physics deck.', locale='en', cover='Spring review\nPrepared by: A. Aliyev\nForm 10\nLyceum No. 2')
+    assert cover == ['Spring review', 'Prepared by: A. Aliyev', 'Form 10', 'Lyceum No. 2']
+    keep(customer, ['Выполнил: Иванов И.', 'Лицей №2'], locale='ru')
+    draft, cover = made_from(customer, 'Физика.', locale='ru', cover='Spring review\nВыполнила: Петрова А.\nГимназия №1')
+    assert cover == ['Spring review', 'Выполнила: Петрова А.', 'Гимназия №1']
+    keep(customer, ['Tayyorladi: Karimova Dilnoza', '9-B sinf', '21-maktab'])
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot.', cover='Spring review\nBajardi: Aliyev Vali\nToshkent 1-son texnikumi')
+    assert cover == ['Spring review', 'Bajardi: Aliyev Vali', 'Toshkent 1-son texnikumi', '9-B sinf']
+    # Dictated, too.
+    draft, cover = made_from(customer, 'Fizika fanidan taqdimot. Titul sahifaga yoz:\nBajardi: Aliyev Vali\nToshkent 1-son texnikumi')
+    assert cover == ['Spring review', 'Bajardi: Aliyev Vali', 'Toshkent 1-son texnikumi', '9-B sinf']
+    # An academy is a school.
+    keep(customer, ['Prepared by: Fixture Pupil', 'Tashkent Pediatric Medical Institute'], locale='en', roles=['made', 'school'])
+    draft, cover = made_from(customer, 'Physics deck.', locale='en', cover='Spring review\nTashkent Medical Academy')
+    assert cover == ['Spring review', 'Tashkent Medical Academy', 'Prepared by: Fixture Pupil']
