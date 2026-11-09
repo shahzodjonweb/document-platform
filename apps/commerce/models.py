@@ -163,7 +163,9 @@ class Referral(models.Model):
     # Whether this friend counts toward Plus months (apps/commerce/referrals.py).
     # False only on friends counted before invitations earned Plus: they stay
     # in the totals as history and never toward a reward.
-    counts_toward_reward=models.BooleanField(default=True)
+    # A database default too: migrations run while the old code still serves,
+    # and it creates referrals without this column.
+    counts_toward_reward=models.BooleanField(default=True,db_default=True)
 
 
 class ReferralReward(models.Model):

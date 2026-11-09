@@ -23,7 +23,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='referral',
             name='counts_toward_reward',
-            field=models.BooleanField(default=True),
+            field=models.BooleanField(db_default=True, default=True),
         ),
         migrations.CreateModel(
             name='ReferralReward',
