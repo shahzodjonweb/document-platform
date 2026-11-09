@@ -29,12 +29,14 @@ def financial_report(filters):
     out of the totals.
     """
     start,end=filters.bounds;as_of=min(end,timezone.now());sandbox=filters.environment=='development'
-    every=Payment.objects.filter(account__in=filters.accounts(False),sandbox=sandbox)
+    # Plus months earned by inviting friends are written as zero-amount
+    # payments (provider 'referral'): never money, never a payer.
+    every=Payment.objects.filter(account__in=filters.accounts(False),sandbox=sandbox).exclude(provider='referral')
     cards=every.filter(currency='UZS')
     rows=cards.filter(occurred_at__gte=start,occurred_at__lt=end)
     gross=rows.aggregate(n=Sum('amount_xtr'))['n'] or 0
     returned=Refund.objects.filter(payment__in=cards,status='confirmed',confirmed_at__gte=start,confirmed_at__lt=end).aggregate(n=Sum('amount_xtr'))['n'] or 0
-    active=SubscriptionPeriod.objects.filter(account__in=filters.accounts(False),sandbox=sandbox,starts_at__lte=as_of,ends_at__gt=as_of).filter(Q(revoked_at__isnull=True)|Q(revoked_at__gt=as_of))
+    active=SubscriptionPeriod.objects.filter(account__in=filters.accounts(False),sandbox=sandbox,starts_at__lte=as_of,ends_at__gt=as_of).filter(Q(revoked_at__isnull=True)|Q(revoked_at__gt=as_of)).exclude(payment__provider='referral')
     first=cards.values('account_id').annotate(first=Min('occurred_at')).filter(first__gte=start,first__lt=end).count()
     return {'totals':{'uzs_gross':gross,'uzs_refunds':returned,'uzs_net':gross-returned,'payers':rows.values('account_id').distinct().count(),'paid':active.values('account_id').distinct().count(),'first':first,'manual_pending':ManualPayment.objects.filter(status='submitted').count()},'rows':every.filter(occurred_at__gte=start,occurred_at__lt=end).select_related('account').order_by('-occurred_at'),'as_of':as_of}
 

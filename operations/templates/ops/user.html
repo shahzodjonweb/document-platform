@@ -28,6 +28,7 @@
   <a href="#files">{{ t.files }} <span class="count">{{ files|length }}</span></a>
   {% if generation_rows %}<a href="#ai">{{ t.gen_customer_recent }} <span class="count">{{ generation_rows|length }}</span></a>{% endif %}
   {% if payment_rows is not None %}<a href="#payments">{{ t.payments }} <span class="count">{{ payment_rows|length }}</span></a>{% endif %}
+  <a href="#invites">{{ t.invites_title }} <span class="count">{{ invites.counted }}</span></a>
 </nav>
 
 <div class="overview-grid" id="overview">
@@ -145,6 +146,38 @@
   </div>
 </section>
 {% endif %}
+
+<section class="panel" id="invites">
+  <div class="panel-heading"><h2>{{ t.invites_title }}</h2></div>
+  <dl class="limit-grid">
+    <dt>{{ t.invites_counted }}</dt><dd class="mono">{{ invites.counted }}</dd>
+    <dt>{{ t.invites_this_month }}</dt><dd class="mono">{{ invites.counted_this_month }} / {{ invites.monthly_cap }}</dd>
+    <dt>{{ t.invites_pending }}</dt><dd class="mono">{{ invites.pending }}</dd>
+    {% if invites.before %}<dt>{{ t.invites_before }}</dt><dd class="mono">{{ invites.before }}</dd>{% endif %}
+    <dt>{{ t.invites_next }}</dt><dd>{{ invites.next_text }}</dd>
+  </dl>
+  <h3>{{ t.invites_rewards }}</h3>
+  <div class="table-region" role="region" aria-label="{{ t.invites_rewards }}" tabindex="0">
+    <table>
+      <thead><tr><th>{{ t.invites_step }}</th><th>{{ t.invites_friends }}</th><th>{{ t.invites_days }}</th><th>{{ t.invites_from }}</th><th>{{ t.invites_until }}</th><th>{{ t.invites_message }}</th></tr></thead>
+      <tbody>
+        {% for row in invites.reward_rows %}
+        <tr>
+          <td class="mono">{{ row.tier }}</td>
+          <td class="mono">{{ row.invites }}</td>
+          <td class="mono">{{ row.days }}</td>
+          <td class="muted">{{ row.period.starts_at|date:'d M Y · H:i'|default:'—' }}</td>
+          <td class="muted">{{ row.period.ends_at|date:'d M Y · H:i'|default:'—' }}</td>
+          <td><span class="badge status-{{ row.status }}">{{ row.status }}</span></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="table-empty">{{ t.invites_none }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="field-hint">{{ t.invites_note }}</p>
+</section>
 
 {% if can_assign_plan %}
 <dialog class="dialog" id="assign-plan" aria-labelledby="assign-plan-title">

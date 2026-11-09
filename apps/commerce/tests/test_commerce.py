@@ -148,7 +148,7 @@ def test_the_reconcile_command_only_expires_and_qualifies():
     # The Stars-era flag went with the provider it chose between.
     with pytest.raises(CommandError): call_command('reconcilepayments','--local-only',stdout=out)
 
-def test_referrals_are_unique_and_qualified_without_a_reward():
+def test_referrals_are_unique_and_one_friend_earns_nothing_yet():
     inviter=account();invitee=account(804);code=services.referral_code(inviter).code
     with pytest.raises(services.DomainError,match='invalid_referral'): services.claim_referral(inviter,code)
     referral=services.claim_referral(invitee,code);assert services.claim_referral(invitee,code).id==referral.id
@@ -156,7 +156,7 @@ def test_referrals_are_unique_and_qualified_without_a_reward():
     assert pdf_job(invitee).status=='succeeded'
     assert services.qualify_referrals(inviter)==1 and services.qualify_referrals(inviter)==0
     referral.refresh_from_db();assert referral.status=='qualified' and referral.qualified_at and referral.grant is None
-    assert weekly(inviter)==('free',5,15,3) and no_credits_written(),'counted, rewarded with nothing for now'
+    assert weekly(inviter)==('free',5,15,3) and no_credits_written(),'counted; Plus comes at five (tests/test_referral_rewards.py)'
     response=client_for(inviter).get('/api/v1/referrals').json()
     assert response['rewards_count']==1 and 'awarded_credits' not in response
 

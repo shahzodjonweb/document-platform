@@ -7,7 +7,7 @@ from django.utils import timezone
 from apps.core.views import current_account,body,throttle
 from apps.core.errors import DomainError,error_data
 from apps.core.models import Artifact
-from .models import Payment,Referral,BotDelivery
+from .models import Payment,BotDelivery
 from . import services
 from .serializers import payment_data,subscription_data,manual_payment_data
 from . import manual
@@ -44,20 +44,24 @@ def subscription(request): return subscription_data(request.account)
 
 @endpoint()
 def transactions(request):
-    return {'results':[payment_data(payment) for payment in Payment.objects.filter(account=request.account).order_by('-occurred_at')[:100]]}
+    # Plus months earned by inviting friends cost nothing; the invitations page lists them.
+    return {'results':[payment_data(payment) for payment in Payment.objects.filter(account=request.account).exclude(provider='referral').order_by('-occurred_at')[:100]]}
 
 @endpoint(('GET','POST'))
 def referrals(request):
     if request.method=='POST':
         referral=services.claim_referral(request.account,body(request).get('code',''))
         return {'id':referral.id,'status':referral.status}
+    from .referrals import progress
     services.qualify_referrals(request.account)
     code=services.referral_code(request.account)
-    sent=Referral.objects.filter(inviter=request.account)
-    qualified=sent.filter(status='qualified').count()
+    state=progress(request.account)
     from .providers import telegram_config
     username=telegram_config().get('username')
-    return {'code':code.code,'url':f'https://t.me/{username}?start=ref_{code.code}' if username else None,'rewards_count':qualified,'pending_count':sent.filter(status='pending').count(),'monthly_cap':5,'expires_in_days':30,'qualification':'first_successful_task','sandbox':request.account.is_test}
+    return {'code':code.code,'url':f'https://t.me/{username}?start=ref_{code.code}' if username else None,
+            'rewards_count':state['qualified_total'],'pending_count':state['pending'],'monthly_cap':state['monthly_cap'],
+            'qualification':'first_successful_task','sandbox':request.account.is_test,
+            **{key:state[key] for key in ('step','counted','counted_this_month','month_full','next_month','waiting_next_month','next_reward','rewards')}}
 
 @endpoint(('POST',))
 def deliver_artifact(request,artifact_id):

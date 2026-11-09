@@ -4,7 +4,7 @@ from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 from apps.core.errors import DomainError
-from apps.core.models import Account,Job
+from apps.core.models import Account
 from .models import Subscription,SubscriptionPeriod,Refund,CommerceAction,ReferralCode,Referral,ManualPayment
 
 # One paid period: 30 days. A card transfer (apps/commerce/manual.py) is the
@@ -121,17 +121,7 @@ def claim_referral(account,code):
     return Referral.objects.create(inviter=value.account,invitee=account)
 
 
-@transaction.atomic
-def qualify_referrals(account=None):
-    pending=Referral.objects.filter(status='pending').select_related('inviter','invitee')
-    if account: pending=pending.filter(inviter=account)
-    count=0
-    for referral in pending.select_for_update():
-        if not Job.objects.filter(account=referral.invitee,status='succeeded').exists(): continue
-        Account.objects.select_for_update().get(pk=referral.inviter_id)
-        start=timezone.now().replace(day=1,hour=0,minute=0,second=0,microsecond=0)
-        if Referral.objects.filter(inviter=referral.inviter,status='qualified',qualified_at__gte=start).count()>=5: continue
-        # Counted, not rewarded: there are no credits to give, and the reward
-        # that replaces them is still to come.
-        referral.status='qualified';referral.qualified_at=timezone.now();referral.save(update_fields=['status','qualified_at']);count+=1
-    return count
+def qualify_referrals(account=None,now=None):
+    """Count the friends who are due and give the Plus months they earn (apps/commerce/referrals.py)."""
+    from .referrals import qualify_referrals as qualify
+    return qualify(account,now)
