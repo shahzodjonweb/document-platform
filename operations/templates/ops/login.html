@@ -4,22 +4,22 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
-  <title>{{ t.signin }} · PDF Master</title>
+  <title>{{ t.signin }} · DocMaster</title>
   {% include 'ops/brand_head.html' %}
-  <link rel="stylesheet" href="{% static 'ops/main.css' %}?v=redesign-13">
-  <script src="{% static 'ops/theme.js' %}?v=redesign-13"></script>
+  <link rel="stylesheet" href="{% static 'ops/main.css' %}?v=redesign-14">
+  <script src="{% static 'ops/theme.js' %}?v=redesign-14"></script>
 </head>
 <body class="login-page">
   <div class="login-story">
     <a class="brand" href="/ops/login?lang={{ lang }}">{% include 'ops/brand.html' %}</a>
     <div>
-      <span class="eyebrow">PDF Master · {{ t.workspace }}</span>
+      <span class="eyebrow">DocMaster · {{ t.workspace }}</span>
       <h1>{{ t.login_title }}</h1>
       <p>{{ t.login_desc }}</p>
       <div class="document-art" aria-hidden="true">
         <div class="art-page art-back"></div>
         <div class="art-page">
-          <img class="art-mark" src="{% static 'ops/brand/pdf-master-icon.svg' %}" alt="" width="34" height="34">
+          <img class="art-mark" src="{% static 'ops/brand/docmaster-icon.svg' %}" alt="" width="34" height="34">
           <i></i><i></i><i class="short"></i>
           <div class="art-chart"><b></b><b></b><b></b><b></b></div>
           <i></i><i class="short"></i>
@@ -27,7 +27,7 @@
         <span class="art-seal">✓</span>
       </div>
     </div>
-    <small>{{ t.private }} · PDF Master</small>
+    <small>{{ t.private }} · DocMaster</small>
   </div>
   <main class="login-form-panel">
     <div class="login-tools">

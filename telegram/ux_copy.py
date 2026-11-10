@@ -106,7 +106,7 @@ MESSAGES = {
     # About the bot (/help): what it is, how to use it (guide), then the company behind it,
     # which payment providers require.
     'about_bot': ('ℹ️ About the bot', 'ℹ️ Bot haqida', 'ℹ️ О боте'),
-    'about_intro': ('PDF Master: PDF and file tools, and AI documents — PDFs, slides and CVs on a topic. In Telegram and on the web.', 'PDF Master — PDF va fayl vositalari hamda AI hujjatlar: mavzuga oid PDF, slayd va CV. Telegram’da va veb-saytda.', 'PDF Master — инструменты для PDF и файлов и ИИ-документы: PDF, слайды и резюме по теме. В Telegram и на сайте.'),
+    'about_intro': ('DocMaster: PDF and file tools, and AI documents — PDFs, slides and CVs on a topic. In Telegram and on the web.', 'DocMaster — PDF va fayl vositalari hamda AI hujjatlar: mavzuga oid PDF, slayd va CV. Telegram’da va veb-saytda.', 'DocMaster — инструменты для PDF и файлов и ИИ-документы: PDF, слайды и резюме по теме. В Telegram и на сайте.'),
     'company_title': ('🏢 Company details', '🏢 Rekvizitlar', '🏢 Реквизиты'),
     'company_name': ('Legal name', 'Yuridik nomi', 'Юридическое название'),
     'company_tin': ('TIN (STIR)', 'STIR (INN)', 'ИНН'),
@@ -401,7 +401,7 @@ MESSAGES = {
 # Keep the older keys for commands, saved controls and transport compatibility.
 # They share the same tone as the primary flow instead of exposing command syntax.
 LEGACY_MESSAGES = {
-    'welcome': ('👋 Welcome to PDF Master! Send a file to begin. Server copies are kept for 24 hours.', '👋 PDF Master’ga xush kelibsiz! Boshlash uchun fayl yuboring. Serverdagi nusxalar 24 soat saqlanadi.', '👋 Добро пожаловать в PDF Master! Отправьте файл. Копии на сервере хранятся 24 часа.'),
+    'welcome': ('👋 Welcome to DocMaster! Send a file to begin. Server copies are kept for 24 hours.', '👋 DocMaster’ga xush kelibsiz! Boshlash uchun fayl yuboring. Serverdagi nusxalar 24 soat saqlanadi.', '👋 Добро пожаловать в DocMaster! Отправьте файл. Копии на сервере хранятся 24 часа.'),
     'tools': ('🧰 Choose what to do with your file.', '🧰 Fayl bilan nima qilishni tanlang.', '🧰 Выберите действие с файлом.'),
     'received': ('📎 File added. Send more or tap Start when ready.', '📎 Fayl qo‘shildi. Yana yuboring yoki Boshlashni bosing.', '📎 Файл добавлен. Отправьте ещё или нажмите «Начать».'),
     'done': ('✅ Check your files, then tap Start.', '✅ Fayllarni tekshirib, Boshlashni bosing.', '✅ Проверьте файлы и нажмите «Начать».'),
@@ -446,7 +446,7 @@ LEGACY_MESSAGES = {
     'stale_reply': ('It has been a while since that question, so let’s start from the menu.', 'O‘sha savoldan beri ancha vaqt o‘tdi, keling, menyudan boshlaymiz.', 'С того вопроса прошло время, давайте начнём с меню.'),
     'no_preview': ('A preview isn’t available. You can still process the file.', 'Ko‘rib chiqish imkoni yo‘q. Fayl bilan ishlashni davom ettirishingiz mumkin.', 'Предпросмотр недоступен. Файл всё равно можно обработать.'),
     'preview': ('👁 Preview page 1', '👁 1-sahifani ko‘rish', '👁 Посмотреть страницу 1'),
-    'link_login': ('🔗 Connect Telegram to your existing PDF Master account? Approve only if you started this in account settings:', '🔗 Telegramni mavjud PDF Master hisobingizga ulaymizmi? Faqat hisob sozlamalarida o‘zingiz boshlagan bo‘lsangiz, tasdiqlang:', '🔗 Подключить Telegram к вашему аккаунту PDF Master? Подтверждайте, только если вы начали это в настройках аккаунта:'),
+    'link_login': ('🔗 Connect Telegram to your existing DocMaster account? Approve only if you started this in account settings:', '🔗 Telegramni mavjud DocMaster hisobingizga ulaymizmi? Faqat hisob sozlamalarida o‘zingiz boshlagan bo‘lsangiz, tasdiqlang:', '🔗 Подключить Telegram к вашему аккаунту DocMaster? Подтверждайте, только если вы начали это в настройках аккаунта:'),
     'link_confirm': ('🔗 Connect Telegram', '🔗 Telegramni ulash', '🔗 Подключить Telegram'),
     'link_approved': ('✅ Telegram approved. Return to the same browser to finish linking.', '✅ Telegram tasdiqlandi. Ulashni tugatish uchun o‘sha brauzerga qayting.', '✅ Telegram подтверждён. Вернитесь в тот же браузер, чтобы завершить привязку.'),
 }

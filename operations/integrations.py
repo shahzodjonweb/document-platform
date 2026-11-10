@@ -451,9 +451,9 @@ def send_auth_email(recipient, code, purpose, locale='en'):
     if not isinstance(code, str) or not re.fullmatch(r'[A-Za-z0-9_-]{4,128}', code):
         raise DomainError('invalid_parameters')
     messages = {
-        'en': ('PDF Master verification code', 'Your PDF Master verification code is: {code}\n\nUse this code only in PDF Master. If you did not request it, you can ignore this email.', 'PDF Master password reset code'),
-        'uz': ('PDF Master tasdiqlash kodi', 'PDF Master tasdiqlash kodingiz: {code}\n\nKodni faqat PDF Master ilovasida kiriting. Agar so‘rov yubormagan bo‘lsangiz, xatni e’tiborsiz qoldiring.', 'PDF Master parolni tiklash kodi'),
-        'ru': ('Код подтверждения PDF Master', 'Ваш код подтверждения PDF Master: {code}\n\nИспользуйте код только в PDF Master. Если вы не запрашивали код, проигнорируйте письмо.', 'Код сброса пароля PDF Master'),
+        'en': ('DocMaster verification code', 'Your DocMaster verification code is: {code}\n\nUse this code only in DocMaster. If you did not request it, you can ignore this email.', 'DocMaster password reset code'),
+        'uz': ('DocMaster tasdiqlash kodi', 'DocMaster tasdiqlash kodingiz: {code}\n\nKodni faqat DocMaster ilovasida kiriting. Agar so‘rov yubormagan bo‘lsangiz, xatni e’tiborsiz qoldiring.', 'DocMaster parolni tiklash kodi'),
+        'ru': ('Код подтверждения DocMaster', 'Ваш код подтверждения DocMaster: {code}\n\nИспользуйте код только в DocMaster. Если вы не запрашивали код, проигнорируйте письмо.', 'Код сброса пароля DocMaster'),
     }
     subject, body, reset_subject = messages.get(locale, messages['en'])
     if purpose in ('reset_password', 'password_reset', 'reset'): subject = reset_subject

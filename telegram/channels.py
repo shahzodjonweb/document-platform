@@ -11,8 +11,8 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 COPY = {
     'en': {
-        'gate_one': "📢 PDF Master is free for members of our Telegram community.\nJoin our channel, then tap «I've joined».",
-        'gate_many': "📢 PDF Master is free for members of our Telegram community.\nJoin our channels, then tap «I've joined».",
+        'gate_one': "📢 DocMaster is free for members of our Telegram community.\nJoin our channel, then tap «I've joined».",
+        'gate_many': "📢 DocMaster is free for members of our Telegram community.\nJoin our channels, then tap «I've joined».",
         'gate_plus_one': "📢 Your Plus plan works for members of our Telegram community.\nJoin our channel, then tap «I've joined».",
         'gate_plus_many': "📢 Your Plus plan works for members of our Telegram community.\nJoin our channels, then tap «I've joined».",
         'joined': "✅ I've joined",
@@ -22,8 +22,8 @@ COPY = {
         'not_yet': "You haven't joined {titles} yet. Join, then tap «I've joined» again.",
     },
     'uz': {
-        'gate_one': '📢 PDF Master Telegram hamjamiyatimiz a’zolari uchun bepul.\nKanalimizga qo‘shiling, so‘ng «Qo‘shildim» tugmasini bosing.',
-        'gate_many': '📢 PDF Master Telegram hamjamiyatimiz a’zolari uchun bepul.\nKanallarimizga qo‘shiling, so‘ng «Qo‘shildim» tugmasini bosing.',
+        'gate_one': '📢 DocMaster Telegram hamjamiyatimiz a’zolari uchun bepul.\nKanalimizga qo‘shiling, so‘ng «Qo‘shildim» tugmasini bosing.',
+        'gate_many': '📢 DocMaster Telegram hamjamiyatimiz a’zolari uchun bepul.\nKanallarimizga qo‘shiling, so‘ng «Qo‘shildim» tugmasini bosing.',
         'gate_plus_one': '📢 Plus tarifingiz Telegram hamjamiyatimiz a’zolari uchun ishlaydi.\nKanalimizga qo‘shiling, so‘ng «Qo‘shildim» tugmasini bosing.',
         'gate_plus_many': '📢 Plus tarifingiz Telegram hamjamiyatimiz a’zolari uchun ishlaydi.\nKanallarimizga qo‘shiling, so‘ng «Qo‘shildim» tugmasini bosing.',
         'joined': '✅ Qo‘shildim',
@@ -33,8 +33,8 @@ COPY = {
         'not_yet': 'Siz hali {titles} ga qo‘shilmagansiz. Qo‘shiling va «Qo‘shildim»ni yana bosing.',
     },
     'ru': {
-        'gate_one': '📢 PDF Master бесплатен для участников нашего Telegram-сообщества.\nПодпишитесь на канал и нажмите «Я подписался».',
-        'gate_many': '📢 PDF Master бесплатен для участников нашего Telegram-сообщества.\nПодпишитесь на наши каналы и нажмите «Я подписался».',
+        'gate_one': '📢 DocMaster бесплатен для участников нашего Telegram-сообщества.\nПодпишитесь на канал и нажмите «Я подписался».',
+        'gate_many': '📢 DocMaster бесплатен для участников нашего Telegram-сообщества.\nПодпишитесь на наши каналы и нажмите «Я подписался».',
         'gate_plus_one': '📢 Тариф Plus действует для участников нашего Telegram-сообщества.\nПодпишитесь на канал и нажмите «Я подписался».',
         'gate_plus_many': '📢 Тариф Plus действует для участников нашего Telegram-сообщества.\nПодпишитесь на наши каналы и нажмите «Я подписался».',
         'joined': '✅ Я подписался',

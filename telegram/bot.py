@@ -35,6 +35,7 @@ from .ux_copy import UX, STATUS, LEGACY_COPY, TOOL_NAMES, PROMPT_EXAMPLES, LOCAL
 from .delivery import app_button, app_url, deck_change_label, editable_pdf
 from .errors import bot_error
 from .clock import local_time, stamp, week_reset
+from apps.core.brand import PRODUCT_NAME
 COPY={locale:{**LEGACY_COPY[locale],**UX[locale]} for locale in UX}
 
 def text(account,key): return COPY.get(account.locale,COPY['en'])[key]
@@ -985,7 +986,7 @@ def build_dispatcher():
             [await button(account,'account','account'),await button(account,'contacts_button','contacts')],
             [await button(account,'language_button','language'),InlineKeyboardButton(text=text(account,'open'),url=await web_url(account))],
         ])
-        body=(html.escape(notice)+'\n\n' if notice else '')+f'<b>👋 PDF Master</b>\n{text(account,"home_body")}'
+        body=(html.escape(notice)+'\n\n' if notice else '')+f'<b>👋 {PRODUCT_NAME}</b>\n{text(account,"home_body")}'
         await render(message,body,rows,edit)
 
     async def menu(message,account,page=0,category='all',edit=False,pdf_only=False):

@@ -460,7 +460,7 @@ def test_start_or_cancel_ends_the_wait_and_the_read_makes_no_cv(customer, model,
     choose(customer, 'cv_mode_file')
     waited = send(customer, 'old-cv.pdf', one_column_pdf())
     words, _ = screen(tap(customer, waited, EN['cancel_button']))
-    assert state(customer) == ('', {}) and words.startswith('<b>👋 PDF Master</b>'), words
+    assert state(customer) == ('', {}) and words.startswith('<b>👋 DocMaster</b>'), words
     reads.next_read()
     look(customer)
     assert not GenerationDraft.objects.filter(account=customer).exists()

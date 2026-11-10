@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
-  <title>{{ title }} · PDF Master</title>
+  <title>{{ title }} · DocMaster</title>
   {% include 'ops/brand_head.html' %}
-  <link rel="stylesheet" href="{% static 'ops/main.css' %}?v=redesign-13">
-  <script src="{% static 'ops/theme.js' %}?v=redesign-13"></script>
-  <script src="{% static 'ops/admin.js' %}?v=redesign-13" defer></script>
+  <link rel="stylesheet" href="{% static 'ops/main.css' %}?v=redesign-14">
+  <script src="{% static 'ops/theme.js' %}?v=redesign-14"></script>
+  <script src="{% static 'ops/admin.js' %}?v=redesign-14" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">{{ t.skip }}</a>
@@ -47,7 +47,7 @@
     <div class="app-body">
       <header class="topbar">
         <button type="button" class="icon-button menu-button" data-nav-toggle aria-controls="sidebar" aria-expanded="false" aria-label="{{ t.menu }}">{% icon 'menu' 20 %}</button>
-        <a class="topbar-brand" href="/ops/today?lang={{ lang }}" aria-label="PDF Master"><img src="{% static 'ops/brand/pdf-master-icon.svg' %}" alt="" width="30" height="30"></a>
+        <a class="topbar-brand" href="/ops/today?lang={{ lang }}" aria-label="DocMaster"><img src="{% static 'ops/brand/docmaster-icon.svg' %}" alt="" width="30" height="30"></a>
         {% if can_search_users %}
         <form class="topbar-search" method="get" action="/ops/users" role="search">
           <input type="hidden" name="lang" value="{{ lang }}">
@@ -71,7 +71,7 @@
       <main id="main" tabindex="-1">{% block content %}{% endblock %}</main>
 
       <footer class="footer">
-        <span>PDF Master · {{ t.workspace }}</span>
+        <span>DocMaster · {{ t.workspace }}</span>
         <span>{{ t.definitions }} · {{ t.no_private }}</span>
       </footer>
     </div>

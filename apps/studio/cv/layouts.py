@@ -44,6 +44,7 @@ from reportlab.platypus import (BaseDocTemplate, Flowable, Frame, FrameBreak, Ke
 
 from . import fonts
 from .templates import FONT_PAIRS
+from apps.core.brand import PRODUCT_NAME
 
 W, H = A4
 MM = 72 / 25.4
@@ -884,7 +885,7 @@ class Sheet:
         else:
             templates, story = self.single()
         document = BaseDocTemplate(target, pagesize=A4, leftMargin=0, rightMargin=0, topMargin=0, bottomMargin=0,
-                                   creator='PDF Master', invariant=1, initialFontName=FONT_PAIRS[self.look['fonts']][1],
+                                   creator=PRODUCT_NAME, invariant=1, initialFontName=FONT_PAIRS[self.look['fonts']][1],
                                    **self.meta)
         document.addPageTemplates(templates)
 

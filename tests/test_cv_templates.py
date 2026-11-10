@@ -407,7 +407,7 @@ def test_the_pdf_names_the_person(tmp_path):
     path, result = render(tmp_path, 'classic_navy', sample.short('ru'), 'ru')
     meta = PdfReader(path).metadata
     assert meta['/Title'] == 'Дильноза Каримова — CV' and meta['/Author'] == 'Дильноза Каримова'
-    assert meta['/Subject'] == 'Старший аналитик данных' and meta['/Creator'] == 'PDF Master'
+    assert meta['/Subject'] == 'Старший аналитик данных' and meta['/Creator'] == 'DocMaster'
 
 
 def test_thumbnails_are_480_wide_a4_pages(tmp_path):
