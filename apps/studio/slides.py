@@ -39,6 +39,7 @@ from pptx.util import Emu, Inches, Pt
 from reportlab.pdfbase.ttfonts import TTFontFace
 
 from .rendering import FIT_STEPS, SENTENCE
+from apps.core.brand import PRODUCT_NAME
 
 # python-pptx cannot embed fonts: `font.name` is a name the viewer resolves for
 # itself. So the deck names faces that ship with Microsoft Office on Windows and
@@ -1083,7 +1084,7 @@ def _draw_deck(content, path, locale, role, style, look, roles, photos, pins):
                 if not section.get('_questions') and pinned.get(section.get('id'), variant_id) != variant_id]
     apply_fonts(deck, look)
     deck.core_properties.title = content['title']
-    deck.core_properties.author = 'PDF Master'
+    deck.core_properties.author = PRODUCT_NAME
     strip_binary_parts(deck)
     deck.save(str(path))
     return {'path': str(path), 'name': path.name,

@@ -11,6 +11,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import SimpleDocTemplate,Paragraph,Spacer,PageBreak,KeepTogether,Table,TableStyle,Flowable,Image as FlowImage
 from pypdf import PdfReader
+from apps.core.brand import PRODUCT_NAME
 
 ROOT=Path(__file__).resolve().parents[2]
 FONT=ROOT/'processors'/'assets'/'fonts'/'NotoSans-Regular.ttf'
@@ -400,7 +401,7 @@ def render_pdf(content,path,locale='en',role='user_document',style=None,photos=N
             canvas.setStrokeColor(colors.HexColor('#ddd6e8'));canvas.setLineWidth(.5);canvas.line(margin-13,45,margin-13,A4[1]-35)
 
     def build(story,target):
-        SimpleDocTemplate(target,pagesize=A4,rightMargin=margin,leftMargin=margin,topMargin=top_margin,bottomMargin=48,title=content['title'],author='PDF Master').build(story,onFirstPage=footer,onLaterPages=footer)
+        SimpleDocTemplate(target,pagesize=A4,rightMargin=margin,leftMargin=margin,topMargin=top_margin,bottomMargin=48,title=content['title'],author=PRODUCT_NAME).build(story,onFirstPage=footer,onLaterPages=footer)
 
     sections=[dict(s) for s in content['sections']]
     if content_layout=='document' and sections:

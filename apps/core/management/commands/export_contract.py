@@ -340,7 +340,7 @@ def schema():
         paths[path]['get']['responses']['200']={'description':'Private single-page PNG preview, no task charge','content':{'image/png':{'schema':{'type':'string','format':'binary'}}}}
         paths[path]['get']['responses']['202']={'description':'With the deck editor on, a page not drawn yet is being drawn: ask again. Refused with `lane_busy` (429, retryable) past the day\'s budget or with three tasks waiting.','content':{'application/json':{'schema':obj({'task_id':UUID},['task_id'])}}}
     extend_schema(models,endpoint,paths)
-    return {'openapi':'3.1.0','info':{'title':'PDF Master public API','version':'1.1.0','description':'Local development beta. Studio, editor, document jobs and card-transfer billing are covered. Staff operations are excluded. Live providers require server configuration.'},'servers':[{'url':'/api/v1'}],'paths':paths,'components':{'securitySchemes':{'customerSession':{'type':'apiKey','in':'cookie','name':'pdfmaster_session'}},'schemas':models}}
+    return {'openapi':'3.1.0','info':{'title':'DocMaster public API','version':'1.1.0','description':'Local development beta. Studio, editor, document jobs and card-transfer billing are covered. Staff operations are excluded. Live providers require server configuration.'},'servers':[{'url':'/api/v1'}],'paths':paths,'components':{'securitySchemes':{'customerSession':{'type':'apiKey','in':'cookie','name':'pdfmaster_session'}},'schemas':models}}
 
 class Command(BaseCommand):
     help='Export immutable public OpenAPI 3.1 contract and checksum.'

@@ -1,8 +1,9 @@
 from django.conf import settings
 from django.contrib import admin
 from .models import Account,FileAsset,Job,Quote,Artifact,SupportTicket,AnalyticsEvent
+from .brand import PRODUCT_NAME
 class RestrictedAdminSite(admin.AdminSite):
-    site_header='PDF Master restricted administration'
+    site_header=f'{PRODUCT_NAME} restricted administration'
     def has_permission(self,request):
         # Production staff authentication lives in /ops with a separate MFA realm.
         return settings.DEBUG and super().has_permission(request) and request.user.is_superuser

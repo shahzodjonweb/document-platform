@@ -19,6 +19,7 @@ from apps.core.models import BotCallback, BotJobNotice
 from apps.core.services import TELEGRAM_ORIGINS
 from .ux_copy import UX, STATUS, TOOL_NAMES
 from .errors import bot_error
+from apps.core.brand import PRODUCT_NAME
 
 NOTICE_STATUSES = frozenset(('failed', 'no_op', 'canceled', 'expired'))
 MAX_ATTEMPTS = 5
@@ -172,7 +173,7 @@ async def attempt_notice(identifier, bot):
         return await sync_to_async(finish_notice)(notice, 'blocked', error='invalid_notice_job')
     locale = account.locale if account.locale in COPY else 'en'
     copy = COPY[locale]
-    lines = ['PDF Master · ' + STATUS[locale][job.status], copy[job.status]]
+    lines = [PRODUCT_NAME + ' · ' + STATUS[locale][job.status], copy[job.status]]
     advice = model_failed(job)
     if advice:
         # Which service failed, in place of "We couldn't finish this task":

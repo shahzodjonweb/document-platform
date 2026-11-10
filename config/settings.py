@@ -46,7 +46,7 @@ TELEGRAM_BOT_USERNAME = os.getenv('TELEGRAM_BOT_USERNAME', '')
 TELEGRAM_WEBHOOK_SECRET = os.getenv('TELEGRAM_WEBHOOK_SECRET', '')
 TELEGRAM_WEBAPP_URL = os.getenv('TELEGRAM_WEBAPP_URL', 'http://localhost:3000/en/app')
 REST_FRAMEWORK = {'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema'}
-SPECTACULAR_SETTINGS = {'TITLE': 'PDF Master public API', 'VERSION': '1.0.0', 'OAS_VERSION': '3.1.0'}
+SPECTACULAR_SETTINGS = {'TITLE': 'DocMaster public API', 'VERSION': '1.0.0', 'OAS_VERSION': '3.1.0'}
 REDIS_URL = os.getenv('REDIS_URL', '')
 CELERY_BROKER_URL = REDIS_URL or 'redis://localhost:6379/0'
 # The limiters' counters live where every process sees them (apps/core/views.py

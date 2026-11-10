@@ -92,7 +92,7 @@ def test_plus_is_asked_to_join_and_offered_premium_as_the_way_round(customer, te
 
 @pytest.mark.parametrize('locale', ['en', 'uz', 'ru'])
 def test_plus_is_never_told_the_product_is_free(customer, telegram, locale):
-    """Someone who has just paid for Plus was told "PDF Master is free for
+    """Someone who has just paid for Plus was told "DocMaster is free for
     members". Plus is told its plan works for members instead."""
     require_channels('@pdfmaster_news\n@pdfmaster_tips')
     paid(customer, 'plus')
