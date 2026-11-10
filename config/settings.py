@@ -8,6 +8,10 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'development-only-change-this-key')
 if not DEBUG and SECRET_KEY == 'development-only-change-this-key':
     raise RuntimeError('Set a unique SECRET_KEY or DEBUG=1 for local development.')
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,testserver').split(',')
+# DocMaster's public site: its pages call the API through their own origin, so the
+# hosts are allowed and trusted here as well as whatever the environment lists.
+SITE_HOSTS = [host for host in os.getenv('SITE_HOSTS', 'docmaster.live,www.docmaster.live').split(',') if host]
+ALLOWED_HOSTS += [host for host in SITE_HOSTS if host not in ALLOWED_HOSTS]
 INSTALLED_APPS = ['django.contrib.admin', 'django.contrib.auth', 'django.contrib.contenttypes', 'django.contrib.sessions', 'django.contrib.messages', 'django.contrib.staticfiles', 'rest_framework', 'drf_spectacular', 'apps.core', 'apps.commerce', 'apps.studio', 'operations']
 MIDDLEWARE = ['django.middleware.security.SecurityMiddleware', 'django.contrib.sessions.middleware.SessionMiddleware', 'django.middleware.common.CommonMiddleware', 'django.middleware.csrf.CsrfViewMiddleware', 'django.contrib.auth.middleware.AuthenticationMiddleware', 'django.contrib.messages.middleware.MessageMiddleware', 'django.middleware.clickjacking.XFrameOptionsMiddleware', 'apps.core.middleware.RequestIdMiddleware', 'operations.middleware.DeviceTimezoneMiddleware']
 ROOT_URLCONF = 'config.urls'
@@ -32,6 +36,7 @@ SESSION_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_SAMESITE = 'Lax'
 CSRF_COOKIE_SECURE = not DEBUG
 CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000').split(',')
+CSRF_TRUSTED_ORIGINS += [f'https://{host}' for host in SITE_HOSTS if f'https://{host}' not in CSRF_TRUSTED_ORIGINS]
 CSRF_FAILURE_VIEW = 'apps.core.views.csrf_failure'
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'

@@ -1,7 +1,9 @@
 """The proxy guard permits new hosts but rejects changes to the existing site."""
 import copy
+import tempfile
 import unittest
-from proxy_setup import without_new_routes
+from pathlib import Path
+from proxy_setup import PREVIOUS_SITES, SITES, ensure_ours, without_new_routes
 
 
 class RoutePreservationTests(unittest.TestCase):
@@ -37,6 +39,41 @@ class RoutePreservationTests(unittest.TestCase):
     def test_rejects_removing_existing_certificate_subject(self):
         self.added['apps']['tls']['automation']['policies'][0]['subjects'].remove('admin.orderdesk.live')
         self.assertNotEqual(without_new_routes(self.added), self.old)
+
+
+class OwnSitesFileTests(unittest.TestCase):
+    """Our sites file may move from the reviewed previous version to this one, never from anything else."""
+
+    def setUp(self):
+        self.folder = tempfile.TemporaryDirectory()
+        self.path = Path(self.folder.name) / 'sites.caddy'
+
+    def tearDown(self):
+        self.folder.cleanup()
+
+    def test_adds_docmaster_and_keeps_the_old_hosts(self):
+        self.assertTrue(SITES.startswith(PREVIOUS_SITES))
+        self.assertIn('docmaster.live {', SITES)
+
+    def test_writes_when_absent(self):
+        ensure_ours(self.path, SITES, PREVIOUS_SITES)
+        self.assertEqual(self.path.read_text(), SITES)
+
+    def test_replaces_the_previous_version(self):
+        self.path.write_text(PREVIOUS_SITES)
+        ensure_ours(self.path, SITES, PREVIOUS_SITES)
+        self.assertEqual(self.path.read_text(), SITES)
+
+    def test_leaves_the_current_version(self):
+        self.path.write_text(SITES)
+        ensure_ours(self.path, SITES, PREVIOUS_SITES)
+        self.assertEqual(self.path.read_text(), SITES)
+
+    def test_refuses_anything_else(self):
+        self.path.write_text('example.com {\n}\n')
+        with self.assertRaises(RuntimeError):
+            ensure_ours(self.path, SITES, PREVIOUS_SITES)
+        self.assertEqual(self.path.read_text(), 'example.com {\n}\n')
 
 
 if __name__ == '__main__':
