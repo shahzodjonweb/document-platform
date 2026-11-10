@@ -3,7 +3,7 @@ import copy
 import tempfile
 import unittest
 from pathlib import Path
-from proxy_setup import PREVIOUS_SITES, SITES, ensure_ours, without_new_routes
+from proxy_setup import DOCMASTER_SITES, FIRST_SITES, PREVIOUS_SITES, SITES, ensure_ours, without_new_routes
 
 
 class RoutePreservationTests(unittest.TestCase):
@@ -52,17 +52,20 @@ class OwnSitesFileTests(unittest.TestCase):
         self.folder.cleanup()
 
     def test_adds_docmaster_and_keeps_the_old_hosts(self):
-        self.assertTrue(SITES.startswith(PREVIOUS_SITES))
-        self.assertIn('docmaster.live {', SITES)
+        self.assertTrue(SITES.startswith(DOCMASTER_SITES) and DOCMASTER_SITES.startswith(FIRST_SITES))
+        for site in ('docmaster.live {', 'www.docmaster.live {', 'api.docmaster.live {'):
+            self.assertIn(site, SITES)
+        self.assertIn('redir https://docmaster.live{uri} permanent', SITES)
 
     def test_writes_when_absent(self):
         ensure_ours(self.path, SITES, PREVIOUS_SITES)
         self.assertEqual(self.path.read_text(), SITES)
 
-    def test_replaces_the_previous_version(self):
-        self.path.write_text(PREVIOUS_SITES)
-        ensure_ours(self.path, SITES, PREVIOUS_SITES)
-        self.assertEqual(self.path.read_text(), SITES)
+    def test_replaces_either_earlier_version(self):
+        for earlier in PREVIOUS_SITES:
+            self.path.write_text(earlier)
+            ensure_ours(self.path, SITES, PREVIOUS_SITES)
+            self.assertEqual(self.path.read_text(), SITES)
 
     def test_leaves_the_current_version(self):
         self.path.write_text(SITES)

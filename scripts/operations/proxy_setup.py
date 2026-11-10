@@ -2,7 +2,7 @@
 
 The sites file is this project's own (`/config/pdfmaster-sites/sites.caddy`,
 imported by the shared Caddyfile). It may move from the reviewed previous
-version to this one, which adds docmaster.live; any other content there is
+version to this one, which adds DocMaster's domains; any other content there is
 refused, and no route of another site may change.
 """
 import copy
@@ -15,8 +15,9 @@ import sys
 
 IMPORT = 'import /config/pdfmaster-sites/*.caddy'
 ORIGINAL_SHA256 = '9b0f8129600c282326193228f3e30296e5c735a224d219e65f04051e2f2c5d82'
-# The sites file as first published (2026-09), kept so the update below can recognise it.
-PREVIOUS_SITES = '''pdfmaster.orderdesk.live {
+# Earlier versions of our sites file, as reviewed and published; the update below
+# recognises them and replaces nothing else.
+FIRST_SITES = '''pdfmaster.orderdesk.live {
     reverse_proxy pdfmaster-web-gateway:8080
 }
 
@@ -24,14 +25,25 @@ pdfmaster-admin.orderdesk.live {
     reverse_proxy pdfmaster-platform-gateway:8080
 }
 '''
-# DocMaster's own domain serves the same web gateway; the old host keeps working.
-SITES = PREVIOUS_SITES + '''
+DOCMASTER_SITES = FIRST_SITES + '''
 docmaster.live {
     reverse_proxy pdfmaster-web-gateway:8080
 }
 '''
-DOMAINS = {'pdfmaster.orderdesk.live', 'pdfmaster-admin.orderdesk.live', 'docmaster.live'}
+PREVIOUS_SITES = (FIRST_SITES, DOCMASTER_SITES)
+# DocMaster's domains: the site on docmaster.live (www goes to it), the API and the
+# admin on api.docmaster.live. The old hosts keep working until they are redirected.
+SITES = DOCMASTER_SITES + '''
+www.docmaster.live {
+    redir https://docmaster.live{uri} permanent
+}
 
+api.docmaster.live {
+    reverse_proxy pdfmaster-platform-gateway:8080
+}
+'''
+DOMAINS = {'pdfmaster.orderdesk.live', 'pdfmaster-admin.orderdesk.live', 'docmaster.live',
+           'www.docmaster.live', 'api.docmaster.live'}
 
 def run(args, data=None):
     result = subprocess.run(args, input=data, text=True, capture_output=True, timeout=60)
@@ -68,10 +80,10 @@ def ensure_file(path, content, mode=0o600):
 
 
 def ensure_ours(path, content, previous):
-    """Our own file: written when absent or still the reviewed previous version."""
+    """Our own file: written when absent or still one of the reviewed earlier versions."""
     if path.is_symlink():
         raise RuntimeError('Refusing symlink: ' + path.name)
-    if path.exists() and path.read_text() not in (content, previous):
+    if path.exists() and path.read_text() not in (content, *previous):
         raise RuntimeError('Existing configuration differs: ' + path.name)
     if path.exists() and path.read_text() == content:
         return
@@ -198,6 +210,7 @@ networks:
     # Activate only after both upstreams answer through the ingress network.
     for alias, host, route in [('pdfmaster-web-gateway', 'pdfmaster.orderdesk.live', '/en/app'),
                               ('pdfmaster-web-gateway', 'docmaster.live', '/en'),
+                              ('pdfmaster-platform-gateway', 'api.docmaster.live', '/api/v1/health'),
                               ('pdfmaster-platform-gateway', 'pdfmaster-admin.orderdesk.live', '/ops/login')]:
         # Match Caddy's actual request Host; Django correctly rejects Docker DNS
         # aliases that are not public application hostnames.
@@ -205,7 +218,7 @@ networks:
              'http://' + alias + ':8080' + route])
     existing = subprocess.run([*docker_exec, 'cat', '/config/pdfmaster-sites/sites.caddy'],
                               text=True, capture_output=True, timeout=30)
-    if existing.returncode == 0 and existing.stdout not in (SITES, PREVIOUS_SITES):
+    if existing.returncode == 0 and existing.stdout not in (SITES, *PREVIOUS_SITES):
         raise RuntimeError('Existing PDF Master routes differ; refusing overwrite')
     run([*docker_exec, 'sh', '-c', 'umask 077; mkdir -p /config/pdfmaster-sites; cat > /config/pdfmaster-sites/sites.caddy'], SITES)
     adapted = json.loads(run([*docker_exec, 'caddy', 'adapt', '--config', '/etc/caddy/Caddyfile']))
