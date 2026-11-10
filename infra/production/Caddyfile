@@ -1,3 +1,4 @@
-pdfmaster-admin.orderdesk.live {
+# The API and the admin; the old host serves the same gateway until it redirects.
+api.docmaster.live, pdfmaster-admin.orderdesk.live {
     reverse_proxy 127.0.0.1:8311
 }

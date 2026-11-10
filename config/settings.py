@@ -10,7 +10,8 @@ if not DEBUG and SECRET_KEY == 'development-only-change-this-key':
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,testserver').split(',')
 # DocMaster's public site: its pages call the API through their own origin, so the
 # hosts are allowed and trusted here as well as whatever the environment lists.
-SITE_HOSTS = [host for host in os.getenv('SITE_HOSTS', 'docmaster.live,www.docmaster.live').split(',') if host]
+# api.docmaster.live serves the API and the admin directly.
+SITE_HOSTS = [host for host in os.getenv('SITE_HOSTS', 'docmaster.live,www.docmaster.live,api.docmaster.live').split(',') if host]
 ALLOWED_HOSTS += [host for host in SITE_HOSTS if host not in ALLOWED_HOSTS]
 INSTALLED_APPS = ['django.contrib.admin', 'django.contrib.auth', 'django.contrib.contenttypes', 'django.contrib.sessions', 'django.contrib.messages', 'django.contrib.staticfiles', 'rest_framework', 'drf_spectacular', 'apps.core', 'apps.commerce', 'apps.studio', 'operations']
 MIDDLEWARE = ['django.middleware.security.SecurityMiddleware', 'django.contrib.sessions.middleware.SessionMiddleware', 'django.middleware.common.CommonMiddleware', 'django.middleware.csrf.CsrfViewMiddleware', 'django.contrib.auth.middleware.AuthenticationMiddleware', 'django.contrib.messages.middleware.MessageMiddleware', 'django.middleware.clickjacking.XFrameOptionsMiddleware', 'apps.core.middleware.RequestIdMiddleware', 'operations.middleware.DeviceTimezoneMiddleware']
