@@ -6182,7 +6182,7 @@
     },
     "/contacts": {
       "get": {
-        "description": "The Telegram accounts for support and for advertising or partnerships, as set in the admin, empty when not set; and the company's legal details (name, taxpayer number, address, phone, email), the phone and email empty when not set.",
+        "description": "The Telegram accounts for support and for advertising or partnerships, as set in the admin, empty when not set; the bot (its public username and t.me link, empty when not set); and the company's legal details (name, taxpayer number, address, phone, email), the phone and email empty when not set.",
         "operationId": "getContacts",
         "responses": {
           "200": {
@@ -6191,6 +6191,21 @@
                 "schema": {
                   "properties": {
                     "ads": {
+                      "properties": {
+                        "url": {
+                          "type": "string"
+                        },
+                        "username": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "username",
+                        "url"
+                      ],
+                      "type": "object"
+                    },
+                    "bot": {
                       "properties": {
                         "url": {
                           "type": "string"
@@ -6251,6 +6266,7 @@
                   "required": [
                     "support",
                     "ads",
+                    "bot",
                     "company"
                   ],
                   "type": "object"

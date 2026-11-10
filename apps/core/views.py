@@ -367,9 +367,12 @@ def artifact_download(request,artifact_id):
 
 @api(('GET',),auth=False)
 def contacts(request):
-    """Where customers reach a person: the support and the ads Telegram accounts, and the company's legal details."""
-    from operations.integrations import company_details, contacts_config
-    return {**contacts_config(), 'company': company_details()}
+    """Where customers reach a person: the support and the ads Telegram accounts, the bot, and the company's legal details."""
+    from operations.integrations import company_details, contacts_config, telegram_config
+    # The bot's public username, so the website can link to it; never its token.
+    username = str(telegram_config()['username'] or '').strip().lstrip('@')
+    bot = {'username': username, 'url': f'https://t.me/{username}' if username else ''}
+    return {**contacts_config(), 'bot': bot, 'company': company_details()}
 
 @api(auth=False)
 def health(request): return {'status':'ok','service':'pdfmaster-platform','api_version':'v1'}
