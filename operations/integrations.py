@@ -144,7 +144,7 @@ _TURNSTILE_TEST_SECRET_KEYS = frozenset({
     '2x0000000000000000000000000000000AA',
     '3x0000000000000000000000000000000AA',
 })
-_ANTIBOT_DEFAULT_HOSTS = ('pdfmaster.orderdesk.live',)
+_ANTIBOT_DEFAULT_HOSTS = ('pdfmaster.orderdesk.live', 'docmaster.live', 'www.docmaster.live')
 
 
 def _antibot_hostnames(value):

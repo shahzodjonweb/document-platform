@@ -1,4 +1,10 @@
-"""Apply the explicitly approved two-site addition; never restart a container."""
+"""Apply the explicitly approved PDF Master / DocMaster sites; never restart a container.
+
+The sites file is this project's own (`/config/pdfmaster-sites/sites.caddy`,
+imported by the shared Caddyfile). It may move from the reviewed previous
+version to this one, which adds docmaster.live; any other content there is
+refused, and no route of another site may change.
+"""
 import copy
 import hashlib
 import json
@@ -9,7 +15,8 @@ import sys
 
 IMPORT = 'import /config/pdfmaster-sites/*.caddy'
 ORIGINAL_SHA256 = '9b0f8129600c282326193228f3e30296e5c735a224d219e65f04051e2f2c5d82'
-SITES = '''pdfmaster.orderdesk.live {
+# The sites file as first published (2026-09), kept so the update below can recognise it.
+PREVIOUS_SITES = '''pdfmaster.orderdesk.live {
     reverse_proxy pdfmaster-web-gateway:8080
 }
 
@@ -17,7 +24,13 @@ pdfmaster-admin.orderdesk.live {
     reverse_proxy pdfmaster-platform-gateway:8080
 }
 '''
-DOMAINS = {'pdfmaster.orderdesk.live', 'pdfmaster-admin.orderdesk.live'}
+# DocMaster's own domain serves the same web gateway; the old host keeps working.
+SITES = PREVIOUS_SITES + '''
+docmaster.live {
+    reverse_proxy pdfmaster-web-gateway:8080
+}
+'''
+DOMAINS = {'pdfmaster.orderdesk.live', 'pdfmaster-admin.orderdesk.live', 'docmaster.live'}
 
 
 def run(args, data=None):
@@ -52,6 +65,24 @@ def ensure_file(path, content, mode=0o600):
         stream.write(content)
         stream.flush()
         os.fsync(stream.fileno())
+
+
+def ensure_ours(path, content, previous):
+    """Our own file: written when absent or still the reviewed previous version."""
+    if path.is_symlink():
+        raise RuntimeError('Refusing symlink: ' + path.name)
+    if path.exists() and path.read_text() not in (content, previous):
+        raise RuntimeError('Existing configuration differs: ' + path.name)
+    if path.exists() and path.read_text() == content:
+        return
+    temporary = path.with_name(path.name + '.new')
+    temporary.unlink(missing_ok=True)
+    descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(descriptor, 'w') as stream:
+        stream.write(content)
+        stream.flush()
+        os.fsync(stream.fileno())
+    temporary.replace(path)
 
 
 def without_new_routes(config):
@@ -127,7 +158,7 @@ def main():
     directory = root / 'proxy'
     directory.mkdir(parents=True, exist_ok=True, mode=0o700)
     ensure_file(directory / 'original.Caddyfile', original)
-    ensure_file(directory / 'sites.caddy', SITES)
+    ensure_ours(directory / 'sites.caddy', SITES, PREVIOUS_SITES)
     baseline_text = json.dumps(baseline, indent=2) + '\n'
     # Keep each inventory; a user-initiated server resize can restart containers
     # between preparation and publication without being caused by this script.
@@ -166,6 +197,7 @@ networks:
 
     # Activate only after both upstreams answer through the ingress network.
     for alias, host, route in [('pdfmaster-web-gateway', 'pdfmaster.orderdesk.live', '/en/app'),
+                              ('pdfmaster-web-gateway', 'docmaster.live', '/en'),
                               ('pdfmaster-platform-gateway', 'pdfmaster-admin.orderdesk.live', '/ops/login')]:
         # Match Caddy's actual request Host; Django correctly rejects Docker DNS
         # aliases that are not public application hostnames.
@@ -173,7 +205,7 @@ networks:
              'http://' + alias + ':8080' + route])
     existing = subprocess.run([*docker_exec, 'cat', '/config/pdfmaster-sites/sites.caddy'],
                               text=True, capture_output=True, timeout=30)
-    if existing.returncode == 0 and existing.stdout != SITES:
+    if existing.returncode == 0 and existing.stdout not in (SITES, PREVIOUS_SITES):
         raise RuntimeError('Existing PDF Master routes differ; refusing overwrite')
     run([*docker_exec, 'sh', '-c', 'umask 077; mkdir -p /config/pdfmaster-sites; cat > /config/pdfmaster-sites/sites.caddy'], SITES)
     adapted = json.loads(run([*docker_exec, 'caddy', 'adapt', '--config', '/etc/caddy/Caddyfile']))
@@ -187,7 +219,7 @@ networks:
         raise
     if baseline != preserved(inventory()):
         raise RuntimeError('An existing container changed during proxy publication')
-    print('PROXY_PUBLISHED: two PDF Master hosts added; existing routes and container IDs/start times unchanged')
+    print('PROXY_PUBLISHED: PDF Master and DocMaster hosts live; existing routes and container IDs/start times unchanged')
 
 
 if __name__ == '__main__':
