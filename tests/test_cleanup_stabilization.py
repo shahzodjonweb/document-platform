@@ -107,7 +107,7 @@ def test_unsafe_initial_selection_never_mutates(monkeypatch, capsys, change):
     elif change == 'wrong-service': selected['Config']['Labels']['com.docker.compose.service'] = 'worker'
     elif change == 'duplicate':
         duplicate = copy.deepcopy(selected); duplicate['Id'] = 'c' * 64
-        duplicate['Name'] = '/pdfmaster-platform-cleanup-2'; probe.containers.append(duplicate)
+        duplicate['Name'] = '/docmaster-platform-cleanup-2'; probe.containers.append(duplicate)
     elif change == 'missing': probe.containers.pop(0)
     elif change == 'not-running': selected['State']['Running'] = False
     elif change == 'oom': selected['State']['OOMKilled'] = True

@@ -44,7 +44,7 @@ class DockerProbe:
         self.commands.append(args)
         if args[:2] == ['docker', 'ps']:
             assert '--no-trunc' in args
-            assert 'label=com.docker.compose.project=pdfmaster-platform' in args
+            assert 'label=com.docker.compose.project=docmaster-platform' in args
             assert 'label=com.docker.compose.service=cleanup' in args
             return self.ids + '\n', ''
         if args[:2] == ['docker', 'inspect']:

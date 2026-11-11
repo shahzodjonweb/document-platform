@@ -7,7 +7,7 @@ folder, checked against its byte count and SHA-256 and only then renamed into
 place, so a folder never holds a partial or wrong model under its real name.
 Files already present and correct are skipped. Any failure exits non-zero.
 
-    python scripts/fetch_scanner_models.py --dest /opt/pdfmaster/scanner-models
+    python scripts/fetch_scanner_models.py --dest /opt/docmaster/scanner-models
 
 The destination defaults to SCANNER_MODELS. Files without a URL ship in
 processors/scanner/models/ and are only checked when present there.

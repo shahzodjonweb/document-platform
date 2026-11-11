@@ -10,7 +10,7 @@ name. An archive holding anything but plain files and folders under safe names
 is refused whole. Everything ends up a=rX. A destination that already holds
 what this archive installed is left alone. Any failure exits non-zero.
 
-    python scripts/fetch_pdfcraft.py --dest /opt/pdfmaster/pdfcraft
+    python scripts/fetch_pdfcraft.py --dest /opt/docmaster/pdfcraft
 """
 import argparse
 import fnmatch

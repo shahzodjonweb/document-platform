@@ -10,7 +10,7 @@ x-platform: &platform
     DEVELOPMENT_LOGIN_ENABLED: "1"
     ENABLE_BETA_TOOLS: "1"
     LOCAL_SYNC_JOBS: "0"
-    DATABASE_URL: postgresql://pdfmaster:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/pdfmaster
+    DATABASE_URL: postgresql://docmaster:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/docmaster
     PRIVATE_STORAGE_ROOT: /data/private
     REDIS_URL: redis://redis:6379/0
   volumes:
@@ -25,12 +25,12 @@ services:
   db:
     image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
     environment:
-      POSTGRES_USER: pdfmaster
-      POSTGRES_DB: pdfmaster
+      POSTGRES_USER: docmaster
+      POSTGRES_DB: docmaster
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
     volumes: [database:/var/lib/postgresql/data]
     healthcheck:
-      test: [CMD-SHELL, 'pg_isready -U pdfmaster -d pdfmaster']
+      test: [CMD-SHELL, 'pg_isready -U docmaster -d docmaster']
       interval: 5s
       retries: 20
   redis:

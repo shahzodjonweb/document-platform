@@ -1,9 +1,13 @@
 """Apply the explicitly approved DocMaster sites, old orderdesk.live hosts included; never restart a container.
 
 The sites file is this project's own (`/config/pdfmaster-sites/sites.caddy`,
-imported by the shared Caddyfile). It may move from the reviewed previous
-version to this one, which adds DocMaster's domains; any other content there is
-refused, and no route of another site may change.
+imported by the shared Caddyfile). It may move from a reviewed previous version
+to this one, which routes every host to the gateways' docmaster-* aliases; any
+other content there is refused, and no route of another site may change.
+
+The import path keeps its pre-rename `pdfmaster-sites` name on purpose: it is
+written into the shared OrderDesk Caddyfile (ORIGINAL_SHA256 below), and moving
+it is a separate change to that file.
 """
 import copy
 import hashlib
@@ -30,16 +34,39 @@ docmaster.live {
     reverse_proxy pdfmaster-web-gateway:8080
 }
 '''
-PREVIOUS_SITES = (FIRST_SITES, DOCMASTER_SITES)
 # DocMaster's domains: the site on docmaster.live (www goes to it), the API and the
 # admin on api.docmaster.live. The old hosts keep working until they are redirected.
-SITES = DOCMASTER_SITES + '''
+API_SITES = DOCMASTER_SITES + '''
 www.docmaster.live {
     redir https://docmaster.live{uri} permanent
 }
 
 api.docmaster.live {
     reverse_proxy pdfmaster-platform-gateway:8080
+}
+'''
+PREVIOUS_SITES = (FIRST_SITES, DOCMASTER_SITES, API_SITES)
+# The same hosts on the gateways' new aliases. Since the rename migration
+# (rename_internals.py) each gateway answers to both docmaster-<component>-gateway
+# and its old pdfmaster-<component>-gateway alias, so either file routes.
+SITES = '''pdfmaster.orderdesk.live {
+    reverse_proxy docmaster-web-gateway:8080
+}
+
+pdfmaster-admin.orderdesk.live {
+    reverse_proxy docmaster-platform-gateway:8080
+}
+
+docmaster.live {
+    reverse_proxy docmaster-web-gateway:8080
+}
+
+www.docmaster.live {
+    redir https://docmaster.live{uri} permanent
+}
+
+api.docmaster.live {
+    reverse_proxy docmaster-platform-gateway:8080
 }
 '''
 DOMAINS = {'pdfmaster.orderdesk.live', 'pdfmaster-admin.orderdesk.live', 'docmaster.live',
@@ -62,7 +89,29 @@ def preserved(containers):
     return {c['Id']: {'name': c['Name'], 'started': c['State']['StartedAt'],
                      'status': c['State']['Status']}
             for c in containers
-            if not c['Config']['Labels'].get('com.docker.compose.project', '').startswith('pdfmaster-')}
+            # Ours: the docmaster-* projects, and the pdfmaster-* ones the rename
+            # migration leaves stopped for its rollback.
+            if not c['Config']['Labels'].get('com.docker.compose.project', '').startswith(('docmaster-', 'pdfmaster-'))}
+
+
+def gateway_override(component):
+    """The server-owned compose.override.yaml: the gateway joins the proxy network.
+
+    It keeps the old pdfmaster-<component>-gateway alias beside the new one,
+    exactly as the rename migration writes it (rename_internals.rewrite_override),
+    so the file it left in place is accepted as ours.
+    """
+    return f'''services:
+  gateway:
+    networks:
+      default:
+      proxy:
+        aliases: [docmaster-{component}-gateway, pdfmaster-{component}-gateway]
+networks:
+  proxy:
+    external: true
+    name: orderdesk_default
+'''
 
 
 def ensure_file(path, content, mode=0o600):
@@ -136,6 +185,9 @@ def main():
     if mode not in {'prepare', 'publish'}:
         raise RuntimeError('Unsupported mode')
     os.umask(0o077)
+    if (Path.home() / 'pdf-master').exists():
+        # Before the rename migration this would start a second ~/docmaster beside it.
+        raise RuntimeError('This server still uses ~/pdf-master: run the rename-migrate server operation first')
     containers = inventory()
     baseline = preserved(containers)
     proxies = [c for c in containers if c['Name'] == '/orderdesk-caddy-1'
@@ -166,7 +218,7 @@ def main():
         print('CONFIG_STRUCTURE_DIFFERENCE', json.dumps(changed_paths(old_config, without_new_routes(new_config))), flush=True)
         raise RuntimeError('Proposed routing modifies an existing site')
     run([*docker_exec, 'caddy', 'validate', '--config', '-', '--adapter', 'caddyfile'], original + '\n' + SITES)
-    root = Path.home() / 'pdf-master'
+    root = Path.home() / 'docmaster'
     directory = root / 'proxy'
     directory.mkdir(parents=True, exist_ok=True, mode=0o700)
     ensure_file(directory / 'original.Caddyfile', original)
@@ -179,18 +231,7 @@ def main():
     for component in ('platform', 'web'):
         own_root = root / component
         own_root.mkdir(exist_ok=True, mode=0o700)
-        override = f'''services:
-  gateway:
-    networks:
-      default:
-      proxy:
-        aliases: [pdfmaster-{component}-gateway]
-networks:
-  proxy:
-    external: true
-    name: orderdesk_default
-'''
-        ensure_file(own_root / 'compose.override.yaml', override)
+        ensure_file(own_root / 'compose.override.yaml', gateway_override(component))
     if source != proposed:
         # Preserve the inode: Docker has this exact file bind-mounted read-only.
         with config_path.open('r+') as stream:
@@ -208,10 +249,10 @@ networks:
         return
 
     # Activate only after both upstreams answer through the ingress network.
-    for alias, host, route in [('pdfmaster-web-gateway', 'pdfmaster.orderdesk.live', '/en/app'),
-                              ('pdfmaster-web-gateway', 'docmaster.live', '/en'),
-                              ('pdfmaster-platform-gateway', 'api.docmaster.live', '/api/v1/health'),
-                              ('pdfmaster-platform-gateway', 'pdfmaster-admin.orderdesk.live', '/ops/login')]:
+    for alias, host, route in [('docmaster-web-gateway', 'pdfmaster.orderdesk.live', '/en/app'),
+                              ('docmaster-web-gateway', 'docmaster.live', '/en'),
+                              ('docmaster-platform-gateway', 'api.docmaster.live', '/api/v1/health'),
+                              ('docmaster-platform-gateway', 'pdfmaster-admin.orderdesk.live', '/ops/login')]:
         # Match Caddy's actual request Host; Django correctly rejects Docker DNS
         # aliases that are not public application hostnames.
         run([*docker_exec, 'wget', '-q', '--header', 'Host: ' + host, '-O', '/dev/null',

@@ -15,7 +15,7 @@ if not re.fullmatch(r'[a-zA-Z0-9_-]{3,64}', BOOTSTRAP['username']):
     raise SystemExit('Invalid administrator username')
 if len(BOOTSTRAP['password']) < 32:
     raise SystemExit('Use a strong password')
-ids = command(['docker', 'ps', '-q', '--filter', 'label=com.docker.compose.project=pdfmaster-platform',
+ids = command(['docker', 'ps', '-q', '--filter', 'label=com.docker.compose.project=docmaster-platform',
                '--filter', 'label=com.docker.compose.service=api']).split()
 if len(ids) != 1:
     raise SystemExit('Expected one healthy DocMaster API container')

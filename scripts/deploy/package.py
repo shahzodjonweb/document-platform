@@ -23,7 +23,7 @@ attempt = int(os.environ.get("GITHUB_RUN_ATTEMPT", "1"))
 if not re.fullmatch(r"[0-9a-f]{40}", commit):
     raise SystemExit("Invalid commit")
 release_id = f"{commit}-{run}-{attempt}"
-image = f"pdfmaster-{args.component}:{release_id}"
+image = f"docmaster-{args.component}:{release_id}"
 info = json.loads(subprocess.check_output(["docker", "image", "inspect", image]))[0]
 schema = root / ("contracts/public.openapi.json" if args.component == "platform" else "generated/api/public.openapi.json")
 with tempfile.TemporaryDirectory() as directory:

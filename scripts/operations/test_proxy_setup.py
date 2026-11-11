@@ -3,7 +3,9 @@ import copy
 import tempfile
 import unittest
 from pathlib import Path
-from proxy_setup import DOCMASTER_SITES, FIRST_SITES, PREVIOUS_SITES, SITES, ensure_ours, without_new_routes
+from proxy_setup import (API_SITES, DOCMASTER_SITES, FIRST_SITES, PREVIOUS_SITES, SITES, ensure_ours,
+                         gateway_override, without_new_routes)
+from rename_internals import rewrite_override
 
 
 class RoutePreservationTests(unittest.TestCase):
@@ -17,8 +19,8 @@ class RoutePreservationTests(unittest.TestCase):
                                                 'issuers': [{'module': 'acme'}]}]}}
         }}
         self.added = copy.deepcopy(self.old)
-        for host, target in [('pdfmaster.orderdesk.live', 'pdfmaster-web-gateway:8080'),
-                             ('pdfmaster-admin.orderdesk.live', 'pdfmaster-platform-gateway:8080')]:
+        for host, target in [('docmaster.live', 'docmaster-web-gateway:8080'),
+                             ('api.docmaster.live', 'docmaster-platform-gateway:8080')]:
             self.added['apps']['http']['servers']['srv0']['routes'].append({
                 'match': [{'host': [host]}], 'handle': [{'handler': 'reverse_proxy',
                                                        'upstreams': [{'dial': target}]}]})
@@ -52,10 +54,26 @@ class OwnSitesFileTests(unittest.TestCase):
         self.folder.cleanup()
 
     def test_adds_docmaster_and_keeps_the_old_hosts(self):
-        self.assertTrue(SITES.startswith(DOCMASTER_SITES) and DOCMASTER_SITES.startswith(FIRST_SITES))
-        for site in ('docmaster.live {', 'www.docmaster.live {', 'api.docmaster.live {'):
+        self.assertTrue(API_SITES.startswith(DOCMASTER_SITES) and DOCMASTER_SITES.startswith(FIRST_SITES))
+        for site in ('pdfmaster.orderdesk.live {', 'pdfmaster-admin.orderdesk.live {',
+                     'docmaster.live {', 'www.docmaster.live {', 'api.docmaster.live {'):
             self.assertIn(site, SITES)
         self.assertIn('redir https://docmaster.live{uri} permanent', SITES)
+
+    def test_routes_only_to_the_new_gateway_aliases(self):
+        # The same hosts as the last published version, each on the gateway's new alias.
+        self.assertEqual(SITES, API_SITES.replace('pdfmaster-web-gateway', 'docmaster-web-gateway')
+                         .replace('pdfmaster-platform-gateway', 'docmaster-platform-gateway'))
+        self.assertNotIn('pdfmaster-web-gateway', SITES)
+        self.assertNotIn('pdfmaster-platform-gateway', SITES)
+
+    def test_override_is_the_one_the_rename_migration_leaves(self):
+        # ensure_file refuses any other content, so proxy-prepare after the
+        # migration depends on these being byte-identical.
+        for component in ('platform', 'web'):
+            before = gateway_override(component).replace(
+                f'[docmaster-{component}-gateway, pdfmaster-{component}-gateway]', f'[pdfmaster-{component}-gateway]')
+            self.assertEqual(rewrite_override(before, component), gateway_override(component))
 
     def test_writes_when_absent(self):
         ensure_ours(self.path, SITES, PREVIOUS_SITES)

@@ -13,9 +13,9 @@ import subprocess
 import time
 
 
-PROJECT = 'pdfmaster-platform'
+PROJECT = 'docmaster-platform'
 SERVICE = 'cleanup'
-NAME = '/pdfmaster-platform-cleanup-1'
+NAME = '/docmaster-platform-cleanup-1'
 MIB = 1024 * 1024
 MEMORY = 384 * MIB
 SWAP = 768 * MIB

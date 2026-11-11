@@ -39,7 +39,7 @@ def test_production_access_logs_omit_callback_query_strings(settings):
     assert '--access-logformat' in dockerfile and '%(U)s' in dockerfile
     assert '%(r)s' not in dockerfile and '%(q)s' not in dockerfile
     config = (settings.BASE_DIR/'infra/production/nginx.conf').read_text()
-    assert 'log_format pdfmaster_safe' in config and '$uri' in config
+    assert 'log_format docmaster_safe' in config and '$uri' in config
     assert '$request_uri' not in config and '$http_referer' not in config
 
 

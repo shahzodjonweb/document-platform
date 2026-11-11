@@ -74,9 +74,9 @@ class Customer:
         self.csrf = data['csrf_token']
 
     def request(self, method, path, data=None, content_type='application/json', headers=None, csrf=True):
-        headers = {'Host': 'pdfmaster-admin.orderdesk.live', 'X-Forwarded-Proto': 'https',
-                   'Origin': 'https://pdfmaster-admin.orderdesk.live',
-                   'Referer': 'https://pdfmaster-admin.orderdesk.live/',
+        headers = {'Host': 'api.docmaster.live', 'X-Forwarded-Proto': 'https',
+                   'Origin': 'https://api.docmaster.live',
+                   'Referer': 'https://api.docmaster.live/',
                    'Cookie': '; '.join(f'{k}={v}' for k, v in self.cookies.items()),
                    'Content-Type': content_type, **(headers or {})}
         if csrf and self.csrf:
@@ -972,7 +972,7 @@ def validate_output(feature, outputs, parameters, inputs=None):
 def check_documents(audit_id, emit):
     results = []
     deadline = time.monotonic() + 410
-    with tempfile.TemporaryDirectory(prefix='pdfmaster-service-audit-') as directory:
+    with tempfile.TemporaryDirectory(prefix='docmaster-service-audit-') as directory:
         paths = fixtures(Path(directory))
         for feature, inputs, parameters in cases():
             customer = None

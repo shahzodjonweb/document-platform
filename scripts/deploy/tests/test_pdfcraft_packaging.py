@@ -218,7 +218,7 @@ class Image(unittest.TestCase):
     def test_the_dockerfile_fetches_it_in_its_own_layer_after_the_scanner(self):
         text = (ROOT / 'infra/Dockerfile').read_text()
         order = [text.index(line) for line in ('ENV SCANNER_MODELS=', 'COPY processors/pdfcraft/manifest.json /tmp/pdfcraft/', 'COPY scripts/fetch_pdfcraft.py /tmp/pdfcraft/',
-                                               'python -I /tmp/pdfcraft/fetch_pdfcraft.py', 'ENV DOCMASTER_PDFCRAFT_BIN=/opt/pdfmaster/pdfcraft/pdfcraft-cli', 'COPY requirements.lock', 'USER pdfmaster')]
+                                               'python -I /tmp/pdfcraft/fetch_pdfcraft.py', 'ENV DOCMASTER_PDFCRAFT_BIN=/opt/docmaster/pdfcraft/pdfcraft-cli', 'COPY requirements.lock', 'USER docmaster')]
         self.assertEqual(order, sorted(order))
 
     def test_the_deck_fonts_are_never_installed_system_wide(self):

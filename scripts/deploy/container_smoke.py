@@ -324,13 +324,13 @@ def main():
     parser.add_argument('image')
     args=parser.parse_args()
     repo=Path(__file__).resolve().parents[2]
-    name='pdfmaster-ci-'+os.environ['GITHUB_RUN_ID']+'-'+os.environ['GITHUB_RUN_ATTEMPT']
+    name='docmaster-ci-'+os.environ['GITHUB_RUN_ID']+'-'+os.environ['GITHUB_RUN_ATTEMPT']
 
     with tempfile.TemporaryDirectory() as temp:
         staging=Path(temp)
         run(['python3',str(repo/'scripts/deploy/init_environment.py'),'--component',args.component,'--root',str(staging)])
-        env={**os.environ,'PDFMASTER_IMAGE':args.image,'PDFMASTER_ENV_FILE':str(staging/'.env'),
-             'PDFMASTER_HTTP_PORT':'0'}
+        env={**os.environ,'DOCMASTER_IMAGE':args.image,'DOCMASTER_ENV_FILE':str(staging/'.env'),
+             'DOCMASTER_HTTP_PORT':'0'}
         compose=['docker','compose','-p',name,'--env-file',str(staging/'.env'),
                  '-f',str(repo/'infra/production/compose.yaml')]
         try:

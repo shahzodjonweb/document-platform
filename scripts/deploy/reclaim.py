@@ -12,7 +12,7 @@ It reports before it removes anything. Nothing is deleted without --apply.
 
 It keeps the active release, the previous one rollback depends on, any pending
 one, and the newest few database dumps and delivered script directories. It
-stays inside ~/pdf-master/<component>/ and never prunes Docker globally: the
+stays inside ~/docmaster/<component>/ and never prunes Docker globally: the
 host serves other projects.
 """
 import argparse
@@ -50,7 +50,7 @@ def main():
     parser.add_argument('--apply', action='store_true', help='actually remove; otherwise report only')
     args = parser.parse_args()
 
-    root = (args.root or Path.home() / 'pdf-master' / args.component).resolve()
+    root = (args.root or Path.home() / 'docmaster' / args.component).resolve()
     if not root.is_dir():
         raise SystemExit(f'No such component directory: {root}')
 
@@ -96,7 +96,7 @@ def main():
     orphans = []
     try:
         listed = subprocess.run(
-            ['docker', 'images', '--filter', f'reference=pdfmaster-{args.component}:*',
+            ['docker', 'images', '--filter', f'reference=docmaster-{args.component}:*',
              '--format', '{{.Repository}}:{{.Tag}}\t{{.Size}}'],
             capture_output=True, text=True, check=False).stdout
     except OSError:
