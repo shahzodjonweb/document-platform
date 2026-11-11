@@ -969,7 +969,55 @@ def validate_output(feature, outputs, parameters, inputs=None):
     if feature == 'editor.signature_image': require(len(pages[0].images) == 1, 'signature_image')
 
 
+def editor_v2_quote(customer, assets, payload):
+    """An editor case the way the web sends it once Editor v2 is on: the old route
+    refuses editor.* (409 feature_unavailable), so the marks are saved on an editor
+    document opened on the first file and quoted from there (an editor.visual job)."""
+    refused = customer.json('POST', 'quotes', payload, expected=(409,))
+    require(refused.get('error', {}).get('code') == 'feature_unavailable', 'legacy_editor_route_open')
+    document = customer.json('POST', 'editor/documents', {'file_id': assets[0]['id']})
+    saved = customer.json('PATCH', 'editor/documents/' + document['id'],
+                          {'version': document['version'], 'input_ids': [a['id'] for a in assets],
+                           'commands': payload['parameters']['commands']})
+    return customer.json('POST', 'editor/documents/' + document['id'] + '/quote', {'version': saved['version']})
+
+
+PLAN_BOUNDARY_COMMANDS = ({'type': 'replace_text', 'page': 1, 'find': 'alpha', 'replacement': 'omega'},
+                          {'type': 'redact', 'page': 1, 'x': 25, 'y': 40, 'width': 120, 'height': 30})
+
+
+def editor_v2_plan_boundary(customer, account, asset):
+    """The save of a mark answers the plan: refused (403 feature_not_in_plan) exactly
+    when the account's plan lacks the mark's feature, kept when it has it. Which
+    features a plan has is the owner's setting, so the expectation is read from it."""
+    from apps.studio.domain import allowed
+    from apps.studio.editor_policy import COMMAND_FEATURES
+    document = customer.json('POST', 'editor/documents', {'file_id': asset['id']})
+    version = document['version']
+    for command in PLAN_BOUNDARY_COMMANDS:
+        if allowed(account, COMMAND_FEATURES[command['type']]):
+            version = customer.json('PATCH', 'editor/documents/' + document['id'],
+                                    {'version': version, 'commands': [command]})['version']
+        else:
+            response = customer.json('PATCH', 'editor/documents/' + document['id'],
+                                     {'version': version, 'commands': [command]}, expected=(403,))
+            require(response.get('error', {}).get('code') == 'feature_not_in_plan', 'plan_access_boundary')
+
+
+def fetch_preview(customer, url, wait=45):
+    """A page preview. With the deck editor on, a page not drawn yet answers 202
+    {task_id} while the editor lane draws it, and the client asks again."""
+    stop = time.monotonic() + wait
+    while True:
+        status, body, _ = customer.request('GET', url)
+        if status != 202: return status, body
+        require(time.monotonic() < stop, 'preview_timeout')
+        time.sleep(1)
+
+
 def check_documents(audit_id, emit):
+    from operations.integrations import editor_flags
+    editor_v2 = editor_flags()['editor_v2']
     results = []
     deadline = time.monotonic() + 410
     with tempfile.TemporaryDirectory(prefix='docmaster-service-audit-') as directory:
@@ -988,7 +1036,11 @@ def check_documents(audit_id, emit):
                 payload = {'feature_id': feature, 'input_ids': [a['id'] for a in assets], 'parameters': parameters}
                 if feature == 'pdf.protect':
                     payload['secret_id'] = customer.json('POST', 'secrets', {'password': 'synthetic-audit-password'})['id']
-                quote = customer.json('POST', 'quotes', payload)
+                if editor_v2 and feature.startswith('editor.'):
+                    quote = editor_v2_quote(customer, assets, payload)
+                    row['scope'] = 'editor_v2_document_queue_worker_download'
+                else:
+                    quote = customer.json('POST', 'quotes', payload)
                 key = 'service-audit-' + uuid.uuid4().hex
                 job = customer.json('POST', 'jobs', {'quote_id': quote['id']}, headers={'Idempotency-Key': key})
                 stop = min(deadline, time.monotonic() + 60)
@@ -1032,7 +1084,7 @@ def check_documents(audit_id, emit):
                 if feature == 'pdf.compress': require(len(outputs[0]) < paths['compress'].stat().st_size, 'compression_size')
                 if feature == 'pdf.merge':
                     preview = job['artifacts'][0]['preview_url']
-                    status, body, _ = customer.request('GET', preview)
+                    status, body = fetch_preview(customer, preview)
                     require(status == 200 and body.startswith(b'\x89PNG'), 'preview_png')
                     retry = customer.json('POST', 'jobs', {'quote_id': quote['id']}, headers={'Idempotency-Key': key})
                     require(retry['id'] == job['id'], 'idempotency')
@@ -1042,9 +1094,14 @@ def check_documents(audit_id, emit):
                     try:
                         for path in ('jobs/' + job['id'], job['artifacts'][0]['download_url']):
                             status, _, _ = other.request('GET', path); require(status == 404, 'owner_boundary')
-                        for fid in ('editor.existing_text', 'editor.insert_images', 'editor.replace_images', 'editor.redact'):
-                            response = customer.json('POST', 'quotes', {**payload, 'feature_id': fid}, expected=(403,))
-                            require(response.get('error', {}).get('code') == 'feature_not_in_plan', 'paid_access_boundary')
+                        if editor_v2:
+                            editor_v2_plan_boundary(customer, customer.account, assets[0])
+                        else:
+                            from apps.studio.domain import allowed
+                            for fid in ('editor.existing_text', 'editor.insert_images', 'editor.replace_images', 'editor.redact'):
+                                if allowed(customer.account, fid): continue
+                                response = customer.json('POST', 'quotes', {**payload, 'feature_id': fid}, expected=(403,))
+                                require(response.get('error', {}).get('code') == 'feature_not_in_plan', 'plan_access_boundary')
                     finally: other.retire()
                     row['access_idempotency_preview'] = 'passed'
                 # The finished job holds one place in the customer's week, once,
