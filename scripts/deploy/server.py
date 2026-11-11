@@ -113,7 +113,7 @@ def environment(root, component):
         if key in values:
             raise DeploymentError("Production .env contains duplicate keys.")
         values[key] = value
-    expected_domain = 'pdfmaster-admin.orderdesk.live' if component == 'platform' else 'pdfmaster.orderdesk.live'
+    expected_domain = 'api.docmaster.live' if component == 'platform' else 'docmaster.live'
     if values.get('PUBLIC_DOMAIN') != expected_domain:
         raise DeploymentError('PUBLIC_DOMAIN does not match this component domain.')
     if component == 'platform':
@@ -130,9 +130,9 @@ def environment(root, component):
             raise DeploymentError("Set explicit HTTPS CSRF_TRUSTED_ORIGINS.")
         if not values.get("ALLOWED_HOSTS") or "*" in values["ALLOWED_HOSTS"]:
             raise DeploymentError("Set explicit ALLOWED_HOSTS.")
-    port = values.get("PDFMASTER_HTTP_PORT", "8310")
+    port = values.get("DOCMASTER_HTTP_PORT", "8310")
     if not port.isdigit() or not 1024 <= int(port) <= 65535:
-        raise DeploymentError("PDFMASTER_HTTP_PORT must be an unprivileged port.")
+        raise DeploymentError("DOCMASTER_HTTP_PORT must be an unprivileged port.")
     if values.get("COMPOSE_PROFILES", "") not in ("", "bot"):
         raise DeploymentError("Only the optional bot profile is supported.")
     return values
@@ -153,7 +153,7 @@ def validate_manifest(meta):
     release_id = f"{meta['commit']}-{meta['run_id']}-{meta['run_attempt']}"
     if meta.get("release_id") != release_id:
         raise DeploymentError("Invalid release identifier.")
-    expected = f"pdfmaster-{meta['component']}:{release_id}"
+    expected = f"docmaster-{meta['component']}:{release_id}"
     if meta.get("image") != expected or meta.get("architecture") not in ("amd64", "arm64"):
         raise DeploymentError("Invalid image name/architecture.")
     if type(meta.get("run_id")) is not int or meta["run_id"] <= 0:
@@ -213,7 +213,7 @@ class Deployer:
             raise DeploymentError('Unknown deployment component.')
         self.root = root.resolve()
         self.component = component
-        self.project = 'pdfmaster-' + component
+        self.project = 'docmaster-' + component
         self.run = runner
 
     def preflight(self):
@@ -240,7 +240,7 @@ class Deployer:
         config = self.root / 'releases' / release['release_id'] / 'stack' / 'compose.yaml'
         env = {k: v for k, v in os.environ.items() if not k.startswith('COMPOSE_')}
         env.update(self.settings)
-        env.update(PDFMASTER_IMAGE=release['image'], PDFMASTER_ENV_FILE=str(self.root / '.env'))
+        env.update(DOCMASTER_IMAGE=release['image'], DOCMASTER_ENV_FILE=str(self.root / '.env'))
         compose = ['docker', 'compose', '--project-name', self.project,
                    '--env-file', str(self.root / '.env'), '-f', str(config)]
         override = self.root / 'compose.override.yaml'
@@ -259,8 +259,8 @@ class Deployer:
             path = directory / f'before-{time.time_ns()}.dump'
             with path.open('xb') as stream:
                 os.chmod(path, 0o600)
-                self.compose(release, 'exec', '-T', 'db', 'pg_dump', '-U', 'pdfmaster',
-                             '-d', 'pdfmaster', '-Fc', output_stream=stream)
+                self.compose(release, 'exec', '-T', 'db', 'pg_dump', '-U', 'docmaster',
+                             '-d', 'docmaster', '-Fc', output_stream=stream)
             self.compose(release, 'run', '--rm', '--no-deps', 'init')
         self.start_services(release)
 
@@ -357,7 +357,7 @@ class Deployer:
             # component's own tags, because the host serves other projects.
             try:
                 listed = self.run(['docker', 'images', '--filter',
-                                   f'reference=pdfmaster-{self.component}:*',
+                                   f'reference=docmaster-{self.component}:*',
                                    '--format', '{{.Repository}}:{{.Tag}}'])
             except Exception:
                 listed = ''
@@ -475,7 +475,7 @@ def main():
     parser.add_argument('--bundle', type=Path)
     parser.add_argument('--root', type=Path)
     args = parser.parse_args()
-    root = args.root or Path.home() / 'pdf-master' / args.component
+    root = args.root or Path.home() / 'docmaster' / args.component
     os.umask(0o077)
     try:
         with deployment_lock(root):

@@ -51,7 +51,7 @@ def cleanup_command(args):
 def verify_cleanup_cycle(baseline):
     """Run after all probes, so a delayed startup OOM cannot pass verification."""
     ids, _ = cleanup_command(['docker', 'ps', '-aq', '--no-trunc', '--filter',
-                              'label=com.docker.compose.project=pdfmaster-platform', '--filter',
+                              'label=com.docker.compose.project=docmaster-platform', '--filter',
                               'label=com.docker.compose.service=cleanup'])
     if ids.split() != [baseline['id']]:
         raise SystemExit('Cleanup verification failed: the container changed during service checks.')
@@ -80,7 +80,7 @@ api = None
 cleanup_baseline = None
 for component, expected in [('platform', {'api', 'db', 'redis', 'worker', 'batches', 'reader', 'editor', 'cleanup', 'bot', 'gateway'}),
                             ('web', {'web', 'gateway'})]:
-    ids = command(['docker', 'ps', '-aq', '--filter', 'label=com.docker.compose.project=pdfmaster-' + component]).split()
+    ids = command(['docker', 'ps', '-aq', '--filter', 'label=com.docker.compose.project=docmaster-' + component]).split()
     containers = json.loads(command(['docker', 'inspect', *ids])) if ids else []
     services = {c['Config']['Labels']['com.docker.compose.service']: c for c in containers}
     if not expected.issubset(services):
@@ -96,7 +96,7 @@ for component, expected in [('platform', {'api', 'db', 'redis', 'worker', 'batch
             raise SystemExit('Unhealthy DocMaster service: ' + name)
         if name != 'gateway' and 'orderdesk_default' in container['NetworkSettings']['Networks']:
             raise SystemExit('Only a DocMaster gateway may join the shared proxy network')
-    active = json.loads((Path.home() / 'pdf-master' / component / 'state.json').read_text())['active']
+    active = json.loads((Path.home() / 'docmaster' / component / 'state.json').read_text())['active']
     print('ACTIVE_RELEASE', component, active['commit'])
     if component == 'platform':
         api = services['api']['Id']
@@ -109,7 +109,7 @@ for port, path in [(8310, '/en/app'), (8311, '/api/v1/health'), (8311, '/ops/log
             raise SystemExit('DocMaster gateway route failed')
 print('VERIFY_GATEWAYS_OK')
 # The Redis key is unique to this audit and expires even if this process stops.
-redis_key = 'pdfmaster:service-audit:' + uuid.uuid4().hex
+redis_key = 'docmaster:service-audit:' + uuid.uuid4().hex
 assert command(['docker', 'exec', redis, 'redis-cli', 'PING']).strip() == 'PONG'
 assert command(['docker', 'exec', redis, 'redis-cli', 'SET', redis_key, 'probe', 'EX', '15']).strip() == 'OK'
 assert command(['docker', 'exec', redis, 'redis-cli', 'GET', redis_key]).strip() == 'probe'

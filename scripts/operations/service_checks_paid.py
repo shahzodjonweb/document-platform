@@ -151,7 +151,7 @@ def check_paid_processors(audit_id):
     """Run all four checks independently; return safe summaries without contents."""
     audit_id = uuid.UUID(str(audit_id))
     results = {}
-    with tempfile.TemporaryDirectory(prefix='pdfmaster-paid-check-' + audit_id.hex[:12] + '-') as temporary:
+    with tempfile.TemporaryDirectory(prefix='docmaster-paid-check-' + audit_id.hex[:12] + '-') as temporary:
         for feature, check in (
             ('editor.existing_text', _paid_existing_text),
             ('editor.insert_images', _paid_insert_images),

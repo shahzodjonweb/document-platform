@@ -2,12 +2,12 @@
 
 | Repository | URL | Docker project | Server directory | Loopback gateway |
 | --- | --- | --- | --- | --- |
-| document-platform | https://pdfmaster-admin.orderdesk.live/ops/login | pdfmaster-platform | ~/pdf-master/platform | 127.0.0.1:8311 |
-| document-web | https://pdfmaster.orderdesk.live/en/app | pdfmaster-web | ~/pdf-master/web | 127.0.0.1:8310 |
+| document-platform | https://api.docmaster.live/ops/login | docmaster-platform | ~/docmaster/platform | 127.0.0.1:8311 |
+| document-web | https://docmaster.live/en/app | docmaster-web | ~/docmaster/web | 127.0.0.1:8310 |
 
 The platform owns the API, admin, PostgreSQL, Redis, private files, workers and Telegram bot. The web project owns only its customer application and gateway. Each has its own Compose network, environment, deployment lock, release history and rollback. Web deployments never run platform migrations or touch its containers/volumes; platform deployments never change web containers. Neither deployer modifies other server projects or prunes Docker globally.
 
-The customer app calls the API through its same-origin `/api` proxy to `https://pdfmaster-admin.orderdesk.live`. It shares no Docker network with the platform. API availability remains an application dependency; use backward-compatible API changes and migrations when releasing independently. A backend restart can briefly interrupt API requests, while the web container continues serving the interface.
+The customer app calls the API through its same-origin `/api` proxy to `https://api.docmaster.live`. It shares no Docker network with the platform. API availability remains an application dependency; use backward-compatible API changes and migrations when releasing independently. A backend restart can briefly interrupt API requests, while the web container continues serving the interface.
 
 ## GitHub credentials
 
@@ -44,13 +44,13 @@ On first delivery, `init_environment.py` creates only that component's environme
 Only platform deployments back up PostgreSQL, run forward migrations and collect static assets. Each release starts its own services, refreshes only its own gateway and verifies its routes. A failed release restores the previous healthy image and, for the platform, static assets. Database migrations are never reversed automatically. Rollback is scoped explicitly:
 
 ```sh
-python3 ~/pdf-master/platform/incoming/RELEASE_DIRECTORY/server.py rollback --component platform
-python3 ~/pdf-master/web/incoming/RELEASE_DIRECTORY/server.py rollback --component web
+python3 ~/docmaster/platform/incoming/RELEASE_DIRECTORY/server.py rollback --component platform
+python3 ~/docmaster/web/incoming/RELEASE_DIRECTORY/server.py rollback --component web
 ```
 
-The first release has no previous image to restore. The persistent directories contain `.env`, `.owner`, `state.json`, `deploy.lock`, `releases/` and `incoming/`. Platform database dumps are in `~/pdf-master/platform/backups/`.
+The first release has no previous image to restore. The persistent directories contain `.env`, `.owner`, `state.json`, `deploy.lock`, `releases/` and `incoming/`. Platform database dumps are in `~/docmaster/platform/backups/`.
 
-Each deployment reclaims its own disk before unpacking and again once the new release is active: it keeps the active release, the previous one rollback depends on, any pending one, and the five most recent database dumps and delivered script directories. Everything older is removed along with the image only that release named, and any remaining `pdfmaster-<component>:*` image no surviving release still points at is swept too — an image outlives its release directory when that directory is cleaned up by hand or a deployment is interrupted, and nothing else would ever reclaim it. This stays inside `~/pdf-master/<component>/` and never prunes Docker globally, so other projects on the host are untouched. An image a running container still uses is refused by Docker and left alone, and a housekeeping failure never fails a release. Off-server backup retention is still yours to configure — five pre-activation dumps is a rollback aid, not an archive.
+Each deployment reclaims its own disk before unpacking and again once the new release is active: it keeps the active release, the previous one rollback depends on, any pending one, and the five most recent database dumps and delivered script directories. Everything older is removed along with the image only that release named, and any remaining `docmaster-<component>:*` image no surviving release still points at is swept too — an image outlives its release directory when that directory is cleaned up by hand or a deployment is interrupted, and nothing else would ever reclaim it. This stays inside `~/docmaster/<component>/` and never prunes Docker globally, so other projects on the host are untouched. An image a running container still uses is refused by Docker and left alone, and a housekeeping failure never fails a release. Off-server backup retention is still yours to configure — five pre-activation dumps is a rollback aid, not an archive.
 
 If a disk has already filled, that reclaim cannot save you: the deploy scripts have to land on the server before any of it runs, and a full disk stops even that. Break the deadlock once with `scripts/deploy/reclaim.py`, which applies the same policy by hand and reports before it removes anything.
 
@@ -65,7 +65,7 @@ Copy it next to the other deploy scripts, or paste it into a heredoc if there is
 
 The host already serves other projects. Inspect the current TLS proxy and container inventory before integration. Keep their files, routes, container IDs and start times unchanged. Add only the two new DocMaster host routes; never replace the existing proxy configuration, stop its containers, or run a global Compose down/prune command.
 
-For a host Caddy instance, each repository supplies its own `infra/production/Caddyfile` site block pointing at its loopback gateway. Add those blocks through the server's existing include mechanism and validate/reload gracefully. Caddy can provision TLS for the two DNS hostnames once they resolve to this server. If Caddy is containerized, use the repository's `proxy-network.example.yaml` as that component's server-owned `compose.override.yaml`; attach only its gateway to the existing ingress network and route to `pdfmaster-platform-gateway:8080` or `pdfmaster-web-gateway:8080`. The database and application networks stay separate.
+For a host Caddy instance, each repository supplies its own `infra/production/Caddyfile` site block pointing at its loopback gateway. Add those blocks through the server's existing include mechanism and validate/reload gracefully. Caddy can provision TLS for the two DNS hostnames once they resolve to this server. If Caddy is containerized, use the repository's `proxy-network.example.yaml` as that component's server-owned `compose.override.yaml`; attach only its gateway to the existing ingress network and route to `docmaster-platform-gateway:8080` or `docmaster-web-gateway:8080`. The database and application networks stay separate.
 
 A server-owned override is read only by its own component's deployer. TLS proxy changes happen during site setup, not during routine image deployments. The deployers never reconfigure the shared proxy.
 
@@ -74,11 +74,11 @@ A server-owned override is read only by its own component's deployer. TLS proxy 
 On the server, select the platform release for management commands:
 
 ```sh
-cd ~/pdf-master/platform
+cd ~/docmaster/platform
 release=$(python3 -c 'import json; print(json.load(open("state.json"))["active"]["release_id"])')
-export PDFMASTER_ENV_FILE="$PWD/.env"
-export PDFMASTER_IMAGE=$(python3 -c 'import json; print(json.load(open("state.json"))["active"]["image"])')
-docker compose -p pdfmaster-platform --env-file .env \
+export DOCMASTER_ENV_FILE="$PWD/.env"
+export DOCMASTER_IMAGE=$(python3 -c 'import json; print(json.load(open("state.json"))["active"]["image"])')
+docker compose -p docmaster-platform --env-file .env \
   -f "releases/$release/stack/compose.yaml" \
   exec api python manage.py setup_staff your-admin --role Administrator
 ```

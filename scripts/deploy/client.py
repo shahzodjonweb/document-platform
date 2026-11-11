@@ -23,14 +23,19 @@ if not port.isdigit() or not 1 <= int(port) <= 65535:
 sha, run, attempt = os.environ["GITHUB_SHA"], os.environ["GITHUB_RUN_ID"], os.environ["GITHUB_RUN_ATTEMPT"]
 if not re.fullmatch(r"[a-f0-9]{40}", sha) or not run.isdigit() or not attempt.isdigit():
     raise SystemExit("Invalid release metadata")
-relative = f"pdf-master/{args.component}/incoming/{sha}-{run}-{attempt}"
+relative = f"docmaster/{args.component}/incoming/{sha}-{run}-{attempt}"
 # Only validated identifiers enter the remote shell. User/host stay local argv.
-remote = (f'set -eu; umask 077; mkdir -p "$HOME/{relative}"; cd "$HOME/{relative}"; '
+# A server still on the pre-rename ~/pdf-master layout has not run the rename
+# migration (scripts/operations/rename_internals.py): refuse before anything is
+# written, or this would create ~/docmaster and initialize an empty second stack.
+remote = (f'set -eu; umask 077; if [ -e "$HOME/pdf-master/{args.component}" ]; then '
+          'echo "This server still uses ~/pdf-master: run the rename-migrate server operation first." >&2; exit 1; fi; '
+          f'mkdir -p "$HOME/{relative}"; cd "$HOME/{relative}"; '
           "trap 'rm -f release.tar.gz' EXIT; tar -xf -; "
-          f'if [ ! -e "$HOME/pdf-master/{args.component}/.env" ]; then '
+          f'if [ ! -e "$HOME/docmaster/{args.component}/.env" ]; then '
           f'python3 init_environment.py --component {args.component} --enable-document-tools; fi; '
           f"python3 server.py deploy --component {args.component} --bundle release.tar.gz")
-with tempfile.TemporaryDirectory(prefix="pdfmaster-ssh-") as folder:
+with tempfile.TemporaryDirectory(prefix="docmaster-ssh-") as folder:
     key = Path(folder) / "key"
     known = Path(folder) / "known_hosts"
     key.write_text(os.environ["DEPLOY_SSH_KEY"].rstrip() + "\n")

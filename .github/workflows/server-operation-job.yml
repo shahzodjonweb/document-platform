@@ -24,7 +24,7 @@ jobs:
     # The rename migration lets job runners finish the job in hand (up to 10 minutes) and copies volumes.
     timeout-minutes: 60
     concurrency:
-      group: pdfmaster-server-operations
+      group: docmaster-server-operations
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262

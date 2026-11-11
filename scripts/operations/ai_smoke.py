@@ -4,7 +4,7 @@ Run this where the credentials already live — on the server, inside the api
 container — so the key never moves. It reads the encrypted configuration from
 the database, never prints it, and makes a small, fixed number of real calls.
 
-    docker compose -p pdfmaster-platform --env-file .env \
+    docker compose -p docmaster-platform --env-file .env \
       -f releases/<release>/stack/compose.yaml \
       exec api python scripts/operations/ai_smoke.py
 

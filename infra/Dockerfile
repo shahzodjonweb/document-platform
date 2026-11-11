@@ -8,18 +8,18 @@ WORKDIR /app
 COPY processors/scanner/models.json /tmp/scanner/models.json
 COPY scripts/fetch_scanner_models.py /tmp/scanner/fetch_scanner_models.py
 RUN python -I /tmp/scanner/fetch_scanner_models.py --manifest /tmp/scanner/models.json \
-        --dest /opt/pdfmaster/scanner-models \
-    && chmod -R a=rX /opt/pdfmaster/scanner-models && rm -rf /tmp/scanner
-ENV SCANNER_MODELS=/opt/pdfmaster/scanner-models
+        --dest /opt/docmaster/scanner-models \
+    && chmod -R a=rX /opt/docmaster/scanner-models && rm -rf /tmp/scanner
+ENV SCANNER_MODELS=/opt/docmaster/scanner-models
 # The PdfCraft binary (~84 MB) and its licences, pinned by size and SHA-256 in
 # manifest.json and fetched for this image's architecture: the same rules as
 # the scanner weights. Nothing runs it until the editor's flags turn it on.
 COPY processors/pdfcraft/manifest.json /tmp/pdfcraft/manifest.json
 COPY scripts/fetch_pdfcraft.py /tmp/pdfcraft/fetch_pdfcraft.py
 RUN python -I /tmp/pdfcraft/fetch_pdfcraft.py --manifest /tmp/pdfcraft/manifest.json \
-        --dest /opt/pdfmaster/pdfcraft \
+        --dest /opt/docmaster/pdfcraft \
     && rm -rf /tmp/pdfcraft
-ENV DOCMASTER_PDFCRAFT_BIN=/opt/pdfmaster/pdfcraft/pdfcraft-cli
+ENV DOCMASTER_PDFCRAFT_BIN=/opt/docmaster/pdfcraft/pdfcraft-cli
 COPY requirements.lock ./
 # The scanner must run on the CPU build of onnxruntime and headless OpenCV;
 # the GPU wheel or another OpenCV build arriving through a dependency (names
@@ -29,9 +29,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* \
     && pip install --no-cache-dir -r requirements.lock \
     && python -c "import importlib.metadata as m, re, sys; found = {re.sub(r'[-_.]+', '-', d.metadata['Name']).lower() for d in m.distributions()} & {'onnxruntime-gpu', 'opencv-python', 'opencv-contrib-python', 'opencv-contrib-python-headless'}; sys.exit(f'Forbidden packages installed: {sorted(found)}' if found else 0)" \
-    && useradd --create-home --uid 10001 pdfmaster
-COPY --chown=pdfmaster:pdfmaster . .
-RUN mkdir -p /data/private /data/static && chown -R pdfmaster:pdfmaster /data /app
-USER pdfmaster
+    && useradd --create-home --uid 10001 docmaster
+COPY --chown=docmaster:docmaster . .
+RUN mkdir -p /data/private /data/static && chown -R docmaster:docmaster /data /app
+USER docmaster
 EXPOSE 8000
 CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2", "--timeout", "120", "--access-logfile", "-", "--access-logformat", "%(h)s %(t)s %(m)s %(U)s %(s)s %(b)s"]

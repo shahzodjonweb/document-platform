@@ -37,14 +37,14 @@ if ids and ids!=['unavailable']:
             'restarts':c['RestartCount'],'oom_killed':c['State'].get('OOMKilled'),
             'ports':c['NetworkSettings']['Ports'],'networks':list(c['NetworkSettings']['Networks']),
             'mounts':[{'source':m['Source'],'target':m['Destination']} for m in c['Mounts']]}))
-        if (c['Config']['Labels'].get('com.docker.compose.project') == 'pdfmaster-platform'
+        if (c['Config']['Labels'].get('com.docker.compose.project') == 'docmaster-platform'
                 and c['Config']['Labels'].get('com.docker.compose.service') == 'cleanup'):
             stats = {}
             for filename in ('memory.events', 'memory.current', 'memory.peak', 'memory.max'):
                 value = output(['docker', 'exec', c['Id'], 'cat', '/sys/fs/cgroup/' + filename])
                 stats[filename] = value if all(part.isdigit() or part.replace('_', '').isalpha()
                     for part in value.split()) else 'unavailable'
-            print('PDFMASTER_CLEANUP_MEMORY', json.dumps(stats))
+            print('DOCMASTER_CLEANUP_MEMORY', json.dumps(stats))
             # A restart recreates its cgroup and clears memory.events. Retain
             # only controlled lifecycle markers from this one service's history.
             history = output(['docker', 'events', '--since', '15m', '--until', str(int(time.time())),
@@ -58,12 +58,14 @@ if ids and ids!=['unavailable']:
                 if event.get('Action') in {'oom', 'die', 'start', 'restart', 'kill'}:
                     markers.append({'action': event['Action'], 'time': event.get('time'),
                         'exit_code': event.get('Actor', {}).get('Attributes', {}).get('exitCode')})
-            print('PDFMASTER_CLEANUP_LIFECYCLE', json.dumps(markers[-30:]))
+            print('DOCMASTER_CLEANUP_LIFECYCLE', json.dumps(markers[-30:]))
         if 'caddy' in c['Config']['Image'].lower():
             print('CADDY_ROUTES',routes(['docker','exec',c['Id'],'caddy','adapt','--config','/etc/caddy/Caddyfile','--pretty']))
-for path in ('/etc/caddy/Caddyfile',str(Path.home()/'pdf-master/state.json')):
+for path in ('/etc/caddy/Caddyfile',str(Path.home()/'docmaster/state.json')):
     p=Path(path)
     if p.is_file():
-        if path.endswith('state.json'):print('EXISTING_PDFMASTER_STATE',p.read_text())
+        if path.endswith('state.json'):print('EXISTING_DOCMASTER_STATE',p.read_text())
         else:print('HOST_CADDY_ROUTES',routes(['caddy','adapt','--config',path,'--pretty']))
-print('PDFMASTER_PATH_EXISTS',(Path.home()/'pdf-master').exists())
+print('DOCMASTER_PATH_EXISTS',(Path.home()/'docmaster').exists())
+# The pre-rename folder: present only before the rename migration or after its rollback.
+print('PDF_MASTER_PATH_EXISTS',(Path.home()/'pdf-master').exists())

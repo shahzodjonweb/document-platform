@@ -13,8 +13,8 @@ parser.add_argument("--port", type=int, default=None, help="Unused loopback HTTP
 parser.add_argument("--root", type=Path)
 parser.add_argument("--enable-document-tools", action="store_true")
 args = parser.parse_args()
-args.root = args.root or Path.home() / 'pdf-master' / args.component
-args.domain = 'pdfmaster-admin.orderdesk.live' if args.component == 'platform' else 'pdfmaster.orderdesk.live'
+args.root = args.root or Path.home() / 'docmaster' / args.component
+args.domain = 'api.docmaster.live' if args.component == 'platform' else 'docmaster.live'
 args.port = args.port or (8311 if args.component == 'platform' else 8310)
 if not 1024 <= args.port <= 65535:
     parser.error("Use an available unprivileged port")
@@ -25,16 +25,16 @@ values = {
     "SECRET_KEY": secrets.token_urlsafe(64), "POSTGRES_PASSWORD": secrets.token_urlsafe(32),
     "FILE_SECRET_KEY": base64.urlsafe_b64encode(os.urandom(32)).decode(),
     "INTEGRATION_ENCRYPTION_KEY": base64.urlsafe_b64encode(os.urandom(32)).decode(),
-    "ALLOWED_HOSTS": "pdfmaster-admin.orderdesk.live,pdfmaster.orderdesk.live,127.0.0.1,localhost,api",
-    "CSRF_TRUSTED_ORIGINS": "https://pdfmaster-admin.orderdesk.live,https://pdfmaster.orderdesk.live",
-    "TELEGRAM_WEBAPP_URL": "https://pdfmaster.orderdesk.live/en/app",
-    "PDFMASTER_HTTP_PORT": str(args.port),
+    "ALLOWED_HOSTS": "api.docmaster.live,docmaster.live,127.0.0.1,localhost,api",
+    "CSRF_TRUSTED_ORIGINS": "https://api.docmaster.live,https://docmaster.live",
+    "TELEGRAM_WEBAPP_URL": "https://docmaster.live/en/app",
+    "DOCMASTER_HTTP_PORT": str(args.port),
     "ENABLE_DOCUMENT_TOOLS": "1" if args.enable_document_tools else "0",
     "COMPOSE_PROFILES": "bot",
 }
 values['PUBLIC_DOMAIN'] = args.domain
 if args.component == 'web':
-    values = {'PUBLIC_DOMAIN': args.domain, 'PDFMASTER_HTTP_PORT': str(args.port)}
+    values = {'PUBLIC_DOMAIN': args.domain, 'DOCMASTER_HTTP_PORT': str(args.port)}
 path = args.root / ".env"
 fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
 with os.fdopen(fd, "w") as stream:

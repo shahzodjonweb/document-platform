@@ -60,7 +60,7 @@ def check_fetch_back(context):
 
     original_resolver = storage.storage_path
     original_logging = storage.logger.disabled
-    with tempfile.TemporaryDirectory(prefix='pdfmaster-owned-storage-check-') as directory:
+    with tempfile.TemporaryDirectory(prefix='docmaster-owned-storage-check-') as directory:
         private = {asset.object_key: Path(directory) / f'canary-{index:02d}'
                    for index, asset in enumerate(assets)}
 

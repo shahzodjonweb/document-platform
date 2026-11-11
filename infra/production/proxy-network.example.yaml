@@ -1,12 +1,13 @@
-# Optional server-owned ~/pdf-master/platform/compose.override.yaml.
-# Only this project's gateway joins the existing TLS proxy network.
+# Optional server-owned ~/docmaster/platform/compose.override.yaml.
+# Only this project's gateway joins the existing TLS proxy network. It keeps its
+# pre-rename pdfmaster-platform-gateway alias until the shared proxy routes to the new one.
 services:
   gateway:
     networks:
       default:
       proxy:
-        aliases: [pdfmaster-platform-gateway]
+        aliases: [docmaster-platform-gateway, pdfmaster-platform-gateway]
 networks:
   proxy:
     external: true
-    name: ${PDFMASTER_PROXY_NETWORK:?Set the existing proxy network}
+    name: ${DOCMASTER_PROXY_NETWORK:?Set the existing proxy network}

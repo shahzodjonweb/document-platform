@@ -1,13 +1,13 @@
-name: pdfmaster-platform
+name: docmaster-platform
 x-platform: &platform
-  image: ${PDFMASTER_IMAGE:?Missing platform image}
-  env_file: ${PDFMASTER_ENV_FILE:?Set absolute environment file}
+  image: ${DOCMASTER_IMAGE:?Missing platform image}
+  env_file: ${DOCMASTER_ENV_FILE:?Set absolute environment file}
   environment: &platform-env
     DEBUG: "0"
     DEVELOPMENT_LOGIN_ENABLED: "0"
     LOCAL_SYNC_JOBS: "0"
     COMMERCE_SANDBOX_ENABLED: "0"
-    DATABASE_URL: postgresql://pdfmaster:${POSTGRES_PASSWORD:?Set database password}@db:5432/pdfmaster
+    DATABASE_URL: postgresql://docmaster:${POSTGRES_PASSWORD:?Set database password}@db:5432/docmaster
     PRIVATE_STORAGE_ROOT: /data/private
     STATIC_ROOT: /data/static
     REDIS_URL: redis://redis:6379/0
@@ -33,15 +33,15 @@ services:
   db:
     image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
     environment:
-      POSTGRES_USER: pdfmaster
-      POSTGRES_DB: pdfmaster
+      POSTGRES_USER: docmaster
+      POSTGRES_DB: docmaster
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set database password}
     volumes: [database:/var/lib/postgresql/data]
     restart: unless-stopped
     mem_limit: 512m
     cpus: 1
     healthcheck:
-      test: [CMD-SHELL, pg_isready -U pdfmaster -d pdfmaster]
+      test: [CMD-SHELL, pg_isready -U docmaster -d docmaster]
       interval: 5s
       timeout: 3s
       retries: 30
@@ -152,7 +152,7 @@ services:
     cpus: 0.5
   gateway:
     image: nginxinc/nginx-unprivileged:stable-alpine@sha256:4714e0b1b2577eaa1a6131d07c958b67f0eb68e6d0521e90c6e5287db8cf0bc5
-    ports: ["127.0.0.1:${PDFMASTER_HTTP_PORT:-8311}:8080"]
+    ports: ["127.0.0.1:${DOCMASTER_HTTP_PORT:-8311}:8080"]
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - static-files:/srv/static:ro
