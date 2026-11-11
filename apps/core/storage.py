@@ -463,7 +463,7 @@ def check(settings):
     import uuid
     target = Bucket(settings)
     key = f'healthcheck/{uuid.uuid4().hex}.txt'
-    payload = b'PDF Master storage check'
+    payload = b'DocMaster storage check'
     with tempfile.TemporaryDirectory() as scratch:
         source, back = Path(scratch) / 'out.txt', Path(scratch) / 'in.txt'
         source.write_bytes(payload)

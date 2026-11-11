@@ -145,17 +145,17 @@ def latest_screen(harness):
 
 def test_support_shows_the_contacts_and_never_creates_a_ticket():
     from operations.integrations import save_config
-    save_config('contacts', {'support': '@pdfmaster_help', 'ads': 'pdfmaster_ads'})
+    save_config('contacts', {'support': '@docmaster_help', 'ads': 'docmaster_ads'})
     harness = Harness()
     harness.command('/support')
     screen = latest_screen(harness)
-    assert '@pdfmaster_help' in screen.text and '@pdfmaster_ads' in screen.text
+    assert '@docmaster_help' in screen.text and '@docmaster_ads' in screen.text
     links = [button.url for row in screen.reply_markup.inline_keyboard for button in row if button.url]
-    assert links == ['https://t.me/pdfmaster_help', 'https://t.me/pdfmaster_ads']
+    assert links == ['https://t.me/docmaster_help', 'https://t.me/docmaster_ads']
     # Writing afterwards is ordinary conversation, not a ticket.
     say(harness, 'My task completed but I cannot open the result.')
     harness.command('/paysupport')
-    assert '@pdfmaster_help' in latest_screen(harness).text
+    assert '@docmaster_help' in latest_screen(harness).text
     assert not SupportTicket.objects.exists()
 
 

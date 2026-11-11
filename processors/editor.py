@@ -175,7 +175,7 @@ def _font(family='sans',bold=False,italic=False):
     from reportlab.pdfbase.ttfonts import TTFont
     # No bold italic is vendored, and bold says more than the slant.
     style='Bold' if bold else 'Italic' if italic else 'Regular'
-    name=f'PDFMasterNoto{family.title()}{style}'
+    name=f'DocMasterNoto{family.title()}{style}'
     if name not in pdfmetrics.getRegisteredFontNames():
         pdfmetrics.registerFont(TTFont(name,str(Path(__file__).resolve().parent/f'assets/fonts/Noto{family.title()}-{style}.ttf')))
     return name

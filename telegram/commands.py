@@ -75,7 +75,7 @@ async def install_commands(bot):
 
 
 async def install_chat_commands(bot, chat_id, locale):
-    """Follow the language selected in PDF Master even if Telegram differs.
+    """Follow the language selected in DocMaster even if Telegram differs.
 
     A chat-specific default beats the globally localized menus. This is an
     optional UI enhancement, so transient API errors must not block onboarding.

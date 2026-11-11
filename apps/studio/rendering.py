@@ -218,7 +218,7 @@ class _Middle(Flowable):
 def _title_page(section, look, title):
     """A title page's heading and dictated lines, centred and unnumbered, the document going on over the page."""
     heading = (section.get('heading') or '').strip()
-    centred = dict(fontName='PDFMaster', alignment=TA_CENTER)
+    centred = dict(fontName='DocMaster', alignment=TA_CENTER)
     block = []
     # The document's title is already over it; a heading that repeats it is left out.
     if heading and ' '.join(heading.split()).casefold() != ' '.join(str(title or '').split()).casefold():
@@ -353,18 +353,18 @@ def render_pdf(content,path,locale='en',role='user_document',style=None,photos=N
     style=style or {};look=design_look(style);accent=look['accent']
     layout=style.get('layout','clean');margin=style.get('margin',48)
     body_size=style.get('body_size',10.5);body_leading=style.get('body_leading',17)
-    if 'PDFMaster' not in pdfmetrics.getRegisteredFontNames():pdfmetrics.registerFont(TTFont('PDFMaster',str(font_path())))
+    if 'DocMaster' not in pdfmetrics.getRegisteredFontNames():pdfmetrics.registerFont(TTFont('DocMaster',str(font_path())))
     kind=look['style']
     title_colour=accent
     styles={
-      'title':ParagraphStyle('title',fontName='PDFMaster',fontSize=30 if layout=='executive' else 21 if layout=='compact' else 25,leading=35 if layout=='executive' else 29,textColor=colors.HexColor(title_colour),spaceAfter=18 if kind in ('ruled','numbered') else 22,alignment=TA_CENTER if kind in ('ruled','numbered') else TA_LEFT),
-      'heading':ParagraphStyle('heading',fontName='PDFMaster',fontSize=15,leading=21,textColor=colors.HexColor(accent),spaceBefore=14,spaceAfter=8),
-      'body':ParagraphStyle('body',fontName='PDFMaster',fontSize=body_size,leading=body_leading,spaceAfter=7,textColor=colors.HexColor(INK),wordWrap='LTR',alignment=TA_JUSTIFY if kind=='numbered' else TA_LEFT),
-      'bullet':ParagraphStyle('bullet',fontName='PDFMaster',fontSize=body_size,leading=body_leading,spaceAfter=4,leftIndent=14,bulletIndent=2,textColor=colors.HexColor(INK)),
-      'callout':ParagraphStyle('callout',fontName='PDFMaster',fontSize=body_size,leading=body_leading,spaceAfter=3,leftIndent=12,bulletIndent=0,textColor=colors.HexColor(INK)),
-      'cell':ParagraphStyle('cell',fontName='PDFMaster',fontSize=max(8.5,body_size-1),leading=max(11,body_leading-4),textColor=colors.HexColor(INK)),
-      'cell_head':ParagraphStyle('cell_head',fontName='PDFMaster',fontSize=max(8.5,body_size-1),leading=max(11,body_leading-4),textColor=colors.HexColor(INK if kind=='plain' else accent)),
-      'small':ParagraphStyle('small',fontName='PDFMaster',fontSize=8,leading=12,textColor=colors.HexColor(MUTED),spaceAfter=9)}
+      'title':ParagraphStyle('title',fontName='DocMaster',fontSize=30 if layout=='executive' else 21 if layout=='compact' else 25,leading=35 if layout=='executive' else 29,textColor=colors.HexColor(title_colour),spaceAfter=18 if kind in ('ruled','numbered') else 22,alignment=TA_CENTER if kind in ('ruled','numbered') else TA_LEFT),
+      'heading':ParagraphStyle('heading',fontName='DocMaster',fontSize=15,leading=21,textColor=colors.HexColor(accent),spaceBefore=14,spaceAfter=8),
+      'body':ParagraphStyle('body',fontName='DocMaster',fontSize=body_size,leading=body_leading,spaceAfter=7,textColor=colors.HexColor(INK),wordWrap='LTR',alignment=TA_JUSTIFY if kind=='numbered' else TA_LEFT),
+      'bullet':ParagraphStyle('bullet',fontName='DocMaster',fontSize=body_size,leading=body_leading,spaceAfter=4,leftIndent=14,bulletIndent=2,textColor=colors.HexColor(INK)),
+      'callout':ParagraphStyle('callout',fontName='DocMaster',fontSize=body_size,leading=body_leading,spaceAfter=3,leftIndent=12,bulletIndent=0,textColor=colors.HexColor(INK)),
+      'cell':ParagraphStyle('cell',fontName='DocMaster',fontSize=max(8.5,body_size-1),leading=max(11,body_leading-4),textColor=colors.HexColor(INK)),
+      'cell_head':ParagraphStyle('cell_head',fontName='DocMaster',fontSize=max(8.5,body_size-1),leading=max(11,body_leading-4),textColor=colors.HexColor(INK if kind=='plain' else accent)),
+      'small':ParagraphStyle('small',fontName='DocMaster',fontSize=8,leading=12,textColor=colors.HexColor(MUTED),spaceAfter=9)}
     labels={'en':('Questions','Teacher answer key','Review before use'), 'uz':('Savollar','O‘qituvchi javoblari','Ishlatishdan oldin tekshiring'), 'ru':('Вопросы','Ответы для учителя','Проверьте перед использованием')}[locale]
     details={'en':{'key':'Answer key','card':'Card','question':'Question','answer':'Answer','marks':'points','source':'Source','page':'p.'},'uz':{'key':'Javoblar','card':'Kartochka','question':'Savol','answer':'Javob','marks':'ball','source':'Manba','page':'b.'},'ru':{'key':'Ответы','card':'Карточка','question':'Вопрос','answer':'Ответ','marks':'баллы','source':'Источник','page':'стр.'}}[locale]
     content_layout=style.get('content_layout','answer_key' if role=='teacher_key' else 'document')
@@ -393,7 +393,7 @@ def render_pdf(content,path,locale='en',role='user_document',style=None,photos=N
         return story
 
     def footer(canvas,doc):
-        canvas.setFont('PDFMaster',8);canvas.setFillColor(colors.HexColor('#68756b'))
+        canvas.setFont('DocMaster',8);canvas.setFillColor(colors.HexColor('#68756b'))
         canvas.drawString(margin,26,_short(content['title'],70));canvas.drawRightString(A4[0]-margin,26,str(doc.page))
         if layout=='executive':
             canvas.setStrokeColor(colors.HexColor(accent));canvas.setLineWidth(3);canvas.line(margin,A4[1]-24,A4[0]-margin,A4[1]-24)

@@ -1,16 +1,16 @@
-# PDF Master Telegram experience
+# DocMaster Telegram experience
 
 Updated 24 September 2026. This is the product flow and acceptance contract for the guided Telegram interface. The underlying account, quotes, processing, allowances and delivery services remain shared with the web application.
 
 ## Research translated into design decisions
 
-Telegram recommends making `/start` useful and using buttons for the main journey instead of requiring parameterized commands. PDF Master therefore uses a small home menu, inline choices and contextual text prompts; commands remain shortcuts. [Telegram Bot Guidelines](https://core.telegram.org/bots/guidelines)
+Telegram recommends making `/start` useful and using buttons for the main journey instead of requiring parameterized commands. DocMaster therefore uses a small home menu, inline choices and contextual text prompts; commands remain shortcuts. [Telegram Bot Guidelines](https://core.telegram.org/bots/guidelines)
 
 Inline keyboards suit navigation and settings. Telegram also supports localized command menus, global `/start`, `/help` and `/settings` commands, and start parameters for entry from another application. We use those capabilities while making the user's explicit language choice persistent. [Telegram Bot Features](https://core.telegram.org/bots/features)
 
 Every callback is acknowledged before slower work; Telegram otherwise leaves the button's progress indicator active. Callback data is an opaque, short reference to server-side state. Buttons never carry account secrets or editable authorization claims. [Telegram Bot API: CallbackQuery](https://core.telegram.org/bots/api#callbackquery), [InlineKeyboardButton](https://core.telegram.org/bots/api#inlinekeyboardbutton)
 
-The screens and copy below are PDF Master's design decisions, not claims that Telegram prescribes this exact flow.
+The screens and copy below are DocMaster's design decisions, not claims that Telegram prescribes this exact flow.
 
 ## First contact and identity
 

@@ -66,13 +66,13 @@ def test_editor_command_cannot_bypass_plan(hold_back):
 
 def test_credentials_are_encrypted_and_never_rendered_or_audited(settings):
     token='123456789:abcdefghijklmnopqrstuvwxyz_1234567890'
-    save_config('telegram',{'token':token,'username':'pdfmaster_bot','webapp_url':'http://localhost:3000/en/app'})
+    save_config('telegram',{'token':token,'username':'docmaster_bot','webapp_url':'http://localhost:3000/en/app'})
     assert telegram_config()['token']==token
     raw=bytes(IntegrationConfig.objects.get(pk='telegram').encrypted_secrets)
     assert token.encode() not in raw
     u=get_user_model().objects.create(username='testadmin',is_staff=True);u.groups.add(Group.objects.get_or_create(name='Administrator')[0])
     c=Client();resp=begin_session(HttpResponse(),u);c.cookies[COOKIE]=resp.cookies[COOKIE].value
     r=c.get('/ops/integrations');assert r.status_code==200;assert token.encode() not in r.content
-    r=c.post('/ops/integrations',{'integration':'telegram','action':'save','reason':'Rotate bot configuration','username':'pdfmaster_bot','webapp_url':'http://localhost:3000/en/app','token':token});assert r.status_code==302
+    r=c.post('/ops/integrations',{'integration':'telegram','action':'save','reason':'Rotate bot configuration','username':'docmaster_bot','webapp_url':'http://localhost:3000/en/app','token':token});assert r.status_code==302
     assert token not in json.dumps(list(AuditLog.objects.values('reason','before','after')))
     assert login_client(account()).post('/ops/integrations',{}).status_code==302

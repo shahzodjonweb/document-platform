@@ -120,7 +120,7 @@ def bot_mock():
 
 
 def test_the_owner_is_alerted_once_with_a_link_to_the_review_page(customer, settings):
-    settings.CSRF_TRUSTED_ORIGINS = ['https://pdfmaster-admin.example.live', 'https://pdfmaster.example.live']
+    settings.CSRF_TRUSTED_ORIGINS = ['https://docmaster-admin.example.live', 'https://docmaster.example.live']
     configure()
     payment = manual.attach_receipt(customer, manual.create(customer, 'premium')[0].id, png(), note='card 4421')
     bot = bot_mock()
@@ -129,7 +129,7 @@ def test_the_owner_is_alerted_once_with_a_link_to_the_review_page(customer, sett
     assert bot.send_message.await_count == 1
     chat, text = bot.send_message.await_args.args
     assert chat == 1234567 and payment.reference in text and "60 000 so'm" in text and 'card 4421' in text
-    assert f'https://pdfmaster-admin.example.live/ops/payments/manual/{payment.id}' in text
+    assert f'https://docmaster-admin.example.live/ops/payments/manual/{payment.id}' in text
     assert PaymentNotice.objects.get(kind='staff_new').status == 'delivered'
 
 

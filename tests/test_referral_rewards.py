@@ -61,7 +61,7 @@ def weekly(a):
     return usage['plan'], usage['ai_documents']['limit'], usage['file_jobs']['limit'], usage['edits_per_file']
 
 
-def bot_named(monkeypatch, username='pdfmaster_test_bot'):
+def bot_named(monkeypatch, username='docmaster_test_bot'):
     from apps.commerce import providers
     configured = providers.telegram_config
     monkeypatch.setattr(providers, 'telegram_config', lambda: {**configured(), 'username': username})
@@ -213,7 +213,7 @@ def test_the_api_says_where_someone_stands(monkeypatch):
     friends(inviter, 1, done=False)
     data = client_for(inviter).get('/api/v1/referrals').json()
     code = services.referral_code(inviter).code
-    assert data['url'] == f'https://t.me/pdfmaster_test_bot?start=ref_{code}'
+    assert data['url'] == f'https://t.me/docmaster_test_bot?start=ref_{code}'
     assert (data['step'], data['monthly_cap'], data['counted'], data['pending_count'], data['rewards_count']) == (5, 5, 5, 1, 5)
     assert data['next_reward'] == {'tier': 2, 'months': 2, 'invites': 10, 'have': 0, 'remaining': 5}
     assert data['month_full'] is True and data['waiting_next_month'] == 0 and 'expires_in_days' not in data
@@ -307,13 +307,13 @@ def test_the_invite_screen_in_the_bot(chat, monkeypatch):
     friends(chat, 1, done=False)
     shown = dispatch_local(chat, text='/invite')['messages'][-1]
     code = services.referral_code(chat).code
-    assert f'https://t.me/pdfmaster_test_bot?start=ref_{code}' in shown['text']
+    assert f'https://t.me/docmaster_test_bot?start=ref_{code}' in shown['text']
     assert '3 of 5' in shown['text'] and '1 month' in shown['text'] and 'no task finished yet: 1' in shown['text']
     assert '🟩🟩🟩⬜⬜' in shown['text'], 'three of five, as a bar'
     labels = [button['label'] for row in shown['buttons'] for button in row]
     assert labels[0] == '📤 Share link'
     share = shown['buttons'][0][0]['url']
-    assert share.startswith('https://t.me/share/url?url=https%3A%2F%2Ft.me%2Fpdfmaster_test_bot')
+    assert share.startswith('https://t.me/share/url?url=https%3A%2F%2Ft.me%2Fdocmaster_test_bot')
 
     # The account screen leads here too.
     account_screen = dispatch_local(chat, text='/account')['messages'][-1]

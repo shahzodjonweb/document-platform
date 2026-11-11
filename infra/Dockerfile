@@ -19,7 +19,7 @@ COPY scripts/fetch_pdfcraft.py /tmp/pdfcraft/fetch_pdfcraft.py
 RUN python -I /tmp/pdfcraft/fetch_pdfcraft.py --manifest /tmp/pdfcraft/manifest.json \
         --dest /opt/pdfmaster/pdfcraft \
     && rm -rf /tmp/pdfcraft
-ENV PDFMASTER_PDFCRAFT_BIN=/opt/pdfmaster/pdfcraft/pdfcraft-cli
+ENV DOCMASTER_PDFCRAFT_BIN=/opt/pdfmaster/pdfcraft/pdfcraft-cli
 COPY requirements.lock ./
 # The scanner must run on the CPU build of onnxruntime and headless OpenCV;
 # the GPU wheel or another OpenCV build arriving through a dependency (names

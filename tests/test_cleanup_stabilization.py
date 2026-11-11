@@ -9,7 +9,7 @@ import pytest
 
 
 SCRIPT = Path(__file__).resolve().parents[1] / 'scripts/operations/stabilize-cleanup.py'
-spec = importlib.util.spec_from_file_location('pdfmaster_cleanup_stabilization', SCRIPT)
+spec = importlib.util.spec_from_file_location('docmaster_cleanup_stabilization', SCRIPT)
 operation = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(operation)
 ID = 'a' * 64

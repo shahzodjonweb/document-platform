@@ -1,4 +1,4 @@
-"""Apply the explicitly approved PDF Master / DocMaster sites; never restart a container.
+"""Apply the explicitly approved DocMaster sites, old orderdesk.live hosts included; never restart a container.
 
 The sites file is this project's own (`/config/pdfmaster-sites/sites.caddy`,
 imported by the shared Caddyfile). It may move from the reviewed previous
@@ -219,7 +219,7 @@ networks:
     existing = subprocess.run([*docker_exec, 'cat', '/config/pdfmaster-sites/sites.caddy'],
                               text=True, capture_output=True, timeout=30)
     if existing.returncode == 0 and existing.stdout not in (SITES, *PREVIOUS_SITES):
-        raise RuntimeError('Existing PDF Master routes differ; refusing overwrite')
+        raise RuntimeError('Existing DocMaster routes differ; refusing overwrite')
     run([*docker_exec, 'sh', '-c', 'umask 077; mkdir -p /config/pdfmaster-sites; cat > /config/pdfmaster-sites/sites.caddy'], SITES)
     adapted = json.loads(run([*docker_exec, 'caddy', 'adapt', '--config', '/etc/caddy/Caddyfile']))
     if adapted != new_config:
@@ -232,7 +232,7 @@ networks:
         raise
     if baseline != preserved(inventory()):
         raise RuntimeError('An existing container changed during proxy publication')
-    print('PROXY_PUBLISHED: PDF Master and DocMaster hosts live; existing routes and container IDs/start times unchanged')
+    print('PROXY_PUBLISHED: DocMaster hosts (old and new domains) live; existing routes and container IDs/start times unchanged')
 
 
 if __name__ == '__main__':

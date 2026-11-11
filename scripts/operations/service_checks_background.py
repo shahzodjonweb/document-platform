@@ -1,4 +1,4 @@
-"""Bounded, synthetic production probes for PDF Master's background services.
+"""Bounded, synthetic production probes for DocMaster's background services.
 
 Load this module inside the API container's Django shell. Call
 ``prepare_canaries(uuid_string)`` once, then ``poll_background(context)`` between

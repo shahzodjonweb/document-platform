@@ -430,7 +430,7 @@ def test_only_the_scanner_child_gets_the_larger_address_space_and_cpu_budget(mon
     monkeypatch.setattr(child.os, 'umask', lambda mask: 0)
     for address_space, cpu, expected in (('3072', '250', (3 << 30, 250)), (None, None, (2 << 30, 85)),
                                          ('99999', '1', (3 << 30, 85)), ('1', 'many', (2 << 30, 85))):
-        for name, value in (('PDFMASTER_ADDRESS_SPACE_MB', address_space), ('PDFMASTER_CPU_SECONDS', cpu)):
+        for name, value in (('DOCMASTER_ADDRESS_SPACE_MB', address_space), ('DOCMASTER_CPU_SECONDS', cpu)):
             if value is None:
                 monkeypatch.delenv(name, raising=False)
             else:

@@ -74,7 +74,7 @@ def test_choosing_a_service_before_joining_turns_the_menu_into_the_channels(cust
     chat.do(text='/start')
     assert chat.tap('tool', feature_id='pdf.images_to_pdf') == 0, 'the menu changes; nothing is added'
     assert GATE['en']['gate_one'] in chat.last()
-    telegram.statuses = {'@pdfmaster_news': 'member'}
+    telegram.statuses = {'@docmaster_news': 'member'}
     assert chat.tap('channels_check') == 1, 'thanks replaces the channels; the service is the one new screen'
     assert 'PDF from images' in chat.last() and 'Merge' not in chat.last()
 
@@ -85,7 +85,7 @@ def test_an_ai_service_asks_for_the_channels_before_the_description(customer, te
     chat.do(text='/start')
     assert chat.tap('ai_tool', feature_id='ai.pdf_topic') == 0
     assert GATE['en']['gate_one'] in chat.last()
-    telegram.statuses = {'@pdfmaster_news': 'member'}
+    telegram.statuses = {'@docmaster_news': 'member'}
     chat.tap('channels_check')
     assert 'PDF on a topic' in chat.last()
     assert chat.do(text='A two page note about tides for students') == 1, '"Preparing…" becomes the priced draft'
@@ -94,7 +94,7 @@ def test_an_ai_service_asks_for_the_channels_before_the_description(customer, te
 
 def test_a_refusal_after_the_description_is_said_once_and_the_description_is_kept(customer, telegram):
     require_channels()
-    telegram.statuses = {'@pdfmaster_news': 'member'}
+    telegram.statuses = {'@docmaster_news': 'member'}
     chat = Chat(customer)
     chat.do(text='/start')
     chat.tap('ai_tool', feature_id='ai.pdf_topic')
@@ -103,7 +103,7 @@ def test_a_refusal_after_the_description_is_said_once_and_the_description_is_kep
     ChannelMembership.objects.all().delete()
     assert chat.do(text='A two page note about tides for students') == 1, 'the channels replace "Preparing…", the question is not asked again'
     assert GATE['en']['gate_one'] in chat.last()
-    telegram.statuses = {'@pdfmaster_news': 'member'}
+    telegram.statuses = {'@docmaster_news': 'member'}
     chat.tap('channels_check')
     assert 'Ready to start' in chat.last() and 'tides' in chat.last(), 'what they wrote is priced, not asked for again'
 
@@ -137,7 +137,7 @@ def test_an_album_before_joining_gets_one_channel_screen_and_then_one_merge(cust
     chat = Chat(customer)
     sent = [chat.do(uploaded=SimpleUploadedFile(f'p{i}.pdf', pdf(), 'application/pdf'), media_group_id='g2') for i in range(3)]
     assert sent == [1, 0, 0] and GATE['en']['gate_one'] in chat.last()
-    telegram.statuses = {'@pdfmaster_news': 'member'}
+    telegram.statuses = {'@docmaster_news': 'member'}
     assert chat.tap('channels_check') == 1
     assert 'Merge PDFs' in chat.last() and all(f'p{i}.pdf' in chat.last() for i in range(3))
 

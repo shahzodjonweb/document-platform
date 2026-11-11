@@ -431,5 +431,5 @@ def export(request, kind):
     for row in rows:writer.writerow([csv_cell(local(value)) for value in row])
     audit(request.ops_user,'report.export',kind,'User-requested filtered CSV export',after=filters.__dict__)
     response=HttpResponse('\ufeff'+output.getvalue(),content_type='text/csv; charset=utf-8')
-    response['Content-Disposition']=f'attachment; filename="pdf-master-{kind}.csv"'
+    response['Content-Disposition']=f'attachment; filename="docmaster-{kind}.csv"'
     return response

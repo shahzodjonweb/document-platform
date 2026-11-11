@@ -17,10 +17,10 @@ pytestmark = pytest.mark.django_db
 @pytest.fixture
 def protection(monkeypatch):
     cfg = {'web_enabled': True, 'configured': True, 'site_key': 'public-site-key',
-           'secret_key': 'private-test-secret', 'allowed_hostnames': ['pdfmaster.orderdesk.live']}
+           'secret_key': 'private-test-secret', 'allowed_hostnames': ['docmaster.live']}
     monkeypatch.setattr(antibot, 'antibot_config', lambda: cfg)
     check = Mock(return_value={'success': True, 'action': 'customer_auth',
-                             'hostname': 'pdfmaster.orderdesk.live', 'challenge_ts': timezone.now().isoformat(), 'cdata': 'browser-binding'})
+                             'hostname': 'docmaster.live', 'challenge_ts': timezone.now().isoformat(), 'cdata': 'browser-binding'})
     monkeypatch.setattr(antibot, 'siteverify', check)
     return cfg, check
 
@@ -55,7 +55,7 @@ def test_proof_is_single_use_even_on_different_browser(protection):
 @pytest.mark.parametrize('overrides', [
     {'success': False}, {'success': 'true'}, {'action': 'another_action'},
     {'cdata': 'different-browser'}, {'cdata': None}, {'cdata': 'é'},
-    {'hostname': 'attacker.example'}, {'hostname': 'pdfmaster.orderdesk.live.attacker.example'},
+    {'hostname': 'attacker.example'}, {'hostname': 'docmaster.live.attacker.example'},
     {'challenge_ts': ''}, {'challenge_ts': '2026-01-01'}, {'challenge_ts': 25},
     {'challenge_ts': (timezone.now() - timedelta(seconds=301)).isoformat()},
     {'challenge_ts': (timezone.now() + timedelta(seconds=60)).isoformat()},

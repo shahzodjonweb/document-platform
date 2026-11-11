@@ -18,7 +18,7 @@ HOME = {
 
 
 def customer(locale):
-    save_config('telegram', {'token': '', 'username': 'fixture_bot', 'webapp_url': 'https://pdfmaster.example/en/app'})
+    save_config('telegram', {'token': '', 'username': 'fixture_bot', 'webapp_url': 'https://docmaster.example/en/app'})
     account = resolve_account({'id': 980500 + len(locale), 'first_name': 'Menu'}, is_test=True)
     account.locale = locale
     account.save(update_fields=['locale'])

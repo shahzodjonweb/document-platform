@@ -1,4 +1,4 @@
-"""Run a reviewed PDF Master operation using credentials only on the Actions runner."""
+"""Run a reviewed DocMaster operation using credentials only on the Actions runner."""
 import os
 import json
 from pathlib import Path
@@ -13,7 +13,7 @@ host = os.environ['DEPLOY_HOST'].strip()
 user = os.environ['DEPLOY_USER'].strip()
 port = os.environ.get('DEPLOY_PORT', '22')
 if host != '77.42.34.241' or user not in {'root', 'orderdesk-deploy'}:
-    raise SystemExit('Credentials do not identify the authorized PDF Master server/account.')
+    raise SystemExit('Credentials do not identify the authorized DocMaster server/account.')
 if not port.isdigit() or not 1 <= int(port) <= 65535:
     raise SystemExit('Invalid SSH port')
 with tempfile.TemporaryDirectory() as folder:

@@ -279,7 +279,7 @@ def member(settings, monkeypatch):
     monkeypatch.setattr(channel_gate, '_call', fake)
     monkeypatch.setattr(channel_gate, '_token', lambda: '1:TOKEN')
     require_channels()
-    fake.statuses = {'@pdfmaster_news': 'member'}
+    fake.statuses = {'@docmaster_news': 'member'}
     return account, fake
 
 
@@ -292,7 +292,7 @@ def test_the_switch_passes_the_channel_check_and_comes_back_to_the_question(memb
     ChannelMembership.objects.all().delete()
     assert chat.tap('ai_retarget', feature_id=SLIDES) == 0
     assert GATE['en']['gate_one'] in chat.last()
-    telegram.statuses = {'@pdfmaster_news': 'member'}
+    telegram.statuses = {'@docmaster_news': 'member'}
     chat.tap('channels_check')
     assert UX['en']['ai_topic_question'] in chat.last() and '“create slides in blue”' in chat.last()
     assert pending(account) == ('ai_input', {'feature_id': SLIDES, 'brief': ['create slides in blue']})
@@ -307,7 +307,7 @@ def test_the_topic_typed_behind_the_channels_goes_to_the_service_chosen(member):
     chat.tap('ai_retarget', feature_id=SLIDES)
     assert pending(account) == ('ai_input', {'feature_id': SLIDES, 'brief': ['create slides in blue']})
     chat.do(text='Volcanoes')
-    telegram.statuses = {'@pdfmaster_news': 'member'}
+    telegram.statuses = {'@docmaster_news': 'member'}
     chat.tap('channels_check')
     assert list(GenerationDraft.objects.filter(account=account).values_list('feature_id', flat=True)) == [SLIDES]
     assert 'Slides:' in chat.last(), chat.last()

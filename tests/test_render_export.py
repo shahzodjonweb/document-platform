@@ -134,10 +134,10 @@ echo "${{FONTCONFIG_FILE:-none}}" >> "{tmp_path}/fontconfig.log"
 cp "{made}" "$folder/input.pdf"
 ''')
     binary.chmod(0o755)
-    monkeypatch.setenv('PDFMASTER_SOFFICE_BIN', str(binary))
+    monkeypatch.setenv('DOCMASTER_SOFFICE_BIN', str(binary))
     office_runtime.cache_clear()
     yield
-    monkeypatch.delenv('PDFMASTER_SOFFICE_BIN')
+    monkeypatch.delenv('DOCMASTER_SOFFICE_BIN')
     office_runtime.cache_clear()
 
 

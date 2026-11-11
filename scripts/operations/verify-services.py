@@ -1,4 +1,4 @@
-"""Check only PDF Master services and process synthetic, explicitly test data."""
+"""Check only DocMaster services and process synthetic, explicitly test data."""
 import json
 from pathlib import Path
 import re
@@ -14,7 +14,7 @@ def command(args, source=None):
         for line in result.stdout.splitlines():
             if line.startswith('VERIFY_'):
                 print(line)
-        raise SystemExit('PDF Master verification command failed; no environment or credentials printed.')
+        raise SystemExit('DocMaster verification command failed; no environment or credentials printed.')
     return result.stdout
 
 
@@ -84,7 +84,7 @@ for component, expected in [('platform', {'api', 'db', 'redis', 'worker', 'batch
     containers = json.loads(command(['docker', 'inspect', *ids])) if ids else []
     services = {c['Config']['Labels']['com.docker.compose.service']: c for c in containers}
     if not expected.issubset(services):
-        raise SystemExit('Missing PDF Master services: ' + ', '.join(sorted(expected - services.keys())))
+        raise SystemExit('Missing DocMaster services: ' + ', '.join(sorted(expected - services.keys())))
     for name in sorted(expected):
         container = services[name]
         state = container['State']
@@ -93,9 +93,9 @@ for component, expected in [('platform', {'api', 'db', 'redis', 'worker', 'batch
                                      'health': health, 'restarts': container['RestartCount'],
                                      'oom_killed': state['OOMKilled']}))
         if state['Status'] != 'running' or health not in {'healthy', 'no-healthcheck'} or state['OOMKilled']:
-            raise SystemExit('Unhealthy PDF Master service: ' + name)
+            raise SystemExit('Unhealthy DocMaster service: ' + name)
         if name != 'gateway' and 'orderdesk_default' in container['NetworkSettings']['Networks']:
-            raise SystemExit('Only a PDF Master gateway may join the shared proxy network')
+            raise SystemExit('Only a DocMaster gateway may join the shared proxy network')
     active = json.loads((Path.home() / 'pdf-master' / component / 'state.json').read_text())['active']
     print('ACTIVE_RELEASE', component, active['commit'])
     if component == 'platform':
@@ -106,7 +106,7 @@ for component, expected in [('platform', {'api', 'db', 'redis', 'worker', 'batch
 for port, path in [(8310, '/en/app'), (8311, '/api/v1/health'), (8311, '/ops/login'), (8311, '/static/ops/main.css')]:
     with urllib.request.urlopen(f'http://127.0.0.1:{port}{path}', timeout=15) as response:
         if response.status != 200:
-            raise SystemExit('PDF Master gateway route failed')
+            raise SystemExit('DocMaster gateway route failed')
 print('VERIFY_GATEWAYS_OK')
 # The Redis key is unique to this audit and expires even if this process stops.
 redis_key = 'pdfmaster:service-audit:' + uuid.uuid4().hex

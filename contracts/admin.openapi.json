@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "PDF Master staff API",
+    "title": "DocMaster staff API",
     "version": "1.1.0",
     "description": "Separate staff-session realm with role authorization and CSRF protection. Read-only analytics APIs and server-rendered staff forms. Secrets are write-only except one-time TOTP enrollment. Do not distribute to the customer app."
   },

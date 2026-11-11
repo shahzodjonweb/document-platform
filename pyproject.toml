@@ -1,5 +1,5 @@
 [project]
-name = "pdfmaster-platform"
+name = "docmaster-platform"
 version = "0.1.0"
 description = "Private document processing, Telegram identity and staff operations"
 requires-python = ">=3.12,<3.14"

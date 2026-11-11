@@ -193,7 +193,7 @@ class LocalTelegramSession(BaseSession):
             await sync_to_async(previous.save)(update_fields=['text','buttons'])
         else:
             await self.save(text,buttons,asset)
-        values={'message_id':message_id,'date':datetime.now(timezone.utc),'chat':Chat(id=self.account.telegram_user_id,type='private'),'from_user':User(id=123456,is_bot=True,first_name='PDF Master local simulator')}
+        values={'message_id':message_id,'date':datetime.now(timezone.utc),'chat':Chat(id=self.account.telegram_user_id,type='private'),'from_user':User(id=123456,is_bot=True,first_name='DocMaster local simulator')}
         if isinstance(method,(SendMessage,EditMessageText,EditMessageReplyMarkup)):
             values.update(text=text)
             # Telegram's returned Message includes inline keyboards only.
@@ -273,7 +273,7 @@ def dispatch_local(account,*,text=None,callback_data=None,uploaded=None,media_gr
         bot=Bot('123456:LOCAL_SIMULATOR_NO_NETWORK',session=session)
         try:
             if callback_data:
-                message=Message(message_id=callback_message.telegram_message_id if callback_message else message_id,date=now,chat=data['chat'],from_user=User(id=123456,is_bot=True,first_name='PDF Master'),text=callback_message.text if callback_message else 'Local controls')
+                message=Message(message_id=callback_message.telegram_message_id if callback_message else message_id,date=now,chat=data['chat'],from_user=User(id=123456,is_bot=True,first_name='DocMaster'),text=callback_message.text if callback_message else 'Local controls')
                 update=Update(update_id=message_id,callback_query=CallbackQuery(id=str(message_id),from_user=user,chat_instance='local',message=message,data=callback_data))
             else: update=Update(update_id=message_id,message=Message(**data))
             await build_dispatcher().feed_update(bot,update)

@@ -256,7 +256,7 @@ def test_the_sandbox_runs_the_scanner_on_two_threads_with_its_models(monkeypatch
     assert seen['SCANNER_MODELS'] == os.environ['SCANNER_MODELS']
     assert seen['MALLOC_ARENA_MAX'] == '2'
     # Two threads: twice the CPU seconds of the 90 s wall budget, and 3 GiB.
-    assert (seen['PDFMASTER_CPU_SECONDS'], seen['PDFMASTER_ADDRESS_SPACE_MB']) == ('170', '3072')
+    assert (seen['DOCMASTER_CPU_SECONDS'], seen['DOCMASTER_ADDRESS_SPACE_MB']) == ('170', '3072')
     monkeypatch.setenv('SCANNER_THREADS', seen['SCANNER_THREADS'])
     assert shadows.threads() == 2
     assert shadows.options().intra_op_num_threads == 2

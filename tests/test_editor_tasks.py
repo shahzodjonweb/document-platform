@@ -903,10 +903,10 @@ done
 cp "{made}" "$folder/input.pdf"
 ''')
     binary.chmod(0o755)
-    monkeypatch.setenv('PDFMASTER_SOFFICE_BIN', str(binary))
+    monkeypatch.setenv('DOCMASTER_SOFFICE_BIN', str(binary))
     office_runtime.cache_clear()
     yield tmp_path
-    monkeypatch.delenv('PDFMASTER_SOFFICE_BIN')
+    monkeypatch.delenv('DOCMASTER_SOFFICE_BIN')
     office_runtime.cache_clear()
 
 
@@ -929,7 +929,7 @@ def test_conversions_share_a_warm_profile_in_deck_faces_with_the_childs_environm
     assert env['TMPDIR'] != env['HOME'], 'what a crash leaves goes with the conversion'
     assert 'secret' not in (soffice / 'env.log').read_text()
     assert 'DATABASE_URL' not in env and 'TELEGRAM_BOT_TOKEN' not in env
-    assert env.get('PDFMASTER_CPU_SECONDS') and env.get('PDFMASTER_ADDRESS_SPACE_MB')
+    assert env.get('DOCMASTER_CPU_SECONDS') and env.get('DOCMASTER_ADDRESS_SPACE_MB')
 
 
 def test_a_customers_file_never_passes_through_the_warm_profile(soffice, tmp_path):
@@ -1197,7 +1197,7 @@ def test_the_heartbeat_the_healthcheck_reads_is_the_one_the_runner_touches():
 
 def smoke_module():
     import importlib.util
-    spec = importlib.util.spec_from_file_location('pdfmaster_editor_smoke', ROOT / 'scripts/deploy/container_smoke.py')
+    spec = importlib.util.spec_from_file_location('docmaster_editor_smoke', ROOT / 'scripts/deploy/container_smoke.py')
     smoke = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(smoke)
     return smoke

@@ -1,4 +1,4 @@
-# PDF Master operations design • v1
+# DocMaster operations design • v1
 
 The administration application belongs only to `document-platform`. It shares the customer's warm ivory, forest and sage palette, with denser tables and a restrained editorial heading. Runtime figures always come from database facts. A development account is explicitly identified and excluded from production reports by default.
 

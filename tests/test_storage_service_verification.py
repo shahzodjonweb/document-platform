@@ -15,7 +15,7 @@ from tests.test_object_storage import FakeS3, KEYS
 
 
 SCRIPT = Path(__file__).resolve().parents[1] / 'scripts/operations/service_checks_storage.py'
-spec = importlib.util.spec_from_file_location('pdfmaster_storage_service_checks', SCRIPT)
+spec = importlib.util.spec_from_file_location('docmaster_storage_service_checks', SCRIPT)
 checks = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(checks)
 pytestmark = pytest.mark.django_db(transaction=True)

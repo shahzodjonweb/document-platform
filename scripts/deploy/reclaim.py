@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reclaim disk a PDF Master component has filled, by hand.
+"""Reclaim disk a DocMaster component has filled, by hand.
 
 The release protocol now does this on every deployment, but it runs on the
 server and therefore needs enough free space to land there first. When a disk

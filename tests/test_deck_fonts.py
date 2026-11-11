@@ -347,10 +347,10 @@ cp "{tmp_path}/made.pdf" "$folder/input.pdf"
 
 @pytest.fixture
 def reporting_office(tmp_path, monkeypatch):
-    monkeypatch.setenv('PDFMASTER_SOFFICE_BIN', str(soffice_that_reports(tmp_path)))
+    monkeypatch.setenv('DOCMASTER_SOFFICE_BIN', str(soffice_that_reports(tmp_path)))
     office_runtime.cache_clear()
     yield
-    monkeypatch.delenv('PDFMASTER_SOFFICE_BIN')
+    monkeypatch.delenv('DOCMASTER_SOFFICE_BIN')
     office_runtime.cache_clear()
 
 

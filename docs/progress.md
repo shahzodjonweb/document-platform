@@ -1,4 +1,4 @@
-# PDF Master implementation progress
+# DocMaster implementation progress
 
 Updated 2026-09-23. The workspace has two independent source repositories, a running customer web/Mini App, Django API, Telegram bot and separate staff panel. Original documents and ticket statuses are preserved unchanged in `docs/product/`. They are product requirements, not permission to deploy or activate payments. The user's current instruction is to demonstrate locally before any Git push.
 

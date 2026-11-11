@@ -15,10 +15,10 @@ from reportlab.pdfgen import canvas
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / 'scripts/bench_pdfcraft.py'
-spec = importlib.util.spec_from_file_location('pdfmaster_bench_pdfcraft', SCRIPT)
+spec = importlib.util.spec_from_file_location('docmaster_bench_pdfcraft', SCRIPT)
 bench = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(bench)
-REQUIRES_PDFCRAFT = pytest.mark.skipif(not os.environ.get('PDFMASTER_PDFCRAFT_BIN'), reason='needs PDFMASTER_PDFCRAFT_BIN')
+REQUIRES_PDFCRAFT = pytest.mark.skipif(not os.environ.get('DOCMASTER_PDFCRAFT_BIN'), reason='needs DOCMASTER_PDFCRAFT_BIN')
 
 
 def letters(text, font='arial', width=5.0):
@@ -245,12 +245,12 @@ def test_a_real_edit_of_a_word_the_new_one_contains_is_not_refused(tmp_path):
 
 
 def test_a_missing_binary_or_folder_is_said_plainly(tmp_path):
-    environment = {key: value for key, value in os.environ.items() if key not in ('PDFMASTER_PDFCRAFT_BIN', 'PDFCRAFT_BENCH_DIR')}
+    environment = {key: value for key, value in os.environ.items() if key not in ('DOCMASTER_PDFCRAFT_BIN', 'PDFMASTER_PDFCRAFT_BIN', 'PDFCRAFT_BENCH_DIR')}
     done = subprocess.run([sys.executable, str(SCRIPT)], capture_output=True, text=True, timeout=60, env=environment)
-    assert done.returncode == 2 and 'PDFMASTER_PDFCRAFT_BIN' in done.stderr
+    assert done.returncode == 2 and 'DOCMASTER_PDFCRAFT_BIN' in done.stderr
     binary = tmp_path / 'pdfcraft-cli'
     binary.write_text('')
-    done = subprocess.run([sys.executable, str(SCRIPT)], capture_output=True, text=True, timeout=60, env={**environment, 'PDFMASTER_PDFCRAFT_BIN': str(binary)})
+    done = subprocess.run([sys.executable, str(SCRIPT)], capture_output=True, text=True, timeout=60, env={**environment, 'DOCMASTER_PDFCRAFT_BIN': str(binary)})
     assert done.returncode == 2 and 'PDFCRAFT_BENCH_DIR' in done.stderr
 
 
@@ -266,7 +266,7 @@ def stand_in(folder, script=None):
 def test_a_binary_named_relatively_still_starts_from_inside_each_temp_folder(tmp_path, name):
     _, started = stand_in(tmp_path)
     page(tmp_path / 'one.pdf')
-    done = subprocess.run([sys.executable, str(SCRIPT)], cwd=tmp_path, capture_output=True, text=True, timeout=60, env={**os.environ, 'PDFCRAFT_BENCH_DIR': str(tmp_path), 'PDFMASTER_PDFCRAFT_BIN': name})
+    done = subprocess.run([sys.executable, str(SCRIPT)], cwd=tmp_path, capture_output=True, text=True, timeout=60, env={**os.environ, 'PDFCRAFT_BENCH_DIR': str(tmp_path), 'DOCMASTER_PDFCRAFT_BIN': name})
     assert done.returncode == 0, done.stderr
     assert started.read_text().split() == ['--version', 'run']
 
@@ -276,6 +276,6 @@ def test_a_binary_that_cannot_start_is_an_error_not_a_table_of_refusals(tmp_path
     binary, _ = stand_in(tmp_path, script)
     binary.chmod(mode)
     page(tmp_path / 'one.pdf')
-    done = subprocess.run([sys.executable, str(SCRIPT)], capture_output=True, text=True, timeout=60, env={**os.environ, 'PDFCRAFT_BENCH_DIR': str(tmp_path), 'PDFMASTER_PDFCRAFT_BIN': str(binary)})
-    assert done.returncode == 2 and 'PDFMASTER_PDFCRAFT_BIN cannot start' in done.stderr
+    done = subprocess.run([sys.executable, str(SCRIPT)], capture_output=True, text=True, timeout=60, env={**os.environ, 'PDFCRAFT_BENCH_DIR': str(tmp_path), 'DOCMASTER_PDFCRAFT_BIN': str(binary)})
+    assert done.returncode == 2 and 'DOCMASTER_PDFCRAFT_BIN cannot start' in done.stderr
     assert 'generator' not in done.stdout

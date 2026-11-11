@@ -98,7 +98,7 @@ Production containment and supported stable Office qualification remain gated. O
 
 ## Office preflight and local qualification
 
-The trusted `PDFMASTER_SOFFICE_BIN` environment setting optionally selects a deployment executable; otherwise detection uses `libreoffice`/`soffice` on PATH and a bounded `--version` probe. No client parameter can select an executable. On this host, the bundled runtime is `LibreOfficeDev 26.8.0.0.alpha0` (build `2c87e51eeaa2b413ff4ae097b2705eea1995d8e5`), explicitly marked `development_only=true`. This alpha build is not qualified for production.
+The trusted `DOCMASTER_SOFFICE_BIN` environment setting (formerly `PDFMASTER_SOFFICE_BIN`, still read as a fallback by `processors/env.py`) optionally selects a deployment executable; otherwise detection uses `libreoffice`/`soffice` on PATH and a bounded `--version` probe. No client parameter can select an executable. On this host, the bundled runtime is `LibreOfficeDev 26.8.0.0.alpha0` (build `2c87e51eeaa2b413ff4ae097b2705eea1995d8e5`), explicitly marked `development_only=true`. This alpha build is not qualified for production.
 
 Inspection converts accepted DOCX/PPTX into a temporary private PDF, validates it, records `preflight_kind=libreoffice_pdf` and exact output `page_count`, and deletes all preflight/profile files. Inspection uses a 90-second outer limit; each Office invocation has a 60-second limit. Execution converts the unchanged original again; domain settlement cannot exceed the confirmed maximum. Other Office types, macros, external relationships and embedded objects remain unsupported.
 

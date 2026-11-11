@@ -197,7 +197,7 @@ def test_one_message_becomes_a_priced_review_with_the_template_and_the_photo(cus
     (setup,) = [button for message in review['messages'][-1:] for row in message['buttons'] for button in row
                 if button['label'] == '🎨 CV template']
     # An https Mini App: the simulator records its address as the button's link.
-    assert setup['url'] == f'https://pdfmaster.example/en/app/cv-setup?draft={draft.id}'
+    assert setup['url'] == f'https://docmaster.example/en/app/cv-setup?draft={draft.id}'
     assert latest(customer, CV)['title'] == 'Dilnoza Karimova' and latest(customer, CV)['prompt'] == BRIEF
     assert not Job.objects.filter(account=customer).exists(), 'nothing runs before the review'
     # The review stays open to a photo for as long as it is the chat's screen.

@@ -3,19 +3,20 @@ from __future__ import annotations
 import json
 import os
 import sys
+from processors.env import env
 
 
 def _setting(name, default, low, high):
     try:
-        return min(high, max(low, int(os.environ.get(name, default))))
+        return min(high, max(low, int(env(name, default))))
     except ValueError:
         return default
 
 
 def apply_limits():
-    cpu_seconds = _setting('PDFMASTER_CPU_SECONDS', 85, 85, 2000)
+    cpu_seconds = _setting('CPU_SECONDS', 85, 85, 2000)
     # 2 GiB, 3 GiB for the document scanner (processors/sandbox.child_limits).
-    address_space = _setting('PDFMASTER_ADDRESS_SPACE_MB', 2048, 2048, 3072) * 1024 * 1024
+    address_space = _setting('ADDRESS_SPACE_MB', 2048, 2048, 3072) * 1024 * 1024
     try:
         import resource
     except ImportError:

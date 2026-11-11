@@ -16,6 +16,7 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from .models import Account, FileAsset, Job, Quote, Artifact, WebhookReceipt
 from .errors import DomainError, error_data
+from .middleware import CHALLENGE_AGE, CHALLENGE_COOKIE, CHALLENGE_PATH, challenge_cookie_attributes
 from .antibot import require_web_verification
 from .identity import resolve_account, exchange_miniapp, create_challenge, get_bound_challenge, exchange_challenge
 from .policy import catalog, SEED, FEATURES, usage_snapshot
@@ -148,19 +149,19 @@ def challenges(request):
     if intent=='link' and request.account.telegram_user_id: raise DomainError('telegram_already_linked',409)
     challenge,token,verifier=create_challenge(request.META.get('HTTP_USER_AGENT','Unknown browser'), request.account if intent=='link' else None)
     response=JsonResponse({'id':str(challenge.pk),'status':'pending','expires_at':challenge.expires_at,'telegram_url':f'https://t.me/{telegram_config()['username']}?start=login_{token}','browser_hint':challenge.browser_hint},status=201)
-    response.set_cookie('pdfmaster_challenge',verifier,max_age=300,httponly=True,secure=not settings.DEBUG,samesite='Lax',path='/api/v1/auth/browser/')
+    response.set_cookie(CHALLENGE_COOKIE,verifier,max_age=CHALLENGE_AGE,**challenge_cookie_attributes())
     return response
 
 @api(auth=False)
 def challenge_status(request,challenge_id):
-    challenge=get_bound_challenge(challenge_id,request.COOKIES.get('pdfmaster_challenge',''))
+    challenge=get_bound_challenge(challenge_id,request.COOKIES.get(CHALLENGE_COOKIE,''))
     return {'id':str(challenge.pk),'status':'approved' if challenge.approved_at else 'pending','expires_at':challenge.expires_at}
 
 @api(('POST',),auth=False)
 def challenge_exchange(request,challenge_id):
     throttle(request,'exchange')
-    response=JsonResponse(sign_in(request,exchange_challenge(challenge_id,request.COOKIES.get('pdfmaster_challenge',''),link_account=request.account)))
-    response.delete_cookie('pdfmaster_challenge',path='/api/v1/auth/browser/')
+    response=JsonResponse(sign_in(request,exchange_challenge(challenge_id,request.COOKIES.get(CHALLENGE_COOKIE,''),link_account=request.account)))
+    response.delete_cookie(CHALLENGE_COOKIE,path=CHALLENGE_PATH)
     return response
 
 @api(('GET','PATCH','DELETE'))
@@ -375,7 +376,7 @@ def contacts(request):
     return {**contacts_config(), 'bot': bot, 'company': company_details()}
 
 @api(auth=False)
-def health(request): return {'status':'ok','service':'pdfmaster-platform','api_version':'v1'}
+def health(request): return {'status':'ok','service':'docmaster-platform','api_version':'v1'}
 
 @csrf_exempt
 @api(('POST',),auth=False)

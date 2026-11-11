@@ -1,4 +1,4 @@
-"""Create the first administrator in PDF Master's database; never print credentials."""
+"""Create the first administrator in DocMaster's database; never print credentials."""
 import json
 import re
 import subprocess
@@ -18,10 +18,10 @@ if len(BOOTSTRAP['password']) < 32:
 ids = command(['docker', 'ps', '-q', '--filter', 'label=com.docker.compose.project=pdfmaster-platform',
                '--filter', 'label=com.docker.compose.service=api']).split()
 if len(ids) != 1:
-    raise SystemExit('Expected one healthy PDF Master API container')
+    raise SystemExit('Expected one healthy DocMaster API container')
 container = json.loads(command(['docker', 'inspect', ids[0]]))[0]
 if container['State'].get('Health', {}).get('Status') != 'healthy':
-    raise SystemExit('PDF Master API is not healthy')
+    raise SystemExit('DocMaster API is not healthy')
 code = 'enrollment = ' + repr(BOOTSTRAP) + '''
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
