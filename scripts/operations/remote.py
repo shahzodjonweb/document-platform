@@ -7,7 +7,8 @@ import subprocess
 import tempfile
 
 operation = os.environ['OPERATION']
-if operation not in {'inventory', 'public-key', 'ssh-check', 'proxy-prepare', 'proxy-publish', 'setup-admin', 'verify-services', 'stabilize-cleanup'}:
+if operation not in {'inventory', 'public-key', 'ssh-check', 'proxy-prepare', 'proxy-publish', 'setup-admin', 'verify-services', 'stabilize-cleanup',
+                     'rename-check', 'rename-migrate', 'rename-rollback'}:
     raise SystemExit('Unsupported server operation')
 host = os.environ['DEPLOY_HOST'].strip()
 user = os.environ['DEPLOY_USER'].strip()
@@ -50,6 +51,10 @@ with tempfile.TemporaryDirectory() as folder:
     if operation in {'proxy-prepare', 'proxy-publish'}:
         script = 'proxy_setup.py'
         args[-1] = 'python3 - ' + operation.removeprefix('proxy-')
+    if operation in {'rename-check', 'rename-migrate', 'rename-rollback'}:
+        # The server internals' rename (rename_internals.py): check reads only.
+        script = 'rename_internals.py'
+        args[-1] = 'python3 - ' + operation.removeprefix('rename-')
     if operation == 'setup-admin':
         payload = json.loads(os.environ.get('ADMIN_BOOTSTRAP', '{}'))
         # A stored secret may still carry the retired authenticator key; it is ignored.

@@ -21,7 +21,8 @@ permissions:
 jobs:
   operation:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # The rename migration lets job runners finish the job in hand (up to 10 minutes) and copies volumes.
+    timeout-minutes: 60
     concurrency:
       group: pdfmaster-server-operations
       cancel-in-progress: false
