@@ -38,7 +38,7 @@ from urllib.parse import urlencode, urlsplit
 
 API = 'https://pixabay.com/api/'
 IMAGE_HOSTS = frozenset({'pixabay.com', 'cdn.pixabay.com'})
-USER_AGENT = 'PDFMaster/1.0'
+USER_AGENT = 'DocMaster/1.0'
 SEARCH_TIMEOUT = 6
 DOWNLOAD_TIMEOUT = 10
 BUDGET_SECONDS = 90

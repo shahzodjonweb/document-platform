@@ -111,7 +111,7 @@ def test_result_caption_and_navigation_are_localized_and_owner_bound(locale):
     assert bot.send_document.await_count == 1
 
 
-def _deliver(monkeypatch, locale='en', username='PdfMasterTestBot'):
+def _deliver(monkeypatch, locale='en', username='DocMasterTestBot'):
     monkeypatch.setattr('telegram.delivery.telegram_config', lambda: {'username': username, 'webapp_url': ''})
     account, job = completed_job(locale=locale)
     delivery = BotDelivery.objects.get()
@@ -127,12 +127,12 @@ def test_a_forwarded_file_carries_a_link_to_the_bot_with_its_owners_referral(mon
     from apps.commerce.models import ReferralCode
     account, _, _, sent = _deliver(monkeypatch, locale)
     code = ReferralCode.objects.get(account=account).code
-    link = f'https://t.me/PdfMasterTestBot?start=ref_{code}'
+    link = f'https://t.me/DocMasterTestBot?start=ref_{code}'
     assert sent['parse_mode'] == 'HTML'
     # One short line and nothing else: who made it, linking to the bot.
-    expected = {'en': f'✅ 📎 Made with <a href="{link}">@PdfMasterTestBot</a>',
-                'uz': f'✅ 📎 <a href="{link}">@PdfMasterTestBot</a> yordamida tayyorlandi',
-                'ru': f'✅ 📎 Сделано в <a href="{link}">@PdfMasterTestBot</a>'}[locale]
+    expected = {'en': f'✅ 📎 Made with <a href="{link}">@DocMasterTestBot</a>',
+                'uz': f'✅ 📎 <a href="{link}">@DocMasterTestBot</a> yordamida tayyorlandi',
+                'ru': f'✅ 📎 Сделано в <a href="{link}">@DocMasterTestBot</a>'}[locale]
     assert sent['caption'] == expected
 
 
@@ -170,8 +170,8 @@ def test_a_referral_that_cannot_be_made_still_links_the_bot(monkeypatch):
     def broken(account):
         raise RuntimeError('database hiccup')
     monkeypatch.setattr('apps.commerce.services.referral_code', broken)
-    _, _, _, sent = _deliver(monkeypatch, username='@PdfMasterTestBot')
-    assert '<a href="https://t.me/PdfMasterTestBot">@PdfMasterTestBot</a>' in sent['caption']
+    _, _, _, sent = _deliver(monkeypatch, username='@DocMasterTestBot')
+    assert '<a href="https://t.me/DocMasterTestBot">@DocMasterTestBot</a>' in sent['caption']
 
 
 def test_failed_send_reuses_navigation_tokens_and_does_not_recount():
@@ -196,7 +196,7 @@ def test_large_result_has_actionable_web_link_without_reading_the_file(monkeypat
     artifact = job.artifacts.get()
     artifact.file.size_bytes = 51 * 1024 * 1024
     artifact.file.save(update_fields=['size_bytes'])
-    monkeypatch.setattr('telegram.delivery.telegram_config', lambda: {'webapp_url': 'https://pdfmaster.example/uz/app'})
+    monkeypatch.setattr('telegram.delivery.telegram_config', lambda: {'webapp_url': 'https://docmaster.example/uz/app'})
     monkeypatch.setattr('apps.core.storage.read_bytes', lambda key: (_ for _ in ()).throw(AssertionError('Large file must not be read')))
     bot = Mock(send_message=AsyncMock(return_value=Mock(message_id=323)), send_document=AsyncMock())
     delivery = BotDelivery.objects.get()
@@ -205,7 +205,7 @@ def test_large_result_has_actionable_web_link_without_reading_the_file(monkeypat
     assert delivery.status == 'delivered' and not bot.send_document.called
     args = bot.send_message.await_args
     assert args.args[1] == RESULT_COPY['uz']['large']
-    assert args.kwargs['reply_markup'].inline_keyboard[0][0].url == 'https://pdfmaster.example/uz/app'
+    assert args.kwargs['reply_markup'].inline_keyboard[0][0].url == 'https://docmaster.example/uz/app'
     assert len(args.kwargs['reply_markup'].inline_keyboard) == 4
 
 
@@ -223,7 +223,7 @@ def test_expired_result_does_not_create_navigation_or_call_telegram():
 
 
 # ✏️ Edit: the editor opened from the chat, behind the edit_buttons switch.
-WEB = 'https://pdfmaster.example/en/app'
+WEB = 'https://docmaster.example/en/app'
 PPTX = 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
 DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
@@ -276,7 +276,7 @@ def test_a_delivered_pdf_opens_in_the_editor_above_the_buttons_it_always_had(edi
     delivery = BotDelivery.objects.get()
     rows = keyboard(delivery)
     assert rows[0][0].text == label and rows[0][0].url is None, 'a Mini App inside Telegram'
-    assert rows[0][0].web_app.url == f'https://pdfmaster.example/{locale}/app/editor?file_id={job.artifacts.get().file_id}'
+    assert rows[0][0].web_app.url == f'https://docmaster.example/{locale}/app/editor?file_id={job.artifacts.get().file_id}'
     assert [row[0].text for row in rows[1:]] == [UX[locale][key] for key in ('home', 'recent', 'new_task')]
     assert all(len(row) == 1 for row in rows), 'one button a row: the longest label still fits a phone'
 

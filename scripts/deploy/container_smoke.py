@@ -129,7 +129,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from processors.__main__ import apply_limits
 apply_limits()
-binary = os.environ['PDFMASTER_PDFCRAFT_BIN']
+binary = os.environ.get('DOCMASTER_PDFCRAFT_BIN') or os.environ['PDFMASTER_PDFCRAFT_BIN']
 version = json.loads(Path('processors/pdfcraft/manifest.json').read_text())['version']
 
 def listing(skip):

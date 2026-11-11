@@ -8,6 +8,7 @@ import subprocess
 import tempfile
 from contextlib import closing
 from pathlib import Path
+from .env import env
 
 ASSETS = Path(__file__).resolve().parent / 'assets'
 LANGUAGES = ('eng', 'rus', 'uzb', 'eng+rus', 'eng+uzb', 'eng+rus+uzb')
@@ -22,7 +23,7 @@ SCHEMAS = {
 
 
 def tesseract_runtime():
-    configured = os.environ.get('PDFMASTER_TESSERACT_BIN')
+    configured = env('TESSERACT_BIN')
     executable = configured or shutil.which('tesseract')
     available = bool(executable and Path(executable).is_file() and all((ASSETS/'tessdata'/f'{lang}.traineddata').is_file() for lang in ('eng','rus','uzb')))
     return {'available': available, 'executable': executable, 'languages': list(LANGUAGES), 'engine': 'tesseract'}

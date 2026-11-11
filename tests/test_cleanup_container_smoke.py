@@ -8,10 +8,10 @@ import pytest
 
 
 SCRIPT = Path(__file__).resolve().parents[1] / 'scripts/deploy/container_smoke.py'
-spec = importlib.util.spec_from_file_location('pdfmaster_cleanup_container_smoke', SCRIPT)
+spec = importlib.util.spec_from_file_location('docmaster_cleanup_container_smoke', SCRIPT)
 smoke = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(smoke)
-COMPOSE = ['docker', 'compose', '-p', 'pdfmaster-ci-test-only']
+COMPOSE = ['docker', 'compose', '-p', 'docmaster-ci-test-only']
 CONTAINER = 'a' * 64
 PRIVATE_LOG = 'S3 secret must never enter CI output: fixture-private-key'
 

@@ -1,7 +1,7 @@
-PDF Master document scanner: third-party notices
+DocMaster document scanner: third-party notices
 =================================================
 
-The code in this folder is PDF Master's own, derived from open-doc-scanner
+The code in this folder is DocMaster's own, derived from open-doc-scanner
 (MIT) with memory-only changes: the text model runs in row strips, ONNX
 Runtime's memory arena is off, and the thread count and model folder come
 from SCANNER_THREADS and SCANNER_MODELS. Output pixels are the same. The
@@ -49,7 +49,7 @@ GC-Net from GCDRNet (shadow removal)
             used and redistributed (GCDRNet issue #8), the author answered by
             adding the MIT licence to the repository. The file is therefore
             fetched from its source when the image is built and is not
-            mirrored as a separate download by PDF Master. It is inside the
+            mirrored as a separate download by DocMaster. It is inside the
             built image, which exists on the production host and, for one
             day per main build, as the release.tar.gz Actions artifact of the
             public repository, which signed-in GitHub users can download.

@@ -50,7 +50,7 @@ def test_concurrent_office_jobs_use_independent_profiles(tmp_path):
 
 
 def test_unavailable_configured_office_fails_closed(monkeypatch):
-    monkeypatch.setenv('PDFMASTER_SOFFICE_BIN', '/nonexistent/pdfmaster/soffice')
+    monkeypatch.setenv('DOCMASTER_SOFFICE_BIN', '/nonexistent/docmaster/soffice')
     office_runtime.cache_clear()
     try:
         assert capabilities()['convert.word_to_pdf']['available'] is False

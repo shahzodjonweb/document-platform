@@ -722,7 +722,7 @@ def request_body(config, data, feature, span=None):
     # Supported by Responses models. Stable across a user's related batches;
     # no raw account identifiers or source hashes leave the app in this key.
     scope = data.get('_cache_scope', '')
-    result['prompt_cache_key'] = 'pdfmaster:' + hashlib.sha256(
+    result['prompt_cache_key'] = 'docmaster:' + hashlib.sha256(
         f'{VERSION}:{scope}:{feature}:{fmt}'.encode()).hexdigest()[:48]
     return result
 

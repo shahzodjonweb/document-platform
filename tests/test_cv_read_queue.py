@@ -659,11 +659,11 @@ def test_the_reader_has_its_own_container_and_the_bot_its_small_one_again():
 def test_the_container_smoke_starts_the_reader_and_reads_a_page_in_it(monkeypatch):
     import importlib.util
     import subprocess
-    spec = importlib.util.spec_from_file_location('pdfmaster_reader_smoke', ROOT / 'scripts/deploy/container_smoke.py')
+    spec = importlib.util.spec_from_file_location('docmaster_reader_smoke', ROOT / 'scripts/deploy/container_smoke.py')
     smoke = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(smoke)
     assert "'reader'" in (ROOT / 'scripts/deploy/container_smoke.py').read_text().split("services=['api'", 1)[1][:80]
-    compose = ['docker', 'compose', '-p', 'pdfmaster-ci-test-only']
+    compose = ['docker', 'compose', '-p', 'docmaster-ci-test-only']
     commands = []
 
     def run(command, **kwargs):

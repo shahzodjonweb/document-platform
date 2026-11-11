@@ -84,7 +84,7 @@ def pick_archive(manifest, machine):
 def download(archive, target):
     """One attempt: stream into the target and verify it."""
     digest, size = hashlib.sha256(), 0
-    request = urllib.request.Request(archive['url'], headers={'User-Agent': 'pdfmaster-pdfcraft'})
+    request = urllib.request.Request(archive['url'], headers={'User-Agent': 'docmaster-pdfcraft'})
     with open(target, 'wb') as out, urllib.request.urlopen(request, timeout=TIMEOUT) as response:
         while block := response.read(CHUNK):
             size += len(block)

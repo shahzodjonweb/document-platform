@@ -49,7 +49,7 @@ def test_a_tap_is_counted_once_thanked_and_its_button_taken_away(delivered):
 
 
 def test_a_tap_on_an_invite_post_opens_invite_friends_and_keeps_its_button(delivered):
-    save_config('telegram', {'token': '', 'username': 'fixture_bot', 'webapp_url': 'https://pdfmaster.example/en/app'})
+    save_config('telegram', {'token': '', 'username': 'fixture_bot', 'webapp_url': 'https://docmaster.example/en/app'})
     Post.objects.filter(pk=delivered.post_id).update(button_action='invite')
     BotConversation.objects.create(telegram_user_id=42, state='cv_wait_check', prompt={'asked': True})
     harness = Harness(onboard=False)

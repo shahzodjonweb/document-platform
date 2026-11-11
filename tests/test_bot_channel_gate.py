@@ -44,12 +44,12 @@ def token(result, action):
 
 
 def test_a_file_sent_before_joining_is_kept_and_the_channels_are_shown(customer, telegram):
-    require_channels('@pdfmaster_news\n@pdfmaster_tips')
+    require_channels('@docmaster_news\n@docmaster_tips')
     result = dispatch_local(customer, uploaded=SimpleUploadedFile('notes.pdf', pdf(), 'application/pdf'))
     text = result['messages'][-1]['text']
     assert COPY['en']['gate_many'] in text
     links = [button.get('url') for button in buttons(result) if button.get('url')]
-    assert links == ['https://t.me/pdfmaster_news', 'https://t.me/pdfmaster_tips']
+    assert links == ['https://t.me/docmaster_news', 'https://t.me/docmaster_tips']
     assert token(result, 'channels_check') and token(result, 'plans')
     assert BotDraft.objects.filter(account=customer).exists(), 'the file waits for its tool'
 
@@ -57,7 +57,7 @@ def test_a_file_sent_before_joining_is_kept_and_the_channels_are_shown(customer,
 def test_ive_joined_checks_again_and_goes_back_to_the_file(customer, telegram):
     require_channels()
     gate = dispatch_local(customer, uploaded=SimpleUploadedFile('notes.pdf', pdf(), 'application/pdf'))
-    telegram.statuses = {'@pdfmaster_news': 'member'}
+    telegram.statuses = {'@docmaster_news': 'member'}
     result = dispatch_local(customer, callback_data=token(gate, 'channels_check'))
     texts = [message['text'] for message in result['messages']]
     assert any(COPY['en']['welcome'] in text for text in texts)
@@ -71,12 +71,12 @@ def test_ive_joined_without_joining_says_which_channel_is_missing(customer, tele
     # The channel screen itself changes; nothing new is sent.
     from apps.commerce.models import LocalBotMessage
     screen = LocalBotMessage.objects.filter(account=customer, direction='outbound').order_by('-created_at').first()
-    assert "You haven't joined pdfmaster_news yet" in screen.text
+    assert "You haven't joined docmaster_news yet" in screen.text
 
 
 def test_members_go_straight_to_the_tools(customer, telegram):
     require_channels()
-    telegram.statuses = {'@pdfmaster_news': 'member'}
+    telegram.statuses = {'@docmaster_news': 'member'}
     result = dispatch_local(customer, uploaded=SimpleUploadedFile('notes.pdf', pdf(), 'application/pdf'))
     assert COPY['en']['gate_one'] not in result['messages'][-1]['text']
 
@@ -94,7 +94,7 @@ def test_plus_is_asked_to_join_and_offered_premium_as_the_way_round(customer, te
 def test_plus_is_never_told_the_product_is_free(customer, telegram, locale):
     """Someone who has just paid for Plus was told "DocMaster is free for
     members". Plus is told its plan works for members instead."""
-    require_channels('@pdfmaster_news\n@pdfmaster_tips')
+    require_channels('@docmaster_news\n@docmaster_tips')
     paid(customer, 'plus')
     customer.locale = locale
     customer.save(update_fields=['locale'])

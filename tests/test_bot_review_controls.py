@@ -182,7 +182,7 @@ def test_a_deck_review_opens_the_setup_screen(customer):
     draft = GenerationDraft.objects.filter(account=customer, feature_id=SLIDES).latest('created_at')
     (setup,) = [button for button in buttons(review) if button['label'] == '🎨 Design and slides']
     # An https Mini App: the simulator records its address as the button's link.
-    assert setup['url'] == f'https://pdfmaster.example/en/app/deck-setup?draft={draft.id}'
+    assert setup['url'] == f'https://docmaster.example/en/app/deck-setup?draft={draft.id}'
     shown = BotConversation.objects.get(telegram_user_id=customer.telegram_user_id).review
     assert shown['draft_id'] == str(draft.id) and shown['local'] is True
     # A document has no design to choose.

@@ -50,7 +50,7 @@ def download(name, spec, folder):
     handle, temporary = tempfile.mkstemp(prefix=f'.{name}.', suffix='.part', dir=folder)
     try:
         digest, size = hashlib.sha256(), 0
-        request = urllib.request.Request(spec['url'], headers={'User-Agent': 'pdfmaster-scanner-models'})
+        request = urllib.request.Request(spec['url'], headers={'User-Agent': 'docmaster-scanner-models'})
         with os.fdopen(handle, 'wb') as out, urllib.request.urlopen(request, timeout=TIMEOUT) as response:
             while block := response.read(CHUNK):
                 size += len(block)

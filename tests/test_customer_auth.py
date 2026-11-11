@@ -43,7 +43,7 @@ GOOGLE = {'enabled': 'true', 'client_id': '123456-fixture.apps.googleusercontent
 def configured_identity_providers(settings, monkeypatch):
     settings.DEBUG = True
     settings.TELEGRAM_WEBAPP_URL = 'https://app.example.com/en/app'
-    settings.TELEGRAM_BOT_USERNAME = 'PdfMasterFixtureBot'
+    settings.TELEGRAM_BOT_USERNAME = 'DocMasterFixtureBot'
     settings.EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
     monkeypatch.setenv('INTEGRATION_ENCRYPTION_KEY', Fernet.generate_key().decode())
     save_config('email', EMAIL)

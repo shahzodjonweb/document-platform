@@ -52,7 +52,7 @@ jobs:
       PYTEST_TIER: ${{ matrix.tier }}
       PYTEST_SHARD: ${{ matrix.shard }}
       PPTX_TEST_SOFFICE: "/usr/bin/soffice"
-      DATABASE_URL: ${{ matrix.database == 'postgres' && 'postgresql://pdfmaster:ci-test-password@127.0.0.1:5432/pdfmaster' || 'sqlite:////tmp/pdfmaster-ci.sqlite3' }}
+      DATABASE_URL: ${{ matrix.database == 'postgres' && 'postgresql://pdfmaster:ci-test-password@127.0.0.1:5432/pdfmaster' || 'sqlite:////tmp/docmaster-ci.sqlite3' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
@@ -110,20 +110,20 @@ jobs:
         id: scanner-models
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: ~/.cache/pdfmaster-scanner-models
+          path: ~/.cache/docmaster-scanner-models
           key: scanner-models-${{ hashFiles('processors/scanner/models.json') }}
       - name: Fetch scanner models
         timeout-minutes: 10
         run: |
-          echo "SCANNER_MODELS=$HOME/.cache/pdfmaster-scanner-models" >> "$GITHUB_ENV"
-          python scripts/fetch_scanner_models.py --dest "$HOME/.cache/pdfmaster-scanner-models"
+          echo "SCANNER_MODELS=$HOME/.cache/docmaster-scanner-models" >> "$GITHUB_ENV"
+          python scripts/fetch_scanner_models.py --dest "$HOME/.cache/docmaster-scanner-models"
       - name: Cache scanner models
         if: steps.scanner-models.outputs.cache-hit != 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         # The first runner to save this model set stores it; the rest find it taken.
         continue-on-error: true
         with:
-          path: ~/.cache/pdfmaster-scanner-models
+          path: ~/.cache/docmaster-scanner-models
           key: scanner-models-${{ hashFiles('processors/scanner/models.json') }}
       # PdfCraft's Linux build (pinned in manifest.json), so the tests that edit
       # real text run on the OS production runs it on. From the Actions cache;
@@ -132,20 +132,20 @@ jobs:
         id: pdfcraft
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: ~/.cache/pdfmaster-pdfcraft
+          path: ~/.cache/docmaster-pdfcraft
           key: pdfcraft-${{ hashFiles('processors/pdfcraft/manifest.json') }}
       - name: Fetch PdfCraft
         timeout-minutes: 10
         run: |
-          echo "PDFMASTER_PDFCRAFT_BIN=$HOME/.cache/pdfmaster-pdfcraft/pdfcraft-cli" >> "$GITHUB_ENV"
-          python scripts/fetch_pdfcraft.py --dest "$HOME/.cache/pdfmaster-pdfcraft"
+          echo "DOCMASTER_PDFCRAFT_BIN=$HOME/.cache/docmaster-pdfcraft/pdfcraft-cli" >> "$GITHUB_ENV"
+          python scripts/fetch_pdfcraft.py --dest "$HOME/.cache/docmaster-pdfcraft"
       - name: Cache PdfCraft
         if: steps.pdfcraft.outputs.cache-hit != 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         # The first runner to save this release stores it; the rest find it taken.
         continue-on-error: true
         with:
-          path: ~/.cache/pdfmaster-pdfcraft
+          path: ~/.cache/docmaster-pdfcraft
           key: pdfcraft-${{ hashFiles('processors/pdfcraft/manifest.json') }}
       - run: pip install -r requirements.lock
       - run: python manage.py check

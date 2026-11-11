@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PDF Master release protocol v2; identical in both application repositories.
+"""DocMaster release protocol v2; identical in both application repositories.
 
 Receives only CI-built images over authenticated SSH. Never runs git on the
 server, edits another Compose project, prunes Docker, or deletes data volumes.
@@ -92,7 +92,7 @@ def command(args, *, env=None, input_stream=None, output_stream=None):
                             stderr=subprocess.PIPE, timeout=900)
     if result.returncode:
         raise DeploymentError("Command failed: " + " ".join(args[:3]) +
-                              ". Inspect PDF Master service logs on the server.")
+                              ". Inspect DocMaster service logs on the server.")
     return result.stdout.decode().strip() if output_stream is None else ""
 
 
@@ -197,7 +197,7 @@ def deployment_lock(root, timeout=600):
                 break
             except BlockingIOError:
                 if time.monotonic() >= deadline:
-                    raise DeploymentError("Another PDF Master deployment still holds the lock.")
+                    raise DeploymentError("Another DocMaster deployment still holds the lock.")
                 time.sleep(1)
         yield
 

@@ -317,7 +317,7 @@ def test_the_button_their_refusal_names_is_the_one_under_the_file(customer, stoc
     from apps.studio.domain import pack
     from telegram.delivery import deck_change_label, enqueue, result_controls
     from telegram.ux_copy import UX
-    config = {'webapp_url': 'https://pdfmaster.example/en/app'}
+    config = {'webapp_url': 'https://docmaster.example/en/app'}
     monkeypatch.setattr('telegram.delivery.telegram_config', lambda: config)
     monkeypatch.setenv('EDITOR_FLAG_EDIT_BUTTONS', '1')
     draft, job = generate(customer)

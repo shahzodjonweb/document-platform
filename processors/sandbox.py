@@ -12,6 +12,7 @@ import sys
 import tempfile
 from pathlib import Path
 from .engine import ProcessorError
+from .env import names
 
 REPORT_LIMIT = 2 * 1024 * 1024
 REQUEST_LIMIT = 512 * 1024
@@ -58,8 +59,8 @@ def _run(request: dict, timeout: int) -> dict:
     # Parser processes must not inherit database, Telegram, signing or provider
     # credentials from the API/worker environment.
     environment = {key: os.environ[key] for key in
-        ('PATH', 'LANG', 'LC_ALL', 'TMPDIR', 'TMP', 'TEMP', 'SYSTEMROOT', 'PDFMASTER_SOFFICE_BIN','PDFMASTER_TESSERACT_BIN',
-         'PDFMASTER_PDFCRAFT_BIN','SCANNER_MODELS')
+        ('PATH', 'LANG', 'LC_ALL', 'TMPDIR', 'TMP', 'TEMP', 'SYSTEMROOT', 'SCANNER_MODELS',
+         *names('SOFFICE_BIN'), *names('TESSERACT_BIN'), *names('PDFCRAFT_BIN'))
         if key in os.environ}
     environment['PYTHONDONTWRITEBYTECODE'] = '1'
     # Numeric image processing must fit the existing child-process budget.
@@ -74,8 +75,8 @@ def _run(request: dict, timeout: int) -> dict:
     environment['MALLOC_ARENA_MAX'] = '2'
     # The child's CPU limit follows the wall-clock budget of this run.
     limits = child_limits(request.get('feature_id', ''), timeout)
-    environment['PDFMASTER_CPU_SECONDS'] = str(limits['cpu_seconds'])
-    environment['PDFMASTER_ADDRESS_SPACE_MB'] = str(limits['address_space_mb'])
+    environment['DOCMASTER_CPU_SECONDS'] = str(limits['cpu_seconds'])
+    environment['DOCMASTER_ADDRESS_SPACE_MB'] = str(limits['address_space_mb'])
     # No request file is written: secrets, if present, travel only over stdin.
     with tempfile.TemporaryFile() as report:
         process = subprocess.Popen([sys.executable, '-m', 'processors'],

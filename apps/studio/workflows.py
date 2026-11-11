@@ -16,7 +16,14 @@ from processors.engine import parse_pages
 from .domain import allowed
 from .models import SavedDefinition,WorkflowRun
 
-SALT='pdfmaster.workflow.confirmation.v1'
+SALT='docmaster.workflow.confirmation.v1'
+# Rename migration: tokens signed before the rename live ten minutes; drop this once that has passed.
+LEGACY_SALT='pdfmaster.workflow.confirmation.v1'
+
+def _confirmation(token):
+    try:return signing.loads(token,salt=SALT,max_age=600)
+    except signing.SignatureExpired:raise
+    except signing.BadSignature:return signing.loads(token,salt=LEGACY_SALT,max_age=600)
 KINDS={'convert.word_to_pdf':'docx','convert.pptx_to_pdf':'pptx','convert.pdf_to_docx':'pdf','convert.pdf_to_xlsx':'pdf'}
 
 def _access(account):
@@ -76,7 +83,7 @@ def start(account,pk,request,key):
             if run.status in ('succeeded','partial','failed') or run.lease_until and run.lease_until>timezone.now():return run,None
         else:
             _access(account);row=_row(account,pk)
-            try:payload=signing.loads(request.get('confirmation_token',''),salt=SALT,max_age=600)
+            try:payload=_confirmation(request.get('confirmation_token',''))
             except signing.SignatureExpired:raise DomainError('quote_expired',409) from None
             except (signing.BadSignature,TypeError):raise DomainError('confirmation_required',409) from None
             if request.get('confirmed') is not True or payload.get('account_id')!=str(account.id) or payload.get('workflow_id')!=str(row.id) or request.get('input_ids')!=payload.get('input_ids'):raise DomainError('confirmation_required',409)

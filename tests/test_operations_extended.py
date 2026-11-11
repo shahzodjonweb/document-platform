@@ -88,9 +88,9 @@ def test_invalid_staff_identifier_and_contact_username_fail_safely():
         response=admin.post('/ops/integrations',{'integration':'contacts','action':'save','support':bad,'ads':''})
         assert response.status_code==200 and b'invalid_contact_username' in response.content, bad
     assert contacts_config()['support']['username']=='' and not AuditLog.objects.exists()
-    assert admin.post('/ops/integrations',{'integration':'contacts','action':'save','support':'https://t.me/PdfMaster_Help','ads':'@pdfmaster_ads'}).status_code==302
-    assert contacts_config()=={'support':{'username':'PdfMaster_Help','url':'https://t.me/PdfMaster_Help'},
-                               'ads':{'username':'pdfmaster_ads','url':'https://t.me/pdfmaster_ads'}}
+    assert admin.post('/ops/integrations',{'integration':'contacts','action':'save','support':'https://t.me/DocMaster_Help','ads':'@docmaster_ads'}).status_code==302
+    assert contacts_config()=={'support':{'username':'DocMaster_Help','url':'https://t.me/DocMaster_Help'},
+                               'ads':{'username':'docmaster_ads','url':'https://t.me/docmaster_ads'}}
 
 
 def test_company_details_are_the_certificates_until_changed_and_refuse_malformed_values():
@@ -161,7 +161,7 @@ def test_production_bot_status_does_not_inspect_the_api_pid_namespace(settings,m
     assert b'The server starts the bot automatically' in response.content
     assert b'Start local bot' not in response.content
     save_config('telegram',{'token':'123456789:'+('A'*32),'username':'fixture_bot',
-                            'webapp_url':'https://pdfmaster.orderdesk.live/en/app'})
+                            'webapp_url':'https://docmaster.live/en/app'})
     assert b'Managed by server' in client.get('/ops/integrations').content
     assert not status.called
 

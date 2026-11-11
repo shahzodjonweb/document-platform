@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """How PdfCraft's small text edits come out, per PDF generator.
 
-    PDFCRAFT_BENCH_DIR=folder PDFMASTER_PDFCRAFT_BIN=pdfcraft-cli python scripts/bench_pdfcraft.py
+    PDFCRAFT_BENCH_DIR=folder DOCMASTER_PDFCRAFT_BIN=pdfcraft-cli python scripts/bench_pdfcraft.py
 
 A local tool: the PDFs stay outside the repository and nothing here runs in the
 image or CI. On the first page of every PDF it changes one word and one number
@@ -385,7 +385,7 @@ def one_file(path, binary):
     """A crash, a timeout or an unreadable file costs that file alone, and says nothing about it."""
     try:
         done = subprocess.run([sys.executable, '-I', __file__, '--one', str(path)], capture_output=True, text=True,
-                              timeout=FILE_SECONDS, env={**os.environ, 'PDFMASTER_PDFCRAFT_BIN': binary})
+                              timeout=FILE_SECONDS, env={**os.environ, 'DOCMASTER_PDFCRAFT_BIN': binary})
         return json.loads(done.stdout)
     except (OSError, ValueError, subprocess.SubprocessError):
         return None
@@ -411,9 +411,10 @@ def main():
     parser.add_argument('--jobs', type=int, default=min(6, os.cpu_count() or 1), help='PDFs read at once')
     parser.add_argument('--one', help=argparse.SUPPRESS)
     args = parser.parse_args()
-    binary = os.environ.get('PDFMASTER_PDFCRAFT_BIN')
+    # PDFMASTER_PDFCRAFT_BIN is the pre-rename name (processors/env.py).
+    binary = os.environ.get('DOCMASTER_PDFCRAFT_BIN') or os.environ.get('PDFMASTER_PDFCRAFT_BIN')
     if not binary or not Path(binary).is_file():
-        parser.error('set PDFMASTER_PDFCRAFT_BIN to the pdfcraft-cli binary')
+        parser.error('set DOCMASTER_PDFCRAFT_BIN to the pdfcraft-cli binary')
     binary = str(Path(binary).resolve())  # run_cli starts it from inside a temp folder
     if args.one:
         json.dump(bench_file(args.one, binary), sys.stdout)
@@ -425,7 +426,7 @@ def main():
     try:
         subprocess.run([binary, '--version'], stdin=subprocess.DEVNULL, capture_output=True, check=True, timeout=CLI_SECONDS)
     except (OSError, subprocess.SubprocessError) as error:
-        parser.error(f'PDFMASTER_PDFCRAFT_BIN cannot start: {error}')
+        parser.error(f'DOCMASTER_PDFCRAFT_BIN cannot start: {error}')
     paths = sorted(path for path in Path(folder).rglob('*') if path.is_file() and path.suffix.lower() == '.pdf')
     with ThreadPoolExecutor(max(1, args.jobs)) as pool:
         results = list(pool.map(lambda path: one_file(path, binary), paths))

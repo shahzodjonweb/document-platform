@@ -101,7 +101,7 @@ def select_cleanup(containers):
         and (item['Config'].get('Labels') or {}).get('com.docker.compose.service') == SERVICE
         and item['State'].get('Running') is True]
     if len(candidates) != 1 or candidates[0]['Name'] != NAME:
-        raise StabilizationError('Expected exactly one running named PDF Master cleanup service')
+        raise StabilizationError('Expected exactly one running named DocMaster cleanup service')
     selected = candidates[0]
     state = selected['State']
     if state.get('Status') != 'running' or state.get('Restarting') or state.get('Dead') or state.get('OOMKilled'):

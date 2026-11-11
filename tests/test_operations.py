@@ -68,7 +68,7 @@ def test_local_staff_login_needs_flag_loopback_and_csrf(settings):
 
 def test_changes_need_no_reason_and_audit_is_append_only():
     c,u=staff_client()
-    response=c.post('/ops/integrations',{'integration':'contacts','action':'save','support':'@pdfmaster_help','ads':''})
+    response=c.post('/ops/integrations',{'integration':'contacts','action':'save','support':'@docmaster_help','ads':''})
     assert response.status_code==302
     e=AuditLog.objects.get(action='integration.save');assert e.actor==u and e.target=='contacts'
     e.reason='tampered'

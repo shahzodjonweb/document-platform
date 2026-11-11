@@ -226,9 +226,9 @@ def test_contacts_are_public_tickets_are_gone_and_paid_checkout_disabled(setting
                                                    'bot':{'username':'','url':''},'company':certificate}
     # The bot's public username, so the website can link to it.
     settings.TELEGRAM_BOT_USERNAME='docmaster_bot'
-    save_config('contacts',{'support':'@pdfmaster_help','ads':'https://t.me/pdfmaster_ads','company_phone':'+998 90 123 45 67','company_email':'info@example.com'})
-    assert Client().get('/api/v1/contacts').json()=={'support':{'username':'pdfmaster_help','url':'https://t.me/pdfmaster_help'},
-                                                   'ads':{'username':'pdfmaster_ads','url':'https://t.me/pdfmaster_ads'},
+    save_config('contacts',{'support':'@docmaster_help','ads':'https://t.me/docmaster_ads','company_phone':'+998 90 123 45 67','company_email':'info@example.com'})
+    assert Client().get('/api/v1/contacts').json()=={'support':{'username':'docmaster_help','url':'https://t.me/docmaster_help'},
+                                                   'ads':{'username':'docmaster_ads','url':'https://t.me/docmaster_ads'},
                                                    'bot':{'username':'docmaster_bot','url':'https://t.me/docmaster_bot'},
                                                    'company':{**certificate,'phone':'+998 90 123 45 67','email':'info@example.com'}}
     # No card configured: nothing is on sale, and a payment request is refused.

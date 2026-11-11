@@ -31,7 +31,7 @@ from processors.text_edit import Page,changed,check_edit,check_removal,close,fac
 
 ROOT=Path(__file__).resolve().parents[1]
 FONTS=ROOT/'processors/assets/fonts'
-REQUIRES_PDFCRAFT=pytest.mark.skipif(not os.environ.get('PDFMASTER_PDFCRAFT_BIN'),reason='needs PDFMASTER_PDFCRAFT_BIN')
+REQUIRES_PDFCRAFT=pytest.mark.skipif(not os.environ.get('DOCMASTER_PDFCRAFT_BIN'),reason='needs DOCMASTER_PDFCRAFT_BIN')
 W,H=595.28,841.89
 for face in ('NotoSans-Regular','NotoSans-Bold','NotoSerif-Regular','NotoSerif-Bold'):
     if face not in pdfmetrics.getRegisteredFontNames():pdfmetrics.registerFont(TTFont(face,str(FONTS/f'{face}.ttf')))
@@ -313,7 +313,7 @@ def stand_in(folder,body):
 def test_pdfcraft_runs_in_its_root_with_nothing_of_the_workers_environment(tmp_path,monkeypatch):
     notes=tmp_path/'notes.json'
     binary=stand_in(tmp_path,f'json.dump({{"argv":sys.argv[1:],"env":dict(os.environ),"cwd":os.getcwd(),"stdin":sys.stdin.read(),"group":os.getpgrp(),"files":sorted(os.listdir("."))}},open({str(notes)!r},"w"))\nprint("{{}}")')
-    monkeypatch.setenv('PDFMASTER_PDFCRAFT_BIN',str(binary));monkeypatch.setenv('SECRET_KEY','do-not-pass');monkeypatch.setenv('DATABASE_URL','postgres://nobody')
+    monkeypatch.setenv('DOCMASTER_PDFCRAFT_BIN',str(binary));monkeypatch.setenv('SECRET_KEY','do-not-pass');monkeypatch.setenv('DATABASE_URL','postgres://nobody')
     source=drawn(tmp_path/'uz.pdf',UZ)
     result,_=run(source,[edit(UZ[2],'Yangi qator')],tmp_path)
     assert engines(result)==['covered'],'a report it cannot read is covered'
@@ -330,17 +330,17 @@ def test_pdfcraft_runs_in_its_root_with_nothing_of_the_workers_environment(tmp_p
 def test_a_binary_that_is_not_the_pinned_release_is_not_asked(tmp_path,monkeypatch):
     binary=tmp_path/'pdfcraft-cli';started=tmp_path/'started'
     binary.write_text(f'#!/bin/sh\necho "$1" >> {shlex.quote(str(started))}\necho "pdfcraft-cli 0.15.0"\n');binary.chmod(0o755)
-    monkeypatch.setenv('PDFMASTER_PDFCRAFT_BIN',str(binary))
+    monkeypatch.setenv('DOCMASTER_PDFCRAFT_BIN',str(binary))
     result,_=run(drawn(tmp_path/'uz.pdf',UZ),[edit(UZ[2],'Yangi qator')],tmp_path)
     assert engines(result)==['covered'] and started.read_text().split()==['--version']
-    monkeypatch.setenv('PDFMASTER_PDFCRAFT_BIN',str(tmp_path/'missing'))
+    monkeypatch.setenv('DOCMASTER_PDFCRAFT_BIN',str(tmp_path/'missing'))
     assert pdfcraft.binary(tmp_path) is None
 
 
 def test_a_run_that_hangs_is_cut_short_and_the_rest_are_covered(tmp_path,monkeypatch):
     started=tmp_path/'started'
     binary=stand_in(tmp_path,f'open({str(started)!r},"a").write("run\\n");time.sleep(30)')
-    monkeypatch.setenv('PDFMASTER_PDFCRAFT_BIN',str(binary));monkeypatch.setattr(pdfcraft,'SECONDS',1)
+    monkeypatch.setenv('DOCMASTER_PDFCRAFT_BIN',str(binary));monkeypatch.setattr(pdfcraft,'SECONDS',1)
     began=time.monotonic()
     result,path=run(drawn(tmp_path/'uz.pdf',UZ),[edit(UZ[1],'Birinchi yangi qator'),edit(UZ[3],'Ikkinchi yangi qator')],tmp_path)
     assert time.monotonic()-began<10 and engines(result)==['covered','covered']
@@ -351,7 +351,7 @@ def test_a_run_that_hangs_is_cut_short_and_the_rest_are_covered(tmp_path,monkeyp
 def test_past_the_budget_the_rest_are_covered_without_asking(tmp_path,monkeypatch):
     started=tmp_path/'started'
     binary=stand_in(tmp_path,f'open({str(started)!r},"a").write("run\\n");print("{{}}")')
-    monkeypatch.setenv('PDFMASTER_PDFCRAFT_BIN',str(binary));monkeypatch.setattr(text_edit,'BUDGET',0)
+    monkeypatch.setenv('DOCMASTER_PDFCRAFT_BIN',str(binary));monkeypatch.setattr(text_edit,'BUDGET',0)
     result,_=run(drawn(tmp_path/'uz.pdf',UZ),[edit(UZ[1],'Birinchi yangi qator'),edit(UZ[3],'Ikkinchi yangi qator')],tmp_path)
     assert engines(result)==['covered','covered'] and not started.exists()
 
@@ -367,7 +367,7 @@ def test_a_file_pdfcraft_rewrote_without_all_its_parts_is_not_used(tmp_path,monk
 
 @pytest.mark.parametrize('answer',['print("not a report")','print(json.dumps({"ok": True}))','print(json.dumps([1, 2]))','sys.stdout.write("x" * (3 * 1024 * 1024))','sys.exit(9)'],ids=['garbage','no-steps','a-list','too-long','crash'])
 def test_a_report_it_cannot_read_is_covered(tmp_path,monkeypatch,answer):
-    monkeypatch.setenv('PDFMASTER_PDFCRAFT_BIN',str(stand_in(tmp_path,answer)))
+    monkeypatch.setenv('DOCMASTER_PDFCRAFT_BIN',str(stand_in(tmp_path,answer)))
     result,path=run(drawn(tmp_path/'uz.pdf',UZ),[edit(UZ[2],'Yangi qator')],tmp_path)
     assert engines(result)==['covered'] and 'Yangi qator' in text_of(path)
 
@@ -375,7 +375,7 @@ def test_a_report_it_cannot_read_is_covered(tmp_path,monkeypatch,answer):
 def test_no_word_of_the_report_reaches_an_error_a_log_or_the_metadata(tmp_path,monkeypatch,caplog):
     marker='MAXFIY-SOZLAR-7731'
     report=json.dumps({'ok':False,'steps':[{'status':'error','error':marker,'tool':'doc_open'},{'status':'skipped'},{'status':'skipped'}]})
-    monkeypatch.setenv('PDFMASTER_PDFCRAFT_BIN',str(stand_in(tmp_path,f'print({report!r});sys.stderr.write({marker!r})')))
+    monkeypatch.setenv('DOCMASTER_PDFCRAFT_BIN',str(stand_in(tmp_path,f'print({report!r});sys.stderr.write({marker!r})')))
     source=drawn(tmp_path/'uz.pdf',UZ)
     with caplog.at_level(logging.DEBUG):
         result,_=run(source,[edit(UZ[2],'Yangi qator')],tmp_path)
@@ -394,13 +394,13 @@ def test_no_word_of_the_report_reaches_an_error_a_log_or_the_metadata(tmp_path,m
 def test_with_the_switch_off_the_binary_is_never_started(tmp_path,monkeypatch):
     started=tmp_path/'started'
     binary=tmp_path/'pdfcraft-cli';binary.write_text(f'#!/bin/sh\necho "$1" >> {shlex.quote(str(started))}\n');binary.chmod(0o755)
-    monkeypatch.setenv('PDFMASTER_PDFCRAFT_BIN',str(binary))
+    monkeypatch.setenv('DOCMASTER_PDFCRAFT_BIN',str(binary))
     result,_=run(drawn(tmp_path/'uz.pdf',UZ),[edit(UZ[2],'Yangi qator')],tmp_path,pdfcraft=False)
     assert engines(result)==['covered'] and not started.exists()
 
 
 def test_covered_words_sit_on_the_old_baseline_in_the_old_colour_and_face(tmp_path,monkeypatch):
-    monkeypatch.delenv('PDFMASTER_PDFCRAFT_BIN',raising=False)
+    monkeypatch.delenv('DOCMASTER_PDFCRAFT_BIN',raising=False)
     rows=[Row('NotoSerif-Regular',14,72,90,'Hisobot oktabr oyida tayyorlandi.','#0b6e4f'),Row('NotoSans-Bold',14,72,120,'Xulosa va takliflar')]
     source=drawn(tmp_path/'styled.pdf',rows)
     result,path=run(source,[edit(rows[0],'Hisobot noyabr oyida tayyorlandi.'),edit(rows[1],'Xulosa')],tmp_path)
@@ -414,7 +414,7 @@ def test_covered_words_sit_on_the_old_baseline_in_the_old_colour_and_face(tmp_pa
 
 
 def test_an_empty_line_is_covered_with_nothing_drawn_on_it(tmp_path,monkeypatch):
-    monkeypatch.delenv('PDFMASTER_PDFCRAFT_BIN',raising=False)
+    monkeypatch.delenv('DOCMASTER_PDFCRAFT_BIN',raising=False)
     source=drawn(tmp_path/'uz.pdf',UZ)
     result,path=run(source,[edit(UZ[1],'')],tmp_path)
     assert engines(result)==['blanked'],'no word is set in another face: the web counts none'
@@ -617,7 +617,7 @@ def test_words_the_web_lets_through_are_set_smaller_and_narrowed_never_refused_t
 
 @pytest.mark.parametrize('switch',[pytest.param(True,marks=REQUIRES_PDFCRAFT,id='retyped'),pytest.param(False,id='covered')])
 def test_a_times_line_the_web_says_will_be_set_a_little_smaller_is_sent(tmp_path,monkeypatch,switch):
-    if not switch:monkeypatch.delenv('PDFMASTER_PDFCRAFT_BIN',raising=False)
+    if not switch:monkeypatch.delenv('DOCMASTER_PDFCRAFT_BIN',raising=False)
     line=Row('Times-Roman',12,72,200,'Hisobot oktabr oyida tayyorlandi va rahbariyatga taqdim etildi.')
     new=line.text[:-1]+', keyin esa barcha bo‘limlar boshliqlariga yuborildi va yig‘ilishda batafsil muhokama qilindi.'
     web=(W-text_edit.MARGIN-line.x)/web_guess(stringWidth(line.text,line.font,line.size),line.text,new)

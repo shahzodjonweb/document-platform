@@ -2,13 +2,13 @@
 import os
 import sys
 from pathlib import Path
-root = Path('/tmp/pdfmaster-auth-e2e')
+root = Path('/tmp/docmaster-auth-e2e')
 root.mkdir(mode=0o700, exist_ok=True)
 os.umask(0o077)
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 os.environ.update(DJANGO_SETTINGS_MODULE='config.settings', DEBUG='1',
     SECRET_KEY='isolated-customer-auth-browser-fixture-not-production',
-    DATABASE_URL='sqlite:////tmp/pdfmaster-auth-e2e/db.sqlite3',
+    DATABASE_URL='sqlite:////tmp/docmaster-auth-e2e/db.sqlite3',
     PRIVATE_STORAGE_ROOT=str(root/'private'), TELEGRAM_WEBAPP_URL='http://127.0.0.1:3001/en/app',
     ALLOWED_HOSTS='127.0.0.1,localhost,testserver', CSRF_TRUSTED_ORIGINS='http://127.0.0.1:3001,http://localhost:3001',
     DEVELOPMENT_LOGIN_ENABLED='0', ENABLE_DOCUMENT_TOOLS='1', LOCAL_SYNC_JOBS='1')

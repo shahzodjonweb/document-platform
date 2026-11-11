@@ -30,6 +30,8 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 from pypdf import PdfReader, PdfWriter
 from pypdf.errors import PdfReadError
 
+from .env import env
+
 MAX_FILE_BYTES = 200 * 1024 * 1024
 MAX_PAGES = 1000
 MAX_INPUTS = 1000
@@ -86,7 +88,7 @@ PARAMETER_SCHEMAS.update(EDITOR_SCHEMAS)
 @lru_cache(maxsize=1)
 def office_runtime() -> dict[str, Any]:
     """Probe the trusted deployment-configured executable, never client input."""
-    configured = os.environ.get('PDFMASTER_SOFFICE_BIN')
+    configured = env('SOFFICE_BIN')
     executable = configured or shutil.which('libreoffice') or shutil.which('soffice')
     if not executable or not Path(executable).is_file() or not os.access(executable, os.X_OK):
         return {'available': False, 'reason': 'engine_unavailable'}
@@ -298,7 +300,7 @@ def inspect_file(path: str | Path, password: str | None = None, *, office_prefli
         if office_preflight and office_runtime()['available']:
             feature = 'convert.word_to_pdf' if metadata['kind'] == 'docx' else 'convert.pptx_to_pdf'
             # Temporary preflight PDFs are never exposed or persisted as assets.
-            with tempfile.TemporaryDirectory(prefix='pdfmaster-office-preflight-') as scratch:
+            with tempfile.TemporaryDirectory(prefix='docmaster-office-preflight-') as scratch:
                 artifacts = _office_pdf(path, feature, Path(scratch), metadata)
                 metadata.update({'page_count': artifacts[0]['page_count'],
                     'preflight_kind': 'libreoffice_pdf', 'office_engine': office_runtime()['version'],

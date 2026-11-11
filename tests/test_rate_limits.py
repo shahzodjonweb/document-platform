@@ -88,7 +88,7 @@ def test_a_shared_link_is_limited_with_no_cookie_and_leaves_no_session_behind():
     from django.test import Client
     for _ in range(30):
         answer=Client().get('/api/v1/shared/a-link-nobody-has')
-        assert answer.status_code==404 and 'pdfmaster_session' not in answer.cookies
+        assert answer.status_code==404 and 'docmaster_session' not in answer.cookies
     assert Client().get('/api/v1/shared/a-link-nobody-has').status_code==429
     assert Client().get('/api/v1/shared/another-link').status_code==404
     assert Session.objects.count()==0

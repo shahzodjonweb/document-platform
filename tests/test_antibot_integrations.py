@@ -14,7 +14,7 @@ pytestmark = pytest.mark.django_db
 SECRET = 'turnstile-secret-private-fixture'
 CONFIG = {'web_enabled': 'true', 'bot_enabled': 'true',
           'site_key': 'turnstile-site-fixture', 'secret_key': SECRET,
-          'allowed_hostnames': 'pdfmaster.orderdesk.live'}
+          'allowed_hostnames': 'docmaster.live'}
 TEST_SITE_KEYS = (
     '1x00000000000000000000AA', '2x00000000000000000000AB',
     '1x00000000000000000000BB', '2x00000000000000000000BB',
@@ -93,7 +93,7 @@ def test_web_cannot_be_enabled_without_complete_configuration(change):
 
 
 @pytest.mark.parametrize('hostname', [
-    'https://pdfmaster.orderdesk.live', '*.orderdesk.live', 'example.com/path',
+    'https://docmaster.live', '*.orderdesk.live', 'example.com/path',
     'example.com:443', 'user@example.com', '.example.com', 'example.com.',
     'two..example.com', '-bad.example.com', 'bad-.example.com',
     'domain_' + '.example.com', 'x' * 64 + '.example.com',
@@ -107,8 +107,8 @@ def test_only_bounded_exact_hostnames_are_accepted(hostname):
 
 
 def test_hostnames_are_normalized_and_deduplicated():
-    save_config('antibot', {**CONFIG, 'allowed_hostnames': 'PDFMaster.orderdesk.live,\nwww.example.com pdfmaster.orderdesk.live'})
-    assert antibot_config()['allowed_hostnames'] == ['pdfmaster.orderdesk.live', 'www.example.com']
+    save_config('antibot', {**CONFIG, 'allowed_hostnames': 'DocMaster.live,\nwww.example.com docmaster.live'})
+    assert antibot_config()['allowed_hostnames'] == ['docmaster.live', 'www.example.com']
 
 
 @pytest.mark.parametrize(('change', 'error'), [

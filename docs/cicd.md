@@ -63,7 +63,7 @@ Copy it next to the other deploy scripts, or paste it into a heredoc if there is
 
 ## HTTPS alongside existing projects
 
-The host already serves other projects. Inspect the current TLS proxy and container inventory before integration. Keep their files, routes, container IDs and start times unchanged. Add only the two new PDF Master host routes; never replace the existing proxy configuration, stop its containers, or run a global Compose down/prune command.
+The host already serves other projects. Inspect the current TLS proxy and container inventory before integration. Keep their files, routes, container IDs and start times unchanged. Add only the two new DocMaster host routes; never replace the existing proxy configuration, stop its containers, or run a global Compose down/prune command.
 
 For a host Caddy instance, each repository supplies its own `infra/production/Caddyfile` site block pointing at its loopback gateway. Add those blocks through the server's existing include mechanism and validate/reload gracefully. Caddy can provision TLS for the two DNS hostnames once they resolve to this server. If Caddy is containerized, use the repository's `proxy-network.example.yaml` as that component's server-owned `compose.override.yaml`; attach only its gateway to the existing ingress network and route to `pdfmaster-platform-gateway:8080` or `pdfmaster-web-gateway:8080`. The database and application networks stay separate.
 
@@ -85,4 +85,4 @@ docker compose -p pdfmaster-platform --env-file .env \
 
 Include an existing `compose.override.yaml` with another `-f` before `exec`. Enroll password and TOTP interactively over SSH; do not publish enrollment credentials in CI logs. Configure Telegram token/username and AI provider credentials in Admin Integrations. The bot container waits without contacting Telegram until polling credentials are configured, then starts automatically. If replacing an already-running bot's token, restart only the platform `bot` service. Provider/payment credentials and reviewed production offers remain separate configuration.
 
-Manual operations use the `PDF Master server operations` workflow. Its inventory operation is read-only, uses the same pinned SSH credentials and prints routing/container metadata rather than environments or keys. A successful build with missing credentials is not a deployment; inspect the deployment job's final server result and public HTTPS routes.
+Manual operations use the `DocMaster server operations` workflow. Its inventory operation is read-only, uses the same pinned SSH credentials and prints routing/container metadata rather than environments or keys. A successful build with missing credentials is not a deployment; inspect the deployment job's final server result and public HTTPS routes.

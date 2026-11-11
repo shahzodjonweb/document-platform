@@ -14,6 +14,7 @@ import subprocess
 import tempfile
 from functools import lru_cache
 from pathlib import Path
+from .env import env
 
 MANIFEST=Path(__file__).resolve().parent/'pdfcraft'/'manifest.json'
 ISOLATION=('HOME','TMPDIR','XDG_CACHE_HOME','XDG_CONFIG_HOME','XDG_DATA_HOME','XDG_STATE_HOME','XDG_RUNTIME_DIR')
@@ -47,7 +48,7 @@ def _speaks(executable,root):
 
 def binary(root):
     """The configured binary when it is the pinned release, else None. `root` is where its version is asked, under the same isolation as a run."""
-    configured=os.environ.get('PDFMASTER_PDFCRAFT_BIN')
+    configured=env('PDFCRAFT_BIN')
     if not configured:return None
     # Runs start inside the root, so a relative name must be fixed first.
     executable=Path(configured).resolve()

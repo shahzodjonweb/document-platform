@@ -21,6 +21,10 @@ spec.loader.exec_module(fetch_pdfcraft)
 spec = importlib.util.spec_from_file_location('pdfcraft_container_smoke', ROOT / 'scripts/deploy/container_smoke.py')
 smoke = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(smoke)
+spec = importlib.util.spec_from_file_location('processors_env', ROOT / 'processors/env.py')
+processors_env = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(processors_env)
+env_names = processors_env.names
 BINARY = b'\x7fELF pretend binary'
 NORMAL = (('pdfcraft-cli-0.16.1-linux-x86_64/pdfcraft-cli', BINARY), ('pdfcraft-cli-0.16.1-linux-x86_64/LICENSE-MIT', b'mit'),
           ('pdfcraft-cli-0.16.1-linux-x86_64/LICENSE-APACHE', b'apache'), ('pdfcraft-cli-0.16.1-linux-x86_64/NOTICE', b'notice'),
@@ -214,7 +218,7 @@ class Image(unittest.TestCase):
     def test_the_dockerfile_fetches_it_in_its_own_layer_after_the_scanner(self):
         text = (ROOT / 'infra/Dockerfile').read_text()
         order = [text.index(line) for line in ('ENV SCANNER_MODELS=', 'COPY processors/pdfcraft/manifest.json /tmp/pdfcraft/', 'COPY scripts/fetch_pdfcraft.py /tmp/pdfcraft/',
-                                               'python -I /tmp/pdfcraft/fetch_pdfcraft.py', 'ENV PDFMASTER_PDFCRAFT_BIN=/opt/pdfmaster/pdfcraft/pdfcraft-cli', 'COPY requirements.lock', 'USER pdfmaster')]
+                                               'python -I /tmp/pdfcraft/fetch_pdfcraft.py', 'ENV DOCMASTER_PDFCRAFT_BIN=/opt/pdfmaster/pdfcraft/pdfcraft-cli', 'COPY requirements.lock', 'USER pdfmaster')]
         self.assertEqual(order, sorted(order))
 
     def test_the_deck_fonts_are_never_installed_system_wide(self):
@@ -243,7 +247,9 @@ class Image(unittest.TestCase):
     def test_the_processor_child_may_see_the_binary_path(self):
         text = (ROOT / 'processors/sandbox.py').read_text()
         allowed = text[text.index("environment = {key: os.environ[key] for key in"):text.index("if key in os.environ}")]
-        self.assertIn("'PDFMASTER_PDFCRAFT_BIN'", allowed)
+        self.assertIn("*names('PDFCRAFT_BIN')", allowed)
+        # Both spellings, so a deployment still on the pre-rename name keeps working.
+        self.assertEqual(env_names('PDFCRAFT_BIN'), ('DOCMASTER_PDFCRAFT_BIN', 'PDFMASTER_PDFCRAFT_BIN'))
 
 
 class Smoke(unittest.TestCase):
@@ -259,7 +265,7 @@ class Smoke(unittest.TestCase):
 
     def test_the_check_runs_in_the_worker_and_compiles(self):
         compile(smoke.PDFCRAFT_CHECK, 'PDFCRAFT_CHECK', 'exec')
-        compose = ['docker', 'compose', '-p', 'pdfmaster-ci-test-only']
+        compose = ['docker', 'compose', '-p', 'docmaster-ci-test-only']
         commands, run = self.docker('false 0 true\n')
         with mock.patch.object(smoke, 'run', run):
             smoke.check_pdfcraft(compose, {})

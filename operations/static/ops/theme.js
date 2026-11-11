@@ -11,8 +11,11 @@
       const page = document.documentElement.dataset;
       const step = `${page.zone || ''}>${zone}`;
       if (saved() === zone && page.zone !== zone && !('posted' in page)
+          && sessionStorage.getItem('docmaster-ops-tz') !== step
+          // Rename migration: a tab opened before the rename keeps its guard under the old key.
           && sessionStorage.getItem('pdfmaster-ops-tz') !== step) {
-        sessionStorage.setItem('pdfmaster-ops-tz', step);
+        sessionStorage.setItem('docmaster-ops-tz', step);
+        sessionStorage.removeItem('pdfmaster-ops-tz');
         location.reload();
       }
     }
@@ -22,7 +25,14 @@
 (() => {
   let theme = 'light';
   try {
-    if (localStorage.getItem('pdfmaster-ops-theme') === 'dark') theme = 'dark';
+    // Rename migration: a choice saved under the pre-rename key moves to the new one.
+    // Remove the fallback a few months after the rename shipped.
+    const legacy = localStorage.getItem('pdfmaster-ops-theme');
+    if (legacy !== null) {
+      if (localStorage.getItem('docmaster-ops-theme') === null) localStorage.setItem('docmaster-ops-theme', legacy);
+      localStorage.removeItem('pdfmaster-ops-theme');
+    }
+    if (localStorage.getItem('docmaster-ops-theme') === 'dark') theme = 'dark';
   } catch (_) { /* The theme switch also works when browser storage is disabled. */ }
 
   const apply = () => {
@@ -41,7 +51,7 @@
     document.querySelector('[data-theme-switch]')?.addEventListener('click', () => {
       theme = theme === 'dark' ? 'light' : 'dark';
       apply();
-      try { localStorage.setItem('pdfmaster-ops-theme', theme); } catch (_) { /* Optional persistence. */ }
+      try { localStorage.setItem('docmaster-ops-theme', theme); } catch (_) { /* Optional persistence. */ }
     });
   });
 })();

@@ -23,7 +23,7 @@ pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.usefixtures('
 def customer(settings):
     settings.DEBUG = True
     settings.COMMERCE_SANDBOX_ENABLED = True
-    save_config('telegram', {'token': '', 'username': 'fixture_bot', 'webapp_url': 'https://pdfmaster.example/en/app'})
+    save_config('telegram', {'token': '', 'username': 'fixture_bot', 'webapp_url': 'https://docmaster.example/en/app'})
     account = resolve_account({'id': 980311, 'first_name': 'Handoff test'}, is_test=True)
     BotConversation.objects.create(telegram_user_id=account.telegram_user_id, locale='en',
                                    language_selected_at=timezone.now())

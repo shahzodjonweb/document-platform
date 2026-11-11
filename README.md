@@ -1,4 +1,4 @@
-# PDF Master · document-platform
+# DocMaster · document-platform
 
 Django API, Telegram bot, private document processing and staff operations. The sibling `document-web` repository contains the Nuxt customer website, web application and Telegram Mini App. This repository owns authorization, prices and usage policy, all processing, public contracts and the separate staff application.
 

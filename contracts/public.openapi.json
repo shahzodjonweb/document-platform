@@ -3286,7 +3286,7 @@
     "securitySchemes": {
       "customerSession": {
         "in": "cookie",
-        "name": "pdfmaster_session",
+        "name": "docmaster_session",
         "type": "apiKey"
       }
     }
