@@ -17,13 +17,9 @@ from .domain import allowed
 from .models import SavedDefinition,WorkflowRun
 
 SALT='docmaster.workflow.confirmation.v1'
-# Rename migration: tokens signed before the rename live ten minutes; drop this once that has passed.
-LEGACY_SALT='pdfmaster.workflow.confirmation.v1'
 
 def _confirmation(token):
-    try:return signing.loads(token,salt=SALT,max_age=600)
-    except signing.SignatureExpired:raise
-    except signing.BadSignature:return signing.loads(token,salt=LEGACY_SALT,max_age=600)
+    return signing.loads(token,salt=SALT,max_age=600)
 KINDS={'convert.word_to_pdf':'docx','convert.pptx_to_pdf':'pptx','convert.pdf_to_docx':'pdf','convert.pdf_to_xlsx':'pdf'}
 
 def _access(account):

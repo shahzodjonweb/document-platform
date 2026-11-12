@@ -6,7 +6,7 @@ on:
         description: DocMaster operation
         required: true
         type: choice
-        options: [inventory, public-key, ssh-check, proxy-prepare, proxy-publish, setup-admin, verify-services, stabilize-cleanup, rename-check, rename-migrate, rename-rollback]
+        options: [inventory, public-key, ssh-check, proxy-prepare, proxy-publish, setup-admin, verify-services, stabilize-cleanup, rename-cleanup]
 permissions:
   contents: read
 jobs:

@@ -1,4 +1,6 @@
-"""Rename the server's PDF Master internals to DocMaster: check, migrate, rollback.
+"""Rename the server's PDF Master internals to DocMaster: check, migrate, rollback, cleanup.
+
+Done on 2026-11-11; only cleanup is offered as a server operation now.
 
 Runs on the server through scripts/operations/remote.py (python3 - <mode>), as
 the deploy account, for both components at once:
@@ -19,7 +21,10 @@ check     reads only and reports whether migrate can run.
 migrate   stops at the first failed step; run rollback after a failure.
 rollback  undoes whatever migrate got to: stops the new projects, moves the
           folders and files back, and starts the old containers on their
-          untouched volumes.
+          untouched volumes. Only safe before the first deploy after migrate.
+cleanup   once the migration is accepted: removes the stopped pdfmaster-*
+          projects (containers, volumes, networks), the old image tags, and the
+          files migrate kept for rollback. Rollback is impossible afterwards.
 """
 import contextlib
 import fcntl
@@ -468,14 +473,80 @@ def rollback():
     return 0
 
 
+OLD_PROJECTS = ('pdfmaster-platform', 'pdfmaster-web')
+OLD_IMAGES = ('pdfmaster-platform', 'pdfmaster-web')
+
+
+def cleanup_targets(root, listed_images):
+    """What cleanup removes besides containers and volumes: the files migrate kept
+    beside the renamed ones, its progress file and its dump, and the old image tags
+    (`docker images` lines "repository:tag"). Pure, so it is unit-tested."""
+    files = sorted(root.rglob('*' + BACKUP)) + [p for p in (root / PROGRESS,) if p.exists()]
+    files += sorted((root / 'platform' / 'backups').glob('pre-rename-*.dump'))
+    tags = [line for line in listed_images
+            if line.split(':', 1)[0] in OLD_IMAGES and ':' in line and not line.endswith(':<none>')]
+    return files, tags
+
+
+def cleanup():
+    """After an accepted migration: remove the stopped pdfmaster-* projects (containers,
+    volumes, networks), the old image tags and migrate's kept files. Ends rollback."""
+    if OLD_ROOT.exists() or not NEW_ROOT.is_dir():
+        raise Stop('cleanup runs only after a finished migration (~/docmaster present, ~/pdf-master gone)')
+    progress = NEW_ROOT / PROGRESS
+    if progress.exists() and json.loads(progress.read_text()).get('step') != 'done':
+        raise Stop('the migration did not finish; inspect before cleaning up')
+    with locks(NEW_ROOT):
+        # The renamed stacks must be the ones serving, on their own volumes.
+        for component in COMPONENTS:
+            state = json.loads((NEW_ROOT / component / 'state.json').read_text())
+            if not str(state['active']['image']).startswith('docmaster-' + component + ':'):
+                raise Stop(f'{component} active release is not a docmaster image')
+            gateway = service_container('docmaster-' + component, 'gateway')
+            run(['docker', 'exec', gateway, 'wget', '-q', '-O', '/dev/null',
+                 'http://127.0.0.1:8080' + ('/api/v1/health' if component == 'platform' else '/en/app')])
+        db = service_container('docmaster-platform', 'db')
+        mounted = run(['docker', 'inspect', '--format', '{{range .Mounts}}{{.Name}} {{end}}', db]).split()
+        if 'docmaster-platform_database' not in mounted:
+            raise Stop('the running database is not on docmaster-platform_database')
+        say('CLEANUP renamed stacks serving; rows:', json.dumps(table_counts(db, 'docmaster', 'docmaster')))
+        free_before = shutil.disk_usage('/').free
+        for project in OLD_PROJECTS:
+            label = 'label=com.docker.compose.project=' + project
+            if containers(project, running_only=True):
+                raise Stop(f'{project} has running containers; it is not the stopped rollback copy')
+            ids = containers(project)
+            if ids:
+                run(['docker', 'rm', *ids])
+            volumes = run(['docker', 'volume', 'ls', '-q', '--filter', label]).split()
+            for volume in volumes:
+                if run(['docker', 'ps', '-aq', '--filter', 'volume=' + volume]):
+                    raise Stop(f'{volume} is still used by a container')
+                run(['docker', 'volume', 'rm', volume])
+            networks = run(['docker', 'network', 'ls', '-q', '--filter', label]).split()
+            for network in networks:
+                run(['docker', 'network', 'rm', network], check=False)
+            say('CLEANUP', project + ':', len(ids), 'containers,', len(volumes), 'volumes,', len(networks), 'networks removed')
+        listed = run(['docker', 'images', '--format', '{{.Repository}}:{{.Tag}}']).splitlines()
+        files, tags = cleanup_targets(NEW_ROOT, listed)
+        for tag in tags:
+            run(['docker', 'image', 'rm', tag])
+        for path in files:
+            path.unlink()
+        say('CLEANUP', len(tags), 'old image tags and', len(files), 'kept files removed')
+        freed = (shutil.disk_usage('/').free - free_before) / 1024 ** 3
+        say(f'RENAME_CLEANED: old pdfmaster projects, images and files removed; {freed:.1f} GiB freed')
+    return 0
+
+
 def main():
     mode = sys.argv[1] if len(sys.argv) > 1 else ''
-    if mode not in ('check', 'migrate', 'rollback'):
-        print('usage: rename_internals.py check|migrate|rollback', file=sys.stderr)
+    if mode not in ('check', 'migrate', 'rollback', 'cleanup'):
+        print('usage: rename_internals.py check|migrate|rollback|cleanup', file=sys.stderr)
         return 2
     os.umask(0o077)
     try:
-        return {'check': check, 'migrate': migrate, 'rollback': rollback}[mode]()
+        return {'check': check, 'migrate': migrate, 'rollback': rollback, 'cleanup': cleanup}[mode]()
     except (Stop, OSError, ValueError, KeyError, subprocess.TimeoutExpired) as error:
         say(f'RENAME_{mode.upper()}_FAILED: {error}')
         return 1
