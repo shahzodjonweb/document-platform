@@ -280,9 +280,11 @@ async def drain(bot):
 
 
 async def delivery_loop(bot):
+    from apps.core import wakeups
     while True:
         await drain(bot)
-        await asyncio.sleep(2)
+        # Woken the moment a job settles with something to send; a look every 2 s regardless.
+        await wakeups.wait_async([wakeups.DELIVERIES], 2)
 
 
 async def standalone():
