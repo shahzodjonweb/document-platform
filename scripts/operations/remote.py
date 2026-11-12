@@ -8,7 +8,7 @@ import tempfile
 
 operation = os.environ['OPERATION']
 if operation not in {'inventory', 'public-key', 'ssh-check', 'proxy-prepare', 'proxy-publish', 'setup-admin', 'verify-services', 'stabilize-cleanup',
-                     'rename-check', 'rename-migrate', 'rename-rollback'}:
+                     'rename-cleanup'}:
     raise SystemExit('Unsupported server operation')
 host = os.environ['DEPLOY_HOST'].strip()
 user = os.environ['DEPLOY_USER'].strip()
@@ -51,8 +51,10 @@ with tempfile.TemporaryDirectory() as folder:
     if operation in {'proxy-prepare', 'proxy-publish'}:
         script = 'proxy_setup.py'
         args[-1] = 'python3 - ' + operation.removeprefix('proxy-')
-    if operation in {'rename-check', 'rename-migrate', 'rename-rollback'}:
-        # The server internals' rename (rename_internals.py): check reads only.
+    if operation == 'rename-cleanup':
+        # The server internals' rename (rename_internals.py) ran on 2026-11-11; migrate and
+        # rollback are no longer offered (a rollback would lose everything since), only the
+        # removal of what it kept for that rollback.
         script = 'rename_internals.py'
         args[-1] = 'python3 - ' + operation.removeprefix('rename-')
     if operation == 'setup-admin':

@@ -64,3 +64,25 @@ class StateAndOverrideTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class CleanupTargetTests(unittest.TestCase):
+    def test_selects_only_what_migrate_kept_and_the_old_image_tags(self):
+        import tempfile
+        from rename_internals import cleanup_targets
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / 'platform' / 'backups').mkdir(parents=True)
+            (root / 'web' / 'releases' / 'r1' / 'stack').mkdir(parents=True)
+            kept = [root / 'platform' / '.env.pre-rename', root / 'web' / 'state.json.pre-rename',
+                    root / 'web' / 'releases' / 'r1' / 'stack' / 'compose.yaml.pre-rename',
+                    root / 'rename-progress.json', root / 'platform' / 'backups' / 'pre-rename-1.dump']
+            live = [root / 'platform' / '.env', root / 'web' / 'state.json',
+                    root / 'platform' / 'backups' / 'before-2.dump']
+            for path in kept + live:
+                path.write_text('x')
+            files, tags = cleanup_targets(root, [
+                'pdfmaster-platform:abc-1-1', 'pdfmaster-web:def-2-1', 'docmaster-platform:abc-1-1',
+                'pdfmaster-platform:<none>', 'orderdesk-api:latest', 'postgres:17-alpine', 'pdfmaster-platformx:1'])
+            self.assertEqual(sorted(files), sorted(kept))
+            self.assertEqual(tags, ['pdfmaster-platform:abc-1-1', 'pdfmaster-web:def-2-1'])
