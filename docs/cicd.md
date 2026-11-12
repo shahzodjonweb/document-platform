@@ -61,13 +61,20 @@ python3 reclaim.py --component platform --apply   # remove
 
 Copy it next to the other deploy scripts, or paste it into a heredoc if there is no room to scp. After one run the protocol keeps the component bounded on its own. Preserve the platform environment's encryption keys together with database and private-file backups.
 
-## HTTPS alongside existing projects
+## HTTPS
 
-The host already serves other projects. Inspect the current TLS proxy and container inventory before integration. Keep their files, routes, container IDs and start times unchanged. Add only the two new DocMaster host routes; never replace the existing proxy configuration, stop its containers, or run a global Compose down/prune command.
+DocMaster is the only project on the server and runs its own Caddy: compose project
+`docmaster-proxy` (`infra/production/proxy/`), the one container on ports 80 and 443, with
+its certificates in the `docmaster-proxy_caddy-data` volume. It reaches the two gateways on
+the `docmaster-proxy` network, which exists outside any compose project; each component's
+server-owned `compose.override.yaml` joins only its gateway to it, under the alias
+`docmaster-platform-gateway` or `docmaster-web-gateway`. The database and application
+networks stay separate. Deployers never touch the proxy.
 
-For a host Caddy instance, each repository supplies its own `infra/production/Caddyfile` site block pointing at its loopback gateway. Add those blocks through the server's existing include mechanism and validate/reload gracefully. Caddy can provision TLS for the two DNS hostnames once they resolve to this server. If Caddy is containerized, use the repository's `proxy-network.example.yaml` as that component's server-owned `compose.override.yaml`; attach only its gateway to the existing ingress network and route to `docmaster-platform-gateway:8080` or `docmaster-web-gateway:8080`. The database and application networks stay separate.
-
-A server-owned override is read only by its own component's deployer. TLS proxy changes happen during site setup, not during routine image deployments. The deployers never reconfigure the shared proxy.
+Proxy changes go through the server operations (`scripts/operations/own_proxy.py`):
+`proxy-check` reads only, `proxy-publish` validates and applies an edited Caddyfile or
+compose file. `proxy-takeover` and `orderdesk-remove` moved the server off the retired
+OrderDesk project's shared Caddy on 2026-11-13.
 
 ## Administration and Telegram
 

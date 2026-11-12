@@ -94,8 +94,8 @@ for component, expected in [('platform', {'api', 'db', 'redis', 'worker', 'batch
                                      'oom_killed': state['OOMKilled']}))
         if state['Status'] != 'running' or health not in {'healthy', 'no-healthcheck'} or state['OOMKilled']:
             raise SystemExit('Unhealthy DocMaster service: ' + name)
-        if name != 'gateway' and 'orderdesk_default' in container['NetworkSettings']['Networks']:
-            raise SystemExit('Only a DocMaster gateway may join the shared proxy network')
+        if name != 'gateway' and 'docmaster-proxy' in container['NetworkSettings']['Networks']:
+            raise SystemExit('Only a DocMaster gateway may join the proxy network')
     active = json.loads((Path.home() / 'docmaster' / component / 'state.json').read_text())['active']
     print('ACTIVE_RELEASE', component, active['commit'])
     if component == 'platform':

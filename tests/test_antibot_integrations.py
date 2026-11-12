@@ -42,7 +42,7 @@ def test_defaults_do_not_claim_web_protection_without_keys(settings):
     config = antibot_config()
     assert not config['web_enabled'] and not config['ready'] and not config['configured']
     assert config['site_key'] == config['secret_key'] == ''
-    assert config['allowed_hostnames'] == ['pdfmaster.orderdesk.live', 'docmaster.live', 'www.docmaster.live']
+    assert config['allowed_hostnames'] == ['docmaster.live', 'www.docmaster.live']
     assert not config['bot_enabled']
     settings.DEBUG = False
     assert antibot_config()['bot_enabled']
