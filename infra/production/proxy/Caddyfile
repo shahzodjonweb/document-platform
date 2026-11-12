@@ -1,0 +1,14 @@
+# DocMaster's own HTTPS proxy (compose project docmaster-proxy). Published to
+# ~/docmaster/proxy/Caddyfile by the proxy-publish server operation
+# (scripts/operations/own_proxy.py, which carries this text and is tested to match it).
+docmaster.live {
+    reverse_proxy docmaster-web-gateway:8080
+}
+
+www.docmaster.live {
+    redir https://docmaster.live{uri} permanent
+}
+
+api.docmaster.live {
+    reverse_proxy docmaster-platform-gateway:8080
+}

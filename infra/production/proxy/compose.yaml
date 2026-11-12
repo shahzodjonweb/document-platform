@@ -1,0 +1,30 @@
+# DocMaster's own HTTPS proxy: the one container on ports 80 and 443. It reaches the
+# component gateways on the docmaster-proxy network, which the proxy-takeover operation
+# creates outside any compose project, so neither the proxy nor a deploy removes it.
+# Published to ~/docmaster/proxy/compose.yaml by scripts/operations/own_proxy.py.
+name: docmaster-proxy
+services:
+  caddy:
+    image: caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks: [proxy]
+    mem_limit: 256m
+    cpus: 0.5
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: "3"}
+networks:
+  proxy:
+    external: true
+    name: docmaster-proxy
+volumes:
+  caddy-data:
+  caddy-config:

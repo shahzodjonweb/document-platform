@@ -7,8 +7,8 @@ import subprocess
 import tempfile
 
 operation = os.environ['OPERATION']
-if operation not in {'inventory', 'public-key', 'ssh-check', 'proxy-prepare', 'proxy-publish', 'setup-admin', 'verify-services', 'stabilize-cleanup',
-                     'rename-cleanup'}:
+if operation not in {'inventory', 'public-key', 'ssh-check', 'setup-admin', 'verify-services', 'stabilize-cleanup',
+                     'proxy-check', 'proxy-takeover', 'proxy-publish', 'orderdesk-remove'}:
     raise SystemExit('Unsupported server operation')
 host = os.environ['DEPLOY_HOST'].strip()
 user = os.environ['DEPLOY_USER'].strip()
@@ -48,15 +48,10 @@ with tempfile.TemporaryDirectory() as folder:
             connected = connected or accepted
         raise SystemExit(0 if connected else 1)
     script = operation + '.py'
-    if operation in {'proxy-prepare', 'proxy-publish'}:
-        script = 'proxy_setup.py'
-        args[-1] = 'python3 - ' + operation.removeprefix('proxy-')
-    if operation == 'rename-cleanup':
-        # The server internals' rename (rename_internals.py) ran on 2026-11-11; migrate and
-        # rollback are no longer offered (a rollback would lose everything since), only the
-        # removal of what it kept for that rollback.
-        script = 'rename_internals.py'
-        args[-1] = 'python3 - ' + operation.removeprefix('rename-')
+    if operation in {'proxy-check', 'proxy-takeover', 'proxy-publish', 'orderdesk-remove'}:
+        # DocMaster's own HTTPS proxy and the removal of the retired OrderDesk (own_proxy.py).
+        script = 'own_proxy.py'
+        args[-1] = 'python3 - ' + {'orderdesk-remove': 'remove-orderdesk'}.get(operation, operation.removeprefix('proxy-'))
     if operation == 'setup-admin':
         payload = json.loads(os.environ.get('ADMIN_BOOTSTRAP', '{}'))
         # A stored secret may still carry the retired authenticator key; it is ignored.
