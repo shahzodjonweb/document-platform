@@ -9,6 +9,7 @@ from .views import context,finish_render
 from datetime import datetime
 from .integrations import telegram_config,ai_config,google_config,email_config,antibot_config,pixabay_config,manual_payment_config,channel_gate_config,test_channels,CARD_LABELS,save_config,test_telegram,test_email,test_pixabay,control_runner,runner_status,object_storage_config,test_object_storage
 from .models import IntegrationConfig
+from apps.studio.tuning import EFFORTS,TIERS
 
 LABELS={
 'en':{'integrations':'Integrations','intro':'Connect your Telegram bot and choose the document generation provider. Secrets are encrypted and never shown after saving.','telegram':'Telegram bot','token':'Bot token','username':'Bot username','webapp':'Web application URL','secret_hint':'Leave blank to keep the saved secret.','reason':'Reason for this change','save':'Save configuration','test':'Test connection','start':'Start local bot','stop':'Stop local bot','ai':'Document generation','mode':'Provider mode','local':'Local authoring · no AI calls','live':'OpenAI · real API calls','disabled':'Disabled','key':'API key','model':'Model ID','configured':'Configured','missing':'Not configured','running':'Running','stopped':'Stopped','local_note':'Local polling needs a real Telegram token. Telegram Mini Apps require an HTTPS URL; ordinary browser tools work on localhost.','saved':'Configuration saved.','connected':'Connected to Telegram.','action_done':'Bot control updated.','failure':'Could not complete this action. Check configuration and try again.','need_reason':'Enter a reason of at least 5 characters.','token_status':'Token status','provider_status':'Provider status','simulator':'Open local bot simulator'},
@@ -16,6 +17,18 @@ LABELS={
 'ru':{'integrations':'Интеграции','intro':'Подключите Telegram-бота и выберите провайдера генерации документов. Секреты шифруются и не показываются после сохранения.','telegram':'Telegram-бот','token':'Токен бота','username':'Имя бота','webapp':'Адрес веб-приложения','secret_hint':'Оставьте пустым, чтобы сохранить текущий ключ.','reason':'Причина изменения','save':'Сохранить настройки','test':'Проверить соединение','start':'Запустить локального бота','stop':'Остановить локального бота','ai':'Генерация документов','mode':'Режим провайдера','local':'Локальное редактирование · без ИИ','live':'OpenAI · реальные вызовы API','disabled':'Отключено','key':'Ключ API','model':'ID модели','configured':'Настроено','missing':'Не настроено','running':'Работает','stopped':'Остановлен','local_note':'Для локального бота нужен настоящий токен Telegram. Mini App требует HTTPS; инструменты браузера работают на localhost.','saved':'Настройки сохранены.','connected':'Соединение с Telegram установлено.','action_done':'Управление ботом обновлено.','failure':'Не удалось выполнить действие. Проверьте настройки и повторите.','need_reason':'Укажите причину длиной не менее 5 символов.','token_status':'Состояние токена','provider_status':'Состояние провайдера','simulator':'Открыть локальный симулятор бота'}}
 
 for language,label in {'en':'Image model ID (optional)','uz':'Rasm modeli identifikatori (ixtiyoriy)','ru':'ID модели изображений (необязательно)'}.items():LABELS[language]['image_model']=label
+# Call tuning (apps/studio/tuning.py).
+for language,labels in {
+    'en':{'writing_effort':'Reasoning effort: writing','photo_effort':'Reasoning effort: photo choice','service_tier':'Processing tier',
+          'model_default':'Model default','account_default':'Account default','tier_priority':'Priority (faster, costs more)',
+          'tuning_note':'Each call takes about 1 s plus 9.5 ms per output token, reasoning included. A setting the model does not accept is left out automatically.'},
+    'uz':{'writing_effort':'Fikrlash darajasi: matn yozish','photo_effort':'Fikrlash darajasi: rasm tanlash','service_tier':'Ishlov berish darajasi',
+          'model_default':'Model standarti','account_default':'Hisob standarti','tier_priority':'Ustuvor (tezroq, qimmatroq)',
+          'tuning_note':'Har bir chaqiruv taxminan 1 soniya va har bir chiqish tokeni uchun 9,5 ms davom etadi, fikrlash ham shunga kiradi. Model qabul qilmaydigan sozlama avtomatik tashlab yuboriladi.'},
+    'ru':{'writing_effort':'Уровень рассуждений: текст','photo_effort':'Уровень рассуждений: выбор фото','service_tier':'Уровень обработки',
+          'model_default':'По умолчанию модели','account_default':'По умолчанию аккаунта','tier_priority':'Приоритетный (быстрее, дороже)',
+          'tuning_note':'Каждый вызов занимает около 1 с плюс 9,5 мс на выходной токен, включая рассуждения. Настройка, которую модель не принимает, отбрасывается автоматически.'},
+}.items():LABELS[language].update(labels)
 
 for language, values in {
     'en': ('Managed by server', 'Waiting for credentials', 'Save your Telegram token and username here. The server starts the bot automatically; use Test connection to verify the credentials.'),
@@ -326,7 +339,7 @@ def integrations(request):
     # Do not misreport it as stopped using the local development PID check.
     status=labels[runner_status()] if local_controls else labels['managed' if bot['token'] else 'waiting']
     # Never include credentials in the template context.
-    data.update(bot={'username':bot['username'],'webapp_url':bot['webapp_url'],'configured':bool(bot['token']),'status':status},ai={'mode':ai['mode'],'model':ai['model'],'image_model':ai['image_model'],'configured':bool(ai['api_key'])},local_controls=local_controls,notice=labels.get(request.GET.get('notice',''),''))
+    data.update(bot={'username':bot['username'],'webapp_url':bot['webapp_url'],'configured':bool(bot['token']),'status':status},ai={'mode':ai['mode'],'model':ai['model'],'image_model':ai['image_model'],'configured':bool(ai['api_key']),'writing_effort':ai['writing_effort'],'photo_effort':ai['photo_effort'],'service_tier':ai['service_tier']},efforts=EFFORTS,tiers=TIERS,local_controls=local_controls,notice=labels.get(request.GET.get('notice',''),''))
     data['google'] = {key: google[key] for key in ('enabled','client_id','redirect_uri','configured','ready')}
     data['email'] = {key: email[key] for key in ('enabled','host','port','username','use_tls','use_ssl','from_email','configured','ready')}
     data['antibot'] = {key: antibot[key] for key in ('web_enabled','bot_enabled','site_key','allowed_hostnames','configured','ready')}

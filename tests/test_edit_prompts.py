@@ -137,7 +137,7 @@ def test_a_change_is_told_how_a_page_or_slide_is_written(fmt):
     words = pages.target_words(fmt)
     if fmt == 'pptx':
         assert layouts.reference(False) in body['instructions']
-        for size in ('at most 8 words', '4 to 6 bullets', '12 to 20 words', '40 to 80 words',
+        for size in ('at most 8 words', '4 to 6 bullets', '12 to 20 words', '20 to 40 words',
                      f'more than {round(words * 1.3)} words'):
             assert size in guidance, size
     else:
