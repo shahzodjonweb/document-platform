@@ -505,3 +505,32 @@ def test_the_photo_allowance_is_an_editable_plan_limit():
     assert [limits_for_plan(plan)['max_deck_images'] for plan in ('free', 'plus', 'premium')] == [40, 40, 40]
     with pytest.raises(plans.PlanError):
         plans.save('free', {'max_deck_images': '61'})
+
+
+def test_a_decks_previews_are_fetched_side_by_side_not_four_at_a_time(model, pixabay, monkeypatch):
+    # Twelve previews for three slides once took three rounds of the network.
+    import threading
+    import time as clock
+    lock, state, queries = threading.Lock(), {'now': 0, 'peak': 0}, []
+
+    def slow(request, timeout, handler):
+        with lock:
+            state['now'] += 1
+            state['peak'] = max(state['peak'], state['now'])
+        clock.sleep(0.05)
+        try:
+            if request.full_url.startswith(photos.API):
+                query = parse_qs(urlsplit(request.full_url).query)['q'][0]
+                queries.append(query)
+                base = 100 * len(queries)
+                answer = [{**hit(base + n), 'tags': ', '.join(query.split())} for n in range(1, 9)]
+                return Response(json.dumps({'total': 99, 'totalHits': 99, 'hits': answer}).encode())
+            return Response(pixabay.image)
+        finally:
+            with lock:
+                state['now'] -= 1
+    monkeypatch.setattr(photos, '_open', slow)
+    model.picks = [{'slide': f's{n}', 'photo': 1} for n in (2, 3, 4)]
+    result = photos.fetch_for_deck(slides('harbour cranes', 'port cranes', 'harbour port'), cap=6, budget=60)
+    assert len(result.photos) == 3 and len(queries) == 3
+    assert photos.POOL_WORKERS >= 8 and state['peak'] > 4, 'twelve previews, more than four at a time'

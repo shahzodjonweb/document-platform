@@ -58,6 +58,11 @@ MAX_REDIRECTS = 2
 LONG_EDGE = 1600
 MAX_JPEG = 450_000
 CACHE_HOURS = 24
+# Searches, previews and downloads run side by side on this many threads. At 4,
+# a ten-slide deck's twelve previews took three rounds of the network, and a
+# thirty-slide deck's photo step about 8 s at 0.5 s a request (2026-11-13).
+# Nothing more is fetched than before: only sooner.
+POOL_WORKERS = 10
 # Pixabay allows 100 requests a minute per key; stay under it across every
 # worker, because the limit is on the key, not on the process.
 RATE = (90, 60)
@@ -319,7 +324,7 @@ def fetch_for_deck(sections, *, cap, budget, job=None, style='photo'):
     now = timezone.now()
     queries = {section['id']: section['image_query'] for section in chosen}
     hits = {}
-    pool = ThreadPoolExecutor(max_workers=4)
+    pool = ThreadPoolExecutor(max_workers=POOL_WORKERS)
 
     def searched(wanted_queries):
         """Answers for these queries, from the cache or Pixabay, into `hits`."""
