@@ -659,3 +659,7 @@ tests/test_text_edit.py::test_an_empty_line_is_covered_with_nothing_drawn_on_it
 # Admin call tuning: reasoning effort and tier reach the calls; a refused setting never fails a job
 tests/test_call_tuning.py::test_a_refused_setting_is_dropped_and_the_call_sent_again
 tests/test_call_tuning.py::test_a_job_whose_model_refuses_the_effort_is_written_all_the_same
+
+# A longer short PDF is extended in parts side by side; a failed part costs only its sections
+tests/test_document_fill.py::test_a_longer_document_is_extended_in_parts_side_by_side
+tests/test_document_fill.py::test_a_part_that_fails_leaves_only_its_own_sections_as_they_were

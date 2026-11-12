@@ -102,3 +102,59 @@ def test_how_much_is_missing():
     assert filling.shortfall(content, 3, 2) > 0
     # A page short is at least most of a page missing, whatever the characters say.
     assert filling.shortfall({'sections': [{'id': 's1', 'body': 'x' * 8400}]}, 3, 2) == 2400
+
+
+# --- A longer document is extended in parts side by side ------------------------------------
+
+def test_a_longer_document_is_extended_in_parts_side_by_side(settings, monkeypatch):
+    # A call takes about as long as the words it writes: a third of them each, at once.
+    import threading
+    import time as clock
+    lock, state, sent = threading.Lock(), {'now': 0, 'peak': 0}, []
+
+    def extend(body):
+        with lock:
+            state['now'] += 1
+            state['peak'] = max(state['peak'], state['now'])
+        clock.sleep(0.2)
+        with lock:
+            state['now'] -= 1
+            sent.append(json.loads(body['input']))
+        return additions(1600)(body)
+
+    job, calls = run(settings, monkeypatch, written(1500), extend, prompt='A 9 page guide to tides.')
+    assert calls == ['write', 'expand', 'expand', 'expand']
+    assert state['peak'] == 3, 'the three parts ran at once'
+    covered = sorted(s['id'] for part in sent for s in part['sections'])
+    assert covered == sorted(f's{n}' for n in range(1, 10)), 'every section in exactly one part'
+    assert all(len(part['sections']) == 3 and len(part['other_sections']) == 6 for part in sent)
+    attempts = ProviderAttempt.objects.filter(stage='expand').order_by('span_start')
+    assert [(a.span_start, a.span_end, a.status) for a in attempts] == [(0, 3, 'succeeded'), (3, 6, 'succeeded'), (6, 9, 'succeeded')]
+    assert job.artifacts.get().file.page_count == 9
+
+
+def test_a_part_that_fails_leaves_only_its_own_sections_as_they_were(settings, monkeypatch):
+    seen = []
+
+    def extend(body):
+        part = json.loads(body['input'])
+        seen.append([s['id'] for s in part['sections']])
+        if part['sections'][0]['id'] == 's4':
+            raise TimeoutError('offline')
+        return additions(1600)(body)
+
+    job, calls = run(settings, monkeypatch, written(1500), extend, prompt='A 9 page guide to tides.')
+    assert calls.count('expand') == 3
+    statuses = dict(ProviderAttempt.objects.filter(stage='expand').values_list('span_start', 'status'))
+    assert statuses == {0: 'succeeded', 3: 'failed', 6: 'succeeded'}
+    from apps.studio.domain import unpack
+    from apps.studio.models import GenerationDraft
+    sections = unpack(GenerationDraft.objects.get().encrypted_data)['content']['sections']
+    lengths = [len(s['body']) for s in sections]
+    assert all(lengths[n] > 1500 for n in (0, 1, 2, 6, 7, 8)) and all(lengths[n] <= 1500 for n in (3, 4, 5))
+
+
+def test_the_parts_of_a_document():
+    assert filling.parts(list(range(5))) == [(0, 5)], 'below six sections, one call as before'
+    assert filling.parts(list(range(7))) == [(0, 3), (3, 5), (5, 7)]
+    assert filling.parts(list(range(35))) == [(0, 9), (9, 18), (18, 27), (27, 35)], 'never more than four calls'
