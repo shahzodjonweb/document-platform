@@ -4,6 +4,10 @@ Every plan shares one queue. Accounts take turns, the one served longest ago
 first, and work that has waited five minutes goes ahead of the rest, oldest
 first. A job's plan never moves it ahead of older work. Publication is at-least-once;
 the ordinary job row lock and settlement ledger remain the exactly-once boundary.
+
+A runner may serve a lane: `features` keeps the selection to those tools. The
+AI lane takes only AI writing jobs, beside the worker that takes everything,
+so two decks run side by side instead of one waiting the other's minutes out.
 """
 from collections import defaultdict,deque
 from datetime import timedelta,datetime,timezone as dt_timezone
@@ -20,12 +24,13 @@ MAX_WINDOW=1000
 MAX_DISPATCH=50
 
 
-def select_outbox(*,limit=20,window=DEFAULT_WINDOW,for_publish=False,now=None):
+def select_outbox(*,limit=20,window=DEFAULT_WINDOW,for_publish=False,now=None,features=None):
     now=now or timezone.now()
     if type(limit) is not int or type(window) is not int or limit<1 or window<1:raise ValueError('Positive dispatch limits required')
     limit=min(limit,MAX_DISPATCH);window=min(max(window,limit),MAX_WINDOW)
     cutoff=now-timedelta(seconds=AGING_SECONDS)
     query=OutboxEvent.objects.filter(topic='job.execute',delivered_at__isnull=True,job__status='queued')
+    if features is not None:query=query.filter(job__feature_id__in=list(features))
     if for_publish:query=query.filter(Q(publish_lease_until__isnull=True)|Q(publish_lease_until__lte=now))
     rank=Case(When(created_at__lte=cutoff,then=Value(0)),default=Value(1),output_field=IntegerField())
     candidates=list(query.annotate(queue_rank=rank).select_related('job').order_by('queue_rank','created_at','id')[:window])

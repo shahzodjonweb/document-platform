@@ -15,9 +15,9 @@ from tests.test_platform import account,upload
 pytestmark=pytest.mark.django_db
 
 
-def queued(owner,plan,created,*,status='queued',topic='job.execute',delivered=False):
-    q=Quote.objects.create(account=owner,feature_id='pdf.rotate',parameters={},input_ids=[],policy={'plan':plan},expires_at=created+timedelta(hours=1))
-    j=Job.objects.create(account=owner,quote=q,feature_id='pdf.rotate',parameters={},input_ids=[],policy={'plan':plan},idempotency_key=uuid.uuid4().hex,request_hash=uuid.uuid4().hex,status=status,created_at=created)
+def queued(owner,plan,created,*,status='queued',topic='job.execute',delivered=False,feature='pdf.rotate'):
+    q=Quote.objects.create(account=owner,feature_id=feature,parameters={},input_ids=[],policy={'plan':plan},expires_at=created+timedelta(hours=1))
+    j=Job.objects.create(account=owner,quote=q,feature_id=feature,parameters={},input_ids=[],policy={'plan':plan},idempotency_key=uuid.uuid4().hex,request_hash=uuid.uuid4().hex,status=status,created_at=created)
     return OutboxEvent.objects.create(job=j,topic=topic,created_at=created,delivered_at=created if delivered else None)
 
 
@@ -123,3 +123,45 @@ def test_publisher_backpressure_does_not_flood_broker_on_repeated_passes():
     Job.objects.filter(pk=events[0].job_id).update(status='running',started_at=now)
     assert publish_pending(publisher,now=now+timedelta(seconds=2))['published']==1
     assert publisher.call_count==21
+
+
+def test_the_ai_lane_selects_ai_writing_jobs_only_in_the_same_fair_order():
+    # The worker still sees every job; the AI lane (ai-worker) only decks, documents and CVs.
+    from apps.core.management.commands.runworker import lane_features
+    now=timezone.now();a=new_owner(560);b=new_owner(561)
+    rotate=queued(a,'free',now-timedelta(seconds=50))
+    deck=queued(a,'free',now-timedelta(seconds=40),feature='ai.pptx')
+    document=queued(b,'free',now-timedelta(seconds=30),feature='ai.pdf_topic')
+    cv=queued(b,'free',now-timedelta(seconds=20),feature='ai.cv')
+    export=queued(b,'free',now-timedelta(seconds=10),feature='export.generated_pptx')
+    assert lane_features('all') is None
+    assert [r.id for r in select_outbox(now=now)]==[rotate.id,document.id,deck.id,cv.id,export.id]
+    assert [r.id for r in select_outbox(now=now,features=lane_features('ai'))]==[deck.id,document.id,cv.id]
+
+
+def test_the_ai_lane_runner_leaves_other_jobs_to_the_worker(monkeypatch):
+    from types import SimpleNamespace
+    from apps.core.management.commands import runworker
+    now=timezone.now();owner=new_owner(570)
+    rotate=queued(owner,'free',now-timedelta(seconds=20))
+    deck=queued(owner,'free',now-timedelta(seconds=10),feature='ai.pptx')
+    ran=[]
+    monkeypatch.setattr(runworker,'execute_job',lambda job_id:(ran.append(job_id),SimpleNamespace(status='succeeded'))[1])
+    call_command('runworker',once=True,lane='ai',verbosity=0)
+    assert ran==[deck.job_id]
+    ran.clear()
+    call_command('runworker',once=True,verbosity=0)
+    assert ran==[rotate.job_id]
+
+
+def test_the_ai_lane_has_its_own_container_like_the_worker_and_finishes_its_deck_on_a_deploy():
+    import yaml
+    from pathlib import Path
+    root=Path(__file__).resolve().parent.parent
+    production=yaml.safe_load((root/'infra/production/compose.yaml').read_text())['services']
+    lane,worker=production['ai-worker'],production['worker']
+    assert lane['command']==['python','manage.py','runworker','--lane','ai']
+    assert worker['command']==['python','manage.py','runworker']
+    assert lane['image']==worker['image'] and lane['read_only'] is True and lane['cap_drop']==['ALL']
+    assert lane['stop_grace_period']==worker['stop_grace_period']=='600s'
+    assert "'ai-worker'" in (root/'scripts/deploy/container_smoke.py').read_text().split("services=['api'",1)[1].split(']')[0]

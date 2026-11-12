@@ -338,7 +338,7 @@ def main():
             if args.component=='platform':
                 run(compose+['up','-d','--wait','--wait-timeout','120','db','redis'],env=env)
                 run(compose+['run','--rm','--no-deps','init'],env=env)
-                services=['api','worker','batches','reader','editor','cleanup','bot','gateway']
+                services=['api','worker','ai-worker','batches','reader','editor','cleanup','bot','gateway']
             else:
                 services=['web','gateway']
             run(compose+['up','-d','--wait','--wait-timeout','180',*services],env=env)

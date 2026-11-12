@@ -36,17 +36,18 @@ class Docker:
         self.fail_health=False; self.project_exists=False
         # The services each release's stack defines, by a part of its release
         # id; any other release has them all. A running reader's container.
-        self.stacks={}; self.reader=''; self.editor=''
+        self.stacks={}; self.reader=''; self.editor=''; self.ai_worker=''
     def services(self,args):
         config=args[args.index('-f')+1]
         named=[services for part,services in self.stacks.items() if part in config]
-        return named[0] if named else ['db','redis','init','api','worker','batches','reader','editor','cleanup','bot','gateway']
+        return named[0] if named else ['db','redis','init','api','worker','ai-worker','batches','reader','editor','cleanup','bot','gateway']
     def __call__(self,args,**kwargs):
         self.calls.append(args)
         if args[:3]==['docker','compose','version']:return '2.39.0'
         if args[:2]==['docker','info']:return 'x86_64'
         if args[:2]==['docker','ps'] and 'label=com.docker.compose.service=reader' in args:return self.reader
         if args[:2]==['docker','ps'] and 'label=com.docker.compose.service=editor' in args:return self.editor
+        if args[:2]==['docker','ps'] and 'label=com.docker.compose.service=ai-worker' in args:return self.ai_worker
         if args[:2]==['docker','ps']:return 'unmanaged-container' if self.project_exists else ''
         if args[:2]==['docker','compose'] and args[-2:]==['config','--services']:return '\n'.join(self.services(args))
         if args[:3]==['docker','volume','ls']:return ''
@@ -238,6 +239,35 @@ class Releases(unittest.TestCase):
         self.assertFalse(any('up' in c and 'editor' in c for c in restored))
         self.assertIn(['docker','stop','--time','30','e'*12],restored)
         self.assertTrue(any('up' in c and 'reader' in c for c in restored))
+        self.assertEqual(self.state('platform')['active'],old)
+
+    def test_the_ai_lane_rolls_on_its_own_after_the_editor_and_before_the_worker(self):
+        # While it drains its deck the old worker still takes AI jobs, and the reverse.
+        self.deploy('platform',10)
+        ups=[c for c in self.docker.calls if 'up' in c]
+        editor=next(i for i,c in enumerate(ups) if 'editor' in c)
+        lane=next(i for i,c in enumerate(ups) if 'ai-worker' in c)
+        runners=next(i for i,c in enumerate(ups) if 'worker' in c)
+        self.assertLess(editor,lane);self.assertLess(lane,runners)
+        self.assertEqual(ups[lane][-1],'ai-worker');self.assertNotIn('--timeout',ups[lane])
+        self.assertFalse(any('ai-worker' in c for i,c in enumerate(ups) if i!=lane))
+        self.docker.calls.clear();self.docker.fail_health=True
+        with self.assertRaisesRegex(server.DeploymentError,'previous image restored'):
+            self.deploy('platform',11)
+        restored=[c for c in self.docker.calls if 'up' in c and 'ai-worker' in c][-1]
+        self.assertEqual(restored[restored.index('--timeout')+1],'30')
+
+    def test_a_restored_release_from_before_the_ai_lane_stops_the_newer_one(self):
+        # Its worker runs every job again; the newer lane would run AI jobs on newer code.
+        _,old=self.deploy('platform',10)
+        self.docker.stacks[old['release_id']]=['db','redis','init','api','worker','batches','reader','editor','cleanup','bot','gateway']
+        self.docker.calls.clear();self.docker.fail_health=True;self.docker.ai_worker='a'*12
+        with self.assertRaisesRegex(server.DeploymentError,'previous image restored'):
+            self.deploy('platform',11)
+        restored=self.docker.calls[next(i for i,c in enumerate(self.docker.calls) if 'up' in c and 'gateway' in c)+1:]
+        self.assertFalse(any('up' in c and 'ai-worker' in c for c in restored))
+        self.assertIn(['docker','stop','--time','30','a'*12],restored)
+        self.assertTrue(any('up' in c and 'worker' in c for c in restored))
         self.assertEqual(self.state('platform')['active'],old)
 
     def test_a_restored_release_from_before_the_reader_stops_the_newer_reader(self):

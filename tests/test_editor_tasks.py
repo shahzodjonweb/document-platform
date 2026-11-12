@@ -1187,7 +1187,7 @@ def test_the_lane_has_its_own_container_read_only_like_the_worker():
 
 def test_the_service_audit_checks_the_lane():
     audit = (ROOT / 'scripts/operations/verify-services.py').read_text()
-    assert "('platform', {'api', 'db', 'redis', 'worker', 'batches', 'reader', 'editor', 'cleanup', 'bot', 'gateway'})" in audit
+    assert "('platform', {'api', 'db', 'redis', 'worker', 'ai-worker', 'batches', 'reader', 'editor', 'cleanup', 'bot', 'gateway'})" in audit
 
 
 def test_the_heartbeat_the_healthcheck_reads_is_the_one_the_runner_touches():

@@ -97,6 +97,19 @@ services:
     # (apps/core/shutdown.py). Ten minutes covers a 10-slide deck and stays
     # inside the deploy's 900 s per-command limit with `--wait-timeout 180`.
     stop_grace_period: 600s
+  ai-worker:
+    <<: *platform
+    # The AI lane: decks, PDF documents and CVs only, beside the worker, which
+    # still takes every job. Two AI jobs then run at once, and a burst no longer
+    # queues behind one deck at a time; with this lane down the worker alone
+    # runs everything, as before. A job is mostly a wait on the provider: the
+    # drawing measured 0.34-0.51 GB at its peak for a 30-slide deck or a
+    # 35-page document, with the whole process.
+    command: [python, manage.py, runworker, --lane, ai]
+    mem_limit: 1280m
+    cpus: 1
+    # Finishes the deck in hand on SIGTERM, as the worker does.
+    stop_grace_period: 600s
   batches:
     <<: *platform
     command: [python, manage.py, runbatches]
