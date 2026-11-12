@@ -76,7 +76,10 @@ def ai_config():
     return {'mode':cfg.get('mode','local_fixture' if settings.DEBUG else 'disabled'),
             'model':cfg.get('model') or os.getenv('AI_MODEL',''),
             'image_model':cfg.get('image_model') or os.getenv('AI_IMAGE_MODEL',''),
-            'api_key':secret.get('api_key') or os.getenv('OPENAI_API_KEY','')}
+            'api_key':secret.get('api_key') or os.getenv('OPENAI_API_KEY',''),
+            # How calls are tuned (apps/studio/tuning.py): '' leaves a setting out.
+            'writing_effort':cfg.get('writing_effort',''),'photo_effort':cfg.get('photo_effort','low'),
+            'service_tier':cfg.get('service_tier','')}
 
 def _boolean(value):
     if value is True or value in ('true', '1', 'on'): return True
@@ -495,6 +498,12 @@ def save_config(key, values):
         image_model=values.get('image_model',cfg.get('image_model','')).strip()
         if image_model and not re.fullmatch(r'[A-Za-z0-9_.:-]{1,100}',image_model):raise DomainError('invalid_parameters')
         cfg.update(mode=mode,model=model[:100],image_model=image_model)
+        # Tuning (apps/studio/tuning.py), kept as it is when the form did not send it.
+        from apps.studio.tuning import EFFORTS,TIERS,PHOTO_EFFORT
+        for name,choices,default in (('writing_effort',EFFORTS,''),('photo_effort',EFFORTS,PHOTO_EFFORT),('service_tier',TIERS,'')):
+            value=str(values.get(name,cfg.get(name,default)) or '').strip()
+            if value and value not in choices:raise DomainError('invalid_parameters')
+            cfg[name]=value
     elif key == 'google':
         client_secret = values.get('client_secret', '')
         if client_secret.strip():

@@ -79,6 +79,25 @@
       <small>{{ i.secret_hint }}</small>
       <label>{{ i.model }}<input name="model" value="{{ ai.model }}" maxlength="100"></label>
       <label>{{ i.image_model }}<input name="image_model" value="{{ ai.image_model }}" maxlength="100"></label>
+      <label>{{ i.writing_effort }}
+        <select name="writing_effort">
+          <option value="" {% if not ai.writing_effort %}selected{% endif %}>{{ i.model_default }}</option>
+          {% for effort in efforts %}<option value="{{ effort }}" {% if ai.writing_effort == effort %}selected{% endif %}>{{ effort }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>{{ i.photo_effort }}
+        <select name="photo_effort">
+          <option value="" {% if not ai.photo_effort %}selected{% endif %}>{{ i.model_default }}</option>
+          {% for effort in efforts %}<option value="{{ effort }}" {% if ai.photo_effort == effort %}selected{% endif %}>{{ effort }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>{{ i.service_tier }}
+        <select name="service_tier">
+          <option value="" {% if not ai.service_tier %}selected{% endif %}>{{ i.account_default }}</option>
+          {% for tier in tiers %}<option value="{{ tier }}" {% if ai.service_tier == tier %}selected{% endif %}>{% if tier == 'priority' %}{{ i.tier_priority }}{% else %}{{ tier }}{% endif %}</option>{% endfor %}
+        </select>
+      </label>
+      <small>{{ i.tuning_note }}</small>
       <div class="integration-actions"><button class="button primary" name="action" value="save">{{ i.save }}</button></div>
     </form>
   </div>

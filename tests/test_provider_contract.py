@@ -163,7 +163,7 @@ def test_a_slide_is_asked_for_as_a_slide_not_as_a_short_page():
     assert '4 to 6 bullets, one per line' in guidance, guidance
     assert 'at most 20 words' in guidance and 'at most 8 words' in guidance, guidance
     assert 'Do not start a line with a bullet character, dash or number' in guidance, guidance
-    assert 'notes: 2 to 4 sentences' in guidance, guidance
+    assert 'notes: 1 to 2 sentences, 20 to 40 words' in guidance, guidance
     assert 'no markdown' in guidance, guidance
     # The title slide is named once, in the call that actually contains it.
     assert 'Section 1 is the title slide' in guidance, guidance

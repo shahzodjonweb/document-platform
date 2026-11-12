@@ -46,12 +46,16 @@ def request_body(config, title, slides):
             content.append({'type': 'input_text', 'text': f'Slide {slide["id"]}, photo {number}:'})
             content.append({'type': 'input_image', 'detail': 'low',
                             'image_url': 'data:image/jpeg;base64,' + base64.b64encode(jpeg).decode()})
-    return {'model': config['model'], 'store': False, 'instructions': INSTRUCTIONS,
+    body = {'model': config['model'], 'store': False, 'instructions': INSTRUCTIONS,
             'input': [{'role': 'user', 'content': content}],
             # Room for a reasoning model to think; the answer itself is tiny.
             'max_output_tokens': 3000 + 50 * len(slides),
             'text': {'format': {'type': 'json_schema', 'name': 'photo_picks', 'strict': True,
                                 'schema': SCHEMA}}}
+    # Low effort unless the admin says otherwise: most of this call's time was
+    # its reasoning, for an answer of a dozen tokens a slide (tuning.py).
+    from . import tuning
+    return tuning.apply(body, config, 'photos')
 
 
 def _post(request, timeout):
@@ -75,11 +79,14 @@ def choose(config, title, slides, *, timeout, job=None):
     attempt = provider_usage.start_attempt(key, SLIDES, config['model'], stage='photo_pick', job=job)
     started, received = time.monotonic(), False
     try:
-        request = urllib.request.Request(
-            API, data=json.dumps(body, separators=(',', ':')).encode(),
-            headers={'Authorization': 'Bearer ' + config['api_key'], 'Content-Type': 'application/json'})
-        with _post(request, timeout) as response:
-            raw = response.read(MAX_RESPONSE + 1)
+        def post(sent):
+            request = urllib.request.Request(
+                API, data=json.dumps(sent, separators=(',', ':')).encode(),
+                headers={'Authorization': 'Bearer ' + config['api_key'], 'Content-Type': 'application/json'})
+            with _post(request, timeout) as response:
+                return response.read(MAX_RESPONSE + 1)
+        from . import tuning
+        raw = tuning.send(post, body)
         # A refused reply raises its code (provider_usage.REJECTIONS), so its row says why, as in provider._call.
         if len(raw) > MAX_RESPONSE:
             raise _Rejected('oversized')

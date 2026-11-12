@@ -103,7 +103,7 @@ def test_whole_revision_preserves_questions_and_does_not_reassign_layouts():
     assert sent['max_questions'] == 1
     assert 'questions' in body['text']['format']['schema']['properties']
     assert 'Section 1 is the title slide' not in sent['writing_guidance']
-    assert 'notes: 2 to 4 sentences' not in sent['writing_guidance']
+    assert 'notes: 1 to 2 sentences' not in sent['writing_guidance']
     assert 'Do not add unrequested content' in body['instructions']
 
 

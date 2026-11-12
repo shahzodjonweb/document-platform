@@ -150,7 +150,7 @@ def writing_guidance(options, sections, output_format='pdf', first=0, total=None
             f'body is 4 to 6 bullets, one per line. Each bullet is a full sentence of 12 to 20 words, '
             f'at most 20 words; item texts are sentences too. Do not start a line with a bullet character, dash or number: the line '
             f'break is the bullet. No sub-bullets, no markdown, no bold. Put what the presenter '
-            f'would say in notes: 2 to 4 sentences, 40 to 80 words, never repeating a bullet word '
+            f'would say in notes: 1 to 2 sentences, 20 to 40 words, never repeating a bullet word '
             f'for word. Never write more than 6 bullets or more than {round(words * 1.3)} words in a '
             f'section — a longer one does not fit its {unit} and will be shortened. Only the final '
             f'section may be shorter.\n'
@@ -181,7 +181,7 @@ def revision_sizes(output_format='pdf'):
     words = target_words(output_format)
     if output_format == 'pptx':
         return (f'a headline of at most 8 words that states the point; when the layout is a list, 4 to 6 '
-                f'bullets, one per line, each a full sentence of 12 to 20 words; speaker notes of 40 to 80 '
+                f'bullets, one per line, each a full sentence of 12 to 20 words; speaker notes of 20 to 40 '
                 f'words that add what the presenter would say. Never more than 6 bullets or more than '
                 f'{round(words * 1.3)} words on a slide: further detail goes in the notes. ')
     return (f'{max(4, round(words / 95))} paragraphs of 5 to 6 sentences, about {words} words and at least '
@@ -587,11 +587,16 @@ def _call(config,data,feature_id,idempotency_key,*,token_limit,span=None,deadlin
                                             span=(first,last),job=job,output_locale=data['output_locale'])
         received=False
         try:
-            request=urllib.request.Request('https://api.openai.com/v1/responses',
-                data=json.dumps(request_body,ensure_ascii=False,separators=(',',':')).encode(),
-                headers={'Authorization':'Bearer '+config['api_key'],'Content-Type':'application/json','Idempotency-Key':key})
-            with urllib.request.build_opener(_NoRedirect).open(request,timeout=call_timeout(request_body['max_output_tokens'],deadline)) as response:
-                raw=response.read(2_000_001)
+            def post(sent):
+                # A body sent again without a refused tuning setting is a different request: its own key.
+                request=urllib.request.Request('https://api.openai.com/v1/responses',
+                    data=json.dumps(sent,ensure_ascii=False,separators=(',',':')).encode(),
+                    headers={'Authorization':'Bearer '+config['api_key'],'Content-Type':'application/json',
+                             'Idempotency-Key':key if sent is request_body else key+'-plain'})
+                with urllib.request.build_opener(_NoRedirect).open(request,timeout=call_timeout(sent['max_output_tokens'],deadline)) as response:
+                    return response.read(2_000_001)
+            from . import tuning
+            raw=tuning.send(post,request_body)
             # Too large to read, so its usage is never known: rejected all the same.
             if len(raw)>2_000_000:raise _Rejected('oversized')
             result=json.loads(raw)

@@ -7,7 +7,7 @@ import re
 # Part of every prompt cache key. A change to any fixed block a model is told —
 # these, provider.SYSTEM and the rules, or a CV's blocks in cv/content.py —
 # bumps it, so no call is served a prefix cached for the old wording.
-VERSION = 'studio-efficient-v6'
+VERSION = 'studio-efficient-v7'
 # The list is read out of the description by a program (apps/studio/topics.py),
 # so it also catches requests about form: "with photos" must not become a section.
 SUBTOPICS = (
@@ -724,7 +724,9 @@ def request_body(config, data, feature, span=None):
     scope = data.get('_cache_scope', '')
     result['prompt_cache_key'] = 'docmaster:' + hashlib.sha256(
         f'{VERSION}:{scope}:{feature}:{fmt}'.encode()).hexdigest()[:48]
-    return result
+    # The reasoning effort and processing tier chosen in the admin (tuning.py).
+    from . import tuning
+    return tuning.apply(result, config, 'writing')
 
 
 def canonical(raw, data):

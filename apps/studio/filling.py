@@ -81,11 +81,13 @@ def request_body(config, data, content, words):
     payload = {**language.wire(data['output_locale']), 'title': content.get('title', ''),
                'description': data.get('prompt', ''), 'words_to_add': words, 'sections': sections}
     tokens = MIN_CALL_TOKENS + round(words * CHARS_PER_WORD / CHARS_PER_PAGE * PAGE_TOKENS)
-    return {'model': config['model'], 'store': False,
-            'instructions': INSTRUCTIONS + '\n' + language.instructions(data['output_locale']),
-            'input': json.dumps(payload, ensure_ascii=False, separators=(',', ':')),
-            'max_output_tokens': min(RESPONSE_CEILING, tokens),
-            'text': {'format': {'type': 'json_schema', 'name': 'additions', 'strict': True, 'schema': SCHEMA}}}
+    from . import tuning
+    return tuning.apply({'model': config['model'], 'store': False,
+                         'instructions': INSTRUCTIONS + '\n' + language.instructions(data['output_locale']),
+                         'input': json.dumps(payload, ensure_ascii=False, separators=(',', ':')),
+                         'max_output_tokens': min(RESPONSE_CEILING, tokens),
+                         'text': {'format': {'type': 'json_schema', 'name': 'additions', 'strict': True,
+                                             'schema': SCHEMA}}}, config, 'writing')
 
 
 def top_up(config, data, content, target_pages, rendered_pages, *, job, deadline=None):
@@ -107,12 +109,15 @@ def top_up(config, data, content, target_pages, rendered_pages, *, job, deadline
                                            output_locale=data['output_locale'])
     started, received = time.monotonic(), False
     try:
-        request = urllib.request.Request(
-            API, data=json.dumps(body, ensure_ascii=False, separators=(',', ':')).encode(),
-            headers={'Authorization': 'Bearer ' + config['api_key'], 'Content-Type': 'application/json'})
-        with urllib.request.build_opener(_NoRedirect).open(
-                request, timeout=call_timeout(body['max_output_tokens'], deadline)) as response:
-            raw = response.read(MAX_RESPONSE + 1)
+        def post(sent):
+            request = urllib.request.Request(
+                API, data=json.dumps(sent, ensure_ascii=False, separators=(',', ':')).encode(),
+                headers={'Authorization': 'Bearer ' + config['api_key'], 'Content-Type': 'application/json'})
+            with urllib.request.build_opener(_NoRedirect).open(
+                    request, timeout=call_timeout(sent['max_output_tokens'], deadline)) as response:
+                return response.read(MAX_RESPONSE + 1)
+        from . import tuning
+        raw = tuning.send(post, body)
         # A refused reply raises its code (provider_usage.REJECTIONS), so its row says why, as in provider._call.
         if len(raw) > MAX_RESPONSE:
             raise _Rejected('oversized')

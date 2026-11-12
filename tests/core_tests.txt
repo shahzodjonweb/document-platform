@@ -655,3 +655,7 @@ tests/test_text_edit.py::test_two_changes_on_one_page_that_need_the_same_importe
 tests/test_text_edit.py::test_a_face_already_on_the_page_is_found_in_its_listing_when_the_import_names_none
 tests/test_text_edit.py::test_a_line_drawn_out_of_sight_over_a_scan_is_covered_so_the_new_words_show
 tests/test_text_edit.py::test_an_empty_line_is_covered_with_nothing_drawn_on_it
+
+# Admin call tuning: reasoning effort and tier reach the calls; a refused setting never fails a job
+tests/test_call_tuning.py::test_a_refused_setting_is_dropped_and_the_call_sent_again
+tests/test_call_tuning.py::test_a_job_whose_model_refuses_the_effort_is_written_all_the_same
