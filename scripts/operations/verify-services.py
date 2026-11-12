@@ -78,7 +78,7 @@ def verify_cleanup_cycle(baseline):
 
 api = None
 cleanup_baseline = None
-for component, expected in [('platform', {'api', 'db', 'redis', 'worker', 'batches', 'reader', 'editor', 'cleanup', 'bot', 'gateway'}),
+for component, expected in [('platform', {'api', 'db', 'redis', 'worker', 'ai-worker', 'batches', 'reader', 'editor', 'cleanup', 'bot', 'gateway'}),
                             ('web', {'web', 'gateway'})]:
     ids = command(['docker', 'ps', '-aq', '--filter', 'label=com.docker.compose.project=docmaster-' + component]).split()
     containers = json.loads(command(['docker', 'inspect', *ids])) if ids else []

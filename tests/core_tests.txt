@@ -525,6 +525,7 @@ tests/test_default_length.py::test_a_description_without_a_count_gets_ten_on_eve
 # Equal plans: no plan jumps the queue, a limit every plan shares is written to every plan
 # from any plan's form, and a test at the question cap fits the last writing call
 tests/test_scheduling.py::test_a_newer_premium_job_is_not_dispatched_before_an_older_free_job
+tests/test_scheduling.py::test_the_ai_lane_selects_ai_writing_jobs_only_in_the_same_fair_order
 tests/test_plan_limits.py::test_a_shared_limit_edited_on_one_plan_is_written_to_every_plan
 tests/test_plan_limits.py::test_a_test_at_the_question_cap_fits_beside_the_fullest_last_call
 

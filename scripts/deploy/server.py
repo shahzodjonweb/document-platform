@@ -289,8 +289,10 @@ class Deployer:
             # The CV reader and the editor lane first, each in a command of its
             # own: each drains one short task (two minutes at most), and beside
             # the worker it would wait out a deck's ten minutes with its queue unread.
+            # The AI lane next, on its own too: while it drains its deck the
+            # worker still takes AI jobs, and while the worker drains, the new lane does.
             defined = self.services(release)
-            for service in ('reader', 'editor'):
+            for service in ('reader', 'editor', 'ai-worker'):
                 if service in defined:
                     self.compose(release, 'up', '-d', *stop, '--wait', '--wait-timeout', '180', service)
                 else:
