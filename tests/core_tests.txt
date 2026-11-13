@@ -667,3 +667,8 @@ tests/test_document_fill.py::test_a_part_that_fails_leaves_only_its_own_sections
 # Wake-ups: a queued job wakes its lanes and a settled bot job the delivery loop; no Redis, the old timer
 tests/test_wakeups.py::test_queuing_a_job_wakes_its_lanes_once_it_commits
 tests/test_wakeups.py::test_a_redis_that_fails_never_fails_the_caller
+
+# Parts side by side: planned first, parts at once; a failed plan writes them one after another
+tests/test_parallel_parts.py::test_a_long_deck_is_planned_then_written_in_parts_at_once
+tests/test_parallel_parts.py::test_a_plan_that_cannot_be_had_leaves_the_parts_written_one_after_another[http]
+tests/test_parallel_parts.py::test_on_postgres_the_parts_and_the_photos_run_at_once

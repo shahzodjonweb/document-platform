@@ -79,7 +79,9 @@ def ai_config():
             'api_key':secret.get('api_key') or os.getenv('OPENAI_API_KEY',''),
             # How calls are tuned (apps/studio/tuning.py): '' leaves a setting out.
             'writing_effort':cfg.get('writing_effort',''),'photo_effort':cfg.get('photo_effort','low'),
-            'service_tier':cfg.get('service_tier','')}
+            'service_tier':cfg.get('service_tier',''),
+            # Long new documents planned, then written in parts side by side (provider.generate).
+            'parallel_parts':cfg.get('parallel_parts') is True}
 
 def _boolean(value):
     if value is True or value in ('true', '1', 'on'): return True
@@ -504,6 +506,8 @@ def save_config(key, values):
             value=str(values.get(name,cfg.get(name,default)) or '').strip()
             if value and value not in choices:raise DomainError('invalid_parameters')
             cfg[name]=value
+        # Kept as it is when not sent; the form sends 'false' under the box, as its other switches do.
+        if 'parallel_parts' in values:cfg['parallel_parts']=values.get('parallel_parts') in (True,'true','on','1')
     elif key == 'google':
         client_secret = values.get('client_secret', '')
         if client_secret.strip():

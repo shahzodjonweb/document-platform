@@ -395,12 +395,121 @@ def _already_written(config,data,feature_id,token_limit,span,sections):
     return written[-low:] if low else []
 
 
-def generate(config,data,feature_id,request_id,*,token_limit,deadline=None,key_suffix=''):
+# Parts written side by side (Admin -> Integrations, off by default): a call
+# takes about 1 s plus 9.5 ms per output token, so a long document written in
+# parts one after another waits for every part's words in turn. With the switch
+# on, a new document of PARALLEL_FROM sections or more is first planned in one
+# short call (each section's heading, a deck's layouts and photo subjects, a
+# document's one-line notes) and then written in parts of about PART_SECTIONS
+# sections, all at once, each shown the whole plan instead of already_written.
+PARALLEL_FROM = 8
+PART_SECTIONS = {'pptx': 5, 'pdf': 3}
+MAX_PARALLEL_PARTS = 6
+
+
+def parallel_spans(count, output_format='pdf'):
+    """Index ranges of the parts written side by side: of about PART_SECTIONS each, at most MAX_PARALLEL_PARTS, evenly."""
+    import math
+    many = min(MAX_PARALLEL_PARTS, max(1, math.ceil(count / PART_SECTIONS.get(output_format, 3))))
+    size, extra = divmod(count, many)
+    spans, start = [], 0
+    for index in range(many):
+        end = start + size + (1 if index < extra else 0)
+        spans.append((start, end))
+        start = end
+    return spans
+
+
+def side_by_side(calls, workers=MAX_PARALLEL_PARTS):
+    """Each of `calls`' results, in order; run at once on threads, each closing its own database connections.
+
+    With LOCAL_SYNC_JOBS (development and the test suite, whose database a
+    second thread cannot share) they run one after another.
+    """
+    from django.conf import settings
+    if len(calls) <= 1 or settings.LOCAL_SYNC_JOBS:
+        return [call() for call in calls]
+    from concurrent.futures import ThreadPoolExecutor
+    from django.db import connections
+
+    def closing(call):
+        try:
+            return call()
+        finally:
+            connections.close_all()
+    with ThreadPoolExecutor(max_workers=min(workers, len(calls))) as pool:
+        futures = [pool.submit(closing, call) for call in calls]
+        return [future.result() for future in futures]
+
+
+def parallel_wanted(config, data, feature_id):
+    """Whether this job is planned and written in parts side by side."""
+    from .domain import DOCUMENT, SLIDES
+    return (bool(config.get('parallel_parts')) and not data.get('revision') and feature_id in (DOCUMENT, SLIDES)
+            and len(data['content']['sections']) >= PARALLEL_FROM)
+
+
+def _plan(config, data, feature_id, request_id, *, deadline=None, job=None):
+    """Every section's planned fields, from one short call; None when it cannot be had.
+
+    Best effort, like the photo choice: whatever goes wrong, the job is written
+    one part after another as before, and the attempt says why.
+    """
+    from . import prompting, provider_usage, tuning
+    planned = copy.deepcopy(data)
+    planned['_stage'] = 'plan'
+    sections = planned['content']['sections']
+    try:
+        body = prompting.request_body(config, planned, feature_id)
+    except Exception:
+        return None
+    key = f'{request_id}-plan'
+    attempt = provider_usage.start_attempt(key, feature_id, config['model'], stage='plan', span=(0, len(sections)),
+                                           job=job, output_locale=data['output_locale'])
+    started, received = time.monotonic(), False
+    try:
+        def post(sent):
+            request = urllib.request.Request('https://api.openai.com/v1/responses',
+                data=json.dumps(sent, ensure_ascii=False, separators=(',', ':')).encode(),
+                headers={'Authorization': 'Bearer ' + config['api_key'], 'Content-Type': 'application/json',
+                         'Idempotency-Key': key if sent is body else key + '-plain'})
+            with urllib.request.build_opener(_NoRedirect).open(request, timeout=call_timeout(sent['max_output_tokens'], deadline)) as response:
+                return response.read(2_000_001)
+        raw = tuning.send(post, body)
+        if len(raw) > 2_000_000:
+            raise _Rejected('oversized')
+        result = json.loads(raw)
+        provider_usage.received(attempt, result, round((time.monotonic() - started) * 1000))
+        received = True
+        if not isinstance(result, dict):
+            raise _Rejected('no_output')
+        if result.get('status') == 'incomplete':
+            raise _CutOff()
+        if result.get('status') != 'completed':
+            raise _Rejected('not_completed')
+        try:
+            content = json.loads(_reply_text(result))
+        except json.JSONDecodeError:
+            raise _Rejected('not_json') from None
+        _validate(content, body['text']['format']['schema'])
+        if [section.get('id') for section in content['sections']] != [section['id'] for section in sections]:
+            raise _Rejected('section_identity')
+        provider_usage.finish(attempt, 'succeeded')
+        return content['sections']
+    except Exception as failure:
+        _close(attempt, failure, received, started)
+        return None
+
+
+def generate(config,data,feature_id,request_id,*,token_limit,deadline=None,key_suffix='',on_plan=None):
     """Generate bounded parts, recovering only explicitly retried completed work.
 
     The parts of a long document are written one after another, and each is
     shown what the ones before it said (`already_written`), so part three of a
-    forty-slide deck continues the deck rather than starting it again.
+    forty-slide deck continues the deck rather than starting it again. With
+    parts written side by side switched on (parallel_wanted), a planned job's
+    parts are written at once instead, and `on_plan` is given the planned
+    sections as soon as there are some (execution.py starts a deck's photos).
     """
     from .pages import batches
     from .prompting import edit_of,selected,structural
@@ -421,9 +530,40 @@ def generate(config,data,feature_id,request_id,*,token_limit,deadline=None,key_s
         effective['content']['sections']=[s for s in effective['content']['sections'] if s['id'] in ids]
         if [s['id'] for s in effective['content']['sections']]!=ids:
             raise DomainError('invalid_parameters')
-    spans=batches(len(effective['content']['sections']))
+    planned=_plan(config,effective,feature_id,f'{request_id}{key_suffix}',deadline=deadline,job=job) if parallel_wanted(config,effective,feature_id) else None
+    if planned is not None:
+        for section,plan in zip(effective['content']['sections'],planned):
+            section['heading']=plan.get('heading') or ''
+            # A document's note of what a section covers goes in as its body, as an outline's does.
+            for field in ('layout','image_query','body'):
+                if field in plan:section[field]=plan[field]
+        effective['_planned']=True
+        if on_plan is not None:
+            try:on_plan(copy.deepcopy(effective['content']['sections']))
+            except Exception:pass
+        spans=parallel_spans(len(effective['content']['sections']),data.get('output_format','pdf'))
+        def write_part(index,span):
+            return _call(config,copy.deepcopy(effective),feature_id,f'{request_id}{key_suffix}-part{index}',token_limit=token_limit,
+                         span=span,deadline=deadline,job=job,draft=draft)
+        import functools
+        written=side_by_side([functools.partial(write_part,index,span) for index,span in enumerate(spans)])
+    else:
+        spans=batches(len(effective['content']['sections']))
+        written=None
     merged,totals=None,{'input_tokens':0,'output_tokens':0}
     for index,span in enumerate(spans):
+        if written is not None:
+            part,usage=written[index]
+            for field in totals:totals[field]+=usage.get(field,0)
+            expected=effective['content']['sections'][span[0]:span[1]]
+            part['sections']=[{**section,'id':expected[position]['id']} for position,section in enumerate(part['sections'][:len(expected)])]
+            if merged is None:merged=part
+            else:
+                merged['sections']+=part['sections']
+                merged['citations']+=part['citations']
+                merged['questions']=part['questions'] or merged['questions']
+                merged['answer_supported']=merged['answer_supported'] and part['answer_supported']
+            continue
         key=f'{request_id}{key_suffix}' if len(spans)==1 else f'{request_id}{key_suffix}-{index}'
         if merged is not None and not scoped and (continued or testing and index==len(spans)-1):
             effective['_written']=_already_written(config,effective,feature_id,token_limit,span,merged['sections'])

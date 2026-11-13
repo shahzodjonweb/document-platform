@@ -85,8 +85,9 @@ class ProviderUsage(models.Model):
 
 class ProviderAttemptQuerySet(models.QuerySet):
     # Calls whose failure never ends a job: the photo choice, the expand call
-    # and a quality repair each leave the document as it was.
-    BEST_EFFORT = ('photo_pick', 'expand', 'repair')
+    # and a quality repair each leave the document as it was, and a failed plan
+    # only means the parts are written one after another.
+    BEST_EFFORT = ('photo_pick', 'expand', 'repair', 'plan')
 
     def final_rejection(self):
         """Why the reply that ended these attempts was refused, or ''; shown beside a job's error.
