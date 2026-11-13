@@ -153,6 +153,17 @@ def test_a_task_page_has_no_charges_to_show(settings):
     assert 'pdf.merge' in page and 'Allowance ledger' not in page
 
 
+def test_a_task_page_shows_the_warnings_it_recorded(settings):
+    settings.DEBUG = True
+    client, _ = staff_client('Operations')
+    job = file_task(customer())
+    page = client.get(f'/ops/jobs/{job.id}').content.decode()
+    assert '<dt>Warnings</dt><dd>—</dd>' in page
+    Job.objects.filter(pk=job.pk).update(warnings=['cv_contact_dropped', 'cv_trimmed'])
+    page = client.get(f'/ops/jobs/{job.id}', {'lang': 'uz'}).content.decode()
+    assert '<dt>Ogohlantirishlar</dt><dd><span class="mono">cv_contact_dropped, cv_trimmed</span></dd>' in page
+
+
 def test_the_old_grant_route_is_gone(settings):
     """Support helps a customer who ran out by assigning a plan; nothing writes credits."""
     settings.DEBUG = True
