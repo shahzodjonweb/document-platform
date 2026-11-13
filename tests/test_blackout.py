@@ -105,7 +105,7 @@ def box(page=1,**place):
 def send(source,commands,tmp_path,agreed=None,pdfcraft=True,out='out'):
     """A stored draft's send: `agreed` the pages the customer agreed may become pictures, None for no consent at all."""
     parameters={'commands':commands,'combined':True,'accept_rasterization':agreed is not None,**({'raster_pages':agreed} if agreed is not None else {})}
-    result=execute('editor.visual',[source],parameters,tmp_path/out,pdfcraft=pdfcraft)
+    result=execute('editor.visual',[source],parameters,tmp_path/out,pdfcraft=pdfcraft,vector_blackout=pdfcraft)
     return result,result['artifacts'][0]['path']
 
 
@@ -305,8 +305,8 @@ def test_pages_keep_or_turn_on_their_own(tmp_path):
     assert norm('Contact sheet 1') in norm(reader.pages[0].extract_text()) and not reader.pages[1].extract_text().strip()
     assert norm(PHONE) not in said(path)
     # A send quoted before pages were told apart agreed to every page with a box.
-    old=execute('editor.visual',[source],{'commands':commands,'combined':True,'accept_rasterization':True},tmp_path/'old',pdfcraft=True)
-    assert old['metadata']['rasterized_pages']==[2]
+    old=execute('editor.visual',[source],{'commands':commands,'combined':True,'accept_rasterization':True},tmp_path/'old',pdfcraft=True,vector_blackout=True)
+    assert old['metadata']['rasterized_pages']==[1,2],'and is not tried again: every page it agreed to is a picture'
 
 
 @REQUIRES_PDFCRAFT
@@ -346,6 +346,69 @@ def test_a_check_with_a_box_its_page_cannot_hold_says_so_for_that_page_alone(tmp
     assert blackout.check(source,[box(1,**FOUND),outside],tmp_path/'check',True)=={1:'vector',2:'invalid'}
 
 
+@REQUIRES_PDFCRAFT
+def test_a_box_made_by_finding_words_is_black_whole(tmp_path):
+    # Its words are a part of what it covers: the whole box goes, whatever it was made for.
+    source=sheet(tmp_path/'sheet.pdf')
+    line=box(x=70,y=119.5,width=140,height=13.8,text='Phone')
+    result,path=send(source,[line],tmp_path)
+    assert result['metadata']['rasterized_pages']==[] and norm(PHONE) not in said(path) and norm('Phone') not in said(path)
+    assert black(path,place(line))
+
+
+def linked(path,uri):
+    sheet(path);writer=PdfWriter(clone_from=str(path))
+    writer.add_annotation(0,DictionaryObject({NameObject('/Type'):NameObject('/Annot'),NameObject('/Subtype'):NameObject('/Link'),
+        NameObject('/Rect'):ArrayObject([FloatObject(300),FloatObject(H-560),FloatObject(400),FloatObject(H-540)]),
+        NameObject('/A'):DictionaryObject({NameObject('/S'):NameObject('/URI'),NameObject('/URI'):TextStringObject(uri)})}))
+    writer.write(str(path))
+    return path
+
+
+@REQUIRES_PDFCRAFT
+def test_a_page_whose_other_notes_say_any_word_that_went_is_a_picture(tmp_path):
+    # A link's address, a note's author and a note that says part of the number all keep the words, so the page goes whole.
+    name=box(x=72,y=99.5,width=160,height=13.8)
+    assert blackout.check(linked(tmp_path/'link.pdf','mailto:example.person@example.org'),[name],tmp_path/'link',True)=={1:'left'}
+    authored=sheet(tmp_path/'author.pdf');writer=PdfWriter(clone_from=str(authored))
+    writer.add_annotation(0,DictionaryObject({NameObject('/Type'):NameObject('/Annot'),NameObject('/Subtype'):NameObject('/Text'),
+        NameObject('/Rect'):ArrayObject([FloatObject(300),FloatObject(H-560),FloatObject(322),FloatObject(H-538)]),
+        NameObject('/Contents'):TextStringObject('Checked'),NameObject('/T'):TextStringObject('Example Person')}))
+    writer.write(str(authored))
+    assert blackout.check(authored,[name],tmp_path/'author',True)=={1:'left'},'the name went from the page'
+    assert blackout.check(noted(tmp_path/'part.pdf',(300,H-460,500,H-430),'Call 90 123 45 67'),[box(**FOUND)],tmp_path/'part',True)=={1:'left'}
+    assert blackout.check(linked(tmp_path/'away.pdf','https://example.org/'),[box(**FOUND)],tmp_path/'away',True)=={1:'vector'}
+
+
+@REQUIRES_PDFCRAFT
+def test_a_bookmark_that_says_a_word_of_lines_that_went_goes(tmp_path):
+    source=sheet(tmp_path/'marked.pdf');writer=PdfWriter(clone_from=str(source));writer.add_outline_item('Example',0);writer.write(str(source))
+    # Two lines in one box: "Name: Example Person" and the number.
+    _,path=send(source,[box(x=70,y=99.5,width=150,height=34)],tmp_path)
+    assert not PdfReader(path).outline
+
+
+@REQUIRES_PDFCRAFT
+def test_a_small_drawing_a_box_touches_is_a_change_outside_it(tmp_path):
+    # A minus sign drawn as a shape, 6 by 1.2 points, half a point of it under the box.
+    path=tmp_path/'minus.pdf';canvas=Canvas(str(path),pagesize=(W,H));canvas.setFont('Helvetica',11);canvas.drawString(72,H-130,'Phone: '+PHONE)
+    canvas.rect(203.5,H-126,6,1.2,stroke=0,fill=1);canvas.showPage();canvas.save()
+    assert blackout.check(path,[box(**DRAWN)],tmp_path/'check',True)=={1:'others'}
+
+
+def test_a_turned_page_whose_frame_does_not_start_at_the_corner_is_a_picture_not_a_refusal(tmp_path):
+    from pypdf.generic import RectangleObject
+    source=sheet(tmp_path/'offset.pdf');writer=PdfWriter(clone_from=str(source))
+    page=writer.pages[0];page.mediabox=RectangleObject([10,10,W+10,H+10]);page.rotate(90);writer.write(str(source))
+    shown=box(x=H-140,y=118,width=13.8,height=96)
+    result,_=send(source,[shown],tmp_path,agreed=[1],pdfcraft=False)
+    assert result['metadata']['rasterized_pages']==[1],'with PdfCraft off it is made as before'
+    if os.environ.get('DOCMASTER_PDFCRAFT_BIN'):
+        assert blackout.check(source,[shown],tmp_path/'check',True)=={1:'invalid'}
+        result,_=send(source,[shown],tmp_path,agreed=[1],out='on')
+        assert result['metadata']['rasterized_pages']==[1]
+
+
 # --- Without PdfCraft -----------------------------------------------------------------------
 
 def test_without_pdfcraft_every_page_with_a_box_is_a_picture(tmp_path,monkeypatch):
@@ -368,7 +431,7 @@ def test_a_box_under_another_change_of_the_send_is_a_picture_without_asking_pdfc
     assert blackout.marked([box(**DRAWN),retyped])=={1},'new words may run on into the box'
     assert blackout.marked([box(**DRAWN),{**words,'page':2}])==set() and blackout.marked([box(**DRAWN),words,{'type':'delete_page','page':1}])==set()
     done=blackout.run(sheet(tmp_path/'sheet.pdf'),[box(**DRAWN),words],tmp_path/'run',True,blackout.marked([box(**DRAWN),words]))
-    assert done.outcome()=={1:'mark'}
+    assert done.outcome()=={1:'skip'}
 
 
 def test_a_pdfcraft_that_answers_nonsense_leaves_every_page_to_a_picture(tmp_path,monkeypatch):

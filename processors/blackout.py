@@ -19,6 +19,7 @@ Some pages go without trying, as nothing short of a picture is sure for them:
   scan     words drawn out of sight on the page (OCR over a scan): what shows is the picture
   image    a box over a picture, which PdfCraft would take whole
   mark     a box over another change of the same send, drawn after this stage on top of the black
+           (the check's caller says this; in a send such a page is skipped, as is one agreed to)
   engine   PdfCraft is off or missing, or the file too large for it
   large    a page too large to look at closely
   invalid  a box the page cannot hold (only `check` says this; a send refuses it)
@@ -48,8 +49,8 @@ from .text_edit import Page,norm
 # Pages are looked at as rendered at 150 dpi, with their form fields drawn as a viewer fills them in.
 SCALE=150/72
 INK=40
-# Changed pixels outside every box allowed at 150 dpi: anti-aliasing, never a line or a letter.
-OUTSIDE=40
+# Changed pixels outside every box allowed at 150 dpi: anti-aliasing, never a line, a letter, a minus sign or a point.
+OUTSIDE=6
 # Points around a box, and around a letter it took, where drawing the black blends with what is beside it.
 PAD=1
 # Points by which a found word may stand out of its box, and a box must reach into a picture to touch it.
@@ -70,8 +71,8 @@ VERSION=1
 HIDDEN=2
 NO_ROTATE=16
 NO_VIEW=32
-# Where a note or a field keeps words of its own.
-WORDS=('/Contents','/RC','/Subj','/TU','/V','/DV')
+# Where a note or a field keeps words of its own: its text, author, rich text, a field's values and options, and a link's address.
+WORDS=('/Contents','/RC','/Subj','/T','/TU','/V','/DV','/RV','/Opt')
 # The other changes of a send that are drawn over the page after this stage.
 DRAWN={'add_text','highlight','note','draw','signature','insert_image','whiteout','edit_text'}
 
@@ -269,22 +270,38 @@ def _flatten(source,target,found):
 
 
 def _strings(node):
-    """The words a note or field keeps besides its picture: its own and, for a widget, those of the fields above it."""
-    from pypdf.generic import DictionaryObject,StreamObject
+    """The words a note or field keeps besides its picture: its own, its link's and caption's and, for a widget, those of the fields above it."""
+    from pypdf.generic import ArrayObject,DictionaryObject,StreamObject
     found=[];seen=0
+    def take(value):
+        value=value.get_object() if value is not None else None
+        if isinstance(value,StreamObject):
+            try:value=value.get_data().decode('utf-8','ignore')
+            except Exception:value=''
+        if isinstance(value,str):found.append(value)
+        elif isinstance(value,ArrayObject):
+            for item in value[:1000]:take(item)
+    first=node
     while isinstance(node,DictionaryObject) and seen<25:
-        for key in WORDS:
-            value=node.get(key);value=value.get_object() if value is not None else None
-            if isinstance(value,StreamObject):
-                try:value=value.get_data().decode('utf-8','ignore')
-                except Exception:value=''
-            if isinstance(value,str):found.append(value)
+        for key in WORDS:take(node.get(key))
         parent=node.get('/Parent');node=parent.get_object() if parent is not None else None;seen+=1
+    if isinstance(first,DictionaryObject):
+        action=_held(first,'/A',DictionaryObject)
+        if action is not None:take(action.get('/URI'))
+        caption=_held(first,'/MK',DictionaryObject)
+        if caption is not None:take(caption.get('/CA'))
     return found
 
 
 def _counts(text,secrets):
     return {secret:text.count(secret) for secret in secrets}
+
+
+def tokens(text):
+    """The words of a text as carriers are searched for them: each run of letters and digits, folded, of SHORTEST or more."""
+    import re
+    folded=norm(re.sub(r'[^\w]+',' ',text or '',flags=re.UNICODE).replace(' ','\x00')).casefold()
+    return {word for word in folded.split('\x00') if len(word)>=SHORTEST}
 
 
 class _Look:
@@ -300,18 +317,29 @@ def _secret(look,command,rect):
     return ''.join(c['char'] for c in look.page.letters if _within(_middle(c),rect))
 
 
+def _words(look,command,rect):
+    """The words a box hides one by one: those it was made by finding and those that stood in it, a gap or a new line ending a word."""
+    found=tokens(command.get('text'))
+    letters=[c for c in look.page.letters if _within(_middle(c),rect)];word='';last=None
+    for c in letters:
+        if last is not None and (abs(c['base']-last['base'])>.5*max(c['size'],1) or c['left']-last['right']>.2*max(c['size'],1)):
+            found|=tokens(word);word=''
+        word+=c['char'];last=c
+    return found|tokens(word)
+
+
 def _targets(look):
-    """What each box of the page has PdfCraft mark: the found words' own rects inside it, else the box."""
+    """What each box of the page has PdfCraft mark: the box whole, and the found words' own rects inside it, which may reach a little past its edge."""
     marks={}
     for index,command in look.rows:
         box=_rect(command);own=[]
         for rects in look.found.get(index,()):
             if all(_within(((r[0]+r[2])/2,(r[1]+r[3])/2),box,NEAR) for r in rects):own.extend(rects)
-        marks[index]=[list(map(float,r)) for r in own] or [box]
+        marks[index]=[[float(v) for v in box],*([float(v) for v in r] for r in own)]
     return marks
 
 
-def _verify(look,after,made,marks,secrets):
+def _verify(look,after,made,marks,secrets,words=()):
     """The checks a page PdfCraft blacked out fails, from the page before and after: none when it keeps its words."""
     import numpy
     from pypdf.generic import ArrayObject,DictionaryObject
@@ -329,8 +357,8 @@ def _verify(look,after,made,marks,secrets):
         if len(rect)==4 and not made.rotation:
             left,right=sorted(rect[::2]);bottom,top=sorted(rect[1::2])
             if any(_meets([left,height-top,right,height-bottom],box) for box in [*boxes,*rects]):faults.add('left')
-        words=norm(' '.join(_strings(note)))
-        if any(len(secret)>=SHORTEST and secret in words for secret in secrets):faults.add('left')
+        said_there=norm(' '.join(_strings(note))).casefold()
+        if any(len(secret)>=SHORTEST and secret.casefold() in said_there for secret in secrets) or any(word in said_there for word in words):faults.add('left')
     if look.page.pixels is None or after.pixels is None or look.page.pixels.shape!=after.pixels.shape:
         faults.add('others');return faults
     scale=look.page.scale;changes=numpy.abs(look.page.pixels.astype(numpy.int16)-after.pixels).max(axis=2)>INK
@@ -368,8 +396,8 @@ def _keeps_its_parts(source,made,pages,forgotten):
 
 
 class _Run:
-    def __init__(self,source,root,executable):
-        self.root,self.executable,self.deadline,self.count=Path(root),executable,time.monotonic()+BUDGET,0
+    def __init__(self,source,root,executable,deadline):
+        self.root,self.executable,self.deadline,self.count=Path(root),executable,deadline,0
         self.root.mkdir(parents=True,exist_ok=True,mode=0o700)
         # PdfCraft reads and writes only under its root.
         self.source=self.root/'source.pdf';shutil.copyfile(source,self.source)
@@ -416,36 +444,43 @@ class _Run:
 
 
 def run(source,commands,root,allowed,skip=()):
-    """Blacks out every box of a send that PdfCraft can, page by page: a Blacked. `allowed` is the pdfcraft switch; `root` a private folder; `skip` pages that go to pictures whatever happens (`marked`).
+    """Blacks out every box of a send that PdfCraft can, page by page: a Blacked.
 
-    Raises editor's errors, with the command's index, for a box its page cannot hold.
+    `allowed` is the switches (pdfcraft and vector_blackout); `root` a private folder;
+    `skip` the pages that go to pictures whatever happens: a box under another change
+    (`marked`), and those the customer agreed may become pictures, as a check found
+    they would. Everything here, PdfCraft and the looks, has BUDGET seconds in all;
+    a page not done in time becomes a picture. A box its page cannot hold here (its
+    frame does not start at the corner) makes the page a picture too: the pipeline
+    refuses one that page cannot hold at all.
     """
+    import numpy
     import pypdfium2 as pdfium
     from pypdf import PdfReader
     from .editor import _geometry,_rotated_box
     from .engine import ProcessorError
+    deadline=time.monotonic()+BUDGET
     source,root=Path(source),Path(root);found=boxes(commands);done=Blacked(source)
     if not found:return done
     reader=PdfReader(source)
-    for number,rows in found.items():
-        page=reader.pages[number-1];turn=int(page.rotation or 0)%360
-        for index,command in rows:
-            # Placed on the page as shown: held to the page's own frame, it is turned back first.
-            x,y,w,h=_rotated_box(command,float(page.mediabox.width),float(page.mediabox.height),(360-turn)%360)
-            try:_geometry(page,{**command,'x':x,'y':y,'width':w,'height':h})
-            except ProcessorError as error:
-                error.index=index;raise
     # Its version is asked inside the root, where it runs.
     if allowed:root.mkdir(parents=True,exist_ok=True,mode=0o700)
     executable=pdfcraft.binary(root) if allowed and source.stat().st_size<=MAX_BYTES and len(reader.pages)<=MAX_PAGES else None
-    for number in found:
-        if number in skip:done.raster[number]='mark'
+    for number,rows in found.items():
+        if number in skip:done.raster[number]='skip'
         elif executable is None:done.raster[number]='engine'
+        else:
+            page=reader.pages[number-1];turn=int(page.rotation or 0)%360
+            for _,command in rows:
+                # Placed on the page as shown: held to the page's own frame, it is turned back first.
+                x,y,w,h=_rotated_box(command,float(page.mediabox.width),float(page.mediabox.height),(360-turn)%360)
+                try:_geometry(page,{**command,'x':x,'y':y,'width':w,'height':h})
+                except ProcessorError:done.raster[number]='invalid'
     pending=[number for number in found if number not in done.raster]
-    if not pending:return done
-    import numpy
     looks=[];held=0
     for number in pending:
+        if time.monotonic()>deadline:
+            done.raster[number]='refused';continue
         try:page=Page.read(source,number,SCALE,forms=True)
         except pdfium.PdfiumError:
             done.raster[number]='refused';continue
@@ -456,7 +491,7 @@ def run(source,commands,root,allowed,skip=()):
         elif any(c['unseen'] for c in page.letters):done.raster[number]='scan'
         else:looks.append(_Look(number,found[number],page,norm(reader.pages[number-1].extract_text())))
     if not looks:return done
-    work=_Run(source,root,executable)
+    work=_Run(source,root,executable,deadline)
     try:work.look(looks)
     except pdfcraft.Failed:
         for look in looks:done.raster[look.number]='refused'
@@ -466,6 +501,7 @@ def run(source,commands,root,allowed,skip=()):
             done.raster[look.number]='image';looks.remove(look)
     marks={look.number:_targets(look) for look in looks}
     secrets={look.number:[_secret(look,command,_rect(command)) for _,command in look.rows] for look in looks}
+    words={look.number:set().union(*(_words(look,command,_rect(command)) for _,command in look.rows)) for look in looks}
     # Pages that fail go to pictures and the rest are tried again on their own, as PdfCraft writes the file whole.
     while looks:
         if work.left()<=1:
@@ -483,15 +519,17 @@ def run(source,commands,root,allowed,skip=()):
             return done
         written=PdfReader(target);failed=[]
         for look in looks:
+            if time.monotonic()>deadline:
+                failed.append((look,{'refused'}));continue
             try:after=Page.read(target,look.number,SCALE,forms=True)
             except pdfium.PdfiumError:
                 failed.append((look,{'refused'}));continue
-            faults=_verify(look,after,written.pages[look.number-1],marks[look.number],[s for s in secrets[look.number] if s])
+            faults=_verify(look,after,written.pages[look.number-1],marks[look.number],[s for s in secrets[look.number] if s],words[look.number])
             if faults:failed.append((look,faults))
         if not failed:
             done.path=target;done.vector={look.number for look in looks};done.forgotten=forgotten
             done.drawn={index:rects for look in looks for index,rects in marks[look.number].items()}
-            done.secrets=[secret for look in looks for secret in secrets[look.number] if secret]
+            done.secrets=[secret for look in looks for secret in secrets[look.number] if secret]+sorted(set().union(*(words[look.number] for look in looks)))
             return done
         target.unlink(missing_ok=True)
         for look,faults in failed:
@@ -504,18 +542,7 @@ def run(source,commands,root,allowed,skip=()):
 def check(source,commands,root,allowed):
     """What a send would do with each page that has a box, found the way the send finds it: {page: 'vector' or why it becomes a picture}.
 
-    A page whose box it cannot hold says 'invalid' (the send refuses it); a box over
-    another change is the caller's to know, as it depends on the other changes alone.
+    A box over another change is the caller's to know, as it depends on the other
+    changes alone; so is a page the customer agreed may become a picture.
     """
-    from .engine import ProcessorError
-    found=boxes(commands);invalid=set()
-    while True:
-        try:
-            done=run(source,[c for c in commands if c['type']=='redact' and c['page'] not in invalid],root,allowed)
-            break
-        except ProcessorError as error:
-            if error.index is None:raise
-            kept=[c for c in commands if c['type']=='redact' and c['page'] not in invalid]
-            invalid.add(kept[error.index]['page'])
-            shutil.rmtree(root,ignore_errors=True)
-    return {**done.outcome(),**{page:'invalid' for page in invalid if page in found}}
+    return run(source,[c for c in commands if c['type']=='redact'],root,allowed).outcome()

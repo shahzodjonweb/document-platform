@@ -53,7 +53,8 @@ def main():
             result = execute(request['feature_id'], request['input_paths'],
                 request.get('parameters', {}), request['output_dir'], secret=request.get('secret'),
                 office_timeout=request.get('office_timeout', 60), deck_fonts=request.get('deck_fonts') is True,
-                office_home=request.get('office_home'), pdfcraft=request.get('pdfcraft') is True)
+                office_home=request.get('office_home'), pdfcraft=request.get('pdfcraft') is True,
+                vector_blackout=request.get('vector_blackout') is True)
         elif request.get('operation') == 'helper':
             from .helpers import run as helper
             result = helper(request.get('name'), request.get('input_paths'), request.get('parameters', {}),

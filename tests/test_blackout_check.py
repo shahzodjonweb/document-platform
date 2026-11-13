@@ -185,3 +185,44 @@ def test_a_draft_keeps_its_newest_answers(tmp_path,switched,monkeypatch):
     for number in range(5):editor_blackout._remember(e,{f'key-{number}':'vector'})
     e.refresh_from_db()
     assert list(unpack(e.encrypted_inspection)['blackout'])==['key-2','key-3','key-4']
+
+
+@REQUIRES_PDFCRAFT
+def test_with_pdfcraft_on_and_its_own_switch_off_a_send_makes_the_quoted_pages_pictures(tmp_path,monkeypatch):
+    monkeypatch.setenv('EDITOR_FLAG_PDFCRAFT','1')
+    a,asset,client,url=opened(tmp_path,table=False)
+    assert save(client,url,1,[box(1,**FOUND)]).status_code==200
+    assert send(client,url,2).json()['error']['message_params']=={'pages':[1]}
+    job=run(client,send(client,url,2,accept_rasterization=True),'blackout-switch-off')
+    assert job.status=='succeeded' and {'rasterized_pages':[1]} in job.warnings,'as the quote said: a picture'
+    assert {'per_command':[{'index':0,'status':'applied','engine':'pdfium'}]} in job.warnings
+
+
+def test_a_page_refused_at_a_send_has_the_others_checked_again_with_it(tmp_path,switched,monkeypatch):
+    monkeypatch.delenv('DOCMASTER_PDFCRAFT_BIN',raising=False)
+    a,asset,client,url=opened(tmp_path)
+    commands=[box(1,**FOUND),box(2,**DRAWN)]
+    assert save(client,url,1,commands).status_code==200
+    from apps.studio.editor_blackout import _key
+    from processors.blackout import boxes
+    e=EditorDocument.objects.get();found=boxes(commands)
+    editor_blackout._remember(e,{_key(asset,page,rows):'vector' for page,rows in found.items()})
+    job=run(client,send(client,url,2),'blackout-refused-both')
+    assert job.status=='failed' and job.error_code=='rasterization_consent_required'
+    answer=check(client,url,'get')
+    assert answer['status']=='none' and outcomes(answer)=={1:'refused'},'the other page is not known any more'
+    assert send(client,url,2).json()['error']['message_params']=={'pages':[1,2]}
+
+
+def test_one_page_not_known_has_every_page_with_a_box_checked_with_it(tmp_path,switched,monkeypatch):
+    monkeypatch.delenv('DOCMASTER_PDFCRAFT_BIN',raising=False)
+    asked=[]
+    from processors import sandbox
+    real=sandbox.helper_sandbox
+    monkeypatch.setattr(sandbox,'helper_sandbox',lambda name,paths,parameters,out,**kwargs:asked.append(sorted({c['page'] for c in parameters['commands']})) or real(name,paths,parameters,out,**kwargs))
+    a,asset,client,url=opened(tmp_path)
+    assert save(client,url,1,[box(1,**DRAWN)]).status_code==200
+    assert check(client,url)['status']=='done'
+    assert save(client,url,2,[box(1,**DRAWN),box(2,**DRAWN)]).status_code==200
+    assert check(client,url)['status']=='done'
+    assert asked==[[1],[1,2]],'page 1 again, beside page 2, as a send runs them'

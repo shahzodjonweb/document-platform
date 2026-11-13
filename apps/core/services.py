@@ -444,8 +444,11 @@ def execute_job(job_id):
                 from apps.studio.editor_policy import require_text_edit
                 require_text_edit(parameters.get('commands',[]))
             # Whether edit_text may ask PdfCraft: the switch as it stands when the job runs.
-            pdfcraft = job.feature_id.startswith('editor.') and editor_flags()['pdfcraft']
-            result = execute(job.feature_id,input_paths,parameters,output_dir,secret=secret,timeout=execution_timeout(job.feature_id,len(input_paths)),deck_fonts=_is_our_deck(job),pdfcraft=pdfcraft)
+            flags = editor_flags()
+            pdfcraft = job.feature_id.startswith('editor.') and flags['pdfcraft']
+            # Black-out keeps a page's words only with its own switch too, as the check that asked about the pages had it.
+            vector_blackout = pdfcraft and flags['vector_blackout']
+            result = execute(job.feature_id,input_paths,parameters,output_dir,secret=secret,timeout=execution_timeout(job.feature_id,len(input_paths)),deck_fonts=_is_our_deck(job),pdfcraft=pdfcraft,vector_blackout=vector_blackout)
         secret=None
         # A photo whose scan failed is kept as uploaded and the job succeeds;
         # the child's own log is discarded, so the worker log records it.
@@ -474,9 +477,13 @@ def execute_job(job_id):
         shutil.rmtree(output_dir,ignore_errors=True)
         index = getattr(exc,'index',None)
         if pointed and index is not None and exc.code=='rasterization_consent_required':
-            # A page a check had found would keep its words did not: the next quote asks about it.
-            from apps.studio.editor_blackout import refused_at_send
-            refused_at_send(job,index)
+            # A page a check had found would keep its words did not: the next quote asks about it. Never in the way of settling.
+            try:
+                from apps.studio.editor_blackout import refused_at_send
+                refused_at_send(job,index)
+            except Exception as error:
+                import logging
+                logging.getLogger(__name__).error('Keeping a black-out page refused at send failed: %s',type(error).__name__)
         return settle_job(job.id,'failed',error_code=exc.code,warnings=[{'failed_command':index}] if pointed and index is not None else None)
     except Exception:
         # No exception text: engine errors may contain private paths or document data.

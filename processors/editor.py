@@ -502,7 +502,7 @@ def _outlines_say(writer,secrets):
         if len(seen)>=10000:return True
         seen.add(id(node))
         title=node.get('/Title')
-        if title is not None and any(secret in norm(str(title.get_object())) for secret in wanted):return True
+        if title is not None and any(secret.casefold() in norm(str(title.get_object())).casefold() for secret in wanted):return True
         pending+=[node.get('/First'),node.get('/Next')]
     return False
 
@@ -732,21 +732,23 @@ def _pipeline(paths,commands,out,edited=None,blacked=None):
     return [artifact],{'engine':engine,'warnings':warnings,'text_replacements':replacements,'command_features':sorted({COMMAND_FEATURES[c['type']] for c in commands}),'per_command':rows,'rasterized_pages':raster}
 
 
+def _agreed(parameters,commands):
+    """The pages the customer agreed may become pictures. A send quoted before pages were told apart agreed to every page with a box."""
+    if not parameters.get('accept_rasterization'):return set()
+    return set(parameters['raster_pages']) if 'raster_pages' in parameters else set(raster_pages(commands))
+
+
 def _consented(parameters,blacked):
     """A page becomes a picture only with the customer's consent to that page; else nothing is made, nothing counted, and the send asks again."""
     from .engine import ProcessorError
-    agreed=set()
-    if parameters.get('accept_rasterization'):
-        # A send quoted before pages were told apart agreed to every page with a box.
-        agreed=set(parameters['raster_pages']) if 'raster_pages' in parameters else set(blacked.raster)
-    refused=sorted(set(blacked.raster)-agreed)
+    refused=sorted(set(blacked.raster)-_agreed(parameters,parameters['commands']))
     if refused:
         first=min(index for index,command in enumerate(parameters['commands']) if command['type']=='redact' and command['page']==refused[0])
         raise ProcessorError('rasterization_consent_required',index=first)
 
 
-def execute(feature,paths,parameters,out,metadata,pdfcraft=False):
-    """`pdfcraft` is the server's switch (/ops/editor), never a parameter: whether black-out and edit_text may ask PdfCraft at all."""
+def execute(feature,paths,parameters,out,metadata,pdfcraft=False,vector_blackout=False):
+    """`pdfcraft` and `vector_blackout` are the server's switches (/ops/editor), never parameters: whether edit_text may ask PdfCraft at all, and black-out with it."""
     import tempfile
     import time
     from . import blackout
@@ -763,7 +765,9 @@ def execute(feature,paths,parameters,out,metadata,pdfcraft=False):
     with tempfile.TemporaryDirectory(prefix='pdfcraft-',dir=out) as root:
         root=Path(root);started=time.monotonic();blacked=None;source=Path(paths[0])
         if found:
-            blacked=blackout.run(source,commands,root/'blackout',pdfcraft,blackout.marked(commands))
+            # A page agreed to become a picture is one, as the check that asked found it would be: it is not tried again.
+            skip=blackout.marked(commands)|_agreed(parameters,commands)
+            blacked=blackout.run(source,commands,root/'blackout',pdfcraft and vector_blackout,skip)
             _consented(parameters,blacked);source=blacked.path
         edited=None
         if texts:

@@ -78,14 +78,15 @@ def raster_pages(e,commands,asset):
     return sorted(page for page,outcome in outcomes(e,commands,asset).items() if outcome!='vector')
 
 
-def _remember(e,answers):
-    """Answers kept with the draft, under its lock, the newest last."""
+def _remember(e,answers,forget=()):
+    """Answers kept with the draft, under its lock, the newest last; those under `forget` go."""
     with transaction.atomic():
         row=EditorDocument.objects.select_for_update().select_related('file').filter(pk=e.pk).first()
         if row is None:return
         same=row.encrypted_inspection is not None and row.inspection_sha256==row.file.sha256
         data=unpack(row.encrypted_inspection) if same else {}
         known=data.get('blackout',{})
+        for key in forget:known.pop(key,None)
         for key,outcome in answers.items():
             known.pop(key,None);known[key]=outcome
         data['blackout']=dict(list(known.items())[-KEPT:])
@@ -103,8 +104,12 @@ def refused_at_send(job,index):
     if e is None or e.version!=job.parameters.get('version'):return
     commands=stored_commands(e)
     command=commands[index] if isinstance(index,int) and 0<=index<len(commands) else None
-    rows=boxes(commands).get(command.get('page')) if isinstance(command,dict) and command.get('type')=='redact' else None
-    if rows:_remember(e,{_key(e.file,command['page'],rows):'refused'})
+    found=boxes(commands)
+    rows=found.get(command.get('page')) if isinstance(command,dict) and command.get('type')=='redact' else None
+    if not rows:return
+    # The send names its first such page alone: the others are checked again, all together, as a send runs them.
+    others=[_key(e.file,page,boxed) for page,boxed in found.items() if page!=command['page']]
+    _remember(e,{_key(e.file,command['page'],rows):'refused'},forget=others)
 
 
 def _document(account,pk):
@@ -159,7 +164,10 @@ def run(row):
     if e is None:raise DomainError('not_found',404)
     e,commands,asset=_document(row.account,e.pk)
     if not switched():return {'checked':0}
-    known=_known(e);todo={page:rows for page,rows in boxes(commands).items() if _key(asset,page,rows) not in known}
+    known=_known(e);found=boxes(commands)
+    # One page not known yet and every page with a box is checked again with it: what a page comes to depends on
+    # the others run beside it (time, memory, PdfCraft writing the file whole), as it does in the send.
+    todo=found if any(_key(asset,page,rows) not in known for page,rows in found.items()) else {}
     if not todo:return {'checked':0}
     path=storage.local(asset.object_key)
     if not path.is_file():raise DomainError('file_unavailable',404)
