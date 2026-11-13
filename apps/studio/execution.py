@@ -40,6 +40,52 @@ def _photos(job,sections,warnings,style='photo',candidates=None):
     return result.photos
 
 
+class _EarlyPhotos:
+    """A deck's photos fetched from its plan while its slides are written (provider.generate's on_plan).
+
+    Its own thread, closing its own database connections; with LOCAL_SYNC_JOBS
+    (development and tests) it runs on the spot. Whatever goes wrong, the deck
+    falls back to fetching its photos after writing, as it always did.
+    """
+    def __init__(self,job,style):
+        self.job,self.style,self.started,self.future,self.pool=job,style,False,None,None
+
+    def _fetch(self,sections):
+        warnings,candidates=[],{}
+        try:return _photos(self.job,sections,warnings,self.style,candidates),warnings,candidates
+        finally:
+            from django.conf import settings
+            if not settings.LOCAL_SYNC_JOBS:
+                from django.db import connections
+                connections.close_all()
+
+    def start(self,sections):
+        from concurrent.futures import Future,ThreadPoolExecutor
+        from django.conf import settings
+        self.started=True
+        if settings.LOCAL_SYNC_JOBS:
+            self.future=Future()
+            try:self.future.set_result(self._fetch(sections))
+            except Exception as exc:self.future.set_exception(exc)
+            return
+        self.pool=ThreadPoolExecutor(max_workers=1)
+        self.future=self.pool.submit(self._fetch,sections)
+
+    def result(self,warnings,candidates):
+        """The photos, with their warnings and shortlists added; None when they could not be had."""
+        try:
+            photos,found,offered=self.future.result()
+        except Exception:
+            return None
+        finally:
+            if self.pool:self.pool.shutdown(wait=False)
+        warnings.extend(found);candidates.update(offered)
+        return photos
+
+    def abandon(self):
+        if self.pool:self.pool.shutdown(wait=False,cancel_futures=True)
+
+
 def _keep_picture(job,draft_id,section_id,source,jpeg,**facts):
     """One picture of a deck as a file of the account's, so a later redraw needs no network.
 
@@ -148,10 +194,14 @@ def execute_generation(job,output_dir):
     if job.parameters.get('stage')=='outline':
         from .outlines import execute_outline
         return execute_outline(job,draft,data,original,cfg,output_dir,deadline=deadline)
+    # A deck written in parts side by side has its slides planned first: its
+    # photos are fetched from that plan while the slides are written.
+    early=_EarlyPhotos(job,(data.get('options') or {}).get('photo_style') or 'photo') if data['output_format']=='pptx' and not cv else None
     if cfg['mode']=='openai':
         from .provider import generate
         try:
-            raw,usage=generate(cfg,data,job.feature_id,job.id,token_limit=job.quote.policy['generation_bounds']['input_tokens'],deadline=deadline)
+            raw,usage=generate(cfg,data,job.feature_id,job.id,token_limit=job.quote.policy['generation_bounds']['input_tokens'],deadline=deadline,
+                               **({'on_plan':early.start} if early else {}))
             content=validate_content(job.account,raw,data['output_format'],feature=job.feature_id)
             # The look the model chose is kept with the draft, so a later change
             # request redraws the same deck rather than picking again. Only a
@@ -201,6 +251,7 @@ def execute_generation(job,output_dir):
             ProviderUsage.objects.create(job=job,provider='openai',model=cfg['model'],input_tokens=usage.get('input_tokens',0),output_tokens=usage.get('output_tokens',0),outcome='succeeded')
         except Exception:
             ProviderUsage.objects.create(job=job,provider='openai',model=cfg['model'],outcome='failed')
+            if early:early.abandon()
             raise
     else:
         warnings.append('local_fixture_not_ai_generated')
@@ -249,7 +300,8 @@ def execute_generation(job,output_dir):
         if artifacts[0].get('shortened'):warnings.append('cv_trimmed')
     elif ext=='pptx':
         candidates={}
-        photos=_photos(job,content['sections'],warnings,photo_style,candidates)
+        photos=early.result(warnings,candidates) if early and early.started else None
+        if photos is None:photos=_photos(job,content['sections'],warnings,photo_style,candidates)
         artifacts=[render_pptx(content,output_dir/'document.pptx',data['output_locale'],'user_document',style=style,photos=photos)]
     else:
         # A document only has photos when its description asked for pictures.

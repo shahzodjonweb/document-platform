@@ -21,13 +21,13 @@ for language,label in {'en':'Image model ID (optional)','uz':'Rasm modeli identi
 for language,labels in {
     'en':{'writing_effort':'Reasoning effort: writing','photo_effort':'Reasoning effort: photo choice','service_tier':'Processing tier',
           'model_default':'Model default','account_default':'Account default','tier_priority':'Priority (faster, costs more)',
-          'tuning_note':'Each call takes about 1 s plus 9.5 ms per output token, reasoning included. A setting the model does not accept is left out automatically.'},
+          'tuning_note':'Each call takes about 1 s plus 9.5 ms per output token, reasoning included. A setting the model does not accept is left out automatically.','parallel_parts':'Write long new documents in parts side by side (planned first)'},
     'uz':{'writing_effort':'Fikrlash darajasi: matn yozish','photo_effort':'Fikrlash darajasi: rasm tanlash','service_tier':'Ishlov berish darajasi',
           'model_default':'Model standarti','account_default':'Hisob standarti','tier_priority':'Ustuvor (tezroq, qimmatroq)',
-          'tuning_note':'Har bir chaqiruv taxminan 1 soniya va har bir chiqish tokeni uchun 9,5 ms davom etadi, fikrlash ham shunga kiradi. Model qabul qilmaydigan sozlama avtomatik tashlab yuboriladi.'},
+          'tuning_note':'Har bir chaqiruv taxminan 1 soniya va har bir chiqish tokeni uchun 9,5 ms davom etadi, fikrlash ham shunga kiradi. Model qabul qilmaydigan sozlama avtomatik tashlab yuboriladi.','parallel_parts':'Uzun yangi hujjatlarni qismlab bir vaqtda yozish (avval reja)'},
     'ru':{'writing_effort':'Уровень рассуждений: текст','photo_effort':'Уровень рассуждений: выбор фото','service_tier':'Уровень обработки',
           'model_default':'По умолчанию модели','account_default':'По умолчанию аккаунта','tier_priority':'Приоритетный (быстрее, дороже)',
-          'tuning_note':'Каждый вызов занимает около 1 с плюс 9,5 мс на выходной токен, включая рассуждения. Настройка, которую модель не принимает, отбрасывается автоматически.'},
+          'tuning_note':'Каждый вызов занимает около 1 с плюс 9,5 мс на выходной токен, включая рассуждения. Настройка, которую модель не принимает, отбрасывается автоматически.','parallel_parts':'Писать длинные новые документы частями параллельно (сначала план)'},
 }.items():LABELS[language].update(labels)
 
 for language, values in {
@@ -339,7 +339,7 @@ def integrations(request):
     # Do not misreport it as stopped using the local development PID check.
     status=labels[runner_status()] if local_controls else labels['managed' if bot['token'] else 'waiting']
     # Never include credentials in the template context.
-    data.update(bot={'username':bot['username'],'webapp_url':bot['webapp_url'],'configured':bool(bot['token']),'status':status},ai={'mode':ai['mode'],'model':ai['model'],'image_model':ai['image_model'],'configured':bool(ai['api_key']),'writing_effort':ai['writing_effort'],'photo_effort':ai['photo_effort'],'service_tier':ai['service_tier']},efforts=EFFORTS,tiers=TIERS,local_controls=local_controls,notice=labels.get(request.GET.get('notice',''),''))
+    data.update(bot={'username':bot['username'],'webapp_url':bot['webapp_url'],'configured':bool(bot['token']),'status':status},ai={'mode':ai['mode'],'model':ai['model'],'image_model':ai['image_model'],'configured':bool(ai['api_key']),'writing_effort':ai['writing_effort'],'photo_effort':ai['photo_effort'],'service_tier':ai['service_tier'],'parallel_parts':ai['parallel_parts']},efforts=EFFORTS,tiers=TIERS,local_controls=local_controls,notice=labels.get(request.GET.get('notice',''),''))
     data['google'] = {key: google[key] for key in ('enabled','client_id','redirect_uri','configured','ready')}
     data['email'] = {key: email[key] for key in ('enabled','host','port','username','use_tls','use_ssl','from_email','configured','ready')}
     data['antibot'] = {key: antibot[key] for key in ('web_enabled','bot_enabled','site_key','allowed_hostnames','configured','ready')}

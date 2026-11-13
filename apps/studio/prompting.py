@@ -524,12 +524,21 @@ def output_budget(data, feature, sections, questions=0):
     return call_tokens(sections, questions)
 
 
-def part_guidance(first, last, total, outline=False):
+def part_guidance(first, last, total, outline=False, planned=False):
     """What one part of a long document is for, so no part opens or closes it out of turn.
 
     Told only "sections 1-10 of 14", the first part covered every subtopic and
-    closed the deck, and the next part opened it again.
+    closed the deck, and the next part opened it again. A `planned` part is
+    written at the same time as the others, from the plan in document_plan and
+    in its own outline, so it has no already_written to continue from.
     """
+    if planned:
+        return (f'This call writes sections {first + 1}-{last} of {total}, at the same time as other calls write '
+                'the rest from the same plan. '
+                + ('Open the document here. ' if first == 0 else 'No new introduction, cover or agenda. ')
+                + ('End the document here. ' if last == total else 'Do not conclude it or use a closing slide yet. ')
+                + 'Write each section on the point its heading in outline names, keeping its layout and image_query; '
+                'document_plan shows what every other section covers, so add nothing that belongs to them.')
     if outline:
         return (f'This call plans sections {first + 1}-{last} of {total}. '
                 + ('Plan the opening of the document here. ' if first == 0 else
@@ -546,6 +555,52 @@ def part_guidance(first, last, total, outline=False):
             'other parts.')
 
 
+# Output allowed a plan call per section, beside room for the model to think:
+# a heading (and a deck's layout and photo subject, or a document's one-line
+# note of what a section covers) is a few dozen tokens.
+PLAN_BASE_TOKENS = 3000
+PLAN_SECTION_TOKENS = {'pptx': 90, 'pdf': 160}
+PLAN_NOTE_CHARS = 200
+
+
+def plan_budget(fmt, count):
+    """A plan call's max_output_tokens."""
+    from .pages import RESPONSE_CEILING
+    return min(RESPONSE_CEILING, PLAN_BASE_TOKENS + PLAN_SECTION_TOKENS.get(fmt, PLAN_SECTION_TOKENS['pdf']) * count)
+
+
+def plan_guidance(fmt, count, options, total):
+    """What a plan call is asked for: the shape of every section, and nothing written yet."""
+    from . import layouts
+    if fmt == 'pptx':
+        # As many photos as the writing guidance would ask the whole deck for (provider.writing_guidance).
+        cap = int(options.get('image_cap', 0) or 0)
+        asked = int(options.get('images_wanted', 0) or 0)
+        photos = min(cap, asked or max(1, round(count / 3))) if cap else 0
+        return (f'Plan {count} slides only, in order, preserving section ids. For each: a headline of at most 8 '
+                'words that states the point its slide makes, the layout from the layout list that suits that point, '
+                'and image_query only where the layout takes a photo. Section 1 is the title slide'
+                + (' and the last slide closes the deck' if count > 2 else '') + '. The slides are then written '
+                'from this plan several at a time, so every headline must name a distinct point: no two slides cover '
+                'the same ground. Write no slide text yet. ' + layouts.photo_guidance(photos))
+    return (f'Plan {count} sections only, in order, preserving section ids. For each: a heading where a new topic '
+            'starts (empty where the section continues the previous topic), and in body one sentence of at most '
+            f'{PLAN_NOTE_CHARS} characters saying what that section covers. The sections are then written from this '
+            'plan several at a time, so each must cover distinct ground and together they must cover the whole '
+            'request in a logical order. Write none of the document yet.')
+
+
+def plan_schema(data, feature):
+    """A plan's wire schema: a title and, per section, only what the parts need from it."""
+    from .provider import obj
+    full = schema(data, feature, final=False, design=False)
+    section = full['properties']['sections']['items']['properties']
+    keep = {name: section[name] for name in ('id', 'heading', 'layout', 'image_query') if name in section}
+    if data.get('output_format') != 'pptx':
+        keep['body'] = {'type': 'string', 'maxLength': PLAN_NOTE_CHARS}
+    return obj({'title': full['properties']['title'], 'sections': {'type': 'array', 'items': obj(keep)}})
+
+
 def request_body(config, data, feature, span=None):
     from . import layouts
     from .provider import SYSTEM, writing_guidance
@@ -559,6 +614,8 @@ def request_body(config, data, feature, span=None):
     final = last >= len(sections)
     mine = sections[first:last]
     outline = is_outline(data, feature)
+    # A plan call (provider._plan): every section's shape, nothing written yet.
+    planning = data.get('_stage') == 'plan' and not outline
     fmt = data.get('output_format', 'pdf')
     options = {k: data.get('options', {})[k] for k in ('length', 'question_count', 'image_cap', 'images_wanted')
                if k in data.get('options', {})}
@@ -613,7 +670,7 @@ def request_body(config, data, feature, span=None):
             # Only a job that can choose a design reads the list (about 9k characters).
             # The answer is the same for every batch of one job, so a long deck's
             # cached prefix still is; only the first call's schema asks.
-            if deck_designs.wanted(data, 0):
+            if deck_designs.wanted(data, 0) and not planning:
                 parts.append(deck_designs.reference(with_photos))
         if fmt != 'pptx':
             every = data.get('options', {})
@@ -624,9 +681,9 @@ def request_body(config, data, feature, span=None):
                                           int(options.get('image_cap', 0) or 0))
             if guide:
                 parts.append(guide)
-            design = doc_designs.wanted(data, first)
+            design = doc_designs.wanted(data, first) and not planning
         else:
-            design = deck_designs.wanted(data, first)
+            design = deck_designs.wanted(data, first) and not planning
     if selected(data):
         parts.append(SELECTED_REVISION)
     parts.append(language.instructions(locale_of(data)))
@@ -683,7 +740,9 @@ def request_body(config, data, feature, span=None):
                 max_questions=questions if final and not outline and not selected(data) else 0)
     if part:
         user['writing_this_part'] = f'sections {first+1}-{last} of {len(sections)}'
-    if outline:
+    if planning:
+        user['writing_guidance'] = plan_guidance(fmt, len(mine), options, len(sections))
+    elif outline:
         user['writing_guidance'] = (f'Plan {len(mine)} sections only: heading and 1–2 brief coverage '
                                     'sentences each. Preserve section ids. No final prose or notes.')
         if fmt == 'pptx':
@@ -708,17 +767,21 @@ def request_body(config, data, feature, span=None):
                                                      len(sections), include_layouts=False)
     if part and not revision:
         user['writing_guidance'] = user['writing_guidance'].rstrip() + ' ' + part_guidance(
-            first, last, len(sections), outline)
+            first, last, len(sections), outline, planned=bool(data.get('_planned')))
     if revision:
         user['revision'] = {'request': revision['request']}
         if selected(data):
             user['revision']['selected_section_ids'] = [s['id'] for s in mine]
+    if planning:
+        user['max_questions'] = 0
+        user['outline']['questions'] = []
     result = {'model': config['model'], 'store': False, 'instructions': instructions,
               'input': json.dumps(user, ensure_ascii=False, separators=(',', ':')),
-              'max_output_tokens': output_budget(data, feature, len(mine),
-                                                 user['max_questions']),
-              'text': {'format': {'type': 'json_schema', 'name': 'document', 'strict': True,
-                                 'schema': schema(data, feature, final=final, design=design)}}}
+              'max_output_tokens': (plan_budget(fmt, len(mine)) if planning else
+                                    output_budget(data, feature, len(mine), user['max_questions'])),
+              'text': {'format': {'type': 'json_schema', 'name': 'plan' if planning else 'document', 'strict': True,
+                                 'schema': plan_schema(data, feature) if planning else
+                                 schema(data, feature, final=final, design=design)}}}
     # Supported by Responses models. Stable across a user's related batches;
     # no raw account identifiers or source hashes leave the app in this key.
     scope = data.get('_cache_scope', '')

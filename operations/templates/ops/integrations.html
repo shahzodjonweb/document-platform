@@ -97,6 +97,7 @@
           {% for tier in tiers %}<option value="{{ tier }}" {% if ai.service_tier == tier %}selected{% endif %}>{% if tier == 'priority' %}{{ i.tier_priority }}{% else %}{{ tier }}{% endif %}</option>{% endfor %}
         </select>
       </label>
+      <input type="hidden" name="parallel_parts" value="false"><label><input type="checkbox" name="parallel_parts" value="true" {% if ai.parallel_parts %}checked{% endif %}> {{ i.parallel_parts }}</label>
       <small>{{ i.tuning_note }}</small>
       <div class="integration-actions"><button class="button primary" name="action" value="save">{{ i.save }}</button></div>
     </form>
