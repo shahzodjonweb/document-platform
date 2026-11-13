@@ -64,7 +64,7 @@ def test_the_new_document_fields_and_answers_are_in_the_contract():
     assert {'200','201'}<=post.keys()
     assert 'device' in CONTRACT['paths']['/editor/documents/{id}']['patch']['requestBody']['content']['application/json']['schema']['properties']
     flags=CONTRACT['paths']['/studio/config']['get']['responses']['200']['content']['application/json']['schema']['properties']['limits']['properties']['editor']
-    assert set(flags['required'])=={'editor_v2','pdfcraft','text_edit','deck_editor','edit_buttons','count_once','photos_task'}
+    assert set(flags['required'])=={'editor_v2','pdfcraft','text_edit','deck_editor','edit_buttons','count_once','photos_task','vector_blackout'}
 
 
 def test_the_file_on_disk_is_what_the_generator_says():

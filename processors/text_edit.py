@@ -147,11 +147,13 @@ class Page:
         self.width,self.height,self.letters,self.pixels,self.scale,self.count=width,height,letters,pixels,scale,count
 
     @classmethod
-    def read(cls,path,number):
+    def read(cls,path,number,scale=SCALE,forms=False):
+        """`scale` is the most it is rendered at; `forms` draws form fields as a viewer fills them in."""
         import numpy
         import pypdfium2 as pdfium
         import pypdfium2.raw as raw
         with pdfium.PdfDocument(str(path)) as document:
+            if forms:document.init_forms()
             count=len(document);page=document[number-1]
             try:
                 left,bottom,right,top=page.get_mediabox();turn=page.get_rotation()%360
@@ -171,16 +173,16 @@ class Page:
                         raw.FPDFText_GetCharBox(text,index,l,r,b,t);raw.FPDFText_GetCharOrigin(text,index,ox,oy)
                         name.value=b'';raw.FPDFText_GetFontInfo(text,index,name,256,ctypes.byref(flags));raw.FPDFText_GetFillColor(text,index,*fill)
                         # pdfium's size leaves out the page's scale (Chrome draws at 0.75), the char's matrix has it.
-                        scale=math.hypot(matrix.c,matrix.d) if raw.FPDFText_GetMatrix(text,index,matrix) else 1
+                        factor=math.hypot(matrix.c,matrix.d) if raw.FPDFText_GetMatrix(text,index,matrix) else 1
                         (x0,y0),(x1,y1)=shown(l.value,t.value),shown(r.value,b.value);x,base=shown(ox.value,oy.value)
                         holder=raw.FPDFText_GetTextObject(text,index)
                         letter={'left':min(x0,x1),'right':max(x0,x1),'top':min(y0,y1),'bottom':max(y0,y1),'x':x,'base':base,
-                                'size':raw.FPDFText_GetFontSize(text,index)*scale,'font':name.value.decode('utf-8','ignore'),'flags':flags.value,
+                                'size':raw.FPDFText_GetFontSize(text,index)*factor,'font':name.value.decode('utf-8','ignore'),'flags':flags.value,
                                 'color':'#%02x%02x%02x'%tuple(part.value for part in fill[:3]),
                                 'unseen':bool(holder) and raw.FPDFTextObj_GetTextRenderMode(holder) in UNSEEN}
                         letters.extend({**letter,'char':char} for char in chars)
                 finally:text.close()
-                scale=min(SCALE,math.sqrt(RENDER_PIXELS/max(1,width*height)))
+                scale=min(scale,math.sqrt(RENDER_PIXELS/max(1,width*height)))
                 bitmap=page.render(scale=scale)
                 try:pixels=numpy.asarray(bitmap.to_pil().convert('RGB'),dtype=numpy.int16)
                 finally:bitmap.close()
@@ -468,8 +470,9 @@ class Edited:
 class _Work:
     """The working file, and PdfCraft while it may still be asked."""
 
-    def __init__(self,source,root,executable):
-        self.root,self.executable,self.started,self.count,self.pages=root,executable,time.monotonic(),0,{}
+    def __init__(self,source,root,executable,spent=0.0):
+        # `spent`: seconds of PdfCraft the send has had already (black-out), which come off this stage's.
+        self.root,self.executable,self.started,self.count,self.pages=root,executable,time.monotonic()-spent,0,{}
         self.path=source
         if executable:
             # PdfCraft reads and writes only under its root.
@@ -645,8 +648,8 @@ def _apply(work,edits,turned):
     return done
 
 
-def stage(source,commands,root,allowed):
-    """Applies every edit_text of a job: an Edited. `allowed` is the pdfcraft switch; `root` a private folder inside the job's output.
+def stage(source,commands,root,allowed,spent=0.0):
+    """Applies every edit_text of a job: an Edited. `allowed` is the pdfcraft switch; `root` a private folder inside the job's output; `spent` the seconds the black-out stage took.
 
     A page PdfCraft cannot be asked about goes straight to covering: a turned page,
     whose runs PdfCraft lists unturned while the web placed the box as shown, and
@@ -668,7 +671,7 @@ def stage(source,commands,root,allowed):
             error.index=index;raise
         if turn:turned.add(command['page'])
     executable=pdfcraft.binary(root) if allowed and source.stat().st_size<=MAX_BYTES and len(reader.pages)<=MAX_PAGES else None
-    done=_apply(_Work(source,root,executable),edits,turned)
+    done=_apply(_Work(source,root,executable,spent),edits,turned)
     if done.path!=source and not _keeps_its_parts(source,done.path):
         # Something else in the file did not survive PdfCraft's rewrite: every change is covered on the source instead.
         done=_apply(_Work(source,root,None),edits,turned)

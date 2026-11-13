@@ -300,7 +300,7 @@ def test_a_task_that_has_waited_long_goes_first():
     assert tasks.claim(now=now).pk == old.pk
 
 
-@pytest.mark.parametrize('kind', ['inspect', 'text_check', 'anything'])
+@pytest.mark.parametrize('kind', ['inspect', 'anything'])
 def test_kinds_of_later_steps_are_refused_by_name_and_never_stubbed(kind):
     with pytest.raises(DomainError) as refused:
         tasks.enqueue(account(), kind, {})
@@ -310,6 +310,14 @@ def test_kinds_of_later_steps_are_refused_by_name_and_never_stubbed(kind):
 
 def test_a_row_of_a_later_kind_fails_by_name_in_the_runner():
     row = task(account(), kind='inspect')
+    assert tasks.next_task()
+    row.refresh_from_db()
+    assert (row.status, row.error, row.encrypted_result) == (tasks.FAILED, 'editor_task_unsupported', None)
+
+
+def test_a_text_check_does_black_out_alone():
+    # Its one action today (editor_blackout.py); any other is refused by name, never guessed at.
+    row = task(account(), kind=tasks.TEXT_CHECK, action='spelling')
     assert tasks.next_task()
     row.refresh_from_db()
     assert (row.status, row.error, row.encrypted_result) == (tasks.FAILED, 'editor_task_unsupported', None)

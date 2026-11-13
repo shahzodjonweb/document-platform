@@ -54,6 +54,10 @@ def main():
                 request.get('parameters', {}), request['output_dir'], secret=request.get('secret'),
                 office_timeout=request.get('office_timeout', 60), deck_fonts=request.get('deck_fonts') is True,
                 office_home=request.get('office_home'), pdfcraft=request.get('pdfcraft') is True)
+        elif request.get('operation') == 'helper':
+            from .helpers import run as helper
+            result = helper(request.get('name'), request.get('input_paths'), request.get('parameters', {}),
+                request['output_dir'], pdfcraft=request.get('pdfcraft') is True)
         else:
             raise ProcessorError('invalid_operation')
         json.dump({'ok': True, 'result': result}, sys.stdout)

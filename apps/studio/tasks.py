@@ -16,9 +16,11 @@ as drafts are, and go an hour after the task finishes; the row stays a little
 longer to count those seconds. In tests and local development
 (settings.LOCAL_SYNC_JOBS) a task runs as it is queued, so nothing waits.
 
-Kinds that run today: `render_deck`, `preview` and `photos` (deck_photos.py: a
+Kinds that run today: `render_deck`, `preview`, `photos` (deck_photos.py: a
 deck's pictures, which never replace one another while waiting: one at a time
-per draft). `inspect` and `text_check` are refused, not stubbed.
+per draft) and `text_check`, whose one action is `blackout` (editor_blackout.py:
+which pages of a PDF draft keep their words when blacked out). `inspect` is
+refused, not stubbed.
 
 A slide's picture is keyed by what is on the slide: its XML and its pictures'
 bytes, the deck's theme, the renderer's version and the language. Draft fields
@@ -75,7 +77,7 @@ logger = logging.getLogger(__name__)
 
 QUEUED, RUNNING, DONE, FAILED = 'queued', 'running', 'done', 'failed'
 WAITING = (QUEUED, RUNNING)
-RENDER, PREVIEW, PHOTOS = 'render_deck', 'preview', 'photos'
+RENDER, PREVIEW, PHOTOS, TEXT_CHECK = 'render_deck', 'preview', 'photos', 'text_check'
 # The queued tasks the order is worked out over, oldest first, and how many of them a runner tries to lock at once.
 WINDOW = 500
 CLAIM_BATCH = 20
@@ -549,7 +551,14 @@ def _photos(row):
     return run(row)
 
 
-HANDLERS = {RENDER: _render_deck, PREVIEW: _preview, PHOTOS: _photos}
+def _text_check(row):
+    from .editor_blackout import ACTION, run
+    if row.action != ACTION:
+        raise DomainError('editor_task_unsupported', 409)
+    return run(row)
+
+
+HANDLERS = {RENDER: _render_deck, PREVIEW: _preview, PHOTOS: _photos, TEXT_CHECK: _text_check}
 
 
 # --- What the customer is told ---------------------------------------------------------------

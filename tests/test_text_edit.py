@@ -318,13 +318,14 @@ def test_pdfcraft_runs_in_its_root_with_nothing_of_the_workers_environment(tmp_p
     result,_=run(source,[edit(UZ[2],'Yangi qator')],tmp_path)
     assert engines(result)==['covered'],'a report it cannot read is covered'
     seen=json.loads(notes.read_text());root=Path(seen['cwd'])
-    assert root.parent==tmp_path/'out' and root.name.startswith('pdfcraft-')
+    # The send's own PdfCraft folder, inside its output, with the text stage's part of it.
+    assert root.parent.parent==tmp_path/'out' and root.parent.name.startswith('pdfcraft-') and root.name=='text'
     # What the stand-in's own interpreter adds on macOS (locale coercion, CoreFoundation) is not what it was given.
     given={name:value for name,value in seen['env'].items() if name not in ('LC_CTYPE','__CF_USER_TEXT_ENCODING')}
     assert given=={'PATH':os.environ.get('PATH',''),**dict.fromkeys(pdfcraft.ISOLATION,str(root))}
     assert seen['argv']==['run','--script',str(root/'steps.json'),'--report','--root',str(root)] and seen['stdin']==''
     assert seen['group']==os.getpgrp(),'in the child\'s own process group, which the sandbox kills whole'
-    assert 'work-0.pdf' in seen['files'] and not root.exists(),'the root goes with the job'
+    assert 'work-0.pdf' in seen['files'] and not root.parent.exists(),'the root goes with the job'
 
 
 def test_a_binary_that_is_not_the_pinned_release_is_not_asked(tmp_path,monkeypatch):

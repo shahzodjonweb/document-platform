@@ -598,6 +598,20 @@ def editor_detail(request,pk):
             store_commands(e,commands);e.input_ids=ids;e.updated_at=timezone.now();e.device=device
             e.save(update_fields=[*COMMAND_COLUMNS,'input_ids','updated_at','device'])
         return editor_data(e)
+# The Black out sheet asks once its boxes settle, and Review before a send; GET follows a check that is running.
+BLACKOUT_CHECKS_PER_MINUTE=20
+BLACKOUT_POLLS_PER_MINUTE=90
+@api(('GET','POST'))
+def editor_blackout(request,pk):
+    """Which pages with a black-out box keep their words in a send, and why each other one becomes a picture (editor_blackout.py). POST asks for a check where a page is not known yet."""
+    from .editor_blackout import ask,state
+    if request.method=='POST':
+        account_limit(request.account,'editor_blackout',BLACKOUT_CHECKS_PER_MINUTE)
+        answer=ask(request.account,pk)
+    else:
+        account_limit(request.account,'editor_blackout_polls',BLACKOUT_POLLS_PER_MINUTE)
+        answer=state(request.account,pk)
+    return JsonResponse(answer,status=202 if answer['status'] in ('queued','running') else 200)
 @api(('POST',))
 def editor_quote(request,pk):
     e=EditorDocument.objects.filter(account=request.account,id=pk).first()
