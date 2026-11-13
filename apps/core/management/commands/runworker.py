@@ -1,4 +1,3 @@
-import time
 import shutil
 from django.core.management.base import BaseCommand
 from django.utils import timezone
@@ -6,10 +5,22 @@ from apps.core.models import OutboxEvent,Job
 from apps.core.services import execute_job,settle_job,storage_path
 from apps.core.scheduling import select_outbox
 from apps.core.shutdown import graceful_stop
+from apps.core import wakeups
 # Which jobs a runner takes. `all` is the worker that runs every tool; `ai` is the
 # AI lane (the ai-worker service): AI writing jobs only. Both take AI jobs, so two
 # run at once, and the worker alone still runs everything should the lane be down.
 LANES=('all','ai')
+
+
+# How long an idle runner waits for a wake-up before it looks anyway: the
+# longest a deploy's SIGTERM waits for an idle runner, and the safety net
+# for a token that never came.
+IDLE_SECONDS=2
+
+
+def wake_key(lane):
+    """The wake-up a lane's runner listens for (apps/core/wakeups.py)."""
+    return wakeups.AI_JOBS if lane=='ai' else wakeups.JOBS
 
 
 def lane_features(lane):
@@ -45,4 +56,5 @@ class Command(BaseCommand):
                         event.delivered_at=timezone.now()
                         event.save(update_fields=['delivered_at'])
                 if options['once']: break
-                if not events and not stop: time.sleep(1)
+                # Woken the moment a job is queued (wakeups.py); without Redis, a look every second as before.
+                if not events and not stop: wakeups.wait([wake_key(options.get('lane') or 'all')],IDLE_SECONDS,idle=1)

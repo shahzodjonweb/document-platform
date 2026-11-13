@@ -313,6 +313,9 @@ def submit_job(account, quote_id, idempotency_key, origin='web'):
         handle.job=job
         handle.save(update_fields=['job'])
     OutboxEvent.objects.create(job=job)
+    # The runners are woken once this commits instead of finding it at their next look.
+    from . import wakeups
+    wakeups.notify_on_commit(wakeups.JOBS,*([wakeups.AI_JOBS] if quote.feature_id in GENERATION_IDS else []))
     if quote.feature_id in GENERATION_IDS:
         from apps.studio.review import record_request
         record_request(job)
@@ -378,6 +381,10 @@ def settle_job(job_id, status, error_code='', outputs=None, warnings=None, engin
     if not settings.LOCAL_SYNC_JOBS:
         from telegram.notifications import enqueue_notice
         enqueue_notice(job)
+    if job.origin_channel in TELEGRAM_ORIGINS and job.account.telegram_user_id is not None:
+        # The bot sends the file, or the notice, as soon as this commits (wakeups.py).
+        from . import wakeups
+        wakeups.notify_on_commit(wakeups.DELIVERIES)
     record_event(job.account,f'job.{status}',job=job,properties={'pages':sum(int(o.get('page_count') or 0) for o in outputs or [])},channel=job.origin_channel)
     OutboxEvent.objects.filter(job=job,topic='job.execute').update(delivered_at=timezone.now())
     SecretHandle.objects.filter(job=job).delete()

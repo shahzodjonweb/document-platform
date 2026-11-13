@@ -663,3 +663,7 @@ tests/test_call_tuning.py::test_a_job_whose_model_refuses_the_effort_is_written_
 # A longer short PDF is extended in parts side by side; a failed part costs only its sections
 tests/test_document_fill.py::test_a_longer_document_is_extended_in_parts_side_by_side
 tests/test_document_fill.py::test_a_part_that_fails_leaves_only_its_own_sections_as_they_were
+
+# Wake-ups: a queued job wakes its lanes and a settled bot job the delivery loop; no Redis, the old timer
+tests/test_wakeups.py::test_queuing_a_job_wakes_its_lanes_once_it_commits
+tests/test_wakeups.py::test_a_redis_that_fails_never_fails_the_caller
