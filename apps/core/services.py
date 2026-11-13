@@ -473,6 +473,10 @@ def execute_job(job_id):
     except (DomainError,ProcessorError) as exc:
         shutil.rmtree(output_dir,ignore_errors=True)
         index = getattr(exc,'index',None)
+        if pointed and index is not None and exc.code=='rasterization_consent_required':
+            # A page a check had found would keep its words did not: the next quote asks about it.
+            from apps.studio.editor_blackout import refused_at_send
+            refused_at_send(job,index)
         return settle_job(job.id,'failed',error_code=exc.code,warnings=[{'failed_command':index}] if pointed and index is not None else None)
     except Exception:
         # No exception text: engine errors may contain private paths or document data.

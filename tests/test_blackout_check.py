@@ -133,9 +133,14 @@ def test_a_page_known_to_keep_its_words_that_does_not_at_the_send_fails_it_and_n
     quoted=send(client,url,2)
     assert quoted.status_code==201 and quoted.json()['summary']['raster_pages']==[]
     job=run(client,quoted,'blackout-late')
-    assert job.status=='failed' and job.error_code=='rasterization_consent_required'
+    assert job.status=='failed' and job.error_code=='rasterization_consent_required' and {'failed_command':0} in job.warnings
     from apps.core.allowance import file_jobs_this_week
     assert file_jobs_this_week(a)==0
+    # Known now: the next quote asks about that page, and the send with consent goes.
+    assert outcomes(check(client,url,'get'))=={1:'refused'}
+    quoted=send(client,url,2)
+    assert refused(quoted)==(400,'rasterization_consent_required') and quoted.json()['error']['message_params']=={'pages':[1]}
+    assert run(client,send(client,url,2,accept_rasterization=True),'blackout-late-2').status=='succeeded'
 
 
 def test_a_check_that_fails_says_so_until_the_draft_changes(tmp_path,switched,monkeypatch):

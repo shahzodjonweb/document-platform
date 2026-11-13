@@ -93,6 +93,20 @@ def _remember(e,answers):
         row.save(update_fields=['encrypted_inspection','inspection_sha256'])
 
 
+def refused_at_send(job,index):
+    """A send that had to make a page a picture without consent to it: that page's answer is now known, so the next quote asks about it.
+
+    The box at `index` of the draft as the job read it; nothing is kept when the draft has moved on since.
+    """
+    from processors.blackout import boxes
+    e=EditorDocument.objects.select_related('file').filter(account=job.account,id=job.parameters.get('editor_document_id')).first()
+    if e is None or e.version!=job.parameters.get('version'):return
+    commands=stored_commands(e)
+    command=commands[index] if isinstance(index,int) and 0<=index<len(commands) else None
+    rows=boxes(commands).get(command.get('page')) if isinstance(command,dict) and command.get('type')=='redact' else None
+    if rows:_remember(e,{_key(e.file,command['page'],rows):'refused'})
+
+
 def _document(account,pk):
     from .editor_domain import file_gone,normalized_commands
     from apps.core.services import validate_inputs
