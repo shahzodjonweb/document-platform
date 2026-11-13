@@ -277,6 +277,13 @@ tests/test_render_export.py::test_a_customers_own_cyrillic_in_an_uzbek_deck_pass
 tests/test_render_export.py::test_the_initials_a_variant_makes_of_a_customers_own_cyrillic_pass_too[quote_speaker]
 tests/test_render_export.py::test_a_deck_that_fits_where_every_slide_tries_many_variants_holds_the_worker_only_so_long[stats-34]
 
+# A deck's pictures changed in the slide editor: free and never an AI edit, within the day's and the
+# deck's caps, and never at the cost of a word on the slide
+tests/test_deck_photos.py::test_manual_picture_actions_use_no_ai_edit_and_no_task_of_the_week
+tests/test_deck_photos.py::test_add_to_all_slides_gives_pictures_only_where_every_word_still_shows
+tests/test_deck_photos.py::test_fills_are_three_a_day_and_failed_ones_do_not_count
+tests/test_deck_photos.py::test_a_deck_holds_twelve_pictures_and_no_more_than_its_plan
+
 # Deck editor helpers: a Latin preview saves nothing, kept cover lines stay private, survive a settings save and go on new
 # decks, a long deck saves whole, and a drawn deck's saves never blank it, drop its pins or ask for files it was made from
 tests/test_deck_editor_api.py::test_latin_writes_an_uzbek_deck_s_cyrillic_in_latin_letters_and_saves_nothing

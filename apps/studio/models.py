@@ -74,7 +74,7 @@ class ProviderUsage(models.Model):
     id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
     # A free editor task spends provider calls with no job to charge them to: one of the two is set.
     job=models.ForeignKey('core.Job',on_delete=models.CASCADE,null=True)
-    task=models.ForeignKey('studio.EditorTask',on_delete=models.CASCADE,null=True)
+    task=models.ForeignKey('studio.EditorTask',on_delete=models.SET_NULL,null=True)
     provider=models.CharField(max_length=24)
     model=models.CharField(max_length=100,blank=True)
     input_tokens=models.PositiveIntegerField(default=0)
@@ -223,6 +223,21 @@ class GenerationRecord(models.Model):
     created_at=models.DateTimeField(default=timezone.now,db_index=True)
     expires_at=models.DateTimeField(db_index=True)
 
+def keep_picture_tasks(collector, field, sub_objs, using):
+    """A deleted draft takes its editor tasks with it, but for its picture tasks: those stay, emptied, as the day's caps count them.
+
+    Deleting a deck must not give an account its day's fills and searches back
+    (deck_photos.used_today). What they held of the deck goes with it.
+    """
+    kept = [task for task in sub_objs if task.kind == 'photos']
+    if kept:
+        for name in ('draft', 'encrypted_payload', 'encrypted_result'):
+            collector.add_field_update(EditorTask._meta.get_field(name), None, kept)
+    gone = [task for task in sub_objs if task.kind != 'photos']
+    if gone:
+        models.CASCADE(collector, field, gone, using)
+
+
 class EditorTask(models.Model):
     """A short piece of editor work done in the editor container, never in a request.
 
@@ -236,7 +251,7 @@ class EditorTask(models.Model):
     account=models.ForeignKey('core.Account',on_delete=models.CASCADE,related_name='+')
     kind=models.CharField(max_length=12,choices=KINDS)
     document=models.ForeignKey(EditorDocument,on_delete=models.CASCADE,null=True,related_name='+')
-    draft=models.ForeignKey(GenerationDraft,on_delete=models.CASCADE,null=True,related_name='+')
+    draft=models.ForeignKey(GenerationDraft,on_delete=keep_picture_tasks,null=True,related_name='+')
     status=models.CharField(max_length=8,choices=STATUSES,default='queued',db_default='queued')
     encrypted_payload=models.BinaryField(null=True)
     encrypted_result=models.BinaryField(null=True)
@@ -248,6 +263,8 @@ class EditorTask(models.Model):
     finished_at=models.DateTimeField(null=True)
     # All its attempts' seconds, which the row's times cannot say: what the day's budget counts.
     spent_seconds=models.FloatField(default=0,db_default=0)
+    # A picture task's action (fill, next, upload, search), never the customer's words: what the day's caps count.
+    action=models.CharField(max_length=12,blank=True,default='',db_default='')
     class Meta:
         indexes=[models.Index(fields=['status','created_at'],name='editor_task_queue'),models.Index(fields=['account','status'],name='editor_task_account')]
         constraints=[models.UniqueConstraint(fields=['draft','kind'],condition=models.Q(status='queued'),name='editor_task_one_queued')]

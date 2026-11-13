@@ -16,8 +16,9 @@ as drafts are, and go an hour after the task finishes; the row stays a little
 longer to count those seconds. In tests and local development
 (settings.LOCAL_SYNC_JOBS) a task runs as it is queued, so nothing waits.
 
-Kinds that run today: `render_deck`, `preview`. Later steps bring `inspect`,
-`text_check` and `photos`; until then they are refused, not stubbed.
+Kinds that run today: `render_deck`, `preview` and `photos` (deck_photos.py: a
+deck's pictures, which never replace one another while waiting: one at a time
+per draft). `inspect` and `text_check` are refused, not stubbed.
 
 A slide's picture is keyed by what is on the slide: its XML and its pictures'
 bytes, the deck's theme, the renderer's version and the language. Draft fields
@@ -74,7 +75,7 @@ logger = logging.getLogger(__name__)
 
 QUEUED, RUNNING, DONE, FAILED = 'queued', 'running', 'done', 'failed'
 WAITING = (QUEUED, RUNNING)
-RENDER, PREVIEW = 'render_deck', 'preview'
+RENDER, PREVIEW, PHOTOS = 'render_deck', 'preview', 'photos'
 # The queued tasks the order is worked out over, oldest first, and how many of them a runner tries to lock at once.
 WINDOW = 500
 CLAIM_BATCH = 20
@@ -156,28 +157,34 @@ def _replace_queued(draft, kind, payload):
     return row if EditorTask.objects.filter(pk=row.pk, status=QUEUED).update(encrypted_payload=packed, attempts=0) else None
 
 
-def enqueue(account, kind, payload, *, draft=None, document=None):
-    """A task queued for the account, or the draft's queued one given this newer payload.
+def enqueue(account, kind, payload, *, draft=None, document=None, action='', check=None):
+    """A task queued for the account, or the draft's queued render given this newer payload.
 
     `lane_busy` past the day's budget of its kind, or with MAX_QUEUED waiting;
-    a replaced task takes no new place. With settings.LOCAL_SYNC_JOBS it runs here and now.
+    a replaced task takes no new place. `check()` runs under the account's lock,
+    to refuse what counting first and queueing after would let through twice.
+    `action` is what a picture task does, which its day's caps count. With
+    settings.LOCAL_SYNC_JOBS it runs here and now.
     """
     if kind not in HANDLERS:
         raise DomainError('editor_task_unsupported', 409)
     _within_budget(account, kind)
+    replaces = draft is not None and kind != PHOTOS
     with transaction.atomic():
         # The account's row held: two requests at once cannot both take the last place.
         Account.objects.select_for_update().filter(pk=account.pk).first()
-        row = _replace_queued(draft, kind, payload) if draft is not None else None
+        if check is not None:
+            check()
+        row = _replace_queued(draft, kind, payload) if replaces else None
         if row is None:
             if EditorTask.objects.filter(account=account, status=QUEUED).count() >= MAX_QUEUED:
                 raise DomainError('lane_busy', 429, retryable=True)
             try:
                 with transaction.atomic():
-                    row = EditorTask.objects.create(account=account, kind=kind, draft=draft, document=document, encrypted_payload=pack(payload))
+                    row = EditorTask.objects.create(account=account, kind=kind, draft=draft, document=document, action=action, encrypted_payload=pack(payload))
             except IntegrityError:
-                # A task given back to the queue at this moment: the newer payload is the one to do.
-                row = _replace_queued(draft, kind, payload)
+                # A render given back to the queue at this moment: the newer payload is the one to do.
+                row = _replace_queued(draft, kind, payload) if replaces else None
                 if row is None:
                     raise DomainError('lane_busy', 429, retryable=True) from None
     if settings.LOCAL_SYNC_JOBS:
@@ -240,8 +247,13 @@ def finish(row, status, *, result=None, error=''):
 
 
 def _give_back(row, code):
-    """A task the lane lost, queued again: failed with `code` after MAX_ATTEMPTS, or when a newer one of its draft's is already waiting."""
-    if row.attempts < MAX_ATTEMPTS:
+    """A task the lane lost, queued again: failed with `code` after MAX_ATTEMPTS, or when a newer one of its draft's is already waiting.
+
+    A picture task is never run twice: a runner slow past its lease may still be
+    spending the provider calls a second would spend again (deck_photos._write
+    keeps the slow one from landing).
+    """
+    if row.attempts < MAX_ATTEMPTS and row.kind != PHOTOS:
         try:
             with transaction.atomic():
                 return bool(EditorTask.objects.filter(pk=row.pk, status=RUNNING, attempts=row.attempts).update(status=QUEUED, lease_expires_at=None, spent_seconds=_charged(row)))
@@ -532,7 +544,12 @@ def _preview(row):
     return {'file_id': str(preview_asset(row.account, payload['asset_id'], payload['page'], payload.get('secret_id'), timeout=PREVIEW_SECONDS).pk)}
 
 
-HANDLERS = {RENDER: _render_deck, PREVIEW: _preview}
+def _photos(row):
+    from .deck_photos import run
+    return run(row)
+
+
+HANDLERS = {RENDER: _render_deck, PREVIEW: _preview, PHOTOS: _photos}
 
 
 # --- What the customer is told ---------------------------------------------------------------

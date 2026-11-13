@@ -23,7 +23,11 @@ When the model cannot be asked, the best tag match is used on its own.
 
 Pixabay's terms shape the rest: search responses are cached for 24 hours,
 images are downloaded rather than hotlinked, and requests happen only inside a
-confirmed job — never while a draft is being written or priced.
+confirmed job, or in a picture task a customer asked for in the slide editor
+(deck_photos.py) — never while a draft is being written or priced. Those tasks
+are few by design: behind the `photos_task` switch, three fills and ten
+searches a day for an account, twelve pictures a deck, and only TASK_RATE of
+the key's rate, so a paid deck's photos are never kept waiting by them.
 """
 import hashlib
 import io
@@ -66,6 +70,9 @@ POOL_WORKERS = 10
 # Pixabay allows 100 requests a minute per key; stay under it across every
 # worker, because the limit is on the key, not on the process.
 RATE = (90, 60)
+# What the editor's picture tasks may take of it: the other 30 a minute are
+# always there for paid decks.
+TASK_RATE = (60, 60)
 
 
 class PhotoResult:
@@ -256,6 +263,29 @@ def _broader(query):
 # ---------------------------------------------------------------- deck
 
 
+def take_rate(task=False):
+    """One request of the key's shared rate, or `rate_limited`; a picture task's first out of its own share."""
+    from apps.core.customer_auth import auth_limit
+    if task:
+        auth_limit('pixabay-api-tasks', 'global', *TASK_RATE)
+    auth_limit('pixabay-api', 'global', *RATE)
+
+
+def find(query, key, style='photo', *, task=False):
+    """The hits for one cleaned query: the 24-hour cache, or Pixabay under the key's rate. Raises when neither answers."""
+    from django.utils import timezone
+    from .models import PhotoSearch
+    now = timezone.now()
+    row = PhotoSearch.objects.filter(key=_cache_key(query, style), expires_at__gt=now).first()
+    if row is not None:
+        return row.hits
+    take_rate(task)
+    found = search(query, key, SEARCH_HITS, _kind(style))
+    PhotoSearch.objects.update_or_create(key=_cache_key(query, style),
+                                         defaults={'hits': found, 'expires_at': now + timedelta(hours=CACHE_HOURS)})
+    return found
+
+
 def wanted(sections):
     """The slides that asked for a photo, in deck order."""
     from .layouts import PHOTO_LAYOUTS
@@ -293,11 +323,12 @@ def _slide_text(section):
     return ' '.join(' '.join(str(part or '') for part in parts).split())[:400]
 
 
-def fetch_for_deck(sections, *, cap, budget, job=None, style='photo'):
+def fetch_for_deck(sections, *, cap, budget, job=None, style='photo', account=None, task=False):
     """Photos for as many of the slides that want one as the plan allows.
 
     `style` is the draft's photo_style: 'illustration' searches Pixabay for
-    drawings instead of photographs.
+    drawings instead of photographs. `task`: a picture task of the slide editor
+    asks, for `account`, within its own share of the key's rate (take_rate).
 
     Database work — the cache, the shared rate limit and the record of the
     model's choice — stays on this thread; the pool only does network and
@@ -305,7 +336,6 @@ def fetch_for_deck(sections, *, cap, budget, job=None, style='photo'):
     passes is a slide drawn as text.
     """
     from django.utils import timezone
-    from apps.core.customer_auth import auth_limit
     from operations.integrations import ai_config, pixabay_config
     from .models import PhotoSearch
 
@@ -335,7 +365,7 @@ def fetch_for_deck(sections, *, cap, budget, job=None, style='photo'):
                 hits[query] = row.hits
                 continue
             try:
-                auth_limit('pixabay-api', 'global', *RATE)
+                take_rate(task)
             except Exception:
                 continue
             searching[pool.submit(search, query, config['api_key'], SEARCH_HITS, _kind(style))] = query
@@ -365,7 +395,7 @@ def fetch_for_deck(sections, *, cap, budget, job=None, style='photo'):
 
         title = sections[0].get('heading', '') if sections else ''
         previews = {}
-        picked = _ask_the_model(chosen, ranked, pool, deadline, ai_config(), job, title, previews)
+        picked = _ask_the_model(chosen, ranked, pool, deadline, ai_config(), job, title, previews, account)
         result.candidates = {
             sid: [{'provider': 'pixabay', 'id': hit['id'], 'preview': hit['preview'], 'url': hit['url'],
                    'page_url': hit['page_url'], **({'jpeg': previews[hit['id']]} if hit['id'] in previews else {})}
@@ -403,7 +433,7 @@ def fetch_for_deck(sections, *, cap, budget, job=None, style='photo'):
     return result
 
 
-def _ask_the_model(chosen, ranked, pool, deadline, ai, job, title, previews):
+def _ask_the_model(chosen, ranked, pool, deadline, ai, job, title, previews, account=None):
     """The model's pick for each slide — a hit, or absent for "none fits".
 
     None when the model could not be asked at all: no provider, too little
@@ -437,7 +467,7 @@ def _ask_the_model(chosen, ranked, pool, deadline, ai, job, title, previews):
     if timeout < PICK_MIN_SECONDS:
         return None
     try:
-        choice = photo_choice.choose(ai, title, slides, timeout=timeout, job=job)
+        choice = photo_choice.choose(ai, title, slides, timeout=timeout, job=job, account=account)
     except Exception:
         return None
     return {sid: shown[sid][number - 1] for sid, number in choice.items() if number}

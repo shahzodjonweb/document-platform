@@ -588,6 +588,99 @@
         ],
         "type": "object"
       },
+      "DeckPhotoTask": {
+        "properties": {
+          "action": {
+            "enum": [
+              "fill",
+              "next",
+              "upload",
+              "search"
+            ]
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "result": {
+            "description": "Once done: `version`, the draft's new version to read back, and counts and ids only (`added`, `asked`, `no_room`, `unmatched`, `failed` for a fill; `asset_id` for next and upload; `found` for a search).",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "done",
+              "failed"
+            ]
+          },
+          "task_id": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "status",
+          "action",
+          "result",
+          "error"
+        ],
+        "type": "object"
+      },
+      "DeckPictures": {
+        "properties": {
+          "fills_left": {
+            "description": "Add to all slides left today (Tashkent).",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "on": {
+            "description": "Whether the slide editor may change pictures at all (the `photos_task` switch).",
+            "type": "boolean"
+          },
+          "per_deck": {
+            "description": "Pictures this deck may hold.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "pinned": {
+            "description": "Slides that wear one now.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "searches_left": {
+            "description": "Find more left today.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "stock": {
+            "description": "Whether pictures can come from the photo library now: Add to all slides and Find more need it.",
+            "type": "boolean"
+          },
+          "style": {
+            "enum": [
+              "photo",
+              "illustration"
+            ]
+          }
+        },
+        "required": [
+          "on",
+          "stock",
+          "per_deck",
+          "pinned",
+          "fills_left",
+          "searches_left",
+          "style"
+        ],
+        "type": "object"
+      },
       "DeckPins": {
         "properties": {
           "body_size": {
@@ -623,6 +716,11 @@
                     "type": "object"
                   },
                   "type": "array"
+                },
+                "offered": {
+                  "description": "Every candidate on offer, those with no stored copy too: what Another picture can reach.",
+                  "minimum": 0,
+                  "type": "integer"
                 }
               },
               "required": [
@@ -1936,6 +2034,11 @@
               "ru"
             ]
           },
+          "pictures": {
+            "$ref": "#/components/schemas/DeckPictures",
+            "description": "A drawn deck opened in the slide editor: what its Pictures sheet allows now.",
+            "readOnly": true
+          },
           "prompt": {
             "type": "string"
           },
@@ -1968,6 +2071,19 @@
               }
             },
             "required": [],
+            "type": "object"
+          },
+          "send": {
+            "description": "A drawn deck read in the slide editor (GET, PATCH and the picture and design calls): whether a send of it this week uses no file task, as it was counted already.",
+            "properties": {
+              "counted_this_week": {
+                "type": "boolean"
+              }
+            },
+            "readOnly": true,
+            "required": [
+              "counted_this_week"
+            ],
             "type": "object"
           },
           "source_ids": {
@@ -8694,6 +8810,96 @@
         ]
       }
     },
+    "/generation/drafts/{id}/design": {
+      "post": {
+        "description": "Another design for a drawn deck, from `/studio/deck-designs`: a new version of the draft that changes its look and nothing else. `invalid_parameters` for a design not listed; `version_conflict`; `generation_running` while a send is under way.",
+        "operationId": "setDeckDesign",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "design": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "version",
+                  "design"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerationDraft"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    },
     "/generation/drafts/{id}/export-quote": {
       "post": {
         "description": "The price of sending a generated deck again from its draft, as PowerPoint, PDF or both: no AI edit, one file task, submitted through `/jobs`. It holds nothing of the deck but ids and the format. Refused, with status 409, when: `version_conflict`; `generation_running`; `deck_not_editable` (not a deck, or none has been drawn from this draft yet); `pinned_asset_expired` (`message_params.sections`: [{id, index}], the slides whose picture is no longer stored); `slide_text_too_long` (`message_params.sections`: [{id, index, words_over}], the slides whose text would not all show).",
@@ -9043,6 +9249,284 @@
               }
             },
             "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    },
+    "/generation/drafts/{id}/photos": {
+      "post": {
+        "description": "A drawn deck's pictures changed in the slide editor, free and never an AI edit. `remove` (a slide's picture off, kept first among its candidates) answers 200 with the draft. The rest answer 202 with a picture task to follow: `fill` gives slides with none a picture where their words still all show (3 a day), `next` puts a slide's `asset_id` candidate, or its first, on it, `upload` makes the customer's uploaded `asset_id` a slide's picture, `search` offers four for a slide from English `query` words (10 a day, 5 a minute). A slide that would lose words to a picture is refused (`picture_no_room`), never cut. Each that lands is a new version of the draft. `photos_limit` (429, `limit_kind` fill, search, search_minute or deck) past a cap; `photos_unavailable` without the photo library; `deck_pictures_complete`; `lane_busy` with one already running; `version_conflict`; `generation_running` while a send is under way; `feature_unavailable` with the switch off.",
+        "operationId": "changeDeckPictures",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "action": {
+                    "enum": [
+                      "fill",
+                      "next",
+                      "upload",
+                      "search",
+                      "remove"
+                    ]
+                  },
+                  "asset_id": {
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  "query": {
+                    "maxLength": 200,
+                    "type": "string"
+                  },
+                  "section_id": {
+                    "type": "string"
+                  },
+                  "style": {
+                    "enum": [
+                      "photo",
+                      "illustration"
+                    ]
+                  },
+                  "version": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "action",
+                  "version"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerationDraft"
+                }
+              }
+            },
+            "description": "`remove`: the draft"
+          },
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "enum": [
+                        "queued",
+                        "running",
+                        "done",
+                        "failed"
+                      ]
+                    },
+                    "task_id": {
+                      "format": "uuid",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "task_id",
+                    "status"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    },
+    "/generation/drafts/{id}/photos/{task}": {
+      "get": {
+        "description": "How a picture task stands. `error` names why one failed (`picture_unavailable`, `picture_no_room`, `photos_unavailable`, `invalid_image`).",
+        "operationId": "getDeckPictureTask",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "task",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeckPhotoTask"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    },
+    "/generation/drafts/{id}/pictures/{asset}.jpg": {
+      "get": {
+        "description": "One of the deck's own pictures, as it wears it or has it on offer, inline. Anything else is 404.",
+        "operationId": "getDeckPicture",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "asset",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Private JPEG"
           },
           "400": {
             "content": {

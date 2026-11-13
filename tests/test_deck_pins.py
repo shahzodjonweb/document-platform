@@ -1158,7 +1158,8 @@ def test_a_draft_shows_its_pins_without_any_address(customer, stock_photos):
     assert {key: shown['render'][key] for key in ('design', 'deck_seed', 'body_size', 'variants')} == {
         key: pins[key] for key in ('design', 'deck_seed', 'body_size', 'variants')}
     for section_id, photo in shown['render']['photos'].items():
-        assert set(photo) == {'asset_id', 'candidates'} and photo['asset_id'] == pins['photos'][section_id]['asset_id']
+        assert set(photo) == {'asset_id', 'offered', 'candidates'} and photo['asset_id'] == pins['photos'][section_id]['asset_id']
+        assert photo['offered'] == stock.CANDIDATES, 'Another picture reaches a candidate with no copy too'
         assert [set(offered) for offered in photo['candidates']] == [{'asset_id'}, {'asset_id'}], 'a candidate with no copy has nothing to show'
     written = json.dumps(shown, default=str)
     assert 'http' not in written and 'pixabay' not in written and 'page_url' not in written
@@ -1381,7 +1382,7 @@ def test_storage_that_fails_altogether_does_not_fail_the_job(customer, stock_pho
     assert not kept_pictures(customer).exists()
     assert pins['variants'] and all(photo['asset_id'] is None for photo in pins['photos'].values())
     shown = draft_data(draft)['render']['photos']
-    assert shown[PHOTO] == {'asset_id': None, 'candidates': []}, '"no candidates" is a state the reader knows'
+    assert shown[PHOTO] == {'asset_id': None, 'offered': stock.CANDIDATES, 'candidates': []}, '"no candidates" is a state the reader knows'
     assert 'are gone' not in caplog.text
 
 

@@ -86,18 +86,19 @@ class _EarlyPhotos:
         if self.pool:self.pool.shutdown(wait=False,cancel_futures=True)
 
 
-def _keep_picture(job,draft_id,section_id,source,jpeg,**facts):
+def keep_picture(account,draft_id,section_id,source,jpeg,expires_at=None,**facts):
     """One picture of a deck as a file of the account's, so a later redraw needs no network.
 
-    It expires by its own clock (cleanup_expired); settle_job moves that with
-    the deck while the pins name it. `later`: a job with sixty of these never
-    waits on the bucket.
+    It expires by its own clock (cleanup_expired), 24 hours unless `expires_at`
+    says longer; settle_job moves that with the deck while the pins name it.
+    `later`: a job with sixty of these never waits on the bucket.
     """
     name=uuid.uuid4().hex
-    key=f'inputs/{job.account_id}/{name}.jpg'
+    key=f'inputs/{account.pk}/{name}.jpg'
+    expires_at=max(expires_at or timezone.now(),timezone.now()+timedelta(hours=24))
     with transaction.atomic():
         storage.write(key,jpeg,'image/jpeg',later=True)
-        return str(FileAsset.objects.create(account=job.account,name=f'deck-photo-{name[:12]}.jpg',object_key=key,mime_type='image/jpeg',sha256=hashlib.sha256(jpeg).hexdigest(),size_bytes=len(jpeg),page_count=1,metadata={'kind':'deck_photo','mime_type':'image/jpeg','draft_id':str(draft_id),'section_id':section_id,'provider':source['provider'],'id':source['id'],'page_url':source['page_url'],**facts},expires_at=timezone.now()+timedelta(hours=24)).pk)
+        return str(FileAsset.objects.create(account=account,name=f'deck-photo-{name[:12]}.jpg',object_key=key,mime_type='image/jpeg',sha256=hashlib.sha256(jpeg).hexdigest(),size_bytes=len(jpeg),page_count=1,metadata={'kind':'deck_photo','mime_type':'image/jpeg','draft_id':str(draft_id),'section_id':section_id,'provider':source['provider'],'id':source['id'],'page_url':source['page_url'],**facts},expires_at=expires_at).pk)
 
 
 def _deck_pins(job,draft_id,content,locale,artifact,photos,candidates):
@@ -117,7 +118,7 @@ def _deck_pins(job,draft_id,content,locale,artifact,photos,candidates):
         if not editor_config()['deck_editor']:return None
         failures=[]
         def keep(section_id,source,jpeg,**facts):
-            try:return _keep_picture(job,draft_id,section_id,source,jpeg,**facts)
+            try:return keep_picture(job.account,draft_id,section_id,source,jpeg,**facts)
             except Exception as exc:
                 failures.append(type(exc).__name__)
                 return None

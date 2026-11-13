@@ -214,5 +214,10 @@
   "preview_interrupted": "Sahifani bu safar ko‘rsatib bo‘lmadi. Qayta urinib ko‘ring.",
   "editor_task_unsupported": "Bu hali mavjud emas.",
   "editor_task_failed": "Buni yakunlab bo‘lmadi. Qayta urinib ko‘ring.",
-  "range_not_satisfiable": "Faylning bu qismi mavjud emas."
+  "range_not_satisfiable": "Faylning bu qismi mavjud emas.",
+  "photos_limit": "Hozircha rasmlar chegarasiga yetdingiz. Topilgan rasmlardan tanlashingiz, rasmni olib tashlashingiz yoki o‘zingiznikini qo‘shishingiz mumkin.",
+  "photos_unavailable": "Rasmlar kutubxonasi hozir mavjud emas. O‘z rasmingizni qo‘shishingiz mumkin.",
+  "picture_unavailable": "Bu rasmni olib bo‘lmadi. Boshqasini tanlang.",
+  "picture_no_room": "Rasm qo‘yilsa, slayddagi matn to‘liq ko‘rinmaydi. Avval matnni qisqartiring yoki slaydni ikkiga bo‘ling.",
+  "deck_pictures_complete": "Rasm qo‘yish mumkin bo‘lgan har bir slaydda rasm bor."
 }

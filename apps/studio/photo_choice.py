@@ -64,7 +64,7 @@ def _post(request, timeout):
     return urllib.request.build_opener(_NoRedirect).open(request, timeout=timeout)
 
 
-def choose(config, title, slides, *, timeout, job=None):
+def choose(config, title, slides, *, timeout, job=None, account=None):
     """{slide id: 1-based photo number, or 0 for none} for the slides given.
 
     A slide the model left out, or answered with a number it was not shown,
@@ -76,7 +76,7 @@ def choose(config, title, slides, *, timeout, job=None):
     from .provider import _CutOff, _Rejected, _close, _reply_text, _validate
     body = request_body(config, title, slides)
     key = f'{job.id}-photos' if job is not None else f'photos-{time.time_ns()}'
-    attempt = provider_usage.start_attempt(key, SLIDES, config['model'], stage='photo_pick', job=job)
+    attempt = provider_usage.start_attempt(key, SLIDES, config['model'], stage='photo_pick', job=job, account=account)
     started, received = time.monotonic(), False
     try:
         def post(sent):
@@ -114,6 +114,81 @@ def choose(config, title, slides, *, timeout, job=None):
                 answered.add(sid)
         provider_usage.finish(attempt, 'succeeded')
         return picks
+    except Exception as failure:
+        _close(attempt, failure, received, started)
+        raise
+
+
+# ---------------------------------------------------------------- naming
+
+
+NAMING_SCHEMA = {
+    'type': 'object',
+    'properties': {'queries': {'type': 'array', 'items': {
+        'type': 'object',
+        'properties': {'slide': {'type': 'string'}, 'query': {'type': 'string'}},
+        'required': ['slide', 'query'], 'additionalProperties': False}}},
+    'required': ['queries'], 'additionalProperties': False,
+}
+
+NAMING_INSTRUCTIONS = (
+    'You name a stock photo for each slide of a presentation, for a photo search. For each slide you '
+    'are given its id and text. ')
+
+
+def name_queries(config, title, slides, *, timeout, account=None):
+    """{slide id: search words} for slides that have no photo subject yet, as the slide editor's fill asks.
+
+    The deck's own words go to the model, as they do when it is written; only
+    the cleaned English words it answers (layouts.clean_query) go on to Pixabay.
+    A slide it leaves out, or names with nothing usable, is absent. Raises on
+    any failure of the call itself.
+    """
+    from . import provider_usage, tuning
+    from .domain import SLIDES
+    from .layouts import _naming, clean_query
+    from .provider import _CutOff, _Rejected, _close, _reply_text, _validate
+    text = f'Presentation: {title}'[:300] + '\n' + '\n'.join(f'Slide {slide["id"]}: {slide["text"]}' for slide in slides)
+    body = tuning.apply({'model': config['model'], 'store': False,
+                         'instructions': NAMING_INSTRUCTIONS + _naming() + 'Answer every slide, by its id.',
+                         'input': [{'role': 'user', 'content': [{'type': 'input_text', 'text': text}]}],
+                         'max_output_tokens': 2000 + 40 * len(slides),
+                         'text': {'format': {'type': 'json_schema', 'name': 'photo_queries', 'strict': True,
+                                             'schema': NAMING_SCHEMA}}}, config, 'photos')
+    attempt = provider_usage.start_attempt(f'photo-names-{time.time_ns()}', SLIDES, config['model'], stage='photo_pick',
+                                           account=account)
+    started, received = time.monotonic(), False
+    try:
+        def post(sent):
+            request = urllib.request.Request(
+                API, data=json.dumps(sent, separators=(',', ':')).encode(),
+                headers={'Authorization': 'Bearer ' + config['api_key'], 'Content-Type': 'application/json'})
+            with _post(request, timeout) as response:
+                return response.read(MAX_RESPONSE + 1)
+        raw = tuning.send(post, body)
+        if len(raw) > MAX_RESPONSE:
+            raise _Rejected('oversized')
+        result = json.loads(raw)
+        provider_usage.received(attempt, result, round((time.monotonic() - started) * 1000))
+        received = True
+        if not isinstance(result, dict):
+            raise _Rejected('no_output')
+        if result.get('status') == 'incomplete':
+            raise _CutOff()
+        if result.get('status') != 'completed':
+            raise _Rejected('not_completed')
+        try:
+            answer = json.loads(_reply_text(result))
+        except json.JSONDecodeError:
+            raise _Rejected('not_json') from None
+        _validate(answer, NAMING_SCHEMA)
+        asked, named = {slide['id'] for slide in slides}, {}
+        for entry in answer['queries']:
+            query = clean_query(entry['query'])
+            if entry['slide'] in asked and entry['slide'] not in named and query:
+                named[entry['slide']] = query
+        provider_usage.finish(attempt, 'succeeded')
+        return named
     except Exception as failure:
         _close(attempt, failure, received, started)
         raise

@@ -51,7 +51,8 @@ def extend_schema(models, endpoint, paths):
         'SubscriptionState':obj({'plan':S,'subscription':{'anyOf':[ref('Subscription'),{'type':'null'}]},'sandbox':B},['plan','subscription','sandbox']),
         'BotDelivery':obj({'id':UUID,'status':S,'attempts':I},['id','status','attempts']),
         'DeckPins':obj({'design':S,'deck_seed':S,'body_size':{'type':'number'},'variants':{'type':'object','additionalProperties':S},
-                        'photos':{'type':'object','additionalProperties':obj({'asset_id':{'type':['string','null'],'format':'uuid'},'candidates':arr(obj({'asset_id':UUID},['asset_id']))},['asset_id','candidates'])}},
+                        'photos':{'type':'object','additionalProperties':obj({'asset_id':{'type':['string','null'],'format':'uuid'},'candidates':arr(obj({'asset_id':UUID},['asset_id'])),
+                                                                               'offered':{**I,'description':'Every candidate on offer, those with no stored copy too: what Another picture can reach.'}},['asset_id','candidates'])}},
                        ['design','deck_seed','body_size','variants','photos']),
     })
     models['GenerationMaterial']=obj({'key':S,'title':S,'sections':arr(ref('GenerationSection')),'questions':arr(ref('GenerationQuestion')),'citations':arr(obj({'asset_id':UUID,'page':I,'quote':S}))},['key','title','sections','questions'])
@@ -59,6 +60,12 @@ def extend_schema(models, endpoint, paths):
     models['GenerationContent']['properties']['citations']['items']['properties']['quote']=S
     for field in ('transcription_ready','transcription_reviewed'):models['GenerationDraft']['properties'][field]={'type':'boolean','readOnly':True}
     models['GenerationDraft']['properties']['revision']=obj({'source_draft_id':UUID,'source_version':I,'selected_section_ids':arr(S),'base_content':ref('GenerationContent')})
+    models['DeckPictures']=obj({'on':{**B,'description':'Whether the slide editor may change pictures at all (the `photos_task` switch).'},'stock':{**B,'description':'Whether pictures can come from the photo library now: Add to all slides and Find more need it.'},
+                                'per_deck':{**I,'description':'Pictures this deck may hold.'},'pinned':{**I,'description':'Slides that wear one now.'},
+                                'fills_left':{**I,'description':'Add to all slides left today (Tashkent).'},'searches_left':{**I,'description':'Find more left today.'},
+                                'style':{'enum':['photo','illustration']}},['on','stock','per_deck','pinned','fills_left','searches_left','style'])
+    models['GenerationDraft']['properties']['send']={**obj({'counted_this_week':B},['counted_this_week']),'readOnly':True,'description':'A drawn deck read in the slide editor (GET, PATCH and the picture and design calls): whether a send of it this week uses no file task, as it was counted already.'}
+    models['GenerationDraft']['properties']['pictures']={**ref('DeckPictures'),'readOnly':True,'description':'A drawn deck opened in the slide editor: what its Pictures sheet allows now.'}
     models['GenerationDraft']['properties']['render']={**ref('DeckPins'),'readOnly':True,'description':'A generated deck (`ai.pptx`): how it was drawn, so an edit changes only the slide it touches. `variants` and `photos` are by section id; a photo `asset_id` is the account\'s own file, null when none was kept, and `candidates` are small copies kept on offer for that slide, possibly none. `deck_seed` is opaque. Absent until a deck has been made.'}
     # Typed command alternatives exactly match the processor's strict allowlist.
     from processors.editor import FIELDS
@@ -150,6 +157,20 @@ def extend_schema(models, endpoint, paths):
         endpoint(route,'get',operation,S,description=f'A slide already drawn, {about}, inline. Nothing is drawn for this request: anything else is 404.')
         paths[route]['get']['parameters'].append({'name':'key','in':'path','required':True,'schema':{'type':'string'}})
         paths[route]['get']['responses']['200']={'description':'Private PNG; no-store','content':{'image/png':{'schema':{'type':'string','format':'binary'}}}}
+    models['DeckPhotoTask']=obj({'task_id':UUID,'status':{'enum':['queued','running','done','failed']},'action':{'enum':['fill','next','upload','search']},
+                                 'result':{'type':['object','null'],'description':'Once done: `version`, the draft\'s new version to read back, and counts and ids only (`added`, `asked`, `no_room`, `unmatched`, `failed` for a fill; `asset_id` for next and upload; `found` for a search).'},
+                                 'error':nullable_string},['task_id','status','action','result','error'])
+    endpoint('/generation/drafts/{id}/photos','post','changeDeckPictures',obj({'task_id':UUID,'status':{'enum':['queued','running','done','failed']}},['task_id','status']),
+             obj({'action':{'enum':['fill','next','upload','search','remove']},'version':I,'section_id':S,'asset_id':UUID,'query':{**S,'maxLength':200},'style':{'enum':['photo','illustration']}},['action','version']),code='202',
+             description='A drawn deck\'s pictures changed in the slide editor, free and never an AI edit. `remove` (a slide\'s picture off, kept first among its candidates) answers 200 with the draft. The rest answer 202 with a picture task to follow: `fill` gives slides with none a picture where their words still all show (3 a day), `next` puts a slide\'s `asset_id` candidate, or its first, on it, `upload` makes the customer\'s uploaded `asset_id` a slide\'s picture, `search` offers four for a slide from English `query` words (10 a day, 5 a minute). A slide that would lose words to a picture is refused (`picture_no_room`), never cut. Each that lands is a new version of the draft. `photos_limit` (429, `limit_kind` fill, search, search_minute or deck) past a cap; `photos_unavailable` without the photo library; `deck_pictures_complete`; `lane_busy` with one already running; `version_conflict`; `generation_running` while a send is under way; `feature_unavailable` with the switch off.')
+    paths['/generation/drafts/{id}/photos']['post']['responses']['200']={'description':'`remove`: the draft','content':{'application/json':{'schema':ref('GenerationDraft')}}}
+    endpoint('/generation/drafts/{id}/photos/{task}','get','getDeckPictureTask',ref('DeckPhotoTask'),description='How a picture task stands. `error` names why one failed (`picture_unavailable`, `picture_no_room`, `photos_unavailable`, `invalid_image`).')
+    paths['/generation/drafts/{id}/photos/{task}']['get']['parameters'].append({'name':'task','in':'path','required':True,'schema':UUID})
+    endpoint('/generation/drafts/{id}/pictures/{asset}.jpg','get','getDeckPicture',S,description='One of the deck\'s own pictures, as it wears it or has it on offer, inline. Anything else is 404.')
+    paths['/generation/drafts/{id}/pictures/{asset}.jpg']['get']['parameters'].append({'name':'asset','in':'path','required':True,'schema':UUID})
+    paths['/generation/drafts/{id}/pictures/{asset}.jpg']['get']['responses']['200']={'description':'Private JPEG','content':{'image/jpeg':{'schema':{'type':'string','format':'binary'}}}}
+    endpoint('/generation/drafts/{id}/design','post','setDeckDesign',ref('GenerationDraft'),obj({'version':I,'design':S},['version','design']),
+             description='Another design for a drawn deck, from `/studio/deck-designs`: a new version of the draft that changes its look and nothing else. `invalid_parameters` for a design not listed; `version_conflict`; `generation_running` while a send is under way.')
     cover_lines={**arr({'type':'string','maxLength':160}),'maxItems':8,'description':'Lines as they go on a title slide, label and all ("Tayyorladi: …").'}
     deck_locale={'enum':['en','uz','ru'],'description':'The language of the deck the lines were written for: their labels are in it.'}
     cover_roles={**arr({'anyOf':[{'enum':['made','checked','group','school']},{'type':'null'}]}),'maxItems':8}
