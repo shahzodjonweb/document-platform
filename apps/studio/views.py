@@ -101,7 +101,14 @@ def draft_detail(request,pk):
             account_limit(request.account,'cv_draft_updates',CV_UPDATES_PER_MINUTE)
             _queue_cv_reads(request.account,data,unpack(d.encrypted_data).get('options',{}))
         d=update_draft(request.account,pk,data)
-    return draft_data(d)
+    return _with_editor_state(request.account,d,draft_data(d))
+
+def _with_editor_state(account,d,data):
+    """A drawn deck as the slide editor reads it, opened or saved: whether a send this week uses a file task, and what its pictures allow today."""
+    if d.feature_id!=SLIDES or not data.get('render') or not editor_flags()['deck_editor']:return data
+    from apps.core.allowance import counted_this_week
+    from .deck_photos import state
+    return {**data,'send':{'counted_this_week':counted_this_week(account,{'generation_draft_id':str(d.pk)})},'pictures':state(account,unpack(d.encrypted_data))}
 
 # How often one account may ask how its CV's files are being read: the web
 # asks every two seconds while it waits, from a tab or two (60 a minute), and
@@ -282,6 +289,51 @@ def draft_slide(request,pk,key,thumb=False):
     except DomainError:raise DomainError('not_found',404) from None
     response['Content-Disposition']='inline; filename="slide.png"'
     return response
+
+# A picture action is a tap; each is followed about twice a second while it runs, and a sheet shows a slide's few pictures.
+PHOTO_ACTIONS_PER_MINUTE=30
+PHOTO_POLLS_PER_MINUTE=240
+PICTURES_PER_MINUTE=300
+DESIGNS_PER_MINUTE=30
+
+@api(('POST',))
+def draft_photos(request,pk):
+    """A deck's pictures changed (deck_photos.py): `remove` now, the rest as a picture task followed at …/photos/{task}."""
+    _require_deck_editor()
+    account_limit(request.account,'deck_photos',PHOTO_ACTIONS_PER_MINUTE)
+    from .deck_photos import request as ask
+    task,draft=ask(request.account,pk,body(request))
+    if draft is not None:return _with_editor_state(request.account,draft,draft_data(draft))
+    return JsonResponse({'task_id':str(task.pk),'status':task.status},status=202)
+
+@api()
+def draft_photo_task(request,pk,task):
+    """How a picture task stands. Once done its result names the draft's new version, which the web then reads."""
+    _require_deck_editor()
+    account_limit(request.account,'deck_photo_polls',PHOTO_POLLS_PER_MINUTE)
+    from .deck_photos import task_state
+    return task_state(request.account,pk,task)
+
+@api()
+def draft_picture(request,pk,asset):
+    """One of the deck's own pictures, inline: what a slide wears or has on offer. Nothing is fetched or drawn for it."""
+    _require_deck_editor()
+    account_limit(request.account,'deck_pictures',PICTURES_PER_MINUTE)
+    picture=FileAsset.objects.filter(pk=asset,account=request.account,metadata__kind='deck_photo',metadata__draft_id=str(pk)).first()
+    if not picture or not GenerationDraft.objects.filter(pk=pk,account=request.account,expires_at__gt=timezone.now()).exists():raise DomainError('not_found',404)
+    try:response=download_asset(request,picture)
+    except DomainError:raise DomainError('not_found',404) from None
+    response['Content-Disposition']='inline; filename="picture.jpg"'
+    return response
+
+@api(('POST',))
+def draft_design(request,pk):
+    """Another design for a drawn deck, as the Design sheet picks it: one save, a new version, nothing else moved."""
+    _require_deck_editor()
+    account_limit(request.account,'deck_designs',DESIGNS_PER_MINUTE)
+    from .deck_photos import set_design
+    d=set_design(request.account,pk,body(request))
+    return _with_editor_state(request.account,d,draft_data(d))
 
 # The Cover sheet reads its lines as it opens and saves them on "Remember", now and then.
 COVER_LINES_PER_MINUTE=30

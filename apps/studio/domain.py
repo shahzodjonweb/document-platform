@@ -135,9 +135,11 @@ def ensure_selected_preservation(data,normalized):
 
 def render_data(pins):
     """A deck's pins as they may be read outside the draft: its look and the account's own
-    files, never a picture's address. A candidate with no stored copy has nothing to show."""
+    files, never a picture's address. A candidate with no stored copy has nothing to show;
+    `offered` counts them all, as Another picture can reach each."""
     return {**{key:pins.get(key) for key in ('design','deck_seed','body_size','variants')},
-            'photos':{sid:{'asset_id':photo.get('asset_id'),'candidates':[{'asset_id':c['asset_id']} for c in photo.get('candidates') or [] if c.get('asset_id')]}
+            'photos':{sid:{'asset_id':photo.get('asset_id'),'offered':len(photo.get('candidates') or []),
+                           'candidates':[{'asset_id':c['asset_id']} for c in photo.get('candidates') or [] if c.get('asset_id')]}
                       for sid,photo in (pins.get('photos') or {}).items()}}
 
 def draft_data(d):

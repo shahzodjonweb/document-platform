@@ -55,7 +55,7 @@ def telegram_config():
 # seconds of free work one account may use a day. Editable at /ops/editor
 # (editor_settings.py); the environment answers until the first save there.
 EDITOR_FLAGS = ('editor_v2','pdfcraft','text_edit','deck_editor','edit_buttons','count_once','photos_task')
-EDITOR_BUDGETS = {'inspect':120,'text_check':90,'preview':120,'render_deck':300,'paid_multiplier':3}
+EDITOR_BUDGETS = {'inspect':120,'text_check':90,'preview':120,'render_deck':300,'photos':600,'paid_multiplier':3}
 
 def _env_budget(name, default):
     try: return int(os.getenv(f'EDITOR_BUDGET_{name.upper()}',''))

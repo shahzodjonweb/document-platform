@@ -300,7 +300,7 @@ def test_a_task_that_has_waited_long_goes_first():
     assert tasks.claim(now=now).pk == old.pk
 
 
-@pytest.mark.parametrize('kind', ['inspect', 'text_check', 'photos', 'anything'])
+@pytest.mark.parametrize('kind', ['inspect', 'text_check', 'anything'])
 def test_kinds_of_later_steps_are_refused_by_name_and_never_stubbed(kind):
     with pytest.raises(DomainError) as refused:
         tasks.enqueue(account(), kind, {})

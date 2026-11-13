@@ -13,7 +13,7 @@ from tests.test_platform import account,login_client
 
 pytestmark=pytest.mark.django_db
 OFF={name:False for name in EDITOR_FLAGS}
-DEFAULTS={'inspect':120,'text_check':90,'preview':120,'render_deck':300,'paid_multiplier':3}
+DEFAULTS={'inspect':120,'text_check':90,'preview':120,'render_deck':300,'photos':600,'paid_multiplier':3}
 
 
 def studio_limits(client):

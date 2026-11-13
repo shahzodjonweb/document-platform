@@ -97,6 +97,9 @@ def export_quote(account,draft_id,version,fmt,deliver):
     require_channels(account)
     if version!=d.version:raise DomainError('version_conflict',409)
     if draft_jobs(account,d.id,('queued',)):raise DomainError('generation_running',409)
+    # A picture still being put on would move the draft under the send.
+    from .deck_photos import waiting
+    if waiting(d.id):raise DomainError('generation_running',409)
     data=unpack(d.encrypted_data)
     _editable(d,data)
     if fmt!='pptx':

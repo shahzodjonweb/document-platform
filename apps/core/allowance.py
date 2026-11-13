@@ -87,13 +87,18 @@ def file_jobs_this_week(account, now=None):
     return jobs + _waiting_items().filter(run__account=account).count()
 
 
-def _counted_this_week(account, quote):
-    pointer = draft_pointer(quote.parameters)
+def counted_this_week(account, parameters):
+    """Whether the stored draft these parameters point at already has a file task counted this week (count_once)."""
+    pointer = draft_pointer(parameters)
     if not pointer or not count_once():
         return False
     start, end = week_bounds()
     return (_counted(account, start, end).exclude(feature_id__in=_generation_ids())
             .filter(**{f'parameters__{pointer[0]}': pointer[1]}).exists())
+
+
+def _counted_this_week(account, quote):
+    return counted_this_week(account, quote.parameters)
 
 
 def same_result(account, quote):

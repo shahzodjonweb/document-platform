@@ -552,7 +552,7 @@ CATALOGS['en'].update(
     editor_flag_photos_task='Fetching pictures outside an AI run',
     editor_budgets='Free work per account per day', editor_budgets_note='Seconds of work on the Free plan; paid plans get that many times more.',
     editor_budget_inspect='Reading a file', editor_budget_text_check='Checking a text edit', editor_budget_preview='Page previews',
-    editor_budget_render_deck='Drawing slides', editor_budget_paid_multiplier='Paid plan multiplier',
+    editor_budget_render_deck='Drawing slides', editor_budget_photos='Deck pictures', editor_budget_paid_multiplier='Paid plan multiplier',
 )
 CATALOGS['uz'].update(
     editor='Muharrir', editor_desc='Yangi PDF va slayd muharrirlarining qaysi qismlari yoqilgani va har bir hisobga qancha bepul ish berilishi. Darhol, deploysiz qo‘llanadi.',
@@ -562,7 +562,7 @@ CATALOGS['uz'].update(
     editor_flag_photos_task='Rasmlarni AI ishidan tashqari olish',
     editor_budgets='Har bir hisobga kuniga bepul ish', editor_budgets_note='Free tarifidagi ish soniyalari; pullik tariflarga shuncha barobar ko‘p beriladi.',
     editor_budget_inspect='Faylni o‘qish', editor_budget_text_check='Matn tahririni tekshirish', editor_budget_preview='Sahifalarni oldindan ko‘rish',
-    editor_budget_render_deck='Slaydlarni chizish', editor_budget_paid_multiplier='Pullik tarif ko‘paytmasi',
+    editor_budget_render_deck='Slaydlarni chizish', editor_budget_photos='Taqdimot rasmlari', editor_budget_paid_multiplier='Pullik tarif ko‘paytmasi',
 )
 CATALOGS['ru'].update(
     editor='Редактор', editor_desc='Какие части новых редакторов PDF и слайдов включены и сколько бесплатной работы получает каждая учётная запись. Применяется сразу, без развёртывания.',
@@ -572,7 +572,7 @@ CATALOGS['ru'].update(
     editor_flag_photos_task='Подбор изображений вне запуска ИИ',
     editor_budgets='Бесплатная работа на учётную запись в день', editor_budgets_note='Секунды работы на тарифе Free; на платных тарифах во столько раз больше.',
     editor_budget_inspect='Чтение файла', editor_budget_text_check='Проверка правки текста', editor_budget_preview='Предпросмотр страниц',
-    editor_budget_render_deck='Отрисовка слайдов', editor_budget_paid_multiplier='Множитель платных тарифов',
+    editor_budget_render_deck='Отрисовка слайдов', editor_budget_photos='Изображения в презентациях', editor_budget_paid_multiplier='Множитель платных тарифов',
 )
 assert CATALOGS['en'].keys() == CATALOGS['uz'].keys() == CATALOGS['ru'].keys()
 

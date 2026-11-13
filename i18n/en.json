@@ -214,5 +214,10 @@
   "preview_interrupted": "The page could not be shown this time. Please try again.",
   "editor_task_unsupported": "This is not available yet.",
   "editor_task_failed": "This could not be finished. Please try again.",
-  "range_not_satisfiable": "That part of the file does not exist."
+  "range_not_satisfiable": "That part of the file does not exist.",
+  "photos_limit": "That's the limit for pictures for now. You can still choose from the pictures already found, take one off, or add your own.",
+  "photos_unavailable": "Pictures from the photo library aren't available right now. You can still add your own.",
+  "picture_unavailable": "Couldn't get that picture. Try another one.",
+  "picture_no_room": "This slide's text wouldn't all show beside a picture. Shorten it or split the slide first.",
+  "deck_pictures_complete": "Every slide that can take a picture already has one."
 }
