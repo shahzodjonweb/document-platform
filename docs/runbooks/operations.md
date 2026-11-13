@@ -66,7 +66,7 @@ Local authoring is available only in DEBUG. Production must select a configured 
 
 ## The new editors' switches
 
-`/ops/editor` (Operations) holds the switches `editor_v2`, `pdfcraft`, `text_edit`, `deck_editor`, `edit_buttons`, `count_once`, `photos_task`, all off by default, and the free-work budgets per account per day. A change takes effect at once and is audited. To go back to the old editor: admin → Editor → `editor_v2` off. Until the first save there, `EDITOR_FLAG_<NAME>=1` and `EDITOR_BUDGET_<NAME>=<seconds>` in the environment answer instead. The web reads the switches from `/studio/config`, `limits.editor`.
+`/ops/editor` (Operations) holds the switches `editor_v2`, `pdfcraft`, `text_edit`, `deck_editor`, `edit_buttons`, `count_once`, `photos_task`, `vector_blackout`, all off by default, and the free-work budgets per account per day. A change takes effect at once and is audited. To go back to the old editor: admin → Editor → `editor_v2` off. Until the first save there, `EDITOR_FLAG_<NAME>=1` and `EDITOR_BUDGET_<NAME>=<seconds>` in the environment answer instead. The web reads the switches from `/studio/config`, `limits.editor`.
 
 ## Rate limits and Redis
 

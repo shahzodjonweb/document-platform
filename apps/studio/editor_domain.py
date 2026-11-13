@@ -67,21 +67,23 @@ def _pointed_marks(account,parameters):
     if not e or e.version!=parameters.get('version') or e.encrypted_commands is None or _snapshot(e)!=parameters.get('snapshot'):raise DomainError('version_conflict',409)
     return stored_commands(e)
 
-def _summary(account,quote,commands,assets):
-    from processors.editor import raster_pages
+def _summary(account,quote,commands,assets,raster):
     changes={}
     for command in commands:
         if 'page' in command:changes[str(command['page'])]=changes.get(str(command['page']),0)+1
-    before=assets[0].page_count;after=before-sum(c['type']=='delete_page' for c in commands);raster=raster_pages(commands)
+    before=assets[0].page_count;after=before-sum(c['type']=='delete_page' for c in commands)
     size=round(assets[0].size_bytes*after/max(before,1))+sum(a.size_bytes for a in assets[1:])+PICTURE_PAGE_BYTES*len(raster)
     return {'changes_by_page':changes,'pages_before':before,'pages_after':after,'raster_pages':raster,'size_estimate':size,'kept_until':timezone.now()+timedelta(hours=24),'cost':quote_cost(account,quote)}
 
 def quote_draft(account,pk,data):
     """One send of a stored draft: the Quote, and the summary a customer reviews before it goes.
 
-    The summary comes from the draft and the file's own record; nothing is run to make it.
+    The summary comes from the draft, the file's own record and what checks of its
+    black-out found (editor_blackout.py); nothing is run to make it. Consent is asked
+    for, and given to, the pages it names that become pictures.
     """
-    from processors.editor import overflowing,raster_pages
+    from processors.editor import overflowing
+    from .editor_blackout import raster_pages
     from apps.core.channel_gate import require as require_channels
     deliver=data.get('deliver');accepted=data.get('accept_rasterization',False)
     if deliver not in DELIVERIES or type(accepted) is not bool:raise DomainError('invalid_parameters')
@@ -100,15 +102,15 @@ def quote_draft(account,pk,data):
         require_text_edit(commands)
         overflow=overflowing(commands,assets[0].metadata.get('page_sizes',[]))
         if overflow is not None:raise DomainError('editor_text_overflow',params={'index':overflow})
-        raster=raster_pages(commands)
+        raster=raster_pages(e,commands,assets[0])
         if raster and not accepted:raise DomainError('rasterization_consent_required',params={'pages':raster})
-        quote=Quote(account=account,feature_id='editor.visual',parameters={'editor_document_id':str(e.id),'version':e.version,'snapshot':_snapshot(e),'content':_content(e,commands),'deliver':deliver,**({'accept_rasterization':True} if accepted else {})},input_ids=[str(a.pk) for a in assets],input_fingerprints=[{'id':str(a.pk),'sha256':a.sha256} for a in assets],policy={'plan':account.plan,'version':POLICY_VERSION,'tariff_version':'file-v1','limits':plan_limits(account)},expires_at=timezone.now()+timedelta(minutes=10))
+        quote=Quote(account=account,feature_id='editor.visual',parameters={'editor_document_id':str(e.id),'version':e.version,'snapshot':_snapshot(e),'content':_content(e,commands),'deliver':deliver,**({'accept_rasterization':True,'raster_pages':raster} if accepted else {})},input_ids=[str(a.pk) for a in assets],input_fingerprints=[{'id':str(a.pk),'sha256':a.sha256} for a in assets],policy={'plan':account.plan,'version':POLICY_VERSION,'tariff_version':'file-v1','limits':plan_limits(account)},expires_at=timezone.now()+timedelta(minutes=10))
         if not same_result(account,quote):
             require_send_room(account,('editor_document_id',str(e.id)))
             require_quote(account,quote)
         quote.save()
         record_event(account,'quote.created',properties={'pages':sum(a.page_count for a in assets)},feature_id=quote.feature_id)
-    return quote,_summary(account,quote,commands,assets)
+    return quote,_summary(account,quote,commands,assets,raster)
 
 def _still_quoted(account,parameters):
     """That the draft a quote points at is still what was quoted; a draft of marks is held to what its plan allows as well."""
@@ -180,4 +182,6 @@ def parameters_to_run(job,assets):
         commands=_pointed_marks(job.account,job.parameters)
     validate_commands_access(job.account,commands)
     require_text_edit(commands)
-    return {'commands':normalized_commands(commands,assets),'accept_rasterization':job.parameters.get('accept_rasterization') is True,'combined':True}
+    agreed=job.parameters.get('raster_pages')
+    # The pages the customer agreed may become pictures; a send quoted before they were named agreed to all.
+    return {'commands':normalized_commands(commands,assets),'accept_rasterization':job.parameters.get('accept_rasterization') is True,'combined':True,**({'raster_pages':agreed} if isinstance(agreed,list) else {})}

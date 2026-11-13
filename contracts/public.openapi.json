@@ -294,6 +294,79 @@
         ],
         "type": "object"
       },
+      "BlackoutCheck": {
+        "properties": {
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pages": {
+            "items": {
+              "$ref": "#/components/schemas/BlackoutPage"
+            },
+            "type": "array"
+          },
+          "status": {
+            "description": "`done` when every page with a box has its answer in `pages`; `queued`/`running` while a check finds the rest (ask again with GET); `failed` when the last check failed (`error`), and `none` when none has been asked for since the boxes changed (POST asks).",
+            "enum": [
+              "done",
+              "queued",
+              "running",
+              "failed",
+              "none"
+            ]
+          },
+          "version": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "status",
+          "version",
+          "pages",
+          "error"
+        ],
+        "type": "object"
+      },
+      "BlackoutPage": {
+        "properties": {
+          "keeps_text": {
+            "description": "Its boxes are blacked out and the rest of the page stays text. Otherwise the page becomes a picture, and the send asks consent for it.",
+            "type": "boolean"
+          },
+          "page": {
+            "description": "Numbered as uploaded.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "reason": {
+            "description": "`vector` when it keeps its text. Why it becomes a picture otherwise: `scan` its words are drawn over a picture of the page, `image` a box covers a picture, `mark` a box is under another change of this draft, `left` words in a box would stay readable, `others` the page would change outside its boxes (a table border or a panel that a box touches), `black` a box would not come out black, `engine` this black-out is off, `large`, `refused`, `parts`, `invalid` (the send refuses that box).",
+            "enum": [
+              "vector",
+              "engine",
+              "large",
+              "scan",
+              "image",
+              "mark",
+              "invalid",
+              "refused",
+              "left",
+              "others",
+              "black",
+              "parts"
+            ]
+          }
+        },
+        "required": [
+          "page",
+          "keeps_text",
+          "reason"
+        ],
+        "type": "object"
+      },
       "BotDelivery": {
         "properties": {
           "attempts": {
@@ -1719,7 +1792,7 @@
             "type": "integer"
           },
           "raster_pages": {
-            "description": "The pages, numbered as uploaded, that will become pictures for their black-out. A page being deleted is not among them.",
+            "description": "The pages, numbered as uploaded, that will become pictures for their black-out: every page with a box that a check (`/editor/documents/{id}/blackout-check`) has not found to keep its words. A page being deleted is not among them.",
             "items": {
               "minimum": 0,
               "type": "integer"
@@ -6843,6 +6916,150 @@
         ]
       }
     },
+    "/editor/documents/{id}/blackout-check": {
+      "get": {
+        "description": "Which pages with a black-out box keep their text in a send of the stored draft as it is saved now, and which become pictures. Nothing is queued.",
+        "operationId": "getBlackoutCheck",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlackoutCheck"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlackoutCheck"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      },
+      "post": {
+        "description": "The same, with a check queued for the pages not known yet: 202 while it runs. A free task of the editor lane (`lane_busy` past the day's budget). The quote asks consent for the pages a check has not found to keep their text.",
+        "operationId": "checkBlackout",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlackoutCheck"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlackoutCheck"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    },
     "/editor/documents/{id}/quote": {
       "post": {
         "description": "One send of the stored draft: one quote, one job, one file task. The marks are read again at submission and when the job runs; if they have changed since, that is `version_conflict` and nothing is counted. A send identical to the last file made, or to the one being made, returns that job rather than a new one.",
@@ -11698,6 +11915,9 @@
                             },
                             "text_edit": {
                               "type": "boolean"
+                            },
+                            "vector_blackout": {
+                              "type": "boolean"
                             }
                           },
                           "required": [
@@ -11707,7 +11927,8 @@
                             "deck_editor",
                             "edit_buttons",
                             "count_once",
-                            "photos_task"
+                            "photos_task",
+                            "vector_blackout"
                           ],
                           "type": "object"
                         }

@@ -117,12 +117,21 @@ def inspect_file_sandbox(path: str | Path, *, password: str | None = None, timeo
     return _run(request, timeout)
 
 
+def helper_sandbox(name: str, input_paths: list[str | Path], parameters: dict, output_dir: str | Path, *,
+                   timeout: int = 90, pdfcraft: bool = False) -> dict:
+    """An editor helper (processors/helpers.py): an answer about a customer's file, made in the bounded child like a file is."""
+    return _run({'operation': 'helper', 'name': name, 'input_paths': [str(Path(p).absolute()) for p in input_paths],
+        'parameters': parameters, 'output_dir': str(Path(output_dir).absolute()), 'pdfcraft': pdfcraft}, timeout)
+
+
 def execute_sandbox(feature_id: str, input_paths: list[str | Path], parameters: dict,
                     output_dir: str | Path, *, secret: str | None = None, timeout: int = 90, office_timeout: int = 60,
-                    deck_fonts: bool = False, office_home: str | Path | None = None, pdfcraft: bool = False) -> dict:
-    # `pdfcraft` is the editor's switch (/ops/editor), never a parameter a caller could set.
+                    deck_fonts: bool = False, office_home: str | Path | None = None, pdfcraft: bool = False,
+                    vector_blackout: bool = False) -> dict:
+    # `pdfcraft` and `vector_blackout` are the editor's switches (/ops/editor), never parameters a caller could set.
     return _run({'operation': 'execute', 'feature_id': feature_id,
         'input_paths': [str(Path(p).absolute()) for p in input_paths],
         'parameters': parameters, 'output_dir': str(Path(output_dir).absolute()),
         'secret': secret, 'office_timeout': office_timeout, 'deck_fonts': deck_fonts, 'pdfcraft': pdfcraft,
+        'vector_blackout': vector_blackout,
         'office_home': str(Path(office_home).absolute()) if office_home else None}, timeout)

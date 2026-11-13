@@ -54,7 +54,7 @@ def telegram_config():
 # What the new editors run on, all off until the owner turns them on, and the
 # seconds of free work one account may use a day. Editable at /ops/editor
 # (editor_settings.py); the environment answers until the first save there.
-EDITOR_FLAGS = ('editor_v2','pdfcraft','text_edit','deck_editor','edit_buttons','count_once','photos_task')
+EDITOR_FLAGS = ('editor_v2','pdfcraft','text_edit','deck_editor','edit_buttons','count_once','photos_task','vector_blackout')
 EDITOR_BUDGETS = {'inspect':120,'text_check':90,'preview':120,'render_deck':300,'photos':600,'paid_multiplier':3}
 
 def _env_budget(name, default):

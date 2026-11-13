@@ -5,8 +5,11 @@ through PdfCraft where a look at the result allows it, and otherwise draws the
 new words where the old stood (processors/text_edit.py): over the old ones,
 painted out, only when PdfCraft could not take them out.
 Redaction from a command list sent whole rasterizes every page and copies no
-original PDF objects; a stored draft's send (`combined`) rasterizes only the
-pages with a box and removes what else could carry them (see _pipeline).
+original PDF objects. A stored draft's send (`combined`) has PdfCraft black out
+what each box covers and keeps the page's words where a look allows it
+(processors/blackout.py); only the other pages with a box become pictures, with
+the customer's consent to each, and what else could carry their words goes
+(see _pipeline).
 """
 from __future__ import annotations
 import copy
@@ -141,17 +144,19 @@ def _deleted(commands):
 
 
 def raster_pages(commands):
-    """The source pages that will really become pictures: a box on a page being deleted draws nothing."""
+    """The source pages with a black-out box: all of them become pictures when PdfCraft cannot be asked. A box on a page being deleted draws nothing."""
     return sorted({c['page'] for c in commands if c['type']=='redact'}-_deleted(commands))
 
 
 def normalize(feature,parameters,metadata=None):
     """`combined` is a stored draft's send: one job of every kind, with consent asked only for pages that really become pictures.
 
-    Never taken from a caller (apps.core.services.create_quote refuses it).
+    Never taken from a caller (apps.core.services.create_quote refuses it). Its
+    `raster_pages` are the pages the customer agreed may become pictures; which do
+    is known only once PdfCraft has tried them (execute).
     """
     from .engine import ProcessorError
-    if not isinstance(parameters,dict) or set(parameters)-{'commands','accept_rasterization','combined'}:raise ProcessorError('invalid_parameters')
+    if not isinstance(parameters,dict) or set(parameters)-{'commands','accept_rasterization','combined','raster_pages'}:raise ProcessorError('invalid_parameters')
     commands=parameters.get('commands')
     if not isinstance(commands,list) or not 1<=len(commands)<=100:raise ProcessorError('invalid_editor_command')
     normalized=[]
@@ -163,8 +168,11 @@ def normalize(feature,parameters,metadata=None):
     combined=parameters.get('combined',False)
     if type(accepted) is not bool or type(combined) is not bool:raise ProcessorError('invalid_parameters')
     if combined:
-        if raster_pages(normalized) and not accepted:raise ProcessorError('rasterization_consent_required')
-        return {'commands':normalized,'accept_rasterization':accepted,'combined':True}
+        agreed=parameters.get('raster_pages')
+        count=metadata[0]['page_count'] if metadata else 1000
+        if agreed is not None and (not isinstance(agreed,list) or len(agreed)>count or any(type(page) is not int or not 1<=page<=count for page in agreed) or len(set(agreed))!=len(agreed)):raise ProcessorError('invalid_parameters')
+        return {'commands':normalized,'accept_rasterization':accepted,'combined':True,**({'raster_pages':sorted(agreed)} if agreed is not None else {})}
+    if 'raster_pages' in parameters:raise ProcessorError('invalid_parameters')
     if any(c['type']=='redact' for c in normalized) and not accepted:raise ProcessorError('rasterization_consent_required')
     if any(c['type']=='redact' for c in normalized) and any(c['type']!='redact' for c in normalized):raise ProcessorError('redaction_requires_separate_export')
     return {'commands':normalized,'accept_rasterization':accepted}
@@ -478,11 +486,32 @@ def _raster_stage(writer,commands,raster,out):
     return forgotten
 
 
-def _carriers(writer,raster):
-    """The parts of a document that repeat its pages' words. Tags go with any page that goes; a page blacked out also takes the bookmarks, which nothing here can read for what it hid. Attached files are refused at upload."""
+def _outlines_say(writer,secrets):
+    """Whether a bookmark's title says any of the words that went, short ones aside."""
+    from .blackout import SHORTEST
+    from .text_edit import norm
+    wanted=[secret for secret in secrets if len(secret)>=SHORTEST]
+    outlines=writer.root_object.get('/Outlines')
+    if not wanted or outlines is None:return False
+    pending=[outlines.get_object().get('/First')];seen=set()
+    while pending:
+        node=pending.pop()
+        node=node.get_object() if node is not None else None
+        if not isinstance(node,DictionaryObject) or id(node) in seen:continue
+        # Past this many, a tree is not looked through: it goes.
+        if len(seen)>=10000:return True
+        seen.add(id(node))
+        title=node.get('/Title')
+        if title is not None and any(secret.casefold() in norm(str(title.get_object())).casefold() for secret in wanted):return True
+        pending+=[node.get('/First'),node.get('/Next')]
+    return False
+
+
+def _carriers(writer,raster,secrets=()):
+    """The parts of a document that repeat its pages' words. Tags go with any page that goes or is blacked out. A page blacked out as a picture also takes the bookmarks, which nothing here can read for what it hid; one PdfCraft blacked out takes them when a title says what went (`secrets`). Attached files are refused at upload."""
     root=writer.root_object
     for key in ('/StructTreeRoot','/MarkInfo','/PieceInfo'):root.pop(key,None)
-    if raster:
+    if raster or _outlines_say(writer,secrets):
         for key in ('/Outlines','/Threads'):root.pop(key,None)
 
 
@@ -523,14 +552,28 @@ def _rotated_box(command,width,height,angle):
     return x,y,w,h
 
 
-def _check_boxes(path,commands,final):
-    """Look at the file as made: every black-out box must be black, wherever its page ended up."""
+def _check_boxes(path,commands,final,drawn=None,vector=frozenset()):
+    """Look at the file as made: every black-out box must be black, wherever its page ended up.
+
+    On a page PdfCraft blacked out (`vector`) the black is where it found the words
+    a box was made for (`drawn`, by command index), and no letter may stand in it.
+    """
     import pypdfium2 as pdfium
     from .engine import ProcessorError
+    from .text_edit import Page
     angles={c['page']:c['angle'] for c in commands if c['type']=='rotate_page'};positions={number:index for index,number in enumerate(final)}
     boxes={}
     for index,command in enumerate(commands):
-        if command['type']=='redact' and command['page'] in positions:boxes.setdefault(command['page'],[]).append((index,command))
+        if command['type']!='redact' or command['page'] not in positions:continue
+        rects=(drawn or {}).get(index) if command['page'] in vector else None
+        for rect in rects or [[command['x'],command['y'],command['x']+command['width'],command['y']+command['height']]]:
+            boxes.setdefault(command['page'],[]).append((index,{'x':rect[0],'y':rect[1],'width':rect[2]-rect[0],'height':rect[3]-rect[1]}))
+    for number in sorted(set(boxes)&set(vector)):
+        # The letters as shown, where the boxes are turned to: one look at a tiny render costs nothing.
+        shown=Page.read(path,positions[number]+1,.05)
+        for index,command in boxes[number]:
+            x,y,w,h=_rotated_box(command,shown.width,shown.height,angles.get(number,0))
+            if any(x<=(c['left']+c['right'])/2<=x+w and y<=(c['top']+c['bottom'])/2<=y+h for c in shown.letters):raise ProcessorError('editor_check_failed',index=index)
     with pdfium.PdfDocument(str(path)) as document:
         for number,rows in boxes.items():
             page=document[positions[number]];width,height=page.get_size()
@@ -617,15 +660,18 @@ def _unturned(writer,page,seen,copies):
     page.transfer_rotation_to_content()
 
 
-def _pipeline(paths,commands,out,edited=None):
+def _pipeline(paths,commands,out,edited=None,blacked=None):
     """One file from everything a draft holds. Every stage reads source page numbers: page operations come last.
 
-    (0) the text stage (`edited`, text_edit.stage) has changed the document's own
-    words already, and `paths[0]` is its file; (1) the pypdf stage draws each
-    mark, the words it retyped or covered among them, (2) the raster stage turns
-    the pages with black-out boxes to pictures, (3) the page stage rotates,
-    deletes and orders. Then the file is written and looked at. A page blacked
-    out or deleted takes with it whatever else in the file could repeat it.
+    Before it, the black-out stage (`blacked`, blackout.run) has had PdfCraft black
+    out the boxes of the pages that keep their words, and then the text stage
+    (`edited`, text_edit.stage) has changed the document's own words; `paths[0]` is
+    the file they left. (1) the pypdf stage draws each mark, the words the text
+    stage retyped or covered among them, (2) the raster stage turns the other pages
+    with black-out boxes to pictures (all of them with no `blacked`), (3) the page
+    stage rotates, deletes and orders. Then the file is written and looked at. A
+    page blacked out or deleted takes with it whatever else in the file could
+    repeat it.
     """
     from .engine import _pdf_reader,_share_identical_objects,_write_pdf,ProcessorError
     reader=_pdf_reader(paths[0],allow_forms=True)
@@ -633,13 +679,16 @@ def _pipeline(paths,commands,out,edited=None):
     seen=set();copies={}
     for page in writer.pages:
         if page.rotation:_unturned(writer,page,seen,copies)
-    deleted=_deleted(commands);raster=raster_pages(commands)
+    deleted=_deleted(commands);raster=sorted(blacked.raster) if blacked else raster_pages(commands)
+    vector=blacked.vector if blacked else set();taken=blacked.forgotten if blacked else set()
     engines=edited.engines if edited else {}
-    rows=[{'index':index,'status':'skipped' if command['type']!='delete_page' and command.get('page') in deleted else 'applied','engine':'pdfium' if command['type']=='redact' else engines.get(index,'pypdf')} for index,command in enumerate(commands)]
+    rows=[{'index':index,'status':'skipped' if command['type']!='delete_page' and command.get('page') in deleted else 'applied','engine':('pdfcraft' if command['page'] in vector else 'pdfium') if command['type']=='redact' else engines.get(index,'pypdf')} for index,command in enumerate(commands)]
     replacements=0;form_values={}
     for index,command in enumerate(commands):
         kind=command['type']
-        if kind=='fill_form':form_values[command['field']]=command['value']
+        # A field a box met went with what the box covered: it is not filled in.
+        if kind=='fill_form':
+            if command['field'] not in taken:form_values[command['field']]=command['value']
         elif kind in PAGE_COMMANDS or command['page'] in deleted:continue
         # A box is drawn at the raster stage, on a page that must be as simple as any mark asks.
         elif kind=='redact':_geometry(writer.pages[command['page']-1],command)
@@ -656,11 +705,14 @@ def _pipeline(paths,commands,out,edited=None):
         page=writer.pages[number-1];removed|=_forget_annotations(writer,page)
         for key in list(page):
             if key!='/Type':del page[key]
+    # A page PdfCraft blacked out keeps its words, and nothing that could show what went: its thumbnail and private data.
+    for number in vector:
+        for key in ('/Thumb','/PieceInfo','/Metadata'):writer.pages[number-1].pop(key,None)
     final=_page_stage(writer,commands)
-    if raster or deleted:
-        _unshare(writer,gone,writer.pages);_carriers(writer,bool(raster))
+    if raster or deleted or vector:
+        _unshare(writer,gone,writer.pages);_carriers(writer,bool(raster),blacked.secrets if blacked else ())
     _share_identical_objects(writer)
-    if raster or deleted:_sweep(writer)
+    if raster or deleted or vector:_sweep(writer)
     artifact=_write_pdf(writer,out/'edited.pdf',allow_forms=True)
     reopened=PdfReader(artifact['path']);fields=reopened.get_fields() or {}
     for name,value in form_values.items():
@@ -669,20 +721,37 @@ def _pipeline(paths,commands,out,edited=None):
         elif name not in drawn|removed:raise ProcessorError('form_validation_failed')
     positions={number:index for index,number in enumerate(final)}
     if any(reopened.pages[positions[number]].extract_text().strip() or reopened.pages[positions[number]].get('/Annots') for number in raster):raise ProcessorError('redaction_validation_failed')
-    if raster:_check_boxes(artifact['path'],commands,final)
+    if raster or vector:_check_boxes(artifact['path'],commands,final,blacked.drawn if blacked else None,vector)
     for index,command in enumerate(commands):
-        if command['type']=='fill_form' and command['field'] in removed-fields.keys():rows[index]['status']='skipped'
+        if command['type']=='fill_form' and command['field'] in (removed|taken)-fields.keys():rows[index]['status']='skipped'
     warnings=[]
     if replacements:warnings.append('existing_text_simple_standard_fonts_only')
     engine='pypdf/reportlab/pdfium' if raster else 'pypdf/reportlab'
-    if edited and edited.pdfcraft:engine='pdfcraft/'+engine
+    if vector or (edited and edited.pdfcraft):engine='pdfcraft/'+engine
     artifact['metadata']={'engine':engine,'rasterized_pages':raster}
     return [artifact],{'engine':engine,'warnings':warnings,'text_replacements':replacements,'command_features':sorted({COMMAND_FEATURES[c['type']] for c in commands}),'per_command':rows,'rasterized_pages':raster}
 
 
-def execute(feature,paths,parameters,out,metadata,pdfcraft=False):
-    """`pdfcraft` is the server's switch (/ops/editor), never a parameter: whether edit_text may ask PdfCraft at all."""
+def _agreed(parameters,commands):
+    """The pages the customer agreed may become pictures. A send quoted before pages were told apart agreed to every page with a box."""
+    if not parameters.get('accept_rasterization'):return set()
+    return set(parameters['raster_pages']) if 'raster_pages' in parameters else set(raster_pages(commands))
+
+
+def _consented(parameters,blacked):
+    """A page becomes a picture only with the customer's consent to that page; else nothing is made, nothing counted, and the send asks again."""
+    from .engine import ProcessorError
+    refused=sorted(set(blacked.raster)-_agreed(parameters,parameters['commands']))
+    if refused:
+        first=min(index for index,command in enumerate(parameters['commands']) if command['type']=='redact' and command['page']==refused[0])
+        raise ProcessorError('rasterization_consent_required',index=first)
+
+
+def execute(feature,paths,parameters,out,metadata,pdfcraft=False,vector_blackout=False):
+    """`pdfcraft` and `vector_blackout` are the server's switches (/ops/editor), never parameters: whether edit_text may ask PdfCraft at all, and black-out with it."""
     import tempfile
+    import time
+    from . import blackout
     from .engine import ProcessorError
     from .text_edit import stage
     commands=parameters['commands']
@@ -690,8 +759,18 @@ def execute(feature,paths,parameters,out,metadata,pdfcraft=False):
         if command['type'] in UNAPPLIED_COMMANDS:raise ProcessorError('invalid_editor_command',index=index)
     # A list sent whole holds nothing but black-out, and today's web has promised every page as a picture.
     if not parameters.get('combined') and any(c['type']=='redact' for c in commands):return _redact(paths[0],commands,out)
-    if not any(c['type']=='edit_text' for c in commands):return _pipeline(paths,commands,out)
-    # PdfCraft's root: the job's private output folder holds it, and it goes with the stage's working files once the file is written.
+    found=blackout.boxes(commands);texts=any(c['type']=='edit_text' for c in commands)
+    if not found and not texts:return _pipeline(paths,commands,out)
+    # PdfCraft's root: the job's private output folder holds it, and it goes with the stages' working files once the file is written.
     with tempfile.TemporaryDirectory(prefix='pdfcraft-',dir=out) as root:
-        edited=stage(paths[0],commands,Path(root),pdfcraft)
-        return _pipeline([edited.path,*paths[1:]],commands,out,edited)
+        root=Path(root);started=time.monotonic();blacked=None;source=Path(paths[0])
+        if found:
+            # A page agreed to become a picture is one, as the check that asked found it would be: it is not tried again.
+            skip=blackout.marked(commands)|_agreed(parameters,commands)
+            blacked=blackout.run(source,commands,root/'blackout',pdfcraft and vector_blackout,skip)
+            _consented(parameters,blacked);source=blacked.path
+        edited=None
+        if texts:
+            (root/'text').mkdir(mode=0o700)
+            edited=stage(source,commands,root/'text',pdfcraft,time.monotonic()-started);source=edited.path
+        return _pipeline([source,*paths[1:]],commands,out,edited,blacked)
