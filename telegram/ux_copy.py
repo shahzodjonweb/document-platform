@@ -200,6 +200,17 @@ MESSAGES = {
     'ai_change_topic': ('✏️ Change the description', '✏️ Tavsifni o‘zgartirish', '✏️ Изменить описание'),
     'ai_review_hint': ('Nothing counts until you tap Generate.', '«Yaratish» tugmasini bosmaguningizcha hech narsa hisoblanmaydi.', 'Ничего не засчитывается, пока вы не нажмёте «Создать».'),
     'ai_back': ('◀️ Back', '◀️ Orqaga', '◀️ Назад'),
+    # The list of categories in front of the description (switched on in the
+    # admin). Its buttons are the catalogue's labels; these are the words around
+    # them. Every kind is made with its own structure, which is why there is a list
+    # at all, and Boshqa below them stays today's question, so it is not named.
+    'ai_cat_choose': ('👇 What are we making? Choose below: each kind is made with its own structure.', '👇 Nima tayyorlaymiz? Quyidan tanlang: har bir tur o‘z tuzilishi bilan tayyorlanadi.', '👇 Что делаем? Выберите ниже: каждый вид делается со своей структурой.'),
+    # A category button from an older list, for one the owner has since taken off it.
+    'ai_cat_gone': ('That kind is not available right now. Choose another one below.', 'Bu tur hozir mavjud emas. Quyidan boshqasini tanlang.', 'Этот вид сейчас недоступен. Выберите другой ниже.'),
+    # A category's question, under its examples: how files go with the description.
+    # The description starts the draft at once, so a file sent after it joins only
+    # through the review's question button.
+    'ai_cat_files': ('📎 Files (PDF, Word, TXT): send them with the description as their caption, or before it.', '📎 Fayllar (PDF, Word, TXT): ularni tavsif bilan izoh sifatida yoki tavsifdan oldin yuboring.', '📎 Файлы (PDF, Word, TXT): отправьте их с описанием в подписи или до него.'),
     'ai_revise': ('✏️ Make changes', '✏️ O‘zgartirish kiritish', '✏️ Внести изменения'),
     'ai_ask_to_change': ('✨ Ask AI to change', '✨ AI bilan o‘zgartirish', '✨ Изменить с ИИ'),
     # The editor, opened inside Telegram: no AI edit is used.

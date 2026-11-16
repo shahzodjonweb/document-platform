@@ -902,3 +902,19 @@ tests/test_category_deck_entries.py::test_no_research_note_reaches_the_model
 tests/test_category_deck_entries.py::test_a_report_on_plan_and_actual_is_told_to_show_the_figures_as_written
 tests/test_category_deck_entries.py::test_a_company_profile_keeps_its_path_for_values_and_a_training_programme
 tests/test_category_deck_entries.py::test_a_product_deck_and_prices_are_still_found
+
+# The bot's list of categories (B1): the list and its group, Boshqa exactly today's question with today's checks,
+# words on the list are today's flow, the switch off is today's bot, a category's question and its draft, old
+# buttons, the gate, a refusal and the topic question keep the category, chosen is counted once per choice
+tests/test_bot_categories.py::test_the_list_and_its_group_in_every_language[uz]
+tests/test_bot_categories.py::test_one_tap_reaches_the_list_and_a_description_typed_on_it_is_todays_flow
+tests/test_bot_categories.py::test_boshqa_is_todays_question_exactly
+tests/test_bot_categories.py::test_boshqa_meets_todays_checks_from_document_and_the_menu
+tests/test_bot_categories.py::test_with_the_switch_off_every_way_in_is_todays_question
+tests/test_bot_categories.py::test_a_category_opens_its_own_question_and_its_draft_carries_it[uz]
+tests/test_bot_categories.py::test_an_entry_no_longer_offered_sends_its_old_button_to_the_list
+tests/test_bot_categories.py::test_the_switch_turned_off_while_writing_still_makes_a_document
+tests/test_bot_categories.py::test_the_gate_comes_back_to_the_category_tapped
+tests/test_bot_categories.py::test_a_rate_limit_asks_the_category_again
+tests/test_bot_categories.py::test_the_topic_question_keeps_the_category_and_todays_join_order
+tests/test_bot_categories.py::test_a_category_tap_is_counted_once_per_choice

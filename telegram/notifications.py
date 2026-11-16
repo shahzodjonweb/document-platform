@@ -152,6 +152,9 @@ def notice_controls(notice):
                 payload['job_id'] = str(notice.job_id)
             if action == 'ai_tool':
                 payload['feature_id'] = job.feature_id
+                # A document made in a category is described again in it, while it is still offered.
+                if (job.parameters or {}).get('category'):
+                    payload['category'] = job.parameters['category']
             control = BotCallback.objects.filter(account=account, action=action, payload=payload).first()
             if control is None:
                 control = BotCallback.objects.create(token=secrets.token_urlsafe(12), account=account, action=action,
