@@ -4,7 +4,7 @@
  "parallel_parts": false,
  "draft": {
   "title": "Javlon Tursunov",
-  "prompt": "Javlon Tursunov, accountant in Samarkand. Phone +998 91 555 01 23. Accountant at Example Trade LLC since 2021. BSc Accounting, 2016 - 2020. Excel, 1C, IFRS reporting.",
+  "prompt": "Javlon Tursunov, accountant in Samarkand. Phone +998 00 000 00 00. Accountant at Example Trade LLC since 2021. BSc Accounting, 2016 - 2020. Excel, 1C, IFRS reporting.",
   "source_text": "",
   "source_ids": [],
   "excerpts": [],
@@ -108,7 +108,7 @@
     "output_locale": "en",
     "output_language": "English",
     "output_script": "latin",
-    "prompt": "Javlon Tursunov, accountant in Samarkand. Phone +998 91 555 01 23. Accountant at Example Trade LLC since 2021. BSc Accounting, 2016 - 2020. Excel, 1C, IFRS reporting.",
+    "prompt": "Javlon Tursunov, accountant in Samarkand. Phone +998 00 000 00 00. Accountant at Example Trade LLC since 2021. BSc Accounting, 2016 - 2020. Excel, 1C, IFRS reporting.",
     "source_text": "",
     "excerpts": [],
     "outline": {

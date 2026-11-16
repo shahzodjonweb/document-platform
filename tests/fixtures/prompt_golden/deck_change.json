@@ -21,7 +21,8 @@
    "uz_script": "latn",
    "image_cap": 12,
    "template_style": {
-    "accent": "#255e49"
+    "accent": "#255e49",
+    "deck_design": "forest"
    }
   },
   "content": {

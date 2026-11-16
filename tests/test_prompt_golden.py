@@ -22,8 +22,13 @@ The model is a stub that answers each body from its own schema, so a later
 part sees the same earlier parts every time and the bodies never vary.
 
 Regenerating is for the lead only, after a change that is meant to alter what
-a no-category draft sends:
+a no-category draft sends, and runs the whole module:
     pytest tests/test_prompt_golden.py --update-golden
+The draft test then writes each fixture's draft and the body test its calls,
+from that written draft and in the body test's own state (no customer, no
+saved admin settings), so a regenerated body is made exactly as it is checked.
+Parts run one after another in both, whatever LOCAL_SYNC_JOBS the shell has,
+so a deck written side by side records its bodies in a fixed order.
 """
 import copy
 import difflib
@@ -172,13 +177,23 @@ def build(who, feature, locale, description, files=()):
 
 
 def generated(monkeypatch, who, draft, feature):
-    """`draft` as it stands once a job wrote it with the stub, so a change can be asked of it."""
+    """`draft` as it stands once a job wrote it with the stub, so a change can be asked of it.
+
+    It keeps what execution.py keeps after the model's reply: the look the model
+    chose, in the draft's style, and none of the seed. A deck's render pins are
+    not made, as that needs the renderer; a change today reads them only for a
+    design the style lacks, and the style has it here.
+    """
+    from apps.studio import deck_designs, doc_designs
     from apps.studio.domain import validate_content
     data = unpack(draft.encrypted_data)
     sending(monkeypatch)
     reply, _ = provider.generate(CONFIG, data, feature, 'golden-original', token_limit=TOKEN_LIMIT)
     data['content'] = validate_content(who, {key: reply[key] for key in ('title', 'sections', 'questions', 'citations')},
                                        data['output_format'], feature=feature)
+    (deck_designs if data['output_format'] == 'pptx' else doc_designs).remember(data, reply)
+    data.pop('_source_seed', None)
+    data.pop('_render', None)
     draft.encrypted_data = pack(data)
     draft.save(update_fields=['encrypted_data'])
     return draft, data
@@ -282,7 +297,7 @@ DESCRIPTIONS = {
     'document_short_en': 'A 5 page guide to keeping bees in a city garden',
     'document_selected': 'Make these two pages more concrete, with one practical example each.',
     'document_short_ru': 'Доклад на 5 страниц о пользе утренней зарядки для школьников',
-    'cv': ('Javlon Tursunov, accountant in Samarkand. Phone +998 91 555 01 23. Accountant at Example Trade LLC '
+    'cv': ('Javlon Tursunov, accountant in Samarkand. Phone +998 00 000 00 00. Accountant at Example Trade LLC '
            'since 2021. BSc Accounting, 2016 - 2020. Excel, 1C, IFRS reporting.'),
 }
 
@@ -307,17 +322,25 @@ CASES = {
 
 def stand_ins(data):
     """`data` with every run's new ids written as fixed stand-ins, the same one wherever an id recurs."""
+    from apps.studio.revisions import provider_content, source_seed
     seen = {}
 
     def fixed(match):
         seen.setdefault(match.group(0), f'00000000-0000-4000-8000-{len(seen) + 1:012d}')
         return seen[match.group(0)]
-    data = json.loads(UUID.sub(fixed, json.dumps(data, ensure_ascii=False)))
-    if '_source_seed' in data:
-        # Its fingerprint covers the files' ids, so it is taken again over the stand-ins: left as it was, it
-        # would no longer match, and the body would carry the seeded pages a real job's never does.
-        from apps.studio.revisions import source_seed
-        data['_source_seed'] = source_seed(data)
+
+    def substituted(value):
+        return json.loads(UUID.sub(fixed, json.dumps(value, ensure_ascii=False)))
+    if '_source_seed' not in data:
+        return substituted(data)
+    # The seed's fingerprint covers the files' ids, so it has to be taken again over the stand-ins; left as it
+    # was, it would no longer match and the body would carry the seeded pages a real job's never does. Taken
+    # again, though, it would hide a wrong seed from create_draft: so the seed written is first held to the one
+    # its draft calls for, and the pages blanked for the model to be the same before and after the stand-ins.
+    assert data['_source_seed'] == source_seed(data), 'create_draft wrote a seed that is not its draft\'s'
+    data, sent = substituted([data, provider_content(data)])
+    data['_source_seed'] = source_seed(data)
+    assert provider_content(data) == sent, 'the stand-ins changed which pages the model is sent'
     return data
 
 
@@ -333,7 +356,7 @@ def case(name):
 def fixture(name):
     path = HERE / f'{name}.json'
     assert path.exists(), f'{path} is missing; the lead makes it with --update-golden'
-    return json.loads(path.read_text())
+    return json.loads(path.read_text(encoding='utf-8'))
 
 
 def same(expected, actual, label):
@@ -345,9 +368,27 @@ def same(expected, actual, label):
     pytest.fail(f'{label} changed for a draft without a category:\n{diff}', pytrace=False)
 
 
+def rewrite(name, **fields):
+    """The fixture for `name` with `fields` replaced; the calls of an older one stay until the body test runs."""
+    HERE.mkdir(parents=True, exist_ok=True)
+    path = HERE / f'{name}.json'
+    old = json.loads(path.read_text(encoding='utf-8')) if path.exists() else {}
+    what = case(name)
+    path.write_text(written({'case': what['what'], 'feature': what['feature'],
+                             'parallel_parts': 'parallel_parts' in what['config'],
+                             'draft': old.get('draft'), 'calls': old.get('calls', []), **fields}), encoding='utf-8')
+
+
 @pytest.fixture
 def update(request):
     return request.config.getoption('--update-golden')
+
+
+@pytest.fixture(autouse=True)
+def parts_in_order(settings):
+    # provider.side_by_side runs a deck's parts on threads without this, and the stub would record their bodies
+    # in the order they finish.
+    settings.LOCAL_SYNC_JOBS = True
 
 
 @pytest.mark.parametrize('name', list(CASES))
@@ -355,25 +396,20 @@ def test_a_draft_without_a_category_is_made_as_before(name, settings, monkeypatc
     data = stand_ins(make(name, settings, monkeypatch))
     data['_cache_scope'] = SCOPE
     if update:
-        monkeypatch.undo()
-        HERE.mkdir(parents=True, exist_ok=True)
-        what = case(name)
-        bodies = calls(monkeypatch, what, data)
-        (HERE / f'{name}.json').write_text(written({'case': what['what'], 'feature': what['feature'],
-                                                    'parallel_parts': 'parallel_parts' in what['config'],
-                                                    'draft': data, 'calls': bodies}))
+        rewrite(name, draft=data)
         return
     same(fixture(name)['draft'], data, 'The draft')
 
 
 @pytest.mark.parametrize('name', list(CASES))
 def test_a_draft_without_a_category_sends_the_same_request_bodies(name, monkeypatch, update):
-    if update:
-        pytest.skip('rewritten by the draft test')
     golden = fixture(name)
     what = case(name)
-    assert golden['feature'] == what['feature']
     sent = calls(monkeypatch, what, golden['draft'])
+    if update:
+        rewrite(name, draft=golden['draft'], calls=sent)
+        return
+    assert golden['feature'] == what['feature']
     assert len(sent) == len(golden['calls']), f'{name}: {len(sent)} calls, {len(golden["calls"])} pinned'
     for number, (expected, actual) in enumerate(zip(golden['calls'], sent), 1):
         same(expected, actual, f'{name}, call {number} of {len(sent)}')
