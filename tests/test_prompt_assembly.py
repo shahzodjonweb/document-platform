@@ -290,6 +290,43 @@ def test_a_category_deck_keeps_one_prefix_in_every_language_and_whatever_the_cus
             provider.request_body(CONFIG, category_deck('uz', other), SLIDES, span)['instructions']
 
 
+def category_paper(locale, prompt):
+    """A category paper's draft (apps/studio/categories): its one page, its seeded parts."""
+    from apps.studio.categories import catalogue, skeleton
+    entry = catalogue.get('pdf.xat.ariza')
+    data = draft(1)
+    data.update(output_locale=locale, prompt=prompt)
+    data['options'].update(category=entry.id, length=1)
+    data['content']['sections'] = skeleton.seed(entry, 1, skeleton.cues(entry, prompt, has_files=False))
+    return data
+
+
+def test_a_category_paper_is_told_its_own_stack_in_one_prefix_whatever_the_customer_wrote():
+    """A category paper is told DOCUMENT and its block in place of SYSTEM, DOCUMENT_RULES and the design guide, and
+    a change REVISION_SYSTEM, REVISION_NOTE and its block; the two properties above hold for it too."""
+    from apps.studio.categories import catalogue, prompting as categories
+    block = categories.block(catalogue.get('pdf.xat.ariza'))
+    prompt = 'A request to the head of an invented school, Example Lyceum, for three days of leave.'
+    other = 'Namuna litseyi direktoriga ariza: 2 kunlik ta’til so‘rayman.'
+    stacks = {'final': [categories.DOCUMENT, block], 'revision': [REVISION_SYSTEM, categories.REVISION_NOTE, block],
+              'selected': [REVISION_SYSTEM, categories.REVISION_NOTE, block, SELECTED_REVISION],
+              'repair': [REVISION_SYSTEM, categories.REVISION_NOTE, block, SELECTED_REVISION]}
+    for stage, stack in stacks.items():
+        made = {}
+        for locale in LOCALES:
+            data = category_paper(locale, prompt)
+            data['options'].update(wants_layouts=True, wants_design=True)
+            data = {'final': lambda d: d, 'revision': revised, 'selected': lambda d: revised(d, ['request']),
+                    'repair': lambda d: repairing(d, ['request'])}[stage](data)
+            made[locale] = provider.request_body(CONFIG, data, DOCUMENT)
+            assert made[locale]['instructions'] == '\n'.join(stack + [language.instructions(locale)]), stage
+            assert SYSTEM not in made[locale]['instructions'] and DOCUMENT_RULES not in made[locale]['instructions']
+        assert len({body['prompt_cache_key'] for body in made.values()}) == 1, stage
+        assert 'Example Lyceum' not in made['en']['instructions']
+    assert provider.request_body(CONFIG, category_paper('uz', prompt), DOCUMENT)['instructions'] == \
+        provider.request_body(CONFIG, category_paper('uz', other), DOCUMENT)['instructions']
+
+
 def test_the_cache_key_changes_with_the_prompt_version(monkeypatch):
     """New instructions must not be served a prefix cached for the old ones."""
     data = draft(5, 'pptx')
