@@ -5,11 +5,16 @@ import math
 
 import pytest
 
+from apps.core.errors import DomainError
 from apps.studio import pages as paging
 from apps.studio.categories import asking, catalogue, skeleton
 from apps.studio.categories.catalogue import SOURCES_CUE, build, read
 from apps.studio.categories.skeleton import (FACTS, cues, dress, length, pages, pages_in, parts, seed, slots, spans,
                                              words)
+
+
+# No cue holds: cues is a required argument, so a test says so.
+NONE = frozenset()
 
 
 def files():
@@ -68,7 +73,9 @@ def unfilled(deck):
     """Where a deck breaks the slot proof: (cues, length, slot ids) for every length and cue subset that fails.
 
     It must give exactly the length, the cover first, and every required slot
-    that exists at that length and those cues.
+    that exists at that length and those cues. Below the entry's minimum, which
+    only a plan ceiling makes, required slots may leave, but the length and the
+    cover still hold.
     """
     names = sorted(set(deck.raw['cues']) | {SOURCES_CUE})
     required = [part for part in deck.parts if part['need'] == 'required']
@@ -76,12 +83,12 @@ def unfilled(deck):
     for size in range(len(names) + 1):
         for chosen in itertools.combinations(names, size):
             held = skeleton.effective(deck, chosen)
-            for count in range(deck.length['min'], deck.length['max'] + 1):
+            for count in range(1, deck.length['max'] + 1):
                 made_slots = slots(deck, count, held)
                 present = {part['id'] for part in made_slots}
                 if (len(made_slots) != count or made_slots[0]['layouts'][0] != 'cover'
-                        or any(part['id'] not in present for part in required
-                               if skeleton._exists(part, count, held))):
+                        or count >= deck.length['min'] and any(part['id'] not in present for part in required
+                                                               if skeleton._exists(part, count, held))):
                     failed.append((sorted(held), count, [part['id'] for part in made_slots]))
     return failed
 
@@ -105,13 +112,13 @@ def test_the_slot_proof_finds_a_deck_that_cannot_fill_its_length(monkeypatch):
 
 def test_the_himoya_slots_follow_the_defence_order():
     himoya = entry('slides.himoya')
-    assert [part['id'] for part in slots(himoya, 3)] == ['cover', 'maqsad_vazifalar', 'natija_xulosa']
+    assert [part['id'] for part in slots(himoya, 3, NONE)] == ['cover', 'maqsad_vazifalar', 'natija_xulosa']
     assert [part['id'] for part in slots(himoya, 10, frozenset({'bmi'}))] == [
         'cover', 'dolzarblik', 'maqsad_vazifalar', 'obyekt_predmet_metodlar', 'natija', 'natija', 'natija',
         'ilmiy_amaliy', 'xulosa', 'rahmat']
     internship = [part['id'] for part in slots(himoya, 8, frozenset({'internship'}))]
     assert internship[:2] == ['cover', 'baza'] and 'natija' not in internship and 'natija_amaliyot' in internship
-    assert [use.section_id for use in parts(himoya, 6)] == ['s1', 's2', 's3', 's4', 's5', 's6']
+    assert [use.section_id for use in parts(himoya, 6, NONE)] == ['s1', 's2', 's3', 's4', 's5', 's6']
     repeated = [use.instance for use in parts(himoya, 10, frozenset({'bmi'})) if use.part['id'] == 'natija']
     assert repeated == [1, 2, 3]
 
@@ -137,8 +144,50 @@ def test_cues_start_words_in_every_language_and_exclusive_keeps_the_first():
 def test_the_sources_cue_holds_with_files_or_a_word_for_references():
     ariza = entry('pdf.xat.ariza')
     assert cues(ariza, 'Ariza kerak', has_files=True) == {SOURCES_CUE}
-    for text in ('Adabiyotlar ro‘yxati bilan', 'со списком литературы', 'with references', 'a bibliography too'):
+    for text in ('Adabiyotlar ro‘yxati bilan', 'adabiyotlar royxati ham', 'Foydalanilgan manbalarni qo‘shing',
+                 'Adabiyotlar ro‘yhati bilan', 'manbalar ro‘yhatini qo‘sh', 'Адабиётлар рўйхати',
+                 'со списком литературы', 'Список использованной литературы', 'с использованными источниками',
+                 'Список литературы', 'Список источников', 'Список литературы:\n1. Иванов И. Учебник',
+                 'Список литературы обязательно', 'Библиографический список в конце',
+                 'with a reference list', 'a list of sources', 'Works cited at the end',
+                 'Mavzu: suv\nManbalar:\nDarslik, 7-sinf', 'Mavzu: suv\nAdabiyotlar: 1. Darslik',
+                 'Topic: water\nSources:\n1. A textbook', 'Topic: water\nReferences\n- A textbook',
+                 'Литература:\n1. Иванов И. Учебник'):
         assert SOURCES_CUE in cues(ariza, text, has_files=False), text
+
+
+# slides.mavzu's own bot example, in its three languages: a seminar topic with a survey, no source supplied.
+SEMINAR = {
+    'uz': 'Ekologiya fanidan seminar uchun slayd kerak: “Qayta tiklanuvchi energiya manbalari”. 2-kurs, 8 ta '
+          'slayd, oddiy tilda. Guruhdagi so‘rovnoma: 30 kishidan 17 tasi quyoshni, 8 tasi shamolni, 5 tasi suvni '
+          'istiqbolli deb tanladi.\nBirinchi slaydga:\nNamuna davlat universiteti\nFan: Ekologiya\n'
+          'Bajardi: Karimova Dilnoza, 205-guruh\nQabul qildi: dotsent Rahimov B.\nToshkent, 2026',
+    'ru': 'Нужна презентация для семинара по экологии: «Возобновляемые источники энергии». 2 курс, 8 слайдов, '
+          'простым языком. Опрос в группе: из 30 человек 17 выбрали солнце, 8 ветер, 5 воду как самое '
+          'перспективное.\nНа первом слайде:\nОбразцовый государственный университет\nПредмет: Экология\n'
+          'Выполнила: Каримова Дилноза, группа 205\nПроверил: доцент Рахимов Б.\nТашкент, 2026',
+    'en': 'I need slides for an ecology seminar: “Renewable energy sources”. Year 2, 8 slides, plain language. A '
+          'survey in my group: of 30 people, 17 chose solar, 8 wind and 5 water as the most promising.\n'
+          'On the first slide:\nExample State University\nSubject: Ecology\nPrepared by: Dilnoza Karimova, '
+          'group 205\nChecked by: Assoc. Prof. B. Rahimov\nTashkent, 2026',
+}
+
+
+def test_a_topic_that_names_sources_or_literature_is_not_a_reference_list():
+    # A deck without supplied sources has no sources slide: these are topics, in every language alike.
+    ariza = entry('pdf.xat.ariza')
+    for text in ('Qayta tiklanuvchi energiya manbalari', 'Возобновляемые источники энергии', 'Renewable energy sources',
+                 'O‘zbek adabiyoti darsi uchun', 'Источники права', 'Suv manbalarini muhofaza qilish',
+                 'Renewable energy sources: solar, wind and water', 'Русская литература: Пушкин',
+                 'Energiya manbalari: quyosh va shamol', *SEMINAR.values()):
+        assert SOURCES_CUE not in cues(ariza, text, has_files=False), text
+    # Asking for references gives none, and a subject label is not the heading of a list.
+    for text in ('with references', 'a bibliography too', 'Pop culture references in modern cinema',
+                 'Cross-references in Excel', 'Библиография как наука', 'Literature: Romeo and Juliet',
+                 'Литература: 9 класс, Пушкин', 'Adabiyotlar: 7-sinf', 'Sources: of energy in Uzbekistan',
+                 'Mavzu: suv\nManbalar: darslik', 'Fan: Adabiyot\n9-sinf'):
+        assert SOURCES_CUE not in cues(ariza, text, has_files=False), text
+    assert all(cues(ariza, text, has_files=True) == {SOURCES_CUE} for text in SEMINAR.values())
 
 
 def test_the_cues_of_a_draft_are_read_from_its_brief_and_files():
@@ -171,6 +220,17 @@ def test_the_plan_ceiling_wins_even_over_an_entrys_minimum():
     assert length(entry('pdf.xat.ariza'), ceiling=1) == 1
 
 
+def test_a_deck_below_its_minimum_still_has_exactly_the_slides_quoted():
+    himoya = entry('slides.himoya')
+    assert himoya.length['min'] == 3
+    # The quote says what length() says; the seed must hold that many slides, the cover first.
+    for ceiling in (1, 2):
+        count = length(himoya, ceiling=ceiling)
+        assert len(seed(himoya, count, NONE)) == count == ceiling
+    assert [part['id'] for part in slots(himoya, 2, NONE)] == ['cover', 'maqsad_vazifalar']
+    assert [part['id'] for part in slots(himoya, 1, frozenset({'bmi'}))] == ['cover']
+
+
 def test_a_fixed_length_is_always_its_default():
     ariza = entry('pdf.xat.ariza')
     assert length(ariza) == 1
@@ -194,29 +254,29 @@ def test_a_derived_length_follows_the_questions_and_reads_pages_only_without_a_c
 
 
 def test_a_paper_seeds_its_facts_then_one_blank_section_per_written_part():
-    sections = seed(entry('pdf.xat.ariza'), 1)
+    sections = seed(entry('pdf.xat.ariza'), 1, NONE)
     assert ids(sections) == [FACTS, 'request', 'statements', 'enclosures']
     assert [section['layout'] for section in sections] == ['list', 'text', 'list', 'list']
     for section in sections:
         assert (section['heading'], section['body'], section['notes'], section['items']) == ('', '', '', [])
-    test = seed(entry('pdf.test'), 4)
+    test = seed(entry('pdf.test'), 4, NONE)
     assert ids(test) == [FACTS, 'passage'] and test[1]['layout'] == 'callout'
-    listed = [(use.section_id, use.part['id']) for use in parts(entry('pdf.xat.ariza'), 1)]
+    listed = [(use.section_id, use.part['id']) for use in parts(entry('pdf.xat.ariza'), 1, NONE)]
     assert listed[:4] == [(None, 'addressee'), (None, 'applicant'), (None, 'title'), ('request', 'request')]
 
 
 def test_a_model_sized_group_is_seeded_at_its_max_and_repeats_together(paper):
-    found = ids(seed(paper, 10))
+    found = ids(seed(paper, 10, NONE))
     assert found == [FACTS, 'request', 'statements', 'enclosures', 'chapter_head', 'chapter_body', 'chapter_head_2',
                      'chapter_body_2', 'chapter_head_3', 'chapter_body_3', 'note', 'note_2']
-    instances = [(use.section_id, use.instance, use.group) for use in parts(paper, 10) if use.group == 'chapter']
+    instances = [(use.section_id, use.instance, use.group) for use in parts(paper, 10, NONE) if use.group == 'chapter']
     assert instances[2] == ('chapter_head_2', 2, 'chapter')
     assert paper.part('chapter_body_3')['id'] == 'chapter_body'
 
 
 def test_a_length_sized_group_grows_with_the_pages(paper):
     def notes(count):
-        return [section for section in ids(seed(paper, count)) if section.startswith('note')]
+        return [section for section in ids(seed(paper, count, NONE)) if section.startswith('note')]
     assert notes(2) == ['note']
     assert notes(16) == ['note', 'note_2', 'note_3']
     assert notes(30) == ['note', 'note_2', 'note_3', 'note_4']
@@ -224,7 +284,7 @@ def test_a_length_sized_group_grows_with_the_pages(paper):
 
 
 def test_parts_follow_their_cues_and_retired_parts_are_never_seeded(paper):
-    assert 'sources' not in ids(seed(paper, 10))
+    assert 'sources' not in ids(seed(paper, 10, NONE))
     assert 'sources' in ids(seed(paper, 10, frozenset({SOURCES_CUE})))
     assert seed(paper, 10, frozenset({SOURCES_CUE}))[-1]['layout'] == 'list'
     assert all(not section.startswith('old') for section in ids(seed(paper, 30, frozenset({SOURCES_CUE}))))
@@ -241,9 +301,9 @@ def test_a_deck_seeds_each_slide_with_its_slots_first_layout():
 
 
 def test_local_authoring_puts_the_customers_words_where_a_file_can_still_be_made(paper):
-    assert seed(entry('pdf.xat.ariza'), 1, text='Ta’til so‘rayman.')[1]['body'] == 'Ta’til so‘rayman.'
-    assert seed(paper, 10, text='Matn')[1]['body'] == 'Matn', 'the first elastic prose part'
-    deck = seed(entry('slides.himoya'), 3, text='Birinchi\n\nIkkinchi\n\nUchinchi\n\nTo‘rtinchi')
+    assert seed(entry('pdf.xat.ariza'), 1, NONE, text='Ta’til so‘rayman.')[1]['body'] == 'Ta’til so‘rayman.'
+    assert seed(paper, 10, NONE, text='Matn')[1]['body'] == 'Matn', 'the first elastic prose part'
+    deck = seed(entry('slides.himoya'), 3, NONE, text='Birinchi\n\nIkkinchi\n\nUchinchi\n\nTo‘rtinchi')
     assert [section['body'] for section in deck] == ['Birinchi', 'Ikkinchi', 'Uchinchi\n\nTo‘rtinchi']
 
 
@@ -283,6 +343,33 @@ def test_dress_dresses_a_part_of_the_deck_by_its_ids():
                      'layout': 'bullets'}, {'id': 'q1', 'heading': 'y', 'layout': 'auto'}]
 
 
+def test_dress_clears_a_headless_slot_and_reads_the_cues_its_seed_was_made_with_files_included(monkeypatch):
+    def change(entries):
+        slides = entries['slides.himoya']['parts']
+        closing = next(part for part in slides if part['id'] == 'rahmat')
+        closing.update(heading=None, heading_mode='none')
+        slides.insert(slides.index(closing), {
+            'id': 'manbalar', 'kind': 'slide', 'heading': {'uz': 'Manbalar', 'ru': 'Источники', 'en': 'Sources'},
+            'heading_mode': 'fixed', 'need': 'usual', 'layouts': ['bullets'], 'pins': [], 'source': 'customer',
+            'write': 'One row per source the customer gave.', 'when': 'cue:sources', 'from': 5})
+    himoya = made(monkeypatch, change).entries['slides.himoya']
+    # The sources cue comes from the attached file, not the prompt: dress must read it as the seed did.
+    data = {'options': {'category': 'slides.himoya'}, 'prompt': 'BMI himoyasi uchun slayd', 'source_text': '',
+            'output_locale': 'en', 'source_ids': ['a1']}
+    held = skeleton.cues_of(data)
+    assert held == {'bmi', SOURCES_CUE}
+    data['content'] = {'sections': seed(himoya, 10, held)}
+    blueprint = slots(himoya, 10, held)
+    assert 'manbalar' in [part['id'] for part in blueprint]
+    assert 'manbalar' not in [part['id'] for part in slots(himoya, 10, skeleton.cues_of({**data, 'source_ids': []}))]
+    planned = [{'id': section['id'], 'heading': 'Model', 'layout': 'auto'} for section in data['content']['sections']]
+    dress(data, planned)
+    for section, slot in zip(planned, blueprint):
+        wanted = {'fixed': (slot['heading'] or {}).get('en'), 'none': '', 'model': 'Model'}[slot['heading_mode']]
+        assert (section['heading'], section['layout']) == (wanted, slot['layouts'][0]), slot['id']
+    assert planned[-1]['heading'] == '' and blueprint[-1]['id'] == 'rahmat'
+
+
 def test_dress_leaves_a_change_a_paper_and_a_boshqa_deck_alone():
     planned = [{'id': 's2', 'heading': 'Mine', 'layout': 'timeline'}]
     for data in (deck_data(revision={'request': 'x'}), {'options': {}, 'content': {'sections': planned}},
@@ -295,25 +382,51 @@ def test_dress_leaves_a_change_a_paper_and_a_boshqa_deck_alone():
 
 def test_a_ceiling_paper_gets_word_maximums_only():
     ariza = entry('pdf.xat.ariza')
-    found = {use.part['id']: words(ariza, use, 1) for use in parts(ariza, 1)}
+    found = {use.part['id']: words(ariza, use, 1, NONE) for use in parts(ariza, 1, NONE)}
     assert found['request'] == (0, 90), 'a ceiling keeps the top of its own words'
     assert found['addressee'] == (0, 0), 'a fixed part is drawn, not written'
     assert found['enclosures'] == (0, round(0.1 * skeleton.CAPACITY_WORDS)), 'what its share of a page holds'
-    assert words(entry('pdf.test'), parts(entry('pdf.test'), 4)[4], 4) == (60, 120)
+    assert words(entry('pdf.test'), parts(entry('pdf.test'), 4, NONE)[4], 4, NONE) == (60, 120)
 
 
 def test_a_count_paper_gets_word_targets_and_its_elastic_parts_take_what_is_left(paper):
-    uses = {use.section_id: use for use in parts(paper, 10) if use.section_id}
-    low, high = words(paper, uses['chapter_head'], 10)
+    uses = {use.section_id: use for use in parts(paper, 10, NONE) if use.section_id}
+    low, high = words(paper, uses['chapter_head'], 10, NONE)
     assert 0 < low < high
     # The chapters split their share between three instances and take up what the absent parts leave.
     assert high > round(0.3 / 3 * 10 * skeleton.TARGET_WORDS)
-    assert words(paper, uses['chapter_head_2'], 10) == (low, high)
+    assert words(paper, uses['chapter_head_2'], 10, NONE) == (low, high)
     # The notes are not elastic: two at ten pages, each half of their own share.
     assert skeleton.instances(paper, 'note', 10) == 2
     note = round(0.08 / 2 * 10 * skeleton.TARGET_WORDS)
-    assert words(paper, uses['note'], 10) == (round(note * skeleton.LOW_SHARE), note)
-    assert words(paper, uses['request'], 10) == (25, 90)
+    assert words(paper, uses['note'], 10, NONE) == (round(note * skeleton.LOW_SHARE), note)
+    assert words(paper, uses['request'], 10, NONE) == (25, 90)
+
+
+def test_no_part_is_asked_for_more_than_its_stored_body_holds(paper):
+    # validate_content cuts a body at pages.max_section_chars, mid-sentence; a word target must stay under it.
+    assert skeleton.SECTION_WORDS * paging.CHARS_PER_WORD <= paging.max_section_chars('pdf')
+    uses = {use.section_id: use for use in parts(paper, 30, NONE) if use.section_id}
+    uncapped = round(skeleton._shares(paper, 30, NONE)['chapter_head'][0] * 30 * skeleton.TARGET_WORDS)
+    assert uncapped > skeleton.SECTION_WORDS, 'a long chapter of a long paper reaches the cap'
+    assert words(paper, uses['chapter_head'], 30, NONE)[1] == skeleton.SECTION_WORDS
+    # A part spans gives a call of its own is so bounded too: its reply fits one call's budget.
+    assert paging.response_tokens(skeleton.SECTION_WORDS * paging.CHARS_PER_WORD / paging.CHARS_PER_PAGE) \
+        < paging.RESPONSE_CEILING
+
+
+def test_every_paper_entry_asks_each_part_for_what_a_body_holds_at_its_longest():
+    papers = [item for item in catalogue._catalogue().entries.values() if item.service == 'pdf']
+    assert papers, 'the catalogue holds no paper to prove'
+    for paper in papers:
+        names = sorted(set(paper.raw.get('cues') or {}) | {SOURCES_CUE})
+        longest = min(paper.length['max'], 35)
+        for size in range(len(names) + 1):
+            for chosen in itertools.combinations(names, size):
+                held = skeleton.effective(paper, chosen)
+                for use in parts(paper, longest, held):
+                    low, high = words(paper, use, longest, held)
+                    assert 0 <= low <= high <= skeleton.SECTION_WORDS, (paper.id, use.section_id, sorted(held))
 
 
 def test_a_count_papers_written_shares_fill_its_pages(paper):
@@ -330,7 +443,13 @@ def paper_data(**options):
 
 def test_pages_is_a_papers_length_and_none_for_anything_else(paper):
     assert pages(paper_data(length=25)) == 25
-    assert pages(paper_data()) == 20, 'computed when the domain wrote none: the cue default'
+    # The domain always writes the length, held to the plan; a recomputed default would skip that clamp.
+    for stored in ({}, {'length': 0}, {'length': '10'}, {'length': True}):
+        missing = paper_data()
+        missing['options'].update(stored)
+        with pytest.raises(DomainError) as refused:
+            pages(missing)
+        assert refused.value.code == 'invalid_parameters'
     assert pages({'options': {'category': 'pdf.test', 'length': 4}}) == 4
     assert pages({'options': {'category': 'slides.himoya', 'length': 10}}) is None
     assert pages({'options': {'length': 10}}) is None
@@ -345,6 +464,16 @@ def test_pages_in_counts_a_spans_share_of_the_pages_and_one_a_section_otherwise(
     plain = {'options': {}, 'content': {'sections': [{'id': f's{n}'} for n in range(1, 8)]}}
     assert pages_in(plain, 2, 7) == 5
     assert pages_in({**plain, 'options': {'category': 'slides.himoya'}}, 0, 3) == 3
+
+
+def test_a_leftover_instance_counts_its_share_of_its_group_not_the_whole_part(paper):
+    # Seeded at 30 pages (four notes), then shortened to 10: a new total keeps the sections, and notes 3 and 4
+    # are left over. Each still counts as one of the two notes ten pages have, never as all of them.
+    data = paper_data(length=30)
+    data['options']['length'] = 10
+    sizes = dict(skeleton._section_pages(data))
+    assert {'note_3', 'note_4'} <= set(sizes)
+    assert sizes['note_3'] == sizes['note_4'] == pytest.approx(0.08 / 2 * 10) == pytest.approx(sizes['note'])
 
 
 def test_spans_cut_a_long_paper_by_pages_and_sections(paper):
@@ -379,8 +508,34 @@ def test_himoya_asks_only_when_the_message_holds_no_figure_and_no_file():
     assert asking.wanted(himoya, 'Kurs ishi himoyasi: “Kutubxona dasturi”', has_files=False)
     assert not asking.wanted(himoya, 'Kurs ishi himoyasi: 120 ta kitob sinaldi', has_files=False)
     assert not asking.wanted(himoya, 'Kurs ishi himoyasi', has_files=True)
-    for example in himoya.raw['bot']['examples']:
+    thesis, *with_figures = himoya.raw['bot']['examples']
+    for example in with_figures:
         assert not any(asking.wanted(himoya, text, has_files=False) for text in example.values())
+    # The first example gives a count, a group and a year, and attaches the work: its file is what it gives.
+    assert all(asking.wanted(himoya, text, has_files=False) for text in thesis.values())
+    assert not any(asking.wanted(himoya, text, has_files=True) for text in thesis.values())
+
+
+def test_a_count_a_course_a_group_or_a_year_is_not_a_figure():
+    # The bot's prompt asks for the count, so the typical message states one and holds no result.
+    himoya = entry('slides.himoya')
+    for text in ('Kurs ishim himoyasi uchun 6 ta slayd kerak: “Python yordamida kutubxona dasturi”',
+                 '3-kurs talabasiman, kurs ishi himoyasi kerak', 'Kurs ishi himoyasi, 2026-yil',
+                 'BMI himoyasi, 10 ta chiroyli slayd, 412-guruh, 7-maktab bitiruvchisi',
+                 'Нужно 10 слайдов на защиту курсовой, 3 курс, группа 212, Ташкент — 2026',
+                 'Слайды на защиту, 3-го курса, 9 класс, школа № 7, количество слайдов: 8',
+                 'Slides for my term paper defence: 8 slides, year 2, group 205, grade 11, 12.05.2026',
+                 'Kurs ishi himoyasi. Slaydlar soni 7 ta. Toshkent — 2026',
+                 'Guruh: 911-20, kurs ishi himoyasi', 'Kurs ishi himoyasi, 911-20 guruh',
+                 'KI-12-20 guruh talabasi, BMI himoyasi', 'Защита курсовой, гр. 21-05',
+                 'Kurs ishi, 5-variant, 2-bob bo‘yicha himoya', 'Himoya uchun 10-12 slayd kerak',
+                 'Kurs ishi himoyasi 2026 yil 15 may', 'Защита 15 мая', 'Defence on May 15'):
+        assert asking.wanted(himoya, text, has_files=False), text
+        assert not asking.wanted(himoya, text, has_files=True), text
+    for text in ('Kurs ishi himoyasi: 120 ta kitob sinaldi', '6 ta slayd, 3-kurs: qidiruv 1 soniyadan kam',
+                 'Защита, 8 слайдов: точность 94%', 'Year 2 defence: 35 patients observed', 'Narxi 1500 so‘m',
+                 'Sotuvlar 3 marta oshdi', 'Guruh: 911-20, so‘rovnomada 40 kishi qatnashdi'):
+        assert not asking.wanted(himoya, text, has_files=False), text
 
 
 def test_an_entry_without_a_question_never_asks():
