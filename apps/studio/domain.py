@@ -55,7 +55,7 @@ def limits(account):
     # call can carry only moves the refusal later.
     return {'sections':seed['max_generated_pdf_pages'], 'slides':seed['max_generated_slides'], 'questions':MAX_QUESTIONS, 'source_chars':seed['max_ai_input_tokens']//2}
 
-def validate_content(account,content,output_format='pdf',feature=None):
+def validate_content(account,content,output_format='pdf',feature=None,category=None):
     """Bring a model response inside the plan, trimming rather than refusing.
 
     The page count was clamped to the plan before the model was ever asked, so
@@ -67,6 +67,12 @@ def validate_content(account,content,output_format='pdf',feature=None):
     A CV (`feature` CV) always has its eight sections, whatever the plan's page
     cap says — they are parts of one or two pages, not pages — and its entries
     are held to the CV's own lengths (cv/content.py clean_fields).
+
+    `category` is `categories.bounds(data)`: None for anything but a category
+    paper, which is many short parts rather than a section a page, so it may
+    hold more sections and longer lists. Its table headers are the catalogue's,
+    drawn at render time, so a paper never stores columns and the three-column
+    cap never cuts one of its rows.
     """
     if not isinstance(content,dict): raise DomainError('invalid_parameters')
     caps=limits(account)
@@ -76,6 +82,7 @@ def validate_content(account,content,output_format='pdf',feature=None):
     if feature==CV:
         from .cv.content import SECTION_IDS
         max_sections=max(max_sections,len(SECTION_IDS))
+    elif category is not None and output_format!='pptx':max_sections=category.sections
     if not isinstance(sections,list): raise DomainError('invalid_parameters')
     if not sections: raise DomainError('content_required')
     from . import pages as paging
@@ -94,6 +101,9 @@ def validate_content(account,content,output_format='pdf',feature=None):
             elif feature==CV:
                 from .cv.content import clean_fields as clean_cv
                 clean[-1].update(clean_cv(s))
+            elif category is not None:
+                from .doc_designs import clean_fields
+                clean[-1].update(clean_fields({**s,'columns':[]},max_items=category.items))
             else:
                 from .doc_designs import clean_fields
                 clean[-1].update(clean_fields(s))
@@ -261,7 +271,49 @@ def _deck_style(fid,brief):
     if len(colours)>1:style['secondary']=colours[1]
     return style
 
-def _prepare_draft(account,data,revision_base=None):
+def _bounds(data):
+    """categories.bounds(data), without loading the catalogue for a draft that has no category."""
+    if (data.get('options') or {}).get('category') is None:return None
+    from .categories import bounds
+    return bounds(data)
+
+def _category_questions(entry,named,cap):
+    """A new category draft's questions: those named in its brief, else its entry's default, within its maximum."""
+    return min(named or entry.raw['questions']['default'],entry.raw['questions']['max'],cap)
+
+def _category(fid,options,pinned_from):
+    """The draft's category entry (None without one) and its options with the category as it is kept.
+
+    `pinned_from` is the options of the draft this one is saved over or
+    changes, None for a new draft. A new draft may name a category of its own
+    service that customers may pick now (switched on, ticked, ready); one
+    that may not be picked now is `category_unavailable`, anything else
+    `invalid_parameters`. After that the category is pinned, as a CV's way of
+    being made is: a save or a change that leaves it out keeps it, one naming
+    another is refused, and a draft made without one never gains one. A kept
+    one needs only to exist, whatever its status, so a draft made while the
+    switch was on still quotes and generates once it is off or the entry is
+    retired; one the catalogue no longer holds is `category_unknown`.
+    """
+    sent=options.get('category')
+    if pinned_from is not None:
+        pinned=pinned_from.get('category')
+        if sent is not None and sent!=pinned:raise DomainError('invalid_parameters')
+        options={key:value for key,value in options.items() if key!='category'}
+        if pinned is None:return None,options
+        from . import categories
+        entry=categories.get(pinned)
+        if entry is None:raise DomainError('category_unknown',500)
+        if entry.feature_id!=fid:raise DomainError('invalid_parameters')
+        return entry,{**options,'category':pinned}
+    if sent is None:return None,{key:value for key,value in options.items() if key!='category'}
+    from . import categories
+    entry=categories.get(sent) if isinstance(sent,str) else None
+    if entry is None or entry.feature_id!=fid:raise DomainError('invalid_parameters')
+    if entry.id not in {item.id for item in categories.live(fid)}:raise DomainError('category_unavailable',409)
+    return entry,options
+
+def _prepare_draft(account,data,revision_base=None,details=False):
     if set(data)&READONLY_FIELDS:raise DomainError('invalid_parameters')
     fid=data.get('feature_id',DOCUMENT);require(account,fid)
     if fid in RENDER_IDS:raise DomainError('feature_unavailable',409)
@@ -284,9 +336,14 @@ def _prepare_draft(account,data,revision_base=None):
     if not isinstance(text,str) or not isinstance(prompt,str):raise DomainError('invalid_parameters')
     if len(text)+len(prompt)>limits(account)['source_chars']:raise DomainError('generation_limit')
     ids=data.get('source_ids',data.get('input_ids',[]))
-    # A CV reads its files its own way, once its mode is known (below).
+    # A CV reads its files its own way, once its mode is known (below), and so
+    # does a category draft, once its category is checked: it reads Word and
+    # text files too (categories/sources.py).
     same_sources=drawn and list(ids or [])==list(revision_base.get('source_ids') or [])
-    excerpts=[] if fid==CV else (deepcopy(revision_base.get('excerpts') or []) if same_sources else source_excerpts(account,ids))
+    asked_options=data.get('options',data.get('parameters',{}))
+    categorised=((revision_base or {}).get('options') or {}).get('category') is not None or (
+        isinstance(asked_options,dict) and asked_options.get('category') is not None)
+    excerpts=[] if fid==CV or categorised else (deepcopy(revision_base.get('excerpts') or []) if same_sources else source_excerpts(account,ids))
     if len(text)+len(prompt)+sum(len(s['text']) for s in excerpts)>limits(account)['source_chars']:raise DomainError('generation_limit')
     options=data.get('options',data.get('parameters',{}))
     # Title lines are the server's own, bounded where they are read: eight long Cyrillic lines alone pass 4000.
@@ -368,6 +425,37 @@ def _prepare_draft(account,data,revision_base=None):
             ids,excerpts,unread=cv_sources.prepare(account,prompt,ids,options,revision_base)
             if len(text)+len(prompt)+sum(len(s['text']) for s in excerpts)>limits(account)['source_chars']:raise DomainError('generation_limit')
     elif 'cv_source' in options:raise DomainError('invalid_parameters')
+    # A category (categories/), chosen when the draft is made and kept for it
+    # and every change of it whatever later requests send. A draft without one
+    # is today's product exactly: none of the category branches below run.
+    pinned_from=original if original is not None else revision_base
+    entry,options=_category(fid,options,None if pinned_from is None else pinned_from.get('options') or {})
+    paper=entry is not None and entry.service=='pdf'
+    # What the review says of a category draft's files (unread_sources, sources_cut), and whether its one extra
+    # question was answered (details_added): the server's, never a client's, like the pictures wanted below.
+    said={}
+    if entry is not None and original is None:
+        from .categories import sources as category_sources
+        if same_sources:
+            # A drawn deck is saved from what its draft holds: its files are not read or looked for again.
+            stored=revision_base.get('options') or {}
+            excerpts=deepcopy(revision_base.get('excerpts') or [])
+            said={'unread':list(stored.get('unread_sources') or []),'cut':bool(stored.get('sources_cut'))}
+        else:
+            excerpts,said=category_sources.excerpts(account,ids,entry,stored=revision_base,
+                                                    room=limits(account)['source_chars']-len(text)-len(prompt))
+        if len(text)+len(prompt)+sum(len(s['text']) for s in excerpts)>limits(account)['source_chars']:raise DomainError('generation_limit')
+    if details and (entry is None or original is not None or ((revision_base or {}).get('options') or {}).get('details_added')):
+        # Only a new category draft's review offers the question, and it is answered once.
+        raise DomainError('invalid_parameters')
+    details_added=entry is not None and original is None and (details or bool(((revision_base or {}).get('options') or {}).get('details_added')))
+    cues=frozenset()
+    if entry is not None:
+        # The cues of its brief, read exactly as the prompt, the provider and the finish read them from the stored
+        # draft (skeleton.cues_of), so the parts seeded here are the parts they name.
+        from .categories import skeleton
+        cues=skeleton.cues_of({'options':{'category':entry.id},'prompt':prompt,'source_text':text,'source_ids':ids,
+                               'excerpts':excerpts,**({'revision':{'original_prompt':original.get('revision',{}).get('original_prompt',original.get('prompt',''))}} if original is not None else {})})
     # Length and question count are read out of the description rather than
     # asked for separately: one section is one page, and questions are priced,
     # so they appear only when the description asks for them. `requested_pages`
@@ -390,8 +478,17 @@ def _prepare_draft(account,data,revision_base=None):
     before_options=original.get('options',{}) if original is not None else {}
     if original is not None and not selection:
         from . import edits as editing
-        edit=editing.read(prompt,fmt=fmt,sections=original['content']['sections'],
-                          questions=len(original['content'].get('questions',[])))
+        edit=None
+        if paper:
+            # A category paper's change is read narrower, as a CV's is: no new
+            # look, no parts added or merged, a new total only for a count
+            # (categories/edits.py). None is today's reading.
+            from .categories import edits as category_edits
+            edit=category_edits.read(prompt,entry,fmt=fmt,sections=original['content']['sections'],
+                                     questions=len(original['content'].get('questions',[])))
+        if edit is None:
+            edit=editing.read(prompt,fmt=fmt,sections=original['content']['sections'],
+                              questions=len(original['content'].get('questions',[])))
         # Another file format is not a change to the document: the bot sends a
         # deck to PowerPoint → PDF and offers a new deck for a document, and
         # the web says so, rather than charging an edit that rewrites nothing.
@@ -467,6 +564,21 @@ def _prepare_draft(account,data,revision_base=None):
         # Its eight sections, always, for a new CV and a change alike.
         from .cv.content import SECTION_IDS
         length,asked=(len(original['content']['sections']) if original is not None else len(SECTION_IDS)),None
+    elif entry is not None and original is None:
+        # A category's length is its entry's (skeleton.length): a count chosen on the review or named in the
+        # brief, else its cue's or its own default, within its bounds and the plan's; an ariza is always one
+        # page and a test as long as its questions need. Pages for a paper, whose sections are parts, not pages.
+        if chosen is not None and (type(chosen) is not int or not 1<=chosen<=200):raise DomainError('invalid_parameters')
+        named=paging.requested_pages(brief)
+        category_questions=_category_questions(entry,paging.requested_questions(brief),limits(account)['questions'])
+        length=skeleton.length(entry,asked=named,chosen=chosen,cues=cues,ceiling=paging.ceiling(account,fmt),
+                               questions=category_questions)
+        asked=(chosen or named) if entry.length['mode']=='count' else None
+        if fid==SLIDES and chosen is None and named is None:
+            # The deck setup screen posts `pages` with every design it saves, its default when the draft has
+            # none (pages.SETUP_SLIDES): a six-slide kurs himoya would come back as ten. The count it was
+            # given is written, so the screen shows and sends it.
+            options={**options,'pages':length}
     elif chosen is not None:
         if type(chosen) is not int or not 1<=chosen<=200:raise DomainError('invalid_parameters')
         length,asked=min(chosen,paging.ceiling(account,fmt)),chosen
@@ -494,16 +606,21 @@ def _prepare_draft(account,data,revision_base=None):
     else:
         length,asked=paging.resolve(account,brief,fmt)
     if selection:
-        if asked is not None and asked!=len(original['content']['sections']):raise DomainError('invalid_parameters')
+        # A category paper's size is its pages, not its parts.
+        size=skeleton.pages(original) if paper else len(original['content']['sections'])
+        if asked is not None and asked!=size:raise DomainError('invalid_parameters')
         length=len(original['content']['sections'])
     # Local authoring has no model to write the pages, so an unasked-for default
     # would render as blank ones. Follow the material that was actually given.
     # A CV keeps its eight sections: the bot sends its description as source
-    # text locally, and its paragraphs are not sections.
-    if original is None and asked is None and not cv and ai_config()['mode']=='local_fixture':
+    # text locally, and its paragraphs are not sections. A category keeps its
+    # length too: its skeleton, not the paragraphs, decides its parts.
+    if original is None and asked is None and not cv and entry is None and ai_config()['mode']=='local_fixture':
         supplied=len([p for p in (text or '\n\n'.join(x['text'] for x in excerpts)).split('\n\n') if p.strip()])
         if supplied:length=min(supplied,paging.ceiling(account,fmt))
     question_count=min(paging.requested_questions(brief),limits(account)['questions'])
+    # A category's questions are its own: a test has its default count when none is named, an ariza none at all.
+    if entry is not None and original is None:question_count=category_questions
     # The questions a change leaves the document with: none once removed, the
     # number asked for ("savollar slaydini 1 bet qil" is five), or a test of ten
     # (five on a deck) when it asks for one without a number — "Test tuz" used to
@@ -525,6 +642,8 @@ def _prepare_draft(account,data,revision_base=None):
         if kept is not None:kept=min(kept,existing)
     # A CV has no test, whatever its description says ("5 ta savolga javob").
     if cv:question_count,kept=0,None
+    # Nor does a category paper that has none (an ariza), whatever a change asks for.
+    if entry is not None:question_count=min(question_count,entry.raw['questions']['max'])
     # A deck's questions go on slides of their own at the end, five to a slide,
     # and those slides are part of the count: "10 slides, 5 questions at the
     # end" is ten slides, not fifteen. `length` is the whole deck; the sections
@@ -551,6 +670,22 @@ def _prepare_draft(account,data,revision_base=None):
         question_slides=min(question_slides,max(0,length-1))
         sections_count=length-question_slides
     length=sections_count+question_slides
+    if paper and original is not None:
+        # A change to a category paper keeps its parts, ids and kinds: none is
+        # added or removed (architecture 3.7), so its sections are the
+        # document's. Its length stays its pages unless the change names a new
+        # total, for an entry whose count may change at all; a test's follows
+        # its questions, an ariza's never moves.
+        sections_count=len(original['content']['sections'])
+        total=None if selection else chosen if chosen is not None else (edit.total if edit is not None and edit.total and edit.total>=2 else None)
+        mode=entry.length['mode']
+        if selection or mode=='count' and total is None:length,asked=skeleton.pages(original),None
+        else:
+            # A change that names no questions asks for none (question_count 0) and keeps those it has.
+            held=len(original['content'].get('questions',[])) if kept is None else kept
+            length=skeleton.length(entry,chosen=total if mode=='count' else None,ceiling=paging.ceiling(account,fmt),
+                                   questions=max(question_count,held))
+            asked=total if mode=='count' else None
     # A document is plain prose in black and white unless its description asks
     # for more: pictures, tables or lists (layouts), or a look or colours (design).
     wants={}
@@ -600,12 +735,18 @@ def _prepare_draft(account,data,revision_base=None):
     elif original is not None:kind=before_options.get('photo_style')
     else:kind=photo_style(prompt)
     if cv:kind=None
-    # Pictures wanted and their kind are the server's reading, never the client's.
-    computed=('wants_layouts','wants_design','images_wanted','photo_style')
+    # A category paper is drawn by its template, which places no photographs.
+    if paper:image_cap,images_wanted,kind=0,0,None
+    # Pictures wanted and their kind are the server's reading, never the client's;
+    # so is what the review says of a category draft's files and question.
+    computed=('wants_layouts','wants_design','images_wanted','photo_style','details_added','unread_sources','sources_cut')
     options={**{k:v for k,v in options.items() if k not in computed},
              'question_count':question_count,'length':length,'requested_pages':asked,'question_slides':question_slides,
              'uz_script':uz_script,**({'images_wanted':images_wanted} if images_wanted else {}),
-             'image_cap':image_cap,**wants,**({'photo_style':kind} if kind in ('photo','illustration') else {})}
+             'image_cap':image_cap,**wants,**({'photo_style':kind} if kind in ('photo','illustration') else {}),
+             **({'details_added':True} if details_added else {}),
+             **({'unread_sources':said['unread']} if said.get('unread') else {}),
+             **({'sources_cut':True} if said.get('cut') else {})}
     template_id=options.get('template_id','clean')
     from .templates import style_for
     # Density is fixed at the spacing the page-fill targets were measured
@@ -657,6 +798,16 @@ def _prepare_draft(account,data,revision_base=None):
         # A selected-page revision never changes the whole document's style.
     elif not cv:
         style.update(_deck_style(fid,brief))
+        if entry is not None and fid==SLIDES and picked in (None,'auto'):
+            # A category deck starts in the look its research recommends, the
+            # one for its cue first. It is soft: a colour or "dark" in the
+            # description still applies over it (deck_designs.look), a design
+            # picked on the setup screen replaces it below, and a change asking
+            # for another look drops it and is never given it back.
+            look=entry.look or {}
+            design=next((rule['design'] for rule in look.get('by_cue',()) if rule['cue'] in cues),None)
+            design=design or next(iter(look.get('designs') or ()),None)
+            if design:style['deck_design']=design
     if picked and picked!='auto':
         # A design picked on the review screen beats whatever look the
         # description implies: its colours and its dark or bold are dropped,
@@ -715,6 +866,17 @@ def _prepare_draft(account,data,revision_base=None):
         from .cv.content import seed
         given=text or prompt or '\n\n'.join(x['text'] for x in excerpts)
         draft_content=seed(title,given if cfg['mode']=='local_fixture' else '')
+    elif entry is not None:
+        # A category draft starts from its skeleton (skeleton.seed): a paper's
+        # facts section and one blank section per part, a deck's slides each in
+        # its slot's first layout. No headings and nothing in a body, so the
+        # source seed never blanks anything and the admin record shows no
+        # catalogue text; the headings are written in the document's language
+        # by the prompt's rows and the finish. With no model to write them,
+        # the customer's words still go in, so a file can be made.
+        given=(text or '\n\n'.join(x['text'] for x in excerpts) or prompt) if cfg['mode']=='local_fixture' else ''
+        sections=skeleton.seed(entry,length if paper else sections_count,cues,text=given)
+        draft_content={'title':title,'sections':sections,'questions':options.get('questions',[]),'citations':[{'asset_id':x['asset_id'],'page':x['page']} for x in excerpts]}
     else:
         chunks=[p.strip() for p in (text or '\n\n'.join(x['text'] for x in excerpts)).split('\n\n') if p.strip()]
         # No headings. They used to be seeded with a fixed Overview / Key ideas /
@@ -724,7 +886,7 @@ def _prepare_draft(account,data,revision_base=None):
         # from the description.
         sections=[{'id':f's{i+1}','heading':'', 'body':('\n\n'.join(chunks[i:]) if i==sections_count-1 else chunks[i]) if i<len(chunks) else '', 'notes':''} for i in range(sections_count)]
         draft_content={'title':title,'sections':sections,'questions':options.get('questions',[]),'citations':[{'asset_id':x['asset_id'],'page':x['page']} for x in excerpts]}
-    content=validate_content(account,draft_content,fmt,feature=fid)
+    content=validate_content(account,draft_content,fmt,feature=fid,category=_bounds({'options':options}))
     if selection:
         ensure_selected_preservation({'content':draft_content,'revision':{'selected_section_ids':selection}},content)
     payload={'title':title,'prompt':prompt,'source_text':text,'source_ids':ids,'excerpts':excerpts,'output_locale':locale,'locale_source':resolved.source,'output_format':fmt,'options':options,'content':content}
@@ -794,6 +956,16 @@ def require_topic(data,fid,payload):
     if asks_to_convert(words):raise DomainError('convert_requested',400,{'service':'','convert':True})
     raise DomainError('topic_required',400,{'service':asked_other_service(words,fid)})
 
+def _topic_wanted(payload):
+    """Whether a new draft is held to naming a topic: always without a category, and for one whose entry says so.
+
+    An ariza, a letter or a business paper is about itself, not a subject, so
+    its description names none; its review question covers what it lacks.
+    """
+    if payload['options'].get('category') is None:return True
+    from .categories import of
+    return bool(of(payload).topic)
+
 def create_draft(account,data):
     # `options.topic_given` is the customer answering the refusal: the bot's
     # topic question answered a second time, or the web's "Continue anyway".
@@ -812,7 +984,7 @@ def create_draft(account,data):
     if fid==CV:
         from .cv.content import require_facts
         require_facts(data,fid,payload,refuse=not given)
-    elif not given:require_topic(data,fid,payload)
+    elif not given and _topic_wanted(payload):require_topic(data,fid,payload)
     if fid==SLIDES and not payload['options'].get('revise_draft_id'):
         # The lines the customer keeps for their decks' covers go with a new deck, packed with it, for its cover
         # (title_lines.place, a deck in the language they were kept in): a quote is tied to them as to the rest, and
@@ -834,7 +1006,14 @@ def draft_jobs(account,draft_id,statuses):
                               quote__parameters__generation_draft_id=str(draft_id)).exists()
 
 @transaction.atomic
-def update_draft(account,draft_id,data):
+def update_draft(account,draft_id,data,*,details=False):
+    """Save a draft over its stored self; `details` marks the answer to a category's review question.
+
+    `details` is for the bot's answer (telegram.generation.add_details), which
+    sends the prompt it appended the answer to and the files it added:
+    `options.details_added` is the server's, set here and kept, never taken
+    from a client, so the question is offered and answered once.
+    """
     d=GenerationDraft.objects.select_for_update().filter(account=account,id=draft_id,expires_at__gt=timezone.now()).first()
     if not d:raise DomainError('not_found',404)
     # A queued job checks, when it starts, that its draft is still the one it
@@ -850,7 +1029,10 @@ def update_draft(account,draft_id,data):
     if set(data)-allowed_keys:raise DomainError('invalid_parameters')
     fields={key:original[key] for key in ('title','prompt','source_text','source_ids','output_locale','output_format','options')}
     fields.update({key:value for key,value in data.items() if key in fields})
-    _,cfg,payload=_prepare_draft(account,{'feature_id':d.feature_id,**fields},revision_base=original)
+    _,cfg,payload=_prepare_draft(account,{'feature_id':d.feature_id,**fields},revision_base=original,details=details)
+    # A category paper's sections are parts the catalogue names, not pages a
+    # client may add, drop or reorder: its outline is not the client's to edit.
+    paper=_bounds(payload) is not None
     if cfg['mode']!=d.provider_mode:raise DomainError('provider_changed',409)
     # The page count lives in the description, so a reworded brief rebuilds the
     # outline the same way a changed source does.
@@ -872,13 +1054,14 @@ def update_draft(account,draft_id,data):
     if content is payload['content'] and not payload['options'].get('revise_draft_id'):payload['options'].pop('title_lines',None)
     rebuilt=content is payload['content'] and 'outline' not in data
     if 'outline' in data:
+        if paper:raise DomainError('invalid_parameters')
         outline=data['outline']
         if not isinstance(outline,list) or any(not isinstance(s,dict) for s in outline):raise DomainError('invalid_parameters')
         slide_keys=('layout','items','columns','image_query')
         content={**content,'sections':[{'id':s.get('id',str(i)),'heading':s.get('title',''),'body':s.get('body',''),'notes':s.get('notes',''),
                                          **{key:s[key] for key in slide_keys if key in s}} for i,s in enumerate(outline)]}
     if 'title' in data and isinstance(content,dict):content={**content,'title':payload['title']}
-    payload['content']=validate_content(account,content,payload['output_format'],feature=d.feature_id)
+    payload['content']=validate_content(account,content,payload['output_format'],feature=d.feature_id,category=_bounds(payload))
     payload['title']=payload['content']['title']
     # Only server-authored, untouched source copies can be deduplicated. Sending
     # content/outline is an explicit author edit, even if its text happens to match.
@@ -894,8 +1077,10 @@ def update_draft(account,draft_id,data):
         base=payload['revision']['base_content']
         if [s['id'] for s in payload['content']['sections']]!=[s['id'] for s in base['sections']]:
             raise DomainError('invalid_parameters')
-    # An edited outline is the page count now, so keep them in step.
-    payload['options']={**payload['options'],'length':len(payload['content']['sections'])+int(payload['options'].get('question_slides',0) or 0)}
+    # An edited outline is the page count now, so keep them in step. A category
+    # paper's length is its pages, which its parts are not one each.
+    if not paper:
+        payload['options']={**payload['options'],'length':len(payload['content']['sections'])+int(payload['options'].get('question_slides',0) or 0)}
     # How the deck was drawn is the server's, and outlives every edit of what it
     # says. An outline rebuilt from scratch is another deck, with nothing drawn
     # yet: the model chooses its look again (execute_outline drops them the same way).
@@ -942,7 +1127,16 @@ def generation_quote(account,draft_id,version):
     # job is bounded by what was asked for instead of the plan's ceiling. One
     # page of headroom is allowed because a section written to fill its page
     # can spill onto the next.
-    output_cap=len(data['content']['sections'])+int(data['options'].get('question_slides',0) or 0)+1
+    # A category paper's pages are its length, not its parts (skeleton.pages),
+    # and its category goes with the quote to the job, where the admin counts it.
+    # An id the catalogue no longer holds is refused here, before anything is paid.
+    category=data['options'].get('category')
+    pages=None
+    if category is not None:
+        from .categories import of,skeleton
+        category=of(data).id
+        pages=skeleton.pages(data)
+    output_cap=(len(data['content']['sections'])+int(data['options'].get('question_slides',0) or 0) if pages is None else pages)+1
     if cfg['mode']=='openai':
         enforce_budget(cfg,data,d.feature_id,plan_limits(account)['max_ai_input_tokens'])
     snapshot=hashlib.sha256(bytes(d.encrypted_data)).hexdigest()
@@ -951,11 +1145,11 @@ def generation_quote(account,draft_id,version):
     # A long document is written in several provider calls and needs longer than
     # the default lease to finish them. Rendering and settlement are on top.
     from .provider import call_budget
-    lease_seconds=call_budget(len(data['content']['sections']))+240
+    lease_seconds=call_budget(len(data['content']['sections']) if pages is None else pages)+240
     if data['output_format']=='pptx':
         from .photos import BUDGET_SECONDS
         lease_seconds+=BUDGET_SECONDS
-    return Quote.objects.create(account=account,feature_id=d.feature_id,input_ids=input_ids,input_fingerprints=[{'id':str(a.id),'sha256':a.sha256} for a in owned_assets(account,input_ids)] if input_ids else [],parameters={'generation_draft_id':str(d.id),'draft_version':d.version,'snapshot':snapshot,**({'revision':True,'root_draft_id':root} if data.get('revision') else {})},policy={'plan':account.plan,'version':POLICY_VERSION,'tariff_version':'generation-draft-staging-v1','limits':plan_limits(account),'provider_mode':d.provider_mode,'provider_model':cfg['model'],'provider_image_model':cfg.get('image_model',''),'generation_bounds':{'question_cap':question_cap,'output_pages':output_cap,'key_pages':caps['sections'],'input_tokens':plan_limits(account)['max_ai_input_tokens']},'lease_seconds':lease_seconds},expires_at=timezone.now()+timedelta(minutes=10))
+    return Quote.objects.create(account=account,feature_id=d.feature_id,input_ids=input_ids,input_fingerprints=[{'id':str(a.id),'sha256':a.sha256} for a in owned_assets(account,input_ids)] if input_ids else [],parameters={'generation_draft_id':str(d.id),'draft_version':d.version,'snapshot':snapshot,**({'revision':True,'root_draft_id':root} if data.get('revision') else {}),**({'category':category} if category is not None else {})},policy={'plan':account.plan,'version':POLICY_VERSION,'tariff_version':'generation-draft-staging-v1','limits':plan_limits(account),'provider_mode':d.provider_mode,'provider_model':cfg['model'],'provider_image_model':cfg.get('image_model',''),'generation_bounds':{'question_cap':question_cap,'output_pages':output_cap,'key_pages':caps['sections'],'input_tokens':plan_limits(account)['max_ai_input_tokens']},'lease_seconds':lease_seconds},expires_at=timezone.now()+timedelta(minutes=10))
 
 def validate_generation_quote(account,quote):
     require(account,quote.feature_id)
