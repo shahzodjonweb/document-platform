@@ -38,10 +38,12 @@ PAGE_ROLES = {
     'jobs':['Operations','Support'], 'generations':['Support','Operations'], 'posts':[], 'plans':['Finance','Content manager'],
     'payments':['Finance'], 'audit':[], 'system':['Operations'],
     'localization':['Content manager'], 'integrations':[], 'staff':[], 'editor':['Operations'],
+    # Who may turn the AI categories on: the same people as the editors' switches.
+    'categories':['Operations'],
 }
 PAGE_KEYS = {'today':'today','overview':'overview','users':'users','analytics/acquisition':'acquisition',
              'analytics/engagement':'engagement','analytics/plans':'plans_screen','analytics/features':'features','analytics/revenue':'revenue','analytics/ai-usage':'ai_usage',
-             'jobs':'jobs','generations':'generations','posts':'posts','plans':'plans','payments':'payments','audit':'audit','system':'system','localization':'localization','editor':'editor'}
+             'jobs':'jobs','generations':'generations','posts':'posts','plans':'plans','payments':'payments','audit':'audit','system':'system','localization':'localization','editor':'editor','categories':'categories'}
 # Sidebar: (group label key, [(page, label key, icon)]). The analytics reports
 # share one entry; their own tabs switch between them.
 NAV = [
@@ -49,14 +51,14 @@ NAV = [
     ('customers', [('users','users','users'),('generations','generations','sparkle'),('posts','posts','send')]),
     ('money', [('payments','payments','card'),('analytics/revenue','revenue','trending')]),
     ('product', [('overview','nav_analytics','chart'),('jobs','nav_tasks','list'),('analytics/ai-usage','ai_usage','cpu'),('plans','plans','layers')]),
-    ('settings', [('integrations','integrations','plug'),('staff','staff','shield'),('audit','audit','history'),('system','system','activity'),('editor','editor','file'),('localization','localization','globe')]),
+    ('settings', [('integrations','integrations','plug'),('staff','staff','shield'),('audit','audit','history'),('system','system','activity'),('editor','editor','file'),('categories','categories','star'),('localization','localization','globe')]),
 ]
 ANALYTICS = ['overview','analytics/acquisition','analytics/engagement','analytics/plans','analytics/features']
 # Each report page() renders lays itself out in one partial.
 SECTIONS = {'today':'today','overview':'analytics','analytics/acquisition':'analytics','analytics/engagement':'analytics',
             'analytics/plans':'analytics',
             'analytics/features':'analytics','users':'users','jobs':'jobs','audit':'audit',
-            'plans':'plans','system':'system','localization':'localization','editor':'editor'}
+            'plans':'plans','system':'system','localization':'localization','editor':'editor','categories':'categories'}
 JOB_STATES = ['queued','running','succeeded','failed','canceled']
 USER_SORTS = {'new':'-created_at','old':'created_at','name':'display_name','plan':'-plan'}
 PLAN_GROUPS = [('group_price',['price_uzs','discount_price_uzs','discount_until']),
@@ -198,6 +200,10 @@ def page(request, section='overview'):
         # A refused upload blocks every tool, so it is counted beside them.
         from .analytics_extra import upload_refusals
         data['upload_refusals']=upload_refusals(filters,data['t'])
+        # AI PDF and AI Slides by category: made, picked, and how the documents fared.
+        from .metrics import category_report
+        data['category_report']=category_report(filters,data['t'],data['lang'])
+        data['category_export_url']='/ops/export/categories?'+data['query']
     if section in {'analytics/acquisition','analytics/engagement'}:
         from .analytics_extra import engagement
         data['cohorts']=engagement(filters)
@@ -269,11 +275,38 @@ def page(request, section='overview'):
         data['editor_switches']=[{'name':name,'label':data['t']['editor_flag_'+name],'value':config[name]} for name in EDITOR_FLAGS]
         data['editor_budgets']=[{'name':name,'label':data['t']['editor_budget_'+name],'value':config[name],'low':editor_settings.BOUNDS[name][0],'high':editor_settings.BOUNDS[name][1]} for name in EDITOR_BUDGETS]
         data['can_edit_editor']=allowed(request.ops_user,['Operations'])
+    if section=='categories':
+        data.update(category_page(data['t'],data['lang']))
+        data['can_edit_categories']=allowed(request.ops_user,['Operations'])
     if section=='system':data['system_cards']=[{'key':key,'label':data['t'][key],'value':value} for key,value in system_snapshot(filters).items()]
     if section=='localization':data['locale_rows']=[{'id':key,'label':{'en':'English','uz':'O‘zbekcha','ru':'Русский'}.get(key,key),'count':len(value),'coverage':'100%'} for key,value in CATALOGS.items()]
     data['now']=timezone.now()
     data['section_template']='ops/sections/'+SECTIONS[section]+'.html'
     return finish_render(request,'ops/page.html',data)
+
+
+def category_page(t,lang):
+    """The switch and one row per category of each service, in the bot's order.
+
+    Every entry but a retired one is listed, so the owner sees what is coming;
+    only a ready one can be ticked. Each row says how it is drawn (a deck, or
+    its PDF templates) and what a person must check before it is ready.
+    """
+    from apps.studio import categories
+    from . import categories_settings
+    switch=categories_settings.get()
+    ticked=set(switch['live'])
+    services=[]
+    for feature,key in (('ai.pdf_topic','categories_service_pdf'),('ai.pptx','categories_service_slides')):
+        shown={entry.id for entry in categories.live(feature)}
+        rows=[{'id':entry.id,'label':entry.label(lang),'status':entry.status,'ready':entry.status=='ready',
+               'ticked':entry.id in ticked,'live':entry.id in shown,
+               'renderer':t['categories_deck'] if entry.service=='slides' else t['categories_template'],
+               'renderer_detail':', '.join(entry.look.get('designs',()) if entry.service=='slides' else entry.templates),
+               'gates':entry.raw.get('gates') or []}
+              for entry in categories.for_feature(feature)]
+        services.append({'feature':feature,'label':t[key],'rows':rows})
+    return {'category_switch':switch,'category_services':services}
 
 
 def plan_row(key,limits,edited,t,lang='en'):
@@ -358,7 +391,7 @@ def user_detail(request, pk):
     data['can_open_files']=allowed(request.ops_user,['Support','Operations'])
     if data['can_open_files']:
         from .generation_views import _rows
-        data['generation_rows']=_rows(account.generation_records.select_related('job').order_by('-created_at')[:10],data['t'])
+        data['generation_rows']=_rows(account.generation_records.select_related('job').order_by('-created_at')[:10],data['t'],data['lang'])
     # Card transfers are Finance's to see.
     if data['ok'](PAGE_ROLES['payments']):
         from apps.commerce.models import ManualPayment
@@ -404,7 +437,7 @@ def csv_cell(value):
 
 @require_staff('Analyst','Support','Operations')
 def export(request, kind):
-    roles={'users':['Support'],'jobs':['Operations','Support'],'features':['Analyst','Operations']}
+    roles={'users':['Support'],'jobs':['Operations','Support'],'features':['Analyst','Operations'],'categories':['Analyst','Operations']}
     if kind not in roles or not allowed(request.ops_user,roles[kind]):return HttpResponseForbidden('Staff permission required')
     try:filters=Filters.from_request(request)
     except ValueError as error:return HttpResponseBadRequest(str(error))
@@ -425,6 +458,11 @@ def export(request, kind):
         if request.GET.get('status'):records=records.filter(status=request.GET['status'])
         if records.count()>10000:return HttpResponseBadRequest('Narrow filters to at most 10000 rows')
         rows=records.values_list(*fields)
+    elif kind=='categories':
+        # Ids, counts and shares only, as on the tools page: never a request or who made it.
+        from .metrics import CATEGORY_CODES,category_report
+        fields=['category','chosen','choosers','attempts','succeeded','failed','canceled','no_op','users','failure_rate',*CATEGORY_CODES]
+        rows=([row['id' if f=='category' else f] for f in fields] for row in category_report(filters,CATALOGS['en'])['rows'])
     else:
         fields=['feature_id','attempts','succeeded','failed','canceled','no_op','users'];rows=([row[f] for f in fields] for row in report(filters)['feature_rows'])
     writer.writerow(fields)

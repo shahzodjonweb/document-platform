@@ -31,9 +31,9 @@ def storage_path(key):
     if not path.is_relative_to(root): raise DomainError('invalid_file', 400)
     return path
 
-def engine_inspect(path, password=None, allow_links=False):
+def engine_inspect(path, password=None, allow_links=False, sources=False):
     from processors.sandbox import inspect_file_sandbox as inspect_file
-    try: return inspect_file(path, password=password, **({'allow_links': True} if allow_links else {}))
+    try: return inspect_file(path, password=password, **({'allow_links': True} if allow_links else {}), **({'sources': True} if sources else {}))
     except Exception as exc:
         from processors import ProcessorError
         if isinstance(exc, ProcessorError): raise DomainError(exc.code) from None
@@ -41,8 +41,19 @@ def engine_inspect(path, password=None, allow_links=False):
 
 # What a file may be uploaded for, beside any tool: 'cv_source' is a file a CV
 # is made from (apps/studio/cv/sources.py), whose text is read, by the reader,
-# and never converted.
-UPLOAD_PURPOSES = ('', 'cv_source')
+# and never converted. 'ai_source' is a file an AI PDF or AI Slides of a chosen
+# category is made from (apps/studio/categories/sources.py): read, never
+# converted, and it may also be a .txt or an old Word .doc. Only the bot
+# uploads one; the public endpoint takes PUBLIC_UPLOAD_PURPOSES, as its
+# published contract says.
+UPLOAD_PURPOSES = ('', 'cv_source', 'ai_source')
+PUBLIC_UPLOAD_PURPOSES = ('', 'cv_source')
+# Read, never converted: a Word file's clickable links are harmless in these.
+READ_ONLY_PURPOSES = ('cv_source', 'ai_source')
+UPLOAD_SUFFIXES = ('.pdf','.png','.jpg','.jpeg','.webp','.tif','.tiff','.docx','.xlsx','.pptx','.txt','.odt','.ods','.odp')
+# A category's sources are the owner's list and nothing else: the reader has
+# text for these alone, and an image is never a source (there is no OCR).
+AI_SOURCE_SUFFIXES = ('.pdf','.docx','.doc','.txt')
 
 def upload_file(account, uploaded, channel='web', password=None, purpose=''):
     if purpose not in UPLOAD_PURPOSES: raise DomainError('invalid_parameters')
@@ -64,7 +75,8 @@ def _stored_upload(account, uploaded, channel, password, purpose):
     limit = plan_limits(account)['max_file_mib'] * 1024 * 1024
     if uploaded.size > limit: raise DomainError('file_too_large', 413, {'max_bytes':limit})
     suffix = Path(uploaded.name.replace('\\','/')).suffix.lower()
-    if suffix not in ('.pdf','.png','.jpg','.jpeg','.webp','.tif','.tiff','.docx','.xlsx','.pptx','.txt','.odt','.ods','.odp'):
+    # An old Word .doc is only ever a category's source, read as text.
+    if suffix not in (AI_SOURCE_SUFFIXES if purpose == 'ai_source' else UPLOAD_SUFFIXES):
         raise DomainError('unsupported_file')
     key = f'inputs/{account.id}/{uuid.uuid4().hex}{suffix}'
     path = storage_path(key)
@@ -84,11 +96,16 @@ def _stored_upload(account, uploaded, channel, password, purpose):
         # is a task's files together, which fewer files or pages put right.
         # A Word or PowerPoint file with a clickable link in it (an email, a
         # LinkedIn address) is refused for the file tools, as it always was:
-        # only a CV's own files take one, as they are read and never converted.
-        try: metadata = engine_inspect(path, password=password, **({'allow_links': True} if purpose == 'cv_source' else {}))
+        # only a CV's or a category's own files take one, as they are read and
+        # never converted. A category's source may also be a .txt or an old
+        # .doc, counted in parts of the text (processors/source_text.pages).
+        try: metadata = engine_inspect(path, password=password, **({'allow_links': True} if purpose in READ_ONLY_PURPOSES else {}),
+                                       **({'sources': True} if purpose == 'ai_source' else {}))
         except DomainError as exc:
             if exc.code == 'page_limit': raise DomainError('page_limit', 413, {'limit': page_cap(account)}) from None
             raise
+        # The bytes decide the kind, not the name: a picture named .pdf is still no source.
+        if purpose == 'ai_source' and metadata.get('kind') not in ('pdf','docx','doc','text'): raise DomainError('unsupported_file')
         if metadata.get('password_required'): raise DomainError('password_required')
         if metadata.get('page_count') is None: raise DomainError('conversion_preflight_unavailable')
         pages = int(metadata['page_count'])

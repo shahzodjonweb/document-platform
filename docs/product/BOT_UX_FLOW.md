@@ -65,6 +65,16 @@ flowchart TD
     H --> X[Account, usage, plans, help and support]
 ```
 
+## AI categories
+
+Categories ship dark: with the switch on `/ops/categories` off, or nothing ticked for a service, every way into AI PDF and AI Slides is the question described above, unchanged. With it on and a category ticked:
+
+1. **List.** Tapping the service, an old service button, `/document` or `/slides` opens one button per ticked category or group, and **Boshqa** (Other), which is today's question with today's checks. Words typed on the list are a description for Boshqa.
+2. **Category question.** The category's own prompt and examples, the line saying how to send files (PDF, Word, TXT, with the description as their caption or before it), and Back to the list. A file sent there is the category's own source, never a file-tool upload; a caption is the whole description.
+3. **Review.** As today, with the category's name under the service's. A category draft is never offered the other service, and its count is offered within the category's own bounds. When a file gave no text, or a long file was read only at its beginning and end, the review says so. When the category asks one extra question and the message leaves it unanswered (a defence deck with no figures and no file, a deck naming no one for its title slide), the category's own line says what will be blank or a draft, above **➕ Add details** under Generate.
+4. **Extra question.** One message: text, files or both. It is added to the same draft once and the review comes back without the button; an answer for a title slide goes under a "Title slide:" header so its lines go on the cover. Back, or Generate on the review, skips it: nothing is ever refused for leaving it out.
+5. **Finished file.** Under the file, in the customer's language: the category's note on what to do with it, the note that blanks were left where the customer gave no details (when code blanked a figure, name, quotation or law they did not give), and, for a deck written from its topic alone with no file, the note that some slides are a draft to check.
+
 ## File-tool journey
 
 1. **Choose or send.** The four frequent tools are on Home; the complete menu has no pagination. A PDF sent directly offers compatible actions instead of assuming merge. A second PDF selects merging. A first-time upload is held as a bounded Telegram attachment reference and resumes after language selection, so the user does not need to send it twice. Images, Word and PowerPoint select their matching conversion. An explicitly chosen compatible tool survives the upload.

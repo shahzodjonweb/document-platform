@@ -96,6 +96,46 @@
     </table>
   </div>
 </section>
+{% with categories=category_report %}
+<section class="panel" data-testid="category-report">
+  <div class="panel-heading">
+    <div>
+      <h2>{{ t.catreport }}</h2>
+      <p>{{ t.catreport_desc }}</p>
+    </div>
+    {% if can_export %}<a class="button secondary small" href="{{ category_export_url }}">{% icon 'download' 16 %}{{ t.catreport_export }}</a>{% endif %}
+  </div>
+  {% if categories.rows %}
+  <div class="info-panel">
+    <div class="metrics-grid">
+      <div class="metric-card" data-testid="category-chosen"><div>{{ t.catreport_chosen }}</div><strong>{{ categories.chosen }}</strong></div>
+      <div class="metric-card" data-testid="category-made"><div>{{ t.catreport_made }}</div><strong>{{ categories.made }}</strong>{% if categories.share is not None %}<small>{{ categories.share }}% · {{ categories.of_all }}</small>{% endif %}</div>
+    </div>
+  </div>
+  <div class="table-region" role="region" aria-label="{{ t.catreport }}" tabindex="0">
+    <table>
+      <thead>
+        <tr><th>{{ t.categories_category }}</th><th>{{ t.catreport_chosen }}</th><th>{{ t.catreport_choosers }}</th><th>{{ t.catreport_made }}</th><th>{{ t.succeeded }}</th><th>{{ t.failed }}</th><th>{{ t.canceled }}</th><th>{{ t.users }}</th><th>{{ t.catreport_failure }}</th>
+          {% for code in categories.codes %}<th title="{{ code.definition }}">{{ code.label }}</th>{% endfor %}</tr>
+      </thead>
+      <tbody>
+        {% for row in categories.rows %}
+        <tr data-category="{{ row.id }}">
+          <td class="wrap">{% if row.label %}{{ row.label }}{% else %}{{ t.catreport_unknown }}{% endif %}<small class="mono">{% if row.service %}{{ row.service }} · {% endif %}{{ row.id }}</small></td>
+          <td>{{ row.chosen }}</td><td>{{ row.choosers }}</td><td>{{ row.attempts }}</td><td>{{ row.succeeded }}</td><td>{{ row.failed }}</td><td>{{ row.canceled }}</td><td>{{ row.users }}</td>
+          <td>{% if row.failure_rate is not None %}{{ row.failure_rate }}%{% else %}—{% endif %}</td>
+          {% for share in row.shares %}<td>{% if share is not None %}{{ share }}%{% else %}—{% endif %}</td>{% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="field-hint">{{ t.catreport_share_note }}</p>
+  {% else %}
+  {% include 'ops/ui/empty.html' with icon='chart' title=t.catreport_none text=t.catreport_none_desc %}
+  {% endif %}
+</section>
+{% endwith %}
 {% with refusals=upload_refusals %}
 <section class="panel" data-testid="upload-refusals">
   <div class="panel-heading">

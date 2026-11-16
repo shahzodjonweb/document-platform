@@ -18,6 +18,12 @@ import pytest
 CORE = Path(__file__).with_name('tests') / 'core_tests.txt'
 
 
+def pytest_addoption(parser):
+    # tests/test_prompt_golden.py rewrites its fixtures with this, and only then.
+    parser.addoption('--update-golden', action='store_true', default=False,
+                     help='rewrite tests/fixtures/prompt_golden from the code as it is now')
+
+
 def core_ids():
     # A comment starts a line or follows a space: ids such as `[#1F3A68]` keep their `#`.
     lines = (re.sub(r'(^|\s)#.*$', '', line).strip() for line in CORE.read_text().splitlines())

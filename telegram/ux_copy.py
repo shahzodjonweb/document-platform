@@ -200,6 +200,32 @@ MESSAGES = {
     'ai_change_topic': ('✏️ Change the description', '✏️ Tavsifni o‘zgartirish', '✏️ Изменить описание'),
     'ai_review_hint': ('Nothing counts until you tap Generate.', '«Yaratish» tugmasini bosmaguningizcha hech narsa hisoblanmaydi.', 'Ничего не засчитывается, пока вы не нажмёте «Создать».'),
     'ai_back': ('◀️ Back', '◀️ Orqaga', '◀️ Назад'),
+    # The list of categories in front of the description (switched on in the
+    # admin). Its buttons are the catalogue's labels; these are the words around
+    # them. Every kind is made with its own structure, which is why there is a list
+    # at all, and Boshqa below them stays today's question, so it is not named.
+    'ai_cat_choose': ('👇 What are we making? Choose below: each kind is made with its own structure.', '👇 Nima tayyorlaymiz? Quyidan tanlang: har bir tur o‘z tuzilishi bilan tayyorlanadi.', '👇 Что делаем? Выберите ниже: каждый вид делается со своей структурой.'),
+    # A category button from an older list, for one the owner has since taken off it.
+    'ai_cat_gone': ('That kind is not available right now. Choose another one below.', 'Bu tur hozir mavjud emas. Quyidan boshqasini tanlang.', 'Этот вид сейчас недоступен. Выберите другой ниже.'),
+    # A category's question, under its examples: how files go with the description.
+    # The description starts the draft at once, so a file sent after it joins only
+    # through the review's question button.
+    'ai_cat_files': ('📎 Files (PDF, Word, TXT): send them with the description as their caption, or before it.', '📎 Fayllar (PDF, Word, TXT): ularni tavsif bilan izoh sifatida yoki tavsifdan oldin yuboring.', '📎 Файлы (PDF, Word, TXT): отправьте их с описанием в подписи или до него.'),
+    # A file of another kind (a photo, a deck) sent on the list or in a category's
+    # question, its topic question included: never downloaded, and the screen says
+    # what is read. Today's question keeps ai_topic_pdf_only.
+    'ai_topic_files_only': ('📎 Only PDF, Word and TXT files are read here — send one of those, or write it in words.', '📎 Bu yerda faqat PDF, Word va TXT fayllar o‘qiladi — shulardan birini yuboring yoki so‘z bilan yozing.', '📎 Здесь читаются только файлы PDF, Word и TXT — пришлите один из них или напишите словами.'),
+    # A category draft's review: the button to its one extra question (the
+    # question and the line above the button are the category's own), and what
+    # its files gave. The question is skippable, so the button only offers.
+    'ai_details_button': ('➕ Add details', '➕ Ma’lumot qo‘shish', '➕ Добавить данные'),
+    # Under the question: an answer is one message, with files if there are any.
+    'ai_details_how': ('Send it in one message. Files (PDF, Word, TXT) can go with it, the text as their caption.', 'Bitta xabarda yuboring. Fayl (PDF, Word, TXT) ham yuborsangiz bo‘ladi, matnni esa unga izoh qilib yozing.', 'Отправьте одним сообщением. Можно приложить файлы (PDF, Word, TXT), а текст написать в подписи к ним.'),
+    'ai_details_added': ('📝 Added to your description.', '📝 Tavsifingizga qo‘shildi.', '📝 Добавлено к вашему описанию.'),
+    'ai_sources_unread': ('📎 Left out because no text could be read: {files}.', '📎 Matni o‘qilmagani uchun hisobga olinmadi: {files}.', '📎 Не учтено, так как текст не удалось прочитать: {files}.'),
+    'ai_sources_cut': ('✂️ Your files are long: only the beginning and the end of each were read.', '✂️ Fayllaringiz uzun: har birining faqat boshi va oxiri o‘qildi.', '✂️ Файлы длинные: прочитаны только начало и конец каждого.'),
+    # Under a category's finished file, for one whose category has no wording of its own.
+    'facts_blanked': ('ℹ️ Where you gave no details, blanks were left for you to fill in.', 'ℹ️ Siz bermagan ma’lumot o‘rniga bo‘sh joy qoldirildi: uni o‘zingiz to‘ldiring.', 'ℹ️ Где данных не было, оставлены пустые места: заполните их сами.'),
     'ai_revise': ('✏️ Make changes', '✏️ O‘zgartirish kiritish', '✏️ Внести изменения'),
     'ai_ask_to_change': ('✨ Ask AI to change', '✨ AI bilan o‘zgartirish', '✨ Изменить с ИИ'),
     # The editor, opened inside Telegram: no AI edit is used.

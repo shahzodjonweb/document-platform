@@ -69,6 +69,11 @@ def record_request(job):
             'questions': len(content.get('questions') or []),
             'sources': sources,
         }
+        # The category the quote carried (a catalogue id, never the customer's
+        # words), so the request page names it; a request without one has no key.
+        category = (job.parameters or {}).get('category')
+        if category:
+            request['category'] = category
         revision = data.get('revision') or {}
         if revision:
             request['revision'] = {'request': revision.get('request', ''),

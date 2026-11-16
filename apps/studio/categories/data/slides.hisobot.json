@@ -1,0 +1,944 @@
+{
+ "schema": 2,
+ "id": "slides.hisobot",
+ "status": "ready",
+ "service": "slides",
+ "parent": null,
+ "order": 6,
+ "labels": {
+  "uz": "📊 Hisobot",
+  "ru": "📊 Отчёт",
+  "en": "📊 Report"
+ },
+ "summary": "An editable PowerPoint report deck for a month, quarter or year of a company, department, branch or project, shown to management, a board or partners: the key results against plan and the previous period as figures and charts, plan and actual by line, what went well, what fell short (the cause only if the customer gave it), finances, the plan for the next period and, from 10 slides, conclusions with the decision asked. Every figure comes from the customer’s message or file and is shown as written: no change, difference or completion percentage is worked out. The count is delivered as quoted; a slot the customer gave nothing for is an honest form of ruled lines.",
+ "tone": "Factual and plain, for management, founders or a meeting: the numbers carry the verdict. One message a slide; the speech lives in the speaker notes.",
+ "topic": true,
+ "title": "model",
+ "length": {
+  "unit": "slides",
+  "mode": "count",
+  "target": "count",
+  "default": 10,
+  "min": 3,
+  "max": 30,
+  "by_cue": [
+   {
+    "cue": "oylik",
+    "default": 7
+   }
+  ],
+  "note": "The research counted the number as a ceiling; the count is delivered as quoted and a slot the customer gave nothing for is an honest form of ruled lines."
+ },
+ "questions": {
+  "default": 0,
+  "max": 0
+ },
+ "quality": "repair",
+ "fill": false,
+ "cues": {
+  "oylik": {
+   "uz": [
+    "oylik yig‘ilish",
+    "oylik hisobot",
+    "oy yakun",
+    "oy natija"
+   ],
+   "ru": [
+    "ежемесячн",
+    "итоги месяца",
+    "за месяц"
+   ],
+   "en": [
+    "monthly",
+    "month report",
+    "month’s report"
+   ]
+  }
+ },
+ "ask": {
+  "when": "no_digits",
+  "fields": [
+   "key_figures",
+   "comparison_base"
+  ],
+  "review": {
+   "uz": "Xabaringizda raqam yo‘q: natija slaydlari siz to‘ldiradigan bo‘sh shakl bo‘lib chiqadi.",
+   "ru": "В сообщении нет цифр: слайды с результатами будут пустыми формами для заполнения.",
+   "en": "Your message has no figures: the result slides come out as blank forms for you to fill in."
+  },
+  "prompt": {
+   "uz": "📈 Xabaringizda raqamlar yo‘q. Asosiy ko‘rsatkichlaringizni bitta xabarda yozing: nomi, davr natijasi va solishtirish uchun raqam (reja yoki o‘tgan davr). O‘tkazib yuborsangiz, natija slaydlarida to‘ldirish uchun bo‘sh joy qoladi.",
+   "ru": "📈 В сообщении нет цифр. Напишите основные показатели одним сообщением: название, результат за период и число для сравнения (план или прошлый период). Если пропустите, на слайдах с результатами останутся пустые места для заполнения.",
+   "en": "📈 There are no figures in your message. Write your key figures in one message: the name, the result for the period and a figure to compare with (plan or previous period). If you skip, the result slides keep blanks for you to fill in."
+  },
+  "hint": {
+   "uz": "Masalan:\nTushum: 412 mln so‘m (reja 400 mln, o‘tgan oy 380 mln)\nMijozlar: 5 800 nafar (o‘tgan oy 5 300)",
+   "ru": "Например:\nВыручка: 412 млн сумов (план 400 млн, в прошлом месяце 380 млн)\nПокупатели: 5 800 (в прошлом месяце 5 300)",
+   "en": "For example:\nRevenue: 412 m sum (plan 400 m, last month 380 m)\nCustomers: 5,800 (last month 5,300)"
+  }
+ },
+ "fields": [
+  {
+   "id": "organisation",
+   "label": {
+    "uz": "Tashkilot, bo‘lim yoki loyiha nomi",
+    "ru": "Организация, отдел или проект",
+    "en": "Organisation, department or project"
+   },
+   "example": {
+    "uz": "Namuna Market MChJ, savdo bo‘limi",
+    "ru": "ООО «Намуна Маркет», отдел продаж",
+    "en": "Namuna Market LLC, sales department"
+   },
+   "kind": "org",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "cover.organisation (top line, 26 pt bold); the account’s brand name is appended to the footer line"
+  },
+  {
+   "id": "period",
+   "label": {
+    "uz": "Hisobot davri",
+    "ru": "Отчётный период",
+    "en": "Reporting period"
+   },
+   "example": {
+    "uz": "2026-yil 3-chorak (iyul–sentabr)",
+    "ru": "3 квартал 2026 года (июль–сентябрь)",
+    "en": "Q3 2026 (July to September)"
+   },
+   "kind": "line",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "cover title, every comparison phrase (“2-chorakka nisbatan”); never taken from today’s date"
+  },
+  {
+   "id": "audience",
+   "label": {
+    "uz": "Kimga ko‘rsatiladi",
+    "ru": "Кому показывают",
+    "en": "Who it is shown to"
+   },
+   "example": {
+    "uz": "rahbariyat, kuzatuv kengashi, hamkorlar",
+    "ru": "руководству, наблюдательному совету, партнёрам",
+    "en": "management, the board, partners"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "omit",
+   "where": "cover.audience (second header line, 24 pt bold, in the soft tint on a bold or dark cover and the accent on a light one) and the tone of the notes"
+  },
+  {
+   "id": "presenter",
+   "label": {
+    "uz": "Tayyorladi (lavozim yoki F.I.Sh.)",
+    "ru": "Подготовил(а) (должность или ФИО)",
+    "en": "Prepared by (role or name)"
+   },
+   "example": {
+    "uz": "savdo bo‘limi boshlig‘i",
+    "ru": "начальник отдела продаж",
+    "en": "head of the sales department"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "omit",
+   "where": "cover.presenter: the cover prints the fixed label (Tayyorladi / Подготовил(а) / Prepared by) and the value exactly as written; a name or role is never invented"
+  },
+  {
+   "id": "report_date",
+   "label": {
+    "uz": "Taqdimot sanasi",
+    "ru": "Дата презентации",
+    "en": "Date of the presentation"
+   },
+   "example": {
+    "uz": "20.10.2026",
+    "ru": "20.10.2026",
+    "en": "20.10.2026"
+   },
+   "kind": "date",
+   "need": "optional",
+   "missing": "omit",
+   "where": "cover.date, dd.mm.yyyy"
+  },
+  {
+   "id": "key_figures",
+   "label": {
+    "uz": "Asosiy ko‘rsatkichlar (qiymat, birlik)",
+    "ru": "Основные показатели (значение, единица)",
+    "en": "Key figures (value, unit)"
+   },
+   "example": {
+    "uz": "Tushum 4,80 mlrd so‘m; sof foyda 380 mln so‘m; xaridorlar 61 400 nafar",
+    "ru": "Выручка 4,80 млрд сумов; чистая прибыль 380 млн сумов; покупатели 61 400",
+    "en": "Revenue 4.80 bn sum; net profit 380 m sum; customers 61,400"
+   },
+   "kind": "text",
+   "need": "required",
+   "missing": "ask",
+   "where": "headline slide, conclusions; with no figure at all one skippable question is asked (spec.bot.extra_step), then a qualitative deck or, with nothing else, the blank form. Write figures with three or more digits where you can: a percentage is only derived from them"
+  },
+  {
+   "id": "comparison_base",
+   "label": {
+    "uz": "Solishtirish bazasi (reja, o‘tgan davr, o‘tgan yil)",
+    "ru": "База сравнения (план, прошлый период, прошлый год)",
+    "en": "Comparison base (plan, previous period, last year)"
+   },
+   "example": {
+    "uz": "reja 4,70 mlrd; 2-chorakda 4,20 mlrd",
+    "ru": "план 4,70 млрд; во 2 квартале 4,20 млрд",
+    "en": "plan 4.70 bn; Q2 4.20 bn"
+   },
+   "kind": "text",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "the change on each figure; without it the figure is shown alone and no percentage is written; the base is printed once per slide (a caption over the context column)"
+  },
+  {
+   "id": "plan_scope",
+   "label": {
+    "uz": "Reja qaysi davr uchun (oy, chorak, yil) va holat sanasi",
+    "ru": "На какой период план (месяц, квартал, год) и на какую дату факт",
+    "en": "The period the plan covers (month, quarter, year) and the as-of date"
+   },
+   "example": {
+    "uz": "yillik reja 24 mlrd; fakt 1-yarim yil uchun",
+    "ru": "годовой план 24 млрд; факт за полугодие",
+    "en": "annual plan 24 bn; actual for the half-year"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "omit",
+   "where": "the completion percentage and its label: a plan of a longer period than the actual is written “yillik rejaning 51%i” with the as-of period, never “reja 51% bajarildi”"
+  },
+  {
+   "id": "plan_vs_actual",
+   "label": {
+    "uz": "Reja va haqiqiy natija (qatorlar bo‘yicha)",
+    "ru": "План и факт (по строкам)",
+    "en": "Plan and actual (by line)"
+   },
+   "example": {
+    "uz": "Chilonzor 1,8 va 1,95; Yunusobod 1,6 va 1,7",
+    "ru": "Чиланзар 1,8 и 1,95; Юнусабад 1,6 и 1,7",
+    "en": "Chilonzor 1.8 and 1.95; Yunusobod 1.6 and 1.7"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "plan-and-actual slide (needs both numbers for every line, else that slide is not made)"
+  },
+  {
+   "id": "time_series",
+   "label": {
+    "uz": "Oylar yoki choraklar bo‘yicha qiymatlar",
+    "ru": "Значения по месяцам или кварталам",
+    "en": "Values by month or quarter"
+   },
+   "example": {
+    "uz": "aprel 1 330, may 1 400, iyun 1 470 (mln so‘m)",
+    "ru": "апрель 1 330, май 1 400, июнь 1 470 (млн сумов)",
+    "en": "April 1,330, May 1,400, June 1,470 (m sum)"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "chart slide (2 to 6 values, none negative; otherwise a table)"
+  },
+  {
+   "id": "by_line",
+   "label": {
+    "uz": "Filial, yo‘nalish yoki mahsulot bo‘yicha natijalar",
+    "ru": "Результаты по филиалам, направлениям или продуктам",
+    "en": "Results by branch, line or product"
+   },
+   "example": {
+    "uz": "Chilonzor, Yunusobod, Mirobod",
+    "ru": "Чиланзар, Юнусабад, Мирабад",
+    "en": "Chilonzor, Yunusobod, Mirobod"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "plan-and-actual rows and, in long decks, one slide per line"
+  },
+  {
+   "id": "wins",
+   "label": {
+    "uz": "Nima yaxshi ketdi",
+    "ru": "Что получилось",
+    "en": "What went well"
+   },
+   "example": {
+    "uz": "Chilonzor rejani 108% bajardi; yetkazib berish ishga tushdi (3 200 buyurtma)",
+    "ru": "Чиланзар выполнил план на 108%; запущена доставка (3 200 заказов)",
+    "en": "Chilonzor reached 108% of plan; delivery launched (3,200 orders)"
+   },
+   "kind": "text",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "achievements slide; a line is a win only if the customer wrote it as one; not written by the AI from nothing, the slide is dropped"
+  },
+  {
+   "id": "slips",
+   "label": {
+    "uz": "Nima bajarilmadi, qanday muammo bo‘ldi",
+    "ru": "Что не получилось, какие были проблемы",
+    "en": "What fell short, what went wrong"
+   },
+   "example": {
+    "uz": "Mirobodda xaridorlar kamaydi; yetkazib berish 14 marta kechikdi",
+    "ru": "В Мирабаде стало меньше покупателей; доставка задержалась 14 раз",
+    "en": "Fewer customers at Mirobod; deliveries were late 14 times"
+   },
+   "kind": "text",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "problems slide; a line is a problem only if the customer wrote it as one; dropped when not given, never softened and never invented"
+  },
+  {
+   "id": "causes",
+   "label": {
+    "uz": "Sabablar (o‘zgarish nima uchun bo‘ldi)",
+    "ru": "Причины (почему изменилось)",
+    "en": "Causes (why it changed)"
+   },
+   "example": {
+    "uz": "yo‘l ta’miri tufayli xaridor oqimi kamaydi",
+    "ru": "из-за ремонта дороги поток покупателей снизился",
+    "en": "road works cut customer traffic"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "beside the change they explain; with no cause the slide states the fact only and the note asks the presenter for it"
+  },
+  {
+   "id": "finances",
+   "label": {
+    "uz": "Moliya (tushum, xarajat, foyda...)",
+    "ru": "Финансы (выручка, расходы, прибыль...)",
+    "en": "Finances (revenue, costs, profit...)"
+   },
+   "example": {
+    "uz": "yalpi foyda 1 200, xarajatlar 820 (mln so‘m)",
+    "ru": "валовая прибыль 1 200, расходы 820 (млн сумов)",
+    "en": "gross profit 1,200, costs 820 (m sum)"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "financial results slide (at least 2 lines, else folded into the headline slide)"
+  },
+  {
+   "id": "next_plan",
+   "label": {
+    "uz": "Keyingi davr rejasi",
+    "ru": "План на следующий период",
+    "en": "Plan for the next period"
+   },
+   "example": {
+    "uz": "tushum 5,3 mlrd so‘m; noyabrda Sergeli filiali ochiladi",
+    "ru": "выручка 5,3 млрд сумов; в ноябре откроется филиал Сергели",
+    "en": "revenue 5.3 bn sum; the Sergeli branch opens in November"
+   },
+   "kind": "text",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "plan slide; targets only as the customer gave them, no forecast"
+  },
+  {
+   "id": "proposals",
+   "label": {
+    "uz": "Rahbariyatdan so‘raladigan qaror yoki taklif",
+    "ru": "Какое решение или предложение нужно от руководства",
+    "en": "The decision or proposal asked of management"
+   },
+   "example": {
+    "uz": "Sergeli uchun 450 mln so‘m byudjetni tasdiqlash",
+    "ru": "утвердить бюджет 450 млн сумов на Сергели",
+    "en": "approve a 450 m sum budget for Sergeli"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "last line of the conclusion slide (“Taklif: ...”)"
+  },
+  {
+   "id": "stages",
+   "label": {
+    "uz": "Bosqichlar va sanalar (loyiha hisoboti)",
+    "ru": "Этапы и даты (отчёт о проекте)",
+    "en": "Stages and dates (project report)"
+   },
+   "example": {
+    "uz": "loyiha: 1 mart–30 may; ishga tushirish 2 iyun",
+    "ru": "проект: 1 марта–30 мая; запуск 2 июня",
+    "en": "project: 1 March to 30 May; launch on 2 June"
+   },
+   "kind": "list",
+   "need": "optional",
+   "missing": "omit",
+   "where": "stages slide (timeline) in a project report"
+  },
+  {
+   "id": "source_note",
+   "label": {
+    "uz": "Manba (ma’lumot qayerdan)",
+    "ru": "Источник данных",
+    "en": "Source of the data"
+   },
+   "example": {
+    "uz": "Manba: 1C buxgalteriya hisobi",
+    "ru": "Источник: бухгалтерия 1С",
+    "en": "Source: 1C accounting"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "omit",
+   "where": "the deck-level footer line, 14 pt, on every content slide (every real deck prints one); never invented"
+  },
+  {
+   "id": "contacts",
+   "label": {
+    "uz": "Aloqa (e-pochta, telefon)",
+    "ru": "Контакты (почта, телефон)",
+    "en": "Contacts (e-mail, phone)"
+   },
+   "example": {
+    "uz": "savdo@namuna.example",
+    "ru": "savdo@namuna.example",
+    "en": "savdo@namuna.example"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "omit",
+   "where": "closing slide second line; never invented"
+  },
+  {
+   "id": "length",
+   "label": {
+    "uz": "Slayd soni",
+    "ru": "Число слайдов",
+    "en": "Slide count"
+   },
+   "example": {
+    "uz": "7 ta slayd",
+    "ru": "7 слайдов",
+    "en": "7 slides"
+   },
+   "kind": "number",
+   "need": "optional",
+   "missing": "omit",
+   "where": "the ceiling; 10 when not named"
+  },
+  {
+   "id": "sources",
+   "label": {
+    "uz": "Fayl (hisobot, jadval, Excel jadvalidan nusxa)",
+    "ru": "Файл (отчёт, таблица)",
+    "en": "File (a report, a table)"
+   },
+   "example": {
+    "uz": "PDF, Word yoki TXT",
+    "ru": "PDF, Word или TXT",
+    "en": "PDF, Word or TXT"
+   },
+   "kind": "file",
+   "need": "optional",
+   "missing": "omit",
+   "where": "figures and sentences are lifted from it; nothing outside it and the message"
+  },
+  {
+   "id": "qualitative_content",
+   "label": {
+    "uz": "Nima bajarildi, nima bajarilmadi, keyingi rejalar (raqamsiz hisobot)",
+    "ru": "Что сделано, что не сделано, планы (отчёт без цифр)",
+    "en": "Done, not done, next plans (a report with no figures)"
+   },
+   "example": {
+    "uz": "Bajarildi: eski baza tozalandi. Bajarilmadi: mobil ilova tayyor bo‘lmadi.",
+    "ru": "Сделано: очистили старую базу. Не сделано: не готово мобильное приложение.",
+    "en": "Done: the old database was cleaned. Not done: the mobile app is not ready."
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "the qualitative deck (bajarilgan, bajarilmagan, bosqichlar, rejalar) when no figure was given"
+  }
+ ],
+ "parts": [
+  {
+   "id": "cover",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "required",
+   "layouts": [
+    "cover"
+   ],
+   "pins": [],
+   "source": "template",
+   "write": "Title of at most 10 words (organisation or department, period, the word hisobot). A TYPED cover object {organisation, audience, presenter, date}: each field is copied from the message in its own fixed slot whatever order the customer wrote them in (“Rahbariyat uchun, Namuna Market MChJ” and the reverse draw the same cover); a field not given is not drawn; A check confirms every field is found in the message. No photo; the account logo is drawn by the chrome at the bottom right as on every slide."
+  },
+  {
+   "id": "mundarija",
+   "kind": "slide",
+   "heading": {
+    "uz": "Mundarija",
+    "ru": "Содержание",
+    "en": "Contents"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "layouts": [
+    "agenda",
+    "bullets"
+   ],
+   "pins": [
+    "agenda.contents_page",
+    "agenda.classic"
+   ],
+   "source": "draft",
+   "write": "From 12 slides only. 4 to 6 items named like the fixed headings of the deck that follow, in deck order; a sentence of at most 8 words each that names what is in it, with no figure.",
+   "from": 12,
+   "join": 9
+  },
+  {
+   "id": "natijalar",
+   "kind": "slide",
+   "heading": {
+    "uz": "Asosiy natijalar",
+    "ru": "Основные результаты",
+    "en": "Key results"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "layouts": [
+    "stats",
+    "table",
+    "big_number",
+    "bullets"
+   ],
+   "pins": [
+    "stats.rows",
+    "stats.classic",
+    "table.dark_first_column",
+    "big_number.classic",
+    "bullets.card_stack"
+   ],
+   "source": "customer",
+   "write": "1 figure: big_number; 2 to 3: stats.classic; 4: stats.rows with the base caption (columns[0]); 5 or 6: a table of metric, previous, current; more: the first 6 here and the rest on a yonalish or moliya slide. A stats value is the number only (at most 8 characters); the label carries the whole unit (“Tushum, mlrd so‘m”, at most 18 characters); the context line is the figure it is compared with, as the customer wrote it (“reja 400”, “sentabrda 5 300”), or nothing. A change, difference or completion percentage appears only when the customer wrote it; it is never worked out from two figures. Notes: the figures read in words."
+  },
+  {
+   "id": "trend",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "usual",
+   "layouts": [
+    "chart",
+    "bullets"
+   ],
+   "pins": [
+    "chart.stepped_rows"
+   ],
+   "source": "customer",
+   "write": "3 to 6 values the customer gave (3 to 12 with chart.columns), oldest first, none negative (a series with a loss goes to a table), labels of at most 14 characters, the unit in columns[0]; the newest period is the accent bar. Heading of at most 34 characters stating the real shape (“Tushum har oy oshib bordi” only if every step is up). With 2 values there is no chart: both go on natijalar. A series longer than the chart holds continues on a second chart slide in the customer’s order; no value is dropped. Notes: the first and last value and where the presenter gives the cause.",
+   "from": 7,
+   "repeat": {
+    "min": 1,
+    "max": 6
+   }
+  },
+  {
+   "id": "reja_natija",
+   "kind": "slide",
+   "heading": {
+    "uz": "Reja va amaldagi natija",
+    "ru": "План и факт",
+    "en": "Plan and actual"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "comparison",
+    "table",
+    "bullets"
+   ],
+   "pins": [
+    "comparison.hue_headers",
+    "table.dark_first_column",
+    "bullets.rail_dots"
+   ],
+   "source": "customer",
+   "write": "Only when BOTH plan and actual are given for at least 2 lines. comparison.hue_headers with columns Reja / Amalda (План / Факт, Plan / Actual): each criterion label is the line’s name as written (at most 20 characters), the two cells are the plan and the actual exactly as written, with the same unit suffix. A completion percentage or a difference appears only when the customer wrote it, never worked out; a Jami row only when the customer gave it. A plan of another period than the actual is shown as two figures, never as a share. One plan/actual pair does not make this slide: it is a stats figure on natijalar with the plan in its context line (“reja 400”). 6 to 10 lines continue on a second slide with the same columns, “(davomi)” in its heading.",
+   "from": 8,
+   "repeat": {
+    "min": 1,
+    "max": 3
+   }
+  },
+  {
+   "id": "yonalish",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "optional",
+   "layouts": [
+    "stats",
+    "chart",
+    "cards",
+    "bullets"
+   ],
+   "pins": [
+    "stats.classic",
+    "chart.stepped_rows",
+    "cards.classic",
+    "bullets.rail_dots"
+   ],
+   "source": "customer",
+   "write": "From 12 slides, one slide per line for which the customer gave at least 2 figures: the same arrangement every time, 2 to 4 figures with their base. A line with one figure stays in the plan-and-actual rows.",
+   "from": 11,
+   "join": 7,
+   "repeat": {
+    "min": 1,
+    "max": 12
+   }
+  },
+  {
+   "id": "yutuqlar",
+   "kind": "slide",
+   "heading": {
+    "uz": "Yutuqlar",
+    "ru": "Достижения",
+    "en": "Achievements"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "cards",
+    "bullets",
+    "two_column"
+   ],
+   "pins": [
+    "cards.classic",
+    "bullets.rail_dots",
+    "two_column.numbered"
+   ],
+   "source": "customer",
+   "write": "Only what the customer wrote under “yaxshi ketdi”; none: the honest form (heading and ruled lines). 3 items with a figure each: cards.classic (figure 44 pt, label of at most 4 words, one sentence of at most 14 words); 2 items: two_column.numbered; 4 to 6: bullets.rail_dots; 1 item: that one line in bullets.rail_dots. No causal claim (“aksiya tufayli”) unless the customer wrote it, and a line is a win only if the customer wrote it as one.",
+   "from": 4
+  },
+  {
+   "id": "muammolar",
+   "kind": "slide",
+   "heading": {
+    "uz": "Muammolar va sabablari",
+    "ru": "Проблемы и причины",
+    "en": "Problems and causes"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.numbered_rows",
+    "bullets.lead_line"
+   ],
+   "source": "customer",
+   "write": "Only what the customer wrote as a shortfall (“muammo bo‘ldi”, “bajarilmadi”); the model never turns a flat or low number into a problem on its own. 2 to 5 numbered lines (bullets.numbered_rows), each a sentence of at most 12 words: the fact with its figure, then the customer’s cause after a colon. No cause given: the fact only. No euphemism, no name of a person to blame. A lone slip is shown on the slide, never moved to the notes.",
+   "from": 5
+  },
+  {
+   "id": "moliya",
+   "kind": "slide",
+   "heading": {
+    "uz": "Moliyaviy natijalar",
+    "ru": "Финансовые результаты",
+    "en": "Financial results"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "layouts": [
+    "table",
+    "bullets"
+   ],
+   "pins": [
+    "table.dark_first_column",
+    "bullets.rail_dots"
+   ],
+   "source": "customer",
+   "write": "Needs 2 or more supplied lines. A table: the unit in the corner cell, previous period then current period (the current one last, in the order the columns read), 2 to 5 rows, one precision per column, right-aligned. With no previous period the table has two columns (name, value) and holds long numbers, in full digits as written. A loss is written with a minus sign, never in a chart, and no percentage is derived on it.",
+   "from": 9,
+   "join": 5
+  },
+  {
+   "id": "bosqichlar",
+   "kind": "slide",
+   "heading": {
+    "uz": "Bajarilgan bosqichlar",
+    "ru": "Выполненные этапы",
+    "en": "Stages completed"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "layouts": [
+    "timeline",
+    "process",
+    "bullets"
+   ],
+   "pins": [
+    "timeline.classic",
+    "process.chevrons",
+    "bullets.rail_dots"
+   ],
+   "source": "customer",
+   "write": "Only for dates or stages the customer gave (3 to 5); timeline.classic when every item has a date, process.chevrons when only an order. Never a milestone the customer did not name.",
+   "from": 13,
+   "join": 8
+  },
+  {
+   "id": "rejalar",
+   "kind": "slide",
+   "heading": {
+    "uz": "Kelgusi davr rejalari",
+    "ru": "Планы на следующий период",
+    "en": "Plans for the next period"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "stats",
+    "table",
+    "bullets"
+   ],
+   "pins": [
+    "stats.rows",
+    "table.dark_first_column",
+    "bullets.numbered_rows"
+   ],
+   "source": "customer",
+   "write": "The period noun follows the report (oy, chorak, yil). 2 to 4 supplied targets with a figure: stats.classic, each a figure with a label and a context line giving today’s value from the same message (“3-chorakda 4,80 edi”); 1 target with a figure (the others without): big_number with the figure and the other targets in its context line; targets without a figure: bullets.rail_dots. No forecast, no extrapolation, no “taxminan”."
+  },
+  {
+   "id": "xulosa",
+   "kind": "slide",
+   "heading": {
+    "uz": "Xulosa va takliflar",
+    "ru": "Выводы и предложения",
+    "en": "Conclusions and proposals"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.numbered_rows",
+    "bullets.rail_dots"
+   ],
+   "source": "customer",
+   "write": "From 10 slides. Only lines the customer gave that no earlier slide carries: the decision asked (“Taklif: ...”), the next step or the open issues, at most 3 (bullets.lead_line: the first, strongest line in the band). It is NOT a recap of the headline slide: with none of these given it is the honest form (heading and ruled lines).",
+   "from": 10
+  },
+  {
+   "id": "rahmat",
+   "kind": "slide",
+   "heading": {
+    "uz": "E’tiboringiz uchun rahmat!",
+    "ru": "Спасибо за внимание!",
+    "en": "Thank you for your attention!"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "closing"
+   ],
+   "pins": [],
+   "source": "template",
+   "write": "From 6 slides. One line “Savollaringiz bormi?” (“Есть вопросы?”, “Any questions?”); for a deck with a decision the one ask is repeated under it (“Taklif: ...”, 28 pt); otherwise a second line with the customer’s own e-mail or phone, only if given.",
+   "from": 6
+  }
+ ],
+ "rules": [
+  {
+   "text": "Every figure on a slide is in the message or the file, as written: never added, rounded, converted or computed, and no change, difference or completion percentage the customer did not write.",
+   "to": "model"
+  },
+  {
+   "text": "A figure carries its unit and currency exactly as written (so‘m, mln so‘m, USD, nafar, ta) and, when a base was given, the base beside it as written, named once a slide. No base: the value alone. Currencies are never converted; mixed units never share a slide.",
+   "to": "model"
+  },
+  {
+   "text": "A heading the slot does not fix is the finding with its number, at most 10 words, in plain verbs (oshdi, kamaydi, bajarildi, orqada qoldi). No evaluative word the customer did not use (a’lo, zo‘r, jiddiy, muvaffaqiyatli). “Har oy”, “ketma-ket” or “eng yuqori” only after checking the series.",
+   "to": "model"
+  },
+  {
+   "text": "Wins and problems are the customer’s own: a line is a problem only if the customer wrote it as one, and every shortfall the customer wrote is shown plainly with its number. Causes, forecasts, targets and proposals appear only in the customer’s words; with no cause, the note says “Sababini shu yerda ayting.”. No person is named as a cause.",
+   "to": "model"
+  },
+  {
+   "text": "Plan against actual only when both numbers exist for a line; a missing actual leaves the line out. A plan of a longer period than the actual is shown as two figures, never as a share.",
+   "to": "model"
+  },
+  {
+   "text": "A chart is one series of 3 or more non-negative values the customer gave, oldest first; fewer values or mixed units are stats or a table. Stats 2 to 4 figures, a table at most 5 rows, bullets at most 5 lines of at most 12 words.",
+   "to": "model"
+  },
+  {
+   "text": "A slide the customer gave nothing for is an honest form of ruled lines (“Ko‘rsatkich: ______________”) and its notes say what to fill; never a plausible number, row name, unit or period.",
+   "to": "model"
+  },
+  {
+   "text": "Period words are the customer’s and the same on every slide; the cover period is never today’s date. Uzbek and Russian use a decimal comma and a space between thousands, English a decimal point and a comma; a change the customer wrote keeps its sign as written.",
+   "to": "model"
+  },
+  {
+   "text": "No photo or illustration (image_query is always empty), no disclaimer, glossary or appendix, no advice to invest, hire, cut or buy, no legal or tax statement. Uzbek is Latin only, o‘ and g‘ with ‘ and the tutuq belgisi with ’; the customer’s names of lines and products stay as written.",
+   "to": "model"
+  }
+ ],
+ "bot": {
+  "prompt": {
+   "uz": "📊 Hisobot: kompaniya, bo‘lim yoki loyihaning oy, chorak yoki yil natijalari (raqamlar, reja, nima bajarildi, keyingi reja). Hammasini bitta xabarda yozing, kimga ko‘rsatilishini ham; slayd soni aytilmasa, 10 ta.\nHisobot yoki jadvalingiz bo‘lsa, PDF, Word yoki TXT qilib yuboring. Maktab, ota-onalar yig‘ilishi yoki himoya hisoboti uchun boshqa tugmani tanlang.",
+   "ru": "📊 Отчёт: итоги месяца, квартала или года компании, отдела или проекта (цифры, план, что сделано, планы). Напишите всё одним сообщением, и для кого он; если не указать число слайдов, будет 10.\nЕсть отчёт или таблица? Пришлите файлом PDF, Word или TXT. Для школьного отчёта, родительского собрания или защиты выберите другую кнопку.",
+   "en": "📊 A report: the results of a month, quarter or year of a company, department or project (figures, plan, what was done, next plans). Say everything in one message, and who it is for; if you don’t say how many slides, there will be 10.\nHave a report or a table? Send it as a PDF, Word or TXT file. For a school report, a parents’ meeting or a defence, pick the other button."
+  },
+  "examples": [
+   {
+    "uz": "Oylik yig‘ilishga 7 ta slayd: mening oziq-ovqat do‘konimning oktyabr hisoboti. Savdo, mln so‘m: avgust 365, sentabr 380, oktyabr 412 (reja 400). Xaridorlar 5 800 nafar (sentabrda 5 300). Yaxshi ketdi: yangi non peshtaxtasi; sut mahsulotlari savdosi oshdi. Muammo bo‘ldi: sut yetkazib berish 4 marta kechikdi; 2 nafar sotuvchi ishdan ketdi. Noyabr rejasi: savdo 430 mln so‘m, 2 ta yangi sotuvchi qabul qilish. Savdoni diagramma qilib ko‘rsating.",
+    "ru": "Нужно 7 слайдов для ежемесячного собрания: отчёт за октябрь моего продуктового магазина. Продажи, млн сумов: август 365, сентябрь 380, октябрь 412 (план 400). Покупателей 5 800 (в сентябре 5 300). Получилось: новая хлебная витрина; выросли продажи молочных продуктов. Проблемы: молоко привозили с опозданием 4 раза; ушли 2 продавца. План на ноябрь: продажи 430 млн сумов, принять 2 новых продавцов. Продажи покажите диаграммой.",
+    "en": "7 slides for the monthly meeting: October report of my grocery shop. Sales, m sum: August 365, September 380, October 412 (plan 400). Customers 5,800 (September 5,300). Went well: the new bread counter; dairy sales rose. Problems: milk deliveries were late 4 times; 2 shop assistants left. November plan: sales of 430 m sum, hire 2 new shop assistants. Show the sales as a chart."
+   },
+   {
+    "uz": "Rahbariyatga 3-chorak hisoboti, 10 ta slayd. Tikuvchilik sexi: 18 400 dona (reja 18 000, 2-chorakda 16 900), brak 2,1% (2-chorakda 3,4%). Oylar bo‘yicha dona: iyul 5 700, avgust 6 100, sentabr 6 600. Filiallar, reja va natija: Andijon 6 500 va 6 900, Namangan 6 000 va 6 100, Farg‘ona 5 500 va 5 400. Moliya, mln so‘m: tushum 2 300 (2-chorakda 2 050), xarajat 1 940 (1 850). Yaxshi ketdi: brak kamaydi; 12 ta yangi tikuv mashinasi o‘rnatildi. Muammo bo‘ldi: mato yetkazib berish 3 marta kechikdi; Farg‘ona rejani bajarmadi. 4-chorak rejasi: 19 500 dona, brak 1,8%. Taklif: 6 ta yangi mashina uchun 90 mln so‘m ajratish.",
+    "ru": "Отчёт за 3 квартал для руководства, 10 слайдов. Швейный цех: 18 400 штук (план 18 000, во 2 квартале 16 900), брак 2,1% (во 2 квартале 3,4%). По месяцам, штук: июль 5 700, август 6 100, сентябрь 6 600. Филиалы, план и факт: Андижан 6 500 и 6 900, Наманган 6 000 и 6 100, Фергана 5 500 и 5 400. Финансы, млн сумов: выручка 2 300 (во 2 квартале 2 050), расходы 1 940 (1 850). Получилось: брак снизился; установили 12 новых швейных машин. Проблемы: ткань привозили с опозданием 3 раза; Фергана не выполнила план. План на 4 квартал: 19 500 штук, брак 1,8%. Предложение: выделить 90 млн сумов на 6 новых машин.",
+    "en": "Q3 report for management, 10 slides. Sewing workshop: 18,400 pieces (plan 18,000, Q2 16,900), defects 2.1% (Q2 3.4%). By month, pieces: July 5,700, August 6,100, September 6,600. Branches, plan and actual: Andijan 6,500 and 6,900, Namangan 6,000 and 6,100, Fergana 5,500 and 5,400. Finances, m sum: revenue 2,300 (Q2 2,050), costs 1,940 (1,850). Went well: defects fell; 12 new sewing machines were installed. Problems: fabric deliveries were late 3 times; Fergana missed its plan. Q4 plan: 19,500 pieces, defects 1.8%. Proposal: allocate 90 m sum for 6 new machines."
+   },
+   {
+    "uz": "O‘quv markazimizning 2026-yil hisoboti, 8 ta slayd, ta’sischilar uchun. O‘quvchilar: 2024-yilda 150, 2025-yilda 190, 2026-yilda 240 nafar; kursni 168 nafari tugatdi. Daromad 1,92 mlrd so‘m (2025-yilda 1,52 mlrd), xarajat 1,61 mlrd so‘m (1,34 mlrd). Yaxshi ketdi: IELTS kursi (60 o‘quvchi); ikkita yangi o‘quv xonasi ochildi. Muammo bo‘ldi: 2 nafar o‘qituvchi ketdi; 14 nafar o‘quvchi kursni tashlab ketdi. 2027-yil rejasi: 300 o‘quvchi va yangi filial ochish.",
+    "ru": "Годовой отчёт нашего учебного центра за 2026 год, 8 слайдов, для учредителей. Учеников: в 2024 году 150, в 2025 году 190, в 2026 году 240; курс закончили 168. Доход 1,92 млрд сумов (в 2025 году 1,52 млрд), расход 1,61 млрд сумов (1,34 млрд). Получилось: курс IELTS (60 учеников); открыли две новые аудитории. Проблемы: ушли 2 преподавателя; 14 учеников бросили курс. План на 2027 год: 300 учеников и новый филиал.",
+    "en": "Annual 2026 report of our learning centre, 8 slides, for the founders. Students: 150 in 2024, 190 in 2025, 240 in 2026; 168 finished the course. Income 1.92 bn sum (1.52 bn in 2025), costs 1.61 bn sum (1.34 bn). Went well: the IELTS course (60 students); two new classrooms opened. Problems: 2 teachers left; 14 students dropped the course. 2027 plan: 300 students and a new branch."
+   }
+  ],
+  "attach": true,
+  "notices": {
+   "blanks": {
+    "uz": "Siz bermagan ma’lumot o‘rniga bo‘sh joy qoldirildi: uni o‘zingiz to‘ldiring.",
+    "ru": "Где данных не было, оставлены пустые места: заполните их сами.",
+    "en": "Where you gave no details, blanks were left for you to fill in."
+   }
+  }
+ },
+ "templates": [],
+ "look": {
+  "designs": [
+   "corporate",
+   "baseline",
+   "graphite"
+  ],
+  "variants": {
+   "stats": [
+    "rows",
+    "classic"
+   ],
+   "big_number": [
+    "classic"
+   ],
+   "chart": [
+    "stepped_rows",
+    "columns"
+   ],
+   "comparison": [
+    "hue_headers"
+   ],
+   "table": [
+    "dark_first_column",
+    "classic"
+   ],
+   "cards": [
+    "classic"
+   ],
+   "bullets": [
+    "lead_line",
+    "numbered_rows",
+    "rail_dots",
+    "card_stack",
+    "classic"
+   ],
+   "two_column": [
+    "numbered"
+   ],
+   "pros_cons": [
+    "classic"
+   ],
+   "agenda": [
+    "contents_page",
+    "classic"
+   ],
+   "timeline": [
+    "classic",
+    "deep_band"
+   ],
+   "process": [
+    "chevrons",
+    "classic"
+   ]
+  },
+  "cover_lines": 4,
+  "note": "Figures need lining numerals: the looks keep Calibri or Arial; chart.pairs (plan against actual) is not registered yet."
+ },
+ "gates": [
+  "A native Uzbek and a native Russian reader check the fixed headings (Asosiy natijalar, Reja va amaldagi natija, Muammolar va sabablari, Kelgusi davr rejalari, Xulosa va takliflar) and the bot copy.",
+  "A 6, a 10 and a 15 slide sample in uz, ru and en are drawn with the deck sample tool, with figures and with none, and looked at next to units/slides.hisobot/mock/business_hisobot.png.",
+  "One real-provider run, scripts/operations/ai_smoke.py --category slides.hisobot on the server, makes the deck with every check passing, and the deck is looked at, before the tick."
+ ],
+ "later": [
+  {
+   "text": "Server-side derived figures (recomputing every change and completion the model writes) and the figure detector that would ask the question only for a one-figure message."
+  },
+  {
+   "text": "The qualitative report (done, not done, plans) chosen when the message holds no figure, and the merged wins-and-problems slide: one structure this round, honest forms where figures are missing.",
+   "words": [
+    "raqamsiz hisobot",
+    "отчёт без цифр",
+    "report without figures"
+   ]
+  },
+  {
+   "text": "The chart.pairs variant, a plan-against-actual chart."
+  },
+  {
+   "text": "A deck-level source line at the foot of the slides."
+  },
+  {
+   "text": "Research launch gate, not adopted as a gate: ORDER OF WORK (the category flag stays OFF until all six are shipped; today’s output breaks the type gate 53 times): 1 type contract and the hisobot additions, 2 pins, 3 numbers check, 4 count rule, 5 typed cover, 6 detector and question. Each depends on the one before it only as noted."
+  },
+  {
+   "text": "Research launch gate, not adopted as a gate: 1. Type contract (family items 1 to 6 of slides.mavzu’s design document) plus the hisobot additions (type_contract.hisobot_additions) and the lining-figure rule (no Georgia). Without it the deck is what mock/business_hisobot-today.png shows. The gate script is work/contract_check.py (footer chrome held to 14 pt)."
+  },
+  {
+   "text": "Research launch gate, not adopted as a gate: 2. Per-template variant allow-list (pins): looks.variants must reach the renderer. “No pins, no release”: plumbing, not new drawing. Needs 1 (the variants it pins are the ones the contract holds)."
+  },
+  {
+   "text": "Research launch gate, not adopted as a gate: 3. Numbers check (server, review screen): every figure on a slide must be found in the message or files (value and unit, decimal comma or point, exact mln/mlrd equivalence, no-break spaces and padded zeros ignored) or be a derived figure under spec.derived_figures that the server recomputes within half a rounding step; anything else is removed and listed on the review screen with a remove button and the sentence it came from. The same pass checks the cover fields, flags “har oy / ketma-ket / eng” claims the series does not support and refuses a completion percentage on a plan of another period. Prototype: slides.himoya’s work/claims.py, extended with the grammar; work/decks.py derived_check() is the reference arithmetic."
+  },
+  {
+   "text": "Research launch gate, not adopted as a gate: 4. Count rule: the count named is a ceiling, clamp 30, minimum 3, default 10; join and drop order (spec.scaling); slot_item_rules; a slot without its source is dropped; xulosa only with a new line; the qualitative deck and the blank form. Needs 3 only for the derived figures on the slides it counts."
+  },
+  {
+   "text": "Research launch gate, not adopted as a gate: 5. Cover: the typed cover object (schema) and its slots; the dictated-lines reader keeps only “Tayyorladi: Name” today (tested on 7 messages), so the lines are the model’s copy plus the check in gate 3. Add “audience first” (“Rahbariyat uchun, Namuna Market MChJ”) and “no organisation” to the tests."
+  },
+  {
+   "text": "Research launch gate, not adopted as a gate: 6. The conditional extra question (figure detector, with numerals in words) and its skip button; the detector test list is in bot.extra_step.detector_tests."
+  }
+ ],
+ "sources": {
+  "take": "all"
+ }
+}

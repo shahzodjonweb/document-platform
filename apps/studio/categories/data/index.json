@@ -1,0 +1,30 @@
+{
+ "schema": 2,
+ "note": "apps/studio/categories/data/index.json: the two flat lists in the owner's order. An item is a category id, a group id (its children listed under groups) or the Boshqa sentinel 'other'. A category or group with nothing live under it is not shown; a list with nothing live is not shown at all (the service opens today's prompt). Group and Boshqa labels are product copy, read by the owner in N1.",
+ "lists": {
+  "ai.pdf_topic": ["pdf.mustaqil_ish", "pdf.kurs_ishi", "pdf.konspekt", "pdf.dars_ishlanmasi", "pdf.test", "pdf.biz", "pdf.xat", "other"],
+  "ai.pptx": ["slides.mavzu", "slides.himoya", "slides.dars", "slides.tadbir", "slides.pitch", "slides.hisobot", "slides.kompaniya", "other"]
+ },
+ "groups": {
+  "pdf.biz": {
+   "label": {"uz": "💼 Biznes va ish", "ru": "💼 Бизнес и работа", "en": "💼 Business and work"},
+   "children": ["pdf.biz.biznes_reja", "pdf.biz.tijorat_taklifi", "pdf.biz.hisobot", "pdf.biz.yoriqnoma", "pdf.biz.lavozim_yoriqnomasi", "pdf.biz.bayonnoma", "pdf.biz.marketing_reja", "other"],
+   "other": {"uz": "📄 Boshqa hujjat", "ru": "📄 Другой документ", "en": "📄 Another paper"}
+  },
+  "pdf.xat": {
+   "label": {"uz": "✉️ Xat va hujjatlar", "ru": "✉️ Письма и документы", "en": "✉️ Letters and papers"},
+   "children": ["pdf.xat.motivatsion", "pdf.xat.ishga_kirish", "pdf.xat.ariza", "pdf.xat.tavsifnoma", "pdf.xat.tavsiya", "pdf.xat.tushuntirish", "other"],
+   "other": {"uz": "✉️ Boshqa xat", "ru": "✉️ Другое письмо", "en": "✉️ Another letter"}
+  },
+  "slides.tadbir": {
+   "label": {"uz": "🎈 Tarbiyaviy soat / tadbir", "ru": "🎈 Классный час / мероприятие", "en": "🎈 Class hour / event"},
+   "children": ["slides.tadbir.tarbiyaviy_soat", "slides.tadbir.bayram", "slides.tadbir.ota_onalar", "slides.tadbir.pedkengash", "other"],
+   "other": {"uz": "🎈 Boshqa tadbir", "ru": "🎈 Другое мероприятие", "en": "🎈 Another event"}
+  }
+ },
+ "other": {"uz": "✏️ Boshqa", "ru": "✏️ Другое", "en": "✏️ Other"},
+ "owner_labels": {
+  "pdf.dars_ishlanmasi": "Dars ishlanmasi / tarqatma",
+  "pdf.biz.yoriqnoma": "Xodimlar uchun yo‘riqnoma"
+ }
+}

@@ -1,0 +1,938 @@
+{
+ "schema": 2,
+ "id": "slides.himoya",
+ "status": "ready",
+ "service": "slides",
+ "parent": null,
+ "order": 2,
+ "labels": {
+  "uz": "🛡 Himoya",
+  "ru": "🛡 Защита работы",
+  "en": "🛡 Thesis defence"
+ },
+ "summary": "An editable PowerPoint deck for defending a kurs ishi, a bitiruv malakaviy ishi, a master’s dissertation or an internship report before a commission. Nothing on a slide is the AI’s own finding: every result, number, method, novelty, proposal and implementation restates the customer’s message or attached work, and only the framing slides (relevance, aim and tasks, object and subject) may be drafted from the topic’s own words, marked as a draft in the notes. The deck has the count asked (a slot with no material is an honest form), a formal title slide with the topic in full, one finding per result slide, conclusions that answer the tasks, and a closing slide that repeats the author.",
+ "tone": "Formal, neutral and short on the slide: noun phrases and infinitive tasks of at most 10 words, 2 to 5 lines, never a paragraph and never “we”. Speaker notes are a speaking outline to the commission, first person singular, polite. Nothing on a slide is the AI’s own finding.",
+ "topic": true,
+ "title": "model",
+ "length": {
+  "unit": "slides",
+  "mode": "count",
+  "target": "count",
+  "default": 10,
+  "min": 3,
+  "max": 30,
+  "by_cue": [
+   {
+    "cue": "masters",
+    "default": 15
+   },
+   {
+    "cue": "bmi",
+    "default": 10
+   },
+   {
+    "cue": "kurs",
+    "default": 6
+   },
+   {
+    "cue": "internship",
+    "default": 8
+   }
+  ],
+  "note": "The count is delivered as quoted. The research rule \"fewer slides when the material is thin\" is replaced by honest blank forms on customer-source slots."
+ },
+ "questions": {
+  "default": 0,
+  "max": 0
+ },
+ "quality": "repair",
+ "fill": false,
+ "cues": {
+  "kurs": {
+   "uz": [
+    "kurs ishi"
+   ],
+   "ru": [
+    "курсов"
+   ],
+   "en": [
+    "course paper",
+    "coursework",
+    "term paper"
+   ]
+  },
+  "bmi": {
+   "uz": [
+    "bmi",
+    "bitiruv malakaviy",
+    "diplom ishi"
+   ],
+   "ru": [
+    "вкр",
+    "выпускн",
+    "дипломн"
+   ],
+   "en": [
+    "thesis",
+    "graduation"
+   ]
+  },
+  "masters": {
+   "uz": [
+    "magistr",
+    "dissertatsiya"
+   ],
+   "ru": [
+    "магистер",
+    "диссертац"
+   ],
+   "en": [
+    "master",
+    "dissertation"
+   ]
+  },
+  "internship": {
+   "uz": [
+    "amaliyot hisobot",
+    "malakaviy amaliyot",
+    "ishlab chiqarish amaliyot",
+    "pedagogik amaliyot",
+    "amaliyotni o'ta",
+    "amaliyot o'ta",
+    "hamshiralik amaliyot"
+   ],
+   "ru": [
+    "по практике",
+    "производственной практик",
+    "преддипломной практик",
+    "учебной практик",
+    "педагогической практик",
+    "прохождени практик"
+   ],
+   "en": [
+    "internship",
+    "placement report",
+    "work placement"
+   ]
+  }
+ },
+ "ask": {
+  "when": "no_digits",
+  "fields": [
+   "work_file",
+   "results",
+   "intro_parts"
+  ],
+  "review": {
+   "uz": "Siz fayl yoki raqam bermadingiz. Natija slaydlari bo‘sh shakl bo‘lib chiqadi: ularni o‘zingiz to‘ldirasiz. Maqsad, vazifalar va obyekt mavzudan olingan qoralama: tekshiring.",
+   "ru": "Вы не дали файл или цифры. Слайды с результатами будут пустыми формами: заполните их сами. Цель, задачи и объект взяты из темы как черновик: проверьте.",
+   "en": "You gave no file or figures. The result slides come out as empty forms for you to fill in. The aim, tasks and object are a draft taken from the topic: check them."
+  },
+  "prompt": {
+   "uz": "📎 Ishingizni fayl qilib yuboring (PDF, Word, TXT) yoki natija va raqamlaringizni yozing: ular natija slaydlariga qo‘yiladi.",
+   "ru": "📎 Пришлите работу файлом (PDF, Word, TXT) или напишите результаты и цифры: они пойдут на слайды с результатами.",
+   "en": "📎 Send your work as a file (PDF, Word, TXT) or write your results and figures: they go on the result slides."
+  }
+ },
+ "fields": [
+  {
+   "id": "topic",
+   "label": {
+    "uz": "Mavzu",
+    "ru": "Тема работы",
+    "en": "Topic"
+   },
+   "example": {
+    "uz": "Kichik korxonada xodimlar almashinuvini kamaytirish yo‘llari",
+    "ru": "Пути снижения текучести кадров в малой компании",
+    "en": "Ways to reduce staff turnover in a small company"
+   },
+   "kind": "text",
+   "need": "required",
+   "missing": "ask",
+   "where": "Cover heading, copied in full as the customer or the attached title page wrote it: never cut. Up to 25 words or 260 characters (the title is drawn from 48 pt down to 26 pt); a longer topic is not cut: the customer is asked to shorten it. The bot’s existing topic check asks when it is missing. (Today: 14 words and 160 characters, then cut: launch gate 3.)"
+  },
+  {
+   "id": "work_type",
+   "label": {
+    "uz": "Ish turi",
+    "ru": "Вид работы",
+    "en": "Type of work"
+   },
+   "example": {
+    "uz": "bitiruv malakaviy ishi / kurs ishi / magistrlik dissertatsiyasi / amaliyot hisoboti",
+    "ru": "ВКР / курсовая / магистерская диссертация / отчёт по практике",
+    "en": "bachelor’s thesis / term paper / master’s dissertation / internship report"
+   },
+   "kind": "choice",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "Cover line 1, only in the customer’s own words; it also picks the blueprint variant (BMI by default, dissertation, kurs ishi, internship). Not asked: with no type the deck is a BMI deck and the cover carries no type line.",
+   "choices": [
+    "kurs",
+    "bmi",
+    "masters",
+    "internship"
+   ]
+  },
+  {
+   "id": "work_file",
+   "label": {
+    "uz": "Ish fayli (PDF, Word, TXT)",
+    "ru": "Файл работы (PDF, Word, TXT)",
+    "en": "The work as a file (PDF, Word, TXT)"
+   },
+   "example": {
+    "uz": "biriktirilgan BMI, PDF",
+    "ru": "приложенная ВКР в PDF",
+    "en": "the thesis attached as a PDF"
+   },
+   "kind": "file",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "Source of the framing slides (kirish parts), every result, the conclusions and, when the message gives none, the cover lines read from its title page. No second question: with no file and no figures the deck is built as a draft and the review screen says so (bot.notices)."
+  },
+  {
+   "id": "results",
+   "label": {
+    "uz": "Natijalar va raqamlar",
+    "ru": "Результаты и цифры",
+    "en": "Results and figures"
+   },
+   "example": {
+    "uz": "2021–2024-yillarda almashinuv 14, 17, 21 va 26 foiz bo‘ldi; ketganlarning 41 foizi ish haqini aytdi",
+    "ru": "текучесть в 2021–2024 годах: 14, 17, 21 и 26 процентов; 41 процент ушедших назвал оплату труда",
+    "en": "turnover in 2021–2024 was 14, 17, 21 and 26 percent; 41 percent of leavers named pay"
+   },
+   "kind": "text",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "The only source of any chart, stats, big-number or list figure, of every conclusion and of every number in the notes, besides the attached work. Without any, the result slides are fill-in forms with the blank “...”, never findings."
+  },
+  {
+   "id": "intro_parts",
+   "label": {
+    "uz": "Kirish qismi: dolzarblik, maqsad, vazifalar, obyekt, predmet, metodlar",
+    "ru": "Введение: актуальность, цель, задачи, объект, предмет, методы",
+    "en": "Introduction: relevance, aim, tasks, object, subject, methods"
+   },
+   "example": {
+    "uz": "Maqsad: almashinuvni kamaytirish yo‘llarini aniqlash. Vazifalar: nazariyani o‘rganish, tahlil qilish, sabablarni aniqlash, takliflar berish",
+    "ru": "Цель: определить пути снижения текучести. Задачи: изучить теорию, проанализировать, выявить причины, дать предложения",
+    "en": "Aim: to find ways to cut turnover. Tasks: study the theory, analyse, find the causes, propose measures"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Framing slides 2 to 4. From the attached work’s kirish when there is one; else from the message; else drafted only from the topic’s own words (no numbers, no claim about an organisation, no consequence or trend) and marked as a draft in the notes. Methods and novelty are never drafted: the line or slide is left out."
+  },
+  {
+   "id": "length",
+   "label": {
+    "uz": "Slayd soni yoki chiqish vaqti",
+    "ru": "Число слайдов или время доклада",
+    "en": "Slide count or talk length"
+   },
+   "example": {
+    "uz": "10 ta slayd yoki 8 daqiqalik chiqish",
+    "ru": "10 слайдов или доклад на 8 минут",
+    "en": "10 slides or an 8-minute talk"
+   },
+   "kind": "number",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Deck length. A count wins; minutes alone give minutes plus 2 (cover and closing are free) and never below 4; nothing given means 10. Minutes are not read by the server today."
+  },
+  {
+   "id": "institution",
+   "label": {
+    "uz": "Universitet va fakultet",
+    "ru": "Вуз и факультет",
+    "en": "University and faculty"
+   },
+   "example": {
+    "uz": "Samarqand davlat universiteti, Iqtisodiyot fakulteti",
+    "ru": "Самаркандский государственный университет, экономический факультет",
+    "en": "Samarkand State University, Faculty of Economics"
+   },
+   "kind": "org",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "Cover header line, copied as written (the message first, else the attached title page). Never completed or guessed. The ministry line (\"O‘ZBEKISTON RESPUBLIKASI ... VAZIRLIGI\") is never added; if the customer writes it, it is the first line dropped when the cover has more than 6 lines (the customer is told which line was left out)."
+  },
+  {
+   "id": "author_line",
+   "label": {
+    "uz": "Bajardi (F.I.Sh., guruh yoki kurs)",
+    "ru": "Выполнил(а) (ФИО, группа или курс)",
+    "en": "Prepared by (name, group or year)"
+   },
+   "example": {
+    "uz": "Bajardi: Yusupov Jasur, 412-guruh",
+    "ru": "Выполнил: Юсупов Джасур, группа 412",
+    "en": "Prepared by: Jasur Yusupov, group 412"
+   },
+   "kind": "line",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "Cover author row and the last line of the closing slide (copied from the cover). Left out when unknown. The customer’s own label is kept (Bajaruvchi, Tayyorladi, Talaba...); when a bare name is given the AI writes Bajardi / Выполнил(а) / Prepared by, the same fallback as slides.mavzu (open question 1)."
+  },
+  {
+   "id": "supervisor_line",
+   "label": {
+    "uz": "Ilmiy rahbar (unvoni va F.I.Sh.)",
+    "ru": "Научный руководитель (звание и ФИО)",
+    "en": "Supervisor (title and name)"
+   },
+   "example": {
+    "uz": "Ilmiy rahbar: dotsent Rahimova N.",
+    "ru": "Научный руководитель: доцент Рахимова Н.",
+    "en": "Supervisor: Assoc. Prof. N. Rahimova"
+   },
+   "kind": "line",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "Cover line 4. Degree and title only as written. For an internship the customer’s own label (Amaliyot rahbari, Руководитель практики) is kept."
+  },
+  {
+   "id": "place_year",
+   "label": {
+    "uz": "Shahar va yil",
+    "ru": "Город и год",
+    "en": "City and year"
+   },
+   "example": {
+    "uz": "Samarqand — 2026",
+    "ru": "Самарканд — 2026",
+    "en": "Samarkand — 2026"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Last cover line. The system does not add the current year or a city. Dropped second, after the ministry line, when the cover has more than 6 lines."
+  },
+  {
+   "id": "speciality",
+   "label": {
+    "uz": "Ta’lim yo‘nalishi (shifri va nomi)",
+    "ru": "Направление подготовки (шифр и название)",
+    "en": "Programme (code and name)"
+   },
+   "example": {
+    "uz": "5230100 — Iqtisodiyot",
+    "ru": "38.03.01 — Экономика",
+    "en": "5230100 — Economics"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "omit",
+   "where": "A cover row before the place and year (docs 01, 03, 14 ask for it on the first slide). Kept before the place and year and before the work type when a 7-line cover has to lose lines."
+  },
+  {
+   "id": "practice",
+   "label": {
+    "uz": "Ilmiy va amaliy ahamiyati (joriy etish, dalolatnoma)",
+    "ru": "Научная новизна и практическая значимость (внедрение, акт)",
+    "en": "Scientific and practical significance (adoption, act)"
+   },
+   "example": {
+    "uz": "Natijalar Namuna MChJda joriy etildi, dalolatnoma bor",
+    "ru": "результаты внедрены в ООО «Намуна», есть акт",
+    "en": "results were adopted by Namuna LLC, an act exists"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Slide “Ilmiy va amaliy ahamiyati”, from 8 slides, only from the customer’s statement of significance, use or an implementation act. Without it the slot is dropped: an adoption, a company or an act is never implied."
+  },
+  {
+   "id": "tasks_status",
+   "label": {
+    "uz": "Vazifalar: ma’lumotli yoki nazariy",
+    "ru": "Задачи: с данными или теоретические",
+    "en": "Tasks: with data or theory"
+   },
+   "example": {
+    "uz": "1) nazariy asoslarni o‘rganish (nazariy); 2) tahlil (ma’lumot bor)",
+    "ru": "1) изучить теорию (теоретическая); 2) анализ (есть данные)",
+    "en": "1) study the theory (theory); 2) analysis (has data)"
+   },
+   "kind": "choice",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Not asked: the AI classes each task itself. A task is answered either by result slides (data) or by the work’s own text (theory, proposal); the class decides how the conclusion row is written (writing rule 5). With no work attached every task the message names is treated as data.",
+   "choices": [
+    "done",
+    "partly",
+    "unknown"
+   ]
+  },
+  {
+   "id": "approbation",
+   "label": {
+    "uz": "Nashrlar va konferensiyalar (magistr uchun)",
+    "ru": "Публикации и конференции (для магистра)",
+    "en": "Publications and conferences (for a master’s)"
+   },
+   "example": {
+    "uz": "2 ta maqola, universitet ilmiy konferensiyasi, 2025",
+    "ru": "2 статьи, научная конференция университета, 2025",
+    "en": "2 articles, the university research conference, 2025"
+   },
+   "kind": "list",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Slide “Natijalar aprobatsiyasi” (dissertation only). Only what the customer or the attached work lists, one line each; never a journal, a title or a date the customer did not give."
+  }
+ ],
+ "parts": [
+  {
+   "id": "cover",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "required",
+   "layouts": [
+    "cover"
+   ],
+   "pins": [],
+   "source": "template",
+   "write": "Heading = the topic in full, never cut (up to 25 words or 260 characters; longer: the customer is asked to shorten, nothing is cut). Body = at most 6 lines, copied as written, in this order: work type (only in the customer’s words), institution and faculty, the author line, the supervisor line, the speciality, place and year. More than 6 lines: the ministry line goes first, then place and year, then the work type, and the customer is told which. Never completed, never reordered inside a line, never invented. No decorative disc, no notes, no photo.",
+   "join": 0
+  },
+  {
+   "id": "baza",
+   "kind": "slide",
+   "heading": {
+    "uz": "Amaliyot bazasi",
+    "ru": "База практики",
+    "en": "Placement"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.lead_line"
+   ],
+   "source": "customer",
+   "write": "A lead line naming the place as the customer gave it, then 2 or 3 lines (period, departments with their lengths) from the customer’s facts only; a hospital, department or supervisor not named is never named.",
+   "when": "cue:internship",
+   "from": 4,
+   "join": 1
+  },
+  {
+   "id": "dolzarblik",
+   "kind": "slide",
+   "heading": {
+    "uz": "Mavzuning dolzarbligi",
+    "ru": "Актуальность темы",
+    "en": "Relevance of the topic"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.lead_line",
+    "bullets.classic"
+   ],
+   "source": "draft",
+   "write": "From the attached kirish or the message: 1 to 4 lines of at most 10 words that restate what it says. With no source from 7 slides on, a draft of at most 2 lines built from the topic’s own words (the problem named in the topic, no consequence, trend, number or organisation) and the notes open with “[Qoralama: ...]”; below 7 slides, with no source, the honest form (heading and ruled lines). Notes: the greeting “Hurmatli Davlat attestatsiya komissiyasi raisi va a’zolari!”, the topic by name, the relevance as the slide says it.",
+   "from": 7,
+   "join": 3,
+   "when": "nocue:internship"
+  },
+  {
+   "id": "maqsad_vazifalar",
+   "kind": "slide",
+   "heading": {
+    "uz": "Maqsad va vazifalar",
+    "ru": "Цель и задачи",
+    "en": "Aim and objectives"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.lead_line"
+   ],
+   "source": "draft",
+   "write": "Line 1 “Maqsad: ...” in one sentence, then 3 to 5 tasks of at most 8 words in the infinitive, in the work’s own order and numbering. From the attached kirish or the message; else the aim restates the topic and the tasks restate the functions or steps the message names, marked as a draft in the notes. A work with 6 or more tasks: the last two are joined in one row with “va”, in the work’s own words (nothing is silently dropped). The notes name each task in the work’s order and say which slides answer it.",
+   "join": 0
+  },
+  {
+   "id": "obyekt_predmet_metodlar",
+   "kind": "slide",
+   "heading": {
+    "uz": "Obyekt, predmet va metodlar",
+    "ru": "Объект, предмет и методы",
+    "en": "Object, subject and methods"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "bullets",
+    "two_column"
+   ],
+   "pins": [
+    "bullets.card_stack",
+    "two_column.numbered"
+   ],
+   "source": "draft",
+   "write": "From 8 slides. Lines “Obyekt: ...”, “Predmet: ...” and, only when the customer or the file names methods, “Metodlar: ...”, of at most 12 words. Object and subject differ. With no source they are the topic’s own nouns (draft, marked in the notes); the methods line is never drafted. Spelling: obyekt, as the Latin orthography writes it.",
+   "from": 8,
+   "join": 4,
+   "when": "nocue:internship",
+   "until": 12
+  },
+  {
+   "id": "obyekt_predmet",
+   "kind": "slide",
+   "heading": {
+    "uz": "Obyekt va predmet",
+    "ru": "Объект и предмет",
+    "en": "Object and subject"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "bullets",
+    "two_column"
+   ],
+   "pins": [
+    "bullets.card_stack",
+    "two_column.numbered"
+   ],
+   "source": "draft",
+   "write": "From 8 slides. Lines “Obyekt: ...”, “Predmet: ...” and, only when the customer or the file names methods, “Metodlar: ...”, of at most 12 words. Object and subject differ. With no source they are the topic’s own nouns (draft, marked in the notes); the methods line is never drafted. Spelling: obyekt, as the Latin orthography writes it.",
+   "from": 13,
+   "join": 4,
+   "when": "nocue:internship"
+  },
+  {
+   "id": "metodlar",
+   "kind": "slide",
+   "heading": {
+    "uz": "Tadqiqot metodlari",
+    "ru": "Методы исследования",
+    "en": "Research methods"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.rail_dots"
+   ],
+   "source": "customer",
+   "write": "2 to 4 lines, each a method the customer or the file names. With none named: the honest form (heading and ruled lines); obyekt_predmet then carries no methods line.",
+   "from": 13,
+   "join": 6
+  },
+  {
+   "id": "yangilik",
+   "kind": "slide",
+   "heading": {
+    "uz": "Ilmiy yangilik",
+    "ru": "Научная новизна",
+    "en": "Novelty"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "layouts": [
+    "statement",
+    "bullets"
+   ],
+   "pins": [
+    "statement.soft_panel"
+   ],
+   "source": "customer",
+   "write": "One sentence of at most 20 words restating the work’s own novelty statement. The work states none: the honest form (heading and ruled lines). “First time”, “new” and any claim of novelty the work does not make are never written.",
+   "from": 13,
+   "join": 7,
+   "when": "cue:masters"
+  },
+  {
+   "id": "bajarilgan_ishlar",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "usual",
+   "layouts": [
+    "stats",
+    "bullets"
+   ],
+   "pins": [
+    "stats.rows",
+    "bullets.numbered_rows"
+   ],
+   "source": "customer",
+   "write": "The totals the customer gave (2 to 4 figures). Never split by ward, never a skill or a duty the customer did not name.",
+   "when": "cue:internship",
+   "from": 4,
+   "join": 1
+  },
+  {
+   "id": "natija",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "required",
+   "layouts": [
+    "chart",
+    "stats",
+    "big_number",
+    "bullets"
+   ],
+   "pins": [
+    "chart.stepped_rows",
+    "stats.rows",
+    "big_number.classic",
+    "bullets.numbered_rows",
+    "process.tone_blocks",
+    "pros_cons.classic"
+   ],
+   "source": "customer",
+   "write": "One finding a slide that restates a line of the message or file; the heading names the figures as the source gives them. chart.stepped_rows: 2 to 8 bars, the labels (years, categories) written in the source (a range plus a count of values is not enough), the unit and base in columns[0]; stats.rows: 2 to 4 figures with a short label and no context line; big_number.classic: one decisive figure; bullets: findings the customer stated in words. Never written unless the customer or the file gave the content: comparison (a current-state column), process (stages), pros_cons, a survey, a sample size, a department or ward detail, a cause, a proposal. A figure with arithmetic (twice, a total, a share) is written only if the source states it. Tables are not used (no table variant meets the type floor today). Notes: “Ikkinchi vazifa bo‘yicha ...” or “To‘rtinchi vazifa bo‘yicha (davomi) ...”, the slide’s numbers exactly as written, no conversion or approximation. No photo, ever.",
+   "from": 4,
+   "repeat": {
+    "min": 1,
+    "max": 24
+   },
+   "join": 2,
+   "when": "nocue:internship"
+  },
+  {
+   "id": "natija_amaliyot",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "usual",
+   "layouts": [
+    "chart",
+    "stats",
+    "big_number",
+    "bullets"
+   ],
+   "pins": [
+    "chart.stepped_rows",
+    "stats.rows",
+    "big_number.classic",
+    "bullets.numbered_rows",
+    "process.tone_blocks",
+    "pros_cons.classic"
+   ],
+   "source": "customer",
+   "write": "One finding a slide that restates a line of the message or file; the heading names the figures as the source gives them. chart.stepped_rows: 2 to 8 bars, the labels (years, categories) written in the source (a range plus a count of values is not enough), the unit and base in columns[0]; stats.rows: 2 to 4 figures with a short label and no context line; big_number.classic: one decisive figure; bullets: findings the customer stated in words. Never written unless the customer or the file gave the content: comparison (a current-state column), process (stages), pros_cons, a survey, a sample size, a department or ward detail, a cause, a proposal. A figure with arithmetic (twice, a total, a share) is written only if the source states it. Tables are not used (no table variant meets the type floor today). Notes: “Ikkinchi vazifa bo‘yicha ...” or “To‘rtinchi vazifa bo‘yicha (davomi) ...”, the slide’s numbers exactly as written, no conversion or approximation. No photo, ever.",
+   "from": 7,
+   "repeat": {
+    "min": 1,
+    "max": 24
+   },
+   "join": 2,
+   "when": "cue:internship"
+  },
+  {
+   "id": "ilmiy_amaliy",
+   "kind": "slide",
+   "heading": {
+    "uz": "Ilmiy va amaliy ahamiyati",
+    "ru": "Научная новизна и практическая значимость",
+    "en": "Scientific and practical significance"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.classic",
+    "bullets.lead_line"
+   ],
+   "source": "customer",
+   "write": "1 to 4 lines restating the work’s own statement of significance, its use or its implementation act. No facts: the honest form (heading and ruled lines). At 10 slides it takes the place of one result slide and the result slides group the tasks.",
+   "from": 8,
+   "join": 5
+  },
+  {
+   "id": "himoyaga_qoidalar",
+   "kind": "slide",
+   "heading": {
+    "uz": "Himoyaga olib chiqilayotgan asosiy qoidalar",
+    "ru": "Положения, выносимые на защиту",
+    "en": "Theses for defence"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.numbered_rows"
+   ],
+   "source": "customer",
+   "write": "2 to 4 numbered lines of at most 14 words copied in substance from the work’s own list; with none, the honest form (heading and ruled lines).",
+   "from": 13,
+   "join": 8,
+   "when": "cue:masters"
+  },
+  {
+   "id": "aprobatsiya",
+   "kind": "slide",
+   "heading": {
+    "uz": "Natijalar aprobatsiyasi",
+    "ru": "Апробация результатов",
+    "en": "Presentation of the results"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.classic"
+   ],
+   "source": "customer",
+   "write": "1 to 4 lines, one per publication or conference, exactly as the customer or the work lists them (no journal, title or date that was not given). None listed: the honest form (heading and ruled lines).",
+   "from": 14,
+   "join": 9,
+   "when": "cue:masters"
+  },
+  {
+   "id": "natija_xulosa",
+   "kind": "slide",
+   "heading": {
+    "uz": "Natijalar va xulosa",
+    "ru": "Результаты и выводы",
+    "en": "Results and conclusions"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.numbered_rows"
+   ],
+   "source": "customer",
+   "write": "One row per task, each the answer with its figure as the source gives it (at most 12 words). Only in the 3-slide deck (cover, maqsad_vazifalar, natija_xulosa).",
+   "until": 3
+  },
+  {
+   "id": "xulosa",
+   "kind": "slide",
+   "heading": {
+    "uz": "Xulosa va takliflar",
+    "ru": "Выводы и рекомендации",
+    "en": "Conclusions and recommendations"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.numbered_rows",
+    "bullets.classic"
+   ],
+   "source": "customer",
+   "write": "2 to 5 rows of at most 12 words, each taken from the work’s own conclusions or from the result slides, opening with the key words of the task it answers. A theory or proposal task gets a row only when the work’s conclusions state one; otherwise its row is left out and the slide is drawn unnumbered (bullets.classic), so a numeral never points at the wrong task. A “Taklif: ...” row only when the work states a proposal. No new fact, no number not on an earlier slide, no derived figure. Notes: the conclusions spoken, then the invitation to questions.",
+   "from": 4
+  },
+  {
+   "id": "rahmat",
+   "kind": "slide",
+   "heading": {
+    "uz": "E’tiboringiz uchun rahmat!",
+    "ru": "Спасибо за внимание!",
+    "en": "Thank you for your attention!"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "closing"
+   ],
+   "pins": [],
+   "source": "template",
+   "write": "Line 1 “Savollaringiz bormi?” / «Вопросы?» / “Questions?” at 24 pt or more (no gendered verb), then the author line copied from the cover. No notes. From 5 slides; the 3- and 4-slide decks end on the conclusions.",
+   "from": 5,
+   "join": 1
+  }
+ ],
+ "rules": [
+  {
+   "text": "Every line of a source slide (results, novelty, significance, methods, theses, publications, placement, work done, conclusions, any “Taklif:” row) restates the customer’s message or the attached work, in its words and with its numbers. Only the framing slides (relevance, aim and tasks, object and subject) may be drafted from the topic’s own words, never methods or novelty, and their notes open with “[Qoralama: ...]” (“[Черновик: ...]”, “[Draft: ...]”). A claim, cause, trend, organisation, sample size, survey, implementation, “first time” or proposal the source does not contain is never written. A source slide with no material is an honest fill-in form: the heading “Natijalarni kiriting: <topic noun>” and rows ending in “...”.",
+   "to": "model"
+  },
+  {
+   "text": "Never a comparison, process or pros-and-cons slide, a per-department breakdown, a survey size, an implementation or a skill unless the customer or the file supplied that very content. A series’ labels (years, categories) must be written in the source; a range plus a count of values does not license the years in between. Never a table, quote, image or agenda layout; image_query is always empty.",
+   "to": "model"
+  },
+  {
+   "text": "Slide text: noun phrases and infinitive tasks of at most 10 words (12 on conclusions), 2 to 5 lines, 10 to 40 words a slide. This overrides the global guide of about 111 words a slide; the same variant may repeat.",
+   "to": "model"
+  },
+  {
+   "text": "The thread: aim, tasks, results and conclusions answer one another. Each task is answered by result slides (data) or by the work’s own text (theory, proposal). Result slides follow the order of the data tasks, one finding each, and their notes name the task (“Ikkinchi vazifa bo‘yicha ...”). A conclusion row restates the work’s conclusion or a result slide and opens with its task’s key words; numbered rows only when rows equal tasks.",
+   "to": "model"
+  },
+  {
+   "text": "Numbers only from the message or the work, with unit and period, never rounded, converted or computed; in the notes as digits exactly as on the slide; never “taxminan”, “about” or “примерно” on a number. A figure that cannot be read with certainty is left out; when the message and the file disagree, the message wins.",
+   "to": "model"
+  },
+  {
+   "text": "Notes: 30 to 90 words a body slide, as long as the slide’s facts allow and never padded. Slide 2 opens with “Hurmatli Davlat attestatsiya komissiyasi raisi va a’zolari!” and the topic by name. Russian notes avoid gendered first-person past forms. The cover and the closing slide carry no notes.",
+   "to": "model"
+  },
+  {
+   "text": "Cover: the topic in full, then only the customer’s or the file’s lines, copied as written, in the order work type, institution, author, supervisor, speciality, place and year; never a ministry line the customer did not write, never a year of your own. The closing slide repeats the author line.",
+   "to": "model"
+  },
+  {
+   "text": "Layout by the supplied content: a series over time or a ranking, chart; 2 to 4 key figures, stats; one decisive figure, big_number; findings in words, bullets; one series a slide. A result heading is a finding with its figure (at most 12 words), never a bare label.",
+   "to": "model"
+  },
+  {
+   "text": "Language follows the customer’s. Uzbek is Latin only (o‘ g‘ with ‘, the tutuq belgisi with ’: ta’lim; but obyekt). Russian decks use Выполнил(а) and Научный руководитель, English Prepared by and Supervisor; no emoji, no exclamation mark except in the thanks heading.",
+   "to": "model"
+  },
+  {
+   "text": "Never invent a person, degree, institution, programme, order, act, grade, publication, conference, patent, law, quotation, source or company. There is no references slide and never a quiz slide.",
+   "to": "model"
+  }
+ ],
+ "bot": {
+  "prompt": {
+   "uz": "🛡 Himoya slaydlari. Bitta xabarda yozing: ish turi (kurs ishi, BMI, dissertatsiya yoki amaliyot hisoboti), mavzu va slayd soni (aytmasangiz, 10 ta).\nIshingizni fayl (PDF, Word, TXT) qilib yuboring yoki natijalar va raqamlaringizni yozing: slaydlar faqat shularga tayanadi.",
+   "ru": "🛡 Слайды для защиты. Напишите одним сообщением: вид работы (курсовая, ВКР, диссертация или отчёт по практике), тему и число слайдов (если не указать, 10).\nПришлите работу файлом (PDF, Word, TXT) или напишите результаты и цифры: слайды опираются только на них.",
+   "en": "🛡 Thesis defence slides. Say in one message: the type of work (term paper, thesis, dissertation or internship report), the topic and how many slides (10 if you don’t say).\nSend your work as a file (PDF, Word, TXT) or write your results and figures: the slides lean only on them."
+  },
+  "examples": [
+   {
+    "uz": "Bitiruv malakaviy ishimni himoya qilish uchun 10 ta slayd kerak: “Kichik korxonada xodimlar almashinuvini kamaytirish yo‘llari”. Ish PDF qilib biriktirilgan: kirish, natijalar va xulosani undan oling.\nNamuna davlat universiteti, Iqtisodiyot fakulteti\nBajardi: Yusupov Jasur, 412-guruh\nIlmiy rahbar: dotsent Rahimova N.\nToshkent — 2026",
+    "ru": "Нужно 10 слайдов для защиты ВКР: «Пути снижения текучести кадров в малой компании». Работа приложена в PDF: возьмите введение, результаты и выводы из неё.\nГосударственный университет «Намуна», экономический факультет\nВыполнил: Юсупов Джасур, группа 412\nНаучный руководитель: доцент Рахимова Н.\nТашкент — 2026",
+    "en": "I need 10 slides to defend my bachelor’s thesis: “Ways to reduce staff turnover in a small company”. The thesis is attached as a PDF: take the introduction, results and conclusions from it.\nNamuna State University, Faculty of Economics\nPrepared by: Jasur Yusupov, group 412\nSupervisor: Assoc. Prof. N. Rahimova\nTashkent — 2026"
+   },
+   {
+    "uz": "Kurs ishim himoyasi uchun 6 ta slayd kerak: “Python yordamida kutubxona hisobi dasturini yaratish”. Qisqa va sodda bo‘lsin. Dastur kitob qo‘shadi, nomi bo‘yicha qidiradi va hisobot chiqaradi. Sinovda 120 ta kitob kiritildi, qidiruv 1 soniyadan kam vaqt oldi.\nNamuna axborot texnologiyalari universiteti\nBajardi: Toshpo‘latova Madina, 212-guruh\nIlmiy rahbar: katta o‘qituvchi Aliyev B.",
+    "ru": "Нужно 6 слайдов для защиты курсовой: «Создание программы учёта книг в библиотеке на Python». Коротко и просто. Программа добавляет книги, ищет по названию и выводит отчёт. На тесте внесли 120 книг, поиск занял меньше 1 секунды.\nУниверситет информационных технологий «Намуна»\nВыполнила: Тошпулатова Мадина, группа 212\nНаучный руководитель: старший преподаватель Алиев Б.",
+    "en": "I need 6 slides to defend my term paper: “Building a library book-tracking program in Python”. Keep it short and simple. The program adds books, searches by title and prints a report. In testing we entered 120 books and a search took under 1 second.\nNamuna University of Information Technologies\nPrepared by: Madina Toshpulatova, group 212\nSupervisor: Senior Lecturer B. Aliyev"
+   },
+   {
+    "uz": "Amaliyot hisoboti himoyasi uchun 6 ta slayd kerak: shahar shifoxonasida o‘tgan 4 haftalik hamshiralik amaliyoti. 2 hafta terapiya, 2 hafta jarrohlik bo‘limida bo‘ldim. 35 ta bemorni kuzatdim, 60 ta ukol qo‘ydim, 40 marta qon bosimini o‘lchadim. Oddiy tilda yozing.\nNamuna tibbiyot kolleji\nBajardi: Hamroyeva Nilufar, 3-kurs\nAmaliyot rahbari: katta hamshira Qodirova S.\nBuxoro — 2026",
+    "ru": "Нужно 6 слайдов для защиты отчёта по практике: четырёхнедельная практика медсестры в городской больнице. Две недели в терапии, две в хирургии. Наблюдала 35 пациентов, сделала 60 уколов, 40 раз измерила давление. Простым языком.\nМедицинский колледж «Намуна»\nВыполнила: Хамроева Нилуфар, 3 курс\nРуководитель практики: старшая медсестра Кодирова С.\nБухара — 2026",
+    "en": "I need 6 slides to defend my internship report: a 4-week nursing placement at a city hospital. Two weeks in the therapy ward, two in surgery. I observed 35 patients, gave 60 injections and measured blood pressure 40 times. Plain language.\nNamuna Medical College\nPrepared by: Nilufar Hamroyeva, year 3\nPlacement supervisor: Senior Nurse S. Qodirova\nBukhara — 2026"
+   }
+  ],
+  "attach": true,
+  "notices": {
+   "draft": {
+    "uz": "Ba’zi slaydlar mavzu asosida qoralama qilib yozildi: ko‘rsatishdan oldin tekshiring.",
+    "ru": "Некоторые слайды написаны по теме как черновик: проверьте их перед показом.",
+    "en": "Some slides are a draft written from the topic: check them before you present."
+   },
+   "blanks": {
+    "uz": "Siz bermagan ma’lumot o‘rniga bo‘sh joy qoldirildi: uni o‘zingiz to‘ldiring.",
+    "ru": "Где данных не было, оставлены пустые места: заполните их сами.",
+    "en": "Where you gave no details, blanks were left for you to fill in."
+   }
+  }
+ },
+ "templates": [],
+ "look": {
+  "designs": [
+   "boardroom",
+   "scholar",
+   "baseline",
+   "lectern"
+  ],
+  "variants": {
+   "bullets": [
+    "lead_line",
+    "classic",
+    "card_stack",
+    "numbered_rows",
+    "rail_dots"
+   ],
+   "two_column": [
+    "numbered"
+   ],
+   "statement": [
+    "soft_panel"
+   ],
+   "chart": [
+    "stepped_rows"
+   ],
+   "stats": [
+    "rows"
+   ],
+   "big_number": [
+    "classic"
+   ],
+   "process": [
+    "tone_blocks"
+   ],
+   "pros_cons": [
+    "classic"
+   ]
+  },
+  "cover_lines": 6,
+  "note": "The research type contract (list text from 24 pt, one slide counter, no cover disc) changes the deck renderer and is not in this round; the pins keep the calm variants."
+ },
+ "gates": [
+  "A native Uzbek reader checks the fixed headings (Mavzuning dolzarbligi, Obyekt, predmet va metodlar, Obyekt va predmet, Himoyaga olib chiqilayotgan asosiy qoidalar).",
+  "A 6, a 10 and a 15 slide sample in uz, ru and en are drawn with the deck sample tool, with and without figures in the message, and looked at next to units/slides.himoya/mock/school_himoya.png.",
+  "A native Russian reader checks the fixed headings and the bot copy in Russian.",
+  "One real-provider run, scripts/operations/ai_smoke.py --category slides.himoya on the server, makes the deck with every check passing, and the deck is looked at, before the tick."
+ ],
+ "later": [
+  {
+   "text": "New variants bullets.aim_tasks and chart.pairs and the new layout kind figure."
+  },
+  {
+   "text": "The review-screen claim check with a remove button per slide.",
+   "words": [
+    "o‘chirish",
+    "qoldirish"
+   ]
+  },
+  {
+   "text": "Fewer slides than asked when the material is thin: the count is delivered as quoted."
+  },
+  {
+   "text": "A cover title of up to 25 words: the deck renderer draws 14 words and stores 160 characters."
+  },
+  {
+   "text": "Research launch gate, not adopted as a gate: 1. Type floor and one heading position (the contract of looks.launch_contract): list ceiling 28 pt and floor 24; item text 22 pt start and 18 pt floor (20 for bold); headline 32 pt in the one box; one slide counter; no cover disc; closing slide 32/24 pt. Without it the deck is what mock/school_himoya-today.png shows."
+  },
+  {
+   "text": "Research launch gate, not adopted as a gate: 2. Per-template variant allow-list (pins): looks.variants must reach the renderer. “No pins, no release.” Plumbing, not new drawing."
+  },
+  {
+   "text": "Research launch gate, not adopted as a gate: 3. Cover: heading cap 14 words / 160 characters to 25 words / 260 characters with the 48 to 26 pt scale, the defence cover (institution on top, author rows, no disc), the dropped-line order and the notice. The validator’s 160-character cut on title and heading must be lifted too (measured: a 245-character topic lost its tail at 160)."
+  },
+  {
+   "text": "Research launch gate, not adopted as a gate: 4. Server: count named = ceiling (fewer slides when the material is thin, with the notice), clamp 30 and 3, type-aware default (6, 10, 15, 8), minutes + 2; no extra bot step."
+  },
+  {
+   "text": "Research launch gate, not adopted as a gate: 5. Review-screen claim check (section 6 of the design document): numbers, content words and forbidden slots, listed per slide with a remove button; the prototype is work/claims.py."
+  }
+ ],
+ "exclusive": [
+  [
+   "masters",
+   "bmi",
+   "kurs",
+   "internship"
+  ]
+ ],
+ "sources": {
+  "take": "head_tail"
+ }
+}

@@ -1,0 +1,1001 @@
+{
+ "schema": 2,
+ "id": "slides.kompaniya",
+ "status": "ready",
+ "service": "slides",
+ "parent": null,
+ "order": 7,
+ "labels": {
+  "uz": "🏢 Kompaniya / mahsulot",
+  "ru": "🏢 Компания / продукт",
+  "en": "🏢 Company / product"
+ },
+ "summary": "An editable PowerPoint deck that introduces a company, a product, a service or a partnership offer to a customer or partner: a navy cover with the name in large type, who we are (with the customer’s own figures), what we make or sell, how we work, proof the customer supplied (advantages, clients, certificates, one case) and a closing slide with contacts. Every figure, name, price and claim comes from the customer’s message or file; a slot the customer gave nothing for is an honest form of ruled lines, never filled. A priced offer written as a letter or a document to sign is “Tijorat taklifi” (pdf.biz.tijorat_taklifi); an investor pitch is “Startap / Pitch” (slides.pitch).",
+ "tone": "Plain and factual: a company speaks as “biz”, a product is described by its name in the third person. Every fact on a slide is the customer’s; the AI writes only headings and joining words. Detail goes to the speaker notes, 20 to 40 words a slide.",
+ "topic": true,
+ "title": "model",
+ "length": {
+  "unit": "slides",
+  "mode": "count",
+  "target": "count",
+  "default": 10,
+  "min": 4,
+  "max": 20,
+  "note": "The research counted the number as what the facts support; the count is delivered as quoted and a slot the customer gave nothing for is an honest form. 20 is the most, as the research capped it."
+ },
+ "questions": {
+  "default": 0,
+  "max": 0
+ },
+ "quality": "repair",
+ "fill": false,
+ "cues": {
+  "mahsulot": {
+   "uz": [
+    "ilova",
+    "mahsulot taqdimot",
+    "dasturiy",
+    "mobil dastur",
+    "platforma",
+    "hamkorlik",
+    "hamkorlikka"
+   ],
+   "ru": [
+    "приложени",
+    "презентация продукта",
+    "наш продукт",
+    "платформ",
+    "программн",
+    "сотрудничеств",
+    "партнёрств",
+    "партнерств"
+   ],
+   "en": [
+    "app ",
+    "app.",
+    "app,",
+    "app!",
+    "app?",
+    "app:",
+    "app;",
+    "app)",
+    "app’",
+    "app\n",
+    "apps ",
+    "apps.",
+    "apps,",
+    "apps\n",
+    "application",
+    "product presentation",
+    "product deck",
+    "our product",
+    "platform",
+    "software",
+    "partnership"
+   ]
+  },
+  "narx": {
+   "uz": [
+    "narx",
+    "tarif"
+   ],
+   "ru": [
+    "цена",
+    "цены",
+    "ценам",
+    "ценах",
+    "ценой",
+    "ценник",
+    "тариф",
+    "прайс"
+   ],
+   "en": [
+    "price",
+    "pricing",
+    "plan costs",
+    "plans:",
+    "tariff"
+   ]
+  }
+ },
+ "ask": {
+  "when": "few_words",
+  "threshold": 40,
+  "fields": [
+   "products",
+   "numbers",
+   "clients",
+   "contacts"
+  ],
+  "review": {
+   "uz": "Xabaringiz qisqa: ko‘p slaydlarda siz to‘ldiradigan bo‘sh joy bo‘ladi.",
+   "ru": "Сообщение короткое: на многих слайдах останутся пустые места для заполнения.",
+   "en": "Your message is short: many slides will keep blanks for you to fill in."
+  },
+  "prompt": {
+   "uz": "📝 Xohlasangiz, qo‘shing (har birini yangi qatordan): mahsulot yoki xizmatlar (har biriga 2–3 fakt), raqamlar (xodimlar, buyurtmalar, mijozlar), mijozlaringiz, narxlar, aloqa (telefon, Telegram, manzil). Slaydlar faqat siz yozgan ma’lumotlarga tayanadi.",
+   "ru": "📝 По желанию добавьте (каждое с новой строки): продукты или услуги (по 2–3 факта), цифры (сотрудники, заказы, клиенты), ваших клиентов, цены, контакты (телефон, Telegram, адрес). Слайды опираются только на ваши данные.",
+   "en": "📝 If you like, add (each on its own line): products or services (2 to 3 facts each), figures (staff, orders, clients), your clients, prices, contacts (phone, Telegram, address). The slides lean only on what you write."
+  }
+ },
+ "fields": [
+  {
+   "id": "name",
+   "label": {
+    "uz": "Kompaniya yoki mahsulot nomi (qisqa)",
+    "ru": "Название компании или продукта (короткое)",
+    "en": "Company or product name (short)"
+   },
+   "example": {
+    "uz": "Namuna Mebel",
+    "ru": "Намуна Мебель",
+    "en": "Namuna Furniture"
+   },
+   "kind": "org",
+   "need": "required",
+   "missing": "ask",
+   "where": "Cover heading (up to 6 words, as the customer uses it, without the legal form, never respelled or translated), the footer line when the account has no brand name, and the cover descriptor. The bot’s existing topic check asks when it is missing."
+  },
+  {
+   "id": "legal_name",
+   "label": {
+    "uz": "To‘liq rasmiy nomi va STIR (tender uchun)",
+    "ru": "Полное юридическое название и ИНН (для тендера)",
+    "en": "Full legal name and tax number (for a tender)"
+   },
+   "example": {
+    "uz": "Namuna Mebel MChJ, STIR 000 000 000",
+    "ru": "ООО «Намуна Мебель», ИНН 000 000 000",
+    "en": "Namuna Mebel LLC, tax number 000 000 000"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "omit",
+   "where": "One small line at the end of the closing slide, copied as written (form MChJ, AJ or YaTT included); the short name stays on the cover. Never completed from a registry or guessed; a licence number goes into credentials, not here."
+  },
+  {
+   "id": "business",
+   "label": {
+    "uz": "Nima bilan shug‘ullanasiz yoki mahsulot nima",
+    "ru": "Чем вы занимаетесь или что это за продукт",
+    "en": "What you do, or what the product is"
+   },
+   "example": {
+    "uz": "Uy va ofis uchun buyurtma mebel ishlab chiqaramiz",
+    "ru": "Делаем мебель на заказ для дома и офиса",
+    "en": "We make made-to-order furniture for homes and offices"
+   },
+   "kind": "text",
+   "need": "required",
+   "missing": "ask",
+   "where": "Cover subtitle line 1 (up to 10 words, the customer’s own words) and the first fact of the about slide. Without it the deck has no subject: the bot asks."
+  },
+  {
+   "id": "kind",
+   "label": {
+    "uz": "Taqdimot turi: kompaniya, mahsulot, xizmat yoki hamkorlik taklifi",
+    "ru": "Вид презентации: компания, продукт, услуга или предложение о сотрудничестве",
+    "en": "Kind: company, product, service or a partnership offer"
+   },
+   "example": {
+    "uz": "mahsulot taqdimoti",
+    "ru": "презентация продукта",
+    "en": "a product presentation"
+   },
+   "kind": "choice",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "Picks the template (company profile by default; “mahsulot”, “ilova”, “xizmat paketi”, “taklif”, “hamkorlik” give business_mahsulot) and the fixed descriptor on cover line 2. Not asked: read from the words, company when in doubt.",
+   "choices": [
+    "company",
+    "product",
+    "service",
+    "offer"
+   ]
+  },
+  {
+   "id": "shown_to",
+   "label": {
+    "uz": "Taqdimotni kimga ko‘rsatasiz: mijoz, hamkor, tender, xodimlar",
+    "ru": "Кому покажете презентацию: клиентам, партнёрам, на тендере, сотрудникам",
+    "en": "Who will see the deck: customers, partners, a tender, staff"
+   },
+   "example": {
+    "uz": "yangi hamkorlarga",
+    "ru": "новым партнёрам",
+    "en": "new partners"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Sets emphasis and register only (a tender deck keeps the legal line and credentials, a customer deck leads with products); never written on a slide. Not the same as target_customers (whom the product serves)."
+  },
+  {
+   "id": "founded",
+   "label": {
+    "uz": "Qaysi yildan ishlaysiz",
+    "ru": "С какого года работаете",
+    "en": "The year you started"
+   },
+   "example": {
+    "uz": "2013-yildan",
+    "ru": "с 2013 года",
+    "en": "since 2013"
+   },
+   "kind": "number",
+   "need": "optional",
+   "missing": "omit",
+   "where": "About-slide heading. The founding year is what the customer wrote; it is never turned into “12 yil” by arithmetic (the year goes stale). If the customer wrote both a year and a count of years and they disagree, the founding year wins and the count is left out."
+  },
+  {
+   "id": "numbers",
+   "label": {
+    "uz": "Raqamlar: xodim, buyurtma, mijoz, filial",
+    "ru": "Цифры: сотрудники, заказы, клиенты, филиалы",
+    "en": "Figures: staff, orders, clients, branches"
+   },
+   "example": {
+    "uz": "28 xodim, 340+ buyurtma, 3 shahar",
+    "ru": "28 сотрудников, 340+ заказов, 3 города",
+    "en": "28 staff, 340+ orders, 3 cities"
+   },
+   "kind": "text",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "The 2 to 4 figures of the about slide (value = the figure with its sign, label = the noun the customer used; an explanatory line under a figure only if the customer wrote one). With one figure or none the about slide is plain facts."
+  },
+  {
+   "id": "products",
+   "label": {
+    "uz": "Mahsulot yoki xizmatlar, har biriga 2-3 fakt",
+    "ru": "Продукты или услуги, к каждому 2-3 факта",
+    "en": "Products or services, 2 to 3 facts each"
+   },
+   "example": {
+    "uz": "oshxona mebeli: o‘lchovdan o‘rnatishgacha, stol usti ro‘yxatdan tanlanadi, o‘rnatishni o‘z ustalarimiz bajaradi",
+    "ru": "кухни: от замера до установки, столешница выбирается из списка, монтаж делают наши мастера",
+    "en": "kitchens: from measuring to installation, the worktop is chosen from a list, our own craftsmen install"
+   },
+   "kind": "text",
+   "need": "required",
+   "missing": "ask",
+   "where": "The products overview (3 to 6 lines, “name: the customer’s phrase”) and one detail slide per product that has at least two facts of its own. A product with one fact stays on the overview. Asked once (extra step) when the supportable count falls 3 or more short of the requested count."
+  },
+  {
+   "id": "advantages",
+   "label": {
+    "uz": "Nimasi bilan farq qilasiz: tekshirsa bo‘ladigan faktlar",
+    "ru": "Чем отличаетесь: проверяемые факты",
+    "en": "What you do differently: facts one can check"
+   },
+   "example": {
+    "uz": "o‘z ustaxonamiz; usta o‘zi o‘lchaydi; muddat shartnomada yoziladi",
+    "ru": "собственная мастерская; мастер замеряет сам; срок записан в договоре",
+    "en": "our own workshop; the craftsman measures; the deadline is in the contract"
+   },
+   "kind": "text",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "The advantages slide (3 to 5 lines), each line the customer’s fact in the customer’s words with no benefit or guarantee added. A bare adjective (sifatli, tajribali) is dropped; fewer than three facts means no slide."
+  },
+  {
+   "id": "steps",
+   "label": {
+    "uz": "Buyurtma yoki xizmat qanday bajariladi (3-5 qadam)",
+    "ru": "Как выполняется заказ или услуга (3-5 шагов)",
+    "en": "How an order or service runs (3 to 5 steps)"
+   },
+   "example": {
+    "uz": "o‘lchov, loyiha, ishlab chiqarish, o‘rnatish",
+    "ru": "замер, проект, производство, установка",
+    "en": "measuring, design, production, installation"
+   },
+   "kind": "list",
+   "need": "optional",
+   "missing": "omit",
+   "where": "“How we work” (company) or “How it works” / “How to start” (product, offer): the steps as given, labels only unless the customer wrote a few words for a step. Never drafted: invented stages are a claim about the company."
+  },
+  {
+   "id": "clients",
+   "label": {
+    "uz": "Mijoz va hamkorlar (ruxsat bilan), nima qilingani va yili",
+    "ru": "Клиенты и партнёры (с их согласия), что сделано и в каком году",
+    "en": "Clients and partners (with permission), what was done and when"
+   },
+   "example": {
+    "uz": "Namuna Hotel: 40 xonali mehmonxona mebeli, 2024",
+    "ru": "Namuna Hotel: мебель для отеля на 40 номеров, 2024",
+    "en": "Namuna Hotel: furniture for a 40-room hotel, 2024"
+   },
+   "kind": "list",
+   "need": "optional",
+   "missing": "omit",
+   "where": "The clients slide, names exactly as written, at most 6 on the slide (the rest in the notes and the customer is told). No logos, no “many leading companies”; fewer than three names: no slide."
+  },
+  {
+   "id": "case",
+   "label": {
+    "uz": "Bitta loyiha: vaziyat, nima qilindi, natija",
+    "ru": "Один проект: ситуация, решение, результат",
+    "en": "One project: situation, solution, result"
+   },
+   "example": {
+    "uz": "Namuna Hotel 40 ta xona uchun mebel buyurtma qildi, bitta andoza bo‘yicha seriya yasadik, 3 haftada topshirdik",
+    "ru": "Намуна Отель заказал мебель на 40 номеров, сделали серию по одному образцу, сдали за 3 недели",
+    "en": "Namuna Hotel ordered furniture for 40 rooms, we made a series from one template, delivered in 3 weeks"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "The case slide: Vaziyat / Yechim / Natija, one sentence each, in the customer’s words. Needs at least the situation and the result. Never composed from the topic; the notes remind the presenter to ask the client’s permission."
+  },
+  {
+   "id": "credentials",
+   "label": {
+    "uz": "Litsenziya, sertifikat, mukofot: nomi, raqami, sanasi",
+    "ru": "Лицензии, сертификаты, награды: название, номер, дата",
+    "en": "Licences, certificates, awards: name, number, date"
+   },
+   "example": {
+    "uz": "ISO 9001, № NAMUNA-001, 12.03.2024",
+    "ru": "ISO 9001, № NAMUNA-001, 12.03.2024",
+    "en": "ISO 9001, no. NAMUNA-001, 12.03.2024"
+   },
+   "kind": "list",
+   "need": "optional",
+   "missing": "omit",
+   "where": "The licences and certificates slide, name, number and date copied as written. A standard, register or licence the customer did not name is never written."
+  },
+  {
+   "id": "problem",
+   "label": {
+    "uz": "Mahsulot qaysi muammoni hal qiladi (2-4 ta)",
+    "ru": "Какую проблему решает продукт (2-4)",
+    "en": "The problem the product solves (2 to 4)"
+   },
+   "example": {
+    "uz": "hisob daftarda yuritiladi, qoldiq noma’lum, kunlik hisobot qo‘lda yig‘iladi",
+    "ru": "учёт ведут в тетради, остатки неизвестны, дневной отчёт собирают вручную",
+    "en": "records are kept in a notebook, stock levels are unknown, the daily report is put together by hand"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "The problem slide of the product template, each pain restating what the customer wrote. When no problem is named the slide is dropped: a problem drafted from the product’s purpose is a market claim."
+  },
+  {
+   "id": "benefits",
+   "label": {
+    "uz": "Mijozga foyda: raqam yoki aniq natija",
+    "ru": "Выгода клиенту: цифра или конкретный результат",
+    "en": "The benefit to the customer: a figure or a concrete result"
+   },
+   "example": {
+    "uz": "kunlik hisobot 5 daqiqada tayyor, 30 kun bepul sinov",
+    "ru": "дневной отчёт готов за 5 минут, 30 дней бесплатного теста",
+    "en": "the daily report is ready in 5 minutes, 30 days free trial"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "The “in numbers” slide (two or more figures) or, in an offer, “Hamkorlikdan foyda” (three stated benefits). Without either the slide does not exist."
+  },
+  {
+   "id": "target_customers",
+   "label": {
+    "uz": "Mahsulot kimlar uchun (mijoz turlari)",
+    "ru": "Для кого продукт (типы клиентов)",
+    "en": "Whom the product serves (types of customer)"
+   },
+   "example": {
+    "uz": "oziq-ovqat do‘konlari, kafe, kiyim do‘konlari, dorixonalar",
+    "ru": "продуктовые магазины, кафе, магазины одежды, аптеки",
+    "en": "grocery shops, cafes, clothing shops, pharmacies"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "The “Kimlar uchun” slide (4 to 6 customer types the customer named, or 3 as plain lines). Not the same as shown_to."
+  },
+  {
+   "id": "prices",
+   "label": {
+    "uz": "Narxlar yoki tariflar",
+    "ru": "Цены или тарифы",
+    "en": "Prices or plans"
+   },
+   "example": {
+    "uz": "99 000, 199 000 va 349 000 so‘m",
+    "ru": "99 000, 199 000 и 349 000 сумов",
+    "en": "99,000, 199,000 and 349,000 so‘m"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "The prices slide (product and offer decks, and company decks when a price list is attached), rows as given with the currency as written. A plan the customer did not name is “Tarif 1 / 2 / 3”; a period (“/ oy”) only if the customer wrote it; no discount, no total, no “arzon”."
+  },
+  {
+   "id": "terms",
+   "label": {
+    "uz": "Hamkorlik shartlari (taklif uchun)",
+    "ru": "Условия сотрудничества (для предложения)",
+    "en": "Terms of cooperation (for an offer)"
+   },
+   "example": {
+    "uz": "oldindan to‘lov 50%, muddat shartnomada yoziladi",
+    "ru": "предоплата 50%, срок записан в договоре",
+    "en": "50% upfront, the deadline is in the contract"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "The terms table of a partnership offer, one row per term as given; the slide is dropped without terms."
+  },
+  {
+   "id": "maker",
+   "label": {
+    "uz": "Mahsulotni kim yaratgan (kompaniya nomi)",
+    "ru": "Кто создал продукт (название компании)",
+    "en": "Who made the product (company name)"
+   },
+   "example": {
+    "uz": "Namuna Soft",
+    "ru": "Намуна Софт",
+    "en": "Namuna Soft"
+   },
+   "kind": "org",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Product deck: cover line 3 and a closing line “Yaratuvchi: ...”, so that a partner who receives the file can tell who stands behind it; with two or more facts about the maker, a short “Biz haqimizda” slide. Never taken from a Telegram handle or a domain."
+  },
+  {
+   "id": "contacts",
+   "label": {
+    "uz": "Aloqa: telefon, Telegram, Instagram, manzil, sayt, ish vaqti",
+    "ru": "Контакты: телефон, Telegram, Instagram, адрес, сайт, часы работы",
+    "en": "Contacts: phone, Telegram, Instagram, address, website, hours"
+   },
+   "example": {
+    "uz": "+998 00 000 00 00, @namuna_mebel, Instagram: @namuna.mebel, Toshkent sh., Namuna ko‘chasi, 1",
+    "ru": "+998 00 000 00 00, @namuna_mebel, Instagram: @namuna.mebel, Ташкент, ул. Намуна, 1",
+    "en": "+998 00 000 00 00, @namuna_mebel, Instagram: @namuna.mebel, 1 Namuna street, Tashkent"
+   },
+   "kind": "line",
+   "need": "recommended",
+   "missing": "ask",
+   "where": "Closing-slide lines, copied as written, labelled. Asked once (skippable) when the first message has no phone, Telegram, Instagram, site or address; if skipped, “Telefon: ________” and “Telegram: ________” stay as ruled blanks and the review screen says so. Nothing is inferred from a handle (a handle is not a booking channel, a site is not an address)."
+  },
+  {
+   "id": "contact_person",
+   "label": {
+    "uz": "Aloqa uchun shaxs: ism va lavozim",
+    "ru": "Контактное лицо: имя и должность",
+    "en": "Contact person: name and role"
+   },
+   "example": {
+    "uz": "Aziza Karimova, sotuv bo‘limi rahbari",
+    "ru": "Азиза Каримова, руководитель отдела продаж",
+    "en": "Aziza Karimova, head of sales"
+   },
+   "kind": "person",
+   "need": "optional",
+   "missing": "omit",
+   "where": "One closing line “Aloqa uchun: ...” before the phone; never invented or taken from an example."
+  },
+  {
+   "id": "files",
+   "label": {
+    "uz": "Katalog, narx ro‘yxati yoki eski taqdimot (PDF, Word, TXT)",
+    "ru": "Каталог, прайс-лист или старая презентация (PDF, Word, TXT)",
+    "en": "A catalogue, price list or old presentation (PDF, Word, TXT)"
+   },
+   "example": {
+    "uz": "biriktirilgan narx ro‘yxati, PDF",
+    "ru": "приложенный прайс-лист, PDF",
+    "en": "the price list attached as a PDF"
+   },
+   "kind": "file",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "Source of products, prices, figures and clients where the message is silent; the message wins when they disagree on a figure. A file counts toward the supportable count slot by slot."
+  },
+  {
+   "id": "length",
+   "label": {
+    "uz": "Slayd soni yoki chiqish vaqti",
+    "ru": "Число слайдов или время выступления",
+    "en": "Slide count or talk length"
+   },
+   "example": {
+    "uz": "8 ta slayd",
+    "ru": "8 слайдов",
+    "en": "8 slides"
+   },
+   "kind": "number",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Deck length, a ceiling (10 when absent, 20 at most); minutes are read as minutes plus 2."
+  }
+ ],
+ "parts": [
+  {
+   "id": "cover",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "required",
+   "layouts": [
+    "cover"
+   ],
+   "pins": [],
+   "source": "template",
+   "write": "Heading = the short name as written, without the legal form (44 pt, three lines hold six words; the full legal name goes to the closing slide). Body = lines: what it is, from the customer’s words (up to 10 words); the fixed descriptor: Kompaniya taqdimoti / Презентация компании / Company presentation, Mahsulot taqdimoti or Xizmat taqdimoti / Презентация продукта or услуги / Product or Service presentation, Hamkorlik taklifi / Предложение о сотрудничестве / Partnership offer; in a product deck a third line “Yaratuvchi: <maker>” when the customer named one. No year, no slogan the customer did not write. NO photo by default (image_query empty): the cover stands without one and the right part carries the diagonal pattern; a photo only when the customer asks, a concrete thing in 2 to 4 English words, and the review screen says “rasm — stok, o‘zingizniki bilan almashtiring”. The account logo, when there is one, sits on a white plate in a zone the cover reserves."
+  },
+  {
+   "id": "haqimizda",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "required",
+   "layouts": [
+    "stats",
+    "bullets"
+   ],
+   "pins": [
+    "stats.classic",
+    "bullets.classic"
+   ],
+   "source": "customer",
+   "write": "With two to four figures: stats, each a value (the figure with at most one short sign: +, %, a unit of up to 4 letters) and a label of up to 3 words that is the noun the customer used (xodim, buyurtma, shahar); a line under a figure ONLY if the customer wrote one. The founding year goes into the heading, never into a figure computed from it. With one figure or none: bullets.classic, the facts the customer gave (what is made, where, since when), one line each; a mission or vision only if the customer wrote it. Notes: how to say it in two sentences, no new fact.",
+   "when": "nocue:mahsulot"
+  },
+  {
+   "id": "haqimizda_qisqa",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "optional",
+   "layouts": [
+    "stats",
+    "bullets"
+   ],
+   "pins": [
+    "stats.classic",
+    "bullets.classic"
+   ],
+   "source": "customer",
+   "write": "With two to four figures: stats, each a value (the figure with at most one short sign: +, %, a unit of up to 4 letters) and a label of up to 3 words that is the noun the customer used (xodim, buyurtma, shahar); a line under a figure ONLY if the customer wrote one. The founding year goes into the heading, never into a figure computed from it. With one figure or none: bullets.classic, the facts the customer gave (what is made, where, since when), one line each; a mission or vision only if the customer wrote it. Notes: how to say it in two sentences, no new fact.",
+   "when": "cue:mahsulot",
+   "from": 11,
+   "join": 6
+  },
+  {
+   "id": "muammo",
+   "kind": "slide",
+   "heading": {
+    "uz": "Muammo",
+    "ru": "Проблема",
+    "en": "Problem"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "cards",
+    "bullets"
+   ],
+   "pins": [
+    "cards.numeral_columns",
+    "bullets.classic"
+   ],
+   "source": "customer",
+   "write": "2 to 4 pains the customer named, each a label of up to 4 words restating their words, no text line. With no problem named: the honest form (heading and ruled lines), never a draft from the product’s purpose, which would be a market claim.",
+   "when": "cue:mahsulot",
+   "from": 5
+  },
+  {
+   "id": "nima",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "required",
+   "layouts": [
+    "statement",
+    "bullets"
+   ],
+   "pins": [
+    "statement.underlined"
+   ],
+   "source": "customer",
+   "write": "One sentence of at most 14 words (120 characters) that is the customer’s own description: what it does and for whom; the heading is the small label above it.",
+   "when": "cue:mahsulot"
+  },
+  {
+   "id": "xizmatlar",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "required",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.card_stack",
+    "bullets.classic"
+   ],
+   "source": "customer",
+   "write": "Heading, in the deck’s language: Mahsulotlarimiz | Xizmatlarimiz | Nima taklif qilamiz / Наша продукция | Наши услуги | Что мы предлагаем / Our products | Our services | What we offer. 3 to 6 lines, each “name: the customer’s own phrase” of at most 10 words, or the name alone when the customer gave none (a name with no phrase is honest, a drafted phrase is not); never a price, duration, guarantee, material or brand unless given. With one or two items the overview lists just those. The heading noun follows what the customer sells (products, services, both).",
+   "when": "nocue:mahsulot"
+  },
+  {
+   "id": "xizmat",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "usual",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.card_stack",
+    "bullets.classic"
+   ],
+   "source": "customer",
+   "write": "1 to 4 lines, only the lines the customer’s words support: what it is, what is included, for whom, how it is finished or delivered; a line the customer did not support is LEFT OUT, never replaced by a plausible one. A product the customer gave no lines for is the honest form (heading and ruled lines). Each line at most 14 words. A neutral one-line definition of a named thing may be drafted ONLY for a plain good (a wardrobe, a lamp), never for a medical, legal, financial, educational-licence or safety service (the clinic example: “Implantatsiya” stays a bare name), is marked “[Qoralama: ...]” in the notes, is listed on the review screen and never counts toward the supportable count. No photo by default: stock photos of “kitchens” or “workshop” present someone else’s work as the company’s; the slide is text. Two or three product slides in a row are allowed.",
+   "when": "nocue:mahsulot",
+   "from": 7,
+   "repeat": {
+    "min": 1,
+    "max": 10
+   }
+  },
+  {
+   "id": "imkoniyatlar",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "required",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.card_stack",
+    "bullets.classic"
+   ],
+   "source": "customer",
+   "write": "Heading, in the deck’s language: Imkoniyatlar | (taklif:) Biz taklif qilamiz / Возможности | (предложение:) Что мы предлагаем / Features | (offer:) What we offer. 2 to 6 lines, each a function or an offer the customer named, at most 10 words, nothing added to make it look complete. A feature the customer did not name is never written.",
+   "when": "cue:mahsulot",
+   "repeat": {
+    "min": 1,
+    "max": 8
+   }
+  },
+  {
+   "id": "jarayon",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "optional",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.numbered_rows"
+   ],
+   "source": "customer",
+   "write": "3 to 5 steps in the customer’s order: a label of up to 3 words and, only if the customer wrote them, up to 8 more words after a colon. The numerals are right here because the order matters. The count in the heading is the number of steps the customer gave. Without steps from the customer: the honest form (heading and ruled lines).",
+   "when": "nocue:mahsulot",
+   "from": 10,
+   "join": 4
+  },
+  {
+   "id": "qanday",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "usual",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.numbered_rows"
+   ],
+   "source": "customer",
+   "write": "Heading, in the deck’s language: Qanday ishlaydi | (taklif:) Qanday boshlaymiz / Как это работает | (предложение:) Как начать / How it works | (offer:) How to start. 3 to 5 steps in the customer’s order, at most 8 words each; in an offer the steps are the customer’s own path to a first order.",
+   "when": "cue:mahsulot",
+   "from": 6
+  },
+  {
+   "id": "afzalliklar",
+   "kind": "slide",
+   "heading": {
+    "uz": "Afzalliklarimiz",
+    "ru": "Наши преимущества",
+    "en": "Our advantages"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.card_stack"
+   ],
+   "source": "customer",
+   "write": "3 to 5 lines, each the customer’s fact in the customer’s own words, at most 10 words, with nothing appended: “Usta o‘zi o‘lchaydi”, not “...: o‘lcham xatosi bo‘lmaydi” (a benefit or a guarantee the customer did not state is a claim). Unnumbered: the advantages are not a ranking. A line with no fact is left out; with no facts at all, the honest form (heading and ruled lines). No superlatives.",
+   "when": "nocue:mahsulot",
+   "from": 5
+  },
+  {
+   "id": "kimlar_uchun",
+   "kind": "slide",
+   "heading": {
+    "uz": "Kimlar uchun",
+    "ru": "Кому подойдёт",
+    "en": "Who it is for"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.card_stack"
+   ],
+   "source": "customer",
+   "write": "3 to 5 customer types the customer named (field target_customers), at most 6 words each, no reason added. Fewer than three: only those named; none: the honest form (heading and ruled lines).",
+   "when": "cue:mahsulot",
+   "from": 9,
+   "join": 4
+  },
+  {
+   "id": "foyda",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "optional",
+   "layouts": [
+    "stats",
+    "bullets"
+   ],
+   "pins": [
+    "stats.classic",
+    "bullets.card_stack"
+   ],
+   "source": "customer",
+   "write": "Heading, in the deck’s language: <Nomi> raqamlarda | (taklif:) Hamkorlikdan foyda / <Название> в цифрах | (предложение:) Что вы получите / <Name> in numbers | (offer:) What you gain. Figures only as the customer gave them (value = figure with one short sign, the unit and the noun in the label; no line under it). Without two figures: the benefits the customer stated, one line each (“Komissiya 8%”), or with none, the honest form (heading and ruled lines). “Sizga nima foyda” is not used (clipped); “Hamkorlikdan foyda” or “Sizga nima beramiz” are.",
+   "when": "cue:mahsulot",
+   "from": 8,
+   "join": 2
+  },
+  {
+   "id": "ishonch",
+   "kind": "slide",
+   "heading": {
+    "uz": "Litsenziya va sertifikatlar",
+    "ru": "Лицензии и сертификаты",
+    "en": "Licences and certificates"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "layouts": [
+    "table",
+    "bullets"
+   ],
+   "pins": [
+    "table.ledger",
+    "bullets.tone_stripes"
+   ],
+   "source": "customer",
+   "write": "columns = Nomi | Raqami | Sana (Название | Номер | Дата; Name | Number | Date), 1 to 6 rows copied as written. Name, number and date are never completed, converted or guessed.",
+   "from": 11,
+   "join": 5
+  },
+  {
+   "id": "narx",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "optional",
+   "layouts": [
+    "table",
+    "bullets"
+   ],
+   "pins": [
+    "table.ledger"
+   ],
+   "source": "customer",
+   "write": "Heading, in the deck’s language: Narxlar | (taklif:) Hamkorlik shartlari / Цены | (предложение:) Условия сотрудничества / Prices | (offer:) Terms of cooperation. Columns Tarif | Narx (Тариф | Цена; Plan | Price) or Mahsulot | Narx, with a third column “Nimalar kiradi” ONLY when the customer listed what each plan includes; or, in an offer, Shart | Ta’rif (Условие | Описание; Term | Description). 2 to 6 rows as given; unnamed plans are “Tarif 1 / 2 / 3” (Тариф 1 / 2 / 3, Plan 1 / 2 / 3); the currency as written and a period (“/ oy”) only if written; a range as a range; no total, no discount, no “arzon”.",
+   "when": "cue:narx",
+   "from": 6,
+   "join": 2
+  },
+  {
+   "id": "mijozlar",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "usual",
+   "layouts": [
+    "table",
+    "bullets"
+   ],
+   "pins": [
+    "table.ledger",
+    "bullets.card_stack",
+    "bullets.classic"
+   ],
+   "source": "customer",
+   "write": "Heading, in the deck’s language: Mijozlarimiz | Mijozlar va hamkorlar / Наши клиенты | Клиенты и партнёры / Our clients | Clients and partners. Names exactly as given. With what was made and a year: a table with the columns Mijoz | <middle header> | Yil, up to 6 rows. The middle header follows the business and is chosen from this fixed list, never “Nimani tayyorladik” for everyone: Nima qildik / Что сделали / What we did (makes or builds things for clients), Loyiha / Проект / Project (agency, IT, consulting, design), Xizmat / Услуга / Service (clinic, salon, school, any service to people). Names only: 3 to 5 as bullets.card_stack, 6 as bullets.classic (unnumbered: a number beside a client reads as a rank). At most 6 names on the slide; more go to the notes and the customer is told. A client the customer left unnamed stays anonymous (“mehmonxona”). No logos, no “ko‘plab yirik kompaniyalar”. The notes say “ruxsat so‘rang”. No names: the honest form (heading and ruled lines).",
+   "from": 6,
+   "join": 3
+  },
+  {
+   "id": "keys",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "optional",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.tone_stripes"
+   ],
+   "source": "customer",
+   "write": "Heading, in the deck’s language: Keys | Loyiha: <natija, raqami bilan> / Кейс | Проект: <результат с цифрой> / Case | Project: <the result with its figure>. Three lines “Vaziyat: ...”, “Yechim: ...”, “Natija: ...” (Ситуация / Решение / Результат; Situation / Solution / Result), each at most 14 words in the customer’s words; the heading states the result with the customer’s own figure and stays within 42 characters. The prefix is “Keys” by default and “Loyiha” when the work was not for a paying client or the customer calls it a project (a clinic’s patients, an app’s users). A client the customer did not name is described by the customer’s own word (“mehmonxona”) in the Vaziyat line. Needs the situation and the result; without them, the honest form (heading and ruled lines). A second case from 14 slides.",
+   "from": 8,
+   "join": 5,
+   "repeat": {
+    "min": 1,
+    "max": 3
+   }
+  },
+  {
+   "id": "aloqa",
+   "kind": "slide",
+   "heading": {
+    "uz": "Biz bilan bog‘laning",
+    "ru": "Свяжитесь с нами",
+    "en": "Get in touch"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "layouts": [
+    "closing"
+   ],
+   "pins": [],
+   "source": "customer",
+   "write": "The heading is fixed. Lines, each labelled in the deck’s language, in this order of importance: Telefon and Telegram (on one line separated by “ · ” when both are given and there are more than four lines); Instagram and site (one line); Aloqa uchun: <person>; Manzil; the legal line (field legal_name, as written; in a product deck “Yaratuvchi: <maker>” before it); the fixed invitation of one line, which promises nothing: “Savollar uchun yozing yoki qo‘ng‘iroq qiling.” / «По вопросам пишите или звоните.» / “Write or call us with any question.” (the first line dropped when there are more than five lines). A line the customer did not give is left out, except phone and Telegram, which stay as “Telefon: ________” and “Telegram: ________” (at most those two ruled blanks; never an address blank); with no contacts at all: heading, invitation and the two blanks. Every label is written, none is left bare (a website is “Sayt: ...” when it stands alone). No notes. In an offer the heading may be “Hamkorlik uchun yozing”."
+  }
+ ],
+ "rules": [
+  {
+   "text": "Every figure, name, date, place, price, unit, client, certificate, term and claim restates the message or an attached file. Never invent a founding year, headcount, number of orders, clients or branches, a rating, award, licence, certificate, standard, client or partner name, price, discount, guarantee, delivery time, team member, testimonial, result or saving.",
+   "to": "model"
+  },
+  {
+   "text": "No puffery: never “eng yaxshi”, “yetakchi”, “№1”, “ishonchli”, “kafolatlangan”, “noyob”, “individual yondashuv” or their Russian and English equivalents unless the customer wrote that claim. An advantage is the customer’s fact in the customer’s words; a bare adjective is dropped.",
+   "to": "model"
+  },
+  {
+   "text": "Numbers exactly as written, with unit and period; thousands with a space, decimal comma, “so‘m” (сум) after the figure; never rounded, summed, converted or computed (years in business are not derived from a founding year).",
+   "to": "model"
+  },
+  {
+   "text": "Headings at most 42 characters and 6 words, on one line; a line at most 14 words; 10 to 45 words a slide. This overrides the global guide of about 111 words a slide. Never a rhetorical question, emoji or exclamation mark. The reader is addressed only on the closing slide, in the polite “siz” form.",
+   "to": "model"
+  },
+  {
+   "text": "Clients and partners: only the names the customer gave, at most 6, with what was made and the year only as given. Credentials: name, number and date as written. A case is Vaziyat, Yechim, Natija, one sentence each, only from the customer’s account. Prices and terms: rows as given, currency as written, no total, discount or comparison.",
+   "to": "model"
+  },
+  {
+   "text": "Contacts on the closing slide only as given; a phone or Telegram line the customer did not give is a ruled blank “________” to fill in. The legal name and tax number, when given, are one small line on the closing slide.",
+   "to": "model"
+  },
+  {
+   "text": "A slide the customer gave nothing for is an honest form: its heading and lines ending in a ruled blank, the notes saying what to write; never a generic or plausible slide.",
+   "to": "model"
+  },
+  {
+   "text": "Layout by the content: 2 to 4 figures, stats; named things, bullets; an ordered path, numbered bullets; rows of facts, a table of at most 3 columns and 6 rows; pains, cards; one sentence, statement. No photo on a product, service or case slide; a cover photo only when asked, never a person or a logo.",
+   "to": "model"
+  },
+  {
+   "text": "Language follows the customer’s; product names, brands and handles stay as written. Uzbek is Latin only, o‘ and g‘ with ‘ and the tutuq belgisi with ’.",
+   "to": "model"
+  }
+ ],
+ "bot": {
+  "prompt": {
+   "uz": "🏢 Kompaniya yoki mahsulot taqdimoti. Bitta xabarda yozing: nomi, nima bilan shug‘ullanishingiz, taqdimotni kimga ko‘rsatasiz (mijoz, hamkor, tender) va necha slayd (aytmasangiz, 10 ta).\nRaqamlar, xizmatlar (har biriga 2–3 fakt), mijozlar, narxlar va aloqa ma’lumotlarini ham yozing: slaydlar faqat shularga tayanadi, o‘zimizdan hech narsa to‘qib chiqarmaymiz. Ma’lumot berilmagan slaydlarda to‘ldirish uchun bo‘sh joy qoladi.\n📎 Katalog, narx ro‘yxati yoki eski taqdimotni PDF, Word yoki TXT qilib qo‘shing.",
+   "ru": "🏢 Презентация компании или продукта. Напишите одним сообщением: название, чем вы занимаетесь, кому покажете презентацию (клиентам, партнёрам, на тендере) и сколько слайдов (если не указать, будет 10).\nДобавьте цифры, услуги (по 2–3 факта на каждую), клиентов, цены и контакты: слайды опираются только на них, мы ничего не выдумываем. Где данных нет, на слайдах останутся пустые места для заполнения.\n📎 Каталог, прайс-лист или старую презентацию пришлите файлом PDF, Word или TXT.",
+   "en": "🏢 A company or product presentation. Say it in one message: the name, what you do, who will see the deck (customers, partners, a tender) and how many slides (10 if you do not say).\nAdd your figures, services (2 to 3 facts each), clients, prices and contacts: the slides lean only on them, and we make nothing up. Where you give no details, the slides keep blanks for you to fill in.\n📎 Add a catalogue, a price list or an old presentation as a PDF, Word or TXT file."
+  },
+  "examples": [
+   {
+    "uz": "Namuna Mebel kompaniyasi taqdimoti kerak, 10 ta slayd: yangi mijozlarga ko‘rsatamiz. Uy va ofis uchun buyurtma mebel ishlab chiqaramiz, Toshkentda, 2013-yildan. 28 xodim, 340+ buyurtma, 3 shahar. Mahsulotlar: oshxona mebeli, ofis mebeli, garderob. Oshxona mebeli o‘lchovdan o‘rnatishgacha: shkaflar va bar peshtaxtasi, stol usti va furnitura ro‘yxatdan tanlanadi, o‘rnatishni o‘z ustalarimiz bajaradi. Ofis mebeli joylashtirish rejasi bilan: ish stollari va javonlar, qabulxona jihozlari, rejani mijoz tasdiqlaydi. Ish tartibi: o‘lchov, loyiha, ishlab chiqarish, o‘rnatish. Afzalliklar: o‘z ustaxonamiz, usta o‘zi o‘lchaydi, muddat shartnomada yoziladi. Mijozlar: Namuna Hotel, Namuna Klinika, Namuna Maktab. Keys: Namuna Hotel 40 ta xona uchun mebel buyurtma qildi, bitta andoza bo‘yicha seriya yasadik, 3 haftada topshirdik. Telefon: +998 00 000 00 00, Telegram: @namuna_mebel.",
+    "ru": "Нужна презентация компании «Намуна Мебель» на 10 слайдов: покажем новым клиентам. Делаем мебель на заказ для дома и офиса в Ташкенте, с 2013 года. 28 сотрудников, 340+ заказов, 3 города. Продукция: кухни, офисная мебель, гардеробы. Кухни от замера до установки: шкафы и барная стойка, столешница и фурнитура выбираются из списка, монтаж делают наши мастера. Офисная мебель с планом расстановки: рабочие столы и стеллажи, мебель для приёмной, план утверждает клиент. Порядок работы: замер, проект, производство, установка. Преимущества: собственная мастерская, мастер замеряет сам, срок записан в договоре. Клиенты: Намуна Отель, Намуна Клиника, Намуна Школа. Кейс: Намуна Отель заказал мебель на 40 номеров, мы сделали серию по одному образцу, сдали за 3 недели. Телефон: +998 00 000 00 00, Telegram: @namuna_mebel.",
+    "en": "I need a 10-slide presentation of the Namuna Furniture company to show new customers. We make made-to-order furniture for homes and offices in Tashkent, since 2013. 28 staff, 340+ orders, 3 cities. Products: kitchens, office furniture, wardrobes. Kitchens from measuring to installation: cabinets and a bar counter, the worktop and fittings are chosen from a list, our own craftsmen install. Office furniture with a layout plan: desks and shelves, reception furniture, the client approves the plan. How we work: measuring, design, production, installation. Advantages: our own workshop, the craftsman measures, the deadline is in the contract. Clients: Namuna Hotel, Namuna Clinic, Namuna School. Case: Namuna Hotel ordered furniture for 40 rooms, we made a series from one template, delivered in 3 weeks. Phone: +998 00 000 00 00, Telegram: @namuna_mebel."
+   },
+   {
+    "uz": "Namuna Kassa ilovasi taqdimoti, 8 ta slayd, do‘kon egalariga ko‘rsatamiz. Ilovani Namuna Soft yaratgan. Namuna Kassa kichik do‘konlar uchun sotuv va ombor hisobi ilovasi. Muammo: hisob daftarda yuritiladi, qoldiq noma’lum, kunlik hisobot qo‘lda yig‘iladi. Imkoniyatlar: chek chiqarish, ombor qoldig‘i, kunlik hisobot. Qanday ishlaydi: ro‘yxatdan o‘tasiz, mahsulotlarni kiritasiz, sotuvni boshlaysiz. Tariflar: 99 000, 199 000 va 349 000 so‘m. Kunlik hisobot 5 daqiqada tayyor, 30 kun bepul sinov. Telegram: @namuna_kassa.",
+    "ru": "Презентация приложения «Намуна Касса», 8 слайдов, покажем владельцам магазинов. Приложение создала компания «Намуна Софт». «Намуна Касса» — приложение для учёта продаж и склада в небольших магазинах. Проблема: учёт ведут в тетради, остатки неизвестны, дневной отчёт собирают вручную. Возможности: печать чека, остатки на складе, дневной отчёт. Как работает: регистрируетесь, вносите товары, начинаете продажи. Тарифы: 99 000, 199 000 и 349 000 сумов. Дневной отчёт готов за 5 минут, 30 дней бесплатного теста. Telegram: @namuna_kassa.",
+    "en": "A presentation of the Namuna Kassa app, 8 slides, to show to shop owners. The app was made by Namuna Soft. Namuna Kassa is a sales and stock records app for small shops. Problem: records are kept in a notebook, stock levels are unknown, the daily report is put together by hand. Features: printing receipts, stock levels, a daily report. How it works: you register, enter your products, start selling. Plans: 99,000, 199,000 and 349,000 so‘m. The daily report is ready in 5 minutes, 30 days free trial. Telegram: @namuna_kassa."
+   },
+   {
+    "uz": "Namuna Mebel ustaxonasi interyer dizaynerlariga hamkorlik taklif qiladi, 7 ta slayd. Biz haqimizda: 2013-yildan Toshkentda buyurtma mebel yasaymiz, 28 xodim. Taklif: dizayner buyurtmani olib keladi, biz o‘lchov, ishlab chiqarish va o‘rnatishni bajaramiz. Dizayner uchun: komissiya 8%, loyiha bo‘yicha alohida hisob, o‘lchov bepul. Shartlar: oldindan to‘lov 50%, muddat shartnomada yoziladi. Qanday boshlash: Telegramga yozing, narx ro‘yxatini oling, birinchi buyurtmani kelishing. Telegram: @namuna_mebel, telefon: +998 00 000 00 00.",
+    "ru": "Мебельная мастерская «Намуна Мебель» предлагает сотрудничество дизайнерам интерьеров, 7 слайдов. О нас: с 2013 года делаем мебель на заказ в Ташкенте, 28 сотрудников. Предложение: дизайнер приводит заказ, мы берём на себя замер, производство и установку. Дизайнеру: комиссия 8%, отдельный счёт по каждому проекту, замер бесплатно. Условия: предоплата 50%, срок записан в договоре. Как начать: напишите в Telegram, получите прайс-лист, согласуйте первый заказ. Telegram: @namuna_mebel, телефон: +998 00 000 00 00.",
+    "en": "The Namuna Furniture workshop proposes a partnership to interior designers, 7 slides. About us: we have made furniture to order in Tashkent since 2013, 28 staff. Offer: the designer brings the order, we do the measuring, production and installation. For the designer: 8% commission, a separate account per project, free measuring. Terms: 50% upfront payment, the deadline is in the contract. How to start: write on Telegram, get the price list, agree the first order. Telegram: @namuna_mebel, phone: +998 00 000 00 00."
+   }
+  ],
+  "attach": true,
+  "notices": {
+   "blanks": {
+    "uz": "Siz bermagan ma’lumot o‘rniga bo‘sh joy qoldirildi: uni o‘zingiz to‘ldiring.",
+    "ru": "Где данных не было, оставлены пустые места: заполните их сами.",
+    "en": "Where you gave no details, blanks were left for you to fill in."
+   }
+  }
+ },
+ "templates": [],
+ "look": {
+  "designs": [
+   "corporate",
+   "boardroom",
+   "stratus"
+  ],
+  "variants": {
+   "stats": [
+    "classic"
+   ],
+   "cards": [
+    "numeral_columns"
+   ],
+   "bullets": [
+    "card_stack",
+    "classic",
+    "numbered_rows",
+    "tone_stripes"
+   ],
+   "table": [
+    "ledger"
+   ],
+   "statement": [
+    "underlined"
+   ]
+  },
+  "cover_lines": 3,
+  "note": "The research renderer items (a one-line heading rule, the logo) are not in this round."
+ },
+ "gates": [
+  "A native Uzbek and a native Russian reader check the fixed headings (Afzalliklarimiz, Litsenziya va sertifikatlar, Kimlar uchun, Biz bilan bog‘laning) and the bot copy.",
+  "A 6, a 10 and a 15 slide sample in uz, ru and en, a company and a product deck, are drawn with the deck sample tool and looked at next to units/slides.kompaniya/mock/business_kompaniya.png and business_mahsulot.png.",
+  "One real-provider run, scripts/operations/ai_smoke.py --category slides.kompaniya on the server, makes the deck with every check passing, and the deck is looked at, before the tick."
+ ],
+ "later": [
+  {
+   "text": "The supportable count (slides only for slots with a source) and the review-screen sentence naming what would add slides: the count is delivered as quoted this round.",
+   "words": [
+    "shuncha ko‘p",
+    "тем больше слайдов",
+    "the more slides"
+   ]
+  },
+  {
+   "text": "The partnership offer as a deck of its own headings: this round it is a product deck whose headings the model words for an offer."
+  },
+  {
+   "text": "Renderer items: a one-line heading rule, a logo on the cover and the closing slide."
+  },
+  {
+   "text": "Research launch gate, not adopted as a gate: {'id': 1, 'name': 'Per-slot variant pinning with a category allow-list', 'must': 'Each blueprint slot names an allow-listed variant (or a short ordered list); the renderer uses the first that holds the content and falls back ONLY inside the allow-list of that layout, never to an unlisted variant. When none holds, it shortens the content, never changes the look.', 'evidence': 'In this round’s mocks a two-line bullets slide pinned to card_stack was drawn as bullets.index_strip (a big “02” numeral) and hex_markers (an amber marker) without any warning; in round 1 the unpinned renderer drew a four-hue tile set, a “06” numeral on a process slide and rings holding the letters M, S, U. Without this the template must not ship.'}"
+  },
+  {
+   "text": "Research launch gate, not adopted as a gate: {'id': 2, 'name': 'Provenance check on the review screen (blocking)', 'must': 'Every number, name, date, price and unit on the deck, plus every claim sentence on an advantage, case, product or about slide, is matched to the customer’s message or file (digits and capitalised names exactly, claim sentences by their content words). Items without a match are LISTED on the review screen next to the slide they sit on (“Xabaringizda yo‘q: ...”) with a keep or remove choice; none is kept silently. Every “[Qoralama: ...]” definition is listed there too (notes are not read). The per-language superlative list below is matched on every slide and in the notes.', 'superlatives': {'uz': ['eng yaxshi', 'eng sifatli', 'eng arzon', 'yetakchi', '№1', 'birinchi raqamli', 'ishonchli', 'kafolatlangan', 'noyob', 'mukammal', 'individual yondashuv', 'keng tajriba', 'tajribali jamoa', 'professional jamoa', 'yuqori sifat', 'ko‘plab yirik kompaniyalar'], 'ru': ['лучший', 'самый', 'лидер', 'ведущий', '№1', 'уникальный', 'надёжный', 'гарантированное качество', 'индивидуальный подход', 'богатый опыт', 'опытная команда', 'профессиональная команда', 'высокое качество', 'многие ведущие компании'], 'en': ['best', 'leading', 'number one', '#1', 'unique', 'trusted', 'guaranteed', 'world-class', 'top-quality', 'state-of-the-art', 'cutting-edge', 'experienced team', 'tailored approach', 'many leading companies']}, 'evidence': 'The rules live in a prompt and models drift (the design’s own first mocks leaked pains, features, tariff names, “/ oy” and a guarantee although the designer knew every rule); the renderer cuts a line only above 40 words and checks nothing about facts. work/build_mocks.py contains a working lint of this kind (every number, capitalised name and long word of a slide must occur in the source message): it caught the remaining paraphrases in this round’s mocks (“yasaymiz” for the customer’s “ishlab chiqaramiz”, “making” for “make”).'}"
+  }
+ ],
+ "sources": {
+  "take": "all"
+ }
+}

@@ -102,6 +102,28 @@ def save_editor(request):
     return redirect('/ops/editor?saved=1')
 
 
+@require_staff('Operations')
+@require_POST
+@transaction.atomic
+def save_categories(request):
+    """Turn the AI categories on or off and tick which ones customers may pick, without a deploy.
+
+    The form always sends `live`, an empty hidden value first, so unticking
+    the last category is an edit like any other rather than a missing field.
+    """
+    from . import categories_settings
+    values = {}
+    for name in request.POST:
+        if name == 'csrfmiddlewaretoken':
+            continue
+        values[name] = [item for item in request.POST.getlist(name) if item] if name == 'live' else request.POST[name]
+    try:
+        categories_settings.save(values, request.ops_user)
+    except categories_settings.CategorySettingsError as error:
+        return HttpResponseBadRequest(str(error))
+    return redirect('/ops/categories?saved=1')
+
+
 @require_staff('Support', 'Operations')
 def download_file(request, pk):
     """Open one customer document, recording who opened which file and when.

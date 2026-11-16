@@ -1,0 +1,334 @@
+{
+ "entry": "slides.tadbir.tarbiyaviy_soat",
+ "case": "topic_only",
+ "about": "Sample content for the deck sample tool (apps/studio/categories/sample.py), invented people, organisations and figures only. prompt is the customer’s one message; slots holds, per part id, the model’s answer for each time that slot appears. Past its listed instances a repeating slot is drawn as the honest form (heading and ruled lines). A slot whose heading is fixed carries an empty heading, which the finish writes in the language of the deck. Customer slots hold only what the prompt says (figures) or an honest form (topic_only); notes are left to the real model.",
+ "prompt": {
+  "uz": "7-sinf tarbiyaviy soati uchun slayd: «Ota-onaga hurmat».",
+  "ru": "Слайды к классному часу в 7 классе: «Уважение к родителям».",
+  "en": "Slides for a grade 7 class hour: “Respect for parents”."
+ },
+ "slots": {
+  "cover": [
+   {
+    "uz": {
+     "layout": "cover",
+     "heading": "Ota-onaga hurmat",
+     "body": "7-sinf tarbiyaviy soati",
+     "items": []
+    },
+    "ru": {
+     "layout": "cover",
+     "heading": "Уважение к родителям",
+     "body": "Классный час, 7 класс",
+     "items": []
+    },
+    "en": {
+     "layout": "cover",
+     "heading": "Respect for parents",
+     "body": "Grade 7 class hour",
+     "items": []
+    }
+   }
+  ],
+  "savol": [
+   {
+    "uz": {
+     "layout": "statement",
+     "heading": "",
+     "body": "Ota-onamizga hurmatni qanday ko‘rsatamiz?",
+     "items": []
+    },
+    "ru": {
+     "layout": "statement",
+     "heading": "",
+     "body": "Как мы показываем уважение к родителям?",
+     "items": []
+    },
+    "en": {
+     "layout": "statement",
+     "heading": "",
+     "body": "How do we show respect for our parents?",
+     "items": []
+    }
+   }
+  ],
+  "maqsad": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Hurmat so‘zda va ishda ko‘rinishini tushunish\nOilada yordamning ahamiyatini anglash\nKichik yaxshi ishlarni rejalashtirish",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Понять, что уважение видно в словах и делах\nОсознать ценность помощи в семье\nЗапланировать маленькие добрые дела",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "To see that respect shows in words and deeds\nTo value helping at home\nTo plan small kind acts",
+     "items": []
+    }
+   }
+  ],
+  "bayon": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Hurmat qanday ko‘rinadi",
+     "body": "Salomlashamiz va xayrlashamiz\nGapni oxirigacha tinglaymiz\nMaslahat so‘raymiz",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Как выглядит уважение",
+     "body": "Здороваемся и прощаемся\nДослушиваем до конца\nСпрашиваем совета",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "What respect looks like",
+     "body": "We greet and say goodbye\nWe listen to the end\nWe ask for advice",
+     "items": []
+    }
+   },
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Uydagi yordam",
+     "body": "Dasturxon yozishga yordam beramiz\nUkalarimizga qaraymiz\nXonamizni o‘zimiz yig‘ishtiramiz",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Помощь дома",
+     "body": "Помогаем накрыть на стол\nПрисматриваем за младшими\nСами убираем свою комнату",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Helping at home",
+     "body": "We help lay the table\nWe look after younger ones\nWe tidy our own room",
+     "items": []
+    }
+   }
+  ],
+  "rasm": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Oila dasturxoni — birlik ramzi",
+     "body": "Hamma birga o‘tiradi\nKattalar birinchi boshlaydi\nKun haqida suhbatlashamiz",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Семейный стол — знак единства",
+     "body": "Все садятся вместе\nСтаршие начинают первыми\nГоворим о том, как прошёл день",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "The family table brings us together",
+     "body": "Everyone sits together\nElders begin first\nWe talk about the day",
+     "items": []
+    }
+   },
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Bog‘dagi yumush — birga mehnat",
+     "body": "Ko‘chat ekamiz\nGullarni sug‘oramiz\nMehnatdan quvonamiz",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Работа в саду — общий труд",
+     "body": "Сажаем саженцы\nПоливаем цветы\nРадуемся общему труду",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Work in the garden, side by side",
+     "body": "We plant seedlings\nWe water the flowers\nWe enjoy the work",
+     "items": []
+    }
+   }
+  ],
+  "vaziyat": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Tasavvur qiling: onangiz charchab keldi\nSiz esa o‘yin o‘ynayapsiz\nNima qilasiz?",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Представьте: мама пришла уставшей\nА вы играете в игру\nКак вы поступите?",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Imagine: your mother comes home tired\nYou are playing a game\nWhat do you do?",
+     "items": []
+    }
+   },
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Tasavvur qiling: otangiz maslahat berdi\nSiz boshqacha o‘ylaysiz\nFikringizni qanday aytasiz?",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Представьте: папа дал совет\nВы думаете иначе\nКак вы скажете своё мнение?",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Imagine: your father gives advice\nYou think differently\nHow do you say what you think?",
+     "items": []
+    }
+   }
+  ],
+  "muhokama": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Nega ota-onani tinglash muhim?\nHurmat qanday so‘zlarda ko‘rinadi?\nQaysi yordam ota-onani quvontiradi?",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Почему важно слушать родителей?\nВ каких словах видно уважение?\nКакая помощь радует родителей?",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Why does listening to parents matter?\nWhich words show respect?\nWhat help makes parents happy?",
+     "items": []
+    }
+   },
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Kelishmovchilikda qanday yo‘l tutamiz?\nKattalardan nimani o‘rganamiz?\nOilada qanday an’analar bor?",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Как мы поступаем при разногласии?\nЧему мы учимся у старших?\nКакие традиции есть в семье?",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "What do we do when we disagree?\nWhat do we learn from elders?\nWhat traditions does a family keep?",
+     "items": []
+    }
+   }
+  ],
+  "oyin": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "O‘yin: gapni davom ettiring",
+     "body": "Men onamga yordam beraman, chunki…\nOtamdan o‘rgangan narsam…\nOilamda eng yoqtirganim…",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Игра: продолжите фразу",
+     "body": "Я помогаю маме, потому что…\nПапа научил меня…\nВ моей семье мне больше всего нравится…",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Game: finish the sentence",
+     "body": "I help my mother because…\nMy father taught me…\nWhat I like most in my family is…",
+     "items": []
+    }
+   }
+  ],
+  "xulosa": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Hurmat har kuni so‘z va ishda ko‘rinadi\nKichik yordam ham katta quvonch\nOila — eng yaqin tayanchimiz",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Уважение видно каждый день в словах и делах\nДаже маленькая помощь — большая радость\nСемья — наша самая близкая опора",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Respect shows every day in words and deeds\nEven small help brings great joy\nFamily is our closest support",
+     "items": []
+    }
+   }
+  ],
+  "refleksiya": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Bugun nimani tushundim?\nErtaga uyda nima qilaman?",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Что я сегодня понял?\nЧто я сделаю дома завтра?",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "What did I understand today?\nWhat will I do at home tomorrow?",
+     "items": []
+    }
+   }
+  ],
+  "uyga_vazifa_doim": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Oila bilan suhbat:\nBir hafta davomida uyda bitta yaxshi ish qiling\nUni daftaringizga yozing",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Беседа в семье:\nВсю неделю делайте дома одно доброе дело\nЗапишите его в тетрадь",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "A talk with your family:\nDo one kind thing at home each day this week\nWrite it in your notebook",
+     "items": []
+    }
+   }
+  ]
+ }
+}

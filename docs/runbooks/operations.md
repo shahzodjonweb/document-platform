@@ -68,6 +68,21 @@ Local authoring is available only in DEBUG. Production must select a configured 
 
 `/ops/editor` (Operations) holds the switches `editor_v2`, `pdfcraft`, `text_edit`, `deck_editor`, `edit_buttons`, `count_once`, `photos_task`, `vector_blackout`, all off by default, and the free-work budgets per account per day. A change takes effect at once and is audited. To go back to the old editor: admin → Editor → `editor_v2` off. Until the first save there, `EDITOR_FLAG_<NAME>=1` and `EDITOR_BUDGET_<NAME>=<seconds>` in the environment answer instead. The web reads the switches from `/studio/config`, `limits.editor`.
 
+## The AI categories' switch
+
+`/ops/categories` (Operations) holds one switch for the AI PDF and AI Slides categories and one tick per category, off and empty by default. It is the `IntegrationConfig` row `categories`, `{on, live}` (`operations/categories_settings.py`); there is no environment fallback, and it is not an editor flag, so the web is not told. A change takes effect at once and is audited (`categories.settings`, before and after). Only a `ready` entry of the catalogue (`apps/studio/categories/data`) can be ticked: a draft is shown greyed with its renderer (a deck, or its PDF templates) and the checks a person makes before it is ready. A category shows in the bot when the switch is on and it is ticked; Other (Boshqa) is always beside it. Off, and for every flow without a category, AI PDF and AI Slides are today's. An entry a later deploy sends back to draft leaves the bot by itself; its tick stays in the row until the next save on the page, which drops it, since a draft cannot be ticked.
+
+Deploy and rollback rules (there are no migrations):
+- Every push to `main` deploys, so the switch and its ticks normally stay as they are through a deploy. API and bot swap before the workers, so for up to ten minutes an old worker may run a job made by new code; that matters only when the old workers lack something the new code serves:
+  - The first deploy of categories: keep the switch off until its last runner has rolled. Workers from before categories would write a category draft as plain sections.
+  - A deploy that adds an entry, a renderer (the PDF templates' first), or a template a ticked entry now uses: leave a new entry unticked, and untick an entry whose template is new, until the deploy's last runner has rolled. A worker that lacks a template draws the fallback (`template_fallback` on the artifact); one without the PDF renderer fails a PDF category job with `category_unavailable`.
+  - Anything else (copy, prompts, fixes, a catalogue edit as below): ticks stay on through the deploy.
+- A catalogue edit of a live entry is safe: ids are append-only, so an old worker finds every part and draws a valid document with its own copy.
+- An id a worker does not know (a catalogue rolled back) fails the job with `category_unknown` before any provider call; failed jobs are not counted. A PDF category draft reaching a worker that only draws decks fails with `category_unavailable`, also before the provider and not counted.
+- Turning the switch off mid-flow: the bot builds without the category from then on; category drafts already made still quote and generate.
+- Rolling back to code from before categories: turn the switch off, wait out the 24-hour draft lifetime, then roll back. Old code would write a category draft as plain sections.
+- Logs carry category, field and block ids, codes and counts only, never a fact value, a description or a file's text.
+
 ## Rate limits and Redis
 
 `throttle` and `account_limit` (`apps/core/views.py`) count per account on the `limits` cache, Redis when `REDIS_URL` is set, so every gunicorn process sees one counter. With Redis away, each call is counted in `AuthRateLimit` rows instead and `Limiter store unavailable` is logged; nothing else depends on it, as every other cache stays in the process.

@@ -19,7 +19,9 @@ def _payload(data):
                       'image_cap':data['options'].get('image_cap',0),
                       # A document's look and layouts are planned with its outline.
                       **{key:data['options'][key] for key in ('wants_layouts','wants_design','template_style')
-                         if key in data['options']}}
+                         if key in data['options']},
+                      # A category deck is planned on its slots, as it is written.
+                      **({'category':data['options']['category']} if data['options'].get('category') is not None else {})}
     value['content']['questions']=[]
     value.pop('revision',None)
     # The brief as the customer wrote it, for what it lists (topics.required).
@@ -41,9 +43,12 @@ def create_outline_quote(account,draft_id,version):
         # outline of the request: an outline would replace the document's text
         # with one-line summaries that the paid change is then told to keep.
         # A CV has nothing to plan: its eight sections are fixed and it is
-        # written from the customer's facts in one call.
-        from .domain import CV
-        if data.get('revision') or draft.feature_id==CV:
+        # written from the customer's facts in one call. Nor has a category
+        # paper: its parts are its catalogue entry's, and a one-line plan of
+        # them would replace what each part is told to hold (the bot never
+        # offers one; a category deck is planned like any deck).
+        from .domain import CV,_bounds
+        if data.get('revision') or draft.feature_id==CV or _bounds(data) is not None:
             raise DomainError('invalid_parameters')
         cfg=ai_config()
         if cfg['mode']!=quote.policy['provider_mode'] or cfg['model']!=quote.policy['provider_model']:raise DomainError('provider_changed',409)

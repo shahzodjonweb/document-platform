@@ -83,7 +83,7 @@ jobs:
             # each attempt, and retry from Ubuntu's main archive. apt resumes
             # the partly downloaded packages rather than starting again.
             timeout 180 sudo apt-get install -y --no-install-recommends $apt \
-              tesseract-ocr libreoffice-writer libreoffice-impress fonts-dejavu-core && break
+              tesseract-ocr libreoffice-writer libreoffice-impress fonts-dejavu-core antiword && break
             echo "apt-get install attempt $attempt failed; retrying from archive.ubuntu.com"
             [ "$attempt" = 3 ] && exit 1
             if [ -f /etc/apt/apt-mirrors.txt ]; then
@@ -94,6 +94,10 @@ jobs:
           done
           sudo rm -rf ~/apt-archives/partial ~/apt-archives/lock
           sudo chown -R "$(id -u):$(id -g)" ~/apt-archives
+          # antiword reads an old Word .doc a category is made from; its tests
+          # skip where it is absent, so a runner without it must fail here.
+          command -v antiword
+          test -f /usr/share/antiword/UTF-8.txt
           # The cache is keyed by the exact package versions installed, so a
           # new LibreOffice or Tesseract release is cached once and reused.
           echo "key=apt-noble-runtimes-$(ls ~/apt-archives | sort | sha256sum | cut -c1-16)" >> "$GITHUB_OUTPUT"

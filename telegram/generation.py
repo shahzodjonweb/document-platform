@@ -55,6 +55,252 @@ def sources(account, file_ids, feature_id=None):
     return [str(asset.id) for asset in ordered if asset.metadata.get('kind') == 'pdf']
 
 
+# The kinds of file a category draft reads (apps/studio/categories/sources.py KINDS):
+# PDF, Word, old Word and text. Anything else staged in the chat, a photo for a
+# file tool, is left out rather than refusing the draft.
+CATEGORY_KINDS = ('pdf', 'docx', 'doc', 'text')
+
+
+def category_sources(account, file_ids):
+    """The files a category draft is made from, in the order they were sent, once each."""
+    assets = {
+        str(asset.id): asset
+        for asset in FileAsset.objects.filter(account=account, id__in=list(file_ids), state='ready',
+                                              expires_at__gt=timezone.now())
+    }
+    ordered = list(dict.fromkeys(str(key) for key in file_ids))
+    return [key for key in ordered if key in assets and assets[key].metadata.get('kind') in CATEGORY_KINDS]
+
+
+@transaction.atomic
+def stage(account, file_ids):
+    """Put the PDFs among `file_ids` on the chat's file draft, after those already there.
+
+    Files sent on the list of categories wait in the chat's state. Boshqa,
+    chosen after them, is today's question, which reads the PDFs staged in the
+    chat (sources): this puts them where it would have found them had they been
+    sent to it. A Word or text file is never staged: it was taken as a
+    category's source, and the file tools never meet one.
+    """
+    from apps.core.models import Account
+    from .workflows import draft_for
+    pdfs = sources(account, [str(key) for key in file_ids])
+    if not pdfs:
+        return
+    Account.objects.select_for_update().get(pk=account.pk)
+    draft = draft_for(account)
+    added = [key for key in pdfs if key not in [str(item) for item in draft.input_ids]][:max(0, 50 - len(draft.input_ids))]
+    if added:
+        draft.input_ids = [*draft.input_ids, *added]
+        draft.quote = None
+        draft.version += 1
+        draft.save(update_fields=['input_ids', 'quote', 'version', 'updated_at'])
+
+
+# --- Categories ---------------------------------------------------------------
+# AI PDF and AI Slides may open a list of categories before the description
+# (apps/studio/categories). Off, or with nothing ticked, the list is never shown
+# and every way in is today's question. Boshqa ('other') is today's question too.
+
+OTHER = 'other'
+
+
+def category_menu(feature_id, group=None):
+    """The buttons of a service's list (or of one group in it); [] when there is no list to show."""
+    if feature_id not in (DOCUMENT, SLIDES):
+        return []
+    from apps.studio import categories
+    return categories.menu(feature_id, group)
+
+
+def category_live(feature_id, category):
+    """The entry of `category` when customers may pick it for this service now, else None."""
+    if not isinstance(category, str) or not category or category == OTHER:
+        return None
+    from apps.studio import categories
+    # Looked up among the live ones (only this service's), not with get(): with
+    # the switch off, a button from an older list must not load the catalogue.
+    return next((entry for entry in categories.live(feature_id) if entry.id == category), None)
+
+
+def door(feature_id, category=None):
+    """Where a way into a service leads, as (kind, value, gone).
+
+    `category` is what the button named: nothing (a service button, every old
+    one included), a group, a category, or Boshqa. The answer is ('prompt',
+    None) for today's question, ('list', group or None) for the list or one of
+    its groups, and ('category', id) for a category's own question. `gone` is
+    True when the list is shown because the category named cannot be picked
+    now: unticked, retired or rolled back since its button was drawn. With the
+    switch off, or nothing ticked for this service, every way is today's
+    question, so a button from a list drawn while it was on still opens one.
+    """
+    if feature_id not in (DOCUMENT, SLIDES) or category == OTHER or not category_menu(feature_id):
+        return 'prompt', None, False
+    if not category:
+        return 'list', None, False
+    if category_live(feature_id, category) is not None:
+        return 'category', category, False
+    if isinstance(category, str) and category_menu(feature_id, category):
+        return 'list', category, False
+    from apps.studio import categories
+    entry = categories.get(category) if isinstance(category, str) else None
+    parent = entry.raw.get('parent') if entry is not None and entry.feature_id == feature_id else None
+    return 'list', parent if parent and category_menu(feature_id, parent) else None, True
+
+
+def category_of(draft):
+    """The category a draft was made in, '' for none."""
+    from apps.studio.domain import unpack
+    return (unpack(draft.encrypted_data).get('options') or {}).get('category') or ''
+
+
+# A customer who opens a category, looks at its examples and comes back, or
+# rewords their description, has chosen it once: taps on it this close together
+# are one choice, so the admin's chosen-versus-made compares like with like.
+CHOSEN_WINDOW_SECONDS = 30 * 60
+
+
+def chosen(account, category):
+    """Record that a customer opened a category's question in the bot. Never raises."""
+    try:
+        from django.core.cache import cache
+        from apps.core.funnel import environment
+        from apps.core.models import AnalyticsEvent
+        from apps.studio import categories
+        entry = categories.get(category)
+        if entry is None or not cache.add(f'category-chosen:{account.pk}:{entry.id}', 1, CHOSEN_WINDOW_SECONDS):
+            return
+        AnalyticsEvent.objects.create(
+            account=account, event_type=categories.CHOSEN_EVENT, feature_id=entry.feature_id, channel='bot',
+            locale=getattr(account, 'locale', '') or 'en', plan_at_event=getattr(account, 'plan', '') or 'free',
+            environment=environment(account), properties={'category': entry.id})
+    except Exception:
+        # Counting is never worth a customer's request failing.
+        return
+
+
+# A category's one extra question (its entry's `ask`) is a button on the
+# review of a new draft, answered at most once with text, files or both, and
+# always skippable: Generate makes the draft as it stands. The answer goes the
+# way every review change goes (_changed): the server re-seeds and re-quotes,
+# and marks it answered (options.details_added), never the bot.
+#
+# A deck's answer for its title slide (`ask.cover`) is written under a header
+# title_lines.BLOCK reads, so title_lines.place puts its lines on the cover as
+# the customer's own. The header is in the deck's language.
+COVER_HEADERS = {'uz': 'Titul slaydga:', 'ru': 'На титульном слайде:', 'en': 'Title slide:'}
+# A generation that ended without making anything leaves the draft on its first
+# review: Generate is tapped again from there, and the question still helps.
+# Every other state, a status added later included, closes the question.
+UNMADE = ('failed', 'canceled', 'expired')
+
+
+def _asked(draft, data):
+    """The entry whose question this draft's review offers now, or None.
+
+    Only a new category draft's review offers it, while it is unanswered, when
+    its entry has a question wanted for what was written and sent
+    (categories.asking.wanted), and before anything was generated from the
+    draft (UNMADE: a failed or canceled generation made nothing): the question
+    belongs to the first review.
+    """
+    options = data.get('options') or {}
+    if not options.get('category') or data.get('revision') or options.get('details_added'):
+        return None
+    # A deck drawn already is made, as _changed holds: only ✏️ Edit changes it.
+    if draft.feature_id == SLIDES and data.get('_render'):
+        return None
+    from apps.studio import categories
+    from apps.studio.categories import asking
+    from apps.studio.domain import GENERATION_IDS
+    entry = categories.get(options['category'])
+    if entry is None or not entry.raw.get('ask'):
+        return None
+    if not asking.wanted(entry, brief_of(data), bool(data.get('source_ids'))):
+        return None
+    generated = Job.objects.filter(account=draft.account, feature_id__in=GENERATION_IDS,
+                                   quote__parameters__generation_draft_id=str(draft.id)).exclude(status__in=UNMADE)
+    return None if generated.exists() else entry
+
+
+def category_review(draft):
+    """What a category draft's review says beyond today's, or None for a draft without a category (and a CV).
+
+    {'entry', 'asked': the entry when its question is offered, 'unread': files
+    that gave no text, 'cut': whether only each file's ends were read,
+    'bounds': (fewest, most) of a count the stepper may choose, None when the
+    entry's length is not a count}. A category the catalogue no longer holds
+    has nothing to say: its job fails before the provider (category_unknown).
+    """
+    from apps.studio import categories
+    from apps.studio.domain import unpack
+    if draft.feature_id not in (DOCUMENT, SLIDES):
+        return None
+    data = unpack(draft.encrypted_data)
+    options = data.get('options') or {}
+    entry = categories.get(options.get('category')) if options.get('category') else None
+    if entry is None:
+        return None
+    length = entry.length
+    return {'entry': entry, 'asked': _asked(draft, data), 'unread': len(options.get('unread_sources') or []),
+            'cut': bool(options.get('sources_cut')),
+            'bounds': (length['min'], length['max']) if length['mode'] == 'count' else None}
+
+
+def details_open(account, draft_id):
+    """(draft, entry) when this account's draft still offers its category's question; (None, None) when it does not."""
+    from apps.studio.domain import unpack
+    try:
+        identifier = uuid.UUID(str(draft_id))
+    except ValueError:
+        return None, None
+    draft = GenerationDraft.objects.filter(account=account, id=identifier, expires_at__gt=timezone.now()).first()
+    entry = _asked(draft, unpack(draft.encrypted_data)) if draft is not None else None
+    return (draft, entry) if entry is not None else (None, None)
+
+
+@transaction.atomic
+def add_details(account, draft_id, text='', file_ids=()):
+    """A new category draft with the answer to its review question added, and its new quote.
+
+    The text is written after the description, under the title-slide header
+    for a deck whose question is for its cover; the files (PDF, Word or text,
+    the customer's own) join its sources. Answered once: the server marks it
+    (options.details_added) and refuses a second answer. The review button is
+    offered only while the question is open, so a button from an older review
+    is controls_expired here.
+    """
+    from apps.studio.domain import unpack
+    draft, entry = details_open(account, draft_id)
+    if entry is None:
+        raise DomainError('controls_expired', 409)
+    words = (text or '').strip()
+    ids = category_sources(account, [str(identifier) for identifier in file_ids])
+    if not words and not ids:
+        raise DomainError('prompt_required')
+    data = unpack(draft.encrypted_data)
+    if words and draft.feature_id == SLIDES and entry.ask.get('cover'):
+        words = f"{COVER_HEADERS.get(data.get('output_locale'), COVER_HEADERS['en'])}\n{words}"
+    # The description is the prompt, or the source text where there is no model
+    # to write with (build's `written`): the answer goes where the description is.
+    if data.get('prompt') or data.get('source_text'):
+        field = 'prompt' if data.get('prompt') else 'source_text'
+    else:
+        from operations.integrations import ai_config
+        field = 'source_text' if ai_config()['mode'] == 'local_fixture' else 'prompt'
+
+    def change(data):
+        fields = {}
+        if words:
+            fields[field] = f"{data.get(field) or ''}\n\n{words}".strip()
+        if ids:
+            known = [str(identifier) for identifier in data.get('source_ids') or []]
+            fields['source_ids'] = [*known, *[identifier for identifier in ids if identifier not in known]]
+        return fields
+    return _changed(account, draft.id, change, details=True)
+
+
 def throttle(account, limit=10):
     """Authoring counts against no limit but is not free of work; cap it per account."""
     key = f'rate:bot_generation:{account.pk}'
@@ -79,7 +325,8 @@ READ_REFUSALS = ('topic_required', 'convert_requested', 'cv_missing', 'cv_file_r
 
 
 @transaction.atomic
-def build(account, feature_id, description, file_ids=(), topic_given=False, portrait_asset_id='', cv_source=''):
+def build(account, feature_id, description, file_ids=(), topic_given=False, portrait_asset_id='', cv_source='',
+          category=''):
     """Author a draft from one chat message. Nothing is counted yet.
 
     `topic_given` is the customer's answer to the topic question taken as it
@@ -90,11 +337,18 @@ def build(account, feature_id, description, file_ids=(), topic_given=False, port
     A CV made from the customer's LinkedIn profile or old CV (`cv_source`
     'linkedin' or 'file') is made from `file_ids`, the files sent for it,
     and `description` is the notes on top of them, which may be empty.
+    `category` is the one chosen in the chat's list, '' for none. One that
+    can no longer be picked (the switch turned off, or the category unticked,
+    while the customer was writing) is left out: they still get a document,
+    today's. A category draft reads Word and text files as well as PDFs.
     """
     available(account, feature_id)
+    if category and category_live(feature_id, category) is None:
+        category = ''
     text = (description or '').strip()
     files = feature_id == CV and cv_source in (LINKEDIN, FILE)
-    ids = [str(identifier) for identifier in file_ids] if files else sources(account, list(file_ids), feature_id)
+    ids = ([str(identifier) for identifier in file_ids] if files
+           else category_sources(account, file_ids) if category else sources(account, list(file_ids), feature_id))
     if not text and not ids:
         raise DomainError('prompt_required')
     throttle(account)
@@ -120,6 +374,8 @@ def build(account, feature_id, description, file_ids=(), topic_given=False, port
     if feature_id == CV and portrait_asset_id:
         # The server checks it is the customer's own JPEG or PNG and pins it.
         options['portrait_asset_id'] = str(portrait_asset_id)
+    if category:
+        options['category'] = category
     if options:
         data['options'] = options
     try:
@@ -233,8 +489,12 @@ def pictures_on():
     return bool(pixabay_config()['ready'])
 
 
-def _changed(account, draft_id, change):
-    """The draft redone with `change(data)` applied to its fields, and its new quote."""
+def _changed(account, draft_id, change, *, details=False):
+    """The draft redone with `change(data)` applied to its fields, and its new quote.
+
+    `details`: the change is the answer to a category's review question, which
+    the server marks answered (domain.update_draft) so it is asked only once.
+    """
     from apps.studio.domain import draft_jobs, unpack, update_draft
     draft = GenerationDraft.objects.filter(account=account, id=draft_id, expires_at__gt=timezone.now()).first()
     if not draft:
@@ -249,7 +509,7 @@ def _changed(account, draft_id, change):
     if draft.feature_id == SLIDES and (data.get('_render') or draft_jobs(account, draft.id, ('succeeded', 'no_op'))):
         raise DomainError('generation_finished', 409)
     fields = change(data)
-    draft = update_draft(account, draft.id, {'version': draft.version, **fields})
+    draft = update_draft(account, draft.id, {'version': draft.version, **fields}, **({'details': True} if details else {}))
     return draft, generation_quote(account, draft.id, draft.version)
 
 
@@ -552,18 +812,29 @@ def relocale(account, draft_id, locale):
         'output_locale': locale, 'options': {**data['options'], 'locale_chosen': True}})
 
 
-def is_example(description):
-    """Whether a description is one of the bot's own examples, sent back unchanged."""
+def is_example(description, category=''):
+    """Whether a description is one of the bot's own examples, sent back unchanged.
+
+    In a category's flow (`category`) the catalogue's examples are ours too:
+    its question shows them, and its pool holds more of the same. Without one
+    only the services' own examples are looked at, as before categories.
+    """
     import difflib
     from .ux_copy import PROMPT_EXAMPLES
     text = ' '.join((description or '').lower().split())
     if len(text) < 40:
         return False
-    for examples in PROMPT_EXAMPLES.values():
-        for translations in examples:
-            for example in translations:
-                if difflib.SequenceMatcher(None, text, ' '.join(example.lower().split())).ratio() >= 0.9:
-                    return True
+    known = [example for examples in PROMPT_EXAMPLES.values() for translations in examples for example in translations]
+    # A category that can no longer be picked (the switch turned off or the
+    # category unticked while the customer wrote) is dropped when the draft is
+    # made (build), so its examples are not ours either; and with nothing
+    # live, nothing here loads the catalogue.
+    if category and (category_live(DOCUMENT, category) or category_live(SLIDES, category)):
+        from apps.studio import categories
+        known += sorted(categories.examples())
+    for example in known:
+        if difflib.SequenceMatcher(None, text, ' '.join(example.lower().split())).ratio() >= 0.9:
+            return True
     return False
 
 

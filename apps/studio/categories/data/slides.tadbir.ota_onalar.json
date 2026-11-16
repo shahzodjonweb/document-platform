@@ -1,0 +1,989 @@
+{
+ "schema": 2,
+ "id": "slides.tadbir.ota_onalar",
+ "status": "ready",
+ "service": "slides",
+ "parent": "slides.tadbir",
+ "order": 3,
+ "labels": {
+  "uz": "👪 Ota-onalar yig‘ilishi",
+  "ru": "👪 Родительское собрание",
+  "en": "👪 Parents’ meeting"
+ },
+ "summary": "An editable PowerPoint deck a class teacher shows at a parents’ meeting, in the order a meeting runs: a cover (class, period, teacher, school, date as given), Kun tartibi, the class’s results as a few big figures and, when given, a subject chart, attendance, achievements, one short talk of plain advice, the school’s housekeeping, requests to parents, coming dates, a draft decision when the teacher has one and Savol va takliflar. Every figure, name and date is exactly what the teacher typed or attached; pupils are never shown one by one with a mark or a problem; a results meeting that came with no figures gets one ruled blank slide to fill in by hand; and the notes, which the teacher reads al",
+ "tone": "Calm and respectful, for adults in a classroom: short statements and polite requests in the plural “siz” form (“Ko‘rib chiqing”, “Kelishib oling”; Russian “вы”), never blame, never a verdict. The teacher’s script lives in the speaker notes.",
+ "topic": false,
+ "title": "model",
+ "length": {
+  "unit": "slides",
+  "mode": "count",
+  "target": "count",
+  "default": 8,
+  "min": 3,
+  "max": 20,
+  "note": "The count is delivered as quoted; 8 is the owner’s base for a typical results meeting. The research count read from the facts (6 to 10) is replaced: a slot with no facts is the talk or the requests, which state no fact, and the results slide with no figures is the ruled blank the spec designs."
+ },
+ "questions": {
+  "default": 0,
+  "max": 0
+ },
+ "quality": "repair",
+ "fill": false,
+ "cues": {
+  "natija": {
+   "uz": [
+    "chorak",
+    "yarim yil",
+    "yakun",
+    "natija",
+    "o‘zlashtirish",
+    "bilim sifati",
+    "sifat ko‘rsatkich",
+    "a’lochi"
+   ],
+   "ru": [
+    "четверт",
+    "полугоди",
+    "итог",
+    "успеваемост",
+    "качество знаний",
+    "отличник"
+   ],
+   "en": [
+    "quarter",
+    "half-year",
+    "term results",
+    "results",
+    "pass rate",
+    "quality rate",
+    "straight-a"
+   ]
+  },
+  "birinchi": {
+   "uz": [
+    "birinchi yig‘ilish",
+    "yangi o‘quv yili",
+    "1-sinf",
+    "tashkiliy yig‘ilish"
+   ],
+   "ru": [
+    "первое собрание",
+    "первоклассник",
+    "нового учебного года",
+    "организационное собрание"
+   ],
+   "en": [
+    "first meeting",
+    "grade 1",
+    "new school year"
+   ]
+  },
+  "davomat": {
+   "uz": [
+    "davomat"
+   ],
+   "ru": [
+    "посещаемост"
+   ],
+   "en": [
+    "attendance"
+   ]
+  },
+  "yutuq": {
+   "uz": [
+    "yutuq",
+    "olimpiada",
+    "g‘olib",
+    "sovrin"
+   ],
+   "ru": [
+    "успех",
+    "достижен",
+    "олимпиад",
+    "победител"
+   ],
+   "en": [
+    "achievement",
+    "olympiad",
+    "winner",
+    "prize"
+   ]
+  },
+  "fanlar": {
+   "uz": [
+    "fanlar bo‘yicha",
+    "fan bo‘yicha",
+    "baholar taqsimot"
+   ],
+   "ru": [
+    "по предметам",
+    "распределение оцен"
+   ],
+   "en": [
+    "by subject",
+    "spread of marks"
+   ]
+  },
+  "tadbir": {
+   "uz": [
+    "tadbir",
+    "ochiq dars",
+    "ekskursiya",
+    "konsert"
+   ],
+   "ru": [
+    "мероприят",
+    "открытый урок",
+    "экскурси",
+    "концерт"
+   ],
+   "en": [
+    "event",
+    "open lesson",
+    "school trip",
+    "concert"
+   ]
+  },
+  "tashkiliy": {
+   "uz": [
+    "dars jadval",
+    "maktab forma",
+    "maktab qoida",
+    "darslik"
+   ],
+   "ru": [
+    "расписани",
+    "школьная форма",
+    "правила школы",
+    "учебник"
+   ],
+   "en": [
+    "timetable",
+    "school uniform",
+    "school rules",
+    "textbook"
+   ]
+  },
+  "qaror": {
+   "uz": [
+    "qaror"
+   ],
+   "ru": [
+    "решени"
+   ],
+   "en": [
+    "decision",
+    "resolution"
+   ]
+  }
+ },
+ "ask": {
+  "when": "cues_missing",
+  "fields": [
+   "teacher_line",
+   "school"
+  ],
+  "cover": true,
+  "review": {
+   "uz": "Sinf rahbari va maktab yozilmadi: titul slaydda ular bo‘lmaydi.",
+   "ru": "Классный руководитель и школа не указаны: на титульном слайде их не будет.",
+   "en": "No class teacher or school was given: they will not be on the title slide."
+  },
+  "prompt": {
+   "uz": "📝 Titul slayd uchun (ixtiyoriy): sinf, sinf rahbari, maktab, yig‘ilish sanasi. Har birini yangi qatordan yozing. Yozmaganingiz slaydda bo‘lmaydi.",
+   "ru": "📝 Для титульного слайда (по желанию): класс, классный руководитель, школа, дата собрания. Каждое с новой строки. Чего не укажете, на слайде не будет.",
+   "en": "📝 For the title slide (optional): class, class teacher, school, date of the meeting. Each on its own line. Anything you skip will not appear on the slide."
+  }
+ },
+ "fields": [
+  {
+   "id": "grade_line",
+   "label": {
+    "uz": "Sinf (yoki guruh)",
+    "ru": "Класс (или группа)",
+    "en": "Class (or group)"
+   },
+   "example": {
+    "uz": "7-«B» sinf",
+    "ru": "7 «Б» класс",
+    "en": "Grade 7B"
+   },
+   "kind": "line",
+   "need": "recommended",
+   "missing": "ask",
+   "where": "First line of the cover (“7-«B» sinf · I chorak yakunlari”). Asked once in the optional step only if the message lacks it; if skipped the header line is the period alone, or the cover has none. The customer’s own word wins (sinf, guruh, kurs). A letter or a number that the message does not give is never added (“1-sinf” stays “1-sinf”, not “1-«A»”)."
+  },
+  {
+   "id": "meeting_kind",
+   "label": {
+    "uz": "Yig‘ilish turi (chorak yakunlari, mavzuli suhbat, birinchi yig‘ilish)",
+    "ru": "Вид собрания (итоги четверти, беседа на тему, первое собрание)",
+    "en": "Kind of meeting (results, topic, first)"
+   },
+   "example": {
+    "uz": "chorak yakunlari",
+    "ru": "итоги четверти",
+    "en": "quarter results"
+   },
+   "kind": "choice",
+   "need": "recommended",
+   "missing": "ask",
+   "where": "Read from the message (chorak, yarim yil, natija, davomat, baho or any class figure: results; a named talk subject: topic; birinchi yig‘ilish, 1-sinf, yangi o‘quv yili, tashkiliy, an attached timetable or rules: first). When none of these is there (a bare “ota-onalar yig‘ilishi, 7-sinf”) the bot asks ONE question with three buttons (see bot.extra_step.kind_question). If the customer skips it, the deck is a results meeting.",
+   "choices": [
+    "results",
+    "topic",
+    "first"
+   ]
+  },
+  {
+   "id": "teacher_line",
+   "label": {
+    "uz": "Sinf rahbari",
+    "ru": "Классный руководитель",
+    "en": "Class teacher"
+   },
+   "example": {
+    "uz": "Sinf rahbari: Mohira Namunova",
+    "ru": "Классный руководитель: Мохира Намунова",
+    "en": "Class teacher: Mohira Namunova"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "ask",
+   "where": "Cover line, copied whole. Asked in the optional step; if skipped it is left out (no blank, no “F.I.Sh.”). Never invented. “Tarbiyachi” or “kurator” when the customer says so.",
+   "cues": {
+    "uz": [
+     "sinf rahbari",
+     "tarbiyachi",
+     "kurator"
+    ],
+    "ru": [
+     "классный руководитель",
+     "воспитател",
+     "куратор"
+    ],
+    "en": [
+     "class teacher",
+     "form tutor",
+     "teacher"
+    ]
+   }
+  },
+  {
+   "id": "school",
+   "label": {
+    "uz": "Maktab",
+    "ru": "Школа",
+    "en": "School"
+   },
+   "example": {
+    "uz": "Namunaviy maktab, Toshkent",
+    "ru": "Школа «Образец», Ташкент",
+    "en": "Model School, Tashkent"
+   },
+   "kind": "org",
+   "need": "optional",
+   "missing": "ask",
+   "where": "Cover line after the teacher line, as written; left out if skipped.",
+   "cues": {
+    "uz": [
+     "maktab",
+     "litsey",
+     "gimnaziya",
+     "bog‘cha"
+    ],
+    "ru": [
+     "школ",
+     "лице",
+     "гимнази",
+     "детский сад"
+    ],
+    "en": [
+     "school",
+     "lyceum",
+     "kindergarten"
+    ]
+   }
+  },
+  {
+   "id": "meeting_date",
+   "label": {
+    "uz": "Sana, vaqt va joy",
+    "ru": "Дата, время и место",
+    "en": "Date, time and place"
+   },
+   "example": {
+    "uz": "2026-yil 20-noyabr, 17:00, 7-xona",
+    "ru": "20 ноября 2026 года, 17:00, кабинет 7",
+    "en": "20 November 2026, 5:00 pm, room 7"
+   },
+   "kind": "date",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Last cover line (it carries a year, so the cover keeps it with the author block), only if the customer wrote one; the room is added to it when given (“2026-yil 12-dekabr, 17:00, 3-xona”). The system never adds a date. Never asked."
+  },
+  {
+   "id": "period",
+   "label": {
+    "uz": "Davr (chorak, yarim yil, o‘quv yili)",
+    "ru": "Период (четверть, полугодие, год)",
+    "en": "Period (quarter, half-year, year)"
+   },
+   "example": {
+    "uz": "I chorak yakunlari",
+    "ru": "итоги I четверти",
+    "en": "Quarter 1 results"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Second half of the cover header and the heading of the results slides. Read from the message; never asked. It also tells the AI that this is a results meeting."
+  },
+  {
+   "id": "class_figures",
+   "label": {
+    "uz": "Sinf natijalari (o‘quvchilar soni, o‘zlashtirish, sifat, a’lochilar, o‘rtacha ball yoki reyting, «2» olganlar soni, baholar bo‘yicha taqsimot)",
+    "ru": "Итоги класса (число учеников, успеваемость, качество знаний, отличники, средний балл или рейтинг, число «2», распределение оценок)",
+    "en": "Class figures (pupils, pass rate, quality rate (marks 4–5), straight-A pupils, average score or rating, number of «2»s, spread of marks)"
+   },
+   "example": {
+    "uz": "28 o‘quvchi, o‘zlashtirish 96%, sifat 68%, 4 nafari a’lochi",
+    "ru": "28 учеников, успеваемость 96%, качество знаний 68%, 4 отличника",
+    "en": "28 pupils, pass rate 96%, quality rate (marks 4–5) 68%, 4 straight-A pupils"
+   },
+   "kind": "text",
+   "need": "recommended",
+   "missing": "ask",
+   "where": "The natijalar slide (2 to 4 figures), copied exactly, in the customer’s own words for each measure, never rounded, converted, summed or explained. Any measure the teacher types is accepted: o‘zlashtirish, sifat, a’lochi, o‘rtacha ball (reyting), the number of pupils with «2», the number of pupils. A term longer than the column holds (12 characters in Russian, about 14 in Uzbek) is split: the label is its first word and the caption the rest (“качество” / “знаний”; “sifat” / “ko‘rsatkichi”). One figure: big_number. Asked once in the optional step when a RESULTS meeting has no figure at all; if still missing, the slide is the ruled blank (writing rule 5), EXCEPT for grade 1 and kindergarten, where no blank is drawn because it is not known that marks or these measures exist there (open question 4). Only a count of pupils per mark, never a pupil’s mark."
+  },
+  {
+   "id": "subject_figures",
+   "label": {
+    "uz": "Fanlar bo‘yicha natijalar (yoki baholar soni)",
+    "ru": "Результаты по предметам (или число оценок)",
+    "en": "Results by subject (or the number of each mark)"
+   },
+   "example": {
+    "uz": "ona tili 78%, matematika 71%, fizika 54%",
+    "ru": "родной язык 78%, математика 71%, физика 54%",
+    "en": "mother tongue 78%, maths 71%, physics 54%"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "The fanlar chart (2 to 8 rows, one measure). The measure’s name is the customer’s word and heads the unit caption. The same slide shows the spread of marks (a’lo 4, yaxshi 15 ...) when the customer gave counts. Without 2 or more figures there is no such slide."
+  },
+  {
+   "id": "previous_period",
+   "label": {
+    "uz": "Oldingi davr bilan solishtirish",
+    "ru": "Сравнение с прошлым периодом",
+    "en": "Comparison with the last period"
+   },
+   "example": {
+    "uz": "o‘tgan yarim yilda sifat 58% edi",
+    "ru": "в прошлом полугодии качество было 58%",
+    "en": "the last half-year quality was 58%"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "A caption under the figure it compares with, written as the customer gave it (“o‘tgan: 58%”, at most 20 characters), on the natijalar slide: two figures are a caption, not a slide (two bars from zero would spend a whole slide on a comparison nobody computed). Only when 3 or more periods are given (quarters I, II, III) is there a slide: chart.stepped_rows with one bar per period, bars from zero. The AI never writes “oshdi” or “kamaydi” and never computes a difference unless the customer did."
+  },
+  {
+   "id": "attendance",
+   "label": {
+    "uz": "Davomat va intizom",
+    "ru": "Посещаемость и дисциплина",
+    "en": "Attendance and behaviour"
+   },
+   "example": {
+    "uz": "davomat 94%, sababsiz qoldirilgan darslar 18 soat, ogohlantirish 0 ta",
+    "ru": "посещаемость 94%, пропущено без уважительной причины 18 часов, замечаний 0",
+    "en": "attendance 94%, 18 hours missed without a reason, 0 warnings"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "The davomat slide (2 to 3 figures) for the class as a whole. Without a figure there is no such slide; behaviour concerns without figures go to the iltimoslar slide. “0” only when the customer said none."
+  },
+  {
+   "id": "achievements",
+   "label": {
+    "uz": "Sinfning yutuqlari",
+    "ru": "Успехи класса",
+    "en": "The class’s achievements"
+   },
+   "example": {
+    "uz": "tuman olimpiadasida 2-o‘rin; «Kitobxon» tanlovida sinf jamoasi finalda",
+    "ru": "районная олимпиада, 2-е место; класс в финале конкурса «Китобхон»",
+    "en": "district olympiad, 2nd place; the class team reached the “Kitobxon” final"
+   },
+   "kind": "list",
+   "need": "optional",
+   "missing": "omit",
+   "where": "The yutuqlar slide: up to 4 lines, each an achievement of the class, a team or, when the teacher typed one, a pupil. THE DEFAULT IS NO NAME: an achievement is written as the customer wrote it, “Tuman olimpiadasida 2-o‘rin”. A pupil’s name stays only when the teacher typed it AND the review screen’s consent line has been confirmed (guard G4: “Slaydda o‘quvchi ismi bor: oilasi rozi ekaniga ishonch hosil qiling”, with the choice “Ismni qoldirish / Faqat sinf nomidan”). This is the one place where the privacy rule (no pupil beside a mark, an absence or a problem) and a pupil’s name meet: praise is not a result, but it is still a child in front of other parents, hence the consent. Never invented, never graded, never ranked, never a name from an attached file."
+  },
+  {
+   "id": "concerns",
+   "label": {
+    "uz": "Muammolar (butun sinf bo‘yicha)",
+    "ru": "Проблемы (по классу в целом)",
+    "en": "Concerns (about the class as a whole)"
+   },
+   "example": {
+    "uz": "uy vazifasi, kechikish, telefon",
+    "ru": "домашние задания, опоздания, телефон",
+    "en": "homework, lateness, phones"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Each concern becomes one line “topic: request” on the iltimoslar slide and its second sentence in the notes; named children are never carried over. With none given the slide is “Ota-onalarga iltimoslar” made of the general requests of the talk."
+  },
+  {
+   "id": "talk_topic",
+   "label": {
+    "uz": "Suhbat mavzusi (ota-onalar uchun maslahat)",
+    "ru": "Тема беседы (совет родителям)",
+    "en": "Talk topic (advice for parents)"
+   },
+   "example": {
+    "uz": "uy vazifasida ota-ona yordami",
+    "ru": "помощь родителей с домашними заданиями",
+    "en": "how parents can help with homework"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "omit",
+   "where": "The mavzu slides. A topic meeting is made of them (3 to 6). When none is named the AI takes the customer’s first concern; with neither it writes one general talk on supporting a child at home. Plain advice only (writing rule 7)."
+  },
+  {
+   "id": "requests",
+   "label": {
+    "uz": "Ota-onalarga iltimoslar",
+    "ru": "Просьбы к родителям",
+    "en": "Requests to parents"
+   },
+   "example": {
+    "uz": "kundalikni birga ko‘rib turing",
+    "ru": "просматривайте дневник вместе",
+    "en": "look through the diary together"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "The customer’s own requests are used as given; otherwise the AI writes one doable request per concern, or three general ones. Never a deadline, a fee, a rule or a consequence."
+  },
+  {
+   "id": "organisational",
+   "label": {
+    "uz": "Tashkiliy masalalar (jadval, forma, qoidalar, darsliklar)",
+    "ru": "Организационные вопросы (расписание, форма, правила, учебники)",
+    "en": "Organisational matters (timetable, uniform, rules, textbooks)"
+   },
+   "example": {
+    "uz": "22-dekabrdan yangi dars jadvali",
+    "ru": "с 22 декабря новое расписание",
+    "en": "a new timetable from 22 December"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "The tashkiliy slides, 3 to 5 lines each, 1 to 3 slides, copied from the message or the attached file, each slide one topic with the customer’s own topic word as its heading. A sentence about money is copied as written and never added by the AI."
+  },
+  {
+   "id": "events",
+   "label": {
+    "uz": "Kelgusi tadbirlar (sanasi bilan)",
+    "ru": "Ближайшие мероприятия (с датами)",
+    "en": "Coming events (with dates)"
+   },
+   "example": {
+    "uz": "25-noyabr ochiq dars; 15-dekabr sinf soati",
+    "ru": "25 ноября открытый урок; 15 декабря классный час",
+    "en": "25 November open lesson; 15 December class hour"
+   },
+   "kind": "list",
+   "need": "optional",
+   "missing": "omit",
+   "where": "The tadbirlar slide: date as value, event as label, place or time as caption, exactly as given. The date is the day and month only (“15-dekabr”, at most 12 characters); a TIME goes to the caption (“17:00”); the event name is never reworded or shortened (at most 18 characters). 3 to 4 events that fit go on the calendar band. Anything that does not fit (a time or a range inside the date, “28-dekabr – 11-yanvar”, a name longer than 18 characters, a caption longer than 20) makes the WHOLE slide dated lines in bullets.classic, “<date>: <event>”, as typed; so do 5 or more events; 1 or 2 events are dated lines as well. Without a date there is no such slide. No date, time or place is ever written by the AI."
+  },
+  {
+   "id": "decisions",
+   "label": {
+    "uz": "Qaror loyihasi va keyingi yig‘ilish",
+    "ru": "Проект решения и следующее собрание",
+    "en": "Draft decisions and the next meeting"
+   },
+   "example": {
+    "uz": "dars vaqtida telefonlar o‘chiriladi; keyingi yig‘ilish 20-mart",
+    "ru": "на уроках телефоны выключаются; следующее собрание 20 марта",
+    "en": "phones are switched off in lessons; the next meeting on 20 March"
+   },
+   "kind": "list",
+   "need": "optional",
+   "missing": "omit",
+   "where": "The qarorlar slide, headed “Qaror loyihasi” (a deck is written BEFORE the meeting, so what the teacher types is a draft that the parents hear, discuss and vote on; the decisions themselves go into the minutes): 2 to 4 lines exactly as given. The next meeting’s date goes to the second line of the CLOSING slide (“Keyingi yig‘ilish: 20-mart”), not to this slide. Only when the teacher typed them; the AI never drafts a decision, and the minutes themselves are a document (bayonnoma), not a slide."
+  },
+  {
+   "id": "contact",
+   "label": {
+    "uz": "Aloqa (telefon yoki Telegram) va qabul vaqti",
+    "ru": "Контакт (телефон или Telegram) и часы приёма",
+    "en": "Contact (phone or Telegram) and reception hours"
+   },
+   "example": {
+    "uz": "Telegram @sinf_rahbari_misol, qabul payshanba 15:00–16:00",
+    "ru": "Telegram @sinf_rahbari_misol, приём по четвергам 15:00–16:00",
+    "en": "Telegram @sinf_rahbari_misol, reception Thursday 3:00–4:00 pm"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "omit",
+   "where": "The tanishuv slide (3 lines: name and role, contact, reception) in a first or start-of-year meeting; otherwise the second line of the closing slide, unless that line holds the next meeting. Exactly as the customer wrote it. Never asked, never invented. Mocks use the invented handle @sinf_rahbari_misol."
+  },
+  {
+   "id": "sources",
+   "label": {
+    "uz": "Natijalar jadvali, dars jadvali yoki qoidalar (fayl)",
+    "ru": "Таблица результатов, расписание или правила (файл)",
+    "en": "Results table, timetable or rules (file)"
+   },
+   "example": {
+    "uz": "chorak natijalari, dars jadvali, PDF",
+    "ru": "итоги четверти, расписание, PDF",
+    "en": "quarter results, timetable, PDF"
+   },
+   "kind": "file",
+   "need": "optional",
+   "missing": "omit",
+   "where": "An attached PDF, Word or TXT: figures, events, rules and timetables come from it and from nothing else. Pupil names in a file are never carried to a slide (rule 6). No sources slide."
+  },
+  {
+   "id": "next_meeting",
+   "label": {
+    "uz": "Keyingi yig‘ilish sanasi",
+    "ru": "Дата следующего собрания",
+    "en": "Date of the next meeting"
+   },
+   "example": {
+    "uz": "20-mart",
+    "ru": "20 марта",
+    "en": "20 March"
+   },
+   "kind": "date",
+   "need": "optional",
+   "missing": "omit",
+   "where": "The second line of the closing slide, “Keyingi yig‘ilish: 20-mart”, only when the customer wrote it. Never asked, never invented, never promised in the notes unless typed."
+  }
+ ],
+ "parts": [
+  {
+   "id": "cover",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "required",
+   "layouts": [
+    "cover"
+   ],
+   "pins": [],
+   "source": "template",
+   "write": "Heading = the customer’s own word for the meeting: “Ota-onalar yig‘ilishi” or, when the message says so, “Ota-onalar majlisi” (a topic meeting: the topic, at most 8 words). Body, at most 5 lines in this order: the header “<class> · <period>” (“7-«B» sinf · I chorak yakunlari”; a first meeting “1-sinf · birinchi yig‘ilish”; a topic meeting “Ota-onalar yig‘ilishi · 8-sinf”; no colon and no year, so the cover sets it as the header block), the teacher line, the school line(s), the date line (carries a year). A line not given is not written. No photo (no image_query), no notes."
+  },
+  {
+   "id": "kun_tartibi",
+   "kind": "slide",
+   "heading": {
+    "uz": "Kun tartibi",
+    "ru": "Повестка дня",
+    "en": "Agenda"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.numbered_rows"
+   ],
+   "source": "draft",
+   "checks": [
+    "numbers"
+   ],
+   "write": "From 5 slides. 3 to 6 lines (bullets.numbered_rows), each line the HEADING OF A SLIDE, WORD FOR WORD. When the deck has more than 6 content slides, consecutive slides of one topic are listed under the heading of the first of them (natijalar, fanlar, davomat: “Sinf natijalari”), and Qaror loyihasi and Savol va takliflar are left out of a full list; it never lists a slide the deck does not have. Notes: the greeting (“Assalomu alaykum, hurmatli ota-onalar!”), thanks, how many items there are, that a hand may be raised at any moment.",
+   "from": 5,
+   "join": 3
+  },
+  {
+   "id": "tanishuv",
+   "kind": "slide",
+   "heading": {
+    "uz": "Sinf rahbari bilan tanishuv",
+    "ru": "Знакомство с классным руководителем",
+    "en": "Meet the class teacher"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.lead_line"
+   ],
+   "source": "customer",
+   "write": "First or start-of-year meeting, and only when the customer gave a contact. bullets.lead_line: the lead “Murojaat uchun:” (“Для связи:”, “To reach me:”), then at most 3 lines exactly as given (name and role, Telegram or phone, reception hours). Nothing else: no biography unless the customer typed one. Notes: warm, first person, invite small questions.",
+   "when": "cue:birinchi",
+   "join": 4
+  },
+  {
+   "id": "natijalar",
+   "kind": "slide",
+   "heading": {
+    "uz": "Sinf natijalari",
+    "ru": "Результаты класса",
+    "en": "Class results"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "stats",
+    "big_number",
+    "bullets"
+   ],
+   "pins": [
+    "stats.classic",
+    "big_number.classic",
+    "bullets.card_stack"
+   ],
+   "source": "customer",
+   "write": "Results meeting only. stats.classic with 2 to 4 of the customer’s figures: value = the figure as written (“96%”), label = the customer’s name for it in at most 2 words (“o‘zlashtirish”, “sifat”, “o‘quvchi”, “a’lochi”, “o‘rtacha ball”), a long term split between label and caption (12 characters in Russian), caption = the customer’s own qualifier in at most 20 characters (“«4» va «5» baho”) or nothing. One figure: big_number.classic. No figure: the ruled blank (rule 5). Notes: this slide has class-wide figures only, no pupil’s name or marks; no promise of a talk with anyone.",
+   "when": "cue:natija",
+   "join": 1
+  },
+  {
+   "id": "fanlar",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "optional",
+   "layouts": [
+    "chart",
+    "bullets"
+   ],
+   "pins": [
+    "chart.stepped_rows"
+   ],
+   "source": "customer",
+   "write": "Heading, in the deck’s language: Fanlar bo‘yicha <o‘lchov> (yoki Baholar bo‘yicha taqsimot) / Результаты по предметам (или Распределение оценок) / Results by subject (or Spread of marks). Only when 2 or more figures were given. chart.stepped_rows, 2 to 8 rows in the customer’s order, value as written, drawn on a 0 to 100 scale when every value is a percentage, the unit caption in columns[0] is the customer’s measure plus the scale (“sifat, % · 0–100”). Row labels are the customer’s subject names in a well-known short form of at most 16 characters (12 in Russian: “Ona tili”, not “Ona tili va adabiyot”). If the labels cannot be shortened, the chart is SPLIT into slides of at most 4 rows, the second headed “… (davomi)”. For the spread of marks the rows are “«5»”, “«4»”, “«3»”, “«2»” with the counts as given (a count chart is not on the 0 to 100 scale). Notes: no blame on a teacher or a child; what help is needed.",
+   "when": "cue:fanlar",
+   "join": 8
+  },
+  {
+   "id": "davomat",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "usual",
+   "layouts": [
+    "stats",
+    "big_number",
+    "bullets"
+   ],
+   "pins": [
+    "stats.rows",
+    "big_number.classic"
+   ],
+   "source": "customer",
+   "write": "Heading, in the deck’s language: Davomat va intizom (faqat davomat berilsa: Davomat) / Посещаемость и дисциплина (только посещаемость: Посещаемость) / Attendance and behaviour (attendance only: Attendance). 2 to 3 of the customer’s figures (davomat %, soat, ogohlantirish): stats.rows, captions at most 34 characters. ONE figure: big_number.classic, and the heading is just “Davomat” when no behaviour figure was given. A concern without a figure is not drawn here. Notes: class-wide only; the number does not show whose absences; ask parents to tell the teacher when a child is ill (a request, not a promise).",
+   "when": "cue:davomat",
+   "join": 5
+  },
+  {
+   "id": "yutuqlar",
+   "kind": "slide",
+   "heading": {
+    "uz": "Sinfimizning yutuqlari",
+    "ru": "Успехи нашего класса",
+    "en": "Our class’s achievements"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.card_stack"
+   ],
+   "source": "customer",
+   "write": "bullets.card_stack, 3 to 4 lines of at most 52 characters: the class’s, a team’s, or a pupil’s achievement as the customer wrote it (“Tuman olimpiadasida 2-o‘rin”). A name only when typed and the consent line is confirmed (field achievements, guard G4). A second slide only when more than 4 were given. Notes: how to thank them aloud; the praise is for effort, never a ranking.",
+   "when": "cue:yutuq",
+   "join": 6
+  },
+  {
+   "id": "mavzu",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "usual",
+   "layouts": [
+    "bullets",
+    "statement"
+   ],
+   "pins": [
+    "bullets.lead_line",
+    "statement.soft_panel"
+   ],
+   "source": "draft",
+   "write": "bullets.lead_line ALWAYS for a talk: a lead of at most 8 words ending in a colon, then 3 to 4 lines; one statement.soft_panel (a single sentence of at most 60 characters) for the closing thought of a talk or for the optional variant MUHOKAMA UCHUN SAVOL (heading “Muhokama uchun savol”: one open question for the parents to talk over, taken from the customer’s message or a general one: “Sizning oilangizda nima yordam beradi?”; sources 01 and 10). 1 slide in the 8-slide deck, 3 to 6 in a topic meeting; the heading is a “we” phrase, never a verdict. GENERAL ADVICE ONLY (rule 7): a sign of a problem is never stated as a fact; it is turned into a question the parents ask themselves (“Telefon uyquga xalaqit bermayaptimi?”) or phrased “bo‘lishi mumkin”; no psychological or developmental claim (“tez zavq beradi” is the limit). Notes: invite the parents’ own experience, in the teacher’s own voice (“Sizlardan bitta misol eshitsam bo‘ladi”).",
+   "join": 9,
+   "repeat": {
+    "min": 1,
+    "max": 17
+   }
+  },
+  {
+   "id": "tashkiliy",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "usual",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.classic"
+   ],
+   "source": "customer",
+   "write": "Heading, in the deck’s language: Tashkiliy masalalar (yoki mijozning mavzusi: “Dars jadvali va maktab qoidalari”) / Организационные вопросы (или тема клиента: «Расписание и правила школы») / Organisational matters (or the customer’s topic: “Timetable and school rules”). Only when given in the message or the file. bullets.classic, 3 to 5 lines each, in the customer’s words; 1 to 3 slides, one topic each, the heading is that topic’s own word. In a first or start-of-year meeting it comes right after tanishuv and before the talk; in a results meeting after the talk. A timetable becomes 3 to 5 lines of paraphrase (“Darslar 8:30 da boshlanadi”), taken from the file, and the notes say the full timetable is handed out. No money sentence unless the customer wrote one. Notes: point to the file; ask what is unclear.",
+   "when": "cue:tashkiliy",
+   "join": 10,
+   "repeat": {
+    "min": 1,
+    "max": 3
+   }
+  },
+  {
+   "id": "iltimoslar",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "usual",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.classic"
+   ],
+   "source": "draft",
+   "checks": [
+    "numbers",
+    "names"
+   ],
+   "write": "Heading, in the deck’s language: Muammolar va iltimoslar (muammo berilmasa: Ota-onalarga iltimoslar) / Проблемы и просьбы (без проблем: Просьбы к родителям) / Problems and requests (no concern given: Requests to parents). bullets.classic, 3 to 5 lines of at most 52 characters, each “<muammo>: <iltimos>” (“Telefon: dars vaqtida o‘chirishga kelishib oling”), one request per concern, in the polite imperative, doable, no deadline, fee or consequence, never about a named child or a named parent. Without concerns: 3 general requests, heading “Ota-onalarga iltimoslar”. Notes: class-wide observations; ask for a show of hands.",
+   "from": 4,
+   "join": 2
+  },
+  {
+   "id": "tadbirlar",
+   "kind": "slide",
+   "heading": {
+    "uz": "Kelgusi tadbirlar",
+    "ru": "Ближайшие мероприятия",
+    "en": "Coming events"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "timeline",
+    "bullets"
+   ],
+   "pins": [
+    "timeline.deep_band",
+    "bullets.classic"
+   ],
+   "source": "customer",
+   "write": "Only when dated events were given. 3 to 4 events that fit: timeline.deep_band (value = the day and month as written, at most 12 characters; label = the event as typed, at most 18; caption = the place or the TIME as typed, at most 20: “17:00”). Anything that does not fit (a time or a range in the date, a longer name, 5 or more events) makes the WHOLE slide dated lines in bullets.classic, “<date>: <event>”, names unchanged; 1 or 2 events are dated lines too. A second slide above 6. Notes: read the dates slowly; suggest noting them in the phone.",
+   "when": "cue:tadbir",
+   "join": 7
+  },
+  {
+   "id": "qarorlar",
+   "kind": "slide",
+   "heading": {
+    "uz": "Qaror loyihasi",
+    "ru": "Проект решения",
+    "en": "Draft decisions"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.numbered_rows"
+   ],
+   "source": "customer",
+   "write": "Only when the customer typed decisions. bullets.numbered_rows, 2 to 4 lines exactly as given; the next meeting’s date is not here but on the closing slide. The AI never drafts a decision. A deck is written before the meeting, so these are a draft, never “taken”: a slide called “Yig‘ilish qarorlari” would show the teacher’s typing as already decided. Notes: read the draft, ask for a show of hands, say it is a draft.",
+   "when": "cue:qaror",
+   "join": 11
+  },
+  {
+   "id": "savollar",
+   "kind": "slide",
+   "heading": {
+    "uz": "Savol va takliflar",
+    "ru": "Вопросы и предложения",
+    "en": "Questions and suggestions"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "layouts": [
+    "closing"
+   ],
+   "pins": [],
+   "source": "template",
+   "write": "Heading fixed. One line: “E’tiboringiz uchun rahmat!” (“Спасибо за внимание!”, “Thank you for your attention!”); a second line: “Keyingi yig‘ilish: <date>” when the customer gave the next meeting, otherwise the customer’s contact when no tanishuv slide carries it. Notes: take questions one at a time; nothing is promised that the customer did not state."
+  }
+ ],
+ "rules": [
+  {
+   "text": "Kind of meeting: results (a period, results words or class figures), a topic (a named talk subject and no results) or a first or start-of-year meeting. Follow the slots given; never add a stage.",
+   "to": "model"
+  },
+  {
+   "text": "Lines at most 52 characters (Russian 48), 3 to 5 lines (the agenda 6), a statement at most 60 characters, a figure’s label at most 2 words and its caption at most 20 characters. Never “kelishing” (it reads as “come”): to agree is “kelishib oling”. This overrides the global guide of about 111 words a slide.",
+   "to": "model"
+  },
+  {
+   "text": "Never invent, on a slide or in a note: no figure, mark, rating, name, class letter, date, time, room, event, rule, order, law, price, fee, phone, handle or source the message or the file does not state. No derived numbers (totals, shares, averages, differences, “oshdi”, “kamaydi”) unless written. A note never promises an action or a follow-up the customer did not state and never generalises about parents or children.",
+   "to": "model"
+  },
+  {
+   "text": "The agenda lines are the headings of this deck’s slides, word for word. A talk heading is a phrase of at most 8 words in the “we” form (“Uy vazifasida qanday yordam beramiz”).",
+   "to": "model"
+  },
+  {
+   "text": "A results meeting with no class figure has a results slide of four fill-in lines (“O‘quvchilar soni: ______”, “O‘zlashtirish: ______ %”, “Sifat ko‘rsatkichi: ______ %”, “A’lochilar: ______ nafar”; Russian “Учеников”, “Успеваемость”, “Качество знаний”, “Отличников”; English “Pupils”, “Pass rate”, “Quality rate”, “Straight-A pupils”) and its notes open “[To‘ldiring: …]”. No other slide is a blank.",
+   "to": "model"
+  },
+  {
+   "text": "Privacy: no slide or note puts a pupil’s name next to a mark, an absence, lateness, behaviour, health or a family matter; problems are about the class as a whole. A name appears only on the achievements slide, as the customer typed it. Never a ranking or a list of the weakest. No photographs.",
+   "to": "model"
+  },
+  {
+   "text": "Each concern gets one doable request in the polite imperative (“Kechqurun daftarni birga ko‘rib chiqing”), no deadline, fee or consequence. A talk is common-sense advice only: no statistic, study, expert, quotation or diagnosis; a sign of a problem is a question the parents ask themselves. Money is never raised unless the message states it, and then copied as written.",
+   "to": "model"
+  },
+  {
+   "text": "Figures exactly as written (“96%” stays “96%”); a chart has one series and at least 2 rows, a percentage chart on the 0 to 100 scale; English terms “pass rate”, “quality rate”, “straight-A pupils”, a mark range only as written. Decisions are a draft headed “Qaror loyihasi”, only as typed; the next meeting is the closing slide’s second line.",
+   "to": "model"
+  },
+  {
+   "text": "Speaker notes are the teacher’s script on every slide but the cover: 20 to 45 words, first person, spoken to the parents, never repeating a slide line; the second slide’s notes open “Assalomu alaykum, hurmatli ota-onalar!”. Uzbek is Latin only (o‘ g‘ with ‘, the tutuq belgisi with ’).",
+   "to": "model"
+  }
+ ],
+ "bot": {
+  "prompt": {
+   "uz": "👪 Ota-onalar yig‘ilishi slaydlari. Bitta xabarda yozing: sinf, sinf rahbari va maktab, yig‘ilish nima haqida (chorak yakunlari, «Farzand va telefon» kabi mavzu yoki birinchi yig‘ilish), sinf natijalari (o‘quvchilar soni, o‘zlashtirish, sifat) va necha slayd (aytmasangiz, 8 ta).\nRaqamlar, yutuqlar va sanalarni o‘zingiz yozing: slaydga faqat siz aytganlar tushadi. O‘quvchilarning alohida baholari slaydga qo‘yilmaydi.\n📎 Natijalar jadvali, dars jadvali yoki maktab qoidalarini PDF, Word yoki TXT qilib qo‘shsangiz, slaydlar shunga tayanadi.",
+   "ru": "👪 Слайды к родительскому собранию. Напишите одним сообщением: класс, классного руководителя и школу, о чём собрание (итоги четверти, тема вроде «Ребёнок и телефон» или первое собрание), итоги класса (число учеников, успеваемость, качество знаний) и число слайдов (если не указать, будет 8).\nЦифры, успехи и даты пишите сами: на слайды попадёт только то, что вы сообщили. Оценки отдельных учеников на слайды не ставятся.\n📎 Прикрепите таблицу результатов, расписание или правила школы в PDF, Word или TXT — слайды будут опираться на них.",
+   "en": "👪 Parents’ meeting slides. Say it in one message: the class, the class teacher and the school, what the meeting is about (quarter results, a topic such as “Children and phones”, or a first meeting), the class results (pupils, pass rate, quality rate) and the number of slides (if you do not say, you get 8).\nWrite the figures, achievements and dates yourself: only what you tell us goes on the slides. Individual pupils’ marks are never put on a slide.\n📎 Attach the results table, the timetable or the school rules as a PDF, Word or TXT file and the slides will lean on it."
+  },
+  "examples": [
+   {
+    "uz": "7-«B» sinf ota-onalar yig‘ilishi uchun 8 ta slayd, I chorak yakunlari. Sinfda 28 o‘quvchi, o‘zlashtirish 96%, sifat 68%, 4 nafari a’lochi. Davomat 94%. Muammolar: uy vazifasi va kechikish. 25-noyabrda ochiq dars bor. Sinf rahbari Mohira Namunova, Namunaviy maktab, Toshkent.",
+    "ru": "8 слайдов для родительского собрания в 7 «Б» классе, итоги I четверти. В классе 28 учеников, успеваемость 96%, качество знаний 68%, 4 отличника. Посещаемость 94%. Проблемы: домашние задания и опоздания. 25 ноября открытый урок. Классный руководитель Мохира Намунова, школа «Образец», Ташкент.",
+    "en": "8 slides for a parents’ meeting in grade 7B, quarter 1 results. 28 pupils, pass rate 96%, quality rate (marks 4–5) 68%, 4 straight-A pupils. Attendance 94%. Problems: homework and lateness. Open lesson on 25 November. Class teacher Mohira Namunova, Model School, Tashkent."
+   },
+   {
+    "uz": "8-sinf ota-onalar yig‘ilishi: farzand va telefon. 8 ta slayd, ayblamasdan, oddiy maslahatlar va oilaviy qoidalar bo‘lsin. Sinf rahbari Sherzod Namunov, Namunaviy maktab, Samarqand.",
+    "ru": "Родительское собрание в 8 классе: ребёнок и телефон. 8 слайдов, без обвинений, простые советы и семейные правила. Классный руководитель Шерзод Намунов, школа «Образец», Самарканд.",
+    "en": "A parents’ meeting for grade 8: children and phones. 8 slides, no blame, simple advice and family rules. Class teacher Sherzod Namunov, Model School, Samarkand."
+   },
+   {
+    "uz": "1-sinf ota-onalarining birinchi yig‘ilishi, 8 ta slayd: maktabga moslashish va bolaning kun rejimi, ota-onalarga iltimoslar. Sinf rahbari Dilfuza Namunova, Namunaviy maktab, Namangan, Telegram @sinf_rahbari_misol, qabul payshanba 15:00–16:00. Dars jadvali va maktab qoidalari biriktirilgan faylda.",
+    "ru": "Первое собрание родителей первоклассников, 8 слайдов: адаптация к школе и режим дня ребёнка, просьбы к родителям. Классный руководитель Дилфуза Намунова, школа «Образец», Наманган, Telegram @sinf_rahbari_misol, приём по четвергам 15:00–16:00. Расписание уроков и правила школы — в прикреплённом файле.",
+    "en": "The first meeting for parents of grade 1, 8 slides: settling into school and the child’s daily routine, requests to parents. Class teacher Dilfuza Namunova, Model School, Namangan, Telegram @sinf_rahbari_misol, reception Thursday 3:00–4:00 pm. The timetable and the school rules are in the attached file."
+   }
+  ],
+  "attach": true,
+  "notices": {
+   "blanks": {
+    "uz": "Siz bermagan ma’lumot o‘rniga bo‘sh joy qoldirildi: uni o‘zingiz to‘ldiring.",
+    "ru": "Где данных не было, оставлены пустые места: заполните их сами.",
+    "en": "Where you gave no details, blanks were left for you to fill in."
+   }
+  }
+ },
+ "templates": [],
+ "look": {
+  "designs": [
+   "lagoon",
+   "classroom",
+   "scholar",
+   "forest",
+   "graphite"
+  ],
+  "variants": {
+   "bullets": [
+    "numbered_rows",
+    "classic",
+    "lead_line",
+    "card_stack"
+   ],
+   "stats": [
+    "classic",
+    "rows"
+   ],
+   "chart": [
+    "stepped_rows"
+   ],
+   "timeline": [
+    "deep_band"
+   ],
+   "statement": [
+    "soft_panel"
+   ],
+   "big_number": [
+    "classic"
+   ]
+  },
+  "cover_lines": 5,
+  "note": "lagoon by default (one hue, calm for adults, prints in two tones); the default is the owner’s to confirm, classroom being the family look of the lesson decks."
+ },
+ "gates": [
+  "A native Uzbek and a native Russian teacher read the fixed headings (Kun tartibi, Sinf natijalari, Sinfimizning yutuqlari, Kelgusi tadbirlar, Qaror loyihasi, Savol va takliflar), the ruled blank and the bot copy.",
+  "A 6, an 8 and a 15 slide sample in uz, ru and en are drawn with the deck sample tool and looked at next to units/slides.tadbir.ota_onalar/mock/school_ota_onalar.png.",
+  "One real-provider run, scripts/operations/ai_smoke.py --category slides.tadbir.ota_onalar on the server, makes the deck with every check passing, and the deck is looked at, before the tick."
+ ],
+ "later": [
+  {
+   "text": "The kind-of-meeting question with three buttons; the kind is read from the message this round."
+  },
+  {
+   "text": "A count read from the facts (6 to 10 with no number) and the review line that says so.",
+   "words": [
+    "ko‘proq ma’lumot bersangiz",
+    "тем больше слайдов",
+    "the more slides"
+   ]
+  },
+  {
+   "text": "The comparison chart of three or more periods (solishtirish), and the first meeting’s order (tanishuv and tashkiliy before the talk)."
+  },
+  {
+   "text": "The consent line for a pupil’s name on the achievements slide (guard G4)."
+  }
+ ],
+ "exclusive": [
+  [
+   "birinchi",
+   "natija"
+  ]
+ ],
+ "sources": {
+  "take": "all"
+ }
+}

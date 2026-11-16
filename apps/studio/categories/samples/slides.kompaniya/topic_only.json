@@ -1,0 +1,232 @@
+{
+ "entry": "slides.kompaniya",
+ "case": "topic_only",
+ "about": "Sample content for the deck sample tool (apps/studio/categories/sample.py), invented people, organisations and figures only. prompt is the customer’s one message; slots holds, per part id, the model’s answer for each time that slot appears. Past its listed instances a repeating slot is drawn as the honest form (heading and ruled lines). A slot whose heading is fixed carries an empty heading, which the finish writes in the language of the deck. Customer slots hold only what the prompt says (figures) or an honest form (topic_only); notes are left to the real model.",
+ "prompt": {
+  "uz": "Namuna Mebel kompaniyasi taqdimoti kerak: yangi mijozlarga ko‘rsatamiz.",
+  "ru": "Нужна презентация компании «Намуна Мебель»: покажем новым клиентам.",
+  "en": "I need a presentation of the Namuna Furniture company to show new customers."
+ },
+ "slots": {
+  "cover": [
+   {
+    "uz": {
+     "layout": "cover",
+     "heading": "Namuna Mebel",
+     "body": "",
+     "items": []
+    },
+    "ru": {
+     "layout": "cover",
+     "heading": "Намуна Мебель",
+     "body": "",
+     "items": []
+    },
+    "en": {
+     "layout": "cover",
+     "heading": "Namuna Furniture",
+     "body": "",
+     "items": []
+    }
+   }
+  ],
+  "haqimizda": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Biz haqimizda",
+     "body": "Faoliyat: ________\nShahar: ________\nTashkil etilgan yil: ________\nXodimlar: ________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "О нас",
+     "body": "Деятельность: ________\nГород: ________\nГод основания: ________\nСотрудники: ________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "About us",
+     "body": "What we do: ________\nCity: ________\nFounded: ________\nStaff: ________",
+     "items": []
+    }
+   }
+  ],
+  "xizmatlar": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Xizmatlarimiz",
+     "body": "Xizmat: ________\nXizmat: ________\nXizmat: ________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Наши услуги",
+     "body": "Услуга: ________\nУслуга: ________\nУслуга: ________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Our services",
+     "body": "Service: ________\nService: ________\nService: ________",
+     "items": []
+    }
+   }
+  ],
+  "xizmat": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Xizmat",
+     "body": "Nima kiradi: ________\nKim uchun: ________\nQanday yetkaziladi: ________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Услуга",
+     "body": "Что входит: ________\nДля кого: ________\nКак доставляется: ________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "A service",
+     "body": "What it includes: ________\nWho it is for: ________\nHow it is delivered: ________",
+     "items": []
+    }
+   }
+  ],
+  "jarayon": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Ish tartibi",
+     "body": "1. ________\n2. ________\n3. ________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Порядок работы",
+     "body": "1. ________\n2. ________\n3. ________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "How we work",
+     "body": "1. ________\n2. ________\n3. ________",
+     "items": []
+    }
+   }
+  ],
+  "afzalliklar": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Afzallik: ________\nAfzallik: ________\nAfzallik: ________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Преимущество: ________\nПреимущество: ________\nПреимущество: ________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Advantage: ________\nAdvantage: ________\nAdvantage: ________",
+     "items": []
+    }
+   }
+  ],
+  "ishonch": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Hujjat: ________\nRaqami va sanasi: ________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Документ: ________\nНомер и дата: ________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Document: ________\nNumber and date: ________",
+     "items": []
+    }
+   }
+  ],
+  "mijozlar": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Mijozlarimiz",
+     "body": "Mijoz: ________\nMijoz: ________\nMijoz: ________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Наши клиенты",
+     "body": "Клиент: ________\nКлиент: ________\nКлиент: ________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Our clients",
+     "body": "Client: ________\nClient: ________\nClient: ________",
+     "items": []
+    }
+   }
+  ],
+  "keys": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Bajarilgan ish",
+     "body": "Mijoz: ________\nVazifa: ________\nNatija: ________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Выполненная работа",
+     "body": "Клиент: ________\nЗадача: ________\nИтог: ________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "A finished job",
+     "body": "Client: ________\nTask: ________\nResult: ________",
+     "items": []
+    }
+   }
+  ],
+  "aloqa": [
+   {
+    "uz": {
+     "layout": "closing",
+     "heading": "",
+     "body": "Telefon: ________\nTelegram: ________",
+     "items": []
+    },
+    "ru": {
+     "layout": "closing",
+     "heading": "",
+     "body": "Телефон: ________\nTelegram: ________",
+     "items": []
+    },
+    "en": {
+     "layout": "closing",
+     "heading": "",
+     "body": "Phone: ________\nTelegram: ________",
+     "items": []
+    }
+   }
+  ]
+ }
+}

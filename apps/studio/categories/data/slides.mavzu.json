@@ -1,0 +1,800 @@
+{
+ "schema": 2,
+ "id": "slides.mavzu",
+ "status": "ready",
+ "service": "slides",
+ "parent": null,
+ "order": 1,
+ "labels": {
+  "uz": "🎓 Mavzu bo‘yicha slayd",
+  "ru": "🎓 Презентация по теме",
+  "en": "🎓 Topic presentation"
+ },
+ "summary": "An editable PowerPoint deck on a topic for a seminar, a mustaqil ish or a class talk: a title slide whose author block is filled by code from one optional step (institution, Fan, Bajardi, Qabul qildi, city and year; the owner’s “Guruh” is part of the Bajardi line), Reja, Kirish, short body slides that each make one point, Xulosa with one line per Reja item, a sources slide only when sources were supplied, and a thank-you slide, with the spoken text in the speaker notes. Type is held to a written contract (nothing below 14 pt, item text 18 pt and up, headings 32 pt and up) that is a ship gate: the template is not enabled until the renderer work of section 6 lands and the gate passes.",
+ "tone": "Neutral and clear. Slide text is keywords and short lines; the spoken text lives in the speaker notes, first person, polite. Plain words for pupils; for students an academic register with each term explained once.",
+ "topic": true,
+ "title": "model",
+ "length": {
+  "unit": "slides",
+  "mode": "count",
+  "target": "count",
+  "default": 10,
+  "min": 3,
+  "max": 60,
+  "note": "The count is delivered as quoted. Talk minutes are not read into a count this round."
+ },
+ "questions": {
+  "default": 0,
+  "max": 0
+ },
+ "quality": "repair",
+ "fill": false,
+ "cues": {
+  "oliy": {
+   "uz": [
+    "kurs",
+    "talaba",
+    "universitet",
+    "institut",
+    "kollej",
+    "texnikum",
+    "seminar",
+    "magistr"
+   ],
+   "ru": [
+    "курс",
+    "студент",
+    "университет",
+    "институт",
+    "колледж",
+    "техникум",
+    "семинар",
+    "магистр"
+   ],
+   "en": [
+    "university",
+    "student",
+    "college",
+    "seminar",
+    "undergraduate",
+    "faculty"
+   ]
+  },
+  "figures": {
+   "uz": [
+    "foiz",
+    "so‘rovnoma",
+    "so‘rov natija",
+    "statistika",
+    "raqamlar",
+    "ma’lumotlar"
+   ],
+   "ru": [
+    "процент",
+    "опрос",
+    "статистик",
+    "цифры",
+    "данные"
+   ],
+   "en": [
+    "percent",
+    "survey",
+    "statistic",
+    "figures",
+    "data"
+   ]
+  }
+ },
+ "ask": {
+  "when": "cues_missing",
+  "fields": [
+   "student_name",
+   "teacher",
+   "institution"
+  ],
+  "cover": true,
+  "review": {
+   "uz": "Titul slayd uchun ma’lumot yozmadingiz: unda faqat mavzu bo‘ladi.",
+   "ru": "Данных для титульного слайда нет: на нём будет только тема.",
+   "en": "You gave no title slide details: it will show the topic only."
+  },
+  "prompt": {
+   "uz": "📝 Titul slayd uchun ma’lumotlar. Bitta xabarda, har birini yangi qatordan yozing: universitet yoki maktab, fan, Bajardi (F.I.Sh., guruh yoki sinf), Qabul qildi (o‘qituvchi), shahar va yil. Yozmaganlaringiz slaydda bo‘lmaydi.",
+   "ru": "📝 Данные для титульного слайда. Одним сообщением, каждое с новой строки: вуз или школа, предмет, Выполнил(а) (ФИО, группа или класс), Принял(а) (преподаватель), город и год. Чего не укажете, на слайде не будет.",
+   "en": "📝 Title slide details. In one message, each on its own line: university or school, subject, Prepared by (name, group or class), Checked by (teacher), city and year. Anything you skip will not appear on the slide."
+  },
+  "hint": {
+   "uz": "Masalan:\nNamuna davlat universiteti\nFan: Ekologiya\nBajardi: Karimova Dilnoza, 205-guruh\nQabul qildi: dotsent Rahimov B.\nSamarqand — 2026",
+   "ru": "Например:\nГосударственный университет «Намуна»\nПредмет: Экология\nВыполнила: Каримова Дилноза, группа 205\nПринял: доцент Рахимов Б.\nСамарканд — 2026",
+   "en": "For example:\nNamuna State University\nSubject: Ecology\nPrepared by: Dilnoza Karimova, group 205\nChecked by: Assoc. Prof. B. Rahimov\nSamarkand — 2026"
+  }
+ },
+ "fields": [
+  {
+   "id": "topic",
+   "label": {
+    "uz": "Mavzu",
+    "ru": "Тема",
+    "en": "Topic"
+   },
+   "example": {
+    "uz": "Qayta tiklanuvchi energiya manbalari",
+    "ru": "Возобновляемые источники энергии",
+    "en": "Renewable energy sources"
+   },
+   "kind": "text",
+   "need": "required",
+   "missing": "ask",
+   "where": "Cover heading and the whole deck. The bot’s existing topic check asks when it is missing; the topic is never replaced or reworded beyond shortening to 8 words, and its own wording (its key term) is reused in every heading, column and label of the deck."
+  },
+  {
+   "id": "subject",
+   "label": {
+    "uz": "Fan",
+    "ru": "Предмет",
+    "en": "Subject"
+   },
+   "example": {
+    "uz": "Ekologiya",
+    "ru": "Экология",
+    "en": "Ecology"
+   },
+   "kind": "line",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "Asked only in the cover step (it is no longer in the main prompt); printed as “Fan: …” with the institution at the top of the cover; also steers vocabulary. If missing: no line."
+  },
+  {
+   "id": "audience_level",
+   "label": {
+    "uz": "Kurs yoki sinf",
+    "ru": "Курс или класс",
+    "en": "Year or grade"
+   },
+   "example": {
+    "uz": "2-kurs / 6-sinf",
+    "ru": "2 курс / 6 класс",
+    "en": "year 2 / grade 6"
+   },
+   "kind": "line",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "Not printed by itself; sets the register (plain words for pupils, explained terms for students) and whether Kirish carries “Dolzarbligi” and “Maqsad va vazifalar” (college and university) or a single “Maqsad:” line (pupils). If missing: plain academic register."
+  },
+  {
+   "id": "length",
+   "label": {
+    "uz": "Slayd soni yoki chiqish vaqti",
+    "ru": "Число слайдов или время выступления",
+    "en": "Slide count or talk length"
+   },
+   "example": {
+    "uz": "10 ta slayd yoki 8 daqiqalik chiqish",
+    "ru": "10 слайдов или выступление на 8 минут",
+    "en": "10 slides or an 8-minute talk"
+   },
+   "kind": "number",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Deck length. A count wins (3 and up); minutes alone give minutes plus 2 slides, never below 5; nothing given means 10. The minutes reader does not exist yet (pages.py counts “daqiqa / минут” as a counted noun, not a slide count, so “8 daqiqalik chiqish” gives 10 slides today): it is a prerequisite, section 6 item 9."
+  },
+  {
+   "id": "institution",
+   "label": {
+    "uz": "Universitet yoki maktab",
+    "ru": "Вуз или школа",
+    "en": "University or school"
+   },
+   "example": {
+    "uz": "Samarqand davlat universiteti",
+    "ru": "Самаркандский государственный университет",
+    "en": "Samarkand State University"
+   },
+   "kind": "org",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Header line at the top of the cover (the customary place, first in doc 5’s list). Taken positionally from the cover step; skipped = no line, never a blank or a guess.",
+   "cues": {
+    "uz": [
+     "birinchi slayd",
+     "titul"
+    ],
+    "ru": [
+     "первом слайде",
+     "титул"
+    ],
+    "en": [
+     "first slide",
+     "title slide",
+     "cover slide"
+    ]
+   }
+  },
+  {
+   "id": "student_name",
+   "label": {
+    "uz": "Bajardi (F.I.Sh.)",
+    "ru": "Выполнил(а) (ФИО)",
+    "en": "Prepared by (name)"
+   },
+   "example": {
+    "uz": "Karimova Dilnoza",
+    "ru": "Каримова Дилноза",
+    "en": "Dilnoza Karimova"
+   },
+   "kind": "person",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "Cover line “Bajardi: …” (ru “Выполнил(а): …”, en “Prepared by: …”): the same word as pdf.mustaqil_ish and pdf.kurs_ishi, so one student has one cover wording across the family. A customer who typed “Tayyorladi” gets “Bajardi” on the cover (the label is the product’s, the name is theirs, verbatim).",
+   "cues": {
+    "uz": [
+     "bajardi",
+     "tayyorladi",
+     "bajaruvchi",
+     "muallif"
+    ],
+    "ru": [
+     "выполнил",
+     "подготовил",
+     "автор"
+    ],
+    "en": [
+     "prepared by",
+     "presented by",
+     "made by"
+    ]
+   }
+  },
+  {
+   "id": "student_group",
+   "label": {
+    "uz": "Guruh yoki sinf",
+    "ru": "Группа или класс",
+    "en": "Group or class"
+   },
+   "example": {
+    "uz": "205-guruh",
+    "ru": "группа 205",
+    "en": "group 205"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "omit",
+   "where": "On the Bajardi line after the name (“Karimova Dilnoza, 205-guruh”). This is where the owner’s “Guruh” line went: it is not a line of its own."
+  },
+  {
+   "id": "teacher",
+   "label": {
+    "uz": "Qabul qildi (o‘qituvchi)",
+    "ru": "Принял(а) (преподаватель)",
+    "en": "Checked by (teacher)"
+   },
+   "example": {
+    "uz": "dotsent Rahimov B.",
+    "ru": "доцент Рахимов Б.",
+    "en": "Assoc. Prof. B. Rahimov"
+   },
+   "kind": "person",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Cover line “Qabul qildi: …” (ru “Принял(а): …”, en “Checked by: …”); “Tekshirdi” only if the customer used that word (the same rule as pdf.mustaqil_ish).",
+   "cues": {
+    "uz": [
+     "qabul qildi",
+     "tekshirdi"
+    ],
+    "ru": [
+     "принял",
+     "проверил"
+    ],
+    "en": [
+     "checked by",
+     "supervisor"
+    ]
+   }
+  },
+  {
+   "id": "city",
+   "label": {
+    "uz": "Shahar",
+    "ru": "Город",
+    "en": "City"
+   },
+   "example": {
+    "uz": "Samarqand",
+    "ru": "Самарканд",
+    "en": "Samarkand"
+   },
+   "kind": "place",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Last cover line with the year: “Samarqand — 2026”."
+  },
+  {
+   "id": "year",
+   "label": {
+    "uz": "Yil",
+    "ru": "Год",
+    "en": "Year"
+   },
+   "example": {
+    "uz": "2026",
+    "ru": "2026",
+    "en": "2026"
+   },
+   "kind": "number",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Only a year the customer wrote. Unlike the PDF title pages, a slide never takes the year from the server clock (open question 4)."
+  },
+  {
+   "id": "focus_points",
+   "label": {
+    "uz": "Nimalarni yoritish",
+    "ru": "Что осветить",
+    "en": "What to cover"
+   },
+   "example": {
+    "uz": "manbalar, ishlash prinsipi, afzallik va to‘siqlar",
+    "ru": "источники, принцип работы, плюсы и минусы",
+    "en": "sources, how it works, pros and cons"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Body slides; when missing the AI picks the 3 to 5 most important aspects of the topic."
+  },
+  {
+   "id": "figures",
+   "label": {
+    "uz": "O‘z raqamlari va sanalari",
+    "ru": "Свои цифры и даты",
+    "en": "Own figures and dates"
+   },
+   "example": {
+    "uz": "30 kishidan 17 tasi quyoshni tanladi",
+    "ru": "из 30 человек 17 выбрали солнце",
+    "en": "17 of 30 people chose solar"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Chart, stats, big-number and timeline slides only. Without them there is no chart, no stats and no dated timeline, and no number or year is printed anywhere."
+  },
+  {
+   "id": "sources",
+   "label": {
+    "uz": "Manbalar (fayl)",
+    "ru": "Источники (файл)",
+    "en": "Sources (file)"
+   },
+   "example": {
+    "uz": "biriktirilgan PDF",
+    "ru": "приложенный PDF",
+    "en": "an attached PDF"
+   },
+   "kind": "file",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Content and the sources slide (only supplied files or named works, as given); none = no sources slide and no source anywhere."
+  }
+ ],
+ "parts": [
+  {
+   "id": "cover",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "required",
+   "layouts": [
+    "cover"
+   ],
+   "pins": [],
+   "source": "template",
+   "write": "Heading = the topic (the model’s only job on the cover). The cover lines are NOT written by the model: code puts them in the body, one per line, in this fixed order, each only if given: institution; “Fan: …”; “Bajardi: <name>, <group>”; “Qabul qildi: <teacher>”; “<city> — <year>”. Drawn as a header block (institution, Fan) at the top, the topic in the middle, and the author block and city-year in a lower block (22 pt and up, ink, comfortable leading); 5 lines is comfortable, 6 safe, 8 the limit. No placeholder, no “F.I.Sh.”, no year of the system’s own. With no lines but a known subject: one subtitle line “<Fan> fanidan slayd”; otherwise none. No notes."
+  },
+  {
+   "id": "reja",
+   "kind": "slide",
+   "heading": {
+    "uz": "Reja",
+    "ru": "План",
+    "en": "Outline"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "agenda",
+    "bullets"
+   ],
+   "pins": [
+    "agenda.classic",
+    "agenda.tone_cards"
+   ],
+   "source": "draft",
+   "write": "3 to 6 items, label only (at most 4 words, no sub-text, 24 pt). The Reja matches the body slides in order and topic, not word for word: each label shares its key noun with the heading of the slide it names (“Quyosh paneli” / “Quyosh paneli nurni tokka aylantiradi”). A deterministic post-pass checks item k against body heading k (a shared word stem of 5 letters or more); a label that fails is rebuilt from that heading cut to 4 words. From 13 slides one item per part, not per slide (every body slide belongs to a part); left out below 8 slides. Notes (35 to 45 words): the greeting and the route; the greeting is neutral unless the message names the audience.",
+   "from": 8
+  },
+  {
+   "id": "kirish",
+   "kind": "slide",
+   "heading": {
+    "uz": "Kirish",
+    "ru": "Введение",
+    "en": "Introduction"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.lead_line"
+   ],
+   "source": "draft",
+   "write": "3 or 4 lines of at most 9 words, the first as a lead line; the last is “Maqsad: …” (ru «Цель: …», en “Aim: …”). For college and university customers a line “Dolzarbligi: …” (relevance, in words, no figure) may come before it. No number, date or name that is not in the message or files.",
+   "from": 6
+  },
+  {
+   "id": "maqsad",
+   "kind": "slide",
+   "heading": {
+    "uz": "Maqsad va vazifalar",
+    "ru": "Цель и задачи",
+    "en": "Aim and tasks"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.numbered_rows",
+    "bullets.classic"
+   ],
+   "source": "draft",
+   "write": "Only for college and university customers and from 12 slides: “Maqsad: …” then 2 or 3 numbered tasks (“Vazifalar”), each at most 9 words, each answered by one body slide. Pupils keep the single “Maqsad:” line of Kirish.",
+   "when": "cue:oliy",
+   "from": 12,
+   "join": 3
+  },
+  {
+   "id": "tarif",
+   "kind": "slide",
+   "heading": {
+    "uz": "Ta’rif",
+    "ru": "Определение",
+    "en": "Definition"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "statement",
+    "bullets"
+   ],
+   "pins": [
+    "statement.underlined"
+   ],
+   "source": "draft",
+   "write": "One sentence of at most 20 words defining the key term of THIS deck’s topic (a deck on solar energy defines “Quyosh energiyasi”, not “renewable energy”). Never a date, number, person or law. At most once, usually in the first third.",
+   "from": 9
+  },
+  {
+   "id": "izoh",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "usual",
+   "layouts": [
+    "bullets",
+    "two_column",
+    "cards",
+    "process",
+    "comparison",
+    "pros_cons",
+    "image_split",
+    "statement"
+   ],
+   "pins": [
+    "bullets.classic",
+    "bullets.rail_dots",
+    "two_column.numbered",
+    "cards.tab_rows",
+    "process.chevrons",
+    "comparison.hue_headers",
+    "pros_cons.split_panels",
+    "image_split.classic",
+    "statement.underlined"
+   ],
+   "source": "draft",
+   "write": "One claim a slide, the heading a statement of at most 7 words (“Quyosh paneli nurni tokka aylantiradi”). Choose the layout by the shape of the content: bullets, 3 to 5 lines of at most 9 words (the default; at least half of the body slides are bullets or two_column); two_column for two labelled things; cards for 3 or 4 kinds of one thing (label 1 to 3 words, one line of at most 8 words, one word for the same kind of thing on every slide); process for 3 or 4 ordered steps, only when the topic has an order; comparison for two things named with the topic’s own words, 3 or 4 criteria, cells of at most 4 words; pros_cons with exactly 3 on each side (Afzalliklari / To‘siqlari); image_split for a visible thing (2 to 4 English nouns, 3 lines that read as plain bullets without a photo); statement for one sentence of at most 20 words, at most once under 13 slides. No number, date, name or law that is not in the message or files. Notes: the spoken explanation of the slide.",
+   "repeat": {
+    "min": 1,
+    "max": 40
+   }
+  },
+  {
+   "id": "misol",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "usual",
+   "layouts": [
+    "image_split",
+    "two_column",
+    "bullets"
+   ],
+   "pins": [
+    "image_split.classic",
+    "image_split.numbered",
+    "two_column.stacked_rows",
+    "two_column.classic"
+   ],
+   "source": "draft",
+   "write": "An example or an application of the part the deck is in: image_split with a photo of a visible thing (2 to 4 English nouns) and 3 lines of at most 9 words that read as plain bullets without a photo, or two_column with two labelled items of at most 9 words, or bullets. The heading states the point in at most 7 words. No number, date, name or law that is not in the message or files.",
+   "from": 13,
+   "repeat": {
+    "min": 1,
+    "max": 20
+   }
+  },
+  {
+   "id": "raqamlar",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "optional",
+   "layouts": [
+    "chart",
+    "stats",
+    "big_number",
+    "timeline",
+    "bullets"
+   ],
+   "pins": [
+    "chart.stepped_rows",
+    "stats.rows",
+    "stats.classic",
+    "big_number.corner",
+    "big_number.classic",
+    "timeline.deep_band",
+    "timeline.classic",
+    "bullets.classic"
+   ],
+   "source": "customer",
+   "write": "Only the customer’s own figures or dates, copied exactly. chart.stepped_rows for 2 to 6 values of one series (the unit in columns[0]); stats for 3 values; big_number for one figure; timeline for 3 to 5 dated items whose dates the customer gave. The heading states the finding with its real proportion (“30 kishidan 17 tasi quyoshni tanladi”), never “hamma” or “hech kim” for a share. Nothing given for this slide: an honest form whose lines end in “...”.",
+   "when": "cue:figures",
+   "from": 6,
+   "join": 2
+  },
+  {
+   "id": "xulosa",
+   "kind": "slide",
+   "heading": {
+    "uz": "Xulosa",
+    "ru": "Выводы",
+    "en": "Conclusion"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.numbered_rows"
+   ],
+   "source": "draft",
+   "write": "Exactly one line per Reja item, in the Reja’s order, at most 9 words each (3 to 5 lines for a deck with no Reja). A line adds nothing new: every number, word-number and year in it must already be on an earlier slide (post-check: each digit and number word of the Xulosa is found on a slide before it; a failing line is regenerated). Numbered 01 to 05 like the Reja.",
+   "from": 5
+  },
+  {
+   "id": "manbalar",
+   "kind": "slide",
+   "heading": {
+    "uz": "Foydalanilgan adabiyotlar",
+    "ru": "Список использованной литературы",
+    "en": "References"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.numbered_rows"
+   ],
+   "source": "customer",
+   "write": "Only attached files or works the customer named, as given (a file name stays a file name); at most 6 lines; with none supplied, the honest form (heading and ruled lines) and no source anywhere. Takes one body place when it appears.",
+   "when": "cue:sources",
+   "from": 6,
+   "join": 5
+  },
+  {
+   "id": "rahmat",
+   "kind": "slide",
+   "heading": {
+    "uz": "E’tiboringiz uchun rahmat!",
+    "ru": "Спасибо за внимание!",
+    "en": "Thank you for your attention!"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "closing"
+   ],
+   "pins": [],
+   "source": "template",
+   "write": "“Savollaringiz bormi?” / «Вопросы?» / “Questions?” at 28 pt or more; no contacts unless supplied. Kept for English decks too."
+  }
+ ],
+ "rules": [
+  {
+   "text": "Slide text is short lines, never paragraphs: bullets of 3 to 5 lines of at most 9 words; a card or step is a label of 1 to 3 words and a line of at most 9 words; 15 to 35 words a slide. This overrides the global guide of about 111 words a slide; the same layout may repeat when the content calls for it.",
+   "to": "model"
+  },
+  {
+   "text": "Speaker notes: 2 to 3 spoken sentences, 25 to 45 words, first person, polite. The outline notes carry the greeting (“Assalomu alaykum, hurmatli tinglovchilar!”, «Здравствуйте, уважаемые слушатели!», “Good morning, everyone.”) unless the message names the audience. 90 to 130 words a slide only when the customer asks for the full speech. Notes add no number, date or name that is not on the slides or in the message. The cover has no notes.",
+   "to": "model"
+  },
+  {
+   "text": "One claim a slide. The outline items match the body slides in order and share their key noun; the conclusion has one line per outline item and adds no fact or number that an earlier slide did not carry.",
+   "to": "model"
+  },
+  {
+   "text": "Never invent a person, institution, year, number, grade, law, quotation or source. A number, percentage, date or statistic appears on a slide, in a heading or in the notes only when the message or an attached file gives it. Allowed without a source: the definition of the topic’s own key term and how-it-works explanations in plain words with no numbers, dates, names or laws.",
+   "to": "model"
+  },
+  {
+   "text": "A headline built from the customer’s figure states its real proportion; a survey of one group is that group’s result, not general statistics.",
+   "to": "model"
+  },
+  {
+   "text": "One term for one thing for the whole deck: the topic’s own wording is reused in headings, columns and labels and never swapped for a synonym; the customer’s wording wins.",
+   "to": "model"
+  },
+  {
+   "text": "Cover: the heading is the topic, shortened only by dropping clauses. The other cover lines are only the customer’s own lines, copied as written (institution, subject, Bajardi, Qabul qildi, city and year); a line not given is left out: no “F.I.Sh.”, no blank, no year of your own.",
+   "to": "model"
+  },
+  {
+   "text": "The sources slide lists only attached files or works the customer named, each described from the customer’s words or the file’s own text; with none supplied no source appears anywhere. No quote slide unless the words are in the attached material.",
+   "to": "model"
+  },
+  {
+   "text": "Language and level follow the message. Uzbek is Latin only, o‘ and g‘ with ‘ and the tutuq belgisi with ’. Pupils get plain words and lines of at most 7 words; a college or university deck may open its introduction with a line “Dolzarbligi: …” (in words, no figure).",
+   "to": "model"
+  },
+  {
+   "text": "A topic too wide for the count is narrowed to its 3 to 5 most important aspects; a long deck splits them into subtopics with distinct claims and never repeats a claim. Photos only where a visible thing is the subject, at most 2 in a 10-slide deck.",
+   "to": "model"
+  }
+ ],
+ "bot": {
+  "prompt": {
+   "uz": "🎓 Mavzu bo‘yicha slayd. Hammasini bitta xabarda yozing: mavzu, kim uchun (kurs yoki sinf) va necha slayd (aytmasangiz, 10 ta slayd bo‘ladi).\nSizda o‘z raqamlaringiz bo‘lsa (so‘rovnoma, statistika), ularni ham yozing: diagramma va sanalar faqat shulardan olinadi.\nManbalaringiz bo‘lsa, PDF, Word yoki TXT fayl qilib yuboring: slaydlar shunga tayanadi, adabiyotlar slaydiga faqat shu fayllar kiradi.\nTitul slayd uchun universitet, fan, F.I.Sh. va o‘qituvchini ham yozishingiz mumkin (Bajardi: …, Qabul qildi: …).",
+   "ru": "🎓 Презентация по теме. Напишите всё одним сообщением: тему, для кого (курс или класс) и сколько слайдов (если не указать, будет 10 слайдов).\nЕсть свои цифры (опрос, статистика)? Напишите их: диаграммы и даты берутся только из них.\nЕсть источники? Пришлите их файлом PDF, Word или TXT: слайды опираются на них, а в список литературы войдут только эти файлы.\nДля титульного слайда можно сразу указать вуз, предмет, ФИО и преподавателя (Выполнил(а): …, Принял(а): …).",
+   "en": "🎓 A presentation on a topic. Say everything in one message: the topic, who it is for (year or grade) and how many slides (10 slides if you don’t say).\nDo you have figures of your own (a survey, statistics)? Write them in: charts and dates come only from them.\nHave sources? Send them as a PDF, Word or TXT file: the slides draw on them, and only those files go into the references slide.\nFor the title slide you can add your university, subject, name and teacher (Prepared by: …, Checked by: …)."
+  },
+  "examples": [
+   {
+    "uz": "Ekologiya fanidan seminar uchun slayd kerak: “Qayta tiklanuvchi energiya manbalari”. 2-kurs, 8 ta slayd, oddiy tilda. Guruhdagi so‘rovnoma: 30 kishidan 17 tasi quyoshni, 8 tasi shamolni, 5 tasi suvni istiqbolli deb tanladi.\nBirinchi slaydga:\nNamuna davlat universiteti\nFan: Ekologiya\nBajardi: Karimova Dilnoza, 205-guruh\nQabul qildi: dotsent Rahimov B.\nToshkent, 2026",
+    "ru": "Нужна презентация для семинара по экологии: «Возобновляемые источники энергии». 2 курс, 8 слайдов, простым языком. Опрос в группе: из 30 человек 17 выбрали солнце, 8 ветер, 5 воду как самое перспективное.\nНа первом слайде:\nОбразцовый государственный университет\nПредмет: Экология\nВыполнила: Каримова Дилноза, группа 205\nПроверил: доцент Рахимов Б.\nТашкент, 2026",
+    "en": "I need slides for an ecology seminar: “Renewable energy sources”. Year 2, 8 slides, plain language. A survey in my group: of 30 people, 17 chose solar, 8 wind and 5 water as the most promising.\nOn the first slide:\nExample State University\nSubject: Ecology\nPrepared by: Dilnoza Karimova, group 205\nChecked by: Assoc. Prof. B. Rahimov\nTashkent, 2026"
+   },
+   {
+    "uz": "6-sinf geografiya darsi uchun 7 ta slayd: “Tabiatda suvning aylanishi”. Sodda tilda, rasmlar bo‘lsin. Yer yuzining 71 foizi suv bilan qoplangan, shuni ham yozing.",
+    "ru": "Нужна презентация для урока географии в 6 классе, 7 слайдов: «Круговорот воды в природе». Простым языком, с картинками. 71 процент поверхности Земли покрыт водой, напишите и это.",
+    "en": "I need 7 slides for a grade 6 geography lesson: “The water cycle in nature”. Plain language, with pictures. 71 percent of the Earth’s surface is covered by water, include that too."
+   },
+   {
+    "uz": "Hamkasblarimga 8 ta slayd kerak: “Kiberxavfsizlik asoslari” — kuchli parol, firibgarlik xabarlarini tanish, ish kompyuterini himoyalash. Biriktirilgan qo‘llanmaga tayaning. Oddiy tilda bo‘lsin.",
+    "ru": "Нужна презентация для коллег, 8 слайдов: «Основы кибербезопасности» — надёжный пароль, как узнать мошенническое сообщение, защита рабочего компьютера. Опирайтесь на приложенное руководство. Простым языком.",
+    "en": "I need 8 slides for my colleagues: “Cybersecurity basics” — a strong password, spotting scam messages, protecting a work computer. Draw on the attached guide. Plain language, please."
+   }
+  ],
+  "attach": true,
+  "notices": {
+   "blanks": {
+    "uz": "Siz bermagan ma’lumot o‘rniga bo‘sh joy qoldirildi: uni o‘zingiz to‘ldiring.",
+    "ru": "Где данных не было, оставлены пустые места: заполните их сами.",
+    "en": "Where you gave no details, blanks were left for you to fill in."
+   }
+  }
+ },
+ "templates": [],
+ "look": {
+  "designs": [
+   "baseline",
+   "boardroom",
+   "lectern",
+   "scholar",
+   "classroom",
+   "chalkboard"
+  ],
+  "variants": {
+   "agenda": [
+    "classic",
+    "tone_cards"
+   ],
+   "bullets": [
+    "lead_line",
+    "numbered_rows",
+    "classic",
+    "rail_dots"
+   ],
+   "statement": [
+    "underlined"
+   ],
+   "cards": [
+    "tab_rows",
+    "classic"
+   ],
+   "process": [
+    "chevrons",
+    "tone_blocks"
+   ],
+   "comparison": [
+    "hue_headers"
+   ],
+   "pros_cons": [
+    "split_panels",
+    "classic"
+   ],
+   "chart": [
+    "stepped_rows"
+   ],
+   "timeline": [
+    "deep_band",
+    "classic"
+   ],
+   "two_column": [
+    "numbered",
+    "stacked_rows",
+    "classic"
+   ],
+   "stats": [
+    "rows",
+    "classic"
+   ],
+   "image_split": [
+    "classic"
+   ],
+   "big_number": [
+    "corner",
+    "classic"
+   ]
+  },
+  "cover_lines": 5,
+  "note": "The research type contract (list text from 18 pt, one headline box) changes the deck renderer and is not in this round; the pins keep the variants the sweep found to hold."
+ },
+ "gates": [
+  "A native Uzbek and a native Russian reader check the fixed headings (Reja, Kirish, Maqsad va vazifalar, Ta’rif, Xulosa, Foydalanilgan adabiyotlar) and the bot copy.",
+  "A 6, a 10 and a 15 slide sample in uz, ru and en are drawn with the deck sample tool, with figures and topic only, and looked at next to units/slides.mavzu/mock/school_mavzu.png.",
+  "One real-provider run, scripts/operations/ai_smoke.py --category slides.mavzu on the server, makes the deck with every check passing, and the deck is looked at, before the tick."
+ ],
+ "later": [
+  {
+   "text": "A slide count read from the talk length (minutes plus 2); the count in the message or the review stepper decides this round.",
+   "words": [
+    "necha daqiqa",
+    "сколько минут",
+    "how many minutes"
+   ]
+  },
+  {
+   "text": "Section dividers in decks of 30 slides or more: a deck’s slots are contiguous blocks this round, so a divider cannot sit between parts."
+  },
+  {
+   "text": "Separate cards, process, comparison, pros-and-cons and timeline slots: this round they are layouts of the body slot the model chooses by content."
+  },
+  {
+   "text": "The post-checks of the research (outline item against body heading, conclusion numbers found earlier, near-duplicate headings): the rules ask for them, code does not check them yet."
+  },
+  {
+   "text": "The one-line notice when a requested photo is not found."
+  }
+ ],
+ "sources": {
+  "take": "all"
+ }
+}

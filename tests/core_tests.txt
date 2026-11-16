@@ -687,3 +687,340 @@ tests/test_wakeups.py::test_a_redis_that_fails_never_fails_the_caller
 tests/test_parallel_parts.py::test_a_long_deck_is_planned_then_written_in_parts_at_once
 tests/test_parallel_parts.py::test_a_plan_that_cannot_be_had_leaves_the_parts_written_one_after_another[http]
 tests/test_parallel_parts.py::test_on_postgres_the_parts_and_the_photos_run_at_once
+
+# Categories, the catalogue: every file loads and holds together, ids stay locked, the owner's words, three-way of(), dark by default
+tests/test_category_catalogue.py::test_every_file_validates_and_the_catalogue_is_fit_to_ship
+tests/test_category_catalogue.py::test_the_lock_holds_every_id_of_the_catalogue
+tests/test_category_catalogue.py::test_a_locked_id_may_never_disappear_or_change_kind
+tests/test_category_catalogue.py::test_the_uz_labels_are_the_owners_names
+tests/test_category_catalogue.py::test_the_lists_are_in_the_owners_order_and_hold_all_28
+tests/test_category_catalogue.py::test_bot_copy_never_promises_what_is_deferred
+tests/test_category_catalogue.py::test_of_is_three_way_no_category_a_known_one_or_a_refusal
+tests/test_category_catalogue.py::test_everything_is_off_while_the_switch_module_does_not_exist
+tests/test_category_catalogue.py::test_the_list_shows_live_categories_groups_with_something_live_and_boshqa
+
+# Categories, the switch: off and empty by default, only ready entries ticked, read on every call, audited, Operations only
+tests/test_category_switch.py::test_it_is_off_and_empty_by_default_so_every_flow_is_todays
+tests/test_category_switch.py::test_a_saved_switch_is_what_the_catalogue_reads_on_the_next_call
+tests/test_category_switch.py::test_only_ready_entries_can_be_ticked_and_unknown_ids_are_refused
+tests/test_category_switch.py::test_the_form_saves_audits_and_shows_it
+tests/test_category_switch.py::test_only_operations_may_see_or_change_it
+
+# Categories, golden bodies: a draft without a category is made and sent exactly as before categories
+tests/test_prompt_golden.py::test_a_draft_without_a_category_is_made_as_before[document_uz]
+tests/test_prompt_golden.py::test_a_draft_without_a_category_is_made_as_before[document_ru]
+tests/test_prompt_golden.py::test_a_draft_without_a_category_is_made_as_before[document_en]
+tests/test_prompt_golden.py::test_a_draft_without_a_category_is_made_as_before[document_long]
+tests/test_prompt_golden.py::test_a_draft_without_a_category_is_made_as_before[document_sources]
+tests/test_prompt_golden.py::test_a_draft_without_a_category_is_made_as_before[deck_photos]
+tests/test_prompt_golden.py::test_a_draft_without_a_category_is_made_as_before[deck_outline]
+tests/test_prompt_golden.py::test_a_draft_without_a_category_is_made_as_before[deck_parallel]
+tests/test_prompt_golden.py::test_a_draft_without_a_category_is_made_as_before[deck_change]
+tests/test_prompt_golden.py::test_a_draft_without_a_category_is_made_as_before[document_selected]
+tests/test_prompt_golden.py::test_a_draft_without_a_category_is_made_as_before[document_repair]
+tests/test_prompt_golden.py::test_a_draft_without_a_category_is_made_as_before[cv]
+tests/test_prompt_golden.py::test_a_draft_without_a_category_sends_the_same_request_bodies[document_uz]
+tests/test_prompt_golden.py::test_a_draft_without_a_category_sends_the_same_request_bodies[document_ru]
+tests/test_prompt_golden.py::test_a_draft_without_a_category_sends_the_same_request_bodies[document_en]
+tests/test_prompt_golden.py::test_a_draft_without_a_category_sends_the_same_request_bodies[document_long]
+tests/test_prompt_golden.py::test_a_draft_without_a_category_sends_the_same_request_bodies[document_sources]
+tests/test_prompt_golden.py::test_a_draft_without_a_category_sends_the_same_request_bodies[deck_photos]
+tests/test_prompt_golden.py::test_a_draft_without_a_category_sends_the_same_request_bodies[deck_outline]
+tests/test_prompt_golden.py::test_a_draft_without_a_category_sends_the_same_request_bodies[deck_parallel]
+tests/test_prompt_golden.py::test_a_draft_without_a_category_sends_the_same_request_bodies[deck_change]
+tests/test_prompt_golden.py::test_a_draft_without_a_category_sends_the_same_request_bodies[document_selected]
+tests/test_prompt_golden.py::test_a_draft_without_a_category_sends_the_same_request_bodies[document_repair]
+tests/test_prompt_golden.py::test_a_draft_without_a_category_sends_the_same_request_bodies[cv]
+tests/test_prompt_golden.py::test_every_case_has_its_fixture_and_no_fixture_is_left_over
+
+# Categories, the skeleton: every deck fills every length under every cue subset; cues, the three length modes, seeds, dressing, call spans, the review question
+tests/test_category_skeleton.py::test_every_deck_gives_exactly_its_length_under_every_cue_subset
+tests/test_category_skeleton.py::test_cues_start_words_in_every_language_and_exclusive_keeps_the_first
+tests/test_category_skeleton.py::test_a_count_takes_the_pick_then_the_brief_then_a_cue_then_the_default_within_its_bounds
+tests/test_category_skeleton.py::test_a_fixed_length_is_always_its_default
+tests/test_category_skeleton.py::test_a_derived_length_follows_the_questions_and_reads_pages_only_without_a_count
+tests/test_category_skeleton.py::test_a_paper_seeds_its_facts_then_one_blank_section_per_written_part
+tests/test_category_skeleton.py::test_a_model_sized_group_is_seeded_at_its_max_and_repeats_together
+tests/test_category_skeleton.py::test_a_deck_seeds_each_slide_with_its_slots_first_layout
+tests/test_category_skeleton.py::test_dress_puts_back_the_fixed_headings_and_the_slot_layouts
+tests/test_category_skeleton.py::test_spans_cut_a_long_paper_by_pages_and_sections
+tests/test_category_skeleton.py::test_himoya_asks_only_when_the_message_holds_no_figure_and_no_file
+
+# Category sources (S1a): a .txt in any of its encodings and an old Word .doc are taken only as the bot's 'ai_source'; every other upload and the public endpoint as before
+tests/test_upload_ai_source.py::test_a_text_file_in_each_encoding_is_taken_as_a_category_source[windows-1251]
+tests/test_upload_ai_source.py::test_a_text_file_is_still_refused_for_the_tools_and_a_cv
+tests/test_upload_ai_source.py::test_text_and_word_files_never_reach_a_file_tool
+tests/test_upload_ai_source.py::test_an_old_word_file_is_taken_and_counted_from_antiwords_text
+tests/test_upload_ai_source.py::test_a_word_file_with_macros_is_refused
+tests/test_upload_ai_source.py::test_the_public_endpoint_refuses_the_purpose_as_any_unpublished_one
+tests/test_upload_ai_source.py::test_cutting_a_long_run_of_punctuation_takes_linear_time
+tests/test_upload_ai_source.py::test_a_text_that_cannot_fit_is_refused_before_it_is_cut_to_its_end
+tests/test_upload_ai_source.py::test_a_category_source_is_a_pdf_word_or_text_file_and_nothing_else
+
+# Categories, never invent: names with their endings in both alphabets, numbers as values, invented facts caught
+tests/test_category_facts.py::test_a_name_is_found_with_its_case_endings_in_both_alphabets
+tests/test_category_facts.py::test_the_spellings_of_one_name_across_the_alphabets_meet
+tests/test_category_facts.py::test_dates_numbers_money_refs_and_phones_are_found_as_values
+tests/test_category_facts.py::test_a_faithful_part_is_left_as_it_is
+tests/test_category_facts.py::test_an_invented_name_sum_quotation_and_decree_are_caught
+tests/test_category_facts.py::test_a_reference_is_kept_only_when_the_customer_gave_it_and_never_as_a_file_name
+
+# Categories, never invent, after review: the allow list matched whole, earlier versions trusted only where held, a
+# number in general knowledge never a citation, no number found through a part of another
+tests/test_category_facts.py::test_the_allow_list_is_matched_whole_never_by_prefix
+tests/test_category_facts.py::test_an_earlier_version_is_trusted_only_where_it_was_held_to_the_customers_words
+tests/test_category_facts.py::test_general_knowledge_with_a_number_is_not_a_legal_reference
+tests/test_category_facts.py::test_a_number_is_never_found_through_a_part_of_another
+
+# Categories, never invent, letters and translations: a role is no name, a month no spelling of one, a time one value,
+# a translated person's name in its Russian spelling
+tests/test_category_facts.py::test_a_role_a_letter_is_addressed_to_is_not_a_name_but_the_name_beside_it_is_checked
+tests/test_category_facts.py::test_a_month_is_never_an_allowed_spelling_of_a_name
+tests/test_category_facts.py::test_a_time_is_one_value_its_hour_and_minutes
+tests/test_category_facts.py::test_a_translated_persons_name_may_take_the_russian_spelling_of_o
+
+# Categories, the skeleton after review: a topic word is not a reference list, a count or a year is not a figure, a deck below its minimum still fills its quote, no part outgrows its stored body, a paper's length is never recomputed
+tests/test_category_skeleton.py::test_the_sources_cue_holds_with_files_or_a_word_for_references
+tests/test_category_skeleton.py::test_a_topic_that_names_sources_or_literature_is_not_a_reference_list
+tests/test_category_skeleton.py::test_a_count_a_course_a_group_or_a_year_is_not_a_figure
+tests/test_category_skeleton.py::test_a_deck_below_its_minimum_still_has_exactly_the_slides_quoted
+tests/test_category_skeleton.py::test_no_part_is_asked_for_more_than_its_stored_body_holds
+tests/test_category_skeleton.py::test_every_paper_entry_asks_each_part_for_what_a_body_holds_at_its_longest
+tests/test_category_skeleton.py::test_pages_is_a_papers_length_and_none_for_anything_else
+tests/test_category_skeleton.py::test_dress_clears_a_headless_slot_and_reads_the_cues_its_seed_was_made_with_files_included
+tests/test_category_skeleton.py::test_a_leftover_instance_counts_its_share_of_its_group_not_the_whole_part
+
+# Category sources (S1b): Word, old Word and text files read in their own bounded child; excerpts, unreadable files, a thesis's ends kept, reuse
+tests/test_source_reader.py::test_a_word_body_is_read_in_order_with_its_link_table_box_and_control
+tests/test_source_reader.py::test_a_text_file_is_read_as_its_upload_decoded_it[windows-1251]
+tests/test_source_reader.py::test_an_old_word_file_is_read_by_antiword_as_its_upload_counted_it
+tests/test_source_reader.py::test_a_reader_that_runs_over_its_time_is_killed_with_everything_it_started
+tests/test_source_reader.py::test_the_child_is_isolated_and_inherits_no_credentials
+tests/test_source_reader.py::test_any_failure_of_the_child_is_one_code_with_nothing_of_the_file[not-json]
+tests/test_category_sources.py::test_a_pdf_a_word_file_an_old_word_file_and_a_text_file_are_read_in_order
+tests/test_category_sources.py::test_a_scan_alone_is_refused_as_unreadable_naming_it_in_every_language
+tests/test_category_sources.py::test_in_a_mix_a_file_with_no_letters_is_dropped_and_said
+tests/test_category_sources.py::test_a_boshqa_draft_still_reads_a_scan_as_it_always_did
+tests/test_category_sources.py::test_a_long_thesis_keeps_its_beginning_and_end_for_a_defence_deck
+tests/test_category_sources.py::test_any_other_category_refuses_a_source_over_the_wall_as_today
+tests/test_category_sources.py::test_unchanged_files_keep_their_excerpts_without_being_read_again
+tests/test_category_sources.py::test_a_file_gone_is_refused_even_when_its_excerpts_are_stored
+
+# Categories, deck prompts: a category deck's bodies hold no customer text, are equal across languages, keep SYSTEM's safety sentences, follow 3.1's stacks and meet the stage caps; an unknown id never reaches the model
+tests/test_category_prompts.py::test_safety_is_systems_own_sentences_word_for_word
+tests/test_category_prompts.py::test_every_new_category_deck_body_keeps_safety_and_the_never_invent_line[slides.himoya]
+tests/test_category_prompts.py::test_a_category_deck_is_told_its_stack_in_the_order_of_architecture_3_1[slides.himoya]
+tests/test_category_prompts.py::test_category_instructions_are_equal_across_languages_and_hold_no_customer_text[slides.himoya]
+tests/test_category_prompts.py::test_every_deck_stage_meets_its_cap_with_the_block_at_its_budget[slides.himoya]
+tests/test_category_prompts.py::test_rows_name_each_slot_with_its_heading_in_the_documents_language
+tests/test_category_prompts.py::test_the_cache_key_carries_the_category_and_its_digest
+tests/test_category_prompts.py::test_an_unknown_category_fails_before_any_call
+tests/test_category_prompts.py::test_a_planned_category_deck_is_dressed_before_its_parts_are_written
+tests/test_category_prompts.py::test_a_category_paper_is_held_to_its_own_bounds_at_the_checkpoint
+
+# Category decks' finish (F1): dressed, customer slides grounded, drafted ones guarded, the cover and the sources
+# slide held to the customer, never raising; pins from the slots; honest forms not sent back; the sample tool
+tests/test_category_finish_decks.py::test_a_draft_without_a_deck_category_is_left_as_it_is[options0]
+tests/test_category_finish_decks.py::test_a_deck_made_of_the_customers_own_figures_loses_nothing[10-uz]
+tests/test_category_finish_decks.py::test_a_topic_only_deck_keeps_its_honest_forms_and_loses_what_the_model_made_up[ru]
+tests/test_category_finish_decks.py::test_a_draft_slot_keeps_general_knowledge_a_customer_slot_does_not
+tests/test_category_finish_decks.py::test_a_change_keeps_headings_and_grounds_every_slide_it_cannot_place
+tests/test_category_finish_decks.py::test_a_change_to_selected_slides_finishes_only_those
+tests/test_category_finish_decks.py::test_a_sources_slide_keeps_only_sources_the_customer_gave_and_never_a_file_name
+tests/test_category_finish_decks.py::test_a_slide_that_cannot_be_finished_becomes_a_form
+tests/test_category_finish_decks.py::test_pins_are_the_slots_own_in_the_layout_each_slide_will_be_drawn_with
+tests/test_category_finish_decks.py::test_repeating_slots_of_honest_forms_are_exempt_from_being_sent_back_as_duplicates
+tests/test_category_finish_decks.py::test_the_sample_tool_draws_every_case_through_the_finish
+
+# Category drafts (D1): options.category validated, pinned on every path and carried to the quote; a paper's
+# length in pages and its skeleton seeded; paper bounds at create and save; the server's details and sources keys
+tests/test_category_drafts.py::test_a_new_draft_names_a_category_of_its_own_service_or_is_refused
+tests/test_category_drafts.py::test_a_new_draft_needs_the_switch_on_and_its_category_ticked_and_ready
+tests/test_category_drafts.py::test_a_draft_made_while_on_still_saves_and_quotes_once_the_switch_is_off_or_its_entry_retired
+tests/test_category_drafts.py::test_an_id_the_catalogue_no_longer_holds_fails_before_anything_is_quoted
+tests/test_category_drafts.py::test_the_category_is_pinned_through_a_save_the_setup_screen_and_the_review_buttons
+tests/test_category_drafts.py::test_a_draft_made_without_a_category_never_gains_one
+tests/test_category_drafts.py::test_server_owned_keys_are_stripped_and_details_added_is_set_once_by_the_answer
+tests/test_category_drafts.py::test_a_category_paper_is_its_skeleton_and_its_length_is_its_pages
+tests/test_category_drafts.py::test_a_category_deck_takes_its_cue_length_writes_it_for_the_setup_screen_and_starts_in_its_look
+tests/test_category_drafts.py::test_an_answer_that_adds_a_cue_seeds_the_slots_it_now_gives
+tests/test_category_drafts.py::test_local_authoring_puts_the_customers_words_in_the_first_elastic_part
+tests/test_category_drafts.py::test_the_topic_question_runs_only_for_a_category_that_has_one
+tests/test_category_drafts.py::test_a_category_paper_is_held_to_the_paper_bounds_and_stores_no_columns
+tests/test_category_drafts.py::test_a_papers_outline_is_not_the_clients_to_edit_and_a_decks_is
+tests/test_category_drafts.py::test_the_quote_carries_the_category_and_holds_a_paper_to_its_pages
+tests/test_category_drafts.py::test_a_category_paper_has_no_outline_stage_and_a_deck_plans_on_its_category
+tests/test_category_drafts.py::test_a_change_inherits_the_category_and_keeps_a_papers_parts_and_pages
+tests/test_category_drafts.py::test_a_change_to_a_test_follows_its_questions
+tests/test_category_drafts.py::test_a_change_to_a_paper_asks_the_categorys_reader_first_and_a_deck_never
+tests/test_category_drafts.py::test_a_category_draft_reads_word_and_text_files_and_says_which_it_could_not
+tests/test_category_drafts.py::test_a_thesis_too_long_for_the_request_keeps_its_ends_and_the_draft_says_so
+tests/test_category_drafts.py::test_a_drawn_category_deck_is_saved_without_its_files_being_read_or_looked_for
+
+# Category admin (A1): AI documents by category beside how often each was picked, the warning shares and failure
+# rate per category, the categories CSV, and the category kept on an AI request, named and filtered in the admin
+tests/test_category_admin.py::test_documents_are_counted_by_category_beside_how_often_each_was_picked
+tests/test_category_admin.py::test_labels_come_from_the_catalogue_an_unknown_id_has_none_and_nothing_is_boshqa
+tests/test_category_admin.py::test_the_report_keeps_to_the_period_environment_channel_and_language
+tests/test_category_admin.py::test_the_report_is_a_few_queries_however_many_documents
+tests/test_category_admin.py::test_each_categorys_warnings_are_shares_of_its_finished_documents_beside_its_failure_rate
+tests/test_category_admin.py::test_a_code_counts_wherever_the_worker_puts_it_and_once_per_document
+tests/test_category_admin.py::test_the_tools_page_shows_documents_by_category_in_each_language[uz]
+tests/test_category_admin.py::test_the_rows_export_as_the_categories_csv_for_the_staff_who_see_the_tools
+tests/test_category_admin.py::test_an_ai_request_keeps_its_category_and_one_without_has_no_key
+tests/test_category_admin.py::test_the_requests_list_the_request_and_the_customer_page_name_the_category_and_the_list_filters_by_it
+
+# Category decks in the job (X1): an unknown id or a paper category fails before the provider; a deck made end to
+# end in its slots, held to the customer (facts_blanked), pinned on its first render; bounds at the job's sites;
+# quality spares the exempt slides; ai_smoke --category
+tests/test_category_generation_decks.py::test_an_id_the_catalogue_no_longer_holds_fails_the_job_before_the_provider
+tests/test_category_generation_decks.py::test_a_paper_category_fails_as_unavailable_before_the_provider
+tests/test_category_generation_decks.py::test_a_job_without_a_category_never_reads_the_catalogue
+tests/test_category_generation_decks.py::test_a_deck_of_the_customers_own_figures_is_made_as_quoted_in_its_slots[uz]
+tests/test_category_generation_decks.py::test_a_topic_only_deck_loses_what_the_model_made_up_and_says_so
+tests/test_category_generation_decks.py::test_the_first_render_draws_the_variants_the_slots_name
+tests/test_category_generation_decks.py::test_a_change_to_a_category_deck_is_not_pinned_again
+tests/test_category_generation_decks.py::test_the_job_gives_validate_content_the_categorys_bounds_at_both_sites
+tests/test_category_generation_decks.py::test_the_repair_gives_validate_content_the_categorys_bounds[pdf.xat.ariza-expected0]
+tests/test_category_generation_decks.py::test_check_spares_the_exempt_slides_and_still_reports_the_rest
+tests/test_category_generation_decks.py::test_finish_passes_the_exemptions_to_the_check_and_the_skip_to_the_deterministic_branch
+tests/test_category_generation_decks.py::test_the_smoke_makes_one_category_deck_through_the_real_pipeline
+
+# Category deck samples (C2s): the ten decks' sample content is in the sample tool's format and, read by its own
+# load and draft, finishes to its exact count at several lengths in three languages with nothing taken out
+tests/test_category_deck_samples.py::test_every_deck_entry_has_both_cases_and_nothing_else_has_samples
+tests/test_category_deck_samples.py::test_a_sample_is_in_the_sample_tools_format
+tests/test_category_deck_samples.py::test_a_sample_is_finished_to_its_count_with_nothing_taken_out
+tests/test_category_deck_samples.py::test_every_slot_a_figures_sample_reaches_at_its_own_length_has_content
+tests/test_category_deck_samples.py::test_a_constitution_day_deck_is_six_slides_and_keeps_its_cover
+
+# Category deck entries (C2s): what the model reads of a deck entry asks for no worked-out figure, quotes only
+# percentages a brief of the entry holds and carries no research note; the company deck's cues keep its path
+tests/test_category_deck_entries.py::test_no_text_the_model_reads_asks_it_to_work_a_figure_out
+tests/test_category_deck_entries.py::test_a_percent_example_the_model_reads_is_one_a_brief_of_the_entry_holds
+tests/test_category_deck_entries.py::test_no_research_note_reaches_the_model
+tests/test_category_deck_entries.py::test_a_report_on_plan_and_actual_is_told_to_show_the_figures_as_written
+tests/test_category_deck_entries.py::test_a_company_profile_keeps_its_path_for_values_and_a_training_programme
+tests/test_category_deck_entries.py::test_a_product_deck_and_prices_are_still_found
+
+# The bot's list of categories (B1): the list and its group, Boshqa exactly today's question with today's checks,
+# words on the list are today's flow, the switch off is today's bot, a category's question and its draft, old
+# buttons, the gate, a refusal and the topic question keep the category, chosen is counted once per choice
+tests/test_bot_categories.py::test_the_list_and_its_group_in_every_language[uz]
+tests/test_bot_categories.py::test_one_tap_reaches_the_list_and_a_description_typed_on_it_is_todays_flow
+tests/test_bot_categories.py::test_boshqa_is_todays_question_exactly
+tests/test_bot_categories.py::test_boshqa_meets_todays_checks_from_document_and_the_menu
+tests/test_bot_categories.py::test_with_the_switch_off_every_way_in_is_todays_question
+tests/test_bot_categories.py::test_a_category_opens_its_own_question_and_its_draft_carries_it[uz]
+tests/test_bot_categories.py::test_an_entry_no_longer_offered_sends_its_old_button_to_the_list
+tests/test_bot_categories.py::test_the_switch_turned_off_while_writing_still_makes_a_document
+tests/test_bot_categories.py::test_the_gate_comes_back_to_the_category_tapped
+tests/test_bot_categories.py::test_a_rate_limit_asks_the_category_again
+tests/test_bot_categories.py::test_the_topic_question_keeps_the_category_and_todays_join_order
+tests/test_bot_categories.py::test_a_category_tap_is_counted_once_per_choice
+
+# The bot's category sources (B2): a Word file with its description as caption is one review, a file then words
+# keeps the category, an album is one draft, .txt and .doc are taken only in a category, files on the list go with
+# the category or (PDFs) to Boshqa, a file refused or unread is said in the category's words and taken out, and
+# Boshqa with a scan or a Word file is today's flow
+tests/test_bot_category_sources.py::test_a_word_file_with_its_description_as_caption_is_one_review_in_one_message
+tests/test_bot_category_sources.py::test_a_file_then_the_description_keeps_the_category_and_the_file
+tests/test_bot_category_sources.py::test_a_text_and_an_old_word_file_are_taken_only_in_a_category
+tests/test_bot_category_sources.py::test_files_on_the_list_are_held_and_go_with_the_category_chosen
+tests/test_bot_category_sources.py::test_boshqa_after_files_on_the_list_reads_the_pdfs_as_todays_question_does
+tests/test_bot_category_sources.py::test_the_topic_question_in_a_category_takes_a_file_as_what_was_missing
+tests/test_bot_category_sources.py::test_a_file_refused_on_upload_is_said_in_the_categorys_words
+tests/test_bot_category_sources.py::test_a_file_with_no_text_is_taken_out_and_said_and_the_question_asked_again
+tests/test_bot_category_sources.py::test_boshqa_with_a_scan_or_a_word_file_is_todays_flow[False]
+tests/test_bot_category_sources.py::test_boshqa_with_a_scan_or_a_word_file_is_todays_flow[True]
+
+# The bot's category review (B3): the review names the category and offers its one question under Generate, a
+# category is never offered the other service and counts within its bounds, the question is the category's and
+# is answered once with words or a file, a cover answer goes under the header the title slide reads, and the file
+# carries the category's notices
+tests/test_bot_category_review.py::test_the_review_names_the_category_and_offers_its_question_under_generate[uz]
+tests/test_bot_category_review.py::test_no_question_when_it_is_not_wanted_or_the_category_has_none
+tests/test_bot_category_review.py::test_a_category_is_never_offered_the_other_service
+tests/test_bot_category_review.py::test_the_count_is_offered_within_the_categorys_bounds
+tests/test_bot_category_review.py::test_the_question_is_the_categorys_and_back_is_the_review[uz]
+tests/test_bot_category_review.py::test_an_answer_is_added_once_and_the_question_is_gone
+tests/test_bot_category_review.py::test_an_answer_with_a_file_joins_its_sources
+tests/test_bot_category_review.py::test_a_cover_answer_goes_under_the_title_slide_header_the_cover_reads[uz]
+tests/test_bot_category_review.py::test_the_file_carries_the_categorys_notices[uz]
+tests/test_bot_category_review.py::test_a_deck_made_with_a_file_is_no_draft_and_finished_is_always_said
+tests/test_bot_category_review.py::test_an_old_back_on_the_question_never_draws_a_made_deck_anew
+
+# Deck readiness (N1): the ten decks are ready and meet every readiness check as an error, the switch page
+# names the native read and the real-provider run left before a tick, the sample tool draws a deck's samples to
+# the count asked, a sample table fills its cells, and no customer text breaks off
+tests/test_category_deck_readiness.py::test_every_deck_is_ready_and_meets_its_gates_as_errors
+tests/test_category_deck_readiness.py::test_the_switch_page_says_what_a_person_still_checks_before_the_tick[slides.himoya]
+tests/test_category_deck_readiness.py::test_the_sample_tool_draws_both_cases_to_the_count_asked[slides.himoya]
+tests/test_category_deck_readiness.py::test_a_sample_table_fills_every_cell_its_columns_name
+tests/test_category_deck_readiness.py::test_no_customer_text_breaks_off_mid_sentence
+
+# The real antiword (fix-off): an old Word file LibreOffice makes is read by the antiword CI and the image install,
+# with its UTF-8 mapping, so Uzbek ‘ ’ and Cyrillic come through, at upload and in the reader child. They skip
+# where antiword or LibreOffice is missing, so CI's install step fails on a runner without them
+tests/test_upload_ai_source.py::test_a_real_old_word_file_is_read_by_antiword_in_three_languages
+tests/test_source_reader.py::test_a_real_old_word_file_is_read_in_three_languages
+
+# The switch-off path and public warnings (fix-off): with nothing live, every way into AI PDF and AI Slides is
+# today's question even when the catalogue cannot load, and facts_blanked stays the bot's and the admin's, never
+# in the warnings a client reads
+tests/test_bot_categories.py::test_with_nothing_live_no_way_in_loads_the_catalogue[switched0]
+tests/test_category_generation_decks.py::test_facts_blanked_is_the_bots_and_the_admins_never_a_clients
+
+# Bot fixes before the first tick (fix-bot): every refusal that names a category's files takes them out, so the
+# next description is made rather than refused again; Boshqa's examples, topic question and review come back to
+# Boshqa's question rather than the list, and with no list every one of those buttons is today's
+tests/test_bot_category_sources.py::test_an_old_word_file_the_reading_host_cannot_read_is_taken_out_and_the_next_description_made
+tests/test_bot_category_sources.py::test_a_refusal_naming_files_with_no_category_wording_still_takes_them_out
+tests/test_bot_categories.py::test_boshqas_examples_come_back_to_boshqa
+tests/test_bot_categories.py::test_a_boshqa_review_describes_again_in_boshqa
+tests/test_bot_categories.py::test_with_no_list_boshqas_buttons_name_only_the_service[False]
+tests/test_bot_categories.py::test_with_no_list_boshqas_buttons_name_only_the_service[True]
+tests/test_bot_categories.py::test_with_the_switch_off_the_topic_questions_examples_name_only_the_service
+
+# Categories, the facts check before the first tick: an invented person is caught in a translated deck's grounded
+# slot and on its cover while the customer's people survive the change of alphabet, an event deck's draft slots
+# about the customer's own school hold their figures, dates and resolution names, and e-mails and links are read in
+# linear time exactly as before
+tests/test_category_facts.py::test_a_translated_part_keeps_the_customers_people_and_never_an_invented_one
+tests/test_category_facts.py::test_a_translated_part_meets_the_customers_people_across_the_alphabets
+tests/test_category_finish_decks.py::test_a_translated_deck_blanks_a_person_the_customer_never_named_in_a_grounded_slot
+tests/test_category_finish_decks.py::test_a_translated_cover_keeps_the_customers_people_and_drops_an_invented_one[en]
+tests/test_category_facts.py::test_a_draft_slot_with_checks_holds_its_numbers_and_names_and_nothing_more_without
+tests/test_category_finish_decks.py::test_an_invented_figure_date_or_person_in_an_event_decks_own_draft_slot_is_blanked[council-resolution-person]
+tests/test_category_finish_decks.py::test_an_invented_figure_date_or_person_in_an_event_decks_own_draft_slot_is_blanked[parents-requests]
+tests/test_category_finish_decks.py::test_the_customers_own_figures_dates_and_people_stay_in_those_slots[council-resolution]
+tests/test_category_catalogue.py::test_the_event_deck_draft_slots_about_the_customers_own_school_hold_its_facts
+tests/test_category_facts.py::test_addresses_are_read_as_before_on_ordinary_text
+tests/test_category_facts.py::test_long_runs_of_letters_dots_and_hyphens_are_read_in_linear_time[ab.]
+
+# Categories, the facts check's holes closed before the first tick: a cover of one invented author line loses it,
+# translated or not, while a lone subtitle is finished as before; a resolution's or an agenda's invented person goes
+# whole with its initials while the customer's reporter stays; an agenda's notes may count its own rows; a translated
+# sources slide still holds the authors it opens with
+tests/test_category_finish_decks.py::test_a_cover_of_one_invented_author_line_loses_it[uz-from-ru]
+tests/test_category_finish_decks.py::test_a_cover_of_one_invented_author_line_loses_it[uz-from-uz]
+tests/test_category_finish_decks.py::test_a_cover_of_one_dictated_line_or_unlabelled_subtitle_is_finished_as_before[subtitle-year-not-given]
+tests/test_category_finish_decks.py::test_an_invented_reporter_or_responsible_person_goes_whole[reporter]
+tests/test_category_finish_decks.py::test_an_invented_reporter_or_responsible_person_goes_whole[responsible]
+tests/test_category_finish_decks.py::test_an_invented_person_as_a_row_of_its_own_goes_whole
+tests/test_category_finish_decks.py::test_the_customers_own_reporter_stays_in_the_surname_and_initial_form
+tests/test_category_finish_decks.py::test_the_agenda_notes_may_count_the_agendas_own_rows[the-slides-own-count]
+tests/test_category_facts.py::test_a_translated_references_list_still_holds_the_authors_it_opens_with
+
+# Categories, the cover's and the names check's last holes: an unlabelled author line ("Bajardi — …", "Prepared by …",
+# a bare name) alone on a cover or opening a closing slide goes, translated or not; a translated cover keeps its
+# unlabelled lines that name no one; a lone invented surname opening a row goes in a slot that checks names, as does
+# an invented person in a council's problems or a parents' requests; a counted copy shares the respelled words
+tests/test_category_finish_decks.py::test_a_cover_of_one_invented_author_line_loses_it[dash-uz]
+tests/test_category_finish_decks.py::test_a_cover_of_one_invented_author_line_loses_it[bare-en-from-ru]
+tests/test_category_finish_decks.py::test_a_closing_slide_whose_first_line_is_an_invented_author_loses_it[uz]
+tests/test_category_finish_decks.py::test_a_translated_cover_keeps_unlabelled_lines_that_name_no_one[en]
+tests/test_category_facts.py::test_a_slot_that_checks_names_takes_a_lone_invented_surname_that_opens_a_sentence_or_a_row[list-item]
+tests/test_category_facts.py::test_a_surname_shaped_first_word_is_kept_when_it_is_the_customers_or_a_common_word[Namunova javobgar.]
+tests/test_category_finish_decks.py::test_an_invented_person_in_a_problem_proposal_or_request_is_blanked[council-problems]
+tests/test_category_facts.py::test_a_counted_copy_shares_the_respelled_words_rather_than_folding_the_source_again
