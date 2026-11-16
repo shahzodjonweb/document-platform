@@ -1,0 +1,931 @@
+{
+ "schema": 2,
+ "id": "slides.tadbir.tarbiyaviy_soat",
+ "status": "draft",
+ "service": "slides",
+ "parent": "slides.tadbir",
+ "order": 1,
+ "labels": {
+  "uz": "🌱 Tarbiyaviy soat",
+  "ru": "🌱 Классный час",
+  "en": "🌱 Class hour"
+ },
+ "summary": "An editable PowerPoint deck a class teacher shows at a tarbiyaviy soat on an upbringing topic: a cover (hour, grade, teacher, school, only as given), one open opening question over a picture (Bugungi savol), the topic in plain picture-led slides (bayon, rasm), a Hayotiy vaziyat, written-out open discussion questions that are never answered on the slide, a game or group task, Xulosa that answers the opening question, and Refleksiya; Mashg‘ulot maqsadi is a slide from 12 slides (below that the aims are read from the notes of the opening slide), and the customer’s own saying, video title, class figures or a family homework task are added only when given. The teacher’s script, what to listen for",
+ "tone": "Warm and open, for pupils from the back of a classroom: short lines in the plural polite “siz” form, questions that invite talk, never preaching. The teacher’s script lives in the speaker notes.",
+ "topic": false,
+ "title": "model",
+ "length": {
+  "unit": "slides",
+  "mode": "count",
+  "target": "count",
+  "default": 10,
+  "min": 3,
+  "max": 60,
+  "note": "The count is delivered as quoted; a 45-minute hour rarely needs more than 20 slides."
+ },
+ "questions": {
+  "default": 0,
+  "max": 0
+ },
+ "quality": "repair",
+ "fill": false,
+ "cues": {
+  "boshlangich": {
+   "uz": [
+    "1-sinf",
+    "2-sinf",
+    "3-sinf",
+    "4-sinf",
+    "boshlang‘ich sinf"
+   ],
+   "ru": [
+    "1 класс",
+    "2 класс",
+    "3 класс",
+    "4 класс",
+    "1-м класс",
+    "2-м класс",
+    "3-м класс",
+    "4-м класс",
+    "начальн"
+   ],
+   "en": [
+    "grade 1 ",
+    "grade 2 ",
+    "grade 3 ",
+    "grade 4 ",
+    "year 1 ",
+    "year 2 ",
+    "year 3 ",
+    "year 4 ",
+    "first grade",
+    "second grade",
+    "third grade",
+    "fourth grade",
+    "primary"
+   ]
+  },
+  "viktorina": {
+   "uz": [
+    "viktorina"
+   ],
+   "ru": [
+    "викторин"
+   ],
+   "en": [
+    "quiz"
+   ]
+  },
+  "maqol": {
+   "uz": [
+    "maqol",
+    "hikmatli so‘z",
+    "hikmat"
+   ],
+   "ru": [
+    "пословиц",
+    "поговорк",
+    "мудр"
+   ],
+   "en": [
+    "proverb",
+    "saying"
+   ]
+  },
+  "video": {
+   "uz": [
+    "video"
+   ],
+   "ru": [
+    "видео"
+   ],
+   "en": [
+    "video"
+   ]
+  },
+  "figures": {
+   "uz": [
+    "so‘rov",
+    "foiz",
+    "statistika"
+   ],
+   "ru": [
+    "опрос",
+    "процент",
+    "статистик"
+   ],
+   "en": [
+    "survey",
+    "percent",
+    "statistic"
+   ]
+  },
+  "vazifa": {
+   "uz": [
+    "uyga vazifa",
+    "uy vazifa"
+   ],
+   "ru": [
+    "домашн"
+   ],
+   "en": [
+    "homework"
+   ]
+  },
+  "rahmat": {
+   "uz": [
+    "rahmat slayd",
+    "rahmat bilan"
+   ],
+   "ru": [
+    "спасибо",
+    "благодар"
+   ],
+   "en": [
+    "thank"
+   ]
+  }
+ },
+ "ask": {
+  "when": "cues_missing",
+  "fields": [
+   "teacher_line",
+   "school"
+  ],
+  "cover": true,
+  "review": {
+   "uz": "Titul slaydga sinf rahbari va maktab yozilmadi: ular slaydda bo‘lmaydi.",
+   "ru": "Классный руководитель и школа не указаны: на титульном слайде их не будет.",
+   "en": "No class teacher or school was given: they will not be on the title slide."
+  },
+  "prompt": {
+   "uz": "📝 Titul slayd uchun (ixtiyoriy): sinf, sinf rahbari, maktab. Har birini yangi qatordan yozing. Yozmaganingiz slaydda bo‘lmaydi.",
+   "ru": "📝 Для титульного слайда (по желанию): класс, классный руководитель, школа. Каждое с новой строки. Чего не укажете, на слайде не будет.",
+   "en": "📝 For the title slide (optional): grade, class teacher, school. Each on its own line. Anything you skip will not appear on the slide."
+  }
+ },
+ "fields": [
+  {
+   "id": "topic",
+   "label": {
+    "uz": "Mavzu",
+    "ru": "Тема",
+    "en": "Topic"
+   },
+   "example": {
+    "uz": "Ota-onaga hurmat",
+    "ru": "Уважение к родителям",
+    "en": "Respect for parents"
+   },
+   "kind": "text",
+   "need": "required",
+   "missing": "ask",
+   "where": "Cover heading and the whole deck. The bot’s existing topic check asks when it is missing. Shortened to at most 8 words by dropping clauses, never reworded."
+  },
+  {
+   "id": "grade",
+   "label": {
+    "uz": "Sinf",
+    "ru": "Класс",
+    "en": "Grade"
+   },
+   "example": {
+    "uz": "7-sinf",
+    "ru": "7 класс",
+    "en": "Grade 7"
+   },
+   "kind": "line",
+   "need": "recommended",
+   "missing": "ask",
+   "where": "First cover line (“Tarbiyaviy soat · 7-sinf”); sets the line length, the register, the number of games and pictures (grades 1 to 4: the primary arrangement). Asked once in the optional cover step only if the message lacks it; if skipped the line reads just the hour’s name and the AI writes for grades 5 to 8."
+  },
+  {
+   "id": "hour_name",
+   "label": {
+    "uz": "Soatning nomi (tarbiyaviy soat, kelajak soati, sinf soati)",
+    "ru": "Название часа (классный час, Келажак соати)",
+    "en": "Name of the hour (class hour, Kelajak soati)"
+   },
+   "example": {
+    "uz": "Kelajak soati",
+    "ru": "Келажак соати",
+    "en": "Kelajak soati"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "omit",
+   "where": "The customer’s own word for the hour opens the cover header; default “Tarbiyaviy soat” (“Классный час”, “Class hour”). Never asked. When it is Kelajak soati (or the attached file is the Ministry script) the notes name the stage of each slide (Bilish, Munosabat, Amal, Refleksiya)."
+  },
+  {
+   "id": "teacher_line",
+   "label": {
+    "uz": "Sinf rahbari",
+    "ru": "Классный руководитель",
+    "en": "Class teacher"
+   },
+   "example": {
+    "uz": "Sinf rahbari: Gulchehra Rahimova",
+    "ru": "Классный руководитель: Гульчехра Рахимова",
+    "en": "Class teacher: Gulchehra Rahimova"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "ask",
+   "where": "Cover line, copied whole as the customer wrote it (a long line wraps at a word; the label stays in the line). Asked once in the optional cover step; if skipped it is left out (no blank, no placeholder). Never invented.",
+   "cues": {
+    "uz": [
+     "sinf rahbari",
+     "o‘qituvchi"
+    ],
+    "ru": [
+     "классный руководитель",
+     "учител"
+    ],
+    "en": [
+     "class teacher",
+     "teacher"
+    ]
+   }
+  },
+  {
+   "id": "school",
+   "label": {
+    "uz": "Maktab",
+    "ru": "Школа",
+    "en": "School"
+   },
+   "example": {
+    "uz": "21-maktab, Toshkent",
+    "ru": "Школа № 21, Ташкент",
+    "en": "School No. 21, Tashkent"
+   },
+   "kind": "org",
+   "need": "optional",
+   "missing": "ask",
+   "where": "Cover line after the teacher line, copied whole as written, however long an official school name is (it may wrap to 3 lines). Asked in the same optional step; if skipped it is left out.",
+   "cues": {
+    "uz": [
+     "maktab",
+     "litsey",
+     "gimnaziya"
+    ],
+    "ru": [
+     "школ",
+     "лице",
+     "гимнази"
+    ],
+    "en": [
+     "school"
+    ]
+   }
+  },
+  {
+   "id": "date_line",
+   "label": {
+    "uz": "Sana",
+    "ru": "Дата",
+    "en": "Date"
+   },
+   "example": {
+    "uz": "15-noyabr, 2026",
+    "ru": "15 ноября 2026 года",
+    "en": "15 November 2026"
+   },
+   "kind": "date",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Last cover line, only if the customer wrote one. The system never adds a date. Never asked."
+  },
+  {
+   "id": "duration",
+   "label": {
+    "uz": "Davomiyligi",
+    "ru": "Продолжительность",
+    "en": "Length of the hour"
+   },
+   "example": {
+    "uz": "45 daqiqa",
+    "ru": "45 минут",
+    "en": "45 minutes"
+   },
+   "kind": "number",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Sets the minutes written in the speaker notes so that they add up to this length; 45 when not given (the Ministry scripts say 40 to 45)."
+  },
+  {
+   "id": "aims",
+   "label": {
+    "uz": "Maqsad (o‘zingizniki bo‘lsa)",
+    "ru": "Цель (если своя)",
+    "en": "The aim (if you have your own)"
+   },
+   "example": {
+    "uz": "o‘quvchilar ota-onaga hurmat yo‘llarini ayta olsin",
+    "ru": "ученики смогут назвать способы проявить уважение к родителям",
+    "en": "pupils can name ways to show respect to parents"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "The Mashg‘ulot maqsadi slide (from 12 slides) or, below that, the aims read from the notes of the hook slide: the customer’s aim turned into at most three pupil-facing lines in the form “... ayta olasiz”, “... tanlay olasiz”, “... sanab bera olasiz” that keep its meaning. If missing the AI writes three observable aims from the topic. The aim in the customer’s plan is never contradicted."
+  },
+  {
+   "id": "activities",
+   "label": {
+    "uz": "O‘yin va usullar",
+    "ru": "Игры и методы",
+    "en": "Games and methods"
+   },
+   "example": {
+    "uz": "assotsiativ zanjir, juftlikda muhokama",
+    "ru": "ассоциативная цепочка, обсуждение в парах",
+    "en": "association chain, discussion in pairs"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Each activity the customer names gets its slide with its name in the heading. With none named the AI uses one game or group task from the customary list (writing_rules) and one discussion method. A quiz (viktorina) is built only when asked."
+  },
+  {
+   "id": "sayings",
+   "label": {
+    "uz": "Maqol yoki hikmatli so‘z",
+    "ru": "Пословица или мудрое слово",
+    "en": "A proverb or wise saying"
+   },
+   "example": {
+    "uz": "Ustoz — otangdek ulug‘.",
+    "ru": "Учитель — как отец, велик.",
+    "en": "A teacher is as great as a father."
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "The maqol slide: the text is copied whole from the customer’s message or from the attached file, never from the model’s memory. Labelled “Xalq maqoli” for a proverb the customer typed, “Hikmatli so‘z” for a saying, or the author’s name only as the customer or the file wrote it (an official’s or a writer’s quotation from an attached file is allowed, with its author as written). Without any text, no such slide exists and the bot says so in its reply. The bot prompt asks the customer to TYPE the saying; a verified bank (D1) is optional and not needed for release."
+  },
+  {
+   "id": "video_title",
+   "label": {
+    "uz": "Videolavha nomi",
+    "ru": "Название видеоролика",
+    "en": "Title of the video"
+   },
+   "example": {
+    "uz": "«Mening oilam» videolavhasi",
+    "ru": "видеоролик «Моя семья»",
+    "en": "the video “My family”"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "omit",
+   "where": "The video slide shows the title exactly as written. The AI never invents a title, a link or a length. Without a title there is no video slide and the bot says so in its reply (the prompt asks the customer to write the title)."
+  },
+  {
+   "id": "figures",
+   "label": {
+    "uz": "Sinfingiz raqamlari (so‘rov natijalari)",
+    "ru": "Цифры вашего класса (итоги опроса)",
+    "en": "Your class figures (survey results)"
+   },
+   "example": {
+    "uz": "24 o‘quvchidan 9 tasi har kuni kitob o‘qiydi",
+    "ru": "из 24 учеников 9 читают каждый день",
+    "en": "of 24 pupils 9 read every day"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "The raqamlar slide: numbers copied exactly. The slide states what was counted (“24 o‘quvchidan 9 nafari ...”) when the customer gave the total, and carries the unit line “sinf so‘rovi”; with no total given the heading says what the numbers count as written and nothing is added up. Without figures no such slide exists."
+  },
+  {
+   "id": "local_story",
+   "label": {
+    "uz": "Sinfingiz yoki maktabingizdan misol",
+    "ru": "Пример из вашего класса или школы",
+    "en": "An example from your class or school"
+   },
+   "example": {
+    "uz": "maktabimizda o‘tgan «Kitob haftaligi»",
+    "ru": "прошедшая в школе «Неделя книги»",
+    "en": "the “Book week” held at our school"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Used as given on a bayon slide. The AI never invents a school event, a pupil, a teacher or an achievement."
+  },
+  {
+   "id": "family_task",
+   "label": {
+    "uz": "Oila bilan topshiriq (uyga vazifa)",
+    "ru": "Задание с семьёй (домашнее задание)",
+    "en": "A task with the family (homework)"
+   },
+   "example": {
+    "uz": "ota-onadan sevimli kitobini so‘rash",
+    "ru": "спросить у родителей про любимую книгу",
+    "en": "ask a parent about a favourite book"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "The uyga_vazifa slide. When the customer wants a homework slide without wording it, the AI writes a general family conversation that needs no purchase, money, internet, filming or personal data."
+  },
+  {
+   "id": "sources",
+   "label": {
+    "uz": "Ssenariy yoki matn (fayl)",
+    "ru": "Сценарий или текст (файл)",
+    "en": "The script or text (file)"
+   },
+   "example": {
+    "uz": "Kelajak soati ssenariysi, PDF",
+    "ru": "сценарий занятия, PDF",
+    "en": "the session script, PDF"
+   },
+   "kind": "file",
+   "need": "optional",
+   "missing": "omit",
+   "where": "An attached PDF, Word or TXT: stages, questions, games and facts come from it and from nothing else; its minutes are kept. A Ministry script is followed in its own order. No references slide is made."
+  }
+ ],
+ "parts": [
+  {
+   "id": "cover",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "required",
+   "layouts": [
+    "cover"
+   ],
+   "pins": [],
+   "source": "template",
+   "write": "Heading = the topic (title 52 pt beside a picture, 56 without; a word longer than the title box steps the size down, to 32 pt at the lowest, before it breaks; the title box is 6.3 in wide beside a picture, 8.8 in without, so it never reaches the composition’s cover circle that sits right of x 10). Body, in this order: the header “Tarbiyaviy soat · <N>-sinf” (no colon; the hour’s name from hour_name), then the customer’s own teacher, school and date lines copied whole (the label stays in its line: “Sinf rahbari: ...”). A line that was not given is not written: no “F.I.Sh.”, no “____”. Notes never kept on a cover. PICTURE RULE: image_query only when the lines after the header render in at most 4 lines beside the picture; the AI counts a line as ceil(characters / 34) rendered lines (28 in Russian). Measured: “Sinf rahbari: Karimova Dilnoza Abdullayevna” (43) plus a 36-character school line = 4 lines, the photo stays; the default Russian cover (41 and 20) = 3 lines, the photo stays. Without a picture the block is 8.8 in wide and holds up to 5 rendered lines (a 91-character official name wraps to 3); the lines step down from 24 to 20 pt before anything is cut."
+  },
+  {
+   "id": "savol",
+   "kind": "slide",
+   "heading": {
+    "uz": "Bugungi savol",
+    "ru": "Вопрос дня",
+    "en": "Question of the day"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "layouts": [
+    "image_full",
+    "statement",
+    "bullets"
+   ],
+   "pins": [
+    "statement.soft_panel"
+   ],
+   "source": "draft",
+   "write": "Drawn as the proposed image_full.question_band when a photo is found (photo bleeding top and right, soft panel under it with the label and the question at 40 pt), else statement.soft_panel (the layout falls back by itself). Heading = the fixed label. Body = ONE open question of at most 12 words and 60 characters (nega, qanday, qachon, nimada; never a yes or no and never a choice with an obvious right side, so not “A yoki B”), which pupils can attempt before the lesson and which xulosa can answer; it may begin “Tasavvur qiling”. image_query: 2 to 4 English words naming something visible. Notes: greeting (Tashkiliy qism), how to ask, “no right answer, listen to all”, and BELOW 12 SLIDES the three aims read aloud (the notes carry them because no maqsad slide exists), up to 60 words; “Bu bosqich 6 daqiqa.” (the stage Boshlanish). A civic topic with no file asks about what a pupil can see (“Vatan siz uchun nimadan boshlanadi?”), never about a date or a symbol."
+  },
+  {
+   "id": "maqsad",
+   "kind": "slide",
+   "heading": {
+    "uz": "Mashg‘ulot maqsadi",
+    "ru": "Цель классного часа",
+    "en": "Aim of the class hour"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.numbered_rows"
+   ],
+   "source": "draft",
+   "write": "From 12 slides, directly after the hook (stage Boshlanish; the notes say “Bu bosqichning davomi.”). Three lines of at most 46 characters in the form “... ayta olasiz.”, “... tanlay olasiz.”, “... sanab bera olasiz.” (a statement of ability, never a prediction), each observable and specific to the topic, never a copy of the title and never “tarbiyalash” (the teacher-side verb of the Ministry card). The customer’s own aim, if any, is kept in meaning. Not drawn below 12 slides (the aims live in the notes of the hook slide), not drawn in grades 1 to 4. Notes: read the three aims together, one example each, say you will come back to them.",
+   "when": "nocue:boshlangich",
+   "from": 12,
+   "join": 5
+  },
+  {
+   "id": "bayon",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "usual",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.classic"
+   ],
+   "source": "draft",
+   "write": "The “Bilish” part, the main substance of the hour (the real decks spend 3 to 5 slides on it). Heading = where the thing is seen, up to 7 words (“Hurmat so‘zda ko‘rinadi”, “Hurmat ishda ko‘rinadi”); never a slogan. 3 or 4 parallel lines of at most 46 characters (36 in grades 1 to 4), each a concrete act a pupil can see or do (“Salom berish va ruxsat so‘rash.”); the explanation with an everyday example is in the notes (2 to 3 sentences, teacher’s voice, “give an example, do not preach”). The base has two bayon slides (two sides of the topic) with the picture slide between. A point about a named person, event, date or number only from the message or the file (rule NEVER INVENT); a civic topic stays with what pupils can see. Minutes: “Bu bosqich 12 daqiqa.” on the first bayon of the stage.",
+   "from": 5,
+   "repeat": {
+    "min": 1,
+    "max": 40
+   }
+  },
+  {
+   "id": "rasm",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "usual",
+   "layouts": [
+    "image_split",
+    "bullets"
+   ],
+   "pins": [
+    "image_split.classic"
+   ],
+   "source": "draft",
+   "write": "3 lines of at most 28 characters (22 in Russian), each a full short phrase that is true of any photo of the topic (“Oila birga ovqatlanadi.”, “Kattalar birinchi gapiradi.”), never a dash pair, and an image_query of 2 to 4 English nouns naming something visible, never a person, a brand or an idea. Pictures: at most one slide in three and never more than 12 in a deck (the cover and the hook count); beyond the allowance the AI writes a bayon slide with no image_query. Never on xulosa, refleksiya or homework. A photo may not be found: the slide then reads as bullets.card_stack (the allow-list fallback, so it never repeats the neighbouring bayon drawing), nothing cut. Notes: one question about what the pupils notice, no verdict on the people shown. Primary classes ask for drawings with “chizma rasm” (the bare word “rasm” gives photographs).",
+   "from": 9,
+   "repeat": {
+    "min": 1,
+    "max": 10
+   }
+  },
+  {
+   "id": "vaziyat",
+   "kind": "slide",
+   "heading": {
+    "uz": "Hayotiy vaziyat",
+    "ru": "Жизненная ситуация",
+    "en": "A real-life situation"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.lead_line"
+   ],
+   "source": "draft",
+   "write": "Drawn as bullets.lead_line: the lead “Tasavvur qiling:” (Russian «Представьте:»), then 2 or 3 lines of at most 46 characters telling a small, ordinary situation and ending in the question “Siz nima qilasiz? Nima uchun?”. The characters are unnamed (“onangiz”, “sinfdoshingiz”), no school, place or real event, never frightening, humiliating or about a real pupil; it is hypothetical and says so by “Tasavvur qiling”. Grades 1 to 4: not used (the game takes its place). Notes: options to draw out (three, named), consequences of each, “do not judge”, up to 60 words. A second situation (from 14 content slides) is a different everyday scene with its own heading (“Yana bir vaziyat”). Stage Munosabat: “Bu bosqich 12 daqiqa.” on the first slide of the stage.",
+   "when": "nocue:boshlangich",
+   "from": 8,
+   "repeat": {
+    "min": 1,
+    "max": 6
+   }
+  },
+  {
+   "id": "muhokama",
+   "kind": "slide",
+   "heading": {
+    "uz": "Muhokama uchun savollar",
+    "ru": "Вопросы для обсуждения",
+    "en": "Questions for discussion"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.card_stack"
+   ],
+   "source": "draft",
+   "write": "3 open questions of at most 46 characters (36 in primary), from easy to thinking; each asks nega, qanday, nimada, qachon, nimani (primary: at most one closed question); none ends in -mi, “mumkinmi”, “bormi” or the Russian “ли”, none is a choice between two answers one of which is the obvious right one; the third is the one a pupil can disagree with. The slide never carries an answer and never steers to the answer the school expects; the notes never tell the teacher to stress one answer. Notes: what to listen for, two follow-up prompts, “if the class is silent, ask for pairs”, up to 60 words. The R6 validator rejects a yes/no ending (work/soft_validator.py).",
+   "repeat": {
+    "min": 1,
+    "max": 6
+   }
+  },
+  {
+   "id": "oyin",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "usual",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.classic",
+    "bullets.step_ladder"
+   ],
+   "source": "draft",
+   "write": "The heading names the activity, taken from the customary list in writing_rules. 3 or 4 rule lines of at most 46 characters (36 in primary) in the order they are played, in the plural imperative (“Doira bo‘lib turing”, “To‘pni olsangiz, gapni davom ettiring”), never a third-person line. Drawn as bullets.classic when the lines are rules, as bullets.step_ladder ONLY for a task with real ordered steps (a group poster: form groups, draw, show, listen). Safe in a classroom: nobody is eliminated, sits down, is ranked, shamed or marked; a player who errs or does not wish to speak simply passes (“Xohlamasangiz, navbatni o‘tkazing”); no points, no scale. Materials, how to start, how to end are in the notes. In grades 1 to 4 this slot is the heart of the hour (10 to 12 minutes). At most one game per 8 slides and never more than 4 in a deck. Stage Amal: “Bu bosqich 8 daqiqa.” on the first game.",
+   "from": 6,
+   "repeat": {
+    "min": 1,
+    "max": 4
+   }
+  },
+  {
+   "id": "viktorina",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "optional",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.classic"
+   ],
+   "source": "draft",
+   "write": "Only when the customer asks for a viktorina or test (kept as an on-request slot because the owner’s notes name a quiz; it costs nothing when not asked). Built by the blueprint, not by the product’s end-of-deck quiz; 3 questions of at most 46 characters a slide without options, every one answerable from the hour or from the attached file; answers in the notes only where certain, never a date or a number not in the message or file. Counted inside the slide total; no points, no ranking.",
+   "when": "cue:viktorina",
+   "from": 6,
+   "join": 4
+  },
+  {
+   "id": "raqamlar",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "optional",
+   "layouts": [
+    "chart",
+    "stats",
+    "big_number",
+    "bullets"
+   ],
+   "pins": [
+    "chart.stepped_rows",
+    "stats.rows",
+    "big_number.classic"
+   ],
+   "source": "customer",
+   "write": "Only numbers from the message or the attached file, copied exactly. The heading is the finding and carries the denominator when the customer gave it (“24 o‘quvchidan 9 nafari har kuni o‘qiydi”); the unit line (columns[0]) is “sinf so‘rovi” (the source, as the real decks carry a source line). At most 1 in a 10-slide deck. Drawn as chart.stepped_rows (mock/school_tarbiyaviy_soat-13-kitob.png), stats.rows or big_number.classic from the allow-list; bars start at zero, so 7 of 24 and 9 of 24 read as the near neighbours they are, which the heading states. The notes name the source (“sinf o‘qituvchisining ma’lumoti”) and ask pupils “which row are you in?”, never blame anyone. Without figures the slot does not exist.",
+   "when": "cue:figures",
+   "from": 6,
+   "join": 1
+  },
+  {
+   "id": "maqol",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "optional",
+   "layouts": [
+    "statement",
+    "bullets"
+   ],
+   "pins": [
+    "statement.soft_panel"
+   ],
+   "source": "customer",
+   "write": "Heading, in the deck’s language: Xalq maqoli | Hikmatli so‘z | <muallif, fayldagidek> / Народная пословица | Мудрое слово | <автор, как в файле> / Folk proverb | A wise saying | <the author as written>. Drawn as statement.soft_panel: the heading is the label (“Xalq maqoli” for a proverb the customer typed; “Hikmatli so‘z” for a saying; the author’s name only as the customer or the file wrote it), the body is the text copied whole, up to 120 characters (a longer one goes on bullets in its own sentences). PLACE: directly before xulosa, so a xulosa line can meet it, or directly after the hook when the customer says it opens the hour; it is a statement the class talks about, not a slogan: the notes ask “which of our findings does this saying meet?” (stage Yakun, minutes on the first slide of the stage). The text must be found word for word in the message or the attached file (G1); otherwise the slide is not made and the bot says so. A quotation of an official or writer is made only from an attached file, with the author as written there.",
+   "when": "cue:maqol",
+   "from": 6,
+   "join": 1
+  },
+  {
+   "id": "video",
+   "kind": "slide",
+   "heading": {
+    "uz": "Videolavha",
+    "ru": "Видеоролик",
+    "en": "Video"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "layouts": [
+    "statement",
+    "bullets"
+   ],
+   "pins": [
+    "statement.soft_panel"
+   ],
+   "source": "customer",
+   "write": "Heading = “Videolavha”, body = the title exactly as the customer wrote it (at most 60 characters). Notes: when to play it, the length limit of the Ministry guide (3 to 5 minutes; 1 to 3 in grades 1 and 2), one question for the pupils to watch for, then the discussion slide. Without a named video the slot does not exist and the bot says so; no link, no length, no channel is ever invented.",
+   "when": "cue:video",
+   "from": 6,
+   "join": 1
+  },
+  {
+   "id": "xulosa",
+   "kind": "slide",
+   "heading": {
+    "uz": "Xulosa",
+    "ru": "Выводы",
+    "en": "Conclusion"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.numbered_rows"
+   ],
+   "source": "draft",
+   "write": "Three lines of at most 60 characters, plain statements of what the class found, in the class’s own voice, not commands (“Hurmat tinglashdan boshlanadi”, not “tinglash kerak”; no kerak, lozim, zarur, no imperative ending); the first answers the opening question; no new fact, no number or name not shown earlier. Numbered 01 to 03 (numbered_rows). Notes: ask 1 or 2 pupils to say it in their own words first, then show the slide; if the class found something else, write its words down. From 7 slides; in grades 1 to 4 the three lines are the three rules of the topic.",
+   "from": 7
+  },
+  {
+   "id": "refleksiya",
+   "kind": "slide",
+   "heading": {
+    "uz": "Refleksiya",
+    "ru": "Рефлексия",
+    "en": "Reflection"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.classic"
+   ],
+   "source": "draft",
+   "write": "Three sentence starters for the pupils to finish aloud or on paper, each ending in an ellipsis: what I learned, what interested me, and one deed (“Bugun uyda ... qilaman.”, «Сегодня дома я ...», “Today at home I ...”); this is also the pupils’ self-assessment from the Ministry guide, without marks. Notes: nobody is made to speak, hear 2 or 3, thank the class. Always the last content slide before homework and thanks.",
+   "from": 4
+  },
+  {
+   "id": "uyga_vazifa",
+   "kind": "slide",
+   "heading": {
+    "uz": "Uyga vazifa",
+    "ru": "Домашнее задание",
+    "en": "Homework"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.lead_line"
+   ],
+   "source": "draft",
+   "write": "From 11 slides, or whenever the message mentions homework, family or parents. Drawn as bullets.lead_line: the lead “Oila bilan suhbat:”, then 2 or 3 lines in the plural imperative of at most 46 characters and “Qiziqqanlarga: ...” as an optional challenge. Only as the customer worded it, else a general conversation task; no purchase, money, internet, filming, marks or deadlines. Notes: say it is not obligatory, 2 to 3 minutes.",
+   "when": "cue:vazifa",
+   "from": 5,
+   "join": 2
+  },
+  {
+   "id": "uyga_vazifa_doim",
+   "kind": "slide",
+   "heading": {
+    "uz": "Uyga vazifa",
+    "ru": "Домашнее задание",
+    "en": "Homework"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.lead_line"
+   ],
+   "source": "draft",
+   "write": "From 11 slides, or whenever the message mentions homework, family or parents. Drawn as bullets.lead_line: the lead “Oila bilan suhbat:”, then 2 or 3 lines in the plural imperative of at most 46 characters and “Qiziqqanlarga: ...” as an optional challenge. Only as the customer worded it, else a general conversation task; no purchase, money, internet, filming, marks or deadlines. Notes: say it is not obligatory, 2 to 3 minutes.",
+   "when": "nocue:vazifa",
+   "from": 11
+  },
+  {
+   "id": "rahmat",
+   "kind": "slide",
+   "heading": {
+    "uz": "E’tiboringiz uchun rahmat!",
+    "ru": "Спасибо за внимание!",
+    "en": "Thank you for your attention!"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "layouts": [
+    "closing"
+   ],
+   "pins": [],
+   "source": "template",
+   "write": "Off by default (neither real deck ends on thanks, and Refleksiya ends the hour on a deed). Added when the customer writes “rahmat slaydi” (the bot prompt names it) or asks for thanks. Body line “Savollaringiz bormi?” / «Вопросы?» / “Questions?”. No contacts, no names.",
+   "when": "cue:rahmat",
+   "from": 5,
+   "join": 6
+  }
+ ],
+ "rules": [
+  {
+   "text": "Lines at most 46 characters and 8 words (grades 1 to 4: 36 and 6), at most 5 lines, a question or statement at most 60 characters, a picture slide’s lines at most 28 characters. Never the we-form in a heading. One job a slide: ask, tell, do or look back. This overrides the global guide of about 111 words a slide.",
+   "to": "model"
+  },
+  {
+   "text": "Layouts: bullets, statement, image_split and image_full; chart, stats and big_number only for the customer’s figures. The same variant is never drawn on two slides in a row.",
+   "to": "model"
+  },
+  {
+   "text": "Never invent, on a slide or in a note: no person, school, class, pupil, event, date, year, number, statistic, survey, official’s words, law, institution, quotation, proverb, video title or source unless the message or the attached file gives it. Patriotic, civic, historical and health topics are told through concepts and what pupils can see, never through dates or figures of your own.",
+   "to": "model"
+  },
+  {
+   "text": "A proverb, saying or quotation appears only word for word as the customer typed it or the file holds it, never from memory and never with an author you add. A video slide names only the title the customer gave.",
+   "to": "model"
+  },
+  {
+   "text": "A life situation is plainly hypothetical (“Tasavvur qiling”), ordinary, with unnamed characters and no place; never a real pupil, a family problem, violence, illness or death. Games come from the customary list (aqliy hujum, klaster, gapni davom ettiring, to‘g‘ri yoki noto‘g‘rimi?, rolli vaziyat, guruhda ishlash) adapted to the topic.",
+   "to": "model"
+  },
+  {
+   "text": "Questions are open (nega, qanday, nimada) and never end in yes or no; the notes never steer to an expected answer. The conclusion is what the class found, in the class’s voice, answers the opening question and is never a command.",
+   "to": "model"
+  },
+  {
+   "text": "Secular and neutral: no religious quotation or practice and no political comment unless the customer wrote it.",
+   "to": "model"
+  },
+  {
+   "text": "Speaker notes are the teacher’s script on every slide but the cover: 20 to 45 words (up to 60 on the hook, situation, discussion and game), what to say and do and two follow-up prompts; the first slide of each stage ends “Bu bosqich N daqiqa.”, the minutes adding up to 45 unless said. With a script attached, stages, questions, games and minutes come from it.",
+   "to": "model"
+  },
+  {
+   "text": "Pictures only where a visible thing is the subject, at most one slide in three, never a person; every picture slide reads as text. Uzbek is Latin only (o‘ g‘ with ‘, the tutuq belgisi with ’); Russian uses “вы”. No emoji, no exclamation mark except in the thanks heading.",
+   "to": "model"
+  }
+ ],
+ "bot": {
+  "prompt": {
+   "uz": "🌱 Tarbiyaviy soat (Kelajak soati ham) slaydlari. Bitta xabarda yozing: sinf, mavzu va necha slayd (aytmasangiz, 10 ta bo‘ladi).\nO‘yin, uyga vazifa yoki rahmat slaydi kerak bo‘lsa, ayting. Maqol, videolavha nomi yoki sinf so‘rovi raqamlari kerak bo‘lsa, ularni o‘zingiz yozing: biz o‘ylab topmaymiz.\n📎 Mashg‘ulot ssenariysini PDF, Word yoki TXT qilib qo‘shsangiz, slaydlar shunga tayanadi.\nTitul slayd uchun sinf rahbari va maktabni ham yozishingiz mumkin.",
+   "ru": "🌱 Слайды к классному часу (и к «Келажак соати»). Напишите одним сообщением: класс, тему и число слайдов (если не указать, будет 10).\nНужны игра, домашнее задание или слайд «Спасибо» — скажите. Пословицу, название видеоролика или цифры опроса напишите сами: мы их не придумываем.\n📎 Сценарий занятия в PDF, Word или TXT — слайды будут опираться на него.\nДля титульного слайда можно сразу указать классного руководителя и школу.",
+   "en": "🌱 Class hour slides (Kelajak soati too). Say it in one message: grade, topic and the number of slides (if you do not say, you get 10).\nAsk for a game, a homework task or a thank-you slide if you want one. Type any proverb, video title or class survey figures yourself: we never make them up.\n📎 Add the session script as a PDF, Word or TXT file and the slides will lean on it.\nYou may add the class teacher and the school for the title slide."
+  },
+  "examples": [
+   {
+    "uz": "7-sinf tarbiyaviy soati uchun 10 ta slayd: «Ota-onaga hurmat». Hayotiy vaziyat, muhokama savollari va o‘yin ham bo‘lsin.\nSinf rahbari: Gulchehra Rahimova\n21-maktab, Toshkent",
+    "ru": "10 слайдов к классному часу в 7 классе: «Уважение к родителям». Нужны жизненная ситуация, вопросы для обсуждения и игра.\nКлассный руководитель: Гульчехра Рахимова\nШкола № 21, Ташкент",
+    "en": "10 slides for a grade 7 class hour: “Respect for parents”. Include a real-life situation, discussion questions and a game.\nClass teacher: Gulchehra Rahimova\nSchool No. 21, Tashkent"
+   },
+   {
+    "uz": "3-sinf uchun «Yo‘lda xavfsizlik» tarbiyaviy soati: 8 ta slayd, chizma rasmlar bo‘lsin, svetofor haqida o‘yin qo‘shing.",
+    "ru": "Классный час в 3 классе «Безопасность на дороге»: 8 слайдов, рисованные картинки, добавьте игру про светофор.",
+    "en": "A grade 3 class hour “Road safety”: 8 slides, drawn pictures (not photos), with a traffic-light game."
+   },
+   {
+    "uz": "6-sinf Kelajak soati: ssenariyni PDF qilib biriktirdim. Shu asosida 12 ta slayd tayyorlang, oxirida uyga vazifa bo‘lsin.",
+    "ru": "Классный час «Келажак соати» в 6 классе: сценарий приложил в PDF. Сделайте по нему 12 слайдов, в конце домашнее задание.",
+    "en": "A grade 6 “Kelajak soati” hour: I attached the script as a PDF. Make 12 slides from it, with a homework task at the end."
+   }
+  ],
+  "attach": true,
+  "notices": {
+   "blanks": {
+    "uz": "Siz bermagan ma’lumot o‘rniga bo‘sh joy qoldirildi: uni o‘zingiz to‘ldiring.",
+    "ru": "Где данных не было, оставлены пустые места: заполните их сами.",
+    "en": "Where you gave no details, blanks were left for you to fill in."
+   }
+  }
+ },
+ "templates": [],
+ "look": {
+  "designs": [
+   "classroom",
+   "forest",
+   "atlas",
+   "scholar",
+   "chalkboard"
+  ],
+  "variants": {
+   "bullets": [
+    "classic",
+    "numbered_rows",
+    "step_ladder",
+    "card_stack",
+    "lead_line"
+   ],
+   "statement": [
+    "soft_panel"
+   ],
+   "image_split": [
+    "classic"
+   ],
+   "chart": [
+    "stepped_rows"
+   ],
+   "stats": [
+    "rows"
+   ],
+   "big_number": [
+    "classic"
+   ]
+  },
+  "cover_lines": 4,
+  "note": "classroom by default; forest, atlas, scholar and chalkboard are picked by the customer. image_full.question_band is a research proposal and is not registered."
+ },
+ "gates": [
+  "A native Uzbek and a native Russian reader check the fixed headings (Bugungi savol, Mashg‘ulot maqsadi, Hayotiy vaziyat, Muhokama uchun savollar, Refleksiya) and the bot copy.",
+  "A 6, a 10 and a 15 slide sample in uz, ru and en are drawn with the deck sample tool and looked at next to units/slides.tadbir.tarbiyaviy_soat/mock/school_tarbiyaviy_soat.png."
+ ],
+ "later": [
+  {
+   "text": "Stage dividers in decks of 18 slides or more: slots are contiguous blocks this round."
+  },
+  {
+   "text": "A verified bank of proverbs; the bot reply naming a requested part that could not be made."
+  },
+  {
+   "text": "The image_full.question_band variant for the opening question."
+  }
+ ],
+ "sources": {
+  "take": "all"
+ }
+}

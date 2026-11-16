@@ -1,0 +1,938 @@
+{
+ "schema": 2,
+ "id": "slides.tadbir.pedkengash",
+ "status": "draft",
+ "service": "slides",
+ "parent": "slides.tadbir",
+ "order": 4,
+ "labels": {
+  "uz": "🏫 Pedagogik kengash",
+  "ru": "🏫 Педагогический совет",
+  "en": "🏫 Pedagogical council"
+ },
+ "summary": "An editable PowerPoint deck for the report a deputy head, a head of a methodological group or a teacher gives at a school’s teachers’ council: a cover (school, meeting number, presenter, date, only as given), the agenda when three or more questions are listed, the report in the customer’s own figures (key indicators, bar charts, tables, split into slices when a series is long), problems paired with their solutions, the tasks for the next year when the customer gives them, and a numbered draft resolution (qaror loyihasi) that stays on screen for the vote; no figure, name, date, law, count of figures or span of years is ever invented or computed, drafted slides are listed to the customer befor",
+ "tone": "Formal, collegial and plain, the register teachers use to each other at a council: noun phrases and short sentences, no “biz / мы / we” on a slide. The reporter’s spoken words live in the notes.",
+ "topic": false,
+ "title": "model",
+ "length": {
+  "unit": "slides",
+  "mode": "count",
+  "target": "count",
+  "default": 10,
+  "min": 5,
+  "max": 30,
+  "note": "The research counted the number as a ceiling; the count is delivered as quoted. A results council without figures gets honest forms on its figure slides; a thematic council fills its count with the topic’s own points, marked as drafts."
+ },
+ "questions": {
+  "default": 0,
+  "max": 0
+ },
+ "quality": "repair",
+ "fill": false,
+ "cues": {
+  "natija": {
+   "uz": [
+    "chorak",
+    "yakun",
+    "o‘zlashtirish",
+    "bilim sifati",
+    "davomat",
+    "natijalar"
+   ],
+   "ru": [
+    "четверт",
+    "итог",
+    "успеваемост",
+    "качество знаний",
+    "посещаемост",
+    "результат"
+   ],
+   "en": [
+    "quarter",
+    "results",
+    "pass rate",
+    "knowledge quality",
+    "attendance"
+   ]
+  },
+  "kun_tartibi": {
+   "uz": [
+    "kun tartib"
+   ],
+   "ru": [
+    "повестк"
+   ],
+   "en": [
+    "agenda"
+   ]
+  },
+  "vazifa": {
+   "uz": [
+    "vazifa"
+   ],
+   "ru": [
+    "задач"
+   ],
+   "en": [
+    "tasks"
+   ]
+  },
+  "tadbir": {
+   "uz": [
+    "chora-tadbir",
+    "tadbirlar reja",
+    "tadbirlar jadval"
+   ],
+   "ru": [
+    "мероприят"
+   ],
+   "en": [
+    "action plan",
+    "action table",
+    "activities"
+   ]
+  }
+ },
+ "ask": null,
+ "fields": [
+  {
+   "id": "topic",
+   "label": {
+    "uz": "Kengash mavzusi (masala)",
+    "ru": "Тема совета (вопрос)",
+    "en": "Topic of the council (the question)"
+   },
+   "example": {
+    "uz": "2025–2026 o‘quv yili yakunlari",
+    "ru": "Итоги 2025–2026 учебного года",
+    "en": "Results of the 2025–2026 school year"
+   },
+   "kind": "text",
+   "need": "required",
+   "missing": "ask",
+   "where": "cover title (in full, never cut) and the first agenda item"
+  },
+  {
+   "id": "agenda_items",
+   "label": {
+    "uz": "Kun tartibi (masalalar)",
+    "ru": "Повестка дня (вопросы)",
+    "en": "Agenda (the questions)"
+   },
+   "example": {
+    "uz": "1) o‘quv yili yakunlari; 2) bitiruvchilarni attestatsiyaga qo‘yish; 3) yangi o‘quv yiliga tayyorgarlik",
+    "ru": "1) итоги года; 2) допуск выпускников к аттестации; 3) подготовка к новому году",
+    "en": "1) year results; 2) admitting graduates to the final assessment; 3) getting ready for the new year"
+   },
+   "kind": "list",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "agenda slide; with a single topic the slide is the report outline (reja) and lists only the parts the deck contains; three to five questions (fewer than three: no agenda slide)"
+  },
+  {
+   "id": "school",
+   "label": {
+    "uz": "Maktab",
+    "ru": "Школа",
+    "en": "School"
+   },
+   "example": {
+    "uz": "21-sonli umumiy o‘rta ta’lim maktabi, Toshkent",
+    "ru": "21-я общеобразовательная школа, Ташкент",
+    "en": "General secondary school No. 21, Tashkent"
+   },
+   "kind": "org",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "cover, first line, copied as the customer wrote it (“21-maktab” stays “21-maktab”; the official form is shown as the example); left out when not given or kept: an account’s kept cover lines may supply it"
+  },
+  {
+   "id": "council_number",
+   "label": {
+    "uz": "Majlis raqami",
+    "ru": "Номер заседания",
+    "en": "Meeting number"
+   },
+   "example": {
+    "uz": "4",
+    "ru": "4",
+    "en": "4"
+   },
+   "kind": "number",
+   "need": "optional",
+   "missing": "omit",
+   "where": "cover, after the fixed label: “Pedagogik kengash majlisi № 4”; without it the label stands alone"
+  },
+  {
+   "id": "council_date",
+   "label": {
+    "uz": "Majlis sanasi",
+    "ru": "Дата заседания",
+    "en": "Meeting date"
+   },
+   "example": {
+    "uz": "2026-yil 28-iyun",
+    "ru": "28 июня 2026 года",
+    "en": "28 June 2026"
+   },
+   "kind": "date",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "cover, last line; never replaced by today’s date"
+  },
+  {
+   "id": "presenter",
+   "label": {
+    "uz": "Ma’ruzachi",
+    "ru": "Докладчик",
+    "en": "Presenter"
+   },
+   "example": {
+    "uz": "o‘quv ishlari bo‘yicha direktor o‘rinbosari",
+    "ru": "заместитель директора по учебной работе",
+    "en": "deputy head for teaching and learning"
+   },
+   "kind": "line",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "cover line “Ma’ruzachi: …”, and on the agenda only when two questions have different reporters; a name only if given, else the role as given"
+  },
+  {
+   "id": "figures",
+   "label": {
+    "uz": "Raqamlar: o‘zlashtirish, sifat, davomat, sinflar va fanlar bo‘yicha",
+    "ru": "Цифры: успеваемость, качество, посещаемость, по классам и предметам",
+    "en": "Figures: pass rate, quality, attendance, by grade and subject"
+   },
+   "example": {
+    "uz": "O‘zlashtirish 98,4%, sifat 61,2% (o‘tgan yil 57,6%); 9-sinfda sifat 51%",
+    "ru": "Успеваемость 98,4%, качество 61,2% (в прошлом году 57,6%); в 9 классе качество 51%",
+    "en": "Pass rate 98.4%, quality 61.2% (last year 57.6%); grade 9 quality 51%"
+   },
+   "kind": "text",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "key indicators, chart and table slides. A results council (quarter or year) with no number and no file is NOT asked a second question: the first prompt asks once, and the review screen says “no figures: no chart or table slides” with an add-figures button (bot.notices.figures_missing). With none, those slides are not made and the deck takes the thematic path"
+  },
+  {
+   "id": "achievements",
+   "label": {
+    "uz": "Erishilgan natijalar",
+    "ru": "Достигнутые результаты",
+    "en": "Achievements"
+   },
+   "example": {
+    "uz": "12 nafar olimpiada g‘olibi, 18 ta ochiq dars",
+    "ru": "12 победителей олимпиад, 18 открытых уроков",
+    "en": "12 olympiad winners, 18 open lessons"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "achievements slide, with its numbers"
+  },
+  {
+   "id": "problems",
+   "label": {
+    "uz": "Muammolar",
+    "ru": "Проблемы",
+    "en": "Problems"
+   },
+   "example": {
+    "uz": "Matematika va ingliz tilida sifat past; 23 nafar o‘quvchi qoniqarsiz",
+    "ru": "Низкое качество по математике и английскому; 23 ученика с двойками",
+    "en": "Low quality in mathematics and English; 23 pupils with failing marks"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "problem side of the pairs slide, or the problems slide; with none given they are read from the customer’s figures; with no basis the slide “Diqqat talab qiladigan masalalar” is a marked draft"
+  },
+  {
+   "id": "proposals",
+   "label": {
+    "uz": "Takliflar",
+    "ru": "Предложения",
+    "en": "Proposals"
+   },
+   "example": {
+    "uz": "Qo‘shimcha mashg‘ulotlar, 9-sinflarda monitoring",
+    "ru": "Дополнительные занятия, мониторинг в 9 классах",
+    "en": "Extra classes, monitoring in grade 9"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "solution side of the pairs slide, or the proposals slide; the customer’s own first, word for word; drafted ones are marked in the notes and listed on the review screen"
+  },
+  {
+   "id": "tasks",
+   "label": {
+    "uz": "Yangi yil vazifalari",
+    "ru": "Задачи на новый год",
+    "en": "Tasks for the new year"
+   },
+   "example": {
+    "uz": "Matematika o‘qituvchilari uchun metodik seminar o‘tkazish; 5-sinflarda kirish diagnostikasini o‘tkazish",
+    "ru": "Провести методический семинар для учителей математики; провести входную диагностику в 5 классах",
+    "en": "Hold a methodological seminar for mathematics teachers; run entry diagnostics in grade 5"
+   },
+   "kind": "list",
+   "need": "optional",
+   "missing": "omit",
+   "where": "vazifalar slide: 3 to 5 imperative lines in the customer’s words, or the customer’s proposals when they are phrased as tasks. If the title or the aim promises tasks and none are given, the slide is not made and the review screen says so (bot.notices.tasks_missing); the aim and the cover then do not mention tasks"
+  },
+  {
+   "id": "decisions",
+   "label": {
+    "uz": "Qaror bandlari (yozgan bo‘lsangiz)",
+    "ru": "Пункты решения (если уже написаны)",
+    "en": "Resolution points (if you already wrote them)"
+   },
+   "example": {
+    "uz": "Qo‘shimcha mashg‘ulotlar tashkil etilsin",
+    "ru": "Организовать дополнительные занятия",
+    "en": "Organise extra classes"
+   },
+   "kind": "list",
+   "need": "optional",
+   "missing": "omit",
+   "where": "draft resolution, used word for word and put in the customary form"
+  },
+  {
+   "id": "responsible_deadlines",
+   "label": {
+    "uz": "Mas’ul va muddatlar",
+    "ru": "Ответственные и сроки",
+    "en": "People responsible and deadlines"
+   },
+   "example": {
+    "uz": "Kutubxonachi, 20-avgust",
+    "ru": "Библиотекарь, 20 августа",
+    "en": "Librarian, 20 August"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "action-plan table; in a resolution only after a dash and only if given. In the table a missing cell is the ruled blank ________; in a resolution nothing is written for it"
+  },
+  {
+   "id": "source_file",
+   "label": {
+    "uz": "Hisobot, jadval yoki bayonnoma fayli (PDF, Word, TXT)",
+    "ru": "Файл доклада, таблицы или протокола (PDF, Word, TXT)",
+    "en": "Report, table or minutes file (PDF, Word, TXT)"
+   },
+   "example": {
+    "uz": "Biriktirilgan Word hisobot",
+    "ru": "Приложенный отчёт в Word",
+    "en": "An attached Word report"
+   },
+   "kind": "file",
+   "need": "optional",
+   "missing": "omit",
+   "where": "every slot is filled from it in blueprint order; the file’s own order of questions is kept"
+  },
+  {
+   "id": "length",
+   "label": {
+    "uz": "Slaydlar soni",
+    "ru": "Число слайдов",
+    "en": "Number of slides"
+   },
+   "example": {
+    "uz": "10 ta slayd",
+    "ru": "10 слайдов",
+    "en": "10 slides"
+   },
+   "kind": "number",
+   "need": "optional",
+   "missing": "omit",
+   "where": "sizes the deck (up to 10 when not said, 5 to 30); a ceiling: with thin material the deck is shorter and the customer is told before paying"
+  }
+ ],
+ "parts": [
+  {
+   "id": "cover",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "required",
+   "layouts": [
+    "cover"
+   ],
+   "pins": [],
+   "source": "template",
+   "write": "Heading = the topic, at most 12 words (it is never cut under 260 characters). Body = 1 to 5 lines in this fixed order and only as given: the school; the label “Pedagogik kengash majlisi” (“Заседание педагогического совета”, “Pedagogical council meeting”) with “№ n” (“No. n”) only if the number was given; “Ma’ruzachi: …” (“Докладчик: …”, “Presenter: …”); the date. The label is the only line the AI writes itself and it is always there (a cover with the label alone is the usual minimum); a missing school, presenter or date is left out, never blanked and never replaced by today’s date. No photo, no notes."
+  },
+  {
+   "id": "kun_tartibi",
+   "kind": "slide",
+   "heading": {
+    "uz": "Kun tartibi",
+    "ru": "Повестка дня",
+    "en": "Agenda"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "layouts": [
+    "agenda",
+    "bullets"
+   ],
+   "pins": [
+    "agenda.current_first",
+    "agenda.classic"
+   ],
+   "source": "draft",
+   "write": "Used when the customer lists three to five questions (the agenda layout draws 3 to 6 items; with fewer than three listed no agenda slide is made). The regulation announces the agenda a week ahead, so the slide is customary, not required (neither real deck has one). 2 to 5 items in the customer’s order, each a label of at most 6 words worded as a subject of the council (“… to‘g‘risida”, «Об …», “On …”); a reporter line “Ma’ruzachi: …” (at most 6 words) only when the customer gave one for that item, never invented. The question the deck reports comes first (agenda.current_first marks row 1 as the one being heard). “Turli masalalar” (“Разное”, “Other business”) only if the customer listed it: the regulation’s text is silent on it. Notes open with the greeting “Hurmatli hamkasblar!”.",
+   "when": "cue:kun_tartibi",
+   "join": 2
+  },
+  {
+   "id": "reja",
+   "kind": "slide",
+   "heading": {
+    "uz": "Ma’ruza rejasi",
+    "ru": "План доклада",
+    "en": "Report outline"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "agenda",
+    "bullets"
+   ],
+   "pins": [
+    "agenda.classic"
+   ],
+   "source": "draft",
+   "write": "Used instead of kun_tartibi when the message names one topic. 3 to 5 items that are the parts this deck really has (for example Masalaning mohiyati, Darsda qo‘llanadigan usullar, Takliflar va qaror loyihasi): a label of at most 6 words and, optionally, a line of at most 5 words; fewer than 3 parts: no slide. Never a part the deck does not contain. Same block name as slides.mavzu (reja). Drawn by agenda.classic (24 / 22 pt).",
+   "when": "nocue:natija",
+   "from": 6,
+   "join": 3
+  },
+  {
+   "id": "maqsad",
+   "kind": "slide",
+   "heading": {
+    "uz": "Ma’ruza maqsadi",
+    "ru": "Цель доклада",
+    "en": "Aim of the report"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "statement",
+    "bullets"
+   ],
+   "pins": [
+    "statement.soft_panel"
+   ],
+   "source": "draft",
+   "write": "One sentence of at most 14 words (statement, 120 characters) built from the topic and the customer’s words: to analyse and to decide; never a fact about the school. In an August council the heading reads “Kengash maqsadi” (“Цель совета”, “Aim of the meeting”). Same block name as slides.dars.",
+   "from": 6,
+   "join": 6
+  },
+  {
+   "id": "mohiyati",
+   "kind": "slide",
+   "heading": {
+    "uz": "Masalaning mohiyati",
+    "ru": "Суть вопроса",
+    "en": "The issue"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.card_stack"
+   ],
+   "source": "draft",
+   "write": "Used when the customer gives no figures: exactly 3 lines of at most 10 words (the definition of the topic, why it matters to teachers, what the school should do), drawn by bullets.card_stack as three equal cards (bullets.lead_line is out of the allow-list: its 24 pt thesis band sat below the bullets under it). General professional knowledge of the topic only; no figure, no source, no claim about this school. Evidence: source 06 opens with the essence of the approach before any practice. Notes begin the draft mark [Qoralama] and are then pure script.",
+   "when": "nocue:natija",
+   "join": 1
+  },
+  {
+   "id": "korsatkichlar",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "usual",
+   "layouts": [
+    "stats",
+    "big_number",
+    "bullets"
+   ],
+   "pins": [
+    "stats.rows",
+    "big_number.classic"
+   ],
+   "source": "customer",
+   "write": "Heading, in the deck’s language: <xulosa-sarlavha, ko‘pi bilan 8 so‘z> / <вывод-заголовок, до 8 слов> / <finding headline, at most 8 words>. Only with figures (fallback heading “Asosiy ko‘rsatkichlar”, “Основные показатели”, “Key indicators”). 2 to 4 items: value with its unit, as written (“98,4%”, “131”); label of at most 3 words; context of at most 4 words (“o‘tgan yil 97,9%”). One decisive figure may use big_number. The heading is a claim of at most 8 words that uses only numbers shown on the slide (“Bilim sifati 61,2 foizga yetdi”). It never counts how many figures rose or fell and never names a span of years; “oshdi / pasaydi” only for two adjacent values that are both on the slide (writing rule NUMBERS).",
+   "when": "cue:natija",
+   "join": 1
+  },
+  {
+   "id": "raqamlar",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "usual",
+   "layouts": [
+    "chart",
+    "bullets"
+   ],
+   "pins": [
+    "chart.stepped_rows"
+   ],
+   "source": "customer",
+   "write": "Heading, in the deck’s language: <xulosa-sarlavha, ko‘pi bilan 8 so‘z, yoki qism: “Sifat 1–6-sinflarda”> / <вывод-заголовок, до 8 слов, или часть: «Качество в 1–6 классах»> / <finding headline, at most 8 words, or the slice: “Quality in grades 1–6”>. Only when the customer gave a series of numbers with their labels (fallback heading “Ko‘rsatkichlar dinamikasi”, “Динамика показателей”, “Indicators over time”). One series per slide, 2 to 8 rows. LONGER SERIES ARE SLICED, never cut: 9 or more rows (eleven grades, twenty-two classes) become consecutive slices in the customer’s order, balanced (11 rows: 6 + 5; 16: 8 + 8), each with its own slide and a heading that names its range (“Sifat 1–6-sinflarda”, “Sifat 7–11-sinflarda”; for names that have no order, the first and the last row: “Sifat: Ona tili va adabiyot – Informatika”). The range in the heading must equal the rows drawn (the claim check compares them); the slices count toward the slide count, and a series that would need more than 3 slices becomes a ledger (jadval) of the customer’s own rows instead. Labels as the customer wrote them: up to 16 characters at 7 to 8 rows (one line at 24 pt bold), up to 20 characters at 6 rows or fewer (two lines hold; measured: “Ona tili va adabiyot” at 6 rows holds, at 8 rows it wraps and crowds the row above), so a label over 16 characters limits a slice to 6 rows. Never a year or grade in between, never an average or a total the customer did not give. Unit caption one to three words. Two series (this year against last year): chart.pairs (shared with slides.himoya and business_hisobot) ",
+   "when": "cue:natija",
+   "join": 1,
+   "repeat": {
+    "min": 1,
+    "max": 8
+   }
+  },
+  {
+   "id": "jadval",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "usual",
+   "layouts": [
+    "table",
+    "bullets"
+   ],
+   "pins": [
+    "table.ledger"
+   ],
+   "source": "customer",
+   "write": "Heading, in the deck’s language: <xulosa-sarlavha, ko‘pi bilan 8 so‘z, yoki qism: “Sifat: Matematika – Biologiya”> / <вывод-заголовок, до 8 слов, или часть> / <finding headline, at most 8 words, or the slice>. Only from the customer’s table (fallback heading “Fanlar bo‘yicha natijalar”, “Результаты по предметам”, “Results by subject”). 3 columns (2 allowed), 3 to 5 rows per slide; the heading names the METRIC (“Matematika va ingliz tilida sifat past”) and the column headers carry the PERIODS and the unit (“2024–25, %”, “2025–26, %”), never a period next to a metric in one header row. The LAST column is the one set in bold accent, so the current figure goes last. A longer table is SLICED into slides of at most 5 rows (12 rows: 4 + 4 + 4), each headed with its first and last row (“Sifat: Ona tili – Rus tili”; the claim check compares), or, when the customer’s table already has groups (1–4, 5–9), one ledger of the customer’s own grouped rows; groups are never made by the AI. Every cell of a table takes one size (measured: 22 pt for 5 short rows or 3 rows with a 6-word cell, 20 pt at the least, header bold at the same size or larger); a table that cannot hold that is refused and the slide falls to bullets.classic, never to a smaller size. Never a row the customer did not give; a table in an attachment that cannot be read with certainty is left out.",
+   "when": "cue:natija",
+   "from": 8,
+   "join": 7,
+   "repeat": {
+    "min": 1,
+    "max": 6
+   }
+  },
+  {
+   "id": "bayon",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "usual",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.numbered_rows",
+    "bullets.classic"
+   ],
+   "source": "draft",
+   "write": "Heading, in the deck’s language: <fikr-sarlavha, ko‘pi bilan 8 so‘z> / <мысль-заголовок, до 8 слов> / <point headline, at most 8 words>. 3 to 5 lines of at most 10 words, numbered by the variant: methods, practice or what the figures say. From the customer’s text or file; with neither, only general professional content of the topic and [Qoralama: …] in the notes. At most 2 such slides without a source. Source 06 develops a topic in four slides (concept, practice, tools, monitoring) and source 04 in theses, which is where this slot comes from.",
+   "from": 7,
+   "join": 5,
+   "repeat": {
+    "min": 1,
+    "max": 24
+   }
+  },
+  {
+   "id": "yutuqlar",
+   "kind": "slide",
+   "heading": {
+    "uz": "Erishilgan natijalar",
+    "ru": "Достигнутые результаты",
+    "en": "Achievements"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.card_stack"
+   ],
+   "source": "customer",
+   "write": "Only what the customer gave: 3 to 5 lines of at most 10 words, each with its number (“131 nafar o‘quvchi a’lo baholarga o‘qidi.”). A line that states growth writes both numbers (“Bilim sifati 57,6 dan 61,2 foizgacha oshdi.”) and never a span. A pupil or teacher is named only if the customer’s own message names them as praised.",
+   "when": "cue:natija",
+   "from": 9,
+   "join": 8
+  },
+  {
+   "id": "muammo_yechim",
+   "kind": "slide",
+   "heading": {
+    "uz": "Muammolar va ularning yechimi",
+    "ru": "Проблемы и пути их решения",
+    "en": "Problems and solutions"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "comparison",
+    "bullets"
+   ],
+   "pins": [
+    "comparison.classic"
+   ],
+   "source": "draft",
+   "write": "Used instead of muammolar + takliflar while the deck has at most 10 slides. Heading exactly “Muammolar va ularning yechimi” (“Проблемы и пути их решения”, “Problems and solutions”) in every deck. columns = [“Muammo”, “Yechim”]. 2 to 4 pairs. ONE cap everywhere: label = the area in at most 3 words, REQUIRED (from the customer’s own words; the layout refuses a row without one); text = the problem and value = the answer, at most 9 words each and at most two lines, ending with a full stop. ONE size per count, which is also its floor: 2 pairs 24 pt, 3 pairs 22 pt, 4 pairs 20 pt with one-line cells only. A cell that does not fit at that size (a long Russian word such as «неудовлетворительными» in a 3-pair slide wraps to three lines) makes the variant refuse and the slide is drawn as bullets.classic, never smaller. Each problem restates a problem the customer named or a weakness a number on an earlier slide shows; each answer is the customer’s proposal, or a drafted one (listed as a draft). No cause, name or class that is not in the source. Rendered by comparison.pair_rows (new variant, section 6 of the design document).",
+   "when": "cue:natija",
+   "until": 10,
+   "join": 2
+  },
+  {
+   "id": "muammolar",
+   "kind": "slide",
+   "heading": {
+    "uz": "Aniqlangan muammolar",
+    "ru": "Выявленные проблемы",
+    "en": "Problems identified"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.numbered_rows"
+   ],
+   "source": "draft",
+   "write": "3 to 5 lines of at most 10 words, numbered by the variant (numbered_rows). Each line restates a problem the customer named or a weakness a number on an earlier slide shows (“9-sinflarda bilim sifati eng past: 51,0 foiz.”). No cause, name or class that is not in the source.",
+   "when": "cue:natija",
+   "from": 11,
+   "join": 2
+  },
+  {
+   "id": "masalalar",
+   "kind": "slide",
+   "heading": {
+    "uz": "Diqqat talab qiladigan masalalar",
+    "ru": "Вопросы, требующие внимания",
+    "en": "Issues that need attention"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.numbered_rows"
+   ],
+   "source": "draft",
+   "write": "Replaces muammolar / muammo_yechim when the customer gave neither problems nor figures: exactly 3 lines of at most 10 words that name areas of the topic to discuss, never findings about the school. Notes begin [Qoralama: bu yo‘nalishlar maktabingiz natijalari bilan tasdiqlanmagan; o‘zingizning kuzatuvlaringiz bilan almashtiring.]",
+   "when": "nocue:natija",
+   "join": 1
+  },
+  {
+   "id": "takliflar",
+   "kind": "slide",
+   "heading": {
+    "uz": "Takliflar",
+    "ru": "Предложения",
+    "en": "Proposals"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.card_stack"
+   ],
+   "source": "draft",
+   "write": "3 to 5 lines of at most 10 words as noun phrases or infinitives (“Qolgan ikki sinf xonasi ta’mirini yakunlash”), each answering one problem of the previous slide, in the same order; the customer’s own proposals first and word for word, drafted ones after, marked in the notes. Tasks for the next year are not proposals: they have their own slot (vazifalar). No number the customer did not give.",
+   "when": "nocue:natija",
+   "join": 1
+  },
+  {
+   "id": "takliflar_natija",
+   "kind": "slide",
+   "heading": {
+    "uz": "Takliflar",
+    "ru": "Предложения",
+    "en": "Proposals"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.card_stack"
+   ],
+   "source": "draft",
+   "write": "3 to 5 lines of at most 10 words as noun phrases or infinitives (“Qolgan ikki sinf xonasi ta’mirini yakunlash”), each answering one problem of the previous slide, in the same order; the customer’s own proposals first and word for word, drafted ones after, marked in the notes. Tasks for the next year are not proposals: they have their own slot (vazifalar). No number the customer did not give.",
+   "when": "cue:natija",
+   "from": 11,
+   "join": 2
+  },
+  {
+   "id": "vazifalar",
+   "kind": "slide",
+   "heading": {
+    "uz": "Yangi o‘quv yili vazifalari",
+    "ru": "Задачи на новый учебный год",
+    "en": "Tasks for the new school year"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.numbered_rows"
+   ],
+   "source": "customer",
+   "write": "Placed directly before the resolution. 3 to 5 imperative lines of at most 10 words, numbered (bullets.numbered_rows), taken from the customer’s text or file (“Ochiq darslar jadvalini avgustda tasdiqlash.”) or, when the customer phrased his proposals as tasks, from them; never a task the customer did not give and never a restatement of the pairs slide. Usual from 8 slides when tasks were given; when the title or the aim promises tasks it enters first (at 6 slides). If the title promises tasks and none were given the slide is not made, the aim does not mention tasks, and the review screen says so. Heading “Vazifalar” is allowed for an August council that calls them so. Evidence: source 01 (key tasks for the new year as numbered imperative lines), source 11 (the tasks of the coming quarter are an item of every council session). Resolution point 1 takes the tasks into account.",
+   "when": "cue:vazifa",
+   "join": 3
+  },
+  {
+   "id": "tadbirlar",
+   "kind": "slide",
+   "heading": {
+    "uz": "Chora-tadbirlar rejasi",
+    "ru": "План мероприятий",
+    "en": "Action plan"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "layouts": [
+    "table",
+    "bullets"
+   ],
+   "pins": [
+    "table.ledger"
+   ],
+   "source": "customer",
+   "write": "Only when the customer gave activities (typical of a new-year council). Columns “Tadbir | Mas’ul | Muddat” (“Мероприятие | Ответственный | Срок”, “Activity | Responsible | Deadline”), 3 to 5 rows, an activity of at most 6 words, a person of at most 6 words, a date of at most 14 characters. An activity given without a person or a date shows the ruled blank ________ in that cell, kept as typed. Measured (one size for every cell): 3 rows with a 6-word person cell hold at 22 pt, 5 rows with short cells at 22 pt; a 4th row with the 6-word cell does not hold, so it moves to a second slice.",
+   "when": "cue:tadbir",
+   "join": 4
+  },
+  {
+   "id": "muhokama",
+   "kind": "slide",
+   "heading": {
+    "uz": "Muhokama uchun savollar",
+    "ru": "Вопросы для обсуждения",
+    "en": "Questions for discussion"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.card_stack"
+   ],
+   "source": "draft",
+   "write": "Usual from 12 slides. Exactly 3 open questions (“nima kerak?”, “kim yordam bera oladi?”; never a yes-or-no question such as “… mumkinmi?”) of at most 10 words that a teacher can answer from experience (“Qaysi sinflarga qo‘shimcha darsliklar eng zarur?”), none that blames a person; at least one asks who does it or when. Placed before the resolution. Same block name as slides.tadbir.tarbiyaviy_soat (muhokama).",
+   "from": 12,
+   "join": 9
+  },
+  {
+   "id": "qaror",
+   "kind": "slide",
+   "heading": {
+    "uz": "Qaror loyihasi",
+    "ru": "Проект решения",
+    "en": "Draft resolution"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.numbered_rows"
+   ],
+   "source": "draft",
+   "write": "3 to 5 points, each at most 9 words and 60 characters (the fixed oversight line is 59 characters with its blank, so numbered_rows keeps each point on one line at 24 to 28 pt), numbered by the variant, in the customary passive imperative. Point 1 takes the report into account in the form “Yil yakunlari haqidagi ma’lumot e’tiborga olinsin.” (the old “… ma’lumot qabul qilinsin” read as “the information is adopted”; “ma’lumot uchun qabul qilinsin” is the accepted alternative); when the deck has tasks it reads “Yil yakunlari va yangi yil vazifalari e’tiborga olinsin.” The middle points are the customer’s decisions word for word, or the answers of the pairs slide put in resolution form (“Ota-onalar bilan haftalik aloqa yo‘lga qo‘yilsin.”, never “Sinf rahbarlari … aloqa qilsin”); the last point is the oversight line “Qaror ijrosini nazorat qilish ________ zimmasiga yuklansin.” (“Контроль за исполнением возложить на ________.”, “Oversight is assigned to ________.”) with the blank kept unless the customer named the person. A deadline or a responsible person is added after a dash only if given. The vote count and the names of the chair and secretary are never written: they belong to the minutes. The slide is a DRAFT put up by the presenter; it is not the record of a decision (pdf.biz.bayonnoma never proposes decisions because a minute records what was decided; here the council is about to decide, and the points come from the customer’s own text or proposals, or are listed as drafts)."
+  },
+  {
+   "id": "rahmat",
+   "kind": "slide",
+   "heading": {
+    "uz": "E’tiboringiz uchun rahmat",
+    "ru": "Спасибо за внимание",
+    "en": "Thank you"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "closing"
+   ],
+   "pins": [],
+   "source": "template",
+   "write": "Only when the customer asks for it or from 14 slides; always last, after the resolution, so the resolution is on screen during the vote. Heading plus one line “Savollar va takliflar” (“Вопросы и предложения”, “Questions and proposals”). Without it the deck ends on the resolution (neither real council deck ends on thanks).",
+   "from": 14,
+   "join": 10
+  }
+ ],
+ "rules": [
+  {
+   "text": "Lines at most 10 words, 3 to 5 lines a slide, a resolution point at most 9 words and 60 characters; no paragraph, no emoji, no exclamation mark. This overrides the global guide of about 111 words a slide; the same variant may repeat.",
+   "to": "model"
+  },
+  {
+   "text": "Figure slides (key indicators, charts, tables, achievements, tasks, the action plan) restate only what the message or the file says, in its words and numbers. Problems, proposals and the resolution are drawn from them; with no basis they are written at the level of the topic, with no figure, name, class or subject the customer did not give, and their notes open “[Qoralama]” (“[Черновик]”, “[Draft]”).",
+   "to": "model"
+  },
+  {
+   "text": "Numbers only as written, with unit and period: decimal comma in Uzbek and Russian, point in English; never rounded, converted, summed or averaged, never “taxminan”. A direction word (oshdi, pasaydi, rose, fell) only for two adjacent values both written on the slide, with both numbers. Never a count of figures (“uchtasi oshdi”) and never a span of years (“uch yil ketma-ket”).",
+   "to": "model"
+  },
+  {
+   "text": "No person, school, class, olympiad, event, date, official, law, decree, order, standard or quotation the customer or the file did not give. A teacher is never named next to a weakness and a pupil never at all; teacher-level rows of a pasted table are left out.",
+   "to": "model"
+  },
+  {
+   "text": "Cover: the topic in at most 12 words, then only as given: the school, “Pedagogik kengash majlisi” (“Заседание педагогического совета”, “Pedagogical council meeting”) with “№ n” only if given, “Ma’ruzachi: …”, the date. The agenda is the customer’s questions in order, each a subject (“… to‘g‘risida”, «Об …», “On …”), labels at most 6 words.",
+   "to": "model"
+  },
+  {
+   "text": "A figure slide’s heading is a claim of at most 8 words that uses only numbers on the slide; every other slide keeps its fixed heading. Each proposal answers one problem, in the same order; the customer’s own proposals first and word for word.",
+   "to": "model"
+  },
+  {
+   "text": "The resolution: 3 to 5 points in the customary passive imperative (“e’tiborga olinsin”, “tashkil etilsin”, “zimmasiga yuklansin”; «Принять к сведению», «Организовать»; “is noted”, “is introduced”); point 1 takes the report into account, the last is the oversight line ending in the blank ________ unless a person was named. Owners and deadlines only if given; never the vote, quorum, chair or secretary.",
+   "to": "model"
+  },
+  {
+   "text": "Speaker notes are the reporter’s script, 25 to 60 words a slide but the cover, first person, to the council; the agenda note opens “Hurmatli hamkasblar!” (“Уважаемые коллеги!”, “Dear colleagues,”); the resolution note asks for amendments and the vote. Never a sentence to the customer. Uzbek is Latin only (o‘ g‘ with ‘, the tutuq belgisi with ’); English writes “pupils with marks 4 and 5” for bilim sifati.",
+   "to": "model"
+  },
+  {
+   "text": "Layouts: cover, agenda, statement, stats (big_number for one figure), chart (one series), table, comparison, bullets and closing only; image_query is always empty.",
+   "to": "model"
+  }
+ ],
+ "bot": {
+  "prompt": {
+   "uz": "🏫 Pedagogik kengash slaydlari. Bitta xabarda yozing: mavzu yoki kun tartibi, maktab, majlis raqami va sanasi, ma’ruzachi va necha slayd kerak (aytmasangiz, ko‘pi bilan 10 ta; material kam bo‘lsa, kamroq).\nO‘zlashtirish, sifat, davomat kabi raqamlaringiz, yutuqlar, muammolar, takliflar va yangi yil vazifalari bo‘lsa, yozing: diagramma va jadval qilamiz. Raqam, ism va sanani biz o‘zimizdan o‘ylab topmaymiz; o‘qituvchilarning ismlari slaydlarga yozilmaydi.\n📎 Hisobot yoki jadvalni PDF, Word yoki TXT qilib qo‘shsangiz, slaydlar shunga tayanadi.",
+   "ru": "🏫 Слайды к педсовету. Напишите одним сообщением: тему или повестку, школу, номер и дату заседания, докладчика и нужное число слайдов (если не указать, до 10; если материала мало, меньше).\nЕсть цифры (успеваемость, качество, посещаемость), достижения, проблемы, предложения и задачи на новый год — напишите их: сделаем диаграмму и таблицу. Цифры, имена и даты мы сами не придумываем; фамилии учителей на слайды не выносим.\n📎 Доклад или таблицу в PDF, Word или TXT — слайды будут опираться на них.",
+   "en": "🏫 Pedagogical council slides. Say it in one message: the topic or agenda, the school, the meeting number and date, the presenter and how many slides you want (if you do not say, up to 10; fewer when the material is thin).\nIf you have figures (pass rate, quality, attendance), achievements, problems, proposals and the tasks for the new year, write them and we turn them into a chart and a table. We never make up figures, names or dates, and teachers’ names are not put on slides.\n📎 Add the report or a table as a PDF, Word or TXT file and the slides will lean on it."
+  },
+  "examples": [
+   {
+    "uz": "1-chorak yakunlari bo‘yicha pedagogik kengashga 8 ta slayd kerak. 21-sonli umumiy o‘rta ta’lim maktabi, 5–9-sinflar, ma’ruzachi — o‘quv ishlari bo‘yicha direktor o‘rinbosari. O‘zlashtirish 97,8%, bilim sifati 58,4% (o‘tgan yilning shu choragida 55,1%). Matematika va ingliz tilida sifat past, 23 nafar o‘quvchi qoniqarsiz baho oldi. Muammolar, takliflar va qaror loyihasi bo‘lsin.",
+    "ru": "Нужно 8 слайдов для педсовета по итогам 1-й четверти. Школа № 21, 5–9 классы, докладчик — заместитель директора по учебной работе. Успеваемость 97,8%, качество знаний 58,4% (в прошлом году за ту же четверть 55,1%). По математике и английскому качество низкое, 23 ученика получили двойки. Нужны проблемы, предложения и проект решения.",
+    "en": "I need 8 slides for the teachers’ council on the first quarter’s results. School No. 21, grades 5–9, presenter: deputy head for teaching and learning. Pass rate 97.8%, knowledge quality 58.4% (55.1% in the same quarter last year). Quality is low in mathematics and English; 23 pupils got failing marks. Include problems, proposals and a draft resolution."
+   },
+   {
+    "uz": "«O‘quvchilarning o‘qish savodxonligini oshirish» mavzusida pedagogik kengashda ma’ruza qilaman, 8 ta slayd. Tinglovchilar — 5–9-sinf ona tili va adabiyot o‘qituvchilari, ma’ruzachi — metodbirlashma rahbari. Muammolar, takliflar va qaror loyihasi bo‘lsin.",
+    "ru": "Выступаю на педсовете с докладом «Повышение читательской грамотности учащихся», 8 слайдов. Слушатели — учителя родного языка и литературы 5–9 классов, докладчик — руководитель методического объединения. Нужны проблемы, предложения и проект решения.",
+    "en": "I am giving a talk at the teachers’ council on “Improving pupils’ reading literacy”, 8 slides. The listeners are language and literature teachers of grades 5–9; the presenter is the head of the methodological group. Include problems, proposals and a draft resolution."
+   },
+   {
+    "uz": "Avgust pedagogik kengashi uchun 12 ta slayd: yangi o‘quv yiliga tayyorgarlik. Hisobotni Word fayl qilib biriktirdim (sinf xonalari, darsliklar, kadrlar). Kun tartibi, chora-tadbirlar jadvali, muhokama savollari va qaror loyihasi bo‘lsin. 21-maktab, 25-avgust.",
+    "ru": "12 слайдов для августовского педсовета: подготовка к новому учебному году. Отчёт приложил в Word (кабинеты, учебники, кадры). Нужны повестка, таблица мероприятий, вопросы для обсуждения и проект решения. Школа № 21, 25 августа.",
+    "en": "12 slides for the August teachers’ council: getting ready for the new school year. I attached the report as a Word file (classrooms, textbooks, staff). Include the agenda, an action table, discussion questions and a draft resolution. School No. 21, 25 August."
+   }
+  ],
+  "attach": true,
+  "notices": {
+   "draft": {
+    "uz": "Ba’zi slaydlar mavzu asosida qoralama qilib yozildi: ko‘rsatishdan oldin tekshiring.",
+    "ru": "Некоторые слайды написаны по теме как черновик: проверьте их перед показом.",
+    "en": "Some slides are a draft written from the topic: check them before you present."
+   },
+   "blanks": {
+    "uz": "Siz bermagan ma’lumot o‘rniga bo‘sh joy qoldirildi: uni o‘zingiz to‘ldiring.",
+    "ru": "Где данных не было, оставлены пустые места: заполните их сами.",
+    "en": "Where you gave no details, blanks were left for you to fill in."
+   }
+  }
+ },
+ "templates": [],
+ "look": {
+  "designs": [
+   "boardroom",
+   "scholar"
+  ],
+  "cover_lines": 4,
+  "variants": {
+   "agenda": [
+    "current_first",
+    "classic"
+   ],
+   "statement": [
+    "soft_panel"
+   ],
+   "bullets": [
+    "card_stack",
+    "numbered_rows",
+    "classic"
+   ],
+   "stats": [
+    "rows"
+   ],
+   "big_number": [
+    "classic"
+   ],
+   "chart": [
+    "stepped_rows"
+   ],
+   "table": [
+    "ledger"
+   ],
+   "comparison": [
+    "classic"
+   ]
+  },
+  "note": "boardroom by default (one dark cover, white pages, one accent, the register of a body that votes), scholar for print. comparison.pair_rows is a research proposal and is not registered: the pairs slide pins comparison.classic and falls back to bullets."
+ },
+ "gates": [
+  "A native Uzbek and a native Russian teacher read the fixed headings (Kun tartibi, Ma’ruza rejasi, Masalaning mohiyati, Muammolar va ularning yechimi, Qaror loyihasi), the resolution forms and the bot copy.",
+  "A 6, a 10 and a 15 slide sample in uz, ru and en are drawn with the deck sample tool and looked at next to units/slides.tadbir.pedkengash/mock/school_pedkengash.png."
+ ],
+ "later": [
+  {
+   "text": "The count as a ceiling with the fewer-slides notice, the slice notice and the drafts list on the review screen."
+  },
+  {
+   "text": "The figures-missing and tasks-missing review buttons, and the claim check with remove or keep.",
+   "words": [
+    "raqam qo‘shish",
+    "добавить цифры",
+    "add figures"
+   ]
+  },
+  {
+   "text": "comparison.pair_rows and chart.pairs for the pairs and plan-against-actual slides."
+  },
+  {
+   "text": "Research launch gate, not adopted as a gate: 1. The school-adult type contract and this unit’s three layout rules (one headline box, one accent rule, one size per table; lookup in looks.layout_rules). The contract is already a launch gate of slides.himoya (its gate 1); the three layout rules are new here and are measured in the mocks."
+  },
+  {
+   "text": "Research launch gate, not adopted as a gate: 2. The per-template variant allow-list with fallback to bullets.classic (slides.himoya gate 2). “No pins, no release.”"
+  },
+  {
+   "text": "Research launch gate, not adopted as a gate: 3. The count as a ceiling with clamps (here 5 to 30, default up to 10) and the shortfall notice before payment (slides.himoya gate 4)."
+  },
+  {
+   "text": "Research launch gate, not adopted as a gate: 4. The review-screen claim check (slides.himoya gate 5), extended here: counts of figures, spans of years, direction words on adjacent values only, slice ranges equal to the rows drawn, notes that never address the customer (work/claims.py prototype with the three old phrases as test strings)."
+  },
+  {
+   "text": "Research launch gate, not adopted as a gate: 5. Title-line reading: the dictated-line reader reads “Tayyorladi: <name>” but not “Ma’ruzachi:”, “Докладчик:”, “Presenter:”, nor the label “Pedagogik kengash majlisi № n” (tested with the mock tool). NOT scheduled for slides.himoya: a small change of its own; until it ships the presenter line depends on the AI copying the customer’s line."
+  },
+  {
+   "text": "Research launch gate, not adopted as a gate: 6. comparison.pair_rows (this unit; about 60 lines), and chart.pairs (slides.himoya and business_hisobot, adopted). Neither blocks the first release: the fallback is bullets.classic and the ledger."
+  },
+  {
+   "text": "Research launch gate, not adopted as a gate: 7. Data slicing: the AI writes the slices (prompt rule), the validator’s silent drop of rows over 8 (“items: 11 -> 8”) becomes a refusal with a notice, and the claim check compares headings with rows."
+  },
+  {
+   "text": "Research launch gate, not adopted as a gate: 8. The draft-slide list on the review screen and in the bot’s reply (writing rule DRAFT SLIDES). asked_when for an extra step is no longer needed: the extra step is dropped."
+  }
+ ],
+ "sources": {
+  "take": "all"
+ }
+}

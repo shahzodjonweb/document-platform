@@ -1,0 +1,1014 @@
+{
+ "schema": 2,
+ "id": "slides.tadbir.bayram",
+ "status": "draft",
+ "service": "slides",
+ "parent": "slides.tadbir",
+ "order": 2,
+ "labels": {
+  "uz": "🎉 Bayram tadbiri",
+  "ru": "🎉 Праздничное мероприятие",
+  "en": "🎉 Holiday event"
+ },
+ "summary": "An editable PowerPoint deck for a school’s or an organisation’s holiday event, in the look of the holiday. The deck follows the run of show when the customer gives a programme (festive cover, what the day means, the programme, then one slide for each item that needs one: the opening greeting, the poem, the talk, the quiz, the awards, in the programme’s order, closed by a wish and never by “thank you”) and the lecture order when there is none (meaning, history, customs, a picture, poem, quiz, greeting, closing). History and the date appear only where a vetted per-holiday fact exists; the host’s words are in the speaker notes; no person, date, number, quotation or verse is ever invented.",
+ "tone": "Warm, festive and plain, in the voice of the host beside the screen: short lines, the plural polite address (“aziz o‘quvchilar”, “hurmatli ustozlar”, “aziz hamkasblar”; Russian “вы”). On a day of remembrance quiet and grateful, never festive.",
+ "topic": false,
+ "title": "model",
+ "length": {
+  "unit": "slides",
+  "mode": "count",
+  "target": "count",
+  "default": 6,
+  "min": 3,
+  "max": 30,
+  "by_cue": [
+   {
+    "cue": "fakt",
+    "default": 10
+   },
+   {
+    "cue": "xotira",
+    "default": 6
+   }
+  ],
+  "note": "The count is delivered as quoted. 10 for a day the block holds facts for (Navro‘z, Mustaqillik, Konstitutsiya, O‘zbek tili), 6 for any other day; the research programme-led count is declined (architecture 15, product 9)."
+ },
+ "questions": {
+  "default": 0,
+  "max": 0
+ },
+ "quality": "repair",
+ "fill": false,
+ "cues": {
+  "dastur": {
+   "uz": [
+    "dastur",
+    "ssenariy"
+   ],
+   "ru": [
+    "программ",
+    "сценари"
+   ],
+   "en": [
+    "programme",
+    "program",
+    "script",
+    "run of show"
+   ]
+  },
+  "sher": {
+   "uz": [
+    "she’r",
+    "qo‘shiq matn"
+   ],
+   "ru": [
+    "стих",
+    "текст песни"
+   ],
+   "en": [
+    "poem",
+    "verse",
+    "song lyrics"
+   ]
+  },
+  "taqdirlash": {
+   "uz": [
+    "taqdirla",
+    "g‘olib",
+    "mukofot"
+   ],
+   "ru": [
+    "награжд",
+    "победител"
+   ],
+   "en": [
+    "award",
+    "winner"
+   ]
+  },
+  "epigraf": {
+   "uz": [
+    "epigraf",
+    "iqtibos"
+   ],
+   "ru": [
+    "эпиграф",
+    "цитат"
+   ],
+   "en": [
+    "epigraph",
+    "quotation"
+   ]
+  },
+  "suhbat": {
+   "uz": [
+    "suhbat",
+    "muloqot",
+    "sinf soati"
+   ],
+   "ru": [
+    "беседа",
+    "беседу",
+    "классный час"
+   ],
+   "en": [
+    "discussion",
+    "talk about",
+    "class talk",
+    "class hour"
+   ]
+  },
+  "fakt": {
+   "uz": [
+    "navro‘z",
+    "mustaqillik",
+    "konstitutsiya",
+    "o‘zbek tili bayram"
+   ],
+   "ru": [
+    "навруз",
+    "наврўз",
+    "независимост",
+    "конституц",
+    "узбекского языка"
+   ],
+   "en": [
+    "nowruz",
+    "navruz",
+    "independence day",
+    "constitution day",
+    "uzbek language day"
+   ]
+  },
+  "xotira": {
+   "uz": [
+    "xotira va qadrlash",
+    "xotira kuni",
+    "9-may"
+   ],
+   "ru": [
+    "день победы",
+    "день памяти",
+    "9 мая"
+   ],
+   "en": [
+    "remembrance",
+    "victory day",
+    "9 may",
+    "may 9"
+   ]
+  },
+  "navruz": {
+   "uz": [
+    "navro‘z"
+   ],
+   "ru": [
+    "навруз"
+   ],
+   "en": [
+    "nowruz",
+    "navruz"
+   ]
+  },
+  "ustoz": {
+   "uz": [
+    "ustozlar",
+    "o‘qituvchilar kuni",
+    "murabbiylar kuni"
+   ],
+   "ru": [
+    "день учител",
+    "учителей и наставн"
+   ],
+   "en": [
+    "teachers’ day",
+    "teachers day",
+    "teachers and mentors"
+   ]
+  },
+  "mart8": {
+   "uz": [
+    "8-mart",
+    "xotin-qizlar"
+   ],
+   "ru": [
+    "8 марта",
+    "женский день"
+   ],
+   "en": [
+    "8 march",
+    "march 8",
+    "women’s day"
+   ]
+  }
+ },
+ "ask": {
+  "when": "cues_missing",
+  "fields": [
+   "programme"
+  ],
+  "review": {
+   "uz": "Tadbir dasturi yozilmadi: dastur slaydi bo‘lmaydi, slaydlar bayramning o‘zi haqida bo‘ladi.",
+   "ru": "Программа не указана: слайда с программой не будет, слайды расскажут о самом празднике.",
+   "en": "No programme was given: there will be no programme slide, and the slides are about the holiday itself."
+  },
+  "prompt": {
+   "uz": "📝 Tadbir dasturi bormi? Har bir nomerni yangi qatordan yozing, xohlasangiz vaqt va ijrochi bilan. Yozmasangiz, dastur slaydi bo‘lmaydi va slaydlar bayramning o‘zi haqida bo‘ladi.",
+   "ru": "📝 Есть программа мероприятия? Напишите каждый пункт программы с новой строки, по желанию с временем и исполнителем. Если не укажете, слайда с программой не будет, а слайды расскажут о самом празднике.",
+   "en": "📝 Is there a programme? Write each item on its own line, with a time and a performer if you like. If you skip it, there will be no programme slide and the slides will be about the holiday itself."
+  },
+  "hint": {
+   "uz": "Masalan:\n10:00 Ochilish so‘zi — sinf rahbari\n10:10 «Bahor keldi» she’ri — Madina\n10:35 Milliy o‘yinlar",
+   "ru": "Например:\n10:00 Вступительное слово — классный руководитель\n10:10 Стихи «Весна пришла» — Мадина\n10:35 Народные игры",
+   "en": "For example:\n10:00 Opening words — class teacher\n10:10 The poem “Spring has come” — Madina\n10:35 Folk games"
+  }
+ },
+ "fields": [
+  {
+   "id": "holiday",
+   "label": {
+    "uz": "Qaysi bayram yoki sana",
+    "ru": "Какой праздник или памятная дата",
+    "en": "Which holiday or day"
+   },
+   "example": {
+    "uz": "Navro‘z bayrami",
+    "ru": "Навруз",
+    "en": "Nowruz"
+   },
+   "kind": "line",
+   "need": "required",
+   "missing": "ask",
+   "where": "the cover title and line, the meaning slide’s kicker (with the date), the closing heading, the look and the fact sheet; the holiday is decided first (see the holiday table)"
+  },
+  {
+   "id": "audience",
+   "label": {
+    "uz": "Kim uchun: sinf yoki jamoa",
+    "ru": "Для кого: класс или коллектив",
+    "en": "For whom: a class or a team"
+   },
+   "example": {
+    "uz": "5-A sinf o‘quvchilari",
+    "ru": "ученики 5 «А» класса",
+    "en": "pupils of class 5-A"
+   },
+   "kind": "line",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "the tone of every slide, the form of address, cover line 2"
+  },
+  {
+   "id": "organisation",
+   "label": {
+    "uz": "Maktab yoki tashkilot",
+    "ru": "Школа или организация",
+    "en": "School or organisation"
+   },
+   "example": {
+    "uz": "21-maktab, Toshkent",
+    "ru": "Школа № 21, Ташкент",
+    "en": "School No. 21, Tashkent"
+   },
+   "kind": "org",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "cover line 2, the greeting voice (“maktab jamoasi nomidan”)"
+  },
+  {
+   "id": "event_date",
+   "label": {
+    "uz": "Tadbir sanasi",
+    "ru": "Дата мероприятия",
+    "en": "Date of the event"
+   },
+   "example": {
+    "uz": "2026-yil 21-mart",
+    "ru": "21 марта 2026 года",
+    "en": "21 March 2026"
+   },
+   "kind": "date",
+   "need": "optional",
+   "missing": "omit",
+   "where": "cover line 3 (with the city or hall when given); never today’s date, never a guess; the holiday’s own fixed date goes in the meaning slide’s kicker"
+  },
+  {
+   "id": "programme",
+   "label": {
+    "uz": "Dastur: nomerlar, vaqt, ijrochilar",
+    "ru": "Программа: пункты, время, исполнители",
+    "en": "Programme: items, times, performers"
+   },
+   "example": {
+    "uz": "10:00 ochilish so‘zi — sinf rahbari; 10:10 «Bahor keldi» she’ri — Madina; 10:35 milliy o‘yinlar",
+    "ru": "10:00 вступительное слово — классный руководитель; 10:10 стихи «Весна пришла» — Мадина; 10:35 народные игры",
+    "en": "10:00 opening words — class teacher; 10:10 the poem “Spring has come” — Madina; 10:35 folk games"
+   },
+   "kind": "list",
+   "need": "recommended",
+   "missing": "ask",
+   "where": "the programme slide, the ORDER of the whole deck and the notes; with no programme there is no programme slide (never a blank) and the deck uses the lecture order. A script attached as a file counts: the extracted text is read before the question is asked",
+   "cues": {
+    "uz": [
+     "dastur",
+     "ssenariy"
+    ],
+    "ru": [
+     "программ",
+     "сценари"
+    ],
+    "en": [
+     "programme",
+     "program",
+     "script",
+     "run of show"
+    ]
+   }
+  },
+  {
+   "id": "poems",
+   "label": {
+    "uz": "She’r yoki qo‘shiq matni",
+    "ru": "Текст стихотворения или песни",
+    "en": "Text of a poem or song"
+   },
+   "example": {
+    "uz": "«Bahor keldi» she’rining matni (4 satr), 5-A sinf o‘quvchisi o‘qiydi",
+    "ru": "текст стихотворения «Весна пришла» (4 строки), читает ученица 5 «А»",
+    "en": "the text of the poem “Spring has come” (4 lines), read by a pupil of 5-A"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "poem slides, word for word; a poem the customer only names is not written out"
+  },
+  {
+   "id": "quote",
+   "label": {
+    "uz": "Epigraf uchun ibora va uning muallifi",
+    "ru": "Цитата для эпиграфа и её автор",
+    "en": "A quotation for the opening and its author"
+   },
+   "example": {
+    "uz": "ibora va muallifi mijoz xabarida",
+    "ru": "цитата и автор — в сообщении клиента",
+    "en": "the quotation and its author as written by the customer"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "the epigraph slide; never composed or recalled by the AI"
+  },
+  {
+   "id": "greeting_from",
+   "label": {
+    "uz": "Tabrik kim nomidan",
+    "ru": "От чьего имени поздравление",
+    "en": "Who the greeting comes from"
+   },
+   "example": {
+    "uz": "maktab jamoasi nomidan",
+    "ru": "от имени коллектива школы",
+    "en": "on behalf of the school staff"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "omit",
+   "where": "the greeting slide; with no sender it is in the collective voice and carries no name"
+  },
+  {
+   "id": "awardees",
+   "label": {
+    "uz": "Taqdirlanuvchilar va nomzodlar",
+    "ru": "Награждаемые и номинации",
+    "en": "Award winners and categories"
+   },
+   "example": {
+    "uz": "eng faol sinf — 5-A; eng yaxshi she’r o‘quvchisi — Madina",
+    "ru": "самый активный класс — 5 «А»; лучшая чтица — Мадина",
+    "en": "the most active class — 5-A; best reader — Madina"
+   },
+   "kind": "list",
+   "need": "optional",
+   "missing": "omit",
+   "where": "the recognition slide, names exactly as given"
+  },
+  {
+   "id": "theme_title",
+   "label": {
+    "uz": "Mavzu yoki shior",
+    "ru": "Тема или девиз",
+    "en": "A theme or a motto"
+   },
+   "example": {
+    "uz": "«Bahor keldi — Navro‘z keldi»",
+    "ru": "«Весна пришла — Навруз пришёл»",
+    "en": "“Spring is here, Nowruz is here”"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "omit",
+   "where": "cover title (with none, the title is the name of the holiday)"
+  },
+  {
+   "id": "local_customs",
+   "label": {
+    "uz": "Maktab yoki mahallangizning an’analari",
+    "ru": "Традиции вашей школы или махалли",
+    "en": "Customs of your school or neighbourhood"
+   },
+   "example": {
+    "uz": "sumalak pishirish, sinf hashari",
+    "ru": "варка сумаляка, классный хашар",
+    "en": "cooking sumalak, a class cleaning day"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "the customs slides (otherwise only textbook-certain customs are written)"
+  },
+  {
+   "id": "look",
+   "label": {
+    "uz": "Rang yoki ko‘rinish",
+    "ru": "Цвет или вид",
+    "en": "Colour or look"
+   },
+   "example": {
+    "uz": "yashil rangda",
+    "ru": "в зелёных тонах",
+    "en": "in green"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "the design: a colour or ground in the words fixes the accent; otherwise the holiday’s look"
+  },
+  {
+   "id": "host",
+   "label": {
+    "uz": "Boshlovchi (tadbirni olib boruvchi)",
+    "ru": "Ведущий мероприятия",
+    "en": "The host or MC"
+   },
+   "example": {
+    "uz": "sinf rahbari yoki ikki o‘quvchi",
+    "ru": "классный руководитель или двое учеников",
+    "en": "the class teacher or two pupils"
+   },
+   "kind": "person",
+   "need": "optional",
+   "missing": "omit",
+   "where": "the first programme row’s performer and the notes (“Boshlovchi: ...”); a name only if the customer wrote it"
+  },
+  {
+   "id": "guests",
+   "label": {
+    "uz": "Faxriy mehmonlar (nomi yoki lavozimi)",
+    "ru": "Почётные гости (имена или должности)",
+    "en": "Guests of honour (names or roles)"
+   },
+   "example": {
+    "uz": "mahalla raisi, faxriy ustozlar",
+    "ru": "председатель махалли, ветераны педагогического труда",
+    "en": "the neighbourhood chair, retired teachers"
+   },
+   "kind": "list",
+   "need": "optional",
+   "missing": "omit",
+   "where": "the greeting’s address line (“Hurmatli mehmonlar, ...”) and the notes; names and titles exactly as written"
+  },
+  {
+   "id": "venue",
+   "label": {
+    "uz": "Joy va vaqt (zal, boshlanish vaqti)",
+    "ru": "Место и время (зал, начало)",
+    "en": "Venue and start time"
+   },
+   "example": {
+    "uz": "aktlar zali, soat 10:00",
+    "ru": "актовый зал, начало в 10:00",
+    "en": "the assembly hall, 10:00"
+   },
+   "kind": "place",
+   "need": "optional",
+   "missing": "omit",
+   "where": "cover line 3 after the date, at most 34 characters; omitted when absent"
+  }
+ ],
+ "parts": [
+  {
+   "id": "cover",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "required",
+   "layouts": [
+    "cover"
+   ],
+   "pins": [],
+   "source": "template",
+   "write": "Title and line 1 come from the holiday table (title without the type word, line 1 “bayramiga bag‘ishlangan tadbir”; with the customer’s theme as title, line 1 is the full “<Navro‘z bayramiga> bag‘ishlangan tadbir”, or omitted when the theme already says “tadbir”). Body = at most 3 lines of at most 34 characters: line 1 the event type, line 2 the school or organisation and the class or team as given, line 3 the date as given (and the hall or city when given, still at most 34 characters). An unknown line is left out, never blanked. NO image_query: a cover never carries a photo in this category (a stock photo is a rectangle that cannot follow the arch or the circle of the composition, and a flag must never be searched); pictures live on the rasm slides. No notes (a cover keeps none)."
+  },
+  {
+   "id": "epigraf",
+   "kind": "slide",
+   "heading": {
+    "uz": "Epigraf",
+    "ru": "Эпиграф",
+    "en": "Epigraph"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "layouts": [
+    "quote",
+    "statement",
+    "bullets"
+   ],
+   "pins": [
+    "quote.classic"
+   ],
+   "source": "customer",
+   "write": "Only when the customer pasted a quotation: body = their words unchanged (at most 45 words), items[0].label = the author as given, items[0].text = the source or role as given. Never composed or recalled by the AI, never attributed to the head of state or an official unless the customer pasted it. Without a quotation the slot does not exist.",
+   "when": "cue:epigraf",
+   "join": 7
+  },
+  {
+   "id": "mohiyat",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "required",
+   "layouts": [
+    "statement",
+    "bullets"
+   ],
+   "pins": [
+    "statement.band",
+    "statement.centred"
+   ],
+   "source": "draft",
+   "write": "Heading (the small kicker above the sentence, drawn at 20 pt) = the holiday’s fixed date from the holiday table, a “·” and the fixed words “Bayramning ma’nosi” (ru «Смысл праздника», en “What the day means”); for a day with no fixed date the words only. Body = ONE self-contained sentence of at most 60 characters in the host’s plain words (“Navro‘z — yangi kun, bahor va yangilanish bayrami.”): it must make sense with the kicker unread. On a solemn day the kicker is “9-may · Esda tutamiz” (ru «Помним», en “We remember”) and the sentence names what is remembered (“Ikkinchi jahon urushida halok bo‘lganlarni eslaymiz.” for 9-may, whose definition is a whitelist fact; for another remembrance day the customer’s own words, else “Biz o‘tmishdan saboq olamiz va yodda tutamiz.”). Notes: the host’s opening words, 20 to 40 words."
+  },
+  {
+   "id": "dastur",
+   "kind": "slide",
+   "heading": {
+    "uz": "Tadbir dasturi",
+    "ru": "Программа",
+    "en": "Programme"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "timeline",
+    "agenda",
+    "bullets"
+   ],
+   "pins": [
+    "timeline.vertical",
+    "agenda.side_panel",
+    "bullets.numbered_rows"
+   ],
+   "source": "customer",
+   "write": "Only from the customer’s list (or the script file). The AI NEVER shortens, rewrites or reorders a customer’s line: when it does not fit one slide it splits the slide. Three drawings, chosen by the longest row (measured with the real renderer under the contract): (1) timeline.vertical when every row has a time: 5 rows a slide when all labels are at most 26 characters and all performers at most 22; 4 rows when at most 34 / 28; 3 rows when at most 40 / 32 (labels and performers may wrap to two lines; a timeline needs 3 rows, so a tail of 1 or 2 rows is balanced into the previous slides); (2) bullets.numbered_rows when any row is longer or any row has no time: each row is ONE body line “10:20 item — performer” exactly as written, up to about 90 characters (two lines), 4 rows a slide; (3) agenda.side_panel for a programme without times with at most 5 short rows (label at most 26, performer at most 22). Rows are split evenly over the fewest slides with “(1/3)”, “(2/3)” in the heading (12 rows = 3 slides of 4; 30 rows = 8 slides of 4, or 6 of 5 when short). A missing time or performer is left out, never invented, never a blank. The time is “10:00”. The host, guests and venue the customer gave go in the first row’s performer and the notes. Notes: who comes on and what is said, in the host’s voice.",
+   "when": "cue:dastur",
+   "join": 2
+  },
+  {
+   "id": "tarix",
+   "kind": "slide",
+   "heading": {
+    "uz": "Bayram tarixi",
+    "ru": "История праздника",
+    "en": "History of the day"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.numbered_rows"
+   ],
+   "source": "draft",
+   "write": "3 to 5 lines of at most 44 characters (Russian 40), each one fact of the day’s fact sheet as a plain sentence; a year or a number appears only if it is on the sheet. A day with fewer than 3 ready facts has no history slot: it is dropped, never filled with a restatement (“Bu kun har yili 8-martda nishonlanadi”). On a solemn day the slot is “Nimani eslaymiz”: 3 or 4 plain lines of memory without numbers or names. Notes: the host speaks the same facts and may ask the class what the word means.",
+   "when": "cue:fakt",
+   "from": 6,
+   "join": 5
+  },
+  {
+   "id": "eslaymiz",
+   "kind": "slide",
+   "heading": {
+    "uz": "Nimani eslaymiz",
+    "ru": "Что мы помним",
+    "en": "What we remember"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.lead_line"
+   ],
+   "source": "draft",
+   "write": "3 or 4 plain lines of memory of at most 44 characters, without numbers, names or places: what the day honours, gratitude, peace. Notes: the host’s quiet words, 20 to 40 words.",
+   "when": "cue:xotira",
+   "join": 3
+  },
+  {
+   "id": "anani",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "usual",
+   "layouts": [
+    "cards",
+    "bullets"
+   ],
+   "pins": [
+    "cards.tickets"
+   ],
+   "source": "draft",
+   "write": "Heading of at most 16 characters: “An’analar” (Navro‘z and days with customs the customer gave); Mustaqillik kuni (and any explicit request for the state symbols): “Davlat ramzlari” (ru «Символы страны», en “National symbols”) with exactly the flag, the emblem and the anthem, each fact written as the sheet states it (flag: “Ko‘k, oq, yashil; ingichka qizil chiziqlar.”; emblem: “Humo, quyosh, tog‘, daryo, boshoq, paxta.”; anthem: “Yangraganda tik turib hurmat qilinadi.”); Konstitutsiya kuni: “Asosiy qonun” with its own cards (the adoption date 1992-yil 8-dekabr, the basic law, rights, duties), NEVER the state symbols and never a card for the Constitution among the symbols. 3 or 4 items: label of at most 3 words, text of at most 7 words, one true fact each. No value tags. A day with no customs and no sheet has no anani slide.",
+   "when": "cue:fakt",
+   "join": 3
+  },
+  {
+   "id": "rasm",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "usual",
+   "layouts": [
+    "image_split",
+    "bullets"
+   ],
+   "pins": [
+    "image_split.classic"
+   ],
+   "source": "draft",
+   "write": "Heading = the name and a claim. Body = exactly 3 lines of at most 44 characters. image_query = the object itself in 2 to 4 English words (“wheat sprouts cauldron”), never a person, a child, a monument or a flag. The slide must read as plain text when no photo is found: its pin names bullets.classic as the no-photo fallback. At most 3 pictures in a deck, and none on the cover. From the fourth rasm slide on there is no picture: image_query is empty and the slide is three plain lines about one more custom or object of the day.",
+   "join": 8,
+   "repeat": {
+    "min": 1,
+    "max": 28
+   }
+  },
+  {
+   "id": "sher",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "optional",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.card_stack"
+   ],
+   "source": "customer",
+   "write": "Body = the customer’s lines word for word, 2 to 6 lines of at most 44 characters (ONE number everywhere; the product caps a bullets body at 6 lines), one stanza a slide; a longer poem is several slides with “(1/2)” in the heading. The credit (the reader or the author as the customer gave it, without a dash, at most 40 characters) goes in items[0].label, because the product strips a leading dash from every body line; the variant draws the dash. Lines are never improved, rhymed or completed. A poem the customer only names (no text) gets no slide; it stays in the programme. Pinned bullets.verse (new variant); a stanza line over the limit is split by the customer’s own punctuation into two lines only if the customer wrote it so, otherwise the pin falls back to bullets.card_stack.",
+   "when": "cue:sher",
+   "join": 4
+  },
+  {
+   "id": "viktorina",
+   "kind": "slide",
+   "heading": {
+    "uz": "Viktorina",
+    "ru": "Викторина",
+    "en": "Quiz"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.numbered_rows"
+   ],
+   "source": "draft",
+   "write": "3 or 4 questions of at most 48 characters, each SELF-CONTAINED (“Navro‘zda qaysi fasl boshlanadi?”, never “Qaysi fasl boshlanadi?”) and each answered by words that occur on an EARLIER slide of this deck (checked mechanically: every answer string must occur in the visible text of an earlier slide, else the question is dropped). One question never has two possible answers (ask “Bayroqda qaysi ranglar bor?” with the answer written on the flag card, not “nechta rang”). Answers go in the notes (“Javoblar: 21-mart; ...”). A second quiz slide only above 14 slides. No quiz on a solemn day, none for a day with no facts on earlier slides.",
+   "when": "cue:fakt",
+   "join": 4
+  },
+  {
+   "id": "javoblar",
+   "kind": "slide",
+   "heading": {
+    "uz": "Javoblar",
+    "ru": "Ответы",
+    "en": "Answers"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.numbered_rows"
+   ],
+   "source": "draft",
+   "write": "Only when the customer asks for answers on the screen, or from 14 slides: one numbered line per question of the quiz, in the same order.",
+   "when": "cue:fakt",
+   "from": 14,
+   "join": 10
+  },
+  {
+   "id": "suhbat",
+   "kind": "slide",
+   "heading": {
+    "uz": "Suhbat uchun savollar",
+    "ru": "Вопросы для беседы",
+    "en": "Questions to discuss"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.lead_line"
+   ],
+   "source": "draft",
+   "write": "Only when the message says “suhbat”, “muloqot” or “sinf soati”: 2 or 3 open questions of at most 40 characters, no answers. A class hour with reflection and homework is the sibling category tarbiyaviy_soat.",
+   "when": "cue:suhbat",
+   "join": 8
+  },
+  {
+   "id": "taqdirlash",
+   "kind": "slide",
+   "heading": {
+    "uz": "Taqdirlanuvchilar",
+    "ru": "Награждаемые",
+    "en": "Award winners"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.numbered_rows"
+   ],
+   "source": "customer",
+   "write": "One line “Name or class — reason” per winner, at most 44 characters, exactly as given, at most 5. No winner is ever invented or ranked.",
+   "when": "cue:taqdirlash",
+   "join": 6
+  },
+  {
+   "id": "tabrik",
+   "kind": "slide",
+   "heading": {
+    "uz": "Tabrik",
+    "ru": "Поздравление",
+    "en": "Greetings"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.lead_line"
+   ],
+   "source": "draft",
+   "write": "3 lines of at most 44 characters: line 1 the address (“Aziz o‘quvchilar va hurmatli ustozlar!”, “Aziz hamkasblar!”; “Hurmatli mehmonlar, ...” when guests were given), lines 2 and 3 plain wishes. In the collective voice (“maktab jamoasi nomidan”) and signed by nobody unless the customer named the sender. Prose only, no rhymed verse. Absent on solemn days. In a deck of 5 slides or fewer it is folded into the closing line instead of a slide.",
+   "when": "nocue:xotira",
+   "from": 6,
+   "join": 6
+  },
+  {
+   "id": "tilak",
+   "kind": "slide",
+   "heading": {
+    "uz": "Tilaklar",
+    "ru": "Пожелания",
+    "en": "Wishes"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "cards",
+    "bullets"
+   ],
+   "pins": [
+    "cards.tickets"
+   ],
+   "source": "draft",
+   "write": "Heading “Tilaklar” (ru «Пожелания», en “Wishes”). 3 or 4 cards: label = one wish word (“Sog‘lik”, “Baxt”, “Omad”, “Bahor”) of at most 2 words, text = one plain sentence of at most 7 words (“Har kuningiz sog‘lik bilan o‘tsin.”). The AI’s own prose, not verse, not attributed to anybody, no promise, no fact. For Ustozlar kuni the same slot carries thanks (“Minnatdorchilik”).",
+   "when": "nocue:xotira",
+   "join": 9
+  },
+  {
+   "id": "sukut",
+   "kind": "slide",
+   "heading": {
+    "uz": "Xotira daqiqasi",
+    "ru": "Минута памяти",
+    "en": "A moment of silence"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "statement",
+    "bullets"
+   ],
+   "pins": [
+    "statement.centred"
+   ],
+   "source": "template",
+   "write": "One line: “Bir daqiqa sukut bilan eslaymiz.” (ru «Почтим память минутой молчания.», en “We remember in a minute of silence.”). Only on days of remembrance, before the closing slide (or where the programme has it).",
+   "when": "cue:xotira",
+   "join": 2
+  },
+  {
+   "id": "closing",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "required",
+   "layouts": [
+    "closing"
+   ],
+   "pins": [],
+   "source": "draft",
+   "write": "Heading from the holiday table’s closing row, in the customer’s language (ru is written in the genitive or dative the day needs: «С Наврузом!», «С Днём независимости!», «С Днём учителей и наставников!», «С 8 Марта!», «С Новым годом!», «С Днём Конституции!»; never «С праздником <название>» with a nominative name; a no-break space after “С”); at most 6 words. Line of at most 10 words: one plain wish. On a solemn day: a sentence of memory (“Xotira abadiy qalbimizda.”) and a line of thanks to the veterans (“Faxriylarimizga hurmat va rahmat.”, ru «Спасибо вам, ветераны.», without «С праздником»), no “muborak”, no exclamation mark."
+  }
+ ],
+ "rules": [
+  {
+   "text": "Lines at most 44 characters, 3 to 5 lines, 12 to 30 words a slide; a statement at most 60 characters; a cover title at most 6 words. School words choose the pupil register, company words the colleague one. This overrides the global guide of about 111 words a slide.",
+   "to": "model"
+  },
+  {
+   "text": "Never invent: no person, performer, host, school, class, company, place, date or time of the event, winner, prize, poem, song, quotation, proverb, statistic, jubilee count, decree or source the customer did not give. A fact not given is left out, never drawn as a blank or a placeholder name.",
+   "to": "model"
+  },
+  {
+   "text": "The only facts you may state of a day: Navro‘z 21-mart, “yangi kun”, thousands of years old (no number), the old year began on it; customs hashar, planting trees, sumalak cooked from wheat sprouts through the night, visiting neighbours, folk games. Mustaqillik kuni 1-sentabr, proclaimed 1991-yil 31-avgust; flag 1991-yil 18-noyabr (blue, white and green, thin red lines, a crescent and twelve stars); emblem 1992-yil 2-iyul (Humo bird, rising sun, mountains, rivers, wheat, cotton); anthem 1992-yil 10-dekabr, heard standing. Konstitutsiya kuni 8-dekabr, adopted 1992-yil 8-dekabr, the basic law, the rights and duties of citizens. O‘zbek tili bayrami 21-oktabr, state-language status 1989-yil 21-oktabr. Ustozlar va murabbiylar kuni 1-oktabr; 8-mart; Yangi yil 1-yanvar; Xotira va qadrlash kuni 9-may honours those who died in the Second World War and the veterans. Hayit and the last bell get no date unless given.",
+   "to": "model"
+  },
+  {
+   "text": "The programme, poems, songs and quotations are the customer’s: word for word, in their order, one stanza a slide, the credit as given; never shortened, reordered, recalled from memory or attributed to an official. A greeting or wish in plain prose is your own and is attributed to nobody.",
+   "to": "model"
+  },
+  {
+   "text": "The greeting speaks for the school or organisation as a whole, signed by nobody unless the customer named the sender. The deck closes on a wish in the customer’s language (Russian in the case the day needs: «С Наврузом!», «С Днём независимости!», «С 8 Марта!»), never on thanks or “Savollar”. On a day of remembrance: no greeting, no wishes, no “muborak”, no exclamation mark.",
+   "to": "model"
+  },
+  {
+   "text": "A quiz has 3 or 4 self-contained questions of at most 48 characters, each answered by words on an earlier slide of this deck; the answers are in the notes; no prize or score.",
+   "to": "model"
+  },
+  {
+   "text": "Speaker notes are the host’s words only, 20 to 40 words on every slide but the cover and the closing: what the host says or asks, who comes on, who reads a poem. Never a sentence to the customer.",
+   "to": "model"
+  },
+  {
+   "text": "Pictures only on rasm slides, objects only (sumalak, wheat sprouts, blossom, flowers, a candle), at most 3 in a deck, never a person, monument, portrait or flag; the state symbols are told in words.",
+   "to": "model"
+  },
+  {
+   "text": "Uzbek is Latin only (o‘ g‘ with ‘, the tutuq belgisi with ’); dates “21-mart”, «21 марта», “21 March”; times “10:00”; names as the customer wrote them. No emoji; an exclamation mark only on the greeting’s first line and the closing heading.",
+   "to": "model"
+  }
+ ],
+ "bot": {
+  "prompt": {
+   "uz": "🎉 Bayram tadbiri slaydlari. Bitta xabarda yozing: qaysi bayram, kim uchun (sinf yoki jamoa) va, bo‘lsa, dastur va she’r matni. Slaydlar soni: aytmasangiz, 6 ta (Navro‘z, Mustaqillik, Konstitutsiya kuni uchun 10 ta).\n📎 Ssenariy yoki she’r matnini PDF, Word yoki TXT qilib qo‘shing. Ism va she’rlarni o‘zimizdan o‘ylab topmaymiz.",
+   "ru": "🎉 Слайды к празднику. Напишите одним сообщением: какой праздник, для кого (класс или коллектив) и, если есть, программу и текст стихов. Слайдов: если не указать, 6 (к Наврузу, Дню независимости и Дню Конституции 10).\n📎 Сценарий или стихи можно приложить в PDF, Word или TXT. Имена и стихи мы сами не придумываем.",
+   "en": "🎉 Holiday event slides. Say it in one message: which holiday, for whom (a class or a team) and, if you have them, the programme and the text of the poems. Slides: 6 if you do not say (10 for Nowruz, Independence Day and Constitution Day).\n📎 You can attach the script or the poems as PDF, Word or TXT. We never make up names or poems."
+  },
+  "examples": [
+   {
+    "uz": "Navro‘z bayrami tadbiriga 10 ta slayd kerak: 21-maktab, 5-A sinf, 2026-yil 21-mart. Dastur: 10:00 ochilish so‘zi — sinf rahbari, 10:10 «Bahor keldi» she’ri — Madina, 10:20 Navro‘z tarixi va an’analari haqida suhbat — ota-onalar, 11:00 viktorina. She’r matnini faylda biriktirdim.",
+    "ru": "Нужно 10 слайдов к празднику Навруз: школа № 21, 5 «А» класс, 21 марта 2026 года. Программа: 10:00 вступительное слово — классный руководитель, 10:10 стихи «Весна пришла» — Мадина, 10:20 беседа об истории и традициях Навруза — родители, 11:00 викторина. Текст стихотворения приложил файлом.",
+    "en": "I need 10 slides for a Nowruz event: School No. 21, class 5-A, 21 March 2026. Programme: 10:00 opening words — class teacher, 10:10 the poem “Spring has come” — Madina, 10:20 a talk about the history and customs of Nowruz — parents, 11:00 a quiz. I attached the text of the poem."
+   },
+   {
+    "uz": "1-oktabr — Ustozlar va murabbiylar kuniga 5 ta slayd, maktab yig‘ilishi uchun: bayramning ma’nosi, ustozlarga minnatdorchilik, o‘quvchilardan tabrik va tilaklar. 12-maktab, Samarqand.",
+    "ru": "5 слайдов ко Дню учителей и наставников (1 октября) для школьной линейки: смысл праздника, слова благодарности учителям, поздравление от учеников и пожелания. Школа № 12, Самарканд.",
+    "en": "5 slides for Teachers and Mentors Day (1 October), for a whole-school assembly: what the day means, thanks to the teachers, a greeting from the pupils and wishes. School No. 12, Samarkand."
+   },
+   {
+    "uz": "Xodim ayollar uchun 8-mart tabrigi: 6 ta slayd. «Bahor Foods» jamoasi, 7-mart. Jamoa nomidan tabrik, tilaklar va dastur: 17:00 ochilish va tabrik, 17:20 konsert, 17:50 sovg‘alar, 18:10 choy. Pushti ranglarda bo‘lsin.",
+    "ru": "Поздравление сотрудниц с 8 Марта: 6 слайдов. Коллектив «Бахор Фудс», 7 марта. Поздравление от имени коллектива, пожелания и программа: 17:00 открытие и поздравление, 17:20 концерт, 17:50 подарки, 18:10 чаепитие. В розовых тонах.",
+    "en": "An 8 March greeting for our female colleagues: 6 slides. The team at Bahor Foods, 7 March. A greeting from the whole team, wishes and the programme: 17:00 opening and greeting, 17:20 concert, 17:50 gifts, 18:10 tea. In pink tones."
+   }
+  ],
+  "attach": true,
+  "notices": {
+   "blanks": {
+    "uz": "Siz bermagan ma’lumot o‘rniga bo‘sh joy qoldirildi: uni o‘zingiz to‘ldiring.",
+    "ru": "Где данных не было, оставлены пустые места: заполните их сами.",
+    "en": "Where you gave no details, blanks were left for you to fill in."
+   },
+   "finished": {
+    "uz": "Tayyor. Dastur, ism, sana va she’rlar siz yozgan matndan olingan, boshqa ism va raqam qo‘shilmadi. Slaydlarda sana va ismlarni bir marta tekshirib chiqing.",
+    "ru": "Готово. Программа, имена, даты и стихи взяты из вашего текста, других имён и цифр мы не добавляли. Проверьте даты и имена на слайдах.",
+    "en": "Done. The programme, names, dates and poems come from your text; we added no other names or figures. Please check the dates and names on the slides."
+   }
+  }
+ },
+ "templates": [],
+ "look": {
+  "designs": [
+   "samarkand",
+   "treetop",
+   "accolade",
+   "anthology",
+   "tulle",
+   "sprinkles",
+   "inkwell",
+   "masthead",
+   "stillness",
+   "pinata",
+   "boardroom",
+   "lantern"
+  ],
+  "by_cue": [
+   {
+    "cue": "xotira",
+    "design": "inkwell"
+   },
+   {
+    "cue": "navruz",
+    "design": "treetop"
+   },
+   {
+    "cue": "ustoz",
+    "design": "anthology"
+   },
+   {
+    "cue": "mart8",
+    "design": "tulle"
+   }
+  ],
+  "variants": {
+   "statement": [
+    "band",
+    "centred"
+   ],
+   "bullets": [
+    "numbered_rows",
+    "card_stack",
+    "lead_line",
+    "classic"
+   ],
+   "cards": [
+    "tickets"
+   ],
+   "image_split": [
+    "classic"
+   ],
+   "timeline": [
+    "vertical"
+   ],
+   "agenda": [
+    "side_panel"
+   ],
+   "quote": [
+    "classic"
+   ]
+  },
+  "cover_lines": 3,
+  "note": "samarkand for a day the holiday table does not name; the days with a cue of their own take theirs. Every default is light; sparkler and the night looks only when the customer asks. bullets.verse is a research proposal and is not registered: poems take bullets.card_stack."
+ },
+ "gates": [
+  "A native Uzbek and a native Russian reader check the fixed headings (Tadbir dasturi, Bayram tarixi, Nimani eslaymiz, Tabrik, Tilaklar, Xotira daqiqasi), the closing wishes of the holiday table and the bot copy.",
+  "The owner and a mother-tongue pedagogue approve the facts of the block (the research fact sheet’s ready facts) before the entry is ticked.",
+  "A 6, a 10 and a 15 slide sample in uz, ru and en are drawn with the deck sample tool and looked at next to units/slides.tadbir.bayram/mock/school_bayram.png."
+ ],
+ "later": [
+  {
+   "text": "The programme-led order and count (the deck following the run of show, its length what the programme needs): the count is delivered as quoted and the slots keep the lecture order.",
+   "words": [
+    "dasturga qarab",
+    "по программе столько",
+    "as many as the programme"
+   ]
+  },
+  {
+   "text": "The date slide on request (sana) and stage dividers from 22 slides (bolim)."
+  },
+  {
+   "text": "The bullets.verse variant for poems, the clamp, not-enough-material and programme-split notices, and the mechanical quiz-answer check."
+  },
+  {
+   "text": "The facts of the to_vet list (UNESCO, the UN day, the year a day was established) until the owner approves them."
+  }
+ ],
+ "exclusive": [
+  [
+   "xotira",
+   "fakt"
+  ]
+ ],
+ "sources": {
+  "take": "all"
+ }
+}

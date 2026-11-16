@@ -11,7 +11,7 @@
   "en": "🛡 Thesis defence"
  },
  "summary": "An editable PowerPoint deck for defending a kurs ishi, a bitiruv malakaviy ishi, a master’s dissertation or an internship report before a commission. Nothing on a slide is the AI’s own finding: every result, number, method, novelty, proposal and implementation restates the customer’s message or attached work, and only the framing slides (relevance, aim and tasks, object and subject) may be drafted from the topic’s own words, marked as a draft in the notes. The deck has as many slides as the material supports (the count asked is a ceiling), a formal title slide with the topic in full, one finding per result slide, conclusions that answer the tasks, and a closing slide that repeats the author.",
- "tone": "Formal, neutral and short on the slide: noun phrases and infinitive tasks of at most 10 words, 2 to 5 lines, never a paragraph and never “we”. The count the customer names is a ceiling: the deck has as many slides as the message and the attached work support, never padded, and the customer is told when it is shorter. 10 slides when the message names no count and no type; a type known and no count named gives the type’s default (a small server rule, launch gate 4). Counts above 30 are clamped to 30 and below 3 raised to 3, each with a one-line notice. The speaker notes are a speaking outline, 30 to 90 words a body slide, as long as the slide’s own facts allow and never padded (a slide with two facts has a notes line of 25 to 40 words); first person singular, polite register toward the commission; a customer who asks for the full speech gets explanatory sentences (how to read the figure, a",
+ "tone": "Formal, neutral and short on the slide: noun phrases and infinitive tasks of at most 10 words, 2 to 5 lines, never a paragraph and never “we”. Speaker notes are a speaking outline to the commission, first person singular, polite. Nothing on a slide is the AI’s own finding.",
  "topic": true,
  "title": "model",
  "length": {
@@ -546,7 +546,8 @@
    "heading_mode": "fixed",
    "need": "optional",
    "layouts": [
-    "statement"
+    "statement",
+    "bullets"
    ],
    "pins": [
     "statement.soft_panel"
@@ -766,63 +767,51 @@
  ],
  "rules": [
   {
-   "text": "PROVENANCE. Every line on a slide of class “source only” (result, comparison, process, pros and cons, novelty, practice, methods, theses, publications, placement, work done, conclusions, any “Taklif:” row) restates something the customer’s message or the attached work says, in its words and with its numbers. The AI may draft only the framing slides (relevance, aim and tasks, object and subject) from the topic’s own words, never methods or novelty, and marks every draft in the notes with “[Qoralama: ...]” (“[Черновик: ...]”, “[Draft: ...]”). A claim, cause, trend, current state, organisation, sample size, survey, implementation, “first time” or proposal the source does not contain is never written, even when it is plausible. When the source is too thin the deck is shorter, not fuller.",
+   "text": "Every line of a source slide (results, novelty, significance, methods, theses, publications, placement, work done, conclusions, any “Taklif:” row) restates the customer’s message or the attached work, in its words and with its numbers. Only the framing slides (relevance, aim and tasks, object and subject) may be drafted from the topic’s own words, never methods or novelty, and their notes open with “[Qoralama: ...]” (“[Черновик: ...]”, “[Draft: ...]”). A claim, cause, trend, organisation, sample size, survey, implementation, “first time” or proposal the source does not contain is never written. A source slide with no material is an honest fill-in form: the heading “Natijalarni kiriting: <topic noun>” and rows ending in “...”.",
    "to": "model"
   },
   {
-   "text": "Forbidden unless the customer or the file supplied that very content: a comparison slide (a “now” column is an invented current state), a process slide (invented stages), a pros and cons slide, a novelty statement, a “Taklif:” row, a per-department or per-ward breakdown, a survey size, an implementation, a skill or duty. A series’ labels (years, categories) must be written in the source; a range plus a count of values does not license the years in between.",
+   "text": "Never a comparison, process or pros-and-cons slide, a per-department breakdown, a survey size, an implementation or a skill unless the customer or the file supplied that very content. A series’ labels (years, categories) must be written in the source; a range plus a count of values does not license the years in between. Never a table, quote, image or agenda layout; image_query is always empty.",
    "to": "model"
   },
   {
-   "text": "Slide text is noun phrases and infinitive tasks of at most 10 words (12 on conclusions), 2 to 5 lines, about 10 to 40 words a slide; no paragraph, no “we”, no copy of the report. This overrides the global guide (111 words a slide, sentences of 12 to 20 words, “never the same layout twice in a row”): the same variant may repeat.",
+   "text": "Slide text: noun phrases and infinitive tasks of at most 10 words (12 on conclusions), 2 to 5 lines, 10 to 40 words a slide. This overrides the global guide of about 111 words a slide; the same variant may repeat.",
    "to": "model"
   },
   {
-   "text": "The thread. The aim, the tasks, the results and the conclusions answer one another, but a task is not always answered by data. Each task is data (answered by result slides), theory or proposal (answered by the work’s own text). Result slides follow the order of the data tasks, one finding each; two tasks may share a slide and a task may take two. A conclusion row restates the work’s own conclusion or a result slide and opens with the key words of its task; a theory or proposal task gets a row only if the work’s conclusions state one. The notes of a result slide name the task(s) it answers (“Ikkinchi vazifa bo‘yicha ...”, never “first result”). Numbered rows only when rows equal tasks; otherwise the unnumbered list.",
+   "text": "The thread: aim, tasks, results and conclusions answer one another. Each task is answered by result slides (data) or by the work’s own text (theory, proposal). Result slides follow the order of the data tasks, one finding each, and their notes name the task (“Ikkinchi vazifa bo‘yicha ...”). A conclusion row restates the work’s conclusion or a result slide and opens with its task’s key words; numbered rows only when rows equal tasks.",
    "to": "model"
   },
   {
-   "text": "Numbers: only from the message or the attached work, with their unit and period, never rounded, converted or computed. In the notes a number is written as digits exactly as on the slide (not in words, not converted: 2,4 years stays “2,4 yil”, never “about two years and five months”). Phrases such as “taxminan”, “almost twice”, “about”, “примерно” are never used on a number. If a table in the attached file cannot be read with certainty the figure is left out.",
+   "text": "Numbers only from the message or the work, with unit and period, never rounded, converted or computed; in the notes as digits exactly as on the slide; never “taxminan”, “about” or “примерно” on a number. A figure that cannot be read with certainty is left out; when the message and the file disagree, the message wins.",
    "to": "model"
   },
   {
-   "text": "Speaker notes are a speaking outline, first person singular, formal, to the commission: 30 to 90 words a body slide, as long as the slide’s facts allow, never padded with a fact the source lacks (a slide of two facts has 25 to 40 words). Slide 2 opens with the greeting “Hurmatli Davlat attestatsiya komissiyasi raisi va a’zolari!” and the topic by name. Russian notes avoid gendered first-person past forms (impersonal: “Проанализирована динамика”, or present tense); the gender of the byline is used only if it is given. The cover and the closing slide carry no notes. A draft slide’s notes open with the draft mark in brackets, to be deleted before speaking.",
+   "text": "Notes: 30 to 90 words a body slide, as long as the slide’s facts allow and never padded. Slide 2 opens with “Hurmatli Davlat attestatsiya komissiyasi raisi va a’zolari!” and the topic by name. Russian notes avoid gendered first-person past forms. The cover and the closing slide carry no notes.",
    "to": "model"
   },
   {
-   "text": "The cover: the topic in full (never cut: 25 words or 260 characters; a longer topic is not cut, the customer is asked to shorten it), then the customer’s or the file’s lines, copied as written, in the order work type, institution, author, supervisor, speciality, place and year; the dictated-lines reader recognises only labelled lines, so the AI copies the others itself. Never the ministry line unless the customer wrote it, never a year of its own. More than 6 lines: the ministry line goes first, then place and year, then the work type, and the customer is told. The closing slide repeats the author line.",
+   "text": "Cover: the topic in full, then only the customer’s or the file’s lines, copied as written, in the order work type, institution, author, supervisor, speciality, place and year; never a ministry line the customer did not write, never a year of your own. The closing slide repeats the author line.",
    "to": "model"
   },
   {
-   "text": "Layout by the shape of the supplied content: a series over time or a ranking, chart (stepped_rows); 2 to 4 key figures, stats (rows); one decisive figure, big_number; findings stated in words, bullets. Never table, quote, image_split, image_full, section, agenda, matrix, cards, timeline or comparison; image_query is always empty. Process and pros_cons only when the customer supplied those stages or points.",
+   "text": "Layout by the supplied content: a series over time or a ranking, chart; 2 to 4 key figures, stats; one decisive figure, big_number; findings in words, bullets; one series a slide. A result heading is a finding with its figure (at most 12 words), never a bare label.",
    "to": "model"
   },
   {
-   "text": "A slide has one job and at most one figure series; two series or negative values are two slides or a bullets slide with the figures written as the source gives them.",
+   "text": "Language follows the customer’s. Uzbek is Latin only (o‘ g‘ with ‘, the tutuq belgisi with ’: ta’lim, ob’ekt). Russian decks use Выполнил(а) and Научный руководитель, English Prepared by and Supervisor; no emoji, no exclamation mark except in the thanks heading.",
    "to": "model"
   },
   {
-   "text": "Fixed headings exactly as the blueprint gives them in the deck’s language; a result heading is a finding with its figure (at most 12 words), never a bare label; in a fill-in slide the heading is “Natijalarni kiriting: <topic noun>” and every row ends in the blank “...”.",
-   "to": "model"
-  },
-  {
-   "text": "Language follows the customer’s (picked, then the message, then the file). Uzbek is Latin only: o‘ and g‘ with U+2018, the tutuq belgisi with U+2019 (ta’lim, e’tibor, ob’ekt). Fixed labels in the deck’s language; Russian decks use Выполнил(а) and Научный руководитель, English Prepared by and Supervisor; register neutral academic, no emoji, no exclamation mark except in the thanks heading; the Russian closing line is the neutral “Вопросы?”.",
-   "to": "model"
-  },
-  {
-   "text": "Never invent a person, degree, institution, faculty, programme, order, implementation act, grade, publication, conference, patent, law, quotation, source or company. A missing fact is left out, never replaced by a placeholder or the current year. The references slide does not exist.",
-   "to": "model"
-  },
-  {
-   "text": "If the attached work states the aim, tasks, object, subject, methods, novelty, provisions and conclusions, take them as the work wrote them, shortened to lines; if the message and the file disagree on a figure the message wins. Quiz slides are never added to a defence deck.",
+   "text": "Never invent a person, degree, institution, programme, order, act, grade, publication, conference, patent, law, quotation, source or company. There is no references slide and never a quiz slide.",
    "to": "model"
   }
  ],
  "bot": {
   "prompt": {
-   "uz": "🛡 Himoya slaydlari. Bitta xabarda yozing: ish turi (kurs ishi, BMI, dissertatsiya yoki amaliyot hisoboti), mavzu va slayd soni.\nIshingizni fayl (PDF, Word, TXT) qilib yuboring yoki natijalar va raqamlaringizni yozing: slaydlar faqat shularga tayanadi.",
-   "ru": "🛡 Слайды для защиты. Напишите одним сообщением: вид работы (курсовая, ВКР, диссертация или отчёт по практике), тему и число слайдов.\nПришлите работу файлом (PDF, Word, TXT) или напишите результаты и цифры: слайды опираются только на них.",
-   "en": "🛡 Thesis defence slides. Say in one message: the type of work (term paper, thesis, dissertation or internship report), the topic and how many slides.\nSend your work as a file (PDF, Word, TXT) or write your results and figures: the slides lean only on them."
+   "uz": "🛡 Himoya slaydlari. Bitta xabarda yozing: ish turi (kurs ishi, BMI, dissertatsiya yoki amaliyot hisoboti), mavzu va slayd soni (aytmasangiz, 10 ta).\nIshingizni fayl (PDF, Word, TXT) qilib yuboring yoki natijalar va raqamlaringizni yozing: slaydlar faqat shularga tayanadi.",
+   "ru": "🛡 Слайды для защиты. Напишите одним сообщением: вид работы (курсовая, ВКР, диссертация или отчёт по практике), тему и число слайдов (если не указать, 10).\nПришлите работу файлом (PDF, Word, TXT) или напишите результаты и цифры: слайды опираются только на них.",
+   "en": "🛡 Thesis defence slides. Say in one message: the type of work (term paper, thesis, dissertation or internship report), the topic and how many slides (10 if you don’t say).\nSend your work as a file (PDF, Word, TXT) or write your results and figures: the slides lean only on them."
   },
   "examples": [
    {
@@ -842,7 +831,18 @@
    }
   ],
   "attach": true,
-  "notices": {}
+  "notices": {
+   "draft": {
+    "uz": "Ba’zi slaydlar mavzu asosida qoralama qilib yozildi: ko‘rsatishdan oldin tekshiring.",
+    "ru": "Некоторые слайды написаны по теме как черновик: проверьте их перед показом.",
+    "en": "Some slides are a draft written from the topic: check them before you present."
+   },
+   "blanks": {
+    "uz": "Siz bermagan ma’lumot o‘rniga bo‘sh joy qoldirildi: uni o‘zingiz to‘ldiring.",
+    "ru": "Где данных не было, оставлены пустые места: заполните их сами.",
+    "en": "Where you gave no details, blanks were left for you to fill in."
+   }
+  }
  },
  "templates": [],
  "look": {
@@ -887,7 +887,8 @@
  },
  "gates": [
   "A native Uzbek reader checks the fixed headings (Mavzuning dolzarbligi, Ob’ekt, predmet va metodlar, Ob’ekt va predmet, Himoyaga olib chiqilayotgan asosiy qoidalar).",
-  "A 6, a 10 and a 15 slide sample in uz, ru and en are drawn with the deck sample tool, with and without figures in the message, and looked at next to units/slides.himoya/mock/school_himoya.png."
+  "A 6, a 10 and a 15 slide sample in uz, ru and en are drawn with the deck sample tool, with and without figures in the message, and looked at next to units/slides.himoya/mock/school_himoya.png.",
+  "A native Russian reader checks the fixed headings and the bot copy in Russian."
  ],
  "later": [
   {
