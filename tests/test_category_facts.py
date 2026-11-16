@@ -395,6 +395,29 @@ def test_the_allow_list_is_matched_whole_never_by_prefix():
     assert ground(part, known) == (part, [])
 
 
+def test_a_role_a_letter_is_addressed_to_is_not_a_name_but_the_name_beside_it_is_checked():
+    known = facts.trusted(draft('Ariza yozing. Men Aliyev Vali.'))
+    for part in ('Hurmatli Direktor! Sizdan so‘rayman.', 'Muhtaram Rektorimiz!', 'Hurmatli Hay’at a’zolari!',
+                 'Assalomu alaykum, Hurmatli Ustoz!', 'Hurmatli Ota-onalar!', 'Уважаемый Директор! Прошу Вас.',
+                 'Dear Hiring Manager,', 'Dear Members of the Committee,', 'To Whom It May Concern,'):
+        assert ground(part, known) == (part, []), part
+    assert ground('Hurmatli Direktor Jumayev Sardor!', known) == ('Hurmatli Direktor ____!', ['ground:name'])
+    assert ground('Уважаемый Директор Мадаминов!', known) == ('Уважаемый Директор ____!', ['ground:name'])
+    # A surname made from a role, and a role that is also a given name, are names.
+    for value in ('Rahbarov', 'Mudirova', 'Директоров', 'Rais', 'Dean'):
+        assert not supported(value, 'person', known), value
+
+
+def test_a_month_is_never_an_allowed_spelling_of_a_name():
+    known = facts.trusted(draft('2027-yil 5-yanvardan ta’til so‘rayman. Men Aliyev Vali.'))
+    for value in ('Anvar', 'Анвар'):
+        assert not supported(value, 'person', known), value
+    assert supported('Yanvar', 'person', known) and supported('Январь', 'person', known)
+    # Inside a word ya and ia still meet: Mariya, Maria and Мария are one name.
+    assert supported('Maria', 'person', facts.trusted(draft('Men Mariya Aliyeva.')))
+    assert supported('Мария', 'person', facts.trusted(draft('Men Mariya Aliyeva.')))
+
+
 def test_currency_codes_and_role_acronyms_are_not_names():
     known = trusting('Narx 500 dollar. Bo‘limlar uchun ariza.')
     part = 'Narx 500 USD. IT bo‘limi va HR menejeri, CEO va KPI bilan; QQS UZS da.'
@@ -425,6 +448,26 @@ def test_a_number_is_never_found_through_a_part_of_another():
     assert numbers.values('5 mayda bola') == {'5'}
     for text in ('5-mayda', '5 mayda kuni', '2026-yil 5 mayda'):
         assert 'd:5.5' in numbers.values(text), text
+
+
+def test_a_translated_persons_name_may_take_the_russian_spelling_of_o():
+    known = facts.trusted(draft('Ariza yozing. Men G‘ofurov Sardor, rahbarim Xo‘jayev Botir, Yo‘ldosheva Lola.'))
+    for value in ('Гафуров Сардор', 'Ходжаев Ботир', 'Хужаев Ботир', 'Юлдашева Лола'):
+        assert supported(value, 'person', known, translated=True), value
+    # Only for a translated document, and never a name the customer did not give.
+    assert not supported('Гафуров Сардор', 'person', known)
+    for value in ('Гаффаров Сардор', 'Мадаминов Ботир', 'Anvar'):
+        assert not supported(value, 'person', known, translated=True), value
+
+
+def test_a_time_is_one_value_its_hour_and_minutes():
+    known = trusting('Majlis soat 10 da boshlanadi va 14:30 gacha davom etadi.')
+    part = 'Majlis soat 10:00 da boshlanadi va 14:30 da tugaydi.'
+    assert ground(part, known) == (part, [])
+    # Numbers given apart never make a time, and a time gives its hour only on the hour.
+    for part in ('Soat 10:30 da boshlanadi.', 'Soat 14 da tugaydi.', 'Soat 9:00 da.'):
+        assert ground(part, known)[1] == ['ground:number'], part
+    assert {'t:9:05', 'd:15.11'} <= numbers.values('15.11.2026, 09:05')
 
 
 def test_a_translated_references_list_is_held_by_its_numbers():

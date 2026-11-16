@@ -77,6 +77,9 @@ def written_otherwise(number):
         day, month = (int(part) for part in number.value[2:].split('.'))
         return [f'{day}-{UZ_MONTHS[month - 1]}', f'{day} {RU_MONTHS[month - 1]}', f'{day} {EN_MONTHS[month - 1]}',
                 f'{EN_MONTHS[month - 1]} {day}', f'{day:02}.{month:02}']
+    if number.kind == 'time':
+        hour, minutes = number.value[2:].split(':')
+        return [f'{hour}:{minutes}', f'{int(hour):02}:{minutes}'] + ([hour] if minutes == '00' else [])
     if number.kind == 'phone':
         digits = number.value
         last = digits[-9:]

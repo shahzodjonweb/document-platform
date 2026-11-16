@@ -15,7 +15,9 @@ value it means:
   "November 15" are the day and month 15.11 (and a year, when one is written,
   which is a number of its own); "с 3 по 12 ноября" gives both days their month;
 - a phone number is its digits and its last nine digits, so "+998 90 123 45 67"
-  is found as "90 123 45 67".
+  is found as "90 123 45 67";
+- a time "10:00" is one value, the hour and its minutes: "soat 10 da" gives it
+  when the minutes are 00, and "10" and "30" written apart never make "10:30".
 
 `found(text)` gives each number of a text with what it needs to be known: a
 date needs its day and month, an amount any one of the values it may mean.
@@ -66,6 +68,7 @@ MONTH_DAY = re.compile(r"(?<![^\W\d_])" + MONTH + r"\.?[ \u00a0]+(\d{1,2})(?:st|
                        r"(?:[ \u00a0]*[-–—][ \u00a0]*(\d{1,2})(?!\d|[.,:]\d))?", re.IGNORECASE)
 DMY = re.compile(r"(?<![\d.,/-])(\d{1,2})([./-])(\d{1,2})\2(\d{4}|\d{2})(?!\d|[.,]\d)")
 YMD = re.compile(r"(?<![\d.,/-])(\d{4})([./-])(\d{1,2})\2(\d{1,2})(?!\d|[.,]\d)")
+TIME = re.compile(r"(?<![\d.,:])([01]?\d|2[0-3]):([0-5]\d)(?!\d|[.,:]\d)")
 PHONE = re.compile(r"(?<![\w+.,])(\+?\(?\d{1,4}\)?(?:[ \u00a0\-]{1,2}\(?\d{2,4}\)?){2,6})(?![\w]|[.,]\d)")
 LONG = re.compile(r"(?<![\d.,])\d{9,15}(?![\d]|[.,]\d)")
 GROUPED = re.compile(rf"(?<![\d.,])\d{{1,3}}(?:{GAP}\d{{3}})+(?:[.,]\d+)?(?![\d]|[.,]\d)")
@@ -123,7 +126,7 @@ class Number(NamedTuple):
 
     start: int
     end: int
-    kind: str  # integer, decimal, amount (may be either), scaled, date, phone
+    kind: str  # integer, decimal, amount (may be either), scaled, date, time, phone
     value: str
     needs: tuple
     # Keys it gives the customer's side beyond its needs: a date's day as a number, an amount's unscaled value.
@@ -271,6 +274,14 @@ class _Reader:
                 continue
             needs = [{_date_key(day, month)} for day in days]
             self.add(*match.span(), 'date', _date_key(days[0], month), needs, {str(int(day)) for day in days})
+        for match in TIME.finditer(text):
+            if not self.free(*match.span()):
+                continue
+            hour, minutes = int(match.group(1)), match.group(2)
+            key = f't:{hour}:{minutes}'
+            # On the hour, the hour alone is the same time: "soat 10 da" and "10:00".
+            self.add(*match.span(), 'time', key, [{key, str(hour)} if minutes == '00' else {key}],
+                     {str(hour)} if minutes == '00' else ())
         for match in PHONE.finditer(text):
             token = match.group(1)
             digits = re.sub(r'\D', '', token)

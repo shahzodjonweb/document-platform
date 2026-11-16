@@ -33,6 +33,8 @@ reported as codes.
 Both sides are compared folded (`fold`): one apostrophe, lower case, Cyrillic
 put into Latin with the house table, and the spellings a name takes across the
 two alphabets made one (x, h and kh; yo and e; ya and ia; q and k; o‘ and u).
+A person's name in a document written in another language than the message is
+also matched as Russian spells Uzbek names, with o as а (`respellings`).
 Folding can only make two spellings of the customer's own name meet; what it
 cannot see is said plainly in the architecture: a name the model writes in
 lower case, a wrong case ending. A transliteration the table misses blanks a
@@ -52,6 +54,7 @@ import math
 import re
 import unicodedata
 from dataclasses import dataclass
+from functools import cached_property
 
 from ..language import normalised
 from ..uzbek import LETTERS
@@ -103,8 +106,45 @@ ALLOWED = (
     "узбекский русский английский немецкий французский арабский турецкий китайский корейский японский казахский "
     "киргизский таджикский "
     "o'zbekiston o'zbekistonda o'zbekistonning o'zbekistonga o'zbekistondan respublikasi respublikasining "
-    "respublikasida uzbekistan узбекистан узбекистана узбекистане узбекистану республика республики республике"
+    "respublikasida uzbekistan узбекистан узбекистана узбекистане узбекистану республика республики республике "
+    "whom concern ladies gentlemen господа дамы"
 ).split()
+# The people a letter is addressed to by their role, which letters capitalise: "Hurmatli Direktor!", "Muhtaram
+# Rektor", "Hurmatli Hay’at a’zolari", "Уважаемый Директор", "Dear Hiring Manager". A role is no one's name, so it is
+# allowed with the endings a sentence gives it, listed as whole words (`_forms`), never by prefix: a prefix would let
+# Rahbarov or Mudirova through as rahbar and mudir. A role that is also a given name (rais, dean) is left out. The
+# Uzbek endings hold no -ov, -ova or -ev, nor the Russian forms -ов or -ев, the endings of surnames made from such
+# words (Директоров, Советов).
+UZ_ROLES = ("direktor rektor prorektor dekan mudir rahbar rahbariyat boshliq hokim vazir prezident menejer "
+            "ustoz domla muallim muallima o‘qituvchi tarbiyachi xodim hamkasb hamkor mijoz jamoa kengash komissiya "
+            "hay’at a’zo ishtirokchi mehmon ota-ona talaba o‘quvchi").split()
+UZ_ENDINGS = ('', 'i', 'si', 'ga', 'iga', 'siga', 'ni', 'ini', 'sini', 'ning', 'ining', 'sining', 'da', 'ida',
+              'sida', 'dan', 'idan', 'sidan', 'lar', 'lari', 'larga', 'lariga', 'larni', 'larini', 'larning',
+              'larining', 'miz', 'imiz', 'mizga', 'imizga', 'im', 'imga', 'm', 'mga')
+RU_ROLES = ("директор директора директору директором директоре директорам "
+            "ректор ректора ректору ректором ректоре проректор проректора проректору декан декана декану деканом "
+            "руководитель руководителя руководителю руководителем руководители руководителей руководство руководства "
+            "председатель председателя председателю председателем заведующий заведующая заведующему заведующей "
+            "заведующего начальник начальника начальнику начальником коллеги коллегам коллега коллектив коллектива "
+            "коллективу комиссия комиссии члены членам совет совета совету партнёры партнёрам партнеры партнерам "
+            "клиенты клиентам учитель учителя учителю учителем преподаватель преподавателя преподавателю").split()
+EN_ROLES = ("hiring manager team committee member board recruitment recruiter director principal head rector "
+            "chair chairman chairperson colleague partner customer client department faculty officer staff "
+            "teacher parent guest participant").split()
+
+
+def _forms():
+    """Every allowed word as typed, the roles with the endings a sentence gives them."""
+    forms = list(ALLOWED) + list(RU_ROLES)
+    forms += [role + ending for role in UZ_ROLES for ending in UZ_ENDINGS]
+    forms += [role + ending for role in EN_ROLES for ending in ('', 's')]
+    return forms
+
+
+def _folded(words):
+    return frozenset(word for item in words for word in FOLDED_WORD.findall(fold(item)))
+
+
 # Abbreviations whose full stop does not end a sentence, so the capitalised word after one is still checked:
 # "prof. Xolmirzayev", "B. Rahimov", "ул. Садовая".
 # A single letter is always an initial.
@@ -152,20 +192,41 @@ STEMS = [(concept, re.compile(rf'(?<![^\W\d_])(?:{stem})(?![^\W\d_])', re.IGNORE
          for concept, stem, strong in LAW]
 
 
-def fold(text):
-    """`text` as both sides of every comparison are read: the spellings of one name across the alphabets made one."""
+def fold(text, *, respelled=False):
+    """`text` as both sides of every comparison are read: the spellings of one name across the alphabets made one.
+
+    `respelled` is the looser reading of a person's name in a document written
+    in another language than the message (`respellings`).
+    """
     text = normalised(str(text or '')).casefold().translate(LATIN)
     text = ''.join(char for char in unicodedata.normalize('NFKD', text) if not unicodedata.combining(char))
     # o‘ is u in Russian spelling (Toshpo‘latova, Тошпулатова); an English possessive ("Two's") is not an o‘.
-    text = re.sub(r"o'(?!s\b)", 'u', text).replace("'", '')
+    text = re.sub(r"o'(?!s\b)", 'o' if respelled else 'u', text).replace("'", '')
     text = re.sub('dzh|dj|zh', 'j', text)
     text = text.replace('sh', '\x01').replace('ch', '\x02').replace('kh', 'x').replace('h', 'x')
     text = text.replace('\x01', 'sh').replace('\x02', 'ch')
     text = text.replace('yo', 'e').replace('q', 'k').replace('w', 'v')
     # ц is s in the Uzbek table and ts in English ("Цой", "Tsoy"); only where a word starts, so "Vaqt's" stays.
     text = re.sub(r'\bts', 's', text)
-    text = re.sub(r'y(?=[aeiou])', '', text)
-    return re.sub(r'iy\b', 'i', text)
+    # ya and ia, yu and iu inside a word (Mariya, Maria); never where a word starts, which made the month "Yanvar"
+    # an allowed spelling of the name Anvar.
+    text = re.sub(r'(?<=[^\W\d_])y(?=[aeiou])', '', text)
+    text = re.sub(r'iy\b', 'i', text)
+    return text.replace('o', 'a') if respelled else text
+
+
+def respellings(word):
+    """The folded forms a name may take when a translation spells it anew.
+
+    Russian writes an Uzbek o as а and an o‘ as о or у (G‘ofurov and Гафуров,
+    Xo‘jayev and Ходжаев, Yo‘ldoshev and Юлдашев), which the plain fold keeps
+    apart. Both sides are read with o as a and o‘ as both o and u.
+    """
+    return {fold(word).replace('o', 'a'), fold(word, respelled=True)}
+
+
+# The allowed words folded once, here, rather than for every draft.
+FORMULAS = _folded(_forms())
 
 
 def flat(text, *, folded=None):
@@ -209,7 +270,10 @@ class Words:
             self.index.setdefault(word[:3], []).append(word)
 
     def known(self, word):
-        word = fold(word)
+        return self.has(fold(word))
+
+    def has(self, word):
+        """`known` for a word already folded."""
         if not word:
             return True
         if word in self.exact:
@@ -241,6 +305,20 @@ class Trusted:
     lower: str
     emails: frozenset
     links: frozenset
+    said: str = ''
+
+    @cached_property
+    def respelled(self):
+        """The customer's words in their respelled forms, read only when a document is in another language."""
+        folded = fold(self.said)
+        return Words([*FOLDED_WORD.findall(folded.replace('o', 'a')),
+                      *FOLDED_WORD.findall(fold(self.said, respelled=True))])
+
+    def person(self, word, translated=False):
+        """Whether a capitalised word of a person's name is the customer's or one no one's facts are in."""
+        if self.allowed.known(word) or self.words.known(word):
+            return True
+        return translated and any(self.respelled.has(form) for form in respellings(word))
 
 
 def _link(text):
@@ -258,13 +336,13 @@ def trusting(text, *, allowed=(), wording=''):
     text = str(text or '')
     folded = fold(text)
     words = Words(FOLDED_WORD.findall(folded))
-    allow = Exact(word for item in (*ALLOWED, *allowed) for word in FOLDED_WORD.findall(fold(item)))
+    allow = Exact(FORMULAS | _folded(allowed))
     wording = str(wording or '')
     quoted = flat(text, folded=folded) + (flat(wording) if wording.strip() else '')
     lower = normalised(text).casefold() + ('\n' + normalised(wording).casefold() if wording.strip() else '')
     return Trusted(words, allow, frozenset(numbers.values(text)), quoted, lower,
                    frozenset(email.lower().strip('.') for email in EMAIL.findall(text)),
-                   frozenset(_link(link) for link in LINK.findall(EMAIL.sub(' ', text))))
+                   frozenset(_link(link) for link in LINK.findall(EMAIL.sub(' ', text))), text)
 
 
 def _texts(content):
@@ -359,13 +437,13 @@ def _strip_addresses(text, trusted):
     return LINK.sub(' ', text), whole
 
 
-def _names_known(text, trusted):
+def _names_known(text, trusted, translated=False):
     """Whether every capitalised word of two letters or more is the customer's or one no one's facts are in."""
     for match in WORD.finditer(text):
         word = match.group(0)
         if not word[0].isupper() or len(re.sub(r"['‘’ʻʼ`´]", '', word)) < 2:
             continue
-        if not (trusted.allowed.known(word) or trusted.words.known(word)):
+        if not trusted.person(word, translated):
             return False
     return True
 
@@ -378,7 +456,8 @@ def supported(value, kind, trusted, *, translated=False):
     email: found whole; list: each line as a line; choice, flag, file: not
     checked here. `translated` (the document is in another language than the
     message) checks names for a person only: organisations and places are
-    translated, a person's name only spelled anew, which the fold meets.
+    translated, a person's name only spelled anew, which the fold meets, with
+    the Russian spellings of o and o‘ allowed (`respellings`).
     """
     if kind in ('choice', 'flag', 'file') or value is None or isinstance(value, bool):
         return True
@@ -394,7 +473,7 @@ def supported(value, kind, trusted, *, translated=False):
     if not all(numbers.known(number, trusted.values) for number in numbers.found(rest)):
         return False
     if kind in ('person', 'org', 'place', 'line') and not (translated and kind != 'person'):
-        return _names_known(rest, trusted)
+        return _names_known(rest, trusted, translated)
     return True
 
 
