@@ -586,7 +586,8 @@
    ],
    "source": "draft",
    "checks": [
-    "numbers"
+    "numbers",
+    "names"
    ],
    "write": "Used instead of muammolar + takliflar while the deck has at most 10 slides. Heading exactly “Muammolar va ularning yechimi” (“Проблемы и пути их решения”, “Problems and solutions”) in every deck. columns = [“Muammo”, “Yechim”]. 2 to 4 pairs. ONE cap everywhere: label = the area in at most 3 words, REQUIRED (from the customer’s own words; the layout refuses a row without one); text = the problem and value = the answer, at most 9 words each and at most two lines, ending with a full stop. Each problem restates a problem the customer named or a weakness a number on an earlier slide shows; each answer is the customer’s proposal, or a drafted one (listed as a draft). No cause, name or class that is not in the source.",
    "when": "cue:natija",
@@ -611,7 +612,8 @@
    ],
    "source": "draft",
    "checks": [
-    "numbers"
+    "numbers",
+    "names"
    ],
    "write": "3 to 5 lines of at most 10 words, numbered by the variant (numbered_rows). Each line restates a problem the customer named or a weakness a number on an earlier slide shows (“9-sinflarda bilim sifati eng past: 51,0 foiz.”). No cause, name or class that is not in the source.",
    "when": "cue:natija",
@@ -657,7 +659,8 @@
    ],
    "source": "draft",
    "checks": [
-    "numbers"
+    "numbers",
+    "names"
    ],
    "write": "3 to 5 lines of at most 10 words as noun phrases or infinitives (“Qolgan ikki sinf xonasi ta’mirini yakunlash”), each answering one problem of the previous slide, in the same order; the customer’s own proposals first and word for word, drafted ones after, marked in the notes. Tasks for the next year are not proposals: they have their own slot (vazifalar). No number the customer did not give.",
    "when": "nocue:natija",
@@ -681,7 +684,8 @@
    ],
    "source": "draft",
    "checks": [
-    "numbers"
+    "numbers",
+    "names"
    ],
    "write": "3 to 5 lines of at most 10 words as noun phrases or infinitives (“Qolgan ikki sinf xonasi ta’mirini yakunlash”), each answering one problem of the previous slide, in the same order; the customer’s own proposals first and word for word, drafted ones after, marked in the notes. Tasks for the next year are not proposals: they have their own slot (vazifalar). No number the customer did not give.",
    "when": "cue:natija",

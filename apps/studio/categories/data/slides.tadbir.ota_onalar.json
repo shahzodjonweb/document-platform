@@ -778,7 +778,8 @@
    ],
    "source": "draft",
    "checks": [
-    "numbers"
+    "numbers",
+    "names"
    ],
    "write": "Heading, in the deck’s language: Muammolar va iltimoslar (muammo berilmasa: Ota-onalarga iltimoslar) / Проблемы и просьбы (без проблем: Просьбы к родителям) / Problems and requests (no concern given: Requests to parents). bullets.classic, 3 to 5 lines of at most 52 characters, each “<muammo>: <iltimos>” (“Telefon: dars vaqtida o‘chirishga kelishib oling”), one request per concern, in the polite imperative, doable, no deadline, fee or consequence, never about a named child or a named parent. Without concerns: 3 general requests, heading “Ota-onalarga iltimoslar”. Notes: class-wide observations; ask for a show of hands.",
    "from": 4,

@@ -203,10 +203,19 @@ def test_a_translated_cover_keeps_the_customers_people_and_drops_an_invented_one
     ('uz', 'ru', 'Bajardi: Xolmirzayev Botir'),
     ('uz', None, 'Bajardi: Xolmirzayev Botir'),
     ('en', None, 'Prepared by: Botir Xolmirzayev'),
-], ids=['en-from-ru', 'uz-from-ru', 'uz-from-uz', 'en-from-en'])
+    ('uz', None, 'Bajardi — Xolmirzayev Botir'),
+    ('uz', None, 'Prepared by Botir Xolmirzayev'),
+    ('uz', None, 'Xolmirzayev Botir'),
+    ('en', 'ru', 'Bajardi — Xolmirzayev Botir'),
+    ('en', 'ru', 'Prepared by Botir Xolmirzayev'),
+    ('en', 'ru', 'Xolmirzayev Botir'),
+    ('uz', 'ru', 'Xolmirzayev'),
+], ids=['en-from-ru', 'uz-from-ru', 'uz-from-uz', 'en-from-en', 'dash-uz', 'by-uz', 'bare-uz', 'dash-en-from-ru',
+        'by-en-from-ru', 'bare-en-from-ru', 'surname-uz-from-ru'])
 def test_a_cover_of_one_invented_author_line_loses_it(locale, prompt_locale, invented):
     # A lone line is a subtitle, which checks only numbers; a labelled one says who made the work and is held as a
-    # title-page line, so a model-written author never ships however short the cover is.
+    # title-page line, so a model-written author never ships however short the cover is. An unlabelled one ("Bajardi —
+    # …", "Prepared by …", a bare name) stays a subtitle but has its names read as guard's 'names' check reads them.
     data, content = translated(locale, prompt_locale) if prompt_locale else made('figures', locale)
     content['sections'][0]['body'] = invented
     codes = []
@@ -228,6 +237,36 @@ def test_a_cover_of_one_dictated_line_or_unlabelled_subtitle_is_finished_as_befo
     finished, _ = finish.apply(data, content, file_names=[], codes=codes)
     assert lines(finished['sections'][0]['body']) == ([line] if stays else [])
     assert ('cover:line' in codes) is not stays
+
+
+@pytest.mark.parametrize('locale, prompt_locale, first, kept', [
+    ('uz', None, 'Bajardi — Xolmirzayev Botir', 'E’tiboringiz uchun rahmat!'),
+    ('en', 'ru', 'Prepared by Botir Xolmirzayev', 'Thank you for your attention!'),
+], ids=['uz', 'en-from-ru'])
+def test_a_closing_slide_whose_first_line_is_an_invented_author_loses_it(locale, prompt_locale, first, kept):
+    data, content = translated(locale, prompt_locale) if prompt_locale else made('figures', locale)
+    content['sections'][-1]['body'] = first
+    codes = []
+    finished, warnings = finish.apply(data, content, file_names=[], codes=codes)
+    assert lines(finished['sections'][-1]['body']) == []
+    assert 'cover:line' in codes and warnings == [finish.FACTS_BLANKED]
+    content['sections'][-1]['body'] = kept
+    finished, _ = finish.apply(data, content, file_names=[])
+    assert lines(finished['sections'][-1]['body']) == [kept]
+
+
+@pytest.mark.parametrize('locale, lines_given', [
+    ('en', ['Term paper', 'Monthly meeting', 'Grocery shop', 'Made-to-order furniture for homes and offices']),
+    ('uz', ['Kurs ishi', 'Oylik yig‘ilish', 'Oziq-ovqat do‘koni']),
+], ids=['en', 'uz'])
+def test_a_translated_cover_keeps_unlabelled_lines_that_name_no_one(locale, lines_given):
+    # Held as a person's, such a line lost its opening word and the customer was told of a blank they had no part in.
+    data, content = translated(locale)
+    content['sections'][0]['body'] = '\n'.join(lines_given)
+    codes = []
+    finished, warnings = finish.apply(data, content, file_names=[], codes=codes)
+    assert lines(finished['sections'][0]['body']) == lines_given
+    assert 'cover:line' not in codes
 
 
 # ---------------------------------------------------------------- dressing, and a change
@@ -518,6 +557,23 @@ AGENDA = ' Kun tartibi: choraklik natijalar, takliflar va qaror.'
 ], ids=['reporter', 'responsible'])
 def test_an_invented_reporter_or_responsible_person_goes_whole(length, slot_id, more, body, written):
     data, content, wanted = event_slide(COUNCIL, 'figures', length, slot_id, body, prompt_more=more)
+    finished, codes, warnings = finished_body(data, content, wanted)
+    assert finished == written
+    assert 'ground:name' in codes and warnings == [finish.FACTS_BLANKED]
+
+
+@pytest.mark.parametrize('entry_id, length, slot_id, body, written', [
+    (COUNCIL, 12, 'muammolar', 'Xolmatov S. sinfida davomat past', '____ sinfida davomat past'),
+    (COUNCIL, 12, 'takliflar_natija', 'Xolmatovga qo‘shimcha dars topshirish', '____ qo‘shimcha dars topshirish'),
+    (COUNCIL, 8, 'muammo_yechim', 'Davomat past — Sardor Xolmatov nazorat qiladi',
+     'Davomat past — ____ nazorat qiladi'),
+    (PARENTS, 8, 'iltimoslar', 'Xolmatova Dilnozaning ota-onasi maktabga kelsin', '____ ota-onasi maktabga kelsin'),
+    (COUNCIL, 12, 'qaror', '1. Xolmatov javobgar', '1. ____ javobgar'),
+], ids=['council-problems', 'council-proposals', 'council-problems-and-solutions', 'parents-requests',
+        'resolution-lone-surname'])
+def test_an_invented_person_in_a_problem_proposal_or_request_is_blanked(entry_id, length, slot_id, body, written):
+    # Their write texts forbid a name the source does not give; a false blank there costs less than a named child.
+    data, content, wanted = event_slide(entry_id, 'figures', length, slot_id, body)
     finished, codes, warnings = finished_body(data, content, wanted)
     assert finished == written
     assert 'ground:name' in codes and warnings == [finish.FACTS_BLANKED]

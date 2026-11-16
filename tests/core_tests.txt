@@ -988,3 +988,16 @@ tests/test_category_finish_decks.py::test_an_invented_person_as_a_row_of_its_own
 tests/test_category_finish_decks.py::test_the_customers_own_reporter_stays_in_the_surname_and_initial_form
 tests/test_category_finish_decks.py::test_the_agenda_notes_may_count_the_agendas_own_rows[the-slides-own-count]
 tests/test_category_facts.py::test_a_translated_references_list_still_holds_the_authors_it_opens_with
+
+# Categories, the cover's and the names check's last holes: an unlabelled author line ("Bajardi — …", "Prepared by …",
+# a bare name) alone on a cover or opening a closing slide goes, translated or not; a translated cover keeps its
+# unlabelled lines that name no one; a lone invented surname opening a row goes in a slot that checks names, as does
+# an invented person in a council's problems or a parents' requests; a counted copy shares the respelled words
+tests/test_category_finish_decks.py::test_a_cover_of_one_invented_author_line_loses_it[dash-uz]
+tests/test_category_finish_decks.py::test_a_cover_of_one_invented_author_line_loses_it[bare-en-from-ru]
+tests/test_category_finish_decks.py::test_a_closing_slide_whose_first_line_is_an_invented_author_loses_it[uz]
+tests/test_category_finish_decks.py::test_a_translated_cover_keeps_unlabelled_lines_that_name_no_one[en]
+tests/test_category_facts.py::test_a_slot_that_checks_names_takes_a_lone_invented_surname_that_opens_a_sentence_or_a_row[list-item]
+tests/test_category_facts.py::test_a_surname_shaped_first_word_is_kept_when_it_is_the_customers_or_a_common_word[Namunova javobgar.]
+tests/test_category_finish_decks.py::test_an_invented_person_in_a_problem_proposal_or_request_is_blanked[council-problems]
+tests/test_category_facts.py::test_a_counted_copy_shares_the_respelled_words_rather_than_folding_the_source_again

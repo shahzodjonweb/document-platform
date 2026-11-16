@@ -602,6 +602,39 @@ def test_a_slot_that_checks_names_keeps_the_customers_people_and_a_lone_grammar_
     assert guard(part, known, checks=('names',)) == (part, [])
 
 
+@pytest.mark.parametrize('part, written', [
+    ('Xolmatovga yuklansin.', '____ yuklansin.'),
+    ('Darslar tashkil etilsin. Xolmatov javobgar.', 'Darslar tashkil etilsin. ____ javobgar.'),
+    ('1. Xolmatov javobgar', '1. ____ javobgar'),
+    ('— Xolmatov', '— ____'),
+    ('Xolmatov', '____'),
+    ('Холматовой поручить', '____ поручить'),
+    ('Xolmirzayevaga topshirilsin', '____ topshirilsin'),
+    ('Mas’ul: S.Xolmatov', 'Mas’ul: ____'),
+], ids=['case-ending', 'opens-a-sentence', 'list-item', 'dash-row', 'item-alone', 'cyrillic', 'yev-feminine',
+        'initial-without-space'])
+def test_a_slot_that_checks_names_takes_a_lone_invented_surname_that_opens_a_sentence_or_a_row(part, written):
+    # A surname alone at the start of a row is the very form a resolution's or an agenda's responsible person takes.
+    known = trusting('Pedagogik kengash: bilim sifati, nazorat Mohira Namunovaga yuklatilsin.')
+    assert guard(part, known, checks=('names',)) == (written, ['ground:name'])
+
+
+@pytest.mark.parametrize('part', [
+    'Namunova javobgar.', '1. Namunovaga yuklansin', 'Tanlov o‘tkazilsin.', 'Sinovlar yakunlansin.',
+    'To‘lovlar o‘z vaqtida qilinsin.', 'Pedsovet qarori bajarilsin.'])
+def test_a_surname_shaped_first_word_is_kept_when_it_is_the_customers_or_a_common_word(part):
+    known = trusting('Pedagogik kengash: bilim sifati, nazorat Mohira Namunovaga yuklatilsin.')
+    assert guard(part, known, checks=('names',)) == (part, [])
+
+
+def test_people_known_reads_a_line_as_the_names_check_does():
+    known = trusting('Kurs ishi. Bajardi: Yusupov Jasur.')
+    assert facts.people_known('Term paper', known) and facts.people_known('Yusupov Jasur', known)
+    assert not facts.people_known('Xolmirzayev Botir', known)
+    assert not facts.people_known('Prepared by Botir Xolmirzayev', known)
+    assert facts.people_known('Toshkent davlat iqtisodiyot universiteti', known)
+
+
 def test_ground_still_leaves_the_first_word_of_a_sentence():
     # ground's limit is unchanged until the owner takes the false blanks the strict reading costs everywhere.
     known = trusting('Pedagogik kengash')
@@ -614,3 +647,10 @@ def test_a_count_the_document_makes_of_itself_is_held_and_nothing_more():
     assert guard('Bugun 5 ta masala ko‘riladi', known, checks=('numbers',)) == \
         ('Bugun ____ ta masala ko‘riladi', ['ground:number'])
     assert facts.counting(known, 0) is known
+
+
+def test_a_counted_copy_shares_the_respelled_words_rather_than_folding_the_source_again():
+    known = trusting('Nazorat Mohira Namunovaga yuklatilsin.')
+    counted = facts.counting(known, 4)
+    assert counted is not known and counted.respelled is known.respelled
+    assert facts.counting(trusting('Pedagogik kengash'), 3).person('Namunova', True) is False

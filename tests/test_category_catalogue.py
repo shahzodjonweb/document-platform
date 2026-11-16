@@ -149,18 +149,19 @@ def test_every_reference_resolves(spoil, says):
 
 def test_the_event_deck_draft_slots_about_the_customers_own_school_hold_its_facts():
     """A council's problems, proposals and resolution and a parents' meeting's agenda and requests are drafts that
-    state the customer's own facts: their numbers are checked, and the names of a resolution and an agenda."""
+    state the customer's own facts: their numbers are checked, and their names too (their write texts forbid a name
+    the source does not give), except on a parents' agenda, which only repeats the deck's slide headings."""
     checked = {(entry_id, part['id']): part['checks'] for entry_id, raw in read()[0].items()
                for part in raw['parts'] if part.get('checks')}
     assert checked == {
         ('slides.tadbir.pedkengash', 'kun_tartibi'): ['numbers', 'names'],
-        ('slides.tadbir.pedkengash', 'muammo_yechim'): ['numbers'],
-        ('slides.tadbir.pedkengash', 'muammolar'): ['numbers'],
-        ('slides.tadbir.pedkengash', 'takliflar'): ['numbers'],
-        ('slides.tadbir.pedkengash', 'takliflar_natija'): ['numbers'],
+        ('slides.tadbir.pedkengash', 'muammo_yechim'): ['numbers', 'names'],
+        ('slides.tadbir.pedkengash', 'muammolar'): ['numbers', 'names'],
+        ('slides.tadbir.pedkengash', 'takliflar'): ['numbers', 'names'],
+        ('slides.tadbir.pedkengash', 'takliflar_natija'): ['numbers', 'names'],
         ('slides.tadbir.pedkengash', 'qaror'): ['numbers', 'names'],
         ('slides.tadbir.ota_onalar', 'kun_tartibi'): ['numbers'],
-        ('slides.tadbir.ota_onalar', 'iltimoslar'): ['numbers'],
+        ('slides.tadbir.ota_onalar', 'iltimoslar'): ['numbers', 'names'],
     }
 
 

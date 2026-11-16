@@ -133,14 +133,26 @@ def _line_known(line, trusted, translated, own):
     The first word of a label is the label's own ("Bajardi", "Ilmiy"); its
     other capitalised words and every word of its value are held as a `line`
     fact. In a deck written in another language than the message a `line`
-    leaves its names to the translation, so there the line is held as a
+    leaves its names to the translation, so there a labelled line is held as a
     `person`: a cover's names are people ("Bajardi: …", "Ilmiy rahbar: …"),
     and an invented one must never ship. A translated school's or company's
     line may then go: a false blank, never an invention.
+
+    A translated line with no label has its names read as guard's 'names'
+    check reads them (facts.people_known): its opening word is capitalised by
+    grammar ("Grocery shop", "Term paper") and is free unless it is shaped as
+    a surname, stands before initials or before another word that is not the
+    customer's. Held as a person's, every such line went and the customer was
+    told of a blank where nothing was invented. A line of one word ("Botir",
+    "Педсовет") is still held as a person's: nothing beside it says it is not
+    a name.
     """
     if _key(line) in own:
         return True
     label, value = _split(line)
+    if translated and not label and len([word for word in facts.WORD.findall(value) if len(word) >= 2]) > 1:
+        return facts.supported(value, 'line', trusted, translated=True) \
+            and facts.people_known(value, trusted, translated=True)
     kind = 'person' if translated else 'line'
     if not facts.supported(value, kind, trusted, translated=translated):
         return False
@@ -151,8 +163,15 @@ def _title_page(text, trusted, translated, own, codes, *, first_free):
     """A cover's or a closing slide's lines, keeping only the customer's; the first kept as a subtitle when `first_free`.
 
     A cover of one line has a subtitle, not a title page (slide_layouts.title_lines):
-    it is guarded, and goes only when it holds a number the customer did not
-    give ("Toshkent — 2026"). A line that only stands in for one ("____",
+    it is guarded, and goes when it holds a number the customer did not give
+    ("Toshkent — 2026") or a name guard's 'names' check would take
+    (facts.people_known): an author with no label ("Bajardi — Xolmirzayev
+    Botir", "Prepared by Botir Xolmirzayev", a bare "Xolmirzayev Botir") would
+    otherwise ship, since a guarded line checks only numbers. Its opening word
+    stays free unless it is shaped as a surname or stands beside initials or
+    an invented word, so a subtitle of general knowledge ("Toshkent davlat
+    iqtisodiyot universiteti") is kept. The same
+    holds for a closing slide's first line. A line that only stands in for one ("____",
     "F.I.Sh.: ____") is never kept. On a closing slide the first line is its own
     words ("Savollaringiz bormi?") and the lines after it are an author line
     copied from the cover, held as the cover's are.
@@ -175,7 +194,8 @@ def _title_page(text, trusted, translated, own, codes, *, first_free):
         if number == 0 and (first_free or len(lines) == 1) and not _split(line)[0]:
             line, found = facts.guard(line, trusted, translated=translated)
             codes.extend(found)
-            if _key(line) in own or all(numbers.known(value, trusted.values) for value in numbers.found(line)):
+            if _key(line) in own or (all(numbers.known(value, trusted.values) for value in numbers.found(line))
+                                     and facts.people_known(line, trusted, translated=translated)):
                 if line.strip():
                     kept.append(line)
                 continue
