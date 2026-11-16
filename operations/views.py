@@ -200,6 +200,10 @@ def page(request, section='overview'):
         # A refused upload blocks every tool, so it is counted beside them.
         from .analytics_extra import upload_refusals
         data['upload_refusals']=upload_refusals(filters,data['t'])
+        # AI PDF and AI Slides by category: made, picked, and how the documents fared.
+        from .metrics import category_report
+        data['category_report']=category_report(filters,data['t'],data['lang'])
+        data['category_export_url']='/ops/export/categories?'+data['query']
     if section in {'analytics/acquisition','analytics/engagement'}:
         from .analytics_extra import engagement
         data['cohorts']=engagement(filters)
@@ -387,7 +391,7 @@ def user_detail(request, pk):
     data['can_open_files']=allowed(request.ops_user,['Support','Operations'])
     if data['can_open_files']:
         from .generation_views import _rows
-        data['generation_rows']=_rows(account.generation_records.select_related('job').order_by('-created_at')[:10],data['t'])
+        data['generation_rows']=_rows(account.generation_records.select_related('job').order_by('-created_at')[:10],data['t'],data['lang'])
     # Card transfers are Finance's to see.
     if data['ok'](PAGE_ROLES['payments']):
         from apps.commerce.models import ManualPayment
@@ -433,7 +437,7 @@ def csv_cell(value):
 
 @require_staff('Analyst','Support','Operations')
 def export(request, kind):
-    roles={'users':['Support'],'jobs':['Operations','Support'],'features':['Analyst','Operations']}
+    roles={'users':['Support'],'jobs':['Operations','Support'],'features':['Analyst','Operations'],'categories':['Analyst','Operations']}
     if kind not in roles or not allowed(request.ops_user,roles[kind]):return HttpResponseForbidden('Staff permission required')
     try:filters=Filters.from_request(request)
     except ValueError as error:return HttpResponseBadRequest(str(error))
@@ -454,6 +458,11 @@ def export(request, kind):
         if request.GET.get('status'):records=records.filter(status=request.GET['status'])
         if records.count()>10000:return HttpResponseBadRequest('Narrow filters to at most 10000 rows')
         rows=records.values_list(*fields)
+    elif kind=='categories':
+        # Ids, counts and shares only, as on the tools page: never a request or who made it.
+        from .metrics import CATEGORY_CODES,category_report
+        fields=['category','chosen','choosers','attempts','succeeded','failed','canceled','no_op','users','failure_rate',*CATEGORY_CODES]
+        rows=([row['id' if f=='category' else f] for f in fields] for row in category_report(filters,CATALOGS['en'])['rows'])
     else:
         fields=['feature_id','attempts','succeeded','failed','canceled','no_op','users'];rows=([row[f] for f in fields] for row in report(filters)['feature_rows'])
     writer.writerow(fields)

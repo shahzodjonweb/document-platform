@@ -638,3 +638,54 @@ CATALOGS['ru'].update(
     categories_status_draft='Черновик', categories_status_ready='Готова', categories_live='Открыта в боте', categories_none='Категорий пока нет.',
 )
 assert CATALOGS['en'].keys() == CATALOGS['uz'].keys() == CATALOGS['ru'].keys()
+
+# AI documents by category on the tools page, and the category of an AI request.
+CATALOGS['en'].update(
+    catreport='AI documents by category',
+    catreport_desc='AI PDF and AI Slides documents made with a category the customer picked, beside how often each category was picked. Changes to a document are not counted; documents without a category have no row.',
+    catreport_chosen='Picked', catreport_choosers='People who picked', catreport_made='Made', catreport_failure='Failure rate',
+    catreport_facts_blanked='Facts left blank', catreport_template_fallback='Plain PDF page',
+    catreport_block_fallback='Part drawn plain', catreport_repinned='Slide layout changed',
+    catreport_facts_blanked_def='A name, number, date or source the customer did not give was left blank instead of made up.',
+    catreport_template_fallback_def='The category’s PDF template could not be drawn, so the plain page was used.',
+    catreport_block_fallback_def='One part of the PDF template was drawn in its plain form.',
+    catreport_repinned_def='A slide’s planned layout did not fit its text and another one was used.',
+    catreport_share_note='The last four columns are shares of each category’s finished documents.',
+    catreport_of_all='{n} of {total} AI documents in this period had a category.',
+    catreport_unknown='No longer in the catalogue', catreport_none='No category documents in this period',
+    catreport_none_desc='Rows appear once the categories are switched on and customers pick them.',
+    catreport_export='Export by category', gen_all_categories='All categories',
+)
+CATALOGS['uz'].update(
+    catreport='Kategoriyalar bo‘yicha AI hujjatlar',
+    catreport_desc='Mijoz tanlagan kategoriya bilan yaratilgan AI PDF va AI Slides hujjatlari hamda har bir kategoriya necha marta tanlangani. Hujjatga kiritilgan o‘zgarishlar hisoblanmaydi; kategoriyasiz hujjatlar uchun qator yo‘q.',
+    catreport_chosen='Tanlandi', catreport_choosers='Tanlaganlar', catreport_made='Yaratildi', catreport_failure='Xatolar ulushi',
+    catreport_facts_blanked='Bo‘sh qoldirilgan faktlar', catreport_template_fallback='Oddiy PDF sahifa',
+    catreport_block_fallback='Oddiy chizilgan qism', catreport_repinned='Slayd maketi almashtirildi',
+    catreport_facts_blanked_def='Mijoz bermagan ism, raqam, sana yoki manba to‘qib chiqarilmadi, bo‘sh qoldirildi.',
+    catreport_template_fallback_def='Kategoriyaning PDF shablonini chizib bo‘lmadi, shuning uchun oddiy sahifa ishlatildi.',
+    catreport_block_fallback_def='PDF shablonining bir qismi oddiy ko‘rinishda chizildi.',
+    catreport_repinned_def='Slaydning rejalangan maketiga matn sig‘madi va boshqasi ishlatildi.',
+    catreport_share_note='Oxirgi to‘rt ustun har bir kategoriyaning tayyor hujjatlaridagi ulushdir.',
+    catreport_of_all='Bu davrdagi {total} ta AI hujjatdan {n} tasi kategoriya bilan yaratilgan.',
+    catreport_unknown='Katalogda endi yo‘q', catreport_none='Bu davrda kategoriya bilan yaratilgan hujjat yo‘q',
+    catreport_none_desc='Kategoriyalar yoqilib, mijozlar ularni tanlay boshlaganda qatorlar paydo bo‘ladi.',
+    catreport_export='Kategoriyalar bo‘yicha yuklab olish', gen_all_categories='Barcha kategoriyalar',
+)
+CATALOGS['ru'].update(
+    catreport='AI-документы по категориям',
+    catreport_desc='Документы AI PDF и AI Slides, созданные с выбранной клиентом категорией, и сколько раз выбирали каждую категорию. Изменения документа не считаются; у документов без категории строки нет.',
+    catreport_chosen='Выбрано', catreport_choosers='Выбрали', catreport_made='Создано', catreport_failure='Доля ошибок',
+    catreport_facts_blanked='Факты оставлены пустыми', catreport_template_fallback='Простая страница PDF',
+    catreport_block_fallback='Часть нарисована просто', catreport_repinned='Макет слайда заменён',
+    catreport_facts_blanked_def='Имя, число, дата или источник, которых клиент не дал, оставлены пустыми, а не выдуманы.',
+    catreport_template_fallback_def='Шаблон PDF категории не удалось нарисовать, поэтому использована простая страница.',
+    catreport_block_fallback_def='Одна часть шаблона PDF нарисована в простом виде.',
+    catreport_repinned_def='Текст не поместился в запланированный макет слайда, и использован другой.',
+    catreport_share_note='Последние четыре столбца — доли от готовых документов каждой категории.',
+    catreport_of_all='{n} из {total} AI-документов за период созданы с категорией.',
+    catreport_unknown='Больше нет в каталоге', catreport_none='За этот период документов с категорией нет',
+    catreport_none_desc='Строки появятся, когда категории включат и клиенты начнут их выбирать.',
+    catreport_export='Экспорт по категориям', gen_all_categories='Все категории',
+)
+assert CATALOGS['en'].keys() == CATALOGS['uz'].keys() == CATALOGS['ru'].keys()
