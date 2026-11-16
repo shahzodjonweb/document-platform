@@ -1,0 +1,340 @@
+{
+ "entry": "slides.kompaniya",
+ "case": "figures",
+ "note": "Sample content for the deck sample tool, invented people, organisations and figures only. For a length and a language the tool reads the brief (and source_text) as the customer’s message, takes the entry’s slots with skeleton.slots over the brief’s cues, and fills slide i from slides[<its slot>]: the k-th time a slot repeats takes item k, starting again from the first when the list is shorter. A slot whose heading is fixed carries an empty heading, which the finish writes in the language of the deck. Customer slots hold only what the brief says (figures) or an honest form (topic_only); notes are left to the real model.",
+ "brief": {
+  "uz": "Namuna Mebel kompaniyasi taqdimoti kerak, 10 ta slayd: yangi mijozlarga ko‘rsatamiz. Uy va ofis uchun buyurtma mebel ishlab chiqaramiz, Toshkentda, 2013-yildan. 28 xodim, 340+ buyurtma, 3 shahar. Mahsulotlar: oshxona mebeli, ofis mebeli, garderob. Oshxona mebeli o‘lchovdan o‘rnatishgacha: shkaflar va bar peshtaxtasi, stol usti va furnitura ro‘yxatdan tanlanadi, o‘rnatishni o‘z ustalarimiz bajaradi. Ofis mebeli joylashtirish rejasi bilan: ish stollari va javonlar, qabulxona jihozlari, rejani mijoz tasdiqlaydi. Ish tartibi: o‘lchov, loyiha, ishlab chiqarish, o‘rnatish. Afzalliklar: o‘z ustaxonamiz, usta o‘zi o‘lchaydi, muddat shartnomada yoziladi. Mijozlar: Namuna Hotel, Namuna Klinika, Namuna Maktab. Keys: Namuna Hotel 40 ta xona uchun mebel buyurtma qildi, bitta andoza bo‘yicha seriya yasadik, 3 haftada topshirdik. Telefon: +998 00 000 00 00, Telegram: @namuna_mebel.",
+  "ru": "Нужна презентация компании «Намуна Мебель» на 10 слайдов: покажем новым клиентам. Делаем мебель на заказ для дома и офиса в Ташкенте, с 2013 года. 28 сотрудников, 340+ заказов, 3 города. Продукция: кухни, офисная мебель, гардеробы. Кухни от замера до установки: шкафы и барная стойка, столешница и фурнитура выбираются из списка, монтаж делают наши мастера. Офисная мебель с планом расстановки: рабочие столы и стеллажи, мебель для приёмной, план утверждает клиент. Порядок работы: замер, проект, производство, установка. Преимущества: собственная мастерская, мастер замеряет сам, срок записан в договоре. Клиенты: Намуна Отель, Намуна Клиника, Намуна Школа. Кейс: Намуна Отель заказал мебель на 40 номеров, мы сделали серию по одному образцу, сдали за 3 недели. Телефон: +998 00 000 00 00, Telegram: @namuna_mebel.",
+  "en": "I need a 10-slide presentation of the Namuna Furniture company to show new customers. We make made-to-order furniture for homes and offices in Tashkent, since 2013. 28 staff, 340+ orders, 3 cities. Products: kitchens, office furniture, wardrobes. Kitchens from measuring to installation: cabinets and a bar counter, the worktop and fittings are chosen from a list, our own craftsmen install. Office furniture with a layout plan: desks and shelves, reception furniture, the client approves the plan. How we work: measuring, design, production, installation. Advantages: our own workshop, the craftsman measures, the deadline is in the contract. Clients: Namuna Hotel, Namuna Clinic, Namuna School. Case: Namuna Hotel ordered furniture for 40 rooms, we made a series from one template, delivered in 3 weeks. Phone: +998 00 000 00 00, Telegram: @namuna_mebel."
+ },
+ "slides": {
+  "cover": [
+   {
+    "uz": {
+     "layout": "cover",
+     "heading": "Namuna Mebel",
+     "body": "Uy va ofis uchun buyurtma mebel\nToshkent, 2013-yildan",
+     "items": []
+    },
+    "ru": {
+     "layout": "cover",
+     "heading": "Намуна Мебель",
+     "body": "Мебель на заказ для дома и офиса\nТашкент, с 2013 года",
+     "items": []
+    },
+    "en": {
+     "layout": "cover",
+     "heading": "Namuna Furniture",
+     "body": "Made-to-order furniture for homes and offices\nTashkent, since 2013",
+     "items": []
+    }
+   }
+  ],
+  "haqimizda": [
+   {
+    "uz": {
+     "layout": "stats",
+     "heading": "2013-yildan buyurtma mebel yasaymiz",
+     "body": "",
+     "items": [
+      {
+       "label": "xodim",
+       "text": "",
+       "value": "28"
+      },
+      {
+       "label": "buyurtma",
+       "text": "",
+       "value": "340+"
+      },
+      {
+       "label": "shahar",
+       "text": "",
+       "value": "3"
+      }
+     ]
+    },
+    "ru": {
+     "layout": "stats",
+     "heading": "Делаем мебель на заказ с 2013 года",
+     "body": "",
+     "items": [
+      {
+       "label": "сотрудников",
+       "text": "",
+       "value": "28"
+      },
+      {
+       "label": "заказов",
+       "text": "",
+       "value": "340+"
+      },
+      {
+       "label": "города",
+       "text": "",
+       "value": "3"
+      }
+     ]
+    },
+    "en": {
+     "layout": "stats",
+     "heading": "Made-to-order furniture since 2013",
+     "body": "",
+     "items": [
+      {
+       "label": "staff",
+       "text": "",
+       "value": "28"
+      },
+      {
+       "label": "orders",
+       "text": "",
+       "value": "340+"
+      },
+      {
+       "label": "cities",
+       "text": "",
+       "value": "3"
+      }
+     ]
+    }
+   }
+  ],
+  "xizmatlar": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Nimalar yasaymiz",
+     "body": "Oshxona mebeli\nOfis mebeli\nGarderob",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Что мы делаем",
+     "body": "Кухни\nОфисная мебель\nГардеробы",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "What we make",
+     "body": "Kitchens\nOffice furniture\nWardrobes",
+     "items": []
+    }
+   }
+  ],
+  "xizmat": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Oshxona mebeli o‘lchovdan o‘rnatishgacha",
+     "body": "Shkaflar va bar peshtaxtasi\nStol usti va furnitura ro‘yxatdan tanlanadi\nO‘rnatishni o‘z ustalarimiz bajaradi",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Кухни от замера до установки",
+     "body": "Шкафы и барная стойка\nСтолешница и фурнитура выбираются из списка\nМонтаж делают наши мастера",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Kitchens from measuring to installation",
+     "body": "Cabinets and a bar counter\nWorktop and fittings chosen from a list\nOur own craftsmen install",
+     "items": []
+    }
+   },
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Ofis mebeli joylashtirish rejasi bilan",
+     "body": "Ish stollari va javonlar\nQabulxona jihozlari\nRejani mijoz tasdiqlaydi",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Офисная мебель с планом расстановки",
+     "body": "Рабочие столы и стеллажи\nМебель для приёмной\nПлан утверждает клиент",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Office furniture with a layout plan",
+     "body": "Desks and shelves\nReception furniture\nThe client approves the plan",
+     "items": []
+    }
+   },
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Garderob",
+     "body": "Nima kiradi: ________\nKim uchun: ________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Гардеробы",
+     "body": "Что входит: ________\nДля кого: ________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Wardrobes",
+     "body": "What it includes: ________\nWho it is for: ________",
+     "items": []
+    }
+   }
+  ],
+  "jarayon": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Ish tartibi",
+     "body": "O‘lchov\nLoyiha\nIshlab chiqarish\nO‘rnatish",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Порядок работы",
+     "body": "Замер\nПроект\nПроизводство\nУстановка",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "How we work",
+     "body": "Measuring\nDesign\nProduction\nInstallation",
+     "items": []
+    }
+   }
+  ],
+  "afzalliklar": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "O‘z ustaxonamiz\nUsta o‘zi o‘lchaydi\nMuddat shartnomada yoziladi",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Собственная мастерская\nМастер замеряет сам\nСрок записан в договоре",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Our own workshop\nThe craftsman measures himself\nThe deadline is in the contract",
+     "items": []
+    }
+   }
+  ],
+  "ishonch": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Hujjat: ________\nRaqami va sanasi: ________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Документ: ________\nНомер и дата: ________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Document: ________\nNumber and date: ________",
+     "items": []
+    }
+   }
+  ],
+  "mijozlar": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Bizga ishonganlar",
+     "body": "Namuna Hotel\nNamuna Klinika\nNamuna Maktab",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Нам доверяют",
+     "body": "Намуна Отель\nНамуна Клиника\nНамуна Школа",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Who trusts us",
+     "body": "Namuna Hotel\nNamuna Clinic\nNamuna School",
+     "items": []
+    }
+   }
+  ],
+  "keys": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Namuna Hotel: 40 ta xona, 3 haftada",
+     "body": "Vazifa: 40 ta xona uchun mebel\nYechim: bitta andoza bo‘yicha seriya\nNatija: 3 haftada topshirildi",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Намуна Отель: 40 номеров за 3 недели",
+     "body": "Задача: мебель на 40 номеров\nРешение: серия по одному образцу\nИтог: сдали за 3 недели",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Namuna Hotel: 40 rooms in 3 weeks",
+     "body": "Task: furniture for 40 rooms\nSolution: a series from one template\nResult: delivered in 3 weeks",
+     "items": []
+    }
+   },
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Bajarilgan ish",
+     "body": "Mijoz: ________\nVazifa: ________\nNatija: ________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Выполненная работа",
+     "body": "Клиент: ________\nЗадача: ________\nИтог: ________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "A finished job",
+     "body": "Client: ________\nTask: ________\nResult: ________",
+     "items": []
+    }
+   }
+  ],
+  "aloqa": [
+   {
+    "uz": {
+     "layout": "closing",
+     "heading": "",
+     "body": "Telefon: +998 00 000 00 00\nTelegram: @namuna_mebel",
+     "items": []
+    },
+    "ru": {
+     "layout": "closing",
+     "heading": "",
+     "body": "Телефон: +998 00 000 00 00\nTelegram: @namuna_mebel",
+     "items": []
+    },
+    "en": {
+     "layout": "closing",
+     "heading": "",
+     "body": "Phone: +998 00 000 00 00\nTelegram: @namuna_mebel",
+     "items": []
+    }
+   }
+  ]
+ }
+}

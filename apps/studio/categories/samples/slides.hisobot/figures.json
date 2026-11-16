@@ -1,0 +1,524 @@
+{
+ "entry": "slides.hisobot",
+ "case": "figures",
+ "note": "Sample content for the deck sample tool, invented people, organisations and figures only. For a length and a language the tool reads the brief (and source_text) as the customer’s message, takes the entry’s slots with skeleton.slots over the brief’s cues, and fills slide i from slides[<its slot>]: the k-th time a slot repeats takes item k, starting again from the first when the list is shorter. A slot whose heading is fixed carries an empty heading, which the finish writes in the language of the deck. Customer slots hold only what the brief says (figures) or an honest form (topic_only); notes are left to the real model.",
+ "brief": {
+  "uz": "Oylik yig‘ilishga 7 ta slayd: mening oziq-ovqat do‘konimning oktyabr hisoboti. Savdo, mln so‘m: avgust 365, sentabr 380, oktyabr 412 (reja 400). Xaridorlar 5 800 nafar (sentabrda 5 300). Yaxshi ketdi: yangi non peshtaxtasi; sut mahsulotlari savdosi oshdi. Muammo bo‘ldi: sut yetkazib berish 4 marta kechikdi; 2 nafar sotuvchi ishdan ketdi. Noyabr rejasi: savdo 430 mln so‘m, 2 ta yangi sotuvchi qabul qilish. Savdoni diagramma qilib ko‘rsating.",
+  "ru": "Нужны 7 слайдов для ежемесячного собрания: отчёт за октябрь моего продуктового магазина. Продажи, млн сумов: август 365, сентябрь 380, октябрь 412 (план 400). Покупателей 5 800 (в сентябре 5 300). Получилось: новая хлебная витрина; выросли продажи молочных продуктов. Проблемы: молоко привозили с опозданием 4 раза; ушли 2 продавца. План на ноябрь: продажи 430 млн сумов, принять 2 новых продавцов. Продажи покажите диаграммой.",
+  "en": "7 slides for the monthly meeting: October report of my grocery shop. Sales, m sum: August 365, September 380, October 412 (plan 400). Customers 5,800 (September 5,300). Went well: the new bread counter; dairy sales rose. Problems: milk deliveries were late 4 times; 2 shop assistants left. November plan: sales of 430 m sum, hire 2 new shop assistants. Show the sales as a chart."
+ },
+ "slides": {
+  "cover": [
+   {
+    "uz": {
+     "layout": "cover",
+     "heading": "Oktyabr hisoboti",
+     "body": "Oziq-ovqat do‘koni\nOylik yig‘ilish",
+     "items": []
+    },
+    "ru": {
+     "layout": "cover",
+     "heading": "Отчёт за октябрь",
+     "body": "Продуктовый магазин\nЕжемесячное собрание",
+     "items": []
+    },
+    "en": {
+     "layout": "cover",
+     "heading": "October report",
+     "body": "Grocery shop\nMonthly meeting",
+     "items": []
+    }
+   }
+  ],
+  "mundarija": [
+   {
+    "uz": {
+     "layout": "agenda",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "Asosiy natijalar",
+       "text": ""
+      },
+      {
+       "label": "Savdo dinamikasi",
+       "text": ""
+      },
+      {
+       "label": "Yutuqlar",
+       "text": ""
+      },
+      {
+       "label": "Muammolar va sabablari",
+       "text": ""
+      },
+      {
+       "label": "Kelgusi davr rejalari",
+       "text": ""
+      }
+     ]
+    },
+    "ru": {
+     "layout": "agenda",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "Основные результаты",
+       "text": ""
+      },
+      {
+       "label": "Динамика продаж",
+       "text": ""
+      },
+      {
+       "label": "Достижения",
+       "text": ""
+      },
+      {
+       "label": "Проблемы и причины",
+       "text": ""
+      },
+      {
+       "label": "Планы на следующий период",
+       "text": ""
+      }
+     ]
+    },
+    "en": {
+     "layout": "agenda",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "Key results",
+       "text": ""
+      },
+      {
+       "label": "Sales over time",
+       "text": ""
+      },
+      {
+       "label": "Achievements",
+       "text": ""
+      },
+      {
+       "label": "Problems and causes",
+       "text": ""
+      },
+      {
+       "label": "Plans for the next period",
+       "text": ""
+      }
+     ]
+    }
+   }
+  ],
+  "natijalar": [
+   {
+    "uz": {
+     "layout": "stats",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "mln so‘m savdo",
+       "text": "oktyabr, reja 400",
+       "value": "412"
+      },
+      {
+       "label": "xaridor",
+       "text": "sentabrda 5 300",
+       "value": "5 800"
+      }
+     ]
+    },
+    "ru": {
+     "layout": "stats",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "млн сумов продаж",
+       "text": "октябрь, план 400",
+       "value": "412"
+      },
+      {
+       "label": "покупателей",
+       "text": "в сентябре 5 300",
+       "value": "5 800"
+      }
+     ]
+    },
+    "en": {
+     "layout": "stats",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "m sum of sales",
+       "text": "October, plan 400",
+       "value": "412"
+      },
+      {
+       "label": "customers",
+       "text": "September 5,300",
+       "value": "5,800"
+      }
+     ]
+    }
+   }
+  ],
+  "trend": [
+   {
+    "uz": {
+     "layout": "chart",
+     "heading": "Savdo avgustdan oktyabrgacha 365 dan 412 ga oshdi",
+     "body": "",
+     "items": [
+      {
+       "label": "Avgust",
+       "text": "",
+       "value": "365"
+      },
+      {
+       "label": "Sentabr",
+       "text": "",
+       "value": "380"
+      },
+      {
+       "label": "Oktyabr",
+       "text": "",
+       "value": "412"
+      }
+     ],
+     "columns": [
+      "mln so‘m"
+     ]
+    },
+    "ru": {
+     "layout": "chart",
+     "heading": "Продажи с августа по октябрь выросли с 365 до 412",
+     "body": "",
+     "items": [
+      {
+       "label": "Август",
+       "text": "",
+       "value": "365"
+      },
+      {
+       "label": "Сентябрь",
+       "text": "",
+       "value": "380"
+      },
+      {
+       "label": "Октябрь",
+       "text": "",
+       "value": "412"
+      }
+     ],
+     "columns": [
+      "млн сумов"
+     ]
+    },
+    "en": {
+     "layout": "chart",
+     "heading": "Sales rose from 365 in August to 412 in October",
+     "body": "",
+     "items": [
+      {
+       "label": "August",
+       "text": "",
+       "value": "365"
+      },
+      {
+       "label": "September",
+       "text": "",
+       "value": "380"
+      },
+      {
+       "label": "October",
+       "text": "",
+       "value": "412"
+      }
+     ],
+     "columns": [
+      "m sum"
+     ]
+    }
+   },
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Ko‘rsatkich oylar bo‘yicha",
+     "body": "Oy: ______________\nOy: ______________\nOy: ______________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Показатель по месяцам",
+     "body": "Месяц: ______________\nМесяц: ______________\nМесяц: ______________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Indicator by month",
+     "body": "Month: ______________\nMonth: ______________\nMonth: ______________",
+     "items": []
+    }
+   }
+  ],
+  "reja_natija": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Savdo, mln so‘m: reja 400, amalda 412",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Продажи, млн сумов: план 400, факт 412",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Sales, m sum: plan 400, actual 412",
+     "items": []
+    }
+   },
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Reja: ______________\nAmalda: ______________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "План: ______________\nФакт: ______________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Plan: ______________\nActual: ______________",
+     "items": []
+    }
+   }
+  ],
+  "yonalish": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Sut va non bo‘limlari",
+     "body": "Yangi non peshtaxtasi ochildi\nSut mahsulotlari savdosi oshdi",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Молочный и хлебный отделы",
+     "body": "Открылась новая хлебная витрина\nВыросли продажи молочных продуктов",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Dairy and bread",
+     "body": "The new bread counter opened\nDairy sales rose",
+     "items": []
+    }
+   }
+  ],
+  "yutuqlar": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Yangi non peshtaxtasi\nSut mahsulotlari savdosi oshdi",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Новая хлебная витрина\nВыросли продажи молочных продуктов",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "The new bread counter\nDairy sales rose",
+     "items": []
+    }
+   }
+  ],
+  "muammolar": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Sut yetkazib berish 4 marta kechikdi\n2 nafar sotuvchi ishdan ketdi",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Молоко привозили с опозданием 4 раза\nУшли 2 продавца",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Milk deliveries were late 4 times\n2 shop assistants left",
+     "items": []
+    }
+   }
+  ],
+  "moliya": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Tushum: ______________\nXarajat: ______________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Выручка: ______________\nРасходы: ______________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Revenue: ______________\nCosts: ______________",
+     "items": []
+    }
+   }
+  ],
+  "bosqichlar": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Bosqich: ______________\nBosqich: ______________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Этап: ______________\nЭтап: ______________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Stage: ______________\nStage: ______________",
+     "items": []
+    }
+   }
+  ],
+  "rejalar": [
+   {
+    "uz": {
+     "layout": "stats",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "mln so‘m savdo",
+       "text": "noyabr rejasi",
+       "value": "430"
+      },
+      {
+       "label": "yangi sotuvchi",
+       "text": "qabul qilish",
+       "value": "2"
+      }
+     ]
+    },
+    "ru": {
+     "layout": "stats",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "млн сумов продаж",
+       "text": "план на ноябрь",
+       "value": "430"
+      },
+      {
+       "label": "новых продавца",
+       "text": "принять",
+       "value": "2"
+      }
+     ]
+    },
+    "en": {
+     "layout": "stats",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "m sum of sales",
+       "text": "November plan",
+       "value": "430"
+      },
+      {
+       "label": "new shop assistants",
+       "text": "to hire",
+       "value": "2"
+      }
+     ]
+    }
+   }
+  ],
+  "xulosa": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Oktyabr savdosi, mln so‘m: 412 (reja 400)\nXaridorlar soni 5 800 nafarga yetdi\nNoyabr rejasi: savdo 430 mln so‘m",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Продажи в октябре, млн сумов: 412 (план 400)\nПокупателей стало 5 800\nПлан на ноябрь: продажи 430 млн сумов",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "October sales, m sum: 412 (plan 400)\nCustomers reached 5,800\nNovember plan: sales of 430 m sum",
+     "items": []
+    }
+   }
+  ],
+  "rahmat": [
+   {
+    "uz": {
+     "layout": "closing",
+     "heading": "",
+     "body": "Savollar va takliflar",
+     "items": []
+    },
+    "ru": {
+     "layout": "closing",
+     "heading": "",
+     "body": "Вопросы и предложения",
+     "items": []
+    },
+    "en": {
+     "layout": "closing",
+     "heading": "",
+     "body": "Questions and suggestions",
+     "items": []
+    }
+   }
+  ]
+ }
+}

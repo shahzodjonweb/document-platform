@@ -1,0 +1,361 @@
+{
+ "entry": "slides.hisobot",
+ "case": "topic_only",
+ "note": "Sample content for the deck sample tool, invented people, organisations and figures only. For a length and a language the tool reads the brief (and source_text) as the customer’s message, takes the entry’s slots with skeleton.slots over the brief’s cues, and fills slide i from slides[<its slot>]: the k-th time a slot repeats takes item k, starting again from the first when the list is shorter. A slot whose heading is fixed carries an empty heading, which the finish writes in the language of the deck. Customer slots hold only what the brief says (figures) or an honest form (topic_only); notes are left to the real model.",
+ "brief": {
+  "uz": "Oylik yig‘ilishga do‘konimning oktyabr hisoboti kerak.",
+  "ru": "Нужен отчёт моего магазина за октябрь для ежемесячного собрания.",
+  "en": "I need my shop’s October report for the monthly meeting."
+ },
+ "slides": {
+  "cover": [
+   {
+    "uz": {
+     "layout": "cover",
+     "heading": "Oktyabr hisoboti",
+     "body": "Oylik yig‘ilish",
+     "items": []
+    },
+    "ru": {
+     "layout": "cover",
+     "heading": "Отчёт за октябрь",
+     "body": "Ежемесячное собрание",
+     "items": []
+    },
+    "en": {
+     "layout": "cover",
+     "heading": "October report",
+     "body": "Monthly meeting",
+     "items": []
+    }
+   }
+  ],
+  "mundarija": [
+   {
+    "uz": {
+     "layout": "agenda",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "Asosiy natijalar",
+       "text": ""
+      },
+      {
+       "label": "Savdo dinamikasi",
+       "text": ""
+      },
+      {
+       "label": "Yutuqlar",
+       "text": ""
+      },
+      {
+       "label": "Muammolar va sabablari",
+       "text": ""
+      },
+      {
+       "label": "Kelgusi davr rejalari",
+       "text": ""
+      }
+     ]
+    },
+    "ru": {
+     "layout": "agenda",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "Основные результаты",
+       "text": ""
+      },
+      {
+       "label": "Динамика продаж",
+       "text": ""
+      },
+      {
+       "label": "Достижения",
+       "text": ""
+      },
+      {
+       "label": "Проблемы и причины",
+       "text": ""
+      },
+      {
+       "label": "Планы на следующий период",
+       "text": ""
+      }
+     ]
+    },
+    "en": {
+     "layout": "agenda",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "Key results",
+       "text": ""
+      },
+      {
+       "label": "Sales over time",
+       "text": ""
+      },
+      {
+       "label": "Achievements",
+       "text": ""
+      },
+      {
+       "label": "Problems and causes",
+       "text": ""
+      },
+      {
+       "label": "Plans for the next period",
+       "text": ""
+      }
+     ]
+    }
+   }
+  ],
+  "natijalar": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Ko‘rsatkich: ______________\nKo‘rsatkich: ______________\nKo‘rsatkich: ______________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Показатель: ______________\nПоказатель: ______________\nПоказатель: ______________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Indicator: ______________\nIndicator: ______________\nIndicator: ______________",
+     "items": []
+    }
+   }
+  ],
+  "trend": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Ko‘rsatkich oylar bo‘yicha",
+     "body": "Oy: ______________\nOy: ______________\nOy: ______________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Показатель по месяцам",
+     "body": "Месяц: ______________\nМесяц: ______________\nМесяц: ______________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Indicator by month",
+     "body": "Month: ______________\nMonth: ______________\nMonth: ______________",
+     "items": []
+    }
+   }
+  ],
+  "reja_natija": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Reja: ______________\nAmalda: ______________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "План: ______________\nФакт: ______________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Plan: ______________\nActual: ______________",
+     "items": []
+    }
+   }
+  ],
+  "yonalish": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Yo‘nalish natijasi",
+     "body": "Yo‘nalish: ______________\nNatija: ______________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Итоги по направлению",
+     "body": "Направление: ______________\nИтог: ______________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Results by area",
+     "body": "Area: ______________\nResult: ______________",
+     "items": []
+    }
+   }
+  ],
+  "yutuqlar": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Yutuq: ______________\nYutuq: ______________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Достижение: ______________\nДостижение: ______________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Achievement: ______________\nAchievement: ______________",
+     "items": []
+    }
+   }
+  ],
+  "muammolar": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Muammo: ______________\nSababi: ______________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Проблема: ______________\nПричина: ______________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Problem: ______________\nCause: ______________",
+     "items": []
+    }
+   }
+  ],
+  "moliya": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Tushum: ______________\nXarajat: ______________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Выручка: ______________\nРасходы: ______________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Revenue: ______________\nCosts: ______________",
+     "items": []
+    }
+   }
+  ],
+  "bosqichlar": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Bosqich: ______________\nBosqich: ______________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Этап: ______________\nЭтап: ______________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Stage: ______________\nStage: ______________",
+     "items": []
+    }
+   }
+  ],
+  "rejalar": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Reja: ______________\nReja: ______________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "План: ______________\nПлан: ______________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Plan: ______________\nPlan: ______________",
+     "items": []
+    }
+   }
+  ],
+  "xulosa": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Xulosa: ______________\nTaklif: ______________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Вывод: ______________\nПредложение: ______________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Conclusion: ______________\nProposal: ______________",
+     "items": []
+    }
+   }
+  ],
+  "rahmat": [
+   {
+    "uz": {
+     "layout": "closing",
+     "heading": "",
+     "body": "Savollar va takliflar",
+     "items": []
+    },
+    "ru": {
+     "layout": "closing",
+     "heading": "",
+     "body": "Вопросы и предложения",
+     "items": []
+    },
+    "en": {
+     "layout": "closing",
+     "heading": "",
+     "body": "Questions and suggestions",
+     "items": []
+    }
+   }
+  ]
+ }
+}

@@ -1,0 +1,515 @@
+{
+ "entry": "slides.mavzu",
+ "case": "figures",
+ "note": "Sample content for the deck sample tool, invented people, organisations and figures only. For a length and a language the tool reads the brief (and source_text) as the customer’s message, takes the entry’s slots with skeleton.slots over the brief’s cues, and fills slide i from slides[<its slot>]: the k-th time a slot repeats takes item k, starting again from the first when the list is shorter. A slot whose heading is fixed carries an empty heading, which the finish writes in the language of the deck. Customer slots hold only what the brief says (figures) or an honest form (topic_only); notes are left to the real model.",
+ "brief": {
+  "uz": "Ekologiya fanidan seminar uchun slayd kerak: “Qayta tiklanuvchi energiya manbalari”. 2-kurs, 8 ta slayd, oddiy tilda. Guruhdagi so‘rovnoma: 30 kishidan 17 tasi quyoshni, 8 tasi shamolni, 5 tasi suvni istiqbolli deb tanladi.\nBirinchi slaydga:\nNamuna davlat universiteti\nFan: Ekologiya\nBajardi: Karimova Dilnoza, 205-guruh\nQabul qildi: dotsent Rahimov B.\nToshkent, 2026\nFoydalanilgan adabiyotlar:\n1. Namunov A. Qayta tiklanuvchi energetika asoslari. Toshkent, 2021.\n2. Misolova S. Quyosh energiyasi. Samarqand, 2023.",
+  "ru": "Нужна презентация для семинара по экологии: «Возобновляемые источники энергии». 2 курс, 8 слайдов, простым языком. Опрос в группе: из 30 человек 17 выбрали солнце, 8 ветер, 5 воду как самое перспективное.\nНа первом слайде:\nОбразцовый государственный университет\nПредмет: Экология\nВыполнила: Каримова Дилноза, группа 205\nПроверил: доцент Рахимов Б.\nТашкент, 2026\nСписок литературы:\n1. Намунов А. Основы возобновляемой энергетики. Ташкент, 2021.\n2. Мисолова С. Солнечная энергия. Самарканд, 2023.",
+  "en": "I need slides for an ecology seminar: “Renewable energy sources”. Year 2, 8 slides, plain language. A survey in my group: of 30 people, 17 chose solar, 8 wind and 5 water as the most promising.\nOn the first slide:\nExample State University\nSubject: Ecology\nPrepared by: Dilnoza Karimova, group 205\nChecked by: Assoc. Prof. B. Rahimov\nTashkent, 2026\nReferences:\n1. Namunov A. Foundations of renewable energy. Tashkent, 2021.\n2. Misolova S. Solar energy. Samarkand, 2023."
+ },
+ "slides": {
+  "cover": [
+   {
+    "uz": {
+     "layout": "cover",
+     "heading": "Qayta tiklanuvchi energiya manbalari",
+     "body": "Namuna davlat universiteti\nFan: Ekologiya\nBajardi: Karimova Dilnoza, 205-guruh\nQabul qildi: dotsent Rahimov B.\nToshkent, 2026",
+     "items": []
+    },
+    "ru": {
+     "layout": "cover",
+     "heading": "Возобновляемые источники энергии",
+     "body": "Образцовый государственный университет\nПредмет: Экология\nВыполнила: Каримова Дилноза, группа 205\nПроверил: доцент Рахимов Б.\nТашкент, 2026",
+     "items": []
+    },
+    "en": {
+     "layout": "cover",
+     "heading": "Renewable energy sources",
+     "body": "Example State University\nSubject: Ecology\nPrepared by: Dilnoza Karimova, group 205\nChecked by: Assoc. Prof. B. Rahimov\nTashkent, 2026",
+     "items": []
+    }
+   }
+  ],
+  "reja": [
+   {
+    "uz": {
+     "layout": "agenda",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "Tushuncha",
+       "text": "Qayta tiklanuvchi energiya nima"
+      },
+      {
+       "label": "Turlari",
+       "text": "Quyosh, shamol va suv"
+      },
+      {
+       "label": "Afzalliklari",
+       "text": "Toza havo va tugamaydigan manba"
+      },
+      {
+       "label": "Xulosa",
+       "text": "Asosiy fikrlar"
+      }
+     ]
+    },
+    "ru": {
+     "layout": "agenda",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "Понятие",
+       "text": "Что такое возобновляемая энергия"
+      },
+      {
+       "label": "Виды",
+       "text": "Солнце, ветер и вода"
+      },
+      {
+       "label": "Преимущества",
+       "text": "Чистый воздух и неисчерпаемый источник"
+      },
+      {
+       "label": "Вывод",
+       "text": "Главные мысли"
+      }
+     ]
+    },
+    "en": {
+     "layout": "agenda",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "The idea",
+       "text": "What renewable energy is"
+      },
+      {
+       "label": "Kinds",
+       "text": "Sun, wind and water"
+      },
+      {
+       "label": "Benefits",
+       "text": "Clean air and a source that does not run out"
+      },
+      {
+       "label": "Conclusion",
+       "text": "The main points"
+      }
+     ]
+    }
+   }
+  ],
+  "kirish": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Energiyaga ehtiyoj yil sayin ortib bormoqda\nKo‘mir va gaz zaxiralari cheklangan\nTabiat o‘zi beradigan manbalar tugamaydi",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Потребность в энергии растёт с каждым годом\nЗапасы угля и газа ограничены\nИсточники, которые даёт природа, не иссякают",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "The need for energy grows every year\nCoal and gas reserves are limited\nThe sources nature gives do not run out",
+     "items": []
+    }
+   }
+  ],
+  "maqsad": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Qayta tiklanuvchi manbalar turlarini tanishtirish\nUlarning afzalliklarini ko‘rsatish\nGuruh fikrini muhokama qilish",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Познакомить с видами возобновляемых источников\nПоказать их преимущества\nОбсудить мнение группы",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "To introduce the kinds of renewable sources\nTo show their benefits\nTo discuss the group’s view",
+     "items": []
+    }
+   }
+  ],
+  "tarif": [
+   {
+    "uz": {
+     "layout": "statement",
+     "heading": "",
+     "body": "Qayta tiklanuvchi energiya — tabiatda o‘z-o‘zidan tiklanadigan manbalardan olinadigan energiya.",
+     "items": []
+    },
+    "ru": {
+     "layout": "statement",
+     "heading": "",
+     "body": "Возобновляемая энергия — энергия из источников, которые восстанавливаются в природе сами.",
+     "items": []
+    },
+    "en": {
+     "layout": "statement",
+     "heading": "",
+     "body": "Renewable energy is energy from sources that renew themselves in nature.",
+     "items": []
+    }
+   }
+  ],
+  "izoh": [
+   {
+    "uz": {
+     "layout": "cards",
+     "heading": "Asosiy turlari",
+     "body": "",
+     "items": [
+      {
+       "label": "Quyosh",
+       "text": "Panellar yorug‘likni elektr tokiga aylantiradi"
+      },
+      {
+       "label": "Shamol",
+       "text": "Turbinalar shamol kuchidan tok oladi"
+      },
+      {
+       "label": "Suv",
+       "text": "Daryo oqimi gidroelektr stansiyasini aylantiradi"
+      }
+     ]
+    },
+    "ru": {
+     "layout": "cards",
+     "heading": "Основные виды",
+     "body": "",
+     "items": [
+      {
+       "label": "Солнце",
+       "text": "Панели превращают свет в электричество"
+      },
+      {
+       "label": "Ветер",
+       "text": "Турбины получают ток от силы ветра"
+      },
+      {
+       "label": "Вода",
+       "text": "Течение реки вращает гидроэлектростанцию"
+      }
+     ]
+    },
+    "en": {
+     "layout": "cards",
+     "heading": "The main kinds",
+     "body": "",
+     "items": [
+      {
+       "label": "Solar",
+       "text": "Panels turn light into electricity"
+      },
+      {
+       "label": "Wind",
+       "text": "Turbines take power from the wind"
+      },
+      {
+       "label": "Water",
+       "text": "A river’s flow turns a hydroelectric plant"
+      }
+     ]
+    }
+   },
+   {
+    "uz": {
+     "layout": "two_column",
+     "heading": "Afzallik va cheklov",
+     "body": "",
+     "items": [
+      {
+       "label": "Afzalligi",
+       "text": "Havoni ifloslantirmaydi, manba tugamaydi"
+      },
+      {
+       "label": "Cheklovi",
+       "text": "Ob-havoga bog‘liq, jihozlari qimmat"
+      }
+     ]
+    },
+    "ru": {
+     "layout": "two_column",
+     "heading": "Плюсы и ограничения",
+     "body": "",
+     "items": [
+      {
+       "label": "Плюсы",
+       "text": "Не загрязняет воздух, источник не иссякает"
+      },
+      {
+       "label": "Ограничения",
+       "text": "Зависит от погоды, оборудование дорогое"
+      }
+     ]
+    },
+    "en": {
+     "layout": "two_column",
+     "heading": "Strengths and limits",
+     "body": "",
+     "items": [
+      {
+       "label": "Strengths",
+       "text": "It does not pollute the air and never runs out"
+      },
+      {
+       "label": "Limits",
+       "text": "It depends on the weather and the equipment is costly"
+      }
+     ]
+    }
+   },
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Kundalik hayotda",
+     "body": "Tom ustidagi quyosh panellari\nQuyosh suv isitgichlari\nKo‘cha chiroqlari uchun kichik panellar",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "В повседневной жизни",
+     "body": "Солнечные панели на крышах\nСолнечные водонагреватели\nНебольшие панели для уличных фонарей",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "In everyday life",
+     "body": "Solar panels on roofs\nSolar water heaters\nSmall panels for street lights",
+     "items": []
+    }
+   }
+  ],
+  "misol": [
+   {
+    "uz": {
+     "layout": "two_column",
+     "heading": "Quyosh va shamol",
+     "body": "",
+     "items": [
+      {
+       "label": "Quyosh",
+       "text": "Kunduzi, ochiq havoda ko‘proq tok beradi"
+      },
+      {
+       "label": "Shamol",
+       "text": "Ochiq dala va tog‘ yonbag‘irlarida yaxshi ishlaydi"
+      }
+     ]
+    },
+    "ru": {
+     "layout": "two_column",
+     "heading": "Солнце и ветер",
+     "body": "",
+     "items": [
+      {
+       "label": "Солнце",
+       "text": "Днём и в ясную погоду даёт больше тока"
+      },
+      {
+       "label": "Ветер",
+       "text": "Хорошо работает в открытой степи и на склонах"
+      }
+     ]
+    },
+    "en": {
+     "layout": "two_column",
+     "heading": "Sun and wind",
+     "body": "",
+     "items": [
+      {
+       "label": "Sun",
+       "text": "Gives more power by day and in clear weather"
+      },
+      {
+       "label": "Wind",
+       "text": "Works well on open plains and hillsides"
+      }
+     ]
+    }
+   },
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Uyda tejash",
+     "body": "Quyosh isitgichi gaz sarfini kamaytiradi\nPanel ortiqcha tokni akkumulyatorga yig‘adi\nTejamkor lampalar bilan birga yaxshi ishlaydi",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Экономия дома",
+     "body": "Солнечный нагреватель сокращает расход газа\nПанель запасает лишний ток в аккумуляторе\nХорошо работает вместе с экономными лампами",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Saving at home",
+     "body": "A solar heater cuts gas use\nA panel stores spare power in a battery\nIt works well with energy-saving lamps",
+     "items": []
+    }
+   }
+  ],
+  "raqamlar": [
+   {
+    "uz": {
+     "layout": "chart",
+     "heading": "30 kishidan 17 tasi quyoshni tanladi",
+     "body": "",
+     "items": [
+      {
+       "label": "Quyosh",
+       "text": "",
+       "value": "17"
+      },
+      {
+       "label": "Shamol",
+       "text": "",
+       "value": "8"
+      },
+      {
+       "label": "Suv",
+       "text": "",
+       "value": "5"
+      }
+     ],
+     "columns": [
+      "kishi"
+     ]
+    },
+    "ru": {
+     "layout": "chart",
+     "heading": "17 человек из 30 выбрали солнце",
+     "body": "",
+     "items": [
+      {
+       "label": "Солнце",
+       "text": "",
+       "value": "17"
+      },
+      {
+       "label": "Ветер",
+       "text": "",
+       "value": "8"
+      },
+      {
+       "label": "Вода",
+       "text": "",
+       "value": "5"
+      }
+     ],
+     "columns": [
+      "человек"
+     ]
+    },
+    "en": {
+     "layout": "chart",
+     "heading": "17 of 30 people chose solar",
+     "body": "",
+     "items": [
+      {
+       "label": "Solar",
+       "text": "",
+       "value": "17"
+      },
+      {
+       "label": "Wind",
+       "text": "",
+       "value": "8"
+      },
+      {
+       "label": "Water",
+       "text": "",
+       "value": "5"
+      }
+     ],
+     "columns": [
+      "people"
+     ]
+    }
+   }
+  ],
+  "xulosa": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Qayta tiklanuvchi manbalar tugamaydi\nUlar havoni toza saqlaydi\nQuyosh, shamol va suv eng ko‘p ishlatiladi",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Возобновляемые источники не иссякают\nОни сохраняют воздух чистым\nЧаще всего используют солнце, ветер и воду",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Renewable sources do not run out\nThey keep the air clean\nSun, wind and water are used most",
+     "items": []
+    }
+   }
+  ],
+  "manbalar": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Namunov A. Qayta tiklanuvchi energetika asoslari. Toshkent, 2021.\nMisolova S. Quyosh energiyasi. Samarqand, 2023.",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Намунов А. Основы возобновляемой энергетики. Ташкент, 2021.\nМисолова С. Солнечная энергия. Самарканд, 2023.",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Namunov A. Foundations of renewable energy. Tashkent, 2021.\nMisolova S. Solar energy. Samarkand, 2023.",
+     "items": []
+    }
+   }
+  ],
+  "rahmat": [
+   {
+    "uz": {
+     "layout": "closing",
+     "heading": "",
+     "body": "Savollaringiz bo‘lsa, marhamat",
+     "items": []
+    },
+    "ru": {
+     "layout": "closing",
+     "heading": "",
+     "body": "Буду рад вашим вопросам",
+     "items": []
+    },
+    "en": {
+     "layout": "closing",
+     "heading": "",
+     "body": "Your questions are welcome",
+     "items": []
+    }
+   }
+  ]
+ }
+}

@@ -1,0 +1,399 @@
+{
+ "entry": "slides.himoya",
+ "case": "figures",
+ "note": "Sample content for the deck sample tool, invented people, organisations and figures only. For a length and a language the tool reads the brief (and source_text) as the customer’s message, takes the entry’s slots with skeleton.slots over the brief’s cues, and fills slide i from slides[<its slot>]: the k-th time a slot repeats takes item k, starting again from the first when the list is shorter. A slot whose heading is fixed carries an empty heading, which the finish writes in the language of the deck. Customer slots hold only what the brief says (figures) or an honest form (topic_only); notes are left to the real model.",
+ "brief": {
+  "uz": "Kurs ishim himoyasi uchun 6 ta slayd kerak: “Python yordamida kutubxona hisobi dasturini yaratish”. Qisqa va sodda bo‘lsin. Dastur kitob qo‘shadi, nomi bo‘yicha qidiradi va hisobot chiqaradi. Sinovda 120 ta kitob kiritildi, qidiruv 1 soniyadan kam vaqt oldi.\nNamuna axborot texnologiyalari universiteti\nBajardi: Toshpo‘latova Madina, 212-guruh\nIlmiy rahbar: katta o‘qituvchi Aliyev B.",
+  "ru": "Нужно 6 слайдов для защиты курсовой: «Создание программы учёта книг в библиотеке на Python». Коротко и просто. Программа добавляет книги, ищет по названию и выводит отчёт. На тесте внесли 120 книг, поиск занял меньше 1 секунды.\nУниверситет информационных технологий «Намуна»\nВыполнила: Тошпулатова Мадина, группа 212\nНаучный руководитель: старший преподаватель Алиев Б.",
+  "en": "I need 6 slides to defend my term paper: “Building a library book-tracking program in Python”. Keep it short and simple. The program adds books, searches by title and prints a report. In testing we entered 120 books and a search took under 1 second.\nNamuna University of Information Technologies\nPrepared by: Madina Toshpulatova, group 212\nSupervisor: Senior Lecturer B. Aliyev"
+ },
+ "slides": {
+  "cover": [
+   {
+    "uz": {
+     "layout": "cover",
+     "heading": "Python yordamida kutubxona hisobi dasturini yaratish",
+     "body": "Kurs ishi\nNamuna axborot texnologiyalari universiteti\nBajardi: Toshpo‘latova Madina, 212-guruh\nIlmiy rahbar: katta o‘qituvchi Aliyev B.",
+     "items": []
+    },
+    "ru": {
+     "layout": "cover",
+     "heading": "Создание программы учёта книг в библиотеке на Python",
+     "body": "Курсовая работа\nУниверситет информационных технологий «Намуна»\nВыполнила: Тошпулатова Мадина, группа 212\nНаучный руководитель: старший преподаватель Алиев Б.",
+     "items": []
+    },
+    "en": {
+     "layout": "cover",
+     "heading": "Building a library book-tracking program in Python",
+     "body": "Term paper\nNamuna University of Information Technologies\nPrepared by: Madina Toshpulatova, group 212\nSupervisor: Senior Lecturer B. Aliyev",
+     "items": []
+    }
+   }
+  ],
+  "dolzarblik": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Kutubxonalarda kitob hisobi ko‘p vaqt oladi\nQog‘oz ro‘yxatda kitob qidirish qiyin\nOddiy dastur ishni tezlashtiradi",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Учёт книг в библиотеке отнимает много времени\nИскать книгу в бумажном списке трудно\nПростая программа ускоряет работу",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Tracking books in a library takes much time\nFinding a book in a paper list is hard\nA simple program speeds up the work",
+     "items": []
+    }
+   }
+  ],
+  "maqsad_vazifalar": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Maqsad: kutubxona hisobi dasturini yaratish\nKitob qo‘shish funksiyasini yozish\nNomi bo‘yicha qidiruvni yozish\nHisobot chiqarishni yozish",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Цель: создать программу учёта книг\nНаписать добавление книг\nНаписать поиск по названию\nНаписать вывод отчёта",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Aim: to build a library tracking program\nTo write adding books\nTo write search by title\nTo write the report",
+     "items": []
+    }
+   }
+  ],
+  "obyekt_predmet_metodlar": [
+   {
+    "uz": {
+     "layout": "two_column",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "Ob’ekt",
+       "text": "Kutubxona kitoblari hisobi"
+      },
+      {
+       "label": "Predmet",
+       "text": "Hisobni Python dasturi bilan yuritish"
+      }
+     ]
+    },
+    "ru": {
+     "layout": "two_column",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "Объект",
+       "text": "Учёт книг в библиотеке"
+      },
+      {
+       "label": "Предмет",
+       "text": "Ведение учёта программой на Python"
+      }
+     ]
+    },
+    "en": {
+     "layout": "two_column",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "Object",
+       "text": "The record of a library’s books"
+      },
+      {
+       "label": "Subject",
+       "text": "Keeping the record with a Python program"
+      }
+     ]
+    }
+   }
+  ],
+  "obyekt_predmet": [
+   {
+    "uz": {
+     "layout": "two_column",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "Ob’ekt",
+       "text": "Kutubxona kitoblari hisobi"
+      },
+      {
+       "label": "Predmet",
+       "text": "Hisobni Python dasturi bilan yuritish"
+      }
+     ]
+    },
+    "ru": {
+     "layout": "two_column",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "Объект",
+       "text": "Учёт книг в библиотеке"
+      },
+      {
+       "label": "Предмет",
+       "text": "Ведение учёта программой на Python"
+      }
+     ]
+    },
+    "en": {
+     "layout": "two_column",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "Object",
+       "text": "The record of a library’s books"
+      },
+      {
+       "label": "Subject",
+       "text": "Keeping the record with a Python program"
+      }
+     ]
+    }
+   }
+  ],
+  "metodlar": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Python dasturlash tili\nSinov: 120 ta kitob kiritildi",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Язык программирования Python\nТест: внесено 120 книг",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "The Python programming language\nTesting: 120 books entered",
+     "items": []
+    }
+   }
+  ],
+  "natija": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Dastur uch ishni bajaradi",
+     "body": "Kitob qo‘shadi\nNomi bo‘yicha qidiradi\nHisobot chiqaradi",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Программа выполняет три задачи",
+     "body": "Добавляет книги\nИщет по названию\nВыводит отчёт",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "The program does three things",
+     "body": "Adds books\nSearches by title\nPrints a report",
+     "items": []
+    }
+   },
+   {
+    "uz": {
+     "layout": "stats",
+     "heading": "Sinovda 120 ta kitob, qidiruv 1 soniyadan kam",
+     "body": "",
+     "items": [
+      {
+       "label": "kitob kiritildi",
+       "text": "sinovda",
+       "value": "120"
+      },
+      {
+       "label": "soniyadan kam",
+       "text": "bir qidiruv",
+       "value": "1"
+      }
+     ]
+    },
+    "ru": {
+     "layout": "stats",
+     "heading": "На тесте 120 книг, поиск меньше 1 секунды",
+     "body": "",
+     "items": [
+      {
+       "label": "книг внесено",
+       "text": "на тесте",
+       "value": "120"
+      },
+      {
+       "label": "секунды и меньше",
+       "text": "один поиск",
+       "value": "1"
+      }
+     ]
+    },
+    "en": {
+     "layout": "stats",
+     "heading": "120 books in testing, a search under 1 second",
+     "body": "",
+     "items": [
+      {
+       "label": "books entered",
+       "text": "in testing",
+       "value": "120"
+      },
+      {
+       "label": "second or less",
+       "text": "one search",
+       "value": "1"
+      }
+     ]
+    }
+   },
+   {
+    "uz": {
+     "layout": "big_number",
+     "heading": "Sinovda 120 ta kitob kiritildi",
+     "body": "",
+     "items": [
+      {
+       "label": "kitob",
+       "text": "dastur sinovida kiritildi",
+       "value": "120"
+      }
+     ]
+    },
+    "ru": {
+     "layout": "big_number",
+     "heading": "На тесте внесено 120 книг",
+     "body": "",
+     "items": [
+      {
+       "label": "книг",
+       "text": "внесено при тестировании программы",
+       "value": "120"
+      }
+     ]
+    },
+    "en": {
+     "layout": "big_number",
+     "heading": "120 books were entered in testing",
+     "body": "",
+     "items": [
+      {
+       "label": "books",
+       "text": "entered while testing the program",
+       "value": "120"
+      }
+     ]
+    }
+   }
+  ],
+  "ilmiy_amaliy": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Amaliy ahamiyati: ...\nQo‘llanish joyi: ...",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Практическая значимость: ...\nГде применяется: ...",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Practical value: ...\nWhere it is used: ...",
+     "items": []
+    }
+   }
+  ],
+  "natija_xulosa": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Dastur kitob qo‘shadi, qidiradi va hisobot chiqaradi\n120 ta kitob bilan sinaldi",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Программа добавляет, ищет и выводит отчёт\nПроверена на 120 книгах",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "The program adds, searches and reports\nTested with 120 books",
+     "items": []
+    }
+   }
+  ],
+  "xulosa": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Kitob qo‘shish, qidiruv va hisobot yozildi\nSinovda 120 ta kitob kiritildi\nQidiruv 1 soniyadan kam vaqt oladi",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Написаны добавление, поиск и отчёт\nНа тесте внесено 120 книг\nПоиск занимает меньше 1 секунды",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Adding, search and the report were written\n120 books were entered in testing\nA search takes under 1 second",
+     "items": []
+    }
+   }
+  ],
+  "rahmat": [
+   {
+    "uz": {
+     "layout": "closing",
+     "heading": "",
+     "body": "Toshpo‘latova Madina, 212-guruh",
+     "items": []
+    },
+    "ru": {
+     "layout": "closing",
+     "heading": "",
+     "body": "Тошпулатова Мадина, группа 212",
+     "items": []
+    },
+    "en": {
+     "layout": "closing",
+     "heading": "",
+     "body": "Madina Toshpulatova, group 212",
+     "items": []
+    }
+   }
+  ]
+ }
+}

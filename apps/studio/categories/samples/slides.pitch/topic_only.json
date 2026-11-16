@@ -1,0 +1,364 @@
+{
+ "entry": "slides.pitch",
+ "case": "topic_only",
+ "note": "Sample content for the deck sample tool, invented people, organisations and figures only. For a length and a language the tool reads the brief (and source_text) as the customer’s message, takes the entry’s slots with skeleton.slots over the brief’s cues, and fills slide i from slides[<its slot>]: the k-th time a slot repeats takes item k, starting again from the first when the list is shorter. A slot whose heading is fixed carries an empty heading, which the finish writes in the language of the deck. Customer slots hold only what the brief says (figures) or an honest form (topic_only); notes are left to the real model.",
+ "brief": {
+  "uz": "Investorlarga slayd kerak: FermaBor — fermerlarni Toshkentdagi restoranlar bilan bog‘laydigan ilova.",
+  "ru": "Нужны слайды для инвесторов: FermaBor — приложение, которое связывает фермеров с ресторанами Ташкента.",
+  "en": "I need slides for investors: FermaBor is an app that connects farmers with restaurants in Tashkent."
+ },
+ "slides": {
+  "cover": [
+   {
+    "uz": {
+     "layout": "cover",
+     "heading": "FermaBor",
+     "body": "Fermerlarni restoranlar bilan bog‘laydigan ilova",
+     "items": []
+    },
+    "ru": {
+     "layout": "cover",
+     "heading": "FermaBor",
+     "body": "Приложение, которое связывает фермеров с ресторанами",
+     "items": []
+    },
+    "en": {
+     "layout": "cover",
+     "heading": "FermaBor",
+     "body": "An app that connects farmers with restaurants",
+     "items": []
+    }
+   }
+  ],
+  "muammo": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Muammo: kim va nima qiynaydi",
+     "body": "Kim: ________\nMuammo: ________\nRaqam va manba: ________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Проблема: кому и что мешает",
+     "body": "Кто: ________\nПроблема: ________\nЦифра и источник: ________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Problem: who and what hurts",
+     "body": "Who: ________\nProblem: ________\nFigure and source: ________",
+     "items": []
+    }
+   }
+  ],
+  "yechim": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Yechim: fermer va restoran bitta ilovada",
+     "body": "FermaBor fermerlarni restoranlar bilan bog‘laydi\nQanday ishlaydi: ________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Решение: фермер и ресторан в одном приложении",
+     "body": "FermaBor связывает фермеров с ресторанами\nКак это работает: ________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Solution: farmer and restaurant in one app",
+     "body": "FermaBor connects farmers with restaurants\nHow it works: ________",
+     "items": []
+    }
+   }
+  ],
+  "mahsulot": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Mahsulot: qanday ishlaydi",
+     "body": "1-qadam: ________\n2-qadam: ________\n3-qadam: ________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Продукт: как это работает",
+     "body": "Шаг 1: ________\nШаг 2: ________\nШаг 3: ________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Product: how it works",
+     "body": "Step 1: ________\nStep 2: ________\nStep 3: ________",
+     "items": []
+    }
+   }
+  ],
+  "natijalar": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Natijalar: hozirgacha nima bor",
+     "body": "Buyurtmalar: ________\nMijozlar: ________\nDavr: ________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Результаты: что уже есть",
+     "body": "Заказы: ________\nКлиенты: ________\nПериод: ________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Traction: what we have so far",
+     "body": "Orders: ________\nCustomers: ________\nPeriod: ________",
+     "items": []
+    }
+   }
+  ],
+  "nega_hozir": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Sabab: ________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Причина: ________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Reason: ________",
+     "items": []
+    }
+   }
+  ],
+  "bozor": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Bozor: TAM, SAM, SOM",
+     "body": "TAM: ________\nSAM: ________\nSOM: ________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Рынок: TAM, SAM, SOM",
+     "body": "TAM: ________\nSAM: ________\nSOM: ________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Market: TAM, SAM, SOM",
+     "body": "TAM: ________\nSAM: ________\nSOM: ________",
+     "items": []
+    }
+   }
+  ],
+  "biznes_model": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Daromad: qanday pul topamiz",
+     "body": "Kim to‘laydi: ________\nNarx yoki komissiya: ________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Доход: как мы зарабатываем",
+     "body": "Кто платит: ________\nЦена или комиссия: ________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Revenue: how we make money",
+     "body": "Who pays: ________\nPrice or commission: ________",
+     "items": []
+    }
+   }
+  ],
+  "raqobat": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Raqobat: hozir qanday hal qilinadi",
+     "body": "Hozirgi yo‘l: ________\nBizning farq: ________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Конкуренты: как решают сейчас",
+     "body": "Как сейчас: ________\nНаше отличие: ________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Competition: how it is solved today",
+     "body": "Today: ________\nOur difference: ________",
+     "items": []
+    }
+   }
+  ],
+  "mijozlar": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Mijozlar: kimlar foydalanadi",
+     "body": "Mijoz: ________\nHamkor: ________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Клиенты: кто пользуется",
+     "body": "Клиент: ________\nПартнёр: ________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Customers: who uses it",
+     "body": "Customer: ________\nPartner: ________",
+     "items": []
+    }
+   }
+  ],
+  "jamoa": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Jamoa: kim nima qiladi",
+     "body": "Asoschi: ________\nDasturchi: ________\nSavdo: ________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Команда: кто что делает",
+     "body": "Основатель: ________\nРазработчик: ________\nПродажи: ________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Team: who does what",
+     "body": "Founder: ________\nDeveloper: ________\nSales: ________",
+     "items": []
+    }
+   }
+  ],
+  "moliya": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Moliya: daromad va xarajat",
+     "body": "Daromad, so‘m: ________\nXarajat, so‘m: ________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Финансы: доход и расходы",
+     "body": "Доход, сум: ________\nРасходы, сум: ________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Finance: revenue and costs",
+     "body": "Revenue, som: ________\nCosts, som: ________",
+     "items": []
+    }
+   }
+  ],
+  "yol_xaritasi": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Yo‘l xaritasi: keyingi qadamlar",
+     "body": "Bosqich va muddat: ________\nBosqich va muddat: ________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Дорожная карта: следующие шаги",
+     "body": "Этап и срок: ________\nЭтап и срок: ________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Roadmap: next steps",
+     "body": "Stage and date: ________\nStage and date: ________",
+     "items": []
+    }
+   }
+  ],
+  "kelajak": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Maqsad: ________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Цель: ________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Goal: ________",
+     "items": []
+    }
+   }
+  ],
+  "sorov": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "So‘rov: qancha va nimaga",
+     "body": "Summa, so‘m: ________\nMuddat: ________\nNimaga sarflanadi: ________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Запрос: сколько и на что",
+     "body": "Сумма, сум: ________\nСрок: ________\nНа что пойдёт: ________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "The ask: how much and for what",
+     "body": "Amount, som: ________\nPeriod: ________\nWhat it pays for: ________",
+     "items": []
+    }
+   }
+  ],
+  "rahmat": [
+   {
+    "uz": {
+     "layout": "closing",
+     "heading": "",
+     "body": "Aloqa: ________",
+     "items": []
+    },
+    "ru": {
+     "layout": "closing",
+     "heading": "",
+     "body": "Контакты: ________",
+     "items": []
+    },
+    "en": {
+     "layout": "closing",
+     "heading": "",
+     "body": "Contact: ________",
+     "items": []
+    }
+   }
+  ]
+ }
+}

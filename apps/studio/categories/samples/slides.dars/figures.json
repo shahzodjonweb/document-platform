@@ -1,0 +1,338 @@
+{
+ "entry": "slides.dars",
+ "case": "figures",
+ "note": "Sample content for the deck sample tool, invented people, organisations and figures only. For a length and a language the tool reads the brief (and source_text) as the customer’s message, takes the entry’s slots with skeleton.slots over the brief’s cues, and fills slide i from slides[<its slot>]: the k-th time a slot repeats takes item k, starting again from the first when the list is shorter. A slot whose heading is fixed carries an empty heading, which the finish writes in the language of the deck. Customer slots hold only what the brief says (figures) or an honest form (topic_only); notes are left to the real model.",
+ "brief": {
+  "uz": "Ochiq dars uchun 12 ta slayd: 5-sinf ona tili, «Sifat». Dars rejasi, uchta maqsad va baholash mezonlari bo‘lsin. Usullar: savol-javob va kichik guruhlarda ishlash. 12-maktab, Samarqand, o‘qituvchi Dilbar Qodirova.",
+  "ru": "Открытый урок, 12 слайдов: родной язык, 5 класс, «Прилагательное». Нужны план урока, три цели и критерии оценивания. Методы: вопросы и ответы, работа в малых группах. Школа № 12, Самарканд, учитель Дилбар Кодирова.",
+  "en": "An open lesson, 12 slides: grade 5 mother tongue, “The adjective”. Include a lesson plan, the three aims and assessment criteria. Methods: question and answer, small-group work. School No. 12, Samarkand, teacher Dilbar Kodirova."
+ },
+ "slides": {
+  "cover": [
+   {
+    "uz": {
+     "layout": "cover",
+     "heading": "Sifat",
+     "body": "5-sinf, ona tili\nO‘qituvchi: Dilbar Qodirova\n12-maktab, Samarqand",
+     "items": []
+    },
+    "ru": {
+     "layout": "cover",
+     "heading": "Прилагательное",
+     "body": "5 класс, родной язык\nУчитель: Дилбар Кодирова\nШкола № 12, Самарканд",
+     "items": []
+    },
+    "en": {
+     "layout": "cover",
+     "heading": "The adjective",
+     "body": "Grade 5, mother tongue\nTeacher: Dilbar Kodirova\nSchool No. 12, Samarkand",
+     "items": []
+    }
+   }
+  ],
+  "maqsad": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Sifatni boshqa so‘z turkumlaridan ajrata olish\nSifat qanday savollarga javob berishini bilish\nGapda sifatni to‘g‘ri qo‘llash",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Отличать прилагательное от других частей речи\nЗнать, на какие вопросы оно отвечает\nПравильно употреблять прилагательное в речи",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "To tell adjectives from other parts of speech\nTo know which questions they answer\nTo use adjectives correctly in a sentence",
+     "items": []
+    }
+   }
+  ],
+  "reja_ochiq": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Takrorlash\nYangi mavzu: sifat\nKichik guruhlarda ishlash\nSavol-javob\nBaholash",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Повторение\nНовая тема: прилагательное\nРабота в малых группах\nВопросы и ответы\nОценивание",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Review\nNew topic: the adjective\nSmall-group work\nQuestion and answer\nAssessment",
+     "items": []
+    }
+   }
+  ],
+  "takrorlash": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Ot nima?\nOt qanday savollarga javob beradi?\nOtga uchta misol keltiring",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Что такое существительное?\nНа какие вопросы оно отвечает?\nПриведите три примера",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "What is a noun?\nWhich questions does it answer?\nGive three examples",
+     "items": []
+    }
+   }
+  ],
+  "tarif": [
+   {
+    "uz": {
+     "layout": "statement",
+     "heading": "Sifat nima",
+     "body": "Sifat — narsaning belgisini bildiruvchi so‘z turkumi.",
+     "items": []
+    },
+    "ru": {
+     "layout": "statement",
+     "heading": "Что такое прилагательное",
+     "body": "Прилагательное — часть речи, которая обозначает признак предмета.",
+     "items": []
+    },
+    "en": {
+     "layout": "statement",
+     "heading": "What an adjective is",
+     "body": "An adjective is a word that names a quality of a thing.",
+     "items": []
+    }
+   }
+  ],
+  "bayon": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Sifat qanday savollarga javob beradi",
+     "body": "Qanday? — qizil olma\nQanaqa? — katta uy\nQaysi? — yangi kitob",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "На какие вопросы отвечает прилагательное",
+     "body": "Какой? — красный мяч\nКакая? — большая школа\nКакое? — новое платье",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Which questions an adjective answers",
+     "body": "What kind? — a red apple\nHow big? — a large house\nWhich one? — the new book",
+     "items": []
+    }
+   },
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Sifat nimani bildiradi",
+     "body": "Rangni: oq, yashil\nHajmni: kichik, keng\nXususiyatni: aqlli, mehribon",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Что обозначает прилагательное",
+     "body": "Цвет: белый, зелёный\nРазмер: маленький, широкий\nКачество: умный, добрый",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "What adjectives describe",
+     "body": "Colour: white, green\nSize: small, wide\nCharacter: clever, kind",
+     "items": []
+    }
+   }
+  ],
+  "misol": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Gapda sifat",
+     "body": "Bog‘da baland daraxtlar o‘sadi\nOsmon tiniq va moviy\nUkam quvnoq bola",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Прилагательное в предложении",
+     "body": "В саду растут высокие деревья\nНебо ясное и голубое\nМой брат весёлый мальчик",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Adjectives in a sentence",
+     "body": "Tall trees grow in the garden\nThe sky is clear and blue\nMy brother is a cheerful boy",
+     "items": []
+    }
+   },
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Sifatni toping",
+     "body": "Shirin non → shirin\nIssiq choy → issiq\nTez poyezd → tez",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Найдите прилагательное",
+     "body": "Сладкий хлеб → сладкий\nГорячий чай → горячий\nБыстрый поезд → быстрый",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Find the adjective",
+     "body": "Sweet bread → sweet\nHot tea → hot\nA fast train → fast",
+     "items": []
+    }
+   }
+  ],
+  "savollar": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Sifat nimani bildiradi?\nSifat qaysi savollarga javob beradi?\nO‘zingiz bir gap tuzing",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Что обозначает прилагательное?\nНа какие вопросы оно отвечает?\nСоставьте своё предложение",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "What does an adjective describe?\nWhich questions does it answer?\nMake up a sentence of your own",
+     "items": []
+    }
+   }
+  ],
+  "mashq": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Guruhda ishlang",
+     "body": "Sinfdagi uchta narsani tasvirlang\nHar biriga ikkita sifat toping\nGaplaringizni o‘qib bering",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Работа в группах",
+     "body": "Опишите три предмета в классе\nПодберите к каждому два прилагательных\nПрочитайте свои предложения",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Work in groups",
+     "body": "Describe three things in the classroom\nFind two adjectives for each\nRead your sentences aloud",
+     "items": []
+    }
+   }
+  ],
+  "xulosa": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Sifat narsaning belgisini bildiradi\nQanday? Qanaqa? Qaysi? savollariga javob beradi\nNutqimizni boy va aniq qiladi",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Прилагательное обозначает признак предмета\nОтвечает на вопросы какой? какая? какое?\nДелает речь богаче и точнее",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "An adjective names a quality of a thing\nIt answers what kind? and which one?\nIt makes our speech richer and clearer",
+     "items": []
+    }
+   }
+  ],
+  "baholash": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Sifatni to‘g‘ri topdi\nSavolini to‘g‘ri berdi\nGapda o‘rinli qo‘lladi",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Правильно нашёл прилагательное\nПравильно задал вопрос\nУместно употребил в предложении",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Found the adjective correctly\nAsked its question correctly\nUsed it well in a sentence",
+     "items": []
+    }
+   }
+  ],
+  "refleksiya": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Bugun nimani bilib oldim?\nQaysi joyi qiyin bo‘ldi?\nNimani yana takrorlayman?",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Что я узнал сегодня?\nЧто было трудным?\nЧто я повторю ещё раз?",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "What did I learn today?\nWhat was hard?\nWhat will I go over again?",
+     "items": []
+    }
+   }
+  ],
+  "uyga_vazifa": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Uyingizdagi beshta narsani sifatlar bilan tasvirlang",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Опишите пять предметов у себя дома с помощью прилагательных",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Describe five things at home using adjectives",
+     "items": []
+    }
+   }
+  ]
+ }
+}
