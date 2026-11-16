@@ -518,7 +518,7 @@
  ],
  "rules": [
   {
-   "text": "One language per test, the customer’s; Uzbek in Latin only, o‘ and g‘ with ‘ and the tutuq with ’. Fixed labels are the template’s, never typed. BSB and CHSB are never expanded.",
+   "text": "One language per test, the customer’s; Uzbek in Latin only, o‘ and g‘ with ‘ and the tutuq with ’. Fixed labels are the template’s, never typed. BSB and CHSB are never expanded, and no paper is called official or from the ministry.",
    "to": "model"
   },
   {
@@ -604,7 +604,7 @@
   },
   "pool": [
    {
-    "uz": "8-sinf kimyo, «Kislotalar» mavzusida 10 ta savollik test. Maktab: 14-maktab.",
+    "uz": "8-sinf kimyo, “Kislotalar” mavzusida 10 ta savollik test. Maktab: 14-maktab.",
     "ru": "Тест по химии для 8 класса, тема «Кислоты», 10 вопросов. Школа № 14.",
     "en": "A chemistry test for grade 8 on acids, 10 questions. School No. 14."
    }

@@ -718,6 +718,7 @@
  "gates": [
   "A native Uzbek and a native Russian reader check the Kirish labels, the fixed headings, the Xulosa formula, the title-page labels of academic_kurs_ishi and the bot copy.",
   "Samples of 10, 25 and 35 pages in uz, ru and en, with and without the customer’s figures and plan, are drawn with the paper sample tool next to units/pdf.kurs_ishi/mock/academic_kurs_ishi.png.",
+  "The shortest paper, 10 pages, is sampled with the paper sample tool in uz, ru and en with no source and with a three-chapter plan, and it ends on page 10 with no longer_than_quoted.",
   "A paper made from bot example 1 shows only the customer’s two sales figures in chapter 2, and one made from a two-chapter kafedra plan keeps every heading word for word.",
   "The facts corpus is at zero on this entry’s examples and pool, and one real-provider run (scripts/operations/ai_smoke.py --category pdf.kurs_ishi) is read before the tick."
  ],

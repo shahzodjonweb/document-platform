@@ -36,7 +36,7 @@
     "xulosa tayyorla",
     "xulosa qil",
     "xulosasini",
-    "mazmunini"
+    "mazmunini qisqa"
    ],
    "ru": [
     "пересказ",
@@ -352,7 +352,7 @@
    "when": "nocue:summary",
    "max_items": 5,
    "words": [
-    20,
+    0,
     100
    ],
    "write": "Three to five points of at most 20 words (five when the customer asks for five), in your own words, repeating only what the body states. None in the questions-and-answers form."
@@ -394,7 +394,7 @@
    "when": "nocue:summary",
    "max_items": 10,
    "words": [
-    20,
+    0,
     140
    ],
    "from": 2,
@@ -449,9 +449,9 @@
  ],
  "bot": {
   "prompt": {
-   "uz": "✍️ Mavzuni, fanni, sinf yoki kursni va necha sahifa kerakligini yozing (aytmasangiz, 4 sahifa).\nNima kerakligini ayting: konspekt, fayl bo‘yicha qisqacha mazmun yoki imtihon uchun savol-javob (savollar ro‘yxatini ham yuboring, 12 tagacha).\n📎 PDF, Word yoki TXT fayl biriktirsangiz, hujjat faqat shu fayl asosida tuziladi.\n🏫 Dars ishlanmasi kerak bo‘lsa, «Dars ishlanmasi / tarqatma» bo‘limini tanlang.",
-   "ru": "✍️ Напишите тему, предмет, класс или курс и сколько страниц нужно (если не указать, 4).\nУкажите, что нужно: конспект, краткое изложение файла или вопросы и ответы к экзамену (пришлите и список вопросов, до 12).\n📎 Прикрепите PDF, Word или TXT — документ будет составлен только по вашему файлу.\n🏫 Поурочный план для учителя — в разделе «Поурочный план / раздатка».",
-   "en": "✍️ Write the topic, the subject, your grade or year and how many pages (4 if you don’t say).\nSay what you need: study notes, a summary of your file, or exam questions with answers (send your list of questions too, up to 12).\n📎 Attach a PDF, Word or TXT file and the document is made only from it.\n🏫 A lesson plan for teaching is under “Lesson plan / handout”."
+   "uz": "✍️ Mavzuni, fanni, sinf yoki kursni va necha sahifa kerakligini yozing (aytmasangiz, 4 sahifa; 1 dan 12 gacha).\nNima kerakligini ayting: konspekt, fayl bo‘yicha qisqacha mazmun yoki imtihon uchun savol-javob (savollar ro‘yxatini ham yuboring, 12 tagacha).\n📎 PDF, Word yoki TXT fayl biriktirsangiz, hujjat faqat shu fayl asosida tuziladi.\n🏫 Dars ishlanmasi kerak bo‘lsa, «Dars ishlanmasi / tarqatma» bo‘limini tanlang.",
+   "ru": "✍️ Напишите тему, предмет, класс или курс и сколько страниц нужно (если не указать, 4; от 1 до 12).\nУкажите, что нужно: конспект, краткое изложение файла или вопросы и ответы к экзамену (пришлите и список вопросов, до 12).\n📎 Прикрепите PDF, Word или TXT — документ будет составлен только по вашему файлу.\n🏫 Поурочный план для учителя — в разделе «Поурочный план / раздатка».",
+   "en": "✍️ Write the topic, the subject, your grade or year and how many pages (4 if you don’t say; 1 to 12).\nSay what you need: study notes, a summary of your file, or exam questions with answers (send your list of questions too, up to 12).\n📎 Attach a PDF, Word or TXT file and the document is made only from it.\n🏫 A lesson plan for teaching is under “Lesson plan / handout”."
   },
   "examples": [
    {
@@ -498,6 +498,7 @@
  "gates": [
   "A native Uzbek and a native Russian reader check the fixed headings (Reja, Tayanch iboralar, Xulosa, Asosiy fikrlar, Nazorat savollari), the definition-table headers, the kind line and the bot copy.",
   "Samples of 1, 4 and 11 pages in uz, ru and en, in the notes, summary and questions forms, are drawn with the paper sample tool next to units/pdf.konspekt/mock/study_konspekt.png, formulas read by a person.",
+  "The shortest notes, 1 page, are sampled with the paper sample tool in uz, ru and en in each form (notes, summary, questions and answers), and each ends on page 1 with no longer_than_quoted.",
   "A summary of an attached file adds no name or number the file does not hold (one real-provider run with scripts/operations/ai_smoke.py --category pdf.konspekt and a file), and the facts corpus is at zero."
  ],
  "later": [

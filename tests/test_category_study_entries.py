@@ -68,7 +68,8 @@ def test_a_short_paper_has_fewer_sections_to_a_chapter_than_a_long_one():
     def per_chapter(length):
         return [use.part['id'] for use in skeleton.parts(paper, length, frozenset()) if use.instance == 1
                 and use.group == 'chapter']
-    assert per_chapter(3) == ['chapter', 'section_a', 'section_b']
+    assert per_chapter(7) == ['chapter', 'section_a', 'section_b']
+    assert per_chapter(9) == ['chapter', 'section_a', 'section_b']
     assert per_chapter(10) == ['chapter', 'section_a', 'section_b', 'section_c']
     assert per_chapter(20) == ['chapter', 'section_a', 'section_b', 'section_c', 'section_d']
 
@@ -97,6 +98,79 @@ def test_references_are_a_sources_part_and_notes_list_them_only_when_supplied():
     assert 'references' in [section['id'] for section in skeleton.seed(notes, 4, frozenset({SOURCES_CUE}))]
     assert not any(part['kind'] == 'sources' for paper_id in ('pdf.dars_ishlanmasi', 'pdf.test')
                    for part in entry(paper_id).parts)
+
+
+def pdf_entries():
+    return [paper for paper in catalogue._catalogue().entries.values() if paper.service == 'pdf']
+
+
+def every_length(paper):
+    return range(max(1, paper.length['min']), paper.length['max'] + 1)
+
+
+def test_a_reference_list_is_never_asked_for_words_it_has_no_source_for():
+    # A customer who supplied no source must not be told to write N words of
+    # references: the only way to reach N is to invent the list.
+    for paper in pdf_entries():
+        for part in paper.parts:
+            if part['kind'] != 'sources':
+                continue
+            for held in subsets(paper):
+                for length in every_length(paper):
+                    for use in skeleton.parts(paper, length, held):
+                        if use.part['id'] == part['id'] and use.section_id:
+                            assert skeleton.words(paper, use, length, held)[0] == 0, (paper.id, length)
+
+
+def test_only_prose_grows_and_shrinks_in_a_count_paper():
+    # The count rule trims and the top-up extends elastic prose only, so a list,
+    # table or group marked elastic would be handed the leftover pages with
+    # nothing able to cut or fill it. A test's question parts grow with the
+    # count of questions it derives its pages from, so they are not this rule's.
+    for paper in pdf_entries():
+        if (paper.length['mode'], paper.length['target']) != ('count', 'count'):
+            continue
+        grown = [part['id'] for part in paper.parts if part.get('elastic') and part['kind'] != 'prose']
+        assert not grown, (paper.id, grown)
+
+
+@pytest.mark.parametrize('entry_id', ['pdf.mustaqil_ish', 'pdf.kurs_ishi', 'pdf.konspekt', 'pdf.dars_ishlanmasi'])
+def test_the_shortest_length_holds_the_pages_its_template_forces(entry_id):
+    # Each placement that starts a page and always draws (no condition, or a
+    # required part, a group's at its fewest instances) is one page the paper
+    # cannot do without; the entry's minimum must leave room for all of them.
+    paper = entry(entry_id)
+    for template_id in paper.templates:
+        flow = catalogue.template(template_id)['flow']
+        forced = 1
+        for place in flow:
+            if not place.get('page_break_before'):
+                continue
+            part = paper.part(place['part']) if place.get('part') else None
+            when = place.get('when')
+            if when and not (when == f"part:{place.get('part')}" and part and part['need'] == 'required'):
+                continue
+            group = (part or {}).get('group')
+            forced += paper.raw['groups'][group]['min'] if group else 1
+        assert forced <= paper.length['min'], (entry_id, template_id, forced)
+    assert str(paper.length['min']) in paper.length['note'] or paper.length['min'] == 1
+    assert any(f"{paper.length['min']} page" in gate for gate in paper.raw['gates']), entry_id
+
+
+def test_a_handout_key_is_written_only_in_a_handout_and_only_when_asked():
+    lesson = entry('pdf.dars_ishlanmasi')
+    keyword = 'Mavzu bo‘yicha kalit so‘zlar va javoblar bilan dars ishlanmasi, 7-sinf'
+    plan = skeleton.cues(lesson, keyword, has_files=False)
+    assert 'h_key' not in [section['id'] for section in skeleton.seed(lesson, 4, plan)]
+    sheet = [use for use in skeleton.parts(lesson, 2, frozenset({'handout'})) if use.part['id'] == 'h_key']
+    assert skeleton.words(lesson, sheet[0], 2, frozenset({'handout'}))[0] == 0
+    assert 'only when the customer asks for the answers' in lesson.part('h_key')['write']
+    # "formula" or "format" in an English brief is not a grade.
+    grade = lesson.field('grade')['cues']['en']
+    assert not any(skeleton.stem_found(stem, 'a formula sheet in a printable format') for stem in grade)
+    # Explaining a topic's content is notes, not a summary of a file.
+    notes = entry('pdf.konspekt')
+    assert 'summary' not in skeleton.cues(notes, 'Fotosintez mavzu mazmunini tushuntiring', has_files=False)
 
 
 def test_a_handout_is_its_own_template_picked_by_its_cue():

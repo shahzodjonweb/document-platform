@@ -19,7 +19,7 @@
   "mode": "count",
   "target": "count",
   "default": 4,
-  "min": 1,
+  "min": 2,
   "max": 8,
   "by_cue": [
    {
@@ -27,7 +27,7 @@
     "default": 2
    }
   ],
-  "note": "One lesson fits 8 pages; a handout defaults to 2 pupil pages."
+  "note": "2 pages is the compact plan (no outline table) and the shortest: the one-page skeleton is deferred, and so a handout asked for on one page is built on 2 until a handout may have a minimum of its own. One lesson fits 8 pages. A handout defaults to 2 pupil pages, and its template holds at most 3."
  },
  "questions": {
   "default": 0,
@@ -118,23 +118,6 @@
     "signature",
     "deputy head"
    ]
-  },
-  "answers": {
-   "uz": [
-    "javoblari",
-    "javoblar varag",
-    "kalit"
-   ],
-   "ru": [
-    "ответы",
-    "ответами",
-    "ключ"
-   ],
-   "en": [
-    "answer key",
-    "answers",
-    "answer sheet"
-   ]
   }
  },
  "ask": {
@@ -201,7 +184,6 @@
     "en": [
      "grade",
      "class",
-     "form",
      "year"
     ]
    },
@@ -560,8 +542,8 @@
    "elastic": false,
    "block": "paragraph",
    "words": [
-    30,
-    90
+    25,
+    60
    ],
    "write": "Its minutes first («3 daqiqa.»), then 2 to 5 sentences: the teacher greets, takes the register, checks readiness, announces the topic and the aim; if group work follows, the groups are formed here (named after the topic’s concepts or 1-guruh, 2-guruh). Third person, present tense."
   },
@@ -577,9 +559,13 @@
    "need": "required",
    "when": "nocue:handout",
    "share": 0.12,
-   "elastic": true,
+   "elastic": false,
    "block": "list",
    "max_items": 8,
+   "words": [
+    50,
+    140
+   ],
    "write": "In body its minutes and the method in one or two sentences, and a last line on what the pupils do. In items the actual questions, 4 to 8, the question in label and its answer in text only when the answer is certain. A game or quiz is written out, not promised."
   },
   {
@@ -664,9 +650,13 @@
    "need": "required",
    "when": "nocue:handout",
    "share": 0.14,
-   "elastic": true,
+   "elastic": false,
    "block": "list",
    "max_items": 8,
+   "words": [
+    60,
+    160
+   ],
    "write": "In body its minutes and the exercises or the practical task in sentences; textbook exercises only by the numbers the customer gave, otherwise «darslikdagi shu mavzuga oid mashqlar». In items a mini-test of 3 to 6 questions: the stem in label, in text the four options «A) … B) … C) … D) …» with exactly one correct, then «Javob: C». The correct letter varies."
   },
   {
@@ -684,8 +674,8 @@
    "elastic": false,
    "block": "paragraph",
    "words": [
-    30,
-    110
+    25,
+    80
    ],
    "write": "Its minutes first, then two summing-up questions, a reflection line («Bugun nimani bildim?») and how the work is assessed with its criterion in one sentence. No pupil names, no marks, no grading scale."
   },
@@ -704,8 +694,8 @@
    "elastic": false,
    "block": "paragraph",
    "words": [
-    15,
-    60
+    12,
+    50
    ],
    "write": "Its minutes first, then a concrete task tied to the topic. Page and exercise numbers only when the customer wrote them; otherwise «Darslikdagi shu mavzuga oid mashqlar bajariladi»."
   },
@@ -786,11 +776,15 @@
    "heading_mode": "model",
    "need": "usual",
    "share": 0.7,
-   "elastic": true,
+   "elastic": false,
    "block": "list",
    "group": "task",
    "when": "cue:handout",
    "max_items": 8,
+   "words": [
+    15,
+    60
+   ],
    "write": "Handout: one task, easy ones first. In heading its title of two to five words («Jadvalni to‘ldiring», «To‘g‘ri javobni tanlang», «Bo‘sh joylarni to‘ldiring», «Savolga javob bering», «Chizing»); in body one instruction line in the siz form; in items its lines: a choice item as the stem in label and «A) … B) … C) … D) …» in text, one correct each; a gap as ______ inside the label; a fill-in table row as its label with empty text. Three to five tasks a page; tasks not needed stay empty. Never an answer on the pupil pages."
   },
   {
@@ -806,13 +800,13 @@
    "share": 0.1,
    "elastic": false,
    "block": "list",
-   "when": "cue:answers",
+   "when": "cue:handout",
    "max_items": 10,
    "words": [
-    10,
+    0,
     200
    ],
-   "write": "Handout, only when the customer asks for the answers: one item per task, the task number in label («1-topshiriq»), its answers in text («1-C, 2-A», the gaps in order, a short model answer). Only answers you are certain of."
+   "write": "Handout, only when the customer asks for the answers (javoblar, kalit, ответы, answer key); otherwise empty. One item per task, the task number in label («1-topshiriq»), its answers in text («1-C, 2-A», the gaps in order, a short model answer). Only answers you are certain of."
   }
  ],
  "rules": [
@@ -847,9 +841,9 @@
  ],
  "bot": {
   "prompt": {
-   "uz": "🏫 Dars ishlanmasi yoki o‘quvchilar uchun tarqatma tayyorlayman.\n✍️ Bitta xabarda yozing: sinf, fan, mavzu (ixtiyoriy: o‘qituvchi, maktab, sana, dars metodlari).\n📎 Darslik sahifasini PDF, Word yoki TXT qilib qo‘shishingiz mumkin.\nSahifa soni aytilmasa: ishlanma 4, tarqatma 2 sahifa (8 tagacha).",
-   "ru": "🏫 Подготовлю поурочный план или раздатку для учеников.\n✍️ Напишите одним сообщением: класс, предмет, тему (по желанию: учитель, школа, дата, методы урока).\n📎 Можно добавить страницы учебника в PDF, Word или TXT.\nЕсли число страниц не указано: план — 4, раздатка — 2 (до 8).",
-   "en": "🏫 I make lesson plans and pupil handouts.\n✍️ Write in one message: grade, subject, topic (optional: teacher, school, date, lesson methods).\n📎 You can attach textbook pages as PDF, Word or TXT.\nNo page count means 4 pages for a plan, 2 for a handout (up to 8)."
+   "uz": "🏫 Dars ishlanmasi yoki o‘quvchilar uchun tarqatma tayyorlayman.\n✍️ Bitta xabarda yozing: sinf, fan, mavzu (ixtiyoriy: o‘qituvchi, maktab, sana, dars metodlari).\n📎 Darslik sahifasini PDF, Word yoki TXT qilib qo‘shishingiz mumkin.\nSahifa soni aytilmasa: ishlanma 4 sahifa (2 dan 8 gacha), tarqatma 2 sahifa (3 tagacha).",
+   "ru": "🏫 Подготовлю поурочный план или раздатку для учеников.\n✍️ Напишите одним сообщением: класс, предмет, тему (по желанию: учитель, школа, дата, методы урока).\n📎 Можно добавить страницы учебника в PDF, Word или TXT.\nЕсли число страниц не указано: план — 4 (от 2 до 8), раздатка — 2 (до 3).",
+   "en": "🏫 I make lesson plans and pupil handouts.\n✍️ Write in one message: grade, subject, topic (optional: teacher, school, date, lesson methods).\n📎 You can attach textbook pages as PDF, Word or TXT.\nNo page count means 4 pages for a plan (2 to 8) and 2 for a handout (up to 3)."
   },
   "examples": [
    {
@@ -896,7 +890,8 @@
  "look": null,
  "gates": [
   "A native Uzbek and a native Russian reader check the stage headings, the three aim labels, the info rows, the outline-table headers, the handout labels and the bot copy.",
-  "Plans of 1, 2, 4 and 8 pages and handouts of 1 and 2 pages (with and without answers) in uz, ru and en are drawn with the paper sample tool next to units/pdf.dars_ishlanmasi/mock/study_dars_ishlanmasi.png and study_tarqatma.png; a person checks every worked example, the minutes and the mini-test keys.",
+  "Plans of 2, 4 and 8 pages (2 the shortest) and handouts of 2 and 3 pages (with and without answers) in uz, ru and en are drawn with the paper sample tool next to units/pdf.dars_ishlanmasi/mock/study_dars_ishlanmasi.png and study_tarqatma.png; a person checks every worked example, the minutes and the mini-test keys.",
+  "The shortest plan, 2 pages (the compact form), and the shortest handout, 2 pupil pages, are sampled with the paper sample tool in uz, ru and en, and each ends on its quoted last page with no longer_than_quoted.",
   "The facts corpus is at zero on this entry’s examples and pool, and one real-provider run each for a plan and a handout (scripts/operations/ai_smoke.py --category pdf.dars_ishlanmasi) is read before the tick."
  ],
  "later": [
@@ -923,7 +918,7 @@
    "text": "Code re-checks of the arithmetic chains, the stage-minute sum and the mini-test keys, sending a stage back with the corrected value."
   },
   {
-   "text": "The nearest-document notice for a calendar plan, a lesson analysis or an open-lesson script, the one-page skeleton form, and marks on every handout task."
+   "text": "The nearest-document notice for a calendar plan, a lesson analysis or an open-lesson script, the one-page skeleton form and a one-page handout (a minimum and a maximum of 3 for the handout alone, which length.by_cue cannot yet say), and marks on every handout task."
   }
  ],
  "groups": {

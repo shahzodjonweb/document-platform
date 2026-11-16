@@ -10,7 +10,7 @@
   "ru": "🎓 Реферат / СРС",
   "en": "🎓 Assignment / Report"
  },
- "summary": "A print-ready student paper in the Uzbek standard form: title page (every fact the customer did not give is a ruled blank, the year from the clock), Reja with real page numbers, Kirish, two or three chapters of numbered sections (the teacher’s plan word for word when given), Xulosa, and references listing only what the customer supplied, a ruled form when nothing was. 3 to 20 pages, default 10, the title, plan and reference pages counted.",
+ "summary": "A print-ready student paper in the Uzbek standard form: title page (every fact the customer did not give is a ruled blank, the year from the clock), Reja with real page numbers, Kirish, two or three chapters of numbered sections (the teacher’s plan word for word when given), Xulosa, and references listing only what the customer supplied, a ruled form when nothing was. 7 to 20 pages, default 10, the title, plan and reference pages counted.",
  "tone": "Academic, impersonal, third person, at the textbook level of the customer’s stated education level; paragraphs of one idea each, joined by linking words.",
  "topic": true,
  "title": "model",
@@ -19,9 +19,9 @@
   "mode": "count",
   "target": "count",
   "default": 10,
-  "min": 3,
+  "min": 7,
   "max": 20,
-  "note": "Physical pages, the title page, the Reja and the references inside the number: 10 pages are about 7 of text. Below 3 is built as 3; above 20 as 20 (a kurs ishi is its own category)."
+  "note": "Physical pages, the title page, the Reja and the references inside the number: 10 pages are about 7 of text. The formal form starts the Reja, the Kirish, each chapter, the Xulosa and the references on a page of their own, so its shortest paper is 7 pages; below 7 is built as 7 (the continuous form of 3 to 7 pages is deferred) and above 20 as 20 (a kurs ishi is its own category)."
  },
  "questions": {
   "default": 0,
@@ -279,7 +279,7 @@
    "heading": null,
    "heading_mode": "none",
    "need": "required",
-   "share": 0.08,
+   "share": 0.1,
    "elastic": false,
    "block": "title_page",
    "fields": [
@@ -308,7 +308,7 @@
    },
    "heading_mode": "fixed",
    "need": "required",
-   "share": 0.07,
+   "share": 0.1,
    "elastic": false,
    "block": "toc",
    "write": "Nothing to write: the template lists the chapter and section headings with the page each starts on."
@@ -326,6 +326,10 @@
    "share": 0.1,
    "elastic": false,
    "block": "paragraph",
+   "words": [
+    200,
+    260
+   ],
    "write": "About one page of flowing prose, in this order: why the topic matters (one paragraph; vary the opening, not always «Bugungi kunda»); the aim («Ishning maqsadi — …», «Цель работы — …») and three or four tasks in one sentence joined by semicolons; the object or the method in one sentence; one sentence naming the parts of the work («Ish kirish, N ta bob, xulosa va foydalanilgan adabiyotlar ro‘yxatidan iborat»), whose number and order match the chapters written. No labelled sub-paragraphs, no citation marks."
   },
   {
@@ -350,7 +354,7 @@
    "heading": null,
    "heading_mode": "model",
    "need": "required",
-   "share": 0.2,
+   "share": 0.18,
    "elastic": true,
    "block": "paragraph",
    "group": "chapter",
@@ -362,7 +366,7 @@
    "heading": null,
    "heading_mode": "model",
    "need": "required",
-   "share": 0.2,
+   "share": 0.18,
    "elastic": true,
    "block": "paragraph",
    "group": "chapter",
@@ -374,12 +378,12 @@
    "heading": null,
    "heading_mode": "model",
    "need": "usual",
-   "share": 0.12,
+   "share": 0.1,
    "elastic": true,
    "block": "paragraph",
    "group": "chapter",
-   "from": 6,
-   "write": "A third section of this chapter, written as the first is: only when the customer’s plan has it or the chapter has the room (papers of six pages and more); otherwise empty."
+   "from": 10,
+   "write": "A third section of this chapter, written as the first is: only when the customer’s plan has it or the chapter has the room (papers of ten pages and more); otherwise empty."
   },
   {
    "id": "section_d",
@@ -387,7 +391,7 @@
    "heading": null,
    "heading_mode": "model",
    "need": "usual",
-   "share": 0.08,
+   "share": 0.05,
    "elastic": true,
    "block": "paragraph",
    "group": "chapter",
@@ -407,6 +411,10 @@
    "share": 0.08,
    "elastic": false,
    "block": "paragraph",
+   "words": [
+    150,
+    230
+   ],
    "write": "About one page. Answers the tasks of the Kirish in the same order, one point each («Birinchidan, … Ikkinchidan, …»), then one sentence on what remains for further study. No new facts, no quotations, no citations."
   },
   {
@@ -419,9 +427,13 @@
    },
    "heading_mode": "fixed",
    "need": "required",
-   "share": 0.06,
+   "share": 0.1,
    "elastic": false,
    "block": "reference_list",
+   "words": [
+    0,
+    300
+   ],
    "write": "One item per source the customer typed or attached, as given and completing nothing: no publisher, year, pages or URL they did not give. An attached file is described only from what its own first pages show (author, title, year), never by its file name. Laws and normative acts first, then scientific and methodical works, foreign works, internet sources. With no source given, no item: the template draws numbered lines to fill in by hand."
   }
  ],
@@ -457,9 +469,9 @@
  ],
  "bot": {
   "prompt": {
-   "uz": "🎓 Bitta xabarda yozing: mavzu, fan va necha sahifa kerakligi (aytmasangiz, 10 sahifa; 3 dan 20 gacha). Titul, reja va adabiyotlar sahifasi ham shu songa kiradi.\nUniversitet, F.I.Sh., guruh va o‘qituvchi yozilsa, titul varag‘iga chiqadi; yozilmasa, qo‘lda to‘ldirish uchun chiziq qoladi.\n📎 O‘qituvchi rejasi yoki manbalaringiz bo‘lsa, PDF, Word yoki TXT fayl qilib yuboring. Adabiyotlar ro‘yxatiga faqat siz bergan manbalar yoziladi.",
-   "ru": "🎓 Напишите одним сообщением: тему, предмет и сколько страниц нужно (если не указать, 10; от 3 до 20). Титульный лист, содержание и список литературы входят в это число.\nВуз, ФИО, группа и преподаватель попадут на титульный лист; что не укажете, останется линией для заполнения от руки.\n📎 Есть план от преподавателя или источники? Пришлите файлом PDF, Word или TXT. В список литературы попадут только ваши источники.",
-   "en": "🎓 Say it all in one message: the topic, the subject and how many pages (10 if you don’t say; 3 to 20). The title page, the contents and the references count among them.\nYour university, full name, group and teacher go on the title page; anything you leave out stays a ruled line to fill in by hand.\n📎 Got the teacher’s plan or your sources? Send them as a PDF, Word or TXT file. Only your sources go into the reference list."
+   "uz": "🎓 Bitta xabarda yozing: mavzu, fan va necha sahifa kerakligi (aytmasangiz, 10 sahifa; 7 dan 20 gacha). Titul, reja va adabiyotlar sahifasi ham shu songa kiradi.\nUniversitet, F.I.Sh., guruh va o‘qituvchi yozilsa, titul varag‘iga chiqadi; yozilmasa, qo‘lda to‘ldirish uchun chiziq qoladi.\n📎 O‘qituvchi rejasi yoki manbalaringiz bo‘lsa, PDF, Word yoki TXT fayl qilib yuboring. Adabiyotlar ro‘yxatiga faqat siz bergan manbalar yoziladi.",
+   "ru": "🎓 Напишите одним сообщением: тему, предмет и сколько страниц нужно (если не указать, 10; от 7 до 20). Титульный лист, содержание и список литературы входят в это число.\nВуз, ФИО, группа и преподаватель попадут на титульный лист; что не укажете, останется линией для заполнения от руки.\n📎 Есть план от преподавателя или источники? Пришлите файлом PDF, Word или TXT. В список литературы попадут только ваши источники.",
+   "en": "🎓 Say it all in one message: the topic, the subject and how many pages (10 if you don’t say; 7 to 20). The title page, the contents and the references count among them.\nYour university, full name, group and teacher go on the title page; anything you leave out stays a ruled line to fill in by hand.\n📎 Got the teacher’s plan or your sources? Send them as a PDF, Word or TXT file. Only your sources go into the reference list."
   },
   "examples": [
    {
@@ -485,9 +497,9 @@
     "en": "An independent assignment in economics: “The role of small business in the national economy”. 15 pages, Ulugbek Valiyev, year 3, group 305. Accepted by senior lecturer L. Mamatqulova."
    },
    {
-    "uz": "Biologiya fanidan referat kerak, mavzu: «Fotosintez jarayoni». 6 sahifa, kollej 1-kurs uchun.",
-    "ru": "Нужен реферат по биологии на тему «Процесс фотосинтеза». 6 страниц, для 1 курса колледжа.",
-    "en": "I need a biology report on “The process of photosynthesis”. 6 pages, for year 1 of college."
+    "uz": "Biologiya fanidan referat kerak, mavzu: «Fotosintez jarayoni». 8 sahifa, kollej 1-kurs uchun.",
+    "ru": "Нужен реферат по биологии на тему «Процесс фотосинтеза». 8 страниц, для 1 курса колледжа.",
+    "en": "I need a biology report on “The process of photosynthesis”. 8 pages, for year 1 of college."
    }
   ],
   "attach": true,
@@ -510,7 +522,8 @@
  "look": null,
  "gates": [
   "A native Uzbek and a native Russian reader check the fixed headings (Reja, Kirish, Xulosa, Foydalanilgan adabiyotlar), the title-page labels of academic_mustaqil_ish and the bot copy.",
-  "Samples of 3, 10 and 20 pages in uz, ru and en, with every title fact and with none, are drawn with the paper sample tool and looked at next to units/pdf.mustaqil_ish/mock/academic_mustaqil_ish.png.",
+  "Samples of 7, 10 and 20 pages (the shortest, the default and the longest) in uz, ru and en, with every title fact and with none, are drawn with the paper sample tool and looked at next to units/pdf.mustaqil_ish/mock/academic_mustaqil_ish.png.",
+  "The shortest paper, 7 pages, is sampled with the paper sample tool in uz, ru and en with no source and with a five-point plan, and it ends on page 7 with no longer_than_quoted.",
   "A paper made from a five-point teacher’s plan keeps every point, in order, as a heading of the Reja.",
   "The facts corpus is at zero on this entry’s examples and pool, and one real-provider run (scripts/operations/ai_smoke.py --category pdf.mustaqil_ish) is read before the tick."
  ],

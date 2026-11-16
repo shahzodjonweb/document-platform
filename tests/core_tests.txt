@@ -1138,3 +1138,12 @@ tests/test_category_study_entries.py::test_a_title_page_year_is_the_clocks_and_n
 tests/test_category_study_entries.py::test_references_are_a_sources_part_and_notes_list_them_only_when_supplied
 tests/test_category_study_entries.py::test_a_handout_is_its_own_template_picked_by_its_cue
 tests/test_category_study_entries.py::test_the_test_keeps_its_locked_shape_with_its_rules_reworded
+
+# Categories, the academic and study papers' sizes (C2a review): a reference list is never asked for words it has no
+# source for; only prose grows and shrinks in a count paper; each entry's shortest length holds the pages its template
+# forces; a handout key only in a handout
+tests/test_category_study_entries.py::test_a_reference_list_is_never_asked_for_words_it_has_no_source_for
+tests/test_category_study_entries.py::test_only_prose_grows_and_shrinks_in_a_count_paper
+tests/test_category_study_entries.py::test_the_shortest_length_holds_the_pages_its_template_forces[pdf.mustaqil_ish]
+tests/test_category_study_entries.py::test_the_shortest_length_holds_the_pages_its_template_forces[pdf.dars_ishlanmasi]
+tests/test_category_study_entries.py::test_a_handout_key_is_written_only_in_a_handout_and_only_when_asked
