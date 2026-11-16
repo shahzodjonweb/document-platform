@@ -1044,3 +1044,12 @@ tests/test_category_finish_pdf.py::test_an_ariza_is_held_to_the_customers_words
 tests/test_category_finish_decks.py::test_a_paper_gets_no_deck_pins
 tests/test_category_finish_pdf.py::test_a_section_of_a_part_the_model_does_not_write_goes_whole_and_never_reaches_the_fallback
 tests/test_category_finish_pdf.py::test_a_clock_value_the_customer_never_gave_is_todays_without_a_blank
+
+# Categories, the finish of a paper (F2 review): a letter's text fact naming an invented person, law or quotation
+# goes whole and never reaches the fallback, while a guarded paper's keeps general knowledge; a guarded title loses
+# an invented labelled author; an empty scope leaves the paper as it is
+tests/test_category_finish_pdf.py::test_a_letters_text_fact_naming_an_invented_person_law_or_quotation_is_not_kept[dean]
+tests/test_category_finish_pdf.py::test_a_letters_text_fact_naming_an_invented_person_law_or_quotation_is_not_kept[law]
+tests/test_category_finish_pdf.py::test_a_guarded_papers_text_fact_keeps_general_knowledge
+tests/test_category_finish_pdf.py::test_a_guarded_titles_invented_author_tail_goes[uz]
+tests/test_category_finish_pdf.py::test_an_empty_scope_leaves_the_paper_as_it_is

@@ -49,7 +49,8 @@ and 5) is finished the same way, by part rather than by slot:
 
 - the `facts` section keeps only the values the customer gave, each held to
   its field's kind (facts.supported; a signer's initials to the verified full
-  name, facts.derived); an unknown field, a choice outside its list or a ____
+  name, facts.derived; in a fact-led paper a text fact, a letter's request or
+  reason, also grounded as its parts are); an unknown field, a choice outside its list or a ____
   for a field that is not `if_needed` is simply not kept, since the template
   draws its own blank, and a clock field the customer left out (the year on a
   title page, the date a letter is made) gets today's Tashkent date from code,
@@ -519,6 +520,11 @@ PLAIN_CELLS = ' — '
 HINT = re.compile(r'\s*\([^()]*\)\s*$')
 CELL = ' | '
 CELLS = re.compile(r'\s*\|\s*')
+# An author line at the end of a title, in each language: a label and its colon, or "Prepared by".
+AUTHOR_TAIL = re.compile(
+    r"[\s.,;—–-]*\b(?:(?:tuzuvchi|tuzdi|muallif|tayyorladi|bajardi|o‘qituvchi|составитель|составила?|автор|"
+    r"подготовила?|учитель|author|teacher)\s*:|(?:prepared|compiled|written|made)\s+by\b\s*:?)"
+    r"(?P<value>[^:\n]*)$", re.IGNORECASE)
 
 
 def today():
@@ -555,6 +561,31 @@ def ground_paper(text, trusted, *, translated=False):
     false blank, never an invention.
     """
     return facts.guard(text, trusted, translated=translated, checks=('numbers', 'names'))
+
+
+def _led(entry):
+    """Whether a paper is fact-led: any part grounded (a letter, an official paper), so its people are facts."""
+    return any(part.get('grounded') for part in entry.parts)
+
+
+def _guarded_title(title, trusted, translated, codes):
+    """A guarded paper's title, without a labelled author tail ("Tuzuvchi: …") whose name the customer never gave.
+
+    A guarded title keeps general knowledge ("Amir Temur davri"), so it is not
+    read for names; but a labelled author is a person, and a model-written one
+    ("7-sinf testi. Tuzuvchi: Karimov A.") would ship on the template's title.
+    The tail goes whole when its value is not the customer's person; the
+    template draws authors from facts, so nothing the document needs is lost.
+    """
+    found = AUTHOR_TAIL.search(title)
+    if found is None:
+        return title
+    value = found.group('value')
+    if value.strip() and not _stand_in(value) and facts.supported(value, 'person', trusted, translated=translated):
+        return title
+    if not _stand_in(value):
+        codes.append('ground:name')
+    return title[:found.start()].rstrip(' \t.,;:—–-')
 
 
 def _instance(section_id, part):
@@ -610,11 +641,21 @@ def _cut(value, size):
     """`value` held to a field's max_chars, at a word's end: a cut only shortens, it never changes a word."""
     if not size or len(value) <= size:
         return value
-    return (value[:size + 1].rsplit(None, 1)[0] if ' ' in value[:size + 1] else value[:size]).rstrip(' ,;:')
+    # Any whitespace ends a word: a list field's lines are joined with new lines, not spaces.
+    head = value[:size + 1]
+    return (head.rsplit(None, 1)[0] if re.search(r'\s', head) else value[:size]).rstrip(' ,;:\n')
 
 
-def _fact(field, value, trusted, translated, verified):
-    """(value to keep or None, whether it was taken out as not the customer's) for one field the model filled."""
+def _fact(field, value, trusted, translated, verified, *, led=False):
+    """(value to keep or None, whether it was taken out as not the customer's) for one field the model filled.
+
+    A `text` fact is checked for numbers only, which leaves a guarded paper's
+    topic its general knowledge. In a fact-led paper (`led`: any part grounded,
+    a letter or an official paper) a text fact is the customer's request or
+    reason, which the template and the fallback print as they are, so it is
+    also held as a grounded part is (`ground_paper`): an invented dean, law or
+    quotation takes the whole value out, since half a reason is no reason.
+    """
     if EMPTY_VALUE.fullmatch(value):
         return (BLANK if field['missing'] == 'if_needed' else None), False
     kind = field['kind']
@@ -629,9 +670,11 @@ def _fact(field, value, trusted, translated, verified):
         if base and base != BLANK and facts.derived(value, base):
             return _cut(value, field.get('max_chars')), False
         return None, True
-    if facts.supported(value, kind, trusted, translated=translated):
-        return _cut(value, field.get('max_chars')), False
-    return None, True
+    if not facts.supported(value, kind, trusted, translated=translated):
+        return None, True
+    if led and kind == 'text' and ground_paper(value, trusted, translated=translated)[1]:
+        return None, True
+    return _cut(value, field.get('max_chars')), False
 
 
 def _facts(entry, section, trusted, translated, locale, codes):
@@ -660,11 +703,12 @@ def _facts(entry, section, trusted, translated, locale, codes):
             continue
         given[field['id']] = value
     verified = {}
+    led = _led(entry)
     fields = sorted(entry.fields, key=lambda field: bool(field.get('derived_from')))
     for field in fields:
         if field['id'] not in given:
             continue
-        value, invented = _fact(field, given[field['id']], trusted, translated, verified)
+        value, invented = _fact(field, given[field['id']], trusted, translated, verified, led=led)
         if invented and not field.get('clock'):
             codes.append(f"fact:{field['id']}")
         if value is not None:
@@ -749,7 +793,7 @@ def _questions(questions, trusted, translated, codes):
         if isinstance(question.get('options'), list):
             question['options'] = options
         if broken:
-            codes.append('ground:law')
+            # Guard's own codes (a law or a quotation) already say what emptied it.
             continue
         kept.append(question)
     return kept
@@ -839,6 +883,10 @@ def _paper(entry, data, content, *, only, file_names, codes):
     scope = set(revision.get('selected_section_ids') or ()) or None
     if only is not None:
         scope = set(only) if scope is None else scope & set(only)
+    if scope is not None and not scope:
+        # Nothing to finish (a top-up that wrote nothing, a change whose selection it did not meet): an empty scope
+        # must not reach quality's tidy and enforce, where a falsy selection means the whole document.
+        return content, []
     locale = _locale(data)
     trusted = facts.trusted(data)
     translated = _translated(data)
@@ -873,9 +921,10 @@ def _paper(entry, data, content, *, only, file_names, codes):
                 _finish_part(section, part, locale=locale, trusted=trusted, translated=translated, names=names,
                              codes=found)
                 tables = tables or (part is not None and part['kind'] == 'table')
-        except Exception:
-            log.exception('Category %s: part %s could not be finished and is left empty', entry.id,
-                          section.get('id'))
+        except Exception as error:
+            # The type only, as the codes are: an exception's message may carry the customer's words.
+            log.warning('Category %s: part %s could not be finished and is left empty (%s)', entry.id,
+                        section.get('id'), type(error).__name__)
             section.update(body='', items=[])
             found.append('finish:form')
     if whole:
@@ -883,9 +932,13 @@ def _paper(entry, data, content, *, only, file_names, codes):
             content['title'] = entry.name(locale)
         elif isinstance(content.get('title'), str):
             # A fact-led paper's title may name its people, so it is held as its grounded parts are.
-            check = ground_paper if any(part.get('grounded') for part in entry.parts) else facts.guard
-            content['title'], title_codes = check(content['title'], trusted, translated=translated)
+            led = _led(entry)
+            check = ground_paper if led else facts.guard
+            title, title_codes = check(content['title'], trusted, translated=translated)
             found.extend(title_codes)
+            if not led:
+                title = _guarded_title(title, trusted, translated, found)
+            content['title'] = title if title.strip() or not content['title'].strip() else entry.name(locale)
         if content.get('questions'):
             content['questions'] = _questions(content['questions'], trusted, translated, found)
         _drop_empty(entry, content)
@@ -1020,6 +1073,8 @@ def plain(data, content):
             sections.append(made)
         title = str(content.get('title') or '').strip() or entry.name(locale)
         return {**content, 'title': title, 'sections': sections, 'questions': list(content.get('questions') or [])}
-    except Exception:
-        log.exception('Category %s: no plain projection; the content goes to the fallback as it is', entry.id)
+    except Exception as error:
+        # The type only: an exception's message may carry the customer's words.
+        log.warning('Category %s: no plain projection; the content goes to the fallback as it is (%s)', entry.id,
+                    type(error).__name__)
         return content

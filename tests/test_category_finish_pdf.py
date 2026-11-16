@@ -555,6 +555,77 @@ def test_an_ariza_is_held_to_the_customers_words():
     assert warnings == [finish.FACTS_BLANKED] and made['title'] == 'Ariza'
 
 
+@pytest.mark.parametrize('field_id, value, code', [
+    ('reason', 'Dekan Karimov A. ruxsati bilan oilaviy sabab', 'ground:name'),
+    ('request', 'Prorektor Tursunov B. bilan kelishilgan holda ta’til berishingizni so‘rayman', 'ground:name'),
+    ('request', 'Mehnat kodeksiga muvofiq ta’til berishingizni so‘rayman', 'ground:law'),
+    ('reason', '«Dam olish har bir talabaning haqqi» deganidek, oilaviy sabab', 'ground:quote'),
+], ids=['dean', 'vice-rector', 'law', 'quotation'])
+def test_a_letters_text_fact_naming_an_invented_person_law_or_quotation_is_not_kept(field_id, value, code):
+    ariza = catalogue.get('pdf.xat.ariza')
+    prompt = ('Namuna davlat universiteti rektori nomiga ariza. Men, Qodirova Malika Anvarovna, 2-kurs talabasiman. '
+              'Oilaviy sabab bilan ta’til so‘rayman.')
+    data = draft(ariza, prompt=prompt, length=1)
+    content = answer(data, facts={'items': [{'label': 'applicant_name', 'text': 'Qodirova Malika Anvarovna'},
+                                            {'label': field_id, 'text': value}]})
+    made, warnings, codes = finished(data, content)
+    assert field_id not in facts_of(made), 'the whole value goes, never a value with a hole in it'
+    assert codes == [f'fact:{field_id}'] and warnings == [finish.FACTS_BLANKED], code
+    flat = repr(finish.plain(data, made))
+    assert 'Karimov' not in flat and 'Tursunov' not in flat and 'kodeks' not in flat and 'haqqi' not in flat
+    # The customer's own reason and request stay, numbers and all.
+    content = answer(data, facts={'items': [
+        {'label': 'reason', 'text': 'Oilaviy sabab bilan'},
+        {'label': 'request', 'text': '2-kurs talabasi sifatida ta’til berishingizni so‘rayman'}]})
+    made, warnings, codes = finished(data, content)
+    assert facts_of(made) == {'reason': 'Oilaviy sabab bilan',
+                              'request': '2-kurs talabasi sifatida ta’til berishingizni so‘rayman'}
+    assert codes == [] and warnings == []
+
+
+def test_a_guarded_papers_text_fact_keeps_general_knowledge():
+    # A test is not fact-led: its topic may name a figure of history the customer did not spell out.
+    test = catalogue.get('pdf.test')
+    data = draft(test, prompt='Tarix fanidan 7-sinf uchun test, mavzu: Temuriylar davri.', length=3)
+    made, _, codes = finished(data, answer(data, facts={'items': [
+        {'label': 'topic', 'text': 'Amir Temur va temuriylar davri'}]}))
+    assert facts_of(made)['topic'] == 'Amir Temur va temuriylar davri' and codes == []
+
+
+@pytest.mark.parametrize('locale, title, kept', [
+    ('uz', '7-sinf tarix testi. Tuzuvchi: Karimov A.', '7-sinf tarix testi'),
+    ('ru', 'Тест по истории для 7 класса. Составитель: Каримов А.', 'Тест по истории для 7 класса'),
+    ('en', 'History test for year 7 — prepared by Anvar Karimov', 'History test for year 7'),
+], ids=['uz', 'ru', 'en'])
+def test_a_guarded_titles_invented_author_tail_goes(locale, title, kept):
+    test = catalogue.get('pdf.test')
+    data = draft(test, prompt='Tarix fanidan 7-sinf uchun test.', locale=locale, length=3)
+    made, warnings, codes = finished(data, answer(data, title=title))
+    assert made['title'] == kept and codes == ['ground:name'] and warnings == [finish.FACTS_BLANKED]
+
+
+def test_a_guarded_titles_author_the_customer_gave_stays():
+    test = catalogue.get('pdf.test')
+    data = draft(test, prompt='Tarix fanidan 7-sinf uchun test. Tuzuvchi: Rahimova Dilnoza.', length=3)
+    title = '7-sinf tarix testi. Tuzuvchi: Rahimova Dilnoza'
+    made, _, codes = finished(data, answer(data, title=title))
+    assert made['title'] == title and codes == []
+    made, _, codes = finished(data, answer(data, title='Tuzuvchi: Karimov A.'))
+    assert made['title'] == test.name('uz'), 'a title that was only an author is the category\'s name'
+
+
+def test_an_empty_scope_leaves_the_paper_as_it_is(sinov):
+    data = draft(sinov)
+    content = answer(data, title='«Uch so‘zli iqtibos bu yerda»', kirish={'body': 'U  «bilim»  degan .'})
+    made, warnings, codes = finished(data, content, only=set())
+    assert made == content and warnings == [] and codes == [], 'no tidy or enforce over the whole paper'
+
+
+def test_a_cut_ends_at_any_whitespace():
+    assert finish._cut('Iqtisodiyot\nKitoblar\nMoliya', 15) == 'Iqtisodiyot'
+    assert finish._cut('Iqtisodiyot asoslari', 15) == 'Iqtisodiyot'
+
+
 def test_a_section_of_a_part_the_model_does_not_write_goes_whole_and_never_reaches_the_fallback():
     ariza = catalogue.get('pdf.xat.ariza')
     data = draft(ariza, prompt='Namuna davlat universiteti rektori nomiga ariza: ta’til so‘rayman.', length=1)
