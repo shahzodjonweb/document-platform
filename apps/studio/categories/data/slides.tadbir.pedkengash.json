@@ -1,7 +1,7 @@
 {
  "schema": 2,
  "id": "slides.tadbir.pedkengash",
- "status": "draft",
+ "status": "ready",
  "service": "slides",
  "parent": "slides.tadbir",
  "order": 4,
@@ -816,7 +816,7 @@
  "bot": {
   "prompt": {
    "uz": "🏫 Pedagogik kengash slaydlari. Bitta xabarda yozing: mavzu yoki kun tartibi, maktab, majlis raqami va sanasi, ma’ruzachi va necha slayd kerak (aytmasangiz, 10 ta; ma’lumot berilmagan slaydlarda to‘ldirish uchun bo‘sh joy qoladi).\nO‘zlashtirish, sifat, davomat kabi raqamlaringiz, yutuqlar, muammolar, takliflar va yangi yil vazifalari bo‘lsa, yozing: diagramma va jadval qilamiz. Raqam, ism va sanani biz o‘zimizdan o‘ylab topmaymiz; o‘qituvchilarning ismlari slaydlarga yozilmaydi.\n📎 Hisobot yoki jadvalni PDF, Word yoki TXT qilib qo‘shsangiz, slaydlar shunga tayanadi.",
-   "ru": "🏫 Слайды к педсовету. Напишите одним сообщением: тему или повестку, школу, номер и дату заседания, докладчика и нужное число слайдов (если не указать, будет 10; где данных нет, на слайдах останутся пустые места для заполнения).\nЕсть цифры (успеваемость, качество, посещаемость), достижения, проблемы, предложения и задачи на новый год — напишите их: сделаем диаграмму и таблицу. Цифры, имена и даты мы сами не придумываем; фамилии учителей на слайды не выносим.\n📎 Доклад или таблицу в PDF, Word или TXT — слайды будут опираться на них.",
+   "ru": "🏫 Слайды к педсовету. Напишите одним сообщением: тему или повестку, школу, номер и дату заседания, докладчика и нужное число слайдов (если не указать, будет 10; где данных нет, на слайдах останутся пустые места для заполнения).\nЕсть цифры (успеваемость, качество, посещаемость), достижения, проблемы, предложения и задачи на новый год — напишите их: сделаем диаграмму и таблицу. Цифры, имена и даты мы сами не придумываем; фамилии учителей на слайды не выносим.\n📎 Приложите отчёт или таблицу файлом PDF, Word или TXT — слайды будут опираться на них.",
    "en": "🏫 Pedagogical council slides. Say it in one message: the topic or agenda, the school, the meeting number and date, the presenter and how many slides you want (10 if you do not say; where you give no details, the slides keep blanks for you to fill in).\nIf you have figures (pass rate, quality, attendance), achievements, problems, proposals and the tasks for the new year, write them and we turn them into a chart and a table. We never make up figures, names or dates, and teachers’ names are not put on slides.\n📎 Add the report or a table as a PDF, Word or TXT file and the slides will lean on it."
   },
   "examples": [
@@ -890,7 +890,8 @@
  },
  "gates": [
   "A native Uzbek and a native Russian teacher read the fixed headings (Kun tartibi, Ma’ruza rejasi, Masalaning mohiyati, Muammolar va ularning yechimi, Qaror loyihasi), the resolution forms and the bot copy.",
-  "A 6, a 10 and a 15 slide sample in uz, ru and en are drawn with the deck sample tool and looked at next to units/slides.tadbir.pedkengash/mock/school_pedkengash.png."
+  "A 6, a 10 and a 15 slide sample in uz, ru and en are drawn with the deck sample tool and looked at next to units/slides.tadbir.pedkengash/mock/school_pedkengash.png.",
+  "One real-provider run, scripts/operations/ai_smoke.py --category slides.tadbir.pedkengash on the server, makes the deck with every check passing, and the deck is looked at, before the tick."
  ],
  "later": [
   {

@@ -1,7 +1,7 @@
 {
  "schema": 2,
  "id": "slides.tadbir.ota_onalar",
- "status": "draft",
+ "status": "ready",
  "service": "slides",
  "parent": "slides.tadbir",
  "order": 3,
@@ -948,7 +948,8 @@
  },
  "gates": [
   "A native Uzbek and a native Russian teacher read the fixed headings (Kun tartibi, Sinf natijalari, Sinfimizning yutuqlari, Kelgusi tadbirlar, Qaror loyihasi, Savol va takliflar), the ruled blank and the bot copy.",
-  "A 6, an 8 and a 15 slide sample in uz, ru and en are drawn with the deck sample tool and looked at next to units/slides.tadbir.ota_onalar/mock/school_ota_onalar.png."
+  "A 6, an 8 and a 15 slide sample in uz, ru and en are drawn with the deck sample tool and looked at next to units/slides.tadbir.ota_onalar/mock/school_ota_onalar.png.",
+  "One real-provider run, scripts/operations/ai_smoke.py --category slides.tadbir.ota_onalar on the server, makes the deck with every check passing, and the deck is looked at, before the tick."
  ],
  "later": [
   {

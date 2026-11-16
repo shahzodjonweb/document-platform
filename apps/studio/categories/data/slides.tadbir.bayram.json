@@ -1,7 +1,7 @@
 {
  "schema": 2,
  "id": "slides.tadbir.bayram",
- "status": "draft",
+ "status": "ready",
  "service": "slides",
  "parent": "slides.tadbir",
  "order": 2,
@@ -978,7 +978,8 @@
  "gates": [
   "A native Uzbek and a native Russian reader check the fixed headings (Tadbir dasturi, Bayram tarixi, Nimani eslaymiz, Tabrik, Tilaklar, Xotira daqiqasi), the closing wishes of the holiday table and the bot copy.",
   "The owner and a mother-tongue pedagogue approve the facts of the block (the research fact sheet’s ready facts) before the entry is ticked.",
-  "A 6, a 10 and a 15 slide sample in uz, ru and en are drawn with the deck sample tool and looked at next to units/slides.tadbir.bayram/mock/school_bayram.png."
+  "A 6, a 10 and a 15 slide sample in uz, ru and en are drawn with the deck sample tool and looked at next to units/slides.tadbir.bayram/mock/school_bayram.png.",
+  "One real-provider run, scripts/operations/ai_smoke.py --category slides.tadbir.bayram on the server, makes the deck with every check passing, and the deck is looked at, before the tick."
  ],
  "later": [
   {

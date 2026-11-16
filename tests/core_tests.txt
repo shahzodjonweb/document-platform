@@ -949,3 +949,12 @@ tests/test_bot_category_review.py::test_a_cover_answer_goes_under_the_title_slid
 tests/test_bot_category_review.py::test_the_file_carries_the_categorys_notices[uz]
 tests/test_bot_category_review.py::test_a_deck_made_with_a_file_is_no_draft_and_finished_is_always_said
 tests/test_bot_category_review.py::test_an_old_back_on_the_question_never_draws_a_made_deck_anew
+
+# Deck readiness (N1): the ten decks are ready and meet every readiness check as an error, the switch page
+# names the native read and the real-provider run left before a tick, the sample tool draws a deck's samples to
+# the count asked, a sample table fills its cells, and no customer text breaks off
+tests/test_category_deck_readiness.py::test_every_deck_is_ready_and_meets_its_gates_as_errors
+tests/test_category_deck_readiness.py::test_the_switch_page_says_what_a_person_still_checks_before_the_tick[slides.himoya]
+tests/test_category_deck_readiness.py::test_the_sample_tool_draws_both_cases_to_the_count_asked[slides.himoya]
+tests/test_category_deck_readiness.py::test_a_sample_table_fills_every_cell_its_columns_name
+tests/test_category_deck_readiness.py::test_no_customer_text_breaks_off_mid_sentence

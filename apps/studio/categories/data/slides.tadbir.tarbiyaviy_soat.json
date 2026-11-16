@@ -1,7 +1,7 @@
 {
  "schema": 2,
  "id": "slides.tadbir.tarbiyaviy_soat",
- "status": "draft",
+ "status": "ready",
  "service": "slides",
  "parent": "slides.tadbir",
  "order": 1,
@@ -845,7 +845,7 @@
  "bot": {
   "prompt": {
    "uz": "🌱 Tarbiyaviy soat (Kelajak soati ham) slaydlari. Bitta xabarda yozing: sinf, mavzu va necha slayd (aytmasangiz, 10 ta bo‘ladi).\nO‘yin, uyga vazifa yoki rahmat slaydi kerak bo‘lsa, ayting. Maqol, videolavha nomi yoki sinf so‘rovi raqamlari kerak bo‘lsa, ularni o‘zingiz yozing: biz o‘ylab topmaymiz.\n📎 Mashg‘ulot ssenariysini PDF, Word yoki TXT qilib qo‘shsangiz, slaydlar shunga tayanadi.\nTitul slayd uchun sinf rahbari va maktabni ham yozishingiz mumkin.",
-   "ru": "🌱 Слайды к классному часу (и к «Келажак соати»). Напишите одним сообщением: класс, тему и число слайдов (если не указать, будет 10).\nНужны игра, домашнее задание или слайд «Спасибо» — скажите. Пословицу, название видеоролика или цифры опроса напишите сами: мы их не придумываем.\n📎 Сценарий занятия в PDF, Word или TXT — слайды будут опираться на него.\nДля титульного слайда можно сразу указать классного руководителя и школу.",
+   "ru": "🌱 Слайды к классному часу (и к «Келажак соати»). Напишите одним сообщением: класс, тему и число слайдов (если не указать, будет 10).\nНужны игра, домашнее задание или слайд «Спасибо» — скажите. Пословицу, название видеоролика или цифры опроса напишите сами: мы их не придумываем.\n📎 Приложите сценарий занятия файлом PDF, Word или TXT — слайды будут опираться на него.\nДля титульного слайда можно сразу указать классного руководителя и школу.",
    "en": "🌱 Class hour slides (Kelajak soati too). Say it in one message: grade, topic and the number of slides (if you do not say, you get 10).\nAsk for a game, a homework task or a thank-you slide if you want one. Type any proverb, video title or class survey figures yourself: we never make them up.\n📎 Add the session script as a PDF, Word or TXT file and the slides will lean on it.\nYou may add the class teacher and the school for the title slide."
   },
   "examples": [
@@ -912,7 +912,8 @@
  },
  "gates": [
   "A native Uzbek and a native Russian reader check the fixed headings (Bugungi savol, Mashg‘ulot maqsadi, Hayotiy vaziyat, Muhokama uchun savollar, Refleksiya) and the bot copy.",
-  "A 6, a 10 and a 15 slide sample in uz, ru and en are drawn with the deck sample tool and looked at next to units/slides.tadbir.tarbiyaviy_soat/mock/school_tarbiyaviy_soat.png."
+  "A 6, a 10 and a 15 slide sample in uz, ru and en are drawn with the deck sample tool and looked at next to units/slides.tadbir.tarbiyaviy_soat/mock/school_tarbiyaviy_soat.png.",
+  "One real-provider run, scripts/operations/ai_smoke.py --category slides.tadbir.tarbiyaviy_soat on the server, makes the deck with every check passing, and the deck is looked at, before the tick."
  ],
  "later": [
   {

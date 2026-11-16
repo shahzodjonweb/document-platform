@@ -1,7 +1,7 @@
 {
  "schema": 2,
  "id": "slides.himoya",
- "status": "draft",
+ "status": "ready",
  "service": "slides",
  "parent": null,
  "order": 2,
@@ -124,7 +124,7 @@
    "intro_parts"
   ],
   "review": {
-   "uz": "Siz fayl yoki raqam bermadingiz. Natija slaydlari bo‘sh shakl bo‘lib chiqadi: uni o‘zingiz to‘ldirasiz. Maqsad, vazifalar va ob’ekt mavzudan olingan qoralama: tekshiring.",
+   "uz": "Siz fayl yoki raqam bermadingiz. Natija slaydlari bo‘sh shakl bo‘lib chiqadi: ularni o‘zingiz to‘ldirasiz. Maqsad, vazifalar va obyekt mavzudan olingan qoralama: tekshiring.",
    "ru": "Вы не дали файл или цифры. Слайды с результатами будут пустыми формами: заполните их сами. Цель, задачи и объект взяты из темы как черновик: проверьте.",
    "en": "You gave no file or figures. The result slides come out as empty forms for you to fill in. The aim, tasks and object are a draft taken from the topic: check them."
   },
@@ -469,7 +469,7 @@
    "id": "obyekt_predmet_metodlar",
    "kind": "slide",
    "heading": {
-    "uz": "Ob’ekt, predmet va metodlar",
+    "uz": "Obyekt, predmet va metodlar",
     "ru": "Объект, предмет и методы",
     "en": "Object, subject and methods"
    },
@@ -484,7 +484,7 @@
     "two_column.numbered"
    ],
    "source": "draft",
-   "write": "From 8 slides. Lines “Ob’ekt: ...”, “Predmet: ...” and, only when the customer or the file names methods, “Metodlar: ...”, of at most 12 words. Object and subject differ. With no source they are the topic’s own nouns (draft, marked in the notes); the methods line is never drafted. Spelling: ob’ekt with the tutuq belgisi.",
+   "write": "From 8 slides. Lines “Obyekt: ...”, “Predmet: ...” and, only when the customer or the file names methods, “Metodlar: ...”, of at most 12 words. Object and subject differ. With no source they are the topic’s own nouns (draft, marked in the notes); the methods line is never drafted. Spelling: obyekt, as the Latin orthography writes it.",
    "from": 8,
    "join": 4,
    "when": "nocue:internship",
@@ -494,7 +494,7 @@
    "id": "obyekt_predmet",
    "kind": "slide",
    "heading": {
-    "uz": "Ob’ekt va predmet",
+    "uz": "Obyekt va predmet",
     "ru": "Объект и предмет",
     "en": "Object and subject"
    },
@@ -509,7 +509,7 @@
     "two_column.numbered"
    ],
    "source": "draft",
-   "write": "From 8 slides. Lines “Ob’ekt: ...”, “Predmet: ...” and, only when the customer or the file names methods, “Metodlar: ...”, of at most 12 words. Object and subject differ. With no source they are the topic’s own nouns (draft, marked in the notes); the methods line is never drafted. Spelling: ob’ekt with the tutuq belgisi.",
+   "write": "From 8 slides. Lines “Obyekt: ...”, “Predmet: ...” and, only when the customer or the file names methods, “Metodlar: ...”, of at most 12 words. Object and subject differ. With no source they are the topic’s own nouns (draft, marked in the notes); the methods line is never drafted. Spelling: obyekt, as the Latin orthography writes it.",
    "from": 13,
    "join": 4,
    "when": "nocue:internship"
@@ -799,7 +799,7 @@
    "to": "model"
   },
   {
-   "text": "Language follows the customer’s. Uzbek is Latin only (o‘ g‘ with ‘, the tutuq belgisi with ’: ta’lim, ob’ekt). Russian decks use Выполнил(а) and Научный руководитель, English Prepared by and Supervisor; no emoji, no exclamation mark except in the thanks heading.",
+   "text": "Language follows the customer’s. Uzbek is Latin only (o‘ g‘ with ‘, the tutuq belgisi with ’: ta’lim; but obyekt). Russian decks use Выполнил(а) and Научный руководитель, English Prepared by and Supervisor; no emoji, no exclamation mark except in the thanks heading.",
    "to": "model"
   },
   {
@@ -886,9 +886,10 @@
   "note": "The research type contract (list text from 24 pt, one slide counter, no cover disc) changes the deck renderer and is not in this round; the pins keep the calm variants."
  },
  "gates": [
-  "A native Uzbek reader checks the fixed headings (Mavzuning dolzarbligi, Ob’ekt, predmet va metodlar, Ob’ekt va predmet, Himoyaga olib chiqilayotgan asosiy qoidalar).",
+  "A native Uzbek reader checks the fixed headings (Mavzuning dolzarbligi, Obyekt, predmet va metodlar, Obyekt va predmet, Himoyaga olib chiqilayotgan asosiy qoidalar).",
   "A 6, a 10 and a 15 slide sample in uz, ru and en are drawn with the deck sample tool, with and without figures in the message, and looked at next to units/slides.himoya/mock/school_himoya.png.",
-  "A native Russian reader checks the fixed headings and the bot copy in Russian."
+  "A native Russian reader checks the fixed headings and the bot copy in Russian.",
+  "One real-provider run, scripts/operations/ai_smoke.py --category slides.himoya on the server, makes the deck with every check passing, and the deck is looked at, before the tick."
  ],
  "later": [
   {
