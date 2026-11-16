@@ -16,6 +16,7 @@ The people and organisations in these files are invented.
 import os
 import struct
 import subprocess
+import time
 from pathlib import Path
 
 import pytest
@@ -30,7 +31,7 @@ from tests.test_adversarial import principal
 
 pytestmark = pytest.mark.django_db
 
-UZBEK = ('Toshkent viloyati, Chirchiq shahar 5-maktab o‘qituvchisi Dilfuza Karimova.\n'
+UZBEK = ('Yashilobod tumani “Kamalak” xususiy maktabi o‘qituvchisi Dilfuza Karimova.\n'
          'Mavzu: “Suvning tabiatdagi aylanishi”. Bolalar g‘ayrat bilan qatnashdi, ta’lim sifati oshdi.')
 RUSSIAN = ('Отчёт о работе кружка «Юный эколог» за первое полугодие.\n'
            'Руководитель кружка: Сабина Юлдашева. Проведено 12 занятий, участвовали 18 учеников.')
@@ -170,6 +171,19 @@ def test_a_long_text_counts_its_parts_and_a_plan_cap_still_holds():
     assert (refused.value.code, refused.value.params) == ('page_limit', {'limit': 2})
 
 
+def test_a_text_too_big_for_a_thousand_parts_is_refused_before_it_is_decoded(monkeypatch, tmp_path):
+    from processors import ProcessorError, engine
+    # No encoding takes more than four bytes a character, so past this size a file cannot fit the page limit.
+    assert source_text.MAX_TEXT_BYTES == engine.MAX_PAGES * source_text.PAGE_CHARS * 4
+    monkeypatch.setattr(source_text, 'MAX_TEXT_BYTES', 1000)
+    monkeypatch.setattr(source_text, 'decode', lambda raw: pytest.fail('decoded'))
+    path = tmp_path / 'katta.txt'
+    path.write_bytes('Отчёт. '.encode('cp1251') * 200)
+    with pytest.raises(ProcessorError) as refused:
+        engine.inspect_file(path, sources=True)
+    assert refused.value.code == 'page_limit'
+
+
 def test_an_empty_text_file_is_one_page_whose_draft_will_say_it_had_nothing():
     account, _ = principal(89105)
     assert upload(account, 'empty.txt', b' \r\n\r\n ').page_count == 1
@@ -266,12 +280,15 @@ def office_pages(monkeypatch):
     monkeypatch.setattr(services, 'engine_inspect', inspect)
 
 
-def test_a_word_source_with_a_clickable_link_is_taken_but_never_by_the_tools(office_pages):
+def test_a_word_source_with_a_clickable_link_is_taken_but_never_by_the_tools(office_pages, monkeypatch):
     from tests.test_cv_sources import docx_with_links
+    monkeypatch.setattr('apps.core.services.require_feature', lambda account, feature_id: None)
     account, _ = principal(89114)
     assert refusal(account, 'thesis.docx', docx_with_links(), '') == 'external_content_unsupported'
     asset = upload(account, 'thesis.docx', docx_with_links())
     assert asset.metadata['kind'] == 'docx' and asset.metadata['external_hyperlinks'] is True
+    with pytest.raises(DomainError, match='external_content_unsupported'):
+        validate_inputs(account, 'convert.word_to_pdf', [str(asset.id)])
 
 
 def test_the_public_endpoint_refuses_the_purpose_as_any_unpublished_one():
@@ -299,6 +316,13 @@ def test_decoding_follows_the_mark_then_utf8_then_cyrillic_windows():
     assert source_text.decode(b'\xef\xbb\xbf\xff\xfe') is None
     assert source_text.decode(b'\xff\xfe\x00\xd8') is None  # a lone surrogate
     assert source_text.decode(b'\xff\xfe\x00\x00h\x00\x00\x00') is None  # UTF-32 comes out with NULs
+    # UTF-8 cut in the middle of a character, or with one stray byte, is UTF-8 with U+FFFD there,
+    # never Windows-1251 mojibake ("РўРѕС€..."); damaged far more than that, it is refused.
+    cyrillic = 'Toshkent: Тошкент вилояти, Янгиобод тумани'
+    assert source_text.decode(cyrillic.encode('utf-8') + b'\xd1') == cyrillic + '\ufffd'
+    words = 'Ўзбекистон, Қашқадарё. ' * 100
+    assert source_text.decode(words[:250].encode() + b'\xff' + words[250:].encode()) == words[:250] + '\ufffd' + words[250:]
+    assert source_text.decode(b'\xff'.join(word.encode() for word in words.split())) is None
 
 
 def test_parts_are_cut_at_paragraphs_then_sentences_then_spaces_and_lose_nothing():
@@ -316,6 +340,19 @@ def test_parts_are_cut_at_paragraphs_then_sentences_then_spaces_and_lose_nothing
     word = 'x' * 7000
     assert [len(p) for p in source_text.pages(f'boshlanishi {word} oxiri')] == [11, 3000, 3000, 1006]
     assert [len(p) for p in source_text.pages('abc ' * 5000, size=100)] == [99] * 200
+    # A sentence ends where a run of punctuation begins, with its closing quotes.
+    assert source_text.pages('Birinchi gap?! “Ikkinchi!” Uchinchi... 3.14 son.', size=20) == [
+        'Birinchi gap?!', '“Ikkinchi!”', 'Uchinchi...', '3.14 son.']
+
+
+def test_cutting_a_long_run_of_punctuation_takes_linear_time():
+    # A line of nothing but dots, or of "!?", once took seconds that grew with
+    # the square of its length, in the upload's child and again in every excerpt.
+    started = time.process_time()
+    assert [len(p) for p in source_text.pages('.' * 200_000)] == [3000] * 66 + [2000]
+    assert len(source_text.pages('!?' * 100_000)) == 67
+    assert len(source_text.pages('Gap… ' + '…' * 100_000 + ' tamom.')) == 35
+    assert time.process_time() - started < 0.5
 
 
 def test_a_damaged_compound_file_is_never_a_crash():

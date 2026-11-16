@@ -15,11 +15,14 @@ import struct
 # A "page" of a Word or text file is a part of at most this many characters.
 PAGE_CHARS = 3000
 
-# The longest text read from one file: past it the file has far more than the
-# 1,000 pages any upload may have (at two bytes a character, 16 MiB is over
-# eight million characters, 2,700 parts), so it is refused as too long without
-# decoding it all.
-MAX_TEXT_BYTES = 16 * 1024 * 1024
+# The most pages any upload may have (processors/engine.MAX_PAGES).
+MAX_PARTS = 1000
+
+# The longest text read from one file. No encoding takes more than four bytes
+# a character, so a file past this holds more characters than 1,000 full parts
+# and is refused as too long before it is decoded. It also keeps a decoded
+# file to a few dozen megabytes inside the bot's small container.
+MAX_TEXT_BYTES = MAX_PARTS * PAGE_CHARS * 4
 
 _BOMS = ((b'\xef\xbb\xbf', 'utf-8'), (b'\xff\xfe', 'utf-16-le'), (b'\xfe\xff', 'utf-16-be'))
 
@@ -40,38 +43,74 @@ def _shared(byte):
 _SHARED = frozenset(b for b in range(0x80, 0x100) if _shared(b))
 
 
+def _cyrillic(ch):
+    return '\u0400' <= ch <= '\u04ff' and ch.isalpha()
+
+
+def _cp1251_letter(byte):
+    try:
+        return _cyrillic(bytes([byte]).decode('cp1251'))
+    except UnicodeDecodeError:
+        return False
+
+
+# One byte is one character in this code page, so both counts below are made
+# on the bytes with bytes.translate: a list of the characters themselves costs
+# about 80 bytes each for Cyrillic, a gigabyte for a 16 MiB file.
+_NOT_TELLING = bytes(b for b in range(256) if b < 0x80 or b in _SHARED)
+_NOT_CYRILLIC = bytes(b for b in range(256) if not _cp1251_letter(b))
+# A Cyrillic letter with a Latin letter on either side (every character in
+# this range that cp1251 decodes to is a letter).
+_TOUCHING = re.compile(r'(?<=[A-Za-z])[\u0400-\u04ff]|[\u0400-\u04ff](?=[A-Za-z])')
+
+
 def _windows_1251(raw):
     """The text of a Windows-1251 file, or None when its high bytes are not Cyrillic writing."""
     try:
         text = raw.decode('cp1251')
     except UnicodeDecodeError:
         return None
-    # One byte is one character in this code page, so bytes and characters line up.
-    telling = [ch for byte, ch in zip(raw, text) if byte >= 0x80 and byte not in _SHARED]
-    cyrillic = sum(_cyrillic(ch) for ch in telling)
+    telling = raw.translate(None, _NOT_TELLING)
+    cyrillic = len(telling.translate(None, _NOT_CYRILLIC))
     if cyrillic < 0.95 * len(telling):
         return None
     # Every accented Latin letter is a Cyrillic one in this code page: "cafe"
     # with its accent would read "caf" and a Cyrillic letter. Cyrillic words
     # stand apart from Latin ones, so when most of the Cyrillic letters touch a
     # Latin letter it is Western text, which is not guessed at.
-    touching = sum(1 for i, ch in enumerate(text) if _cyrillic(ch) and (_latin(text[i - 1:i]) or _latin(text[i + 1:i + 2])))
+    touching = sum(1 for _ in _TOUCHING.finditer(text))
     return None if touching * 2 > cyrillic else text
 
 
-def _cyrillic(ch):
-    return '\u0400' <= ch <= '\u04ff' and ch.isalpha()
+def _not_strict_utf8(raw):
+    """The text of bytes strict UTF-8 refused: damaged UTF-8, else Windows-1251, else None.
+
+    A file cut in the middle of a character, or one stray byte, fails strict
+    UTF-8; read as Windows-1251 its lead bytes would each become a Cyrillic
+    letter and the whole file mojibake. Well-formed multibyte characters almost
+    never arise by chance in Windows-1251 text, which breaks UTF-8 at nearly
+    every high byte, so many of them beside few breaks is UTF-8. A file with at
+    most one break in a thousand characters (or a single one) is taken with
+    U+FFFD where the bytes broke, which can be stored and shown; one damaged
+    more than that is refused rather than guessed at as Windows-1251.
+    """
+    text = raw.decode('utf-8', 'replace')
+    broken = text.count('\ufffd')
+    multibyte = len(text) - len(text.encode('ascii', 'ignore')) - broken
+    if multibyte < 10 * broken:
+        return _windows_1251(raw)
+    return text if broken <= max(1, len(text) // 1000) else None
 
 
-def _latin(ch):
-    return ch.isascii() and ch.isalpha()
+_CONTROLS = re.compile('[\x01-\x08\x0e-\x19\x1b-\x1f\x7f-\x9f]')
 
 
 def _plain(text):
     """True for writing, False for a binary file that happened to decode."""
     if '\x00' in text:
         return False
-    controls = sum(1 for ch in text if (ord(ch) < 32 and ch not in '\t\n\r\f\v\x1a') or 0x7f <= ord(ch) < 0xa0)
+    # Control characters other than tab, the line ends, form feed and the old end-of-file mark.
+    controls = sum(1 for _ in _CONTROLS.finditer(text))
     return controls * 100 <= len(text)
 
 
@@ -79,10 +118,12 @@ def decode(raw):
     """The text of a `.txt` file's bytes, with line ends made `\\n`, or None when it is not text.
 
     In order: a byte-order mark (UTF-8, UTF-16 little or big endian); strict
-    UTF-8; then Windows-1251, the "ANSI" of Russian and Uzbek Cyrillic
-    Windows, when at least 95% of the high bytes that tell code pages apart are
-    Cyrillic letters and most of them are not inside Latin words. Nothing is ever guessed with replacement characters: a
-    lone surrogate could be neither stored nor sent to the worker. A NUL, or
+    UTF-8; UTF-8 with a few broken bytes, taken with U+FFFD there and never
+    read as Windows-1251 (_not_strict_utf8); then Windows-1251, the "ANSI" of
+    Russian and Uzbek Cyrillic Windows, when at least 95% of the high bytes
+    that tell code pages apart are Cyrillic letters and most of them are not
+    inside Latin words. A mark's codec is strict: a lone surrogate could be
+    neither stored nor sent to the worker. A NUL, or
     control characters in more than one character in a hundred, is a binary
     file named `.txt` (and UTF-16 or UTF-32 without a mark comes out full of NULs).
     """
@@ -98,13 +139,19 @@ def decode(raw):
         try:
             text = raw.decode('utf-8')
         except UnicodeDecodeError:
-            text = _windows_1251(raw)
+            text = _not_strict_utf8(raw)
     if text is None or not _plain(text):
         return None
     return text.replace('\r\n', '\n').replace('\r', '\n')
 
 
-_SENTENCE = re.compile(r'.*?(?:[.!?…]+["»”’)\]]*\s+|$)', re.S)
+# A sentence ends at the start of a run of . ! ? or … followed by closing
+# quotes or brackets and a space. The run and the quotes are taken possessively
+# and only where the run begins: otherwise, in a line of 40,000 dots, every
+# position the lazy .*? reached would scan the rest of the run again, a cost
+# that grows with the square of the length (25 s for 40,000 characters of
+# "!?"). It splits normal text exactly as the plain pattern does.
+_SENTENCE = re.compile(r'.*?(?:(?<![.!?…])[.!?…]++["»”’)\]]*+\s+|$)', re.S)
 _WORD = re.compile(r'\S*\s*')
 
 
