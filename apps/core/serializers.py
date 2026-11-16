@@ -24,6 +24,20 @@ def warning_codes(job):
     """The warnings that are codes. Job.warnings also holds what a run reported in numbers (job_notes)."""
     return [row for row in job.warnings or [] if isinstance(row,str)]
 
+# Codes kept on the job for the bot and the admin only. The web shows every
+# code of a job's `warnings` through its own translations, and one it has no
+# words for appears raw, so a bot customer opening a category job there would
+# read `facts_blanked`. The bot says it in the category's own words under the
+# file (telegram/delivery.py) and the admin counts it from Job.warnings
+# (operations/metrics.py); neither reads job_data. Holds
+# apps.studio.categories.finish.FACTS_BLANKED, named here so this module does
+# not import the catalogue.
+INTERNAL_WARNINGS=frozenset({'facts_blanked'})
+
+def public_warnings(job):
+    """The warning codes a client is told: warning_codes without the internal ones."""
+    return [code for code in warning_codes(job) if code not in INTERNAL_WARNINGS]
+
 def job_notes(job):
     """What a run reported in numbers, by name: per_command, rasterized_pages, failed_command."""
     notes={}
@@ -46,4 +60,4 @@ def job_data(job):
         artifacts.append(row)
     notes=job_notes(job)
     error=error_data(DomainError(job.error_code,params={'index':notes['failed_command']} if 'failed_command' in notes else None),job.account.locale) if job.error_code else None
-    return {'id':str(job.id),'feature_id':job.feature_id,'status':job.status,'created_at':job.created_at,'started_at':job.started_at,'completed_at':job.completed_at,'input_files':[files[i] for i in job.input_ids if i in files],'artifacts':artifacts,'error':error,'warnings':warning_codes(job),**{name:notes[name] for name in ('per_command','rasterized_pages') if name in notes},'parameters':public_parameters(job.feature_id,job.parameters),'origin_channel':job.origin_channel}
+    return {'id':str(job.id),'feature_id':job.feature_id,'status':job.status,'created_at':job.created_at,'started_at':job.started_at,'completed_at':job.completed_at,'input_files':[files[i] for i in job.input_ids if i in files],'artifacts':artifacts,'error':error,'warnings':public_warnings(job),**{name:notes[name] for name in ('per_command','rasterized_pages') if name in notes},'parameters':public_parameters(job.feature_id,job.parameters),'origin_channel':job.origin_channel}

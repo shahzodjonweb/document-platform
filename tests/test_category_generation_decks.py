@@ -187,6 +187,34 @@ def test_a_topic_only_deck_loses_what_the_model_made_up_and_says_so(customer, mo
     assert [call['stage'] for call in model.calls] == [None]
 
 
+def test_facts_blanked_is_the_bots_and_the_admins_never_a_clients(customer, monkeypatch):
+    """The web shows a job's warning codes through its own words, and one it has none for appears raw.
+
+    facts_blanked stays on the job, where the bot says it under the file in
+    the category's words and the admin counts it, but the job a client reads
+    (job_data, the jobs list and a workflow's jobs all use it) leaves it out.
+    A warning the web knows still reaches it.
+    """
+    from apps.core.models import Job
+    from apps.core.serializers import INTERNAL_WARNINGS, job_data, public_warnings, warning_codes
+    from telegram.delivery import category_notices
+    from tests.test_platform import login_client
+    Model(monkeypatch, case='topic_only')
+    job, _ = made(customer, deck(customer, case='topic_only'))
+    assert finish.FACTS_BLANKED in INTERNAL_WARNINGS
+    assert 'facts_blanked' in job.warnings and 'facts_blanked' in warning_codes(job)
+    assert 'facts_blanked' not in public_warnings(job) and 'facts_blanked' not in job_data(job)['warnings']
+    client = login_client(customer)
+    assert 'facts_blanked' not in client.get(f'/api/v1/jobs/{job.id}').json()['warnings']
+    assert all('facts_blanked' not in row['warnings'] for row in client.get('/api/v1/jobs').json()['results'])
+    assert catalogue.get(HIMOYA).raw['bot']['notices']['blanks']['uz'] in category_notices(job, 'uz')
+    Job.objects.filter(pk=job.pk).update(warnings=[*job.warnings, 'sections_trimmed'])
+    job.refresh_from_db()
+    assert client.get(f'/api/v1/jobs/{job.id}').json()['warnings'] == [
+        code for code in job.warnings if isinstance(code, str) and code != 'facts_blanked']
+    assert 'sections_trimmed' in job_data(job)['warnings']
+
+
 def test_the_first_render_draws_the_variants_the_slots_name(customer, monkeypatch):
     seen = {}
     real = finish.pins
