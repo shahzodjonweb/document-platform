@@ -933,3 +933,19 @@ tests/test_bot_category_sources.py::test_a_file_refused_on_upload_is_said_in_the
 tests/test_bot_category_sources.py::test_a_file_with_no_text_is_taken_out_and_said_and_the_question_asked_again
 tests/test_bot_category_sources.py::test_boshqa_with_a_scan_or_a_word_file_is_todays_flow[False]
 tests/test_bot_category_sources.py::test_boshqa_with_a_scan_or_a_word_file_is_todays_flow[True]
+
+# The bot's category review (B3): the review names the category and offers its one question under Generate, a
+# category is never offered the other service and counts within its bounds, the question is the category's and
+# is answered once with words or a file, a cover answer goes under the header the title slide reads, and the file
+# carries the category's notices
+tests/test_bot_category_review.py::test_the_review_names_the_category_and_offers_its_question_under_generate[uz]
+tests/test_bot_category_review.py::test_no_question_when_it_is_not_wanted_or_the_category_has_none
+tests/test_bot_category_review.py::test_a_category_is_never_offered_the_other_service
+tests/test_bot_category_review.py::test_the_count_is_offered_within_the_categorys_bounds
+tests/test_bot_category_review.py::test_the_question_is_the_categorys_and_back_is_the_review[uz]
+tests/test_bot_category_review.py::test_an_answer_is_added_once_and_the_question_is_gone
+tests/test_bot_category_review.py::test_an_answer_with_a_file_joins_its_sources
+tests/test_bot_category_review.py::test_a_cover_answer_goes_under_the_title_slide_header_the_cover_reads[uz]
+tests/test_bot_category_review.py::test_the_file_carries_the_categorys_notices[uz]
+tests/test_bot_category_review.py::test_a_deck_made_with_a_file_is_no_draft_and_finished_is_always_said
+tests/test_bot_category_review.py::test_an_old_back_on_the_question_never_draws_a_made_deck_anew
