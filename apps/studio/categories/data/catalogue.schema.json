@@ -1,0 +1,240 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://docmaster.live/schemas/category-entry-2.json",
+  "title": "DocMaster category entry",
+  "description": "One category of AI PDF (service pdf, feature ai.pdf_topic) or AI Slides (service slides, feature ai.pptx): apps/studio/categories/data/<id>.json. A PDF template is a separate document validated against #/$defs/template: apps/studio/categories/data/templates/<template id>.json. Everything a customer reads carries uz, ru and en; everything the model reads is English. Group buttons (pdf.biz, pdf.xat, slides.tadbir) and the Boshqa buttons are not categories: they live in data/index.json. Validated at import by jsonschema (a runtime dependency already, through drf-spectacular) and then by the cross-reference checks of catalogue.py. Ids are append-only: a field id or part id in data/ids.lock.json may be marked retired but never removed or reused with another kind.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "id", "status", "service", "parent", "order", "labels", "summary", "tone", "topic", "length", "questions", "quality", "fill", "cues", "ask", "fields", "parts", "rules", "bot", "templates", "look", "gates", "later"],
+  "properties": {
+    "schema": {"const": 2},
+    "id": {"type": "string", "pattern": "^(pdf|slides)(\\.[a-z][a-z0-9_]*){1,2}$", "maxLength": 48, "description": "Stored as options.category, in Quote.parameters.category and in analytics. Never renamed and never deleted: retire it instead."},
+    "status": {"enum": ["draft", "ready", "retired"], "description": "draft: converted, not yet reviewed. ready: passed the catalogue checks at its budgets, its samples were looked at and its native review was signed (package N1/N2); only a ready entry can be ticked live in the admin. retired: kept so drafts made with it still generate; it cannot be created, listed or ticked."},
+    "service": {"enum": ["pdf", "slides"]},
+    "parent": {"type": ["string", "null"], "pattern": "^(pdf|slides)\\.[a-z][a-z0-9_]*$", "description": "The group button this category sits under, or null for the first list."},
+    "order": {"type": "integer", "minimum": 0},
+    "labels": {"$ref": "#/$defs/label"},
+    "summary": {"type": "string", "maxLength": 700, "description": "English, for staff; not sent to the model."},
+    "tone": {"type": "string", "maxLength": 900, "description": "English; opens the category's instruction block."},
+    "topic": {"type": "boolean", "description": "true: today's topic question (domain.require_topic and the bot's topic loop, unchanged, answer joined in front) runs for this category. false for papers whose subject is the category itself (ariza, letters, business, events)."},
+    "topic_prompt": {"$ref": "#/$defs/text3", "description": "Optional wording of the topic question for this category (Qaysi fan va qaysi mavzu bo‘yicha test kerak?); without it today's wording is shown."},
+    "title": {"enum": ["model", "label"], "description": "What content.title (and so the file name) is. model: written from the customer's topic. label: this category's label without its emoji, for a paper with no title of its own (Ariza). Default model."},
+    "length": {"$ref": "#/$defs/length"},
+    "questions": {
+      "type": "object", "additionalProperties": false, "required": ["default", "max"],
+      "properties": {"default": {"type": "integer", "minimum": 0, "maximum": 40}, "max": {"type": "integer", "minimum": 0, "maximum": 40}}
+    },
+    "quality": {"enum": ["repair", "fixed"], "description": "repair: quality.finish may send flagged prose parts back to the model once; parts in finish.exempt are never flagged. fixed: tidy and alphabet only, nothing sent back (the CV's deterministic finish)."},
+    "fill": {"type": "boolean", "description": "pdf with length.target count only: whether filling.top_up may write the ungrounded elastic prose parts further when the paper renders short of its pages."},
+    "cues": {
+      "type": "object",
+      "description": "Named stem lists matched, lower case, against language.normalised() of the message (apostrophes folded to '); a cue holds when any stem of any language is found. The name 'sources' is reserved and computed: it holds when files are attached or a references stem (adabiyot, manba, литератур, источник, reference, bibliograph) is in the message.",
+      "propertyNames": {"pattern": "^[a-z][a-z0-9_]*$", "not": {"const": "sources"}},
+      "additionalProperties": {"$ref": "#/$defs/stems"}
+    },
+    "exclusive": {"type": "array", "items": {"type": "array", "minItems": 2, "items": {"type": "string"}}, "description": "Ordered lists of cues that exclude each other: when several of one list hold, only the first one found in list order counts (himoya: masters, bmi, kurs, internship)."},
+    "ask": {
+      "description": "The one extra, skippable question, offered on the review screen as a button (never a blocking refusal), or null.",
+      "oneOf": [{"type": "null"}, {"$ref": "#/$defs/ask"}]
+    },
+    "fields": {"type": "array", "maxItems": 40, "items": {"$ref": "#/$defs/field"}},
+    "groups": {
+      "type": "object", "propertyNames": {"pattern": "^[a-z][a-z0-9_]*$"},
+      "additionalProperties": {"$ref": "#/$defs/group"},
+      "description": "pdf: parts that repeat together as one unit (a chapter with its subsections, an agenda item with its decisions). A group of one part is a repeated part."
+    },
+    "parts": {"type": "array", "minItems": 1, "maxItems": 60, "items": {"$ref": "#/$defs/part"}},
+    "rules": {"type": "array", "maxItems": 40, "items": {"$ref": "#/$defs/rule"}},
+    "bot": {"$ref": "#/$defs/bot"},
+    "templates": {"type": "array", "maxItems": 4, "items": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}, "description": "pdf: ids of data/templates/<id>.json, the default first; every other one carries a pick. Empty for slides."},
+    "look": {"description": "slides only; null for pdf.", "oneOf": [{"type": "null"}, {"$ref": "#/$defs/look"}]},
+    "sources": {"type": "object", "additionalProperties": false, "properties": {"take": {"enum": ["all", "head_tail"], "description": "head_tail: when the attached files hold more text than the plan's source wall, the first and last parts of each file are kept (a thesis's introduction and conclusion) instead of refusing; the review says so. Default all (today's refusal)."}}},
+    "gates": {"type": "array", "items": {"type": "string"}, "description": "What a person checks before the entry is marked ready (native readers, samples). English."},
+    "later": {"type": "array", "items": {"$ref": "#/$defs/later"}, "description": "What the research spec asks for that this round does not build."}
+  },
+  "allOf": [
+    {"if": {"properties": {"service": {"const": "pdf"}}}, "then": {"properties": {"look": {"type": "null"}, "templates": {"minItems": 1}, "length": {"properties": {"unit": {"const": "pages"}}}}}},
+    {"if": {"properties": {"service": {"const": "slides"}}}, "then": {"properties": {"templates": {"maxItems": 0}, "look": {"type": "object"}, "fill": {"const": false}, "length": {"properties": {"unit": {"const": "slides"}, "target": {"const": "count"}}}}}}
+  ],
+  "$defs": {
+    "text3": {
+      "type": "object", "additionalProperties": false, "required": ["uz", "ru", "en"],
+      "properties": {"uz": {"type": "string"}, "ru": {"type": "string"}, "en": {"type": "string"}},
+      "description": "Uzbek is Latin only, with ‘ (U+2018) in o‘ g‘ and ʼ (U+02BC) or ’ for the tutuq; no ASCII apostrophe; no < or &. Slots {field_id} are allowed in template labels; every language carries the same slots. The loader checks it."
+    },
+    "label": {
+      "type": "object", "additionalProperties": false, "required": ["uz", "ru", "en"],
+      "properties": {"uz": {"type": "string", "minLength": 2, "maxLength": 32}, "ru": {"type": "string", "minLength": 2, "maxLength": 32}, "en": {"type": "string", "minLength": 2, "maxLength": 32}},
+      "description": "A full-width bot button: one emoji, a space, the name; 32 characters at most. The uz name is the owner's wording exactly."
+    },
+    "stems": {
+      "type": "object", "additionalProperties": false, "required": ["uz", "ru", "en"],
+      "properties": {
+        "uz": {"type": "array", "items": {"type": "string", "minLength": 2}},
+        "ru": {"type": "array", "items": {"type": "string", "minLength": 2}},
+        "en": {"type": "array", "items": {"type": "string", "minLength": 2}}
+      }
+    },
+    "later": {
+      "type": "object", "additionalProperties": false, "required": ["text"],
+      "properties": {
+        "text": {"type": "string", "minLength": 10},
+        "words": {"type": "array", "items": {"type": "string", "minLength": 3}, "description": "Lower-case stems that name the deferred thing; the catalogue test fails when any appears in the entry's bot prompt, examples, pool or notices, so no copy promises what is not built."}
+      }
+    },
+    "length": {
+      "type": "object", "additionalProperties": false, "required": ["unit", "mode", "target", "default", "min", "max"],
+      "properties": {
+        "unit": {"enum": ["pages", "slides"]},
+        "mode": {"enum": ["count", "fixed", "derived"], "description": "count: options.pages, then a count in the brief, then by_cue, then default, clamped to min..max and the plan. fixed: always default, no stepper. derived: from the question count (per), no stepper."},
+        "target": {"enum": ["count", "ceiling"], "description": "count: the paper fills the number (word targets per part, a page rule that fills, top-up when fill). ceiling: the number is a maximum; parts get word maximums only, nothing pads the paper, no top-up, and the bot's shorter notice is shown when it renders shorter. Slides are always count."},
+        "default": {"type": "integer", "minimum": 1, "maximum": 60},
+        "min": {"type": "integer", "minimum": 1, "maximum": 60},
+        "max": {"type": "integer", "minimum": 1, "maximum": 60},
+        "by_cue": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["cue", "default"], "properties": {"cue": {"type": "string"}, "default": {"type": "integer", "minimum": 1, "maximum": 60}}}},
+        "per": {"type": "object", "additionalProperties": false, "required": ["questions_per_page", "first_page_fewer", "extra_pages"], "properties": {"questions_per_page": {"type": "integer", "minimum": 1}, "first_page_fewer": {"type": "integer", "minimum": 0}, "extra_pages": {"type": "integer", "minimum": 0}}, "description": "derived only: pages = ceil((questions + first_page_fewer) / questions_per_page) + extra_pages."},
+        "note": {"type": "string"}
+      }
+    },
+    "ask": {
+      "type": "object", "additionalProperties": false, "required": ["when", "fields", "review", "prompt"],
+      "properties": {
+        "when": {"enum": ["cues_missing", "few_words", "no_digits", "always"], "description": "When the review screen offers the button (asking.wanted, pure and cheap). cues_missing: no cue of the listed fields is found. few_words: fewer than threshold words. no_digits: no figure in the message and no file attached. always: on every new draft of the category."},
+        "threshold": {"type": "integer", "minimum": 1},
+        "fields": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "review": {"$ref": "#/$defs/text3", "description": "The line on the review screen above the button: what will be blank if nothing is added."},
+        "prompt": {"$ref": "#/$defs/text3", "description": "The question shown after the button is tapped; the answer (text, files, or both) is added to the draft once."},
+        "hint": {"$ref": "#/$defs/text3"},
+        "cover": {"type": "boolean", "description": "slides: the answer is added under a fixed title-slide header line (uz Titul slaydga:, ru На титульном слайде:, en Title slide:) that title_lines.BLOCK reads, so its lines are placed on the cover by title_lines.place."}
+      }
+    },
+    "field": {
+      "type": "object", "additionalProperties": false, "required": ["id", "label", "example", "kind", "need", "missing"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$", "maxLength": 40},
+        "label": {"$ref": "#/$defs/text3"},
+        "example": {"$ref": "#/$defs/text3", "description": "Made-up people and organisations only."},
+        "kind": {"enum": ["person", "org", "place", "date", "number", "money", "phone", "email", "ref", "line", "text", "choice", "list", "flag", "file"], "description": "Decides how facts.supported holds a value to the customer's words and files (section 4 of the architecture). choice: one of the values listed in choices, not checked. flag: true or false. file: not written; the attached files."},
+        "choices": {"type": "array", "items": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}, "description": "choice only: the closed values the model may return."},
+        "need": {"enum": ["required", "recommended", "optional"]},
+        "missing": {"enum": ["ask", "blank", "omit", "if_needed"], "description": "ask: named by ask.fields; a ruled blank if still missing. blank: a ruled blank. omit: nothing is drawn. if_needed: the model returns ____ when this paper needs it and nothing when it does not."},
+        "clock": {"enum": ["year", "date"], "description": "Filled by code from the Tashkent clock at finish time when the customer gave no value (the year on a title page, the date a letter is made). Never written by the model."},
+        "max_chars": {"type": "integer", "minimum": 1, "maximum": 600},
+        "derived_from": {"type": "string", "description": "A field id this one is made from (a signer's initials and surname from the full name); every word and initial must come from the verified base value."},
+        "cues": {"$ref": "#/$defs/stems"},
+        "where": {"type": "string", "description": "English note for the template builder."}
+      }
+    },
+    "group": {
+      "type": "object", "additionalProperties": false, "required": ["min", "max", "sized"],
+      "properties": {
+        "min": {"type": "integer", "minimum": 0, "maximum": 12},
+        "max": {"type": "integer", "minimum": 1, "maximum": 12},
+        "sized": {"enum": ["length", "model"], "description": "length: the instance count follows the pages (by share). model: seeded at max; the model fills as many instances as the brief, its plan or its files need (a teacher's plan of three chapters fills three) and leaves the rest empty; finish drops empty instances, which quality never flags."}
+      }
+    },
+    "part": {
+      "type": "object", "additionalProperties": false, "required": ["id", "kind", "heading", "heading_mode", "need", "write"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$", "maxLength": 32, "description": "pdf: the section id of a written part; an instance of a grouped part is id_2, id_3 (the first keeps id). slides: the slot name; the slide's own id stays s1..sN."},
+        "kind": {"enum": ["prose", "list", "table", "questions", "fixed", "sources", "slide"], "description": "prose, list, table: one content section the model writes (body; items; one item per row). questions: drawn from content.questions, no section. fixed: drawn from facts and template labels, no section; its write is sent with the field table. sources: a list section the model writes, one item per source it can describe from the customer's words or files; code keeps only items that verify (section 4); never a file name. slide: one slide of a deck."},
+        "heading": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/text3"}]},
+        "heading_mode": {"enum": ["fixed", "model", "none"], "description": "fixed: this entry's heading in the document's language, set by code at request and finish time. model: the model writes it (from the customer's plan when one is given). none: no heading."},
+        "need": {"enum": ["required", "usual", "optional"], "description": "required: always present. usual: present unless the count is too small. optional: only by when, from or join."},
+        "share": {"type": "number", "minimum": 0, "maximum": 1, "description": "pdf: share of the pages, for word targets (target count) or word maximums (target ceiling) and call spans."},
+        "elastic": {"type": "boolean", "description": "pdf: takes up the pages the other parts leave; the only parts a fit may trim or a top-up may extend (and only when not grounded)."},
+        "level": {"enum": [1, 2, 3]},
+        "group": {"type": "string", "description": "pdf: the group (top-level groups) this part repeats with."},
+        "from": {"type": "integer", "minimum": 1, "description": "The smallest length (pages or slides) at which the part exists."},
+        "until": {"type": "integer", "minimum": 1, "description": "The largest length at which it exists."},
+        "join": {"type": "integer", "minimum": 0, "description": "slides: the order in which optional slots join as the count grows; repeating slots take the remainder."},
+        "repeat": {"type": "object", "additionalProperties": false, "required": ["min", "max"], "properties": {"min": {"type": "integer", "minimum": 0}, "max": {"type": "integer", "minimum": 1, "maximum": 40}}, "description": "slides only: a slot that repeats to fill the count."},
+        "when": {"type": "string", "pattern": "^(cue|nocue):[a-z][a-z0-9_]*$", "description": "Exists only when the cue holds (cue:) or does not (nocue:); cue:sources is the reserved computed cue."},
+        "write": {"type": "string", "maxLength": 1600, "description": "English: what the model writes here. Sent as the part's row of the request's parts list; for a fixed part, sent with the field table for the fields it draws."},
+        "words": {"type": "array", "prefixItems": [{"type": "integer"}, {"type": "integer"}], "minItems": 2, "maxItems": 2, "description": "Lowest and highest word count when the part is not elastic."},
+        "max_items": {"type": "integer", "minimum": 1, "maximum": 60},
+        "columns": {"type": "array", "minItems": 2, "maxItems": 8, "items": {"$ref": "#/$defs/text3"}, "description": "table: the header cells, drawn by code from here, never stored in the draft. A row is one item: label is the first cell, value the last, text the cells between joined by ' | '."},
+        "computed": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["column", "op", "of"], "properties": {"column": {"type": "integer", "minimum": 0}, "op": {"enum": ["sum", "difference", "percent", "share", "product"]}, "of": {"type": "array", "items": {"type": "integer", "minimum": 0}}}}, "description": "table: cells the model leaves empty and derive.py fills from verified numbers of the same row (difference of plan and fact, percent, share of the column total, quantity times price)."},
+        "total": {"type": "array", "items": {"type": "integer", "minimum": 0}, "description": "table: columns summed by derive.py into a total row."},
+        "fields": {"type": "array", "items": {"type": "string"}, "description": "fixed: the fields it draws."},
+        "grounded": {"type": "boolean", "description": "Every number, capitalised name, quotation and legal reference written here must be supported by the customer's words or files (facts.ground); what is not becomes an inline blank, or a removed sentence for a legal reference, and is counted."},
+        "block": {"type": "string", "description": "pdf: the block of blocks.json that draws it by default."},
+        "layouts": {"type": "array", "minItems": 1, "items": {"type": "string"}, "description": "slides: the layouts the slot may take, the preferred first; the last one any content fills (bullets, section, closing)."},
+        "pins": {"type": "array", "items": {"type": "string", "pattern": "^[a-z_]+\\.[a-z_0-9]+$"}, "description": "slides: registered variants tried in order on the first render (render_pptx pins)."},
+        "source": {"enum": ["template", "customer", "draft"], "description": "slides. template: fixed words. customer: only what the customer or the files say, grounded; with nothing, an honest blank form. draft: may be drafted from the topic's own words; the bot's draft notice says so."},
+        "notes": {"type": "string", "description": "slides: the rule for the speaker notes of this slot."},
+        "retired": {"type": "boolean", "description": "Kept for drafts made before; never seeded again."}
+      },
+      "allOf": [
+        {"if": {"properties": {"kind": {"const": "table"}}}, "then": {"required": ["columns"]}},
+        {"if": {"properties": {"kind": {"const": "slide"}}}, "then": {"required": ["layouts", "source"]}},
+        {"if": {"properties": {"heading_mode": {"const": "fixed"}}}, "then": {"properties": {"heading": {"type": "object"}}}}
+      ]
+    },
+    "rule": {
+      "type": "object", "additionalProperties": false, "required": ["text", "to"],
+      "properties": {
+        "text": {"type": "string", "minLength": 10},
+        "to": {"enum": ["model", "engine", "bot", "gate", "rewrite"], "description": "model: sent in the category's instruction block. engine: kept by code (not sent). bot: about the chat. gate: a release check. rewrite: names a mechanism this design replaces; reworded or dropped before the entry is ready (a ready entry has none)."}
+      }
+    },
+    "bot": {
+      "type": "object", "additionalProperties": false, "required": ["prompt", "examples", "attach", "notices"],
+      "properties": {
+        "prompt": {"$ref": "#/$defs/text3", "description": "The body of the describe-what-you-need screen, under the bold service and category line."},
+        "examples": {"type": "array", "minItems": 1, "maxItems": 3, "items": {"$ref": "#/$defs/text3"}},
+        "pool": {"type": "array", "maxItems": 8, "items": {"$ref": "#/$defs/text3"}, "description": "More examples, known to the our-own-example check in a category flow and used by the facts corpus test."},
+        "attach": {"type": "boolean", "description": "Whether the prompt screen carries the files line."},
+        "notices": {
+          "type": "object", "additionalProperties": false,
+          "properties": {
+            "finished": {"$ref": "#/$defs/text3", "description": "Under the finished file, always."},
+            "blanks": {"$ref": "#/$defs/text3", "description": "Under the finished file when facts_blanked was raised."},
+            "draft": {"$ref": "#/$defs/text3", "description": "slides: under the file when a draft-source slot was drafted from the topic."},
+            "shorter": {"$ref": "#/$defs/text3", "description": "length.target ceiling: under the file when it rendered shorter than the number asked."}
+          }
+        }
+      }
+    },
+    "template": {
+      "type": "object", "additionalProperties": false, "required": ["schema", "id", "entries", "name", "family", "page", "type", "page_rule", "furniture", "flow", "labels"],
+      "properties": {
+        "schema": {"const": 2},
+        "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$", "maxLength": 40},
+        "entries": {"type": "array", "minItems": 1, "items": {"type": "string"}, "description": "The category ids that list this template."},
+        "name": {"$ref": "#/$defs/text3"},
+        "family": {"enum": ["academic", "study", "official", "letter", "business"]},
+        "pick": {"type": "string", "pattern": "^((cue|nocue):[a-z][a-z0-9_]*|locale:(uz|ru|en))$", "description": "Taken instead of the default when this holds (cue:handout picks the tarqatma; locale:en picks the personal recommendation letter)."},
+        "page": {"type": "object", "additionalProperties": false, "required": ["margins_mm"], "properties": {"margins_mm": {"type": "object", "additionalProperties": false, "required": ["left", "right", "top", "bottom"], "properties": {"left": {"type": "number"}, "right": {"type": "number"}, "top": {"type": "number"}, "bottom": {"type": "number"}}}}},
+        "type": {"type": "object", "additionalProperties": false, "required": ["face", "ladder"], "properties": {"face": {"enum": ["serif", "sans"]}, "ladder": {"type": "array", "minItems": 1, "maxItems": 6, "items": {"type": "array", "prefixItems": [{"type": "number"}, {"type": "number"}], "minItems": 2, "maxItems": 2}, "description": "Body size and leading, loosest first."}, "align": {"enum": ["left", "justify"]}, "indent_first_mm": {"type": "number"}}},
+        "page_rule": {"type": "object", "additionalProperties": false, "required": ["kind"], "properties": {"kind": {"enum": ["fixed", "flow", "count"]}, "pages": {"type": "integer", "minimum": 1}, "trim": {"type": "boolean"}, "stub_min": {"type": "number"}}},
+        "furniture": {"type": "object", "additionalProperties": false, "required": ["first", "later"], "properties": {"first": {"enum": ["none", "number"]}, "later": {"enum": ["none", "number_top", "number_bottom", "header_number"]}, "format": {"enum": ["n", "n_of_N"]}, "header": {"type": "array", "items": {"type": "string"}}}},
+        "flow": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/placement"}},
+        "labels": {"type": "object", "propertyNames": {"pattern": "^[a-z][a-z0-9_]*$"}, "additionalProperties": {"$ref": "#/$defs/text3"}, "description": "Every fixed word the template prints; a label may hold {field_id} slots (a formula line), filled with the verified value or an inline blank."},
+        "mock": {"type": "string", "description": "The research mock-up a sample is compared with."}
+      }
+    },
+    "placement": {
+      "type": "object", "additionalProperties": false, "required": ["block"],
+      "properties": {
+        "block": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$", "description": "An id of blocks.json with kind block."},
+        "part": {"type": "string", "description": "A part of an entry that lists this template. Consecutive placements whose parts share a group are drawn once per instance, in order."},
+        "fields": {"type": "array", "items": {"type": "string"}},
+        "params": {"type": "object"},
+        "when": {"type": "string", "pattern": "^((fact|nofact):[a-z0-9_]+(=[a-z0-9_]+)?|(blank|part|nopart):[a-z0-9_]+|questions:(choice|open|both|passage)|(cue|nocue):[a-z0-9_]+|pages_from:[0-9]+)$", "description": "fact:id a verified value exists (fact:id=v: it equals v); nofact:id none (nofact:id=v: it is not v); blank:id a blank is drawn for it; part:id the part has text or items; nopart:id it has none; questions:choice|open|both|passage; cue:name / nocue:name; pages_from:N."},
+        "keep": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$", "description": "Consecutive entries with one tag never separate across pages."},
+        "page_break_before": {"type": "boolean"}
+      }
+    },
+    "look": {
+      "type": "object", "additionalProperties": false, "required": ["designs"],
+      "properties": {
+        "designs": {"type": "array", "minItems": 1, "maxItems": 12, "items": {"type": "string", "pattern": "^[a-z_]+$"}, "description": "Ids of deck_designs.DESIGNS. The first is the category's default look, written to template_style.deck_design of a new deck only, never to options.deck_design: a colour in the description and a pick on the setup screen still win."},
+        "by_cue": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["cue", "design"], "properties": {"cue": {"type": "string"}, "design": {"type": "string"}}}},
+        "variants": {"type": "object", "propertyNames": {"pattern": "^[a-z_]+$"}, "additionalProperties": {"type": "array", "items": {"type": "string", "pattern": "^[a-z_0-9]+$"}}, "description": "Per layout, the variants the research found calm; pinned for a slot that names no pins."},
+        "cover_lines": {"type": "integer", "minimum": 0, "maximum": 8, "description": "How many lines the cover slot asks the model for besides its title."},
+        "note": {"type": "string"}
+      }
+    }
+  }
+}

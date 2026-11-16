@@ -1,0 +1,220 @@
+{
+ "schema": 2,
+ "entries": [
+  "pdf.xat.ariza"
+ ],
+ "id": "official_ariza",
+ "name": {
+  "uz": "Rasmiy ariza",
+  "ru": "Официальное заявление",
+  "en": "Official application"
+ },
+ "family": "official",
+ "page": {
+  "margins_mm": {
+   "left": 30,
+   "right": 15,
+   "top": 20,
+   "bottom": 20
+  }
+ },
+ "type": {
+  "face": "serif",
+  "ladder": [
+   [
+    12,
+    18
+   ],
+   [
+    11.5,
+    17
+   ],
+   [
+    11,
+    16
+   ]
+  ],
+  "align": "left",
+  "indent_first_mm": 12.5
+ },
+ "page_rule": {
+  "kind": "fixed",
+  "pages": 1
+ },
+ "furniture": {
+  "first": "none",
+  "later": "number_top",
+  "format": "n"
+ },
+ "flow": [
+  {
+   "block": "party_block",
+   "part": "addressee",
+   "fields": [
+    "addressee_org",
+    "addressee_position",
+    "addressee_person"
+   ],
+   "params": {
+    "anchor": "right_half",
+    "max_lines": 4,
+    "captions": {
+     "addressee_org": "cap_org",
+     "addressee_position": "cap_head"
+    }
+   }
+  },
+  {
+   "block": "party_block",
+   "part": "applicant",
+   "fields": [
+    "applicant_role",
+    "on_behalf_of",
+    "applicant_address",
+    "applicant_name",
+    "phone",
+    "email"
+   ],
+   "params": {
+    "anchor": "right_half",
+    "max_lines": 6,
+    "gap_pt": 12,
+    "captions": {
+     "applicant_role": "cap_role",
+     "applicant_address": "cap_address",
+     "applicant_name": "cap_name"
+    },
+    "labels": {
+     "phone": "tel"
+    }
+   }
+  },
+  {
+   "block": "doc_title",
+   "part": "title",
+   "params": {
+    "label": "title",
+    "tracking_pt": 1.2
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "request",
+   "params": {
+    "indent_first_mm": 12.5,
+    "gap_pt": 0
+   }
+  },
+  {
+   "block": "ruled_blank",
+   "part": "reason_blank",
+   "when": "blank:reason",
+   "params": {
+    "label": "reason",
+    "lines": 2
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "statements",
+   "when": "part:statements",
+   "params": {
+    "indent_first_mm": 12.5,
+    "gap_pt": 0
+   }
+  },
+  {
+   "block": "list",
+   "part": "enclosures",
+   "when": "part:enclosures",
+   "keep": "closing",
+   "params": {
+    "marker": "number",
+    "label": "enclosure",
+    "max_items": 6,
+    "single_unnumbered": true
+   }
+  },
+  {
+   "block": "signature_row",
+   "part": "signature",
+   "fields": [
+    "date_written",
+    "signer_name"
+   ],
+   "keep": "closing",
+   "params": {
+    "variant": "date_sign_name",
+    "sign_room_mm": 14
+   }
+  }
+ ],
+ "labels": {
+  "title": {
+   "uz": "ARIZA",
+   "ru": "ЗАЯВЛЕНИЕ",
+   "en": "APPLICATION"
+  },
+  "reason": {
+   "uz": "Sababi:",
+   "ru": "Причина:",
+   "en": "Reason:"
+  },
+  "enclosure": {
+   "uz": "Ilova:",
+   "ru": "Приложение:",
+   "en": "Enclosure:"
+  },
+  "enclosures": {
+   "uz": "Ilova:",
+   "ru": "Приложение:",
+   "en": "Enclosures:"
+  },
+  "date": {
+   "uz": "Sana",
+   "ru": "Дата",
+   "en": "Date"
+  },
+  "sign": {
+   "uz": "Imzo",
+   "ru": "Подпись",
+   "en": "Signature"
+  },
+  "name": {
+   "uz": "F.I.Sh.",
+   "ru": "Расшифровка",
+   "en": "Printed name"
+  },
+  "tel": {
+   "uz": "Tel.:",
+   "ru": "Тел.:",
+   "en": "Tel.:"
+  },
+  "cap_org": {
+   "uz": "(tashkilot nomi)",
+   "ru": "(наименование организации)",
+   "en": "(name of the organisation)"
+  },
+  "cap_head": {
+   "uz": "(rahbarning lavozimi, F.I.Sh.)",
+   "ru": "(должность, Ф.И.О. руководителя)",
+   "en": "(position and name of the head)"
+  },
+  "cap_role": {
+   "uz": "(lavozimi yoki fakulteti, kursi, guruhi)",
+   "ru": "(должность или факультет, курс, группа)",
+   "en": "(position, or faculty, course, group)"
+  },
+  "cap_name": {
+   "uz": "(F.I.Sh.)",
+   "ru": "(Ф.И.О.)",
+   "en": "(full name)"
+  },
+  "cap_address": {
+   "uz": "(yashash manzili)",
+   "ru": "(адрес проживания)",
+   "en": "(home address)"
+  }
+ },
+ "mock": "units/pdf.xat.ariza/mock/official_ariza.png"
+}
