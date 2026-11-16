@@ -858,7 +858,7 @@
    "to": "model"
   },
   {
-   "text": "A results meeting with no class figure has a results slide of four fill-in lines (“O‘quvchilar soni: ______”, “O‘zlashtirish: ______ %”, “Sifat ko‘rsatkichi: ______ %”, “A’lochilar: ______ nafar”; Russian “Учеников”, “Успеваемость”, “Качество знаний”, “Отличников”; English “Pupils”, “Pass rate”, “Quality rate (marks 4–5)”, “Straight-A pupils”) and its notes open “[To‘ldiring: …]”. No other slide is a blank.",
+   "text": "A results meeting with no class figure has a results slide of four fill-in lines (“O‘quvchilar soni: ______”, “O‘zlashtirish: ______ %”, “Sifat ko‘rsatkichi: ______ %”, “A’lochilar: ______ nafar”; Russian “Учеников”, “Успеваемость”, “Качество знаний”, “Отличников”; English “Pupils”, “Pass rate”, “Quality rate”, “Straight-A pupils”) and its notes open “[To‘ldiring: …]”. No other slide is a blank.",
    "to": "model"
   },
   {
@@ -870,7 +870,7 @@
    "to": "model"
   },
   {
-   "text": "Figures exactly as written (“96%” stays “96%”); a chart has one series and at least 2 rows, a percentage chart on the 0 to 100 scale; English terms “pass rate”, “quality rate (marks 4–5)”, “straight-A pupils”. Decisions are a draft headed “Qaror loyihasi”, only as typed; the next meeting is the closing slide’s second line.",
+   "text": "Figures exactly as written (“96%” stays “96%”); a chart has one series and at least 2 rows, a percentage chart on the 0 to 100 scale; English terms “pass rate”, “quality rate”, “straight-A pupils”, a mark range only as written. Decisions are a draft headed “Qaror loyihasi”, only as typed; the next meeting is the closing slide’s second line.",
    "to": "model"
   },
   {
