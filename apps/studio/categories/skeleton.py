@@ -43,18 +43,28 @@ FACTS = 'facts'
 # everyday topic words ("Qayta tiklanuvchi energiya manbalari", "Источники
 # права"), and "adabiyot" is a school subject, so a bare stem gave a deck a
 # sources slide, an empty form, when the customer supplied no source at all.
-# A heading word counts only as a heading, at the start of a line and followed
-# by a colon ("Manbalar:", "Sources:"), because "energy sources: solar, wind"
-# is a topic too. Read over folded text (apostrophes one, casefolded).
+# The bare "references" and "bibliography" go the same way ("Pop culture
+# references", "Библиография как наука"): a customer who only asks for
+# references gives none, and the AI invents none. "Список" is matched as both
+# "список" and "списка/списком", and Uzbek "ro‘yxat" also as "ro‘yhat".
+# A heading word counts only as a heading of a list: at the start of a line,
+# then a colon and a new line, a colon and a numbered item, or a numbered or
+# bulleted item on the next line ("Manbalar:\n…", "Sources: 1. …",
+# "References\n- …"). "energy sources: solar, wind" is a topic, and a subject
+# label ("Literature: Romeo and Juliet", "Adabiyotlar: 7-sinf") is no list.
+# Read over folded text (apostrophes one, casefolded).
+_NUMBERED = r"\d{1,3}[.)][ \t]*\S"
 REFERENCES = re.compile(
     r"(?<!\w)(?:"
-    r"(?:adabiyot|manba)\w*\s+r[ou]'?yxat|foydalanilgan\s+(?:adabiyot|manba)"
-    r"|(?:адабиёт|манба)\w*\s+рўйхат|фойдаланилган\s+(?:адабиёт|манба)"
-    r"|списк\w*\s+(?:использованн\w*\s+)?(?:литератур|источник)|использованн\w*\s+(?:литератур|источник)"
-    r"|библиограф"
-    r"|references\b|reference\s+list|bibliograph|works\s+cited|list\s+of\s+(?:sources|references|literature)"
+    r"(?:adabiyot|manba)\w*\s+r[ou]'?y[xh]at|foydalanilgan\s+(?:adabiyot|manba)"
+    r"|(?:адабиёт|манба)\w*\s+р[ўу]йх?ат|фойдаланилган\s+(?:адабиёт|манба)"
+    r"|спис(?:ок|к)\w*\s+(?:использованн\w*\s+)?(?:литератур|источник)|использованн\w*\s+(?:литератур|источник)"
+    r"|библиографическ\w*\s+спис"
+    r"|reference\s+list|works\s+cited|list\s+of\s+(?:sources|references|literature|works)"
     r")"
-    r"|^[ \t]*(?:adabiyotlar|manbalar|литература|источники|literature|sources)[ \t]*:",
+    r"|^[ \t]*(?:adabiyotlar|manbalar|адабиётлар|манбалар|литература|источники|библиография"
+    r"|literature|sources|references|bibliography)"
+    r"[ \t]*(?::[ \t]*\n\s*\S|:[ \t]*" + _NUMBERED + r"|\n[ \t]*(?:[-–—•*][ \t]*\S|" + _NUMBERED + r"))",
     re.MULTILINE)
 # Part kinds the model writes as a section of their own; fixed parts are drawn
 # from facts and template labels, questions from content.questions.
@@ -81,7 +91,11 @@ LOW_SHARE = 0.8
 # of 35 pages) would otherwise be asked for more than that. It also bounds a
 # single part's reply when spans gives it a call of its own. What the cap
 # leaves short of the count, the top-up writes, as for any short paper.
-SECTION_WORDS = int(paging.max_section_chars('pdf') / paging.CHARS_PER_WORD)
+# CHARS_PER_WORD is an average and Uzbek words run longer, so the cap keeps a
+# quarter of the bound as headroom: a part written at its full target in long
+# words still ends where the model ended it.
+SECTION_HEADROOM = 0.75
+SECTION_WORDS = int(SECTION_HEADROOM * paging.max_section_chars('pdf') / paging.CHARS_PER_WORD)
 
 Use = namedtuple('Use', 'section_id part instance group')
 Use.__doc__ = """One part as it exists in a draft: the section it is written in (None when it holds none),
@@ -233,7 +247,10 @@ def slots(entry, length, cues):
     repeating slots in turn; with too many, the latest joiners leave, never a
     required one. Below the entry's minimum, which only a plan ceiling makes
     (`length` lets it win), required slots leave too, the last first and never
-    the cover, so the deck still has exactly the slides quoted. Every deck
+    the cover, so the deck still has exactly the slides quoted. That order is
+    blind to meaning: slides.himoya held to two slides keeps its aims slide and
+    drops results and conclusion; an entry wanting another order needs an
+    explicit keep order, which no entry has yet. Every deck
     entry's parts are proven to give exactly `length` for every length from 1
     to its maximum and every cue subset (tests/test_category_skeleton.py).
 
@@ -440,6 +457,10 @@ def pages(data):
     whose sections are its pages as today. A category paper without a stored
     length is refused (invalid_parameters): the domain always writes one, held
     to the plan's ceiling, and a recomputed default would skip that clamp.
+
+    `data` is draft data (its `options`), never a job's parameters: unlike
+    catalogue.of, this reads no `parameters` fallback, so a job passed here is
+    refused as having no stored length.
     """
     entry = of(data)
     if entry is None or entry.service != 'pdf':

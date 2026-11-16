@@ -145,9 +145,14 @@ def test_the_sources_cue_holds_with_files_or_a_word_for_references():
     ariza = entry('pdf.xat.ariza')
     assert cues(ariza, 'Ariza kerak', has_files=True) == {SOURCES_CUE}
     for text in ('Adabiyotlar ro‘yxati bilan', 'adabiyotlar royxati ham', 'Foydalanilgan manbalarni qo‘shing',
+                 'Adabiyotlar ro‘yhati bilan', 'manbalar ro‘yhatini qo‘sh', 'Адабиётлар рўйхати',
                  'со списком литературы', 'Список использованной литературы', 'с использованными источниками',
-                 'with references', 'a bibliography too', 'a list of sources', 'Mavzu: suv\nManbalar: darslik',
-                 'Topic: water\nSources:\n1. A textbook'):
+                 'Список литературы', 'Список источников', 'Список литературы:\n1. Иванов И. Учебник',
+                 'Список литературы обязательно', 'Библиографический список в конце',
+                 'with a reference list', 'a list of sources', 'Works cited at the end',
+                 'Mavzu: suv\nManbalar:\nDarslik, 7-sinf', 'Mavzu: suv\nAdabiyotlar: 1. Darslik',
+                 'Topic: water\nSources:\n1. A textbook', 'Topic: water\nReferences\n- A textbook',
+                 'Литература:\n1. Иванов И. Учебник'):
         assert SOURCES_CUE in cues(ariza, text, has_files=False), text
 
 
@@ -175,6 +180,12 @@ def test_a_topic_that_names_sources_or_literature_is_not_a_reference_list():
                  'O‘zbek adabiyoti darsi uchun', 'Источники права', 'Suv manbalarini muhofaza qilish',
                  'Renewable energy sources: solar, wind and water', 'Русская литература: Пушкин',
                  'Energiya manbalari: quyosh va shamol', *SEMINAR.values()):
+        assert SOURCES_CUE not in cues(ariza, text, has_files=False), text
+    # Asking for references gives none, and a subject label is not the heading of a list.
+    for text in ('with references', 'a bibliography too', 'Pop culture references in modern cinema',
+                 'Cross-references in Excel', 'Библиография как наука', 'Literature: Romeo and Juliet',
+                 'Литература: 9 класс, Пушкин', 'Adabiyotlar: 7-sinf', 'Sources: of energy in Uzbekistan',
+                 'Mavzu: suv\nManbalar: darslik', 'Fan: Adabiyot\n9-sinf'):
         assert SOURCES_CUE not in cues(ariza, text, has_files=False), text
     assert all(cues(ariza, text, has_files=True) == {SOURCES_CUE} for text in SEMINAR.values())
 
@@ -514,11 +525,16 @@ def test_a_count_a_course_a_group_or_a_year_is_not_a_figure():
                  'Нужно 10 слайдов на защиту курсовой, 3 курс, группа 212, Ташкент — 2026',
                  'Слайды на защиту, 3-го курса, 9 класс, школа № 7, количество слайдов: 8',
                  'Slides for my term paper defence: 8 slides, year 2, group 205, grade 11, 12.05.2026',
-                 'Kurs ishi himoyasi. Slaydlar soni 7 ta. Toshkent — 2026'):
+                 'Kurs ishi himoyasi. Slaydlar soni 7 ta. Toshkent — 2026',
+                 'Guruh: 911-20, kurs ishi himoyasi', 'Kurs ishi himoyasi, 911-20 guruh',
+                 'KI-12-20 guruh talabasi, BMI himoyasi', 'Защита курсовой, гр. 21-05',
+                 'Kurs ishi, 5-variant, 2-bob bo‘yicha himoya', 'Himoya uchun 10-12 slayd kerak',
+                 'Kurs ishi himoyasi 2026 yil 15 may', 'Защита 15 мая', 'Defence on May 15'):
         assert asking.wanted(himoya, text, has_files=False), text
         assert not asking.wanted(himoya, text, has_files=True), text
     for text in ('Kurs ishi himoyasi: 120 ta kitob sinaldi', '6 ta slayd, 3-kurs: qidiruv 1 soniyadan kam',
-                 'Защита, 8 слайдов: точность 94%', 'Year 2 defence: 35 patients observed', 'Narxi 1500 so‘m'):
+                 'Защита, 8 слайдов: точность 94%', 'Year 2 defence: 35 patients observed', 'Narxi 1500 so‘m',
+                 'Sotuvlar 3 marta oshdi', 'Guruh: 911-20, so‘rovnomada 40 kishi qatnashdi'):
         assert not asking.wanted(himoya, text, has_files=False), text
 
 
