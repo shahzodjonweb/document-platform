@@ -287,6 +287,47 @@ def test_too_much_in_the_files_is_said_as_too_much_and_they_are_taken_out(custom
     assert pending(customer) == ('ai_input', {'feature_id': DOCUMENT, 'category': TEST})
 
 
+def test_an_old_word_file_the_reading_host_cannot_read_is_taken_out_and_the_next_description_made(customer, switch,
+                                                                                                  antiword, monkeypatch):
+    # Taken on upload where antiword is installed, read where it is missing.
+    speak(customer, 'uz')
+    chat = question(opened(customer))
+    chat.do(uploaded=upload('old.doc', word_doc()))
+    old = asset(customer, 'old.doc')
+    assert pending(customer)[1]['files'] == [str(old.id)]
+    monkeypatch.setenv('DOCMASTER_ANTIWORD_BIN', str(antiword / 'missing'))
+    assert chat.do(text=QUIZ) == 2
+    assert outbound(customer, 1) == SOURCE_COPY['uz']['conversion_preflight_unavailable']
+    assert pending(customer) == ('ai_input', {'feature_id': DOCUMENT, 'category': TEST})
+    assert not GenerationDraft.objects.filter(account=customer).exists()
+    # Written again, it is made without the file rather than refused again.
+    assert chat.do(text=QUIZ) == 1
+    data = latest(customer)
+    assert data['options']['category'] == TEST and data['source_ids'] == []
+
+
+def test_a_refusal_naming_files_with_no_category_wording_still_takes_them_out(customer, switch, monkeypatch):
+    from apps.studio.categories import sources
+    real = sources.excerpts
+
+    def unavailable(account, ids, entry, **kwargs):
+        if ids:
+            raise DomainError('engine_unavailable', 503, {'asset_ids': list(ids)})
+        return real(account, ids, entry, **kwargs)
+    monkeypatch.setattr(sources, 'excerpts', unavailable)
+    blank = stage_pdf(customer)
+    chat = question(opened(customer))
+    chat.do(uploaded=upload('notes.txt', UZBEK.encode()))
+    notes = asset(customer, 'notes.txt')
+    assert chat.do(text=QUIZ) == 2
+    # The customer learns the files are gone, not a general error to send the same words again after.
+    assert outbound(customer, 1) == SOURCE_COPY['en']['source_extraction_failed']
+    assert pending(customer) == ('ai_input', {'feature_id': DOCUMENT, 'category': TEST})
+    assert str(blank.id) not in staged(customer) and str(notes.id) not in staged(customer)
+    assert chat.do(text=QUIZ) == 1
+    assert latest(customer)['source_ids'] == []
+
+
 def test_the_category_wording_is_only_for_refusals_that_name_files():
     named = DomainError('generation_limit', 400, {'asset_ids': ['a']})
     assert source_error(named, 'uz') == SOURCE_COPY['uz']['generation_limit']

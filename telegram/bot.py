@@ -33,7 +33,7 @@ from apps.core.allowance import LIMIT_CODES
 
 from .ux_copy import UX, STATUS, LEGACY_COPY, TOOL_NAMES, PROMPT_EXAMPLES, LOCALES, EDIT_BUTTON_COPY, counted
 from .delivery import app_button, app_url, deck_change_label, editable_pdf
-from .errors import bot_error, source_error
+from .errors import bot_error, dropped_error, source_error
 from .clock import local_time, stamp, week_reset
 from apps.core.brand import PRODUCT_NAME
 COPY={locale:{**LEGACY_COPY[locale],**UX[locale]} for locale in UX}
@@ -2464,9 +2464,14 @@ def build_dispatcher():
                     else {'kind':'ai_prompt','feature_id':feature_id,**({'category':category} if category else {})})
             # Files a category's draft could not use are named by the refusal: they
             # are taken out, the chat says why in the category's words, and its
-            # question comes back with the files that are left.
-            said=source_error(exc,account.locale) if category and (exc.params or {}).get('asset_ids') else ''
-            if said: await sync_to_async(drop_files)(account,exc.params['asset_ids'])
+            # question comes back with the files that are left. Every refusal that
+            # names files takes them out, worded or not: one left held would make
+            # every later description in the category refused the same way.
+            dropped=(exc.params or {}).get('asset_ids') if category else None
+            said=''
+            if dropped:
+                await sync_to_async(drop_files)(account,dropped)
+                said=dropped_error(exc,account.locale)
             return await ai_refused(message,account,exc,resume,lambda:ai_prompt(message,account,feature_id,category=category or None),said)
         # A new CV's review takes a photo sent while it is drawn, so the chat
         # says so from now on: never empty while the review is on its way.
