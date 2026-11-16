@@ -189,6 +189,20 @@ def test_an_empty_text_file_is_one_page_whose_draft_will_say_it_had_nothing():
     assert upload(account, 'empty.txt', b' \r\n\r\n ').page_count == 1
 
 
+def test_a_category_source_is_a_pdf_word_or_text_file_and_nothing_else():
+    # The owner's list; an image is never a source, as there is no OCR, whatever its name says.
+    from PIL import Image
+    import io
+    picture = io.BytesIO()
+    Image.new('RGB', (8, 8), 'white').save(picture, 'PNG')
+    account, _ = principal(89117)
+    for name in ('scan.png', 'photo.jpg', 'slides.pptx', 'table.xlsx', 'essay.odt', 'scan.pdf'):
+        assert refusal(account, name, picture.getvalue()) == 'unsupported_file'
+    assert refused_codes(account) == ['unsupported_file'] * 6 and not FileAsset.objects.exists()
+    # The same picture is still a file for the tools.
+    assert upload(account, 'scan.png', picture.getvalue(), '').metadata['kind'] == 'image'
+
+
 def test_text_and_word_files_never_reach_a_file_tool(monkeypatch, antiword):
     monkeypatch.setattr('apps.core.services.require_feature', lambda account, feature_id: None)
     account, _ = principal(89106)
@@ -323,6 +337,13 @@ def test_decoding_follows_the_mark_then_utf8_then_cyrillic_windows():
     words = 'Ўзбекистон, Қашқадарё. ' * 100
     assert source_text.decode(words[:250].encode() + b'\xff' + words[250:].encode()) == words[:250] + '\ufffd' + words[250:]
     assert source_text.decode(b'\xff'.join(word.encode() for word in words.split())) is None
+    # However short: too few characters to outweigh one break, but the break is only the cut last one.
+    assert source_text.decode('Тошкент'.encode('utf-8') + b'\xd1') == 'Тошкент�'
+    # A file of nothing but ASCII and one final high byte is still Windows-1251's letter.
+    assert source_text.decode('Hello Р'.encode('cp1251')) == 'Hello Р'
+    # 0x98, which Windows-1251 leaves undefined, is U+FFFD rather than a refusal of the whole file.
+    russian = 'Отчёт о работе кружка, этап второй'
+    assert source_text.decode(russian.encode('cp1251') + b'\x98' + russian.encode('cp1251')) == f'{russian}�{russian}'
 
 
 def test_parts_are_cut_at_paragraphs_then_sentences_then_spaces_and_lose_nothing():
@@ -353,6 +374,43 @@ def test_cutting_a_long_run_of_punctuation_takes_linear_time():
     assert len(source_text.pages('!?' * 100_000)) == 67
     assert len(source_text.pages('Gap… ' + '…' * 100_000 + ' tamom.')) == 35
     assert time.process_time() - started < 0.5
+
+
+def test_cutting_keeps_only_the_part_being_filled():
+    # The upload counts pages inside the bot's 384 MiB container. A list of
+    # every word of a 12 MB "a a a ..." took 363 MiB there, and 12 MB of line
+    # ends 257 MiB; now cutting holds a copy or two of a long line and nothing
+    # that grows with its words or lines.
+    import tracemalloc
+    for text, bound in (('a ' * 300_000, 4 * 600_000), ('\n' * 12_000_000, 1 << 20),
+                        ('Bir gap. ' * 50_000 + '\n' + 'soz\n\n' * 100_000, 4 * 950_000)):
+        tracemalloc.start()
+        try:
+            count = sum(1 for _ in source_text.iter_pages(text))
+            peak = tracemalloc.get_traced_memory()[1]
+        finally:
+            tracemalloc.stop()
+        assert count == len(source_text.pages(text)) and peak < bound, (text[:10], count, peak)
+
+
+def test_a_text_that_cannot_fit_is_refused_before_it_is_cut_to_its_end(monkeypatch):
+    from processors import ProcessorError, engine
+    # More letters than a thousand full parts: refused before any cutting.
+    monkeypatch.setattr(source_text, 'iter_pages', lambda text: pytest.fail('cut'))
+    for text in ('a ' * 6_000_000, '. ' * 6_000_000, 'Отчёт ' * 700_000):
+        with pytest.raises(ProcessorError, match='Page limit'):
+            engine._source_pages(text)
+    monkeypatch.undo()
+    # Few letters among many spaces fit the letter count but not the parts: counting stops at part 1,001.
+    cut = []
+    real = source_text.iter_pages
+    monkeypatch.setattr(source_text, 'iter_pages', lambda text: (cut.append(1) or part for part in real(text)))
+    started = time.process_time()
+    with pytest.raises(ProcessorError, match='Page limit'):
+        engine._source_pages(('a' + ' ' * 1600 + 'b\n') * 4000)
+    assert len(cut) == engine.MAX_PAGES + 1 and time.process_time() - started < 2
+    # 12 MB of line ends is one empty page, read at once.
+    assert engine._source_pages('\n' * 12_000_000) == 1
 
 
 def test_a_damaged_compound_file_is_never_a_crash():

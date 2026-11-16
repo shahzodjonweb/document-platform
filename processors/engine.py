@@ -9,6 +9,7 @@ import importlib.metadata
 from contextlib import closing
 import hashlib
 import io
+import itertools
 import json
 import logging
 import math
@@ -296,8 +297,15 @@ def _office_inspect(path: Path, allow_links: bool = False) -> dict:
 
 
 def _source_pages(text: str) -> int:
-    """An AI source's "pages": the parts the model will be shown (processors/source_text.pages)."""
-    count = len(source_text.pages(text))
+    """An AI source's "pages": the parts the model will be shown (processors/source_text.pages).
+
+    It runs in the bot's small container on every upload, so a text that
+    cannot fit is refused before it is cut, and counting stops at the first
+    part past the limit rather than cutting a long file to its end.
+    """
+    if source_text.surely_over(text, MAX_PAGES):
+        raise ProcessorError('page_limit')
+    count = sum(1 for _ in itertools.islice(source_text.iter_pages(text), MAX_PAGES + 1))
     if count > MAX_PAGES:
         raise ProcessorError('page_limit')
     # A file with no words in it is still one page: it is kept, and a draft

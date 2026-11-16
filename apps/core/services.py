@@ -51,6 +51,9 @@ PUBLIC_UPLOAD_PURPOSES = ('', 'cv_source')
 # Read, never converted: a Word file's clickable links are harmless in these.
 READ_ONLY_PURPOSES = ('cv_source', 'ai_source')
 UPLOAD_SUFFIXES = ('.pdf','.png','.jpg','.jpeg','.webp','.tif','.tiff','.docx','.xlsx','.pptx','.txt','.odt','.ods','.odp')
+# A category's sources are the owner's list and nothing else: the reader has
+# text for these alone, and an image is never a source (there is no OCR).
+AI_SOURCE_SUFFIXES = ('.pdf','.docx','.doc','.txt')
 
 def upload_file(account, uploaded, channel='web', password=None, purpose=''):
     if purpose not in UPLOAD_PURPOSES: raise DomainError('invalid_parameters')
@@ -73,7 +76,7 @@ def _stored_upload(account, uploaded, channel, password, purpose):
     if uploaded.size > limit: raise DomainError('file_too_large', 413, {'max_bytes':limit})
     suffix = Path(uploaded.name.replace('\\','/')).suffix.lower()
     # An old Word .doc is only ever a category's source, read as text.
-    if suffix not in UPLOAD_SUFFIXES + (('.doc',) if purpose == 'ai_source' else ()):
+    if suffix not in (AI_SOURCE_SUFFIXES if purpose == 'ai_source' else UPLOAD_SUFFIXES):
         raise DomainError('unsupported_file')
     key = f'inputs/{account.id}/{uuid.uuid4().hex}{suffix}'
     path = storage_path(key)
@@ -101,6 +104,8 @@ def _stored_upload(account, uploaded, channel, password, purpose):
         except DomainError as exc:
             if exc.code == 'page_limit': raise DomainError('page_limit', 413, {'limit': page_cap(account)}) from None
             raise
+        # The bytes decide the kind, not the name: a picture named .pdf is still no source.
+        if purpose == 'ai_source' and metadata.get('kind') not in ('pdf','docx','doc','text'): raise DomainError('unsupported_file')
         if metadata.get('password_required'): raise DomainError('password_required')
         if metadata.get('page_count') is None: raise DomainError('conversion_preflight_unavailable')
         pages = int(metadata['page_count'])
