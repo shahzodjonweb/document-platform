@@ -223,9 +223,11 @@ def test_a_ready_entry_meets_its_gates_once_the_work_is_done():
 
 
 def test_the_block_estimate_counts_what_the_model_reads():
+    # Measured now that categories/prompting.py builds the block (P1), no longer estimated.
+    from apps.studio.categories import prompting
     entry = catalogue.get('pdf.xat.ariza')
     size, estimated = catalogue.block_size(entry)
-    assert estimated
+    assert not estimated and size == len(prompting.block(entry))
     rules = sum(len(rule['text']) for rule in entry.raw['rules'] if rule['to'] == 'model')
     assert size > rules + len(entry.raw['tone'])
 

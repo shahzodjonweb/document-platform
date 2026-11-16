@@ -601,6 +601,18 @@ def plan_schema(data, feature):
     return obj({'title': full['properties']['title'], 'sections': {'type': 'array', 'items': obj(keep)}})
 
 
+def categories_of(data):
+    """apps/studio/categories/prompting.py for a draft that carries a category; None for any other.
+
+    Imported only then: a draft without a category never loads the catalogue,
+    and its request stays byte for byte what it was before categories.
+    """
+    if (data.get('options') or {}).get('category') is None:
+        return None
+    from .categories import prompting as categories
+    return categories
+
+
 def request_body(config, data, feature, span=None):
     from . import layouts
     from .provider import SYSTEM, writing_guidance
@@ -638,6 +650,15 @@ def request_body(config, data, feature, span=None):
     redesign = bool(edit_of(data).get('redesign'))
     shifting = structural(data) and not cv
     shape = reshape(data) if shifting else None
+    # A category deck (architecture 3.1) follows its slot list: DECK and the
+    # category's block after the layout guide, and its rows in the input. An
+    # outline is planned as any deck's is, and a category paper waits for P2.
+    categories = categories_of(data)
+    entry = categories.of(data) if categories is not None and not cv else None
+    slotted = entry is not None and entry.service == 'slides' and fmt == 'pptx' and not outline
+    # A new category deck always has its design (the entry's look); a change
+    # may still ask for a new one, and then reads the designs as any deck's does.
+    fresh = slotted and not revision
     from . import deck_designs, doc_designs, language
     from .provider import DECK_RULES, DOCUMENT_RULES
     # Stable parts first, so a long deck's cached prefix is shared; what varies
@@ -670,7 +691,7 @@ def request_body(config, data, feature, span=None):
             # Only a job that can choose a design reads the list (about 9k characters).
             # The answer is the same for every batch of one job, so a long deck's
             # cached prefix still is; only the first call's schema asks.
-            if deck_designs.wanted(data, 0) and not planning:
+            if deck_designs.wanted(data, 0) and not planning and not fresh:
                 parts.append(deck_designs.reference(with_photos))
         if fmt != 'pptx':
             every = data.get('options', {})
@@ -683,7 +704,9 @@ def request_body(config, data, feature, span=None):
                 parts.append(guide)
             design = doc_designs.wanted(data, first) and not planning
         else:
-            design = deck_designs.wanted(data, first) and not planning
+            design = deck_designs.wanted(data, first) and not planning and not fresh
+        if slotted:
+            parts += [categories.DECK, categories.block(entry)]
     if selected(data):
         parts.append(SELECTED_REVISION)
     parts.append(language.instructions(locale_of(data)))
@@ -740,8 +763,15 @@ def request_body(config, data, feature, span=None):
                 max_questions=questions if final and not outline and not selected(data) else 0)
     if part:
         user['writing_this_part'] = f'sections {first+1}-{last} of {len(sections)}'
+    if slotted:
+        user['category'] = entry.id
+        # A change has no rows: the customer may have edited slides since, so
+        # the slots may no longer map (architecture 3.7).
+        if not revision:
+            user['parts'] = categories.rows(data, mine, first)
     if planning:
-        user['writing_guidance'] = plan_guidance(fmt, len(mine), options, len(sections))
+        user['writing_guidance'] = (categories.guidance(data, mine, first, len(sections), 'plan') if slotted else
+                                    plan_guidance(fmt, len(mine), options, len(sections)))
     elif outline:
         user['writing_guidance'] = (f'Plan {len(mine)} sections only: heading and 1–2 brief coverage '
                                     'sentences each. Preserve section ids. No final prose or notes.')
@@ -762,6 +792,8 @@ def request_body(config, data, feature, span=None):
     elif revision:
         user['writing_guidance'] = revision_guidance(data, options, len(sections), first, last, design=design,
                                                      questions=user['max_questions'], shape=shape)
+    elif slotted:
+        user['writing_guidance'] = categories.guidance(data, mine, first, len(sections), 'new')
     else:
         user['writing_guidance'] = writing_guidance(options, len(mine), fmt, first,
                                                      len(sections), include_layouts=False)
@@ -785,8 +817,11 @@ def request_body(config, data, feature, span=None):
     # Supported by Responses models. Stable across a user's related batches;
     # no raw account identifiers or source hashes leave the app in this key.
     scope = data.get('_cache_scope', '')
+    # A category's entry and templates are part of what the model reads, so
+    # their digest is part of the key; '' without a category (architecture 3.2).
+    tag = categories.cache_tag(data) if categories is not None else ''
     result['prompt_cache_key'] = 'docmaster:' + hashlib.sha256(
-        f'{VERSION}:{scope}:{feature}:{fmt}'.encode()).hexdigest()[:48]
+        f'{VERSION}:{scope}:{feature}:{fmt}{tag}'.encode()).hexdigest()[:48]
     # The reasoning effort and processing tier chosen in the admin (tuning.py).
     from . import tuning
     return tuning.apply(result, config, 'writing')
