@@ -1,7 +1,7 @@
 {
  "schema": 2,
  "id": "slides.dars",
- "status": "draft",
+ "status": "ready",
  "service": "slides",
  "parent": null,
  "order": 3,
@@ -963,7 +963,8 @@
  },
  "gates": [
   "A mother-tongue teacher confirms the Uzbek school terms of the rules and the fixed headings (Darsning maqsadi, O‘tilgan mavzuni takrorlash, Mustahkamlash: savollar, Refleksiya, Uyga vazifa).",
-  "A 6, a 10 and a 15 slide sample in uz, ru and en, an ordinary and an open lesson, are drawn with the deck sample tool and looked at next to units/slides.dars/mock/school_dars.png and school_ochiq_dars.png."
+  "A 6, a 10 and a 15 slide sample in uz, ru and en, an ordinary and an open lesson, are drawn with the deck sample tool and looked at next to units/slides.dars/mock/school_dars.png and school_ochiq_dars.png.",
+  "One real-provider run, scripts/operations/ai_smoke.py --category slides.dars on the server, makes the deck with every check passing, and the deck is looked at, before the tick."
  ],
  "later": [
   {

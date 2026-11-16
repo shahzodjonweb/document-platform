@@ -1,7 +1,7 @@
 {
  "schema": 2,
  "id": "slides.pitch",
- "status": "draft",
+ "status": "ready",
  "service": "slides",
  "parent": null,
  "order": 5,
@@ -873,7 +873,8 @@
  },
  "gates": [
   "A native Uzbek and a native Russian reader check the slot labels (Muammo, Yechim, Moliyalashtirish, Bizga nima kerak) and the bot copy; the owner signs off every Uzbek and Russian heading label, as they were proposed, not read from a real pitch deck or application form.",
-  "A 6, a 10 and a 15 slide sample in uz, ru and en are drawn with the deck sample tool, with figures and topic only, and looked at next to units/slides.pitch/mock/business_pitch.png."
+  "A 6, a 10 and a 15 slide sample in uz, ru and en are drawn with the deck sample tool, with figures and topic only, and looked at next to units/slides.pitch/mock/business_pitch.png.",
+  "One real-provider run, scripts/operations/ai_smoke.py --category slides.pitch on the server, makes the deck with every check passing, and the deck is looked at, before the tick."
  ],
  "later": [
   {

@@ -49,14 +49,14 @@ def test_a_saved_switch_is_what_the_catalogue_reads_on_the_next_call(ready):
 
 
 def test_only_ready_entries_can_be_ticked_and_unknown_ids_are_refused():
-    # The examples in the catalogue are drafts: none may be ticked yet.
-    for values in ({'live': ['slides.himoya']}, {'live': ['pdf.nothing']}, {'live': ['other']},
+    # The papers stay drafts until their renderer and N2 make them ready: none may be ticked yet.
+    for values in ({'live': ['pdf.test']}, {'live': ['pdf.nothing']}, {'live': ['other']},
                    {'on': 'maybe'}, {'sources': 'true'}, {}):
         with pytest.raises(CategorySettingsError):
             validate(values)
     client, user = staff_client('Operations')
     with pytest.raises(CategorySettingsError):
-        save({'on': 'true', 'live': ['slides.himoya']}, user)
+        save({'on': 'true', 'live': ['pdf.test']}, user)
     assert get() == OFF and not AuditLog.objects.filter(action='categories.settings').exists()
 
 
@@ -82,8 +82,12 @@ def test_saving_writes_everything_in_force_and_audits_only_a_change(ready):
     assert AuditLog.objects.filter(action='categories.settings').count() == 2, 'an unchanged save leaves no row'
 
 
-def test_a_ticked_entry_sent_back_to_draft_leaves_the_bot_without_an_edit():
+def test_a_ticked_entry_sent_back_to_draft_leaves_the_bot_without_an_edit(monkeypatch):
     # Ticked while ready, then a deploy marks it draft again: the row is untouched, the bot no longer lists it.
+    entries, templates, index = copy.deepcopy(catalogue.read())
+    entries['slides.himoya']['status'] = 'draft'
+    made = catalogue.build(entries, templates, index)
+    monkeypatch.setattr(catalogue, '_catalogue', lambda: made)
     IntegrationConfig.objects.create(key=KEY, configuration={'on': True, 'live': ['slides.himoya']})
     assert get() == {'on': True, 'live': ['slides.himoya']}
     assert categories.live('ai.pptx') == [] and categories.menu('ai.pptx') == []
@@ -102,7 +106,10 @@ def test_the_page_shows_the_switch_and_every_category_with_its_renderer_and_gate
     html = page.content.decode()
     assert 'name="on" value="true">' in html and 'action="/ops/categories/settings"' in html
     for entry in (*categories.for_feature('ai.pdf_topic'), *categories.for_feature('ai.pptx')):
-        assert f'value="{entry.id}" disabled' in html, 'a draft is shown greyed, never tickable'
+        # The decks are ready since N1 and can be ticked; a draft is shown greyed, never tickable.
+        ready = entry.status == catalogue.READY
+        assert (f'value="{entry.id}" disabled' in html) is not ready
+        assert f'value="{entry.id}"' in html
         assert entry.label('en') in html
     assert 'study_test' in html and 'official_ariza' in html and 'boardroom' in html
     assert 'A native Uzbek reader checks the fixed headings' in html

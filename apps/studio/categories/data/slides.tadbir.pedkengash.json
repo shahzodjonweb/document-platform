@@ -1,7 +1,7 @@
 {
  "schema": 2,
  "id": "slides.tadbir.pedkengash",
- "status": "draft",
+ "status": "ready",
  "service": "slides",
  "parent": "slides.tadbir",
  "order": 4,
@@ -890,7 +890,8 @@
  },
  "gates": [
   "A native Uzbek and a native Russian teacher read the fixed headings (Kun tartibi, Ma’ruza rejasi, Masalaning mohiyati, Muammolar va ularning yechimi, Qaror loyihasi), the resolution forms and the bot copy.",
-  "A 6, a 10 and a 15 slide sample in uz, ru and en are drawn with the deck sample tool and looked at next to units/slides.tadbir.pedkengash/mock/school_pedkengash.png."
+  "A 6, a 10 and a 15 slide sample in uz, ru and en are drawn with the deck sample tool and looked at next to units/slides.tadbir.pedkengash/mock/school_pedkengash.png.",
+  "One real-provider run, scripts/operations/ai_smoke.py --category slides.tadbir.pedkengash on the server, makes the deck with every check passing, and the deck is looked at, before the tick."
  ],
  "later": [
   {

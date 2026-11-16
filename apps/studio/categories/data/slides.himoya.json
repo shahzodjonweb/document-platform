@@ -1,7 +1,7 @@
 {
  "schema": 2,
  "id": "slides.himoya",
- "status": "draft",
+ "status": "ready",
  "service": "slides",
  "parent": null,
  "order": 2,
@@ -888,7 +888,8 @@
  "gates": [
   "A native Uzbek reader checks the fixed headings (Mavzuning dolzarbligi, Obyekt, predmet va metodlar, Obyekt va predmet, Himoyaga olib chiqilayotgan asosiy qoidalar).",
   "A 6, a 10 and a 15 slide sample in uz, ru and en are drawn with the deck sample tool, with and without figures in the message, and looked at next to units/slides.himoya/mock/school_himoya.png.",
-  "A native Russian reader checks the fixed headings and the bot copy in Russian."
+  "A native Russian reader checks the fixed headings and the bot copy in Russian.",
+  "One real-provider run, scripts/operations/ai_smoke.py --category slides.himoya on the server, makes the deck with every check passing, and the deck is looked at, before the tick."
  ],
  "later": [
   {

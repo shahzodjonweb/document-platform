@@ -91,7 +91,7 @@ def test_the_command_line_checks_and_says_the_lock_is_whole(capsys):
     assert '0 errors' in capsys.readouterr().out
     assert catalogue.main(['--check', 'slides.']) == 0
     out = capsys.readouterr().out
-    assert 'slides.himoya: draft' in out and 'pdf.test: draft' not in out
+    assert 'slides.himoya: ready' in out and 'pdf.test: draft' not in out
     lock = read_lock()
     assert relock(catalogue._catalogue(), lock) == lock
 
@@ -207,6 +207,7 @@ def test_readiness_gates_are_warnings_on_a_draft_and_errors_on_a_ready_entry():
     # A deck converted by C2s meets its count and block gates; take them away again to see them caught. The prompt
     # is replaced whole, so the check does not hang on how himoya's own copy happens to write its count.
     himoya = entries['slides.himoya']
+    himoya['status'] = 'draft'  # ready since N1; the gates are read here on a draft first
     himoya['bot']['prompt'] = {'uz': 'Bitta xabarda yozing.', 'ru': 'Напишите одним сообщением.',
                                'en': 'Say it in one message.'}
     himoya['rules'].append({'text': 'A long rule. ' * 400, 'to': 'model'})
@@ -340,7 +341,7 @@ def test_an_owner_label_that_drifts_is_caught():
 
 def test_get_and_the_entry_it_gives():
     entry = catalogue.get('slides.himoya')
-    assert (entry.id, entry.service, entry.feature_id, entry.status) == ('slides.himoya', 'slides', 'ai.pptx', 'draft')
+    assert (entry.id, entry.service, entry.feature_id, entry.status) == ('slides.himoya', 'slides', 'ai.pptx', 'ready')
     assert entry.label('uz') == '🛡 Himoya' and entry.label('ru') == '🛡 Защита работы'
     assert entry.label('de') == entry.label('en') and entry.name('en') == 'Thesis defence'
     assert entry.field('results')['kind'] == 'text' and entry.field('nothing') is None
@@ -415,8 +416,9 @@ def test_off_is_off_whatever_is_ticked(switch, ready):
 def test_only_ticked_ready_entries_of_the_service_are_live(switch):
     switch.update(on=True, live=['slides.himoya', 'pdf.test'])
     assert catalogue.on() is True
-    # The examples are drafts: ticking one does not make it live.
-    assert catalogue.live('ai.pptx') == [] and catalogue.menu('ai.pptx') == []
+    # The decks are ready since N1 and the papers still drafts: a ticked draft is not live.
+    assert [entry.id for entry in catalogue.live('ai.pptx')] == ['slides.himoya']
+    assert catalogue.live('ai.pdf_topic') == [] and catalogue.menu('ai.pdf_topic') == []
 
 
 def test_the_list_shows_live_categories_groups_with_something_live_and_boshqa(switch, ready):

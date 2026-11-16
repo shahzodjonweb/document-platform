@@ -1,7 +1,7 @@
 {
  "schema": 2,
  "id": "slides.mavzu",
- "status": "draft",
+ "status": "ready",
  "service": "slides",
  "parent": null,
  "order": 1,
@@ -769,7 +769,8 @@
  },
  "gates": [
   "A native Uzbek and a native Russian reader check the fixed headings (Reja, Kirish, Maqsad va vazifalar, Ta’rif, Xulosa, Foydalanilgan adabiyotlar) and the bot copy.",
-  "A 6, a 10 and a 15 slide sample in uz, ru and en are drawn with the deck sample tool, with figures and topic only, and looked at next to units/slides.mavzu/mock/school_mavzu.png."
+  "A 6, a 10 and a 15 slide sample in uz, ru and en are drawn with the deck sample tool, with figures and topic only, and looked at next to units/slides.mavzu/mock/school_mavzu.png.",
+  "One real-provider run, scripts/operations/ai_smoke.py --category slides.mavzu on the server, makes the deck with every check passing, and the deck is looked at, before the tick."
  ],
  "later": [
   {

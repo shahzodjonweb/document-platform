@@ -1,7 +1,7 @@
 {
  "schema": 2,
  "id": "slides.tadbir.tarbiyaviy_soat",
- "status": "draft",
+ "status": "ready",
  "service": "slides",
  "parent": "slides.tadbir",
  "order": 1,
@@ -912,7 +912,8 @@
  },
  "gates": [
   "A native Uzbek and a native Russian reader check the fixed headings (Bugungi savol, Mashg‘ulot maqsadi, Hayotiy vaziyat, Muhokama uchun savollar, Refleksiya) and the bot copy.",
-  "A 6, a 10 and a 15 slide sample in uz, ru and en are drawn with the deck sample tool and looked at next to units/slides.tadbir.tarbiyaviy_soat/mock/school_tarbiyaviy_soat.png."
+  "A 6, a 10 and a 15 slide sample in uz, ru and en are drawn with the deck sample tool and looked at next to units/slides.tadbir.tarbiyaviy_soat/mock/school_tarbiyaviy_soat.png.",
+  "One real-provider run, scripts/operations/ai_smoke.py --category slides.tadbir.tarbiyaviy_soat on the server, makes the deck with every check passing, and the deck is looked at, before the tick."
  ],
  "later": [
   {

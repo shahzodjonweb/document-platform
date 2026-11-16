@@ -1,7 +1,7 @@
 {
  "schema": 2,
  "id": "slides.kompaniya",
- "status": "draft",
+ "status": "ready",
  "service": "slides",
  "parent": null,
  "order": 7,
@@ -970,7 +970,8 @@
  },
  "gates": [
   "A native Uzbek and a native Russian reader check the fixed headings (Afzalliklarimiz, Litsenziya va sertifikatlar, Kimlar uchun, Biz bilan bog‘laning) and the bot copy.",
-  "A 6, a 10 and a 15 slide sample in uz, ru and en, a company and a product deck, are drawn with the deck sample tool and looked at next to units/slides.kompaniya/mock/business_kompaniya.png and business_mahsulot.png."
+  "A 6, a 10 and a 15 slide sample in uz, ru and en, a company and a product deck, are drawn with the deck sample tool and looked at next to units/slides.kompaniya/mock/business_kompaniya.png and business_mahsulot.png.",
+  "One real-provider run, scripts/operations/ai_smoke.py --category slides.kompaniya on the server, makes the deck with every check passing, and the deck is looked at, before the tick."
  ],
  "later": [
   {
