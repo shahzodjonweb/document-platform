@@ -1,18 +1,13 @@
 {
  "entry": "slides.tadbir.bayram",
  "case": "figures",
- "note": "Sample content for the deck sample tool, invented people, organisations and figures only. For a length and a language the tool reads the brief (and source_text) as the customer’s message, takes the entry’s slots with skeleton.slots over the brief’s cues, and fills slide i from slides[<its slot>]: the k-th time a slot repeats takes item k, starting again from the first when the list is shorter. A slot whose heading is fixed carries an empty heading, which the finish writes in the language of the deck. Customer slots hold only what the brief says (figures) or an honest form (topic_only); notes are left to the real model.",
- "brief": {
-  "uz": "Navro‘z bayrami tadbiriga 10 ta slayd kerak: 21-maktab, 5-A sinf, 2026-yil 21-mart. Dastur: 10:00 ochilish so‘zi — sinf rahbari, 10:10 «Bahor keldi» she’ri — Madina, 10:20 Navro‘z tarixi va an’analari haqida suhbat — ota-onalar, 11:00 viktorina. She’r matnini faylda biriktirdim.",
-  "ru": "Нужно 10 слайдов к празднику Навруз: школа № 21, 5 «А» класс, 21 марта 2026 года. Программа: 10:00 вступительное слово — классный руководитель, 10:10 стихи «Весна пришла» — Мадина, 10:20 беседа об истории и традициях Навруза — родители, 11:00 викторина. Текст стихотворения приложил файлом.",
-  "en": "I need 10 slides for a Nowruz event: School No. 21, class 5-A, 21 March 2026. Programme: 10:00 opening words — class teacher, 10:10 the poem “Spring has come” — Madina, 10:20 a talk about the history and customs of Nowruz — parents, 11:00 a quiz. I attached the text of the poem."
+ "about": "Sample content for the deck sample tool (apps/studio/categories/sample.py), invented people, organisations and figures only. prompt is the customer’s one message; slots holds, per part id, the model’s answer for each time that slot appears. Past its listed instances a repeating slot is drawn as the honest form (heading and ruled lines). A slot whose heading is fixed carries an empty heading, which the finish writes in the language of the deck. Customer slots hold only what the prompt says (figures) or an honest form (topic_only); notes are left to the real model.",
+ "prompt": {
+  "uz": "Navro‘z bayrami tadbiriga 10 ta slayd kerak: 21-maktab, 5-A sinf, 2026-yil 21-mart. Dastur: 10:00 ochilish so‘zi — sinf rahbari, 10:10 «Bahor keldi» she’ri — Madina, 10:20 Navro‘z tarixi va an’analari haqida suhbat — ota-onalar, 11:00 viktorina. She’r matni:\nBahor keldi bog‘imizga,\nGul ochildi ko‘ksimizga.\nNavro‘z kelib dasturxonga,\nQuvonch to‘ldi uyimizga.",
+  "ru": "Нужно 10 слайдов к празднику Навруз: школа № 21, 5 «А» класс, 21 марта 2026 года. Программа: 10:00 вступительное слово — классный руководитель, 10:10 стихи «Весна пришла» — Мадина, 10:20 беседа об истории и традициях Навруза — родители, 11:00 викторина. Текст стихотворения:\nВесна пришла в наш светлый сад,\nЦветы раскрылись все подряд.\nНавруз пришёл за дастархан,\nИ радость в доме — нам и вам.",
+  "en": "I need 10 slides for a Nowruz event: School No. 21, class 5-A, 21 March 2026. Programme: 10:00 opening words — class teacher, 10:10 the poem “Spring has come” — Madina, 10:20 a talk about the history and customs of Nowruz — parents, 11:00 a quiz. The text of the poem:\nSpring has come into our garden,\nFlowers open, bright and new.\nNowruz comes to share our table,\nJoy comes home to me and you."
  },
- "source_text": {
-  "uz": "Bahor keldi bog‘imizga,\nGul ochildi ko‘ksimizga.\nNavro‘z kelib dasturxonga,\nQuvonch to‘ldi uyimizga.",
-  "ru": "Весна пришла в наш светлый сад,\nЦветы раскрылись все подряд.\nНавруз пришёл за дастархан,\nИ радость в доме — нам и вам.",
-  "en": "Spring has come into our garden,\nFlowers open, bright and new.\nNowruz comes to share our table,\nJoy comes home to me and you."
- },
- "slides": {
+ "slots": {
   "cover": [
    {
     "uz": {

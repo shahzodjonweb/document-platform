@@ -1,13 +1,13 @@
 {
  "entry": "slides.tadbir.pedkengash",
  "case": "figures",
- "note": "Sample content for the deck sample tool, invented people, organisations and figures only. For a length and a language the tool reads the brief (and source_text) as the customer’s message, takes the entry’s slots with skeleton.slots over the brief’s cues, and fills slide i from slides[<its slot>]: the k-th time a slot repeats takes item k, starting again from the first when the list is shorter. A slot whose heading is fixed carries an empty heading, which the finish writes in the language of the deck. Customer slots hold only what the brief says (figures) or an honest form (topic_only); notes are left to the real model.",
- "brief": {
+ "about": "Sample content for the deck sample tool (apps/studio/categories/sample.py), invented people, organisations and figures only. prompt is the customer’s one message; slots holds, per part id, the model’s answer for each time that slot appears. Past its listed instances a repeating slot is drawn as the honest form (heading and ruled lines). A slot whose heading is fixed carries an empty heading, which the finish writes in the language of the deck. Customer slots hold only what the prompt says (figures) or an honest form (topic_only); notes are left to the real model.",
+ "prompt": {
   "uz": "1-chorak yakunlari bo‘yicha pedagogik kengashga 8 ta slayd kerak. 21-sonli umumiy o‘rta ta’lim maktabi, 5–9-sinflar, ma’ruzachi — o‘quv ishlari bo‘yicha direktor o‘rinbosari. O‘zlashtirish 97,8%, bilim sifati 58,4% (o‘tgan yilning shu choragida 55,1%). Matematika va ingliz tilida sifat past, 23 nafar o‘quvchi qoniqarsiz baho oldi. Muammolar, takliflar va qaror loyihasi bo‘lsin.",
   "ru": "Нужно 8 слайдов для педсовета по итогам 1-й четверти. Школа № 21, 5–9 классы, докладчик — заместитель директора по учебной работе. Успеваемость 97,8%, качество знаний 58,4% (в прошлом году за ту же четверть 55,1%). По математике и английскому качество низкое, 23 ученика получили двойки. Нужны проблемы, предложения и проект решения.",
   "en": "I need 8 slides for the teachers’ council on the first quarter’s results. School No. 21, grades 5–9, presenter: deputy head for teaching and learning. Pass rate 97.8%, knowledge quality 58.4% (55.1% in the same quarter last year). Quality is low in mathematics and English; 23 pupils got failing marks. Include problems, proposals and a draft resolution."
  },
- "slides": {
+ "slots": {
   "cover": [
    {
     "uz": {
@@ -19,7 +19,7 @@
     "ru": {
      "layout": "cover",
      "heading": "Итоги 1-й четверти",
-     "body": "Школа № 21\nЗаседание педагогического совета\nДокладчик: заместитель директора по учебной работе",
+     "body": "Школа № 21\nПедсовет\nДокладчик: заместитель директора по учебной работе",
      "items": []
     },
     "en": {

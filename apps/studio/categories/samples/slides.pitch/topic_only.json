@@ -1,13 +1,13 @@
 {
  "entry": "slides.pitch",
  "case": "topic_only",
- "note": "Sample content for the deck sample tool, invented people, organisations and figures only. For a length and a language the tool reads the brief (and source_text) as the customer’s message, takes the entry’s slots with skeleton.slots over the brief’s cues, and fills slide i from slides[<its slot>]: the k-th time a slot repeats takes item k, starting again from the first when the list is shorter. A slot whose heading is fixed carries an empty heading, which the finish writes in the language of the deck. Customer slots hold only what the brief says (figures) or an honest form (topic_only); notes are left to the real model.",
- "brief": {
+ "about": "Sample content for the deck sample tool (apps/studio/categories/sample.py), invented people, organisations and figures only. prompt is the customer’s one message; slots holds, per part id, the model’s answer for each time that slot appears. Past its listed instances a repeating slot is drawn as the honest form (heading and ruled lines). A slot whose heading is fixed carries an empty heading, which the finish writes in the language of the deck. Customer slots hold only what the prompt says (figures) or an honest form (topic_only); notes are left to the real model.",
+ "prompt": {
   "uz": "Investorlarga slayd kerak: FermaBor — fermerlarni Toshkentdagi restoranlar bilan bog‘laydigan ilova.",
   "ru": "Нужны слайды для инвесторов: FermaBor — приложение, которое связывает фермеров с ресторанами Ташкента.",
   "en": "I need slides for investors: FermaBor is an app that connects farmers with restaurants in Tashkent."
  },
- "slides": {
+ "slots": {
   "cover": [
    {
     "uz": {
@@ -79,19 +79,19 @@
     "uz": {
      "layout": "bullets",
      "heading": "Mahsulot: qanday ishlaydi",
-     "body": "1-qadam: ________\n2-qadam: ________\n3-qadam: ________",
+     "body": "1. ________\n2. ________\n3. ________",
      "items": []
     },
     "ru": {
      "layout": "bullets",
      "heading": "Продукт: как это работает",
-     "body": "Шаг 1: ________\nШаг 2: ________\nШаг 3: ________",
+     "body": "1. ________\n2. ________\n3. ________",
      "items": []
     },
     "en": {
      "layout": "bullets",
      "heading": "Product: how it works",
-     "body": "Step 1: ________\nStep 2: ________\nStep 3: ________",
+     "body": "1. ________\n2. ________\n3. ________",
      "items": []
     }
    }
@@ -144,20 +144,20 @@
    {
     "uz": {
      "layout": "bullets",
-     "heading": "Bozor: TAM, SAM, SOM",
-     "body": "TAM: ________\nSAM: ________\nSOM: ________",
+     "heading": "Bozor hajmi",
+     "body": "________\n________\n________",
      "items": []
     },
     "ru": {
      "layout": "bullets",
-     "heading": "Рынок: TAM, SAM, SOM",
-     "body": "TAM: ________\nSAM: ________\nSOM: ________",
+     "heading": "Объём рынка",
+     "body": "________\n________\n________",
      "items": []
     },
     "en": {
      "layout": "bullets",
-     "heading": "Market: TAM, SAM, SOM",
-     "body": "TAM: ________\nSAM: ________\nSOM: ________",
+     "heading": "Market size",
+     "body": "________\n________\n________",
      "items": []
     }
    }
@@ -343,19 +343,19 @@
     "uz": {
      "layout": "closing",
      "heading": "",
-     "body": "Aloqa: ________",
+     "body": "Savollaringizga javob beramiz",
      "items": []
     },
     "ru": {
      "layout": "closing",
      "heading": "",
-     "body": "Контакты: ________",
+     "body": "Ответим на ваши вопросы",
      "items": []
     },
     "en": {
      "layout": "closing",
      "heading": "",
-     "body": "Contact: ________",
+     "body": "We will gladly answer your questions",
      "items": []
     }
    }

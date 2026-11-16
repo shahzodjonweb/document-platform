@@ -1,13 +1,13 @@
 {
  "entry": "slides.tadbir.tarbiyaviy_soat",
  "case": "topic_only",
- "note": "Sample content for the deck sample tool, invented people, organisations and figures only. For a length and a language the tool reads the brief (and source_text) as the customer’s message, takes the entry’s slots with skeleton.slots over the brief’s cues, and fills slide i from slides[<its slot>]: the k-th time a slot repeats takes item k, starting again from the first when the list is shorter. A slot whose heading is fixed carries an empty heading, which the finish writes in the language of the deck. Customer slots hold only what the brief says (figures) or an honest form (topic_only); notes are left to the real model.",
- "brief": {
+ "about": "Sample content for the deck sample tool (apps/studio/categories/sample.py), invented people, organisations and figures only. prompt is the customer’s one message; slots holds, per part id, the model’s answer for each time that slot appears. Past its listed instances a repeating slot is drawn as the honest form (heading and ruled lines). A slot whose heading is fixed carries an empty heading, which the finish writes in the language of the deck. Customer slots hold only what the prompt says (figures) or an honest form (topic_only); notes are left to the real model.",
+ "prompt": {
   "uz": "7-sinf tarbiyaviy soati uchun slayd: «Ota-onaga hurmat».",
   "ru": "Слайды к классному часу в 7 классе: «Уважение к родителям».",
   "en": "Slides for a grade 7 class hour: “Respect for parents”."
  },
- "slides": {
+ "slots": {
   "cover": [
    {
     "uz": {

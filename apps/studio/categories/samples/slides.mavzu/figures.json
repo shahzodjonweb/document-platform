@@ -1,13 +1,13 @@
 {
  "entry": "slides.mavzu",
  "case": "figures",
- "note": "Sample content for the deck sample tool, invented people, organisations and figures only. For a length and a language the tool reads the brief (and source_text) as the customer’s message, takes the entry’s slots with skeleton.slots over the brief’s cues, and fills slide i from slides[<its slot>]: the k-th time a slot repeats takes item k, starting again from the first when the list is shorter. A slot whose heading is fixed carries an empty heading, which the finish writes in the language of the deck. Customer slots hold only what the brief says (figures) or an honest form (topic_only); notes are left to the real model.",
- "brief": {
+ "about": "Sample content for the deck sample tool (apps/studio/categories/sample.py), invented people, organisations and figures only. prompt is the customer’s one message; slots holds, per part id, the model’s answer for each time that slot appears. Past its listed instances a repeating slot is drawn as the honest form (heading and ruled lines). A slot whose heading is fixed carries an empty heading, which the finish writes in the language of the deck. Customer slots hold only what the prompt says (figures) or an honest form (topic_only); notes are left to the real model.",
+ "prompt": {
   "uz": "Ekologiya fanidan seminar uchun slayd kerak: “Qayta tiklanuvchi energiya manbalari”. 2-kurs, 8 ta slayd, oddiy tilda. Guruhdagi so‘rovnoma: 30 kishidan 17 tasi quyoshni, 8 tasi shamolni, 5 tasi suvni istiqbolli deb tanladi.\nBirinchi slaydga:\nNamuna davlat universiteti\nFan: Ekologiya\nBajardi: Karimova Dilnoza, 205-guruh\nQabul qildi: dotsent Rahimov B.\nToshkent, 2026\nFoydalanilgan adabiyotlar:\n1. Namunov A. Qayta tiklanuvchi energetika asoslari. Toshkent, 2021.\n2. Misolova S. Quyosh energiyasi. Samarqand, 2023.",
   "ru": "Нужна презентация для семинара по экологии: «Возобновляемые источники энергии». 2 курс, 8 слайдов, простым языком. Опрос в группе: из 30 человек 17 выбрали солнце, 8 ветер, 5 воду как самое перспективное.\nНа первом слайде:\nОбразцовый государственный университет\nПредмет: Экология\nВыполнила: Каримова Дилноза, группа 205\nПроверил: доцент Рахимов Б.\nТашкент, 2026\nСписок литературы:\n1. Намунов А. Основы возобновляемой энергетики. Ташкент, 2021.\n2. Мисолова С. Солнечная энергия. Самарканд, 2023.",
   "en": "I need slides for an ecology seminar: “Renewable energy sources”. Year 2, 8 slides, plain language. A survey in my group: of 30 people, 17 chose solar, 8 wind and 5 water as the most promising.\nOn the first slide:\nExample State University\nSubject: Ecology\nPrepared by: Dilnoza Karimova, group 205\nChecked by: Assoc. Prof. B. Rahimov\nTashkent, 2026\nReferences:\n1. Namunov A. Foundations of renewable energy. Tashkent, 2021.\n2. Misolova S. Solar energy. Samarkand, 2023."
  },
- "slides": {
+ "slots": {
   "cover": [
    {
     "uz": {

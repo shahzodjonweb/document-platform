@@ -1,13 +1,13 @@
 {
  "entry": "slides.himoya",
  "case": "figures",
- "note": "Sample content for the deck sample tool, invented people, organisations and figures only. For a length and a language the tool reads the brief (and source_text) as the customer’s message, takes the entry’s slots with skeleton.slots over the brief’s cues, and fills slide i from slides[<its slot>]: the k-th time a slot repeats takes item k, starting again from the first when the list is shorter. A slot whose heading is fixed carries an empty heading, which the finish writes in the language of the deck. Customer slots hold only what the brief says (figures) or an honest form (topic_only); notes are left to the real model.",
- "brief": {
+ "about": "Sample content for the deck sample tool (apps/studio/categories/sample.py), invented people, organisations and figures only. prompt is the customer’s one message; slots holds, per part id, the model’s answer for each time that slot appears. Past its listed instances a repeating slot is drawn as the honest form (heading and ruled lines). A slot whose heading is fixed carries an empty heading, which the finish writes in the language of the deck. Customer slots hold only what the prompt says (figures) or an honest form (topic_only); notes are left to the real model.",
+ "prompt": {
   "uz": "Kurs ishim himoyasi uchun 6 ta slayd kerak: “Python yordamida kutubxona hisobi dasturini yaratish”. Qisqa va sodda bo‘lsin. Dastur kitob qo‘shadi, nomi bo‘yicha qidiradi va hisobot chiqaradi. Sinovda 120 ta kitob kiritildi, qidiruv 1 soniyadan kam vaqt oldi.\nNamuna axborot texnologiyalari universiteti\nBajardi: Toshpo‘latova Madina, 212-guruh\nIlmiy rahbar: katta o‘qituvchi Aliyev B.",
   "ru": "Нужно 6 слайдов для защиты курсовой: «Создание программы учёта книг в библиотеке на Python». Коротко и просто. Программа добавляет книги, ищет по названию и выводит отчёт. На тесте внесли 120 книг, поиск занял меньше 1 секунды.\nУниверситет информационных технологий «Намуна»\nВыполнила: Тошпулатова Мадина, группа 212\nНаучный руководитель: старший преподаватель Алиев Б.",
   "en": "I need 6 slides to defend my term paper: “Building a library book-tracking program in Python”. Keep it short and simple. The program adds books, searches by title and prints a report. In testing we entered 120 books and a search took under 1 second.\nNamuna University of Information Technologies\nPrepared by: Madina Toshpulatova, group 212\nSupervisor: Senior Lecturer B. Aliyev"
  },
- "slides": {
+ "slots": {
   "cover": [
    {
     "uz": {

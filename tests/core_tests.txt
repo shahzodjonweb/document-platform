@@ -856,3 +856,11 @@ tests/test_category_drafts.py::test_a_change_to_a_paper_asks_the_categorys_reade
 tests/test_category_drafts.py::test_a_category_draft_reads_word_and_text_files_and_says_which_it_could_not
 tests/test_category_drafts.py::test_a_thesis_too_long_for_the_request_keeps_its_ends_and_the_draft_says_so
 tests/test_category_drafts.py::test_a_drawn_category_deck_is_saved_without_its_files_being_read_or_looked_for
+
+# Category deck samples (C2s): the ten decks' sample content is in the sample tool's format and, read by its own
+# load and draft, finishes to its exact count at several lengths in three languages with nothing taken out
+tests/test_category_deck_samples.py::test_every_deck_entry_has_both_cases_and_nothing_else_has_samples
+tests/test_category_deck_samples.py::test_a_sample_is_in_the_sample_tools_format
+tests/test_category_deck_samples.py::test_a_sample_is_finished_to_its_count_with_nothing_taken_out
+tests/test_category_deck_samples.py::test_every_slot_a_figures_sample_reaches_at_its_own_length_has_content
+tests/test_category_deck_samples.py::test_a_constitution_day_deck_is_six_slides_and_keeps_its_cover

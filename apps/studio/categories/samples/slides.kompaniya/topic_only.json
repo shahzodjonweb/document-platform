@@ -1,13 +1,13 @@
 {
  "entry": "slides.kompaniya",
  "case": "topic_only",
- "note": "Sample content for the deck sample tool, invented people, organisations and figures only. For a length and a language the tool reads the brief (and source_text) as the customer’s message, takes the entry’s slots with skeleton.slots over the brief’s cues, and fills slide i from slides[<its slot>]: the k-th time a slot repeats takes item k, starting again from the first when the list is shorter. A slot whose heading is fixed carries an empty heading, which the finish writes in the language of the deck. Customer slots hold only what the brief says (figures) or an honest form (topic_only); notes are left to the real model.",
- "brief": {
+ "about": "Sample content for the deck sample tool (apps/studio/categories/sample.py), invented people, organisations and figures only. prompt is the customer’s one message; slots holds, per part id, the model’s answer for each time that slot appears. Past its listed instances a repeating slot is drawn as the honest form (heading and ruled lines). A slot whose heading is fixed carries an empty heading, which the finish writes in the language of the deck. Customer slots hold only what the prompt says (figures) or an honest form (topic_only); notes are left to the real model.",
+ "prompt": {
   "uz": "Namuna Mebel kompaniyasi taqdimoti kerak: yangi mijozlarga ko‘rsatamiz.",
   "ru": "Нужна презентация компании «Намуна Мебель»: покажем новым клиентам.",
   "en": "I need a presentation of the Namuna Furniture company to show new customers."
  },
- "slides": {
+ "slots": {
   "cover": [
    {
     "uz": {
@@ -101,19 +101,19 @@
     "uz": {
      "layout": "bullets",
      "heading": "Ish tartibi",
-     "body": "1-qadam: ________\n2-qadam: ________\n3-qadam: ________",
+     "body": "1. ________\n2. ________\n3. ________",
      "items": []
     },
     "ru": {
      "layout": "bullets",
      "heading": "Порядок работы",
-     "body": "Шаг 1: ________\nШаг 2: ________\nШаг 3: ________",
+     "body": "1. ________\n2. ________\n3. ________",
      "items": []
     },
     "en": {
      "layout": "bullets",
      "heading": "How we work",
-     "body": "Step 1: ________\nStep 2: ________\nStep 3: ________",
+     "body": "1. ________\n2. ________\n3. ________",
      "items": []
     }
    }
