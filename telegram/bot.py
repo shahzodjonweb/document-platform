@@ -969,7 +969,10 @@ async def review_screen(account,draft,quote):
         rows.append([await button(account,'ai_details_button','ai_details',{'draft_id':str(draft.id)})])
     # A change has none of the controls below: its request already says what
     # to do, and a stepper or a theme beside it was read as part of the change.
-    if not change and not cv:
+    # A category whose length is not a count (an ariza's one page, a test's
+    # pages from its questions) has none either: the server would answer every
+    # tap with the same number (categories.skeleton.length).
+    if not change and not cv and not (review and review['bounds'] is None):
         # The count can be put right here, before anything is made. Every plan has
         # the same ceiling, so at it there is no "more" button and no plan offered
         # in its place: only the weekly allowance differs by plan.

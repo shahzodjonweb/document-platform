@@ -1024,3 +1024,15 @@ tests/test_category_facts.py::test_a_slot_that_checks_names_takes_a_lone_invente
 tests/test_category_facts.py::test_a_surname_shaped_first_word_is_kept_when_it_is_the_customers_or_a_common_word[Namunova javobgar.]
 tests/test_category_finish_decks.py::test_an_invented_person_in_a_problem_proposal_or_request_is_blanked[council-problems]
 tests/test_category_facts.py::test_a_counted_copy_shares_the_respelled_words_rather_than_folding_the_source_again
+
+# The bot for category papers (B4): a paper whose length is not a count has no stepper, a change to a paper says
+# its pages before (its stored length, never a count of its parts), and a ceiling paper that came out shorter than
+# quoted says so under its file with both numbers
+tests/test_bot_category_papers.py::test_a_paper_whose_length_is_not_a_count_has_no_stepper[uz]
+tests/test_bot_category_papers.py::test_a_count_paper_steps_within_its_bounds_and_boshqa_as_today
+tests/test_bot_category_papers.py::test_a_change_to_a_paper_reads_its_pages_not_its_parts
+tests/test_bot_category_papers.py::test_a_change_to_a_category_deck_counts_its_slides_as_today
+tests/test_bot_category_papers.py::test_a_ceiling_paper_that_came_out_shorter_says_so_under_its_file[uz]
+tests/test_bot_category_papers.py::test_a_ceiling_paper_that_fills_its_pages_says_nothing_more
+tests/test_bot_category_papers.py::test_a_document_without_a_category_is_never_called_shorter
+tests/test_bot_category_papers.py::test_every_categorys_shorter_words_are_for_a_ceiling_paper_and_name_only_the_two_numbers

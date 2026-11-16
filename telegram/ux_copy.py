@@ -226,6 +226,8 @@ MESSAGES = {
     'ai_sources_cut': ('✂️ Your files are long: only the beginning and the end of each were read.', '✂️ Fayllaringiz uzun: har birining faqat boshi va oxiri o‘qildi.', '✂️ Файлы длинные: прочитаны только начало и конец каждого.'),
     # Under a category's finished file, for one whose category has no wording of its own.
     'facts_blanked': ('ℹ️ Where you gave no details, blanks were left for you to fill in.', 'ℹ️ Siz bermagan ma’lumot o‘rniga bo‘sh joy qoldirildi: uni o‘zingiz to‘ldiring.', 'ℹ️ Где данных не было, оставлены пустые места: заполните их сами.'),
+    # A paper whose pages are a ceiling (a report, a letter) that came out shorter than quoted: nothing pads it.
+    'paper_shorter': ('ℹ️ The document fills {pages} of the {asked} pages: it holds only what you gave, and nothing was made up to fill the rest.', 'ℹ️ Hujjat {asked} sahifa o‘rniga {pages} sahifa bo‘ldi: unda faqat siz bergan ma’lumotlar bor, joyni to‘ldirish uchun hech narsa o‘ylab topilmadi.', 'ℹ️ Документ занял {pages} стр. из {asked}: в нём только то, что вы дали, и ничего не выдумано ради объёма.'),
     'ai_revise': ('✏️ Make changes', '✏️ O‘zgartirish kiritish', '✏️ Внести изменения'),
     'ai_ask_to_change': ('✨ Ask AI to change', '✨ AI bilan o‘zgartirish', '✨ Изменить с ИИ'),
     # The editor, opened inside Telegram: no AI edit is used.

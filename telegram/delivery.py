@@ -85,10 +85,13 @@ def category_notices(job, locale):
     The category's own words (its entry's `bot.notices`), never a value from
     the document: `finished` always, what to do with the file; `blanks` when
     code took out or blanked a fact the customer did not give (the job warning
-    facts_blanked), in the shared wording when the category has none; `draft`
-    when a new deck has slides written from its topic alone, as a draft to
-    check, because no file was sent. Never raises: a notice is never worth
-    the file.
+    facts_blanked), in the shared wording when the category has none;
+    `shorter` when a paper whose pages are a ceiling (`length.target`) came
+    out with fewer pages than it was quoted, so a one-page report asked for
+    in four is not taken for a failure, also in the shared wording when the
+    category has none; `draft` when a new deck has slides written from its
+    topic alone, as a draft to check, because no file was sent. Never raises:
+    a notice is never worth the file.
     """
     category = (job.parameters or {}).get('category')
     if not category:
@@ -109,6 +112,15 @@ def category_notices(job, locale):
     except Exception:
         _unread_notices(job)
         return []
+    # The pages quoted are read from the draft and those made from the file:
+    # a failure there loses this notice alone.
+    try:
+        short = _shorter(job, entry)
+        if short:
+            notice = words(said['shorter']) if said.get('shorter') else UX[locale]['paper_shorter']
+            lines.append(notice.replace('{asked}', str(short[0])).replace('{pages}', str(short[1])))
+    except Exception:
+        _unread_notices(job)
     # Read from the draft, which may have changed shape since: a failure there
     # loses the draft notice alone, never the ones already worked out.
     try:
@@ -122,6 +134,29 @@ def category_notices(job, locale):
 def _unread_notices(job):
     import logging
     logging.getLogger(__name__).exception('The notices of job %s could not be read', job.id)
+
+
+def _shorter(job, entry):
+    """(pages quoted, pages made) when a ceiling paper's file has fewer pages than its draft was quoted; else None.
+
+    The quote is the draft's stored length (categories.skeleton.pages, the one
+    reader of the number, which the review showed and the quote capped), the
+    made pages are the delivered file's. A paper whose number is a count is
+    filled to it, and a deck is always its count, so neither is ever shorter.
+    A file whose page count is unknown (0) says nothing.
+    """
+    from apps.studio.categories import skeleton
+    from apps.studio.domain import unpack
+    from apps.studio.models import GenerationDraft
+    if entry.service != 'pdf' or entry.length['target'] != 'ceiling':
+        return None
+    made = [artifact.file.page_count for artifact in job.artifacts.select_related('file')
+            if artifact.role == 'user_document']
+    draft = GenerationDraft.objects.filter(account=job.account, id=(job.parameters or {}).get('generation_draft_id')).first()
+    if not made or draft is None:
+        return None
+    asked, pages = skeleton.pages(unpack(draft.encrypted_data)), max(made)
+    return (asked, pages) if asked and 0 < pages < asked else None
 
 
 def _drafted(job, entry):
