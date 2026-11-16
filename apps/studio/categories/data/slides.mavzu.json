@@ -105,7 +105,7 @@
   },
   "hint": {
    "uz": "Masalan:\nNamuna davlat universiteti\nFan: Ekologiya\nBajardi: Karimova Dilnoza, 205-guruh\nQabul qildi: dotsent Rahimov B.\nSamarqand — 2026",
-   "ru": "Например:\nГосударственный университет «Намуна»\nПредмет: Экология\nВыполнила: Каримова Дилноза, группа 205\nПроверил: доцент Рахимов Б.\nСамарканд — 2026",
+   "ru": "Например:\nГосударственный университет «Намуна»\nПредмет: Экология\nВыполнила: Каримова Дилноза, группа 205\nПринял: доцент Рахимов Б.\nСамарканд — 2026",
    "en": "For example:\nNamuna State University\nSubject: Ecology\nPrepared by: Dilnoza Karimova, group 205\nChecked by: Assoc. Prof. B. Rahimov\nSamarkand — 2026"
   }
  },
@@ -604,7 +604,7 @@
     "bullets.numbered_rows"
    ],
    "source": "customer",
-   "write": "Only attached files or works the customer named, as given (a file name stays a file name); at most 6 lines; with none supplied no slide and no source anywhere. Takes one body place when it appears.",
+   "write": "Only attached files or works the customer named, as given (a file name stays a file name); at most 6 lines; with none supplied, the honest form (heading and ruled lines) and no source anywhere. Takes one body place when it appears.",
    "when": "cue:sources",
    "from": 6,
    "join": 5
@@ -624,7 +624,7 @@
    ],
    "pins": [],
    "source": "template",
-   "write": "“Savollaringiz bormi?” / «Вопросы?» / “Questions?” at 28 pt or more; no contacts unless supplied. Kept for English decks too (owner’s practice and CIS convention; 0 of 4 English example decks end this way)."
+   "write": "“Savollaringiz bormi?” / «Вопросы?» / “Questions?” at 28 pt or more; no contacts unless supplied. Kept for English decks too."
   }
  ],
  "rules": [

@@ -628,7 +628,7 @@
     "two_column.numbered"
    ],
    "source": "customer",
-   "write": "Only what the customer wrote under “yaxshi ketdi”; none: the slide is dropped. 3 items with a figure each: cards.classic (figure 44 pt, label of at most 4 words, one sentence of at most 14 words); 2 items: two_column.numbered; 4 to 6: bullets.rail_dots; 1 item: see slot_item_rules. Heading = the two strongest supplied facts. No causal claim (“aksiya tufayli”) unless the customer wrote it, and a line is a win only if the customer wrote it as one.",
+   "write": "Only what the customer wrote under “yaxshi ketdi”; none: the honest form (heading and ruled lines). 3 items with a figure each: cards.classic (figure 44 pt, label of at most 4 words, one sentence of at most 14 words); 2 items: two_column.numbered; 4 to 6: bullets.rail_dots; 1 item: see slot_item_rules. Heading = the two strongest supplied facts. No causal claim (“aksiya tufayli”) unless the customer wrote it, and a line is a win only if the customer wrote it as one.",
    "from": 4
   },
   {

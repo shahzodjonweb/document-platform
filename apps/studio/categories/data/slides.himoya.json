@@ -10,7 +10,7 @@
   "ru": "🛡 Защита работы",
   "en": "🛡 Thesis defence"
  },
- "summary": "An editable PowerPoint deck for defending a kurs ishi, a bitiruv malakaviy ishi, a master’s dissertation or an internship report before a commission. Nothing on a slide is the AI’s own finding: every result, number, method, novelty, proposal and implementation restates the customer’s message or attached work, and only the framing slides (relevance, aim and tasks, object and subject) may be drafted from the topic’s own words, marked as a draft in the notes. The deck has as many slides as the material supports (the count asked is a ceiling), a formal title slide with the topic in full, one finding per result slide, conclusions that answer the tasks, and a closing slide that repeats the author.",
+ "summary": "An editable PowerPoint deck for defending a kurs ishi, a bitiruv malakaviy ishi, a master’s dissertation or an internship report before a commission. Nothing on a slide is the AI’s own finding: every result, number, method, novelty, proposal and implementation restates the customer’s message or attached work, and only the framing slides (relevance, aim and tasks, object and subject) may be drafted from the topic’s own words, marked as a draft in the notes. The deck has the count asked (a slot with no material is an honest form), a formal title slide with the topic in full, one finding per result slide, conclusions that answer the tasks, and a closing slide that repeats the author.",
  "tone": "Formal, neutral and short on the slide: noun phrases and infinitive tasks of at most 10 words, 2 to 5 lines, never a paragraph and never “we”. Speaker notes are a speaking outline to the commission, first person singular, polite. Nothing on a slide is the AI’s own finding.",
  "topic": true,
  "title": "model",
@@ -440,7 +440,7 @@
     "bullets.classic"
    ],
    "source": "draft",
-   "write": "From the attached kirish or the message: 1 to 4 lines of at most 10 words that restate what it says. With no source from 7 slides on, a draft of at most 2 lines built from the topic’s own words (the problem named in the topic, no consequence, trend, number or organisation) and the notes open with “[Qoralama: ...]”; below 7 slides the slot is dropped. Notes: the greeting “Hurmatli Davlat attestatsiya komissiyasi raisi va a’zolari!”, the topic by name, the relevance as the slide says it.",
+   "write": "From the attached kirish or the message: 1 to 4 lines of at most 10 words that restate what it says. With no source from 7 slides on, a draft of at most 2 lines built from the topic’s own words (the problem named in the topic, no consequence, trend, number or organisation) and the notes open with “[Qoralama: ...]”; below 7 slides, with no source, the honest form (heading and ruled lines). Notes: the greeting “Hurmatli Davlat attestatsiya komissiyasi raisi va a’zolari!”, the topic by name, the relevance as the slide says it.",
    "from": 7,
    "join": 3,
    "when": "nocue:internship"
@@ -484,7 +484,7 @@
     "two_column.numbered"
    ],
    "source": "draft",
-   "write": "From 8 slides. Lines “Ob’ekt: ...”, “Predmet: ...” and, only when the customer or the file names methods, “Metodlar: ...”, of at most 12 words. Object and subject differ. With no source they are the topic’s own nouns (draft, marked in the notes); the methods line is never drafted. Spelling: ob’ekt with the tutuq belgisi, as doc 11’s kirish list (open question 3).",
+   "write": "From 8 slides. Lines “Ob’ekt: ...”, “Predmet: ...” and, only when the customer or the file names methods, “Metodlar: ...”, of at most 12 words. Object and subject differ. With no source they are the topic’s own nouns (draft, marked in the notes); the methods line is never drafted. Spelling: ob’ekt with the tutuq belgisi.",
    "from": 8,
    "join": 4,
    "when": "nocue:internship",
@@ -509,7 +509,7 @@
     "two_column.numbered"
    ],
    "source": "draft",
-   "write": "From 8 slides. Lines “Ob’ekt: ...”, “Predmet: ...” and, only when the customer or the file names methods, “Metodlar: ...”, of at most 12 words. Object and subject differ. With no source they are the topic’s own nouns (draft, marked in the notes); the methods line is never drafted. Spelling: ob’ekt with the tutuq belgisi, as doc 11’s kirish list (open question 3).",
+   "write": "From 8 slides. Lines “Ob’ekt: ...”, “Predmet: ...” and, only when the customer or the file names methods, “Metodlar: ...”, of at most 12 words. Object and subject differ. With no source they are the topic’s own nouns (draft, marked in the notes); the methods line is never drafted. Spelling: ob’ekt with the tutuq belgisi.",
    "from": 13,
    "join": 4,
    "when": "nocue:internship"
@@ -531,7 +531,7 @@
     "bullets.rail_dots"
    ],
    "source": "customer",
-   "write": "2 to 4 lines, each a method the customer or the file names. With none named the slot is dropped; then obyekt_predmet carries no methods line.",
+   "write": "2 to 4 lines, each a method the customer or the file names. With none named: the honest form (heading and ruled lines); obyekt_predmet then carries no methods line.",
    "from": 13,
    "join": 6
   },
@@ -553,7 +553,7 @@
     "statement.soft_panel"
    ],
    "source": "customer",
-   "write": "One sentence of at most 20 words restating the work’s own novelty statement. The work states none: the slide does not exist. “First time”, “new” and any claim of novelty the work does not make are never written.",
+   "write": "One sentence of at most 20 words restating the work’s own novelty statement. The work states none: the honest form (heading and ruled lines). “First time”, “new” and any claim of novelty the work does not make are never written.",
    "from": 13,
    "join": 7,
    "when": "cue:masters"
@@ -656,7 +656,7 @@
     "bullets.lead_line"
    ],
    "source": "customer",
-   "write": "1 to 4 lines restating the work’s own statement of significance, its use or its implementation act (the DAK chair reads the act aloud, doc 09 page 19). No facts: the slot is dropped. At 10 slides it takes the place of one result slide and the result slides group the tasks.",
+   "write": "1 to 4 lines restating the work’s own statement of significance, its use or its implementation act. No facts: the honest form (heading and ruled lines). At 10 slides it takes the place of one result slide and the result slides group the tasks.",
    "from": 8,
    "join": 5
   },
@@ -677,7 +677,7 @@
     "bullets.numbered_rows"
    ],
    "source": "customer",
-   "write": "2 to 4 numbered lines of at most 14 words copied in substance from the work’s own list; dropped when it has none. The Uzbek heading is the reviewer’s term and is unverified in the sources (open question 3).",
+   "write": "2 to 4 numbered lines of at most 14 words copied in substance from the work’s own list; with none, the honest form (heading and ruled lines).",
    "from": 13,
    "join": 8,
    "when": "cue:masters"
@@ -699,7 +699,7 @@
     "bullets.classic"
    ],
    "source": "customer",
-   "write": "1 to 4 lines, one per publication or conference, exactly as the customer or the work lists them (no journal, title or date that was not given). Dropped when none is listed.",
+   "write": "1 to 4 lines, one per publication or conference, exactly as the customer or the work lists them (no journal, title or date that was not given). None listed: the honest form (heading and ruled lines).",
    "from": 14,
    "join": 9,
    "when": "cue:masters"

@@ -510,7 +510,7 @@
    ],
    "pins": [],
    "source": "template",
-   "write": "Heading = the short name as written, without the legal form (44 pt, three lines hold six words; the full legal name goes to the closing slide). Body = lines: what it is, from the customer’s words (up to 10 words); the fixed descriptor: Kompaniya taqdimoti / Презентация компании / Company presentation, Mahsulot taqdimoti or Xizmat taqdimoti / Презентация продукта or услуги / Product or Service presentation, Hamkorlik taklifi / Предложение о сотрудничестве / Partnership offer; in a product deck a third line “Yaratuvchi: <maker>” when the customer named one. No year, no slogan the customer did not write. NO photo by default (image_query empty): the cover stands without one and the right part carries the diagonal pattern; a photo only when the customer asks, a concrete thing in 2 to 4 English words, and the review screen says “rasm — stok, o‘zingizniki bilan almashtiring”. The account logo, when there is one, sits on a white plate in a zone the cover reserves (renderer item 4)."
+   "write": "Heading = the short name as written, without the legal form (44 pt, three lines hold six words; the full legal name goes to the closing slide). Body = lines: what it is, from the customer’s words (up to 10 words); the fixed descriptor: Kompaniya taqdimoti / Презентация компании / Company presentation, Mahsulot taqdimoti or Xizmat taqdimoti / Презентация продукта or услуги / Product or Service presentation, Hamkorlik taklifi / Предложение о сотрудничестве / Partnership offer; in a product deck a third line “Yaratuvchi: <maker>” when the customer named one. No year, no slogan the customer did not write. NO photo by default (image_query empty): the cover stands without one and the right part carries the diagonal pattern; a photo only when the customer asks, a concrete thing in 2 to 4 English words, and the review screen says “rasm — stok, o‘zingizniki bilan almashtiring”. The account logo, when there is one, sits on a white plate in a zone the cover reserves."
   },
   {
    "id": "haqimizda",
@@ -569,7 +569,7 @@
     "bullets.classic"
    ],
    "source": "customer",
-   "write": "2 to 4 pains the customer named, each a label of up to 4 words restating their words, no text line. With no problem named the slide is DROPPED: a draft from the product’s purpose is a market claim (the earlier “draft allowed” rule is removed). The fixed heading avoids a claim about “what shop owners run into”.",
+   "write": "2 to 4 pains the customer named, each a label of up to 4 words restating their words, no text line. With no problem named: the honest form (heading and ruled lines), never a draft from the product’s purpose, which would be a market claim.",
    "when": "cue:mahsulot",
    "from": 5
   },
@@ -604,7 +604,7 @@
     "bullets.classic"
    ],
    "source": "customer",
-   "write": "Heading, in the deck’s language: Mahsulotlarimiz | Xizmatlarimiz | Nima taklif qilamiz / Наша продукция | Наши услуги | Что мы предлагаем / Our products | Our services | What we offer. 3 to 6 lines, each “name: the customer’s own phrase” of at most 10 words, or the name alone when the customer gave none (a name with no phrase is honest, a drafted phrase is not); never a price, duration, guarantee, material or brand unless given. With one or two items the overview is dropped and their detail slides carry them. The heading noun follows what the customer sells (products, services, both). (cards.tab_rows is no longer used: its 14 pt text and its 01 to 04 tabs, which read as a ranking, are what this rule replaces.)",
+   "write": "Heading, in the deck’s language: Mahsulotlarimiz | Xizmatlarimiz | Nima taklif qilamiz / Наша продукция | Наши услуги | Что мы предлагаем / Our products | Our services | What we offer. 3 to 6 lines, each “name: the customer’s own phrase” of at most 10 words, or the name alone when the customer gave none (a name with no phrase is honest, a drafted phrase is not); never a price, duration, guarantee, material or brand unless given. With one or two items the overview lists just those. The heading noun follows what the customer sells (products, services, both).",
    "when": "nocue:mahsulot"
   },
   {
@@ -621,7 +621,7 @@
     "bullets.classic"
    ],
    "source": "customer",
-   "write": "1 to 4 lines, only the lines the customer’s words support: what it is, what is included, for whom, how it is finished or delivered; a line the customer did not support is LEFT OUT, never replaced by a plausible one (the earlier “four lines” rule, which made models pad, is removed). A product with fewer than two supported lines gets no slide of its own and stays on the overview. Each line at most 14 words. A neutral one-line definition of a named thing may be drafted ONLY for a plain good (a wardrobe, a lamp), never for a medical, legal, financial, educational-licence or safety service (the clinic example: “Implantatsiya” stays a bare name), is marked “[Qoralama: ...]” in the notes, is listed on the review screen and never counts toward the supportable count. No photo by default: stock photos of “kitchens” or “workshop” present someone else’s work as the company’s; the slide is text. Two or three product slides in a row are allowed.",
+   "write": "1 to 4 lines, only the lines the customer’s words support: what it is, what is included, for whom, how it is finished or delivered; a line the customer did not support is LEFT OUT, never replaced by a plausible one. A product the customer gave no lines for is the honest form (heading and ruled lines). Each line at most 14 words. A neutral one-line definition of a named thing may be drafted ONLY for a plain good (a wardrobe, a lamp), never for a medical, legal, financial, educational-licence or safety service (the clinic example: “Implantatsiya” stays a bare name), is marked “[Qoralama: ...]” in the notes, is listed on the review screen and never counts toward the supportable count. No photo by default: stock photos of “kitchens” or “workshop” present someone else’s work as the company’s; the slide is text. Two or three product slides in a row are allowed.",
    "when": "nocue:mahsulot",
    "from": 7,
    "repeat": {
@@ -663,7 +663,7 @@
     "bullets.numbered_rows"
    ],
    "source": "customer",
-   "write": "3 to 5 steps in the customer’s order: a label of up to 3 words and, only if the customer wrote them, up to 8 more words after a colon. The numerals are right here because the order matters. The count in the heading is the number of steps the customer gave. Without steps from the customer the slide does not exist. (process.connected_cards is not allow-listed: its 14 pt labels sit in half-empty cards.)",
+   "write": "3 to 5 steps in the customer’s order: a label of up to 3 words and, only if the customer wrote them, up to 8 more words after a colon. The numerals are right here because the order matters. The count in the heading is the number of steps the customer gave. Without steps from the customer: the honest form (heading and ruled lines).",
    "when": "nocue:mahsulot",
    "from": 10,
    "join": 4
@@ -702,7 +702,7 @@
     "bullets.card_stack"
    ],
    "source": "customer",
-   "write": "3 to 5 lines, each the customer’s fact in the customer’s own words, at most 10 words, with nothing appended: “Usta o‘zi o‘lchaydi”, not “...: o‘lcham xatosi bo‘lmaydi” (a benefit or a guarantee the customer did not state is a claim). Unnumbered: the advantages are not a ranking. A line with no fact is dropped; fewer than three lines and the slide does not exist. No superlatives (the per-language list is in launch gate 2).",
+   "write": "3 to 5 lines, each the customer’s fact in the customer’s own words, at most 10 words, with nothing appended: “Usta o‘zi o‘lchaydi”, not “...: o‘lcham xatosi bo‘lmaydi” (a benefit or a guarantee the customer did not state is a claim). Unnumbered: the advantages are not a ranking. A line with no fact is left out; with no facts at all, the honest form (heading and ruled lines). No superlatives.",
    "when": "nocue:mahsulot",
    "from": 5
   },
@@ -723,7 +723,7 @@
     "bullets.card_stack"
    ],
    "source": "customer",
-   "write": "3 to 5 customer types the customer named (field target_customers), at most 6 words each, no reason added. Fewer than three: the slide does not exist.",
+   "write": "3 to 5 customer types the customer named (field target_customers), at most 6 words each, no reason added. Fewer than three: only those named; none: the honest form (heading and ruled lines).",
    "when": "cue:mahsulot",
    "from": 9,
    "join": 4
@@ -743,7 +743,7 @@
     "bullets.card_stack"
    ],
    "source": "customer",
-   "write": "Heading, in the deck’s language: <Nomi> raqamlarda | (taklif:) Hamkorlikdan foyda / <Название> в цифрах | (предложение:) Что вы получите / <Name> in numbers | (offer:) What you gain. Figures only as the customer gave them (value = figure with one short sign, the unit and the noun in the label; no line under it). Without two figures: the benefits the customer stated, one line each (“Komissiya 8%”), or the slide does not exist. “Sizga nima foyda” is not used (clipped); “Hamkorlikdan foyda” or “Sizga nima beramiz” are.",
+   "write": "Heading, in the deck’s language: <Nomi> raqamlarda | (taklif:) Hamkorlikdan foyda / <Название> в цифрах | (предложение:) Что вы получите / <Name> in numbers | (offer:) What you gain. Figures only as the customer gave them (value = figure with one short sign, the unit and the noun in the label; no line under it). Without two figures: the benefits the customer stated, one line each (“Komissiya 8%”), or with none, the honest form (heading and ruled lines). “Sizga nima foyda” is not used (clipped); “Hamkorlikdan foyda” or “Sizga nima beramiz” are.",
    "when": "cue:mahsulot",
    "from": 8,
    "join": 2
@@ -805,7 +805,7 @@
     "bullets.classic"
    ],
    "source": "customer",
-   "write": "Heading, in the deck’s language: Mijozlarimiz | Mijozlar va hamkorlar / Наши клиенты | Клиенты и партнёры / Our clients | Clients and partners. Names exactly as given. With what was made and a year: a table with the columns Mijoz | <middle header> | Yil, up to 6 rows. The middle header follows the business and is chosen from this fixed list, never “Nimani tayyorladik” for everyone: Nima qildik / Что сделали / What we did (makes or builds things for clients), Loyiha / Проект / Project (agency, IT, consulting, design), Xizmat / Услуга / Service (clinic, salon, school, any service to people). Names only: 3 to 5 as bullets.card_stack, 6 as bullets.classic (unnumbered: a number beside a client reads as a rank). At most 6 names on the slide; more go to the notes and the customer is told. A client the customer left unnamed stays anonymous (“mehmonxona”). No logos, no “ko‘plab yirik kompaniyalar”. The notes say “ruxsat so‘rang”. Fewer than three names: the slide does not exist.",
+   "write": "Heading, in the deck’s language: Mijozlarimiz | Mijozlar va hamkorlar / Наши клиенты | Клиенты и партнёры / Our clients | Clients and partners. Names exactly as given. With what was made and a year: a table with the columns Mijoz | <middle header> | Yil, up to 6 rows. The middle header follows the business and is chosen from this fixed list, never “Nimani tayyorladik” for everyone: Nima qildik / Что сделали / What we did (makes or builds things for clients), Loyiha / Проект / Project (agency, IT, consulting, design), Xizmat / Услуга / Service (clinic, salon, school, any service to people). Names only: 3 to 5 as bullets.card_stack, 6 as bullets.classic (unnumbered: a number beside a client reads as a rank). At most 6 names on the slide; more go to the notes and the customer is told. A client the customer left unnamed stays anonymous (“mehmonxona”). No logos, no “ko‘plab yirik kompaniyalar”. The notes say “ruxsat so‘rang”. No names: the honest form (heading and ruled lines).",
    "from": 6,
    "join": 3
   },
@@ -822,7 +822,7 @@
     "bullets.tone_stripes"
    ],
    "source": "customer",
-   "write": "Heading, in the deck’s language: Keys | Loyiha: <natija, raqami bilan> / Кейс | Проект: <результат с цифрой> / Case | Project: <the result with its figure>. Three lines “Vaziyat: ...”, “Yechim: ...”, “Natija: ...” (Ситуация / Решение / Результат; Situation / Solution / Result), each at most 14 words in the customer’s words; the heading states the result with the customer’s own figure and stays within 42 characters. The prefix is “Keys” by default and “Loyiha” when the work was not for a paying client or the customer calls it a project (a clinic’s patients, an app’s users). A client the customer did not name is described by the customer’s own word (“mehmonxona”) in the Vaziyat line. Needs the situation and the result; without them the slide does not exist. A second case from 14 slides.",
+   "write": "Heading, in the deck’s language: Keys | Loyiha: <natija, raqami bilan> / Кейс | Проект: <результат с цифрой> / Case | Project: <the result with its figure>. Three lines “Vaziyat: ...”, “Yechim: ...”, “Natija: ...” (Ситуация / Решение / Результат; Situation / Solution / Result), each at most 14 words in the customer’s words; the heading states the result with the customer’s own figure and stays within 42 characters. The prefix is “Keys” by default and “Loyiha” when the work was not for a paying client or the customer calls it a project (a clinic’s patients, an app’s users). A client the customer did not name is described by the customer’s own word (“mehmonxona”) in the Vaziyat line. Needs the situation and the result; without them, the honest form (heading and ruled lines). A second case from 14 slides.",
    "from": 8,
    "join": 5,
    "repeat": {
@@ -845,7 +845,7 @@
    ],
    "pins": [],
    "source": "customer",
-   "write": "The heading is fixed. Lines, each labelled in the deck’s language, in this order of importance: Telefon and Telegram (on one line separated by “ · ” when both are given and there are more than four lines); Instagram and site (one line); Aloqa uchun: <person>; Manzil; the legal line (field legal_name, as written; in a product deck “Yaratuvchi: <maker>” before it); the fixed invitation of one line, which promises nothing: “Savollar uchun yozing yoki qo‘ng‘iroq qiling.” / «По вопросам пишите или звоните.» / “Write or call us with any question.” (the first line dropped when there are more than five lines). A line the customer did not give is left out, except phone and Telegram, which stay as “Telefon: ________” and “Telegram: ________” (at most those two ruled blanks; never an address blank); with no contacts at all: heading, invitation and the two blanks. Every label is written, none is left bare (a website is “Sayt: ...” when it stands alone). No notes. Measured on the mocks: the classic closing draws 18 pt for up to five lines and 17 pt for six; phone and Telegram are therefore the smallest hierarchy problem of the deck, and the contact-card change of renderer item 4 (phone and Telegram at 28 pt) is asked for before launch; in an offer the heading may be “Hamkorlik uchun yozing”."
+   "write": "The heading is fixed. Lines, each labelled in the deck’s language, in this order of importance: Telefon and Telegram (on one line separated by “ · ” when both are given and there are more than four lines); Instagram and site (one line); Aloqa uchun: <person>; Manzil; the legal line (field legal_name, as written; in a product deck “Yaratuvchi: <maker>” before it); the fixed invitation of one line, which promises nothing: “Savollar uchun yozing yoki qo‘ng‘iroq qiling.” / «По вопросам пишите или звоните.» / “Write or call us with any question.” (the first line dropped when there are more than five lines). A line the customer did not give is left out, except phone and Telegram, which stay as “Telefon: ________” and “Telegram: ________” (at most those two ruled blanks; never an address blank); with no contacts at all: heading, invitation and the two blanks. Every label is written, none is left bare (a website is “Sayt: ...” when it stands alone). No notes. In an offer the heading may be “Hamkorlik uchun yozing”."
   }
  ],
  "rules": [

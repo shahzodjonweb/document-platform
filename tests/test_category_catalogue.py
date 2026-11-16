@@ -204,9 +204,11 @@ def test_a_deck_names_only_designs_and_variants_that_exist():
 
 def test_readiness_gates_are_warnings_on_a_draft_and_errors_on_a_ready_entry():
     entries, templates, index = files()
-    # A deck converted by C2s meets its count and block gates; take them away again to see them caught.
+    # A deck converted by C2s meets its count and block gates; take them away again to see them caught. The prompt
+    # is replaced whole, so the check does not hang on how himoya's own copy happens to write its count.
     himoya = entries['slides.himoya']
-    himoya['bot']['prompt'] = {locale: text.replace('10', 'o‘n') for locale, text in himoya['bot']['prompt'].items()}
+    himoya['bot']['prompt'] = {'uz': 'Bitta xabarda yozing.', 'ru': 'Напишите одним сообщением.',
+                               'en': 'Say it in one message.'}
     himoya['rules'].append({'text': 'A long rule. ' * 400, 'to': 'model'})
     made = build(entries, templates, index)
     drafts = check(catalogue=made, lock=relock(made, {}))

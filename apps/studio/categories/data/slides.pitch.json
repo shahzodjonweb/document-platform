@@ -513,7 +513,7 @@
     "chart.peak_callout"
    ],
    "source": "customer",
-   "write": "Placed right after the solution by default. THAT PLACE IS A DESIGN JUDGEMENT AND THE OWNER’S DECISION, not a sourced fact: the verified sources (the Microsoft templates, Sequoia, the owner’s own hypothesis) put growth or traction after the market and the business model, and the Y Combinator pages that were said to support an early place could not be read (open question 2). The alternative order is one line: after biznes_model. A chart of the customer’s own series (3-8 points, the customer’s labels and unit, one series), or 2-4 figures, or one figure. Headline names the first and the last value (\"12 mln so‘mdan 72 mln so‘mga\") and the customer’s own word for what was counted (buyurtmalar), never a ratio or percentage the customer did not write. Up to 2 slides. No figure: no slide.",
+   "write": "A chart of the customer’s own series (3-8 points, the customer’s labels and unit, one series), or 2-4 figures, or one figure. Headline names the first and the last value (\"12 mln so‘mdan 72 mln so‘mga\") and the customer’s own word for what was counted (buyurtmalar), never a ratio or percentage the customer did not write. Up to 2 slides. No figure: the honest form (heading and ruled lines).",
    "from": 7,
    "join": 3,
    "repeat": {

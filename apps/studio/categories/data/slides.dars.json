@@ -579,7 +579,7 @@
     "statement.soft_panel"
    ],
    "source": "draft",
-   "write": "One sentence of at most 60 characters (the statement slide holds two lines of 40 to 44 pt; three lines touch the underline): the definition, rule or main idea of the topic, only if it is textbook-certain or in the attached file; formulas as plain text with Unicode (x², ≠, −, ·, :). The heading is the label above it. “Yangi tushuncha” only when the topic defines a term (a part of speech, a theorem, a process); history, literature and similar topics have no concept, so the heading is “Asosiy g‘oya” / «Главная мысль» / “Main idea” and the sentence is the main idea of the lesson (mock/school_dars-en.png). Grammar terms use the school terms (narsa-buyum, bildiruvchi, ega, kesim), never Russian loans (predmet). Notes: write it on the board, pupils copy it; 3 to 4 minutes.",
+   "write": "One sentence of at most 60 characters (the statement slide holds two lines of 40 to 44 pt; three lines touch the underline): the definition, rule or main idea of the topic, only if it is textbook-certain or in the attached file; formulas as plain text with Unicode (x², ≠, −, ·, :). The heading is the label above it. “Yangi tushuncha” only when the topic defines a term (a part of speech, a theorem, a process); history, literature and similar topics have no concept, so the heading is “Asosiy g‘oya” / «Главная мысль» / “Main idea” and the sentence is the main idea of the lesson. Grammar terms use the school terms (narsa-buyum, bildiruvchi, ega, kesim), never Russian loans (predmet). Notes: write it on the board, pupils copy it; 3 to 4 minutes.",
    "from": 8
   },
   {
@@ -725,7 +725,7 @@
     "bullets.card_stack"
    ],
    "source": "draft",
-   "write": "Only when the customer gives a number of test questions; built by the blueprint (the product’s end-of-deck quiz is not used), drawn after mashq and before xulosa, counted inside the slide total. At most 2 questions a slide when every option has at most 3 words, otherwise 1 question a slide. A question is a line of at most 46 characters (the heading is “Test: 1- va 2-savol”); the 4 options are written on one line separated by “  ·  ” (“x = 5  ·  x = 6  ·  x = 7  ·  x = 8”) or, for one question a slide, as 4 lines, never with a letter or a numeral: the renderer strips “A)” markers, and variants that draw 01, 02 next to numeric options (“01 6”) are not used. Exactly one option is correct, its position varies, the key is in the notes by position and value (“ikkinchi variant, x = 6”). A matrix variant with fixed letters A to D would be the cheap later improvement (a few hours, gated by the allow-list).",
+   "write": "Only when the customer gives a number of test questions; drawn after mashq and before xulosa, counted inside the slide total. At most 2 questions a slide when every option has at most 3 words, otherwise 1 question a slide. A question is a line of at most 46 characters (the heading is “Test: 1- va 2-savol”); the 4 options are written on one line separated by “  ·  ” (“x = 5  ·  x = 6  ·  x = 7  ·  x = 8”) or, for one question a slide, as 4 lines, never with a letter or a numeral. Exactly one option is correct, its position varies, the key is in the notes by position and value (“ikkinchi variant, x = 6”).",
    "when": "cue:test",
    "from": 8,
    "join": 5,
@@ -924,7 +924,13 @@
    }
   ],
   "attach": true,
-  "notices": {}
+  "notices": {
+   "blanks": {
+    "uz": "Siz bermagan ma’lumot o‘rniga bo‘sh joy qoldirildi: uni o‘zingiz to‘ldiring.",
+    "ru": "Где данных не было, оставлены пустые места: заполните их сами.",
+    "en": "Where you gave no details, blanks were left for you to fill in."
+   }
+  }
  },
  "templates": [],
  "look": {

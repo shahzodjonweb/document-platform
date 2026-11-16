@@ -348,7 +348,7 @@
    "kind": "number",
    "need": "optional",
    "missing": "omit",
-   "where": "sizes the deck (up to 10 when not said, 5 to 30); a ceiling: with thin material the deck is shorter and the customer is told before paying"
+   "where": "sizes the deck (10 when not said, 5 to 30); the count is delivered as quoted, a slide with no material being a form to fill in"
   }
  ],
  "parts": [
@@ -384,7 +384,7 @@
     "agenda.classic"
    ],
    "source": "draft",
-   "write": "Used when the customer lists three to five questions (the agenda layout draws 3 to 6 items; with fewer than three listed no agenda slide is made). The regulation announces the agenda a week ahead, so the slide is customary, not required (neither real deck has one). 2 to 5 items in the customer’s order, each a label of at most 6 words worded as a subject of the council (“… to‘g‘risida”, «Об …», “On …”); a reporter line “Ma’ruzachi: …” (at most 6 words) only when the customer gave one for that item, never invented. The question the deck reports comes first (agenda.current_first marks row 1 as the one being heard). “Turli masalalar” (“Разное”, “Other business”) only if the customer listed it: the regulation’s text is silent on it. Notes open with the greeting “Hurmatli hamkasblar!”.",
+   "write": "Used when the customer lists three to five questions. 2 to 5 items in the customer’s order, each a label of at most 6 words worded as a subject of the council (“… to‘g‘risida”, «Об …», “On …”); a reporter line “Ma’ruzachi: …” (at most 6 words) only when the customer gave one for that item, never invented. The question the deck reports comes first (agenda.current_first marks row 1 as the one being heard). “Turli masalalar” (“Разное”, “Other business”) only if the customer listed it. Notes open with the greeting “Hurmatli hamkasblar!”.",
    "when": "cue:kun_tartibi",
    "join": 2
   },
@@ -406,7 +406,7 @@
     "agenda.classic"
    ],
    "source": "draft",
-   "write": "Used instead of kun_tartibi when the message names one topic. 3 to 5 items that are the parts this deck really has (for example Masalaning mohiyati, Darsda qo‘llanadigan usullar, Takliflar va qaror loyihasi): a label of at most 6 words and, optionally, a line of at most 5 words; fewer than 3 parts: no slide. Never a part the deck does not contain. Same block name as slides.mavzu (reja). Drawn by agenda.classic (24 / 22 pt).",
+   "write": "Used instead of kun_tartibi when the message names one topic. 3 to 5 items that are the parts this deck really has (for example Masalaning mohiyati, Darsda qo‘llanadigan usullar, Takliflar va qaror loyihasi): a label of at most 6 words and, optionally, a line of at most 5 words; with fewer than 3 parts, those there are. Never a part the deck does not contain.",
    "when": "nocue:natija",
    "from": 6,
    "join": 3
@@ -450,7 +450,7 @@
     "bullets.card_stack"
    ],
    "source": "draft",
-   "write": "Used when the customer gives no figures: exactly 3 lines of at most 10 words (the definition of the topic, why it matters to teachers, what the school should do), drawn by bullets.card_stack as three equal cards (bullets.lead_line is out of the allow-list: its 24 pt thesis band sat below the bullets under it). General professional knowledge of the topic only; no figure, no source, no claim about this school. Evidence: source 06 opens with the essence of the approach before any practice. Notes begin the draft mark [Qoralama] and are then pure script.",
+   "write": "Used when the customer gives no figures: exactly 3 lines of at most 10 words (the definition of the topic, why it matters to teachers, what the school should do), drawn by bullets.card_stack as three equal cards. General professional knowledge of the topic only; no figure, no source, no claim about this school. Notes begin the draft mark [Qoralama] and are then pure script.",
    "when": "nocue:natija",
    "join": 1
   },
@@ -689,7 +689,7 @@
     "bullets.numbered_rows"
    ],
    "source": "customer",
-   "write": "Placed directly before the resolution. 3 to 5 imperative lines of at most 10 words, numbered (bullets.numbered_rows), taken from the customer’s text or file (“Ochiq darslar jadvalini avgustda tasdiqlash.”) or, when the customer phrased his proposals as tasks, from them; never a task the customer did not give and never a restatement of the pairs slide. Usual from 8 slides when tasks were given; when the title or the aim promises tasks it enters first (at 6 slides). If the title promises tasks and none were given the slide is not made, the aim does not mention tasks, and the review screen says so. Heading “Vazifalar” is allowed for an August council that calls them so. Evidence: source 01 (key tasks for the new year as numbered imperative lines), source 11 (the tasks of the coming quarter are an item of every council session). Resolution point 1 takes the tasks into account.",
+   "write": "Placed directly before the resolution. 3 to 5 imperative lines of at most 10 words, numbered (bullets.numbered_rows), taken from the customer’s text or file (“Ochiq darslar jadvalini avgustda tasdiqlash.”) or, when the customer phrased his proposals as tasks, from them; never a task the customer did not give and never a restatement of the pairs slide. Usual from 8 slides when tasks were given; when the title or the aim promises tasks it enters first (at 6 slides). If none were given: the honest form (heading and ruled lines), and the aim does not mention tasks. Heading “Vazifalar” is allowed for an August council that calls them so. Resolution point 1 takes the tasks into account.",
    "when": "cue:vazifa",
    "join": 3
   },
@@ -815,9 +815,9 @@
  ],
  "bot": {
   "prompt": {
-   "uz": "🏫 Pedagogik kengash slaydlari. Bitta xabarda yozing: mavzu yoki kun tartibi, maktab, majlis raqami va sanasi, ma’ruzachi va necha slayd kerak (aytmasangiz, ko‘pi bilan 10 ta; material kam bo‘lsa, kamroq).\nO‘zlashtirish, sifat, davomat kabi raqamlaringiz, yutuqlar, muammolar, takliflar va yangi yil vazifalari bo‘lsa, yozing: diagramma va jadval qilamiz. Raqam, ism va sanani biz o‘zimizdan o‘ylab topmaymiz; o‘qituvchilarning ismlari slaydlarga yozilmaydi.\n📎 Hisobot yoki jadvalni PDF, Word yoki TXT qilib qo‘shsangiz, slaydlar shunga tayanadi.",
-   "ru": "🏫 Слайды к педсовету. Напишите одним сообщением: тему или повестку, школу, номер и дату заседания, докладчика и нужное число слайдов (если не указать, до 10; если материала мало, меньше).\nЕсть цифры (успеваемость, качество, посещаемость), достижения, проблемы, предложения и задачи на новый год — напишите их: сделаем диаграмму и таблицу. Цифры, имена и даты мы сами не придумываем; фамилии учителей на слайды не выносим.\n📎 Доклад или таблицу в PDF, Word или TXT — слайды будут опираться на них.",
-   "en": "🏫 Pedagogical council slides. Say it in one message: the topic or agenda, the school, the meeting number and date, the presenter and how many slides you want (if you do not say, up to 10; fewer when the material is thin).\nIf you have figures (pass rate, quality, attendance), achievements, problems, proposals and the tasks for the new year, write them and we turn them into a chart and a table. We never make up figures, names or dates, and teachers’ names are not put on slides.\n📎 Add the report or a table as a PDF, Word or TXT file and the slides will lean on it."
+   "uz": "🏫 Pedagogik kengash slaydlari. Bitta xabarda yozing: mavzu yoki kun tartibi, maktab, majlis raqami va sanasi, ma’ruzachi va necha slayd kerak (aytmasangiz, 10 ta; ma’lumot berilmagan slaydlarda to‘ldirish uchun bo‘sh joy qoladi).\nO‘zlashtirish, sifat, davomat kabi raqamlaringiz, yutuqlar, muammolar, takliflar va yangi yil vazifalari bo‘lsa, yozing: diagramma va jadval qilamiz. Raqam, ism va sanani biz o‘zimizdan o‘ylab topmaymiz; o‘qituvchilarning ismlari slaydlarga yozilmaydi.\n📎 Hisobot yoki jadvalni PDF, Word yoki TXT qilib qo‘shsangiz, slaydlar shunga tayanadi.",
+   "ru": "🏫 Слайды к педсовету. Напишите одним сообщением: тему или повестку, школу, номер и дату заседания, докладчика и нужное число слайдов (если не указать, будет 10; где данных нет, на слайдах останутся пустые места для заполнения).\nЕсть цифры (успеваемость, качество, посещаемость), достижения, проблемы, предложения и задачи на новый год — напишите их: сделаем диаграмму и таблицу. Цифры, имена и даты мы сами не придумываем; фамилии учителей на слайды не выносим.\n📎 Доклад или таблицу в PDF, Word или TXT — слайды будут опираться на них.",
+   "en": "🏫 Pedagogical council slides. Say it in one message: the topic or agenda, the school, the meeting number and date, the presenter and how many slides you want (10 if you do not say; where you give no details, the slides keep blanks for you to fill in).\nIf you have figures (pass rate, quality, attendance), achievements, problems, proposals and the tasks for the new year, write them and we turn them into a chart and a table. We never make up figures, names or dates, and teachers’ names are not put on slides.\n📎 Add the report or a table as a PDF, Word or TXT file and the slides will lean on it."
   },
   "examples": [
    {

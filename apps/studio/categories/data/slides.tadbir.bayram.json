@@ -31,7 +31,7 @@
     "default": 6
    }
   ],
-  "note": "The count is delivered as quoted. 10 for a day the block holds facts for (Navro‘z, Mustaqillik, Konstitutsiya, O‘zbek tili), 6 for any other day; the research programme-led count is declined (architecture 15, product 9)."
+  "note": "The count is delivered as quoted. 10 for a day the block holds facts for (Navro‘z, Mustaqillik, O‘zbek tili), 6 for any other day, Konstitutsiya kuni included: every sentence about a constitution is a legal one, which the facts guard removes unless the customer wrote it, so that day has no facts to fill 10 slides with; the research programme-led count is declined (architecture 15, product 9)."
  },
  "questions": {
   "default": 0,
@@ -122,21 +122,18 @@
    "uz": [
     "navro‘z",
     "mustaqillik",
-    "konstitutsiya",
     "o‘zbek tili bayram"
    ],
    "ru": [
     "навруз",
     "наврўз",
     "независимост",
-    "конституц",
     "узбекского языка"
    ],
    "en": [
     "nowruz",
     "navruz",
     "independence day",
-    "constitution day",
     "uzbek language day"
    ]
   },
@@ -529,7 +526,7 @@
     "quote.classic"
    ],
    "source": "customer",
-   "write": "Only when the customer pasted a quotation: body = their words unchanged (at most 45 words), items[0].label = the author as given, items[0].text = the source or role as given. Never composed or recalled by the AI, never attributed to the head of state or an official unless the customer pasted it. Without a quotation the slot does not exist.",
+   "write": "Only when the customer pasted a quotation: body = their words unchanged (at most 45 words), items[0].label = the author as given, items[0].text = the source or role as given. Never composed or recalled by the AI, never attributed to the head of state or an official unless the customer pasted it. Without a quotation: the honest form (heading and ruled lines).",
    "when": "cue:epigraf",
    "join": 7
   },
@@ -571,7 +568,7 @@
     "bullets.numbered_rows"
    ],
    "source": "customer",
-   "write": "Only from the customer’s list (or the script file). The AI NEVER shortens, rewrites or reorders a customer’s line: when it does not fit one slide it splits the slide. Three drawings, chosen by the longest row (measured with the real renderer under the contract): (1) timeline.vertical when every row has a time: 5 rows a slide when all labels are at most 26 characters and all performers at most 22; 4 rows when at most 34 / 28; 3 rows when at most 40 / 32 (labels and performers may wrap to two lines; a timeline needs 3 rows, so a tail of 1 or 2 rows is balanced into the previous slides); (2) bullets.numbered_rows when any row is longer or any row has no time: each row is ONE body line “10:20 item — performer” exactly as written, up to about 90 characters (two lines), 4 rows a slide; (3) agenda.side_panel for a programme without times with at most 5 short rows (label at most 26, performer at most 22). Rows are split evenly over the fewest slides with “(1/3)”, “(2/3)” in the heading (12 rows = 3 slides of 4; 30 rows = 8 slides of 4, or 6 of 5 when short). A missing time or performer is left out, never invented, never a blank. The time is “10:00”. The host, guests and venue the customer gave go in the first row’s performer and the notes. Notes: who comes on and what is said, in the host’s voice.",
+   "write": "Only from the customer’s list (or the script file). The AI NEVER shortens, rewrites or reorders a customer’s line: when it does not fit one slide it splits the slide. Three drawings, chosen by the longest row: (1) timeline.vertical when every row has a time: 5 rows a slide when all labels are at most 26 characters and all performers at most 22; 4 rows when at most 34 / 28; 3 rows when at most 40 / 32 (labels and performers may wrap to two lines; a timeline needs 3 rows, so a tail of 1 or 2 rows is balanced into the previous slides); (2) bullets.numbered_rows when any row is longer or any row has no time: each row is ONE body line “10:20 item — performer” exactly as written, up to about 90 characters (two lines), 4 rows a slide; (3) agenda.side_panel for a programme without times with at most 5 short rows (label at most 26, performer at most 22). Rows are split evenly over the fewest slides with “(1/3)”, “(2/3)” in the heading (12 rows = 3 slides of 4; 30 rows = 8 slides of 4, or 6 of 5 when short). A missing time or performer is left out, never invented, never a blank. The time is “10:00”. The host, guests and venue the customer gave go in the first row’s performer and the notes. Notes: who comes on and what is said, in the host’s voice.",
    "when": "cue:dastur",
    "join": 2
   },
@@ -592,7 +589,7 @@
     "bullets.numbered_rows"
    ],
    "source": "draft",
-   "write": "3 to 5 lines of at most 44 characters (Russian 40), each one fact of the day’s fact sheet as a plain sentence; a year or a number appears only if it is on the sheet. A day with fewer than 3 ready facts has no history slot: it is dropped, never filled with a restatement (“Bu kun har yili 8-martda nishonlanadi”). On a solemn day the slot is “Nimani eslaymiz”: 3 or 4 plain lines of memory without numbers or names. Notes: the host speaks the same facts and may ask the class what the word means.",
+   "write": "3 to 5 lines of at most 44 characters (Russian 40), each one fact of the day’s fact sheet as a plain sentence; a year or a number appears only if it is on the sheet. With fewer than 3 facts on the sheet, write those there are and leave ruled lines for the rest; never fill it with a restatement (“Bu kun har yili 8-martda nishonlanadi”). On a solemn day the slot is “Nimani eslaymiz”: 3 or 4 plain lines of memory without numbers or names. Notes: the host speaks the same facts and may ask the class what the word means.",
    "when": "cue:fakt",
    "from": 6,
    "join": 5
@@ -670,7 +667,7 @@
     "bullets.card_stack"
    ],
    "source": "customer",
-   "write": "Body = the customer’s lines word for word, 2 to 6 lines of at most 44 characters (ONE number everywhere; the product caps a bullets body at 6 lines), one stanza a slide; a longer poem is several slides with “(1/2)” in the heading. The credit (the reader or the author as the customer gave it, without a dash, at most 40 characters) goes in items[0].label, because the product strips a leading dash from every body line; the variant draws the dash. Lines are never improved, rhymed or completed. A poem the customer only names (no text) gets no slide; it stays in the programme. Pinned bullets.verse (new variant); a stanza line over the limit is split by the customer’s own punctuation into two lines only if the customer wrote it so, otherwise the pin falls back to bullets.card_stack.",
+   "write": "Body = the customer’s lines word for word, 2 to 6 lines of at most 44 characters (ONE number everywhere; the product caps a bullets body at 6 lines), one stanza a slide; a longer poem is several slides with “(1/2)” in the heading. The credit (the reader or the author as the customer gave it, without a dash, at most 40 characters) goes in items[0].label, because the product strips a leading dash from every body line, not as a dashed body line. Lines are never improved, rhymed or completed. A poem the customer only names (no text) is the honest form (heading and ruled lines); it stays in the programme. A stanza line over the limit is split at the customer’s own punctuation only if the customer wrote it so.",
    "when": "cue:sher",
    "join": 4
   },
@@ -836,7 +833,7 @@
    ],
    "pins": [],
    "source": "draft",
-   "write": "Heading from the holiday table’s closing row, in the customer’s language (ru is written in the genitive or dative the day needs: «С Наврузом!», «С Днём независимости!», «С Днём учителей и наставников!», «С 8 Марта!», «С Новым годом!», «С Днём Конституции!»; never «С праздником <название>» with a nominative name; a no-break space after “С”); at most 6 words. Line of at most 10 words: one plain wish. On a solemn day: a sentence of memory (“Xotira abadiy qalbimizda.”) and a line of thanks to the veterans (“Faxriylarimizga hurmat va rahmat.”, ru «Спасибо вам, ветераны.», without «С праздником»), no “muborak”, no exclamation mark."
+   "write": "Heading from the holiday table’s closing row, in the customer’s language (ru is written in the genitive or dative the day needs: «С Наврузом!», «С Днём независимости!», «С Днём учителей и наставников!», «С 8 Марта!», «С Новым годом!»; never «С праздником <название>» with a nominative name; a no-break space after “С”); at most 6 words. Line of at most 10 words: one plain wish. On a solemn day: a sentence of memory (“Xotira abadiy qalbimizda.”) and a line of thanks to the veterans (“Faxriylarimizga hurmat va rahmat.”, ru «Спасибо вам, ветераны.», without «С праздником»), no “muborak”, no exclamation mark."
   }
  ],
  "rules": [
@@ -849,7 +846,7 @@
    "to": "model"
   },
   {
-   "text": "The only facts you may state of a day: Navro‘z 21-mart, “yangi kun”, thousands of years old (no number), the old year began on it; customs hashar, planting trees, sumalak cooked from wheat sprouts through the night, visiting neighbours, folk games. Mustaqillik kuni 1-sentabr, proclaimed 1991-yil 31-avgust; flag 1991-yil 18-noyabr (blue, white and green, thin red lines, a crescent and twelve stars); emblem 1992-yil 2-iyul (Humo bird, rising sun, mountains, rivers, wheat, cotton); anthem 1992-yil 10-dekabr, heard standing. Konstitutsiya kuni 8-dekabr, adopted 1992-yil 8-dekabr, the basic law, the rights and duties of citizens. O‘zbek tili bayrami 21-oktabr, state-language status 1989-yil 21-oktabr. Ustozlar va murabbiylar kuni 1-oktabr; 8-mart; Yangi yil 1-yanvar; Xotira va qadrlash kuni 9-may honours those who died in the Second World War and the veterans. Hayit and the last bell get no date unless given.",
+   "text": "The only facts you may state of a day: Navro‘z 21-mart, “yangi kun”, thousands of years old (no number), the old year began on it; customs hashar, planting trees, sumalak cooked from wheat sprouts through the night, visiting neighbours, folk games. Mustaqillik kuni 1-sentabr, proclaimed 1991-yil 31-avgust; flag 1991-yil 18-noyabr (blue, white and green, thin red lines, a crescent and twelve stars); emblem 1992-yil 2-iyul (Humo bird, rising sun, mountains, rivers, wheat, cotton); anthem 1992-yil 10-dekabr, heard standing. Konstitutsiya kuni: nothing of the constitution beyond what the customer wrote. O‘zbek tili bayrami 21-oktabr, state-language status 1989-yil 21-oktabr. Ustozlar va murabbiylar kuni 1-oktabr; 8-mart; Yangi yil 1-yanvar; Xotira va qadrlash kuni 9-may honours those who died in the Second World War and the veterans. Hayit and the last bell get no date unless given.",
    "to": "model"
   },
   {
@@ -879,9 +876,9 @@
  ],
  "bot": {
   "prompt": {
-   "uz": "🎉 Bayram tadbiri slaydlari. Bitta xabarda yozing: qaysi bayram, kim uchun (sinf yoki jamoa) va, bo‘lsa, dastur va she’r matni. Slaydlar soni: aytmasangiz, 6 ta (Navro‘z, Mustaqillik, Konstitutsiya kuni uchun 10 ta).\n📎 Ssenariy yoki she’r matnini PDF, Word yoki TXT qilib qo‘shing. Ism va she’rlarni o‘zimizdan o‘ylab topmaymiz.",
-   "ru": "🎉 Слайды к празднику. Напишите одним сообщением: какой праздник, для кого (класс или коллектив) и, если есть, программу и текст стихов. Слайдов: если не указать, 6 (к Наврузу, Дню независимости и Дню Конституции 10).\n📎 Сценарий или стихи можно приложить в PDF, Word или TXT. Имена и стихи мы сами не придумываем.",
-   "en": "🎉 Holiday event slides. Say it in one message: which holiday, for whom (a class or a team) and, if you have them, the programme and the text of the poems. Slides: 6 if you do not say (10 for Nowruz, Independence Day and Constitution Day).\n📎 You can attach the script or the poems as PDF, Word or TXT. We never make up names or poems."
+   "uz": "🎉 Bayram tadbiri slaydlari. Bitta xabarda yozing: qaysi bayram, kim uchun (sinf yoki jamoa) va, bo‘lsa, dastur va she’r matni. Slaydlar soni: aytmasangiz, 6 ta (Navro‘z, Mustaqillik kuni va O‘zbek tili bayrami uchun 10 ta).\n📎 Ssenariy yoki she’r matnini PDF, Word yoki TXT qilib qo‘shing. Ism va she’rlarni o‘zimizdan o‘ylab topmaymiz.",
+   "ru": "🎉 Слайды к празднику. Напишите одним сообщением: какой праздник, для кого (класс или коллектив) и, если есть, программу и текст стихов. Слайдов: если не указать, 6 (к Наврузу, Дню независимости и Дню узбекского языка 10).\n📎 Сценарий или стихи можно приложить в PDF, Word или TXT. Имена и стихи мы сами не придумываем.",
+   "en": "🎉 Holiday event slides. Say it in one message: which holiday, for whom (a class or a team) and, if you have them, the programme and the text of the poems. Slides: 6 if you do not say (10 for Nowruz, Independence Day and Uzbek Language Day).\n📎 You can attach the script or the poems as PDF, Word or TXT. We never make up names or poems."
   },
   "examples": [
    {

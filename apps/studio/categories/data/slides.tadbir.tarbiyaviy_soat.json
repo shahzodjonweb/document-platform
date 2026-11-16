@@ -541,7 +541,7 @@
     "image_split.classic"
    ],
    "source": "draft",
-   "write": "3 lines of at most 28 characters (22 in Russian), each a full short phrase that is true of any photo of the topic (“Oila birga ovqatlanadi.”, “Kattalar birinchi gapiradi.”), never a dash pair, and an image_query of 2 to 4 English nouns naming something visible, never a person, a brand or an idea. Pictures: at most one slide in three and never more than 12 in a deck (the cover and the hook count); beyond the allowance the AI writes a bayon slide with no image_query. Never on xulosa, refleksiya or homework. A photo may not be found: the slide then reads as bullets.card_stack (the allow-list fallback, so it never repeats the neighbouring bayon drawing), nothing cut. Notes: one question about what the pupils notice, no verdict on the people shown. Primary classes ask for drawings with “chizma rasm” (the bare word “rasm” gives photographs).",
+   "write": "3 lines of at most 28 characters (22 in Russian), each a full short phrase that is true of any photo of the topic (“Oila birga ovqatlanadi.”, “Kattalar birinchi gapiradi.”), never a dash pair, and an image_query of 2 to 4 English nouns naming something visible, never a person, a brand or an idea. Pictures: at most one slide in three and never more than 12 in a deck (the cover and the hook count); beyond the allowance the AI writes a bayon slide with no image_query. Never on xulosa, refleksiya or homework. A photo may not be found: the slide then reads as bullets.card_stack, nothing cut. Notes: one question about what the pupils notice, no verdict on the people shown. Primary classes ask for drawings with “chizma rasm” (the bare word “rasm” gives photographs).",
    "from": 9,
    "repeat": {
     "min": 1,
@@ -630,7 +630,7 @@
     "bullets.classic"
    ],
    "source": "draft",
-   "write": "Only when the customer asks for a viktorina or test (kept as an on-request slot because the owner’s notes name a quiz; it costs nothing when not asked). Built by the blueprint, not by the product’s end-of-deck quiz; 3 questions of at most 46 characters a slide without options, every one answerable from the hour or from the attached file; answers in the notes only where certain, never a date or a number not in the message or file. Counted inside the slide total; no points, no ranking.",
+   "write": "Only when the customer asks for a viktorina or test. 3 questions of at most 46 characters a slide without options, every one answerable from the hour or from the attached file; answers in the notes only where certain, never a date or a number not in the message or file. Counted inside the slide total; no points, no ranking.",
    "when": "cue:viktorina",
    "from": 6,
    "join": 4
@@ -653,7 +653,7 @@
     "big_number.classic"
    ],
    "source": "customer",
-   "write": "Only numbers from the message or the attached file, copied exactly. The heading is the finding and carries the denominator when the customer gave it (“24 o‘quvchidan 9 nafari har kuni o‘qiydi”); the unit line (columns[0]) is “sinf so‘rovi” (the source, as the real decks carry a source line). At most 1 in a 10-slide deck. Drawn as chart.stepped_rows (mock/school_tarbiyaviy_soat-13-kitob.png), stats.rows or big_number.classic from the allow-list; bars start at zero, so 7 of 24 and 9 of 24 read as the near neighbours they are, which the heading states. The notes name the source (“sinf o‘qituvchisining ma’lumoti”) and ask pupils “which row are you in?”, never blame anyone. Without figures the slot does not exist.",
+   "write": "Only numbers from the message or the attached file, copied exactly. The heading is the finding and carries the denominator when the customer gave it (“24 o‘quvchidan 9 nafari har kuni o‘qiydi”); the unit line (columns[0]) is “sinf so‘rovi” (the source, as the real decks carry a source line). At most 1 in a 10-slide deck. Drawn as chart.stepped_rows, stats.rows or big_number.classic; bars start at zero, so 7 of 24 and 9 of 24 read as the near neighbours they are, which the heading states. The notes name the source (“sinf o‘qituvchisining ma’lumoti”) and ask pupils “which row are you in?”, never blame anyone. Without figures: the honest form (heading and ruled lines).",
    "when": "cue:figures",
    "from": 6,
    "join": 1
@@ -672,7 +672,7 @@
     "statement.soft_panel"
    ],
    "source": "customer",
-   "write": "Heading, in the deck’s language: Xalq maqoli | Hikmatli so‘z | <muallif, fayldagidek> / Народная пословица | Мудрое слово | <автор, как в файле> / Folk proverb | A wise saying | <the author as written>. Drawn as statement.soft_panel: the heading is the label (“Xalq maqoli” for a proverb the customer typed; “Hikmatli so‘z” for a saying; the author’s name only as the customer or the file wrote it), the body is the text copied whole, up to 120 characters (a longer one goes on bullets in its own sentences). PLACE: directly before xulosa, so a xulosa line can meet it, or directly after the hook when the customer says it opens the hour; it is a statement the class talks about, not a slogan: the notes ask “which of our findings does this saying meet?” (stage Yakun, minutes on the first slide of the stage). The text must be found word for word in the message or the attached file (G1); otherwise the slide is not made and the bot says so. A quotation of an official or writer is made only from an attached file, with the author as written there.",
+   "write": "Heading, in the deck’s language: Xalq maqoli | Hikmatli so‘z | <muallif, fayldagidek> / Народная пословица | Мудрое слово | <автор, как в файле> / Folk proverb | A wise saying | <the author as written>. Drawn as statement.soft_panel: the heading is the label (“Xalq maqoli” for a proverb the customer typed; “Hikmatli so‘z” for a saying; the author’s name only as the customer or the file wrote it), the body is the text copied whole, up to 120 characters (a longer one goes on bullets in its own sentences). PLACE: directly before xulosa, so a xulosa line can meet it, or directly after the hook when the customer says it opens the hour; it is a statement the class talks about, not a slogan: the notes ask “which of our findings does this saying meet?” (stage Yakun, minutes on the first slide of the stage). The text must be found word for word in the message or the attached file; otherwise the honest form (heading and ruled lines). A quotation of an official or writer is made only from an attached file, with the author as written there.",
    "when": "cue:maqol",
    "from": 6,
    "join": 1
@@ -695,7 +695,7 @@
     "statement.soft_panel"
    ],
    "source": "customer",
-   "write": "Heading = “Videolavha”, body = the title exactly as the customer wrote it (at most 60 characters). Notes: when to play it, the length limit of the Ministry guide (3 to 5 minutes; 1 to 3 in grades 1 and 2), one question for the pupils to watch for, then the discussion slide. Without a named video the slot does not exist and the bot says so; no link, no length, no channel is ever invented.",
+   "write": "Heading = “Videolavha”, body = the title exactly as the customer wrote it (at most 60 characters). Notes: when to play it, the length limit of the Ministry guide (3 to 5 minutes; 1 to 3 in grades 1 and 2), one question for the pupils to watch for, then the discussion slide. Without a named video: the honest form (heading and ruled lines); no link, no length, no channel is ever invented.",
    "when": "cue:video",
    "from": 6,
    "join": 1
