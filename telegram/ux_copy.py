@@ -211,6 +211,10 @@ MESSAGES = {
     # The description starts the draft at once, so a file sent after it joins only
     # through the review's question button.
     'ai_cat_files': ('📎 Files (PDF, Word, TXT): send them with the description as their caption, or before it.', '📎 Fayllar (PDF, Word, TXT): ularni tavsif bilan izoh sifatida yoki tavsifdan oldin yuboring.', '📎 Файлы (PDF, Word, TXT): отправьте их с описанием в подписи или до него.'),
+    # A file of another kind (a photo, a deck) sent on the list or in a category's
+    # question, its topic question included: never downloaded, and the screen says
+    # what is read. Today's question keeps ai_topic_pdf_only.
+    'ai_topic_files_only': ('📎 Only PDF, Word and TXT files are read here — send one of those, or write it in words.', '📎 Bu yerda faqat PDF, Word va TXT fayllar o‘qiladi — shulardan birini yuboring yoki so‘z bilan yozing.', '📎 Здесь читаются только файлы PDF, Word и TXT — пришлите один из них или напишите словами.'),
     'ai_revise': ('✏️ Make changes', '✏️ O‘zgartirish kiritish', '✏️ Внести изменения'),
     'ai_ask_to_change': ('✨ Ask AI to change', '✨ AI bilan o‘zgartirish', '✨ Изменить с ИИ'),
     # The editor, opened inside Telegram: no AI edit is used.

@@ -33,7 +33,7 @@ from apps.core.allowance import LIMIT_CODES
 
 from .ux_copy import UX, STATUS, LEGACY_COPY, TOOL_NAMES, PROMPT_EXAMPLES, LOCALES, EDIT_BUTTON_COPY, counted
 from .delivery import app_button, app_url, deck_change_label, editable_pdf
-from .errors import bot_error
+from .errors import bot_error, source_error
 from .clock import local_time, stamp, week_reset
 from apps.core.brand import PRODUCT_NAME
 COPY={locale:{**LEGACY_COPY[locale],**UX[locale]} for locale in UX}
@@ -449,6 +449,79 @@ def pending_files(account,feature_id,category=None):
     if prompt.get('feature_id')!=feature_id: return []
     if row.state=='ai_input' and (not prompt.get('category') or (category is not None and prompt.get('category')!=category)): return []
     return [str(item) for item in prompt.get('files') or []]
+
+# The files a category reads, by extension (apps.core.services.AI_SOURCE_SUFFIXES):
+# the list in front of a service and a category's question take these and only these.
+CATEGORY_FILE_KINDS=('pdf','docx','doc','txt')
+
+def category_flow(conversation):
+    """(state, feature_id, category, group) when the chat's screen takes a category's files, else None.
+
+    The list in front of AI PDF or AI Slides ('ai_category', category '') while
+    it is still shown, and a category's question ('ai_input' with a category,
+    its topic question included) while customers may still pick it. Anything
+    else, today's question and Boshqa among them, takes a file as it always did.
+    """
+    from . import generation as ai
+    if conversation is None or conversation.state not in ('ai_input','ai_category'): return None
+    prompt=conversation.prompt or {}
+    feature_id=prompt.get('feature_id')
+    if feature_id not in (ai.DOCUMENT,ai.SLIDES): return None
+    if conversation.state=='ai_category':
+        return ('ai_category',feature_id,'',prompt.get('group') or None) if ai.category_menu(feature_id) else None
+    category=prompt.get('category')
+    if not category or ai.category_live(feature_id,category) is None: return None
+    return ('ai_input',feature_id,category,None)
+
+def hold_files(account,flow,ids):
+    """Keep `ids` with the files held for the screen `flow` names; the chat's state after, or None once that screen is gone.
+
+    Only the 'files' of the chat's state change, in one row lock: what was
+    written while the topic is asked for stays, and a description handled at
+    the same moment either sees these files or has closed the question. On a
+    screen gone old, what was written and the files held then are not kept
+    (pending_brief, pending_files): the screen starts again from these files.
+    """
+    from django.db import transaction
+    state,feature_id,category,_=flow
+    with transaction.atomic():
+        row=BotConversation.objects.select_for_update().filter(pk=account.telegram_user_id).first()
+        if row is None or row.state!=state: return None
+        prompt=dict(row.prompt or {})
+        if prompt.get('feature_id')!=feature_id or (prompt.get('category') or '')!=category: return None
+        # A screen gone old keeps only where it is: what was written and sent then is not taken.
+        if row.updated_at<timezone.now()-QUESTION_LIFETIME:
+            prompt={key:value for key,value in prompt.items() if key in ('feature_id','category','group')}
+        held=[str(item) for item in prompt.get('files') or []]
+        held+=[str(item) for item in ids if str(item) not in held]
+        if held: prompt['files']=held
+        else: prompt.pop('files',None)
+        row.prompt=prompt;row.updated_at=timezone.now()
+        row.save(update_fields=['prompt','updated_at'])
+        return prompt
+
+def drop_files(account,ids):
+    """Take files a category's draft refused out of what its question reads: the files held, and the same files staged in the chat.
+
+    The question reads the files staged for the file tools too (ai_start), so
+    one of those refused stays out of the next description as well, as the
+    customer is told; otherwise every description would be refused again.
+    """
+    from django.db import transaction
+    gone={str(item) for item in ids}
+    with transaction.atomic():
+        row=BotConversation.objects.select_for_update().filter(pk=account.telegram_user_id,state__in=('ai_input','ai_category')).first()
+        if row is not None and (row.prompt or {}).get('files'):
+            prompt=dict(row.prompt)
+            prompt['files']=[str(item) for item in prompt['files'] if str(item) not in gone]
+            if not prompt['files']: prompt.pop('files')
+            row.prompt=prompt
+            row.save(update_fields=['prompt'])
+        draft=BotDraft.objects.select_for_update().filter(account=account).first()
+        kept=[item for item in draft.input_ids if str(item) not in gone] if draft is not None else []
+        if draft is not None and kept!=list(draft.input_ids):
+            draft.input_ids=kept;draft.quote=None;draft.version+=1
+            draft.save(update_fields=['input_ids','quote','version','updated_at'])
 
 def cv_brief(account):
     """What is kept of a CV described about yourself while what it lacks is asked for; [] with no such question."""
@@ -1973,19 +2046,20 @@ def build_dispatcher():
         rows=[[await button(account,'ai_back','home')]]
         return await render(message,body,rows,edit)
 
-    async def ai_refused(message,account,exc,resume,again):
+    async def ai_refused(message,account,exc,resume,again,said=''):
         """An AI request that could not be priced, said once.
 
         `message` is the bot's own "Preparing…" line. Channels to join replace
         it; a used-up limit, or any other error, takes its place, and only an
         error the customer can fix by writing again asks the question again.
+        `said` is the flow's own wording of the error, when it has one.
         """
         if exc.code=='channels_required':
             await sync_to_async(set_prompt)(account)
             from .channels import show_gate
             return await show_gate(message,account,resume=resume,edit=True)
         # The shared error copy cannot say what the chat does with a file format.
-        body=html.escape(text(account,'ai_format_only') if exc.code=='format_only_change' else bot_error(exc,account.locale,account))
+        body=html.escape(said or (text(account,'ai_format_only') if exc.code=='format_only_change' else bot_error(exc,account.locale,account)))
         if exc.code in ('weekly_ai_limit','edit_limit'):
             # Nothing to rewrite: the limit and the way past it, in place of "Preparing…".
             await sync_to_async(set_prompt)(account)
@@ -2225,7 +2299,12 @@ def build_dispatcher():
             # in the category it was written in.
             resume=({'kind':'ai_draft','draft_id':str(draft.id)} if draft else {'kind':'cv_mode','cv_source':ai.TEXT} if cv
                     else {'kind':'ai_prompt','feature_id':feature_id,**({'category':category} if category else {})})
-            return await ai_refused(message,account,exc,resume,lambda:ai_prompt(message,account,feature_id,category=category or None))
+            # Files a category's draft could not use are named by the refusal: they
+            # are taken out, the chat says why in the category's words, and its
+            # question comes back with the files that are left.
+            said=source_error(exc,account.locale) if category and (exc.params or {}).get('asset_ids') else ''
+            if said: await sync_to_async(drop_files)(account,exc.params['asset_ids'])
+            return await ai_refused(message,account,exc,resume,lambda:ai_prompt(message,account,feature_id,category=category or None),said)
         # A new CV's review takes a photo sent while it is drawn, so the chat
         # says so from now on: never empty while the review is on its way.
         if cv: await sync_to_async(set_prompt)(account,'cv_review',{'draft_id':str(draft.id)})
@@ -2506,7 +2585,10 @@ def build_dispatcher():
             elif action=='ai_tool' and p.get('category')==ai.OTHER and p['feature_id'] in (ai.DOCUMENT,ai.SLIDES):
                 # Boshqa on a list: today's question. The checks ran on the tap
                 # that opened the list (or, from /document, none ran, as none
-                # ran before the list), so they are not run again.
+                # ran before the list), so they are not run again. PDFs sent on
+                # the list go where today's question reads them; it reads no other kind.
+                held=await sync_to_async(pending_files)(account,p['feature_id'])
+                if held: await sync_to_async(ai.stage)(account,held)
                 await ai_prompt(message,account,p['feature_id'],True,group=p.get('group'))
             elif action=='ai_tool':
                 await sync_to_async(funnel.step)('service.chosen',account=account,feature=p['feature_id'])
@@ -2881,6 +2963,69 @@ def build_dispatcher():
             notice=await sync_to_async(cv_refusal_said)(account,exc)
         return await ai_review(message,account,draft,quote,True,notice)
 
+    async def category_file(message,bot,account,flow,name,ext,doc):
+        """A file sent on the list of categories or in a category's question: one of the category's sources.
+
+        A PDF, Word (.docx or old .doc) or TXT file is stored as the customer's
+        own source ('ai_source': a .txt or .doc is taken only so), noted as
+        received (record_receipt) and held in the chat's state beside the
+        category, never on the file tools' draft: the tools never meet a text
+        or .doc file, and the menu offers no task nobody started. A file of
+        another kind is never downloaded, and the screen says what is read.
+
+        Every file of an album is taken, not only the newest (cv_stash), and
+        the album answers once. Its caption, or a single file's, is the whole
+        description: the draft is made at once, from the held files, in the
+        category (on the list, for Boshqa, as words typed there are). With no
+        caption the screen is drawn again with the files counted; on the
+        category's topic question the files are what was missing, so the draft
+        is made from what was written and them, never asking for a PDF. A file
+        that could not be taken is said above the screen, and nothing is made.
+        """
+        state,feature_id,category,group=flow
+        album_caption(message)
+        raw=None
+        if ext in CATEGORY_FILE_KINDS:
+            stream=io.BytesIO()
+            try:
+                await bot.download(doc,destination=stream)
+            except (TelegramAPIError,OSError,TimeoutError,DomainError):
+                return await home(message,account,notice=text(account,'download_error'))
+            raw=stream.getvalue()
+        own=cv_stash(message,name,raw)
+        target,edit=await album_target(message,bot)
+        if target is None: return
+        files=cv_unstash(message,own)
+        if not files: return
+        async with chat_lock(message.chat.id):
+            ids,notice=[],''
+            for item in files:
+                if item['raw'] is None:
+                    notice=notice or text(account,'ai_topic_files_only')
+                    continue
+                try:
+                    asset=await sync_to_async(upload_file)(account,SimpleUploadedFile(item['name'],item['raw']),'bot',purpose='ai_source')
+                    await sync_to_async(record_receipt)(account,asset,message.chat.id,item['message_id'])
+                    ids.append(str(asset.id))
+                except DomainError as exc:
+                    notice=notice or source_error(exc,account.locale) or bot_error(exc,account.locale,account)
+            kept=await sync_to_async(hold_files)(account,flow,ids)
+            # A description handled meanwhile has made its draft and closed the question.
+            if kept is None: return
+            held=kept.get('files') or []
+            brief,question=list(kept.get('brief') or []),kept.get('question','')
+            caption=album_caption(message)
+            if not notice and (caption or (brief and held)):
+                waiting=target if edit else await target.answer(text(account,'ai_preparing'))
+                if caption: return album_shown(message,await ai_start(waiting,account,feature_id,caption,brief,question,category=category,files=held))
+                return album_shown(message,await ai_start(waiting,account,feature_id,'\n'.join(brief),category=category,files=held))
+            if state=='ai_category': return album_shown(message,await ai_categories(target,account,feature_id,group,edit,notice))
+            if brief:
+                from apps.studio.topics import asked_other_service
+                other=await sync_to_async(asked_other_service)('\n'.join(brief),feature_id)
+                return album_shown(message,await ai_topic_needed(target,account,feature_id,brief,other,edit,question,notice,category=category))
+            return album_shown(message,await ai_prompt(target,account,feature_id,edit,notice,category=category))
+
     @dp.message(F.document | F.photo)
     async def receive(message,bot):
         account=await account_for(message.from_user)
@@ -2899,6 +3044,14 @@ def build_dispatcher():
                 return await ai_prompt(message,account,ai.CV)
             reviewed=await sync_to_async(open_cv_review)(account)
             if reviewed: return await ai_resume(message,account,reviewed)
+            # A category's file is held for its question, never on the file tools' draft: that question again.
+            flow=await sync_to_async(category_flow)(conversation)
+            if flow and flow[0]=='ai_category': return await ai_categories(message,account,flow[1],flow[3])
+            if flow:
+                brief=await sync_to_async(pending_brief)(account)
+                if brief: return await ai_topic_needed(message,account,flow[1],brief,'',False,conversation.prompt.get('question',''),
+                                                       category=flow[2])
+                return await ai_prompt(message,account,flow[1],category=flow[2])
             return await controls(message,account,received=True)
         doc=message.document or message.photo[-1]
         if (doc.file_size or 0)>20*1024*1024: return await safe_error(message,account,DomainError('bot_transport_limit'))
@@ -2911,6 +3064,11 @@ def build_dispatcher():
         sources=cv_screen_open(conversation) or cv_waiting(conversation) or (bool(conversation) and conversation.state=='cv_review'
             and await sync_to_async(cv_takes_more)(account,ext,message.date.timestamp(),getattr(message,'media_group_id',None)))
         if sources and ext not in CV_FILE_KINDS and await cv_source_file(message,bot,account,name,None): return
+        # The list of categories and a category's question take the category's
+        # own kinds of file (.doc and .txt among them) as its sources; every
+        # other screen, today's question included, takes a file as before.
+        flow=await sync_to_async(category_flow)(conversation)
+        if flow: return await category_file(message,bot,account,flow,name,ext,doc)
         if ext not in ('pdf','jpg','jpeg','png','docx','pptx'): return await message.answer(text(account,'unsupported'))
         stream=io.BytesIO()
         try:

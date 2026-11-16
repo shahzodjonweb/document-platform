@@ -355,6 +355,60 @@ COPY = {
     for index, locale in enumerate(('en', 'uz', 'ru'))
 }
 
+# A file sent for a category's document (telegram/bot.py category_file), said in
+# that flow only. The shared wording above names "PDF, image, DOCX or PPTX",
+# which is wrong there: a category reads PDF, Word (.docx and old .doc) and TXT
+# files and never a picture. A refusal of the draft names its files
+# (apps/studio/categories/sources.py), and the bot has taken them out of the
+# question by the time this is read, so the wording says so; one refused on
+# upload was never kept. Every other flow keeps the wording above.
+SOURCE_MESSAGES = {
+    'unsupported_file unsupported_type invalid_content_type': (
+        '📎 This file can’t be used here. Send a PDF, a Word file (.docx or .doc) or a TXT file, without a password.',
+        '📎 Bu faylni bu yerda ishlatib bo‘lmaydi. PDF, Word (.docx yoki .doc) yoki TXT faylni parolsiz yuboring.',
+        '📎 Этот файл здесь не подходит. Отправьте PDF, файл Word (.docx или .doc) или TXT без пароля.',
+    ),
+    # A scan, a photo saved as PDF or an empty file: no letters to work from in any of them.
+    'source_unreadable': (
+        '🔍 We found no text to read in these files: a scan or a photo has none. We left them out. '
+        'Send a PDF, Word or TXT file with text in it, or describe what you need without a file.',
+        '🔍 Bu fayllarda o‘qiladigan matn topilmadi: skan yoki rasmda matn bo‘lmaydi. Ular olib tashlandi. '
+        'Ichida matni bor PDF, Word yoki TXT fayl yuboring yoki nima kerakligini faylsiz yozing.',
+        '🔍 В этих файлах нет текста, который можно прочитать: в скане или фото его нет. Мы их убрали. '
+        'Отправьте PDF, Word или TXT с текстом или опишите, что нужно, без файла.',
+    ),
+    'source_extraction_failed': (
+        '⚠️ We couldn’t read this file, so we left it out. Save it again as a new PDF, Word or TXT file and send it, '
+        'or describe what you need without it.',
+        '⚠️ Bu faylni o‘qiy olmadik, shuning uchun u olib tashlandi. Uni yangi PDF, Word yoki TXT fayl qilib qayta '
+        'saqlang va yuboring yoki nima kerakligini faylsiz yozing.',
+        '⚠️ Не удалось прочитать этот файл, поэтому мы его убрали. Сохраните его заново как PDF, Word или TXT и '
+        'отправьте или опишите, что нужно, без него.',
+    ),
+    # More files, pages or text than one document is made from. Only when the
+    # refusal names the files: a description too long on its own keeps the shared wording.
+    'generation_limit': (
+        '📄 There is too much in these files for one document, so we left them out. '
+        'Send fewer or shorter files, or only the part you need.',
+        '📄 Bu fayllardagi matn bitta hujjat uchun juda ko‘p, shuning uchun ular olib tashlandi. '
+        'Kamroq yoki qisqaroq fayl yoxud faqat kerakli qismini yuboring.',
+        '📄 В этих файлах слишком много для одного документа, поэтому мы их убрали. '
+        'Отправьте меньше файлов, файлы покороче или только нужную часть.',
+    ),
+}
+SOURCE_COPY = {
+    locale: {code: values[index] for codes, values in SOURCE_MESSAGES.items() for code in codes.split()}
+    for index, locale in enumerate(('en', 'uz', 'ru'))
+}
+
+
+def source_error(error, locale='en'):
+    """The wording for a file sent for a category's document, or '' when the shared wording (bot_error) says it."""
+    locale = locale if locale in SOURCE_COPY else 'en'
+    if error.code == 'generation_limit' and not (error.params or {}).get('asset_ids'):
+        return ''
+    return SOURCE_COPY[locale].get(error.code, '')
+
 
 # When a week starts again, for a reader whose own clock is not known
 # (telegram/clock.py week_reset): most bot customers never open the web app.
