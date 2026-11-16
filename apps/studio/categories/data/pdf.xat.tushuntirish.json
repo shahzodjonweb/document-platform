@@ -444,7 +444,7 @@
  ],
  "rules": [
   {
-   "text": "What it is: a person explains to a head, dean or class teacher what happened and why (late, absent, a task not done, an incident); not a request (ariza), a report or a diploma project's memorandum.",
+   "text": "What it is: a person explains to a head, dean or class teacher what happened and why (late, absent, a task not done, an incident); not a request (ariza) or a report.",
    "to": "model"
   },
   {
@@ -452,7 +452,7 @@
    "to": "model"
   },
   {
-   "text": "Voice: first person singular, past tense for what happened, formal and plain, short sentences; no emotion, sarcasm or blame of a named person. No request (iltimos, so‘rayman, прошу, please): the note explains, the ariza asks; a request the customer wrote may stay as his last sentence.",
+   "text": "Voice: first person singular, past tense for what happened, short sentences; no sarcasm or blame of a named person. No request (iltimos, so‘rayman, прошу, please): the note explains, the ariza asks; a request the customer wrote may stay as his last sentence.",
    "to": "model"
   },
   {
@@ -464,7 +464,7 @@
    "to": "model"
   },
   {
-   "text": "Missing parts: no reason given, write none and return reason as ____ (the template prints Sababi: and three lines; illness, traffic or family are inventions even when usual). Neither an event nor a reason (a bare \"tushuntirish xati kerak\", or a blank to write by hand): write no paragraph and return what_happened as ____ and no reason (the template prints eight ruled lines). Only a reason: write the reason alone.",
+   "text": "Missing parts: no reason given, write none and return reason as ____ (illness, traffic or family are inventions even when usual). Neither an event nor a reason (a bare \"tushuntirish xati kerak\", or a blank to write by hand): write no paragraph and return what_happened as ____ and no reason. Only a reason: write the reason alone.",
    "to": "model"
   },
   {

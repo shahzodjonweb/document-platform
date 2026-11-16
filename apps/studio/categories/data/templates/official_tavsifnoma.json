@@ -53,7 +53,7 @@
     "issuer_name",
     "issuer_contact"
    ],
-   "when": "nofact:letterhead",
+   "when": "nofact:letterhead=true",
    "params": {
     "anchor": "centre",
     "caps": true,
@@ -197,7 +197,7 @@
   {
    "block": "line",
    "part": "seal",
-   "when": "nofact:without_seal",
+   "when": "nofact:without_seal=true",
    "keep": "closing",
    "params": {
     "label": "seal",

@@ -151,7 +151,8 @@
    },
    "service": "pdf",
    "templates": [
-    "letter_motivatsion"
+    "letter_motivatsion",
+    "letter_statement"
    ]
   },
   "pdf.xat.tavsifnoma": {

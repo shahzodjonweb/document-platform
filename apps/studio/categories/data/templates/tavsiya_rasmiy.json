@@ -54,7 +54,7 @@
     "recommender_unit",
     "recommender_address"
    ],
-   "when": "nofact:letterhead_preprinted",
+   "when": "nofact:letterhead_preprinted=true",
    "params": {
     "anchor": "centre",
     "caps": true,
@@ -175,7 +175,10 @@
    "when": "fact:strength=strong",
    "params": {
     "label": "verdict_strong",
-    "indent_first_mm": 12.5
+    "indent_first_mm": 12.5,
+    "without": {
+     "target": "verdict_strong_plain"
+    }
    }
   },
   {
@@ -242,7 +245,7 @@
   {
    "block": "line",
    "part": "sign_off",
-   "when": "fact:seal",
+   "when": "fact:seal=true",
    "keep": "closing",
    "params": {
     "label": "seal"
@@ -274,6 +277,11 @@
    "uz": "{candidate_short} {target} uchun ishonch bilan tavsiya etiladi.",
    "ru": "{candidate_short} с уверенностью рекомендуется {target}.",
    "en": "{candidate_short} is recommended with confidence for {target}."
+  },
+  "verdict_strong_plain": {
+   "uz": "{candidate_short} ishonch bilan tavsiya etiladi.",
+   "ru": "{candidate_short} с уверенностью рекомендуется.",
+   "en": "{candidate_short} is recommended with confidence."
   },
   "presentation": {
    "uz": "Tavsiyanoma talab qilingan joyga taqdim etish uchun berildi.",

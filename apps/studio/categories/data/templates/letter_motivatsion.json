@@ -50,15 +50,6 @@
  },
  "flow": [
   {
-   "block": "line",
-   "part": "subject",
-   "when": "cue:statement",
-   "params": {
-    "label": "kind_statement",
-    "style": "caps"
-   }
-  },
-  {
    "block": "party_block",
    "part": "sender",
    "fields": [
@@ -89,7 +80,6 @@
     "recipient_person",
     "letter_date"
    ],
-   "when": "nocue:statement",
    "params": {
     "left": {
      "block": "party_block",
@@ -157,25 +147,11 @@
     "target_institution",
     "intake"
    ],
-   "when": "nocue:statement",
    "params": {
     "label": "kind",
     "style": "bold",
     "max_lines": 3,
     "balance": true
-   }
-  },
-  {
-   "block": "line",
-   "part": "subject",
-   "fields": [
-    "target_programme",
-    "target_institution",
-    "intake"
-   ],
-   "when": "cue:statement",
-   "params": {
-    "style": "italic"
    }
   },
   {
@@ -272,11 +248,6 @@
    "ru": "Мотивационное письмо:",
    "en": "Letter of motivation:"
   },
-  "kind_statement": {
-   "uz": "MOTIVATSION XAT",
-   "ru": "МОТИВАЦИОННОЕ ПИСЬМО",
-   "en": "PERSONAL STATEMENT"
-  },
   "admissions": {
    "uz": "Hurmatli qabul komissiyasi a’zolari!",
    "ru": "Уважаемые члены приёмной комиссии!",
@@ -309,7 +280,7 @@
   },
   "enclosures": {
    "uz": "Ilova:",
-   "ru": "Приложения:",
+   "ru": "Приложение:",
    "en": "Enclosures:"
   },
   "tel": {

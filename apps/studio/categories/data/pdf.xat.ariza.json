@@ -165,7 +165,7 @@
    },
    "kind": "text",
    "need": "required",
-   "missing": "ask",
+   "missing": "blank",
    "where": "the request paragraph under the title."
   },
   {
@@ -356,7 +356,7 @@
    "need": "required",
    "share": 0.15,
    "elastic": false,
-   "write": "applicant_role (faculty, course, group; or position and workplace), applicant_address, applicant_name in full. uz and ru: the name last, uz with -dan (\"Karimova Dilnoza Rustam qizidan\"), ru after \"от\" in the genitive; \"fuqaro\" starts the name only for an outsider or a citizen to a state body. en: the name first, no From: label. A parent writes as the parent (o‘quvchining onasi). One applicant only.",
+   "write": "applicant_role (faculty, course, group; or position and workplace), applicant_address, applicant_name in full. uz and ru: the name last, uz with -dan (\"Karimova Dilnoza Rustam qizidan\"), ru after \"от\" in the genitive; \"fuqaro\" starts the name only for an outsider or a citizen to a state body. en: the name first, no From: label. A parent writes as the parent (o‘quvchining onasi). The address only as he wrote it, never from a file. One applicant only.",
    "block": "party_block",
    "fields": [
     "applicant_role",
@@ -390,7 +390,7 @@
    "need": "required",
    "share": 0.33,
    "elastic": true,
-   "write": "One paragraph of 25 to 90 words, two only when the second carries the reason or a clause of the same decision: the request itself and its dates first, then the reason if given, ending with the formula verb. Formulas, uz: excused absence ... qoldirgan darslarimni uzrli deb hisoblashingizni so‘rayman (never \"sababli deb hisoblash\"); paid leave Menga ... yillik mehnat ta’tili berishingizni so‘rayman; resignation Meni o‘z xohishimga ko‘ra ... ishdan bo‘shatishingizni so‘rayman; academic leave Meni ... akademik ta’tilga chiqarishingizni so‘rayman; to a state body Menga ... haqida ma’lumotnoma berishingizni so‘rayman. ru: Прошу считать уважительными пропуски занятий с ... по ...; Прошу предоставить мне ...; Прошу уволить меня по собственному желанию с .... en: I ask you to treat my absence from classes from ... to ... as excused; Please grant me ...; I ask you to release me from my position at my own request from .... A missing date, number or short name is an inline blank: uz 20___-yil ___-____________dan, ru с ___ ____________ 20___ года, en from ____ ____________ 20___; never dots, brackets, X or [ism].",
+   "write": "One paragraph (two only for the reason or the same decision): the request and its dates first, then the reason. uz (+ so‘rayman): hiring Meni ...dan boshlab ... lavozimiga ishga qabul qilishingizni; paid leave Menga ... yillik mehnat ta’tili berishingizni; unpaid leave Menga o‘z hisobimdan ... kunlik ta’til berishingizni; resignation Meni o‘z xohishimga ko‘ra ... ishdan bo‘shatishingizni; financial help Menga ... moddiy yordam ko‘rsatishingizni; academic leave Meni ... akademik ta’tilga chiqarishingizni; deferral ... to‘lovni ...gacha kechiktirib berishingizni; excused absence ... qoldirgan darslarimni uzrli deb hisoblashingizni (never \"sababli deb hisoblash\"); competition ... ishtirok etishga ruxsat berishingizni; a parent farzandim ...ning ... darslarga qatnashmasligiga ruxsat berishingizni; state body Menga ... haqida ma’lumotnoma berishingizni, Mening ... masalamni ko‘rib chiqishingizni va yozma javob berishingizni. ru, after Прошу: принять меня на должность ... с ...; предоставить мне ... отпуск; уволить меня по собственному желанию с ...; оказать мне материальную помощь; предоставить отсрочку оплаты ... до ...; считать уважительными пропуски занятий с ... по ...; разрешить моему сыну (дочери) не посещать занятия; выдать мне справку о .... en: I kindly ask you to employ me as ... from ...; to grant me ...; to release me from my position at my own request from ...; to treat my absence from classes from ... to ... as excused. Date blanks: uz 20___-yil ___-____________dan, ru с ___ ____________ 20___ года, en from ____ ____________ 20___; never dots, brackets, X or [ism].",
    "block": "paragraph",
    "grounded": true,
    "words": [
@@ -563,7 +563,7 @@
  ],
  "look": null,
  "gates": [
-  "A native Uzbek reader checks every Uzbek formula in writing rule 12 and every fixed Uzbek label (ARIZA, Ilova:, Sababi:, Sana / Imzo / F.I.Sh., Tel.:, the six blank-row captions, fuqaro) BEFORE the category is enabled. The first review already corrected two (uzrli for excused, F.I.Sh. for the name label).",
+  "A native Uzbek reader checks every Uzbek formula in the request part's write and every fixed Uzbek label (ARIZA, Ilova:, Sababi:, Sana / Imzo / F.I.Sh., Tel.:, the six blank-row captions, fuqaro) BEFORE the category is enabled. The first review already corrected two (uzrli for excused, F.I.Sh. for the name label).",
   "The kinds hiring, paid and unpaid leave, resignation, financial help, a parent’s ariza and a citizen’s request to a state body rest on pages the researcher read, not on a downloaded official sample; they are enabled only after the native check and, if one can be fetched, a check against an official sample (state forestry committee forms, or another state body).",
   "Every English word (title APPLICATION, To the ..., Enclosure(s):, the captions) is checked by a native English reader: the only English source is weak (sources/14).",
   "Render the six sample cases of the mock in uz, ru and en with the sample tool and compare them with units/pdf.xat.ariza/mock/official_ariza.png before the entry is marked ready."

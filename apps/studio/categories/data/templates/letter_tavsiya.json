@@ -57,7 +57,7 @@
     "recommender_unit",
     "recommender_address"
    ],
-   "when": "nofact:letterhead_preprinted",
+   "when": "nofact:letterhead_preprinted=true",
    "params": {
     "anchor": "left",
     "name_style": "bold_large",
@@ -193,7 +193,10 @@
    ],
    "when": "fact:strength=strong",
    "params": {
-    "label": "verdict_strong"
+    "label": "verdict_strong",
+    "without": {
+     "target": "verdict_strong_plain"
+    }
    }
   },
   {
@@ -302,6 +305,11 @@
    "uz": "{candidate_short} nomzodini {target} uchun ishonch bilan tavsiya qilaman.",
    "ru": "С уверенностью рекомендую: {candidate_short}, {target}.",
    "en": "I recommend {candidate_short} with confidence for {target}."
+  },
+  "verdict_strong_plain": {
+   "uz": "{candidate_short} nomzodini ishonch bilan tavsiya qilaman.",
+   "ru": "С уверенностью рекомендую: {candidate_short}.",
+   "en": "I recommend {candidate_short} with confidence."
   },
   "salutation": {
    "uz": "Hurmatli {salutation}!",

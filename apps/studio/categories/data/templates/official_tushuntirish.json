@@ -71,6 +71,12 @@
     },
     "blank_suffix": {
      "uz": "ga"
+    },
+    "order": {
+     "en": [
+      "addressee_name",
+      "addressee_position"
+     ]
     }
    }
   },
@@ -95,6 +101,13 @@
     },
     "blank_suffix": {
      "uz": "dan"
+    },
+    "order": {
+     "en": [
+      "writer_name",
+      "writer_role",
+      "writer_phone"
+     ]
     }
    }
   },

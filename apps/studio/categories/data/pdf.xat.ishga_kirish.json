@@ -249,7 +249,7 @@
    },
    "kind": "line",
    "need": "required",
-   "missing": "ask",
+   "missing": "blank",
    "where": "the subject line after the fixed lead word, as the customer wrote it."
   },
   {
@@ -639,7 +639,7 @@
    "to": "model"
   },
   {
-   "text": "Two jobs in one message: write for the first. Language: the customer's; Uzbek in Latin only, o‘ and g‘ with ‘ and the tutuq with ’, a suffix after a foreign name with ’ (Chinor Foods’da); English in British spelling.",
+   "text": "Two jobs in one message: write for the first. Language: the customer's; Uzbek in Latin only, o‘ and g‘ with ‘ and the tutuq with ’, a suffix after a foreign name with ’ (Chinor Foods’da); a name written in Cyrillic is transliterated into Latin in an Uzbek or English paper; English in British spelling.",
    "to": "model"
   }
  ],
