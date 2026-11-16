@@ -193,7 +193,8 @@ def test_an_invented_person_date_or_sum_is_not_a_fact(sinov):
                                             {'label': 'made_on', 'text': '5-dekabr'}]})
     made, warnings, codes = finished(data, content)
     assert facts_of(made) == {'year': '2026', 'made_on': '2026-yil 16-noyabr'}
-    assert codes == ['fact:author', 'fact:made_on', 'fact:amount'] and warnings == [finish.FACTS_BLANKED]
+    # The invented date is replaced by today's, which leaves no blank to count.
+    assert codes == ['fact:author', 'fact:amount'] and warnings == [finish.FACTS_BLANKED]
 
 
 def test_the_customers_own_numbers_pass_however_they_are_written(sinov):
@@ -262,10 +263,25 @@ def test_a_clock_field_the_customer_filled_keeps_their_value(sinov):
 
 def test_a_paper_without_a_facts_section_still_gets_its_clock_values(sinov):
     data = draft(sinov)
-    content = answer(data)
+    content = answer(data, kirish={'body': 'Kirish matni.'})
     content['sections'] = [section for section in content['sections'] if section['id'] != 'facts']
     made, _, _ = finished(data, content)
-    assert made['sections'][0]['id'] == 'facts' and facts_of(made)['year'] == '2026'
+    assert facts_of(made)['year'] == '2026'
+    # The job trims sections past the quoted count by position: the facts go last, never pushing a part out.
+    assert made['sections'][-1]['id'] == 'facts' and made['sections'][0]['id'] == 'kirish'
+
+
+def test_a_clock_value_the_customer_never_gave_is_todays_without_a_blank(sinov):
+    data = draft(sinov, prompt='Qodirova Malika nomidan Namuna davlat universitetiga xat.')
+    content = answer(data, facts={'items': [{'label': 'year', 'text': '2026'},
+                                            {'label': 'made_on', 'text': '2025-yil 1-mart'}]})
+    made, warnings, codes = finished(data, content)
+    assert facts_of(made) == {'year': '2026', 'made_on': '2026-yil 16-noyabr'}
+    assert (warnings, codes) == ([], []), 'nothing is blank: code writes the value back'
+    # A whole-document change re-finishes the value the first finish wrote, which the prompt does not hold either.
+    data['revision'] = {'request': 'Qisqartiring', 'original_prompt': data['prompt']}
+    again, warnings, codes = finished(data, made)
+    assert facts_of(again) == facts_of(made) and (warnings, codes) == ([], [])
 
 
 # ---------------------------------------------------------------- grounding and guarding by part
@@ -360,6 +376,8 @@ def test_cells_pad_and_merge_a_row_to_its_columns():
     assert finish.cells({'label': 'a', 'text': 'b | c | d', 'value': 'e'}, 3) == ['a', 'b | c | d', 'e']
     assert finish.cells({'label': 'a', 'text': '', 'value': 'e'}, 4) == ['a', '', '', 'e']
     assert finish.cells({'label': 'a', 'text': 'b', 'value': 'e'}, 2) == ['a | b', 'e']
+    assert finish.cells({'label': 'a', 'text': 'b', 'value': 'e'}, 1) == ['a | b | e'], 'one column keeps the value'
+    assert finish.cells({'label': '', 'text': '', 'value': 'e'}, 1) == ['e']
     assert finish.cells({'label': 'a', 'text': 'b | c', 'value': 'e'}) == ['a', 'b', 'c', 'e']
     assert finish.cells({'label': 'a', 'text': '| c', 'value': 'e'}, 4) == ['a', '', 'c', 'e'], 'a tidied empty cell'
     assert finish.cells({'label': 'a', 'text': 'b |', 'value': 'e'}, 4) == ['a', 'b', '', 'e']
@@ -537,6 +555,32 @@ def test_an_ariza_is_held_to_the_customers_words():
     assert warnings == [finish.FACTS_BLANKED] and made['title'] == 'Ariza'
 
 
+def test_a_section_of_a_part_the_model_does_not_write_goes_whole_and_never_reaches_the_fallback():
+    ariza = catalogue.get('pdf.xat.ariza')
+    data = draft(ariza, prompt='Namuna davlat universiteti rektori nomiga ariza: ta’til so‘rayman.', length=1)
+    content = answer(data, request={'body': 'Menga ta’til berishingizni so‘rayman.'})
+    content['sections'] += [
+        {'id': 'addressee', 'heading': '', 'body': 'Yulduz shahar 7-maktab direktori Rahimov Javlon Erkinovichga'},
+        {'id': 'signature', 'heading': '', 'body': 'Imzo: Saidov B. T., 2026-yil 20-noyabr'}]
+    made, warnings, codes = finished(data, content)
+    ids = [section['id'] for section in made['sections']]
+    assert 'addressee' not in ids and 'signature' not in ids and 'request' in ids
+    assert codes == [finish.UNWRITTEN] and warnings == [], 'nothing the template draws was blanked'
+    flat = finish.plain(data, content)
+    text = repr(flat)
+    assert 'Rahimov' not in text and 'Saidov' not in text and '7-maktab' not in text and '20-noyabr' not in text
+    assert 'Menga ta’til' in text
+    # A test's head and its questions part are drawn from facts and content.questions, never from a section.
+    test = catalogue.get('pdf.test')
+    data = draft(test, prompt='Iqtisodiyot fanidan 7-sinf uchun test.', length=3)
+    content = answer(data)
+    content['sections'] += [{'id': 'head', 'heading': '', 'body': 'Yulduz maktabi, 2-chorak, 3-ish'},
+                            {'id': 'part_choice', 'heading': 'Savollar', 'body': '1. Nima?'}]
+    made, _, codes = finished(data, content)
+    assert {'head', 'part_choice'}.isdisjoint(section['id'] for section in made['sections'])
+    assert codes == [finish.UNWRITTEN]
+
+
 def test_a_tests_questions_are_guarded_and_a_broken_question_goes():
     test = catalogue.get('pdf.test')
     data = draft(test, prompt='Iqtisodiyot fanidan 7-sinf uchun test.', length=3)
@@ -596,8 +640,10 @@ def test_the_plain_fallback_keeps_its_contract(sinov):
                                                                        'Manbalar']
     table = flat['sections'][3]
     assert table['layout'] == 'list' and table['body'] == 'Nomi — Soni — Narxi — Jami'
-    assert [item['text'] for item in table['items']] == ['Kitob — 12 — 45 000']
-    assert flat['sections'][4]['layout'] == 'list' and len(flat['sections'][4]['items']) == 1
+    assert [item['text'] for item in table['items']] == ['Kitob — 12 — 45 000 — ____'], 'each value under its column'
+    sources = flat['sections'][4]
+    assert sources['layout'] == 'list' and len(sources['items']) == 1
+    assert sources['items'][0]['label'] == '', 'the model\'s "1" is no label in a numbered list'
     assert all(section['layout'] in ('text', 'list') for section in flat['sections'])
     assert not violations(flat, 'uz')
 
@@ -620,8 +666,9 @@ def test_the_plain_fallback_of_an_ariza_draws_every_blank_its_policy_asks():
         {'id': 'facts', 'items': [{'label': 'applicant_name', 'text': 'Malika Qodirova'}]},
         {'id': 'request', 'heading': '', 'body': 'I ask for leave.'}], 'questions': []})
     labels = [item['label'] for item in flat['sections'][0]['items']]
-    assert 'Addressee: organisation' in labels and 'Phone (optional)' not in labels
+    assert 'Addressee: organisation' in labels and not any(label.startswith('Phone') for label in labels)
     assert not any(label.startswith('What you ask') for label in labels), 'the request is drawn as its part'
+    assert 'Date of writing' in labels and not any('(' in label for label in labels), 'no review-form hint'
     lines = {item['label']: item['text'] for item in flat['sections'][0]['items']}
     assert lines['Your full name'] == 'Malika Qodirova' and lines['Addressee: organisation'] == '____'
     assert flat['title'] == 'Official request' and flat['sections'][1]['body'] == 'I ask for leave.'

@@ -52,7 +52,12 @@ and 5) is finished the same way, by part rather than by slot:
   name, facts.derived); an unknown field, a choice outside its list or a ____
   for a field that is not `if_needed` is simply not kept, since the template
   draws its own blank, and a clock field the customer left out (the year on a
-  title page, the date a letter is made) gets today's Tashkent date from code;
+  title page, the date a letter is made) gets today's Tashkent date from code,
+  as does one the model filled with a date the customer never gave;
+- a section of a part the model does not write (an ariza's addressee or
+  signature, a test's head: drawn from facts and template labels) goes whole,
+  counted as `finish:unwritten`, which raises no warning since nothing the
+  document draws is blanked;
 - a grounded part (a letter's, an official or business paper's written
   parts) is grounded, its people's names read strictly (`ground_paper`), and
   every other part guarded, the test's questions too;
@@ -80,6 +85,8 @@ log = logging.getLogger(__name__)
 
 # The job warning that any blank or removal raises; the bot answers it with the entry's `blanks` notice.
 FACTS_BLANKED = 'facts_blanked'
+# A paper section of a part drawn from facts and labels, taken out whole: logged, but no blank the customer sees.
+UNWRITTEN = 'finish:unwritten'
 BLANK = facts.BLANK
 # An honest form: as many ruled lines as a short slide holds, numbered on a sources slide.
 FORM_LINES = 3
@@ -508,6 +515,8 @@ MONTHS = {
 PLAIN_FACTS = {'uz': 'Ma’lumotlar', 'ru': 'Сведения', 'en': 'Details'}
 # What joins a table row's cells in the emergency fallback, which draws a table as a list (6.7).
 PLAIN_CELLS = ' — '
+# A review-form label's trailing hint in brackets, which the fallback's line of the document leaves off.
+HINT = re.compile(r'\s*\([^()]*\)\s*$')
 CELL = ' | '
 CELLS = re.compile(r'\s*\|\s*')
 
@@ -567,8 +576,10 @@ def cells(item, count=None):
     first, last = str(item.get('label') or '').strip(), str(item.get('value') or '').strip()
     if count is None:
         return [first, *middle, last]
-    if count <= 2:
-        return [CELL.join(cell for cell in (first, *middle) if cell), last][:max(count, 1)]
+    if count <= 1:
+        return [CELL.join(cell for cell in (first, *middle, last) if cell)]
+    if count == 2:
+        return [CELL.join(cell for cell in (first, *middle) if cell), last]
     wanted = count - 2
     if len(middle) > wanted:
         middle = middle[:wanted - 1] + [CELL.join(middle[wanted - 1:])]
@@ -630,7 +641,10 @@ def _facts(entry, section, trusted, translated, locale, codes):
     A list field's several items join with new lines; any other field keeps
     its first. A field whose value is not the customer's is counted as
     `fact:<field id>`; the template then draws its blank, as for a field the
-    customer never gave.
+    customer never gave. A clock field is the exception: a value the customer
+    did not give is replaced by today's, silently, since nothing is left blank.
+    The model writes today's year unasked, and a change re-finishes the value
+    the first finish wrote, which the prompt does not hold either.
     """
     given = {}
     for item in section.get('items') or []:
@@ -651,7 +665,7 @@ def _facts(entry, section, trusted, translated, locale, codes):
         if field['id'] not in given:
             continue
         value, invented = _fact(field, given[field['id']], trusted, translated, verified)
-        if invented:
+        if invented and not field.get('clock'):
             codes.append(f"fact:{field['id']}")
         if value is not None:
             verified[field['id']] = value
@@ -830,11 +844,23 @@ def _paper(entry, data, content, *, only, file_names, codes):
     translated = _translated(data)
     names = _file_names(data) if file_names is None else list(file_names)
     found = []
-    sections = content.setdefault('sections', [])
+    # A part the model does not write (a fixed part, drawn from facts and template labels, or the questions) is never
+    # seeded, so a section of one is the model's own: an ariza's "addressee" naming a head the customer never named.
+    # The template never draws it and plain() would print it, so it goes whole, whatever the scope.
+    sections = []
+    for section in content.get('sections') or []:
+        part = entry.part(section.get('id')) if isinstance(section, dict) else None
+        if part is not None and part['kind'] not in skeleton.WRITTEN:
+            found.append(UNWRITTEN)
+            continue
+        sections.append(section)
+    content['sections'] = sections
     whole = scope is None
     if whole and not any(section.get('id') == FACTS for section in sections) \
             and any(field.get('clock') for field in entry.fields):
-        sections.insert(0, {'id': FACTS, 'heading': '', 'body': '', 'notes': '', 'layout': 'list', 'items': []})
+        # Appended, not put first: the job trims sections past the quoted count by position, and a facts section put
+        # first would push the model's last written part out (the template finds facts by id, wherever they are).
+        sections.append({'id': FACTS, 'heading': '', 'body': '', 'notes': '', 'layout': 'list', 'items': []})
     tables = False
     for section in sections:
         if scope is not None and section.get('id') not in scope:
@@ -874,7 +900,7 @@ def _paper(entry, data, content, *, only, file_names, codes):
         codes.extend(found)
     if found:
         log.info('Category %s: finish took out %s', entry.id, ', '.join(found))
-    return content, [FACTS_BLANKED] if found else []
+    return content, [FACTS_BLANKED] if any(code != UNWRITTEN for code in found) else []
 
 
 def _paper_exempt(entry, data):
@@ -919,10 +945,13 @@ def plain(data, content):
       files are settings, not lines. Each is an item {label, text}, which
       today's renderer draws as "Label — value": a label of its own may hold
       a colon ("Kimga: tashkilot"), and "Label: value" would read as two;
-    - each written part with words is a section under its heading;
+      a label's trailing hint in brackets ("(ixtiyoriy)") is left off;
+    - each written part with words is a section under its heading; a section
+      of a fixed part or of an id the entry does not name is not drawn;
     - a table's rows are list items whose cells are joined by " — ", under a
-      line of its column names, so nothing is cut at three columns;
-    - the verified sources are a list section;
+      line of its column names, so nothing is cut at three columns; an empty
+      cell is ____, so every value stays under its column;
+    - the verified sources are a list section, without the model's numbers;
     - the questions stay in content.questions.
     Anything else is returned as it is. Never raises: on a failure the
     content is returned as given, which today's renderer can still draw.
@@ -948,6 +977,9 @@ def plain(data, content):
                 continue
             value = '; '.join(line.strip() for line in (value or BLANK).split('\n') if line.strip())
             label = (field['label'].get(locale) or field['label']['en']).strip().rstrip(':').strip()
+            # A field's label is the review form's: its hint for the customer ("(ixtiyoriy)", "(if writing to a
+            # state body)") is no word of the document.
+            label = HINT.sub('', label).rstrip(' :') or label
             lines.append({'label': label, 'text': value, 'value': ''})
         sections = []
         if lines:
@@ -957,22 +989,33 @@ def plain(data, content):
             if section.get('id') == FACTS or not _words(section):
                 continue
             part = entry.part(section.get('id'))
+            # Only a written part is drawn, as the template would: a fixed part's or an unknown id's section is
+            # the model's own and was never checked as the facts it would print were.
+            if part is None or part['kind'] not in skeleton.WRITTEN:
+                continue
             made = {'id': section.get('id'), 'heading': str(section.get('heading') or ''),
                     'body': str(section.get('body') or ''), 'notes': '', 'layout': 'text', 'items': []}
             items = [item for item in section.get('items') or []
                      if isinstance(item, dict) and _words({'items': [item]})]
-            kind = part['kind'] if part is not None else 'prose'
+            kind = part['kind']
             if kind == 'table':
                 columns = [column.get(locale) or column['en'] for column in part.get('columns') or ()]
                 count = len(columns) or None
                 header = PLAIN_CELLS.join(columns)
                 made['body'] = '\n'.join(text for text in (made['body'], header) if text.strip())
-                made['items'] = [{'label': '', 'text': PLAIN_CELLS.join(cell for cell in cells(item, count) if cell),
+                # An empty cell (a computed one before derive fills it, a quantity not given) stays a blank, so each
+                # value keeps its column under the header and a price never reads as the quantity.
+                made['items'] = [{'label': '', 'text': PLAIN_CELLS.join(cell or BLANK for cell in cells(item, count)),
                                   'value': ''} for item in items]
                 made['layout'] = 'list'
             elif kind in ('list', 'sources') or items:
                 made['items'] = [{key: str(item.get(key) or '') for key in ('label', 'text', 'value')}
                                  for item in items]
+                if kind == 'sources':
+                    # The model's "1" beside a source would read "1 — Saidov B. …" in a list already numbered.
+                    for item in made['items']:
+                        if re.fullmatch(r'[\s\d.)\[\]]*', item['label']):
+                            item['label'] = ''
                 made['layout'] = 'list'
             sections.append(made)
         title = str(content.get('title') or '').strip() or entry.name(locale)

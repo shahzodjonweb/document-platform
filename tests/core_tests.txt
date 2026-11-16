@@ -1028,7 +1028,8 @@ tests/test_category_facts.py::test_a_counted_copy_shares_the_respelled_words_rat
 # Categories, the finish of a paper (F2): facts kept only when the customer gave them, by kind, and clock values
 # written by code from the Tashkent date; a grounded part loses every invented number, name, quotation and law while
 # a guarded part keeps general knowledge; sources never a file name; empty instances of a model-sized group dropped;
-# a top-up's sections finished again alone; the emergency fallback's contract; an ariza held to the customer's words
+# a top-up's sections finished again alone; the emergency fallback's contract; an ariza held to the customer's words;
+# a section of a part the model does not write dropped whole; a clock value never counted as a blank
 tests/test_category_finish_pdf.py::test_facts_keep_only_what_the_customer_gave_each_held_to_its_kind
 tests/test_category_finish_pdf.py::test_an_invented_person_date_or_sum_is_not_a_fact
 tests/test_category_finish_pdf.py::test_clock_fields_are_written_by_code_from_the_tashkent_date[uz-2026-yil 16-noyabr]
@@ -1041,3 +1042,5 @@ tests/test_category_finish_pdf.py::test_only_finishes_the_sections_a_top_up_wrot
 tests/test_category_finish_pdf.py::test_the_plain_fallback_keeps_its_contract
 tests/test_category_finish_pdf.py::test_an_ariza_is_held_to_the_customers_words
 tests/test_category_finish_decks.py::test_a_paper_gets_no_deck_pins
+tests/test_category_finish_pdf.py::test_a_section_of_a_part_the_model_does_not_write_goes_whole_and_never_reaches_the_fallback
+tests/test_category_finish_pdf.py::test_a_clock_value_the_customer_never_gave_is_todays_without_a_blank
