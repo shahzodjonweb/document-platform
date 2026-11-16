@@ -60,7 +60,7 @@ def _run(request: dict, timeout: int) -> dict:
     # credentials from the API/worker environment.
     environment = {key: os.environ[key] for key in
         ('PATH', 'LANG', 'LC_ALL', 'TMPDIR', 'TMP', 'TEMP', 'SYSTEMROOT', 'SCANNER_MODELS',
-         *names('SOFFICE_BIN'), *names('TESSERACT_BIN'), *names('PDFCRAFT_BIN'))
+         *names('SOFFICE_BIN'), *names('TESSERACT_BIN'), *names('PDFCRAFT_BIN'), *names('ANTIWORD_BIN'))
         if key in os.environ}
     environment['PYTHONDONTWRITEBYTECODE'] = '1'
     # Numeric image processing must fit the existing child-process budget.
@@ -110,10 +110,14 @@ def _run(request: dict, timeout: int) -> dict:
     return result['result']
 
 
-def inspect_file_sandbox(path: str | Path, *, password: str | None = None, timeout: int = 90, allow_links: bool = False) -> dict:
+def inspect_file_sandbox(path: str | Path, *, password: str | None = None, timeout: int = 90, allow_links: bool = False,
+                         sources: bool = False) -> dict:
+    # `sources`: a category's AI source, which may also be a .txt or an old .doc (engine.inspect_file).
     request = {'operation': 'inspect', 'path': str(Path(path).absolute()), 'secret': password}
     if allow_links:
         request['allow_links'] = True
+    if sources:
+        request['sources'] = True
     return _run(request, timeout)
 
 

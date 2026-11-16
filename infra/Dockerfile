@@ -24,9 +24,13 @@ COPY requirements.lock ./
 # The scanner must run on the CPU build of onnxruntime and headless OpenCV;
 # the GPU wheel or another OpenCV build arriving through a dependency (names
 # compared after PEP 503 normalisation) fails the build.
+# antiword reads an old Word .doc a category is made from (processors/
+# source_text.py): a small package, milliseconds a file, no network. The build
+# fails without it or its UTF-8 mapping, which every run of it names.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    tesseract-ocr libreoffice-writer libreoffice-impress fonts-dejavu-core fonts-noto-core \
+    tesseract-ocr libreoffice-writer libreoffice-impress fonts-dejavu-core fonts-noto-core antiword \
     && rm -rf /var/lib/apt/lists/* \
+    && command -v antiword && test -f /usr/share/antiword/UTF-8.txt \
     && pip install --no-cache-dir -r requirements.lock \
     && python -c "import importlib.metadata as m, re, sys; found = {re.sub(r'[-_.]+', '-', d.metadata['Name']).lower() for d in m.distributions()} & {'onnxruntime-gpu', 'opencv-python', 'opencv-contrib-python', 'opencv-contrib-python-headless'}; sys.exit(f'Forbidden packages installed: {sorted(found)}' if found else 0)" \
     && useradd --create-home --uid 10001 docmaster

@@ -9,9 +9,11 @@ import importlib.metadata
 from contextlib import closing
 import hashlib
 import io
+import itertools
 import json
 import logging
 import math
+import mmap
 import os
 import re
 import secrets
@@ -30,6 +32,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 from pypdf import PdfReader, PdfWriter
 from pypdf.errors import PdfReadError
 
+from . import source_text
 from .env import env
 
 MAX_FILE_BYTES = 200 * 1024 * 1024
@@ -124,6 +127,19 @@ def capabilities() -> dict[str, dict[str, Any]]:
         if feature=='convert.pdf_to_xlsx':result[feature].update(engine='pdfplumber/openpyxl',limitations=['native_tables_only_review_cells'])
         if feature in EDITOR_SCHEMAS:result[feature].update(engine='pypdf/reportlab',coordinate_system='top_left_pdf_points')
     return result
+
+
+def antiword_runtime() -> str | None:
+    """antiword, which reads an old binary Word file's text, or None when it is not installed.
+
+    The trusted DOCMASTER_ANTIWORD_BIN selects it, else `antiword` on PATH; a
+    configured path that is not an executable file is not replaced by PATH.
+    Debian's package (infra/Dockerfile) brings the UTF-8 mapping it is run with.
+    """
+    executable = env('ANTIWORD_BIN') or shutil.which('antiword')
+    if not executable or not Path(executable).is_file() or not os.access(executable, os.X_OK):
+        return None
+    return executable
 
 
 def _regular_file(value: str | Path) -> Path:
@@ -280,8 +296,84 @@ def _office_inspect(path: Path, allow_links: bool = False) -> dict:
     raise ProcessorError('unsupported_type')
 
 
+def _source_pages(text: str) -> int:
+    """An AI source's "pages": the parts the model will be shown (processors/source_text.pages).
+
+    It runs in the bot's small container on every upload, so a text that
+    cannot fit is refused before it is cut, and counting stops at the first
+    part past the limit rather than cutting a long file to its end.
+    """
+    if source_text.surely_over(text, MAX_PAGES):
+        raise ProcessorError('page_limit')
+    count = sum(1 for _ in itertools.islice(source_text.iter_pages(text), MAX_PAGES + 1))
+    if count > MAX_PAGES:
+        raise ProcessorError('page_limit')
+    # A file with no words in it is still one page: it is kept, and a draft
+    # made from it says that nothing could be read from it.
+    return max(1, count)
+
+
+def _text_inspect(path: Path) -> dict:
+    if path.stat().st_size > source_text.MAX_TEXT_BYTES:
+        raise ProcessorError('page_limit')
+    text = source_text.decode(path.read_bytes())
+    if text is None:
+        raise ProcessorError('unsupported_type')
+    return {'mime_type': 'text/plain', 'page_count': _source_pages(text), 'kind': 'text'}
+
+
+def doc_text(path: str | Path, timeout: int = 30) -> str | None:
+    """An old Word file's text as antiword prints it, or None when antiword is not installed.
+
+    It runs inside whatever bounded child calls this (the upload inspection's,
+    processors/sandbox.py), so it shares that child's CPU, file-size and
+    address-space limits and dies with its process group. Its HOME and working
+    folder are a throw-away folder, where it looks for its own settings.
+    """
+    executable = antiword_runtime()
+    if executable is None:
+        return None
+    with tempfile.TemporaryDirectory(prefix='docmaster-antiword-') as home, tempfile.TemporaryFile() as output:
+        try:
+            completed = subprocess.run(source_text.doc_command(executable, Path(path).absolute()),
+                stdin=subprocess.DEVNULL, stdout=output, stderr=subprocess.DEVNULL, cwd=home,
+                timeout=timeout, check=False, env={**os.environ, 'HOME': home})
+        except subprocess.TimeoutExpired:
+            raise ProcessorError('processor_timeout') from None
+        # Encrypted, damaged or not Word after all: antiword says so on stderr, which is never read.
+        if completed.returncode != 0:
+            raise ProcessorError('invalid_file')
+        if output.tell() > source_text.MAX_TEXT_BYTES:
+            raise ProcessorError('page_limit')
+        output.seek(0)
+        return source_text.doc_text(output.read())
+
+
+def _doc_inspect(path: Path) -> dict:
+    """An old binary Word file: macros refused, its pages counted from antiword's text.
+
+    Without antiword the page count is unknown, which the upload refuses as
+    'conversion_preflight_unavailable', as a .docx is without LibreOffice.
+    """
+    with path.open('rb') as stream, mmap.mmap(stream.fileno(), 0, access=mmap.ACCESS_READ) as raw:
+        if source_text.has_macros(raw):
+            raise ProcessorError('active_content_unsupported')
+        if not source_text.is_word97(raw):
+            raise ProcessorError('unsupported_type')
+    text = doc_text(path)
+    return {'mime_type': 'application/msword', 'page_count': None if text is None else _source_pages(text), 'kind': 'doc'}
+
+
 def inspect_file(path: str | Path, password: str | None = None, *, office_preflight: bool = True, allow_forms: bool = True,
-                 allow_links: bool = False) -> dict[str, Any]:
+                 allow_links: bool = False, sources: bool = False) -> dict[str, Any]:
+    """What a private file is, by its bytes: MIME type, kind, pages and what was refused in it.
+
+    `sources` is set only for a file uploaded as a category's AI source
+    (purpose 'ai_source', core.services.upload_file). It alone takes a `.txt`
+    that decodes as text (kind 'text') and an old Word `.doc` (kind 'doc'),
+    told apart by the stored suffix and the bytes; for every other upload
+    both stay 'unsupported_type', as they always were.
+    """
     path = _regular_file(path)
     with path.open('rb') as stream:
         header = stream.read(16)
@@ -323,6 +415,11 @@ def inspect_file(path: str | Path, password: str | None = None, *, office_prefli
             raise ProcessorError('image_pixel_limit') from None
         except Exception:
             raise ProcessorError('invalid_image') from None
+    suffix = path.suffix.lower()
+    if sources and suffix == '.txt':
+        return {**base, **_text_inspect(path)}
+    if sources and suffix == '.doc' and header.startswith(source_text.OLE_MAGIC):
+        return {**base, **_doc_inspect(path)}
     raise ProcessorError('unsupported_type')
 
 
