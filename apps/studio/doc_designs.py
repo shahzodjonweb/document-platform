@@ -168,19 +168,23 @@ def wanted(data, first=0):
     return bool(options.get('wants_design')) and not options.get('template_style', {}).get('doc_design')
 
 
-def clean_fields(section):
+def clean_fields(section, max_items=16):
     """A document section's layout fields, bounded; empty when it is plain text.
+
+    `max_items` is twice a slide's items for a document page; a category
+    paper's list and table parts (a price table, a list of enclosures) are
+    allowed more (categories.PAPER_BOUNDS).
 
     Raises ValueError on a shape no model can produce under the schema.
     """
-    from .layouts import MAX_COLUMNS, MAX_ITEMS, _item, clean_query
+    from .layouts import MAX_COLUMNS, _item, clean_query
     layout = str(section.get('layout') or 'text')
     if layout not in LAYOUTS:
         raise ValueError('layout')
     items, columns = section.get('items') or [], section.get('columns') or []
     if not isinstance(items, list) or not isinstance(columns, list):
         raise ValueError('shape')
-    items = [item for item in (_item(value) for value in items) if any(item.values())][:MAX_ITEMS * 2]
+    items = [item for item in (_item(value) for value in items) if any(item.values())][:max_items]
     columns = [str(column or '').strip()[:80] for column in columns[:MAX_COLUMNS]]
     columns = columns if any(columns) else []
     query = clean_query(section.get('image_query', ''))
