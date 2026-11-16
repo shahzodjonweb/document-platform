@@ -1125,3 +1125,16 @@ tests/test_paper_engine.py::test_a_keep_group_taller_than_any_page_starts_where_
 tests/test_paper_engine.py::test_the_head_left_before_a_closing_group_is_measured_not_counted
 tests/test_paper_engine.py::test_a_final_pass_that_adds_a_page_is_longer_than_quoted
 tests/test_paper_engine.py::test_the_final_passes_start_from_the_chosen_build_and_say_when_they_did_not_settle
+
+# Categories, the academic and study papers as drafts (C2a): each stays inside its block budget and the paper bounds
+# at every length and cue subset; chapters are a group the model sizes to the plan; a title-page year is the clock's;
+# references only from what was supplied; a handout is its own template picked by its cue; the test keeps its locked
+# shape with its rules reworded
+tests/test_category_study_entries.py::test_each_entry_is_a_draft_paper_within_its_budgets[pdf.mustaqil_ish]
+tests/test_category_study_entries.py::test_each_entry_is_a_draft_paper_within_its_budgets[pdf.test]
+tests/test_category_study_entries.py::test_every_length_and_cue_subset_seeds_within_the_paper_bounds[pdf.dars_ishlanmasi]
+tests/test_category_study_entries.py::test_chapters_are_a_group_the_model_sizes_to_the_plan[pdf.kurs_ishi]
+tests/test_category_study_entries.py::test_a_title_page_year_is_the_clocks_and_no_other_fact_is
+tests/test_category_study_entries.py::test_references_are_a_sources_part_and_notes_list_them_only_when_supplied
+tests/test_category_study_entries.py::test_a_handout_is_its_own_template_picked_by_its_cue
+tests/test_category_study_entries.py::test_the_test_keeps_its_locked_shape_with_its_rules_reworded

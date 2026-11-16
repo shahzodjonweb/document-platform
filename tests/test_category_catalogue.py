@@ -173,9 +173,9 @@ def test_an_index_id_with_no_entry_yet_is_allowed_and_never_shown(switch, ready)
         landed = [item for item in items if item == 'other' or item in ready.entries
                   or any(child in ready.entries for child in index['groups'].get(item, {}).get('children', ()))]
         assert [node.id for node in catalogue.menu(feature)] == landed
-    # The deck entries have all landed (C2s); the papers still wait for theirs.
+    # The deck entries have all landed (C2s), and the academic and study papers (C2a) open the PDF list.
     assert [node.id for node in catalogue.menu('ai.pptx')] == OWNER_LISTS['ai.pptx']
-    assert 'pdf.mustaqil_ish' not in [node.id for node in catalogue.menu('ai.pdf_topic')]
+    assert [node.id for node in catalogue.menu('ai.pdf_topic')][:5] == OWNER_LISTS['ai.pdf_topic'][:5]
 
 
 @pytest.mark.parametrize('spoil, says', [
@@ -233,6 +233,8 @@ def test_readiness_gates_are_warnings_on_a_draft_and_errors_on_a_ready_entry():
     himoya['bot']['prompt'] = {'uz': 'Bitta xabarda yozing.', 'ru': 'Напишите одним сообщением.',
                                'en': 'Say it in one message.'}
     himoya['rules'].append({'text': 'A long rule. ' * 400, 'to': 'model'})
+    # The papers' own rewrite rules are reworded by their C2 packages; one is put back to see it caught.
+    entries['pdf.test']['rules'].append({'text': 'Variants are rebuilt by the pipeline.', 'to': 'rewrite'})
     made = build(entries, templates, index)
     drafts = check(catalogue=made, lock=relock(made, {}))
     assert any(problem.warning and 'rewrite rule is left' in problem.text for problem in drafts)
@@ -417,7 +419,11 @@ def test_bounds_are_the_papers_for_a_category_pdf_and_todays_otherwise():
 
 
 def test_for_feature_lists_each_service_in_the_lists_order():
-    assert [entry.id for entry in catalogue.for_feature('ai.pdf_topic')] == ['pdf.test', 'pdf.xat.ariza']
+    papers = [entry.id for entry in catalogue.for_feature('ai.pdf_topic')]
+    index = catalogue._catalogue().index
+    assert papers == [item for item in catalogue._walk(index, 'ai.pdf_topic') if item in papers]
+    assert papers[:5] == ['pdf.mustaqil_ish', 'pdf.kurs_ishi', 'pdf.konspekt', 'pdf.dars_ishlanmasi', 'pdf.test']
+    assert 'pdf.xat.ariza' in papers
     assert [entry.id for entry in catalogue.for_feature('ai.pptx')] == [
         'slides.mavzu', 'slides.himoya', 'slides.dars', 'slides.tadbir.tarbiyaviy_soat', 'slides.tadbir.bayram',
         'slides.tadbir.ota_onalar', 'slides.tadbir.pedkengash', 'slides.pitch', 'slides.hisobot', 'slides.kompaniya']

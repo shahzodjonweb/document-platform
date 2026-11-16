@@ -1,0 +1,561 @@
+{
+ "schema": 2,
+ "id": "pdf.mustaqil_ish",
+ "status": "draft",
+ "service": "pdf",
+ "parent": null,
+ "order": 1,
+ "labels": {
+  "uz": "🎓 Mustaqil ish / Referat",
+  "ru": "🎓 Реферат / СРС",
+  "en": "🎓 Assignment / Report"
+ },
+ "summary": "A print-ready student paper in the Uzbek standard form: title page (every fact the customer did not give is a ruled blank, the year from the clock), Reja with real page numbers, Kirish, two or three chapters of numbered sections (the teacher’s plan word for word when given), Xulosa, and references listing only what the customer supplied, a ruled form when nothing was. 3 to 20 pages, default 10, the title, plan and reference pages counted.",
+ "tone": "Academic, impersonal, third person, at the textbook level of the customer’s stated education level; paragraphs of one idea each, joined by linking words.",
+ "topic": true,
+ "title": "model",
+ "length": {
+  "unit": "pages",
+  "mode": "count",
+  "target": "count",
+  "default": 10,
+  "min": 3,
+  "max": 20,
+  "note": "Physical pages, the title page, the Reja and the references inside the number: 10 pages are about 7 of text. Below 3 is built as 3; above 20 as 20 (a kurs ishi is its own category)."
+ },
+ "questions": {
+  "default": 0,
+  "max": 0
+ },
+ "quality": "repair",
+ "fill": true,
+ "cues": {},
+ "ask": {
+  "when": "always",
+  "fields": [
+   "institution",
+   "subject",
+   "student_name",
+   "student_group",
+   "teacher",
+   "city",
+   "work_kind"
+  ],
+  "review": {
+   "uz": "📝 Titul varag‘idagi ma’lumotlarni qo‘shishingiz mumkin; yozilmaganlari qo‘lda to‘ldirish uchun chiziq bo‘lib qoladi.",
+   "ru": "📝 Можно добавить данные для титульного листа; что не указано, останется линией для заполнения от руки.",
+   "en": "📝 You can add the title page details; anything not given stays a ruled line to fill in by hand."
+  },
+  "prompt": {
+   "uz": "📝 Titul varag‘i uchun ma’lumotlar. Bitta xabarda yozing: universitet yoki maktab, fan, F.I.Sh. va kurs yoki guruh, o‘qituvchi (unvoni bilan), shahar, ish turi (referat yoki mustaqil ish). Yozmaganlaringiz qo‘lda to‘ldirish uchun chiziq bo‘lib qoladi.",
+   "ru": "📝 Данные для титульного листа. Одним сообщением: вуз или школа, предмет, ФИО и курс или группа, преподаватель (со званием), город, вид работы (реферат или самостоятельная работа). Что не укажете, останется линией для заполнения от руки.",
+   "en": "📝 Title page details. In one message: university or school, subject, your full name and year or group, teacher (with title), city, kind of work (report or independent work). Anything you skip stays a ruled line to fill in by hand."
+  },
+  "hint": {
+   "uz": "Masalan: Misol davlat universiteti, Pedagogika, Odilova Mohinur, 2-kurs, 214-guruh, dotsent Nurmatov O., Toshkent, referat",
+   "ru": "Например: Примерный государственный университет, Педагогика, Одилова Мохинур, 2 курс, группа 214, доцент Нурматов О., Ташкент, реферат",
+   "en": "For example: Example State University, Pedagogy, Mohinur Odilova, year 2, group 214, Assoc. Prof. O. Nurmatov, Tashkent, report"
+  }
+ },
+ "fields": [
+  {
+   "id": "topic",
+   "label": {
+    "uz": "Mavzu",
+    "ru": "Тема",
+    "en": "Topic"
+   },
+   "example": {
+    "uz": "Boshlang‘ich sinflarda o‘quvchilarning mustaqil fikrlashini rivojlantirish",
+    "ru": "Развитие самостоятельного мышления у младших школьников",
+    "en": "Developing independent thinking in primary school pupils"
+   },
+   "kind": "text",
+   "need": "required",
+   "missing": "ask",
+   "where": "Title page, under the Mavzu label, bold and centred; the topic loop asks for it when missing."
+  },
+  {
+   "id": "work_kind",
+   "label": {
+    "uz": "Ish turi (referat yoki mustaqil ish)",
+    "ru": "Вид работы (реферат или самостоятельная работа)",
+    "en": "Kind of work (report or independent work)"
+   },
+   "example": {
+    "uz": "mustaqil ish",
+    "ru": "самостоятельная работа",
+    "en": "independent work"
+   },
+   "kind": "choice",
+   "need": "recommended",
+   "missing": "omit",
+   "choices": [
+    "referat",
+    "mustaqil_ish"
+   ],
+   "where": "The one large word of the title page: REFERAT unless the customer wrote mustaqil ish (that word is a fact only the teacher’s assignment fixes)."
+  },
+  {
+   "id": "ministry",
+   "label": {
+    "uz": "Vazirlik",
+    "ru": "Министерство",
+    "en": "Ministry"
+   },
+   "example": {
+    "uz": "Misol viloyati xalq ta’limi boshqarmasi",
+    "ru": "Управление народного образования Примерной области",
+    "en": "Example Region Department of Education"
+   },
+   "kind": "org",
+   "need": "optional",
+   "missing": "omit",
+   "where": "First line of the title page, bold capitals, only as the customer wrote it. The owner’s allow-list of state institutions is deferred, so it is never printed unasked."
+  },
+  {
+   "id": "institution",
+   "label": {
+    "uz": "Universitet, kollej yoki maktab",
+    "ru": "Вуз, колледж или школа",
+    "en": "University, college or school"
+   },
+   "example": {
+    "uz": "Misol davlat universiteti",
+    "ru": "Примерный государственный университет",
+    "en": "Example State University"
+   },
+   "kind": "org",
+   "need": "recommended",
+   "missing": "blank",
+   "where": "Title page, top block in bold capitals; missing: two ruled lines captioned (ta’lim muassasasining nomi)."
+  },
+  {
+   "id": "faculty_department",
+   "label": {
+    "uz": "Fakultet yoki kafedra",
+    "ru": "Факультет или кафедра",
+    "en": "Faculty or department"
+   },
+   "example": {
+    "uz": "Boshlang‘ich ta’lim fakulteti",
+    "ru": "Факультет начального образования",
+    "en": "Faculty of Primary Education"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Title page, one regular line per item under the institution."
+  },
+  {
+   "id": "subject",
+   "label": {
+    "uz": "Fan",
+    "ru": "Предмет",
+    "en": "Subject"
+   },
+   "example": {
+    "uz": "Pedagogika",
+    "ru": "Педагогика",
+    "en": "Pedagogy"
+   },
+   "kind": "line",
+   "need": "recommended",
+   "missing": "blank",
+   "where": "Title page line above the large word: «<fan>» fanidan / по дисциплине «…» / Subject: …; stored without the word fani. Missing: a ruled blank captioned (fan nomi)."
+  },
+  {
+   "id": "student_name",
+   "label": {
+    "uz": "Talaba yoki o‘quvchi (F.I.Sh.)",
+    "ru": "Автор (ФИО)",
+    "en": "Student (full name)"
+   },
+   "example": {
+    "uz": "Rustamova Muslima",
+    "ru": "Рустамова Муслима",
+    "en": "Muslima Rustamova"
+   },
+   "kind": "person",
+   "need": "recommended",
+   "missing": "blank",
+   "where": "Title page row Bajardi; up to four names for a group paper, in the order written."
+  },
+  {
+   "id": "student_group",
+   "label": {
+    "uz": "Kurs, guruh yoki sinf",
+    "ru": "Курс, группа или класс",
+    "en": "Year, group or class"
+   },
+   "example": {
+    "uz": "2-kurs, 214-guruh",
+    "ru": "2 курс, группа 214",
+    "en": "Year 2, group 214"
+   },
+   "kind": "line",
+   "need": "recommended",
+   "missing": "blank",
+   "where": "Second, smaller line under the student’s name; a ruled blank captioned (kurs, guruh) when missing."
+  },
+  {
+   "id": "teacher",
+   "label": {
+    "uz": "O‘qituvchi (unvoni bilan)",
+    "ru": "Преподаватель (со званием)",
+    "en": "Teacher (with title)"
+   },
+   "example": {
+    "uz": "dotsent Nurmatov O.",
+    "ru": "доцент Нурматов О.",
+    "en": "Assoc. Prof. O. Nurmatov"
+   },
+   "kind": "person",
+   "need": "recommended",
+   "missing": "blank",
+   "where": "Title page row Qabul qildi (or Tekshirdi); two ruled lines when missing."
+  },
+  {
+   "id": "checker_word",
+   "label": {
+    "uz": "Qabul qildi yoki Tekshirdi",
+    "ru": "Принял(а) или Проверил(а)",
+    "en": "Accepted by or Checked by"
+   },
+   "example": {
+    "uz": "tekshirdi",
+    "ru": "проверил",
+    "en": "checked by"
+   },
+   "kind": "choice",
+   "need": "optional",
+   "missing": "omit",
+   "choices": [
+    "accepted",
+    "checked"
+   ],
+   "where": "The label of the teacher row: accepted (Qabul qildi) unless the customer wrote tekshirdi, проверил or checked."
+  },
+  {
+   "id": "city",
+   "label": {
+    "uz": "Shahar",
+    "ru": "Город",
+    "en": "City"
+   },
+   "example": {
+    "uz": "Samarqand",
+    "ru": "Самарканд",
+    "en": "Samarkand"
+   },
+   "kind": "place",
+   "need": "optional",
+   "missing": "blank",
+   "where": "Title page foot, «Samarqand – 2026»; a ruled blank captioned (shahar) when missing."
+  },
+  {
+   "id": "year",
+   "label": {
+    "uz": "Yil",
+    "ru": "Год",
+    "en": "Year"
+   },
+   "example": {
+    "uz": "2026",
+    "ru": "2026",
+    "en": "2026"
+   },
+   "kind": "date",
+   "need": "required",
+   "missing": "omit",
+   "clock": "year",
+   "where": "Title page foot after the city. Written by code from the Tashkent clock; a year the customer wrote wins. The model never writes one."
+  }
+ ],
+ "parts": [
+  {
+   "id": "title_page",
+   "kind": "fixed",
+   "heading": null,
+   "heading_mode": "none",
+   "need": "required",
+   "share": 0.08,
+   "elastic": false,
+   "block": "title_page",
+   "fields": [
+    "ministry",
+    "institution",
+    "faculty_department",
+    "subject",
+    "work_kind",
+    "topic",
+    "student_name",
+    "student_group",
+    "checker_word",
+    "teacher",
+    "city",
+    "year"
+   ],
+   "write": "Nothing to write: the template draws the title page from the facts, and a fact not given is a ruled blank. Return each title-page fact exactly as the customer wrote it: keep the order «Familiya Ism», add no title, group, course, ministry or city they did not give, expand no initials and translate no name; the subject without the word fani, the topic without «Mavzu:» and its final full stop. The student is the writer (Bajardi, men, o‘quvchi, talaba); a person with a rank or the words o‘qituvchi, ustoz, domla or dotsent is the teacher; when it is unclear, leave both out."
+  },
+  {
+   "id": "plan",
+   "kind": "fixed",
+   "heading": {
+    "uz": "Reja",
+    "ru": "Содержание",
+    "en": "Contents"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "share": 0.07,
+   "elastic": false,
+   "block": "toc",
+   "write": "Nothing to write: the template lists the chapter and section headings with the page each starts on."
+  },
+  {
+   "id": "introduction",
+   "kind": "prose",
+   "heading": {
+    "uz": "Kirish",
+    "ru": "Введение",
+    "en": "Introduction"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "share": 0.1,
+   "elastic": false,
+   "block": "paragraph",
+   "write": "About one page of flowing prose, in this order: why the topic matters (one paragraph; vary the opening, not always «Bugungi kunda»); the aim («Ishning maqsadi — …», «Цель работы — …») and three or four tasks in one sentence joined by semicolons; the object or the method in one sentence; one sentence naming the parts of the work («Ish kirish, N ta bob, xulosa va foydalanilgan adabiyotlar ro‘yxatidan iborat»), whose number and order match the chapters written. No labelled sub-paragraphs, no citation marks."
+  },
+  {
+   "id": "chapter",
+   "kind": "prose",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "required",
+   "share": 0.01,
+   "elastic": false,
+   "block": "heading",
+   "group": "chapter",
+   "words": [
+    20,
+    60
+   ],
+   "write": "The chapter: its title in heading (a short exact noun phrase of at most 90 characters, no number, full stop or colon, never «Asosiy qism»; from the customer’s plan word for word when one is given), and in body one to three sentences that say what the chapter examines. Chapter 1 is theory and foundations, chapter 2 analysis, practice or application, chapter 3 (only when the plan has it or the paper is 15 pages or more) recommendations or prospects. A chapter not needed stays empty, its sections too."
+  },
+  {
+   "id": "section_a",
+   "kind": "prose",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "required",
+   "share": 0.2,
+   "elastic": true,
+   "block": "paragraph",
+   "group": "chapter",
+   "write": "The first section of this chapter: its title in heading (a short noun phrase, at most 90 characters, no number, full stop or colon), then paragraphs of 4 to 7 sentences, one idea each, joined by linking words. At most one short list in a chapter, introduced by a sentence ending in a colon. Empty when its chapter is."
+  },
+  {
+   "id": "section_b",
+   "kind": "prose",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "required",
+   "share": 0.2,
+   "elastic": true,
+   "block": "paragraph",
+   "group": "chapter",
+   "write": "The second section of this chapter, written as the first is. Empty when its chapter is."
+  },
+  {
+   "id": "section_c",
+   "kind": "prose",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "usual",
+   "share": 0.12,
+   "elastic": true,
+   "block": "paragraph",
+   "group": "chapter",
+   "from": 6,
+   "write": "A third section of this chapter, written as the first is: only when the customer’s plan has it or the chapter has the room (papers of six pages and more); otherwise empty."
+  },
+  {
+   "id": "section_d",
+   "kind": "prose",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "usual",
+   "share": 0.08,
+   "elastic": true,
+   "block": "paragraph",
+   "group": "chapter",
+   "from": 12,
+   "write": "A fourth section of this chapter: only when the customer’s plan has it; otherwise empty."
+  },
+  {
+   "id": "conclusion",
+   "kind": "prose",
+   "heading": {
+    "uz": "Xulosa",
+    "ru": "Заключение",
+    "en": "Conclusion"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "share": 0.08,
+   "elastic": false,
+   "block": "paragraph",
+   "write": "About one page. Answers the tasks of the Kirish in the same order, one point each («Birinchidan, … Ikkinchidan, …»), then one sentence on what remains for further study. No new facts, no quotations, no citations."
+  },
+  {
+   "id": "references",
+   "kind": "sources",
+   "heading": {
+    "uz": "Foydalanilgan adabiyotlar",
+    "ru": "Список литературы",
+    "en": "References"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "share": 0.06,
+   "elastic": false,
+   "block": "reference_list",
+   "write": "One item per source the customer typed or attached, as given and completing nothing: no publisher, year, pages or URL they did not give. An attached file is described only from what its own first pages show (author, title, year), never by its file name. Laws and normative acts first, then scientific and methodical works, foreign works, internet sources. With no source given, no item: the template draws numbered lines to fill in by hand."
+  }
+ ],
+ "rules": [
+  {
+   "text": "Form: a student paper, referat or mustaqil ish: title page, Reja, Kirish, two or three chapters of numbered sections, Xulosa, references. An essay, theses or an article asked for here is written in this form under the customer’s topic; the title page says REFERAT unless the customer wrote mustaqil ish.",
+   "to": "model"
+  },
+  {
+   "text": "Voice: impersonal academic third person with passive or reflexive verbs (ko‘rib chiqiladi, tahlil qilinadi; рассматривается; is examined). No men, biz or address to the reader, no questions, no words about the document itself, no markdown, bold, emoji or headings inside a body. The register follows the level the customer names: for school pupils simple words and sentences of about 20 words, for college and university fuller terminology.",
+   "to": "model"
+  },
+  {
+   "text": "A plan the customer gives (in the message or a file) is kept in its order and words, spelling and apostrophes repaired only: up to three points are the chapter titles; with more, write three chapter titles and every point stays a section, in order. Never add, merge, drop or reorder a point; a plan with fewer points is written longer, never padded with new chapters.",
+   "to": "model"
+  },
+  {
+   "text": "With attached files the paper is built from them: their facts, terms and order of ideas, paraphrased in your own words, never copied. A file that only lists sources feeds only the references.",
+   "to": "model"
+  },
+  {
+   "text": "Well-established textbook knowledge of the topic may be used (a definition, a historical event and its year). Never from memory: a statistic, percentage, survey, experiment, law or decree name or number, quotation, book, article, publisher, page number or web address; never an idea credited to a named author the customer did not give. Write no citation marks ([1]) and no footnotes, and no phrase that points at a source («adabiyotlarda ko‘rsatilishicha»). At most one general sentence on state attention to the field, in the Kirish.",
+   "to": "model"
+  },
+  {
+   "text": "No tables, pictures, charts or diagrams in the text. Never write an approval, grade, signature, stamp, date line, review, or a statement that the work is original or checked.",
+   "to": "model"
+  },
+  {
+   "text": "Uzbek is Latin only, o‘ and g‘ with ‘ and the tutuq with ’; quotation marks « » in Uzbek and Russian, “ ” in English. A Russian paper has «Введение», «Заключение», «Список литературы»; an English one Introduction, Conclusion, References. Fixed words (Reja, Kirish, Xulosa, Bajardi, Qabul qildi) are drawn by the template, never typed into a body.",
+   "to": "model"
+  }
+ ],
+ "bot": {
+  "prompt": {
+   "uz": "🎓 Bitta xabarda yozing: mavzu, fan va necha sahifa kerakligi (aytmasangiz, 10 sahifa; 3 dan 20 gacha). Titul, reja va adabiyotlar sahifasi ham shu songa kiradi.\nUniversitet, F.I.Sh., guruh va o‘qituvchi yozilsa, titul varag‘iga chiqadi; yozilmasa, qo‘lda to‘ldirish uchun chiziq qoladi.\n📎 O‘qituvchi rejasi yoki manbalaringiz bo‘lsa, PDF, Word yoki TXT fayl qilib yuboring. Adabiyotlar ro‘yxatiga faqat siz bergan manbalar yoziladi.",
+   "ru": "🎓 Напишите одним сообщением: тему, предмет и сколько страниц нужно (если не указать, 10; от 3 до 20). Титульный лист, содержание и список литературы входят в это число.\nВуз, ФИО, группа и преподаватель попадут на титульный лист; что не укажете, останется линией для заполнения от руки.\n📎 Есть план от преподавателя или источники? Пришлите файлом PDF, Word или TXT. В список литературы попадут только ваши источники.",
+   "en": "🎓 Say it all in one message: the topic, the subject and how many pages (10 if you don’t say; 3 to 20). The title page, the contents and the references count among them.\nYour university, full name, group and teacher go on the title page; anything you leave out stays a ruled line to fill in by hand.\n📎 Got the teacher’s plan or your sources? Send them as a PDF, Word or TXT file. Only your sources go into the reference list."
+  },
+  "examples": [
+   {
+    "uz": "Tarix fanidan referat, 9-sinf: «Amir Temur davrida ilm-fan va madaniyat». 8 sahifa, sodda tilda. 21-maktab, o‘quvchi Rustamova Muslima, o‘qituvchi Shukurova X. Buxoro.",
+    "ru": "Реферат по истории, 9 класс: «Наука и культура в эпоху Амира Темура». 8 страниц, простым языком. Школа № 21, ученица Рустамова Муслима, учитель Шукурова Х. Бухара.",
+    "en": "A history report for grade 9: “Science and culture in the age of Amir Temur”. 8 pages, plain language. School No. 21, pupil Muslima Rustamova, teacher X. Shukurova. Bukhara."
+   },
+   {
+    "uz": "Pedagogika fanidan mustaqil ish kerak: «Boshlang‘ich sinflarda o‘quvchilarning mustaqil fikrlashini rivojlantirish». 12 sahifa, ilmiy uslubda. Misol davlat universiteti, 2-kurs, 214-guruh, Odilova Mohinur. O‘qituvchi: dotsent Nurmatov O. Toshkent. Biriktirilgan darslik faylidan foydalaning.",
+    "ru": "Нужна самостоятельная работа по педагогике: «Развитие самостоятельного мышления у младших школьников». 12 страниц, научным стилем. Примерный государственный университет, 2 курс, группа 214, Одилова Мохинур. Преподаватель: доцент Нурматов О. Ташкент. Используйте прикреплённый файл учебника.",
+    "en": "I need an independent study assignment on pedagogy: “Developing independent thinking in primary school pupils”. 12 pages, academic style. Example State University, year 2, group 214, Mohinur Odilova. Teacher: Assoc. Prof. O. Nurmatov. Tashkent. Use the attached textbook file."
+   },
+   {
+    "uz": "Ekologiya fanidan referat: «Orol dengizi muammosi va uning oqibatlari». 10 sahifa. Reja: 1) Orol dengizining qurishi sabablari; 2) Ekologik oqibatlar; 3) Muammoni hal etish yo‘llari.",
+    "ru": "Реферат по экологии: «Проблема Аральского моря и её последствия». 10 страниц. План: 1) причины высыхания Аральского моря; 2) экологические последствия; 3) пути решения проблемы.",
+    "en": "An ecology report: “The Aral Sea problem and its consequences”. 10 pages. Plan: 1) why the Aral Sea dried up; 2) the ecological consequences; 3) ways to solve the problem."
+   }
+  ],
+  "pool": [
+   {
+    "uz": "Iqtisodiyot fanidan mustaqil ish: «Kichik biznesning mamlakat iqtisodiyotidagi o‘rni». 15 sahifa, 3-kurs, 305-guruh talabasi Valiyev Ulug‘bek. Qabul qildi: katta o‘qituvchi Mamatqulova L.",
+    "ru": "Самостоятельная работа по экономике: «Роль малого бизнеса в экономике страны». 15 страниц, студент 3 курса, группа 305, Валиев Улугбек. Принял: старший преподаватель Маматкулова Л.",
+    "en": "An independent assignment in economics: “The role of small business in the national economy”. 15 pages, Ulugbek Valiyev, year 3, group 305. Accepted by senior lecturer L. Mamatqulova."
+   },
+   {
+    "uz": "Biologiya fanidan referat kerak, mavzu: «Fotosintez jarayoni». 6 sahifa, kollej 1-kurs uchun.",
+    "ru": "Нужен реферат по биологии на тему «Процесс фотосинтеза». 6 страниц, для 1 курса колледжа.",
+    "en": "I need a biology report on “The process of photosynthesis”. 6 pages, for year 1 of college."
+   }
+  ],
+  "attach": true,
+  "notices": {
+   "finished": {
+    "uz": "📄 Tayyor. Titul varag‘idagi bo‘sh chiziqlarni qo‘lda to‘ldiring. Adabiyotlar ro‘yxatida faqat siz bergan manbalar bor; manba bermagan bo‘lsangiz, u qo‘lda to‘ldirish uchun bo‘sh qatorlar.",
+    "ru": "📄 Готово. Пустые строки на титульном листе заполните от руки. В списке литературы только ваши источники; если вы их не прислали, там пустые строки для заполнения.",
+    "en": "📄 Ready. Fill in the blank lines on the title page by hand. The reference list holds only your sources; if you sent none, it is blank lines to fill in."
+   },
+   "blanks": {
+    "uz": "Siz bermagan ma’lumot o‘rniga bo‘sh joy qoldirildi: uni o‘zingiz to‘ldiring.",
+    "ru": "Где данных не было, оставлены пустые места: заполните их сами.",
+    "en": "Where you gave no details, blanks were left for you to fill in."
+   }
+  }
+ },
+ "templates": [
+  "academic_mustaqil_ish"
+ ],
+ "look": null,
+ "gates": [
+  "A native Uzbek and a native Russian reader check the fixed headings (Reja, Kirish, Xulosa, Foydalanilgan adabiyotlar), the title-page labels of academic_mustaqil_ish and the bot copy.",
+  "Samples of 3, 10 and 20 pages in uz, ru and en, with every title fact and with none, are drawn with the paper sample tool and looked at next to units/pdf.mustaqil_ish/mock/academic_mustaqil_ish.png.",
+  "A paper made from a five-point teacher’s plan keeps every point, in order, as a heading of the Reja.",
+  "The facts corpus is at zero on this entry’s examples and pool, and one real-provider run (scripts/operations/ai_smoke.py --category pdf.mustaqil_ish) is read before the tick."
+ ],
+ "later": [
+  {
+   "text": "The essay, theses and article forms (academic_maqola: annotation, keywords, ORCID, the article header): this round an essay or article asked for here is written as a referat.",
+   "words": [
+    "esse",
+    "tezis",
+    "maqola",
+    "эссе",
+    "тезис",
+    "статья",
+    "статью",
+    "essay",
+    "article"
+   ]
+  },
+  {
+   "text": "Citation marks [n] tied to verified reference entries, and the READ/LISTED source classes: this round the text carries no marks.",
+   "words": [
+    "[n]",
+    "havola",
+    "ссылк",
+    "citation"
+   ]
+  },
+  {
+   "text": "The ministry line printed from an owner-kept allow-list of state institutions, with a review button that removes it: this round it is printed only as the customer wrote it."
+  },
+  {
+   "text": "The continuous mode of 3 to 7 pages (the plan as a list at the top of page 2), the justified hyphenated variant, group labels in the reference list, a Times-metric face."
+  },
+  {
+   "text": "The deterministic fact check that sends a paragraph back once and drops a sentence that still fails; the transliteration of Cyrillic names shown on the review screen."
+  }
+ ],
+ "groups": {
+  "chapter": {
+   "min": 2,
+   "max": 3,
+   "sized": "model"
+  }
+ },
+ "sources": {
+  "take": "all"
+ }
+}

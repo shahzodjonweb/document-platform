@@ -1,5 +1,152 @@
 {
  "entries": {
+  "pdf.dars_ishlanmasi": {
+   "fields": {
+    "date": "date",
+    "duration": "number",
+    "grade": "line",
+    "place": "place",
+    "school": "org",
+    "subject": "line",
+    "teacher": "person",
+    "textbook": "line",
+    "topic": "text"
+   },
+   "parts": {
+    "aim_development": "prose",
+    "aim_education": "prose",
+    "aim_upbringing": "prose",
+    "appendix": "list",
+    "approval": "fixed",
+    "cover": "fixed",
+    "expected_results": "prose",
+    "group_tasks": "table",
+    "h_head": "fixed",
+    "h_key": "list",
+    "h_rule": "prose",
+    "head": "fixed",
+    "lesson_equipment": "prose",
+    "lesson_methods": "prose",
+    "lesson_type": "prose",
+    "outline": "table",
+    "rule": "prose",
+    "stage_close": "prose",
+    "stage_homework": "prose",
+    "stage_new": "prose",
+    "stage_opening": "prose",
+    "stage_practice": "list",
+    "stage_review": "list",
+    "task": "list"
+   },
+   "service": "pdf",
+   "templates": [
+    "study_dars_ishlanmasi",
+    "study_tarqatma"
+   ]
+  },
+  "pdf.konspekt": {
+   "fields": {
+    "author": "person",
+    "institution": "org",
+    "lecture_number": "number",
+    "level": "line",
+    "source_pages": "line",
+    "subject": "line",
+    "topic": "text"
+   },
+   "parts": {
+    "answer": "prose",
+    "definitions": "table",
+    "formulas": "list",
+    "key_terms": "list",
+    "lead": "prose",
+    "main_points": "list",
+    "plan": "fixed",
+    "references": "sources",
+    "review": "list",
+    "section": "prose",
+    "takeaways": "list",
+    "title": "fixed"
+   },
+   "service": "pdf",
+   "templates": [
+    "study_konspekt"
+   ]
+  },
+  "pdf.kurs_ishi": {
+   "fields": {
+    "city": "place",
+    "course_group": "line",
+    "direction": "line",
+    "faculty": "line",
+    "kafedra": "line",
+    "ministry": "org",
+    "object_name": "line",
+    "student_name": "person",
+    "subject": "line",
+    "supervisor": "person",
+    "topic": "text",
+    "university": "org",
+    "year": "date"
+   },
+   "parts": {
+    "aim": "prose",
+    "appendix": "list",
+    "chapter": "prose",
+    "chapter_close": "prose",
+    "conclusion": "prose",
+    "methods": "prose",
+    "object": "prose",
+    "proposals": "list",
+    "references": "sources",
+    "relevance": "prose",
+    "research_state": "prose",
+    "section_a": "prose",
+    "section_b": "prose",
+    "section_c": "prose",
+    "significance": "prose",
+    "subject_matter": "prose",
+    "tasks": "list",
+    "title_page": "fixed",
+    "toc": "fixed"
+   },
+   "service": "pdf",
+   "templates": [
+    "academic_kurs_ishi"
+   ]
+  },
+  "pdf.mustaqil_ish": {
+   "fields": {
+    "checker_word": "choice",
+    "city": "place",
+    "faculty_department": "line",
+    "institution": "org",
+    "ministry": "org",
+    "student_group": "line",
+    "student_name": "person",
+    "subject": "line",
+    "teacher": "person",
+    "topic": "text",
+    "work_kind": "choice",
+    "year": "date"
+   },
+   "parts": {
+    "chapter": "prose",
+    "conclusion": "prose",
+    "introduction": "prose",
+    "plan": "fixed",
+    "references": "sources",
+    "section_a": "prose",
+    "section_b": "prose",
+    "section_c": "prose",
+    "section_d": "prose",
+    "title_page": "fixed"
+   },
+   "service": "pdf",
+   "templates": [
+    "academic_mustaqil_ish"
+   ]
+  },
   "pdf.test": {
    "fields": {
     "answer_extras": "choice",

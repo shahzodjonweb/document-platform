@@ -1,0 +1,185 @@
+{
+ "schema": 2,
+ "id": "study_tarqatma",
+ "entries": [
+  "pdf.dars_ishlanmasi"
+ ],
+ "name": {
+  "uz": "Tarqatma material",
+  "ru": "Раздаточный материал",
+  "en": "Handout"
+ },
+ "family": "study",
+ "pick": "cue:handout",
+ "page": {
+  "margins_mm": {
+   "left": 20,
+   "right": 15,
+   "top": 15,
+   "bottom": 18
+  }
+ },
+ "type": {
+  "face": "serif",
+  "ladder": [
+   [
+    11,
+    15
+   ],
+   [
+    10.5,
+    14.5
+   ],
+   [
+    10,
+    13.8
+   ]
+  ],
+  "align": "left"
+ },
+ "page_rule": {
+  "kind": "count"
+ },
+ "furniture": {
+  "first": "number",
+  "later": "header_number",
+  "format": "n",
+  "header": [
+   "subject",
+   "grade"
+  ]
+ },
+ "flow": [
+  {
+   "block": "cell_strip",
+   "part": "h_head",
+   "fields": [
+    "topic",
+    "grade",
+    "subject"
+   ],
+   "params": {
+    "rows": [
+     [
+      {
+       "label": "name",
+       "share": 1
+      }
+     ],
+     [
+      {
+       "label": "class",
+       "share": 0.5
+      },
+      {
+       "label": "date",
+       "share": 0.5
+      }
+     ]
+    ],
+    "height_mm": 9
+   }
+  },
+  {
+   "block": "doc_head",
+   "part": "h_head",
+   "fields": [
+    "topic",
+    "grade",
+    "subject"
+   ],
+   "params": {
+    "overline": "overline",
+    "title": [
+     "topic"
+    ],
+    "subtitle": [
+     "grade",
+     "subject"
+    ],
+    "rules": "above"
+   }
+  },
+  {
+   "block": "callout",
+   "part": "h_rule",
+   "when": "part:h_rule",
+   "params": {
+    "style": "bar"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "task",
+   "when": "part:task",
+   "params": {
+    "level": 3,
+    "numbering": "arabic",
+    "style": "badge"
+   }
+  },
+  {
+   "block": "list",
+   "part": "task",
+   "when": "part:task",
+   "params": {
+    "marker": "number"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "h_key",
+   "when": "part:h_key",
+   "params": {
+    "level": 3,
+    "caps": true
+   },
+   "page_break_before": true
+  },
+  {
+   "block": "line",
+   "part": "h_key",
+   "when": "part:h_key",
+   "params": {
+    "text": "teacher_only",
+    "style": "italic"
+   }
+  },
+  {
+   "block": "kv_table",
+   "part": "h_key",
+   "when": "part:h_key",
+   "params": {
+    "rows": "h_key"
+   }
+  }
+ ],
+ "labels": {
+  "overline": {
+   "uz": "TARQATMA MATERIAL",
+   "ru": "РАЗДАТОЧНЫЙ МАТЕРИАЛ",
+   "en": "HANDOUT"
+  },
+  "name": {
+   "uz": "Ism-familiya:",
+   "ru": "Фамилия, имя:",
+   "en": "Name:"
+  },
+  "class": {
+   "uz": "Sinf:",
+   "ru": "Класс:",
+   "en": "Class:"
+  },
+  "date": {
+   "uz": "Sana:",
+   "ru": "Дата:",
+   "en": "Date:"
+  },
+  "teacher_only": {
+   "uz": "O‘qituvchi uchun. Bu varaq o‘quvchilarga tarqatilmaydi.",
+   "ru": "Для учителя. Этот лист ученикам не раздаётся.",
+   "en": "For the teacher. This sheet is not handed out."
+  }
+ },
+ "mock": "units/pdf.dars_ishlanmasi/mock/study_tarqatma.png"
+}
