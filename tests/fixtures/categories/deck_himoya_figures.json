@@ -1,0 +1,104 @@
+{
+  "entry": "slides.himoya",
+  "case": "figures",
+  "about": "A defence deck whose customer gave the topic, the figures, the methods and the cover lines in one message, and a model answer that keeps to them. The people, the university and every figure are invented.",
+  "prompt": {
+    "uz": "Bitiruv malakaviy ishimni himoya qilish uchun slayd kerak: “Kichik korxonada xodimlar almashinuvini kamaytirish yo‘llari”.\nNatijalar: 2023-yilda xodimlar almashinuvi 28 % edi, 2025-yilda 14 % ga tushdi. So‘rovnomada 60 xodim qatnashdi, ulardan 42 tasi moslashuvchan ish jadvalini tanladi. Yangi xodimlarga murabbiy biriktirilgach, sinov muddatida ketganlar 11 tadan 4 taga kamaydi.\nMetodlar: so‘rovnoma, intervyu, statistik tahlil.\nBirinchi slaydga:\nNamuna davlat universiteti, Iqtisodiyot fakulteti\nBajardi: Yusupov Jasur, 412-guruh\nIlmiy rahbar: dotsent Rahimova N.\nToshkent — 2026",
+    "ru": "Нужны слайды для защиты ВКР: «Пути снижения текучести кадров в малой компании».\nРезультаты: в 2023 году текучесть кадров была 28 %, в 2025 году снизилась до 14 %. В опросе участвовали 60 сотрудников, 42 из них выбрали гибкий график. После закрепления наставника за новыми сотрудниками число ушедших на испытательном сроке сократилось с 11 до 4.\nМетоды: опрос, интервью, статистический анализ.\nНа титульном слайде:\nГосударственный университет «Намуна», экономический факультет\nВыполнил: Юсупов Джасур, группа 412\nНаучный руководитель: доцент Рахимова Н.\nТашкент — 2026",
+    "en": "I need slides to defend my bachelor’s thesis: “Ways to reduce staff turnover in a small company”.\nResults: staff turnover was 28 % in 2023 and fell to 14 % in 2025. 60 employees took part in the survey and 42 of them chose a flexible schedule. Once new staff were given a mentor, those leaving during probation fell from 11 to 4.\nMethods: survey, interviews, statistical analysis.\nTitle slide:\nNamuna State University, Faculty of Economics\nPrepared by: Jasur Yusupov, group 412\nSupervisor: Associate Professor N. Rahimova\nTashkent — 2026"
+  },
+  "title": {
+    "uz": "Kichik korxonada xodimlar almashinuvini kamaytirish yo‘llari",
+    "ru": "Пути снижения текучести кадров в малой компании",
+    "en": "Ways to reduce staff turnover in a small company"
+  },
+  "slots": {
+    "cover": [
+      {
+        "uz": {"heading": "Kichik korxonada xodimlar almashinuvini kamaytirish yo‘llari", "body": "Bitiruv malakaviy ishi\nNamuna davlat universiteti, Iqtisodiyot fakulteti\nBajardi: Yusupov Jasur, 412-guruh\nIlmiy rahbar: dotsent Rahimova N.\nToshkent — 2026"},
+        "ru": {"heading": "Пути снижения текучести кадров в малой компании", "body": "ВКР\nГосударственный университет «Намуна», экономический факультет\nВыполнил: Юсупов Джасур, группа 412\nНаучный руководитель: доцент Рахимова Н.\nТашкент — 2026"},
+        "en": {"heading": "Ways to reduce staff turnover in a small company", "body": "Bachelor’s thesis\nNamuna State University, Faculty of Economics\nPrepared by: Jasur Yusupov, group 412\nSupervisor: Associate Professor N. Rahimova\nTashkent — 2026"}
+      }
+    ],
+    "dolzarblik": [
+      {
+        "uz": {"body": "Kichik korxonada malakali xodimni saqlash qiyin\nHar bir ketgan xodim o‘rniga yangisini o‘qitish kerak", "notes": "[Qoralama: mavzudan olingan] Hurmatli komissiya a’zolari! Mavzuning dolzarbligi shundaki, kichik korxonada har bir xodimning ketishi sezilarli."},
+        "ru": {"body": "Малой компании трудно удержать квалифицированных сотрудников\nКаждого ушедшего нужно заменить и обучить нового", "notes": "[Черновик: из темы] Уважаемые члены комиссии! Актуальность темы в том, что в малой компании уход каждого сотрудника заметен."},
+        "en": {"body": "A small company struggles to keep skilled staff\nEvery leaver must be replaced and a newcomer trained", "notes": "[Draft: from the topic] Members of the committee, the topic matters because in a small company every leaver is felt."}
+      }
+    ],
+    "maqsad_vazifalar": [
+      {
+        "uz": {"body": "Maqsad: kichik korxonada xodimlar almashinuvini kamaytirish yo‘llarini ishlab chiqish\n1. Almashinuv sabablarini o‘rganish\n2. Xodimlar fikrini so‘rovnoma orqali aniqlash\n3. Moslashuvchan jadval va murabbiylik ta’sirini baholash", "notes": "[Qoralama: maqsad mavzudan olingan] Uchta vazifa natija slaydlarida javob topadi."},
+        "ru": {"body": "Цель: разработать пути снижения текучести кадров в малой компании\n1. Изучить причины текучести\n2. Выяснить мнение сотрудников опросом\n3. Оценить влияние гибкого графика и наставничества", "notes": "[Черновик: цель из темы] На три задачи отвечают слайды с результатами."},
+        "en": {"body": "Aim: to find ways to reduce staff turnover in a small company\n1. Study the causes of turnover\n2. Learn staff views through a survey\n3. Assess a flexible schedule and mentoring", "notes": "[Draft: the aim from the topic] The result slides answer the three tasks."}
+      }
+    ],
+    "obyekt_predmet_metodlar": [
+      {
+        "uz": {"body": "Ob’ekt: kichik korxona xodimlari\nPredmet: almashinuvni kamaytirish usullari\nMetodlar: so‘rovnoma, intervyu, statistik tahlil"},
+        "ru": {"body": "Объект: сотрудники малой компании\nПредмет: способы снижения текучести\nМетоды: опрос, интервью, статистический анализ"},
+        "en": {"body": "Object: the staff of a small company\nSubject: ways of reducing turnover\nMethods: survey, interviews, statistical analysis"}
+      }
+    ],
+    "obyekt_predmet": [
+      {
+        "uz": {"body": "Ob’ekt: kichik korxona xodimlari\nPredmet: almashinuvni kamaytirish usullari"},
+        "ru": {"body": "Объект: сотрудники малой компании\nПредмет: способы снижения текучести"},
+        "en": {"body": "Object: the staff of a small company\nSubject: ways of reducing turnover"}
+      }
+    ],
+    "metodlar": [
+      {
+        "uz": {"body": "So‘rovnoma\nIntervyu\nStatistik tahlil"},
+        "ru": {"body": "Опрос\nИнтервью\nСтатистический анализ"},
+        "en": {"body": "Survey\nInterviews\nStatistical analysis"}
+      }
+    ],
+    "natija": [
+      {
+        "uz": {"heading": "Almashinuv: 28 % dan 14 % gacha", "layout": "stats", "items": [{"label": "2023-yil", "text": "", "value": "28 %"}, {"label": "2025-yil", "text": "", "value": "14 %"}], "notes": "Birinchi vazifa bo‘yicha: almashinuv 2023-yilda 28 % edi, 2025-yilda 14 % ga tushdi."},
+        "ru": {"heading": "Текучесть: с 28 % до 14 %", "layout": "stats", "items": [{"label": "2023 год", "text": "", "value": "28 %"}, {"label": "2025 год", "text": "", "value": "14 %"}], "notes": "По первой задаче: в 2023 году текучесть была 28 %, в 2025 году — 14 %."},
+        "en": {"heading": "Turnover: from 28 % to 14 %", "layout": "stats", "items": [{"label": "2023", "text": "", "value": "28 %"}, {"label": "2025", "text": "", "value": "14 %"}], "notes": "On the first task: turnover was 28 % in 2023 and 14 % in 2025."}
+      },
+      {
+        "uz": {"heading": "60 xodimdan 42 tasi moslashuvchan jadvalni tanladi", "layout": "big_number", "items": [{"label": "moslashuvchan jadvalni tanlagan xodimlar", "text": "So‘rovnomada 60 xodim qatnashdi", "value": "42"}], "notes": "Ikkinchi vazifa bo‘yicha: so‘rovnomada 60 xodim qatnashdi, 42 tasi moslashuvchan jadvalni tanladi."},
+        "ru": {"heading": "42 из 60 сотрудников выбрали гибкий график", "layout": "big_number", "items": [{"label": "сотрудников выбрали гибкий график", "text": "В опросе участвовали 60 сотрудников", "value": "42"}], "notes": "По второй задаче: в опросе участвовали 60 сотрудников, 42 выбрали гибкий график."},
+        "en": {"heading": "42 of 60 employees chose a flexible schedule", "layout": "big_number", "items": [{"label": "employees chose a flexible schedule", "text": "60 employees took part in the survey", "value": "42"}], "notes": "On the second task: 60 employees took part in the survey and 42 chose a flexible schedule."}
+      },
+      {
+        "uz": {"heading": "Murabbiylik: sinov muddatida ketganlar kamaydi", "layout": "bullets", "body": "Yangi xodimlarga murabbiy biriktirildi\nSinov muddatida ketganlar: 11 tadan 4 taga", "notes": "Uchinchi vazifa bo‘yicha: murabbiy biriktirilgach, sinov muddatida ketganlar 11 tadan 4 taga kamaydi."},
+        "ru": {"heading": "Наставничество: меньше уходов на испытательном сроке", "layout": "bullets", "body": "За новыми сотрудниками закреплён наставник\nУшедших на испытательном сроке: с 11 до 4", "notes": "По третьей задаче: после закрепления наставника число ушедших на испытательном сроке сократилось с 11 до 4."},
+        "en": {"heading": "Mentoring: fewer leavers during probation", "layout": "bullets", "body": "New staff were given a mentor\nLeavers during probation: from 11 to 4", "notes": "On the third task: once new staff had a mentor, leavers during probation fell from 11 to 4."}
+      }
+    ],
+    "ilmiy_amaliy": [
+      {
+        "uz": {"body": "Amaliy ahamiyati: ____\nJoriy etilgan joyi: ____"},
+        "ru": {"body": "Практическая значимость: ____\nМесто внедрения: ____"},
+        "en": {"body": "Practical significance: ____\nWhere it is used: ____"}
+      }
+    ],
+    "xulosa": [
+      {
+        "uz": {"body": "1. Almashinuv 28 % dan 14 % ga kamaydi\n2. 60 xodimdan 42 tasi moslashuvchan jadvalni tanladi\n3. Murabbiylik sinov muddatidagi ketishni 11 tadan 4 taga tushirdi", "notes": "Xulosa qilib aytganda, uchala vazifa bo‘yicha natijalar olindi. Savollaringizga javob berishga tayyorman."},
+        "ru": {"body": "1. Текучесть снизилась с 28 % до 14 %\n2. 42 из 60 сотрудников выбрали гибкий график\n3. Наставничество сократило уходы на испытательном сроке с 11 до 4", "notes": "Итак, по всем трём задачам получены результаты. Готов ответить на вопросы."},
+        "en": {"body": "1. Turnover fell from 28 % to 14 %\n2. 42 of 60 employees chose a flexible schedule\n3. Mentoring cut leavers during probation from 11 to 4", "notes": "In short, each of the three tasks has its result. I am ready for your questions."}
+      }
+    ],
+    "natija_xulosa": [
+      {
+        "uz": {"body": "1. Almashinuv 28 % dan 14 % ga kamaydi\n2. Murabbiylik ketishni 11 tadan 4 taga tushirdi"},
+        "ru": {"body": "1. Текучесть снизилась с 28 % до 14 %\n2. Наставничество сократило уходы с 11 до 4"},
+        "en": {"body": "1. Turnover fell from 28 % to 14 %\n2. Mentoring cut leavers from 11 to 4"}
+      }
+    ],
+    "rahmat": [
+      {
+        "uz": {"body": "Savollaringiz bormi?\nBajardi: Yusupov Jasur, 412-guruh"},
+        "ru": {"body": "Вопросы?\nВыполнил: Юсупов Джасур, группа 412"},
+        "en": {"body": "Questions?\nPrepared by: Jasur Yusupov, group 412"}
+      }
+    ]
+  }
+}
