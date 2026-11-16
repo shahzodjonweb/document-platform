@@ -605,3 +605,36 @@ CATALOGS['ru'].update(
     invites_none='Plus за приглашения пока не получен.',
     invites_note='Бесплатные месяцы Plus не являются доходом. Чтобы остановить злоупотребление, назначьте тариф: он важнее любого периода.')
 assert CATALOGS['en'].keys() == CATALOGS['uz'].keys() == CATALOGS['ru'].keys()
+
+# The AI categories' rollout switch (categories_settings.py).
+CATALOGS['en'].update(
+    categories='AI categories', categories_desc='The categories customers pick in AI PDF and AI Slides: one switch for them all, and which are open. Takes effect at once, without a deploy.',
+    categories_switch='Switch', categories_on='Show the category lists in the bot',
+    categories_switch_note='Off by default. While it is off, AI PDF and AI Slides open today’s prompt and nothing else changes. A draft started with a category still finishes after it is turned off.',
+    categories_ticks='Categories customers may pick',
+    categories_ticks_note='Only a ready category can be ticked. A category shows in the bot when the switch is on and it is ticked; Other is always beside them.',
+    categories_service_pdf='AI PDF', categories_service_slides='AI Slides', categories_category='Category', categories_drawn='Drawn as',
+    categories_deck='Deck', categories_template='PDF template', categories_gates='Checked before it is ready',
+    categories_status_draft='Draft', categories_status_ready='Ready', categories_live='Open in the bot', categories_none='No categories yet.',
+)
+CATALOGS['uz'].update(
+    categories='AI kategoriyalari', categories_desc='Mijoz AI PDF va AI Slides’da tanlaydigan kategoriyalar: hammasi uchun bitta kalit va qaysilari ochiq. Darhol, deploysiz qo‘llanadi.',
+    categories_switch='Kalit', categories_on='Botda kategoriyalar ro‘yxatini ko‘rsatish',
+    categories_switch_note='Dastlab o‘chirilgan. O‘chiq turganda AI PDF va AI Slides bugungidek ochiladi va boshqa hech narsa o‘zgarmaydi. Kategoriya bilan boshlangan qoralama kalit o‘chirilgandan keyin ham yakunlanadi.',
+    categories_ticks='Mijozlar tanlay oladigan kategoriyalar',
+    categories_ticks_note='Faqat tayyor kategoriyani belgilash mumkin. Kalit yoqilgan va kategoriya belgilangan bo‘lsa, u botda ko‘rinadi; «Boshqa» doim yonida turadi.',
+    categories_service_pdf='AI PDF', categories_service_slides='AI Slides', categories_category='Kategoriya', categories_drawn='Ko‘rinishi',
+    categories_deck='Taqdimot', categories_template='PDF shablon', categories_gates='Tayyor bo‘lishidan oldin tekshiriladi',
+    categories_status_draft='Qoralama', categories_status_ready='Tayyor', categories_live='Botda ochiq', categories_none='Hali kategoriya yo‘q.',
+)
+CATALOGS['ru'].update(
+    categories='Категории ИИ', categories_desc='Категории, которые клиент выбирает в AI PDF и AI Slides: один переключатель для всех и какие из них открыты. Применяется сразу, без развёртывания.',
+    categories_switch='Переключатель', categories_on='Показывать списки категорий в боте',
+    categories_switch_note='По умолчанию выключено. Пока выключено, AI PDF и AI Slides открываются как сейчас и больше ничего не меняется. Черновик, начатый с категорией, завершится и после выключения.',
+    categories_ticks='Категории, которые могут выбрать клиенты',
+    categories_ticks_note='Отметить можно только готовую категорию. Категория видна в боте, когда переключатель включён и она отмечена; «Другое» всегда рядом.',
+    categories_service_pdf='AI PDF', categories_service_slides='AI Slides', categories_category='Категория', categories_drawn='Оформление',
+    categories_deck='Презентация', categories_template='Шаблон PDF', categories_gates='Проверить до готовности',
+    categories_status_draft='Черновик', categories_status_ready='Готова', categories_live='Открыта в боте', categories_none='Категорий пока нет.',
+)
+assert CATALOGS['en'].keys() == CATALOGS['uz'].keys() == CATALOGS['ru'].keys()

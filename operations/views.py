@@ -38,10 +38,12 @@ PAGE_ROLES = {
     'jobs':['Operations','Support'], 'generations':['Support','Operations'], 'posts':[], 'plans':['Finance','Content manager'],
     'payments':['Finance'], 'audit':[], 'system':['Operations'],
     'localization':['Content manager'], 'integrations':[], 'staff':[], 'editor':['Operations'],
+    # Who may turn the AI categories on: the same people as the editors' switches.
+    'categories':['Operations'],
 }
 PAGE_KEYS = {'today':'today','overview':'overview','users':'users','analytics/acquisition':'acquisition',
              'analytics/engagement':'engagement','analytics/plans':'plans_screen','analytics/features':'features','analytics/revenue':'revenue','analytics/ai-usage':'ai_usage',
-             'jobs':'jobs','generations':'generations','posts':'posts','plans':'plans','payments':'payments','audit':'audit','system':'system','localization':'localization','editor':'editor'}
+             'jobs':'jobs','generations':'generations','posts':'posts','plans':'plans','payments':'payments','audit':'audit','system':'system','localization':'localization','editor':'editor','categories':'categories'}
 # Sidebar: (group label key, [(page, label key, icon)]). The analytics reports
 # share one entry; their own tabs switch between them.
 NAV = [
@@ -49,14 +51,14 @@ NAV = [
     ('customers', [('users','users','users'),('generations','generations','sparkle'),('posts','posts','send')]),
     ('money', [('payments','payments','card'),('analytics/revenue','revenue','trending')]),
     ('product', [('overview','nav_analytics','chart'),('jobs','nav_tasks','list'),('analytics/ai-usage','ai_usage','cpu'),('plans','plans','layers')]),
-    ('settings', [('integrations','integrations','plug'),('staff','staff','shield'),('audit','audit','history'),('system','system','activity'),('editor','editor','file'),('localization','localization','globe')]),
+    ('settings', [('integrations','integrations','plug'),('staff','staff','shield'),('audit','audit','history'),('system','system','activity'),('editor','editor','file'),('categories','categories','star'),('localization','localization','globe')]),
 ]
 ANALYTICS = ['overview','analytics/acquisition','analytics/engagement','analytics/plans','analytics/features']
 # Each report page() renders lays itself out in one partial.
 SECTIONS = {'today':'today','overview':'analytics','analytics/acquisition':'analytics','analytics/engagement':'analytics',
             'analytics/plans':'analytics',
             'analytics/features':'analytics','users':'users','jobs':'jobs','audit':'audit',
-            'plans':'plans','system':'system','localization':'localization','editor':'editor'}
+            'plans':'plans','system':'system','localization':'localization','editor':'editor','categories':'categories'}
 JOB_STATES = ['queued','running','succeeded','failed','canceled']
 USER_SORTS = {'new':'-created_at','old':'created_at','name':'display_name','plan':'-plan'}
 PLAN_GROUPS = [('group_price',['price_uzs','discount_price_uzs','discount_until']),
@@ -269,11 +271,38 @@ def page(request, section='overview'):
         data['editor_switches']=[{'name':name,'label':data['t']['editor_flag_'+name],'value':config[name]} for name in EDITOR_FLAGS]
         data['editor_budgets']=[{'name':name,'label':data['t']['editor_budget_'+name],'value':config[name],'low':editor_settings.BOUNDS[name][0],'high':editor_settings.BOUNDS[name][1]} for name in EDITOR_BUDGETS]
         data['can_edit_editor']=allowed(request.ops_user,['Operations'])
+    if section=='categories':
+        data.update(category_page(data['t'],data['lang']))
+        data['can_edit_categories']=allowed(request.ops_user,['Operations'])
     if section=='system':data['system_cards']=[{'key':key,'label':data['t'][key],'value':value} for key,value in system_snapshot(filters).items()]
     if section=='localization':data['locale_rows']=[{'id':key,'label':{'en':'English','uz':'O‘zbekcha','ru':'Русский'}.get(key,key),'count':len(value),'coverage':'100%'} for key,value in CATALOGS.items()]
     data['now']=timezone.now()
     data['section_template']='ops/sections/'+SECTIONS[section]+'.html'
     return finish_render(request,'ops/page.html',data)
+
+
+def category_page(t,lang):
+    """The switch and one row per category of each service, in the bot's order.
+
+    Every entry but a retired one is listed, so the owner sees what is coming;
+    only a ready one can be ticked. Each row says how it is drawn (a deck, or
+    its PDF templates) and what a person must check before it is ready.
+    """
+    from apps.studio import categories
+    from . import categories_settings
+    switch=categories_settings.get()
+    ticked=set(switch['live'])
+    services=[]
+    for feature,key in (('ai.pdf_topic','categories_service_pdf'),('ai.pptx','categories_service_slides')):
+        shown={entry.id for entry in categories.live(feature)}
+        rows=[{'id':entry.id,'label':entry.label(lang),'status':entry.status,'ready':entry.status=='ready',
+               'ticked':entry.id in ticked,'live':entry.id in shown,
+               'renderer':t['categories_deck'] if entry.service=='slides' else t['categories_template'],
+               'renderer_detail':', '.join(entry.look.get('designs',()) if entry.service=='slides' else entry.templates),
+               'gates':entry.raw.get('gates') or []}
+              for entry in categories.for_feature(feature)]
+        services.append({'feature':feature,'label':t[key],'rows':rows})
+    return {'category_switch':switch,'category_services':services}
 
 
 def plan_row(key,limits,edited,t,lang='en'):

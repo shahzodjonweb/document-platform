@@ -1,0 +1,55 @@
+{% load ops_ui %}
+<div class="page-heading">
+  <div>
+    <h1>{{ t.categories }}</h1>
+    <p class="page-description">{{ t.categories_desc }}</p>
+  </div>
+</div>
+{% if request.GET.saved %}<p class="alert success" role="status">{% icon 'check' %}<span>{{ t.saved }}</span></p>{% endif %}
+<form method="post" action="/ops/categories/settings">
+  {% csrf_token %}
+  <section class="panel info-panel">
+    <fieldset class="field-group"{% if not can_edit_categories %} disabled{% endif %}>
+      <legend>{{ t.categories_switch }}</legend>
+      <p class="field-hint">{{ t.categories_switch_note }}</p>
+      <input type="hidden" name="on" value="false">
+      <label><input type="checkbox" name="on" value="true"{% if category_switch.on %} checked{% endif %}> {{ t.categories_on }}</label>
+    </fieldset>
+  </section>
+  {# Sent even with nothing ticked, so unticking the last category is saved. #}
+  <input type="hidden" name="live" value="">
+  {% for service in category_services %}
+  <section class="panel">
+    <div class="panel-heading">
+      <div>
+        <h2>{{ service.label }}</h2>
+        <p>{{ t.categories_ticks_note }}</p>
+      </div>
+    </div>
+    <div class="table-region" role="region" aria-label="{{ service.label }}" tabindex="0">
+      <table>
+        <thead>
+          <tr><th><span class="visually-hidden">{{ t.categories_ticks }}</span></th><th>{{ t.categories_category }}</th><th>{{ t.status }}</th><th>{{ t.categories_drawn }}</th><th>{{ t.categories_gates }}</th></tr>
+        </thead>
+        <tbody>
+          {% for row in service.rows %}
+          <tr{% if not row.ready %} class="muted"{% endif %}>
+            <td><label><input type="checkbox" name="live" value="{{ row.id }}"{% if row.ticked and row.ready %} checked{% endif %}{% if not row.ready or not can_edit_categories %} disabled{% endif %}><span class="visually-hidden">{{ row.label }}</span></label></td>
+            <td>{{ row.label }}<br><small class="mono">{{ row.id }}</small></td>
+            <td>
+              {% if row.ready %}<span class="badge status-ready">{{ t.categories_status_ready }}</span>{% else %}<span class="badge">{{ t.categories_status_draft }}</span>{% endif %}
+              {% if row.live %}<span class="badge good">{{ t.categories_live }}</span>{% endif %}
+            </td>
+            <td>{{ row.renderer }}{% if row.renderer_detail %}<br><small class="mono">{{ row.renderer_detail }}</small>{% endif %}</td>
+            <td>{% if row.gates %}<ul class="field-hint">{% for gate in row.gates %}<li>{{ gate }}</li>{% endfor %}</ul>{% else %}—{% endif %}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5">{% include 'ops/ui/empty.html' with icon='star' title=t.categories_none text=t.categories_ticks_note %}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endfor %}
+  {% if can_edit_categories %}<div class="plan-actions"><button class="button primary">{{ t.save_changes }}</button></div>{% endif %}
+</form>
