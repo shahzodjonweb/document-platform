@@ -106,13 +106,22 @@ def category_notices(job, locale):
         lines = [words(said['finished'])] if said.get('finished') else []
         if 'facts_blanked' in warning_codes(job):
             lines.append(words(said['blanks']) if said.get('blanks') else UX[locale]['facts_blanked'])
+    except Exception:
+        _unread_notices(job)
+        return []
+    # Read from the draft, which may have changed shape since: a failure there
+    # loses the draft notice alone, never the ones already worked out.
+    try:
         if said.get('draft') and _drafted(job, entry):
             lines.append(words(said['draft']))
-        return lines
     except Exception:
-        import logging
-        logging.getLogger(__name__).exception('The notices of job %s could not be read', job.id)
-        return []
+        _unread_notices(job)
+    return lines
+
+
+def _unread_notices(job):
+    import logging
+    logging.getLogger(__name__).exception('The notices of job %s could not be read', job.id)
 
 
 def _drafted(job, entry):
@@ -132,11 +141,16 @@ def _drafted(job, entry):
     return any(use.part.get('source') == 'draft' for use in uses)
 
 
+def visible_length(caption):
+    """How long Telegram counts an HTML caption: its text without tags or entities, in UTF-16 units."""
+    return len(html.unescape(re.sub(r'<[^>]*>', '', caption)).encode('utf-16-le')) // 2
+
+
 def with_notices(caption, notices):
     """`caption` and the notices under it, each a paragraph, as many as fit Telegram's caption."""
     for notice in notices:
         more = f'{caption}\n\n{html.escape(notice)}'
-        if len(more) > CAPTION_LIMIT:
+        if visible_length(more) > CAPTION_LIMIT:
             break
         caption = more
     return caption

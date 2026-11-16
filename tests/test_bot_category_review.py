@@ -26,10 +26,12 @@ import asyncio
 import html
 import re
 import secrets
+from datetime import timedelta
 from unittest.mock import AsyncMock, Mock
 
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.utils import timezone
 
 from apps.commerce.models import BotDelivery, LocalBotMessage
 from apps.core.errors import DomainError
@@ -42,7 +44,8 @@ from apps.studio.pages import ceiling
 from apps.studio.scripts import CYRILLIC
 from telegram import generation as ai
 from telegram.bot import COPY
-from telegram.delivery import CAPTION_LIMIT, RESULT_COPY, attempt, category_notices, ready_caption, share_link, with_notices
+from telegram.delivery import (CAPTION_LIMIT, RESULT_COPY, attempt, category_notices, ready_caption, share_link,
+                               visible_length, with_notices)
 from telegram.errors import source_error
 from telegram.ux_copy import LOCALES, MESSAGES, TOOL_NAMES, UX, counted
 from tests.test_bot_categories import (DEFENCE, HIMOYA, TEST, customer, latest, model, opened, pending,  # noqa: F401
@@ -274,6 +277,63 @@ def test_the_question_closes_once_the_draft_is_generated(customer, decks, settin
     assert COPY['en']['stale_button'] in screen(customer)[0]
 
 
+def test_an_old_back_on_the_question_never_draws_a_made_deck_anew(customer, decks):
+    chat = described(customer, DEFENCE)
+    draft = draft_of(customer)
+    tapped(customer, {'draft_id': str(draft.id)}, 'ai_details')
+    back = BotCallback.objects.get(account=customer, action='ai_details', payload={'draft_id': str(draft.id), 'back': True}).pk
+    # Answered in a new message: that review is new, and the question's message stays in the chat with its Back.
+    assert chat.do(text=RESULTS) == 1
+    chat.tap('ai_run')
+    assert list(Job.objects.filter(account=customer).values_list('status', flat=True)) == ['succeeded']
+    runs = BotCallback.objects.filter(account=customer, action='ai_run').count()
+
+    Chat(customer).do(callback_data=back)
+    # The question's message, above the file, becomes the menu saying so.
+    assert LocalBotMessage.objects.filter(account=customer, direction='outbound', text__contains=COPY['en']['stale_button']).exists()
+    assert BotCallback.objects.filter(account=customer, action='ai_run').count() == runs, 'no review with a live Generate'
+    assert Job.objects.filter(account=customer).count() == 1
+
+
+def test_back_with_no_draft_is_an_old_button(customer, decks):
+    described(customer, DEFENCE)
+    token = secrets.token_urlsafe(12)
+    BotCallback.objects.create(token=token, account=customer, action='ai_details', payload={'back': True},
+                               expires_at=timezone.now() + timedelta(minutes=30))
+    LocalBotMessage.objects.create(account=customer, direction='outbound', text='A question',
+                                   buttons=[[{'label': 'Back', 'callback_data': token, 'url': None}]],
+                                   telegram_message_id=secrets.randbelow(1_000_000) + 1)
+    Chat(customer).do(callback_data=token)
+    assert COPY['en']['stale_button'] in screen(customer)[0]
+
+
+@pytest.mark.parametrize('status', ai.UNMADE)
+def test_a_generation_that_made_nothing_leaves_the_question_open(customer, decks, settings, status):
+    described(customer, DEFENCE)
+    draft = draft_of(customer)
+    _, quote = ai.quote(customer, draft.id)
+    settings.LOCAL_SYNC_JOBS = False
+    job = ai.start(customer, quote.id)
+    Job.objects.filter(pk=job.pk).update(status=status)
+    assert ai.details_open(customer, draft.id)[1].id == HIMOYA, 'Generate is tapped again from the first review'
+    # Any other state, one added later included, has the draft generated from.
+    Job.objects.filter(pk=job.pk).update(status='paused')
+    assert ai.details_open(customer, draft.id) == (None, None)
+
+
+def test_the_setup_screen_redrawing_the_review_closes_its_question(customer, decks):
+    from telegram.bot import refresh_review
+    described(customer, TOPIC_DECK, MAVZU)
+    draft = draft_of(customer)
+    tapped(customer, {'draft_id': str(draft.id)}, 'ai_details')
+    assert pending(customer)[0] == 'ai_details'
+    _, quote = ai.quote(customer, draft.id)
+    assert refresh_review(customer, draft, quote)
+    assert pending(customer) == ('', {}), 'the next words are not taken as its answer'
+    actions, _, _ = rows_of(customer)
+    assert actions[0] == ['ai_run'] and actions[1] == ['ai_details']
+
+
 def test_an_answer_with_a_file_joins_its_sources(customer, decks):
     chat = described(customer, DEFENCE)
     draft = draft_of(customer)
@@ -416,6 +476,23 @@ def test_a_category_without_its_own_blanks_wording_uses_the_shared_one(customer,
     entry = categories.get(PITCH)
     monkeypatch.setitem(entry.raw['bot'], 'notices', {})
     assert category_notices(job, 'uz') == [UX['uz']['facts_blanked']]
+
+
+def test_a_draft_that_cannot_be_read_loses_only_the_draft_notice(customer, decks, settings, monkeypatch):
+    job, _ = generated(customer, HIMOYA, DEFENCE, settings)
+    Job.objects.filter(pk=job.pk).update(warnings=['facts_blanked'])
+    job.refresh_from_db()
+    monkeypatch.setattr('telegram.delivery._drafted', Mock(side_effect=KeyError('sections')))
+    assert category_notices(job, 'en') == [categories.get(HIMOYA).raw['bot']['notices']['blanks']['en']]
+
+
+def test_the_caption_is_measured_as_telegram_counts_it():
+    # The share line's link is long markup but two words on screen: a notice that fits on screen is kept.
+    caption = '✅ 📎 Made with <a href="https://t.me/fixture_bot?start=' + 'r' * 400 + '">@fixture_bot</a>'
+    notice = 'Tekshiring & to‘ldiring. ' * 36
+    assert with_notices(caption, [notice]) == f'{caption}\n\n{html.escape(notice)}'
+    assert visible_length(with_notices(caption, [notice])) <= CAPTION_LIMIT < len(with_notices(caption, [notice]))
+    assert with_notices(caption, ['n' * 1000]) == caption
 
 
 def test_a_document_without_a_category_has_no_notices_and_the_caption_keeps_its_limit():

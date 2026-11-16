@@ -222,7 +222,7 @@ MESSAGES = {
     # Under the question: an answer is one message, with files if there are any.
     'ai_details_how': ('Send it in one message. Files (PDF, Word, TXT) can go with it, the text as their caption.', 'Bitta xabarda yuboring. Fayl (PDF, Word, TXT) ham yuborsangiz bo‘ladi, matnni esa unga izoh qilib yozing.', 'Отправьте одним сообщением. Можно приложить файлы (PDF, Word, TXT), а текст написать в подписи к ним.'),
     'ai_details_added': ('📝 Added to your description.', '📝 Tavsifingizga qo‘shildi.', '📝 Добавлено к вашему описанию.'),
-    'ai_sources_unread': ('📎 Left out, as no text could be read in it: {files}.', '📎 Matni o‘qilmagani uchun hisobga olinmadi: {files}.', '📎 Не учтено, так как текст не удалось прочитать: {files}.'),
+    'ai_sources_unread': ('📎 Left out because no text could be read: {files}.', '📎 Matni o‘qilmagani uchun hisobga olinmadi: {files}.', '📎 Не учтено, так как текст не удалось прочитать: {files}.'),
     'ai_sources_cut': ('✂️ Your files are long: only the beginning and the end of each were read.', '✂️ Fayllaringiz uzun: har birining faqat boshi va oxiri o‘qildi.', '✂️ Файлы длинные: прочитаны только начало и конец каждого.'),
     # Under a category's finished file, for one whose category has no wording of its own.
     'facts_blanked': ('ℹ️ Where you gave no details, blanks were left for you to fill in.', 'ℹ️ Siz bermagan ma’lumot o‘rniga bo‘sh joy qoldirildi: uni o‘zingiz to‘ldiring.', 'ℹ️ Где данных не было, оставлены пустые места: заполните их сами.'),

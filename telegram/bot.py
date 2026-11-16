@@ -1053,10 +1053,16 @@ def refresh_review(account,draft,quote):
                 await remember_review(account,draft,sent)
             return True
         finally: await bot.session.close()
-    try: return async_to_sync(run)()
+    try: redrawn=async_to_sync(run)()
     except Exception:
         logging.getLogger(__name__).warning('review refresh failed',exc_info=True)
         return False
+    # A category's question open on that message is gone with it: the next
+    # words or file are no longer its answer.
+    if redrawn:
+        BotConversation.objects.filter(telegram_user_id=account.telegram_user_id,state='ai_details',
+                                       prompt__draft_id=str(draft.id)).update(state='',prompt={})
+    return redrawn
 
 def build_dispatcher():
     from .workflows import draft_for,configure,snapshot,bound_draft,quote_draft,run_quote,attach_input,order_inputs,discard_draft,choose_tool,start_tool,discard_finished_draft,accept_upload,record_receipt
@@ -2256,12 +2262,18 @@ def build_dispatcher():
         return await render(message,body,rows,edit)
 
     async def ai_details_back(message,account,draft_id):
-        """Back from a category's question to its review, unanswered; the menu when the draft has gone."""
-        from apps.studio.models import GenerationDraft
+        """Back from a category's question to its review, unanswered, while the question is still open.
+
+        Its message lives only as long as the question: once it is answered or
+        the draft generated from (or gone), Back is an old button and goes to
+        the menu, as the question's own button does. A fresh review there would
+        carry a live Generate, and a deck already made would be built and
+        counted again, over the slides edited since.
+        """
         await sync_to_async(lambda:BotConversation.objects.filter(pk=account.telegram_user_id,state='ai_details',
                                                                  prompt__draft_id=str(draft_id)).update(state='',prompt={}))()
-        draft=await sync_to_async(lambda:GenerationDraft.objects.filter(pk=draft_id,account=account,expires_at__gt=timezone.now()).first())()
-        if draft is None: return await home(message,account,True,notice=text(account,'stale_button'))
+        draft,entry=await sync_to_async(ai.details_open)(account,draft_id)
+        if entry is None: return await home(message,account,True,notice=text(account,'stale_button'))
         _,quote=await sync_to_async(ai.quote)(account,draft.id)
         return await ai_review(message,account,draft,quote,True)
 

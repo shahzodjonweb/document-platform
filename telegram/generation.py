@@ -191,8 +191,10 @@ def chosen(account, category):
 # title_lines.BLOCK reads, so title_lines.place puts its lines on the cover as
 # the customer's own. The header is in the deck's language.
 COVER_HEADERS = {'uz': 'Titul slaydga:', 'ru': 'На титульном слайде:', 'en': 'Title slide:'}
-# Every state a job can end or wait in: a draft generated from at all is past its first review.
-JOB_STATUSES = ('queued', 'running', 'finalizing', 'succeeded', 'failed', 'no_op', 'canceled', 'expired')
+# A generation that ended without making anything leaves the draft on its first
+# review: Generate is tapped again from there, and the question still helps.
+# Every other state, a status added later included, closes the question.
+UNMADE = ('failed', 'canceled', 'expired')
 
 
 def _asked(draft, data):
@@ -201,20 +203,26 @@ def _asked(draft, data):
     Only a new category draft's review offers it, while it is unanswered, when
     its entry has a question wanted for what was written and sent
     (categories.asking.wanted), and before anything was generated from the
-    draft: the question belongs to the first review.
+    draft (UNMADE: a failed or canceled generation made nothing): the question
+    belongs to the first review.
     """
     options = data.get('options') or {}
     if not options.get('category') or data.get('revision') or options.get('details_added'):
         return None
+    # A deck drawn already is made, as _changed holds: only ✏️ Edit changes it.
+    if draft.feature_id == SLIDES and data.get('_render'):
+        return None
     from apps.studio import categories
     from apps.studio.categories import asking
-    from apps.studio.domain import draft_jobs
+    from apps.studio.domain import GENERATION_IDS
     entry = categories.get(options['category'])
     if entry is None or not entry.raw.get('ask'):
         return None
     if not asking.wanted(entry, brief_of(data), bool(data.get('source_ids'))):
         return None
-    return None if draft_jobs(draft.account, draft.id, JOB_STATUSES) else entry
+    generated = Job.objects.filter(account=draft.account, feature_id__in=GENERATION_IDS,
+                                   quote__parameters__generation_draft_id=str(draft.id)).exclude(status__in=UNMADE)
+    return None if generated.exists() else entry
 
 
 def category_review(draft):
