@@ -395,6 +395,19 @@ SOURCE_MESSAGES = {
         '📄 В этих файлах слишком много для одного документа, поэтому мы их убрали. '
         'Отправьте меньше файлов, файлы покороче или только нужную часть.',
     ),
+    # A file the host cannot read for now: an old .doc where antiword is
+    # missing (extraction.read_source), or a Word file whose pages could not be
+    # counted on upload. The shared wording says "this tool" and "try again
+    # later", but the category flow has already taken the file out, so trying
+    # the same message again would not bring it back.
+    'conversion_preflight_unavailable': (
+        '🛠 We can’t read this file right now, so we left it out. Save it in another format (PDF, Word or TXT) '
+        'and send it again, or describe what you need without it.',
+        '🛠 Bu faylni hozir o‘qiy olmaymiz, shuning uchun u olib tashlandi. Uni boshqa formatda (PDF, Word yoki TXT) '
+        'saqlab, qayta yuboring yoki nima kerakligini faylsiz yozing.',
+        '🛠 Сейчас мы не можем прочитать этот файл, поэтому мы его убрали. Сохраните его в другом формате '
+        '(PDF, Word или TXT) и отправьте снова или опишите, что нужно, без него.',
+    ),
 }
 SOURCE_COPY = {
     locale: {code: values[index] for codes, values in SOURCE_MESSAGES.items() for code in codes.split()}
@@ -408,6 +421,18 @@ def source_error(error, locale='en'):
     if error.code == 'generation_limit' and not (error.params or {}).get('asset_ids'):
         return ''
     return SOURCE_COPY[locale].get(error.code, '')
+
+
+def dropped_error(error, locale='en'):
+    """The wording for a refusal whose files the bot has taken out of a category's question.
+
+    The category's own wording when it has one; for a code it has none for,
+    that the file could not be read and was left out, so the customer always
+    learns the file is gone rather than reading a general error and sending
+    the same description again.
+    """
+    locale = locale if locale in SOURCE_COPY else 'en'
+    return source_error(error, locale) or SOURCE_COPY[locale]['source_extraction_failed']
 
 
 # When a week starts again, for a reader whose own clock is not known

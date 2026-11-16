@@ -970,3 +970,14 @@ tests/test_source_reader.py::test_a_real_old_word_file_is_read_in_three_language
 # in the warnings a client reads
 tests/test_bot_categories.py::test_with_nothing_live_no_way_in_loads_the_catalogue[switched0]
 tests/test_category_generation_decks.py::test_facts_blanked_is_the_bots_and_the_admins_never_a_clients
+
+# Bot fixes before the first tick (fix-bot): every refusal that names a category's files takes them out, so the
+# next description is made rather than refused again; Boshqa's examples, topic question and review come back to
+# Boshqa's question rather than the list, and with no list every one of those buttons is today's
+tests/test_bot_category_sources.py::test_an_old_word_file_the_reading_host_cannot_read_is_taken_out_and_the_next_description_made
+tests/test_bot_category_sources.py::test_a_refusal_naming_files_with_no_category_wording_still_takes_them_out
+tests/test_bot_categories.py::test_boshqas_examples_come_back_to_boshqa
+tests/test_bot_categories.py::test_a_boshqa_review_describes_again_in_boshqa
+tests/test_bot_categories.py::test_with_no_list_boshqas_buttons_name_only_the_service[False]
+tests/test_bot_categories.py::test_with_no_list_boshqas_buttons_name_only_the_service[True]
+tests/test_bot_categories.py::test_with_the_switch_off_the_topic_questions_examples_name_only_the_service
