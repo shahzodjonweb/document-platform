@@ -215,18 +215,18 @@
      "items": [
       {
        "label": "O‘zlashtirish",
-       "text": "",
-       "value": "97,8%"
+       "text": "97,8%",
+       "value": ""
       },
       {
        "label": "Bilim sifati",
-       "text": "",
-       "value": "58,4%"
+       "text": "58,4%",
+       "value": ""
       },
       {
        "label": "Qoniqarsiz baho",
-       "text": "",
-       "value": "23 nafar"
+       "text": "23 nafar",
+       "value": ""
       }
      ],
      "columns": [
@@ -241,18 +241,18 @@
      "items": [
       {
        "label": "Успеваемость",
-       "text": "",
-       "value": "97,8%"
+       "text": "97,8%",
+       "value": ""
       },
       {
        "label": "Качество знаний",
-       "text": "",
-       "value": "58,4%"
+       "text": "58,4%",
+       "value": ""
       },
       {
        "label": "Неудовлетворительно",
-       "text": "",
-       "value": "23 ученика"
+       "text": "23 ученика",
+       "value": ""
       }
      ],
      "columns": [
@@ -267,18 +267,18 @@
      "items": [
       {
        "label": "Pass rate",
-       "text": "",
-       "value": "97.8%"
+       "text": "97.8%",
+       "value": ""
       },
       {
        "label": "Knowledge quality",
-       "text": "",
-       "value": "58.4%"
+       "text": "58.4%",
+       "value": ""
       },
       {
        "label": "Failing marks",
-       "text": "",
-       "value": "23 pupils"
+       "text": "23 pupils",
+       "value": ""
       }
      ],
      "columns": [

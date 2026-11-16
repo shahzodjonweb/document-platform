@@ -903,7 +903,7 @@
  "bot": {
   "prompt": {
    "uz": "🧑‍🏫 Dars slaydlari. Bitta xabarda yozing: sinf, fan, mavzu va necha slayd (aytmasangiz, dars 10 ta, ochiq dars 12 ta bo‘ladi).\nOchiq dars bo‘lsa, shuni yozing. O‘yin, test yoki rahmat slaydi kerak bo‘lsa, ayting; o‘tgan dars mavzusini ham yozishingiz mumkin.\n📎 Darslik matnini PDF, Word yoki TXT qilib qo‘shsangiz, slaydlar shunga tayanadi.\nTitul slayd uchun o‘qituvchi va maktabni ham yozishingiz mumkin.",
-   "ru": "🧑‍🏫 Слайды к уроку. Напишите одним сообщением: класс, предмет, тему и число слайдов (если не указать, урок — 10, открытый урок — 12).\nЕсли это открытый урок, так и напишите. Нужны игра, тест или слайд «Спасибо» — скажите; можно указать и тему прошлого урока.\n📎 Текст из учебника в PDF, Word или TXT — слайды будут опираться на него.\nДля титульного слайда можно сразу указать учителя и школу.",
+   "ru": "🧑‍🏫 Слайды к уроку. Напишите одним сообщением: класс, предмет, тему и число слайдов (если не указать, урок — 10, открытый урок — 12).\nЕсли это открытый урок, так и напишите. Нужны игра, тест или слайд «Спасибо» — скажите; можно указать и тему прошлого урока.\n📎 Приложите текст из учебника файлом PDF, Word или TXT — слайды будут опираться на него.\nДля титульного слайда можно сразу указать учителя и школу.",
    "en": "🧑‍🏫 Lesson slides. Say it in one message: grade, subject, topic and the number of slides (if you do not say, a lesson has 10 and an open lesson 12).\nIf it is an open lesson, say so. Ask for a game, a test or a thank-you slide if you want one; you may also name the last lesson’s topic.\n📎 Add the textbook text as a PDF, Word or TXT file and the slides will lean on it.\nYou may add the teacher and the school for the title slide."
   },
   "examples": [
@@ -919,7 +919,7 @@
    },
    {
     "uz": "7-sinf algebra, «Bir noma’lumli chiziqli tenglama» mavzusiga 14 ta slayd. Misollar yechimi bilan, juftlikda ishlash uchun 3 ta mashq va 5 ta test savoli bo‘lsin. Darslikdagi mavzu matnini PDF qilib biriktirdim.",
-    "ru": "14 слайдов к уроку алгебры в 7 классе: «Линейное уравнение с одной неизвестной». Примеры с решением, 3 упражнения для работы в парах и 5 тестовых вопросов. Текст темы из учебника приложил в PDF.",
+    "ru": "14 слайдов к уроку алгебры в 7 классе: «Линейное уравнение с одним неизвестным». Примеры с решением, 3 упражнения для работы в парах и 5 тестовых вопросов. Текст темы из учебника приложил в PDF.",
     "en": "14 slides for a grade 7 algebra lesson: “A linear equation in one unknown”. Worked examples, 3 exercises for pairs and 5 test questions. I attached the textbook text for the topic as a PDF."
    }
   ],
