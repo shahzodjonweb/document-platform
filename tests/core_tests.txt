@@ -1024,3 +1024,21 @@ tests/test_category_facts.py::test_a_slot_that_checks_names_takes_a_lone_invente
 tests/test_category_facts.py::test_a_surname_shaped_first_word_is_kept_when_it_is_the_customers_or_a_common_word[Namunova javobgar.]
 tests/test_category_finish_decks.py::test_an_invented_person_in_a_problem_proposal_or_request_is_blanked[council-problems]
 tests/test_category_facts.py::test_a_counted_copy_shares_the_respelled_words_rather_than_folding_the_source_again
+
+# The paper engine (R0): a category paper is drawn in its template only when every block is registered; a block
+# that raises or breaks the layout is drawn plain, a build that fails anyway or an unknown template gives the
+# emergency fallback marked template_fallback; the fixed rule takes a page with its closing group whole, the count
+# rule cuts only elastic prose; the contents print the pages the headings land on
+tests/test_paper_engine.py::test_ready_needs_a_pdf_category_whose_template_blocks_are_all_registered
+tests/test_paper_engine.py::test_a_groups_placements_are_drawn_once_per_instance_the_content_holds_in_order
+tests/test_paper_engine.py::test_every_when_predicate
+tests/test_paper_engine.py::test_facts_blanks_and_clock_values
+tests/test_paper_engine.py::test_text_rules_set_house_apostrophes_and_glue
+tests/test_paper_engine.py::test_a_longer_fixed_paper_tightens_then_takes_a_page_with_its_closing_group_whole
+tests/test_paper_engine.py::test_a_count_paper_cuts_only_its_elastic_prose_when_no_step_holds_it
+tests/test_paper_engine.py::test_the_page_rules_choose_steps_as_specified
+tests/test_paper_engine.py::test_the_contents_print_the_pages_the_headings_land_on
+tests/test_paper_engine.py::test_a_block_that_raises_is_drawn_by_its_fallback
+tests/test_paper_engine.py::test_a_placement_that_breaks_the_layout_is_drawn_plain
+tests/test_paper_engine.py::test_a_build_that_fails_whatever_is_drawn_plain_gives_the_emergency_fallback
+tests/test_paper_engine.py::test_an_unknown_template_gives_the_emergency_fallback_or_the_callers
