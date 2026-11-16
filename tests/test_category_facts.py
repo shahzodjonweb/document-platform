@@ -355,6 +355,85 @@ def test_the_categorys_own_words_are_allowed_but_its_made_up_examples_never_are(
     assert ground('Hurmatli Sizga yozaman.', unknown)[1] == []
 
 
+def test_an_earlier_version_is_trusted_only_where_it_was_held_to_the_customers_words():
+    before = {'title': 'Test', 'sections': [
+        {'id': 'facts', 'layout': 'list', 'items': [{'label': 'teacher', 'text': 'Sobirova Gulnora'}]},
+        {'id': 'passage', 'heading': 'Matn', 'body': 'Matnni Jumanazarov Bekzod 1987-yilda yozgan. U '
+                                                     '«bilim har bir yurtning eng katta boyligi» degan.'}]}
+    data = {'prompt': 'Ona tili fanidan test', 'options': {'category': 'pdf.test'},
+            'revision': {'request': 'Savollarni ko‘paytiring', 'original_prompt': 'Ona tili fanidan test',
+                         'before': before}}
+    known = facts.trusted(data)
+    # The facts section was held to the customer's words when it was made; the passage is the model's own prose.
+    assert supported('Sobirova Gulnora', 'person', known)
+    assert ground('Testni Jumanazarov Bekzod 1987-yilda tuzgan.', known) == ('Testni ____-yilda tuzgan.',
+                                                                              ['ground:number', 'ground:name'])
+    # Its quotations may still be repeated in a later version.
+    part = 'U «bilim har bir yurtning eng katta boyligi» degan.'
+    assert guard(part, known) == (part, [])
+    # A deck's slides are s1..sN and its slot mapping may have moved: nothing of them is read back as the customer's.
+    deck = {'prompt': 'Himoya taqdimoti', 'options': {'category': 'slides.himoya'},
+            'revision': {'request': 'Rangini o‘zgartiring', 'before': {'title': 'Himoya', 'sections': [
+                {'id': 's2', 'heading': 'Dolzarblik', 'body': 'Ergashev Nodir 2019-yilda boshlagan.'}]}}}
+    assert ground('Ergashev Nodir 2019-yilda boshlagan.', facts.trusted(deck))[1] == ['ground:number', 'ground:name']
+    # Without a category, or with one this catalogue lacks, no earlier text is read as the customer's.
+    for options in ({}, {'category': 'pdf.nope'}):
+        known = facts.trusted({**data, 'options': options})
+        assert not supported('Sobirova Gulnora', 'person', known)
+
+
+def test_the_allow_list_is_matched_whole_never_by_prefix():
+    known = facts.trusted(draft('Dekanga ariza yozing. Men Aliyev Vali, 2-kurs talabasiman.'))
+    assert ground('The letter was signed by Martin Bestuzhev.', known) == ('The letter was signed by ____.',
+                                                                           ['ground:name'])
+    # Surnames and places that begin with a formula word, a weekday, a month or a language.
+    for value in ('Jumayev', 'Madaminov', 'Hurmatov', 'Xonimova', 'Шанбаеву', 'Turkiston', 'Martin', 'Bestuzhev'):
+        assert not supported(value, 'person', known), value
+    # The forms a formula word takes in a letter are listed, so they still stand.
+    part = ('Hurmatlim, Sizga yozaman. Sizning javobingizni kutaman. Уважаемая госпожа, прошу Вашего ответа. '
+            'Ответ господину Aliyev. Dear Sir or Madam, kind regards.')
+    assert ground(part, known) == (part, [])
+
+
+def test_currency_codes_and_role_acronyms_are_not_names():
+    known = trusting('Narx 500 dollar. Bo‘limlar uchun ariza.')
+    part = 'Narx 500 USD. IT bo‘limi va HR menejeri, CEO va KPI bilan; QQS UZS da.'
+    assert ground(part, known) == (part, [])
+    assert ground('Narx 500 USD, menejer Xolmirzayev.', known)[0] == 'Narx 500 USD, menejer ____.'
+
+
+def test_general_knowledge_with_a_number_is_not_a_legal_reference():
+    known = trusting('Kimyo fanidan referat: suv va moddalar.')
+    for part in ('Suv murakkab modda bo‘lib, u 100 °C da qaynaydi.', 'Har bir modda 3 holatda bo‘ladi.',
+                 'Talabalar 2 ta qaror qabul qilishdi.', 'Ohm’s law was formulated in 1827.',
+                 'Закон Ома открыт в 1827 году.', 'Article 3 discusses methods.'):
+        assert guard(part, known) == (part, []), part
+    for part in ('Mehnat kodeksining 214-moddasiga ko‘ra', 'статья 214', 'Article 214 of the Labour Code',
+                 '593-son qaror', 'Bu qonun № 15 bilan tasdiqlangan.', 'Закон от 12.05.2020 это требует.',
+                 'Konstitutsiyaning 5-moddasiga ko‘ra.', 'Согласно Конституции это право.',
+                 'The Constitution guarantees it.'):
+        assert guard(part, known) == ('', ['ground:law']), part
+
+
+def test_a_number_is_never_found_through_a_part_of_another():
+    assert ground('Narxi 150 so‘m.', trusting('Narx 1 150 000 so‘m'))[1] == ['ground:number']
+    assert ground('Narxi 1 so‘m.', trusting('Narx 1 150 000 so‘m'))[1] == ['ground:number']
+    assert ground('Narx 45 so‘m', trusting('Tel: +998 90 123 45 67'))[1] == ['ground:number']
+    keys = numbers.values('03.11.2026')
+    assert 'd:3.11' in keys and '2026' in keys and '3' not in keys and '11' not in keys
+    # "mayda" is "small" unless the hyphen, a year or "kuni" makes it a day of May.
+    assert numbers.values('5 mayda bola') == {'5'}
+    for text in ('5-mayda', '5 mayda kuni', '2026-yil 5 mayda'):
+        assert 'd:5.5' in numbers.values(text), text
+
+
+def test_a_translated_references_list_is_held_by_its_numbers():
+    known = trusting('Manba: Karimov A. Iqtisodiyot nazariyasi, 2019.')
+    items = ['Karimov A. Economic Theory, 2019.', 'Karimov A. Economic Theory, 2020.']
+    assert verify_items(items, known) == ([], ['source:dropped'])
+    assert verify_items(items, known, translated=True) == ([items[0]], ['source:dropped'])
+
+
 def test_codes_name_what_was_taken_never_the_value(uz):
     found = set()
     for text in ('Xolmirzayev 4 870 000 so‘m. «bir ikki uch to‘rt besh». PF-60-son Farmon.', 'info@namuna.uz'):

@@ -20,9 +20,11 @@ value it means:
 `found(text)` gives each number of a text with what it needs to be known: a
 date needs its day and month, an amount any one of the values it may mean.
 `values(text)` is everything a text gives, for the customer's side. It is
-generous on purpose (a date also gives its day as a number, "ikki" and "две"
-give 2): more ways to be found only ever save a real fact from a blank, while
-what the model writes is read strictly by `found`.
+generous on purpose ("3-noyabr" also gives its day as a number, "ikki" and
+"две" give 2): more ways to be found save a real fact from a blank, while what
+the model writes is read strictly by `found`. It is never generous with parts
+of one number: the groups of "1 150 000" or of a phone, and the day and month of
+"03.11.2026", are not numbers the customer gave.
 
 Numbers inside an e-mail or a link are not numbers; facts.py checks those whole.
 """
@@ -36,7 +38,8 @@ from ..uzbek import to_latin
 GAP = '[ \u00a0\u202f\u2009]'
 LETTER = r'[^\W\d_]'
 # The months as a date names them, by number. Full names take any ending ("noyabrdan", "ноября"); short forms and
-# words that are also ordinary words stand alone: "3 marta" is three times, "3 mayda" small, never a date.
+# words that are also ordinary words stand alone: "3 marta" is three times, never a date. "mayda" is both "in May"
+# and "small", so "5 mayda" is a date only with the hyphen ("5-mayda") or a year or "kuni" beside it (`_small`).
 MONTHS = (
     r"yanvar\w*|январ\w*|january|(?:jan|янв)\.?",
     r"fevral\w*|феврал\w*|february|(?:feb|фев)\.?",
@@ -161,6 +164,15 @@ def _year(text):
     return str(int(text)) if len(text) == 4 else f'20{text}'
 
 
+def _small(text, start, month_start, month_end):
+    """Whether "N mayda" from `start` is "N small" rather than a day of May: no hyphen, no year and no "kuni"."""
+    if text[month_start:month_end].casefold() != 'mayda' or '-' in text[start:month_start]:
+        return False
+    after = re.match(r"[ \u00a0,]*(?:\d{4}|kuni)", text[month_end:]) is not None
+    before = re.search(r"\d{4}[ \u00a0]*-?[ \u00a0]*y(?:il\w*|\.)[ \u00a0,]*$", text[:start]) is not None
+    return not (after or before)
+
+
 def _scale(text, end):
     """(power of ten, end) of the scale word right after a number ("1,5 mln", "20 ming"), or (0, end)."""
     match = SCALE.match(text, end)
@@ -231,12 +243,13 @@ class _Reader:
                 if not _valid(day, month):
                     continue
                 key = _date_key(day, month)
-                self.add(*match.span(), 'date', key, [{key}, {str(int(year))}],
-                         {str(int(day)), str(int(month)), str(int(year)), f'{key}.{int(year)}'})
+                # Day and month are a pair here, never two plain numbers: "03.11.2026" does not give "3" or "11".
+                self.add(*match.span(), 'date', key, [{key}, {str(int(year))}], {str(int(year)), f'{key}.{int(year)}'})
         for match in RANGE.finditer(text):
             month = _month(match.group(3))
             first, second = match.group(1), match.group(2)
-            if month is None or not (_valid(first, month) and _valid(second, month)):
+            if month is None or not (_valid(first, month) and _valid(second, month)) \
+                    or _small(text, match.start(), *match.span(3)):
                 continue
             if not self.free(*match.span()):
                 continue
@@ -246,7 +259,8 @@ class _Reader:
                      {str(int(second))})
         for match in DAY_MONTH.finditer(text):
             month = _month(match.group(2))
-            if month is None or not _valid(match.group(1), month) or not self.free(*match.span()):
+            if month is None or not _valid(match.group(1), month) or not self.free(*match.span()) \
+                    or _small(text, match.start(), *match.span(2)):
                 continue
             key = _date_key(match.group(1), month)
             self.add(*match.span(), 'date', key, [{key}], {str(int(match.group(1)))})
@@ -268,7 +282,7 @@ class _Reader:
             years = all(len(group) == 4 and group[:2] in ('19', '20') for group in groups)
             if (thousands and not marked) or years:
                 continue
-            self._phone(match.start(1), match.end(1), digits, groups)
+            self._phone(match.start(1), match.end(1), digits)
         for match in LONG.finditer(text):
             if self.free(*match.span()):
                 digits = match.group(0)
@@ -284,7 +298,8 @@ class _Reader:
                     tail = re.split(r'[.,]', token)[1] if re.search(r'[.,]', token) else ''
                     kind = 'decimal' if tail else 'integer'
                     found = [Decimal(f"{int(''.join(groups))}{'.' + tail if tail else ''}")]
-                    extra = {str(int(group)) for group in groups}
+                    # Its groups are not numbers of their own: "1 150 000" never makes "150" or "1" the customer's.
+                    extra = set()
                 else:
                     kind, found = _readings(token)
                     extra = set()
@@ -308,9 +323,10 @@ class _Reader:
         self.numbers.sort(key=lambda number: number.start)
         return self.numbers
 
-    def _phone(self, start, end, digits, groups):
+    def _phone(self, start, end, digits):
         keys = {digits, 'tel:' + digits[-9:]} if len(digits) >= 9 else {'tel:' + digits}
-        extra = {'tel:' + digits[-7:], 'tel:' + digits, *(str(int(group)) for group in groups)}
+        # A phone's groups stay phone keys: "+998 90 123 45 67" never makes "45" a price the customer gave.
+        extra = {'tel:' + digits[-7:], 'tel:' + digits}
         self.add(start, end, 'phone', digits, [keys], extra)
 
 

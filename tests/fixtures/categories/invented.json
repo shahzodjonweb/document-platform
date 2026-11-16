@@ -1,7 +1,11 @@
 {
-  "about": "Sentences a model might write that state something no customer message of the catalogue gives: a person, a sum, a scaled sum, a date, a phone number, a decree, a law and a quotation, in each language. Every person and organisation is invented. tests/test_category_facts_corpus.py requires each to be caught against every example and pool message of every entry (the miss rate at zero); `guard` marks the ones the guard on subject prose must catch too.",
+  "about": "Sentences a model might write that state something no customer message of the catalogue gives: a person, a sum, a scaled sum, a date, a phone number, a decree, a law and a quotation, in each language. Every person and organisation is invented; some names begin with a word the allow list holds (Jumayev, Madaminov, Hurmatov, Martin Bestuzhev) and must still be caught. tests/test_category_facts_corpus.py requires each to be caught against every example and pool message of every entry (the miss rate at zero); `guard` marks the ones the guard on subject prose must catch too.",
   "uz": [
     {"kind": "name", "code": "ground:name", "text": "Bu ishga Xolmirzayev Botirjon Ergashevich rahbarlik qildi."},
+    {"kind": "name", "code": "ground:name", "text": "Hujjatni Jumayev Sardor imzoladi."},
+    {"kind": "name", "code": "ground:name", "text": "Ariza Madaminov Botir nomidan yozildi."},
+    {"kind": "name", "code": "ground:name", "text": "Xatni Hurmatov Anvar va Xonimova Lola tayyorladi."},
+    {"kind": "name", "code": "ground:name", "text": "Uni Turkistonlik Martin Bestuzhev olib keldi."},
     {"kind": "sum", "code": "ground:number", "text": "Loyihaga 4 870 000 so‘m sarflandi."},
     {"kind": "scaled", "code": "ground:number", "text": "Yillik foyda 7,3 mlrd so‘mni tashkil etdi."},
     {"kind": "date", "code": "ground:number", "text": "Yig‘ilish 27-fevral kuni bo‘lib o‘tdi."},
@@ -12,6 +16,9 @@
   ],
   "ru": [
     {"kind": "name", "code": "ground:name", "text": "Работой также руководил Холмирзаев Ботиржон Эргашевич."},
+    {"kind": "name", "code": "ground:name", "text": "Документ подписал Мадаминов Ботир."},
+    {"kind": "name", "code": "ground:name", "text": "Письмо передано Шанбаеву Ботиру и Джумаеву Сардору."},
+    {"kind": "name", "code": "ground:name", "text": "Отчёт подготовил Мартин Бестужев."},
     {"kind": "sum", "code": "ground:number", "text": "На проект потрачено 4 870 000 сумов."},
     {"kind": "scaled", "code": "ground:number", "text": "Годовая прибыль составила 7,3 млрд сумов."},
     {"kind": "date", "code": "ground:number", "text": "Собрание прошло 27 февраля."},
@@ -22,6 +29,9 @@
   ],
   "en": [
     {"kind": "name", "code": "ground:name", "text": "The project was also supervised by Botirjon Xolmirzayev."},
+    {"kind": "name", "code": "ground:name", "text": "The letter was signed by Martin Bestuzhev."},
+    {"kind": "name", "code": "ground:name", "text": "It was approved by Jumayev Sardor and Madaminov Botir."},
+    {"kind": "name", "code": "ground:name", "text": "The request came from Hurmatov Anvar of Turkiston."},
     {"kind": "sum", "code": "ground:number", "text": "The project cost 4,870,000 soums."},
     {"kind": "scaled", "code": "ground:number", "text": "Annual profit reached 7.3 billion soums."},
     {"kind": "date", "code": "ground:number", "text": "The meeting took place on 27 February."},

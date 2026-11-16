@@ -764,3 +764,10 @@ tests/test_category_facts.py::test_dates_numbers_money_refs_and_phones_are_found
 tests/test_category_facts.py::test_a_faithful_part_is_left_as_it_is
 tests/test_category_facts.py::test_an_invented_name_sum_quotation_and_decree_are_caught
 tests/test_category_facts.py::test_a_reference_is_kept_only_when_the_customer_gave_it_and_never_as_a_file_name
+
+# Categories, never invent, after review: the allow list matched whole, earlier versions trusted only where held, a
+# number in general knowledge never a citation, no number found through a part of another
+tests/test_category_facts.py::test_the_allow_list_is_matched_whole_never_by_prefix
+tests/test_category_facts.py::test_an_earlier_version_is_trusted_only_where_it_was_held_to_the_customers_words
+tests/test_category_facts.py::test_general_knowledge_with_a_number_is_not_a_legal_reference
+tests/test_category_facts.py::test_a_number_is_never_found_through_a_part_of_another

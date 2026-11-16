@@ -9,8 +9,10 @@ reported as codes.
 
 - `trusted(data)` is everything the customer has said: the description, the
   pasted text and the files, every change request and the first description,
-  the cover lines they keep and their brand name, and the document as it stood
-  before a change (it went through these same checks when it was made).
+  the cover lines they keep and their brand name, and the parts of the document
+  as it stood before a change that were held to their words when it was made
+  (its facts, grounded parts and verified sources, never the model's guarded
+  prose, whose text may only be quoted or cited again).
 - `supported(value, kind, trusted)` decides one fact the model read out of
   that, by the kind of its field: a person's or an organisation's capitalised
   words must be the customer's (with a case ending allowed), a date, sum or
@@ -35,6 +37,16 @@ Folding can only make two spellings of the customer's own name meet; what it
 cannot see is said plainly in the architecture: a name the model writes in
 lower case, a wrong case ending. A transliteration the table misses blanks a
 real name, which is a false blank and never an invention, and is counted.
+
+More limits, said as plainly:
+- A name is matched against every word the customer gave, lower case included,
+  with an ending allowed, so "rahbarlik" supports "Rahbarov" and "salom"
+  supports "Salomova". With long files most surnames find such a word.
+- The first word of a sentence is never blanked, so an invented "Javohir Saidov"
+  opening a sentence becomes "Javohir ____".
+- `guard` removes any sentence with a strong legal stem (kodeks, farmon,
+  Konstitutsiya ...) the customer did not give, even one that cites nothing
+  specific ("U ko‘plab farmonlar chiqargan"), and a part may come back empty.
 """
 import math
 import re
@@ -61,22 +73,37 @@ VOWELS = set('aeiouy')
 ENDINGS = frozenset(('ning', 'ni', 'ga', 'ka', 'da', 'dan', 'dagi', 'lar', 'larga', 'larni', 'larning', 'lardan',
                      'a', 'u', 'om', 'e', 'oy', 'i', 'em', 'im', 's', 'ov', 'ova'))
 # Words a document may capitalise that are no one's facts: formulas of address and closing, the polite forms of
-# "you" that letters capitalise, titles, legal forms, months, weekdays and languages. The entry's labels and fixed
-# headings and its templates' labels are added per draft (`trusted`). Prefixes take endings: "Hurmatli",
-# "Уважаемая", "Вашего".
+# "you" that letters capitalise, titles, legal forms, currencies, role and unit acronyms, months, weekdays,
+# languages and the country's own name. The entry's labels and fixed headings and its templates' labels are added
+# per draft (`trusted`). They are matched whole, never by prefix: a prefix rule let "Jumayev" through as "juma",
+# "Hurmatov" as "hurmat" and "Martin Bestuzhev" as "mart" and "best", so every form a formula word takes in a
+# letter is listed instead ("Sizga", "Уважаемая", "Вашего").
 ALLOWED = (
-    "hurmatli muhtaram assalomu alaykum hurmat bilan janob xonim siz sizlar dear sincerely regards respectfully "
-    "yours faithfully truly kind best sir madam mr mrs ms miss dr prof phd dsc you your i'm i've i'd i'll "
-    "уважаемый глубокоуважаемый здравствуйте уважением вы вас вам вами ваш господин госпожа "
+    "hurmatli hurmatlim muhtaram muhtarama assalomu alaykum hurmat bilan janob janobi janoblari xonim xonimlar "
+    "siz sizga sizni sizning sizdan sizda sizlar sizlarga sizlarni sizlarning sizlardan "
+    "dear sincerely regards respectfully yours faithfully truly kind best sir sirs madam mr mrs ms miss dr prof "
+    "phd dsc you your i'm i've i'd i'll "
+    "уважаемый уважаемая уважаемое уважаемые уважаемого уважаемой уважаемому уважаемым уважаемых "
+    "глубокоуважаемый глубокоуважаемая глубокоуважаемые глубокоуважаемого глубокоуважаемой здравствуйте уважением "
+    "вы вас вам вами ваш ваша ваше ваши вашего вашей вашему вашим вашими ваших вашу "
+    "господин господина господину господином госпожа госпожи госпоже госпожу госпожой "
     "mchj aj xk qk yatt ooo ao pao ip llc ltd inc jsc plc gmbh ооо оао пао зао ао ип "
+    "usd uzs eur rub gbp cny kzt so'm сум сума сумов рубль рубля рублей "
+    "ceo cfo cto coo hr it pr qa kpi smm crm erp api ai ikt ict id qqs nds ндс vat inn stir инн "
+    "pdf docx xlsx pptx kg km mb gb "
     "yanvar fevral mart aprel may iyun iyul avgust sentabr sentyabr oktabr oktyabr noyabr dekabr "
     "january february march april june july august september october november december "
     "январь февраль март апрель май июнь июль август сентябрь октябрь ноябрь декабрь "
+    "января февраля марта апреля мая июня июля августа сентября октября ноября декабря "
+    "январе феврале марте апреле мае июне июле августе сентябре октябре ноябре декабре "
     "dushanba seshanba chorshanba payshanba juma shanba yakshanba monday tuesday wednesday thursday friday "
-    "saturday sunday понедельник вторник среда четверг пятница суббота воскресенье "
-    "o'zbek ingliz rus nemis fransuz arab turk xitoy koreys yapon qozoq qirg'iz tojik uzbek english russian german "
-    "french arabic turkish chinese korean japanese kazakh kyrgyz tajik узбекский русский английский немецкий "
-    "французский арабский турецкий китайский корейский японский казахский киргизский таджикский"
+    "saturday sunday понедельник вторник среда среду четверг пятница пятницу суббота субботу воскресенье "
+    "o'zbek o'zbekcha ingliz inglizcha rus ruscha nemis fransuz arab turk xitoy koreys yapon qozoq qirg'iz tojik "
+    "uzbek english russian german french arabic turkish chinese korean japanese kazakh kyrgyz tajik "
+    "узбекский русский английский немецкий французский арабский турецкий китайский корейский японский казахский "
+    "киргизский таджикский "
+    "o'zbekiston o'zbekistonda o'zbekistonning o'zbekistonga o'zbekistondan respublikasi respublikasining "
+    "respublikasida uzbekistan узбекистан узбекистана узбекистане узбекистану республика республики республике"
 ).split()
 # Abbreviations whose full stop does not end a sentence, so the capitalised word after one is still checked:
 # "prof. Xolmirzayev", "B. Rahimov", "ул. Садовая".
@@ -93,6 +120,7 @@ SENTENCE_END = re.compile(r'[.!?…]+(?=[\s"»”)\]]|$)|\n+')
 # citation by itself; a weak one also means something else ("Nyutonning ikkinchi qonuni", "qaror qabul qilish",
 # "kimyoviy modda", "in his article") and is a citation only with a mark of one beside it (`LEGAL_MARK`).
 LAW = (
+    ('constitution', r"konstitutsiya(?!viy)\w*|конституци(?:я|и|ю|ей|ях)|constitutions?", True),
     ('code', r"kodeks\w*|кодекс\w*", True),
     ('code', r"codes?", False),
     ('decree', r"farmon\w*|указ(?:а|е|ом|у|ы|ов|ами|ах)?|decrees?", True),
@@ -104,8 +132,22 @@ LAW = (
     ('article', r"modda\w*|стать(?:я|и|е|ю|ей|ям|ях)|articles?", False),
 )
 NUMBERED = re.compile(r"\d[ \u00a0]?-[ \u00a0]?son(?:i|ga|da|dan|ning)?(?![^\W\d_])")
-LEGAL_MARK = re.compile(r"\d|№|\bno\.|to'g'risida|togrisida|respublika|республик|federal|федеральн|mahkama"
-                        r"|министр|prezident|президент|oliy majlis|parliament|парламент")
+# What makes a weak stem a citation (lower case). A bare digit anywhere in the sentence does not: "modda 100 °C da
+# qaynaydi", "2 ta qaror", "Ohm's law ... in 1827" are general knowledge. A number belongs to the citation only
+# when it is attached the way a citation attaches it: "214-moddasi" (an Uzbek count is "3 modda", never with the
+# hyphen), "статья 214", "Article 214 of ..." or "under Article 214" ("Article 3 discusses" is a paper's own
+# article), "№ 5" and "No. 5", "593-son" (`NUMBERED`), or a dd.mm.yyyy date right beside the stem (`DATED`).
+LEGAL_MARK = re.compile(
+    r"\d+\s*-\s*(?:modda|band|qism)\w*"
+    r"|(?<![^\W\d_])(?:стать|пункт|част)\w*\s*№?\s*\d"
+    r"|(?<![^\W\d_])(?:articles?|sections?)\s+\d+[\w.()]*\s+of(?![^\W\d_])"
+    r"|(?<![^\W\d_])(?:under|pursuant to|according to|in accordance with|per)\s+(?:articles?|sections?)\s+\d"
+    r"|№\s*\d|(?<![^\W\d_])no\.?\s*\d"  # language.normalised writes № as "No"
+    r"|to'g'risida|togrisida|respublika|республик|federal|федеральн|mahkama|министр|prezident|президент"
+    r"|oliy majlis|parliament|парламент")
+DATED = re.compile(r"(?<![\d.])\d{1,2}[./]\d{1,2}[./](?:\d{4}|\d{2})(?!\d)")
+# How far from a weak stem a date may stand and still be its date: "17.07.2019 dagi qaror", "закон от 12.05.2020".
+DATED_REACH = 30
 STEMS = [(concept, re.compile(rf'(?<![^\W\d_])(?:{stem})(?![^\W\d_])', re.IGNORECASE), strong)
          for concept, stem, strong in LAW]
 
@@ -177,12 +219,23 @@ class Words:
         return any(_close(word, other) for other in self.index.get(word[:3], ()))
 
 
+class Exact:
+    """A set of folded words matched whole: the words no one's facts are in, where an ending would let a name in."""
+
+    def __init__(self, words=()):
+        self.exact = frozenset(words)
+
+    def known(self, word):
+        word = fold(word)
+        return not word or word in self.exact
+
+
 @dataclass(frozen=True)
 class Trusted:
     """What the customer said, read once per job in every form the checks look it up in."""
 
     words: Words
-    allowed: Words
+    allowed: Exact
     values: frozenset
     flat: str
     lower: str
@@ -194,23 +247,55 @@ def _link(text):
     return re.sub(r'^(?:https?://)?(?:www\.)?', '', text.lower()).rstrip('/.,;)')
 
 
-def trusting(text, *, allowed=()):
-    """A Trusted from plain text, `allowed` being more words no one's facts are in (labels, headings)."""
+def trusting(text, *, allowed=(), wording=''):
+    """A Trusted from plain text, `allowed` being more words no one's facts are in (labels, headings).
+
+    `wording` is text whose quotations and legal sentences may be repeated but
+    whose names and numbers are not the customer's: the earlier version of a
+    document, model prose included. It reaches only the quotation and the
+    legal-concept lookups.
+    """
     text = str(text or '')
     folded = fold(text)
     words = Words(FOLDED_WORD.findall(folded))
-    allow = Words()
-    for item in (*ALLOWED, *allowed):
-        for word in FOLDED_WORD.findall(fold(item)):
-            allow.add(word)
-    return Trusted(words, allow, frozenset(numbers.values(text)), flat(text, folded=folded),
-                   normalised(text).casefold(), frozenset(email.lower().strip('.') for email in EMAIL.findall(text)),
+    allow = Exact(word for item in (*ALLOWED, *allowed) for word in FOLDED_WORD.findall(fold(item)))
+    wording = str(wording or '')
+    quoted = flat(text, folded=folded) + (flat(wording) if wording.strip() else '')
+    lower = normalised(text).casefold() + ('\n' + normalised(wording).casefold() if wording.strip() else '')
+    return Trusted(words, allow, frozenset(numbers.values(text)), quoted, lower,
+                   frozenset(email.lower().strip('.') for email in EMAIL.findall(text)),
                    frozenset(_link(link) for link in LINK.findall(EMAIL.sub(' ', text))))
 
 
 def _texts(content):
+    return [text for _, text in _fields(content)] if isinstance(content, dict) else []
+
+
+def _held(content, entry):
+    """The texts of an earlier version whose values were held to the customer's words when it was made.
+
+    That is the `facts` section, the grounded parts, the customer's and the
+    template's slots and the verified sources. Guarded prose and deck draft
+    slots are the model's, where general knowledge is allowed: a year or a name
+    written there must never become the customer's on the next change. A deck's
+    sections are `s1..sN` and its slot mapping may no longer hold after the
+    customer edited slides, so they resolve to no part and give nothing here.
+    """
+    if entry is None or not isinstance(content, dict):
+        return []
+    def kept(section):
+        if section.get('id') == 'facts':
+            return True
+        part = entry.part(section.get('id'))
+        return bool(part) and bool(part.get('grounded') or part.get('kind') == 'sources'
+                                   or part.get('source') in ('customer', 'template'))
+    sections = [section for section in content.get('sections') or [] if isinstance(section, dict) and kept(section)]
+    return [text for _, text in _fields({'sections': sections}) if text]
+
+
+def _fields(content):
     from ..scripts import fields
-    return [text for _, text in fields(content) if isinstance(text, str)] if isinstance(content, dict) else []
+    return [(path, text) for path, text in fields(content) if isinstance(text, str)]
 
 
 def _catalogue_words(entry):
@@ -248,13 +333,16 @@ def trusted(data):
     parts += [line for line in cover.get('lines') or [] if isinstance(line, str)]
     branding = options.get('branding') if isinstance(options.get('branding'), dict) else {}
     parts.append(branding.get('name'))
-    # A change keeps only the latest request and the first description; what an earlier change gave lives on in the
-    # document it went into, which these checks read when it was made.
-    for content in (revision.get('before'), revision.get('base_content')):
-        parts += _texts(content)
     category = options.get('category')
     entry = catalogue.get(category) if isinstance(category, str) else None
-    return trusting('\n'.join(str(part) for part in parts if part), allowed=_catalogue_words(entry))
+    # A change keeps only the latest request and the first description; what an earlier change gave lives on in the
+    # document it went into. Only the parts held to the customer's words are read back as theirs (`_held`); the whole
+    # earlier text may still be quoted or cited, never mined for names and numbers.
+    earlier = [revision.get('before'), revision.get('base_content')]
+    for content in earlier:
+        parts += _held(content, entry)
+    wording = '\n'.join(text for content in earlier for text in _texts(content) if text)
+    return trusting('\n'.join(str(part) for part in parts if part), allowed=_catalogue_words(entry), wording=wording)
 
 
 # ---------------------------------------------------------------- one fact
@@ -389,7 +477,7 @@ def _sentences(text):
 def _concepts(sentence):
     """The legal things `sentence` cites, or an empty set when it cites none (a weak stem with no mark beside it)."""
     text = normalised(sentence)
-    found, weak = set(), set()
+    found, weak, dated = set(), set(), False
     for concept, stem, strong in STEMS:
         for match in stem.finditer(text):
             # A weak stem capitalised inside a sentence is a title ("Mehnat Kodeksi", "Labour Code", "Закон о …").
@@ -397,10 +485,12 @@ def _concepts(sentence):
                 found.add(concept)
             else:
                 weak.add(concept)
+                reach = text[max(0, match.start() - DATED_REACH):match.end() + DATED_REACH]
+                dated = dated or DATED.search(reach) is not None
     lower = text.casefold()
     if NUMBERED.search(lower):
         found.add('number')
-    if weak and (found or LEGAL_MARK.search(lower)):
+    if weak and (found or dated or LEGAL_MARK.search(lower)):
         found |= weak
     return found
 
@@ -595,20 +685,23 @@ def _file_name(text, file_names):
     return False
 
 
-def verify_items(items, trusted, *, file_names=()):
+def verify_items(items, trusted, *, file_names=(), translated=False):
     """(kept, codes): the items of a references list that are the customer's sources, in order.
 
     Each is held as a line to what the customer said and the files' own text
     (a book they named, a description taken from a file's first page). One
     that is not, or that is an attached file's name with or without its
     extension, is dropped: a references list never shows a file name.
+    `translated` is for a list written in another language than the message,
+    whose titles are translated: its capitalised words are then not checked,
+    only its numbers, so pass it only when the titles really are translated.
     """
     kept, codes = [], []
     for item in items or []:
         text = _item_text(item).strip()
         if not text:
             continue
-        if _file_name(text, file_names) or not supported(text, 'line', trusted):
+        if _file_name(text, file_names) or not supported(text, 'line', trusted, translated=translated):
             codes.append('source:dropped')
             continue
         kept.append(item)
