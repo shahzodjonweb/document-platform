@@ -6,6 +6,8 @@ list: one button per category or group customers may pick now, and Boshqa
 its own prompt and examples, and the draft written there carries it
 (`options.category`). Every door keeps it: the gate, a refusal, the topic
 question, the examples, a failed job's “Change the description”, the review's.
+Boshqa's examples and its review's “Change the description” come back to
+Boshqa's question by a mark on the button (category 'other'), never on the draft.
 
 With the switch off, or nothing ticked for a service, there is no list and
 every way in is today's question, whatever a button from an older list names.
@@ -224,6 +226,92 @@ def test_boshqa_is_todays_question_exactly(customer, switch):
     text, actions, payloads, _ = screen(customer)
     assert 'Describe what you want' in text and pending(customer) == ('ai_input', {'feature_id': DOCUMENT})
     assert payloads[1][0] == {'feature_id': DOCUMENT, 'category': GROUP}
+
+
+def boshqa_question(account, back=None):
+    """Boshqa's question is on screen: today's question, with no category kept, and Back to the list (or its group)."""
+    text, actions, payloads, _ = screen(account)
+    assert 'Describe what you want' in text and pending(account) == ('ai_input', {'feature_id': DOCUMENT})
+    assert actions == [['ai_examples'], ['ai_tool', 'home']]
+    assert payloads[1][0] == {'feature_id': DOCUMENT, **({'category': back} if back else {})}
+
+
+def test_boshqas_examples_come_back_to_boshqa(customer, switch):
+    chat = opened(customer)
+    chat.tap('ai_tool', feature_id=DOCUMENT, category='other')
+    assert screen(customer)[2][0][0] == {'feature_id': DOCUMENT, 'category': 'other'}
+    assert chat.tap('ai_examples', feature_id=DOCUMENT, category='other') == 0
+    text, actions, payloads, labels = screen(customer)
+    assert UX['en']['ai_examples_title'] in text
+    assert actions[0] == ['ai_tool'] and labels[0] == [TOOL_NAMES[DOCUMENT]['en']]
+    assert payloads[0][0] == {'feature_id': DOCUMENT, 'category': 'other'}
+    # The service button is Boshqa's question again, not the list to tap Boshqa on once more.
+    assert chat.tap('ai_tool', feature_id=DOCUMENT, category='other') == 0
+    boshqa_question(customer)
+
+    # The Boshqa of a group comes back to itself, and its Back still to the group.
+    opened(customer)
+    tapped(customer, {'feature_id': DOCUMENT, 'category': GROUP})
+    tapped(customer, {'feature_id': DOCUMENT, 'category': 'other', 'group': GROUP})
+    tapped(customer, {'feature_id': DOCUMENT, 'category': 'other', 'group': GROUP}, 'ai_examples')
+    assert screen(customer)[2][0][0] == {'feature_id': DOCUMENT, 'category': 'other', 'group': GROUP}
+    tapped(customer, {'feature_id': DOCUMENT, 'category': 'other', 'group': GROUP})
+    boshqa_question(customer, GROUP)
+
+
+def test_boshqas_topic_question_sends_its_examples_back_to_boshqa(customer, switch, model):
+    chat = opened(customer)
+    chat.tap('ai_tool', feature_id=DOCUMENT, category='other')
+    assert chat.do(text='Menga test kerak') == 1
+    _, actions, payloads, _ = screen(customer)
+    assert actions[-2] == ['ai_examples'] and payloads[-2][0] == {'feature_id': DOCUMENT, 'category': 'other'}
+    tapped(customer, {'feature_id': DOCUMENT, 'category': 'other'}, 'ai_examples')
+    tapped(customer, {'feature_id': DOCUMENT, 'category': 'other'})
+    boshqa_question(customer)
+    # Our own example sent back: its examples button comes back to Boshqa too.
+    from telegram.ux_copy import PROMPT_EXAMPLES
+    assert chat.do(text=PROMPT_EXAMPLES[DOCUMENT][0][LOCALES.index('en')]) == 1
+    text, _, payloads, _ = screen(customer)
+    assert text == UX['en']['ai_example_copied'] and payloads[0][0] == {'feature_id': DOCUMENT, 'category': 'other'}
+
+
+def test_a_boshqa_review_describes_again_in_boshqa(customer, switch):
+    chat = opened(customer)
+    chat.tap('ai_tool', feature_id=DOCUMENT, category='other')
+    assert chat.do(text='A 3 page guide to tide tables.') == 1
+    _, actions, payloads, labels = screen(customer)
+    assert labels[-1][0] == UX['en']['ai_change_topic']
+    assert actions[-1] == ['ai_tool', 'home'] and payloads[-1][0] == {'feature_id': DOCUMENT, 'category': 'other'}
+    # The mark is the button's only: the draft carries no category, as Boshqa's never do.
+    assert 'category' not in latest(customer)['options']
+    tapped(customer, {'feature_id': DOCUMENT, 'category': 'other'})
+    boshqa_question(customer)
+
+
+@pytest.mark.parametrize('on', [False, True])
+def test_with_no_list_boshqas_buttons_name_only_the_service(customer, ready, on):
+    """The examples and the review's “Change the description” are today's: the switch off, or on with nothing ticked for PDFs."""
+    turn(on=on, live=[HIMOYA])
+    chat = opened(customer)
+    assert screen(customer)[2][0][0] == {'feature_id': DOCUMENT}
+    chat.tap('ai_examples', feature_id=DOCUMENT)
+    _, actions, payloads, _ = screen(customer)
+    assert actions[0] == ['ai_tool'] and payloads[0][0] == {'feature_id': DOCUMENT}
+    chat.tap('ai_tool', feature_id=DOCUMENT)
+    assert pending(customer) == ('ai_input', {'feature_id': DOCUMENT})
+    assert chat.do(text='A 3 page guide to tide tables.') == 1
+    _, actions, payloads, _ = screen(customer)
+    assert actions[-1] == ['ai_tool', 'home'] and payloads[-1][0] == {'feature_id': DOCUMENT}
+    assert not BotCallback.objects.filter(account=customer, payload__category='other').exists()
+
+
+def test_with_the_switch_off_the_topic_questions_examples_name_only_the_service(customer, ready, model):
+    turn(on=False)
+    chat = opened(customer)
+    assert chat.do(text='Menga test kerak') == 1
+    _, actions, payloads, _ = screen(customer)
+    assert actions[-2] == ['ai_examples'] and payloads[-2][0] == {'feature_id': DOCUMENT}
+    assert not BotCallback.objects.filter(account=customer, payload__category='other').exists()
 
 
 def test_with_the_switch_off_every_way_in_is_todays_question(customer, ready):

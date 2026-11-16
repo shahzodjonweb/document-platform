@@ -434,6 +434,21 @@ def ai_state(feature_id,category=None,**kept):
     """
     return {'feature_id':feature_id,**({'category':category} if category else {}),**kept}
 
+def boshqa_back(feature_id):
+    """What a button back to a question without a category adds so it lands on Boshqa's question: {} when no list is shown.
+
+    While a list stands in front of AI PDF or AI Slides, every question
+    without a category is Boshqa's, but a service button alone opens the list,
+    and the customer had to tap Boshqa again. The button names Boshqa the way
+    the list's own Boshqa button does (ai_tool with category 'other', which
+    ai.door and the ai_tool handler read as today's question). It is a mark
+    on the button only: a Boshqa draft never carries a category, and
+    categories.of refuses 'other'. With the switch off, or nothing ticked for
+    the service, it adds nothing, so those buttons stay exactly as they were.
+    """
+    from . import generation as ai
+    return {'category':ai.OTHER} if feature_id in (ai.DOCUMENT,ai.SLIDES) and ai.category_menu(feature_id) else {}
+
 def pending_files(account,feature_id,category=None):
     """The files held for a category's question or the list in front of it; [] with none, or once it is old.
 
@@ -938,11 +953,13 @@ async def review_screen(account,draft,quote):
     # CV's description written again goes back to the way it was made, with
     # the photo and the files sent for it (by the draft it is on: a button
     # never carries what the customer sent).
-    # A document described in a category is described again in it.
+    # A document described in a category is described again in it, and one
+    # described in Boshqa while a list is shown, in Boshqa (boshqa_back).
     category=await sync_to_async(ai.category_of)(draft) if not source and not cv else ''
+    again={'category':category} if category else await sync_to_async(boshqa_back)(draft.feature_id) if not source and not cv else {}
     reword=(await button(account,await ai_change_copy('ai_revise'),'ai_revise',{'draft_id':source}) if source
             else await button(account,'ai_change_topic','ai_tool',{'feature_id':draft.feature_id,**({'draft_id':str(draft.id)} if photo or cv else {}),
-                                                                   **({'category':category} if category else {})}))
+                                                                   **again}))
     rows=[[await button(account,generate,'ai_run',{'quote_id':str(quote.id),'draft_id':str(draft.id)})]]
     if other:
         rows.insert(0,[await button(account,'ai_switch_slides' if other==ai.SLIDES else 'ai_switch_pdf','ai_switch',
@@ -1359,7 +1376,9 @@ def build_dispatcher():
         # first screen, where the other ways to make a CV are.
         # Boshqa, chosen on a list: Back to it, beside the menu, as from a category.
         listed=not cv and bool(await sync_to_async(ai.category_menu)(feature_id))
-        rows=[[await button(account,'ai_examples','ai_examples',{'feature_id':feature_id,**({'cv_source':'text'} if cv else {})})],
+        # Boshqa's examples come back to Boshqa's question (in its group), not to the list.
+        boshqa={'category':ai.OTHER,**({'group':group} if group else {})} if listed else {}
+        rows=[[await button(account,'ai_examples','ai_examples',{'feature_id':feature_id,**({'cv_source':'text'} if cv else {}),**boshqa})],
               [await button(account,'ai_back','cv_mode')] if cv
               else [await button(account,'ai_back','ai_tool',{'feature_id':feature_id,**({'category':group} if group else {})}),
                     await button(account,'home','home')] if listed
@@ -2046,10 +2065,12 @@ def build_dispatcher():
         if cv and notice==text(account,'cv_photo_only'):
             rows.append([await button(account,'cv_mode_file','cv_mode',{'cv_source':ai.FILE})])
         # A CV's examples come back to this question, or once it is closed to
-        # the question about yourself, never to the first CV screen.
+        # the question about yourself, never to the first CV screen; a
+        # category's to its question, and Boshqa's to Boshqa's (boshqa_back).
         rows.append([await button(account,'ai_examples','ai_examples',{'feature_id':feature_id,
                                                                        **({'question':question,'cv_source':ai.TEXT} if cv else {}),
-                                                                       **({'category':entry.id} if entry is not None else {})})])
+                                                                       **({'category':entry.id} if entry is not None
+                                                                          else {} if cv else await sync_to_async(boshqa_back)(feature_id))})])
         rows.append([await button(account,'ai_back','home')])
         return await render(message,body,rows,edit)
 
@@ -2159,7 +2180,7 @@ def build_dispatcher():
         await render(message,html.escape(text(account,'ai_same_format').format(format=name)),[],True)
         await deliver(message,account,job,f'same-format:{secrets.token_urlsafe(9)}',file=asset)
 
-    async def ai_examples(message,account,feature_id=None,edit=False,question='',cv_source='',category=''):
+    async def ai_examples(message,account,feature_id=None,edit=False,question='',cv_source='',category='',group=None):
         """What a good description looks like, in the customer's language.
 
         Opened from a CV's open question (`question`), its service button goes
@@ -2168,7 +2189,9 @@ def build_dispatcher():
         to the first CV screen that asks how to make one. Opened from a
         category's question (`category`), the category's own examples, and its
         button goes back to that category's question; one no longer offered
-        shows the service's.
+        shows the service's. Opened from Boshqa's (`category` 'other', with the
+        `group` it stood in), the service's examples, and its button goes back
+        to Boshqa's question rather than to the list.
         """
         entry=await sync_to_async(ai.category_live)(feature_id,category) if category and feature_id else None
         if entry is not None:
@@ -2191,7 +2214,8 @@ def build_dispatcher():
                 body+=(f'\n\n<blockquote expandable>{index+1}. {example}</blockquote>' if fid==ai.CV
                        else f'\n\n{index+1}. <code>{example}</code>')
             back={'feature_id':fid,**({'question':question} if question and fid==feature_id else {}),
-                  **({'cv_source':cv_source} if cv_source and fid==feature_id else {})}
+                  **({'cv_source':cv_source} if cv_source and fid==feature_id else {}),
+                  **({'category':ai.OTHER,**({'group':group} if group else {})} if category==ai.OTHER and fid==feature_id else {})}
             rows.append([InlineKeyboardButton(text=TOOL_NAMES[fid][account.locale],callback_data=await callback(account,'ai_tool',back))])
         rows.append([await button(account,'ai_back','home'),
                      InlineKeyboardButton(text=text(account,'ai_open_web'),url=await ai_studio_url(account))])
@@ -2422,7 +2446,8 @@ def build_dispatcher():
             return await render(message,text(account,'cv_example_copied' if cv else 'ai_example_copied'),
                                 [[await button(account,'ai_examples','ai_examples',{'feature_id':feature_id,
                                                                                     **({'cv_source':ai.TEXT} if cv else {}),
-                                                                                    **({'category':category} if category else {})}),
+                                                                                    **({'category':category} if category else {} if cv
+                                                                                       else await sync_to_async(boshqa_back)(feature_id))}),
                                   await button(account,'cancel_button','home')]],True)
         if cv:
             from apps.studio.cv.sources import linkedin_link_only
@@ -2743,7 +2768,7 @@ def build_dispatcher():
             elif action=='menu': await menu(message,account,p.get('page',0),p.get('category','pdf'),True)
             elif action=='controls': await controls(message,account,edit=True,advanced=p.get('advanced',False))
             elif action=='ai_examples': await ai_examples(message,account,p.get('feature_id'),True,p.get('question',''),p.get('cv_source',''),
-                                                          p.get('category',''))
+                                                          p.get('category',''),p.get('group'))
             elif action=='ai_revise': await ai_revise_prompt(message,account,p['draft_id'],True)
             elif action=='ai_retry':
                 draft,quote=await sync_to_async(ai.retry)(account,ref.token)

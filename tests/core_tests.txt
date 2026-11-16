@@ -958,3 +958,14 @@ tests/test_category_deck_readiness.py::test_the_switch_page_says_what_a_person_s
 tests/test_category_deck_readiness.py::test_the_sample_tool_draws_both_cases_to_the_count_asked[slides.himoya]
 tests/test_category_deck_readiness.py::test_a_sample_table_fills_every_cell_its_columns_name
 tests/test_category_deck_readiness.py::test_no_customer_text_breaks_off_mid_sentence
+
+# Bot fixes before the first tick (fix-bot): every refusal that names a category's files takes them out, so the
+# next description is made rather than refused again; Boshqa's examples, topic question and review come back to
+# Boshqa's question rather than the list, and with no list every one of those buttons is today's
+tests/test_bot_category_sources.py::test_an_old_word_file_the_reading_host_cannot_read_is_taken_out_and_the_next_description_made
+tests/test_bot_category_sources.py::test_a_refusal_naming_files_with_no_category_wording_still_takes_them_out
+tests/test_bot_categories.py::test_boshqas_examples_come_back_to_boshqa
+tests/test_bot_categories.py::test_a_boshqa_review_describes_again_in_boshqa
+tests/test_bot_categories.py::test_with_no_list_boshqas_buttons_name_only_the_service[False]
+tests/test_bot_categories.py::test_with_no_list_boshqas_buttons_name_only_the_service[True]
+tests/test_bot_categories.py::test_with_the_switch_off_the_topic_questions_examples_name_only_the_service
