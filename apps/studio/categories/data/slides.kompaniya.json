@@ -10,7 +10,7 @@
   "ru": "🏢 Компания / продукт",
   "en": "🏢 Company / product"
  },
- "summary": "An editable PowerPoint deck that introduces a company, a product, a service or a partnership offer to a customer or partner: a navy cover with the name in large type, who we are (with the customer’s own figures), what we make or sell, how we work, proof the customer supplied (advantages, clients, certificates, one case) and a closing slide with contacts. Every figure, name, price and claim comes from the customer’s message or file; a missing fact shortens the deck, it is never filled. WHEN TO PICK IT: a deck to show on a screen or send to a customer or partner. A priced offer written as a letter or a document to sign is “Tijorat taklifi” (pdf.biz.tijorat_taklifi); an investor pitch (market, ",
+ "summary": "An editable PowerPoint deck that introduces a company, a product, a service or a partnership offer to a customer or partner: a navy cover with the name in large type, who we are (with the customer’s own figures), what we make or sell, how we work, proof the customer supplied (advantages, clients, certificates, one case) and a closing slide with contacts. Every figure, name, price and claim comes from the customer’s message or file; a slot the customer gave nothing for is an honest form of ruled lines, never filled. A priced offer written as a letter or a document to sign is “Tijorat taklifi” (pdf.biz.tijorat_taklifi); an investor pitch is “Startap / Pitch” (slides.pitch).",
  "tone": "Plain and factual: a company speaks as “biz”, a product is described by its name in the third person. Every fact on a slide is the customer’s; the AI writes only headings and joining words. Detail goes to the speaker notes, 20 to 40 words a slide.",
  "topic": true,
  "title": "model",
@@ -34,7 +34,8 @@
    "uz": [
     "ilova",
     "mahsulot taqdimot",
-    "dastur",
+    "dasturiy",
+    "mobil dastur",
     "platforma",
     "hamkorlik",
     "hamkorlikka"
@@ -44,13 +45,26 @@
     "презентация продукта",
     "наш продукт",
     "платформ",
-    "программ",
+    "программн",
     "сотрудничеств",
     "партнёрств",
     "партнерств"
    ],
    "en": [
     "app ",
+    "app.",
+    "app,",
+    "app!",
+    "app?",
+    "app:",
+    "app;",
+    "app)",
+    "app’",
+    "app\n",
+    "apps ",
+    "apps.",
+    "apps,",
+    "apps\n",
     "application",
     "product presentation",
     "product deck",
@@ -66,7 +80,12 @@
     "tarif"
    ],
    "ru": [
-    "цен",
+    "цена",
+    "цены",
+    "ценам",
+    "ценах",
+    "ценой",
+    "ценник",
     "тариф",
     "прайс"
    ],
@@ -527,7 +546,7 @@
     "bullets.classic"
    ],
    "source": "customer",
-   "write": "With two to four figures: stats, each a value (the figure with at most one short sign: +, %, a unit of up to 4 letters) and a label of up to 3 words that is the noun the customer used (xodim, buyurtma, shahar); a line under a figure ONLY if the customer wrote one (the earlier “context under every figure” rule is removed: it forced invented lines). The founding year goes into the heading, never into a figure computed from it. With one figure or none: bullets.classic, the facts the customer gave (what is made, where, since when), one line each; a mission or vision only if the customer wrote it. Notes: how to say it in two sentences, no new fact.",
+   "write": "With two to four figures: stats, each a value (the figure with at most one short sign: +, %, a unit of up to 4 letters) and a label of up to 3 words that is the noun the customer used (xodim, buyurtma, shahar); a line under a figure ONLY if the customer wrote one. The founding year goes into the heading, never into a figure computed from it. With one figure or none: bullets.classic, the facts the customer gave (what is made, where, since when), one line each; a mission or vision only if the customer wrote it. Notes: how to say it in two sentences, no new fact.",
    "when": "nocue:mahsulot"
   },
   {
@@ -545,7 +564,7 @@
     "bullets.classic"
    ],
    "source": "customer",
-   "write": "With two to four figures: stats, each a value (the figure with at most one short sign: +, %, a unit of up to 4 letters) and a label of up to 3 words that is the noun the customer used (xodim, buyurtma, shahar); a line under a figure ONLY if the customer wrote one (the earlier “context under every figure” rule is removed: it forced invented lines). The founding year goes into the heading, never into a figure computed from it. With one figure or none: bullets.classic, the facts the customer gave (what is made, where, since when), one line each; a mission or vision only if the customer wrote it. Notes: how to say it in two sentences, no new fact.",
+   "write": "With two to four figures: stats, each a value (the figure with at most one short sign: +, %, a unit of up to 4 letters) and a label of up to 3 words that is the noun the customer used (xodim, buyurtma, shahar); a line under a figure ONLY if the customer wrote one. The founding year goes into the heading, never into a figure computed from it. With one figure or none: bullets.classic, the facts the customer gave (what is made, where, since when), one line each; a mission or vision only if the customer wrote it. Notes: how to say it in two sentences, no new fact.",
    "when": "cue:mahsulot",
    "from": 11,
    "join": 6
@@ -763,7 +782,8 @@
     "bullets"
    ],
    "pins": [
-    "table.ledger"
+    "table.ledger",
+    "bullets.tone_stripes"
    ],
    "source": "customer",
    "write": "columns = Nomi | Raqami | Sana (Название | Номер | Дата; Name | Number | Date), 1 to 6 rows copied as written. Name, number and date are never completed, converted or guessed.",

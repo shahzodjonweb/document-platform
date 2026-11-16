@@ -397,7 +397,7 @@
    ],
    "pins": [],
    "source": "template",
-   "write": "Heading = the topic in full, never cut (up to 25 words or 260 characters; longer: the customer is asked to shorten, nothing is cut). Body = at most 6 lines, copied as written, in this order: work type (only in the customer’s words), institution and faculty, the author line, the supervisor line, the speciality, place and year. More than 6 lines: the ministry line goes first, then place and year, then the work type, and the customer is told which. Never completed, never reordered inside a line, never invented. Boardroom cover (launch contract): institution 22 pt bold top left, work type 22 pt bold in the second colour under it, the topic in Georgia white at 48 pt to 100 characters (2 to 3 lines), 40 pt to 160 (up to 4 lines), 36 pt to 200 and 32 pt to 220 (5 lines), 26 pt to 260 (4 to 5 lines), a short rule, then the author rows and the place and year at 22 pt, bottom aligned (the mock school_himoya-covers.png shows 2, 3, 4 and 5 line titles and a 7-line input). No decorative disc, no notes, no photo.",
+   "write": "Heading = the topic in full, never cut (up to 25 words or 260 characters; longer: the customer is asked to shorten, nothing is cut). Body = at most 6 lines, copied as written, in this order: work type (only in the customer’s words), institution and faculty, the author line, the supervisor line, the speciality, place and year. More than 6 lines: the ministry line goes first, then place and year, then the work type, and the customer is told which. Never completed, never reordered inside a line, never invented. No decorative disc, no notes, no photo.",
    "join": 0
   },
   {

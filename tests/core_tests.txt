@@ -864,3 +864,12 @@ tests/test_category_deck_samples.py::test_a_sample_is_in_the_sample_tools_format
 tests/test_category_deck_samples.py::test_a_sample_is_finished_to_its_count_with_nothing_taken_out
 tests/test_category_deck_samples.py::test_every_slot_a_figures_sample_reaches_at_its_own_length_has_content
 tests/test_category_deck_samples.py::test_a_constitution_day_deck_is_six_slides_and_keeps_its_cover
+
+# Category deck entries (C2s): what the model reads of a deck entry asks for no worked-out figure, quotes only
+# percentages a brief of the entry holds and carries no research note; the company deck's cues keep its path
+tests/test_category_deck_entries.py::test_no_text_the_model_reads_asks_it_to_work_a_figure_out
+tests/test_category_deck_entries.py::test_a_percent_example_the_model_reads_is_one_a_brief_of_the_entry_holds
+tests/test_category_deck_entries.py::test_no_research_note_reaches_the_model
+tests/test_category_deck_entries.py::test_a_report_on_plan_and_actual_is_told_to_show_the_figures_as_written
+tests/test_category_deck_entries.py::test_a_company_profile_keeps_its_path_for_values_and_a_training_programme
+tests/test_category_deck_entries.py::test_a_product_deck_and_prices_are_still_found

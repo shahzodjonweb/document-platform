@@ -462,7 +462,7 @@
    ],
    "pins": [],
    "source": "template",
-   "write": "Heading = the topic (title 52 pt beside a picture, 56 without; a word longer than the title box steps the size down, to 32 pt at the lowest, before it breaks; the title box is 6.3 in wide beside a picture, 8.8 in without, so it never reaches the composition’s cover circle that sits right of x 10). Body, in this order: the header “Tarbiyaviy soat · <N>-sinf” (no colon; the hour’s name from hour_name), then the customer’s own teacher, school and date lines copied whole (the label stays in its line: “Sinf rahbari: ...”). A line that was not given is not written: no “F.I.Sh.”, no “____”. Notes never kept on a cover. PICTURE RULE: image_query only when the lines after the header render in at most 4 lines beside the picture; the AI counts a line as ceil(characters / 34) rendered lines (28 in Russian). Measured: “Sinf rahbari: Karimova Dilnoza Abdullayevna” (43) plus a 36-character school line = 4 lines, the photo stays; the default Russian cover (41 and 20) = 3 lines, the photo stays. Without a picture the block is 8.8 in wide and holds up to 5 rendered lines (a 91-character official name wraps to 3); the lines step down from 24 to 20 pt before anything is cut."
+   "write": "Heading = the topic. Body, in this order: the header “Tarbiyaviy soat · <N>-sinf” (no colon; the hour’s name from hour_name), then the customer’s own teacher, school and date lines copied whole (the label stays in its line: “Sinf rahbari: ...”). A line that was not given is not written: no “F.I.Sh.”, no “____”. Notes never kept on a cover. PICTURE RULE: image_query only when the lines after the header render in at most 4 lines beside the picture; the AI counts a line as ceil(characters / 34) rendered lines (28 in Russian)."
   },
   {
    "id": "savol",
@@ -483,7 +483,7 @@
     "statement.soft_panel"
    ],
    "source": "draft",
-   "write": "Drawn as the proposed image_full.question_band when a photo is found (photo bleeding top and right, soft panel under it with the label and the question at 40 pt), else statement.soft_panel (the layout falls back by itself). Heading = the fixed label. Body = ONE open question of at most 12 words and 60 characters (nega, qanday, qachon, nimada; never a yes or no and never a choice with an obvious right side, so not “A yoki B”), which pupils can attempt before the lesson and which xulosa can answer; it may begin “Tasavvur qiling”. image_query: 2 to 4 English words naming something visible. Notes: greeting (Tashkiliy qism), how to ask, “no right answer, listen to all”, and BELOW 12 SLIDES the three aims read aloud (the notes carry them because no maqsad slide exists), up to 60 words; “Bu bosqich 6 daqiqa.” (the stage Boshlanish). A civic topic with no file asks about what a pupil can see (“Vatan siz uchun nimadan boshlanadi?”), never about a date or a symbol."
+   "write": "Heading = the fixed label. Body = ONE open question of at most 12 words and 60 characters (nega, qanday, qachon, nimada; never a yes or no and never a choice with an obvious right side, so not “A yoki B”), which pupils can attempt before the lesson and which xulosa can answer; it may begin “Tasavvur qiling”. image_query: 2 to 4 English words naming something visible. Notes: greeting (Tashkiliy qism), how to ask, “no right answer, listen to all”, and BELOW 12 SLIDES the three aims read aloud (the notes carry them because no maqsad slide exists), up to 60 words; “Bu bosqich 6 daqiqa.” (the stage Boshlanish). A civic topic with no file asks about what a pupil can see (“Vatan siz uchun nimadan boshlanadi?”), never about a date or a symbol."
   },
   {
    "id": "maqsad",
@@ -590,7 +590,7 @@
     "bullets.card_stack"
    ],
    "source": "draft",
-   "write": "3 open questions of at most 46 characters (36 in primary), from easy to thinking; each asks nega, qanday, nimada, qachon, nimani (primary: at most one closed question); none ends in -mi, “mumkinmi”, “bormi” or the Russian “ли”, none is a choice between two answers one of which is the obvious right one; the third is the one a pupil can disagree with. The slide never carries an answer and never steers to the answer the school expects; the notes never tell the teacher to stress one answer. Notes: what to listen for, two follow-up prompts, “if the class is silent, ask for pairs”, up to 60 words. The R6 validator rejects a yes/no ending (work/soft_validator.py).",
+   "write": "3 open questions of at most 46 characters (36 in primary), from easy to thinking; each asks nega, qanday, nimada, qachon, nimani (primary: at most one closed question); none ends in -mi, “mumkinmi”, “bormi” or the Russian “ли”, none is a choice between two answers one of which is the obvious right one; the third is the one a pupil can disagree with. The slide never carries an answer and never steers to the answer the school expects; the notes never tell the teacher to stress one answer. Notes: what to listen for, two follow-up prompts, “if the class is silent, ask for pairs”, up to 60 words.",
    "repeat": {
     "min": 1,
     "max": 6

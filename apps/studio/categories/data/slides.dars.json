@@ -519,7 +519,7 @@
     "bullets.numbered_rows"
    ],
    "source": "draft",
-   "write": "Usual in the open lesson, optional from 14 slides in an ordinary one. 4 to 6 lines of at most 46 characters: “<bosqich> — <N> daqiqa” and, where it fits, “, <usul>” (savol-javob, suhbat, guruhda ishlash, juftlikda ishlash, mustaqil ish, o‘yin). The lines name the stages of the slides that follow, in order, EVERY stage including Xulosa and Refleksiya (a closing stage may be combined: “Xulosa va baholash”, “Refleksiya va uyga vazifa”); the minutes are whole numbers that add up to the lesson length (45 unless the customer said otherwise) and equal the sum of the minutes in the notes of those slides (checked by work/minutes_check.py). Never a room, a time of day, a name or a mark.",
+   "write": "Usual in the open lesson, optional from 14 slides in an ordinary one. 4 to 6 lines of at most 46 characters: “<bosqich> — <N> daqiqa” and, where it fits, “, <usul>” (savol-javob, suhbat, guruhda ishlash, juftlikda ishlash, mustaqil ish, o‘yin). The lines name the stages of the slides that follow, in order, EVERY stage including Xulosa and Refleksiya (a closing stage may be combined: “Xulosa va baholash”, “Refleksiya va uyga vazifa”); the minutes are whole numbers that add up to the lesson length (45 unless the customer said otherwise) and equal the sum of the minutes in the notes of those slides. Never a room, a time of day, a name or a mark.",
    "when": "nocue:ochiq",
    "from": 14,
    "join": 4
@@ -541,7 +541,7 @@
     "bullets.numbered_rows"
    ],
    "source": "draft",
-   "write": "Usual in the open lesson, optional from 14 slides in an ordinary one. 4 to 6 lines of at most 46 characters: “<bosqich> — <N> daqiqa” and, where it fits, “, <usul>” (savol-javob, suhbat, guruhda ishlash, juftlikda ishlash, mustaqil ish, o‘yin). The lines name the stages of the slides that follow, in order, EVERY stage including Xulosa and Refleksiya (a closing stage may be combined: “Xulosa va baholash”, “Refleksiya va uyga vazifa”); the minutes are whole numbers that add up to the lesson length (45 unless the customer said otherwise) and equal the sum of the minutes in the notes of those slides (checked by work/minutes_check.py). Never a room, a time of day, a name or a mark.",
+   "write": "Usual in the open lesson, optional from 14 slides in an ordinary one. 4 to 6 lines of at most 46 characters: “<bosqich> — <N> daqiqa” and, where it fits, “, <usul>” (savol-javob, suhbat, guruhda ishlash, juftlikda ishlash, mustaqil ish, o‘yin). The lines name the stages of the slides that follow, in order, EVERY stage including Xulosa and Refleksiya (a closing stage may be combined: “Xulosa va baholash”, “Refleksiya va uyga vazifa”); the minutes are whole numbers that add up to the lesson length (45 unless the customer said otherwise) and equal the sum of the minutes in the notes of those slides. Never a room, a time of day, a name or a mark.",
    "when": "cue:ochiq",
    "from": 10
   },
@@ -685,7 +685,7 @@
     "bullets.card_stack"
    ],
    "source": "draft",
-   "write": "Conditional: only when the customer asks for a game or the grade is 1 to 4 (where it replaces the mashq); never in grades 10 to 11 or the open lesson unless asked. 3 or 4 statements, tasks or rounds of at most 46 characters (36 in primary), drawn as the card stack at the list size (28 pt), NOT as cards: the cards layout sets its text at 14 pt and its label at 19 to 20 pt today. True-or-false statements must be textbook-certain and the notes give the answers; the rules (how pupils answer, how the point is scored) go in the notes. At most one game in a 10-slide deck.",
+   "write": "Conditional: only when the customer asks for a game or the grade is 1 to 4 (where it replaces the mashq); never in grades 10 to 11 or the open lesson unless asked. 3 or 4 statements, tasks or rounds of at most 46 characters (36 in primary), drawn as bullets.card_stack. True-or-false statements must be textbook-certain and the notes give the answers; the rules (how pupils answer, how the point is scored) go in the notes. At most one game in a 10-slide deck.",
    "when": "cue:oyin",
    "from": 10,
    "join": 6
@@ -703,7 +703,7 @@
     "bullets.card_stack"
    ],
    "source": "draft",
-   "write": "Conditional: only when the customer asks for a game or the grade is 1 to 4 (where it replaces the mashq); never in grades 10 to 11 or the open lesson unless asked. 3 or 4 statements, tasks or rounds of at most 46 characters (36 in primary), drawn as the card stack at the list size (28 pt), NOT as cards: the cards layout sets its text at 14 pt and its label at 19 to 20 pt today. True-or-false statements must be textbook-certain and the notes give the answers; the rules (how pupils answer, how the point is scored) go in the notes. At most one game in a 10-slide deck.",
+   "write": "Conditional: only when the customer asks for a game or the grade is 1 to 4 (where it replaces the mashq); never in grades 10 to 11 or the open lesson unless asked. 3 or 4 statements, tasks or rounds of at most 46 characters (36 in primary), drawn as bullets.card_stack. True-or-false statements must be textbook-certain and the notes give the answers; the rules (how pupils answer, how the point is scored) go in the notes. At most one game in a 10-slide deck.",
    "when": "cue:boshlangich",
    "from": 10,
    "repeat": {

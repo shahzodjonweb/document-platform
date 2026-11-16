@@ -10,7 +10,7 @@
   "ru": "🚀 Стартап / Питч",
   "en": "🚀 Startup / Pitch"
  },
- "summary": "LABELS PROPOSED, OWNER TO SIGN OFF: every Uzbek and Russian heading label below is proposed, not read from a pitch deck or application form (none was found; the one Uzbek contest regulation that was read is an engineering contest, not a startup form). An editable PowerPoint pitch deck for an investor, a grant programme, an accelerator or a startup contest: a cover that says what the project is, the problem as one decisive figure, the solution in three steps, the proof (traction), the market, how the company earns, the alternatives, the team and one ask slide, in a bold look that is still legible in grey, with every figure, name, role, date and contact taken from the customer’s message or att",
+ "summary": "An editable PowerPoint pitch deck for an investor, a grant programme, an accelerator or a startup contest: a cover that says what the project is, the problem as one decisive figure, the solution in three steps, the proof (traction), the market, how the company earns, the alternatives, the team and one ask slide, in a bold look that is still legible in grey, with every figure, name, role, date and contact taken from the customer’s message or attached files. The count is delivered as quoted; a slot the customer gave nothing for is an honest form of ruled lines.",
  "tone": "Confident, plain and concrete, in the first person plural (“biz”): a claim in the headline, one fact under it, one idea a slide. No buzzwords and no superlative the customer did not write. The spoken part lives in the speaker notes and adds nothing the customer did not write.",
  "topic": true,
  "title": "model",
@@ -629,7 +629,7 @@
     "table.row_cards"
    ],
    "source": "customer",
-   "write": "From 11 slides, only if the customer wrote the channels: 3-4 channels or steps in the customer’s words, label at most 3 words, text at most 12 words; no channel, number, budget or order that the customer did not write. Not mocked in this round.",
+   "write": "From 11 slides, only if the customer wrote the channels: 3-4 channels or steps in the customer’s words, label at most 3 words, text at most 12 words; no channel, number, budget or order that the customer did not write.",
    "from": 11,
    "join": 7
   },
@@ -872,7 +872,7 @@
   "note": "Pins are per slot (the research by_slot table), primary first."
  },
  "gates": [
-  "A native Uzbek and a native Russian reader check the slot labels (Muammo, Yechim, Moliyalashtirish, Bizga nima kerak) and the bot copy.",
+  "A native Uzbek and a native Russian reader check the slot labels (Muammo, Yechim, Moliyalashtirish, Bizga nima kerak) and the bot copy; the owner signs off every Uzbek and Russian heading label, as they were proposed, not read from a real pitch deck or application form.",
   "A 6, a 10 and a 15 slide sample in uz, ru and en are drawn with the deck sample tool, with figures and topic only, and looked at next to units/slides.pitch/mock/business_pitch.png."
  ],
  "later": [

@@ -167,19 +167,19 @@
     "uz": {
      "layout": "bullets",
      "heading": "Garderob",
-     "body": "Nima kiradi: ________\nKim uchun: ________",
+     "body": "Nima kiradi: ________\nKim uchun: ________\nQanday yetkaziladi: ________",
      "items": []
     },
     "ru": {
      "layout": "bullets",
      "heading": "Гардеробы",
-     "body": "Что входит: ________\nДля кого: ________",
+     "body": "Что входит: ________\nДля кого: ________\nКак доставляется: ________",
      "items": []
     },
     "en": {
      "layout": "bullets",
      "heading": "Wardrobes",
-     "body": "What it includes: ________\nWho it is for: ________",
+     "body": "What it includes: ________\nWho it is for: ________\nHow it is delivered: ________",
      "items": []
     }
    }

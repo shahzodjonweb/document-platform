@@ -79,19 +79,19 @@
     "uz": {
      "layout": "bullets",
      "heading": "Xizmat",
-     "body": "Nima kiradi: ________\nKim uchun: ________",
+     "body": "Nima kiradi: ________\nKim uchun: ________\nQanday yetkaziladi: ________",
      "items": []
     },
     "ru": {
      "layout": "bullets",
      "heading": "Услуга",
-     "body": "Что входит: ________\nДля кого: ________",
+     "body": "Что входит: ________\nДля кого: ________\nКак доставляется: ________",
      "items": []
     },
     "en": {
      "layout": "bullets",
      "heading": "A service",
-     "body": "What it includes: ________\nWho it is for: ________",
+     "body": "What it includes: ________\nWho it is for: ________\nHow it is delivered: ________",
      "items": []
     }
    }
@@ -123,19 +123,19 @@
     "uz": {
      "layout": "bullets",
      "heading": "",
-     "body": "Afzallik: ________\nAfzallik: ________",
+     "body": "Afzallik: ________\nAfzallik: ________\nAfzallik: ________",
      "items": []
     },
     "ru": {
      "layout": "bullets",
      "heading": "",
-     "body": "Преимущество: ________\nПреимущество: ________",
+     "body": "Преимущество: ________\nПреимущество: ________\nПреимущество: ________",
      "items": []
     },
     "en": {
      "layout": "bullets",
      "heading": "",
-     "body": "Advantage: ________\nAdvantage: ________",
+     "body": "Advantage: ________\nAdvantage: ________\nAdvantage: ________",
      "items": []
     }
    }
@@ -167,19 +167,19 @@
     "uz": {
      "layout": "bullets",
      "heading": "Mijozlarimiz",
-     "body": "Mijoz: ________\nMijoz: ________",
+     "body": "Mijoz: ________\nMijoz: ________\nMijoz: ________",
      "items": []
     },
     "ru": {
      "layout": "bullets",
      "heading": "Наши клиенты",
-     "body": "Клиент: ________\nКлиент: ________",
+     "body": "Клиент: ________\nКлиент: ________\nКлиент: ________",
      "items": []
     },
     "en": {
      "layout": "bullets",
      "heading": "Our clients",
-     "body": "Client: ________\nClient: ________",
+     "body": "Client: ________\nClient: ________\nClient: ________",
      "items": []
     }
    }

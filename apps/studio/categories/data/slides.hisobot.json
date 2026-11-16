@@ -10,7 +10,7 @@
   "ru": "📊 Отчёт",
   "en": "📊 Report"
  },
- "summary": "An editable PowerPoint report deck for a month, quarter or year of a company, department, branch or project, shown to management, a board or partners: a verdict-first headline slide, results against plan and the previous period as figures and charts, what went well, what fell short (the cause only if the customer gave it), finances, the plan for the next period and, from 10 slides and only when it carries a new line, conclusions with the decision asked. Every figure comes from the customer’s message or file; a change or plan-completion percentage is derived from two figures the customer gave under a written grammar (spec.derived_figures: three digits written, percentage points for rates, not",
+ "summary": "An editable PowerPoint report deck for a month, quarter or year of a company, department, branch or project, shown to management, a board or partners: the key results against plan and the previous period as figures and charts, plan and actual by line, what went well, what fell short (the cause only if the customer gave it), finances, the plan for the next period and, from 10 slides, conclusions with the decision asked. Every figure comes from the customer’s message or file and is shown as written: no change, difference or completion percentage is worked out. The count is delivered as quoted; a slot the customer gave nothing for is an honest form of ruled lines.",
  "tone": "Factual and plain, for management, founders or a meeting: the numbers carry the verdict. One message a slide; the speech lives in the speaker notes.",
  "topic": true,
  "title": "model",
@@ -67,9 +67,9 @@
    "en": "Your message has no figures: the result slides come out as blank forms for you to fill in."
   },
   "prompt": {
-   "uz": "📈 Xabaringizda raqamlar yo‘q. Asosiy ko‘rsatkichlaringizni bitta xabarda yozing: nomi, davr natijasi va solishtirish uchun raqam (reja yoki o‘tgan davr); uch xonali raqamlar aniqroq foiz beradi. O‘tkazib yuborsangiz, natija slaydlarida to‘ldirish uchun bo‘sh joy qoladi.",
-   "ru": "📈 В сообщении нет цифр. Напишите основные показатели одним сообщением: название, результат за период и число для сравнения (план или прошлый период); числа из трёх цифр дают точнее проценты. Если пропустите, на слайдах с результатами останутся пустые места для заполнения.",
-   "en": "📈 There are no figures in your message. Write your key figures in one message: the name, the result for the period and a figure to compare with (plan or previous period); figures of three digits give more exact percentages. If you skip, the result slides keep blanks for you to fill in."
+   "uz": "📈 Xabaringizda raqamlar yo‘q. Asosiy ko‘rsatkichlaringizni bitta xabarda yozing: nomi, davr natijasi va solishtirish uchun raqam (reja yoki o‘tgan davr). O‘tkazib yuborsangiz, natija slaydlarida to‘ldirish uchun bo‘sh joy qoladi.",
+   "ru": "📈 В сообщении нет цифр. Напишите основные показатели одним сообщением: название, результат за период и число для сравнения (план или прошлый период). Если пропустите, на слайдах с результатами останутся пустые места для заполнения.",
+   "en": "📈 There are no figures in your message. Write your key figures in one message: the name, the result for the period and a figure to compare with (plan or previous period). If you skip, the result slides keep blanks for you to fill in."
   },
   "hint": {
    "uz": "Masalan:\nTushum: 412 mln so‘m (reja 400 mln, o‘tgan oy 380 mln)\nMijozlar: 5 800 nafar (o‘tgan oy 5 300)",
@@ -482,7 +482,7 @@
    ],
    "pins": [],
    "source": "template",
-   "write": "Title of at most 10 words (organisation or department, period, the word hisobot). A TYPED cover object {organisation, audience, presenter, date}: each field is copied from the message in its own fixed slot whatever order the customer wrote them in (“Rahbariyat uchun, Namuna Market MChJ” and the reverse draw the same cover); a field not given is not drawn; the renderer prints the label of the presenter row. A check confirms every field is found in the message. No photo; the account logo is drawn by the chrome at the bottom right as on every slide."
+   "write": "Title of at most 10 words (organisation or department, period, the word hisobot). A TYPED cover object {organisation, audience, presenter, date}: each field is copied from the message in its own fixed slot whatever order the customer wrote them in (“Rahbariyat uchun, Namuna Market MChJ” and the reverse draw the same cover); a field not given is not drawn; A check confirms every field is found in the message. No photo; the account logo is drawn by the chrome at the bottom right as on every slide."
   },
   {
    "id": "mundarija",
@@ -531,7 +531,7 @@
     "bullets.card_stack"
    ],
    "source": "customer",
-   "write": "Heading = the biggest comparison the figures support, stated with its number (“Tushum reja bo‘yicha 102% bajarildi”); with no comparison the fixed label. 1 figure: big_number; 2 to 3: stats.classic; 4: stats.rows with the base caption (columns[0]); 5 or 6: a table of metric, previous, current; more: the first 6 here and the rest on a yonalish or moliya slide. A stats value is the number only (at most 8 characters); the label carries the whole unit (“Tushum, mlrd so‘m”, at most 18 characters); the context line is the signed change (“+14%”) with the base printed once in the caption (stats.rows) or in the line (“+8,4% sentabrga nisbatan”, stats.classic, 2 to 3 figures). A figure with a plan: its completion in the heading or the context (“reja 103% bajarildi”). Notes: the figures read in words."
+   "write": "1 figure: big_number; 2 to 3: stats.classic; 4: stats.rows with the base caption (columns[0]); 5 or 6: a table of metric, previous, current; more: the first 6 here and the rest on a yonalish or moliya slide. A stats value is the number only (at most 8 characters); the label carries the whole unit (“Tushum, mlrd so‘m”, at most 18 characters); the context line is the figure it is compared with, as the customer wrote it (“reja 400”, “sentabrda 5 300”), or nothing. A change, difference or completion percentage appears only when the customer wrote it; it is never worked out from two figures. Notes: the figures read in words."
   },
   {
    "id": "trend",
@@ -547,7 +547,7 @@
     "chart.stepped_rows"
    ],
    "source": "customer",
-   "write": "3 to 6 values the customer gave (3 to 12 with chart.columns), oldest first, none negative (a series with a loss goes to a table), labels of at most 14 characters, the unit in columns[0]; the newest period is the accent bar. Heading of at most 34 characters stating the real shape (“Tushum har oy oshib bordi” only if every step is up). With 2 values there is no chart: the change goes on natijalar. A 12-month series: see number_scaling.twelve_months. Notes: the first and last value and where the presenter gives the cause.",
+   "write": "3 to 6 values the customer gave (3 to 12 with chart.columns), oldest first, none negative (a series with a loss goes to a table), labels of at most 14 characters, the unit in columns[0]; the newest period is the accent bar. Heading of at most 34 characters stating the real shape (“Tushum har oy oshib bordi” only if every step is up). With 2 values there is no chart: both go on natijalar. A series longer than the chart holds continues on a second chart slide in the customer’s order; no value is dropped. Notes: the first and last value and where the presenter gives the cause.",
    "from": 7,
    "repeat": {
     "min": 1,
@@ -571,10 +571,11 @@
    ],
    "pins": [
     "comparison.hue_headers",
-    "table.dark_first_column"
+    "table.dark_first_column",
+    "bullets.rail_dots"
    ],
    "source": "customer",
-   "write": "Only when BOTH plan and actual are given for at least 2 lines. comparison.hue_headers with columns Reja / Amalda (План / Факт, Plan / Actual): each criterion label is “name · percent” (“Chilonzor · 108%”, at most 20 characters; an under-plan line “Mirobod · ↓ 88%” is set bold with the arrow), the two cells are the plain values with one precision per column and the same unit suffix, right-aligned so decimals line up; a Jami row when the lines add up (checked sum) or when the customer gave it. The completion percentage follows spec.derived_figures; with a plan of another period there is no percentage. One plan/actual pair does not make this slide: it is a stats figure on natijalar with “reja 400 mln: 103%”. 6 to 10 lines continue on a second slide (number_scaling.long_list). With chart.pairs the renderer draws the percentage itself.",
+   "write": "Only when BOTH plan and actual are given for at least 2 lines. comparison.hue_headers with columns Reja / Amalda (План / Факт, Plan / Actual): each criterion label is the line’s name as written (at most 20 characters), the two cells are the plan and the actual exactly as written, with the same unit suffix. A completion percentage or a difference appears only when the customer wrote it, never worked out; a Jami row only when the customer gave it. A plan of another period than the actual is shown as two figures, never as a share. One plan/actual pair does not make this slide: it is a stats figure on natijalar with the plan in its context line (“reja 400”). 6 to 10 lines continue on a second slide with the same columns, “(davomi)” in its heading.",
    "from": 8,
    "repeat": {
     "min": 1,
@@ -596,10 +597,11 @@
    "pins": [
     "stats.classic",
     "chart.stepped_rows",
-    "cards.classic"
+    "cards.classic",
+    "bullets.rail_dots"
    ],
    "source": "customer",
-   "write": "From 12 slides, one slide per line for which the customer gave at least 2 figures: the same arrangement every time (the VEON repeat), 2 to 4 figures with their base. A line with one figure stays in the plan-and-actual rows.",
+   "write": "From 12 slides, one slide per line for which the customer gave at least 2 figures: the same arrangement every time, 2 to 4 figures with their base. A line with one figure stays in the plan-and-actual rows.",
    "from": 11,
    "join": 7,
    "repeat": {
@@ -624,11 +626,11 @@
    ],
    "pins": [
     "cards.classic",
-    "bullets.card_stack",
+    "bullets.rail_dots",
     "two_column.numbered"
    ],
    "source": "customer",
-   "write": "Only what the customer wrote under “yaxshi ketdi”; none: the honest form (heading and ruled lines). 3 items with a figure each: cards.classic (figure 44 pt, label of at most 4 words, one sentence of at most 14 words); 2 items: two_column.numbered; 4 to 6: bullets.rail_dots; 1 item: see slot_item_rules. Heading = the two strongest supplied facts. No causal claim (“aksiya tufayli”) unless the customer wrote it, and a line is a win only if the customer wrote it as one.",
+   "write": "Only what the customer wrote under “yaxshi ketdi”; none: the honest form (heading and ruled lines). 3 items with a figure each: cards.classic (figure 44 pt, label of at most 4 words, one sentence of at most 14 words); 2 items: two_column.numbered; 4 to 6: bullets.rail_dots; 1 item: that one line in bullets.rail_dots. No causal claim (“aksiya tufayli”) unless the customer wrote it, and a line is a win only if the customer wrote it as one.",
    "from": 4
   },
   {
@@ -649,7 +651,7 @@
     "bullets.lead_line"
    ],
    "source": "customer",
-   "write": "Only what the customer wrote as a shortfall (“muammo bo‘ldi”, “bajarilmadi”); the model never turns a flat or low number into a problem on its own. Heading states the largest supplied shortfall with its number. 2 to 5 numbered lines (bullets.numbered_rows), each a sentence of at most 12 words: the fact with its figure, then the customer’s cause after a colon. No cause given: the fact only. No euphemism, no name of a person to blame. A lone slip is never moved to the notes: it is shown (slot_item_rules).",
+   "write": "Only what the customer wrote as a shortfall (“muammo bo‘ldi”, “bajarilmadi”); the model never turns a flat or low number into a problem on its own. 2 to 5 numbered lines (bullets.numbered_rows), each a sentence of at most 12 words: the fact with its figure, then the customer’s cause after a colon. No cause given: the fact only. No euphemism, no name of a person to blame. A lone slip is shown on the slide, never moved to the notes.",
    "from": 5
   },
   {
@@ -667,10 +669,11 @@
     "bullets"
    ],
    "pins": [
-    "table.dark_first_column"
+    "table.dark_first_column",
+    "bullets.rail_dots"
    ],
    "source": "customer",
-   "write": "Needs 2 or more supplied lines. A table: the unit in the corner cell, previous period then current period (the current one last, in the order the columns read), 2 to 5 rows, one precision per column, right-aligned. With no previous period the table has two columns (name, value) and holds long numbers (number_scaling.unit). A loss is written with a minus sign, never in a chart, and no percentage is derived on it. Heading states the profit and cost change with their numbers.",
+   "write": "Needs 2 or more supplied lines. A table: the unit in the corner cell, previous period then current period (the current one last, in the order the columns read), 2 to 5 rows, one precision per column, right-aligned. With no previous period the table has two columns (name, value) and holds long numbers, in full digits as written. A loss is written with a minus sign, never in a chart, and no percentage is derived on it.",
    "from": 9,
    "join": 5
   },
@@ -691,7 +694,8 @@
    ],
    "pins": [
     "timeline.classic",
-    "process.chevrons"
+    "process.chevrons",
+    "bullets.rail_dots"
    ],
    "source": "customer",
    "write": "Only for dates or stages the customer gave (3 to 5); timeline.classic when every item has a date, process.chevrons when only an order. Never a milestone the customer did not name.",
@@ -739,7 +743,7 @@
     "bullets.rail_dots"
    ],
    "source": "customer",
-   "write": "From 10 slides, and only when it carries a line no earlier slide carries: the decision asked (“Taklif: ...”), the next step, or the open issues. 3 lines (bullets.lead_line: the first, strongest line in the band at 30 pt bold, the rest at 24). It is NOT a recap of the headline slide: at exactly 10 slides without a decision, next step or open issue it is left out and the count is what the material supports.",
+   "write": "From 10 slides. Only lines the customer gave that no earlier slide carries: the decision asked (“Taklif: ...”), the next step or the open issues, at most 3 (bullets.lead_line: the first, strongest line in the band). It is NOT a recap of the headline slide: with none of these given it is the honest form (heading and ruled lines).",
    "from": 10
   },
   {
@@ -791,7 +795,7 @@
    "to": "model"
   },
   {
-   "text": "Period words are the customer’s and the same on every slide; the cover period is never today’s date. Uzbek and Russian use a decimal comma and a space between thousands, English a decimal point and a comma; a change carries its sign (+14%, −3%).",
+   "text": "Period words are the customer’s and the same on every slide; the cover period is never today’s date. Uzbek and Russian use a decimal comma and a space between thousands, English a decimal point and a comma; a change the customer wrote keeps its sign as written.",
    "to": "model"
   },
   {

@@ -481,19 +481,19 @@
     "uz": {
      "layout": "bullets",
      "heading": "",
-     "body": "Oktyabr savdosi, mln so‘m: 412 (reja 400)\nXaridorlar soni 5 800 nafarga yetdi\nNoyabr rejasi: savdo 430 mln so‘m",
+     "body": "Taklif: ______________\nKeyingi qadam: ______________",
      "items": []
     },
     "ru": {
      "layout": "bullets",
      "heading": "",
-     "body": "Продажи в октябре, млн сумов: 412 (план 400)\nПокупателей стало 5 800\nПлан на ноябрь: продажи 430 млн сумов",
+     "body": "Предложение: ______________\nСледующий шаг: ______________",
      "items": []
     },
     "en": {
      "layout": "bullets",
      "heading": "",
-     "body": "October sales, m sum: 412 (plan 400)\nCustomers reached 5,800\nNovember plan: sales of 430 m sum",
+     "body": "Proposal: ______________\nNext step: ______________",
      "items": []
     }
    }

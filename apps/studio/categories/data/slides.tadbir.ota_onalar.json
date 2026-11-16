@@ -590,7 +590,7 @@
    ],
    "pins": [],
    "source": "template",
-   "write": "Heading = the customer’s own word for the meeting: “Ota-onalar yig‘ilishi” or, when the message says so, “Ota-onalar majlisi” (a topic meeting: the topic, at most 8 words, which may take 3 lines at 56 pt: mock -edge-title). Body, at most 5 lines in this order: the header “<class> · <period>” (“7-«B» sinf · I chorak yakunlari”; a first meeting “1-sinf · birinchi yig‘ilish”; a topic meeting “Ota-onalar yig‘ilishi · 8-sinf”; no colon and no year, so the cover sets it as the header block), the teacher line, the school line(s) (two long school lines hold: mock -edge), the date line (carries a year). A line not given is not written. No photo (no image_query), no notes."
+   "write": "Heading = the customer’s own word for the meeting: “Ota-onalar yig‘ilishi” or, when the message says so, “Ota-onalar majlisi” (a topic meeting: the topic, at most 8 words). Body, at most 5 lines in this order: the header “<class> · <period>” (“7-«B» sinf · I chorak yakunlari”; a first meeting “1-sinf · birinchi yig‘ilish”; a topic meeting “Ota-onalar yig‘ilishi · 8-sinf”; no colon and no year, so the cover sets it as the header block), the teacher line, the school line(s), the date line (carries a year). A line not given is not written. No photo (no image_query), no notes."
   },
   {
    "id": "kun_tartibi",
@@ -609,7 +609,7 @@
     "bullets.numbered_rows"
    ],
    "source": "draft",
-   "write": "From 5 slides. 3 to 6 lines (bullets.numbered_rows draws 01 to 06; 6 lines hold at 24 pt, 7 cut a word: measured), each line the HEADING OF A SLIDE, WORD FOR WORD. When the deck has more than 6 content slides, consecutive slides of one topic are listed under the heading of the first of them (natijalar, fanlar, davomat: “Sinf natijalari”), and Qaror loyihasi and Savol va takliflar are left out of a full list; it never lists a slide the deck does not have. The agenda is generated from the headings after the deck is written, so the two cannot drift. Notes: the greeting (“Assalomu alaykum, hurmatli ota-onalar!”), thanks, how many items there are, that a hand may be raised at any moment.",
+   "write": "From 5 slides. 3 to 6 lines (bullets.numbered_rows), each line the HEADING OF A SLIDE, WORD FOR WORD. When the deck has more than 6 content slides, consecutive slides of one topic are listed under the heading of the first of them (natijalar, fanlar, davomat: “Sinf natijalari”), and Qaror loyihasi and Savol va takliflar are left out of a full list; it never lists a slide the deck does not have. Notes: the greeting (“Assalomu alaykum, hurmatli ota-onalar!”), thanks, how many items there are, that a hand may be raised at any moment.",
    "from": 5,
    "join": 3
   },
@@ -655,7 +655,7 @@
     "bullets.card_stack"
    ],
    "source": "customer",
-   "write": "Results meeting only. stats.classic with 2 to 4 of the customer’s figures at 72 pt: value = the figure as written (“96%”), label = the customer’s name for it in at most 2 words (“o‘zlashtirish”, “sifat”, “o‘quvchi”, “a’lochi”, “o‘rtacha ball”), a long term split between label and caption (12 characters in Russian), caption = the customer’s own qualifier in at most 20 characters (“«4» va «5» baho”, “o‘tgan: 58%”) or nothing. One figure: big_number.classic. No figure: the ruled blank (rule 5). Notes: this slide has class-wide figures only, no pupil’s name or marks; no promise of a talk with anyone.",
+   "write": "Results meeting only. stats.classic with 2 to 4 of the customer’s figures: value = the figure as written (“96%”), label = the customer’s name for it in at most 2 words (“o‘zlashtirish”, “sifat”, “o‘quvchi”, “a’lochi”, “o‘rtacha ball”), a long term split between label and caption (12 characters in Russian), caption = the customer’s own qualifier in at most 20 characters (“«4» va «5» baho”) or nothing. One figure: big_number.classic. No figure: the ruled blank (rule 5). Notes: this slide has class-wide figures only, no pupil’s name or marks; no promise of a talk with anyone.",
    "when": "cue:natija",
    "join": 1
   },
@@ -693,7 +693,7 @@
     "big_number.classic"
    ],
    "source": "customer",
-   "write": "Heading, in the deck’s language: Davomat va intizom (faqat davomat berilsa: Davomat) / Посещаемость и дисциплина (только посещаемость: Посещаемость) / Attendance and behaviour (attendance only: Attendance). 2 to 3 of the customer’s figures (davomat %, soat, ogohlantirish): stats.rows, captions at most 34 characters. ONE figure: big_number.classic (mock school_ota_onalar.png), and the heading is just “Davomat” when no behaviour figure was given. A concern without a figure is not drawn here. Notes: class-wide only; the number does not show whose absences; ask parents to tell the teacher when a child is ill (a request, not a promise).",
+   "write": "Heading, in the deck’s language: Davomat va intizom (faqat davomat berilsa: Davomat) / Посещаемость и дисциплина (только посещаемость: Посещаемость) / Attendance and behaviour (attendance only: Attendance). 2 to 3 of the customer’s figures (davomat %, soat, ogohlantirish): stats.rows, captions at most 34 characters. ONE figure: big_number.classic, and the heading is just “Davomat” when no behaviour figure was given. A concern without a figure is not drawn here. Notes: class-wide only; the number does not show whose absences; ask parents to tell the teacher when a child is ill (a request, not a promise).",
    "when": "cue:davomat",
    "join": 5
   },
@@ -837,7 +837,7 @@
    ],
    "pins": [],
    "source": "template",
-   "write": "Heading fixed. One line: “E’tiboringiz uchun rahmat!” (“Спасибо за внимание!”, “Thank you for your attention!”); a second line (32 pt, the composition draws up to two): “Keyingi yig‘ilish: <date>” when the customer gave the next meeting, otherwise the customer’s contact when no tanishuv slide carries it. Notes: take questions one at a time; nothing is promised that the customer did not state."
+   "write": "Heading fixed. One line: “E’tiboringiz uchun rahmat!” (“Спасибо за внимание!”, “Thank you for your attention!”); a second line: “Keyingi yig‘ilish: <date>” when the customer gave the next meeting, otherwise the customer’s contact when no tanishuv slide carries it. Notes: take questions one at a time; nothing is promised that the customer did not state."
   }
  ],
  "rules": [
