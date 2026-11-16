@@ -75,6 +75,73 @@ def ready_caption(copy, username, link):
     return html.escape(copy['share']).replace('{bot}', mention)
 
 
+# Telegram's limit on a file's caption, in characters.
+CAPTION_LIMIT = 1024
+
+
+def category_notices(job, locale):
+    """What a category document's file says under it, in the customer's language: [] for any other file.
+
+    The category's own words (its entry's `bot.notices`), never a value from
+    the document: `finished` always, what to do with the file; `blanks` when
+    code took out or blanked a fact the customer did not give (the job warning
+    facts_blanked), in the shared wording when the category has none; `draft`
+    when a new deck has slides written from its topic alone, as a draft to
+    check, because no file was sent. Never raises: a notice is never worth
+    the file.
+    """
+    category = (job.parameters or {}).get('category')
+    if not category:
+        return []
+    try:
+        from apps.studio import categories
+        from apps.core.serializers import warning_codes
+        entry = categories.get(category)
+        if entry is None:
+            return []
+        said = entry.raw['bot'].get('notices') or {}
+
+        def words(notice):
+            return notice.get(locale) or notice['en']
+        lines = [words(said['finished'])] if said.get('finished') else []
+        if 'facts_blanked' in warning_codes(job):
+            lines.append(words(said['blanks']) if said.get('blanks') else UX[locale]['facts_blanked'])
+        if said.get('draft') and _drafted(job, entry):
+            lines.append(words(said['draft']))
+        return lines
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception('The notices of job %s could not be read', job.id)
+        return []
+
+
+def _drafted(job, entry):
+    """Whether a new category deck has a slide its entry writes from the topic alone (source `draft`) and was given no file."""
+    from apps.studio.categories import skeleton
+    from apps.studio.domain import unpack
+    from apps.studio.models import GenerationDraft
+    if entry.service != 'slides':
+        return False
+    draft = GenerationDraft.objects.filter(account=job.account, id=(job.parameters or {}).get('generation_draft_id')).first()
+    if draft is None:
+        return False
+    data = unpack(draft.encrypted_data)
+    if data.get('revision') or data.get('source_ids'):
+        return False
+    uses = skeleton.parts(entry, len(data['content']['sections']), skeleton.cues_of(data))
+    return any(use.part.get('source') == 'draft' for use in uses)
+
+
+def with_notices(caption, notices):
+    """`caption` and the notices under it, each a paragraph, as many as fit Telegram's caption."""
+    for notice in notices:
+        more = f'{caption}\n\n{html.escape(notice)}'
+        if len(more) > CAPTION_LIMIT:
+            break
+        caption = more
+    return caption
+
+
 def enqueue(artifact,key):
     if artifact.account.telegram_user_id is None: raise DomainError('telegram_link_required',409)
     delivery,_=BotDelivery.objects.get_or_create(account=artifact.account,artifact=artifact,idempotency_key=key)
@@ -246,17 +313,22 @@ async def attempt(delivery_id,bot):
         locale = delivery.account.locale if delivery.account.locale in RESULT_COPY else 'en'
         copy = RESULT_COPY[locale]
         controls = await sync_to_async(result_controls)(delivery)
+        # A category's document says under it what to do with it (category_notices); any other file nothing more.
+        notices = (await sync_to_async(lambda: category_notices(delivery.artifact.job, locale))()
+                   if delivery.artifact.role == 'user_document' else [])
         if asset.size_bytes>50*1024*1024:
             cfg=await sync_to_async(telegram_config)()
             controls.inline_keyboard.insert(0, [InlineKeyboardButton(text=copy['open'], url=cfg['webapp_url'])])
-            response=await bot.send_message(delivery.account.telegram_user_id,copy['large'],reply_markup=controls)
+            large='\n\n'.join([copy['large'],*notices])
+            response=await bot.send_message(delivery.account.telegram_user_id,large,reply_markup=controls)
         else:
             payload=await sync_to_async(lambda:storage.read_bytes(asset.object_key))()
             # The buttons belong to the owner; whoever the file is forwarded to
             # finds the way to the bot in the caption itself.
             cfg=await sync_to_async(telegram_config)()
             username,link=await sync_to_async(share_link)(delivery.account,cfg.get('username',''))
-            response=await bot.send_document(delivery.account.telegram_user_id,BufferedInputFile(payload,filename=asset.name),caption=ready_caption(copy,username,link),parse_mode='HTML',reply_markup=controls)
+            caption=with_notices(ready_caption(copy,username,link),notices)
+            response=await bot.send_document(delivery.account.telegram_user_id,BufferedInputFile(payload,filename=asset.name),caption=caption,parse_mode='HTML',reply_markup=controls)
         await sync_to_async(finish)(delivery.id,status='delivered',message_id=response.message_id)
     except TelegramRetryAfter as exc:
         await sync_to_async(finish)(delivery.id,status='retrying',error='telegram_rate_limited',delay=min(3600,max(1,exc.retry_after)))

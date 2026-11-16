@@ -181,6 +181,119 @@ def chosen(account, category):
         return
 
 
+# A category's one extra question (its entry's `ask`) is a button on the
+# review of a new draft, answered at most once with text, files or both, and
+# always skippable: Generate makes the draft as it stands. The answer goes the
+# way every review change goes (_changed): the server re-seeds and re-quotes,
+# and marks it answered (options.details_added), never the bot.
+#
+# A deck's answer for its title slide (`ask.cover`) is written under a header
+# title_lines.BLOCK reads, so title_lines.place puts its lines on the cover as
+# the customer's own. The header is in the deck's language.
+COVER_HEADERS = {'uz': 'Titul slaydga:', 'ru': 'На титульном слайде:', 'en': 'Title slide:'}
+# Every state a job can end or wait in: a draft generated from at all is past its first review.
+JOB_STATUSES = ('queued', 'running', 'finalizing', 'succeeded', 'failed', 'no_op', 'canceled', 'expired')
+
+
+def _asked(draft, data):
+    """The entry whose question this draft's review offers now, or None.
+
+    Only a new category draft's review offers it, while it is unanswered, when
+    its entry has a question wanted for what was written and sent
+    (categories.asking.wanted), and before anything was generated from the
+    draft: the question belongs to the first review.
+    """
+    options = data.get('options') or {}
+    if not options.get('category') or data.get('revision') or options.get('details_added'):
+        return None
+    from apps.studio import categories
+    from apps.studio.categories import asking
+    from apps.studio.domain import draft_jobs
+    entry = categories.get(options['category'])
+    if entry is None or not entry.raw.get('ask'):
+        return None
+    if not asking.wanted(entry, brief_of(data), bool(data.get('source_ids'))):
+        return None
+    return None if draft_jobs(draft.account, draft.id, JOB_STATUSES) else entry
+
+
+def category_review(draft):
+    """What a category draft's review says beyond today's, or None for a draft without a category (and a CV).
+
+    {'entry', 'asked': the entry when its question is offered, 'unread': files
+    that gave no text, 'cut': whether only each file's ends were read,
+    'bounds': (fewest, most) of a count the stepper may choose, None when the
+    entry's length is not a count}. A category the catalogue no longer holds
+    has nothing to say: its job fails before the provider (category_unknown).
+    """
+    from apps.studio import categories
+    from apps.studio.domain import unpack
+    if draft.feature_id not in (DOCUMENT, SLIDES):
+        return None
+    data = unpack(draft.encrypted_data)
+    options = data.get('options') or {}
+    entry = categories.get(options.get('category')) if options.get('category') else None
+    if entry is None:
+        return None
+    length = entry.length
+    return {'entry': entry, 'asked': _asked(draft, data), 'unread': len(options.get('unread_sources') or []),
+            'cut': bool(options.get('sources_cut')),
+            'bounds': (length['min'], length['max']) if length['mode'] == 'count' else None}
+
+
+def details_open(account, draft_id):
+    """(draft, entry) when this account's draft still offers its category's question; (None, None) when it does not."""
+    from apps.studio.domain import unpack
+    try:
+        identifier = uuid.UUID(str(draft_id))
+    except ValueError:
+        return None, None
+    draft = GenerationDraft.objects.filter(account=account, id=identifier, expires_at__gt=timezone.now()).first()
+    entry = _asked(draft, unpack(draft.encrypted_data)) if draft is not None else None
+    return (draft, entry) if entry is not None else (None, None)
+
+
+@transaction.atomic
+def add_details(account, draft_id, text='', file_ids=()):
+    """A new category draft with the answer to its review question added, and its new quote.
+
+    The text is written after the description, under the title-slide header
+    for a deck whose question is for its cover; the files (PDF, Word or text,
+    the customer's own) join its sources. Answered once: the server marks it
+    (options.details_added) and refuses a second answer. The review button is
+    offered only while the question is open, so a button from an older review
+    is controls_expired here.
+    """
+    from apps.studio.domain import unpack
+    draft, entry = details_open(account, draft_id)
+    if entry is None:
+        raise DomainError('controls_expired', 409)
+    words = (text or '').strip()
+    ids = category_sources(account, [str(identifier) for identifier in file_ids])
+    if not words and not ids:
+        raise DomainError('prompt_required')
+    data = unpack(draft.encrypted_data)
+    if words and draft.feature_id == SLIDES and entry.ask.get('cover'):
+        words = f"{COVER_HEADERS.get(data.get('output_locale'), COVER_HEADERS['en'])}\n{words}"
+    # The description is the prompt, or the source text where there is no model
+    # to write with (build's `written`): the answer goes where the description is.
+    if data.get('prompt') or data.get('source_text'):
+        field = 'prompt' if data.get('prompt') else 'source_text'
+    else:
+        from operations.integrations import ai_config
+        field = 'source_text' if ai_config()['mode'] == 'local_fixture' else 'prompt'
+
+    def change(data):
+        fields = {}
+        if words:
+            fields[field] = f"{data.get(field) or ''}\n\n{words}".strip()
+        if ids:
+            known = [str(identifier) for identifier in data.get('source_ids') or []]
+            fields['source_ids'] = [*known, *[identifier for identifier in ids if identifier not in known]]
+        return fields
+    return _changed(account, draft.id, change, details=True)
+
+
 def throttle(account, limit=10):
     """Authoring counts against no limit but is not free of work; cap it per account."""
     key = f'rate:bot_generation:{account.pk}'
@@ -369,8 +482,12 @@ def pictures_on():
     return bool(pixabay_config()['ready'])
 
 
-def _changed(account, draft_id, change):
-    """The draft redone with `change(data)` applied to its fields, and its new quote."""
+def _changed(account, draft_id, change, *, details=False):
+    """The draft redone with `change(data)` applied to its fields, and its new quote.
+
+    `details`: the change is the answer to a category's review question, which
+    the server marks answered (domain.update_draft) so it is asked only once.
+    """
     from apps.studio.domain import draft_jobs, unpack, update_draft
     draft = GenerationDraft.objects.filter(account=account, id=draft_id, expires_at__gt=timezone.now()).first()
     if not draft:
@@ -385,7 +502,7 @@ def _changed(account, draft_id, change):
     if draft.feature_id == SLIDES and (data.get('_render') or draft_jobs(account, draft.id, ('succeeded', 'no_op'))):
         raise DomainError('generation_finished', 409)
     fields = change(data)
-    draft = update_draft(account, draft.id, {'version': draft.version, **fields})
+    draft = update_draft(account, draft.id, {'version': draft.version, **fields}, **({'details': True} if details else {}))
     return draft, generation_quote(account, draft.id, draft.version)
 
 

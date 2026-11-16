@@ -835,14 +835,24 @@ async def review_screen(account,draft,quote):
     # to read wrong, so none to show or put right.
     cv=draft.feature_id==ai.CV
     unit='ai_slides' if deck else 'ai_pages'
+    # A draft made in a category (ai.category_review): its name under the
+    # service's, the line its one extra question is offered with, and what its
+    # files gave. None for anything else, whose review is today's exactly.
+    review=await sync_to_async(ai.category_review)(draft) if not cv else None
+    entry=review['entry'] if review else None
+    said_in=account.locale if account.locale in LOCALES else 'en'
     # A description asking for the other service is offered it, before anything
     # is spent. Said first, in bold, with its button on top and Generate named
     # for what it makes: as one line above the hint it went unread, and decks
-    # asked of the PDF service were made as PDFs.
-    other=await sync_to_async(ai.other_service)(draft)
+    # asked of the PDF service were made as PDFs. Not in a category: it was
+    # chosen in this service, its description names the other format as its
+    # subject ("kurs ishi himoyasi uchun taqdimot"), and the other service's
+    # draft would be made without it.
+    other=await sync_to_async(ai.other_service)(draft) if entry is None else None
     body=(f'<b>{text(account,"ai_wrong_tool_slides" if other==ai.SLIDES else "ai_wrong_tool_pdf")}</b>\n\n' if other else '')
     body+=(f'<b>{text(account,"review_title")}</b>\n{html.escape(title)}\n'
-           f'📄 {html.escape(heading)}\n')
+           +(f'{html.escape(entry.label(said_in))}\n' if entry is not None else '')
+           +f'📄 {html.escape(heading)}\n')
     # A change says what is changing; a new document says what it is.
     if change: body+=f'{"✨" if await edit_buttons_on() else "✏️"} {html.escape(change)}\n'
     pages_more=False
@@ -898,6 +908,18 @@ async def review_screen(account,draft,quote):
     if change and not cv and await sync_to_async(ai.format_kept)(draft):
         body+='\n'+html.escape(text(account,'ai_format_kept_deck' if deck else 'ai_format_kept_pdf').format(
             button=text(account,await ai_change_copy('ai_revise')),service=TOOL_NAMES[ai.SLIDES][account.locale]))
+    if review:
+        # What the category's files gave, said before anything is spent: a file
+        # with no text in it (a scan, an empty file) is left out, and a long one
+        # was read only at its beginning and end (categories/sources.py).
+        if review['unread']:
+            body+='\n'+html.escape(text(account,'ai_sources_unread').format(files=counted(account.locale,review['unread'],'file')))
+        if review['cut']: body+='\n'+html.escape(text(account,'ai_sources_cut'))
+        # The category's one extra question: its own line saying what will be
+        # blank or a draft without it, above the button that asks it.
+        if review['asked'] is not None:
+            line=review['asked'].ask['review']
+            body+='\n\n'+html.escape(line.get(said_in) or line['en'])
     generate='ai_generate' if not other else 'ai_pdf_anyway' if other==ai.SLIDES else 'ai_slides_anyway'
     hint=(text(account,'ai_review_hint_button').format(button=text(account,generate).split(' ',1)[1]) if other
           else text(account,'ai_review_hint'))
@@ -925,6 +947,9 @@ async def review_screen(account,draft,quote):
     if other:
         rows.insert(0,[await button(account,'ai_switch_slides' if other==ai.SLIDES else 'ai_switch_pdf','ai_switch',
                                     {'draft_id':str(draft.id),'feature_id':other})])
+    # Under Generate, so skipping it is the obvious tap: the category's question, once.
+    if review and review['asked'] is not None:
+        rows.append([await button(account,'ai_details_button','ai_details',{'draft_id':str(draft.id)})])
     # A change has none of the controls below: its request already says what
     # to do, and a stepper or a theme beside it was read as part of the change.
     if not change and not cv:
@@ -933,11 +958,16 @@ async def review_screen(account,draft,quote):
         # in its place: only the weekly allowance differs by plan.
         from apps.studio.pages import ceiling
         top=await sync_to_async(ceiling)(account,'pptx' if deck else 'pdf')
+        # A category counts within its own bounds too (a kurs himoya is 3 to 30
+        # slides): the server clamps a count outside them, so none is offered.
+        lowest=1
+        if review and review['bounds']:
+            lowest,top=review['bounds'][0],min(top,review['bounds'][1])
         # [➖] [10 slides] [➕]: the count between the buttons that change it. The
         # middle one only shows it; a button at the limit is left out.
         stepper=[InlineKeyboardButton(text=counted(account.locale,given,'slide' if deck else 'page'),
                                       callback_data=await callback(account,'ai_count'))]
-        if given>1:
+        if given>lowest:
             stepper.insert(0,InlineKeyboardButton(text='➖',callback_data=await callback(account,'ai_length',{'draft_id':str(draft.id),'pages':given-1})))
         if given<top:
             stepper.append(InlineKeyboardButton(text='➕',callback_data=await callback(account,'ai_length',{'draft_id':str(draft.id),'pages':given+1})))
@@ -2199,6 +2229,127 @@ def build_dispatcher():
             else: await sync_to_async(set_prompt)(account,'cv_review',shown)
         return sent
 
+    async def ai_details(message,account,draft_id,edit=True,notice=''):
+        """A category draft's one extra question, opened by the button on its review (architecture 4, 8.1).
+
+        Its own words (the entry's `ask.prompt`, and its `ask.hint` when it has
+        one) and how to answer: one message, text, files or both. The answer is
+        added to the draft once (ai.add_details) and the review drawn again;
+        Back is the review unanswered, and Generate there makes the draft as it
+        stands, so the question is never in the way. While it is open the chat
+        keeps 'ai_details' with the draft, never the answer. A button from a
+        review whose question is closed (answered, generated from, gone) is an
+        old button: the menu, said so. `notice` is a line above the question.
+        """
+        draft,entry=await sync_to_async(ai.details_open)(account,draft_id)
+        if entry is None:
+            await sync_to_async(set_prompt)(account)
+            return await home(message,account,edit,notice=text(account,'stale_button'))
+        locale=account.locale if account.locale in LOCALES else 'en'
+        ask=entry.ask
+        await sync_to_async(set_prompt)(account,'ai_details',{'draft_id':str(draft.id),'feature_id':draft.feature_id,'category':entry.id})
+        body=(html.escape(notice)+'\n\n' if notice else '')+f'<b>{html.escape(TOOL_NAMES[draft.feature_id][locale])} · {html.escape(entry.label(locale))}</b>\n'
+        body+=html.escape(ask['prompt'].get(locale) or ask['prompt']['en'])
+        if ask.get('hint'): body+='\n\n<blockquote>'+html.escape(ask['hint'].get(locale) or ask['hint']['en'])+'</blockquote>'
+        body+='\n\n'+text(account,'ai_details_how')
+        rows=[[await button(account,'ai_back','ai_details',{'draft_id':str(draft.id),'back':True}),await button(account,'home','home')]]
+        return await render(message,body,rows,edit)
+
+    async def ai_details_back(message,account,draft_id):
+        """Back from a category's question to its review, unanswered; the menu when the draft has gone."""
+        from apps.studio.models import GenerationDraft
+        await sync_to_async(lambda:BotConversation.objects.filter(pk=account.telegram_user_id,state='ai_details',
+                                                                 prompt__draft_id=str(draft_id)).update(state='',prompt={}))()
+        draft=await sync_to_async(lambda:GenerationDraft.objects.filter(pk=draft_id,account=account,expires_at__gt=timezone.now()).first())()
+        if draft is None: return await home(message,account,True,notice=text(account,'stale_button'))
+        _,quote=await sync_to_async(ai.quote)(account,draft.id)
+        return await ai_review(message,account,draft,quote,True)
+
+    async def ai_details_answer(message,account,draft_id,words='',files=(),notice=''):
+        """The answer to a category's question added to its draft, and the review drawn again in `message`.
+
+        A refusal (a file with no text, too much text for the plan) asks the
+        question again with the reason, in the category's words for a file
+        (telegram/errors.py source_error), and the answer is not added; a
+        question closed meanwhile is an old screen. `notice` is a file of the
+        answer that could not be taken, said above the review.
+        """
+        try: draft,quote=await sync_to_async(ai.add_details)(account,draft_id,words,files)
+        except DomainError as exc:
+            if exc.code=='controls_expired':
+                await sync_to_async(set_prompt)(account)
+                return await home(message,account,True,notice=text(account,'stale_button'))
+            if exc.code=='generation_finished':
+                await sync_to_async(set_prompt)(account)
+                return await home(message,account,True,notice=text(account,'ai_deck_made').format(button=await deck_change_button(account,draft_id)))
+            said=source_error(exc,account.locale) if (exc.params or {}).get('asset_ids') else ''
+            return await ai_details(message,account,draft_id,True,said or bot_error(exc,account.locale,account))
+        await sync_to_async(set_prompt)(account)
+        added=text(account,'ai_details_added')
+        return await ai_review(message,account,draft,quote,True,f'{notice}\n{added}' if notice else added)
+
+    def details_open_state(conversation):
+        """The draft id of the category question the chat has open, or '' when it has none (or it is old)."""
+        if conversation is None or conversation.state!='ai_details' or conversation.updated_at<timezone.now()-QUESTION_LIFETIME:
+            return ''
+        return str((conversation.prompt or {}).get('draft_id') or '')
+
+    async def details_text(message,account,value):
+        """Words sent while a category's question is open: its answer, added to the draft at once."""
+        if not value: return await message.answer(text(account,'ai_topic_empty'))
+        async with chat_lock(message.chat.id):
+            # A file sent just before, with its caption, may have answered it meanwhile.
+            conversation=await sync_to_async(lambda:BotConversation.objects.filter(pk=message.from_user.id).first())()
+            draft_id=details_open_state(conversation)
+            if not draft_id: return await home(message,account,notice=text(account,'fallback'))
+            waiting=await message.answer(text(account,'ai_preparing'))
+            return await ai_details_answer(waiting,account,draft_id,value)
+
+    async def details_file(message,bot,account,name,ext,doc):
+        """A file sent while a category's question is open: part of its answer, with its caption (or its album's) as the words.
+
+        Taken as the category's other files are (category_file): a PDF, Word
+        (.docx or old .doc) or TXT file is stored as the customer's own source
+        and noted as received, never staged for the file tools, and every file
+        of an album goes with the one answer. A file of another kind is never
+        downloaded. With nothing that could be taken, the question is asked
+        again saying why.
+        """
+        album_caption(message)
+        raw=None
+        if ext in CATEGORY_FILE_KINDS:
+            stream=io.BytesIO()
+            try:
+                await bot.download(doc,destination=stream)
+            except (TelegramAPIError,OSError,TimeoutError,DomainError):
+                return await home(message,account,notice=text(account,'download_error'))
+            raw=stream.getvalue()
+        own=cv_stash(message,name,raw)
+        target,edit=await album_target(message,bot)
+        if target is None: return
+        files=cv_unstash(message,own)
+        if not files: return
+        async with chat_lock(message.chat.id):
+            conversation=await sync_to_async(lambda:BotConversation.objects.filter(pk=message.from_user.id).first())()
+            draft_id=details_open_state(conversation)
+            # Answered meanwhile, by words sent with or just before it: the review it made is on screen.
+            if not draft_id: return
+            ids,notice=[],''
+            for item in files:
+                if item['raw'] is None:
+                    notice=notice or text(account,'ai_topic_files_only')
+                    continue
+                try:
+                    asset=await sync_to_async(upload_file)(account,SimpleUploadedFile(item['name'],item['raw']),'bot',purpose='ai_source')
+                    await sync_to_async(record_receipt)(account,asset,message.chat.id,item['message_id'])
+                    ids.append(str(asset.id))
+                except DomainError as exc:
+                    notice=notice or source_error(exc,account.locale) or bot_error(exc,account.locale,account)
+            caption=album_caption(message)
+            if not ids and not caption: return album_shown(message,await ai_details(target,account,draft_id,edit,notice))
+            waiting=target if edit else await target.answer(text(account,'ai_preparing'))
+            return album_shown(message,await ai_details_answer(waiting,account,draft_id,caption,ids,notice))
+
     async def ai_start(message,account,feature_id,description,brief=(),question='',portrait='',missing=(),copied='',
                        category='',files=()):
         """One chat message in, a priced draft out. Nothing is counted yet.
@@ -2319,13 +2470,14 @@ def build_dispatcher():
         _,quote=await sync_to_async(ai.quote)(account,draft.id)
         await ai_review(message,account,draft,quote)
 
-    def notes(account,job):
+    def notes(account,job,said=()):
         """What was adjusted to match the request, in the customer's language.
 
         A warning we have no wording for is dropped rather than shown as a bare
-        code — the codes are internal.
+        code — the codes are internal. `said`: codes the file's caption already
+        says (a category's blanks, delivery.category_notices), not said twice.
         """
-        lines=[COPY.get(account.locale,COPY['en']).get(code) for code in warning_codes(job)]
+        lines=[COPY.get(account.locale,COPY['en']).get(code) for code in warning_codes(job) if code not in said]
         return '\n'.join(line for line in lines if line)
 
     async def deliver(message,account,job,request_key=None,file=None):
@@ -2336,7 +2488,7 @@ def build_dispatcher():
             key=f'resend:{request_key}:{artifact.id}' if request_key else f'job:{job.id}:{artifact.id}'
             delivery=await sync_to_async(enqueue)(artifact,key)
             await attempt(delivery.id,message.bot)
-        note=notes(account,job)
+        note=notes(account,job,('facts_blanked',) if (job.parameters or {}).get('category') else ())
         if note and not request_key: await message.answer(html.escape(note))
 
     async def send_preview(message,account,asset_id,page):
@@ -2708,6 +2860,9 @@ def build_dispatcher():
                     else: await safe_error(message,account,exc)
                 else: await ai_review(message,account,draft,quote,True)
             elif action=='ai_count': pass  # The count on the stepper; the tap is already answered.
+            # A category's one extra question, from its review, and Back from it to the review.
+            elif action=='ai_details' and p.get('back'): await ai_details_back(message,account,p.get('draft_id',''))
+            elif action=='ai_details': await ai_details(message,account,p.get('draft_id',''))
             elif action in ('ai_length','ai_locale'):
                 change=ai.resize if action=='ai_length' else ai.relocale
                 value=p['pages'] if action=='ai_length' else p['locale']
@@ -3044,6 +3199,8 @@ def build_dispatcher():
                 return await ai_prompt(message,account,ai.CV)
             reviewed=await sync_to_async(open_cv_review)(account)
             if reviewed: return await ai_resume(message,account,reviewed)
+            # Part of the answer to a category's question still open: that question again.
+            if details_open_state(conversation): return await ai_details(message,account,details_open_state(conversation),False)
             # A category's file is held for its question, never on the file tools' draft: that question again.
             flow=await sync_to_async(category_flow)(conversation)
             if flow and flow[0]=='ai_category': return await ai_categories(message,account,flow[1],flow[3])
@@ -3064,6 +3221,8 @@ def build_dispatcher():
         sources=cv_screen_open(conversation) or cv_waiting(conversation) or (bool(conversation) and conversation.state=='cv_review'
             and await sync_to_async(cv_takes_more)(account,ext,message.date.timestamp(),getattr(message,'media_group_id',None)))
         if sources and ext not in CV_FILE_KINDS and await cv_source_file(message,bot,account,name,None): return
+        # A category's question opened from its review takes its files as part of the answer.
+        if details_open_state(conversation): return await details_file(message,bot,account,name,ext,doc)
         # The list of categories and a category's question take the category's
         # own kinds of file (.doc and .txt among them) as its sources; every
         # other screen, today's question included, takes a file as before.
@@ -3394,6 +3553,8 @@ def build_dispatcher():
         # Words typed on the list of categories are a description, for Boshqa:
         # tapping a service and writing at once is still one message, as before the list.
         if conversation.state in ('ai_input','ai_category'): return await ai_text(message,account,conversation,value)
+        # A category's question opened from its review: these words are its answer.
+        if conversation.state=='ai_details': return await details_text(message,account,value)
         if conversation.state=='ai_revise':
             p=conversation.prompt
             if not value: return await message.answer(text(account,'ai_topic_empty'))
