@@ -18,11 +18,18 @@ it, and they all agree because they compute the same thing.
 - `words`, `pages`, `pages_in` and `spans`: how long each part is written and
   how a category paper is cut into calls.
 
+`cues` is a required argument everywhere it is taken, never defaulted: `dress`,
+`pages_in` and `spans` read `cues_of(data)` (the brief, the pasted source text
+and whether files are attached), so a caller that seeds or sizes a draft must
+pass `cues_of` of the same payload, or its skeleton differs from theirs.
+
 A draft without a category never reaches this module.
 """
 import math
 import re
 from collections import namedtuple
+
+from apps.core.errors import DomainError
 
 from .. import pages as paging
 from ..language import normalised
@@ -31,8 +38,24 @@ from .catalogue import LOCALES, SOURCES_CUE, of
 # The facts section: one item per field the customer gave (label = field id),
 # always first in a category paper, holding no written part of its own.
 FACTS = 'facts'
-# The computed `sources` cue also holds when the message talks of references.
-REFERENCE_STEMS = ('adabiyot', 'manba', 'литератур', 'источник', 'reference', 'bibliograph')
+# The computed `sources` cue also holds when the message talks of a reference
+# list. Phrases, never the bare nouns: "manba", "источник" and "sources" are
+# everyday topic words ("Qayta tiklanuvchi energiya manbalari", "Источники
+# права"), and "adabiyot" is a school subject, so a bare stem gave a deck a
+# sources slide, an empty form, when the customer supplied no source at all.
+# A heading word counts only as a heading, at the start of a line and followed
+# by a colon ("Manbalar:", "Sources:"), because "energy sources: solar, wind"
+# is a topic too. Read over folded text (apostrophes one, casefolded).
+REFERENCES = re.compile(
+    r"(?<!\w)(?:"
+    r"(?:adabiyot|manba)\w*\s+r[ou]'?yxat|foydalanilgan\s+(?:adabiyot|manba)"
+    r"|(?:адабиёт|манба)\w*\s+рўйхат|фойдаланилган\s+(?:адабиёт|манба)"
+    r"|списк\w*\s+(?:использованн\w*\s+)?(?:литератур|источник)|использованн\w*\s+(?:литератур|источник)"
+    r"|библиограф"
+    r"|references\b|reference\s+list|bibliograph|works\s+cited|list\s+of\s+(?:sources|references|literature)"
+    r")"
+    r"|^[ \t]*(?:adabiyotlar|manbalar|литература|источники|literature|sources)[ \t]*:",
+    re.MULTILINE)
 # Part kinds the model writes as a section of their own; fixed parts are drawn
 # from facts and template labels, questions from content.questions.
 WRITTEN = ('prose', 'list', 'table', 'sources')
@@ -52,6 +75,13 @@ CAPACITY_WORDS = round(paging.CHARS_PER_PAGE / paging.CHARS_PER_WORD)
 MIN_WORDS = 20
 # The low end of a word target, as a share of the high end.
 LOW_SHARE = 0.8
+# The most words one part is asked for: what the stored body bound
+# (pages.max_section_chars) holds. A body past it is cut mid-sentence by
+# validate_content, and one long part of a long paper (a model-sized chapter
+# of 35 pages) would otherwise be asked for more than that. It also bounds a
+# single part's reply when spans gives it a call of its own. What the cap
+# leaves short of the count, the top-up writes, as for any short paper.
+SECTION_WORDS = int(paging.max_section_chars('pdf') / paging.CHARS_PER_WORD)
 
 Use = namedtuple('Use', 'section_id part instance group')
 Use.__doc__ = """One part as it exists in a draft: the section it is written in (None when it holds none),
@@ -81,12 +111,13 @@ def cues(entry, text, *, has_files):
     message (folded as language.normalised folds Uzbek apostrophes). Within
     each `exclusive` list only the first that holds, in list order, counts: a
     master's thesis about banking practice is a master's thesis. `sources`
-    holds when files are attached or the message talks of references.
+    holds when files are attached or the message names a reference list
+    (REFERENCES), so a deck without supplied sources has no sources slide.
     """
     folded = _folded(text)
     held = {name for name, stems in (entry.raw.get('cues') or {}).items()
             if any(stem_found(stem, folded) for words in stems.values() for stem in words)}
-    if has_files or any(stem_found(stem, folded) for stem in REFERENCE_STEMS):
+    if has_files or REFERENCES.search(folded):
         held.add(SOURCES_CUE)
     return effective(entry, held)
 
@@ -194,14 +225,20 @@ def instances(entry, group, length):
     return max(size['min'], min(size['max'], size['min'] + round((size['max'] - size['min']) * step)))
 
 
-def slots(entry, length, cues=frozenset()):
+def slots(entry, length, cues):
     """The `length` slots of a deck in blueprint order, a repeating slot once per slide it takes.
 
     Required and usual slots that exist at this length (`from`, `until`,
     `when`) come first; optional ones join by `join`; the remainder goes to the
     repeating slots in turn; with too many, the latest joiners leave, never a
-    required one. Every deck entry's parts are proven to give exactly `length`
-    for every length and cue subset (tests/test_category_skeleton.py).
+    required one. Below the entry's minimum, which only a plan ceiling makes
+    (`length` lets it win), required slots leave too, the last first and never
+    the cover, so the deck still has exactly the slides quoted. Every deck
+    entry's parts are proven to give exactly `length` for every length from 1
+    to its maximum and every cue subset (tests/test_category_skeleton.py).
+
+    `cues` has no default: the domain, the prompt and `dress` must all read the
+    same cues, `cues_of(data)`, or their slots disagree.
     """
     live = [part for part in entry.parts if _exists(part, length, cues)]
     count = {part['id']: ((part.get('repeat') or {}).get('min', 1) if part['need'] != 'optional' or 'join' in part
@@ -212,6 +249,9 @@ def slots(entry, length, cues=frozenset()):
         if part is None:
             break
         count[part['id']] -= 1
+    for part in reversed(live[1:]):
+        while sum(count.values()) > length and count[part['id']]:
+            count[part['id']] -= 1
     growing = sorted((part for part in live if (part.get('repeat') or {}).get('max', 1) > 1),
                      key=lambda part: part.get('join', 0))
     while sum(count.values()) < length and any(count[part['id']] < part['repeat']['max'] for part in growing):
@@ -221,7 +261,7 @@ def slots(entry, length, cues=frozenset()):
     return [part for part in live for _ in range(count[part['id']])]
 
 
-def parts(entry, length, cues=frozenset()):
+def parts(entry, length, cues):
     """Every part of a draft of this length, in order, as `Use`s.
 
     A deck: its slots, the slide ids s1..sN. A paper: every part that exists
@@ -267,7 +307,7 @@ def _layout(part):
     return 'table' if part['kind'] == 'table' else 'list'
 
 
-def seed(entry, length, cues=frozenset(), *, text=''):
+def seed(entry, length, cues, *, text=''):
     """The blank sections a new category draft starts with.
 
     A paper: the facts section, then one section per written part instance,
@@ -366,7 +406,7 @@ def _shares(entry, length, cues):
     return found
 
 
-def words(entry, use, length, cues=frozenset()):
+def words(entry, use, length, cues):
     """How many words the model writes in one part: (lowest, highest), or (0, most) for a ceiling paper.
 
     A part with its own `words` keeps them, elastic or not: the research that
@@ -375,18 +415,20 @@ def words(entry, use, length, cues=frozenset()):
     top-up extend it later. Otherwise its share of the pages sets them (the
     elastic parts of a count paper with the pages the others leave), at a
     page's target for a count paper and at what a page holds for a ceiling. A
-    part that holds no section is written in no words.
+    part that holds no section is written in no words. Nothing is asked for
+    more than SECTION_WORDS.
     """
     if not use.section_id:
         return 0, 0
     ceiling = entry.length['target'] == 'ceiling'
     fixed = use.part.get('words')
     if fixed:
-        return (0, fixed[1]) if ceiling else (fixed[0], fixed[1])
+        high = min(fixed[1], SECTION_WORDS)
+        return (0, high) if ceiling else (min(fixed[0], high), high)
     share = _shares(entry, length, cues).get(use.section_id, (0, use))[0]
     if ceiling:
-        return 0, max(MIN_WORDS, round(share * length * CAPACITY_WORDS))
-    high = max(MIN_WORDS, round(share * length * TARGET_WORDS))
+        return 0, min(SECTION_WORDS, max(MIN_WORDS, round(share * length * CAPACITY_WORDS)))
+    high = min(SECTION_WORDS, max(MIN_WORDS, round(share * length * TARGET_WORDS)))
     return round(high * LOW_SHARE), high
 
 
@@ -395,15 +437,17 @@ def pages(data):
 
     The one reader of the number for the quote cap, the lease, the call budgets,
     the top-up and the render. None for anything that is not a category paper,
-    whose sections are its pages as today.
+    whose sections are its pages as today. A category paper without a stored
+    length is refused (invalid_parameters): the domain always writes one, held
+    to the plan's ceiling, and a recomputed default would skip that clamp.
     """
     entry = of(data)
     if entry is None or entry.service != 'pdf':
         return None
     stored = (data.get('options') or {}).get('length')
-    if isinstance(stored, int) and stored > 0:
-        return stored
-    return length(entry, cues=cues_of(data))
+    if type(stored) is not int or stored < 1:
+        raise DomainError('invalid_parameters')
+    return stored
 
 
 def _section_pages(data):
@@ -415,9 +459,13 @@ def _section_pages(data):
         share = shares.get(section['id'])
         if share is None:
             # A section the present cues no longer give (a draft seeded before a
-            # cue changed) still counts as its part's own share of the pages.
+            # cue changed) still counts as its part's share of the pages, split
+            # between the instances its group has at this length, as _shares splits it.
             part = entry.part(section['id'])
-            share = (part.get('share', 0) if part and part['kind'] in WRITTEN else 0, None)
+            size = part.get('share', 0) if part and part['kind'] in WRITTEN else 0
+            if size and part.get('group'):
+                size /= instances(entry, part['group'], total)
+            share = (size, None)
         found.append((section['id'], share[0] * total))
     return found
 
@@ -440,7 +488,8 @@ def spans(data):
 
     Consecutive sections whose pages add up to at most PAGES_PER_CALL and that
     are at most SECTIONS_PER_CALL in number; a single larger part is a call of
-    its own. Anything else is cut as today (pages.batches).
+    its own, whose reply stays small because no part is asked for more than
+    SECTION_WORDS. Anything else is cut as today (pages.batches).
     """
     if pages(data) is None:
         return paging.batches(len(data['content']['sections']))
