@@ -198,6 +198,38 @@ def test_a_translated_cover_keeps_the_customers_people_and_drops_an_invented_one
     assert 'cover:line' in codes and warnings == [finish.FACTS_BLANKED]
 
 
+@pytest.mark.parametrize('locale, prompt_locale, invented', [
+    ('en', 'ru', 'Prepared by: Botir Xolmirzayev'),
+    ('uz', 'ru', 'Bajardi: Xolmirzayev Botir'),
+    ('uz', None, 'Bajardi: Xolmirzayev Botir'),
+    ('en', None, 'Prepared by: Botir Xolmirzayev'),
+], ids=['en-from-ru', 'uz-from-ru', 'uz-from-uz', 'en-from-en'])
+def test_a_cover_of_one_invented_author_line_loses_it(locale, prompt_locale, invented):
+    # A lone line is a subtitle, which checks only numbers; a labelled one says who made the work and is held as a
+    # title-page line, so a model-written author never ships however short the cover is.
+    data, content = translated(locale, prompt_locale) if prompt_locale else made('figures', locale)
+    content['sections'][0]['body'] = invented
+    codes = []
+    finished, warnings = finish.apply(data, content, file_names=[], codes=codes)
+    assert lines(finished['sections'][0]['body']) == []
+    assert 'cover:line' in codes and warnings == [finish.FACTS_BLANKED]
+
+
+@pytest.mark.parametrize('case, line, stays', [
+    ('figures', 'Bajardi: Yusupov Jasur, 412-guruh', True),
+    ('figures', 'Toshkent — 2026', True),
+    ('topic_only', 'Toshkent — 2026', False),
+    ('topic_only', 'Toshkent davlat iqtisodiyot universiteti', True),
+], ids=['dictated', 'subtitle-year-given', 'subtitle-year-not-given', 'subtitle-general-knowledge'])
+def test_a_cover_of_one_dictated_line_or_unlabelled_subtitle_is_finished_as_before(case, line, stays):
+    data, content = made(case, 'uz')
+    content['sections'][0]['body'] = line
+    codes = []
+    finished, _ = finish.apply(data, content, file_names=[], codes=codes)
+    assert lines(finished['sections'][0]['body']) == ([line] if stays else [])
+    assert ('cover:line' in codes) is not stays
+
+
 # ---------------------------------------------------------------- dressing, and a change
 
 
@@ -439,8 +471,9 @@ def finished_body(data, content, wanted):
     (COUNCIL, 'figures', 12, 'muammolar', 'Bilim sifati 41,3 foizga tushdi', 'Bilim sifati ____ foizga tushdi'),
     (COUNCIL, 'figures', 12, 'takliflar_natija', 'Qo‘shimcha darslarni 15-dekabrgacha o‘tkazish',
      'Qo‘shimcha darslarni ____ o‘tkazish'),
+    # The sentence's first word is in the invented name's run, and goes with it: a false blank, never a name.
     (COUNCIL, 'figures', 12, 'qaror', 'Nazorat Sardor Xolmatov zimmasiga yuklansin',
-     'Nazorat ____ zimmasiga yuklansin'),
+     '____ zimmasiga yuklansin'),
     (COUNCIL, 'figures', 12, 'qaror', 'Qo‘shimcha darslar 2026-yil 20-dekabrgacha tashkil etilsin',
      'Qo‘shimcha darslar ____-yil ____ tashkil etilsin'),
     (COUNCIL, 'figures', 8, 'muammo_yechim', 'Haftasiga 3 marta qo‘shimcha dars',
@@ -472,6 +505,52 @@ def test_the_customers_own_figures_dates_and_people_stay_in_those_slots(entry_id
     data, content, wanted = event_slide(entry_id, case, length, slot_id, given, prompt_more=more)
     body, codes, warnings = finished_body(data, content, wanted)
     assert (body, codes, warnings) == (given, [], [])
+
+
+AGENDA = ' Kun tartibi: choraklik natijalar, takliflar va qaror.'
+
+
+@pytest.mark.parametrize('length, slot_id, more, body, written', [
+    (12, 'kun_tartibi', AGENDA, 'Choraklik natijalar to‘g‘risida\nMa’ruzachi: Xolmatov S.',
+     'Choraklik natijalar to‘g‘risida\nMa’ruzachi: ____'),
+    (12, 'qaror', '', 'Qo‘shimcha darslar tashkil etilsin — mas’ul: Xolmatov S.',
+     'Qo‘shimcha darslar tashkil etilsin — mas’ul: ____'),
+], ids=['reporter', 'responsible'])
+def test_an_invented_reporter_or_responsible_person_goes_whole(length, slot_id, more, body, written):
+    data, content, wanted = event_slide(COUNCIL, 'figures', length, slot_id, body, prompt_more=more)
+    finished, codes, warnings = finished_body(data, content, wanted)
+    assert finished == written
+    assert 'ground:name' in codes and warnings == [finish.FACTS_BLANKED]
+
+
+def test_an_invented_person_as_a_row_of_its_own_goes_whole():
+    data, content, wanted = event_slide(COUNCIL, 'figures', 12, 'qaror', 'Nazorat:')
+    next(item for item in content['sections'] if item['id'] == wanted)['items'] = [{'text': 'Sardor Xolmatov'}]
+    finished, warnings = finish.apply(data, content, file_names=[])
+    assert next(item for item in finished['sections'] if item['id'] == wanted)['items'][0]['text'] == facts.BLANK
+    assert warnings == [finish.FACTS_BLANKED]
+
+
+def test_the_customers_own_reporter_stays_in_the_surname_and_initial_form():
+    more = AGENDA + ' Ma’ruzachi — direktor o‘rinbosari Mohira Namunova.'
+    body = 'Choraklik natijalar to‘g‘risida\nMa’ruzachi: Namunova M.'
+    data, content, wanted = event_slide(COUNCIL, 'figures', 12, 'kun_tartibi', body, prompt_more=more)
+    assert finished_body(data, content, wanted) == (body, [], [])
+
+
+@pytest.mark.parametrize('notes, written', [
+    ('Assalomu alaykum! Bugun 4 ta masala ko‘riladi.', 'Assalomu alaykum! Bugun 4 ta masala ko‘riladi.'),
+    ('Assalomu alaykum! Bugun 5 ta masala ko‘riladi.', 'Assalomu alaykum! Bugun ____ ta masala ko‘riladi.'),
+], ids=['the-slides-own-count', 'a-count-it-does-not-have'])
+def test_the_agenda_notes_may_count_the_agendas_own_rows(notes, written):
+    body = 'Sinf natijalari\nDavomat\nOta-onalarga iltimoslar\nSavol va takliflar'
+    data, content, wanted = event_slide(PARENTS, 'figures', 8, 'kun_tartibi', body)
+    next(item for item in content['sections'] if item['id'] == wanted)['notes'] = notes
+    codes = []
+    finished, warnings = finish.apply(data, content, file_names=[], codes=codes)
+    slide = next(item for item in finished['sections'] if item['id'] == wanted)
+    assert (slide['notes'], slide['body']) == (written, body)
+    assert bool(warnings) is (notes != written)
 
 
 def test_a_draft_slot_without_checks_still_keeps_general_knowledge_in_an_event_deck():

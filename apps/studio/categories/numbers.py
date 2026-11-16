@@ -86,7 +86,9 @@ SCALES = (('ming', 3), ('минг', 3), ('тыс', 3), ('thousand', 3), ('k', 3)
 # once from where it may start: an address's local part is at most 64 characters (its own limit), a host label at
 # most 63 and a host at most ten labels before its ending, read possessively, and a host starts only where a word
 # starts outside another host ("ab.cd.uz" is tried at "ab", never again at "cd", which the first try covered). On
-# text with real addresses they match what the plain forms matched.
+# text with real addresses they match what the plain forms matched. The local part has no lookbehind, so one longer
+# than 64 characters (no real address has one) is read as its last 64 and the host, the rest left as plain text;
+# the customer's side and the model's are read alike, so such a text is still compared fairly.
 EMAIL_PATTERN = r"[\w.+\-]{1,64}+@[\w\-]++(?:\.[\w\-]++)+"
 LINK_PATTERN = (r"(?:https?://|www\.)\S+|\b(?<!\w)(?<!\w-)(?<!\w\.)(?:[\w\-]{1,63}+\.){1,10}"
                 r"(?:uz|com|ru|org|net|io|me|info|edu|gov)(?:/\S*)?(?!\w)")

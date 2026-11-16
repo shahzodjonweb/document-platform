@@ -156,6 +156,12 @@ def _title_page(text, trusted, translated, own, codes, *, first_free):
     "F.I.Sh.: ____") is never kept. On a closing slide the first line is its own
     words ("Savollaringiz bormi?") and the lines after it are an author line
     copied from the cover, held as the cover's are.
+
+    A first line with a label ("Bajardi: …", "Prepared by: …") is never a
+    subtitle, alone or on a closing slide: it says who made the work, and a
+    guarded line checks only numbers, so a model-written author would ship.
+    It is held as every other title-page line is, as a person's in a translated
+    deck.
     """
     lines = [line for line in str(text or '').split('\n') if line.strip()]
     if not lines:
@@ -166,7 +172,7 @@ def _title_page(text, trusted, translated, own, codes, *, first_free):
             # A ruled line or a stand-in for a name ("F.I.Sh.: ____", "Bajardi: [Ismingiz]") says nothing of
             # anyone's: it goes, and as no fact was taken out the customer is not told of a blank to fill.
             continue
-        if number == 0 and (first_free or len(lines) == 1):
+        if number == 0 and (first_free or len(lines) == 1) and not _split(line)[0]:
             line, found = facts.guard(line, trusted, translated=translated)
             codes.extend(found)
             if _key(line) in own or all(numbers.known(value, trusted.values) for value in numbers.found(line)):
@@ -180,9 +186,9 @@ def _title_page(text, trusted, translated, own, codes, *, first_free):
     return '\n'.join(kept)
 
 
-def _texts(section, check, heading):
+def _texts(section, check, heading, notes=True):
     """Run `check(text) -> text` over every field of a slide a reader sees; its heading only when `heading`."""
-    keys = ('heading', 'body', 'notes') if heading else ('body', 'notes')
+    keys = (('heading',) if heading else ()) + ('body',) + (('notes',) if notes else ())
     for key in keys:
         if isinstance(section.get(key), str):
             section[key] = check(section[key])
@@ -193,6 +199,15 @@ def _texts(section, check, heading):
                     item[key] = check(item[key])
     if isinstance(section.get('columns'), list):
         section['columns'] = [check(column) if isinstance(column, str) else column for column in section['columns']]
+
+
+def _rows(section):
+    """How many rows a slide shows: its items with any words, else the lines of its body."""
+    items = [item for item in section.get('items') or [] if isinstance(item, dict)
+             and any(isinstance(item.get(key), str) and item[key].strip() for key in ('label', 'text', 'value'))]
+    if items:
+        return len(items)
+    return len([line for line in str(section.get('body') or '').split('\n') if line.strip()])
 
 
 def _form(section, *, numbered=False):
@@ -272,8 +287,8 @@ def _finish_slide(index, section, use, *, revision, locale, trusted, translated,
         codes.extend(found)
         return text
 
-    def guarded(text, checks=()):
-        text, found = facts.guard(text, trusted, translated=translated, checks=checks)
+    def guarded(text, checks=(), held=trusted):
+        text, found = facts.guard(text, held, translated=translated, checks=checks)
         codes.extend(found)
         return text
     if role == 'cover':
@@ -290,7 +305,13 @@ def _finish_slide(index, section, use, *, revision, locale, trusted, translated,
     elif role == 'draft':
         # A draft slot that states the customer's own facts names the checks it also takes (catalogue `checks`).
         checks = tuple(use.part.get('checks') or ())
-        _texts(section, lambda text: guarded(text, checks), heading=not fixed)
+        _texts(section, lambda text: guarded(text, checks), heading=not fixed, notes=False)
+        if isinstance(section.get('notes'), str):
+            # The notes may say how many rows the slide has ("Bugun 5 ta masala", as the agenda's write text asks):
+            # that count is the slide's own, not a figure of the school's, so it alone is let through, and only in
+            # the notes. Any other number there is held as the slide's are.
+            counted = facts.counting(trusted, _rows(section)) if 'numbers' in checks else trusted
+            section['notes'] = guarded(section['notes'], checks, counted)
     else:
         _texts(section, grounded, heading=not fixed)
 

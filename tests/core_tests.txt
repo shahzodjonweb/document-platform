@@ -974,3 +974,17 @@ tests/test_category_finish_decks.py::test_the_customers_own_figures_dates_and_pe
 tests/test_category_catalogue.py::test_the_event_deck_draft_slots_about_the_customers_own_school_hold_its_facts
 tests/test_category_facts.py::test_addresses_are_read_as_before_on_ordinary_text
 tests/test_category_facts.py::test_long_runs_of_letters_dots_and_hyphens_are_read_in_linear_time[ab.]
+
+# Categories, the facts check's holes closed before the first tick: a cover of one invented author line loses it,
+# translated or not, while a lone subtitle is finished as before; a resolution's or an agenda's invented person goes
+# whole with its initials while the customer's reporter stays; an agenda's notes may count its own rows; a translated
+# sources slide still holds the authors it opens with
+tests/test_category_finish_decks.py::test_a_cover_of_one_invented_author_line_loses_it[uz-from-ru]
+tests/test_category_finish_decks.py::test_a_cover_of_one_invented_author_line_loses_it[uz-from-uz]
+tests/test_category_finish_decks.py::test_a_cover_of_one_dictated_line_or_unlabelled_subtitle_is_finished_as_before[subtitle-year-not-given]
+tests/test_category_finish_decks.py::test_an_invented_reporter_or_responsible_person_goes_whole[reporter]
+tests/test_category_finish_decks.py::test_an_invented_reporter_or_responsible_person_goes_whole[responsible]
+tests/test_category_finish_decks.py::test_an_invented_person_as_a_row_of_its_own_goes_whole
+tests/test_category_finish_decks.py::test_the_customers_own_reporter_stays_in_the_surname_and_initial_form
+tests/test_category_finish_decks.py::test_the_agenda_notes_may_count_the_agendas_own_rows[the-slides-own-count]
+tests/test_category_facts.py::test_a_translated_references_list_still_holds_the_authors_it_opens_with

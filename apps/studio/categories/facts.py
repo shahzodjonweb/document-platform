@@ -49,8 +49,10 @@ More limits, said as plainly:
 - A name is matched against every word the customer gave, lower case included,
   with an ending allowed, so "rahbarlik" supports "Rahbarov" and "salom"
   supports "Salomova". With long files most surnames find such a word.
-- The first word of a sentence is never blanked, so an invented "Javohir Saidov"
-  opening a sentence becomes "Javohir ____".
+- In `ground` the first word of a sentence is never blanked, so an invented
+  "Javohir Saidov" opening a sentence becomes "Javohir ____". A slot whose
+  `checks` hold names (`guard`) takes the whole run instead, and a grammar word
+  before an invented name may go with it (`_names`).
 - `guard` removes any sentence with a strong legal stem (kodeks, farmon,
   Konstitutsiya ...) the customer did not give, even one that cites nothing
   specific ("U ko‘plab farmonlar chiqargan"), and a part may come back empty.
@@ -58,7 +60,7 @@ More limits, said as plainly:
 import math
 import re
 import unicodedata
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import cached_property
 
 from ..language import normalised
@@ -91,6 +93,9 @@ ALLOWED = (
     "siz sizga sizni sizning sizdan sizda sizlar sizlarga sizlarni sizlarning sizlardan "
     "dear sincerely regards respectfully yours faithfully truly kind best sir sirs madam mr mrs ms miss dr prof "
     "phd dsc you your i'm i've i'd i'll "
+    # Academic titles, which a translated cover capitalises ("Supervisor: Associate Professor N. Rahimova").
+    "professor professors associate assistant senior lecturer docent dotsent dotsenti professori akademik academician "
+    "доцент доцента профессор профессора академик старший преподаватель "
     "уважаемый уважаемая уважаемое уважаемые уважаемого уважаемой уважаемому уважаемым уважаемых "
     "глубокоуважаемый глубокоуважаемая глубокоуважаемые глубокоуважаемого глубокоуважаемой здравствуйте уважением "
     "вы вас вам вами ваш ваша ваше ваши вашего вашей вашему вашим вашими ваших вашу "
@@ -348,6 +353,13 @@ def trusting(text, *, allowed=(), wording=''):
     return Trusted(words, allow, frozenset(numbers.values(text)), quoted, lower,
                    frozenset(email.lower().strip('.') for email in EMAIL.findall(text)),
                    frozenset(_link(link) for link in LINK.findall(EMAIL.sub(' ', text))), text)
+
+
+def counting(trusted, count):
+    """`trusted` that also holds one count the document makes of itself (a slide's rows), never a fact of anyone's."""
+    if not count:
+        return trusted
+    return replace(trusted, values=trusted.values | frozenset(numbers.values(str(count))))
 
 
 def _texts(content):
@@ -669,29 +681,77 @@ def _runs(text):
     return runs
 
 
-def _names(text, trusted, codes, translated=False):
+def _letters(word):
+    return len(re.sub(r"['‘’ʻʼ`´]", '', word))
+
+
+def _after_colon(text, position):
+    """Whether the word at `position` is the first after a colon: a label's value ("mas’ul: Xolmatov S.")."""
+    at = position - 1
+    while at >= 0 and text[at] in OPENING:
+        at -= 1
+    return at >= 0 and text[at] == ':'
+
+
+def _names(text, trusted, codes, translated=False, *, strict=False):
+    """Blank the runs of capitalised words that are not the customer's (see `ground`).
+
+    The first word of a sentence is capitalised by grammar ("Bunga",
+    "Shuningdek") and is not blanked; an invented name that is a sentence's first
+    word is then a limit the architecture names. `strict` is for the slots that
+    name people as a label's value or a row of their own (a resolution's
+    "mas’ul: …", an agenda's "Ma’ruzachi: …"), where that limit let the very form
+    they ask for through. There the first word is held too when it follows a
+    colon, when only initials follow it in its run ("Xolmatov S."), or when
+    another word of its run is blanked ("Sardor Xolmatov", and so also "Nazorat
+    Sardor Xolmatov": a grammar word before an invented name may go with it, a
+    false blank in a sentence that had one anyway); the initials beside a
+    blanked word go with it, their full stops included, so no part of an
+    invented name is left. A lone grammar word opening a sentence stays, and so
+    does one before the customer's own people ("Nazorat Namunova M.").
+    """
     spans = []
     for run in _runs(text):
         bad = []
+        first_free = _starts(text, run[0][0])
+        if strict and first_free and (_after_colon(text, run[0][0])
+                                      or (len(run) > 1 and all(_letters(word) < 2 for _, _, word in run[1:]))):
+            first_free = False
         for position, (start, end, word) in enumerate(run):
-            letters = len(re.sub(r"['‘’ʻʼ`´]", '', word))
-            # The first word of a sentence is capitalised by grammar ("Bunga", "Shuningdek") and is never blanked;
-            # an invented name that is a sentence's first word alone is a limit the architecture names.
-            if letters < 2 or (position == 0 and _starts(text, start)):
+            if _letters(word) < 2 or (position == 0 and first_free):
                 continue
             if not trusted.person(word, translated):
                 bad.append(position)
+        if strict and bad:
+            if first_free and bad[0] != 0 and _letters(run[0][2]) >= 2 and not trusted.person(run[0][2], translated):
+                bad.insert(0, 0)
+            taken = set(bad)
+            for position in bad:
+                for step in (-1, 1):
+                    near = position + step
+                    while 0 <= near < len(run) and _letters(run[near][2]) < 2:
+                        taken.add(near)
+                        near += step
+            bad = sorted(taken)
         group = []
         for position in bad:
             if group and position != group[-1] + 1:
-                spans.append((run[group[0]][0], run[group[-1]][1]))
+                spans.append(_span(text, run, group, strict))
                 group = []
             group.append(position)
         if group:
-            spans.append((run[group[0]][0], run[group[-1]][1]))
+            spans.append(_span(text, run, group, strict))
     if spans:
         codes.append('ground:name')
     return _replace(text, spans)
+
+
+def _span(text, run, group, strict):
+    """Where a group of a run's blanked words starts and ends; with `strict`, a last initial's full stop included."""
+    start, end = run[group[0]][0], run[group[-1]][1]
+    if strict and _letters(run[group[-1]][2]) < 2 and text[end:end + 1] == '.':
+        end += 1
+    return start, end
 
 
 def _tidy(text):
@@ -737,7 +797,9 @@ def guard(text, trusted, *, translated=False, checks=()):
     customer's own facts (a council's problems and resolution, a parents'
     meeting's requests), where a percentage, a deadline, a fee or a person
     would rest on the prompt alone: 'numbers' holds its numbers, e-mails and
-    links as `ground` does, 'names' its runs of capitalised words.
+    links as `ground` does, 'names' its runs of capitalised words, more strictly
+    than `ground` at the start of a sentence or a label's value, since these
+    slots name a responsible person or a reporter in just that place (`_names`).
     """
     codes = []
     text = str(text or '')
@@ -749,11 +811,21 @@ def guard(text, trusted, *, translated=False, checks=()):
         text = _addresses(text, trusted, codes)
         text = _numbers(text, trusted, codes)
     if 'names' in checks:
-        text = _names(text, trusted, codes, translated)
+        text = _names(text, trusted, codes, translated, strict=True)
     return _tidy(text), list(dict.fromkeys(codes))
 
 
 # ---------------------------------------------------------------- references
+
+
+# An author at the head of a references item, the way a list writes one: a surname with one or two initials after it
+# ("Karimov A.", "Каримов А. А.") or before it ("A. Karimov"), then a comma, a full stop or a space before the next
+# author or the title. Only a surname of two letters or more beside its initials counts, so a title's "Part I." is
+# never read as one: it is not at the head of the item.
+INITIALS = r"[^\W\d_]\.(?:[ \t\u00a0]?[^\W\d_]\.)?"
+SURNAME = r"[^\W\d_](?:[^\W\d_]|['‘’ʻʼ`´-](?=[^\W\d_]))+"
+AUTHOR = re.compile(rf"[ \t\u00a0]*(?:(?P<surname>{SURNAME})[ \t\u00a0,]+{INITIALS}"
+                    rf"|{INITIALS}[ \t\u00a0]?(?P<after>{SURNAME}))[ \t\u00a0]*[,;.]?")
 
 
 def _item_text(item):
@@ -782,6 +854,21 @@ def _file_name(text, file_names):
     return False
 
 
+def _authors(text):
+    """The surnames of the authors a references item opens with: "Karimov A., Saidova B. B. Title" or "A. Karimov. Title"."""
+    found, at = [], 0
+    while True:
+        match = AUTHOR.match(text, at)
+        if not match:
+            return found
+        found.append(match.group('surname') or match.group('after'))
+        at = match.end()
+
+
+def _authors_known(text, trusted):
+    return all(trusted.person(surname, True) for surname in _authors(text))
+
+
 def verify_items(items, trusted, *, file_names=(), translated=False):
     """(kept, codes): the items of a references list that are the customer's sources, in order.
 
@@ -791,14 +878,17 @@ def verify_items(items, trusted, *, file_names=(), translated=False):
     extension, is dropped: a references list never shows a file name.
     `translated` is for a list written in another language than the message,
     whose titles are translated: its capitalised words are then not checked,
-    only its numbers, so pass it only when the titles really are translated.
+    only its numbers and the authors it opens with ("Karimov A."), which are
+    people's names and only spelled anew, so pass it only when the titles
+    really are translated.
     """
     kept, codes = [], []
     for item in items or []:
         text = _item_text(item).strip()
         if not text:
             continue
-        if _file_name(text, file_names) or not supported(text, 'line', trusted, translated=translated):
+        if _file_name(text, file_names) or not supported(text, 'line', trusted, translated=translated) \
+                or (translated and not _authors_known(text, trusted)):
             codes.append('source:dropped')
             continue
         kept.append(item)

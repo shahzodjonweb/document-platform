@@ -501,6 +501,22 @@ def test_a_translated_references_list_is_held_by_its_numbers():
     assert verify_items(items, known, translated=True) == ([items[0]], ['source:dropped'])
 
 
+def test_a_translated_references_list_still_holds_the_authors_it_opens_with():
+    known = trusting('Manba: Karimov A. Iqtisodiyot nazariyasi, 2019.')
+    items = ['Karimov A. Economic Theory, 2019.', 'Каримов А. Экономическая теория, 2019.',
+             'Xolmatov S. Basics of Economics', 'A. Karimov, S. Xolmatov. Economic Theory', 'Economic Theory. Part I.']
+    assert verify_items(items, known, translated=True) == \
+        ([items[0], items[1], items[4]], ['source:dropped'])
+
+
+def test_a_translated_cover_keeps_an_academic_title():
+    # A cover line's label is the label's own (finish._line_known); its value is held as a person's.
+    known = trusting('Ilmiy rahbar: dotsent Rahimova N.')
+    assert supported('Associate Professor N. Rahimova', 'person', known, translated=True)
+    assert supported('Доцент Рахимова Н.', 'person', known, translated=True)
+    assert not supported('Associate Professor B. Xolmirzayev', 'person', known, translated=True)
+
+
 def test_codes_name_what_was_taken_never_the_value(uz):
     found = set()
     for text in ('Xolmirzayev 4 870 000 so‘m. «bir ikki uch to‘rt besh». PF-60-son Farmon.', 'info@namuna.uz'):
@@ -541,7 +557,9 @@ def test_addresses_are_read_as_before_on_ordinary_text():
     assert known.links == {'namuna.uz/qabul?id=7', 'namuna-edu.uz/about'}
 
 
-@pytest.mark.parametrize('run', ['ab.', 'a-b', 'ab.cd-', 'a.+', 'a--', 'a.' * 40 + '@b', '1.2-3', 'аб.вг-',
+# 'a--.' (labels ending in hyphens, joined by dots) is the slowest shape found: the link's lookbehinds allow a start
+# at every letter after '--'.
+@pytest.mark.parametrize('run', ['ab.', 'a-b', 'ab.cd-', 'a.+', 'a--', 'a--.', 'a.' * 40 + '@b', '1.2-3', 'аб.вг-',
                                  'a-' * 31 + 'a.'])
 def test_long_runs_of_letters_dots_and_hyphens_are_read_in_linear_time(run):
     """A source of 130,000 characters made of such runs once took facts.trusting about 15 s, inside the lease."""
@@ -560,3 +578,39 @@ def test_a_draft_slot_with_checks_holds_its_numbers_and_names_and_nothing_more_w
         ('Sifat 58,4% dan ____% ga oshsin, nazorat Mohira Namunova va Sardor Xolmatovga, ____.', ['ground:number'])
     assert guard(part, known, checks=('numbers', 'names')) == \
         ('Sifat 58,4% dan ____% ga oshsin, nazorat Mohira Namunova va ____, ____.', ['ground:number', 'ground:name'])
+
+
+@pytest.mark.parametrize('part, written', [
+    ('Ma’ruzachi: Xolmatov S.', 'Ma’ruzachi: ____'),
+    ('Qo‘shimcha darslar tashkil etilsin — mas’ul: Xolmatov S.', 'Qo‘shimcha darslar tashkil etilsin — mas’ul: ____'),
+    ('Mas’ul: Xolmatov Sardor', 'Mas’ul: ____'),
+    ('Sardor Xolmatov', '____'),
+    ('Xolmatov S. hisobot beradi', '____ hisobot beradi'),
+    ('S. R. Xolmatov hisobot beradi', '____ hisobot beradi'),
+], ids=['reporter-initial', 'responsible-after-dash', 'responsible-full', 'row-of-its-own', 'sentence-first-initial',
+        'initials-first'])
+def test_a_slot_that_checks_names_takes_an_invented_name_whole_where_a_label_or_a_row_names_it(part, written):
+    known = trusting('Pedagogik kengash: bilim sifati, nazorat Mohira Namunovaga yuklatilsin.')
+    assert guard(part, known, checks=('names',)) == (written, ['ground:name'])
+
+
+@pytest.mark.parametrize('part', [
+    'Ma’ruzachi: Namunova M.', 'Mas’ul: Mohira Namunova', 'Nazorat Namunova M. zimmasiga', 'Bunga e’tibor bering',
+    'Shuningdek, bilim sifati oshsin', 'Mas’ul: direktor o‘rinbosari'])
+def test_a_slot_that_checks_names_keeps_the_customers_people_and_a_lone_grammar_word(part):
+    known = trusting('Pedagogik kengash: bilim sifati, nazorat Mohira Namunovaga yuklatilsin.')
+    assert guard(part, known, checks=('names',)) == (part, [])
+
+
+def test_ground_still_leaves_the_first_word_of_a_sentence():
+    # ground's limit is unchanged until the owner takes the false blanks the strict reading costs everywhere.
+    known = trusting('Pedagogik kengash')
+    assert ground('Sardor Xolmatov hisobot beradi', known) == ('Sardor ____ hisobot beradi', ['ground:name'])
+
+
+def test_a_count_the_document_makes_of_itself_is_held_and_nothing_more():
+    known = facts.counting(trusting('Pedagogik kengash'), 4)
+    assert guard('Bugun 4 ta masala ko‘riladi', known, checks=('numbers',)) == ('Bugun 4 ta masala ko‘riladi', [])
+    assert guard('Bugun 5 ta masala ko‘riladi', known, checks=('numbers',)) == \
+        ('Bugun ____ ta masala ko‘riladi', ['ground:number'])
+    assert facts.counting(known, 0) is known
