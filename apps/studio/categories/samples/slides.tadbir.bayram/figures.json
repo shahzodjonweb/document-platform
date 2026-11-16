@@ -1,0 +1,506 @@
+{
+ "entry": "slides.tadbir.bayram",
+ "case": "figures",
+ "about": "Sample content for the deck sample tool (apps/studio/categories/sample.py), invented people, organisations and figures only. prompt is the customer’s one message; slots holds, per part id, the model’s answer for each time that slot appears. Past its listed instances a repeating slot is drawn as the honest form (heading and ruled lines). A slot whose heading is fixed carries an empty heading, which the finish writes in the language of the deck. Customer slots hold only what the prompt says (figures) or an honest form (topic_only); notes are left to the real model.",
+ "prompt": {
+  "uz": "Navro‘z bayrami tadbiriga 10 ta slayd kerak: 21-maktab, 5-A sinf, 2026-yil 21-mart. Dastur: 10:00 ochilish so‘zi — sinf rahbari, 10:10 «Bahor keldi» she’ri — Madina, 10:20 Navro‘z tarixi va an’analari haqida suhbat — ota-onalar, 11:00 viktorina. She’r matni:\nBahor keldi bog‘imizga,\nGul ochildi ko‘ksimizga.\nNavro‘z kelib dasturxonga,\nQuvonch to‘ldi uyimizga.",
+  "ru": "Нужно 10 слайдов к празднику Навруз: школа № 21, 5 «А» класс, 21 марта 2026 года. Программа: 10:00 вступительное слово — классный руководитель, 10:10 стихи «Весна пришла» — Мадина, 10:20 беседа об истории и традициях Навруза — родители, 11:00 викторина. Текст стихотворения:\nВесна пришла в наш светлый сад,\nЦветы раскрылись все подряд.\nНавруз пришёл за дастархан,\nИ радость в доме — нам и вам.",
+  "en": "I need 10 slides for a Nowruz event: School No. 21, class 5-A, 21 March 2026. Programme: 10:00 opening words — class teacher, 10:10 the poem “Spring has come” — Madina, 10:20 a talk about the history and customs of Nowruz — parents, 11:00 a quiz. The text of the poem:\nSpring has come into our garden,\nFlowers open, bright and new.\nNowruz comes to share our table,\nJoy comes home to me and you."
+ },
+ "slots": {
+  "cover": [
+   {
+    "uz": {
+     "layout": "cover",
+     "heading": "Navro‘z",
+     "body": "bayramiga bag‘ishlangan tadbir\n21-maktab, 5-A sinf\n2026-yil 21-mart",
+     "items": []
+    },
+    "ru": {
+     "layout": "cover",
+     "heading": "Навруз",
+     "body": "Праздничное мероприятие\nШкола № 21, 5 «А» класс\n21 марта 2026 года",
+     "items": []
+    },
+    "en": {
+     "layout": "cover",
+     "heading": "Nowruz",
+     "body": "Holiday event\nSchool No. 21, class 5-A\n21 March 2026",
+     "items": []
+    }
+   }
+  ],
+  "mohiyat": [
+   {
+    "uz": {
+     "layout": "statement",
+     "heading": "21-mart · Bayramning ma’nosi",
+     "body": "Navro‘z — yangi kun, bahor va yangilanish bayrami.",
+     "items": []
+    },
+    "ru": {
+     "layout": "statement",
+     "heading": "21 марта · Смысл праздника",
+     "body": "Навруз — новый день, праздник весны и обновления.",
+     "items": []
+    },
+    "en": {
+     "layout": "statement",
+     "heading": "21 March · What the day means",
+     "body": "Nowruz is a new day, a feast of spring and renewal.",
+     "items": []
+    }
+   }
+  ],
+  "dastur": [
+   {
+    "uz": {
+     "layout": "timeline",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "Ochilish so‘zi",
+       "text": "sinf rahbari",
+       "value": "10:00"
+      },
+      {
+       "label": "«Bahor keldi» she’ri",
+       "text": "Madina",
+       "value": "10:10"
+      },
+      {
+       "label": "Tarix va an’analar haqida suhbat",
+       "text": "ota-onalar",
+       "value": "10:20"
+      },
+      {
+       "label": "Viktorina",
+       "text": "",
+       "value": "11:00"
+      }
+     ]
+    },
+    "ru": {
+     "layout": "timeline",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "Вступительное слово",
+       "text": "классный руководитель",
+       "value": "10:00"
+      },
+      {
+       "label": "Стихи «Весна пришла»",
+       "text": "Мадина",
+       "value": "10:10"
+      },
+      {
+       "label": "Беседа об истории и традициях",
+       "text": "родители",
+       "value": "10:20"
+      },
+      {
+       "label": "Викторина",
+       "text": "",
+       "value": "11:00"
+      }
+     ]
+    },
+    "en": {
+     "layout": "timeline",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "Opening words",
+       "text": "class teacher",
+       "value": "10:00"
+      },
+      {
+       "label": "The poem “Spring has come”",
+       "text": "Madina",
+       "value": "10:10"
+      },
+      {
+       "label": "A talk on history and customs",
+       "text": "parents",
+       "value": "10:20"
+      },
+      {
+       "label": "A quiz",
+       "text": "",
+       "value": "11:00"
+      }
+     ]
+    }
+   }
+  ],
+  "tarix": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "“Navro‘z” — “yangi kun” degani\nBayram ming yillardan beri nishonlanadi\nQadimda yil shu kundan boshlangan",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Слово «Навруз» значит «новый день»\nПраздник отмечают тысячи лет\nВ древности год начинался с этого дня",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "“Nowruz” means “new day”\nThe feast is thousands of years old\nIn old times the year began on this day",
+     "items": []
+    }
+   }
+  ],
+  "anani": [
+   {
+    "uz": {
+     "layout": "cards",
+     "heading": "An’analar",
+     "body": "",
+     "items": [
+      {
+       "label": "Sumalak",
+       "text": "Bug‘doy maysasidan tun bo‘yi pishiriladi"
+      },
+      {
+       "label": "Hashar",
+       "text": "Mahalla birga ishlaydi"
+      },
+      {
+       "label": "Ko‘chat",
+       "text": "Bahorda daraxt ekiladi"
+      },
+      {
+       "label": "Mehmondorchilik",
+       "text": "Qo‘shnilar bir-birini ziyorat qiladi"
+      }
+     ]
+    },
+    "ru": {
+     "layout": "cards",
+     "heading": "Традиции",
+     "body": "",
+     "items": [
+      {
+       "label": "Сумаляк",
+       "text": "Варят из ростков пшеницы всю ночь"
+      },
+      {
+       "label": "Хашар",
+       "text": "Махалля работает вместе"
+      },
+      {
+       "label": "Саженцы",
+       "text": "Весной сажают деревья"
+      },
+      {
+       "label": "Гости",
+       "text": "Соседи навещают друг друга"
+      }
+     ]
+    },
+    "en": {
+     "layout": "cards",
+     "heading": "Traditions",
+     "body": "",
+     "items": [
+      {
+       "label": "Sumalak",
+       "text": "Cooked from wheat sprouts all night"
+      },
+      {
+       "label": "Hashar",
+       "text": "The neighbourhood works together"
+      },
+      {
+       "label": "Seedlings",
+       "text": "Trees are planted in spring"
+      },
+      {
+       "label": "Visits",
+       "text": "Neighbours visit one another"
+      }
+     ]
+    }
+   }
+  ],
+  "rasm": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Sumalak — Navro‘zning aziz taomi",
+     "body": "Bug‘doy maysasidan tayyorlanadi\nQozonda tun bo‘yi qaynatiladi\nTongda hammaga ulashiladi",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Сумаляк — главное угощение Навруза",
+     "body": "Готовят из ростков пшеницы\nВарят в казане всю ночь\nУтром угощают всех",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Sumalak, the dish of Nowruz",
+     "body": "Made from wheat sprouts\nSimmered in a cauldron all night\nShared with everyone at dawn",
+     "items": []
+    }
+   },
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Bahor gullari — uyg‘onish ramzi",
+     "body": "Bog‘lar oq va pushti gulga burkanadi\nDalalar yashillanadi\nTabiat yangilanadi",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Весенние цветы — знак пробуждения",
+     "body": "Сады покрываются белым и розовым цветом\nПоля зеленеют\nПрирода обновляется",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Spring blossom, a sign of waking",
+     "body": "Orchards turn white and pink\nFields grow green\nNature renews itself",
+     "items": []
+    }
+   },
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Bug‘doy maysasi — mo‘l hosil tilagi",
+     "body": "Uyda likopchada o‘stiriladi\nYashil rang yangi hayotni bildiradi\nDasturxonga qo‘yiladi",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Ростки пшеницы — пожелание урожая",
+     "body": "Их растят дома на блюдце\nЗелёный цвет — новая жизнь\nИх ставят на стол",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Wheat sprouts, a wish for harvest",
+     "body": "Grown at home on a saucer\nGreen stands for new life\nSet out on the table",
+     "items": []
+    }
+   }
+  ],
+  "sher": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "«Bahor keldi»",
+     "body": "Bahor keldi bog‘imizga,\nGul ochildi ko‘ksimizga.\nNavro‘z kelib dasturxonga,\nQuvonch to‘ldi uyimizga.",
+     "items": [
+      {
+       "label": "Madina",
+       "text": ""
+      }
+     ]
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "«Весна пришла»",
+     "body": "Весна пришла в наш светлый сад,\nЦветы раскрылись все подряд.\nНавруз пришёл за дастархан,\nИ радость в доме — нам и вам.",
+     "items": [
+      {
+       "label": "Мадина",
+       "text": ""
+      }
+     ]
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "“Spring has come”",
+     "body": "Spring has come into our garden,\nFlowers open, bright and new.\nNowruz comes to share our table,\nJoy comes home to me and you.",
+     "items": [
+      {
+       "label": "Madina",
+       "text": ""
+      }
+     ]
+    }
+   }
+  ],
+  "viktorina": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "“Navro‘z” so‘zi nimani anglatadi?\nNavro‘zda qaysi taom pishiriladi?\nNavro‘z qaysi kuni nishonlanadi?",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Что значит слово «Навруз»?\nКакое блюдо варят на Навруз?\nВ какой день отмечают Навруз?",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "What does the word “Nowruz” mean?\nWhich dish is cooked at Nowruz?\nOn which day is Nowruz marked?",
+     "items": []
+    }
+   }
+  ],
+  "javoblar": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Yangi kun\nSumalak\n21-mart",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Новый день\nСумаляк\n21 марта",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "New day\nSumalak\n21 March",
+     "items": []
+    }
+   }
+  ],
+  "suhbat": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Oilangizda Navro‘z qanday kutib olinadi?\nBahorda qanday yaxshi ish qilasiz?",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Как встречают Навруз в вашей семье?\nКакое доброе дело вы сделаете весной?",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "How does your family welcome Nowruz?\nWhat kind thing will you do this spring?",
+     "items": []
+    }
+   }
+  ],
+  "tabrik": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Aziz o‘quvchilar va hurmatli ustozlar!\nSizni Navro‘z bilan tabriklaymiz\nBahor uyingizga quvonch olib kelsin",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Дорогие ученики и уважаемые учителя!\nПоздравляем вас с Наврузом\nПусть весна принесёт радость",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Dear pupils and teachers!\nWe wish you a happy Nowruz\nMay spring bring joy to your home",
+     "items": []
+    }
+   }
+  ],
+  "tilak": [
+   {
+    "uz": {
+     "layout": "cards",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "Sog‘lik",
+       "text": "Har kuningiz sog‘lik bilan o‘tsin"
+      },
+      {
+       "label": "Baxt",
+       "text": "Uyingiz quvonchga to‘lsin"
+      },
+      {
+       "label": "Bahor",
+       "text": "Ko‘nglingiz bahordek yashnasin"
+      }
+     ]
+    },
+    "ru": {
+     "layout": "cards",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "Здоровье",
+       "text": "Пусть каждый день будет добрым"
+      },
+      {
+       "label": "Счастье",
+       "text": "Пусть дом наполнится радостью"
+      },
+      {
+       "label": "Весна",
+       "text": "Пусть душа цветёт, как весна"
+      }
+     ]
+    },
+    "en": {
+     "layout": "cards",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "Health",
+       "text": "May every day be a healthy one"
+      },
+      {
+       "label": "Happiness",
+       "text": "May your home fill with joy"
+      },
+      {
+       "label": "Spring",
+       "text": "May your heart bloom like spring"
+      }
+     ]
+    }
+   }
+  ],
+  "closing": [
+   {
+    "uz": {
+     "layout": "closing",
+     "heading": "Navro‘z bayramingiz muborak!",
+     "body": "Yangi kun yaxshiliklar olib kelsin",
+     "items": []
+    },
+    "ru": {
+     "layout": "closing",
+     "heading": "С Наврузом!",
+     "body": "Пусть новый день принесёт добро",
+     "items": []
+    },
+    "en": {
+     "layout": "closing",
+     "heading": "Happy Nowruz!",
+     "body": "May the new day bring good things",
+     "items": []
+    }
+   }
+  ]
+ }
+}

@@ -1,0 +1,184 @@
+{
+ "entry": "slides.tadbir.ota_onalar",
+ "case": "topic_only",
+ "about": "Sample content for the deck sample tool (apps/studio/categories/sample.py), invented people, organisations and figures only. prompt is the customer’s one message; slots holds, per part id, the model’s answer for each time that slot appears. Past its listed instances a repeating slot is drawn as the honest form (heading and ruled lines). A slot whose heading is fixed carries an empty heading, which the finish writes in the language of the deck. Customer slots hold only what the prompt says (figures) or an honest form (topic_only); notes are left to the real model.",
+ "prompt": {
+  "uz": "7-«B» sinf ota-onalar yig‘ilishi uchun slayd: I chorak yakunlari.",
+  "ru": "Слайды для родительского собрания в 7 «Б» классе: итоги I четверти.",
+  "en": "Slides for a parents’ meeting in grade 7B: quarter 1 results."
+ },
+ "slots": {
+  "cover": [
+   {
+    "uz": {
+     "layout": "cover",
+     "heading": "Ota-onalar yig‘ilishi",
+     "body": "7-«B» sinf · I chorak yakunlari",
+     "items": []
+    },
+    "ru": {
+     "layout": "cover",
+     "heading": "Родительское собрание",
+     "body": "7 «Б» класс · итоги I четверти",
+     "items": []
+    },
+    "en": {
+     "layout": "cover",
+     "heading": "Parents’ meeting",
+     "body": "Grade 7B · quarter 1 results",
+     "items": []
+    }
+   }
+  ],
+  "kun_tartibi": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Sinf natijalari\nUy vazifasida qanday yordam beramiz\nOta-onalarga iltimoslar",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Результаты класса\nКак мы помогаем с домашним заданием\nПросьбы к родителям",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Class results\nHow we help with homework\nRequests to parents",
+     "items": []
+    }
+   }
+  ],
+  "natijalar": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "O‘quvchilar soni: ______\nO‘zlashtirish: ______ %\nSifat ko‘rsatkichi: ______ %\nA’lochilar: ______ nafar",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Учеников: ______\nУспеваемость: ______ %\nКачество знаний: ______ %\nОтличников: ______",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Pupils: ______\nPass rate: ______ %\nQuality rate: ______ %\nStraight-A pupils: ______",
+     "items": []
+    }
+   }
+  ],
+  "mavzu": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Uy vazifasida qanday yordam beramiz",
+     "body": "Har kuni bir vaqtda:\nVazifa uchun tinch joy ajrating\nDaftarni birga ko‘rib chiqing\nSavol bersa, birga izlang",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Как мы помогаем с домашним заданием",
+     "body": "Каждый день в одно время:\nВыделите тихое место для занятий\nПросматривайте тетрадь вместе\nИщите ответ вместе с ребёнком",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "How we help with homework",
+     "body": "At the same time each day:\nKeep a quiet place for homework\nLook through the notebook together\nFind answers together",
+     "items": []
+    }
+   },
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Vaqtida kelish odatini qanday shakllantiramiz",
+     "body": "Ertalabki tartib:\nKechqurun sumkani tayyorlab qo‘ying\nErtalab vaqtni oldindan rejalang\nUyqu vaqtini kelishib oling",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Как мы приучаем приходить вовремя",
+     "body": "Утренний порядок:\nСобирайте портфель с вечера\nПланируйте утро заранее\nДоговоритесь о времени сна",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "How we build the habit of being on time",
+     "body": "A morning routine:\nPack the bag the evening before\nPlan the morning ahead\nAgree on a bedtime",
+     "items": []
+    }
+   },
+   {
+    "uz": {
+     "layout": "statement",
+     "heading": "Muhokama uchun savol",
+     "body": "Farzandingiz qaysi ishni o‘zi mustaqil bajaradi?",
+     "items": []
+    },
+    "ru": {
+     "layout": "statement",
+     "heading": "Вопрос для обсуждения",
+     "body": "Что ваш ребёнок уже делает сам?",
+     "items": []
+    },
+    "en": {
+     "layout": "statement",
+     "heading": "A question to discuss",
+     "body": "What does your child already do on their own?",
+     "items": []
+    }
+   }
+  ],
+  "iltimoslar": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Ota-onalarga iltimoslar",
+     "body": "Har kuni kundalikni ko‘rib chiqing\nFarzandingiz bilan maktab haqida gaplashing\nSavollaringizni ochiq aytib turing",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Просьбы к родителям",
+     "body": "Каждый день смотрите дневник\nГоворите с ребёнком о школе\nНе стесняйтесь задавать вопросы",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Requests to parents",
+     "body": "Check the record book each day\nTalk with your child about school\nFeel free to ask your questions",
+     "items": []
+    }
+   }
+  ],
+  "savollar": [
+   {
+    "uz": {
+     "layout": "closing",
+     "heading": "",
+     "body": "E’tiboringiz uchun rahmat!",
+     "items": []
+    },
+    "ru": {
+     "layout": "closing",
+     "heading": "",
+     "body": "Спасибо за внимание!",
+     "items": []
+    },
+    "en": {
+     "layout": "closing",
+     "heading": "",
+     "body": "Thank you for your attention!",
+     "items": []
+    }
+   }
+  ]
+ }
+}

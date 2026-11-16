@@ -355,8 +355,11 @@ def test_repeating_slots_of_honest_forms_are_exempt_from_being_sent_back_as_dupl
 
 
 def test_the_sample_tool_draws_every_case_through_the_finish(tmp_path, capsys):
-    assert sample.main(['--deck', HIMOYA, '--lengths', '3,6', '--locale', 'uz,en', '--case', 'figures,topic_only',
-                        '--out', str(tmp_path)]) == 0
+    # The fixtures are passed with --sample: the entry's own samples (categories/samples/, C2s) come first
+    # in the tool's search and are kept clean, while these carry a cover line the customer never wrote.
+    for case in ('figures', 'topic_only'):
+        assert sample.main(['--deck', HIMOYA, '--lengths', '3,6', '--locale', 'uz,en', '--case', case,
+                            '--sample', str(FIXTURES / f'deck_himoya_{case}.json'), '--out', str(tmp_path)]) == 0
     printed = capsys.readouterr().out
     for case in ('figures', 'topic_only'):
         for locale in ('uz', 'en'):

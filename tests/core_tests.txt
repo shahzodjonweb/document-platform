@@ -885,3 +885,20 @@ tests/test_category_generation_decks.py::test_the_repair_gives_validate_content_
 tests/test_category_generation_decks.py::test_check_spares_the_exempt_slides_and_still_reports_the_rest
 tests/test_category_generation_decks.py::test_finish_passes_the_exemptions_to_the_check_and_the_skip_to_the_deterministic_branch
 tests/test_category_generation_decks.py::test_the_smoke_makes_one_category_deck_through_the_real_pipeline
+
+# Category deck samples (C2s): the ten decks' sample content is in the sample tool's format and, read by its own
+# load and draft, finishes to its exact count at several lengths in three languages with nothing taken out
+tests/test_category_deck_samples.py::test_every_deck_entry_has_both_cases_and_nothing_else_has_samples
+tests/test_category_deck_samples.py::test_a_sample_is_in_the_sample_tools_format
+tests/test_category_deck_samples.py::test_a_sample_is_finished_to_its_count_with_nothing_taken_out
+tests/test_category_deck_samples.py::test_every_slot_a_figures_sample_reaches_at_its_own_length_has_content
+tests/test_category_deck_samples.py::test_a_constitution_day_deck_is_six_slides_and_keeps_its_cover
+
+# Category deck entries (C2s): what the model reads of a deck entry asks for no worked-out figure, quotes only
+# percentages a brief of the entry holds and carries no research note; the company deck's cues keep its path
+tests/test_category_deck_entries.py::test_no_text_the_model_reads_asks_it_to_work_a_figure_out
+tests/test_category_deck_entries.py::test_a_percent_example_the_model_reads_is_one_a_brief_of_the_entry_holds
+tests/test_category_deck_entries.py::test_no_research_note_reaches_the_model
+tests/test_category_deck_entries.py::test_a_report_on_plan_and_actual_is_told_to_show_the_figures_as_written
+tests/test_category_deck_entries.py::test_a_company_profile_keeps_its_path_for_values_and_a_training_programme
+tests/test_category_deck_entries.py::test_a_product_deck_and_prices_are_still_found

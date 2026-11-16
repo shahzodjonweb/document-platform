@@ -1,0 +1,308 @@
+{
+ "entry": "slides.himoya",
+ "case": "topic_only",
+ "about": "Sample content for the deck sample tool (apps/studio/categories/sample.py), invented people, organisations and figures only. prompt is the customer’s one message; slots holds, per part id, the model’s answer for each time that slot appears. Past its listed instances a repeating slot is drawn as the honest form (heading and ruled lines). A slot whose heading is fixed carries an empty heading, which the finish writes in the language of the deck. Customer slots hold only what the prompt says (figures) or an honest form (topic_only); notes are left to the real model.",
+ "prompt": {
+  "uz": "Kurs ishim himoyasi uchun slayd kerak: “Python yordamida kutubxona hisobi dasturini yaratish”. Toshpo‘latova Madina, 212-guruh.",
+  "ru": "Нужны слайды для защиты курсовой: «Создание программы учёта книг в библиотеке на Python». Тошпулатова Мадина, группа 212.",
+  "en": "I need slides to defend my term paper: “Building a library book-tracking program in Python”. Madina Toshpulatova, group 212."
+ },
+ "slots": {
+  "cover": [
+   {
+    "uz": {
+     "layout": "cover",
+     "heading": "Python yordamida kutubxona hisobi dasturini yaratish",
+     "body": "Kurs ishi\nToshpo‘latova Madina, 212-guruh",
+     "items": []
+    },
+    "ru": {
+     "layout": "cover",
+     "heading": "Создание программы учёта книг в библиотеке на Python",
+     "body": "Курсовая работа\nТошпулатова Мадина, группа 212",
+     "items": []
+    },
+    "en": {
+     "layout": "cover",
+     "heading": "Building a library book-tracking program in Python",
+     "body": "Term paper\nMadina Toshpulatova, group 212",
+     "items": []
+    }
+   }
+  ],
+  "dolzarblik": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Kutubxonalarda kitob hisobi ko‘p vaqt oladi\nQog‘oz ro‘yxatda kitob qidirish qiyin\nOddiy dastur ishni tezlashtiradi",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Учёт книг в библиотеке отнимает много времени\nИскать книгу в бумажном списке трудно\nПростая программа ускоряет работу",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Tracking books in a library takes much time\nFinding a book in a paper list is hard\nA simple program speeds up the work",
+     "items": []
+    }
+   }
+  ],
+  "maqsad_vazifalar": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Maqsad: kutubxona hisobi dasturini yaratish\nKitob qo‘shish funksiyasini yozish\nNomi bo‘yicha qidiruvni yozish\nHisobot chiqarishni yozish",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Цель: создать программу учёта книг\nНаписать добавление книг\nНаписать поиск по названию\nНаписать вывод отчёта",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Aim: to build a library tracking program\nTo write adding books\nTo write search by title\nTo write the report",
+     "items": []
+    }
+   }
+  ],
+  "obyekt_predmet_metodlar": [
+   {
+    "uz": {
+     "layout": "two_column",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "Ob’ekt",
+       "text": "Kutubxona kitoblari hisobi"
+      },
+      {
+       "label": "Predmet",
+       "text": "Hisobni Python dasturi bilan yuritish"
+      }
+     ]
+    },
+    "ru": {
+     "layout": "two_column",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "Объект",
+       "text": "Учёт книг в библиотеке"
+      },
+      {
+       "label": "Предмет",
+       "text": "Ведение учёта программой на Python"
+      }
+     ]
+    },
+    "en": {
+     "layout": "two_column",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "Object",
+       "text": "The record of a library’s books"
+      },
+      {
+       "label": "Subject",
+       "text": "Keeping the record with a Python program"
+      }
+     ]
+    }
+   }
+  ],
+  "obyekt_predmet": [
+   {
+    "uz": {
+     "layout": "two_column",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "Ob’ekt",
+       "text": "Kutubxona kitoblari hisobi"
+      },
+      {
+       "label": "Predmet",
+       "text": "Hisobni Python dasturi bilan yuritish"
+      }
+     ]
+    },
+    "ru": {
+     "layout": "two_column",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "Объект",
+       "text": "Учёт книг в библиотеке"
+      },
+      {
+       "label": "Предмет",
+       "text": "Ведение учёта программой на Python"
+      }
+     ]
+    },
+    "en": {
+     "layout": "two_column",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "Object",
+       "text": "The record of a library’s books"
+      },
+      {
+       "label": "Subject",
+       "text": "Keeping the record with a Python program"
+      }
+     ]
+    }
+   }
+  ],
+  "metodlar": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Metod: ...\nMetod: ...",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Метод: ...\nМетод: ...",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Method: ...\nMethod: ...",
+     "items": []
+    }
+   }
+  ],
+  "natija": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Natijalarni kiriting: dastur sinovi",
+     "body": "Kiritilgan kitoblar: ...\nQidiruv vaqti: ...\nHisobot: ...",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Введите результаты: тест программы",
+     "body": "Внесено книг: ...\nВремя поиска: ...\nОтчёт: ...",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Enter your results: testing the program",
+     "body": "Books entered: ...\nSearch time: ...\nReport: ...",
+     "items": []
+    }
+   }
+  ],
+  "ilmiy_amaliy": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Amaliy ahamiyati: ...\nQo‘llanish joyi: ...",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Практическая значимость: ...\nГде применяется: ...",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Practical value: ...\nWhere it is used: ...",
+     "items": []
+    }
+   }
+  ],
+  "natija_xulosa": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Natija: ...\nXulosa: ...",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Результат: ...\nВывод: ...",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Result: ...\nConclusion: ...",
+     "items": []
+    }
+   }
+  ],
+  "xulosa": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Birinchi vazifa bo‘yicha: ...\nIkkinchi vazifa bo‘yicha: ...\nUchinchi vazifa bo‘yicha: ...",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "По первой задаче: ...\nПо второй задаче: ...\nПо третьей задаче: ...",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "On the first task: ...\nOn the second task: ...\nOn the third task: ...",
+     "items": []
+    }
+   }
+  ],
+  "rahmat": [
+   {
+    "uz": {
+     "layout": "closing",
+     "heading": "",
+     "body": "Toshpo‘latova Madina, 212-guruh",
+     "items": []
+    },
+    "ru": {
+     "layout": "closing",
+     "heading": "",
+     "body": "Тошпулатова Мадина, группа 212",
+     "items": []
+    },
+    "en": {
+     "layout": "closing",
+     "heading": "",
+     "body": "Madina Toshpulatova, group 212",
+     "items": []
+    }
+   }
+  ]
+ }
+}

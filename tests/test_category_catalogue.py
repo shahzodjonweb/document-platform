@@ -144,9 +144,16 @@ def test_every_reference_resolves(spoil, says):
 
 
 def test_an_index_id_with_no_entry_yet_is_allowed_and_never_shown(switch, ready):
-    """The 25 entries the C2 packages convert are listed already; until their files land they are not buttons."""
+    """The entries the C2 packages convert are listed already; until their files land they are not buttons."""
     switch.update(on=True, live=sorted(OWNER_NAMES))
-    assert [node.id for node in catalogue.menu('ai.pptx')] == ['slides.himoya', 'other']
+    index = ready.index
+    for feature, items in index['lists'].items():
+        landed = [item for item in items if item == 'other' or item in ready.entries
+                  or any(child in ready.entries for child in index['groups'].get(item, {}).get('children', ()))]
+        assert [node.id for node in catalogue.menu(feature)] == landed
+    # The deck entries have all landed (C2s); the papers still wait for theirs.
+    assert [node.id for node in catalogue.menu('ai.pptx')] == OWNER_LISTS['ai.pptx']
+    assert 'pdf.mustaqil_ish' not in [node.id for node in catalogue.menu('ai.pdf_topic')]
 
 
 @pytest.mark.parametrize('spoil, says', [
@@ -197,6 +204,12 @@ def test_a_deck_names_only_designs_and_variants_that_exist():
 
 def test_readiness_gates_are_warnings_on_a_draft_and_errors_on_a_ready_entry():
     entries, templates, index = files()
+    # A deck converted by C2s meets its count and block gates; take them away again to see them caught. The prompt
+    # is replaced whole, so the check does not hang on how himoya's own copy happens to write its count.
+    himoya = entries['slides.himoya']
+    himoya['bot']['prompt'] = {'uz': 'Bitta xabarda yozing.', 'ru': 'Напишите одним сообщением.',
+                               'en': 'Say it in one message.'}
+    himoya['rules'].append({'text': 'A long rule. ' * 400, 'to': 'model'})
     made = build(entries, templates, index)
     drafts = check(catalogue=made, lock=relock(made, {}))
     assert any(problem.warning and 'rewrite rule is left' in problem.text for problem in drafts)
@@ -382,7 +395,9 @@ def test_bounds_are_the_papers_for_a_category_pdf_and_todays_otherwise():
 
 def test_for_feature_lists_each_service_in_the_lists_order():
     assert [entry.id for entry in catalogue.for_feature('ai.pdf_topic')] == ['pdf.test', 'pdf.xat.ariza']
-    assert [entry.id for entry in catalogue.for_feature('ai.pptx')] == ['slides.himoya']
+    assert [entry.id for entry in catalogue.for_feature('ai.pptx')] == [
+        'slides.mavzu', 'slides.himoya', 'slides.dars', 'slides.tadbir.tarbiyaviy_soat', 'slides.tadbir.bayram',
+        'slides.tadbir.ota_onalar', 'slides.tadbir.pedkengash', 'slides.pitch', 'slides.hisobot', 'slides.kompaniya']
     assert catalogue.for_feature('pdf.merge') == []
 
 

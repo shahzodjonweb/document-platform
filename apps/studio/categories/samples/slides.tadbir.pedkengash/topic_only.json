@@ -1,0 +1,323 @@
+{
+ "entry": "slides.tadbir.pedkengash",
+ "case": "topic_only",
+ "about": "Sample content for the deck sample tool (apps/studio/categories/sample.py), invented people, organisations and figures only. prompt is the customer’s one message; slots holds, per part id, the model’s answer for each time that slot appears. Past its listed instances a repeating slot is drawn as the honest form (heading and ruled lines). A slot whose heading is fixed carries an empty heading, which the finish writes in the language of the deck. Customer slots hold only what the prompt says (figures) or an honest form (topic_only); notes are left to the real model.",
+ "prompt": {
+  "uz": "«O‘quvchilarning o‘qish savodxonligini oshirish» mavzusida pedagogik kengashda ma’ruza qilaman. Ma’ruzachi — metodbirlashma rahbari.",
+  "ru": "Выступаю на педсовете с докладом «Повышение читательской грамотности учащихся». Докладчик — руководитель методического объединения.",
+  "en": "I am giving a talk at the teachers’ council on “Improving pupils’ reading literacy”. The presenter is the head of the methodological group."
+ },
+ "slots": {
+  "cover": [
+   {
+    "uz": {
+     "layout": "cover",
+     "heading": "O‘quvchilarning o‘qish savodxonligini oshirish",
+     "body": "Pedagogik kengash majlisi\nMa’ruzachi: metodbirlashma rahbari",
+     "items": []
+    },
+    "ru": {
+     "layout": "cover",
+     "heading": "Повышение читательской грамотности учащихся",
+     "body": "Педсовет\nДокладчик: руководитель методического объединения",
+     "items": []
+    },
+    "en": {
+     "layout": "cover",
+     "heading": "Improving pupils’ reading literacy",
+     "body": "Pedagogical council meeting\nPresenter: head of the methodological group",
+     "items": []
+    }
+   }
+  ],
+  "reja": [
+   {
+    "uz": {
+     "layout": "agenda",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "Masalaning mohiyati",
+       "text": ""
+      },
+      {
+       "label": "Darsdagi usullar",
+       "text": ""
+      },
+      {
+       "label": "Takliflar",
+       "text": ""
+      },
+      {
+       "label": "Qaror loyihasi",
+       "text": ""
+      }
+     ]
+    },
+    "ru": {
+     "layout": "agenda",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "Суть вопроса",
+       "text": ""
+      },
+      {
+       "label": "Методы на уроке",
+       "text": ""
+      },
+      {
+       "label": "Предложения",
+       "text": ""
+      },
+      {
+       "label": "Проект решения",
+       "text": ""
+      }
+     ]
+    },
+    "en": {
+     "layout": "agenda",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "The issue",
+       "text": ""
+      },
+      {
+       "label": "Methods in lessons",
+       "text": ""
+      },
+      {
+       "label": "Proposals",
+       "text": ""
+      },
+      {
+       "label": "Draft resolution",
+       "text": ""
+      }
+     ]
+    }
+   }
+  ],
+  "maqsad": [
+   {
+    "uz": {
+     "layout": "statement",
+     "heading": "",
+     "body": "O‘qish savodxonligini oshirish yo‘llarini muhokama qilish va kelishish",
+     "items": []
+    },
+    "ru": {
+     "layout": "statement",
+     "heading": "",
+     "body": "Обсудить пути повышения читательской грамотности и договориться",
+     "items": []
+    },
+    "en": {
+     "layout": "statement",
+     "heading": "",
+     "body": "To discuss ways to improve reading literacy and agree on them",
+     "items": []
+    }
+   }
+  ],
+  "mohiyati": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "O‘qish savodxonligi — matnni tushunib foydalanish\nHar bir fan uchun asosiy ko‘nikma\nMaktab birgalikda ishlashi kerak",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Читательская грамотность — понимать и применять текст\nКлючевой навык для каждого предмета\nШколе нужно работать сообща",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Reading literacy is understanding and using a text\nA key skill in every subject\nThe school has to work on it together",
+     "items": []
+    }
+   }
+  ],
+  "bayon": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Darsda matn bilan ishlash usullari",
+     "body": "O‘qishdan oldin savol qo‘yish\nMatnni qismlarga bo‘lish\nAsosiy fikrni o‘z so‘zi bilan aytish",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Приёмы работы с текстом на уроке",
+     "body": "Вопрос до чтения\nДеление текста на части\nПересказ главной мысли своими словами",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Ways of working with a text in class",
+     "body": "A question before reading\nSplitting the text into parts\nRetelling the main idea in one’s own words",
+     "items": []
+    }
+   },
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Barcha fanlarda o‘qish",
+     "body": "Masala shartini birga o‘qish\nJadval va chizmani tushuntirish\nAtamalar lug‘atini yuritish",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Чтение на всех предметах",
+     "body": "Читать условие задачи вместе\nОбъяснять таблицы и схемы\nВести словарь терминов",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Reading in every subject",
+     "body": "Reading a problem together\nExplaining tables and diagrams\nKeeping a glossary of terms",
+     "items": []
+    }
+   },
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Kutubxona va o‘qish odati",
+     "body": "Haftalik o‘qish soati\nSinf kutubxonasi burchagi\nO‘qilgan kitob haqida qisqa suhbat",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Библиотека и привычка читать",
+     "body": "Еженедельный час чтения\nУголок книг в классе\nКороткая беседа о прочитанном",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "The library and the reading habit",
+     "body": "A weekly reading hour\nA class book corner\nA short talk about a book read",
+     "items": []
+    }
+   }
+  ],
+  "masalalar": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Matnni tushunish darajasini aniqlash\nFanlararo o‘qish topshiriqlari\nO‘qishga qiziqishni oshirish",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Как оценить понимание текста\nЧтение на межпредметных заданиях\nИнтерес к чтению",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "How to gauge text understanding\nReading tasks across subjects\nInterest in reading",
+     "items": []
+    }
+   }
+  ],
+  "takliflar": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Har chorakda o‘qish diagnostikasini o‘tkazish\nFanlararo o‘qish topshiriqlarini kiritish\nHaftalik o‘qish soatini tashkil etish",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Проводить диагностику чтения каждую четверть\nВвести межпредметные задания на чтение\nОрганизовать еженедельный час чтения",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "A reading check each quarter\nReading tasks across subjects\nA weekly reading hour",
+     "items": []
+    }
+   }
+  ],
+  "muhokama": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Qaysi fanlarda matn bilan ko‘proq ishlash kerak?\nKim o‘qish soatini olib boradi?\nDiagnostikani qachon boshlaymiz?",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "На каких предметах больше работать с текстом?\nКто проведёт час чтения?\nКогда начнём диагностику?",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "In which subjects should we work more with texts?\nWho will run the reading hour?\nWhen do we start the reading check?",
+     "items": []
+    }
+   }
+  ],
+  "qaror": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Ma’ruza e’tiborga olinsin\nHar chorakda o‘qish diagnostikasi o‘tkazilsin\nHaftalik o‘qish soati tashkil etilsin\nNazorat ________ zimmasiga yuklansin",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Принять доклад к сведению\nПроводить диагностику чтения каждую четверть\nОрганизовать еженедельный час чтения\nКонтроль возложить на ________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "The report is noted\nA reading check is held each quarter\nA weekly reading hour is introduced\nOversight is assigned to ________",
+     "items": []
+    }
+   }
+  ],
+  "rahmat": [
+   {
+    "uz": {
+     "layout": "closing",
+     "heading": "",
+     "body": "Savollar va takliflar",
+     "items": []
+    },
+    "ru": {
+     "layout": "closing",
+     "heading": "",
+     "body": "Вопросы и предложения",
+     "items": []
+    },
+    "en": {
+     "layout": "closing",
+     "heading": "",
+     "body": "Questions and proposals",
+     "items": []
+    }
+   }
+  ]
+ }
+}

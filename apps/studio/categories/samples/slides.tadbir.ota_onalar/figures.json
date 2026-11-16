@@ -1,0 +1,309 @@
+{
+ "entry": "slides.tadbir.ota_onalar",
+ "case": "figures",
+ "about": "Sample content for the deck sample tool (apps/studio/categories/sample.py), invented people, organisations and figures only. prompt is the customer’s one message; slots holds, per part id, the model’s answer for each time that slot appears. Past its listed instances a repeating slot is drawn as the honest form (heading and ruled lines). A slot whose heading is fixed carries an empty heading, which the finish writes in the language of the deck. Customer slots hold only what the prompt says (figures) or an honest form (topic_only); notes are left to the real model.",
+ "prompt": {
+  "uz": "7-«B» sinf ota-onalar yig‘ilishi uchun 8 ta slayd, I chorak yakunlari. Sinfda 28 o‘quvchi, o‘zlashtirish 96%, sifat 68%, 4 nafari a’lochi. Davomat 94%. Muammolar: uy vazifasi va kechikish. 25-noyabrda ochiq dars bor. Sinf rahbari Mohira Namunova, Namunaviy maktab, Toshkent.",
+  "ru": "8 слайдов для родительского собрания в 7 «Б» классе, итоги I четверти. В классе 28 учеников, успеваемость 96%, качество знаний 68%, 4 отличника. Посещаемость 94%. Проблемы: домашние задания и опоздания. 25 ноября открытый урок. Классный руководитель Мохира Намунова, школа «Образец», Ташкент.",
+  "en": "8 slides for a parents’ meeting in grade 7B, quarter 1 results. 28 pupils, pass rate 96%, quality rate (marks 4–5) 68%, 4 straight-A pupils. Attendance 94%. Problems: homework and lateness. Open lesson on 25 November. Class teacher Mohira Namunova, Model School, Tashkent."
+ },
+ "slots": {
+  "cover": [
+   {
+    "uz": {
+     "layout": "cover",
+     "heading": "Ota-onalar yig‘ilishi",
+     "body": "7-«B» sinf · I chorak yakunlari\nSinf rahbari: Mohira Namunova\nNamunaviy maktab, Toshkent",
+     "items": []
+    },
+    "ru": {
+     "layout": "cover",
+     "heading": "Родительское собрание",
+     "body": "7 «Б» класс · итоги I четверти\nКлассный руководитель: Мохира Намунова\nШкола «Образец», Ташкент",
+     "items": []
+    },
+    "en": {
+     "layout": "cover",
+     "heading": "Parents’ meeting",
+     "body": "Grade 7B · quarter 1 results\nClass teacher: Mohira Namunova\nModel School, Tashkent",
+     "items": []
+    }
+   }
+  ],
+  "kun_tartibi": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Sinf natijalari\nDavomat\nUy vazifasida qanday yordam beramiz\nMuammolar va iltimoslar\nKelgusi tadbirlar",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Результаты класса\nПосещаемость\nКак мы помогаем с домашним заданием\nПроблемы и просьбы\nБлижайшие мероприятия",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Class results\nAttendance\nHow we help with homework\nProblems and requests\nComing events",
+     "items": []
+    }
+   }
+  ],
+  "natijalar": [
+   {
+    "uz": {
+     "layout": "stats",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "o‘quvchi",
+       "text": "",
+       "value": "28"
+      },
+      {
+       "label": "o‘zlashtirish",
+       "text": "",
+       "value": "96%"
+      },
+      {
+       "label": "sifat",
+       "text": "",
+       "value": "68%"
+      },
+      {
+       "label": "a’lochi",
+       "text": "",
+       "value": "4"
+      }
+     ]
+    },
+    "ru": {
+     "layout": "stats",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "учеников",
+       "text": "",
+       "value": "28"
+      },
+      {
+       "label": "успеваемость",
+       "text": "",
+       "value": "96%"
+      },
+      {
+       "label": "качество знаний",
+       "text": "",
+       "value": "68%"
+      },
+      {
+       "label": "отличника",
+       "text": "",
+       "value": "4"
+      }
+     ]
+    },
+    "en": {
+     "layout": "stats",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "pupils",
+       "text": "",
+       "value": "28"
+      },
+      {
+       "label": "pass rate",
+       "text": "",
+       "value": "96%"
+      },
+      {
+       "label": "quality rate",
+       "text": "marks 4–5",
+       "value": "68%"
+      },
+      {
+       "label": "straight-A",
+       "text": "",
+       "value": "4"
+      }
+     ]
+    }
+   }
+  ],
+  "davomat": [
+   {
+    "uz": {
+     "layout": "big_number",
+     "heading": "Davomat",
+     "body": "",
+     "items": [
+      {
+       "label": "davomat",
+       "text": "sinf bo‘yicha",
+       "value": "94%"
+      }
+     ]
+    },
+    "ru": {
+     "layout": "big_number",
+     "heading": "Посещаемость",
+     "body": "",
+     "items": [
+      {
+       "label": "посещаемость",
+       "text": "по классу",
+       "value": "94%"
+      }
+     ]
+    },
+    "en": {
+     "layout": "big_number",
+     "heading": "Attendance",
+     "body": "",
+     "items": [
+      {
+       "label": "attendance",
+       "text": "for the class",
+       "value": "94%"
+      }
+     ]
+    }
+   }
+  ],
+  "mavzu": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Uy vazifasida qanday yordam beramiz",
+     "body": "Har kuni bir vaqtda:\nVazifa uchun tinch joy ajrating\nDaftarni birga ko‘rib chiqing\nSavol bersa, birga izlang",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Как мы помогаем с домашним заданием",
+     "body": "Каждый день в одно время:\nВыделите тихое место для занятий\nПросматривайте тетрадь вместе\nИщите ответ вместе с ребёнком",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "How we help with homework",
+     "body": "At the same time each day:\nKeep a quiet place for homework\nLook through the notebook together\nFind answers together",
+     "items": []
+    }
+   },
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Vaqtida kelish odatini qanday shakllantiramiz",
+     "body": "Ertalabki tartib:\nKechqurun sumkani tayyorlab qo‘ying\nErtalab vaqtni oldindan rejalang\nUyqu vaqtini kelishib oling",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Как мы приучаем приходить вовремя",
+     "body": "Утренний порядок:\nСобирайте портфель с вечера\nПланируйте утро заранее\nДоговоритесь о времени сна",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "How we build the habit of being on time",
+     "body": "A morning routine:\nPack the bag the evening before\nPlan the morning ahead\nAgree on a bedtime",
+     "items": []
+    }
+   },
+   {
+    "uz": {
+     "layout": "statement",
+     "heading": "Muhokama uchun savol",
+     "body": "Farzandingiz qaysi ishni o‘zi mustaqil bajaradi?",
+     "items": []
+    },
+    "ru": {
+     "layout": "statement",
+     "heading": "Вопрос для обсуждения",
+     "body": "Что ваш ребёнок уже делает сам?",
+     "items": []
+    },
+    "en": {
+     "layout": "statement",
+     "heading": "A question to discuss",
+     "body": "What does your child already do on their own?",
+     "items": []
+    }
+   }
+  ],
+  "iltimoslar": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Muammolar va iltimoslar",
+     "body": "Uy vazifasi: daftarni kechqurun birga ko‘rib chiqing\nKechikish: ertalabki tartibni kelishib oling",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Проблемы и просьбы",
+     "body": "Домашние задания: просматривайте тетрадь вечером\nОпоздания: договоритесь об утреннем порядке",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Problems and requests",
+     "body": "Homework: look through the notebook in the evening\nLateness: agree on a morning routine",
+     "items": []
+    }
+   }
+  ],
+  "tadbirlar": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "25-noyabr: ochiq dars",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "25 ноября: открытый урок",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "25 November: open lesson",
+     "items": []
+    }
+   }
+  ],
+  "savollar": [
+   {
+    "uz": {
+     "layout": "closing",
+     "heading": "",
+     "body": "E’tiboringiz uchun rahmat!",
+     "items": []
+    },
+    "ru": {
+     "layout": "closing",
+     "heading": "",
+     "body": "Спасибо за внимание!",
+     "items": []
+    },
+    "en": {
+     "layout": "closing",
+     "heading": "",
+     "body": "Thank you for your attention!",
+     "items": []
+    }
+   }
+  ]
+ }
+}

@@ -1,0 +1,568 @@
+{
+ "entry": "slides.tadbir.pedkengash",
+ "case": "figures",
+ "about": "Sample content for the deck sample tool (apps/studio/categories/sample.py), invented people, organisations and figures only. prompt is the customer’s one message; slots holds, per part id, the model’s answer for each time that slot appears. Past its listed instances a repeating slot is drawn as the honest form (heading and ruled lines). A slot whose heading is fixed carries an empty heading, which the finish writes in the language of the deck. Customer slots hold only what the prompt says (figures) or an honest form (topic_only); notes are left to the real model.",
+ "prompt": {
+  "uz": "1-chorak yakunlari bo‘yicha pedagogik kengashga 8 ta slayd kerak. 21-sonli umumiy o‘rta ta’lim maktabi, 5–9-sinflar, ma’ruzachi — o‘quv ishlari bo‘yicha direktor o‘rinbosari. O‘zlashtirish 97,8%, bilim sifati 58,4% (o‘tgan yilning shu choragida 55,1%). Matematika va ingliz tilida sifat past, 23 nafar o‘quvchi qoniqarsiz baho oldi. Muammolar, takliflar va qaror loyihasi bo‘lsin.",
+  "ru": "Нужно 8 слайдов для педсовета по итогам 1-й четверти. Школа № 21, 5–9 классы, докладчик — заместитель директора по учебной работе. Успеваемость 97,8%, качество знаний 58,4% (в прошлом году за ту же четверть 55,1%). По математике и английскому качество низкое, 23 ученика получили двойки. Нужны проблемы, предложения и проект решения.",
+  "en": "I need 8 slides for the teachers’ council on the first quarter’s results. School No. 21, grades 5–9, presenter: deputy head for teaching and learning. Pass rate 97.8%, knowledge quality 58.4% (55.1% in the same quarter last year). Quality is low in mathematics and English; 23 pupils got failing marks. Include problems, proposals and a draft resolution."
+ },
+ "slots": {
+  "cover": [
+   {
+    "uz": {
+     "layout": "cover",
+     "heading": "1-chorak yakunlari",
+     "body": "21-sonli umumiy o‘rta ta’lim maktabi\nPedagogik kengash majlisi\nMa’ruzachi: o‘quv ishlari bo‘yicha direktor o‘rinbosari",
+     "items": []
+    },
+    "ru": {
+     "layout": "cover",
+     "heading": "Итоги 1-й четверти",
+     "body": "Школа № 21\nПедсовет\nДокладчик: заместитель директора по учебной работе",
+     "items": []
+    },
+    "en": {
+     "layout": "cover",
+     "heading": "First quarter results",
+     "body": "School No. 21\nPedagogical council meeting\nPresenter: deputy head for teaching and learning",
+     "items": []
+    }
+   }
+  ],
+  "maqsad": [
+   {
+    "uz": {
+     "layout": "statement",
+     "heading": "",
+     "body": "1-chorak natijalarini tahlil qilish va qaror qabul qilish",
+     "items": []
+    },
+    "ru": {
+     "layout": "statement",
+     "heading": "",
+     "body": "Проанализировать итоги 1-й четверти и принять решение",
+     "items": []
+    },
+    "en": {
+     "layout": "statement",
+     "heading": "",
+     "body": "To review the first quarter’s results and decide what to do",
+     "items": []
+    }
+   }
+  ],
+  "korsatkichlar": [
+   {
+    "uz": {
+     "layout": "stats",
+     "heading": "Bilim sifati 58,4 foizga yetdi",
+     "body": "",
+     "items": [
+      {
+       "label": "o‘zlashtirish",
+       "text": "5–9-sinflar",
+       "value": "97,8%"
+      },
+      {
+       "label": "bilim sifati",
+       "text": "o‘tgan yil 55,1%",
+       "value": "58,4%"
+      },
+      {
+       "label": "qoniqarsiz baho",
+       "text": "o‘quvchi",
+       "value": "23"
+      }
+     ]
+    },
+    "ru": {
+     "layout": "stats",
+     "heading": "Качество знаний достигло 58,4%",
+     "body": "",
+     "items": [
+      {
+       "label": "успеваемость",
+       "text": "5–9 классы",
+       "value": "97,8%"
+      },
+      {
+       "label": "качество знаний",
+       "text": "в прошлом году 55,1%",
+       "value": "58,4%"
+      },
+      {
+       "label": "неудовлетворительно",
+       "text": "учеников",
+       "value": "23"
+      }
+     ]
+    },
+    "en": {
+     "layout": "stats",
+     "heading": "Knowledge quality reached 58.4%",
+     "body": "",
+     "items": [
+      {
+       "label": "pass rate",
+       "text": "grades 5–9",
+       "value": "97.8%"
+      },
+      {
+       "label": "knowledge quality",
+       "text": "last year 55.1%",
+       "value": "58.4%"
+      },
+      {
+       "label": "failing marks",
+       "text": "pupils",
+       "value": "23"
+      }
+     ]
+    }
+   }
+  ],
+  "raqamlar": [
+   {
+    "uz": {
+     "layout": "chart",
+     "heading": "Bilim sifati 55,1 dan 58,4 foizga oshdi",
+     "body": "",
+     "items": [
+      {
+       "label": "O‘tgan yil",
+       "text": "",
+       "value": "55,1"
+      },
+      {
+       "label": "Joriy yil",
+       "text": "",
+       "value": "58,4"
+      }
+     ],
+     "columns": [
+      "bilim sifati, %"
+     ]
+    },
+    "ru": {
+     "layout": "chart",
+     "heading": "Качество знаний выросло с 55,1 до 58,4%",
+     "body": "",
+     "items": [
+      {
+       "label": "Прошлый год",
+       "text": "",
+       "value": "55,1"
+      },
+      {
+       "label": "Этот год",
+       "text": "",
+       "value": "58,4"
+      }
+     ],
+     "columns": [
+      "качество знаний, %"
+     ]
+    },
+    "en": {
+     "layout": "chart",
+     "heading": "Knowledge quality rose from 55.1 to 58.4%",
+     "body": "",
+     "items": [
+      {
+       "label": "Last year",
+       "text": "",
+       "value": "55.1"
+      },
+      {
+       "label": "This year",
+       "text": "",
+       "value": "58.4"
+      }
+     ],
+     "columns": [
+      "knowledge quality, %"
+     ]
+    }
+   },
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Ko‘rsatkichlar dinamikasi",
+     "body": "Ko‘rsatkich: ________\nKo‘rsatkich: ________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Динамика показателей",
+     "body": "Показатель: ________\nПоказатель: ________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Indicators over time",
+     "body": "Indicator: ________\nIndicator: ________",
+     "items": []
+    }
+   }
+  ],
+  "jadval": [
+   {
+    "uz": {
+     "layout": "table",
+     "heading": "O‘zlashtirish 97,8%, sifat 58,4%",
+     "body": "",
+     "items": [
+      {
+       "label": "O‘zlashtirish",
+       "text": "",
+       "value": "97,8%"
+      },
+      {
+       "label": "Bilim sifati",
+       "text": "",
+       "value": "58,4%"
+      },
+      {
+       "label": "Qoniqarsiz baho",
+       "text": "",
+       "value": "23 nafar"
+      }
+     ],
+     "columns": [
+      "Ko‘rsatkich",
+      "1-chorak"
+     ]
+    },
+    "ru": {
+     "layout": "table",
+     "heading": "Успеваемость 97,8%, качество 58,4%",
+     "body": "",
+     "items": [
+      {
+       "label": "Успеваемость",
+       "text": "",
+       "value": "97,8%"
+      },
+      {
+       "label": "Качество знаний",
+       "text": "",
+       "value": "58,4%"
+      },
+      {
+       "label": "Неудовлетворительно",
+       "text": "",
+       "value": "23 ученика"
+      }
+     ],
+     "columns": [
+      "Показатель",
+      "1-я четверть"
+     ]
+    },
+    "en": {
+     "layout": "table",
+     "heading": "Pass rate 97.8%, quality 58.4%",
+     "body": "",
+     "items": [
+      {
+       "label": "Pass rate",
+       "text": "",
+       "value": "97.8%"
+      },
+      {
+       "label": "Knowledge quality",
+       "text": "",
+       "value": "58.4%"
+      },
+      {
+       "label": "Failing marks",
+       "text": "",
+       "value": "23 pupils"
+      }
+     ],
+     "columns": [
+      "Indicator",
+      "First quarter"
+     ]
+    }
+   },
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Fanlar bo‘yicha natijalar",
+     "body": "Fan: ________\nFan: ________",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Результаты по предметам",
+     "body": "Предмет: ________\nПредмет: ________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "Results by subject",
+     "body": "Subject: ________\nSubject: ________",
+     "items": []
+    }
+   }
+  ],
+  "bayon": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Matematikada sifatni qanday oshiramiz",
+     "body": "Darsda ko‘proq amaliy mashq\nQiyin mavzularni takrorlash\nHaftalik qisqa nazorat",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "Как повысить качество по математике",
+     "body": "Больше практики на уроке\nПовторение трудных тем\nКороткий еженедельный контроль",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "How to raise marks in mathematics",
+     "body": "More practice in lessons\nGoing over hard topics again\nA short weekly check",
+     "items": []
+    }
+   },
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "Ingliz tilida nimalarga e’tibor beramiz",
+     "body": "So‘z boyligini muntazam takrorlash\nOg‘zaki nutq mashqlari\nKichik guruhlarda ishlash",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "На что обратить внимание в английском",
+     "body": "Регулярное повторение слов\nУпражнения в устной речи\nРабота в малых группах",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "What to focus on in English",
+     "body": "Regular vocabulary review\nSpeaking practice\nSmall-group work",
+     "items": []
+    }
+   }
+  ],
+  "yutuqlar": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Bilim sifati 55,1 dan 58,4 foizgacha oshdi\nO‘zlashtirish 97,8% ni tashkil etdi",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Качество знаний выросло с 55,1 до 58,4%\nУспеваемость составила 97,8%",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Knowledge quality rose from 55.1 to 58.4%\nThe pass rate was 97.8%",
+     "items": []
+    }
+   }
+  ],
+  "muammo_yechim": [
+   {
+    "uz": {
+     "layout": "comparison",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "Matematika",
+       "text": "Bilim sifati past",
+       "value": "Qo‘shimcha mashg‘ulotlar"
+      },
+      {
+       "label": "Ingliz tili",
+       "text": "Bilim sifati past",
+       "value": "Og‘zaki nutq mashqlari"
+      },
+      {
+       "label": "Qoniqarsiz baho",
+       "text": "23 nafar o‘quvchi",
+       "value": "Yakka yordam rejasi"
+      }
+     ],
+     "columns": [
+      "Muammo",
+      "Yechim"
+     ]
+    },
+    "ru": {
+     "layout": "comparison",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "Математика",
+       "text": "Низкое качество знаний",
+       "value": "Дополнительные занятия"
+      },
+      {
+       "label": "Английский язык",
+       "text": "Низкое качество знаний",
+       "value": "Упражнения в устной речи"
+      },
+      {
+       "label": "Двойки",
+       "text": "23 ученика",
+       "value": "План индивидуальной помощи"
+      }
+     ],
+     "columns": [
+      "Проблема",
+      "Решение"
+     ]
+    },
+    "en": {
+     "layout": "comparison",
+     "heading": "",
+     "body": "",
+     "items": [
+      {
+       "label": "Mathematics",
+       "text": "Low knowledge quality",
+       "value": "Extra lessons"
+      },
+      {
+       "label": "English",
+       "text": "Low knowledge quality",
+       "value": "Speaking practice"
+      },
+      {
+       "label": "Failing marks",
+       "text": "23 pupils",
+       "value": "A plan of one-to-one help"
+      }
+     ],
+     "columns": [
+      "Problem",
+      "Solution"
+     ]
+    }
+   }
+  ],
+  "muammolar": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Matematikada bilim sifati past\nIngliz tilida bilim sifati past\n23 nafar o‘quvchi qoniqarsiz baho oldi",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Низкое качество знаний по математике\nНизкое качество знаний по английскому\n23 ученика получили неудовлетворительные оценки",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Low knowledge quality in mathematics\nLow knowledge quality in English\n23 pupils got failing marks",
+     "items": []
+    }
+   }
+  ],
+  "takliflar_natija": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Matematikadan qo‘shimcha mashg‘ulotlar tashkil etish\nIngliz tilida og‘zaki nutq mashqlarini ko‘paytirish\nQoniqarsiz baho olganlar uchun yakka reja tuzish",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Организовать дополнительные занятия по математике\nБольше устной практики на английском\nСоставить индивидуальный план для неуспевающих",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Set up extra mathematics lessons\nMore speaking practice in English\nA personal plan for pupils with failing marks",
+     "items": []
+    }
+   }
+  ],
+  "muhokama": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Qaysi sinflarga qo‘shimcha yordam kerak?\nKim qo‘shimcha mashg‘ulot olib boradi?\nNatijani qachon qayta ko‘rib chiqamiz?",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Каким классам нужна дополнительная помощь?\nКто проведёт дополнительные занятия?\nКогда мы снова рассмотрим итоги?",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Which classes need extra help?\nWho will run extra lessons?\nWhen do we review the results again?",
+     "items": []
+    }
+   }
+  ],
+  "qaror": [
+   {
+    "uz": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "1-chorak yakunlari haqidagi ma’lumot e’tiborga olinsin\nMatematikadan qo‘shimcha mashg‘ulotlar tashkil etilsin\nIngliz tilida og‘zaki mashqlar yo‘lga qo‘yilsin\nNazorat ________ zimmasiga yuklansin",
+     "items": []
+    },
+    "ru": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "Принять к сведению информацию об итогах 1-й четверти\nОрганизовать дополнительные занятия по математике\nНаладить устные упражнения по английскому\nКонтроль возложить на ________",
+     "items": []
+    },
+    "en": {
+     "layout": "bullets",
+     "heading": "",
+     "body": "The report on the first quarter is noted\nExtra mathematics lessons are introduced\nSpeaking practice in English is introduced\nOversight is assigned to ________",
+     "items": []
+    }
+   }
+  ],
+  "rahmat": [
+   {
+    "uz": {
+     "layout": "closing",
+     "heading": "",
+     "body": "Savollar va takliflar",
+     "items": []
+    },
+    "ru": {
+     "layout": "closing",
+     "heading": "",
+     "body": "Вопросы и предложения",
+     "items": []
+    },
+    "en": {
+     "layout": "closing",
+     "heading": "",
+     "body": "Questions and proposals",
+     "items": []
+    }
+   }
+  ]
+ }
+}

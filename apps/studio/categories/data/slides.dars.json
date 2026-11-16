@@ -1,0 +1,988 @@
+{
+ "schema": 2,
+ "id": "slides.dars",
+ "status": "draft",
+ "service": "slides",
+ "parent": null,
+ "order": 3,
+ "labels": {
+  "uz": "🧑‍🏫 Dars / ochiq dars",
+  "ru": "🧑‍🏫 Урок / открытый урок",
+  "en": "🧑‍🏫 Lesson / open lesson"
+ },
+ "summary": "An editable PowerPoint deck a teacher shows in class: a cover (subject and grade, teacher, school, only as given), Darsning maqsadi, O‘tilgan mavzuni takrorlash, the new idea in one large sentence and the new topic on a few slides (a picture where something is to be seen), written-out questions and a task for Mustahkamlash (a game or a test only when asked), Xulosa and Uyga vazifa; an open lesson adds the plan with minutes, the three aims, assessment criteria and a reflection. The teacher’s script, the answers and the minutes live in the speaker notes. Type is held to a written contract (every pupil-facing line 24 pt or more, headings 32 pt, cover lines 20 pt or more) that is a ship gate: th",
+ "tone": "Pupil-facing slides, teacher-facing notes. Slide text is short lines in the plural polite imperative a teacher says to a class (“Yozing”, “Toping”, “Ayting”; Russian “вы”). The teacher’s script, the answers and the minutes live in the speaker notes.",
+ "topic": true,
+ "title": "model",
+ "length": {
+  "unit": "slides",
+  "mode": "count",
+  "target": "count",
+  "default": 10,
+  "min": 3,
+  "max": 60,
+  "by_cue": [
+   {
+    "cue": "ochiq",
+    "default": 12
+   }
+  ],
+  "note": "A lesson has 10 slides by default and an open lesson 12; the count is delivered as quoted."
+ },
+ "questions": {
+  "default": 0,
+  "max": 0
+ },
+ "quality": "repair",
+ "fill": false,
+ "cues": {
+  "ochiq": {
+   "uz": [
+    "ochiq dars"
+   ],
+   "ru": [
+    "открытый урок",
+    "открытого урока",
+    "открытом урок"
+   ],
+   "en": [
+    "open lesson"
+   ]
+  },
+  "boshlangich": {
+   "uz": [
+    "1-sinf",
+    "2-sinf",
+    "3-sinf",
+    "4-sinf",
+    "boshlang‘ich sinf"
+   ],
+   "ru": [
+    "1 класс",
+    "2 класс",
+    "3 класс",
+    "4 класс",
+    "1-м класс",
+    "2-м класс",
+    "3-м класс",
+    "4-м класс",
+    "начальн"
+   ],
+   "en": [
+    "grade 1 ",
+    "grade 2 ",
+    "grade 3 ",
+    "grade 4 ",
+    "year 1 ",
+    "year 2 ",
+    "year 3 ",
+    "year 4 ",
+    "first grade",
+    "second grade",
+    "third grade",
+    "fourth grade",
+    "primary"
+   ]
+  },
+  "oyin": {
+   "uz": [
+    "o‘yin"
+   ],
+   "ru": [
+    "игр"
+   ],
+   "en": [
+    "game"
+   ]
+  },
+  "test": {
+   "uz": [
+    "test"
+   ],
+   "ru": [
+    "тест"
+   ],
+   "en": [
+    "test",
+    "quiz"
+   ]
+  },
+  "ball": {
+   "uz": [
+    "ball",
+    "rag‘bat"
+   ],
+   "ru": [
+    "балл",
+    "очки",
+    "очков"
+   ],
+   "en": [
+    "points",
+    "reward"
+   ]
+  },
+  "rahmat": {
+   "uz": [
+    "rahmat slayd",
+    "rahmat bilan"
+   ],
+   "ru": [
+    "спасибо",
+    "благодар"
+   ],
+   "en": [
+    "thank"
+   ]
+  }
+ },
+ "ask": {
+  "when": "cues_missing",
+  "fields": [
+   "teacher_line",
+   "school",
+   "previous_topic"
+  ],
+  "cover": true,
+  "review": {
+   "uz": "Titul slaydga o‘qituvchi va maktab yozilmadi: ular slaydda bo‘lmaydi.",
+   "ru": "Учитель и школа не указаны: на титульном слайде их не будет.",
+   "en": "No teacher or school was given: they will not be on the title slide."
+  },
+  "prompt": {
+   "uz": "📝 Titul slayd uchun (ixtiyoriy): o‘qituvchi, maktab, sana. Har birini yangi qatordan yozing. O‘tgan dars mavzusini ham yozsangiz, takrorlash slaydi shu haqda bo‘ladi.",
+   "ru": "📝 Для титульного слайда (по желанию): учитель, школа, дата. Каждое с новой строки. Напишите и тему прошлого урока, тогда повторение будет по ней.",
+   "en": "📝 For the title slide (optional): teacher, school, date. Each on its own line. Name the last lesson’s topic too and the review slide will ask about it."
+  }
+ },
+ "fields": [
+  {
+   "id": "topic",
+   "label": {
+    "uz": "Mavzu",
+    "ru": "Тема",
+    "en": "Topic"
+   },
+   "example": {
+    "uz": "Fotosintez",
+    "ru": "Фотосинтез",
+    "en": "Photosynthesis"
+   },
+   "kind": "text",
+   "need": "required",
+   "missing": "ask",
+   "where": "Cover heading and the whole deck. The bot’s existing topic check asks when it is missing; the topic is shortened to at most 8 words by dropping clauses, never reworded."
+  },
+  {
+   "id": "subject",
+   "label": {
+    "uz": "Fan",
+    "ru": "Предмет",
+    "en": "Subject"
+   },
+   "example": {
+    "uz": "Biologiya",
+    "ru": "Биология",
+    "en": "Biology"
+   },
+   "kind": "line",
+   "need": "recommended",
+   "missing": "ask",
+   "where": "First cover line, labelled: “Fan: <Fan> · <N>-sinf” (the label is the customary FAN bar of the Uzbek deck, source 02). Also steers vocabulary, examples, the kind of picture and which slots are used. Asked once in the optional cover step only if the message lacks it; if skipped the line is left out and the AI infers the field from the topic for wording only."
+  },
+  {
+   "id": "grade",
+   "label": {
+    "uz": "Sinf",
+    "ru": "Класс",
+    "en": "Grade"
+   },
+   "example": {
+    "uz": "6-sinf",
+    "ru": "6 класс",
+    "en": "Grade 6"
+   },
+   "kind": "line",
+   "need": "recommended",
+   "missing": "ask",
+   "where": "First cover line, with the subject. Sets the line length (grades 1 to 4: at most 6 words, lines of 36 characters, a game and more pictures), the register and the look. If skipped, grades 5 to 9 level and the line is left out."
+  },
+  {
+   "id": "lesson_kind",
+   "label": {
+    "uz": "Dars yoki ochiq dars",
+    "ru": "Урок или открытый урок",
+    "en": "Ordinary or open lesson"
+   },
+   "example": {
+    "uz": "ochiq dars",
+    "ru": "открытый урок",
+    "en": "open lesson"
+   },
+   "kind": "choice",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Never asked. The words “ochiq dars”, “открытый урок” or “open lesson” in the message choose the template school_ochiq_dars (12 slides by default); otherwise school_dars (10). The open lesson’s first cover line is “Ochiq dars”.",
+   "choices": [
+    "dars",
+    "ochiq_dars"
+   ]
+  },
+  {
+   "id": "teacher_line",
+   "label": {
+    "uz": "O‘qituvchi",
+    "ru": "Учитель",
+    "en": "Teacher"
+   },
+   "example": {
+    "uz": "O‘qituvchi: Nodira Yusupova",
+    "ru": "Учитель: Нодира Юсупова",
+    "en": "Teacher: Nodira Yusupova"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "ask",
+   "where": "Cover line, copied whole as the customer wrote it. Asked once in the optional cover step; if skipped it is left out (no blank, no placeholder). Never invented.",
+   "cues": {
+    "uz": [
+     "o‘qituvchi",
+     "ustoz"
+    ],
+    "ru": [
+     "учител",
+     "преподават"
+    ],
+    "en": [
+     "teacher"
+    ]
+   }
+  },
+  {
+   "id": "school",
+   "label": {
+    "uz": "Maktab",
+    "ru": "Школа",
+    "en": "School"
+   },
+   "example": {
+    "uz": "21-maktab, Toshkent",
+    "ru": "Школа № 21, Ташкент",
+    "en": "School No. 21, Tashkent"
+   },
+   "kind": "org",
+   "need": "optional",
+   "missing": "ask",
+   "where": "Cover line after the teacher line, copied as written. Asked in the same optional step; if skipped it is left out.",
+   "cues": {
+    "uz": [
+     "maktab",
+     "litsey",
+     "gimnaziya"
+    ],
+    "ru": [
+     "школ",
+     "лице",
+     "гимнази"
+    ],
+    "en": [
+     "school"
+    ]
+   }
+  },
+  {
+   "id": "date_line",
+   "label": {
+    "uz": "Dars sanasi",
+    "ru": "Дата урока",
+    "en": "Lesson date"
+   },
+   "example": {
+    "uz": "15-noyabr",
+    "ru": "15 ноября",
+    "en": "15 November"
+   },
+   "kind": "date",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Last cover line, only if the customer wrote one. The system never adds a date by itself."
+  },
+  {
+   "id": "duration",
+   "label": {
+    "uz": "Dars davomiyligi",
+    "ru": "Длительность урока",
+    "en": "Lesson length"
+   },
+   "example": {
+    "uz": "45 daqiqa",
+    "ru": "45 минут",
+    "en": "45 minutes"
+   },
+   "kind": "number",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Sets the minutes written in the speaker notes (and on the open lesson’s plan slide) so that they add up to this length; 45 when not given."
+  },
+  {
+   "id": "previous_topic",
+   "label": {
+    "uz": "O‘tgan dars mavzusi va uyga vazifa",
+    "ru": "Тема прошлого урока и домашнее задание",
+    "en": "Last lesson’s topic and homework"
+   },
+   "example": {
+    "uz": "o‘simlik ildizi; vazifa: ildiz sxemasi",
+    "ru": "корень растения; задание: схема корня",
+    "en": "the plant root; homework: a root diagram"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "ask",
+   "where": "The review slide (takrorlash) asks about exactly this and nothing else; only the teacher knows what the last lesson covered. Asked once in the cover step if the message lacks it; if skipped, the review asks about the prerequisite every pupil of the grade knows, stated generally, never a named textbook chapter, and the notes say “o‘tilgan mavzuni o‘zingiz moslang”. The homework line, if given, is asked about in the review’s notes."
+  },
+  {
+   "id": "methods",
+   "label": {
+    "uz": "Usullar va o‘yin",
+    "ru": "Методы и игра",
+    "en": "Methods and game"
+   },
+   "example": {
+    "uz": "aqliy hujum, juftlikda ishlash, o‘yin",
+    "ru": "мозговой штурм, работа в парах, игра",
+    "en": "brainstorm, pair work, a game"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Each method the customer names appears on a task slide with its name in the heading (Juftlikda ishlang, Guruhda ishlang, Xatoni toping). A game is built only when asked (or for grades 1 to 4). With none named the AI uses one or two customary ones (savol-javob, juftlikda ishlash). In the open lesson they are also written on the plan slide."
+  },
+  {
+   "id": "focus_points",
+   "label": {
+    "uz": "Nimalarni o‘tish kerak",
+    "ru": "Что разобрать",
+    "en": "What to cover"
+   },
+   "example": {
+    "uz": "ta’rif, jarayon, rasm bilan misol",
+    "ru": "определение, процесс, пример с картинкой",
+    "en": "a definition, the process, an example with a picture"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Becomes the new-topic slides in the order written. If missing, the AI picks the 3 to 5 most important points of the topic for the slide count."
+  },
+  {
+   "id": "textbook_pages",
+   "label": {
+    "uz": "Darslik sahifa va mashq raqamlari",
+    "ru": "Страницы и номера упражнений",
+    "en": "Textbook pages and exercise numbers"
+   },
+   "example": {
+    "uz": "darslik 48-bet, 3-mashq",
+    "ru": "учебник, стр. 48, упражнение 3",
+    "en": "textbook p. 48, exercise 3"
+   },
+   "kind": "ref",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Printed on the homework or practice slide only exactly as given. Never guessed: when missing the task is worded without numbers (“Darslikdan mavzuni o‘qing”) and no blank is drawn on the slide."
+  },
+  {
+   "id": "question_count",
+   "label": {
+    "uz": "Test savollari soni",
+    "ru": "Число тестовых вопросов",
+    "en": "Number of test questions"
+   },
+   "example": {
+    "uz": "5 ta test savoli",
+    "ru": "5 тестовых вопросов",
+    "en": "5 test questions"
+   },
+   "kind": "number",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Only when a number is given. The test is built by the blueprint, not by the product’s end-of-deck quiz: the test slots are drawn before the last two slides (practice, after mashq), inside the slide total, at most 2 questions a slide when every option has at most 3 words (else 1), at 28 pt with the options in one line or as lines, answers in the notes. 5 questions on 14 slides therefore take 3 slides (2 + 2 + 1). Without a number the questions are the written practice slots (the “questions on by default” of the brief)."
+  },
+  {
+   "id": "figures",
+   "label": {
+    "uz": "O‘zingizdagi raqamlar",
+    "ru": "Ваши цифры",
+    "en": "Your own figures"
+   },
+   "example": {
+    "uz": "sinfda 24 o‘quvchi, 18 tasi o‘tdi",
+    "ru": "в классе 24 ученика, 18 справились",
+    "en": "24 pupils, 18 passed"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "The only source of any chart, stats or big-number slide and of any number printed on a slide, besides attached files. Without figures there is no such slide."
+  },
+  {
+   "id": "sources",
+   "label": {
+    "uz": "Darslik matni (fayl)",
+    "ru": "Текст учебника (файл)",
+    "en": "Textbook text (file)"
+   },
+   "example": {
+    "uz": "mavzuning 2 betlik PDF’i",
+    "ru": "PDF с двумя страницами темы",
+    "en": "a 2-page PDF of the topic"
+   },
+   "kind": "file",
+   "need": "optional",
+   "missing": "omit",
+   "where": "An attached PDF, Word or TXT is the lesson’s source: terms, definitions, examples and exercise wording come from it and from nothing else. No references slide is made for a lesson."
+  }
+ ],
+ "parts": [
+  {
+   "id": "cover",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "required",
+   "layouts": [
+    "cover"
+   ],
+   "pins": [],
+   "source": "template",
+   "write": "Heading = the topic. Body = at most 4 lines of at most 48 characters (34 when the cover has a photo; beyond that no photo is drawn), in this order: “Fan: <Fan> · <N>-sinf” (the open lesson’s first line is “Ochiq dars”, then the Fan line), then the customer’s own teacher, school and date lines exactly as written, one per line. A line that was not given is not written: no “F.I.Sh.”, no “____”, no year or school of the AI’s own. With nothing known besides the topic, the cover is the title alone. image_query on the cover only for a concrete visible subject and only when the author block is short. The topic is the title (56 pt, up to 3 lines, so an 8-word topic fits); a “Mavzu:” label in front of a 56 pt title would repeat what its place says, so the labelled line is “Fan:”. No notes (a cover keeps none)."
+  },
+  {
+   "id": "savol",
+   "kind": "slide",
+   "heading": {
+    "uz": "Bugungi savol",
+    "ru": "Вопрос урока",
+    "en": "Today’s question"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "layouts": [
+    "statement",
+    "bullets"
+   ],
+   "pins": [
+    "statement.soft_panel"
+   ],
+   "source": "draft",
+   "write": "From 11 slides (ordinary lesson only; the open lesson has no hook by default). One question of at most 12 words that the pupils can attempt before the lesson and that the new method answers (a maths hook is a two-step equation, not x + 5 = 12), not a yes/no; set as a statement, the lesson comes back to it in xulosa. Notes: how to run the minute, the expected answer, the minutes.",
+   "when": "nocue:ochiq",
+   "from": 11,
+   "join": 3
+  },
+  {
+   "id": "maqsad",
+   "kind": "slide",
+   "heading": {
+    "uz": "Darsning maqsadi",
+    "ru": "Цель урока",
+    "en": "Lesson objectives"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.numbered_rows",
+    "bullets.card_stack"
+   ],
+   "source": "draft",
+   "write": "Ordinary lesson: 3 lines of at most 46 characters in the plural polite imperative, each starting with the object and ending in a verb of doing (“... tushuntirib berasiz.”, “... sanaysiz.”, “... ko‘rsatasiz.”), measurable, specific to the topic, never a copy of the title. Open lesson: exactly 3 lines labelled Ta’limiy / Tarbiyaviy / Rivojlantiruvchi (Образовательная / Воспитательная / Развивающая; Educational / Upbringing / Developmental), each a verbal-noun clause of at most 60 characters (“... o‘rgatish.”, “... tarbiyalash.”, “... boyitish.”); the upbringing aim names a value the lesson really practises. Notes: greet, read the goals with the class, say that xulosa returns to them; the opening minutes (the organising stage) are counted here.",
+   "from": 5
+  },
+  {
+   "id": "reja",
+   "kind": "slide",
+   "heading": {
+    "uz": "Dars rejasi",
+    "ru": "План урока",
+    "en": "Lesson plan"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.numbered_rows"
+   ],
+   "source": "draft",
+   "write": "Usual in the open lesson, optional from 14 slides in an ordinary one. 4 to 6 lines of at most 46 characters: “<bosqich> — <N> daqiqa” and, where it fits, “, <usul>” (savol-javob, suhbat, guruhda ishlash, juftlikda ishlash, mustaqil ish, o‘yin). The lines name the stages of the slides that follow, in order, EVERY stage including Xulosa and Refleksiya (a closing stage may be combined: “Xulosa va baholash”, “Refleksiya va uyga vazifa”); the minutes are whole numbers that add up to the lesson length (45 unless the customer said otherwise) and equal the sum of the minutes in the notes of those slides. Never a room, a time of day, a name or a mark.",
+   "when": "nocue:ochiq",
+   "from": 14,
+   "join": 4
+  },
+  {
+   "id": "reja_ochiq",
+   "kind": "slide",
+   "heading": {
+    "uz": "Dars rejasi",
+    "ru": "План урока",
+    "en": "Lesson plan"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.numbered_rows"
+   ],
+   "source": "draft",
+   "write": "Usual in the open lesson, optional from 14 slides in an ordinary one. 4 to 6 lines of at most 46 characters: “<bosqich> — <N> daqiqa” and, where it fits, “, <usul>” (savol-javob, suhbat, guruhda ishlash, juftlikda ishlash, mustaqil ish, o‘yin). The lines name the stages of the slides that follow, in order, EVERY stage including Xulosa and Refleksiya (a closing stage may be combined: “Xulosa va baholash”, “Refleksiya va uyga vazifa”); the minutes are whole numbers that add up to the lesson length (45 unless the customer said otherwise) and equal the sum of the minutes in the notes of those slides. Never a room, a time of day, a name or a mark.",
+   "when": "cue:ochiq",
+   "from": 10
+  },
+  {
+   "id": "takrorlash",
+   "kind": "slide",
+   "heading": {
+    "uz": "O‘tilgan mavzuni takrorlash",
+    "ru": "Повторение пройденного",
+    "en": "Review of the last lesson"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.classic"
+   ],
+   "source": "draft",
+   "write": "3 or 4 questions of at most 46 characters each, one per line, about the previous topic the customer named (field previous_topic); without it about the prerequisite every pupil of that grade knows, stated generally and never a named textbook chapter, so the slide never claims what “the last lesson” covered. Only questions; the answers go in the notes (“Javoblar: 1) ...; 2) ...”) and only where certain. Notes also say how it is run and the minutes (5 to 8). Left out when the lesson opens a new section and the customer says so.",
+   "from": 7
+  },
+  {
+   "id": "tarif",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "usual",
+   "layouts": [
+    "statement",
+    "bullets"
+   ],
+   "pins": [
+    "statement.soft_panel"
+   ],
+   "source": "draft",
+   "write": "One sentence of at most 60 characters (the statement slide holds two lines of 40 to 44 pt; three lines touch the underline): the definition, rule or main idea of the topic, only if it is textbook-certain or in the attached file; formulas as plain text with Unicode (x², ≠, −, ·, :). The heading is the label above it. “Yangi tushuncha” only when the topic defines a term (a part of speech, a theorem, a process); history, literature and similar topics have no concept, so the heading is “Asosiy g‘oya” / «Главная мысль» / “Main idea” and the sentence is the main idea of the lesson. Grammar terms use the school terms (narsa-buyum, bildiruvchi, ega, kesim), never Russian loans (predmet). Notes: write it on the board, pupils copy it; 3 to 4 minutes.",
+   "from": 8
+  },
+  {
+   "id": "bayon",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "usual",
+   "layouts": [
+    "bullets",
+    "image_split",
+    "statement"
+   ],
+   "pins": [
+    "bullets.classic",
+    "bullets.card_stack",
+    "bullets.step_ladder",
+    "image_split.classic",
+    "statement.soft_panel"
+   ],
+   "source": "draft",
+   "write": "A new-topic slide; several of them make up the new-topic stage, each with one point. bullets: 3 or 4 parallel lines of at most 46 characters, the heading stating the point in at most 7 words (“Barg — o‘simlikning oshxonasi”); when the topic has an order (a method, an algorithm, a life cycle) 3 to 5 ordered lines, one step each. image_split: for something to look at (natural science, geography, places, primary classes, describing a picture), 3 lines of at most 40 characters and an image_query of 2 to 4 English nouns naming a visible thing (“green leaf closeup”), never a person, a brand or an idea; the slide must read as plain text when no photo is found. statement: one idea of at most 60 characters. A topic about two things is two slides or one slide of 4 parallel lines (“Ot — kim? nima?”, “Sifat — qanday?”). The explanation itself is in the notes, 2 to 3 sentences in the teacher’s voice.",
+   "repeat": {
+    "min": 1,
+    "max": 40
+   }
+  },
+  {
+   "id": "misol",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "usual",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.lead_line"
+   ],
+   "source": "draft",
+   "write": "Maths, physics, chemistry, grammar analysis. 4 lines: the task first (set as the lead line), then at most 3 steps, one per line, each a line of at most 46 characters or a formula in plain text. Every figure and step is computed before it is written; the answer is the last step. Notes: the check (“Tekshirish: ...”) by substitution and what the pupils say at each line. “Misol 2” is the one the pupils lead.",
+   "from": 12,
+   "repeat": {
+    "min": 1,
+    "max": 10
+   }
+  },
+  {
+   "id": "savollar",
+   "kind": "slide",
+   "heading": {
+    "uz": "Mustahkamlash: savollar",
+    "ru": "Закрепление: вопросы",
+    "en": "Practice: questions"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.card_stack"
+   ],
+   "source": "draft",
+   "write": "3 to 5 questions of at most 46 characters, one per line, from easy to thinking questions (“nima uchun?”, “qanday?”), all answerable from this lesson. Answers in the notes only where certain (“Javoblar: ...”). This slot is the questions-on-by-default of the brief.",
+   "from": 5,
+   "repeat": {
+    "min": 1,
+    "max": 6
+   }
+  },
+  {
+   "id": "mashq",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "usual",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.lead_line"
+   ],
+   "source": "draft",
+   "write": "The heading names the activity (a method from the customary list; a we-form heading such as “Guruhlarda ishlaymiz” is never used: “Guruhda ishlang”). 3 or 4 lines of at most 46 characters: the task as an imperative (“Yozing”, “Toping”, “Taqqoslang”) or the items to solve; an error-hunt shows a short solution with one deliberate error (the correction is in the notes). A mashq exists in every subject and every deck from 10 slides (it replaces the game). Textbook exercises are named only by the numbers the customer gave. Notes: how long the pupils work, how the answers are collected, the answers; the minutes.",
+   "when": "nocue:boshlangich",
+   "from": 10,
+   "repeat": {
+    "min": 1,
+    "max": 8
+   }
+  },
+  {
+   "id": "oyin",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "optional",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.card_stack"
+   ],
+   "source": "draft",
+   "write": "Conditional: only when the customer asks for a game or the grade is 1 to 4 (where it replaces the mashq); never in grades 10 to 11 or the open lesson unless asked. 3 or 4 statements, tasks or rounds of at most 46 characters (36 in primary), drawn as bullets.card_stack. True-or-false statements must be textbook-certain and the notes give the answers; the rules (how pupils answer, how the point is scored) go in the notes. At most one game in a 10-slide deck.",
+   "when": "cue:oyin",
+   "from": 10,
+   "join": 6
+  },
+  {
+   "id": "oyin_kichik",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "usual",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.card_stack"
+   ],
+   "source": "draft",
+   "write": "Conditional: only when the customer asks for a game or the grade is 1 to 4 (where it replaces the mashq); never in grades 10 to 11 or the open lesson unless asked. 3 or 4 statements, tasks or rounds of at most 46 characters (36 in primary), drawn as bullets.card_stack. True-or-false statements must be textbook-certain and the notes give the answers; the rules (how pupils answer, how the point is scored) go in the notes. At most one game in a 10-slide deck.",
+   "when": "cue:boshlangich",
+   "from": 10,
+   "repeat": {
+    "min": 1,
+    "max": 4
+   }
+  },
+  {
+   "id": "test",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "optional",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.classic",
+    "bullets.card_stack"
+   ],
+   "source": "draft",
+   "write": "Only when the customer gives a number of test questions; drawn after mashq and before xulosa, counted inside the slide total. At most 2 questions a slide when every option has at most 3 words, otherwise 1 question a slide. A question is a line of at most 46 characters (the heading is “Test: 1- va 2-savol”); the 4 options are written on one line separated by “  ·  ” (“x = 5  ·  x = 6  ·  x = 7  ·  x = 8”) or, for one question a slide, as 4 lines, never with a letter or a numeral. Exactly one option is correct, its position varies, the key is in the notes by position and value (“ikkinchi variant, x = 6”).",
+   "when": "cue:test",
+   "from": 8,
+   "join": 5,
+   "repeat": {
+    "min": 1,
+    "max": 2
+   }
+  },
+  {
+   "id": "xulosa",
+   "kind": "slide",
+   "heading": {
+    "uz": "Xulosa",
+    "ru": "Выводы",
+    "en": "Conclusion"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.numbered_rows",
+    "bullets.classic"
+   ],
+   "source": "draft",
+   "write": "3 lines of at most 60 characters, one for each goal on the maqsad slide in the same order (numbered 01 to 03 so the match is visible when the deck has the numbered list, otherwise plain), no new fact and no number not shown earlier; a hook slide (savol) is answered here. Notes: ask two or three pupils what they learned and tie it to the goals; 2 to 4 minutes. In a 5-slide deck this slot is left out.",
+   "from": 6
+  },
+  {
+   "id": "baholash",
+   "kind": "slide",
+   "heading": {
+    "uz": "Baholash mezonlari",
+    "ru": "Критерии оценивания",
+    "en": "Assessment criteria"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.card_stack"
+   ],
+   "source": "draft",
+   "write": "Usual in the open lesson, optional otherwise. 3 criteria of at most 4 words (“Javobning to‘g‘riligi”, “Guruhdagi faollik”, “Yozuvning aniqligi”) taken from what the lesson actually did. Never a mark, a scale, a score or a pupil’s name; the notes say that marks are announced by the teacher by the school’s own system. The ordinary lesson’s counterpart is the slot ball below (group points, which 4 of 7 Uzbek lesson plans carry).",
+   "when": "cue:ochiq",
+   "from": 10
+  },
+  {
+   "id": "ball",
+   "kind": "slide",
+   "heading": {
+    "uz": "Ballar nima uchun beriladi",
+    "ru": "За что даются баллы",
+    "en": "What earns points"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.card_stack"
+   ],
+   "source": "draft",
+   "write": "Optional in an ordinary lesson from 12 slides, only when the customer mentions groups, points or rewards; 3 lines of at most 46 characters naming what earns a point (“To‘g‘ri javob uchun”, “Guruhdagi hamkorlik uchun”, “Vaqtida bajarilgan topshiriq uchun”). No number of points, no scale, no pupil or group names (the teacher decides them live; the notes say so). Evidence: group points and reward cards in 4 of the 7 Uzbek lesson plans of the sibling unit. Placed after xulosa, before refleksiya.",
+   "when": "cue:ball",
+   "from": 12,
+   "join": 7
+  },
+  {
+   "id": "refleksiya",
+   "kind": "slide",
+   "heading": {
+    "uz": "Refleksiya",
+    "ru": "Рефлексия",
+    "en": "Reflection"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.classic"
+   ],
+   "source": "draft",
+   "write": "Three sentence starters for the pupils to finish aloud or on paper, each ending in an ellipsis (“Bugun men … bilib oldim.”, “Menga … qiziq bo‘ldi.”, “Menga … qiyin tuyuldi.”). The three real decks that end on a reflection use the same 3-2-1 idea. Usual from 13 slides and in the open lesson; its notes carry minutes like every other slide (2).",
+   "from": 12
+  },
+  {
+   "id": "uyga_vazifa",
+   "kind": "slide",
+   "heading": {
+    "uz": "Uyga vazifa",
+    "ru": "Домашнее задание",
+    "en": "Homework"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "layouts": [
+    "bullets"
+   ],
+   "pins": [
+    "bullets.lead_line"
+   ],
+   "source": "draft",
+   "write": "2 or 3 lines in the plural polite imperative, concrete and tied to the topic: the first line is the task every pupil does (set as the lead line), then one more, and “Qiziqqanlarga: ...” as an optional challenge. Page, exercise and mark numbers only as the customer gave them; otherwise “Mavzuni darslikdan o‘qib chiqing” without numbers and no blank on the slide. A count the AI sets inside its own task (“sifat qatnashgan 5 ta gap”) is allowed. Wording care: “sifatli” means of good quality, so the Uzbek task is “sifat qatnashgan gap”. Notes: where to write it on the board, minutes (2 to 3)."
+  },
+  {
+   "id": "rahmat",
+   "kind": "slide",
+   "heading": {
+    "uz": "E’tiboringiz uchun rahmat!",
+    "ru": "Спасибо за внимание!",
+    "en": "Thank you for your attention!"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "layouts": [
+    "closing"
+   ],
+   "pins": [],
+   "source": "template",
+   "write": "Off by default: none of the three real US lesson decks ends on thanks and a lesson ends on the homework (only the Uzbek university lecture has one). Added when the customer asks for a thank-you slide; the bot prompt now says so in one clause, so an open lesson with guests can ask for it. Body line “Savollaringiz bormi?” / «Вопросы?» / “Questions?”. No contacts, no names.",
+   "when": "cue:rahmat",
+   "from": 6,
+   "join": 8
+  }
+ ],
+ "rules": [
+  {
+   "text": "Lines: at most 46 characters and 8 words when a slide has 4 or 5 lines, at most 60 characters with 3 or fewer (grades 1 to 4: 36 and 48, 6 words); at most 5 lines; a statement at most 60 characters; 12 to 30 words a slide. This overrides the global guide of about 111 words a slide. Never the we-form (“ishlaymiz”); questions end with a question mark.",
+   "to": "model"
+  },
+  {
+   "text": "Layouts: bullets (lines, steps, questions, examples, a game, a test), statement (one idea) and image_split (something to look at) only. The same variant is never drawn on two slides in a row.",
+   "to": "model"
+  },
+  {
+   "text": "Speaker notes are the teacher’s script on every slide but the cover: 20 to 45 words (up to 60 on question, task, game and test slides), what to say and do, and the answers (“Javoblar: 1) ...; 2) ...”) only where certain. Each note ends with “Bu bosqich N daqiqa.” («Этот этап занимает N минут.», “This stage takes N minutes.”); the minutes add up to the lesson length, 45 unless the customer says otherwise.",
+   "to": "model"
+  },
+  {
+   "text": "Never invent a person, school, date, textbook title, page or exercise number, curriculum clause, quotation, proverb, statistic, mark or source. A fact not given is left out, never drawn as a blank: the homework is worded without numbers, and the review asks about a prerequisite stated generally when the last lesson’s topic was not given.",
+   "to": "model"
+  },
+  {
+   "text": "Subject facts must be right and at school level for the grade. Compute every worked example and answer step by step and check it before writing; check true-or-false statements and test options twice; state an uncertain fact in general words. With an attached file, terms, definitions, examples and exercises come from it.",
+   "to": "model"
+  },
+  {
+   "text": "Uzbek school terms as in the school books (narsa-buyum, bildiruvchi, ega, kesim, so‘z turkumi); no Russian loan where a school term exists. Uzbek is Latin only, o‘ and g‘ with ‘ and the tutuq belgisi with ’.",
+   "to": "model"
+  },
+  {
+   "text": "Open lesson: three aims labelled Ta’limiy, Tarbiyaviy, Rivojlantiruvchi (Образовательная, Воспитательная, Развивающая); a plan slide whose minutes add up to the lesson and name every stage; the methods named; assessment criteria without marks or a scale. Never mention guests or a commission.",
+   "to": "model"
+  },
+  {
+   "text": "Grades 1 to 4: concrete everyday examples, more pictures, a game in place of the practice. Grades 10 to 11: more abstract tasks, no game unless asked. A test question has 4 options in one line or as lines without letters, one correct, its position varied, the key in the notes.",
+   "to": "model"
+  },
+  {
+   "text": "Pictures only where a visible thing is the subject, at most 3 in a 10-slide deck, never on questions, the conclusion, the reflection or the homework; every picture slide reads as plain text.",
+   "to": "model"
+  },
+  {
+   "text": "No slide only announces a stage or repeats another’s point; no emoji; no exclamation mark except in the thank-you heading; no text addressed to the customer. A topic too wide for the count is narrowed to its 3 to 5 most important points.",
+   "to": "model"
+  }
+ ],
+ "bot": {
+  "prompt": {
+   "uz": "🧑‍🏫 Dars slaydlari. Bitta xabarda yozing: sinf, fan, mavzu va necha slayd (aytmasangiz, dars 10 ta, ochiq dars 12 ta bo‘ladi).\nOchiq dars bo‘lsa, shuni yozing. O‘yin, test yoki rahmat slaydi kerak bo‘lsa, ayting; o‘tgan dars mavzusini ham yozishingiz mumkin.\n📎 Darslik matnini PDF, Word yoki TXT qilib qo‘shsangiz, slaydlar shunga tayanadi.\nTitul slayd uchun o‘qituvchi va maktabni ham yozishingiz mumkin.",
+   "ru": "🧑‍🏫 Слайды к уроку. Напишите одним сообщением: класс, предмет, тему и число слайдов (если не указать, урок — 10, открытый урок — 12).\nЕсли это открытый урок, так и напишите. Нужны игра, тест или слайд «Спасибо» — скажите; можно указать и тему прошлого урока.\n📎 Текст из учебника в PDF, Word или TXT — слайды будут опираться на него.\nДля титульного слайда можно сразу указать учителя и школу.",
+   "en": "🧑‍🏫 Lesson slides. Say it in one message: grade, subject, topic and the number of slides (if you do not say, a lesson has 10 and an open lesson 12).\nIf it is an open lesson, say so. Ask for a game, a test or a thank-you slide if you want one; you may also name the last lesson’s topic.\n📎 Add the textbook text as a PDF, Word or TXT file and the slides will lean on it.\nYou may add the teacher and the school for the title slide."
+  },
+  "examples": [
+   {
+    "uz": "3-sinf «Atrofimizdagi olam» darsi uchun 10 ta slayd: «Fasllar». Rasmlar ko‘p bo‘lsin, oxirida o‘yin. 7-maktab, o‘qituvchi Gulnora Ahmedova.",
+    "ru": "Слайды к уроку «Окружающий мир» в 3 классе: «Времена года». 10 слайдов, побольше картинок, в конце игра. Школа № 7, учитель Гульнора Ахмедова.",
+    "en": "Slides for a grade 3 “The world around us” lesson: “The seasons”. 10 slides, plenty of pictures, a game at the end. School No. 7, teacher Gulnora Akhmedova."
+   },
+   {
+    "uz": "Ochiq dars uchun 12 ta slayd: 5-sinf ona tili, «Sifat». Dars rejasi, uchta maqsad va baholash mezonlari bo‘lsin. Usullar: savol-javob va kichik guruhlarda ishlash. 12-maktab, Samarqand, o‘qituvchi Dilbar Qodirova.",
+    "ru": "Открытый урок, 12 слайдов: родной язык, 5 класс, «Прилагательное». Нужны план урока, три цели и критерии оценивания. Методы: вопросы и ответы, работа в малых группах. Школа № 12, Самарканд, учитель Дилбар Кодирова.",
+    "en": "An open lesson, 12 slides: grade 5 mother tongue, “The adjective”. Include a lesson plan, the three aims and assessment criteria. Methods: question and answer, small-group work. School No. 12, Samarkand, teacher Dilbar Kodirova."
+   },
+   {
+    "uz": "7-sinf algebra, «Bir noma’lumli chiziqli tenglama» mavzusiga 14 ta slayd. Misollar yechimi bilan, juftlikda ishlash uchun 3 ta mashq va 5 ta test savoli bo‘lsin. Darslikdagi mavzu matnini PDF qilib biriktirdim.",
+    "ru": "14 слайдов к уроку алгебры в 7 классе: «Линейное уравнение с одной неизвестной». Примеры с решением, 3 упражнения для работы в парах и 5 тестовых вопросов. Текст темы из учебника приложил в PDF.",
+    "en": "14 slides for a grade 7 algebra lesson: “A linear equation in one unknown”. Worked examples, 3 exercises for pairs and 5 test questions. I attached the textbook text for the topic as a PDF."
+   }
+  ],
+  "attach": true,
+  "notices": {
+   "blanks": {
+    "uz": "Siz bermagan ma’lumot o‘rniga bo‘sh joy qoldirildi: uni o‘zingiz to‘ldiring.",
+    "ru": "Где данных не было, оставлены пустые места: заполните их сами.",
+    "en": "Where you gave no details, blanks were left for you to fill in."
+   }
+  }
+ },
+ "templates": [],
+ "look": {
+  "designs": [
+   "classroom",
+   "forest",
+   "atlas",
+   "chalkboard",
+   "lectern",
+   "boardroom",
+   "scholar"
+  ],
+  "variants": {
+   "bullets": [
+    "classic",
+    "numbered_rows",
+    "step_ladder",
+    "card_stack",
+    "lead_line"
+   ],
+   "statement": [
+    "soft_panel"
+   ],
+   "image_split": [
+    "classic"
+   ]
+  },
+  "cover_lines": 4,
+  "note": "classroom for both lessons; forest, atlas, chalkboard and the formal looks are picked by the customer. The research type contract changes the deck renderer and is not in this round."
+ },
+ "gates": [
+  "A mother-tongue teacher confirms the Uzbek school terms of the rules and the fixed headings (Darsning maqsadi, O‘tilgan mavzuni takrorlash, Mustahkamlash: savollar, Refleksiya, Uyga vazifa).",
+  "A 6, a 10 and a 15 slide sample in uz, ru and en, an ordinary and an open lesson, are drawn with the deck sample tool and looked at next to units/slides.dars/mock/school_dars.png and school_ochiq_dars.png."
+ ],
+ "later": [
+  {
+   "text": "Charts and figure slides for a lesson: a lesson rarely carries the customer’s own figures, so the figures slot is not built this round."
+  },
+  {
+   "text": "Section dividers before the new-topic and practice stages in decks of 18 slides or more."
+  },
+  {
+   "text": "A test built from an exact number of questions (two questions a slide); this round the test slides follow the slide count."
+  }
+ ],
+ "exclusive": [
+  [
+   "boshlangich",
+   "oyin"
+  ]
+ ],
+ "sources": {
+  "take": "all"
+ }
+}

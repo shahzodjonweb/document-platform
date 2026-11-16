@@ -1,0 +1,900 @@
+{
+ "schema": 2,
+ "id": "slides.pitch",
+ "status": "draft",
+ "service": "slides",
+ "parent": null,
+ "order": 5,
+ "labels": {
+  "uz": "🚀 Startap / Pitch",
+  "ru": "🚀 Стартап / Питч",
+  "en": "🚀 Startup / Pitch"
+ },
+ "summary": "An editable PowerPoint pitch deck for an investor, a grant programme, an accelerator or a startup contest: a cover that says what the project is, the problem as one decisive figure, the solution in three steps, the proof (traction), the market, how the company earns, the alternatives, the team and one ask slide, in a bold look that is still legible in grey, with every figure, name, role, date and contact taken from the customer’s message or attached files. The count is delivered as quoted; a slot the customer gave nothing for is an honest form of ruled lines.",
+ "tone": "Confident, plain and concrete, in the first person plural (“biz”): a claim in the headline, one fact under it, one idea a slide. No buzzwords and no superlative the customer did not write. The spoken part lives in the speaker notes and adds nothing the customer did not write.",
+ "topic": true,
+ "title": "model",
+ "length": {
+  "unit": "slides",
+  "mode": "count",
+  "target": "count",
+  "default": 10,
+  "min": 5,
+  "max": 30,
+  "by_cue": [
+   {
+    "cue": "tanlov",
+    "default": 8
+   }
+  ],
+  "note": "The count is delivered as quoted; a slot the customer gave nothing for is an honest form. 30 is the most: past about 15 slides a pitch is no longer longer, it is repeated."
+ },
+ "questions": {
+  "default": 0,
+  "max": 0
+ },
+ "quality": "repair",
+ "fill": false,
+ "cues": {
+  "tanlov": {
+   "uz": [
+    "tanlov",
+    "musobaqa",
+    "konkurs"
+   ],
+   "ru": [
+    "конкурс",
+    "соревнован"
+   ],
+   "en": [
+    "contest",
+    "competition"
+   ]
+  },
+  "grant": {
+   "uz": [
+    "grant"
+   ],
+   "ru": [
+    "грант"
+   ],
+   "en": [
+    "grant"
+   ]
+  }
+ },
+ "ask": null,
+ "fields": [
+  {
+   "id": "project_name",
+   "label": {
+    "uz": "Loyiha yoki kompaniya nomi",
+    "ru": "Название проекта или компании",
+    "en": "Project or company name"
+   },
+   "example": {
+    "uz": "FermaBor",
+    "ru": "FermaBor",
+    "en": "FermaBor"
+   },
+   "kind": "org",
+   "need": "required",
+   "missing": "ask",
+   "where": "Cover heading, the closing slide and the deck title. The bot’s existing topic check asks when the message has no name; if the customer cannot name it the cover carries a plain descriptive title (the one-sentence purpose), never an invented brand."
+  },
+  {
+   "id": "one_liner",
+   "label": {
+    "uz": "Bir jumlada: nima yasaydi va kim uchun",
+    "ru": "Одной фразой: что делает и для кого",
+    "en": "One sentence: what it makes and for whom"
+   },
+   "example": {
+    "uz": "Fermerlarni Toshkentdagi restoranlar bilan bog‘laydigan ilova",
+    "ru": "Приложение, которое связывает фермеров с ресторанами Ташкента",
+    "en": "An app that connects farmers with restaurants in Tashkent"
+   },
+   "kind": "text",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "Cover line 1: Sequoia’s \"company purpose in one declarative sentence\", written as WHAT THE THING IS and for whom (an app, a bot, a service; where; for whom), at most 12 words, in the customer’s own words. Never a slogan, never a claim to be first, best or only. If missing: the AI drafts it from the first sentence of the message and the solution line, in the same words."
+  },
+  {
+   "id": "purpose",
+   "label": {
+    "uz": "Kim uchun: investor, grant, tanlov yoki akselerator",
+    "ru": "Для кого: инвестор, грант, конкурс или акселератор",
+    "en": "For whom: investor, grant, contest or accelerator"
+   },
+   "example": {
+    "uz": "Yoshlar startap tanlovi",
+    "ru": "Молодёжный стартап-конкурс",
+    "en": "A youth startup contest"
+   },
+   "kind": "choice",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "Sets the blueprint variant: an investor deck keeps market, model and ask; a contest deck is shorter (default 7 to 8 slides) and leans on problem, proof, how it earns, team and what help is asked; a grant deck adds the effect (taasir). Printed only as a cover line when the customer names the programme. Never a programme name the customer did not write, and never a programme’s criteria from the model’s memory.",
+   "choices": [
+    "investor",
+    "grant",
+    "contest",
+    "accelerator"
+   ]
+  },
+  {
+   "id": "stage",
+   "label": {
+    "uz": "Bosqich: g‘oya, prototip, MVP yoki daromad bor",
+    "ru": "Стадия: идея, прототип, MVP или есть выручка",
+    "en": "Stage: idea, prototype, MVP or revenue"
+   },
+   "example": {
+    "uz": "Hozircha prototip bor",
+    "ru": "Пока есть прототип",
+    "en": "A prototype so far"
+   },
+   "kind": "choice",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "Decides the tense and whether a proof slide exists: an idea or prototype never gets words such as \"ishlayapti\", \"mijozlar\" or \"daromad\". If missing: read from the other fields; with no proof at all the natijalar slot is left out.",
+   "choices": [
+    "idea",
+    "prototype",
+    "mvp",
+    "revenue"
+   ]
+  },
+  {
+   "id": "problem",
+   "label": {
+    "uz": "Muammo: kim, qanchalik og‘ir, qanday raqam",
+    "ru": "Проблема: у кого, насколько тяжёлая, какая цифра",
+    "en": "The problem: who, how bad, which figure"
+   },
+   "example": {
+    "uz": "Kichik restoranlar yetkazib beruvchi qidirishga haftasiga o‘rtacha 6 soat sarflaydi (40 ta egasidan so‘radik)",
+    "ru": "Небольшие рестораны тратят на поиск поставщика в среднем 6 часов в неделю (спросили 40 владельцев)",
+    "en": "Small restaurants spend 6 hours a week finding a supplier (we asked 40 owners)"
+   },
+   "kind": "text",
+   "need": "required",
+   "missing": "ask",
+   "where": "Muammo slide. A figure is used only with its source in the customer’s words (a survey of 40 owners, not \"research shows\"). Without any figure the slide states two pains in the customer’s own words. The bot’s topic check asks when there is no problem at all."
+  },
+  {
+   "id": "solution",
+   "label": {
+    "uz": "Yechim va u qanday ishlaydi",
+    "ru": "Решение и как оно работает",
+    "en": "The solution and how it works"
+   },
+   "example": {
+    "uz": "Fermer hosilini ilovaga qo‘yadi, restoran ertalab buyurtma beradi, mahsulot ertasi kuni oshxonada bo‘ladi",
+    "ru": "Фермер выставляет урожай в приложении, ресторан заказывает утром, на следующий день продукты на кухне",
+    "en": "The farmer lists the harvest in the app, the restaurant orders in the morning, the produce is in the kitchen next day"
+   },
+   "kind": "text",
+   "need": "required",
+   "missing": "ask",
+   "where": "Yechim slide (3 cards). The customer’s own sequence; no feature the customer did not name. The \"Qanday ishlaydi\" slide exists only if the message holds something the solution slide does not (see its slot)."
+  },
+  {
+   "id": "business_model",
+   "label": {
+    "uz": "Daromad modeli: qanday daromad qilasiz",
+    "ru": "Модель дохода: как вы зарабатываете",
+    "en": "Business model: how you earn"
+   },
+   "example": {
+    "uz": "Har buyurtmadan 8% komissiya, o‘rtacha buyurtma 1,2 mln so‘m",
+    "ru": "8 % комиссии с каждого заказа, средний заказ 1,2 млн сум",
+    "en": "8% commission on every order, an average order of 1.2 million som"
+   },
+   "kind": "text",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "Biznes model slide, the first question a startup jury asks (it joins the deck at 6 slides, before the proof). The first line of the bot prompt asks for it by name (\"qanday daromad qilasiz\"). No price, rate or period is made up and no margin is computed. If missing: the slide is not made and the review screen says so by name (notices.omitted)."
+  },
+  {
+   "id": "traction",
+   "label": {
+    "uz": "Natijalar: mijozlar, daromad, pilotlar, shartnomalar",
+    "ru": "Результаты: клиенты, выручка, пилоты, договоры",
+    "en": "Traction: customers, revenue, pilots, contracts"
+   },
+   "example": {
+    "uz": "Mart–iyun oylarida buyurtmalar 12, 25, 46 va 72 mln so‘m; 14 ta fermer, 38 ta restoran",
+    "ru": "С марта по июнь заказы 12, 25, 46 и 72 млн сум; 14 фермеров, 38 ресторанов",
+    "en": "March to June orders of 12, 25, 46 and 72 million som; 14 farmers, 38 restaurants"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Natijalar slide: a chart of the customer’s own series, 2-4 figures or one decisive figure. No figure, no slide (an idea-stage deck simply has no proof slide). The headline names the first and the last value and uses the customer’s own word for what was counted (\"buyurtmalar\" stays orders, never turnover or revenue) and never a ratio or percentage the customer did not write. A chart label is a period name only when the customer named the periods or a range with as many values (March to June, four values)."
+  },
+  {
+   "id": "market",
+   "label": {
+    "uz": "Bozor: hajmi (TAM, SAM, SOM) yoki mijozlar soni",
+    "ru": "Рынок: объём (TAM, SAM, SOM) или число клиентов",
+    "en": "Market: size (TAM, SAM, SOM) or number of customers"
+   },
+   "example": {
+    "uz": "TAM yiliga 1,8 trln so‘m; SAM Toshkent va Samarqandda 410 mlrd; SOM uch yilda mingta mijoz",
+    "ru": "TAM 1,8 трлн сум в год; SAM Ташкент и Самарканд 410 млрд; SOM тысяча клиентов за три года",
+    "en": "TAM 1.8 trillion som a year; SAM Tashkent and Samarkand 410 billion; SOM a thousand customers in three years"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Bozor slide: up to three figures, each labelled with the customer’s own words for what it counts (\"restoran va kafelar\", \"Toshkent va Samarqand\"); the letters TAM, SAM, SOM are printed only when the customer wrote them (or the attached file did). One figure: one big number; none: the customer’s own description of who pays (2-4 segments); with nothing about customers the slide is left out. No market size from the model’s memory, no word such as \"butun\" or \"nationwide\" that the customer did not write, and a source named by the customer or the file is printed as \"Manba: ...\"."
+  },
+  {
+   "id": "alternatives",
+   "label": {
+    "uz": "Raqobatchilar yoki hozirgi usul",
+    "ru": "Конкуренты или нынешний способ",
+    "en": "Competitors or today’s way"
+   },
+   "example": {
+    "uz": "Bozorga borib yoki fermerlarga qo‘ng‘iroq qilib: 3–5 kun, yarim soat, naqd pul",
+    "ru": "Ездят на рынок или звонят фермерам: 3–5 дней, полчаса, наличные",
+    "en": "Going to the market or phoning farmers: 3–5 days, half an hour, cash"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Raqobat slide: how customers solve it today against the product on 3-5 criteria, each cell a fact the customer gave. Competitors are named only if the customer named them. A customer who writes \"raqobatchilarimiz yo‘q\" gets today’s way (what the customer says customers do now) and a headline that does not repeat the claim; if the message gives no today’s way either, the slide is left out. If missing: left out."
+  },
+  {
+   "id": "team",
+   "label": {
+    "uz": "Jamoa: ism, lavozim, tajriba",
+    "ru": "Команда: имя, должность, опыт",
+    "en": "Team: name, role, experience"
+   },
+   "example": {
+    "uz": "Aziza Karimova — asoschi, 5 yil oziq-ovqat yetkazib berishda ishlagan",
+    "ru": "Азиза Каримова — основатель, 5 лет в доставке продуктов",
+    "en": "Aziza Karimova, founder, 5 years in food delivery"
+   },
+   "kind": "list",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "Jamoa slide: a table (Ism, Roli, Tajriba), one row per named person, 2-6 rows, role and experience in the customer’s words; no title, photo, credential or verb of what the person did that the customer did not write. A team the customer mentions by count only (\"three students\") gets the single line \"Uchta talaba\" (statement) and the notes carry [To‘ldiring: ...]; the review screen asks for the names. More than 6 people: the first six in the customer’s order, the others only in the notes, and the review screen says so. If the team is not mentioned the slide is left out."
+  },
+  {
+   "id": "ask",
+   "label": {
+    "uz": "So‘rov: summa, valyuta, nimaga, qancha muddatga",
+    "ru": "Запрос: сумма, валюта, на что, на какой срок",
+    "en": "The ask: amount, currency, what for, for how long"
+   },
+   "example": {
+    "uz": "150 mln so‘m pre-seed, 12 oyga yetadi: 60% ilova, 25% savdo, 15% ombor",
+    "ru": "150 млн сум pre-seed на 12 месяцев: 60 % приложение, 25 % продажи, 15 % склад",
+    "en": "150 million som pre-seed for 12 months: 60% app, 25% sales, 15% warehouse"
+   },
+   "kind": "money",
+   "need": "recommended",
+   "missing": "ask",
+   "where": "Moliyalashtirish slide, the one the deck exists for. Asked for by name in the main prompt. The amount goes in the headline as the customer wrote it, in the currency the customer wrote; a split the customer wrote is shown as written, in the customer’s order. If the customer showed an ask exists but gave no amount (\"so‘raymiz\", \"grant kerak\") the headline carries the ruled blank (\"Moliyalashtirish: ________ so‘m\") and the review screen lists it; if the customer asked only for help (mentoring, a server, a pilot) there is no money on the slide at all, no blank and no amount: the slide is \"Bizga nima kerak\" with the help as written. No valuation, equity share, return or instrument is proposed by the AI."
+  },
+  {
+   "id": "roadmap",
+   "label": {
+    "uz": "Reja: sanalar va bosqichlar",
+    "ru": "План: даты и этапы",
+    "en": "Plan: dates and milestones"
+   },
+   "example": {
+    "uz": "2026-yil iyul — ilova yangilanadi; sentabr — Samarqandda ishga tushiramiz",
+    "ru": "Июль 2026 — обновляем приложение; сентябрь — запуск в Самарканде",
+    "en": "July 2026: app update; September: launch in Samarkand"
+   },
+   "kind": "list",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Yo‘l xaritasi slide (timeline of 3-6 milestones) from 14 slides; only the customer’s dates, in the deck language. If missing: left out."
+  },
+  {
+   "id": "go_to_market",
+   "label": {
+    "uz": "Mijozlarni qanday topamiz",
+    "ru": "Как мы находим клиентов",
+    "en": "How customers will be found"
+   },
+   "example": {
+    "uz": "Telegram kanallari va restoranlar uyushmasi orqali",
+    "ru": "Через Telegram-каналы и ассоциацию ресторанов",
+    "en": "Through Telegram channels and a restaurant association"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Mijozlarni topish slide (3-4 channels or steps in the customer’s words) from 11 slides; contest criteria and the growth slide of the Microsoft templates ask for it and the roadmap is dates only. No channel, number or order of steps the customer did not write. If missing: left out."
+  },
+  {
+   "id": "financials",
+   "label": {
+    "uz": "Moliya: buyurtmalar, xarajat, daromad",
+    "ru": "Финансы: заказы, расходы, доход",
+    "en": "Financials: orders, costs, income"
+   },
+   "example": {
+    "uz": "Mart–iyun: buyurtmalar 155 mln so‘m, komissiya 12,4 mln, xarajat 31 mln",
+    "ru": "Март–июнь: заказы 155 млн сум, комиссия 12,4 млн, расходы 31 млн",
+    "en": "March to June: orders 155 m, commission 12.4 m, costs 31 m"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Moliya slide (a two-column table, Ko‘rsatkich and the period, 2-6 rows) from 12 slides; verbatim figures and the customer’s own terms only, no forecast, no total, no \"note\" column. If missing: left out."
+  },
+  {
+   "id": "why_now",
+   "label": {
+    "uz": "Nega aynan hozir",
+    "ru": "Почему сейчас",
+    "en": "Why now"
+   },
+   "example": {
+    "uz": "Fermerlar telefonda to‘lov qabul qila boshladi",
+    "ru": "Фермеры стали принимать оплату на телефон",
+    "en": "Farmers have started to accept payments on a phone"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Nega hozir slide (one sentence) from 15 slides, only if the customer wrote the reason. If missing: left out."
+  },
+  {
+   "id": "vision",
+   "label": {
+    "uz": "Kelajak: besh yildan keyin",
+    "ru": "Видение: через пять лет",
+    "en": "Vision: in five years"
+   },
+   "example": {
+    "uz": "Besh yilda har bir viloyatda bitta ilova",
+    "ru": "Через пять лет — одно приложение в каждой области",
+    "en": "In five years one app in every region"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Kelajak slide (one sentence) from 16 slides, only if written. If missing: left out."
+  },
+  {
+   "id": "impact",
+   "label": {
+    "uz": "Ijtimoiy yoki iqtisodiy ta’sir (grant yoki tanlov uchun)",
+    "ru": "Социальный или экономический эффект (для гранта или конкурса)",
+    "en": "Social or economic impact (for a grant or contest)"
+   },
+   "example": {
+    "uz": "14 ta fermer yangi daromad manbasiga ega bo‘ldi",
+    "ru": "14 фермеров получили новый источник дохода",
+    "en": "14 farmers gained a new source of income"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Ta’sir slide in a grant deck, and in a contest deck when the customer gave it (the Uzbek contest regulation scores the social and economic effect), from the customer’s figures. If missing: left out; nothing is written about jobs, GDP or the environment unless the customer wrote it."
+  },
+  {
+   "id": "cover_lines",
+   "label": {
+    "uz": "Birinchi va oxirgi slayd: kim taqdim etadi, tanlov yoki dastur, yil, aloqa",
+    "ru": "Первый и последний слайд: кто выступает, конкурс или программа, год, контакты",
+    "en": "First and last slide: who presents, contest or programme, year, contacts"
+   },
+   "example": {
+    "uz": "Aziza Karimova, asoschi / Namuna Startap tanlovi, 2026 / Telegram @fermabor_namuna",
+    "ru": "Азиза Каримова, основатель / Конкурс «Намуна Стартап», 2026 / Telegram @fermabor_namuna",
+    "en": "Aziza Karimova, founder / Namuna Startup Contest, 2026 / Telegram @fermabor_namuna"
+   },
+   "kind": "list",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Asked in the fifth line of the main prompt (there is no extra step). Printed without a label word: the name and role (\"Aziza Karimova, asoschi\"), then the contest and year, then on the closing slide the contacts exactly as written. If missing: the cover has the name and the purpose line only and the closing slide \"Rahmat!\" with the presenter, if any."
+  },
+  {
+   "id": "length",
+   "label": {
+    "uz": "Slayd soni yoki chiqish vaqti",
+    "ru": "Число слайдов или время выступления",
+    "en": "Slide count or talk length"
+   },
+   "example": {
+    "uz": "3 daqiqalik chiqish, 6 ta slayd",
+    "ru": "Выступление на 3 минуты, 6 слайдов",
+    "en": "A 3-minute talk, 6 slides"
+   },
+   "kind": "number",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Deck length: a count is the target (5 and up), minutes alone give minutes plus 2, never below 5; a named contest with neither gives 7 to 8; nothing given means 10. The minutes reader is shared with slides.mavzu and does not exist yet (section 6, item 6)."
+  }
+ ],
+ "parts": [
+  {
+   "id": "cover",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "required",
+   "layouts": [
+    "cover"
+   ],
+   "pins": [],
+   "source": "template",
+   "write": "Heading = the name (at most 3 words). Lines: 1 what we make, for whom (at most 12 words, the customer’s words, a declarative sentence and not a slogan), 2 the presenter’s name and role with no label word, 3 the contest or programme and year; only lines the customer gave, at most 4, no photo, no notes. When the customer asks for print (\"chop etish uchun\") the look is spotlight with a white ground (theme light), not the coral flood."
+  },
+  {
+   "id": "muammo",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "required",
+   "layouts": [
+    "big_number",
+    "stats",
+    "cards",
+    "two_column",
+    "statement",
+    "bullets"
+   ],
+   "pins": [
+    "big_number.band",
+    "big_number.corner",
+    "two_column.numbered"
+   ],
+   "source": "customer",
+   "write": "One decisive figure the customer gave as big_number (the figure, what it measures, where it came from in at most 25 words); 2-3 figures as stats; without a figure two pains in the customer’s own words as two_column (numbered). Headline at most 9 words, with the verb the customer used (sarflaydi) and not a stronger one (yo‘qotadi). Notes: who suffers and how the customer found out."
+  },
+  {
+   "id": "yechim",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "required",
+   "layouts": [
+    "cards",
+    "bullets"
+   ],
+   "pins": [
+    "cards.tab_rows",
+    "cards.numeral_columns",
+    "cards.colour_tiles"
+   ],
+   "source": "customer",
+   "write": "3 cards (2-4): label a verb phrase of at most 3 words and 22 characters, text at most 12 words; the customer’s own sequence; no feature, benefit or superlative the customer did not write."
+  },
+  {
+   "id": "mahsulot",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "optional",
+   "layouts": [
+    "process",
+    "cards",
+    "bullets"
+   ],
+   "pins": [
+    "process.big_numerals",
+    "process.chevrons"
+   ],
+   "source": "customer",
+   "write": "From 11 slides and ONLY if the message holds a fact the yechim slide does not carry (a cut-off time, a step such as the driver, a figure, an example, a screen); the same farmer-lists, restaurant-orders, kitchen-next-day steps in other words are never a second slide. Under 16 slides without such a fact the slot is merged into yechim. 3-4 steps in order, label at most 3 words, text at most 12 words. figure (the customer’s own screenshot) only when that layout exists and the customer added a picture; never a stock photo of a person with a phone. Up to 2 slides.",
+   "from": 12,
+   "join": 8,
+   "repeat": {
+    "min": 1,
+    "max": 8
+   }
+  },
+  {
+   "id": "natijalar",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "optional",
+   "layouts": [
+    "chart",
+    "stats",
+    "big_number",
+    "bullets"
+   ],
+   "pins": [
+    "chart.columns",
+    "chart.peak_callout"
+   ],
+   "source": "customer",
+   "write": "A chart of the customer’s own series (3-8 points, the customer’s labels and unit, one series), or 2-4 figures, or one figure. Headline names the first and the last value (\"12 mln so‘mdan 72 mln so‘mga\") and the customer’s own word for what was counted (buyurtmalar), never a ratio or percentage the customer did not write. Up to 2 slides. No figure: the honest form (heading and ruled lines).",
+   "from": 7,
+   "join": 3,
+   "repeat": {
+    "min": 1,
+    "max": 8
+   }
+  },
+  {
+   "id": "nega_hozir",
+   "kind": "slide",
+   "heading": {
+    "uz": "Nega hozir",
+    "ru": "Почему сейчас",
+    "en": "Why now"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "layouts": [
+    "statement",
+    "bullets"
+   ],
+   "pins": [
+    "statement.soft_panel",
+    "statement.band",
+    "statement.left_bar"
+   ],
+   "source": "customer",
+   "write": "From 15 slides, only if the customer wrote the reason: one sentence of at most 20 words in the customer’s words, the heading is the fixed label alone. Placed after the solution.",
+   "from": 15,
+   "join": 11
+  },
+  {
+   "id": "bozor",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "usual",
+   "layouts": [
+    "stats",
+    "big_number",
+    "cards",
+    "bullets"
+   ],
+   "pins": [
+    "stats.split_cards",
+    "stats.rows",
+    "stats.dark_band"
+   ],
+   "source": "customer",
+   "write": "Up to three figures as the customer gave them: value, a label in the customer’s own words for what is counted (and \"TAM: \", \"SAM: \", \"SOM: \" in front only if the customer wrote those letters or the file did), one line saying what is counted only if the customer said it (no period or scope is filled in), and \"Manba: ...\" if the customer or file gave a source. One figure as one big number. No figure: 2-4 customer segments as cards, from the customer’s words on who pays. Nothing about customers: left out. The notes restate the same three figures, no more.",
+   "when": "nocue:tanlov",
+   "from": 8
+  },
+  {
+   "id": "biznes_model",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "usual",
+   "layouts": [
+    "process",
+    "cards",
+    "table",
+    "stats",
+    "bullets"
+   ],
+   "pins": [
+    "process.chevrons",
+    "process.big_numerals",
+    "process.tone_blocks"
+   ],
+   "source": "customer",
+   "write": "The money flow in 3 steps (who pays whom, how much, when), label at most 3 words and 20 characters, or the revenue streams as cards, or the price list as a table (2-3 columns, 2-6 rows), or unit figures as stats. Every price, rate and period from the customer; no margin, no \"the rest\", no total computed. Left out when the message has no model, and then the review screen says so by name.",
+   "from": 6
+  },
+  {
+   "id": "raqobat",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "optional",
+   "layouts": [
+    "comparison",
+    "matrix",
+    "table",
+    "bullets"
+   ],
+   "pins": [
+    "comparison.hue_headers",
+    "comparison.stacked_pairs",
+    "comparison.split_halves"
+   ],
+   "source": "customer",
+   "write": "Two columns, the product FIRST and in the accent colour, today’s way second and in the neutral colour (the only place where a second hue carries meaning: us against them), on 3-5 criteria; each cell a fact or a plain yes/no the customer gave. matrix (cross_axes) only when the customer names two axes. Competitors only by the customer’s names; never \"no competitors\", and when the customer writes it the slide shows today’s way and the headline does not repeat the claim. Left out when nothing is given.",
+   "from": 10,
+   "join": 5
+  },
+  {
+   "id": "mijozlar",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "optional",
+   "layouts": [
+    "cards",
+    "process",
+    "table",
+    "bullets"
+   ],
+   "pins": [
+    "cards.numeral_columns",
+    "cards.tab_rows",
+    "table.row_cards"
+   ],
+   "source": "customer",
+   "write": "From 11 slides, only if the customer wrote the channels: 3-4 channels or steps in the customer’s words, label at most 3 words, text at most 12 words; no channel, number, budget or order that the customer did not write.",
+   "from": 11,
+   "join": 7
+  },
+  {
+   "id": "taasir",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "optional",
+   "layouts": [
+    "stats",
+    "cards",
+    "bullets"
+   ],
+   "pins": [
+    "stats.split_cards",
+    "stats.rows",
+    "stats.dark_band"
+   ],
+   "source": "customer",
+   "write": "Grant decks, and contest decks when the customer gave it, from the customer’s figures (people, farms, jobs the customer counted). No general statement about the economy or the environment. Joins after raqobat.",
+   "when": "cue:grant",
+   "from": 11,
+   "join": 6
+  },
+  {
+   "id": "jamoa",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "usual",
+   "layouts": [
+    "table",
+    "statement",
+    "bullets"
+   ],
+   "pins": [
+    "table.row_cards",
+    "table.dark_first_column",
+    "statement.soft_panel"
+   ],
+   "source": "customer",
+   "write": "A table (Ism, Roli, Tajriba), one row per named person, 2-6 rows (16 pt, names and facts in ink): the name, the role and one fact in the customer’s words, at most 12 words; no photo, no invented title or credential, no verb of what a person built or did unless the customer wrote it; advisors only if given and labelled so. Headline from the roles as written (\"asoschi, dasturchi va savdo\"), never a field the customer did not name (\"logistika tajribasi\"). Count only (\"uchta talaba\"): a statement with the single line \"Uchta talaba.\" and [To‘ldiring: ...] in the notes. Over 6 people: the first six in the customer’s order, the rest in the notes. Up to 2 slides.",
+   "from": 5,
+   "repeat": {
+    "min": 1,
+    "max": 4
+   }
+  },
+  {
+   "id": "moliya",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "optional",
+   "layouts": [
+    "table",
+    "chart",
+    "bullets"
+   ],
+   "pins": [
+    "table.row_cards",
+    "table.dark_first_column"
+   ],
+   "source": "customer",
+   "write": "From 12 slides. A TWO-column table (Ko‘rsatkich and the period, 2-6 rows) or a chart; verbatim figures in the customer’s own terms (buyurtmalar stays orders), no forecast, no total the customer did not write, no note column. Up to 2 slides.",
+   "when": "nocue:tanlov",
+   "from": 13,
+   "join": 9,
+   "repeat": {
+    "min": 1,
+    "max": 4
+   }
+  },
+  {
+   "id": "yol_xaritasi",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "optional",
+   "layouts": [
+    "timeline",
+    "bullets"
+   ],
+   "pins": [
+    "timeline.stairs",
+    "timeline.year_blocks",
+    "timeline.deep_band"
+   ],
+   "source": "customer",
+   "write": "From 14 slides. 3-6 milestones with the customer’s dates in the deck language (\"2026-yil iyul\"); the headline names the last milestone and its date.",
+   "from": 14,
+   "join": 10
+  },
+  {
+   "id": "kelajak",
+   "kind": "slide",
+   "heading": {
+    "uz": "Kelajak",
+    "ru": "Видение",
+    "en": "Vision"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "layouts": [
+    "statement",
+    "bullets"
+   ],
+   "pins": [
+    "statement.soft_panel",
+    "statement.band",
+    "statement.left_bar"
+   ],
+   "source": "customer",
+   "write": "From 16 slides, only if written: one sentence of at most 20 words.",
+   "from": 16,
+   "join": 12
+  },
+  {
+   "id": "sorov",
+   "kind": "slide",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "required",
+   "layouts": [
+    "stats",
+    "big_number",
+    "table",
+    "two_column",
+    "bullets"
+   ],
+   "pins": [
+    "stats.rows",
+    "table.row_cards",
+    "big_number.band",
+    "two_column.numbered"
+   ],
+   "source": "customer",
+   "write": "The headline carries the amount in the customer’s currency as written, and the runway or purpose if given (\"Moliyalashtirish: 150 mln so‘m pre-seed, 12 oyga yetadi\"). The body by what the customer wrote: (a) amount and 1 to 3 shares or uses (2 to 4 rows in all): stats.rows, the amount first (value, then what it is, then the period), then the shares in the customer’s order, each row ending with the fixed caption \"mablag‘dan\" (\"of the amount\"); on the two Trebuchet/Calibri looks (midnight, summit), where four stats rows do not fit, a two-column table (Nimaga, Mablag‘dan) and the amount in the headline only; (b) amount and 4 to 6 uses: that table (the amount in the headline), more than 6 on a second ask slide continuing the table; (c) amount only: big_number; (d) shares or uses with no amount, the customer having shown an ask exists: the headline carries \"________ so‘m\" and the shares follow as in (a); (e) help only, no money (a contest deck): the label \"Bizga nima kerak\" and two_column of the help as written, no amount and no blank. Shares are shown as written even if they do not add to 100; the AI never proposes a split, a valuation, an equity share or an instrument. Notes: the milestone only if given."
+  },
+  {
+   "id": "rahmat",
+   "kind": "slide",
+   "heading": {
+    "uz": "Rahmat!",
+    "ru": "Спасибо!",
+    "en": "Thank you!"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "layouts": [
+    "closing"
+   ],
+   "pins": [],
+   "source": "template",
+   "write": "Heading \"Rahmat!\" and the lines the customer gave (presenter and role with no label word, contacts exactly as written); at most 4 lines. With no contacts: one line \"Savollaringizga javob beramiz\". Never an invented handle, address or phone.",
+   "from": 9
+  }
+ ],
+ "rules": [
+  {
+   "text": "Every name, figure, date, percentage, organisation, contact, role, market scope, sequence word, causal claim and every verb saying what a person built or did comes from the message or the attached file; you write only the words around them. Never a market size, growth multiple, “first in Uzbekistan”, competitor name, valuation or source of your own.",
+   "to": "model"
+  },
+  {
+   "text": "No computed figures: never add, subtract, divide or round (no “6 barobar”, no CAGR, no total, no remainder). Growth is shown by the two numbers the customer gave. A currency stays as the customer wrote it and is never converted; every figure carries its unit and period.",
+   "to": "model"
+  },
+  {
+   "text": "A slide the customer gave nothing for is an honest form: its heading and lines ending in a ruled blank with the unit (“Summa: ________ so‘m”), repeated in the notes as “[To‘ldiring: ...]”; never a plausible number, “XXX” or an example. An ask for help with no money has no amount and no blank.",
+   "to": "model"
+  },
+  {
+   "text": "Slide form: the headline is “Label: claim” of at most 9 words, the label the slot’s fixed word in the deck’s language (Muammo, Yechim, Bozor; Проблема, Решение, Рынок; Problem, Solution, Market); 20 to 45 words a slide; a card or step label at most 3 words and its text at most 12; a statement at most 20 words. This overrides the global guide of about 111 words a slide.",
+   "to": "model"
+  },
+  {
+   "text": "Voice: “biz”, present tense, active verbs. Never “innovatsion”, “noyob”, “inqilobiy”, “birinchi”, “yagona”, “eng yaxshi”, “lider” or their Russian and English equivalents unless the customer wrote them. An idea or prototype never speaks in the tense of a running business.",
+   "to": "model"
+  },
+  {
+   "text": "Problem: one kind of customer, one pain, the customer’s figure with where it came from; a survey of one group is that group’s result. Market: TAM, SAM and SOM only when the customer wrote them, never derived. Competition: never “no competitors”; show how customers solve the problem today, as described, against the product; rivals are named only if the customer named them.",
+   "to": "model"
+  },
+  {
+   "text": "Team: names and roles as written, one fact of experience each in the customer’s words; no photo, title, degree or employer of your own. The ask states the amount, currency, use and period as written, under “Moliyalashtirish” for money or “Bizga nima kerak” for help only, never “So‘rov”; never propose a valuation, an equity share or a return.",
+   "to": "model"
+  },
+  {
+   "text": "A programme the customer names changes tone and order, never content: never recite its criteria or deadlines from memory. When the programme asks for a language, the whole deck is in it; otherwise the deck follows the message. Uzbek is Latin only, o‘ and g‘ with ‘ and the tutuq belgisi with ’.",
+   "to": "model"
+  },
+  {
+   "text": "No stock photo and never a person; image_split only for a physical product when pictures are asked. Notes: 25 to 45 words a slide in the first person plural that restate the slide and add nothing that is not in the message.",
+   "to": "model"
+  }
+ ],
+ "bot": {
+  "prompt": {
+   "uz": "🚀 Startap / Pitch. Bitta xabarda yozing: loyiha nima qiladi va kim uchun, muammo, yechim, qanday daromad qilasiz, jamoa va qancha mablag‘ so‘rayotganingiz.\nRaqamlaringizni (mijozlar, daromad, bozor) valyutasi bilan yozing: slaydlarga faqat shular, siz yozgandek kiradi; o‘zimizdan raqam qo‘shmaymiz, valyutani almashtirmaymiz.\nBiznes-reja yoki eski taqdimotingiz bo‘lsa, PDF, Word yoki TXT qilib yuboring.\nSlayd soni: aytmasangiz, 10 ta slayd bo‘ladi (tanlov uchun 8 ta).\nBirinchi va oxirgi slayd uchun (ixtiyoriy): kim taqdim etadi (ism, lavozim), tanlov yoki dastur nomi va yili, aloqa. Yozmagan narsangiz slaydda bo‘lmaydi.",
+   "ru": "🚀 Стартап / Питч. Напишите одним сообщением: что делает проект и для кого, проблему, решение, как вы зарабатываете, команду и сколько денег вы просите.\nНапишите свои цифры (клиенты, выручка, рынок) с валютой: на слайды попадут только они, как вы их написали; от себя цифры мы не добавляем и валюту не меняем.\nЕсть бизнес-план или старая презентация? Пришлите файлом PDF, Word или TXT.\nЧисло слайдов: если не указать, будет 10 слайдов (для конкурса 8).\nДля первого и последнего слайда (по желанию): кто выступает (имя, должность), название конкурса или программы и год, контакты. Чего не напишете, на слайде не будет.",
+   "en": "🚀 Startup / Pitch. Say in one message: what the project does and for whom, the problem, the solution, how you earn money, the team and how much money you are asking for.\nWrite your own figures too (customers, revenue, market) with their currency: only they go on the slides, as you wrote them; we add no numbers of our own and never change a currency.\nGot a business plan or an old deck? Send it as a PDF, Word or TXT file.\nSlide count: 10 slides if you don’t say (8 for a contest).\nFor the first and the last slide (optional): who presents (name, role), the name of the contest or programme and the year, contacts. Anything you leave out will not appear on the slides."
+  },
+  "examples": [
+   {
+    "uz": "Investorlarga 10 ta slayd kerak. FermaBor — fermerlarni Toshkentdagi restoranlar bilan bog‘laydigan ilova.\nMuammo: kichik restoran egalari yetkazib beruvchi qidirishga haftasiga o‘rtacha 6 soat sarflaydi (40 ta restoran egasi o‘rtasidagi so‘rov); yangi mahsulot ko‘pincha kech yetib keladi.\nYechim: fermer hosilini narxi bilan ilovaga qo‘yadi, restoran ertalab bitta ro‘yxatdan buyurtma beradi, mahsulot ertasi kuni oshxonada bo‘ladi.\nNatijalar: mart, aprel, may va iyun oylarida buyurtmalar 12, 25, 46 va 72 mln so‘m bo‘ldi. Hozir 14 ta fermer va 38 ta restoran ishlaydi.\nBozor: TAM — restoran va kafelar yiliga 1,8 trln so‘mlik oziq-ovqat xarid qiladi; SAM — Toshkent va Samarqandda 410 mlrd so‘m; SOM — uch yilda mingta mijozga yetsak, 38 mlrd so‘m.\nDaromad: har buyurtmadan 8% komissiya, o‘rtacha buyurtma 1,2 mln so‘m; fermerga pul yetkazilgandan keyin bir sutkada o‘tkaziladi.\nRaqobat: restoranlar hozir bozorga borib yoki fermerlarga qo‘ng‘iroq qiladi: yangi mahsulot 3–5 kunda yetadi, buyurtma yarim soat oladi, to‘lov naqd. Bizda: ertasi kuni, 2 daqiqa, narxlar bitta ro‘yxatda, ilova orqali to‘lov.\nJamoa: Aziza Karimova — asoschi, 5 yil oziq-ovqat yetkazib berishda ishlagan; Jasur Rahimov — dasturchi, 6 yillik tajriba; Nilufar Yusupova — savdo, fermerlar bilan 14 ta shartnoma tuzgan.\nSo‘raymiz: 150 mln so‘m pre-seed, 12 oyga yetadi: 60% ilova va yetkazishga, 25% savdo jamoasiga, 15% omborga.\nBirinchi va oxirgi slayd uchun:\nTaqdim etuvchi: Aziza Karimova, asoschi\nNamuna Startap tanlovi, 2026\nAloqa: Telegram @fermabor_namuna, aziza@example.com",
+    "ru": "Нужно 10 слайдов для инвесторов. FermaBor — приложение, которое связывает фермеров с ресторанами Ташкента.\nПроблема: владельцы небольших ресторанов тратят на поиск поставщика в среднем 6 часов в неделю (опрос 40 владельцев ресторанов); свежие продукты часто приходят поздно.\nРешение: фермер выставляет урожай в приложении с ценой, ресторан утром заказывает из одного списка, на следующий день продукты на кухне.\nРезультаты: в марте, апреле, мае и июне заказы составили 12, 25, 46 и 72 млн сум. Сейчас работают 14 фермеров и 38 ресторанов.\nРынок: TAM — рестораны и кафе закупают продукты на 1,8 трлн сум в год; SAM — Ташкент и Самарканд, 410 млрд сум; SOM — если за три года придёт тысяча клиентов, 38 млрд сум.\nДоход: 8 % комиссии с каждого заказа, средний заказ 1,2 млн сум; деньги фермеру переводятся в течение суток после доставки.\nКонкуренты: сейчас рестораны едут на рынок или звонят фермерам: продукты приходят за 3–5 дней, заказ занимает полчаса, оплата наличными. У нас: на следующий день, 2 минуты, цены в одном списке, оплата через приложение.\nКоманда: Азиза Каримова — основатель, 5 лет работала в доставке продуктов; Жасур Рахимов — разработчик, 6 лет опыта; Нилуфар Юсупова — продажи, заключила 14 договоров с фермерами.\nПросим: 150 млн сум pre-seed на 12 месяцев: 60 % приложение и доставка, 25 % команда продаж, 15 % склад.\nНа первый и последний слайд:\nДокладчик: Азиза Каримова, основатель\nКонкурс «Намуна Стартап», 2026\nКонтакты: Telegram @fermabor_namuna, aziza@example.com",
+    "en": "I need 10 slides for investors. FermaBor is an app that connects farmers with restaurants in Tashkent.\nProblem: small restaurant owners spend 6 hours a week on average looking for a supplier (a survey of 40 restaurant owners); fresh produce often arrives late.\nSolution: the farmer lists the harvest with a price in the app, the restaurant orders from one list in the morning, the produce is in the kitchen the next day.\nTraction: in March, April, May and June orders were 12, 25, 46 and 72 million som. 14 farmers and 38 restaurants work with us now.\nMarket: TAM, restaurants and cafes buy 1.8 trillion som of food a year; SAM, Tashkent and Samarkand, 410 billion som; SOM, if we reach a thousand customers in three years, 38 billion som.\nRevenue: 8% commission on every order, an average order of 1.2 million som; the farmer is paid within a day of delivery.\nCompetition: today restaurants go to the market or phone farmers: produce arrives in 3–5 days, an order takes half an hour, payment is in cash. With us: the next day, 2 minutes, prices in one list, payment in the app.\nTeam: Aziza Karimova, founder, 5 years in food delivery; Jasur Rahimov, developer, 6 years of experience; Nilufar Yusupova, sales, signed 14 contracts with farmers.\nWe ask for 150 million som pre-seed for 12 months: 60% app and delivery, 25% sales team, 15% warehouse.\nFor the first and the last slide:\nPresenter: Aziza Karimova, founder\nNamuna Startup Contest, 2026\nContact: Telegram @fermabor_namuna, aziza@example.com"
+   },
+   {
+    "uz": "Yoshlar startap tanlovi uchun 3 daqiqalik chiqish, 6 ta slayd kerak. Loyiha: Savolchi — 9–11-sinf o‘quvchilari uchun Telegram-bot: har kuni 10 ta test savoli va xatolar tahlili.\nMuammo: ko‘p o‘quvchi repetitorga pul to‘laydi, tumanlarda esa yaxshi repetitor topilmaydi.\nHozircha prototip bor, 25 ta o‘quvchi sinab ko‘rdi. Jamoa: uchta talaba.\nTanlovdan mentorlik va server uchun yordam so‘raymiz.",
+    "ru": "Нужно выступление на 3 минуты для молодёжного стартап-конкурса, 6 слайдов. Проект: Savolchi — Telegram-бот для учеников 9–11 классов: каждый день 10 тестовых вопросов и разбор ошибок.\nПроблема: многие ученики платят репетитору, а в районах хорошего репетитора не найти.\nПока есть прототип, его попробовали 25 учеников. Команда: трое студентов.\nПросим у конкурса помощь с наставничеством и сервером.",
+    "en": "I need a 3-minute talk with 6 slides for a youth startup contest. Project: Savolchi, a Telegram bot for pupils in grades 9 to 11: 10 test questions a day and an analysis of mistakes.\nProblem: many pupils pay a tutor, and in the districts a good tutor is hard to find.\nWe have a prototype so far and 25 pupils tried it. Team: three students.\nWe ask the contest for mentoring and help with a server."
+   },
+   {
+    "uz": "Startap akseleratoriga ariza uchun ingliz tilida 8 ta slayd kerak. Loyiha: AgroSklad — kichik fermerlar uchun sovutgichli omborni soatlab ijaraga berish xizmati.\nMuammo: kichik fermerlar dalaga yaqin sovutgichli ombor yo‘qligi uchun hosilning 20% ini yo‘qotadi (30 ta fermerlikka bordik).\nYechim: fermer ilovada sovutgichli konteynerni soatlab band qiladi; konteyner qishloq bozorida turadi.\nBozor: 120 000 ta kichik fermerlik (o‘zimizning baho).\nDaromad: konteynerning har soati uchun $2.\nJamoa: Dilshod Aliyev — CEO, 8 yil logistikada; Malika Nurova — muhandis.\nBiz 18 oyga $50 000 seed so‘raymiz: 50% konteynerlarga, 30% ilovaga, 20% savdoga.\nBirinchi va oxirgi slayd uchun: Dilshod Aliyev, CEO; Namuna Akselerator, 2026; Aloqa: Telegram @agrosklad_namuna",
+    "ru": "Нужна презентация на английском для заявки в акселератор, 8 слайдов. Проект: AgroSklad — почасовая аренда холодильного склада для небольших фермеров.\nПроблема: небольшие фермеры теряют 20 % урожая, потому что рядом с полем нет холодильного склада (мы побывали на 30 фермах).\nРешение: фермер бронирует в приложении холодильный контейнер на часы; контейнер стоит на сельском рынке.\nРынок: 120 000 небольших ферм (наша оценка).\nДоход: $2 за час контейнера.\nКоманда: Дилшод Алиев — CEO, 8 лет в логистике; Малика Нурова — инженер.\nПросим $50 000 seed на 18 месяцев: 50 % контейнеры, 30 % приложение, 20 % продажи.\nНа первый и последний слайд: Дилшод Алиев, CEO; Namuna Accelerator, 2026; Контакты: Telegram @agrosklad_namuna",
+    "en": "I need an 8-slide deck in English for an accelerator application. Project: AgroSklad, hourly rental of cold storage for small farmers.\nProblem: small farmers lose 20% of the harvest because they have no cold storage near the field (we visited 30 farms).\nSolution: a farmer books a refrigerated container by the hour in an app; the container stands at the village market.\nMarket: 120 000 small farms (our estimate).\nRevenue: $2 per container hour.\nTeam: Dilshod Aliyev, CEO, 8 years in logistics; Malika Nurova, engineer.\nWe ask for a $50 000 seed round for 18 months: 50% containers, 30% app, 20% sales.\nFor the first and the last slide: Dilshod Aliyev, CEO; Namuna Accelerator, 2026; Contact: Telegram @agrosklad_namuna"
+   }
+  ],
+  "attach": true,
+  "notices": {
+   "blanks": {
+    "uz": "Siz bermagan ma’lumot o‘rniga bo‘sh joy qoldirildi: uni o‘zingiz to‘ldiring.",
+    "ru": "Где данных не было, оставлены пустые места: заполните их сами.",
+    "en": "Where you gave no details, blanks were left for you to fill in."
+   }
+  }
+ },
+ "templates": [],
+ "look": {
+  "designs": [
+   "spotlight",
+   "liftoff",
+   "midnight",
+   "summit"
+  ],
+  "cover_lines": 3,
+  "variants": {},
+  "note": "Pins are per slot (the research by_slot table), primary first."
+ },
+ "gates": [
+  "A native Uzbek and a native Russian reader check the slot labels (Muammo, Yechim, Moliyalashtirish, Bizga nima kerak) and the bot copy; the owner signs off every Uzbek and Russian heading label, as they were proposed, not read from a real pitch deck or application form.",
+  "A 6, a 10 and a 15 slide sample in uz, ru and en are drawn with the deck sample tool, with figures and topic only, and looked at next to units/slides.pitch/mock/business_pitch.png."
+ ],
+ "later": [
+  {
+   "text": "A slide count read from the talk length (minutes plus 2).",
+   "words": [
+    "chiqish vaqti",
+    "время выступления",
+    "talk length"
+   ]
+  },
+  {
+   "text": "Leaving out a slot the customer gave nothing for, with the review-screen list of omitted slides: the count is delivered as quoted and such a slot is an honest form."
+  },
+  {
+   "text": "An appendix after the thanks slide under one divider: slots are contiguous blocks this round, so a long pitch repeats its proof, product, team and financials slides in place."
+  },
+  {
+   "text": "The new variants chart.columns, chart.peak_callout and the typography pass for one-word lines."
+  }
+ ],
+ "sources": {
+  "take": "all"
+ }
+}
