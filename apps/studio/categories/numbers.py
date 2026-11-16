@@ -80,8 +80,17 @@ SCALE = re.compile(r"[ \u00a0]*(ming|минг|тыс\w*\.?|thousand\w*|mln\.?|м
 SCALES = (('ming', 3), ('минг', 3), ('тыс', 3), ('thousand', 3), ('k', 3), ('mln', 6), ('млн', 6), ('million', 6),
           ('миллион', 6), ('mlrd', 9), ('млрд', 9), ('milliard', 9), ('миллиард', 9), ('billion', 9), ('trln', 12),
           ('трлн', 12), ('trillion', 12))
-SKIPPED = re.compile(r"[\w.+\-]+@[\w\-]+(?:\.[\w\-]+)+|(?:https?://|www\.)\S+|\b[\w\-]+(?:\.[\w\-]+)*\.(?:uz|com|ru"
-                     r"|org|net|io|me|info|edu|gov)(?:/\S*)?(?!\w)", re.IGNORECASE)
+# An e-mail and a link as facts.py reads them (and as this module skips them), written to be read in time linear in
+# the text: a file of long runs of letters, dots and hyphens made the plain forms try every start in a run and read
+# the whole run from each, about 15 s for one 130,000-character source, inside the job's lease. Each run is now read
+# once from where it may start: an address's local part is at most 64 characters (its own limit), a host label at
+# most 63 and a host at most ten labels before its ending, read possessively, and a host starts only where a word
+# starts outside another host ("ab.cd.uz" is tried at "ab", never again at "cd", which the first try covered). On
+# text with real addresses they match what the plain forms matched.
+EMAIL_PATTERN = r"[\w.+\-]{1,64}+@[\w\-]++(?:\.[\w\-]++)+"
+LINK_PATTERN = (r"(?:https?://|www\.)\S+|\b(?<!\w)(?<!\w-)(?<!\w\.)(?:[\w\-]{1,63}+\.){1,10}"
+                r"(?:uz|com|ru|org|net|io|me|info|edu|gov)(?:/\S*)?(?!\w)")
+SKIPPED = re.compile(f'{EMAIL_PATTERN}|{LINK_PATTERN}', re.IGNORECASE)
 
 # Number words, on the customer's side only: "Две недели в терапии", "two in surgery", "ikkala guruh". "Bir", "один"
 # and "one" are ordinary words too, and are left out. Russian forms are whole words or the start of a compound

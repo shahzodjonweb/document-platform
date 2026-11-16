@@ -67,9 +67,9 @@ LATIN = str.maketrans({**LETTERS, 'ъ': '', 'ь': '', 'ц': 'ts', 'щ': 'sh', '�
                        'ї': 'i', 'є': 'e', 'ў': "o'", 'ғ': "g'", 'ҳ': 'h'})
 WORD = re.compile(r"[^\W\d_](?:[^\W\d_]|['‘’ʻʼ`´](?=[^\W\d_]))*")
 FOLDED_WORD = re.compile(r'[^\W\d_]+')
-EMAIL = re.compile(r"[\w.+\-]+@[\w\-]+(?:\.[\w\-]+)+")
-LINK = re.compile(r"(?:https?://|www\.)\S+|\b[\w\-]+(?:\.[\w\-]+)*\.(?:uz|com|ru|org|net|io|me|info|edu|gov)"
-                  r"(?:/\S*)?(?!\w)", re.IGNORECASE)
+# The forms numbers.py skips, read in linear time there (numbers.EMAIL_PATTERN says how).
+EMAIL = re.compile(numbers.EMAIL_PATTERN)
+LINK = re.compile(numbers.LINK_PATTERN, re.IGNORECASE)
 VOWELS = set('aeiouy')
 # What a name takes in a sentence when it is three letters long and cannot meet the common-prefix rule:
 # "Aliga", "Alining", "Алию", "Ali's" (folded).

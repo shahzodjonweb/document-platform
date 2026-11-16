@@ -3,8 +3,13 @@
 Architecture section 4, row by row. Every person and organisation here is
 invented; the messages are written for these tests, never a customer's.
 """
+import re
+import time
+from pathlib import Path
+
 import pytest
 
+from apps.studio import categories
 from apps.studio.categories import facts, numbers
 from apps.studio.categories.facts import derived, ground, guard, supported, trusting, verify_items
 
@@ -483,3 +488,46 @@ def test_codes_name_what_was_taken_never_the_value(uz):
         found |= set(ground(text, uz)[1])
     found |= set(verify_items(['Xolmirzayev'], uz, file_names=[])[1])
     assert found <= CODES and found
+
+
+# ---------------------------------------------------------------- addresses in linear time
+
+# The address forms as they were before they were made linear, the reference for what they must still match.
+PLAIN_EMAIL = r"[\w.+\-]+@[\w\-]+(?:\.[\w\-]+)+"
+PLAIN_LINK = (r"(?:https?://|www\.)\S+|\b[\w\-]+(?:\.[\w\-]+)*\.(?:uz|com|ru|org|net|io|me|info|edu|gov)"
+              r"(?:/\S*)?(?!\w)")
+ADDRESSES = (
+    'E-pochta: dilnoza.k@example.com, nusxasi info@namuna.uz ga.',
+    'Почта: d.karimova+ariza@mail.namuna.ru; сайт https://namuna.uz/qabul?id=7 и www.namuna-edu.uz/about.',
+    'Sayt: namuna.uz, mail.ped.namuna.edu.uz va e-library.namuna.uz/kitoblar; my.gov.uz orqali ariza bering.',
+    'Write to j.yusupov@test-mail.co.uz or visit test-school.org/en. The file is report.v2.pdf, not a link.',
+    'Ro‘yxat: -namuna.uz, (namuna.com), «namuna.ru», sub.domain.namuna.info. Oxiri.namuna.io!',
+    'Matn.Gap.Sayt: uz.namuna.uz-ga, foo.uz.bar, foo.uz-bar va a--b.namuna.net hamda x@y.z.uz.',
+)
+
+
+def test_addresses_are_read_as_before_on_ordinary_text():
+    texts = list(ADDRESSES)
+    for path in sorted((Path(categories.__file__).parent / 'data').glob('*.json')):
+        texts.append(path.read_text(encoding='utf-8'))
+    for text in texts:
+        assert [m.span() for m in facts.EMAIL.finditer(text)] == \
+            [m.span() for m in re.finditer(PLAIN_EMAIL, text)], text[:80]
+        assert [m.span() for m in facts.LINK.finditer(text)] == \
+            [m.span() for m in re.finditer(PLAIN_LINK, text, re.IGNORECASE)], text[:80]
+        assert [m.span() for m in numbers.SKIPPED.finditer(text)] == \
+            [m.span() for m in re.finditer(f'{PLAIN_EMAIL}|{PLAIN_LINK}', text, re.IGNORECASE)], text[:80]
+    known = trusting(ADDRESSES[0] + ' ' + ADDRESSES[1])
+    assert known.emails == {'dilnoza.k@example.com', 'info@namuna.uz', 'd.karimova+ariza@mail.namuna.ru'}
+    assert known.links == {'namuna.uz/qabul?id=7', 'namuna-edu.uz/about'}
+
+
+@pytest.mark.parametrize('run', ['ab.', 'a-b', 'ab.cd-', 'a.+', 'a--', 'a.' * 40 + '@b', '1.2-3', 'аб.вг-',
+                                 'a-' * 31 + 'a.'])
+def test_long_runs_of_letters_dots_and_hyphens_are_read_in_linear_time(run):
+    """A source of 130,000 characters made of such runs once took facts.trusting about 15 s, inside the lease."""
+    part = (run * (3000 // len(run)))[:3000]
+    source = '\n'.join([part] * 44)
+    started = time.monotonic()
+    facts.trusting(source)
+    assert time.monotonic() - started < 2
