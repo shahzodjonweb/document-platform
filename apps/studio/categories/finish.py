@@ -129,14 +129,19 @@ def _line_known(line, trusted, translated, own):
 
     The first word of a label is the label's own ("Bajardi", "Ilmiy"); its
     other capitalised words and every word of its value are held as a `line`
-    fact.
+    fact. In a deck written in another language than the message a `line`
+    leaves its names to the translation, so there the line is held as a
+    `person`: a cover's names are people ("Bajardi: …", "Ilmiy rahbar: …"),
+    and an invented one must never ship. A translated school's or company's
+    line may then go: a false blank, never an invention.
     """
     if _key(line) in own:
         return True
     label, value = _split(line)
-    if not facts.supported(value, 'line', trusted, translated=translated):
+    kind = 'person' if translated else 'line'
+    if not facts.supported(value, kind, trusted, translated=translated):
         return False
-    return not label or facts.supported(' '.join(label.split()[1:]), 'line', trusted, translated=translated)
+    return not label or facts.supported(' '.join(label.split()[1:]), kind, trusted, translated=translated)
 
 
 def _title_page(text, trusted, translated, own, codes, *, first_free):

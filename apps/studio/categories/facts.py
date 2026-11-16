@@ -34,7 +34,12 @@ Both sides are compared folded (`fold`): one apostrophe, lower case, Cyrillic
 put into Latin with the house table, and the spellings a name takes across the
 two alphabets made one (x, h and kh; yo and e; ya and ia; q and k; o‘ and u).
 A person's name in a document written in another language than the message is
-also matched as Russian spells Uzbek names, with o as а (`respellings`).
+also matched as Russian spells Uzbek names, with o as а (`respellings`). Such a
+document's organisations and places are translated, so their words cannot be
+looked up; a grounded part still holds every capitalised run to the customer's
+names in those looser spellings, because an invented person must never pass
+for a translated organisation. A translated organisation's name may then be
+blanked: a false blank, never an invention.
 Folding can only make two spellings of the customer's own name meet; what it
 cannot see is said plainly in the architecture: a name the model writes in
 lower case, a wrong case ending. A transliteration the table misses blanks a
@@ -664,7 +669,7 @@ def _runs(text):
     return runs
 
 
-def _names(text, trusted, codes):
+def _names(text, trusted, codes, translated=False):
     spans = []
     for run in _runs(text):
         bad = []
@@ -674,7 +679,7 @@ def _names(text, trusted, codes):
             # an invented name that is a sentence's first word alone is a limit the architecture names.
             if letters < 2 or (position == 0 and _starts(text, start)):
                 continue
-            if not (trusted.allowed.known(word) or trusted.words.known(word)):
+            if not trusted.person(word, translated):
                 bad.append(position)
         group = []
         for position in bad:
@@ -703,8 +708,11 @@ def ground(text, trusted, *, translated=False):
     capitalised words that is not theirs become ____. The first word of a
     sentence, a line, a list item or the words after a colon is not taken for a
     name, nor is a word no one's facts are in (a label, a month, "Hurmatli").
-    `translated` leaves names to the translation; numbers, quotations and laws
-    are always checked.
+    `translated` (the part is in another language than the message) also lets
+    a capitalised word through in the spellings a translation gives a person's
+    name (`respellings`); every run is still checked, as a person's, so a
+    translated organisation's name may be blanked but an invented person never
+    passes. Numbers, quotations and laws are always checked.
     """
     codes = []
     text = str(text or '')
@@ -714,8 +722,7 @@ def ground(text, trusted, *, translated=False):
     text = _quotes(text, trusted, codes)
     text = _addresses(text, trusted, codes)
     text = _numbers(text, trusted, codes)
-    if not translated:
-        text = _names(text, trusted, codes)
+    text = _names(text, trusted, codes, translated)
     return _tidy(text), list(dict.fromkeys(codes))
 
 

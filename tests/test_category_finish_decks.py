@@ -158,13 +158,44 @@ def test_the_notes_items_and_columns_of_a_customer_slot_are_grounded_too():
     assert '2019' not in done['columns'][0]
 
 
-def test_a_document_in_another_language_than_the_message_leaves_names_to_the_translation():
-    data, content = made('figures', 'en')
-    data['prompt'] = fixture('figures')['prompt']['ru']
+def translated(locale, prompt_locale='ru'):
+    """(data, content) of a new himoya deck written in `locale` from a message in another language."""
+    data, content = made('figures', locale)
+    data['prompt'] = fixture('figures')['prompt'][prompt_locale]
     title_lines.apply(data, content)
-    section(content, 'natija', data, 3)['body'] = 'Namuna State University staff were given a mentor'
+    assert finish._translated(data)
+    return data, content
+
+
+def test_a_translated_deck_keeps_the_customers_people_in_their_new_spelling():
+    data, content = translated('en')
+    section(content, 'natija', data, 3)['body'] = 'The survey of 60 employees was run by Jasur Yusupov'
     finished, _ = finish.apply(data, content, file_names=[])
-    assert section(finished, 'natija', data, 3)['body'] == 'Namuna State University staff were given a mentor'
+    assert section(finished, 'natija', data, 3)['body'] == 'The survey of 60 employees was run by Jasur Yusupov'
+
+
+def test_a_translated_deck_blanks_a_person_the_customer_never_named_in_a_grounded_slot():
+    data, content = translated('en')
+    section(content, 'natija', data, 3)['body'] = 'The survey was run by Jasur Yusupov and Botir Xolmirzayev'
+    codes = []
+    finished, warnings = finish.apply(data, content, file_names=[], codes=codes)
+    assert section(finished, 'natija', data, 3)['body'] == 'The survey was run by Jasur Yusupov and ____'
+    assert 'ground:name' in codes and warnings == [finish.FACTS_BLANKED]
+
+
+@pytest.mark.parametrize('locale, kept, invented', [
+    ('en', ['Prepared by: Jasur Yusupov, group 412', 'Supervisor: N. Rahimova', 'Tashkent — 2026'],
+     'Reviewer: Botir Xolmirzayev'),
+    ('uz', ['Bajardi: Yusupov Jasur, 412-guruh', 'Ilmiy rahbar: Rahimova N.', 'Toshkent — 2026'],
+     'Taqrizchi: Xolmirzayev Botir'),
+])
+def test_a_translated_cover_keeps_the_customers_people_and_drops_an_invented_one(locale, kept, invented):
+    data, content = translated(locale)
+    content['sections'][0]['body'] = '\n'.join([*kept[:2], invented, kept[2]])
+    codes = []
+    finished, warnings = finish.apply(data, content, file_names=[], codes=codes)
+    assert lines(finished['sections'][0]['body']) == kept
+    assert 'cover:line' in codes and warnings == [finish.FACTS_BLANKED]
 
 
 # ---------------------------------------------------------------- dressing, and a change

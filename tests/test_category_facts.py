@@ -251,11 +251,30 @@ def test_an_address_not_the_customers_is_blanked(uz):
     assert ground('Javobni info@namuna.uz ga yuboring.', uz) == ('Javobni ____ ga yuboring.', ['ground:number'])
 
 
-def test_a_translated_part_leaves_names_to_the_translation_but_never_numbers():
+def test_a_translated_part_keeps_the_customers_people_and_never_an_invented_one():
     known = trusting(ARIZA_RU)
-    part = 'Men Namuna davlat universitetining talabasi Dilnoza Karimova 2026-yil 3-noyabrdan dars qoldirdim.'
+    part = 'Men talaba Dilnoza Karimova 2026-yil 3-noyabrdan dars qoldirdim.'
     assert ground(part, known, translated=True) == (part, [])
     assert ground('Men 4-noyabrdan dars qoldirdim.', known, translated=True)[1] == ['ground:number']
+    # A person the customer never named is blanked in a translated part as in any other.
+    assert ground('Men talaba Dilnoza Karimova, rahbarim Botir Xolmirzayev.', known, translated=True) == \
+        ('Men talaba Dilnoza Karimova, rahbarim ____.', ['ground:name'])
+    # A translated organisation cannot be told from an invented person, so it may be blanked too: a false blank,
+    # never an invention ("Образцового государственного университета" is no spelling of Namuna).
+    assert ground('Men Namuna davlat universiteti talabasiman.', known, translated=True) == \
+        ('Men ____ davlat universiteti talabasiman.', ['ground:name'])
+
+
+def test_a_translated_part_meets_the_customers_people_across_the_alphabets():
+    latin = facts.trusted(draft('Ariza yozing. Men G‘ofurov Sardor, rahbarim Xo‘jayev Botir, Yo‘ldosheva Lola.'))
+    part = 'Доклад подготовил Гафуров Сардор под руководством Ходжаев Ботир, рецензент Юлдашева Лола.'
+    assert ground(part, latin, translated=True) == (part, [])
+    assert ground('Доклад подготовил Гафуров Сардор, рецензент Мадаминов Шерзод.', latin, translated=True) == \
+        ('Доклад подготовил Гафуров Сардор, рецензент ____.', ['ground:name'])
+    cyrillic = trusting(ARIZA_RU)
+    for part in ('Arizachi Dilnoza Karimova.', 'The applicant is Dilnoza Karimova.'):
+        assert ground(part, cyrillic, translated=True) == (part, []), part
+    assert ground('The applicant is Dilnoza Rahimova.', cyrillic, translated=True)[1] == ['ground:name']
 
 
 def test_blanks_next_to_each_other_are_one(uz):
