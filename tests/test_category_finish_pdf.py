@@ -1,0 +1,627 @@
+"""The finish of a category paper: its facts verified, its parts grounded or guarded, its shape and fixed words.
+
+Architecture 3.6, 4, 5 and 6.7. Most cases run on an invented entry,
+`pdf.xat.sinov`, built beside the real catalogue for the test only, so every
+kind of part the paper categories use (a model-sized group, a grounded
+letter part, a list, a table with a computed column, a sources list, clock
+and derived fields) is covered before the entries that use them land. The
+ariza and the test are the real entries. Every person, organisation, figure
+and source here is invented.
+"""
+import copy
+import datetime
+
+import pytest
+
+from apps.studio.categories import catalogue, derive, finish, skeleton
+from apps.studio.categories.catalogue import build, read
+from apps.studio.scripts import violations
+
+SINOV = 'pdf.xat.sinov'
+DAY = datetime.date(2026, 11, 16)
+PROMPT = ('Qodirova Malika Anvarovna nomidan Namuna davlat universitetiga xat. 2026-yil 3-noyabrda 12 ta kitob '
+          'oldim, har biri 45 000 so‘m. Manbalar: Saidov B. Iqtisodiyot asoslari. Toshkent, 2021.')
+
+
+def text3(uz, ru, en):
+    return {'uz': uz, 'ru': ru, 'en': en}
+
+
+def field(field_id, kind, missing='omit', **more):
+    return {'id': field_id, 'label': text3(f'{field_id} uz', f'{field_id} ru', f'{field_id} en'),
+            'example': text3('Namuna', 'Образец', 'Example'), 'kind': kind, 'need': 'optional', 'missing': missing,
+            **more}
+
+
+def part(part_id, kind, heading=None, mode='none', **more):
+    return {'id': part_id, 'kind': kind, 'heading': heading, 'heading_mode': mode, 'need': 'required',
+            'write': f'The {part_id}.', **more}
+
+
+SINOV_FIELDS = [
+    field('author', 'person', 'blank', max_chars=40),
+    field('signer', 'person', 'blank', derived_from='author'),
+    field('org', 'org'),
+    field('year', 'date', 'blank', clock='year'),
+    field('made_on', 'date', 'blank', clock='date'),
+    field('city', 'place', 'if_needed'),
+    field('level', 'choice', choices=['school', 'university']),
+    field('handout', 'flag'),
+    field('attached', 'file'),
+    field('topics', 'list'),
+    field('amount', 'money', 'blank'),
+]
+SINOV_PARTS = [
+    part('kirish', 'prose', text3('Kirish', 'Введение', 'Introduction'), 'fixed', share=0.1, elastic=True),
+    part('bob', 'prose', mode='model', group='boblar', share=0.4, elastic=True),
+    part('bob_xulosa', 'prose', text3('Bob bo‘yicha xulosa', 'Выводы по главе', 'Chapter summary'), 'fixed',
+         group='boblar', share=0.1),
+    part('maktub', 'prose', grounded=True, share=0.1, words=[25, 90]),
+    part('ilova', 'list', text3('Ilova:', 'Приложение:', 'Enclosure:'), 'fixed', need='optional', share=0.05,
+         max_items=3, grounded=True),
+    part('narxlar', 'table', text3('Narxlar', 'Цены', 'Prices'), 'fixed', share=0.1,
+         columns=[text3('Nomi', 'Название', 'Item'), text3('Soni', 'Кол-во', 'Quantity'),
+                  text3('Narxi', 'Цена', 'Price'), text3('Jami', 'Сумма', 'Amount')],
+         computed=[{'column': 3, 'op': 'product', 'of': [1, 2]}], total=[3]),
+    part('manbalar', 'sources', text3('Manbalar', 'Источники', 'Sources'), 'fixed', share=0.05),
+    part('imzo', 'fixed', text3('Imzo', 'Подпись', 'Signature'), 'fixed', share=0.05, block='signature_row',
+         fields=['signer', 'made_on']),
+]
+
+
+@pytest.fixture
+def sinov(monkeypatch):
+    """The catalogue with the invented paper entry in the letters group, and Tashkent's clock held at DAY."""
+    entries, templates, index = read()
+    raw = copy.deepcopy(entries['pdf.xat.ariza'])
+    children = index['groups']['pdf.xat']['children']
+    children.insert(children.index('other'), SINOV)
+    raw.update(id=SINOV, order=children.index(SINOV) + 1, title='model', fields=SINOV_FIELDS, parts=SINOV_PARTS,
+               groups={'boblar': {'min': 1, 'max': 4, 'sized': 'model'}}, templates=['official_sinov'],
+               quality='repair',
+               length={'unit': 'pages', 'mode': 'count', 'target': 'count', 'default': 5, 'min': 1, 'max': 20})
+    entries[SINOV] = raw
+    template = copy.deepcopy(templates['official_ariza'])
+    template.update(id='official_sinov', entries=[SINOV], flow=[{'block': 'paragraph', 'part': 'kirish'}], labels={})
+    templates['official_sinov'] = template
+    built = build(entries, templates, index)
+    monkeypatch.setattr(catalogue, '_catalogue', lambda: built)
+    monkeypatch.setattr(finish, 'today', lambda: DAY)
+    return built.entries[SINOV]
+
+
+def draft(entry, prompt=PROMPT, locale='uz', length=5, **more):
+    """Draft data as the job holds it: the entry's seed at `length` pages."""
+    data = {'options': {'category': entry.id, 'length': length}, 'prompt': prompt, 'output_locale': locale,
+            'output_format': 'pdf', 'excerpts': [], 'source_ids': [], **more}
+    data['content'] = {'title': '', 'sections': skeleton.seed(entry, length, skeleton.cues_of(data)),
+                       'questions': [], 'citations': []}
+    return data
+
+
+def answer(data, **sections):
+    """The model's answer: every seeded section, empty unless given (a dict merged into the seed's section)."""
+    made = []
+    for seeded in data['content']['sections']:
+        section = copy.deepcopy(seeded)
+        section.update(sections.get(seeded['id'], {}))
+        made.append(section)
+    return {'title': sections.get('title', ''), 'sections': made, 'questions': sections.get('questions', []),
+            'citations': []}
+
+
+def facts_of(content):
+    section = next(item for item in content['sections'] if item['id'] == 'facts')
+    return {item['label']: item['text'] for item in section['items']}
+
+
+def section_of(content, section_id):
+    return next(item for item in content['sections'] if item['id'] == section_id)
+
+
+def finished(data, content, **options):
+    codes = []
+    made, warnings = finish.apply(data, content, file_names=options.pop('file_names', []), codes=codes, **options)
+    return made, warnings, codes
+
+
+# ---------------------------------------------------------------- what is not a paper
+
+
+def test_a_draft_without_a_category_is_left_as_it_is():
+    data = {'options': {}, 'prompt': 'x', 'output_locale': 'uz', 'content': {'sections': []}}
+    content = {'title': 'Toshkent', 'sections': [{'id': 's1', 'heading': 'Toshkent — 2026', 'body': '1990-yil'}]}
+    assert finish.apply(data, content) == (content, [])
+    assert finish.apply(data, content, only={'s1'})[0] is content
+    assert finish.plain(data, content) is content
+    assert finish.exempt(data) == set()
+
+
+def test_an_unknown_paper_category_never_raises_here():
+    data = {'options': {'category': 'pdf.gone', 'length': 1}, 'output_locale': 'uz', 'content': {'sections': []}}
+    content = {'title': 'x', 'sections': []}
+    assert finish.apply(data, content) == (content, [])
+    assert finish.plain(data, content) is content
+    assert finish.exempt(data) == set()
+
+
+# ---------------------------------------------------------------- facts
+
+
+def test_facts_keep_only_what_the_customer_gave_each_held_to_its_kind(sinov):
+    data = draft(sinov)
+    content = answer(data, facts={'items': [
+        {'label': 'author', 'text': 'Qodirova Malika Anvarovna'},
+        {'label': 'signer', 'text': 'M. A. Qodirova'},
+        {'label': 'org', 'text': 'Yulduz Invest MChJ'},          # an organisation the customer never named
+        {'label': 'city', 'text': '____'},                       # if_needed: the blank is kept
+        {'label': 'amount', 'text': '____'},                     # blank policy: the template draws it, not kept
+        {'label': 'level', 'text': 'University'},
+        {'label': 'handout', 'text': 'yes'},
+        {'label': 'attached', 'text': 'kitob.pdf'},
+        {'label': 'topics', 'text': 'Iqtisodiyot'},
+        {'label': 'topics', 'text': 'Kitoblar'},
+        {'label': 'author', 'text': 'Saidova Nodira'},           # a second value for a field that holds one
+        {'label': 'colour', 'text': 'qizil'},                    # no such field
+    ]})
+    made, warnings, codes = finished(data, content)
+    assert facts_of(made) == {'author': 'Qodirova Malika Anvarovna', 'signer': 'M. A. Qodirova', 'year': '2026',
+                              'made_on': '2026-yil 16-noyabr', 'city': '____', 'level': 'university',
+                              'handout': 'true', 'topics': 'Iqtisodiyot\nKitoblar'}
+    assert list(facts_of(made)) == [item['id'] for item in sinov.fields if item['id'] in facts_of(made)]
+    assert codes == ['fact:org'] and warnings == [finish.FACTS_BLANKED]
+    section = section_of(made, 'facts')
+    assert (section['heading'], section['body'], section['layout']) == ('', '', 'list')
+
+
+def test_a_derived_fact_is_held_to_the_verified_value_it_is_made_from(sinov):
+    data = draft(sinov)
+    content = answer(data, facts={'items': [{'label': 'author', 'text': 'Qodirova Malika'},
+                                            {'label': 'signer', 'text': 'B. Qodirova'}]})
+    made, _, codes = finished(data, content)
+    assert 'signer' not in facts_of(made) and codes == ['fact:signer'], 'B. is no initial of Malika'
+    # Without a verified base the signer is not kept, even when the prompt names that person.
+    content = answer(data, facts={'items': [{'label': 'signer', 'text': 'M. A. Qodirova'}]})
+    made, _, codes = finished(data, content)
+    assert 'signer' not in facts_of(made) and codes == ['fact:signer']
+
+
+def test_an_invented_person_date_or_sum_is_not_a_fact(sinov):
+    data = draft(sinov)
+    content = answer(data, facts={'items': [{'label': 'author', 'text': 'Rahimov Javlon'},
+                                            {'label': 'amount', 'text': '99 000 so‘m'},
+                                            {'label': 'made_on', 'text': '5-dekabr'}]})
+    made, warnings, codes = finished(data, content)
+    assert facts_of(made) == {'year': '2026', 'made_on': '2026-yil 16-noyabr'}
+    assert codes == ['fact:author', 'fact:made_on', 'fact:amount'] and warnings == [finish.FACTS_BLANKED]
+
+
+def test_the_customers_own_numbers_pass_however_they_are_written(sinov):
+    data = draft(sinov)
+    content = answer(data, facts={'items': [{'label': 'amount', 'text': '45000 so‘m'},
+                                            {'label': 'made_on', 'text': '03.11.2026'}]})
+    made, warnings, codes = finished(data, content)
+    assert facts_of(made)['amount'] == '45000 so‘m' and facts_of(made)['made_on'] == '03.11.2026'
+    assert (warnings, codes) == ([], [])
+
+
+def test_a_long_value_is_cut_at_a_words_end(sinov):
+    data = draft(sinov, prompt='Qodirova Malika Anvarovna Toshkentova Namunaxon qizi Kamolova Zuhra')
+    long = 'Qodirova Malika Anvarovna Toshkentova Namunaxon qizi Kamolova Zuhra'
+    made, _, _ = finished(data, answer(data, facts={'items': [{'label': 'author', 'text': long}]}))
+    assert facts_of(made)['author'] == 'Qodirova Malika Anvarovna Toshkentova'
+    assert len(facts_of(made)['author']) <= 40
+
+
+def test_a_translated_paper_leaves_organisations_to_the_translation_but_never_a_person(sinov):
+    data = draft(sinov, prompt='Письмо от Кодировой Малики в Образцовый государственный университет, 12 книг.',
+                 locale='uz')
+    content = answer(data, facts={'items': [{'label': 'org', 'text': 'Namunaviy davlat universiteti'},
+                                            {'label': 'author', 'text': 'Qodirova Malika'},
+                                            {'label': 'signer', 'text': 'M. Qodirova'}]})
+    made, _, codes = finished(data, content)
+    assert facts_of(made)['org'] == 'Namunaviy davlat universiteti'
+    assert facts_of(made)['author'] == 'Qodirova Malika' and codes == []
+    content = answer(data, facts={'items': [{'label': 'author', 'text': 'Rahimov Javlon'}]})
+    assert finished(data, content)[2] == ['fact:author']
+
+
+# ---------------------------------------------------------------- clock values
+
+
+@pytest.mark.parametrize('locale, date', [('uz', '2026-yil 16-noyabr'), ('ru', '16 ноября 2026 г.'),
+                                          ('en', '16 November 2026')])
+def test_clock_fields_are_written_by_code_from_the_tashkent_date(sinov, locale, date):
+    data = draft(sinov, locale=locale)
+    made, warnings, codes = finished(data, answer(data))
+    assert facts_of(made) == {'year': '2026', 'made_on': date}
+    assert (warnings, codes) == ([], []), 'a clock value is code\'s, not a blank'
+    assert not violations(made, locale)
+
+
+def test_clock_values_follow_the_calendar():
+    assert finish.clock_value('date', 'uz', datetime.date(2027, 1, 5)) == '2027-yil 5-yanvar'
+    assert finish.clock_value('date', 'uz', datetime.date(2026, 9, 1)) == '2026-yil 1-sentabr'
+    assert finish.clock_value('date', 'uz', datetime.date(2026, 10, 1)) == '2026-yil 1-oktabr'
+    assert finish.clock_value('date', 'ru', datetime.date(2026, 3, 8)) == '8 марта 2026 г.'
+    assert finish.clock_value('year', 'en', datetime.date(2027, 12, 31)) == '2027'
+
+
+def test_finish_today_is_tashkents_calendar_day(monkeypatch):
+    from django.utils import timezone
+    late = datetime.datetime(2026, 11, 16, 20, 30, tzinfo=datetime.timezone.utc)
+    monkeypatch.setattr(timezone, 'now', lambda: late)
+    assert finish.today() == datetime.date(2026, 11, 17), '20:30 UTC is already the next day in Tashkent'
+
+
+def test_a_clock_field_the_customer_filled_keeps_their_value(sinov):
+    data = draft(sinov)
+    made, _, codes = finished(data, answer(data, facts={'items': [{'label': 'year', 'text': '2021'}]}))
+    assert facts_of(made)['year'] == '2021' and codes == []
+
+
+def test_a_paper_without_a_facts_section_still_gets_its_clock_values(sinov):
+    data = draft(sinov)
+    content = answer(data)
+    content['sections'] = [section for section in content['sections'] if section['id'] != 'facts']
+    made, _, _ = finished(data, content)
+    assert made['sections'][0]['id'] == 'facts' and facts_of(made)['year'] == '2026'
+
+
+# ---------------------------------------------------------------- grounding and guarding by part
+
+
+def test_a_grounded_part_loses_every_number_name_quotation_and_law_the_customer_did_not_give(sinov):
+    data = draft(sinov)
+    body = ('Men 12 ta kitob oldim, har biri 45 000 so‘m. Hisob-kitobni dekan Rahimov J. tasdiqladi. '
+            'Jami 780 000 so‘m to‘landi. Rektor aytganidek: «Bilim — eng katta boylik bo‘ladi». '
+            'Fuqarolik kodeksining 386-moddasiga muvofiq to‘lov qaytarilmaydi.')
+    made, warnings, codes = finished(data, answer(data, maktub={'body': body}))
+    text = section_of(made, 'maktub')['body']
+    assert '12 ta kitob' in text and '45 000' in text
+    assert 'Rahimov' not in text and ' J.' not in text, 'an invented name goes whole, its initials too'
+    assert '780 000' not in text and '«' not in text and 'kodeks' not in text
+    assert {'ground:name', 'ground:number', 'ground:quote', 'ground:law'} == set(codes)
+    assert warnings == [finish.FACTS_BLANKED]
+
+
+def test_a_guarded_part_keeps_general_knowledge_but_no_quotation_or_law(sinov):
+    data = draft(sinov)
+    body = ('Iqtisodiyot fani Adam Smit asarlari bilan 1776-yilda shakllana boshlagan. '
+            'U shunday yozgan: «Mehnat taqsimoti boylikning asosiy manbaidir». '
+            'Soliq kodeksining 12-moddasi bu sohani tartibga soladi.')
+    made, _, codes = finished(data, answer(data, kirish={'body': body}))
+    text = section_of(made, 'kirish')['body']
+    assert 'Adam Smit' in text and '1776' in text
+    assert '«' not in text and 'kodeks' not in text
+    assert set(codes) == {'ground:quote', 'ground:law'}
+
+
+def test_every_part_gets_its_layout_and_fixed_heading_in_the_documents_language(sinov):
+    for locale, heading in (('uz', 'Kirish'), ('ru', 'Введение'), ('en', 'Introduction')):
+        data = draft(sinov, locale=locale)
+        content = answer(data, kirish={'heading': 'Muqaddima', 'layout': 'image', 'body': 'Matn.'},
+                         maktub={'heading': 'Xat', 'layout': 'list', 'body': 'Matn.'},
+                         bob={'heading': 'Iqtisodiyot asoslari', 'layout': 'table', 'body': 'Matn.'})
+        made, _, _ = finished(data, content)
+        assert (section_of(made, 'kirish')['heading'], section_of(made, 'kirish')['layout']) == (heading, 'text')
+        assert (section_of(made, 'maktub')['heading'], section_of(made, 'maktub')['layout']) == ('', 'text')
+        assert section_of(made, 'bob')['heading'] == 'Iqtisodiyot asoslari', 'a model heading stays the model\'s'
+        assert section_of(made, 'bob')['layout'] == 'text'
+        assert section_of(made, 'bob_xulosa')['heading'] == {'uz': 'Bob bo‘yicha xulosa', 'ru': 'Выводы по главе',
+                                                             'en': 'Chapter summary'}[locale]
+
+
+def test_a_model_heading_is_guarded_and_a_fixed_heading_is_never_checked(sinov):
+    data = draft(sinov)
+    content = answer(data, bob={'heading': '«Bozor o‘zini o‘zi boshqaradi va tartibga soladi»', 'body': 'Matn.'})
+    made, _, codes = finished(data, content)
+    assert section_of(made, 'bob')['heading'] == '____' and codes == ['ground:quote']
+
+
+def test_the_title_is_guarded_or_the_categorys_name(sinov):
+    data = draft(sinov)
+    made, _, codes = finished(data, answer(data, title='Rahimov Javlon bilan hisob-kitob'))
+    assert 'Rahimov' not in made['title'] and 'ground:name' in codes, 'a fact-led paper\'s title is grounded'
+    ariza = catalogue.get('pdf.xat.ariza')
+    data = draft(ariza, length=1)
+    for locale, name in (('uz', 'Ariza'), ('ru', 'Заявление'), ('en', 'Official request')):
+        data['output_locale'] = locale
+        assert finished(data, answer(data, title='Dekanga ariza'))[0]['title'] == name
+
+
+# ---------------------------------------------------------------- lists, tables, sources
+
+
+def test_a_list_written_as_lines_becomes_items_held_to_its_maximum(sinov):
+    data = draft(sinov)
+    body = '1. Kitoblar ro‘yxati.\n2. To‘lov cheki.\n- Shartnoma nusxasi.\n4. Ma’lumotnoma.'
+    made, _, _ = finished(data, answer(data, ilova={'body': body, 'layout': 'text'}))
+    section = section_of(made, 'ilova')
+    assert section['layout'] == 'list' and section['body'] == '' and section['heading'] == 'Ilova:'
+    assert [item['text'] for item in section['items']] == ['Kitoblar ro‘yxati.', 'To‘lov cheki.',
+                                                          'Shartnoma nusxasi.']
+
+
+def test_a_tables_computed_cells_are_emptied_for_derive_and_its_columns_never_stored(sinov):
+    data = draft(sinov)
+    rows = [{'label': 'Kitob', 'text': '12 | 45 000', 'value': '540 000'},
+            {'label': 'Daftar', 'text': '12', 'value': '9 999'},
+            {'label': 'Ruchka', 'text': '12 | 45 000 | 3 | 4', 'value': ''}]
+    made, _, codes = finished(data, answer(data, narxlar={'items': rows, 'columns': ['A', 'B', 'C', 'D']}))
+    section = section_of(made, 'narxlar')
+    assert section['columns'] == [] and section['layout'] == 'table' and section['heading'] == 'Narxlar'
+    assert [finish.cells(item, 4) for item in section['items']] == [
+        ['Kitob', '12', '45 000', ''], ['Daftar', '12', '', ''], ['Ruchka', '12', '45 000 | 3 | 4', '']]
+    assert codes == [], 'the model\'s own arithmetic is emptied, not counted as a blank'
+
+
+def test_cells_pad_and_merge_a_row_to_its_columns():
+    assert finish.cells({'label': 'a', 'text': 'b | c | d', 'value': 'e'}, 3) == ['a', 'b | c | d', 'e']
+    assert finish.cells({'label': 'a', 'text': '', 'value': 'e'}, 4) == ['a', '', '', 'e']
+    assert finish.cells({'label': 'a', 'text': 'b', 'value': 'e'}, 2) == ['a | b', 'e']
+    assert finish.cells({'label': 'a', 'text': 'b | c', 'value': 'e'}) == ['a', 'b', 'c', 'e']
+    assert finish.cells({'label': 'a', 'text': '| c', 'value': 'e'}, 4) == ['a', '', 'c', 'e'], 'a tidied empty cell'
+    assert finish.cells({'label': 'a', 'text': 'b |', 'value': 'e'}, 4) == ['a', 'b', '', 'e']
+
+
+def test_derive_fills_the_computed_cells_after_grounding(sinov, monkeypatch):
+    seen = []
+
+    def fill(entry, content, trusted):
+        section = section_of(content, 'narxlar')
+        seen.append([finish.cells(item, 4) for item in section['items']])
+        for item in section['items']:
+            item['value'] = '540 000'
+        return content
+    monkeypatch.setattr(derive, 'apply', fill)
+    data = draft(sinov)
+    made, _, codes = finished(data, answer(data, narxlar={'items': [{'label': 'Kitob', 'text': '12 | 45 000',
+                                                                     'value': '1 000 000'}]}))
+    assert seen == [[['Kitob', '12', '45 000', '']]]
+    assert section_of(made, 'narxlar')['items'][0]['value'] == '540 000' and codes == []
+
+
+def test_sources_keep_only_what_the_customer_named_never_a_file_name(sinov):
+    data = draft(sinov)
+    items = [{'label': '1', 'text': 'Saidov B. Iqtisodiyot asoslari. Toshkent, 2021.'},
+             {'label': '2', 'text': 'Karimov A. Bozor iqtisodiyoti. Toshkent, 2019.'},
+             {'label': '3', 'text': 'hisobot_2026.docx'}]
+    made, warnings, codes = finished(data, answer(data, manbalar={'items': items}),
+                                     file_names=['hisobot_2026.docx'])
+    section = section_of(made, 'manbalar')
+    assert [item['text'] for item in section['items']] == ['Saidov B. Iqtisodiyot asoslari. Toshkent, 2021.']
+    assert section['heading'] == 'Manbalar' and section['layout'] == 'list'
+    assert codes == ['source:dropped'] and warnings == [finish.FACTS_BLANKED]
+
+
+def test_sources_with_none_verified_are_left_empty_for_the_ruled_form(sinov):
+    data = draft(sinov, prompt='Kitob sotib olish haqida xat.')
+    made, _, codes = finished(data, answer(data, manbalar={'body': '1. Karimov A. Bozor. Toshkent, 2019.'}))
+    section = section_of(made, 'manbalar')
+    assert section['items'] == [] and section['body'] == '' and codes == ['source:dropped']
+
+
+def test_an_uzbek_paper_with_cyrillic_sources_reads_back_in_latin(sinov):
+    data = draft(sinov, prompt='Xat. Manbalar ilova qilingan.',
+                 excerpts=[{'asset_id': 'a1', 'page': 1, 'text': 'Саидов Б. Основы экономики. Ташкент, 2021.'}])
+    items = [{'label': '1', 'text': 'Саидов Б. Основы экономики. Ташкент, 2021.'}]
+    made, _, codes = finished(data, answer(data, manbalar={'items': items}), file_names=['Саидов_экономика.docx'])
+    assert codes == []
+    assert section_of(made, 'manbalar')['items'][0]['text'].startswith('Saidov B.')
+    assert not violations(made, 'uz')
+
+
+# ---------------------------------------------------------------- groups
+
+
+def test_empty_instances_of_a_model_sized_group_are_dropped(sinov):
+    data = draft(sinov)
+    ids = [section['id'] for section in data['content']['sections']]
+    assert {'bob', 'bob_2', 'bob_3', 'bob_4', 'bob_xulosa_4'} <= set(ids), 'seeded at the group\'s max'
+    content = answer(data, bob={'heading': 'Birinchi bob', 'body': 'Matn.'},
+                     bob_xulosa_2={'body': 'Xulosa.'}, bob_3={'heading': 'Faqat sarlavha'})
+    made, _, _ = finished(data, content)
+    kept = [section['id'] for section in made['sections']]
+    assert [item for item in kept if item.startswith('bob')] == ['bob', 'bob_xulosa', 'bob_2', 'bob_xulosa_2']
+
+
+def test_an_all_empty_group_keeps_its_minimum(sinov):
+    data = draft(sinov)
+    made, _, _ = finished(data, answer(data))
+    assert [item['id'] for item in made['sections'] if item['id'].startswith('bob')] == ['bob', 'bob_xulosa']
+
+
+def test_a_later_instance_filled_alone_is_kept_without_an_empty_first(sinov):
+    data = draft(sinov)
+    made, _, _ = finished(data, answer(data, bob_3={'body': 'Matn.'}))
+    assert [item['id'] for item in made['sections'] if item['id'].startswith('bob')] == ['bob_3', 'bob_xulosa_3']
+
+
+# ---------------------------------------------------------------- only, selections, failures
+
+
+def test_only_finishes_the_sections_a_top_up_wrote_and_nothing_else(sinov):
+    data = draft(sinov)
+    content = answer(data, title='«Uch so‘zli iqtibos bu yerda»',
+                     facts={'items': [{'label': 'org', 'text': 'Yulduz Invest MChJ'}]},
+                     kirish={'body': 'U «bilim eng katta boylikdir» degan.'},
+                     bob={'body': 'U «bilim eng katta boylikdir» degan.'})
+    made, warnings, codes = finished(data, content, only={'kirish'})
+    assert section_of(made, 'kirish')['body'] == 'U ____ degan.' and codes == ['ground:quote']
+    assert section_of(made, 'bob') == section_of(content, 'bob')
+    assert section_of(made, 'facts') == section_of(content, 'facts'), 'facts are finished once, not per top-up'
+    assert made['title'] == content['title'] and len(made['sections']) == len(content['sections'])
+    assert warnings == [finish.FACTS_BLANKED]
+
+
+def test_a_selected_change_finishes_only_the_selected_sections(sinov):
+    data = draft(sinov)
+    data['revision'] = {'request': 'Kirishni qayta yozing', 'original_prompt': PROMPT,
+                        'selected_section_ids': ['kirish']}
+    content = answer(data, kirish={'body': '«Bilim eng katta boylikdir» deyiladi.'},
+                     maktub={'body': 'Rahimov J. tasdiqladi.'})
+    made, _, codes = finished(data, content)
+    assert section_of(made, 'kirish')['body'] == '____ deyiladi.'
+    assert section_of(made, 'maktub')['body'] == 'Rahimov J. tasdiqladi.'
+    made, _, codes = finished(data, content, only={'maktub'})
+    assert made == content and codes == [], 'a top-up outside the selection touches nothing'
+
+
+def test_a_part_that_cannot_be_finished_is_left_empty(sinov, monkeypatch):
+    real = finish._shape
+
+    def broken(section, part, locale):
+        if section['id'] == 'maktub':
+            raise RuntimeError('bug')
+        return real(section, part, locale)
+    monkeypatch.setattr(finish, '_shape', broken)
+    data = draft(sinov)
+    made, warnings, codes = finished(data, answer(data, maktub={'body': 'Rahimov J. tasdiqladi.'},
+                                                  kirish={'body': 'Matn.'}))
+    assert section_of(made, 'maktub')['body'] == '' and section_of(made, 'kirish')['body'] == 'Matn.'
+    assert codes == ['finish:form'] and warnings == [finish.FACTS_BLANKED]
+
+
+def test_the_content_handed_in_is_never_changed(sinov):
+    data = draft(sinov)
+    content = answer(data, maktub={'body': 'Rahimov J. 780 000 so‘m to‘ladi.'}, bob_2={'body': ''})
+    before = copy.deepcopy(content)
+    finished(data, content)
+    assert content == before
+
+
+@pytest.mark.parametrize('locale', ['uz', 'ru', 'en'])
+def test_a_paper_of_the_customers_own_words_loses_nothing_and_reads_back(sinov, locale):
+    data = draft(sinov, locale=locale)
+    content = answer(data, facts={'items': [{'label': 'author', 'text': 'Qodirova Malika Anvarovna'}]},
+                     maktub={'body': 'Qodirova Malika 2026-yil 3-noyabrda 12 ta kitob oldi.'},
+                     manbalar={'items': [{'label': '1', 'text': 'Saidov B. Iqtisodiyot asoslari. Toshkent, 2021.'}]})
+    made, warnings, codes = finished(data, content)
+    assert (warnings, codes) == ([], [])
+    assert '12 ta kitob' in section_of(made, 'maktub')['body']
+    assert not violations(made, locale)
+
+
+# ---------------------------------------------------------------- the real entries
+
+
+def test_an_ariza_is_held_to_the_customers_words():
+    ariza = catalogue.get('pdf.xat.ariza')
+    prompt = ('Namuna davlat universiteti rektori nomiga ariza. Men, Qodirova Malika Anvarovna, 2-kurs talabasiman. '
+              '12.11.2026 dan 19.11.2026 gacha oilaviy sabab bilan ta’til so‘rayman.')
+    data = draft(ariza, prompt=prompt, length=1)
+    content = answer(data, facts={'items': [
+        {'label': 'addressee_org', 'text': 'Namuna davlat universiteti'},
+        {'label': 'addressee_position', 'text': 'rektori'},
+        {'label': 'addressee_person', 'text': 'Saidov B. T.'},
+        {'label': 'applicant_name', 'text': 'Qodirova Malika Anvarovna'},
+        {'label': 'signer_name', 'text': 'M. A. Qodirova'},
+        {'label': 'applicant_address', 'text': '____'},
+        {'label': 'date_written', 'text': '____'}]},
+        request={'heading': 'Ariza', 'body': (
+            'Sizdan 2026-yil 12-noyabrdan 19-noyabrgacha oilaviy sabablarga ko‘ra menga ta’til berishingizni '
+            'so‘rayman. Dekan Karimov A. bilan kelishilgan. Mehnat kodeksining 131-moddasiga muvofiq.')},
+        enclosures={'body': '1. Ma’lumotnoma nusxasi.\n2. Pasport nusxasi.'})
+    made, warnings, codes = finished(data, content)
+    assert facts_of(made) == {'addressee_org': 'Namuna davlat universiteti', 'addressee_position': 'rektori',
+                              'applicant_name': 'Qodirova Malika Anvarovna', 'applicant_address': '____',
+                              'signer_name': 'M. A. Qodirova'}, 'the ariza date stays a blank: it has no clock'
+    request = section_of(made, 'request')
+    assert request['heading'] == '' and 'Karimov' not in request['body'] and 'kodeks' not in request['body']
+    assert request['body'].startswith('Sizdan 2026-yil 12-noyabrdan 19-noyabrgacha')
+    enclosures = section_of(made, 'enclosures')
+    assert enclosures['heading'] == 'Ilova:' and [item['text'] for item in enclosures['items']] == [
+        'Ma’lumotnoma nusxasi.', 'Pasport nusxasi.']
+    assert set(codes) == {'fact:addressee_person', 'ground:name', 'ground:law'}
+    assert warnings == [finish.FACTS_BLANKED] and made['title'] == 'Ariza'
+
+
+def test_a_tests_questions_are_guarded_and_a_broken_question_goes():
+    test = catalogue.get('pdf.test')
+    data = draft(test, prompt='Iqtisodiyot fanidan 7-sinf uchun test.', length=3)
+    questions = [
+        {'stem': 'Bozor iqtisodiyotining asosiy belgisi nima?', 'options': ['Raqobat', 'Reja', 'Monopoliya', 'Soliq'],
+         'answer': 'Raqobat', 'explanation': '', 'marks': 1, 'topic': ''},
+        {'stem': 'Prezidentning 2019-yil 17-iyuldagi PF-5775-son farmoni nimaga bag‘ishlangan?',
+         'options': ['Soliqqa', 'Bankka', 'Savdoga', 'Ta’limga'], 'answer': 'Bankka', 'explanation': '',
+         'marks': 1, 'topic': ''},
+        {'stem': 'Kim aytgan?', 'options': ['«Bilim eng katta boylikdir»', 'Boshqa', 'Hech kim', 'Bilmayman'],
+         'answer': '«Bilim eng katta boylikdir»', 'explanation': '', 'marks': 1, 'topic': ''}]
+    made, warnings, codes = finished(data, answer(data, questions=questions))
+    assert [question['stem'] for question in made['questions']] == [questions[0]['stem'], 'Kim aytgan?']
+    assert made['questions'][1]['options'][0] == made['questions'][1]['answer'] == '____'
+    assert set(codes) == {'ground:law', 'ground:quote'} and warnings == [finish.FACTS_BLANKED]
+
+
+# ---------------------------------------------------------------- quality exemptions
+
+
+def test_a_papers_exemptions_are_the_parts_empty_repeating_or_not_prose_by_design(sinov):
+    data = draft(sinov)
+    exempt = finish.exempt(data)
+    groups = {f'{name}{suffix}' for name in ('bob', 'bob_xulosa') for suffix in ('', '_2', '_3', '_4')}
+    assert exempt == {'facts', 'ilova', 'narxlar', 'manbalar'} | groups
+    assert 'kirish' not in exempt and 'maktub' not in exempt
+    ariza = catalogue.get('pdf.xat.ariza')
+    assert finish.exempt(draft(ariza, length=1)) == {'facts', 'statements', 'enclosures'}
+
+
+# ---------------------------------------------------------------- the emergency fallback
+
+
+def test_the_plain_fallback_keeps_its_contract(sinov):
+    data = draft(sinov)
+    content = answer(data, title='Kitoblar uchun to‘lov',
+                     facts={'items': [{'label': 'author', 'text': 'Qodirova Malika'},
+                                      {'label': 'topics', 'text': 'Iqtisodiyot'},
+                                      {'label': 'topics', 'text': 'Kitoblar'},
+                                      {'label': 'level', 'text': 'school'}]},
+                     kirish={'body': 'Kirish matni.'},
+                     bob={'heading': 'Birinchi bob', 'body': 'Bob matni.'},
+                     narxlar={'items': [{'label': 'Kitob', 'text': '12 | 45 000', 'value': ''}]},
+                     manbalar={'items': [{'label': '1', 'text': 'Saidov B. Iqtisodiyot asoslari. Toshkent, 2021.'}]},
+                     questions=[{'stem': 'Savol?', 'options': [], 'answer': '', 'explanation': '', 'marks': 1,
+                                 'topic': ''}])
+    made, _, _ = finished(data, content)
+    flat = finish.plain(data, made)
+    assert flat['title'] == 'Kitoblar uchun to‘lov' and flat['questions'] == made['questions']
+    facts = flat['sections'][0]
+    assert (facts['id'], facts['heading'], facts['layout']) == ('facts', 'Ma’lumotlar', 'list')
+    assert [(item['label'], item['text']) for item in facts['items']] == [
+        ('author uz', 'Qodirova Malika'), ('signer uz', '____'), ('year uz', '2026'),
+        ('made_on uz', '2026-yil 16-noyabr'), ('topics uz', 'Iqtisodiyot; Kitoblar'), ('amount uz', '____')]
+    assert [section['id'] for section in flat['sections']] == ['facts', 'kirish', 'bob', 'narxlar', 'manbalar']
+    assert [section['heading'] for section in flat['sections'][1:]] == ['Kirish', 'Birinchi bob', 'Narxlar',
+                                                                       'Manbalar']
+    table = flat['sections'][3]
+    assert table['layout'] == 'list' and table['body'] == 'Nomi — Soni — Narxi — Jami'
+    assert [item['text'] for item in table['items']] == ['Kitob — 12 — 45 000']
+    assert flat['sections'][4]['layout'] == 'list' and len(flat['sections'][4]['items']) == 1
+    assert all(section['layout'] in ('text', 'list') for section in flat['sections'])
+    assert not violations(flat, 'uz')
+
+
+def test_the_plain_fallback_names_an_untitled_paper_and_never_raises(sinov):
+    data = draft(sinov, locale='ru')
+    flat = finish.plain(data, {'title': '', 'sections': [], 'questions': []})
+    assert flat['title'] == catalogue.get(SINOV).name('ru')
+    assert flat['sections'][0]['heading'] == 'Сведения'
+    odd = {'title': 'x', 'sections': [{'id': 'narxlar', 'items': 'not a list'}], 'questions': []}
+    assert [section['id'] for section in finish.plain(data, odd)['sections']] == ['facts']
+    broken = {'title': 'x', 'sections': ['not a section'], 'questions': []}
+    assert finish.plain(data, broken) is broken
+
+
+def test_the_plain_fallback_of_an_ariza_draws_every_blank_its_policy_asks():
+    ariza = catalogue.get('pdf.xat.ariza')
+    data = draft(ariza, length=1, locale='en')
+    flat = finish.plain(data, {'title': '', 'sections': [
+        {'id': 'facts', 'items': [{'label': 'applicant_name', 'text': 'Malika Qodirova'}]},
+        {'id': 'request', 'heading': '', 'body': 'I ask for leave.'}], 'questions': []})
+    labels = [item['label'] for item in flat['sections'][0]['items']]
+    assert 'Addressee: organisation' in labels and 'Phone (optional)' not in labels
+    assert not any(label.startswith('What you ask') for label in labels), 'the request is drawn as its part'
+    lines = {item['label']: item['text'] for item in flat['sections'][0]['items']}
+    assert lines['Your full name'] == 'Malika Qodirova' and lines['Addressee: organisation'] == '____'
+    assert flat['title'] == 'Official request' and flat['sections'][1]['body'] == 'I ask for leave.'

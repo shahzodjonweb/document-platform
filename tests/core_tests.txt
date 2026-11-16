@@ -1024,3 +1024,20 @@ tests/test_category_facts.py::test_a_slot_that_checks_names_takes_a_lone_invente
 tests/test_category_facts.py::test_a_surname_shaped_first_word_is_kept_when_it_is_the_customers_or_a_common_word[Namunova javobgar.]
 tests/test_category_finish_decks.py::test_an_invented_person_in_a_problem_proposal_or_request_is_blanked[council-problems]
 tests/test_category_facts.py::test_a_counted_copy_shares_the_respelled_words_rather_than_folding_the_source_again
+
+# Categories, the finish of a paper (F2): facts kept only when the customer gave them, by kind, and clock values
+# written by code from the Tashkent date; a grounded part loses every invented number, name, quotation and law while
+# a guarded part keeps general knowledge; sources never a file name; empty instances of a model-sized group dropped;
+# a top-up's sections finished again alone; the emergency fallback's contract; an ariza held to the customer's words
+tests/test_category_finish_pdf.py::test_facts_keep_only_what_the_customer_gave_each_held_to_its_kind
+tests/test_category_finish_pdf.py::test_an_invented_person_date_or_sum_is_not_a_fact
+tests/test_category_finish_pdf.py::test_clock_fields_are_written_by_code_from_the_tashkent_date[uz-2026-yil 16-noyabr]
+tests/test_category_finish_pdf.py::test_a_grounded_part_loses_every_number_name_quotation_and_law_the_customer_did_not_give
+tests/test_category_finish_pdf.py::test_a_guarded_part_keeps_general_knowledge_but_no_quotation_or_law
+tests/test_category_finish_pdf.py::test_sources_keep_only_what_the_customer_named_never_a_file_name
+tests/test_category_finish_pdf.py::test_an_uzbek_paper_with_cyrillic_sources_reads_back_in_latin
+tests/test_category_finish_pdf.py::test_empty_instances_of_a_model_sized_group_are_dropped
+tests/test_category_finish_pdf.py::test_only_finishes_the_sections_a_top_up_wrote_and_nothing_else
+tests/test_category_finish_pdf.py::test_the_plain_fallback_keeps_its_contract
+tests/test_category_finish_pdf.py::test_an_ariza_is_held_to_the_customers_words
+tests/test_category_finish_decks.py::test_a_paper_gets_no_deck_pins

@@ -27,19 +27,46 @@ guarantee. For a deck (`apply`, after title_lines.apply in the job):
   scripts.enforce), so the read-back of the file cannot fail on what code put in.
 
 Nothing here adds a fact: it only removes text, writes catalogue words and
-writes ____. What it removed is said as codes (`ground:number`, `ground:name`,
-`ground:quote`, `ground:law`, `cover:line`, `source:dropped`), logged without
-a value, and any of them raises the job warning `facts_blanked`, on which the
-bot adds the entry's `blanks` notice. `apply` never raises: a slide it cannot
-finish becomes an honest form rather than costing the customer the deck or
-shipping what was not checked. Only when the deck itself cannot be read (its
-slots, the customer's words) is it returned as the model wrote it, logged, as
-title_lines.apply does: that is a bug to fix, not a customer to fail.
+writes ____ (and, for a paper, today's date where a clock field asks for it).
+What it removed is said as codes (`ground:number`, `ground:name`,
+`ground:quote`, `ground:law`, `cover:line`, `source:dropped`, a paper's
+`fact:<field>`), logged without a value, and any of them raises the job
+warning `facts_blanked`, on which the bot adds the entry's `blanks` notice.
+For a deck `apply` never raises: a slide it cannot finish becomes an honest
+form rather than costing the customer the deck or shipping what was not
+checked. Only when the deck itself cannot be read (its slots, the customer's
+words) is it returned as the model wrote it, logged, as title_lines.apply
+does: that is a bug to fix, not a customer to fail. A paper differs there
+(`_paper`).
 
 `pins(data, content)` gives the first render of a category deck the calm
 variants its slots name, and `exempt(data)` the slides quality.check must not
 send back for repeating each other, which a deck of honest forms does by
-design. A category paper is F2's: until then these leave it as it is.
+design.
+
+A category paper (`apply` before its template draws it, architecture 3.6, 4
+and 5) is finished the same way, by part rather than by slot:
+
+- the `facts` section keeps only the values the customer gave, each held to
+  its field's kind (facts.supported; a signer's initials to the verified full
+  name, facts.derived); an unknown field, a choice outside its list or a ____
+  for a field that is not `if_needed` is simply not kept, since the template
+  draws its own blank, and a clock field the customer left out (the year on a
+  title page, the date a letter is made) gets today's Tashkent date from code;
+- a grounded part (a letter's, an official or business paper's written
+  parts) is grounded, its people's names read strictly (`ground_paper`), and
+  every other part guarded, the test's questions too;
+  a sources part keeps only verified items, never a file name, and is left
+  empty when none verifies, which the reference list draws as a ruled form;
+- every part gets its layout and its fixed heading in the document's
+  language, the title is the category's name where the entry says so, a
+  table's computed cells are emptied for derive.apply to fill from verified
+  numbers, and the instances of a model-sized group the model left empty go;
+- `only` re-finishes just the sections a top-up wrote, before the second draw.
+
+`plain(data, content)` is the emergency fallback's content (6.7): what today's
+renderer can draw when a template build fails. A paper's `exempt` holds the
+parts that are empty, repeating or not prose by design.
 """
 import copy
 import logging
@@ -336,17 +363,22 @@ def _finish_slide(index, section, use, *, revision, locale, trusted, translated,
         _texts(section, grounded, heading=not fixed)
 
 
-def apply(data, content, *, file_names=None, codes=None):
-    """(content, warnings): a category deck's answer held to the customer's words; anything else as it is.
+def apply(data, content, *, only=None, file_names=None, codes=None):
+    """(content, warnings): a category document's answer held to the customer's words; anything else as it is.
 
     `file_names` are the attached files' names (looked up from the draft's
     `source_ids` when not given); `codes`, a list, receives what was blanked
     or removed, for the caller's log. `content` is never changed in place.
-    Never raises (see the module's docstring).
+    `only` (section ids) is for a paper: the sections a top-up wrote, which
+    alone are finished again. A deck never raises (see the module's
+    docstring); a paper raises only when the draft itself cannot be read
+    (`_paper`).
     """
     entry = _entry(data)
-    if entry is None or entry.service != 'slides':
+    if entry is None:
         return content, []
+    if entry.service == 'pdf':
+        return _paper(entry, data, content, only=only, file_names=file_names, codes=codes)
     found = []
     try:
         content = copy.deepcopy(content)
@@ -436,11 +468,13 @@ def exempt(data):
     For a deck: every slide of a slot that takes several slides and either
     has a fixed heading (the same heading on each, by design) or is of source
     `customer` (with nothing given, each is the same honest form, and a repair
-    asked to make them differ could only invent). A paper's are F2's.
+    asked to make them differ could only invent). For a paper, `_paper_exempt`.
     """
     entry = _entry(data)
-    if entry is None or entry.service != 'slides':
+    if entry is None:
         return set()
+    if entry.service == 'pdf':
+        return _paper_exempt(entry, data)
     try:
         uses = list(_uses(entry, data).values())
         taken = Counter(use.part['id'] for use in uses)
@@ -449,3 +483,500 @@ def exempt(data):
     except Exception:
         log.exception('Category %s: no quality exemptions', entry.id)
         return set()
+
+
+# ---------------------------------------------------------------- papers
+
+
+FACTS = skeleton.FACTS
+# A value that is only a blank: rules, dots and dashes ("____", "…", "—"). The model returns ____ for an `if_needed`
+# field the paper needs; for any other field the template draws its own blank, so such a value is not kept.
+EMPTY_VALUE = re.compile(r'[\s_.\-–—…]*')
+# How a flag field's value may be written; anything else is not kept.
+FLAGS = {'true': 'true', 'yes': 'true', '1': 'true', 'false': 'false', 'no': 'false', '0': 'false'}
+# Month names as a date is written in each language after its day: '2026-yil 16-noyabr', '16 ноября 2026 г.',
+# '16 November 2026' (the research specs' date patterns). Uzbek "sentabr" and "oktabr", never the Russian spellings.
+MONTHS = {
+    'uz': ('yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun', 'iyul', 'avgust', 'sentabr', 'oktabr', 'noyabr',
+           'dekabr'),
+    'ru': ('января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября',
+           'декабря'),
+    'en': ('January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October',
+           'November', 'December'),
+}
+# The heading of the facts in the emergency fallback, the one fixed word of a paper not in the catalogue.
+PLAIN_FACTS = {'uz': 'Ma’lumotlar', 'ru': 'Сведения', 'en': 'Details'}
+# What joins a table row's cells in the emergency fallback, which draws a table as a list (6.7).
+PLAIN_CELLS = ' — '
+CELL = ' | '
+CELLS = re.compile(r'\s*\|\s*')
+
+
+def today():
+    """The calendar day in Tashkent, where every customer's papers are dated (the weekly limits' zone)."""
+    from django.utils import timezone
+
+    from apps.core.allowance import WEEK_ZONE
+    return timezone.now().astimezone(WEEK_ZONE).date()
+
+
+def clock_value(kind, locale, day=None):
+    """A clock field's value written by code: the year ('2026') or the date in the document's language."""
+    day = day or today()
+    if kind == 'year':
+        return str(day.year)
+    month = MONTHS.get(locale, MONTHS['en'])[day.month - 1]
+    if locale == 'uz':
+        return f'{day.year}-yil {day.day}-{month}'
+    if locale == 'ru':
+        return f'{day.day} {month} {day.year} г.'
+    return f'{day.day} {month} {day.year}'
+
+
+def ground_paper(text, trusted, *, translated=False):
+    """(text, codes): a paper's grounded part held to the customer's words, its people's names read strictly.
+
+    facts.ground's checks (laws, quotations, e-mails and links, numbers, runs
+    of capitalised words), with the names read as a slot that names people
+    reads them (guard's 'names'): a letter or a form names its people just
+    where ground leaves a name's first word free, after a colon ("Ma’sul:
+    Karimov A."), before initials or beside another invented word, and there
+    an invented name goes whole with its initials instead of leaving
+    "Dekan ____ A.". A grammar word before an invented name may go with it: a
+    false blank, never an invention.
+    """
+    return facts.guard(text, trusted, translated=translated, checks=('numbers', 'names'))
+
+
+def _instance(section_id, part):
+    """Which instance of its part a section is: `chapter` is 1, `chapter_3` is 3."""
+    rest = str(section_id)[len(part['id']):]
+    return int(rest[1:]) if re.fullmatch(r'_\d+', rest) else 1
+
+
+def cells(item, count=None):
+    """A table row's cells: the first in `label`, the last in `value`, those between in `text` joined by ' | '.
+
+    With `count` (the part's columns) the row is held to that many cells: a
+    middle cell that itself holds ' | ' merges into the last middle cell, and
+    a short row is padded with empty cells, so a cell never moves column.
+    """
+    text = str(item.get('text') or '')
+    # Split on the bar with any spaces around it: tidying may have taken the space off an empty first or last cell.
+    middle = [cell.strip() for cell in CELLS.split(text)] if text.strip() else []
+    first, last = str(item.get('label') or '').strip(), str(item.get('value') or '').strip()
+    if count is None:
+        return [first, *middle, last]
+    if count <= 2:
+        return [CELL.join(cell for cell in (first, *middle) if cell), last][:max(count, 1)]
+    wanted = count - 2
+    if len(middle) > wanted:
+        middle = middle[:wanted - 1] + [CELL.join(middle[wanted - 1:])]
+    return [first, *middle, *[''] * (wanted - len(middle)), last]
+
+
+def _row(values):
+    """A row's cells as an item; empty middle cells at the end are left out, since `cells` pads them back."""
+    middle = list(values[1:-1])
+    while middle and not middle[-1]:
+        middle.pop()
+    return {'label': values[0], 'text': CELL.join(middle), 'value': values[-1] if len(values) > 1 else ''}
+
+
+def _words(section):
+    """Whether a section holds anything to read: a body or an item with words (a heading alone is no part)."""
+    return bool(str(section.get('body') or '').strip()) or any(
+        isinstance(item, dict) and any(str(item.get(key) or '').strip() for key in ('label', 'text', 'value'))
+        for item in section.get('items') or [])
+
+
+def _value(item):
+    text = item.get('text') if str(item.get('text') or '').strip() else item.get('value')
+    return str(text or '').strip()
+
+
+def _cut(value, size):
+    """`value` held to a field's max_chars, at a word's end: a cut only shortens, it never changes a word."""
+    if not size or len(value) <= size:
+        return value
+    return (value[:size + 1].rsplit(None, 1)[0] if ' ' in value[:size + 1] else value[:size]).rstrip(' ,;:')
+
+
+def _fact(field, value, trusted, translated, verified):
+    """(value to keep or None, whether it was taken out as not the customer's) for one field the model filled."""
+    if EMPTY_VALUE.fullmatch(value):
+        return (BLANK if field['missing'] == 'if_needed' else None), False
+    kind = field['kind']
+    if kind == 'choice':
+        chosen = value.casefold().strip(' .')
+        return (chosen if chosen in field.get('choices', ()) else None), False
+    if kind == 'flag':
+        return FLAGS.get(value.casefold().strip(' .')), False
+    if field.get('derived_from'):
+        # A signer's "D. R. Karimova" is held to the verified full name it is made from, whatever the prompt says.
+        base = verified.get(field['derived_from'])
+        if base and base != BLANK and facts.derived(value, base):
+            return _cut(value, field.get('max_chars')), False
+        return None, True
+    if facts.supported(value, kind, trusted, translated=translated):
+        return _cut(value, field.get('max_chars')), False
+    return None, True
+
+
+def _facts(entry, section, trusted, translated, locale, codes):
+    """The facts section: one item per field the customer gave, verified by kind, and the clock fields' values.
+
+    Items are written {label: field id, text: value} in the entry's field order.
+    A list field's several items join with new lines; any other field keeps
+    its first. A field whose value is not the customer's is counted as
+    `fact:<field id>`; the template then draws its blank, as for a field the
+    customer never gave.
+    """
+    given = {}
+    for item in section.get('items') or []:
+        if not isinstance(item, dict):
+            continue
+        field = entry.field(str(item.get('label') or '').strip())
+        value = _value(item)
+        if field is None or field['kind'] == 'file' or not value:
+            continue
+        if field['id'] in given:
+            if field['kind'] == 'list':
+                given[field['id']] += '\n' + value
+            continue
+        given[field['id']] = value
+    verified = {}
+    fields = sorted(entry.fields, key=lambda field: bool(field.get('derived_from')))
+    for field in fields:
+        if field['id'] not in given:
+            continue
+        value, invented = _fact(field, given[field['id']], trusted, translated, verified)
+        if invented:
+            codes.append(f"fact:{field['id']}")
+        if value is not None:
+            verified[field['id']] = value
+    for field in entry.fields:
+        if field.get('clock') and verified.get(field['id'], BLANK) == BLANK:
+            verified[field['id']] = clock_value(field['clock'], locale)
+    section.update(heading='', body='', notes='', layout='list',
+                   items=[{'label': field['id'], 'text': verified[field['id']], 'value': ''}
+                          for field in entry.fields if field['id'] in verified])
+    if isinstance(section.get('columns'), list):
+        section['columns'] = []
+
+
+def _shape(section, part, locale):
+    """A part's section in the shape its kind takes: its layout, its fixed heading, a list's items, a table's cells.
+
+    A list or sources part written as lines of a body has them as items, since
+    its template block reads items; a list longer than its `max_items` is cut
+    there. A table's computed cells are emptied, so that every figure in them
+    is derive.apply's from verified numbers and never the model's arithmetic.
+    Columns are never stored for a paper: the catalogue draws the header.
+    """
+    kind = part['kind']
+    if kind in skeleton.WRITTEN:
+        # The layout the seed gave the part (skeleton._layout, the package's one reading of a part's layout).
+        section['layout'] = skeleton._layout(part)
+    mode = part.get('heading_mode')
+    if mode == 'fixed' and isinstance(part.get('heading'), dict):
+        section['heading'] = part['heading'].get(locale) or part['heading']['en']
+    elif mode == 'none':
+        section['heading'] = ''
+    if isinstance(section.get('columns'), list):
+        section['columns'] = []
+    items = [item for item in section.get('items') or [] if isinstance(item, dict)]
+    if kind in ('list', 'sources') and not any(_words({'items': [item]}) for item in items):
+        lines = [ENUMERATOR.sub('', line).strip() for line in str(section.get('body') or '').split('\n')]
+        items = [{'label': '', 'text': line, 'value': ''} for line in lines if line]
+        if items:
+            section['body'] = ''
+    if kind == 'list' and part.get('max_items'):
+        items = items[:part['max_items']]
+    if kind == 'table':
+        count = len(part.get('columns') or ()) or None
+        computed = {rule['column'] for rule in part.get('computed') or ()}
+        made = []
+        for item in items:
+            values = cells(item, count)
+            for column in computed:
+                if column < len(values):
+                    values[column] = ''
+            made.append(_row(values) if computed or count else item)
+        items = made
+    section['items'] = items
+
+
+def _questions(questions, trusted, translated, codes):
+    """The test's questions guarded: no quotation or law the customer did not give; a question left broken goes.
+
+    The answer is guarded as its option is, so it still equals the option's
+    text. A question whose stem or one of whose options a removed legal
+    sentence emptied is taken out whole: half a question is no question.
+    """
+    kept = []
+    for question in questions or []:
+        if not isinstance(question, dict):
+            continue
+        question = dict(question)
+        broken = False
+        for key in ('stem', 'answer', 'explanation'):
+            if isinstance(question.get(key), str) and question[key].strip():
+                question[key], found = facts.guard(question[key], trusted, translated=translated)
+                codes.extend(found)
+                broken = broken or (key == 'stem' and not question[key].strip())
+        options = []
+        for option in question.get('options') or []:
+            if isinstance(option, str) and option.strip():
+                option, found = facts.guard(option, trusted, translated=translated)
+                codes.extend(found)
+                broken = broken or not option.strip()
+            options.append(option)
+        if isinstance(question.get('options'), list):
+            question['options'] = options
+        if broken:
+            codes.append('ground:law')
+            continue
+        kept.append(question)
+    return kept
+
+
+def _paper_sources(section, trusted, translated, names, codes):
+    """A sources part's items, only those the customer named or a file's own text gives, never a file name.
+
+    With none left the part is empty, which the reference list draws as a
+    numbered form of ruled lines for the customer to fill in.
+    """
+    items, found = facts.verify_items([item for item in section.get('items') or [] if isinstance(item, dict)],
+                                      trusted, file_names=names, translated=translated)
+    codes.extend(found)
+    lines = [line for line in str(section.get('body') or '').split('\n') if line.strip()]
+    kept = []
+    for line in lines:
+        verified, found = facts.verify_items([ENUMERATOR.sub('', line)], trusted, file_names=names,
+                                             translated=translated)
+        codes.extend(found)
+        if verified:
+            kept.append(line)
+    section.update(body='\n'.join(kept), items=items)
+    if isinstance(section.get('notes'), str):
+        section['notes'], found = facts.ground(section['notes'], trusted, translated=translated)
+        codes.extend(found)
+
+
+def _finish_part(section, part, *, locale, trusted, translated, names, codes):
+    """One written part of a paper: shaped, then grounded, guarded or verified by its kind.
+
+    A section no part of the entry names (none should reach here) is grounded,
+    the strict reading: at worst a false blank, never an invention.
+    """
+    if part is not None:
+        _shape(section, part, locale)
+    if part is not None and part['kind'] == 'sources':
+        _paper_sources(section, trusted, translated, names, codes)
+        return
+    strict = part is None or part.get('grounded')
+
+    def checked(text):
+        text, found = (ground_paper if strict else facts.guard)(text, trusted, translated=translated)
+        codes.extend(found)
+        return text
+    _texts(section, checked, heading=part is None or part.get('heading_mode') == 'model')
+
+
+def _drop_empty(entry, content):
+    """The sections of `content` without the instances of a model-sized group that hold nothing.
+
+    Such a group is seeded at its max and the model fills as many instances as
+    the customer's plan or files need. An instance is empty when none of its
+    sections holds a body or an item with words (a heading alone is no
+    chapter). Empty instances are kept only to reach the group's min, the
+    first of them first; their ids are left as they are.
+    """
+    groups = entry.raw.get('groups') or {}
+    instances = {}
+    for section in content['sections']:
+        part = entry.part(section.get('id'))
+        if part is None or not part.get('group') or (groups.get(part['group']) or {}).get('sized') != 'model':
+            continue
+        instances.setdefault(part['group'], {}).setdefault(_instance(section['id'], part), []).append(section)
+    dropped = set()
+    for group, found in instances.items():
+        empty = [number for number in sorted(found) if not any(_words(section) for section in found[number])]
+        keep = max(0, groups[group]['min'] - (len(found) - len(empty)))
+        for number in empty[keep:]:
+            dropped |= {id(section) for section in found[number]}
+    if dropped:
+        content['sections'] = [section for section in content['sections'] if id(section) not in dropped]
+
+
+def _paper(entry, data, content, *, only, file_names, codes):
+    """(content, warnings): a category paper held to the customer's words and shaped by its parts.
+
+    A part that cannot be finished is left empty ('finish:form') rather than
+    shipped unchecked or costing the customer the paper. Unlike a deck, a
+    paper whose draft cannot be read at all (what the customer said, its
+    entry) raises: its grounded parts are a letter's or a form's facts, and a
+    job that fails is not counted, while an unchecked one could ship an
+    invented name.
+    """
+    content = copy.deepcopy(content)
+    revision = data.get('revision') or {}
+    scope = set(revision.get('selected_section_ids') or ()) or None
+    if only is not None:
+        scope = set(only) if scope is None else scope & set(only)
+    locale = _locale(data)
+    trusted = facts.trusted(data)
+    translated = _translated(data)
+    names = _file_names(data) if file_names is None else list(file_names)
+    found = []
+    sections = content.setdefault('sections', [])
+    whole = scope is None
+    if whole and not any(section.get('id') == FACTS for section in sections) \
+            and any(field.get('clock') for field in entry.fields):
+        sections.insert(0, {'id': FACTS, 'heading': '', 'body': '', 'notes': '', 'layout': 'list', 'items': []})
+    tables = False
+    for section in sections:
+        if scope is not None and section.get('id') not in scope:
+            continue
+        part = None if section.get('id') == FACTS else entry.part(section.get('id'))
+        try:
+            if section.get('id') == FACTS:
+                _facts(entry, section, trusted, translated, locale, found)
+            else:
+                _finish_part(section, part, locale=locale, trusted=trusted, translated=translated, names=names,
+                             codes=found)
+                tables = tables or (part is not None and part['kind'] == 'table')
+        except Exception:
+            log.exception('Category %s: part %s could not be finished and is left empty', entry.id,
+                          section.get('id'))
+            section.update(body='', items=[])
+            found.append('finish:form')
+    if whole:
+        if entry.raw.get('title') == 'label':
+            content['title'] = entry.name(locale)
+        elif isinstance(content.get('title'), str):
+            # A fact-led paper's title may name its people, so it is held as its grounded parts are.
+            check = ground_paper if any(part.get('grounded') for part in entry.parts) else facts.guard
+            content['title'], title_codes = check(content['title'], trusted, translated=translated)
+            found.extend(title_codes)
+        if content.get('questions'):
+            content['questions'] = _questions(content['questions'], trusted, translated, found)
+        _drop_empty(entry, content)
+    if whole or tables:
+        from . import derive
+        content = derive.apply(entry, content, trusted)
+    from .. import quality
+    content, _ = quality.tidy(content, scope)
+    content, _ = quality.enforce(content, locale, scope)
+    found = list(dict.fromkeys(found))
+    if codes is not None:
+        codes.extend(found)
+    if found:
+        log.info('Category %s: finish took out %s', entry.id, ', '.join(found))
+    return content, [FACTS_BLANKED] if found else []
+
+
+def _paper_exempt(entry, data):
+    """The sections of a paper quality.check must not send back for being empty, repeating or not prose.
+
+    The facts section; list, table and sources parts, which hold names and
+    figures rather than prose; optional parts, empty unless the customer's
+    words call for them; every instance of a model-sized group, which stands
+    empty where the customer's plan has fewer chapters; and the instances of a
+    grouped part whose heading is fixed or none, the same on each by design.
+    Sent back, a repair could only invent to fill or vary them.
+    """
+    try:
+        groups = entry.raw.get('groups') or {}
+        found = set()
+        for section in (data.get('content') or {}).get('sections') or []:
+            section_id = section.get('id')
+            if section_id == FACTS:
+                found.add(section_id)
+                continue
+            part = entry.part(section_id)
+            if part is None:
+                continue
+            group = groups.get(part['group']) if part.get('group') else None
+            if part['kind'] in ('list', 'table', 'sources') or part.get('need') == 'optional' or (
+                    group is not None and (group['sized'] == 'model' or part.get('heading_mode') != 'model')):
+                found.add(section_id)
+        return found
+    except Exception:
+        log.exception('Category %s: no quality exemptions', entry.id)
+        return set()
+
+
+def plain(data, content):
+    """The emergency fallback's content of a finished category paper, for today's renderer (architecture 6.7).
+
+    Only for a failed template build or a template this worker lacks; no
+    category is ever ticked onto it. The contract:
+    - the title is the content's title (the category's name when it has none);
+    - the facts are one list section of label and value lines in the field
+      order, ____ for a field whose policy draws a blank; choices, flags and
+      files are settings, not lines. Each is an item {label, text}, which
+      today's renderer draws as "Label — value": a label of its own may hold
+      a colon ("Kimga: tashkilot"), and "Label: value" would read as two;
+    - each written part with words is a section under its heading;
+    - a table's rows are list items whose cells are joined by " — ", under a
+      line of its column names, so nothing is cut at three columns;
+    - the verified sources are a list section;
+    - the questions stay in content.questions.
+    Anything else is returned as it is. Never raises: on a failure the
+    content is returned as given, which today's renderer can still draw.
+    """
+    entry = _entry(data)
+    if entry is None or entry.service != 'pdf':
+        return content
+    try:
+        locale = _locale(data)
+        values = {}
+        for section in content.get('sections') or []:
+            if section.get('id') == FACTS:
+                values = {str(item.get('label')): _value(item) for item in section.get('items') or []
+                          if isinstance(item, dict) and _value(item)}
+        # A field the paper also writes as a part of the same id (an ariza's request) is drawn there, not as a blank.
+        written = {section.get('id') for section in content.get('sections') or [] if _words(section)}
+        lines = []
+        for field in entry.fields:
+            if field['kind'] in ('choice', 'flag', 'file'):
+                continue
+            value = values.get(field['id'])
+            if not value and (field['missing'] not in ('blank', 'ask') or field['id'] in written):
+                continue
+            value = '; '.join(line.strip() for line in (value or BLANK).split('\n') if line.strip())
+            label = (field['label'].get(locale) or field['label']['en']).strip().rstrip(':').strip()
+            lines.append({'label': label, 'text': value, 'value': ''})
+        sections = []
+        if lines:
+            sections.append({'id': FACTS, 'heading': PLAIN_FACTS[locale], 'body': '', 'notes': '', 'layout': 'list',
+                             'items': lines})
+        for section in content.get('sections') or []:
+            if section.get('id') == FACTS or not _words(section):
+                continue
+            part = entry.part(section.get('id'))
+            made = {'id': section.get('id'), 'heading': str(section.get('heading') or ''),
+                    'body': str(section.get('body') or ''), 'notes': '', 'layout': 'text', 'items': []}
+            items = [item for item in section.get('items') or []
+                     if isinstance(item, dict) and _words({'items': [item]})]
+            kind = part['kind'] if part is not None else 'prose'
+            if kind == 'table':
+                columns = [column.get(locale) or column['en'] for column in part.get('columns') or ()]
+                count = len(columns) or None
+                header = PLAIN_CELLS.join(columns)
+                made['body'] = '\n'.join(text for text in (made['body'], header) if text.strip())
+                made['items'] = [{'label': '', 'text': PLAIN_CELLS.join(cell for cell in cells(item, count) if cell),
+                                  'value': ''} for item in items]
+                made['layout'] = 'list'
+            elif kind in ('list', 'sources') or items:
+                made['items'] = [{key: str(item.get(key) or '') for key in ('label', 'text', 'value')}
+                                 for item in items]
+                made['layout'] = 'list'
+            sections.append(made)
+        title = str(content.get('title') or '').strip() or entry.name(locale)
+        return {**content, 'title': title, 'sections': sections, 'questions': list(content.get('questions') or [])}
+    except Exception:
+        log.exception('Category %s: no plain projection; the content goes to the fallback as it is', entry.id)
+        return content
