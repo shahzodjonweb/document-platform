@@ -1,0 +1,354 @@
+{
+ "schema": 2,
+ "id": "business_hisobot",
+ "entries": [
+  "pdf.biz.hisobot"
+ ],
+ "name": {
+  "uz": "Zamonaviy hisobot",
+  "ru": "Современный отчёт",
+  "en": "Modern report"
+ },
+ "family": "business",
+ "page": {
+  "margins_mm": {
+   "left": 30,
+   "right": 15,
+   "top": 26,
+   "bottom": 20
+  }
+ },
+ "type": {
+  "face": "sans",
+  "ladder": [
+   [
+    10.5,
+    15.5
+   ],
+   [
+    10,
+    14.8
+   ],
+   [
+    9.5,
+    14
+   ]
+  ],
+  "align": "left"
+ },
+ "page_rule": {
+  "kind": "flow"
+ },
+ "furniture": {
+  "first": "none",
+  "later": "header_number",
+  "format": "n",
+  "header": [
+   "organization",
+   "period"
+  ]
+ },
+ "flow": [
+  {
+   "block": "doc_head",
+   "part": "head",
+   "fields": [
+    "organization",
+    "subject",
+    "period",
+    "unit",
+    "author",
+    "addressee"
+   ],
+   "params": {
+    "overline": "organization",
+    "kind_line": "kind",
+    "title": "content_title",
+    "subtitle": [
+     "period"
+    ],
+    "rows": [
+     "unit",
+     "author",
+     "addressee"
+    ],
+    "labels": {
+     "unit": "row_unit",
+     "author": "row_author",
+     "addressee": "row_addressee"
+    },
+    "captions": {
+     "organization": "cap_org",
+     "period": "cap_period"
+    }
+   }
+  },
+  {
+   "block": "heading",
+   "part": "summary",
+   "when": "part:summary",
+   "params": {
+    "level": 1,
+    "numbering": "chapter"
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "summary",
+   "when": "part:summary"
+  },
+  {
+   "block": "key_figures",
+   "part": "figures",
+   "params": {
+    "from": "indicators",
+    "min_rows": 5,
+    "boxes": 4
+   }
+  },
+  {
+   "block": "heading",
+   "part": "indicators",
+   "when": "part:indicators",
+   "params": {
+    "level": 1,
+    "numbering": "chapter"
+   }
+  },
+  {
+   "block": "table",
+   "part": "indicators",
+   "when": "part:indicators",
+   "params": {
+    "numbered": true,
+    "drop_empty_columns": true
+   }
+  },
+  {
+   "block": "heading",
+   "part": "work_done",
+   "params": {
+    "level": 1,
+    "numbering": "chapter"
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "work_done",
+   "params": {
+    "subheadings": "numbered"
+   }
+  },
+  {
+   "block": "ruled_blank",
+   "part": "work_done",
+   "when": "nopart:work_done",
+   "params": {
+    "lines": 6
+   }
+  },
+  {
+   "block": "table",
+   "part": "tasks",
+   "when": "part:tasks",
+   "params": {
+    "numbered": true
+   }
+  },
+  {
+   "block": "heading",
+   "part": "problems",
+   "when": "part:problems",
+   "params": {
+    "level": 1,
+    "numbering": "chapter"
+   }
+  },
+  {
+   "block": "list",
+   "part": "problems",
+   "when": "part:problems",
+   "params": {
+    "marker": "bullet",
+    "table_from": 2
+   }
+  },
+  {
+   "block": "heading",
+   "part": "plans",
+   "params": {
+    "level": 1,
+    "numbering": "chapter"
+   }
+  },
+  {
+   "block": "list",
+   "part": "plans",
+   "when": "part:plans",
+   "params": {
+    "marker": "number"
+   }
+  },
+  {
+   "block": "ruled_blank",
+   "part": "plans",
+   "when": "nopart:plans",
+   "params": {
+    "lines": 3,
+    "numbered": true
+   }
+  },
+  {
+   "block": "heading",
+   "part": "proposals",
+   "when": "part:proposals",
+   "params": {
+    "level": 1,
+    "numbering": "chapter"
+   }
+  },
+  {
+   "block": "list",
+   "part": "proposals",
+   "when": "part:proposals",
+   "params": {
+    "marker": "bullet"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "conclusion",
+   "when": "part:conclusion",
+   "params": {
+    "level": 1,
+    "numbering": "chapter"
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "conclusion",
+   "when": "part:conclusion"
+  },
+  {
+   "block": "heading",
+   "part": "annexes",
+   "when": "part:annexes",
+   "params": {
+    "level": 1,
+    "numbering": "chapter"
+   }
+  },
+  {
+   "block": "list",
+   "part": "annexes",
+   "when": "part:annexes",
+   "params": {
+    "marker": "number",
+    "label": "annex_item"
+   }
+  },
+  {
+   "block": "signature_row",
+   "part": "closing",
+   "keep": "closing",
+   "fields": [
+    "signers",
+    "author"
+   ],
+   "params": {
+    "variant": "role_position_sign_name",
+    "labels": {
+     "author": "role_author",
+     "signers": "role_agreed"
+    },
+    "captions": {
+     "author": "cap_position"
+    }
+   }
+  },
+  {
+   "block": "date_line",
+   "part": "closing",
+   "keep": "closing",
+   "fields": [
+    "report_date"
+   ],
+   "params": {
+    "label": "date"
+   }
+  },
+  {
+   "block": "line",
+   "part": "closing",
+   "keep": "closing",
+   "when": "fact:seal_request",
+   "params": {
+    "label": "seal",
+    "style": "small"
+   }
+  }
+ ],
+ "labels": {
+  "kind": {
+   "uz": "HISOBOT",
+   "ru": "ОТЧЁТ",
+   "en": "REPORT"
+  },
+  "row_unit": {
+   "uz": "Bo‘lim",
+   "ru": "Подразделение",
+   "en": "Department"
+  },
+  "row_author": {
+   "uz": "Tayyorladi",
+   "ru": "Подготовил",
+   "en": "Prepared by"
+  },
+  "row_addressee": {
+   "uz": "Kimga",
+   "ru": "Кому",
+   "en": "To"
+  },
+  "cap_org": {
+   "uz": "(tashkilot nomi)",
+   "ru": "(наименование организации)",
+   "en": "(organisation)"
+  },
+  "cap_period": {
+   "uz": "(hisobot davri)",
+   "ru": "(отчётный период)",
+   "en": "(reporting period)"
+  },
+  "annex_item": {
+   "uz": "ilova",
+   "ru": "Приложение",
+   "en": "Annex"
+  },
+  "role_author": {
+   "uz": "Tayyorladi:",
+   "ru": "Исполнитель:",
+   "en": "Prepared by:"
+  },
+  "role_agreed": {
+   "uz": "Kelishildi:",
+   "ru": "Согласовано:",
+   "en": "Agreed:"
+  },
+  "cap_position": {
+   "uz": "(lavozimi)",
+   "ru": "(должность)",
+   "en": "(position)"
+  },
+  "date": {
+   "uz": "Sana:",
+   "ru": "Дата:",
+   "en": "Date:"
+  },
+  "seal": {
+   "uz": "M.O‘.",
+   "ru": "М.П.",
+   "en": "Seal"
+  }
+ },
+ "mock": "units/pdf.biz.hisobot/mock/business_hisobot.png"
+}

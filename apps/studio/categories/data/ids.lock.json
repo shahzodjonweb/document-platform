@@ -1,5 +1,302 @@
 {
  "entries": {
+  "pdf.biz.bayonnoma": {
+   "fields": {
+    "absent": "list",
+    "attendance_counts": "text",
+    "chair": "line",
+    "drawn_up_date": "date",
+    "guests": "list",
+    "meeting_body": "line",
+    "meeting_date": "date",
+    "meeting_place": "place",
+    "meeting_time": "line",
+    "minute_number": "ref",
+    "organisation": "org",
+    "participants": "list",
+    "seal": "flag",
+    "secretary": "line",
+    "title_word": "choice"
+   },
+   "parts": {
+    "agenda": "list",
+    "attachments": "list",
+    "head": "fixed",
+    "item_decisions": "list",
+    "item_report": "prose",
+    "item_speakers": "prose",
+    "item_vote": "prose",
+    "place_date": "fixed",
+    "quorum": "fixed",
+    "roster": "fixed",
+    "signatures": "fixed"
+   },
+   "service": "pdf",
+   "templates": [
+    "official_bayonnoma"
+   ]
+  },
+  "pdf.biz.biznes_reja": {
+   "fields": {
+    "address": "place",
+    "applicant": "org",
+    "business_idea": "text",
+    "business_status": "choice",
+    "capacity": "text",
+    "contacts": "line",
+    "currency": "line",
+    "differentiator": "text",
+    "director": "person",
+    "external_funding": "money",
+    "investor_offer": "text",
+    "legal_form": "line",
+    "loan_bank": "org",
+    "loan_collateral": "text",
+    "loan_grace": "line",
+    "loan_rate": "number",
+    "loan_repayment": "line",
+    "loan_term": "line",
+    "location": "place",
+    "market_figures": "text",
+    "own_funds": "money",
+    "owner_experience": "text",
+    "plan_year": "number",
+    "premises": "text",
+    "project_name": "line",
+    "project_status": "text",
+    "purpose": "choice",
+    "signers": "list",
+    "stamp_request": "flag",
+    "tax_id": "ref",
+    "tax_regime": "line"
+   },
+   "parts": {
+    "attachments": "list",
+    "business_description": "prose",
+    "conclusion": "prose",
+    "finance_costs": "table",
+    "finance_investment": "table",
+    "finance_result": "table",
+    "finance_revenue": "table",
+    "finance_sources": "table",
+    "finance_terms": "fixed",
+    "market_competitors": "table",
+    "market_customers": "prose",
+    "marketing": "list",
+    "operations": "prose",
+    "product": "table",
+    "risks": "table",
+    "schedule": "table",
+    "signature": "fixed",
+    "summary_details": "fixed",
+    "summary_figures": "fixed",
+    "summary_lead": "prose",
+    "summary_purpose": "prose",
+    "summary_status": "prose",
+    "team": "table",
+    "title_page": "fixed",
+    "toc": "fixed"
+   },
+   "service": "pdf",
+   "templates": [
+    "business_biznes_reja"
+   ]
+  },
+  "pdf.biz.hisobot": {
+   "fields": {
+    "addressee": "line",
+    "as_of": "date",
+    "author": "line",
+    "comparison_basis": "choice",
+    "organization": "org",
+    "period": "line",
+    "report_date": "date",
+    "seal_request": "flag",
+    "signers": "list",
+    "subject": "text",
+    "unit": "line"
+   },
+   "parts": {
+    "annexes": "list",
+    "closing": "fixed",
+    "conclusion": "prose",
+    "figures": "fixed",
+    "head": "fixed",
+    "indicators": "table",
+    "plans": "list",
+    "problems": "list",
+    "proposals": "list",
+    "summary": "prose",
+    "tasks": "table",
+    "toc": "fixed",
+    "work_done": "prose"
+   },
+   "service": "pdf",
+   "templates": [
+    "business_hisobot"
+   ]
+  },
+  "pdf.biz.lavozim_yoriqnomasi": {
+   "fields": {
+    "agreement_signers": "list",
+    "approval_date": "date",
+    "approval_mode": "flag",
+    "approver_name": "person",
+    "approver_post": "line",
+    "document_ref": "line",
+    "employee_name": "person",
+    "final_facts": "text",
+    "organisation": "org",
+    "position": "line",
+    "qualification": "text",
+    "reports_to": "line",
+    "special_terms": "text",
+    "substitute": "line",
+    "title_form": "flag",
+    "unit": "line"
+   },
+   "parts": {
+    "acknowledgement": "fixed",
+    "agreement": "fixed",
+    "approval": "fixed",
+    "duties": "list",
+    "final": "list",
+    "general": "list",
+    "head": "fixed",
+    "qualification": "list",
+    "responsibility": "list",
+    "rights": "list"
+   },
+   "service": "pdf",
+   "templates": [
+    "official_lavozim_yoriqnomasi"
+   ]
+  },
+  "pdf.biz.marketing_reja": {
+   "fields": {
+    "approver": "line",
+    "audience": "text",
+    "author": "line",
+    "avg_check": "money",
+    "budget_total": "money",
+    "business_name": "org",
+    "current_state": "text",
+    "differentiator": "text",
+    "key_dates": "list",
+    "location": "place",
+    "market_figures": "text",
+    "offer": "text",
+    "period": "line",
+    "price_info": "line",
+    "situation": "choice"
+   },
+   "parts": {
+    "approval": "fixed",
+    "audience": "prose",
+    "budget": "table",
+    "calendar": "table",
+    "ch_conclusion": "prose",
+    "ch_risks": "table",
+    "channels": "table",
+    "competitors": "table",
+    "goals": "table",
+    "kpis": "table",
+    "market": "prose",
+    "mix": "list",
+    "plan_head": "fixed",
+    "positioning": "prose",
+    "review": "prose",
+    "signature": "fixed",
+    "summary_figures": "fixed",
+    "summary_text": "prose",
+    "swot": "list",
+    "title_page": "fixed",
+    "toc": "fixed"
+   },
+   "service": "pdf",
+   "templates": [
+    "business_marketing_reja"
+   ]
+  },
+  "pdf.biz.tijorat_taklifi": {
+   "fields": {
+    "addressee_org": "org",
+    "addressee_person": "person",
+    "contact_person": "line",
+    "currency": "line",
+    "delivery_terms": "text",
+    "discount": "text",
+    "doc_date": "date",
+    "doc_number": "ref",
+    "note": "text",
+    "offer_subject": "text",
+    "payment_terms": "text",
+    "price_period": "choice",
+    "seller_address": "place",
+    "seller_email": "email",
+    "seller_name": "org",
+    "seller_phone": "phone",
+    "seller_requisites": "ref",
+    "seller_website": "line",
+    "signer_name": "person",
+    "signer_position": "line",
+    "validity": "text",
+    "vat_status": "line",
+    "warranty": "text"
+   },
+   "parts": {
+    "addressee": "fixed",
+    "advantages": "list",
+    "closing": "fixed",
+    "cta": "prose",
+    "date_line": "fixed",
+    "letterhead": "fixed",
+    "note": "fixed",
+    "opening": "prose",
+    "prices": "table",
+    "terms": "fixed",
+    "title": "fixed"
+   },
+   "service": "pdf",
+   "templates": [
+    "business_taklif"
+   ]
+  },
+  "pdf.biz.yoriqnoma": {
+   "fields": {
+    "agreement_signers": "list",
+    "approval_date": "date",
+    "approval_mode": "flag",
+    "approver_name": "person",
+    "approver_post": "line",
+    "audience": "line",
+    "author": "line",
+    "contacts": "list",
+    "final_terms": "text",
+    "number": "ref",
+    "organisation": "org",
+    "subject": "text"
+   },
+   "parts": {
+    "acknowledgement": "fixed",
+    "after_work": "list",
+    "approval": "fixed",
+    "before_work": "list",
+    "contacts_table": "fixed",
+    "details": "fixed",
+    "during_work": "list",
+    "emergency": "list",
+    "final": "list",
+    "general": "list",
+    "head": "fixed",
+    "rules_chapter": "list",
+    "signers": "fixed"
+   },
+   "service": "pdf",
+   "templates": [
+    "business_yoriqnoma"
+   ]
+  },
   "pdf.test": {
    "fields": {
     "answer_extras": "choice",

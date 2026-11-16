@@ -1,0 +1,836 @@
+{
+ "schema": 2,
+ "id": "pdf.biz.tijorat_taklifi",
+ "status": "draft",
+ "service": "pdf",
+ "parent": "pdf.biz",
+ "order": 2,
+ "labels": {
+  "uz": "📨 Tijorat taklifi",
+  "ru": "📨 Коммерческое предложение",
+  "en": "📨 Commercial proposal"
+ },
+ "summary": "A one- or two-page commercial offer on the seller’s letterhead, with the date of generation, the addressee, a price table whose totals are computed in code from lines whose price basis (per unit or line total) is known, plain terms with a validity period, a call to action, and a signature row with a stamp place, in the customer’s language; a formal black-and-white variant is used for tenders and official requests.",
+ "tone": "polite, calm, concrete business register; “biz” to “siz”; short sentences; facts only as the customer gave them",
+ "topic": false,
+ "title": "model",
+ "length": {
+  "unit": "pages",
+  "mode": "count",
+  "target": "ceiling",
+  "default": 1,
+  "min": 1,
+  "max": 5,
+  "note": "One page by default, two when the rows or terms need it. A ceiling: the paper is as long as the customer’s items and terms, never padded; the research’s 35 is capped at 5 because no part grows past the price list."
+ },
+ "questions": {
+  "default": 0,
+  "max": 0
+ },
+ "quality": "fixed",
+ "fill": false,
+ "cues": {},
+ "ask": {
+  "when": "no_digits",
+  "fields": [
+   "offer_subject"
+  ],
+  "review": {
+   "uz": "Narxlar yozilmadi: narx qatorlari bo‘sh chiziq bo‘lib chiqadi, jami summa chiqmaydi.",
+   "ru": "Цены не указаны: строки цен будут пустыми линиями, итоговой суммы не будет.",
+   "en": "No prices were given: the price rows come out as blank lines and there is no total."
+  },
+  "prompt": {
+   "uz": "💰 Qaysi tovar yoki xizmat, nechta va narxi qancha? Narx har bir dona uchunmi yoki jamimi, yozing. Yozmasangiz, narx qatorlari bo‘sh qoladi.",
+   "ru": "💰 Какой товар или услуга, сколько и по какой цене? Укажите, цена за единицу или всего. Если пропустите, строки цен останутся пустыми.",
+   "en": "💰 Which item or service, how many, and at what price? Say whether the price is per unit or in total. If you skip this, the price rows stay empty."
+  },
+  "hint": {
+   "uz": "Har qatorga bittadan: nomi — soni — har birining narxi yoki “jami”. Masalan: O‘quvchi stuli — 40 ta — har biri 280 000",
+   "ru": "По одной позиции в строке: название — количество — цена за единицу или «всего». Например: Стул ученический — 40 шт. — по 280 000 за штуку",
+   "en": "One item per line: name — quantity — price each or “total”. For example: Student chair — 40 — 280,000 each"
+  }
+ },
+ "fields": [
+  {
+   "id": "seller_name",
+   "label": {
+    "uz": "Kompaniya nomi",
+    "ru": "Название компании",
+    "en": "Company name"
+   },
+   "example": {
+    "uz": "Namuna Mebel MChJ",
+    "ru": "Namuna Mebel MChJ",
+    "en": "Namuna Mebel MChJ"
+   },
+   "kind": "org",
+   "need": "required",
+   "missing": "blank",
+   "where": "Letterhead, top left of page 1 beside the logo; the running header of later pages; the formal opening formula. Missing: the account’s brand name when it has one, otherwise the bot asks once; only if that is skipped, a captioned ruled blank."
+  },
+  {
+   "id": "seller_address",
+   "label": {
+    "uz": "Manzil",
+    "ru": "Адрес",
+    "en": "Address"
+   },
+   "example": {
+    "uz": "Toshkent sh., Yunusobod t., Namuna ko‘chasi, 12-uy",
+    "ru": "г. Ташкент, Юнусабадский р-н, ул. Намуна, д. 12",
+    "en": "12 Namuna St., Yunusabad district, Tashkent"
+   },
+   "kind": "place",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "Letterhead, right block, first line."
+  },
+  {
+   "id": "seller_phone",
+   "label": {
+    "uz": "Telefon",
+    "ru": "Телефон",
+    "en": "Phone"
+   },
+   "example": {
+    "uz": "+998 90 123 45 67",
+    "ru": "+998 90 123 45 67",
+    "en": "+998 90 123 45 67"
+   },
+   "kind": "phone",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "Letterhead, right block, second line; the contact line of the call to action."
+  },
+  {
+   "id": "seller_email",
+   "label": {
+    "uz": "E-mail",
+    "ru": "E-mail",
+    "en": "E-mail"
+   },
+   "example": {
+    "uz": "info@example.com",
+    "ru": "info@example.com",
+    "en": "info@example.com"
+   },
+   "kind": "email",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Letterhead, right block, third line."
+  },
+  {
+   "id": "seller_website",
+   "label": {
+    "uz": "Veb-sayt",
+    "ru": "Сайт",
+    "en": "Website"
+   },
+   "example": {
+    "uz": "www.example.com",
+    "ru": "www.example.com",
+    "en": "www.example.com"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Letterhead, right block, third line after the e-mail."
+  },
+  {
+   "id": "seller_requisites",
+   "label": {
+    "uz": "Rekvizitlar (STIR, hisob raqami, bank, MFO)",
+    "ru": "Реквизиты (ИНН, р/с, банк, МФО)",
+    "en": "Bank details (TIN, account, bank, MFO)"
+   },
+   "example": {
+    "uz": "STIR 123 456 789, h/r 2020 8000 1234 5678 9001, Namuna bank, MFO 00000",
+    "ru": "ИНН 123 456 789, р/с 2020 8000 1234 5678 9001, Namuna bank, МФО 00000",
+    "en": "TIN 123 456 789, account 2020 8000 1234 5678 9001, Namuna bank, MFO 00000"
+   },
+   "kind": "ref",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Footer of every page, a 9 pt grey line under a hairline (wraps to two lines). Optional and named in the bot prompt; the AI only transcribes what the customer wrote, never makes a number up."
+  },
+  {
+   "id": "addressee_org",
+   "label": {
+    "uz": "Taklif kimga yuboriladi (tashkilot)",
+    "ru": "Кому адресовано (организация)",
+    "en": "Who the offer is for (organisation)"
+   },
+   "example": {
+    "uz": "25-sonli maktab",
+    "ru": "Школа № 25",
+    "en": "School No. 25"
+   },
+   "kind": "org",
+   "need": "recommended",
+   "missing": "blank",
+   "where": "Addressee block, right half under the letterhead: the label Kimga: (Адресат:, To:) and the organisation in bold, in the nominative as written (a deliberate trade-off: the model never declines a name)."
+  },
+  {
+   "id": "addressee_person",
+   "label": {
+    "uz": "Murojaat qilinadigan shaxs (lavozim, ism)",
+    "ru": "Контактное лицо адресата (должность, имя)",
+    "en": "Addressee person (position, name)"
+   },
+   "example": {
+    "uz": "Direktor Sardor Namunov",
+    "ru": "Директор Сардор Намунов",
+    "en": "Director Sardor Namunov"
+   },
+   "kind": "person",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Addressee block second line; the salutation Hurmatli <name>!"
+  },
+  {
+   "id": "doc_number",
+   "label": {
+    "uz": "Chiquvchi raqam",
+    "ru": "Исходящий номер",
+    "en": "Outgoing number"
+   },
+   "example": {
+    "uz": "14/2026",
+    "ru": "14/2026",
+    "en": "14/2026"
+   },
+   "kind": "ref",
+   "need": "optional",
+   "missing": "blank",
+   "where": "Date line, first line: № ________ typed underscores; left blank unless the customer gives it."
+  },
+  {
+   "id": "doc_date",
+   "label": {
+    "uz": "Hujjat sanasi",
+    "ru": "Дата документа",
+    "en": "Document date"
+   },
+   "example": {
+    "uz": "2026-yil 16-noyabr",
+    "ru": "16 ноября 2026 г.",
+    "en": "16 November 2026"
+   },
+   "kind": "date",
+   "need": "optional",
+   "missing": "blank",
+   "clock": "date",
+   "where": "Date line under the letterhead. The customer’s own date wins; otherwise code writes the day the paper is made (Tashkent), which the validity counts from. Never written by the model."
+  },
+  {
+   "id": "offer_subject",
+   "label": {
+    "uz": "Nima taklif qilinadi",
+    "ru": "Что предлагается",
+    "en": "What is offered"
+   },
+   "example": {
+    "uz": "maktab uchun mebel",
+    "ru": "мебель для школы",
+    "en": "furniture for a school"
+   },
+   "kind": "text",
+   "need": "required",
+   "missing": "omit",
+   "where": "Headline under the title; the opening sentence; the formal opening formula. Missing: the existing topic question asks."
+  },
+  {
+   "id": "currency",
+   "label": {
+    "uz": "Valyuta",
+    "ru": "Валюта",
+    "en": "Currency"
+   },
+   "example": {
+    "uz": "so‘m",
+    "ru": "сум",
+    "en": "UZS"
+   },
+   "kind": "line",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "Price column headers and the total. so‘m / сум is assumed only for an Uzbek or Russian message that names no currency and shows no other sign ($, USD, у.е., EUR); any other currency is written as the customer wrote it and is shown with two decimals."
+  },
+  {
+   "id": "vat_status",
+   "label": {
+    "uz": "QQS: narxga kiritilgan / kiritilmagan, stavka",
+    "ru": "НДС: включён / не включён, ставка",
+    "en": "VAT: included / not included, rate"
+   },
+   "example": {
+    "uz": "QQS bilan",
+    "ru": "с НДС",
+    "en": "incl. VAT"
+   },
+   "kind": "line",
+   "need": "recommended",
+   "missing": "blank",
+   "where": "Total label and, when VAT is added on top at a rate the customer gave, a VAT row; unknown: terms row QQS with a ruled blank."
+  },
+  {
+   "id": "discount",
+   "label": {
+    "uz": "Chegirma (foiz va nimaga)",
+    "ru": "Скидка (процент и на что)",
+    "en": "Discount (percent and what it covers)"
+   },
+   "example": {
+    "uz": "barcha xizmatlarga 5%",
+    "ru": "скидка 5% на все услуги",
+    "en": "5% off everything"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Printed under the price table in the customer’s words; never computed into the totals this round."
+  },
+  {
+   "id": "delivery_terms",
+   "label": {
+    "uz": "Yetkazib berish yoki bajarish muddati va joyi",
+    "ru": "Срок и условия поставки или выполнения",
+    "en": "Delivery or completion time and place"
+   },
+   "example": {
+    "uz": "10 ish kuni ichida; yetkazib berish va o‘rnatish bepul",
+    "ru": "в течение 10 рабочих дней; доставка и установка бесплатно",
+    "en": "within 10 working days; delivery and installation are free"
+   },
+   "kind": "text",
+   "need": "recommended",
+   "missing": "blank",
+   "where": "Terms table, first row (label Yetkazib berish for goods, Bajarish muddati for services)."
+  },
+  {
+   "id": "payment_terms",
+   "label": {
+    "uz": "To‘lov shartlari",
+    "ru": "Условия оплаты",
+    "en": "Payment terms"
+   },
+   "example": {
+    "uz": "50% oldindan, qolgani yetkazilganda",
+    "ru": "50% предоплата, остаток при поставке",
+    "en": "50% in advance, the rest on delivery"
+   },
+   "kind": "text",
+   "need": "recommended",
+   "missing": "blank",
+   "where": "Terms table, second row."
+  },
+  {
+   "id": "warranty",
+   "label": {
+    "uz": "Kafolat",
+    "ru": "Гарантия",
+    "en": "Warranty"
+   },
+   "example": {
+    "uz": "3 yil",
+    "ru": "3 года",
+    "en": "3 years"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Terms table, third row; the row is left out when not given."
+  },
+  {
+   "id": "validity",
+   "label": {
+    "uz": "Taklifning amal qilish muddati",
+    "ru": "Срок действия предложения",
+    "en": "Validity of the offer"
+   },
+   "example": {
+    "uz": "30 kun",
+    "ru": "30 дней",
+    "en": "30 days"
+   },
+   "kind": "text",
+   "need": "required",
+   "missing": "blank",
+   "where": "Terms table, last row, labelled with the neutral Amal qilish muddati (Срок действия, Validity) because it is printed as written, a count or a date, never computed."
+  },
+  {
+   "id": "price_period",
+   "label": {
+    "uz": "Narx davri (oyiga, yiliga …)",
+    "ru": "Период цены (в месяц, в год …)",
+    "en": "Price period (per month, per year …)"
+   },
+   "example": {
+    "uz": "oyiga",
+    "ru": "в месяц",
+    "en": "per month"
+   },
+   "kind": "choice",
+   "need": "optional",
+   "missing": "omit",
+   "choices": [
+    "month",
+    "year",
+    "week",
+    "day"
+   ],
+   "where": "An enum (month, year, week, day) when the prices are recurring; it goes into the column headers and the total label (Oyiga jami, Итого в месяц, Total per month)."
+  },
+  {
+   "id": "note",
+   "label": {
+    "uz": "Izoh",
+    "ru": "Примечание",
+    "en": "Note"
+   },
+   "example": {
+    "uz": "Yoqilg‘i narxi o‘zgarsa, narxlar qayta ko‘rib chiqiladi.",
+    "ru": "При изменении цен на топливо цены пересматриваются.",
+    "en": "Prices are reviewed if fuel prices change."
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "One italic line under the terms."
+  },
+  {
+   "id": "contact_person",
+   "label": {
+    "uz": "Aloqa uchun shaxs (ism, telefon)",
+    "ru": "Контактное лицо (имя, телефон)",
+    "en": "Contact person (name, phone)"
+   },
+   "example": {
+    "uz": "Dilnoza, +998 90 123 45 67",
+    "ru": "Дилноза, +998 90 123 45 67",
+    "en": "Dilnoza, +998 90 123 45 67"
+   },
+   "kind": "line",
+   "need": "recommended",
+   "missing": "blank",
+   "where": "The call to action (default) or the contact_line (Mas’ul shaxs) beside the seal circle (formal) or under the seal_place label (default with no call to action)."
+  },
+  {
+   "id": "signer_position",
+   "label": {
+    "uz": "Imzolovchi lavozimi",
+    "ru": "Должность подписанта",
+    "en": "Signer’s position"
+   },
+   "example": {
+    "uz": "Direktor",
+    "ru": "Директор",
+    "en": "Director"
+   },
+   "kind": "line",
+   "need": "recommended",
+   "missing": "blank",
+   "where": "Signature row, left cell; blank: ruled line with the caption (lavozimi)."
+  },
+  {
+   "id": "signer_name",
+   "label": {
+    "uz": "Imzolovchi ismi (F.I.Sh.)",
+    "ru": "ФИО подписанта",
+    "en": "Signer’s name"
+   },
+   "example": {
+    "uz": "Bahrom Tajribayev",
+    "ru": "Бахром Таджрибаев",
+    "en": "Bahrom Tajribayev"
+   },
+   "kind": "person",
+   "need": "recommended",
+   "missing": "blank",
+   "where": "Signature row, right cell; blank: ruled line with the caption (F.I.Sh.)."
+  }
+ ],
+ "parts": [
+  {
+   "id": "letterhead",
+   "kind": "fixed",
+   "heading": {
+    "uz": "Firma blankasi",
+    "ru": "Фирменный бланк",
+    "en": "Letterhead"
+   },
+   "heading_mode": "none",
+   "need": "required",
+   "share": 0.09,
+   "elastic": false,
+   "write": "Nothing: the template draws the seller’s name, address, phone, e-mail and website from the facts. A line not given is left out; a missing name is a ruled blank.",
+   "block": "letterhead",
+   "fields": [
+    "seller_name",
+    "seller_address",
+    "seller_phone",
+    "seller_email",
+    "seller_website",
+    "seller_requisites"
+   ]
+  },
+  {
+   "id": "date_line",
+   "kind": "fixed",
+   "heading": {
+    "uz": "Raqam va sana",
+    "ru": "Номер и дата",
+    "en": "Number and date"
+   },
+   "heading_mode": "none",
+   "need": "usual",
+   "share": 0.03,
+   "elastic": false,
+   "write": "Nothing: the outgoing number as given (else a blank) and the date as given (else code writes the day the paper is made).",
+   "block": "date_line",
+   "fields": [
+    "doc_number",
+    "doc_date"
+   ]
+  },
+  {
+   "id": "addressee",
+   "kind": "fixed",
+   "heading": {
+    "uz": "Kimga",
+    "ru": "Кому",
+    "en": "To"
+   },
+   "heading_mode": "none",
+   "need": "required",
+   "share": 0.07,
+   "elastic": false,
+   "write": "Nothing: the organisation and the person exactly as the customer wrote them, in the nominative, never declined.",
+   "block": "party_block",
+   "fields": [
+    "addressee_org",
+    "addressee_person"
+   ]
+  },
+  {
+   "id": "title",
+   "kind": "fixed",
+   "heading": {
+    "uz": "TIJORAT TAKLIFI",
+    "ru": "КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ",
+    "en": "COMMERCIAL PROPOSAL"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "share": 0.07,
+   "elastic": false,
+   "write": "The fixed title is the template’s. The document title you return is the headline under it: one line of at most 90 characters naming what is offered, with a figure only if the customer gave it; no slogan.",
+   "block": "doc_title",
+   "fields": [
+    "offer_subject"
+   ]
+  },
+  {
+   "id": "opening",
+   "kind": "prose",
+   "heading": null,
+   "heading_mode": "none",
+   "need": "required",
+   "share": 0.09,
+   "elastic": true,
+   "write": "The salutation, then one to three sentences: who offers what to whom, in the customer’s words. Uzbek “Hurmatli <name>!”; Russian “Уважаемый г-н <surname>!” or “Уважаемая г-жа <surname>!” when the given name shows the gender, else “Уважаемые партнёры!”; English “Dear Mr/Ms <surname>,” by the same test, else the full name. No person given: “Hurmatli hamkor!”, “Уважаемые партнёры!”, “Dear partner,”.",
+   "block": "paragraph",
+   "grounded": true,
+   "words": [
+    15,
+    70
+   ]
+  },
+  {
+   "id": "advantages",
+   "kind": "list",
+   "heading": {
+    "uz": "Afzalliklarimiz",
+    "ru": "Наши преимущества",
+    "en": "Our advantages"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "share": 0.08,
+   "elastic": true,
+   "write": "Two to four items of at most 70 characters, each a product or service feature the customer wrote; never a delivery, payment, warranty, validity or price term. Fewer than two features: no items.",
+   "block": "list",
+   "grounded": true,
+   "max_items": 4
+  },
+  {
+   "id": "prices",
+   "kind": "table",
+   "heading": {
+    "uz": "Narxlar",
+    "ru": "Цены",
+    "en": "Prices"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "share": 0.27,
+   "elastic": false,
+   "write": "One row per item or service the customer listed, in their order, up to 40: label the name, then unit and quantity, then the unit price, and the amount last. Copy every figure exactly as given, with no rounding or conversion; a unit at most 10 characters (dona, kg, m2), only if given. Leave the amount empty: code multiplies quantity by price. When the customer gave only a line’s total, put it in the amount and leave the unit price empty. A price not given stays empty; never split one total into invented lines.",
+   "block": "table",
+   "grounded": true,
+   "max_items": 40,
+   "columns": [
+    {
+     "uz": "Nomi",
+     "ru": "Наименование",
+     "en": "Item"
+    },
+    {
+     "uz": "Birlik",
+     "ru": "Ед.",
+     "en": "Unit"
+    },
+    {
+     "uz": "Miqdori",
+     "ru": "Кол-во",
+     "en": "Qty"
+    },
+    {
+     "uz": "Narxi",
+     "ru": "Цена",
+     "en": "Price"
+    },
+    {
+     "uz": "Summasi",
+     "ru": "Сумма",
+     "en": "Amount"
+    }
+   ],
+   "computed": [
+    {
+     "column": 4,
+     "op": "product",
+     "of": [
+      2,
+      3
+     ]
+    }
+   ],
+   "total": [
+    4
+   ]
+  },
+  {
+   "id": "terms",
+   "kind": "fixed",
+   "heading": {
+    "uz": "Shartlar",
+    "ru": "Условия",
+    "en": "Terms"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "share": 0.12,
+   "elastic": false,
+   "write": "Nothing written here: each term is a facts item in the customer’s words shortened to one line (delivery or completion, payment, warranty, VAT, validity). A term not given is left out of the facts: the template draws a ruled blank, and leaves warranty out. Validity is copied as written, a count or a date, never computed.",
+   "block": "kv_table",
+   "fields": [
+    "delivery_terms",
+    "payment_terms",
+    "warranty",
+    "vat_status",
+    "validity"
+   ]
+  },
+  {
+   "id": "note",
+   "kind": "fixed",
+   "heading": {
+    "uz": "Izoh",
+    "ru": "Примечание",
+    "en": "Note"
+   },
+   "heading_mode": "none",
+   "need": "optional",
+   "share": 0.02,
+   "elastic": false,
+   "write": "Nothing: the customer’s own caveat and discount, printed as written under the table.",
+   "block": "line",
+   "fields": [
+    "discount",
+    "note"
+   ]
+  },
+  {
+   "id": "cta",
+   "kind": "prose",
+   "heading": null,
+   "heading_mode": "none",
+   "need": "usual",
+   "share": 0.05,
+   "elastic": false,
+   "write": "One sentence with one action and the contact the customer gave; a deadline only if given. No pressure words. Empty when no contact was given.",
+   "block": "callout",
+   "grounded": true,
+   "words": [
+    0,
+    30
+   ]
+  },
+  {
+   "id": "closing",
+   "kind": "fixed",
+   "heading": {
+    "uz": "Hurmat bilan",
+    "ru": "С уважением",
+    "en": "Sincerely"
+   },
+   "heading_mode": "none",
+   "need": "required",
+   "share": 0.11,
+   "elastic": false,
+   "write": "Nothing: the closing words and one signature row with the signer’s position and name as given, else ruled blanks; the signature is never typed.",
+   "block": "signature_row",
+   "fields": [
+    "signer_position",
+    "signer_name",
+    "contact_person"
+   ]
+  }
+ ],
+ "rules": [
+  {
+   "text": "What it is: a one- or two-page commercial offer from one seller to one buyer: who offers what, the prices, the terms, what to do next and who signs. It is not a contract: never add penalties, advance terms, extras or contract clauses the customer did not state.",
+   "to": "model"
+  },
+  {
+   "text": "Voice: the company speaks as biz to the reader as siz; short, calm, concrete sentences; no exclamation marks. No quality claim (eng yaxshi, arzon, sifatli, ishonchli, professional, tezkor, noyob; best, reliable, fast) unless the customer gave the fact behind it, and then write the fact, not the adjective.",
+   "to": "model"
+  },
+  {
+   "text": "Never invent a fact: the company, its address, phone, e-mail, tax number or bank details, a person or position, a number, a date, a price, a discount, a delivery time, a warranty, a validity, a certificate, a client, a statistic, a product feature or a unit. Every number and feature in the paper is in the message or an attached file.",
+   "to": "model"
+  },
+  {
+   "text": "Prices are copied exactly as given: the same digits and currency, no rounding, conversion or estimate. Code computes the amounts and the total: never write a sum, a total, a discount amount or VAT in any part. so‘m (сум) is assumed only for an Uzbek or Russian message that names no other currency.",
+   "to": "model"
+  },
+  {
+   "text": "Discount, VAT and billing period stay in the customer’s words as facts items: the template prints them; nothing is computed from them this round. A recurring price returns price_period; never guess it from the kind of service.",
+   "to": "model"
+  },
+  {
+   "text": "Names and organisations exactly as written, never declined (a common noun such as maktab or direktor may take the ending the sentence needs).",
+   "to": "model"
+  },
+  {
+   "text": "Attached files (a price list, a catalogue, an earlier offer) are the customer’s own facts for items, prices and terms: copy them exactly and take nothing else, never another customer’s name or contact.",
+   "to": "model"
+  },
+  {
+   "text": "Length: one page by default, two when the rows or terms need it or the customer asks; never pad. Uzbek is Latin only, with ‘ in o‘ and g‘ and ’ for the tutuq belgisi.",
+   "to": "model"
+  },
+  {
+   "text": "Rounding (derive): each amount half up to the currency’s smallest unit (whole so‘m, 0.01 for USD or EUR); the total is the sum of the rounded amounts. A row whose quantity or price is missing, or whose basis is unclear, stays blank and the paper prints no total. A total the customer wrote that differs from the computed one is never printed.",
+   "to": "engine"
+  },
+  {
+   "text": "Columns drop when no row has the value: no unit anywhere, no Birlik column; no quantity anywhere, the table is name, price, amount. The price headers carry the currency and the billing period word.",
+   "to": "engine"
+  },
+  {
+   "text": "The closing block travels with the validity row and the note: no page holds only the closing block. The advantages are the first thing the fit drops when one page is tight, unless the customer asked for two pages.",
+   "to": "engine"
+  }
+ ],
+ "bot": {
+  "prompt": {
+   "uz": "✍️ Bitta xabarda yozing: kompaniyangiz nomi, taklif kimga, nima taklif qilasiz, narxlar (har biri uchunmi yoki jamimi, yozing) va shartlar (yetkazib berish, to‘lov, amal qilish muddati).\n➕ Ixtiyoriy: manzil, telefon, rekvizitlar (STIR, hisob raqami, bank, MFO), kafolat, chegirma, imzolovchining lavozimi va ismi.\n📎 Narxlar ro‘yxatini (PDF, Word, TXT) biriktirsangiz, narxlar shu fayldan olinadi.\n✅ Taklif odatda 1 bet. Yozmagan ma’lumotingiz bo‘sh chiziq bo‘lib qoladi — qo‘lda to‘ldirasiz. Narx va raqamlar hech qachon o‘ylab topilmaydi.",
+   "ru": "✍️ Опишите одним сообщением: название компании, кому адресовано предложение, что вы предлагаете, цены (укажите: за единицу или всего) и условия (поставка, оплата, срок действия).\n➕ По желанию: адрес, телефон, реквизиты (ИНН, р/с, банк, МФО), гарантия, скидка, должность и имя подписанта.\n📎 Приложите прайс-лист (PDF, Word, TXT) — цены возьмём из него.\n✅ Обычно предложение занимает 1 страницу. Что вы не укажете, останется пустой линией — допишете от руки. Цены и цифры мы не выдумываем.",
+   "en": "✍️ Say it all in one message: your company, who the offer is for, what you offer, the prices (say whether each is per unit or in total) and the terms (delivery, payment, how long the offer is valid).\n➕ Optional: address, phone, bank details (TIN, account, bank, MFO), warranty, discount, the signer’s position and name.\n📎 Attach a price list (PDF, Word, TXT) and the prices are taken from it.\n✅ An offer is usually 1 page. Anything you leave out becomes a blank line to fill in by hand. Prices and figures are never made up."
+  },
+  "examples": [
+   {
+    "uz": "Namuna Mebel MChJ nomidan 25-sonli maktab direktori Sardor Namunovga tijorat taklifi. 40 ta o‘quvchi partasi — har biri 650 000 so‘m, 40 ta stul — har biri 280 000 so‘m, 2 ta o‘qituvchi stoli — har biri 1 150 000 so‘m, narxlar QQS bilan. Yetkazib berish va o‘rnatish bepul, 10 ish kunida. To‘lov: 50% oldindan. Kafolat 3 yil, taklif 30 kun amal qiladi. Bog‘lanish: Dilnoza, +998 90 123 45 67.",
+    "ru": "Коммерческое предложение от Namuna Mebel MChJ директору школы № 25 Сардору Намунову. 40 ученических парт — по 650 000 сум за штуку, 40 стульев — по 280 000 сум за штуку, 2 учительских стола — по 1 150 000 сум за штуку, цены с НДС. Доставка и установка бесплатно, за 10 рабочих дней. Оплата: 50% предоплата. Гарантия 3 года, предложение действует 30 дней. Контакт: Дилноза, +998 90 123 45 67.",
+    "en": "A commercial proposal from Namuna Mebel MChJ to Sardor Namunov, director of School No. 25. 40 student desks — 650,000 UZS each, 40 chairs — 280,000 UZS each, 2 teacher desks — 1,150,000 UZS each, VAT included. Delivery and installation are free, within 10 working days. Payment: 50% in advance. Warranty 3 years, the offer is valid for 30 days. Contact: Dilnoza, +998 90 123 45 67."
+   },
+   {
+    "uz": "Namuna Servis YaTT, ofis tozalash xizmati taklifi — mijoz kichik IT kompaniya direktori. Oyiga 2 marta chuqur tozalash — oyiga jami 1 800 000 so‘m, har kuni yengil tozalash — oyiga jami 3 200 000 so‘m, QQS siz. Birinchi oyga 10% chegirma. Shartnoma asosida, to‘lov har oyning 5-sanasigacha. Taklif 2026-yil 31-dekabrgacha amal qiladi. Aloqa: Dilnoza, dilnoza@example.com.",
+    "ru": "Namuna Servis YaTT, предложение на уборку офиса для директора небольшой IT-компании. Генеральная уборка 2 раза в месяц — всего 1 800 000 сум в месяц, ежедневная лёгкая уборка — всего 3 200 000 сум в месяц, без НДС. Скидка 10% на первый месяц. По договору, оплата до 5-го числа каждого месяца. Предложение действует до 31 декабря 2026 года. Контакт: Дилноза, dilnoza@example.com.",
+    "en": "Namuna Servis YaTT, an office cleaning offer for the director of a small IT company. Deep cleaning twice a month — 1,800,000 UZS in total per month, light daily cleaning — 3,200,000 UZS in total per month, excluding VAT. 10% off the first month. Under a contract, payment by the 5th of each month. The offer is valid until 31 December 2026. Contact: Dilnoza, dilnoza@example.com."
+   },
+   {
+    "uz": "Namuna Print MChJ nomidan «Bahor» kafesiga tijorat taklifi: menyu va vizitkalar. 200 ta menyu — har biri 18 000 so‘m, 1 000 ta vizitka — jami 350 000 so‘m, QQS siz. Tayyorlash muddati 5 ish kuni, to‘lov 100% oldindan, taklif 14 kun amal qiladi. Imzolaydi: direktor Jasur Ergashev.",
+    "ru": "Коммерческое предложение от Namuna Print MChJ кафе «Bahor»: меню и визитки. 200 меню — по 18 000 сум за штуку, 1 000 визиток — всего 350 000 сум, без НДС. Срок изготовления 5 рабочих дней, оплата 100% вперёд, предложение действует 14 дней. Подписывает директор Жасур Эргашев.",
+    "en": "A commercial proposal from Namuna Print MChJ to the Bahor cafe: menus and business cards. 200 menus — 18,000 UZS each, 1,000 business cards — 350,000 UZS in total, excluding VAT. Made in 5 working days, payment 100% in advance, the offer is valid for 14 days. Signed by the director Jasur Ergashev."
+   }
+  ],
+  "attach": true,
+  "notices": {
+   "finished": {
+    "uz": "Taklif tayyor: narx va shartlarni tekshiring, bo‘sh chiziqlarni to‘ldiring va imzolang.",
+    "ru": "Предложение готово: проверьте цены и условия, заполните пустые линии и подпишите.",
+    "en": "Your offer is ready: check the prices and terms, fill in the blank lines and sign."
+   },
+   "blanks": {
+    "uz": "Ba’zi ma’lumotlar xabaringizda yo‘q edi, shuning uchun bo‘sh chiziq qoldirildi: ularni qo‘lda to‘ldiring.",
+    "ru": "Некоторых сведений не было в вашем сообщении, поэтому оставлены пустые линии: заполните их от руки.",
+    "en": "Some facts were not in your message, so blank lines were left for them: fill them in by hand."
+   },
+   "shorter": {
+    "uz": "Taklif siz so‘ragan sahifadan qisqaroq chiqdi: hujjatni ortiqcha matn bilan to‘ldirmaymiz.",
+    "ru": "Предложение получилось короче, чем вы просили: мы не добавляем лишний текст.",
+    "en": "The offer came out shorter than you asked: we do not pad a document."
+   }
+  }
+ },
+ "templates": [
+  "business_taklif"
+ ],
+ "look": null,
+ "gates": [
+  "A native Uzbek and a native Russian reader check the fixed words (TIJORAT TAKLIFI, Kimga:, the price headers, the term labels, Hurmat bilan, the captions) and the salutation formulas before the entry is marked ready.",
+  "Render the full, blank and long cases in uz, ru and en with the paper sample tool and compare them with units/pdf.biz.tijorat_taklifi/mock/business_taklif.png; check by hand that every computed amount and total equals quantity times price.",
+  "The facts corpus is at zero on this entry’s examples."
+ ],
+ "later": [
+  {
+   "text": "The formal black-and-white template for tenders, procurement commissions and banks (business_taklif_rasmiy), with its form label, request reference and seal guide: this round every offer uses the letterhead template.",
+   "words": [
+    "rasmiy",
+    "tender",
+    "официальн",
+    "тендер",
+    "formal"
+   ]
+  },
+  {
+   "text": "The total written out in words under the price grid (the amount_in_words block).",
+   "words": [
+    "so‘z bilan",
+    "прописью",
+    "in words"
+   ]
+  },
+  {
+   "text": "The price-basis question with buttons (each or total?) asked before the paper is made; this round a row whose basis is unclear stays blank."
+  },
+  {
+   "text": "A discount over every line and VAT added on top computed into the totals; this round both are printed in the customer’s words and the total is the sum of the rows."
+  },
+  {
+   "text": "The warnings of the bot: a stated total that differs from the computed one, and the advantages left out to keep one page."
+  },
+  {
+   "text": "The account logo on the letterhead.",
+   "words": [
+    "logotip",
+    "логотип",
+    "logo"
+   ]
+  }
+ ]
+}

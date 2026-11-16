@@ -1,0 +1,332 @@
+{
+ "schema": 2,
+ "id": "official_bayonnoma",
+ "entries": [
+  "pdf.biz.bayonnoma"
+ ],
+ "name": {
+  "uz": "Yig‘ilish bayonnomasi",
+  "ru": "Протокол собрания",
+  "en": "Meeting minutes"
+ },
+ "family": "official",
+ "page": {
+  "margins_mm": {
+   "left": 30,
+   "right": 15,
+   "top": 20,
+   "bottom": 20
+  }
+ },
+ "type": {
+  "face": "serif",
+  "ladder": [
+   [
+    12,
+    18
+   ],
+   [
+    11.5,
+    17
+   ],
+   [
+    11,
+    16
+   ]
+  ],
+  "align": "left",
+  "indent_first_mm": 12.5
+ },
+ "page_rule": {
+  "kind": "flow"
+ },
+ "furniture": {
+  "first": "none",
+  "later": "number_top",
+  "format": "n"
+ },
+ "flow": [
+  {
+   "block": "doc_head",
+   "part": "head",
+   "fields": [
+    "organisation",
+    "title_word",
+    "minute_number",
+    "meeting_body"
+   ],
+   "params": {
+    "overline": "organisation",
+    "kind_line": "title",
+    "number": "minute_number",
+    "title": "content_title",
+    "captions": {
+     "organisation": "cap_org"
+    },
+    "labels": {
+     "bayon": "title_bayon",
+     "bayoni": "title_bayoni"
+    }
+   }
+  },
+  {
+   "block": "date_line",
+   "part": "place_date",
+   "fields": [
+    "meeting_place",
+    "meeting_date",
+    "meeting_time"
+   ],
+   "params": {
+    "variant": "place_left_date_right",
+    "captions": {
+     "meeting_place": "cap_place"
+    }
+   }
+  },
+  {
+   "block": "kv_table",
+   "part": "roster",
+   "fields": [
+    "chair",
+    "secretary",
+    "participants",
+    "guests",
+    "absent"
+   ],
+   "params": {
+    "labels": {
+     "chair": "chair",
+     "secretary": "secretary",
+     "participants": "present",
+     "guests": "guests",
+     "absent": "absent"
+    },
+    "omit_missing": [
+     "participants",
+     "guests",
+     "absent"
+    ],
+    "captions": {
+     "chair": "cap_person",
+     "secretary": "cap_person"
+    }
+   }
+  },
+  {
+   "block": "line",
+   "part": "quorum",
+   "when": "fact:attendance_counts",
+   "fields": [
+    "attendance_counts"
+   ],
+   "params": {
+    "label": "attendance"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "agenda",
+   "params": {
+    "level": 2,
+    "numbering": "none"
+   }
+  },
+  {
+   "block": "list",
+   "part": "agenda",
+   "params": {
+    "marker": "number",
+    "single_unnumbered": true
+   }
+  },
+  {
+   "block": "heading",
+   "part": "item_report",
+   "params": {
+    "level": 3,
+    "numbering": "item",
+    "label": "item_label",
+    "topic_from": "agenda"
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "item_report",
+   "when": "part:item_report",
+   "params": {
+    "run_in_heading": true
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "item_speakers",
+   "when": "part:item_speakers",
+   "params": {
+    "run_in_heading": true,
+    "singular": "spoke_one"
+   }
+  },
+  {
+   "block": "clauses",
+   "part": "item_decisions",
+   "params": {
+    "numbering": "decimal",
+    "heading": "run_in",
+    "blank_items": 2
+   }
+  },
+  {
+   "block": "line",
+   "part": "item_vote",
+   "when": "part:item_vote",
+   "params": {
+    "label": "vote"
+   }
+  },
+  {
+   "block": "list",
+   "part": "attachments",
+   "when": "part:attachments",
+   "keep": "closing",
+   "params": {
+    "marker": "number"
+   }
+  },
+  {
+   "block": "signature_row",
+   "part": "signatures",
+   "keep": "closing",
+   "fields": [
+    "chair",
+    "secretary"
+   ],
+   "params": {
+    "variant": "role_sign_name",
+    "labels": {
+     "chair": "sign_chair",
+     "secretary": "sign_secretary"
+    }
+   }
+  },
+  {
+   "block": "line",
+   "part": "signatures",
+   "when": "fact:seal",
+   "keep": "closing",
+   "params": {
+    "label": "seal",
+    "style": "small"
+   }
+  },
+  {
+   "block": "date_line",
+   "part": "signatures",
+   "when": "fact:drawn_up_date",
+   "fields": [
+    "drawn_up_date"
+   ],
+   "params": {
+    "label": "drawn_up"
+   }
+  }
+ ],
+ "labels": {
+  "title": {
+   "uz": "BAYONNOMA",
+   "ru": "ПРОТОКОЛ",
+   "en": "MINUTES"
+  },
+  "title_bayon": {
+   "uz": "BAYON",
+   "ru": "ПРОТОКОЛ",
+   "en": "MINUTES"
+  },
+  "title_bayoni": {
+   "uz": "BAYONI",
+   "ru": "ПРОТОКОЛ",
+   "en": "MINUTES"
+  },
+  "cap_org": {
+   "uz": "(tashkilot nomi)",
+   "ru": "(наименование организации)",
+   "en": "(organisation)"
+  },
+  "cap_place": {
+   "uz": "(shahar)",
+   "ru": "(город)",
+   "en": "(city)"
+  },
+  "cap_person": {
+   "uz": "(F.I.Sh., lavozimi)",
+   "ru": "(Ф.И.О., должность)",
+   "en": "(name, position)"
+  },
+  "chair": {
+   "uz": "Rais:",
+   "ru": "Председатель:",
+   "en": "Chair:"
+  },
+  "secretary": {
+   "uz": "Kotib:",
+   "ru": "Секретарь:",
+   "en": "Secretary:"
+  },
+  "present": {
+   "uz": "Qatnashdilar:",
+   "ru": "Присутствовали:",
+   "en": "Present:"
+  },
+  "guests": {
+   "uz": "Taklif etilganlar:",
+   "ru": "Приглашённые:",
+   "en": "Guests:"
+  },
+  "absent": {
+   "uz": "Qatnashmaganlar:",
+   "ru": "Отсутствовали:",
+   "en": "Absent:"
+  },
+  "attendance": {
+   "uz": "Qatnashganlar:",
+   "ru": "Присутствовало:",
+   "en": "Attendance:"
+  },
+  "item_label": {
+   "uz": "MASALA",
+   "ru": "ВОПРОС",
+   "en": "ITEM"
+  },
+  "spoke_one": {
+   "uz": "SO‘ZGA CHIQDI:",
+   "ru": "ВЫСТУПИЛ(А):",
+   "en": "DISCUSSION:"
+  },
+  "vote": {
+   "uz": "Ovoz berish natijalari:",
+   "ru": "Результаты голосования:",
+   "en": "Vote:"
+  },
+  "sign_chair": {
+   "uz": "Rais",
+   "ru": "Председатель",
+   "en": "Chair"
+  },
+  "sign_secretary": {
+   "uz": "Kotib",
+   "ru": "Секретарь",
+   "en": "Secretary"
+  },
+  "seal": {
+   "uz": "M.O‘.",
+   "ru": "М.П.",
+   "en": "Seal"
+  },
+  "drawn_up": {
+   "uz": "Bayonnoma rasmiylashtirilgan sana:",
+   "ru": "Дата оформления протокола:",
+   "en": "Minutes drawn up on:"
+  }
+ },
+ "mock": "units/pdf.biz.bayonnoma/mock/official_bayonnoma.png"
+}

@@ -1,0 +1,631 @@
+{
+ "schema": 2,
+ "id": "business_biznes_reja",
+ "entries": [
+  "pdf.biz.biznes_reja"
+ ],
+ "name": {
+  "uz": "Biznes-reja",
+  "ru": "Бизнес-план",
+  "en": "Business plan"
+ },
+ "family": "business",
+ "page": {
+  "margins_mm": {
+   "left": 30,
+   "right": 15,
+   "top": 26,
+   "bottom": 20
+  }
+ },
+ "type": {
+  "face": "sans",
+  "ladder": [
+   [
+    10.5,
+    15.5
+   ],
+   [
+    10,
+    14.8
+   ],
+   [
+    9.5,
+    14
+   ]
+  ],
+  "align": "left"
+ },
+ "page_rule": {
+  "kind": "count",
+  "trim": false
+ },
+ "furniture": {
+  "first": "none",
+  "later": "header_number",
+  "format": "n",
+  "header": [
+   "applicant",
+   "project_name"
+  ]
+ },
+ "flow": [
+  {
+   "block": "title_page",
+   "part": "title_page",
+   "when": "pages_from:4",
+   "fields": [
+    "project_name",
+    "purpose",
+    "applicant",
+    "director",
+    "address",
+    "contacts",
+    "location",
+    "plan_year"
+   ],
+   "params": {
+    "label": "kind",
+    "title": "content_title",
+    "foot": [
+     "location",
+     "plan_year"
+    ],
+    "labels": {
+     "applicant": "row_applicant",
+     "director": "row_director",
+     "address": "row_address",
+     "contacts": "row_contacts"
+    }
+   }
+  },
+  {
+   "block": "toc",
+   "part": "toc",
+   "when": "pages_from:12",
+   "params": {
+    "label": "toc",
+    "levels": 1
+   }
+  },
+  {
+   "block": "heading",
+   "part": "summary_lead",
+   "params": {
+    "level": 1,
+    "numbering": "chapter",
+    "label": "ch_summary"
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "summary_lead"
+  },
+  {
+   "block": "key_figures",
+   "part": "summary_figures",
+   "fields": [
+    "own_funds",
+    "external_funding"
+   ],
+   "params": {
+    "from": "finance_investment",
+    "labels": {
+     "own_funds": "kf_own",
+     "external_funding": "kf_external"
+    },
+    "label": "kf_investment"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "summary_details",
+   "params": {
+    "level": 2,
+    "numbering": "section"
+   }
+  },
+  {
+   "block": "kv_table",
+   "part": "summary_details",
+   "fields": [
+    "project_name",
+    "applicant",
+    "legal_form",
+    "director",
+    "tax_id",
+    "address",
+    "contacts",
+    "tax_regime"
+   ],
+   "params": {
+    "labels": {
+     "project_name": "row_project",
+     "applicant": "row_applicant",
+     "legal_form": "row_legal_form",
+     "director": "row_director",
+     "tax_id": "row_tax_id",
+     "address": "row_address",
+     "contacts": "row_contacts",
+     "tax_regime": "row_tax_regime"
+    },
+    "omit_missing": [
+     "tax_regime"
+    ]
+   }
+  },
+  {
+   "block": "heading",
+   "part": "summary_purpose",
+   "params": {
+    "level": 2,
+    "numbering": "section"
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "summary_purpose"
+  },
+  {
+   "block": "heading",
+   "part": "summary_status",
+   "when": "part:summary_status",
+   "params": {
+    "level": 2,
+    "numbering": "section"
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "summary_status",
+   "when": "part:summary_status"
+  },
+  {
+   "block": "heading",
+   "part": "business_description",
+   "params": {
+    "level": 1,
+    "numbering": "chapter",
+    "label": "ch_business"
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "business_description"
+  },
+  {
+   "block": "table",
+   "part": "product",
+   "when": "part:product",
+   "params": {
+    "numbered": true,
+    "heading": "section"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "market_customers",
+   "params": {
+    "level": 1,
+    "numbering": "chapter",
+    "label": "ch_market"
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "market_customers"
+  },
+  {
+   "block": "table",
+   "part": "market_competitors",
+   "when": "part:market_competitors",
+   "params": {
+    "heading": "section"
+   }
+  },
+  {
+   "block": "list",
+   "part": "marketing",
+   "when": "part:marketing",
+   "params": {
+    "marker": "bullet",
+    "run_in": true,
+    "heading": "section",
+    "labels": {
+     "price": "mk_price",
+     "sales": "mk_sales",
+     "promotion": "mk_promotion"
+    }
+   }
+  },
+  {
+   "block": "heading",
+   "part": "operations",
+   "when": "part:operations",
+   "params": {
+    "level": 1,
+    "numbering": "chapter",
+    "label": "ch_operations"
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "operations",
+   "when": "part:operations",
+   "params": {
+    "heading": "section"
+   }
+  },
+  {
+   "block": "table",
+   "part": "team",
+   "when": "part:team",
+   "params": {
+    "heading": "section",
+    "total_label": "total"
+   }
+  },
+  {
+   "block": "table",
+   "part": "schedule",
+   "when": "part:schedule",
+   "params": {
+    "heading": "section",
+    "drop_empty_columns": true
+   }
+  },
+  {
+   "block": "heading",
+   "part": "finance_investment",
+   "params": {
+    "level": 1,
+    "numbering": "chapter",
+    "label": "ch_finance"
+   }
+  },
+  {
+   "block": "table",
+   "part": "finance_investment",
+   "params": {
+    "numbered": true,
+    "heading": "section",
+    "total_label": "total",
+    "drop_empty_columns": true
+   }
+  },
+  {
+   "block": "table",
+   "part": "finance_sources",
+   "params": {
+    "heading": "section",
+    "total_label": "total"
+   }
+  },
+  {
+   "block": "kv_table",
+   "part": "finance_terms",
+   "when": "fact:purpose=loan",
+   "fields": [
+    "loan_bank",
+    "external_funding",
+    "loan_rate",
+    "loan_term",
+    "loan_grace",
+    "loan_repayment",
+    "loan_collateral"
+   ],
+   "params": {
+    "heading": "section",
+    "labels": {
+     "loan_bank": "lt_bank",
+     "external_funding": "lt_amount",
+     "loan_rate": "lt_rate",
+     "loan_term": "lt_term",
+     "loan_grace": "lt_grace",
+     "loan_repayment": "lt_repayment",
+     "loan_collateral": "lt_collateral"
+    },
+    "omit_missing": [
+     "loan_grace",
+     "loan_repayment"
+    ]
+   }
+  },
+  {
+   "block": "kv_table",
+   "part": "finance_terms",
+   "when": "fact:purpose=investor",
+   "fields": [
+    "external_funding",
+    "investor_offer"
+   ],
+   "params": {
+    "label": "investor_heading",
+    "labels": {
+     "external_funding": "inv_amount",
+     "investor_offer": "inv_offer"
+    }
+   }
+  },
+  {
+   "block": "table",
+   "part": "finance_revenue",
+   "when": "part:finance_revenue",
+   "params": {
+    "heading": "section",
+    "total_label": "total_named"
+   }
+  },
+  {
+   "block": "table",
+   "part": "finance_costs",
+   "when": "part:finance_costs",
+   "params": {
+    "heading": "section",
+    "total_label": "total_named"
+   }
+  },
+  {
+   "block": "table",
+   "part": "finance_result",
+   "when": "part:finance_result",
+   "params": {
+    "heading": "section"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "risks",
+   "params": {
+    "level": 1,
+    "numbering": "chapter",
+    "label": "ch_closing"
+   }
+  },
+  {
+   "block": "table",
+   "part": "risks",
+   "params": {
+    "heading": "section"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "conclusion",
+   "params": {
+    "level": 2,
+    "numbering": "section"
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "conclusion",
+   "keep": "closing"
+  },
+  {
+   "block": "list",
+   "part": "attachments",
+   "when": "part:attachments",
+   "keep": "closing",
+   "params": {
+    "marker": "number",
+    "heading": "section"
+   }
+  },
+  {
+   "block": "signature_row",
+   "part": "signature",
+   "when": "nofact:purpose=own",
+   "keep": "closing",
+   "fields": [
+    "signers",
+    "director"
+   ],
+   "params": {
+    "variant": "position_sign_name",
+    "captions": {
+     "signers": "cap_position",
+     "director": "cap_name"
+    }
+   }
+  },
+  {
+   "block": "line",
+   "part": "signature",
+   "when": "fact:stamp_request",
+   "keep": "closing",
+   "params": {
+    "label": "seal",
+    "style": "small"
+   }
+  }
+ ],
+ "labels": {
+  "kind": {
+   "uz": "BIZNES-REJA",
+   "ru": "БИЗНЕС-ПЛАН",
+   "en": "BUSINESS PLAN"
+  },
+  "toc": {
+   "uz": "Mundarija",
+   "ru": "Содержание",
+   "en": "Contents"
+  },
+  "ch_summary": {
+   "uz": "Rezyume",
+   "ru": "Резюме",
+   "en": "Executive summary"
+  },
+  "ch_business": {
+   "uz": "Biznes va mahsulot",
+   "ru": "Бизнес и продукция",
+   "en": "Business and product"
+  },
+  "ch_market": {
+   "uz": "Bozor va marketing",
+   "ru": "Рынок и маркетинг",
+   "en": "Market and marketing"
+  },
+  "ch_operations": {
+   "uz": "Operatsion reja va jamoa",
+   "ru": "Операционный план и команда",
+   "en": "Operations and team"
+  },
+  "ch_finance": {
+   "uz": "Moliyaviy reja",
+   "ru": "Финансовый план",
+   "en": "Financial plan"
+  },
+  "ch_closing": {
+   "uz": "Tavakkalchiliklar va xulosa",
+   "ru": "Риски и выводы",
+   "en": "Risks and conclusion"
+  },
+  "kf_investment": {
+   "uz": "Jami investitsiya",
+   "ru": "Всего инвестиций",
+   "en": "Total investment"
+  },
+  "kf_own": {
+   "uz": "O‘z mablag‘i",
+   "ru": "Собственные средства",
+   "en": "Own funds"
+  },
+  "kf_external": {
+   "uz": "Jalb qilinadigan mablag‘",
+   "ru": "Привлекаемые средства",
+   "en": "Funding sought"
+  },
+  "row_project": {
+   "uz": "Loyiha nomi",
+   "ru": "Название проекта",
+   "en": "Project"
+  },
+  "row_applicant": {
+   "uz": "Tashabbuskor",
+   "ru": "Инициатор проекта",
+   "en": "Applicant"
+  },
+  "row_legal_form": {
+   "uz": "Tashkiliy-huquqiy shakl",
+   "ru": "Организационно-правовая форма",
+   "en": "Legal form"
+  },
+  "row_director": {
+   "uz": "Rahbar",
+   "ru": "Руководитель",
+   "en": "Director"
+  },
+  "row_tax_id": {
+   "uz": "STIR",
+   "ru": "ИНН",
+   "en": "Tax ID"
+  },
+  "row_address": {
+   "uz": "Manzil",
+   "ru": "Адрес",
+   "en": "Address"
+  },
+  "row_contacts": {
+   "uz": "Aloqa",
+   "ru": "Контакты",
+   "en": "Contacts"
+  },
+  "row_tax_regime": {
+   "uz": "Soliq to‘lash tartibi",
+   "ru": "Система налогообложения",
+   "en": "Tax regime"
+  },
+  "mk_price": {
+   "uz": "Narx",
+   "ru": "Цена",
+   "en": "Price"
+  },
+  "mk_sales": {
+   "uz": "Sotuv",
+   "ru": "Продажи",
+   "en": "Sales"
+  },
+  "mk_promotion": {
+   "uz": "Targ‘ibot",
+   "ru": "Продвижение",
+   "en": "Promotion"
+  },
+  "lt_bank": {
+   "uz": "Bank yoki dastur",
+   "ru": "Банк или программа",
+   "en": "Bank or programme"
+  },
+  "lt_amount": {
+   "uz": "Kredit summasi",
+   "ru": "Сумма кредита",
+   "en": "Loan amount"
+  },
+  "lt_rate": {
+   "uz": "Yillik foiz stavkasi",
+   "ru": "Годовая ставка",
+   "en": "Annual rate"
+  },
+  "lt_term": {
+   "uz": "Kredit muddati",
+   "ru": "Срок кредита",
+   "en": "Term"
+  },
+  "lt_grace": {
+   "uz": "Imtiyozli davr",
+   "ru": "Льготный период",
+   "en": "Grace period"
+  },
+  "lt_repayment": {
+   "uz": "Qaytarish tartibi",
+   "ru": "Порядок погашения",
+   "en": "Repayment order"
+  },
+  "lt_collateral": {
+   "uz": "Garov (kredit ta’minoti)",
+   "ru": "Залог (обеспечение)",
+   "en": "Collateral"
+  },
+  "investor_heading": {
+   "uz": "Investor taklifi",
+   "ru": "Предложение инвестору",
+   "en": "Investor offer"
+  },
+  "inv_amount": {
+   "uz": "So‘ralayotgan summa",
+   "ru": "Запрашиваемая сумма",
+   "en": "Amount sought"
+  },
+  "inv_offer": {
+   "uz": "Taklif etilayotgan ulush va qaytarish shakli",
+   "ru": "Предлагаемая доля и форма возврата",
+   "en": "Share offered and form of return"
+  },
+  "total": {
+   "uz": "Jami",
+   "ru": "Итого",
+   "en": "Total"
+  },
+  "total_named": {
+   "uz": "Jami (ko‘rsatilgan moddalar)",
+   "ru": "Итого (указанные статьи)",
+   "en": "Total (items named)"
+  },
+  "cap_position": {
+   "uz": "(lavozimi)",
+   "ru": "(должность)",
+   "en": "(position)"
+  },
+  "cap_name": {
+   "uz": "(F.I.Sh.)",
+   "ru": "(Ф.И.О.)",
+   "en": "(full name)"
+  },
+  "seal": {
+   "uz": "M.O‘.",
+   "ru": "М.П.",
+   "en": "Stamp"
+  }
+ },
+ "mock": "units/pdf.biz.biznes_reja/mock/business_biznes_reja.png"
+}

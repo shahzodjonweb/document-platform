@@ -1,0 +1,661 @@
+{
+ "schema": 2,
+ "id": "pdf.biz.bayonnoma",
+ "status": "draft",
+ "service": "pdf",
+ "parent": "pdf.biz",
+ "order": 6,
+ "labels": {
+  "uz": "📋 Yig‘ilish bayonnomasi",
+  "ru": "📋 Протокол собрания",
+  "en": "📋 Meeting minutes"
+ },
+ "summary": "A signed-ready record of a meeting, with its organisation, number, place and date, chair, secretary and participants, the agenda, for each item what was heard, who spoke and what was decided (with a responsible person, a deadline and the vote when given), and the chair’s and secretary’s signature rows: written only from the customer’s facts, with ruled blanks for what they did not say.",
+ "tone": "official, impersonal, third person; past tense for what was said and done, imperative-passive for decisions; no first person, no emotion, no praise",
+ "topic": false,
+ "title": "model",
+ "length": {
+  "unit": "pages",
+  "mode": "count",
+  "target": "ceiling",
+  "default": 2,
+  "min": 1,
+  "max": 12,
+  "note": "A ceiling: the length is the facts. Real minutes run 2 to 6 pages; one or two short items fit one page; 12 is the practical most the research names."
+ },
+ "questions": {
+  "default": 0,
+  "max": 0
+ },
+ "quality": "fixed",
+ "fill": false,
+ "cues": {},
+ "groups": {
+  "items": {
+   "min": 1,
+   "max": 8,
+   "sized": "model"
+  }
+ },
+ "ask": {
+  "when": "few_words",
+  "threshold": 15,
+  "fields": [
+   "chair",
+   "secretary",
+   "meeting_date"
+  ],
+  "review": {
+   "uz": "Kun tartibi, rais, kotib yoki qarorlar yozilmagan bo‘lsa, ular bo‘sh chiziq bo‘lib chiqadi.",
+   "ru": "Если не указаны повестка, председатель, секретарь или решения, они будут пустыми линиями.",
+   "en": "Whatever you did not give (agenda, chair, secretary, decisions) comes out as blank lines."
+  },
+  "prompt": {
+   "uz": "📋 Yig‘ilishda qaysi masalalar ko‘rildi, kim ma’lumot berdi va qanday qaror qilindi? Sana, rais va kotibni ham yozing.",
+   "ru": "📋 Какие вопросы рассматривались, кто докладывал и что решили? Укажите также дату, председателя и секретаря.",
+   "en": "📋 Which items did the meeting discuss, who reported and what was decided? Add the date, the chair and the secretary too."
+  },
+  "hint": {
+   "uz": "Masalan: 1) 3-chorak hisoboti; 2) yangi ombor ijarasi",
+   "ru": "Например: 1) отчёт за 3 квартал; 2) аренда нового склада",
+   "en": "For example: 1) the Q3 report; 2) renting a new warehouse"
+  }
+ },
+ "fields": [
+  {
+   "id": "organisation",
+   "label": {
+    "uz": "Tashkilot nomi",
+    "ru": "Название организации",
+    "en": "Organisation name"
+   },
+   "example": {
+    "uz": "«Namuna Savdo» MChJ",
+    "ru": "ООО «Namuna Savdo»",
+    "en": "Namuna Savdo LLC"
+   },
+   "kind": "org",
+   "need": "recommended",
+   "missing": "blank",
+   "where": "issuer_line at the top of page 1 (capitals, hairline under); a ruled blank with the caption (tashkilot nomi) when missing; a letterhead switch clears 35 mm instead"
+  },
+  {
+   "id": "meeting_body",
+   "label": {
+    "uz": "Yig‘ilish turi (qaysi organ)",
+    "ru": "Вид собрания (какой орган)",
+    "en": "Kind of meeting (which body)"
+   },
+   "example": {
+    "uz": "Pedagogik kengash yig‘ilishi",
+    "ru": "заседания педагогического совета",
+    "en": "Meeting of the Pedagogical Council"
+   },
+   "kind": "line",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "subject_line under the title; left out when the message does not say it (the title word alone is a complete heading)"
+  },
+  {
+   "id": "title_word",
+   "label": {
+    "uz": "Sarlavha so‘zi",
+    "ru": "Слово в заголовке",
+    "en": "Title word"
+   },
+   "example": {
+    "uz": "bayonnoma",
+    "ru": "протокол",
+    "en": "minutes"
+   },
+   "kind": "choice",
+   "need": "optional",
+   "missing": "omit",
+   "choices": [
+    "bayonnoma",
+    "bayon",
+    "bayoni"
+   ],
+   "where": "BAYONNOMA by default; BAYON or BAYONI only when the customer writes it for a state body. The template sets the word."
+  },
+  {
+   "id": "minute_number",
+   "label": {
+    "uz": "Bayonnoma raqami",
+    "ru": "Номер протокола",
+    "en": "Minutes number"
+   },
+   "example": {
+    "uz": "7",
+    "ru": "7",
+    "en": "7"
+   },
+   "kind": "ref",
+   "need": "recommended",
+   "missing": "blank",
+   "where": "in the title after № (uz, ru) or No. (en); a 14 mm ruled blank when missing; never a guessed sequence number"
+  },
+  {
+   "id": "meeting_date",
+   "label": {
+    "uz": "Yig‘ilish sanasi",
+    "ru": "Дата собрания",
+    "en": "Meeting date"
+   },
+   "example": {
+    "uz": "2026-yil 3-noyabr",
+    "ru": "3 ноября 2026 года",
+    "en": "3 November 2026"
+   },
+   "kind": "date",
+   "need": "required",
+   "missing": "blank",
+   "where": "place_date_row, flush right; “bugun” and “kecha” are resolved with today’s date in Tashkent, anything else missing becomes the family date blank «____» ______________ 20____-yil"
+  },
+  {
+   "id": "meeting_time",
+   "label": {
+    "uz": "Boshlanish vaqti",
+    "ru": "Время начала",
+    "en": "Start time"
+   },
+   "example": {
+    "uz": "soat 10:00",
+    "ru": "10:00",
+    "en": "10:00"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "omit",
+   "where": "appended to the date in place_date_row after a comma"
+  },
+  {
+   "id": "meeting_place",
+   "label": {
+    "uz": "Joy (shahar yoki xona)",
+    "ru": "Место (город или помещение)",
+    "en": "Place (city or room)"
+   },
+   "example": {
+    "uz": "Samarqand",
+    "ru": "Самарканд",
+    "en": "Samarkand"
+   },
+   "kind": "place",
+   "need": "recommended",
+   "missing": "blank",
+   "where": "place_date_row, flush left; a 45 mm ruled blank with the caption (shahar) when missing; in Russian a bare city is printed «г. Самарканд» (the model marks the place as a city, the renderer adds «г.»)"
+  },
+  {
+   "id": "chair",
+   "label": {
+    "uz": "Rais (F.I.Sh., lavozimi)",
+    "ru": "Председатель (ФИО, должность)",
+    "en": "Chair (name, position)"
+   },
+   "example": {
+    "uz": "B. S. Toshmatov, direktor",
+    "ru": "Б. С. Тошматов, директор",
+    "en": "B. S. Toshmatov, director"
+   },
+   "kind": "line",
+   "need": "required",
+   "missing": "blank",
+   "where": "roster_block first row, and the Rais signature row; an 80 mm ruled blank with the caption (F.I.Sh., lavozimi) when missing; the signature row keeps its rule and caption"
+  },
+  {
+   "id": "secretary",
+   "label": {
+    "uz": "Kotib (F.I.Sh., lavozimi)",
+    "ru": "Секретарь (ФИО, должность)",
+    "en": "Secretary (name, position)"
+   },
+   "example": {
+    "uz": "N. A. Karimova",
+    "ru": "Н. А. Каримова",
+    "en": "N. A. Karimova"
+   },
+   "kind": "line",
+   "need": "required",
+   "missing": "blank",
+   "where": "roster_block second row, and the Kotib signature row; same blank as the chair"
+  },
+  {
+   "id": "participants",
+   "label": {
+    "uz": "Qatnashdilar (ismlar yoki guruh)",
+    "ru": "Присутствовали (имена или группа)",
+    "en": "Present (names or a group)"
+   },
+   "example": {
+    "uz": "ta’sischilar B. S. Toshmatov va N. A. Karimova",
+    "ru": "учредители Б. С. Тошматов и Н. А. Каримова",
+    "en": "founders B. S. Toshmatov and N. A. Karimova"
+   },
+   "kind": "list",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "roster_block row “Qatnashdilar:”, one person per line; from 15 names two columns, from 41 names three columns, above 90 names no list: the customer’s own group line (“mahalla fuqarolari, 120 nafar”) and the count; left out when no name or group was given. The chair and the secretary are repeated here only when the customer names them among the participants (the founders’ example: they are two of the two founders); otherwise they stand in their own rows only"
+  },
+  {
+   "id": "attendance_counts",
+   "label": {
+    "uz": "Qatnashganlar soni (jami / qatnashgan)",
+    "ru": "Число присутствующих (всего / было)",
+    "en": "Attendance (total / present)"
+   },
+   "example": {
+    "uz": "32 a’zodan 29 nafari",
+    "ru": "29 из 32 членов",
+    "en": "29 of 32 members"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "one counting sentence under the roster (paragraph with the family indent); the word “kvorum” is added only when the customer used it"
+  },
+  {
+   "id": "guests",
+   "label": {
+    "uz": "Taklif etilganlar",
+    "ru": "Приглашённые",
+    "en": "Guests"
+   },
+   "example": {
+    "uz": "metodist M. N. Abdullayeva",
+    "ru": "методист М. Н. Абдуллаева",
+    "en": "methodist M. N. Abdullayeva"
+   },
+   "kind": "list",
+   "need": "optional",
+   "missing": "omit",
+   "where": "roster_block row “Taklif etilganlar:”"
+  },
+  {
+   "id": "absent",
+   "label": {
+    "uz": "Qatnashmaganlar",
+    "ru": "Отсутствовали",
+    "en": "Absent"
+   },
+   "example": {
+    "uz": "o‘qituvchi F. R. Qodirov (kasal)",
+    "ru": "учитель Ф. Р. Кодиров (болен)",
+    "en": "teacher F. R. Qodirov (ill)"
+   },
+   "kind": "list",
+   "need": "optional",
+   "missing": "omit",
+   "where": "roster_block row “Qatnashmaganlar:” with the reason only as given"
+  },
+  {
+   "id": "seal",
+   "label": {
+    "uz": "Muhr o‘rni",
+    "ru": "Место печати",
+    "en": "Seal place"
+   },
+   "example": {
+    "uz": "muhr bosiladi",
+    "ru": "печать ставится",
+    "en": "a seal is applied"
+   },
+   "kind": "flag",
+   "need": "optional",
+   "missing": "omit",
+   "where": "seal_text M.O‘. under the last signature row; only when the customer says the paper is sealed"
+  },
+  {
+   "id": "drawn_up_date",
+   "label": {
+    "uz": "Bayonnoma rasmiylashtirilgan sana",
+    "ru": "Дата оформления протокола",
+    "en": "Date the minutes were drawn up"
+   },
+   "example": {
+    "uz": "2026-yil 3-noyabr",
+    "ru": "3 ноября 2026 года",
+    "en": "3 November 2026"
+   },
+   "kind": "date",
+   "need": "optional",
+   "missing": "omit",
+   "where": "date_line at the left margin under the signature rows and the seal text (the bank extracts, docs 02 and 05, print it); drawn only when the customer states it or says it is the meeting date; never today’s date, never a ruled blank"
+  }
+ ],
+ "parts": [
+  {
+   "id": "head",
+   "kind": "fixed",
+   "heading": {
+    "uz": "BAYONNOMA",
+    "ru": "ПРОТОКОЛ",
+    "en": "MINUTES"
+   },
+   "heading_mode": "none",
+   "need": "required",
+   "share": 0.06,
+   "elastic": false,
+   "write": "The template draws the organisation, the title word with the number or its blank, and the subject line. The document title you return is that subject line: the meeting body in the language’s own form (uz “Pedagogik kengash yig‘ilishi”, ru genitive “заседания педагогического совета”, en “Meeting of the Pedagogical Council”), at most 90 characters, nothing the message did not say; empty when it does not say.",
+   "block": "doc_head",
+   "fields": [
+    "organisation",
+    "title_word",
+    "minute_number",
+    "meeting_body"
+   ]
+  },
+  {
+   "id": "place_date",
+   "kind": "fixed",
+   "heading": null,
+   "heading_mode": "none",
+   "need": "required",
+   "share": 0.02,
+   "elastic": false,
+   "write": "Nothing: the place at the left and the date with the start time at the right, as given; bugun and kecha are the only relative dates code turns into a date, every other missing one is the template’s blank.",
+   "block": "date_line",
+   "fields": [
+    "meeting_place",
+    "meeting_date",
+    "meeting_time"
+   ]
+  },
+  {
+   "id": "roster",
+   "kind": "fixed",
+   "heading": {
+    "uz": "Rais · Kotib · Qatnashdilar",
+    "ru": "Председатель · Секретарь · Присутствовали",
+    "en": "Chair · Secretary · Present"
+   },
+   "heading_mode": "none",
+   "need": "required",
+   "share": 0.1,
+   "elastic": false,
+   "write": "Nothing written here: the chair, the secretary, the participants, guests and absent people are facts items exactly as given, one person per line with the role (“A. B. Karimov — direktor”). Never add a person or decide who chaired; a group given without names stays a group (ota-onalar, ta’sischilar).",
+   "block": "kv_table",
+   "fields": [
+    "chair",
+    "secretary",
+    "participants",
+    "guests",
+    "absent"
+   ]
+  },
+  {
+   "id": "quorum",
+   "kind": "fixed",
+   "heading": null,
+   "heading_mode": "none",
+   "need": "optional",
+   "share": 0.01,
+   "elastic": false,
+   "write": "Nothing: one counting line from the attendance the customer gave (“32 a’zodan 29 nafari”); the word kvorum only if the customer used it.",
+   "block": "line",
+   "fields": [
+    "attendance_counts"
+   ]
+  },
+  {
+   "id": "agenda",
+   "kind": "list",
+   "heading": {
+    "uz": "KUN TARTIBI:",
+    "ru": "ПОВЕСТКА ДНЯ:",
+    "en": "AGENDA:"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "share": 0.05,
+   "elastic": false,
+   "write": "The customer’s agenda items in their order, one item each, as a topic line: uz “... haqida” or “... to‘g‘risida”, ru «О ...», en a noun phrase (Approval of the timetable). None added, merged, split or dropped; no number typed. Item n of this list is the topic of the n-th group of report, discussion, decisions and vote.",
+   "block": "list",
+   "grounded": true,
+   "max_items": 8
+  },
+  {
+   "id": "item_report",
+   "kind": "prose",
+   "heading": {
+    "uz": "ESHITILDI:",
+    "ru": "СЛУШАЛИ:",
+    "en": "PRESENTED:"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "share": 0.26,
+   "elastic": true,
+   "write": "For this agenda item: the reporter as given (role and name) and what was reported, in the past tense, third person, in the customer’s order with their numbers (uz “Direktor o‘rinbosari ... ma’lum qildi.”; en a verb other than presented: reported that). Compress, never add background or reasons. Empty when the customer gave neither a reporter nor a content.",
+   "block": "paragraph",
+   "grounded": true,
+   "group": "items",
+   "words": [
+    20,
+    150
+   ]
+  },
+  {
+   "id": "item_speakers",
+   "kind": "prose",
+   "heading": {
+    "uz": "SO‘ZGA CHIQDILAR:",
+    "ru": "ВЫСТУПИЛИ:",
+    "en": "DISCUSSION:"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "share": 0.12,
+   "elastic": true,
+   "write": "For this agenda item: one paragraph per speaker the customer named, the role and name as given, a verb (fikr bildirdi, taklif qildi) and the gist in indirect speech; no quotation marks unless the customer quoted. Empty when nobody was named: never “muhokama bo‘ldi” as filler.",
+   "block": "paragraph",
+   "grounded": true,
+   "group": "items",
+   "words": [
+    0,
+    150
+   ]
+  },
+  {
+   "id": "item_decisions",
+   "kind": "list",
+   "heading": {
+    "uz": "QAROR QILINDI:",
+    "ru": "РЕШИЛИ:",
+    "en": "RESOLVED:"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "share": 0.24,
+   "elastic": true,
+   "write": "For this agenda item: one clause per decision the customer gave, in their order and meaning, in the customary form (uz tasdiqlansin, qabul qilinsin, tuzilsin, tugatilsin; ru infinitive Утвердить ...; en passive “... is approved”). The responsible person and the deadline, only as given, end the clause in brackets “(mas’ul: ...; muddat: ...)”. No decision given: no items (the template draws two numbered blanks); never draft or propose one, even when asked.",
+   "block": "clauses",
+   "grounded": true,
+   "group": "items",
+   "max_items": 10,
+   "words": [
+    0,
+    120
+   ]
+  },
+  {
+   "id": "item_vote",
+   "kind": "prose",
+   "heading": {
+    "uz": "Ovoz berish natijalari:",
+    "ru": "Результаты голосования:",
+    "en": "Vote:"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "share": 0.02,
+   "elastic": false,
+   "write": "For this agenda item: the vote exactly as the customer stated it (29 yoqlab, 1 qarshi; qarshi yo‘q only if they said none; bir ovozdan only if they said unanimous). Never infer a count or unanimity from the attendance or the roster. Empty when no vote was stated.",
+   "block": "paragraph",
+   "grounded": true,
+   "group": "items",
+   "words": [
+    0,
+    25
+   ]
+  },
+  {
+   "id": "attachments",
+   "kind": "list",
+   "heading": {
+    "uz": "Ilova:",
+    "ru": "Приложение:",
+    "en": "Enclosures:"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "share": 0.02,
+   "elastic": false,
+   "write": "Only the documents the customer named, one item each, as named.",
+   "block": "list",
+   "grounded": true,
+   "max_items": 6
+  },
+  {
+   "id": "signatures",
+   "kind": "fixed",
+   "heading": {
+    "uz": "Rais · Kotib",
+    "ru": "Председатель · Секретарь",
+    "en": "Chair · Secretary"
+   },
+   "heading_mode": "none",
+   "need": "required",
+   "share": 0.09,
+   "elastic": false,
+   "write": "Nothing: the Rais and Kotib rows with the names as given (a rule and caption when missing), the seal text only when the customer says the paper is sealed, and the drawing-up date only when given. Every signature space stays empty.",
+   "block": "signature_row",
+   "fields": [
+    "chair",
+    "secretary",
+    "seal",
+    "drawn_up_date"
+   ]
+  }
+ ],
+ "rules": [
+  {
+   "text": "What it is: the record of a meeting: who met, the agenda, what was reported, who spoke and what was decided. Not a transcript, an essay, an order or a report. Official, impersonal, third person; past tense for what was said and done; no first person, emotion, praise or selling adjective; plain verbs (ma’lumot berdi, fikr bildirdi, taklif kiritdi; ru сообщил(а), выступил(а); en reported, said, proposed).",
+   "to": "model"
+  },
+  {
+   "text": "Only facts from the message and the files. Never invent or complete a person, name, initials, position, organisation, date, time, number, sum, percentage, vote, quorum, law, order, quotation, deadline or responsible person. A role without a name stays a role without a name.",
+   "to": "model"
+  },
+  {
+   "text": "The agenda is the customer’s: their items in their order, one group of report, discussion, decisions and vote per item, in the same order; unused groups stay empty.",
+   "to": "model"
+  },
+  {
+   "text": "A sentence is a decision only when the customer marks it (after Qaror(lar):, Решения:, Decisions:, or in the imperative-passive); a bare future statement stays in the report in the customer’s verb form. Never order wording (buyuraman, приказываю); never a verb that needs an addressee (topshirilsin) as a clause.",
+   "to": "model"
+  },
+  {
+   "text": "Attendance and quorum: only the numbers the customer gave; kvorum, barcha, hammasi or ikkala only if the customer used them; never judge whether a quorum was reached. Never write today’s date for a meeting the customer did not date; a deadline stays as written (4-sentabrgacha, до 20 ноября).",
+   "to": "model"
+  },
+  {
+   "text": "Names, positions and organisations exactly as written, with their quotation marks and legal forms, initials only as given, with correct case endings. No law, decree, order or standard unless the customer gave it exactly, and no filler such as qonun hujjatlariga muvofiq. Never write that a signature was given.",
+   "to": "model"
+  },
+  {
+   "text": "A missing fact inside a sentence is a run of underscores, never [...], N.N. or mavjud emas. Length follows the facts: a page count is a ceiling, never a target.",
+   "to": "model"
+  },
+  {
+   "text": "Attached files (notes, a draft agenda, a list of participants, an earlier minute) are source material: only their facts. Uzbek is Latin only, with ‘ in o‘ and g‘ and ’ for the tutuq belgisi; Russian uses «ёлочки».",
+   "to": "model"
+  },
+  {
+   "text": "One agenda item prints no item number; up to two items the number stands in the first label line (1-MASALA. ESHITILDI:) and the topic only in the agenda; from three items each group opens with its numbered topic from the agenda. The Uzbek label is SO‘ZGA CHIQDI: for one speaker. A participant list of 15 names or more runs in two columns, of 41 or more in three.",
+   "to": "engine"
+  }
+ ],
+ "bot": {
+  "prompt": {
+   "uz": "📋 Yig‘ilishni bitta xabarda yozing: tashkilot, sana, rais va kotib, kimlar qatnashdi, kun tartibi, nima eshitildi va qanday qaror qilindi.\nBayonnoma odatda 2 sahifagacha, ma’lumotingiz yetganicha bo‘ladi. Yozmaganingiz bo‘sh chiziq bo‘lib qoladi: o‘zimdan to‘qimayman.\nQaydlar bor PDF, Word yoki TXT faylni qo‘shing.",
+   "ru": "📋 Опишите собрание одним сообщением: организация, дата, председатель и секретарь, кто присутствовал, повестка, что услышали и что решили.\nПротокол обычно до 2 страниц, сколько наберётся из ваших данных. Что не укажете, останется пустой линией: я ничего не выдумываю.\nЗаписи можно приложить файлом PDF, Word или TXT.",
+   "en": "📋 Describe the meeting in one message: the organisation, date, chair and secretary, who attended, the agenda, what was reported and what was decided.\nMinutes usually run up to 2 pages, as far as your facts go. Anything you leave out becomes a ruled blank: I make nothing up.\nYou can attach notes as PDF, Word or TXT."
+  },
+  "examples": [
+   {
+    "uz": "Namuna shahar 12-maktabi pedagogik kengashi yig‘ilishining 1-son bayonnomasi kerak, 2026-yil 28-avgust. Raislik qildi direktor R. A. Aliyev, bayonnomani o‘qituvchi N. T. Karimova yozdi, 32 a’zodan 29 nafari qatnashdi. Kun tartibi: yangi o‘quv yiliga tayyorgarlik; dars jadvali. Direktor o‘rinbosari D. S. Yusupova 38 ta sinf xonasidan 34 tasida ta’mir tugaganini ma’lum qildi. Qarorlar: ma’lumot qabul qilinsin; qolgan ta’mir 4-sentabrgacha tugatilsin, mas’ul — xo‘jalik mudiri A. K. Rahimov. Dars jadvali bir ovozdan tasdiqlandi.",
+    "ru": "Нужен протокол № 1 педагогического совета школы № 12 города Намуна от 28 августа 2026 года. Председатель — директор Р. А. Алиев, протокол вела учитель Н. Т. Каримова, из 32 членов присутствовали 29. Повестка: подготовка к новому учебному году; расписание. Заместитель директора Д. С. Юсупова сообщила, что ремонт закончен в 34 из 38 классов. Решения: информацию принять; остальной ремонт завершить до 4 сентября, ответственный — завхоз А. К. Рахимов. Расписание утверждено единогласно.",
+    "en": "We need minutes for the pedagogical council of Namuna City School No. 12, meeting no. 1 on 28 August 2026. Director R. A. Aliyev chaired, teacher N. T. Karimova took the minutes, 29 of 32 members attended. Agenda: preparation for the new school year; the timetable. Deputy director D. S. Yusupova reported that 34 of 38 classrooms are repaired. Decisions: the report is accepted; the remaining repairs finish by 4 September, responsible: the head of facilities A. K. Rahimov. The timetable was approved unanimously."
+   },
+   {
+    "uz": "«Namuna Savdo» MChJ ta’sischilar yig‘ilishi bayonnomasi: Samarqand, 2026-yil 3-noyabr, 7-son. Ta’sischilar B. S. Toshmatov (rais, direktor) va N. A. Karimova (kotib) qatnashdi, kvorum bor. Kun tartibi: 1) 3-chorak hisobotini tasdiqlash; 2) yangi ombor ijarasi. Bosh hisobchi Z. T. Rahimova hisobotni taqdim etdi, ikkala ta’sischi yoqlab ovoz berdi — tasdiqlandi. Qarorlar: ombor ijaraga olinsin; shartnomani direktor 20-noyabrgacha imzolasin.",
+    "ru": "Нужен протокол собрания учредителей ООО «Namuna Savdo»: Самарканд, 3 ноября 2026 года, № 7. Учредители Б. С. Тошматов (председатель, директор) и Н. А. Каримова (секретарь) присутствовали, кворум есть. Повестка: 1) утверждение отчёта за 3 квартал; 2) аренда нового склада. Главный бухгалтер З. Т. Рахимова представила отчёт, оба учредителя проголосовали «за» — утверждён. Решения: склад арендовать; договор подписать директору до 20 ноября.",
+    "en": "I need the minutes of the founders’ meeting of Namuna Savdo MChJ: Samarkand, 3 November 2026, no. 7. Founders B. S. Toshmatov (chair, director) and N. A. Karimova (secretary) attended; there is a quorum. Agenda: 1) approving the third-quarter report; 2) renting a new warehouse. Chief accountant Z. T. Rahimova presented the report; both founders voted in favour, so it is approved. Decisions: rent the warehouse; the director signs the lease by 20 November."
+   },
+   {
+    "uz": "2-«A» sinf ota-onalar yig‘ilishi bayonnomasi, 2026-yil 14-noyabr, 24 ota-onadan 21 nafari qatnashdi. Sinf rahbari Z. N. Nazarova raislik qildi, kotib — ota-ona M. R. Qosimova. Masalalar: choraklik natijalar; dekabrdagi ekskursiya. Nazarova o‘rtacha o‘zlashtirish 4,3 ekanini ma’lum qildi. Ekskursiya 6-dekabr kuni o‘tkazilsin, mas’ul — sinf rahbari.",
+    "ru": "Нужен протокол родительского собрания 2 «А» класса от 14 ноября 2026 года, пришли 21 родитель из 24. Председательствовала классный руководитель З. Н. Назарова, секретарь — родитель М. Р. Косимова. Вопросы: итоги четверти; экскурсия в декабре. Назарова сообщила, что средний балл — 4,3. Экскурсию провести 6 декабря, ответственная — классный руководитель.",
+    "en": "I need the minutes of the parents’ meeting of class 2-A, 14 November 2026; 21 of the 24 parents came. Class teacher Z. N. Nazarova chaired, parent M. R. Qosimova took the minutes. Topics: the quarter’s results; the December trip. Nazarova reported an average mark of 4.3. The trip is to take place on 6 December; responsible: the class teacher."
+   }
+  ],
+  "attach": true,
+  "notices": {
+   "finished": {
+    "uz": "📄 Bayonnoma tayyor. Unga faqat siz yozgan ma’lumotlar kirdi. Bo‘sh chiziqlarni to‘ldirasiz va imzolarni qo‘lda qo‘yasiz.",
+    "ru": "📄 Протокол готов. В него вошло только то, что вы написали. Пустые линии заполните и подписи поставьте от руки.",
+    "en": "📄 Your minutes are ready. They contain only what you wrote. Fill in the blank lines and add the signatures by hand."
+   },
+   "blanks": {
+    "uz": "Ba’zi ma’lumotlar xabaringizda yo‘q edi yoki unga mos kelmadi, shuning uchun bo‘sh qoldirildi — qo‘lda to‘ldiring. Qaror qatorlarini bayonnoma o‘zi taklif qilmaydi.",
+    "ru": "Некоторых сведений не было в вашем сообщении или они с ним не совпали, поэтому оставлено пустым — заполните от руки. Решения протокол сам не предлагает.",
+    "en": "Some facts were not in your message or did not match it, so they were left blank: fill them in by hand. The minutes never propose decisions."
+   },
+   "shorter": {
+    "uz": "Yozgan ma’lumotlaringiz so‘ralgan sahifaga yetmadi, shuning uchun bayonnoma qisqaroq: hech narsa o‘ylab topilmadi.",
+    "ru": "Написанного вами не хватило на столько страниц, поэтому протокол короче: ничего не выдумано.",
+    "en": "What you wrote did not fill the pages asked for, so the minutes are shorter: nothing was made up."
+   }
+  }
+ },
+ "templates": [
+  "official_bayonnoma"
+ ],
+ "look": null,
+ "gates": [
+  "A native Uzbek and a native Russian reader check the fixed words (BAYONNOMA, KUN TARTIBI, ESHITILDI, SO‘ZGA CHIQDI(LAR), QAROR QILINDI, the vote labels, Rais and Kotib) and the decision formulas before the entry is marked ready.",
+  "Render a one-item, a three-item and an eight-item minute in uz, ru and en (full, blank and long cases) with the paper sample tool and compare them with units/pdf.biz.bayonnoma/mock/official_bayonnoma.png; check that each group follows its agenda line and that no decision appears that the brief did not hold.",
+  "The facts corpus is at zero on this entry’s examples."
+ ],
+ "later": [
+  {
+   "text": "An extract of chosen items (BAYONNOMADAN KO‘CHIRMA) with its certification line.",
+   "words": [
+    "ko‘chirma",
+    "выписк",
+    "extract"
+   ]
+  },
+  {
+   "text": "The approval block (TASDIQLAYMAN) on minutes and member signature rows or a member signature grid.",
+   "words": [
+    "tasdiqlayman",
+    "утверждаю",
+    "a’zolar imzolaydi",
+    "члены подписывают",
+    "members sign"
+   ]
+  },
+  {
+   "text": "The blank-form button under the prompt for a meeting that has not happened yet.",
+   "words": [
+    "bo‘sh blank",
+    "пустой бланк",
+    "blank form"
+   ]
+  },
+  {
+   "text": "Per-item reporter, speaker, responsible person, deadline and vote counts as separate structured values; this round they are written inside the item’s text from the customer’s words."
+  }
+ ]
+}

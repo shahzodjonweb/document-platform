@@ -1,0 +1,668 @@
+{
+ "schema": 2,
+ "id": "pdf.biz.hisobot",
+ "status": "draft",
+ "service": "pdf",
+ "parent": "pdf.biz",
+ "order": 3,
+ "labels": {
+  "uz": "📊 Hisobot",
+  "ru": "📊 Отчёт",
+  "en": "📊 Report"
+ },
+ "summary": "A management report as a PDF: a head with the organisation, subject and period, a plan-versus-result table whose difference and per cent code computes only from the customer’s own figures, what was done, problems, plans for the next period and a signature, in the modern navy-accented layout; it writes only what the customer said, so a short message gives a short report and every missing fact is a ruled blank, never an invented number.",
+ "tone": "formal, impersonal business prose; what was done in the past tense, plans in the future; every result with its comparison and no judgement the customer did not make; every figure only as the customer typed it",
+ "topic": false,
+ "title": "model",
+ "length": {
+  "unit": "pages",
+  "mode": "count",
+  "target": "ceiling",
+  "default": 4,
+  "min": 1,
+  "max": 15,
+  "note": "A ceiling: a monthly or quarterly report is 1 to 4 pages, an employee report 1, an annual report up to 15; the report is as long as the facts and the shorter notice says so."
+ },
+ "questions": {
+  "default": 0,
+  "max": 0
+ },
+ "quality": "fixed",
+ "fill": false,
+ "cues": {},
+ "ask": {
+  "when": "no_digits",
+  "fields": [
+   "subject"
+  ],
+  "review": {
+   "uz": "Raqam yoki fayl bermadingiz: hisobotda faqat siz yozgan ishlar bo‘ladi, qolgan joylar bo‘sh chiziq.",
+   "ru": "Вы не дали цифр или файла: в отчёте будет только то, что вы написали, остальное — пустые линии.",
+   "en": "You gave no figures or file: the report holds only what you wrote, and the rest is blank lines."
+  },
+  "prompt": {
+   "uz": "📊 Hisobotda nima bo‘lishi kerak? Bitta xabarda yozing: nima qilindi, raqamlar (reja va natija), muammolar, kelgusi davr rejalari. O‘tkazib yuborsangiz, tayyor shakl chiqadi: bo‘sh chiziqlarni o‘zingiz to‘ldirasiz.",
+   "ru": "📊 Что должно быть в отчёте? Напишите одним сообщением: что сделано, цифры (план и факт), проблемы, планы на следующий период. Если пропустите, получится готовая форма: пустые линии вы заполните сами.",
+   "en": "📊 What should the report contain? Write it in one message: what was done, figures (plan and actual), problems, plans for the next period. If you skip, you get a ready form: you fill the blank lines yourself."
+  },
+  "hint": {
+   "uz": "Misol: sotuv — reja 480 mln, natija 502 mln; yangi mijozlar — reja 40, natija 48. Muammo: yetkazib berish kechikdi. Reja: Buxoroda savdoni boshlash.",
+   "ru": "Пример: продажи — план 480 млн, факт 502 млн; новые клиенты — план 40, факт 48. Проблема: задержка поставок. План: начать продажи в Бухаре.",
+   "en": "Example: sales — plan 480 million, actual 502 million; new customers — plan 40, actual 48. Problem: delivery delays. Plan: start selling in Bukhara."
+  }
+ },
+ "fields": [
+  {
+   "id": "subject",
+   "label": {
+    "uz": "Hisobot nima haqida",
+    "ru": "О чём отчёт",
+    "en": "What the report is about"
+   },
+   "example": {
+    "uz": "Savdo bo‘limining 3-chorak faoliyati",
+    "ru": "Деятельность отдела продаж за 3 квартал",
+    "en": "The sales department’s work in Q3"
+   },
+   "kind": "text",
+   "need": "required",
+   "missing": "omit",
+   "where": "The title under the HISOBOT label (report_head), the cover title, the centred title phrase of the formal form. The model writes it as one line of at most 90 characters, in the customer’s words. If the message names no subject at all (a bare «hisobot kerak») the bot asks the ONE question of bot.extra_step; if that is skipped the title is a ruled blank with the caption (hisobot mavzusi)."
+  },
+  {
+   "id": "period",
+   "label": {
+    "uz": "Hisobot davri",
+    "ru": "Отчётный период",
+    "en": "Reporting period"
+   },
+   "example": {
+    "uz": "2025-yil 3-chorak (iyul – sentabr)",
+    "ru": "III квартал 2025 г. (июль – сентябрь)",
+    "en": "Q3 2025 (July – September)"
+   },
+   "kind": "line",
+   "need": "required",
+   "missing": "blank",
+   "where": "The period line under the title, the cover period line, the right end of the running header; in the formal form it stands inside the title phrase. Never the current date or the current year by assumption: a period without a year («3-chorak», «mart») is printed with a typed year blank, «20__-yil 3-chorak» / «III квартал 20__ г.» / «Q3 20__»; no period at all is a 60 mm ruled blank with the caption (hisobot davri)."
+  },
+  {
+   "id": "organization",
+   "label": {
+    "uz": "Tashkilot nomi",
+    "ru": "Название организации",
+    "en": "Organisation"
+   },
+   "example": {
+    "uz": "«Namuna Savdo» MChJ",
+    "ru": "ООО «Намуна Савдо»",
+    "en": "Namuna Savdo LLC"
+   },
+   "kind": "org",
+   "need": "recommended",
+   "missing": "blank",
+   "where": "The organisation line above the label bar (it wraps to as many lines as it needs on page 1 and is never cut; only the running header cuts it), the cover details, the left end of the running header; in the formal form it opens the title phrase. A 78 mm ruled blank with the caption (tashkilot nomi) when unknown."
+  },
+  {
+   "id": "unit",
+   "label": {
+    "uz": "Bo‘lim yoki loyiha",
+    "ru": "Подразделение или проект",
+    "en": "Department or project"
+   },
+   "example": {
+    "uz": "Savdo bo‘limi",
+    "ru": "Отдел продаж",
+    "en": "Sales department"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Row «Bo‘lim» of the meta_table and the cover; left out when not given."
+  },
+  {
+   "id": "author",
+   "label": {
+    "uz": "Tayyorlagan shaxs (F.I.Sh. va lavozimi)",
+    "ru": "Кто подготовил (Ф.И.О. и должность)",
+    "en": "Prepared by (name and position)"
+   },
+   "example": {
+    "uz": "A. Namunov, savdo bo‘limi boshlig‘i",
+    "ru": "А. Намунов, начальник отдела продаж",
+    "en": "A. Namunov, head of the sales department"
+   },
+   "kind": "line",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "Row «Tayyorladi» of the meta_table and the cover; left out when not given (no blank row: the signature unit already leaves the name and position to the hand). It is also the first signer."
+  },
+  {
+   "id": "addressee",
+   "label": {
+    "uz": "Kimga topshiriladi",
+    "ru": "Кому адресован",
+    "en": "Addressed to"
+   },
+   "example": {
+    "uz": "Direktorga",
+    "ru": "Директору",
+    "en": "The director"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Row «Kimga» of the meta_table and the cover, in the customer’s words («Direktor»); never expanded with a company name or a person."
+  },
+  {
+   "id": "report_date",
+   "label": {
+    "uz": "Hisobot sanasi",
+    "ru": "Дата отчёта",
+    "en": "Report date"
+   },
+   "example": {
+    "uz": "10.10.2025",
+    "ru": "10.10.2025",
+    "en": "10.10.2025"
+   },
+   "kind": "date",
+   "need": "optional",
+   "missing": "blank",
+   "where": "ONE place only: the date_line under the signature (modern) or under the title (formal), typed blank «___» ________ 20__-yil when not given. There is no «Sana» row in the meta_table. The year is never filled in."
+  },
+  {
+   "id": "comparison_basis",
+   "label": {
+    "uz": "Nima bilan solishtirish",
+    "ru": "С чем сравнивать",
+    "en": "Compared with"
+   },
+   "example": {
+    "uz": "yillik reja bilan",
+    "ru": "с годовым планом",
+    "en": "with the annual plan"
+   },
+   "kind": "choice",
+   "need": "optional",
+   "missing": "omit",
+   "choices": [
+    "plan",
+    "annual_plan",
+    "quarter_plan",
+    "month_plan",
+    "previous_year",
+    "previous_period"
+   ],
+   "where": "The heading of the plan column, as the customer named the comparison: Reja, Yillik reja, Choraklik reja, Oylik reja, O‘tgan yil, O‘tgan davr."
+  },
+  {
+   "id": "as_of",
+   "label": {
+    "uz": "Holatiga (sana)",
+    "ru": "По состоянию на (дата)",
+    "en": "As of (date)"
+   },
+   "example": {
+    "uz": "30-iyun holatiga",
+    "ru": "по состоянию на 30 июня",
+    "en": "as of 30 June"
+   },
+   "kind": "date",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Set when the figures are a to-date result against a plan that covers a longer period (an annual plan and a half-year result). The line «30-iyun holatiga» stands under the lead sentence of the indicators chapter, in the customer’s words, no year added; the table shows no Farqi (see price_table)."
+  },
+  {
+   "id": "signers",
+   "label": {
+    "uz": "Imzo qo‘yuvchilar (lavozimi va F.I.Sh., rol)",
+    "ru": "Подписанты (должность, Ф.И.О., роль)",
+    "en": "Signers (position, name, role)"
+   },
+   "example": {
+    "uz": "Savdo bo‘limi boshlig‘i A. Namunov; kelishdi: moliya direktori",
+    "ru": "Начальник отдела продаж А. Намунов; согласовано: финансовый директор",
+    "en": "Head of sales A. Namunov; agreed: finance director"
+   },
+   "kind": "list",
+   "need": "recommended",
+   "missing": "blank",
+   "where": "The signature_row: the first signer is the author (role Tayyorladi / Исполнитель / Prepared by), further signers only as named, with the role Kelishildi / Согласовано / Agreed when the customer says they agreed. Up to three are stacked, more than three go two to a row (eight checked). Position and name are ruled blanks with captions when not given; the signature cell is always blank."
+  },
+  {
+   "id": "seal_request",
+   "label": {
+    "uz": "Muhr o‘rni so‘ralganmi",
+    "ru": "Нужно ли место печати",
+    "en": "Is a seal place requested"
+   },
+   "example": {
+    "uz": "muhr bilan",
+    "ru": "с печатью",
+    "en": "with a seal"
+   },
+   "kind": "flag",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Boolean. The seal text (M.O‘. / М.П. / Seal) is drawn under the signature only when the customer asks for it; off by default in both templates (source 04 carries none; the business family treats the stamp as no longer compulsory)."
+  }
+ ],
+ "parts": [
+  {
+   "id": "head",
+   "kind": "fixed",
+   "heading": {
+    "uz": "Hisobot",
+    "ru": "Отчёт",
+    "en": "Report"
+   },
+   "heading_mode": "none",
+   "need": "required",
+   "share": 0.08,
+   "elastic": false,
+   "write": "The template draws the organisation, the word HISOBOT, the title, the period and the department, author and addressee rows from the facts. The document title you return is the subject in one line of at most 90 characters, in the customer’s words, with no period, organisation or full stop.",
+   "block": "doc_head",
+   "fields": [
+    "organization",
+    "subject",
+    "period",
+    "unit",
+    "author",
+    "addressee"
+   ]
+  },
+  {
+   "id": "toc",
+   "kind": "fixed",
+   "heading": {
+    "uz": "Mundarija",
+    "ru": "Содержание",
+    "en": "Contents"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "share": 0.0,
+   "elastic": false,
+   "from": 12,
+   "write": "Nothing: drawn by the template.",
+   "block": "toc"
+  },
+  {
+   "id": "summary",
+   "kind": "prose",
+   "heading": {
+    "uz": "Qisqacha xulosa",
+    "ru": "Краткие итоги",
+    "en": "Summary"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "share": 0.12,
+   "elastic": true,
+   "from": 2,
+   "write": "Written last, one paragraph of 3 to 5 sentences, only when the report has more than a page of facts; otherwise empty. In this order: the main result as “natija Y (reja X)” with at most two figures in the whole summary, the one problem the customer named if any, one sentence on the next period. No fact the other parts lack, and never a word of fulfilment or failure the customer did not write.",
+   "block": "paragraph",
+   "grounded": true
+  },
+  {
+   "id": "figures",
+   "kind": "fixed",
+   "heading": null,
+   "heading_mode": "none",
+   "need": "optional",
+   "share": 0.0,
+   "elastic": false,
+   "write": "Nothing: with five indicators or more the template shows three or four of the first ones as key figures, taken from the indicators table.",
+   "block": "key_figures"
+  },
+  {
+   "id": "indicators",
+   "kind": "table",
+   "heading": {
+    "uz": "Asosiy ko‘rsatkichlar",
+    "ru": "Основные показатели",
+    "en": "Key indicators"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "share": 0.18,
+   "elastic": false,
+   "write": "One row per indicator in the customer’s order, with the customer’s own name and unit: label the indicator, then the unit, the plan or previous figure and the actual figure, copied as typed, two empty cells, and a short comment the customer gave last. Code fills the two empty cells (difference and per cent). Never add, merge, reorder or convert an indicator. No row has a plan or previous figure and fewer than five figures were given: no rows, and the figures are sentences in the work done.",
+   "block": "table",
+   "grounded": true,
+   "max_items": 40,
+   "columns": [
+    {
+     "uz": "Ko‘rsatkich",
+     "ru": "Показатель",
+     "en": "Indicator"
+    },
+    {
+     "uz": "Birlik",
+     "ru": "Ед. изм.",
+     "en": "Unit"
+    },
+    {
+     "uz": "Reja",
+     "ru": "План",
+     "en": "Plan"
+    },
+    {
+     "uz": "Natija",
+     "ru": "Факт",
+     "en": "Actual"
+    },
+    {
+     "uz": "Farqi",
+     "ru": "Разница",
+     "en": "Difference"
+    },
+    {
+     "uz": "Rejaga nisbatan, %",
+     "ru": "К плану, %",
+     "en": "Of plan, %"
+    },
+    {
+     "uz": "Izoh",
+     "ru": "Комментарий",
+     "en": "Comment"
+    }
+   ],
+   "computed": [
+    {
+     "column": 4,
+     "op": "difference",
+     "of": [
+      3,
+      2
+     ]
+    },
+    {
+     "column": 5,
+     "op": "percent",
+     "of": [
+      3,
+      2
+     ]
+    }
+   ]
+  },
+  {
+   "id": "work_done",
+   "kind": "prose",
+   "heading": {
+    "uz": "Bajarilgan ishlar",
+    "ru": "Проделанная работа",
+    "en": "Work completed"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "share": 0.36,
+   "elastic": true,
+   "write": "Only what the customer told: the directions of work in their order (a short sub-heading line for each when there are two or more), one or two sentences of what was done under each, and a result only when the customer gave it. Past tense, impersonal (amalga oshirildi, проведено, was completed). No cause, quantity or consequence the customer did not state; a figure the indicators table shows is not repeated unless the sentence is about that action.",
+   "block": "paragraph",
+   "grounded": true
+  },
+  {
+   "id": "tasks",
+   "kind": "table",
+   "heading": {
+    "uz": "Vazifalar",
+    "ru": "Задачи",
+    "en": "Tasks"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "share": 0.1,
+   "elastic": false,
+   "write": "An employee’s own report only: one row per task in the customer’s order, label the task in the customer’s words, then the result, and the time in the customer’s unit last (empty when not given). Never estimate a time and never add a total. A result without a task name gets a short task name taken from the result. Empty for any other report.",
+   "block": "table",
+   "grounded": true,
+   "max_items": 40,
+   "columns": [
+    {
+     "uz": "Vazifa",
+     "ru": "Задача",
+     "en": "Task"
+    },
+    {
+     "uz": "Natija",
+     "ru": "Результат",
+     "en": "Result"
+    },
+    {
+     "uz": "Vaqt, soat",
+     "ru": "Время, ч",
+     "en": "Time, h"
+    }
+   ]
+  },
+  {
+   "id": "problems",
+   "kind": "list",
+   "heading": {
+    "uz": "Muammolar va kamchiliklar",
+    "ru": "Проблемы и недостатки",
+    "en": "Problems and challenges"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "share": 0.1,
+   "elastic": true,
+   "write": "Only the problems the customer reported, one item each: label the problem in one sentence, text its cause and the action taken, only as given. None reported: no items; never write that there were no problems.",
+   "block": "list",
+   "grounded": true,
+   "max_items": 12
+  },
+  {
+   "id": "plans",
+   "kind": "list",
+   "heading": {
+    "uz": "Kelgusi davr rejalari",
+    "ru": "Планы на следующий период",
+    "en": "Plans for the next period"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "share": 0.12,
+   "elastic": true,
+   "write": "The customer’s stated plans for the next period, one item each, in the form they used; a deadline or owner only as given. Nothing derived: no “ish davom ettiriladi”, no initiative, target, budget, deadline or owner the customer did not state. No plan given: no items (the template draws three ruled lines).",
+   "block": "list",
+   "grounded": true,
+   "max_items": 12
+  },
+  {
+   "id": "proposals",
+   "kind": "list",
+   "heading": {
+    "uz": "Takliflar",
+    "ru": "Предложения",
+    "en": "Proposals"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "share": 0.06,
+   "elastic": true,
+   "write": "What the customer asks the reader to do, decide or provide, one item each, in their words. Nothing asked: no items.",
+   "block": "list",
+   "grounded": true,
+   "max_items": 8
+  },
+  {
+   "id": "conclusion",
+   "kind": "prose",
+   "heading": {
+    "uz": "Xulosa",
+    "ru": "Выводы",
+    "en": "Conclusion"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "share": 0.03,
+   "elastic": false,
+   "write": "The customer’s own conclusion, in their words; never one you draw. Empty when the customer gave none.",
+   "block": "paragraph",
+   "grounded": true,
+   "words": [
+    0,
+    80
+   ]
+  },
+  {
+   "id": "annexes",
+   "kind": "list",
+   "heading": {
+    "uz": "Ilovalar",
+    "ru": "Приложения",
+    "en": "Annexes"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "share": 0.02,
+   "elastic": false,
+   "write": "Only the documents the customer named, one item each, as named.",
+   "block": "list",
+   "grounded": true,
+   "max_items": 10
+  },
+  {
+   "id": "closing",
+   "kind": "fixed",
+   "heading": null,
+   "heading_mode": "none",
+   "need": "required",
+   "share": 0.05,
+   "elastic": false,
+   "write": "Nothing: the template draws a signature row for each signer the customer named (the author first, as Tayyorladi), ruled blanks for a missing position or name, and the date line. The signature and an unstated date are never typed.",
+   "block": "signature_row",
+   "fields": [
+    "signers",
+    "author",
+    "report_date",
+    "seal_request"
+   ]
+  }
+ ],
+ "rules": [
+  {
+   "text": "What it is: a report on work done over a period, for a head or a client, written only from what the customer said. A short message gives a short report: chapters without facts stay empty, and the report is as long as the facts, whatever page count was asked.",
+   "to": "model"
+  },
+  {
+   "text": "Register: formal, impersonal business prose; what was done in the past tense with the impersonal verb, plans in the future or as infinitive items; never men, biz or siz. Short sentences; no praise, apology or advertising adjective unless the customer wrote it.",
+   "to": "model"
+  },
+  {
+   "text": "Figures: as the customer typed them, the same number and unit, no rounding or conversion, with the comparison they gave (natija 502 mln so‘m, reja 480 mln so‘m). Never say a plan was met, exceeded or missed unless the customer wrote that verb: for costs, returns or complaints a lower number is the good one. Never do arithmetic: code computes differences, per cents and totals. A range or taxminan is copied as typed.",
+   "to": "model"
+  },
+  {
+   "text": "The comparison basis: the plan when the customer gave plan figures, the previous period when they gave that; with both, the plan in the table and the previous figure in the comment. A to-date result against a longer plan (an annual plan and a half-year result) returns as_of.",
+   "to": "model"
+  },
+  {
+   "text": "Never invent a person, position, organisation, department, partner, client, region, date, year, number, amount, percentage, ranking, award, quotation, source, law, order or decision number, nor a cause, action or consequence the customer did not state. A decision or order is cited only as the customer gave it.",
+   "to": "model"
+  },
+  {
+   "text": "A missing fact inside a sentence is a run of underscores, never a guess, a bracket, XXX or N/A. A part the customer gave nothing for stays empty and the template closes up the numbering. The report speaks about the work, never about the conversation.",
+   "to": "model"
+  },
+  {
+   "text": "Tables are named in the sentence before them (quyidagi jadvalda), never by a number, and carry no number. Attached files (a results table, an earlier report, a task list) are sources of facts and figures: copy their numbers exactly; take no prose, layout, logo or people’s names from them, and no personal data. When a file and the message differ, the message wins.",
+   "to": "model"
+  },
+  {
+   "text": "Language: the report follows the language of the message. Uzbek is Latin only, with ‘ in o‘ and g‘ and ’ for the tutuq belgisi. Periods as 2025-yil 3-chorak, III квартал 2025 г., Q3 2025.",
+   "to": "model"
+  },
+  {
+   "text": "Difference is actual minus plan and per cent is actual over plan times 100, rounded half up to one decimal; the per-cent heading stays neutral (Rejaga nisbatan, %), never Bajarilish. With as_of set the difference column is left out and the per-cent heading names the plan type; a level indicator in per cent shows a dash. With no plan or previous figure in any row the actual column is Natija and no computed column exists.",
+   "to": "engine"
+  },
+  {
+   "text": "With five or more indicators the key-figures strip shows the first three or four that have a plan or previous figure. Numbers align on the decimal separator; Uzbek and Russian use a no-break space for thousands and a comma for decimals, English a comma and a point.",
+   "to": "engine"
+  },
+  {
+   "text": "A skipped review question with no fact at all gives the form: the head with blanks, Bajarilgan ishlar as six ruled lines, Kelgusi davr rejalari as three numbered ruled lines and the signature unit.",
+   "to": "engine"
+  }
+ ],
+ "bot": {
+  "prompt": {
+   "uz": "Hisobotni bitta xabarda tasvirlang: kimning hisoboti, qaysi davr uchun, nima qilingan.\nRaqamlar (reja va natija), muammolar va kelgusi davr rejalari bo‘lsa, yozing; PDF, Word yoki TXT fayl ham qo‘shishingiz mumkin.\nHisobot 4 sahifagacha, yozganingizcha bo‘ladi: yozmaganingiz bo‘sh chiziq bo‘lib qoladi, hech narsa o‘ylab topilmaydi.",
+   "ru": "Опишите отчёт одним сообщением: чей он, за какой период и что сделано.\nЕсли есть цифры (план и факт), проблемы и планы на следующий период, напишите; можно приложить файл PDF, Word или TXT.\nОтчёт — до 4 страниц, сколько наберётся из ваших данных: что не укажете, останется пустой строкой, ничего не выдумывается.",
+   "en": "Describe the report in one message: whose it is, which period it covers and what was done.\nAdd figures (plan and actual), problems and plans for the next period if you have them; a PDF, Word or TXT file can be attached.\nThe report runs up to 4 pages, as long as your facts: anything you leave out stays a blank line, and nothing is made up."
+  },
+  "examples": [
+   {
+    "uz": "Savdo bo‘limining 3-chorak hisoboti kerak, direktorga, 4 sahifa. Sotuv rejasi 480 mln so‘m edi, natija 502 mln so‘m. Yangi mijozlar: reja 40 ta, natija 48 ta. Qaytarilgan tovarlar: reja 12 ta, natija 9 ta. Muammo: Qashqadaryo viloyatiga yetkazib berish 2 hafta kechikdi. Keyingi chorakda 2 ta yangi menejer olish va Buxoroda savdoni boshlash rejada. «Namuna Savdo» MChJ.",
+    "ru": "Нужен отчёт отдела продаж за 3 квартал для директора, 4 страницы. План продаж был 480 млн сум, факт 502 млн сум. Новые клиенты: план 40, факт 48. Возвраты товара: план 12, факт 9. Проблема: поставки в Кашкадарьинскую область задержались на 2 недели. В следующем квартале планируем нанять 2 менеджеров и начать продажи в Бухаре. ООО «Намуна Савдо».",
+    "en": "I need the sales department’s Q3 report for the director, 4 pages. The sales plan was 480 million UZS and the result was 502 million UZS. New customers: plan 40, actual 48. Returned goods: plan 12, actual 9. Problem: deliveries to Qashqadaryo region were two weeks late. Next quarter we plan to hire 2 managers and start selling in Bukhara. Namuna Savdo LLC."
+   },
+   {
+    "uz": "Maktab direktoriga 2024–2025-o‘quv yili bo‘yicha matematika fani metodbirlashmasining hisoboti kerak. 12 ta ochiq dars va 4 ta seminar o‘tkazildi, 9-sinfdan 7 nafar o‘quvchi tuman olimpiadasida g‘olib bo‘ldi, o‘zlashtirish 92%. Muammo: 2 ta sinf xonasida proyektor yo‘q. Kelgusi yilga reja: yangi dastur bo‘yicha o‘qituvchilarni tayyorlash va 5-sinflar uchun to‘garak ochish.",
+    "ru": "Нужен отчёт методобъединения учителей математики за 2024–2025 учебный год для директора школы. Проведено 12 открытых уроков и 4 семинара, 7 учеников 9 класса победили в районной олимпиаде, успеваемость 92%. Проблема: в двух кабинетах нет проектора. План на следующий год: подготовка учителей по новой программе и кружок для 5 классов.",
+    "en": "I need a report of the mathematics teachers’ methodical association for the school director for the 2024–2025 school year. 12 open lessons and 4 seminars were held, 7 pupils of grade 9 won the district olympiad, academic performance 92%. Problem: two classrooms have no projector. Plan for next year: train teachers for the new curriculum and open a club for grade 5."
+   },
+   {
+    "uz": "Oylik hisobotim kerak, 1 sahifa: marketing menejeri, mart oyi. 12 ta Instagram post tayyorlandi (12 soat), 2 ta reklama kampaniyasi ishga tushirildi (byudjet 6 mln so‘m, 8 soat), 450 ta yangi obunachi qo‘shildi, mijozlar bazasi 3 ta tadbir uchun yangilandi (5 soat). Muammo: dizayner javobni kech berdi. Aprelda: yangi sayt uchun matnlar.",
+    "ru": "Нужен мой месячный отчёт, 1 страница: менеджер по маркетингу, март. Подготовлено 12 постов в Instagram (12 часов), запущено 2 рекламные кампании (бюджет 6 млн сум, 8 часов), прирост 450 подписчиков, обновлена база клиентов для 3 мероприятий (5 часов). Проблема: дизайнер поздно отвечал. В апреле: тексты для нового сайта.",
+    "en": "I need my monthly report, 1 page: marketing manager, March. 12 Instagram posts prepared (12 hours), 2 ad campaigns launched (budget 6 million UZS, 8 hours), 450 new followers, the customer base updated for 3 events (5 hours). Problem: the designer replied late. In April: copy for the new website."
+   }
+  ],
+  "attach": true,
+  "notices": {
+   "finished": {
+    "uz": "📊 Hisobot tayyor: unga faqat siz yozgan ma’lumotlar kirdi. Bo‘sh chiziqlarni qo‘lda to‘ldiring; jadvaldagi tire hisoblab bo‘lmasligini bildiradi.",
+    "ru": "📊 Отчёт готов: в него вошло только то, что вы написали. Пустые линии заполните от руки; прочерк в таблице значит, что расчёт невозможен.",
+    "en": "📊 Your report is ready: it holds only what you wrote. Fill in the blank lines by hand; a dash in a table means it cannot be calculated."
+   },
+   "blanks": {
+    "uz": "Ba’zi ma’lumotlar xabaringizda yo‘q edi yoki unga mos kelmadi, shuning uchun bo‘sh chiziq qoldirildi: ularni tekshirib, qo‘lda to‘ldiring.",
+    "ru": "Некоторых сведений не было в вашем сообщении или они с ним не совпали, поэтому оставлены пустые линии: проверьте и заполните их от руки.",
+    "en": "Some facts were not in your message or did not match it, so blank lines were left: check them and fill them in by hand."
+   },
+   "shorter": {
+    "uz": "Hisobot siz so‘ragan sahifadan qisqaroq chiqdi: yozgan ma’lumotlaringiz shunga yetdi, hech narsa o‘ylab topilmadi.",
+    "ru": "Отчёт получился короче, чем вы просили: написанного хватило на столько, ничего не выдумано.",
+    "en": "The report came out shorter than you asked: what you wrote fills this much, and nothing was made up."
+   }
+  }
+ },
+ "templates": [
+  "business_hisobot"
+ ],
+ "look": null,
+ "gates": [
+  "A native Uzbek and a native Russian reader check the fixed words (HISOBOT, the chapter headings, the table headers Reja, Natija, Farqi, Rejaga nisbatan, %, the signer roles Tayyorladi and Kelishildi) before the entry is marked ready.",
+  "Render the full, blank and long cases in uz, ru and en with the paper sample tool and compare them with units/pdf.biz.hisobot/mock/business_hisobot.png and business_hisobot-blank.png; check by hand every computed difference and per cent.",
+  "The facts corpus is at zero on this entry’s examples."
+ ],
+ "later": [
+  {
+   "text": "The strict black formal form (business_hisobot_rasmiy) with its TASDIQLAYMAN block, numbered sentences and the form choice buttons: this round every report uses the modern template.",
+   "words": [
+    "rasmiy",
+    "официальн",
+    "formal",
+    "tasdiqlash uchun",
+    "на утверждение",
+    "for approval",
+    "tasdiqlayman",
+    "утверждаю"
+   ]
+  },
+  {
+   "text": "A cover page for reports of eight pages and more, and the conclusions-and-proposals chapter heading that goes with it."
+  },
+  {
+   "text": "Checking every number taken from a file against the extracted text a second time (indicator name and column header beside it) and naming a mismatch in the delivery message."
+  },
+  {
+   "text": "The delivery lines that name each blank and the separate notice for the blank form."
+  }
+ ]
+}

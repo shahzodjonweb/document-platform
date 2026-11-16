@@ -1,0 +1,261 @@
+{
+ "schema": 2,
+ "id": "official_lavozim_yoriqnomasi",
+ "entries": [
+  "pdf.biz.lavozim_yoriqnomasi"
+ ],
+ "name": {
+  "uz": "Lavozim yo‘riqnomasi",
+  "ru": "Должностная инструкция",
+  "en": "Job description"
+ },
+ "family": "official",
+ "page": {
+  "margins_mm": {
+   "left": 30,
+   "right": 15,
+   "top": 20,
+   "bottom": 20
+  }
+ },
+ "type": {
+  "face": "serif",
+  "ladder": [
+   [
+    12,
+    18
+   ],
+   [
+    11.5,
+    17
+   ],
+   [
+    11,
+    16
+   ]
+  ],
+  "align": "left"
+ },
+ "page_rule": {
+  "kind": "flow"
+ },
+ "furniture": {
+  "first": "none",
+  "later": "number_top",
+  "format": "n"
+ },
+ "flow": [
+  {
+   "block": "doc_head",
+   "part": "head",
+   "fields": [
+    "organisation"
+   ],
+   "keep": "head",
+   "params": {
+    "overline": "organisation",
+    "layout": "issuer_left"
+   }
+  },
+  {
+   "block": "approval_block",
+   "part": "approval",
+   "when": "nofact:approval_mode",
+   "keep": "head",
+   "fields": [
+    "approver_post",
+    "approver_name",
+    "approval_date"
+   ],
+   "params": {
+    "label": "approved",
+    "anchor": "right_half",
+    "captions": {
+     "approver_post": "cap_position",
+     "approver_name": "cap_name"
+    }
+   }
+  },
+  {
+   "block": "doc_title",
+   "part": "head",
+   "fields": [
+    "position",
+    "unit",
+    "document_ref",
+    "title_form"
+   ],
+   "params": {
+    "label": "title",
+    "subtitle": "content_title",
+    "lines": [
+     "unit",
+     "document_ref"
+    ]
+   }
+  },
+  {
+   "block": "heading",
+   "part": "general",
+   "params": {
+    "level": 1,
+    "numbering": "chapter"
+   }
+  },
+  {
+   "block": "clauses",
+   "part": "general",
+   "params": {
+    "numbering": "decimal"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "qualification",
+   "when": "part:qualification",
+   "params": {
+    "level": 1,
+    "numbering": "chapter"
+   }
+  },
+  {
+   "block": "clauses",
+   "part": "qualification",
+   "when": "part:qualification",
+   "params": {
+    "numbering": "decimal"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "duties",
+   "params": {
+    "level": 1,
+    "numbering": "chapter"
+   }
+  },
+  {
+   "block": "clauses",
+   "part": "duties",
+   "params": {
+    "numbering": "decimal"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "rights",
+   "params": {
+    "level": 1,
+    "numbering": "chapter"
+   }
+  },
+  {
+   "block": "clauses",
+   "part": "rights",
+   "params": {
+    "numbering": "decimal"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "responsibility",
+   "params": {
+    "level": 1,
+    "numbering": "chapter"
+   }
+  },
+  {
+   "block": "clauses",
+   "part": "responsibility",
+   "params": {
+    "numbering": "decimal"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "final",
+   "when": "part:final",
+   "params": {
+    "level": 1,
+    "numbering": "chapter"
+   }
+  },
+  {
+   "block": "clauses",
+   "part": "final",
+   "when": "part:final",
+   "params": {
+    "numbering": "decimal"
+   }
+  },
+  {
+   "block": "signature_row",
+   "part": "agreement",
+   "when": "fact:agreement_signers",
+   "keep": "closing",
+   "fields": [
+    "agreement_signers"
+   ],
+   "params": {
+    "variant": "position_sign_name",
+    "label": "agreed",
+    "date_line": true
+   }
+  },
+  {
+   "block": "line",
+   "part": "acknowledgement",
+   "keep": "closing",
+   "params": {
+    "label": "ack"
+   }
+  },
+  {
+   "block": "signature_row",
+   "part": "acknowledgement",
+   "keep": "closing",
+   "fields": [
+    "employee_name"
+   ],
+   "params": {
+    "variant": "date_sign_name",
+    "captions": {
+     "employee_name": "cap_name"
+    }
+   }
+  }
+ ],
+ "labels": {
+  "title": {
+   "uz": "LAVOZIM YO‘RIQNOMASI",
+   "ru": "ДОЛЖНОСТНАЯ ИНСТРУКЦИЯ",
+   "en": "JOB DESCRIPTION"
+  },
+  "approved": {
+   "uz": "TASDIQLAYMAN",
+   "ru": "УТВЕРЖДАЮ",
+   "en": "APPROVED"
+  },
+  "agreed": {
+   "uz": "KELISHILDI:",
+   "ru": "СОГЛАСОВАНО:",
+   "en": "AGREED:"
+  },
+  "ack": {
+   "uz": "Yo‘riqnoma bilan tanishdim:",
+   "ru": "С инструкцией ознакомлен(а):",
+   "en": "I have read this job description:"
+  },
+  "cap_position": {
+   "uz": "(lavozimi)",
+   "ru": "(должность)",
+   "en": "(position)"
+  },
+  "cap_name": {
+   "uz": "(F.I.Sh.)",
+   "ru": "(Ф.И.О.)",
+   "en": "(full name)"
+  }
+ },
+ "mock": "units/pdf.biz.lavozim_yoriqnomasi/mock/official_lavozim_yoriqnomasi.png"
+}

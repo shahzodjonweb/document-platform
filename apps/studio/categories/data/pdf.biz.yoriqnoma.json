@@ -1,0 +1,645 @@
+{
+ "schema": 2,
+ "id": "pdf.biz.yoriqnoma",
+ "status": "draft",
+ "service": "pdf",
+ "parent": "pdf.biz",
+ "order": 4,
+ "labels": {
+  "uz": "📑 Xodimlar uchun yo‘riqnoma",
+  "ru": "📑 Инструкция для сотрудников",
+  "en": "📑 Staff instruction"
+ },
+ "summary": "A staff instruction as a print-ready A4 paper in the modern one-accent business form: details table, numbered chapters of a work instruction, a safety instruction or rules of conduct, caution boxes, a contacts table, approval, author and agreement rows and an acknowledgement line; written only from what the customer said, with a ruled blank for every number, date, signature and phone they did not give.",
+ "tone": "formal, impersonal, third person, present tense, one directive per clause, every step something a supervisor can check; a plain guide for new employees (kind procedure, asked for as a guide or in \"siz\") speaks to the reader as \"siz\" in plain friendly sentences; no praise, no threats, nothing stated that the customer did not give",
+ "topic": false,
+ "title": "model",
+ "length": {
+  "unit": "pages",
+  "mode": "count",
+  "target": "ceiling",
+  "default": 3,
+  "min": 1,
+  "max": 12,
+  "note": "A ceiling: real instructions run 1 to 6 pages; about 8 for a safety or work instruction and 12 for rules of conduct is what a topic holds, and the shorter notice says when it holds less."
+ },
+ "questions": {
+  "default": 0,
+  "max": 0
+ },
+ "quality": "repair",
+ "fill": false,
+ "cues": {
+  "safety": {
+   "uz": [
+    "mehnat muhofaza",
+    "xavfsizlik",
+    "yong‘in",
+    "texnika xavfsiz",
+    "laboratoriya"
+   ],
+   "ru": [
+    "охран труда",
+    "охраны труда",
+    "безопасност",
+    "пожар",
+    "техник безопасн",
+    "лаборатор"
+   ],
+   "en": [
+    "safety",
+    "fire",
+    "hazard",
+    "laboratory"
+   ]
+  },
+  "rules": {
+   "uz": [
+    "qoidalar",
+    "qoidalari",
+    "ichki tartib",
+    "xulq-atvor",
+    "odob"
+   ],
+   "ru": [
+    "правила",
+    "правил внутренн",
+    "распорядк",
+    "распорядок"
+   ],
+   "en": [
+    "rules",
+    "code of conduct",
+    "house rules"
+   ]
+  }
+ },
+ "exclusive": [
+  [
+   "safety",
+   "rules"
+  ]
+ ],
+ "groups": {
+  "rules": {
+   "min": 2,
+   "max": 6,
+   "sized": "model"
+  }
+ },
+ "ask": null,
+ "fields": [
+  {
+   "id": "subject",
+   "label": {
+    "uz": "Nima haqida yo‘riqnoma",
+    "ru": "О чём инструкция",
+    "en": "What the instruction is about"
+   },
+   "example": {
+    "uz": "ombor xodimlari uchun yuk ko‘tarish va tashishda mehnat muhofazasi",
+    "ru": "охрана труда при подъёме и перемещении грузов на складе",
+    "en": "labour protection when lifting and moving loads in a warehouse"
+   },
+   "kind": "text",
+   "need": "required",
+   "missing": "omit",
+   "where": "the topic phrase (writing rule 13): subject_line of the official title (above the word in Uzbek, below it in Russian and English) and, with the kind noun, the one-phrase title of the business head; clause 1.1; the sheet line. The one fact without which the paper is meaningless: when neither the message nor a file names a job, equipment, place or set of rules, the bot asks the single question of bot.extra_step."
+  },
+  {
+   "id": "organisation",
+   "label": {
+    "uz": "Tashkilot nomi",
+    "ru": "Название организации",
+    "en": "Organisation name"
+   },
+   "example": {
+    "uz": "«Namuna Savdo» MChJ",
+    "ru": "ООО «Namuna Savdo»",
+    "en": "Namuna Savdo LLC"
+   },
+   "kind": "org",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "official: issuer_line at the top left in capitals (three lines at most, then 9.5 pt), the first line of the approval block above the post, and clause 1.1 (the organisation is named there but never given a short name); missing: nothing is drawn and 1.1 keeps only the subject. Business: the organisation line of document_head and the running header; missing there: a 78 mm ruled blank with the caption (tashkilot nomi), the business family's rule."
+  },
+  {
+   "id": "audience",
+   "label": {
+    "uz": "Kimlar uchun",
+    "ru": "Для кого",
+    "en": "Who it is for"
+   },
+   "example": {
+    "uz": "ombor xodimlari",
+    "ru": "работники склада",
+    "en": "warehouse staff"
+   },
+   "kind": "line",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "clause 1.1 (the short name of the role, defined once and used again) and, in the business template, the row \"Kimlar uchun\" of the details table; missing: the generic \"xodimlar\" in 1.1 and no table row. Staff, pupils and visitors are all allowed audiences under the same template (role short names Xodim, O‘quvchi, Tashrif buyuvchi): a school laboratory or a gym instruction is the same paper (mock official_yoriqnoma-cases, school-lab)."
+  },
+  {
+   "id": "number",
+   "label": {
+    "uz": "Yo‘riqnoma raqami",
+    "ru": "Номер инструкции",
+    "en": "Instruction number"
+   },
+   "example": {
+    "uz": "14",
+    "ru": "14",
+    "en": "14"
+   },
+   "kind": "ref",
+   "need": "optional",
+   "missing": "blank",
+   "where": "official: the number after № (English No.) in the title line (kinds safety and procedure); business: the row \"Hujjat raqami\" of the details table; missing: a ruled blank (the number comes from the organisation's own log). A rules paper carries no number unless given."
+  },
+  {
+   "id": "approver_post",
+   "label": {
+    "uz": "Tasdiqlovchi lavozimi",
+    "ru": "Должность утверждающего",
+    "en": "Approver’s position"
+   },
+   "example": {
+    "uz": "Direktor",
+    "ru": "Директор",
+    "en": "Director"
+   },
+   "kind": "line",
+   "need": "recommended",
+   "missing": "blank",
+   "where": "official: the post line of approval_block under the organisation line, else a blank row with the caption (lavozimi); business: the post cell of the closing signature_row only (the details table no longer repeats the approver); never guessed from the organisation."
+  },
+  {
+   "id": "approver_name",
+   "label": {
+    "uz": "Tasdiqlovchi F.I.Sh.",
+    "ru": "Ф.И.О. утверждающего",
+    "en": "Approver’s name"
+   },
+   "example": {
+    "uz": "B. S. Toshmatov",
+    "ru": "Б. С. Тошматов",
+    "en": "B. S. Toshmatov"
+   },
+   "kind": "person",
+   "need": "optional",
+   "missing": "blank",
+   "where": "the name cell next to the signature rule (initials first), else a blank rule with (F.I.Sh.); the signature cell is never typed."
+  },
+  {
+   "id": "approval_date",
+   "label": {
+    "uz": "Tasdiqlangan sana",
+    "ru": "Дата утверждения",
+    "en": "Approval date"
+   },
+   "example": {
+    "uz": "2026-yil 3-fevral",
+    "ru": "3 февраля 2026 г.",
+    "en": "3 February 2026"
+   },
+   "kind": "date",
+   "need": "optional",
+   "missing": "blank",
+   "where": "the date line of approval_block (official) or the date_line under the closing signature row and the row \"Tasdiqlangan sana\" of the details table (business), typed only if given; else the family pattern, year first in Uzbek: 20___-yil «___» ____________ (ru «___» ____________ 20___ г.)."
+  },
+  {
+   "id": "approval_mode",
+   "label": {
+    "uz": "Tasdiqlash bloki kerak emas",
+    "ru": "Гриф утверждения не нужен",
+    "en": "No approval block"
+   },
+   "example": {
+    "uz": "tasdiqlash blokisiz",
+    "ru": "без грифа утверждения",
+    "en": "without an approval block"
+   },
+   "kind": "flag",
+   "need": "optional",
+   "missing": "omit",
+   "where": "a switch set only when the customer says the paper needs none: the right column of the head row stays empty (official) or the closing approval row is left out (business). Missing: the block is drawn, with blanks."
+  },
+  {
+   "id": "author",
+   "label": {
+    "uz": "Tuzuvchi (lavozimi, F.I.Sh.)",
+    "ru": "Составитель (должность, Ф.И.О.)",
+    "en": "Prepared by (position, name)"
+   },
+   "example": {
+    "uz": "ombor mudiri A. K. Sodiqov",
+    "ru": "заведующий складом А. К. Содиков",
+    "en": "warehouse manager A. K. Sodiqov"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "omit",
+   "where": "author_block (official) or a signature_row \"Tuzuvchi\" (business) before the agreement rows, typed as given. Missing: not drawn, except for a safety topic (mehnat muhofazasi, xavfsizlik, yong‘in) when the approval block is drawn: then one blank row."
+  },
+  {
+   "id": "agreement_signers",
+   "label": {
+    "uz": "Kim kelishadi",
+    "ru": "Кто согласует",
+    "en": "Who agrees it"
+   },
+   "example": {
+    "uz": "mehnat muhofazasi bo‘yicha mutaxassis",
+    "ru": "специалист по охране труда",
+    "en": "the labour protection specialist"
+   },
+   "kind": "list",
+   "need": "optional",
+   "missing": "omit",
+   "where": "agreement_block: one row per post named, names as given, at most 6 rows (the content check); none named: not drawn, except for a safety topic when the approval block is drawn: then one blank row (post, signature and name left empty), as the safety service agrees such papers in Uzbek practice (evidence, resolution 819)."
+  },
+  {
+   "id": "contacts",
+   "label": {
+    "uz": "Telefon raqamlari",
+    "ru": "Телефоны",
+    "en": "Phone numbers"
+   },
+   "example": {
+    "uz": "bevosita rahbar: +998 90 123 45 67",
+    "ru": "непосредственный руководитель: +998 90 123 45 67",
+    "en": "immediate supervisor: +998 90 123 45 67"
+   },
+   "kind": "list",
+   "need": "optional",
+   "missing": "if_needed",
+   "where": "the emergency chapter: official a dash item \"label — ____\" with an inline blank, business the contacts_table (at most 8 rows) with a ruled blank in the phone cell; a number appears only when the customer typed it, public emergency numbers included (declined to print them as constants: no official page could be read, see the revision notes)."
+  },
+  {
+   "id": "final_terms",
+   "label": {
+    "uz": "Nusxalar, qayta ko‘rib chiqish",
+    "ru": "Экземпляры, пересмотр",
+    "en": "Copies, review"
+   },
+   "example": {
+    "uz": "2 nusxada tuziladi, har yili qayta ko‘rib chiqiladi",
+    "ru": "составляется в 2 экземплярах, пересматривается ежегодно",
+    "en": "made in 2 copies, reviewed every year"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "the final-provisions chapter: one to three clauses that use exactly these facts; nothing given: no such chapter (a rules document still gets its customary closing clause on acknowledgement by signature)."
+  }
+ ],
+ "parts": [
+  {
+   "id": "head",
+   "kind": "fixed",
+   "heading": {
+    "uz": "YO‘RIQNOMA",
+    "ru": "ИНСТРУКЦИЯ",
+    "en": "INSTRUCTION"
+   },
+   "heading_mode": "none",
+   "need": "required",
+   "share": 0.05,
+   "elastic": false,
+   "write": "The template draws the organisation, the kind word (YO‘RIQNOMA, or QOIDALAR for rules) with the number or its blank, and the topic. The document title you return is the topic as ONE phrase of at most 90 characters, never repeating the organisation: uz a capitalised phrase ending in “bo‘yicha”, ru lower case beginning “по”, “для”, “при” or “на”, en lower case beginning “for” or “on”.",
+   "block": "doc_head",
+   "fields": [
+    "organisation",
+    "subject",
+    "number"
+   ]
+  },
+  {
+   "id": "details",
+   "kind": "fixed",
+   "heading": null,
+   "heading_mode": "none",
+   "need": "usual",
+   "share": 0.02,
+   "elastic": false,
+   "write": "Nothing: drawn from the facts.",
+   "block": "kv_table",
+   "fields": [
+    "audience",
+    "number",
+    "approval_date"
+   ]
+  },
+  {
+   "id": "general",
+   "kind": "list",
+   "heading": {
+    "uz": "Umumiy qoidalar",
+    "ru": "Общие положения",
+    "en": "General provisions"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "share": 0.2,
+   "elastic": true,
+   "write": "Two to eight clauses. The first is the opening formula: what the instruction sets, for whom and in which work, defining the role’s short name once (uz “Mazkur yo‘riqnoma ... ombor xodimlari (keyingi o‘rinlarda — Xodim) ... talablarini belgilaydi.”, ru “Настоящая инструкция устанавливает ... (далее — Работник)”, en “This instruction sets ... (the Employee)”). Then that it binds every such person, the real hazards of the topic, to whom problems are reported, and the generic liability clause. One clause or list item per item; a lead-in that ends with a colon goes in label and its items, one action each, in text joined by “ | ”; a single clause has only text. A clause that must not be missed (at most one a chapter, four a paper) is one sentence opening with Diqqat! (ru Внимание!, en Caution!): the template boxes it.",
+   "block": "clauses",
+   "grounded": true,
+   "max_items": 40
+  },
+  {
+   "id": "before_work",
+   "kind": "list",
+   "heading": {
+    "uz": "Ishni boshlashdan oldin",
+    "ru": "Перед началом работы",
+    "en": "Before starting work"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "share": 0.12,
+   "elastic": true,
+   "write": "A safety or work instruction only (empty for rules): a lead-in such as “Xodim ish boshlashdan oldin:” with three to six checks (workplace, equipment, tools, lighting), and that faulty equipment is not used. No number the customer did not give; no claim about clothing or protective equipment. One clause or list item per item; a lead-in that ends with a colon goes in label and its items, one action each, in text joined by “ | ”; a single clause has only text. A clause that must not be missed (at most one a chapter, four a paper) is one sentence opening with Diqqat! (ru Внимание!, en Caution!): the template boxes it.",
+   "block": "clauses",
+   "grounded": true,
+   "max_items": 40,
+   "when": "nocue:rules"
+  },
+  {
+   "id": "during_work",
+   "kind": "list",
+   "heading": {
+    "uz": "Ish jarayonida",
+    "ru": "Во время работы",
+    "en": "During work"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "share": 0.4,
+   "elastic": true,
+   "write": "A safety or work instruction only, and the longest chapter: the customer’s points first, then the usual steps of the topic, one lead-in per operation with three to six items in the order they are done; the prohibitions under “Ish jarayonida taqiqlanadi:” as verbal nouns. For a work instruction the clauses are the steps in order. One clause or list item per item; a lead-in that ends with a colon goes in label and its items, one action each, in text joined by “ | ”; a single clause has only text. A clause that must not be missed (at most one a chapter, four a paper) is one sentence opening with Diqqat! (ru Внимание!, en Caution!): the template boxes it.",
+   "block": "clauses",
+   "grounded": true,
+   "max_items": 40,
+   "when": "nocue:rules"
+  },
+  {
+   "id": "emergency",
+   "kind": "list",
+   "heading": {
+    "uz": "Alohida holatlarda",
+    "ru": "В особых случаях",
+    "en": "Special cases"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "share": 0.15,
+   "elastic": true,
+   "write": "A safety or work instruction only: what to do when something goes wrong (an accident, a fire, a spill, a breakdown, a complaint), in this order: stop, warn, report, first aid and an ambulance, leave by the evacuation route, keep the scene. Never an instruction to fight a fire or use any equipment. Who to tell: only the phone numbers the customer gave; any other number is “____”. One clause or list item per item; a lead-in that ends with a colon goes in label and its items, one action each, in text joined by “ | ”; a single clause has only text. A clause that must not be missed (at most one a chapter, four a paper) is one sentence opening with Diqqat! (ru Внимание!, en Caution!): the template boxes it.",
+   "block": "clauses",
+   "grounded": true,
+   "max_items": 40,
+   "when": "nocue:rules"
+  },
+  {
+   "id": "after_work",
+   "kind": "list",
+   "heading": {
+    "uz": "Ish tugagandan so‘ng",
+    "ru": "По окончании работы",
+    "en": "After finishing work"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "share": 0.07,
+   "elastic": true,
+   "write": "A safety or work instruction only: two to four clauses: put things back, tidy up, hand over, report defects. One clause or list item per item; a lead-in that ends with a colon goes in label and its items, one action each, in text joined by “ | ”; a single clause has only text. A clause that must not be missed (at most one a chapter, four a paper) is one sentence opening with Diqqat! (ru Внимание!, en Caution!): the template boxes it.",
+   "block": "clauses",
+   "grounded": true,
+   "max_items": 40,
+   "when": "nocue:rules"
+  },
+  {
+   "id": "rules_chapter",
+   "kind": "list",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "usual",
+   "share": 0.45,
+   "elastic": true,
+   "write": "Rules of conduct only: one chapter per topic of the customer (two to six chapters, as many as the topics), each with 2 to 6 clauses. The heading is yours: nominative, at most 6 words, from the customer’s topic (Ish vaqti, Kiyinish va tashqi ko‘rinish, Mijozlar bilan muomala). The customer’s hours, rules and numbers exactly as typed; prohibitions end in “taqiqlanadi”. Unused chapters stay empty. One clause or list item per item; a lead-in that ends with a colon goes in label and its items, one action each, in text joined by “ | ”; a single clause has only text. A clause that must not be missed (at most one a chapter, four a paper) is one sentence opening with Diqqat! (ru Внимание!, en Caution!): the template boxes it.",
+   "block": "clauses",
+   "grounded": true,
+   "max_items": 40,
+   "when": "cue:rules",
+   "group": "rules"
+  },
+  {
+   "id": "final",
+   "kind": "list",
+   "heading": {
+    "uz": "Yakuniy qoidalar",
+    "ru": "Заключительные положения",
+    "en": "Final provisions"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "share": 0.04,
+   "elastic": false,
+   "write": "Rules of conduct always: that every employee reads them and signs, and the liability clause. A safety or work instruction only when the customer gave final terms (copies, review), one to three clauses that use exactly those facts. Otherwise empty. One clause or list item per item; a lead-in that ends with a colon goes in label and its items, one action each, in text joined by “ | ”; a single clause has only text. A clause that must not be missed (at most one a chapter, four a paper) is one sentence opening with Diqqat! (ru Внимание!, en Caution!): the template boxes it.",
+   "block": "clauses",
+   "grounded": true,
+   "max_items": 40
+  },
+  {
+   "id": "contacts_table",
+   "kind": "fixed",
+   "heading": {
+    "uz": "Telefonlar",
+    "ru": "Телефоны",
+    "en": "Phone numbers"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "share": 0.03,
+   "elastic": false,
+   "when": "nocue:rules",
+   "write": "Nothing: the contacts as given (generic roles such as the immediate supervisor or an ambulance, at most 8), a ruled blank for each phone not given.",
+   "block": "kv_table",
+   "fields": [
+    "contacts"
+   ]
+  },
+  {
+   "id": "approval",
+   "kind": "fixed",
+   "heading": {
+    "uz": "Tasdiqladi",
+    "ru": "Утвердил",
+    "en": "Approved by"
+   },
+   "heading_mode": "none",
+   "need": "usual",
+   "share": 0.04,
+   "elastic": false,
+   "write": "Nothing: the approval row from the facts, ruled blanks for what is missing; left out when the customer says no approval is needed.",
+   "block": "signature_row",
+   "fields": [
+    "approver_post",
+    "approver_name",
+    "approval_date",
+    "approval_mode"
+   ]
+  },
+  {
+   "id": "signers",
+   "kind": "fixed",
+   "heading": {
+    "uz": "Tuzuvchi va kelishuvchilar",
+    "ru": "Составитель и согласующие",
+    "en": "Prepared and agreed by"
+   },
+   "heading_mode": "none",
+   "need": "optional",
+   "share": 0.03,
+   "elastic": false,
+   "write": "Nothing: rows for the author and each agreeing post (at most 6) as given.",
+   "block": "signature_row",
+   "fields": [
+    "author",
+    "agreement_signers"
+   ]
+  },
+  {
+   "id": "acknowledgement",
+   "kind": "fixed",
+   "heading": {
+    "uz": "Yo‘riqnoma bilan tanishdim:",
+    "ru": "С инструкцией ознакомлен(а):",
+    "en": "I have read this instruction:"
+   },
+   "heading_mode": "none",
+   "need": "usual",
+   "share": 0.03,
+   "elastic": false,
+   "write": "Nothing: drawn by the template.",
+   "block": "signature_row"
+  }
+ ],
+ "rules": [
+  {
+   "text": "What it is: a staff instruction written from one message: a work instruction (how to do a job, also a plain guide for new employees), a safety instruction (a hazard, equipment, a laboratory) or rules of conduct (internal order), for staff, pupils or visitors. The parts list says which chapters exist; never a job description (duties and rights of one position).",
+   "to": "model"
+  },
+  {
+   "text": "Register: formal, impersonal, third person, present tense, short sentences; the role is the subject by the short name defined in the first clause (Xodim, O‘quvchi, Ofitsiant, Работник). One exception: a guide for new employees (qo‘llanma, yangi xodim, or “siz deb yozing”) speaks to the reader as siz throughout and defines no short name.",
+   "to": "model"
+  },
+  {
+   "text": "One directive per clause: a clause at most 45 words, an item at most 20; three or more parallel actions become items under a lead-in ending in a colon; items start lower case, one action each, no final punctuation. Never type a clause number, bullet, approval word or fixed heading: the template prints them.",
+   "to": "model"
+  },
+  {
+   "text": "Invent nothing: names of people or organisations, orders, dates, document numbers, phone numbers (emergency services included), limits of any kind (weight, distance, temperature, age, hours, dose, voltage), standards (ISO, GOST, SanQvaM) and spelled-out numbers appear only if the message or the text of an attached file holds them, beside the same words. A limit not given is written without it (belgilangan me’yordan, belgilangan tartibda).",
+   "to": "model"
+  },
+  {
+   "text": "Safety content only from the hazard the customer named: check the workplace and equipment, no faulty equipment, keep exits clear, stop work, warn people nearby, report to the immediate supervisor, call the emergency service, first aid and an ambulance, leave by the evacuation route, keep the scene, tidy up and report defects. Never state a site fact or employer policy (that a briefing was given, that clothing or protective equipment is issued).",
+   "to": "model"
+  },
+  {
+   "text": "Liability is generic only: “... amaldagi qonunchilikka muvofiq javobgar bo‘ladi” (ru “несёт ответственность в соответствии с законодательством”, en “is liable in accordance with the law”). Never name a code, the Constitution, a law, an article, a penalty or a sum, unless the customer gave it.",
+   "to": "model"
+  },
+  {
+   "text": "The customer’s own points come first, in their order and meaning, then the usual clauses of the topic, never filler. An attached old instruction or rules: use their facts and duties, tidy the wording, copy no order numbers, names or dates, and never mention the file. Pay, bonuses, discipline tables and personal details stay out unless asked for as a clause.",
+   "to": "model"
+  },
+  {
+   "text": "Uzbek is Latin only, with ‘ in o‘ and g‘ and ’ for the tutuq belgisi (ma’lumot, me’yor); never Cyrillic or the straight apostrophe in Uzbek.",
+   "to": "model"
+  },
+  {
+   "text": "A safety topic (cue safety) prints the safety chapter headings: Umumiy xavfsizlik talablari, Ishni boshlashdan oldingi xavfsizlik talablari, Ish jarayonidagi xavfsizlik talablari, Favqulodda vaziyatlardagi xavfsizlik talablari, Ish tugagandan so‘ng xavfsizlik talablari (ru Общие требования охраны труда ..., en General safety requirements ...); a work instruction prints the plain headings of its parts; rules print 1-bob. before each chapter.",
+   "to": "engine"
+  },
+  {
+   "text": "At most one clause per chapter and four per paper are drawn as a caution box: a prohibition or hazard that must not be missed. One page is the short form: general, during work and special cases, at most about 70 words.",
+   "to": "engine"
+  }
+ ],
+ "bot": {
+  "prompt": {
+   "uz": "📑 Xodimlar uchun yo‘riqnoma: ish tartibi, mehnat muhofazasi yo‘riqnomasi yoki ichki tartib qoidalari (vazifa va huquqlar uchun «Lavozim yo‘riqnomasi»ni tanlang).\nHammasini bitta xabarda yozing. Majburiy: qaysi ish, jihoz yoki mavzu bo‘yicha.\nYaxshi chiqishi uchun: tashkilot nomi, kim uchun (xodimlar, o‘quvchilar), kim tasdiqlashi.\nIxtiyoriy: tuzuvchi va kelishuvchilar, o‘z qoidalaringiz, necha sahifa (aytmasangiz — 3; yo‘riqnoma 8, qoidalar 12 sahifagacha).\nYozmaganingiz bo‘sh chiziq bo‘lib qoladi — raqam, sana, imzo va telefonlarni qo‘lda qo‘yasiz. Talablarni men tuzaman: tasdiqlashdan oldin mutaxassis bilan tekshiring.",
+   "ru": "📑 Инструкция для сотрудников: порядок работы, инструкция по охране труда или правила внутреннего распорядка (для обязанностей и прав выберите «Должностная инструкция»).\nНапишите всё одним сообщением. Обязательно: по какой работе, оборудованию или теме.\nЧтобы вышло хорошо: организация, для кого (работники, учащиеся), кто утверждает.\nПо желанию: кто составил и согласует, ваши правила, сколько страниц (если не укажете — 3; инструкция до 8, правила до 12).\nЧего не напишете, останется пустой строкой — номер, дату, подпись и телефоны поставите от руки. Требования формулирую я: перед утверждением проверьте их со специалистом.",
+   "en": "📑 Staff instruction: a work procedure, a safety instruction or internal rules of conduct (for duties and rights choose “Job description”).\nWrite everything in one message. Required: which job, machine or subject.\nFor a better result: the organisation, who it is for (staff, pupils) and who approves it.\nOptional: who prepared and who agrees it, your own rules, how many pages (3 if you do not say; an instruction up to 8, rules up to 12).\nAnything you leave out becomes a blank line: you add the number, date, signatures and phones by hand. I draft the requirements, so have a specialist check them before you approve."
+  },
+  "examples": [
+   {
+    "uz": "«Namuna Savdo» MChJ ombor xodimlari uchun yuk ko‘tarish va tashishda mehnat muhofazasi yo‘riqnomasi kerak. Tuzuvchi ombor mudiri A. K. Sodiqov, tasdiqlaydi direktor B. S. Toshmatov, kelishadi mehnat muhofazasi bo‘yicha mutaxassis. Qo‘lda yuk ko‘tarish, aravachada tashish, stellajlar bilan ishlash, yong‘in bo‘lsa nima qilish. 3 sahifa.",
+    "ru": "Нужна инструкция по охране труда для работников склада ООО «Namuna Savdo» при подъёме и перемещении грузов. Составил заведующий складом А. К. Содиков, утверждает директор Б. С. Тошматов, согласует специалист по охране труда. 3 страницы.",
+    "en": "I need an occupational safety instruction for the warehouse staff of Namuna Savdo LLC on lifting and moving loads. Prepared by the warehouse manager A. K. Sodiqov, approved by the director B. S. Toshmatov, agreed by the occupational safety specialist. 3 pages."
+   },
+   {
+    "uz": "Bahor kafesining yangi ofitsiantlari uchun ish yo‘riqnomasi kerak: mijozni kutib olish, buyurtma olish, ovqat tashish, hisob-kitob, shikoyat bo‘lsa nima qilish. Ish vaqti 10:00 dan 22:00 gacha. Sodda tilda va chiroyli ko‘rinishda, 3 sahifa. Tasdiqlaydi kafe egasi Sh. R. Karimov.",
+    "ru": "Нужна инструкция для новых официантов кафе Bahor: встреча гостя, приём заказа, подача блюд, расчёт, что делать при жалобе. Время работы с 10:00 до 22:00. Простым языком, красиво, 3 страницы. Утверждает владелец кафе Ш. Р. Каримов.",
+    "en": "I need a work instruction for new waiters at the Bahor cafe: greeting a guest, taking an order, serving, paying, what to do about a complaint. Opening hours 10:00 to 22:00. Plain language, nice looking, 3 pages. Approved by the cafe owner Sh. R. Karimov."
+   },
+   {
+    "uz": "Namuna 12-sonli maktabning kimyo laboratoriyasida o‘quvchilar uchun xavfsizlik yo‘riqnomasi kerak: tajribadan oldin, tajriba vaqtida, shisha idish sinsa yoki kimyoviy modda to‘kilsa nima qilish. Tuzuvchi kimyo o‘qituvchisi, tasdiqlaydi maktab direktori.",
+    "ru": "Нужна инструкция по безопасности для учащихся в химической лаборатории школы Namuna № 12: перед опытом, во время опыта, что делать, если разбилась посуда или пролито вещество. Составляет учитель химии, утверждает директор школы.",
+    "en": "I need a safety instruction for pupils in the chemistry lab of Namuna School No. 12: before the experiment, during it, what to do if glass breaks or a chemical is spilled. Prepared by the chemistry teacher, approved by the school head."
+   }
+  ],
+  "attach": true,
+  "notices": {
+   "finished": {
+    "uz": "Tayyor. Talablar sizning tavsifingiz va umumiy qoidalar asosida tuzilgan: tasdiqlashdan oldin ularni mehnat muhofazasi bo‘yicha mutaxassis yoki rahbar bilan tekshiring.",
+    "ru": "Готово. Требования составлены по вашему описанию и общепринятым правилам: перед утверждением проверьте их со специалистом по охране труда или руководителем.",
+    "en": "Done. The requirements are drafted from your description and common practice: have a safety specialist or the head check them before you approve the paper."
+   },
+   "blanks": {
+    "uz": "Ba’zi raqam va ma’lumotlar xabaringizda yo‘q edi, shuning uchun bo‘sh chiziq qoldirildi: ularni qo‘lda to‘ldiring.",
+    "ru": "Некоторых цифр и сведений не было в вашем сообщении, поэтому оставлены пустые линии: заполните их от руки.",
+    "en": "Some figures and facts were not in your message, so blank lines were left: fill them in by hand."
+   },
+   "shorter": {
+    "uz": "Hujjat so‘ralganidan qisqaroq chiqdi: mavzuda ko‘proq aniq ma’lumot yo‘q edi, to‘ldirish uchun gap qo‘shilmadi.",
+    "ru": "Документ получился короче, чем вы просили: по теме больше нечего сказать, лишнего не добавляли.",
+    "en": "The paper came out shorter than you asked: the topic holds no more, so nothing was padded."
+   }
+  }
+ },
+ "templates": [
+  "business_yoriqnoma"
+ ],
+ "look": null,
+ "gates": [
+  "A native Uzbek and a native Russian reader check the fixed words (YO‘RIQNOMA, QOIDALAR, the chapter headings of both kinds, Tasdiqladi, the acknowledgement sentences) and the opening formulas before the entry is marked ready.",
+  "Render a work, a safety and a rules instruction in uz, ru and en (full, blank and long cases) with the paper sample tool and compare them with units/pdf.biz.yoriqnoma/mock/business_yoriqnoma.png; check that no clause tells anyone to fight a fire or names a number the brief lacks.",
+  "The facts corpus is at zero on this entry’s examples."
+ ],
+ "later": [
+  {
+   "text": "The strict official form (official_yoriqnoma) with the approval block at the top right, the order-annex block and the agreement block: this round every instruction uses the business form.",
+   "words": [
+    "rasmiy",
+    "официальн",
+    "formal"
+   ]
+  },
+  {
+   "text": "The acknowledgement sheet (a ruled page of names, positions, dates and signatures) printed after the instruction.",
+   "words": [
+    "tanishib chiqish varaqasi",
+    "varaqasi",
+    "лист ознакомления",
+    "acknowledgement sheet"
+   ]
+  },
+  {
+   "text": "The note when the paper comes out one page longer than quoted."
+  }
+ ]
+}
