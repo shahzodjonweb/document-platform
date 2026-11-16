@@ -11,7 +11,8 @@ only through this module:
   not hold (a catalogue rolled back), so a job fails before any provider call;
 - `on()`, `live(fid)` and `menu(fid, group)`: what customers may pick now. They
   read the switch row (`operations.categories_settings`) on every call, and are
-  off while that module does not exist;
+  off while that module does not exist. Off, or with nothing ticked, they
+  answer from that row alone, without loading the catalogue;
 - `check()`, the checks a person cannot be trusted to remember (alphabets,
   references, budgets, the ids lock), run by the catalogue test and by
   `python -m apps.studio.categories.catalogue --check [prefix] | --lock`.
@@ -517,11 +518,17 @@ def on():
 
 
 def live(feature_id):
-    """The entries customers may pick now: switched on, ticked by the owner, ready, in the lists' order."""
+    """The entries customers may pick now: switched on, ticked by the owner, ready, in the lists' order.
+
+    The switch row is read before the catalogue: off is the shipped default,
+    and every /document, /slides and menu tap asks. Loading and checking the
+    catalogue then would cost the bot time and memory for nothing, and one
+    that failed to load would break today's question.
+    """
     switch = _switch()
-    if not switch.get('on'):
+    ticked = set(switch.get('live') or ()) if switch.get('on') else set()
+    if not ticked:
         return []
-    ticked = set(switch.get('live') or ())
     return [entry for entry in for_feature(feature_id) if entry.id in ticked and entry.status == READY]
 
 
@@ -532,8 +539,11 @@ def menu(feature_id, group=None):
     and Boshqa always beside them. An empty answer means no list at all: the
     service opens today's prompt.
     """
-    index = _catalogue().index
     shown = {entry.id: entry for entry in live(feature_id)}
+    if not shown:
+        # Nothing to pick: today's prompt, answered without loading the catalogue (live).
+        return []
+    index = _catalogue().index
     if group is None:
         items, other = index['lists'].get(feature_id, ()), index['other']
     elif group in index['groups'] and group in index['lists'].get(feature_id, ()):

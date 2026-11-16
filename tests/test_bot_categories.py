@@ -35,7 +35,7 @@ from apps.studio.models import GenerationDraft
 from operations.integrations import save_config
 from operations.models import IntegrationConfig
 from telegram import generation
-from telegram.bot import ai_state
+from telegram.bot import ai_state, category_flow
 from telegram.channels import COPY as GATE
 from telegram.ux_copy import LOCALES, MESSAGES, TOOL_NAMES, UX
 from tests.test_bot_no_flood import Chat
@@ -243,6 +243,52 @@ def test_with_the_switch_off_every_way_in_is_todays_question(customer, ready):
     assert pending(customer) == ('ai_input', {'feature_id': DOCUMENT})
     assert generation.door(DOCUMENT, None) == ('prompt', None, False)
     assert generation.door(SLIDES, None) == ('list', None, False)
+
+
+@pytest.mark.parametrize('switched', [{'on': False, 'live': list(EVERY)}, {'on': True, 'live': []}, None])
+def test_with_nothing_live_no_way_in_loads_the_catalogue(customer, monkeypatch, switched):
+    """Off (the shipped default), or on with nothing ticked, today's question never waits on the catalogue.
+
+    Every /document, /slides and menu tap asks for the list; a catalogue that
+    failed to load (it is not cached then, so every tap would try again) must
+    not break any of them, nor a button from an older list, nor a description
+    written in a category before the switch went off.
+    """
+    if switched is not None:
+        turn(**switched)
+
+    def broken():
+        raise catalogue.CatalogueError(['the catalogue failed to load'])
+    monkeypatch.setattr(catalogue, '_catalogue', broken)
+    chat = Chat(customer)
+    for command, service in (('/document', DOCUMENT), ('/create', DOCUMENT), ('/slides', SLIDES)):
+        chat.do(text=command)
+        assert pending(customer) == ('ai_input', {'feature_id': service}), command
+        assert 'Describe what you want' in screen(customer)[0], command
+    for service in (DOCUMENT, SLIDES):
+        opened(customer, service)
+        text, actions, _, _ = screen(customer)
+        assert 'Describe what you want' in text and actions == [['ai_examples'], ['home']]
+        assert pending(customer) == ('ai_input', {'feature_id': service})
+    for named in (TEST, GROUP, HIMOYA, 'other'):
+        assert chat.do(callback_data=old_button(customer, {'feature_id': DOCUMENT, 'category': named}, 3)) == 0
+        assert pending(customer) == ('ai_input', {'feature_id': DOCUMENT}), named
+    # A chat left on a category's list or question when the switch went off: a file sent there is
+    # taken as today's (category_flow), the examples are the service's, and the document is made
+    # without the category.
+    for state, prompt in (('ai_category', {'feature_id': DOCUMENT}), ('ai_input', ai_state(DOCUMENT, TEST))):
+        BotConversation.objects.filter(pk=customer.telegram_user_id).update(state=state, prompt=prompt)
+        assert category_flow(BotConversation.objects.get(pk=customer.telegram_user_id)) is None, state
+    examples = old_button(customer, {'feature_id': DOCUMENT, 'category': TEST}, 3)
+    BotCallback.objects.filter(pk=examples).update(action='ai_examples')
+    chat.do(callback_data=examples)
+    assert screen(customer)[2][0] == [{'feature_id': DOCUMENT}], 'the service’s own examples, back to today’s question'
+    BotConversation.objects.filter(pk=customer.telegram_user_id).update(
+        state='ai_input', prompt=ai_state(DOCUMENT, TEST))
+    assert chat.do(text=QUIZ) == 1
+    assert 'Ready to start' in chat.last()
+    assert 'category' not in latest(customer)['options']
+    assert generation.category_review(GenerationDraft.objects.filter(account=customer).latest('created_at')) is None
 
 
 def test_an_old_service_button_opens_the_list_and_commands_draw_it_with_no_check(customer, switch):
