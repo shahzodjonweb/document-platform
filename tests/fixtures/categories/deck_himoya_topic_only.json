@@ -1,0 +1,64 @@
+{
+  "entry": "slides.himoya",
+  "case": "topic_only",
+  "about": "A defence deck whose customer gave only the type of work and the topic, and a model answer that slipped: a city and year and a name stand-in on the cover, a figure, a study, a quotation and a law on the slides. The finish must leave the honest forms and take the rest out. Everything is invented.",
+  "prompt": {
+    "uz": "Bitiruv malakaviy ishim himoyasi uchun slayd kerak: “Kichik korxonada xodimlar almashinuvini kamaytirish yo‘llari”",
+    "ru": "Нужны слайды для защиты ВКР: «Пути снижения текучести кадров в малой компании»",
+    "en": "I need slides for my bachelor’s thesis defence: “Ways to reduce staff turnover in a small company”"
+  },
+  "title": {
+    "uz": "Kichik korxonada xodimlar almashinuvini kamaytirish yo‘llari",
+    "ru": "Пути снижения текучести кадров в малой компании",
+    "en": "Ways to reduce staff turnover in a small company"
+  },
+  "slots": {
+    "cover": [
+      {
+        "uz": {"heading": "Kichik korxonada xodimlar almashinuvini kamaytirish yo‘llari", "body": "Bitiruv malakaviy ishi\nBajardi: F.I.Sh.\nIlmiy rahbar: ____\nToshkent — 2026"},
+        "ru": {"heading": "Пути снижения текучести кадров в малой компании", "body": "ВКР\nВыполнил: ФИО\nНаучный руководитель: ____\nТашкент — 2026"},
+        "en": {"heading": "Ways to reduce staff turnover in a small company", "body": "Bachelor’s thesis\nPrepared by: [Your Name]\nSupervisor: ____\nTashkent — 2026"}
+      }
+    ],
+    "dolzarblik": [
+      {
+        "uz": {"body": "Kichik korxonada xodimlar tez-tez almashadi\n“Xodim — korxonaning eng katta boyligi” degan fikr bor", "notes": "[Qoralama: mavzudan olingan] Hurmatli komissiya a’zolari! Mavzu kichik korxonadagi xodimlar almashinuviga bag‘ishlangan."},
+        "ru": {"body": "В малой компании сотрудники часто меняются\nЕсть мнение: «сотрудник — главное богатство компании»", "notes": "[Черновик: из темы] Уважаемые члены комиссии! Тема посвящена текучести кадров в малой компании."},
+        "en": {"body": "Staff change often in a small company\nAs the saying goes, “employees are a company’s greatest asset”", "notes": "[Draft: from the topic] Members of the committee, the topic is staff turnover in a small company."}
+      }
+    ],
+    "maqsad_vazifalar": [
+      {
+        "uz": {"body": "Maqsad: xodimlar almashinuvini kamaytirish yo‘llarini ko‘rsatish\n1. Almashinuv sabablarini o‘rganish\n2. Kamaytirish yo‘llarini taklif qilish", "notes": "[Qoralama: maqsad va vazifalar mavzudan olingan]"},
+        "ru": {"body": "Цель: показать пути снижения текучести кадров\n1. Изучить причины текучести\n2. Предложить пути её снижения", "notes": "[Черновик: цель и задачи из темы]"},
+        "en": {"body": "Aim: to show ways to reduce staff turnover\n1. Study the causes of turnover\n2. Propose ways to reduce it", "notes": "[Draft: the aim and tasks from the topic]"}
+      }
+    ],
+    "natija": [
+      {
+        "uz": {"heading": "Almashinuv 35 % ga kamaydi", "layout": "bullets", "body": "Gallup tadqiqotiga ko‘ra almashinuv 35 % ga kamaydi\nKo‘rsatkich: ____", "notes": "Birinchi vazifa bo‘yicha: ____"},
+        "ru": {"heading": "Текучесть снизилась на 35 %", "layout": "bullets", "body": "По данным исследования Gallup текучесть снизилась на 35 %\nПоказатель: ____", "notes": "По первой задаче: ____"},
+        "en": {"heading": "Turnover fell by 35 %", "layout": "bullets", "body": "According to a Gallup study, turnover fell by 35 %\nFigure: ____", "notes": "On the first task: ____"}
+      },
+      {
+        "uz": {"heading": "Natija", "layout": "bullets", "body": "Ko‘rsatkich: ____\nDavr: ____\nNatija: ____"},
+        "ru": {"heading": "Результат", "layout": "bullets", "body": "Показатель: ____\nПериод: ____\nРезультат: ____"},
+        "en": {"heading": "Result", "layout": "bullets", "body": "Figure: ____\nPeriod: ____\nResult: ____"}
+      }
+    ],
+    "xulosa": [
+      {
+        "uz": {"body": "Xulosa: ____\nTaklif: ____\nMehnat kodeksining 81-moddasiga muvofiq xodimlar huquqlari himoyalanadi.", "notes": "Savollaringizga javob berishga tayyorman."},
+        "ru": {"body": "Вывод: ____\nПредложение: ____\nСогласно статье 81 Трудового кодекса права работников защищены.", "notes": "Готов ответить на вопросы."},
+        "en": {"body": "Conclusion: ____\nProposal: ____\nUnder Article 81 of the Labour Code, employees’ rights are protected.", "notes": "I am ready for your questions."}
+      }
+    ],
+    "rahmat": [
+      {
+        "uz": {"body": "Savollaringiz bormi?\nBajardi: F.I.Sh."},
+        "ru": {"body": "Вопросы?\nВыполнил: ФИО"},
+        "en": {"body": "Questions?\nPrepared by: [Your Name]"}
+      }
+    ]
+  }
+}
