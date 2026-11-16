@@ -1,0 +1,680 @@
+{
+ "schema": 2,
+ "id": "pdf.test",
+ "status": "draft",
+ "service": "pdf",
+ "parent": null,
+ "order": 5,
+ "labels": {
+  "uz": "📝 Test savollari",
+  "ru": "📝 Тестовые вопросы",
+  "en": "📝 Test questions"
+ },
+ "summary": "A printable test in two files built from one layout: the pupil copy (head with a ruled name and score strip, numbered questions with four options A to D, and when asked written questions with answer boxes, parallel variants, DTM-style combinations, matching and a reading passage) and the teacher copy (the same sheets plus the key on its own last pages). BSB and CHSB papers are printed as the customer names them, with a marking-criteria table in the key.",
+ "tone": "Neutral school-exam register: impersonal stems that are complete questions or exam imperatives (aniqlang, toping, belgilang, yozing, tanlang); no address to the reader outside the template's fixed instruction line.",
+ "topic": true,
+ "title": "model",
+ "length": {
+  "unit": "pages",
+  "mode": "derived",
+  "target": "count",
+  "default": 3,
+  "min": 1,
+  "max": 12,
+  "per": {
+   "questions_per_page": 10,
+   "first_page_fewer": 3,
+   "extra_pages": 1
+  },
+  "note": "The customer names questions, not pages: 20 questions are 3 pages and one page of key. A page count in the message is read only when no question count is."
+ },
+ "questions": {
+  "default": 20,
+  "max": 40
+ },
+ "quality": "fixed",
+ "fill": false,
+ "cues": {},
+ "ask": null,
+ "fields": [
+  {
+   "id": "subject",
+   "label": {
+    "uz": "Fan",
+    "ru": "Предмет",
+    "en": "Subject"
+   },
+   "example": {
+    "uz": "Biologiya",
+    "ru": "Биология",
+    "en": "Biology"
+   },
+   "kind": "text",
+   "need": "required",
+   "missing": "ask",
+   "where": "Head: first line of the title (\"Subject, N-sinf\"); running head; key page subtitle."
+  },
+  {
+   "id": "class_level",
+   "label": {
+    "uz": "Sinf",
+    "ru": "Класс",
+    "en": "Class"
+   },
+   "example": {
+    "uz": "7-sinf",
+    "ru": "7 класс",
+    "en": "year 7"
+   },
+   "kind": "number",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "Head: after the subject in the title line; also sets the difficulty and the type step (classes 1-4 start at the loose step). Omitted from the head when unknown."
+  },
+  {
+   "id": "topic",
+   "label": {
+    "uz": "Mavzu yoki bo‘lim",
+    "ru": "Тема или раздел",
+    "en": "Topic or unit"
+   },
+   "example": {
+    "uz": "Hujayra tuzilishi",
+    "ru": "Строение клетки",
+    "en": "Cell structure"
+   },
+   "kind": "text",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "Head: italic topic line under the title; read from an attached file when there is one; running head."
+  },
+  {
+   "id": "kind",
+   "label": {
+    "uz": "Ish turi (test, nazorat ishi, BSB, CHSB)",
+    "ru": "Вид работы (тест, контрольная, БСБ, ЧСБ)",
+    "en": "Kind of paper (test, class test, BSB, CHSB)"
+   },
+   "example": {
+    "uz": "2-BSB",
+    "ru": "контрольная работа",
+    "en": "class test"
+   },
+   "kind": "line",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "Head: the tracked-capitals kind line. TEST, NAZORAT ISHI (КОНТРОЛЬНАЯ РАБОТА, CLASS TEST) and YOZMA SAVOLLAR are fixed words; BSB and CHSB have no fixed word in any language: the line is the customer's own text with its number exactly as typed (2-BSB, BSB-2, ЧСБ-1), never expanded. Missing means the plain word TEST."
+  },
+  {
+   "id": "question_count",
+   "label": {
+    "uz": "Savollar soni",
+    "ru": "Количество вопросов",
+    "en": "Number of questions"
+   },
+   "example": {
+    "uz": "20",
+    "ru": "20",
+    "en": "20"
+   },
+   "kind": "number",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "Numbering, the \"/ N\" total in the pupil strip, the key strips. The count is PER VARIANT. Missing means 20. At most 40 questions in the whole document: when count x variants is over 40 the pipeline writes floor(40 / variants) per variant and the delivery caption says so."
+  },
+  {
+   "id": "variants",
+   "label": {
+    "uz": "Variantlar soni",
+    "ru": "Количество вариантов",
+    "en": "Number of variants"
+   },
+   "example": {
+    "uz": "2",
+    "ru": "2",
+    "en": "2"
+   },
+   "kind": "number",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Variant badge in the head, one sheet per variant (page numbers and question numbers restart in each), one key per variant on the key pages. Missing means one variant, no badge. The question count is per variant."
+  },
+  {
+   "id": "question_types",
+   "label": {
+    "uz": "Savol turlari (yopiq, yozma, DTM, matn, juftlash)",
+    "ru": "Типы вопросов (закрытые, письменные, ДТМ, текст, соответствие)",
+    "en": "Question types (closed, written, DTM, text, matching)"
+   },
+   "example": {
+    "uz": "15 ta test va 3 ta yozma savol",
+    "ru": "15 тестовых и 3 письменных вопроса",
+    "en": "15 choice and 3 written questions"
+   },
+   "kind": "choice",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Part I / Part II headings, statement lists, passage block, written answer boxes. Missing means choice questions only.",
+   "choices": [
+    "choice",
+    "open",
+    "both"
+   ]
+  },
+  {
+   "id": "time_min",
+   "label": {
+    "uz": "Vaqt (daqiqa)",
+    "ru": "Время (минуты)",
+    "en": "Time (minutes)"
+   },
+   "example": {
+    "uz": "30",
+    "ru": "30",
+    "en": "30"
+   },
+   "kind": "number",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Instruction line: \"Vaqt: 30 daqiqa.\" Never guessed."
+  },
+  {
+   "id": "total_points",
+   "label": {
+    "uz": "Jami ball",
+    "ru": "Общий балл",
+    "en": "Total points"
+   },
+   "example": {
+    "uz": "25",
+    "ru": "25",
+    "en": "25"
+   },
+   "kind": "number",
+   "need": "optional",
+   "missing": "omit",
+   "where": "When given, the AI sets the marks so that they add up to exactly this number. Otherwise the renderer adds up the marks. Printed as \"Ball: / N\" in the pupil strip and in the key."
+  },
+  {
+   "id": "grade_scale",
+   "label": {
+    "uz": "Baholash jadvali",
+    "ru": "Шкала оценивания",
+    "en": "Grading scale"
+   },
+   "example": {
+    "uz": "86–100 % — “5”, 66–85 % — “4”",
+    "ru": "86–100 % — «5», 66–85 % — «4»",
+    "en": "86–100 % = “5”, 66–85 % = “4”"
+   },
+   "kind": "flag",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Key pages: grade scale table with point ranges computed from the total. Drawn only when the customer asks for it or gives the bands; never a default, not even for BSB and CHSB (the 0-29 / 30-65 / 66-85 / 86-100 bands convert the accumulated quarter score, see doc 9)."
+  },
+  {
+   "id": "school",
+   "label": {
+    "uz": "Maktab yoki muassasa nomi",
+    "ru": "Название школы или учреждения",
+    "en": "School or institution name"
+   },
+   "example": {
+    "uz": "99-sonli maktab",
+    "ru": "школа № 99",
+    "en": "School No. 99"
+   },
+   "kind": "org",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Head: the small tracked-capitals line over the kind line. Never invented; the line and its space vanish when missing."
+  },
+  {
+   "id": "term_and_number",
+   "label": {
+    "uz": "Chorak va ish raqami",
+    "ru": "Четверть и номер работы",
+    "en": "Term and paper number"
+   },
+   "example": {
+    "uz": "I chorak, 2-nazorat ishi",
+    "ru": "I четверть, контрольная № 2",
+    "en": "Term 1, class test 2"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Head: \"2-NAZORAT ISHI\" (bare hyphen) / \"КОНТРОЛЬНАЯ РАБОТА № 2\" / \"CLASS TEST 2\" in the kind line, and the italic term line under it in the customer's words. For BSB/CHSB the number stays where the customer put it (2-BSB or BSB-2)."
+  },
+  {
+   "id": "use",
+   "label": {
+    "uz": "Qayerda foydalaniladi (sinfda chop etish yoki o‘zim tayyorlanish)",
+    "ru": "Для чего (печать в классе или самоподготовка)",
+    "en": "Use (class print or self-study)"
+   },
+   "example": {
+    "uz": "o‘zim tayyorlanaman",
+    "ru": "для самоподготовки",
+    "en": "for my own revision"
+   },
+   "kind": "choice",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Self-study removes the pupil strip and the Ball/Baho cells and turns the key into letter plus one-line explanation. Missing means class print.",
+   "choices": [
+    "class",
+    "self_study"
+   ]
+  },
+  {
+   "id": "answer_extras",
+   "label": {
+    "uz": "Qo‘shimchalar (javoblar varaqasi, yechim uchun joy, izohli kalit)",
+    "ru": "Дополнения (бланк ответов, место для решения, ключ с пояснениями)",
+    "en": "Extras (answer sheet, working space, explained key)"
+   },
+   "example": {
+    "uz": "javoblar varaqasi bo‘lsin",
+    "ru": "нужен бланк ответов",
+    "en": "add an answer sheet"
+   },
+   "kind": "choice",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Answer sheet at the end of the pupil part; working boxes for written items (strictly opt-in: only when the customer asks for room for the solution, because many control works are written in a notebook); explanations in the key.",
+   "choices": [
+    "answer_sheet",
+    "explained"
+   ]
+  },
+  {
+   "id": "source_files",
+   "label": {
+    "uz": "Manba fayllar (PDF, Word, TXT)",
+    "ru": "Исходные файлы (PDF, Word, TXT)",
+    "en": "Source files (PDF, Word, TXT)"
+   },
+   "example": {
+    "uz": "ilova qilingan konspekt",
+    "ru": "прикреплённый конспект",
+    "en": "the attached notes"
+   },
+   "kind": "file",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Not drawn. Every question must be answerable from them; no citation line is printed in a test."
+  },
+  {
+   "id": "pupil_identity",
+   "label": {
+    "uz": "O‘quvchining F.I.Sh., sinfi va sanasi",
+    "ru": "Фамилия, имя, класс и дата ученика",
+    "en": "Pupil's name, class and date"
+   },
+   "example": {
+    "uz": "(o‘quvchi qo‘lda yozadi)",
+    "ru": "(ученик пишет от руки)",
+    "en": "(the pupil writes it by hand)"
+   },
+   "kind": "flag",
+   "need": "optional",
+   "missing": "blank",
+   "where": "Pupil strip: the name row (F.I.Sh. across the full width, about 150 mm of writing room) and the Sinf and Sana cells, always empty. The strip is a convention of teacher worksheets, not an evidenced part of any reputable paper in the set, so one phrase drops it (\"F.I.Sh. satrisiz\", \"без строки для фамилии\", \"no name line\"): the pupil cells vanish and the teacher's cells stay alone on one right-aligned row. Off for self-study."
+  },
+  {
+   "id": "teacher_score",
+   "label": {
+    "uz": "Ball va baho",
+    "ru": "Балл и оценка",
+    "en": "Score and mark"
+   },
+   "example": {
+    "uz": "(o‘qituvchi qo‘lda yozadi)",
+    "ru": "(учитель пишет от руки)",
+    "en": "(the teacher writes it by hand)"
+   },
+   "kind": "flag",
+   "need": "optional",
+   "missing": "blank",
+   "where": "Strip: Ball (\"/ N\") and Baho cells, two heavier empty cells; for BSB and CHSB only the Ball cell, because the mark comes from the converted quarter score (doc 9). A score tab under every written item. Always empty."
+  }
+ ],
+ "parts": [
+  {
+   "id": "head",
+   "kind": "fixed",
+   "heading": {
+    "uz": "TEST",
+    "ru": "ТЕСТ",
+    "en": "TEST"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "share": 0.04,
+   "elastic": false,
+   "write": "Only two short strings, both taken from the customer's words: the title line \"Subject, N-sinf\" (or the subject alone) and one topic line of at most 160 characters. The kind line, the school line, the term line and the variant badge are filled by the renderer from fields; for BSB/CHSB the kind line is the customer's own text. Never a school, year, date or teacher the customer did not give; never the heading of another subject.",
+   "block": "doc_head",
+   "fields": [
+    "school",
+    "kind",
+    "term_and_number",
+    "subject",
+    "class_level",
+    "topic"
+   ]
+  },
+  {
+   "id": "pupil_line",
+   "kind": "fixed",
+   "heading": {
+    "uz": "F.I.Sh. · Sinf · Sana · Ball · Baho",
+    "ru": "Фамилия, имя · Класс · Дата · Балл · Оценка",
+    "en": "Name · Class · Date · Score · Mark"
+   },
+   "heading_mode": "none",
+   "need": "usual",
+   "share": 0.03,
+   "elastic": false,
+   "write": "Nothing. Fixed ruled cells in two rows; the Ball cell shows \"/ N\" computed from the marks. Left out for self-study; the pupil cells can be dropped with one phrase; no Baho cell for BSB/CHSB.",
+   "block": "cell_strip",
+   "fields": [
+    "pupil_identity",
+    "teacher_score",
+    "total_points"
+   ]
+  },
+  {
+   "id": "instruction",
+   "kind": "fixed",
+   "heading": {
+    "uz": "Ko‘rsatma",
+    "ru": "Инструкция",
+    "en": "Instructions"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "share": 0.02,
+   "elastic": false,
+   "write": "Nothing: the renderer builds the sentences from the item mix (one correct answer, where to write, time, points per correct answer). The AI may pass one rule the customer stated (for example no calculator) in at most 12 words, copied in meaning, never added on its own.",
+   "block": "line",
+   "fields": [
+    "time_min"
+   ]
+  },
+  {
+   "id": "part_choice",
+   "kind": "questions",
+   "heading": {
+    "uz": "I qism. To‘g‘ri javobni tanlang",
+    "ru": "Часть I. Выберите правильный ответ",
+    "en": "Part I. Choose the correct answer"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "share": 0.5,
+   "elastic": true,
+   "write": "The closed questions: a complete stem, four options, the index of the one correct option, a one-line explanation (kept for self-study and for checking), marks 1. The heading is drawn only when a written Part II also exists. Number continues through the whole paper; with variants it restarts in each variant, and the count is per variant. Count scales the length: about 10 questions a page after page 1 (see writing rules for what each question must be).",
+   "block": "question_list"
+  },
+  {
+   "id": "passage",
+   "kind": "prose",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "optional",
+   "share": 0.06,
+   "elastic": true,
+   "write": "Only when asked, when the subject is reading-based, or when a source file is attached: a short title and 60 to 120 words, original or a paraphrase of the attached source, followed by 3 to 6 questions that need the text. The reference line \"9-11-savollarga matn asosida javob bering.\" is made by the renderer.",
+   "block": "callout",
+   "words": [
+    60,
+    120
+   ]
+  },
+  {
+   "id": "part_open",
+   "kind": "questions",
+   "heading": {
+    "uz": "II qism. Yozma javob bering",
+    "ru": "Часть II. Дайте письменный ответ",
+    "en": "Part II. Write your answer"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "share": 0.2,
+   "elastic": true,
+   "write": "Only when asked (yozma, ochiq, BSB, CHSB, nazorat ishi): a stem, marks, how much room the answer needs (rows, or a working box for calculations), a model answer of one to four sentences or the solution steps, and a rubric of how the marks are earned (the parts add up to the item's marks). The rubric is a proposal for the teacher, never presented as an official scheme. For BSB and CHSB each criterion line states the points it earns, so the key can print them in the criteria column.",
+   "block": "question_list"
+  },
+  {
+   "id": "answer_sheet",
+   "kind": "fixed",
+   "heading": {
+    "uz": "Javoblar varaqasi",
+    "ru": "Бланк ответов",
+    "en": "Answer sheet"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "share": 0.02,
+   "elastic": false,
+   "write": "Nothing. Empty numbered cells for the choice questions, at the end of the pupil part. Only when asked.",
+   "block": "answer_key",
+   "fields": [
+    "answer_extras"
+   ]
+  },
+  {
+   "id": "answer_key",
+   "kind": "fixed",
+   "heading": {
+    "uz": "KALITLAR",
+    "ru": "КЛЮЧИ",
+    "en": "ANSWER KEY"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "share": 0.06,
+   "elastic": true,
+   "write": "Nothing new: letters are drawn from the answer indices. In the teacher copy it is always on its own last pages (numbered K1, K2; unnumbered when one page), one group per variant; the pupil copy has no key pages at all. For self-study (one file) the heading becomes JAVOBLAR / ОТВЕТЫ / ANSWERS and each row carries the explanation (at most 20 words).",
+   "block": "answer_key"
+  },
+  {
+   "id": "model_answers",
+   "kind": "fixed",
+   "heading": {
+    "uz": "Yozma savollar: namunaviy javoblar va baholash",
+    "ru": "Письменные вопросы: образец ответов и оценивание",
+    "en": "Written questions: model answers and marking"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "share": 0.06,
+   "elastic": true,
+   "write": "The model answer and the marking rubric of each written item, exactly as produced with the item. Present only when Part II exists. For BSB and CHSB the rubric is printed in its own column \"Baholash mezoni\" with the points each criterion earns.",
+   "block": "table"
+  },
+  {
+   "id": "grade_scale",
+   "kind": "fixed",
+   "heading": {
+    "uz": "Baholash jadvali",
+    "ru": "Шкала оценивания",
+    "en": "Grading scale"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "share": 0.01,
+   "elastic": false,
+   "write": "Nothing: the renderer turns the customer's percent bands (or, when asked for a scale without bands, the 0-29 / 30-65 / 66-85 / 86-100 bands of the Ministry order, doc 9) into point ranges for the paper's total. Never printed unasked, and the delivery caption says the bands are those used to convert the accumulated quarter score.",
+   "block": "table",
+   "fields": [
+    "grade_scale",
+    "total_points"
+   ]
+  }
+ ],
+ "rules": [
+  {
+   "text": "One language per test: the language the customer wrote in (picked > brief > attached file > Russian-written > settings). Uzbek is Latin script only, o‘ and g‘ with U+2018 and the tutuq belgisi with U+2019; no Cyrillic in an Uzbek or English test. Every fixed label (head, instruction, parts, key) comes from the template, never typed by the AI. BSB and CHSB are never expanded or translated; a long form is written only when the customer wrote it.",
+   "to": "model"
+  },
+  {
+   "text": "The head is built from what the customer said: subject, class, topic, kind. Never copy a heading from another subject or class, never put a school, teacher, year, date, time limit or point total the customer did not give. When a fact is missing it is omitted (school, time, class) or left as a ruled blank by the template (pupil name, class, date, score, grade); the AI never types underscores for those.",
+   "to": "model"
+  },
+  {
+   "text": "Write exactly the number of questions asked PER VARIANT (default 20). The document holds at most 40 questions in all: when count x variants is over 40, write floor(40 / variants) in each variant (two variants: 20 + 20); the pipeline sets this number and the delivery caption tells the customer. Numbering is continuous 1..N through the paper and restarts in each variant. A page request (\"N bet\") without a count means about 10 x N - 3 questions for the pupil copy; the count wins when both are given; never pad with blank space or filler questions, and when the page request cannot be met with 40 questions the caption says what was made.",
+   "to": "rewrite"
+  },
+  {
+   "text": "Every closed question has exactly four options and exactly one correct one. After your own final ordering of the options, copy the text of the correct option exactly into answer.",
+   "to": "model"
+  },
+  {
+   "text": "Options of a question have the same grammatical form and a similar length (within about 30 %); the correct option is not systematically the longest or the most detailed. Across the paper the correct letters are spread (each of A to D about a quarter, never three in a row). Wrong options are plausible, wrong for one clear reason, and never partly correct.",
+   "to": "model"
+  },
+  {
+   "text": "Never use \"all of the above\", \"none of the above\" or \"A and B\" as options. Options that are numbers, years or combinations are written in ascending or natural order and flagged order-locked so the renderer never reshuffles them.",
+   "to": "model"
+  },
+  {
+   "text": "The stem is complete and answerable on its own, one idea, no hint that gives the answer away, no answer or letter inside the stem. A negative stem (\"qaysi biri noto‘g‘ri\") is used for at most one question in ten, with the negative word in capitals.",
+   "to": "model"
+  },
+  {
+   "text": "Difficulty rises through the paper: about a third recall, a third application, a third reasoning (Bilish, Qo‘llash, Mulohaza qilish). These labels are never printed unless the customer asks.",
+   "to": "model"
+  },
+  {
+   "text": "Facts must be textbook-level and certain. With attached files every correct answer must be found in them. Without a file, history, geography and literature tests may contain dates, names and numbers only when you are certain of them; when a date, name or number is not certain write a conceptual question instead. Never invent a person, organisation, quotation, law, statistic or source. No reference list and no citation lines in a test. A separate, independent verify call solves every item blind and compares with answer_index (rule 16).",
+   "to": "model"
+  },
+  {
+   "text": "Calculations: the pipeline recomputes every numeric answer in code (a separate calculation step), numeric options are distinct values from plausible mistakes. Characters: x² (x+1)² aⁿ 10⁻⁶ H₂SO₄ Ca₁₀ ½ ¼ ¾ ⅓ ⅔ ⅕ ° ‰ ′ × ÷ − ± π and every Greek letter draw directly (Noto Serif has superscripts 0-9, subscripts 0-9, plus, minus, equals, parentheses and n). √ ≤ ≥ ≠ ≈ ∞ → may be used: the renderer draws them from Liberation Sans per glyph. ∠ △ ⊥ ∥ ∈ ∪ ⊂ ⇒ can be drawn from no shipped font: write \"ABC burchak\", \"ABC uchburchak\", \"perpendikulyar\", \"parallel\" and so on. Stacked fractions and roots over expressions are unsupported: write 3/4, a/b, 5√2, √(x+1).",
+   "to": "rewrite"
+  },
+  {
+   "text": "No question may depend on a picture, graph or table that is not on the page. Do not write \"rasmda ko‘rsatilganidek\". When the topic usually needs a figure (geometry, physics, geography) give the data in words and ask a text-only task, for example \"tomonlari 9 sm, 12 sm va 15 sm bo‘lgan uchburchakning to‘g‘ri burchakli ekanini isbotlang\" instead of \"rasmdagi uchburchak\"; the bot tells the customer that figures were replaced (see mock/study_test-bsb.pdf).",
+   "to": "model"
+  },
+  {
+   "text": "DTM style (only when the customer says DTM, UZBMB or asks for numbered statements): the stem introduces 5 to 8 numbered statements \"1) ...\", the four options are distinct number combinations, exactly one combination is fully correct. Matching (only when asked): numbered items \"1) ...\" and lettered items \"a) ...\" in two lists, options like \"1-c, 2-d, 3-a, 4-b\", four distinct.",
+   "to": "model"
+  },
+  {
+   "text": "Written questions (only when asked): marks as the customer states, otherwise 2 for a short answer and 3 or 4 for an extended one; when a total is given the marks add up to exactly it. Give rows for the answer (about 2 per mark, 2 to 10) or, when the customer wants room for the solution, a working box (at least 13 mm per mark; below that the box is dropped), a model answer, and a rubric whose parts add up to the marks, one line per criterion with its points. The rubric is a proposal; never call it official.",
+   "to": "model"
+  },
+  {
+   "text": "Variants (I and II): identical structure, same question types in the same order, same marks, same topics, same count, different numbers, names, options and wording. Never the same question in both variants. Each variant has its own key.",
+   "to": "rewrite"
+  },
+  {
+   "text": "A passage is only written when asked, when the subject is reading-based, or when a source is attached: 60 to 120 words with a short title, original text or a paraphrase of the attached source, no quotation of copyrighted works, then 3 to 6 questions that cannot be answered without it. Give each of those questions the topic \"passage\" and put them after every other closed question.",
+   "to": "model"
+  },
+  {
+   "text": "Explanations (kept in the content, printed only in the self-study key): one sentence of at most 20 words saying why the answer is right. Verification is a SEPARATE call that does not see the author's answer: it solves each item blind and compares its choice with answer_index; on a disagreement the item is rewritten once, then dropped and replaced. The author re-reading its own work does not count.",
+   "to": "rewrite"
+  },
+  {
+   "text": "Language level follows the class when it is given (short sentences for classes 1 to 4); without a class use a general secondary-school level. The document never states the level.",
+   "to": "model"
+  },
+  {
+   "text": "A gap to fill inside a sentence is written as six underscores. Nothing else is typed as a blank.",
+   "to": "model"
+  },
+  {
+   "text": "Never print or mention that the text was written by an AI, and never add advice or comments outside the fields. Anything the customer asked for that the page cannot draw (pictures, graphs, long tables) is replaced by a text-only question, and the bot tells the customer. Anything undrawable is caught first by the deterministic glyph check (block glyph_safety): the item is returned for rewriting, never printed with a dropped symbol.",
+   "to": "model"
+  },
+  {
+   "text": "BSB and CHSB (only when the customer names them): a closed part and a written part are the usual shape; the written items carry criteria lines with points. Do not state that the paper is official or from the ministry; teachers may make their own papers within the ministry's criteria (doc 9), and no official sample was available to check the layout.",
+   "to": "model"
+  },
+  {
+   "text": "Quotation marks in Uzbek and English text are “ ” (as in the bot's own examples); Russian text uses « ».",
+   "to": "model"
+  }
+ ],
+ "bot": {
+  "prompt": {
+   "uz": "✍️ Bitta xabarda yozing: fan, sinf, mavzu va savollar soni (40 tagacha, aytilmasa 20).\n➕ Ixtiyoriy: turi (test, nazorat ishi, BSB, CHSB), vaqt, maktab nomi, yozma savollar.\n📎 Darslik yoki konspektni (PDF, Word, TXT) biriktirsangiz, savollar shundan tuziladi.\n✅ Kalitlar faylning oxirgi sahifasida.",
+   "ru": "✍️ Опишите одним сообщением: предмет, класс, тему и число вопросов (до 40, без числа — 20).\n➕ По желанию: вид (тест, контрольная, БСБ, ЧСБ), время, название школы, письменные вопросы.\n📎 Прикрепите учебник или конспект (PDF, Word, TXT) — вопросы составлю по нему.\n✅ Ключи — на последней странице файла.",
+   "en": "✍️ Say it all in one message: subject, class, topic and number of questions (up to 40, 20 if you don’t say).\n➕ Optional: kind (test, class test, BSB, CHSB), time limit, school name, written questions.\n📎 Attach a textbook or your notes (PDF, Word, TXT) and I’ll write the questions from them.\n✅ The key is on the last page of the file."
+  },
+  "examples": [
+   {
+    "uz": "7-sinf biologiya, “Hujayra tuzilishi” mavzusi bo‘yicha test kerak: 15 ta savol, 4 tadan javob. Vaqt — 30 daqiqa.",
+    "ru": "Нужен тест по биологии для 7 класса, тема «Строение клетки»: 15 вопросов, у каждого 4 ответа на выбор. Время — 30 минут.",
+    "en": "A biology test for year 7 on cell structure: 15 questions, four options each. Time limit: 30 minutes."
+   },
+   {
+    "uz": "6-sinf matematika, “Kasrlar” bobi bo‘yicha 2-BSB kerak: 10 ta test savoli va 3 ta yozma savol. Yozma savollar uchun namunaviy javob va baholash mezonini yozing.",
+    "ru": "Нужна 2-БСБ по математике для 6 класса, раздел «Дроби»: 10 тестовых и 3 письменных вопроса. К письменным — образец ответа и критерии оценивания.",
+    "en": "A 2-BSB in mathematics for year 6, chapter “Fractions”: 10 choice questions and 3 written ones, with a model answer and marking criteria for each written question."
+   },
+   {
+    "uz": "O‘zim tayyorlanish uchun DTM uslubida tarix testi kerak: “Amir Temur davri” mavzusida 30 ta savol, ilova qilgan konspektim asosida. Javoblarga qisqa izoh yozing.",
+    "ru": "Хочу подготовиться к ДТМ: тест по истории в стиле ДТМ, тема «Эпоха Амира Темура», 30 вопросов по моему прикреплённому конспекту. К ответам — короткие пояснения.",
+    "en": "I’m preparing for the DTM: 30 history questions in the DTM style on the age of Amir Temur, based on the notes I attached. Add a short explanation to each answer."
+   }
+  ],
+  "attach": true,
+  "notices": {}
+ },
+ "templates": [
+  "study_test"
+ ],
+ "look": null,
+ "gates": [
+  "A native speaker reads the instruction sentences (one_answer, time, point_each, self_study) and the part headings in uz, ru and en against section 4.3 of units/pdf.test/template.md.",
+  "A sample of 20 and of 40 questions in each language is rendered and every key letter is checked against its question by a person.",
+  "Reword or drop rules 3, 10, 14 and 16 (rewrite: variants, a recompute step and a blind verification call are not built)."
+ ],
+ "later": [
+  {
+   "text": "Variants (I and II) with a badge and a key per variant: this round writes one variant; a message that asks for variants gets one and the review says so.",
+   "words": [
+    "ikki variant",
+    "2 variant",
+    "variantlar",
+    "два варианта",
+    "2 вариант",
+    "вариантах",
+    "variants"
+   ]
+  },
+  {
+   "text": "Two files (pupil copy and teacher copy): this round delivers one file with the key on its own last page.",
+   "words": [
+    "ikki fayl",
+    "два файла",
+    "two files"
+   ]
+  },
+  {
+   "text": "Working boxes for written answers (\"room for working\").",
+   "words": [
+    "yechim uchun joy",
+    "место для решения",
+    "room for working"
+   ]
+  },
+  {
+   "text": "Recomputing numeric answers in code; the grade-scale table; BSB and CHSB criteria columns; the self-study explained key; a blind verification call."
+  },
+  {
+   "text": "The delivery file names of bot.delivery (the product names a result in apps/core/naming.py)."
+  }
+ ],
+ "topic_prompt": {
+  "uz": "Qaysi fan va qaysi mavzu bo‘yicha test kerak?",
+  "ru": "По какому предмету и теме нужен тест?",
+  "en": "Which subject and topic is the test on?"
+ }
+}

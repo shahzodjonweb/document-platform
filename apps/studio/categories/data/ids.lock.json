@@ -1,0 +1,116 @@
+{
+ "entries": {
+  "pdf.test": {
+   "fields": {
+    "answer_extras": "choice",
+    "class_level": "number",
+    "grade_scale": "flag",
+    "kind": "line",
+    "pupil_identity": "flag",
+    "question_count": "number",
+    "question_types": "choice",
+    "school": "org",
+    "source_files": "file",
+    "subject": "text",
+    "teacher_score": "flag",
+    "term_and_number": "line",
+    "time_min": "number",
+    "topic": "text",
+    "total_points": "number",
+    "use": "choice",
+    "variants": "number"
+   },
+   "parts": {
+    "answer_key": "fixed",
+    "answer_sheet": "fixed",
+    "grade_scale": "fixed",
+    "head": "fixed",
+    "instruction": "fixed",
+    "model_answers": "fixed",
+    "part_choice": "questions",
+    "part_open": "questions",
+    "passage": "prose",
+    "pupil_line": "fixed"
+   },
+   "service": "pdf",
+   "templates": [
+    "study_test"
+   ]
+  },
+  "pdf.xat.ariza": {
+   "fields": {
+    "addressee_org": "org",
+    "addressee_person": "person",
+    "addressee_position": "line",
+    "applicant_address": "place",
+    "applicant_name": "person",
+    "applicant_role": "line",
+    "date_written": "date",
+    "email": "email",
+    "enclosures": "list",
+    "on_behalf_of": "person",
+    "period": "date",
+    "phone": "phone",
+    "reason": "text",
+    "reference_numbers": "ref",
+    "request": "text",
+    "signer_name": "person",
+    "statements": "list"
+   },
+   "parts": {
+    "addressee": "fixed",
+    "applicant": "fixed",
+    "enclosures": "list",
+    "reason_blank": "fixed",
+    "request": "prose",
+    "signature": "fixed",
+    "statements": "list",
+    "title": "fixed"
+   },
+   "service": "pdf",
+   "templates": [
+    "official_ariza"
+   ]
+  },
+  "slides.himoya": {
+   "fields": {
+    "approbation": "list",
+    "author_line": "line",
+    "institution": "org",
+    "intro_parts": "text",
+    "length": "number",
+    "place_year": "line",
+    "practice": "text",
+    "results": "text",
+    "speciality": "line",
+    "supervisor_line": "line",
+    "tasks_status": "choice",
+    "topic": "text",
+    "work_file": "file",
+    "work_type": "choice"
+   },
+   "parts": {
+    "aprobatsiya": "slide",
+    "bajarilgan_ishlar": "slide",
+    "baza": "slide",
+    "cover": "slide",
+    "dolzarblik": "slide",
+    "himoyaga_qoidalar": "slide",
+    "ilmiy_amaliy": "slide",
+    "maqsad_vazifalar": "slide",
+    "metodlar": "slide",
+    "natija": "slide",
+    "natija_amaliyot": "slide",
+    "natija_xulosa": "slide",
+    "obyekt_predmet": "slide",
+    "obyekt_predmet_metodlar": "slide",
+    "rahmat": "slide",
+    "xulosa": "slide",
+    "yangilik": "slide"
+   },
+   "service": "slides",
+   "templates": []
+  }
+ },
+ "note": "Every category id that may never disappear, with its kind. Written by python -m apps.studio.categories.catalogue --lock; never edited by hand."
+}

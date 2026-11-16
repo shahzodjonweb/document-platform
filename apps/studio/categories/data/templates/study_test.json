@@ -1,0 +1,360 @@
+{
+ "schema": 2,
+ "entries": [
+  "pdf.test"
+ ],
+ "id": "study_test",
+ "name": {
+  "uz": "Test varag‘i",
+  "ru": "Тестовый лист",
+  "en": "Test paper"
+ },
+ "family": "study",
+ "page": {
+  "margins_mm": {
+   "left": 25,
+   "right": 18,
+   "top": 20,
+   "bottom": 23
+  }
+ },
+ "type": {
+  "face": "serif",
+  "ladder": [
+   [
+    11,
+    14.5
+   ],
+   [
+    10.5,
+    13.8
+   ],
+   [
+    10,
+    13.2
+   ]
+  ],
+  "align": "left"
+ },
+ "page_rule": {
+  "kind": "flow"
+ },
+ "furniture": {
+  "first": "none",
+  "later": "header_number",
+  "format": "n",
+  "header": [
+   "subject",
+   "class_level",
+   "topic"
+  ]
+ },
+ "flow": [
+  {
+   "block": "doc_head",
+   "part": "head",
+   "fields": [
+    "school",
+    "kind",
+    "term_and_number",
+    "subject",
+    "class_level",
+    "topic"
+   ],
+   "params": {
+    "overline": "school",
+    "kind_line": "kind",
+    "kind_default": "kind_test",
+    "title": [
+     "subject",
+     "class_level"
+    ],
+    "subtitle": [
+     "topic"
+    ],
+    "rules": "both",
+    "align": "centre"
+   }
+  },
+  {
+   "block": "cell_strip",
+   "part": "pupil_line",
+   "when": "nofact:use=self_study",
+   "params": {
+    "rows": [
+     [
+      {
+       "label": "name",
+       "share": 1
+      }
+     ],
+     [
+      {
+       "label": "class",
+       "share": 0.3
+      },
+      {
+       "label": "date",
+       "share": 0.4
+      },
+      {
+       "label": "score",
+       "share": 0.17,
+       "heavy": true,
+       "total": true
+      },
+      {
+       "label": "mark",
+       "share": 0.13,
+       "heavy": true
+      }
+     ]
+    ],
+    "height_mm": 10
+   }
+  },
+  {
+   "block": "line",
+   "part": "instruction",
+   "fields": [
+    "time_min"
+   ],
+   "when": "nofact:use=self_study",
+   "params": {
+    "style": "small",
+    "label": "instruction",
+    "sentences": [
+     "one_answer",
+     "time",
+     "point_each"
+    ],
+    "drop_empty_slots": true
+   }
+  },
+  {
+   "block": "line",
+   "part": "instruction",
+   "when": "fact:use=self_study",
+   "params": {
+    "style": "small",
+    "label": "instruction",
+    "sentences": [
+     "self_study"
+    ]
+   }
+  },
+  {
+   "block": "heading",
+   "part": "part_choice",
+   "when": "questions:both",
+   "params": {
+    "level": 2,
+    "numbering": "none",
+    "rule": "under",
+    "label": "part_choice"
+   }
+  },
+  {
+   "block": "question_list",
+   "part": "part_choice",
+   "when": "questions:choice",
+   "params": {
+    "filter": "choice",
+    "letters": true,
+    "option_columns": "auto",
+    "marks": false
+   }
+  },
+  {
+   "block": "callout",
+   "part": "passage",
+   "when": "part:passage",
+   "keep": "passage",
+   "params": {
+    "style": "bar",
+    "label": "passage"
+   }
+  },
+  {
+   "block": "question_list",
+   "part": "part_choice",
+   "when": "questions:passage",
+   "keep": "passage",
+   "params": {
+    "filter": "passage",
+    "letters": true,
+    "option_columns": "auto",
+    "marks": false
+   }
+  },
+  {
+   "block": "heading",
+   "part": "part_open",
+   "when": "questions:both",
+   "params": {
+    "level": 2,
+    "numbering": "none",
+    "rule": "under",
+    "label": "part_open"
+   }
+  },
+  {
+   "block": "question_list",
+   "part": "part_open",
+   "when": "questions:open",
+   "params": {
+    "filter": "open",
+    "answer_rows": 4,
+    "marks": true
+   }
+  },
+  {
+   "block": "answer_key",
+   "part": "answer_sheet",
+   "when": "fact:answer_extras=answer_sheet",
+   "params": {
+    "style": "sheet",
+    "per_row": 10,
+    "label": "sheet"
+   }
+  },
+  {
+   "block": "answer_key",
+   "part": "answer_key",
+   "page_break_before": true,
+   "params": {
+    "style": "grid",
+    "per_row": 10,
+    "label": "key"
+   }
+  },
+  {
+   "block": "table",
+   "part": "model_answers",
+   "when": "questions:open",
+   "params": {
+    "columns": [
+     {
+      "label": "no",
+      "width_mm": 11,
+      "align": "centre"
+     },
+     {
+      "label": "model_answer",
+      "width_mm": "flex"
+     },
+     {
+      "label": "score",
+      "width_mm": 17,
+      "align": "centre"
+     }
+    ],
+    "rules": "horizontal",
+    "from": "questions:open"
+   }
+  }
+ ],
+ "labels": {
+  "kind_test": {
+   "uz": "TEST",
+   "ru": "ТЕСТ",
+   "en": "TEST"
+  },
+  "kind_class_test": {
+   "uz": "NAZORAT ISHI",
+   "ru": "КОНТРОЛЬНАЯ РАБОТА",
+   "en": "CLASS TEST"
+  },
+  "kind_written": {
+   "uz": "YOZMA SAVOLLAR",
+   "ru": "ПИСЬМЕННЫЕ ВОПРОСЫ",
+   "en": "WRITTEN QUESTIONS"
+  },
+  "name": {
+   "uz": "F.I.Sh.:",
+   "ru": "Фамилия, имя:",
+   "en": "Name:"
+  },
+  "class": {
+   "uz": "Sinf:",
+   "ru": "Класс:",
+   "en": "Class:"
+  },
+  "date": {
+   "uz": "Sana:",
+   "ru": "Дата:",
+   "en": "Date:"
+  },
+  "score": {
+   "uz": "Ball:",
+   "ru": "Балл:",
+   "en": "Score:"
+  },
+  "mark": {
+   "uz": "Baho:",
+   "ru": "Оценка:",
+   "en": "Mark:"
+  },
+  "instruction": {
+   "uz": "Ko‘rsatma:",
+   "ru": "Инструкция:",
+   "en": "Instructions:"
+  },
+  "one_answer": {
+   "uz": "Har bir savolda bitta to‘g‘ri javob bor. To‘g‘ri javob harfini doira ichiga oling.",
+   "ru": "В каждом вопросе один правильный ответ. Обведите букву правильного ответа.",
+   "en": "Each question has one correct answer. Circle the letter of the correct answer."
+  },
+  "time": {
+   "uz": "Vaqt: {time_min} daqiqa.",
+   "ru": "Время: {time_min} мин.",
+   "en": "Time: {time_min} minutes."
+  },
+  "point_each": {
+   "uz": "I qismda har bir to‘g‘ri javob – 1 ball.",
+   "ru": "В части I каждый правильный ответ – 1 балл.",
+   "en": "In Part I each correct answer scores 1 point."
+  },
+  "self_study": {
+   "uz": "O‘zingizni sinab ko‘ring: avval javob bering, so‘ng oxirgi sahifadagi javoblar bilan solishtiring.",
+   "ru": "Проверьте себя: сначала ответьте, затем сверьтесь с ответами на последней странице.",
+   "en": "Try it yourself: answer first, then compare with the answers on the last page."
+  },
+  "part_choice": {
+   "uz": "I qism. To‘g‘ri javobni tanlang",
+   "ru": "Часть I. Выберите правильный ответ",
+   "en": "Part I. Choose the correct answer"
+  },
+  "part_open": {
+   "uz": "II qism. Yozma javob bering",
+   "ru": "Часть II. Дайте письменный ответ",
+   "en": "Part II. Write your answer"
+  },
+  "passage": {
+   "uz": "Matn asosida savollar",
+   "ru": "Вопросы по тексту",
+   "en": "Questions on a text"
+  },
+  "sheet": {
+   "uz": "Javoblar varaqasi",
+   "ru": "Бланк ответов",
+   "en": "Answer sheet"
+  },
+  "key": {
+   "uz": "KALITLAR",
+   "ru": "КЛЮЧИ",
+   "en": "ANSWER KEY"
+  },
+  "no": {
+   "uz": "№",
+   "ru": "№",
+   "en": "No."
+  },
+  "model_answer": {
+   "uz": "Namunaviy javob",
+   "ru": "Образец ответа",
+   "en": "Model answer"
+  }
+ },
+ "mock": "units/pdf.test/mock/study_test.png"
+}
