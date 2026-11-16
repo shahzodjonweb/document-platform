@@ -417,7 +417,13 @@ def test_bounds_are_the_papers_for_a_category_pdf_and_todays_otherwise():
 
 
 def test_for_feature_lists_each_service_in_the_lists_order():
-    assert [entry.id for entry in catalogue.for_feature('ai.pdf_topic')] == ['pdf.test', 'pdf.xat.ariza']
+    # The papers land package by package, so the list is checked against the index's order of those present.
+    papers = [entry.id for entry in catalogue.for_feature('ai.pdf_topic')]
+    assert papers == [item for item in catalogue._walk(catalogue._catalogue().index, 'ai.pdf_topic') if item in papers]
+    assert 'pdf.test' in papers
+    assert [item for item in papers if item.startswith('pdf.xat.')] == [
+        'pdf.xat.motivatsion', 'pdf.xat.ishga_kirish', 'pdf.xat.ariza', 'pdf.xat.tavsifnoma', 'pdf.xat.tavsiya',
+        'pdf.xat.tushuntirish']
     assert [entry.id for entry in catalogue.for_feature('ai.pptx')] == [
         'slides.mavzu', 'slides.himoya', 'slides.dars', 'slides.tadbir.tarbiyaviy_soat', 'slides.tadbir.bayram',
         'slides.tadbir.ota_onalar', 'slides.tadbir.pedkengash', 'slides.pitch', 'slides.hisobot', 'slides.kompaniya']

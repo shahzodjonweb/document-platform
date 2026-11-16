@@ -1,0 +1,273 @@
+{
+ "schema": 2,
+ "id": "official_tushuntirish",
+ "entries": [
+  "pdf.xat.tushuntirish"
+ ],
+ "name": {
+  "uz": "Rasmiy shakl",
+  "ru": "Официальная форма",
+  "en": "Official form"
+ },
+ "family": "official",
+ "page": {
+  "margins_mm": {
+   "left": 30,
+   "right": 15,
+   "top": 20,
+   "bottom": 20
+  }
+ },
+ "type": {
+  "face": "serif",
+  "ladder": [
+   [
+    12,
+    24
+   ],
+   [
+    12,
+    22
+   ],
+   [
+    12,
+    20
+   ],
+   [
+    12,
+    18
+   ],
+   [
+    11,
+    16.5
+   ]
+  ],
+  "align": "left",
+  "indent_first_mm": 12.5
+ },
+ "page_rule": {
+  "kind": "fixed",
+  "pages": 1
+ },
+ "furniture": {
+  "first": "none",
+  "later": "number_top",
+  "format": "n"
+ },
+ "flow": [
+  {
+   "block": "party_block",
+   "part": "addressee",
+   "fields": [
+    "addressee_position",
+    "addressee_name"
+   ],
+   "params": {
+    "anchor": "right_half",
+    "max_lines": 5,
+    "label": "to",
+    "captions": {
+     "addressee_position": "cap_head"
+    },
+    "blank_suffix": {
+     "uz": "ga"
+    }
+   }
+  },
+  {
+   "block": "party_block",
+   "part": "writer",
+   "fields": [
+    "writer_role",
+    "writer_name",
+    "writer_phone"
+   ],
+   "params": {
+    "anchor": "right_half",
+    "max_lines": 5,
+    "gap_pt": 12,
+    "label": "from",
+    "captions": {
+     "writer_name": "cap_name"
+    },
+    "labels": {
+     "writer_phone": "tel"
+    },
+    "blank_suffix": {
+     "uz": "dan"
+    }
+   }
+  },
+  {
+   "block": "doc_title",
+   "part": "title",
+   "params": {
+    "label": "title",
+    "tracking_pt": 0
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "event",
+   "when": "part:event",
+   "params": {
+    "indent_first_mm": 12.5,
+    "gap_pt": 0
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "reason",
+   "when": "part:reason",
+   "params": {
+    "indent_first_mm": 12.5,
+    "gap_pt": 0
+   }
+  },
+  {
+   "block": "ruled_blank",
+   "part": "reason_blank",
+   "when": "blank:reason",
+   "keep": "reason",
+   "params": {
+    "label": "reason",
+    "lines": 3,
+    "pitch_pt": 24
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "follow_up",
+   "when": "part:follow_up",
+   "params": {
+    "indent_first_mm": 12.5,
+    "gap_pt": 0
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "promise",
+   "when": "part:promise",
+   "params": {
+    "indent_first_mm": 12.5,
+    "gap_pt": 0
+   }
+  },
+  {
+   "block": "ruled_blank",
+   "part": "blank_body",
+   "when": "blank:what_happened",
+   "params": {
+    "lines": 8,
+    "width_mm": "full",
+    "pitch_pt": 24
+   }
+  },
+  {
+   "block": "list",
+   "part": "attachments",
+   "when": "part:attachments",
+   "keep": "closing",
+   "params": {
+    "marker": "number",
+    "label": "attachment",
+    "labels": {
+     "several": "attachments"
+    },
+    "max_items": 6,
+    "single_unnumbered": true
+   }
+  },
+  {
+   "block": "signature_row",
+   "part": "signature",
+   "fields": [
+    "written_date",
+    "signer_name"
+   ],
+   "keep": "closing",
+   "params": {
+    "variant": "date_sign_name",
+    "sign_room_mm": 14,
+    "captions": {
+     "written_date": "date",
+     "signer_name": "name"
+    },
+    "label": "sign"
+   }
+  }
+ ],
+ "labels": {
+  "title": {
+   "uz": "TUSHUNTIRISH XATI",
+   "ru": "ОБЪЯСНИТЕЛЬНАЯ ЗАПИСКА",
+   "en": "EXPLANATORY NOTE"
+  },
+  "to": {
+   "uz": "",
+   "ru": "",
+   "en": "To:"
+  },
+  "from": {
+   "uz": "",
+   "ru": "",
+   "en": "From:"
+  },
+  "reason": {
+   "uz": "Sababi:",
+   "ru": "Причина:",
+   "en": "Reason:"
+  },
+  "attachment": {
+   "uz": "Ilova:",
+   "ru": "Приложение:",
+   "en": "Attachment:"
+  },
+  "attachments": {
+   "uz": "Ilova:",
+   "ru": "Приложение:",
+   "en": "Attachments:"
+  },
+  "date": {
+   "uz": "Sana",
+   "ru": "Дата",
+   "en": "Date"
+  },
+  "sign": {
+   "uz": "Imzo",
+   "ru": "Подпись",
+   "en": "Signature"
+  },
+  "name": {
+   "uz": "I.O. familiyasi",
+   "ru": "Расшифровка",
+   "en": "Printed name"
+  },
+  "tel": {
+   "uz": "Tel.:",
+   "ru": "Тел.:",
+   "en": "Tel.:"
+  },
+  "cap_org": {
+   "uz": "(tashkilot nomi)",
+   "ru": "(наименование организации)",
+   "en": "(name of the organisation)"
+  },
+  "cap_head": {
+   "uz": "(rahbarning lavozimi, F.I.Sh.)",
+   "ru": "(должность, Ф.И.О. руководителя)",
+   "en": "(position and name of the head)"
+  },
+  "cap_role": {
+   "uz": "(lavozimi, bo‘limi)",
+   "ru": "(должность, подразделение)",
+   "en": "(position, department)"
+  },
+  "cap_name": {
+   "uz": "(F.I.Sh.)",
+   "ru": "(Ф.И.О.)",
+   "en": "(full name)"
+  }
+ },
+ "mock": "units/pdf.xat.tushuntirish/mock/official_tushuntirish.png"
+}

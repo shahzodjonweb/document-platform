@@ -1,0 +1,748 @@
+{
+ "schema": 2,
+ "id": "pdf.xat.motivatsion",
+ "status": "draft",
+ "service": "pdf",
+ "parent": "pdf.xat",
+ "order": 1,
+ "labels": {
+  "uz": "🎓 Motivatsion xat",
+  "ru": "🎓 Мотивационное письмо",
+  "en": "🎓 Motivation letter"
+ },
+ "summary": "A letter (one page for an exchange semester or an internship programme, up to two for a scholarship or a master's application, three at most) that a selection committee reads as the real thing, written only from what the customer said and attached: sender, recipient and date, salutation, subject line, short paragraphs (who I am and what I apply for, why this programme, what I have done, my goals, thanks), the close, room to sign, the printed name and the enclosures, on the letter family's grid; a statement form without the letter apparatus on an explicit cue. What the customer did not say is left out.",
+ "tone": "sincere, specific and modest; first person; one concrete fact behind every claim; no flattery, platitudes or exclamations; polite in the salutation and close",
+ "topic": false,
+ "title": "label",
+ "length": {
+  "unit": "pages",
+  "mode": "count",
+  "target": "ceiling",
+  "default": 1,
+  "min": 1,
+  "max": 3,
+  "by_cue": [
+   {
+    "cue": "scholarship",
+    "default": 2
+   }
+  ],
+  "note": "A ceiling: 1 page, 2 for a scholarship, master's or doctoral application, the customer's number up to 3; nothing pads to reach it."
+ },
+ "questions": {
+  "default": 0,
+  "max": 0
+ },
+ "quality": "fixed",
+ "fill": false,
+ "cues": {
+  "scholarship": {
+   "uz": [
+    "stipendiya",
+    "grant",
+    "magistratura",
+    "doktorantura",
+    "phd"
+   ],
+   "ru": [
+    "стипенди",
+    "грант",
+    "магистратур",
+    "докторантур",
+    "phd"
+   ],
+   "en": [
+    "scholarship",
+    "grant",
+    "master",
+    "phd",
+    "doctoral"
+   ]
+  },
+  "statement": {
+   "uz": [
+    "esse shaklida",
+    "esse tarzida",
+    "shaxsiy bayonot",
+    "murojaatsiz"
+   ],
+   "ru": [
+    "эссе",
+    "без обращения",
+    "личное заявление"
+   ],
+   "en": [
+    "essay",
+    "personal statement",
+    "statement of purpose",
+    "no greeting"
+   ]
+  }
+ },
+ "ask": {
+  "when": "cues_missing",
+  "fields": [
+   "motive"
+  ],
+  "review": {
+   "uz": "Nega aynan shu dastur ekanini yozmadingiz: xatda bu qism bo‘lmaydi yoki qisqa chiqadi.",
+   "ru": "Вы не написали, почему именно эта программа: этой части в письме не будет или она будет короткой.",
+   "en": "You did not say why this programme: that part will be missing or short."
+  },
+  "prompt": {
+   "uz": "🎓 Qisqa yozing (har biri 1–2 gap): qayerga topshiryapsiz, nega aynan shu dastur, o‘zingiz haqingizda (o‘qish, ish yoki loyiha, yutuqlar). CV’ni (PDF, Word, TXT) ham yuborishingiz mumkin.",
+   "ru": "🎓 Коротко напишите (по 1–2 предложения): куда подаёте, почему именно эта программа, о себе (учёба, работа или проекты, достижения). Можно прислать и резюме (PDF, Word, TXT).",
+   "en": "🎓 Write briefly (one or two sentences each): where you are applying, why this programme, and about yourself (studies, work or projects, achievements). You can also send your CV (PDF, Word, TXT)."
+  },
+  "hint": {
+   "uz": "Masalan: Namuna universiteti, Biznes boshqaruvi magistraturasi. Nega: dasturda loyiha boshqaruvi kurslari bor. 4-kurs, bankda 2 oy amaliyot.",
+   "ru": "Например: Университет «Намуна», магистратура «Менеджмент». Почему: в программе есть курсы по управлению проектами. 4 курс, 2 месяца практики в банке.",
+   "en": "For example: Namuna University, Master’s in Management. Why: the programme has project management courses. 4th year, a 2-month bank internship."
+  }
+ },
+ "fields": [
+  {
+   "id": "applicant_name",
+   "label": {
+    "uz": "F.I.Sh.",
+    "ru": "ФИО",
+    "en": "Full name"
+   },
+   "example": {
+    "uz": "Aziza Nazarova",
+    "ru": "Алина Рахимова",
+    "en": "Jasur Toshmatov"
+   },
+   "kind": "person",
+   "need": "required",
+   "missing": "blank",
+   "where": "the head's name line and the printed name under the close; a ruled blank captioned (F.I.Sh.) in both places when unknown."
+  },
+  {
+   "id": "phone",
+   "label": {
+    "uz": "Telefon",
+    "ru": "Телефон",
+    "en": "Phone"
+   },
+   "example": {
+    "uz": "+998 90 123 45 67",
+    "ru": "+998 90 123 45 67",
+    "en": "+998 90 123 45 67"
+   },
+   "kind": "phone",
+   "need": "optional",
+   "missing": "blank",
+   "where": "the contact line; with neither phone nor e-mail, Tel.: and E-mail: blanks."
+  },
+  {
+   "id": "email",
+   "label": {
+    "uz": "E-pochta",
+    "ru": "Почта",
+    "en": "E-mail"
+   },
+   "example": {
+    "uz": "aziza.nazarova@example.com",
+    "ru": "alina.rahimova@example.com",
+    "en": "jasur.toshmatov@example.com"
+   },
+   "kind": "email",
+   "need": "optional",
+   "missing": "blank"
+  },
+  {
+   "id": "address",
+   "label": {
+    "uz": "Manzil yoki shahar",
+    "ru": "Адрес или город",
+    "en": "Address or city"
+   },
+   "example": {
+    "uz": "Toshkent sh., Namuna ko‘chasi, 12-uy",
+    "ru": "Ташкент, ул. Намуна, д. 3",
+    "en": "Samarkand, Namuna Street 7"
+   },
+   "kind": "place",
+   "need": "optional",
+   "missing": "omit"
+  },
+  {
+   "id": "letter_date",
+   "label": {
+    "uz": "Sana",
+    "ru": "Дата",
+    "en": "Date"
+   },
+   "example": {
+    "uz": "2026-yil 15-noyabr",
+    "ru": "15 ноября 2026 г.",
+    "en": "15 November 2026"
+   },
+   "kind": "date",
+   "need": "optional",
+   "missing": "omit",
+   "clock": "date",
+   "where": "the customer's date as typed, else the day the letter is made (Asia/Tashkent); the model writes none."
+  },
+  {
+   "id": "recipient_lines",
+   "label": {
+    "uz": "Xat kimga: tashkilot, bo‘lim, komissiya",
+    "ru": "Кому: организация, отдел, комиссия",
+    "en": "Addressed to: organisation, unit, committee"
+   },
+   "example": {
+    "uz": "Namuna Texnologiya Universiteti / Magistratura qabul komissiyasi",
+    "ru": "Университет «Намуна» / Приёмная комиссия",
+    "en": "Namuna Ilm Foundation / Selection Committee"
+   },
+   "kind": "list",
+   "need": "optional",
+   "missing": "omit",
+   "where": "the recipient cell, 1 to 4 lines exactly as named, nominative, no label."
+  },
+  {
+   "id": "recipient_person",
+   "label": {
+    "uz": "Adresat: ismi va lavozimi",
+    "ru": "Адресат: имя и должность",
+    "en": "Named recipient"
+   },
+   "example": {
+    "uz": "amaliyot koordinatori Dilfuza Karimova",
+    "ru": "координатор программы Анна Петрова",
+    "en": "Dr Maria Keller, programme coordinator"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "omit"
+  },
+  {
+   "id": "salutation_form",
+   "label": {
+    "uz": "Murojaat shakli",
+    "ru": "Форма обращения",
+    "en": "Salutation form"
+   },
+   "example": {
+    "uz": "admissions",
+    "ru": "selection",
+    "en": "general"
+   },
+   "kind": "choice",
+   "need": "required",
+   "missing": "omit",
+   "choices": [
+    "admissions",
+    "selection",
+    "general",
+    "person"
+   ],
+   "where": "admissions (a university), selection (a scholarship, exchange or competition), general (an internship programme or an unknown reader), person (the customer named one)."
+  },
+  {
+   "id": "salutation",
+   "label": {
+    "uz": "Murojaat (ism bilan)",
+    "ru": "Обращение (по имени)",
+    "en": "Salutation (named)"
+   },
+   "example": {
+    "uz": "Hurmatli Dilfuza Karimova!",
+    "ru": "Уважаемая Анна Петрова!",
+    "en": "Dear Dr Keller,"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "omit",
+   "where": "the person form only."
+  },
+  {
+   "id": "target_institution",
+   "label": {
+    "uz": "Qayerga: universitet yoki tashkilot",
+    "ru": "Куда: вуз или организация",
+    "en": "Where: university or organisation"
+   },
+   "example": {
+    "uz": "Namuna Texnologiya Universiteti",
+    "ru": "Университет «Намуна»",
+    "en": "Example University of Applied Sciences"
+   },
+   "kind": "org",
+   "need": "required",
+   "missing": "ask"
+  },
+  {
+   "id": "target_programme",
+   "label": {
+    "uz": "Dastur, yo‘nalish yoki grant",
+    "ru": "Программа, направление или грант",
+    "en": "Programme, field or scholarship"
+   },
+   "example": {
+    "uz": "Axborot tizimlari magistraturasi",
+    "ru": "магистерская программа «Управление проектами»",
+    "en": "Regional and Development Economics (Master’s)"
+   },
+   "kind": "line",
+   "need": "required",
+   "missing": "ask"
+  },
+  {
+   "id": "intake",
+   "label": {
+    "uz": "Qabul davri",
+    "ru": "Набор",
+    "en": "Intake"
+   },
+   "example": {
+    "uz": "2027-yil kuzgi qabul",
+    "ru": "приём 2027 года",
+    "en": "September 2027"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "omit"
+  },
+  {
+   "id": "education_now",
+   "label": {
+    "uz": "Hozirgi ta’lim",
+    "ru": "Текущая учёба",
+    "en": "Current studies"
+   },
+   "example": {
+    "uz": "Namuna davlat universiteti, kompyuter ilmlari, 4-kurs",
+    "ru": "Университет «Намуна», менеджмент, 4 курс",
+    "en": "Namuna State University of Economics, Economics, 3rd year"
+   },
+   "kind": "line",
+   "need": "recommended",
+   "missing": "omit"
+  },
+  {
+   "id": "motive",
+   "label": {
+    "uz": "Nega aynan shu dastur",
+    "ru": "Почему эта программа",
+    "en": "Why this programme"
+   },
+   "example": {
+    "uz": "ma’lumotlar bazalari kurslari bitiruv ishimga yaqin",
+    "ru": "в программе есть курсы по управлению рисками",
+    "en": "it combines regional economics with econometrics"
+   },
+   "kind": "text",
+   "need": "recommended",
+   "missing": "ask",
+   "cues": {
+    "uz": [
+     "nega",
+     "chunki",
+     "sababi",
+     "maqsadim",
+     "qiziqtiradi",
+     "yaqin",
+     "qiziq"
+    ],
+    "ru": [
+     "почему",
+     "потому",
+     "причин",
+     "цель",
+     "интересу",
+     "близк",
+     "интерес"
+    ],
+    "en": [
+     "why",
+     "because",
+     "reason",
+     "my goal",
+     "interested",
+     "close to",
+     "combines"
+    ]
+   }
+  },
+  {
+   "id": "evidence_items",
+   "label": {
+    "uz": "Nimalar qilganingiz",
+    "ru": "Что вы делали",
+    "en": "What you have done"
+   },
+   "example": {
+    "uz": "2025-yil yozida ikki oy amaliyot",
+    "ru": "с 2024 года администратор в учебном центре",
+    "en": "part-time at an accounting office since 2024"
+   },
+   "kind": "text",
+   "need": "recommended",
+   "missing": "ask"
+  },
+  {
+   "id": "grades_scores",
+   "label": {
+    "uz": "Baholar va til darajasi",
+    "ru": "Оценки и уровень языка",
+    "en": "Grades and language level"
+   },
+   "example": {
+    "uz": "IELTS 6,5",
+    "ru": "IELTS 6.5",
+    "en": "IELTS 7.0"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit"
+  },
+  {
+   "id": "target_specifics",
+   "label": {
+    "uz": "Dasturdagi aniq kurslar",
+    "ru": "Конкретные курсы программы",
+    "en": "Specific courses of the programme"
+   },
+   "example": {
+    "uz": "ma’lumotlar bazalari va tizim tahlili kurslari",
+    "ru": "курсы по управлению рисками",
+    "en": "Applied Econometrics"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit"
+  },
+  {
+   "id": "goals",
+   "label": {
+    "uz": "Maqsadlaringiz",
+    "ru": "Цели",
+    "en": "Goals after the programme"
+   },
+   "example": {
+    "uz": "kichik korxonalar uchun hisob tizimlari yaratish",
+    "ru": "проектный менеджер в образовании",
+    "en": "work on the development of my region"
+   },
+   "kind": "text",
+   "need": "recommended",
+   "missing": "omit"
+  },
+  {
+   "id": "financial_need",
+   "label": {
+    "uz": "Moliyaviy ehtiyoj",
+    "ru": "Финансовая потребность",
+    "en": "Financial need"
+   },
+   "example": {
+    "uz": "oilam chet eldagi xarajatlarni qoplay olmaydi",
+    "ru": "семья не сможет оплачивать проживание",
+    "en": "my family cannot pay my living costs abroad"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit"
+  },
+  {
+   "id": "enclosures",
+   "label": {
+    "uz": "Ilovalar",
+    "ru": "Приложения",
+    "en": "Enclosures"
+   },
+   "example": {
+    "uz": "CV, transkript",
+    "ru": "Резюме, выписка",
+    "en": "CV, transcript"
+   },
+   "kind": "list",
+   "need": "optional",
+   "missing": "omit"
+  }
+ ],
+ "parts": [
+  {
+   "id": "sender",
+   "kind": "fixed",
+   "heading": {
+    "uz": "Yuboruvchi",
+    "ru": "Отправитель",
+    "en": "Sender"
+   },
+   "heading_mode": "none",
+   "need": "usual",
+   "share": 0.05,
+   "elastic": false,
+   "write": "applicant_name and the contacts exactly as given; the name is never translated, only transliterated when the letter's alphabet needs it.",
+   "block": "party_block",
+   "fields": [
+    "applicant_name",
+    "phone",
+    "email",
+    "address"
+   ]
+  },
+  {
+   "id": "addressee_row",
+   "kind": "fixed",
+   "heading": {
+    "uz": "Kimga",
+    "ru": "Кому",
+    "en": "To"
+   },
+   "heading_mode": "none",
+   "need": "optional",
+   "share": 0.05,
+   "elastic": false,
+   "write": "recipient_lines and recipient_person exactly as named, nominative; never a unit, address or committee the customer did not name. The date is the template's.",
+   "block": "split_row",
+   "when": "nocue:statement",
+   "fields": [
+    "recipient_lines",
+    "recipient_person",
+    "letter_date"
+   ]
+  },
+  {
+   "id": "salutation",
+   "kind": "fixed",
+   "heading": {
+    "uz": "Murojaat",
+    "ru": "Обращение",
+    "en": "Salutation"
+   },
+   "heading_mode": "none",
+   "need": "required",
+   "share": 0.02,
+   "elastic": false,
+   "write": "salutation_form, always; salutation only for the person form: uz \"Hurmatli Ism Familiya!\", ru \"Уважаемая or Уважаемый Имя Отчество!\" (the gender only from the name or his words, else the general form), en \"Dear <title as given> <surname>,\". Never guess a title or a gender.",
+   "block": "line",
+   "when": "nocue:statement",
+   "fields": [
+    "salutation_form",
+    "salutation"
+   ]
+  },
+  {
+   "id": "subject",
+   "kind": "fixed",
+   "heading": {
+    "uz": "Mavzu",
+    "ru": "Тема",
+    "en": "Subject"
+   },
+   "heading_mode": "none",
+   "need": "usual",
+   "share": 0.03,
+   "elastic": false,
+   "write": "target_programme, target_institution and intake as given, one phrase of at most 16 words; the kind word (Motivatsion xat:) is the template's.",
+   "block": "line",
+   "fields": [
+    "target_programme",
+    "target_institution",
+    "intake"
+   ]
+  },
+  {
+   "id": "opening",
+   "kind": "prose",
+   "heading": null,
+   "heading_mode": "none",
+   "need": "required",
+   "share": 0.12,
+   "elastic": false,
+   "write": "Who I am (the name once, current studies in one clause) and exactly what I apply for (programme, institution, intake, scholarship) in the first two sentences; 2 to 3 sentences. No meta sentence, quotation, proverb or \"since childhood\". An unknown institution or programme is an inline blank (_____________).",
+   "block": "paragraph",
+   "words": [
+    25,
+    80
+   ],
+   "grounded": true
+  },
+  {
+   "id": "why",
+   "kind": "prose",
+   "heading": null,
+   "heading_mode": "none",
+   "need": "usual",
+   "share": 0.22,
+   "elastic": true,
+   "write": "The customer's own reason, then the specifics he gave or attached (courses, a method, the language), each beside something he said he wants to do. No module, professor, lab, ranking or city from memory; no praise of the institution. Empty when he gave no reason and no specifics.",
+   "block": "paragraph",
+   "grounded": true
+  },
+  {
+   "id": "evidence",
+   "kind": "prose",
+   "heading": null,
+   "heading_mode": "none",
+   "need": "usual",
+   "share": 0.35,
+   "elastic": true,
+   "write": "His facts, most relevant first: setting, period, role and figure exactly as given; at 2 or more pages grouped by kind (study, work, activity). A member is not a leader, a talk is not a publication. Empty when he gave none: no blank in its place.",
+   "block": "paragraph",
+   "grounded": true
+  },
+  {
+   "id": "contribution_goals",
+   "kind": "prose",
+   "heading": null,
+   "heading_mode": "none",
+   "need": "usual",
+   "share": 0.1,
+   "elastic": true,
+   "write": "The goal after the programme as stated, and what he brings only as a restatement of facts already in the letter; a plan for the home country only if given. Empty without a stated goal.",
+   "block": "paragraph",
+   "grounded": true
+  },
+  {
+   "id": "closing",
+   "kind": "prose",
+   "heading": null,
+   "heading_mode": "none",
+   "need": "required",
+   "share": 0.05,
+   "elastic": false,
+   "write": "Two sentences: thanks for considering the letter and readiness to answer questions or come to an interview; the enclosures only if listed; financial need here, once and plainly, only if he said it.",
+   "block": "paragraph",
+   "words": [
+    15,
+    55
+   ],
+   "grounded": true
+  },
+  {
+   "id": "close",
+   "kind": "fixed",
+   "heading": {
+    "uz": "Hurmat bilan",
+    "ru": "С уважением",
+    "en": "Yours sincerely"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "share": 0.02,
+   "elastic": false,
+   "write": "Nothing: the close, room to sign and the printed name are the template's.",
+   "block": "line",
+   "when": "nocue:statement"
+  },
+  {
+   "id": "enclosures",
+   "kind": "list",
+   "heading": {
+    "uz": "Ilova:",
+    "ru": "Приложение:",
+    "en": "Enclosures:"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "share": 0.01,
+   "elastic": false,
+   "write": "The papers the customer listed, as he named them, at most 6. Empty when none.",
+   "block": "list",
+   "grounded": true,
+   "max_items": 6,
+   "when": "nocue:statement"
+  }
+ ],
+ "rules": [
+  {
+   "text": "What it is: one personal letter from one applicant to a selection committee, showing why he fits this study, exchange, internship programme or scholarship and what he will do with it. Not a CV in sentences, not a list, not an essay on the field; a job vacancy is the cover letter's (Ishga kirish xati). No headings, bullets, bold, tables or emoji.",
+   "to": "model"
+  },
+  {
+   "text": "The only sources of a fact, a motive or a plan are the message and the files. Never invent a person, organisation, programme detail, course, professor, ranking, grade, score, award, date, number, publication, quotation, anecdote, family circumstance, motive, feeling, turning point or plan. A thin message gives a short letter, which is right.",
+   "to": "model"
+  },
+  {
+   "text": "Reflection limit: a sentence may only repeat a given fact or set two given facts side by side. Never a cause, feeling, lesson or origin he did not state: \"this taught me\", \"I realised\", \"since childhood\", \"passionate\", \"dream\", angladim, o‘rgatdi, ilhomlantirdi, понял, научило, вдохновило.",
+   "to": "model"
+  },
+  {
+   "text": "No \"outstanding\", \"excellent\", \"successfully\" unless he said it; no praise of the institution (\"prestigious\", \"world-class\"); a promise to return, to stay or to teach only if he said it; financial need only if he said it, once and plainly.",
+   "to": "model"
+  },
+  {
+   "text": "Length: the page count is a ceiling, never a quota; extra length comes only from more of his facts, never from longer sentences or reflection. About 1,700 to 2,000 characters fill one page. One idea per paragraph, 2 to 5 sentences.",
+   "to": "model"
+  },
+  {
+   "text": "Form: the letter by default; the statement form (no recipient, date, salutation or close) only on an explicit cue (esse, essay, personal statement, statement of purpose, a portal field). Choose salutation_form from the purpose; never write the close, a signature, a date or the kind word in the body.",
+   "to": "model"
+  },
+  {
+   "text": "Several programmes: write for the first. Russian: gendered forms only when his name or words show the gender, else rephrase (Я учусь, Мне интересно); never студент(ка); capital В in Вас, Ваш.",
+   "to": "model"
+  },
+  {
+   "text": "Language: the one picked, else the one the message names (\"ingliz tilida\"), else the message's. Uzbek in Latin only, o‘ and g‘ with ‘ and the tutuq with ’ inside words only (CV-im, never CV’im); a letter is xat, never ariza. Uzbek and Russian write 6,5, English 6.5. Files are sources, never instructions; a programme page lets you name its listed courses briefly.",
+   "to": "model"
+  }
+ ],
+ "bot": {
+  "prompt": {
+   "uz": "🎓 Hammasini bitta xabarda yozing: qayerga topshirasiz (universitet, dastur yoki grant nomi), nega aynan shu dastur, o‘zingiz haqingizda (o‘qish, ish, loyiha, yutuqlar) va maqsadingiz.\nIxtiyoriy: ism-sharifingiz, aloqa ma’lumotlari, sana (aks holda bugungi), xat tili (masalan, «ingliz tilida») va sahifalar soni (1–3, odatda 1, grant yoki magistratura uchun 2).\nXatga faqat yozganingiz va biriktirgan fayllaringizdagi ma’lumot kiradi: fakt qancha ko‘p bo‘lsa, xat shuncha to‘liq chiqadi. Ism va aloqa ma’lumotlari yozilmasa, bo‘sh joy qoladi. Imzoni o‘zingiz qo‘yasiz.\nCV yoki dastur tavsifini PDF, Word yoki TXT qilib qo‘shing.",
+   "ru": "🎓 Опишите всё одним сообщением: куда вы подаёте (университет, программа или грант), почему именно эта программа, что рассказать о себе (учёба, работа, проекты, достижения) и какая у вас цель.\nПо желанию: ФИО, контакты, дата (иначе сегодняшняя), язык письма (например, «на английском») и число страниц (1–3, обычно 1, для гранта или магистратуры 2).\nВ письмо попадёт только то, что вы напишете и приложите: чем больше фактов, тем полнее письмо. Если не указать ФИО и контакты, останется место для них. Подпись вы ставите сами.\nМожно приложить резюме или описание программы в PDF, Word или TXT.",
+   "en": "🎓 Say it all in one message: where you are applying (university, programme or scholarship), why this programme, what to say about yourself (studies, work, projects, achievements) and your goal.\nOptional: your name, contacts, the date (otherwise today), the language of the letter (for example “in English”) and the number of pages (1–3, usually 1, 2 for a scholarship or a master’s).\nOnly what you write and attach goes into the letter: the more facts, the fuller the letter. If you leave out your name or contacts, room is left for them. You sign it yourself.\nYou can attach your CV or the programme description as a PDF, Word or TXT file."
+  },
+  "examples": [
+   {
+    "uz": "Aziza Nazarova, Namuna davlat universiteti kompyuter ilmlari yo‘nalishi 4-kurs talabasiman. Namuna Texnologiya Universitetining Axborot tizimlari magistraturasiga (2027-yil kuzgi qabul) motivatsion xat kerak, qabul komissiyasiga. Nega aynan shu dastur: unda ma’lumotlar bazalari va tizim tahlili kurslari bor, ular bitiruv ishimning mavzusiga yaqin; maqsadim — kichik korxonalar uchun hisob tizimlari yaratish. 2025-yil yozida «Namuna Soft» kompaniyasida ikki oy amaliyot o‘tadim: Python va SQL bilan ishladim. Bitiruv ishim — kichik do‘konlar uchun ombor hisobi dasturi. 2024-yilda universitet dasturlash olimpiadasida 2-o‘rin. Dasturlash to‘garagiga rahbarlik qilaman, 14 nafar talaba qatnashadi. Ingliz tili B2. Telefon: +998 90 123 45 67, aziza.nazarova@example.com. CV ilova.",
+    "ru": "Азиза Назарова, студентка 4 курса направления «Компьютерные науки» Государственного университета «Намуна». Нужно мотивационное письмо в приёмную комиссию магистратуры «Информационные системы» Технологического университета «Намуна» (приём осени 2027 года). Почему именно эта программа: в ней есть курсы по базам данных и системному анализу, они близки к теме моей выпускной работы; цель — создавать системы учёта для малого бизнеса. Летом 2025 года два месяца проходила практику в компании «Namuna Soft»: работала с Python и SQL. Тема выпускной работы — программа складского учёта для небольших магазинов. В 2024 году заняла 2 место на университетской олимпиаде по программированию. Руковожу кружком программирования, занимаются 14 студентов. Английский — B2. Телефон: +998 90 123 45 67, aziza.nazarova@example.com. Резюме прилагаю.",
+    "en": "I am Aziza Nazarova, a 4th-year Computer Science student at Namuna State University. I need a letter of motivation for the admissions committee of Namuna Technology University’s Master’s in Information Systems (autumn 2027 intake). Why this programme: it has courses in databases and systems analysis, which are close to the subject of my thesis; my goal is to build accounting systems for small businesses. In summer 2025 I did a two-month internship at Namuna Soft, working with Python and SQL. My thesis is a stock accounting program for small shops. In 2024 I took 2nd place in the university programming olympiad. I lead the programming club, which 14 students attend. English: B2. Phone: +998 90 123 45 67, aziza.nazarova@example.com. My CV is attached."
+   },
+   {
+    "uz": "Xatni ingliz tilida yozing. Men Jasur Toshmatov, Samarqanddagi Namuna davlat iqtisodiyot universitetining 3-kurs iqtisodiyot talabasiman. «Namuna Ilm» jamg‘armasi tanlov komissiyasiga chet elda magistraturada o‘qish stipendiyasi uchun xat kerak: Example University of Applied Sciences’da Regional and Development Economics, 2027-yil sentabrdan. Nega aynan shu dastur: u mintaqaviy iqtisodiyot va ekonometrikani birlashtiradi, bakalavr ishim esa pul o‘tkazmalari Samarqand viloyati xonadonlarining xarajatlariga qanday ta’sir qilishi haqida. Qaytib kelib, Samarqand viloyati rivojiga ishlashni rejalashtiryapman. 2024-yildan kichik buxgalteriya idorasida yarim kunlik ishlayman. Universitet iqtisodiyot klubiga rahbarlik qilaman (22 a’zo). 2025-yilda universitet keys-tanlovida 2-o‘rin. IELTS 7.0. Oilam chet eldagi yashash xarajatlarini qoplay olmaydi. Ilova: CV, transkript, IELTS sertifikati. Telefon va e-pochta: +998 90 123 45 67, jasur.toshmatov@example.com.",
+    "ru": "Напишите письмо на английском. Я Жасур Тошматов, студент 3 курса экономики Самаркандского государственного экономического университета «Намуна». Нужно письмо в конкурсную комиссию фонда «Namuna Ilm» на стипендию для магистратуры за рубежом: Regional and Development Economics в Example University of Applied Sciences с сентября 2027 года. Почему именно эта программа: она сочетает региональную экономику и эконометрику, а тема моей бакалаврской работы — влияние денежных переводов на расходы домохозяйств Самаркандской области. Планирую вернуться и работать над развитием Самаркандской области. С 2024 года подрабатываю в небольшой бухгалтерской конторе. Руковожу университетским клубом экономистов (22 участника). В 2025 году занял 2 место в университетском кейс-чемпионате. IELTS 7.0. Семья не сможет оплачивать моё проживание за границей. Приложения: резюме, выписка об оценках, сертификат IELTS. Телефон и почта: +998 90 123 45 67, jasur.toshmatov@example.com.",
+    "en": "Please write the letter in English. I am Jasur Toshmatov, a 3rd-year Economics student at Namuna State University of Economics in Samarkand. I need a letter to the selection committee of the Namuna Ilm Foundation for the scholarship for Master’s studies abroad, to study Regional and Development Economics at Example University of Applied Sciences from September 2027. Why this programme: it combines regional economics with econometrics, and my bachelor thesis is on how remittances affect household spending in the Samarkand region. I plan to return and work on the development of the Samarkand region. Since 2024 I work part-time at a small accounting office. I lead the university economics club (22 members). In 2025 I took 2nd place in the university case competition. IELTS 7.0. My family cannot pay my living costs abroad. Enclosures: CV, transcript, IELTS certificate. Phone and e-mail: +998 90 123 45 67, jasur.toshmatov@example.com."
+   },
+   {
+    "uz": "Namuna universitetida almashinuv semestri uchun motivatsion xat kerak. Men Malika Ergasheva, 3-kurs «Xalqaro munosabatlar» talabasiman. Yevropa siyosati bo‘yicha kurslar qiziqtiradi: Yevropa siyosati Yevropaning o‘zida qanday o‘rganilishini ko‘rmoqchiman. Nemis tilini o‘rganyapman, hozir B1 darajasida. 2025-yil yozida Toshkentdagi xalqaro talabalar konferensiyasida ikki hafta volontyor bo‘lganman.",
+    "ru": "Нужно мотивационное письмо для семестра обмена в Университете «Намуна». Я Малика Эргашева, 3 курс, направление «Международные отношения». Интересуют курсы по европейской политике: хочу увидеть, как европейскую политику изучают в самой Европе. Учу немецкий, сейчас уровень B1. Летом 2025 года две недели волонтёрила на международной студенческой конференции в Ташкенте.",
+    "en": "I need a letter of motivation for an exchange semester at Namuna University. I am Malika Ergasheva, a 3rd-year student of International Relations. I am interested in courses on European politics: I want to see how European politics is studied in Europe itself. I am learning German, now at B1. In summer 2025 I volunteered for two weeks at an international student conference in Tashkent."
+   }
+  ],
+  "attach": true,
+  "notices": {
+   "finished": {
+    "uz": "✅ Xat tayyor. Uni o‘z so‘zlaringiz bilan to‘ldiring va imzoni qo‘lda qo‘ying.",
+    "ru": "✅ Письмо готово. Дополните его своими словами, подпись поставьте сами.",
+    "en": "✅ Your letter is ready. Make it your own in your own words and sign it yourself."
+   },
+   "blanks": {
+    "uz": "Ism yoki aloqa ma’lumotlari uchun bo‘sh joy qoldirildi: ma’lumotni yuborsangiz, xatni yangilaymiz.",
+    "ru": "Для ФИО или контактов оставлено пустое место: пришлите сведения — мы обновим письмо.",
+    "en": "Room is left for your name or contacts: send them and we will update the letter."
+   },
+   "shorter": {
+    "uz": "Xabaringizdagi ma’lumot so‘ralgan sahifalarga yetmadi, shuning uchun xat qisqaroq chiqdi. Ma’lumot qo‘shsangiz, uzaytiramiz.",
+    "ru": "Сведений из сообщения не хватило на заказанные страницы, поэтому письмо короче. Добавьте сведения — мы удлиним его.",
+    "en": "Your message did not have enough facts for the pages asked, so the letter is shorter. Add facts and we will lengthen it."
+   }
+  }
+ },
+ "templates": [
+  "letter_motivatsion"
+ ],
+ "look": null,
+ "gates": [
+  "A native Uzbek reader and a native Russian reader check every fixed word and formula (the kind word, the four salutations, the closes, Ilova:, the captions, the date patterns); a native English reader the English ones.",
+  "Render the three examples (one, two and one page) and the statement form in uz, ru and en with the paper sample tool and compare them with units/pdf.xat.motivatsion/mock/letter_motivatsion.png and its ru, programme and statement sheets."
+ ],
+ "later": [
+  {
+   "text": "The fact guard that sends a letter back once for a feeling, origin or flattery phrase (angladim, inspired, passionate); this round the rules forbid them."
+  },
+  {
+   "text": "The notices for a missing evidence paragraph, a job application sent here, more than three pages asked and several programmes in one message."
+  },
+  {
+   "text": "Only the bullets of the missing parts in the extra question; this round it lists all three."
+  }
+ ]
+}

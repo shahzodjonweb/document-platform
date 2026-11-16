@@ -72,6 +72,208 @@
     "official_ariza"
    ]
   },
+  "pdf.xat.ishga_kirish": {
+   "fields": {
+    "about_applicant": "text",
+    "applicant_city": "place",
+    "applicant_name": "person",
+    "availability": "text",
+    "date_written": "date",
+    "email": "email",
+    "employer_address": "place",
+    "employer_name": "org",
+    "enclosures": "list",
+    "experience_facts": "text",
+    "motivation": "text",
+    "other_contact": "line",
+    "phone": "phone",
+    "position": "line",
+    "recipient_person": "person",
+    "recipient_title": "line",
+    "salary_expectation": "money",
+    "salutation": "line",
+    "skills_tools": "text",
+    "vacancy_reference": "ref",
+    "vacancy_source": "line"
+   },
+   "parts": {
+    "addressee_row": "fixed",
+    "close": "fixed",
+    "closing": "prose",
+    "enclosures": "list",
+    "fit": "prose",
+    "motive": "prose",
+    "opening": "prose",
+    "salutation": "fixed",
+    "sender": "fixed",
+    "subject": "fixed"
+   },
+   "service": "pdf",
+   "templates": [
+    "letter_cover"
+   ]
+  },
+  "pdf.xat.motivatsion": {
+   "fields": {
+    "address": "place",
+    "applicant_name": "person",
+    "education_now": "line",
+    "email": "email",
+    "enclosures": "list",
+    "evidence_items": "text",
+    "financial_need": "text",
+    "goals": "text",
+    "grades_scores": "text",
+    "intake": "line",
+    "letter_date": "date",
+    "motive": "text",
+    "phone": "phone",
+    "recipient_lines": "list",
+    "recipient_person": "line",
+    "salutation": "line",
+    "salutation_form": "choice",
+    "target_institution": "org",
+    "target_programme": "line",
+    "target_specifics": "text"
+   },
+   "parts": {
+    "addressee_row": "fixed",
+    "close": "fixed",
+    "closing": "prose",
+    "contribution_goals": "prose",
+    "enclosures": "list",
+    "evidence": "prose",
+    "opening": "prose",
+    "salutation": "fixed",
+    "sender": "fixed",
+    "subject": "fixed",
+    "why": "prose"
+   },
+   "service": "pdf",
+   "templates": [
+    "letter_motivatsion"
+   ]
+  },
+  "pdf.xat.tavsifnoma": {
+   "fields": {
+    "acquaintance": "text",
+    "addressee": "org",
+    "birth_year": "date",
+    "conduct_record": "text",
+    "issue_date": "date",
+    "issuer_contact": "line",
+    "issuer_name": "org",
+    "letterhead": "flag",
+    "purpose_recipient": "line",
+    "qualities": "text",
+    "residence": "place",
+    "results": "text",
+    "signers": "list",
+    "since_when": "date",
+    "subject_name": "person",
+    "subject_role": "line",
+    "without_seal": "flag"
+   },
+   "parts": {
+    "achievements": "prose",
+    "acquaintance": "prose",
+    "addressee": "fixed",
+    "identity": "prose",
+    "issue_date": "fixed",
+    "issuer": "fixed",
+    "purpose_line": "fixed",
+    "qualities": "prose",
+    "seal": "fixed",
+    "signers": "fixed",
+    "title": "fixed",
+    "verdict": "prose",
+    "work_or_study": "prose"
+   },
+   "service": "pdf",
+   "templates": [
+    "official_tavsifnoma"
+   ]
+  },
+  "pdf.xat.tavsiya": {
+   "fields": {
+    "addressee": "org",
+    "candidate_name": "person",
+    "candidate_short": "person",
+    "candidate_status": "line",
+    "evidence": "text",
+    "letter_date": "date",
+    "letterhead_preprinted": "flag",
+    "limits": "text",
+    "outgoing_number": "ref",
+    "qualities": "text",
+    "recommender_address": "place",
+    "recommender_email": "email",
+    "recommender_name": "person",
+    "recommender_org": "org",
+    "recommender_phone": "phone",
+    "recommender_position": "line",
+    "recommender_unit": "org",
+    "relationship": "text",
+    "salutation": "line",
+    "seal": "flag",
+    "second_signer": "line",
+    "strength": "choice",
+    "target": "line"
+   },
+   "parts": {
+    "character": "prose",
+    "context": "prose",
+    "evidence": "prose",
+    "evidence_blank": "fixed",
+    "fit": "prose",
+    "head_row": "fixed",
+    "letterhead": "fixed",
+    "opening": "prose",
+    "purpose": "fixed",
+    "sign_off": "fixed",
+    "title": "fixed",
+    "verdict": "fixed"
+   },
+   "service": "pdf",
+   "templates": [
+    "letter_tavsiya",
+    "tavsiya_rasmiy"
+   ]
+  },
+  "pdf.xat.tushuntirish": {
+   "fields": {
+    "addressee_name": "person",
+    "addressee_position": "line",
+    "attachments": "list",
+    "event_date": "date",
+    "informed": "text",
+    "promise": "text",
+    "reason": "text",
+    "signer_name": "person",
+    "what_happened": "text",
+    "writer_name": "person",
+    "writer_phone": "phone",
+    "writer_role": "line",
+    "written_date": "date"
+   },
+   "parts": {
+    "addressee": "fixed",
+    "attachments": "list",
+    "blank_body": "fixed",
+    "event": "prose",
+    "follow_up": "prose",
+    "promise": "prose",
+    "reason": "prose",
+    "reason_blank": "fixed",
+    "signature": "fixed",
+    "title": "fixed",
+    "writer": "fixed"
+   },
+   "service": "pdf",
+   "templates": [
+    "official_tushuntirish"
+   ]
+  },
   "slides.dars": {
    "fields": {
     "date_line": "date",

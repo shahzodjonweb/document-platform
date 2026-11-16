@@ -1,0 +1,330 @@
+{
+ "schema": 2,
+ "id": "tavsiya_rasmiy",
+ "entries": [
+  "pdf.xat.tavsiya"
+ ],
+ "name": {
+  "uz": "Rasmiy tavsiyanoma",
+  "ru": "Официальная рекомендация",
+  "en": "Official recommendation"
+ },
+ "family": "official",
+ "page": {
+  "margins_mm": {
+   "left": 30,
+   "right": 15,
+   "top": 20,
+   "bottom": 20
+  }
+ },
+ "type": {
+  "face": "serif",
+  "ladder": [
+   [
+    12,
+    18
+   ],
+   [
+    11.5,
+    17
+   ],
+   [
+    11,
+    16
+   ]
+  ],
+  "align": "left",
+  "indent_first_mm": 12.5
+ },
+ "page_rule": {
+  "kind": "flow"
+ },
+ "furniture": {
+  "first": "none",
+  "later": "number_top",
+  "format": "n"
+ },
+ "flow": [
+  {
+   "block": "party_block",
+   "part": "letterhead",
+   "fields": [
+    "recommender_org",
+    "recommender_unit",
+    "recommender_address"
+   ],
+   "when": "nofact:letterhead_preprinted",
+   "params": {
+    "anchor": "centre",
+    "caps": true,
+    "rule": "under",
+    "max_lines": 3
+   }
+  },
+  {
+   "block": "split_row",
+   "part": "head_row",
+   "fields": [
+    "letter_date",
+    "outgoing_number",
+    "addressee"
+   ],
+   "params": {
+    "left": {
+     "block": "date_line",
+     "fact": "letter_date",
+     "pattern": "date_blank",
+     "label": "number"
+    },
+    "right": {
+     "block": "party_block",
+     "fields": [
+      "addressee"
+     ],
+     "anchor": "right_half",
+     "max_lines": 4
+    },
+    "left_mm": 82.5
+   }
+  },
+  {
+   "block": "doc_title",
+   "part": "title",
+   "fields": [
+    "candidate_status",
+    "candidate_name"
+   ],
+   "params": {
+    "label": "title",
+    "tracking_pt": 1.2,
+    "subject": [
+     "candidate_status",
+     "candidate_name"
+    ],
+    "labels": {
+     "name_after": "about"
+    },
+    "captions": {
+     "candidate_name": "cap_name"
+    }
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "opening",
+   "when": "part:opening",
+   "params": {
+    "indent_first_mm": 12.5,
+    "gap_pt": 0
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "evidence",
+   "when": "part:evidence",
+   "params": {
+    "indent_first_mm": 12.5,
+    "gap_pt": 0
+   }
+  },
+  {
+   "block": "ruled_blank",
+   "part": "evidence_blank",
+   "when": "blank:evidence",
+   "params": {
+    "lines": 4,
+    "width_mm": "full",
+    "caption": "evidence_caption"
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "character",
+   "when": "part:character",
+   "params": {
+    "indent_first_mm": 12.5,
+    "gap_pt": 0
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "context",
+   "when": "part:context",
+   "params": {
+    "indent_first_mm": 12.5,
+    "gap_pt": 0
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "fit",
+   "when": "part:fit",
+   "params": {
+    "indent_first_mm": 12.5,
+    "gap_pt": 0
+   }
+  },
+  {
+   "block": "line",
+   "part": "verdict",
+   "fields": [
+    "candidate_short",
+    "target"
+   ],
+   "when": "fact:strength=strong",
+   "params": {
+    "label": "verdict_strong",
+    "indent_first_mm": 12.5
+   }
+  },
+  {
+   "block": "line",
+   "part": "verdict",
+   "fields": [
+    "candidate_short",
+    "target"
+   ],
+   "when": "nofact:strength=strong",
+   "params": {
+    "label": "verdict_target",
+    "without": {
+     "target": "verdict"
+    },
+    "indent_first_mm": 12.5
+   }
+  },
+  {
+   "block": "line",
+   "part": "purpose",
+   "when": "nofact:addressee",
+   "params": {
+    "label": "presentation",
+    "indent_first_mm": 12.5
+   }
+  },
+  {
+   "block": "signature_row",
+   "part": "sign_off",
+   "fields": [
+    "recommender_position",
+    "recommender_name",
+    "second_signer"
+   ],
+   "keep": "closing",
+   "params": {
+    "variant": "post_sign_name",
+    "max_rows": 2,
+    "sign_room_mm": 12,
+    "label": "sign",
+    "captions": {
+     "recommender_position": "cap_post",
+     "recommender_name": "cap_name"
+    }
+   }
+  },
+  {
+   "block": "line",
+   "part": "sign_off",
+   "fields": [
+    "recommender_phone",
+    "recommender_email"
+   ],
+   "keep": "closing",
+   "params": {
+    "style": "small",
+    "labels": {
+     "recommender_phone": "tel",
+     "recommender_email": "email"
+    }
+   }
+  },
+  {
+   "block": "line",
+   "part": "sign_off",
+   "when": "fact:seal",
+   "keep": "closing",
+   "params": {
+    "label": "seal"
+   }
+  }
+ ],
+ "labels": {
+  "title": {
+   "uz": "TAVSIYANOMA",
+   "ru": "РЕКОМЕНДАТЕЛЬНОЕ ПИСЬМО",
+   "en": "LETTER OF RECOMMENDATION"
+  },
+  "about": {
+   "uz": "haqida",
+   "ru": "",
+   "en": ""
+  },
+  "verdict": {
+   "uz": "{candidate_short} tavsiya etiladi.",
+   "ru": "{candidate_short} рекомендуется.",
+   "en": "{candidate_short} is recommended."
+  },
+  "verdict_target": {
+   "uz": "{candidate_short} {target} uchun tavsiya etiladi.",
+   "ru": "{candidate_short} рекомендуется {target}.",
+   "en": "{candidate_short} is recommended for {target}."
+  },
+  "verdict_strong": {
+   "uz": "{candidate_short} {target} uchun ishonch bilan tavsiya etiladi.",
+   "ru": "{candidate_short} с уверенностью рекомендуется {target}.",
+   "en": "{candidate_short} is recommended with confidence for {target}."
+  },
+  "presentation": {
+   "uz": "Tavsiyanoma talab qilingan joyga taqdim etish uchun berildi.",
+   "ru": "Рекомендательное письмо выдано для предъявления по месту требования.",
+   "en": "Issued for presentation wherever required."
+  },
+  "seal": {
+   "uz": "M.O‘.",
+   "ru": "М.П.",
+   "en": "Seal"
+  },
+  "sign": {
+   "uz": "(imzo)",
+   "ru": "(подпись)",
+   "en": "(signature)"
+  },
+  "cap_post": {
+   "uz": "(lavozimi)",
+   "ru": "(должность)",
+   "en": "(position)"
+  },
+  "cap_name": {
+   "uz": "(F.I.Sh.)",
+   "ru": "(Ф.И.О.)",
+   "en": "(full name)"
+  },
+  "evidence_caption": {
+   "uz": "(bu yerga aniq misolni qo‘lda yozing)",
+   "ru": "(впишите сюда конкретный пример)",
+   "en": "(add a specific example here, in your own hand)"
+  },
+  "tel": {
+   "uz": "Tel.:",
+   "ru": "Тел.:",
+   "en": "Phone:"
+  },
+  "email": {
+   "uz": "E-mail:",
+   "ru": "E-mail:",
+   "en": "E-mail:"
+  },
+  "date_blank": {
+   "uz": "«___» ____________ 20___-yil",
+   "ru": "«___» ____________ 20___ г.",
+   "en": "___ ____________ 20___"
+  },
+  "number": {
+   "uz": "№ {outgoing_number}",
+   "ru": "Исх. № {outgoing_number}",
+   "en": "Ref. No. {outgoing_number}"
+  }
+ },
+ "mock": "units/pdf.xat.tavsiya/mock/tavsiya_rasmiy.png"
+}
