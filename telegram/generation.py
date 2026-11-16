@@ -118,10 +118,9 @@ def category_live(feature_id, category):
     if not isinstance(category, str) or not category or category == OTHER:
         return None
     from apps.studio import categories
-    entry = categories.get(category)
-    if entry is None or entry.feature_id != feature_id:
-        return None
-    return entry if any(item.id == entry.id for item in categories.live(feature_id)) else None
+    # Looked up among the live ones (only this service's), not with get(): with
+    # the switch off, a button from an older list must not load the catalogue.
+    return next((entry for entry in categories.live(feature_id) if entry.id == category), None)
 
 
 def door(feature_id, category=None):
@@ -826,7 +825,11 @@ def is_example(description, category=''):
     if len(text) < 40:
         return False
     known = [example for examples in PROMPT_EXAMPLES.values() for translations in examples for example in translations]
-    if category:
+    # A category that can no longer be picked (the switch turned off or the
+    # category unticked while the customer wrote) is dropped when the draft is
+    # made (build), so its examples are not ours either; and with nothing
+    # live, nothing here loads the catalogue.
+    if category and (category_live(DOCUMENT, category) or category_live(SLIDES, category)):
         from apps.studio import categories
         known += sorted(categories.examples())
     for example in known:
