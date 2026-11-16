@@ -67,6 +67,13 @@ def marked(monkeypatch, status, *, drop=()):
             index['lists'][feature] = [item for item in items if item != name]
         for template in templates.values():
             template['entries'] = [item for item in template['entries'] if item != name]
+    if drop:
+        # The entries after a dropped one move up a place in the owner's list, as they would if its file were
+        # gone, so the catalogue's order check still holds when the entry has neighbours.
+        for items in [*index['lists'].values(), *(group['children'] for group in index['groups'].values())]:
+            for position, item in enumerate(items, 1):
+                if item in entries:
+                    entries[item]['order'] = position
     for raw in entries.values():
         raw['status'] = status
     made = catalogue.build(entries, {name: raw for name, raw in templates.items() if raw['entries']}, index)

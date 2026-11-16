@@ -394,8 +394,10 @@ def smoke(monkeypatch, capsys, *argv):
 def test_the_smoke_makes_one_category_deck_through_the_real_pipeline(settings, monkeypatch, capsys, tmp_path):
     live(settings)
     model = Model(monkeypatch)
+    # The message is now the entry's own sample, which asks for 6 slides; the count is given so the deck is the
+    # fixture's ten whatever a sample's wording asks for.
     code, out = smoke(monkeypatch, capsys, '--category', HIMOYA, '--locale', 'uz', '--case', 'figures',
-                      '--out', str(tmp_path))
+                      '--slides', '10', '--out', str(tmp_path))
     assert code == 0, out
     assert len(model.calls) == 1 and len(model.calls[0]['ids']) == 10
     assert 'FAIL' not in out and HIMOYA in out
