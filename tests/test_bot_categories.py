@@ -35,7 +35,7 @@ from apps.studio.models import GenerationDraft
 from operations.integrations import save_config
 from operations.models import IntegrationConfig
 from telegram import generation
-from telegram.bot import ai_state
+from telegram.bot import ai_state, category_flow
 from telegram.channels import COPY as GATE
 from telegram.ux_copy import LOCALES, MESSAGES, TOOL_NAMES, UX
 from tests.test_bot_no_flood import Chat
@@ -273,10 +273,12 @@ def test_with_nothing_live_no_way_in_loads_the_catalogue(customer, monkeypatch, 
     for named in (TEST, GROUP, HIMOYA, 'other'):
         assert chat.do(callback_data=old_button(customer, {'feature_id': DOCUMENT, 'category': named}, 3)) == 0
         assert pending(customer) == ('ai_input', {'feature_id': DOCUMENT}), named
-    # A chat left on a category's question (or its list) when the switch went off: the
-    # examples, a file and the description are today's, and the document is made without it.
-    BotConversation.objects.filter(pk=customer.telegram_user_id).update(
-        state='ai_input', prompt=ai_state(DOCUMENT, TEST))
+    # A chat left on a category's list or question when the switch went off: a file sent there is
+    # taken as today's (category_flow), the examples are the service's, and the document is made
+    # without the category.
+    for state, prompt in (('ai_category', {'feature_id': DOCUMENT}), ('ai_input', ai_state(DOCUMENT, TEST))):
+        BotConversation.objects.filter(pk=customer.telegram_user_id).update(state=state, prompt=prompt)
+        assert category_flow(BotConversation.objects.get(pk=customer.telegram_user_id)) is None, state
     examples = old_button(customer, {'feature_id': DOCUMENT, 'category': TEST}, 3)
     BotCallback.objects.filter(pk=examples).update(action='ai_examples')
     chat.do(callback_data=examples)
