@@ -1143,9 +1143,10 @@ def generation_quote(account,draft_id,version):
     from .branding import generation_inputs
     input_ids=generation_inputs(data)
     # A long document is written in several provider calls and needs longer than
-    # the default lease to finish them. Rendering and settlement are on top.
+    # the default lease to finish them. Rendering and settlement are on top. A
+    # category paper's calls are its spans, sized by their pages (`data`).
     from .provider import call_budget
-    lease_seconds=call_budget(len(data['content']['sections']) if pages is None else pages)+240
+    lease_seconds=call_budget(len(data['content']['sections']) if pages is None else pages,data)+240
     if data['output_format']=='pptx':
         from .photos import BUDGET_SECONDS
         lease_seconds+=BUDGET_SECONDS

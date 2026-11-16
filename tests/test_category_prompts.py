@@ -267,8 +267,8 @@ def test_a_change_names_its_category_but_sends_no_rows_and_keeps_todays_guidance
         assert user['writing_guidance'] == sent(provider.request_body(CONFIG, plain, SLIDES))['writing_guidance']
 
 
-def test_an_outline_and_a_category_paper_are_told_nothing_of_the_category_yet():
-    """An outline of a category deck is planned as any deck's; a paper's prompts are P2's."""
+def test_an_outline_of_a_category_deck_is_told_nothing_of_the_category():
+    """An outline of a category deck is planned as any deck's; a paper's prompts are tests/test_category_prompts_pdf.py's."""
     from apps.studio import outlines
     entry = catalogue.get('slides.himoya')
     data = deck(entry, 10, 'en')
@@ -277,12 +277,6 @@ def test_an_outline_and_a_category_paper_are_told_nothing_of_the_category_yet():
     outline = provider.request_body(CONFIG, outlines._payload(data), 'ai.outline')
     assert outline['instructions'] == provider.request_body(CONFIG, outlines._payload(plain), 'ai.outline')['instructions']
     assert 'parts' not in sent(outline) and 'category' not in sent(outline)
-    paper = draft(3)
-    paper['options']['category'] = 'pdf.xat.ariza'
-    body = provider.request_body(CONFIG, paper, DOCUMENT)
-    plain_paper = provider.request_body(CONFIG, draft(3), DOCUMENT)
-    assert body['instructions'] == plain_paper['instructions'] and body['input'] == plain_paper['input']
-    assert body['prompt_cache_key'] != plain_paper['prompt_cache_key']
 
 
 # ---------------------------------------------------------------- budgets
