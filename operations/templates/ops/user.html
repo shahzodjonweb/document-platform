@@ -113,7 +113,7 @@
         {% for row in generation_rows %}
         <tr>
           <td class="muted">{{ row.record.created_at|date:'d M Y · H:i' }}</td>
-          <td>{{ row.service }}</td>
+          <td>{{ row.service }}{% if row.category %}<br><small data-testid="request-category">{{ row.category }}</small>{% endif %}</td>
           <td class="request-cell"><a class="table-link" href="/ops/generations/{{ row.record.id }}?lang={{ lang }}">{{ row.excerpt|default:'—' }}</a></td>
         </tr>
         {% endfor %}

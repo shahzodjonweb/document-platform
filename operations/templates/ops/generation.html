@@ -13,6 +13,7 @@
   <dl>
     <dt>{{ t.gen_customer }}</dt><dd><a class="table-link" href="/ops/users/{{ record.account_id }}?lang={{ lang }}">{{ record.account.display_name|default:record.account_id }}</a></dd>
     <dt>{{ t.gen_service }}</dt><dd>{{ service }}{% if request_data.output_format %} · {{ request_data.output_format|upper }}{% endif %}</dd>
+    {% if category %}<dt>{{ t.categories_category }}</dt><dd data-testid="request-category">{{ category }}</dd>{% endif %}
     <dt>{{ t.gen_language }}</dt><dd>{{ request_data.output_locale|upper|default:'—' }}</dd>
     <dt>{{ t.gen_channel }}</dt><dd>{{ record.channel|default:'—' }}</dd>
     <dt>{{ t.gen_task }}</dt><dd>{% if can_inspect_jobs %}<a class="mono table-link" href="/ops/jobs/{{ job.id }}?lang={{ lang }}">{{ job.id|stringformat:'s'|slice:':8' }}</a>{% else %}<span class="mono">{{ job.id|stringformat:'s'|slice:':8' }}</span>{% endif %} <span class="badge status-{{ job.status }}">{% status_label job.status lang %}</span></dd>

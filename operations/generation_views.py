@@ -5,6 +5,7 @@ only who, when, which service and the first words of the request; opening one
 shows the whole request and the document, and is written to the audit log
 first, as opening any customer document is.
 """
+import re
 from datetime import timedelta
 
 from django.core.paginator import Paginator
@@ -16,6 +17,7 @@ from django.utils import timezone
 from apps.studio.models import GenerationRecord
 from apps.studio.review import REVIEW_DAYS, output_path, page_image, request_data
 from .auth import allowed, audit, require_staff
+from .metrics import category_label
 from .views import context, finish_render
 
 ROLES = ('Support', 'Operations')
@@ -23,6 +25,9 @@ SERVICES = {'ai.pdf_topic': 'gen_document', 'ai.pptx': 'gen_slides', 'ai.cv': 'g
 # Prompts are encrypted, so a search for words in them reads the newest records
 # in turn; this bounds how many one search may open.
 TEXT_SEARCH_LIMIT = 3000
+# A category id as the catalogue writes them (`slides.himoya`, `pdf.xat.ariza`):
+# the filter takes nothing else, so an id a later catalogue dropped still finds its records.
+CATEGORY_ID = re.compile(r'[a-z0-9_.]{1,64}')
 
 
 def _excerpt(data, length=180):
@@ -31,14 +36,30 @@ def _excerpt(data, length=180):
     return words if len(words) <= length else words[:length].rstrip() + '…'
 
 
-def _rows(records, t):
+def _category(category_id, lang):
+    """How a request's category is shown: its label, or its id when the catalogue no longer holds it; '' without one."""
+    if not isinstance(category_id, str) or not category_id:
+        return ''
+    return category_label(category_id, lang) or category_id
+
+
+def _rows(records, t, lang='en'):
     rows = []
     for record in records:
         data = request_data(record)
+        # The quote's category, on the job: what the list filters by, so the two agree.
         rows.append({'record': record, 'excerpt': _excerpt(data), 'revision': bool(data.get('revision')),
                      'service': t[SERVICES.get(record.feature_id, 'gen_document')],
+                     'category': _category((record.job.parameters or {}).get('category'), lang),
                      'format': (data.get('output_format') or '').upper(), 'status': record.job.status})
     return rows
+
+
+def _category_choices(lang):
+    """The list's category filter: every entry of AI PDF, then AI Slides, retired ones aside."""
+    from apps.studio import categories
+    from apps.studio.categories.catalogue import FEATURES
+    return [(entry.id, entry.label(lang)) for feature in FEATURES.values() for entry in categories.for_feature(feature)]
 
 
 @require_staff(*ROLES)
@@ -55,6 +76,11 @@ def generations(request):
     service = request.GET.get('service', '')
     if service in SERVICES:
         records = records.filter(feature_id=service)
+    category = request.GET.get('category', '')
+    if CATEGORY_ID.fullmatch(category):
+        records = records.filter(job__parameters__category=category)
+    else:
+        category = ''
     words = ' '.join(request.GET.get('text', '').split())[:120].casefold()
     if words:
         # Read in turn, newest first, within the bound above.
@@ -63,7 +89,9 @@ def generations(request):
     pagination = Paginator(records, 30).get_page(request.GET.get('p'))
     params = request.GET.copy()
     params.pop('p', None)
-    data.update(pagination=pagination, rows=_rows(pagination, t), services=[(key, t[label]) for key, label in SERVICES.items()],
+    data.update(pagination=pagination, rows=_rows(pagination, t, data['lang']),
+                services=[(key, t[label]) for key, label in SERVICES.items()],
+                categories=_category_choices(data['lang']), selected_category=category,
                 selected_service=service, who=who, words=request.GET.get('text', ''), page_query=params.urlencode(),
                 intro=t['gen_intro'].format(days=REVIEW_DAYS))
     return finish_render(request, 'ops/generations.html', data)
@@ -107,6 +135,7 @@ def generation_detail(request, pk):
                 is_pdf=record.output_mime == 'application/pdf', page=page, pages=pages,
                 page_label=t['gen_page'].format(n=page, count=pages),
                 service=t[SERVICES.get(record.feature_id, 'gen_document')],
+                category=_category(contents.get('category') or (job.parameters or {}).get('category'), data['lang']),
                 kept_until=t['gen_kept_until'].format(date=timezone.localtime(record.expires_at).strftime('%d %b %Y')),
                 can_inspect_jobs=allowed(request.ops_user, ['Operations', 'Support']))
     return finish_render(request, 'ops/generation.html', data)
