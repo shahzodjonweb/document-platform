@@ -1036,3 +1036,15 @@ tests/test_category_prompts_pdf.py::test_a_papers_wire_schema_has_layouts_and_it
 tests/test_category_prompts_pdf.py::test_a_paper_is_never_written_side_by_side_and_is_cut_by_its_pages
 tests/test_category_prompts_pdf.py::test_the_lease_covers_every_span_of_a_paper_and_one_more
 tests/test_category_prompts_pdf.py::test_a_ready_paper_block_within_budget_keeps_every_stage_under_its_cap
+
+# The bot for category papers (B4): a paper whose length is not a count has no stepper, a change to a paper says
+# its pages before (its stored length, never a count of its parts), and a ceiling paper that came out shorter than
+# quoted says so under its file with both numbers
+tests/test_bot_category_papers.py::test_a_paper_whose_length_is_not_a_count_has_no_stepper[uz]
+tests/test_bot_category_papers.py::test_a_count_paper_steps_within_its_bounds_and_boshqa_as_today
+tests/test_bot_category_papers.py::test_a_change_to_a_paper_reads_its_pages_not_its_parts
+tests/test_bot_category_papers.py::test_a_change_to_a_category_deck_counts_its_slides_as_today
+tests/test_bot_category_papers.py::test_a_ceiling_paper_that_came_out_shorter_says_so_under_its_file[uz]
+tests/test_bot_category_papers.py::test_a_ceiling_paper_that_fills_its_pages_says_nothing_more
+tests/test_bot_category_papers.py::test_a_document_without_a_category_is_never_called_shorter
+tests/test_bot_category_papers.py::test_every_categorys_shorter_words_are_for_a_ceiling_paper_and_name_only_the_two_numbers
