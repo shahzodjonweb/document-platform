@@ -227,6 +227,31 @@ def body_tokens(body):
     return len(json.dumps(body,ensure_ascii=False,separators=(',',':')).encode('utf-8'))+512
 
 
+def category_paper(data):
+    """Whether a draft is a category paper (apps/studio/categories), without loading the catalogue for one with no category."""
+    if (data.get('options') or {}).get('category') is None or data.get('output_format')=='pptx':return False
+    from .categories import of
+    entry=of(data)
+    return entry is not None and entry.service=='pdf'
+
+
+def spans_of(data):
+    """The section ranges a job for this draft is written in one after another, one provider call each.
+
+    PAGES_PER_CALL sections a call (pages.batches), as ever; a category paper's
+    parts are of unequal size, so its calls are cut by the pages they take
+    (categories.skeleton.spans). A selected change counts only its sections,
+    as generate writes only those.
+    """
+    from .pages import batches
+    from .prompting import selected
+    ids=set(data['revision']['selected_section_ids']) if selected(data) else None
+    sections=[s for s in data['content']['sections'] if ids is None or s['id'] in ids]
+    if not category_paper(data):return batches(len(sections))
+    from .categories import skeleton
+    return skeleton.spans({**data,'content':{**data['content'],'sections':sections}})
+
+
 def largest_body(config,data,feature_id):
     """The largest request body a job for this draft sends: one for each part, as `generate` splits it.
 
@@ -236,11 +261,7 @@ def largest_body(config,data,feature_id):
     KB. What earlier parts said (already_written) is not counted: it is cut to
     fit when the part is sent.
     """
-    from .pages import batches
-    from .prompting import selected
-    ids=set(data['revision']['selected_section_ids']) if selected(data) else None
-    count=len([s for s in data['content']['sections'] if ids is None or s['id'] in ids])
-    spans=batches(count)
+    spans=spans_of(data)
     return max((request_body(config,data,feature_id,None if len(spans)==1 else span) for span in spans),key=body_tokens)
 
 
@@ -339,14 +360,28 @@ TOKENS_PER_SECOND=40
 CALL_TIMEOUT_CEILING=300
 
 
-def call_budget(sections):
+def call_budget(sections,data=None):
     """Seconds the provider calls for a document of this many sections may take.
 
     A document written in several calls is given one call more: a reply that
     comes back cut off is asked for once again (see _call), and that second
     try has to fit too. A one-call document already fits in the ordinary lease.
+
+    `data`, the draft, matters only for a category paper (`sections` is then
+    its pages): its calls are its spans, each as long as the pages it takes
+    and the last with its questions, as prompting.output_budget sizes them,
+    and the call given again is the longest.
     """
     from .pages import batches,call_tokens,PAGES_PER_CALL
+    if data is not None and category_paper(data):
+        from .categories import skeleton
+        from .prompting import asked_questions
+        spans=skeleton.spans(data)
+        last=len(data['content']['sections'])
+        times=[min(CALL_TIMEOUT_CEILING,60+call_tokens(skeleton.pages_in(data,first,end),
+                                                       asked_questions(data) if end==last else 0)//TOKENS_PER_SECOND)
+               for first,end in spans]
+        return sum(times)+(max(times) if len(times)>1 else 0)
     per_call=min(CALL_TIMEOUT_CEILING,60+call_tokens(min(sections,PAGES_PER_CALL))//TOKENS_PER_SECOND)
     calls=len(batches(sections))
     return per_call*(calls+1 if calls>1 else 1)
@@ -454,10 +489,16 @@ def side_by_side(calls, workers=MAX_PARALLEL_PARTS):
 
 
 def parallel_wanted(config, data, feature_id):
-    """Whether this job is planned and written in parts side by side."""
+    """Whether this job is planned and written in parts side by side.
+
+    Never a category paper's: the plan call writes every heading, which a
+    paper's fixed parts must not have, and its parts are cut by pages
+    (spans_of). Its long papers are written one part after another, as a long
+    Boshqa document is with the switch off.
+    """
     from .domain import DOCUMENT, SLIDES
     return (bool(config.get('parallel_parts')) and not data.get('revision') and feature_id in (DOCUMENT, SLIDES)
-            and len(data['content']['sections']) >= PARALLEL_FROM)
+            and len(data['content']['sections']) >= PARALLEL_FROM and not category_paper(data))
 
 
 def _plan(config, data, feature_id, request_id, *, deadline=None, job=None):
@@ -565,7 +606,8 @@ def generate(config,data,feature_id,request_id,*,token_limit,deadline=None,key_s
         import functools
         written=side_by_side([functools.partial(write_part,index,span) for index,span in enumerate(spans)])
     else:
-        spans=batches(len(effective['content']['sections']))
+        # A category paper's parts are cut by the pages they take; the rest by count.
+        spans=spans_of(effective) if category_paper(effective) else batches(len(effective['content']['sections']))
         written=None
     merged,totals=None,{'input_tokens':0,'output_tokens':0}
     for index,span in enumerate(spans):
