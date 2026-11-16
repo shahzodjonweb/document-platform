@@ -12,7 +12,10 @@ guarantee. For a deck (`apply`, after title_lines.apply in the job):
   reference the customer did not give becomes ____ or goes;
 - a slot of source `draft` (relevance, aim and tasks, object and subject) is
   guarded (facts.guard): it may be drafted from general knowledge of the topic,
-  but never quotes or cites a law the customer did not give;
+  but never quotes or cites a law the customer did not give; one that also
+  states the customer's own facts (a council's problems, proposals and
+  resolution, a parents' meeting's requests) has its numbers, and where its
+  slot says so its names, grounded too (the slot's `checks`);
 - the cover keeps only lines that are the customer's: a title-page line whose
   names or numbers they did not give ("Toshkent — 2026" with no year said, a
   "F.I.Sh.: ____" stand-in) is taken off, as is a model author line on the
@@ -269,8 +272,8 @@ def _finish_slide(index, section, use, *, revision, locale, trusted, translated,
         codes.extend(found)
         return text
 
-    def guarded(text):
-        text, found = facts.guard(text, trusted, translated=translated)
+    def guarded(text, checks=()):
+        text, found = facts.guard(text, trusted, translated=translated, checks=checks)
         codes.extend(found)
         return text
     if role == 'cover':
@@ -285,7 +288,9 @@ def _finish_slide(index, section, use, *, revision, locale, trusted, translated,
     elif role == 'sources':
         _sources(section, trusted, translated, names, codes)
     elif role == 'draft':
-        _texts(section, guarded, heading=not fixed)
+        # A draft slot that states the customer's own facts names the checks it also takes (catalogue `checks`).
+        checks = tuple(use.part.get('checks') or ())
+        _texts(section, lambda text: guarded(text, checks), heading=not fixed)
     else:
         _texts(section, grounded, heading=not fixed)
 

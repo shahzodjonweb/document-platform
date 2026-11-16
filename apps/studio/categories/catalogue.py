@@ -337,6 +337,9 @@ def _entry_problems(name, raw, entries, templates, index):
         unknown = set(part.get('layouts', ())) - set(LAYOUT_IDS)
         if unknown:
             problems.append(f"{where}: unknown layouts {sorted(unknown)}")
+        if part.get('checks') and part.get('source') != 'draft':
+            # A customer slot is grounded whole and a template slot holds fixed words: checks would mean nothing.
+            problems.append(f"{where}: checks go with source draft only")
     used = {part.get('group') for part in raw['parts']}
     for group, size in groups.items():
         if group not in used:

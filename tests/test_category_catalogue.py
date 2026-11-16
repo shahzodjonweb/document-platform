@@ -135,12 +135,33 @@ def test_a_template_is_validated_against_its_own_schema():
     (lambda e, t, i: i['lists']['ai.pptx'].remove('slides.himoya'), 'slides.himoya: not in index.json'),
     (lambda e, t, i: i['groups']['pdf.xat']['children'].remove('other'), 'Boshqa (other) must be in the group once'),
     (lambda e, t, i: i['lists']['ai.pptx'].insert(0, 'pdf.konspekt'), 'not a group, a slides category id or other'),
+    (lambda e, t, i: next(part for part in e['slides.himoya']['parts'] if part['source'] == 'customer').update(
+        checks=['numbers']), 'checks go with source draft only'),
+    (lambda e, t, i: next(part for part in e['slides.himoya']['parts'] if part['source'] == 'draft').update(
+        checks=['dates']), "'dates' is not one of ['numbers', 'names']"),
 ])
 def test_every_reference_resolves(spoil, says):
     entries, templates, index = files()
     spoil(entries, templates, index)
     found = built_problems(entries, templates, index)
     assert any(says in problem for problem in found), found
+
+
+def test_the_event_deck_draft_slots_about_the_customers_own_school_hold_its_facts():
+    """A council's problems, proposals and resolution and a parents' meeting's agenda and requests are drafts that
+    state the customer's own facts: their numbers are checked, and the names of a resolution and an agenda."""
+    checked = {(entry_id, part['id']): part['checks'] for entry_id, raw in read()[0].items()
+               for part in raw['parts'] if part.get('checks')}
+    assert checked == {
+        ('slides.tadbir.pedkengash', 'kun_tartibi'): ['numbers', 'names'],
+        ('slides.tadbir.pedkengash', 'muammo_yechim'): ['numbers'],
+        ('slides.tadbir.pedkengash', 'muammolar'): ['numbers'],
+        ('slides.tadbir.pedkengash', 'takliflar'): ['numbers'],
+        ('slides.tadbir.pedkengash', 'takliflar_natija'): ['numbers'],
+        ('slides.tadbir.pedkengash', 'qaror'): ['numbers', 'names'],
+        ('slides.tadbir.ota_onalar', 'kun_tartibi'): ['numbers'],
+        ('slides.tadbir.ota_onalar', 'iltimoslar'): ['numbers'],
+    }
 
 
 def test_an_index_id_with_no_entry_yet_is_allowed_and_never_shown(switch, ready):

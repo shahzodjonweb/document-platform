@@ -726,12 +726,18 @@ def ground(text, trusted, *, translated=False):
     return _tidy(text), list(dict.fromkeys(codes))
 
 
-def guard(text, trusted, *, translated=False):
+def guard(text, trusted, *, translated=False, checks=()):
     """(text, codes): any other category part, with no quotation and no legal reference the customer did not give.
 
     Names, numbers and general knowledge are left as SYSTEM allows them in a
     subject paper; a quotation that is not the customer's becomes ____ and a
     legal sentence that is not theirs is removed, in any language.
+
+    `checks` are the catalogue's for a draft slot that also states the
+    customer's own facts (a council's problems and resolution, a parents'
+    meeting's requests), where a percentage, a deadline, a fee or a person
+    would rest on the prompt alone: 'numbers' holds its numbers, e-mails and
+    links as `ground` does, 'names' its runs of capitalised words.
     """
     codes = []
     text = str(text or '')
@@ -739,6 +745,11 @@ def guard(text, trusted, *, translated=False):
         return text, codes
     text = _laws(text, trusted, translated, codes)
     text = _quotes(text, trusted, codes)
+    if 'numbers' in checks:
+        text = _addresses(text, trusted, codes)
+        text = _numbers(text, trusted, codes)
+    if 'names' in checks:
+        text = _names(text, trusted, codes, translated)
     return _tidy(text), list(dict.fromkeys(codes))
 
 

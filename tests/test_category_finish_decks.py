@@ -188,7 +188,7 @@ def test_a_translated_deck_blanks_a_person_the_customer_never_named_in_a_grounde
      'Reviewer: Botir Xolmirzayev'),
     ('uz', ['Bajardi: Yusupov Jasur, 412-guruh', 'Ilmiy rahbar: Rahimova N.', 'Toshkent — 2026'],
      'Taqrizchi: Xolmirzayev Botir'),
-])
+], ids=['en', 'uz'])
 def test_a_translated_cover_keeps_the_customers_people_and_drops_an_invented_one(locale, kept, invented):
     data, content = translated(locale)
     content['sections'][0]['body'] = '\n'.join([*kept[:2], invented, kept[2]])
@@ -407,3 +407,73 @@ def test_the_sample_tool_draws_blank_forms_for_an_entry_without_samples(tmp_path
     assert 'has no figures sample' in capsys.readouterr().out
     with pytest.raises(SystemExit):
         sample.main(['--deck', 'pdf.xat.ariza', '--out', str(tmp_path)])
+
+
+# ---------------------------------------------------------------- draft slots about the customer's own school
+
+COUNCIL, PARENTS = 'slides.tadbir.pedkengash', 'slides.tadbir.ota_onalar'
+
+
+def event_slide(entry_id, case, length, slot_id, body, *, prompt_more=''):
+    """(data, content, section id) of a new event deck from its sample, the slide of `slot_id` holding `body`."""
+    entry = catalogue.get(entry_id)
+    given = copy.deepcopy(sample.load(entry_id, case))
+    given['prompt']['uz'] += prompt_more
+    data, content = sample.draft(entry, given, 'uz', length)
+    content = title_lines.apply(data, content)
+    uses = skeleton.parts(entry, length, skeleton.cues_of(data))
+    wanted = next(use.section_id for use in uses if use.part['id'] == slot_id)
+    slide = next(item for item in content['sections'] if item['id'] == wanted)
+    slide.update(body=body, items=[])
+    return data, content, wanted
+
+
+def finished_body(data, content, wanted):
+    codes = []
+    finished, warnings = finish.apply(data, content, file_names=[], codes=codes)
+    slide = next(item for item in finished['sections'] if item['id'] == wanted)
+    return slide['body'], codes, warnings
+
+
+@pytest.mark.parametrize('entry_id, case, length, slot_id, invented, written', [
+    (COUNCIL, 'figures', 12, 'muammolar', 'Bilim sifati 41,3 foizga tushdi', 'Bilim sifati ____ foizga tushdi'),
+    (COUNCIL, 'figures', 12, 'takliflar_natija', 'Qo‘shimcha darslarni 15-dekabrgacha o‘tkazish',
+     'Qo‘shimcha darslarni ____ o‘tkazish'),
+    (COUNCIL, 'figures', 12, 'qaror', 'Nazorat Sardor Xolmatov zimmasiga yuklansin',
+     'Nazorat ____ zimmasiga yuklansin'),
+    (COUNCIL, 'figures', 12, 'qaror', 'Qo‘shimcha darslar 2026-yil 20-dekabrgacha tashkil etilsin',
+     'Qo‘shimcha darslar ____-yil ____ tashkil etilsin'),
+    (COUNCIL, 'figures', 8, 'muammo_yechim', 'Haftasiga 3 marta qo‘shimcha dars',
+     'Haftasiga ____ marta qo‘shimcha dars'),
+    (COUNCIL, 'topic_only', 8, 'takliflar', 'O‘qish soatini haftasiga 3 marta o‘tkazish',
+     'O‘qish soatini haftasiga ____ marta o‘tkazish'),
+    (PARENTS, 'figures', 8, 'iltimoslar', 'Sinf fondiga oyiga 50 000 so‘m to‘lang',
+     'Sinf fondiga oyiga ____ so‘m to‘lang'),
+    (PARENTS, 'figures', 8, 'kun_tartibi', 'Keyingi yig‘ilish 20-dekabrda', 'Keyingi yig‘ilish ____'),
+], ids=['council-problems', 'council-proposals', 'council-resolution-person', 'council-resolution-deadline',
+        'council-problems-and-solutions', 'council-topic-proposals', 'parents-requests', 'parents-agenda'])
+def test_an_invented_figure_date_or_person_in_an_event_decks_own_draft_slot_is_blanked(
+        entry_id, case, length, slot_id, invented, written):
+    data, content, wanted = event_slide(entry_id, case, length, slot_id, invented)
+    body, codes, warnings = finished_body(data, content, wanted)
+    assert body == written
+    assert warnings == [finish.FACTS_BLANKED] and set(codes) & {'ground:number', 'ground:name'}
+
+
+@pytest.mark.parametrize('entry_id, case, length, slot_id, given, more', [
+    (COUNCIL, 'figures', 12, 'muammolar',
+     'Bilim sifati 58,4% (o‘tgan yil 55,1%)\n23 nafar o‘quvchi qoniqarsiz baho oldi', ''),
+    (COUNCIL, 'figures', 12, 'qaror', 'Qo‘shimcha darslar 20-dekabrgacha tashkil etilsin\n'
+     'Nazorat Mohira Namunova zimmasiga yuklansin',
+     ' Qo‘shimcha darslar 20-dekabrgacha, nazorat direktor o‘rinbosari Mohira Namunovaga yuklatilsin.'),
+    (PARENTS, 'figures', 8, 'iltimoslar', 'Ochiq dars: 25-noyabrda albatta keling', ''),
+], ids=['council-problems', 'council-resolution', 'parents-requests'])
+def test_the_customers_own_figures_dates_and_people_stay_in_those_slots(entry_id, case, length, slot_id, given, more):
+    data, content, wanted = event_slide(entry_id, case, length, slot_id, given, prompt_more=more)
+    body, codes, warnings = finished_body(data, content, wanted)
+    assert (body, codes, warnings) == (given, [], [])
+
+
+def test_a_draft_slot_without_checks_still_keeps_general_knowledge_in_an_event_deck():
+    data, content, wanted = event_slide(COUNCIL, 'topic_only', 8, 'mohiyati', 'Bu usul 1990-yillarda keng tarqalgan')
+    assert finished_body(data, content, wanted) == ('Bu usul 1990-yillarda keng tarqalgan', [], [])

@@ -550,3 +550,13 @@ def test_long_runs_of_letters_dots_and_hyphens_are_read_in_linear_time(run):
     started = time.monotonic()
     facts.trusting(source)
     assert time.monotonic() - started < 2
+
+
+def test_a_draft_slot_with_checks_holds_its_numbers_and_names_and_nothing_more_without():
+    known = trusting('Pedagogik kengash: bilim sifati 58,4%, nazorat Mohira Namunovaga yuklatilsin.')
+    part = 'Sifat 58,4% dan 61% ga oshsin, nazorat Mohira Namunova va Sardor Xolmatovga, info@namuna.uz.'
+    assert guard(part, known) == (part, [])
+    assert guard(part, known, checks=('numbers',)) == \
+        ('Sifat 58,4% dan ____% ga oshsin, nazorat Mohira Namunova va Sardor Xolmatovga, ____.', ['ground:number'])
+    assert guard(part, known, checks=('numbers', 'names')) == \
+        ('Sifat 58,4% dan ____% ga oshsin, nazorat Mohira Namunova va ____, ____.', ['ground:number', 'ground:name'])
