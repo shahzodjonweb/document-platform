@@ -10,9 +10,29 @@ the database, never prints it, and makes a small, fixed number of real calls.
 
 Cost: three requests by default. Nothing is written to a customer account and
 no job or ledger row is created.
+
+A category deck (apps/studio/categories), one real run per entry before the
+owner ticks it on /ops/categories:
+
+    ... exec api python scripts/operations/ai_smoke.py --category slides.himoya --locale uz --case figures
+
+It makes the deck the way a job does, with no account: the draft seeded from
+the entry's slots, one provider.generate (a long deck may be written in
+parts), quality.check with the slides finish.exempt spares, title_lines and
+finish.apply, and render_pptx with finish.pins, into `--out` (a new temporary
+folder by default). The message is the entry's invented sample for `--case`
+(categories/samples, else the test fixtures), or `--prompt`. It prints codes
+and counts only: whether the slides came back as asked, which fixed headings
+and layouts the model kept, what the check would send back, what finish took
+out, which pins gave way and whether the file passes the alphabet read-back.
+`--category slides.` runs every deck entry, at one run each. A paper category
+is refused as the job refuses it until its renderer ships (X2). Nothing is
+stored, and the switch need not be on.
 """
+import argparse
 import os
 import sys
+import tempfile
 from pathlib import Path
 
 import django
@@ -28,8 +48,17 @@ from apps.studio.domain import DOCUMENT, SLIDES  # noqa: E402
 from apps.studio.provider import generate, writing_guidance  # noqa: E402
 from operations.integrations import ai_config  # noqa: E402
 
-PASS, FAIL = 'PASS', 'FAIL'
+PASS, FAIL, NOTE = 'PASS', 'FAIL', 'NOTE'
 results = []
+
+parser = argparse.ArgumentParser(description='Bounded live check of the configured AI provider.')
+parser.add_argument('--category', help='a category id, or a prefix ending in "." (slides.) for every deck entry')
+parser.add_argument('--locale', default='uz', choices=('uz', 'ru', 'en'))
+parser.add_argument('--case', default='figures', help='the sample to take the message from: figures or topic_only')
+parser.add_argument('--slides', type=int, help='the slide count; by default the one the entry gives the message')
+parser.add_argument('--prompt', help='the customer\'s message, in place of the sample\'s')
+parser.add_argument('--out', help='where the decks are written; a new temporary folder by default')
+args = parser.parse_args()
 
 
 def report(name, status, detail=''):
@@ -70,6 +99,91 @@ if config['mode'] != 'openai' or not config['api_key'] or not config['model']:
     report('provider configured', FAIL, 'set mode, model and key in Admin → Integrations')
     sys.exit(1)
 report('provider configured', PASS, 'two services enabled by this key')
+
+
+def category_deck(entry, out):
+    """One category deck made as a job makes it, with no account and nothing stored; its checks are reported."""
+    from apps.studio import quality, title_lines
+    from apps.studio.categories import finish, sample as samples, skeleton
+    from apps.studio.scripts import artifact_violations
+    from apps.studio.slides import render_pptx
+    name = entry.id
+    given = samples.load(entry.id, args.case)
+    prompt = args.prompt or (given.get('prompt') or {}).get(args.locale) or entry.label(args.locale)
+    draft = {'output_locale': args.locale, 'prompt': prompt, 'source_text': '', 'source_ids': [], 'excerpts': [],
+             'output_format': 'pptx', 'options': {'category': entry.id}}
+    cues = skeleton.cues_of(draft)
+    slides = skeleton.length(entry, asked=args.slides or pages.requested_pages(prompt), cues=cues)
+    design = entry.look['designs'][0]
+    draft['options'].update(pages=slides, length=slides, question_count=0, image_cap=0,
+                            template_style={'deck_design': design})
+    draft['content'] = {'title': '', 'sections': skeleton.seed(entry, slides, cues), 'questions': [], 'citations': []}
+    try:
+        answer, usage = generate(config, draft, SLIDES, f'ai-smoke-{entry.id}', token_limit=120000)
+    except DomainError as error:
+        report(f'{name} written', FAIL, error.code)
+        return
+    sections = answer.get('sections') or []
+    report(f'{name} written', PASS, f'{usage.get("input_tokens", 0)}→{usage.get("output_tokens", 0)} tokens, '
+           f'{args.locale}, {args.case if not args.prompt else "own message"}')
+    ids = [section.get('id') for section in sections]
+    report(f'{name} slides as asked', PASS if ids == [f's{n}' for n in range(1, slides + 1)] else FAIL,
+           f'asked {slides}, got {len(sections)}')
+    blueprint = skeleton.slots(entry, slides, cues)
+    fixed = [(slot, section) for slot, section in zip(blueprint, sections) if slot['heading_mode'] == 'fixed']
+    # A fixed heading left empty is what the model is told; one in its own words is not.
+    reworded = sum(bool(section.get('heading')) and section.get('heading') != slot['heading'][args.locale]
+                   for slot, section in fixed)
+    astray = sum(section.get('layout') not in slot['layouts'] for slot, section in zip(blueprint, sections))
+    report(f'{name} slots followed', NOTE if reworded or astray else PASS,
+           f'fixed headings reworded {reworded}/{len(fixed)}, layouts outside their slot {astray}/{len(sections)}'
+           f'{" (finish puts them back)" if reworded or astray else ""}')
+    content = {'title': answer.get('title', ''), 'sections': sections, 'questions': [], 'citations': []}
+    found = quality.check(content, locale=args.locale, fmt='pptx', prompt=prompt, exempt=finish.exempt(draft))
+    wrong = {code: len(items) for code, items in found.issues.items() if items and code != 'script'}
+    report(f'{name} quality', NOTE if found.to_repair() else PASS,
+           ', '.join(f'{code} {count}' for code, count in sorted(wrong.items())) or 'nothing a job would send back')
+    content = quality.normalise(content, args.locale)
+    content = title_lines.apply(draft, content)
+    codes = []
+    content, warnings = finish.apply(draft, content, file_names=[], codes=codes)
+    report(f'{name} held to the message', NOTE if codes else PASS,
+           ', '.join(warnings + codes) or 'finish took nothing out')
+    deck = render_pptx(content, Path(out) / f'{entry.id}-{args.case}-{args.locale}-{slides}.pptx', args.locale,
+                       'user_document', style={'deck_design': design}, pins=finish.pins(draft, content))
+    metadata = deck['metadata']
+    report(f'{name} drawn', PASS if deck['page_count'] == slides else FAIL,
+           f'{deck["page_count"]} slides in {metadata["design"]}, {len(metadata["repinned"])} pins gave way, '
+           f'{len(metadata["shortened"])} shortened')
+    cyrillic = artifact_violations(deck['path'], args.locale, '')
+    report(f'{name} alphabet read-back', FAIL if cyrillic else PASS,
+           f'{len(cyrillic)} Cyrillic words' if cyrillic else deck['path'])
+
+
+if args.category:
+    from apps.studio import categories
+    from apps.studio.categories import catalogue
+    if args.category.endswith('.'):
+        chosen = [entry for feature in catalogue.FEATURES.values() for entry in catalogue.for_feature(feature)
+                  if entry.id.startswith(args.category)]
+    else:
+        chosen = [entry for entry in [categories.get(args.category)] if entry is not None]
+    if not chosen:
+        report('category', FAIL, f'{args.category} is not in this catalogue')
+    out = args.out or tempfile.mkdtemp(prefix='ai-smoke-')
+    Path(out).mkdir(parents=True, exist_ok=True)
+    for entry in chosen:
+        if entry.service != 'slides':
+            report(f'{entry.id}', FAIL, 'a paper category: refused as category_unavailable until its renderer ships (X2)')
+            continue
+        try:
+            category_deck(entry, out)
+        except Exception as error:
+            # One entry that breaks the pipeline is a finding; the rest are still run.
+            report(f'{entry.id}', FAIL, type(error).__name__)
+    failed = [name for name, status, _ in results if status == FAIL]
+    print('\n' + ('FAILED: ' + ', '.join(failed) if failed else 'Every category deck checked was made.'))
+    sys.exit(1 if failed else 0)
 
 # 1. Credentials and model name, via the smallest real generation we can make.
 try:

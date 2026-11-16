@@ -173,6 +173,24 @@ def _write_pins(job,draft_id,pins,version):
         logger.warning('Job %s: deck pins not written (%s)',job.id,type(exc).__name__)
 
 
+def _category(data):
+    """The draft's category entry, or None without one; a category this worker cannot make fails the job here.
+
+    Both refusals come before any provider call, and a failed job is not
+    counted. An id the catalogue does not hold (one rolled back while the
+    draft waited) is category_unknown: run as a Boshqa document it would be
+    today's pipeline sold as a category. A paper category is
+    category_unavailable: its template renderer is not in this worker, and
+    today's renderer cannot draw what it promises. A draft without a category
+    never loads the catalogue.
+    """
+    if (data.get('options') or {}).get('category') is None:return None
+    from .categories import of
+    entry=of(data)
+    if entry.service!='slides':raise DomainError('category_unavailable',409)
+    return entry
+
+
 def execute_generation(job,output_dir):
     with transaction.atomic():
         draft=GenerationDraft.objects.select_for_update().get(id=job.parameters['generation_draft_id'],account=job.account)
@@ -180,13 +198,16 @@ def execute_generation(job,output_dir):
         original=bytes(draft.encrypted_data)
         data=unpack(original)
     content=data['content'];cfg=ai_config();warnings=[]
-    from .domain import CV
+    from .domain import CV,_bounds
     cv=job.feature_id==CV
+    entry=_category(data)
+    # A category paper's parts are held to its own bounds (categories.bounds); anything else to today's.
+    paper=_bounds(data) if entry is not None else None
     if data.get('revision',{}).get('selected_section_ids'):
         # Recheck mutable plan bounds before any paid provider request. The
         # original quote cannot authorize losing untouched pages after a cap
         # change or subscription expiry while the job waited in the queue.
-        ensure_selected_preservation(data,validate_content(job.account,content,data['output_format'],feature=job.feature_id))
+        ensure_selected_preservation(data,validate_content(job.account,content,data['output_format'],feature=job.feature_id,category=paper))
     # Finish the provider calls while the worker still holds the job: work
     # completed after the lease lapses is thrown away by the reclaim sweep. An
     # outline's calls are held to it too, second tries included.
@@ -203,7 +224,7 @@ def execute_generation(job,output_dir):
         try:
             raw,usage=generate(cfg,data,job.feature_id,job.id,token_limit=job.quote.policy['generation_bounds']['input_tokens'],deadline=deadline,
                                **({'on_plan':early.start} if early else {}))
-            content=validate_content(job.account,raw,data['output_format'],feature=job.feature_id)
+            content=validate_content(job.account,raw,data['output_format'],feature=job.feature_id,category=paper)
             # The look the model chose is kept with the draft, so a later change
             # request redraws the same deck rather than picking again. Only a
             # change asking for a new look replaces the one the document has:
@@ -227,7 +248,17 @@ def execute_generation(job,output_dir):
             # A change request is checked against the model's own plan of it:
             # a part it planned and left undone goes into the one repair. A CV
             # is only tidied and put in its alphabet: a repair could only invent.
-            content,_=quality.finish(cfg,data,content,job=job,deadline=deadline,plan=raw.get('edit_plan'),deterministic=cv)
+            # So is a category whose entry says so; a category's slides that
+            # repeat or stand empty by design are never sent back (finish.exempt).
+            fixed=cv or (entry is not None and entry.raw.get('quality')=='fixed')
+            spared={}
+            if cv:
+                from .cv.content import contact_field
+                spared['skip']=contact_field
+            if entry is not None:
+                from .categories import finish as category_finish
+                spared['exempt']=category_finish.exempt(data)
+            content,_=quality.finish(cfg,data,content,job=job,deadline=deadline,plan=raw.get('edit_plan'),deterministic=fixed,**spared)
             # Bounds can also change while the provider is running. Deliver
             # only a result that still preserves everything outside its scope,
             # exactly as it was: quality.finish never retouches those pages.
@@ -262,6 +293,15 @@ def execute_generation(job,output_dir):
     # cover as they wrote them, whatever the model did with them (title_lines.py).
     from . import title_lines
     content=title_lines.apply(data,content)
+    if entry is not None and cfg['mode']=='openai':
+        # A category deck is held to what the customer said: its slots dressed,
+        # a figure, name, quotation or law they did not give blanked or taken
+        # out, its cover and sources only theirs (categories/finish.py). It runs
+        # after title_lines, whose dictated lines it keeps, and before the
+        # read-back, which what it writes cannot fail. Never raises.
+        from .categories import finish as category_finish
+        content,blanked=category_finish.apply(data,content)
+        warnings.extend(code for code in blanked if code not in warnings)
     bounds=job.quote.policy.get('generation_bounds',{})
     # Everything from here on trims the response to what was quoted instead of
     # rejecting it. The customer chose a page count, it was clamped to their plan
@@ -303,7 +343,14 @@ def execute_generation(job,output_dir):
         candidates={}
         photos=early.result(warnings,candidates) if early and early.started else None
         if photos is None:photos=_photos(job,content['sections'],warnings,photo_style,candidates)
-        artifacts=[render_pptx(content,output_dir/'document.pptx',data['output_locale'],'user_document',style=style,photos=photos)]
+        # A new category deck's first render tries the calm variants its slots
+        # name; one that does not hold gives way and is listed in metadata['repinned'].
+        pinned=None
+        if entry is not None:
+            from .categories import finish as category_finish
+            pinned=category_finish.pins(data,content)
+        artifacts=[render_pptx(content,output_dir/'document.pptx',data['output_locale'],'user_document',style=style,photos=photos,
+                               **({'pins':pinned} if pinned else {}))]
     else:
         # A document only has photos when its description asked for pictures.
         photos=_photos(job,content['sections'],warnings,photo_style) if any(s.get('layout')=='image' for s in content['sections']) else {}
