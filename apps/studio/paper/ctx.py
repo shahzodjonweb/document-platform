@@ -29,6 +29,7 @@ from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.platypus import Flowable
+from reportlab.platypus.flowables import _Container, _listWrapOn
 
 from ..categories.catalogue import LOCALES
 from ..categories.skeleton import FACTS, WRITTEN, instances
@@ -139,13 +140,19 @@ class Anchor(Flowable):
 class Lazy(Flowable):
     """Flowables made when they are first laid out, after every block has run: a contents built from the marks.
 
-    `make()` returns the flowables; they are made once per build and then laid
-    out, split and drawn as if they had been in the story all along.
+    `make()` returns the flowables; they are made once per build. When they
+    fit where they are, the Lazy reports their real height and draws them
+    itself, so a heading kept with it (keep-with-next) is measured truly and
+    stays on its page. When they do not, the frame splits it: the first
+    flowable is cut to the room left (ReportLab lays the first of a split out
+    unsplit) and the rest flows on, or everything moves to the next page.
+    Drawn this way, an Anchor or a Mark inside is not seen by the engine: a
+    contents holds neither. Any flowable works, small Paragraphs or a Table.
     """
 
     def __init__(self, make):
         super().__init__()
-        self.make, self.made = make, None
+        self.make, self.made, self.fits = make, None, False
 
     def _content(self):
         if self.made is None:
@@ -153,12 +160,28 @@ class Lazy(Flowable):
         return self.made
 
     def wrap(self, width, height):
-        # Never drawn itself: a height no frame holds makes the frame split it into what it made.
-        self._content()
-        return width, 0xffffff
+        _, need = _listWrapOn(self._content(), width, self.canv)
+        self.width, self.height, self.fits = width, need, need <= height + 1e-6
+        # Too tall for the room: a height no frame holds makes the frame split it.
+        return (width, need) if self.fits else (width, 0xffffff)
 
     def split(self, width, height):
-        return self._content()
+        content = self._content()
+        if not content:
+            return []
+        first = content[0]
+        _, need = first.wrapOn(self.canv, width, height)
+        if need <= height + 1e-6:
+            return list(content)
+        parts = first.split(width, height) if height > 0 else []
+        if len(parts) > 1:
+            _, need = parts[0].wrapOn(self.canv, width, height)
+            if need <= height + 1e-6:
+                return [*parts, *content[1:]]
+        return []
+
+    def drawOn(self, canvas, x, y, _sW=0):
+        _Container.drawOn(self, canvas, x, y, _sW, content=self._content(), aW=self.width)
 
     def draw(self):
         pass

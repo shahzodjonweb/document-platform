@@ -1042,3 +1042,13 @@ tests/test_paper_engine.py::test_a_block_that_raises_is_drawn_by_its_fallback
 tests/test_paper_engine.py::test_a_placement_that_breaks_the_layout_is_drawn_plain
 tests/test_paper_engine.py::test_a_build_that_fails_whatever_is_drawn_plain_gives_the_emergency_fallback
 tests/test_paper_engine.py::test_an_unknown_template_gives_the_emergency_fallback_or_the_callers
+# Paper engine after review: a heading and a short part stay with the closing group on the page they fit, a heading
+# stays with the contents, a request longer than two pages still ends with its enclosures and signatures, an empty
+# placement after a page break adds no page, a placement that broke one instance is plain in that one only, and
+# customer text never reaches the log
+tests/test_paper_engine.py::test_a_heading_and_a_one_paragraph_part_before_the_closing_group_stay_on_the_page_they_fit
+tests/test_paper_engine.py::test_a_heading_before_the_contents_stays_where_it_fits
+tests/test_paper_engine.py::test_a_request_paragraph_longer_than_two_pages_ends_with_its_closing_group
+tests/test_paper_engine.py::test_a_page_break_before_a_placement_that_draws_nothing_adds_no_page
+tests/test_paper_engine.py::test_a_placement_that_breaks_one_instance_is_drawn_plain_in_that_instance_only
+tests/test_paper_engine.py::test_customer_text_never_reaches_the_log

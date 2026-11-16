@@ -12,6 +12,9 @@ and the later pages differ only in what is printed outside it
 - `format`: n | n_of_N ("2 / 3", for which the engine builds once more with the
   page count it found).
 
+A paper that turns out one page long carries no number at all (the engine
+builds it once more with `total=1` when its first page is numbered).
+
 The build is the CV's pattern (cv/layouts.py Sheet.build): a BaseDocTemplate
 with `invariant=1`, so the same content always gives the same bytes, and an
 `afterFlowable` hook that notes how low text reached on each page (the last
@@ -21,7 +24,6 @@ being laid out, so one that breaks the layout can be drawn plain instead.
 import io
 from dataclasses import dataclass, field as attribute
 
-from pypdf import PdfReader
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.platypus import BaseDocTemplate, Flowable, Frame, NextPageTemplate, PageTemplate
@@ -72,17 +74,22 @@ class Built:
     fill: float = 1.0
     anchors: dict = attribute(default_factory=dict)
     at: tuple = ()
+    # The placements (failed, dropped) it was built with: see paper._Paper.build.
+    state: tuple = (frozenset(), frozenset())
 
 
 def _cut(text, font, size, room):
-    """A running header cut at a word to fit `room` points."""
+    """A running header cut at a word to fit `room` points; a single word too long for it is cut at a letter."""
     text = ' '.join(text.split())
     if stringWidth(text, font, size) <= room:
         return text
     words = text.split(' ')
     while len(words) > 1 and stringWidth(' '.join(words) + '…', font, size) > room:
         words.pop()
-    return ' '.join(words).rstrip(',;:·–—') + '…'
+    text = ' '.join(words).rstrip(',;:·–—')
+    while len(text) > 1 and stringWidth(text + '…', font, size) > room:
+        text = text[:-1]
+    return text + '…'
 
 
 def header_text(ctx):
@@ -108,7 +115,7 @@ def furniture(ctx, total=None):
     def draw(canvas, document):
         page = document.page
         kind = spec.get('first', 'none') if page == 1 else spec.get('later', 'none')
-        if kind == 'none':
+        if kind == 'none' or total == 1:
             return
         canvas.saveState()
         canvas.setFillColor(INK)
@@ -178,7 +185,8 @@ def build(ctx, story, *, total=None, made=None):
     document.afterFlowable = reached
     document.build([NextPageTemplate('later'), *story])
     made.data = buffer.getvalue()
-    made.pages = len(PdfReader(io.BytesIO(made.data)).pages)
+    # The page the build ended on is the page count: no need to read the PDF back.
+    made.pages = document.page
     if made.pages in lowest:
         made.fill = round(max(0.0, (bottom + height - lowest[made.pages]) / height), 3)
     else:

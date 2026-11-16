@@ -21,7 +21,8 @@ Nothing about a paper's content can fail the job here:
 - a block that raises is drawn by its plain fallback (`block_fallback:<name>`);
 - a placement that breaks the layout (a cell taller than a page) is found by
   the mark before it, and the paper is built again with it drawn plain, then
-  without it;
+  without it, unless it carries facts or a keep group (an addressee, the
+  signatures): a paper without those is broken, so it goes to the fallback;
 - a template this worker does not know, one with an unregistered block, or a
   build that fails anyway, gives the emergency fallback (architecture 6.7): the
   paper's parts as a plain document drawn by today's renderer, with
@@ -137,37 +138,59 @@ class _Paper:
         self.content, self.locale, self.entry, self.template = content, locale, entry, template
         self.pages, self.cues, self.day, self.style = pages, cues, day, style
         left, bottom, self.width, self.height = page.geometry(template)
+        # Placements as (flow index, instance): drawn plain, and left out.
         self.failed, self.dropped = set(), set()
+        self.placed = {}
         self.elastic = _elastic(entry, content)
 
-    def build(self, step, ratio=None, *, known=None, total=None):
-        """One build at `step` with the elastic prose cut to `ratio`; a placement that breaks it is drawn plain."""
+    def build(self, step, ratio=None, *, known=None, total=None, state=None):
+        """One build at `step` with the elastic prose cut to `ratio`; a placement that breaks it is drawn plain.
+
+        `state` is the (failed, dropped) a build was made with: the final
+        passes start from the build the fit chose, not from what other steps
+        broke since. The Built keeps the state it was made with.
+        """
+        if state is not None:
+            self.failed, self.dropped = set(state[0]), set(state[1])
         content = _cut(self.content, self.elastic, ratio)
         for _ in range(RETRIES + 1):
             ctx = Ctx(content=content, entry=self.entry, template=self.template, locale=self.locale, step=step,
                       pages=self.pages, width=self.width, frame_height=self.height, cues=self.cues, day=self.day,
                       style=self.style, known_pages=known)
             made = page.Built()
+            resolved = places(ctx)
+            self.placed = {(place.index, place.instance): place for place in resolved}
             try:
-                page.build(ctx, fit.story(ctx, places(ctx), self.failed, self.dropped), total=total, made=made)
-            except Exception:
+                page.build(ctx, fit.story(ctx, resolved, self.failed, self.dropped), total=total, made=made)
+            except Exception as error:
                 if not self._blame(made.at):
                     raise
-                log.warning('Paper %s: a placement broke the layout at step %s; drawn plain', self.entry.id, step)
+                log.warning('Paper %s: a placement broke the layout at step %s (%s); drawn plain', self.entry.id,
+                            step, type(error).__name__)
                 continue
             made.ctx = ctx
+            made.state = (frozenset(self.failed), frozenset(self.dropped))
             return made
         raise RuntimeError('the paper did not lay out after drawing its breaking placements plain')
 
-    def _blame(self, indexes):
-        """Note the placement that broke a build: drawn plain next time, left out the time after. False: none left."""
-        for index in indexes:
-            if index not in self.failed:
-                self.failed.add(index)
+    def _blame(self, keys):
+        """Note the placement that broke a build: drawn plain next time, left out the time after. False: none left.
+
+        A placement that carries facts or belongs to a keep group is never
+        left out: False, so the build fails and the paper takes the emergency
+        fallback, which keeps every fact and which the admin counts.
+        """
+        for key in keys:
+            if key not in self.failed:
+                self.failed.add(key)
                 return True
-        for index in indexes:
-            if index not in self.dropped:
-                self.dropped.add(index)
+        for key in keys:
+            place = self.placed.get(key)
+            if place is not None and (place.fields or place.keep):
+                return False
+        for key in keys:
+            if key not in self.dropped:
+                self.dropped.add(key)
                 return True
         return False
 
@@ -214,22 +237,38 @@ def render_paper(content, path, locale, *, entry, template, pages, style=None, c
         paper = _Paper(content, locale, entry, raw, pages, frozenset(cues or ()), day, style)
         steps = len(raw['type']['ladder'])
         choice = fit.fit(paper.build, raw['page_rule'], steps, pages)
-        built = choice.attempt
-        final = raw['furniture'].get('format') == 'n_of_N'
-        for _ in range(FINAL_PASSES):
-            if not (final or built.ctx.wants_contents):
-                break
-            again = paper.build(choice.step, choice.ratio, known=built.anchors, total=built.pages)
-            settled = again.pages == built.pages and again.anchors == built.anchors
-            built, final = again, False
-            if settled:
-                break
+        built = _final(paper, choice, raw['furniture'])
+        codes = list(choice.codes)
+        if built.pages > choice.target and fit.LONGER not in codes:
+            # The final pass may move a page (the contents' numbers grew a line): the rule is read on what ships.
+            codes.append(fit.LONGER)
         path.write_bytes(built.data)
         return _artifact(path, built, entry=entry, template_id=template_id, step=choice.step, ratio=choice.ratio,
-                         codes=choice.codes, template=raw)
-    except Exception:
-        log.exception('Paper %s: template %s could not be built; drawn by the fallback', entry.id, template_id)
+                         codes=codes, template=raw)
+    except Exception as error:
+        log.warning('Paper %s: template %s could not be built (%s); drawn by the fallback', entry.id, template_id,
+                    registry.described(error))
         return _emergency(content, path, locale, entry, template_id, pages, fallback, 'build_failed')
+
+
+def _final(paper, choice, furniture):
+    """The build delivered: the fit's, built again when it prints what only a finished build knows.
+
+    That is the contents' page numbers, the page count of "n / N", and a
+    paper that turned out one page long: it carries no page number, so a
+    numbered first page is built again without it.
+    """
+    built = choice.attempt
+    total = furniture.get('format') == 'n_of_N' or (built.pages == 1 and furniture.get('first', 'none') != 'none')
+    if not (total or built.ctx.wants_contents):
+        return built
+    for _ in range(FINAL_PASSES):
+        again = paper.build(choice.step, choice.ratio, known=built.anchors, total=built.pages, state=built.state)
+        settled = again.pages == built.pages and again.anchors == built.anchors
+        built = again
+        if settled:
+            break
+    return built
 
 
 # ---------------------------------------------------------------- the emergency fallback
@@ -291,8 +330,9 @@ def _emergency(content, path, locale, entry, template_id, pages, fallback, reaso
             try:
                 drawn = finish.plain({'options': {'category': entry.id, 'length': pages}, 'output_locale': locale,
                                       'content': content}, content)
-            except Exception:
-                log.exception('Paper %s: finish.plain failed; the engine projects the paper itself', entry.id)
+            except Exception as error:
+                log.warning('Paper %s: finish.plain failed (%s); the engine projects the paper itself', entry.id,
+                            registry.described(error))
         drawn = drawn or plain(content, entry, locale)
         more = {}
         if 'pages' in inspect.signature(render_pdf).parameters:

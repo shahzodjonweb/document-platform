@@ -310,6 +310,7 @@ def test_text_rules_set_house_apostrophes_and_glue():
     rules = Rules('CVSerif', 'uz')
     assert rules.plain("O'zbekiston ma'lumot va g`alaba") == 'O‘zbekiston ma’lumot va g‘alaba'
     assert rules.plain('rektori B. A. Sobirovga') == f'rektori B.{NBSP}A.{NBSP}Sobirovga'
+    assert rules.plain('O‘. Karimov, G‘. A. Aliyev') == f'O‘.{NBSP}Karimov, G‘.{NBSP}A.{NBSP}Aliyev'
     assert rules.plain('Vaqt: 35 daqiqa, № 5, 1 150 000 so‘m') == \
         f'Vaqt: 35{NBSP}daqiqa, №{NBSP}5, 1{NBSP}150{NBSP}000{NBSP}so‘m'
     assert rules.plain('bir — ikki') == f'bir{NBSP}— ikki'
@@ -445,6 +446,159 @@ def test_a_keep_group_never_separates(tmp_path, blocks):
         assert 'Ma’lumotnoma 1 nusxasi' in last and 'N. A. Toshmatova' in last, paragraphs
 
 
+def _closing_flow(tail=None):
+    closing = {'tail_lines': tail} if tail is not None else {}
+    return [{'block': 'paragraph', 'part': 'request'},
+            {'block': 'heading', 'part': 'chapter_head'}, {'block': 'paragraph', 'part': 'chapter'},
+            {'block': 'list', 'part': 'enclosures', 'keep': 'closing', 'params': closing},
+            {'block': 'signature_row', 'part': 'signature', 'fields': ['signer_name'], 'keep': 'closing'}]
+
+
+@pytest.mark.parametrize('rule', [{'kind': 'fixed', 'pages': 1}, {'kind': 'flow'}])
+def test_a_heading_and_a_one_paragraph_part_before_the_closing_group_stay_on_the_page_they_fit(tmp_path, blocks,
+                                                                                            chapters, rule):
+    for paragraphs in (1, 3):
+        content = letter(paragraphs=paragraphs)
+        content['sections'][2:2] = [{'id': 'chapter', 'heading': 'Xulosa', 'body': ' '.join([REQUEST] * 2),
+                                     'layout': 'text'}]
+        result = paper.render_paper(content, tmp_path / f'closing{paragraphs}.pdf', 'uz', entry=chapters,
+                                    template=template(flow=_closing_flow(), page_rule=rule), pages=1, day=DAY)
+        pages = text_of(result)
+        assert result['page_count'] == 1 and len(pages) == 1, paragraphs
+        assert '1. Xulosa' in pages[0] and 'N. A. Toshmatova' in pages[0]
+        assert 'longer_than_quoted' not in result['metadata']['warnings']
+
+
+def test_a_heading_before_the_contents_stays_where_it_fits(tmp_path, blocks, chapters):
+    blocks('doc_title', lambda ctx, place: [Paragraph(ctx.text('MUNDARIJA'), ctx.styles['h2'])])
+    content = letter(paragraphs=1)
+    content['sections'][2:2] = [{'id': 'chapter' if number == 1 else f'chapter_{number}', 'heading': f'Bob {number}',
+                                 'body': REQUEST, 'layout': 'text'} for number in (1, 2, 3, 4)]
+    flow = [{'block': 'paragraph', 'part': 'request'}, {'block': 'doc_title', 'part': 'title'},
+            {'block': 'toc', 'params': {}}, {'block': 'heading', 'part': 'chapter_head'},
+            {'block': 'paragraph', 'part': 'chapter'}]
+    result = paper.render_paper(content, tmp_path / 'contents.pdf', 'uz', entry=chapters,
+                                template=template(flow=flow, page_rule={'kind': 'flow'}), pages=2, day=DAY)
+    first = text_of(result)[0]
+    assert result['page_count'] == 1
+    assert 'MUNDARIJA' in first and 'Bob 1 … 1' in first and 'Bob 4 … 1' in first
+
+
+def test_a_table_contents_taller_than_the_rest_of_the_page_runs_on(tmp_path, blocks):
+    def contents(ctx, place):
+        def make():
+            return [Table([[Paragraph(ctx.text(f'Bob {number}'), ctx.styles['body']), str(number)]
+                           for number in range(1, 61)], colWidths=[ctx.width - 40, 40])]
+        return [Lazy(make)]
+    blocks('toc', contents)
+    flow = [{'block': 'paragraph', 'part': 'request'}, {'block': 'toc', 'params': {}},
+            {'block': 'list', 'part': 'enclosures'}]
+    result = render(tmp_path, letter(paragraphs=3), template=template(flow=flow, page_rule={'kind': 'flow'}), pages=2)
+    pages = text_of(result)
+    assert 'block_fallback:toc' not in result['metadata']['warnings']
+    assert 'Bob 1\n' in pages[0] + '\n' and 'Bob 60' in pages[-1] and 'Ma’lumotnoma 3 nusxasi' in pages[-1]
+
+
+def test_a_request_paragraph_longer_than_two_pages_ends_with_its_closing_group(tmp_path, blocks):
+    content = letter()
+    content['sections'][1]['body'] = ' '.join([REQUEST] * 45)
+    result = render(tmp_path, content)
+    pages = text_of(result)
+    assert len(pages) >= 3 and result['page_count'] == len(pages)
+    warnings = result['metadata']['warnings']
+    assert not result['metadata'].get('template_fallback') and not any(code.startswith('block_fallback')
+                                                                       for code in warnings)
+    last = pages[-1].split('\n')
+    assert 'Ma’lumotnoma 1 nusxasi.' in last and 'Ma’lumotnoma 3 nusxasi.' in last and 'N. A. Toshmatova' in last
+    # The request's last lines travel with the group, never the enclosures alone.
+    assert last[1].startswith(('Men', 'darslarga', 'qatnasha', 'Shu', 'kunlardagi', 'deb', 'hisoblash', 'olmadim',
+                               'davrda', 'kasallik', 'sababli', '3-noyabrdan', '12-noyabrgacha', 'bo‘lgan', 'dars',
+                               'qoldirish', 'uzrli', 'so‘rayman'))
+
+
+def test_a_page_break_before_a_placement_that_draws_nothing_adds_no_page(tmp_path, blocks):
+    blocks('answer_key', lambda ctx, place: [])
+    flow = [*catalogue.template('official_ariza')['flow'], {'block': 'answer_key', 'page_break_before': True}]
+    result = render(tmp_path, template=template(flow=flow))
+    assert result['page_count'] == 1 and result['metadata']['warnings'] == []
+    assert result['metadata']['last_page_fill'] > 0
+    # Nor does one first in the paper, after only marks.
+    first = render(tmp_path, template=template(flow=[{'block': 'answer_key'},
+                                                     {'block': 'paragraph', 'part': 'request',
+                                                      'page_break_before': True}]), name='first.pdf')
+    assert first['page_count'] == 1
+
+
+def test_a_keep_group_takes_the_paragraph_before_its_gap_and_two_lines_only_when_it_closes(blocks):
+    def gapped(ctx, place):
+        return [*_lines(ctx, place), Spacer(1, 12)]
+    blocks('paragraph', gapped)
+    ctx = context(letter())
+    closing = next(flowable for flowable in fit.story(ctx, places(ctx)) if isinstance(flowable, fit.Closing))
+    assert isinstance(closing.lead, Paragraph) and closing.tail == 2
+    assert isinstance(closing.group[0], Spacer), 'the gap stays between the paragraph and the group'
+    flow = [{**placement, 'keep': 'passage'} if placement.get('keep') else placement
+            for placement in catalogue.template('official_ariza')['flow']]
+    ctx = context(letter(), raw=template(flow=flow))
+    made = fit.story(ctx, places(ctx))
+    assert not any(isinstance(flowable, fit.Closing) and flowable.lead is not None for flowable in made)
+
+
+def test_customer_text_never_reaches_the_log(tmp_path, blocks, monkeypatch, caplog):
+    def raising(ctx, place):
+        raise ValueError(f"paragraph text '{ctx.fact('applicant_name')}' caused exception")
+
+    def markup(ctx, place):
+        return [Paragraph('<para>Toshmatova Nilufar <b>', ctx.styles['body'])]
+    blocks('list', raising)
+    blocks('paragraph', markup)
+    with caplog.at_level('DEBUG'):
+        result = render(tmp_path)
+    assert {'block_fallback:list', 'block_fallback:paragraph'} <= set(result['metadata']['warnings'])
+
+    def failing(*args, **kwargs):
+        raise RuntimeError('Splitting error on page 1 in <Paragraph> Toshmatova Nilufar Akmal qizidan')
+    monkeypatch.setattr(page, 'build', failing)
+    with caplog.at_level('DEBUG'):
+        assert render(tmp_path, name='failed.pdf')['metadata']['template_fallback'] is True
+    logged = '\n'.join(record.getMessage() + str(record.exc_info or '') for record in caplog.records)
+    assert 'Paper block list raised ValueError' in logged
+    assert 'Toshmatova' not in logged and 'Nilufar' not in logged
+
+
+def test_a_one_page_paper_carries_no_page_number(tmp_path, blocks):
+    for style in ('n', 'n_of_N'):
+        raw = template(furniture={'first': 'number', 'later': 'number_bottom', 'format': style})
+        one = text_of(render(tmp_path, template=raw, name=f'one_{style}.pdf'))
+        assert len(one) == 1 and one[0].rstrip().split('\n')[-1] != '1' and '1 / 1' not in one[0]
+        more = text_of(render(tmp_path, letter(paragraphs=8), template=template(
+            furniture=raw['furniture'], page_rule={'kind': 'flow'}), name=f'more_{style}.pdf'))
+        assert more[0].rstrip().split('\n')[-1] == ('1' if style == 'n' else f'1 / {len(more)}')
+
+
+def test_a_running_header_word_longer_than_the_line_is_cut():
+    cut = page._cut('Namunaviy' * 20, 'CVSerif', 9, 100)
+    assert cut.endswith('…') and page.stringWidth(cut, 'CVSerif', 9) <= 100
+
+
+def test_a_block_module_that_fails_to_import_leaves_only_its_blocks_missing(monkeypatch, caplog):
+    import importlib
+    import pkgutil
+
+    real = importlib.import_module
+
+    def fake_import(name, *args):
+        if name.endswith('.broken'):
+            registry.block('half_made')(_word)
+            raise SyntaxError('a broken family module')
+        return real(name, *args)
+    monkeypatch.setattr(pkgutil, 'iter_modules', lambda path: [pkgutil.ModuleInfo(None, 'broken', False)])
+    monkeypatch.setattr(importlib, 'import_module', fake_import)
+    registry.discover()
+    assert 'half_made' not in registry.BLOCKS
+    assert any('broken' in record.getMessage() for record in caplog.records)
+
+
 def test_the_mark_after_a_heading_keeps_it_with_what_follows(blocks, chapters):
     content = letter()
     content['sections'][2:2] = [{'id': 'chapter', 'heading': 'Birinchi', 'body': 'Bir.', 'layout': 'text'}]
@@ -479,11 +633,37 @@ def test_a_placement_that_breaks_the_layout_is_drawn_plain(tmp_path, blocks):
     assert 'block_fallback:list' in result['metadata']['warnings']
     assert not result['metadata'].get('template_fallback')
     assert 'Ma’lumotnoma 2 nusxasi' in text_of(result)[0]
-    # A fallback that breaks it too leaves the placement out, and the paper is still drawn.
-    blocks('list', _too_tall, _too_tall)
-    left = render(tmp_path, name='left.pdf')
-    assert 'block_fallback:list' in left['metadata']['warnings'] and not left['metadata'].get('template_fallback')
+    # A fallback that breaks it too leaves out a placement without facts, and the paper is still drawn.
+    blocks('callout', _too_tall, _too_tall)
+    flow = [*catalogue.template('official_ariza')['flow'], {'block': 'callout'}]
+    left = render(tmp_path, template=template(flow=flow), name='left.pdf')
+    assert 'block_fallback:callout' in left['metadata']['warnings'] and not left['metadata'].get('template_fallback')
     assert 'Toshmatova' in text_of(left)[0]
+    # A placement of the closing group (or one with facts) is never left out: the paper takes the emergency fallback.
+    blocks('list', _too_tall, _too_tall)
+    kept = render(tmp_path, name='kept.pdf')
+    assert kept['metadata']['template_fallback'] is True
+    assert any('Ma’lumotnoma 2 nusxasi' in text for text in text_of(kept))
+
+
+def test_a_placement_that_breaks_one_instance_is_drawn_plain_in_that_instance_only(tmp_path, blocks, chapters):
+    def chapter(ctx, place):
+        if place.instance == 2:
+            return _too_tall(ctx, place)
+        return [Paragraph(ctx.text('Blok: ' + place.section['body']), ctx.styles['body'])]
+    blocks('chapter_text', chapter)
+    content = letter()
+    content['sections'][2:2] = [{'id': 'chapter' if number == 1 else f'chapter_{number}', 'heading': '',
+                                 'body': word, 'layout': 'text'}
+                                for number, word in ((1, 'Bir.'), (2, 'Ikki.'), (3, 'Uch.'))]
+    flow = [{'block': 'paragraph', 'part': 'request'}, {'block': 'heading', 'part': 'chapter_head'},
+            {'block': 'chapter_text', 'part': 'chapter'}]
+    result = paper.render_paper(content, tmp_path / 'chapters.pdf', 'uz', entry=chapters,
+                                template=template(flow=flow, page_rule={'kind': 'flow'}), pages=1, day=DAY)
+    text = '\n'.join(text_of(result))
+    assert 'Blok: Bir.' in text and 'Blok: Uch.' in text
+    assert 'Ikki.' in text and 'Blok: Ikki.' not in text
+    assert 'block_fallback:chapter_text' in result['metadata']['warnings']
 
 
 def test_a_build_that_fails_whatever_is_drawn_plain_gives_the_emergency_fallback(tmp_path, blocks, monkeypatch):

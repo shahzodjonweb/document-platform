@@ -40,8 +40,8 @@ SHORT_KINDS = frozenset(('date', 'number', 'money', 'ref', 'phone', 'choice', 'f
 # The tutuq belgisi between two letters, typed with whatever was to hand; o‘ and g‘ are TURNED's.
 TUTUQ = re.compile(r"(?<=[^\W\d_])['ʼ`´](?=[^\W\d_])")
 UPPER = 'A-ZА-ЯЁЎҚҒҲ'
-# "B. A. Rahimova": the space after a capital initial, before another initial or a name.
-INITIAL = re.compile(rf'(?<![^\W\d_])([{UPPER}]\.)[ ]+(?=[{UPPER}])')
+# "B. A. Rahimova", "O‘. Karimov": the space after a capital initial, before another initial or a name.
+INITIAL = re.compile(rf'(?<![^\W\d_])([{UPPER}]‘?\.)[ ]+(?=[{UPPER}])')
 # "35 daqiqa", "2026 yil", "5 ta": a number and the short word after it.
 UNIT = re.compile(r'(?<=\d)[ ]+(?=[^\W\d_]{1,12}(?![^\W\d_]))')
 # "1 150 000": the groups of a number.
