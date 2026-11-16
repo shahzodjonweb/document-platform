@@ -958,3 +958,15 @@ tests/test_category_deck_readiness.py::test_the_switch_page_says_what_a_person_s
 tests/test_category_deck_readiness.py::test_the_sample_tool_draws_both_cases_to_the_count_asked[slides.himoya]
 tests/test_category_deck_readiness.py::test_a_sample_table_fills_every_cell_its_columns_name
 tests/test_category_deck_readiness.py::test_no_customer_text_breaks_off_mid_sentence
+
+# The real antiword (fix-off): an old Word file LibreOffice makes is read by the antiword CI and the image install,
+# with its UTF-8 mapping, so Uzbek ‘ ’ and Cyrillic come through, at upload and in the reader child. They skip
+# where antiword or LibreOffice is missing, so CI's install step fails on a runner without them
+tests/test_upload_ai_source.py::test_a_real_old_word_file_is_read_by_antiword_in_three_languages
+tests/test_source_reader.py::test_a_real_old_word_file_is_read_in_three_languages
+
+# The switch-off path and public warnings (fix-off): with nothing live, every way into AI PDF and AI Slides is
+# today's question even when the catalogue cannot load, and facts_blanked stays the bot's and the admin's, never
+# in the warnings a client reads
+tests/test_bot_categories.py::test_with_nothing_live_no_way_in_loads_the_catalogue[switched0]
+tests/test_category_generation_decks.py::test_facts_blanked_is_the_bots_and_the_admins_never_a_clients
