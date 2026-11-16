@@ -220,5 +220,6 @@
   "picture_unavailable": "Couldn't get that picture. Try another one.",
   "picture_no_room": "This slide's text wouldn't all show beside a picture. Shorten it or split the slide first.",
   "deck_pictures_complete": "Every slide that can take a picture already has one.",
-  "category_unknown": "This document type is no longer available. Choose another one and send the description again."
+  "category_unknown": "This document type is no longer available. Choose another one and send the description again.",
+  "source_unreadable": "We couldn’t read any text in the attached files: a scan or a photo of pages has none. Send a PDF with text, a Word or TXT file, or write the details in your message."
 }

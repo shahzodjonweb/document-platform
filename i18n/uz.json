@@ -220,5 +220,6 @@
   "picture_unavailable": "Bu rasmni olib bo‘lmadi. Boshqasini tanlang.",
   "picture_no_room": "Rasm qo‘yilsa, slayddagi matn to‘liq ko‘rinmaydi. Avval matnni qisqartiring yoki slaydni ikkiga bo‘ling.",
   "deck_pictures_complete": "Rasm qo‘yish mumkin bo‘lgan har bir slaydda rasm bor.",
-  "category_unknown": "Bu hujjat turi endi mavjud emas. Boshqasini tanlab, tavsifni qayta yuboring."
+  "category_unknown": "Bu hujjat turi endi mavjud emas. Boshqasini tanlab, tavsifni qayta yuboring.",
+  "source_unreadable": "Biriktirilgan fayllardagi matnni o‘qib bo‘lmadi: skan yoki sahifa rasmida matn bo‘lmaydi. Matnli PDF, Word yoki TXT fayl yuboring yoki ma’lumotlarni xabarda yozing."
 }
