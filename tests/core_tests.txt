@@ -745,3 +745,11 @@ tests/test_category_skeleton.py::test_a_deck_seeds_each_slide_with_its_slots_fir
 tests/test_category_skeleton.py::test_dress_puts_back_the_fixed_headings_and_the_slot_layouts
 tests/test_category_skeleton.py::test_spans_cut_a_long_paper_by_pages_and_sections
 tests/test_category_skeleton.py::test_himoya_asks_only_when_the_message_holds_no_figure_and_no_file
+
+# Category sources (S1a): a .txt in any of its encodings and an old Word .doc are taken only as the bot's 'ai_source'; every other upload and the public endpoint as before
+tests/test_upload_ai_source.py::test_a_text_file_in_each_encoding_is_taken_as_a_category_source[windows-1251]
+tests/test_upload_ai_source.py::test_a_text_file_is_still_refused_for_the_tools_and_a_cv
+tests/test_upload_ai_source.py::test_text_and_word_files_never_reach_a_file_tool
+tests/test_upload_ai_source.py::test_an_old_word_file_is_taken_and_counted_from_antiwords_text
+tests/test_upload_ai_source.py::test_a_word_file_with_macros_is_refused
+tests/test_upload_ai_source.py::test_the_public_endpoint_refuses_the_purpose_as_any_unpublished_one

@@ -20,7 +20,7 @@ from .middleware import CHALLENGE_AGE, CHALLENGE_COOKIE, CHALLENGE_PATH, challen
 from .antibot import require_web_verification
 from .identity import resolve_account, exchange_miniapp, create_challenge, get_bound_challenge, exchange_challenge
 from .policy import catalog, SEED, FEATURES, usage_snapshot
-from .services import upload_file, create_quote, submit_job, execute_job, cancel_job, record_event
+from .services import PUBLIC_UPLOAD_PURPOSES, upload_file, create_quote, submit_job, execute_job, cancel_job, record_event
 from .serializers import account_data, asset_data, quote_data, job_data
 
 def current_account(request):
@@ -248,7 +248,10 @@ def uploads(request):
     # `purpose` 'cv_source' is a file a CV is made from: it may carry links
     # (services.upload_file), and is queued for the reader at once. `cv_read`
     # says how its reading stands (apps/studio/cv/reads.py upload_state).
+    # 'ai_source' (a category's source, which may be a .txt or an old .doc)
+    # is the bot's alone: refused here exactly as an unknown purpose is.
     purpose=request.POST.get('purpose','')
+    if purpose not in PUBLIC_UPLOAD_PURPOSES: raise DomainError('invalid_parameters')
     asset=upload_file(request.account,request.FILES['file'],password=request.POST.get('password'),purpose=purpose)
     data=asset_data(asset)
     if purpose=='cv_source':
