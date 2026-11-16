@@ -425,6 +425,31 @@ def pending_portrait(account):
     prompt=row.prompt or {}
     return str(prompt.get('portrait_asset_id') or '') if prompt.get('feature_id')=='ai.cv' else ''
 
+def ai_state(feature_id,category=None,**kept):
+    """What the AI question keeps ('ai_input'): the service, the category when there is one, and `kept`.
+
+    Every writer of the question goes through here, so a description written
+    without a category keeps exactly what it kept before categories, and one
+    written in a category never loses it when the question is asked again.
+    """
+    return {'feature_id':feature_id,**({'category':category} if category else {}),**kept}
+
+def pending_files(account,feature_id,category=None):
+    """The files held for a category's question or the list in front of it; [] with none, or once it is old.
+
+    Like what was written, they wait in the chat's state, never in a button:
+    on the list (ai_category), and on a question of this service in the same
+    category, so they go with the customer from the list to the category and
+    back. A question without a category holds none: its files are the file
+    tools' draft, as before categories.
+    """
+    row=BotConversation.objects.filter(pk=account.telegram_user_id,state__in=('ai_input','ai_category')).first()
+    if row is None or row.updated_at<timezone.now()-QUESTION_LIFETIME: return []
+    prompt=row.prompt or {}
+    if prompt.get('feature_id')!=feature_id: return []
+    if row.state=='ai_input' and (not prompt.get('category') or (category is not None and prompt.get('category')!=category)): return []
+    return [str(item) for item in prompt.get('files') or []]
+
 def cv_brief(account):
     """What is kept of a CV described about yourself while what it lacks is asked for; [] with no such question."""
     row=BotConversation.objects.filter(pk=account.telegram_user_id,state='ai_input').first()
@@ -818,8 +843,11 @@ async def review_screen(account,draft,quote):
     # CV's description written again goes back to the way it was made, with
     # the photo and the files sent for it (by the draft it is on: a button
     # never carries what the customer sent).
+    # A document described in a category is described again in it.
+    category=await sync_to_async(ai.category_of)(draft) if not source and not cv else ''
     reword=(await button(account,await ai_change_copy('ai_revise'),'ai_revise',{'draft_id':source}) if source
-            else await button(account,'ai_change_topic','ai_tool',{'feature_id':draft.feature_id,**({'draft_id':str(draft.id)} if photo or cv else {})}))
+            else await button(account,'ai_change_topic','ai_tool',{'feature_id':draft.feature_id,**({'draft_id':str(draft.id)} if photo or cv else {}),
+                                                                   **({'category':category} if category else {})}))
     rows=[[await button(account,generate,'ai_run',{'quote_id':str(quote.id),'draft_id':str(draft.id)})]]
     if other:
         rows.insert(0,[await button(account,'ai_switch_slides' if other==ai.SLIDES else 'ai_switch_pdf','ai_switch',
@@ -1117,7 +1145,61 @@ def build_dispatcher():
     def ai_example(account,feature_id,index):
         return PROMPT_EXAMPLES[feature_id][index][LOCALES.index(account.locale if account.locale in LOCALES else 'en')]
 
-    async def ai_prompt(message,account,feature_id,edit=False,notice='',portrait=None):
+    async def ai_files_line(account,feature_id,files,category):
+        """`📎 N`: the files a description sent now would be made from, or '' with none."""
+        def count():
+            staged=draft_for(account).input_ids
+            if category: return len(ai.category_sources(account,[*files,*staged]))
+            return len(ai.sources(account,staged,feature_id))
+        number=await sync_to_async(count)()
+        return f'\n\n📎 {number}' if number else ''
+
+    async def ai_categories(message,account,feature_id,group=None,edit=False,notice='',files=None):
+        """The list in front of AI PDF or AI Slides: what kind of document, or Boshqa for anything else.
+
+        One button per category or group customers may pick now, one per row,
+        and Boshqa last, which is today's question. A group opens its own list
+        of the same shape. Words typed here are a description for Boshqa (the CV
+        chooser takes them the same way), so a customer who never looks at the
+        list loses nothing. Files held here (`files`, or None for those already
+        held) go with the customer to the category they choose. `notice` is a
+        line above it: a category tapped on an older list is gone.
+        """
+        nodes=await sync_to_async(ai.category_menu)(feature_id,group)
+        if not nodes: return await ai_prompt(message,account,feature_id,edit,notice)
+        if files is None: files=await sync_to_async(pending_files)(account,feature_id)
+        await sync_to_async(set_prompt)(account,'ai_category',{'feature_id':feature_id,**({'group':group} if group else {}),
+                                                               **({'files':files} if files else {})})
+        title=TOOL_NAMES[feature_id][account.locale]
+        if group:
+            names=await sync_to_async(lambda:{node.id:node for node in ai.category_menu(feature_id)})()
+            if group in names: title+=' · '+names[group].label(account.locale)
+        body=(html.escape(notice)+'\n\n' if notice else '')+f'<b>{html.escape(title)}</b>\n{text(account,"ai_cat_choose")}'
+        if files: body+=f'\n\n📎 {len(files)}'
+        rows=[]
+        for node in nodes:
+            payload={'feature_id':feature_id,'category':node.id,**({'group':group} if group and node.kind=='other' else {})}
+            rows.append([InlineKeyboardButton(text=node.label(account.locale),callback_data=await callback(account,'ai_tool',payload))])
+        rows.append([await button(account,'ai_back','ai_tool',{'feature_id':feature_id}),await button(account,'home','home')] if group
+                    else [await button(account,'ai_back','home')])
+        return await render(message,body,rows,edit)
+
+    async def ai_door(message,account,feature_id,category=None,edit=True,group=None,tap=False):
+        """A way into AI PDF or AI Slides, wherever it came from: the list, a group of it, a category's question or today's.
+
+        `category` is what the button named (ai.door). `tap`: a customer
+        choosing, so a category's question opened is counted as chosen.
+        `group` is the group a Boshqa button stood in, for its Back.
+        """
+        kind,value,gone=await sync_to_async(ai.door)(feature_id,category)
+        if kind=='list':
+            return await ai_categories(message,account,feature_id,value,edit,text(account,'ai_cat_gone') if gone else '')
+        if kind=='category':
+            if tap: await sync_to_async(ai.chosen)(account,value)
+            return await ai_prompt(message,account,feature_id,edit,category=value)
+        return await ai_prompt(message,account,feature_id,edit,group=group)
+
+    async def ai_prompt(message,account,feature_id,edit=False,notice='',portrait=None,category=None,group=None,files=None):
         """One screen, one question: what do you want? Examples included.
 
         One description is visible; the rest sit in an expandable blockquote,
@@ -1133,10 +1215,18 @@ def build_dispatcher():
         A CV asks about the customer and takes a photo too: `portrait` is one
         just sent, or None to keep the one already waiting with this question.
         `notice` is a line about a file just sent.
+
+        `category` is a category chosen on the list: its own question, examples
+        and Back to the list (category_prompt). Without one this is today's
+        question; while a list is shown, its Back returns to the list (to
+        `group`, for the Boshqa of a group) rather than to the menu.
         """
         cv=feature_id==ai.CV
+        if category and not cv:
+            entry=await sync_to_async(ai.category_live)(feature_id,category)
+            if entry is not None: return await category_prompt(message,account,entry,edit,notice,files)
         if portrait is None: portrait=await sync_to_async(pending_portrait)(account) if cv else ''
-        await sync_to_async(set_prompt)(account,'ai_input',{'feature_id':feature_id,**({'portrait_asset_id':portrait} if portrait else {})})
+        await sync_to_async(set_prompt)(account,'ai_input',ai_state(feature_id,**({'portrait_asset_id':portrait} if portrait else {})))
         title=TOOL_NAMES[feature_id][account.locale]
         samples=[ai_example(account,feature_id,index) for index in range(len(PROMPT_EXAMPLES[feature_id]))]
         body=(html.escape(notice)+'\n\n' if notice else '')+f'<b>{html.escape(title)}</b>\n'
@@ -1158,11 +1248,51 @@ def build_dispatcher():
         if staged: body+=f'\n\n📎 {len(staged)}'
         # A CV's examples come back to this question, and its Back to the
         # first screen, where the other ways to make a CV are.
+        # Boshqa, chosen on a list: Back to it, beside the menu, as from a category.
+        listed=not cv and bool(await sync_to_async(ai.category_menu)(feature_id))
         rows=[[await button(account,'ai_examples','ai_examples',{'feature_id':feature_id,**({'cv_source':'text'} if cv else {})})],
-              [await button(account,'ai_back','cv_mode') if cv else await button(account,'ai_back','home')]]
+              [await button(account,'ai_back','cv_mode')] if cv
+              else [await button(account,'ai_back','ai_tool',{'feature_id':feature_id,**({'category':group} if group else {})}),
+                    await button(account,'home','home')] if listed
+              else [await button(account,'ai_back','home')]]
         # A PDF or Word file sent here was meant as the old CV: the way to that screen.
         if cv and notice==text(account,'cv_photo_only'):
             rows.insert(0,[await button(account,'cv_mode_file','cv_mode',{'cv_source':ai.FILE})])
+        return await render(message,body,rows,edit)
+
+    def category_example(account,entry,index):
+        examples=entry.raw['bot']['examples']
+        return examples[index].get(account.locale) or examples[index]['en']
+
+    async def category_prompt(message,account,entry,edit=False,notice='',files=None):
+        """A category's question: what it needs, said by its own prompt, with its own examples.
+
+        The same shape as today's question: one example to tap and copy, the
+        rest in a quote that opens on a tap. Everything the category says is the
+        catalogue's, in the customer's language and escaped; the chat's own
+        words are only the frame. Files held for it (`files`, or None for those
+        already held) wait in the chat's state beside the category, never on
+        the file tools' draft, and the line under the examples says how to send
+        them. Back returns to the list it was chosen on.
+        """
+        feature_id=entry.feature_id
+        locale=account.locale if account.locale in LOCALES else 'en'
+        if files is None: files=await sync_to_async(pending_files)(account,feature_id,entry.id)
+        await sync_to_async(set_prompt)(account,'ai_input',ai_state(feature_id,entry.id,**({'files':files} if files else {})))
+        bot_copy=entry.raw['bot']
+        samples=[category_example(account,entry,index) for index in range(len(bot_copy['examples']))]
+        body=(html.escape(notice)+'\n\n' if notice else '')+f'<b>{html.escape(TOOL_NAMES[feature_id][locale])} · {html.escape(entry.label(locale))}</b>\n'
+        body+=(f'{html.escape(bot_copy["prompt"].get(locale) or bot_copy["prompt"]["en"])}'
+               f'\n\n{text(account,"ai_examples")}:\n\n1. <code>{html.escape(samples[0])}</code>')
+        if samples[1:]:
+            rest='\n\n'.join(f'{number}. {html.escape(sample)}' for number,sample in enumerate(samples[1:],2))
+            body+=f'\n\n<blockquote expandable>{rest}</blockquote>'
+        if bot_copy.get('attach'): body+=f'\n\n{text(account,"ai_cat_files")}'
+        body+=await ai_files_line(account,feature_id,files,entry.id)
+        parent=entry.raw.get('parent')
+        rows=[[await button(account,'ai_examples','ai_examples',{'feature_id':feature_id,'category':entry.id})],
+              [await button(account,'ai_back','ai_tool',{'feature_id':feature_id,**({'category':parent} if parent else {})}),
+               await button(account,'home','home')]]
         return await render(message,body,rows,edit)
 
     async def cv_choose(message,account,edit=False,notice=''):
@@ -1747,7 +1877,7 @@ def build_dispatcher():
         return await cv_choose(message,account,True,notice=text(account,'cv_photo_kept_choose'))
 
     async def ai_topic_needed(message,account,feature_id,brief,other='',edit=True,question='',notice='',portrait=None,ask='missing',
-                              missing=(),copied=''):
+                              missing=(),copied='',category=''):
         """A description that names no topic: what was kept of it, and the one thing missing.
 
         `message` is the "Preparing…" line, which becomes this question: one
@@ -1769,13 +1899,22 @@ def build_dispatcher():
         back to this question, not a blank one. `copied` is a sample of this
         screen just sent back (as `compared` gives it): sent again at once, it
         is the customer's own.
+
+        In a category (`category`, one whose entry asks for a topic) the
+        question is the same, with the category's own wording of it when it
+        has one ("Which subject and topic is the test on?"); the category and
+        the files held for it wait with what was written, and the topic sent
+        next goes in front of it as ever.
         """
         cv=feature_id==ai.CV
         question=question or secrets.token_urlsafe(6)
         if portrait is None: portrait=await sync_to_async(pending_portrait)(account) if cv else ''
         asked=cv_asked({'ask':ask,'missing':missing}) if cv else []
-        state={'feature_id':feature_id,'brief':brief,'question':question,**({'portrait_asset_id':portrait} if portrait else {}),
-               **({'ask':'missing','missing':asked,**({'copied':copied} if copied else {})} if cv else {})}
+        entry=await sync_to_async(ai.category_live)(feature_id,category) if category and not cv else None
+        files=await sync_to_async(pending_files)(account,feature_id,entry.id) if entry is not None else []
+        state=ai_state(feature_id,entry.id if entry is not None else None,brief=brief,question=question,
+                       **({'files':files} if files else {}),**({'portrait_asset_id':portrait} if portrait else {}),
+                       **({'ask':'missing','missing':asked,**({'copied':copied} if copied else {})} if cv else {}))
         await sync_to_async(set_prompt)(account,'ai_input',state)
         body=f'<b>{html.escape(TOOL_NAMES[feature_id][account.locale])}</b>\n'
         if notice: body+=f'{html.escape(notice)}\n'
@@ -1789,7 +1928,9 @@ def build_dispatcher():
         if cv: body+=missing_lines(account,asked,written=brief)
         else:
             sample=f'<code>{html.escape(text(account,"ai_topic_sample"))}</code>'
-            body+=(f'{text(account,"ai_topic_question")}\n{text(account,"ai_topic_example").format(example=sample)}\n'
+            worded=(entry.raw.get('topic_prompt') or {}) if entry is not None else {}
+            asking=html.escape(worded.get(account.locale) or worded['en']) if worded else text(account,'ai_topic_question')
+            body+=(f'{asking}\n{text(account,"ai_topic_example").format(example=sample)}\n'
                    f'{text(account,"ai_topic_again")}')
         # A PDF or Word file sent here was meant as the old CV: the way to that
         # screen, which keeps what was written as its notes (cv_mode).
@@ -1798,7 +1939,8 @@ def build_dispatcher():
         # A CV's examples come back to this question, or once it is closed to
         # the question about yourself, never to the first CV screen.
         rows.append([await button(account,'ai_examples','ai_examples',{'feature_id':feature_id,
-                                                                       **({'question':question,'cv_source':ai.TEXT} if cv else {})})])
+                                                                       **({'question':question,'cv_source':ai.TEXT} if cv else {}),
+                                                                       **({'category':entry.id} if entry is not None else {})})])
         rows.append([await button(account,'ai_back','home')])
         return await render(message,body,rows,edit)
 
@@ -1907,14 +2049,28 @@ def build_dispatcher():
         await render(message,html.escape(text(account,'ai_same_format').format(format=name)),[],True)
         await deliver(message,account,job,f'same-format:{secrets.token_urlsafe(9)}',file=asset)
 
-    async def ai_examples(message,account,feature_id=None,edit=False,question='',cv_source=''):
+    async def ai_examples(message,account,feature_id=None,edit=False,question='',cv_source='',category=''):
         """What a good description looks like, in the customer's language.
 
         Opened from a CV's open question (`question`), its service button goes
         back to that question with what was written, not to a blank one; opened
         from the question about yourself (`cv_source` 'text'), back to it, not
-        to the first CV screen that asks how to make one.
+        to the first CV screen that asks how to make one. Opened from a
+        category's question (`category`), the category's own examples, and its
+        button goes back to that category's question; one no longer offered
+        shows the service's.
         """
+        entry=await sync_to_async(ai.category_live)(feature_id,category) if category and feature_id else None
+        if entry is not None:
+            locale=account.locale if account.locale in LOCALES else 'en'
+            label=f'{TOOL_NAMES[feature_id][locale]} · {entry.label(locale)}'
+            body=f'<b>{text(account,"ai_examples_title")}</b>\n\n<b>{html.escape(label)}</b>'
+            for index in range(len(entry.raw['bot']['examples'])):
+                body+=f'\n\n{index+1}. <code>{html.escape(category_example(account,entry,index))}</code>'
+            # No way to the web studio: it does not make categories yet.
+            rows=[[InlineKeyboardButton(text=label,callback_data=await callback(account,'ai_tool',{'feature_id':feature_id,'category':entry.id}))],
+                  [await button(account,'ai_back','home')]]
+            return await render(message,body,rows,edit)
         rows=[]
         body=f'<b>{text(account,"ai_examples_title")}</b>'
         for fid in ([feature_id] if feature_id else list(ai.SERVICES)):
@@ -1969,7 +2125,8 @@ def build_dispatcher():
             else: await sync_to_async(set_prompt)(account,'cv_review',shown)
         return sent
 
-    async def ai_start(message,account,feature_id,description,brief=(),question='',portrait='',missing=(),copied=''):
+    async def ai_start(message,account,feature_id,description,brief=(),question='',portrait='',missing=(),copied='',
+                       category='',files=()):
         """One chat message in, a priced draft out. Nothing is counted yet.
 
         `message` is the "Preparing…" line, which becomes the priced draft.
@@ -1998,6 +2155,10 @@ def build_dispatcher():
         screen, or a copy of its list, is ours, not theirs (sent_back): not
         kept, and the screen says so, however often it is sent (sample_held);
         only the sample name sent again at once (`copied`) is the customer's own.
+
+        `category` is the one chosen on the list ('' for none) and `files` the
+        files held for it: the draft is made in it from them and from the files
+        staged in the chat, and every question asked again on the way keeps it.
         """
         draft=None
         cv=feature_id==ai.CV
@@ -2020,10 +2181,11 @@ def build_dispatcher():
         # The words are the same whichever way they were typed: the first time is kept, as written then.
         if repeated and cv: description=repeated[0]
         # Our own example sent back unchanged would make our example, not theirs.
-        if await sync_to_async(ai.is_example)(description):
+        if await sync_to_async(ai.is_example)(description,category):
             return await render(message,text(account,'cv_example_copied' if cv else 'ai_example_copied'),
                                 [[await button(account,'ai_examples','ai_examples',{'feature_id':feature_id,
-                                                                                    **({'cv_source':ai.TEXT} if cv else {})}),
+                                                                                    **({'cv_source':ai.TEXT} if cv else {}),
+                                                                                    **({'category':category} if category else {})}),
                                   await button(account,'cancel_button','home')]],True)
         if cv:
             from apps.studio.cv.sources import linkedin_link_only
@@ -2039,8 +2201,9 @@ def build_dispatcher():
         # A photo kept with the question may have expired since: the CV goes ahead without it.
         portrait=await sync_to_async(ai.usable_portrait)(account,portrait) if cv else ''
         try:
-            file_ids=await sync_to_async(lambda:draft_for(account).input_ids)()
-            draft=await sync_to_async(ai.build)(account,feature_id,'\n'.join([description,*brief]),file_ids,given,portrait)
+            file_ids=[*files,*await sync_to_async(lambda:draft_for(account).input_ids)()]
+            draft=await sync_to_async(ai.build)(account,feature_id,'\n'.join([description,*brief]),file_ids,given,portrait,
+                                                **({'category':category} if category else {}))
             await sync_to_async(funnel.step)('ai.described',account=account,feature=feature_id)
             _,quote=await sync_to_async(ai.quote)(account,draft.id)
         except DomainError as exc:
@@ -2056,12 +2219,13 @@ def build_dispatcher():
                 # Still no topic: both pieces are kept, and the topic asked for again.
                 other=(exc.params or {}).get('service') or ''
                 return await ai_topic_needed(message,account,feature_id,kept_brief([*brief,description]),other,
-                                             question=question if brief else '')
+                                             question=question if brief else '',category=category)
             # The description is kept: after joining, the customer is shown its
-            # review; without one, the question again (a CV's about yourself).
+            # review; without one, the question again (a CV's about yourself),
+            # in the category it was written in.
             resume=({'kind':'ai_draft','draft_id':str(draft.id)} if draft else {'kind':'cv_mode','cv_source':ai.TEXT} if cv
-                    else {'kind':'ai_prompt','feature_id':feature_id})
-            return await ai_refused(message,account,exc,resume,lambda:ai_prompt(message,account,feature_id))
+                    else {'kind':'ai_prompt','feature_id':feature_id,**({'category':category} if category else {})})
+            return await ai_refused(message,account,exc,resume,lambda:ai_prompt(message,account,feature_id,category=category or None))
         # A new CV's review takes a photo sent while it is drawn, so the chat
         # says so from now on: never empty while the review is on its way.
         if cv: await sync_to_async(set_prompt)(account,'cv_review',{'draft_id':str(draft.id)})
@@ -2124,7 +2288,10 @@ def build_dispatcher():
                 # gave, and a new description beside Retry (notifications.py).
                 if model_failed(job):
                     body+='\n\n'+text(account,'cv_failed_advice' if job.feature_id==ai.CV else 'ai_failed_advice')
-                    rows.append([await button(account,'ai_change_topic','ai_tool',{'feature_id':job.feature_id})])
+                    # A document made in a category is described again in it (when it is still offered: ai.door).
+                    category=(job.parameters or {}).get('category')
+                    rows.append([await button(account,'ai_change_topic','ai_tool',{'feature_id':job.feature_id,
+                                                                                   **({'category':category} if category else {})})])
             else:
                 draft=await sync_to_async(lambda:BotDraft.objects.filter(account=account,quote_id=job.quote_id).first())()
                 if draft: rows.append([await button(account,'retry_task','retry',snapshot(draft))])
@@ -2327,7 +2494,8 @@ def build_dispatcher():
             elif action=='language': await show_language(message,query.from_user,{})
             elif action=='menu': await menu(message,account,p.get('page',0),p.get('category','pdf'),True)
             elif action=='controls': await controls(message,account,edit=True,advanced=p.get('advanced',False))
-            elif action=='ai_examples': await ai_examples(message,account,p.get('feature_id'),True,p.get('question',''),p.get('cv_source',''))
+            elif action=='ai_examples': await ai_examples(message,account,p.get('feature_id'),True,p.get('question',''),p.get('cv_source',''),
+                                                          p.get('category',''))
             elif action=='ai_revise': await ai_revise_prompt(message,account,p['draft_id'],True)
             elif action=='ai_retry':
                 draft,quote=await sync_to_async(ai.retry)(account,ref.token)
@@ -2335,6 +2503,11 @@ def build_dispatcher():
                 await sync_to_async(set_prompt)(account)
                 if existing: await job_status(message,account,existing,True)
                 else: await ai_review(message,account,draft,quote,True)
+            elif action=='ai_tool' and p.get('category')==ai.OTHER and p['feature_id'] in (ai.DOCUMENT,ai.SLIDES):
+                # Boshqa on a list: today's question. The checks ran on the tap
+                # that opened the list (or, from /document, none ran, as none
+                # ran before the list), so they are not run again.
+                await ai_prompt(message,account,p['feature_id'],True,group=p.get('group'))
             elif action=='ai_tool':
                 await sync_to_async(funnel.step)('service.chosen',account=account,feature=p['feature_id'])
                 try: await sync_to_async(ai.available)(account,p['feature_id'])
@@ -2342,7 +2515,9 @@ def build_dispatcher():
                 else:
                     from .channels import blocked,show_gate
                     current=await blocked(account)
-                    if current: await show_gate(message,account,current,resume={'kind':'ai_prompt','feature_id':p['feature_id']},edit=True)
+                    # Behind the channels, the list or the category tapped is where the customer comes back to.
+                    if current: await show_gate(message,account,current,resume={'kind':'ai_prompt','feature_id':p['feature_id'],
+                                                                              **({'category':p['category']} if p.get('category') else {})},edit=True)
                     else:
                         # Back from the examples to a CV's open question: what was
                         # written, and the photo, are still waiting for the answer.
@@ -2362,6 +2537,11 @@ def build_dispatcher():
                                                             files=again['source_ids'],ask='again' if again['source_ids'] else 'file',
                                                             portrait=again['portrait_asset_id'])
                             return await ai_prompt(message,account,ai.CV,True,portrait=again['portrait_asset_id'])
+                        # A document or a deck: its list of categories, a group of it or a
+                        # category's question, whatever the button named, or today's question
+                        # when no list is shown. Every old button lands somewhere (ai.door).
+                        if p['feature_id'] in (ai.DOCUMENT,ai.SLIDES):
+                            return await ai_door(message,account,p['feature_id'],p.get('category'),tap=True)
                         # A CV's description written again keeps the photo of the CV it rewrites.
                         portrait=await sync_to_async(ai.kept_portrait)(account,p['draft_id']) if p.get('draft_id') else None
                         await ai_prompt(message,account,p['feature_id'],True,portrait=portrait)
@@ -2427,8 +2607,9 @@ def build_dispatcher():
                     brief=await sync_to_async(pending_brief)(account,question)
                     if current:
                         # Behind the channels, the topic typed next is for the service chosen.
-                        if brief: await sync_to_async(set_prompt)(account,'ai_input',{'feature_id':p['feature_id'],'brief':brief,'question':question})
-                        resume={'kind':'ai_topic','feature_id':p['feature_id'],'question':question} if brief else {'kind':'ai_prompt','feature_id':p['feature_id']}
+                        if brief: await sync_to_async(set_prompt)(account,'ai_input',ai_state(p['feature_id'],brief=brief,question=question))
+                        # The other service's own question, never its list: it was chosen for what was written.
+                        resume={'kind':'ai_topic','feature_id':p['feature_id'],'question':question} if brief else {'kind':'ai_prompt','feature_id':p['feature_id'],'category':ai.OTHER}
                         await show_gate(message,account,current,resume=resume,edit=True)
                     elif brief: await ai_topic_needed(message,account,p['feature_id'],brief,question=question)
                     else: await ai_prompt(message,account,p['feature_id'],True)
@@ -2538,7 +2719,8 @@ def build_dispatcher():
                     kind=p.get('kind')
                     if kind=='ai_draft': await ai_resume(message,account,p['draft_id'])
                     elif kind=='ai_prompt' and p.get('feature_id')==ai.CV: await cv_choose(message,account)
-                    elif kind=='ai_prompt': await ai_prompt(message,account,p['feature_id'])
+                    # A document or a deck: the list, or the category tapped before the channels (ai.door).
+                    elif kind=='ai_prompt': await ai_door(message,account,p['feature_id'],p.get('category'),edit=False,tap=True)
                     elif kind=='cv_mode':
                         # The CV's screen again, with the files and notes kept behind the channels.
                         way=p.get('cv_source','')
@@ -2885,9 +3067,11 @@ def build_dispatcher():
         if command=='examples': return await ai_examples(message,account)
         feature_id=AI_COMMANDS.get(command)
         if not feature_id: return await home(message,account)
-        # A CV is asked first how it is made.
+        # A CV is asked first how it is made. A document or a deck opens its list
+        # of categories when one is shown, and today's question otherwise; with
+        # no check, as the question was opened with none before the list.
         if feature_id==ai.CV: return await cv_choose(message,account)
-        await ai_prompt(message,account,feature_id)
+        await ai_door(message,account,feature_id,edit=False)
 
     @dp.message(Command('web','editor'))
     async def open_workspace_mode(message):
@@ -2921,8 +3105,11 @@ def build_dispatcher():
         p=conversation.prompt
         if not value: return await message.answer(text(account,'ai_topic_empty'))
         waiting=await message.answer(text(account,'ai_preparing'))
+        # On the list (ai_category) nothing is chosen yet: the words are a description for Boshqa.
         return await ai_start(waiting,account,p['feature_id'],value,p.get('brief') or [],p.get('question',''),
-                              p.get('portrait_asset_id',''),cv_asked(p),p.get('copied',''))
+                              p.get('portrait_asset_id',''),cv_asked(p),p.get('copied',''),
+                              p.get('category','') if conversation.state=='ai_input' else '',
+                              [str(item) for item in p.get('files') or []])
 
     async def cv_review_text(message,account,conversation,value):
         """Text sent while a new CV's review is on screen.
@@ -3046,7 +3233,9 @@ def build_dispatcher():
                 if conversation.state=='cv_choose': return await cv_choose_text(message,account,conversation,value)
                 if conversation.state=='cv_source': return await cv_source_text(message,account,conversation,value)
                 if cv_question(conversation): return await ai_text(message,account,conversation,value)
-        if conversation.state=='ai_input': return await ai_text(message,account,conversation,value)
+        # Words typed on the list of categories are a description, for Boshqa:
+        # tapping a service and writing at once is still one message, as before the list.
+        if conversation.state in ('ai_input','ai_category'): return await ai_text(message,account,conversation,value)
         if conversation.state=='ai_revise':
             p=conversation.prompt
             if not value: return await message.answer(text(account,'ai_topic_empty'))

@@ -55,6 +55,107 @@ def sources(account, file_ids, feature_id=None):
     return [str(asset.id) for asset in ordered if asset.metadata.get('kind') == 'pdf']
 
 
+# The kinds of file a category draft reads (apps/studio/categories/sources.py KINDS):
+# PDF, Word, old Word and text. Anything else staged in the chat, a photo for a
+# file tool, is left out rather than refusing the draft.
+CATEGORY_KINDS = ('pdf', 'docx', 'doc', 'text')
+
+
+def category_sources(account, file_ids):
+    """The files a category draft is made from, in the order they were sent, once each."""
+    assets = {
+        str(asset.id): asset
+        for asset in FileAsset.objects.filter(account=account, id__in=list(file_ids), state='ready',
+                                              expires_at__gt=timezone.now())
+    }
+    ordered = list(dict.fromkeys(str(key) for key in file_ids))
+    return [key for key in ordered if key in assets and assets[key].metadata.get('kind') in CATEGORY_KINDS]
+
+
+# --- Categories ---------------------------------------------------------------
+# AI PDF and AI Slides may open a list of categories before the description
+# (apps/studio/categories). Off, or with nothing ticked, the list is never shown
+# and every way in is today's question. Boshqa ('other') is today's question too.
+
+OTHER = 'other'
+
+
+def category_menu(feature_id, group=None):
+    """The buttons of a service's list (or of one group in it); [] when there is no list to show."""
+    if feature_id not in (DOCUMENT, SLIDES):
+        return []
+    from apps.studio import categories
+    return categories.menu(feature_id, group)
+
+
+def category_live(feature_id, category):
+    """The entry of `category` when customers may pick it for this service now, else None."""
+    if not isinstance(category, str) or not category or category == OTHER:
+        return None
+    from apps.studio import categories
+    entry = categories.get(category)
+    if entry is None or entry.feature_id != feature_id:
+        return None
+    return entry if any(item.id == entry.id for item in categories.live(feature_id)) else None
+
+
+def door(feature_id, category=None):
+    """Where a way into a service leads, as (kind, value, gone).
+
+    `category` is what the button named: nothing (a service button, every old
+    one included), a group, a category, or Boshqa. The answer is ('prompt',
+    None) for today's question, ('list', group or None) for the list or one of
+    its groups, and ('category', id) for a category's own question. `gone` is
+    True when the list is shown because the category named cannot be picked
+    now: unticked, retired or rolled back since its button was drawn. With the
+    switch off, or nothing ticked for this service, every way is today's
+    question, so a button from a list drawn while it was on still opens one.
+    """
+    if feature_id not in (DOCUMENT, SLIDES) or category == OTHER or not category_menu(feature_id):
+        return 'prompt', None, False
+    if not category:
+        return 'list', None, False
+    if category_live(feature_id, category) is not None:
+        return 'category', category, False
+    if isinstance(category, str) and category_menu(feature_id, category):
+        return 'list', category, False
+    from apps.studio import categories
+    entry = categories.get(category) if isinstance(category, str) else None
+    parent = entry.raw.get('parent') if entry is not None and entry.feature_id == feature_id else None
+    return 'list', parent if parent and category_menu(feature_id, parent) else None, True
+
+
+def category_of(draft):
+    """The category a draft was made in, '' for none."""
+    from apps.studio.domain import unpack
+    return (unpack(draft.encrypted_data).get('options') or {}).get('category') or ''
+
+
+# A customer who opens a category, looks at its examples and comes back, or
+# rewords their description, has chosen it once: taps on it this close together
+# are one choice, so the admin's chosen-versus-made compares like with like.
+CHOSEN_WINDOW_SECONDS = 30 * 60
+
+
+def chosen(account, category):
+    """Record that a customer opened a category's question in the bot. Never raises."""
+    try:
+        from django.core.cache import cache
+        from apps.core.funnel import environment
+        from apps.core.models import AnalyticsEvent
+        from apps.studio import categories
+        entry = categories.get(category)
+        if entry is None or not cache.add(f'category-chosen:{account.pk}:{entry.id}', 1, CHOSEN_WINDOW_SECONDS):
+            return
+        AnalyticsEvent.objects.create(
+            account=account, event_type=categories.CHOSEN_EVENT, feature_id=entry.feature_id, channel='bot',
+            locale=getattr(account, 'locale', '') or 'en', plan_at_event=getattr(account, 'plan', '') or 'free',
+            environment=environment(account), properties={'category': entry.id})
+    except Exception:
+        # Counting is never worth a customer's request failing.
+        return
+
+
 def throttle(account, limit=10):
     """Authoring counts against no limit but is not free of work; cap it per account."""
     key = f'rate:bot_generation:{account.pk}'
@@ -79,7 +180,8 @@ READ_REFUSALS = ('topic_required', 'convert_requested', 'cv_missing', 'cv_file_r
 
 
 @transaction.atomic
-def build(account, feature_id, description, file_ids=(), topic_given=False, portrait_asset_id='', cv_source=''):
+def build(account, feature_id, description, file_ids=(), topic_given=False, portrait_asset_id='', cv_source='',
+          category=''):
     """Author a draft from one chat message. Nothing is counted yet.
 
     `topic_given` is the customer's answer to the topic question taken as it
@@ -90,11 +192,18 @@ def build(account, feature_id, description, file_ids=(), topic_given=False, port
     A CV made from the customer's LinkedIn profile or old CV (`cv_source`
     'linkedin' or 'file') is made from `file_ids`, the files sent for it,
     and `description` is the notes on top of them, which may be empty.
+    `category` is the one chosen in the chat's list, '' for none. One that
+    can no longer be picked (the switch turned off, or the category unticked,
+    while the customer was writing) is left out: they still get a document,
+    today's. A category draft reads Word and text files as well as PDFs.
     """
     available(account, feature_id)
+    if category and category_live(feature_id, category) is None:
+        category = ''
     text = (description or '').strip()
     files = feature_id == CV and cv_source in (LINKEDIN, FILE)
-    ids = [str(identifier) for identifier in file_ids] if files else sources(account, list(file_ids), feature_id)
+    ids = ([str(identifier) for identifier in file_ids] if files
+           else category_sources(account, file_ids) if category else sources(account, list(file_ids), feature_id))
     if not text and not ids:
         raise DomainError('prompt_required')
     throttle(account)
@@ -120,6 +229,8 @@ def build(account, feature_id, description, file_ids=(), topic_given=False, port
     if feature_id == CV and portrait_asset_id:
         # The server checks it is the customer's own JPEG or PNG and pins it.
         options['portrait_asset_id'] = str(portrait_asset_id)
+    if category:
+        options['category'] = category
     if options:
         data['options'] = options
     try:
@@ -552,18 +663,25 @@ def relocale(account, draft_id, locale):
         'output_locale': locale, 'options': {**data['options'], 'locale_chosen': True}})
 
 
-def is_example(description):
-    """Whether a description is one of the bot's own examples, sent back unchanged."""
+def is_example(description, category=''):
+    """Whether a description is one of the bot's own examples, sent back unchanged.
+
+    In a category's flow (`category`) the catalogue's examples are ours too:
+    its question shows them, and its pool holds more of the same. Without one
+    only the services' own examples are looked at, as before categories.
+    """
     import difflib
     from .ux_copy import PROMPT_EXAMPLES
     text = ' '.join((description or '').lower().split())
     if len(text) < 40:
         return False
-    for examples in PROMPT_EXAMPLES.values():
-        for translations in examples:
-            for example in translations:
-                if difflib.SequenceMatcher(None, text, ' '.join(example.lower().split())).ratio() >= 0.9:
-                    return True
+    known = [example for examples in PROMPT_EXAMPLES.values() for translations in examples for example in translations]
+    if category:
+        from apps.studio import categories
+        known += sorted(categories.examples())
+    for example in known:
+        if difflib.SequenceMatcher(None, text, ' '.join(example.lower().split())).ratio() >= 0.9:
+            return True
     return False
 
 
