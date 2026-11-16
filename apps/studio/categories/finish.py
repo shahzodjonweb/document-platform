@@ -12,7 +12,10 @@ guarantee. For a deck (`apply`, after title_lines.apply in the job):
   reference the customer did not give becomes ____ or goes;
 - a slot of source `draft` (relevance, aim and tasks, object and subject) is
   guarded (facts.guard): it may be drafted from general knowledge of the topic,
-  but never quotes or cites a law the customer did not give;
+  but never quotes or cites a law the customer did not give; one that also
+  states the customer's own facts (a council's problems, proposals and
+  resolution, a parents' meeting's requests) has its numbers, and where its
+  slot says so its names, grounded too (the slot's `checks`);
 - the cover keeps only lines that are the customer's: a title-page line whose
   names or numbers they did not give ("Toshkent — 2026" with no year said, a
   "F.I.Sh.: ____" stand-in) is taken off, as is a model author line on the
@@ -129,25 +132,55 @@ def _line_known(line, trusted, translated, own):
 
     The first word of a label is the label's own ("Bajardi", "Ilmiy"); its
     other capitalised words and every word of its value are held as a `line`
-    fact.
+    fact. In a deck written in another language than the message a `line`
+    leaves its names to the translation, so there a labelled line is held as a
+    `person`: a cover's names are people ("Bajardi: …", "Ilmiy rahbar: …"),
+    and an invented one must never ship. A translated school's or company's
+    line may then go: a false blank, never an invention.
+
+    A translated line with no label has its names read as guard's 'names'
+    check reads them (facts.people_known): its opening word is capitalised by
+    grammar ("Grocery shop", "Term paper") and is free unless it is shaped as
+    a surname, stands before initials or before another word that is not the
+    customer's. Held as a person's, every such line went and the customer was
+    told of a blank where nothing was invented. A line of one word ("Botir",
+    "Педсовет") is still held as a person's: nothing beside it says it is not
+    a name.
     """
     if _key(line) in own:
         return True
     label, value = _split(line)
-    if not facts.supported(value, 'line', trusted, translated=translated):
+    if translated and not label and len([word for word in facts.WORD.findall(value) if len(word) >= 2]) > 1:
+        return facts.supported(value, 'line', trusted, translated=True) \
+            and facts.people_known(value, trusted, translated=True)
+    kind = 'person' if translated else 'line'
+    if not facts.supported(value, kind, trusted, translated=translated):
         return False
-    return not label or facts.supported(' '.join(label.split()[1:]), 'line', trusted, translated=translated)
+    return not label or facts.supported(' '.join(label.split()[1:]), kind, trusted, translated=translated)
 
 
 def _title_page(text, trusted, translated, own, codes, *, first_free):
     """A cover's or a closing slide's lines, keeping only the customer's; the first kept as a subtitle when `first_free`.
 
     A cover of one line has a subtitle, not a title page (slide_layouts.title_lines):
-    it is guarded, and goes only when it holds a number the customer did not
-    give ("Toshkent — 2026"). A line that only stands in for one ("____",
+    it is guarded, and goes when it holds a number the customer did not give
+    ("Toshkent — 2026") or a name guard's 'names' check would take
+    (facts.people_known): an author with no label ("Bajardi — Xolmirzayev
+    Botir", "Prepared by Botir Xolmirzayev", a bare "Xolmirzayev Botir") would
+    otherwise ship, since a guarded line checks only numbers. Its opening word
+    stays free unless it is shaped as a surname or stands beside initials or
+    an invented word, so a subtitle of general knowledge ("Toshkent davlat
+    iqtisodiyot universiteti") is kept. The same
+    holds for a closing slide's first line. A line that only stands in for one ("____",
     "F.I.Sh.: ____") is never kept. On a closing slide the first line is its own
     words ("Savollaringiz bormi?") and the lines after it are an author line
     copied from the cover, held as the cover's are.
+
+    A first line with a label ("Bajardi: …", "Prepared by: …") is never a
+    subtitle, alone or on a closing slide: it says who made the work, and a
+    guarded line checks only numbers, so a model-written author would ship.
+    It is held as every other title-page line is, as a person's in a translated
+    deck.
     """
     lines = [line for line in str(text or '').split('\n') if line.strip()]
     if not lines:
@@ -158,10 +191,11 @@ def _title_page(text, trusted, translated, own, codes, *, first_free):
             # A ruled line or a stand-in for a name ("F.I.Sh.: ____", "Bajardi: [Ismingiz]") says nothing of
             # anyone's: it goes, and as no fact was taken out the customer is not told of a blank to fill.
             continue
-        if number == 0 and (first_free or len(lines) == 1):
+        if number == 0 and (first_free or len(lines) == 1) and not _split(line)[0]:
             line, found = facts.guard(line, trusted, translated=translated)
             codes.extend(found)
-            if _key(line) in own or all(numbers.known(value, trusted.values) for value in numbers.found(line)):
+            if _key(line) in own or (all(numbers.known(value, trusted.values) for value in numbers.found(line))
+                                     and facts.people_known(line, trusted, translated=translated)):
                 if line.strip():
                     kept.append(line)
                 continue
@@ -172,9 +206,9 @@ def _title_page(text, trusted, translated, own, codes, *, first_free):
     return '\n'.join(kept)
 
 
-def _texts(section, check, heading):
+def _texts(section, check, heading, notes=True):
     """Run `check(text) -> text` over every field of a slide a reader sees; its heading only when `heading`."""
-    keys = ('heading', 'body', 'notes') if heading else ('body', 'notes')
+    keys = (('heading',) if heading else ()) + ('body',) + (('notes',) if notes else ())
     for key in keys:
         if isinstance(section.get(key), str):
             section[key] = check(section[key])
@@ -185,6 +219,15 @@ def _texts(section, check, heading):
                     item[key] = check(item[key])
     if isinstance(section.get('columns'), list):
         section['columns'] = [check(column) if isinstance(column, str) else column for column in section['columns']]
+
+
+def _rows(section):
+    """How many rows a slide shows: its items with any words, else the lines of its body."""
+    items = [item for item in section.get('items') or [] if isinstance(item, dict)
+             and any(isinstance(item.get(key), str) and item[key].strip() for key in ('label', 'text', 'value'))]
+    if items:
+        return len(items)
+    return len([line for line in str(section.get('body') or '').split('\n') if line.strip()])
 
 
 def _form(section, *, numbered=False):
@@ -264,8 +307,8 @@ def _finish_slide(index, section, use, *, revision, locale, trusted, translated,
         codes.extend(found)
         return text
 
-    def guarded(text):
-        text, found = facts.guard(text, trusted, translated=translated)
+    def guarded(text, checks=(), held=trusted):
+        text, found = facts.guard(text, held, translated=translated, checks=checks)
         codes.extend(found)
         return text
     if role == 'cover':
@@ -280,7 +323,15 @@ def _finish_slide(index, section, use, *, revision, locale, trusted, translated,
     elif role == 'sources':
         _sources(section, trusted, translated, names, codes)
     elif role == 'draft':
-        _texts(section, guarded, heading=not fixed)
+        # A draft slot that states the customer's own facts names the checks it also takes (catalogue `checks`).
+        checks = tuple(use.part.get('checks') or ())
+        _texts(section, lambda text: guarded(text, checks), heading=not fixed, notes=False)
+        if isinstance(section.get('notes'), str):
+            # The notes may say how many rows the slide has ("Bugun 5 ta masala", as the agenda's write text asks):
+            # that count is the slide's own, not a figure of the school's, so it alone is let through, and only in
+            # the notes. Any other number there is held as the slide's are.
+            counted = facts.counting(trusted, _rows(section)) if 'numbers' in checks else trusted
+            section['notes'] = guarded(section['notes'], checks, counted)
     else:
         _texts(section, grounded, heading=not fixed)
 

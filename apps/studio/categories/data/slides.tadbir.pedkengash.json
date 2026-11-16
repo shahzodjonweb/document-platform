@@ -384,6 +384,10 @@
     "agenda.classic"
    ],
    "source": "draft",
+   "checks": [
+    "numbers",
+    "names"
+   ],
    "write": "Used when the customer lists three to five questions. 2 to 5 items in the customer’s order, each a label of at most 6 words worded as a subject of the council (“… to‘g‘risida”, «Об …», “On …”); a reporter line “Ma’ruzachi: …” (at most 6 words) only when the customer gave one for that item, never invented. The question the deck reports comes first (agenda.current_first marks row 1 as the one being heard). “Turli masalalar” (“Разное”, “Other business”) only if the customer listed it. Notes open with the greeting “Hurmatli hamkasblar!”.",
    "when": "cue:kun_tartibi",
    "join": 2
@@ -581,6 +585,10 @@
     "comparison.classic"
    ],
    "source": "draft",
+   "checks": [
+    "numbers",
+    "names"
+   ],
    "write": "Used instead of muammolar + takliflar while the deck has at most 10 slides. Heading exactly “Muammolar va ularning yechimi” (“Проблемы и пути их решения”, “Problems and solutions”) in every deck. columns = [“Muammo”, “Yechim”]. 2 to 4 pairs. ONE cap everywhere: label = the area in at most 3 words, REQUIRED (from the customer’s own words; the layout refuses a row without one); text = the problem and value = the answer, at most 9 words each and at most two lines, ending with a full stop. Each problem restates a problem the customer named or a weakness a number on an earlier slide shows; each answer is the customer’s proposal, or a drafted one (listed as a draft). No cause, name or class that is not in the source.",
    "when": "cue:natija",
    "until": 10,
@@ -603,6 +611,10 @@
     "bullets.numbered_rows"
    ],
    "source": "draft",
+   "checks": [
+    "numbers",
+    "names"
+   ],
    "write": "3 to 5 lines of at most 10 words, numbered by the variant (numbered_rows). Each line restates a problem the customer named or a weakness a number on an earlier slide shows (“9-sinflarda bilim sifati eng past: 51,0 foiz.”). No cause, name or class that is not in the source.",
    "when": "cue:natija",
    "from": 11,
@@ -646,6 +658,10 @@
     "bullets.card_stack"
    ],
    "source": "draft",
+   "checks": [
+    "numbers",
+    "names"
+   ],
    "write": "3 to 5 lines of at most 10 words as noun phrases or infinitives (“Qolgan ikki sinf xonasi ta’mirini yakunlash”), each answering one problem of the previous slide, in the same order; the customer’s own proposals first and word for word, drafted ones after, marked in the notes. Tasks for the next year are not proposals: they have their own slot (vazifalar). No number the customer did not give.",
    "when": "nocue:natija",
    "join": 1
@@ -667,6 +683,10 @@
     "bullets.card_stack"
    ],
    "source": "draft",
+   "checks": [
+    "numbers",
+    "names"
+   ],
    "write": "3 to 5 lines of at most 10 words as noun phrases or infinitives (“Qolgan ikki sinf xonasi ta’mirini yakunlash”), each answering one problem of the previous slide, in the same order; the customer’s own proposals first and word for word, drafted ones after, marked in the notes. Tasks for the next year are not proposals: they have their own slot (vazifalar). No number the customer did not give.",
    "when": "cue:natija",
    "from": 11,
@@ -753,6 +773,10 @@
     "bullets.numbered_rows"
    ],
    "source": "draft",
+   "checks": [
+    "numbers",
+    "names"
+   ],
    "write": "3 to 5 points, each at most 9 words and 60 characters (the fixed oversight line is 59 characters with its blank, so numbered_rows keeps each point on one line at 24 to 28 pt), numbered by the variant, in the customary passive imperative. Point 1 takes the report into account in the form “Yil yakunlari haqidagi ma’lumot e’tiborga olinsin.” (the old “… ma’lumot qabul qilinsin” read as “the information is adopted”; “ma’lumot uchun qabul qilinsin” is the accepted alternative); when the deck has tasks it reads “Yil yakunlari va yangi yil vazifalari e’tiborga olinsin.” The middle points are the customer’s decisions word for word, or the answers of the pairs slide put in resolution form (“Ota-onalar bilan haftalik aloqa yo‘lga qo‘yilsin.”, never “Sinf rahbarlari … aloqa qilsin”); the last point is the oversight line “Qaror ijrosini nazorat qilish ________ zimmasiga yuklansin.” (“Контроль за исполнением возложить на ________.”, “Oversight is assigned to ________.”) with the blank kept unless the customer named the person. A deadline or a responsible person is added after a dash only if given. The vote count and the names of the chair and secretary are never written: they belong to the minutes. The slide is a DRAFT put up by the presenter; it is not the record of a decision (pdf.biz.bayonnoma never proposes decisions because a minute records what was decided; here the council is about to decide, and the points come from the customer’s own text or proposals, or are listed as drafts)."
   },
   {

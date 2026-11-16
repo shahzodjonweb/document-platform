@@ -162,6 +162,7 @@
         "layouts": {"type": "array", "minItems": 1, "items": {"type": "string"}, "description": "slides: the layouts the slot may take, the preferred first; the last one any content fills (bullets, section, closing)."},
         "pins": {"type": "array", "items": {"type": "string", "pattern": "^[a-z_]+\\.[a-z_0-9]+$"}, "description": "slides: registered variants tried in order on the first render (render_pptx pins)."},
         "source": {"enum": ["template", "customer", "draft"], "description": "slides. template: fixed words. customer: only what the customer or the files say, grounded; with nothing, an honest blank form. draft: may be drafted from the topic's own words; the bot's draft notice says so."},
+        "checks": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["numbers", "names"]}, "description": "slides, a slot of source draft only: the customer's facts such a slot states about their own school or company, held as a grounded slot holds them (facts.guard with checks). numbers: every number, date, sum, e-mail and link must be the customer's; names: every run of capitalised words too. Quotations and legal references are checked on every draft slot; what is not supported becomes an inline blank and is counted."},
         "notes": {"type": "string", "description": "slides: the rule for the speaker notes of this slot."},
         "retired": {"type": "boolean", "description": "Kept for drafts made before; never seeded again."}
       },

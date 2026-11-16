@@ -131,12 +131,11 @@ def test_every_invented_fact_is_caught(entry_id, text):
             written, codes = facts.ground(item['text'], known)
             if item['code'] not in codes or written == item['text']:
                 missed.append((locale, item['kind'], 'ground'))
-            if item['kind'] != 'name':
-                # A paper in another language than the message leaves names to the translation, never numbers,
-                # quotations or laws.
-                written, codes = facts.ground(item['text'], known, translated=True)
-                if item['code'] not in codes:
-                    missed.append((locale, item['kind'], 'translated'))
+            # A paper in another language than the message lets a name through in the spellings a translation
+            # gives it, never one the customer did not give, nor a number, quotation or law.
+            written, codes = facts.ground(item['text'], known, translated=True)
+            if item['code'] not in codes:
+                missed.append((locale, item['kind'], 'translated'))
             if item.get('guard'):
                 written, codes = facts.guard(item['text'], known)
                 if item['code'] not in codes:

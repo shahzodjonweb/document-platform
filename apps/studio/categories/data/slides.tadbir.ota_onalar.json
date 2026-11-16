@@ -609,6 +609,9 @@
     "bullets.numbered_rows"
    ],
    "source": "draft",
+   "checks": [
+    "numbers"
+   ],
    "write": "From 5 slides. 3 to 6 lines (bullets.numbered_rows), each line the HEADING OF A SLIDE, WORD FOR WORD. When the deck has more than 6 content slides, consecutive slides of one topic are listed under the heading of the first of them (natijalar, fanlar, davomat: “Sinf natijalari”), and Qaror loyihasi and Savol va takliflar are left out of a full list; it never lists a slide the deck does not have. Notes: the greeting (“Assalomu alaykum, hurmatli ota-onalar!”), thanks, how many items there are, that a hand may be raised at any moment.",
    "from": 5,
    "join": 3
@@ -774,6 +777,10 @@
     "bullets.classic"
    ],
    "source": "draft",
+   "checks": [
+    "numbers",
+    "names"
+   ],
    "write": "Heading, in the deck’s language: Muammolar va iltimoslar (muammo berilmasa: Ota-onalarga iltimoslar) / Проблемы и просьбы (без проблем: Просьбы к родителям) / Problems and requests (no concern given: Requests to parents). bullets.classic, 3 to 5 lines of at most 52 characters, each “<muammo>: <iltimos>” (“Telefon: dars vaqtida o‘chirishga kelishib oling”), one request per concern, in the polite imperative, doable, no deadline, fee or consequence, never about a named child or a named parent. Without concerns: 3 general requests, heading “Ota-onalarga iltimoslar”. Notes: class-wide observations; ask for a show of hands.",
    "from": 4,
    "join": 2

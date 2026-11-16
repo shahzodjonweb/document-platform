@@ -3,8 +3,13 @@
 Architecture section 4, row by row. Every person and organisation here is
 invented; the messages are written for these tests, never a customer's.
 """
+import re
+import time
+from pathlib import Path
+
 import pytest
 
+from apps.studio import categories
 from apps.studio.categories import facts, numbers
 from apps.studio.categories.facts import derived, ground, guard, supported, trusting, verify_items
 
@@ -246,11 +251,30 @@ def test_an_address_not_the_customers_is_blanked(uz):
     assert ground('Javobni info@namuna.uz ga yuboring.', uz) == ('Javobni ____ ga yuboring.', ['ground:number'])
 
 
-def test_a_translated_part_leaves_names_to_the_translation_but_never_numbers():
+def test_a_translated_part_keeps_the_customers_people_and_never_an_invented_one():
     known = trusting(ARIZA_RU)
-    part = 'Men Namuna davlat universitetining talabasi Dilnoza Karimova 2026-yil 3-noyabrdan dars qoldirdim.'
+    part = 'Men talaba Dilnoza Karimova 2026-yil 3-noyabrdan dars qoldirdim.'
     assert ground(part, known, translated=True) == (part, [])
     assert ground('Men 4-noyabrdan dars qoldirdim.', known, translated=True)[1] == ['ground:number']
+    # A person the customer never named is blanked in a translated part as in any other.
+    assert ground('Men talaba Dilnoza Karimova, rahbarim Botir Xolmirzayev.', known, translated=True) == \
+        ('Men talaba Dilnoza Karimova, rahbarim ____.', ['ground:name'])
+    # A translated organisation cannot be told from an invented person, so it may be blanked too: a false blank,
+    # never an invention ("Образцового государственного университета" is no spelling of Namuna).
+    assert ground('Men Namuna davlat universiteti talabasiman.', known, translated=True) == \
+        ('Men ____ davlat universiteti talabasiman.', ['ground:name'])
+
+
+def test_a_translated_part_meets_the_customers_people_across_the_alphabets():
+    latin = facts.trusted(draft('Ariza yozing. Men G‘ofurov Sardor, rahbarim Xo‘jayev Botir, Yo‘ldosheva Lola.'))
+    part = 'Доклад подготовил Гафуров Сардор под руководством Ходжаев Ботир, рецензент Юлдашева Лола.'
+    assert ground(part, latin, translated=True) == (part, [])
+    assert ground('Доклад подготовил Гафуров Сардор, рецензент Мадаминов Шерзод.', latin, translated=True) == \
+        ('Доклад подготовил Гафуров Сардор, рецензент ____.', ['ground:name'])
+    cyrillic = trusting(ARIZA_RU)
+    for part in ('Arizachi Dilnoza Karimova.', 'The applicant is Dilnoza Karimova.'):
+        assert ground(part, cyrillic, translated=True) == (part, []), part
+    assert ground('The applicant is Dilnoza Rahimova.', cyrillic, translated=True)[1] == ['ground:name']
 
 
 def test_blanks_next_to_each_other_are_one(uz):
@@ -477,9 +501,156 @@ def test_a_translated_references_list_is_held_by_its_numbers():
     assert verify_items(items, known, translated=True) == ([items[0]], ['source:dropped'])
 
 
+def test_a_translated_references_list_still_holds_the_authors_it_opens_with():
+    known = trusting('Manba: Karimov A. Iqtisodiyot nazariyasi, 2019.')
+    items = ['Karimov A. Economic Theory, 2019.', 'Каримов А. Экономическая теория, 2019.',
+             'Xolmatov S. Basics of Economics', 'A. Karimov, S. Xolmatov. Economic Theory', 'Economic Theory. Part I.']
+    assert verify_items(items, known, translated=True) == \
+        ([items[0], items[1], items[4]], ['source:dropped'])
+
+
+def test_a_translated_cover_keeps_an_academic_title():
+    # A cover line's label is the label's own (finish._line_known); its value is held as a person's.
+    known = trusting('Ilmiy rahbar: dotsent Rahimova N.')
+    assert supported('Associate Professor N. Rahimova', 'person', known, translated=True)
+    assert supported('Доцент Рахимова Н.', 'person', known, translated=True)
+    assert not supported('Associate Professor B. Xolmirzayev', 'person', known, translated=True)
+
+
 def test_codes_name_what_was_taken_never_the_value(uz):
     found = set()
     for text in ('Xolmirzayev 4 870 000 so‘m. «bir ikki uch to‘rt besh». PF-60-son Farmon.', 'info@namuna.uz'):
         found |= set(ground(text, uz)[1])
     found |= set(verify_items(['Xolmirzayev'], uz, file_names=[])[1])
     assert found <= CODES and found
+
+
+# ---------------------------------------------------------------- addresses in linear time
+
+# The address forms as they were before they were made linear, the reference for what they must still match.
+PLAIN_EMAIL = r"[\w.+\-]+@[\w\-]+(?:\.[\w\-]+)+"
+PLAIN_LINK = (r"(?:https?://|www\.)\S+|\b[\w\-]+(?:\.[\w\-]+)*\.(?:uz|com|ru|org|net|io|me|info|edu|gov)"
+              r"(?:/\S*)?(?!\w)")
+ADDRESSES = (
+    'E-pochta: dilnoza.k@example.com, nusxasi info@namuna.uz ga.',
+    'Почта: d.karimova+ariza@mail.namuna.ru; сайт https://namuna.uz/qabul?id=7 и www.namuna-edu.uz/about.',
+    'Sayt: namuna.uz, mail.ped.namuna.edu.uz va e-library.namuna.uz/kitoblar; my.gov.uz orqali ariza bering.',
+    'Write to j.yusupov@test-mail.co.uz or visit test-school.org/en. The file is report.v2.pdf, not a link.',
+    'Ro‘yxat: -namuna.uz, (namuna.com), «namuna.ru», sub.domain.namuna.info. Oxiri.namuna.io!',
+    'Matn.Gap.Sayt: uz.namuna.uz-ga, foo.uz.bar, foo.uz-bar va a--b.namuna.net hamda x@y.z.uz.',
+)
+
+
+def test_addresses_are_read_as_before_on_ordinary_text():
+    texts = list(ADDRESSES)
+    for path in sorted((Path(categories.__file__).parent / 'data').glob('*.json')):
+        texts.append(path.read_text(encoding='utf-8'))
+    for text in texts:
+        assert [m.span() for m in facts.EMAIL.finditer(text)] == \
+            [m.span() for m in re.finditer(PLAIN_EMAIL, text)], text[:80]
+        assert [m.span() for m in facts.LINK.finditer(text)] == \
+            [m.span() for m in re.finditer(PLAIN_LINK, text, re.IGNORECASE)], text[:80]
+        assert [m.span() for m in numbers.SKIPPED.finditer(text)] == \
+            [m.span() for m in re.finditer(f'{PLAIN_EMAIL}|{PLAIN_LINK}', text, re.IGNORECASE)], text[:80]
+    known = trusting(ADDRESSES[0] + ' ' + ADDRESSES[1])
+    assert known.emails == {'dilnoza.k@example.com', 'info@namuna.uz', 'd.karimova+ariza@mail.namuna.ru'}
+    assert known.links == {'namuna.uz/qabul?id=7', 'namuna-edu.uz/about'}
+
+
+# 'a--.' (labels ending in hyphens, joined by dots) is the slowest shape found: the link's lookbehinds allow a start
+# at every letter after '--'.
+@pytest.mark.parametrize('run', ['ab.', 'a-b', 'ab.cd-', 'a.+', 'a--', 'a--.', 'a.' * 40 + '@b', '1.2-3', 'аб.вг-',
+                                 'a-' * 31 + 'a.'])
+def test_long_runs_of_letters_dots_and_hyphens_are_read_in_linear_time(run):
+    """A source of 130,000 characters made of such runs once took facts.trusting about 15 s, inside the lease."""
+    part = (run * (3000 // len(run)))[:3000]
+    source = '\n'.join([part] * 44)
+    started = time.monotonic()
+    facts.trusting(source)
+    assert time.monotonic() - started < 2
+
+
+def test_a_draft_slot_with_checks_holds_its_numbers_and_names_and_nothing_more_without():
+    known = trusting('Pedagogik kengash: bilim sifati 58,4%, nazorat Mohira Namunovaga yuklatilsin.')
+    part = 'Sifat 58,4% dan 61% ga oshsin, nazorat Mohira Namunova va Sardor Xolmatovga, info@namuna.uz.'
+    assert guard(part, known) == (part, [])
+    assert guard(part, known, checks=('numbers',)) == \
+        ('Sifat 58,4% dan ____% ga oshsin, nazorat Mohira Namunova va Sardor Xolmatovga, ____.', ['ground:number'])
+    assert guard(part, known, checks=('numbers', 'names')) == \
+        ('Sifat 58,4% dan ____% ga oshsin, nazorat Mohira Namunova va ____, ____.', ['ground:number', 'ground:name'])
+
+
+@pytest.mark.parametrize('part, written', [
+    ('Ma’ruzachi: Xolmatov S.', 'Ma’ruzachi: ____'),
+    ('Qo‘shimcha darslar tashkil etilsin — mas’ul: Xolmatov S.', 'Qo‘shimcha darslar tashkil etilsin — mas’ul: ____'),
+    ('Mas’ul: Xolmatov Sardor', 'Mas’ul: ____'),
+    ('Sardor Xolmatov', '____'),
+    ('Xolmatov S. hisobot beradi', '____ hisobot beradi'),
+    ('S. R. Xolmatov hisobot beradi', '____ hisobot beradi'),
+], ids=['reporter-initial', 'responsible-after-dash', 'responsible-full', 'row-of-its-own', 'sentence-first-initial',
+        'initials-first'])
+def test_a_slot_that_checks_names_takes_an_invented_name_whole_where_a_label_or_a_row_names_it(part, written):
+    known = trusting('Pedagogik kengash: bilim sifati, nazorat Mohira Namunovaga yuklatilsin.')
+    assert guard(part, known, checks=('names',)) == (written, ['ground:name'])
+
+
+@pytest.mark.parametrize('part', [
+    'Ma’ruzachi: Namunova M.', 'Mas’ul: Mohira Namunova', 'Nazorat Namunova M. zimmasiga', 'Bunga e’tibor bering',
+    'Shuningdek, bilim sifati oshsin', 'Mas’ul: direktor o‘rinbosari'])
+def test_a_slot_that_checks_names_keeps_the_customers_people_and_a_lone_grammar_word(part):
+    known = trusting('Pedagogik kengash: bilim sifati, nazorat Mohira Namunovaga yuklatilsin.')
+    assert guard(part, known, checks=('names',)) == (part, [])
+
+
+@pytest.mark.parametrize('part, written', [
+    ('Xolmatovga yuklansin.', '____ yuklansin.'),
+    ('Darslar tashkil etilsin. Xolmatov javobgar.', 'Darslar tashkil etilsin. ____ javobgar.'),
+    ('1. Xolmatov javobgar', '1. ____ javobgar'),
+    ('— Xolmatov', '— ____'),
+    ('Xolmatov', '____'),
+    ('Холматовой поручить', '____ поручить'),
+    ('Xolmirzayevaga topshirilsin', '____ topshirilsin'),
+    ('Mas’ul: S.Xolmatov', 'Mas’ul: ____'),
+], ids=['case-ending', 'opens-a-sentence', 'list-item', 'dash-row', 'item-alone', 'cyrillic', 'yev-feminine',
+        'initial-without-space'])
+def test_a_slot_that_checks_names_takes_a_lone_invented_surname_that_opens_a_sentence_or_a_row(part, written):
+    # A surname alone at the start of a row is the very form a resolution's or an agenda's responsible person takes.
+    known = trusting('Pedagogik kengash: bilim sifati, nazorat Mohira Namunovaga yuklatilsin.')
+    assert guard(part, known, checks=('names',)) == (written, ['ground:name'])
+
+
+@pytest.mark.parametrize('part', [
+    'Namunova javobgar.', '1. Namunovaga yuklansin', 'Tanlov o‘tkazilsin.', 'Sinovlar yakunlansin.',
+    'To‘lovlar o‘z vaqtida qilinsin.', 'Pedsovet qarori bajarilsin.'])
+def test_a_surname_shaped_first_word_is_kept_when_it_is_the_customers_or_a_common_word(part):
+    known = trusting('Pedagogik kengash: bilim sifati, nazorat Mohira Namunovaga yuklatilsin.')
+    assert guard(part, known, checks=('names',)) == (part, [])
+
+
+def test_people_known_reads_a_line_as_the_names_check_does():
+    known = trusting('Kurs ishi. Bajardi: Yusupov Jasur.')
+    assert facts.people_known('Term paper', known) and facts.people_known('Yusupov Jasur', known)
+    assert not facts.people_known('Xolmirzayev Botir', known)
+    assert not facts.people_known('Prepared by Botir Xolmirzayev', known)
+    assert facts.people_known('Toshkent davlat iqtisodiyot universiteti', known)
+
+
+def test_ground_still_leaves_the_first_word_of_a_sentence():
+    # ground's limit is unchanged until the owner takes the false blanks the strict reading costs everywhere.
+    known = trusting('Pedagogik kengash')
+    assert ground('Sardor Xolmatov hisobot beradi', known) == ('Sardor ____ hisobot beradi', ['ground:name'])
+
+
+def test_a_count_the_document_makes_of_itself_is_held_and_nothing_more():
+    known = facts.counting(trusting('Pedagogik kengash'), 4)
+    assert guard('Bugun 4 ta masala ko‘riladi', known, checks=('numbers',)) == ('Bugun 4 ta masala ko‘riladi', [])
+    assert guard('Bugun 5 ta masala ko‘riladi', known, checks=('numbers',)) == \
+        ('Bugun ____ ta masala ko‘riladi', ['ground:number'])
+    assert facts.counting(known, 0) is known
+
+
+def test_a_counted_copy_shares_the_respelled_words_rather_than_folding_the_source_again():
+    known = trusting('Nazorat Mohira Namunovaga yuklatilsin.')
+    counted = facts.counting(known, 4)
+    assert counted is not known and counted.respelled is known.respelled
+    assert facts.counting(trusting('Pedagogik kengash'), 3).person('Namunova', True) is False
