@@ -259,6 +259,37 @@ def test_the_instructions_do_not_depend_on_what_the_customer_wrote():
             provider.request_body(CONFIG, second, SLIDES, span)['instructions']
 
 
+def category_deck(locale, prompt, slides=12):
+    """A category deck's draft (apps/studio/categories): its slots seeded, its look already chosen."""
+    from apps.studio.categories import catalogue, skeleton
+    entry = catalogue.get('slides.himoya')
+    data = draft(slides, 'pptx')
+    data.update(output_locale=locale, prompt=prompt)
+    data['options'].update(category=entry.id, image_cap=6, template_style={'deck_design': entry.look['designs'][0]})
+    data['content']['sections'] = skeleton.seed(entry, slides, skeleton.cues(entry, prompt, has_files=False))
+    return data
+
+
+def test_a_category_deck_keeps_one_prefix_in_every_language_and_whatever_the_customer_wrote():
+    """The two properties above hold for a category deck too: its block is in the prefix, its customer text is not."""
+    prompt = 'A thesis defence deck on staff turnover at a small invented bakery, Example Crumbs.'
+    other = 'Kurs ishi himoyasi: “Namuna Bog‘” fermer xo‘jaligida suvni tejash yo‘llari, slaydlar bilan.'
+    for stage in ('final', 'revision', 'selected', 'repair'):
+        made = {}
+        for locale in LOCALES:
+            data = category_deck(locale, prompt)
+            data = {'final': lambda d: d, 'revision': revised, 'selected': lambda d: revised(d, ['s2']),
+                    'repair': lambda d: repairing(d, ['s2'])}[stage](data)
+            made[locale] = provider.request_body(CONFIG, data, SLIDES)
+        prefixes = {made[locale]['instructions'][:-len(language.instructions(locale))] for locale in LOCALES}
+        assert len(prefixes) == 1, stage
+        assert 'Category slides.himoya.' in prefixes.pop() and 'Example Crumbs' not in made['en']['instructions']
+        assert len({body['prompt_cache_key'] for body in made.values()}) == 1, stage
+    for span in pages.batches(12):
+        assert provider.request_body(CONFIG, category_deck('uz', prompt), SLIDES, span)['instructions'] == \
+            provider.request_body(CONFIG, category_deck('uz', other), SLIDES, span)['instructions']
+
+
 def test_the_cache_key_changes_with_the_prompt_version(monkeypatch):
     """New instructions must not be served a prefix cached for the old ones."""
     data = draft(5, 'pptx')
