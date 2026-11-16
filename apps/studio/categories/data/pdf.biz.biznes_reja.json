@@ -17,11 +17,11 @@
  "length": {
   "unit": "pages",
   "mode": "count",
-  "target": "count",
+  "target": "ceiling",
   "default": 10,
   "min": 1,
   "max": 20,
-  "note": "A count paper (the architecture’s page rule count) with every written part grounded, so a top-up has nothing it may extend and fill is off; the facts set how full the pages are."
+  "note": "A ceiling: every written part is grounded, so the plan grows only with the customer’s facts and is never padded to the pages; the pages asked for (10 when none are) are the most it fills, about 20 is the honest top, and the shorter notice says when the facts ran out first."
  },
  "questions": {
   "default": 0,
@@ -854,6 +854,7 @@
    "need": "optional",
    "share": 0.06,
    "elastic": true,
+   "from": 4,
    "write": "How the work is done day to day, only as the customer described it: premises (own or rented, area, address), capacity or working days, the equipment of the investment table. Never a made-up capacity, shift pattern, supplier or supplier type. Empty when the customer said nothing beyond the other parts.",
    "block": "paragraph",
    "grounded": true
@@ -870,6 +871,7 @@
    "need": "optional",
    "share": 0.04,
    "elastic": false,
+   "from": 4,
    "write": "One row per position the customer named: label the position, then the number of people and the monthly pay as given, and leave the last cell empty (code multiplies). Only an average pay: one row Xodimlar with the number and the average. No pay given: no rows, and the number of staff is a sentence of the operations.",
    "block": "table",
    "grounded": true,
@@ -923,6 +925,7 @@
    "need": "optional",
    "share": 0.03,
    "elastic": false,
+   "from": 4,
    "write": "Stage rows only from the customer’s own items (each investment line, hiring, the launch; registration and permits only for a new business) in the order they happen: label the stage, then its start and its duration as given. Only when the customer gave at least one duration or start and there are three rows or more; never mark a stage done unless the customer said so.",
    "block": "table",
    "grounded": true,
@@ -1055,6 +1058,7 @@
    "need": "usual",
    "share": 0.04,
    "elastic": false,
+   "from": 4,
    "write": "Nothing: the loan or investor terms, drawn from the facts; none for a grant or the owner’s own plan.",
    "block": "kv_table",
    "fields": [
@@ -1080,6 +1084,7 @@
    "need": "optional",
    "share": 0.05,
    "elastic": false,
+   "from": 4,
    "write": "One row per product with both a monthly volume and a price, in the customer’s order: label the product, then the volume and the price as typed, and an empty last cell (code multiplies). A product missing either stays out. A daily volume becomes monthly only when the customer gave the working days, and then both figures stay as typed.",
    "block": "table",
    "grounded": true,
@@ -1132,6 +1137,7 @@
    "need": "optional",
    "share": 0.04,
    "elastic": false,
+   "from": 4,
    "write": "The customer’s monthly cost lines in their order: label the item and the monthly amount as typed. Code adds the total of the lines named.",
    "block": "table",
    "grounded": true,
@@ -1193,6 +1199,7 @@
    "need": "usual",
    "share": 0.06,
    "elastic": false,
+   "from": 3,
    "write": "Three to six rows, each a risk tied to a fact of this plan (the loan, the equipment, staff, raw materials, the sales channel the customer named): label the risk, the measure last, as a plan (rejalashtiriladi) that uses only resources the customer stated. No impact rating, insurer, partner or number.",
    "block": "table",
    "grounded": true,
@@ -1222,6 +1229,7 @@
    "need": "usual",
    "share": 0.03,
    "elastic": false,
+   "from": 4,
    "write": "Two to four sentences: what the project is, what it needs and what it gives (jobs only as the customer stated them), from the figures the customer wrote. No new fact, promise or guarantee.",
    "block": "paragraph",
    "grounded": true,
@@ -1306,15 +1314,15 @@
    "to": "engine"
   },
   {
-   "text": "Chapter headings are the template’s and numbered by position: Rezyume, Biznes va mahsulot, Bozor va marketing, Operatsion reja va jamoa, Moliyaviy reja, Tavakkalchiliklar va xulosa; a chapter with no content leaves no gap. The cover from 4 pages, the contents from 12.",
+   "text": "Chapter headings are the template’s and numbered by position: Rezyume, Biznes va mahsulot, Bozor va marketing, Operatsion reja va jamoa, Moliyaviy reja, Tavakkalchiliklar va xulosa; a chapter with no content leaves no gap. One to three pages are the compact form: the operations chapter, the loan terms, revenue and cost tables and the conclusion start at 4 pages, the risks at 3, so the parts carry it. The cover from 4 pages, the contents from 12.",
    "to": "engine"
   }
  ],
  "bot": {
   "prompt": {
-   "uz": "Biznesingizni bitta xabarda yozing: nima qilasiz, qayerda va reja nima uchun kerak (bank krediti, grant, investor yoki o‘zingiz uchun).\nRaqamlar (xarajatlar, o‘z mablag‘ingiz, kredit, narxlar) qancha ko‘p bo‘lsa, reja shuncha to‘liq chiqadi. Hajmi aytilmasa — 10 sahifagacha.\nYozmaganingiz bo‘sh chiziq bo‘lib qoladi: raqam, nom, sana va manbani o‘zimdan to‘qimayman. Narxlar ro‘yxati yoki eski rejani PDF, Word yoki TXT qilib qo‘shing.",
-   "ru": "Опишите бизнес одним сообщением: чем занимаетесь, где и для чего нужен план (банковский кредит, грант, инвестор или для себя).\nЧем больше цифр (расходы, свои средства, кредит, цены), тем полнее план. Если объём не указан — до 10 страниц.\nЧто не укажете, останется пустой строкой: цифры, названия, даты и источники я не выдумываю. Прайс-лист или старый план приложите файлом PDF, Word или TXT.",
-   "en": "Describe your business in one message: what you do, where, and what the plan is for (a bank loan, a grant, an investor, or just for yourself).\nThe more figures you give (costs, own funds, the loan, prices), the fuller the plan. With no length named it runs up to 10 pages.\nAnything you leave out stays a blank line: I never make up numbers, names, dates or sources. Attach a price list or an old plan as a PDF, Word or TXT file."
+   "uz": "Biznesingizni bitta xabarda yozing: nima qilasiz, qayerda va reja nima uchun kerak (bank krediti, grant, investor yoki o‘zingiz uchun).\nRaqamlar (xarajatlar, o‘z mablag‘ingiz, kredit, narxlar) qancha ko‘p bo‘lsa, reja shuncha to‘liq chiqadi. Hajmi aytilmasa — 10 sahifagacha.\nYozmaganingiz bo‘sh chiziq bo‘lib qoladi: raqam, nom, sana va manba hech qachon o‘ylab topilmaydi. Narxlar ro‘yxati yoki eski rejani PDF, Word yoki TXT qilib qo‘shing.",
+   "ru": "Опишите бизнес одним сообщением: чем занимаетесь, где и для чего нужен план (банковский кредит, грант, инвестор или для себя).\nЧем больше цифр (расходы, свои средства, кредит, цены), тем полнее план. Если объём не указан — до 10 страниц.\nЧто не укажете, останется пустой строкой: цифры, названия, даты и источники никогда не выдумываются. Прайс-лист или старый план приложите файлом PDF, Word или TXT.",
+   "en": "Describe your business in one message: what you do, where, and what the plan is for (a bank loan, a grant, an investor, or just for yourself).\nThe more figures you give (costs, own funds, the loan, prices), the fuller the plan. With no length named it runs up to 10 pages.\nAnything you leave out stays a blank line: numbers, names, dates and sources are never made up. Attach a price list or an old plan as a PDF, Word or TXT file."
   },
   "examples": [
    {
@@ -1344,6 +1352,11 @@
     "uz": "Ba’zi ma’lumotlar xabaringizda yo‘q edi, shuning uchun bo‘sh chiziq qoldirildi: ularni qo‘lda to‘ldiring yoki raqamlarni yozib, rejani qayta so‘rang.",
     "ru": "Некоторых сведений не было в вашем сообщении, поэтому оставлены пустые линии: заполните их от руки или напишите цифры и запросите план заново.",
     "en": "Some facts were not in your message, so blank lines were left: fill them in by hand, or send the figures and ask for the plan again."
+   },
+   "shorter": {
+    "uz": "Reja siz so‘ragan sahifadan qisqaroq chiqdi: yozgan ma’lumotlaringiz shunga yetdi, yozilmagani o‘ylab topilmadi.",
+    "ru": "План получился короче, чем вы просили: ваших данных хватило на столько, а то, что не указано, не выдумывалось.",
+    "en": "The plan came out shorter than you asked: your facts filled this much, and nothing you left out was made up."
    }
   }
  },
@@ -1352,6 +1365,7 @@
  ],
  "look": null,
  "gates": [
+  "templates/business_biznes_reja.json is a first draft written from the spec only so the catalogue loads; R5a owns it and may rewrite any of it. Its flow params (labels and captions maps, run_in, table_from, blank_items, keep: closing) are no contract until a registered block defines them.",
   "A native Uzbek and a native Russian reader check the chapter and table headings, the key-figure labels and the loan-term rows before the entry is marked ready.",
   "Render the full, blank and long cases in uz, ru and en with the paper sample tool and compare them with units/pdf.biz.biznes_reja/mock/business_biznes_reja.png; check every computed total and share by hand.",
   "The facts corpus is at zero on this entry’s examples."
@@ -1383,7 +1397,7 @@
    "text": "The blank guard: asking once instead of delivering when more than six groups of facts are missing."
   },
   {
-   "text": "The delivery line that names each blank, and the line for a plan shorter than asked or capped at 20 pages."
+   "text": "The delivery line that names each blank and the pages asked and made, and the line for a plan capped at 20 pages; the shorter notice already says a plan came out shorter."
   }
  ]
 }

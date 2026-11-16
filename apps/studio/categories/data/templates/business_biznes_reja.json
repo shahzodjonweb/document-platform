@@ -37,8 +37,7 @@
   "align": "left"
  },
  "page_rule": {
-  "kind": "count",
-  "trim": false
+  "kind": "flow"
  },
  "furniture": {
   "first": "none",

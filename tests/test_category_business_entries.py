@@ -3,9 +3,12 @@
 Each is a draft converted from its research spec. What these tests hold is
 what the converted data promises the later packages and the customer:
 
-- the fact-led papers are ceilings (nothing pads them) and the business plan
-  a count with nothing a top-up may extend, because every written part of a
-  business paper is grounded;
+- every business paper is a ceiling: each written part is grounded, so no
+  part is asked for a floor of words the customer's facts may not reach, and
+  a plan or minutes shorter than the pages asked says so;
+- the short forms (a marketing plan of 1-2 pages, a business plan of 1-3)
+  are the parts' own `from`, so the model is never asked for a part the
+  pages cannot hold;
 - a table's computed cells and totals name columns that exist, so derive.py
   (R5a) fills what the model leaves empty from the customer's own numbers;
 - the minutes' agenda items are one model-sized group, so a meeting of three
@@ -27,15 +30,17 @@ import pytest
 from apps.studio import categories
 from apps.studio.categories import catalogue, prompting, skeleton
 from apps.studio.categories.catalogue import PAPER_BOUNDS, SOURCES_CUE
-from apps.studio.domain import create_draft, generation_quote, unpack, validate_content
+from apps.studio import provider
+from apps.studio.domain import DOCUMENT, create_draft, generation_quote, unpack, validate_content
 from operations.categories_settings import save as save_switch
 from tests.test_operations import staff_client
 from tests.test_platform import account
+from tests.test_category_prompts_pdf import paper, sent
+from tests.test_provider_contract import CONFIG
 from tests.test_studio import paid
 
 BUSINESS = ('pdf.biz.biznes_reja', 'pdf.biz.tijorat_taklifi', 'pdf.biz.hisobot', 'pdf.biz.yoriqnoma',
             'pdf.biz.lavozim_yoriqnomasi', 'pdf.biz.bayonnoma', 'pdf.biz.marketing_reja')
-CEILINGS = set(BUSINESS) - {'pdf.biz.biznes_reja'}
 # Research notes and renderer plumbing the model cannot use: mock-ups, scripts, measurements, the research's
 # document numbers and waves, token syntax for figures code fills.
 NOTES = re.compile(r'\bmock\b|\.png\b|\.py\b|\bwork/|\bmeasured\b|\bdocs? \d|\bsources/|\bwave \d|\{\{|\bspec\b'
@@ -65,15 +70,40 @@ def test_the_seven_business_papers_are_drafts_under_their_group_in_the_owners_or
     assert entry('pdf.biz.yoriqnoma').name('uz') == 'Xodimlar uchun yo‘riqnoma'
 
 
-def test_the_fact_led_papers_are_ceilings_and_the_plan_a_count_with_nothing_to_top_up():
+def test_every_business_paper_is_a_ceiling_that_asks_no_part_for_a_floor_of_words():
     for entry_id in BUSINESS:
-        length = entry(entry_id).length
+        item = entry(entry_id)
+        length = item.length
         assert length['mode'] == 'count' and length['min'] <= length['default'] <= length['max'] <= 35
-        assert length['target'] == ('ceiling' if entry_id in CEILINGS else 'count'), entry_id
-        assert entry(entry_id).raw['fill'] is False
-    # Top-up extends only ungrounded elastic prose, and a business paper has none, so the plan's fill is off.
+        assert length['target'] == 'ceiling' and item.raw['fill'] is False, entry_id
+        # A floor on a grounded part makes the model write past the customer's facts: none at any length.
+        for pages in range(length['min'], length['max'] + 1):
+            floors = [use.section_id for use in skeleton.parts(item, pages, frozenset())
+                      if use.section_id and skeleton.words(item, use, pages, frozenset())[0]]
+            assert not floors, (entry_id, pages, floors)
+
+
+@pytest.mark.parametrize('pages', [8, 10])
+def test_the_business_plan_of_two_sentences_is_told_its_most_words_never_to_fill_the_pages(pages):
+    # The bot's own first example asks for 8 pages and gives about two sentences of facts; 10 is the default.
     plan = entry('pdf.biz.biznes_reja')
-    assert not [part['id'] for part in plan.parts if part['kind'] in skeleton.WRITTEN and not part.get('grounded')]
+    data = paper(plan, 'en', prompt=plan.raw['bot']['examples'][0]['en'], length=pages)
+    rows = [row for row in prompting.paper_rows(data, plan, data['content']['sections']) if row['kind'] != 'facts']
+    assert rows and not [row['id'] for row in rows if 'words' in row or 'max_words' not in row]
+    said = sent(provider.request_body(CONFIG, data, DOCUMENT))['writing_guidance']
+    assert prompting.CEILING_SIZES in said and prompting.COUNT_SIZES not in said
+
+
+def test_the_short_forms_leave_out_the_parts_their_pages_cannot_hold():
+    def made(entry_id, pages):
+        return {use.part['id'] for use in skeleton.parts(entry(entry_id), pages, frozenset()) if use.section_id}
+    analysis = {'competitors', 'swot', 'positioning', 'mix'}
+    assert not made('pdf.biz.marketing_reja', 1) & analysis and not made('pdf.biz.marketing_reja', 2) & analysis
+    assert analysis <= made('pdf.biz.marketing_reja', 3)
+    later = {'operations', 'team', 'schedule', 'finance_revenue', 'finance_costs', 'conclusion'}
+    assert not made('pdf.biz.biznes_reja', 2) & (later | {'risks'})
+    assert made('pdf.biz.biznes_reja', 3) & (later | {'risks'}) == {'risks'}
+    assert later | {'risks'} <= made('pdf.biz.biznes_reja', 4)
 
 
 def test_every_written_part_of_a_business_paper_is_grounded():
@@ -168,11 +198,20 @@ def test_no_research_note_or_law_to_cite_reaches_the_model():
             assert not CITED.search(text), (entry_id, CITED.search(text).group(0), text[:120])
 
 
-def test_the_ceiling_papers_say_when_they_came_out_shorter_and_every_paper_says_what_to_check():
+def test_every_business_paper_says_when_it_came_out_shorter_and_what_to_check():
     for entry_id in BUSINESS:
         notices = entry(entry_id).raw['bot']['notices']
-        assert {'finished', 'blanks'} <= set(notices), entry_id
-        assert ('shorter' in notices) == (entry_id in CEILINGS), entry_id
+        assert {'finished', 'blanks', 'shorter'} <= set(notices), entry_id
+
+
+
+def test_russian_and_english_examples_name_their_invented_organisations_in_their_own_script():
+    # Platform names (Instagram, Telegram, IELTS) stay as written; an Uzbek name or legal form does not.
+    uzbek = re.compile(r'\b(Namuna|Bahor|MChJ|YaTT)\b')
+    for entry_id in BUSINESS:
+        for example in entry(entry_id).raw['bot']['examples']:
+            assert not uzbek.search(example['ru']), (entry_id, example['ru'][:80])
+            assert not re.search(r'\b(MChJ|YaTT)\b', example['en']), (entry_id, example['en'][:80])
 
 
 # ---------------------------------------------------------------- drafts the domain makes

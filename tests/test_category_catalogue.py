@@ -419,8 +419,7 @@ def test_bounds_are_the_papers_for_a_category_pdf_and_todays_otherwise():
 def test_for_feature_lists_each_service_in_the_lists_order():
     # The paper entries land package by package (C2a, C2b, C2c): whatever has landed is listed in the owner's
     # order, a group's children where the group stands.
-    index = catalogue._catalogue().index
-    order = [child for item in index['lists']['ai.pdf_topic'] for child in index['groups'].get(item, {}).get('children', [item])]
+    order = list(catalogue._walk(catalogue.read()[2], 'ai.pdf_topic'))
     papers = [entry.id for entry in catalogue.for_feature('ai.pdf_topic')]
     assert papers == [item for item in order if item in papers] and {'pdf.test', 'pdf.xat.ariza'} <= set(papers)
     assert [item for item in papers if item.startswith('pdf.biz.')] == [

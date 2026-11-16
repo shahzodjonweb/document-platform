@@ -637,6 +637,7 @@
  ],
  "look": null,
  "gates": [
+  "templates/business_hisobot.json is a first draft written from the spec only so the catalogue loads; R5a owns it and may rewrite any of it. Its flow params (labels and captions maps, run_in, table_from, blank_items, keep: closing) are no contract until a registered block defines them.",
   "A native Uzbek and a native Russian reader check the fixed words (HISOBOT, the chapter headings, the table headers Reja, Natija, Farqi, Rejaga nisbatan, %, the signer roles Tayyorladi and Kelishildi) before the entry is marked ready.",
   "Render the full, blank and long cases in uz, ru and en with the paper sample tool and compare them with units/pdf.biz.hisobot/mock/business_hisobot.png and business_hisobot-blank.png; check by hand every computed difference and per cent.",
   "The facts corpus is at zero on this entry’s examples."

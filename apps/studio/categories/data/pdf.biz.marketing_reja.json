@@ -492,6 +492,7 @@
    "need": "usual",
    "share": 0.06,
    "elastic": false,
+   "from": 3,
    "write": "Two or more competitors or kinds the customer named: one row each, label the name, then the customer’s own comment, and the difference the customer gave last. A cell the customer did not fill stays empty. Fewer than two: no rows.",
    "block": "table",
    "grounded": true,
@@ -526,6 +527,7 @@
    "need": "usual",
    "share": 0.08,
    "elastic": false,
+   "from": 3,
    "write": "Up to three points per quadrant, each at most 12 words: label one of strengths, weaknesses, opportunities, threats, text the point. Strengths and weaknesses only from stated facts; opportunities and threats are number-free conditions tied to the stated activities, channels, place or competitors. No point repeats; no filler such as yuqori sifat. Fewer than three stated strengths and weaknesses together: no items.",
    "block": "card_grid",
    "grounded": true,
@@ -559,6 +561,7 @@
    "need": "usual",
    "share": 0.04,
    "elastic": false,
+   "from": 3,
    "write": "One sentence: the business, for whom, what, and its difference, built only from stated facts, at most 40 words. No slogan, imperative, superlative or second person. No difference given: the sentence ends with “Farqi: ____”.",
    "block": "callout",
    "grounded": true,
@@ -579,6 +582,7 @@
    "need": "usual",
    "share": 0.07,
    "elastic": false,
+   "from": 3,
    "write": "Up to four items in this order, label one of product, price, place, promotion, text one or two sentences built from stated facts. A P with no stated fact is left out, except price, which is “____” when no price was given. No discount or promotion percentage unless typed. Fewer than two items would remain: no items.",
    "block": "list",
    "grounded": true,
@@ -846,7 +850,7 @@
    "to": "model"
   },
   {
-   "text": "Activities are one list used in the channels, budget and calendar tables with identical names. A total budget without lines is never split by you; only when the customer asks for a split, propose one in 5 per cent steps over the activities they named, and say so in the activity text.",
+   "text": "Activities are one list used in the channels, budget and calendar tables with identical names. A total budget without lines is never split: the activity rows leave the amount empty and the total stays as typed.",
    "to": "model"
   },
   {
@@ -862,30 +866,30 @@
    "to": "engine"
   },
   {
-   "text": "Pages choose the form: one or two pages draw the compact form (no SWOT, competitor table, positioning or 4P); the cover from 8, the extra indicators and risks from 9, the contents and conclusion from 10.",
+   "text": "Pages choose the form: one or two pages are the compact form, since the SWOT, competitor table, positioning and 4P parts start at 3 pages; the cover from 8, the extra indicators and risks from 9, the contents and conclusion from 10.",
    "to": "engine"
   }
  ],
  "bot": {
   "prompt": {
-   "uz": "Biznes yoki mahsulotingizni bitta xabarda yozing: nima sotasiz, qayerda va kimga.\nImkon bo‘lsa, maqsad (raqamda), byudjet va muddatni ham qo‘shing: reja aniqroq chiqadi. Reja 4 sahifagacha, ma’lumotingiz yetganicha bo‘ladi.\nYozilmagan raqam, narx va nomlarni o‘zimdan to‘qimayman: ular bo‘sh chiziq bo‘lib qoladi. Sotuv hisoboti yoki narxlar ro‘yxatini PDF, Word yoki TXT fayl qilib qo‘shishingiz mumkin.",
-   "ru": "Опишите бизнес или продукт одним сообщением: что продаёте, где и кому.\nЕсли можете, добавьте цель (в цифрах), бюджет и срок: так план получится точнее. План — до 4 страниц, сколько наберётся из ваших данных.\nНе названные цифры, цены и названия я не выдумываю: они остаются пустыми строками. Отчёт о продажах или прайс можно приложить файлом PDF, Word или TXT.",
-   "en": "Describe your business or product in one message: what you sell, where and to whom.\nIf you can, add your goal (in numbers), budget and timeframe so the plan is more precise. The plan runs up to 4 pages, as far as your facts go.\nI do not make up numbers, prices or names you leave out: they stay blank lines. You can attach a sales report or a price list as a PDF, Word or TXT file."
+   "uz": "Biznes yoki mahsulotingizni bitta xabarda yozing: nima sotasiz, qayerda va kimga.\nImkon bo‘lsa, maqsad (raqamda), byudjet va muddatni ham qo‘shing: reja aniqroq chiqadi. Reja 4 sahifagacha, ma’lumotingiz yetganicha bo‘ladi.\nYozilmagan raqam, narx va nomlar o‘ylab topilmaydi: ular bo‘sh chiziq bo‘lib qoladi. Sotuv hisoboti yoki narxlar ro‘yxatini PDF, Word yoki TXT fayl qilib qo‘shishingiz mumkin.",
+   "ru": "Опишите бизнес или продукт одним сообщением: что продаёте, где и кому.\nЕсли можете, добавьте цель (в цифрах), бюджет и срок: так план получится точнее. План — до 4 страниц, сколько наберётся из ваших данных.\nНе названные цифры, цены и названия не выдумываются: они остаются пустыми строками. Отчёт о продажах или прайс можно приложить файлом PDF, Word или TXT.",
+   "en": "Describe your business or product in one message: what you sell, where and to whom.\nIf you can, add your goal (in numbers), budget and timeframe so the plan is more precise. The plan runs up to 4 pages, as far as your facts go.\nNumbers, prices and names you leave out are never made up: they stay blank lines. You can attach a sales report or a price list as a PDF, Word or TXT file."
   },
   "examples": [
    {
     "uz": "Samarqandda yangi kofexona ochyapman, «Namuna Kofe». Marketing reja kerak.",
-    "ru": "Открываю в Самарканде новую кофейню «Namuna Kofe». Нужен маркетинг-план.",
+    "ru": "Открываю в Самарканде новую кофейню «Намуна Кофе». Нужен маркетинг-план.",
     "en": "I am opening a new coffee shop in Samarkand, “Namuna Kofe”. I need a marketing plan."
    },
    {
     "uz": "Toshkentdagi onlayn kiyim do‘konim «Namuna Kiyim» uchun 6 oylik marketing reja kerak, 1-martdan boshlab. Hozir Instagramda 4 000 ta obunachi, oyiga 120 ta buyurtma; 6 oyda oyiga 300 ta buyurtmaga chiqmoqchiman. Byudjet 36 mln so‘m. Mijozlar — 20–35 yoshli ayollar, narx 150 000–400 000 so‘m. Raqobatchilar — Instagramdagi arzonroq do‘konlar va onlayn bozordagi sotuvchilar; bizda 7 kun ichida almashtirish bor.",
-    "ru": "Нужен маркетинг-план на 6 месяцев, с 1 марта, для моего интернет-магазина одежды «Namuna Kiyim» в Ташкенте. Сейчас в Instagram 4 000 подписчиков и 120 заказов в месяц; за 6 месяцев хочу выйти на 300 заказов в месяц. Бюджет 36 млн сум. Клиенты — женщины 20–35 лет, цены 150 000–400 000 сум. Конкуренты — магазины в Instagram с более низкими ценами и продавцы на онлайн-маркетплейсах; у нас обмен в течение 7 дней.",
+    "ru": "Нужен маркетинг-план на 6 месяцев, с 1 марта, для моего интернет-магазина одежды «Намуна Кийим» в Ташкенте. Сейчас в Instagram 4 000 подписчиков и 120 заказов в месяц; за 6 месяцев хочу выйти на 300 заказов в месяц. Бюджет 36 млн сум. Клиенты — женщины 20–35 лет, цены 150 000–400 000 сум. Конкуренты — магазины в Instagram с более низкими ценами и продавцы на онлайн-маркетплейсах; у нас обмен в течение 7 дней.",
     "en": "I need a 6-month marketing plan from 1 March for my online clothing shop “Namuna Kiyim” in Tashkent. We have 4,000 Instagram followers and 120 orders a month now; in 6 months I want 300 orders a month. Budget UZS 36 million. Customers are women aged 20–35, prices UZS 150,000–400,000. Competitors are cheaper Instagram shops and marketplace sellers; we offer exchange within 7 days."
    },
    {
     "uz": "Namuna Asal brendi uchun yangi mahsulot — tog‘ asali, 500 g bankada — ishga tushirish rejasi kerak, 4 sahifa. Sotuv: Telegram kanal, onlayn bozor va 2 ta do‘kon. Ishga tushirish 1-martda, byudjet 8 mln so‘m, narxi 85 000 so‘m. Birinchi oyda 300 ta banka sotmoqchimiz.",
-    "ru": "Нужен план запуска нового продукта бренда Namuna Asal — горного мёда в банке 500 г, на 4 страницы. Продажи: Telegram-канал, онлайн-маркетплейс и 2 магазина. Запуск 1 марта, бюджет 8 млн сум, цена 85 000 сум. В первый месяц хотим продать 300 банок.",
+    "ru": "Нужен план запуска нового продукта бренда «Намуна Асал» — горного мёда в банке 500 г, на 4 страницы. Продажи: Telegram-канал, онлайн-маркетплейс и 2 магазина. Запуск 1 марта, бюджет 8 млн сум, цена 85 000 сум. В первый месяц хотим продать 300 банок.",
     "en": "I need a launch plan, 4 pages, for a new product from the Namuna Asal brand: mountain honey in a 500 g jar. We sell through a Telegram channel, an online marketplace and 2 shops. Launch on 1 March, budget UZS 8 million, price UZS 85,000. We want to sell 300 jars in the first month."
    }
   ],
@@ -913,6 +917,7 @@
  ],
  "look": null,
  "gates": [
+  "templates/business_marketing_reja.json is a first draft written from the spec only so the catalogue loads; R5a owns it and may rewrite any of it. Its flow params (labels and captions maps, run_in, table_from, blank_items, keep: closing) are no contract until a registered block defines them.",
   "A native Uzbek and a native Russian reader check the fixed headings, table headers, the SWOT quadrant names, the 4P run-in words and the proposal tag before the entry is marked ready.",
   "Render the full, blank and long cases in uz, ru and en with the paper sample tool and compare them with units/pdf.biz.marketing_reja/mock/business_marketing_reja.png and the onepage and twopage mocks; check the computed shares and total by hand.",
   "The facts corpus is at zero on this entry’s examples."

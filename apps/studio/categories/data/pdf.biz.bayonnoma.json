@@ -150,7 +150,7 @@
    "kind": "date",
    "need": "required",
    "missing": "blank",
-   "where": "place_date_row, flush right; “bugun” and “kecha” are resolved with today’s date in Tashkent, anything else missing becomes the family date blank «____» ______________ 20____-yil"
+   "where": "place_date_row, flush right; only a date the customer gave, copied as written (never today’s date, and bugun or kecha is not a date); missing becomes the family date blank «____» ______________ 20____-yil"
   },
   {
    "id": "meeting_time",
@@ -353,7 +353,7 @@
    "need": "required",
    "share": 0.02,
    "elastic": false,
-   "write": "Nothing: the place at the left and the date with the start time at the right, as given; bugun and kecha are the only relative dates code turns into a date, every other missing one is the template’s blank.",
+   "write": "Nothing: the place at the left and the date with the start time at the right, as given; a meeting date is never today’s, and a missing or relative one (bugun, kecha) is the template’s blank.",
    "block": "date_line",
    "fields": [
     "meeting_place",
@@ -578,9 +578,9 @@
  ],
  "bot": {
   "prompt": {
-   "uz": "📋 Yig‘ilishni bitta xabarda yozing: tashkilot, sana, rais va kotib, kimlar qatnashdi, kun tartibi, nima eshitildi va qanday qaror qilindi.\nBayonnoma odatda 2 sahifagacha, ma’lumotingiz yetganicha bo‘ladi. Yozmaganingiz bo‘sh chiziq bo‘lib qoladi: o‘zimdan to‘qimayman.\nQaydlar bor PDF, Word yoki TXT faylni qo‘shing.",
-   "ru": "📋 Опишите собрание одним сообщением: организация, дата, председатель и секретарь, кто присутствовал, повестка, что услышали и что решили.\nПротокол обычно до 2 страниц, сколько наберётся из ваших данных. Что не укажете, останется пустой линией: я ничего не выдумываю.\nЗаписи можно приложить файлом PDF, Word или TXT.",
-   "en": "📋 Describe the meeting in one message: the organisation, date, chair and secretary, who attended, the agenda, what was reported and what was decided.\nMinutes usually run up to 2 pages, as far as your facts go. Anything you leave out becomes a ruled blank: I make nothing up.\nYou can attach notes as PDF, Word or TXT."
+   "uz": "📋 Yig‘ilishni bitta xabarda yozing: tashkilot, sana, rais va kotib, kimlar qatnashdi, kun tartibi, nima eshitildi va qanday qaror qilindi.\nBayonnoma odatda 2 sahifagacha, ma’lumotingiz yetganicha bo‘ladi. Yozmaganingiz bo‘sh chiziq bo‘lib qoladi: hech narsa o‘ylab topilmaydi.\nQaydlar bor PDF, Word yoki TXT faylni qo‘shing.",
+   "ru": "📋 Опишите собрание одним сообщением: организация, дата, председатель и секретарь, кто присутствовал, повестка, что услышали и что решили.\nПротокол обычно до 2 страниц, сколько наберётся из ваших данных. Что не укажете, останется пустой линией: ничего не выдумывается.\nЗаписи можно приложить файлом PDF, Word или TXT.",
+   "en": "📋 Describe the meeting in one message: the organisation, date, chair and secretary, who attended, the agenda, what was reported and what was decided.\nMinutes usually run up to 2 pages, as far as your facts go. Anything you leave out becomes a ruled blank: nothing is made up.\nYou can attach notes as PDF, Word or TXT."
   },
   "examples": [
    {
@@ -590,8 +590,8 @@
    },
    {
     "uz": "«Namuna Savdo» MChJ ta’sischilar yig‘ilishi bayonnomasi: Samarqand, 2026-yil 3-noyabr, 7-son. Ta’sischilar B. S. Toshmatov (rais, direktor) va N. A. Karimova (kotib) qatnashdi, kvorum bor. Kun tartibi: 1) 3-chorak hisobotini tasdiqlash; 2) yangi ombor ijarasi. Bosh hisobchi Z. T. Rahimova hisobotni taqdim etdi, ikkala ta’sischi yoqlab ovoz berdi — tasdiqlandi. Qarorlar: ombor ijaraga olinsin; shartnomani direktor 20-noyabrgacha imzolasin.",
-    "ru": "Нужен протокол собрания учредителей ООО «Namuna Savdo»: Самарканд, 3 ноября 2026 года, № 7. Учредители Б. С. Тошматов (председатель, директор) и Н. А. Каримова (секретарь) присутствовали, кворум есть. Повестка: 1) утверждение отчёта за 3 квартал; 2) аренда нового склада. Главный бухгалтер З. Т. Рахимова представила отчёт, оба учредителя проголосовали «за» — утверждён. Решения: склад арендовать; договор подписать директору до 20 ноября.",
-    "en": "I need the minutes of the founders’ meeting of Namuna Savdo MChJ: Samarkand, 3 November 2026, no. 7. Founders B. S. Toshmatov (chair, director) and N. A. Karimova (secretary) attended; there is a quorum. Agenda: 1) approving the third-quarter report; 2) renting a new warehouse. Chief accountant Z. T. Rahimova presented the report; both founders voted in favour, so it is approved. Decisions: rent the warehouse; the director signs the lease by 20 November."
+    "ru": "Нужен протокол собрания учредителей ООО «Намуна Савдо»: Самарканд, 3 ноября 2026 года, № 7. Учредители Б. С. Тошматов (председатель, директор) и Н. А. Каримова (секретарь) присутствовали, кворум есть. Повестка: 1) утверждение отчёта за 3 квартал; 2) аренда нового склада. Главный бухгалтер З. Т. Рахимова представила отчёт, оба учредителя проголосовали «за» — утверждён. Решения: склад арендовать; договор подписать директору до 20 ноября.",
+    "en": "I need the minutes of the founders’ meeting of Namuna Savdo LLC: Samarkand, 3 November 2026, no. 7. Founders B. S. Toshmatov (chair, director) and N. A. Karimova (secretary) attended; there is a quorum. Agenda: 1) approving the third-quarter report; 2) renting a new warehouse. Chief accountant Z. T. Rahimova presented the report; both founders voted in favour, so it is approved. Decisions: rent the warehouse; the director signs the lease by 20 November."
    },
    {
     "uz": "2-«A» sinf ota-onalar yig‘ilishi bayonnomasi, 2026-yil 14-noyabr, 24 ota-onadan 21 nafari qatnashdi. Sinf rahbari Z. N. Nazarova raislik qildi, kotib — ota-ona M. R. Qosimova. Masalalar: choraklik natijalar; dekabrdagi ekskursiya. Nazarova o‘rtacha o‘zlashtirish 4,3 ekanini ma’lum qildi. Ekskursiya 6-dekabr kuni o‘tkazilsin, mas’ul — sinf rahbari.",
@@ -623,6 +623,7 @@
  ],
  "look": null,
  "gates": [
+  "templates/official_bayonnoma.json is a first draft written from the spec only so the catalogue loads; R5b owns it and may rewrite any of it. Its flow params (labels and captions maps, run_in, table_from, blank_items, keep: closing) are no contract until a registered block defines them.",
   "A native Uzbek and a native Russian reader check the fixed words (BAYONNOMA, KUN TARTIBI, ESHITILDI, SO‘ZGA CHIQDI(LAR), QAROR QILINDI, the vote labels, Rais and Kotib) and the decision formulas before the entry is marked ready.",
   "Render a one-item, a three-item and an eight-item minute in uz, ru and en (full, blank and long cases) with the paper sample tool and compare them with units/pdf.biz.bayonnoma/mock/official_bayonnoma.png; check that each group follows its agenda line and that no decision appears that the brief did not hold.",
   "The facts corpus is at zero on this entry’s examples."
