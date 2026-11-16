@@ -1,0 +1,141 @@
+"""The facts corpus: every entry's own example messages lose nothing, and every invented fact is caught.
+
+This is the tick gate of architecture section 4. A category is ticked only
+with both rates at zero on its own copy:
+
+- the false-blank rate: each example and pool message, as the customer's whole
+  description, must pass `ground` and `guard` unchanged; its names must be found
+  with the endings Uzbek, Russian and English give them, and its numbers in the
+  other ways they are written ("1 150 000", "1.150.000", "3-noyabr", "03.11");
+- the miss rate: each invented sentence of tests/fixtures/categories/invented.json
+  (a person, a sum, a date, a phone, a decree, a law, a quotation not in the
+  message) must be caught in every language against every message.
+
+Every entry present is covered as it lands: the C2 packages add theirs, and
+their examples and pools are tested here without a line changing.
+"""
+import json
+from pathlib import Path
+
+import pytest
+
+from apps.studio import categories
+from apps.studio.categories import facts, numbers
+from apps.studio.language import CYRILLIC
+
+INVENTED = json.loads((Path(__file__).parent / 'fixtures' / 'categories' / 'invented.json').read_text('utf-8'))
+LANGUAGES = ('uz', 'ru', 'en')
+UZ_MONTHS = ('yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun', 'iyul', 'avgust', 'sentabr', 'oktabr', 'noyabr',
+             'dekabr')
+RU_MONTHS = ('января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября',
+             'ноября', 'декабря')
+EN_MONTHS = ('January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October',
+             'November', 'December')
+
+
+def entries():
+    return [entry for feature in ('ai.pdf_topic', 'ai.pptx') for entry in categories.for_feature(feature)]
+
+
+def messages():
+    found = []
+    for entry in entries():
+        bot = entry.raw['bot']
+        for number, text in enumerate((*bot['examples'], *bot.get('pool', ()))):
+            for locale in LANGUAGES:
+                found.append(pytest.param(entry.id, text[locale], id=f'{entry.id}-{number}-{locale}'))
+    return found
+
+
+def trusted(entry_id, text):
+    return facts.trusted({'prompt': text, 'options': {'category': entry_id}})
+
+
+def endings(word):
+    """The forms a sentence gives a name: Uzbek and English endings in Latin, Russian declension in Cyrillic."""
+    if CYRILLIC.search(word):
+        if word[-1] in 'ая':
+            return [word[:-1] + ending for ending in ('ы', 'е', 'у', 'ой')]
+        if word[-1] == 'й':
+            return [word[:-1] + ending for ending in ('я', 'ю', 'ем')]
+        if word[-1].lower() in 'бвгджзклмнпрстфхцчшщ':
+            return [word + ending for ending in ('а', 'у', 'ом', 'е')]
+        return []
+    return [word + ending for ending in ('ning', 'ni', 'ga', 'da', 'dan', '’s')]
+
+
+def names(text):
+    """Every capitalised word of a message that is a word (three letters or more, not an acronym)."""
+    return sorted({word for word in facts.WORD.findall(text)
+                   if word[0].isupper() and any(char.islower() for char in word)
+                   and sum(char.isalpha() for char in word) >= 3})
+
+
+def written_otherwise(number):
+    """Other ways of writing a number of a message, each meaning what it means."""
+    if number.kind == 'date':
+        day, month = (int(part) for part in number.value[2:].split('.'))
+        return [f'{day}-{UZ_MONTHS[month - 1]}', f'{day} {RU_MONTHS[month - 1]}', f'{day} {EN_MONTHS[month - 1]}',
+                f'{EN_MONTHS[month - 1]} {day}', f'{day:02}.{month:02}']
+    if number.kind == 'phone':
+        digits = number.value
+        last = digits[-9:]
+        forms = [digits, f'{last[:2]} {last[2:5]} {last[5:7]} {last[7:]}',
+                 f'({last[:2]}) {last[2:5]}-{last[5:7]}-{last[7:]}']
+        return forms + ([f'+{digits}'] if len(digits) == 12 else [])
+    if number.kind == 'decimal':
+        return [number.value.replace('.', ','), number.value]
+    if number.kind in ('integer', 'amount', 'scaled') and '.' not in number.value:
+        value = int(number.value)
+        if value < 1000 or 1900 <= value <= 2100:
+            return [str(value)]
+        grouped = f'{value:,}'
+        return [grouped, grouped.replace(',', '.'), grouped.replace(',', ' '), grouped.replace(',', '\u00a0'),
+                str(value)]
+    return [number.value]
+
+
+def test_the_corpus_covers_every_entry_present():
+    assert entries(), 'the catalogue holds no entry'
+    assert all(entry.raw['bot']['examples'] for entry in entries())
+    assert set(INVENTED) - {'about'} == set(LANGUAGES)
+    kinds = {item['kind'] for item in INVENTED['uz']}
+    assert {'name', 'sum', 'date', 'decree', 'quote'} <= kinds
+    assert all({item['kind'] for item in INVENTED[locale]} == kinds for locale in LANGUAGES)
+
+
+@pytest.mark.parametrize('entry_id, text', messages())
+def test_a_message_loses_none_of_its_own_facts(entry_id, text):
+    """The false-blank rate: the customer's own words, names and numbers are all found, however written."""
+    known = trusted(entry_id, text)
+    assert facts.ground(text, known) == (text, [])
+    assert facts.guard(text, known) == (text, [])
+    blanked = [form for word in names(text) for form in [word, *endings(word)]
+               if not facts.supported(form, 'person', known)]
+    assert not blanked, f'names of the message blanked: {blanked}'
+    blanked = [form for number in numbers.found(text) for form in written_otherwise(number)
+               if not facts.supported(form, 'number', known) or facts.ground(form, known)[1]]
+    assert not blanked, f'numbers of the message blanked: {blanked}'
+
+
+@pytest.mark.parametrize('entry_id, text', messages())
+def test_every_invented_fact_is_caught(entry_id, text):
+    """The miss rate: an invented person, sum, date, phone, decree, law or quotation never passes."""
+    known = trusted(entry_id, text)
+    missed = []
+    for locale in LANGUAGES:
+        for item in INVENTED[locale]:
+            written, codes = facts.ground(item['text'], known)
+            if item['code'] not in codes or written == item['text']:
+                missed.append((locale, item['kind'], 'ground'))
+            if item['kind'] != 'name':
+                # A paper in another language than the message leaves names to the translation, never numbers,
+                # quotations or laws.
+                written, codes = facts.ground(item['text'], known, translated=True)
+                if item['code'] not in codes:
+                    missed.append((locale, item['kind'], 'translated'))
+            if item.get('guard'):
+                written, codes = facts.guard(item['text'], known)
+                if item['code'] not in codes:
+                    missed.append((locale, item['kind'], 'guard'))
+    assert not missed, f'invented facts that passed: {missed}'
