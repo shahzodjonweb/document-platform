@@ -72,6 +72,31 @@ def category_sources(account, file_ids):
     return [key for key in ordered if key in assets and assets[key].metadata.get('kind') in CATEGORY_KINDS]
 
 
+@transaction.atomic
+def stage(account, file_ids):
+    """Put the PDFs among `file_ids` on the chat's file draft, after those already there.
+
+    Files sent on the list of categories wait in the chat's state. Boshqa,
+    chosen after them, is today's question, which reads the PDFs staged in the
+    chat (sources): this puts them where it would have found them had they been
+    sent to it. A Word or text file is never staged: it was taken as a
+    category's source, and the file tools never meet one.
+    """
+    from apps.core.models import Account
+    from .workflows import draft_for
+    pdfs = sources(account, [str(key) for key in file_ids])
+    if not pdfs:
+        return
+    Account.objects.select_for_update().get(pk=account.pk)
+    draft = draft_for(account)
+    added = [key for key in pdfs if key not in [str(item) for item in draft.input_ids]][:max(0, 50 - len(draft.input_ids))]
+    if added:
+        draft.input_ids = [*draft.input_ids, *added]
+        draft.quote = None
+        draft.version += 1
+        draft.save(update_fields=['input_ids', 'quote', 'version', 'updated_at'])
+
+
 # --- Categories ---------------------------------------------------------------
 # AI PDF and AI Slides may open a list of categories before the description
 # (apps/studio/categories). Off, or with nothing ticked, the list is never shown
