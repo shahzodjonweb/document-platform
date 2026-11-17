@@ -1311,3 +1311,9 @@ tests/test_category_derive.py::test_one_line_against_a_stated_total_has_no_share
 tests/test_category_derive.py::test_amounts_in_different_currencies_are_never_added
 tests/test_paper_business.py::test_staff_without_operations_prose_is_filed_under_the_operations_chapter
 tests/test_paper_business.py::test_no_table_header_word_is_broken_inside_nor_its_per_cent_sign_left_alone[business_hisobot]
+# R5a, second review round: shares and totals never mix currencies (an amount with no currency is the paper's), a
+# line named after the total word is an item, a stated budget the lines miss names code's total as the items listed.
+tests/test_category_derive.py::test_so_m_and_dollars_in_one_column_get_no_shares_and_no_total
+tests/test_category_derive.py::test_an_amount_with_no_currency_is_in_the_papers_and_never_added_to_dollars
+tests/test_category_derive.py::test_a_line_named_after_the_total_word_is_an_item_and_is_added_up
+tests/test_category_derive.py::test_a_marketing_total_that_differs_from_the_stated_budget_is_of_the_activities_listed

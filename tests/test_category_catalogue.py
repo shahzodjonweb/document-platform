@@ -128,6 +128,10 @@ def test_a_template_is_validated_against_its_own_schema():
     (lambda e, t, i: t['study_test']['flow'][0].update(part='cover'), 'part cover is not a part for pdf.test'),
     (lambda e, t, i: t['study_test']['flow'][1].update(when='nofact:use=homework'), 'homework is not one of the choices'),
     (lambda e, t, i: t['official_ariza']['flow'][2]['params'].update(label='heading'), "labels ['heading']"),
+    (lambda e, t, i: next(place for place in t['business_biznes_reja']['flow'] if 'any_part' in place.get(
+        'params', {}))['params']['any_part'].append('tem'), "any_part names ['tem']"),
+    (lambda e, t, i: next(place for place in t['business_marketing_reja']['flow'] if 'stated' in place.get(
+        'params', {}))['params'].update(stated='budget'), 'stated names budget, not a field'),
     (lambda e, t, i: t['official_ariza']['labels']['name'].update(
         uz='{applicant_nick}', ru='{applicant_nick}', en='{applicant_nick}'), "slots ['applicant_nick'] are not fields"),
     (lambda e, t, i: e['pdf.test'].update(order=2), 'order is 2 but index.json shows it at 5'),

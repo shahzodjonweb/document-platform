@@ -15,7 +15,10 @@ import pytest
 
 from apps.studio.categories import catalogue, derive, facts, finish
 from apps.studio.paper import sample
+from apps.studio.paper.blocks import business
 from tests.test_category_business_entries import finished_table
+from tests.test_paper_business import context as paper_context
+from tests.test_paper_business import place as paper_place
 
 OFFER, REPORT, PLAN, MARKETING = ('pdf.biz.tijorat_taklifi', 'pdf.biz.hisobot', 'pdf.biz.biznes_reja',
                                   'pdf.biz.marketing_reja')
@@ -171,7 +174,8 @@ def test_an_offer_rounds_each_amount_to_its_currency_and_totals_the_rounded_amou
     ('uz', [('A', 'dona | 3 | 1,5 mln so‘m', ''), ('B', 'dona | 3 | 1,25 mln so‘m', ''),
             ('C', 'dona | 2 | 1,25 mln so‘m', '')],
      ['4,5 mln so‘m', '3,75 mln so‘m', '2,5 mln so‘m', '10,75 mln so‘m']),
-    ('ru', [('A', 'шт. | 3 | 1,5 млн сум', ''), ('B', 'шт. | 3 | 1,25 млн сум', ''), ('C', 'шт. | 2 | 1,25 млн сум', '')],
+    ('ru', [('A', 'шт. | 3 | 1,5 млн сум', ''), ('B', 'шт. | 3 | 1,25 млн сум', ''),
+            ('C', 'шт. | 2 | 1,25 млн сум', '')],
      ['4,5 млн сум', '3,75 млн сум', '2,5 млн сум', '10,75 млн сум']),
     ('en', [('A', 'pcs | 3 | $1.5 mln', ''), ('B', 'pcs | 3 | $1.25 mln', ''), ('C', 'pcs | 2 | $1.5 mln', '')],
      ['$4.5 mln', '$3.75 mln', '$3 mln', '$11.25 mln']),
@@ -191,6 +195,83 @@ def test_amounts_in_different_currencies_are_never_added():
     rows, totals = made(OFFER, 'prices', [('A', 'pcs | 3 | 1.5 mln UZS', ''), ('B', 'pcs | 2 | $1.5 mln', '')],
                         locale='en')
     assert [row[4] for row in rows] == ['4.5 mln UZS', '$3 mln'] and totals == [None, None]
+
+
+def test_so_m_and_dollars_in_one_column_get_no_shares_and_no_total():
+    # Own funds in so‘m and an investor's dollars: "100% and 0%" or one sum of both would be false figures.
+    rows, totals = made(PLAN, 'finance_sources', [('O‘z mablag‘i', '120 mln so‘m', ''), ('Investor', '$50 000', '')])
+    assert rows == [['O‘z mablag‘i', '120 mln so‘m', ''], ['Investor', '$50 000', '']] and totals == [None, None]
+    budget, totals = made(MARKETING, 'budget', [('Instagram', '2 mln so‘m', ''), ('Bloggerlar', '3 mln so‘m', ''),
+                                                ('Reklama', '$500', '')])
+    assert [row[2] for row in budget] == ['', '', ''] and totals == [None, None, None]
+    scaled, _ = made(PLAN, 'finance_sources', [('O‘z mablag‘i', '10 mln so‘m', ''), ('Investor', '$1,5 mln', '')])
+    assert [row[2] for row in scaled] == ['', ''] and len(scaled) == 2
+
+
+def test_an_amount_with_no_currency_is_in_the_papers_and_never_added_to_dollars():
+    rows, totals = made(PLAN, 'finance_investment', [('A', '', '120 mln'), ('B', '', '$50 000')])
+    assert rows == [['A', '', '', '120 mln'], ['B', '', '', '$50 000']] and totals == [None, None]
+    content = {'title': '', 'questions': [], 'sections': [section('finance_investment', [('A', '', '120 mln'),
+                                                                                        ('B', '', '$50 000')])]}
+    result = derive.apply(catalogue.get(PLAN), content, object(), locale='uz')
+    ctx = paper_context('business_biznes_reja', result['sections'])
+    params = {'figures': [{'total': 'finance_investment', 'column': 3, 'label': 'kf_investment'}], 'min': 1}
+    assert business.key_figures(ctx, paper_place(ctx, 'key_figures', 'summary_figures', params=params)) == [], \
+        'no total, so no key figure either'
+    # The paper's currency is the `currency` fact: unnamed amounts in dollars add to dollars, not to so‘m.
+    dollars, _ = made(PLAN, 'finance_investment', [('A', '', '120 000'), ('B', '', '$50 000')], locale='en',
+                      facts_items=[('currency', 'USD')])
+    assert dollars[-1] == ['Total', '', '', '170,000']
+    _, totals = made(PLAN, 'finance_investment', [('A', '', '120 000'), ('B', '', '50 000 so‘m')],
+                        facts_items=[('currency', 'USD')])
+    assert totals == [None, None]
+
+
+def test_a_typed_total_in_another_currency_than_its_lines_gets_no_hundred_per_cent():
+    rows, totals = made(PLAN, 'finance_sources', [('O‘z mablag‘i', '50 000', ''), ('Jami', '$50 000', '')])
+    assert rows == [['O‘z mablag‘i', '50 000', ''], ['Jami', '$50 000', '']] and totals == [None, True]
+
+
+def test_a_line_named_after_the_total_word_is_an_item_and_is_added_up():
+    rows, totals = made(PLAN, 'finance_costs', [('Svet', '', '2 mln'), ('Gaz', '', '1 mln'),
+                                                ('Jami ijara (2 do‘kon)', '', '5 mln')])
+    # (The plan's costs table always names its total as the items listed: a month's costs are never all of them.)
+    assert rows[-1] == ['Jami (ko‘rsatilgan moddalar)', '8 mln'] and len(rows) == 4 and totals[-1] is True
+    english, _ = made(PLAN, 'finance_costs', [('Rent', '', '5 mln'), ('Total energy', '', '2 mln')], locale='en')
+    assert english == [['Rent', '5 mln'], ['Total energy', '2 mln'], ['Total (items listed)', '7 mln']]
+    # The word with a generic noun, a remark in brackets or a colon is still a total.
+    for label in ('Jami xarajatlar', 'Итого расходы', 'Total costs (monthly)', 'Jami:', 'Grand total'):
+        assert derive.TOTAL_ROW.match(label), label
+    for label in ('Jami ijara (2 do‘kon)', 'Total salaries', 'Total energy', 'Jamila'):
+        assert not derive.TOTAL_ROW.match(label), label
+
+
+def test_an_offer_drops_a_typed_total_that_repeats_one_lines_amount_beside_a_line_with_none():
+    rows, totals = made(OFFER, 'prices', [('Parta', 'dona | 40 | 600 000', ''), ('Montaj', 'xizmat | 1 |', ''),
+                                          ('Jami', '', '24 000 000')])
+    assert rows == [['Parta', 'dona', '40', '600 000', '24 000 000'], ['Montaj', 'xizmat', '1', '', '']]
+    assert totals == [None, None]
+
+
+def test_a_per_cent_of_a_plan_below_zero_is_blank():
+    rows, _ = made(REPORT, 'indicators', [('Foyda', 'mln so‘m | −10 | 5 | | ', '')])
+    assert rows[0][4:6] == ['+15', '']
+
+
+def test_a_marketing_total_that_differs_from_the_stated_budget_is_of_the_activities_listed():
+    lines = [('Instagram', '20 mln', ''), ('Bloggerlar', '14 mln', '')]
+    rows, totals = made(MARKETING, 'budget', lines, facts_items=[('budget_total', '36 mln so‘m')])
+    assert rows[-1] == ['Jami (ko‘rsatilgan tadbirlar)', '34 mln', '100%'] and totals[-1] == 'named'
+    agreeing, totals = made(MARKETING, 'budget', lines, facts_items=[('budget_total', '34 mln so‘m')])
+    assert agreeing[-1] == ['Jami', '34 mln', '100%'] and totals[-1] is True
+    unstated, _ = made(MARKETING, 'budget', lines)
+    assert unstated[-1][0] == 'Jami'
+
+
+def test_a_quantity_with_a_scale_keeps_the_prices_currency():
+    rows, _ = made(OFFER, 'prices', [('Bloknot', 'dona | 1,5 ming | 2 000 so‘m', ''),
+                                     ('Ruchka', 'dona | 2 ming | 1 000 so‘m', '')])
+    assert [row[4] for row in rows] == ['3 000 000 so‘m', '2 000 000 so‘m', '5 000 000 so‘m']
 
 
 def test_an_amount_drops_the_prices_per_unit_tail_as_in_the_specs_own_example():

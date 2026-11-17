@@ -446,7 +446,8 @@
     ],
     "rules": "horizontal",
     "total_label": "total",
-    "named_label": "total_named"
+    "named_label": "total_named",
+    "stated": "budget_total"
    },
    "when": "part:budget"
   },
