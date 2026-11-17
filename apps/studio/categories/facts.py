@@ -326,9 +326,12 @@ def respellings(word):
     return {fold(word).replace('o', 'a'), fold(word, respelled=True)}
 
 
-# The allowed words folded once, here, rather than for every draft.
+# The allowed words folded once, here, rather than for every draft. An Uzbek legal form heads a name with the endings a
+# sentence gives it too ("Baraka MChJning ...", "Artel MChJga ...", "Kvarts AJga ..."): allowed as no one's name, it
+# still says the word before it is an organisation's.
 FORMULAS = _folded(_forms())
-ORG_HEADS = _folded(ORG_FORMS + [kind + ending for kind in ORG_KINDS for ending in UZ_ENDINGS]
+ORG_HEADS = _folded(ORG_FORMS + [form + ending for form in UZ_ORG_FORMS for ending in UZ_ENDINGS]
+                    + [kind + ending for kind in ORG_KINDS for ending in UZ_ENDINGS]
                     + [kind + ending for kind in EN_ORG_KINDS for ending in ('', 's')])
 ORG_AFTER = _folded([kind + own + case for kind in UZ_ORG_KINDS for own in ('i', 'si') for case in UZ_CASES])
 CHAIN = _folded(['tarmog‘i' + case for case in UZ_CASES])
