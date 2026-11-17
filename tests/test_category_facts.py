@@ -1341,3 +1341,22 @@ def test_a_thousand_and_one_is_still_read_whole():
     assert [number.value for number in numbers.found('Two thousand and one copies.', words=True)] == ['2001']
     assert guard('Our team of ten tripled revenue.', trusting('Team of 12.'), checks=('numbers',), words=True)[1] == [
         'ground:number'], 'an invented count beside a multiplier is still blanked'
+
+
+# ---------------------------------------------------------------- a name by the kind after it (stage-2 round 4)
+
+
+@pytest.mark.parametrize('sentence, brief, kept', [
+    ('Samarqand shahrida yangi filial ochildi.', 'Kompaniyamiz yillik hisoboti kerak.', False),
+    ('Yunusobod tumanida do‘kon ochamiz.', 'Nonvoyxona uchun biznes-reja yozing.', False),
+    ('Toshkent shahrida do‘kon ochamiz.', 'Toshkentda nonvoyxona ochmoqchimiz.', True),
+    ('Uzum platformasida savdo boshlandi.', 'Kompaniyamiz yillik hisoboti kerak.', False),
+    ('Вестминстерский университет принял меня.', 'Напишите сопроводительное письмо, я работала в рознице.', False),
+    ('Самаркандский государственный институт принял меня.', 'Напишите письмо, я работала в рознице.', False),
+    ('Медицинский институт принял меня.', 'Напишите сопроводительное письмо, я работала в рознице.', True),
+    ('Keyslar banki ilovada berilgan.', 'Raqamli marketing mavzusida kurs ishi yozing.', True),
+], ids=['uz-city', 'uz-district', 'uz-the-customers-city', 'uz-platform', 'ru-name-adjective',
+        'ru-name-adjective-before-another', 'ru-kind-adjective', 'uz-plural-before-a-kind'])
+def test_a_first_word_is_a_name_by_the_kind_after_it(sentence, brief, kept):
+    from apps.studio.categories import finish
+    assert (finish.ground_paper(sentence, trusting(brief))[0] == sentence) is kept

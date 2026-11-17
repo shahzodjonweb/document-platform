@@ -188,8 +188,19 @@ UZ_ORG_FORMS = "mchj aj atb akb aitb xk qk yatt oaj".split()
 # (`ORG_AFTER`): a kind in the plural or bare ("Tijorat banklari", "Bizning kompaniyamiz", "Markaziy bank") follows
 # no one's name. A chain is "Korzinka supermarketlar tarmog‘i" (`CHAIN`).
 UZ_ORG_KINDS = ("bank kompaniya universitet institut akademiya kollej market supermarket gipermarket xolding "
-                "korporatsiya firma korxona zavod fabrika shirkat klinika").split()
+                "korporatsiya firma korxona zavod fabrika shirkat klinika platforma").split()
 UZ_CASES = ('', 'ga', 'da', 'dan', 'ning', 'ni', 'dagi', 'gacha')
+# A place is followed so by its kind: "Samarqand shahrida", "Yunusobod tumanida", "Chilonzor mahallasida".
+UZ_PLACES_AFTER = ("shahri viloyati tumani qishlog‘i mahallasi ko‘chasi").split()
+# A Russian name is an adjective before its kind in lower case: "Вестминстерский университет", "Самаркандский
+# филиал банка" is none. Only an adjective of a place's or a name's shape counts (-ский, -цкий), never one that makes
+# the kind a kind ("Медицинский институт", "Коммерческий банк", "Городская школа").
+RU_ORG_KINDS = re.compile(r"(?:университет|институт|колледж|академи|банк|завод|фабрик|компани|холдинг|супермаркет"
+                          r"|гипермаркет|корпораци|комбинат)\w*")
+RU_NAMED = re.compile(r"[а-яё]+[сц]к(?:ий|ая|ое|ого|ой|ом|ому|ую|ие|их|им|ими)")
+RU_KIND_ADJECTIVES = re.compile(r"[а-яё]*(?:ическ|ческ|медицинск|городск|сельск|детск|женск|мужск|президентск"
+                                r"|банковск|университетск|институтск|гражданск|частн|международн)\w*")
+RU_ADJECTIVE = re.compile(r"[а-яё]+(?:ый|ий|ой|ая|яя|ое|ее|ого|его|ому|ему|ым|им|ом|ем|ую|юю|ых|их|ыми|ими)")
 # The words that make such a kind a kind of organisation, never one's name, opening a sentence: "Tijorat banki",
 # "Davlat universiteti", "Xususiy klinikasi", "Qurilish kompaniyasi bilan ...".
 KINDS_OF = ("tijorat davlat xususiy xorijiy mahalliy yirik kichik katta yangi ushbu mazkur bu shu har biror birorta "
@@ -341,7 +352,8 @@ FORMULAS = _folded(_forms())
 ORG_HEADS = _folded(ORG_FORMS + [form + ending for form in UZ_ORG_FORMS for ending in UZ_ENDINGS]
                     + [kind + ending for kind in ORG_KINDS for ending in UZ_ENDINGS]
                     + [kind + ending for kind in EN_ORG_KINDS for ending in ('', 's')])
-ORG_AFTER = _folded([kind + own + case for kind in UZ_ORG_KINDS for own in ('i', 'si') for case in UZ_CASES])
+ORG_AFTER = _folded([kind + own + case for kind in UZ_ORG_KINDS for own in ('i', 'si') for case in UZ_CASES]
+                    + [place + case for place in UZ_PLACES_AFTER for case in UZ_CASES])
 CHAIN = _folded(['tarmog‘i' + case for case in UZ_CASES])
 KIND_WORDS = _folded(KINDS_OF)
 
@@ -1308,7 +1320,16 @@ def _organisation(text, run):
     kind = re.match(rf"[»\"”'’]*[ \t\u00a0]+({WORD.pattern})(?:[ \t\u00a0]+({WORD.pattern}))?", text[run[-1][1]:])
     if kind is None or not kind.group(1)[0].islower():
         return False
+    if len(run) == 1 and RU_NAMED.fullmatch(first.casefold()) and not RU_KIND_ADJECTIVES.fullmatch(first.casefold()):
+        # "Вестминстерский университет", "Самаркандский государственный институт".
+        after = kind.group(1).casefold()
+        second = (kind.group(2) or '').casefold()
+        return RU_ORG_KINDS.fullmatch(after) is not None or (
+            RU_ADJECTIVE.fullmatch(after) is not None and RU_ORG_KINDS.fullmatch(second) is not None)
     word = fold(kind.group(1))
+    # A plural before a kind is a common noun's: "Keyslar banki" (a bank of cases).
+    if re.search(r"lar(?:i|ning|ni|ga|da|dan)?$", fold(run[-1][2])):
+        return False
     return word in ORG_AFTER or (word.endswith('lar') and kind.group(2) is not None and fold(kind.group(2)) in CHAIN)
 
 
