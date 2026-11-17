@@ -1112,6 +1112,30 @@ def _legal_known(sentence, concepts, trusted, translated):
     return True
 
 
+def _legal_words(text, trusted):
+    """Where the words naming a code or a law the customer named stand in `text`, in any language: no one's name.
+
+    A legal sentence that is kept names the customer's code (`_laws`): in a paper in another language than the
+    message its "Mehnat kodeksi" or "Labour Code" is their "Трудовой кодекс", and the names check must not take
+    the code's name for an invented one ("Bosh buxgalter ____ kodeksiga muvofiq", "follows the ____ of the
+    Republic"). Only a word of LAW_NAMES their words name and a stem of a kind of act they named are given.
+    """
+    found = set()
+    for start, end in _sentences(text):
+        sentence = text[start:end]
+        if not _concepts(sentence):
+            continue
+        for at, word in _law_names(sentence):
+            forms = _law_name(word)
+            if forms is not None and forms.search(trusted.legal):
+                found.add(start + at)
+        for concept, stem, _ in STEMS:
+            if concept in ('code', 'law', 'constitution') and any(
+                    other.search(trusted.legal) for name, other, _ in STEMS if name == concept):
+                found |= {start + match.start() for match in stem.finditer(sentence)}
+    return found
+
+
 def _laws(text, trusted, translated, codes):
     kept, removed = [], False
     last = 0
@@ -1246,8 +1270,11 @@ def _org_shaped(word):
     return word.isupper() and _letters(word) >= 3 and not re.fullmatch(r"[IVXLCDM]+", word)
 
 
-def _unknown_runs(text, trusted, translated=False, *, strict=False, orgs=False, invented=None):
-    """(run, positions of its words not the customer's, whether its first word was left free) of each run (`_names`)."""
+def _unknown_runs(text, trusted, translated=False, *, strict=False, orgs=False, invented=None, legal=()):
+    """(run, positions of its words not the customer's, whether its first word was left free) of each run (`_names`).
+
+    `legal` holds where the words of the customer's own code stand (`_legal_words`): never a name.
+    """
     for run in _runs(text):
         bad = []
         first_free = _starts(text, run[0][0])
@@ -1257,7 +1284,7 @@ def _unknown_runs(text, trusted, translated=False, *, strict=False, orgs=False, 
                                       or (invented is not None and invented.has(fold(run[0][2])))):
             first_free = False
         for position, (start, end, word) in enumerate(run):
-            if _letters(word) < 2 or (position == 0 and first_free):
+            if _letters(word) < 2 or (position == 0 and first_free) or start in legal:
                 continue
             if not trusted.person(word, translated):
                 bad.append(position)
@@ -1331,7 +1358,10 @@ def _names(text, trusted, codes, translated=False, *, strict=False, orgs=False, 
     surname, an organisation's shaped or quoted, never a common word.
     """
     spans = []
-    for run, bad, first_free in _unknown_runs(text, trusted, translated, strict=strict, orgs=orgs, invented=invented):
+    # A paper's grounded part names the customer's code in its own language (`_legal_words`).
+    legal = _legal_words(text, trusted) if orgs else ()
+    for run, bad, first_free in _unknown_runs(text, trusted, translated, strict=strict, orgs=orgs, invented=invented,
+                                              legal=legal):
         if blanked is not None:
             for word in _holdable(text, run, bad):
                 blanked.add(word)
