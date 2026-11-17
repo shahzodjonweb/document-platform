@@ -484,7 +484,7 @@ def _names_known(text, trusted, translated=False):
     return True
 
 
-def supported(value, kind, trusted, *, translated=False, strict=False):
+def supported(value, kind, trusted, *, translated=False, strict=False, words=False):
     """Whether a fact of this kind is the customer's (architecture 4, "Verifying").
 
     person, org, place, line: every capitalised word is theirs and every number
@@ -503,6 +503,10 @@ def supported(value, kind, trusted, *, translated=False, strict=False):
     person's are, in the looser spellings, so a translated organisation whose
     words do not fold to the customer's is not kept: a false blank, never an
     invention, and never one that a later change would read back as theirs.
+
+    `words` also reads the numbers written as words (numbers.SPELLED): a
+    paper's "five years", "besh yuz million so‘m" or "двенадцать человек" must
+    be a value the customer gave, as its digits must.
     """
     if kind in ('choice', 'flag', 'file') or value is None or isinstance(value, bool):
         return True
@@ -510,12 +514,12 @@ def supported(value, kind, trusted, *, translated=False, strict=False):
     if not text or not re.sub(r'[_\s.\-]', '', text):
         return True  # nothing, or the blank the model returns for an if_needed field
     if kind == 'list':
-        return all(supported(line, 'line', trusted, translated=translated, strict=strict)
+        return all(supported(line, 'line', trusted, translated=translated, strict=strict, words=words)
                    for line in re.split(r'[\n;]+', text) if line.strip())
     rest, whole = _strip_addresses(text, trusted)
     if not whole:
         return False
-    if not all(numbers.known(number, trusted.values) for number in numbers.found(rest)):
+    if not all(numbers.known(number, trusted.values) for number in numbers.found(rest, words=words)):
         return False
     if kind in ('person', 'org', 'place', 'line') and (strict or not translated or kind == 'person'):
         return _names_known(rest, trusted, translated)
@@ -671,8 +675,8 @@ def _quotes(text, trusted, codes):
     return _replace(text, spans)
 
 
-def _numbers(text, trusted, codes):
-    spans = [(number.start, number.end) for number in numbers.found(text)
+def _numbers(text, trusted, codes, words=False):
+    spans = [(number.start, number.end) for number in numbers.found(text, words=words)
              if not _enumerator(text, number) and not numbers.known(number, trusted.values)]
     if spans:
         codes.append('ground:number')
@@ -828,7 +832,7 @@ def ground(text, trusted, *, translated=False):
     return _tidy(text), list(dict.fromkeys(codes))
 
 
-def guard(text, trusted, *, translated=False, checks=()):
+def guard(text, trusted, *, translated=False, checks=(), words=False):
     """(text, codes): any other category part, with no quotation and no legal reference the customer did not give.
 
     Names, numbers and general knowledge are left as SYSTEM allows them in a
@@ -842,6 +846,9 @@ def guard(text, trusted, *, translated=False, checks=()):
     links as `ground` does, 'names' its runs of capitalised words, more strictly
     than `ground` at the start of a sentence or a label's value, since these
     slots name a responsible person or a reporter in just that place (`_names`).
+    `words` makes 'numbers' read the numbers written as words too
+    (numbers.SPELLED), which a paper's grounded parts ask for: "five years of
+    experience" or "yigirma foiz" the customer never gave becomes ____.
     """
     codes = []
     text = str(text or '')
@@ -851,7 +858,7 @@ def guard(text, trusted, *, translated=False, checks=()):
     text = _quotes(text, trusted, codes)
     if 'numbers' in checks:
         text = _addresses(text, trusted, codes)
-        text = _numbers(text, trusted, codes)
+        text = _numbers(text, trusted, codes, words)
     if 'names' in checks:
         text = _names(text, trusted, codes, translated, strict=True)
     return _tidy(text), list(dict.fromkeys(codes))

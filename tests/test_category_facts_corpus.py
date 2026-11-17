@@ -9,7 +9,8 @@ with both rates at zero on its own copy:
   other ways they are written ("1 150 000", "1.150.000", "3-noyabr", "03.11");
 - the miss rate: each invented sentence of tests/fixtures/categories/invented.json
   (a person, a sum, a date, a phone, a decree, a law, a quotation not in the
-  message) must be caught in every language against every message.
+  message) must be caught in every language against every message, and so
+  must a figure written as words in a paper's grounded part.
 
 Every entry present is covered as it lands: the C2 packages add theirs, and
 their examples and pools are tested here without a line changing.
@@ -113,12 +114,31 @@ def test_a_message_loses_none_of_its_own_facts(entry_id, text):
     known = trusted(entry_id, text)
     assert facts.ground(text, known) == (text, [])
     assert facts.guard(text, known) == (text, [])
+    # A paper's grounded parts also read the numbers written as words (finish.ground_paper): the message's own
+    # "ikki hafta", "пять лет" or "two hundred" must be found as the values they are.
+    assert facts.guard(text, known, checks=('numbers',), words=True) == (text, [])
     blanked = [form for word in names(text) for form in [word, *endings(word)]
                if not facts.supported(form, 'person', known)]
     assert not blanked, f'names of the message blanked: {blanked}'
     blanked = [form for number in numbers.found(text) for form in written_otherwise(number)
                if not facts.supported(form, 'number', known) or facts.ground(form, known)[1]]
     assert not blanked, f'numbers of the message blanked: {blanked}'
+
+
+# Figures written as words that no example or pool message gives, as a model invents them in a letter or a plan.
+SPELLED_INVENTED = {
+    'uz': 'Loyiha qiymati uch yuz qirq yetti million so‘mni tashkil etadi.',
+    'ru': 'У меня более семнадцати лет опыта, а команда насчитывает триста сорок семь человек.',
+    'en': 'With over seventeen years of experience, I served three hundred and forty-seven clients.',
+}
+
+
+@pytest.mark.parametrize('entry_id, text', messages())
+def test_every_invented_figure_written_in_words_is_caught_in_a_paper(entry_id, text):
+    known = trusted(entry_id, text)
+    missed = [locale for locale, sentence in SPELLED_INVENTED.items()
+              if 'ground:number' not in facts.guard(sentence, known, checks=('numbers',), words=True)[1]]
+    assert not missed, f'invented figures in words that passed: {missed}'
 
 
 @pytest.mark.parametrize('entry_id, text', messages())

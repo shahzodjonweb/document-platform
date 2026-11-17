@@ -178,6 +178,46 @@ def test_words_that_only_look_like_months_or_numbers_are_not_dates():
     assert '3' not in numbers.values('uchun') and '2' not in numbers.values('один')
 
 
+@pytest.mark.parametrize('text, read', [
+    ('five years of experience', [('5', 'five')]),
+    ('a team of twelve people and two hundred clients', [('12', 'twelve'), ('200', 'two hundred')]),
+    ('two hundred and fifty thousand dollars', [('250000', 'two hundred and fifty thousand')]),
+    ('twenty-one days, a dozen eggs, a hundred per cent', [('21', 'twenty-one'), ('12', 'a dozen'),
+                                                           ('100', 'a hundred')]),
+    ('revenue grew by a third, then by two thirds of it', [('f:1/3', 'a third'), ('f:2/3', 'two thirds')]),
+    ('besh yuz million so‘m', [('500000000', 'besh yuz million')]),
+    ('yillik yigirma foiz, o‘n bir kun, yuz nafar', [('20', 'yigirma'), ('11', 'o‘n bir'), ('100', 'yuz')]),
+    ('bir yarim million so‘m, uchdan bir qismi', [('1500000', 'bir yarim million'), ('f:1/3', 'uchdan bir')]),
+    ('besh-olti kun', [('5', 'besh'), ('6', 'olti')]),
+    ('besh yuzta stul va yuzta stol', [('500', 'besh yuzta'), ('100', 'yuzta')]),
+    ('беш юз минг сўм', [('500000', 'беш юз минг')]),
+    ('более пяти лет, две тысячи пятьсот рублей', [('5', 'пяти'), ('2500', 'две тысячи пятьсот')]),
+    ('тысяча рублей, два миллиона, треть клиентов', [('1000', 'тысяча'), ('2000000', 'два миллиона'),
+                                                    ('f:1/3', 'треть')]),
+], ids=['five', 'twelve', 'compound', 'article', 'fraction', 'uz-scale', 'uz-counts', 'uz-half', 'uz-range',
+        'uz-yuzta', 'uz-cyrillic', 'ru-counts', 'ru-alone'])
+def test_cardinal_numbers_written_as_words_are_read_with_their_scales(text, read):
+    assert [(number.value, text[number.start:number.end]) for number in numbers.found(text, words=True)] == read
+    assert not [number for number in numbers.found(text) if number.kind in ('spelled', 'fraction')]
+
+
+@pytest.mark.parametrize('text', [
+    'one of the best', 'the second stage', 'once a quarter', 'thousands of clients', 'often', 'ikkinchi bob',
+    'muammo yuz berdi', 'ming yillik tarix', 'ikkala guruh', 'свою семью', 'третью неделю', 'a third party',
+    'a third-party vendor', 'a third option',
+])
+def test_words_that_are_not_counts_are_not_read_as_numbers(text):
+    assert [text[number.start:number.end] for number in numbers.found(text, words=True)] == []
+
+
+def test_a_number_in_words_is_known_however_the_customer_wrote_it():
+    given = numbers.values('Loyiha qiymati 500 mln so‘m, 5 yillik tajriba, yigirma besh nafar xodim, 33 foiz')
+    for written in ('besh yuz million so‘m', 'five years', '25 people', 'двадцать пять сотрудников'):
+        assert all(numbers.known(number, given) for number in numbers.found(written, words=True)), written
+    assert not all(numbers.known(number, given) for number in numbers.found('a third', words=True))
+    assert not all(numbers.known(number, given) for number in numbers.found('six years', words=True))
+
+
 def test_a_phone_is_its_digits_and_its_last_nine():
     keys = numbers.values('Tel: +998 (90) 123-45-67')
     assert {'998901234567', 'tel:901234567'} <= keys
@@ -633,6 +673,18 @@ def test_people_known_reads_a_line_as_the_names_check_does():
     assert not facts.people_known('Xolmirzayev Botir', known)
     assert not facts.people_known('Prepared by Botir Xolmirzayev', known)
     assert facts.people_known('Toshkent davlat iqtisodiyot universiteti', known)
+
+
+def test_guard_reads_numbers_in_words_only_when_asked():
+    known = trusting('Sotuv menejeri lavozimiga xat, men savdoda ishlaganman.')
+    text = 'With over five years of experience, I led twelve people.'
+    assert guard(text, known, checks=('numbers',)) == (text, [])
+    assert guard(text, known, checks=('numbers',), words=True) == (
+        'With over ____ years of experience, I led ____ people.', ['ground:number'])
+    assert ground(text, known) == (text, []), 'a deck slide keeps its reading'
+    assert not supported('five years in retail', 'text', known, words=True)
+    assert supported('five years in retail', 'text', known)
+    assert supported('five years in retail', 'text', trusting('5 yil savdoda ishlaganman'), words=True)
 
 
 def test_ground_still_leaves_the_first_word_of_a_sentence():

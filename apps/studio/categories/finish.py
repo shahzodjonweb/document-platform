@@ -560,8 +560,14 @@ def ground_paper(text, trusted, *, translated=False):
     an invented name goes whole with its initials instead of leaving
     "Dekan ____ A.". A grammar word before an invented name may go with it: a
     false blank, never an invention.
+
+    Numbers written as words are read too (numbers.SPELLED): "five years of
+    experience", "twelve people", "besh yuz million so‘m", "более пяти лет"
+    the customer never gave become ____ with their scale words, as digits do.
+    The model writes a count in words as readily as in digits, and in a letter
+    "five years" is the commonest invented figure.
     """
-    return facts.guard(text, trusted, translated=translated, checks=('numbers', 'names'))
+    return facts.guard(text, trusted, translated=translated, checks=('numbers', 'names'), words=True)
 
 
 def _led(entry):
@@ -660,7 +666,9 @@ def _fact(field, value, trusted, translated, verified, *, led=False):
     Every fact is held strictly (facts.supported's `strict`): a paper in
     another language than the message still checks the names of its org,
     place, line and list fields, which hold signers, participants and
-    addressees as often as a person field does.
+    addressees as often as a person field does. Numbers written as words are
+    read in every fact but a guarded paper's text, whose topic keeps its
+    general knowledge ("Uch buyuk alloma").
     """
     if EMPTY_VALUE.fullmatch(value):
         return (BLANK if field['missing'] == 'if_needed' else None), False
@@ -676,7 +684,8 @@ def _fact(field, value, trusted, translated, verified, *, led=False):
         if base and base != BLANK and facts.derived(value, base):
             return _cut(value, field.get('max_chars')), False
         return None, True
-    if not facts.supported(value, kind, trusted, translated=translated, strict=True):
+    if not facts.supported(value, kind, trusted, translated=translated, strict=True,
+                           words=led or kind != 'text'):
         return None, True
     if led and kind == 'text' and ground_paper(value, trusted, translated=translated)[1]:
         return None, True

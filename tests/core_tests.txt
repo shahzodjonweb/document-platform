@@ -1427,3 +1427,12 @@ tests/test_category_business_readiness.py::test_the_smoke_makes_every_business_p
 tests/test_paper_business.py::test_a_row_figure_too_wide_with_its_unit_is_left_out_never_drawn_without_it[mln-uz]
 tests/test_paper_business.py::test_a_narrow_computed_total_loses_only_the_currency_it_was_given
 tests/test_paper_business.py::test_a_computed_total_is_labelled_as_derive_added_it[tenge]
+
+# Paper facts (stage-2 verification): a paper in another language than the message still holds the names in its
+# org, line and list facts, so an invented chair, secretary, participant or employer is never kept; and a figure the
+# model writes in words ("five years", "besh yuz million so‘m", "более пяти лет") is held to the customer's values
+tests/test_category_finish_pdf.py::test_a_translated_minutes_never_keeps_an_invented_chair_secretary_or_participant
+tests/test_category_finish_pdf.py::test_a_translated_cover_letter_never_keeps_an_invented_employer_or_recipient
+tests/test_category_finish_pdf.py::test_a_number_written_in_words_the_customer_never_gave_is_blanked[five-years]
+tests/test_category_finish_pdf.py::test_a_number_written_in_words_the_customer_never_gave_is_blanked[project-cost]
+tests/test_category_finish_pdf.py::test_a_number_in_words_the_customer_gave_is_kept_and_a_led_fact_in_words_is_held

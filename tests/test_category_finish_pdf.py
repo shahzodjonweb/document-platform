@@ -595,7 +595,8 @@ def test_a_letters_text_fact_naming_an_invented_person_law_or_quotation_is_not_k
     assert codes == [] and warnings == []
 
 
-TRANSLATED_MINUTES = 'Составьте протокол собрания отдела продаж о плане работы на следующий квартал, подробно и по делу.'
+TRANSLATED_MINUTES = ('Составьте протокол собрания отдела продаж о плане работы на следующий квартал, подробно и '
+                      'по делу.')
 
 
 def test_a_translated_minutes_never_keeps_an_invented_chair_secretary_or_participant():
@@ -669,6 +670,55 @@ def test_a_translated_course_papers_invented_university_is_not_kept():
         {'label': 'kafedra', 'text': '«Moliya» kafedrasi'}]}))
     assert 'university' not in facts_of(made) and 'kafedra' not in facts_of(made)
     assert set(codes) == {'fact:university', 'fact:kafedra'}
+
+
+COVER_EN = ('Please write a cover letter for the sales manager position for me, Malika Qodirova. I have worked in '
+            'retail sales and I am good with customers.')
+PLAN_UZ = ('Namuna Savdo MChJ uchun nonvoyxona ochish bo‘yicha biznes-reja yozib bering, mahalla aholisiga issiq non '
+           'sotamiz, direktor Qodirova Malika.')
+
+
+@pytest.mark.parametrize('entry_id, prompt, locale, part_id, text, left', [
+    ('pdf.xat.ishga_kirish', COVER_EN, 'en', 'fit',
+     'With over five years of experience in sales, I increased revenue by a third.',
+     'With over ____ years of experience in sales, I increased revenue by ____.'),
+    ('pdf.xat.ishga_kirish', COVER_EN, 'en', 'fit',
+     'I led a team of twelve people and served two hundred clients a month.',
+     'I led a team of ____ people and served ____ clients a month.'),
+    ('pdf.xat.ishga_kirish', COVER_EN, 'en', 'fit', 'With over 5 years of experience, I grew sales by 30%.',
+     'With over ____ years of experience, I grew sales by ____%.'),
+    ('pdf.xat.ishga_kirish', 'Напишите сопроводительное письмо на должность менеджера по продажам, я Малика '
+     'Кодирова, работала в рознице.', 'ru', 'fit', 'У меня более пяти лет опыта в продажах.',
+     'У меня более ____ лет опыта в продажах.'),
+    ('pdf.biz.biznes_reja', PLAN_UZ, 'uz', 'summary_lead',
+     'Loyihaning umumiy qiymati besh yuz million so‘mni tashkil etadi.', 'Loyihaning umumiy qiymati ____ so‘mni '
+     'tashkil etadi.'),
+    ('pdf.biz.biznes_reja', PLAN_UZ, 'uz', 'summary_lead', 'Kredit yillik yigirma foiz stavkada olinadi.',
+     'Kredit yillik ____ foiz stavkada olinadi.'),
+    ('pdf.biz.biznes_reja', PLAN_UZ, 'uz', 'summary_lead', 'Loyiha uch yilda o‘zini qoplaydi.',
+     'Loyiha ____ yilda o‘zini qoplaydi.'),
+], ids=['five-years', 'twelve-people', 'digits', 'ru-five-years', 'project-cost', 'loan-rate', 'payback'])
+def test_a_number_written_in_words_the_customer_never_gave_is_blanked(entry_id, prompt, locale, part_id, text, left):
+    entry = catalogue.get(entry_id)
+    data = draft(entry, prompt=prompt, locale=locale, length=1 if entry_id.startswith('pdf.xat') else 6)
+    made, warnings, codes = finished(data, answer(data, **{part_id: {'body': text}}))
+    assert section_of(made, part_id)['body'] == left
+    assert 'ground:number' in codes and warnings == [finish.FACTS_BLANKED]
+
+
+def test_a_number_in_words_the_customer_gave_is_kept_and_a_led_fact_in_words_is_held():
+    letter = catalogue.get('pdf.xat.ishga_kirish')
+    prompt = COVER_EN + ' I have 5 years of experience and led a team of 12.'
+    data = draft(letter, prompt=prompt, locale='en', length=1)
+    text = 'With five years of experience, I led a team of twelve people.'
+    made, warnings, codes = finished(data, answer(data, fit={'body': text}, facts={'items': [
+        {'label': 'experience_facts', 'text': 'Five years in retail sales, a team of twelve'}]}))
+    assert section_of(made, 'fit')['body'] == text and codes == [] and warnings == []
+    assert facts_of(made)['experience_facts'] == 'Five years in retail sales, a team of twelve'
+    data = draft(letter, prompt=COVER_EN, locale='en', length=1)
+    made, _, codes = finished(data, answer(data, facts={'items': [
+        {'label': 'experience_facts', 'text': 'Over five years in retail sales'}]}))
+    assert 'experience_facts' not in facts_of(made) and codes == ['fact:experience_facts']
 
 
 def test_a_guarded_papers_text_fact_keeps_general_knowledge():
