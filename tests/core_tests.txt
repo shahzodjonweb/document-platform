@@ -1599,3 +1599,12 @@ tests/test_category_facts.py::test_a_rejected_fact_holds_only_the_words_that_nam
 tests/test_category_finish_pdf.py::test_a_blanked_run_of_common_words_never_blanks_them_opening_other_sentences_or_cells
 tests/test_category_finish_pdf.py::test_a_rejected_bank_named_by_a_common_word_holds_the_bank_never_the_word
 tests/test_category_finish_pdf.py::test_a_rejected_authors_role_words_stay_and_the_person_is_held_in_any_case
+
+# Stage-2 re-audit round 2, a law's name in full: the words naming a code apart from its stem ("Ma’muriy javobgarlik
+# to‘g‘risidagi kodeks", "Fuqarolik protsessual kodeksi", "Jinoyat-protsessual") or after it ("Кодекс об
+# административных правонарушениях", "Code of Administrative Offences") are the customer's in any language and at a
+# sentence's or an item's start, or the sentence goes; their own code with the country's name stays
+tests/test_category_finish_pdf.py::test_a_code_named_by_words_apart_from_its_stem_or_after_it_is_the_customers_or_goes[uz]
+tests/test_category_finish_pdf.py::test_a_code_named_by_words_apart_from_its_stem_or_after_it_is_the_customers_or_goes[uz-from-ru]
+tests/test_category_finish_pdf.py::test_a_code_named_by_words_apart_from_its_stem_or_after_it_is_the_customers_or_goes[ru]
+tests/test_category_finish_pdf.py::test_a_code_named_by_words_apart_from_its_stem_or_after_it_is_the_customers_or_goes[en]

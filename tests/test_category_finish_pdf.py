@@ -1302,3 +1302,36 @@ def test_a_rejected_authors_role_words_stay_and_the_person_is_held_in_any_case()
         'Bosh hisobchi lavozimi bo‘sh qoldi.', 'Moliyaviy resurslar yetishmadi.']
     assert section_of(made, 'work_done')['body'].endswith('bilan hamkorlik qildi. Moliya bo‘limi kengaytirildi.')
     assert {'fact:author', 'ground:name'} <= set(codes)
+
+
+# ---------------------------------------------------------------- stage-2 re-audit, round 2: a law's name in full
+
+
+@pytest.mark.parametrize('prompt, locale, items, kept', [
+    ('Bosh buxgalter uchun lavozim yo‘riqnomasi yozing, Mehnat kodeksiga muvofiq.', 'uz',
+     ['Ma’muriy javobgarlik to‘g‘risidagi kodeksga muvofiq javobgar bo‘ladi.',
+      'Fuqarolik protsessual kodeksi talablariga rioya qiladi.', 'Jinoyat-protsessual kodeksiga muvofiq javob beradi.',
+      'O‘zbekiston Respublikasi Mehnat kodeksiga muvofiq ish yuritadi.'],
+     ['O‘zbekiston Respublikasi Mehnat kodeksiga muvofiq ish yuritadi.']),
+    ('Составьте должностную инструкцию главного бухгалтера на узбекском, в соответствии с Трудовым кодексом.', 'uz',
+     ['Ma’muriy javobgarlik to‘g‘risidagi kodeksga muvofiq javobgar bo‘ladi.',
+      'U Ma’muriy javobgarlik to‘g‘risidagi kodeksga ko‘ra javob beradi.', 'Jinoyat kodeksiga ko‘ra javobgar bo‘ladi.',
+      'Mehnat kodeksi talablariga amal qiladi.'],
+     ['Mehnat kodeksi talablariga amal qiladi.']),
+    ('Составьте должностную инструкцию главного бухгалтера, в соответствии с Трудовым кодексом.', 'ru',
+     ['Несёт ответственность по Кодексу об административных правонарушениях.',
+      'Руководствуется Кодексом Республики Узбекистан об административной ответственности.',
+      'Соблюдает требования Трудового кодекса Республики Узбекистан.'],
+     ['Соблюдает требования Трудового кодекса Республики Узбекистан.']),
+    ('Write a job description for a chief accountant in line with the Labour Code.', 'en',
+     ['Complies with the Code of Administrative Offences.', 'Follows the Labour Code and the Tax Code.',
+      'Complies with the Labour Code of the Republic of Uzbekistan.'],
+     ['Complies with the Labour Code of the Republic of Uzbekistan.']),
+], ids=['uz', 'uz-from-ru', 'ru', 'en'])
+def test_a_code_named_by_words_apart_from_its_stem_or_after_it_is_the_customers_or_goes(prompt, locale, items, kept):
+    job = catalogue.get('pdf.biz.lavozim_yoriqnomasi')
+    data = draft(job, prompt=prompt, locale=locale, length=2)
+    made, _, codes = finished(data, answer(data, responsibility={
+        'items': [{'label': '', 'text': item, 'value': ''} for item in items]}))
+    assert [item['text'] for item in section_of(made, 'responsibility')['items'] if item['text'].strip()] == kept
+    assert 'ground:law' in codes

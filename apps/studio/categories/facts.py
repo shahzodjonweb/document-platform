@@ -141,7 +141,7 @@ ALLOWED = (
     "узбекский русский английский немецкий французский арабский турецкий китайский корейский японский казахский "
     "киргизский таджикский "
     "o'zbekiston o'zbekistonda o'zbekistonning o'zbekistonga o'zbekistondan respublikasi respublikasining "
-    "respublikasida uzbekistan узбекистан узбекистана узбекистане узбекистану республика республики республике "
+    "respublikasida uzbekistan republic узбекистан узбекистана узбекистане узбекистану республика республики республике "
     "whom concern ladies gentlemen господа дамы"
 ).split()
 # The people a letter is addressed to by their role, which letters capitalise: "Hurmatli Direktor!", "Muhtaram
@@ -876,27 +876,74 @@ LAW_NAME_FORMS = [re.compile(rf"(?<![^\W\d_])(?:{forms})", re.IGNORECASE) for fo
 NAMED_STEMS = [stem for concept, stem, _ in STEMS if concept in ('code', 'law')]
 
 
-def _law_names(sentence):
-    """The words naming a code or a law: a run of capitalised words right before its stem, or ending in it.
+# What joins a law's name to its stem without naming anything: "Ma’muriy javobgarlik to‘g‘risidagi kodeks", "Sport
+# haqidagi qonun". The name is what stands before it, up to `LAW_ABOUT_REACH` words.
+LAW_ABOUT = re.compile(r"to'g'risida(?:gi)?|tog'risida(?:gi)?|haqida(?:gi)?")
+LAW_ABOUT_REACH = 4
+# A code's kind of procedure, part of its name: "Fuqarolik protsessual kodeksi", "Jinoyat-protsessual kodeksi",
+# "Уголовно-процессуальный кодекс", "Criminal Procedure Code".
+LAW_KIND = re.compile(r"protsessual\w*|процессуальн\w*|procedur\w*|ijro\w*|исполнительн\w*")
+# What may stand between a code and the preposition its name follows ("Кодекс Республики Узбекистан об
+# административной ответственности", "Code of the Republic of ..."): the country, no one's law.
+LAW_COUNTRY = re.compile(r"the|o'zbekiston\w*|respublika\w*|uzbekistan|republic|республик\w*|узбекистан\w*|руз|ruz")
+# The preposition a law's name follows in Russian and English: "Кодекс об административных правонарушениях",
+# "Code of Administrative Offences", "Law on Education".
+LAW_OF = re.compile(r"of|on|об|о")
+LAW_TOKEN = re.compile(WORD.pattern + r"|[,;:()«»\"“”„!?]")
 
-    "Soliq kodeksi", "Jinoyat kodeksiga", "Mehnat Kodeksi", "Labour Code". They are held wherever they stand, a
+
+def _law_names(sentence):
+    """The words naming a code or a law (start, word), in any case: what stands right before its stem, or after it.
+
+    Before it: the capitalised words, the words of LAW_NAMES and a kind of procedure side by side with it ("Soliq
+    kodeksi", "Jinoyat-protsessual kodeksiga", "Трудовой кодекс", "Labour Code"), or every word up to
+    `LAW_ABOUT_REACH` before a "to‘g‘risidagi" ("Ma’muriy javobgarlik to‘g‘risidagi kodeksga"). After it: the
+    words after its "of", "on", "об" or "о", the country passed over ("Кодекс Республики Узбекистан об
+    административной ответственности", "Code of Administrative Offences"). They are held wherever they stand, a
     sentence's or a list item's first word included: there the start of a sentence was taken for grammar, and an
-    invented "Jinoyat kodeksiga muvofiq javobgar bo‘ladi" passed once the customer had named any code.
+    invented "Jinoyat kodeksiga muvofiq javobgar bo‘ladi" or "Ma’muriy javobgarlik to‘g‘risidagi kodeksga
+    muvofiq ..." passed once the customer had named any code. A sentence's first word before another of the name
+    is grammar ("The Criminal Code", "Согласно Трудовому кодексу", "Korxona Mehnat kodeksiga ..."), unless it is
+    one of LAW_NAMES.
     """
+    tokens = [(match.start(), match.group(0)) for match in LAW_TOKEN.finditer(sentence)]
+
+    def word(index):
+        return 0 <= index < len(tokens) and WORD.fullmatch(tokens[index][1]) is not None \
+            and not any(stem.fullmatch(tokens[index][1]) for stem in NAMED_STEMS)
     found = []
-    for run in _runs(sentence):
-        named = [index for index, word in enumerate(run) if any(stem.fullmatch(word[2]) for stem in NAMED_STEMS)]
-        if named:
-            names = run[:named[0]]
-        else:
-            after = re.match(r"[ \t\u00a0]+([^\W\d_]+)", sentence[run[-1][1]:])
-            if not after or not any(stem.fullmatch(after.group(1)) for stem in NAMED_STEMS):
-                continue
-            names = run
-        if len(names) > 1 and _starts(sentence, names[0][0]) and not _law_name(names[0][2]):
-            names = names[1:]  # "The Criminal Code", "Согласно Трудовому кодексу": the first word is grammar
-        found += [(start, word) for start, _, word in names if _letters(word) >= 2]
-    return found
+    for at, (_, token) in enumerate(tokens):
+        if not any(stem.fullmatch(token) for stem in NAMED_STEMS):
+            continue
+        name, index, about = [], at - 1, None
+        while word(index):
+            low = normalised(tokens[index][1]).casefold()
+            if about is not None:
+                if about == LAW_ABOUT_REACH:
+                    break
+                about += 1
+                name.append(tokens[index])
+            elif LAW_ABOUT.fullmatch(low) and not name:
+                about = 0
+            elif _law_name(tokens[index][1]) or LAW_KIND.fullmatch(low) or tokens[index][1][0].isupper():
+                name.append(tokens[index])
+            else:
+                break
+            index -= 1
+        name.reverse()
+        if len(name) > 1 and _starts(sentence, name[0][0]) and not _law_name(name[0][1]):
+            name = name[1:]
+        index = at + 1
+        while word(index) and LAW_COUNTRY.fullmatch(normalised(tokens[index][1]).casefold()):
+            index += 1
+        if word(index) and LAW_OF.fullmatch(normalised(tokens[index][1]).casefold()):
+            index += 1
+            while word(index) and index <= at + 8:
+                name.append(tokens[index])
+                index += 1
+        found += [(start, text) for start, text in name if _letters(text) >= 2
+                  and not LAW_COUNTRY.fullmatch(normalised(text).casefold())]
+    return list(dict.fromkeys(found))
 
 
 def _law_name(word):
@@ -919,7 +966,12 @@ def _legal_known(sentence, concepts, trusted, translated):
             return False
     if not all(numbers.known(number, trusted.values) for number in numbers.found(sentence)):
         return False
-    named = _law_names(sentence)
+    words = _law_names(sentence)
+    # Which code or law it is ("Jinoyat", "административных", "Labour"), in any case and any language, is the
+    # customer's: the same code named in their words.
+    if not all(_law_name(word).search(trusted.lower) for _, word in words if _law_name(word) is not None):
+        return False
+    named = [(start, word) for start, word in words if word[0].isupper()]
     if translated:
         # A translated sentence's other words are the translation's; the code it names is still the customer's.
         return all(_law_name_known(word, trusted) for _, word in named)
