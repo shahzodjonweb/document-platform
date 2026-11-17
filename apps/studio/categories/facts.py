@@ -1750,14 +1750,15 @@ def held_names(value, kind, trusted, *, translated=False):
         for run, bad in runs:
             found += _holdable(line, run, bad)
         if kind in ('line', 'list') and _only_name(line):
-            found += [fold(run[position][2]) for run, bad in runs for position in bad if _letters(run[position][2]) >= 2]
+            found += [fold(run[position][2]) for run, bad in runs for position in bad
+                      if _letters(run[position][2]) >= 2]
         if kind in ('org', 'place'):
             found += _one_name(line, runs)
     return list(dict.fromkeys(found))
 
 
 def _role_opening(line, run):
-    """Whether a run is a role's capitalised opening word, a lower-case word right after it: "Bosh" of "Bosh direktor"."""
+    """Whether a run is a role's capitalised opening word, a lower-case word after it: "Bosh" of "Bosh direktor"."""
     rest = line[run[-1][1]:]
     return len(run) == 1 and not _surname(run[0][2]) and re.match(r"[ \t ]+[^\W\d_]", rest) is not None \
         and rest.lstrip(' \t ')[:1].islower()

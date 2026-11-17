@@ -164,7 +164,8 @@ WORD_TABLES = [_alternation(RU_WORDS + EN_WORDS), _alternation(UZ_WORDS)]
 # ("тысяча рублей"), and "семью" never (also "family"). The common spoken forms are read too: an Uzbek count's case
 # endings ("ellikdan ortiq"), a Russian count fused to what it counts ("пятилетний"), half a scale ("yarim milliard",
 # "полмиллиона"), how many times over ("doubled", "вдвое") and "a decade"; "twice", "half" and the vague "o‘nlab",
-# "hundreds", "decades" are not. An ordinal is read only where it is a figure (`ORDINAL_PLACE`, `ORDINAL_DATE`). Each word is a role and a value; a run of them side by side is one number (`_Reader.spelled`).
+# "hundreds", "decades" are not. An ordinal is read only where it is a figure (`ORDINAL_PLACE`, `ORDINAL_DATE`).
+# Each word is a role and a value; a run of them side by side is one number (`_Reader.spelled`).
 # The endings an Uzbek count takes as the last word of a number: "beshta", "ellikdan ortiq", "yigirmaga yetadi",
 # "o‘ttiz birta", "ellikka yaqin", "o‘ngacha", "beshdagi", "ikkini"; never "-lab" (o‘nlab, yuzlab: tens, hundreds),
 # which names no figure.
