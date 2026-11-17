@@ -42,12 +42,22 @@ section. The three cases (architecture 6.5):
 - `blank`: no fact, so every blank is drawn. Without its own file it is the
   full sample with its facts taken out;
 - `long`: more than the page rule holds. Without its own file it is the full
-  sample with each part’s text eight times over and at least a page long, its
-  rows and questions three times over (up to the paper bounds): a fixed paper takes its one page more,
-  a flow paper runs past its quote and says so, a count paper is cut.
+  sample with prose for its rule's pages and a half (fixed) or its quote and
+  a page and a half (flow, count), shared among its prose parts in
+  proportion to their length and each part still one paragraph, and its rows
+  and questions three times over (up to their part's and the paper's
+  bounds): a fixed paper takes its one page more, a flow paper runs past its
+  quote and says so, a count paper is cut.
 
 Block samples. A block module's `SAMPLES` is a list of dicts (or a dict of
-lists by block name, or a function returning either); each draws one block:
+lists by block name, or a function returning either); each draws one block.
+
+A module that exports `sample_paper(locale, samples) -> (entry, template,
+content)` draws its own: its samples name parts, fields and labels of the
+entry and template it makes (R1's core blocks do this), so each sample is
+drawn as `render_paper(content, path, locale, entry=entry,
+template=template, pages=1)` of `sample_paper(locale, [sample])`, under its
+`name` or `case`. A module without it gives each sample whole:
 
     {"block": "signature_row", "name": "date, signature, name",
      "params": {...},                  # the placement's parameters
@@ -82,9 +92,15 @@ HERE = Path(__file__).resolve().parent
 SAMPLES = HERE / 'samples'
 # Clock fields read this day in samples, so a sheet and a test draw the same paper every day.
 SAMPLE_DAY = datetime.date(2026, 9, 15)
-# The long case: each part's text at least eight times over and at least a page of characters (a short request
-# eight times over still fits one page), its rows and questions three times over.
-LONG_TEXT, LONG_CHARS, LONG_ROWS = 8, 4000, 3
+# The long case runs past the page rule by about this many pages of prose and no further: enough to make the
+# paper overflow, not so much that a fixed template with four prose parts is eight pages and fails its own rule.
+LONG_FIXED, LONG_FLOW = 0.5, 1.5
+# Each prose part grows at least this much, so a sample already past the budget is still longer than its full case.
+LONG_GROWTH = 1.5
+# Rows and questions three times over, up to their bound.
+LONG_ROWS = 3
+# A character of body text, taken as this share of the type size wide, sizes what a page of the frame holds.
+CHAR_EMS = 0.5
 # The block sheet's own page when a sample names no template: A4 with plain margins, one step of serif type.
 SHEET = {'id': 'block_sheet', 'name': {'uz': 'Bloklar', 'ru': 'Блоки', 'en': 'Blocks'},
          'page': {'margins_mm': {'left': 20, 'right': 20, 'top': 15, 'bottom': 15}},
@@ -125,24 +141,75 @@ def _blanked(sample):
     return made
 
 
-def _longer(sample):
+def page_chars(template):
+    """About how many characters of body text one page of the template's frame holds at its first type step."""
+    from .page import geometry
+    left, bottom, width, height = geometry(template)
+    size, leading = template['type']['ladder'][0]
+    return int(width / (CHAR_EMS * size)) * int(height / leading)
+
+
+def long_budget(template, pages):
+    """The characters of prose the derived long case gives a paper quoted `pages`: its rule's overflow, sized."""
+    from .check import PLAN_CAP
+    rule = template['page_rule']
+    if rule.get('kind') == 'fixed':
+        held = int(rule.get('pages') or pages) + LONG_FIXED
+    else:
+        held = min(pages + LONG_FLOW, PLAN_CAP)
+    return int(held * page_chars(template))
+
+
+def _grown(body, room):
+    """`body` said again, joined by spaces into one paragraph, to about `room` characters, cut after a sentence.
+
+    One paragraph, so the long case tests wrapping, justification and widows
+    inside it; cut at a word when no sentence ends in the last fifth.
+    """
+    room = max(int(room), round(len(body) * LONG_GROWTH))
+    text = ' '.join([body] * (-(-room // (len(body) + 1)) + 1))
+    sentence = max(text.rfind(mark, len(body), room + 1) for mark in ('. ', '! ', '? '))
+    if sentence >= room * 0.8:
+        return text[:sentence + 1]
+    cut = text.rfind(' ', len(body), room + 1)
+    return text[:cut if cut > 0 else room].rstrip(' ,;:')
+
+
+def _bound(entry, template, section_id, given):
+    """How many rows a part's section may hold: its part's and placements' max_items, under the paper's bound."""
+    bounds = [PAPER_BOUNDS.items]
+    part = entry.part(section_id) if entry is not None else None
+    if part is not None:
+        bounds.append(part.get('max_items'))
+        bounds += [(placement.get('params') or {}).get('max_items') for placement in template.get('flow') or ()
+                   if placement.get('part') == part['id']]
+    return max(given, min(bound for bound in bounds if isinstance(bound, int) and bound > 0))
+
+
+def _longer(sample, template):
+    """The full sample made the long case (see the module's docstring), for `template`."""
     made = copy.deepcopy(sample)
+    entry = catalogue.get(sample.get('entry') or (template.get('entries') or [''])[0])
+    pages = int(sample.get('pages') or (entry.length['default'] if entry is not None else 1))
+    budget = long_budget(template, pages)
+    most = ((entry.raw.get('questions') or {}).get('max') if entry is not None else None) or PAPER_BOUNDS.items
     for locale in LOCALES:
         content = made.get(locale)
         if not isinstance(content, dict):
             continue
-        for section in content.get('sections') or []:
-            if not isinstance(section, dict) or section.get('id') == FACTS:
-                continue
+        sections = [section for section in content.get('sections') or []
+                    if isinstance(section, dict) and section.get('id') != FACTS]
+        prose = sum(len(str(section.get('body') or '').strip()) for section in sections)
+        for section in sections:
             body = str(section.get('body') or '').strip()
             if body:
-                section['body'] = '\n'.join([body] * max(LONG_TEXT, -(-LONG_CHARS // len(body))))
+                section['body'] = _grown(body, budget * len(body) / prose)
             items = list(section.get('items') or [])
             if items:
-                section['items'] = (items * LONG_ROWS)[:max(len(items), PAPER_BOUNDS.items)]
+                section['items'] = (items * LONG_ROWS)[:_bound(entry, template, section.get('id'), len(items))]
         questions = list(content.get('questions') or [])
         if questions:
-            content['questions'] = (questions * LONG_ROWS)[:max(len(questions), PAPER_BOUNDS.items)]
+            content['questions'] = (questions * LONG_ROWS)[:max(len(questions), min(most, PAPER_BOUNDS.items))]
     return made
 
 
@@ -156,7 +223,8 @@ def load(template_id, case, root=None):
     full = sample_path(template_id, 'full', root)
     if full is None:
         return {}
-    made = (_blanked if case == 'blank' else _longer)(_read(full, template_id))
+    full = _read(full, template_id)
+    made = _blanked(full) if case == 'blank' else _longer(full, catalogue.template(template_id))
     return {**made, 'case': case, 'derived': 'full'}
 
 
@@ -399,6 +467,21 @@ def block_modules():
     return found
 
 
+def tile_name(module_name, sample):
+    """The line over a block sample's tile: module, block, and the sample's `name` (R1 calls it `case`)."""
+    called = sample.get('name') or sample.get('case')
+    return f"{module_name}.{sample['block']}" + (f' · {called}' if called else '')
+
+
+def draw_own(module, sample, locale, folder, index=0):
+    """Draw one sample of a module that makes its own paper (`sample_paper`); (path to its PDF, its warnings)."""
+    from . import render_paper
+    entry, template, content = module.sample_paper(locale, [sample])
+    path = Path(folder) / f'block-{index}.pdf'
+    artifact = render_paper(content, path, locale, entry=entry, template=template, pages=1, day=SAMPLE_DAY)
+    return Path(artifact['path']), list((artifact.get('metadata') or {}).get('warnings') or ())
+
+
 def blocks_sheet(out, *, locale='uz', width=760, columns=2, modules=None):
     """The block sheet: every SAMPLES entry of every block module (or `modules`, as (name, module)), drawn alone."""
     from PIL import Image, ImageDraw
@@ -408,10 +491,12 @@ def blocks_sheet(out, *, locale='uz', width=760, columns=2, modules=None):
             if isinstance(module, Exception):
                 tiles.append((None, f'{module_name}: does not import ({type(module).__name__})'))
                 continue
+            own = callable(getattr(module, 'sample_paper', None))
             for sample in block_samples(module):
-                name = f"{module_name}.{sample['block']}" + (f" · {sample['name']}" if sample.get('name') else '')
+                name = tile_name(module_name, sample)
                 try:
-                    path, warnings = draw_block(sample, locale, folder, len(tiles))
+                    path, warnings = (draw_own(module, sample, locale, folder, len(tiles)) if own
+                                      else draw_block(sample, locale, folder, len(tiles)))
                 except Exception as error:
                     tiles.append((None, f'{name}: failed ({type(error).__name__})'))
                     continue
@@ -458,7 +543,12 @@ def check(template_id, *, locales=None, cases=None, root=None, pages=None, say=p
     with tempfile.TemporaryDirectory() as folder:
         for case in cases or CASES:
             for locale in locales or LOCALES:
-                drawn = draw(template_id, case, locale, folder, root=root)
+                try:
+                    drawn = draw(template_id, case, locale, folder, root=root)
+                except (KeyError, ValueError) as error:
+                    failed += 1
+                    say(f'FAIL {template_id} · {case} · {locale}: cannot be drawn: {error}')
+                    continue
                 found = drawn.problems()
                 failed += bool(found)
                 say(f"{'FAIL' if found else 'ok  '} {drawn.note()}")
@@ -475,9 +565,8 @@ def check(template_id, *, locales=None, cases=None, root=None, pages=None, say=p
 
 def main(argv=None):
     import argparse
-    import os
     import django
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+    # The package's __init__ has named the settings module by now: `python -m` imports the package first.
     django.setup()
     parser = argparse.ArgumentParser(prog='python -m apps.studio.paper.sample', description=__doc__.split('\n')[0])
     parser.add_argument('--sheet', metavar='OUT.png', help='a sheet of papers drawn from their samples')

@@ -36,7 +36,12 @@ def _lines(ctx, place):
 
 
 def _list(ctx, place):
-    return [Paragraph(ctx.text(ctx.label(place.params['label'])), ctx.styles['bold']), *_lines(ctx, place)]
+    # As R1's list: several items print the plural label (`label_many`, else the key with an s) when there is one.
+    lines = _lines(ctx, place)
+    key = place.params['label']
+    many = place.params.get('label_many') or f'{key}s'
+    key = many if len(lines) > 1 and many in ctx.template['labels'] else key
+    return [Paragraph(ctx.text(ctx.label(key)), ctx.styles['bold']), *lines]
 
 
 def _facts(ctx, place):
@@ -165,6 +170,24 @@ def test_a_missing_fact_or_label_is_found_whatever_the_case_and_apostrophes(tmp_
     assert found == ['the fact "Karimov Jasur" is missing', 'the label "Imzo" is missing']
 
 
+def test_a_label_with_underscore_rules_is_read_as_the_words_between_them(tmp_path):
+    # text_rules draws a run of underscores as a rule to write on, so the PDF holds only the words around it.
+    path = drawn_pdf(tmp_path / 'rules.pdf', [[(100, 100, 'Men,                    ,       kun ta’til so‘rayman.')]])
+    wanted = 'Men, __________________, ___ kun ta’til so‘rayman.'
+    assert check.problems(path, expect(labels=[wanted])) == []
+    assert check.problems(path, expect(labels=['Men, ____ kun dam olaman.'])) == [
+        'the label "Men, ____ kun dam olaman." is missing']
+
+
+def test_a_gutter_list_may_hang_its_markers_left_of_the_frame(tmp_path):
+    path = drawn_pdf(tmp_path / 'gutter.pdf', [[(FRAME[0] - 16, 100, '1)'), (FRAME[0], 100, 'Birinchi vazifa')]])
+    assert any('outside the frame' in problem for problem in check.problems(path, expect()))
+    assert check.problems(path, expect(gutter=36)) == []
+    # Only as wide as the hang: further out is still outside.
+    far = drawn_pdf(tmp_path / 'far.pdf', [[(FRAME[0] - 60, 100, '1)'), (FRAME[0], 100, 'Birinchi vazifa')]])
+    assert any('outside the frame' in problem for problem in check.problems(far, expect(gutter=36)))
+
+
 def test_cyrillic_is_found_in_uzbek_and_english_papers_only(tmp_path):
     path = drawn_pdf(tmp_path / 'cyrillic.pdf', [[(100, 100, 'Ariza Заявление')]])
     for locale in ('uz', 'en'):
@@ -247,6 +270,65 @@ def test_expect_leaves_out_codes_and_lets_a_part_that_starts_a_page_stand_alone(
     assert found['frames'] is None
 
 
+def _ariza_content(locale, enclosures):
+    content = sample.content_of({'template': 'official_ariza', locale: _content(locale)}, locale)
+    for section in content['sections']:
+        if section['id'] == 'enclosures':
+            section['items'] = [{'label': '', 'text': text} for text in enclosures]
+    return content
+
+
+@pytest.mark.parametrize(('locale', 'enclosures', 'label'), [
+    ('en', ['A copy of the certificate.'], 'Enclosure:'),
+    ('en', ['A copy of the certificate.', 'A copy of the passport.'], 'Enclosures:'),
+    ('ru', ['Копия справки.', 'Копия паспорта.'], 'Приложение:'),
+], ids=['en-one', 'en-two', 'ru-two'])
+def test_expect_asks_for_the_plural_label_of_a_list_of_several_items(locale, enclosures, label):
+    # The real ariza's words: "enclosure" and "enclosures", which differ in English only. A list of several prints
+    # the plural, as R1's list block does, so the checker must not ask for the singular.
+    entry, raw = catalogue.get('pdf.xat.ariza'), catalogue.template('official_ariza')
+    found = check.expect_for({'page_count': 1, 'metadata': {}}, _ariza_content(locale, enclosures), entry=entry,
+                             template=raw, locale=locale, pages=1, day=DAY)
+    assert label in found['labels']
+    assert not {'Enclosure:', 'Enclosures:'} - {label} & set(found['labels'])
+    # `label_many` names the plural when it is not the key with an s.
+    named = copy.deepcopy(raw)
+    named['labels']['several'] = {'uz': 'Ilovalar:', 'ru': 'Приложения:', 'en': 'Annexes:'}
+    for placement in named['flow']:
+        if placement['block'] == 'list':
+            placement['params']['label_many'] = 'several'
+    found = check.expect_for({'page_count': 1, 'metadata': {}}, _ariza_content('en', enclosures), entry=entry,
+                             template=named, locale='en', pages=1, day=DAY)
+    assert ('Annexes:' if len(enclosures) > 1 else 'Enclosure:') in found['labels']
+
+
+def test_the_running_header_asks_only_for_the_facts_it_has_room_for(blocks, tmp_path):
+    entry = catalogue.get('pdf.xat.ariza')
+    raw = copy.deepcopy(catalogue.template('official_ariza'))
+    raw['furniture'] = {'first': 'none', 'later': 'header_number', 'format': 'n',
+                        'header': ['applicant_name', 'addressee_org']}
+    content = sample.content_of({'en': _content('en')}, 'en')
+    found = check.expect_for({'page_count': 2, 'metadata': {}}, content, entry=entry, template=raw, locale='en',
+                             pages=1, day=DAY)
+    assert {'From Malika A. Qodirova', 'Sample State University'} <= set(found['facts'])
+    # A name too long for the header is cut there with an ellipsis; a reader finds it whole only in the paper body,
+    # where its own placement already asks for it, so the header does not ask again.
+    long_name = 'From Malika A. Qodirova ' + 'and the members of the Sample Debating Society ' * 6
+    for section in content['sections']:
+        for item in section['items'] if section['id'] == 'facts' else ():
+            if item['label'] == 'applicant_name':
+                item['text'] = long_name.strip()
+    shown = check._header_facts(sample_ctx(content, entry, raw), page)
+    assert shown == []
+
+
+def sample_ctx(content, entry, raw):
+    from apps.studio.paper.ctx import Ctx
+    left, bottom, width, height = page.geometry(raw)
+    return Ctx(content=content, entry=entry, template=raw, locale='en', step=0, pages=1, width=width,
+               frame_height=height, day=DAY)
+
+
 # ---------------------------------------------------------------- samples
 
 
@@ -257,8 +339,15 @@ def test_a_missing_case_is_made_from_the_full_sample_and_an_own_file_wins(sample
     assert blank['derived'] == 'full' and blank['case'] == 'blank'
     assert 'facts' not in blank['uz'] and not check_facts(sample.content_of(blank, 'uz'))
     assert check_facts(sample.content_of(full, 'uz')) == FACTS['uz']
-    request = next(section for section in sample.content_of(long, 'ru')['sections'] if section['id'] == 'request')
-    assert len(request['body']) >= sample.LONG_CHARS and request['body'].count(REQUEST['ru']) >= sample.LONG_TEXT
+    # The ariza is one fixed page with one prose part: the request grows to a page and a half of the frame, one
+    # paragraph, and the enclosures three times over.
+    long_ru = sample.content_of(long, 'ru')
+    request = next(section for section in long_ru['sections'] if section['id'] == 'request')
+    budget = sample.long_budget(catalogue.template('official_ariza'), 1)
+    assert budget == int(1.5 * sample.page_chars(catalogue.template('official_ariza')))
+    assert budget * 0.8 <= len(request['body']) <= budget and '\n' not in request['body']
+    assert request['body'].startswith(REQUEST['ru'] + ' ' + REQUEST['ru'])
+    assert len(next(section for section in long_ru['sections'] if section['id'] == 'enclosures')['items']) == 3
     write_sample(samples, 'blank')
     assert 'derived' not in sample.load('official_ariza', 'blank', samples)
     assert sample.load('study_test', 'full', samples) == {}
@@ -268,6 +357,53 @@ def test_a_missing_case_is_made_from_the_full_sample_and_an_own_file_wins(sample
     (samples / 'official_ariza' / 'long.json').write_text(json.dumps({'template': 'study_test'}), encoding='utf-8')
     with pytest.raises(ValueError):
         sample.load('official_ariza', 'long', samples)
+
+
+def test_the_long_case_is_sized_to_the_page_rule_and_shared_among_the_prose_parts():
+    template = catalogue.template('official_ariza')
+    texts = {'request': 'Birinchi gap. ' * 20, 'statements': 'Ikkinchi gap. ' * 10, 'note': 'Uchinchi. ' * 5,
+             'more': 'To‘rtinchi. ' * 5}
+    prose = [{'id': name, 'heading': '', 'layout': 'text', 'items': [], 'body': body.strip()}
+             for name, body in texts.items()]
+    listed = {'id': 'enclosures', 'heading': '', 'layout': 'list', 'body': '',
+              'items': [{'label': '', 'text': f'Ilova {number}.'} for number in range(4)]}
+    full = {'template': 'official_ariza', 'pages': 1, 'uz': {'title': '', 'sections': prose + [listed]}}
+    long = sample._longer(full, template)
+    sections = {section['id']: section for section in long['uz']['sections']}
+    budget = sample.long_budget(template, 1)
+    prose = {name: sections[name]['body'] for name in texts}
+    # About the budget in all, never one copy per line, each part in proportion to its own length.
+    assert budget * 0.8 <= sum(map(len, prose.values())) <= budget
+    assert all('\n' not in body for body in prose.values())
+    assert len(prose['request']) == pytest.approx(2 * len(prose['statements']), rel=0.15)
+    # The enclosures part holds at most six (its part's and its placement's bound), not 4 × 3.
+    assert len(sections['enclosures']['items']) == 6
+    # A flow paper gets its quote and a page and a half; never past the plan's cap.
+    flowing = {**template, 'page_rule': {'kind': 'flow'}}
+    assert sample.long_budget(flowing, 10) == int(11.5 * sample.page_chars(template))
+    assert sample.long_budget(flowing, 35) == int(check.PLAN_CAP * sample.page_chars(template))
+
+
+def test_the_long_case_of_a_fixed_paper_with_several_prose_parts_takes_one_page_more(blocks, tmp_path):
+    # The ariza is fixed at one page; with a request and statements both written, the derived long case must
+    # overflow by about half a page of prose, not draw eight pages and fail its own rule.
+    root = tmp_path / 'samples'
+    write_sample(root)
+    path = root / 'official_ariza' / 'full.json'
+    body = json.loads(path.read_text(encoding='utf-8'))
+    for locale in FACTS:
+        body[locale]['sections'].insert(1, {'id': 'statements', 'heading': '', 'layout': 'text', 'items': [],
+                                            'body': REQUEST[locale]})
+        body[locale]['sections'][-1]['items'].append({'label': '', 'text': ENCLOSURE[locale]})
+    path.write_text(json.dumps(body, ensure_ascii=False), encoding='utf-8')
+    for locale in FACTS:
+        drawn = paper_family.assert_reads_well('official_ariza', locale, 'long', tmp_path, root=root)
+        assert drawn.artifact['page_count'] == 2 and drawn.expect['longer']
+        # Two enclosures: the English paper reads "Enclosures:" and the checker asks for that.
+        if locale == 'en':
+            assert 'Enclosures:' in drawn.expect['labels'] and 'Enclosure:' not in drawn.expect['labels']
+        full = paper_family.assert_reads_well('official_ariza', locale, 'full', tmp_path, root=root)
+        assert full.artifact['page_count'] == 1
 
 
 def check_facts(content):
@@ -352,6 +488,36 @@ def test_the_block_sheet_draws_each_sample_alone(blocks, tmp_path):
         sample.blocks_sheet(tmp_path / 'none.png', modules=[])
 
 
+def test_a_module_that_makes_its_own_sample_paper_draws_each_sample_on_it(blocks, tmp_path):
+    # R1's contract: its samples name parts, fields and labels of the entry and template its sample_paper makes.
+    made = []
+
+    def sample_paper(locale='uz', samples=None):
+        made.append(list(samples))
+        raw = {'id': 'pdf.sample', 'labels': {code: 'Namuna' for code in ('uz', 'ru', 'en')}, 'fields': [],
+               'parts': [{'id': 'note', 'kind': 'prose', 'heading_mode': 'none'}],
+               'templates': ['own_blocks'], 'length': {'default': 1}}
+        entry = catalogue.Entry('pdf.sample', 'pdf', 'ai.pdf_topic', 'draft', raw=raw)
+        template = {**copy.deepcopy(sample.SHEET), 'id': 'own_blocks', 'entries': ['pdf.sample'],
+                    'flow': [{'block': item['block'], 'part': item['part'], 'params': item.get('params') or {}}
+                             for item in samples]}
+        body = {'uz': 'O‘z namunasi.', 'ru': 'Свой образец.', 'en': 'Its own sample.'}[locale]
+        content = {'title': '', 'questions': [], 'sections': [
+            {'id': 'note', 'heading': '', 'layout': 'text', 'items': [], 'body': body}]}
+        return entry, template, content
+    module = types.SimpleNamespace(SAMPLES=({'block': 'paragraph', 'case': 'plain', 'part': 'note'},),
+                                   sample_paper=sample_paper)
+    path, warnings = sample.draw_own(module, module.SAMPLES[0], 'ru', tmp_path)
+    assert page_text(path).strip() == 'Свой образец.' and warnings == []
+    assert made == [[module.SAMPLES[0]]]
+    assert sample.tile_name('core', module.SAMPLES[0]) == 'core.paragraph · plain'
+    assert sample.tile_name('core', {'block': 'list', 'name': 'b', 'case': 'c'}) == 'core.list · b'
+    out = sample.blocks_sheet(tmp_path / 'own.png', modules=[('own', module)])
+    with Image.open(out) as image:
+        # The tile is the drawn page (white), not a failed sample's red line on the grey sheet.
+        assert image.getpixel((16 + 5, 16 + 24 + 5)) == (255, 255, 255)
+
+
 def page_text(path):
     import pdfplumber
     with pdfplumber.open(str(path)) as document:
@@ -369,6 +535,14 @@ def test_the_command_checks_a_template_and_writes_its_pages(blocks, samples, tmp
                         '--case', 'blank']) == 1
     said = capsys.readouterr().out
     assert said.count('FAIL') == 2 and 'the label "Enclosure:" is missing' in said
+    # A sample without one language's content is a FAIL line, not a traceback.
+    body = json.loads((samples / 'official_ariza' / 'full.json').read_text(encoding='utf-8'))
+    del body['ru']
+    (samples / 'official_ariza' / 'full.json').write_text(json.dumps(body, ensure_ascii=False), encoding='utf-8')
+    blocks('list', _list)
+    assert sample.main(['--check', 'official_ariza', '--samples', str(samples), '--case', 'full']) == 1
+    said = capsys.readouterr().out
+    assert 'FAIL official_ariza · full · ru: cannot be drawn' in said and said.count('ok   ') == 2
     with pytest.raises(SystemExit):
         sample.main(['--check', 'study_test', '--samples', str(samples)])
     with pytest.raises(SystemExit):

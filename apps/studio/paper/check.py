@@ -39,6 +39,11 @@ OVERLAPS_SHOWN = 5
 # shapes a block, a file is a name, a list is drawn as the part's items.
 UNPRINTED = frozenset(('choice', 'flag', 'file', 'list'))
 APOSTROPHES = str.maketrans({mark: "'" for mark in '‘’ʻʼ`´'})
+# A run of underscores in a label is drawn as a rule to write on (text_rules), not as text: the pieces between
+# the runs are what a reader sees.
+RULE_RUN = re.compile(r'_{2,}')
+# How far a list with `gutter` hangs its markers left of the frame, in ems of the body size: "40)" and the gap.
+GUTTER_EMS = 3.0
 SPACES = re.compile(r'[\s   ]+')
 
 
@@ -57,13 +62,19 @@ def _inside(x, y, box, slack=0.5):
 
 
 def _boxes(expect, number):
-    """Where text may sit on page `number`: the frame and the furniture's places, or None when not known."""
+    """Where text may sit on page `number`: the frame and the furniture's places, or None when not known.
+
+    A paper with a gutter list may also print in a band as wide as the hang
+    left of the frame: the list sets its markers in the margin on purpose.
+    """
     frames = expect.get('frames') or {}
     if not frames:
         return None
     kind = 'first' if number == 1 else 'later'
-    return [tuple(box) for box in (frames.get(kind) or ())] + \
-        [tuple(box) for box in ((expect.get('furniture') or {}).get(kind) or ())]
+    inside = [tuple(box) for box in (frames.get(kind) or ())]
+    hang = float(expect.get('gutter') or 0)
+    margin = [(x0 - hang, top, x0, bottom) for x0, top, x1, bottom in inside] if hang > 0 else []
+    return inside + margin + [tuple(box) for box in ((expect.get('furniture') or {}).get(kind) or ())]
 
 
 def _overlaps(chars):
@@ -117,9 +128,11 @@ def problems(path, expect=None):
     """Everything wrong with the paper at `path`, as sentences; [] when it reads well.
 
     `expect` (all keys optional, see `expect_for`): `frames` and `furniture`
-    (the artifact's metadata), `rule`, `rule_pages`, `quoted` and `longer`
-    (the page rule), `facts` and `labels` (strings the text must hold),
-    `locale`, `stub_min`, and `warnings` (the artifact's codes).
+    (the artifact's metadata), `gutter` (points a gutter list may hang left
+    of the frame), `rule`, `rule_pages`, `quoted` and `longer` (the page
+    rule), `facts` and `labels` (strings the text must hold, a label's
+    underscore runs read as the rules they are drawn as), `locale`,
+    `stub_min`, and `warnings` (the artifact's codes).
     """
     import pdfplumber
     expect = expect or {}
@@ -177,14 +190,21 @@ def problems(path, expect=None):
     squeezed = tuple(_squeezed(reading) for reading in readings)
     for kind in ('facts', 'labels'):
         for wanted in expect.get(kind) or ():
-            text = normal(wanted)
-            if not text:
-                continue
-            # Squeezed: letters set with tracking come back as spaced words, a word in a narrow cell may break.
-            tight = _squeezed(text)
-            if not any(text in reading for reading in readings) and not any(tight in reading for reading in squeezed):
+            if not _present(wanted, readings, squeezed):
                 found.append(f'the {kind[:-1]} "{wanted}" is missing')
     return found
+
+
+def _present(wanted, readings, squeezed):
+    """Whether the text holds `wanted`: every piece of it between its underscore rules, in either reading."""
+    pieces = [normal(piece) for piece in RULE_RUN.split(str(wanted or ''))]
+    pieces = [piece for piece in pieces if piece.strip(' ,.;:')]
+    for piece in pieces:
+        # Squeezed: letters set with tracking come back as spaced words, a word in a narrow cell may break.
+        tight = _squeezed(piece)
+        if not any(piece in reading for reading in readings) and not any(tight in reading for reading in squeezed):
+            return False
+    return True
 
 
 def _fill(chars, expect):
@@ -223,16 +243,56 @@ def _printed(entry, field_id):
     return field is not None and field['kind'] not in UNPRINTED
 
 
+def _list_length(section):
+    """How many items a list block draws from a section: its items with text, else its body's lines (R1's list)."""
+    items = [item for item in (section or {}).get('items') or [] if isinstance(item, dict)
+             and any(str(item.get(key) or '').strip() for key in ('label', 'text', 'value'))]
+    return len(items) or len([line for line in str((section or {}).get('body') or '').split('\n') if line.strip()])
+
+
+def _label_key(place, labels):
+    """The label a placement prints by its `label` param, or None.
+
+    A list of several items prints its plural as R1's list block does: the
+    `label_many` key, else the key with an s, when the template holds it.
+    So an English list of two enclosures reads "Enclosures:", not "Enclosure:".
+    """
+    params = place.params or {}
+    key = params.get('label')
+    if not isinstance(key, str) or key not in labels:
+        return None
+    if place.block == 'list' and _list_length(place.section) > 1:
+        many = params.get('label_many') or f'{key}s'
+        if isinstance(many, str) and many in labels:
+            return many
+    return key
+
+
+def _header_facts(ctx, sheet):
+    """The running header's facts a reader can find: the header is cut at a word to fit, so only those that fit."""
+    values = [value for value in (ctx.fact(name) for name in ctx.template['furniture'].get('header') or ())
+              if value is not None]
+    if not values:
+        return []
+    left, bottom, width, height = sheet.geometry(ctx.template)
+    # The step-0 type is the largest, so what fits here fits on a paper drawn at any later step.
+    size = min(sheet.FURNITURE_SIZE, ctx.styles['small'].fontSize)
+    shown = normal(sheet._cut(sheet.header_text(ctx), ctx.face, size, width))
+    return [value for value in values if normal(ctx.plain(value)) in shown]
+
+
 def expect_for(artifact, content, *, entry, template, locale, pages, cues=frozenset(), day=None):
     """What `problems` holds the paper render_paper drew to: its frames, page rule, facts, labels, language, codes.
 
     The facts are the verified values (and clock values) of the printable
     fields that a placement whose `when` holds draws, by its `fields`, a
-    label slot or the running header of a paper longer than a page. The labels
-    are the `label` parameter of each such placement, its slots filled; one
-    whose slot has no fact is left out, since a block may drop that sentence
-    (`drop_empty_slots`). Captions and the other labels a block picks by
-    itself are not required: whether they print depends on the block.
+    label slot or the running header of a paper longer than a page (those the
+    header has room for: it is cut at a word to fit). The labels are the
+    `label` parameter of each such placement, its slots filled, in the plural
+    for a list of several items; one whose slot has no fact is left out, since
+    a block may drop that sentence (`drop_empty_slots`). Captions and the
+    other labels a block picks by itself are not required: whether they print
+    depends on the block.
 
     When a placement that holds starts a page, the last page may be that part
     alone (a test's answer key): its fill is not judged.
@@ -246,30 +306,31 @@ def expect_for(artifact, content, *, entry, template, locale, pages, cues=frozen
     ctx = Ctx(content=content, entry=entry, template=raw, locale=locale, step=0, pages=pages, width=width,
               frame_height=height, cues=frozenset(cues or ()), day=day)
     labels = raw.get('labels') or {}
-    facts, words, stub = [], [], STUB_MIN
+    facts, words, stub, gutter = [], [], STUB_MIN, 0.0
     for place in places(ctx):
         if not holds(place.when, ctx, place):
             continue
         if place.page_break_before:
             stub = 0
+        if (place.params or {}).get('gutter'):
+            gutter = GUTTER_EMS * ctx.size
         for field_id in place.fields:
             value = ctx.fact(field_id)
             if value is not None and _printed(entry, field_id):
                 facts.append(value)
-        key = (place.params or {}).get('label')
-        if isinstance(key, str) and key in labels:
+        key = _label_key(place, labels)
+        if key is not None:
             text = labels[key].get(locale) or labels[key].get('en', '')
             filled = _filled(text, ctx)
             if filled is not None and filled.strip():
                 words.append(filled.strip())
     if (artifact.get('page_count') or 0) > 1 and raw['furniture'].get('later') == 'header_number':
-        facts += [value for value in (ctx.fact(name) for name in raw['furniture'].get('header') or ())
-                  if value is not None]
+        facts += _header_facts(ctx, sheet)
     return {
         'frames': metadata.get('frames'), 'furniture': metadata.get('furniture'),
         'rule': raw['page_rule'].get('kind', 'flow'), 'rule_pages': raw['page_rule'].get('pages'),
         'quoted': pages, 'longer': LONGER in (metadata.get('warnings') or ()),
         'facts': list(dict.fromkeys(facts)), 'labels': list(dict.fromkeys(words)), 'locale': locale,
-        'stub_min': stub, 'warnings': list(metadata.get('warnings') or ()),
+        'stub_min': stub, 'warnings': list(metadata.get('warnings') or ()), 'gutter': gutter,
     }
 
