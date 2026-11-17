@@ -280,9 +280,35 @@ def test_agreeing_signers_joined_by_semicolons_are_one_row_each(tmp_path):
     ('Rustamova Zarina — direktor', ('direktor', 'Rustamova Zarina', True)),
     ('Иванов Иван Иванович — директор', ('директор', 'Иванов Иван Иванович', True)),
     ('Chief Accountant — John Smith', ('Chief Accountant', 'John Smith', False)),
+    # A one-word surname beside a capitalised English post: the full-name side is no name, so only a guess.
+    ('Sales Manager — Smith', ('Sales Manager', 'Smith', False)),
+    # o‘ and g‘ initials as typed: an ASCII apostrophe, a backtick or the Uzbek letter ʻ, never only the house ‘.
+    ("G'. A. Karimov", ('', "G'. A. Karimov", True)),
+    ("Yo'ldosheva G. O'.", ('', "Yo'ldosheva G. O'.", True)),
+    ('Xolmatov M. Gʻ.', ('', 'Xolmatov M. Gʻ.', True)),
+    ('direktor — Oʻ. T. Karimov', ('direktor', 'Oʻ. T. Karimov', True)),
+    ('zal menejeri Ergasheva D. G`.', ('zal menejeri', 'Ergasheva D. G`.', True)),
+    ("O'quv ishlari bo'yicha direktor o'rinbosari Xolmatov M. G'.",
+     ("O'quv ishlari bo'yicha direktor o'rinbosari", "Xolmatov M. G'.", True)),
+    # The catalogue's own comma form: a name with initials, then the post.
+    ('B. S. Toshmatov, direktor', ('direktor', 'B. S. Toshmatov', True)),
+    ('Б. С. Тошматов, директор', ('директор', 'Б. С. Тошматов', True)),
+    ('Toshmatov B. S., direktor', ('direktor', 'Toshmatov B. S.', True)),
+    # A bare full name is a name, only unsure: a caller keeps it in the name cell.
+    ('Karimova Nilufar', ('', 'Karimova Nilufar', False)),
+    ("O'. Karimov", ('', "O'. Karimov", True)),
 ])
 def test_a_signers_line_is_split_into_post_and_name(line, expected):
     assert core._post_and_name(line) == expected
+
+
+def test_an_o_or_g_initial_typed_with_any_apostrophe_is_drawn_with_the_house_mark():
+    from apps.studio.paper.text import NBSP, Rules
+    rules = Rules('CVSerif', 'uz')
+    assert rules.plain("G'. O`. Yo'ldosheva") == f'G‘.{NBSP}O‘.{NBSP}Yo‘ldosheva'
+    assert rules.plain('Xolmatov M. Gʻ.') == f'Xolmatov M.{NBSP}G‘.'
+    # Only an initial: a word ending in a mark before a stop, and other languages, keep what was typed.
+    assert rules.plain("Oleg'.") == "Oleg'." and Rules('CVSerif', 'en').plain("G'. Smith") == "G'. Smith"
 
 
 @pytest.mark.parametrize(('locale', 'chair', 'word', 'name'), [
@@ -291,12 +317,53 @@ def test_a_signers_line_is_split_into_post_and_name(line, expected):
     ('ru', 'Иванов Иван Иванович — директор', 'Председатель', 'Иванов Иван Иванович'),
     # Neither side is surely a name: the line is typed whole, never the post alone in the name cell.
     ('en', 'Head Teacher — Grace Hill', 'Chair', 'Head Teacher — Grace Hill'),
-], ids=['uz-digraph-initials', 'uz-full-name', 'ru-full-name', 'en-guess-kept-whole'])
+    ('en', 'Sales Manager — Smith', 'Chair', 'Sales Manager — Smith'),
+    # An initial typed with an ASCII apostrophe keeps its surname, and the page draws the house o‘.
+    ('uz', "G'. A. Karimov — direktor", 'Rais', 'G‘. A. Karimov'),
+    ('ru', 'Б. С. Тошматов, директор', 'Председатель', 'Б. С. Тошматов'),
+], ids=['uz-digraph-initials', 'uz-full-name', 'ru-full-name', 'en-guess-kept-whole', 'en-one-word-surname',
+        'uz-ascii-initial', 'ru-comma-form'])
 def test_the_chair_signs_by_name_and_never_by_post(tmp_path, locale, chair, word, name):
     lines = lines_of(draw(tmp_path, 'official_bayonnoma', content('official_bayonnoma', locale,
                                                                    facts={'chair': chair}), locale))
     signed = [line for line in lines if line.startswith(word) and ':' not in line]
     assert signed and signed[-1].endswith(name), signed
+
+
+def test_the_secretary_with_ascii_initials_keeps_the_surname_and_every_initial(tmp_path):
+    made = content('official_bayonnoma', facts={'secretary': "Yo'ldosheva G. O'."})
+    lines = lines_of(draw(tmp_path, 'official_bayonnoma', made))
+    signed = [line for line in lines if line.startswith('Kotib') and ':' not in line]
+    assert signed and signed[-1].endswith('Yo‘ldosheva G. O‘.'), signed
+
+
+def test_the_instructions_author_with_ascii_initials_is_split_whole(tmp_path):
+    made = content('business_yoriqnoma', facts={'author': "zal menejeri Ergasheva D. G'."})
+    lines = lines_of(draw(tmp_path, 'business_yoriqnoma', made))
+    assert any(line.startswith('zal menejeri') and line.endswith('Ergasheva D. G‘.') for line in lines), lines
+    made = content('business_yoriqnoma', facts={'author': 'D. G. Ergasheva, zal menejeri'})
+    lines = lines_of(draw(tmp_path, 'business_yoriqnoma', made, name='comma.pdf'))
+    assert any(line.startswith('zal menejeri') and line.endswith('D. G. Ergasheva') for line in lines), lines
+
+
+def test_agreeing_signers_typed_with_ascii_apostrophes_a_comma_or_a_bare_name(tmp_path):
+    made = content('official_lavozim_yoriqnomasi', facts={
+        'agreement_signers': "Bosh hisobchi — Yo'ldosheva G. O'.\nD. A. Umarova, yurist\nKarimova Nilufar"})
+    lines = lines_of(draw(tmp_path, 'official_lavozim_yoriqnomasi', made))
+    assert any(line.startswith('Bosh hisobchi') and line.endswith('Yo‘ldosheva G. O‘.') for line in lines), lines
+    assert any(line.startswith('yurist') and line.endswith('D. A. Umarova') for line in lines), lines
+    # The bare name stands where a name goes, never as a post with an empty name rule beside it.
+    assert any(line.strip() == 'Karimova Nilufar' for line in lines)
+    ctx = ctx_for('official_lavozim_yoriqnomasi', made)
+    place = Place('signature_row', None, None, ('agreement_signers',), {'variant': 'post_sign_name'})
+    assert ('', 'Karimova Nilufar') in core._signers(ctx, place)
+
+
+def test_an_english_capitalised_post_alone_stays_a_post():
+    made = content('official_lavozim_yoriqnomasi', 'en', facts={'agreement_signers': 'Chief Accountant'})
+    ctx = ctx_for('official_lavozim_yoriqnomasi', made, 'en')
+    place = Place('signature_row', None, None, ('agreement_signers',), {'variant': 'post_sign_name'})
+    assert core._signers(ctx, place) == [('Chief Accountant', '')]
 
 
 def test_the_minutes_sign_by_name_while_the_roster_keeps_the_role(tmp_path):
