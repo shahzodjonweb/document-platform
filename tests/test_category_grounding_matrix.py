@@ -719,6 +719,17 @@ CASES = [
     body('held-common-word-after-blanked-ministry-uz-keep', KEEP, 'pdf.biz.hisobot', REPORT_UZ, 'uz', 'conclusion',
          'Moliya bo‘limi kengaytirildi.',
          parts=(('work_done', {'body': 'Kompaniya Moliya Vazirligi bilan hamkorlik qildi.'}),)),
+    # A rejected line or list of capitalised common words holds none of them (round 2 of the convergence, from 9de1cf9).
+    body('held-common-word-of-a-rejected-signers-line-uz-keep', KEEP, 'pdf.biz.hisobot', REPORT_UZ, 'uz', 'summary',
+         'Bosh ofis ta’mirlandi.', facts=(('signers', 'Bosh Hisobchi'),)),
+    body('held-common-words-of-rejected-enclosures-uz-keep', KEEP, 'pdf.xat.ishga_kirish', COVER_UZ, 'uz', 'closing',
+         'Rezyume ilova qilinadi. Tavsiyanoma ham ilova qilingan.',
+         facts=(('applicant_name', 'Qodirova Malika'), ('enclosures', 'Rezyume\nTavsiyanoma'))),
+    body('held-common-word-of-a-rejected-author-line-uz-keep', KEEP, 'pdf.biz.hisobot', REPORT_UZ, 'uz', 'summary',
+         'Maktab binosi ta’mirlandi.', facts=(('author', 'Maktab Direktori'),)),
+    body('held-given-names-of-a-rejected-participants-list-uz-blank', BLANK, 'pdf.biz.bayonnoma', MINUTES_UZ, 'uz',
+         'item_speakers', 'Malika maktab formasi haqida gapirdi.', gone=('Malika',),
+         facts=(('participants', 'Dilnoza\nSardor\nMalika'),)),
     body('held-role-word-of-rejected-person-uz-keep', KEEP, 'pdf.biz.biznes_reja', UZ_NONE, 'uz', 'summary_lead',
          'Bosh ofis mahallada joylashgan.', facts=(('director', 'Bosh direktor Karimova Dilnoza'),)),
     # The same word in the same place is the rejected person's name and the verb's noun: only grammar tells them.

@@ -1861,8 +1861,9 @@ def held_names(value, kind, trusted, *, translated=False):
     Only words that name someone wherever they stand (finish's `invented`, read whole or with a case ending,
     `Named`): a person's every word not the customer's but a role's opening word ("Bosh direktor Karimova
     Dilnoza" gives karimova and dilnoza, never bosh); else a person's beside a surname ("Bosh hisobchi Karimova
-    Dilnoza"), every word of a line that is only a name after its label ("Rais: Aziz Rahim", a participants'
-    list's "Dilnoza"), an organisation's shaped or quoted ("Hamkorbank", "«Baraka» nonvoyxonasi"), and an
+    Dilnoza"), every word but a common one of a line that is only a name after its label ("Rais: Aziz Rahim", a
+    participants' list's "Dilnoza", never the "Bosh Hisobchi" or "Rezyume" of a line), an organisation's shaped or
+    quoted ("Hamkorbank", "«Baraka» nonvoyxonasi"), and an
     organisation's or a place's name before its legal form or alone ("Acme LLC", "Artel MChJ", "Artel",
     "Samarqand"; of "Acme Trading LLC" the first). A name its value follows with its kind ("Xalq banki",
     "Westminster University") is held by that kind where it opens a sentence (`_organisation`); alone it may be a
@@ -1885,8 +1886,9 @@ def held_names(value, kind, trusted, *, translated=False):
         for run, bad in runs:
             found += _holdable(line, run, bad)
         if kind in ('line', 'list') and _only_name(line):
+            # A line of capitalised common words ("Bosh Hisobchi", "Rezyume", "Maktab Direktori") names no one.
             found += [fold(run[position][2]) for run, bad in runs for position in bad
-                      if _letters(run[position][2]) >= 2]
+                      if _letters(run[position][2]) >= 2 and not common(run[position][2])]
         if kind in ('org', 'place'):
             found += _one_name(line, runs)
     return list(dict.fromkeys(found))
