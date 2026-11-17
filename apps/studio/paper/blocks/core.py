@@ -1104,20 +1104,23 @@ def kv_table(ctx, place):
     if not pairs:
         return []
     label_width = min(_num(params.get('label_mm'), 45.0, 10, 120) * MM, ctx.width * 0.5)
-    words = _style(ctx, 'bold' if params.get('bold_labels', True) else 'body')
+    # A label longer than its column ("Организационно-правовая форма") wraps at its own hyphen, not mid-word.
+    words = _style(ctx, 'bold' if params.get('bold_labels', True) else 'body', embeddedHyphenation=1)
     body = ctx.styles['body']
-    data, blanks = [], []
-    for row, (label, value, blank) in enumerate(pairs):
-        data.append([Paragraph(ctx.text(label, words), words), Paragraph(ctx.text(value, body), body) if value
-                     else ''])
-        if blank:
-            blanks.append(row)
-    heights = [ctx.leading * 1.5 if row in blanks else None for row in range(len(data))]
+    rules = params.get('rules') or 'none'
+    room = label_width - 2 * MM - (1.7 * MM if rules == 'box' else 0)
+    data, heights = [], []
+    for label, value, blank in pairs:
+        said = Paragraph(ctx.text(label, words), words)
+        data.append([said, Paragraph(ctx.text(value, body), body) if value else ''])
+        # A blank row is a set height to write in, but never lower than its label: a two-line label in a row of
+        # one line's height is drawn over the row above.
+        heights.append(max(ctx.leading * 1.5, said.wrap(room, 10 ** 4)[1] + 4) if blank else None)
+    blanks = [row for row, height in enumerate(heights) if height is not None]
     drawn = Table(data, colWidths=[label_width, ctx.width - label_width], rowHeights=heights, hAlign='LEFT')
     commands = [('VALIGN', (0, 0), (-1, -1), 'BOTTOM' if blanks else 'TOP'),
                 ('LEFTPADDING', (0, 0), (-1, -1), 0), ('RIGHTPADDING', (0, 0), (-1, -1), 2 * MM),
                 ('TOPPADDING', (0, 0), (-1, -1), 1.5), ('BOTTOMPADDING', (0, 0), (-1, -1), 2.5)]
-    rules = params.get('rules') or 'none'
     if rules == 'under_rows':
         commands.append(('LINEBELOW', (0, 0), (-1, -1), 0.3, INK))
     elif rules == 'box':
