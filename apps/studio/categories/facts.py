@@ -256,8 +256,12 @@ LAW = (
     ('resolution', r"qaror\w*|resolutions?", False),
     ('law', r"qonun(?!iyat)\w*|закон(?!омерн)\w*|laws?|acts?", False),
     ('article', r"modda\w*|стать(?:я|и|е|ю|ей|ям|ях)|articles?", False),
-    # «Положение о школе», never the "положение" (situation) of "экономическое положение республики".
-    ('regulation', r"nizom\w*|regulations?|(?-i:Положени\w*)|положени\w*(?=[ \t]+(?:о|об)(?![^\W\d_]))", LOOSE),
+    # «Положение о школе» and "Положение о налогах было принято ...": a regulation named by its title, wherever it
+    # stands; never the "положение" (situation) of "экономическое положение республики", "Положение в экономике ..."
+    # or "Положение дел ...", nor "положение о том, что ..." (a thesis).
+    ('regulation', r"положени\w*(?=[ \t]+(?:о|об)[ \t]+(?!(?:том|тех)(?![^\W\d_])))", True),
+    # Capitalised, «Положение» is a title only inside a sentence (`_concepts`).
+    ('regulation', r"nizom\w*|regulations?|(?-i:Положени\w*)", LOOSE),
     # The Geneva Convention, a convention on or of something, never "the convention centre".
     ('convention', r"konvensiya\w*|конвенци\w*|(?-i:Conventions?)|conventions?(?=[ \t]+(?:on|of|for|against)(?![^\W\d_]))",
      LOOSE),
@@ -922,6 +926,8 @@ def _concepts(sentence):
     found, weak, dated = set(), [], False
     for concept, stem, strong in STEMS:
         for match in stem.finditer(text):
+            if strong == LOOSE and match.group(0).startswith('Положени') and _starts(text, match.start()):
+                continue  # "Положение в экономике ...": a situation; «Положение о …» is read by its title above
             # A weak stem capitalised inside a sentence is a title ("Mehnat Kodeksi", "Labour Code", "Закон о …").
             if strong is True or (match.group(0)[0].isupper() and not _starts(text, match.start())):
                 found.add(concept)
