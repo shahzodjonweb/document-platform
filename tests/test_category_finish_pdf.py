@@ -1335,3 +1335,18 @@ def test_a_code_named_by_words_apart_from_its_stem_or_after_it_is_the_customers_
         'items': [{'label': '', 'text': item, 'value': ''} for item in items]}))
     assert [item['text'] for item in section_of(made, 'responsibility')['items'] if item['text'].strip()] == kept
     assert 'ground:law' in codes
+
+
+# ---------------------------------------------------------------- stage-2 re-audit, round 2: no class letter
+
+
+@pytest.mark.parametrize('prompt, locale, position', [
+    ('Программист 1С, нужно сопроводительное письмо на узбекском. Меня зовут Каримов Азиз.', 'uz', '1C dasturchisi'),
+    ('Программист 1С, нужно сопроводительное письмо на английском. Меня зовут Каримов Азиз.', 'en', '1C Programmer'),
+    ('1С dasturchisi lavozimiga ishga kirish xati yozing. Men Karimov Aziz.', 'uz', '1C dasturchisi'),
+], ids=['uz-from-ru', 'en-from-ru', 'uz-cyrillic-letter'])
+def test_a_cover_letters_1c_position_is_kept_whole(prompt, locale, position):
+    cover = catalogue.get('pdf.xat.ishga_kirish')
+    data = draft(cover, prompt=prompt, locale=locale, length=1)
+    made, _, codes = finished(data, answer(data, facts={'items': [{'label': 'position', 'text': position}]}))
+    assert facts_of(made)['position'] == position and 'fact:position' not in codes

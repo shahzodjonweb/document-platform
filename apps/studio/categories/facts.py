@@ -687,15 +687,39 @@ def _strip_addresses(text, trusted):
 
 # A class's letter after its number: "7-«B» sinf", "7-B", "7 «Б» класс", "Grade 7B". A single capital is no name the
 # names check reads, so an invented parallel ("7-«B» sinf" for the customer's "7-sinf") is held here; never an
-# initial ("7 A. Karimova") or a word ("7 Apples").
+# initial ("7 A. Karimova") or a word ("7 Apples"). Only a letter a class is written with is one: quoted, after a
+# hyphen, or beside a class word (`CLASS_WORD`); "1C dasturchisi", "3D dizayner" and "12A uy" name no class.
 CLASS_LETTER = re.compile(r"""(?<!\d)(\d{1,2})([ \u00a0]?-?[ \u00a0]?[«"“'‘]?)([A-ZА-ЯЁ])([»"”'’]?)(?![^\W\d_]|\.)""")
+CLASS_WORD = re.compile(r"sinf\w*|класс\w*|class(?:es)?|grades?", re.IGNORECASE)
+# The Cyrillic capitals written as the Latin ones they look like: the customer's "1С" or "7 «В»" typed in Cyrillic is
+# the paper's "1C" or "7-«B»" in Latin.
+LOOKALIKES = str.maketrans('АВЕКМНОРСТХ', 'ABEKMHOPCTX')
+
+
+def _class_letter(text, match):
+    """Whether a CLASS_LETTER match is a class's letter: quoted, after a hyphen, or beside a class word."""
+    if match.group(4) or '-' in match.group(2) or re.search(r"[«\"“'‘]", match.group(2)):
+        return True
+    after = re.match(r"[ \u00a0]*([^\W\d_]+)", text[match.end():])
+    before = re.search(r"([^\W\d_]+)[ \u00a0]*$", text[:match.start()])
+    return any(word is not None and CLASS_WORD.fullmatch(word.group(1)) for word in (after, before))
 
 
 def _class_letters(text, trusted):
     """The class letters of `text` the customer never wrote after the same number, as match objects."""
     said = fold(trusted.said)
-    return [match for match in CLASS_LETTER.finditer(text)
-            if not re.search(rf"(?<!\d){match.group(1)}\W{{0,4}}{re.escape(fold(match.group(3)))}(?![^\W\d_])", said)]
+    shaped = trusted.said.translate(LOOKALIKES).casefold()
+    found = []
+    for match in CLASS_LETTER.finditer(text):
+        if not _class_letter(text, match):
+            continue
+        number = match.group(1)
+        if any(re.search(rf"(?<!\d){number}\W{{0,4}}{re.escape(letter)}(?![^\W\d_])", written)
+               for written, letter in ((said, fold(match.group(3))),
+                                       (shaped, match.group(3).translate(LOOKALIKES).casefold()))):
+            continue
+        found.append(match)
+    return found
 
 
 def without_class_letters(text, trusted):

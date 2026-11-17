@@ -1227,3 +1227,26 @@ def test_a_code_pointed_at_after_the_customer_named_one_stays(brief, part):
 ])
 def test_an_issuers_act_a_regulation_and_a_convention_are_still_legal_sentences(part):
     assert guard(part, trusting('7-sinf matematika fanidan dars ishlanmasi yozing.')) == ('', ['ground:law'])
+
+
+# ---------------------------------------------------------------- what no class letter is (stage-2 re-audit, round 2)
+
+
+@pytest.mark.parametrize('brief, value', [
+    ('1С dasturchisi lavozimiga ishga kirish xati kerak.', '1C dasturchisi'),
+    ('Нужно сопроводительное письмо, должность: программист 1С.', 'Programmer 1C'),
+    ('1C dasturchisi lavozimiga xat.', '1С dasturchisi'),
+    ('Buxgalter lavozimi, 1C bilishi kerak.', 'Buxgalter (1C)'),
+    ('3D dizayner lavozimiga xat.', '3D dizayner'),
+    ('Ofis manzili: Chilonzor 9-kvartal, 12A uy.', 'Chilonzor 9-kvartal, 12A uy'),
+], ids=['uz-cyrillic-1c', 'ru-1c', 'latin-given', 'brackets', '3d', 'house'])
+def test_a_letter_after_a_number_that_names_no_class_is_kept_whole(brief, value):
+    known = trusting(brief)
+    assert facts.without_class_letters(value, known) == (value, False)
+    assert supported(value, 'line', known, strict=True, words=True)
+
+
+@pytest.mark.parametrize('brief', ['7 «В» класс, математика', '7С класс, урок'])
+def test_the_customers_class_letter_typed_in_cyrillic_stays_in_latin(brief):
+    letter = 'B' if '«В»' in brief else 'C'
+    assert facts.without_class_letters(f'7-«{letter}» sinf', trusting(brief)) == (f'7-«{letter}» sinf', False)

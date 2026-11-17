@@ -1619,3 +1619,12 @@ tests/test_category_facts.py::test_a_situation_a_plural_act_or_a_convention_cent
 tests/test_category_facts.py::test_a_code_pointed_at_after_the_customer_named_one_stays[ushbu]
 tests/test_category_facts.py::test_a_code_pointed_at_after_the_customer_named_one_stays[nastoyashchiy]
 tests/test_category_facts.py::test_an_issuers_act_a_regulation_and_a_convention_are_still_legal_sentences
+
+# Stage-2 re-audit round 2, no class letter: a letter after a number is a class's only quoted, after a hyphen or
+# beside a class word, so the customer's "1С"/"1C" position and "3D" stay whole, and their class letter typed in
+# Cyrillic ("7 «В» класс", "1С") meets the paper's Latin one
+tests/test_category_facts.py::test_a_letter_after_a_number_that_names_no_class_is_kept_whole[uz-cyrillic-1c]
+tests/test_category_facts.py::test_a_letter_after_a_number_that_names_no_class_is_kept_whole[3d]
+tests/test_category_facts.py::test_the_customers_class_letter_typed_in_cyrillic_stays_in_latin
+tests/test_category_finish_pdf.py::test_a_cover_letters_1c_position_is_kept_whole[uz-from-ru]
+tests/test_category_finish_pdf.py::test_a_cover_letters_1c_position_is_kept_whole[en-from-ru]
