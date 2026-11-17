@@ -71,7 +71,7 @@
    },
    "example": {
     "uz": "«Namuna Savdo» MChJ",
-    "ru": "ООО «Namuna Savdo»",
+    "ru": "ООО «Намуна Савдо»",
     "en": "Namuna Savdo LLC"
    },
    "kind": "org",
@@ -468,7 +468,7 @@
    "need": "required",
    "share": 0.24,
    "elastic": true,
-   "write": "For this agenda item: one clause per decision the customer gave, in their order and meaning, in the customary form (uz tasdiqlansin, qabul qilinsin, tuzilsin, tugatilsin; ru infinitive Утвердить ...; en passive “... is approved”). The responsible person and the deadline, only as given, end the clause in brackets “(mas’ul: ...; muddat: ...)”. No decision given: no items (the template draws two numbered blanks); never draft or propose one, even when asked.",
+   "write": "For this agenda item: one clause per decision the customer gave, in their order and meaning, in the customary form (uz tasdiqlansin, qabul qilinsin, tuzilsin, tugatilsin; ru infinitive Утвердить ...; en passive “... is approved”). The responsible person and the deadline, only as given, end the clause in brackets: uz “(mas’ul: ...; muddat: ...)”, ru «(ответственный: ...; срок: ...)», en “(responsible: ...; deadline: ...)”. No decision given: no items (the template draws two numbered blanks); never draft or propose one, even when asked.",
    "block": "clauses",
    "grounded": true,
    "group": "items",
@@ -612,9 +612,9 @@
     "en": "Some facts were not in your message or did not match it, so they were left blank: fill them in by hand. The minutes never propose decisions."
    },
    "shorter": {
-    "uz": "Yozgan ma’lumotlaringiz so‘ralgan sahifaga yetmadi, shuning uchun bayonnoma qisqaroq: hech narsa o‘ylab topilmadi.",
-    "ru": "Написанного вами не хватило на столько страниц, поэтому протокол короче: ничего не выдумано.",
-    "en": "What you wrote did not fill the pages asked for, so the minutes are shorter: nothing was made up."
+    "uz": "Bayonnoma {asked} sahifa o‘rniga {pages} sahifa bo‘ldi: yozgan ma’lumotlaringiz shunga yetdi, hech narsa o‘ylab topilmadi.",
+    "ru": "Протокол занял {pages} стр. из {asked}: написанного вами хватило на столько, ничего не выдумано.",
+    "en": "The minutes take {pages} of the {asked} pages asked for: what you wrote filled this much, and nothing was made up."
    }
   }
  },

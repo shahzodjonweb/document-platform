@@ -57,7 +57,7 @@
    },
    "example": {
     "uz": "«Namuna Kiyim»",
-    "ru": "«Namuna Kiyim»",
+    "ru": "«Намуна Кийим»",
     "en": "“Namuna Kiyim”"
    },
    "kind": "org",
@@ -562,7 +562,7 @@
    "share": 0.04,
    "elastic": false,
    "from": 3,
-   "write": "One sentence: the business, for whom, what, and its difference, built only from stated facts, at most 40 words. No slogan, imperative, superlative or second person. No difference given: the sentence ends with “Farqi: ____”.",
+   "write": "One sentence: the business, for whom, what, and its difference, built only from stated facts, at most 40 words. No slogan, imperative, superlative or second person. No difference given: the sentence ends with “Farqi: ____” (ru “Отличие: ____”, en “Difference: ____”).",
    "block": "callout",
    "grounded": true,
    "words": [
@@ -896,9 +896,9 @@
   "attach": true,
   "notices": {
    "finished": {
-    "uz": "✅ Reja tayyor. «Taklif» belgisi bor tadbirlarni men qo‘shdim: ularni o‘qib chiqing.",
-    "ru": "✅ План готов. Мероприятия с пометкой «предложение» добавил я: проверьте их.",
-    "en": "✅ Your plan is ready. Activities tagged “proposed” were added by me: please read them."
+    "uz": "✅ Reja tayyor. «Taklif» belgisi bor tadbirlar taklif sifatida qo‘shilgan: ularni o‘qib chiqing.",
+    "ru": "✅ План готов. Мероприятия с пометкой «предложение» добавлены как предложения: проверьте их.",
+    "en": "✅ Your plan is ready. Activities tagged “proposed” are added as suggestions: please read them."
    },
    "blanks": {
     "uz": "Ba’zi raqam va ma’lumotlar xabaringizda yo‘q edi, shuning uchun bo‘sh chiziq qoldirildi: ularni qo‘lda to‘ldiring.",
@@ -906,9 +906,9 @@
     "en": "Some figures and facts were not in your message, so blank lines were left: fill them in by hand."
    },
    "shorter": {
-    "uz": "Reja siz so‘ragan sahifadan qisqaroq chiqdi: yozgan ma’lumotlaringiz shunga yetdi, hech narsa to‘qilmadi.",
-    "ru": "План получился короче, чем вы просили: написанного хватило на столько, ничего не выдумано.",
-    "en": "The plan came out shorter than you asked: what you wrote fills this much, and nothing was made up."
+    "uz": "Reja {asked} sahifa o‘rniga {pages} sahifa bo‘ldi: yozgan ma’lumotlaringiz shunga yetdi, hech narsa to‘qilmadi.",
+    "ru": "План занял {pages} стр. из {asked}: написанного хватило на столько, ничего не выдумано.",
+    "en": "The plan takes {pages} of the {asked} pages asked for: what you wrote filled this much, and nothing was made up."
    }
   }
  },

@@ -837,7 +837,7 @@
    "need": "optional",
    "share": 0.04,
    "elastic": true,
-   "write": "Two or three items, each built on a customer fact: label one of price, sales or promotion, text one or two sentences in the plan’s future tense (rejalashtiriladi). Price refers to the products table and names no new price; sales names the channels the customer named; promotion names a budget only as given. Fewer than two such facts: no items.",
+   "write": "Two or three items, each built on a customer fact: label one of price, sales or promotion, text one or two sentences in the plan’s future tense (uz “rejalashtiriladi”, ru “планируется”, en “is planned”). Price refers to the products table and names no new price; sales names the channels the customer named; promotion names a budget only as given. Fewer than two such facts: no items.",
    "block": "list",
    "grounded": true,
    "max_items": 3
@@ -872,7 +872,7 @@
    "share": 0.04,
    "elastic": false,
    "from": 4,
-   "write": "One row per position the customer named: label the position, then the number of people and the monthly pay as given, and leave the last cell empty (code multiplies). Only an average pay: one row Xodimlar with the number and the average. No pay given: no rows, and the number of staff is a sentence of the operations.",
+   "write": "One row per position the customer named: label the position, then the number of people and the monthly pay as given, and the total last: empty when both the number and the pay are given (code multiplies), otherwise a monthly pay fund the customer typed for that position, copied as typed. Only an average pay: one row named “Xodimlar” (ru “Персонал”, en “Staff”) with the number and the average. No pay given: no rows, and the number of staff is a sentence of the operations.",
    "block": "table",
    "grounded": true,
    "max_items": 40,
@@ -960,7 +960,7 @@
    "need": "required",
    "share": 0.06,
    "elastic": false,
-   "write": "One row per thing the money buys, in the customer’s order: label the item, then the quantity and the unit price when given, and the amount last. Leave the amount empty when quantity and price are given (code multiplies); a line with only an amount carries it in the amount. Code adds the total. Nothing given: no rows.",
+   "write": "One row per thing the money buys, in the customer’s order: label the item, then the quantity and the unit price when given, and the amount last. Leave the amount empty only when both the quantity and the unit price are given (code multiplies); a line given as an amount carries that amount exactly as typed, and the quantity or price it lacks stays empty. Code adds the total. Nothing given: no rows.",
    "block": "table",
    "grounded": true,
    "max_items": 40,
@@ -1200,7 +1200,7 @@
    "share": 0.06,
    "elastic": false,
    "from": 3,
-   "write": "Three to six rows, each a risk tied to a fact of this plan (the loan, the equipment, staff, raw materials, the sales channel the customer named): label the risk, the measure last, as a plan (rejalashtiriladi) that uses only resources the customer stated. No impact rating, insurer, partner or number.",
+   "write": "Three to six rows, each a risk tied to a fact of this plan (the loan, the equipment, staff, raw materials, the sales channel the customer named): label the risk, the measure last, as a plan (uz “rejalashtiriladi”, ru “планируется”, en “is planned”) that uses only resources the customer stated. No impact rating, insurer, partner or number.",
    "block": "table",
    "grounded": true,
    "max_items": 6,
@@ -1344,9 +1344,9 @@
   "attach": true,
   "notices": {
    "finished": {
-    "uz": "✅ Reja tayyor. Tavakkalchiliklar jadvalini o‘qib chiqing: uni men taklif qildim. Hisob-kitoblar faqat siz yozgan raqamlardan.",
-    "ru": "✅ План готов. Проверьте таблицу рисков: её предложил я. Расчёты сделаны только из ваших цифр.",
-    "en": "✅ Your plan is ready. Please read the risk table: it is my suggestion. The calculations use only your figures."
+    "uz": "✅ Reja tayyor. Tavakkalchiliklar jadvalini o‘qib chiqing: u taklif sifatida tuzilgan. Hisob-kitoblar faqat siz yozgan raqamlardan.",
+    "ru": "✅ План готов. Проверьте таблицу рисков: она составлена как предложение. Расчёты сделаны только из ваших цифр.",
+    "en": "✅ Your plan is ready. Please read the risk table: it is drafted as a suggestion. The calculations use only your figures."
    },
    "blanks": {
     "uz": "Ba’zi ma’lumotlar xabaringizda yo‘q edi, shuning uchun bo‘sh chiziq qoldirildi: ularni qo‘lda to‘ldiring yoki raqamlarni yozib, rejani qayta so‘rang.",
@@ -1354,9 +1354,9 @@
     "en": "Some facts were not in your message, so blank lines were left: fill them in by hand, or send the figures and ask for the plan again."
    },
    "shorter": {
-    "uz": "Reja siz so‘ragan sahifadan qisqaroq chiqdi: yozgan ma’lumotlaringiz shunga yetdi, yozilmagani o‘ylab topilmadi.",
-    "ru": "План получился короче, чем вы просили: ваших данных хватило на столько, а то, что не указано, не выдумывалось.",
-    "en": "The plan came out shorter than you asked: your facts filled this much, and nothing you left out was made up."
+    "uz": "Reja {asked} sahifa o‘rniga {pages} sahifa bo‘ldi: yozgan ma’lumotlaringiz shunga yetdi, yozilmagani o‘ylab topilmadi.",
+    "ru": "План занял {pages} стр. из {asked}: ваших данных хватило на столько, а то, что не указано, не выдумывалось.",
+    "en": "The plan takes {pages} of the {asked} pages asked for: your facts filled this much, and nothing you left out was made up."
    }
   }
  },

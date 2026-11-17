@@ -115,7 +115,7 @@
    },
    "example": {
     "uz": "«Namuna Savdo» MChJ",
-    "ru": "ООО «Namuna Savdo»",
+    "ru": "ООО «Намуна Савдо»",
     "en": "Namuna Savdo LLC"
    },
    "kind": "org",
@@ -360,7 +360,7 @@
    "need": "usual",
    "share": 0.12,
    "elastic": true,
-   "write": "A safety or work instruction only (empty for rules): a lead-in such as “Xodim ish boshlashdan oldin:” with three to six checks (workplace, equipment, tools, lighting), and that faulty equipment is not used. No number the customer did not give; no claim about clothing or protective equipment. One clause or list item per item; a lead-in that ends with a colon goes in label and its items, one action each, in text joined by “ | ”; a single clause has only text. A clause that must not be missed (at most one a chapter, four a paper) is one sentence opening with Diqqat! (ru Внимание!, en Caution!): the template boxes it.",
+   "write": "A safety or work instruction only (empty for rules): a lead-in such as uz “Xodim ish boshlashdan oldin:”, ru “Перед началом работы работник:”, en “Before work the Employee:” with three to six checks (workplace, equipment, tools, lighting), and that faulty equipment is not used. No number the customer did not give; no claim about clothing or protective equipment. The usual practice of the topic belongs here and is allowed although the row is grounded; it names no number, person, organisation, date or law the customer did not give. One clause or list item per item; a lead-in that ends with a colon goes in label and its items, one action each, in text joined by “ | ”; a single clause has only text. A clause that must not be missed (at most one a chapter, four a paper) is one sentence opening with Diqqat! (ru Внимание!, en Caution!): the template boxes it.",
    "block": "clauses",
    "grounded": true,
    "max_items": 40,
@@ -378,7 +378,7 @@
    "need": "usual",
    "share": 0.4,
    "elastic": true,
-   "write": "A safety or work instruction only, and the longest chapter: the customer’s points first, then the usual steps of the topic, one lead-in per operation with three to six items in the order they are done; the prohibitions under “Ish jarayonida taqiqlanadi:” as verbal nouns. For a work instruction the clauses are the steps in order. One clause or list item per item; a lead-in that ends with a colon goes in label and its items, one action each, in text joined by “ | ”; a single clause has only text. A clause that must not be missed (at most one a chapter, four a paper) is one sentence opening with Diqqat! (ru Внимание!, en Caution!): the template boxes it.",
+   "write": "A safety or work instruction only, and the longest chapter: the customer’s points first, then the usual steps of the topic, one lead-in per operation with three to six items in the order they are done; the prohibitions under uz “Ish jarayonida taqiqlanadi:”, ru “Во время работы запрещается:”, en “During work it is prohibited to:” as verbal nouns. The usual practice of the topic belongs here and is allowed although the row is grounded; it names no number, person, organisation, date or law the customer did not give. For a work instruction the clauses are the steps in order. One clause or list item per item; a lead-in that ends with a colon goes in label and its items, one action each, in text joined by “ | ”; a single clause has only text. A clause that must not be missed (at most one a chapter, four a paper) is one sentence opening with Diqqat! (ru Внимание!, en Caution!): the template boxes it.",
    "block": "clauses",
    "grounded": true,
    "max_items": 40,
@@ -396,7 +396,7 @@
    "need": "usual",
    "share": 0.15,
    "elastic": true,
-   "write": "A safety or work instruction only: what to do when something goes wrong (an accident, a fire, a spill, a breakdown, a complaint), in this order: stop, warn, report, first aid and an ambulance, leave by the evacuation route, keep the scene. Never an instruction to fight a fire or use any equipment. Who to tell: only the phone numbers the customer gave; any other number is “____”. One clause or list item per item; a lead-in that ends with a colon goes in label and its items, one action each, in text joined by “ | ”; a single clause has only text. A clause that must not be missed (at most one a chapter, four a paper) is one sentence opening with Diqqat! (ru Внимание!, en Caution!): the template boxes it.",
+   "write": "A safety or work instruction only: what to do when something goes wrong (an accident, a fire, a spill, a breakdown, a complaint), in this order: stop, warn, report, first aid and an ambulance, leave by the evacuation route, keep the scene. Never an instruction to fight a fire or use any equipment. Who to tell: only the phone numbers the customer gave; any other number is “____”. The usual practice of the topic belongs here and is allowed although the row is grounded; it names no number, person, organisation, date or law the customer did not give. One clause or list item per item; a lead-in that ends with a colon goes in label and its items, one action each, in text joined by “ | ”; a single clause has only text. A clause that must not be missed (at most one a chapter, four a paper) is one sentence opening with Diqqat! (ru Внимание!, en Caution!): the template boxes it.",
    "block": "clauses",
    "grounded": true,
    "max_items": 40,
@@ -414,7 +414,7 @@
    "need": "usual",
    "share": 0.07,
    "elastic": true,
-   "write": "A safety or work instruction only: two to four clauses: put things back, tidy up, hand over, report defects. One clause or list item per item; a lead-in that ends with a colon goes in label and its items, one action each, in text joined by “ | ”; a single clause has only text. A clause that must not be missed (at most one a chapter, four a paper) is one sentence opening with Diqqat! (ru Внимание!, en Caution!): the template boxes it.",
+   "write": "A safety or work instruction only: two to four clauses: put things back, tidy up, hand over, report defects. The usual practice of the topic belongs here and is allowed although the row is grounded; it names no number, person, organisation, date or law the customer did not give. One clause or list item per item; a lead-in that ends with a colon goes in label and its items, one action each, in text joined by “ | ”; a single clause has only text. A clause that must not be missed (at most one a chapter, four a paper) is one sentence opening with Diqqat! (ru Внимание!, en Caution!): the template boxes it.",
    "block": "clauses",
    "grounded": true,
    "max_items": 40,
@@ -428,7 +428,7 @@
    "need": "usual",
    "share": 0.45,
    "elastic": true,
-   "write": "Rules of conduct only: one chapter per topic of the customer (two to six chapters, as many as the topics), each with 2 to 6 clauses. The heading is yours: nominative, at most 6 words, from the customer’s topic (Ish vaqti, Kiyinish va tashqi ko‘rinish, Mijozlar bilan muomala). The customer’s hours, rules and numbers exactly as typed; prohibitions end in “taqiqlanadi”. Unused chapters stay empty. One clause or list item per item; a lead-in that ends with a colon goes in label and its items, one action each, in text joined by “ | ”; a single clause has only text. A clause that must not be missed (at most one a chapter, four a paper) is one sentence opening with Diqqat! (ru Внимание!, en Caution!): the template boxes it.",
+   "write": "Rules of conduct only: one chapter per topic of the customer (two to six chapters, as many as the topics), each with 2 to 6 clauses. The heading is yours: nominative, at most 6 words, from the customer’s topic (Ish vaqti, Kiyinish va tashqi ko‘rinish, Mijozlar bilan muomala). The customer’s hours, rules and numbers exactly as typed; prohibitions end in uz “taqiqlanadi”, ru “запрещается”, en “is prohibited”. Unused chapters stay empty. One clause or list item per item; a lead-in that ends with a colon goes in label and its items, one action each, in text joined by “ | ”; a single clause has only text. A clause that must not be missed (at most one a chapter, four a paper) is one sentence opening with Diqqat! (ru Внимание!, en Caution!): the template boxes it.",
    "block": "clauses",
    "grounded": true,
    "max_items": 40,
@@ -605,9 +605,9 @@
     "en": "Some figures and facts were not in your message, so blank lines were left: fill them in by hand."
    },
    "shorter": {
-    "uz": "Hujjat so‘ralganidan qisqaroq chiqdi: mavzuda ko‘proq aniq ma’lumot yo‘q edi, to‘ldirish uchun gap qo‘shilmadi.",
-    "ru": "Документ получился короче, чем вы просили: по теме больше нечего сказать, лишнего не добавляли.",
-    "en": "The paper came out shorter than you asked: the topic holds no more, so nothing was padded."
+    "uz": "Hujjat {asked} sahifa o‘rniga {pages} sahifa bo‘ldi: mavzuda ko‘proq aniq ma’lumot yo‘q edi, to‘ldirish uchun gap qo‘shilmadi.",
+    "ru": "Документ занял {pages} стр. из {asked}: по теме больше нечего сказать, лишнего не добавлено.",
+    "en": "The paper takes {pages} of the {asked} pages asked for: the topic holds no more, so nothing was padded."
    }
   }
  },

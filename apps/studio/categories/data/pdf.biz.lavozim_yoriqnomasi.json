@@ -58,7 +58,7 @@
    },
    "example": {
     "uz": "Samarqand shahar 12-sonli umumiy o‘rta ta’lim maktabi",
-    "ru": "ООО «Namuna Savdo»",
+    "ru": "ООО «Намуна Савдо»",
     "en": "Bahor Foods LLC"
    },
    "kind": "org",
@@ -109,7 +109,7 @@
    },
    "example": {
     "uz": "Maktab direktori",
-    "ru": "Директор ООО «Namuna Savdo»",
+    "ru": "Директор ООО «Намуна Савдо»",
     "en": "Director"
    },
    "kind": "line",
@@ -361,7 +361,7 @@
    "need": "required",
    "share": 0.18,
    "elastic": true,
-   "write": "Five one-sentence clauses in this order: the opening formula naming the organisation (if given), the unit (if given) and the position, each short name defined once (uz “Mazkur lavozim yo‘riqnomasi ... (keyingi o‘rinlarda — Maktab) ... (keyingi o‘rinlarda — O‘qituvchi) ... belgilaydi.”); to whom the post reports (as given, else “bevosita rahbariga”); appointment and dismissal by order of the head (the approver’s post when given, else the organisation’s short name and “rahbari”); who stands in (as given, else “belgilangan tartibda tayinlangan shaxs”); what the post follows in its work (qonunchilik hujjatlari, the internal work rules, the charter for a type that has one, this instruction). One clause per item; a lead-in that ends with a colon goes in label and its dash items, one sentence each, in text joined by “ | ”; a single clause has only text.",
+   "write": "Five one-sentence clauses in this order: the opening formula naming the organisation (if given), the unit (if given) and the position, each short name defined once (uz “Mazkur lavozim yo‘riqnomasi ... (keyingi o‘rinlarda — Maktab) ... (keyingi o‘rinlarda — O‘qituvchi) ... belgilaydi.”, ru “Настоящая должностная инструкция определяет ... (далее — Школа) ... (далее — Учитель)”, en “This job description sets ... (the School) ... (the Teacher)”); to whom the post reports (as given, else uz “bevosita rahbariga”, ru “непосредственному руководителю”, en “the line manager”); appointment and dismissal by order of the head (the approver’s post when given, else the organisation’s short name and uz “rahbari”, ru “руководитель”, en “head”); who stands in (as given, else uz “belgilangan tartibda tayinlangan shaxs”, ru “лицо, назначенное в установленном порядке”, en “a person appointed in the set manner”); what the post follows in its work (the legislation: uz “qonunchilik hujjatlari”, ru “законодательство”; the internal work rules, the charter for a type that has one, this instruction). One clause per item; a lead-in that ends with a colon goes in label and its dash items, one sentence each, in text joined by “ | ”; a single clause has only text.",
    "block": "clauses",
    "grounded": true,
    "max_items": 30
@@ -395,7 +395,7 @@
    "need": "required",
    "share": 0.38,
    "elastic": true,
-   "write": "The largest part: a lead-in (“... quyidagi vazifalarni bajaradi:”) and eight to fourteen items for three pages, one thematic lead-in per five to seven items in a longer paper, never a sub-heading. Each item one sentence in the third person singular present, starting with a checkable verb (tuzadi, yuritadi, topshiradi, nazorat qiladi). The customer’s duties first, in their order and meaning, then the usual duties of the post; a duty that needs a fact the customer did not give is written without it (belgilangan muddatda). One clause per item; a lead-in that ends with a colon goes in label and its dash items, one sentence each, in text joined by “ | ”; a single clause has only text.",
+   "write": "The largest part: a lead-in (uz “... quyidagi vazifalarni bajaradi:”, ru “... выполняет следующие обязанности:”, en “... performs the following duties:”) and eight to fourteen items for three pages, one thematic lead-in per five to seven items in a longer paper, never a sub-heading. Each item one sentence in the third person singular present, starting with a checkable verb (uz tuzadi, yuritadi, topshiradi, nazorat qiladi; ru составляет, ведёт, сдаёт, контролирует; en prepares, keeps, submits, checks). The customer’s duties first, in their order and meaning, then the usual duties of the post; a duty that needs a fact the customer did not give is written without it (uz “belgilangan muddatda”, ru “в установленный срок”, en “within the set time”). The usual practice of the post belongs here and is allowed although the row is grounded; it names no number, person, organisation, date or law the customer did not give. One clause per item; a lead-in that ends with a colon goes in label and its dash items, one sentence each, in text joined by “ | ”; a single clause has only text.",
    "block": "clauses",
    "grounded": true,
    "max_items": 30
@@ -412,7 +412,7 @@
    "need": "required",
    "share": 0.12,
    "elastic": true,
-   "write": "A lead-in (“... quyidagi huquqlarga ega:”, ru “... вправе:”, en “... has the right to:”) and four to seven items as verbal nouns: receive the information the work needs, make proposals, take part in meetings on the work, train, ask for safe conditions. Rights over subordinates, signing, spending or hiring only if the customer gave them. A closing clause: other rights as qonunchilik hujjatlari allow. One clause per item; a lead-in that ends with a colon goes in label and its dash items, one sentence each, in text joined by “ | ”; a single clause has only text.",
+   "write": "A lead-in (“... quyidagi huquqlarga ega:”, ru “... вправе:”, en “... has the right to:”) and four to seven items as verbal nouns: receive the information the work needs, make proposals, take part in meetings on the work, train, ask for safe conditions. Rights over subordinates, signing, spending or hiring only if the customer gave them. A closing clause: other rights as the legislation allows (uz “qonunchilik hujjatlari”, ru “законодательство”, en “the legislation”). The usual practice of the post belongs here and is allowed although the row is grounded; it names no number, person, organisation, date or law the customer did not give. One clause per item; a lead-in that ends with a colon goes in label and its dash items, one sentence each, in text joined by “ | ”; a single clause has only text.",
    "block": "clauses",
    "grounded": true,
    "max_items": 30
@@ -429,7 +429,7 @@
    "need": "required",
    "share": 0.08,
    "elastic": true,
-   "write": "Three clauses: for failing to do or doing badly the duties of this instruction, for offences in the work, and for material damage, each “amaldagi qonunchilikda belgilangan tartibda”. A fourth on financial liability only when the customer said such an agreement exists. No code, article, sum or list of penalties. One clause per item; a lead-in that ends with a colon goes in label and its dash items, one sentence each, in text joined by “ | ”; a single clause has only text.",
+   "write": "Three clauses: for failing to do or doing badly the duties of this instruction, for offences in the work, and for material damage, each uz “amaldagi qonunchilikda belgilangan tartibda”, ru “в порядке, установленном действующим законодательством”, en “as the legislation in force sets”. A fourth on financial liability only when the customer said such an agreement exists. No code, article, sum or list of penalties. The usual practice of the post belongs here and is allowed although the row is grounded; it names no number, person, organisation, date or law the customer did not give. One clause per item; a lead-in that ends with a colon goes in label and its dash items, one sentence each, in text joined by “ | ”; a single clause has only text.",
    "block": "clauses",
    "grounded": true,
    "max_items": 30
@@ -562,9 +562,9 @@
     "en": "Some facts were not in your message, so blank lines were left: fill them in by hand."
    },
    "shorter": {
-    "uz": "Yo‘riqnoma so‘ralganidan qisqaroq chiqdi: lavozim bo‘yicha boshqa aniq ma’lumot yo‘q edi, to‘ldirish uchun gap qo‘shilmadi.",
-    "ru": "Инструкция получилась короче, чем вы просили: по должности больше нечего сказать, лишнего не добавляли.",
-    "en": "The job description came out shorter than you asked: the post holds no more, so nothing was padded."
+    "uz": "Yo‘riqnoma {asked} sahifa o‘rniga {pages} sahifa bo‘ldi: lavozim bo‘yicha boshqa aniq ma’lumot yo‘q edi, to‘ldirish uchun gap qo‘shilmadi.",
+    "ru": "Инструкция заняла {pages} стр. из {asked}: по должности больше нечего сказать, лишнего не добавлено.",
+    "en": "The job description takes {pages} of the {asked} pages asked for: the post holds no more, so nothing was padded."
    }
   }
  },

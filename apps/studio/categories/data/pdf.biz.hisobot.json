@@ -616,9 +616,9 @@
   "attach": true,
   "notices": {
    "finished": {
-    "uz": "📊 Hisobot tayyor: unga faqat siz yozgan ma’lumotlar kirdi. Bo‘sh chiziqlarni qo‘lda to‘ldiring; jadvaldagi tire hisoblab bo‘lmasligini bildiradi.",
-    "ru": "📊 Отчёт готов: в него вошло только то, что вы написали. Пустые линии заполните от руки; прочерк в таблице значит, что расчёт невозможен.",
-    "en": "📊 Your report is ready: it holds only what you wrote. Fill in the blank lines by hand; a dash in a table means it cannot be calculated."
+    "uz": "📊 Hisobot tayyor: unga faqat siz yozgan ma’lumotlar kirdi. Bo‘sh chiziqlarni qo‘lda to‘ldiring; jadvaldagi bo‘sh katak hisoblash uchun raqam yetmaganini bildiradi.",
+    "ru": "📊 Отчёт готов: в него вошло только то, что вы написали. Пустые линии заполните от руки; пустая ячейка в таблице значит, что для расчёта не хватило цифр.",
+    "en": "📊 Your report is ready: it holds only what you wrote. Fill in the blank lines by hand; an empty cell in a table means a figure for the calculation was missing."
    },
    "blanks": {
     "uz": "Ba’zi ma’lumotlar xabaringizda yo‘q edi yoki unga mos kelmadi, shuning uchun bo‘sh chiziq qoldirildi: ularni tekshirib, qo‘lda to‘ldiring.",
@@ -626,9 +626,9 @@
     "en": "Some facts were not in your message or did not match it, so blank lines were left: check them and fill them in by hand."
    },
    "shorter": {
-    "uz": "Hisobot siz so‘ragan sahifadan qisqaroq chiqdi: yozgan ma’lumotlaringiz shunga yetdi, hech narsa o‘ylab topilmadi.",
-    "ru": "Отчёт получился короче, чем вы просили: написанного хватило на столько, ничего не выдумано.",
-    "en": "The report came out shorter than you asked: what you wrote fills this much, and nothing was made up."
+    "uz": "Hisobot {asked} sahifa o‘rniga {pages} sahifa bo‘ldi: yozgan ma’lumotlaringiz shunga yetdi, hech narsa o‘ylab topilmadi.",
+    "ru": "Отчёт занял {pages} стр. из {asked}: написанного хватило на столько, ничего не выдумано.",
+    "en": "The report takes {pages} of the {asked} pages asked for: what you wrote fills this much, and nothing was made up."
    }
   }
  },

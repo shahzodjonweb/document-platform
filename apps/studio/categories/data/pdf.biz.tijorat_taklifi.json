@@ -61,8 +61,8 @@
    },
    "example": {
     "uz": "Namuna Mebel MChJ",
-    "ru": "Namuna Mebel MChJ",
-    "en": "Namuna Mebel MChJ"
+    "ru": "ООО «Намуна Мебель»",
+    "en": "Namuna Mebel LLC"
    },
    "kind": "org",
    "need": "required",
@@ -107,7 +107,7 @@
    "id": "seller_email",
    "label": {
     "uz": "E-mail",
-    "ru": "E-mail",
+    "ru": "Эл. почта",
     "en": "E-mail"
    },
    "example": {
@@ -146,7 +146,7 @@
    },
    "example": {
     "uz": "STIR 123 456 789, h/r 2020 8000 1234 5678 9001, Namuna bank, MFO 00000",
-    "ru": "ИНН 123 456 789, р/с 2020 8000 1234 5678 9001, Namuna bank, МФО 00000",
+    "ru": "ИНН 123 456 789, р/с 2020 8000 1234 5678 9001, Намуна банк, МФО 00000",
     "en": "TIN 123 456 789, account 2020 8000 1234 5678 9001, Namuna bank, MFO 00000"
    },
    "kind": "ref",
@@ -576,7 +576,7 @@
    "need": "required",
    "share": 0.27,
    "elastic": false,
-   "write": "One row per item or service the customer listed, in their order, up to 40: label the name, then unit and quantity, then the unit price, and the amount last. Copy every figure exactly as given, with no rounding or conversion; a unit at most 10 characters (dona, kg, m2), only if given. Leave the amount empty: code multiplies quantity by price. When the customer gave only a line’s total, put it in the amount and leave the unit price empty. A price not given stays empty; never split one total into invented lines.",
+   "write": "One row per item or service the customer listed, in their order, up to 40: label the name, then unit and quantity, then the unit price, and the amount last. Copy every figure exactly as given, with no rounding or conversion; a unit at most 10 characters (dona, kg, m2), only if given. Leave the amount empty only when both the quantity and the unit price are given: code multiplies them. When the customer gave a line’s total instead, copy it into the amount exactly as typed and leave the unit price empty. A price not given stays empty; never split one total into invented lines.",
    "block": "table",
    "grounded": true,
    "max_items": 40,
@@ -781,9 +781,9 @@
     "en": "Some facts were not in your message, so blank lines were left for them: fill them in by hand."
    },
    "shorter": {
-    "uz": "Taklif siz so‘ragan sahifadan qisqaroq chiqdi: hujjatni ortiqcha matn bilan to‘ldirmaymiz.",
-    "ru": "Предложение получилось короче, чем вы просили: мы не добавляем лишний текст.",
-    "en": "The offer came out shorter than you asked: we do not pad a document."
+    "uz": "Taklif {asked} sahifa o‘rniga {pages} sahifa bo‘ldi: hujjat ortiqcha matn bilan to‘ldirilmadi.",
+    "ru": "Предложение заняло {pages} стр. из {asked}: лишний текст не добавлялся.",
+    "en": "The offer takes {pages} of the {asked} pages asked for: it is not padded with extra text."
    }
   }
  },
