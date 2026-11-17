@@ -531,6 +531,9 @@ AUTHOR_TAIL = re.compile(
     r"|author|teacher|student|supervisor|lecturer|presenter|speaker)\s*:"
     r"|(?:prepared|compiled|written|made|checked|supervised|presented)\s+by\b\s*:?)"
     r"(?P<value>[^:\n]*)$", re.IGNORECASE)
+# A title's author after a bare "by": "Inflation and its consequences by Dilnoza Karimova". Only a name of one to four
+# capitalised words or initials, none a common word, is an author's ("... Driven by Foreign Investment" is a title).
+AUTHOR_BY = re.compile(r"[\s.,;—–-]+by\s+(?P<value>(?:[^\W\d_][^\W\d_'‘’.-]*\.?[ \t]*){1,4})$")
 
 
 def today():
@@ -593,7 +596,8 @@ def _led(entry):
 
 
 def _guarded_title(title, trusted, translated, codes):
-    """A guarded paper's title, without a labelled author tail ("Tuzuvchi: …") whose name the customer never gave.
+    """A guarded paper's title, without an author tail ("Tuzuvchi: …", "… by D. Karimova") whose name the customer
+    never gave.
 
     A guarded title keeps general knowledge ("Amir Temur davri"), so it is not
     read for names; but a labelled author is a person, and a model-written one
@@ -603,7 +607,11 @@ def _guarded_title(title, trusted, translated, codes):
     """
     found = AUTHOR_TAIL.search(title)
     if found is None:
-        return title
+        found = AUTHOR_BY.search(title)
+        words = facts.WORD.findall(found.group('value')) if found is not None else []
+        if not words or not all(word[0].isupper() for word in words) \
+                or any(facts.common(word) for word in words if len(word) > 1):
+            return title
     value = found.group('value')
     if value.strip() and not _stand_in(value) and facts.supported(value, 'person', trusted, translated=translated):
         return title
