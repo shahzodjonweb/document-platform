@@ -1436,3 +1436,10 @@ tests/test_category_finish_pdf.py::test_a_translated_cover_letter_never_keeps_an
 tests/test_category_finish_pdf.py::test_a_number_written_in_words_the_customer_never_gave_is_blanked[five-years]
 tests/test_category_finish_pdf.py::test_a_number_written_in_words_the_customer_never_gave_is_blanked[project-cost]
 tests/test_category_finish_pdf.py::test_a_number_in_words_the_customer_gave_is_kept_and_a_led_fact_in_words_is_held
+
+# Stage-2 re-audit, dates: a numeric date's year is tied to its day and month, so the customer's 15.01.2025 never
+# makes the model's 15.01.2024 although 2024 is a year they wrote elsewhere; a day and month written with no year
+# tied to it may take any of their years
+tests/test_category_facts.py::test_a_numeric_dates_year_is_tied_to_its_day_and_month[other-year]
+tests/test_category_facts.py::test_a_numeric_dates_year_is_tied_to_its_day_and_month[written-apart]
+tests/test_category_finish_pdf.py::test_a_reports_date_moved_to_another_year_the_brief_names_is_not_kept

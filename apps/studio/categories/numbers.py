@@ -209,6 +209,9 @@ class Number(NamedTuple):
     needs: tuple
     # Keys it gives the customer's side beyond its needs: a date's day as a number, an amount's unscaled value.
     extra: frozenset = frozenset()
+    # What it gives the customer's side in place of its needs, when the two differ: a dated day and month gives its
+    # own year, never the "any year" its needs also accept ("d:15.1.?").
+    gives: frozenset = None
 
 
 def canon(number):
@@ -306,9 +309,9 @@ class _Reader:
     def free(self, start, end):
         return 1 not in self.taken[start:end]
 
-    def add(self, start, end, kind, value, needs, extra=()):
+    def add(self, start, end, kind, value, needs, extra=(), gives=None):
         self.numbers.append(Number(start, end, kind, value, tuple(frozenset(need) for need in needs),
-                                   frozenset(extra)))
+                                   frozenset(extra), None if gives is None else frozenset(gives)))
         self.take(start, end)
 
     def read(self, words=False):
@@ -330,9 +333,13 @@ class _Reader:
                     year, month, day = match.group(1), match.group(3), match.group(4)
                 if not _valid(day, month):
                     continue
-                key = _date_key(day, month)
-                # Day and month are a pair here, never two plain numbers: "03.11.2026" does not give "3" or "11".
-                self.add(*match.span(), 'date', key, [{key}, {str(int(year))}], {str(int(year)), f'{key}.{int(year)}'})
+                key, year = _date_key(day, month), str(int(year))
+                # Day and month are a pair here, never two plain numbers: "03.11.2026" does not give "3" or "11". And
+                # the year is tied to them: the customer's "15.01.2025" never makes the model's "15.01.2024", though
+                # 2024 is a year they wrote elsewhere. A day and month they wrote with no year tied to it ("15-yanvar",
+                # "2025-yil 15-yanvar", "15.01") gives "d:15.1.?", which any of their years may complete.
+                self.add(*match.span(), 'date', key, [{f'{key}.{year}', f'{key}.?'}, {year}],
+                         gives={key, f'{key}.{year}', year})
         for match in RANGE.finditer(text):
             month = _month(match.group(3))
             first, second = match.group(1), match.group(2)
@@ -342,23 +349,24 @@ class _Reader:
             if not self.free(*match.span()):
                 continue
             self.add(match.start(1), match.end(1), 'date', _date_key(first, month), [{_date_key(first, month)}],
-                     {str(int(first))})
+                     {str(int(first)), _date_key(first, month) + '.?'})
             self.add(match.start(2), match.end(), 'date', _date_key(second, month), [{_date_key(second, month)}],
-                     {str(int(second))})
+                     {str(int(second)), _date_key(second, month) + '.?'})
         for match in DAY_MONTH.finditer(text):
             month = _month(match.group(2))
             if month is None or not _valid(match.group(1), month) or not self.free(*match.span()) \
                     or _small(text, match.start(), *match.span(2)):
                 continue
             key = _date_key(match.group(1), month)
-            self.add(*match.span(), 'date', key, [{key}], {str(int(match.group(1)))})
+            self.add(*match.span(), 'date', key, [{key}], {str(int(match.group(1))), key + '.?'})
         for match in MONTH_DAY.finditer(text):
             month = _month(match.group(1))
             days = [day for day in (match.group(2), match.group(3)) if day]
             if month is None or not all(_valid(day, month) for day in days) or not self.free(*match.span()):
                 continue
             needs = [{_date_key(day, month)} for day in days]
-            self.add(*match.span(), 'date', _date_key(days[0], month), needs, {str(int(day)) for day in days})
+            self.add(*match.span(), 'date', _date_key(days[0], month), needs,
+                     {str(int(day)) for day in days} | {_date_key(day, month) + '.?' for day in days})
         for match in TIME.finditer(text):
             if not self.free(*match.span()):
                 continue
@@ -408,8 +416,9 @@ class _Reader:
                 if kind == 'decimal' and pattern is DOTTED and re.fullmatch(r'\d{1,2}[.]\d{1,2}', token):
                     day, month = token.split('.')
                     if _valid(day, month):
-                        # "03.11" is a date as often as a decimal.
+                        # "03.11" is a date as often as a decimal, with no year tied to it.
                         needs.add(_date_key(day, month))
+                        extra.add(_date_key(day, month) + '.?')
                 if power:
                     extra |= needs
                     found = [item * (Decimal(10) ** power) for item in found]
@@ -557,8 +566,11 @@ def values(text):
     """Every value `text` gives as a set of keys: what a number the model wrote is looked up in."""
     keys = set()
     for number in found(text, words=True):
-        for need in number.needs:
-            keys |= need
+        if number.gives is not None:
+            keys |= number.gives
+        else:
+            for need in number.needs:
+                keys |= need
         keys |= number.extra
     keys |= _words(text)
     return keys

@@ -706,3 +706,17 @@ def test_a_counted_copy_shares_the_respelled_words_rather_than_folding_the_sourc
     counted = facts.counting(known, 4)
     assert counted is not known and counted.respelled is known.respelled
     assert facts.counting(trusting('Pedagogik kengash'), 3).person('Namunova', True) is False
+
+
+@pytest.mark.parametrize('brief, written, kept', [
+    ('2024-yil faoliyati bo‘yicha hisobot, sanasi 15.01.2025', '15.01.2024', False),
+    ('2024-yil faoliyati bo‘yicha hisobot, sanasi 15.01.2025', '15.01.2025', True),
+    ('2024-yil faoliyati bo‘yicha hisobot, sanasi 15.01.2025', '2025-01-15', True),
+    ('2024-yil faoliyati bo‘yicha hisobot, sanasi 15.01.2025', '15-yanvar', True),
+    ('Majlis 2025-yil 12-mayda bo‘ldi, 2024-yil natijalari', '12.05.2025', True),
+    ('Majlis 12-may kuni, 2025-yil rejasi', '12.05.2025', True),
+    ('Sanasi 15.01', '15.01.2025', False),
+    ('Sanasi 15.01, 2025-yil', '15.01.2025', True),
+], ids=['other-year', 'same', 'iso', 'no-year', 'written-with-year', 'written-apart', 'year-not-given', 'dotted'])
+def test_a_numeric_dates_year_is_tied_to_its_day_and_month(brief, written, kept):
+    assert all(numbers.known(number, numbers.values(brief)) for number in numbers.found(written)) is kept

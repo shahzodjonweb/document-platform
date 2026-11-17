@@ -882,3 +882,20 @@ def test_the_plain_fallback_of_an_ariza_draws_every_blank_its_policy_asks():
     lines = {item['label']: item['text'] for item in flat['sections'][0]['items']}
     assert lines['Your full name'] == 'Malika Qodirova' and lines['Addressee: organisation'] == '____'
     assert flat['title'] == 'Official request' and flat['sections'][1]['body'] == 'I ask for leave.'
+
+
+# ---------------------------------------------------------------- stage-2 re-audit: figures in words
+
+
+COVER_RU = ('Напишите сопроводительное письмо на должность менеджера по продажам, я Малика Кодирова, работала '
+            'в рознице.')
+REPORT_UZ = 'Namuna Savdo MChJ uchun 2025-yil faoliyati bo‘yicha hisobot yozib bering, savdo bo‘limi.'
+
+
+def test_a_reports_date_moved_to_another_year_the_brief_names_is_not_kept():
+    report = catalogue.get('pdf.biz.hisobot')
+    data = draft(report, prompt=REPORT_UZ + ' Hisobot sanasi 15.01.2026.', length=6)
+    made, _, codes = finished(data, answer(data, facts={'items': [{'label': 'report_date', 'text': '15.01.2025'}]}))
+    assert 'report_date' not in facts_of(made) and codes == ['fact:report_date']
+    made, _, codes = finished(data, answer(data, facts={'items': [{'label': 'report_date', 'text': '15.01.2026'}]}))
+    assert facts_of(made)['report_date'] == '15.01.2026' and codes == []
