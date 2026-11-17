@@ -1169,6 +1169,9 @@ def callout(ctx, place):
         commands.append(('BOX', (0, 0), (-1, -1), 0.6, INK))
     else:
         commands.append(('LINEBEFORE', (0, 0), (0, -1), 1.6, INK))
+    if (label or heading) and len(rows) > 1:
+        # The bold first row names the box: it goes over a page's foot with the box's first line, never alone.
+        commands.append(('NOSPLIT', (0, 0), (-1, 1)))
     drawn.setStyle(TableStyle(commands))
     return _finish(place, [drawn], before=ctx.leading * 0.5, after=ctx.leading * 0.5)
 

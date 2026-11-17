@@ -21,7 +21,7 @@
   "default": 25,
   "min": 12,
   "max": 35,
-  "note": "Sheets of the PDF, the title page and the contents included. Below 12 is built as 12: the title page, the contents, a two-page Kirish, three chapters of two pages each (a kafedra plan may have three at any length), the Xulosa and the references are 12 page starts and fills. The fixed parts’ shares stand for the room the template’s page starts, headings and boxes take, which skeleton.words cannot see at its generic words a page: they are set so the shortest and the default length fit at about 0.9 of each part’s top word count with no trim below 0.7 (rendered through the paper engine with stand-in blocks), a longer paper running short for the top-up to fill. A words-a-page figure per template would replace this."
+  "note": "Sheets of the PDF, the title page and the contents included. Below 12 is built as 12: the title page, the contents, a two-page Kirish, three chapters of two pages each (a kafedra plan may have three at any length), the Xulosa and the references are 12 page starts and fills. An appendix starts a page of its own, so it comes from 13 pages, where the shortest paper’s page starts leave it one, and is written in 40 to 250 words, its share standing for its page. The fixed parts’ shares stand for the room the template’s page starts, headings and boxes take, which skeleton.words cannot see at its generic words a page: they are set so the shortest and the default length fit at about 0.9 of each part’s top word count with no trim below 0.7 (rendered through the paper engine with stand-in blocks), a longer paper running short for the top-up to fill. A words-a-page figure per template would replace this."
  },
  "questions": {
   "default": 0,
@@ -629,10 +629,15 @@
    },
    "heading_mode": "fixed",
    "need": "optional",
-   "share": 0.04,
+   "share": 0.08,
    "elastic": false,
    "block": "list",
    "when": "cue:appendix",
+   "from": 13,
+   "words": [
+    40,
+    250
+   ],
    "max_items": 40,
    "write": "Only when the customer asks for an appendix: material they supplied (their data, a questionnaire, a list of terms), or a glossary of this paper’s terms in your own words, one item each (label the term or the title, text its content). Never data, forms or sources of your own."
   }

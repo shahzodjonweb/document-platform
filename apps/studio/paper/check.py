@@ -331,7 +331,7 @@ def expect_for(artifact, content, *, entry, template, locale, pages, cues=frozen
     return {
         'frames': metadata.get('frames'), 'furniture': metadata.get('furniture'),
         'rule': raw['page_rule'].get('kind', 'flow'), 'rule_pages': raw['page_rule'].get('pages'),
-        'quoted': pages, 'longer': LONGER in (metadata.get('warnings') or ()),
+        'quoted': pages + int(metadata.get('uncounted') or 0), 'longer': LONGER in (metadata.get('warnings') or ()),
         'facts': list(dict.fromkeys(facts)), 'labels': list(dict.fromkeys(words)), 'locale': locale,
         'stub_min': stub, 'warnings': list(metadata.get('warnings') or ()), 'gutter': gutter,
     }

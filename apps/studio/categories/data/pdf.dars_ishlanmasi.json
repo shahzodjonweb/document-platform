@@ -27,7 +27,7 @@
     "default": 2
    }
   ],
-  "note": "2 pages is the compact plan (no outline table) and the shortest: the one-page skeleton is deferred, and so a handout asked for on one page is built on 2 until a handout may have a minimum of its own. One lesson fits 8 pages. A handout defaults to 2 pupil pages with its answer key after the tasks; its parts have fixed words and its template holds at most 3, so a longer handout asked for comes out at 2 or 3 and the review says it is shorter (length.by_cue cannot yet hold a maximum). The fixed parts’ shares stand for the room the template’s page starts, headings and boxes take, which skeleton.words cannot see at its generic words a page: they are set so the shortest and the default length fit at about 0.9 of each part’s top word count with no trim below 0.7 (rendered through the paper engine with stand-in blocks), a longer paper running short for the top-up to fill. A words-a-page figure per template would replace this."
+  "note": "2 pages is the compact plan (no outline table) and the shortest: the one-page skeleton is deferred, and so a handout asked for on one page is built on 2 until a handout may have a minimum of its own. One lesson fits 8 pages. A handout defaults to 2 pupil pages with its answer key after the tasks; its parts have fixed words and its template holds at most 3, so a longer handout asked for comes out at 2 or 3 and the review says it is shorter (length.by_cue cannot yet hold a maximum). The compact plan has no room for expected results or group tasks beside its stages, so both come from 3 pages. A cover is a sheet before the quoted pages and a handout’s answer key a sheet after them (each template’s page_rule.uncounted): the count is of body pages, as the research counts them. The fixed parts’ shares stand for the room the template’s page starts, headings and boxes take, which skeleton.words cannot see at its generic words a page: they are set so the shortest and the default length fit at about 0.9 of each part’s top word count with no trim below 0.7 (rendered through the paper engine with stand-in blocks), a longer paper running short for the top-up to fill. A words-a-page figure per template would replace this."
  },
  "questions": {
   "default": 0,
@@ -438,6 +438,7 @@
    "elastic": false,
    "block": "kv_table",
    "when": "cue:results",
+   "from": 3,
    "words": [
     12,
     60
@@ -630,6 +631,7 @@
    "elastic": false,
    "block": "table",
    "when": "cue:group",
+   "from": 3,
    "max_items": 4,
    "columns": [
     {

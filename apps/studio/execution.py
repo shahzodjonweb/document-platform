@@ -403,7 +403,9 @@ def execute_generation(job,output_dir):
             from .categories import finish as category_finish,skeleton
             from .categories.prompting import block
             from .filling import top_up
-            longer=top_up(cfg,data,content,skeleton.pages(data),artifacts[0]['page_count'],job=job,deadline=deadline,
+            # A page the quote leaves out (a lesson's cover, a handout's key) is no page of the body being filled.
+            drawn=artifacts[0]['page_count']-int(artifacts[0]['metadata'].get('uncounted') or 0)
+            longer=top_up(cfg,data,content,skeleton.pages(data),drawn,job=job,deadline=deadline,
                           only=fillable,rules=block(entry))
             if longer is not content:
                 from . import quality

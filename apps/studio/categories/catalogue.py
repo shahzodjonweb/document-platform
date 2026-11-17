@@ -418,6 +418,8 @@ def _template_problems(name, raw, entries):
             if unknown:
                 problems.append(f'{at}: unknown fields {sorted(unknown)} {where}')
             problems += [f'{at}: {text} {where}' for text in _when_problems(place.get('when'), fields, parts, cues)]
+        problems += [f'page_rule uncounted: {text} {where}' for when in raw['page_rule'].get('uncounted', ())
+                     for text in _when_problems(when, fields, parts, cues)]
         unknown = set(raw['furniture'].get('header', ())) - set(fields)
         if unknown:
             problems.append(f'furniture: header names unknown fields {sorted(unknown)} {where}')

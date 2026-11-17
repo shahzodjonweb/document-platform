@@ -39,7 +39,10 @@
  "page_rule": {
   "kind": "count",
   "trim": true,
-  "stub_min": 0.12
+  "stub_min": 0.12,
+  "uncounted": [
+   "cue:cover"
+  ]
  },
  "furniture": {
   "first": "number",
