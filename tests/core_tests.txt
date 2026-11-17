@@ -1125,3 +1125,19 @@ tests/test_paper_engine.py::test_a_keep_group_taller_than_any_page_starts_where_
 tests/test_paper_engine.py::test_the_head_left_before_a_closing_group_is_measured_not_counted
 tests/test_paper_engine.py::test_a_final_pass_that_adds_a_page_is_longer_than_quoted
 tests/test_paper_engine.py::test_the_final_passes_start_from_the_chosen_build_and_say_when_they_did_not_settle
+# The core paper blocks (R1): an ariza is drawn by them alone, one page with every fact, its word and its captions,
+# blank rows with captions when facts are missing, a page more with its enclosures and signatures whole when long;
+# every block draws its samples in three languages without a fallback, table headers come from the catalogue,
+# signatures are typed on their rules, customer text is never markup and a gap never starts a page
+tests/test_paper_blocks_core.py::test_the_core_blocks_are_registered_and_an_ariza_is_drawn_by_them_alone
+tests/test_paper_blocks_core.py::test_a_full_ariza_is_one_page_with_every_fact_its_word_and_its_captions
+tests/test_paper_blocks_core.py::test_a_blank_ariza_draws_ruled_rows_with_captions_and_the_reason_lines
+tests/test_paper_blocks_core.py::test_a_long_ariza_takes_a_page_with_its_enclosures_and_signatures_whole
+tests/test_paper_blocks_core.py::test_the_sample_paper_draws_every_block_with_its_glyphs[uz]
+tests/test_paper_blocks_core.py::test_the_sample_paper_draws_every_block_with_its_glyphs[ru]
+tests/test_paper_blocks_core.py::test_the_sample_paper_draws_every_block_with_its_glyphs[en]
+tests/test_paper_blocks_core.py::test_table_headers_come_from_the_catalogue_and_rows_are_padded_or_merged
+tests/test_paper_blocks_core.py::test_signature_row_types_the_date_and_the_name_on_their_rules
+tests/test_paper_blocks_core.py::test_a_block_that_raises_is_drawn_by_its_fallback
+tests/test_paper_blocks_core.py::test_customer_text_is_text_never_markup
+tests/test_paper_blocks_core.py::test_a_gap_never_starts_a_page
