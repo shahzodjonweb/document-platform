@@ -1515,3 +1515,10 @@ tests/test_category_finish_pdf.py::test_a_lessons_invented_class_letter_goes_and
 tests/test_category_facts.py::test_a_translated_source_whose_author_or_editor_is_written_in_full_is_still_held[surname-name]
 tests/test_category_facts.py::test_a_translated_source_whose_author_or_editor_is_written_in_full_is_still_held[editor-en]
 tests/test_category_facts.py::test_a_translated_source_by_the_customers_author_in_full_stays
+
+# Stage-2 re-audit, a guarded title's author: a model-written author under any title-page label (Выполнила, Talaba,
+# Ilmiy rahbar, Ma’ruzachi, Student, Supervised by ...) goes from a guarded paper's title; a topic that only starts
+# with such a word stays
+tests/test_category_finish_pdf.py::test_a_guarded_titles_author_under_any_title_page_label_goes[ru-vypolnila]
+tests/test_category_finish_pdf.py::test_a_guarded_titles_author_under_any_title_page_label_goes[uz-ilmiy-rahbar]
+tests/test_category_finish_pdf.py::test_a_topic_that_only_starts_with_a_label_word_stays[ru-topic]

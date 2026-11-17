@@ -1019,3 +1019,32 @@ def test_a_lessons_invented_class_letter_goes_and_the_customers_class_stays():
     data = draft(lesson, prompt='7 «Б» класс, математика, урок на тему сложение дробей.', locale='uz', length=2)
     made, _, codes = finished(data, answer(data, facts={'items': [{'label': 'grade', 'text': '7-«B» sinf'}]}))
     assert facts_of(made)['grade'] == '7-«B» sinf' and codes == []
+
+
+# ---------------------------------------------------------------- stage-2 re-audit: a guarded title's author
+
+
+@pytest.mark.parametrize('entry_id, locale, title, kept', [
+    ('pdf.mustaqil_ish', 'ru', 'Инфляция и её последствия. Выполнила: Каримова Д.', 'Инфляция и её последствия'),
+    ('pdf.konspekt', 'uz', 'Inflyatsiya. Ma’ruzachi: dotsent Rahimov B.', 'Inflyatsiya'),
+    ('pdf.mustaqil_ish', 'uz', 'Inflyatsiya va uning oqibatlari. Talaba: Karimova D.',
+     'Inflyatsiya va uning oqibatlari'),
+    ('pdf.mustaqil_ish', 'uz', 'Inflyatsiya. Ilmiy rahbar: dotsent Rahimov B.', 'Inflyatsiya'),
+    ('pdf.kurs_ishi', 'en', 'Inflation and its effects. Student: Karimova D.', 'Inflation and its effects'),
+    ('pdf.kurs_ishi', 'en', 'Inflation and its effects. Supervised by Prof. Rahimov', 'Inflation and its effects'),
+], ids=['ru-vypolnila', 'uz-maruzachi', 'uz-talaba', 'uz-ilmiy-rahbar', 'en-student', 'en-supervised-by'])
+def test_a_guarded_titles_author_under_any_title_page_label_goes(entry_id, locale, title, kept):
+    paper = catalogue.get(entry_id)
+    data = draft(paper, prompt='Inflyatsiya va uning oqibatlari mavzusida ish yozib bering.', locale=locale,
+                 length=paper.length['default'])
+    made, warnings, codes = finished(data, answer(data, title=title))
+    assert made['title'] == kept and 'ground:name' in codes and warnings == [finish.FACTS_BLANKED]
+
+
+@pytest.mark.parametrize('locale, title', [('ru', 'Руководитель: роль и функции'), ('uz', 'Talaba: hayot va o‘qish')],
+                         ids=['ru-topic', 'uz-topic'])
+def test_a_topic_that_only_starts_with_a_label_word_stays(locale, title):
+    test = catalogue.get('pdf.mustaqil_ish')
+    data = draft(test, prompt='Mustaqil ish yozib bering: ' + title, locale=locale, length=test.length['default'])
+    made, _, codes = finished(data, answer(data, title=title))
+    assert made['title'] == title and 'ground:name' not in codes

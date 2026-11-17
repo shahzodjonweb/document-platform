@@ -521,10 +521,15 @@ PLAIN_CELLS = ' — '
 HINT = re.compile(r'\s*\([^()]*\)\s*$')
 CELL = ' | '
 CELLS = re.compile(r'\s*\|\s*')
-# An author line at the end of a title, in each language: a label and its colon, or "Prepared by".
+# An author line at the end of a title, in each language: a label and its colon, or "Prepared by". The labels a
+# student's, a teacher's or a speaker's title page uses, each with its colon, so a topic that only starts with one
+# ("Руководитель: роль и функции") is read as the topic it is: its value then names no one.
 AUTHOR_TAIL = re.compile(
-    r"[\s.,;—–-]*\b(?:(?:tuzuvchi|tuzdi|muallif|tayyorladi|bajardi|o‘qituvchi|составитель|составила?|автор|"
-    r"подготовила?|учитель|author|teacher)\s*:|(?:prepared|compiled|written|made)\s+by\b\s*:?)"
+    r"[\s.,;—–-]*\b(?:(?:tuzuvchi|tuzdi|muallif|tayyorladi|bajardi|o[‘'’ʻ]qituvchi|talaba|(?:ilmiy\s+)?rahbar"
+    r"|tekshirdi|qabul\s+qildi|ma[’'‘ʼ]ruzachi|составитель|составила?|автор|подготовила?|учитель|выполнила?"
+    r"|проверила?|приняла?|(?:научный\s+)?руководитель|студентк?а?|преподаватель|докладчик|лектор"
+    r"|author|teacher|student|supervisor|lecturer|presenter|speaker)\s*:"
+    r"|(?:prepared|compiled|written|made|checked|supervised|presented)\s+by\b\s*:?)"
     r"(?P<value>[^:\n]*)$", re.IGNORECASE)
 
 
