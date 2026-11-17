@@ -1180,12 +1180,17 @@ def test_a_held_name_is_matched_whole_or_with_a_case_ending_never_by_a_prefix():
 @pytest.mark.parametrize('value, kind, held', [
     ('Bosh hisobchi Karimova Dilnoza', 'line', ['karimova', 'dilnoza']),
     ('Rais: Karimov Aziz Bahodirovich', 'line', ['karimov', 'aziz', 'baxodirovich']),
-    ('Xalq banki', 'org', []), ('Westminster University', 'org', []), ('Acme LLC', 'org', []),
+    # A name before its legal form is always a name (round 3: a rejected "Acme LLC" printed "Acme also ..." again).
+    ('Xalq banki', 'org', []), ('Westminster University', 'org', []), ('Acme LLC', 'org', ['acme']),
     ('Artel', 'org', ['artel']), ('Hamkorbank', 'org', ['xamkorbank']), ('«Baraka» MChJ', 'org', ['baraka']),
     ('«Baraka» nonvoyxonasi', 'line', ['baraka']), ('Moliya Vazirligi', 'org', []),
     ('Samarqand', 'place', ['samarkand']), ('Malika', 'person', ['malika']),
+    ('Artel MChJ', 'org', ['artel']), ('Acme Trading LLC', 'org', ['acme']), ('Aziz Rahim', 'line', ['aziz', 'raxim']),
+    ('Dilnoza\nSardor', 'list', ['dilnoza', 'sardor']),
+    ('Bosh direktor Karimova Dilnoza', 'person', ['karimova', 'dilnoza']),
 ], ids=['role-and-person', 'chair', 'bank-of-a-word', 'university', 'llc', 'one-word', 'bank-shape', 'quoted-form',
-        'quoted-project', 'ministry', 'city', 'given-name'])
+        'quoted-project', 'ministry', 'city', 'given-name', 'uzbek-form', 'llc-of-two-words', 'a-line-only-a-name',
+        'a-list-of-names', 'a-role-before-a-person'])
 def test_a_rejected_fact_holds_only_the_words_that_name_someone_wherever_they_stand(value, kind, held):
     known = trusting('Nonvoyxona uchun hujjat yozib bering.')
     assert facts.held_names(value, kind, known) == held

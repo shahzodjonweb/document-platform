@@ -1366,8 +1366,14 @@ def _rejected(text, trusted, rejected, codes, translated=False):
     `rejected` holds each such fact's words that were not the customer's, folded ("karimova", "dilnoza",
     "baxodirovna"). A run of a guarded part with two of them side by side, or the one of a one-word name, goes with
     the initials beside it: the lesson's "O‘qituvchi Karimova Dilnoza Bahodirovna o‘quvchilar bilan salomlashadi"
-    when the teacher "Karimova Dilnoza Bahodirovna" was just blanked. Nothing else is read for names there.
+    when the teacher "Karimova Dilnoza Bahodirovna" was just blanked. A surname so taken also takes the names
+    beside it that are not the customer's either: "Karimova Dilnoza" when the teacher was "Karimova D. R.". Nothing
+    else is read for names there.
     """
+
+    def other(position):
+        word = run[position][2]
+        return _letters(word) < 2 or not trusted.person(word, translated)
     spans = []
     for run in _runs(text):
         for value in rejected:
@@ -1380,9 +1386,11 @@ def _rejected(text, trusted, rejected, codes, translated=False):
                     group.append(position)
                     continue
                 if len(group) >= min(2, len(value)):
-                    while group[0] > 0 and _letters(run[group[0] - 1][2]) < 2:
+                    named = any(_surname(run[at][2]) for at in group)
+                    while group[0] > 0 and (_letters(run[group[0] - 1][2]) < 2 or (named and other(group[0] - 1))):
                         group.insert(0, group[0] - 1)
-                    while group[-1] + 1 < len(run) and _letters(run[group[-1] + 1][2]) < 2:
+                    while group[-1] + 1 < len(run) and (_letters(run[group[-1] + 1][2]) < 2
+                                                        or (named and other(group[-1] + 1))):
                         group.append(group[-1] + 1)
                     spans.append(_span(text, run, group, True))
                 group = [position] if position is not None else []
@@ -1476,12 +1484,14 @@ def held_names(value, kind, trusted, *, translated=False):
     """The folded words of a fact taken out as not the customer's that a paper holds wherever they open a sentence.
 
     Only words that name someone wherever they stand (finish's `invented`, read whole or with a case ending,
-    `Named`): a person's every word not the customer's; else a person's beside a surname ("Bosh hisobchi Karimova
-    Dilnoza" gives karimova and dilnoza, never bosh), an organisation's shaped or quoted ("Hamkorbank",
-    "«Baraka» nonvoyxonasi"), and an organisation's or a place's one name when the value has no other ("Artel",
-    "Samarqand"). A name its value follows with its kind or form ("Xalq banki", "Westminster University",
-    "Acme LLC") is held by that kind where it opens a sentence (`_organisation`); alone it may be a common word
-    ("Xalq sayllarida"), so it is not held. A run of common words ("Moliya Vazirligi") gives nothing.
+    `Named`): a person's every word not the customer's but a role's opening word ("Bosh direktor Karimova
+    Dilnoza" gives karimova and dilnoza, never bosh); else a person's beside a surname ("Bosh hisobchi Karimova
+    Dilnoza"), every word of a line that is only a name after its label ("Rais: Aziz Rahim", a participants'
+    list's "Dilnoza"), an organisation's shaped or quoted ("Hamkorbank", "«Baraka» nonvoyxonasi"), and an
+    organisation's or a place's name before its legal form or alone ("Acme LLC", "Artel MChJ", "Artel",
+    "Samarqand"; of "Acme Trading LLC" the first). A name its value follows with its kind ("Xalq banki",
+    "Westminster University") is held by that kind where it opens a sentence (`_organisation`); alone it may be a
+    common word ("Xalq sayllarida"), so it is not held. A run of common words ("Moliya Vazirligi") gives nothing.
     """
     text, _ = _strip_addresses(str(value or ''), trusted)
     found = []
@@ -1494,27 +1504,54 @@ def held_names(value, kind, trusted, *, translated=False):
         else:
             runs = [(run, bad) for run, bad, _ in _unknown_runs(line, trusted, translated, strict=True, orgs=True)]
         if kind == 'person':
-            found += [fold(run[position][2]) for run, bad in runs for position in bad if _letters(run[position][2]) >= 2]
+            found += [fold(run[position][2]) for run, bad in runs if not _role_opening(line, run)
+                      for position in bad if _letters(run[position][2]) >= 2]
             continue
         for run, bad in runs:
             found += _holdable(line, run, bad)
+        if kind in ('line', 'list') and _only_name(line):
+            found += [fold(run[position][2]) for run, bad in runs for position in bad if _letters(run[position][2]) >= 2]
         if kind in ('org', 'place'):
             found += _one_name(line, runs)
     return list(dict.fromkeys(found))
 
 
+def _role_opening(line, run):
+    """Whether a run is a role's capitalised opening word, a lower-case word right after it: "Bosh" of "Bosh direktor"."""
+    rest = line[run[-1][1]:]
+    return len(run) == 1 and not _surname(run[0][2]) and re.match(r"[ \t ]+[^\W\d_]", rest) is not None \
+        and rest.lstrip(' \t ')[:1].islower()
+
+
+def _only_name(line):
+    """Whether a line is a name and nothing else: one to three capitalised words with its initials, none a kind
+    ("Aziz Rahim", "Dilnoza", "Peter Brown"); never "Bosh hisobchi Karimova D." nor "Moliya Vazirligi"."""
+    words = WORD.findall(line)
+    named = [word for word in words if _letters(word) >= 2]
+    return 1 <= len(named) <= 3 and all(word[0].isupper() for word in words) and not any(
+        fold(word) in ORG_HEADS | ORG_AFTER | KIND_WORDS or re.search(r'(?:si|gi)$', fold(word)) for word in named)
+
+
+# The legal forms, with the endings an Uzbek sentence gives them ("MChJning"), apart from an organisation's kinds.
+LEGAL_FORMS = _folded(ORG_FORMS + [form + ending for form in UZ_ORG_FORMS for ending in UZ_ENDINGS])
+
+
 def _one_name(line, runs):
-    """An organisation's or a place's only word not the customer's, unless its kind or form follows it (`held_names`)."""
+    """An organisation's or a place's name not the customer's: its only word unless its kind follows it ("Xalq
+    banki"), or the first of its words before its legal form ("Acme Trading LLC") (`held_names`)."""
     names = [(run, position) for run, bad in runs for position in bad if _letters(run[position][2]) >= 2
              and fold(run[position][2]) not in ORG_HEADS and fold(run[position][2]) not in KIND_WORDS]
-    if len(names) != 1:
+    if not names:
         return []
-    run, position = names[0]
-    after = re.match(rf"[»\"”'’]*[ \t\u00a0]+({WORD.pattern})", line[run[position][1]:])
-    if after is not None and fold(after.group(1)) in ORG_HEADS | ORG_AFTER:
-        return []
-    return [fold(run[position][2])]
-
+    last, at = names[-1]
+    after = re.match(rf"[»\"”'’]*[ \t ]+({WORD.pattern})", line[last[at][1]:])
+    following = fold(after.group(1)) if after is not None else ''
+    first = fold(names[0][0][names[0][1]][2])
+    if len(names) == 1:
+        # A name before its legal form is always a name ("Acme LLC", "Artel MChJ"); one before its kind may be a
+        # common word ("Xalq banki"), held by that kind where it opens a sentence instead.
+        return [] if following in (ORG_HEADS | ORG_AFTER) - LEGAL_FORMS else [first]
+    return [first] if following in LEGAL_FORMS else []
 
 # ---------------------------------------------------------------- references
 
