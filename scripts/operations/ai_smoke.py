@@ -25,9 +25,19 @@ folder by default). The message is the entry's invented sample for `--case`
 and counts only: whether the slides came back as asked, which fixed headings
 and layouts the model kept, what the check would send back, what finish took
 out, which pins gave way and whether the file passes the alphabet read-back.
-`--category slides.` runs every deck entry, at one run each. A paper category
-is not made here: this smoke runs decks only, and a paper's samples are its
-template's (apps/studio/paper). Nothing is stored, and the switch need not be on.
+`--category slides.` runs every deck entry, at one run each.
+
+A paper category the same way (`--category pdf.xat.ariza`, or `pdf.xat.` for
+a family): the draft seeded from the entry's parts at the length the domain
+gives the message, one provider.generate, quality.check with finish.exempt,
+finish.apply, and execution.draw_paper, which draws it in its own template.
+The message is the entry's first bot example in `--locale` (invented, as the
+catalogue's copy is), or `--prompt`; `--case` and `--slides` are a deck's. It
+reports whether the paper was drawn by its template and not the emergency
+fallback, its pages against the quote, the template's codes and the alphabet
+read-back. The top-up of a count paper is not run: this family's papers are
+ceilings, and one call is the smoke's budget. Nothing is stored, and the
+switch need not be on.
 """
 import argparse
 import os
@@ -52,7 +62,8 @@ PASS, FAIL, NOTE = 'PASS', 'FAIL', 'NOTE'
 results = []
 
 parser = argparse.ArgumentParser(description='Bounded live check of the configured AI provider.')
-parser.add_argument('--category', help='a category id, or a prefix ending in "." (slides.) for every deck entry')
+parser.add_argument('--category',
+                    help='a category id, or a prefix ending in "." (slides., pdf.xat.) for every entry under it')
 parser.add_argument('--locale', default='uz', choices=('uz', 'ru', 'en'))
 parser.add_argument('--case', default='figures', help='the sample to take the message from: figures or topic_only')
 parser.add_argument('--slides', type=int, help='the slide count; by default the one the entry gives the message')
@@ -160,6 +171,54 @@ def category_deck(entry, out):
            f'{len(cyrillic)} Cyrillic words' if cyrillic else deck['path'])
 
 
+def category_paper(entry, out):
+    """One category paper made as a job makes it, with no account and nothing stored; its checks are reported."""
+    from apps.studio import quality
+    from apps.studio.categories import finish, skeleton
+    from apps.studio.execution import draw_paper
+    from apps.studio.scripts import artifact_violations
+    name = entry.id
+    prompt = args.prompt or entry.raw['bot']['examples'][0][args.locale]
+    draft = {'output_locale': args.locale, 'prompt': prompt, 'source_text': '', 'source_ids': [], 'excerpts': [],
+             'output_format': 'pdf', 'options': {'category': entry.id}}
+    cues = skeleton.cues_of(draft)
+    questions = min(entry.raw['questions']['default'], entry.raw['questions']['max'])
+    length = skeleton.length(entry, asked=pages.requested_pages(prompt), cues=cues, ceiling=35, questions=questions)
+    draft['options'].update(length=length, question_count=questions, requested_pages=None, image_cap=0)
+    draft['content'] = {'title': '', 'sections': skeleton.seed(entry, length, cues), 'questions': [],
+                        'citations': []}
+    try:
+        answer, usage = generate(config, draft, DOCUMENT, f'ai-smoke-{entry.id}', token_limit=120000)
+    except DomainError as error:
+        report(f'{name} written', FAIL, error.code)
+        return
+    report(f'{name} written', PASS, f'{usage.get("input_tokens", 0)}→{usage.get("output_tokens", 0)} tokens, '
+           f'{args.locale}, {length} page(s) quoted, {"example" if not args.prompt else "own message"}')
+    content = {'title': answer.get('title', ''), 'sections': answer.get('sections') or [],
+               'questions': answer.get('questions') or [], 'citations': []}
+    found = quality.check(content, locale=args.locale, fmt='pdf', prompt=prompt, exempt=finish.exempt(draft))
+    wrong = {code: len(items) for code, items in found.issues.items() if items and code != 'script'}
+    report(f'{name} quality', NOTE if found.to_repair() else PASS,
+           ', '.join(f'{code} {count}' for code, count in sorted(wrong.items())) or 'nothing a job would send back')
+    content = quality.normalise(content, args.locale)
+    codes = []
+    content, warnings = finish.apply(draft, content, file_names=[], codes=codes)
+    report(f'{name} held to the message', NOTE if codes else PASS,
+           ', '.join(warnings + codes) or 'finish took nothing out')
+    drawn = draw_paper(draft, content, Path(out) / f'{entry.id}-{args.locale}-{length}.pdf')
+    metadata = drawn.get('metadata') or {}
+    template = metadata.get('template') or '?'
+    report(f'{name} template', FAIL if metadata.get('template_fallback') else PASS,
+           'the emergency fallback drew it' if metadata.get('template_fallback') else template)
+    longer = 'longer_than_quoted' in (metadata.get('warnings') or ())
+    report(f'{name} pages', PASS if drawn['page_count'] <= length else NOTE if longer else FAIL,
+           f'{drawn["page_count"]} of {length} quoted, step {metadata.get("fit_step")}, '
+           f'{", ".join(metadata.get("warnings") or ()) or "no codes"}')
+    cyrillic = artifact_violations(drawn['path'], args.locale, '')
+    report(f'{name} alphabet read-back', FAIL if cyrillic else PASS,
+           f'{len(cyrillic)} Cyrillic words' if cyrillic else drawn['path'])
+
+
 if args.category:
     from apps.studio import categories
     from apps.studio.categories import catalogue
@@ -173,16 +232,13 @@ if args.category:
     out = args.out or tempfile.mkdtemp(prefix='ai-smoke-')
     Path(out).mkdir(parents=True, exist_ok=True)
     for entry in chosen:
-        if entry.service != 'slides':
-            report(f'{entry.id}', FAIL, 'a paper category: this smoke makes decks only')
-            continue
         try:
-            category_deck(entry, out)
+            (category_deck if entry.service == 'slides' else category_paper)(entry, out)
         except Exception as error:
             # One entry that breaks the pipeline is a finding; the rest are still run.
             report(f'{entry.id}', FAIL, type(error).__name__)
     failed = [name for name, status, _ in results if status == FAIL]
-    print('\n' + ('FAILED: ' + ', '.join(failed) if failed else 'Every category deck checked was made.'))
+    print('\n' + ('FAILED: ' + ', '.join(failed) if failed else 'Every category checked was made.'))
     sys.exit(1 if failed else 0)
 
 # 1. Credentials and model name, via the smallest real generation we can make.
