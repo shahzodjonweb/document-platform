@@ -1077,3 +1077,15 @@ tests/test_category_finish_pdf.py::test_a_letters_text_fact_naming_an_invented_p
 tests/test_category_finish_pdf.py::test_a_guarded_papers_text_fact_keeps_general_knowledge
 tests/test_category_finish_pdf.py::test_a_guarded_titles_invented_author_tail_goes[uz]
 tests/test_category_finish_pdf.py::test_an_empty_scope_leaves_the_paper_as_it_is
+
+# Categories, change requests on papers (E1): a paper's change is read narrower than a document's: no new look, no
+# pages, parts or pictures added or taken away, a new total only for a counted entry and as its pages, a test's
+# questions added or cut but never removed, and a request for the file alone still answered without a change
+tests/test_category_edits.py::test_a_deck_or_no_entry_is_left_to_todays_reader
+tests/test_category_edits.py::test_pages_parts_and_pictures_are_not_added_or_taken_away[Add a conclusion and 3 more pages with pictures]
+tests/test_category_edits.py::test_a_new_look_is_refused_because_the_template_is_the_look[Change the design and the background]
+tests/test_category_edits.py::test_an_introduction_asked_of_a_paper_that_has_one_moves_nothing
+tests/test_category_edits.py::test_a_new_total_is_read_for_a_counted_entry_only[Make it 4 pages-4]
+tests/test_category_edits.py::test_a_tests_questions_are_added_or_cut_and_never_taken_away
+tests/test_category_edits.py::test_a_new_total_sets_a_counted_papers_pages_and_keeps_its_parts
+tests/test_category_edits.py::test_a_paper_asked_for_as_slides_alone_is_answered_without_a_change
