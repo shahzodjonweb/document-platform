@@ -196,6 +196,57 @@
     "filter": "passage",
     "letters": true,
     "option_columns": "auto",
+    "intro": [
+     {
+      "when": "fact:use=self_study",
+      "label": "instruction",
+      "sentences": [
+       "self_study"
+      ]
+     },
+     {
+      "when": [
+       "fact:answer_extras=answer_sheet",
+       "questions:both"
+      ],
+      "label": "instruction",
+      "sentences": [
+       "one_answer_sheet",
+       "time",
+       "point_each"
+      ]
+     },
+     {
+      "when": "fact:answer_extras=answer_sheet",
+      "label": "instruction",
+      "sentences": [
+       "one_answer_sheet",
+       "time",
+       "point_each_one"
+      ]
+     },
+     {
+      "when": "questions:both",
+      "label": "instruction",
+      "sentences": [
+       "one_answer",
+       "time",
+       "point_each"
+      ]
+     },
+     {
+      "label": "instruction",
+      "sentences": [
+       "one_answer",
+       "time",
+       "point_each_one"
+      ]
+     }
+    ],
+    "heading": {
+     "label": "part_choice",
+     "when": "questions:both"
+    },
     "passage": {
      "part": "passage",
      "label": "passage_lead",
@@ -277,7 +328,8 @@
      "no",
      "answer_col",
      "explanation"
-    ]
+    ],
+    "head_when_open": true
    }
   },
   {
@@ -293,7 +345,8 @@
      "no",
      "answer_col",
      "explanation"
-    ]
+    ],
+    "head_when_open": true
    }
   },
   {
@@ -321,6 +374,16 @@
       "align": "centre"
      }
     ]
+   }
+  },
+  {
+   "block": "answer_key",
+   "part": "model_answers",
+   "when": "questions:open",
+   "params": {
+    "style": "overall",
+    "total": "max_score",
+    "before_pt": 6
    }
   }
  ],

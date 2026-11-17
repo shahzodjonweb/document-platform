@@ -167,6 +167,7 @@
   {
    "block": "heading",
    "part": "aim_education",
+   "when": "part:aim_education",
    "params": {
     "level": 2,
     "caps": true,

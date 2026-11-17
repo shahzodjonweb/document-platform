@@ -127,6 +127,7 @@
    "block": "heading",
    "part": "h_key",
    "when": "part:h_key",
+   "page_break_before": true,
    "params": {
     "level": 3,
     "caps": true

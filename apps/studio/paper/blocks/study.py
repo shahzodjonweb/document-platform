@@ -57,10 +57,22 @@ NUMBER_ROW_MM, LETTER_ROW_MM = 6.2, 8.2
 # How alike an answer and an option's text must be for the option's letter to stand for it.
 ALIKE = 0.8
 OPTION_LETTERS = 'ABCDEFGH'
-# A letter the model typed before an option ("B) Ribosoma", "в. Рибосома"), which the list draws itself.
-TYPED_LETTER = re.compile(r'^\s*[A-Ha-hА-Иа-и][).:]\s+')
+CYRILLIC_LETTERS = 'АБВГДЕЖЗ'
+# Cyrillic capitals drawn like a Latin option letter: a model typing "А) В) С)" may mean A, B, C.
+LOOKALIKE = {'А': 'A', 'В': 'B', 'С': 'C', 'Е': 'E', 'Н': 'H'}
+# A letter the model typed before an option ("B) Ribosoma", "в: Рибосома"), which the list draws itself. Never
+# with a full stop: "А. Н. Толстой" and "A. Qodiriy" begin with an initial, not a letter of the list. A colon
+# needs a space after it, so the ratios "A:B", "B:C" stay whole.
+TYPED_LETTER = re.compile(r'^\s*([A-Za-zА-Яа-яЁё])\s*(?:\)\s*|:\s+)(?=\S)')
 # An answer that is only a letter ("B", "B)").
 LETTER_ONLY = re.compile(r'^\s*([A-Ha-h])\s*[).]?\s*$')
+# The signs that tell two answers apart once other punctuation goes: −5 and 5, x > 2 and x < 2, a + b and a − b.
+SIGNS = '-+<>≤≥≠/=×÷·*^%'
+DASHES = str.maketrans({mark: '-' for mark in '−–—‒'})
+WIDE_SIGNS = (('>=', '≥'), ('<=', '≤'), ('!=', '≠'))
+# What is left of a text for the alike test to be trusted: its digits and signs must agree (1, 3, 4, 5 is not
+# 1, 3, 4, 6), and it must hold a letter (a bare number or list is matched exactly or not at all).
+SKELETON = re.compile(r'[\d' + re.escape(SIGNS) + r']')
 # A formula's subscript and power markers: _{12}, ^{3}, and the short F_1 or x^2.
 SCRIPT = re.compile(r'([_^])(?:\{([^{}]{1,16})\}|(\d{1,3}))')
 NUMBER_MARK = '#'
@@ -70,14 +82,26 @@ APOSTROPHES = str.maketrans({mark: "'" for mark in '‘’ʻʼ`´'})
 # ---------------------------------------------------------------- helpers
 
 
+def _holds(ctx, place, when):
+    """One predicate; `questions:both` counts the passage's questions as closed, as the paper numbers them.
+
+    The engine's predicate counts choice questions alone, which leaves a test
+    of passage and written questions without its Part I and II and with the
+    written-only instruction over its closed questions.
+    """
+    if when == 'questions:both':
+        return bool(closed_questions(ctx)) and bool(ctx.questions('open'))
+    return holds(when, ctx, place)
+
+
 def _all_hold(ctx, place, when):
     """Whether `when` holds: none, one predicate, or a list of predicates that must all hold."""
     if not when:
         return True
     if isinstance(when, str):
-        return holds(when, ctx, place)
+        return _holds(ctx, place, when)
     if isinstance(when, list):
-        return all(isinstance(item, str) and holds(item, ctx, place) for item in when)
+        return all(isinstance(item, str) and _holds(ctx, place, item) for item in when)
     return False
 
 
@@ -91,15 +115,83 @@ def _counted(ctx, key, number, one=None):
 
 
 def _normal(text):
+    """A text with its punctuation gone: only for comparing a legend's start with its run-in word."""
     return ' '.join(re.sub(r'[^\w\s]', ' ', str(text or '').translate(APOSTROPHES).casefold()).split())
 
 
-def _option_text(option):
-    return TYPED_LETTER.sub('', str(option or '').strip(), count=1)
+def _exact(text):
+    """An answer or an option as compared first: case, spacing, apostrophes and a closing full stop aside."""
+    return ' '.join(str(text or '').translate(APOSTROPHES).casefold().split()).rstrip('.').rstrip()
+
+
+def _loose(text):
+    """The looser form: other punctuation and the spaces around a sign go, the signs themselves stay."""
+    text = _exact(text).translate(DASHES)
+    for wide, sign in WIDE_SIGNS:
+        text = text.replace(wide, sign)
+    text = re.sub(r'[^\w\s' + re.escape(SIGNS) + r']', ' ', text)
+    text = re.sub(r'\s*([' + re.escape(SIGNS) + r'])\s*', r'\1', text)
+    return ' '.join(text.split())
+
+
+def _typed(text):
+    """(the option positions a typed letter can stand for, the rest), or None when the text starts with none."""
+    found = TYPED_LETTER.match(str(text or ''))
+    if not found:
+        return None
+    letter = found.group(1).upper()
+    places = set()
+    for alphabet in (OPTION_LETTERS, CYRILLIC_LETTERS):
+        if letter in alphabet:
+            places.add(alphabet.index(letter))
+    if letter in LOOKALIKE:
+        places.add(OPTION_LETTERS.index(LOOKALIKE[letter]))
+    return (places, str(text)[found.end():].strip()) if places else None
 
 
 def _options(question):
-    return [_option_text(option) for option in question.get('options') or [] if str(option or '').strip()]
+    """The options as the list prints them: a letter the model typed is taken off only when every option carries
+    its own, in order (A), B), C)… or А), Б), В)…); otherwise every option is kept exactly as given."""
+    options = [str(option).strip() for option in question.get('options') or [] if str(option or '').strip()]
+    typed = [_typed(option) for option in options]
+    if options and all(found and index in found[0] for index, found in enumerate(typed)):
+        return [found[1] for found in typed]
+    return options
+
+
+def _answer_text(question):
+    """The answer as printed in a key cell when no letter stands for it: a typed letter taken off as for options."""
+    answer = str(question.get('answer') or '').strip()
+    found = _typed(answer)
+    if found and found[1] and min(found[0]) < len(_options(question)):
+        return found[1]
+    return answer
+
+
+def _find(answer, options, alike=True):
+    """The position of the option `answer` names, or None when none or more than one does.
+
+    Exactly first, then in the looser form, each taken only when it matches
+    one option; two options that are one text once normalised give no
+    letter and no guess. Only when neither matches does the 0.8 likeness
+    count, and only between texts with the same digits and signs.
+    """
+    for form in (_exact, _loose):
+        wanted = form(answer)
+        hits = [index for index, option in enumerate(options) if form(option) == wanted]
+        if len(hits) == 1:
+            return hits[0]
+        if hits:
+            return None
+    wanted = _loose(answer)
+    if not alike or not re.search(r'[^\W\d_]', wanted):
+        return None
+    texts = [_loose(option) for option in options]
+    scores = [difflib.SequenceMatcher(None, wanted, text).ratio() for text in texts]
+    best = max(range(len(scores)), key=scores.__getitem__)
+    if scores[best] < ALIKE or scores.count(scores[best]) != 1:
+        return None
+    return best if SKELETON.findall(wanted) == SKELETON.findall(texts[best]) else None
 
 
 def key_letter(question):
@@ -111,13 +203,16 @@ def key_letter(question):
     only = LETTER_ONLY.match(answer)
     if only and only.group(1).upper() in OPTION_LETTERS[:len(options)]:
         return only.group(1).upper()
-    wanted = _normal(_option_text(answer))
-    texts = [_normal(option) for option in options]
-    if wanted in texts:
-        return OPTION_LETTERS[texts.index(wanted)]
-    scores = [difflib.SequenceMatcher(None, wanted, text).ratio() for text in texts]
-    best = max(range(len(scores)), key=scores.__getitem__)
-    return OPTION_LETTERS[best] if scores[best] >= ALIKE and scores.count(scores[best]) == 1 else None
+    found = _find(answer, options, alike=False)
+    if found is not None:
+        return OPTION_LETTERS[found]
+    typed = _typed(answer)
+    if typed and typed[1]:
+        # "C) Xloroplast": the letter and the text must name the same option, or the key prints the answer.
+        found = _find(typed[1], options)
+        return OPTION_LETTERS[found] if found is not None and found in typed[0] else None
+    found = _find(answer, options)
+    return OPTION_LETTERS[found] if found is not None else None
 
 
 def _marks(question, default=0):
@@ -587,11 +682,14 @@ def _intro(ctx, place):
 
 
 def _part_heading(ctx, place):
+    """The part heading, once a paper: the passage's list names Part I only when no choice list did."""
     spec = _params(place).get('heading')
     if not isinstance(spec, dict) or not _has_label(ctx, spec.get('label')):
         return []
-    if not _all_hold(ctx, place, spec.get('when', 'questions:both')):
+    drawn = getattr(ctx, 'study_headings', set())
+    if spec['label'] in drawn or not _all_hold(ctx, place, spec.get('when', 'questions:both')):
         return []
+    ctx.study_headings = drawn | {spec['label']}
     size = round(ctx.size * 1.05 * 2) / 2
     style = _style(ctx, 'h3', fontSize=size, leading=size * 1.3, spaceBefore=ctx.leading * 0.7, keepWithNext=1)
     hair = Hair(thickness=0.5, above=1.0 * MM, below=2.0 * MM)
@@ -636,15 +734,18 @@ def question_list(ctx, place):
     if kind == 'passage' and spec:
         last = number + len(found) - 1
         key = spec.get('label_one') if last == number and _has_label(ctx, spec.get('label_one')) else spec.get('label')
-        if _has_label(ctx, key):
+        part = ctx.entry.part(spec['part']) if isinstance(spec.get('part'), str) else None
+        section = ctx.section(part['id'], place.instance) if part else None
+        bar = _bar(ctx, section, part)
+        if not bar:
+            # Questions on a text the model never wrote: no line sends the pupil to a passage that is not there.
+            ctx.warn('passage_missing')
+        elif _has_label(ctx, key):
             # An Uzbek range takes the bare hyphen of its ordinal suffix ("9-11-savollarga"), as the mock does.
             dash = '-' if ctx.locale == 'uz' else '–'
             span = str(number) if last == number else f'{number}{dash}{last}'
             style = _style(ctx, 'bold', spaceBefore=ctx.leading * 0.4, spaceAfter=2, keepWithNext=1)
             lead.append(Paragraph(ctx.text(ctx.label(key).replace(NUMBER_MARK, span), style), style))
-        part = ctx.entry.part(spec['part']) if isinstance(spec.get('part'), str) else None
-        section = ctx.section(part['id'], place.instance) if part else None
-        bar = _bar(ctx, section, part)
         if bar:
             lead += [*bar, Spacer(1, ctx.leading * 0.4)]
     gap = _num(params.get('gap_pt'), 10.0, 0, 40)
@@ -748,7 +849,7 @@ def _strips(ctx, questions, first, per_row, empty):
                 letters.append(Paragraph(ctx.text(letter, letter_style), letter_style))
             else:
                 # No option matches the answer well enough: its own words, never a guessed letter.
-                letters.append(Paragraph(ctx.text(_option_text(question.get('answer')), answer_style),
+                letters.append(Paragraph(ctx.text(_answer_text(question), answer_style),
                                          answer_style))
         table = Table([numbers, letters], colWidths=[cell] * len(chunk),
                       rowHeights=[NUMBER_ROW_MM * MM, None if not empty else LETTER_ROW_MM * MM], hAlign='LEFT')
@@ -771,7 +872,7 @@ def _explained(ctx, place, questions, first):
     data = [[Paragraph(ctx.text(text, bold), bold) for text in heads[:3]]]
     for index, question in enumerate(questions):
         letter = key_letter(question) if question.get('options') else None
-        answer = letter or _option_text(question.get('answer'))
+        answer = letter or _answer_text(question)
         data.append([Paragraph(ctx.text(str(first + index), cell), _style(ctx, cell, alignment=TA_CENTER)),
                      Paragraph(ctx.text(answer, bold if letter else cell), bold if letter else cell),
                      Paragraph(ctx.text(str(question.get('explanation') or '').strip(), cell), cell)])
@@ -799,15 +900,24 @@ def answer_key(ctx, place):
     savollari); total (a label key, `#` the closed questions' marks, at the
     right under the grid); explain_when (a predicate or a list: when it holds,
     a grid is followed by the explanation table); columns (three label keys
-    of the explanation table: No, Answer, Explanation). Draws nothing for a
-    paper without closed questions.
+    of the explanation table: No, Answer, Explanation); head_when_open (a
+    paper of written questions only still gets the head, so its page break
+    holds and the model answers under it start their own page). Style overall
+    is the paper's maximum alone, `total` with the closed and the written
+    marks: "Maksimal ball: 22 (14 + 8)", drawn under the model answers. Draws
+    nothing for a paper without closed questions.
     """
     params = _params(place)
-    style = params.get('style') if params.get('style') in ('grid', 'sheet', 'explained') else 'grid'
+    style = params.get('style') if params.get('style') in ('grid', 'sheet', 'explained', 'overall') else 'grid'
+    if style == 'overall':
+        line = _overall(ctx, params)
+        return _finish(place, line, before=ctx.leading * 0.2, after=ctx.leading * 0.6) if line else []
     questions = closed_questions(ctx)
     if style == 'explained' and params.get('include_open'):
         questions = questions + ctx.questions('open')
     if not questions:
+        if params.get('head_when_open') and style != 'sheet' and ctx.questions('open'):
+            return _finish(place, _key_head(ctx, place), before=ctx.leading * 0.2, after=ctx.leading * 0.2)
         return []
     per_row = _int(params.get('per_row'), PER_ROW, 1, PER_ROW)
     made = _key_head(ctx, place)
@@ -831,9 +941,34 @@ def answer_key(ctx, place):
     return _finish(place, made, before=ctx.leading * 0.2, after=ctx.leading * 0.6)
 
 
+def _overall(ctx, params):
+    """The paper's maximum under its model answers, the closed and the written marks in brackets when both count.
+
+    The customer's total points stand alone unless the marks add up to them:
+    the key never prints a sum that disagrees with the pupil strip's "/ N".
+    """
+    opened = ctx.questions('open')
+    if not opened or not params.get('total'):
+        return []
+    closed = sum(_marks(question, 1) for question in closed_questions(ctx))
+    written = sum(_marks(question) for question in opened)
+    total = total_marks(ctx)
+    if not total:
+        return []
+    number = f'{total} ({closed} + {written})' if closed and written and closed + written == total else str(total)
+    line = _counted(ctx, params['total'], number)
+    if not line:
+        return []
+    small = max(8.5, round(ctx.size * 0.86 * 2) / 2)
+    right = _style(ctx, 'bold', fontSize=small, leading=small * 1.3, alignment=TA_RIGHT, spaceBefore=2)
+    return [Paragraph(ctx.text(line, right), right)]
+
+
 def _key_plain(ctx, place):
     """"1 — B" lines under the heading; the answer's words where no letter matches."""
     params = _params(place)
+    if params.get('style') == 'overall':
+        return _overall(ctx, params)
     questions = closed_questions(ctx)
     if not questions:
         return []
@@ -843,7 +978,7 @@ def _key_plain(ctx, place):
         made.append(Paragraph(ctx.text(word, 'bold'), ctx.styles['bold']))
     empty = params.get('style') == 'sheet'
     for number, question in enumerate(questions, 1):
-        answer = '____' if empty else (key_letter(question) or _option_text(question.get('answer')))
+        answer = '____' if empty else (key_letter(question) or _answer_text(question))
         made.append(Paragraph(ctx.text(f'{number} — {answer}', 'body'), ctx.styles['body']))
     return made + [Spacer(1, ctx.leading * 0.5)]
 
@@ -1032,6 +1167,8 @@ SAMPLES = (
     {**TEST, 'block': 'answer_key', 'name': 'self-study answers with explanations', 'part': 'answer_key',
      'params': {'style': 'explained', 'label': 'answers_self', 'note': 'self_note',
                 'columns': ['no', 'answer_col', 'explanation']}},
+    {**TEST, 'block': 'answer_key', 'name': 'the paper’s maximum under the model answers', 'part': 'model_answers',
+     'params': {'style': 'overall', 'total': 'max_score'}},
     {'block': 'formula_line', 'name': 'formulas: numbered through, a given number, legends, scripts',
      'template': 'study_konspekt', 'entry': 'pdf.konspekt', 'part': 'formulas', 'section': SAMPLE_FORMULAS,
      'params': {'numbering': 'section', 'legend': 'legend'}},

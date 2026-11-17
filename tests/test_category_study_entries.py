@@ -238,16 +238,16 @@ def test_a_handout_asked_for_without_a_plan_is_the_handout(message):
 
 
 def test_a_handout_holds_its_two_pages_with_its_key():
-    # Every handout part has fixed words, so its tasks and key are sized to
-    # the two pupil pages; the key follows the tasks instead of starting a
-    # page the count would not hold.
+    # Every handout part has fixed words, so its tasks are sized to the two
+    # pupil pages. The key starts a sheet of its own after them (template.md
+    # page K1): on the pupils' page it would be handed out with the tasks.
     lesson = entry('pdf.dars_ishlanmasi')
     handout = frozenset({'handout'})
     assert lesson.raw['groups']['task'] == {'min': 2, 'max': 6, 'sized': 'model'}
     top = sum(skeleton.words(lesson, use, 2, handout)[1] for use in skeleton.parts(lesson, 2, handout))
     assert top <= 600, top
     flow = catalogue.template('study_tarqatma')['flow']
-    assert not [place for place in flow if place.get('part') == 'h_key' and place.get('page_break_before')]
+    assert [place for place in flow if place.get('part') == 'h_key' and place.get('page_break_before')]
 
 
 def test_the_technological_map_is_deferred_and_never_promised():
@@ -444,7 +444,9 @@ def _stand_ins():
 # (entry, pages, cues, instances the model writes of a group it sizes, parts its rules leave empty): each entry at
 # its shortest and its default length. Mustaqil ish has two chapters below 11 pages (a plan's points are their
 # sections, a third only for a plan of five or six) and three from 11; a kurs ishi's kafedra plan may have three
-# chapters at any length; notes in their three forms; a lesson plan, and a handout with six tasks and its key.
+# chapters at any length; notes in their three forms; a lesson plan; a handout with six tasks on its two pupil
+# pages, and with its key on the sheet after them (spec: added after the pupil pages, not counted; the engine counts
+# every page, so the case is drawn at the three it takes).
 DRAWN = [
     ('pdf.mustaqil_ish', 8, (), 2, ('section_c',)), ('pdf.mustaqil_ish', 8, (), 3, ('section_c',)),
     ('pdf.mustaqil_ish', 10, (), 2, ()), ('pdf.mustaqil_ish', 11, (), 3, ()),
@@ -453,7 +455,7 @@ DRAWN = [
     ('pdf.konspekt', 2, (), 0, ()), ('pdf.konspekt', 4, (), 0, ()), ('pdf.konspekt', 2, ('summary',), 0, ()),
     ('pdf.konspekt', 4, ('summary',), 0, ()), ('pdf.konspekt', 2, ('qa',), 6, ()), ('pdf.konspekt', 4, ('qa',), 12, ()),
     ('pdf.dars_ishlanmasi', 2, (), 0, ()), ('pdf.dars_ishlanmasi', 4, (), 0, ()),
-    ('pdf.dars_ishlanmasi', 2, ('handout',), 6, ()),
+    ('pdf.dars_ishlanmasi', 2, ('handout',), 6, ('h_key',)), ('pdf.dars_ishlanmasi', 3, ('handout',), 6, ()),
 ]
 
 

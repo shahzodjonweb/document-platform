@@ -215,8 +215,45 @@ def test_written_only_says_so_and_draws_no_closed_key(tmp_path):
     result = draw_test(tmp_path, questions=OPEN)
     whole = text(result)
     assert 'Savollarga yozma, to‘liq javob bering.' in whole and 'doira ichiga' not in whole
-    assert 'KALITLAR' not in whole.replace(' ', '') and 'Namunaviy javob' in whole
+    assert 'Test savollari' not in whole and 'Namunaviy javob' in whole
     assert re.search(r'^1\. Mitoxondriyaning', whole, re.M)
+
+
+@pytest.mark.parametrize('use, head', [(None, 'KALITLAR'), ('self_study', 'JAVOBLAR')])
+def test_written_only_model_answers_start_a_page_after_the_last_question(tmp_path, use, head):
+    facts = {**FACTS, 'use': use} if use else FACTS
+    pages = pages_text(draw_test(tmp_path, questions=OPEN, facts=facts))
+    last = max(index for index, page_text in enumerate(pages) if 'Yadroning vazifasini yozing.' in page_text)
+    answers = [index for index, page_text in enumerate(pages) if 'Namunaviy javob' in page_text]
+    assert answers and min(answers) > last, pages
+    # The key's head stands over the model answers on that page, without a grid of closed questions.
+    assert head in pages[min(answers)].replace(' ', '') and 'Test savollari' not in pages[min(answers)]
+    assert 'Maksimal ball: 5' in pages[-1]
+
+
+def test_the_key_ends_with_the_papers_overall_maximum(tmp_path):
+    key = pages_text(draw_test(tmp_path, sections=[passage_section()]))[-1]
+    assert 'Maksimal ball: 4' in key and 'Maksimal ball: 9 (4 + 5)' in key
+    assert key.index('Maksimal ball: 9') > key.index('Irsiy axborotni')
+    given = pages_text(draw_test(tmp_path, facts={**FACTS, 'total_points': '20'}, name='given.pdf'))
+    assert '/ 20' in given[0] and 'Maksimal ball: 20' in given[-1] and '(4 + 5)' not in given[-1]
+
+
+def test_passage_and_written_questions_get_the_closed_instruction_and_both_part_headings(tmp_path):
+    whole = flat(text(draw_test(tmp_path, questions=PASSAGE + OPEN, sections=[passage_section()])))
+    assert 'I qism. To‘g‘ri javobni tanlang' in whole and 'II qism. Yozma javob bering' in whole
+    assert 'doira ichiga oling' in whole and 'I qismda har bir to‘g‘ri javob – 1 ball.' in whole
+    assert 'Savollarga yozma, to‘liq javob bering' not in whole
+    assert whole.index('I qism.') < whole.index('1-2-savollarga matn asosida') < whole.index('II qism.')
+    assert whole.index('doira ichiga') < whole.index('1-2-savollarga')
+    # With choice questions as well, Part I is named once, over the choice questions.
+    whole = flat(text(draw_test(tmp_path, sections=[passage_section()], name='all.pdf')))
+    assert len(re.findall(r'(?<!I)I qism\.', whole)) == 1
+
+
+def test_passage_questions_without_a_passage_get_no_reference_line(tmp_path):
+    result = draw_test(tmp_path, questions=CHOICE + PASSAGE)
+    assert 'matn asosida' not in text(result) and 'passage_missing' in result['metadata']['warnings']
 
 
 def test_an_answer_sheet_changes_the_instruction_and_draws_empty_cells(tmp_path):
@@ -281,6 +318,72 @@ def test_customer_text_is_text_never_markup(tmp_path):
 def test_the_key_letter_is_the_matching_option_never_a_guess(answer, letter):
     found = {'options': ['Mitoxondriya', 'Lizosoma', 'Xloroplast', 'Ribosoma'], 'answer': answer}
     assert study.key_letter(found) == letter
+
+
+@pytest.mark.parametrize('options, answer, letter', [
+    (['−5', '−3', '3', '5'], '5', 'D'), (['−5', '−3', '3', '5'], '−5', 'A'), (['−5', '−3', '3', '5'], '-5', 'A'),
+    (['−5', '−3', '3', '5'], '3.', 'C'), (['-12', '12', '-1,2', '1,2'], '12', 'B'),
+    (['x > 2', 'x < 2', 'x ≥ 2', 'x ≤ 2'], 'x < 2', 'B'), (['x > 2', 'x < 2', 'x ≥ 2', 'x ≤ 2'], 'x<2', 'B'),
+    (['x > 2', 'x < 2', 'x ≥ 2', 'x ≤ 2'], 'x ≤ 2', 'D'), (['x > 2', 'x < 2', 'x ≥ 2', 'x ≤ 2'], 'x >= 2', 'C'),
+    (['a + b', 'a − b', 'ab', 'a/b'], 'a − b', 'B'), (['a + b', 'a − b', 'ab', 'a/b'], 'a-b', 'B'),
+    (['a + b', 'a − b', 'ab', 'a/b'], 'a/b', 'D'), (['a + b', 'a − b', 'ab', 'a/b'], 'ab', 'C'),
+    (['2x + 3y = 12', '2x − 3y = 12', '3x + 2y = 12', '2x + 3y = 21'], '2x − 3y = 12', 'B'),
+    # One text twice once normalised: neither letter, and never the alike match.
+    (['5', '5.', '3', '7'], '5', None), (['a+b', 'a + b', 'ab', 'ba'], 'a + b', 'B'),
+    (['a+b', 'a + b', 'ab', 'ba'], 'a+ b', None),
+    # A wrong answer that only looks like an option is printed, not given its letter.
+    (['1, 3, 4, 6', '1, 2', '2, 5', '3, 6'], '1, 3, 4, 5', None), (['−5', '−3', '3', '5'], '4', None),
+    (['2x + 3y = 12', '2x − 3y = 12', 'x', 'y'], '2x + 3y = 13', None)])
+def test_signs_and_numbers_keep_the_key_letter_apart(options, answer, letter):
+    assert study.key_letter({'options': options, 'answer': answer}) == letter
+
+
+@pytest.mark.parametrize('options', [
+    ['А. Н. Толстой', 'Л. Н. Толстой', 'А. П. Чехов', 'И. С. Тургенев'],
+    ['A. Qodiriy', 'E. Vohidov', 'A. Oripov', 'G‘. G‘ulom'],
+    ['B. Franklin', 'A. Lincoln', 'G. Washington', 'D. Eisenhower'],
+    ['A) Navoiy', 'C) Bobur', 'B) Furqat', 'D) Muqimiy'],
+    ['A) 5', 'B. 6', 'C) 7'], ['A:B', 'B:C', 'C:D', 'D:E']])
+def test_initials_and_letters_out_of_order_are_kept_as_written(options):
+    assert study._options({'options': options}) == options
+
+
+@pytest.mark.parametrize('options, printed', [
+    (['A) Yadro', 'B) Ribosoma', 'C) Vakuola', 'D) Lizosoma'], ['Yadro', 'Ribosoma', 'Vakuola', 'Lizosoma']),
+    (['а) Ядро', 'б) Рибосома', 'в) Вакуоль'], ['Ядро', 'Рибосома', 'Вакуоль']),
+    (['А) Ядро', 'Б) Рибосома', 'В) Вакуоль', 'Г) Лизосома'], ['Ядро', 'Рибосома', 'Вакуоль', 'Лизосома']),
+    (['a: 1', 'b: 2', 'c: 3', 'd: 4'], ['1', '2', '3', '4'])])
+def test_letters_every_option_carries_in_order_are_taken_off(options, printed):
+    assert study._options({'options': options}) == printed
+
+
+@pytest.mark.parametrize('options, answer, letter', [
+    (['А. Н. Толстой', 'Л. Н. Толстой', 'А. П. Чехов', 'И. С. Тургенев'], 'Л. Н. Толстой', 'B'),
+    (['А. Н. Толстой', 'Л. Н. Толстой', 'А. П. Чехов', 'И. С. Тургенев'], 'А. П. Чехов', 'C'),
+    (['А. Н. Толстой', 'Л. Н. Толстой', 'А. П. Чехов', 'И. С. Тургенев'], 'И. С. Тургенев', 'D'),
+    (['A. Qodiriy', 'E. Vohidov', 'A. Oripov', 'Cho‘lpon'], 'E. Vohidov', 'B'),
+    (['A. Qodiriy', 'E. Vohidov', 'A. Oripov', 'Cho‘lpon'], 'A. Oripov', 'C'),
+    (['A) Yadro', 'B) Ribosoma', 'C) Vakuola', 'D) Lizosoma'], 'C) Vakuola', 'C'),
+    (['А) Ядро', 'Б) Рибосома', 'В) Вакуоль', 'Г) Лизосома'], 'В) Вакуоль', 'C'),
+    (['Ядро', 'Рибосома', 'Вакуоль', 'Лизосома'], 'В) Рибосома', 'B'),
+    # The typed letter and the text name different options: no letter.
+    (['Mitoxondriya', 'Lizosoma', 'Xloroplast', 'Ribosoma'], 'A) Xloroplast', None)])
+def test_initials_in_options_and_answers_still_find_their_letter(options, answer, letter):
+    assert study.key_letter({'options': options, 'answer': answer}) == letter
+
+
+def test_a_name_with_initials_is_printed_whole_in_the_test_and_its_key(tmp_path):
+    names = [question('«Pyotr I» romanini kim yozgan?', ['А. Н. Толстой', 'Л. Н. Толстой', 'А. П. Чехов',
+                                                           'И. С. Тургенев'], 'А. Н. Толстой'),
+             question('«O‘tkan kunlar» muallifi kim?', ['A. Qodiriy', 'E. Vohidov', 'A. Oripov', 'Cho‘lpon'],
+                      'E. Vohidov'),
+             question('Qaysi son eng katta?', ['−5', '−3', '3', '5'], '5'),
+             question('Tengsizlik qaysi?', ['x > 2', 'x < 2', 'x ≥ 2', 'x ≤ 2'], 'x < 2')]
+    pages = pages_text(draw_test(tmp_path, questions=names))
+    first = flat(pages[0])
+    for wanted in ('А. Н. Толстой', 'Л. Н. Толстой', 'А. П. Чехов', 'И. С. Тургенев', 'A. Qodiriy', 'E. Vohidov'):
+        assert wanted in first, wanted
+    assert re.search(r'1 2 3 4\s*\nA B D B', pages[-1]), pages[-1]
 
 
 def test_two_options_equally_alike_give_no_letter():
@@ -383,6 +486,19 @@ def test_a_head_box_drops_a_cell_left_out_stretches_its_neighbour_and_leaves_a_b
     left, bottom, width, height = page.geometry(raw)
     teacher_box = [rect for rect in rects if abs(rect['width'] - width) < 2]
     assert len(teacher_box) >= 2
+
+
+@pytest.mark.parametrize('locale, word, note', [('uz', 'JAVOBLAR', 'tarqatilmaydi'),
+                                                ('ru', 'ОТВЕТЫ', 'не раздаётся'),
+                                                ('en', 'ANSWERS', 'not handed out')])
+def test_the_handouts_answers_are_on_a_sheet_of_their_own(tmp_path, locale, word, note):
+    drawn = paper_family.draw('study_tarqatma', locale, 'full', tmp_path)
+    pages = pages_text(drawn.artifact)
+    last_task = drawn.content['sections'][-2]['heading']
+    tasks = max(index for index, page_text in enumerate(pages) if last_task in flat(page_text))
+    key = next(index for index, page_text in enumerate(pages) if word in page_text.replace(' ', ''))
+    assert key > tasks and note in flat(pages[key]) and not any(note in flat(page_text) for page_text in pages[:key])
+    assert drawn.artifact['page_count'] <= drawn.pages
 
 
 def test_a_cell_strip_without_rows_draws_nothing_and_its_fallback_says_label_and_blank():
