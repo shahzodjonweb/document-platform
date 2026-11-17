@@ -965,3 +965,15 @@ def test_a_lessons_invented_ministry_order_goes_whole():
     made, warnings, codes = finished(data, answer(data, stage_new={'body': f'Yangi mavzu tushuntiriladi. {order}'}))
     assert section_of(made, 'stage_new')['body'] == 'Yangi mavzu tushuntiriladi.'
     assert codes == ['ground:law'] and warnings == [finish.FACTS_BLANKED]
+
+
+def test_a_job_descriptions_list_items_never_cite_a_code_the_customer_did_not_name():
+    job = catalogue.get('pdf.biz.lavozim_yoriqnomasi')
+    data = draft(job, prompt='Bosh buxgalter uchun lavozim yo‘riqnomasi yozing, Mehnat kodeksiga muvofiq.', length=2)
+    items = ['Mehnat kodeksi talablariga amal qiladi.', 'Soliq kodeksi va Mehnat kodeksi talablariga amal qiladi.',
+             'Fuqarolik kodeksining talablariga rioya qiladi.', 'Jinoyat kodeksiga muvofiq javobgar bo‘ladi.']
+    made, warnings, codes = finished(data, answer(data, responsibility={
+        'items': [{'label': '', 'text': item, 'value': ''} for item in items]}))
+    kept = [item['text'] for item in section_of(made, 'responsibility')['items'] if item['text'].strip()]
+    assert kept == ['Mehnat kodeksi talablariga amal qiladi.']
+    assert 'ground:law' in codes and warnings == [finish.FACTS_BLANKED]

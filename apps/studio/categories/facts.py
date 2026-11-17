@@ -633,17 +633,74 @@ def _concepts(sentence):
     return found
 
 
+# The codes and laws a sentence names by a word before its stem ("Soliq kodeksi", "Трудовой кодекс", "Labour Code"),
+# by what they are, in the three languages: in a paper in another language than the message, the customer's "Трудовой
+# кодекс" is the paper's "Mehnat kodeksi", and only that.
+LAW_NAMES = (
+    r"mehnat|трудов|labou?r", r"soliq|налог|tax", r"jinoyat|уголовн|criminal", r"fuqarolik|гражданск|civil",
+    r"ma'muriy|административн|administrative", r"oila|семейн|family", r"bojxona|таможен|customs",
+    r"yer|земельн|land", r"uy-joy|жилищн|housing", r"bu?d?jet|бюджетн|budget", r"saylov|избирательн|elector",
+    r"suv|водн|water", r"o'rmon|лесн|forest", r"shaharsozlik|градостроительн|urban", r"ta'lim|образован|education",
+)
+LAW_NAME_FORMS = [re.compile(rf"(?<![^\W\d_])(?:{forms})", re.IGNORECASE) for forms in LAW_NAMES]
+
+
+# The stems a code or a law is named before: "Soliq kodeksi", "Labour Code", "Education Act". A constitution, a
+# decree or an article is not ("День Конституции" is a day, not a constitution's name).
+NAMED_STEMS = [stem for concept, stem, _ in STEMS if concept in ('code', 'law')]
+
+
+def _law_names(sentence):
+    """The words naming a code or a law: a run of capitalised words right before its stem, or ending in it.
+
+    "Soliq kodeksi", "Jinoyat kodeksiga", "Mehnat Kodeksi", "Labour Code". They are held wherever they stand, a
+    sentence's or a list item's first word included: there the start of a sentence was taken for grammar, and an
+    invented "Jinoyat kodeksiga muvofiq javobgar bo‘ladi" passed once the customer had named any code.
+    """
+    found = []
+    for run in _runs(sentence):
+        named = [index for index, word in enumerate(run) if any(stem.fullmatch(word[2]) for stem in NAMED_STEMS)]
+        if named:
+            names = run[:named[0]]
+        else:
+            after = re.match(r"[ \t\u00a0]+([^\W\d_]+)", sentence[run[-1][1]:])
+            if not after or not any(stem.fullmatch(after.group(1)) for stem in NAMED_STEMS):
+                continue
+            names = run
+        if len(names) > 1 and _starts(sentence, names[0][0]) and not _law_name(names[0][2]):
+            names = names[1:]  # "The Criminal Code", "Согласно Трудовому кодексу": the first word is grammar
+        found += [(start, word) for start, _, word in names if _letters(word) >= 2]
+    return found
+
+
+def _law_name(word):
+    """The forms (LAW_NAME_FORMS) of the code or law a word names, or None."""
+    folded = normalised(word).casefold()
+    return next((forms for forms in LAW_NAME_FORMS if forms.match(folded)), None)
+
+
+def _law_name_known(word, trusted):
+    """Whether a word naming a code in a translated paper is the customer's: the same code named in any language."""
+    forms = _law_name(word)
+    if forms is not None:
+        return forms.search(trusted.lower) is not None
+    return trusted.allowed.known(word) or trusted.person(word, True)
+
+
 def _legal_known(sentence, concepts, trusted, translated):
     for concept in concepts - {'number'}:
         if not any(stem.search(trusted.lower) for name, stem, _ in STEMS if name == concept):
             return False
     if not all(numbers.known(number, trusted.values) for number in numbers.found(sentence)):
         return False
+    named = _law_names(sentence)
     if translated:
-        return True
+        # A translated sentence's other words are the translation's; the code it names is still the customer's.
+        return all(_law_name_known(word, trusted) for _, word in named)
+    held = {start for start, _ in named}
     for match in WORD.finditer(sentence):
         word = match.group(0)
-        if (word[0].isupper() and len(word) >= 2 and not _starts(sentence, match.start())
+        if (word[0].isupper() and len(word) >= 2 and (match.start() in held or not _starts(sentence, match.start()))
                 and not trusted.allowed.known(word) and not trusted.words.known(word)):
             return False
     return True

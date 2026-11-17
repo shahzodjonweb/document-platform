@@ -958,3 +958,27 @@ def test_an_order_the_customer_named_stays():
     known = trusting('Dars Xalq ta’limi vazirligining 2017-yil 6-apreldagi 187-sonli buyrug‘i asosida o‘tadi.')
     part = 'Dars Xalq ta’limi vazirligining 2017-yil 6-apreldagi 187-sonli buyrug‘i asosida tashkil etiladi.'
     assert guard(part, known) == (part, []) and ground(part, known) == (part, [])
+
+
+JOB_UZ = 'Bosh buxgalter uchun lavozim yo‘riqnomasi yozing, Mehnat kodeksiga muvofiq.'
+
+
+@pytest.mark.parametrize('part', [
+    'Soliq kodeksi va Mehnat kodeksi talablariga amal qiladi.', 'Fuqarolik kodeksining talablariga rioya qiladi.',
+    'Jinoyat kodeksiga muvofiq javobgar bo‘ladi.', '- Bojxona kodeksi talablarini biladi.',
+], ids=['tax-and-labour', 'civil', 'criminal', 'customs-item'])
+def test_a_code_the_customer_never_named_goes_when_its_name_opens_the_sentence(part):
+    known = trusting(JOB_UZ)
+    assert guard(part, known) == ('', ['ground:law'])
+    russian = trusting('Напишите должностную инструкцию главного бухгалтера согласно Трудовому кодексу.')
+    assert guard(part.lstrip('- '), russian, translated=True) == ('', ['ground:law'])
+
+
+@pytest.mark.parametrize('part, translated', [
+    ('Mehnat kodeksiga muvofiq ishlaydi.', False), ('O‘zbekiston Respublikasi Mehnat kodeksiga amal qiladi.', False),
+    ('Mehnat kodeksi talablariga amal qiladi.', True), ('The Labour Code requires a written contract.', True),
+    ('Согласно Трудовому кодексу работник отдыхает.', True),
+], ids=['uz', 'uz-republic', 'translated-uz', 'translated-en', 'ru'])
+def test_the_code_the_customer_named_stays_in_any_language(part, translated):
+    known = trusting('Напишите должностную инструкцию согласно Трудовому кодексу.') if translated else trusting(JOB_UZ)
+    assert guard(part, known, translated=translated) == (part, [])

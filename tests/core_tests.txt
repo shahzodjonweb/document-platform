@@ -1479,3 +1479,10 @@ tests/test_category_facts.py::test_a_ministry_or_government_act_the_customer_nev
 tests/test_category_facts.py::test_a_numbered_table_school_or_annex_and_order_in_other_senses_are_no_legal_sentence[In order to finish, we work.]
 tests/test_category_facts.py::test_an_order_the_customer_named_stays
 tests/test_category_finish_pdf.py::test_a_lessons_invented_ministry_order_goes_whole
+
+# Stage-2 re-audit, codes by name: the words naming a code are held wherever they stand, a sentence's or list item's
+# first word included, so "Jinoyat kodeksiga muvofiq ..." never passes once the customer named any code; in a
+# translated paper the code is held by what it is (Трудовой кодекс is Mehnat kodeksi), never by the word alone
+tests/test_category_facts.py::test_a_code_the_customer_never_named_goes_when_its_name_opens_the_sentence[criminal]
+tests/test_category_facts.py::test_the_code_the_customer_named_stays_in_any_language[translated-uz]
+tests/test_category_finish_pdf.py::test_a_job_descriptions_list_items_never_cite_a_code_the_customer_did_not_name
