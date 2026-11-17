@@ -38,7 +38,8 @@
   "align": "left"
  },
  "page_rule": {
-  "kind": "count"
+  "kind": "count",
+  "stub_min": 0.12
  },
  "furniture": {
   "first": "number",
@@ -53,12 +54,8 @@
   {
    "block": "cell_strip",
    "part": "h_head",
-   "fields": [
-    "topic",
-    "grade",
-    "subject"
-   ],
    "params": {
+    "height_mm": 9,
     "rows": [
      [
       {
@@ -69,15 +66,14 @@
      [
       {
        "label": "class",
-       "share": 0.5
+       "share": 0.4
       },
       {
        "label": "date",
-       "share": 0.5
+       "share": 0.6
       }
      ]
-    ],
-    "height_mm": 9
+    ]
    }
   },
   {
@@ -97,7 +93,8 @@
      "grade",
      "subject"
     ],
-    "rules": "above"
+    "rules": "above",
+    "align": "left"
    }
   },
   {
@@ -105,7 +102,7 @@
    "part": "h_rule",
    "when": "part:h_rule",
    "params": {
-    "style": "bar"
+    "style": "tint"
    }
   },
   {

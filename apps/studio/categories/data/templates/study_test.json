@@ -1,9 +1,9 @@
 {
  "schema": 2,
+ "id": "study_test",
  "entries": [
   "pdf.test"
  ],
- "id": "study_test",
  "name": {
   "uz": "Test varag‘i",
   "ru": "Тестовый лист",
@@ -40,7 +40,7 @@
   "kind": "flow"
  },
  "furniture": {
-  "first": "none",
+  "first": "number",
   "later": "header_number",
   "format": "n",
   "header": [
@@ -65,6 +65,7 @@
     "overline": "school",
     "kind_line": "kind",
     "kind_default": "kind_test",
+    "term": "term_and_number",
     "title": [
      "subject",
      "class_level"
@@ -72,6 +73,9 @@
     "subtitle": [
      "topic"
     ],
+    "formats": {
+     "class_level": "class_n"
+    },
     "rules": "both",
     "align": "centre"
    }
@@ -81,77 +85,46 @@
    "part": "pupil_line",
    "when": "nofact:use=self_study",
    "params": {
+    "height_mm": 10,
     "rows": [
      [
       {
        "label": "name",
-       "share": 1
+       "width_mm": 167,
+       "when": "nofact:pupil_identity=false"
       }
      ],
      [
       {
        "label": "class",
-       "share": 0.3
+       "width_mm": 43,
+       "when": "nofact:pupil_identity=false"
       },
       {
        "label": "date",
-       "share": 0.4
+       "width_mm": 66,
+       "when": "nofact:pupil_identity=false"
       },
       {
        "label": "score",
-       "share": 0.17,
+       "width_mm": 30,
+       "gap_mm": 4,
        "heavy": true,
-       "total": true
+       "total": true,
+       "when": "nofact:teacher_score=false"
       },
       {
        "label": "mark",
-       "share": 0.13,
-       "heavy": true
+       "width_mm": 24,
+       "heavy": true,
+       "when": "nofact:teacher_score=false",
+       "drop_if": {
+        "fact": "kind",
+        "pattern": "bsb|chsb|бсб|чсб"
+       }
       }
      ]
-    ],
-    "height_mm": 10
-   }
-  },
-  {
-   "block": "line",
-   "part": "instruction",
-   "fields": [
-    "time_min"
-   ],
-   "when": "nofact:use=self_study",
-   "params": {
-    "style": "small",
-    "label": "instruction",
-    "sentences": [
-     "one_answer",
-     "time",
-     "point_each"
-    ],
-    "drop_empty_slots": true
-   }
-  },
-  {
-   "block": "line",
-   "part": "instruction",
-   "when": "fact:use=self_study",
-   "params": {
-    "style": "small",
-    "label": "instruction",
-    "sentences": [
-     "self_study"
     ]
-   }
-  },
-  {
-   "block": "heading",
-   "part": "part_choice",
-   "when": "questions:both",
-   "params": {
-    "level": 2,
-    "numbering": "none",
-    "rule": "under",
-    "label": "part_choice"
    }
   },
   {
@@ -162,40 +135,72 @@
     "filter": "choice",
     "letters": true,
     "option_columns": "auto",
-    "marks": false
-   }
-  },
-  {
-   "block": "callout",
-   "part": "passage",
-   "when": "part:passage",
-   "keep": "passage",
-   "params": {
-    "style": "bar",
-    "label": "passage"
+    "intro": [
+     {
+      "when": "fact:use=self_study",
+      "label": "instruction",
+      "sentences": [
+       "self_study"
+      ]
+     },
+     {
+      "when": [
+       "fact:answer_extras=answer_sheet",
+       "questions:both"
+      ],
+      "label": "instruction",
+      "sentences": [
+       "one_answer_sheet",
+       "time",
+       "point_each"
+      ]
+     },
+     {
+      "when": "fact:answer_extras=answer_sheet",
+      "label": "instruction",
+      "sentences": [
+       "one_answer_sheet",
+       "time",
+       "point_each_one"
+      ]
+     },
+     {
+      "when": "questions:both",
+      "label": "instruction",
+      "sentences": [
+       "one_answer",
+       "time",
+       "point_each"
+      ]
+     },
+     {
+      "label": "instruction",
+      "sentences": [
+       "one_answer",
+       "time",
+       "point_each_one"
+      ]
+     }
+    ],
+    "heading": {
+     "label": "part_choice",
+     "when": "questions:both"
+    }
    }
   },
   {
    "block": "question_list",
-   "part": "part_choice",
+   "part": "passage",
    "when": "questions:passage",
-   "keep": "passage",
    "params": {
     "filter": "passage",
     "letters": true,
     "option_columns": "auto",
-    "marks": false
-   }
-  },
-  {
-   "block": "heading",
-   "part": "part_open",
-   "when": "questions:both",
-   "params": {
-    "level": 2,
-    "numbering": "none",
-    "rule": "under",
-    "label": "part_open"
+    "passage": {
+     "part": "passage",
+     "label": "passage_lead",
+     "label_one": "passage_lead_one"
+    }
    }
   },
   {
@@ -204,8 +209,36 @@
    "when": "questions:open",
    "params": {
     "filter": "open",
+    "marks": true,
     "answer_rows": 4,
-    "marks": true
+    "answer_label": "answer",
+    "intro": [
+     {
+      "when": "fact:use=self_study",
+      "label": "instruction",
+      "sentences": [
+       "self_study"
+      ]
+     },
+     {
+      "label": "instruction",
+      "sentences": [
+       "written_only",
+       "time"
+      ]
+     }
+    ],
+    "heading": {
+     "label": "part_open",
+     "when": "questions:both"
+    },
+    "score": {
+     "label": "score",
+     "when": [
+      "nofact:teacher_score=false",
+      "nofact:use=self_study"
+     ]
+    }
    }
   },
   {
@@ -214,18 +247,53 @@
    "when": "fact:answer_extras=answer_sheet",
    "params": {
     "style": "sheet",
+    "head": "plain",
     "per_row": 10,
-    "label": "sheet"
+    "label": "sheet",
+    "before_pt": 18
    }
   },
   {
    "block": "answer_key",
    "part": "answer_key",
+   "when": "nofact:use=self_study",
    "page_break_before": true,
    "params": {
     "style": "grid",
     "per_row": 10,
-    "label": "key"
+    "label": "key",
+    "note": "key_note",
+    "subtitle": [
+     "subject",
+     "class_level"
+    ],
+    "formats": {
+     "class_level": "class_n"
+    },
+    "section": "key_choice",
+    "total": "max_score",
+    "explain_when": "fact:answer_extras=explained",
+    "columns": [
+     "no",
+     "answer_col",
+     "explanation"
+    ]
+   }
+  },
+  {
+   "block": "answer_key",
+   "part": "answer_key",
+   "when": "fact:use=self_study",
+   "page_break_before": true,
+   "params": {
+    "style": "explained",
+    "label": "answers_self",
+    "note": "self_note",
+    "columns": [
+     "no",
+     "answer_col",
+     "explanation"
+    ]
    }
   },
   {
@@ -233,6 +301,10 @@
    "part": "model_answers",
    "when": "questions:open",
    "params": {
+    "heading": true,
+    "rules": "horizontal",
+    "from": "questions:open",
+    "before_pt": 14,
     "columns": [
      {
       "label": "no",
@@ -244,13 +316,11 @@
       "width_mm": "flex"
      },
      {
-      "label": "score",
+      "label": "score_col",
       "width_mm": 17,
       "align": "centre"
      }
-    ],
-    "rules": "horizontal",
-    "from": "questions:open"
+    ]
    }
   }
  ],
@@ -269,6 +339,11 @@
    "uz": "YOZMA SAVOLLAR",
    "ru": "ПИСЬМЕННЫЕ ВОПРОСЫ",
    "en": "WRITTEN QUESTIONS"
+  },
+  "class_n": {
+   "uz": "{class_level}-sinf",
+   "ru": "{class_level} класс",
+   "en": "grade {class_level}"
   },
   "name": {
    "uz": "F.I.Sh.:",
@@ -305,6 +380,11 @@
    "ru": "В каждом вопросе один правильный ответ. Обведите букву правильного ответа.",
    "en": "Each question has one correct answer. Circle the letter of the correct answer."
   },
+  "one_answer_sheet": {
+   "uz": "Har bir savolda bitta to‘g‘ri javob bor. To‘g‘ri javob harfini ish oxiridagi javoblar varaqasiga yozing.",
+   "ru": "В каждом вопросе один правильный ответ. Букву правильного ответа запишите в бланк ответов в конце работы.",
+   "en": "Each question has one correct answer. Write the letter of the correct answer on the answer sheet at the end."
+  },
   "time": {
    "uz": "Vaqt: {time_min} daqiqa.",
    "ru": "Время: {time_min} мин.",
@@ -314,6 +394,16 @@
    "uz": "I qismda har bir to‘g‘ri javob – 1 ball.",
    "ru": "В части I каждый правильный ответ – 1 балл.",
    "en": "In Part I each correct answer scores 1 point."
+  },
+  "point_each_one": {
+   "uz": "Har bir to‘g‘ri javob – 1 ball.",
+   "ru": "Каждый правильный ответ – 1 балл.",
+   "en": "Each correct answer scores 1 point."
+  },
+  "written_only": {
+   "uz": "Savollarga yozma, to‘liq javob bering. Ishni toza va aniq yozing.",
+   "ru": "Отвечайте на вопросы письменно и полно. Пишите чисто и разборчиво.",
+   "en": "Answer the questions in writing, in full. Write clearly and neatly."
   },
   "self_study": {
    "uz": "O‘zingizni sinab ko‘ring: avval javob bering, so‘ng oxirgi sahifadagi javoblar bilan solishtiring.",
@@ -330,10 +420,30 @@
    "ru": "Часть II. Дайте письменный ответ",
    "en": "Part II. Write your answer"
   },
-  "passage": {
-   "uz": "Matn asosida savollar",
-   "ru": "Вопросы по тексту",
-   "en": "Questions on a text"
+  "passage_lead": {
+   "uz": "#-savollarga matn asosida javob bering.",
+   "ru": "Ответьте на вопросы # по тексту.",
+   "en": "Answer questions # using the text."
+  },
+  "passage_lead_one": {
+   "uz": "#-savolga matn asosida javob bering.",
+   "ru": "Ответьте на вопрос # по тексту.",
+   "en": "Answer question # using the text."
+  },
+  "answer": {
+   "uz": "Javob:",
+   "ru": "Ответ:",
+   "en": "Answer:"
+  },
+  "marks": {
+   "uz": "(# ball)",
+   "ru": "(# б.)",
+   "en": "(# points)"
+  },
+  "marks_one": {
+   "uz": "(# ball)",
+   "ru": "(# б.)",
+   "en": "(# point)"
   },
   "sheet": {
    "uz": "Javoblar varaqasi",
@@ -345,15 +455,55 @@
    "ru": "КЛЮЧИ",
    "en": "ANSWER KEY"
   },
+  "key_note": {
+   "uz": "Faqat o‘qituvchi uchun",
+   "ru": "Только для учителя",
+   "en": "For the teacher only"
+  },
+  "key_choice": {
+   "uz": "Test savollari",
+   "ru": "Тестовые вопросы",
+   "en": "Multiple-choice questions"
+  },
+  "max_score": {
+   "uz": "Maksimal ball: #",
+   "ru": "Максимальный балл: #",
+   "en": "Maximum score: #"
+  },
+  "answers_self": {
+   "uz": "JAVOBLAR",
+   "ru": "ОТВЕТЫ",
+   "en": "ANSWERS"
+  },
+  "self_note": {
+   "uz": "O‘zingizni tekshiring",
+   "ru": "Проверьте себя",
+   "en": "Check yourself"
+  },
   "no": {
    "uz": "№",
    "ru": "№",
    "en": "No."
   },
+  "answer_col": {
+   "uz": "Javob",
+   "ru": "Ответ",
+   "en": "Answer"
+  },
+  "explanation": {
+   "uz": "Izoh",
+   "ru": "Пояснение",
+   "en": "Explanation"
+  },
   "model_answer": {
    "uz": "Namunaviy javob",
    "ru": "Образец ответа",
    "en": "Model answer"
+  },
+  "score_col": {
+   "uz": "Ball",
+   "ru": "Балл",
+   "en": "Points"
   }
  },
  "mock": "units/pdf.test/mock/study_test.png"

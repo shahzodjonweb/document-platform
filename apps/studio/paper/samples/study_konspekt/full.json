@@ -1,0 +1,438 @@
+{
+ "template": "study_konspekt",
+ "case": "full",
+ "entry": "pdf.konspekt",
+ "pages": 3,
+ "uz": {
+  "title": "Nyuton qonunlari: dinamikaning asosiy qonunlari",
+  "facts": {
+   "topic": "Nyuton qonunlari: dinamikaning asosiy qonunlari",
+   "subject": "Fizika (mexanika)",
+   "level": "9-sinf"
+  },
+  "sections": [
+   {
+    "id": "key_terms",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "kuch"
+     },
+     {
+      "label": "",
+      "text": "massa"
+     },
+     {
+      "label": "",
+      "text": "inersiya"
+     },
+     {
+      "label": "",
+      "text": "tezlanish"
+     },
+     {
+      "label": "",
+      "text": "inersial sanoq sistemasi"
+     },
+     {
+      "label": "",
+      "text": "ta’sir va aks ta’sir"
+     }
+    ]
+   },
+   {
+    "id": "section",
+    "heading": "Dinamikaning asosiy tushunchalari",
+    "body": "Dinamika jismning harakatini va shu harakatni yuzaga keltiruvchi sabablarni o‘rganadi. Asosiy tushunchalar kuch, massa va tezlanishdir.\nKuch jismlarning o‘zaro ta’sirini miqdoriy ifodalaydi. Massa jismning inertlik o‘lchovi bo‘lib xizmat qiladi.",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "definitions",
+    "heading": "",
+    "body": "",
+    "layout": "table",
+    "items": [
+     {
+      "label": "Kuch",
+      "text": "",
+      "value": "jismlarning o‘zaro ta’sirini ifodalovchi vektor kattalik"
+     },
+     {
+      "label": "Massa",
+      "text": "",
+      "value": "jismning inertlik o‘lchovi bo‘lgan skalyar kattalik"
+     },
+     {
+      "label": "Inersiya",
+      "text": "",
+      "value": "tashqi ta’sir bo‘lmaganda jismning tezligini saqlash xususiyati"
+     }
+    ]
+   },
+   {
+    "id": "section_2",
+    "heading": "Nyutonning birinchi va ikkinchi qonunlari",
+    "body": "Jismga boshqa jismlar ta’sir qilmasa, u tinch holatini yoki to‘g‘ri chiziqli tekis harakatini saqlaydi. Bu inersiya qonunidir.\nJismning olgan tezlanishi unga ta’sir etuvchi kuchga to‘g‘ri, massasiga esa teskari proporsional.",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "formulas_2",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "F = m · a",
+      "text": "bu yerda: F — kuch, m — jism massasi, a — tezlanish.",
+      "value": ""
+     },
+     {
+      "label": "F_{12} = −F_{21}",
+      "text": "F_{12} — birinchi jismning ikkinchisiga ta’sir kuchi.",
+      "value": ""
+     }
+    ]
+   },
+   {
+    "id": "section_3",
+    "heading": "Nyutonning uchinchi qonuni",
+    "body": "Ikki jism bir-biriga moduli jihatdan teng va yo‘nalishi qarama-qarshi kuchlar bilan ta’sir qiladi. Bu kuchlar har xil jismlarga qo‘yilgan, shuning uchun ular bir-birini muvozanatlamaydi.",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "takeaways",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "Birinchi qonun: tezlikni o‘zgartirish uchun kuch kerak."
+     },
+     {
+      "label": "",
+      "text": "Ikkinchi qonun: F = m · a."
+     },
+     {
+      "label": "",
+      "text": "Uchinchi qonun: kuchlar doim juft bo‘lib paydo bo‘ladi."
+     }
+    ]
+   },
+   {
+    "id": "review",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "Inersiya hodisasini misol bilan tushuntiring."
+     },
+     {
+      "label": "",
+      "text": "Nyutonning ikkinchi qonuni qanday ifodalanadi?"
+     },
+     {
+      "label": "",
+      "text": "Nega ta’sir va aks ta’sir kuchlari bir-birini muvozanatlamaydi?"
+     }
+    ]
+   }
+  ]
+ },
+ "ru": {
+  "title": "Законы Ньютона: основные законы динамики",
+  "facts": {
+   "topic": "Законы Ньютона: основные законы динамики",
+   "subject": "Физика (механика)",
+   "level": "9 класс"
+  },
+  "sections": [
+   {
+    "id": "key_terms",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "сила"
+     },
+     {
+      "label": "",
+      "text": "масса"
+     },
+     {
+      "label": "",
+      "text": "инерция"
+     },
+     {
+      "label": "",
+      "text": "ускорение"
+     },
+     {
+      "label": "",
+      "text": "инерциальная система отсчёта"
+     },
+     {
+      "label": "",
+      "text": "действие и противодействие"
+     }
+    ]
+   },
+   {
+    "id": "section",
+    "heading": "Основные понятия динамики",
+    "body": "Динамика изучает движение тела и причины, которые его вызывают. Основные понятия — сила, масса и ускорение.\nСила количественно выражает взаимодействие тел. Масса служит мерой инертности тела.",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "definitions",
+    "heading": "",
+    "body": "",
+    "layout": "table",
+    "items": [
+     {
+      "label": "Сила",
+      "text": "",
+      "value": "векторная величина, выражающая взаимодействие тел"
+     },
+     {
+      "label": "Масса",
+      "text": "",
+      "value": "скалярная величина, мера инертности тела"
+     },
+     {
+      "label": "Инерция",
+      "text": "",
+      "value": "свойство тела сохранять скорость без внешнего воздействия"
+     }
+    ]
+   },
+   {
+    "id": "section_2",
+    "heading": "Первый и второй законы Ньютона",
+    "body": "Если на тело не действуют другие тела, оно сохраняет покой или равномерное прямолинейное движение. Это закон инерции.\nУскорение тела прямо пропорционально действующей силе и обратно пропорционально его массе.",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "formulas_2",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "F = m · a",
+      "text": "где: F — сила, m — масса тела, a — ускорение.",
+      "value": ""
+     },
+     {
+      "label": "F_{12} = −F_{21}",
+      "text": "F_{12} — сила действия первого тела на второе.",
+      "value": ""
+     }
+    ]
+   },
+   {
+    "id": "section_3",
+    "heading": "Третий закон Ньютона",
+    "body": "Два тела действуют друг на друга силами, равными по модулю и противоположными по направлению. Эти силы приложены к разным телам, поэтому не уравновешивают друг друга.",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "takeaways",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "Первый закон: чтобы изменить скорость, нужна сила."
+     },
+     {
+      "label": "",
+      "text": "Второй закон: F = m · a."
+     },
+     {
+      "label": "",
+      "text": "Третий закон: силы всегда возникают парами."
+     }
+    ]
+   },
+   {
+    "id": "review",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "Объясните явление инерции на примере."
+     },
+     {
+      "label": "",
+      "text": "Как формулируется второй закон Ньютона?"
+     },
+     {
+      "label": "",
+      "text": "Почему силы действия и противодействия не уравновешивают друг друга?"
+     }
+    ]
+   }
+  ]
+ },
+ "en": {
+  "title": "Newton’s laws: the basic laws of dynamics",
+  "facts": {
+   "topic": "Newton’s laws: the basic laws of dynamics",
+   "subject": "Physics (mechanics)",
+   "level": "Year 9"
+  },
+  "sections": [
+   {
+    "id": "key_terms",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "force"
+     },
+     {
+      "label": "",
+      "text": "mass"
+     },
+     {
+      "label": "",
+      "text": "inertia"
+     },
+     {
+      "label": "",
+      "text": "acceleration"
+     },
+     {
+      "label": "",
+      "text": "inertial frame of reference"
+     },
+     {
+      "label": "",
+      "text": "action and reaction"
+     }
+    ]
+   },
+   {
+    "id": "section",
+    "heading": "The basic ideas of dynamics",
+    "body": "Dynamics studies the motion of a body and the causes of that motion. Its basic ideas are force, mass and acceleration.\nForce measures how bodies act on each other. Mass is the measure of a body’s inertia.",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "definitions",
+    "heading": "",
+    "body": "",
+    "layout": "table",
+    "items": [
+     {
+      "label": "Force",
+      "text": "",
+      "value": "a vector quantity that describes how bodies act on each other"
+     },
+     {
+      "label": "Mass",
+      "text": "",
+      "value": "a scalar quantity, the measure of a body’s inertia"
+     },
+     {
+      "label": "Inertia",
+      "text": "",
+      "value": "the property of keeping its velocity when nothing acts on a body"
+     }
+    ]
+   },
+   {
+    "id": "section_2",
+    "heading": "Newton’s first and second laws",
+    "body": "A body that nothing acts on stays at rest or keeps moving in a straight line at a steady speed. This is the law of inertia.\nThe acceleration of a body is directly proportional to the force on it and inversely proportional to its mass.",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "formulas_2",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "F = m · a",
+      "text": "where: F is the force, m the mass of the body, a the acceleration.",
+      "value": ""
+     },
+     {
+      "label": "F_{12} = −F_{21}",
+      "text": "F_{12} is the force of the first body on the second.",
+      "value": ""
+     }
+    ]
+   },
+   {
+    "id": "section_3",
+    "heading": "Newton’s third law",
+    "body": "Two bodies act on each other with forces equal in size and opposite in direction. The forces act on different bodies, so they do not balance each other.",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "takeaways",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "First law: a force is needed to change velocity."
+     },
+     {
+      "label": "",
+      "text": "Second law: F = m · a."
+     },
+     {
+      "label": "",
+      "text": "Third law: forces always come in pairs."
+     }
+    ]
+   },
+   {
+    "id": "review",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "Explain inertia with an example."
+     },
+     {
+      "label": "",
+      "text": "How is Newton’s second law stated?"
+     },
+     {
+      "label": "",
+      "text": "Why do action and reaction forces not balance each other?"
+     }
+    ]
+   }
+  ]
+ }
+}

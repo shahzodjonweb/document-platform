@@ -38,7 +38,8 @@
  },
  "page_rule": {
   "kind": "count",
-  "trim": true
+  "trim": true,
+  "stub_min": 0.12
  },
  "furniture": {
   "first": "number",
@@ -92,95 +93,181 @@
    }
   },
   {
-   "block": "doc_head",
+   "block": "cell_strip",
    "part": "head",
-   "page_break_before": false,
    "fields": [
     "date",
     "grade",
     "subject",
     "topic",
     "teacher",
-    "school"
+    "school",
+    "duration",
+    "textbook"
    ],
    "params": {
     "overline": "overline",
-    "title": [
-     "topic"
-    ],
-    "meta": [
-     "date",
-     "grade",
-     "subject",
-     "teacher",
-     "school"
-    ],
-    "rules": "both"
+    "height_mm": 11,
+    "row_gap_mm": 0,
+    "value_style": "bold",
+    "rows": [
+     [
+      {
+       "label": "date_l",
+       "fact": "date",
+       "share": 0.3
+      },
+      {
+       "label": "grade_l",
+       "fact": "grade",
+       "share": 0.2
+      },
+      {
+       "label": "subject_l",
+       "fact": "subject",
+       "share": 0.5
+      }
+     ],
+     [
+      {
+       "label": "topic_l",
+       "fact": "topic",
+       "share": 1,
+       "style": "title"
+      }
+     ],
+     [
+      {
+       "label": "teacher_l",
+       "fact": "teacher",
+       "share": 0.5
+      },
+      {
+       "label": "school_l",
+       "fact": "school",
+       "share": 0.5
+      }
+     ],
+     [
+      {
+       "label": "duration_l",
+       "fact": "duration",
+       "format": "minutes",
+       "share": 0.3
+      },
+      {
+       "label": "textbook_l",
+       "fact": "textbook",
+       "share": 0.7
+      }
+     ]
+    ]
    }
   },
   {
    "block": "heading",
    "part": "aim_education",
    "params": {
-    "level": 3,
+    "level": 2,
     "caps": true,
-    "label": "aims"
+    "label": "aims",
+    "in_toc": false,
+    "rule": "under"
    }
   },
   {
-   "block": "kv_table",
+   "block": "heading",
    "part": "aim_education",
    "when": "part:aim_education",
    "params": {
-    "rows": "aim_education"
+    "level": 3,
+    "in_toc": false
    }
   },
   {
-   "block": "kv_table",
+   "block": "paragraph",
+   "part": "aim_education",
+   "when": "part:aim_education",
+   "params": {
+    "style": "body"
+   }
+  },
+  {
+   "block": "heading",
    "part": "aim_upbringing",
    "when": "part:aim_upbringing",
    "params": {
-    "rows": "aim_upbringing"
+    "level": 3,
+    "in_toc": false
    }
   },
   {
-   "block": "kv_table",
+   "block": "paragraph",
+   "part": "aim_upbringing",
+   "when": "part:aim_upbringing",
+   "params": {
+    "style": "body"
+   }
+  },
+  {
+   "block": "heading",
    "part": "aim_development",
    "when": "part:aim_development",
    "params": {
-    "rows": "aim_development"
+    "level": 3,
+    "in_toc": false
    }
   },
   {
-   "block": "kv_table",
+   "block": "paragraph",
+   "part": "aim_development",
+   "when": "part:aim_development",
+   "params": {
+    "style": "body"
+   }
+  },
+  {
+   "block": "heading",
    "part": "expected_results",
    "when": "part:expected_results",
    "params": {
-    "rows": "expected_results"
+    "level": 3,
+    "in_toc": false
    }
   },
   {
-   "block": "kv_table",
+   "block": "paragraph",
+   "part": "expected_results",
+   "when": "part:expected_results",
+   "params": {
+    "style": "body"
+   }
+  },
+  {
+   "block": "paragraph",
    "part": "lesson_type",
    "when": "part:lesson_type",
    "params": {
-    "rows": "lesson_type"
+    "label": "type_l",
+    "before_pt": 3
    }
   },
   {
-   "block": "kv_table",
+   "block": "paragraph",
    "part": "lesson_methods",
    "when": "part:lesson_methods",
    "params": {
-    "rows": "lesson_methods"
+    "label": "methods_l",
+    "before_pt": 3
    }
   },
   {
-   "block": "kv_table",
+   "block": "paragraph",
    "part": "lesson_equipment",
    "when": "part:lesson_equipment",
    "params": {
-    "rows": "lesson_equipment"
+    "label": "equipment_l",
+    "before_pt": 3
    }
   },
   {
@@ -188,8 +275,10 @@
    "part": "outline",
    "when": "part:outline",
    "params": {
-    "level": 3,
-    "caps": true
+    "level": 2,
+    "caps": true,
+    "in_toc": false,
+    "rule": "under"
    }
   },
   {
@@ -197,8 +286,7 @@
    "part": "outline",
    "when": "part:outline",
    "params": {
-    "rules": "grid",
-    "total": "none"
+    "rules": "grid"
    }
   },
   {
@@ -268,7 +356,8 @@
    "part": "group_tasks",
    "when": "part:group_tasks",
    "params": {
-    "rules": "grid"
+    "rules": "grid",
+    "heading": true
    }
   },
   {
@@ -351,10 +440,18 @@
     "teacher"
    ],
    "params": {
-    "word": "reviewed",
     "side": "pair",
-    "rows": [
-     "teacher"
+    "groups": [
+     {
+      "word": "teacher_word",
+      "name": "teacher",
+      "date": false
+     },
+     {
+      "word": "reviewed",
+      "rows": [],
+      "date": true
+     }
     ]
    }
   }
@@ -385,10 +482,65 @@
    "ru": "{duration} мин",
    "en": "{duration} min"
   },
-  "total": {
-   "uz": "Jami",
-   "ru": "Итого",
-   "en": "Total"
+  "date_l": {
+   "uz": "Sana",
+   "ru": "Дата",
+   "en": "Date"
+  },
+  "grade_l": {
+   "uz": "Sinf",
+   "ru": "Класс",
+   "en": "Grade"
+  },
+  "subject_l": {
+   "uz": "Fan",
+   "ru": "Предмет",
+   "en": "Subject"
+  },
+  "topic_l": {
+   "uz": "Mavzu",
+   "ru": "Тема",
+   "en": "Topic"
+  },
+  "teacher_l": {
+   "uz": "O‘qituvchi",
+   "ru": "Учитель",
+   "en": "Teacher"
+  },
+  "school_l": {
+   "uz": "Maktab",
+   "ru": "Школа",
+   "en": "School"
+  },
+  "duration_l": {
+   "uz": "Davomiyligi",
+   "ru": "Продолжительность",
+   "en": "Length"
+  },
+  "textbook_l": {
+   "uz": "Darslik",
+   "ru": "Учебник",
+   "en": "Textbook"
+  },
+  "type_l": {
+   "uz": "Dars turi:",
+   "ru": "Тип урока:",
+   "en": "Lesson type:"
+  },
+  "methods_l": {
+   "uz": "Dars metodi:",
+   "ru": "Методы:",
+   "en": "Methods:"
+  },
+  "equipment_l": {
+   "uz": "Dars jihozi:",
+   "ru": "Оборудование:",
+   "en": "Equipment:"
+  },
+  "teacher_word": {
+   "uz": "O‘qituvchi",
+   "ru": "Учитель",
+   "en": "Teacher"
   }
  },
  "mock": "units/pdf.dars_ishlanmasi/mock/study_dars_ishlanmasi.png"

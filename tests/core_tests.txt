@@ -1245,3 +1245,18 @@ tests/test_paper_check.py::test_a_gutter_list_may_hang_its_markers_left_of_the_f
 tests/test_paper_check.py::test_the_long_case_is_sized_to_the_page_rule_and_shared_among_the_prose_parts
 tests/test_paper_check.py::test_the_long_case_of_a_fixed_paper_with_several_prose_parts_takes_one_page_more
 tests/test_paper_check.py::test_a_module_that_makes_its_own_sample_paper_draws_each_sample_on_it
+
+# The study papers (R3b): the test sheet is drawn by its template with its head, pupil strip, lettered options in
+# measured columns, passage, written answer boxes and the key on its own page; self-study has no strip and an
+# explained key; the key letter is a matching option, never a guess; formulas carry their section's numbers; the
+# test and the handout read well in every language; customer text is never markup
+tests/test_paper_study.py::test_the_study_blocks_are_registered_and_the_test_is_ready
+tests/test_paper_study.py::test_every_study_template_has_its_samples
+tests/test_paper_study.py::test_the_test_and_the_handout_read_well[study_test-uz-full]
+tests/test_paper_study.py::test_the_test_and_the_handout_read_well[study_tarqatma-uz-full]
+tests/test_paper_study.py::test_a_full_test_has_its_head_strip_parts_passage_written_answers_and_key_on_its_own_page
+tests/test_paper_study.py::test_self_study_has_no_strip_no_score_tab_and_an_explained_key
+tests/test_paper_study.py::test_two_options_equally_alike_give_no_letter
+tests/test_paper_study.py::test_an_answer_no_option_matches_is_printed_in_its_cell
+tests/test_paper_study.py::test_formulas_are_numbered_by_their_section_with_scripts_and_their_legend
+tests/test_paper_study.py::test_customer_text_is_text_never_markup
