@@ -1147,3 +1147,16 @@ tests/test_category_study_entries.py::test_only_prose_grows_and_shrinks_in_a_cou
 tests/test_category_study_entries.py::test_the_shortest_length_holds_the_pages_its_template_forces[pdf.mustaqil_ish]
 tests/test_category_study_entries.py::test_the_shortest_length_holds_the_pages_its_template_forces[pdf.dars_ishlanmasi]
 tests/test_category_study_entries.py::test_a_handout_key_is_written_only_in_a_handout_and_only_when_asked
+
+# Categories, the academic and study papers' pages (C2a second review): a third chapter only where three can fill
+# their pages; a group the model sizes counts at its max among the page starts; a named lesson plan is the plan
+# whatever its methods and materials, a handout only when asked for with no plan; a handout holds its two pages with
+# its key; the shortest and the default length end on their page with no heavy cut (drawn with stand-in blocks)
+tests/test_category_study_entries.py::test_a_third_chapter_comes_only_where_three_can_fill_their_pages
+tests/test_category_study_entries.py::test_the_shortest_length_holds_the_pages_its_template_forces[pdf.kurs_ishi]
+tests/test_category_study_entries.py::test_a_named_lesson_plan_is_the_plan_whatever_its_methods_and_materials[uz-cards]
+tests/test_category_study_entries.py::test_a_named_lesson_plan_is_the_plan_whatever_its_methods_and_materials[ru-cards]
+tests/test_category_study_entries.py::test_a_handout_asked_for_without_a_plan_is_the_handout[uz]
+tests/test_category_study_entries.py::test_a_handout_holds_its_two_pages_with_its_key
+tests/test_category_study_entries.py::test_the_shortest_and_the_default_length_end_on_their_page_without_heavy_cuts[pdf.mustaqil_ish-8-plain-2]
+tests/test_category_study_entries.py::test_the_shortest_and_the_default_length_end_on_their_page_without_heavy_cuts[pdf.kurs_ishi-12-plain-3]

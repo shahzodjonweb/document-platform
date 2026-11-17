@@ -133,8 +133,7 @@
    "params": {
     "level": 3,
     "caps": true
-   },
-   "page_break_before": true
+   }
   },
   {
    "block": "line",

@@ -10,7 +10,7 @@
   "ru": "📖 Конспект / Пересказ",
   "en": "📖 Notes / Summary"
  },
- "summary": "A tidy notes sheet in black and grey: the topic, a plan and key terms, numbered sections with definition rows and formula lines, closing points and review questions; or a faithful summary of an attached file (a main idea and the source’s points); or exam questions with short answers. With a file every fact comes from the file; without one only textbook-safe facts. 1 to 35 pages, default 4, at most 12.",
+ "summary": "A tidy notes sheet in black and grey: the topic, a plan and key terms, numbered sections with definition rows and formula lines, closing points and review questions; or a faithful summary of an attached file (a main idea and the source’s points); or exam questions with short answers. With a file every fact comes from the file; without one only textbook-safe facts. 2 to 12 pages, default 4.",
  "tone": "Impersonal, concise, telegraphic study notes; exact terms; no first or second person.",
  "topic": true,
  "title": "model",
@@ -19,9 +19,9 @@
   "mode": "count",
   "target": "count",
   "default": 4,
-  "min": 1,
+  "min": 2,
   "max": 12,
-  "note": "The fixed parts are inside the count. Nothing is padded: the notes end where the content ends (fill false), so an under-run is a shorter last page. At most 12: the form is made for 1 to 11 pages, and a longer request is built at 12 and said on the review."
+  "note": "The fixed parts are inside the count. Nothing is padded: the notes end where the content ends (fill false), so an under-run is a shorter last page. From 2 pages: one page cannot hold a section with the key terms, the closing points and the definitions (the one-page revision sheet is deferred), so 1 is built as 2. At most 12: the form is made for up to 11 pages, and a longer request is built at 12 and said on the review. The fixed parts’ shares stand for the room the template’s page starts, headings and boxes take, which skeleton.words cannot see at its generic words a page: they are set so the shortest and the default length fit at about 0.9 of each part’s top word count with no trim below 0.7 (rendered through the paper engine with stand-in blocks), a longer paper running short for the top-up to fill. A words-a-page figure per template would replace this."
  },
  "questions": {
   "default": 0,
@@ -200,7 +200,7 @@
    "heading": null,
    "heading_mode": "none",
    "need": "required",
-   "share": 0.04,
+   "share": 0.3,
    "elastic": false,
    "block": "doc_head",
    "fields": [
@@ -449,9 +449,9 @@
  ],
  "bot": {
   "prompt": {
-   "uz": "✍️ Mavzuni, fanni, sinf yoki kursni va necha sahifa kerakligini yozing (aytmasangiz, 4 sahifa; 1 dan 12 gacha).\nNima kerakligini ayting: konspekt, fayl bo‘yicha qisqacha mazmun yoki imtihon uchun savol-javob (savollar ro‘yxatini ham yuboring, 12 tagacha).\n📎 PDF, Word yoki TXT fayl biriktirsangiz, hujjat faqat shu fayl asosida tuziladi.\n🏫 Dars ishlanmasi kerak bo‘lsa, «Dars ishlanmasi / tarqatma» bo‘limini tanlang.",
-   "ru": "✍️ Напишите тему, предмет, класс или курс и сколько страниц нужно (если не указать, 4; от 1 до 12).\nУкажите, что нужно: конспект, краткое изложение файла или вопросы и ответы к экзамену (пришлите и список вопросов, до 12).\n📎 Прикрепите PDF, Word или TXT — документ будет составлен только по вашему файлу.\n🏫 Поурочный план для учителя — в разделе «Поурочный план / раздатка».",
-   "en": "✍️ Write the topic, the subject, your grade or year and how many pages (4 if you don’t say; 1 to 12).\nSay what you need: study notes, a summary of your file, or exam questions with answers (send your list of questions too, up to 12).\n📎 Attach a PDF, Word or TXT file and the document is made only from it.\n🏫 A lesson plan for teaching is under “Lesson plan / handout”."
+   "uz": "✍️ Mavzuni, fanni, sinf yoki kursni va necha sahifa kerakligini yozing (aytmasangiz, 4 sahifa; 2 dan 12 gacha).\nNima kerakligini ayting: konspekt, fayl bo‘yicha qisqacha mazmun yoki imtihon uchun savol-javob (savollar ro‘yxatini ham yuboring, 12 tagacha).\n📎 PDF, Word yoki TXT fayl biriktirsangiz, hujjat faqat shu fayl asosida tuziladi.\n🏫 Dars ishlanmasi kerak bo‘lsa, «Dars ishlanmasi / tarqatma» bo‘limini tanlang.",
+   "ru": "✍️ Напишите тему, предмет, класс или курс и сколько страниц нужно (если не указать, 4; от 2 до 12).\nУкажите, что нужно: конспект, краткое изложение файла или вопросы и ответы к экзамену (пришлите и список вопросов, до 12).\n📎 Прикрепите PDF, Word или TXT — документ будет составлен только по вашему файлу.\n🏫 Поурочный план для учителя — в разделе «Поурочный план / раздатка».",
+   "en": "✍️ Write the topic, the subject, your grade or year and how many pages (4 if you don’t say; 2 to 12).\nSay what you need: study notes, a summary of your file, or exam questions with answers (send your list of questions too, up to 12).\n📎 Attach a PDF, Word or TXT file and the document is made only from it.\n🏫 A lesson plan for teaching is under “Lesson plan / handout”."
   },
   "examples": [
    {
@@ -497,8 +497,8 @@
  "look": null,
  "gates": [
   "A native Uzbek and a native Russian reader check the fixed headings (Reja, Tayanch iboralar, Xulosa, Asosiy fikrlar, Nazorat savollari), the definition-table headers, the kind line and the bot copy.",
-  "Samples of 1, 4 and 11 pages in uz, ru and en, in the notes, summary and questions forms, are drawn with the paper sample tool next to units/pdf.konspekt/mock/study_konspekt.png, formulas read by a person.",
-  "The shortest notes, 1 page, are sampled with the paper sample tool in uz, ru and en in each form (notes, summary, questions and answers), and each ends on page 1 with no longer_than_quoted.",
+  "Samples of 2, 4 and 11 pages in uz, ru and en, in the notes, summary and questions forms, are drawn with the paper sample tool next to units/pdf.konspekt/mock/study_konspekt.png, formulas read by a person.",
+  "The shortest notes, 2 pages, are sampled with the paper sample tool in uz, ru and en in each form (notes, summary, questions and answers), and each ends on page 2 with no longer_than_quoted and no trim below 0.7.",
   "A summary of an attached file adds no name or number the file does not hold (one real-provider run with scripts/operations/ai_smoke.py --category pdf.konspekt and a file), and the facts corpus is at zero."
  ],
  "later": [

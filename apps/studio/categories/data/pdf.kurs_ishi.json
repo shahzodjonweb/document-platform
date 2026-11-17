@@ -10,7 +10,7 @@
   "ru": "📚 Курсовая работа",
   "en": "📚 Course paper"
  },
- "summary": "A typeset kurs ishi as an Uzbek kafedra expects it: formal title page (ruled blanks for every fact not given, the year from the clock), Mundarija with real page numbers, a Kirish of labelled parts, two or three chapters of numbered sections with a closing paragraph each (the kafedra plan word for word when given), Xulosa with proposals for applied topics, references only from what the customer supplied (a ruled form otherwise), and an optional appendix. 10 to 35 pages, default 25.",
+ "summary": "A typeset kurs ishi as an Uzbek kafedra expects it: formal title page (ruled blanks for every fact not given, the year from the clock), Mundarija with real page numbers, a Kirish of labelled parts, two or three chapters of numbered sections with a closing paragraph each (the kafedra plan word for word when given), Xulosa with proposals for applied topics, references only from what the customer supplied (a ruled form otherwise), and an optional appendix. 12 to 35 pages, default 25.",
  "tone": "Formal academic, impersonal third person, plain exact sentences, written to be read by a supervisor and a kafedra commission.",
  "topic": true,
  "title": "model",
@@ -19,9 +19,9 @@
   "mode": "count",
   "target": "count",
   "default": 25,
-  "min": 10,
+  "min": 12,
   "max": 35,
-  "note": "Sheets of the PDF, the title page and the contents included. Below 10 is built as 10."
+  "note": "Sheets of the PDF, the title page and the contents included. Below 12 is built as 12: the title page, the contents, a two-page Kirish, three chapters of two pages each (a kafedra plan may have three at any length), the Xulosa and the references are 12 page starts and fills. The fixed parts’ shares stand for the room the template’s page starts, headings and boxes take, which skeleton.words cannot see at its generic words a page: they are set so the shortest and the default length fit at about 0.9 of each part’s top word count with no trim below 0.7 (rendered through the paper engine with stand-in blocks), a longer paper running short for the top-up to fill. A words-a-page figure per template would replace this."
  },
  "questions": {
   "default": 0,
@@ -305,7 +305,7 @@
    "heading": null,
    "heading_mode": "none",
    "need": "required",
-   "share": 0.04,
+   "share": 0.18,
    "elastic": false,
    "block": "title_page",
    "fields": [
@@ -334,7 +334,7 @@
    },
    "heading_mode": "fixed",
    "need": "required",
-   "share": 0.04,
+   "share": 0.17,
    "elastic": false,
    "block": "toc",
    "write": "Nothing to write: the template lists the headings with the page each starts on."
@@ -353,8 +353,8 @@
    "block": "paragraph",
    "share": 0.025,
    "words": [
-    100,
-    220
+    90,
+    170
    ],
    "write": "One paragraph on why the topic matters now. Starts with the content itself, never restating the label."
   },
@@ -372,8 +372,8 @@
    "block": "paragraph",
    "share": 0.02,
    "words": [
-    60,
-    150
+    50,
+    110
    ],
    "write": "One short paragraph. Name authors or works only when a source the customer supplied names them; otherwise say in general words which aspects are usually studied, and name no one."
   },
@@ -392,7 +392,7 @@
    "share": 0.005,
    "words": [
     12,
-    40
+    35
    ],
    "write": "The aim in one sentence."
   },
@@ -412,7 +412,7 @@
    "max_items": 5,
    "words": [
     25,
-    90
+    80
    ],
    "write": "Three to five tasks, one item each (in text, no label), each a verbal phrase ending in a semicolon, the last in a full stop. Each is answered later by a section and by one finding of the Xulosa, in the same order."
   },
@@ -431,7 +431,7 @@
    "share": 0.005,
    "words": [
     10,
-    40
+    35
    ],
    "write": "One sentence: what is studied. An enterprise the customer did not name stays generic («tanlangan korxona»)."
   },
@@ -450,7 +450,7 @@
    "share": 0.005,
    "words": [
     10,
-    40
+    35
    ],
    "write": "One sentence: which side of the object is examined."
   },
@@ -469,7 +469,7 @@
    "share": 0.01,
    "words": [
     20,
-    70
+    60
    ],
    "write": "One or two sentences naming the methods used (analysis, comparison, generalisation, the customer’s own survey only when they described one). No law or decree named."
   },
@@ -488,7 +488,7 @@
    "share": 0.01,
    "words": [
     20,
-    70
+    60
    ],
    "write": "One or two sentences on where the results can be used."
   },
@@ -503,8 +503,8 @@
    "block": "heading",
    "group": "chapter",
    "words": [
-    20,
-    60
+    15,
+    40
    ],
    "write": "The chapter: its title in heading (repeating the topic’s key words; from the customer’s plan word for word when one is given; no number, the template counts), and in body one to three sentences that say what the chapter examines. Chapter 1 is theory (concepts, development, classification, approaches), chapter 2 analysis or practice and the largest, chapter 3 only when the plan has it or the paper is 31 pages or more (proposals, a model, an implementation). A chapter not needed stays empty, its sections too."
   },
@@ -514,7 +514,7 @@
    "heading": null,
    "heading_mode": "model",
    "need": "required",
-   "share": 0.22,
+   "share": 0.12,
    "elastic": true,
    "block": "paragraph",
    "group": "chapter",
@@ -526,7 +526,7 @@
    "heading": null,
    "heading_mode": "model",
    "need": "required",
-   "share": 0.22,
+   "share": 0.12,
    "elastic": true,
    "block": "paragraph",
    "group": "chapter",
@@ -538,12 +538,12 @@
    "heading": null,
    "heading_mode": "model",
    "need": "usual",
-   "share": 0.12,
+   "share": 0.06,
    "elastic": true,
    "block": "paragraph",
    "group": "chapter",
    "from": 14,
-   "write": "A third section of this chapter: when the plan has it or the chapter has ten pages or more; otherwise empty."
+   "write": "A third section of this chapter, written as the first is: when the plan has it or the paper is 14 pages or more; otherwise empty."
   },
   {
    "id": "chapter_close",
@@ -556,8 +556,8 @@
    "block": "paragraph",
    "group": "chapter",
    "words": [
-    40,
-    110
+    30,
+    80
    ],
    "write": "One short closing paragraph of this chapter, with no heading: what the chapter established, leading into the next. No new facts. Empty when its chapter is."
   },
@@ -575,8 +575,8 @@
    "elastic": false,
    "block": "paragraph",
    "words": [
-    200,
-    420
+    150,
+    250
    ],
    "write": "Opens with «Mavzuni o‘rganish natijasida quyidagi xulosalarga kelindi.» («В результате исследования сделаны следующие выводы.», “The study leads to the following conclusions.”), then one finding per task of the Kirish in the same order (Birinchidan, Ikkinchidan …), each 1 to 3 sentences restating what the work established. No new facts or citations; a number only one the customer gave."
   },
@@ -596,7 +596,7 @@
    "max_items": 4,
    "words": [
     0,
-    120
+    60
    ],
    "write": "For an applied topic, two to four short proposals that follow from chapter 2, one item each (in text, no label). For a theoretical topic, none."
   },
@@ -610,7 +610,7 @@
    },
    "heading_mode": "fixed",
    "need": "required",
-   "share": 0.04,
+   "share": 0.18,
    "elastic": false,
    "block": "reference_list",
    "words": [
@@ -643,7 +643,7 @@
    "to": "model"
   },
   {
-   "text": "A kafedra plan the customer gives (in the message or a file) is followed word for word: its chapter and section titles are the headings, in order, and no point is added, merged, dropped or reordered. Without a plan, propose two chapters of two or three sections (three chapters from 31 pages).",
+   "text": "A kafedra plan the customer gives (in the message or a file) is followed word for word: its chapter and section titles are the headings, in order, and no point is added, merged, dropped or reordered. A paper has at most three chapters: a plan of more keeps every heading in order, the later chapters’ titles written as sections of the third. Without a plan, two chapters of two or three sections; three chapters only from 31 pages.",
    "to": "model"
   },
   {
@@ -669,9 +669,9 @@
  ],
  "bot": {
   "prompt": {
-   "uz": "📚 Kurs ishining mavzusi va fanini yozing. Sahifalar sonini ham ayting (aytmasangiz, 25; 10 dan 35 gacha). Titul varag‘i va mundarija ham shu songa kiradi.\n📎 Kafedra rejasi, raqamlaringiz yoki manbalaringiz bo‘lsa, PDF, Word yoki TXT fayl qo‘shing. Ilova kerak bo‘lsa, shuni ham yozing.\nRaqam va manbalar faqat sizdan olinadi. Manba bermasangiz, adabiyotlar ro‘yxati qo‘lda to‘ldirish uchun bo‘sh qatorlar bo‘lib chiqadi.",
-   "ru": "📚 Напишите тему и предмет курсовой. Укажите и число страниц (если не укажете, 25; от 10 до 35). Титульный лист и оглавление входят в это число.\n📎 Если есть план кафедры, ваши цифры или источники, добавьте файл PDF, Word или TXT. Нужно приложение — напишите и об этом.\nЦифры и источники берутся только у вас. Без источников список литературы будет пустыми строками для заполнения от руки.",
-   "en": "📚 Write the topic and the subject of your course paper. Add the number of pages too (25 if you don’t; 10 to 35). The title page and the contents count among them.\n📎 If you have the department’s plan, your figures or sources, attach a PDF, Word or TXT file. If you need an appendix, say so.\nFigures and sources are taken only from you. Without sources the reference list is blank lines to fill in by hand."
+   "uz": "📚 Kurs ishining mavzusi va fanini yozing. Sahifalar sonini ham ayting (aytmasangiz, 25; 12 dan 35 gacha). Titul varag‘i va mundarija ham shu songa kiradi.\n📎 Kafedra rejasi, raqamlaringiz yoki manbalaringiz bo‘lsa, PDF, Word yoki TXT fayl qo‘shing. Ilova kerak bo‘lsa, shuni ham yozing.\nRaqam va manbalar faqat sizdan olinadi. Manba bermasangiz, adabiyotlar ro‘yxati qo‘lda to‘ldirish uchun bo‘sh qatorlar bo‘lib chiqadi.",
+   "ru": "📚 Напишите тему и предмет курсовой. Укажите и число страниц (если не укажете, 25; от 12 до 35). Титульный лист и оглавление входят в это число.\n📎 Если есть план кафедры, ваши цифры или источники, добавьте файл PDF, Word или TXT. Нужно приложение — напишите и об этом.\nЦифры и источники берутся только у вас. Без источников список литературы будет пустыми строками для заполнения от руки.",
+   "en": "📚 Write the topic and the subject of your course paper. Add the number of pages too (25 if you don’t; 12 to 35). The title page and the contents count among them.\n📎 If you have the department’s plan, your figures or sources, attach a PDF, Word or TXT file. If you need an appendix, say so.\nFigures and sources are taken only from you. Without sources the reference list is blank lines to fill in by hand."
   },
   "examples": [
    {
@@ -717,8 +717,8 @@
  "look": null,
  "gates": [
   "A native Uzbek and a native Russian reader check the Kirish labels, the fixed headings, the Xulosa formula, the title-page labels of academic_kurs_ishi and the bot copy.",
-  "Samples of 10, 25 and 35 pages in uz, ru and en, with and without the customer’s figures and plan, are drawn with the paper sample tool next to units/pdf.kurs_ishi/mock/academic_kurs_ishi.png.",
-  "The shortest paper, 10 pages, is sampled with the paper sample tool in uz, ru and en with no source and with a three-chapter plan, and it ends on page 10 with no longer_than_quoted.",
+  "Samples of 12, 25 and 35 pages in uz, ru and en, with and without the customer’s figures and plan, are drawn with the paper sample tool next to units/pdf.kurs_ishi/mock/academic_kurs_ishi.png.",
+  "The shortest paper, 12 pages, is sampled with the paper sample tool in uz, ru and en with no source and with a three-chapter plan, and it ends on page 12 with no longer_than_quoted and no trim below 0.7.",
   "A paper made from bot example 1 shows only the customer’s two sales figures in chapter 2, and one made from a two-chapter kafedra plan keeps every heading word for word.",
   "The facts corpus is at zero on this entry’s examples and pool, and one real-provider run (scripts/operations/ai_smoke.py --category pdf.kurs_ishi) is read before the tick."
  ],

@@ -10,7 +10,7 @@
   "ru": "🏫 Поурочный план / раздатка",
   "en": "🏫 Lesson plan / handout"
  },
- "summary": "A one-lesson plan (dars ishlanmasi) as a deputy head expects it: head box, three aims, lesson type, methods and equipment, an outline table whose minutes add up to the lesson, the stages written out with their questions, rule box and mini-test, homework; or, when the message asks for a handout, a pupil sheet (study_tarqatma): a rule box and numbered tasks with an optional answer sheet. 1 to 8 pages, default 4 for a plan and 2 for a handout.",
+ "summary": "A one-lesson plan (dars ishlanmasi) as a deputy head expects it: head box, three aims, lesson type, methods and equipment, an outline table whose minutes add up to the lesson, the stages written out with their questions, rule box and mini-test, homework; or, when the message asks for a handout, a pupil sheet (study_tarqatma): a rule box and numbered tasks with an optional answer sheet. 2 to 8 pages, default 4 for a plan and 2 for a handout.",
  "tone": "Formal and professional for the plan: third person, present tense, impersonal passive. Direct and short, polite siz to the pupil, for the handout.",
  "topic": true,
  "title": "model",
@@ -27,7 +27,7 @@
     "default": 2
    }
   ],
-  "note": "2 pages is the compact plan (no outline table) and the shortest: the one-page skeleton is deferred, and so a handout asked for on one page is built on 2 until a handout may have a minimum of its own. One lesson fits 8 pages. A handout defaults to 2 pupil pages, and its template holds at most 3."
+  "note": "2 pages is the compact plan (no outline table) and the shortest: the one-page skeleton is deferred, and so a handout asked for on one page is built on 2 until a handout may have a minimum of its own. One lesson fits 8 pages. A handout defaults to 2 pupil pages with its answer key after the tasks; its parts have fixed words and its template holds at most 3, so a longer handout asked for comes out at 2 or 3 and the review says it is shorter (length.by_cue cannot yet hold a maximum). The fixed parts’ shares stand for the room the template’s page starts, headings and boxes take, which skeleton.words cannot see at its generic words a page: they are set so the shortest and the default length fit at about 0.9 of each part’s top word count with no trim below 0.7 (rendered through the paper engine with stand-in blocks), a longer paper running short for the top-up to fill. A words-a-page figure per template would replace this."
  },
  "questions": {
   "default": 0,
@@ -36,27 +36,39 @@
  "quality": "repair",
  "fill": true,
  "cues": {
+  "lesson_plan": {
+   "uz": [
+    "ishlanma",
+    "dars rejasi",
+    "dars konspekt"
+   ],
+   "ru": [
+    "поурочн",
+    "план урока",
+    "план-конспект",
+    "конспект урока"
+   ],
+   "en": [
+    "lesson plan"
+   ]
+  },
   "handout": {
    "uz": [
     "tarqatma",
     "ish varag‘i",
     "ish varaq",
-    "kartochka",
-    "didaktik material",
     "ish daftari"
    ],
    "ru": [
     "раздатк",
     "раздаточн",
     "рабочий лист",
-    "карточк",
-    "дидактическ"
+    "рабочие листы"
    ],
    "en": [
     "handout",
     "worksheet",
-    "practice sheet",
-    "task cards"
+    "practice sheet"
    ]
   },
   "cover": {
@@ -336,7 +348,7 @@
    "heading": null,
    "heading_mode": "none",
    "need": "required",
-   "share": 0.03,
+   "share": 0.12,
    "elastic": false,
    "block": "doc_head",
    "when": "nocue:handout",
@@ -368,7 +380,7 @@
    "block": "kv_table",
    "words": [
     12,
-    40
+    30
    ],
    "write": "One sentence on the new knowledge and skill of this topic, ending in a verbal noun in -ish («… qoidasini tushuntirish»); never a copy of the title."
   },
@@ -388,7 +400,7 @@
    "block": "kv_table",
    "words": [
     12,
-    40
+    30
    ],
    "write": "One sentence naming a value the lesson really practises (hamkorlik, aniqlik, ona tiliga hurmat), ending in a verbal noun in -ish."
   },
@@ -408,7 +420,7 @@
    "block": "kv_table",
    "words": [
     12,
-    40
+    30
    ],
    "write": "One sentence on the thinking, speech or practical skill developed, ending in a verbal noun in -ish."
   },
@@ -542,8 +554,8 @@
    "elastic": false,
    "block": "paragraph",
    "words": [
-    25,
-    60
+    20,
+    45
    ],
    "write": "Its minutes first («3 daqiqa.»), then 2 to 5 sentences: the teacher greets, takes the register, checks readiness, announces the topic and the aim; if group work follows, the groups are formed here (named after the topic’s concepts or 1-guruh, 2-guruh). Third person, present tense."
   },
@@ -563,8 +575,8 @@
    "block": "list",
    "max_items": 8,
    "words": [
-    50,
-    140
+    40,
+    100
    ],
    "write": "In body its minutes and the method in one or two sentences, and a last line on what the pupils do. In items the actual questions, 4 to 8, the question in label and its answer in text only when the answer is certain. A game or quiz is written out, not promised."
   },
@@ -600,7 +612,7 @@
    "block": "callout",
    "words": [
     12,
-    60
+    45
    ],
    "write": "The rule or definition of the lesson in 1 to 3 sentences, set in a box. Only standard school knowledge."
   },
@@ -654,8 +666,8 @@
    "block": "list",
    "max_items": 8,
    "words": [
-    60,
-    160
+    50,
+    120
    ],
    "write": "In body its minutes and the exercises or the practical task in sentences; textbook exercises only by the numbers the customer gave, otherwise «darslikdagi shu mavzuga oid mashqlar». In items a mini-test of 3 to 6 questions: the stem in label, in text the four options «A) … B) … C) … D) …» with exactly one correct, then «Javob: C». The correct letter varies."
   },
@@ -674,8 +686,8 @@
    "elastic": false,
    "block": "paragraph",
    "words": [
-    25,
-    80
+    20,
+    60
    ],
    "write": "Its minutes first, then two summing-up questions, a reflection line («Bugun nimani bildim?») and how the work is assessed with its criterion in one sentence. No pupil names, no marks, no grading scale."
   },
@@ -783,9 +795,9 @@
    "max_items": 8,
    "words": [
     15,
-    60
+    50
    ],
-   "write": "Handout: one task, easy ones first. In heading its title of two to five words («Jadvalni to‘ldiring», «To‘g‘ri javobni tanlang», «Bo‘sh joylarni to‘ldiring», «Savolga javob bering», «Chizing»); in body one instruction line in the siz form; in items its lines: a choice item as the stem in label and «A) … B) … C) … D) …» in text, one correct each; a gap as ______ inside the label; a fill-in table row as its label with empty text. Three to five tasks a page; tasks not needed stay empty. Never an answer on the pupil pages."
+   "write": "Handout: one task, easy ones first. In heading its title of two to five words («Jadvalni to‘ldiring», «To‘g‘ri javobni tanlang», «Bo‘sh joylarni to‘ldiring», «Savolga javob bering», «Chizing»); in body one instruction line in the siz form; in items its lines: a choice item as the stem in label and «A) … B) … C) … D) …» in text, one correct each; a gap as ______ inside the label; a fill-in table row as its label with empty text. Two to four tasks a page, six at most; tasks not needed stay empty. Never an answer on the pupil pages."
   },
   {
    "id": "h_key",
@@ -804,14 +816,14 @@
    "max_items": 10,
    "words": [
     0,
-    200
+    120
    ],
-   "write": "Handout, only when the customer asks for the answers (javoblar, kalit, ответы, answer key); otherwise empty. One item per task, the task number in label («1-topshiriq»), its answers in text («1-C, 2-A», the gaps in order, a short model answer). Only answers you are certain of."
+   "write": "Handout, only when the customer asks for the answers (javoblar, kalit, ответы, answer key); otherwise empty. It follows the tasks on the last page, under a rule. One item per task, the task number in label («1-topshiriq»), its answers in text («1-C, 2-A», the gaps in order, a short model answer). Only answers you are certain of."
   }
  ],
  "rules": [
   {
-   "text": "One school lesson, as a deputy head expects its plan: head, three aims, lesson type, methods and equipment, the stages with their minutes, homework. A handout (tarqatma, ish varag‘i, kartochka, раздатка, рабочий лист, handout, worksheet) is for the pupil only: a rule box and numbered tasks, no aims, stages or minutes. A technological map, a series of lessons or a calendar plan asked for here is written as the plan of one lesson on its topic.",
+   "text": "One school lesson, as a deputy head expects its plan: head, three aims, lesson type, methods and equipment, the stages with their minutes, homework. A handout (tarqatma, ish varag‘i, раздатка, рабочий лист, handout, worksheet) is for the pupil only: a rule box and numbered tasks, no aims, stages or minutes. A message that names a lesson plan (dars ishlanmasi, поурочный план, lesson plan) is the plan, even when it lists cards, worksheets or didactic material among its methods or equipment. A technological map, a series of lessons or a calendar plan asked for here is written as the plan of one lesson on its topic.",
    "to": "model"
   },
   {
@@ -852,9 +864,9 @@
     "en": "I need a lesson plan for one lesson, grade 7 physics: the density of a substance. Use brainstorming and small-group work, and write the homework too. 4 pages."
    },
    {
-    "uz": "6-sinf biologiya, «Hujayra tuzilishi» mavzusiga tarqatma kerak: qisqa qoida, 5 ta topshiriq, ism-familiya yozadigan joy. Javoblari alohida varaqda bo‘lsin.",
-    "ru": "Раздатка для 6 класса по биологии: строение клетки. Короткое правило, 5 заданий, место для имени и фамилии. Ответы — на отдельном листе.",
-    "en": "A handout for grade 6 biology on the structure of the cell: a short rule, 5 tasks and a line for the pupil’s name. Put the answers on a separate sheet."
+    "uz": "6-sinf biologiya, «Hujayra tuzilishi» mavzusiga tarqatma kerak: qisqa qoida, 5 ta topshiriq, ism-familiya yozadigan joy. Javoblari ham bo‘lsin.",
+    "ru": "Раздатка для 6 класса по биологии: строение клетки. Короткое правило, 5 заданий, место для имени и фамилии. Ответы тоже нужны.",
+    "en": "A handout for grade 6 biology on the structure of the cell: a short rule, 5 tasks and a line for the pupil’s name. Add the answers too."
    },
    {
     "uz": "Ochiq dars uchun dars ishlanmasi: 4-sinf ona tili, «Sifat» mavzusi, 45 daqiqa. Titul varag‘i ham kerak: Namangan shahri, 27-maktab, o‘qituvchi Komilova Lobar.",
@@ -904,7 +916,7 @@
    ]
   },
   {
-   "text": "A series of lessons in one file, and a plan and a handout asked for together delivered as two files: this round one file, the handout when the message asks for one.",
+   "text": "A series of lessons in one file, and a plan and a handout asked for together delivered as two files: this round one file, and a message that names a lesson plan gets the plan even when it asks for a handout too; the handout only when the message asks for one and names no plan.",
    "words": [
     "ta dars uchun",
     "серия урок",
@@ -924,11 +936,17 @@
  "groups": {
   "task": {
    "min": 2,
-   "max": 8,
+   "max": 6,
    "sized": "model"
   }
  },
  "sources": {
   "take": "all"
- }
+ },
+ "exclusive": [
+  [
+   "lesson_plan",
+   "handout"
+  ]
+ ]
 }

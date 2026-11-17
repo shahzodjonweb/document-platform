@@ -10,7 +10,7 @@
   "ru": "🎓 Реферат / СРС",
   "en": "🎓 Assignment / Report"
  },
- "summary": "A print-ready student paper in the Uzbek standard form: title page (every fact the customer did not give is a ruled blank, the year from the clock), Reja with real page numbers, Kirish, two or three chapters of numbered sections (the teacher’s plan word for word when given), Xulosa, and references listing only what the customer supplied, a ruled form when nothing was. 7 to 20 pages, default 10, the title, plan and reference pages counted.",
+ "summary": "A print-ready student paper in the Uzbek standard form: title page (every fact the customer did not give is a ruled blank, the year from the clock), Reja with real page numbers, Kirish, two chapters of numbered sections, three from 11 pages (the teacher’s plan word for word when given), Xulosa, and references listing only what the customer supplied, a ruled form when nothing was. 8 to 20 pages, default 10, the title, plan and reference pages counted.",
  "tone": "Academic, impersonal, third person, at the textbook level of the customer’s stated education level; paragraphs of one idea each, joined by linking words.",
  "topic": true,
  "title": "model",
@@ -19,9 +19,9 @@
   "mode": "count",
   "target": "count",
   "default": 10,
-  "min": 7,
+  "min": 8,
   "max": 20,
-  "note": "Physical pages, the title page, the Reja and the references inside the number: 10 pages are about 7 of text. The formal form starts the Reja, the Kirish, each chapter, the Xulosa and the references on a page of their own, so its shortest paper is 7 pages; below 7 is built as 7 (the continuous form of 3 to 7 pages is deferred) and above 20 as 20 (a kurs ishi is its own category)."
+  "note": "Physical pages, the title page, the Reja and the references inside the number: 10 pages are about 7 of text. The formal form starts the Reja, the Kirish, each chapter, the Xulosa and the references on a page of their own, so three chapters need 8 page starts and the shortest paper is 8 pages; below 8 is built as 8 (the continuous form of 3 to 7 pages is deferred) and above 20 as 20 (a kurs ishi is its own category). A third chapter comes only from 11 pages, where each of three can fill two pages: at 9 or 10 three equal chapters cannot end on the quoted page. The fixed parts’ shares stand for the room the template’s page starts, headings and boxes take, which skeleton.words cannot see at its generic words a page: they are set so the shortest and the default length fit at about 0.9 of each part’s top word count with no trim below 0.7 (rendered through the paper engine with stand-in blocks), a longer paper running short for the top-up to fill. A words-a-page figure per template would replace this."
  },
  "questions": {
   "default": 0,
@@ -279,7 +279,7 @@
    "heading": null,
    "heading_mode": "none",
    "need": "required",
-   "share": 0.1,
+   "share": 0.16,
    "elastic": false,
    "block": "title_page",
    "fields": [
@@ -308,7 +308,7 @@
    },
    "heading_mode": "fixed",
    "need": "required",
-   "share": 0.1,
+   "share": 0.16,
    "elastic": false,
    "block": "toc",
    "write": "Nothing to write: the template lists the chapter and section headings with the page each starts on."
@@ -323,7 +323,7 @@
    },
    "heading_mode": "fixed",
    "need": "required",
-   "share": 0.1,
+   "share": 0.16,
    "elastic": false,
    "block": "paragraph",
    "words": [
@@ -343,10 +343,10 @@
    "block": "heading",
    "group": "chapter",
    "words": [
-    20,
-    60
+    15,
+    40
    ],
-   "write": "The chapter: its title in heading (a short exact noun phrase of at most 90 characters, no number, full stop or colon, never «Asosiy qism»; from the customer’s plan word for word when one is given), and in body one to three sentences that say what the chapter examines. Chapter 1 is theory and foundations, chapter 2 analysis, practice or application, chapter 3 (only when the plan has it or the paper is 15 pages or more) recommendations or prospects. A chapter not needed stays empty, its sections too."
+   "write": "The chapter: its title in heading (a short exact noun phrase of at most 90 characters, no number, full stop or colon, never «Asosiy qism»; from the customer’s plan word for word when one is given), and in body one to three sentences that say what the chapter examines. Chapter 1 is theory and foundations, chapter 2 analysis, practice or application, chapter 3 recommendations or prospects: only from 11 pages, and there when the plan gives three or more points or the paper is 15 pages or more. A chapter not needed stays empty, its sections too."
   },
   {
    "id": "section_a",
@@ -354,7 +354,7 @@
    "heading": null,
    "heading_mode": "model",
    "need": "required",
-   "share": 0.18,
+   "share": 0.07,
    "elastic": true,
    "block": "paragraph",
    "group": "chapter",
@@ -366,7 +366,7 @@
    "heading": null,
    "heading_mode": "model",
    "need": "required",
-   "share": 0.18,
+   "share": 0.07,
    "elastic": true,
    "block": "paragraph",
    "group": "chapter",
@@ -378,12 +378,11 @@
    "heading": null,
    "heading_mode": "model",
    "need": "usual",
-   "share": 0.1,
+   "share": 0.04,
    "elastic": true,
    "block": "paragraph",
    "group": "chapter",
-   "from": 10,
-   "write": "A third section of this chapter, written as the first is: only when the customer’s plan has it or the chapter has the room (papers of ten pages and more); otherwise empty."
+   "write": "A third section of this chapter, written as the first is: only when the customer’s plan needs it or the paper is 10 pages or more; otherwise empty."
   },
   {
    "id": "section_d",
@@ -391,7 +390,7 @@
    "heading": null,
    "heading_mode": "model",
    "need": "usual",
-   "share": 0.05,
+   "share": 0.02,
    "elastic": true,
    "block": "paragraph",
    "group": "chapter",
@@ -408,7 +407,7 @@
    },
    "heading_mode": "fixed",
    "need": "required",
-   "share": 0.08,
+   "share": 0.16,
    "elastic": false,
    "block": "paragraph",
    "words": [
@@ -427,7 +426,7 @@
    },
    "heading_mode": "fixed",
    "need": "required",
-   "share": 0.1,
+   "share": 0.15,
    "elastic": false,
    "block": "reference_list",
    "words": [
@@ -439,7 +438,7 @@
  ],
  "rules": [
   {
-   "text": "Form: a student paper, referat or mustaqil ish: title page, Reja, Kirish, two or three chapters of numbered sections, Xulosa, references. An essay, theses or an article asked for here is written in this form under the customer’s topic; the title page says REFERAT unless the customer wrote mustaqil ish.",
+   "text": "Form: a student paper, referat or mustaqil ish: title page, Reja, Kirish, two chapters of numbered sections (three from 11 pages), Xulosa, references. An essay, theses or an article asked for here is written in this form under the customer’s topic; the title page says REFERAT unless the customer wrote mustaqil ish.",
    "to": "model"
   },
   {
@@ -447,7 +446,7 @@
    "to": "model"
   },
   {
-   "text": "A plan the customer gives (in the message or a file) is kept in its order and words, spelling and apostrophes repaired only: up to three points are the chapter titles; with more, write three chapter titles and every point stays a section, in order. Never add, merge, drop or reorder a point; a plan with fewer points is written longer, never padded with new chapters.",
+   "text": "A plan the customer gives (in the message or a file) is kept in its order and words, spelling and apostrophes repaired only; never add, merge, drop or reorder a point, and a plan with fewer points is written longer, never padded with new chapters. From 11 pages, up to three points are the chapter titles; with more, write three chapter titles and every point stays a section, in order. Below 11 pages there are two chapters: every point is a section, in order, the first half in chapter 1 and the rest in chapter 2, under chapter titles you write.",
    "to": "model"
   },
   {
@@ -469,9 +468,9 @@
  ],
  "bot": {
   "prompt": {
-   "uz": "🎓 Bitta xabarda yozing: mavzu, fan va necha sahifa kerakligi (aytmasangiz, 10 sahifa; 7 dan 20 gacha). Titul, reja va adabiyotlar sahifasi ham shu songa kiradi.\nUniversitet, F.I.Sh., guruh va o‘qituvchi yozilsa, titul varag‘iga chiqadi; yozilmasa, qo‘lda to‘ldirish uchun chiziq qoladi.\n📎 O‘qituvchi rejasi yoki manbalaringiz bo‘lsa, PDF, Word yoki TXT fayl qilib yuboring. Adabiyotlar ro‘yxatiga faqat siz bergan manbalar yoziladi.",
-   "ru": "🎓 Напишите одним сообщением: тему, предмет и сколько страниц нужно (если не указать, 10; от 7 до 20). Титульный лист, содержание и список литературы входят в это число.\nВуз, ФИО, группа и преподаватель попадут на титульный лист; что не укажете, останется линией для заполнения от руки.\n📎 Есть план от преподавателя или источники? Пришлите файлом PDF, Word или TXT. В список литературы попадут только ваши источники.",
-   "en": "🎓 Say it all in one message: the topic, the subject and how many pages (10 if you don’t say; 7 to 20). The title page, the contents and the references count among them.\nYour university, full name, group and teacher go on the title page; anything you leave out stays a ruled line to fill in by hand.\n📎 Got the teacher’s plan or your sources? Send them as a PDF, Word or TXT file. Only your sources go into the reference list."
+   "uz": "🎓 Bitta xabarda yozing: mavzu, fan va necha sahifa kerakligi (aytmasangiz, 10 sahifa; 8 dan 20 gacha). Titul, reja va adabiyotlar sahifasi ham shu songa kiradi.\nUniversitet, F.I.Sh., guruh va o‘qituvchi yozilsa, titul varag‘iga chiqadi; yozilmasa, qo‘lda to‘ldirish uchun chiziq qoladi.\n📎 O‘qituvchi rejasi yoki manbalaringiz bo‘lsa, PDF, Word yoki TXT fayl qilib yuboring. Adabiyotlar ro‘yxatiga faqat siz bergan manbalar yoziladi.",
+   "ru": "🎓 Напишите одним сообщением: тему, предмет и сколько страниц нужно (если не указать, 10; от 8 до 20). Титульный лист, содержание и список литературы входят в это число.\nВуз, ФИО, группа и преподаватель попадут на титульный лист; что не укажете, останется линией для заполнения от руки.\n📎 Есть план от преподавателя или источники? Пришлите файлом PDF, Word или TXT. В список литературы попадут только ваши источники.",
+   "en": "🎓 Say it all in one message: the topic, the subject and how many pages (10 if you don’t say; 8 to 20). The title page, the contents and the references count among them.\nYour university, full name, group and teacher go on the title page; anything you leave out stays a ruled line to fill in by hand.\n📎 Got the teacher’s plan or your sources? Send them as a PDF, Word or TXT file. Only your sources go into the reference list."
   },
   "examples": [
    {
@@ -522,8 +521,8 @@
  "look": null,
  "gates": [
   "A native Uzbek and a native Russian reader check the fixed headings (Reja, Kirish, Xulosa, Foydalanilgan adabiyotlar), the title-page labels of academic_mustaqil_ish and the bot copy.",
-  "Samples of 7, 10 and 20 pages (the shortest, the default and the longest) in uz, ru and en, with every title fact and with none, are drawn with the paper sample tool and looked at next to units/pdf.mustaqil_ish/mock/academic_mustaqil_ish.png.",
-  "The shortest paper, 7 pages, is sampled with the paper sample tool in uz, ru and en with no source and with a five-point plan, and it ends on page 7 with no longer_than_quoted.",
+  "Samples of 8, 10 and 20 pages (the shortest, the default and the longest) in uz, ru and en, with every title fact and with none, are drawn with the paper sample tool and looked at next to units/pdf.mustaqil_ish/mock/academic_mustaqil_ish.png.",
+  "The shortest paper, 8 pages, is sampled with the paper sample tool in uz, ru and en with no source, with a three-point and with a five-point plan, and with a three-point plan at 10 and 11 pages; each ends by its quoted page with no longer_than_quoted and no trim below 0.7, and one that runs short is looked at after its top-up.",
   "A paper made from a five-point teacher’s plan keeps every point, in order, as a heading of the Reja.",
   "The facts corpus is at zero on this entry’s examples and pool, and one real-provider run (scripts/operations/ai_smoke.py --category pdf.mustaqil_ish) is read before the tick."
  ],
