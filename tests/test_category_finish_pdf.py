@@ -1253,3 +1253,52 @@ def test_a_reports_legal_form_with_an_ending_is_no_name():
     assert made['title'] == '«Baraka Savdo» MChJning 2025-yil faoliyati to‘g‘risida hisobot'
     assert section_of(made, 'summary')['body'] == 'Hisobot davrida «Baraka Savdo» MChJga yangi xodimlar qabul qilindi.'
     assert 'ground:name' not in codes
+
+
+# ---------------------------------------------------------------- stage-2 re-audit, round 2: what a finish holds again
+
+
+def test_a_blanked_run_of_common_words_never_blanks_them_opening_other_sentences_or_cells():
+    plan = catalogue.get('pdf.biz.biznes_reja')
+    data = draft(plan, prompt=BAKERY_UZ, length=8)
+    made, _, codes = finished(data, answer(
+        data, operations={'body': 'Korxona Davlat Soliq Qo‘mitasi orqali ro‘yxatdan o‘tadi. Davlat ro‘yxatidan o‘tish '
+                                  'bir hafta oladi.'},
+        finance_costs={'items': [{'label': 'Davlat boji', 'text': '', 'value': ''}]}))
+    body = section_of(made, 'operations')['body']
+    assert body.endswith('o‘tadi. Davlat ro‘yxatidan o‘tish bir hafta oladi.') and '____' in body
+    assert section_of(made, 'finance_costs')['items'][0]['label'] == 'Davlat boji' and 'ground:name' in codes
+
+
+def test_a_rejected_bank_named_by_a_common_word_holds_the_bank_never_the_word():
+    plan = catalogue.get('pdf.biz.biznes_reja')
+    data = draft(plan, prompt=BAKERY_UZ, length=8)
+    made, _, codes = finished(data, answer(
+        data, summary_lead={'body': 'Xalq banki 200 mln so‘m kredit beradi.'},
+        marketing={'items': [{'label': '', 'text': 'Xalqaro ko‘rgazmalarda ishtirok etish', 'value': ''},
+                             {'label': '', 'text': 'Xalq sayllarida stend', 'value': ''}]},
+        conclusion={'body': 'Xalqaro tajriba shuni ko‘rsatadiki, issiq non talab yuqori.'},
+        facts={'items': [{'label': 'loan_bank', 'text': 'Xalq banki'}]}))
+    assert section_of(made, 'summary_lead')['body'] == '____ banki 200 mln so‘m kredit beradi.'
+    assert [item['text'] for item in section_of(made, 'marketing')['items']] == [
+        'Xalqaro ko‘rgazmalarda ishtirok etish', 'Xalq sayllarida stend']
+    assert section_of(made, 'conclusion')['body'] == 'Xalqaro tajriba shuni ko‘rsatadiki, issiq non talab yuqori.'
+    assert {'fact:loan_bank', 'ground:name'} <= set(codes)
+
+
+def test_a_rejected_authors_role_words_stay_and_the_person_is_held_in_any_case():
+    report = catalogue.get('pdf.biz.hisobot')
+    data = draft(report, prompt='Nonvoyxonamizning 2025-yil faoliyati bo‘yicha hisobot yozib bering. Sotuv 1,2 mlrd '
+                                'so‘m bo‘ldi.', length=4)
+    made, _, codes = finished(data, answer(
+        data, summary={'body': 'Bosh ofis ta’mirlandi. Dilnozaga yangi lavozim berildi. Sotuv 1,2 mlrd so‘mga yetdi.'},
+        problems={'items': [{'label': '', 'text': 'Bosh hisobchi lavozimi bo‘sh qoldi.', 'value': ''},
+                            {'label': '', 'text': 'Moliyaviy resurslar yetishmadi.', 'value': ''}]},
+        work_done={'body': 'Kompaniya Moliya Vazirligi bilan hamkorlik qildi. Moliya bo‘limi kengaytirildi.'},
+        facts={'items': [{'label': 'author', 'text': 'Bosh hisobchi Karimova Dilnoza'}]}))
+    assert section_of(made, 'summary')['body'] == ('Bosh ofis ta’mirlandi. ____ yangi lavozim berildi. Sotuv 1,2 mlrd '
+                                                   'so‘mga yetdi.')
+    assert [item['text'] for item in section_of(made, 'problems')['items']] == [
+        'Bosh hisobchi lavozimi bo‘sh qoldi.', 'Moliyaviy resurslar yetishmadi.']
+    assert section_of(made, 'work_done')['body'].endswith('bilan hamkorlik qildi. Moliya bo‘limi kengaytirildi.')
+    assert {'fact:author', 'ground:name'} <= set(codes)

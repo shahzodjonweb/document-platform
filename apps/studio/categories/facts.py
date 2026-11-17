@@ -63,10 +63,11 @@ More limits, said as plainly:
   "«Baraka» MChJ ...") or by the Uzbek kind after it in the possessive a name
   gives it ("Asaka banki ...", "Artel kompaniyasidagi ...", never "Tijorat
   banki"), or that the same finish took out elsewhere, a rejected fact's or a
-  blanked run's ("Artelda ishlaganman" when the employer Artel was blanked);
-  a lone word with none of these, a brand, a city or a given name
-  ("Korzinka", "Samarqand shahrida", "Smith led ..."), still passes, a
-  table's label cell and a list item included.
+  blanked run's ("Artelda ishlaganman" when the employer Artel was blanked:
+  only a word that names someone wherever it stands, matched whole or with a
+  case ending, `Named`); a lone word with none of these, a brand, a city or a
+  given name ("Korzinka", "Samarqand shahrida", "Smith led ..."), still
+  passes, a table's label cell and a list item included.
 - `guard` removes any sentence with a strong legal stem (kodeks, farmon,
   Konstitutsiya ...) the customer did not give, even one that cites nothing
   specific ("U ko‘plab farmonlar chiqargan"), and a part may come back empty.
@@ -373,6 +374,43 @@ class Words:
         if len(word) < 3:
             return False
         return any(_close(word, other) for other in self.index.get(word[:3], ()))
+
+
+# The case endings of a word held as invented (`Named`), folded: Uzbek ("Artelga", "Arteldagi", "Hamkorbankdan",
+# "Artelning", with the possessive: "Barakasining"), Russian ("Артелю", "Артелем", "Каримову", "Каримовой") and the
+# English "'s".
+NAME_ENDINGS = frozenset((
+    'ga', 'ka', 'da', 'dan', 'ning', 'ni', 'dagi', 'gacha', 'dek', 'niki', 'lar', 'larga', 'larda', 'lardan',
+    'larning', 'larni', 'i', 'si', 'iga', 'siga', 'ida', 'sida', 'idan', 'sidan', 'ining', 'sining', 'ini', 'sini',
+    'idagi', 'sidagi', 'a', 'u', 'e', 'om', 'em', 'oy', 'ey', 'im', 'ym', 's'))
+# A Russian name in -a takes them in place of its -a: "Дилнозы", "Дилнозе", "Дилнозу", "Дилнозой".
+A_ENDINGS = frozenset(('i', 'y', 'e', 'u', 'oy', 'oi', 'ou'))
+
+
+class Named:
+    """The folded words a paper's finish took out as no one's the customer gave (`held_names`, `_names`'s `blanked`).
+
+    A word is one of them whole or with a case ending (`NAME_ENDINGS`), never by a common prefix as `Words` reads a
+    customer's word: "Xalqaro" and "Moliyaviy" are no forms of an invented "Xalq" or "Moliya".
+    """
+
+    def __init__(self, words=()):
+        self.exact = set()
+        for word in words:
+            self.add(word)
+
+    def add(self, word):
+        if word:
+            self.exact.add(word)
+
+    def has(self, word):
+        if word in self.exact:
+            return True
+        for cut in range(3, len(word)):
+            base, ending = word[:cut], word[cut:]
+            if (base in self.exact and ending in NAME_ENDINGS) or (base + 'a' in self.exact and ending in A_ENDINGS):
+                return True
+        return False
 
 
 class Exact:
@@ -1046,15 +1084,39 @@ def _unknown_runs(text, trusted, translated=False, *, strict=False, orgs=False, 
         yield run, bad, first_free
 
 
-def _named(run, bad):
-    """Whether a run's blanked words name someone, so they are held elsewhere too (`_names`'s `blanked`).
+def _holdable(text, run, bad):
+    """The folded words of a run's words not the customer's (`bad`, positions) that name someone wherever they stand.
 
-    Two words or more ("Sardor Xolmatov", "John Smith"), or one shaped as a surname or an organisation; a lone
-    capitalised common word mid-sentence ("Bosh direktor") is not, so it never blanks a sentence opened by it.
+    A person's: the words side by side with one shaped as a surname ("Karimova Dilnoza", "Sardor Xolmatov"). An
+    organisation's: a word shaped as one ("Hamkorbank", "UNICEF") or a quoted name («Baraka»), never its kind or a
+    word that makes a kind ("Market", "Savdo"). A run of common words ("Davlat Soliq Qo‘mitasi", "Moliya
+    Vazirligi", the "Bosh" of "Bosh hisobchi") gives none, so it never blanks "Davlat ro‘yxatidan o‘tish ..." or
+    "Bosh ofis ..." elsewhere (`_names`'s `blanked`, `held_names`).
     """
-    words = [run[position][2] for position in bad if _letters(run[position][2]) >= 2]
-    return len(words) >= 2 or any(_surname(word) or re.fullmatch(r"[^\W\d_]{2,}bank[^\W\d_]*", fold(word))
-                                  for word in words)
+    bad = [position for position in bad if _letters(run[position][2]) >= 2]
+    found, group = [], []
+    for position in bad + [None]:
+        if position is not None and (not group or position == group[-1] + 1):
+            group.append(position)
+            continue
+        if any(_surname(run[at][2]) for at in group):
+            found += [fold(run[at][2]) for at in group]
+        group = [position] if position is not None else []
+    quoted = _quoted(text, run)
+    for position in bad:
+        word = run[position][2]
+        folded = fold(word)
+        if folded not in found and folded not in ORG_HEADS and folded not in KIND_WORDS \
+                and (quoted or _org_shaped(word)):
+            found.append(folded)
+    return found
+
+
+def _quoted(text, run):
+    """Whether a run stands in quotation marks of its own: «Baraka», "Oqtosh"."""
+    before = text[:run[0][0]].rstrip(' \t\u00a0')
+    after = text[run[-1][1]:].lstrip(' \t\u00a0')
+    return before[-1:] in ('«', '"', '“', '„', "'", '‘') and after[:1] in ('»', '"', '”', '“', "'", '’')
 
 
 def _names(text, trusted, codes, translated=False, *, strict=False, orgs=False, invented=None, blanked=None):
@@ -1080,19 +1142,19 @@ def _names(text, trusted, codes, translated=False, *, strict=False, orgs=False, 
     `orgs` (a paper's grounded part) also holds a first word that opens an
     organisation's name by its shape (`_organisation`): "Hamkorbank 200 mln
     so‘m kredit beradi.", "Acme LLC increased sales", "«Baraka» MChJ ...".
-    `invented` (facts.Words) holds the words the same finish has already
-    taken out as no one's the customer gave (a rejected fact's names, a
-    blanked run elsewhere): a first word that is one of them, with an ending,
-    is held too, so "Artel kompaniyasidagi ..." is not left when the employer
-    "Artel" was just blanked. `blanked`, a facts.Words, receives the words of
-    each run blanked here that name someone (`_named`).
+    `invented` (`Named`) holds the words the same finish has already taken
+    out as no one's the customer gave (a rejected fact's names, a blanked run
+    elsewhere): a first word that is one of them, whole or with a case ending,
+    is held too, so "Artelda ishlaganman." is not left when the employer
+    "Artel" was just blanked. `blanked`, a `Named`, receives the words of each
+    run blanked here that name someone (`_holdable`): a person's beside a
+    surname, an organisation's shaped or quoted, never a common word.
     """
     spans = []
     for run, bad, first_free in _unknown_runs(text, trusted, translated, strict=strict, orgs=orgs, invented=invented):
-        if blanked is not None and _named(run, bad):
-            for position in bad:
-                if _letters(run[position][2]) >= 2:
-                    blanked.add(fold(run[position][2]))
+        if blanked is not None:
+            for word in _holdable(text, run, bad):
+                blanked.add(word)
         if strict and bad:
             if first_free and bad[0] != 0 and _letters(run[0][2]) >= 2 and not trusted.person(run[0][2], translated):
                 bad.insert(0, 0)
@@ -1267,6 +1329,50 @@ def failed_names(value, kind, trusted, *, translated=False):
         for run, bad, _ in _unknown_runs(line, trusted, translated, strict=True, orgs=True):
             found += [fold(run[position][2]) for position in bad if _letters(run[position][2]) >= 2]
     return list(dict.fromkeys(found))
+
+
+def held_names(value, kind, trusted, *, translated=False):
+    """The folded words of a fact taken out as not the customer's that a paper holds wherever they open a sentence.
+
+    Only words that name someone wherever they stand (finish's `invented`, read whole or with a case ending,
+    `Named`): a person's every word not the customer's; else a person's beside a surname ("Bosh hisobchi Karimova
+    Dilnoza" gives karimova and dilnoza, never bosh), an organisation's shaped or quoted ("Hamkorbank",
+    "«Baraka» nonvoyxonasi"), and an organisation's or a place's one name when the value has no other ("Artel",
+    "Samarqand"). A name its value follows with its kind or form ("Xalq banki", "Westminster University",
+    "Acme LLC") is held by that kind where it opens a sentence (`_organisation`); alone it may be a common word
+    ("Xalq sayllarida"), so it is not held. A run of common words ("Moliya Vazirligi") gives nothing.
+    """
+    text, _ = _strip_addresses(str(value or ''), trusted)
+    found = []
+    for line in re.split(r'[\n;]+', text):
+        if kind in ('person', 'org', 'place', 'line', 'list'):
+            # Every capitalised word was checked; a label's own words before its colon ("Rais:", "Kotiba:") name no one.
+            line = re.sub(r'^[^:\d\n]{1,40}:', ' ', line.strip())
+            runs = [(run, [position for position, (_, _, word) in enumerate(run)
+                           if _letters(word) >= 2 and not trusted.person(word, translated)]) for run in _runs(line)]
+        else:
+            runs = [(run, bad) for run, bad, _ in _unknown_runs(line, trusted, translated, strict=True, orgs=True)]
+        if kind == 'person':
+            found += [fold(run[position][2]) for run, bad in runs for position in bad if _letters(run[position][2]) >= 2]
+            continue
+        for run, bad in runs:
+            found += _holdable(line, run, bad)
+        if kind in ('org', 'place'):
+            found += _one_name(line, runs)
+    return list(dict.fromkeys(found))
+
+
+def _one_name(line, runs):
+    """An organisation's or a place's only word not the customer's, unless its kind or form follows it (`held_names`)."""
+    names = [(run, position) for run, bad in runs for position in bad if _letters(run[position][2]) >= 2
+             and fold(run[position][2]) not in ORG_HEADS and fold(run[position][2]) not in KIND_WORDS]
+    if len(names) != 1:
+        return []
+    run, position = names[0]
+    after = re.match(rf"[»\"”'’]*[ \t\u00a0]+({WORD.pattern})", line[run[position][1]:])
+    if after is not None and fold(after.group(1)) in ORG_HEADS | ORG_AFTER:
+        return []
+    return [fold(run[position][2])]
 
 
 # ---------------------------------------------------------------- references

@@ -1588,3 +1588,14 @@ tests/test_category_finish_pdf.py::test_an_uzbek_organisation_opening_a_sentence
 tests/test_category_finish_pdf.py::test_an_uzbek_organisation_opening_a_sentence_before_its_kind_in_lower_case_is_held[chain]
 tests/test_category_finish_pdf.py::test_a_kind_of_organisation_opening_a_sentence_is_no_ones_name
 tests/test_category_finish_pdf.py::test_a_reports_legal_form_with_an_ending_is_no_name
+
+# Stage-2 re-audit round 2, what a finish holds again: only words that name someone wherever they stand (a person's
+# beside a surname, an organisation's shaped or quoted, a one-word organisation or place), matched whole or with a
+# case ending, so a blanked "Davlat Soliq Qo‘mitasi", a rejected "Xalq banki" or "Bosh hisobchi Karimova Dilnoza"
+# never blanks "Davlat ro‘yxatidan", "Xalqaro", "Xalq sayllarida", "Bosh ofis" or "Moliyaviy" elsewhere
+tests/test_category_facts.py::test_a_held_name_is_matched_whole_or_with_a_case_ending_never_by_a_prefix
+tests/test_category_facts.py::test_a_rejected_fact_holds_only_the_words_that_name_someone_wherever_they_stand[role-and-person]
+tests/test_category_facts.py::test_a_rejected_fact_holds_only_the_words_that_name_someone_wherever_they_stand[bank-of-a-word]
+tests/test_category_finish_pdf.py::test_a_blanked_run_of_common_words_never_blanks_them_opening_other_sentences_or_cells
+tests/test_category_finish_pdf.py::test_a_rejected_bank_named_by_a_common_word_holds_the_bank_never_the_word
+tests/test_category_finish_pdf.py::test_a_rejected_authors_role_words_stay_and_the_person_is_held_in_any_case

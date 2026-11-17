@@ -1163,3 +1163,29 @@ def test_a_guarded_papers_topic_and_a_translated_reference_give_back_only_their_
 def test_russian_hundreds_in_every_case_and_a_ten_as_a_noun_are_read(text, found):
     assert read(text) == found
     assert read('десятки сотрудников, свою семью') == []
+
+
+# ---------------------------------------------------------------- what a paper holds again (stage-2 re-audit, round 2)
+
+
+def test_a_held_name_is_matched_whole_or_with_a_case_ending_never_by_a_prefix():
+    held = facts.Named([facts.fold(word) for word in ('Dilnoza', 'Artel', 'Xalq', 'Hamkorbank')])
+    for word in ('Dilnoza', 'Dilnozaga', 'Дилнозы', 'Дилнозой', 'Artelda', 'Arteldagi', 'Артелем', "Artel's",
+                 'Hamkorbankdan', 'Xalq'):
+        assert held.has(facts.fold(word)), word
+    for word in ('Xalqaro', 'Artelxona', 'Dilnozaxon', 'Hamkor'):
+        assert not held.has(facts.fold(word)), word
+
+
+@pytest.mark.parametrize('value, kind, held', [
+    ('Bosh hisobchi Karimova Dilnoza', 'line', ['karimova', 'dilnoza']),
+    ('Rais: Karimov Aziz Bahodirovich', 'line', ['karimov', 'aziz', 'baxodirovich']),
+    ('Xalq banki', 'org', []), ('Westminster University', 'org', []), ('Acme LLC', 'org', []),
+    ('Artel', 'org', ['artel']), ('Hamkorbank', 'org', ['xamkorbank']), ('«Baraka» MChJ', 'org', ['baraka']),
+    ('«Baraka» nonvoyxonasi', 'line', ['baraka']), ('Moliya Vazirligi', 'org', []),
+    ('Samarqand', 'place', ['samarkand']), ('Malika', 'person', ['malika']),
+], ids=['role-and-person', 'chair', 'bank-of-a-word', 'university', 'llc', 'one-word', 'bank-shape', 'quoted-form',
+        'quoted-project', 'ministry', 'city', 'given-name'])
+def test_a_rejected_fact_holds_only_the_words_that_name_someone_wherever_they_stand(value, kind, held):
+    known = trusting('Nonvoyxona uchun hujjat yozib bering.')
+    assert facts.held_names(value, kind, known) == held

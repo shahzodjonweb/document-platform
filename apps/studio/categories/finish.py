@@ -575,11 +575,13 @@ def ground_paper(text, trusted, *, translated=False, invented=None, blanked=None
     A sentence's, a cell's or an item's first word is held where it opens an
     organisation's name by its shape ("Hamkorbank 200 mln so‘m kredit
     beradi.", "Acme LLC ...", "«Baraka» MChJ ...", "Asaka banki ...", "Artel
-    kompaniyasidagi ...") and where it is one of the
-    `invented` words (facts.Words) this finish has already taken out as not
-    the customer's, a rejected fact's or a blanked run's ("Artel
-    kompaniyasidagi ..." when the employer "Artel" was blanked). `blanked`
-    receives the words of the runs blanked here that name someone.
+    kompaniyasidagi ...") and where it is one of the `invented` words
+    (facts.Named, whole or with a case ending) this finish has already taken
+    out as not the customer's, a rejected fact's or a blanked run's
+    ("Artelda ishlaganman." when the employer "Artel" was blanked). `blanked`
+    receives the words of the runs blanked here that name someone: a person's
+    beside a surname or an organisation's shaped or quoted, never a common
+    word ("Davlat" of a blanked "Davlat Soliq Qo‘mitasi").
     """
     return facts.guard(text, trusted, translated=translated, checks=('numbers', 'names'), words=True, orgs=True,
                        invented=invented, blanked=blanked)
@@ -723,9 +725,10 @@ def _facts(entry, section, trusted, translated, locale, codes, invented=None, re
     The model writes today's year unasked, and a change re-finishes the value
     the first finish wrote, which the prompt does not hold either.
 
-    `invented` (facts.Words) receives the words of each value taken out that
-    name someone the customer never gave (facts.failed_names), which the
-    paper's grounded parts then hold at a sentence's start too; `rejected` (a
+    `invented` (facts.Named) receives the words of each value taken out that
+    name someone the customer never gave wherever they stand
+    (facts.held_names), which the paper's grounded parts then hold at a
+    sentence's start too; `rejected` (a
     list) receives those of a person's, or an organisation's shaped as one,
     which its guarded parts and title blank (facts.guard's `rejected`).
     """
@@ -772,7 +775,7 @@ def _rejected_names(field, value, trusted, translated, led, invented, rejected):
         return  # a guarded paper's text keeps its general knowledge, and its names were never read
     words = facts.failed_names(value, kind, trusted, translated=translated)
     if invented is not None:
-        for word in words:
+        for word in facts.held_names(value, kind, trusted, translated=translated):
             invented.add(word)
     shaped = len(words) == 1 and re.fullmatch(r"[^\W\d_]{2,}bank[^\W\d_]*", words[0]) is not None
     if rejected is not None and words and (kind == 'person' or (kind == 'org' and (len(words) >= 2 or shaped))):
@@ -989,7 +992,7 @@ def _paper(entry, data, content, *, only, file_names, codes):
     # The names this finish takes out as not the customer's: a rejected fact's and a blanked run's (`invented`), and
     # a rejected person's or organisation's (`rejected`). The facts go first, so every part can hold them where it
     # leaves a name's first word free; a grounded part finished before a later one blanked a name is read again.
-    invented, rejected = facts.Words(), []
+    invented, rejected = facts.Named(), []
     ordered = sorted(sections, key=lambda section: section.get('id') != FACTS)
     grounded = []
     for section in ordered:
