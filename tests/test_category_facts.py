@@ -982,3 +982,30 @@ def test_a_code_the_customer_never_named_goes_when_its_name_opens_the_sentence(p
 def test_the_code_the_customer_named_stays_in_any_language(part, translated):
     known = trusting('Напишите должностную инструкцию согласно Трудовому кодексу.') if translated else trusting(JOB_UZ)
     assert guard(part, known, translated=translated) == (part, [])
+
+
+# ---------------------------------------------------------------- quotation marks (stage-2 re-audit)
+
+
+@pytest.mark.parametrize('part', [
+    'As Peter Drucker put it, ‘the aim of marketing is to make selling superfluous’.',
+    "As Peter Drucker put it, 'the aim of marketing is to make selling superfluous'.",
+    'Как писал Котлер, ‹маркетинг — это искусство находить клиентов›.',
+    'Как писал Котлер, ‚маркетинг — это искусство находить клиентов‘.',
+    'Muallif aytganidek, ‘bilim olish har bir o‘quvchining burchidir’.',
+], ids=['curly-single', 'straight-single', 'guillemet-single', 'low-single', 'uz-single'])
+def test_a_quotation_in_single_marks_is_checked_as_any_other(part):
+    known = trusting('Marketing bo‘yicha kurs ishi yozib bering.')
+    written, codes = guard(part, known)
+    assert codes == ['ground:quote'] and written.endswith(', ____.')
+    assert guard(part, trusting(part)) == (part, []), 'the customer\'s own quotation stays'
+
+
+@pytest.mark.parametrize('part', [
+    'O‘quvchilar ma’lumot oldi, g‘oyalar o‘rganildi va bo‘limlar ko‘rib chiqildi.',
+    "O'quvchilar ma'lumot oldi, g'oyalar o'rganildi va bo'limlar ko'rib chiqildi.",
+    "O ‘quvchilar ma ’lumot oldi, g ‘oyalar o ‘rganildi va bo ‘limlar ko ‘rib chiqildi.",
+    "Drucker's book and the students' work show the teachers' role in it's own way.",
+], ids=['uz-marks', 'uz-straight', 'uz-spaced', 'en-apostrophes'])
+def test_uzbek_letters_and_english_apostrophes_are_never_quotation_marks(part):
+    assert guard(part, trusting('Marketing bo‘yicha kurs ishi yozib bering.')) == (part, [])

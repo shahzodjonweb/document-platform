@@ -1486,3 +1486,10 @@ tests/test_category_finish_pdf.py::test_a_lessons_invented_ministry_order_goes_w
 tests/test_category_facts.py::test_a_code_the_customer_never_named_goes_when_its_name_opens_the_sentence[criminal]
 tests/test_category_facts.py::test_the_code_the_customer_named_stays_in_any_language[translated-uz]
 tests/test_category_finish_pdf.py::test_a_job_descriptions_list_items_never_cite_a_code_the_customer_did_not_name
+
+# Stage-2 re-audit, quotation marks: a quotation in ‘…’, '…', ‹…› or ‚…‘ is checked as one in «…» or “…” is, while
+# Uzbek o‘, g‘, the tutuq and English apostrophes never open or close one
+tests/test_category_facts.py::test_a_quotation_in_single_marks_is_checked_as_any_other[straight-single]
+tests/test_category_facts.py::test_a_quotation_in_single_marks_is_checked_as_any_other[uz-single]
+tests/test_category_facts.py::test_uzbek_letters_and_english_apostrophes_are_never_quotation_marks[uz-marks]
+tests/test_category_facts.py::test_uzbek_letters_and_english_apostrophes_are_never_quotation_marks[en-apostrophes]

@@ -15,7 +15,8 @@
     {"kind": "law", "code": "ground:law", "guard": true, "text": "Mehnat kodeksining 214-moddasiga ko‘ra ta’til berilishi shart."},
     {"kind": "quote", "code": "ground:quote", "guard": true, "text": "Muallif ta’kidlaganidek, «bilim olish har bir insonning muqaddas burchidir»."},
     {"kind": "order", "code": "ground:law", "guard": true, "text": "Dars Xalq ta’limi vazirligining 2017-yil 6-apreldagi 187-sonli buyrug‘i asosida tashkil etiladi."},
-    {"kind": "code", "code": "ground:law", "guard": true, "text": "Jinoyat kodeksiga muvofiq u javobgar bo‘ladi."}
+    {"kind": "code", "code": "ground:law", "guard": true, "text": "Jinoyat kodeksiga muvofiq u javobgar bo‘ladi."},
+    {"kind": "single_quote", "code": "ground:quote", "guard": true, "text": "Muallif ta’kidlaganidek, ‘bilim olish har bir o‘quvchining muqaddas burchidir’."}
   ],
   "ru": [
     {"kind": "name", "code": "ground:name", "text": "Работой также руководил Холмирзаев Ботиржон Эргашевич."},
@@ -31,7 +32,8 @@
     {"kind": "law", "code": "ground:law", "guard": true, "text": "Согласно статье 214 Трудового кодекса отпуск предоставляется обязательно."},
     {"kind": "quote", "code": "ground:quote", "guard": true, "text": "Как отмечал автор, «знание есть главная обязанность каждого человека»."},
     {"kind": "order", "code": "ground:law", "guard": true, "text": "Урок проводится согласно приказу Министерства просвещения от 6 апреля 2017 года № 187."},
-    {"kind": "code", "code": "ground:law", "guard": true, "text": "Уголовный кодекс предусматривает за это ответственность."}
+    {"kind": "code", "code": "ground:law", "guard": true, "text": "Уголовный кодекс предусматривает за это ответственность."},
+    {"kind": "single_quote", "code": "ground:quote", "guard": true, "text": "Как писал автор, ‹маркетинг — это искусство находить своих клиентов›."}
   ],
   "en": [
     {"kind": "name", "code": "ground:name", "text": "The project was also supervised by Botirjon Xolmirzayev."},
@@ -47,6 +49,7 @@
     {"kind": "law", "code": "ground:law", "guard": true, "text": "Under Article 214 of the Labour Code, leave must be granted."},
     {"kind": "quote", "code": "ground:quote", "guard": true, "text": "As the author put it, “knowledge is the sacred duty of every person”."},
     {"kind": "order", "code": "ground:law", "guard": true, "text": "Lessons follow the Ministry of Public Education order of 6 April 2017."},
-    {"kind": "code", "code": "ground:law", "guard": true, "text": "Criminal Code provisions apply to this case."}
+    {"kind": "code", "code": "ground:law", "guard": true, "text": "Criminal Code provisions apply to this case."},
+    {"kind": "single_quote", "code": "ground:quote", "guard": true, "text": "As the author put it, 'the aim of marketing is to make selling superfluous'."}
   ]
 }

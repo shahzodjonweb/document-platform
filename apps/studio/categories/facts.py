@@ -60,6 +60,9 @@ More limits, said as plainly:
 - `guard` removes any sentence with a strong legal stem (kodeks, farmon,
   Konstitutsiya ...) the customer did not give, even one that cites nothing
   specific ("U ko‘plab farmonlar chiqargan"), and a part may come back empty.
+- A quotation is read by its marks (`QUOTE`): one written with none, an
+  attribution only ("Filip Kotler ta’kidlaganidek, marketing — bu ..."), is
+  not told from the model's own words and is not checked.
 """
 import math
 import re
@@ -178,7 +181,16 @@ SHAPED_WORDS = re.compile(
     r'(?:tanl|sin|tul)ov(?:ga|ni|ning|da|dan|dagi|lar|larga|larni|larning)?')
 OPENING = ' \t«“„"\'‘(['
 LIST_MARKS = '-–—•*·'
-QUOTE = re.compile(r'«([^«»]{1,800})»|“([^“”]{1,800})”|„([^„“”]{1,800})[“”]|"([^"\n]{1,800})"')
+# A quotation in any of the marks the three languages use: «…», “…”, „…“, "…", and the single ones ‘…’, '…', ‹…›,
+# ‚…‘. A single mark opens only where no letter or digit stands before it and closes only where none follows, and
+# inside it stands only between two letters: so Uzbek o‘, g‘ and the tutuq (ma’lumot, o'quvchi) and an English
+# apostrophe (Drucker's, students') never open or close one, while ‘bilim — o‘quvchining burchi’ is read whole.
+SINGLE_INSIDE = r"(?:[^{marks}\n]|(?<=[^\W\d_])[{marks}](?=[^\W\d_])){{1,800}}?"
+QUOTE = re.compile(
+    r'«([^«»]{1,800})»|“([^“”]{1,800})”|„([^„“”]{1,800})[“”]|"([^"\n]{1,800})"'
+    r"|(?<![^\W_])‘(?=\S)(" + SINGLE_INSIDE.format(marks='‘’') + r")’(?![^\W\d_])"
+    r"|(?<![^\W_])'(?=\S)(" + SINGLE_INSIDE.format(marks="'") + r")'(?![^\W\d_])"
+    r"|‹([^‹›\n]{1,800})›|‚([^‚‘’\n]{1,800})[‘’]")
 SENTENCE_END = re.compile(r'[.!?…]+(?=[\s"»”)\]]|$)|\n+')
 # Legal references, by what they cite, in the three languages (normalised, lower case). A strong stem is a
 # citation by itself; a weak one also means something else ("Nyutonning ikkinchi qonuni", "qaror qabul qilish",
