@@ -1570,51 +1570,78 @@ def _lexicon():
     return found
 
 
+# The languages of words/names.txt's sections (`_name_forms`): a section's header names it. Places and brands are
+# every language's.
+NAME_SECTIONS = (('uzbek', 'uz'), ('russian', 'ru'), ('english', 'en'), ('places', 'any'), ('brands', 'any'))
+
+
 @functools.cache
 def _name_forms():
-    """(the names of words/names.txt folded, their forms with a case ending folded), read once per process."""
-    names, forms, place = set(), set(), False
+    """{language: (its names of words/names.txt folded, their forms with a case ending folded)}, read once per process.
+
+    A section's language is its header's (`NAME_SECTIONS`): an English given name ("Joy", "Tom", "Sara") is an
+    English paper's name, never one that refuses an Uzbek word in an Uzbek paper (`common`)."""
+    found, language, place = {}, 'any', False
     for line in (WORDS / 'names.txt').read_text('utf-8').splitlines():
         line = line.strip()
-        if line.startswith('#'):
-            place = place if not line.startswith('# ----') else 'places' in line.casefold()
+        if line.startswith('# ----'):
+            header = line.casefold()
+            language = next((code for word, code in NAME_SECTIONS if word in header), 'any')
+            place = 'places' in header
             continue
-        if not line:
+        if not line or line.startswith('#'):
             continue
+        names, forms = found.setdefault(language, (set(), set()))
         name = fold(line)
         names.add(name)
         forms.update(name + ending for ending in NAME_CASES + (PLACE_PEOPLE if place else ()))
         forms.update(name[:-1] + ending for ending in RU_A_CASES) if name.endswith('a') else \
             forms.update(name + ending for ending in RU_CASES)
-    return frozenset(names), frozenset(forms - names)
+    return {language: (frozenset(names), frozenset(forms - names)) for language, (names, forms) in found.items()}
 
 
-def _named(low):
-    """Whether a word (lower case) is a name of words/names.txt, whole or with a case ending (`_name_forms`).
+def _named(low, languages=None):
+    """Whether a word (lower case) is a name of words/names.txt, whole or with a case ending (`_name_forms`), of the
+    sections of `languages` (every section's when None).
 
     The name itself is one even where it is also a common word ("Umid", "Grace", "Надежда"); a form of it with an
     ending only where the language has no such word ("Malikaga", never "Umidi", "Shirinlik", "Ширина").
     """
-    names, forms = _name_forms()
+    sections = _name_forms()
+    chosen = [sections[language] for language in (languages or sections) if language in sections]
     possessive = re.fullmatch(r"(.{2,}?)(?:'s|s')", low)
-    if fold(low) in names or (possessive is not None and fold(possessive.group(1)) in names):
+    folded = fold(low)
+    if any(folded in names or (possessive is not None and fold(possessive.group(1)) in names)
+           for names, _ in chosen):
         return True
-    if fold(low) not in forms:
+    if not any(folded in forms for _, forms in chosen):
         return False
     return not any(low in _lexicon()[language][0] for language in SUFFIXES)
 
 
-def common(word):
+def _refusing(language, cyrillic):
+    """The sections of words/names.txt whose names are never a common word in a paper of `language` (`common`): its
+    own, the Uzbek names any paper here may hold, the places and the brands; with no language, every section."""
+    if language not in ('uz', 'ru', 'en'):
+        return None
+    return {language, 'uz', 'any'} | ({'ru'} if cyrillic else set())
+
+
+def common(word, language=None):
     """Whether a capitalised word is a common word of Uzbek, Russian or English rather than a name: one of the
     lexicon's (words/*.txt) with or without an ending, a number word, a plural or a Russian verb (no name is one:
     "O‘quvchilar", "Соблюдает"), and never a given name, a surname, a place or a brand of words/names.txt
-    (`_named`), even one that is also a common word: the owner's tie-break, a blank before a leak."""
+    (`_named`), even one that is also a common word: the owner's tie-break, a blank before a leak.
+
+    `language` is the paper's: there a name of another language's section refuses only that language's words
+    (`_refusing`), so an Uzbek paper's "Joy ijarasi", "Tom yopish" and "Sara navli" are Uzbek words while an English
+    paper's "Joy", "Tom" and "Sara" are names; with no language every name refuses every word."""
     low = normalised(word).casefold()
-    if _named(low):
+    cyrillic = re.search('[а-яё]', low) is not None
+    if _named(low, _refusing(language, cyrillic)):
         return False
     if numbers._spelled_role(low, False) is not None or numbers.ORDINAL.fullmatch(low):
         return True
-    cyrillic = re.search('[а-яё]', low) is not None
     if not cyrillic and re.search(r"lar(?:i|ning|ni|ga|da|dan|imiz|ingiz)?$", low):
         return True
     if cyrillic and (RU_VERB.fullmatch(low) or (RU_COMMON_ADJECTIVE.fullmatch(low) and (
@@ -1623,6 +1650,8 @@ def common(word):
     if re.fullmatch(r"[A-Z]{2,}s", word) or re.fullmatch(r"[IVXLC]+", word):
         return True  # an acronym's plural ("SOPs", "CVs"; an organisation's name is no plural), a roman numeral
     for language in (('ru',) if cyrillic else ('uz', 'en')):
+        if _named(low, (language,)):
+            continue  # a name of the lexicon's own language is never one of its common words
         words, stems = _lexicon()[language]
         if low in words or low in stems:
             return True
@@ -1646,11 +1675,13 @@ def _compound(text, run):
         and text[run[0][1] + 1].islower()
 
 
-def _unknown_runs(text, trusted, translated=False, *, strict=False, orgs=False, invented=None, legal=(), lone=False):
+def _unknown_runs(text, trusted, translated=False, *, strict=False, orgs=False, invented=None, legal=(), lone=False,
+                  language=None):
     """(run, positions of its words not the customer's, whether its first word was left free) of each run (`_names`).
 
     `legal` holds where the words of the customer's own code stand (`_legal_words`): never a name. `lone` (a paper's
-    grounded part) holds a first word that is no common word (`common`), the customer's or no one's.
+    grounded part) holds a first word that is no common word (`common`, in the paper's `language`), the customer's or
+    no one's.
     """
     for run in _runs(text):
         bad = []
@@ -1659,7 +1690,7 @@ def _unknown_runs(text, trusted, translated=False, *, strict=False, orgs=False, 
                                       or (len(run) > 1 and all(_letters(word) < 2 for _, _, word in run[1:]))
                                       or _surname(run[0][2]) or (orgs and _organisation(text, run))
                                       or (invented is not None and invented.has(fold(run[0][2])))
-                                      or (lone and not common(run[0][2]) and not _compound(text, run))):
+                                      or (lone and not common(run[0][2], language) and not _compound(text, run))):
             first_free = False
         for position, (start, end, word) in enumerate(run):
             if _letters(word) < 2 or (position == 0 and first_free) or start in legal:
@@ -1705,7 +1736,7 @@ def _quoted(text, run):
 
 
 def _names(text, trusted, codes, translated=False, *, strict=False, orgs=False, invented=None, blanked=None,
-           lone=False):
+           lone=False, language=None):
     """Blank the runs of capitalised words that are not the customer's (see `ground`).
 
     The first word of a sentence is capitalised by grammar ("Bunga",
@@ -1740,7 +1771,7 @@ def _names(text, trusted, codes, translated=False, *, strict=False, orgs=False, 
     # A paper's grounded part names the customer's code in its own language (`_legal_words`).
     legal = _legal_words(text, trusted) if orgs else ()
     for run, bad, first_free in _unknown_runs(text, trusted, translated, strict=strict, orgs=orgs, invented=invented,
-                                              legal=legal, lone=lone):
+                                              legal=legal, lone=lone, language=language):
         if blanked is not None:
             for word in _holdable(text, run, bad):
                 blanked.add(word)
@@ -1855,7 +1886,7 @@ def _rejected(text, trusted, rejected, codes, translated=False):
 
 
 def guard(text, trusted, *, translated=False, checks=(), words=False, orgs=False, invented=None, blanked=None,
-          rejected=(), lone=False):
+          rejected=(), lone=False, language=None):
     """(text, codes): any other category part, with no quotation and no legal reference the customer did not give.
 
     Names, numbers and general knowledge are left as SYSTEM allows them in a
@@ -1872,7 +1903,7 @@ def guard(text, trusted, *, translated=False, checks=(), words=False, orgs=False
     `words` makes 'numbers' read the numbers written as words too
     (numbers.SPELLED), which a paper's grounded parts ask for: "five years of
     experience" or "yigirma foiz" the customer never gave becomes ____.
-    `orgs`, `invented`, `blanked` and `lone` are passed to the 'names' check
+    `orgs`, `invented`, `blanked`, `lone` and `language` (the paper's) are passed to the 'names' check
     (`_names`, a paper's grounded parts). `rejected` (`_rejected`) is for a paper's
     guarded parts and title: the people and organisations of facts the same
     finish has taken out are blanked there too.
@@ -1888,7 +1919,7 @@ def guard(text, trusted, *, translated=False, checks=(), words=False, orgs=False
         text = _numbers(text, trusted, codes, words)
     if 'names' in checks:
         text = _names(text, trusted, codes, translated, strict=True, orgs=orgs, invented=invented, blanked=blanked,
-                      lone=lone)
+                      lone=lone, language=language)
     if rejected:
         text = _rejected(text, trusted, rejected, codes, translated)
     return _tidy(text), list(dict.fromkeys(codes))

@@ -1458,6 +1458,88 @@ CASES = [
          'bloger 3 mln, flayer 2 mln.', 'uz', 'budget', 'Instagram reklama', row=('5 mln so‘m', '')),
 ]
 
+# ---- words/names.txt is read by the paper's language (round 3 of the convergence, should, from db19bc0): an English
+# given name refuses no Uzbek word in an Uzbek paper; a name that is a word of its own paper's language is still held,
+# and each such collision kept is an accepted false blank beside the leak it pays for.
+PLAN_UZ_EN = ('Menga ingliz tilida nonvoyxona uchun biznes-reja yozing. Toshkentda issiq non va somsa sotamiz, '
+              'o‘z mablag‘im 120 mln so‘m, xodimlar: novvoy, sotuvchi, kassir.')
+CAFE_UZ = ('Toshkentda kichik kafe ochish uchun biznes-reja yozing. Choy, sharbat va shirinliklar sotamiz. '
+           'O‘z mablag‘im 150 mln so‘m.')
+CAFE_RU_EN = ('Напишите бизнес-план кафе в Ташкенте на английском языке. Чай, соки и выпечка. Собственные средства '
+              '150 млн сумов.')
+OFFER_MEBEL_UZ = 'Mebel do‘konimiz uchun tijorat taklifi yozing, Toshkentda oshxona mebeli sotamiz, chegirma 10 foiz.'
+CASES += [
+    cell('names-english-given-name-joy-is-an-uzbek-word-in-a-cost-cell-uz-keep', KEEP, 'pdf.biz.biznes_reja', PLAN_UZ,
+         'uz', 'finance_costs', 'Joy ijarasi'),
+    body('names-english-given-name-joy-is-an-uzbek-word-opening-a-sentence-uz-keep', KEEP, 'pdf.biz.biznes_reja',
+         PLAN_UZ, 'uz', 'operations', 'Joy tanlashda transport qulayligi hisobga olindi.'),
+    cell('names-english-given-name-tom-is-an-uzbek-word-uz-keep', KEEP, 'pdf.biz.biznes_reja', PLAN_UZ, 'uz',
+         'finance_costs', 'Tom yopish ishlari'),
+    body('names-english-given-name-sara-is-an-uzbek-word-uz-keep', KEEP, 'pdf.biz.biznes_reja', PLAN_UZ, 'uz', 'product',
+         'Sara navli bug‘doy unidan non yopamiz.'),
+    gp('names-english-surname-kim-is-an-uzbek-word-uz-keep', KEEP, UZ_NONE, 'uz',
+       'Kim javobgar ekanini direktor belgilaydi.'),
+    body('names-english-given-name-joy-in-an-english-paper-uz-to-en-blank', BLANK, 'pdf.biz.biznes_reja', PLAN_UZ_EN,
+         'en', 'operations', 'Joy manages the shop floor.', gone=('Joy',), translated=True),
+    gp('names-english-given-name-tom-in-an-english-paper-en-blank', BLANK, EN_NONE, 'en', 'Tom supervised the bakers.',
+       gone=('Tom',)),
+    gp('names-english-given-name-sara-in-an-english-paper-en-blank', BLANK, EN_NONE, 'en',
+       'Sara handled the accounts.', gone=('Sara',)),
+    gp('names-english-given-name-grace-in-an-uzbek-paper-uz-blank', BLANK, UZ_NONE, 'uz', 'Grace kassada ishlaydi.',
+       gone=('Grace',)),
+    gp('names-uzbek-given-name-said-in-an-english-paper-en-blank', BLANK, EN_NONE, 'en', 'Said handled the accounts.',
+       gone=('Said',)),
+    # An Uzbek given name that is an Uzbek word, in an Uzbek paper.
+    gp('names-uzbek-given-name-asal-uz-blank', BLANK, UZ_NONE, 'uz', 'Asal kassada ishlaydi.', gone=('Asal',)),
+    cell('names-uzbek-given-name-asal-is-honey-in-a-product-cell-uz-accepted_false_blank', ACCEPTED,
+         'pdf.biz.biznes_reja', CAFE_UZ, 'uz', 'product', 'Asal va murabbo', gone=('Asal',),
+         pair='names-uzbek-given-name-asal-uz-blank'),
+    gp('names-uzbek-given-name-erkin-uz-blank', BLANK, UZ_NONE, 'uz', 'Erkin loyihani boshqaradi.', gone=('Erkin',)),
+    body('names-uzbek-given-name-erkin-is-free-opening-a-sentence-uz-accepted_false_blank', ACCEPTED,
+         'pdf.biz.biznes_reja', PLAN_UZ, 'uz', 'market_customers', 'Erkin raqobat sharoitida narx muhim.',
+         gone=('Erkin',), pair='names-uzbek-given-name-erkin-uz-blank'),
+    gp('names-uzbek-given-name-kumush-uz-blank', BLANK, UZ_NONE, 'uz', 'Kumush sotuvni boshqaradi.', gone=('Kumush',)),
+    body('names-uzbek-given-name-kumush-is-silver-opening-a-sentence-uz-accepted_false_blank', ACCEPTED,
+         'pdf.biz.biznes_reja', PLAN_UZ, 'uz', 'product', 'Kumush rangli qadoqda sotamiz.', gone=('Kumush',),
+         pair='names-uzbek-given-name-kumush-uz-blank'),
+    gp('names-uzbek-given-name-aziz-uz-blank', BLANK, UZ_NONE, 'uz', 'Aziz loyihani boshqaradi.', gone=('Aziz',)),
+    gp('names-uzbek-given-name-said-in-an-english-paper-is-a-verb-en-accepted_false_blank', ACCEPTED, EN_NONE, 'en',
+       'Said differently, our prices stay low.', gone=('Said',),
+       pair='names-uzbek-given-name-said-in-an-english-paper-en-blank'),
+    # An English surname, given name or brand that is an English word, in an English paper.
+    cell('names-english-surname-baker-is-a-trade-in-a-team-cell-uz-to-en-accepted_false_blank', ACCEPTED,
+         'pdf.biz.biznes_reja', PLAN_UZ_EN, 'en', 'team', 'Baker', gone=('Baker',), translated=True,
+         pair='names-english-surname-baker-en-blank'),
+    cell('names-english-surname-cook-is-a-trade-in-a-team-cell-ru-to-en-accepted_false_blank', ACCEPTED,
+         'pdf.biz.biznes_reja', CAFE_RU_EN, 'en', 'team', 'Cook', gone=('Cook',), translated=True,
+         pair='names-english-surname-cook-en-blank'),
+    cell('names-english-surname-black-is-a-colour-in-a-product-cell-ru-to-en-accepted_false_blank', ACCEPTED,
+         'pdf.biz.biznes_reja', CAFE_RU_EN, 'en', 'product', 'Black tea', gone=('Black',), translated=True,
+         pair='names-english-surname-black-en-blank'),
+    cell('names-english-surname-green-is-a-colour-in-a-product-cell-ru-to-en-accepted_false_blank', ACCEPTED,
+         'pdf.biz.biznes_reja', CAFE_RU_EN, 'en', 'product', 'Green tea', gone=('Green',), translated=True,
+         pair='names-english-surname-green-en-blank'),
+    cell('names-brand-apple-is-a-fruit-in-a-product-cell-ru-to-en-accepted_false_blank', ACCEPTED,
+         'pdf.biz.biznes_reja', CAFE_RU_EN, 'en', 'product', 'Apple juice', gone=('Apple',), translated=True,
+         pair='names-brand-apple-en-blank'),
+    body('names-english-surname-stone-is-a-material-uz-to-en-accepted_false_blank', ACCEPTED, 'pdf.biz.biznes_reja',
+         PLAN_UZ_EN, 'en', 'product', 'Stone oven bread is baked every morning.', gone=('Stone',), translated=True,
+         pair='names-english-surname-stone-en-blank'),
+]
+for word, sentence in (('Price', 'Price is our main advantage over supermarkets.'),
+                       ('King', 'King prawns are on the menu.'), ('Long', 'Long queues form at noon.'),
+                       ('Mark', 'Mark the opening date in the calendar.'), ('Bill', 'Bill payments are made monthly.')):
+    CASES += [
+        gp(f'names-english-name-{word.lower()}-is-a-word-en-accepted_false_blank', ACCEPTED, PLAN_EN, 'en', sentence,
+           gone=(word,), pair=f'names-english-name-{word.lower()}-en-blank'),
+        gp(f'names-english-name-{word.lower()}-en-blank', BLANK, EN_NONE, 'en', f'{word} handled the accounts.',
+           gone=(word,)),
+    ]
+for word in ('Baker', 'Cook', 'Black', 'Green', 'Stone'):
+    CASES.append(gp(f'names-english-surname-{word.lower()}-en-blank', BLANK, EN_NONE, 'en',
+                    f'{word} supervised the bakery team.', gone=(word,)))
+CASES.append(gp('names-brand-apple-en-blank', BLANK, EN_NONE, 'en', 'Apple supplies our tablets.', gone=('Apple',)))
+
 CASE_IDS = [case.id for case in CASES]
 
 
@@ -1563,7 +1645,8 @@ def _unit(case):
         assert translated is case.translated, 'the brief is not read in the language the case says'
     call, _, kind = case.call.partition(':')
     if call == 'ground_paper':
-        return finish.ground_paper(case.value, trusted, translated=translated)[0]
+        # In the paper's language, as the finish reads a grounded part (facts.common's `language`).
+        return finish.ground_paper(case.value, trusted, translated=translated, language=case.locale)[0]
     if call == 'guard':
         return facts.guard(case.value, trusted, translated=translated)[0]
     return facts.supported(case.value, kind, trusted, translated=translated, strict=True, words=True)

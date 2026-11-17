@@ -560,7 +560,7 @@ def clock_value(kind, locale, day=None):
     return f'{day.day} {month} {day.year}'
 
 
-def ground_paper(text, trusted, *, translated=False, invented=None, blanked=None):
+def ground_paper(text, trusted, *, translated=False, invented=None, blanked=None, language=None):
     """(text, codes): a paper's grounded part held to the customer's words, its people's names read strictly.
 
     facts.ground's checks (laws, quotations, e-mails and links, numbers, runs
@@ -587,10 +587,13 @@ def ground_paper(text, trusted, *, translated=False, invented=None, blanked=None
     ("Artelda ishlaganman." when the employer "Artel" was blanked). `blanked`
     receives the words of the runs blanked here that name someone: a person's
     beside a surname or an organisation's shaped or quoted, never a common
-    word ("Davlat" of a blanked "Davlat Soliq Qo‘mitasi").
+    word ("Davlat" of a blanked "Davlat Soliq Qo‘mitasi"). `language` is the
+    paper's, in which a lone first word is read as a common word or a name
+    (facts.common): an Uzbek paper's "Joy ijarasi" is an Uzbek word, an
+    English paper's "Joy" a name.
     """
     text, codes = facts.guard(text, trusted, translated=translated, checks=('numbers', 'names'), words=True,
-                              orgs=True, invented=invented, blanked=blanked, lone=True)
+                              orgs=True, invented=invented, blanked=blanked, lone=True, language=language)
     # A class letter the customer never wrote goes as a fact's does ("11-«A» sinf o‘quvchisi" is "11-sinf ..."): one a
     # class is written with only (quoted, after a hyphen, beside a class's or a pupil's word).
     text, lettered = facts.without_class_letters(text, trusted)
@@ -928,7 +931,8 @@ def _finish_part(section, part, *, locale, trusted, translated, names, codes, in
 
     def checked(text):
         if strict:
-            text, found = ground_paper(text, trusted, translated=translated, invented=invented, blanked=invented)
+            text, found = ground_paper(text, trusted, translated=translated, invented=invented, blanked=invented,
+                                       language=locale)
         else:
             text, found = facts.guard(text, trusted, translated=translated, rejected=rejected)
         codes.extend(found)
@@ -936,10 +940,10 @@ def _finish_part(section, part, *, locale, trusted, translated, names, codes, in
     _texts(section, checked, heading=part is None or part.get('heading_mode') == 'model')
 
 
-def _held_again(text, trusted, translated, invented, codes):
+def _held_again(text, trusted, translated, invented, codes, language=None):
     """A grounded part's text read again for the names a later part or fact of the paper took out (`_paper`)."""
     text, found = facts.guard(text, trusted, translated=translated, checks=('names',), orgs=True, invented=invented,
-                              lone=True)
+                              lone=True, language=language)
     codes.extend(found)
     return text
 
@@ -1039,7 +1043,7 @@ def _paper(entry, data, content, *, only, file_names, codes):
             found.append('finish:form')
     for section, known in grounded:
         if len(invented.exact) > known:
-            _texts(section, lambda text: _held_again(text, trusted, translated, invented, found),
+            _texts(section, lambda text: _held_again(text, trusted, translated, invented, found, locale),
                    heading=entry.part(section.get('id')) is None
                    or entry.part(section.get('id')).get('heading_mode') == 'model')
     if whole:
@@ -1049,7 +1053,8 @@ def _paper(entry, data, content, *, only, file_names, codes):
             # A fact-led paper's title may name its people, so it is held as its grounded parts are.
             led = _led(entry)
             if led:
-                title, title_codes = ground_paper(content['title'], trusted, translated=translated, invented=invented)
+                title, title_codes = ground_paper(content['title'], trusted, translated=translated, invented=invented,
+                                                  language=locale)
             else:
                 title, title_codes = facts.guard(content['title'], trusted, translated=translated, rejected=rejected)
             found.extend(title_codes)
