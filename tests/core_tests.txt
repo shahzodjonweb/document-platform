@@ -1555,3 +1555,9 @@ tests/test_category_generation_pdf.py::test_a_paper_written_in_several_calls_nev
 # Stage-2 re-audit, citations: a category paper's schema has no citations, which its template never prints, so a
 # paper with an attached file is never retried or failed over a quote that was not word for word
 tests/test_category_generation_pdf.py::test_a_paper_with_an_attached_file_is_never_retried_or_failed_over_citations
+
+# Stage-2 re-audit, the test's key: an answer is matched to an option's text before it is read as a letter, so an
+# articles test's "a", a chemistry test's "C" or a note "D" is keyed to its own option, never to A, C or D
+tests/test_paper_study.py::test_an_answer_whose_option_is_one_letter_is_keyed_by_its_text[article]
+tests/test_paper_study.py::test_an_answer_whose_option_is_one_letter_is_keyed_by_its_text[note]
+tests/test_paper_study.py::test_an_articles_test_is_keyed_by_the_options_text_in_the_drawn_key

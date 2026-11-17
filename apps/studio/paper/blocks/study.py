@@ -204,17 +204,20 @@ def key_letter(question):
     answer = str(question.get('answer') or '').strip()
     if not options or not answer:
         return None
-    only = LETTER_ONLY.match(answer)
-    if only:
-        letter = only.group(1).upper()
-        # Options that are single letters themselves ("Which letter…?") are matched by their text instead.
-        if letter in CYRILLIC_LETTERS and letter not in LOOKALIKE and not any(len(item) == 1 for item in options):
-            letter = OPTION_LETTERS[CYRILLIC_LETTERS.index(letter)]
-        if letter in OPTION_LETTERS[:len(options)]:
-            return letter
+    # The option's text first: the model copies it (pdf.test), and it may itself be one letter, the article "a",
+    # the symbol "C", a note "D", a variable "b", which read as a letter would key another option.
     found = _find(answer, options, alike=False)
     if found is not None:
         return OPTION_LETTERS[found]
+    only = LETTER_ONLY.match(answer)
+    # An answer that is only a letter names an option by its place, unless the options are single letters
+    # themselves ("Which letter…?"), where it names none of them.
+    if only and not any(len(item.strip()) == 1 for item in options):
+        letter = only.group(1).upper()
+        if letter in CYRILLIC_LETTERS and letter not in LOOKALIKE:
+            letter = OPTION_LETTERS[CYRILLIC_LETTERS.index(letter)]
+        if letter in OPTION_LETTERS[:len(options)]:
+            return letter
     typed = _typed(answer)
     if typed and typed[1]:
         # "C) Xloroplast": the letter and the text must name the same option, or the key prints the answer.

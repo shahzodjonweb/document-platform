@@ -637,3 +637,21 @@ def test_the_question_fallback_is_todays_list():
              if hasattr(flowable, 'text')]
     assert lines[0].startswith('1. Hujayraning') and any('A) Yadro' in line for line in lines)
     assert any(line.startswith('3. Mitoxondriyaning') and '(2)' in line for line in lines)
+
+
+@pytest.mark.parametrize('options, answer, letter', [
+    (['an', 'a', 'the', '—'], 'a', 'B'), (['Ca', 'C', 'Co', 'Cu'], 'C', 'B'), (['D', 'E', 'B', 'G'], 'D', 'A'),
+    (['a', 'x', 'b', 'y'], 'b', 'C'), (['a', 'x', 'b', 'y'], 'a', 'A'), (['a', 'x', 'b', 'y'], 'C', None),
+], ids=['article', 'symbol', 'note', 'variable', 'variable-first', 'letter-of-no-option'])
+def test_an_answer_whose_option_is_one_letter_is_keyed_by_its_text(options, answer, letter):
+    # pdf.test asks the model to copy the correct option's text: "a" is the article, not option A.
+    assert study.key_letter({'options': options, 'answer': answer}) == letter
+
+
+def test_an_articles_test_is_keyed_by_the_options_text_in_the_drawn_key(tmp_path):
+    articles = [question('I have ___ dog.', ['an', 'a', 'the', '—'], 'a'),
+                question('She is ___ engineer.', ['an', 'a', 'the', '—'], 'an'),
+                question('___ sun is hot.', ['an', 'a', 'The', '—'], 'The'),
+                question('He bought ___ car.', ['the', 'an', 'a', '—'], 'a')]
+    pages = pages_text(draw_test(tmp_path, questions=articles))
+    assert re.search(r'1 2 3 4\s*\nB A C C', pages[-1]), pages[-1]
