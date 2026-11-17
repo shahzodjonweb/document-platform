@@ -65,9 +65,12 @@ More limits, said as plainly:
   banki"), or that the same finish took out elsewhere, a rejected fact's or a
   blanked run's ("Artelda ishlaganman" when the employer Artel was blanked:
   only a word that names someone wherever it stands, matched whole or with a
-  case ending, `Named`); a lone word with none of these, a brand, a city or a
-  given name ("Korzinka", "Samarqand shahrida", "Smith led ..."), still
-  passes, a table's label cell and a list item included.
+  case ending, `Named`), or that is no common word of the three languages
+  (`common`, words/*.txt): a brand, a city or a given name alone ("Korzinka",
+  "Ucell bilan ...", "Smith led ...", a table's cell and a list item
+  included). A common word the lexicon lacks is held too: a false blank
+  ("Pudratchi ..."), never an invention; a given name that is also a common
+  word ("Umid", "Aziz") still passes unless the same finish took it out.
 - `guard` removes any sentence with a strong legal stem (kodeks, farmon,
   Konstitutsiya ...) the customer did not give, even one that cites nothing
   specific ("U ko‘plab farmonlar chiqargan"), and a part may come back empty.
@@ -75,10 +78,12 @@ More limits, said as plainly:
   attribution only ("Filip Kotler ta’kidlaganidek, marketing — bu ..."), is
   not told from the model's own words and is not checked.
 """
+import functools
 import math
 import re
 import unicodedata
 from dataclasses import dataclass, field, replace
+from pathlib import Path
 
 from ..language import normalised
 from ..uzbek import LETTERS, to_latin
@@ -199,7 +204,7 @@ RU_ORG_KINDS = re.compile(r"(?:университет|институт|колл�
                           r"|гипермаркет|корпораци|комбинат)\w*")
 RU_NAMED = re.compile(r"[а-яё]+[сц]к(?:ий|ая|ое|ого|ой|ом|ому|ую|ие|их|им|ими)")
 RU_KIND_ADJECTIVES = re.compile(r"[а-яё]*(?:ическ|ческ|медицинск|городск|сельск|детск|женск|мужск|президентск"
-                                r"|банковск|университетск|институтск|гражданск|частн|международн)\w*")
+                                r"|банковск|университетск|институтск|гражданск|частн|международн|тельск|торск)\w*")
 RU_ADJECTIVE = re.compile(r"[а-яё]+(?:ый|ий|ой|ая|яя|ое|ее|ого|его|ому|ему|ым|им|ом|ем|ую|юю|ых|их|ыми|ими)")
 # The words that make such a kind a kind of organisation, never one's name, opening a sentence: "Tijorat banki",
 # "Davlat universiteti", "Xususiy klinikasi", "Qurilish kompaniyasi bilan ...".
@@ -1342,10 +1347,79 @@ def _org_shaped(word):
     return word.isupper() and _letters(word) >= 3 and not re.fullmatch(r"[IVXLCDM]+", word)
 
 
-def _unknown_runs(text, trusted, translated=False, *, strict=False, orgs=False, invented=None, legal=()):
+# The common words a paper's sentence, cell or item may open with, by language (words/*.txt, `common`), and the
+# endings a sentence gives them there, so that "Savdoda", "Soliqlar", "Kompaniyangizda", "Компания" and "Trading"
+# are found from "savdo", "soliq", "kompaniya", "компании" and "trade".
+WORDS = Path(__file__).with_name('words')
+UZ_SUFFIXES = frozenset(
+    derived + plural + own + case
+    for derived in ('', 'li', 'siz', 'lik', 'lig', 'iy', 'viy', 'chi', 'gi', 'ki', 'roq', 'cha')
+    for plural in ('', 'lar')
+    for own in ('', 'i', 'si', 'im', 'ing', 'imiz', 'ingiz', 'm', 'ng', 'miz', 'ngiz', 'lari', 'ri')
+    for case in ('', 'ga', 'ka', 'qa', 'ni', 'ning', 'da', 'dan', 'dagi', 'gacha', 'dek', 'day', 'ki', 'mi', 'gina'))
+RU_SUFFIXES = frozenset((
+    'а я о е и ы у ю ь й ой ей ий ый ая яя ое ее ые ие ом ем ам ям ах ях ами ями ов ев ого его ому ему ую юю ых их ым '
+    'им ыми ими ью ию ия ии ием иям иях иями ость ости остью остей ться тся ет ют ит ят ут ат ил ила ило или ал ала '
+    'ало али ел ела ело ели').split())
+# An Uzbek verb's endings, after a stem a common word gives: "Ishlab", "Ta’minlaydi", "Bajarilsin".
+UZ_VERB_SUFFIXES = frozenset(
+    "adi aydi ydi di moqda sin ilsin lsin ib b ish ishi gan gach guncha masdan ladi lanadi ng ngiz".split())
+EN_SUFFIXES = frozenset("s es 's ed d ing er ers est ly ment ments ness ion ions al ally ity ive".split())
+SUFFIXES = {'uz': (UZ_SUFFIXES | UZ_VERB_SUFFIXES) - {''}, 'ru': RU_SUFFIXES, 'en': EN_SUFFIXES}
+# A Russian finite verb or infinitive, which a list item of duties opens with ("Соблюдает", "Ведёт", "Руководствуется",
+# "Обеспечивать", "Участвовали", "Родился"), and an adjective not of a name's shape ("Переменные расходы",
+# "Эксплуатационные", "Подоходный"): no name is one. Never the -ий of Дмитрий or Евгений, nor the -ой of Москвой.
+RU_VERB = re.compile(r"[а-яё]{3,}(?:[аяуеё]ет|[аяуеё]ют|ит|ят|ётся|ется|ится|ются|ятся|ться|ать|ять|ить|еть|йте|ите"
+                     r"|лся|лась|лось|лись)|[а-яё]{5,}(?:али|или|ели)")
+RU_COMMON_ADJECTIVE = re.compile(r"[а-яё]{4,}(?:ый|[кгхжшщч]ий|ая|яя|ое|ее|ые|ие|ого|его|ому|ему|ую|юю|ых|их|ыми|ими)")
+
+
+@functools.cache
+def _lexicon():
+    """{language: (its common words, their stems before an ending)}, read once per process."""
+    found = {}
+    for language, endings in SUFFIXES.items():
+        lines = (WORDS / f'{language}.txt').read_text('utf-8').splitlines()
+        words = frozenset(line.strip() for line in lines if line.strip() and not line.startswith('#'))
+        stems = frozenset(word[:cut] for word in words for cut in range(3, len(word)) if word[cut:] in endings)
+        found[language] = (words, stems)
+    return found
+
+
+def common(word):
+    """Whether a capitalised word is a common word of Uzbek, Russian or English rather than a name: one of the
+    lexicon's (words/*.txt) with or without an ending, a number word, a plural or a Russian verb (no name is one:
+    "O‘quvchilar", "Соблюдает")."""
+    low = normalised(word).casefold()
+    if numbers._spelled_role(low, False) is not None or numbers.ORDINAL.fullmatch(low):
+        return True
+    cyrillic = re.search('[а-яё]', low) is not None
+    if not cyrillic and re.search(r"lar(?:i|ning|ni|ga|da|dan|imiz|ingiz)?$", low):
+        return True
+    if cyrillic and (RU_VERB.fullmatch(low) or (RU_COMMON_ADJECTIVE.fullmatch(low) and (
+            not RU_NAMED.fullmatch(low) or RU_KIND_ADJECTIVES.fullmatch(low)))):
+        return True
+    if re.fullmatch(r"[A-Z]{2,}s", word) or re.fullmatch(r"[IVXLC]+", word):
+        return True  # an acronym's plural ("SOPs", "CVs"; an organisation's name is no plural), a roman numeral
+    for language in (('ru',) if cyrillic else ('uz', 'en')):
+        words, stems = _lexicon()[language]
+        if low in words or low in stems:
+            return True
+        endings = SUFFIXES[language]
+        for cut in range(3, len(low)):
+            base = low[:cut]
+            if low[cut:] in endings and (base in words or base in stems or (language == 'en' and (
+                    base + 'e' in words or (low[cut:] in ('es', 'ed') and base.endswith('i')
+                                            and base[:-1] + 'y' in words)))):
+                return True  # "Trading" of "trade", "Complies" of "comply"
+    return False
+
+
+def _unknown_runs(text, trusted, translated=False, *, strict=False, orgs=False, invented=None, legal=(), lone=False):
     """(run, positions of its words not the customer's, whether its first word was left free) of each run (`_names`).
 
-    `legal` holds where the words of the customer's own code stand (`_legal_words`): never a name.
+    `legal` holds where the words of the customer's own code stand (`_legal_words`): never a name. `lone` (a paper's
+    grounded part) holds a first word that is no common word (`common`), the customer's or no one's.
     """
     for run in _runs(text):
         bad = []
@@ -1353,7 +1427,8 @@ def _unknown_runs(text, trusted, translated=False, *, strict=False, orgs=False, 
         if strict and first_free and (_after_colon(text, run[0][0])
                                       or (len(run) > 1 and all(_letters(word) < 2 for _, _, word in run[1:]))
                                       or _surname(run[0][2]) or (orgs and _organisation(text, run))
-                                      or (invented is not None and invented.has(fold(run[0][2])))):
+                                      or (invented is not None and invented.has(fold(run[0][2])))
+                                      or (lone and not common(run[0][2]))):
             first_free = False
         for position, (start, end, word) in enumerate(run):
             if _letters(word) < 2 or (position == 0 and first_free) or start in legal:
@@ -1398,7 +1473,8 @@ def _quoted(text, run):
     return before[-1:] in ('«', '"', '“', '„', "'", '‘') and after[:1] in ('»', '"', '”', '“', "'", '’')
 
 
-def _names(text, trusted, codes, translated=False, *, strict=False, orgs=False, invented=None, blanked=None):
+def _names(text, trusted, codes, translated=False, *, strict=False, orgs=False, invented=None, blanked=None,
+           lone=False):
     """Blank the runs of capitalised words that are not the customer's (see `ground`).
 
     The first word of a sentence is capitalised by grammar ("Bunga",
@@ -1433,7 +1509,7 @@ def _names(text, trusted, codes, translated=False, *, strict=False, orgs=False, 
     # A paper's grounded part names the customer's code in its own language (`_legal_words`).
     legal = _legal_words(text, trusted) if orgs else ()
     for run, bad, first_free in _unknown_runs(text, trusted, translated, strict=strict, orgs=orgs, invented=invented,
-                                              legal=legal):
+                                              legal=legal, lone=lone):
         if blanked is not None:
             for word in _holdable(text, run, bad):
                 blanked.add(word)
@@ -1548,7 +1624,7 @@ def _rejected(text, trusted, rejected, codes, translated=False):
 
 
 def guard(text, trusted, *, translated=False, checks=(), words=False, orgs=False, invented=None, blanked=None,
-          rejected=()):
+          rejected=(), lone=False):
     """(text, codes): any other category part, with no quotation and no legal reference the customer did not give.
 
     Names, numbers and general knowledge are left as SYSTEM allows them in a
@@ -1565,8 +1641,8 @@ def guard(text, trusted, *, translated=False, checks=(), words=False, orgs=False
     `words` makes 'numbers' read the numbers written as words too
     (numbers.SPELLED), which a paper's grounded parts ask for: "five years of
     experience" or "yigirma foiz" the customer never gave becomes ____.
-    `orgs`, `invented` and `blanked` are passed to the 'names' check (`_names`,
-    a paper's grounded parts). `rejected` (`_rejected`) is for a paper's
+    `orgs`, `invented`, `blanked` and `lone` are passed to the 'names' check
+    (`_names`, a paper's grounded parts). `rejected` (`_rejected`) is for a paper's
     guarded parts and title: the people and organisations of facts the same
     finish has taken out are blanked there too.
     """
@@ -1580,7 +1656,8 @@ def guard(text, trusted, *, translated=False, checks=(), words=False, orgs=False
         text = _addresses(text, trusted, codes)
         text = _numbers(text, trusted, codes, words)
     if 'names' in checks:
-        text = _names(text, trusted, codes, translated, strict=True, orgs=orgs, invented=invented, blanked=blanked)
+        text = _names(text, trusted, codes, translated, strict=True, orgs=orgs, invented=invented, blanked=blanked,
+                      lone=lone)
     if rejected:
         text = _rejected(text, trusted, rejected, codes, translated)
     return _tidy(text), list(dict.fromkeys(codes))

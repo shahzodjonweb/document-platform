@@ -584,7 +584,7 @@ def ground_paper(text, trusted, *, translated=False, invented=None, blanked=None
     word ("Davlat" of a blanked "Davlat Soliq Qo‘mitasi").
     """
     return facts.guard(text, trusted, translated=translated, checks=('numbers', 'names'), words=True, orgs=True,
-                       invented=invented, blanked=blanked)
+                       invented=invented, blanked=blanked, lone=True)
 
 
 def _led(entry):
@@ -921,7 +921,8 @@ def _finish_part(section, part, *, locale, trusted, translated, names, codes, in
 
 def _held_again(text, trusted, translated, invented, codes):
     """A grounded part's text read again for the names a later part or fact of the paper took out (`_paper`)."""
-    text, found = facts.guard(text, trusted, translated=translated, checks=('names',), orgs=True, invented=invented)
+    text, found = facts.guard(text, trusted, translated=translated, checks=('names',), orgs=True, invented=invented,
+                              lone=True)
     codes.extend(found)
     return text
 
