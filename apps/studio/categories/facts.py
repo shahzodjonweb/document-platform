@@ -207,10 +207,12 @@ RU_KIND_ADJECTIVES = re.compile(r"[а-яё]*(?:ическ|ческ|медици�
                                 r"|банковск|университетск|институтск|гражданск|частн|международн|тельск|торск)\w*")
 RU_ADJECTIVE = re.compile(r"[а-яё]+(?:ый|ий|ой|ая|яя|ое|ее|ого|его|ому|ему|ым|им|ом|ем|ую|юю|ых|их|ыми|ими)")
 # The words that make such a kind a kind of organisation, never one's name, opening a sentence: "Tijorat banki",
-# "Davlat universiteti", "Xususiy klinikasi", "Qurilish kompaniyasi bilan ...".
+# "Davlat universiteti", "Xususiy klinikasi", "Qurilish kompaniyasi bilan ...", and a place or a platform a kind of
+# one ("Ta’lim platformasi", "Onlayn platformasi", "Sanoat shahri").
 KINDS_OF = ("tijorat davlat xususiy xorijiy mahalliy yirik kichik katta yangi ushbu mazkur bu shu har biror birorta "
             "boshqa bitta bir oliy xalqaro hamkor raqobatchi sug‘urta qurilish savdo logistika transport "
-            "investitsiya mikromoliya oilaviy tibbiyot texnika pedagogika iqtisodiyot quyidagi tegishli").split()
+            "investitsiya mikromoliya oilaviy tibbiyot texnika pedagogika iqtisodiyot quyidagi tegishli "
+            "ta’lim onlayn raqamli elektron sanoat o‘quv").split()
 
 
 def _forms():

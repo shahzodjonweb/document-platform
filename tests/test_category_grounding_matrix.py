@@ -468,6 +468,18 @@ CASES = [
     gp('names-a-building-company-is-no-name-uz-keep', KEEP, PLAN_UZ, 'uz',
        'Qurilish kompaniyasi bilan shartnoma tuzamiz.'),
     gp('names-a-bread-factory-is-no-name-uz-keep', KEEP, PLAN_UZ, 'uz', 'Non zavodi qurilmaydi.'),
+    # A place or a platform of a kind opens no name (round 2 of the convergence, regression from 7da99e9).
+    gp('names-an-education-platform-is-no-name-uz-keep', KEEP, PLAN_UZ, 'uz',
+       'Ta’lim platformasi yordamida xodimlar o‘qitiladi.'),
+    gp('names-an-online-platform-is-no-name-uz-keep', KEEP, PLAN_UZ, 'uz',
+       'Onlayn platformasi orqali sotuv yo‘lga qo‘yiladi.'),
+    gp('names-a-digital-platform-is-no-name-uz-keep', KEEP, PLAN_UZ, 'uz',
+       'Raqamli platformasi orqali buyurtmalar qabul qilinadi.'),
+    gp('names-an-industrial-town-is-no-name-uz-keep', KEEP, PLAN_UZ, 'uz', 'Sanoat shahri yaqinida sex joylashgan.'),
+    gp('names-a-platforms-name-before-its-kind-uz-blank', BLANK, PLAN_UZ, 'uz', 'Uzum platformasida sotamiz.',
+       gone=('Uzum',)),
+    gp('names-a-towns-name-before-its-kind-uz-blank', BLANK, PLAN_UZ, 'uz', 'Chirchiq shahrida filial ochamiz.',
+       gone=('Chirchiq',)),
     # A plural before an Uzbek kind in the possessive is an organisation's name as often as a common noun's
     # ("Do‘stlar kompaniyasida", "Yoshlar banki"): the run is held (round 2 of the convergence, must, regression from
     # 7da99e9), and a plural common noun before a kind goes with it, the price of it.
