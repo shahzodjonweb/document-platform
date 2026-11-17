@@ -1,8 +1,8 @@
 """A category deck made by the job, with the model stubbed (architecture 3.6, 7 and 11).
 
 The job refuses a category it cannot make before any provider call: an id
-the catalogue no longer holds is category_unknown, a paper category
-category_unavailable until its template renderer ships (X2). A deck is
+the catalogue no longer holds is category_unknown (a paper category is made,
+tests/test_category_generation_pdf.py). A deck is
 written, checked by quality.finish with its repeating forms and fixed
 headings spared (finish.exempt), held to the customer's words after
 title_lines (finish.apply, which raises the warning facts_blanked when it
@@ -30,7 +30,7 @@ from apps.studio.categories import catalogue, facts, finish, sample, skeleton
 from apps.studio.domain import SLIDES, create_draft, generation_quote, unpack
 from apps.studio.models import GenerationDraft, ProviderUsage
 from operations.categories_settings import save as save_switch
-from tests.test_category_drafts import APPLICATION, ARIZA, HIMOYA, marked
+from tests.test_category_drafts import ARIZA, HIMOYA, marked
 from tests.test_operations import staff_client
 from tests.test_page_fill import live
 
@@ -128,16 +128,6 @@ def test_an_id_the_catalogue_no_longer_holds_fails_the_job_before_the_provider(c
     marked(monkeypatch, 'ready', drop=[HIMOYA])
     job = execute_job(job.id)
     assert (job.status, job.error_code) == ('failed', 'category_unknown')
-    assert model.calls == [] and not ProviderUsage.objects.filter(job=job).exists()
-
-
-def test_a_paper_category_fails_as_unavailable_before_the_provider(customer, monkeypatch):
-    """The paper renderer is X2's: a stage-1 worker never writes a category paper on today's renderer."""
-    model = Model(monkeypatch)
-    draft = create_draft(customer, {'feature_id': catalogue.get(ARIZA).feature_id, 'prompt': APPLICATION,
-                                    'options': {'category': ARIZA}})
-    job = execute_job(queued(customer, draft).id)
-    assert (job.status, job.error_code) == ('failed', 'category_unavailable')
     assert model.calls == [] and not ProviderUsage.objects.filter(job=job).exists()
 
 
@@ -440,7 +430,7 @@ def test_the_smoke_says_what_finish_took_out_and_refuses_a_paper(settings, monke
     assert code == 0, out
     assert 'facts_blanked' in out
     code, out = smoke(monkeypatch, capsys, '--category', ARIZA)
-    assert code == 1 and 'category_unavailable' in out
+    assert code == 1 and 'decks only' in out
     code, out = smoke(monkeypatch, capsys, '--category', 'slides.gone')
     assert code == 1 and 'slides.gone is not in this catalogue' in out
 
