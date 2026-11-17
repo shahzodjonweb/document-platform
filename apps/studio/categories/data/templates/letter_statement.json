@@ -53,8 +53,8 @@
   {
    "block": "line",
    "params": {
-    "label": "kind",
-    "style": "caps"
+    "style": "caps",
+    "text": "kind"
    }
   },
   {
@@ -96,7 +96,7 @@
    "params": {
     "anchor": "left",
     "rule": "under",
-    "contact_line": true,
+    "contact_line": "all",
     "labels": {
      "phone": "tel",
      "email": "email"
@@ -107,7 +107,8 @@
    "block": "paragraph",
    "part": "opening",
    "params": {
-    "gap_pt": 12
+    "gap_pt": 7,
+    "before_pt": 7
    }
   },
   {
@@ -115,7 +116,8 @@
    "part": "why",
    "when": "part:why",
    "params": {
-    "gap_pt": 12
+    "gap_pt": 7,
+    "before_pt": 7
    }
   },
   {
@@ -123,7 +125,8 @@
    "part": "evidence",
    "when": "part:evidence",
    "params": {
-    "gap_pt": 12
+    "gap_pt": 7,
+    "before_pt": 7
    }
   },
   {
@@ -131,14 +134,16 @@
    "part": "contribution_goals",
    "when": "part:contribution_goals",
    "params": {
-    "gap_pt": 12
+    "gap_pt": 7,
+    "before_pt": 7
    }
   },
   {
    "block": "paragraph",
    "part": "closing",
    "params": {
-    "gap_pt": 12
+    "gap_pt": 7,
+    "before_pt": 7
    }
   }
  ],
@@ -155,7 +160,7 @@
   },
   "email": {
    "uz": "E-mail:",
-   "ru": "E-mail:",
+   "ru": "Эл. почта:",
    "en": "E-mail:"
   },
   "cap_name": {

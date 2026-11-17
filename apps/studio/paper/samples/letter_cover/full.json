@@ -1,0 +1,180 @@
+{
+ "template": "letter_cover",
+ "case": "full",
+ "entry": "pdf.xat.ishga_kirish",
+ "pages": 1,
+ "uz": {
+  "title": "Ishga kirish xati",
+  "facts": {
+   "applicant_name": "Malika Tursunova",
+   "phone": "+998 90 123 45 67",
+   "email": "malika.tursunova@example.com",
+   "applicant_city": "Toshkent",
+   "recipient_person": "Dilbar Hamidova xonim",
+   "recipient_title": "Kadrlar bo‘limi boshlig‘i",
+   "employer_name": "Misol Logistika",
+   "date_written": "15.09.2026",
+   "salutation": "Hurmatli Dilbar xonim!",
+   "position": "Marketing menejeri",
+   "vacancy_reference": "M-214"
+  },
+  "sections": [
+   {
+    "id": "opening",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "Misol Logistika saytida e’lon qilingan marketing menejeri vakansiyasi bilan tanishdim va o‘z nomzodimni taqdim etmoqchiman."
+   },
+   {
+    "id": "fit",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "2021-yildan beri Namuna Foods kompaniyasida marketing menejeri bo‘lib ishlayman. Kompaniyaning onlayn savdosini ikki yilda 40 foizga oshirdim, hozir besh kishilik jamoaga rahbarlik qilaman."
+   },
+   {
+    "id": "motive",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "Logistika sohasiga qiziqaman: buyurtmalarni kuzatish tizimini rivojlantirish menga yaqin."
+   },
+   {
+    "id": "closing",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "Suhbat uchun qulay vaqtda uchrashishga tayyorman. Nomzodimni ko‘rib chiqishga vaqt ajratganingiz uchun minnatdorman."
+   },
+   {
+    "id": "enclosures",
+    "heading": "",
+    "layout": "list",
+    "body": "",
+    "items": [
+     {
+      "label": "",
+      "text": "Rezyume (CV)."
+     }
+    ]
+   }
+  ]
+ },
+ "ru": {
+  "title": "Сопроводительное письмо",
+  "facts": {
+   "applicant_name": "Малика Турсунова",
+   "phone": "+998 90 123 45 67",
+   "email": "malika.tursunova@example.com",
+   "applicant_city": "Ташкент",
+   "recipient_person": "Дилбар Хамидова",
+   "recipient_title": "Начальник отдела кадров",
+   "employer_name": "ООО «Мисол Логистика»",
+   "date_written": "15.09.2026",
+   "salutation": "Уважаемая Дилбар Хамидовна!",
+   "position": "Менеджер по маркетингу",
+   "vacancy_reference": "M-214"
+  },
+  "sections": [
+   {
+    "id": "opening",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "Я увидела на сайте компании «Мисол Логистика» вакансию менеджера по маркетингу и хочу предложить свою кандидатуру."
+   },
+   {
+    "id": "fit",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "С 2021 года я работаю менеджером по маркетингу в компании «Намуна Фудс». За два года я увеличила онлайн-продажи компании на 40 %, сейчас руковожу командой из пяти человек."
+   },
+   {
+    "id": "motive",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "Мне интересна логистика: развитие системы отслеживания заказов мне близко."
+   },
+   {
+    "id": "closing",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "Буду рада встретиться в удобное для вас время. Благодарю за внимание к моей кандидатуре."
+   },
+   {
+    "id": "enclosures",
+    "heading": "",
+    "layout": "list",
+    "body": "",
+    "items": [
+     {
+      "label": "",
+      "text": "Резюме."
+     }
+    ]
+   }
+  ]
+ },
+ "en": {
+  "title": "Cover letter",
+  "facts": {
+   "applicant_name": "Malika Tursunova",
+   "phone": "+998 90 123 45 67",
+   "email": "malika.tursunova@example.com",
+   "applicant_city": "Tashkent",
+   "recipient_person": "Ms Dilbar Hamidova",
+   "recipient_title": "Head of HR",
+   "employer_name": "Misol Logistics",
+   "date_written": "15 September 2026",
+   "salutation": "Dear Ms Hamidova,",
+   "position": "Marketing manager",
+   "vacancy_reference": "M-214"
+  },
+  "sections": [
+   {
+    "id": "opening",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "I saw the marketing manager vacancy on the Misol Logistics website and would like to apply."
+   },
+   {
+    "id": "fit",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "Since 2021 I have worked as a marketing manager at Namuna Foods. In two years I grew the company’s online sales by 40%, and I now lead a team of five."
+   },
+   {
+    "id": "motive",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "Logistics interests me: building order tracking is close to what I enjoy."
+   },
+   {
+    "id": "closing",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "I would be glad to meet at a time that suits you. Thank you for considering my application."
+   },
+   {
+    "id": "enclosures",
+    "heading": "",
+    "layout": "list",
+    "body": "",
+    "items": [
+     {
+      "label": "",
+      "text": "CV."
+     }
+    ]
+   }
+  ]
+ }
+}

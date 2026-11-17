@@ -71,12 +71,18 @@
     "addressee"
    ],
    "params": {
-    "left": {
-     "block": "date_line",
-     "fact": "letter_date",
-     "pattern": "date_blank",
-     "label": "number"
-    },
+    "left": [
+     {
+      "block": "date_line",
+      "fact": "letter_date",
+      "pattern": "date_blank"
+     },
+     {
+      "block": "line",
+      "text": "number",
+      "when": "fact:outgoing_number"
+     }
+    ],
     "right": {
      "block": "party_block",
      "fields": [
@@ -107,9 +113,7 @@
       "uz": "about"
      }
     },
-    "captions": {
-     "candidate_name": "cap_name"
-    }
+    "name_style": "bold_caps"
    }
   },
   {
@@ -176,11 +180,11 @@
    ],
    "when": "fact:strength=strong",
    "params": {
-    "label": "verdict_strong",
     "indent_first_mm": 12.5,
     "without": {
      "target": "verdict_strong_plain"
-    }
+    },
+    "text": "verdict_strong"
    }
   },
   {
@@ -192,11 +196,11 @@
    ],
    "when": "nofact:strength=strong",
    "params": {
-    "label": "verdict_target",
     "without": {
      "target": "verdict"
     },
-    "indent_first_mm": 12.5
+    "indent_first_mm": 12.5,
+    "text": "verdict_target"
    }
   },
   {
@@ -204,8 +208,8 @@
    "part": "purpose",
    "when": "nofact:addressee",
    "params": {
-    "label": "presentation",
-    "indent_first_mm": 12.5
+    "indent_first_mm": 12.5,
+    "text": "presentation"
    }
   },
   {
@@ -221,11 +225,11 @@
     "variant": "post_sign_name",
     "max_rows": 2,
     "sign_room_mm": 12,
-    "label": "sign",
-    "captions": {
-     "recommender_position": "cap_post",
-     "recommender_name": "cap_name"
-    }
+    "captions": [
+     "cap_post",
+     "sign",
+     "cap_name"
+    ]
    }
   },
   {
@@ -241,7 +245,8 @@
     "labels": {
      "recommender_phone": "tel",
      "recommender_email": "email"
-    }
+    },
+    "separator": " · "
    }
   },
   {
@@ -249,7 +254,7 @@
    "when": "fact:seal=true",
    "keep": "closing",
    "params": {
-    "label": "seal"
+    "text": "seal"
    }
   }
  ],
@@ -321,7 +326,7 @@
   },
   "email": {
    "uz": "E-mail:",
-   "ru": "E-mail:",
+   "ru": "Эл. почта:",
    "en": "E-mail:"
   },
   "date_blank": {

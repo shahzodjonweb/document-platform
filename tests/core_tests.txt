@@ -1245,3 +1245,18 @@ tests/test_paper_check.py::test_a_gutter_list_may_hang_its_markers_left_of_the_f
 tests/test_paper_check.py::test_the_long_case_is_sized_to_the_page_rule_and_shared_among_the_prose_parts
 tests/test_paper_check.py::test_the_long_case_of_a_fixed_paper_with_several_prose_parts_takes_one_page_more
 tests/test_paper_check.py::test_a_module_that_makes_its_own_sample_paper_draws_each_sample_on_it
+# Official and letter templates (R4): every template drawn from its samples reads back clean in Uzbek, split_row
+# sets two blocks on one row, the English head names the person first, Uzbek blanks keep their case ending, signers
+# given as "post | name" sign on their own rows, the verdict says its target or its own words without it
+tests/test_paper_official.py::test_every_template_reads_well[official_ariza-uz-full]
+tests/test_paper_official.py::test_every_template_reads_well[tavsiya_rasmiy-ru-blank]
+tests/test_paper_official.py::test_every_template_reads_well[letter_tavsiya-en-long]
+tests/test_paper_official.py::test_every_template_has_its_samples
+tests/test_paper_official.py::test_every_template_is_drawn_by_the_engine_and_every_letter_entry_is_ready_to_draw
+tests/test_paper_official.py::test_split_row_puts_the_addressee_left_and_the_date_flush_right
+tests/test_paper_official.py::test_split_row_stacks_the_outgoing_number_under_the_date_only_when_there_is_one
+tests/test_paper_official.py::test_a_per_language_map_resolves_to_the_papers_language_and_is_absent_elsewhere
+tests/test_paper_official.py::test_the_english_note_names_the_person_first_after_to_and_from
+tests/test_paper_official.py::test_an_uzbek_blank_head_carries_its_case_ending_and_a_russian_one_none
+tests/test_paper_official.py::test_signers_given_as_post_and_name_sign_on_their_own_rows
+tests/test_paper_official.py::test_the_verdict_says_its_target_when_given_and_its_own_words_without[tavsiya_rasmiy]

@@ -1,0 +1,132 @@
+{
+ "template": "official_tavsifnoma",
+ "case": "full",
+ "entry": "pdf.xat.tavsifnoma",
+ "pages": 1,
+ "uz": {
+  "title": "Tavsifnoma",
+  "facts": {
+   "issuer_name": "Namuna davlat iqtisodiyot universiteti",
+   "issuer_contact": "Toshkent sh., Namuna ko‘chasi, 15-uy",
+   "subject_role": "«Buxgalteriya hisobi» yo‘nalishi 3-kurs talabasi",
+   "subject_name": "Yo‘ldosheva Kamola Botir qizi",
+   "purpose_recipient": "universitet stipendiyasi tanloviga",
+   "signers": "Dekan | F. R. Qosimov\nKafedra mudiri | M. T. Ergasheva",
+   "issue_date": "15.09.2026"
+  },
+  "sections": [
+   {
+    "id": "identity",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "Yo‘ldosheva Kamola Botir qizi 2005-yilda tug‘ilgan; kunduzgi ta’lim shaklida o‘qiydi."
+   },
+   {
+    "id": "work_or_study",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "O‘rtacha bahosi 4,8. Intizomiy jazosi va qarzdorligi yo‘q."
+   },
+   {
+    "id": "achievements",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "2025-yilda talabalar ilmiy konferensiyasida ma’ruza qilgan, ilmiy to‘garak a’zosi."
+   },
+   {
+    "id": "qualities",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "Mas’uliyatli, guruhdoshlariga darslarda yordam beradi."
+   }
+  ]
+ },
+ "ru": {
+  "title": "Характеристика",
+  "facts": {
+   "issuer_name": "Образцовый государственный экономический университет",
+   "issuer_contact": "г. Ташкент, ул. Намуна, д. 15",
+   "subject_role": "студентку 3 курса направления «Бухгалтерский учёт»",
+   "subject_name": "Юлдашеву Камолу Ботировну",
+   "purpose_recipient": "в конкурс на университетскую стипендию",
+   "signers": "Декан | Ф. Р. Косимов\nЗаведующая кафедрой | М. Т. Эргашева",
+   "issue_date": "15.09.2026"
+  },
+  "sections": [
+   {
+    "id": "identity",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "Юлдашева Камола Ботировна, 2005 года рождения, обучается на дневной форме."
+   },
+   {
+    "id": "work_or_study",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "Средний балл — 4,8. Дисциплинарных взысканий и задолженностей не имеет."
+   },
+   {
+    "id": "achievements",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "В 2025 году выступала с докладом на студенческой научной конференции, состоит в научном кружке."
+   },
+   {
+    "id": "qualities",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "Ответственна, помогает одногруппникам на занятиях."
+   }
+  ]
+ },
+ "en": {
+  "title": "Character reference",
+  "facts": {
+   "issuer_name": "Namuna State University of Economics",
+   "issuer_contact": "15 Namuna Street, Tashkent",
+   "subject_role": "Third-year student of the Accounting programme",
+   "subject_name": "Kamola Yuldasheva",
+   "purpose_recipient": "to the university scholarship competition",
+   "signers": "Dean | F. R. Kosimov\nHead of department | M. T. Ergasheva",
+   "issue_date": "15 September 2026"
+  },
+  "sections": [
+   {
+    "id": "identity",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "Kamola Yuldasheva was born in 2005 and studies full-time."
+   },
+   {
+    "id": "work_or_study",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "Her average mark is 4.8, and she has no penalties or debts."
+   },
+   {
+    "id": "achievements",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "In 2025 she gave a talk at the student research conference and is a member of the research society."
+   },
+   {
+    "id": "qualities",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "She is responsible and helps her groupmates in class."
+   }
+  ]
+ }
+}
