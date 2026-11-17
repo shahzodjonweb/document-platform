@@ -1798,17 +1798,24 @@ def held_names(value, kind, trusted, *, translated=False):
     return list(dict.fromkeys(found))
 
 
+# The words a name takes after it in lower case, part of it rather than a role's: "Malika opa", "Aziz aka", "Dilnoza
+# xonim", "Karim domla", "Малика хоним".
+HONORIFICS = re.compile(r"opa|opajon|aka|akajon|xonim|janob|bonu|hoji|domla|mulla|ака|опа|хоним|жаноб|бону|ҳожи|домла",
+                        re.IGNORECASE)
+
+
 def _role_opening(line, run):
-    """Whether a run is a role's capitalised opening word, a lower-case word after it: "Bosh" of "Bosh direktor"."""
-    rest = line[run[-1][1]:]
-    return len(run) == 1 and not _surname(run[0][2]) and re.match(r"[ \t ]+[^\W\d_]", rest) is not None \
-        and rest.lstrip(' \t ')[:1].islower()
+    """Whether a run is a role's capitalised opening word, a lower-case word after it: "Bosh" of "Bosh direktor",
+    never a name's honorific ("Malika opa", `HONORIFICS`)."""
+    after = re.match(rf"[ \t\u00a0]+({WORD.pattern})", line[run[-1][1]:])
+    return len(run) == 1 and not _surname(run[0][2]) and after is not None and after.group(1)[:1].islower() \
+        and not HONORIFICS.fullmatch(normalised(after.group(1)))
 
 
 def _only_name(line):
     """Whether a line is a name and nothing else: one to three capitalised words with its initials, none a kind
     ("Aziz Rahim", "Dilnoza", "Peter Brown"); never "Bosh hisobchi Karimova D." nor "Moliya Vazirligi"."""
-    words = WORD.findall(line)
+    words = [word for word in WORD.findall(line) if not HONORIFICS.fullmatch(normalised(word))]
     named = [word for word in words if _letters(word) >= 2]
     return 1 <= len(named) <= 3 and all(word[0].isupper() for word in words) and not any(
         fold(word) in ORG_HEADS | ORG_AFTER | KIND_WORDS or re.search(r'(?:si|gi)$', fold(word)) for word in named)
