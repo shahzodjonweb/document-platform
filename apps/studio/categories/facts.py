@@ -964,7 +964,18 @@ LAW_NAMES = (
     r"yer|земельн|land", r"uy-joy|жилищн|housing", r"bu?d?jet|бюджетн|budget", r"saylov|избирательн|elector",
     r"suv|водн|water", r"o'rmon|лесн|forest", r"shaharsozlik|градостроительн|urban", r"ta'lim|образован|education",
 )
-LAW_NAME_FORMS = [re.compile(rf"(?<![^\W\d_])(?:{forms})", re.IGNORECASE) for forms in LAW_NAMES]
+# A Latin form is a whole word, with an ending a sentence may give it ("Labour", "Mehnat", never "laboratory", "taxi"
+# or "suvenir"); a Russian one is a stem its adjective declines from ("трудового", "налоговому").
+LAW_NAME_ENDINGS = r"(?:ning|ni|ga|da|dan|iy|s)?"
+
+
+def _law_name_form(forms):
+    latin = '|'.join(form for form in forms.split('|') if not re.search('[а-я]', form))
+    cyrillic = '|'.join(form for form in forms.split('|') if re.search('[а-я]', form))
+    return re.compile(rf"(?<![^\W\d_])(?:(?:{latin}){LAW_NAME_ENDINGS}(?![^\W\d_])|(?:{cyrillic}))", re.IGNORECASE)
+
+
+LAW_NAME_FORMS = [_law_name_form(forms) for forms in LAW_NAMES]
 
 
 # The stems a code or a law is named before: "Soliq kodeksi", "Labour Code", "Education Act". A constitution, a
@@ -983,8 +994,14 @@ LAW_KIND = re.compile(r"protsessual\w*|процессуальн\w*|procedur\w*|i
 # административной ответственности", "Code of the Republic of ..."): the country, no one's law.
 LAW_COUNTRY = re.compile(r"the|o'zbekiston\w*|respublika\w*|uzbekistan|republic|республик\w*|узбекистан\w*|руз|ruz")
 # The preposition a law's name follows in Russian and English: "Кодекс об административных правонарушениях",
-# "Code of Administrative Offences", "Law on Education".
+# "Code of Administrative Offences", "Law on Education". The name after it is its capitalised words in English and
+# its words in the case "о" and "об" give them in Russian, at most `LAW_OF_REACH`, the country passed over: it ends at
+# a conjunction ("... of the Republic of Uzbekistan and tax rules", "... ответственности и налоговым правилам") or at
+# a word that goes on the sentence ("... of Uzbekistan applies to land workers").
 LAW_OF = re.compile(r"of|on|об|о")
+LAW_OF_REACH = 4
+LAW_AND = re.compile(r"and|or|but|и|или|а|но|va|yoki|hamda|ham")
+LAW_OF_CASE = re.compile(r"[а-яё]+(?:е|и|ах|ях|ой|ей|ом|ем|ых|их|ий|ия)")
 LAW_TOKEN = re.compile(WORD.pattern + r"|[,;:()«»\"“”„!?]")
 # A word that points at a code already named, no one's name for it: "Ushbu kodeks", "Mazkur kodeksga", "Настоящий
 # кодекс", "This Code".
@@ -1040,10 +1057,18 @@ def _law_names(sentence):
         while word(index) and LAW_COUNTRY.fullmatch(normalised(tokens[index][1]).casefold()):
             index += 1
         if word(index) and LAW_OF.fullmatch(normalised(tokens[index][1]).casefold()):
-            index += 1
-            while word(index) and index <= at + 8:
+            index, taken = index + 1, 0
+            while word(index) and taken < LAW_OF_REACH:
+                token = tokens[index][1]
+                low = normalised(token).casefold()
+                if not taken and (LAW_COUNTRY.fullmatch(low) or LAW_OF.fullmatch(low)):
+                    index += 1
+                    continue
+                if LAW_AND.fullmatch(low) or (LAW_OF_CASE.fullmatch(low) is None if re.search('[а-яё]', low)
+                                              else not token[0].isupper()):
+                    break
                 name.append(tokens[index])
-                index += 1
+                index, taken = index + 1, taken + 1
         found += [(start, text) for start, text in name if _letters(text) >= 2
                   and not LAW_COUNTRY.fullmatch(normalised(text).casefold())]
     return list(dict.fromkeys(found))
