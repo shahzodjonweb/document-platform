@@ -67,7 +67,8 @@ and 5) is finished the same way, by part rather than by slot:
 - every part gets its layout and its fixed heading in the document's
   language, the title is the category's name where the entry says so, a
   table's computed cells are emptied for derive.apply to fill from verified
-  numbers, and the instances of a model-sized group the model left empty go;
+  numbers (a cell whose inputs are not all given keeps the customer's own
+  figure, grounded), and the instances of a model-sized group the model left empty go;
 - `only` re-finishes just the sections a top-up wrote, before the second draw.
 
 `plain(data, content)` is the emergency fallback's content (6.7): what today's
@@ -728,8 +729,12 @@ def _shape(section, part, locale):
 
     A list or sources part written as lines of a body has them as items, since
     its template block reads items; a list longer than its `max_items` is cut
-    there. A table's computed cells are emptied, so that every figure in them
-    is derive.apply's from verified numbers and never the model's arithmetic.
+    there. A table's computed cell is emptied when every cell its rule reads
+    holds a number, so that the figure is derive.apply's from verified numbers
+    and never the model's arithmetic. When one of them is missing derive has
+    nothing to compute from, and a figure there is the customer's own (a line
+    of an offer or a plan given only as its amount): it is kept and grounded
+    as any other cell, since emptying it would lose the figure silently.
     Columns are never stored for a paper: the catalogue draws the header.
     """
     kind = part['kind']
@@ -753,13 +758,15 @@ def _shape(section, part, locale):
         items = items[:part['max_items']]
     if kind == 'table':
         count = len(part.get('columns') or ()) or None
-        computed = {rule['column'] for rule in part.get('computed') or ()}
+        rules = part.get('computed') or ()
+        computed = {rule['column'] for rule in rules}
         made = []
         for item in items:
             values = cells(item, count)
-            for column in computed:
-                if column < len(values):
-                    values[column] = ''
+            for rule in rules:
+                inputs = [values[column] if column < len(values) else '' for column in rule['of']]
+                if rule['column'] < len(values) and all(re.search(r'\d', value) for value in inputs):
+                    values[rule['column']] = ''
             made.append(_row(values) if computed or count else item)
         items = made
     section['items'] = items

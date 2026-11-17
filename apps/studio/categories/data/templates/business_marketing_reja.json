@@ -1,0 +1,474 @@
+{
+ "schema": 2,
+ "id": "business_marketing_reja",
+ "entries": [
+  "pdf.biz.marketing_reja"
+ ],
+ "name": {
+  "uz": "Marketing reja",
+  "ru": "Маркетинг-план",
+  "en": "Marketing plan"
+ },
+ "family": "business",
+ "page": {
+  "margins_mm": {
+   "left": 30,
+   "right": 15,
+   "top": 26,
+   "bottom": 20
+  }
+ },
+ "type": {
+  "face": "sans",
+  "ladder": [
+   [
+    10.5,
+    15.5
+   ],
+   [
+    10,
+    14.8
+   ],
+   [
+    9.5,
+    14
+   ]
+  ],
+  "align": "left"
+ },
+ "page_rule": {
+  "kind": "flow"
+ },
+ "furniture": {
+  "first": "none",
+  "later": "header_number",
+  "format": "n",
+  "header": [
+   "business_name",
+   "period"
+  ]
+ },
+ "flow": [
+  {
+   "block": "approval_block",
+   "part": "approval",
+   "when": "fact:approver",
+   "fields": [
+    "approver"
+   ],
+   "params": {
+    "label": "approved",
+    "anchor": "right_half"
+   }
+  },
+  {
+   "block": "title_page",
+   "part": "title_page",
+   "when": "pages_from:8",
+   "fields": [
+    "business_name",
+    "location",
+    "author",
+    "period"
+   ],
+   "params": {
+    "label": "kind",
+    "title": "content_title",
+    "labels": {
+     "business_name": "row_business",
+     "location": "row_area",
+     "author": "row_author"
+    }
+   }
+  },
+  {
+   "block": "doc_head",
+   "part": "plan_head",
+   "fields": [
+    "business_name",
+    "period"
+   ],
+   "params": {
+    "overline": "business_name",
+    "kind_line": "kind",
+    "title": "content_title",
+    "subtitle": [
+     "period"
+    ],
+    "captions": {
+     "period": "cap_period"
+    }
+   }
+  },
+  {
+   "block": "toc",
+   "part": "toc",
+   "when": "pages_from:10",
+   "params": {
+    "label": "toc",
+    "levels": 1
+   }
+  },
+  {
+   "block": "heading",
+   "part": "summary_text",
+   "params": {
+    "level": 1,
+    "numbering": "chapter"
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "summary_text"
+  },
+  {
+   "block": "key_figures",
+   "part": "summary_figures",
+   "fields": [
+    "budget_total",
+    "current_state"
+   ],
+   "params": {
+    "from": "goals",
+    "boxes": 4,
+    "labels": {
+     "budget_total": "kf_budget"
+    }
+   }
+  },
+  {
+   "block": "heading",
+   "part": "goals",
+   "params": {
+    "level": 1,
+    "numbering": "chapter"
+   }
+  },
+  {
+   "block": "table",
+   "part": "goals",
+   "params": {
+    "drop_empty_columns": true
+   }
+  },
+  {
+   "block": "heading",
+   "part": "competitors",
+   "when": "part:competitors",
+   "params": {
+    "level": 1,
+    "numbering": "chapter",
+    "label": "ch_market"
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "market",
+   "when": "part:market",
+   "params": {
+    "heading": "section"
+   }
+  },
+  {
+   "block": "table",
+   "part": "competitors",
+   "when": "part:competitors",
+   "params": {
+    "heading": "section"
+   }
+  },
+  {
+   "block": "card_grid",
+   "part": "swot",
+   "when": "part:swot",
+   "params": {
+    "heading": "section",
+    "columns": 2,
+    "labels": {
+     "strengths": "sw_s",
+     "weaknesses": "sw_w",
+     "opportunities": "sw_o",
+     "threats": "sw_t"
+    }
+   }
+  },
+  {
+   "block": "heading",
+   "part": "audience",
+   "params": {
+    "level": 1,
+    "numbering": "chapter",
+    "label": "ch_audience"
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "audience",
+   "params": {
+    "heading": "section"
+   }
+  },
+  {
+   "block": "callout",
+   "part": "positioning",
+   "when": "part:positioning",
+   "params": {
+    "heading": "section",
+    "label": "position_run_in"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "channels",
+   "params": {
+    "level": 1,
+    "numbering": "chapter",
+    "label": "ch_strategy"
+   }
+  },
+  {
+   "block": "list",
+   "part": "mix",
+   "when": "part:mix",
+   "params": {
+    "heading": "section",
+    "run_in": true,
+    "labels": {
+     "product": "p_product",
+     "price": "p_price",
+     "place": "p_place",
+     "promotion": "p_promotion"
+    }
+   }
+  },
+  {
+   "block": "table",
+   "part": "channels",
+   "params": {
+    "heading": "section",
+    "note": "proposal_note"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "budget",
+   "when": "part:budget",
+   "params": {
+    "level": 1,
+    "numbering": "chapter",
+    "label": "ch_budget"
+   }
+  },
+  {
+   "block": "table",
+   "part": "budget",
+   "when": "part:budget",
+   "params": {
+    "heading": "section",
+    "total_label": "total"
+   }
+  },
+  {
+   "block": "table",
+   "part": "calendar",
+   "when": "part:calendar",
+   "params": {
+    "heading": "section"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "review",
+   "params": {
+    "level": 1,
+    "numbering": "chapter",
+    "label": "ch_review"
+   }
+  },
+  {
+   "block": "table",
+   "part": "kpis",
+   "when": "part:kpis",
+   "params": {
+    "heading": "section"
+   }
+  },
+  {
+   "block": "callout",
+   "part": "review",
+   "params": {
+    "label": "review_run_in"
+   }
+  },
+  {
+   "block": "table",
+   "part": "ch_risks",
+   "when": "part:ch_risks",
+   "params": {
+    "heading": "chapter"
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "ch_conclusion",
+   "when": "part:ch_conclusion",
+   "params": {
+    "heading": "chapter"
+   }
+  },
+  {
+   "block": "signature_row",
+   "part": "signature",
+   "when": "fact:approver",
+   "keep": "closing",
+   "fields": [
+    "author"
+   ],
+   "params": {
+    "variant": "role_position_sign_name",
+    "label": "prepared",
+    "captions": {
+     "author": "cap_position"
+    }
+   }
+  }
+ ],
+ "labels": {
+  "kind": {
+   "uz": "MARKETING REJA",
+   "ru": "МАРКЕТИНГ-ПЛАН",
+   "en": "MARKETING PLAN"
+  },
+  "approved": {
+   "uz": "TASDIQLAYMAN",
+   "ru": "УТВЕРЖДАЮ",
+   "en": "APPROVED"
+  },
+  "toc": {
+   "uz": "Mundarija",
+   "ru": "Содержание",
+   "en": "Contents"
+  },
+  "row_business": {
+   "uz": "Biznes",
+   "ru": "Бизнес",
+   "en": "Business"
+  },
+  "row_area": {
+   "uz": "Hudud",
+   "ru": "Регион",
+   "en": "Area"
+  },
+  "row_author": {
+   "uz": "Tayyorladi",
+   "ru": "Подготовил",
+   "en": "Prepared by"
+  },
+  "cap_period": {
+   "uz": "(reja davri)",
+   "ru": "(период плана)",
+   "en": "(plan period)"
+  },
+  "kf_budget": {
+   "uz": "Byudjet",
+   "ru": "Бюджет",
+   "en": "Budget"
+  },
+  "ch_market": {
+   "uz": "Bozor va raqobatchilar",
+   "ru": "Рынок и конкуренты",
+   "en": "Market and competitors"
+  },
+  "ch_audience": {
+   "uz": "Auditoriya va pozitsiyalash",
+   "ru": "Аудитория и позиционирование",
+   "en": "Audience and positioning"
+  },
+  "ch_strategy": {
+   "uz": "Marketing strategiyasi",
+   "ru": "Маркетинговая стратегия",
+   "en": "Marketing strategy"
+  },
+  "ch_budget": {
+   "uz": "Byudjet va kalendar",
+   "ru": "Бюджет и календарь",
+   "en": "Budget and calendar"
+  },
+  "ch_review": {
+   "uz": "Nazorat",
+   "ru": "Контроль",
+   "en": "Review"
+  },
+  "sw_s": {
+   "uz": "Kuchli tomonlar",
+   "ru": "Сильные стороны",
+   "en": "Strengths"
+  },
+  "sw_w": {
+   "uz": "Zaif tomonlar",
+   "ru": "Слабые стороны",
+   "en": "Weaknesses"
+  },
+  "sw_o": {
+   "uz": "Imkoniyatlar",
+   "ru": "Возможности",
+   "en": "Opportunities"
+  },
+  "sw_t": {
+   "uz": "Xavflar",
+   "ru": "Угрозы",
+   "en": "Threats"
+  },
+  "position_run_in": {
+   "uz": "Pozitsiya.",
+   "ru": "Позиция.",
+   "en": "Position."
+  },
+  "p_product": {
+   "uz": "Mahsulot.",
+   "ru": "Продукт.",
+   "en": "Product."
+  },
+  "p_price": {
+   "uz": "Narx.",
+   "ru": "Цена.",
+   "en": "Price."
+  },
+  "p_place": {
+   "uz": "Taqsimlash.",
+   "ru": "Распределение.",
+   "en": "Place."
+  },
+  "p_promotion": {
+   "uz": "Rag‘batlantirish.",
+   "ru": "Продвижение.",
+   "en": "Promotion."
+  },
+  "proposal_note": {
+   "uz": "(taklif) — reja uchun taklif qilingan tadbir.",
+   "ru": "(предложение) — мероприятие, предложенное для плана.",
+   "en": "(proposed) — an activity proposed for the plan."
+  },
+  "total": {
+   "uz": "Jami",
+   "ru": "Итого",
+   "en": "Total"
+  },
+  "review_run_in": {
+   "uz": "Nazorat qoidasi.",
+   "ru": "Правило контроля.",
+   "en": "Review rule."
+  },
+  "prepared": {
+   "uz": "Tayyorladi:",
+   "ru": "Подготовил:",
+   "en": "Prepared by:"
+  },
+  "cap_position": {
+   "uz": "(lavozimi)",
+   "ru": "(должность)",
+   "en": "(position)"
+  }
+ },
+ "mock": "units/pdf.biz.marketing_reja/mock/business_marketing_reja.png"
+}

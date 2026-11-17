@@ -1,0 +1,1403 @@
+{
+ "schema": 2,
+ "id": "pdf.biz.biznes_reja",
+ "status": "draft",
+ "service": "pdf",
+ "parent": "pdf.biz",
+ "order": 1,
+ "labels": {
+  "uz": "📈 Biznes-reja",
+  "ru": "📈 Бизнес-план",
+  "en": "📈 Business plan"
+ },
+ "summary": "A bank-ready business plan as a PDF: cover, an executive summary with key figures, business, market, operations, staff, financing, financial tables whose totals and shares code computes only from the customer’s own figures, risks, conclusion and a signature line; every fact the customer did not give is a ruled blank, never an invented name, number, date or source.",
+ "tone": "formal, impersonal business prose; third person; plans in present or future tense; short sentences; no advertising adjectives; every claim traceable to the customer’s message or attached files",
+ "topic": false,
+ "title": "model",
+ "length": {
+  "unit": "pages",
+  "mode": "count",
+  "target": "ceiling",
+  "default": 10,
+  "min": 1,
+  "max": 20,
+  "note": "A ceiling: every written part is grounded, so the plan grows only with the customer’s facts and is never padded to the pages; the pages asked for (10 when none are) are the most it fills, about 20 is the honest top, and the shorter notice says when the facts ran out first."
+ },
+ "questions": {
+  "default": 0,
+  "max": 0
+ },
+ "quality": "repair",
+ "fill": false,
+ "cues": {},
+ "ask": {
+  "when": "no_digits",
+  "fields": [
+   "own_funds",
+   "external_funding"
+  ],
+  "review": {
+   "uz": "Raqam yozmadingiz: moliyaviy jadvallar bo‘sh chiziq bo‘lib chiqadi.",
+   "ru": "Вы не указали цифр: финансовые таблицы будут пустыми линиями.",
+   "en": "You gave no figures: the financial tables come out as blank lines."
+  },
+  "prompt": {
+   "uz": "💰 Raqamlarni yozing: nimaga qancha sarflanadi, o‘z mablag‘ingiz va kredit (foiz, muddat), mahsulot narxi va oylik hajmi, oylik xarajatlar, xodimlar soni va maoshi. Yozmaganingiz rejada bo‘sh chiziq bo‘ladi.",
+   "ru": "💰 Напишите цифры: на что сколько пойдёт, собственные средства и кредит (ставка, срок), цена продукции и объём в месяц, ежемесячные расходы, число сотрудников и оклад. Что не напишете, в плане будет пустой строкой.",
+   "en": "💰 Write the figures: what the money buys and how much, your own funds and the loan (rate, term), product prices and monthly volumes, monthly costs, staff numbers and pay. Anything you leave out is a blank line in the plan."
+  }
+ },
+ "fields": [
+  {
+   "id": "business_idea",
+   "label": {
+    "uz": "Biznes: nima qilasiz",
+    "ru": "Бизнес: чем занимаетесь",
+    "en": "The business: what you do"
+   },
+   "example": {
+    "uz": "Samarqandda qandolat va non sexi",
+    "ru": "Кондитерский и хлебопекарный цех в Самарканде",
+    "en": "A confectionery and bakery workshop in Samarkand"
+   },
+   "kind": "text",
+   "need": "required",
+   "missing": "omit",
+   "where": "Cover title, summary, chapter 2. Without it nothing can be written, so the bot gives its ordinary \"please describe it\" reply (this is not the one extra step)."
+  },
+  {
+   "id": "project_name",
+   "label": {
+    "uz": "Loyiha nomi",
+    "ru": "Название проекта",
+    "en": "Project name"
+   },
+   "example": {
+    "uz": "Qandolat sexini tashkil etish",
+    "ru": "Организация кондитерского цеха",
+    "en": "Setting up a confectionery workshop"
+   },
+   "kind": "line",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "Cover title, running header when there is no applicant, row \"Loyiha nomi\" of table 1.1. When missing the model writes a plain descriptive title from the business idea and the city (a title is not a fact; no slogans, no adjectives the customer did not use)."
+  },
+  {
+   "id": "purpose",
+   "label": {
+    "uz": "Reja nima uchun kerak",
+    "ru": "Для чего нужен план",
+    "en": "What the plan is for"
+   },
+   "example": {
+    "uz": "bank krediti, grant, investor yoki o‘zim uchun",
+    "ru": "банковский кредит, грант, инвестор или для себя",
+    "en": "a bank loan, a grant, an investor or for myself"
+   },
+   "kind": "choice",
+   "need": "recommended",
+   "missing": "omit",
+   "choices": [
+    "loan",
+    "grant",
+    "investor",
+    "own"
+   ],
+   "where": "The purpose line of the cover and the label of the applicant (loan: Qarz oluvchi; otherwise Tashabbuskor). Read from the words used when not stated; own when nothing says otherwise."
+  },
+  {
+   "id": "applicant",
+   "label": {
+    "uz": "Tashabbuskor (tashkilot yoki shaxs)",
+    "ru": "Инициатор (организация или лицо)",
+    "en": "Applicant (organisation or person)"
+   },
+   "example": {
+    "uz": "«Namuna Qandolat» MChJ",
+    "ru": "ООО «Намуна Кондитер»",
+    "en": "Namuna Confectionery LLC"
+   },
+   "kind": "org",
+   "need": "recommended",
+   "missing": "blank",
+   "where": "Cover details block, table 1.1, running header, signature caption. Never invented."
+  },
+  {
+   "id": "legal_form",
+   "label": {
+    "uz": "Tashkiliy-huquqiy shakl",
+    "ru": "Организационно-правовая форма",
+    "en": "Legal form"
+   },
+   "example": {
+    "uz": "MChJ, YaTT yoki o‘zini o‘zi band qilgan shaxs",
+    "ru": "ООО, ИП или самозанятый",
+    "en": "LLC, sole proprietor or self-employed"
+   },
+   "kind": "line",
+   "need": "recommended",
+   "missing": "blank",
+   "where": "Table 1.2. Decides the signature lead (organisation or individual)."
+  },
+  {
+   "id": "director",
+   "label": {
+    "uz": "Rahbar (F.I.Sh.)",
+    "ru": "Руководитель (Ф.И.О.)",
+    "en": "Director (full name)"
+   },
+   "example": {
+    "uz": "Karimov A.B. (namuna)",
+    "ru": "Каримов А.Б. (образец)",
+    "en": "A. Karimov (sample)"
+   },
+   "kind": "person",
+   "need": "recommended",
+   "missing": "blank",
+   "where": "Cover details block, table 1.1, name cell of the signature row. Never invented."
+  },
+  {
+   "id": "tax_id",
+   "label": {
+    "uz": "STIR",
+    "ru": "ИНН (СТИР)",
+    "en": "Tax ID (STIR)"
+   },
+   "example": {
+    "uz": "000000000 (namuna)",
+    "ru": "000000000 (образец)",
+    "en": "000000000 (sample)"
+   },
+   "kind": "ref",
+   "need": "optional",
+   "missing": "blank",
+   "where": "Table 1.1. Never invented, never checked."
+  },
+  {
+   "id": "location",
+   "label": {
+    "uz": "Shahar yoki viloyat",
+    "ru": "Город или область",
+    "en": "City or region"
+   },
+   "example": {
+    "uz": "Samarqand",
+    "ru": "Самарканд",
+    "en": "Samarkand"
+   },
+   "kind": "place",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "Cover foot \"city · year\", chapters 2 and 3. When missing the cover foot shows the year only and no gap is left."
+  },
+  {
+   "id": "address",
+   "label": {
+    "uz": "Manzil",
+    "ru": "Адрес",
+    "en": "Address"
+   },
+   "example": {
+    "uz": "Samarqand shahri, Namuna ko‘chasi, 1-uy",
+    "ru": "г. Самарканд, ул. Намуна, д. 1",
+    "en": "1 Namuna Street, Samarkand"
+   },
+   "kind": "place",
+   "need": "optional",
+   "missing": "blank",
+   "where": "Cover details block, table 1.1."
+  },
+  {
+   "id": "contacts",
+   "label": {
+    "uz": "Telefon, e-pochta",
+    "ru": "Телефон, эл. почта",
+    "en": "Phone, e-mail"
+   },
+   "example": {
+    "uz": "+998 90 000 00 00, info@example.com",
+    "ru": "+998 90 000 00 00, info@example.com",
+    "en": "+998 90 000 00 00, info@example.com"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "blank",
+   "where": "Cover details block (\"Aloqa\"), table 1.1."
+  },
+  {
+   "id": "currency",
+   "label": {
+    "uz": "Pul birligi",
+    "ru": "Валюта",
+    "en": "Currency"
+   },
+   "example": {
+    "uz": "so‘m (o‘zgartirilmasa)",
+    "ru": "сум (если не указано иное)",
+    "en": "UZS (unless stated)"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Headers and key figures. so‘m (сум, UZS) when the message names none; otherwise the customer’s own currency. Nothing is ever converted."
+  },
+  {
+   "id": "project_status",
+   "label": {
+    "uz": "Loyiha holati",
+    "ru": "Состояние проекта",
+    "en": "Project status"
+   },
+   "example": {
+    "uz": "bino tanlangan, narx-takliflar o‘rganilmoqda",
+    "ru": "помещение выбрано, изучаются предложения по оборудованию",
+    "en": "premises chosen, equipment quotes being compared"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Sub-section 1.4. When missing the sub-section is left out (a status the customer did not give is not guessed)."
+  },
+  {
+   "id": "owner_experience",
+   "label": {
+    "uz": "Tashabbuskorning tajribasi",
+    "ru": "Опыт инициатора",
+    "en": "The founder’s experience"
+   },
+   "example": {
+    "uz": "sohada besh yillik tajriba",
+    "ru": "пять лет опыта в отрасли",
+    "en": "five years in the field"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Sub-section 2.1. Written only if given."
+  },
+  {
+   "id": "own_funds",
+   "label": {
+    "uz": "O‘z mablag‘i",
+    "ru": "Собственные средства",
+    "en": "Own funds"
+   },
+   "example": {
+    "uz": "120 mln so‘m",
+    "ru": "120 млн сум",
+    "en": "120 million UZS"
+   },
+   "kind": "money",
+   "need": "recommended",
+   "missing": "blank",
+   "where": "Key figures 1.3, table 5.2."
+  },
+  {
+   "id": "external_funding",
+   "label": {
+    "uz": "Kredit, grant yoki investor mablag‘i",
+    "ru": "Кредит, грант или средства инвестора",
+    "en": "Loan, grant or investor money"
+   },
+   "example": {
+    "uz": "kredit 300 mln so‘m",
+    "ru": "кредит 300 млн сум",
+    "en": "loan 300 million UZS"
+   },
+   "kind": "money",
+   "need": "recommended",
+   "missing": "blank",
+   "where": "Key figures 1.3, table 5.2, sub-section 5.3."
+  },
+  {
+   "id": "loan_bank",
+   "label": {
+    "uz": "Bank yoki dastur",
+    "ru": "Банк или программа",
+    "en": "Bank or programme"
+   },
+   "example": {
+    "uz": "Namuna bank",
+    "ru": "Банк «Намуна»",
+    "en": "Namuna Bank"
+   },
+   "kind": "org",
+   "need": "optional",
+   "missing": "if_needed",
+   "where": "Row Bank yoki dastur of the loan terms (loan purpose only); a blank when a loan has none."
+  },
+  {
+   "id": "loan_rate",
+   "label": {
+    "uz": "Yillik foiz stavkasi",
+    "ru": "Годовая процентная ставка",
+    "en": "Annual interest rate"
+   },
+   "example": {
+    "uz": "yillik 24%",
+    "ru": "24% годовых",
+    "en": "24% a year"
+   },
+   "kind": "number",
+   "need": "optional",
+   "missing": "if_needed",
+   "where": "Row of the loan terms, as typed."
+  },
+  {
+   "id": "loan_term",
+   "label": {
+    "uz": "Kredit muddati",
+    "ru": "Срок кредита",
+    "en": "Loan term"
+   },
+   "example": {
+    "uz": "3 yil (36 oy)",
+    "ru": "3 года (36 месяцев)",
+    "en": "3 years (36 months)"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "if_needed",
+   "where": "Row of the loan terms, as typed."
+  },
+  {
+   "id": "loan_grace",
+   "label": {
+    "uz": "Imtiyozli davr",
+    "ru": "Льготный период",
+    "en": "Grace period"
+   },
+   "example": {
+    "uz": "3 oy",
+    "ru": "3 месяца",
+    "en": "3 months"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Row of the loan terms, only when given."
+  },
+  {
+   "id": "loan_repayment",
+   "label": {
+    "uz": "Qaytarish tartibi",
+    "ru": "Порядок погашения",
+    "en": "Repayment order"
+   },
+   "example": {
+    "uz": "teng ulushlarda",
+    "ru": "равными долями",
+    "en": "equal instalments"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Row of the loan terms, only when given."
+  },
+  {
+   "id": "loan_collateral",
+   "label": {
+    "uz": "Garov (kredit ta’minoti)",
+    "ru": "Залог (обеспечение)",
+    "en": "Collateral"
+   },
+   "example": {
+    "uz": "uskunalar garovi",
+    "ru": "залог оборудования",
+    "en": "the equipment"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "if_needed",
+   "where": "Row of the loan terms; a blank when a loan names none."
+  },
+  {
+   "id": "investor_offer",
+   "label": {
+    "uz": "Investorga taklif: ulush, qaytarish shakli",
+    "ru": "Предложение инвестору: доля, форма возврата",
+    "en": "Offer to the investor: share, form of return"
+   },
+   "example": {
+    "uz": "20% ulush, daromaddan dividend",
+    "ru": "20% доли, дивиденды из прибыли",
+    "en": "20% share, dividends from profit"
+   },
+   "kind": "text",
+   "need": "recommended",
+   "missing": "if_needed",
+   "where": "Rows of the investor offer table (investor purpose only). Without a share offered and a form of return the offer table is half blank, so the figures question asks for them when the purpose is an investor."
+  },
+  {
+   "id": "differentiator",
+   "label": {
+    "uz": "Sizning ustunligingiz",
+    "ru": "Ваше отличие от других",
+    "en": "What sets you apart"
+   },
+   "example": {
+    "uz": "tortlarni buyurtma bo‘yicha bezab beraman",
+    "ru": "торты делаю на заказ с оформлением",
+    "en": "I decorate cakes to order"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "One sentence under 3.2 (\"Uning o‘z farqi: ...\"), only in the customer’s words; omitted when not given."
+  },
+  {
+   "id": "market_figures",
+   "label": {
+    "uz": "Bozor hajmi, talab raqamlari va manba",
+    "ru": "Объём рынка, данные о спросе и источник",
+    "en": "Market size, demand figures and source"
+   },
+   "example": {
+    "uz": "bozor hajmi 12 mlrd so‘m (manba: mijoz ko‘rsatgan hujjat)",
+    "ru": "объём рынка 12 млрд сум (источник: документ клиента)",
+    "en": "market size 12 billion UZS (source: the customer’s document)"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Line \"Bozor hajmi: ___ so‘m. Manba: ___\" under 3.1, drawn only when the customer or an attached file gave a figure. When nothing was given the line is not drawn at all; it is counted as a blank for the delivery message."
+  },
+  {
+   "id": "premises",
+   "label": {
+    "uz": "Bino: o‘zingizniki yoki ijara, maydoni, manzili",
+    "ru": "Помещение: своё или аренда, площадь, адрес",
+    "en": "Premises: own or rented, area, site address"
+   },
+   "example": {
+    "uz": "ijaraga olinadi, 120 m²",
+    "ru": "арендуется, 120 м²",
+    "en": "rented, 120 m²"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Sub-section 4.1 (production). Written only from what was said; a rent cost line alone does not prove the premises are rented, so it is not turned into a premises sentence."
+  },
+  {
+   "id": "business_status",
+   "label": {
+    "uz": "Biznes yangi yoki mavjud",
+    "ru": "Бизнес новый или действующий",
+    "en": "New or existing business"
+   },
+   "example": {
+    "uz": "MChJ mavjud, sex yangi ochiladi",
+    "ru": "ООО действует, цех открывается",
+    "en": "the company exists, the workshop is new"
+   },
+   "kind": "choice",
+   "need": "optional",
+   "missing": "omit",
+   "choices": [
+    "new",
+    "existing"
+   ],
+   "where": "Decides whether the stage table gets a \"registration and permits\" row and whether 2.1 speaks of a company that \"plans\" or \"operates\". A company with a name is treated as existing."
+  },
+  {
+   "id": "capacity",
+   "label": {
+    "uz": "Quvvat yoki ish kunlari",
+    "ru": "Мощность или рабочие дни",
+    "en": "Capacity or working days"
+   },
+   "example": {
+    "uz": "haftasiga olti kun",
+    "ru": "шесть дней в неделю",
+    "en": "six days a week"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Sub-section 4.1; also the only way a daily volume can become a monthly one in the revenue table."
+  },
+  {
+   "id": "tax_regime",
+   "label": {
+    "uz": "Soliq to‘lash tartibi yoki QQS",
+    "ru": "Система налогообложения или НДС",
+    "en": "Tax regime or VAT"
+   },
+   "example": {
+    "uz": "aylanma soliq",
+    "ru": "оборотный налог",
+    "en": "turnover tax"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "omit",
+   "where": "One extra row of table 1.2 (\"Soliq to‘lash tartibi\"), only when given. The calculator never applies a tax rate."
+  },
+  {
+   "id": "signers",
+   "label": {
+    "uz": "Imzolovchilar (lavozim, F.I.Sh.)",
+    "ru": "Подписанты (должность, Ф.И.О.)",
+    "en": "Signers (post, full name)"
+   },
+   "example": {
+    "uz": "direktor va bosh hisobchi",
+    "ru": "директор и главный бухгалтер",
+    "en": "director and chief accountant"
+   },
+   "kind": "list",
+   "need": "optional",
+   "missing": "blank",
+   "where": "The signature row: one row by default (a loan, grant or investor plan), up to three stacked, more than three two to a row. Posts and names the customer gave are printed; the rest are ruled lines for the hand and are not counted as missing facts."
+  },
+  {
+   "id": "stamp_request",
+   "label": {
+    "uz": "Muhr uchun joy kerakmi",
+    "ru": "Нужно ли место для печати",
+    "en": "A stamp place is wanted"
+   },
+   "example": {
+    "uz": "muhr uchun joy qoldiring",
+    "ru": "оставьте место для печати",
+    "en": "leave a place for the stamp"
+   },
+   "kind": "flag",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Shows the \"M.O‘.\" mark under the first signer. Off by default: no source showed a stamp and the owner is asked (open question 3)."
+  },
+  {
+   "id": "plan_year",
+   "label": {
+    "uz": "Yil",
+    "ru": "Год",
+    "en": "Year"
+   },
+   "example": {
+    "uz": "2026",
+    "ru": "2026",
+    "en": "2026"
+   },
+   "kind": "number",
+   "need": "optional",
+   "missing": "omit",
+   "clock": "year",
+   "where": "The year in the cover foot (city · year); code writes the year the plan is made when the customer gave none."
+  }
+ ],
+ "parts": [
+  {
+   "id": "title_page",
+   "kind": "fixed",
+   "heading": {
+    "uz": "Biznes-reja",
+    "ru": "Бизнес-план",
+    "en": "Business plan"
+   },
+   "heading_mode": "none",
+   "need": "usual",
+   "share": 0.0,
+   "elastic": false,
+   "from": 4,
+   "write": "Drawn from the facts. The document title you return is a plain name of the project, at most 160 characters: no slogan, quotation marks or adjective the customer did not use.",
+   "block": "title_page",
+   "fields": [
+    "project_name",
+    "purpose",
+    "applicant",
+    "director",
+    "address",
+    "contacts",
+    "location",
+    "plan_year"
+   ]
+  },
+  {
+   "id": "toc",
+   "kind": "fixed",
+   "heading": {
+    "uz": "Mundarija",
+    "ru": "Содержание",
+    "en": "Contents"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "share": 0.0,
+   "elastic": false,
+   "from": 12,
+   "write": "Nothing: drawn by the template.",
+   "block": "toc"
+  },
+  {
+   "id": "summary_lead",
+   "kind": "prose",
+   "heading": null,
+   "heading_mode": "none",
+   "need": "required",
+   "share": 0.05,
+   "elastic": false,
+   "write": "The opening of the executive summary, written last, four or five sentences: what the business is, where, what it needs and from whom, and the loan, grant or investment in the customer’s own words (yillik 24%, 3 yil). Only figures the customer wrote; no fact another part does not state. Phrased for the purpose: bank loan, grant, investor or the owner’s own plan.",
+   "block": "paragraph",
+   "grounded": true,
+   "words": [
+    60,
+    110
+   ]
+  },
+  {
+   "id": "summary_figures",
+   "kind": "fixed",
+   "heading": {
+    "uz": "Asosiy ko‘rsatkichlar",
+    "ru": "Основные показатели",
+    "en": "Key figures"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "share": 0.03,
+   "elastic": false,
+   "write": "Nothing: key figures drawn from the facts and the investment table.",
+   "block": "key_figures",
+   "fields": [
+    "own_funds",
+    "external_funding"
+   ]
+  },
+  {
+   "id": "summary_details",
+   "kind": "fixed",
+   "heading": {
+    "uz": "Loyiha va tashabbuskor",
+    "ru": "Проект и инициатор",
+    "en": "Project and applicant"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "share": 0.05,
+   "elastic": false,
+   "write": "Nothing: rows drawn from the facts; a missing value is a ruled blank.",
+   "block": "kv_table",
+   "fields": [
+    "project_name",
+    "applicant",
+    "legal_form",
+    "director",
+    "tax_id",
+    "address",
+    "contacts",
+    "tax_regime"
+   ]
+  },
+  {
+   "id": "summary_purpose",
+   "kind": "prose",
+   "heading": {
+    "uz": "Biznes-rejaning maqsadi",
+    "ru": "Цель бизнес-плана",
+    "en": "Purpose of the plan"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "share": 0.02,
+   "elastic": false,
+   "write": "One or two sentences on what the plan is for. Promise only what the plan holds: no repayment schedule and no profit forecast are drawn this round, so never promise either.",
+   "block": "paragraph",
+   "grounded": true,
+   "words": [
+    15,
+    60
+   ]
+  },
+  {
+   "id": "summary_status",
+   "kind": "prose",
+   "heading": {
+    "uz": "Loyiha holati",
+    "ru": "Состояние проекта",
+    "en": "Project status"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "share": 0.02,
+   "elastic": false,
+   "write": "One or two sentences on where the project stands (premises, permits, quotes), only from the customer’s words. Empty when nothing was said.",
+   "block": "paragraph",
+   "grounded": true,
+   "words": [
+    0,
+    60
+   ]
+  },
+  {
+   "id": "business_description",
+   "kind": "prose",
+   "heading": {
+    "uz": "Biznes tavsifi",
+    "ru": "Описание бизнеса",
+    "en": "Business description"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "share": 0.07,
+   "elastic": true,
+   "write": "What the business does, where, for whom, its legal form, whether it is new or operating, and the founder’s experience if given. Third person, three to five sentences. Never an invented history, award, licence, partner, goal or number of years.",
+   "block": "paragraph",
+   "grounded": true
+  },
+  {
+   "id": "product",
+   "kind": "table",
+   "heading": {
+    "uz": "Mahsulotlar va narxlar",
+    "ru": "Продукция и цены",
+    "en": "Products and prices"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "share": 0.05,
+   "elastic": false,
+   "write": "One row per product or service the customer priced, in their order: label the name, then the unit (only if given), and the price last, exactly as written. A price not given stays empty. No price at all: no rows, and the products are named in the business description.",
+   "block": "table",
+   "grounded": true,
+   "max_items": 40,
+   "columns": [
+    {
+     "uz": "Mahsulot yoki xizmat",
+     "ru": "Продукция или услуга",
+     "en": "Product or service"
+    },
+    {
+     "uz": "Birlik",
+     "ru": "Ед.",
+     "en": "Unit"
+    },
+    {
+     "uz": "Narxi",
+     "ru": "Цена",
+     "en": "Price"
+    }
+   ]
+  },
+  {
+   "id": "market_customers",
+   "kind": "prose",
+   "heading": {
+    "uz": "Mijozlar va talab",
+    "ru": "Клиенты и спрос",
+    "en": "Customers and demand"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "share": 0.05,
+   "elastic": true,
+   "write": "Who buys and how the goods or services reach them, in one to three sentences, from the message. No statistic, market size, growth, ranking, season or trend unless the customer or a file gave it; a market figure is given with the source the customer named.",
+   "block": "paragraph",
+   "grounded": true
+  },
+  {
+   "id": "market_competitors",
+   "kind": "table",
+   "heading": {
+    "uz": "Raqobatchilar",
+    "ru": "Конкуренты",
+    "en": "Competitors"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "share": 0.04,
+   "elastic": false,
+   "write": "Two or more competitors or groups the customer named: one row each, label the competitor, the customer’s own comment last. Never add a strength, weakness, group or name the customer did not give. Fewer than two named: no rows.",
+   "block": "table",
+   "grounded": true,
+   "max_items": 40,
+   "columns": [
+    {
+     "uz": "Raqobatchi",
+     "ru": "Конкурент",
+     "en": "Competitor"
+    },
+    {
+     "uz": "Izoh",
+     "ru": "Комментарий",
+     "en": "Comment"
+    }
+   ]
+  },
+  {
+   "id": "marketing",
+   "kind": "list",
+   "heading": {
+    "uz": "Marketing rejasi",
+    "ru": "Маркетинговый план",
+    "en": "Marketing plan"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "share": 0.04,
+   "elastic": true,
+   "write": "Two or three items, each built on a customer fact: label one of price, sales or promotion, text one or two sentences in the plan’s future tense (uz “rejalashtiriladi”, ru “планируется”, en “is planned”). Price refers to the products table and names no new price; sales names the channels the customer named; promotion names a budget only as given. Fewer than two such facts: no items.",
+   "block": "list",
+   "grounded": true,
+   "max_items": 3
+  },
+  {
+   "id": "operations",
+   "kind": "prose",
+   "heading": {
+    "uz": "Ishlab chiqarish",
+    "ru": "Производство",
+    "en": "Production"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "share": 0.06,
+   "elastic": true,
+   "from": 4,
+   "write": "How the work is done day to day, only as the customer described it: premises (own or rented, area, address), capacity or working days, the equipment of the investment table. Never a made-up capacity, shift pattern, supplier or supplier type. Empty when the customer said nothing beyond the other parts.",
+   "block": "paragraph",
+   "grounded": true
+  },
+  {
+   "id": "team",
+   "kind": "table",
+   "heading": {
+    "uz": "Xodimlar",
+    "ru": "Персонал",
+    "en": "Staff"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "share": 0.04,
+   "elastic": false,
+   "from": 4,
+   "write": "One row per position the customer named: label the position, then the number of people and the monthly pay as given, and the total last: empty when both the number and the pay are given (code multiplies), otherwise a monthly pay fund the customer typed for that position, copied as typed. Only an average pay: one row named “Xodimlar” (ru “Персонал”, en “Staff”) with the number and the average. No pay given: no rows, and the number of staff is a sentence of the operations.",
+   "block": "table",
+   "grounded": true,
+   "max_items": 40,
+   "columns": [
+    {
+     "uz": "Lavozim",
+     "ru": "Должность",
+     "en": "Position"
+    },
+    {
+     "uz": "Soni",
+     "ru": "Кол-во",
+     "en": "Number"
+    },
+    {
+     "uz": "Oylik maosh",
+     "ru": "Оклад в месяц",
+     "en": "Monthly pay"
+    },
+    {
+     "uz": "Jami",
+     "ru": "Итого",
+     "en": "Total"
+    }
+   ],
+   "computed": [
+    {
+     "column": 3,
+     "op": "product",
+     "of": [
+      1,
+      2
+     ]
+    }
+   ],
+   "total": [
+    1,
+    3
+   ]
+  },
+  {
+   "id": "schedule",
+   "kind": "table",
+   "heading": {
+    "uz": "Amalga oshirish bosqichlari",
+    "ru": "План реализации проекта",
+    "en": "Implementation plan"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "share": 0.03,
+   "elastic": false,
+   "from": 4,
+   "write": "Stage rows only from the customer’s own items (each investment line, hiring, the launch; registration and permits only for a new business) in the order they happen: label the stage, then its start and its duration as given. Only when the customer gave at least one duration or start and there are three rows or more; never mark a stage done unless the customer said so.",
+   "block": "table",
+   "grounded": true,
+   "max_items": 40,
+   "columns": [
+    {
+     "uz": "Bosqich",
+     "ru": "Этап",
+     "en": "Stage"
+    },
+    {
+     "uz": "Boshlanishi",
+     "ru": "Начало",
+     "en": "Start"
+    },
+    {
+     "uz": "Davomiyligi",
+     "ru": "Длительность",
+     "en": "Duration"
+    }
+   ]
+  },
+  {
+   "id": "finance_investment",
+   "kind": "table",
+   "heading": {
+    "uz": "Investitsiya xarajatlari",
+    "ru": "Инвестиционные затраты",
+    "en": "Investment costs"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "share": 0.06,
+   "elastic": false,
+   "write": "One row per thing the money buys, in the customer’s order: label the item, then the quantity and the unit price when given, and the amount last. Leave the amount empty only when both the quantity and the unit price are given (code multiplies); a line given as an amount carries that amount exactly as typed, and the quantity or price it lacks stays empty. Code adds the total. Nothing given: no rows.",
+   "block": "table",
+   "grounded": true,
+   "max_items": 40,
+   "columns": [
+    {
+     "uz": "Xarajat moddasi",
+     "ru": "Статья затрат",
+     "en": "Item"
+    },
+    {
+     "uz": "Soni",
+     "ru": "Кол-во",
+     "en": "Qty"
+    },
+    {
+     "uz": "Narxi",
+     "ru": "Цена",
+     "en": "Price"
+    },
+    {
+     "uz": "Summasi",
+     "ru": "Сумма",
+     "en": "Amount"
+    }
+   ],
+   "computed": [
+    {
+     "column": 3,
+     "op": "product",
+     "of": [
+      1,
+      2
+     ]
+    }
+   ],
+   "total": [
+    3
+   ]
+  },
+  {
+   "id": "finance_sources",
+   "kind": "table",
+   "heading": {
+    "uz": "Moliyalashtirish manbalari",
+    "ru": "Источники финансирования",
+    "en": "Sources of funding"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "share": 0.03,
+   "elastic": false,
+   "write": "One row per source of money the customer gave (own funds, then the loan, grant or investor money): label the source, the amount as typed, and an empty share cell (code computes it).",
+   "block": "table",
+   "grounded": true,
+   "max_items": 40,
+   "columns": [
+    {
+     "uz": "Manba",
+     "ru": "Источник",
+     "en": "Source"
+    },
+    {
+     "uz": "Summasi",
+     "ru": "Сумма",
+     "en": "Amount"
+    },
+    {
+     "uz": "Ulushi, %",
+     "ru": "Доля, %",
+     "en": "Share, %"
+    }
+   ],
+   "computed": [
+    {
+     "column": 2,
+     "op": "share",
+     "of": [
+      1
+     ]
+    }
+   ],
+   "total": [
+    1
+   ]
+  },
+  {
+   "id": "finance_terms",
+   "kind": "fixed",
+   "heading": {
+    "uz": "Kredit shartlari",
+    "ru": "Условия кредита",
+    "en": "Loan terms"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "share": 0.04,
+   "elastic": false,
+   "from": 4,
+   "write": "Nothing: the loan or investor terms, drawn from the facts; none for a grant or the owner’s own plan.",
+   "block": "kv_table",
+   "fields": [
+    "loan_bank",
+    "external_funding",
+    "loan_rate",
+    "loan_term",
+    "loan_grace",
+    "loan_repayment",
+    "loan_collateral",
+    "investor_offer"
+   ]
+  },
+  {
+   "id": "finance_revenue",
+   "kind": "table",
+   "heading": {
+    "uz": "Daromad",
+    "ru": "Выручка",
+    "en": "Revenue"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "share": 0.05,
+   "elastic": false,
+   "from": 4,
+   "write": "One row per product with both a monthly volume and a price, in the customer’s order: label the product, then the volume and the price as typed, and an empty last cell (code multiplies). A product missing either stays out. A daily volume becomes monthly only when the customer gave the working days, and then both figures stay as typed.",
+   "block": "table",
+   "grounded": true,
+   "max_items": 40,
+   "columns": [
+    {
+     "uz": "Mahsulot",
+     "ru": "Продукция",
+     "en": "Product"
+    },
+    {
+     "uz": "Oylik hajm",
+     "ru": "Объём в месяц",
+     "en": "Monthly volume"
+    },
+    {
+     "uz": "Narxi",
+     "ru": "Цена",
+     "en": "Price"
+    },
+    {
+     "uz": "Oylik daromad",
+     "ru": "Выручка в месяц",
+     "en": "Monthly revenue"
+    }
+   ],
+   "computed": [
+    {
+     "column": 3,
+     "op": "product",
+     "of": [
+      1,
+      2
+     ]
+    }
+   ],
+   "total": [
+    3
+   ]
+  },
+  {
+   "id": "finance_costs",
+   "kind": "table",
+   "heading": {
+    "uz": "Xarajatlar",
+    "ru": "Расходы",
+    "en": "Costs"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "share": 0.04,
+   "elastic": false,
+   "from": 4,
+   "write": "The customer’s monthly cost lines in their order: label the item and the monthly amount as typed. Code adds the total of the lines named.",
+   "block": "table",
+   "grounded": true,
+   "max_items": 40,
+   "columns": [
+    {
+     "uz": "Xarajat moddasi",
+     "ru": "Статья расходов",
+     "en": "Cost item"
+    },
+    {
+     "uz": "Oyiga",
+     "ru": "В месяц",
+     "en": "Per month"
+    }
+   ],
+   "total": [
+    1
+   ]
+  },
+  {
+   "id": "finance_result",
+   "kind": "table",
+   "heading": {
+    "uz": "Foyda va qoplash",
+    "ru": "Прибыль и окупаемость",
+    "en": "Profit and payback"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "share": 0.04,
+   "elastic": false,
+   "write": "Only results the customer stated (a monthly revenue, cost or profit, a payback), one row each: label what it is and the figure exactly as typed. Never work one out, never a forecast, NPV, IRR, inflation, tax rate or growth. Nothing stated: no rows.",
+   "block": "table",
+   "grounded": true,
+   "max_items": 40,
+   "columns": [
+    {
+     "uz": "Ko‘rsatkich",
+     "ru": "Показатель",
+     "en": "Indicator"
+    },
+    {
+     "uz": "Qiymati",
+     "ru": "Значение",
+     "en": "Value"
+    }
+   ]
+  },
+  {
+   "id": "risks",
+   "kind": "table",
+   "heading": {
+    "uz": "Asosiy tavakkalchiliklar",
+    "ru": "Основные риски",
+    "en": "Main risks"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "share": 0.06,
+   "elastic": false,
+   "from": 3,
+   "write": "Three to six rows, each a risk tied to a fact of this plan (the loan, the equipment, staff, raw materials, the sales channel the customer named): label the risk, the measure last, as a plan (uz “rejalashtiriladi”, ru “планируется”, en “is planned”) that uses only resources the customer stated. No impact rating, insurer, partner or number.",
+   "block": "table",
+   "grounded": true,
+   "max_items": 6,
+   "columns": [
+    {
+     "uz": "Tavakkalchilik",
+     "ru": "Риск",
+     "en": "Risk"
+    },
+    {
+     "uz": "Chora",
+     "ru": "Мера",
+     "en": "Measure"
+    }
+   ]
+  },
+  {
+   "id": "conclusion",
+   "kind": "prose",
+   "heading": {
+    "uz": "Xulosa",
+    "ru": "Выводы",
+    "en": "Conclusion"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "share": 0.03,
+   "elastic": false,
+   "from": 4,
+   "write": "Two to four sentences: what the project is, what it needs and what it gives (jobs only as the customer stated them), from the figures the customer wrote. No new fact, promise or guarantee.",
+   "block": "paragraph",
+   "grounded": true,
+   "words": [
+    30,
+    90
+   ]
+  },
+  {
+   "id": "attachments",
+   "kind": "list",
+   "heading": {
+    "uz": "Ilova qilinadigan hujjatlar",
+    "ru": "Прилагаемые документы",
+    "en": "Attached documents"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "share": 0.01,
+   "elastic": false,
+   "write": "Only the documents the customer said they will attach, one item each, as named; never a generic checklist.",
+   "block": "list",
+   "grounded": true,
+   "max_items": 10
+  },
+  {
+   "id": "signature",
+   "kind": "fixed",
+   "heading": {
+    "uz": "Imzo",
+    "ru": "Подпись",
+    "en": "Signature"
+   },
+   "heading_mode": "none",
+   "need": "usual",
+   "share": 0.02,
+   "elastic": false,
+   "write": "Nothing: a signature row per signer named (the director by default), ruled blanks for what is missing; none for an own plan.",
+   "block": "signature_row",
+   "fields": [
+    "signers",
+    "director",
+    "stamp_request"
+   ]
+  }
+ ],
+ "rules": [
+  {
+   "text": "What it is: a business plan for a bank, a grant, an investor or the owner, built from the customer’s message and files. It grows with facts and tables, never with filler: a plan shorter than the pages asked is right when the facts run out.",
+   "to": "model"
+  },
+  {
+   "text": "Register: formal, impersonal, third person (Loyiha ... ko‘zda tutadi, Korxona ... joylashadi); plans in the present or future, never accomplished results; never men, biz or siz; short sentences; no advertising adjective (zamonaviy, noyob, eng yaxshi) unless the customer used it. The plan never speaks about the conversation.",
+   "to": "model"
+  },
+  {
+   "text": "Never invent a person, company, bank, programme, competitor, supplier, address, phone, tax number, date, price, quantity, salary, loan rate or term, market size, statistic, trend, ranking, law, licence, award, risk rating or source. A number appears only as the customer wrote it, a conversion beside it in brackets (3 yil (36 oy)); a range or taxminan is copied as typed.",
+   "to": "model"
+  },
+  {
+   "text": "Never do arithmetic: code computes the amounts, totals and shares of the tables. A sentence that needs a computed figure names the table instead (quyidagi jadvalda), never by a number. Never write a monthly loan payment, a profit, a payback or a cash flow the customer did not state.",
+   "to": "model"
+  },
+  {
+   "text": "A missing fact inside a sentence is a run of underscores; in a table the cell stays empty. A table that would hold only names stays empty, and its part says it in one sentence or is left out.",
+   "to": "model"
+  },
+  {
+   "text": "Write for the purpose: for a loan what it buys, for a grant what it buys and the own contribution, for an investor the ask and the use of funds; an own plan has no loan, investor or signature parts. Name the repayment source only if the customer stated it.",
+   "to": "model"
+  },
+  {
+   "text": "Market and competitors are qualitative and only in the customer’s words; no news, macro background or growth claim. No law, decree, tax rate, subsidy programme or bank product unless the customer named it.",
+   "to": "model"
+  },
+  {
+   "text": "Attached files (a price list, an old plan, quotes) are sources of facts: copy their numbers exactly; take no prose, layout or people’s names from them. Uzbek is Latin only, with ‘ in o‘ and g‘ and ’ for the tutuq belgisi; amounts in the customer’s currency, so‘m when none is named.",
+   "to": "model"
+  },
+  {
+   "text": "Totals (derive): the investment total, the shares of the sources (whole per cents adding to 100), the payroll and revenue products and the cost total are computed from verified numbers of the same table; a row missing an input stays blank and the total is labelled as the items named (Jami (ko‘rsatilgan moddalar)).",
+   "to": "engine"
+  },
+  {
+   "text": "Chapter headings are the template’s and numbered by position: Rezyume, Biznes va mahsulot, Bozor va marketing, Operatsion reja va jamoa, Moliyaviy reja, Tavakkalchiliklar va xulosa; a chapter with no content leaves no gap. One to three pages are the compact form: the operations chapter, the loan terms, revenue and cost tables and the conclusion start at 4 pages, the risks at 3, so the parts carry it. The cover from 4 pages, the contents from 12.",
+   "to": "engine"
+  }
+ ],
+ "bot": {
+  "prompt": {
+   "uz": "Biznesingizni bitta xabarda yozing: nima qilasiz, qayerda va reja nima uchun kerak (bank krediti, grant, investor yoki o‘zingiz uchun).\nRaqamlar (xarajatlar, o‘z mablag‘ingiz, kredit, narxlar) qancha ko‘p bo‘lsa, reja shuncha to‘liq chiqadi. Hajmi aytilmasa — 10 sahifagacha.\nYozmaganingiz bo‘sh chiziq bo‘lib qoladi: raqam, nom, sana va manba hech qachon o‘ylab topilmaydi. Narxlar ro‘yxati yoki eski rejani PDF, Word yoki TXT qilib qo‘shing.",
+   "ru": "Опишите бизнес одним сообщением: чем занимаетесь, где и для чего нужен план (банковский кредит, грант, инвестор или для себя).\nЧем больше цифр (расходы, свои средства, кредит, цены), тем полнее план. Если объём не указан — до 10 страниц.\nЧто не укажете, останется пустой строкой: цифры, названия, даты и источники никогда не выдумываются. Прайс-лист или старый план приложите файлом PDF, Word или TXT.",
+   "en": "Describe your business in one message: what you do, where, and what the plan is for (a bank loan, a grant, an investor, or just for yourself).\nThe more figures you give (costs, own funds, the loan, prices), the fuller the plan. With no length named it runs up to 10 pages.\nAnything you leave out stays a blank line: numbers, names, dates and sources are never made up. Attach a price list or an old plan as a PDF, Word or TXT file."
+  },
+  "examples": [
+   {
+    "uz": "Samarqandda qandolat va non sexi ochmoqchiman, bank krediti uchun biznes-reja kerak, 8 sahifa. Tort, pirog, pechenye va non tayyorlab, kafe va do‘konlarga yetkazaman. Jami 420 mln so‘m kerak: 120 mln o‘zimniki, 300 mln kredit (yillik 24%, 3 yil, 3 oy imtiyozli davr). Sohada 5 yillik tajribam bor. «Namuna Qandolat» MChJ.",
+    "ru": "Хочу открыть в Самарканде кондитерский и хлебопекарный цех, нужен бизнес-план для банковского кредита, 8 страниц. Буду делать торты, пироги, печенье и хлеб и поставлять в кафе и магазины. Всего нужно 420 млн сум: 120 млн свои, 300 млн кредит (24% годовых, 3 года, 3 месяца льготного периода). В отрасли 5 лет опыта. ООО «Намуна Кондитер».",
+    "en": "I want to open a confectionery and bakery workshop in Samarkand and need a business plan for a bank loan, 8 pages. I will make cakes, pies, biscuits and bread for cafes and shops. I need 420 million UZS in total: 120 million is my own and 300 million is the loan (24% a year, 3 years, 3 months grace). I have 5 years in the trade. Namuna Confectionery LLC."
+   },
+   {
+    "uz": "Toshkentda IELTS tayyorlov onlayn markazi ochmoqchiman, investor uchun biznes-reja kerak. Dastur va 3 ta o‘qituvchim tayyor, guruhda 12 tadan o‘quvchi, kurs narxi oyiga 600 000 so‘m. Reklama va o‘quv platformasi uchun investordan 150 mln so‘m so‘rayapman.",
+    "ru": "Хочу открыть в Ташкенте онлайн-центр подготовки к IELTS, нужен бизнес-план для инвестора. Программа и 3 преподавателя уже есть, в группе по 12 учеников, курс стоит 600 000 сум в месяц. Прошу у инвестора 150 млн сум на рекламу и учебную платформу.",
+    "en": "I plan an online IELTS preparation centre in Tashkent and need a business plan for an investor. The programme and 3 teachers are ready, groups have 12 students and the course costs 600,000 UZS a month. I am asking the investor for 150 million UZS for advertising and the learning platform."
+   },
+   {
+    "uz": "Farg‘onada 20 sotix issiqxona uchun grant arizasiga biznes-reja kerak, 6 sahifa. Pomidor va bodring yetishtirib, mahalliy bozor va do‘konlarga sotaman. Grant 150 mln so‘m, o‘z hissam 50 mln: issiqxona qurilishi 130 mln, sug‘orish tizimi 40 mln, urug‘ va o‘g‘it 30 mln. Narxlarni ilova qilingan ro‘yxatdan oling.",
+    "ru": "Нужен бизнес-план для заявки на грант: теплица на 20 соток в Фергане, 6 страниц. Буду выращивать помидоры и огурцы и продавать на местном рынке и в магазины. Грант 150 млн сум, свой вклад 50 млн: строительство теплицы 130 млн, система полива 40 млн, семена и удобрения 30 млн. Цены возьмите из прикреплённого прайса.",
+    "en": "I need a business plan for a grant application: a 20-sotka greenhouse in Fergana, 6 pages. I will grow tomatoes and cucumbers and sell them at the local market and to shops. The grant is 150 million UZS and my own share is 50 million: greenhouse construction 130 million, irrigation system 40 million, seeds and fertiliser 30 million. Please take the prices from the attached price list."
+   }
+  ],
+  "attach": true,
+  "notices": {
+   "finished": {
+    "uz": "✅ Reja tayyor. Tavakkalchiliklar jadvalini o‘qib chiqing: u taklif sifatida tuzilgan. Hisob-kitoblar faqat siz yozgan raqamlardan.",
+    "ru": "✅ План готов. Проверьте таблицу рисков: она составлена как предложение. Расчёты сделаны только из ваших цифр.",
+    "en": "✅ Your plan is ready. Please read the risk table: it is drafted as a suggestion. The calculations use only your figures."
+   },
+   "blanks": {
+    "uz": "Ba’zi ma’lumotlar xabaringizda yo‘q edi, shuning uchun bo‘sh chiziq qoldirildi: ularni qo‘lda to‘ldiring yoki raqamlarni yozib, rejani qayta so‘rang.",
+    "ru": "Некоторых сведений не было в вашем сообщении, поэтому оставлены пустые линии: заполните их от руки или напишите цифры и запросите план заново.",
+    "en": "Some facts were not in your message, so blank lines were left: fill them in by hand, or send the figures and ask for the plan again."
+   },
+   "shorter": {
+    "uz": "Reja {asked} sahifa o‘rniga {pages} sahifa bo‘ldi: yozgan ma’lumotlaringiz shunga yetdi, yozilmagani o‘ylab topilmadi.",
+    "ru": "План занял {pages} стр. из {asked}: ваших данных хватило на столько, а то, что не указано, не выдумывалось.",
+    "en": "The plan takes {pages} of the {asked} pages asked for: your facts filled this much, and nothing you left out was made up."
+   }
+  }
+ },
+ "templates": [
+  "business_biznes_reja"
+ ],
+ "look": null,
+ "gates": [
+  "templates/business_biznes_reja.json is a first draft written from the spec only so the catalogue loads; R5a owns it and may rewrite any of it. Its flow params (labels and captions maps, run_in, table_from, blank_items, keep: closing) are no contract until a registered block defines them.",
+  "A native Uzbek and a native Russian reader check the chapter and table headings, the key-figure labels and the loan-term rows before the entry is marked ready.",
+  "Render the full, blank and long cases in uz, ru and en with the paper sample tool and compare them with units/pdf.biz.biznes_reja/mock/business_biznes_reja.png; check every computed total and share by hand.",
+  "The facts corpus is at zero on this entry’s examples."
+ ],
+ "later": [
+  {
+   "text": "The loan repayment schedule (yearly and monthly), the monthly loan payment and the total interest computed from the amount, rate and term: annuity and repayment schedules are deferred.",
+   "words": [
+    "qaytarish jadvali",
+    "график погашения",
+    "repayment schedule",
+    "annuitet",
+    "аннуитет",
+    "annuity"
+   ]
+  },
+  {
+   "text": "The monthly profit and the paybacks (simple and with interest) computed across the revenue, cost and loan tables, and the twelve-month cash flow.",
+   "words": [
+    "pul oqimi",
+    "денежный поток",
+    "cash flow",
+    "qoplash muddati",
+    "окупаемост",
+    "payback"
+   ]
+  },
+  {
+   "text": "The blank guard: asking once instead of delivering when more than six groups of facts are missing."
+  },
+  {
+   "text": "The delivery line that names each blank and the pages asked and made, and the line for a plan capped at 20 pages; the shorter notice already says a plan came out shorter."
+  }
+ ]
+}

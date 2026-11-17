@@ -1,0 +1,449 @@
+{
+ "schema": 2,
+ "id": "business_yoriqnoma",
+ "entries": [
+  "pdf.biz.yoriqnoma"
+ ],
+ "name": {
+  "uz": "Zamonaviy yo‘riqnoma",
+  "ru": "Современная инструкция",
+  "en": "Modern instruction"
+ },
+ "family": "business",
+ "page": {
+  "margins_mm": {
+   "left": 30,
+   "right": 15,
+   "top": 26,
+   "bottom": 20
+  }
+ },
+ "type": {
+  "face": "sans",
+  "ladder": [
+   [
+    10.5,
+    15.5
+   ],
+   [
+    10,
+    14.8
+   ],
+   [
+    9.5,
+    14
+   ]
+  ],
+  "align": "left"
+ },
+ "page_rule": {
+  "kind": "flow"
+ },
+ "furniture": {
+  "first": "number",
+  "later": "header_number",
+  "format": "n_of_N",
+  "header": [
+   "organisation"
+  ]
+ },
+ "flow": [
+  {
+   "block": "doc_head",
+   "part": "head",
+   "fields": [
+    "organisation",
+    "subject",
+    "number"
+   ],
+   "when": "nocue:rules",
+   "params": {
+    "overline": "organisation",
+    "kind_line": "kind_instruction",
+    "title": "content_title",
+    "captions": {
+     "organisation": "cap_org"
+    }
+   }
+  },
+  {
+   "block": "doc_head",
+   "part": "head",
+   "fields": [
+    "organisation",
+    "subject",
+    "number"
+   ],
+   "when": "cue:rules",
+   "params": {
+    "overline": "organisation",
+    "kind_line": "kind_rules",
+    "title": "content_title",
+    "captions": {
+     "organisation": "cap_org"
+    }
+   }
+  },
+  {
+   "block": "kv_table",
+   "part": "details",
+   "fields": [
+    "audience",
+    "number",
+    "approval_date"
+   ],
+   "params": {
+    "labels": {
+     "audience": "row_audience",
+     "number": "row_number",
+     "approval_date": "row_date"
+    },
+    "omit_missing": [
+     "audience",
+     "approval_date"
+    ]
+   }
+  },
+  {
+   "block": "heading",
+   "part": "general",
+   "when": "cue:safety",
+   "params": {
+    "level": 1,
+    "numbering": "chapter",
+    "label": "h_general_safety"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "general",
+   "when": "nocue:safety",
+   "params": {
+    "level": 1,
+    "numbering": "chapter"
+   }
+  },
+  {
+   "block": "clauses",
+   "part": "general",
+   "params": {
+    "numbering": "decimal",
+    "caution": "callout"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "before_work",
+   "when": "cue:safety",
+   "params": {
+    "level": 1,
+    "numbering": "chapter",
+    "label": "h_before_safety"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "before_work",
+   "when": "part:before_work",
+   "params": {
+    "level": 1,
+    "numbering": "chapter"
+   }
+  },
+  {
+   "block": "clauses",
+   "part": "before_work",
+   "when": "part:before_work",
+   "params": {
+    "numbering": "decimal"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "during_work",
+   "when": "cue:safety",
+   "params": {
+    "level": 1,
+    "numbering": "chapter",
+    "label": "h_during_safety"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "during_work",
+   "when": "part:during_work",
+   "params": {
+    "level": 1,
+    "numbering": "chapter"
+   }
+  },
+  {
+   "block": "clauses",
+   "part": "during_work",
+   "when": "part:during_work",
+   "params": {
+    "numbering": "decimal",
+    "caution": "callout"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "emergency",
+   "when": "cue:safety",
+   "params": {
+    "level": 1,
+    "numbering": "chapter",
+    "label": "h_emergency_safety"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "emergency",
+   "when": "part:emergency",
+   "params": {
+    "level": 1,
+    "numbering": "chapter"
+   }
+  },
+  {
+   "block": "clauses",
+   "part": "emergency",
+   "when": "part:emergency",
+   "params": {
+    "numbering": "decimal"
+   }
+  },
+  {
+   "block": "kv_table",
+   "part": "contacts_table",
+   "when": "fact:contacts",
+   "fields": [
+    "contacts"
+   ],
+   "params": {
+    "blank_values": true
+   }
+  },
+  {
+   "block": "heading",
+   "part": "after_work",
+   "when": "cue:safety",
+   "params": {
+    "level": 1,
+    "numbering": "chapter",
+    "label": "h_after_safety"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "after_work",
+   "when": "part:after_work",
+   "params": {
+    "level": 1,
+    "numbering": "chapter"
+   }
+  },
+  {
+   "block": "clauses",
+   "part": "after_work",
+   "when": "part:after_work",
+   "params": {
+    "numbering": "decimal"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "rules_chapter",
+   "when": "part:rules_chapter",
+   "params": {
+    "level": 1,
+    "numbering": "chapter",
+    "prefix": "chapter_prefix"
+   }
+  },
+  {
+   "block": "clauses",
+   "part": "rules_chapter",
+   "when": "part:rules_chapter",
+   "params": {
+    "numbering": "decimal"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "final",
+   "when": "part:final",
+   "params": {
+    "level": 1,
+    "numbering": "chapter"
+   }
+  },
+  {
+   "block": "clauses",
+   "part": "final",
+   "when": "part:final",
+   "params": {
+    "numbering": "decimal"
+   }
+  },
+  {
+   "block": "signature_row",
+   "part": "signers",
+   "keep": "closing",
+   "fields": [
+    "author",
+    "agreement_signers"
+   ],
+   "params": {
+    "variant": "role_position_sign_name",
+    "labels": {
+     "author": "role_author",
+     "agreement_signers": "role_agreed"
+    }
+   }
+  },
+  {
+   "block": "signature_row",
+   "part": "approval",
+   "keep": "closing",
+   "when": "nofact:approval_mode",
+   "fields": [
+    "approver_post",
+    "approver_name",
+    "approval_date"
+   ],
+   "params": {
+    "variant": "role_position_sign_name",
+    "label": "role_approved",
+    "captions": {
+     "approver_post": "cap_position",
+     "approver_name": "cap_name"
+    }
+   }
+  },
+  {
+   "block": "line",
+   "part": "acknowledgement",
+   "keep": "acknowledgement",
+   "when": "nocue:rules",
+   "params": {
+    "label": "ack_instruction"
+   }
+  },
+  {
+   "block": "line",
+   "part": "acknowledgement",
+   "keep": "acknowledgement",
+   "when": "cue:rules",
+   "params": {
+    "label": "ack_rules"
+   }
+  },
+  {
+   "block": "signature_row",
+   "part": "acknowledgement",
+   "keep": "acknowledgement",
+   "params": {
+    "variant": "date_sign_name"
+   }
+  }
+ ],
+ "labels": {
+  "kind_instruction": {
+   "uz": "YO‘RIQNOMA",
+   "ru": "ИНСТРУКЦИЯ",
+   "en": "INSTRUCTION"
+  },
+  "kind_rules": {
+   "uz": "QOIDALAR",
+   "ru": "ПРАВИЛА",
+   "en": "RULES"
+  },
+  "cap_org": {
+   "uz": "(tashkilot nomi)",
+   "ru": "(наименование организации)",
+   "en": "(organisation)"
+  },
+  "row_audience": {
+   "uz": "Kimlar uchun",
+   "ru": "Для кого",
+   "en": "For"
+  },
+  "row_number": {
+   "uz": "Hujjat raqami",
+   "ru": "Номер документа",
+   "en": "Document No."
+  },
+  "row_date": {
+   "uz": "Tasdiqlangan sana",
+   "ru": "Дата утверждения",
+   "en": "Approved on"
+  },
+  "h_general_safety": {
+   "uz": "Umumiy xavfsizlik talablari",
+   "ru": "Общие требования охраны труда",
+   "en": "General safety requirements"
+  },
+  "h_before_safety": {
+   "uz": "Ishni boshlashdan oldingi xavfsizlik talablari",
+   "ru": "Требования охраны труда перед началом работы",
+   "en": "Safety requirements before starting work"
+  },
+  "h_during_safety": {
+   "uz": "Ish jarayonidagi xavfsizlik talablari",
+   "ru": "Требования охраны труда во время работы",
+   "en": "Safety requirements during work"
+  },
+  "h_emergency_safety": {
+   "uz": "Favqulodda vaziyatlardagi xavfsizlik talablari",
+   "ru": "Требования охраны труда в аварийных ситуациях",
+   "en": "Safety requirements in emergencies"
+  },
+  "h_after_safety": {
+   "uz": "Ish tugagandan so‘ng xavfsizlik talablari",
+   "ru": "Требования охраны труда по окончании работы",
+   "en": "Safety requirements after finishing work"
+  },
+  "chapter_prefix": {
+   "uz": "bob.",
+   "ru": "Глава",
+   "en": "Chapter"
+  },
+  "role_author": {
+   "uz": "Tuzuvchi:",
+   "ru": "Разработал:",
+   "en": "Prepared by:"
+  },
+  "role_agreed": {
+   "uz": "Kelishildi:",
+   "ru": "Согласовано:",
+   "en": "Agreed:"
+  },
+  "role_approved": {
+   "uz": "Tasdiqladi:",
+   "ru": "Утвердил:",
+   "en": "Approved by:"
+  },
+  "cap_position": {
+   "uz": "(lavozimi)",
+   "ru": "(должность)",
+   "en": "(position)"
+  },
+  "cap_name": {
+   "uz": "(F.I.Sh.)",
+   "ru": "(Ф.И.О.)",
+   "en": "(full name)"
+  },
+  "ack_instruction": {
+   "uz": "Yo‘riqnoma bilan tanishdim:",
+   "ru": "С инструкцией ознакомлен(а):",
+   "en": "I have read this instruction:"
+  },
+  "ack_rules": {
+   "uz": "Qoidalar bilan tanishdim:",
+   "ru": "С правилами ознакомлен(а):",
+   "en": "I have read these rules:"
+  }
+ },
+ "mock": "units/pdf.biz.yoriqnoma/mock/business_yoriqnoma.png"
+}

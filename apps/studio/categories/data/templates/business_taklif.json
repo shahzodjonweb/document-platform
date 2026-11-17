@@ -1,0 +1,360 @@
+{
+ "schema": 2,
+ "id": "business_taklif",
+ "entries": [
+  "pdf.biz.tijorat_taklifi"
+ ],
+ "name": {
+  "uz": "Blankali taklif",
+  "ru": "Предложение на бланке",
+  "en": "Offer on a letterhead"
+ },
+ "family": "business",
+ "page": {
+  "margins_mm": {
+   "left": 20,
+   "right": 20,
+   "top": 16,
+   "bottom": 20
+  }
+ },
+ "type": {
+  "face": "sans",
+  "ladder": [
+   [
+    10.5,
+    15
+   ],
+   [
+    10,
+    14.2
+   ],
+   [
+    9.5,
+    13.5
+   ],
+   [
+    9,
+    12.8
+   ]
+  ],
+  "align": "left"
+ },
+ "page_rule": {
+  "kind": "flow"
+ },
+ "furniture": {
+  "first": "none",
+  "later": "header_number",
+  "format": "n_of_N",
+  "header": [
+   "seller_name",
+   "doc_number"
+  ]
+ },
+ "flow": [
+  {
+   "block": "letterhead",
+   "part": "letterhead",
+   "fields": [
+    "seller_name",
+    "seller_address",
+    "seller_phone",
+    "seller_email",
+    "seller_website"
+   ],
+   "params": {
+    "rule": "accent",
+    "labels": {
+     "seller_phone": "tel"
+    },
+    "captions": {
+     "seller_name": "cap_company"
+    }
+   }
+  },
+  {
+   "block": "date_line",
+   "part": "date_line",
+   "fields": [
+    "doc_number",
+    "doc_date"
+   ],
+   "params": {
+    "labels": {
+     "doc_number": "number",
+     "doc_date": "date"
+    },
+    "anchor": "left_half"
+   }
+  },
+  {
+   "block": "party_block",
+   "part": "addressee",
+   "fields": [
+    "addressee_org",
+    "addressee_person"
+   ],
+   "params": {
+    "anchor": "right_half",
+    "label": "to",
+    "captions": {
+     "addressee_org": "cap_org"
+    }
+   }
+  },
+  {
+   "block": "doc_title",
+   "part": "title",
+   "params": {
+    "label": "title",
+    "subtitle": "content_title",
+    "align": "centre"
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "opening"
+  },
+  {
+   "block": "heading",
+   "part": "advantages",
+   "when": "part:advantages",
+   "params": {
+    "level": 2,
+    "numbering": "none",
+    "rule": "after",
+    "label": "advantages"
+   }
+  },
+  {
+   "block": "list",
+   "part": "advantages",
+   "when": "part:advantages",
+   "params": {
+    "marker": "bullet",
+    "max_items": 4
+   }
+  },
+  {
+   "block": "heading",
+   "part": "prices",
+   "params": {
+    "level": 2,
+    "numbering": "none",
+    "rule": "after",
+    "label": "prices"
+   }
+  },
+  {
+   "block": "table",
+   "part": "prices",
+   "params": {
+    "numbered": true,
+    "total_label": "total",
+    "drop_empty_columns": true
+   }
+  },
+  {
+   "block": "line",
+   "part": "note",
+   "fields": [
+    "discount",
+    "note"
+   ],
+   "params": {
+    "style": "italic",
+    "labels": {
+     "discount": "discount"
+    }
+   }
+  },
+  {
+   "block": "heading",
+   "part": "terms",
+   "keep": "closing",
+   "params": {
+    "level": 2,
+    "numbering": "none",
+    "rule": "after",
+    "label": "terms"
+   }
+  },
+  {
+   "block": "kv_table",
+   "part": "terms",
+   "keep": "closing",
+   "fields": [
+    "delivery_terms",
+    "payment_terms",
+    "warranty",
+    "vat_status",
+    "validity"
+   ],
+   "params": {
+    "labels": {
+     "delivery_terms": "delivery",
+     "payment_terms": "payment",
+     "warranty": "warranty",
+     "vat_status": "vat",
+     "validity": "validity"
+    },
+    "omit_missing": [
+     "warranty"
+    ]
+   }
+  },
+  {
+   "block": "callout",
+   "part": "cta",
+   "when": "part:cta",
+   "keep": "closing",
+   "params": {
+    "style": "bar"
+   }
+  },
+  {
+   "block": "signature_row",
+   "part": "closing",
+   "keep": "closing",
+   "fields": [
+    "signer_position",
+    "signer_name"
+   ],
+   "params": {
+    "variant": "position_sign_name",
+    "label": "regards",
+    "captions": {
+     "signer_position": "cap_position",
+     "signer_name": "cap_name"
+    }
+   }
+  },
+  {
+   "block": "line",
+   "part": "closing",
+   "fields": [
+    "contact_person"
+   ],
+   "when": "nopart:cta",
+   "keep": "closing",
+   "params": {
+    "style": "small",
+    "label": "contact"
+   }
+  }
+ ],
+ "labels": {
+  "title": {
+   "uz": "TIJORAT TAKLIFI",
+   "ru": "КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ",
+   "en": "COMMERCIAL PROPOSAL"
+  },
+  "to": {
+   "uz": "Kimga:",
+   "ru": "Адресат:",
+   "en": "To:"
+  },
+  "number": {
+   "uz": "№",
+   "ru": "Исх. №",
+   "en": "Ref. No."
+  },
+  "date": {
+   "uz": "Sana:",
+   "ru": "Дата:",
+   "en": "Date:"
+  },
+  "tel": {
+   "uz": "Tel.:",
+   "ru": "Тел.:",
+   "en": "Tel.:"
+  },
+  "advantages": {
+   "uz": "AFZALLIKLARIMIZ",
+   "ru": "НАШИ ПРЕИМУЩЕСТВА",
+   "en": "OUR ADVANTAGES"
+  },
+  "prices": {
+   "uz": "NARXLAR",
+   "ru": "ЦЕНЫ",
+   "en": "PRICES"
+  },
+  "terms": {
+   "uz": "SHARTLAR",
+   "ru": "УСЛОВИЯ",
+   "en": "TERMS"
+  },
+  "total": {
+   "uz": "Jami",
+   "ru": "Итого",
+   "en": "Total"
+  },
+  "discount": {
+   "uz": "Chegirma:",
+   "ru": "Скидка:",
+   "en": "Discount:"
+  },
+  "delivery": {
+   "uz": "Yetkazib berish",
+   "ru": "Поставка",
+   "en": "Delivery"
+  },
+  "payment": {
+   "uz": "To‘lov",
+   "ru": "Оплата",
+   "en": "Payment"
+  },
+  "warranty": {
+   "uz": "Kafolat",
+   "ru": "Гарантия",
+   "en": "Warranty"
+  },
+  "vat": {
+   "uz": "QQS",
+   "ru": "НДС",
+   "en": "VAT"
+  },
+  "validity": {
+   "uz": "Amal qilish muddati",
+   "ru": "Срок действия",
+   "en": "Validity"
+  },
+  "regards": {
+   "uz": "Hurmat bilan,",
+   "ru": "С уважением,",
+   "en": "Sincerely,"
+  },
+  "contact": {
+   "uz": "Mas’ul shaxs:",
+   "ru": "Контактное лицо:",
+   "en": "Contact person:"
+  },
+  "cap_company": {
+   "uz": "(kompaniya nomi)",
+   "ru": "(название компании)",
+   "en": "(company name)"
+  },
+  "cap_org": {
+   "uz": "(tashkilot nomi)",
+   "ru": "(наименование организации)",
+   "en": "(name of the organisation)"
+  },
+  "cap_position": {
+   "uz": "(lavozimi)",
+   "ru": "(должность)",
+   "en": "(position)"
+  },
+  "cap_sign": {
+   "uz": "(imzo)",
+   "ru": "(подпись)",
+   "en": "(signature)"
+  },
+  "cap_name": {
+   "uz": "(F.I.Sh.)",
+   "ru": "(Ф.И.О.)",
+   "en": "(full name)"
+  }
+ },
+ "mock": "units/pdf.biz.tijorat_taklifi/mock/business_taklif.png"
+}
