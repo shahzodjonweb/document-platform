@@ -40,8 +40,10 @@ from .core import (TINT, Gap, Hair, _bold, _cells, _finish, _font, _has_label, _
 FIGURE = 1.7
 # The gap between two boxes of the strip, in mm.
 BOX_GAP_MM = 4.0
-# A figure as typed: the number (with its sign and groups) and the words after it, set smaller ("420 mln so‘m").
-FIGURE_SPLIT = re.compile(r'^\s*(?P<number>[+\-−]?\$?\d[\d   .,]*%?)\s*(?P<rest>.*)$')
+# A figure as typed: the number (with its sign, its groups and a currency written before it: "$1,200", "UZS 36")
+# and the words after it, set smaller ("420 mln so‘m").
+FIGURE_SPLIT = re.compile(r'^\s*(?P<number>[+\-−]?(?:[$€£₽]|(?:UZS|USD|EUR|RUB)\s?)?\d[\d   .,]*%?)\s*(?P<rest>.*)$',
+                          re.IGNORECASE)
 # A total row the strip may read: derive's complete total, never one of only the items listed.
 COMPLETE = True
 
@@ -128,6 +130,14 @@ block('letterhead', fallback=_letterhead_plain)(letterhead)
 # ---------------------------------------------------------------- key_figures
 
 
+def _complete_word(ctx, item):
+    """A total row known by its word alone (validate_content keeps no `total` mark): never the items-listed one."""
+    from apps.studio.categories.derive import NAMED, TOTAL_ROW
+    label = ' '.join(str(item.get('label') or '').split())
+    named = {NAMED[ctx.locale]} | ({ctx.label('total_named')} if _has_label(ctx, 'total_named') else set())
+    return bool(TOTAL_ROW.match(label)) and label not in named
+
+
 def _total_cell(ctx, part_id, column):
     """A table's complete total in `column` (derive's row), or None: a total of only the items listed is no figure."""
     part = ctx.entry.part(part_id)
@@ -135,7 +145,7 @@ def _total_cell(ctx, part_id, column):
         return None
     count = len(part.get('columns') or ()) or None
     for item in _items(ctx.section(part_id)):
-        if item.get('total') is COMPLETE and count:
+        if (item.get('total') is COMPLETE or ('total' not in item and _complete_word(ctx, item))) and count:
             cells = _cells(item, count)
             return cells[column] if 0 <= column < len(cells) and cells[column].strip() else None
     return None

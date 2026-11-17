@@ -138,6 +138,15 @@
    "when": "part:indicators"
   },
   {
+   "block": "line",
+   "part": "indicators",
+   "params": {
+    "text": "as_of_line",
+    "style": "small"
+   },
+   "when": "fact:as_of"
+  },
+  {
    "block": "table",
    "part": "indicators",
    "params": {
@@ -157,11 +166,11 @@
       "type": "number"
      },
      {
-      "width_mm": 16,
+      "width_mm": 22,
       "type": "number"
      },
      {
-      "width_mm": 19,
+      "width_mm": 23,
       "type": "number"
      },
      {
@@ -170,9 +179,49 @@
     ],
     "rules": "horizontal",
     "drop_empty_columns": true,
-    "note": "indicators_note"
+    "note": "indicators_note",
+    "to_date": "as_of"
    },
-   "when": "part:indicators"
+   "when": "nofact:as_of"
+  },
+  {
+   "block": "table",
+   "part": "indicators",
+   "params": {
+    "columns": [
+     {
+      "width_mm": "flex"
+     },
+     {
+      "width_mm": 17
+     },
+     {
+      "width_mm": 17,
+      "type": "number"
+     },
+     {
+      "width_mm": 17,
+      "type": "number"
+     },
+     {
+      "width_mm": 1,
+      "type": "number"
+     },
+     {
+      "width_mm": 23,
+      "type": "number",
+      "label": "pct_to_date"
+     },
+     {
+      "width_mm": 28
+     }
+    ],
+    "rules": "horizontal",
+    "drop_empty_columns": true,
+    "note": "indicators_note_to_date",
+    "to_date": "as_of"
+   },
+   "when": "fact:as_of"
   },
   {
    "block": "heading",
@@ -458,6 +507,21 @@
    "uz": "Izoh. Farqi va foizlar jadvaldagi raqamlardan hisoblangan.",
    "ru": "Примечание. Разница и проценты рассчитаны по цифрам таблицы.",
    "en": "Note. Differences and per cents are computed from the figures in the table."
+  },
+  "indicators_note_to_date": {
+   "uz": "Izoh. Foizlar jadvaldagi raqamlardan hisoblangan.",
+   "ru": "Примечание. Проценты рассчитаны по цифрам таблицы.",
+   "en": "Note. Per cents are computed from the figures in the table."
+  },
+  "pct_to_date": {
+   "uz": "Butun davr rejasiga nisbatan, %",
+   "ru": "К плану всего периода, %",
+   "en": "Of full-period plan, %"
+  },
+  "as_of_line": {
+   "uz": "{as_of} holatiga",
+   "ru": "По состоянию на {as_of}",
+   "en": "As of {as_of}"
   },
   "prepared": {
    "uz": "Tayyorladi:",

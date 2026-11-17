@@ -1300,3 +1300,14 @@ tests/test_paper_business.py::test_every_template_reads_well[business_biznes_rej
 tests/test_paper_business.py::test_every_template_reads_well[business_marketing_reja-uz-full]
 tests/test_paper_business.py::test_the_offer_ends_its_price_table_on_codes_total_in_bold
 tests/test_paper_business.py::test_a_heading_never_stands_alone_at_the_foot_of_a_page
+
+# Business templates (R5a review): a scaled price is rounded as a full amount, an amount drops the price's per-unit
+# tail, a total the customer typed is kept when code makes none, staff stands under the operations chapter, and no
+# table header word is broken
+tests/test_category_derive.py::test_a_scaled_price_is_rounded_as_a_full_amount_never_to_whole_millions[uz]
+tests/test_category_derive.py::test_an_amount_drops_the_prices_per_unit_tail_as_in_the_specs_own_example
+tests/test_category_derive.py::test_a_lone_total_the_customer_typed_is_kept_and_not_split
+tests/test_category_derive.py::test_one_line_against_a_stated_total_has_no_share_of_the_line_alone
+tests/test_category_derive.py::test_amounts_in_different_currencies_are_never_added
+tests/test_paper_business.py::test_staff_without_operations_prose_is_filed_under_the_operations_chapter
+tests/test_paper_business.py::test_no_table_header_word_is_broken_inside_nor_its_per_cent_sign_left_alone[business_hisobot]

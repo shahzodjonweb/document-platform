@@ -6,21 +6,26 @@ by the checker; then what the mock-ups promise is read from the page: an
 offer's price table ends on code's total, a report's indicators carry their
 difference and per cent and its strip of key figures the plan typed beside
 them, a plan's money tables add up, the 4P list prints its words and not its
-codes, the SWOT cards stand two by two. The small changes this package made to
-the core table and list and to the page's keep-with-next are held here too.
+codes, the SWOT cards stand two by two, staff stands under the operations
+chapter, no table header word is broken. The small changes this package made
+to the core heading, table, list and callout and to the page's keep-with-next
+are held here too.
 People, organisations and figures are invented.
 """
+import dataclasses
 import datetime
 
 import pdfplumber
 import pytest
+from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.platypus import Paragraph, Table
 
 from apps.studio import paper
-from apps.studio.categories import catalogue
+from apps.studio.categories import catalogue, derive
 from apps.studio.paper import page, registry, sample
 from apps.studio.paper.blocks import business, core
-from apps.studio.paper.ctx import Anchor, Ctx, Place
+from apps.studio.paper.ctx import Anchor, Ctx, Place, holds, places
+from apps.studio.paper.text import MM
 from tests import paper_family
 
 TEMPLATES = ('business_taklif', 'business_hisobot', 'business_biznes_reja', 'business_marketing_reja')
@@ -183,6 +188,81 @@ def test_the_marketing_plan_prints_its_4p_words_its_swot_cards_and_budget_shares
     assert clean(artifact)
 
 
+def test_staff_without_operations_prose_is_filed_under_the_operations_chapter(tmp_path):
+    # The full sample has a staff table and no operations prose: the chapter word stands over it all the same,
+    # so staff is never 3.2 under marketing nor finance 4.
+    def change(content):
+        content['sections'] = [section for section in content['sections'] if section['id'] != 'operations']
+    for locale, chapter, staff, finance in (('uz', '4. Operatsion reja va jamoa', '4.1 Xodimlar', '5. Moliyaviy reja'),
+                                            ('en', '4. Operations and team', '4.1 Staff', '5. Financial plan')):
+        _, pages = drawn(tmp_path, 'business_biznes_reja', locale, change=change, name=f'{locale}.pdf')
+        text = '\n'.join(pages)
+        assert chapter in text and staff in text and finance in text, locale
+
+    def closing(content):
+        content['sections'] = [section for section in content['sections'] if section['id'] != 'risks']
+    _, pages = drawn(tmp_path, 'business_biznes_reja', change=closing, name='closing.pdf')
+    assert '6. Tavakkalchiliklar va xulosa' in '\n'.join(pages) and '6.1 Xulosa' in '\n'.join(pages)
+
+
+def test_a_report_to_a_date_against_a_longer_plan_drops_the_difference_and_names_its_per_cent(tmp_path):
+    def change(content):
+        content['sections'][0]['items'].append({'label': 'as_of', 'text': '30-iyun'})
+        content.update(derive.apply(catalogue.get('pdf.biz.hisobot'), content, object(), locale='uz'))
+    artifact, pages = drawn(tmp_path, 'business_hisobot', change=change)
+    assert '30-iyun holatiga' in pages[0] and 'Butun davr' in pages[0] and '104,6%' in pages[0]
+    assert 'Farqi' not in pages[0] and '+22' not in pages[0] and clean(artifact)
+
+
+def _header_cells(template_id, locale, case, as_of=False):
+    """(part id, header Paragraph, the room its column gives) for every header cell of the drawn tables."""
+    template = catalogue.template(template_id)
+    given = sample.load(template_id, case)
+    entry = catalogue.get(given['entry'])
+    content = sample.content_of(given, locale)
+    if as_of:
+        content['sections'][0]['items'].append({'label': 'as_of', 'text': '30.06.2026'})
+        content = derive.apply(entry, content, object(), locale=locale)
+    _, _, width, height = page.geometry(template)
+    ctx = Ctx(content=content, entry=entry, template=template, locale=locale, step=0, pages=int(given['pages']),
+              width=width, frame_height=height, day=DAY)
+    for found in places(ctx):
+        if found.block != 'table' or not holds(found.when, ctx, found):
+            continue
+        # With every column kept too (but those derive always empties): the narrowest each column gets, before a
+        # dropped column's room is shared.
+        kept = dict(found.params, drop_empty_columns=False) if not as_of else found.params
+        for variant in (found, dataclasses.replace(found, params=kept)):
+            for flowable in core.table(ctx, variant):
+                if isinstance(flowable, Table):
+                    for column, cell in zip(flowable._colWidths, flowable._cellvalues[0]):
+                        yield found.part['id'], cell, column - 3.4 * MM
+
+
+@pytest.mark.parametrize('template_id', TEMPLATES)
+def test_no_table_header_word_is_broken_inside_nor_its_per_cent_sign_left_alone(template_id):
+    # A header word wider than its column's room is broken letter-wise ("Differenc" / "e").
+    for locale in ('uz', 'ru', 'en'):
+        for case in ('full', 'blank', 'long'):
+            for as_of in (False, True) if template_id == 'business_hisobot' else (False,):
+                for part, cell, room in _header_cells(template_id, locale, case, as_of):
+                    for word in cell.getPlainText().split():
+                        assert stringWidth(word, cell.style.fontName, cell.style.fontSize) <= room, (
+                            locale, case, as_of, part, word)
+                    cell.wrap(room, 1000)
+                    last = cell.blPara.lines[-1] if cell.blPara.lines else None
+                    words = getattr(last, 'words', None) or (last[1] if isinstance(last, tuple) else [])
+                    assert [str(getattr(word, 'text', word)) for word in words] != ['%'], (locale, case, part)
+
+
+def test_a_callout_title_shares_its_cell_with_its_first_paragraph():
+    ctx = context('business_marketing_reja', [{'id': 'positioning', 'heading': 'Pozitsiyalash', 'body': 'Birinchi.\n\n'
+                                               'Ikkinchi.', 'layout': 'callout', 'items': []}])
+    drawn_ = next(flowable for flowable in core.callout(ctx, place(ctx, 'callout', 'positioning'))
+                  if isinstance(flowable, Table))
+    assert len(drawn_._cellvalues) == 2 and texts(drawn_._cellvalues[0][0]) == ['Pozitsiyalash', 'Birinchi.']
+
+
 def test_a_heading_never_stands_alone_at_the_foot_of_a_page(tmp_path):
     # The report's fifth chapter falls at the foot of page 1: its heading goes over with its first item.
     _, pages = drawn(tmp_path, 'business_hisobot')
@@ -266,6 +346,31 @@ def test_key_figures_from_facts_and_a_complete_total_only():
     assert business.key_figures(ctx, place(ctx, 'key_figures', 'summary_figures', params=dict(params, min=2))) == []
 
 
+def test_a_total_row_that_lost_its_mark_is_still_known_by_its_word():
+    # validate_content keeps only label, text and value: a re-checked paper's total row keeps its word alone.
+    investment = table('finance_investment', [('Uskuna', '', '180 000 000'), ('Bino', '', '90 000 000'),
+                                              ('Jami', '', '270 000 000')])
+    params = {'figures': [{'total': 'finance_investment', 'column': 3, 'label': 'kf_investment'}], 'min': 1}
+    ctx = context('business_biznes_reja', [investment])
+    assert texts(business.key_figures(ctx, place(ctx, 'key_figures', 'summary_figures', params=params))) == [
+        'Umumiy investitsiya', '270 000 000']
+    grid = next(flowable for flowable in core.table(ctx, place(ctx, 'table', 'finance_investment'))
+                if isinstance(flowable, Table))
+    assert grid._cellvalues[-1][0].style.fontName.endswith('Bold')
+    named = table('finance_investment', [('Uskuna', '', '180 000 000'), ('Bino', '', ''),
+                                         ('Jami (ko‘rsatilgan moddalar)', '', '180 000 000')])
+    ctx = context('business_biznes_reja', [named])
+    assert business.key_figures(ctx, place(ctx, 'key_figures', 'summary_figures', params=params)) == []
+
+
+def test_a_figure_with_its_currency_written_first_still_prints_large():
+    ctx = context('business_marketing_reja', facts={'budget_total': 'UZS 36 mln'})
+    params = {'figures': [{'field': 'budget_total', 'label': 'kf_budget'}], 'min': 1}
+    made = business.key_figures(ctx, place(ctx, 'key_figures', 'summary_figures', params=params))
+    figure = made[0]._cellvalues[0][0][2]
+    assert figure.getPlainText().startswith('UZS 36') and figure.style.fontSize > ctx.size, 'set large, not in bold text'
+
+
 def test_a_goal_figure_carries_its_target_word_and_where_it_stands_now():
     goals = table('goals', [('Oylik buyurtmalar', '120 | 300 | avgust', 'hisob')])
     ctx = context('business_marketing_reja', [goals], facts={'budget_total': '36 mln so‘m'})
@@ -326,12 +431,14 @@ def test_the_block_samples_draw_without_a_fallback(tmp_path):
 
 
 def test_a_list_prints_a_code_label_as_its_word_and_drops_a_code_it_does_not_know():
-    mix = table('mix', [('price', '150 000 so‘mdan.', ''), ('place', 'Onlayn.', ''), ('channel', 'Telegram.', '')],
-                'list')
+    mix = table('mix', [('price', '150 000 so‘mdan.', ''), ('place', 'Onlayn.', ''), ('promotion', 'Telegram.', ''),
+                        ('sales_channel', 'Do‘kon.', ''), ('ijara', 'Oyiga 9 mln.', '')], 'list')
     ctx = context('business_marketing_reja', [mix])
     params = {'marker': 'bullet', 'labels': {'price': 'p_price', 'place': 'p_place'}}
     made = core.list_block(ctx, place(ctx, 'list', 'mix', params=params))
-    assert texts(made) == ['Narx. 150 000 so‘mdan.', 'Taqsimlash. Onlayn.', 'Telegram.']
+    # A code (one the part names, or one with "_") is left out; a plain word the model put there is kept.
+    assert texts(made) == ['Narx. 150 000 so‘mdan.', 'Taqsimlash. Onlayn.', 'Telegram.', 'Do‘kon.',
+                           'ijara — Oyiga 9 mln.']
     assert 'CVSans-Bold' in made[0].text, 'the word is run in bold'
 
 

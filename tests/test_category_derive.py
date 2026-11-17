@@ -5,7 +5,9 @@ multiplies, subtracts, takes per cents and shares and adds totals from the
 numbers of the same row or column. A cell whose inputs are missing, unread or
 not the customer's stays blank; a partial total is labelled as the items
 listed, or left out where the template says so; a total the model wrote is
-never the one printed. Figures are invented, and so are the organisations.
+never printed beside code's, and one the customer typed stays when code makes
+none. A scaled price is rounded as a full amount and an amount never carries
+the price's per-unit tail. Figures are invented, and so are the organisations.
 """
 import copy
 
@@ -163,6 +165,96 @@ def test_an_offer_rounds_each_amount_to_its_currency_and_totals_the_rounded_amou
     sums, _ = made(OFFER, 'prices', [('A', 'dona | 3 | 333,5', ''), ('B', 'dona | 1 | 1 000', '')],
                    facts_items=[('currency', 'so‘m')])
     assert [row[4] for row in sums] == ['1 001', '1 000', '2 001']
+
+
+@pytest.mark.parametrize(('locale', 'rows', 'amounts'), [
+    ('uz', [('A', 'dona | 3 | 1,5 mln so‘m', ''), ('B', 'dona | 3 | 1,25 mln so‘m', ''),
+            ('C', 'dona | 2 | 1,25 mln so‘m', '')],
+     ['4,5 mln so‘m', '3,75 mln so‘m', '2,5 mln so‘m', '10,75 mln so‘m']),
+    ('ru', [('A', 'шт. | 3 | 1,5 млн сум', ''), ('B', 'шт. | 3 | 1,25 млн сум', ''), ('C', 'шт. | 2 | 1,25 млн сум', '')],
+     ['4,5 млн сум', '3,75 млн сум', '2,5 млн сум', '10,75 млн сум']),
+    ('en', [('A', 'pcs | 3 | $1.5 mln', ''), ('B', 'pcs | 3 | $1.25 mln', ''), ('C', 'pcs | 2 | $1.5 mln', '')],
+     ['$4.5 mln', '$3.75 mln', '$3 mln', '$11.25 mln']),
+], ids=['uz', 'ru', 'en'])
+def test_a_scaled_price_is_rounded_as_a_full_amount_never_to_whole_millions(locale, rows, amounts):
+    # round: currency means whole so‘m and cents of a dollar: 3 × 1,5 mln is 4,5 mln, never "5 mln".
+    found, totals = made(OFFER, 'prices', rows, locale=locale)
+    assert [row[4] for row in found] == amounts and totals[-1] is True
+
+
+def test_a_scaled_amount_two_places_cannot_hold_is_written_in_full():
+    rows, _ = made(OFFER, 'prices', [('A', 'dona | 3 | 1,4445 mln so‘m', ''), ('B', 'dona | 1 | 2 mln so‘m', '')])
+    assert [row[4] for row in rows] == ['4 333 500 so‘m', '2 mln so‘m', '6 333 500']
+
+
+def test_amounts_in_different_currencies_are_never_added():
+    rows, totals = made(OFFER, 'prices', [('A', 'pcs | 3 | 1.5 mln UZS', ''), ('B', 'pcs | 2 | $1.5 mln', '')],
+                        locale='en')
+    assert [row[4] for row in rows] == ['4.5 mln UZS', '$3 mln'] and totals == [None, None]
+
+
+def test_an_amount_drops_the_prices_per_unit_tail_as_in_the_specs_own_example():
+    # The business plan's format hint: "Tort 140 000 so‘m/kg, oyiga 450 kg" is 63 000 000 so‘m a month, never per kilo.
+    message = 'Tort 140 000 so‘m/kg, oyiga 450 kg. Pirog 9 000 so‘m/dona, oyiga 2 000 dona.'
+    rows, _ = made(PLAN, 'finance_revenue', [('Tort', '450 kg | 140 000 so‘m/kg', ''),
+                                             ('Pirog', '2 000 dona | 9 000 so‘m/dona', '')],
+                   trusted=facts.trusting(message))
+    assert [row[3] for row in rows] == ['63 000 000 so‘m', '18 000 000 so‘m', '81 000 000 so‘m']
+    russian, _ = made(PLAN, 'finance_revenue', [('Торт', '450 кг | 140 000 сум за кг', ''),
+                                                ('Пирог', '2 000 шт. | 9 000 сум/шт.', '')], locale='ru')
+    assert [row[3] for row in russian] == ['63 000 000 сум', '18 000 000 сум', '81 000 000 сум']
+    english, _ = made(PLAN, 'finance_revenue', [('Cake', '450 kg | 140,000 UZS per kg', ''),
+                                                ('Pie', '2,000 pcs | 9,000 UZS each', '')], locale='en')
+    assert [row[3] for row in english] == ['63,000,000 UZS', '18,000,000 UZS', '81,000,000 UZS']
+    uzbek, _ = made(PLAN, 'finance_revenue', [('Tort', '450 | 140 000 so‘mdan', ''),
+                                              ('Pirog', '2 000 | 9 000 so‘m har biri', '')])
+    assert [row[3] for row in uzbek] == ['63 000 000 so‘m', '18 000 000 so‘m', '81 000 000 so‘m']
+
+
+def test_equal_amounts_get_equal_shares():
+    rows, _ = made(MARKETING, 'budget', [('Instagram', '14 000 000', ''), ('Bloggerlar', '10 000 000', ''),
+                                         ('Telegram', '6 000 000', ''), ('Aksiyalar', '6 000 000', '')])
+    assert [row[2] for row in rows] == ['39%', '27%', '17%', '17%', '100%']
+
+
+# ---------------------------------------------------------------- totals the customer typed
+
+
+def test_a_lone_total_the_customer_typed_is_kept_and_not_split():
+    rows, totals = made(MARKETING, 'budget', [('Jami', '36 mln', '')])
+    assert rows == [['Jami', '36 mln', '']] and totals == [True]
+    costs, totals = made(PLAN, 'finance_costs', [('Jami oylik xarajatlar', '', '25 mln')])
+    assert costs == [['Jami oylik xarajatlar', '25 mln']] and totals == [True]
+
+
+def test_one_line_against_a_stated_total_has_no_share_of_the_line_alone():
+    # 14 mln is not 100% of a 36 mln budget: the shares stay blank and the customer's total stays.
+    rows, totals = made(MARKETING, 'budget', [('Instagram', '14 mln', ''), ('Jami', '36 mln', '')])
+    assert rows == [['Instagram', '14 mln', ''], ['Jami', '36 mln', '']] and totals == [None, True]
+    agreeing, _ = made(MARKETING, 'budget', [('Instagram', '36 mln', ''), ('Jami', '36 mln', '')])
+    assert agreeing == [['Instagram', '36 mln', '100%'], ['Jami', '36 mln', '100%']]
+
+
+def test_a_model_total_without_a_figure_or_with_one_nobody_typed_is_left_out():
+    assert made(MARKETING, 'budget', [('Jami', '', '')]) == ([], [])
+    trusted = facts.trusting('Instagram reklamasi uchun byudjet ajratamiz.')
+    assert made(MARKETING, 'budget', [('Jami', '36 mln', '')], trusted=trusted) == ([], [])
+
+
+def test_an_offer_whose_lines_do_not_all_compute_keeps_the_customers_own_total():
+    rows, totals = made(OFFER, 'prices', [('Parta', 'dona | 40 | 650 000', ''), ('Montaj', 'xizmat | 1 |', ''),
+                                          ('Jami', '', '27 500 000')])
+    assert rows[-1] == ['Jami', '', '', '', '27 500 000'] and totals[-1] is True
+    assert derive.apply(catalogue.get(OFFER), derive.apply(catalogue.get(OFFER), {
+        'title': '', 'questions': [], 'sections': [section('prices', [('Jami', '', '27 500 000')])]}, object(),
+        locale='uz'), object(), locale='uz')['sections'][0]['items'][-1]['total'] is True, 'and keeps it again'
+
+
+def test_a_to_date_result_against_a_longer_plan_has_no_difference():
+    # A half-year 520 against a year's 1 000 is not "−480": with as_of the difference column stays empty.
+    rows, _ = made(REPORT, 'indicators', [('Sotuv', 'mln so‘m | 1 000 | 520 | −480 | ', '')],
+                   facts_items=[('as_of', '30-iyun')])
+    assert rows == [['Sotuv', 'mln so‘m', '1 000', '520', '', '52,0%', '']]
 
 
 # ---------------------------------------------------------------- trust and safety

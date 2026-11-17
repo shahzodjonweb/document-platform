@@ -369,9 +369,13 @@
     "level": 1,
     "numbering": "decimal",
     "rule": "under",
-    "label": "ch_operations"
-   },
-   "when": "part:operations"
+    "label": "ch_operations",
+    "any_part": [
+     "operations",
+     "team",
+     "schedule"
+    ]
+   }
   },
   {
    "block": "heading",
@@ -740,9 +744,13 @@
     "level": 1,
     "numbering": "decimal",
     "rule": "under",
-    "label": "ch_closing"
-   },
-   "when": "part:risks"
+    "label": "ch_closing",
+    "any_part": [
+     "risks",
+     "conclusion",
+     "attachments"
+    ]
+   }
   },
   {
    "block": "heading",

@@ -30,7 +30,12 @@ it has grounded the parts.
 
 Units and scales follow the inputs: 120 mln and 300 mln add to "420 mln";
 an amount takes the price's currency and scale ("2" × "1,5 mln so‘m" is
-"3 mln so‘m"); inputs that disagree are added as full numbers. The decimal
+"3 mln so‘m") but never its per-unit tail ("140 000 so‘m/kg" × "450 kg" is
+"63 000 000 so‘m", a month's revenue and no price per kilo); inputs that
+disagree are added as full numbers. A scaled figure is written with at most
+two places and its trailing zeros dropped ("4,5 mln", "6,25 mln"); one two
+places cannot hold exactly is written in full, so no rounding hides behind
+the scale word. The decimal
 mark and the thousands are the paper's language's ("1 067,08" in Uzbek and
 Russian, "1,067.08" in English), a difference carries its sign ("+22",
 "−3").
@@ -45,12 +50,25 @@ placement's parameters in the entry's default template):
   (else the built-in "Jami / Итого / Total" and its "items listed" form);
 - `round: currency`: amounts to the currency's smallest unit, whole so‘m and
   cents of a dollar or a euro, read from the price cell or the `currency`
-  fact; the total is the sum of the rounded amounts.
+  fact; the full amount is rounded, never the figure written under a scale
+  word, and the total is the sum of the rounded amounts;
+- `to_date`: a fact id ("as_of"); when the paper has it, the result is to a
+  date against a longer plan (half a year against a year's plan) and its
+  difference from the plan reads as a shortfall it is not, so a `difference`
+  column is left empty (the template drops it and names its per cent).
 
 A total row the model wrote (a "Jami" line, or a row an earlier pass marked
-`total` and a change sent back) is taken out and made again, so a total the
-customer typed that differs from the sum of the lines never prints. A per
-cent of a level indicator (a figure that is itself a per cent) is a dash.
+`total` and a change sent back) is taken out when code makes the total again,
+so a total the customer typed that differs from the sum of the lines never
+prints beside it. When code makes no total (one row, or a partial total the
+template does not print) a typed total whose figures are all the customer's
+is kept as the total row: a lone "Jami 36 mln" is the customer's figure, not
+split; shares are then left blank unless the lines add up to it, since a
+share of the lines alone would misstate it. A total row is known by its first
+word (TOTAL_ROW), so a customer's own line named "Jami xarajatlar" or "Total
+energy" in a table with totals is read as a total too: kept when it is the
+only figure, replaced when code adds the lines. A per cent of a level
+indicator (a figure that is itself a per cent) is a dash.
 """
 import copy
 import re
@@ -76,6 +94,17 @@ PREFIX = re.compile(r'^(?:\$|€|£|₽|usd|eur|rub|uzs)?$', re.IGNORECASE)
 # The currencies whose smallest unit is a cent; every other (so‘m first) is rounded to whole units.
 CENTS = re.compile(r'\$|€|£|\b(?:usd|eur|gbp|dollar\w*|euro\w*|доллар\w*|долл\.?|евро)\b', re.IGNORECASE)
 WHOLE = re.compile(r"so[‘'ʻ`’]?m|сум|сўм|uzs|\bsum\b|\bруб\w*|₽|rub\b", re.IGNORECASE)
+# A price's per-unit tail ("/kg", "per kg", "за кг", "har biri", "each"): it names the price of one, never an amount.
+PER_UNIT = re.compile(r'\s*(?:/.*|(?<![^\W\d_])(?:per|за|har\s+biri|dona\s+narxi|each|apiece|a\s+piece)'
+                      r'(?![^\W\d_]).*)$', re.IGNORECASE)
+# "so‘mdan" is "so‘m each" in Uzbek: the suffix goes with the tail.
+FROM_EACH = re.compile(r"(so[‘'ʻ`’]?m|сўм)dan\b", re.IGNORECASE)
+# Each currency by its marks: two amounts in different ones are never added.
+MONEY = (('usd', re.compile(r'\$|\b(?:usd|dollar\w*|доллар\w*|долл)', re.IGNORECASE)),
+         ('eur', re.compile(r'€|\b(?:eur|euro\w*|евро)', re.IGNORECASE)),
+         ('gbp', re.compile(r'£|\bgbp\b', re.IGNORECASE)),
+         ('rub', re.compile(r'₽|\b(?:rub|руб)', re.IGNORECASE)),
+         ('uzs', re.compile(r"so[‘'ʻ`’]?m|сум|сўм|\buzs\b|\bsum\b", re.IGNORECASE)))
 MINUS = '−'
 DASH = '—'
 HUNDRED = Decimal(100)
@@ -96,6 +125,22 @@ class Read:
 
     def style(self):
         return (self.scale.casefold().rstrip('.'), self.exp, self.unit.casefold(), self.prefix.casefold())
+
+    @property
+    def money(self):
+        """The currency the cell names ('usd', 'uzs', ...), '' when it names none."""
+        marks = f'{self.prefix} {self.unit}'
+        return next((code for code, pattern in MONEY if pattern.search(marks)), '')
+
+    @property
+    def places(self):
+        """The places of the full value: "2,10" has two, "1,5 mln" none (it is 1 500 000)."""
+        return max(0, self.decimals - self.exp)
+
+    def each_stripped(self):
+        """The read without a per-unit tail on its unit (see PER_UNIT): what an amount made from the price is in."""
+        unit = FROM_EACH.sub(r'\1', PER_UNIT.sub('', self.unit)).strip(' .,;:')
+        return self if unit == self.unit else Read(self.value, self.scale, self.exp, unit, self.prefix, self.decimals)
 
 
 def _scale_of(text):
@@ -206,17 +251,31 @@ def number(value, locale, *, decimals=None, places=2, sign=False):
 
 
 def _styled(value, reads, locale, *, decimals=None, sign=False):
-    """`value` written in the shared style of `reads`: their scale word, unit and currency sign when all agree."""
+    """`value` written in the shared style of `reads`: their scale word, unit and currency sign when all agree.
+
+    `decimals` fixes the places of the full value (a currency's cents) and is
+    never applied to the figure under a scale word: the caller has rounded the
+    full value already, and "4,5 mln" rounded to whole units would read "5 mln".
+    A scaled figure keeps at most two places, trailing zeros dropped; when two
+    places cannot hold it exactly it is written in full in the same unit.
+    """
     styles = {read_.style() for read_ in reads}
     if len(styles) == 1:
         first = reads[0]
-        shown = value / (Decimal(10) ** first.exp) if first.exp else value
-        # A scaled figure keeps two places ("1,25 mln"); a plain one the most its inputs were written with.
-        places = 2 if first.exp else max(read_.decimals for read_ in reads)
-        text = number(shown, locale, decimals=decimals, places=places, sign=sign)
+        scale, shown = first.scale, value
+        if first.exp:
+            shown = value / (Decimal(10) ** first.exp)
+            if shown == shown.quantize(Decimal('0.01')):
+                text = number(shown, locale, places=2, sign=sign)
+            else:
+                scale = ''
+                text = number(value, locale, decimals=decimals, places=2, sign=sign)
+        else:
+            # A plain figure keeps the most places its inputs were written with.
+            text = number(value, locale, decimals=decimals, places=max(read_.decimals for read_ in reads), sign=sign)
         pieces = [first.prefix + text if first.prefix in ('$', '€', '£', '₽') else
                   ' '.join(piece for piece in (first.prefix, text) if piece)]
-        pieces += [piece for piece in (first.scale, first.unit) if piece]
+        pieces += [piece for piece in (scale, first.unit) if piece]
         return ' '.join(pieces)
     return number(value, locale, decimals=decimals, places=2, sign=sign)
 
@@ -291,12 +350,26 @@ def _shares(values):
     floors = [int(share) for share in exact]
     left = 100 - sum(floors)
     order = sorted(range(len(values)), key=lambda index: (-(exact[index] - floors[index]), index))
-    for index in order[:left]:
+    # Rows tied on their remainder (equal amounts first) take the extra points together or not at all, so two equal
+    # amounts never print 17% and 16%: of the sets of whole tie groups that take exactly the points left, the one
+    # with the largest remainders wins (the least error). Only when no set fits (three equal thirds) do the first
+    # rows take them one by one, since the shares must add to 100.
+    groups = {}
+    for index in order:
+        if exact[index] > floors[index]:
+            groups.setdefault(exact[index] - floors[index], []).append(index)
+    best = {0: (Decimal(0), [])}
+    for remainder, group in groups.items():
+        for taken, (worth, chosen) in sorted(best.items(), reverse=True):
+            size, gain = taken + len(group), worth + remainder * len(group)
+            if size <= left and (size not in best or gain > best[size][0]):
+                best[size] = (gain, chosen + group)
+    for index in best[left][1] if left in best else order[:left]:
         floors[index] += 1
     return floors
 
 
-def _table(section, part, params, labels, trusted, locale, currency):
+def _table(section, part, params, labels, trusted, locale, currency, to_date=False):
     """One table part's section made: model totals out, computed cells in, the total row last."""
     count = len(part.get('columns') or ()) or None
     if count is None:
@@ -304,12 +377,14 @@ def _table(section, part, params, labels, trusted, locale, currency):
     rules = [rule for rule in part.get('computed') or () if isinstance(rule, dict)]
     totals = {column for column in part.get('total') or () if 0 < column < count}
     computed = {rule['column'] for rule in rules}
-    grid = []
+    grid, typed = [], []
     for item in section.get('items') or ():
         if not isinstance(item, dict):
             continue
         values = _cells(item, count)
-        if not (totals and _is_total(item, values, totals, computed)):
+        if totals and _is_total(item, values, totals, computed):
+            typed.append(values)
+        else:
             grid.append(values)
     # The cells this pass wrote: code's own figures, read back without asking the customer's words for them.
     made = set()
@@ -327,6 +402,11 @@ def _table(section, part, params, labels, trusted, locale, currency):
         column, op, of = rule['column'], rule['op'], [index for index in rule['of'] if index < count]
         if column >= count or not of:
             continue
+        if op == 'difference' and to_date:
+            # A to-date result against a longer plan: "−12" would read as a shortfall, so the column stays empty.
+            for values in grid:
+                values[column] = ''
+            continue
         if op == 'share':
             readable = [(row, value(row, of[0])) for row in range(len(grid))]
             readable = [(row, found) for row, found in readable if found is not None]
@@ -343,9 +423,45 @@ def _table(section, part, params, labels, trusted, locale, currency):
             if result is not None:
                 grid[row][column] = result
                 made.add((row, column))
-    rows = [_row(values) for values in grid]
     total = _total_row(grid, totals, rules, params, labels, locale, made, value)
-    section['items'] = rows + ([total] if total else [])
+    kept = [] if total else _stated(typed, grid, totals, rules, params, labels, locale, made, value, trusted)
+    section['items'] = [_row(values) for values in grid] + ([total] if total else kept)
+
+
+def _stated(typed, grid, totals, rules, params, labels, locale, made, value, trusted):
+    """The total rows the customer typed, kept where code makes none; shares blanked unless the lines add up to it.
+
+    A typed total stays only when one of its total cells is a number and every
+    number in it is the customer's: a model's "Jami" with no figure, or with a
+    figure nobody typed, is left out as before.
+    """
+    kept = []
+    for values in typed:
+        figures = {column: read(values[column], locale) for column in totals if column < len(values)}
+        figures = {column: found for column, found in figures.items() if found is not None}
+        if not figures or not _known(CELL.join(values), trusted):
+            continue
+        values = list(values)
+        if not values[0].strip():
+            values[0] = _word(labels, params.get('total_label'), TOTAL, locale)
+        for rule in rules:
+            if rule['op'] != 'share' or rule['column'] >= len(values):
+                continue
+            stated = figures.get(rule['of'][0]) if rule['of'] else None
+            lines = [value(row, rule['of'][0]) for row in range(len(grid))]
+            agrees = stated is not None and lines and all(found is not None for found in lines) and \
+                sum(found.value for found in lines) == stated.value
+            if agrees:
+                values[rule['column']] = '100%'
+            else:
+                # A share of the lines alone against a total that says more would misstate every line.
+                values[rule['column']] = ''
+                for row in range(len(grid)):
+                    if (row, rule['column']) in made:
+                        grid[row][rule['column']] = ''
+                        made.discard((row, rule['column']))
+        kept.append(_row(values, True))
+    return kept
 
 
 def _computed(op, inputs, row, params, locale, currency):
@@ -354,10 +470,15 @@ def _computed(op, inputs, row, params, locale, currency):
         result = inputs[0].value
         for found in inputs[1:]:
             result *= found.value
-        price = inputs[-1]
-        decimals = _currency_places([price], currency) if params.get('round') == 'currency' else None
-        if decimals is None and params.get('round') == 'currency':
-            decimals = 2 if any(found.decimals for found in inputs) else 0
+        # The amount is in the price's money, never per its unit: "so‘m/kg" × "450 kg" is so‘m.
+        price = inputs[-1].each_stripped()
+        decimals = None
+        if params.get('round') == 'currency':
+            decimals = _currency_places([price], currency)
+            if decimals is None:
+                decimals = 2 if any(found.places for found in inputs) else 0
+            # The full amount to the currency's smallest unit, before any scale word is put on it.
+            result = result.quantize(Decimal(1).scaleb(-decimals), rounding=ROUND_HALF_UP)
         plain = all(not found.exp and not found.prefix for found in inputs[:-1])
         return _styled(result, [price], locale, decimals=decimals) if plain else number(result, locale,
                                                                                          decimals=decimals)
@@ -389,10 +510,12 @@ def _total_row(grid, totals, rules, params, labels, locale, made, value):
         missing = [row for row, item in found if item is None and any(cell.strip() for cell in grid[row])]
         if missing:
             partial = True
-        if len(readable) < 2:
+        if len(readable) < 2 or len({item.money for item in readable} - {''}) > 1:
+            # Dollars and so‘m added would be a figure in no currency at all: no total, rather than a false one.
             continue
+        # Places of the full values ("2,10" two, "1,5 mln" none), never those written under a scale word.
         cells[column] = _styled(sum(item.value for item in readable), readable, locale,
-                                decimals=max(item.decimals for item in readable) or None)
+                                decimals=max(item.places for item in readable) or None)
         any_value = True
     if not any_value or (partial and params.get('partial') == 'none'):
         return None
@@ -407,13 +530,15 @@ def _total_row(grid, totals, rules, params, labels, locale, made, value):
     return _row(cells, 'named' if partial else True)
 
 
-def _currency(content):
-    """The `currency` fact of the paper, if it has one: the money a price cell does not name."""
+def _fact(content, field_id):
+    """A fact of the paper ('' when it has none): `currency`, the money a price cell does not name, or `as_of`."""
     for section in content.get('sections') or ():
         if isinstance(section, dict) and section.get('id') == 'facts':
             for item in section.get('items') or ():
-                if isinstance(item, dict) and item.get('label') == 'currency':
-                    return str(item.get('text') or item.get('value') or '')
+                if isinstance(item, dict) and item.get('label') == field_id:
+                    value = str(item.get('text') or item.get('value') or '').strip()
+                    # A blank drawn for it ("____") is no value.
+                    return value if re.search(r'[^\W_]', value) else ''
     return ''
 
 
@@ -434,7 +559,7 @@ def apply(entry, content, trusted, locale=None):
     locale = locale if locale in LOCALES else 'en'
     settings, labels = _settings(entry)
     content = copy.deepcopy(content)
-    currency = _currency(content)
+    currency = _fact(content, 'currency')
     for section in content.get('sections') or ():
         if not isinstance(section, dict):
             continue
@@ -442,7 +567,9 @@ def apply(entry, content, trusted, locale=None):
         if part is None or part['id'] not in wanted:
             continue
         try:
-            _table(section, part, settings.get(part['id'], {}), labels, trusted, locale, currency)
+            params = settings.get(part['id'], {})
+            to_date = bool(isinstance(params.get('to_date'), str) and _fact(content, params['to_date']))
+            _table(section, part, params, labels, trusted, locale, currency, to_date)
         except Exception as error:
             import logging
             # The type only: an exception's message may carry the customer's figures.
