@@ -423,7 +423,8 @@ def test_the_smoke_makes_one_category_deck_through_the_real_pipeline(settings, m
 
 
 def test_the_smoke_says_what_finish_took_out_and_names_an_unknown_id(settings, monkeypatch, capsys, tmp_path):
-    # A paper is made by the smoke too since N2c (tests/test_category_letter_readiness.py).
+    # A paper is made by the smoke too since N2c and N2a (tests/test_category_letter_readiness.py and
+    # test_category_study_readiness.py).
     live(settings)
     Model(monkeypatch, case='topic_only')
     code, out = smoke(monkeypatch, capsys, '--category', HIMOYA, '--case', 'topic_only', '--slides', '6',

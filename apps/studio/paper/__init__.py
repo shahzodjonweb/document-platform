@@ -150,6 +150,12 @@ class _Paper:
         self.placed = {}
         self.elastic = _elastic(entry, content)
 
+    def ctx(self):
+        """A context of the content as given, at the loosest step: what `when` predicates read before any build."""
+        return Ctx(content=self.content, entry=self.entry, template=self.template, locale=self.locale, step=0,
+                   pages=self.pages, width=self.width, frame_height=self.height, cues=self.cues, day=self.day,
+                   style=self.style)
+
     def build(self, step, ratio=None, *, known=None, total=None, state=None):
         """One build at `step` with the elastic prose cut to `ratio`; a placement that breaks it is drawn plain.
 
@@ -243,15 +249,18 @@ def render_paper(content, path, locale, *, entry, template, pages, style=None, c
     try:
         paper = _Paper(content, locale, entry, raw, pages, frozenset(cues or ()), day, style)
         steps = len(raw['type']['ladder'])
-        choice = fit.fit(paper.build, raw['page_rule'], steps, pages)
+        uncounted = fit.uncounted(raw['page_rule'], paper.ctx())
+        choice = fit.fit(paper.build, raw['page_rule'], steps, pages + uncounted)
         built, settled = _final(paper, choice, raw['furniture'])
         codes = list(choice.codes) + ([] if settled else [UNSETTLED])
         if built.pages > choice.target and fit.LONGER not in codes:
             # The final pass may move a page (the contents' numbers grew a line): the rule is read on what ships.
             codes.append(fit.LONGER)
         path.write_bytes(built.data)
-        return _artifact(path, built, entry=entry, template_id=template_id, step=choice.step, ratio=choice.ratio,
+        made = _artifact(path, built, entry=entry, template_id=template_id, step=choice.step, ratio=choice.ratio,
                          codes=codes, template=raw)
+        made['metadata']['uncounted'] = uncounted
+        return made
     except Exception as error:
         log.warning('Paper %s: template %s could not be built (%s); drawn by the fallback', entry.id, template_id,
                     registry.described(error))

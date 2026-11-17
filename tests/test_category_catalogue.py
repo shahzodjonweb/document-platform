@@ -241,6 +241,7 @@ def test_readiness_gates_are_warnings_on_a_draft_and_errors_on_a_ready_entry(mon
                                'en': 'Say it in one message.'}
     himoya['rules'].append({'text': 'A long rule. ' * 400, 'to': 'model'})
     # The papers' own rewrite rules are reworded by their C2 packages; one is put back to see it caught.
+    entries['pdf.test']['status'] = 'draft'  # ready since N2a
     entries['pdf.test']['rules'].append({'text': 'Variants are rebuilt by the pipeline.', 'to': 'rewrite'})
     made = build(entries, templates, index)
     drafts = check(catalogue=made, lock=relock(made, {}))
@@ -457,12 +458,18 @@ def test_off_is_off_whatever_is_ticked(switch, ready):
     assert catalogue.on() is False and catalogue.live('ai.pptx') == [] and catalogue.menu('ai.pdf_topic') == []
 
 
-def test_only_ticked_ready_entries_of_the_service_are_live(switch):
-    switch.update(on=True, live=['slides.himoya', 'pdf.test'])
+def test_only_ticked_ready_entries_of_the_service_are_live(switch, monkeypatch):
+    # The decks are ready since N1 and the study papers since N2a; the ariza is held a draft here, as any paper
+    # is until its family is read: a ticked draft is not live.
+    entries, templates, index = files()
+    entries['pdf.xat.ariza']['status'] = 'draft'
+    made = build(entries, templates, index)
+    monkeypatch.setattr(catalogue, '_catalogue', lambda: made)
+    switch.update(on=True, live=['slides.himoya', 'pdf.test', 'pdf.xat.ariza'])
     assert catalogue.on() is True
-    # The decks are ready since N1 and the papers still drafts: a ticked draft is not live.
     assert [entry.id for entry in catalogue.live('ai.pptx')] == ['slides.himoya']
-    assert catalogue.live('ai.pdf_topic') == [] and catalogue.menu('ai.pdf_topic') == []
+    assert [entry.id for entry in catalogue.live('ai.pdf_topic')] == ['pdf.test']
+    assert [node.id for node in catalogue.menu('ai.pdf_topic')] == ['pdf.test', 'other']
 
 
 def test_the_list_shows_live_categories_groups_with_something_live_and_boshqa(switch, ready):

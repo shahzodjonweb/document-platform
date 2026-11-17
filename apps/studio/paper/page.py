@@ -13,7 +13,10 @@ and the later pages differ only in what is printed outside it
   page count it found).
 
 A paper that turns out one page long carries no number at all (the engine
-builds it once more with `total=1` when its first page is numbered).
+builds it once more with `total=1` when its first page is numbered). Nor does
+a cover: when the flow opens with a title_page that is drawn (a lesson plan's
+cover, asked for by its cue), page 1 is unnumbered whatever `first` says, as a
+title page is; it still counts, so the body's pages read "2 / 3" and "3 / 3".
 
 The build is the CV's pattern (cv/layouts.py Sheet.build): a BaseDocTemplate
 with `invariant=1`, so the same content always gives the same bytes, and an
@@ -30,7 +33,7 @@ from reportlab.platypus import BaseDocTemplate, Flowable, Frame, KeepTogether, N
 
 from apps.core.brand import PRODUCT_NAME
 
-from .ctx import Anchor, INK
+from .ctx import Anchor, INK, holds
 from .text import MM
 
 W, H = A4
@@ -126,13 +129,15 @@ def furniture(ctx, total=None):
     font = ctx.face
     size = min(FURNITURE_SIZE, ctx.styles['small'].fontSize)
     header = header_text(ctx) if spec.get('later') == 'header_number' else ''
+    opening = (ctx.template.get('flow') or [{}])[0]
+    cover = opening.get('block') == 'title_page' and holds(opening.get('when'), ctx)
 
     def number(page):
         return f'{page} / {total}' if spec.get('format') == 'n_of_N' and total else str(page)
 
     def draw(canvas, document):
         page = document.page
-        kind = spec.get('first', 'none') if page == 1 else spec.get('later', 'none')
+        kind = ('none' if cover else spec.get('first', 'none')) if page == 1 else spec.get('later', 'none')
         if kind == 'none' or total == 1:
             return
         canvas.saveState()

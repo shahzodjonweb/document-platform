@@ -31,6 +31,12 @@ elastic prose cut to `ratio` of its sentences (None: whole):
 
 Under every rule a last page filled less than `stub_min` is pulled back by a
 tighter step when one gives fewer pages.
+
+`uncounted(rule, ctx)` is the pages a paper takes beyond its quote without
+breaking its rule: one for each of the rule's `uncounted` predicates that
+holds. A lesson plan's research counts its body pages, so a cover the teacher
+asked for is a sheet before them, and a handout's answer key a sheet after its
+pupil pages: the body is held to the quote and they follow it.
 """
 from dataclasses import dataclass
 
@@ -227,6 +233,11 @@ class Choice:
     codes: list
     # The most pages the rule allows without `longer_than_quoted`.
     target: int = 0
+
+
+def uncounted(rule, ctx):
+    """How many pages beyond the quote the rule leaves out of its count: its `uncounted` predicates that hold."""
+    return sum(1 for when in rule.get('uncounted') or () if holds(when, ctx))
 
 
 def fit(make, rule, steps, quoted):

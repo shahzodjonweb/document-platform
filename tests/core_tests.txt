@@ -1395,3 +1395,16 @@ tests/test_category_derive.py::test_so_m_and_dollars_in_one_column_get_no_shares
 tests/test_category_derive.py::test_an_amount_with_no_currency_is_in_the_papers_and_never_added_to_dollars
 tests/test_category_derive.py::test_a_line_named_after_the_total_word_is_an_item_and_is_added_up
 tests/test_category_derive.py::test_a_marketing_total_that_differs_from_the_stated_budget_is_of_the_activities_listed
+
+# Study paper readiness (N2a): the five academic and study papers are ready and meet every readiness check as an
+# error, the switch page names the native read and the real-provider run (which the smoke now makes for a paper),
+# their shortest lengths and covered or keyed forms end within the quote barely cut, a lesson's cover and a
+# handout's key are sheets the quote does not count, and a boxed heading never stands alone at a page's foot
+tests/test_category_study_readiness.py::test_every_study_paper_is_ready_and_meets_its_gates_as_errors
+tests/test_category_study_readiness.py::test_the_switch_page_says_what_a_person_still_checks_before_the_tick[pdf.mustaqil_ish]
+tests/test_category_study_readiness.py::test_every_length_and_cue_subset_ends_within_its_quote_barely_cut[pdf.mustaqil_ish-plain-8]
+tests/test_category_study_readiness.py::test_every_length_and_cue_subset_ends_within_its_quote_barely_cut[pdf.dars_ishlanmasi-cover-2]
+tests/test_category_study_readiness.py::test_every_length_and_cue_subset_ends_within_its_quote_barely_cut[pdf.dars_ishlanmasi-handout-2]
+tests/test_category_study_readiness.py::test_a_lessons_cover_and_a_handouts_key_are_sheets_the_quote_does_not_count
+tests/test_category_study_readiness.py::test_a_boxed_heading_goes_over_a_page_foot_with_its_first_line
+tests/test_category_study_readiness.py::test_the_smoke_makes_a_study_paper_through_the_real_pipeline[pdf.kurs_ishi]

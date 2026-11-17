@@ -32,13 +32,12 @@ def subsets(paper):
 
 @pytest.mark.parametrize('entry_id', STUDY)
 def test_each_entry_is_a_draft_paper_within_its_budgets(entry_id):
+    # Drafts until their templates were drawn and N2a read them; ready since, with nothing left to meet.
     paper = entry(entry_id)
-    assert (paper.service, paper.status, paper.raw['parent']) == ('pdf', 'draft', None)
+    assert (paper.service, paper.status, paper.raw['parent']) == ('pdf', catalogue.READY, None)
     assert len(prompting.block(paper)) <= BLOCK_BUDGET
     assert not [rule for rule in paper.raw['rules'] if rule['to'] == 'rewrite']
-    found = [problem for problem in catalogue.check(entry_id) if problem.subject == entry_id]
-    # What is left before ready is only the blocks R1, R3a and R3b register, and the readers N2 brings.
-    assert all('not yet registered' in problem.text for problem in found), found
+    assert [problem for problem in catalogue.check(entry_id) if problem.subject == entry_id] == []
 
 
 @pytest.mark.parametrize('entry_id', STUDY)

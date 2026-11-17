@@ -39,7 +39,10 @@
  },
  "page_rule": {
   "kind": "count",
-  "stub_min": 0.12
+  "stub_min": 0.12,
+  "uncounted": [
+   "part:h_key"
+  ]
  },
  "furniture": {
   "first": "number",
