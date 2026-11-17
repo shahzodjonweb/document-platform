@@ -238,20 +238,27 @@ SENTENCE_END = re.compile(r'[.!?…]+(?=[\s"»”)\]]|$)|\n+')
 # Legal references, by what they cite, in the three languages (normalised, lower case). A strong stem is a
 # citation by itself; a weak one also means something else ("Nyutonning ikkinchi qonuni", "qaror qabul qilish",
 # "kimyoviy modda", "in his article") and is a citation only with a mark of one beside it (`LEGAL_MARK`).
+# A weak stem that also names much else (an English "order", a Nizom, a convention): in the plural it is a citation
+# only with a number or a date beside it ("nizomlar soddalashtirildi", "the regulations of the Ministry" cite none).
+LOOSE = 'loose'
 LAW = (
     ('constitution', r"konstitutsiya(?!viy)\w*|конституци(?:я|и|ю|ей|ях)|constitutions?", True),
     ('code', r"kodeks\w*|кодекс\w*", True),
     ('code', r"codes?", False),
     ('decree', r"farmon\w*|указ(?:а|е|ом|у|ы|ов|ами|ах)?|decrees?", True),
     ('order', r"farmoyish\w*|распоряжени\w*", True),
+    ('order', r"buyru[qg]\w*|приказ\w*", False),
     # "order" in English, never "in order to".
-    ('order', r"buyru[qg]\w*|приказ\w*|(?<!in )orders?(?![ \t]+to(?![^\W\d_]))", False),
+    ('order', r"(?<!in )orders?(?![ \t]+to(?![^\W\d_]))", LOOSE),
     ('resolution', r"постановлени\w*", True),
     ('resolution', r"qaror\w*|resolutions?", False),
     ('law', r"qonun(?!iyat)\w*|закон(?!омерн)\w*|laws?|acts?", False),
     ('article', r"modda\w*|стать(?:я|и|е|ю|ей|ям|ях)|articles?", False),
-    ('regulation', r"nizom\w*|положени\w*|regulations?", False),
-    ('convention', r"konvensiya\w*|конвенци\w*|conventions?", False),
+    # «Положение о школе», never the "положение" (situation) of "экономическое положение республики".
+    ('regulation', r"nizom\w*|regulations?|(?-i:Положени\w*)|положени\w*(?=[ \t]+(?:о|об)(?![^\W\d_]))", LOOSE),
+    # The Geneva Convention, a convention on or of something, never "the convention centre".
+    ('convention', r"konvensiya\w*|конвенци\w*|(?-i:Conventions?)|conventions?(?=[ \t]+(?:on|of|for|against)(?![^\W\d_]))",
+     LOOSE),
 )
 # "593-son", "PF-5712-son", "625-I-son": an act's number. "187-sonli buyruq" is the adjective, a mark (`LEGAL_MARK`)
 # rather than a citation of its own, since "1-sonli jadval" and "45-sonli maktab" cite nothing.
@@ -263,16 +270,22 @@ NUMBERED = re.compile(SON + r"(?:i|ga|da|dan|ning)?(?![^\W\d_])")
 # when it is attached the way a citation attaches it: "214-moddasi" (an Uzbek count is "3 modda", never with the
 # hyphen), "статья 214", "Article 214 of ..." or "under Article 214" ("Article 3 discusses" is a paper's own
 # article), "№ 5" and "No. 5", "593-son" (`NUMBERED`), or a dd.mm.yyyy date right beside the stem (`DATED`).
-LEGAL_MARK = re.compile(
+NUMBER_MARK = re.compile(
     r"\d+\s*-\s*(?:modda|band|qism)\w*"
     r"|(?<![^\W\d_])(?:стать|пункт|част)\w*\s*№?\s*\d"
     r"|(?<![^\W\d_])(?:articles?|sections?)\s+\d+[\w.()]*\s+of(?![^\W\d_])"
     r"|(?<![^\W\d_])(?:under|pursuant to|according to|in accordance with|per)\s+(?:articles?|sections?)\s+\d"
     r"|№\s*\d|(?<![^\W\d_])no\.?\s*\d"  # language.normalised writes № as "No"
-    r"|to'g'risida|togrisida|respublika|республик|federal|федеральн|mahkama|министр|prezident|президент"
-    r"|oliy majlis|parliament|парламент"
-    # A ministry's or the government's act: "vazirligining 187-sonli buyrug‘i", "hukumat qarori", "Ministry ... order".
-    r"|" + SON + r"li|vazirli[gk]|hukumat|ministr(?:y|ies)|министерств")
+    # An act's number as the adjective: "vazirligining 187-sonli buyrug‘i", "625-I-sonli qonun".
+    r"|" + SON + r"li")
+# A word that marks a weak stem as a citation anywhere in its sentence: "... to‘g‘risidagi qonun", "Prezident qarori".
+WORD_MARK = re.compile(r"to'g'risida|togrisida|respublika|республик|federal|федеральн|mahkama|министр|prezident"
+                       r"|президент|oliy majlis|parliament|парламент")
+# Who issues an act, a mark only for a stem in the singular near it ("hukumat qarori", "vazirlikning buyrug‘i",
+# "the Ministry of Public Education order"): "Hukumat qator qarorlar qabul qildi" and "the Ministry reports that
+# orders grew" cite nothing.
+ISSUER = re.compile(r"vazirli[gk]|hukumat|ministr(?:y|ies)|министерств")
+ISSUER_REACH = 60
 DATED = re.compile(r"(?<![\d.])\d{1,2}[./]\d{1,2}[./](?:\d{4}|\d{2})(?!\d)")
 # How far from a weak stem a date may stand and still be its date: "17.07.2019 dagi qaror", "закон от 12.05.2020".
 DATED_REACH = 30
@@ -839,24 +852,47 @@ def _sentences(text):
 
 
 def _concepts(sentence):
-    """The legal things `sentence` cites, or an empty set when it cites none (a weak stem with no mark beside it)."""
+    """The legal things `sentence` cites, or an empty set when it cites none (a weak stem with no mark beside it).
+
+    A weak stem cites with a strong one, a number or a date beside it (NUMBER_MARK, `DATED`) or a word mark
+    anywhere (WORD_MARK), a LOOSE one in the plural only with the first two; with an issuer (ISSUER) only in the
+    singular and near it.
+    """
     text = normalised(sentence)
-    found, weak, dated = set(), set(), False
+    found, weak, dated = set(), [], False
     for concept, stem, strong in STEMS:
         for match in stem.finditer(text):
             # A weak stem capitalised inside a sentence is a title ("Mehnat Kodeksi", "Labour Code", "Закон о …").
-            if strong or (match.group(0)[0].isupper() and not _starts(text, match.start())):
+            if strong is True or (match.group(0)[0].isupper() and not _starts(text, match.start())):
                 found.add(concept)
             else:
-                weak.add(concept)
+                weak.append((concept, match, strong))
                 reach = text[max(0, match.start() - DATED_REACH):match.end() + DATED_REACH]
                 dated = dated or DATED.search(reach) is not None
     lower = text.casefold()
     if NUMBERED.search(lower):
         found.add('number')
-    if weak and (found or dated or LEGAL_MARK.search(lower)):
-        found |= weak
+    if not weak:
+        return found
+    marked = bool(found) or dated or NUMBER_MARK.search(lower) is not None
+    worded = WORD_MARK.search(lower) is not None
+    issuers = [match.span() for match in ISSUER.finditer(lower)]
+    for concept, match, strength in weak:
+        plural = _plural(match.group(0))
+        if marked or (worded and not (strength == LOOSE and plural)) or (not plural and any(
+                start - ISSUER_REACH <= match.end() and match.start() <= end + ISSUER_REACH for start, end in issuers)):
+            found.add(concept)
     return found
+
+
+def _plural(word):
+    """Whether a legal stem is in the plural: "qarorlar", "qonunlariga", "orders", "regulations", "приказы"."""
+    low = word.casefold()
+    if 'lar' in low:
+        return True
+    if low.isascii():
+        return low.endswith('s')
+    return re.fullmatch(r"(?:приказ|закон)\w*?(?:ы|ов|ам|ами|ах)", low) is not None
 
 
 # The codes and laws a sentence names by a word before its stem ("Soliq kodeksi", "Трудовой кодекс", "Labour Code"),
@@ -890,6 +926,10 @@ LAW_COUNTRY = re.compile(r"the|o'zbekiston\w*|respublika\w*|uzbekistan|republic|
 # "Code of Administrative Offences", "Law on Education".
 LAW_OF = re.compile(r"of|on|об|о")
 LAW_TOKEN = re.compile(WORD.pattern + r"|[,;:()«»\"“”„!?]")
+# A word that points at a code already named, no one's name for it: "Ushbu kodeks", "Mazkur kodeksga", "Настоящий
+# кодекс", "This Code".
+LAW_THIS = re.compile(r"ushbu|mazkur|bu|shu|amaldagi|yuqoridagi|настоящ\w*|данн\w*|указанн\w*|эт(?:от|ого|ому|им|ом)"
+                      r"|this|that|said|present|current")
 
 
 def _law_names(sentence):
@@ -904,7 +944,8 @@ def _law_names(sentence):
     invented "Jinoyat kodeksiga muvofiq javobgar bo‘ladi" or "Ma’muriy javobgarlik to‘g‘risidagi kodeksga
     muvofiq ..." passed once the customer had named any code. A sentence's first word before another of the name
     is grammar ("The Criminal Code", "Согласно Трудовому кодексу", "Korxona Mehnat kodeksiga ..."), unless it is
-    one of LAW_NAMES.
+    one of LAW_NAMES, and a word pointing at the code already named ("Ushbu kodeks", "Настоящий кодекс",
+    `LAW_THIS`) ends its name.
     """
     tokens = [(match.start(), match.group(0)) for match in LAW_TOKEN.finditer(sentence)]
 
@@ -918,6 +959,8 @@ def _law_names(sentence):
         name, index, about = [], at - 1, None
         while word(index):
             low = normalised(tokens[index][1]).casefold()
+            if LAW_THIS.fullmatch(low):
+                break
             if about is not None:
                 if about == LAW_ABOUT_REACH:
                     break

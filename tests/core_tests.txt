@@ -1608,3 +1608,14 @@ tests/test_category_finish_pdf.py::test_a_code_named_by_words_apart_from_its_ste
 tests/test_category_finish_pdf.py::test_a_code_named_by_words_apart_from_its_stem_or_after_it_is_the_customers_or_goes[uz-from-ru]
 tests/test_category_finish_pdf.py::test_a_code_named_by_words_apart_from_its_stem_or_after_it_is_the_customers_or_goes[ru]
 tests/test_category_finish_pdf.py::test_a_code_named_by_words_apart_from_its_stem_or_after_it_is_the_customers_or_goes[en]
+
+# Stage-2 re-audit round 2, laws in other senses: a situation ("экономическое положение"), a plural act beside an
+# issuer or a plain mark ("Hukumat qator qarorlar qabul qildi", "the Ministry reports that orders grew", "nizomlar
+# soddalashtirildi") and "the convention centre" are no legal sentence; "Ushbu kodeks", "Настоящий кодекс" after the
+# customer named a code stay; an issuer's act, «Положение о …» and the Geneva Convention still go
+tests/test_category_facts.py::test_a_situation_a_plural_act_or_a_convention_centre_is_no_legal_sentence[ru-situation]
+tests/test_category_facts.py::test_a_situation_a_plural_act_or_a_convention_centre_is_no_legal_sentence[en-ministry-orders]
+tests/test_category_facts.py::test_a_situation_a_plural_act_or_a_convention_centre_is_no_legal_sentence[uz-government-resolutions]
+tests/test_category_facts.py::test_a_code_pointed_at_after_the_customer_named_one_stays[ushbu]
+tests/test_category_facts.py::test_a_code_pointed_at_after_the_customer_named_one_stays[nastoyashchiy]
+tests/test_category_facts.py::test_an_issuers_act_a_regulation_and_a_convention_are_still_legal_sentences

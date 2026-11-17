@@ -1189,3 +1189,41 @@ def test_a_held_name_is_matched_whole_or_with_a_case_ending_never_by_a_prefix():
 def test_a_rejected_fact_holds_only_the_words_that_name_someone_wherever_they_stand(value, kind, held):
     known = trusting('Nonvoyxona uchun hujjat yozib bering.')
     assert facts.held_names(value, kind, known) == held
+
+
+# ---------------------------------------------------------------- laws in other senses (stage-2 re-audit, round 2)
+
+
+@pytest.mark.parametrize('part', [
+    'Экономическое положение Республики Узбекистан улучшилось.',
+    'Социально-экономическое положение республики остаётся стабильным.',
+    'Министерство экономики изучило положение малого бизнеса.',
+    'The Ministry of Economy reports that orders from small firms grew.',
+    'Parliament discussed the convention centre project.',
+    'Hukumat kichik biznesni qo‘llab-quvvatlash bo‘yicha qator qarorlar qabul qildi.',
+    'Respublika iqtisodiyotida nizomlar soddalashtirildi.',
+    'ОБЩИЕ ПОЛОЖЕНИЯ',
+], ids=['ru-situation', 'ru-situation-lower', 'ru-ministry-situation', 'en-ministry-orders', 'en-convention-centre',
+        'uz-government-resolutions', 'uz-plural-regulations', 'ru-general-provisions'])
+def test_a_situation_a_plural_act_or_a_convention_centre_is_no_legal_sentence(part):
+    assert guard(part, trusting('Iqtisodiyot fanidan kurs ishi yozing.')) == (part, [])
+
+
+@pytest.mark.parametrize('brief, part', [
+    ('Bosh buxgalter uchun lavozim yo‘riqnomasi, Mehnat kodeksiga muvofiq.', 'Ushbu kodeks talablariga rioya qiladi.'),
+    ('Bosh buxgalter uchun lavozim yo‘riqnomasi, Mehnat kodeksiga muvofiq.', 'Mazkur kodeksga muvofiq javob beradi.'),
+    ('Должностная инструкция по Трудовому кодексу.', 'Настоящий кодекс обязателен для исполнения.'),
+    ('A job description under the Labour Code.', 'This Code applies to every employee.'),
+], ids=['ushbu', 'mazkur', 'nastoyashchiy', 'this'])
+def test_a_code_pointed_at_after_the_customer_named_one_stays(brief, part):
+    assert guard(part, trusting(brief)) == (part, [])
+    assert ground(part, trusting(brief)) == (part, [])
+
+
+@pytest.mark.parametrize('part', [
+    'Hukumat qarori bilan dastur tasdiqlangan.', 'The Ministry of Public Education order sets the length.',
+    'Согласно Положению о школе урок длится 45 минут.', 'Under the Geneva Convention prisoners are protected.',
+    'Respublika qonunchiligida nizom № 5 bilan belgilangan.',
+])
+def test_an_issuers_act_a_regulation_and_a_convention_are_still_legal_sentences(part):
+    assert guard(part, trusting('7-sinf matematika fanidan dars ishlanmasi yozing.')) == ('', ['ground:law'])
