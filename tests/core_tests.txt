@@ -1125,3 +1125,15 @@ tests/test_paper_engine.py::test_a_keep_group_taller_than_any_page_starts_where_
 tests/test_paper_engine.py::test_the_head_left_before_a_closing_group_is_measured_not_counted
 tests/test_paper_engine.py::test_a_final_pass_that_adds_a_page_is_longer_than_quoted
 tests/test_paper_engine.py::test_the_final_passes_start_from_the_chosen_build_and_say_when_they_did_not_settle
+# Paper checker and sample tool (R2): a drawn paper is read back for text outside the page or frame, overlapping
+# characters, fonts that are not Noto, missing facts and labels, a page count its rule does not allow, Cyrillic in
+# an Uzbek or English paper, a stub last page and the engine's fallback codes; the family helper draws every case
+# and language of a template's samples and fails on any of these
+tests/test_paper_check.py::test_text_outside_the_page_or_frame_is_found
+tests/test_paper_check.py::test_overlapping_words_and_foreign_fonts_are_found
+tests/test_paper_check.py::test_a_missing_fact_or_label_is_found_whatever_the_case_and_apostrophes
+tests/test_paper_check.py::test_cyrillic_is_found_in_uzbek_and_english_papers_only
+tests/test_paper_check.py::test_the_engines_codes_for_a_paper_not_drawn_as_its_template_are_problems
+tests/test_paper_check.py::test_expect_holds_the_printed_facts_of_placements_that_hold_and_their_labels
+tests/test_paper_check.py::test_the_family_helper_fails_a_paper_that_loses_a_fact
+tests/test_paper_check.py::test_a_template_without_its_blocks_fails_as_the_emergency_fallback
