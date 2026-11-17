@@ -26,7 +26,7 @@ from dataclasses import dataclass, field as attribute
 
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfbase.pdfmetrics import stringWidth
-from reportlab.platypus import BaseDocTemplate, Flowable, Frame, NextPageTemplate, PageTemplate
+from reportlab.platypus import BaseDocTemplate, Flowable, Frame, KeepTogether, NextPageTemplate, PageTemplate
 
 from apps.core.brand import PRODUCT_NAME
 
@@ -63,6 +63,24 @@ class Mark(Flowable):
 
     def draw(self):
         pass
+
+
+class Together(KeepTogether):
+    """ReportLab's keep-with-next group, its space before read past the zero-size marks at its start.
+
+    A heading's run starts with its contents Anchor and a Mark, which print
+    nothing and have no space before. ReportLab asks the group's first
+    flowable for the space the frame keeps above it, so it kept none, measured
+    the group into a room the heading's own space before then took, and left a
+    heading alone at a page's foot while the line it keeps with went over.
+    """
+
+    def getSpaceBefore(self, content=None):
+        for flowable in self._content if content is None else content:
+            if hasattr(flowable, 'frameAction') or getattr(flowable, '_ZEROSIZE', 0):
+                continue
+            return flowable.getSpaceBefore()
+        return 0
 
 
 @dataclass
@@ -166,6 +184,7 @@ def build(ctx, story, *, total=None, made=None):
                                - height, bottomMargin=bottom, title=title, author=PRODUCT_NAME, creator=PRODUCT_NAME,
                                subject=name.get(ctx.locale) or name.get('en', ''), lang=ctx.locale, invariant=1,
                                initialFontName=ctx.face)
+    document.keepTogetherClass = Together
     hook = furniture(ctx, total)
     document.addPageTemplates([
         PageTemplate('first', [Frame(left, bottom, width, height, 0, 0, 0, 0, id='main')], onPage=hook),

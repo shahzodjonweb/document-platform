@@ -6,7 +6,7 @@
  ],
  "name": {
   "uz": "Marketing reja",
-  "ru": "Маркетинг-план",
+  "ru": "Маркетинговый план",
   "en": "Marketing plan"
  },
  "family": "business",
@@ -14,7 +14,7 @@
   "margins_mm": {
    "left": 30,
    "right": 15,
-   "top": 26,
+   "top": 22,
    "bottom": 20
   }
  },
@@ -32,20 +32,24 @@
    [
     9.5,
     14
+   ],
+   [
+    9,
+    13.2
    ]
   ],
   "align": "left"
  },
  "page_rule": {
-  "kind": "flow"
+  "kind": "flow",
+  "stub_min": 0.12
  },
  "furniture": {
   "first": "none",
   "later": "header_number",
-  "format": "n",
+  "format": "n_of_N",
   "header": [
-   "business_name",
-   "period"
+   "business_name"
   ]
  },
  "flow": [
@@ -57,28 +61,13 @@
     "approver"
    ],
    "params": {
-    "label": "approved",
-    "anchor": "right_half"
-   }
-  },
-  {
-   "block": "title_page",
-   "part": "title_page",
-   "when": "pages_from:8",
-   "fields": [
-    "business_name",
-    "location",
-    "author",
-    "period"
-   ],
-   "params": {
-    "label": "kind",
-    "title": "content_title",
-    "labels": {
-     "business_name": "row_business",
-     "location": "row_area",
-     "author": "row_author"
-    }
+    "word": "approved",
+    "rows": [
+     "approver"
+    ],
+    "date": true,
+    "year": "blank",
+    "side": "right"
    }
   },
   {
@@ -90,14 +79,13 @@
    ],
    "params": {
     "overline": "business_name",
-    "kind_line": "kind",
-    "title": "content_title",
+    "kind_default": "kind",
+    "title": "title",
     "subtitle": [
      "period"
     ],
-    "captions": {
-     "period": "cap_period"
-    }
+    "align": "left",
+    "rules": "below"
    }
   },
   {
@@ -114,26 +102,37 @@
    "part": "summary_text",
    "params": {
     "level": 1,
-    "numbering": "chapter"
+    "numbering": "decimal",
+    "rule": "under"
    }
   },
   {
    "block": "paragraph",
-   "part": "summary_text"
+   "part": "summary_text",
+   "params": {
+    "gap_pt": 4
+   }
   },
   {
    "block": "key_figures",
    "part": "summary_figures",
    "fields": [
-    "budget_total",
-    "current_state"
+    "budget_total"
    ],
    "params": {
+    "figures": [
+     {
+      "field": "budget_total",
+      "label": "kf_budget"
+     }
+    ],
     "from": "goals",
+    "value_column": 2,
+    "compare_column": 1,
+    "compare_label": "kf_now",
+    "label_suffix": "kf_goal",
     "boxes": 4,
-    "labels": {
-     "budget_total": "kf_budget"
-    }
+    "min": 1
    }
   },
   {
@@ -141,54 +140,147 @@
    "part": "goals",
    "params": {
     "level": 1,
-    "numbering": "chapter"
+    "numbering": "decimal",
+    "rule": "under"
    }
   },
   {
    "block": "table",
    "part": "goals",
    "params": {
+    "columns": [
+     {
+      "width_mm": "flex"
+     },
+     {
+      "width_mm": 20,
+      "type": "number"
+     },
+     {
+      "width_mm": 22,
+      "type": "number"
+     },
+     {
+      "width_mm": 28
+     },
+     {
+      "width_mm": 36
+     }
+    ],
+    "rules": "horizontal",
     "drop_empty_columns": true
-   }
+   },
+   "when": "part:goals"
+  },
+  {
+   "block": "table",
+   "part": "goals",
+   "params": {
+    "columns": [
+     {
+      "width_mm": "flex"
+     },
+     {
+      "width_mm": 20,
+      "type": "number"
+     },
+     {
+      "width_mm": 22,
+      "type": "number"
+     },
+     {
+      "width_mm": 28
+     },
+     {
+      "width_mm": 36
+     }
+    ],
+    "rules": "horizontal",
+    "blank_rows": 2
+   },
+   "when": "nopart:goals"
   },
   {
    "block": "heading",
    "part": "competitors",
-   "when": "part:competitors",
    "params": {
     "level": 1,
-    "numbering": "chapter",
+    "numbering": "decimal",
+    "rule": "under",
     "label": "ch_market"
-   }
+   },
+   "when": "pages_from:3"
+  },
+  {
+   "block": "heading",
+   "part": "market",
+   "params": {
+    "level": 2,
+    "numbering": "decimal"
+   },
+   "when": "part:market"
   },
   {
    "block": "paragraph",
    "part": "market",
    "when": "part:market",
    "params": {
-    "heading": "section"
+    "gap_pt": 4
    }
+  },
+  {
+   "block": "heading",
+   "part": "competitors",
+   "params": {
+    "level": 2,
+    "numbering": "decimal"
+   },
+   "when": "part:competitors"
   },
   {
    "block": "table",
    "part": "competitors",
-   "when": "part:competitors",
    "params": {
-    "heading": "section"
-   }
+    "columns": [
+     {
+      "width_mm": 48
+     },
+     {
+      "width_mm": "flex"
+     },
+     {
+      "width_mm": 50
+     }
+    ],
+    "rules": "horizontal"
+   },
+   "when": "part:competitors"
+  },
+  {
+   "block": "heading",
+   "part": "swot",
+   "params": {
+    "level": 2,
+    "numbering": "decimal"
+   },
+   "when": "part:swot"
   },
   {
    "block": "card_grid",
    "part": "swot",
    "when": "part:swot",
    "params": {
-    "heading": "section",
-    "columns": 2,
     "labels": {
      "strengths": "sw_s",
      "weaknesses": "sw_w",
      "opportunities": "sw_o",
      "threats": "sw_t"
+    },
+    "tags": {
+     "strengths": "tag_inner",
+     "weaknesses": "tag_inner",
+     "opportunities": "tag_outer",
+     "threats": "tag_outer"
     }
    }
   },
@@ -197,15 +289,33 @@
    "part": "audience",
    "params": {
     "level": 1,
-    "numbering": "chapter",
+    "numbering": "decimal",
+    "rule": "under",
     "label": "ch_audience"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "audience",
+   "params": {
+    "level": 2,
+    "numbering": "decimal"
    }
   },
   {
    "block": "paragraph",
    "part": "audience",
+   "when": "part:audience",
    "params": {
-    "heading": "section"
+    "gap_pt": 4
+   }
+  },
+  {
+   "block": "ruled_blank",
+   "part": "audience",
+   "when": "nopart:audience",
+   "params": {
+    "lines": 2
    }
   },
   {
@@ -213,8 +323,7 @@
    "part": "positioning",
    "when": "part:positioning",
    "params": {
-    "heading": "section",
-    "label": "position_run_in"
+    "style": "bar"
    }
   },
   {
@@ -222,17 +331,26 @@
    "part": "channels",
    "params": {
     "level": 1,
-    "numbering": "chapter",
+    "numbering": "decimal",
+    "rule": "under",
     "label": "ch_strategy"
    }
+  },
+  {
+   "block": "heading",
+   "part": "mix",
+   "params": {
+    "level": 2,
+    "numbering": "decimal"
+   },
+   "when": "part:mix"
   },
   {
    "block": "list",
    "part": "mix",
    "when": "part:mix",
    "params": {
-    "heading": "section",
-    "run_in": true,
+    "marker": "bullet",
     "labels": {
      "product": "p_product",
      "price": "p_price",
@@ -242,101 +360,249 @@
    }
   },
   {
+   "block": "heading",
+   "part": "channels",
+   "params": {
+    "level": 2,
+    "numbering": "decimal"
+   }
+  },
+  {
    "block": "table",
    "part": "channels",
    "params": {
-    "heading": "section",
-    "note": "proposal_note"
-   }
+    "columns": [
+     {
+      "width_mm": "flex"
+     },
+     {
+      "width_mm": 70
+     },
+     {
+      "width_mm": 30
+     }
+    ],
+    "rules": "horizontal",
+    "drop_empty_columns": true
+   },
+   "when": "part:channels"
+  },
+  {
+   "block": "table",
+   "part": "channels",
+   "params": {
+    "columns": [
+     {
+      "width_mm": "flex"
+     },
+     {
+      "width_mm": 70
+     },
+     {
+      "width_mm": 30
+     }
+    ],
+    "rules": "horizontal",
+    "blank_rows": 3
+   },
+   "when": "nopart:channels"
   },
   {
    "block": "heading",
    "part": "budget",
-   "when": "part:budget",
    "params": {
     "level": 1,
-    "numbering": "chapter",
+    "numbering": "decimal",
+    "rule": "under",
     "label": "ch_budget"
-   }
+   },
+   "when": "part:budget"
+  },
+  {
+   "block": "heading",
+   "part": "budget",
+   "params": {
+    "level": 2,
+    "numbering": "decimal"
+   },
+   "when": "part:budget"
   },
   {
    "block": "table",
    "part": "budget",
-   "when": "part:budget",
    "params": {
-    "heading": "section",
-    "total_label": "total"
-   }
+    "columns": [
+     {
+      "width_mm": "flex"
+     },
+     {
+      "width_mm": 40,
+      "type": "money"
+     },
+     {
+      "width_mm": 26,
+      "type": "number"
+     }
+    ],
+    "rules": "horizontal",
+    "total_label": "total",
+    "named_label": "total_named"
+   },
+   "when": "part:budget"
+  },
+  {
+   "block": "heading",
+   "part": "calendar",
+   "params": {
+    "level": 2,
+    "numbering": "decimal"
+   },
+   "when": "part:calendar"
   },
   {
    "block": "table",
    "part": "calendar",
-   "when": "part:calendar",
    "params": {
-    "heading": "section"
-   }
+    "columns": [
+     {
+      "width_mm": "flex"
+     },
+     {
+      "width_mm": 80
+     }
+    ],
+    "rules": "horizontal"
+   },
+   "when": "part:calendar"
   },
   {
    "block": "heading",
    "part": "review",
    "params": {
     "level": 1,
-    "numbering": "chapter",
+    "numbering": "decimal",
+    "rule": "under",
     "label": "ch_review"
    }
   },
   {
+   "block": "heading",
+   "part": "kpis",
+   "params": {
+    "level": 2,
+    "numbering": "decimal"
+   },
+   "when": "part:kpis"
+  },
+  {
    "block": "table",
    "part": "kpis",
-   "when": "part:kpis",
    "params": {
-    "heading": "section"
-   }
+    "columns": [
+     {
+      "width_mm": "flex"
+     },
+     {
+      "width_mm": 40
+     },
+     {
+      "width_mm": 28
+     },
+     {
+      "width_mm": 28
+     }
+    ],
+    "rules": "horizontal",
+    "drop_empty_columns": true
+   },
+   "when": "part:kpis"
   },
   {
    "block": "callout",
    "part": "review",
+   "when": "part:review",
    "params": {
-    "label": "review_run_in"
+    "style": "bar"
    }
+  },
+  {
+   "block": "heading",
+   "part": "ch_risks",
+   "params": {
+    "level": 1,
+    "numbering": "decimal",
+    "rule": "under"
+   },
+   "when": "part:ch_risks"
   },
   {
    "block": "table",
    "part": "ch_risks",
-   "when": "part:ch_risks",
    "params": {
-    "heading": "chapter"
-   }
+    "columns": [
+     {
+      "width_mm": 60
+     },
+     {
+      "width_mm": "flex"
+     }
+    ],
+    "rules": "horizontal"
+   },
+   "when": "part:ch_risks"
+  },
+  {
+   "block": "heading",
+   "part": "ch_conclusion",
+   "params": {
+    "level": 1,
+    "numbering": "decimal",
+    "rule": "under"
+   },
+   "when": "part:ch_conclusion"
   },
   {
    "block": "paragraph",
    "part": "ch_conclusion",
    "when": "part:ch_conclusion",
    "params": {
-    "heading": "chapter"
+    "gap_pt": 4
    }
+  },
+  {
+   "block": "line",
+   "when": "fact:author",
+   "params": {
+    "text": "prepared",
+    "style": "bold",
+    "before_pt": 18
+   },
+   "keep": "closing"
   },
   {
    "block": "signature_row",
    "part": "signature",
-   "when": "fact:approver",
-   "keep": "closing",
    "fields": [
     "author"
    ],
+   "when": "fact:author",
    "params": {
-    "variant": "role_position_sign_name",
-    "label": "prepared",
-    "captions": {
-     "author": "cap_position"
-    }
-   }
+    "variant": "post_sign_name",
+    "captions": [
+     "cap_position",
+     "cap_sign",
+     "cap_name"
+    ],
+    "sign_room_mm": 10,
+    "before_pt": 2
+   },
+   "keep": "closing"
   }
  ],
  "labels": {
   "kind": {
    "uz": "MARKETING REJA",
-   "ru": "МАРКЕТИНГ-ПЛАН",
+   "ru": "МАРКЕТИНГОВЫЙ ПЛАН",
    "en": "MARKETING PLAN"
   },
   "approved": {
@@ -349,30 +615,20 @@
    "ru": "Содержание",
    "en": "Contents"
   },
-  "row_business": {
-   "uz": "Biznes",
-   "ru": "Бизнес",
-   "en": "Business"
-  },
-  "row_area": {
-   "uz": "Hudud",
-   "ru": "Регион",
-   "en": "Area"
-  },
-  "row_author": {
-   "uz": "Tayyorladi",
-   "ru": "Подготовил",
-   "en": "Prepared by"
-  },
-  "cap_period": {
-   "uz": "(reja davri)",
-   "ru": "(период плана)",
-   "en": "(plan period)"
-  },
   "kf_budget": {
-   "uz": "Byudjet",
-   "ru": "Бюджет",
-   "en": "Budget"
+   "uz": "Marketing byudjeti",
+   "ru": "Маркетинговый бюджет",
+   "en": "Marketing budget"
+  },
+  "kf_now": {
+   "uz": "hozir",
+   "ru": "сейчас",
+   "en": "now"
+  },
+  "kf_goal": {
+   "uz": "maqsad",
+   "ru": "цель",
+   "en": "target"
   },
   "ch_market": {
    "uz": "Bozor va raqobatchilar",
@@ -419,10 +675,15 @@
    "ru": "Угрозы",
    "en": "Threats"
   },
-  "position_run_in": {
-   "uz": "Pozitsiya.",
-   "ru": "Позиция.",
-   "en": "Position."
+  "tag_inner": {
+   "uz": "ichki omil",
+   "ru": "внутренний",
+   "en": "internal"
+  },
+  "tag_outer": {
+   "uz": "tashqi omil",
+   "ru": "внешний",
+   "en": "external"
   },
   "p_product": {
    "uz": "Mahsulot.",
@@ -436,7 +697,7 @@
   },
   "p_place": {
    "uz": "Taqsimlash.",
-   "ru": "Распределение.",
+   "ru": "Сбыт.",
    "en": "Place."
   },
   "p_promotion": {
@@ -444,20 +705,15 @@
    "ru": "Продвижение.",
    "en": "Promotion."
   },
-  "proposal_note": {
-   "uz": "(taklif) — reja uchun taklif qilingan tadbir.",
-   "ru": "(предложение) — мероприятие, предложенное для плана.",
-   "en": "(proposed) — an activity proposed for the plan."
-  },
   "total": {
    "uz": "Jami",
    "ru": "Итого",
    "en": "Total"
   },
-  "review_run_in": {
-   "uz": "Nazorat qoidasi.",
-   "ru": "Правило контроля.",
-   "en": "Review rule."
+  "total_named": {
+   "uz": "Jami (ko‘rsatilgan tadbirlar)",
+   "ru": "Итого (указанные мероприятия)",
+   "en": "Total (activities listed)"
   },
   "prepared": {
    "uz": "Tayyorladi:",
@@ -468,6 +724,21 @@
    "uz": "(lavozimi)",
    "ru": "(должность)",
    "en": "(position)"
+  },
+  "cap_sign": {
+   "uz": "(imzo)",
+   "ru": "(подпись)",
+   "en": "(signature)"
+  },
+  "cap_name": {
+   "uz": "(F.I.Sh.)",
+   "ru": "(Ф.И.О.)",
+   "en": "(full name)"
+  },
+  "seal": {
+   "uz": "M.O‘.",
+   "ru": "М.П.",
+   "en": "L.S."
   }
  },
  "mock": "units/pdf.biz.marketing_reja/mock/business_marketing_reja.png"

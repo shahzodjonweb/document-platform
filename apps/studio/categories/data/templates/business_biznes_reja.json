@@ -14,7 +14,7 @@
   "margins_mm": {
    "left": 30,
    "right": 15,
-   "top": 26,
+   "top": 22,
    "bottom": 20
   }
  },
@@ -32,20 +32,24 @@
    [
     9.5,
     14
+   ],
+   [
+    9,
+    13.2
    ]
   ],
   "align": "left"
  },
  "page_rule": {
-  "kind": "flow"
+  "kind": "flow",
+  "stub_min": 0.12
  },
  "furniture": {
   "first": "none",
   "later": "header_number",
-  "format": "n",
+  "format": "n_of_N",
   "header": [
-   "applicant",
-   "project_name"
+   "applicant"
   ]
  },
  "flow": [
@@ -54,7 +58,6 @@
    "part": "title_page",
    "when": "pages_from:4",
    "fields": [
-    "project_name",
     "purpose",
     "applicant",
     "director",
@@ -64,18 +67,58 @@
     "plan_year"
    ],
    "params": {
-    "label": "kind",
-    "title": "content_title",
-    "foot": [
-     "location",
-     "plan_year"
-    ],
-    "labels": {
-     "applicant": "row_applicant",
-     "director": "row_director",
-     "address": "row_address",
-     "contacts": "row_contacts"
-    }
+    "year": "fact",
+    "rows": [
+     {
+      "role": "kind",
+      "label": "kind",
+      "style": "display"
+     },
+     {
+      "role": "title",
+      "own_title": true
+     },
+     {
+      "role": "subtitle",
+      "choice": "purpose",
+      "labels": {
+       "loan": "purpose_loan",
+       "grant": "purpose_grant",
+       "investor": "purpose_investor",
+       "own": "purpose_own"
+      }
+     },
+     {
+      "role": "credit",
+      "fact": "applicant",
+      "label": "row_applicant",
+      "colon": true
+     },
+     {
+      "role": "credit",
+      "fact": "director",
+      "label": "row_director",
+      "colon": true
+     },
+     {
+      "role": "credit",
+      "fact": "address",
+      "label": "row_address",
+      "colon": true
+     },
+     {
+      "role": "credit",
+      "fact": "contacts",
+      "label": "row_contacts",
+      "colon": true
+     },
+     {
+      "role": "foot",
+      "facts": [
+       "location"
+      ]
+     }
+    ]
    }
   },
   {
@@ -92,13 +135,17 @@
    "part": "summary_lead",
    "params": {
     "level": 1,
-    "numbering": "chapter",
+    "numbering": "decimal",
+    "rule": "under",
     "label": "ch_summary"
    }
   },
   {
    "block": "paragraph",
-   "part": "summary_lead"
+   "part": "summary_lead",
+   "params": {
+    "gap_pt": 4
+   }
   },
   {
    "block": "key_figures",
@@ -108,12 +155,22 @@
     "external_funding"
    ],
    "params": {
-    "from": "finance_investment",
-    "labels": {
-     "own_funds": "kf_own",
-     "external_funding": "kf_external"
-    },
-    "label": "kf_investment"
+    "figures": [
+     {
+      "total": "finance_investment",
+      "column": 3,
+      "label": "kf_investment"
+     },
+     {
+      "field": "own_funds",
+      "label": "kf_own"
+     },
+     {
+      "field": "external_funding",
+      "label": "kf_external"
+     }
+    ],
+    "min": 1
    }
   },
   {
@@ -121,7 +178,7 @@
    "part": "summary_details",
    "params": {
     "level": 2,
-    "numbering": "section"
+    "numbering": "decimal"
    }
   },
   {
@@ -148,9 +205,8 @@
      "contacts": "row_contacts",
      "tax_regime": "row_tax_regime"
     },
-    "omit_missing": [
-     "tax_regime"
-    ]
+    "label_mm": 48,
+    "rules": "under_rows"
    }
   },
   {
@@ -158,7 +214,7 @@
    "part": "summary_purpose",
    "params": {
     "level": 2,
-    "numbering": "section"
+    "numbering": "decimal"
    }
   },
   {
@@ -168,11 +224,11 @@
   {
    "block": "heading",
    "part": "summary_status",
-   "when": "part:summary_status",
    "params": {
     "level": 2,
-    "numbering": "section"
-   }
+    "numbering": "decimal"
+   },
+   "when": "part:summary_status"
   },
   {
    "block": "paragraph",
@@ -184,43 +240,114 @@
    "part": "business_description",
    "params": {
     "level": 1,
-    "numbering": "chapter",
+    "numbering": "decimal",
+    "rule": "under",
     "label": "ch_business"
    }
   },
   {
+   "block": "heading",
+   "part": "business_description",
+   "params": {
+    "level": 2,
+    "numbering": "decimal"
+   }
+  },
+  {
    "block": "paragraph",
-   "part": "business_description"
+   "part": "business_description",
+   "params": {
+    "gap_pt": 4
+   }
+  },
+  {
+   "block": "heading",
+   "part": "product",
+   "params": {
+    "level": 2,
+    "numbering": "decimal"
+   },
+   "when": "part:product"
   },
   {
    "block": "table",
    "part": "product",
-   "when": "part:product",
    "params": {
-    "numbered": true,
-    "heading": "section"
-   }
+    "columns": [
+     {
+      "width_mm": "flex"
+     },
+     {
+      "width_mm": 24
+     },
+     {
+      "width_mm": 36,
+      "type": "money"
+     }
+    ],
+    "rules": "horizontal",
+    "drop_empty_columns": true
+   },
+   "when": "part:product"
   },
   {
    "block": "heading",
    "part": "market_customers",
    "params": {
     "level": 1,
-    "numbering": "chapter",
+    "numbering": "decimal",
+    "rule": "under",
     "label": "ch_market"
    }
   },
   {
+   "block": "heading",
+   "part": "market_customers",
+   "params": {
+    "level": 2,
+    "numbering": "decimal"
+   }
+  },
+  {
    "block": "paragraph",
-   "part": "market_customers"
+   "part": "market_customers",
+   "params": {
+    "gap_pt": 4
+   }
+  },
+  {
+   "block": "heading",
+   "part": "market_competitors",
+   "params": {
+    "level": 2,
+    "numbering": "decimal"
+   },
+   "when": "part:market_competitors"
   },
   {
    "block": "table",
    "part": "market_competitors",
-   "when": "part:market_competitors",
    "params": {
-    "heading": "section"
-   }
+    "columns": [
+     {
+      "width_mm": 55
+     },
+     {
+      "width_mm": "flex"
+     }
+    ],
+    "rules": "horizontal"
+   },
+   "when": "part:market_competitors"
+  },
+  {
+   "block": "heading",
+   "part": "marketing",
+   "params": {
+    "level": 2,
+    "numbering": "decimal"
+   },
+   "when": "part:marketing"
   },
   {
    "block": "list",
@@ -228,8 +355,6 @@
    "when": "part:marketing",
    "params": {
     "marker": "bullet",
-    "run_in": true,
-    "heading": "section",
     "labels": {
      "price": "mk_price",
      "sales": "mk_sales",
@@ -240,65 +365,229 @@
   {
    "block": "heading",
    "part": "operations",
-   "when": "part:operations",
    "params": {
     "level": 1,
-    "numbering": "chapter",
+    "numbering": "decimal",
+    "rule": "under",
     "label": "ch_operations"
-   }
+   },
+   "when": "part:operations"
+  },
+  {
+   "block": "heading",
+   "part": "operations",
+   "params": {
+    "level": 2,
+    "numbering": "decimal"
+   },
+   "when": "part:operations"
   },
   {
    "block": "paragraph",
    "part": "operations",
    "when": "part:operations",
    "params": {
-    "heading": "section"
+    "gap_pt": 4
    }
+  },
+  {
+   "block": "heading",
+   "part": "team",
+   "params": {
+    "level": 2,
+    "numbering": "decimal"
+   },
+   "when": "part:team"
   },
   {
    "block": "table",
    "part": "team",
-   "when": "part:team",
    "params": {
-    "heading": "section",
-    "total_label": "total"
-   }
+    "columns": [
+     {
+      "width_mm": "flex"
+     },
+     {
+      "width_mm": 18,
+      "type": "number"
+     },
+     {
+      "width_mm": 34,
+      "type": "money"
+     },
+     {
+      "width_mm": 36,
+      "type": "money"
+     }
+    ],
+    "rules": "horizontal",
+    "total_label": "total",
+    "named_label": "total_named"
+   },
+   "when": "part:team"
+  },
+  {
+   "block": "heading",
+   "part": "schedule",
+   "params": {
+    "level": 2,
+    "numbering": "decimal"
+   },
+   "when": "part:schedule"
   },
   {
    "block": "table",
    "part": "schedule",
-   "when": "part:schedule",
    "params": {
-    "heading": "section",
+    "columns": [
+     {
+      "width_mm": "flex"
+     },
+     {
+      "width_mm": 34
+     },
+     {
+      "width_mm": 34
+     }
+    ],
+    "rules": "horizontal",
     "drop_empty_columns": true
-   }
+   },
+   "when": "part:schedule"
   },
   {
    "block": "heading",
    "part": "finance_investment",
    "params": {
     "level": 1,
-    "numbering": "chapter",
+    "numbering": "decimal",
+    "rule": "under",
     "label": "ch_finance"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "finance_investment",
+   "params": {
+    "level": 2,
+    "numbering": "decimal"
    }
   },
   {
    "block": "table",
    "part": "finance_investment",
    "params": {
-    "numbered": true,
-    "heading": "section",
+    "columns": [
+     {
+      "width_mm": "flex"
+     },
+     {
+      "width_mm": 18,
+      "type": "number"
+     },
+     {
+      "width_mm": 32,
+      "type": "money"
+     },
+     {
+      "width_mm": 36,
+      "type": "money"
+     }
+    ],
+    "rules": "horizontal",
+    "drop_empty_columns": true,
     "total_label": "total",
-    "drop_empty_columns": true
+    "named_label": "total_named"
+   },
+   "when": "part:finance_investment"
+  },
+  {
+   "block": "table",
+   "part": "finance_investment",
+   "params": {
+    "columns": [
+     {
+      "width_mm": "flex"
+     },
+     {
+      "width_mm": 18,
+      "type": "number"
+     },
+     {
+      "width_mm": 32,
+      "type": "money"
+     },
+     {
+      "width_mm": 36,
+      "type": "money"
+     }
+    ],
+    "rules": "horizontal",
+    "blank_rows": 3
+   },
+   "when": "nopart:finance_investment"
+  },
+  {
+   "block": "heading",
+   "part": "finance_sources",
+   "params": {
+    "level": 2,
+    "numbering": "decimal"
    }
   },
   {
    "block": "table",
    "part": "finance_sources",
    "params": {
-    "heading": "section",
-    "total_label": "total"
-   }
+    "columns": [
+     {
+      "width_mm": "flex"
+     },
+     {
+      "width_mm": 40,
+      "type": "money"
+     },
+     {
+      "width_mm": 24,
+      "type": "number"
+     }
+    ],
+    "rules": "horizontal",
+    "total_label": "total",
+    "named_label": "total_named"
+   },
+   "when": "part:finance_sources"
+  },
+  {
+   "block": "table",
+   "part": "finance_sources",
+   "params": {
+    "columns": [
+     {
+      "width_mm": "flex"
+     },
+     {
+      "width_mm": 40,
+      "type": "money"
+     },
+     {
+      "width_mm": 24,
+      "type": "number"
+     }
+    ],
+    "rules": "horizontal",
+    "blank_rows": 2
+   },
+   "when": "nopart:finance_sources"
+  },
+  {
+   "block": "heading",
+   "part": "finance_terms",
+   "params": {
+    "level": 2,
+    "numbering": "decimal"
+   },
+   "when": "fact:purpose=loan"
   },
   {
    "block": "kv_table",
@@ -314,7 +603,6 @@
     "loan_collateral"
    ],
    "params": {
-    "heading": "section",
     "labels": {
      "loan_bank": "lt_bank",
      "external_funding": "lt_amount",
@@ -324,10 +612,18 @@
      "loan_repayment": "lt_repayment",
      "loan_collateral": "lt_collateral"
     },
-    "omit_missing": [
-     "loan_grace",
-     "loan_repayment"
-    ]
+    "label_mm": 48,
+    "rules": "under_rows"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "finance_terms",
+   "when": "fact:purpose=investor",
+   "params": {
+    "level": 2,
+    "numbering": "decimal",
+    "label": "investor_heading"
    }
   },
   {
@@ -339,104 +635,233 @@
     "investor_offer"
    ],
    "params": {
-    "label": "investor_heading",
     "labels": {
      "external_funding": "inv_amount",
      "investor_offer": "inv_offer"
-    }
+    },
+    "label_mm": 48,
+    "rules": "under_rows"
    }
+  },
+  {
+   "block": "heading",
+   "part": "finance_revenue",
+   "params": {
+    "level": 2,
+    "numbering": "decimal"
+   },
+   "when": "part:finance_revenue"
   },
   {
    "block": "table",
    "part": "finance_revenue",
-   "when": "part:finance_revenue",
    "params": {
-    "heading": "section",
-    "total_label": "total_named"
-   }
+    "columns": [
+     {
+      "width_mm": "flex"
+     },
+     {
+      "width_mm": 28,
+      "type": "number"
+     },
+     {
+      "width_mm": 30,
+      "type": "money"
+     },
+     {
+      "width_mm": 36,
+      "type": "money"
+     }
+    ],
+    "rules": "horizontal",
+    "total_label": "total",
+    "named_label": "total_named"
+   },
+   "when": "part:finance_revenue"
+  },
+  {
+   "block": "heading",
+   "part": "finance_costs",
+   "params": {
+    "level": 2,
+    "numbering": "decimal"
+   },
+   "when": "part:finance_costs"
   },
   {
    "block": "table",
    "part": "finance_costs",
-   "when": "part:finance_costs",
    "params": {
-    "heading": "section",
-    "total_label": "total_named"
-   }
+    "columns": [
+     {
+      "width_mm": "flex"
+     },
+     {
+      "width_mm": 40,
+      "type": "money"
+     }
+    ],
+    "rules": "horizontal",
+    "total_label": "total_named",
+    "named_label": "total_named"
+   },
+   "when": "part:finance_costs"
+  },
+  {
+   "block": "heading",
+   "part": "finance_result",
+   "params": {
+    "level": 2,
+    "numbering": "decimal"
+   },
+   "when": "part:finance_result"
   },
   {
    "block": "table",
    "part": "finance_result",
-   "when": "part:finance_result",
    "params": {
-    "heading": "section"
-   }
+    "columns": [
+     {
+      "width_mm": "flex"
+     },
+     {
+      "width_mm": 40,
+      "type": "money"
+     }
+    ],
+    "rules": "horizontal"
+   },
+   "when": "part:finance_result"
   },
   {
    "block": "heading",
    "part": "risks",
    "params": {
     "level": 1,
-    "numbering": "chapter",
+    "numbering": "decimal",
+    "rule": "under",
     "label": "ch_closing"
-   }
+   },
+   "when": "part:risks"
+  },
+  {
+   "block": "heading",
+   "part": "risks",
+   "params": {
+    "level": 2,
+    "numbering": "decimal"
+   },
+   "when": "part:risks"
   },
   {
    "block": "table",
    "part": "risks",
    "params": {
-    "heading": "section"
-   }
+    "columns": [
+     {
+      "width_mm": 55
+     },
+     {
+      "width_mm": "flex"
+     }
+    ],
+    "rules": "horizontal"
+   },
+   "when": "part:risks"
   },
   {
    "block": "heading",
    "part": "conclusion",
    "params": {
     "level": 2,
-    "numbering": "section"
-   }
+    "numbering": "decimal"
+   },
+   "when": "part:conclusion"
   },
   {
    "block": "paragraph",
    "part": "conclusion",
-   "keep": "closing"
+   "when": "part:conclusion",
+   "params": {
+    "gap_pt": 4
+   }
+  },
+  {
+   "block": "heading",
+   "part": "attachments",
+   "params": {
+    "level": 2,
+    "numbering": "decimal"
+   },
+   "when": "part:attachments"
   },
   {
    "block": "list",
    "part": "attachments",
    "when": "part:attachments",
-   "keep": "closing",
    "params": {
-    "marker": "number",
-    "heading": "section"
-   }
-  },
-  {
-   "block": "signature_row",
-   "part": "signature",
-   "when": "nofact:purpose=own",
-   "keep": "closing",
-   "fields": [
-    "signers",
-    "director"
-   ],
-   "params": {
-    "variant": "position_sign_name",
-    "captions": {
-     "signers": "cap_position",
-     "director": "cap_name"
-    }
+    "marker": "number"
    }
   },
   {
    "block": "line",
    "part": "signature",
-   "when": "fact:stamp_request",
-   "keep": "closing",
+   "fields": [
+    "applicant"
+   ],
    "params": {
-    "label": "seal",
+    "label": "sign_applicant",
+    "style": "bold",
+    "before_pt": 18
+   },
+   "keep": "closing"
+  },
+  {
+   "block": "signature_row",
+   "part": "signature",
+   "fields": [
+    "signers"
+   ],
+   "when": "fact:signers",
+   "params": {
+    "variant": "post_sign_name",
+    "captions": [
+     "cap_position",
+     "cap_sign",
+     "cap_name"
+    ],
+    "sign_room_mm": 10,
+    "before_pt": 2
+   },
+   "keep": "closing"
+  },
+  {
+   "block": "signature_row",
+   "part": "signature",
+   "fields": [
+    "director"
+   ],
+   "when": "nofact:signers",
+   "params": {
+    "variant": "post_sign_name",
+    "captions": [
+     "cap_position",
+     "cap_sign",
+     "cap_name"
+    ],
+    "sign_room_mm": 10,
+    "before_pt": 2
+   },
+   "keep": "closing"
+  },
+  {
+   "block": "line",
+   "when": "fact:stamp_request",
+   "params": {
+    "text": "seal",
     "style": "small"
-   }
+   },
+   "keep": "closing"
   }
  ],
  "labels": {
@@ -450,15 +875,35 @@
    "ru": "Содержание",
    "en": "Contents"
   },
+  "purpose_loan": {
+   "uz": "Bank krediti olish uchun",
+   "ru": "Для получения банковского кредита",
+   "en": "For a bank loan"
+  },
+  "purpose_grant": {
+   "uz": "Grant olish uchun",
+   "ru": "Для получения гранта",
+   "en": "For a grant"
+  },
+  "purpose_investor": {
+   "uz": "Investor uchun",
+   "ru": "Для инвестора",
+   "en": "For an investor"
+  },
+  "purpose_own": {
+   "uz": "Ichki reja",
+   "ru": "Внутренний план",
+   "en": "Internal plan"
+  },
   "ch_summary": {
    "uz": "Rezyume",
    "ru": "Резюме",
-   "en": "Executive summary"
+   "en": "Summary"
   },
   "ch_business": {
    "uz": "Biznes va mahsulot",
    "ru": "Бизнес и продукция",
-   "en": "Business and product"
+   "en": "Business and products"
   },
   "ch_market": {
    "uz": "Bozor va marketing",
@@ -477,12 +922,12 @@
   },
   "ch_closing": {
    "uz": "Tavakkalchiliklar va xulosa",
-   "ru": "Риски и выводы",
+   "ru": "Риски и заключение",
    "en": "Risks and conclusion"
   },
   "kf_investment": {
-   "uz": "Jami investitsiya",
-   "ru": "Всего инвестиций",
+   "uz": "Umumiy investitsiya",
+   "ru": "Общие инвестиции",
    "en": "Total investment"
   },
   "kf_own": {
@@ -493,7 +938,7 @@
   "kf_external": {
    "uz": "Jalb qilinadigan mablag‘",
    "ru": "Привлекаемые средства",
-   "en": "Funding sought"
+   "en": "Funds sought"
   },
   "row_project": {
    "uz": "Loyiha nomi",
@@ -502,7 +947,7 @@
   },
   "row_applicant": {
    "uz": "Tashabbuskor",
-   "ru": "Инициатор проекта",
+   "ru": "Инициатор",
    "en": "Applicant"
   },
   "row_legal_form": {
@@ -532,23 +977,23 @@
   },
   "row_tax_regime": {
    "uz": "Soliq to‘lash tartibi",
-   "ru": "Система налогообложения",
+   "ru": "Режим налогообложения",
    "en": "Tax regime"
   },
   "mk_price": {
-   "uz": "Narx",
-   "ru": "Цена",
-   "en": "Price"
+   "uz": "Narx.",
+   "ru": "Цена.",
+   "en": "Price."
   },
   "mk_sales": {
-   "uz": "Sotuv",
-   "ru": "Продажи",
-   "en": "Sales"
+   "uz": "Sotuv.",
+   "ru": "Продажи.",
+   "en": "Sales."
   },
   "mk_promotion": {
-   "uz": "Targ‘ibot",
-   "ru": "Продвижение",
-   "en": "Promotion"
+   "uz": "Targ‘ibot.",
+   "ru": "Продвижение.",
+   "en": "Promotion."
   },
   "lt_bank": {
    "uz": "Bank yoki dastur",
@@ -578,7 +1023,7 @@
   "lt_repayment": {
    "uz": "Qaytarish tartibi",
    "ru": "Порядок погашения",
-   "en": "Repayment order"
+   "en": "Repayment"
   },
   "lt_collateral": {
    "uz": "Garov (kredit ta’minoti)",
@@ -588,7 +1033,7 @@
   "investor_heading": {
    "uz": "Investor taklifi",
    "ru": "Предложение инвестору",
-   "en": "Investor offer"
+   "en": "Offer to the investor"
   },
   "inv_amount": {
    "uz": "So‘ralayotgan summa",
@@ -596,9 +1041,9 @@
    "en": "Amount sought"
   },
   "inv_offer": {
-   "uz": "Taklif etilayotgan ulush va qaytarish shakli",
-   "ru": "Предлагаемая доля и форма возврата",
-   "en": "Share offered and form of return"
+   "uz": "Ulush va qaytarish shakli",
+   "ru": "Доля и форма возврата",
+   "en": "Share and form of return"
   },
   "total": {
    "uz": "Jami",
@@ -608,12 +1053,22 @@
   "total_named": {
    "uz": "Jami (ko‘rsatilgan moddalar)",
    "ru": "Итого (указанные статьи)",
-   "en": "Total (items named)"
+   "en": "Total (items listed)"
+  },
+  "sign_applicant": {
+   "uz": "Tashabbuskor:",
+   "ru": "Инициатор:",
+   "en": "Applicant:"
   },
   "cap_position": {
    "uz": "(lavozimi)",
    "ru": "(должность)",
    "en": "(position)"
+  },
+  "cap_sign": {
+   "uz": "(imzo)",
+   "ru": "(подпись)",
+   "en": "(signature)"
   },
   "cap_name": {
    "uz": "(F.I.Sh.)",
@@ -623,7 +1078,7 @@
   "seal": {
    "uz": "M.O‘.",
    "ru": "М.П.",
-   "en": "Stamp"
+   "en": "L.S."
   }
  },
  "mock": "units/pdf.biz.biznes_reja/mock/business_biznes_reja.png"

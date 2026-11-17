@@ -1,0 +1,654 @@
+{
+ "template": "business_marketing_reja",
+ "case": "full",
+ "entry": "pdf.biz.marketing_reja",
+ "pages": 4,
+ "uz": {
+  "title": "«Misol Kiyim» onlayn do‘koni uchun 6 oylik marketing reja",
+  "facts": {
+   "business_name": "«Misol Kiyim»",
+   "offer": "onlayn kiyim do‘koni",
+   "location": "Toshkent",
+   "period": "2027-yil mart – avgust",
+   "budget_total": "36 mln so‘m",
+   "audience": "20–35 yoshli ayollar",
+   "author": "M. Rustamova",
+   "approver": "Direktor S. Qodirov"
+  },
+  "sections": [
+   {
+    "id": "summary_text",
+    "heading": "",
+    "body": "«Misol Kiyim» — Toshkentdagi onlayn kiyim do‘koni; mijozlari 20–35 yoshli ayollar. Reja 2027-yil mart–avgust oylari uchun tuzilgan: maqsad oyiga 300 ta buyurtma va 9 000 ta obunachi.",
+    "notes": "",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "goals",
+    "heading": "",
+    "body": "",
+    "notes": "",
+    "layout": "table",
+    "items": [
+     {
+      "label": "Oylik buyurtmalar",
+      "text": "120 | 300 | 2027-yil avgust",
+      "value": "Buyurtmalar hisobi"
+     },
+     {
+      "label": "Instagram obunachilari",
+      "text": "4 000 | 9 000 | 2027-yil avgust",
+      "value": "Instagram statistikasi"
+     }
+    ]
+   },
+   {
+    "id": "competitors",
+    "heading": "",
+    "body": "",
+    "notes": "",
+    "layout": "table",
+    "items": [
+     {
+      "label": "Instagramdagi arzonroq do‘konlar",
+      "text": "Narxi pastroq",
+      "value": "7 kun ichida almashtirish"
+     }
+    ]
+   },
+   {
+    "id": "swot",
+    "heading": "",
+    "body": "",
+    "notes": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "strengths",
+      "text": "7 kun ichida almashtirish",
+      "value": ""
+     },
+     {
+      "label": "strengths",
+      "text": "Mavjud baza: 4 000 obunachi",
+      "value": ""
+     },
+     {
+      "label": "weaknesses",
+      "text": "Raqobatchilarda narx pastroq",
+      "value": ""
+     },
+     {
+      "label": "opportunities",
+      "text": "Telegram — qo‘shimcha aloqa kanali",
+      "value": ""
+     },
+     {
+      "label": "threats",
+      "text": "Instagram reklama narxining o‘zgarishi",
+      "value": ""
+     }
+    ]
+   },
+   {
+    "id": "audience",
+    "heading": "",
+    "body": "Asosiy mijozlar — 20–35 yoshli ayollar.",
+    "notes": "",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "positioning",
+    "heading": "",
+    "body": "«Misol Kiyim» — 20–35 yoshli ayollar uchun Toshkentdagi onlayn kiyim do‘koni; farqi — 7 kun ichida almashtirish.",
+    "notes": "",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "mix",
+    "heading": "",
+    "body": "",
+    "notes": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "product",
+      "text": "Onlayn kiyim do‘koni; xaridorga 7 kun ichida almashtirish imkoniyati beriladi.",
+      "value": ""
+     },
+     {
+      "label": "place",
+      "text": "Savdo onlayn, Toshkent bo‘ylab olib boriladi.",
+      "value": ""
+     },
+     {
+      "label": "promotion",
+      "text": "Instagram reklama, bloggerlar va Telegram.",
+      "value": ""
+     }
+    ]
+   },
+   {
+    "id": "channels",
+    "heading": "",
+    "body": "",
+    "notes": "",
+    "layout": "table",
+    "items": [
+     {
+      "label": "Instagram reklama",
+      "text": "20–35 yoshli ayollarga reklama",
+      "value": ""
+     },
+     {
+      "label": "Bloggerlar",
+      "text": "Yangi auditoriyaga chiqish",
+      "value": ""
+     },
+     {
+      "label": "Telegram",
+      "text": "Mijozlar bilan aloqa",
+      "value": ""
+     }
+    ]
+   },
+   {
+    "id": "budget",
+    "heading": "",
+    "body": "",
+    "notes": "",
+    "layout": "table",
+    "items": [
+     {
+      "label": "Instagram reklama",
+      "text": "14 000 000",
+      "value": "39%"
+     },
+     {
+      "label": "Bloggerlar",
+      "text": "10 000 000",
+      "value": "28%"
+     },
+     {
+      "label": "Telegram",
+      "text": "6 000 000",
+      "value": "17%"
+     },
+     {
+      "label": "Aksiyalar",
+      "text": "6 000 000",
+      "value": "16%"
+     },
+     {
+      "label": "Jami",
+      "text": "36 000 000",
+      "value": "100%",
+      "total": true
+     }
+    ]
+   },
+   {
+    "id": "calendar",
+    "heading": "",
+    "body": "",
+    "notes": "",
+    "layout": "table",
+    "items": [
+     {
+      "label": "Instagram reklama",
+      "text": "",
+      "value": "mart – avgust"
+     },
+     {
+      "label": "Bloggerlar",
+      "text": "",
+      "value": "aprel – iyun"
+     }
+    ]
+   },
+   {
+    "id": "review",
+    "heading": "",
+    "body": "Reja har oy oxirida tekshiriladi, birinchi tekshiruv — mart oxirida. Maqsadga yaqinlashtirmagan tadbirning mablag‘i natija bergan tadbirga ko‘chiriladi.",
+    "notes": "",
+    "layout": "text",
+    "items": []
+   }
+  ]
+ },
+ "ru": {
+  "title": "Маркетинговый план онлайн-магазина «Мисол Кийим» на 6 месяцев",
+  "facts": {
+   "business_name": "«Мисол Кийим»",
+   "offer": "онлайн-магазин одежды",
+   "location": "Ташкент",
+   "period": "март – август 2027 года",
+   "budget_total": "36 млн сумов",
+   "audience": "женщины 20–35 лет",
+   "author": "М. Рустамова",
+   "approver": "Директор С. Кодиров"
+  },
+  "sections": [
+   {
+    "id": "summary_text",
+    "heading": "",
+    "body": "«Мисол Кийим» — онлайн-магазин одежды в Ташкенте; покупатели — женщины 20–35 лет. План составлен на март–август 2027 года: цель — 300 заказов в месяц и 9 000 подписчиков.",
+    "notes": "",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "goals",
+    "heading": "",
+    "body": "",
+    "notes": "",
+    "layout": "table",
+    "items": [
+     {
+      "label": "Заказы в месяц",
+      "text": "120 | 300 | август 2027",
+      "value": "Учёт заказов"
+     },
+     {
+      "label": "Подписчики в Instagram",
+      "text": "4 000 | 9 000 | август 2027",
+      "value": "Статистика Instagram"
+     }
+    ]
+   },
+   {
+    "id": "competitors",
+    "heading": "",
+    "body": "",
+    "notes": "",
+    "layout": "table",
+    "items": [
+     {
+      "label": "Более дешёвые магазины в Instagram",
+      "text": "Цены ниже",
+      "value": "Обмен в течение 7 дней"
+     }
+    ]
+   },
+   {
+    "id": "swot",
+    "heading": "",
+    "body": "",
+    "notes": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "strengths",
+      "text": "Обмен в течение 7 дней",
+      "value": ""
+     },
+     {
+      "label": "strengths",
+      "text": "Своя база: 4 000 подписчиков",
+      "value": ""
+     },
+     {
+      "label": "weaknesses",
+      "text": "У конкурентов цены ниже",
+      "value": ""
+     },
+     {
+      "label": "opportunities",
+      "text": "Telegram — дополнительный канал связи",
+      "value": ""
+     },
+     {
+      "label": "threats",
+      "text": "Изменение цен на рекламу в Instagram",
+      "value": ""
+     }
+    ]
+   },
+   {
+    "id": "audience",
+    "heading": "",
+    "body": "Основные покупатели — женщины 20–35 лет.",
+    "notes": "",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "positioning",
+    "heading": "",
+    "body": "«Мисол Кийим» — онлайн-магазин одежды в Ташкенте для женщин 20–35 лет; отличие — обмен в течение 7 дней.",
+    "notes": "",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "mix",
+    "heading": "",
+    "body": "",
+    "notes": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "product",
+      "text": "Онлайн-магазин одежды; покупатель может обменять товар в течение 7 дней.",
+      "value": ""
+     },
+     {
+      "label": "place",
+      "text": "Продажи идут онлайн, по всему Ташкенту.",
+      "value": ""
+     },
+     {
+      "label": "promotion",
+      "text": "Реклама в Instagram, блогеры и Telegram.",
+      "value": ""
+     }
+    ]
+   },
+   {
+    "id": "channels",
+    "heading": "",
+    "body": "",
+    "notes": "",
+    "layout": "table",
+    "items": [
+     {
+      "label": "Реклама в Instagram",
+      "text": "Реклама для женщин 20–35 лет",
+      "value": ""
+     },
+     {
+      "label": "Блогеры",
+      "text": "Выход на новую аудиторию",
+      "value": ""
+     },
+     {
+      "label": "Telegram",
+      "text": "Связь с покупателями",
+      "value": ""
+     }
+    ]
+   },
+   {
+    "id": "budget",
+    "heading": "",
+    "body": "",
+    "notes": "",
+    "layout": "table",
+    "items": [
+     {
+      "label": "Реклама в Instagram",
+      "text": "14 000 000",
+      "value": "39%"
+     },
+     {
+      "label": "Блогеры",
+      "text": "10 000 000",
+      "value": "28%"
+     },
+     {
+      "label": "Telegram",
+      "text": "6 000 000",
+      "value": "17%"
+     },
+     {
+      "label": "Акции",
+      "text": "6 000 000",
+      "value": "16%"
+     },
+     {
+      "label": "Итого",
+      "text": "36 000 000",
+      "value": "100%",
+      "total": true
+     }
+    ]
+   },
+   {
+    "id": "calendar",
+    "heading": "",
+    "body": "",
+    "notes": "",
+    "layout": "table",
+    "items": [
+     {
+      "label": "Реклама в Instagram",
+      "text": "",
+      "value": "март – август"
+     },
+     {
+      "label": "Блогеры",
+      "text": "",
+      "value": "апрель – июнь"
+     }
+    ]
+   },
+   {
+    "id": "review",
+    "heading": "",
+    "body": "План проверяется в конце каждого месяца, первая проверка — в конце марта. Деньги мероприятия, которое не приближает к цели, переходят к тому, что дало результат.",
+    "notes": "",
+    "layout": "text",
+    "items": []
+   }
+  ]
+ },
+ "en": {
+  "title": "A six-month marketing plan for the Misol Wear online shop",
+  "facts": {
+   "business_name": "Misol Wear",
+   "offer": "online clothing shop",
+   "location": "Tashkent",
+   "period": "March – August 2027",
+   "budget_total": "UZS 36 mln",
+   "audience": "women aged 20–35",
+   "author": "M. Rustamova",
+   "approver": "Director S. Qodirov"
+  },
+  "sections": [
+   {
+    "id": "summary_text",
+    "heading": "",
+    "body": "Misol Wear is an online clothing shop in Tashkent whose customers are women aged 20–35. The plan covers March to August 2027: the aim is 300 orders a month and 9,000 followers.",
+    "notes": "",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "goals",
+    "heading": "",
+    "body": "",
+    "notes": "",
+    "layout": "table",
+    "items": [
+     {
+      "label": "Orders a month",
+      "text": "120 | 300 | August 2027",
+      "value": "Order records"
+     },
+     {
+      "label": "Instagram followers",
+      "text": "4,000 | 9,000 | August 2027",
+      "value": "Instagram statistics"
+     }
+    ]
+   },
+   {
+    "id": "competitors",
+    "heading": "",
+    "body": "",
+    "notes": "",
+    "layout": "table",
+    "items": [
+     {
+      "label": "Cheaper shops on Instagram",
+      "text": "Lower prices",
+      "value": "Exchange within 7 days"
+     }
+    ]
+   },
+   {
+    "id": "swot",
+    "heading": "",
+    "body": "",
+    "notes": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "strengths",
+      "text": "Exchange within 7 days",
+      "value": ""
+     },
+     {
+      "label": "strengths",
+      "text": "An audience of 4,000 followers",
+      "value": ""
+     },
+     {
+      "label": "weaknesses",
+      "text": "Competitors charge less",
+      "value": ""
+     },
+     {
+      "label": "opportunities",
+      "text": "Telegram as a second channel",
+      "value": ""
+     },
+     {
+      "label": "threats",
+      "text": "Instagram advertising prices change",
+      "value": ""
+     }
+    ]
+   },
+   {
+    "id": "audience",
+    "heading": "",
+    "body": "The main customers are women aged 20–35.",
+    "notes": "",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "positioning",
+    "heading": "",
+    "body": "Misol Wear is an online clothing shop in Tashkent for women aged 20–35; its difference is an exchange within 7 days.",
+    "notes": "",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "mix",
+    "heading": "",
+    "body": "",
+    "notes": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "product",
+      "text": "An online clothing shop; a buyer may exchange an item within 7 days.",
+      "value": ""
+     },
+     {
+      "label": "place",
+      "text": "Sales are online, across Tashkent.",
+      "value": ""
+     },
+     {
+      "label": "promotion",
+      "text": "Instagram advertising, bloggers and Telegram.",
+      "value": ""
+     }
+    ]
+   },
+   {
+    "id": "channels",
+    "heading": "",
+    "body": "",
+    "notes": "",
+    "layout": "table",
+    "items": [
+     {
+      "label": "Instagram advertising",
+      "text": "Advertising to women aged 20–35",
+      "value": ""
+     },
+     {
+      "label": "Bloggers",
+      "text": "Reaching a new audience",
+      "value": ""
+     },
+     {
+      "label": "Telegram",
+      "text": "Keeping in touch with buyers",
+      "value": ""
+     }
+    ]
+   },
+   {
+    "id": "budget",
+    "heading": "",
+    "body": "",
+    "notes": "",
+    "layout": "table",
+    "items": [
+     {
+      "label": "Instagram advertising",
+      "text": "14,000,000",
+      "value": "39%"
+     },
+     {
+      "label": "Bloggers",
+      "text": "10,000,000",
+      "value": "28%"
+     },
+     {
+      "label": "Telegram",
+      "text": "6,000,000",
+      "value": "17%"
+     },
+     {
+      "label": "Promotions",
+      "text": "6,000,000",
+      "value": "16%"
+     },
+     {
+      "label": "Total",
+      "text": "36,000,000",
+      "value": "100%",
+      "total": true
+     }
+    ]
+   },
+   {
+    "id": "calendar",
+    "heading": "",
+    "body": "",
+    "notes": "",
+    "layout": "table",
+    "items": [
+     {
+      "label": "Instagram advertising",
+      "text": "",
+      "value": "March – August"
+     },
+     {
+      "label": "Bloggers",
+      "text": "",
+      "value": "April – June"
+     }
+    ]
+   },
+   {
+    "id": "review",
+    "heading": "",
+    "body": "The plan is checked at the end of each month, the first time at the end of March. The money of an activity that does not move toward the goal goes to one that does.",
+    "notes": "",
+    "layout": "text",
+    "items": []
+   }
+  ]
+ }
+}
