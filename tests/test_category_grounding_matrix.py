@@ -431,8 +431,25 @@ CASES = [
     gp('names-a-building-company-is-no-name-uz-keep', KEEP, PLAN_UZ, 'uz',
        'Qurilish kompaniyasi bilan shartnoma tuzamiz.'),
     gp('names-a-bread-factory-is-no-name-uz-keep', KEEP, PLAN_UZ, 'uz', 'Non zavodi qurilmaydi.'),
-    # 3b7d121 measured it on the real samples: a plural noun before a kind names no one.
-    gp('names-a-plural-noun-before-banki-uz-keep', KEEP, COURSE_UZ, 'uz', 'Keyslar banki ilovada berilgan.'),
+    # A plural before an Uzbek kind in the possessive is an organisation's name as often as a common noun's
+    # ("Do‘stlar kompaniyasida", "Yoshlar banki"): the run is held (round 2 of the convergence, must, regression from
+    # 7da99e9), and a plural common noun before a kind goes with it, the price of it.
+    gp('names-plural-name-before-banki-uz-blank', BLANK, PLAN_UZ, 'uz', 'Yoshlar banki 200 mln so‘m kredit beradi.',
+       gone=('Yoshlar',)),
+    body('names-plural-name-before-kind-in-a-letter-uz-blank', BLANK, 'pdf.xat.ishga_kirish', COVER_UZ, 'uz', 'fit',
+         'Do‘stlar kompaniyasida sotuvchi bo‘lib ishlaganman.', gone=('Do‘stlar',),
+         facts=(('applicant_name', 'Qodirova Malika'),)),
+    body('names-plural-names-before-kinds-in-a-letter-uz-blank', BLANK, 'pdf.xat.ishga_kirish', COVER_UZ, 'uz', 'fit',
+         'Yulduzlar supermarketida kassir bo‘lib ishlaganman. Do‘stlar kompaniyasida sotuv bo‘limida tajriba '
+         'orttirdim.', gone=('Yulduzlar', 'Do‘stlar'), facts=(('applicant_name', 'Qodirova Malika'),)),
+    cell('names-plural-name-before-kind-in-a-competitor-cell-uz-blank', BLANK, 'pdf.biz.biznes_reja', PLAN_UZ, 'uz',
+         'market_competitors', 'Do‘stlar supermarketi', row=('', 'Narxlari yuqori'), gone=('Do‘stlar',)),
+    gp('names-plural-name-before-zavodida-uz-blank', BLANK, COVER_UZ, 'uz', 'Ustalar zavodida ishlaganman.',
+       gone=('Ustalar',)),
+    gp('names-plural-name-before-akademiyasida-uz-blank', BLANK, COVER_UZ, 'uz',
+       'Yulduzlar akademiyasida malaka oshirganman.', gone=('Yulduzlar',)),
+    gp('names-a-plural-noun-before-banki-uz-accepted_false_blank', ACCEPTED, COURSE_UZ, 'uz',
+       'Keyslar banki ilovada berilgan.', gone=('Keyslar',), pair='names-plural-name-before-banki-uz-blank'),
     gp('names-a-bank-in-lower-case-en-keep', KEEP, PLAN_EN, 'en', 'The bank will lend 200 million soums.'),
     gp('names-a-bank-opening-a-sentence-ru-keep', KEEP, PLAN_RU, 'ru', 'Банк выдаст кредит 200 млн сумов.'),
     gp('names-the-customers-bank-opening-a-sentence-uz-keep', KEEP, PLAN_UZ + ' Kreditni Hamkorbank beradi.', 'uz',

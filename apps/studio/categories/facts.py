@@ -1331,10 +1331,9 @@ def _organisation(text, run):
         second = (kind.group(2) or '').casefold()
         return RU_ORG_KINDS.fullmatch(after) is not None or (
             RU_ADJECTIVE.fullmatch(after) is not None and RU_ORG_KINDS.fullmatch(second) is not None)
+    # A plural before a kind is a name as often as a common noun ("Do‘stlar kompaniyasida", "Yoshlar banki" beside
+    # "Keyslar banki", a bank of cases): it is held, a false blank at worst.
     word = fold(kind.group(1))
-    # A plural before a kind is a common noun's: "Keyslar banki" (a bank of cases).
-    if re.search(r"lar(?:i|ning|ni|ga|da|dan)?$", fold(run[-1][2])):
-        return False
     return word in ORG_AFTER or (word.endswith('lar') and kind.group(2) is not None and fold(kind.group(2)) in CHAIN)
 
 

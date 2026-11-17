@@ -1354,7 +1354,8 @@ def test_a_thousand_and_one_is_still_read_whole():
     ('Вестминстерский университет принял меня.', 'Напишите сопроводительное письмо, я работала в рознице.', False),
     ('Самаркандский государственный институт принял меня.', 'Напишите письмо, я работала в рознице.', False),
     ('Медицинский институт принял меня.', 'Напишите сопроводительное письмо, я работала в рознице.', True),
-    ('Keyslar banki ilovada berilgan.', 'Raqamli marketing mavzusida kurs ishi yozing.', True),
+    # A plural before a kind is a name as often ("Do‘stlar kompaniyasida"): held, the price of it (owner's tie-break).
+    ('Keyslar banki ilovada berilgan.', 'Raqamli marketing mavzusida kurs ishi yozing.', False),
 ], ids=['uz-city', 'uz-district', 'uz-the-customers-city', 'uz-platform', 'ru-name-adjective',
         'ru-name-adjective-before-another', 'ru-kind-adjective', 'uz-plural-before-a-kind'])
 def test_a_first_word_is_a_name_by_the_kind_after_it(sentence, brief, kept):
