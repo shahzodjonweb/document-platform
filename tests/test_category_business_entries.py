@@ -178,14 +178,17 @@ def test_a_line_amount_the_customer_typed_survives_the_finish_while_a_product_is
     rows = finished_table('pdf.biz.biznes_reja', plan, 6, 'finance_investment',
                           [('Issiqxona qurilishi', '', '130 mln'), ('Sug‘orish tizimi', '', '40 mln'),
                            ('Urug‘ va o‘g‘it', '', '30 mln')])
+    # derive adds the typed amounts in their own scale.
     assert rows == [['Issiqxona qurilishi', '', '', '130 mln'], ['Sug‘orish tizimi', '', '', '40 mln'],
-                    ['Urug‘ va o‘g‘it', '', '', '30 mln']]
+                    ['Urug‘ va o‘g‘it', '', '', '30 mln'], ['Jami', '', '', '200 mln']]
     offer = ('Namuna Jihoz MChJ nomidan tijorat taklifi: 20 ta stol jami 24 000 000 so‘m, 15 ta stul — har biri '
              '310 000 so‘m.')
     rows = finished_table('pdf.biz.tijorat_taklifi', offer, 1, 'prices',
                           [('Stol', 'ta | 20 |', '24 000 000'), ('Stul', 'ta | 15 | 310 000', '4 650 000')])
-    # The table's line given as its total keeps it; the line with a quantity and a price is derive's to multiply.
-    assert rows == [['Stol', 'ta', '20', '', '24 000 000'], ['Stul', 'ta', '15', '310 000', '']]
+    # The table's line given as its total keeps it; the line with a quantity and a price is derive's to multiply,
+    # and the total adds both.
+    assert rows == [['Stol', 'ta', '20', '', '24 000 000'], ['Stul', 'ta', '15', '310 000', '4 650 000'],
+                    ['Jami', '', '', '', '28 650 000']]
     # A figure the customer never typed is still not kept, computed column or not.
     rows = finished_table('pdf.biz.tijorat_taklifi', offer, 1, 'prices', [('Stol', 'ta | 20 |', '25 000 000')])
     assert rows[0][4] != '25 000 000' and '25' not in rows[0][4]

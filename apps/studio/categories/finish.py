@@ -951,7 +951,7 @@ def _paper(entry, data, content, *, only, file_names, codes):
         _drop_empty(entry, content)
     if whole or tables:
         from . import derive
-        content = derive.apply(entry, content, trusted)
+        content = derive.apply(entry, content, trusted, locale=locale)
     from .. import quality
     content, _ = quality.tidy(content, scope)
     content, _ = quality.enforce(content, locale, scope)
