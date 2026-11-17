@@ -16,7 +16,8 @@
     {"kind": "quote", "code": "ground:quote", "guard": true, "text": "Muallif ta’kidlaganidek, «bilim olish har bir insonning muqaddas burchidir»."},
     {"kind": "order", "code": "ground:law", "guard": true, "text": "Dars Xalq ta’limi vazirligining 2017-yil 6-apreldagi 187-sonli buyrug‘i asosida tashkil etiladi."},
     {"kind": "code", "code": "ground:law", "guard": true, "text": "Jinoyat kodeksiga muvofiq u javobgar bo‘ladi."},
-    {"kind": "single_quote", "code": "ground:quote", "guard": true, "text": "Muallif ta’kidlaganidek, ‘bilim olish har bir o‘quvchining muqaddas burchidir’."}
+    {"kind": "single_quote", "code": "ground:quote", "guard": true, "text": "Muallif ta’kidlaganidek, ‘bilim olish har bir o‘quvchining muqaddas burchidir’."},
+    {"kind": "handle", "code": "ground:number", "text": "Buyurtma uchun @namuna_mebel_uz kanaliga yoki namunamebel.shop saytiga yozing."}
   ],
   "ru": [
     {"kind": "name", "code": "ground:name", "text": "Работой также руководил Холмирзаев Ботиржон Эргашевич."},
@@ -33,7 +34,8 @@
     {"kind": "quote", "code": "ground:quote", "guard": true, "text": "Как отмечал автор, «знание есть главная обязанность каждого человека»."},
     {"kind": "order", "code": "ground:law", "guard": true, "text": "Урок проводится согласно приказу Министерства просвещения от 6 апреля 2017 года № 187."},
     {"kind": "code", "code": "ground:law", "guard": true, "text": "Уголовный кодекс предусматривает за это ответственность."},
-    {"kind": "single_quote", "code": "ground:quote", "guard": true, "text": "Как писал автор, ‹маркетинг — это искусство находить своих клиентов›."}
+    {"kind": "single_quote", "code": "ground:quote", "guard": true, "text": "Как писал автор, ‹маркетинг — это искусство находить своих клиентов›."},
+    {"kind": "handle", "code": "ground:number", "text": "Для заказа пишите в @namuna_mebel_uz или на сайт namunamebel.kz."}
   ],
   "en": [
     {"kind": "name", "code": "ground:name", "text": "The project was also supervised by Botirjon Xolmirzayev."},
@@ -50,6 +52,7 @@
     {"kind": "quote", "code": "ground:quote", "guard": true, "text": "As the author put it, “knowledge is the sacred duty of every person”."},
     {"kind": "order", "code": "ground:law", "guard": true, "text": "Lessons follow the Ministry of Public Education order of 6 April 2017."},
     {"kind": "code", "code": "ground:law", "guard": true, "text": "Criminal Code provisions apply to this case."},
-    {"kind": "single_quote", "code": "ground:quote", "guard": true, "text": "As the author put it, 'the aim of marketing is to make selling superfluous'."}
+    {"kind": "single_quote", "code": "ground:quote", "guard": true, "text": "As the author put it, 'the aim of marketing is to make selling superfluous'."},
+    {"kind": "handle", "code": "ground:number", "text": "To order, message @namuna_mebel_uz or visit namunamebel.online."}
   ]
 }

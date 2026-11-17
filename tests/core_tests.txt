@@ -1493,3 +1493,12 @@ tests/test_category_facts.py::test_a_quotation_in_single_marks_is_checked_as_any
 tests/test_category_facts.py::test_a_quotation_in_single_marks_is_checked_as_any_other[uz-single]
 tests/test_category_facts.py::test_uzbek_letters_and_english_apostrophes_are_never_quotation_marks[uz-marks]
 tests/test_category_facts.py::test_uzbek_letters_and_english_apostrophes_are_never_quotation_marks[en-apostrophes]
+
+# Stage-2 re-audit, contacts: a Telegram or Instagram handle and a site on the region's or the shops' endings (.kz,
+# .shop, .online ...) are found whole as e-mails are, so an invented one never reaches a cover letter's sender block,
+# an offer's letterhead or its call to action; the customer's own, given as "@name" or a t.me/ link, stays
+tests/test_category_facts.py::test_a_handle_or_a_site_the_customer_never_gave_is_not_kept[@aziz_karimov]
+tests/test_category_facts.py::test_a_handle_or_a_site_the_customer_never_gave_is_not_kept[aziz-karimov.kz]
+tests/test_category_facts.py::test_the_customers_own_handle_is_kept_however_they_gave_it
+tests/test_category_finish_pdf.py::test_a_cover_letters_invented_handle_and_site_are_not_kept_or_written
+tests/test_category_finish_pdf.py::test_an_offers_invented_website_is_not_kept_and_the_customers_is

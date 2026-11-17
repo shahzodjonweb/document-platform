@@ -17,7 +17,8 @@ reported as codes.
   that, by the kind of its field: a person's or an organisation's capitalised
   words must be the customer's (with a case ending allowed), a date, sum or
   reference number must be one the customer gave however it is written
-  (numbers.py), an e-mail must be found whole.
+  (numbers.py), an e-mail, a link or a handle ("@oqtosh_mebel") must be
+  found whole.
 - `ground(text, trusted)` is for the written parts that state the customer's
   facts (a letter, an official paper, a business paper, a deck slide of the
   customer's figures): an unsupported number, run of capitalised words or
@@ -83,6 +84,10 @@ FOLDED_WORD = re.compile(r'[^\W\d_]+')
 # The forms numbers.py skips, read in linear time there (numbers.EMAIL_PATTERN says how).
 EMAIL = re.compile(numbers.EMAIL_PATTERN)
 LINK = re.compile(numbers.LINK_PATTERN, re.IGNORECASE)
+HANDLE = re.compile(numbers.HANDLE_PATTERN)
+# A handle given as a link, "t.me/oqtosh_mebel", "instagram.com/oqtosh_mebel": the same account as "@oqtosh_mebel".
+HANDLE_LINK = re.compile(r"(?:t|telegram)\.me/([A-Za-z0-9_]{3,32})|instagram\.com/([A-Za-z0-9_.]{3,32})",
+                         re.IGNORECASE)
 VOWELS = set('aeiouy')
 # What a name takes in a sentence when it is three letters long and cannot meet the common-prefix rule:
 # "Aliga", "Alining", "Алию", "Ali's" (folded).
@@ -351,6 +356,8 @@ class Trusted:
     emails: frozenset
     links: frozenset
     said: str = ''
+    # The customer's handles, lower case with their "@" ("@oqtosh_mebel"), from the text and from t.me/ links.
+    handles: frozenset = frozenset()
     # What is read from `said` only when needed. `counting` makes a new Trusted with dataclasses.replace, which hands
     # this same dict on, so a slide's counted copy never folds the whole source again.
     cache: dict = field(default_factory=dict, compare=False, repr=False)
@@ -392,7 +399,14 @@ def trusting(text, *, allowed=(), wording=''):
     lower = normalised(text).casefold() + ('\n' + normalised(wording).casefold() if wording.strip() else '')
     return Trusted(words, allow, frozenset(numbers.values(text)), quoted, lower,
                    frozenset(email.lower().strip('.') for email in EMAIL.findall(text)),
-                   frozenset(_link(link) for link in LINK.findall(EMAIL.sub(' ', text))), text)
+                   frozenset(_link(link) for link in LINK.findall(EMAIL.sub(' ', text))), text, _handles(text))
+
+
+def _handles(text):
+    """The handles `text` gives, from "@name" and from a t.me/ or instagram.com/ link, lower case with their "@"."""
+    found = {handle.lower() for handle in HANDLE.findall(EMAIL.sub(' ', text))}
+    found |= {'@' + (match.group(1) or match.group(2)).lower().rstrip('.') for match in HANDLE_LINK.finditer(text)}
+    return frozenset(found)
 
 
 def counting(trusted, count):
@@ -484,11 +498,14 @@ def trusted(data):
 
 
 def _strip_addresses(text, trusted):
-    """(text without its e-mails and links, whether every one of them is the customer's, found whole)."""
+    """(text without its e-mails, links and handles, whether every one of them is the customer's, found whole)."""
     whole = True
     for email in EMAIL.findall(text):
         whole = whole and email.lower().strip('.') in trusted.emails
     text = EMAIL.sub(' ', text)
+    for handle in HANDLE.findall(text):
+        whole = whole and handle.lower() in trusted.handles
+    text = HANDLE.sub(' ', text)
     for link in LINK.findall(text):
         whole = whole and _link(link) in trusted.links
     return LINK.sub(' ', text), whole
@@ -763,11 +780,14 @@ def _numbers(text, trusted, codes, words=False):
 
 
 def _addresses(text, trusted, codes):
-    # An e-mail or a link is a contact detail, counted with the numbers: it is never a name, quotation or law.
+    # An e-mail, a link or a handle is a contact detail, counted with the numbers: never a name, quotation or law.
     emails = list(EMAIL.finditer(text))
     spans = [match.span() for match in emails if match.group(0).lower().strip('.') not in trusted.emails]
     # A link is looked for with the e-mails masked, so the domain of a known address is not read as a link.
     masked = EMAIL.sub(lambda match: ' ' * len(match.group(0)), text)
+    spans += [match.span() for match in HANDLE.finditer(masked) if match.group(0).lower() not in trusted.handles]
+    # A handle is masked too, so "@namuna.uz" is never also read as the link "namuna.uz".
+    masked = HANDLE.sub(lambda match: ' ' * len(match.group(0)), masked)
     spans += [match.span() for match in LINK.finditer(masked) if _link(match.group(0)) not in trusted.links]
     if spans:
         codes.append('ground:number')

@@ -977,3 +977,31 @@ def test_a_job_descriptions_list_items_never_cite_a_code_the_customer_did_not_na
     kept = [item['text'] for item in section_of(made, 'responsibility')['items'] if item['text'].strip()]
     assert kept == ['Mehnat kodeksi talablariga amal qiladi.']
     assert 'ground:law' in codes and warnings == [finish.FACTS_BLANKED]
+
+
+# ---------------------------------------------------------------- stage-2 re-audit: contacts
+
+
+def test_a_cover_letters_invented_handle_and_site_are_not_kept_or_written():
+    letter = catalogue.get('pdf.xat.ishga_kirish')
+    prompt = ('Sotuv menejeri lavozimiga ishga kirish xati yozib bering. Men Aziz Karimov, savdoda ishlaganman, '
+              'telefon +998 90 123 45 67.')
+    data = draft(letter, prompt=prompt, length=1)
+    made, warnings, codes = finished(data, answer(data, facts={'items': [
+        {'label': 'phone', 'text': '+998 90 123 45 67'}, {'label': 'other_contact', 'text': '@aziz_karimov'}]},
+        closing={'body': 'Men bilan @aziz_karimov yoki aziz-karimov.kz orqali bog‘lanishingiz mumkin.'}))
+    assert 'other_contact' not in facts_of(made) and facts_of(made)['phone'] == '+998 90 123 45 67'
+    assert section_of(made, 'closing')['body'] == 'Men bilan ____ yoki ____ orqali bog‘lanishingiz mumkin.'
+    assert {'fact:other_contact', 'ground:number'} <= set(codes) and warnings == [finish.FACTS_BLANKED]
+
+
+def test_an_offers_invented_website_is_not_kept_and_the_customers_is():
+    offer = catalogue.get('pdf.biz.tijorat_taklifi')
+    prompt = ('Oqtosh Mebel MChJ nomidan ofis mebeli bo‘yicha tijorat taklifi yozing, Instagram: @oqtosh_mebel, '
+              'telefon +998 90 123 45 67.')
+    data = draft(offer, prompt=prompt, length=1)
+    made, _, codes = finished(data, answer(data, facts={'items': [
+        {'label': 'seller_website', 'text': 'oqtoshmebel.shop'}]},
+        cta={'body': 'Buyurtma uchun: @oqtosh_mebel yoki @oqtoshmebel.'}))
+    assert 'seller_website' not in facts_of(made) and 'fact:seller_website' in codes
+    assert section_of(made, 'cta')['body'] == 'Buyurtma uchun: @oqtosh_mebel yoki ____.'

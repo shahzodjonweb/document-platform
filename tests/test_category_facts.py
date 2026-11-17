@@ -569,8 +569,9 @@ def test_codes_name_what_was_taken_never_the_value(uz):
 
 # The address forms as they were before they were made linear, the reference for what they must still match.
 PLAIN_EMAIL = r"[\w.+\-]+@[\w\-]+(?:\.[\w\-]+)+"
-PLAIN_LINK = (r"(?:https?://|www\.)\S+|\b[\w\-]+(?:\.[\w\-]+)*\.(?:uz|com|ru|org|net|io|me|info|edu|gov)"
-              r"(?:/\S*)?(?!\w)")
+PLAIN_LINK = (r"(?:https?://|www\.)\S+|\b[\w\-]+(?:\.[\w\-]+)*\."
+              r"(?:uz|com|ru|org|net|io|me|info|edu|gov|kz|tj|kg|su|shop|store|online|site|co|de)(?:/\S*)?(?!\w)")
+PLAIN_HANDLE = r"(?<![\w.@])@[A-Za-z0-9_](?:[A-Za-z0-9_.]{1,30}[A-Za-z0-9_])(?![\w@])"
 ADDRESSES = (
     'E-pochta: dilnoza.k@example.com, nusxasi info@namuna.uz ga.',
     'Почта: d.karimova+ariza@mail.namuna.ru; сайт https://namuna.uz/qabul?id=7 и www.namuna-edu.uz/about.',
@@ -591,7 +592,7 @@ def test_addresses_are_read_as_before_on_ordinary_text():
         assert [m.span() for m in facts.LINK.finditer(text)] == \
             [m.span() for m in re.finditer(PLAIN_LINK, text, re.IGNORECASE)], text[:80]
         assert [m.span() for m in numbers.SKIPPED.finditer(text)] == \
-            [m.span() for m in re.finditer(f'{PLAIN_EMAIL}|{PLAIN_LINK}', text, re.IGNORECASE)], text[:80]
+            [m.span() for m in re.finditer(f'{PLAIN_EMAIL}|{PLAIN_LINK}|{PLAIN_HANDLE}', text, re.I)], text[:80]
     known = trusting(ADDRESSES[0] + ' ' + ADDRESSES[1])
     assert known.emails == {'dilnoza.k@example.com', 'info@namuna.uz', 'd.karimova+ariza@mail.namuna.ru'}
     assert known.links == {'namuna.uz/qabul?id=7', 'namuna-edu.uz/about'}
@@ -1009,3 +1010,24 @@ def test_a_quotation_in_single_marks_is_checked_as_any_other(part):
 ], ids=['uz-marks', 'uz-straight', 'uz-spaced', 'en-apostrophes'])
 def test_uzbek_letters_and_english_apostrophes_are_never_quotation_marks(part):
     assert guard(part, trusting('Marketing bo‘yicha kurs ishi yozib bering.')) == (part, [])
+
+
+# ---------------------------------------------------------------- handles and sites (stage-2 re-audit)
+
+
+@pytest.mark.parametrize('value', ['@aziz_karimov', 'aziz-karimov.kz', 'aziz.shop', 'aziz.online/portfolio',
+                                   't.me/aziz', 'instagram.com/aziz'])
+def test_a_handle_or_a_site_the_customer_never_gave_is_not_kept(value):
+    known = trusting('Sotuv menejeri lavozimiga xat yozing. Men Aziz Karimov, telefon +998 90 123 45 67.')
+    assert not supported(value, 'line', known, strict=True)
+    assert ground(f'Bog‘lanish: {value}', known) == ('Bog‘lanish: ____', ['ground:number'])
+
+
+def test_the_customers_own_handle_is_kept_however_they_gave_it():
+    known = trusting('Telegram: @Oqtosh_Mebel, sayt oqtosh.shop, bot t.me/oqtosh_bot, Instagram: @oqtosh.uz')
+    for value in ('@oqtosh_mebel', '@Oqtosh_Mebel', '@oqtosh_bot', 'oqtosh.shop', '@oqtosh.uz'):
+        assert supported(value, 'line', known, strict=True), value
+        assert ground(f'Buyurtma: {value}.', known) == (f'Buyurtma: {value}.', []), value
+    assert numbers.values('@aziz_2024 kanaliga yozing') == set(), 'a handle\'s digits are no figure'
+    assert ground('Muallif: S.Xolmatov, sh.Chilonzor', trusting('S.Xolmatov, sh.Chilonzor')) == (
+        'Muallif: S.Xolmatov, sh.Chilonzor', []), 'an initial or an abbreviation before a name is no link'

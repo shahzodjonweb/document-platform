@@ -105,9 +105,14 @@ CURRENCY_AFTER = re.compile(r"[ \u00a0\u202f\u2009]*(?:usd|eur|gbp|rub|uzs|so['�
 # than 64 characters (no real address has one) is read as its last 64 and the host, the rest left as plain text;
 # the customer's side and the model's are read alike, so such a text is still compared fairly.
 EMAIL_PATTERN = r"[\w.+\-]{1,64}+@[\w\-]++(?:\.[\w\-]++)+"
+# The endings are listed, never any letters: "S.Xolmatov" and "sh.Chilonzor" are no links. Beside the usual ones, the
+# region's (kz, tj, kg, su) and the shops' (shop, store, online, site, co, de).
 LINK_PATTERN = (r"(?:https?://|www\.)\S+|\b(?<!\w)(?<!\w-)(?<!\w\.)(?:[\w\-]{1,63}+\.){1,10}"
-                r"(?:uz|com|ru|org|net|io|me|info|edu|gov)(?:/\S*)?(?!\w)")
-SKIPPED = re.compile(f'{EMAIL_PATTERN}|{LINK_PATTERN}', re.IGNORECASE)
+                r"(?:uz|com|ru|org|net|io|me|info|edu|gov|kz|tj|kg|su|shop|store|online|site|co|de)(?:/\S*)?(?!\w)")
+# A Telegram or Instagram handle, "@oqtosh_mebel", "@namuna.mebel": a contact detail found whole, as an e-mail is.
+# Never the "@" of an e-mail, which a letter or digit always stands before, nor a full stop that ends the sentence.
+HANDLE_PATTERN = r"(?<![\w.@])@[A-Za-z0-9_](?:[A-Za-z0-9_.]{1,30}[A-Za-z0-9_])(?![\w@])"
+SKIPPED = re.compile(f'{EMAIL_PATTERN}|{LINK_PATTERN}|{HANDLE_PATTERN}', re.IGNORECASE)
 
 # Number words, on the customer's side only: "Две недели в терапии", "two in surgery", "ikkala guruh". "Bir", "один"
 # and "one" are ordinary words too, and are left out. Russian forms are whole words or the start of a compound
