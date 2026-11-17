@@ -404,13 +404,15 @@ def _link(text):
     return re.sub(r'^(?:https?://)?(?:www\.)?', '', text.lower()).rstrip('/.,;)')
 
 
-def trusting(text, *, allowed=(), wording=''):
+def trusting(text, *, allowed=(), wording='', quotable=()):
     """A Trusted from plain text, `allowed` being more words no one's facts are in (labels, headings).
 
     `wording` is text whose quotations and legal sentences may be repeated but
     whose names and numbers are not the customer's: the earlier version of a
     document, model prose included. It reaches only the quotation and the
-    legal-concept lookups.
+    legal-concept lookups. `quotable` are phrases the category itself puts in
+    quotation marks for the model to write («Bugun nimani bildim?»): they
+    reach the quotation lookup only.
     """
     text = str(text or '')
     folded = fold(text)
@@ -418,6 +420,7 @@ def trusting(text, *, allowed=(), wording=''):
     allow = Exact(FORMULAS | _folded(allowed))
     wording = str(wording or '')
     quoted = flat(text, folded=folded) + (flat(wording) if wording.strip() else '')
+    quoted += ''.join(flat(phrase) for phrase in quotable)
     lower = normalised(text).casefold() + ('\n' + normalised(wording).casefold() if wording.strip() else '')
     return Trusted(words, allow, frozenset(numbers.values(text)), quoted, lower,
                    frozenset(email.lower().strip('.') for email in EMAIL.findall(text)),
@@ -580,7 +583,18 @@ def trusted(data):
     for content in earlier:
         parts += _held(content, entry, translated)
     wording = '\n'.join(text for content in earlier for text in _texts(content) if text)
-    return trusting('\n'.join(str(part) for part in parts if part), allowed=_catalogue_words(entry), wording=wording)
+    return trusting('\n'.join(str(part) for part in parts if part), allowed=_catalogue_words(entry), wording=wording,
+                    quotable=_catalogue_quotes(entry))
+
+
+def _catalogue_quotes(entry):
+    """The phrases a category's own instructions put in « » for the model to write («Bugun nimani bildim?»,
+    «Darslikdagi shu mavzuga oid mashqlar bajariladi»): no one's quotation, so never blanked as one."""
+    if entry is None:
+        return []
+    texts = [rule.get('text') for rule in entry.raw.get('rules') or [] if isinstance(rule, dict)]
+    texts += [part.get('write') for part in entry.parts]
+    return [inner for text in texts if isinstance(text, str) for inner in re.findall(r'«([^«»]{1,200})»', text)]
 
 
 # ---------------------------------------------------------------- one fact

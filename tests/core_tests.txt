@@ -1570,3 +1570,9 @@ tests/test_bot_categories.py::test_with_the_switch_off_a_fresh_bot_never_imports
 # grounded as any answer; a CV's deterministic finish still sends nothing back
 tests/test_category_generation_pdf.py::test_a_fixed_paper_answered_in_the_wrong_language_is_sent_back_once_for_that
 tests/test_category_generation_pdf.py::test_a_fixed_document_sends_back_nothing_it_was_not_asked_to
+
+# Stage-2 re-audit, what the guard leaves of a test and a lesson plan: a question a quotation blank left
+# unanswerable goes as one a law emptied does; a lesson plan's own phrases in « » stay, and its voice rule asks for
+# the teacher's words reported, never quoted
+tests/test_category_finish_pdf.py::test_a_question_a_quotation_blank_left_unanswerable_goes[quoted-options]
+tests/test_category_finish_pdf.py::test_a_lessons_own_phrases_in_quotation_marks_stay

@@ -831,7 +831,10 @@ def _questions(questions, trusted, translated, codes):
 
     The answer is guarded as its option is, so it still equals the option's
     text. A question whose stem or one of whose options a removed legal
-    sentence emptied is taken out whole: half a question is no question.
+    sentence emptied is taken out whole: half a question is no question. So is
+    one whose stem, answer or an option lost a quotation to ____: "Who wrote
+    ____?" asks nothing, and two options of ____ with the key "____" cannot be
+    answered.
     """
     kept = []
     for question in questions or []:
@@ -843,13 +846,14 @@ def _questions(questions, trusted, translated, codes):
             if isinstance(question.get(key), str) and question[key].strip():
                 question[key], found = facts.guard(question[key], trusted, translated=translated)
                 codes.extend(found)
-                broken = broken or (key == 'stem' and not question[key].strip())
+                broken = broken or (key == 'stem' and not question[key].strip()) \
+                    or (key != 'explanation' and 'ground:quote' in found)
         options = []
         for option in question.get('options') or []:
             if isinstance(option, str) and option.strip():
                 option, found = facts.guard(option, trusted, translated=translated)
                 codes.extend(found)
-                broken = broken or not option.strip()
+                broken = broken or not option.strip() or 'ground:quote' in found
             options.append(option)
         if isinstance(question.get('options'), list):
             question['options'] = options

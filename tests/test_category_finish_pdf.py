@@ -802,8 +802,9 @@ def test_a_tests_questions_are_guarded_and_a_broken_question_goes():
         {'stem': 'Kim aytgan?', 'options': ['«Bilim eng katta boylikdir»', 'Boshqa', 'Hech kim', 'Bilmayman'],
          'answer': '«Bilim eng katta boylikdir»', 'explanation': '', 'marks': 1, 'topic': ''}]
     made, warnings, codes = finished(data, answer(data, questions=questions))
-    assert [question['stem'] for question in made['questions']] == [questions[0]['stem'], 'Kim aytgan?']
-    assert made['questions'][1]['options'][0] == made['questions'][1]['answer'] == '____'
+    # A question a law emptied and one whose correct option lost its quotation to ____ both go: neither can be
+    # answered, nor keyed.
+    assert [question['stem'] for question in made['questions']] == [questions[0]['stem']]
     assert set(codes) == {'ground:law', 'ground:quote'} and warnings == [finish.FACTS_BLANKED]
 
 
@@ -1186,3 +1187,32 @@ def test_a_translated_course_papers_invented_publisher_never_becomes_its_univers
     made, _, codes = finished(data, answer(data, facts={'items': [
         {'label': 'university', 'text': 'Westminster University'}]}))
     assert 'university' not in facts_of(made) and 'fact:university' in codes
+
+
+# ---------------------------------------------------------------- stage-2 re-audit: what the guard leaves of a test
+
+
+@pytest.mark.parametrize('stem, options, correct', [
+    ('«Farhod va Shirin» dostoni kimning qalamiga mansub?', ['Navoiy', 'Bobur', 'Qodiriy', 'Cho‘lpon'], 'Navoiy'),
+    ('Qaysi asar Navoiyniki?', ['«Layli va Majnun»', '«O‘tkan kunlar»', '«Kecha va kunduz»', '«Boburnoma»'],
+     '«Layli va Majnun»'),
+], ids=['quoted-stem', 'quoted-options'])
+def test_a_question_a_quotation_blank_left_unanswerable_goes(stem, options, correct):
+    test = catalogue.get('pdf.test')
+    data = draft(test, prompt='Adabiyot fanidan 9-sinf uchun test.', length=3)
+    kept = {'stem': 'Alisher Navoiy qaysi asrda yashagan?', 'options': ['XIV', 'XV', 'XVI', 'XVII'], 'answer': 'XV',
+            'explanation': '', 'marks': 1, 'topic': ''}
+    broken = {'stem': stem, 'options': options, 'answer': correct, 'explanation': '', 'marks': 1, 'topic': ''}
+    made, warnings, codes = finished(data, answer(data, questions=[kept, broken]))
+    assert made['questions'] == [kept] and codes == ['ground:quote'] and warnings == [finish.FACTS_BLANKED]
+
+
+def test_a_lessons_own_phrases_in_quotation_marks_stay():
+    lesson = catalogue.get('pdf.dars_ishlanmasi')
+    data = draft(lesson, prompt=LESSON_UZ, length=2)
+    body = ('5 daqiqa. «Bugun nimani bildim?» savoliga javob beriladi. «Darslikdagi shu mavzuga oid mashqlar '
+            'bajariladi».')
+    made, _, codes = finished(data, answer(data, stage_close={'body': body}))
+    assert section_of(made, 'stage_close')['body'] == body and 'ground:quote' not in codes
+    voice = next(rule['text'] for rule in lesson.raw['rules'] if rule['text'].startswith('Voice of the plan'))
+    assert 'never quoted in « »' in voice, 'the teacher\'s words are reported, not quoted'
