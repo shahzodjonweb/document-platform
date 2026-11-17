@@ -734,26 +734,29 @@ def _strip_addresses(text, trusted):
 # and a paper's "7-«B»" is another class.
 CLASS_LETTER = re.compile(r"""(?<!\d)(\d{1,2})([ \u00a0]?-?[ \u00a0]?[«"“'‘]?)([A-ZА-ЯЁ])([»"”'’]?)(?![^\W\d_]|\.)""")
 CLASS_WORD = re.compile(r"sinf\w*|класс\w*|class(?:es)?|grades?|years?", re.IGNORECASE)
+# The fields that hold a grade or a class: there a value of a number and a letter alone ("7B") is a class.
+GRADE_FIELDS = frozenset(('grade', 'class_level', 'level', 'grade_line'))
 
 
-def _class_letter(text, match):
+def _class_letter(text, match, grade=False):
     """Whether a CLASS_LETTER match is a class's letter: quoted, after a hyphen, beside a class word (one after a
-    hyphen too: "7B-sinf"), or the whole value ("7B")."""
+    hyphen too: "7B-sinf"), or, in a grade's or a class's field (`grade`), the whole value ("7B"). Anywhere else a
+    value of a number and a letter alone names no class: the customer's "1С" is the paper's "1C"."""
     if match.group(4) or '-' in match.group(2) or re.search(r"[«\"“'‘]", match.group(2)):
         return True
     if not text[:match.start()].strip() and not text[match.end():].strip():
-        return True
+        return grade
     after = re.match(r"[ \u00a0]*-?[ \u00a0]*([^\W\d_]+)", text[match.end():])
     before = re.search(r"([^\W\d_]+)[ \u00a0]*$", text[:match.start()])
     return any(word is not None and CLASS_WORD.fullmatch(word.group(1)) for word in (after, before))
 
 
-def _class_letters(text, trusted):
+def _class_letters(text, trusted, grade=False):
     """The class letters of `text` the customer never wrote after the same number, as match objects."""
     said = fold(trusted.said)
     found = []
     for match in CLASS_LETTER.finditer(text):
-        if not _class_letter(text, match):
+        if not _class_letter(text, match, grade):
             continue
         number, letter = match.group(1), fold(match.group(3))
         if re.search(rf"(?<!\d){number}\W{{0,4}}{re.escape(letter)}(?![^\W\d_])", said):
@@ -762,9 +765,11 @@ def _class_letters(text, trusted):
     return found
 
 
-def without_class_letters(text, trusted):
-    """(`text` without the class letters the customer never wrote, whether any was taken): "7-«B» sinf" is "7-sinf"."""
-    found = _class_letters(text, trusted)
+def without_class_letters(text, trusted, *, grade=False):
+    """(`text` without the class letters the customer never wrote, whether any was taken): "7-«B» sinf" is "7-sinf".
+
+    `grade` is for a grade's or a class's field (`GRADE_FIELDS`), whose whole value "7B" is a class too."""
+    found = _class_letters(text, trusted, grade)
     for match in reversed(found):
         joint = '-' if '-' in match.group(2) else ''
         rest = text[match.end():]

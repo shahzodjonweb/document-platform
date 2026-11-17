@@ -1035,6 +1035,16 @@ CASES = [
          '3D dizayner', gone=('3D',)),
     supported('class-letter-house-number-is-no-class-uz-keep', KEEP, 'Ofis manzili: Chilonzor 9-kvartal, 12A uy.',
               'uz', 'place', 'Chilonzor 9-kvartal, 12A uy'),
+    # A value of a number and a letter alone is a class only in a grade's or a class's field: the customer's Cyrillic
+    # "1С" is a line's or a slot's Latin "1C" (round 2 of the convergence, regression from fe4c307).
+    supported('class-letter-1c-whole-value-of-a-line-ru-keep', KEEP,
+              'Напишите презентацию о компании, мы партнёр 1С и внедряем 1С: Бухгалтерию.', 'ru', 'line', '1C'),
+    fact('class-letter-1c-whole-value-of-a-position-ru-to-uz-keep', KEEP, 'pdf.xat.ishga_kirish', COVER_RU_1C_UZ, 'uz',
+         'position', '1C', translated=True),
+    fact('class-letter-bare-in-a-tests-class-level-uz-blank', BLANK, 'pdf.test',
+         '7-sinf uchun matematika testi tuzing, 10 ta savol bo‘lsin.', 'uz', 'class_level', '7B', gone=('7B',)),
+    fact('class-letter-bare-in-a-notes-level-uz-blank', BLANK, 'pdf.konspekt',
+         '7-sinf uchun fizika fanidan konspekt yozing, mavzu: kuch.', 'uz', 'level', '7B', gone=('7B',)),
 
     # ---- A guarded title's labelled author tail (0e3a40f).
     title('author-tail-vypolnila-ru-blank', BLANK, 'pdf.mustaqil_ish',

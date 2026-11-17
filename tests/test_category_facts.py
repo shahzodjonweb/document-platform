@@ -1293,7 +1293,11 @@ def test_the_customers_class_letter_typed_in_cyrillic_stays_in_latin(brief, kept
 @pytest.mark.parametrize('value, left', [('7B', '7'), ('7B-sinf', '7-sinf'), ('Year 7B', 'Year 7'), ('7 B', '7')],
                          ids=['bare', 'before-a-hyphenated-class-word', 'after-year', 'bare-spaced'])
 def test_an_invented_class_letter_is_taken_however_the_grade_writes_it(value, left):
-    assert facts.without_class_letters(value, trusting('7-sinf matematika dars ishlanmasi')) == (left, True)
+    known = trusting('7-sinf matematika dars ishlanmasi')
+    assert facts.without_class_letters(value, known, grade=True) == (left, True)
+    if not re.search(r'[a-z]', value):
+        # A value of a number and a letter alone is a class in a grade's field only: a line's "1C" names none.
+        assert facts.without_class_letters(value, known) == (value, False)
 
 
 # ---------------------------------------------------------------- a figure's own labels (stage-2 re-audit, round 2)

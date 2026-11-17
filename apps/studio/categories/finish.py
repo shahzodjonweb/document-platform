@@ -714,8 +714,8 @@ def _fact(field, value, trusted, translated, verified, *, led=False):
         return None, True
     # A class letter the customer never wrote ("7-«B» sinf" for their "7-sinf") goes, and the rest of the value stays.
     lettered = False
-    if kind in ('person', 'org', 'place', 'line', 'list'):
-        value, lettered = facts.without_class_letters(value, trusted)
+    if kind in ('person', 'org', 'place', 'line', 'list') or field['id'] in facts.GRADE_FIELDS:
+        value, lettered = facts.without_class_letters(value, trusted, grade=field['id'] in facts.GRADE_FIELDS)
     if not facts.supported(value, kind, trusted, translated=translated, strict=True,
                            words=led or kind != 'text'):
         return None, True
