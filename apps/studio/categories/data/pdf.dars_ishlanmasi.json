@@ -1,7 +1,7 @@
 {
  "schema": 2,
  "id": "pdf.dars_ishlanmasi",
- "status": "draft",
+ "status": "ready",
  "service": "pdf",
  "parent": null,
  "order": 4,

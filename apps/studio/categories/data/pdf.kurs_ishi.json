@@ -1,7 +1,7 @@
 {
  "schema": 2,
  "id": "pdf.kurs_ishi",
- "status": "draft",
+ "status": "ready",
  "service": "pdf",
  "parent": null,
  "order": 2,

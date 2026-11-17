@@ -48,8 +48,12 @@ def test_a_saved_switch_is_what_the_catalogue_reads_on_the_next_call(ready):
     assert get() == {'on': False, 'live': ['slides.himoya']}, 'the ticks wait for the switch to come back on'
 
 
-def test_only_ready_entries_can_be_ticked_and_unknown_ids_are_refused():
-    # The papers stay drafts until their renderer and N2 make them ready: none may be ticked yet.
+def test_only_ready_entries_can_be_ticked_and_unknown_ids_are_refused(monkeypatch):
+    # A paper is a draft until its family's N2 makes it ready; the test is held one here (ready since N2a).
+    entries, templates, index = copy.deepcopy(catalogue.read())
+    entries['pdf.test']['status'] = 'draft'
+    made = catalogue.build(entries, templates, index)
+    monkeypatch.setattr(catalogue, '_catalogue', lambda: made)
     for values in ({'live': ['pdf.test']}, {'live': ['pdf.nothing']}, {'live': ['other']},
                    {'on': 'maybe'}, {'sources': 'true'}, {}):
         with pytest.raises(CategorySettingsError):

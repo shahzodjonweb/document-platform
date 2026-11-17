@@ -1,7 +1,7 @@
 {
  "schema": 2,
  "id": "pdf.test",
- "status": "draft",
+ "status": "ready",
  "service": "pdf",
  "parent": null,
  "order": 5,
@@ -310,7 +310,7 @@
    "label": {
     "uz": "O‘quvchining F.I.Sh., sinfi va sanasi",
     "ru": "Фамилия, имя, класс и дата ученика",
-    "en": "Pupil's name, class and date"
+    "en": "Pupil’s name, class and date"
    },
    "example": {
     "uz": "(o‘quvchi qo‘lda yozadi)",
