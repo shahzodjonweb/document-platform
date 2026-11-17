@@ -48,6 +48,8 @@ from .ctx import Ctx, places
 log = logging.getLogger(__name__)
 
 TEMPLATE_FALLBACK = 'template_fallback'
+# The final passes did not settle: the contents' numbers or the "n / N" total may be a page off.
+UNSETTLED = 'page_numbers_unsettled'
 # How many times a build that breaks is tried again with the placement that broke it drawn plain, then left out.
 RETRIES = 6
 # Final builds after the fit: one with the contents' page numbers and the page count it found, one more only if
@@ -237,8 +239,8 @@ def render_paper(content, path, locale, *, entry, template, pages, style=None, c
         paper = _Paper(content, locale, entry, raw, pages, frozenset(cues or ()), day, style)
         steps = len(raw['type']['ladder'])
         choice = fit.fit(paper.build, raw['page_rule'], steps, pages)
-        built = _final(paper, choice, raw['furniture'])
-        codes = list(choice.codes)
+        built, settled = _final(paper, choice, raw['furniture'])
+        codes = list(choice.codes) + ([] if settled else [UNSETTLED])
         if built.pages > choice.target and fit.LONGER not in codes:
             # The final pass may move a page (the contents' numbers grew a line): the rule is read on what ships.
             codes.append(fit.LONGER)
@@ -257,18 +259,22 @@ def _final(paper, choice, furniture):
     That is the contents' page numbers, the page count of "n / N", and a
     paper that turned out one page long: it carries no page number, so a
     numbered first page is built again without it.
+
+    Returns (built, settled): unsettled when the last pass still moved a
+    heading or the page count, so what it prints may be a page off.
     """
     built = choice.attempt
     total = furniture.get('format') == 'n_of_N' or (built.pages == 1 and furniture.get('first', 'none') != 'none')
     if not (total or built.ctx.wants_contents):
-        return built
+        return built, True
+    settled = False
     for _ in range(FINAL_PASSES):
         again = paper.build(choice.step, choice.ratio, known=built.anchors, total=built.pages, state=built.state)
         settled = again.pages == built.pages and again.anchors == built.anchors
         built = again
         if settled:
             break
-    return built
+    return built, settled
 
 
 # ---------------------------------------------------------------- the emergency fallback
@@ -278,9 +284,13 @@ def plain(content, entry, locale):
     """A paper as a plain document (architecture 6.7), for today's renderer.
 
     The title is the content's; the facts are one list of "Label: value" lines
-    (a blank where a fact draws one); each written part is a section under its
-    heading; a table's rows are list items whose cells are joined by " — ", so
-    nothing is cut at three columns; the questions stay as they are.
+    (a blank where a fact draws one), except choice, flag and file facts: a
+    choice's value is a catalogue id such as `both`, which has no wording in
+    the paper's language and would print an English code in an Uzbek or
+    Russian paper; what it chose shows in the parts it shaped. Each written
+    part is a section under its heading; a table's rows are list items whose
+    cells are joined by " — ", so nothing is cut at three columns; the
+    questions stay as they are.
     categories.finish.plain, when it exists, is preferred by `_emergency`.
     """
     locale = _locale(locale)

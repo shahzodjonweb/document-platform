@@ -10,7 +10,10 @@ customer typed:
 - Uzbek apostrophes are the house ones, ‘ in o‘ and g‘ and ’ for the tutuq;
 - a no-break space glues an initial to what follows it ("B. A. Rahimova"), a
   number to its word ("35 daqiqa", "№ 5", "1 150 000") and a dash to the word
-  before it, so no line starts with "A." alone, a unit or a dash;
+  before it, so no line starts with "A." alone, a unit or a dash. The patterns
+  are deliberately loose: any capital and period before a capital ("Vitamin C.
+  Keyin") and any number before a word of up to twelve letters are glued too,
+  which only keeps a line from breaking there;
 - a run of underscores is a blank to fill in by hand. It is drawn as a rule of
   one of three widths (a day, a number, a name: blocks.json `inline_blank`)
   made of no-break spaces under an underline, so it is never broken across

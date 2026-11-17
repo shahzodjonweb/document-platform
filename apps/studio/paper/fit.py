@@ -64,9 +64,11 @@ class Closing(Flowable):
     `tail` lines going on with the group (a paragraph taller than a page is
     cut again on the next one); else, when not one line fits here, everything
     on the next page. ReportLab lays out the first flowable of a split without
-    splitting it, so each list returned starts with one that fits. When even
-    an empty page cannot hold the group and there is no line to split, it
-    gives up and flows, so a group taller than a page still prints.
+    splitting it, so each list returned starts with one that fits. A group
+    that no page can hold whole (with the run before it) gives up and flows,
+    so it still prints: from where it stands when its first lines fit there,
+    since moving it on would only leave this page half empty and add a page;
+    else from the top of the next page.
     """
 
     def __init__(self, before, mark, lead, group, tail, frame_height):
@@ -89,22 +91,41 @@ class Closing(Flowable):
             parts = self._head(width, height)
             if parts:
                 return parts
-        return everything if height >= self.frame_height - 1 else []
+        if height >= self.frame_height - 1 or (need > self.frame_height + 1e-6 and self._starts(width, height)):
+            return everything
+        return []
+
+    def _starts(self, width, height):
+        """Whether the group can start flowing here: the run before fits, and the first thing after it fits or splits."""
+        _, above = _listWrapOn([*self.before, self.mark], width, self.canv)
+        room = height - above
+        first = next(iter([self.lead] if self.lead is not None else self.group), None)
+        if room <= 0 or first is None:
+            return False
+        _, tall = first.wrapOn(self.canv, width, room)
+        return tall + first.getSpaceBefore() <= room + 1e-6 or bool(first.splitOn(self.canv, width, room))
 
     def _head(self, width, height):
         """The run before, the paragraph's lines that fit here, and a Closing of the rest; None when no line fits."""
         lead = self.lead
         _, above = _listWrapOn([*self.before, self.mark], width, self.canv)
+        room = height - above
         lead.wrap(width, height)
         lines = len(getattr(lead.blPara, 'lines', ()) or ())
         leading, space = lead.style.leading, lead.getSpaceBefore()
-        head = min(lines - self.tail, int((height - above - space) // leading))
-        # A paragraph refuses a split that leaves one line alone (orphans and widows): try one line fewer.
+        head = min(lines - self.tail, int((room - space) // leading))
+        # A paragraph refuses a split that leaves one line alone (orphans and widows): try one line fewer. Lines
+        # are counted at the style's leading, so the head is measured too: inline text in a larger size makes it
+        # taller, and a head the frame had to split again would part the group from its tail lines.
         for count in range(head, 0, -1):
-            parts = lead.split(width, count * leading + space + 0.5)
-            if len(parts) == 2:
-                rest = Closing((), Mark(self.mark.indexes), parts[1], self.group, self.tail, self.frame_height)
-                return [*self.before, self.mark, parts[0], rest]
+            parts = lead.split(width, count * leading + 0.5)
+            if len(parts) != 2:
+                continue
+            _, tall = parts[0].wrapOn(self.canv, width, room)
+            if tall + space > room + 1e-6:
+                continue
+            rest = Closing((), Mark(self.mark.indexes), parts[1], self.group, self.tail, self.frame_height)
+            return [*self.before, self.mark, parts[0], rest]
         return None
 
     def draw(self):
@@ -112,8 +133,8 @@ class Closing(Flowable):
 
 
 def _real(flowable):
-    """Whether a flowable prints or takes room: not a Mark or an Anchor, not a page break."""
-    return not getattr(flowable, '_ZEROSIZE', 0) and not isinstance(flowable, PageBreak)
+    """Whether a flowable prints: not a Mark or an Anchor, not a page break, not a Spacer (a gap alone is no page)."""
+    return not getattr(flowable, '_ZEROSIZE', 0) and not isinstance(flowable, (PageBreak, Spacer))
 
 
 def _mark(made, keys):

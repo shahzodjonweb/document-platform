@@ -454,7 +454,7 @@ def _closing_flow(tail=None):
             {'block': 'signature_row', 'part': 'signature', 'fields': ['signer_name'], 'keep': 'closing'}]
 
 
-@pytest.mark.parametrize('rule', [{'kind': 'fixed', 'pages': 1}, {'kind': 'flow'}])
+@pytest.mark.parametrize('rule', [{'kind': 'fixed', 'pages': 1}, {'kind': 'flow'}], ids=['fixed', 'flow'])
 def test_a_heading_and_a_one_paragraph_part_before_the_closing_group_stay_on_the_page_they_fit(tmp_path, blocks,
                                                                                             chapters, rule):
     for paragraphs in (1, 3):
@@ -529,6 +529,43 @@ def test_a_page_break_before_a_placement_that_draws_nothing_adds_no_page(tmp_pat
     assert first['page_count'] == 1
 
 
+def test_a_spacer_alone_after_a_page_break_adds_no_page(tmp_path, blocks):
+    blocks('answer_key', lambda ctx, place: [Spacer(1, 30)])
+    flow = [*catalogue.template('official_ariza')['flow'], {'block': 'answer_key', 'page_break_before': True}]
+    assert render(tmp_path, template=template(flow=flow))['page_count'] == 1
+
+
+def test_a_keep_group_taller_than_any_page_starts_where_it_stands(tmp_path, blocks):
+    # A passage group: no lines of the paragraph before travel with it, and it is taller than a page.
+    flow = [{'block': 'paragraph', 'part': 'request'},
+            {'block': 'list', 'part': 'enclosures', 'keep': 'passage'},
+            {'block': 'signature_row', 'part': 'signature', 'fields': ['signer_name'], 'keep': 'passage'}]
+    result = render(tmp_path, letter(enclosures=70), template=template(flow=flow, page_rule={'kind': 'flow'}))
+    pages = text_of(result)
+    assert 'Ma’lumotnoma 1 nusxasi' in pages[0], 'page 1 is not left half empty'
+    assert result['page_count'] == len(pages) == 2 and 'Ma’lumotnoma 70 nusxasi' in pages[-1]
+    # One that would fit a page whole still moves on rather than separate.
+    kept = render(tmp_path, letter(paragraphs=6, enclosures=12), template=template(flow=flow, page_rule={'kind': 'flow'}),
+                  name='kept.pdf')
+    first, second = text_of(kept)
+    assert 'nusxasi' not in first and 'Ma’lumotnoma 1 nusxasi' in second
+
+
+def test_the_head_left_before_a_closing_group_is_measured_not_counted():
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.pdfgen.canvas import Canvas
+    style = ParagraphStyle('lead', fontName='Helvetica', fontSize=10, leading=12, spaceBefore=30)
+    big = ' '.join(['so‘z'] * 12 + ['<font size="22">KATTA</font>'] + ['so‘z'] * 12)
+    lead = Paragraph(' '.join([big] * 6), style)
+    closing = fit.Closing((), page.Mark(()), lead, [Paragraph('Imzo', style)], 2, 700)
+    canvas = Canvas(io.BytesIO())
+    closing.canv = canvas
+    parts = closing.split(200, 160)
+    assert len(parts) == 3 and isinstance(parts[2], fit.Closing)
+    _, tall = parts[1].wrapOn(canvas, 200, 160)
+    assert tall + parts[1].getSpaceBefore() <= 160
+
+
 def test_a_keep_group_takes_the_paragraph_before_its_gap_and_two_lines_only_when_it_closes(blocks):
     def gapped(ctx, place):
         return [*_lines(ctx, place), Spacer(1, 12)]
@@ -564,6 +601,50 @@ def test_customer_text_never_reaches_the_log(tmp_path, blocks, monkeypatch, capl
     logged = '\n'.join(record.getMessage() + str(record.exc_info or '') for record in caplog.records)
     assert 'Paper block list raised ValueError' in logged
     assert 'Toshmatova' not in logged and 'Nilufar' not in logged
+
+
+def test_a_final_pass_that_adds_a_page_is_longer_than_quoted(tmp_path, blocks, monkeypatch):
+    real = paper._Paper.build
+
+    def grown(self, step, ratio=None, **options):
+        made = real(self, step, ratio, **options)
+        if options.get('known') is not None:
+            made.pages += 1  # the contents' numbers grew a line and pushed the signature over
+        return made
+    monkeypatch.setattr(paper._Paper, 'build', grown)
+    raw = template(furniture={'first': 'number', 'later': 'number_bottom', 'format': 'n_of_N'})
+    warnings = render(tmp_path, template=raw)['metadata']['warnings']
+    assert 'longer_than_quoted' in warnings and paper.UNSETTLED not in warnings
+
+
+def test_the_final_passes_start_from_the_chosen_build_and_say_when_they_did_not_settle():
+    class Built:
+        def __init__(self, pages, state):
+            self.pages, self.anchors, self.state = pages, {}, state
+            self.ctx = type('Ctx', (), {'wants_contents': True})()
+
+    class Paper:
+        def __init__(self, sizes):
+            self.sizes, self.states = iter(sizes), []
+
+        def build(self, step, ratio=None, *, known=None, total=None, state=None):
+            self.states.append(state)
+            return Built(next(self.sizes), state)
+    chosen = (frozenset({(3, 0)}), frozenset({(5, 1)}))
+    choice = fit.Choice(Built(2, chosen), 1, None, [])
+    steady = Paper([2])
+    built, settled = paper._final(steady, choice, {'format': 'n_of_N'})
+    assert settled and built.pages == 2 and steady.states == [chosen]
+    swinging = Paper([3, 2])
+    built, settled = paper._final(swinging, choice, {'format': 'n_of_N'})
+    assert not settled and swinging.states == [chosen, chosen]
+
+
+def test_a_build_with_a_state_starts_from_it(blocks):
+    made = paper._Paper(letter(), 'uz', ariza(), catalogue.template('official_ariza'), 1, frozenset(), DAY, None)
+    made.failed, made.dropped = {(9, 0)}, {(8, 0)}
+    built = made.build(0, state=(frozenset(), frozenset()))
+    assert built.state == (frozenset(), frozenset()) and not made.failed and not made.dropped
 
 
 def test_a_one_page_paper_carries_no_page_number(tmp_path, blocks):
