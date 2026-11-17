@@ -731,51 +731,93 @@ def _strip_addresses(text, trusted):
     return LINK.sub(' ', text), whole
 
 
-# A class's letter after its number: "7-«B» sinf", "7-B", "7B-sinf", "7 «Б» класс", "Grade 7B", "Year 7B", or a
-# grade written "7B" and nothing else. A single capital is no name the names check reads, so an invented parallel
-# ("7-«B» sinf" for the customer's "7-sinf") is held here; never an initial ("7 A. Karimova") or a word ("7
-# Apples"). Only a letter a class is written with is one: quoted, after a hyphen, beside a class word (`CLASS_WORD`)
-# or the whole value; "1C dasturchisi", "3D dizayner" and "12A uy" name no class. The customer's letter is matched as
-# Uzbek writes a Cyrillic one in Latin (В as V, С as S), never by its look: their "7 «В»" is the paper's "7-«V»",
-# and a paper's "7-«B»" is another class.
+# A class's letter after its number: "7-«B» sinf", "7-B", "7B-sinf", "7 «Б» класс", "Grade 7B", "Year 7B", "Sinf:
+# 7B", "7B o‘quvchisi", or a grade written "7B" and nothing else. A single capital is no name the names check reads, so
+# an invented parallel ("7-«B» sinf" for the customer's "7-sinf") is held here; never an initial ("7 A. Karimova") or
+# a word ("7 Apples"). Only a letter a class is written with is one (`_class_letter`, `_class_letters`); "1C
+# dasturchisi", "3D dizayner" and "12A uy" name no class. The customer's letter is matched as Uzbek writes a Cyrillic
+# one in Latin (В as V, С as S), never by its look inside a class: their "7 «В»" is the paper's "7-«V»", and a paper's
+# "7-«B»" is another class; only their own token ("1С dasturi") is matched by its look (`LOOKALIKES`).
 CLASS_LETTER = re.compile(r"""(?<!\d)(\d{1,2})([ \u00a0]?-?[ \u00a0]?[«"“'‘]?)([A-ZА-ЯЁ])([»"”'’]?)(?![^\W\d_]|\.)""")
+# The same in the customer's words, where a full stop may end it ("... программист 1С.").
+CLASS_TOKEN = re.compile(r"""(?<!\d)(\d{1,2})([ \u00a0]?-?[ \u00a0]?[«"“'‘]?)([A-ZА-ЯЁ])([»"”'’]?)(?![^\W\d_])""")
 CLASS_WORD = re.compile(r"sinf\w*|класс\w*|class(?:es)?|grades?|years?", re.IGNORECASE)
-# The fields that hold a grade or a class: there a value of a number and a letter alone ("7B") is a class.
+# A pupil's word, beside which a number and a letter are a class: "7B o‘quvchisi", "an 11A student", "ученик 9Б".
+PUPIL_WORD = re.compile(r"o['‘’ʻʼ`]?quvchi\w*|ученик\w*|ученица\w*|учащ\w*|школьни\w*|students?|pupils?"
+                        r"|schoolchild\w*", re.IGNORECASE)
+# A class's label, whose value a number and a letter are a class as: "Sinf: 7B", "Class: 7B", "Класс: 7Б".
+CLASS_LABEL = re.compile(r"(?<![^\W\d_])(?:sinf\w*|класс\w*|class|grade|year)[  ]*:[  ]*$", re.IGNORECASE)
+# A number the customer wrote as their class: "7-sinf", "7 «В» класса", "в 7-м классе", "grade 11", "Year 7".
+CLASS_NUMBER = re.compile(
+    r"(?<!\d)(\d{1,2})[  ]*-?[  ]*(?:[«\"“'‘]?[^\W\d_]{1,2}[»\"”'’]?[  ]*-?[  ]*)?"
+    r"(?:sinf|класс|class|grade)"
+    r"|(?<![^\W\d_])(?:sinf\w*|класс\w*|class|grade|year)[  ]*№?[  ]*(\d{1,2})(?!\d)", re.IGNORECASE)
+# The Cyrillic capitals a Latin one looks like: the customer's "1С" is the paper's "1C" where no class is written.
+LOOKALIKES = str.maketrans('АВСЕКМНОРТХ', 'ABCEKMHOPTX')
+# The fields that hold a grade or a class: there a number and a letter anywhere ("7B", "Sinf: 7B", "7B, matematika")
+# are a class.
 GRADE_FIELDS = frozenset(('grade', 'class_level', 'level', 'grade_line'))
 
 
 def _class_letter(text, match, grade=False):
-    """Whether a CLASS_LETTER match is a class's letter: quoted, after a hyphen, beside a class word (one after a
-    hyphen too: "7B-sinf"), or, in a grade's or a class's field (`grade`), the whole value ("7B"). Anywhere else a
-    value of a number and a letter alone names no class: the customer's "1С" is the paper's "1C"."""
-    if match.group(4) or '-' in match.group(2) or re.search(r"[«\"“'‘]", match.group(2)):
+    """Whether a CLASS_LETTER match is a class's letter by what is written beside it: quoted, after a hyphen, beside a
+    class word (one after a hyphen too: "7B-sinf") or a pupil's (`PUPIL_WORD`: "7B o‘quvchisi", "an 11A student"),
+    as a class label's value (`CLASS_LABEL`: "Sinf: 7B"), or anywhere in a grade's or a class's field (`grade`).
+    Anywhere else a number and a letter name no class by themselves: "1C dasturchisi", "3D dizayner", "12A uy"."""
+    if grade or match.group(4) or '-' in match.group(2) or re.search(r"[«\"“'‘]", match.group(2)):
         return True
-    if not text[:match.start()].strip() and not text[match.end():].strip():
-        return grade
-    after = re.match(r"[ \u00a0]*-?[ \u00a0]*([^\W\d_]+)", text[match.end():])
-    before = re.search(r"([^\W\d_]+)[ \u00a0]*$", text[:match.start()])
-    return any(word is not None and CLASS_WORD.fullmatch(word.group(1)) for word in (after, before))
+    if CLASS_LABEL.search(text[:match.start()]):
+        return True
+    after = re.match(rf"[  ]*-?[  ]*({WORD.pattern})", text[match.end():])
+    before = re.search(rf"({WORD.pattern})[  ]*$", text[:match.start()])
+    return any(word is not None and (CLASS_WORD.fullmatch(word.group(1)) or PUPIL_WORD.fullmatch(word.group(1)))
+               for word in (after, before))
 
 
-def _class_letters(text, trusted, grade=False):
-    """The class letters of `text` the customer never wrote after the same number, as match objects."""
+def _class_numbers(trusted):
+    """The numbers the customer wrote as their class (`CLASS_NUMBER`), read once per Trusted."""
+    if 'classes' not in trusted.cache:
+        trusted.cache['classes'] = frozenset(
+            match.group(1) or match.group(2) for match in CLASS_NUMBER.finditer(normalised(trusted.said)))
+    return trusted.cache['classes']
+
+
+def _token(trusted, number, letter):
+    """Whether the customer wrote `number` and `letter` as a token of their own, no class ("1С dasturi", "программист
+    1С"): their letter matched as the Latin one it looks like (`LOOKALIKES`), never one beside a class's words."""
+    said = normalised(trusted.said)
+    return any(match.group(1) == number and match.group(3).translate(LOOKALIKES) == letter
+               and not _class_letter(said, match) for match in CLASS_TOKEN.finditer(said))
+
+
+def _class_letters(text, trusted, grade=False, weak=False):
+    """The class letters of `text` the customer never wrote after the same number, as match objects.
+
+    `weak` (a title-page line, a line or a list fact) also reads as a class a number and a letter that are the whole
+    value ("7B" on a cover, "Sinf: 7B" once its label is split off) or whose number the customer wrote as their class
+    ("7B matematika" for their "7-sinf"), unless the customer wrote them as a token of their own (`_token`)."""
     said = fold(trusted.said)
     found = []
     for match in CLASS_LETTER.finditer(text):
-        if not _class_letter(text, match, grade):
+        strong = _class_letter(text, match, grade)
+        whole = not text[:match.start()].strip() and not text[match.end():].strip()
+        if not strong and not (weak and (whole or match.group(1) in _class_numbers(trusted))):
             continue
         number, letter = match.group(1), fold(match.group(3))
         if re.search(rf"(?<!\d){number}\W{{0,4}}{re.escape(letter)}(?![^\W\d_])", said):
+            continue
+        if not strong and _token(trusted, number, match.group(3)):
             continue
         found.append(match)
     return found
 
 
-def without_class_letters(text, trusted, *, grade=False):
+def without_class_letters(text, trusted, *, grade=False, weak=False):
     """(`text` without the class letters the customer never wrote, whether any was taken): "7-«B» sinf" is "7-sinf".
 
-    `grade` is for a grade's or a class's field (`GRADE_FIELDS`), whose whole value "7B" is a class too."""
-    found = _class_letters(text, trusted, grade)
+    `grade` is for a grade's or a class's field (`GRADE_FIELDS`), where a number and a letter anywhere are a class;
+    `weak` for a line or a list fact (`_class_letters`)."""
+    found = _class_letters(text, trusted, grade, weak)
     for match in reversed(found):
         joint = '-' if '-' in match.group(2) else ''
         rest = text[match.end():]
@@ -808,7 +850,7 @@ REQUISITES = (
     "filiali bo‘lim bo‘limi rekvizitlar").split()
 
 
-def supported(value, kind, trusted, *, translated=False, strict=False, words=False):
+def supported(value, kind, trusted, *, translated=False, strict=False, words=False, classed=None):
     """Whether a fact of this kind is the customer's (architecture 4, "Verifying").
 
     person, org, place, line: every capitalised word is theirs and every number
@@ -832,6 +874,11 @@ def supported(value, kind, trusted, *, translated=False, strict=False, words=Fal
     `words` also reads the numbers written as words (numbers.SPELLED): a
     paper's "five years", "besh yuz million so‘m" or "двенадцать человек" must
     be a value the customer gave, as its digits must.
+
+    A class letter the customer never wrote is refused (`_class_letters`); a
+    line's (or, with `classed`, any kind's: a title-page line held as a
+    person's) whole value "7B" and a number the customer wrote as their class
+    ("7B matematika" for their "7-sinf") are read as a class too.
     """
     if kind in ('choice', 'flag', 'file') or value is None or isinstance(value, bool):
         return True
@@ -839,15 +886,16 @@ def supported(value, kind, trusted, *, translated=False, strict=False, words=Fal
     if not text or not re.sub(r'[_\s.\-]', '', text):
         return True  # nothing, or the blank the model returns for an if_needed field
     if kind == 'list':
-        return all(supported(line, 'line', trusted, translated=translated, strict=strict, words=words)
-                   for line in re.split(r'[\n;]+', text) if line.strip())
+        return all(supported(line, 'line', trusted, translated=translated, strict=strict, words=words,
+                             classed=classed) for line in re.split(r'[\n;]+', text) if line.strip())
     rest, whole = _strip_addresses(text, trusted)
     if not whole:
         return False
     read = numbers.found(rest, words=words, uzbek_cyrillic=False)
     if not all(numbers.known(number, trusted.values) for number in read):
         return False
-    if kind in ('person', 'org', 'place', 'line') and _class_letters(rest, trusted):
+    if kind in ('person', 'org', 'place', 'line') and _class_letters(
+            rest, trusted, weak=kind == 'line' if classed is None else classed):
         return False
     if kind in ('person', 'org', 'place', 'line') and (strict or not translated or kind == 'person'):
         return _names_known(rest, trusted, translated)

@@ -1183,6 +1183,32 @@ CASES = [
          '7-sinf uchun matematika testi tuzing, 10 ta savol bo‘lsin.', 'uz', 'class_level', '7B', gone=('7B',)),
     fact('class-letter-bare-in-a-notes-level-uz-blank', BLANK, 'pdf.konspekt',
          '7-sinf uchun fizika fanidan konspekt yozing, mavzu: kuch.', 'uz', 'level', '7B', gone=('7B',)),
+    # A number and a letter are a class too as a class label's value, beside a pupil's word, after a number the
+    # customer wrote as their class, and anywhere in a grade's field (round 3 of the convergence, must, regression
+    # from 0157a2a); "1C" and "3D" stay where no class is written.
+    fact('class-letter-as-a-labels-value-in-the-grade-uz-blank', BLANK, 'pdf.dars_ishlanmasi', LESSON_UZ, 'uz', 'grade',
+         'Sinf: 7B', gone=('7B',)),
+    fact('class-letter-beside-a-subject-in-the-grade-uz-blank', BLANK, 'pdf.dars_ishlanmasi', LESSON_UZ, 'uz', 'grade',
+         '7B, matematika', gone=('7B',)),
+    fact('class-letter-after-the-customers-class-number-in-a-subject-uz-blank', BLANK, 'pdf.dars_ishlanmasi', LESSON_UZ,
+         'uz', 'subject', '7B matematika', gone=('7B',)),
+    fact('class-letter-beside-a-pupils-word-uz-blank', BLANK, 'pdf.xat.tavsifnoma', REFERENCE_UZ, 'uz', 'subject_role',
+         '11A o‘quvchisi', gone=('11A',)),
+    fact('class-letter-beside-a-students-word-en-blank', BLANK, 'pdf.xat.tavsiya',
+         'Please write a recommendation letter for my former student Malika Qodirova, who studied in grade 11 at our '
+         'school and is applying for a master’s programme.', 'en', 'candidate_status', 'an 11A student',
+         gone=('11A',)),
+    body('class-letter-beside-a-pupils-word-in-a-grounded-part-uz-blank', BLANK, 'pdf.xat.tavsifnoma', REFERENCE_UZ,
+         'uz', 'identity', 'Qodirova Malika 11-«A» sinf o‘quvchisi.', gone=('«A»',)),
+    fact('class-letter-none-beside-a-pupils-word-uz-keep', KEEP, 'pdf.xat.tavsifnoma', REFERENCE_UZ, 'uz',
+         'subject_role', '11-sinf o‘quvchisi'),
+    body('class-letter-none-in-a-grounded-part-uz-keep', KEEP, 'pdf.xat.tavsifnoma', REFERENCE_UZ, 'uz', 'identity',
+         'Qodirova Malika 11-sinf o‘quvchisi.'),
+    fact('class-letter-the-customers-letter-beside-a-pupils-word-uz-keep', KEEP, 'pdf.xat.tavsifnoma',
+         REFERENCE_UZ.replace('11-sinf', '11-«A» sinf'), 'uz', 'subject_role', '11A o‘quvchisi'),
+    supported('class-letter-1c-position-beside-the-customers-class-number-ru-keep', KEEP,
+              'Напишите презентацию для 1 класса о профессиях, мой папа программист 1С.', 'ru', 'line',
+              '1C dasturchisi'),
 
     # ---- A guarded title's labelled author tail (0e3a40f).
     title('author-tail-vypolnila-ru-blank', BLANK, 'pdf.mustaqil_ish',
@@ -1548,3 +1574,60 @@ def test_what_a_change_reads_back(change):
         assert any(other.id == change.pair and other.direction == BLANK for other in CHANGES)
     leaked = [word for word in change.gone if _shows(_strings(made), word)]
     assert not leaked, f'{leaked} reached the paper after the change: {found!r}'
+
+
+# ---------------------------------------------------------------- a deck's cover lines (round 3 of the convergence)
+
+
+@dataclass(frozen=True)
+class Cover:
+    id: str
+    direction: str
+    line: str
+    said: str = ' Men 7-sinf o‘quvchisiman.'   # what the customer adds to the deck fixture's brief
+
+    def __str__(self):
+        return self.id
+
+
+COVERS = [
+    # A number and a letter are a class as a class label's value, as a cover line's whole value and beside a pupil's
+    # word (must, regression from 0157a2a): the customer wrote "7-sinf", never a parallel.
+    Cover('cover-class-letter-as-sinfs-value-uz-blank', BLANK, 'Sinf: 7B'),
+    Cover('cover-class-letter-as-class-value-uz-blank', BLANK, 'Class: 7B'),
+    Cover('cover-class-letter-as-the-whole-line-uz-blank', BLANK, '7B'),
+    Cover('cover-class-letter-beside-a-pupils-word-uz-blank', BLANK, 'Bajardi: 7B o‘quvchisi'),
+    Cover('cover-class-letter-quoted-uz-blank', BLANK, 'Sinf: 7-«B»'),
+    Cover('cover-class-letter-before-sinf-uz-blank', BLANK, '7B sinf'),
+    Cover('cover-the-customers-class-uz-keep', KEEP, 'Sinf: 7'),
+    Cover('cover-the-customers-class-letter-uz-keep', KEEP, 'Sinf: 7B', said=' Men 7-«B» sinf o‘quvchisiman.'),
+    Cover('cover-the-customers-1c-uz-keep', KEEP, '1C', said=' Mavzu 1С dasturi haqida.'),
+]
+
+
+def _deck_cover(cover):
+    """(the cover's lines, codes) after finish.apply on the himoya deck fixture with `cover.line` added to its cover."""
+    import json
+    from pathlib import Path
+
+    from apps.studio import title_lines
+    from apps.studio.categories import sample
+    fixture = json.loads((Path(__file__).parent / 'fixtures' / 'categories' / 'deck_himoya_figures.json')
+                         .read_text(encoding='utf-8'))
+    data, content = sample.draft(catalogue.get('slides.himoya'), fixture, 'uz', 10)
+    content = title_lines.apply(data, content)
+    data['prompt'] = str(data['prompt']) + cover.said
+    content['sections'][0]['body'] = '\n'.join(['Bajardi: Yusupov Jasur, 412-guruh', cover.line, 'Toshkent — 2026'])
+    codes = []
+    finished, _ = finish.apply(data, content, file_names=[], codes=codes)
+    return [line for line in finished['sections'][0]['body'].split('\n') if line.strip()], codes
+
+
+@pytest.mark.parametrize('cover', COVERS, ids=[cover.id for cover in COVERS])
+def test_a_deck_cover_line(cover):
+    lines, codes = _deck_cover(cover)
+    assert 'Bajardi: Yusupov Jasur, 412-guruh' in lines, 'the customer\'s own cover line stays'
+    if cover.direction == KEEP:
+        assert cover.line in lines, f'{cover.line!r} is the customer\'s and must stay on the cover: {lines!r}'
+    else:
+        assert cover.line not in lines and 'cover:line' in codes, f'{cover.line!r} reached the cover: {lines!r}'

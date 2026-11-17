@@ -187,10 +187,11 @@ def _line_known(line, trusted, translated, own):
         return True
     label, value = _split(line)
     if translated and not label and len([word for word in facts.WORD.findall(value) if len(word) >= 2]) > 1:
-        return facts.supported(value, 'line', trusted, translated=True) \
+        return facts.supported(value, 'line', trusted, translated=True, classed=True) \
             and facts.people_known(value, trusted, translated=True)
     kind = 'person' if translated else 'line'
-    if not facts.supported(value, kind, trusted, translated=translated):
+    # A cover's value of a number and a letter is a class ("Sinf: 7B", "7B"), held as a line's is in any language.
+    if not facts.supported(value, kind, trusted, translated=translated, classed=True):
         return False
     return not label or facts.supported(' '.join(label.split()[1:]), kind, trusted, translated=translated)
 
@@ -588,8 +589,12 @@ def ground_paper(text, trusted, *, translated=False, invented=None, blanked=None
     beside a surname or an organisation's shaped or quoted, never a common
     word ("Davlat" of a blanked "Davlat Soliq Qo‘mitasi").
     """
-    return facts.guard(text, trusted, translated=translated, checks=('numbers', 'names'), words=True, orgs=True,
-                       invented=invented, blanked=blanked, lone=True)
+    text, codes = facts.guard(text, trusted, translated=translated, checks=('numbers', 'names'), words=True,
+                              orgs=True, invented=invented, blanked=blanked, lone=True)
+    # A class letter the customer never wrote goes as a fact's does ("11-«A» sinf o‘quvchisi" is "11-sinf ..."): one a
+    # class is written with only (quoted, after a hyphen, beside a class's or a pupil's word).
+    text, lettered = facts.without_class_letters(text, trusted)
+    return text, codes + ['ground:number'] if lettered and 'ground:number' not in codes else codes
 
 
 def _led(entry):
@@ -717,7 +722,8 @@ def _fact(field, value, trusted, translated, verified, *, led=False):
     # A class letter the customer never wrote ("7-«B» sinf" for their "7-sinf") goes, and the rest of the value stays.
     lettered = False
     if kind in ('person', 'org', 'place', 'line', 'list') or field['id'] in facts.GRADE_FIELDS:
-        value, lettered = facts.without_class_letters(value, trusted, grade=field['id'] in facts.GRADE_FIELDS)
+        value, lettered = facts.without_class_letters(value, trusted, grade=field['id'] in facts.GRADE_FIELDS,
+                                                      weak=kind in ('line', 'list'))
     if not facts.supported(value, kind, trusted, translated=translated, strict=True,
                            words=led or kind != 'text'):
         return None, True

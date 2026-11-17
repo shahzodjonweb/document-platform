@@ -1310,8 +1310,26 @@ def test_an_invented_class_letter_is_taken_however_the_grade_writes_it(value, le
     known = trusting('7-sinf matematika dars ishlanmasi')
     assert facts.without_class_letters(value, known, grade=True) == (left, True)
     if not re.search(r'[a-z]', value):
-        # A value of a number and a letter alone is a class in a grade's field only: a line's "1C" names none.
+        # A value of a number and a letter alone is no class by itself in a person's, an organisation's or a place's
+        # fact; in a line's or a title-page line's (`weak`) it is, as the customer's "7-sinf" makes 7 a class (round 3
+        # of the convergence: "Sinf: 7B" and "7B" passed on a deck's cover).
         assert facts.without_class_letters(value, known) == (value, False)
+        assert facts.without_class_letters(value, known, weak=True) == (left, True)
+
+
+@pytest.mark.parametrize('brief, value, taken', [
+    ('7-sinf matematika dars ishlanmasi', '7B matematika', True),
+    ('7-sinf matematika dars ishlanmasi', '11A o‘quvchisi', True),
+    ('Please write a reference for a student of grade 11.', 'an 11A student', True),
+    ('7-sinf matematika dars ishlanmasi', 'Sinf: 7B', True),
+    ('Презентация для 1 класса, мой папа программист 1С.', '1C dasturchisi', False),
+    ('Mavzu 1С dasturi haqida.', '1C', False),
+    ('Составьте план урока для 7 «В» класса.', '7B', True),
+], ids=['after-the-customers-class-number', 'beside-a-pupils-word', 'beside-a-students-word', 'a-labels-value',
+        'the-customers-1c-beside-a-class', 'the-customers-1c-whole', 'a-cyrillic-ve-is-no-b'])
+def test_a_class_letter_by_what_stands_beside_it_and_the_customers_class(brief, value, taken):
+    known = trusting(brief)
+    assert facts.without_class_letters(value, known, weak=True)[1] is taken
 
 
 # ---------------------------------------------------------------- a figure's own labels (stage-2 re-audit, round 2)
