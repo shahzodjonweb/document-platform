@@ -1,0 +1,952 @@
+{
+ "schema": 2,
+ "id": "pdf.dars_ishlanmasi",
+ "status": "draft",
+ "service": "pdf",
+ "parent": null,
+ "order": 4,
+ "labels": {
+  "uz": "🏫 Dars ishlanmasi / tarqatma",
+  "ru": "🏫 Поурочный план / раздатка",
+  "en": "🏫 Lesson plan / handout"
+ },
+ "summary": "A one-lesson plan (dars ishlanmasi) as a deputy head expects it: head box, three aims, lesson type, methods and equipment, an outline table whose minutes add up to the lesson, the stages written out with their questions, rule box and mini-test, homework; or, when the message asks for a handout, a pupil sheet (study_tarqatma): a rule box and numbered tasks with an optional answer sheet. 2 to 8 pages, default 4 for a plan and 2 for a handout.",
+ "tone": "Formal and professional for the plan: third person, present tense, impersonal passive. Direct and short, polite siz to the pupil, for the handout.",
+ "topic": true,
+ "title": "model",
+ "length": {
+  "unit": "pages",
+  "mode": "count",
+  "target": "count",
+  "default": 4,
+  "min": 2,
+  "max": 8,
+  "by_cue": [
+   {
+    "cue": "handout",
+    "default": 2
+   }
+  ],
+  "note": "2 pages is the compact plan (no outline table) and the shortest: the one-page skeleton is deferred, and so a handout asked for on one page is built on 2 until a handout may have a minimum of its own. One lesson fits 8 pages. A handout defaults to 2 pupil pages with its answer key after the tasks; its parts have fixed words and its template holds at most 3, so a longer handout asked for comes out at 2 or 3 and the review says it is shorter (length.by_cue cannot yet hold a maximum). The fixed parts’ shares stand for the room the template’s page starts, headings and boxes take, which skeleton.words cannot see at its generic words a page: they are set so the shortest and the default length fit at about 0.9 of each part’s top word count with no trim below 0.7 (rendered through the paper engine with stand-in blocks), a longer paper running short for the top-up to fill. A words-a-page figure per template would replace this."
+ },
+ "questions": {
+  "default": 0,
+  "max": 0
+ },
+ "quality": "repair",
+ "fill": true,
+ "cues": {
+  "lesson_plan": {
+   "uz": [
+    "ishlanma",
+    "dars rejasi",
+    "dars konspekt"
+   ],
+   "ru": [
+    "поурочн",
+    "план урока",
+    "план-конспект",
+    "конспект урока"
+   ],
+   "en": [
+    "lesson plan"
+   ]
+  },
+  "handout": {
+   "uz": [
+    "tarqatma",
+    "ish varag‘i",
+    "ish varaq",
+    "ish daftari"
+   ],
+   "ru": [
+    "раздатк",
+    "раздаточн",
+    "рабочий лист",
+    "рабочие листы"
+   ],
+   "en": [
+    "handout",
+    "worksheet",
+    "practice sheet"
+   ]
+  },
+  "cover": {
+   "uz": [
+    "titul",
+    "muqova",
+    "ochiq dars"
+   ],
+   "ru": [
+    "титульн",
+    "открытый урок",
+    "открытого урока"
+   ],
+   "en": [
+    "cover page",
+    "title page",
+    "open lesson"
+   ]
+  },
+  "results": {
+   "uz": [
+    "kutiladigan natija",
+    "kompetensiya"
+   ],
+   "ru": [
+    "планируемые результаты",
+    "компетенци",
+    "ууд"
+   ],
+   "en": [
+    "expected results",
+    "learning outcomes",
+    "competenc"
+   ]
+  },
+  "group": {
+   "uz": [
+    "guruh"
+   ],
+   "ru": [
+    "групп"
+   ],
+   "en": [
+    "group"
+   ]
+  },
+  "signature": {
+   "uz": [
+    "imzo",
+    "tasdiq",
+    "ko‘rib chiqil",
+    "direktor o‘rinbosari"
+   ],
+   "ru": [
+    "подпис",
+    "завуч"
+   ],
+   "en": [
+    "signature",
+    "deputy head"
+   ]
+  }
+ },
+ "ask": {
+  "when": "cues_missing",
+  "fields": [
+   "grade"
+  ],
+  "review": {
+   "uz": "🏫 Sinf aytilmadi: matn umumiy o‘quvchilar uchun yoziladi, «Sinf» katagi qo‘lda to‘ldiriladi.",
+   "ru": "🏫 Класс не указан: текст будет для школьников в целом, графа «Класс» заполняется от руки.",
+   "en": "🏫 No grade was given: the text is written for pupils in general, and the Grade cell is filled in by hand."
+  },
+  "prompt": {
+   "uz": "🏫 Qaysi sinf uchun? Masalan: 7-sinf",
+   "ru": "🏫 Для какого класса? Например: 7 класс",
+   "en": "🏫 Which grade is it for? For example: grade 7"
+  },
+  "hint": {
+   "uz": "Sinfni yozing, kerak bo‘lsa fanni ham: 5-sinf, matematika.",
+   "ru": "Напишите класс, если нужно, и предмет: 5 класс, математика.",
+   "en": "Write the grade, and the subject if needed: grade 5, maths."
+  }
+ },
+ "fields": [
+  {
+   "id": "topic",
+   "label": {
+    "uz": "Mavzu",
+    "ru": "Тема урока",
+    "en": "Topic"
+   },
+   "example": {
+    "uz": "Maxrajlari bir xil kasrlarni qo‘shish va ayirish",
+    "ru": "Сложение и вычитание дробей с одинаковыми знаменателями",
+    "en": "Adding and subtracting fractions with the same denominator"
+   },
+   "kind": "text",
+   "need": "required",
+   "missing": "ask",
+   "where": "Head box Mavzu row; the handout title; the cover. Never reworded when the customer gave a wording."
+  },
+  {
+   "id": "grade",
+   "label": {
+    "uz": "Sinf",
+    "ru": "Класс",
+    "en": "Grade"
+   },
+   "example": {
+    "uz": "5-«A» sinf",
+    "ru": "5 «А» класс",
+    "en": "Grade 5A"
+   },
+   "kind": "line",
+   "need": "required",
+   "missing": "ask",
+   "cues": {
+    "uz": [
+     "sinf"
+    ],
+    "ru": [
+     "класс"
+    ],
+    "en": [
+     "grade",
+     "class",
+     "year"
+    ]
+   },
+   "where": "Head box Sinf cell (the letter only when given); the handout sub-line; a ruled blank when missing."
+  },
+  {
+   "id": "subject",
+   "label": {
+    "uz": "Fan",
+    "ru": "Предмет",
+    "en": "Subject"
+   },
+   "example": {
+    "uz": "Matematika",
+    "ru": "Математика",
+    "en": "Mathematics"
+   },
+   "kind": "line",
+   "need": "required",
+   "missing": "ask",
+   "where": "Head box Fan cell; the handout sub-line; read from the topic when it settles it."
+  },
+  {
+   "id": "date",
+   "label": {
+    "uz": "Sana",
+    "ru": "Дата",
+    "en": "Date"
+   },
+   "example": {
+    "uz": "12.10.2026",
+    "ru": "12.10.2026",
+    "en": "12.10.2026"
+   },
+   "kind": "date",
+   "need": "optional",
+   "missing": "blank",
+   "where": "Head box Sana cell; a writing line when missing. Never today’s date, never guessed."
+  },
+  {
+   "id": "teacher",
+   "label": {
+    "uz": "O‘qituvchi (F.I.Sh.)",
+    "ru": "Учитель (Ф. И. О.)",
+    "en": "Teacher (full name)"
+   },
+   "example": {
+    "uz": "Komilova Lobar",
+    "ru": "Комилова Лобар",
+    "en": "Lobar Komilova"
+   },
+   "kind": "person",
+   "need": "optional",
+   "missing": "blank",
+   "where": "Head box teacher row and the cover; a writing line when missing; as the customer wrote it."
+  },
+  {
+   "id": "school",
+   "label": {
+    "uz": "Maktab",
+    "ru": "Школа",
+    "en": "School"
+   },
+   "example": {
+    "uz": "27-maktab",
+    "ru": "школа № 27",
+    "en": "School 27"
+   },
+   "kind": "org",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Head box and cover, exactly as written; the cell is dropped when missing."
+  },
+  {
+   "id": "place",
+   "label": {
+    "uz": "Shahar yoki tuman",
+    "ru": "Город или район",
+    "en": "City or district"
+   },
+   "example": {
+    "uz": "Namangan shahri",
+    "ru": "город Наманган",
+    "en": "Namangan"
+   },
+   "kind": "place",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Cover only."
+  },
+  {
+   "id": "duration",
+   "label": {
+    "uz": "Dars davomiyligi (daqiqa)",
+    "ru": "Продолжительность урока (минуты)",
+    "en": "Lesson length (minutes)"
+   },
+   "example": {
+    "uz": "45",
+    "ru": "45",
+    "en": "45"
+   },
+   "kind": "number",
+   "need": "optional",
+   "missing": "omit",
+   "where": "The total of the stage minutes; 45 when not given. «Bir soatlik dars» is one school lesson of 45."
+  },
+  {
+   "id": "textbook",
+   "label": {
+    "uz": "Darslik, sahifa va mashq raqamlari",
+    "ru": "Учебник, страницы и номера упражнений",
+    "en": "Textbook, pages and exercise numbers"
+   },
+   "example": {
+    "uz": "Matematika, 5-sinf, 180-betdagi 1–4-mashqlar",
+    "ru": "Математика, 5 класс, упр. 1–4 на с. 180",
+    "en": "Maths, grade 5, exercises 1–4 on page 180"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "omit",
+   "where": "The Darslik info row and the homework; numbers only as the customer wrote them in the message."
+  }
+ ],
+ "parts": [
+  {
+   "id": "cover",
+   "kind": "fixed",
+   "heading": null,
+   "heading_mode": "none",
+   "need": "optional",
+   "share": 0.0,
+   "elastic": false,
+   "block": "title_page",
+   "when": "cue:cover",
+   "fields": [
+    "place",
+    "school",
+    "subject",
+    "teacher",
+    "grade",
+    "topic"
+   ],
+   "write": "Nothing to write: a cover page assembled from the place, school, subject, teacher, grade and topic facts when the customer asks for one; a line whose fact is missing is dropped."
+  },
+  {
+   "id": "head",
+   "kind": "fixed",
+   "heading": null,
+   "heading_mode": "none",
+   "need": "required",
+   "share": 0.12,
+   "elastic": false,
+   "block": "doc_head",
+   "when": "nocue:handout",
+   "fields": [
+    "date",
+    "grade",
+    "subject",
+    "topic",
+    "teacher",
+    "school",
+    "textbook",
+    "duration"
+   ],
+   "write": "Nothing to write: the head box (Sana, Sinf, Fan, Mavzu, O‘qituvchi, Maktab) is drawn from the facts; a date or teacher not given is a writing line, a school not given is left out. The grade is copied as the customer wrote it («5-«A» sinf»), the topic in their wording."
+  },
+  {
+   "id": "aim_education",
+   "kind": "prose",
+   "heading": {
+    "uz": "Ta’limiy maqsad",
+    "ru": "Образовательная цель",
+    "en": "Educational aim"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "when": "nocue:handout",
+   "share": 0.02,
+   "elastic": false,
+   "block": "kv_table",
+   "words": [
+    12,
+    30
+   ],
+   "write": "One sentence on the new knowledge and skill of this topic, ending in a verbal noun in -ish («… qoidasini tushuntirish»); never a copy of the title."
+  },
+  {
+   "id": "aim_upbringing",
+   "kind": "prose",
+   "heading": {
+    "uz": "Tarbiyaviy maqsad",
+    "ru": "Воспитательная цель",
+    "en": "Upbringing aim"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "when": "nocue:handout",
+   "share": 0.02,
+   "elastic": false,
+   "block": "kv_table",
+   "words": [
+    12,
+    30
+   ],
+   "write": "One sentence naming a value the lesson really practises (hamkorlik, aniqlik, ona tiliga hurmat), ending in a verbal noun in -ish."
+  },
+  {
+   "id": "aim_development",
+   "kind": "prose",
+   "heading": {
+    "uz": "Rivojlantiruvchi maqsad",
+    "ru": "Развивающая цель",
+    "en": "Developmental aim"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "when": "nocue:handout",
+   "share": 0.02,
+   "elastic": false,
+   "block": "kv_table",
+   "words": [
+    12,
+    30
+   ],
+   "write": "One sentence on the thinking, speech or practical skill developed, ending in a verbal noun in -ish."
+  },
+  {
+   "id": "expected_results",
+   "kind": "prose",
+   "heading": {
+    "uz": "Kutiladigan natijalar",
+    "ru": "Планируемые результаты",
+    "en": "Expected results"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "share": 0.02,
+   "elastic": false,
+   "block": "kv_table",
+   "when": "cue:results",
+   "words": [
+    12,
+    60
+   ],
+   "write": "Only when the customer asks for results or competences: one to three clauses of what the pupil can do at the end of the lesson. Never quote or number a standard or a curriculum clause."
+  },
+  {
+   "id": "lesson_type",
+   "kind": "prose",
+   "heading": {
+    "uz": "Dars turi",
+    "ru": "Тип урока",
+    "en": "Lesson type"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "when": "nocue:handout",
+   "share": 0.005,
+   "elastic": false,
+   "block": "kv_table",
+   "words": [
+    2,
+    8
+   ],
+   "write": "One of: yangi bilim beruvchi, mustahkamlash, takrorlash, aralash, nazorat dars (or its Russian or English form)."
+  },
+  {
+   "id": "lesson_methods",
+   "kind": "prose",
+   "heading": {
+    "uz": "Dars metodi",
+    "ru": "Методы",
+    "en": "Methods"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "when": "nocue:handout",
+   "share": 0.005,
+   "elastic": false,
+   "block": "kv_table",
+   "words": [
+    3,
+    20
+   ],
+   "write": "Two to four methods the customer named, else from the customary list (savol-javob, suhbat, aqliy hujum, klaster, kichik guruhlarda ishlash, juftlikda ishlash, mustaqil ish, interfaol o‘yin); each is used in a stage."
+  },
+  {
+   "id": "lesson_equipment",
+   "kind": "prose",
+   "heading": {
+    "uz": "Dars jihozi",
+    "ru": "Оборудование",
+    "en": "Equipment"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "when": "nocue:handout",
+   "share": 0.005,
+   "elastic": false,
+   "block": "kv_table",
+   "words": [
+    3,
+    25
+   ],
+   "write": "One line, the realistic minimum, every item used in a stage; a projector, computer or reagents only when the customer names them."
+  },
+  {
+   "id": "outline",
+   "kind": "table",
+   "heading": {
+    "uz": "Darsning borishi",
+    "ru": "Ход урока",
+    "en": "Course of the lesson"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "share": 0.05,
+   "elastic": false,
+   "block": "table",
+   "when": "nocue:handout",
+   "max_items": 8,
+   "columns": [
+    {
+     "uz": "Dars bosqichi",
+     "ru": "Этап урока",
+     "en": "Stage"
+    },
+    {
+     "uz": "Vaqt, daq.",
+     "ru": "Время, мин",
+     "en": "Time, min"
+    },
+    {
+     "uz": "Faoliyat shakli, usul",
+     "ru": "Форма работы, метод",
+     "en": "Form of work, method"
+    }
+   ],
+   "from": 3,
+   "write": "One row per stage, in the order of the stages below: the stage name in label, its whole minutes in text, the method or form of work in 2 to 6 words in value. The minutes add up exactly to the lesson length (45 unless the customer gave another number of minutes); no stage under 2 minutes; the new topic takes 35 to 45 percent of the time."
+  },
+  {
+   "id": "stage_opening",
+   "kind": "prose",
+   "heading": {
+    "uz": "Tashkiliy qism",
+    "ru": "Организационный момент",
+    "en": "Opening"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "when": "nocue:handout",
+   "share": 0.04,
+   "elastic": false,
+   "block": "paragraph",
+   "words": [
+    20,
+    45
+   ],
+   "write": "Its minutes first («3 daqiqa.»), then 2 to 5 sentences: the teacher greets, takes the register, checks readiness, announces the topic and the aim; if group work follows, the groups are formed here (named after the topic’s concepts or 1-guruh, 2-guruh). Third person, present tense."
+  },
+  {
+   "id": "stage_review",
+   "kind": "list",
+   "heading": {
+    "uz": "O‘tilgan mavzuni takrorlash",
+    "ru": "Повторение пройденного",
+    "en": "Review of the previous topic"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "when": "nocue:handout",
+   "share": 0.12,
+   "elastic": false,
+   "block": "list",
+   "max_items": 8,
+   "words": [
+    40,
+    100
+   ],
+   "write": "In body its minutes and the method in one or two sentences, and a last line on what the pupils do. In items the actual questions, 4 to 8, the question in label and its answer in text only when the answer is certain. A game or quiz is written out, not promised."
+  },
+  {
+   "id": "stage_new",
+   "kind": "prose",
+   "heading": {
+    "uz": "Yangi mavzuni bayon qilish",
+    "ru": "Изучение нового материала",
+    "en": "Presentation of the new topic"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "when": "nocue:handout",
+   "share": 0.25,
+   "elastic": true,
+   "block": "paragraph",
+   "write": "The longest stage. Its minutes first, then a short hook, the explanation itself (the key idea in 4 to 8 sentences), a worked example with every step computed before it is written, a common mistake after «Eslatma:», and what the pupils do. Never «yangi mavzu tushuntiriladi» without the explanation."
+  },
+  {
+   "id": "rule",
+   "kind": "prose",
+   "heading": {
+    "uz": "Qoida",
+    "ru": "Правило",
+    "en": "Rule"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "when": "nocue:handout",
+   "share": 0.02,
+   "elastic": false,
+   "block": "callout",
+   "words": [
+    12,
+    45
+   ],
+   "write": "The rule or definition of the lesson in 1 to 3 sentences, set in a box. Only standard school knowledge."
+  },
+  {
+   "id": "group_tasks",
+   "kind": "table",
+   "heading": {
+    "uz": "Guruhlarda ishlash",
+    "ru": "Работа в группах",
+    "en": "Group work"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "share": 0.05,
+   "elastic": false,
+   "block": "table",
+   "when": "cue:group",
+   "max_items": 4,
+   "columns": [
+    {
+     "uz": "Guruh",
+     "ru": "Группа",
+     "en": "Group"
+    },
+    {
+     "uz": "Topshiriq",
+     "ru": "Задание",
+     "en": "Task"
+    },
+    {
+     "uz": "Javob (o‘qituvchi uchun)",
+     "ru": "Ответ (для учителя)",
+     "en": "Answer (for the teacher)"
+    }
+   ],
+   "write": "Only when the lesson has group work: one row per group, the group in label, its task in text, the answer for the teacher in value."
+  },
+  {
+   "id": "stage_practice",
+   "kind": "list",
+   "heading": {
+    "uz": "Yangi mavzuni mustahkamlash",
+    "ru": "Закрепление",
+    "en": "Consolidation"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "when": "nocue:handout",
+   "share": 0.14,
+   "elastic": false,
+   "block": "list",
+   "max_items": 8,
+   "words": [
+    50,
+    120
+   ],
+   "write": "In body its minutes and the exercises or the practical task in sentences; textbook exercises only by the numbers the customer gave, otherwise «darslikdagi shu mavzuga oid mashqlar». In items a mini-test of 3 to 6 questions: the stem in label, in text the four options «A) … B) … C) … D) …» with exactly one correct, then «Javob: C». The correct letter varies."
+  },
+  {
+   "id": "stage_close",
+   "kind": "prose",
+   "heading": {
+    "uz": "Darsni yakunlash va baholash",
+    "ru": "Итоги урока и оценивание",
+    "en": "Closing and assessment"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "when": "nocue:handout",
+   "share": 0.05,
+   "elastic": false,
+   "block": "paragraph",
+   "words": [
+    20,
+    60
+   ],
+   "write": "Its minutes first, then two summing-up questions, a reflection line («Bugun nimani bildim?») and how the work is assessed with its criterion in one sentence. No pupil names, no marks, no grading scale."
+  },
+  {
+   "id": "stage_homework",
+   "kind": "prose",
+   "heading": {
+    "uz": "Uyga vazifa",
+    "ru": "Домашнее задание",
+    "en": "Homework"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "when": "nocue:handout",
+   "share": 0.03,
+   "elastic": false,
+   "block": "paragraph",
+   "words": [
+    12,
+    50
+   ],
+   "write": "Its minutes first, then a concrete task tied to the topic. Page and exercise numbers only when the customer wrote them; otherwise «Darslikdagi shu mavzuga oid mashqlar bajariladi»."
+  },
+  {
+   "id": "appendix",
+   "kind": "list",
+   "heading": {
+    "uz": "Ilova",
+    "ru": "Приложение",
+    "en": "Appendix"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "share": 0.1,
+   "elastic": false,
+   "block": "list",
+   "when": "nocue:handout",
+   "max_items": 15,
+   "from": 6,
+   "write": "Plans of six pages and more: task cards, a longer test with its key, or a glossary of 5 to 12 terms with one-line meanings, one item each (label the title or the term, text the content). Never filler prose and never a pupil handout."
+  },
+  {
+   "id": "approval",
+   "kind": "fixed",
+   "heading": null,
+   "heading_mode": "none",
+   "need": "optional",
+   "share": 0.0,
+   "elastic": false,
+   "block": "approval_block",
+   "when": "cue:signature",
+   "fields": [
+    "teacher"
+   ],
+   "write": "Nothing to write: signature and review lines (O‘qituvchi; Ko‘rib chiqildi) with no names or dates, only when the customer asks for them."
+  },
+  {
+   "id": "h_head",
+   "kind": "fixed",
+   "heading": null,
+   "heading_mode": "none",
+   "need": "usual",
+   "share": 0.04,
+   "elastic": false,
+   "block": "cell_strip",
+   "when": "cue:handout",
+   "fields": [
+    "topic",
+    "grade",
+    "subject"
+   ],
+   "write": "Handout: nothing to write. The pupil strip (name, class, date to fill in), the topic as title and «5-sinf · Matematika» under it are drawn from the facts."
+  },
+  {
+   "id": "h_rule",
+   "kind": "prose",
+   "heading": {
+    "uz": "Eslab qoling",
+    "ru": "Запомните",
+    "en": "Remember"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "share": 0.1,
+   "elastic": false,
+   "block": "callout",
+   "when": "cue:handout",
+   "words": [
+    25,
+    80
+   ],
+   "write": "Handout: the rule, definition or key example the tasks rest on, 2 to 4 simple sentences for the pupil’s age; it names every term the tasks ask about and states nothing the tasks do not use."
+  },
+  {
+   "id": "task",
+   "kind": "list",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "usual",
+   "share": 0.7,
+   "elastic": false,
+   "block": "list",
+   "group": "task",
+   "when": "cue:handout",
+   "max_items": 8,
+   "words": [
+    15,
+    50
+   ],
+   "write": "Handout: one task, easy ones first. In heading its title of two to five words («Jadvalni to‘ldiring», «To‘g‘ri javobni tanlang», «Bo‘sh joylarni to‘ldiring», «Savolga javob bering», «Chizing»); in body one instruction line in the siz form; in items its lines: a choice item as the stem in label and «A) … B) … C) … D) …» in text, one correct each; a gap as ______ inside the label; a fill-in table row as its label with empty text. Two to four tasks a page, six at most; tasks not needed stay empty. Never an answer on the pupil pages."
+  },
+  {
+   "id": "h_key",
+   "kind": "list",
+   "heading": {
+    "uz": "Javoblar",
+    "ru": "Ответы",
+    "en": "Answers"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "share": 0.1,
+   "elastic": false,
+   "block": "list",
+   "when": "cue:handout",
+   "max_items": 10,
+   "words": [
+    0,
+    120
+   ],
+   "write": "Handout, only when the customer asks for the answers (javoblar, kalit, ответы, answer key); otherwise empty. It follows the tasks on the last page, under a rule. One item per task, the task number in label («1-topshiriq»), its answers in text («1-C, 2-A», the gaps in order, a short model answer). Only answers you are certain of."
+  }
+ ],
+ "rules": [
+  {
+   "text": "One school lesson, as a deputy head expects its plan: head, three aims, lesson type, methods and equipment, the stages with their minutes, homework. A handout (tarqatma, ish varag‘i, раздатка, рабочий лист, handout, worksheet) is for the pupil only: a rule box and numbered tasks, no aims, stages or minutes. A message that names a lesson plan (dars ishlanmasi, поурочный план, lesson plan) is the plan, even when it lists cards, worksheets or didactic material among its methods or equipment. A technological map, a series of lessons or a calendar plan asked for here is written as the plan of one lesson on its topic.",
+   "to": "model"
+  },
+  {
+   "text": "Voice of the plan: third person, present tense, the teacher and the pupils as actors («O‘qituvchi savol beradi», «O‘quvchilar javob beradilar») or the impersonal passive; the teacher’s own words only short and in « »; questions to pupils in the polite siz form. No praise, no «Albatta», nothing addressed to the customer. The handout speaks to the pupil in the siz form, with imperatives.",
+   "to": "model"
+  },
+  {
+   "text": "Time: «bir soatlik dars», «1 soat», «на один урок» and «one lesson» mean one lesson of 45 minutes; only an explicit number of minutes changes it. Every stage has whole minutes that add up exactly to the lesson, the same in the outline table and in the stages.",
+   "to": "model"
+  },
+  {
+   "text": "Stages are written out: the actual questions, the explanation, the worked example, the task items. A method named in Dars metodi is used in a stage; nothing is in Dars jihozi that no stage uses.",
+   "to": "model"
+  },
+  {
+   "text": "Subject facts must be right and at school level: compute every worked example and answer step by step before writing it. A mini-test has four options, exactly one correct, plausible wrong ones. With attached files the content and definitions come from them only.",
+   "to": "model"
+  },
+  {
+   "text": "Never invent a textbook title, page or exercise number (only those the customer wrote in the message), an author, a standard or curriculum clause, a quotation, an event date, a statistic, a real person, a pupil’s name, a mark or score. Group names are the topic’s own concepts or 1-guruh, 2-guruh, 3-guruh. Word problems use made-up quantities, never a real shop, person or place.",
+   "to": "model"
+  },
+  {
+   "text": "Level follows the grade: grades 1 to 4 short sentences, a game, everyday examples; grades 5 to 9 the standard form; 10 and 11 more abstract tasks. Uzbek is Latin only, o‘ and g‘ with ‘ and the tutuq with ’, quotation marks « »; Russian « », English “ ”.",
+   "to": "model"
+  }
+ ],
+ "bot": {
+  "prompt": {
+   "uz": "🏫 Dars ishlanmasi yoki o‘quvchilar uchun tarqatma tayyorlayman.\n✍️ Bitta xabarda yozing: sinf, fan, mavzu (ixtiyoriy: o‘qituvchi, maktab, sana, dars metodlari).\n📎 Darslik sahifasini PDF, Word yoki TXT qilib qo‘shishingiz mumkin.\nSahifa soni aytilmasa: ishlanma 4 sahifa (2 dan 8 gacha), tarqatma 2 sahifa (3 tagacha).",
+   "ru": "🏫 Подготовлю поурочный план или раздатку для учеников.\n✍️ Напишите одним сообщением: класс, предмет, тему (по желанию: учитель, школа, дата, методы урока).\n📎 Можно добавить страницы учебника в PDF, Word или TXT.\nЕсли число страниц не указано: план — 4 (от 2 до 8), раздатка — 2 (до 3).",
+   "en": "🏫 I make lesson plans and pupil handouts.\n✍️ Write in one message: grade, subject, topic (optional: teacher, school, date, lesson methods).\n📎 You can attach textbook pages as PDF, Word or TXT.\nNo page count means 4 pages for a plan (2 to 8) and 2 for a handout (up to 3)."
+  },
+  "examples": [
+   {
+    "uz": "7-sinf fizika, «Moddaning zichligi» mavzusida bir soatlik dars ishlanmasi kerak. Aqliy hujum va kichik guruhlarda ishlash bo‘lsin, uyga vazifa ham yozing. 4 sahifa.",
+    "ru": "Нужен поурочный план на один урок: физика, 7 класс, тема «Плотность вещества». Методы: мозговой штурм и работа в малых группах, добавьте домашнее задание. 4 страницы.",
+    "en": "I need a lesson plan for one lesson, grade 7 physics: the density of a substance. Use brainstorming and small-group work, and write the homework too. 4 pages."
+   },
+   {
+    "uz": "6-sinf biologiya, «Hujayra tuzilishi» mavzusiga tarqatma kerak: qisqa qoida, 5 ta topshiriq, ism-familiya yozadigan joy. Javoblari ham bo‘lsin.",
+    "ru": "Раздатка для 6 класса по биологии: строение клетки. Короткое правило, 5 заданий, место для имени и фамилии. Ответы тоже нужны.",
+    "en": "A handout for grade 6 biology on the structure of the cell: a short rule, 5 tasks and a line for the pupil’s name. Add the answers too."
+   },
+   {
+    "uz": "Ochiq dars uchun dars ishlanmasi: 4-sinf ona tili, «Sifat» mavzusi, 45 daqiqa. Titul varag‘i ham kerak: Namangan shahri, 27-maktab, o‘qituvchi Komilova Lobar.",
+    "ru": "Поурочный план для открытого урока: русский язык, 4 класс, тема «Прилагательное», 45 минут. Нужен и титульный лист: город Наманган, школа № 27, учитель Комилова Лобар.",
+    "en": "A lesson plan for an open lesson: grade 4 mother tongue, the topic “The adjective”, 45 minutes. Add a cover page: Namangan, School 27, teacher Lobar Komilova."
+   }
+  ],
+  "pool": [
+   {
+    "uz": "5-«B» sinf matematika: «Maxrajlari bir xil kasrlarni qo‘shish» mavzusida dars ishlanmasi, 3 ta guruh bilan, mini-test bo‘lsin. 3 sahifa.",
+    "ru": "5 «Б» класс, математика: поурочный план по теме «Сложение дробей с одинаковыми знаменателями», с тремя группами и мини-тестом. 3 страницы.",
+    "en": "Grade 5B maths: a lesson plan on adding fractions with the same denominator, with three groups and a mini test. 3 pages."
+   }
+  ],
+  "attach": true,
+  "notices": {
+   "finished": {
+    "uz": "📄 Tayyor. Sana va o‘qituvchi berilmagan bo‘lsa, ular qo‘lda to‘ldiriladi.",
+    "ru": "📄 Готово. Если дата и учитель не указаны, их нужно вписать от руки.",
+    "en": "📄 Ready. If the date and the teacher were not given, fill them in by hand."
+   },
+   "blanks": {
+    "uz": "Siz bermagan ma’lumot o‘rniga bo‘sh joy qoldirildi: uni o‘zingiz to‘ldiring.",
+    "ru": "Где данных не было, оставлены пустые места: заполните их сами.",
+    "en": "Where you gave no details, blanks were left for you to fill in."
+   }
+  }
+ },
+ "templates": [
+  "study_dars_ishlanmasi",
+  "study_tarqatma"
+ ],
+ "look": null,
+ "gates": [
+  "A native Uzbek and a native Russian reader check the stage headings, the three aim labels, the info rows, the outline-table headers, the handout labels and the bot copy.",
+  "Plans of 2, 4 and 8 pages (2 the shortest) and handouts of 2 and 3 pages (with and without answers) in uz, ru and en are drawn with the paper sample tool next to units/pdf.dars_ishlanmasi/mock/study_dars_ishlanmasi.png and study_tarqatma.png; a person checks every worked example, the minutes and the mini-test keys.",
+  "The shortest plan, 2 pages (the compact form), and the shortest handout, 2 pupil pages, are sampled with the paper sample tool in uz, ru and en, and each ends on its quoted last page with no longer_than_quoted.",
+  "The facts corpus is at zero on this entry’s examples and pool, and one real-provider run each for a plan and a handout (scripts/operations/ai_smoke.py --category pdf.dars_ishlanmasi) is read before the tick."
+ ],
+ "later": [
+  {
+   "text": "The technological map (study_texnologik_xarita): teacher and pupil columns per stage, the Russian UUD column and three-part results; this round a map asked for is the lesson plan.",
+   "words": [
+    "texnologik xarita",
+    "технологическ",
+    "technological map"
+   ]
+  },
+  {
+   "text": "A series of lessons in one file, and a plan and a handout asked for together delivered as two files: this round one file, and a message that names a lesson plan gets the plan even when it asks for a handout too; the handout only when the message asks for one and names no plan.",
+   "words": [
+    "ta dars uchun",
+    "серия урок",
+    "series of lessons",
+    "ikkita fayl",
+    "два файла",
+    "two files"
+   ]
+  },
+  {
+   "text": "Code re-checks of the arithmetic chains, the stage-minute sum and the mini-test keys, sending a stage back with the corrected value."
+  },
+  {
+   "text": "The nearest-document notice for a calendar plan, a lesson analysis or an open-lesson script, the one-page skeleton form and a one-page handout (a minimum and a maximum of 3 for the handout alone, which length.by_cue cannot yet say), and marks on every handout task."
+  }
+ ],
+ "groups": {
+  "task": {
+   "min": 2,
+   "max": 6,
+   "sized": "model"
+  }
+ },
+ "sources": {
+  "take": "all"
+ },
+ "exclusive": [
+  [
+   "lesson_plan",
+   "handout"
+  ]
+ ]
+}

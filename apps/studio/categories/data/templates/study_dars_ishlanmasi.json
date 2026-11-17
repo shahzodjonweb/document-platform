@@ -1,0 +1,395 @@
+{
+ "schema": 2,
+ "id": "study_dars_ishlanmasi",
+ "entries": [
+  "pdf.dars_ishlanmasi"
+ ],
+ "name": {
+  "uz": "Dars ishlanmasi",
+  "ru": "Поурочный план",
+  "en": "Lesson plan"
+ },
+ "family": "study",
+ "page": {
+  "margins_mm": {
+   "left": 20,
+   "right": 15,
+   "top": 15,
+   "bottom": 18
+  }
+ },
+ "type": {
+  "face": "serif",
+  "ladder": [
+   [
+    10.5,
+    14.5
+   ],
+   [
+    10,
+    13.8
+   ],
+   [
+    9.5,
+    13
+   ]
+  ],
+  "align": "left"
+ },
+ "page_rule": {
+  "kind": "count",
+  "trim": true
+ },
+ "furniture": {
+  "first": "number",
+  "later": "number_bottom",
+  "format": "n_of_N",
+  "header": [
+   "grade",
+   "subject"
+  ]
+ },
+ "flow": [
+  {
+   "block": "title_page",
+   "part": "cover",
+   "when": "cue:cover",
+   "fields": [
+    "place",
+    "school",
+    "subject",
+    "teacher",
+    "grade",
+    "topic"
+   ],
+   "params": {
+    "rows": [
+     {
+      "role": "place",
+      "fact": "place"
+     },
+     {
+      "role": "institution",
+      "fact": "school"
+     },
+     {
+      "role": "kind",
+      "label": "overline",
+      "style": "display"
+     },
+     {
+      "role": "topic",
+      "fact": "topic",
+      "style": "bold"
+     },
+     {
+      "role": "credit",
+      "fact": "teacher",
+      "label": "teacher"
+     }
+    ],
+    "year": "none"
+   }
+  },
+  {
+   "block": "doc_head",
+   "part": "head",
+   "page_break_before": false,
+   "fields": [
+    "date",
+    "grade",
+    "subject",
+    "topic",
+    "teacher",
+    "school"
+   ],
+   "params": {
+    "overline": "overline",
+    "title": [
+     "topic"
+    ],
+    "meta": [
+     "date",
+     "grade",
+     "subject",
+     "teacher",
+     "school"
+    ],
+    "rules": "both"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "aim_education",
+   "params": {
+    "level": 3,
+    "caps": true,
+    "label": "aims"
+   }
+  },
+  {
+   "block": "kv_table",
+   "part": "aim_education",
+   "when": "part:aim_education",
+   "params": {
+    "rows": "aim_education"
+   }
+  },
+  {
+   "block": "kv_table",
+   "part": "aim_upbringing",
+   "when": "part:aim_upbringing",
+   "params": {
+    "rows": "aim_upbringing"
+   }
+  },
+  {
+   "block": "kv_table",
+   "part": "aim_development",
+   "when": "part:aim_development",
+   "params": {
+    "rows": "aim_development"
+   }
+  },
+  {
+   "block": "kv_table",
+   "part": "expected_results",
+   "when": "part:expected_results",
+   "params": {
+    "rows": "expected_results"
+   }
+  },
+  {
+   "block": "kv_table",
+   "part": "lesson_type",
+   "when": "part:lesson_type",
+   "params": {
+    "rows": "lesson_type"
+   }
+  },
+  {
+   "block": "kv_table",
+   "part": "lesson_methods",
+   "when": "part:lesson_methods",
+   "params": {
+    "rows": "lesson_methods"
+   }
+  },
+  {
+   "block": "kv_table",
+   "part": "lesson_equipment",
+   "when": "part:lesson_equipment",
+   "params": {
+    "rows": "lesson_equipment"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "outline",
+   "when": "part:outline",
+   "params": {
+    "level": 3,
+    "caps": true
+   }
+  },
+  {
+   "block": "table",
+   "part": "outline",
+   "when": "part:outline",
+   "params": {
+    "rules": "grid",
+    "total": "none"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "stage_opening",
+   "when": "part:stage_opening",
+   "params": {
+    "level": 2,
+    "numbering": "roman",
+    "rule": "under"
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "stage_opening",
+   "when": "part:stage_opening",
+   "params": {
+    "style": "body"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "stage_review",
+   "when": "part:stage_review",
+   "params": {
+    "level": 2,
+    "numbering": "roman",
+    "rule": "under"
+   }
+  },
+  {
+   "block": "list",
+   "part": "stage_review",
+   "when": "part:stage_review",
+   "params": {
+    "marker": "number"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "stage_new",
+   "when": "part:stage_new",
+   "params": {
+    "level": 2,
+    "numbering": "roman",
+    "rule": "under"
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "stage_new",
+   "when": "part:stage_new",
+   "params": {
+    "style": "body"
+   }
+  },
+  {
+   "block": "callout",
+   "part": "rule",
+   "when": "part:rule",
+   "params": {
+    "style": "tint"
+   }
+  },
+  {
+   "block": "table",
+   "part": "group_tasks",
+   "when": "part:group_tasks",
+   "params": {
+    "rules": "grid"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "stage_practice",
+   "when": "part:stage_practice",
+   "params": {
+    "level": 2,
+    "numbering": "roman",
+    "rule": "under"
+   }
+  },
+  {
+   "block": "list",
+   "part": "stage_practice",
+   "when": "part:stage_practice",
+   "params": {
+    "marker": "number"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "stage_close",
+   "when": "part:stage_close",
+   "params": {
+    "level": 2,
+    "numbering": "roman",
+    "rule": "under"
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "stage_close",
+   "when": "part:stage_close",
+   "params": {
+    "style": "body"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "stage_homework",
+   "when": "part:stage_homework",
+   "params": {
+    "level": 2,
+    "numbering": "roman",
+    "rule": "under"
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "stage_homework",
+   "when": "part:stage_homework",
+   "params": {
+    "style": "body"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "appendix",
+   "when": "part:appendix",
+   "params": {
+    "level": 2,
+    "caps": true
+   },
+   "page_break_before": true
+  },
+  {
+   "block": "list",
+   "part": "appendix",
+   "when": "part:appendix",
+   "params": {
+    "marker": "number"
+   }
+  },
+  {
+   "block": "approval_block",
+   "part": "approval",
+   "when": "cue:signature",
+   "fields": [
+    "teacher"
+   ],
+   "params": {
+    "word": "reviewed",
+    "side": "pair",
+    "rows": [
+     "teacher"
+    ]
+   }
+  }
+ ],
+ "labels": {
+  "overline": {
+   "uz": "BIR SOATLIK DARS ISHLANMASI",
+   "ru": "ПОУРОЧНЫЙ ПЛАН",
+   "en": "LESSON PLAN"
+  },
+  "aims": {
+   "uz": "Darsning maqsadi",
+   "ru": "Цели урока",
+   "en": "Lesson aims"
+  },
+  "teacher": {
+   "uz": "O‘qituvchi:",
+   "ru": "Учитель:",
+   "en": "Teacher:"
+  },
+  "reviewed": {
+   "uz": "Ko‘rib chiqildi",
+   "ru": "Рассмотрено",
+   "en": "Reviewed"
+  },
+  "minutes": {
+   "uz": "{duration} daqiqa",
+   "ru": "{duration} мин",
+   "en": "{duration} min"
+  },
+  "total": {
+   "uz": "Jami",
+   "ru": "Итого",
+   "en": "Total"
+  }
+ },
+ "mock": "units/pdf.dars_ishlanmasi/mock/study_dars_ishlanmasi.png"
+}

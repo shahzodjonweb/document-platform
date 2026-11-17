@@ -1,0 +1,245 @@
+{
+ "schema": 2,
+ "id": "study_konspekt",
+ "entries": [
+  "pdf.konspekt"
+ ],
+ "name": {
+  "uz": "Konspekt",
+  "ru": "Конспект",
+  "en": "Study notes"
+ },
+ "family": "study",
+ "page": {
+  "margins_mm": {
+   "left": 22,
+   "right": 18,
+   "top": 18,
+   "bottom": 20
+  }
+ },
+ "type": {
+  "face": "serif",
+  "ladder": [
+   [
+    11,
+    16
+   ],
+   [
+    10.5,
+    15.2
+   ],
+   [
+    10,
+    14.4
+   ]
+  ],
+  "align": "left"
+ },
+ "page_rule": {
+  "kind": "count"
+ },
+ "furniture": {
+  "first": "number",
+  "later": "number_bottom",
+  "format": "n_of_N",
+  "header": [
+   "topic"
+  ]
+ },
+ "flow": [
+  {
+   "block": "doc_head",
+   "part": "title",
+   "fields": [
+    "topic",
+    "subject",
+    "level",
+    "lecture_number",
+    "author",
+    "institution",
+    "source_pages"
+   ],
+   "params": {
+    "overline": "kind_notes",
+    "title": [
+     "topic"
+    ],
+    "meta": [
+     "subject",
+     "level",
+     "lecture_number",
+     "author",
+     "institution",
+     "source_pages"
+    ],
+    "rules": "below",
+    "align": "left"
+   }
+  },
+  {
+   "block": "callout",
+   "part": "lead",
+   "when": "part:lead",
+   "params": {
+    "style": "bar"
+   }
+  },
+  {
+   "block": "toc",
+   "part": "plan",
+   "params": {
+    "label": "plan",
+    "levels": 1,
+    "page_numbers": false,
+    "style": "strip"
+   }
+  },
+  {
+   "block": "list",
+   "part": "key_terms",
+   "when": "part:key_terms",
+   "params": {
+    "marker": "bullet",
+    "columns": 2
+   }
+  },
+  {
+   "block": "heading",
+   "part": "section",
+   "when": "part:section",
+   "params": {
+    "level": 1,
+    "numbering": "arabic",
+    "rule": "none"
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "section",
+   "when": "part:section",
+   "params": {
+    "style": "body"
+   }
+  },
+  {
+   "block": "table",
+   "part": "definitions",
+   "when": "part:definitions",
+   "params": {
+    "rules": "horizontal",
+    "columns": [
+     {
+      "label": "term",
+      "width_mm": 38
+     },
+     {
+      "label": "definition",
+      "width_mm": "flex"
+     }
+    ]
+   }
+  },
+  {
+   "block": "formula_line",
+   "part": "formulas",
+   "when": "part:formulas",
+   "params": {
+    "source": "items"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "answer",
+   "when": "part:answer",
+   "params": {
+    "level": 2,
+    "numbering": "arabic"
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "answer",
+   "when": "part:answer",
+   "params": {
+    "style": "body",
+    "run_in_label": true
+   }
+  },
+  {
+   "block": "callout",
+   "part": "takeaways",
+   "when": "part:takeaways",
+   "params": {
+    "style": "tint"
+   }
+  },
+  {
+   "block": "callout",
+   "part": "main_points",
+   "when": "part:main_points",
+   "params": {
+    "style": "tint"
+   }
+  },
+  {
+   "block": "list",
+   "part": "review",
+   "when": "part:review",
+   "params": {
+    "marker": "number"
+   }
+  },
+  {
+   "block": "list",
+   "part": "references",
+   "when": "part:references",
+   "params": {
+    "marker": "number"
+   }
+  }
+ ],
+ "labels": {
+  "kind_notes": {
+   "uz": "KONSPEKT",
+   "ru": "КОНСПЕКТ",
+   "en": "STUDY NOTES"
+  },
+  "kind_summary": {
+   "uz": "QISQACHA MAZMUN",
+   "ru": "КРАТКОЕ СОДЕРЖАНИЕ",
+   "en": "SUMMARY"
+  },
+  "kind_qa": {
+   "uz": "SAVOL-JAVOB",
+   "ru": "ВОПРОСЫ И ОТВЕТЫ",
+   "en": "QUESTIONS AND ANSWERS"
+  },
+  "lecture": {
+   "uz": "{lecture_number}-ma’ruza",
+   "ru": "Лекция {lecture_number}",
+   "en": "Lecture {lecture_number}"
+  },
+  "plan": {
+   "uz": "Reja",
+   "ru": "План",
+   "en": "Outline"
+  },
+  "term": {
+   "uz": "Atama",
+   "ru": "Термин",
+   "en": "Term"
+  },
+  "definition": {
+   "uz": "Ta’rifi",
+   "ru": "Определение",
+   "en": "Definition"
+  },
+  "legend": {
+   "uz": "bu yerda:",
+   "ru": "где:",
+   "en": "where:"
+  }
+ },
+ "mock": "units/pdf.konspekt/mock/study_konspekt.png"
+}

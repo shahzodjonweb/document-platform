@@ -1159,3 +1159,38 @@ tests/test_category_letters.py::test_the_statement_head_is_its_own_template_with
 tests/test_category_letters.py::test_a_label_drawn_in_a_language_has_words_in_it
 tests/test_category_letters.py::test_the_explanatory_notes_head_has_a_label_in_english_only
 tests/test_category_letters.py::test_a_line_drawn_from_labels_alone_prints_no_inherited_fields
+
+# Categories, the academic and study papers as drafts (C2a): each stays inside its block budget and the paper bounds
+# at every length and cue subset; chapters are a group the model sizes to the plan; a title-page year is the clock's;
+# references only from what was supplied; a handout is its own template picked by its cue; the test keeps its locked
+# shape with its rules reworded
+tests/test_category_study_entries.py::test_each_entry_is_a_draft_paper_within_its_budgets[pdf.mustaqil_ish]
+tests/test_category_study_entries.py::test_each_entry_is_a_draft_paper_within_its_budgets[pdf.test]
+tests/test_category_study_entries.py::test_every_length_and_cue_subset_seeds_within_the_paper_bounds[pdf.dars_ishlanmasi]
+tests/test_category_study_entries.py::test_chapters_are_a_group_the_model_sizes_to_the_plan[pdf.kurs_ishi]
+tests/test_category_study_entries.py::test_a_title_page_year_is_the_clocks_and_no_other_fact_is
+tests/test_category_study_entries.py::test_references_are_a_sources_part_and_notes_list_them_only_when_supplied
+tests/test_category_study_entries.py::test_a_handout_is_its_own_template_picked_by_its_cue
+tests/test_category_study_entries.py::test_the_test_keeps_its_locked_shape_with_its_rules_reworded
+
+# Categories, the academic and study papers' sizes (C2a review): a reference list is never asked for words it has no
+# source for; only prose grows and shrinks in a count paper; each entry's shortest length holds the pages its template
+# forces; a handout key only in a handout
+tests/test_category_study_entries.py::test_a_reference_list_is_never_asked_for_words_it_has_no_source_for
+tests/test_category_study_entries.py::test_only_prose_grows_and_shrinks_in_a_count_paper
+tests/test_category_study_entries.py::test_the_shortest_length_holds_the_pages_its_template_forces[pdf.mustaqil_ish]
+tests/test_category_study_entries.py::test_the_shortest_length_holds_the_pages_its_template_forces[pdf.dars_ishlanmasi]
+tests/test_category_study_entries.py::test_a_handout_key_is_written_only_in_a_handout_and_only_when_asked
+
+# Categories, the academic and study papers' pages (C2a second review): a third chapter only where three can fill
+# their pages; a group the model sizes counts at its max among the page starts; a named lesson plan is the plan
+# whatever its methods and materials, a handout only when asked for with no plan; a handout holds its two pages with
+# its key; the shortest and the default length end on their page with no heavy cut (drawn with stand-in blocks)
+tests/test_category_study_entries.py::test_a_third_chapter_comes_only_where_three_can_fill_their_pages
+tests/test_category_study_entries.py::test_the_shortest_length_holds_the_pages_its_template_forces[pdf.kurs_ishi]
+tests/test_category_study_entries.py::test_a_named_lesson_plan_is_the_plan_whatever_its_methods_and_materials[uz-cards]
+tests/test_category_study_entries.py::test_a_named_lesson_plan_is_the_plan_whatever_its_methods_and_materials[ru-cards]
+tests/test_category_study_entries.py::test_a_handout_asked_for_without_a_plan_is_the_handout[uz]
+tests/test_category_study_entries.py::test_a_handout_holds_its_two_pages_with_its_key
+tests/test_category_study_entries.py::test_the_shortest_and_the_default_length_end_on_their_page_without_heavy_cuts[pdf.mustaqil_ish-8-plain-2]
+tests/test_category_study_entries.py::test_the_shortest_and_the_default_length_end_on_their_page_without_heavy_cuts[pdf.kurs_ishi-12-plain-3]

@@ -1,0 +1,547 @@
+{
+ "schema": 2,
+ "id": "pdf.konspekt",
+ "status": "draft",
+ "service": "pdf",
+ "parent": null,
+ "order": 3,
+ "labels": {
+  "uz": "📖 Konspekt / Xulosa",
+  "ru": "📖 Конспект / Пересказ",
+  "en": "📖 Notes / Summary"
+ },
+ "summary": "A tidy notes sheet in black and grey: the topic, a plan and key terms, numbered sections with definition rows and formula lines, closing points and review questions; or a faithful summary of an attached file (a main idea and the source’s points); or exam questions with short answers. With a file every fact comes from the file; without one only textbook-safe facts. 2 to 12 pages, default 4.",
+ "tone": "Impersonal, concise, telegraphic study notes; exact terms; no first or second person.",
+ "topic": true,
+ "title": "model",
+ "length": {
+  "unit": "pages",
+  "mode": "count",
+  "target": "count",
+  "default": 4,
+  "min": 2,
+  "max": 12,
+  "note": "The fixed parts are inside the count. Nothing is padded: the notes end where the content ends (fill false), so an under-run is a shorter last page. From 2 pages: one page cannot hold a section with the key terms, the closing points and the definitions (the one-page revision sheet is deferred), so 1 is built as 2. At most 12: the form is made for up to 11 pages, and a longer request is built at 12 and said on the review. The fixed parts’ shares stand for the room the template’s page starts, headings and boxes take, which skeleton.words cannot see at its generic words a page: they are set so the shortest and the default length fit at about 0.9 of each part’s top word count with no trim below 0.7 (rendered through the paper engine with stand-in blocks), a longer paper running short for the top-up to fill. A words-a-page figure per template would replace this."
+ },
+ "questions": {
+  "default": 0,
+  "max": 0
+ },
+ "quality": "repair",
+ "fill": false,
+ "cues": {
+  "summary": {
+   "uz": [
+    "qisqacha mazmun",
+    "xulosa tayyorla",
+    "xulosa qil",
+    "xulosasini",
+    "mazmunini qisqa"
+   ],
+   "ru": [
+    "пересказ",
+    "краткое содержание",
+    "краткое изложение",
+    "резюме"
+   ],
+   "en": [
+    "summary",
+    "summarise",
+    "summarize"
+   ]
+  },
+  "qa": {
+   "uz": [
+    "savol-javob",
+    "savol javob",
+    "savollar va javoblar",
+    "imtihon savollari"
+   ],
+   "ru": [
+    "вопросы и ответы",
+    "вопросов и ответов",
+    "экзаменационные вопросы",
+    "билеты"
+   ],
+   "en": [
+    "questions and answers",
+    "questions with answers",
+    "exam questions",
+    "q&a"
+   ]
+  }
+ },
+ "ask": null,
+ "fields": [
+  {
+   "id": "topic",
+   "label": {
+    "uz": "Mavzu",
+    "ru": "Тема",
+    "en": "Topic"
+   },
+   "example": {
+    "uz": "Nyuton qonunlari",
+    "ru": "Законы Ньютона",
+    "en": "Newton’s laws"
+   },
+   "kind": "text",
+   "need": "required",
+   "missing": "ask",
+   "where": "The title on page 1; with a file and no topic, the topic of the file (never its file name)."
+  },
+  {
+   "id": "subject",
+   "label": {
+    "uz": "Fan",
+    "ru": "Предмет",
+    "en": "Subject"
+   },
+   "example": {
+    "uz": "Fizika (mexanika)",
+    "ru": "Физика (механика)",
+    "en": "Physics (mechanics)"
+   },
+   "kind": "line",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "Row Fan of the meta rows under the title; left out when not given, never guessed."
+  },
+  {
+   "id": "level",
+   "label": {
+    "uz": "Sinf yoki kurs",
+    "ru": "Класс или курс",
+    "en": "Grade or year"
+   },
+   "example": {
+    "uz": "1-kurs",
+    "ru": "1 курс",
+    "en": "year 1"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "omit",
+   "where": "One meta row in the customer’s own word (Sinf 9 or Kurs 1); also sets the depth of the notes."
+  },
+  {
+   "id": "lecture_number",
+   "label": {
+    "uz": "Ma’ruza raqami",
+    "ru": "Номер лекции",
+    "en": "Lecture number"
+   },
+   "example": {
+    "uz": "2",
+    "ru": "2",
+    "en": "2"
+   },
+   "kind": "number",
+   "need": "optional",
+   "missing": "omit",
+   "where": "The kind line above the title: «2-ma’ruza · Konspekt»; only the customer’s."
+  },
+  {
+   "id": "author",
+   "label": {
+    "uz": "Muallif",
+    "ru": "Автор",
+    "en": "Author"
+   },
+   "example": {
+    "uz": "Shukurova Xurshida",
+    "ru": "Шукурова Хуршида",
+    "en": "Xurshida Shukurova"
+   },
+   "kind": "person",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Row Muallif of the meta rows, only when the customer writes their own name; no blank."
+  },
+  {
+   "id": "institution",
+   "label": {
+    "uz": "Muassasa yoki kafedra",
+    "ru": "Учреждение или кафедра",
+    "en": "Institution or department"
+   },
+   "example": {
+    "uz": "Misol pedagogika instituti, fizika kafedrasi",
+    "ru": "Примерный педагогический институт, кафедра физики",
+    "en": "Example Pedagogical Institute, Department of Physics"
+   },
+   "kind": "org",
+   "need": "optional",
+   "missing": "omit",
+   "where": "One meta row in plain text; no emblem and no ministry line."
+  },
+  {
+   "id": "source_pages",
+   "label": {
+    "uz": "Manba bobi yoki betlari",
+    "ru": "Глава или страницы источника",
+    "en": "Source chapter or pages"
+   },
+   "example": {
+    "uz": "2-bob",
+    "ru": "глава 2",
+    "en": "chapter 2"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "omit",
+   "where": "The part of an attached file the customer asked for; a meta row. Only the customer’s words."
+  }
+ ],
+ "parts": [
+  {
+   "id": "title",
+   "kind": "fixed",
+   "heading": null,
+   "heading_mode": "none",
+   "need": "required",
+   "share": 0.3,
+   "elastic": false,
+   "block": "doc_head",
+   "fields": [
+    "topic",
+    "subject",
+    "level",
+    "lecture_number",
+    "author",
+    "institution",
+    "source_pages"
+   ],
+   "write": "Nothing to write: the template draws the kind line, the topic and the meta rows from the facts; a row not given is left out (this paper has no ruled blanks). The topic is a noun phrase of at most 90 characters in the customer’s words, with no full stop or quotation marks and never the words konspekt, xulosa, savol-javob."
+  },
+  {
+   "id": "lead",
+   "kind": "prose",
+   "heading": {
+    "uz": "Asosiy g‘oya",
+    "ru": "Основная мысль",
+    "en": "Main idea"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "share": 0.03,
+   "elastic": false,
+   "block": "callout",
+   "when": "cue:summary",
+   "words": [
+    20,
+    60
+   ],
+   "write": "A summary of a file only: at most three sentences saying what the source is about in its own terms, starting «Matnga ko‘ra,» («Согласно тексту,», “According to the text,”). No opinion, nothing the source does not state."
+  },
+  {
+   "id": "plan",
+   "kind": "fixed",
+   "heading": {
+    "uz": "Reja",
+    "ru": "План",
+    "en": "Outline"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "share": 0.03,
+   "elastic": false,
+   "block": "toc",
+   "from": 2,
+   "write": "Nothing to write: the template lists the section headings, in order and word for word."
+  },
+  {
+   "id": "key_terms",
+   "kind": "list",
+   "heading": {
+    "uz": "Tayanch iboralar",
+    "ru": "Ключевые понятия",
+    "en": "Key terms"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "share": 0.03,
+   "elastic": false,
+   "block": "list",
+   "max_items": 12,
+   "words": [
+    4,
+    40
+   ],
+   "write": "Four to twelve key terms of these notes (about two a page), one item each (in text, no label), each in the form a textbook index prints it, lower case unless a name, in order of first appearance. Every term listed is explained in a section or a definition row."
+  },
+  {
+   "id": "section",
+   "kind": "prose",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "required",
+   "share": 0.5,
+   "elastic": true,
+   "block": "paragraph",
+   "group": "topic",
+   "when": "nocue:qa",
+   "write": "One numbered section of the notes: in heading a noun phrase of at most 70 characters that reads as a plan item (no number, full stop or colon); in body one or two sentences on what it covers, then short paragraphs of single ideas, sentences of at most 22 words. A term is defined at its first use. A worked example (Misol, Masala) with plain hypothetical numbers only when no file is attached. A summary of a file follows the order of the source and adds nothing to it."
+  },
+  {
+   "id": "definitions",
+   "kind": "table",
+   "heading": null,
+   "heading_mode": "none",
+   "need": "usual",
+   "share": 0.08,
+   "elastic": false,
+   "block": "table",
+   "group": "topic",
+   "when": "nocue:qa",
+   "max_items": 7,
+   "columns": [
+    {
+     "uz": "Atama",
+     "ru": "Термин",
+     "en": "Term"
+    },
+    {
+     "uz": "Ta’rifi",
+     "ru": "Определение",
+     "en": "Definition"
+    }
+   ],
+   "write": "One to seven rows where this section introduces terms: the term in label, in value one sentence that starts in lower case with the kind of thing it is and does not repeat the term («jismlarning o‘zaro ta’sirini ifodalovchi vektor kattalik»). Only definitions the source or textbook practice gives; none when the section introduces no term."
+  },
+  {
+   "id": "formulas",
+   "kind": "list",
+   "heading": null,
+   "heading_mode": "none",
+   "need": "optional",
+   "share": 0.03,
+   "elastic": false,
+   "block": "formula_line",
+   "group": "topic",
+   "when": "nocue:qa",
+   "max_items": 6,
+   "write": "Only where the subject has formulas, and only formulas the source gives or that are textbook facts of an exact science: one item each, the formula in label in plain symbols («F = m · a», a subscript as _{12}, a power as ^{3}), in text the legend after «bu yerda:» («где:», “where:”) naming every symbol. The number is the template’s. None for a subject without formulas."
+  },
+  {
+   "id": "answer",
+   "kind": "prose",
+   "heading": null,
+   "heading_mode": "model",
+   "need": "usual",
+   "share": 0.8,
+   "elastic": true,
+   "block": "paragraph",
+   "group": "answers",
+   "when": "cue:qa",
+   "write": "Questions and answers: one instance per question, the question in heading in the customer’s words and order (without a list of theirs, two or three questions a page on the topic’s main points), the answer in body: one direct sentence of at most 25 words, then sentences up to 40 to 110 words in all. Questions beyond those listed here stay empty."
+  },
+  {
+   "id": "takeaways",
+   "kind": "list",
+   "heading": {
+    "uz": "Xulosa",
+    "ru": "Выводы",
+    "en": "Key points"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "share": 0.05,
+   "elastic": false,
+   "block": "callout",
+   "when": "nocue:summary",
+   "max_items": 5,
+   "words": [
+    0,
+    100
+   ],
+   "write": "Three to five points of at most 20 words (five when the customer asks for five), in your own words, repeating only what the body states. None in the questions-and-answers form."
+  },
+  {
+   "id": "main_points",
+   "kind": "list",
+   "heading": {
+    "uz": "Asosiy fikrlar",
+    "ru": "Главное",
+    "en": "Key points"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "share": 0.05,
+   "elastic": false,
+   "block": "callout",
+   "when": "cue:summary",
+   "max_items": 5,
+   "words": [
+    20,
+    100
+   ],
+   "write": "Three to five main points of the source, at most 20 words each (five when the customer asks for five), adding no fact."
+  },
+  {
+   "id": "review",
+   "kind": "list",
+   "heading": {
+    "uz": "Nazorat savollari",
+    "ru": "Контрольные вопросы",
+    "en": "Review questions"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "share": 0.05,
+   "elastic": false,
+   "block": "list",
+   "when": "nocue:summary",
+   "max_items": 10,
+   "words": [
+    0,
+    140
+   ],
+   "from": 2,
+   "write": "Four to seven open questions, each answerable from the body, starting with Nima, Qanday, Nega, Qachon, Qaysi or Hisoblang; no options, no answers. None in the questions-and-answers form."
+  },
+  {
+   "id": "references",
+   "kind": "sources",
+   "heading": {
+    "uz": "Foydalanilgan adabiyotlar",
+    "ru": "Использованная литература",
+    "en": "References"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "share": 0.02,
+   "elastic": false,
+   "block": "list",
+   "when": "cue:sources",
+   "words": [
+    0,
+    120
+   ],
+   "write": "Only a work the customer names in the message, printed exactly as written, or one whose author and title the attached file’s own title page gives. Never the file’s name, never a book, author, link or year of your own. None when there are none."
+  }
+ ],
+ "rules": [
+  {
+   "text": "Register: impersonal, concise study notes; exact terms, short declarative sentences of one idea, no men, biz or siz and no address to the reader (imperatives and questions only in the review questions). No introduction announcing the notes, no closing paragraph repeating them, no emoji, pictures or diagrams; the key points are the only summary.",
+   "to": "model"
+  },
+  {
+   "text": "Forms: study notes by default; a summary of an attached file when the message asks for xulosa, qisqacha mazmun, пересказ, краткое содержание or summary; questions with answers when it asks for savol-javob, вопросы и ответы or questions and answers. A teacher’s lesson plan asked for here is written as study notes on its topic.",
+   "to": "model"
+  },
+  {
+   "text": "With a file attached, the file is the only source of facts in every form: write nothing it does not say, no example of your own and no new numbers; terms, definitions and questions come from it. If it lacks what was asked, leave that out. A long file without a named chapter is summarised chapter by chapter.",
+   "to": "model"
+  },
+  {
+   "text": "Without a file, textbook-safe content only: definitions, laws and formulas of the exact sciences, standard constants, the order and causes of well-known processes. Never a statute or article number, a statistic, percentage, price, grade, quotation or «according to X»; a date only for an event the customer named, its year or its century. When unsure, state the idea in general terms and leave the figure out.",
+   "to": "model"
+  },
+  {
+   "text": "Depth follows the customer’s level: for a school class simple words and an everyday example in each section, formulas only where the subject has them; for a university course exact terms and fewer examples.",
+   "to": "model"
+  },
+  {
+   "text": "Uzbek is Latin only, o‘ and g‘ with ‘ and the tutuq with ’, standard spelling of names and terms; quotation marks « » in Uzbek and Russian, “ ” in English. A number stays with its unit. Never a Cyrillic word in an Uzbek or English text.",
+   "to": "model"
+  }
+ ],
+ "bot": {
+  "prompt": {
+   "uz": "✍️ Mavzuni, fanni, sinf yoki kursni va necha sahifa kerakligini yozing (aytmasangiz, 4 sahifa; 2 dan 12 gacha).\nNima kerakligini ayting: konspekt, fayl bo‘yicha qisqacha mazmun yoki imtihon uchun savol-javob (savollar ro‘yxatini ham yuboring, 12 tagacha).\n📎 PDF, Word yoki TXT fayl biriktirsangiz, hujjat faqat shu fayl asosida tuziladi.\n🏫 Dars ishlanmasi kerak bo‘lsa, «Dars ishlanmasi / tarqatma» bo‘limini tanlang.",
+   "ru": "✍️ Напишите тему, предмет, класс или курс и сколько страниц нужно (если не указать, 4; от 2 до 12).\nУкажите, что нужно: конспект, краткое изложение файла или вопросы и ответы к экзамену (пришлите и список вопросов, до 12).\n📎 Прикрепите PDF, Word или TXT — документ будет составлен только по вашему файлу.\n🏫 Поурочный план для учителя — в разделе «Поурочный план / раздатка».",
+   "en": "✍️ Write the topic, the subject, your grade or year and how many pages (4 if you don’t say; 2 to 12).\nSay what you need: study notes, a summary of your file, or exam questions with answers (send your list of questions too, up to 12).\n📎 Attach a PDF, Word or TXT file and the document is made only from it.\n🏫 A lesson plan for teaching is under “Lesson plan / handout”."
+  },
+  "examples": [
+   {
+    "uz": "9-sinf fizikasi: Nyuton qonunlari bo‘yicha o‘qib chiqish uchun konspekt kerak. Tayanch iboralar, formulalar va har bir qonunga bitta misol bo‘lsin, 3 sahifa.",
+    "ru": "Нужен конспект по физике для 9 класса, чтобы выучить тему «Законы Ньютона»: ключевые понятия, формулы и по одному примеру на каждый закон, 3 страницы.",
+    "en": "Study notes for year 9 physics on Newton’s laws, to learn the topic: key terms, the formulas and one example for each law, 3 pages."
+   },
+   {
+    "uz": "Biriktirgan faylimdagi 2-bob bo‘yicha qisqacha mazmun tayyorlang: asosiy g‘oya, muhim atamalar va oxirida 5 ta asosiy fikr. Fan: marketing asoslari, 2-kurs, 2 sahifa.",
+    "ru": "Сделайте краткое содержание главы 2 из прикреплённого файла: основная мысль, важные термины и 5 главных пунктов в конце. Предмет: основы маркетинга, 2 курс, 2 страницы.",
+    "en": "Summarise chapter 2 of the attached file: the main idea, the important terms and the 5 key points at the end. Subject: marketing basics, year 2, 2 pages."
+   },
+   {
+    "uz": "Biologiya fanidan imtihonga tayyorlanish uchun savol-javob kerak: hujayra tuzilishi. 8 ta savol, har biriga qisqa javob, 3 sahifa.",
+    "ru": "Нужны вопросы и ответы для подготовки к экзамену по биологии: строение клетки. 8 вопросов, к каждому короткий ответ, 3 страницы.",
+    "en": "Exam questions and answers for biology revision: the structure of the cell. 8 questions, a short answer to each, 3 pages."
+   }
+  ],
+  "pool": [
+   {
+    "uz": "Kimyo, 8-sinf: «Kislotalar va asoslar» mavzusiga 2 sahifalik konspekt, ta’riflar jadvali bilan.",
+    "ru": "Химия, 8 класс: конспект на 2 страницы по теме «Кислоты и основания», с таблицей определений.",
+    "en": "Chemistry, grade 8: 2 pages of notes on acids and bases, with a table of definitions."
+   }
+  ],
+  "attach": true,
+  "notices": {
+   "finished": {
+    "uz": "📄 Tayyor. Fayl biriktirilmagan bo‘lsa, matn umumiy bilimga asoslangan: sana, nom va formulalarni darslik bilan solishtiring.",
+    "ru": "📄 Готово. Если файл не был прикреплён, текст написан по общим знаниям: сверьте даты, названия и формулы с учебником.",
+    "en": "📄 Ready. If no file was attached, the text is written from general knowledge: check dates, names and formulas against your textbook."
+   },
+   "blanks": {
+    "uz": "Tekshirib bo‘lmagan ma’lumot o‘rniga bo‘sh joy qoldirildi.",
+    "ru": "Где сведения не удалось проверить, оставлены пустые места.",
+    "en": "Where a detail could not be checked, a blank was left."
+   }
+  }
+ },
+ "templates": [
+  "study_konspekt"
+ ],
+ "look": null,
+ "gates": [
+  "A native Uzbek and a native Russian reader check the fixed headings (Reja, Tayanch iboralar, Xulosa, Asosiy fikrlar, Nazorat savollari), the definition-table headers, the kind line and the bot copy.",
+  "Samples of 2, 4 and 11 pages in uz, ru and en, in the notes, summary and questions forms, are drawn with the paper sample tool next to units/pdf.konspekt/mock/study_konspekt.png, formulas read by a person.",
+  "The shortest notes, 2 pages, are sampled with the paper sample tool in uz, ru and en in each form (notes, summary, questions and answers), and each ends on page 2 with no longer_than_quoted and no trim below 0.7.",
+  "A summary of an attached file adds no name or number the file does not hold (one real-provider run with scripts/operations/ai_smoke.py --category pdf.konspekt and a file), and the facts corpus is at zero."
+ ],
+ "later": [
+  {
+   "text": "Key terms marked in the running text ([[term]]) and drawn as a strip beside the plan; this round they are a list the model writes."
+  },
+  {
+   "text": "The Manba row naming the attached file, and the reply that says how many sentences the file check dropped or which years were written from general knowledge."
+  },
+  {
+   "text": "Fact tables with headers of the content’s own (quantities with units, a chronology of events, a comparison of two to four things): a table’s header is the catalogue’s this round.",
+   "words": [
+    "xronologi",
+    "хронологи",
+    "chronolog"
+   ]
+  },
+  {
+   "text": "More than 12 exam questions in one paper (one answer group has at most 12 instances)."
+  },
+  {
+   "text": "A shorten retry when the notes overrun, a teachers’ course-pack cover, a Cornell page and a one-page revision sheet."
+  }
+ ],
+ "exclusive": [
+  [
+   "qa",
+   "summary"
+  ]
+ ],
+ "groups": {
+  "topic": {
+   "min": 2,
+   "max": 10,
+   "sized": "length"
+  },
+  "answers": {
+   "min": 1,
+   "max": 12,
+   "sized": "model"
+  }
+ },
+ "sources": {
+  "take": "head_tail"
+ }
+}
