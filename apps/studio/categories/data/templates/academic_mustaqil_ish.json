@@ -75,7 +75,8 @@
       "role": "institution",
       "fact": "institution",
       "style": "bold_caps",
-      "blank_caption": "cap_institution"
+      "blank_caption": "cap_institution",
+      "blank_lines": 2
      },
      {
       "role": "faculty",
@@ -90,9 +91,13 @@
      },
      {
       "role": "kind",
-      "fact": "work_kind",
       "label": "kind_referat",
-      "style": "display"
+      "style": "display",
+      "choice": "work_kind",
+      "labels": {
+       "referat": "kind_referat",
+       "mustaqil_ish": "kind_mustaqil_ish"
+      }
      },
      {
       "role": "topic",
@@ -115,7 +120,13 @@
       "role": "credit",
       "fact": "teacher",
       "label": "accepted_by",
-      "blank_caption": "cap_teacher"
+      "blank_caption": "cap_teacher",
+      "choice": "checker_word",
+      "labels": {
+       "accepted": "accepted_by",
+       "checked": "checked_by"
+      },
+      "blank_lines": 2
      },
      {
       "role": "foot",
@@ -275,7 +286,8 @@
    "params": {
     "label": "references",
     "blank_entries": 10,
-    "groups": false
+    "blank_lines": 2,
+    "groups": true
    }
   }
  ],
@@ -354,6 +366,26 @@
    "uz": "(shahar)",
    "ru": "(город)",
    "en": "(city)"
+  },
+  "group_normative": {
+   "uz": "Normativ-huquqiy hujjatlar",
+   "ru": "Нормативные правовые акты",
+   "en": "Laws and regulations"
+  },
+  "group_literature": {
+   "uz": "Ilmiy va o‘quv adabiyotlar",
+   "ru": "Научная и учебная литература",
+   "en": "Books and articles"
+  },
+  "group_online": {
+   "uz": "Internet manbalari",
+   "ru": "Интернет-источники",
+   "en": "Online sources"
+  },
+  "cap_reference": {
+   "uz": "(muallif, nomi, shahar: nashriyot, yil, sahifalar soni)",
+   "ru": "(автор, название, город: издательство, год, количество страниц)",
+   "en": "(author, title, city: publisher, year, pages)"
   }
  },
  "mock": "units/pdf.mustaqil_ish/mock/academic_mustaqil_ish.png"

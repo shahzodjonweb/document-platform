@@ -1245,3 +1245,16 @@ tests/test_paper_check.py::test_a_gutter_list_may_hang_its_markers_left_of_the_f
 tests/test_paper_check.py::test_the_long_case_is_sized_to_the_page_rule_and_shared_among_the_prose_parts
 tests/test_paper_check.py::test_the_long_case_of_a_fixed_paper_with_several_prose_parts_takes_one_page_more
 tests/test_paper_check.py::test_a_module_that_makes_its_own_sample_paper_draws_each_sample_on_it
+
+# Academic templates (R3a): the mustaqil ish and kurs ishi are drawn by their own templates; the title page is one
+# sheet with every fact by its role or a captioned blank and the clock's year; the contents prints the page each
+# heading lands on; the reference list holds only verified sources, grouped from six, else a numbered ruled form
+tests/test_paper_academic.py::test_the_academic_papers_are_drawn_by_their_own_templates[pdf.mustaqil_ish]
+tests/test_paper_academic.py::test_the_academic_papers_are_drawn_by_their_own_templates[pdf.kurs_ishi]
+tests/test_paper_academic.py::test_every_template_reads_well[academic_mustaqil_ish-uz-full]
+tests/test_paper_academic.py::test_every_template_reads_well[academic_kurs_ishi-uz-full]
+tests/test_paper_academic.py::test_a_title_page_is_one_whole_page_with_every_fact_by_its_role
+tests/test_paper_academic.py::test_a_blank_title_page_draws_rules_with_captions_and_the_clock_year
+tests/test_paper_academic.py::test_the_contents_lists_each_heading_with_the_page_it_lands_on
+tests/test_paper_academic.py::test_sources_are_numbered_in_groups_laws_first_with_a_long_url_inside_the_frame
+tests/test_paper_academic.py::test_no_source_draws_the_numbered_form_with_its_caption

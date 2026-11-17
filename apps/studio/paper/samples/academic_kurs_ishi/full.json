@@ -1,0 +1,138 @@
+{
+ "template": "academic_kurs_ishi",
+ "case": "full",
+ "entry": "pdf.kurs_ishi",
+ "pages": 12,
+ "uz": {
+  "title": "Kichik korxonalarda xodimlarni rag‘batlantirish usullari",
+  "facts": {
+   "topic": "Kichik korxonalarda xodimlarni rag‘batlantirish usullari",
+   "subject": "Menejment",
+   "university": "Gulzorobod iqtisodiyot universiteti",
+   "faculty": "Menejment fakulteti",
+   "kafedra": "Korxona iqtisodiyoti",
+   "course_group": "3-kurs 312-guruh",
+   "student_name": "Ergasheva Dilnoza",
+   "supervisor": "katta o‘qituvchi Yo‘ldoshev Bekzod",
+   "city": "Gulzorobod"
+  },
+  "sections": [
+   {"id": "relevance", "heading": "Mavzuning dolzarbligi", "layout": "text", "items": [], "body": "Kichik korxonalar uchun malakali xodimni saqlab qolish yirik kompaniyalarga qaraganda qiyinroq kechadi, chunki ularning moliyaviy imkoniyati cheklangan. Shu sababli moddiy va nomoddiy rag‘batlantirish usullarini to‘g‘ri tanlash va ularning natijasini baholash masalasi dolzarbdir."},
+   {"id": "research_state", "heading": "Mavzuning o‘rganilganlik darajasi", "layout": "text", "items": [], "body": "Xodimlarni rag‘batlantirish masalasi menejment fanida keng o‘rganilgan, biroq ko‘pincha yirik tashkilotlar misolida ko‘rib chiqiladi. Kichik korxonalarning o‘ziga xos sharoitlari esa kamroq yoritilgan."},
+   {"id": "aim", "heading": "Kurs ishining maqsadi", "layout": "text", "items": [], "body": "Kichik korxonalarda xodimlarni rag‘batlantirish usullarini tahlil qilish va ularni takomillashtirish yo‘llarini ko‘rsatish."},
+   {"id": "tasks", "heading": "Kurs ishining vazifalari", "layout": "list", "body": "", "items": [
+    {"label": "", "text": "rag‘batlantirish tushunchasi va nazariyalarini o‘rganish;"},
+    {"label": "", "text": "moddiy va nomoddiy usullarni tasniflash;"},
+    {"label": "", "text": "kichik korxona sharoitida usullarni qo‘llash tartibini tahlil qilish;"},
+    {"label": "", "text": "rag‘batlantirish tizimini takomillashtirish bo‘yicha takliflar ishlab chiqish."}
+   ]},
+   {"id": "object", "heading": "Kurs ishining obyekti", "layout": "text", "items": [], "body": "Tanlangan kichik korxonaning xodimlar bilan ishlash faoliyati."},
+   {"id": "subject_matter", "heading": "Kurs ishining predmeti", "layout": "text", "items": [], "body": "Xodimlarni rag‘batlantirishda qo‘llaniladigan usullar va ularning samaradorligi."},
+   {"id": "methods", "heading": "Kurs ishining nazariy-metodologik asoslari", "layout": "text", "items": [], "body": "Ishda tahlil, taqqoslash va umumlashtirish usullaridan foydalanildi."},
+   {"id": "significance", "heading": "Kurs ishining amaliy ahamiyati", "layout": "text", "items": [], "body": "Natijalardan kichik korxona rahbarlari xodimlar bilan ishlash tizimini qayta ko‘rib chiqishda foydalanishi mumkin."},
+   {"id": "chapter", "heading": "Xodimlarni rag‘batlantirishning nazariy asoslari", "layout": "text", "items": [], "body": "Bobda rag‘batlantirish tushunchasi, uning asosiy nazariyalari va usullar tasnifi ko‘rib chiqiladi."},
+   {"id": "section_a", "heading": "Rag‘batlantirish tushunchasi va mohiyati", "layout": "text", "items": [], "body": "Rag‘batlantirish deganda xodimni belgilangan maqsadlarga erishishga undovchi tashqi omillar tizimi tushuniladi. U ichki motivatsiya bilan chambarchas bog‘liq: tashqi rag‘bat xodimning o‘z ehtiyojlariga javob bergandagina samarali bo‘ladi.\nMenejmentda rag‘batlantirish boshqaruvning asosiy funksiyalaridan biri hisoblanadi. U rejalashtirish va nazorat bilan birga tashkilot natijalariga bevosita ta’sir ko‘rsatadi."},
+   {"id": "section_b", "heading": "Rag‘batlantirish usullarining tasnifi", "layout": "text", "items": [], "body": "Usullar odatda moddiy va nomoddiy turlarga ajratiladi. Moddiy usullarga ish haqi, mukofot va ijtimoiy to‘lovlar kiradi. Nomoddiy usullarga esa e’tirof, kasbiy o‘sish imkoniyati, moslashuvchan ish vaqti va jamoadagi qulay muhit kiradi.\nKichik korxonada nomoddiy usullarning ahamiyati ortadi, chunki ular katta xarajat talab qilmaydi va rahbar bilan xodim o‘rtasidagi yaqin aloqaga tayanadi."},
+   {"id": "chapter_close", "heading": "", "layout": "text", "items": [], "body": "Shunday qilib, rag‘batlantirish moddiy va nomoddiy usullar uyg‘unligiga tayanadi. Keyingi bobda bu usullarning kichik korxona sharoitida qo‘llanishi tahlil qilinadi."},
+   {"id": "chapter_2", "heading": "Kichik korxonada rag‘batlantirish tizimini tahlil qilish va takomillashtirish", "layout": "text", "items": [], "body": "Bobda tanlangan korxona misolida rag‘batlantirish tizimini tahlil qilish tartibi va takomillashtirish yo‘llari ko‘rsatiladi."},
+   {"id": "section_a_2", "heading": "Rag‘batlantirish tizimini tahlil qilish tartibi", "layout": "text", "items": [], "body": "Tahlil xodimlar tarkibi, ish haqi tuzilmasi va qo‘llanayotgan nomoddiy usullarni o‘rganishdan boshlanadi. Ko‘rsatkich sifatida xodimlar almashinuvi, ish vaqtidan foydalanish va xodimlarning qoniqish darajasi olinadi.\nHisob-kitob korxonaning o‘z ma’lumotlari asosida bajariladi. Natijalar rag‘batlantirish tizimining qaysi qismi kuchli va qaysi qismi zaif ekanini ko‘rsatadi."},
+   {"id": "section_b_2", "heading": "Rag‘batlantirish tizimini takomillashtirish yo‘llari", "layout": "text", "items": [], "body": "Takomillashtirish tahlil natijalariga tayanadi. Mukofotlarni aniq natijalarga bog‘lash, xodimlarning yutuqlarini muntazam e’tirof etish va o‘qish imkoniyatlarini yaratish asosiy yo‘nalishlar hisoblanadi.\nO‘zgarishlar bosqichma-bosqich joriy etiladi va har bir bosqichdan so‘ng xodimlarning fikri so‘raladi."},
+   {"id": "chapter_close_2", "heading": "", "layout": "text", "items": [], "body": "Bobda rag‘batlantirish tizimini tahlil qilish tartibi va uni takomillashtirishning asosiy yo‘nalishlari belgilandi."},
+   {"id": "conclusion", "heading": "Xulosa", "layout": "text", "items": [], "body": "Mavzuni o‘rganish natijasida quyidagi xulosalarga kelindi.\nBirinchidan, rag‘batlantirish xodimning ichki motivatsiyasiga tayangandagina samarali bo‘ladi. Ikkinchidan, kichik korxonada nomoddiy usullarning o‘rni alohida katta. Uchinchidan, tizimni tahlil qilish korxonaning o‘z ma’lumotlariga asoslanishi kerak. To‘rtinchidan, takomillashtirish bosqichma-bosqich va xodimlar fikrini hisobga olgan holda olib boriladi."},
+   {"id": "proposals", "heading": "Takliflar", "layout": "list", "body": "", "items": [
+    {"label": "", "text": "Mukofotlarni har chorakda aniq natijalarga bog‘lash."},
+    {"label": "", "text": "Xodimlarning yutuqlarini jamoa oldida muntazam e’tirof etish."},
+    {"label": "", "text": "Har bir xodim uchun yillik o‘qish rejasini tuzish."}
+   ]},
+   {"id": "references", "heading": "Foydalanilgan adabiyotlar ro‘yxati", "layout": "list", "body": "", "items": []}
+  ]
+ },
+ "ru": {
+  "title": "Методы стимулирования персонала на малых предприятиях",
+  "facts": {
+   "topic": "Методы стимулирования персонала на малых предприятиях",
+   "subject": "Менеджмент",
+   "university": "Гулзорабадский экономический университет",
+   "faculty": "Факультет менеджмента",
+   "kafedra": "Экономика предприятия",
+   "course_group": "3 курса группы 312",
+   "student_name": "Эргашева Дилноза",
+   "supervisor": "старший преподаватель Юлдошев Бекзод",
+   "city": "Гулзорабад"
+  },
+  "sections": [
+   {"id": "relevance", "heading": "Актуальность темы", "layout": "text", "items": [], "body": "Малому предприятию удержать квалифицированного работника труднее, чем крупной компании, так как его финансовые возможности ограничены. Поэтому вопрос правильного выбора материальных и нематериальных методов стимулирования и оценки их результата является актуальным."},
+   {"id": "research_state", "heading": "Степень изученности темы", "layout": "text", "items": [], "body": "Стимулирование персонала широко изучено в менеджменте, однако чаще на примере крупных организаций. Особые условия малых предприятий освещены меньше."},
+   {"id": "aim", "heading": "Цель курсовой работы", "layout": "text", "items": [], "body": "Проанализировать методы стимулирования персонала на малых предприятиях и показать пути их совершенствования."},
+   {"id": "tasks", "heading": "Задачи курсовой работы", "layout": "list", "body": "", "items": [
+    {"label": "", "text": "изучить понятие и теории стимулирования;"},
+    {"label": "", "text": "классифицировать материальные и нематериальные методы;"},
+    {"label": "", "text": "проанализировать порядок применения методов на малом предприятии;"},
+    {"label": "", "text": "разработать предложения по совершенствованию системы стимулирования."}
+   ]},
+   {"id": "object", "heading": "Объект исследования", "layout": "text", "items": [], "body": "Работа с персоналом выбранного малого предприятия."},
+   {"id": "subject_matter", "heading": "Предмет исследования", "layout": "text", "items": [], "body": "Методы стимулирования персонала и их эффективность."},
+   {"id": "methods", "heading": "Теоретико-методологическая основа", "layout": "text", "items": [], "body": "В работе использованы методы анализа, сравнения и обобщения."},
+   {"id": "significance", "heading": "Практическая значимость", "layout": "text", "items": [], "body": "Результаты могут быть использованы руководителями малых предприятий при пересмотре системы работы с персоналом."},
+   {"id": "chapter", "heading": "Теоретические основы стимулирования персонала", "layout": "text", "items": [], "body": "В главе рассматриваются понятие стимулирования, его основные теории и классификация методов."},
+   {"id": "section_a", "heading": "Понятие и сущность стимулирования", "layout": "text", "items": [], "body": "Под стимулированием понимается система внешних факторов, побуждающих работника достигать поставленных целей. Оно тесно связано с внутренней мотивацией: внешний стимул эффективен, только когда отвечает потребностям работника.\nВ менеджменте стимулирование считается одной из основных функций управления. Вместе с планированием и контролем оно прямо влияет на результаты организации."},
+   {"id": "section_b", "heading": "Классификация методов стимулирования", "layout": "text", "items": [], "body": "Методы обычно делят на материальные и нематериальные. К материальным относятся заработная плата, премии и социальные выплаты. К нематериальным — признание, возможность профессионального роста, гибкий график и благоприятный климат в коллективе.\nНа малом предприятии значение нематериальных методов возрастает, так как они не требуют больших затрат и опираются на близкий контакт руководителя с работником."},
+   {"id": "chapter_close", "heading": "", "layout": "text", "items": [], "body": "Таким образом, стимулирование опирается на сочетание материальных и нематериальных методов. В следующей главе анализируется их применение на малом предприятии."},
+   {"id": "chapter_2", "heading": "Анализ и совершенствование системы стимулирования на малом предприятии", "layout": "text", "items": [], "body": "В главе на примере выбранного предприятия показаны порядок анализа системы стимулирования и пути её совершенствования."},
+   {"id": "section_a_2", "heading": "Порядок анализа системы стимулирования", "layout": "text", "items": [], "body": "Анализ начинается с изучения состава персонала, структуры оплаты труда и применяемых нематериальных методов. Показателями служат текучесть кадров, использование рабочего времени и удовлетворённость работников.\nРасчёт выполняется по собственным данным предприятия. Результаты показывают, какая часть системы стимулирования сильна, а какая слаба."},
+   {"id": "section_b_2", "heading": "Пути совершенствования системы стимулирования", "layout": "text", "items": [], "body": "Совершенствование опирается на результаты анализа. Основные направления — привязка премий к конкретным результатам, регулярное признание достижений работников и создание возможностей для обучения.\nИзменения вводятся поэтапно, и после каждого этапа учитывается мнение работников."},
+   {"id": "chapter_close_2", "heading": "", "layout": "text", "items": [], "body": "В главе определены порядок анализа системы стимулирования и основные направления её совершенствования."},
+   {"id": "conclusion", "heading": "Заключение", "layout": "text", "items": [], "body": "В результате исследования сделаны следующие выводы.\nВо-первых, стимулирование эффективно, только когда опирается на внутреннюю мотивацию работника. Во-вторых, на малом предприятии особенно велика роль нематериальных методов. В-третьих, анализ системы должен основываться на собственных данных предприятия. В-четвёртых, совершенствование ведётся поэтапно с учётом мнения работников."},
+   {"id": "proposals", "heading": "Предложения", "layout": "list", "body": "", "items": [
+    {"label": "", "text": "Ежеквартально привязывать премии к конкретным результатам."},
+    {"label": "", "text": "Регулярно отмечать достижения работников перед коллективом."},
+    {"label": "", "text": "Составлять годовой план обучения для каждого работника."}
+   ]},
+   {"id": "references", "heading": "Список использованной литературы", "layout": "list", "body": "", "items": []}
+  ]
+ },
+ "en": {
+  "title": "Methods of motivating staff in small enterprises",
+  "facts": {
+   "topic": "Methods of motivating staff in small enterprises",
+   "subject": "Management",
+   "university": "Gulzorobod University of Economics",
+   "faculty": "Faculty of Management",
+   "kafedra": "Business Economics",
+   "course_group": "Year 3, group 312",
+   "student_name": "Dilnoza Ergasheva",
+   "supervisor": "Senior Lecturer Bekzod Yoldoshev",
+   "city": "Gulzorobod"
+  },
+  "sections": [
+   {"id": "relevance", "heading": "Relevance of the topic", "layout": "text", "items": [], "body": "A small enterprise finds it harder than a large company to keep a skilled employee, because its financial means are limited. Choosing the right material and non-material methods of motivation, and judging their results, is therefore a pressing question."},
+   {"id": "research_state", "heading": "State of research", "layout": "text", "items": [], "body": "Staff motivation is widely studied in management, but mostly in large organisations. The particular conditions of small enterprises are covered less."},
+   {"id": "aim", "heading": "Aim of the course paper", "layout": "text", "items": [], "body": "To analyse the methods of motivating staff in small enterprises and to show ways of improving them."},
+   {"id": "tasks", "heading": "Tasks of the course paper", "layout": "list", "body": "", "items": [
+    {"label": "", "text": "to study the concept and theories of motivation;"},
+    {"label": "", "text": "to classify material and non-material methods;"},
+    {"label": "", "text": "to analyse how the methods are applied in a small enterprise;"},
+    {"label": "", "text": "to draw up proposals for improving the motivation system."}
+   ]},
+   {"id": "object", "heading": "Object of the study", "layout": "text", "items": [], "body": "The staff management of a selected small enterprise."},
+   {"id": "subject_matter", "heading": "Subject of the study", "layout": "text", "items": [], "body": "The methods of staff motivation and their effectiveness."},
+   {"id": "methods", "heading": "Theoretical and methodological basis", "layout": "text", "items": [], "body": "The work uses analysis, comparison and generalisation."},
+   {"id": "significance", "heading": "Practical significance", "layout": "text", "items": [], "body": "Managers of small enterprises can use the results when reviewing how they work with their staff."},
+   {"id": "chapter", "heading": "The theoretical foundations of staff motivation", "layout": "text", "items": [], "body": "The chapter examines the concept of motivation, its main theories and the classification of methods."},
+   {"id": "section_a", "heading": "The concept and essence of motivation", "layout": "text", "items": [], "body": "Motivation is understood as a system of external factors that move an employee towards set goals. It is closely tied to inner drive: an external incentive works only when it answers the employee’s own needs.\nIn management, motivation is one of the main functions of leadership. Together with planning and control, it directly affects the results of an organisation."},
+   {"id": "section_b", "heading": "The classification of motivation methods", "layout": "text", "items": [], "body": "Methods are usually divided into material and non-material ones. Material methods include pay, bonuses and social benefits. Non-material methods include recognition, room for professional growth, flexible hours and a good climate in the team.\nIn a small enterprise non-material methods matter more, since they cost little and rest on the close contact between the manager and the employee."},
+   {"id": "chapter_close", "heading": "", "layout": "text", "items": [], "body": "Motivation thus rests on a combination of material and non-material methods. The next chapter analyses how they are applied in a small enterprise."},
+   {"id": "chapter_2", "heading": "Analysing and improving the motivation system of a small enterprise", "layout": "text", "items": [], "body": "The chapter shows, on a selected enterprise, how its motivation system is analysed and how it can be improved."},
+   {"id": "section_a_2", "heading": "How the motivation system is analysed", "layout": "text", "items": [], "body": "The analysis begins with the staff structure, the pay structure and the non-material methods in use. Staff turnover, the use of working time and employee satisfaction serve as indicators.\nThe calculation is made on the enterprise’s own data. The results show which part of the motivation system is strong and which is weak."},
+   {"id": "section_b_2", "heading": "Ways of improving the motivation system", "layout": "text", "items": [], "body": "Improvement rests on the results of the analysis. The main lines are tying bonuses to clear results, recognising employees’ achievements regularly and creating chances to learn.\nChanges are introduced step by step, and the employees’ opinions are asked after each step."},
+   {"id": "chapter_close_2", "heading": "", "layout": "text", "items": [], "body": "The chapter set out how the motivation system is analysed and the main lines of its improvement."},
+   {"id": "conclusion", "heading": "Conclusion", "layout": "text", "items": [], "body": "The study leads to the following conclusions.\nFirst, motivation works only when it rests on the employee’s inner drive. Second, non-material methods play a particularly large role in a small enterprise. Third, the analysis of the system must be based on the enterprise’s own data. Fourth, improvement is made step by step and takes the employees’ opinions into account."},
+   {"id": "proposals", "heading": "Proposals", "layout": "list", "body": "", "items": [
+    {"label": "", "text": "Tie bonuses to clear results every quarter."},
+    {"label": "", "text": "Recognise employees’ achievements before the team regularly."},
+    {"label": "", "text": "Draw up a yearly training plan for each employee."}
+   ]},
+   {"id": "references", "heading": "References", "layout": "list", "body": "", "items": []}
+  ]
+ }
+}
