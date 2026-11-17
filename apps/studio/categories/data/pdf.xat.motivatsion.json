@@ -1,7 +1,7 @@
 {
  "schema": 2,
  "id": "pdf.xat.motivatsion",
- "status": "draft",
+ "status": "ready",
  "service": "pdf",
  "parent": "pdf.xat",
  "order": 1,
@@ -744,7 +744,8 @@
  "look": null,
  "gates": [
   "A native Uzbek reader and a native Russian reader check every fixed word and formula (the kind word, the four salutations, the closes, Ilova:, the captions, the date patterns); a native English reader the English ones.",
-  "Render the three examples (one, two and one page) and the statement form in uz, ru and en with the paper sample tool and compare them with units/pdf.xat.motivatsion/mock/letter_motivatsion.png and its ru, programme and statement sheets."
+  "Render the three examples (one, two and one page) and the statement form in uz, ru and en with the paper sample tool and compare them with units/pdf.xat.motivatsion/mock/letter_motivatsion.png and its ru, programme and statement sheets.",
+  "One real-provider run, scripts/operations/ai_smoke.py --category pdf.xat.motivatsion on the server, makes the paper in its own template with every check passing, and the paper is looked at, before the tick."
  ],
  "later": [
   {

@@ -422,15 +422,14 @@ def test_the_smoke_makes_one_category_deck_through_the_real_pipeline(settings, m
     assert list(tmp_path.glob('*.pptx'))
 
 
-def test_the_smoke_says_what_finish_took_out_and_refuses_a_paper(settings, monkeypatch, capsys, tmp_path):
+def test_the_smoke_says_what_finish_took_out_and_names_an_unknown_id(settings, monkeypatch, capsys, tmp_path):
+    # A paper is made by the smoke too since N2c (tests/test_category_letter_readiness.py).
     live(settings)
     Model(monkeypatch, case='topic_only')
     code, out = smoke(monkeypatch, capsys, '--category', HIMOYA, '--case', 'topic_only', '--slides', '6',
                       '--out', str(tmp_path))
     assert code == 0, out
     assert 'facts_blanked' in out
-    code, out = smoke(monkeypatch, capsys, '--category', ARIZA)
-    assert code == 1 and 'decks only' in out
     code, out = smoke(monkeypatch, capsys, '--category', 'slides.gone')
     assert code == 1 and 'slides.gone is not in this catalogue' in out
 

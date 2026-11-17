@@ -1,7 +1,7 @@
 {
  "schema": 2,
  "id": "pdf.xat.tavsiya",
- "status": "draft",
+ "status": "ready",
  "service": "pdf",
  "parent": "pdf.xat",
  "order": 5,
@@ -753,7 +753,8 @@
  "gates": [
   "A native Uzbek reader checks the Uzbek fixed words (TAVSIYANOMA, haqida, the verdict frames, the presentation sentence, M.O‘., the captions); a native Russian reader the Russian ones and the dative subject lines; a native English reader the English letter's frames (opening, verdict, contact offer, Yours sincerely and Yours faithfully).",
   "Render the professor, draft-for-the-teacher (thin, with the evidence blank) and employer cases in uz and ru with tavsiya_rasmiy and in en with letter_tavsiya, and compare them with units/pdf.xat.tavsiya/mock/tavsiya_rasmiy.png and letter_tavsiya.png.",
-  "Every real output of the native read is checked for intensifiers and judgement formulas."
+  "Every real output of the native read is checked for intensifiers and judgement formulas.",
+  "One real-provider run, scripts/operations/ai_smoke.py --category pdf.xat.tavsiya on the server, makes the paper in its own template with every check passing, and the paper is looked at, before the tick."
  ],
  "later": [
   {
