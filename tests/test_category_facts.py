@@ -1250,3 +1250,30 @@ def test_a_letter_after_a_number_that_names_no_class_is_kept_whole(brief, value)
 def test_the_customers_class_letter_typed_in_cyrillic_stays_in_latin(brief):
     letter = 'B' if '«В»' in brief else 'C'
     assert facts.without_class_letters(f'7-«{letter}» sinf', trusting(brief)) == (f'7-«{letter}» sinf', False)
+
+
+# ---------------------------------------------------------------- a figure's own labels (stage-2 re-audit, round 2)
+
+
+REQUISITES_RU = ('Коммерческое предложение на английском. Телефон +998 90 123 45 67. Реквизиты: р/с '
+                 '20208000900123456001, АКБ «Капиталбанк», МФО 00440, ИНН 301234567.')
+
+
+@pytest.mark.parametrize('value, kind', [
+    ('Account 20208000900123456001, Kapitalbank JSCB, MFO 00440, TIN 301234567', 'ref'),
+    ('Account 20208000900123456001, JSCB Kapitalbank, MFO 00440, TIN 301234567', 'ref'),
+    ('Settlement account 20208000900123456001 at Kapitalbank, Bank code (MFO) 00440, TIN 301234567', 'ref'),
+    ('Расчётный счёт 20208000900123456001, Банк: АКБ «Капиталбанк», МФО 00440', 'ref'),
+    ('+998 90 123 45 67 (mobile, Telegram)', 'phone'),
+], ids=['jscb-after', 'jscb-before', 'bank-code', 'ru-bank-label', 'phone-telegram'])
+def test_the_customers_bank_details_and_phone_keep_their_labels_in_a_translated_paper(value, kind):
+    assert supported(value, kind, trusting(REQUISITES_RU), translated=True, strict=True, words=True)
+
+
+@pytest.mark.parametrize('value, kind', [
+    ('Account 20208000900123456001, Hamkorbank JSCB, MFO 00440, TIN 301234567', 'ref'),
+    ('Расчётный счёт 20208000900123456001, Банк: АКБ «Хамкорбанк», МФО 00440', 'ref'),
+    ('+998 90 123 45 67 (mobile, Aziz Karimov)', 'phone'),
+], ids=['other-bank', 'ru-other-bank', 'phone-person'])
+def test_an_invented_bank_or_person_beside_the_customers_figures_is_still_not_theirs(value, kind):
+    assert not supported(value, kind, trusting(REQUISITES_RU), translated=True, strict=True, words=True)

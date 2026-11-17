@@ -1350,3 +1350,19 @@ def test_a_cover_letters_1c_position_is_kept_whole(prompt, locale, position):
     data = draft(cover, prompt=prompt, locale=locale, length=1)
     made, _, codes = finished(data, answer(data, facts={'items': [{'label': 'position', 'text': position}]}))
     assert facts_of(made)['position'] == position and 'fact:position' not in codes
+
+
+# ---------------------------------------------------------------- stage-2 re-audit, round 2: a figure's own labels
+
+
+def test_a_translated_offers_bank_details_and_phone_are_kept_with_their_labels():
+    offer = catalogue.get('pdf.biz.tijorat_taklifi')
+    prompt = ('Коммерческое предложение на английском от ООО «Октош Мебель» на офисную мебель. Реквизиты: р/с '
+              '20208000900123456001, АКБ «Капиталбанк», МФО 00440, ИНН 301234567. Телефон +998 90 123 45 67.')
+    data = draft(offer, prompt=prompt, locale='en', length=1)
+    requisites = 'Account 20208000900123456001, Kapitalbank JSCB, MFO 00440, TIN 301234567'
+    made, _, codes = finished(data, answer(data, facts={'items': [
+        {'label': 'seller_requisites', 'text': requisites},
+        {'label': 'seller_phone', 'text': '+998 90 123 45 67 (mobile, Telegram)'}]}))
+    assert facts_of(made)['seller_requisites'] == requisites
+    assert facts_of(made)['seller_phone'] == '+998 90 123 45 67 (mobile, Telegram)' and codes == []

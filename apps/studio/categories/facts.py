@@ -745,6 +745,16 @@ def _names_known(text, trusted, translated=False):
 
 # The kinds whose values are figures first: read for their numbers, and in a paper's facts for the names beside them.
 NAMED_NUMBERS = ('date', 'number', 'money', 'ref', 'phone')
+# The words a figure's own labels capitalise beside it in any of the three languages, no one's name: a seller's bank
+# details ("Kapitalbank JSCB, MFO 00440", "Bank code (MFO)", "Банк: АКБ «Капиталбанк»", "Settlement account") and a
+# phone's ("Mobile", "Telegram", "WhatsApp"). Read only in those kinds (`supported`'s `strict`), never in prose.
+REQUISITES = (
+    "account accounts settlement current correspondent corr bank banks code details branch office jscb ojsc cjsc pjsc "
+    "ojscb cb mobile cell phone telephone tel fax telegram whatsapp viber "
+    "банк банка банке банком банку расчетный расчетного счет счета корр корреспондентский корсчет филиал филиала "
+    "отделение отделения реквизиты мобильный моб телефон тел факс телеграм ватсап "
+    "bank banki bankida bankining hisob hisobi hisobraqam hisobraqami raqam raqami kitob mobil telefon tel faks filial "
+    "filiali bo‘lim bo‘limi rekvizitlar").split()
 
 
 def supported(value, kind, trusted, *, translated=False, strict=False, words=False):
@@ -794,9 +804,18 @@ def supported(value, kind, trusted, *, translated=False, strict=False, words=Fal
         # A paper's sum, reference, phone or date may carry a name beside its figures: the bank of "h/r …,
         # «Kapitalbank» ATB, MFO 00440", the lender of "200 mln so‘m (Hamkorbank krediti)", the person of "+998 90 123
         # 45 67 (Aziz Karimov)". Its names are read as a title-page line's are (people_known), so the value's own
-        # opening word ("Mobile:", "Average check", "Договор №") stays a label.
-        return people_known(rest, trusted, translated=translated, orgs=True)
+        # opening word ("Mobile:", "Average check", "Договор №") stays a label, and so do the words such labels
+        # capitalise beside the figures (REQUISITES: "Kapitalbank JSCB", "Банк: …", "(mobile, Telegram)").
+        return people_known(rest, _labelled(trusted), translated=translated, orgs=True)
     return True
+
+
+def _labelled(trusted):
+    """`trusted` with the words a figure's labels capitalise (REQUISITES) allowed too, made once per Trusted."""
+    if 'labelled' not in trusted.cache:
+        trusted.cache['labelled'] = replace(trusted, allowed=Exact(trusted.allowed.exact | _folded(REQUISITES)),
+                                            cache={})
+    return trusted.cache['labelled']
 
 
 def derived(value, base):
