@@ -1092,14 +1092,17 @@ tests/test_category_edits.py::test_a_paper_asked_for_as_slides_alone_is_answered
 
 # Categories, the seven business papers as draft entries (C2b): every business paper is a ceiling that asks no part
 # for a floor of words, the plan of two sentences is told its most and never to fill the pages, the short forms leave
-# out what their pages cannot hold; computed cells and totals name columns of their own table; the minutes repeat
+# out what their pages cannot hold; computed cells and totals name columns of their own table, and a line amount the
+# customer typed survives the finish while a product is left to code; the minutes repeat
 # their parts per agenda item; nothing the model reads is a research note or a law to cite; a draft of each is made,
 # seeded and quoted
 tests/test_category_business_entries.py::test_every_business_paper_is_a_ceiling_that_asks_no_part_for_a_floor_of_words
 tests/test_category_business_entries.py::test_the_business_plan_of_two_sentences_is_told_its_most_words_never_to_fill_the_pages[8]
+tests/test_category_business_entries.py::test_the_business_plan_of_two_sentences_is_told_its_most_words_never_to_fill_the_pages[10]
 tests/test_category_business_entries.py::test_the_short_forms_leave_out_the_parts_their_pages_cannot_hold
 tests/test_category_business_entries.py::test_every_written_part_of_a_business_paper_is_grounded
 tests/test_category_business_entries.py::test_computed_cells_and_totals_name_columns_of_their_own_table
+tests/test_category_business_entries.py::test_a_line_amount_the_customer_typed_survives_the_finish_while_a_product_is_left_to_code
 tests/test_category_business_entries.py::test_the_minutes_repeat_report_discussion_decisions_and_vote_once_per_agenda_item
 tests/test_category_business_entries.py::test_no_research_note_or_law_to_cite_reaches_the_model
 tests/test_category_business_entries.py::test_each_example_makes_a_draft_of_its_skeleton_held_to_its_pages_and_quoted[pdf.biz.tijorat_taklifi]

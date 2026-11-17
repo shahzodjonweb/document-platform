@@ -10,7 +10,9 @@ what the converted data promises the later packages and the customer:
   are the parts' own `from`, so the model is never asked for a part the
   pages cannot hold;
 - a table's computed cells and totals name columns that exist, so derive.py
-  (R5a) fills what the model leaves empty from the customer's own numbers;
+  (R5a) fills what the model leaves empty from the customer's own numbers,
+  while a line amount the customer typed without a quantity and a price
+  survives the finish as their own figure;
 - the minutes' agenda items are one model-sized group, so a meeting of three
   items fills three and the rest are dropped;
 - what this round does not build (repayment schedules, the formal forms,
@@ -28,7 +30,7 @@ import re
 import pytest
 
 from apps.studio import categories
-from apps.studio.categories import catalogue, prompting, skeleton
+from apps.studio.categories import catalogue, finish, prompting, skeleton
 from apps.studio.categories.catalogue import PAPER_BOUNDS, SOURCES_CUE
 from apps.studio import provider
 from apps.studio.domain import DOCUMENT, create_draft, generation_quote, unpack, validate_content
@@ -111,6 +113,14 @@ def test_every_written_part_of_a_business_paper_is_grounded():
         loose = [part['id'] for part in entry(entry_id).parts
                  if part['kind'] in skeleton.WRITTEN and not part.get('grounded')]
         assert not loose, (entry_id, loose)
+    # A grounded row is told never to fill from general knowledge; the parts whose job is the usual practice of a
+    # post or a topic say so themselves, or a short request would come back as empty formulas.
+    usual = {'pdf.biz.lavozim_yoriqnomasi': ('duties', 'rights', 'responsibility'),
+             'pdf.biz.yoriqnoma': ('before_work', 'during_work', 'emergency', 'after_work')}
+    for entry_id, part_ids in usual.items():
+        for part_id in part_ids:
+            write = entry(entry_id).part(part_id)['write']
+            assert 'allowed although the row is grounded' in write and 'no number' in write, (entry_id, part_id)
 
 
 def test_computed_cells_and_totals_name_columns_of_their_own_table():
@@ -129,12 +139,56 @@ def test_computed_cells_and_totals_name_columns_of_their_own_table():
             for column in part.get('total', ()):
                 assert 0 < column < width, (entry_id, part['id'], column)
     assert tables >= 15
+    # The amount is computed only from a quantity and a price; a line given as its total keeps the customer's figure
+    # (finish empties a computed cell only when its inputs are there), and the write says to copy it as typed.
     prices = entry('pdf.biz.tijorat_taklifi').part('prices')
     assert prices['computed'] == [{'column': 4, 'op': 'product', 'of': [2, 3]}] and prices['total'] == [4]
+    assert 'empty only when both the quantity and the unit price are given' in prices['write']
+    plan = entry('pdf.biz.biznes_reja')
+    assert 'empty only when both the quantity and the unit price are given' in plan.part('finance_investment')['write']
+    assert 'a monthly pay fund the customer typed' in plan.part('team')['write']
     indicators = entry('pdf.biz.hisobot').part('indicators')
     assert [rule['op'] for rule in indicators['computed']] == ['difference', 'percent']
     assert entry('pdf.biz.marketing_reja').part('budget')['computed'] == [{'column': 2, 'op': 'share', 'of': [1]}]
 
+
+
+def finished_table(entry_id, prompt, length, part_id, rows):
+    """A part's rows as finish.apply leaves them, from the model's `rows` (label, middle cells, last cell)."""
+    item = entry(entry_id)
+    data = {'options': {'category': entry_id, 'length': length}, 'prompt': prompt, 'output_locale': 'uz',
+            'output_format': 'pdf', 'excerpts': [], 'source_ids': []}
+    sections = skeleton.seed(item, length, skeleton.cues_of(data))
+    data['content'] = {'title': '', 'sections': sections, 'questions': [], 'citations': []}
+    answer = copy.deepcopy(sections)
+    for section in answer:
+        if section['id'] == part_id:
+            section['items'] = [{'label': label, 'text': text, 'value': value} for label, text, value in rows]
+    made, _ = finish.apply(data, {'title': '', 'sections': answer, 'questions': [], 'citations': []},
+                           file_names=[])
+    count = len(item.part(part_id)['columns'])
+    return [finish.cells(row, count) for row in next(
+        section for section in made['sections'] if section['id'] == part_id)['items']]
+
+
+def test_a_line_amount_the_customer_typed_survives_the_finish_while_a_product_is_left_to_code():
+    # The plan's own third example gives each investment line as an amount only: no quantity or price to multiply,
+    # so emptying the amount would leave the plan's money table without a figure.
+    plan = entry('pdf.biz.biznes_reja').raw['bot']['examples'][2]['uz']
+    rows = finished_table('pdf.biz.biznes_reja', plan, 6, 'finance_investment',
+                          [('Issiqxona qurilishi', '', '130 mln'), ('Sug‘orish tizimi', '', '40 mln'),
+                           ('Urug‘ va o‘g‘it', '', '30 mln')])
+    assert rows == [['Issiqxona qurilishi', '', '', '130 mln'], ['Sug‘orish tizimi', '', '', '40 mln'],
+                    ['Urug‘ va o‘g‘it', '', '', '30 mln']]
+    offer = ('Namuna Jihoz MChJ nomidan tijorat taklifi: 20 ta stol jami 24 000 000 so‘m, 15 ta stul — har biri '
+             '310 000 so‘m.')
+    rows = finished_table('pdf.biz.tijorat_taklifi', offer, 1, 'prices',
+                          [('Stol', 'ta | 20 |', '24 000 000'), ('Stul', 'ta | 15 | 310 000', '4 650 000')])
+    # The table's line given as its total keeps it; the line with a quantity and a price is derive's to multiply.
+    assert rows == [['Stol', 'ta', '20', '', '24 000 000'], ['Stul', 'ta', '15', '310 000', '']]
+    # A figure the customer never typed is still not kept, computed column or not.
+    rows = finished_table('pdf.biz.tijorat_taklifi', offer, 1, 'prices', [('Stol', 'ta | 20 |', '25 000 000')])
+    assert rows[0][4] != '25 000 000' and '25' not in rows[0][4]
 
 def test_the_minutes_repeat_report_discussion_decisions_and_vote_once_per_agenda_item():
     minutes = entry('pdf.biz.bayonnoma')
@@ -202,6 +256,9 @@ def test_every_business_paper_says_when_it_came_out_shorter_and_what_to_check():
     for entry_id in BUSINESS:
         notices = entry(entry_id).raw['bot']['notices']
         assert {'finished', 'blanks', 'shorter'} <= set(notices), entry_id
+        # The bot fills both numbers, so the customer reads how many pages came out against how many were asked.
+        for locale, text in notices['shorter'].items():
+            assert '{asked}' in text and '{pages}' in text, (entry_id, locale)
 
 
 
@@ -212,6 +269,11 @@ def test_russian_and_english_examples_name_their_invented_organisations_in_their
         for example in entry(entry_id).raw['bot']['examples']:
             assert not uzbek.search(example['ru']), (entry_id, example['ru'][:80])
             assert not re.search(r'\b(MChJ|YaTT)\b', example['en']), (entry_id, example['en'][:80])
+        # A field's example and label are bilingual data too: the sample tool and the letterhead read them.
+        for field in entry(entry_id).fields:
+            for key in ('example', 'label'):
+                text = (field.get(key) or {}).get('ru') or ''
+                assert not uzbek.search(text) and 'bank' not in text and 'E-mail' not in text, (entry_id, field['id'])
 
 
 # ---------------------------------------------------------------- drafts the domain makes

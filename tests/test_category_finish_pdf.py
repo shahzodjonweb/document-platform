@@ -367,8 +367,10 @@ def test_a_tables_computed_cells_are_emptied_for_derive_and_its_columns_never_st
     made, _, codes = finished(data, answer(data, narxlar={'items': rows, 'columns': ['A', 'B', 'C', 'D']}))
     section = section_of(made, 'narxlar')
     assert section['columns'] == [] and section['layout'] == 'table' and section['heading'] == 'Narxlar'
+    # Daftar has no price, so derive has nothing to multiply: its amount is the customer's own line total, kept and
+    # held as the part's other cells are (this test table is guarded; every business table is grounded).
     assert [finish.cells(item, 4) for item in section['items']] == [
-        ['Kitob', '12', '45 000', ''], ['Daftar', '12', '', ''], ['Ruchka', '12', '45 000 | 3 | 4', '']]
+        ['Kitob', '12', '45 000', ''], ['Daftar', '12', '', '9 999'], ['Ruchka', '12', '45 000 | 3 | 4', '']]
     assert codes == [], 'the model\'s own arithmetic is emptied, not counted as a blank'
 
 
