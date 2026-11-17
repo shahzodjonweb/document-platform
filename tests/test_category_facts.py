@@ -1277,3 +1277,23 @@ def test_the_customers_bank_details_and_phone_keep_their_labels_in_a_translated_
 ], ids=['other-bank', 'ru-other-bank', 'phone-person'])
 def test_an_invented_bank_or_person_beside_the_customers_figures_is_still_not_theirs(value, kind):
     assert not supported(value, kind, trusting(REQUISITES_RU), translated=True, strict=True, words=True)
+
+
+# ---------------------------------------------------------------- numbers side by side (stage-2 re-audit, round 2)
+
+
+@pytest.mark.parametrize('brief, text', [
+    ('Team of 10; revenue tripled.', 'Our team of ten tripled revenue.'),
+    ('Команда из 10 человек, продажи выросли вдвое.', 'Десять сотрудников вдвое увеличили продажи.'),
+    ('Narxi 5000 so‘m.', 'Narxi besh ming bir dona uchun.'),
+], ids=['en-tripled', 'ru-vdvoe', 'uz-one-piece'])
+def test_a_count_beside_a_multiplier_or_a_counted_one_is_read_apart(brief, text):
+    assert guard(text, trusting(brief), checks=('numbers',), words=True) == (text, [])
+
+
+def test_a_thousand_and_one_is_still_read_whole():
+    assert [number.value for number in numbers.found('Ming bir kecha ertaklari.', words=True)] == ['1001']
+    assert [number.value for number in numbers.found('Zavodda ming bir xodim ishlaydi.', words=True)] == ['1001']
+    assert [number.value for number in numbers.found('Two thousand and one copies.', words=True)] == ['2001']
+    assert guard('Our team of ten tripled revenue.', trusting('Team of 12.'), checks=('numbers',), words=True)[1] == [
+        'ground:number'], 'an invented count beside a multiplier is still blanked'

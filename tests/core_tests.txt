@@ -1637,3 +1637,10 @@ tests/test_category_facts.py::test_the_customers_bank_details_and_phone_keep_the
 tests/test_category_facts.py::test_the_customers_bank_details_and_phone_keep_their_labels_in_a_translated_paper[phone-telegram]
 tests/test_category_facts.py::test_an_invented_bank_or_person_beside_the_customers_figures_is_still_not_theirs[other-bank]
 tests/test_category_finish_pdf.py::test_a_translated_offers_bank_details_and_phone_are_kept_with_their_labels
+
+# Stage-2 re-audit round 2, numbers side by side: a multiplier ("tripled", "вдвое") is a number of its own, never
+# summed with the count before it, and an Uzbek "bir" of a price's "per one" ("besh ming bir dona uchun") is no part
+# of the thousand before it; "ming bir xodim" is still 1001
+tests/test_category_facts.py::test_a_count_beside_a_multiplier_or_a_counted_one_is_read_apart[en-tripled]
+tests/test_category_facts.py::test_a_count_beside_a_multiplier_or_a_counted_one_is_read_apart[uz-one-piece]
+tests/test_category_facts.py::test_a_thousand_and_one_is_still_read_whole

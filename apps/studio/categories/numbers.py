@@ -193,8 +193,9 @@ SPELLED = (
     (r"thousand", 'scale', 3), (r"million", 'scale', 6), (r"billion", 'scale', 9), (r"trillion", 'scale', 12),
     (r"thirds?", 'fraction', 3), (r"and", 'and', 0),
     # How many times over: "doubled", "tripled", "fivefold"; "twice" and "double" are left, being ordinary words too.
-    (r"doubled", 'unit', 2), (r"tripled", 'unit', 3), (r"quadrupled", 'unit', 4),
-    *((rf"{word}fold", 'unit', value) for word, value in (
+    # A number of its own, never part of a count beside it (`_Reader._spelled_run`).
+    (r"doubled", 'times', 2), (r"tripled", 'times', 3), (r"quadrupled", 'times', 4),
+    *((rf"{word}fold", 'times', value) for word, value in (
         ('two', 2), ('three', 3), ('four', 4), ('five', 5), ('six', 6), ('seven', 7), ('eight', 8), ('nine', 9),
         ('ten', 10))),
     # Russian, in the cases a count takes.
@@ -230,7 +231,7 @@ SPELLED = (
     # how many times over, "вдвое", "впятеро".
     (r"сотня|сотню|сотней", 'unit', 100), (r"полмиллиона", 'unit', 500000), (r"полмиллиарда", 'unit', 500000000),
     (r"полтысячи", 'unit', 500),
-    *((rf"в{stem}", 'unit', value) for stem, value in (
+    *((rf"в{stem}", 'times', value) for stem, value in (
         ('двое', 2), ('трое', 3), ('четверо', 4), ('пятеро', 5), ('шестеро', 6), ('семеро', 7), ('восьмеро', 8),
         ('девятеро', 9), ('десятеро', 10))),
     # A count fused to what it counts: "пятилетний опыт", "двухнедельный", "двадцатипятилетний" (RU_FUSED).
@@ -580,7 +581,8 @@ class _Reader:
                     current, last, end = current + 1, 1, stop
                     continue
                 if role == 'one' and total and current is None and (
-                        after in ('hundred', 'dozen', 'half') or (after is None and not _hyphenated(text, stop))):
+                        after in ('hundred', 'dozen', 'half')
+                        or (after is None and not _hyphenated(text, stop) and not _counting_one(text, word, stop))):
                     group, current, last, end, lone, multiplied = start, Decimal(1), 1, stop, False, False
                     continue
                 if after in ('hundred', 'dozen', 'scale', 'alone', 'fraction', 'half'):
@@ -588,6 +590,13 @@ class _Reader:
                     first, group, current, last, end, lone = start, start, Decimal(1), 1, stop, True
                     continue
                 close()
+                continue
+            if role == 'times':
+                # "doubled", "fivefold", "вдвое": how many times over, a number of its own; "a team of ten tripled
+                # revenue" is ten, then three times, never 13.
+                close()
+                times = canon(Decimal(value))
+                self.add(start, stop, 'spelled', times, [{times}])
                 continue
             if role == 'and':
                 # "two hundred and fifty", "one hundred and one": only between a multiplier and what it is added to.
@@ -714,6 +723,16 @@ def _bare(text, word, role, stop, after):
     if counted is not None and not (bare == 'ming' and rest[counted.end():counted.end() + 3] == 'lik'):
         return True
     return bare.endswith(('dan', 'ga', 'gacha')) and UZ_ABOUT.match(rest) is not None
+
+
+def _counting_one(text, word, stop):
+    """Whether an Uzbek "bir" after a scale is the "one" of a price's "per one": "besh ming bir dona uchun" is five
+    thousand for one piece, never 5001; "ming bir xodim" (1001 employees) and "ming bir kecha" stay one number."""
+    if normalised(to_latin(word)).casefold() != 'bir':
+        return False
+    rest = normalised(to_latin(text[stop:stop + 60]))
+    counted = UZ_COUNTED.match(rest)
+    return counted is not None and re.match(r"[^\W\d_]*[ \t\u00a0]+uchun(?![^\W\d_])", rest[counted.end():]) is not None
 
 
 def _hyphenated(text, stop):
