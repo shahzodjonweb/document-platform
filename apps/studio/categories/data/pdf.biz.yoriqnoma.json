@@ -1,7 +1,7 @@
 {
  "schema": 2,
  "id": "pdf.biz.yoriqnoma",
- "status": "draft",
+ "status": "ready",
  "service": "pdf",
  "parent": "pdf.biz",
  "order": 4,
@@ -616,10 +616,10 @@
  ],
  "look": null,
  "gates": [
-  "templates/business_yoriqnoma.json is a first draft written from the spec only so the catalogue loads; R5b owns it and may rewrite any of it. Its flow params (labels and captions maps, run_in, table_from, blank_items, keep: closing) are no contract until a registered block defines them.",
   "A native Uzbek and a native Russian reader check the fixed words (YO‘RIQNOMA, QOIDALAR, the chapter headings of both kinds, Tasdiqladi, the acknowledgement sentences) and the opening formulas before the entry is marked ready.",
   "Render a work, a safety and a rules instruction in uz, ru and en (full, blank and long cases) with the paper sample tool and compare them with units/pdf.biz.yoriqnoma/mock/business_yoriqnoma.png; check that no clause tells anyone to fight a fire or names a number the brief lacks.",
-  "The facts corpus is at zero on this entry’s examples."
+  "The facts corpus is at zero on this entry’s examples.",
+  "One real-provider run, scripts/operations/ai_smoke.py --category pdf.biz.yoriqnoma on the server, makes the paper in its own template with every check passing, and the paper is looked at, before the tick."
  ],
  "later": [
   {

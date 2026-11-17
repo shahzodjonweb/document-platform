@@ -1408,3 +1408,15 @@ tests/test_category_study_readiness.py::test_every_length_and_cue_subset_ends_wi
 tests/test_category_study_readiness.py::test_a_lessons_cover_and_a_handouts_key_are_sheets_the_quote_does_not_count
 tests/test_category_study_readiness.py::test_a_boxed_heading_goes_over_a_page_foot_with_its_first_line
 tests/test_category_study_readiness.py::test_the_smoke_makes_a_study_paper_through_the_real_pipeline[pdf.kurs_ishi]
+
+# Business readiness (N2b): the seven business papers are ready and meet every readiness check as errors, the
+# switch page names the native Uzbek and Russian read and the real-provider run left before a tick, every length
+# and cue set is seeded and drawn by its own template with the checker finding nothing, a blank row's two-line
+# label stays below the row above it, the drawn offer's amounts are quantity times price, and the smoke makes
+# every business paper in its template
+tests/test_category_business_readiness.py::test_every_business_paper_is_ready_and_meets_its_gates_as_errors
+tests/test_category_business_readiness.py::test_the_switch_page_says_what_a_person_still_checks_before_the_tick[pdf.biz.tijorat_taklifi]
+tests/test_category_business_readiness.py::test_every_length_and_cue_subset_is_seeded_and_drawn_in_its_template[pdf.biz.tijorat_taklifi]
+tests/test_category_business_readiness.py::test_a_blank_row_whose_label_takes_two_lines_is_drawn_below_the_row_above_it
+tests/test_category_business_readiness.py::test_every_amount_and_total_of_the_drawn_offer_is_its_quantity_times_its_price[uz]
+tests/test_category_business_readiness.py::test_the_smoke_makes_every_business_paper_in_its_own_template[uz]

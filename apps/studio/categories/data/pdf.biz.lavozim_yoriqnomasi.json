@@ -1,7 +1,7 @@
 {
  "schema": 2,
  "id": "pdf.biz.lavozim_yoriqnomasi",
- "status": "draft",
+ "status": "ready",
  "service": "pdf",
  "parent": "pdf.biz",
  "order": 5,
@@ -573,10 +573,10 @@
  ],
  "look": null,
  "gates": [
-  "templates/official_lavozim_yoriqnomasi.json is a first draft written from the spec only so the catalogue loads; R5b owns it and may rewrite any of it. Its flow params (labels and captions maps, run_in, table_from, blank_items, keep: closing) are no contract until a registered block defines them.",
   "A native Uzbek and a native Russian reader check the fixed words (LAVOZIM YO‘RIQNOMASI, TASDIQLAYMAN, KELISHILDI, the chapter headings, the acknowledgement sentence) and the opening and appointment formulas before the entry is marked ready.",
   "Render the full, blank and long cases in uz, ru and en with the paper sample tool and compare them with units/pdf.biz.lavozim_yoriqnomasi/mock/official_lavozim_yoriqnomasi.png; check that no clause names a code, law or article the brief lacks.",
-  "The facts corpus is at zero on this entry’s examples."
+  "The facts corpus is at zero on this entry’s examples.",
+  "One real-provider run, scripts/operations/ai_smoke.py --category pdf.biz.lavozim_yoriqnomasi on the server, makes the paper in its own template with every check passing, and the paper is looked at, before the tick."
  ],
  "later": [
   {

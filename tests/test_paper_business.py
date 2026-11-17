@@ -124,8 +124,9 @@ def test_each_business_paper_is_drawn_by_its_own_template_and_stays_a_draft(entr
     found = catalogue.check(entry_id)
     assert not [problem for problem in found if not problem.warning]
     assert not [problem for problem in found if problem.text.startswith('blocks not yet registered')]
-    # N2 makes them ready after the native reading; R5a only draws them.
-    assert catalogue.get(entry_id).status == 'draft'
+    # Ready since N2b (tests/test_category_business_readiness.py); the test keeps its name, which the append-only
+    # tests/core_tests.txt lists. The native reading and the real-provider run stay the owner's, before the tick.
+    assert catalogue.get(entry_id).status == 'ready'
 
 
 def test_the_offer_fits_its_page_and_a_long_one_says_it_came_out_longer(tmp_path):

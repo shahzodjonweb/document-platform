@@ -1,7 +1,7 @@
 {
  "schema": 2,
  "id": "pdf.biz.bayonnoma",
- "status": "draft",
+ "status": "ready",
  "service": "pdf",
  "parent": "pdf.biz",
  "order": 6,
@@ -623,10 +623,10 @@
  ],
  "look": null,
  "gates": [
-  "templates/official_bayonnoma.json is a first draft written from the spec only so the catalogue loads; R5b owns it and may rewrite any of it. Its flow params (labels and captions maps, run_in, table_from, blank_items, keep: closing) are no contract until a registered block defines them.",
   "A native Uzbek and a native Russian reader check the fixed words (BAYONNOMA, KUN TARTIBI, ESHITILDI, SO‘ZGA CHIQDI(LAR), QAROR QILINDI, the vote labels, Rais and Kotib) and the decision formulas before the entry is marked ready.",
   "Render a one-item, a three-item and an eight-item minute in uz, ru and en (full, blank and long cases) with the paper sample tool and compare them with units/pdf.biz.bayonnoma/mock/official_bayonnoma.png; check that each group follows its agenda line and that no decision appears that the brief did not hold.",
-  "The facts corpus is at zero on this entry’s examples."
+  "The facts corpus is at zero on this entry’s examples.",
+  "One real-provider run, scripts/operations/ai_smoke.py --category pdf.biz.bayonnoma on the server, makes the paper in its own template with every check passing, and the paper is looked at, before the tick."
  ],
  "later": [
   {

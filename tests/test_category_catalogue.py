@@ -237,6 +237,8 @@ def test_readiness_gates_are_warnings_on_a_draft_and_errors_on_a_ready_entry(mon
     # is replaced whole, so the check does not hang on how himoya's own copy happens to write its count.
     himoya = entries['slides.himoya']
     himoya['status'] = 'draft'  # ready since N1; the gates are read here on a draft first
+    # Every paper drawing party_block is ready since N2b and N2c: the ariza is read as a draft here first.
+    entries['pdf.xat.ariza']['status'] = 'draft'
     himoya['bot']['prompt'] = {'uz': 'Bitta xabarda yozing.', 'ru': 'Напишите одним сообщением.',
                                'en': 'Say it in one message.'}
     himoya['rules'].append({'text': 'A long rule. ' * 400, 'to': 'model'})
