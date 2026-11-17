@@ -1128,7 +1128,9 @@ def _law_name_known(word, trusted):
     return trusted.allowed.known(word) or trusted.person(word, True)
 
 
-def _legal_known(sentence, concepts, trusted, translated):
+def _legal_known(sentence, concepts, trusted, translated, *, names=True):
+    """Whether a legal sentence cites only what the customer gave: its kinds of act, numbers and the code's name;
+    with `names`, every other capitalised word of it too (a person, a ministry, a date's issuer)."""
     for concept in concepts - {'number'}:
         if not any(stem.search(trusted.legal) for name, stem, _ in STEMS if name == concept):
             return False
@@ -1150,6 +1152,8 @@ def _legal_known(sentence, concepts, trusted, translated):
     if translated:
         # A translated sentence's other words are the translation's; the code it names is still the customer's.
         return all(_law_name_known(word, trusted) for _, word in named)
+    if not names:
+        return all(trusted.allowed.known(word) or trusted.words.known(word) for _, word in named)
     held = {start for start, _ in named}
     for match in WORD.finditer(sentence):
         word = match.group(0)
@@ -1559,6 +1563,28 @@ def guard(text, trusted, *, translated=False, checks=(), words=False, orgs=False
     if rejected:
         text = _rejected(text, trusted, rejected, codes, translated)
     return _tidy(text), list(dict.fromkeys(codes))
+
+
+def guarded_known(text, trusted, *, translated=False):
+    """Whether a guarded paper's text fact (its topic) says nothing of the customer's they did not give.
+
+    The topic keeps its general knowledge, as the paper's guarded parts do ("Abdulla Qodiriy ijodi", "The First
+    Amendment to the United States Constitution"), but not a quotation (`_quotes`), a law, a code or an act the
+    customer did not name (`_legal_known` without its names check: the act and the code's name are what a topic
+    cites), nor an organisation named by its shape or form (`_organisation`): "«Vatan sajdagoh kabi muqaddasdir»
+    degan g‘oya ...", "(Ta’lim to‘g‘risidagi qonun talablari asosida)", "(«Hamkorbank» ATB misolida)".
+    """
+    codes = []
+    _quotes(text, trusted, codes)
+    if codes:
+        return False
+    for start, end in _sentences(text):
+        sentence = text[start:end]
+        concepts = _concepts(sentence)
+        if concepts and not _legal_known(sentence, concepts, trusted, translated, names=False):
+            return False
+    return all(not _organisation(text, run) or all(trusted.person(word, translated) for _, _, word in run
+                                                   if _letters(word) >= 2) for run in _runs(text))
 
 
 def people_known(text, trusted, *, translated=False, orgs=False):

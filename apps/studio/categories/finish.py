@@ -685,7 +685,10 @@ def _fact(field, value, trusted, translated, verified, *, led=False):
     place, line and list fields, which hold signers, participants and
     addressees as often as a person field does. Numbers written as words are
     read in every fact but a guarded paper's text, whose topic keeps its
-    general knowledge ("Uch buyuk alloma").
+    general knowledge ("Uch buyuk alloma"). That text is still guarded as the
+    paper's guarded parts are, and an organisation it names by its shape must
+    be the customer's: a topic with an invented quotation, law or case-study
+    bank («Hamkorbank» ATB misolida) is taken out whole.
     """
     if EMPTY_VALUE.fullmatch(value):
         return (BLANK if field['missing'] == 'if_needed' else None), False
@@ -709,6 +712,8 @@ def _fact(field, value, trusted, translated, verified, *, led=False):
                            words=led or kind != 'text'):
         return None, True
     if led and kind == 'text' and ground_paper(value, trusted, translated=translated)[1]:
+        return None, True
+    if not led and kind == 'text' and not facts.guarded_known(value, trusted, translated=translated):
         return None, True
     return _cut(value, field.get('max_chars')), lettered
 
