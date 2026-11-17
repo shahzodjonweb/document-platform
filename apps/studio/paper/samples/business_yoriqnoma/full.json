@@ -1,0 +1,342 @@
+{
+ "template": "business_yoriqnoma",
+ "case": "full",
+ "entry": "pdf.biz.yoriqnoma",
+ "pages": 3,
+ "uz": {
+  "title": "Yulduz kafesi ofitsiantlari uchun mijozlarga xizmat ko‘rsatish tartibi bo‘yicha",
+  "facts": {
+   "organisation": "Yulduz kafesi",
+   "subject": "ofitsiantlarning mijozlarga xizmat ko‘rsatish tartibi",
+   "audience": "Yulduz kafesining ofitsiantlari",
+   "number": "7",
+   "approver_post": "Kafe egasi",
+   "approver_name": "S. T. Nurmatova",
+   "approval_date": "2026-yil 2-noyabr",
+   "author": "zal menejeri D. R. Ergasheva",
+   "agreement_signers": "Bosh oshpaz — O. K. Sattorov",
+   "contacts": "Zal menejeri: +998 90 111 22 33\nKafe egasi: +998 90 444 55 66"
+  },
+  "sections": [
+   {
+    "id": "general",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "Mazkur yo‘riqnoma Yulduz kafesi ofitsiantlarining (keyingi o‘rinlarda — Ofitsiant) mijozlarga xizmat ko‘rsatish tartibini belgilaydi.",
+      "value": ""
+     },
+     {
+      "label": "",
+      "text": "Kafe soat 10:00 dan 22:00 gacha ishlaydi.",
+      "value": ""
+     },
+     {
+      "label": "Ofitsiant ish vaqtida:",
+      "text": "mijozlarga hurmat bilan munosabatda bo‘ladi | o‘z tashqi ko‘rinishi va ish joyini ozoda saqlaydi | qiyin vaziyatda zal menejeriga murojaat qiladi",
+      "value": ""
+     }
+    ]
+   },
+   {
+    "id": "before_work",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "Ofitsiant smena boshlanishidan oldin:",
+      "text": "qo‘llarini yuvadi va formasini tartibga keltiradi | stollar toza va tayyor ekanini tekshiradi | menyudagi mavjud bo‘lmagan taomlarni so‘rab oladi",
+      "value": ""
+     }
+    ]
+   },
+   {
+    "id": "during_work",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "Mijozni kutib olishda Ofitsiant:",
+      "text": "mijoz bilan salomlashadi | bo‘sh stolni ko‘rsatadi va menyuni beradi | mijozga tanlash uchun vaqt beradi",
+      "value": ""
+     },
+     {
+      "label": "Buyurtma olishda Ofitsiant:",
+      "text": "buyurtmani aniq yozib oladi | buyurtmani mijozga takrorlaydi | buyurtmani oshxonaga o‘z vaqtida uzatadi",
+      "value": ""
+     },
+     {
+      "label": "",
+      "text": "Diqqat! Mijoz allergiya yoki parhez haqida aytsa, Ofitsiant buni darhol oshxonaga yetkazadi.",
+      "value": ""
+     },
+     {
+      "label": "Hisob-kitobda Ofitsiant:",
+      "text": "hisobni mijoz so‘raganda keltiradi | to‘lovni qabul qilib, qaytimni sanab beradi | mijozga minnatdorchilik bildiradi",
+      "value": ""
+     }
+    ]
+   },
+   {
+    "id": "emergency",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "Mijoz shikoyat qilsa, Ofitsiant:",
+      "text": "mijozni oxirigacha tinglaydi | kechirim so‘raydi va zal menejeriga xabar beradi",
+      "value": ""
+     },
+     {
+      "label": "",
+      "text": "Jarohat yoki yong‘in holatida Ofitsiant zal menejeriga darhol xabar beradi va mijozlarni chiqish yo‘li tomon yo‘naltiradi.",
+      "value": ""
+     }
+    ]
+   },
+   {
+    "id": "after_work",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "Smena tugagandan so‘ng Ofitsiant:",
+      "text": "o‘ziga biriktirilgan stollarni tozalaydi | hisob-kitob bo‘yicha tushumni topshiradi | kun davomidagi muammolar haqida zal menejeriga aytadi",
+      "value": ""
+     }
+    ]
+   }
+  ]
+ },
+ "ru": {
+  "title": "по обслуживанию гостей официантами кафе «Юлдуз»",
+  "facts": {
+   "organisation": "Кафе «Юлдуз»",
+   "subject": "порядок обслуживания гостей официантами",
+   "audience": "официанты кафе «Юлдуз»",
+   "number": "7",
+   "approver_post": "Владелец кафе",
+   "approver_name": "С. Т. Нурматова",
+   "approval_date": "2 ноября 2026 г.",
+   "author": "менеджер зала Д. Р. Эргашева",
+   "agreement_signers": "Шеф-повар — О. К. Сатторов",
+   "contacts": "Менеджер зала: +998 90 111 22 33\nВладелец кафе: +998 90 444 55 66"
+  },
+  "sections": [
+   {
+    "id": "general",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "Настоящая инструкция устанавливает порядок обслуживания гостей официантами кафе «Юлдуз» (далее — Официант).",
+      "value": ""
+     },
+     {
+      "label": "",
+      "text": "Кафе работает с 10:00 до 22:00.",
+      "value": ""
+     },
+     {
+      "label": "Во время работы Официант:",
+      "text": "вежливо обращается с гостями | содержит в чистоте форму и рабочее место | в сложной ситуации обращается к менеджеру зала",
+      "value": ""
+     }
+    ]
+   },
+   {
+    "id": "before_work",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "Перед началом смены Официант:",
+      "text": "моет руки и приводит в порядок форму | проверяет, что столы чистые и накрыты | уточняет, каких блюд нет в меню",
+      "value": ""
+     }
+    ]
+   },
+   {
+    "id": "during_work",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "При встрече гостя Официант:",
+      "text": "приветствует гостя | провожает к свободному столу и подаёт меню | даёт гостю время на выбор",
+      "value": ""
+     },
+     {
+      "label": "При приёме заказа Официант:",
+      "text": "точно записывает заказ | повторяет заказ гостю | вовремя передаёт заказ на кухню",
+      "value": ""
+     },
+     {
+      "label": "",
+      "text": "Внимание! Если гость говорит об аллергии или диете, Официант сразу сообщает об этом на кухню.",
+      "value": ""
+     },
+     {
+      "label": "При расчёте Официант:",
+      "text": "приносит счёт по просьбе гостя | принимает оплату и отсчитывает сдачу | благодарит гостя",
+      "value": ""
+     }
+    ]
+   },
+   {
+    "id": "emergency",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "Если гость жалуется, Официант:",
+      "text": "выслушивает гостя до конца | извиняется и сообщает менеджеру зала",
+      "value": ""
+     },
+     {
+      "label": "",
+      "text": "При травме или пожаре Официант сразу сообщает менеджеру зала и направляет гостей к выходу.",
+      "value": ""
+     }
+    ]
+   },
+   {
+    "id": "after_work",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "После окончания смены Официант:",
+      "text": "убирает закреплённые за ним столы | сдаёт выручку | сообщает менеджеру зала о проблемах за день",
+      "value": ""
+     }
+    ]
+   }
+  ]
+ },
+ "en": {
+  "title": "on serving guests for the waiters of Yulduz Cafe",
+  "facts": {
+   "organisation": "Yulduz Cafe",
+   "subject": "how waiters serve guests",
+   "audience": "the waiters of Yulduz Cafe",
+   "number": "7",
+   "approver_post": "Cafe owner",
+   "approver_name": "S. T. Nurmatova",
+   "approval_date": "2 November 2026",
+   "author": "floor manager D. R. Ergasheva",
+   "agreement_signers": "Head chef — O. K. Sattorov",
+   "contacts": "Floor manager: +998 90 111 22 33\nCafe owner: +998 90 444 55 66"
+  },
+  "sections": [
+   {
+    "id": "general",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "This instruction sets how the waiters of Yulduz Cafe (the Waiter) serve guests.",
+      "value": ""
+     },
+     {
+      "label": "",
+      "text": "The cafe is open from 10:00 to 22:00.",
+      "value": ""
+     },
+     {
+      "label": "At work the Waiter:",
+      "text": "treats guests with respect | keeps the uniform and the workplace clean | turns to the floor manager in a difficult situation",
+      "value": ""
+     }
+    ]
+   },
+   {
+    "id": "before_work",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "Before the shift the Waiter:",
+      "text": "washes hands and tidies the uniform | checks that the tables are clean and laid | asks which dishes are off the menu",
+      "value": ""
+     }
+    ]
+   },
+   {
+    "id": "during_work",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "When meeting a guest the Waiter:",
+      "text": "greets the guest | shows a free table and hands over the menu | gives the guest time to choose",
+      "value": ""
+     },
+     {
+      "label": "When taking an order the Waiter:",
+      "text": "writes the order down exactly | repeats the order to the guest | passes the order to the kitchen on time",
+      "value": ""
+     },
+     {
+      "label": "",
+      "text": "Caution! If a guest mentions an allergy or a diet, the Waiter tells the kitchen at once.",
+      "value": ""
+     },
+     {
+      "label": "When settling the bill the Waiter:",
+      "text": "brings the bill when the guest asks | takes the payment and counts out the change | thanks the guest",
+      "value": ""
+     }
+    ]
+   },
+   {
+    "id": "emergency",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "If a guest complains, the Waiter:",
+      "text": "listens to the guest to the end | apologises and tells the floor manager",
+      "value": ""
+     },
+     {
+      "label": "",
+      "text": "In case of an injury or a fire the Waiter tells the floor manager at once and leads guests to the exit.",
+      "value": ""
+     }
+    ]
+   },
+   {
+    "id": "after_work",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "After the shift the Waiter:",
+      "text": "cleans the tables assigned to them | hands in the takings | tells the floor manager about the day’s problems",
+      "value": ""
+     }
+    ]
+   }
+  ]
+ }
+}

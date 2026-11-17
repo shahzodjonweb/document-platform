@@ -1202,6 +1202,13 @@ def _signers(ctx, place):
     fields = [field_id for field_id in (source if isinstance(source, list) else place.fields)
               if isinstance(field_id, str)]
     found = []
+    # A list field holds one signer a line, and a lone line field one signer, each as "post — name" or "post
+    # A. B. Name" (the agreeing posts of a job description, the author of an instruction): split, never retyped.
+    whole = [field_id for field_id in fields if (ctx.entry.field(field_id) or {}).get('kind') == 'list'
+             or (len(fields) == 1 and (ctx.entry.field(field_id) or {}).get('kind') == 'line')]
+    for field_id in whole:
+        found += [_post_and_name(line) for line in (ctx.fact(field_id) or '').split('\n') if line.strip()]
+    fields = [field_id for field_id in fields if field_id not in whole]
     for index in range(0, len(fields), 2):
         pair = fields[index:index + 2]
         post = (ctx.fact(pair[0]) or '') if len(pair) == 2 else ''
@@ -1211,6 +1218,27 @@ def _signers(ctx, place):
         if post or name or ctx.blank(pair[-1]):
             found.append((post, name))
     return found
+
+
+# A person's name with its initials, at the end of a signer's line: "A. B. Karimov", "Karimov A. B.".
+SIGNER_NAME = re.compile(r'(?:(?:[A-ZА-ЯЁЎҚҒҲ][‘’]?\.\s*){1,3}[^\W\d_][\w‘’ʼ\'-]+'
+                         r'|[^\W\d_][\w‘’ʼ\'-]+(?:\s+[A-ZА-ЯЁЎҚҒҲ][‘’]?\.){1,3})\s*$')
+SIGNER_DASH = re.compile(r'\s+[—–-]\s+|\s*:\s+')
+
+
+def _post_and_name(line):
+    """(post, name) of one signer's line: split at a dash or colon (the side with initials is the name), else
+    before a name with initials at its end; a line without one is a post to sign by hand."""
+    # A closing full stop goes, never the one of a final initial ("Rahimov B. S.").
+    line = re.sub(r'(?<![A-ZА-ЯЁЎҚҒҲ])[\s.;,]+$', '', ' '.join(line.split()).strip(' ;,'))
+    pieces = SIGNER_DASH.split(line, maxsplit=1)
+    if len(pieces) == 2:
+        left, right = (piece.strip() for piece in pieces)
+        return (right, left) if SIGNER_NAME.fullmatch(left) and not SIGNER_NAME.fullmatch(right) else (left, right)
+    found = SIGNER_NAME.search(line)
+    if found and found.start() > 0:
+        return line[:found.start()].strip(' ,'), found.group(0).strip()
+    return ('', line) if found else (line, '')
 
 
 def signature_row(ctx, place):
@@ -1257,7 +1285,11 @@ def signature_row(ctx, place):
         if variant == 'post_sign_name':
             signers = _signers(ctx, place)
         else:
-            signers = [('', (ctx.fact(place.fields[-1]) if place.fields else None) or '')]
+            signed = (ctx.fact(place.fields[-1]) if place.fields else None) or ''
+            # A line field ("R. A. Aliyev — direktor") signs by its name: the label already says the role.
+            if signed and (ctx.entry.field(place.fields[-1]) or {}).get('kind') == 'line':
+                signed = _post_and_name(signed)[1] or signed
+            signers = [('', signed)]
         _warn_over(ctx, 'signature_row', len(signers), _int(params.get('max_rows'), 0, 0, 100))
         widths = [width * 0.38, width * 0.25, width - width * 0.63 - 2 * gap]
         for post, name in signers:

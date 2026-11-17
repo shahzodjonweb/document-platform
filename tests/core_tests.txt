@@ -1245,3 +1245,17 @@ tests/test_paper_check.py::test_a_gutter_list_may_hang_its_markers_left_of_the_f
 tests/test_paper_check.py::test_the_long_case_is_sized_to_the_page_rule_and_shared_among_the_prose_parts
 tests/test_paper_check.py::test_the_long_case_of_a_fixed_paper_with_several_prose_parts_takes_one_page_more
 tests/test_paper_check.py::test_a_module_that_makes_its_own_sample_paper_draws_each_sample_on_it
+# Regulations and minutes (R5b): numbered clauses with their chapter numbers, actions and caution boxes draw a staff
+# instruction, a job description and meeting minutes; every template reads well in its full case, an empty chapter
+# leaves no heading, a safety instruction takes the safety headings, signers split into post and name, and each
+# agenda item draws its heading, report, decisions and vote in order
+tests/test_paper_regulations.py::test_clauses_is_registered_here_and_the_three_papers_are_drawn_by_the_engine
+tests/test_paper_regulations.py::test_every_template_reads_well[business_yoriqnoma-uz-full]
+tests/test_paper_regulations.py::test_every_template_reads_well[official_lavozim_yoriqnomasi-ru-full]
+tests/test_paper_regulations.py::test_every_template_reads_well[official_bayonnoma-en-full]
+tests/test_paper_regulations.py::test_clauses_are_read_from_lead_ins_actions_single_clauses_and_body_lines
+tests/test_paper_regulations.py::test_chapters_are_numbered_as_drawn_and_an_empty_one_leaves_no_heading
+tests/test_paper_regulations.py::test_a_safety_instruction_titles_its_chapters_by_the_safety_rules
+tests/test_paper_regulations.py::test_agreeing_posts_are_one_row_each_split_into_post_and_name
+tests/test_paper_regulations.py::test_each_item_follows_its_agenda_line_with_its_report_decisions_and_vote
+tests/test_paper_regulations.py::test_a_clauses_block_that_raises_is_drawn_plain
