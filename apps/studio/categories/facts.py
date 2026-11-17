@@ -1055,6 +1055,30 @@ def _authors_known(text, trusted):
     return all(trusted.person(surname, True) for surname in _authors(text))
 
 
+# An editor named in a references item: after "Edited by", "под ред.", "mas’ul muharrir", or before "tahriri ostida".
+NAME_RUN = r"(?:[^\W\d_]\.[ \t]?){0,2}[^\W\d_][^\W\d_'‘’-]+(?:[ \t,]+(?:[^\W\d_]\.[ \t]?){1,2})?"
+EDITOR_AFTER = re.compile(
+    rf"(?:edited\s+by|eds\.|ed\.|под\s+ред(?:акцией)?\.?|ред\.|muharrir(?:i|lar)?)[\s:]*(?P<name>{NAME_RUN})",
+    re.IGNORECASE)
+EDITOR_BEFORE = re.compile(r"(?P<name>[^\W\d_][^\W\d_'‘’-]+\s+(?:[^\W\d_]\.\s?){1,2})\s*tahrir", re.IGNORECASE)
+
+
+def _people_named_known(text, trusted):
+    """Whether a translated references item's people are the customer's: those it opens with and its editors.
+
+    The head, up to the first full stop or colon, is read as a title-page line is (people_known, in a
+    translation's spellings): "Karimov A." and "A. Karimov" as `_authors` reads them, but also an author written
+    in full ("Karimov Abdulla.", "Kotler, Philip.", "Philip Kotler and Kevin Keller.") and an English title
+    there ("Economic Theory. Part I."), which a translation cannot have kept in the customer's words: a false
+    drop, never an invention. So is an editor ("Edited by D. Chaffey", "mas’ul muharrir Saidov B.").
+    """
+    head = re.split(r"[.:]", text, maxsplit=1)[0]
+    if not people_known(head, trusted, translated=True):
+        return False
+    names = [match.group('name') for pattern in (EDITOR_AFTER, EDITOR_BEFORE) for match in pattern.finditer(text)]
+    return all(people_known(name, trusted, translated=True) for name in names)
+
+
 def verify_items(items, trusted, *, file_names=(), translated=False):
     """(kept, codes): the items of a references list that are the customer's sources, in order.
 
@@ -1064,9 +1088,10 @@ def verify_items(items, trusted, *, file_names=(), translated=False):
     extension, is dropped: a references list never shows a file name.
     `translated` is for a list written in another language than the message,
     whose titles are translated: its capitalised words are then not checked,
-    only its numbers and the authors it opens with ("Karimov A."), which are
-    people's names and only spelled anew, so pass it only when the titles
-    really are translated.
+    only its numbers, the authors it opens with ("Karimov A.", "Kotler,
+    Philip.") and its editors, which are people's names and only spelled anew
+    (`_people_named_known`), so pass it only when the titles really are
+    translated.
     """
     kept, codes = [], []
     for item in items or []:
@@ -1074,7 +1099,7 @@ def verify_items(items, trusted, *, file_names=(), translated=False):
         if not text:
             continue
         if _file_name(text, file_names) or not supported(text, 'line', trusted, translated=translated) \
-                or (translated and not _authors_known(text, trusted)):
+                or (translated and not (_authors_known(text, trusted) and _people_named_known(text, trusted))):
             codes.append('source:dropped')
             continue
         kept.append(item)

@@ -1508,3 +1508,10 @@ tests/test_category_finish_pdf.py::test_an_offers_invented_website_is_not_kept_a
 tests/test_category_facts.py::test_a_class_letter_the_customer_never_wrote_is_not_theirs[uz-quoted]
 tests/test_category_facts.py::test_an_initial_after_a_number_is_no_class_letter
 tests/test_category_finish_pdf.py::test_a_lessons_invented_class_letter_goes_and_the_customers_class_stays
+
+# Stage-2 re-audit, translated references: an item's head and its editors are held as people in a translation's
+# spellings, so an author written in full ("Karimov Abdulla.", "Kotler, Philip.") or an editor ("Edited by D.
+# Chaffey") the customer never named is dropped, never only one written "Karimov A."
+tests/test_category_facts.py::test_a_translated_source_whose_author_or_editor_is_written_in_full_is_still_held[surname-name]
+tests/test_category_facts.py::test_a_translated_source_whose_author_or_editor_is_written_in_full_is_still_held[editor-en]
+tests/test_category_facts.py::test_a_translated_source_by_the_customers_author_in_full_stays

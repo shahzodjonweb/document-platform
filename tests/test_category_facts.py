@@ -545,8 +545,9 @@ def test_a_translated_references_list_still_holds_the_authors_it_opens_with():
     known = trusting('Manba: Karimov A. Iqtisodiyot nazariyasi, 2019.')
     items = ['Karimov A. Economic Theory, 2019.', 'Каримов А. Экономическая теория, 2019.',
              'Xolmatov S. Basics of Economics', 'A. Karimov, S. Xolmatov. Economic Theory', 'Economic Theory. Part I.']
-    assert verify_items(items, known, translated=True) == \
-        ([items[0], items[1], items[4]], ['source:dropped'])
+    # A title opening an item is held as its head (`_people_named_known`): one a translation renamed goes, a false
+    # drop, so that an author written in full is never let through as a title.
+    assert verify_items(items, known, translated=True) == ([items[0], items[1]], ['source:dropped'])
 
 
 def test_a_translated_cover_keeps_an_academic_title():
@@ -1056,3 +1057,26 @@ def test_the_customers_own_class_letter_stays_in_either_alphabet(brief):
 def test_an_initial_after_a_number_is_no_class_letter():
     known = trusting('7-sinf rahbari Karimova Aziza')
     assert facts.without_class_letters('7-sinf rahbari A. Karimova', known) == ('7-sinf rahbari A. Karimova', False)
+
+
+# ---------------------------------------------------------------- translated references (stage-2 re-audit)
+
+
+@pytest.mark.parametrize('item', [
+    'Karimov Abdulla. Raqamli marketing strategiyalari. — Toshkent: Fan.',
+    'Abdulla Karimov. Raqamli marketing asoslari: darslik.',
+    'Marketing asoslari / mas’ul muharrir Saidov B. — T.: Iqtisodiyot.',
+    'Kotler, Philip. Marketing Management. Pearson Education.',
+    'Philip Kotler and Kevin Keller. Marketing Management. Pearson.',
+    'Ryan, Damian. Understanding Digital Marketing. Kogan Page.',
+    'Digital Marketing. Edited by D. Chaffey. Pearson.',
+], ids=['surname-name', 'name-surname', 'editor-uz', 'surname-comma-name', 'two-full-names', 'ryan', 'editor-en'])
+def test_a_translated_source_whose_author_or_editor_is_written_in_full_is_still_held(item):
+    known = trusting('Напишите курсовую работу на узбекском языке о цифровом маркетинге.')
+    assert verify_items([item], known, translated=True) == ([], ['source:dropped'])
+
+
+def test_a_translated_source_by_the_customers_author_in_full_stays():
+    known = trusting('Источники: Каримов Абдулла, учебник по цифровому маркетингу. Курсовая на узбекском.')
+    item = 'Karimov Abdulla. Raqamli marketing strategiyalari.'
+    assert verify_items([item], known, translated=True) == ([item], [])
