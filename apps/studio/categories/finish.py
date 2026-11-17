@@ -532,7 +532,9 @@ AUTHOR_TAIL = re.compile(
     r"|(?:prepared|compiled|written|made|checked|supervised|presented)\s+by\b\s*:?)"
     r"(?P<value>[^:\n]*)$", re.IGNORECASE)
 # A title's author after a bare "by": "Inflation and its consequences by Dilnoza Karimova". Only a name of one to four
-# capitalised words or initials, none a common word, is an author's ("... Driven by Foreign Investment" is a title).
+# capitalised words or initials is an author's, and only one with a surname's shape, an initial or a word that is no
+# common word ("... by Hikmat Karimov", "... by D. R. Hall", "... by Peter Brown"): "... Driven by Foreign
+# Investment" and "Management by Objectives" are titles.
 AUTHOR_BY = re.compile(r"[\s.,;—–-]+by\s+(?P<value>(?:[^\W\d_][^\W\d_'‘’.-]*\.?[ \t]*){1,4})$")
 
 
@@ -609,8 +611,8 @@ def _guarded_title(title, trusted, translated, codes):
     if found is None:
         found = AUTHOR_BY.search(title)
         words = facts.WORD.findall(found.group('value')) if found is not None else []
-        if not words or not all(word[0].isupper() for word in words) \
-                or any(facts.common(word) for word in words if len(word) > 1):
+        named = any(len(word) == 1 or facts._surname(word) or not facts.common(word) for word in words)
+        if not words or not all(word[0].isupper() for word in words) or not named:
             return title
     value = found.group('value')
     if value.strip() and not _stand_in(value) and facts.supported(value, 'person', trusted, translated=translated):
