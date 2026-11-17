@@ -1224,7 +1224,7 @@ def test_a_code_pointed_at_after_the_customer_named_one_stays(brief, part):
     'Hukumat qarori bilan dastur tasdiqlangan.', 'The Ministry of Public Education order sets the length.',
     'Согласно Положению о школе урок длится 45 минут.', 'Under the Geneva Convention prisoners are protected.',
     'Respublika qonunchiligida nizom № 5 bilan belgilangan.',
-])
+], ids=['government-resolution', 'ministry-order', 'ru-polozhenie', 'geneva-convention', 'numbered-nizom'])
 def test_an_issuers_act_a_regulation_and_a_convention_are_still_legal_sentences(part):
     assert guard(part, trusting('7-sinf matematika fanidan dars ishlanmasi yozing.')) == ('', ['ground:law'])
 
@@ -1246,7 +1246,7 @@ def test_a_letter_after_a_number_that_names_no_class_is_kept_whole(brief, value)
     assert supported(value, 'line', known, strict=True, words=True)
 
 
-@pytest.mark.parametrize('brief', ['7 «В» класс, математика', '7С класс, урок'])
+@pytest.mark.parametrize('brief', ['7 «В» класс, математика', '7С класс, урок'], ids=['ve', 'es'])
 def test_the_customers_class_letter_typed_in_cyrillic_stays_in_latin(brief):
     letter = 'B' if '«В»' in brief else 'C'
     assert facts.without_class_letters(f'7-«{letter}» sinf', trusting(brief)) == (f'7-«{letter}» sinf', False)

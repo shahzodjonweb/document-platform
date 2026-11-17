@@ -1239,7 +1239,7 @@ def test_an_uzbek_organisation_opening_a_sentence_before_its_kind_in_lower_case_
     'Tijorat banki 200 mln so‘m kredit beradi.', 'Davlat universitetida o‘qiyman.',
     'Bizning kompaniyamiz issiq non sotadi.', 'Markaziy bank stavkasi o‘zgarmaydi.',
     'Mahalliy supermarketlar issiq non sotmaydi.', 'Qurilish kompaniyasi bilan shartnoma tuziladi.',
-])
+], ids=['commercial-bank', 'state-university', 'our-company', 'central-bank', 'plural-kind', 'sector-kind'])
 def test_a_kind_of_organisation_opening_a_sentence_is_no_ones_name(text):
     assert finish.ground_paper(text, facts.trusting(BAKERY_UZ)) == (text, [])
 
