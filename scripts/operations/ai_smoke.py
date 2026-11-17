@@ -26,8 +26,8 @@ and counts only: whether the slides came back as asked, which fixed headings
 and layouts the model kept, what the check would send back, what finish took
 out, which pins gave way and whether the file passes the alphabet read-back.
 `--category slides.` runs every deck entry, at one run each. A paper category
-is refused as the job refuses it until its renderer ships (X2). Nothing is
-stored, and the switch need not be on.
+is not made here: this smoke runs decks only, and a paper's samples are its
+template's (apps/studio/paper). Nothing is stored, and the switch need not be on.
 """
 import argparse
 import os
@@ -174,7 +174,7 @@ if args.category:
     Path(out).mkdir(parents=True, exist_ok=True)
     for entry in chosen:
         if entry.service != 'slides':
-            report(f'{entry.id}', FAIL, 'a paper category: refused as category_unavailable until its renderer ships (X2)')
+            report(f'{entry.id}', FAIL, 'a paper category: this smoke makes decks only')
             continue
         try:
             category_deck(entry, out)

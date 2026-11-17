@@ -348,7 +348,13 @@ def fit_document(sections, target, styles, body_size, body_leading, count_pages)
     return _trimmed(sections, low), True
 
 
-def render_pdf(content,path,locale='en',role='user_document',style=None,photos=None):
+def render_pdf(content,path,locale='en',role='user_document',style=None,photos=None,pages=None):
+    """Draw a document; `pages` is the count the fit holds it to, its sections when None (one section a page).
+
+    `pages` is for a category paper's emergency fallback (execution.draw_paper):
+    its sections are parts of a paper, not pages, so it is held to more pages
+    than it was quoted at and the fit never cuts it.
+    """
     from .doc_designs import look as design_look
     style=style or {};look=design_look(style);accent=look['accent']
     layout=style.get('layout','clean');margin=style.get('margin',48)
@@ -408,7 +414,7 @@ def render_pdf(content,path,locale='en',role='user_document',style=None,photos=N
         def count_pages(candidate):
             buffer=io.BytesIO();build(opening()+document_story(candidate,styles,look,frame_width,photos,content['title']),buffer)
             return len(PdfReader(io.BytesIO(buffer.getvalue())).pages)
-        sections,shortened=fit_document(sections,len(sections),styles,body_size,body_leading,count_pages)
+        sections,shortened=fit_document(sections,len(sections) if pages is None else pages,styles,body_size,body_leading,count_pages)
     story=opening()
     if content_layout=='answer_key':
         story.append(Paragraph(labels[1] if role=='teacher_key' else details['key'],styles['heading']))

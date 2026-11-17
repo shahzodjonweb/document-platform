@@ -174,21 +174,59 @@ def _write_pins(job,draft_id,pins,version):
 
 
 def _category(data):
-    """The draft's category entry, or None without one; a category this worker cannot make fails the job here.
+    """The draft's category entry, or None without one; an id this worker does not know fails the job here.
 
-    Both refusals come before any provider call, and a failed job is not
+    The refusal comes before any provider call, and a failed job is not
     counted. An id the catalogue does not hold (one rolled back while the
     draft waited) is category_unknown: run as a Boshqa document it would be
-    today's pipeline sold as a category. A paper category is
-    category_unavailable: its template renderer is not in this worker, and
-    today's renderer cannot draw what it promises. A draft without a category
-    never loads the catalogue.
+    today's pipeline sold as a category. A paper category is made here
+    (draw_paper); only a worker from before the paper engine refused one, as
+    category_unavailable. A draft without a category never loads the catalogue.
     """
     if (data.get('options') or {}).get('category') is None:return None
     from .categories import of
-    entry=of(data)
-    if entry.service!='slides':raise DomainError('category_unavailable',409)
-    return entry
+    return of(data)
+
+
+def draw_paper(data,content,path,*,style=None):
+    """A finished category paper drawn to `path`, in its own template; render_pdf's result shape.
+
+    paper.render_paper draws it when this worker holds its template with
+    every block registered (paper.ready), and otherwise, or when the build
+    fails, gives the emergency fallback (architecture 6.7), marked
+    `template_fallback` in its metadata: the paper projected by finish.plain
+    and drawn by today's renderer, held to more pages than its sections and
+    its quoted pages so the fit never cuts it. A category paper never prints
+    the internal-id lines of its citations, which are checked as today but
+    are not the paper's words. The first and the second draw of a topped-up
+    paper both come through here, so they are drawn alike.
+    """
+    from pathlib import Path
+    from . import paper
+    from .categories import catalogue,finish,skeleton
+    entry,pages,locale=catalogue.of(data),skeleton.pages(data),data['output_locale']
+    def fallback(finished,target):
+        drawn={**finish.plain(data,finished),'citations':[]}
+        return render_pdf(drawn,Path(target),locale,'user_document',style=style,pages=max(len(drawn['sections']),pages+1))
+    return paper.render_paper(content,path,locale,entry=entry,template=paper.template_for(data),pages=pages,style=style,
+                              cues=skeleton.cues_of(data),fallback=fallback)
+
+
+def _fillable(entry,content):
+    """The sections a category paper's top-up may extend: its ungrounded elastic prose that holds words.
+
+    Only a paper that fills a count of pages and whose entry lets it (`fill`):
+    a ceiling paper is never padded. A grounded part (a letter's request, a
+    form's facts), a list, a table or the sources are never written further,
+    and a part the model left empty is not begun by a top-up.
+    """
+    if not entry.raw.get('fill') or entry.length['target']!='count':return set()
+    found=set()
+    for section in content['sections']:
+        part=entry.part(section.get('id'))
+        if part and part['kind']=='prose' and part.get('elastic') and not part.get('grounded') and (section.get('body') or '').strip():
+            found.add(section['id'])
+    return found
 
 
 def execute_generation(job,output_dir):
@@ -351,6 +389,31 @@ def execute_generation(job,output_dir):
             pinned=category_finish.pins(data,content)
         artifacts=[render_pptx(content,output_dir/'document.pptx',data['output_locale'],'user_document',style=style,photos=photos,
                                **({'pins':pinned} if pinned else {}))]
+    elif entry is not None:
+        # A category paper, finished above, is drawn in its own template and
+        # never on today's renderer but as the emergency fallback (draw_paper).
+        # It has no photos. One that fills a count of pages and came out short
+        # has its ungrounded elastic prose written further, once, under the
+        # category's rules; what that wrote is finished again, so nothing it
+        # adds escapes the never-invent checks, and drawn the same way.
+        photos={}
+        artifacts=[draw_paper(data,content,output_dir/'document.pdf',style=style)]
+        fillable=_fillable(entry,content) if cfg['mode']=='openai' and not artifacts[0]['metadata'].get('template_fallback') else set()
+        if fillable:
+            from .categories import finish as category_finish,skeleton
+            from .categories.prompting import block
+            from .filling import top_up
+            longer=top_up(cfg,data,content,skeleton.pages(data),artifacts[0]['page_count'],job=job,deadline=deadline,
+                          only=fillable,rules=block(entry))
+            if longer is not content:
+                from . import quality
+                written={s['id'] for s,before in zip(longer['sections'],content['sections']) if s.get('body')!=before.get('body')}
+                content,blanked=category_finish.apply(data,quality.normalise(longer,data['output_locale']),only=written)
+                warnings.extend(code for code in blanked if code not in warnings)
+                artifacts=[draw_paper(data,content,output_dir/'document.pdf',style=style)]
+        # The template's page rule may take one page more than quoted to keep a closing group whole; it says so.
+        if 'longer_than_quoted' in (artifacts[0]['metadata'].get('warnings') or ()) and 'longer_than_quoted' not in warnings:
+            warnings.append('longer_than_quoted')
     else:
         # A document only has photos when its description asked for pictures.
         photos=_photos(job,content['sections'],warnings,photo_style) if any(s.get('layout')=='image' for s in content['sections']) else {}
@@ -384,7 +447,7 @@ def execute_generation(job,output_dir):
     # A document that renders longer than the estimate is still the document that
     # was asked for. It is delivered and said out loud, never refused.
     allowance=bounds.get('output_pages',limits(job.account)['slides' if data['output_format']=='pptx' else 'sections'])
-    if any(a['page_count']>allowance for a in artifacts):warnings.append('longer_than_quoted')
+    if any(a['page_count']>allowance for a in artifacts) and 'longer_than_quoted' not in warnings:warnings.append('longer_than_quoted')
     # The renderer holds each section to its own page. When it had to shorten one
     # to do that, the customer is told rather than left to notice.
     if not cv and any(a.get('shortened') for a in artifacts):warnings.append('shortened_to_fit')

@@ -874,7 +874,6 @@ tests/test_category_admin.py::test_the_requests_list_the_request_and_the_custome
 # end in its slots, held to the customer (facts_blanked), pinned on its first render; bounds at the job's sites;
 # quality spares the exempt slides; ai_smoke --category
 tests/test_category_generation_decks.py::test_an_id_the_catalogue_no_longer_holds_fails_the_job_before_the_provider
-tests/test_category_generation_decks.py::test_a_paper_category_fails_as_unavailable_before_the_provider
 tests/test_category_generation_decks.py::test_a_job_without_a_category_never_reads_the_catalogue
 tests/test_category_generation_decks.py::test_a_deck_of_the_customers_own_figures_is_made_as_quoted_in_its_slots[uz]
 tests/test_category_generation_decks.py::test_a_topic_only_deck_loses_what_the_model_made_up_and_says_so
@@ -1125,3 +1124,14 @@ tests/test_paper_engine.py::test_a_keep_group_taller_than_any_page_starts_where_
 tests/test_paper_engine.py::test_the_head_left_before_a_closing_group_is_measured_not_counted
 tests/test_paper_engine.py::test_a_final_pass_that_adds_a_page_is_longer_than_quoted
 tests/test_paper_engine.py::test_the_final_passes_start_from_the_chosen_build_and_say_when_they_did_not_settle
+# Execution for papers (X2): a PDF without a category never reaches the paper engine and is drawn as today; a paper
+# category is drawn in its template, or by the emergency fallback without its blocks, never printing citation lines;
+# a short count paper tops up only its ungrounded elastic prose under the category's rules and finishes it again; an
+# Uzbek paper with Cyrillic sources and file names is delivered
+tests/test_category_generation_pdf.py::test_a_pdf_without_a_category_never_reaches_the_paper_engine_and_is_drawn_as_today
+tests/test_category_generation_pdf.py::test_render_pdf_without_pages_holds_a_document_to_its_sections_as_before
+tests/test_category_generation_pdf.py::test_a_paper_category_is_made_in_its_template_and_never_topped_up_as_a_ceiling
+tests/test_category_generation_pdf.py::test_without_its_blocks_a_paper_is_the_emergency_fallback_on_todays_renderer
+tests/test_category_generation_pdf.py::test_draw_paper_never_prints_the_citation_lines
+tests/test_category_generation_pdf.py::test_a_short_count_paper_tops_up_only_its_ungrounded_prose_and_finishes_it_again
+tests/test_category_generation_pdf.py::test_an_uzbek_paper_with_cyrillic_sources_and_file_names_is_delivered
