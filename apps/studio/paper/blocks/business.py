@@ -152,7 +152,7 @@ def _total_cell(ctx, part_id, column):
 
 
 def _row_figures(ctx, params):
-    """The figures a table's rows give: (label, figure, unit, note) for each row whose figure cell holds one."""
+    """The figures a table's rows give, as _spec_figures gives them, for each row whose figure cell holds one."""
     part_id = params.get('from')
     part = ctx.entry.part(part_id) if isinstance(part_id, str) else None
     if not part or part.get('kind') != 'table':
@@ -178,12 +178,17 @@ def _row_figures(ctx, params):
         label = cells[0].strip()
         if label and _has_label(ctx, params.get('label_suffix')):
             label = f"{label}, {ctx.label(params['label_suffix'])}"
-        found.append((label, figure, unit, note, True))
+        found.append((label, figure, unit, note, True, None))
     return found
 
 
 def _spec_figures(ctx, params):
-    """The figures the placement names one by one: a field's value, or a table's complete total."""
+    """The figures the placement names one by one: a field's value, or a table's complete total.
+
+    Each is (label, figure, unit, note, from_table, bare): `bare` is None, or
+    for a total that _money_mark gave the paper's currency, the total as derive
+    wrote it, which a box too narrow for the mark draws instead.
+    """
     found = []
     for spec in params.get('figures') or ():
         if not isinstance(spec, dict):
@@ -198,8 +203,49 @@ def _spec_figures(ctx, params):
         elif isinstance(spec.get('total'), str):
             value = _total_cell(ctx, spec['total'], _int(spec.get('column'), 1, 0, 40))
             if value:
-                found.append((label, value, '', _word(ctx, spec.get('note')) if spec.get('note') else '', True))
-    return found
+                found.append((label, value, None, _word(ctx, spec.get('note')) if spec.get('note') else '', True))
+    mark = _money_mark(ctx, [value for _, value, unit, _, _ in found if unit is not None]) \
+        if any(unit is None for _, _, unit, _, _ in found) else None
+    figures = []
+    for label, value, unit, note, table in found:
+        bare = None
+        if unit is None:
+            marked, unit = mark(value)
+            bare, value = (value if (marked, unit) != (value, '') else None), marked
+        figures.append((label, value, unit, note, table, bare))
+    return figures
+
+
+def _money_mark(ctx, given):
+    """`mark(figure)`: a code-made total that names no currency, as (figure, unit) with the paper's currency on it.
+
+    derive takes an amount that names no currency to be in the paper's (the
+    `currency` fact, else so‘m), so a total of such amounts is in it too. The
+    card beside "120 mln so‘m" then reads "420 000 000 so‘m", not a bare
+    number, and beside "UZS 120 mln" it reads "UZS 420,000,000". The mark is
+    the one the customer wrote on the strip's own figures, and only when all of
+    them name that same paper currency; otherwise (dollars beside so‘m, no
+    currency anywhere) the total stays as derive wrote it, since a guessed
+    currency would be an invented fact.
+    """
+    from apps.studio.categories import derive
+    paper = derive.paper_currency(ctx.fact('currency'))
+    reads = [derive.read(value, ctx.locale) for value in given]
+    # Only the currency's own words are copied: "120 mln so‘m/oy" names a rate, and its "/oy" is no total's.
+    marks = {(found.prefix, ' '.join(word for word in found.each_stripped().unit.split() if derive.money(word)))
+             for found in reads if found is not None}
+    if not reads or len(marks) != 1 or any(found is None or found.money != paper for found in reads):
+        return lambda figure: (figure, '')
+    prefix, unit = marks.pop()
+
+    def mark(figure):
+        found = derive.read(figure, ctx.locale)
+        if found is None or found.money or found.unit or found.prefix or not (prefix or unit):
+            return figure, ''
+        # Written as derive writes a prefix: a sign touches the number ("$420,000"), a code stands apart.
+        joint = '' if prefix in ('$', '€', '£', '₽') else ' '
+        return (f'{prefix}{joint}{figure.strip()}' if prefix else figure), unit
+    return mark
 
 
 def _figure_markup(ctx, figure, unit, style, small):
@@ -252,9 +298,13 @@ def key_figures(ctx, place):
     label_style = _style(ctx, 'bold', fontSize=round(ctx.size * 0.85 * 2) / 2, leading=round(ctx.size * 1.1, 1))
     note_style = _style(ctx, 'small', fontSize=round(ctx.size * 0.8 * 2) / 2, leading=round(ctx.size * 1.05, 1))
     cells = []
-    for label, figure, unit, note, from_table in figures:
+    for label, figure, unit, note, from_table, bare in figures:
         if len(cells) == count:
             break
+        if bare is not None and not _fits(ctx, figure, unit, figure_style, unit_style, width):
+            # The currency code put on a total is the first thing to go when the box is narrow. A unit the
+            # customer wrote (a row's unit column) never goes: "13 254,7" without "mln so‘m" misstates it.
+            figure, unit = bare, ''
         if from_table and not _fits(ctx, figure, unit, figure_style, unit_style, width):
             # A figure that does not fit its box is left out, never shrunk: a smaller figure reads as a smaller one.
             continue
@@ -296,7 +346,7 @@ def _key_figures_plain(ctx, place):
     """The figures as "label — figure" lines."""
     params = _params(place)
     made = []
-    for label, figure, unit, note, _ in _spec_figures(ctx, params) + _row_figures(ctx, params):
+    for label, figure, unit, note, _, _ in _spec_figures(ctx, params) + _row_figures(ctx, params):
         text = ' — '.join(piece for piece in (label, ' '.join(p for p in (figure, unit) if p), note) if piece)
         made.append(Paragraph(ctx.text(text, 'body'), ctx.styles['body']))
     return made + [Gap(1, ctx.leading * 0.5)] if made else []

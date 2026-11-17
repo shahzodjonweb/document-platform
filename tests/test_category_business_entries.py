@@ -67,7 +67,9 @@ def test_the_seven_business_papers_are_drafts_under_their_group_in_the_owners_or
         list(BUSINESS)
     for entry_id in BUSINESS:
         item = entry(entry_id)
-        assert (item.service, item.status, item.raw['parent'], item.topic) == ('pdf', 'draft', 'pdf.biz', False)
+        # Ready since N2b (tests/test_category_business_readiness.py); the test keeps its name, which the
+        # append-only tests/core_tests.txt lists.
+        assert (item.service, item.status, item.raw['parent'], item.topic) == ('pdf', 'ready', 'pdf.biz', False)
         assert len(item.templates) == 1 and catalogue.template(item.templates[0])['entries'] == [entry_id]
     assert entry('pdf.biz.yoriqnoma').name('uz') == 'Xodimlar uchun yo‘riqnoma'
 

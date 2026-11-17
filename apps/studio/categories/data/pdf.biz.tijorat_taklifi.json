@@ -1,7 +1,7 @@
 {
  "schema": 2,
  "id": "pdf.biz.tijorat_taklifi",
- "status": "draft",
+ "status": "ready",
  "service": "pdf",
  "parent": "pdf.biz",
  "order": 2,
@@ -792,10 +792,10 @@
  ],
  "look": null,
  "gates": [
-  "templates/business_taklif.json is a first draft written from the spec only so the catalogue loads; R5a owns it and may rewrite any of it. Its flow params (labels and captions maps, run_in, table_from, blank_items, keep: closing) are no contract until a registered block defines them.",
   "A native Uzbek and a native Russian reader check the fixed words (TIJORAT TAKLIFI, Kimga:, the price headers, the term labels, Hurmat bilan, the captions) and the salutation formulas before the entry is marked ready.",
   "Render the full, blank and long cases in uz, ru and en with the paper sample tool and compare them with units/pdf.biz.tijorat_taklifi/mock/business_taklif.png; check by hand that every computed amount and total equals quantity times price.",
-  "The facts corpus is at zero on this entry’s examples."
+  "The facts corpus is at zero on this entry’s examples.",
+  "One real-provider run, scripts/operations/ai_smoke.py --category pdf.biz.tijorat_taklifi on the server, makes the paper in its own template with every check passing, and the paper is looked at, before the tick."
  ],
  "later": [
   {

@@ -124,8 +124,9 @@ def test_each_business_paper_is_drawn_by_its_own_template_and_stays_a_draft(entr
     found = catalogue.check(entry_id)
     assert not [problem for problem in found if not problem.warning]
     assert not [problem for problem in found if problem.text.startswith('blocks not yet registered')]
-    # N2 makes them ready after the native reading; R5a only draws them.
-    assert catalogue.get(entry_id).status == 'draft'
+    # Ready since N2b (tests/test_category_business_readiness.py); the test keeps its name, which the append-only
+    # tests/core_tests.txt lists. The native reading and the real-provider run stay the owner's, before the tick.
+    assert catalogue.get(entry_id).status == 'ready'
 
 
 def test_the_offer_fits_its_page_and_a_long_one_says_it_came_out_longer(tmp_path):
@@ -337,13 +338,57 @@ def test_key_figures_from_facts_and_a_complete_total_only():
     ctx = context('business_biznes_reja', [dict(investment, items=investment['items'] + [total])],
                   facts={'own_funds': '120 mln so‘m'})
     found = texts(business.key_figures(ctx, place(ctx, 'key_figures', 'summary_figures', params=params)))
-    assert found == ['Umumiy investitsiya', '270 000 000', 'O‘z mablag‘i', '120 mln so‘m']
+    # The bare total is in the paper's currency (derive's rule), which the card beside it names: it says so too.
+    assert found == ['Umumiy investitsiya', '270 000 000 so‘m', 'O‘z mablag‘i', '120 mln so‘m']
     named = dict(total, total='named', label='Jami (ko‘rsatilgan moddalar)')
     ctx = context('business_biznes_reja', [dict(investment, items=investment['items'] + [named])],
                   facts={'own_funds': '120 mln so‘m'})
     found = texts(business.key_figures(ctx, place(ctx, 'key_figures', 'summary_figures', params=params)))
     assert found == ['O‘z mablag‘i', '120 mln so‘m'], 'a total of only the items listed is no key figure'
     assert business.key_figures(ctx, place(ctx, 'key_figures', 'summary_figures', params=dict(params, min=2))) == []
+
+
+@pytest.mark.parametrize('locale', ['uz', 'ru', 'en'])
+@pytest.mark.parametrize('unit, fact', [('mln so‘m', '13 254,7'), ('ming so‘m', '254 300'), ('млн сумов', '13 254,7')],
+                         ids=['mln', 'ming', 'mln-ru'])
+def test_a_row_figure_too_wide_with_its_unit_is_left_out_never_drawn_without_it(locale, unit, fact):
+    # The unit column is the customer's: "13 254,7" without "mln so‘m" reads as thirteen thousand.
+    rows = [('Sotuv', f'{unit} | 480 | {fact} | | ', '')] + INDICATORS[1:]
+    ctx = context('business_hisobot', [table('indicators', rows)], locale=locale)
+    found = texts(business.key_figures(ctx, place(ctx, 'key_figures', 'figures', params=FROM_INDICATORS)))
+    assert fact not in found
+    assert 'Sotuv' not in found or f'{fact} {unit}' in found
+
+
+def test_a_narrow_computed_total_loses_only_the_currency_it_was_given():
+    investment = table('finance_investment', [('Uskuna', '', '180 000 000 000'), ('Bino', '', '90 000 000 000')])
+    total = {'label': 'Jami', 'text': '', 'value': '270 000 000 000', 'total': True}
+    items = investment['items'] + [total]
+    two = {'figures': [{'total': 'finance_investment', 'column': 3, 'label': 'kf_investment'},
+                       {'field': 'own_funds', 'label': 'kf_own'}], 'min': 1}
+    three = dict(two, figures=two['figures'] + [{'field': 'external_funding'}])
+    facts = {'own_funds': '120 mln so‘m', 'external_funding': '300 mln so‘m'}
+    ctx = context('business_biznes_reja', [dict(investment, items=items)], facts=facts)
+    found = texts(business.key_figures(ctx, place(ctx, 'key_figures', 'summary_figures', params=two)))
+    assert found[:2] == ['Umumiy investitsiya', '270 000 000 000 so‘m'], 'a box wide enough keeps the mark'
+    found = texts(business.key_figures(ctx, place(ctx, 'key_figures', 'summary_figures', params=three)))
+    assert found[:2] == ['Umumiy investitsiya', '270 000 000 000'], 'a narrow box drops the mark, never the figure'
+
+
+@pytest.mark.parametrize('facts, shown', [
+    # A per-month tail names a rate: the total takes the currency word alone.
+    ({'own_funds': '120 mln so‘m/oy'}, '270 000 000 so‘m'),
+    # derive adds the bare rows as tenge (a currency of its own), so the card never calls them so‘m.
+    ({'own_funds': '120 mln so‘m', 'currency': 'tenge'}, '270 000 000'),
+], ids=['per-month', 'tenge'])
+def test_a_computed_total_is_labelled_as_derive_added_it(facts, shown):
+    investment = table('finance_investment', [('Uskuna', '', '180 000 000'), ('Bino', '', '90 000 000')])
+    total = {'label': 'Jami', 'text': '', 'value': '270 000 000', 'total': True}
+    params = {'figures': [{'total': 'finance_investment', 'column': 3, 'label': 'kf_investment'},
+                          {'field': 'own_funds', 'label': 'kf_own'}], 'min': 1}
+    ctx = context('business_biznes_reja', [dict(investment, items=investment['items'] + [total])], facts=facts)
+    found = texts(business.key_figures(ctx, place(ctx, 'key_figures', 'summary_figures', params=params)))
+    assert found[:2] == ['Umumiy investitsiya', shown]
 
 
 def test_a_total_row_that_lost_its_mark_is_still_known_by_its_word():
