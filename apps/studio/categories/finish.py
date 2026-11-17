@@ -574,7 +574,8 @@ def ground_paper(text, trusted, *, translated=False, invented=None, blanked=None
 
     A sentence's, a cell's or an item's first word is held where it opens an
     organisation's name by its shape ("Hamkorbank 200 mln so‘m kredit
-    beradi.", "Acme LLC ...", "«Baraka» MChJ ...") and where it is one of the
+    beradi.", "Acme LLC ...", "«Baraka» MChJ ...", "Asaka banki ...", "Artel
+    kompaniyasidagi ...") and where it is one of the
     `invented` words (facts.Words) this finish has already taken out as not
     the customer's, a rejected fact's or a blanked run's ("Artel
     kompaniyasidagi ..." when the employer "Artel" was blanked). `blanked`

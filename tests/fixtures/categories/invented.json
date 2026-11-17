@@ -19,7 +19,10 @@
     {"kind": "single_quote", "code": "ground:quote", "guard": true, "text": "Muallif ta’kidlaganidek, ‘bilim olish har bir o‘quvchining muqaddas burchidir’."},
     {"kind": "handle", "code": "ground:number", "text": "Buyurtma uchun @namuna_mebel_uz kanaliga yoki namunamebel.shop saytiga yozing."},
     {"kind": "organisation_first", "code": "ground:name", "paper": true, "text": "Agrobank loyihaga kredit ajratdi."},
-    {"kind": "organisation_first", "code": "ground:name", "paper": true, "text": "«Oqtosh» MChJ yangi filial ochdi."}
+    {"kind": "organisation_first", "code": "ground:name", "paper": true, "text": "«Oqtosh» MChJ yangi filial ochdi."},
+    {"kind": "organisation_first", "code": "ground:name", "paper": true, "text": "Turonbek banki loyihaga kredit ajratdi."},
+    {"kind": "organisation_first", "code": "ground:name", "paper": true, "text": "Oqtosh kompaniyasidagi lavozimga ariza beraman."},
+    {"kind": "organisation_first", "code": "ground:name", "paper": true, "text": "Gulbaxor supermarketlar tarmog‘ida ishlaganman."}
   ],
   "ru": [
     {"kind": "name", "code": "ground:name", "text": "Работой также руководил Холмирзаев Ботиржон Эргашевич."},

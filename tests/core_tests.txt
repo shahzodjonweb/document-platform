@@ -1579,3 +1579,12 @@ tests/test_category_finish_pdf.py::test_a_lessons_own_phrases_in_quotation_marks
 
 # Stage-2 re-audit, Russian hundreds: a hundred in any case ("тремястами", "пятистам") and "десятком" are read
 tests/test_category_facts.py::test_russian_hundreds_in_every_case_and_a_ten_as_a_noun_are_read[instrumental]
+
+# Stage-2 re-audit round 2, an organisation's kind: an Uzbek name opening a sentence, a cell or an item before its
+# kind in the possessive ("Asaka banki", "Artel kompaniyasidagi", "Korzinka supermarketlar tarmog‘ida") is held in a
+# paper's grounded part, never a kind of organisation ("Tijorat banki", "Bizning kompaniyamiz"); a legal form with an
+# ending ("MChJning") is no name
+tests/test_category_finish_pdf.py::test_an_uzbek_organisation_opening_a_sentence_before_its_kind_in_lower_case_is_held[company]
+tests/test_category_finish_pdf.py::test_an_uzbek_organisation_opening_a_sentence_before_its_kind_in_lower_case_is_held[chain]
+tests/test_category_finish_pdf.py::test_a_kind_of_organisation_opening_a_sentence_is_no_ones_name
+tests/test_category_finish_pdf.py::test_a_reports_legal_form_with_an_ending_is_no_name

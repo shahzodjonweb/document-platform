@@ -60,10 +60,12 @@ More limits, said as plainly:
   invented given name alone at the start of a sentence still passes. A
   paper's grounded part (finish.ground_paper) also holds one that opens an
   organisation's name by its shape ("Hamkorbank ...", "Acme LLC ...",
-  "«Baraka» MChJ ...") or that the same finish took out elsewhere, a rejected
-  fact's or a blanked run's ("Artel kompaniyasidagi ..." when the employer
-  Artel was blanked); a lone word with neither, a brand, a city or a given
-  name ("Korzinka", "Samarqand shahrida", "Smith led ..."), still passes, a
+  "«Baraka» MChJ ...") or by the Uzbek kind after it in the possessive a name
+  gives it ("Asaka banki ...", "Artel kompaniyasidagi ...", never "Tijorat
+  banki"), or that the same finish took out elsewhere, a rejected fact's or a
+  blanked run's ("Artelda ishlaganman" when the employer Artel was blanked);
+  a lone word with none of these, a brand, a city or a given name
+  ("Korzinka", "Samarqand shahrida", "Smith led ..."), still passes, a
   table's label cell and a list item included.
 - `guard` removes any sentence with a strong legal stem (kodeks, farmon,
   Konstitutsiya ...) the customer did not give, even one that cites nothing
@@ -174,6 +176,20 @@ ORG_FORMS = ("mchj aj atb akb xk qk yatt oaj llc ltd inc jsc plc gmbh corp ooo o
 ORG_KINDS = ("universitet institut akademiya kollej market supermarket gipermarket bank kompaniya xolding "
              "korporatsiya").split()
 EN_ORG_KINDS = "university institute academy college market supermarket group holding bank company corporation".split()
+# The Uzbek legal forms, which a sentence gives its endings ("«Baraka Savdo» MChJning", "AJga"): no one's name.
+UZ_ORG_FORMS = "mchj aj atb akb aitb xk qk yatt oaj".split()
+# An Uzbek name is followed by its kind in the possessive the name gives it, in lower case: "Asaka banki", "Artel
+# kompaniyasidagi", "Westminster universitetida", "Korzinka supermarketi", "Akfa zavodida". Only that form counts
+# (`ORG_AFTER`): a kind in the plural or bare ("Tijorat banklari", "Bizning kompaniyamiz", "Markaziy bank") follows
+# no one's name. A chain is "Korzinka supermarketlar tarmog‘i" (`CHAIN`).
+UZ_ORG_KINDS = ("bank kompaniya universitet institut akademiya kollej market supermarket gipermarket xolding "
+                "korporatsiya firma korxona zavod fabrika shirkat klinika").split()
+UZ_CASES = ('', 'ga', 'da', 'dan', 'ning', 'ni', 'dagi', 'gacha')
+# The words that make such a kind a kind of organisation, never one's name, opening a sentence: "Tijorat banki",
+# "Davlat universiteti", "Xususiy klinikasi", "Qurilish kompaniyasi bilan ...".
+KINDS_OF = ("tijorat davlat xususiy xorijiy mahalliy yirik kichik katta yangi ushbu mazkur bu shu har biror birorta "
+            "boshqa bitta bir oliy xalqaro hamkor raqobatchi sug‘urta qurilish savdo logistika transport "
+            "investitsiya mikromoliya oilaviy tibbiyot texnika pedagogika iqtisodiyot quyidagi tegishli").split()
 
 
 def _forms():
@@ -181,6 +197,7 @@ def _forms():
     forms = list(ALLOWED) + list(RU_ROLES)
     forms += [role + ending for role in UZ_ROLES for ending in UZ_ENDINGS]
     forms += [role + ending for role in EN_ROLES for ending in ('', 's')]
+    forms += [form + ending for form in UZ_ORG_FORMS for ending in UZ_ENDINGS]
     return forms
 
 
@@ -299,6 +316,9 @@ def respellings(word):
 FORMULAS = _folded(_forms())
 ORG_HEADS = _folded(ORG_FORMS + [kind + ending for kind in ORG_KINDS for ending in UZ_ENDINGS]
                     + [kind + ending for kind in EN_ORG_KINDS for ending in ('', 's')])
+ORG_AFTER = _folded([kind + own + case for kind in UZ_ORG_KINDS for own in ('i', 'si') for case in UZ_CASES])
+CHAIN = _folded(['tarmog‘i' + case for case in UZ_CASES])
+KIND_WORDS = _folded(KINDS_OF)
 
 
 def flat(text, *, folded=None):
@@ -978,19 +998,34 @@ def _organisation(text, run):
 
     Its first word is shaped as one ("Hamkorbank", "Kapitalbanki", "UzAuto", "UNICEF"; never a roman numeral), or
     the run goes on in an organisation's form or kind ("Acme LLC", "Westminster University", "Xalq Banki"), or a
-    quoted name is followed by one ("«Baraka» MChJ").
+    quoted name is followed by one ("«Baraka» MChJ"), or an Uzbek name by its kind in lower case in the possessive
+    it gives it ("Asaka banki", "Artel kompaniyasidagi", "Korzinka supermarketlar tarmog‘ida": `ORG_AFTER`), unless
+    the word is one that makes the kind a kind ("Tijorat banki", "Davlat universiteti": `KIND_WORDS`).
     """
     first = run[0][2]
-    folded = fold(first)
-    if re.fullmatch(r"[^\W\d_]{2,}bank[^\W\d_]*", folded) or any(
-            a.islower() and b.isupper() for a, b in zip(first, first[1:])):
-        return True
-    if first.isupper() and _letters(first) >= 3 and not re.fullmatch(r"[IVXLCDM]+", first):
+    if _org_shaped(first):
         return True
     if any(fold(word) in ORG_HEADS for _, _, word in run[1:]):
         return True
     after = re.match(r"[»\"”'’]+[ \t\u00a0]*([^\W\d_][^\W\d_'‘’ʻʼ`´-]*)", text[run[-1][1]:])
-    return after is not None and fold(after.group(1)) in ORG_HEADS
+    if after is not None and fold(after.group(1)) in ORG_HEADS:
+        return True
+    if len(run) == 1 and fold(first) in KIND_WORDS:
+        return False
+    kind = re.match(rf"[»\"”'’]*[ \t\u00a0]+({WORD.pattern})(?:[ \t\u00a0]+({WORD.pattern}))?", text[run[-1][1]:])
+    if kind is None or not kind.group(1)[0].islower():
+        return False
+    word = fold(kind.group(1))
+    return word in ORG_AFTER or (word.endswith('lar') and kind.group(2) is not None and fold(kind.group(2)) in CHAIN)
+
+
+def _org_shaped(word):
+    """Whether a word is shaped as an organisation's name: a bank's ("Hamkorbank", "Kapitalbanki"), CamelCase
+    ("UzAuto"), or an acronym of three capitals or more that is no roman numeral ("UNICEF")."""
+    if re.fullmatch(r"[^\W\d_]{2,}bank[^\W\d_]*", fold(word)) or any(
+            a.islower() and b.isupper() for a, b in zip(word, word[1:])):
+        return True
+    return word.isupper() and _letters(word) >= 3 and not re.fullmatch(r"[IVXLCDM]+", word)
 
 
 def _unknown_runs(text, trusted, translated=False, *, strict=False, orgs=False, invented=None):

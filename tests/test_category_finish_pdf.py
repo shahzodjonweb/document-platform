@@ -13,7 +13,7 @@ import datetime
 
 import pytest
 
-from apps.studio.categories import catalogue, derive, finish, skeleton
+from apps.studio.categories import catalogue, derive, facts, finish, skeleton
 from apps.studio.categories.catalogue import build, read
 from apps.studio.scripts import violations
 
@@ -1216,3 +1216,40 @@ def test_a_lessons_own_phrases_in_quotation_marks_stay():
     assert section_of(made, 'stage_close')['body'] == body and 'ground:quote' not in codes
     voice = next(rule['text'] for rule in lesson.raw['rules'] if rule['text'].startswith('Voice of the plan'))
     assert 'never quoted in « »' in voice, 'the teacher\'s words are reported, not quoted'
+
+
+# ---------------------------------------------------------------- stage-2 re-audit, round 2: an organisation's kind
+
+
+@pytest.mark.parametrize('text, left', [
+    ('Asaka banki 200 mln so‘m kredit beradi.', '____ banki 200 mln so‘m kredit beradi.'),
+    ('Artel kompaniyasidagi sotuv menejeri lavozimiga ariza bermoqchiman.',
+     '____ kompaniyasidagi sotuv menejeri lavozimiga ariza bermoqchiman.'),
+    ('Korzinka supermarketlar tarmog‘ida ishlaganman.', '____ supermarketlar tarmog‘ida ishlaganman.'),
+    ('Westminster universitetida o‘qishni xohlayman.', '____ universitetida o‘qishni xohlayman.'),
+    ('«Baraka» kompaniyasi yangi filial ochdi.', '«____» kompaniyasi yangi filial ochdi.'),
+], ids=['bank', 'company', 'chain', 'university', 'quoted'])
+def test_an_uzbek_organisation_opening_a_sentence_before_its_kind_in_lower_case_is_held(text, left):
+    known = facts.trusting(BAKERY_UZ)
+    assert finish.ground_paper(text, known) == (left, ['ground:name'])
+    assert finish.ground_paper(text, facts.trusting(BAKERY_UZ + ' ' + text)) == (text, []), 'the customer\'s own stays'
+
+
+@pytest.mark.parametrize('text', [
+    'Tijorat banki 200 mln so‘m kredit beradi.', 'Davlat universitetida o‘qiyman.',
+    'Bizning kompaniyamiz issiq non sotadi.', 'Markaziy bank stavkasi o‘zgarmaydi.',
+    'Mahalliy supermarketlar issiq non sotmaydi.', 'Qurilish kompaniyasi bilan shartnoma tuziladi.',
+])
+def test_a_kind_of_organisation_opening_a_sentence_is_no_ones_name(text):
+    assert finish.ground_paper(text, facts.trusting(BAKERY_UZ)) == (text, [])
+
+
+def test_a_reports_legal_form_with_an_ending_is_no_name():
+    report = catalogue.get('pdf.biz.hisobot')
+    data = draft(report, prompt='«Baraka Savdo» MChJ uchun 2025-yil faoliyati bo‘yicha hisobot yozing.', length=3)
+    made, _, codes = finished(data, answer(
+        data, title='«Baraka Savdo» MChJning 2025-yil faoliyati to‘g‘risida hisobot',
+        summary={'body': 'Hisobot davrida «Baraka Savdo» MChJga yangi xodimlar qabul qilindi.'}))
+    assert made['title'] == '«Baraka Savdo» MChJning 2025-yil faoliyati to‘g‘risida hisobot'
+    assert section_of(made, 'summary')['body'] == 'Hisobot davrida «Baraka Savdo» MChJga yangi xodimlar qabul qilindi.'
+    assert 'ground:name' not in codes
