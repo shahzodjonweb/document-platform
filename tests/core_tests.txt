@@ -1143,3 +1143,19 @@ tests/test_category_business_entries.py::test_the_minutes_repeat_report_discussi
 tests/test_category_business_entries.py::test_no_research_note_or_law_to_cite_reaches_the_model
 tests/test_category_business_entries.py::test_each_example_makes_a_draft_of_its_skeleton_held_to_its_pages_and_quoted[pdf.biz.tijorat_taklifi]
 tests/test_category_business_entries.py::test_each_example_makes_a_draft_of_its_skeleton_held_to_its_pages_and_quoted[pdf.biz.bayonnoma]
+
+# Categories, the letters and official papers (C2c): each is a draft on its own template within the block budget;
+# its written parts are grounded and its length a ceiling; a letter is dated by the clock and an official paper
+# never; the recommendation is the official form, the personal letter in English; a blank form only on the model's ask;
+# a flag holds only when true, and the statement head is its own template without salutation, close or signature
+tests/test_category_letters.py::test_each_letter_is_a_draft_on_its_own_template_within_its_budget[pdf.xat.tavsiya]
+tests/test_category_letters.py::test_the_recommendation_is_the_official_form_and_the_personal_letter_in_english
+tests/test_category_letters.py::test_every_written_part_is_grounded_and_the_length_is_a_ceiling[pdf.xat.tushuntirish]
+tests/test_category_letters.py::test_a_letter_is_dated_by_the_clock_and_an_official_paper_never[pdf.xat.ishga_kirish]
+tests/test_category_letters.py::test_a_letter_is_dated_by_the_clock_and_an_official_paper_never[pdf.xat.tavsifnoma]
+tests/test_category_letters.py::test_a_blank_form_is_drawn_only_when_the_model_asks_for_it
+tests/test_category_letters.py::test_a_flag_holds_only_when_it_is_true
+tests/test_category_letters.py::test_the_statement_head_is_its_own_template_without_the_letters_apparatus
+tests/test_category_letters.py::test_a_label_drawn_in_a_language_has_words_in_it
+tests/test_category_letters.py::test_the_explanatory_notes_head_has_a_label_in_english_only
+tests/test_category_letters.py::test_a_line_drawn_from_labels_alone_prints_no_inherited_fields

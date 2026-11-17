@@ -425,6 +425,9 @@ def test_for_feature_lists_each_service_in_the_lists_order():
     assert [item for item in papers if item.startswith('pdf.biz.')] == [
         'pdf.biz.biznes_reja', 'pdf.biz.tijorat_taklifi', 'pdf.biz.hisobot', 'pdf.biz.yoriqnoma',
         'pdf.biz.lavozim_yoriqnomasi', 'pdf.biz.bayonnoma', 'pdf.biz.marketing_reja']
+    assert [item for item in papers if item.startswith('pdf.xat.')] == [
+        'pdf.xat.motivatsion', 'pdf.xat.ishga_kirish', 'pdf.xat.ariza', 'pdf.xat.tavsifnoma', 'pdf.xat.tavsiya',
+        'pdf.xat.tushuntirish']
     assert [entry.id for entry in catalogue.for_feature('ai.pptx')] == [
         'slides.mavzu', 'slides.himoya', 'slides.dars', 'slides.tadbir.tarbiyaviy_soat', 'slides.tadbir.bayram',
         'slides.tadbir.ota_onalar', 'slides.tadbir.pedkengash', 'slides.pitch', 'slides.hisobot', 'slides.kompaniya']

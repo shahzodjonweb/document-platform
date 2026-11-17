@@ -1,0 +1,372 @@
+{
+ "schema": 2,
+ "id": "letter_tavsiya",
+ "entries": [
+  "pdf.xat.tavsiya"
+ ],
+ "name": {
+  "uz": "Shaxsiy tavsiya xati",
+  "ru": "Личное рекомендательное письмо",
+  "en": "Personal recommendation letter"
+ },
+ "family": "letter",
+ "pick": "locale:en",
+ "page": {
+  "margins_mm": {
+   "left": 25,
+   "right": 25,
+   "top": 22,
+   "bottom": 20
+  }
+ },
+ "type": {
+  "face": "serif",
+  "ladder": [
+   [
+    11,
+    16
+   ],
+   [
+    10.5,
+    15
+   ],
+   [
+    10,
+    14
+   ]
+  ],
+  "align": "left"
+ },
+ "page_rule": {
+  "kind": "flow"
+ },
+ "furniture": {
+  "first": "none",
+  "later": "header_number",
+  "format": "n",
+  "header": [
+   "candidate_name"
+  ]
+ },
+ "flow": [
+  {
+   "block": "party_block",
+   "part": "letterhead",
+   "fields": [
+    "recommender_org",
+    "recommender_unit",
+    "recommender_address"
+   ],
+   "when": "nofact:letterhead_preprinted=true",
+   "params": {
+    "anchor": "left",
+    "name_style": "bold_large",
+    "rule": "under"
+   }
+  },
+  {
+   "block": "split_row",
+   "part": "head_row",
+   "fields": [
+    "addressee",
+    "letter_date"
+   ],
+   "params": {
+    "left": {
+     "block": "party_block",
+     "fields": [
+      "addressee"
+     ],
+     "anchor": "left",
+     "max_lines": 4
+    },
+    "right": {
+     "block": "date_line",
+     "fact": "letter_date",
+     "pattern": "date_blank",
+     "align": "right"
+    },
+    "left_mm": 104
+   }
+  },
+  {
+   "block": "line",
+   "part": "title",
+   "fields": [
+    "candidate_name",
+    "target"
+   ],
+   "params": {
+    "label": "kind",
+    "style": "bold"
+   }
+  },
+  {
+   "block": "line",
+   "part": "head_row",
+   "fields": [
+    "salutation"
+   ],
+   "when": "fact:salutation",
+   "params": {
+    "label": "salutation"
+   }
+  },
+  {
+   "block": "line",
+   "when": "nofact:salutation",
+   "params": {
+    "label": "to_whom"
+   }
+  },
+  {
+   "block": "line",
+   "part": "opening",
+   "fields": [
+    "candidate_name",
+    "target"
+   ],
+   "params": {
+    "label": "opening_target",
+    "without": {
+     "target": "opening"
+    }
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "opening",
+   "when": "part:opening",
+   "params": {
+    "gap_pt": 12
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "evidence",
+   "when": "part:evidence",
+   "params": {
+    "gap_pt": 12
+   }
+  },
+  {
+   "block": "ruled_blank",
+   "part": "evidence_blank",
+   "when": "blank:evidence",
+   "params": {
+    "lines": 4,
+    "width_mm": "full",
+    "caption": "evidence_caption"
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "character",
+   "when": "part:character",
+   "params": {
+    "gap_pt": 12
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "context",
+   "when": "part:context",
+   "params": {
+    "gap_pt": 12
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "fit",
+   "when": "part:fit",
+   "params": {
+    "gap_pt": 12
+   }
+  },
+  {
+   "block": "line",
+   "part": "verdict",
+   "fields": [
+    "candidate_short",
+    "target"
+   ],
+   "when": "fact:strength=strong",
+   "params": {
+    "label": "verdict_strong",
+    "without": {
+     "target": "verdict_strong_plain"
+    }
+   }
+  },
+  {
+   "block": "line",
+   "part": "verdict",
+   "fields": [
+    "candidate_short",
+    "target"
+   ],
+   "when": "nofact:strength=strong",
+   "params": {
+    "label": "verdict_target",
+    "without": {
+     "target": "verdict"
+    }
+   }
+  },
+  {
+   "block": "line",
+   "when": "fact:recommender_phone",
+   "params": {
+    "label": "contact_offer"
+   }
+  },
+  {
+   "block": "line",
+   "when": "fact:salutation",
+   "keep": "closing",
+   "params": {
+    "label": "close_named"
+   }
+  },
+  {
+   "block": "line",
+   "when": "nofact:salutation",
+   "keep": "closing",
+   "params": {
+    "label": "close"
+   }
+  },
+  {
+   "block": "signature_row",
+   "part": "sign_off",
+   "fields": [
+    "recommender_name",
+    "recommender_position"
+   ],
+   "keep": "closing",
+   "params": {
+    "variant": "label_sign_name",
+    "max_rows": 1,
+    "sign_room_mm": 14,
+    "captions": {
+     "recommender_name": "cap_name",
+     "recommender_position": "cap_post"
+    }
+   }
+  },
+  {
+   "block": "line",
+   "part": "sign_off",
+   "fields": [
+    "recommender_phone",
+    "recommender_email"
+   ],
+   "keep": "closing",
+   "params": {
+    "style": "small",
+    "labels": {
+     "recommender_phone": "tel",
+     "recommender_email": "email"
+    }
+   }
+  }
+ ],
+ "labels": {
+  "kind": {
+   "uz": "Tavsiya xati:",
+   "ru": "Рекомендательное письмо:",
+   "en": "Letter of recommendation:"
+  },
+  "opening": {
+   "uz": "{candidate_name} nomzodini tavsiya qilishdan mamnunman.",
+   "ru": "С удовольствием рекомендую: {candidate_name}.",
+   "en": "I am pleased to recommend {candidate_name}."
+  },
+  "opening_target": {
+   "uz": "{candidate_name} nomzodini {target} uchun tavsiya qilishdan mamnunman.",
+   "ru": "С удовольствием рекомендую: {candidate_name}, {target}.",
+   "en": "I am pleased to recommend {candidate_name} for {target}."
+  },
+  "verdict": {
+   "uz": "{candidate_short} nomzodini tavsiya qilaman.",
+   "ru": "Рекомендую: {candidate_short}.",
+   "en": "I recommend {candidate_short}."
+  },
+  "verdict_target": {
+   "uz": "{candidate_short} nomzodini {target} uchun tavsiya qilaman.",
+   "ru": "Рекомендую: {candidate_short}, {target}.",
+   "en": "I recommend {candidate_short} for {target}."
+  },
+  "verdict_strong": {
+   "uz": "{candidate_short} nomzodini {target} uchun ishonch bilan tavsiya qilaman.",
+   "ru": "С уверенностью рекомендую: {candidate_short}, {target}.",
+   "en": "I recommend {candidate_short} with confidence for {target}."
+  },
+  "verdict_strong_plain": {
+   "uz": "{candidate_short} nomzodini ishonch bilan tavsiya qilaman.",
+   "ru": "С уверенностью рекомендую: {candidate_short}.",
+   "en": "I recommend {candidate_short} with confidence."
+  },
+  "salutation": {
+   "uz": "Hurmatli {salutation}!",
+   "ru": "Здравствуйте, {salutation}!",
+   "en": "Dear {salutation},"
+  },
+  "to_whom": {
+   "uz": "Talab qilingan joyga taqdim etish uchun.",
+   "ru": "Для предъявления по месту требования.",
+   "en": "To whom it may concern,"
+  },
+  "contact_offer": {
+   "uz": "Qo‘shimcha savollaringiz bo‘lsa, quyidagi aloqa orqali murojaat qilishingiz mumkin.",
+   "ru": "Если у вас появятся вопросы, со мной можно связаться по указанным ниже контактам.",
+   "en": "If you need further information, please contact me at the details below."
+  },
+  "close_named": {
+   "uz": "Hurmat bilan,",
+   "ru": "С уважением,",
+   "en": "Yours sincerely,"
+  },
+  "close": {
+   "uz": "Hurmat bilan,",
+   "ru": "С уважением,",
+   "en": "Yours faithfully,"
+  },
+  "cap_post": {
+   "uz": "(lavozimi)",
+   "ru": "(должность)",
+   "en": "(position)"
+  },
+  "cap_name": {
+   "uz": "(F.I.Sh.)",
+   "ru": "(Ф.И.О.)",
+   "en": "(full name)"
+  },
+  "evidence_caption": {
+   "uz": "(bu yerga aniq misolni qo‘lda yozing)",
+   "ru": "(впишите сюда конкретный пример)",
+   "en": "(add a specific example here, in your own hand)"
+  },
+  "tel": {
+   "uz": "Tel.:",
+   "ru": "Тел.:",
+   "en": "Phone:"
+  },
+  "email": {
+   "uz": "E-mail:",
+   "ru": "E-mail:",
+   "en": "E-mail:"
+  },
+  "date_blank": {
+   "uz": "«___» ____________ 20___-yil",
+   "ru": "«___» ____________ 20___ г.",
+   "en": "___ ____________ 20___"
+  },
+  "number": {
+   "uz": "№ {outgoing_number}",
+   "ru": "Исх. № {outgoing_number}",
+   "en": "Ref. No. {outgoing_number}"
+  }
+ },
+ "mock": "units/pdf.xat.tavsiya/mock/letter_tavsiya.png"
+}

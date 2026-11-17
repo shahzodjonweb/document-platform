@@ -86,6 +86,16 @@
     },
     "labels": {
      "phone": "tel"
+    },
+    "order": {
+     "en": [
+      "applicant_name",
+      "applicant_role",
+      "on_behalf_of",
+      "applicant_address",
+      "phone",
+      "email"
+     ]
     }
    }
   },
@@ -103,6 +113,16 @@
    "params": {
     "indent_first_mm": 12.5,
     "gap_pt": 0
+   }
+  },
+  {
+   "block": "ruled_blank",
+   "part": "request_blank",
+   "when": "blank:request",
+   "params": {
+    "lines": 6,
+    "width_mm": "full",
+    "pitch_pt": 24
    }
   },
   {
