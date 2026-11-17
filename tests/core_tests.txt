@@ -1281,3 +1281,34 @@ tests/test_paper_academic.py::test_no_source_draws_the_numbered_form_with_its_ca
 tests/test_paper_academic.py::test_a_label_that_only_numbers_a_source_is_dropped_and_an_author_label_runs_into_its_title
 tests/test_paper_academic.py::test_a_sub_row_under_a_credit_that_prints_nothing_goes_with_it
 tests/test_paper_academic.py::test_a_long_web_address_breaks_after_a_slash_and_stays_inside_the_frame
+
+# Regulations and minutes (R5b): numbered clauses with their chapter numbers, actions and caution boxes draw a staff
+# instruction, a job description and meeting minutes; every template reads well in its full case, an empty chapter
+# leaves no heading, a safety instruction takes the safety headings, signers split into post and name, and each
+# agenda item draws its heading, report, decisions and vote in order
+tests/test_paper_regulations.py::test_clauses_is_registered_here_and_the_three_papers_are_drawn_by_the_engine
+tests/test_paper_regulations.py::test_every_template_reads_well[business_yoriqnoma-uz-full]
+tests/test_paper_regulations.py::test_every_template_reads_well[official_lavozim_yoriqnomasi-ru-full]
+tests/test_paper_regulations.py::test_every_template_reads_well[official_bayonnoma-en-full]
+tests/test_paper_regulations.py::test_clauses_are_read_from_lead_ins_actions_single_clauses_and_body_lines
+tests/test_paper_regulations.py::test_chapters_are_numbered_as_drawn_and_an_empty_one_leaves_no_heading
+tests/test_paper_regulations.py::test_a_safety_instruction_titles_its_chapters_by_the_safety_rules
+tests/test_paper_regulations.py::test_agreeing_posts_are_one_row_each_split_into_post_and_name
+tests/test_paper_regulations.py::test_each_item_follows_its_agenda_line_with_its_report_decisions_and_vote
+tests/test_paper_regulations.py::test_a_clauses_block_that_raises_is_drawn_plain
+# Regulations and minutes (R5b review): a chair or secretary signs by name and never by post, Uzbek digraph initials
+# stay whole, semicolon-joined signers are rows of their own, the customer's title word is drawn, and a caution clause
+# taller than a page keeps its numbers
+tests/test_paper_regulations.py::test_the_chair_signs_by_name_and_never_by_post[uz-digraph-initials]
+tests/test_paper_regulations.py::test_the_chair_signs_by_name_and_never_by_post[ru-full-name]
+tests/test_paper_regulations.py::test_agreeing_signers_joined_by_semicolons_are_one_row_each
+tests/test_paper_regulations.py::test_the_minutes_title_takes_the_customers_word_and_only_one_title_is_drawn[bayoni-BAYONI]
+tests/test_paper_regulations.py::test_a_caution_clause_taller_than_a_page_is_drawn_unboxed_and_keeps_its_numbers
+# Regulations and minutes (R5b second review): an o‘ or g‘ initial typed with an ASCII apostrophe or ʻ keeps the
+# signer's surname, the comma form signs by the name, and a one-word surname beside an English post is kept whole
+tests/test_paper_regulations.py::test_the_chair_signs_by_name_and_never_by_post[uz-ascii-initial]
+tests/test_paper_regulations.py::test_the_chair_signs_by_name_and_never_by_post[ru-comma-form]
+tests/test_paper_regulations.py::test_the_chair_signs_by_name_and_never_by_post[en-one-word-surname]
+tests/test_paper_regulations.py::test_the_instructions_author_with_ascii_initials_is_split_whole
+tests/test_paper_regulations.py::test_agreeing_signers_typed_with_ascii_apostrophes_a_comma_or_a_bare_name
+tests/test_paper_regulations.py::test_an_o_or_g_initial_typed_with_any_apostrophe_is_drawn_with_the_house_mark

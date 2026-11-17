@@ -37,7 +37,8 @@
   "align": "left"
  },
  "page_rule": {
-  "kind": "flow"
+  "kind": "flow",
+  "stub_min": 0.15
  },
  "furniture": {
   "first": "number",
@@ -49,302 +50,357 @@
  },
  "flow": [
   {
-   "block": "doc_head",
+   "block": "ruled_blank",
    "part": "head",
    "fields": [
-    "organisation",
-    "subject",
-    "number"
+    "organisation"
    ],
-   "when": "nocue:rules",
+   "when": "nofact:organisation",
    "params": {
-    "overline": "organisation",
-    "kind_line": "kind_instruction",
-    "title": "content_title",
-    "captions": {
-     "organisation": "cap_org"
-    }
+    "style": "captioned",
+    "caption": "cap_org",
+    "width_mm": 78,
+    "indent_mm": 0
    }
   },
   {
    "block": "doc_head",
    "part": "head",
    "fields": [
-    "organisation",
-    "subject",
-    "number"
+    "organisation"
+   ],
+   "when": "nocue:rules",
+   "params": {
+    "overline": "organisation",
+    "kind_default": "kind_instruction",
+    "title": "title",
+    "align": "left"
+   }
+  },
+  {
+   "block": "doc_head",
+   "part": "head",
+   "fields": [
+    "organisation"
    ],
    "when": "cue:rules",
    "params": {
     "overline": "organisation",
-    "kind_line": "kind_rules",
-    "title": "content_title",
-    "captions": {
-     "organisation": "cap_org"
-    }
+    "kind_default": "kind_rules",
+    "title": "title",
+    "align": "left"
    }
   },
   {
    "block": "kv_table",
    "part": "details",
    "fields": [
-    "audience",
     "number",
-    "approval_date"
+    "audience"
    ],
    "params": {
     "labels": {
-     "audience": "row_audience",
      "number": "row_number",
-     "approval_date": "row_date"
+     "audience": "row_audience"
     },
-    "omit_missing": [
-     "audience",
-     "approval_date"
-    ]
-   }
-  },
-  {
-   "block": "heading",
-   "part": "general",
-   "when": "cue:safety",
-   "params": {
-    "level": 1,
-    "numbering": "chapter",
-    "label": "h_general_safety"
-   }
-  },
-  {
-   "block": "heading",
-   "part": "general",
-   "when": "nocue:safety",
-   "params": {
-    "level": 1,
-    "numbering": "chapter"
+    "rules": "under_rows",
+    "label_mm": 38
    }
   },
   {
    "block": "clauses",
    "part": "general",
    "params": {
+    "heading": {
+     "level": 1,
+     "numbering": "arabic",
+     "rule": "under",
+     "in_toc": false,
+     "labels": {
+      "safety": "h_general_safety"
+     }
+    },
     "numbering": "decimal",
-    "caution": "callout"
-   }
-  },
-  {
-   "block": "heading",
-   "part": "before_work",
-   "when": "cue:safety",
-   "params": {
-    "level": 1,
-    "numbering": "chapter",
-    "label": "h_before_safety"
-   }
-  },
-  {
-   "block": "heading",
-   "part": "before_work",
-   "when": "part:before_work",
-   "params": {
-    "level": 1,
-    "numbering": "chapter"
+    "nested": "bullet",
+    "lead": "bold",
+    "number": "bold",
+    "caution": true,
+    "hang_mm": 10
    }
   },
   {
    "block": "clauses",
    "part": "before_work",
-   "when": "part:before_work",
    "params": {
-    "numbering": "decimal"
-   }
-  },
-  {
-   "block": "heading",
-   "part": "during_work",
-   "when": "cue:safety",
-   "params": {
-    "level": 1,
-    "numbering": "chapter",
-    "label": "h_during_safety"
-   }
-  },
-  {
-   "block": "heading",
-   "part": "during_work",
-   "when": "part:during_work",
-   "params": {
-    "level": 1,
-    "numbering": "chapter"
-   }
-  },
-  {
-   "block": "clauses",
-   "part": "during_work",
-   "when": "part:during_work",
-   "params": {
+    "heading": {
+     "level": 1,
+     "numbering": "arabic",
+     "rule": "under",
+     "in_toc": false,
+     "labels": {
+      "safety": "h_before_safety"
+     }
+    },
     "numbering": "decimal",
-    "caution": "callout"
+    "nested": "bullet",
+    "lead": "bold",
+    "number": "bold",
+    "caution": true,
+    "hang_mm": 10
    }
   },
   {
-   "block": "heading",
-   "part": "emergency",
-   "when": "cue:safety",
+   "block": "clauses",
+   "part": "during_work",
    "params": {
-    "level": 1,
-    "numbering": "chapter",
-    "label": "h_emergency_safety"
-   }
-  },
-  {
-   "block": "heading",
-   "part": "emergency",
-   "when": "part:emergency",
-   "params": {
-    "level": 1,
-    "numbering": "chapter"
+    "heading": {
+     "level": 1,
+     "numbering": "arabic",
+     "rule": "under",
+     "in_toc": false,
+     "labels": {
+      "safety": "h_during_safety"
+     }
+    },
+    "numbering": "decimal",
+    "nested": "bullet",
+    "lead": "bold",
+    "number": "bold",
+    "caution": true,
+    "hang_mm": 10
    }
   },
   {
    "block": "clauses",
    "part": "emergency",
-   "when": "part:emergency",
    "params": {
-    "numbering": "decimal"
+    "heading": {
+     "level": 1,
+     "numbering": "arabic",
+     "rule": "under",
+     "in_toc": false,
+     "labels": {
+      "safety": "h_emergency_safety"
+     }
+    },
+    "numbering": "decimal",
+    "nested": "bullet",
+    "lead": "bold",
+    "number": "bold",
+    "caution": true,
+    "hang_mm": 10
    }
   },
   {
    "block": "kv_table",
    "part": "contacts_table",
-   "when": "fact:contacts",
+   "when": "nocue:rules",
    "fields": [
     "contacts"
    ],
    "params": {
-    "blank_values": true
-   }
-  },
-  {
-   "block": "heading",
-   "part": "after_work",
-   "when": "cue:safety",
-   "params": {
-    "level": 1,
-    "numbering": "chapter",
-    "label": "h_after_safety"
-   }
-  },
-  {
-   "block": "heading",
-   "part": "after_work",
-   "when": "part:after_work",
-   "params": {
-    "level": 1,
-    "numbering": "chapter"
+    "labels": {
+     "contacts": "row_contacts"
+    },
+    "rules": "under_rows",
+    "label_mm": 38
    }
   },
   {
    "block": "clauses",
    "part": "after_work",
-   "when": "part:after_work",
    "params": {
-    "numbering": "decimal"
-   }
-  },
-  {
-   "block": "heading",
-   "part": "rules_chapter",
-   "when": "part:rules_chapter",
-   "params": {
-    "level": 1,
-    "numbering": "chapter",
-    "prefix": "chapter_prefix"
+    "heading": {
+     "level": 1,
+     "numbering": "arabic",
+     "rule": "under",
+     "in_toc": false,
+     "labels": {
+      "safety": "h_after_safety"
+     }
+    },
+    "numbering": "decimal",
+    "nested": "bullet",
+    "lead": "bold",
+    "number": "bold",
+    "caution": true,
+    "hang_mm": 10
    }
   },
   {
    "block": "clauses",
    "part": "rules_chapter",
-   "when": "part:rules_chapter",
    "params": {
-    "numbering": "decimal"
-   }
-  },
-  {
-   "block": "heading",
-   "part": "final",
-   "when": "part:final",
-   "params": {
-    "level": 1,
-    "numbering": "chapter"
+    "heading": {
+     "level": 1,
+     "numbering": "arabic",
+     "rule": "under",
+     "in_toc": false
+    },
+    "numbering": "decimal",
+    "nested": "bullet",
+    "lead": "bold",
+    "number": "bold",
+    "caution": true,
+    "hang_mm": 10
    }
   },
   {
    "block": "clauses",
    "part": "final",
-   "when": "part:final",
    "params": {
-    "numbering": "decimal"
+    "heading": {
+     "level": 1,
+     "numbering": "arabic",
+     "rule": "under",
+     "in_toc": false
+    },
+    "numbering": "decimal",
+    "nested": "bullet",
+    "lead": "bold",
+    "number": "bold",
+    "caution": true,
+    "hang_mm": 10
+   }
+  },
+  {
+   "block": "line",
+   "part": "signers",
+   "keep": "signers",
+   "when": "fact:author",
+   "params": {
+    "text": "role_author",
+    "style": "bold"
    }
   },
   {
    "block": "signature_row",
    "part": "signers",
-   "keep": "closing",
+   "keep": "signers",
+   "when": "fact:author",
    "fields": [
-    "author",
+    "author"
+   ],
+   "params": {
+    "variant": "post_sign_name",
+    "captions": [
+     "cap_position",
+     "cap_sign",
+     "cap_name"
+    ],
+    "sign_room_mm": 11,
+    "before_pt": 2
+   }
+  },
+  {
+   "block": "line",
+   "part": "signers",
+   "keep": "signers",
+   "when": "fact:agreement_signers",
+   "params": {
+    "text": "role_agreed",
+    "style": "bold"
+   }
+  },
+  {
+   "block": "signature_row",
+   "part": "signers",
+   "keep": "signers",
+   "when": "fact:agreement_signers",
+   "fields": [
     "agreement_signers"
    ],
    "params": {
-    "variant": "role_position_sign_name",
-    "labels": {
-     "author": "role_author",
-     "agreement_signers": "role_agreed"
-    }
+    "variant": "post_sign_name",
+    "captions": [
+     "cap_position",
+     "cap_sign",
+     "cap_name"
+    ],
+    "sign_room_mm": 11,
+    "before_pt": 2,
+    "max_rows": 6
+   }
+  },
+  {
+   "block": "line",
+   "part": "approval",
+   "keep": "closing",
+   "when": "nofact:approval_mode=true",
+   "params": {
+    "text": "role_approved",
+    "style": "bold"
    }
   },
   {
    "block": "signature_row",
    "part": "approval",
    "keep": "closing",
-   "when": "nofact:approval_mode",
+   "when": "nofact:approval_mode=true",
    "fields": [
     "approver_post",
-    "approver_name",
+    "approver_name"
+   ],
+   "params": {
+    "variant": "post_sign_name",
+    "captions": [
+     "cap_position",
+     "cap_sign",
+     "cap_name"
+    ],
+    "sign_room_mm": 11,
+    "before_pt": 2
+   }
+  },
+  {
+   "block": "date_line",
+   "part": "approval",
+   "keep": "closing",
+   "when": "nofact:approval_mode=true",
+   "fields": [
     "approval_date"
    ],
    "params": {
-    "variant": "role_position_sign_name",
-    "label": "role_approved",
-    "captions": {
-     "approver_post": "cap_position",
-     "approver_name": "cap_name"
-    }
+    "label": "date_word",
+    "pattern": "date_blank"
    }
   },
   {
    "block": "line",
    "part": "acknowledgement",
-   "keep": "acknowledgement",
+   "keep": "closing",
    "when": "nocue:rules",
    "params": {
-    "label": "ack_instruction"
+    "text": "ack_instruction",
+    "style": "bold",
+    "before_pt": 14
    }
   },
   {
    "block": "line",
    "part": "acknowledgement",
-   "keep": "acknowledgement",
+   "keep": "closing",
    "when": "cue:rules",
    "params": {
-    "label": "ack_rules"
+    "text": "ack_rules",
+    "style": "bold",
+    "before_pt": 14
    }
   },
   {
    "block": "signature_row",
    "part": "acknowledgement",
-   "keep": "acknowledgement",
+   "keep": "closing",
+   "fields": [],
    "params": {
-    "variant": "date_sign_name"
+    "variant": "date_sign_name",
+    "captions": [
+     "cap_date",
+     "cap_sign",
+     "cap_name"
+    ],
+    "sign_room_mm": 11,
+    "before_pt": 2
    }
   }
  ],
@@ -374,10 +430,10 @@
    "ru": "Номер документа",
    "en": "Document No."
   },
-  "row_date": {
-   "uz": "Tasdiqlangan sana",
-   "ru": "Дата утверждения",
-   "en": "Approved on"
+  "row_contacts": {
+   "uz": "Telefonlar",
+   "ru": "Телефоны",
+   "en": "Phone numbers"
   },
   "h_general_safety": {
    "uz": "Umumiy xavfsizlik talablari",
@@ -404,11 +460,6 @@
    "ru": "Требования охраны труда по окончании работы",
    "en": "Safety requirements after finishing work"
   },
-  "chapter_prefix": {
-   "uz": "bob.",
-   "ru": "Глава",
-   "en": "Chapter"
-  },
   "role_author": {
    "uz": "Tuzuvchi:",
    "ru": "Разработал:",
@@ -424,15 +475,15 @@
    "ru": "Утвердил:",
    "en": "Approved by:"
   },
-  "cap_position": {
-   "uz": "(lavozimi)",
-   "ru": "(должность)",
-   "en": "(position)"
+  "date_word": {
+   "uz": "Sana:",
+   "ru": "Дата:",
+   "en": "Date:"
   },
-  "cap_name": {
-   "uz": "(F.I.Sh.)",
-   "ru": "(Ф.И.О.)",
-   "en": "(full name)"
+  "date_blank": {
+   "uz": "20___-yil «___» ____________",
+   "ru": "«___» ____________ 20___ г.",
+   "en": "___ ____________ 20___"
   },
   "ack_instruction": {
    "uz": "Yo‘riqnoma bilan tanishdim:",
@@ -443,6 +494,26 @@
    "uz": "Qoidalar bilan tanishdim:",
    "ru": "С правилами ознакомлен(а):",
    "en": "I have read these rules:"
+  },
+  "cap_position": {
+   "uz": "(lavozimi)",
+   "ru": "(должность)",
+   "en": "(position)"
+  },
+  "cap_sign": {
+   "uz": "(imzo)",
+   "ru": "(подпись)",
+   "en": "(signature)"
+  },
+  "cap_name": {
+   "uz": "(F.I.Sh.)",
+   "ru": "(Ф.И.О.)",
+   "en": "(full name)"
+  },
+  "cap_date": {
+   "uz": "(sana)",
+   "ru": "(дата)",
+   "en": "(date)"
   }
  },
  "mock": "units/pdf.biz.yoriqnoma/mock/business_yoriqnoma.png"

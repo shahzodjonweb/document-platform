@@ -38,7 +38,8 @@
   "indent_first_mm": 12.5
  },
  "page_rule": {
-  "kind": "flow"
+  "kind": "flow",
+  "stub_min": 0.15
  },
  "furniture": {
   "first": "none",
@@ -47,30 +48,107 @@
  },
  "flow": [
   {
-   "block": "doc_head",
+   "block": "line",
    "part": "head",
    "fields": [
-    "organisation",
-    "title_word",
-    "minute_number",
-    "meeting_body"
+    "organisation"
    ],
+   "when": "fact:organisation",
    "params": {
-    "overline": "organisation",
-    "kind_line": "title",
-    "number": "minute_number",
-    "title": "content_title",
-    "captions": {
-     "organisation": "cap_org"
-    },
-    "labels": {
-     "bayon": "title_bayon",
-     "bayoni": "title_bayoni"
-    }
+    "text": "organisation",
+    "style": "caps",
+    "align": "centre",
+    "balance": true
    }
   },
   {
-   "block": "date_line",
+   "block": "ruled_blank",
+   "part": "head",
+   "fields": [
+    "organisation"
+   ],
+   "when": "blank:organisation",
+   "params": {
+    "style": "captioned",
+    "caption": "cap_org",
+    "width_mm": 110,
+    "indent_mm": 27
+   }
+  },
+  {
+   "block": "doc_title",
+   "part": "head",
+   "fields": [
+    "minute_number",
+    "meeting_body"
+   ],
+   "when": "nofact:title_word",
+   "params": {
+    "label": "title",
+    "caps": false,
+    "subject": [
+     "meeting_body"
+    ],
+    "before_pt": 24,
+    "after_pt": 14
+   }
+  },
+  {
+   "block": "doc_title",
+   "part": "head",
+   "fields": [
+    "minute_number",
+    "meeting_body"
+   ],
+   "when": "fact:title_word=bayonnoma",
+   "params": {
+    "label": "title",
+    "caps": false,
+    "subject": [
+     "meeting_body"
+    ],
+    "before_pt": 24,
+    "after_pt": 14
+   }
+  },
+  {
+   "block": "doc_title",
+   "part": "head",
+   "fields": [
+    "minute_number",
+    "meeting_body"
+   ],
+   "when": "fact:title_word=bayon",
+   "params": {
+    "label": "title_bayon",
+    "caps": false,
+    "subject": [
+     "meeting_body"
+    ],
+    "before_pt": 24,
+    "after_pt": 14
+   }
+  },
+  {
+   "block": "doc_title",
+   "part": "head",
+   "fields": [
+    "minute_number",
+    "meeting_body"
+   ],
+   "when": "fact:title_word=bayoni",
+   "params": {
+    "label": "title_bayoni",
+    "caps": false,
+    "subject": [
+     "meeting_body"
+    ],
+    "before_pt": 24,
+    "after_pt": 14
+   }
+  },
+  {
+   "block": "kv_table",
    "part": "place_date",
    "fields": [
     "meeting_place",
@@ -78,10 +156,13 @@
     "meeting_time"
    ],
    "params": {
-    "variant": "place_left_date_right",
-    "captions": {
-     "meeting_place": "cap_place"
-    }
+    "labels": {
+     "meeting_place": "row_place",
+     "meeting_date": "row_date",
+     "meeting_time": "row_time"
+    },
+    "label_mm": 42,
+    "after_pt": 0
    }
   },
   {
@@ -102,15 +183,8 @@
      "guests": "guests",
      "absent": "absent"
     },
-    "omit_missing": [
-     "participants",
-     "guests",
-     "absent"
-    ],
-    "captions": {
-     "chair": "cap_person",
-     "secretary": "cap_person"
-    }
+    "label_mm": 42,
+    "before_pt": 0
    }
   },
   {
@@ -127,53 +201,83 @@
   {
    "block": "heading",
    "part": "agenda",
+   "when": "part:agenda",
    "params": {
     "level": 2,
-    "numbering": "none"
+    "align": "centre",
+    "in_toc": false
    }
   },
   {
    "block": "list",
    "part": "agenda",
+   "when": "part:agenda",
    "params": {
     "marker": "number",
-    "single_unnumbered": true
+    "single_unnumbered": true,
+    "max_items": 8
+   }
+  },
+  {
+   "block": "clauses",
+   "part": "item_report",
+   "params": {
+    "source": "agenda",
+    "pick": "instance",
+    "style": "bold",
+    "from_instances": 2,
+    "hang_mm": 8,
+    "before_pt": 16
    }
   },
   {
    "block": "heading",
    "part": "item_report",
+   "when": "part:item_report",
    "params": {
     "level": 3,
-    "numbering": "item",
-    "label": "item_label",
-    "topic_from": "agenda"
+    "in_toc": false
    }
   },
   {
    "block": "paragraph",
    "part": "item_report",
    "when": "part:item_report",
+   "params": {}
+  },
+  {
+   "block": "heading",
+   "part": "item_speakers",
+   "when": "part:item_speakers",
    "params": {
-    "run_in_heading": true
+    "level": 3,
+    "in_toc": false
    }
   },
   {
    "block": "paragraph",
    "part": "item_speakers",
    "when": "part:item_speakers",
-   "params": {
-    "run_in_heading": true,
-    "singular": "spoke_one"
-   }
+   "params": {}
   },
   {
    "block": "clauses",
    "part": "item_decisions",
    "params": {
-    "numbering": "decimal",
-    "heading": "run_in",
-    "blank_items": 2
+    "heading": {
+     "level": 3,
+     "in_toc": false
+    },
+    "numbering": {
+     "uz": "arabic",
+     "ru": "decimal",
+     "en": "arabic"
+    },
+    "chapter": "instance",
+    "tail": "italic",
+    "blank_items": 2,
+    "hang_mm": 8,
+    "max_items": 10
    }
   },
   {
@@ -190,7 +294,10 @@
    "when": "part:attachments",
    "keep": "closing",
    "params": {
-    "marker": "number"
+    "marker": "number",
+    "label": "enclosure",
+    "single_unnumbered": true,
+    "max_items": 6
    }
   },
   {
@@ -198,30 +305,51 @@
    "part": "signatures",
    "keep": "closing",
    "fields": [
-    "chair",
+    "chair"
+   ],
+   "params": {
+    "variant": "label_sign_name",
+    "label": "sign_chair",
+    "captions": [
+     "cap_position",
+     "cap_sign",
+     "cap_name"
+    ],
+    "sign_room_mm": 11
+   }
+  },
+  {
+   "block": "signature_row",
+   "part": "signatures",
+   "keep": "closing",
+   "fields": [
     "secretary"
    ],
    "params": {
-    "variant": "role_sign_name",
-    "labels": {
-     "chair": "sign_chair",
-     "secretary": "sign_secretary"
-    }
+    "variant": "label_sign_name",
+    "label": "sign_secretary",
+    "captions": [
+     "cap_position",
+     "cap_sign",
+     "cap_name"
+    ],
+    "sign_room_mm": 11
    }
   },
   {
    "block": "line",
    "part": "signatures",
-   "when": "fact:seal",
    "keep": "closing",
+   "when": "fact:seal=true",
    "params": {
-    "label": "seal",
+    "text": "seal",
     "style": "small"
    }
   },
   {
    "block": "date_line",
    "part": "signatures",
+   "keep": "closing",
    "when": "fact:drawn_up_date",
    "fields": [
     "drawn_up_date"
@@ -233,34 +361,39 @@
  ],
  "labels": {
   "title": {
-   "uz": "BAYONNOMA",
-   "ru": "ПРОТОКОЛ",
-   "en": "MINUTES"
+   "uz": "BAYONNOMA № {minute_number}",
+   "ru": "ПРОТОКОЛ № {minute_number}",
+   "en": "MINUTES No. {minute_number}"
   },
   "title_bayon": {
-   "uz": "BAYON",
-   "ru": "ПРОТОКОЛ",
-   "en": "MINUTES"
+   "uz": "BAYON № {minute_number}",
+   "ru": "ПРОТОКОЛ № {minute_number}",
+   "en": "MINUTES No. {minute_number}"
   },
   "title_bayoni": {
-   "uz": "BAYONI",
-   "ru": "ПРОТОКОЛ",
-   "en": "MINUTES"
+   "uz": "BAYONI № {minute_number}",
+   "ru": "ПРОТОКОЛ № {minute_number}",
+   "en": "MINUTES No. {minute_number}"
   },
   "cap_org": {
    "uz": "(tashkilot nomi)",
    "ru": "(наименование организации)",
-   "en": "(organisation)"
+   "en": "(name of the organisation)"
   },
-  "cap_place": {
-   "uz": "(shahar)",
-   "ru": "(город)",
-   "en": "(city)"
+  "row_place": {
+   "uz": "Joy:",
+   "ru": "Место:",
+   "en": "Place:"
   },
-  "cap_person": {
-   "uz": "(F.I.Sh., lavozimi)",
-   "ru": "(Ф.И.О., должность)",
-   "en": "(name, position)"
+  "row_date": {
+   "uz": "Sana:",
+   "ru": "Дата:",
+   "en": "Date:"
+  },
+  "row_time": {
+   "uz": "Vaqt:",
+   "ru": "Время:",
+   "en": "Time:"
   },
   "chair": {
    "uz": "Rais:",
@@ -292,20 +425,20 @@
    "ru": "Присутствовало:",
    "en": "Attendance:"
   },
-  "item_label": {
-   "uz": "MASALA",
-   "ru": "ВОПРОС",
-   "en": "ITEM"
-  },
-  "spoke_one": {
-   "uz": "SO‘ZGA CHIQDI:",
-   "ru": "ВЫСТУПИЛ(А):",
-   "en": "DISCUSSION:"
-  },
   "vote": {
    "uz": "Ovoz berish natijalari:",
    "ru": "Результаты голосования:",
    "en": "Vote:"
+  },
+  "enclosure": {
+   "uz": "Ilova:",
+   "ru": "Приложение:",
+   "en": "Enclosure:"
+  },
+  "enclosures": {
+   "uz": "Ilova:",
+   "ru": "Приложения:",
+   "en": "Enclosures:"
   },
   "sign_chair": {
    "uz": "Rais",
@@ -326,6 +459,26 @@
    "uz": "Bayonnoma rasmiylashtirilgan sana:",
    "ru": "Дата оформления протокола:",
    "en": "Minutes drawn up on:"
+  },
+  "cap_position": {
+   "uz": "(lavozimi)",
+   "ru": "(должность)",
+   "en": "(position)"
+  },
+  "cap_sign": {
+   "uz": "(imzo)",
+   "ru": "(подпись)",
+   "en": "(signature)"
+  },
+  "cap_name": {
+   "uz": "(F.I.Sh.)",
+   "ru": "(Ф.И.О.)",
+   "en": "(full name)"
+  },
+  "cap_date": {
+   "uz": "(sana)",
+   "ru": "(дата)",
+   "en": "(date)"
   }
  },
  "mock": "units/pdf.biz.bayonnoma/mock/official_bayonnoma.png"

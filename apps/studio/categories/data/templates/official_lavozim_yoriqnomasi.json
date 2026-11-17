@@ -37,7 +37,8 @@
   "align": "left"
  },
  "page_rule": {
-  "kind": "flow"
+  "kind": "flow",
+  "stub_min": 0.15
  },
  "furniture": {
   "first": "none",
@@ -46,34 +47,36 @@
  },
  "flow": [
   {
-   "block": "doc_head",
+   "block": "line",
    "part": "head",
    "fields": [
     "organisation"
    ],
-   "keep": "head",
+   "when": "fact:organisation",
    "params": {
-    "overline": "organisation",
-    "layout": "issuer_left"
+    "text": "organisation",
+    "style": "caps",
+    "balance": true,
+    "after_pt": 10
    }
   },
   {
    "block": "approval_block",
    "part": "approval",
-   "when": "nofact:approval_mode",
-   "keep": "head",
+   "when": "nofact:approval_mode=true",
    "fields": [
     "approver_post",
     "approver_name",
     "approval_date"
    ],
    "params": {
-    "label": "approved",
-    "anchor": "right_half",
-    "captions": {
-     "approver_post": "cap_position",
-     "approver_name": "cap_name"
-    }
+    "word": "approved",
+    "rows": [
+     "approver_post"
+    ],
+    "name": "approver_name",
+    "date": "approval_date",
+    "side": "right"
    }
   },
   {
@@ -82,124 +85,144 @@
    "fields": [
     "position",
     "unit",
-    "document_ref",
-    "title_form"
+    "document_ref"
    ],
    "params": {
     "label": "title",
-    "subtitle": "content_title",
-    "lines": [
+    "subject": [
+     "position",
      "unit",
      "document_ref"
-    ]
-   }
-  },
-  {
-   "block": "heading",
-   "part": "general",
-   "params": {
-    "level": 1,
-    "numbering": "chapter"
+    ],
+    "before_pt": 30,
+    "after_pt": 10
    }
   },
   {
    "block": "clauses",
    "part": "general",
    "params": {
-    "numbering": "decimal"
-   }
-  },
-  {
-   "block": "heading",
-   "part": "qualification",
-   "when": "part:qualification",
-   "params": {
-    "level": 1,
-    "numbering": "chapter"
+    "heading": {
+     "level": 2,
+     "numbering": "roman",
+     "align": "centre",
+     "in_toc": false
+    },
+    "numbering": "decimal",
+    "nested": "dash",
+    "punctuate": true,
+    "hang_mm": 12.5
    }
   },
   {
    "block": "clauses",
    "part": "qualification",
-   "when": "part:qualification",
    "params": {
-    "numbering": "decimal"
+    "heading": {
+     "level": 2,
+     "numbering": "roman",
+     "align": "centre",
+     "in_toc": false
+    },
+    "numbering": "decimal",
+    "nested": "dash",
+    "punctuate": true,
+    "hang_mm": 12.5
    }
   },
   {
-   "block": "heading",
+   "block": "clauses",
    "part": "duties",
    "params": {
-    "level": 1,
-    "numbering": "chapter"
-   }
-  },
-  {
-   "block": "clauses",
-   "part": "duties",
-   "params": {
-    "numbering": "decimal"
-   }
-  },
-  {
-   "block": "heading",
-   "part": "rights",
-   "params": {
-    "level": 1,
-    "numbering": "chapter"
+    "heading": {
+     "level": 2,
+     "numbering": "roman",
+     "align": "centre",
+     "in_toc": false
+    },
+    "numbering": "decimal",
+    "nested": "dash",
+    "punctuate": true,
+    "hang_mm": 12.5
    }
   },
   {
    "block": "clauses",
    "part": "rights",
    "params": {
-    "numbering": "decimal"
-   }
-  },
-  {
-   "block": "heading",
-   "part": "responsibility",
-   "params": {
-    "level": 1,
-    "numbering": "chapter"
-   }
-  },
-  {
-   "block": "clauses",
-   "part": "responsibility",
-   "params": {
-    "numbering": "decimal"
-   }
-  },
-  {
-   "block": "heading",
-   "part": "final",
-   "when": "part:final",
-   "params": {
-    "level": 1,
-    "numbering": "chapter"
+    "heading": {
+     "level": 2,
+     "numbering": "roman",
+     "align": "centre",
+     "in_toc": false
+    },
+    "numbering": "decimal",
+    "nested": "dash",
+    "punctuate": true,
+    "hang_mm": 12.5
    }
   },
   {
    "block": "clauses",
-   "part": "final",
-   "when": "part:final",
+   "part": "responsibility",
    "params": {
-    "numbering": "decimal"
+    "heading": {
+     "level": 2,
+     "numbering": "roman",
+     "align": "centre",
+     "in_toc": false
+    },
+    "numbering": "decimal",
+    "nested": "dash",
+    "punctuate": true,
+    "hang_mm": 12.5
+   }
+  },
+  {
+   "block": "clauses",
+   "part": "final",
+   "params": {
+    "heading": {
+     "level": 2,
+     "numbering": "roman",
+     "align": "centre",
+     "in_toc": false
+    },
+    "numbering": "decimal",
+    "nested": "dash",
+    "punctuate": true,
+    "hang_mm": 12.5
+   }
+  },
+  {
+   "block": "line",
+   "part": "agreement",
+   "keep": "closing",
+   "when": "fact:agreement_signers",
+   "params": {
+    "text": "agreed",
+    "style": "bold",
+    "before_pt": 18
    }
   },
   {
    "block": "signature_row",
    "part": "agreement",
-   "when": "fact:agreement_signers",
    "keep": "closing",
+   "when": "fact:agreement_signers",
    "fields": [
     "agreement_signers"
    ],
    "params": {
-    "variant": "position_sign_name",
-    "label": "agreed",
-    "date_line": true
+    "variant": "post_sign_name",
+    "captions": [
+     "cap_position",
+     "cap_sign",
+     "cap_name"
+    ],
+    "sign_room_mm": 11,
+    "before_pt": 2,
+    "max_rows": 10
    }
   },
   {
@@ -207,7 +230,8 @@
    "part": "acknowledgement",
    "keep": "closing",
    "params": {
-    "label": "ack"
+    "text": "ack",
+    "before_pt": 18
    }
   },
   {
@@ -218,10 +242,14 @@
     "employee_name"
    ],
    "params": {
-    "variant": "date_sign_name",
-    "captions": {
-     "employee_name": "cap_name"
-    }
+    "variant": "post_sign_name",
+    "captions": [
+     "cap_date",
+     "cap_sign",
+     "cap_name"
+    ],
+    "sign_room_mm": 11,
+    "before_pt": 2
    }
   }
  ],
@@ -251,10 +279,20 @@
    "ru": "(должность)",
    "en": "(position)"
   },
+  "cap_sign": {
+   "uz": "(imzo)",
+   "ru": "(подпись)",
+   "en": "(signature)"
+  },
   "cap_name": {
    "uz": "(F.I.Sh.)",
    "ru": "(Ф.И.О.)",
    "en": "(full name)"
+  },
+  "cap_date": {
+   "uz": "(sana)",
+   "ru": "(дата)",
+   "en": "(date)"
   }
  },
  "mock": "units/pdf.biz.lavozim_yoriqnomasi/mock/official_lavozim_yoriqnomasi.png"

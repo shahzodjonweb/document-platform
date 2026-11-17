@@ -42,6 +42,8 @@ RUNS = {'day': '___', 'number': '_' * 8, 'name': '_' * 16}
 SHORT_KINDS = frozenset(('date', 'number', 'money', 'ref', 'phone', 'choice', 'flag'))
 # The tutuq belgisi between two letters, typed with whatever was to hand; o‘ and g‘ are TURNED's.
 TUTUQ = re.compile(r"(?<=[^\W\d_])['ʼ`´](?=[^\W\d_])")
+# An o‘ or g‘ initial ("G'. O'. Karimova"): TURNED wants a letter after the mark, an initial has its full stop.
+TURNED_INITIAL = re.compile(r"(?<![^\W\d_])([OG])['’ʻʼ`´](?=\.)")
 UPPER = 'A-ZА-ЯЁЎҚҒҲ'
 # "B. A. Rahimova", "O‘. Karimov": the space after a capital initial, before another initial or a name.
 INITIAL = re.compile(rf'(?<![^\W\d_])([{UPPER}]‘?\.)[ ]+(?=[{UPPER}])')
@@ -83,7 +85,7 @@ class Rules:
         """The text as the face draws it, apostrophes and glue applied; lines kept, spaces single."""
         text = self.cleaner(unicodedata.normalize('NFC', str(value if value is not None else '')))
         if self.locale == 'uz':
-            text = TUTUQ.sub('’', TURNED.sub('‘', text))
+            text = TURNED_INITIAL.sub(r'\1‘', TUTUQ.sub('’', TURNED.sub('‘', text)))
         for pattern, glue in ((INITIAL, r'\1' + NBSP), (NUMBERED, r'\1' + NBSP)):
             text = pattern.sub(glue, text)
         for pattern in (GROUPS, UNIT, DASH):
