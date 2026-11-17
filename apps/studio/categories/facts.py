@@ -68,9 +68,13 @@ More limits, said as plainly:
   case ending, `Named`), or that is no common word of the three languages
   (`common`, words/*.txt): a brand, a city or a given name alone ("Korzinka",
   "Ucell bilan ...", "Smith led ...", a table's cell and a list item
-  included). A common word the lexicon lacks is held too: a false blank
-  ("Pudratchi ..."), never an invention; a given name that is also a common
-  word ("Umid", "Aziz") still passes unless the same finish took it out.
+  included). A given name, a surname, a place or a brand of words/names.txt
+  is never a common word, even one that is also a word ("Umid", "Grace",
+  "Надежда"): a false blank where it is the word ("Umid qilamanki"), never an
+  invention. A common word the lexicon lacks is held too: a false blank
+  ("Sinergiya ..."), counted on held-out prose in the commit that grew it. A
+  name that is an everyday word and is left out of names.txt ("Yangi",
+  "Xalq", "Hikmat") still passes alone.
 - `guard` removes any sentence with a strong legal stem (kodeks, farmon,
   Konstitutsiya ...) the customer did not give, even one that cites nothing
   specific ("U ko‘plab farmonlar chiqargan"), and a part may come back empty.
