@@ -148,6 +148,9 @@ JOB_RU_UZ = JOB_RU.replace('на русском', 'на узбекском')
 JOB_RU_UZ_ARTICLE = JOB_RU_UZ + ' Материальная ответственность по статье 214 Трудового кодекса.'
 JOB_RU_EN = ('Составьте должностную инструкцию бухгалтера на английском языке, по Трудовому кодексу, '
              'подчиняется директору.')
+JOB_RU_EN_LAW = ('Составьте должностную инструкцию бухгалтера на английском языке, по Трудовому кодексу и Закону о '
+                 'бухгалтерском учёте.')
+JOB_EN_LAW = 'Write a job description for an accountant in line with the Labour Code and the Law on Accounting.'
 JOB_EN = 'Write a job description for a chief accountant in line with the Labour Code; reports to the CFO.'
 JOB_EN_TAX = 'Write a job description for a lab assistant in line with the Tax Code; reports to the head of the lab.'
 JOB_RU_ADMIN = ('Составьте должностную инструкцию кассира на русском, ответственность по Кодексу об административной '
@@ -743,6 +746,58 @@ CASES = [
     guard('laws-another-code-named-after-of-ru-to-en-blank', BLANK, JOB_RU_EN, 'en',
           'The Code of Administrative Offences of the Republic of Uzbekistan applies to late reports.',
           gone=('Administrative',), translated=True),
+    # A code's or a law's name in lower case after its capitalised stem's "of" or "on", as a model renders the
+    # Russian and Uzbek names in English (round 2 of the convergence, must, regression from e6dcaea): the reach reads
+    # through the names, the kinds of procedure and the noun after them, and stops at a conjunction or a verb.
+    item('laws-code-named-in-lower-case-after-of-ru-to-en-blank', BLANK, 'pdf.biz.lavozim_yoriqnomasi', JOB_RU_EN,
+         'en', 'responsibility', 'The accountant is liable under the Code of administrative offences.',
+         gone=('administrative',), translated=True),
+    item('laws-procedure-code-named-in-lower-case-after-of-ru-to-en-blank', BLANK, 'pdf.biz.lavozim_yoriqnomasi',
+         JOB_RU_EN, 'en', 'responsibility', 'The accountant is liable under the Code of criminal procedure.',
+         gone=('criminal',), translated=True),
+    guard('laws-law-named-in-lower-case-after-on-ru-to-en-blank', BLANK, JOB_RU_EN_LAW, 'en',
+          'The accountant follows the Law on education when training interns.', gone=('education',), translated=True),
+    guard('laws-law-named-in-lower-case-after-on-en-blank', BLANK, JOB_EN_LAW, 'en',
+          'The accountant follows the Law on education when training interns.', gone=('education',)),
+    guard('laws-plural-law-name-after-on-ru-to-en-blank', BLANK, JOB_RU_EN_LAW, 'en',
+          'Under the Law on taxes and fees, reports are filed monthly.', gone=('taxes',), translated=True),
+    guard('laws-plural-law-name-after-on-en-blank', BLANK, JOB_EN_LAW, 'en',
+          'Under the Law on taxes and fees, reports are filed monthly.', gone=('taxes',)),
+    guard('laws-law-name-after-the-country-ru-to-en-blank', BLANK, JOB_RU_EN_LAW, 'en',
+          'The accountant follows the Law of the Republic of Uzbekistan on education.', gone=('education',),
+          translated=True),
+    guard('laws-law-name-after-the-country-en-blank', BLANK, JOB_EN_LAW, 'en',
+          'The accountant follows the Law of the Republic of Uzbekistan on education.', gone=('education',)),
+    guard('laws-code-named-in-lower-case-beside-a-law-ru-to-en-blank', BLANK, JOB_RU_EN_LAW, 'en',
+          'The accountant follows the Code of administrative offences.', gone=('administrative',), translated=True),
+    guard('laws-code-named-in-lower-case-beside-a-law-en-blank', BLANK, JOB_EN_LAW, 'en',
+          'The accountant follows the Code of administrative offences.', gone=('administrative',)),
+    gp('laws-law-named-in-lower-case-in-a-grounded-part-en-blank', BLANK, JOB_EN_LAW, 'en',
+       'Under the Law on taxes and fees, reports are filed monthly.', gone=('taxes',)),
+    guard('laws-the-customers-law-in-lower-case-after-on-en-keep', KEEP,
+          'Write a job description for a school teacher in line with the Law on Education.', 'en',
+          'The teacher follows the Law on education when planning lessons.'),
+    guard('laws-the-customers-law-after-on-ru-to-en-keep', KEEP, JOB_RU_EN_LAW, 'en',
+          'The accountant keeps records under the Law on accounting.', translated=True),
+    guard('laws-the-customers-law-after-on-en-keep', KEEP, JOB_EN_LAW, 'en',
+          'Under the Law on Accounting, records are kept carefully.'),
+    guard('laws-the-customers-code-applies-to-an-education-en-keep', KEEP, JOB_EN, 'en',
+          'The Labour Code applies to education staff too.'),
+    guard('laws-law-named-after-on-the-protection-of-ru-to-en-blank', BLANK, JOB_RU_EN_LAW, 'en',
+          'The accountant also follows the Law on the protection of consumer rights.', gone=('consumer',),
+          translated=True),
+    guard('laws-the-customers-code-protects-consumer-interests-ru-to-en-keep', KEEP, JOB_RU_EN, 'en',
+          'The Labour Code of Uzbekistan protects consumer interests too.', translated=True),
+    guard('laws-the-customers-law-capitalised-after-on-ru-to-en-keep', KEEP, JOB_RU_EN_LAW, 'en',
+          'Under the Law on Accounting, records are kept carefully.', translated=True),
+    guard('laws-law-title-in-marks-after-its-stem-ru-to-en-blank', BLANK, JOB_RU_EN_LAW, 'en',
+          'The accountant follows the Law "On Education".', gone=('Education',), translated=True),
+    guard('laws-the-customers-law-title-in-marks-ru-to-en-keep', KEEP,
+          'Составьте должностную инструкцию учителя на английском языке, по Закону «Об образовании».', 'en',
+          'The teacher follows the Law "On Education".', translated=True),
+    guard('laws-another-law-named-in-russian-after-o-ru-blank', BLANK,
+          'Составьте должностную инструкцию бухгалтера, по Закону о бухгалтерском учёте.', 'ru',
+          'Бухгалтер соблюдает Закон о защите прав потребителей.', gone=('потребителей',)),
 
     # ---- A legal sentence by its marks; a situation, a plural act, a convention centre is none (274f7c1, 9cd639f).
     guard('laws-cabinet-resolution-uz-blank', BLANK, ECONOMICS['uz'], 'uz',

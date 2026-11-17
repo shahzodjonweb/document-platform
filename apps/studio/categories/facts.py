@@ -988,10 +988,14 @@ LAW_NAMES = (
     r"ma'muriy|административн|administrative", r"oila|семейн|family", r"bojxona|таможен|customs",
     r"yer|земельн|land", r"uy-joy|жилищн|housing", r"bu?d?jet|бюджетн|budget", r"saylov|избирательн|elector",
     r"suv|водн|water", r"o'rmon|лесн|forest", r"shaharsozlik|градостроительн|urban", r"ta'lim|образован|education",
+    # What a law is on, as a model renders it after its "on" ("the Law on accounting", "the Law on the protection of
+    # consumer rights"): read in any language as the codes' names are.
+    r"buxgalteriya|бухгалтерск|accounting", r"iste'molchi|потребител|consumers?", r"raqobat|конкуренц|competition",
+    r"reklama|реклам|advertising", r"litsenziya|лицензир|licen[cs]ing", r"sug'urta|страхован|insurance",
 )
-# A Latin form is a whole word, with an ending a sentence may give it ("Labour", "Mehnat", never "laboratory", "taxi"
-# or "suvenir"); a Russian one is a stem its adjective declines from ("трудового", "налоговому").
-LAW_NAME_ENDINGS = r"(?:ning|ni|ga|da|dan|iy|s)?"
+# A Latin form is a whole word, with an ending a sentence may give it ("Labour", "Mehnat", "taxes", never
+# "laboratory", "taxi" or "suvenir"); a Russian one is a stem its adjective declines from ("трудового", "налоговому").
+LAW_NAME_ENDINGS = r"(?:lar)?(?:ning|ni|ga|da|dan|iy|es|s)?"
 
 
 def _law_name_form(forms):
@@ -1019,12 +1023,22 @@ LAW_KIND = re.compile(r"protsessual\w*|процессуальн\w*|procedur\w*|i
 # административной ответственности", "Code of the Republic of ..."): the country, no one's law.
 LAW_COUNTRY = re.compile(r"the|o'zbekiston\w*|respublika\w*|uzbekistan|republic|республик\w*|узбекистан\w*|руз|ruz")
 # The preposition a law's name follows in Russian and English: "Кодекс об административных правонарушениях",
-# "Code of Administrative Offences", "Law on Education". The name after it is its capitalised words in English and
-# its words in the case "о" and "об" give them in Russian, at most `LAW_OF_REACH`, the country passed over: it ends at
-# a conjunction ("... of the Republic of Uzbekistan and tax rules", "... ответственности и налоговым правилам") or at
-# a word that goes on the sentence ("... of Uzbekistan applies to land workers").
+# "Code of Administrative Offences", "Law on Education". The name after it is its words in the case "о" and "об" give
+# them in Russian; in English its capitalised words, and the words of LAW_NAMES and kinds of procedure a model writes
+# in lower case ("the Code of administrative offences", "the Law on taxes and fees", "the Code of criminal
+# procedure"), read through the words between them, at most `LAW_OF_REACH`, the country passed over. It ends at a
+# conjunction ("... of the Republic of Uzbekistan and tax rules", "... ответственности и налоговым правилам") or at a
+# word that goes on the sentence (`LAW_OF_STOP`: "... of Uzbekistan applies to land workers", "... on education when
+# training interns").
 LAW_OF = re.compile(r"of|on|об|о")
-LAW_OF_REACH = 4
+LAW_OF_REACH = 6
+LAW_OF_STOP = re.compile(
+    r"is|are|was|were|be|been|being|has|have|had|do|does|did|will|shall|would|should|must|may|might|can|could"
+    r"|appl(?:y|ies|ied|ying)|govern\w*|regulat\w*|requir\w*|set|sets|cover\w*|say|says|said|state[sd]?|provid\w*"
+    r"|allow\w*|forbid\w*|oblig\w*|mean\w*|follow\w*|keep\w*|kept|make\w*|made|take\w*|took|give\w*|gave"
+    r"|when|where|while|which|who|whom|whose|that|this|these|those|if|unless|because|since|as|than|so|too|also"
+    r"|to|in|into|for|with|without|by|at|from|under|over|after|before|during|through|within|about|against|between"
+    r"|its|their|his|her|our|your|it|they|he|she|we|you|i|all|each|every|any|some|no|not|only|even")
 LAW_AND = re.compile(r"and|or|but|и|или|а|но|va|yoki|hamda|ham")
 LAW_OF_CASE = re.compile(r"[а-яё]+(?:е|и|ах|ях|ой|ей|ом|ем|ых|их|ий|ия)")
 LAW_TOKEN = re.compile(WORD.pattern + r"|[,;:()«»\"“”„!?]")
@@ -1093,6 +1107,9 @@ def _law_names(sentence):
         index = at + 1
         while word(index) and LAW_COUNTRY.fullmatch(normalised(tokens[index][1]).casefold()):
             index += 1
+        if index < len(tokens) and tokens[index][1] in '«"“„' and word(index + 1) \
+                and LAW_OF.fullmatch(normalised(tokens[index + 1][1]).casefold()):
+            index += 1  # a title in its marks: the Law "On Education", Закон «Об образовании»
         if word(index) and LAW_OF.fullmatch(normalised(tokens[index][1]).casefold()):
             index, taken = index + 1, 0
             while word(index) and taken < LAW_OF_REACH:
@@ -1101,10 +1118,20 @@ def _law_names(sentence):
                 if not taken and (LAW_COUNTRY.fullmatch(low) or LAW_OF.fullmatch(low)):
                     index += 1
                     continue
-                if LAW_AND.fullmatch(low) or (LAW_OF_CASE.fullmatch(low) is None if re.search('[а-яё]', low)
-                                              else not token[0].isupper()):
+                if LAW_AND.fullmatch(low):
                     break
-                name.append(tokens[index])
+                if re.search('[а-яё]', low):
+                    if LAW_OF_CASE.fullmatch(low) is None:
+                        break
+                    name.append(tokens[index])
+                elif token[0].isupper() or _law_name(token) or LAW_KIND.fullmatch(low):
+                    name.append(tokens[index])
+                elif LAW_OF_STOP.fullmatch(low) or (not taken and not (
+                        word(index + 1) and normalised(tokens[index + 1][1]).casefold() == 'of')):
+                    # A word that goes on the sentence ends the name, and a first word that is no name word begins
+                    # one only before its own "of" ("the Law on the protection of consumer rights"; never "... of
+                    # Uzbekistan applies to land workers" or "... protects consumer interests").
+                    break
                 index, taken = index + 1, taken + 1
         found += [(start, text) for start, text in name if _letters(text) >= 2
                   and not LAW_COUNTRY.fullmatch(normalised(text).casefold())]
