@@ -1251,10 +1251,21 @@ def test_a_letter_after_a_number_that_names_no_class_is_kept_whole(brief, value)
     assert supported(value, 'line', known, strict=True, words=True)
 
 
-@pytest.mark.parametrize('brief', ['7 «В» класс, математика', '7С класс, урок'], ids=['ve', 'es'])
-def test_the_customers_class_letter_typed_in_cyrillic_stays_in_latin(brief):
-    letter = 'B' if '«В»' in brief else 'C'
-    assert facts.without_class_letters(f'7-«{letter}» sinf', trusting(brief)) == (f'7-«{letter}» sinf', False)
+# The customer's Cyrillic class letter is the Latin one Uzbek writes for it, never the one it looks like (round 3: a
+# paper's "7-«B»" passed for the customer's "7 «В»", the third parallel, not the second).
+@pytest.mark.parametrize('brief, kept, taken', [
+    ('7 «В» класс, математика', 'V', 'B'), ('7С класс, урок', 'S', 'C'), ('7 «Б» класс, математика', 'B', 'V'),
+], ids=['ve', 'es', 'be'])
+def test_the_customers_class_letter_typed_in_cyrillic_stays_in_latin(brief, kept, taken):
+    known = trusting(brief)
+    assert facts.without_class_letters(f'7-«{kept}» sinf', known) == (f'7-«{kept}» sinf', False)
+    assert facts.without_class_letters(f'7-«{taken}» sinf', known) == ('7-sinf', True)
+
+
+@pytest.mark.parametrize('value, left', [('7B', '7'), ('7B-sinf', '7-sinf'), ('Year 7B', 'Year 7'), ('7 B', '7')],
+                         ids=['bare', 'before-a-hyphenated-class-word', 'after-year', 'bare-spaced'])
+def test_an_invented_class_letter_is_taken_however_the_grade_writes_it(value, left):
+    assert facts.without_class_letters(value, trusting('7-sinf matematika dars ishlanmasi')) == (left, True)
 
 
 # ---------------------------------------------------------------- a figure's own labels (stage-2 re-audit, round 2)

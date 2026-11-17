@@ -144,7 +144,9 @@ ALLOWED = (
     "киргизский таджикский "
     "o'zbekiston o'zbekistonda o'zbekistonning o'zbekistonga o'zbekistondan respublikasi respublikasining "
     "respublikasida uzbekistan republic узбекистан узбекистана узбекистане узбекистану республика республики республике "
-    "whom concern ladies gentlemen господа дамы"
+    "whom concern ladies gentlemen господа дамы "
+    # A class's own words, which a translated grade capitalises ("Year 7", "Grade 7").
+    "year grade class"
 ).split()
 # The people a letter is addressed to by their role, which letters capitalise: "Hurmatli Direktor!", "Muhtaram
 # Rektor", "Hurmatli Hay’at a’zolari", "Уважаемый Директор", "Dear Hiring Manager". A role is no one's name, so it is
@@ -706,22 +708,25 @@ def _strip_addresses(text, trusted):
     return LINK.sub(' ', text), whole
 
 
-# A class's letter after its number: "7-«B» sinf", "7-B", "7 «Б» класс", "Grade 7B". A single capital is no name the
-# names check reads, so an invented parallel ("7-«B» sinf" for the customer's "7-sinf") is held here; never an
-# initial ("7 A. Karimova") or a word ("7 Apples"). Only a letter a class is written with is one: quoted, after a
-# hyphen, or beside a class word (`CLASS_WORD`); "1C dasturchisi", "3D dizayner" and "12A uy" name no class.
+# A class's letter after its number: "7-«B» sinf", "7-B", "7B-sinf", "7 «Б» класс", "Grade 7B", "Year 7B", or a
+# grade written "7B" and nothing else. A single capital is no name the names check reads, so an invented parallel
+# ("7-«B» sinf" for the customer's "7-sinf") is held here; never an initial ("7 A. Karimova") or a word ("7
+# Apples"). Only a letter a class is written with is one: quoted, after a hyphen, beside a class word (`CLASS_WORD`)
+# or the whole value; "1C dasturchisi", "3D dizayner" and "12A uy" name no class. The customer's letter is matched as
+# Uzbek writes a Cyrillic one in Latin (В as V, С as S), never by its look: their "7 «В»" is the paper's "7-«V»",
+# and a paper's "7-«B»" is another class.
 CLASS_LETTER = re.compile(r"""(?<!\d)(\d{1,2})([ \u00a0]?-?[ \u00a0]?[«"“'‘]?)([A-ZА-ЯЁ])([»"”'’]?)(?![^\W\d_]|\.)""")
-CLASS_WORD = re.compile(r"sinf\w*|класс\w*|class(?:es)?|grades?", re.IGNORECASE)
-# The Cyrillic capitals written as the Latin ones they look like: the customer's "1С" or "7 «В»" typed in Cyrillic is
-# the paper's "1C" or "7-«B»" in Latin.
-LOOKALIKES = str.maketrans('АВЕКМНОРСТХ', 'ABEKMHOPCTX')
+CLASS_WORD = re.compile(r"sinf\w*|класс\w*|class(?:es)?|grades?|years?", re.IGNORECASE)
 
 
 def _class_letter(text, match):
-    """Whether a CLASS_LETTER match is a class's letter: quoted, after a hyphen, or beside a class word."""
+    """Whether a CLASS_LETTER match is a class's letter: quoted, after a hyphen, beside a class word (one after a
+    hyphen too: "7B-sinf"), or the whole value ("7B")."""
     if match.group(4) or '-' in match.group(2) or re.search(r"[«\"“'‘]", match.group(2)):
         return True
-    after = re.match(r"[ \u00a0]*([^\W\d_]+)", text[match.end():])
+    if not text[:match.start()].strip() and not text[match.end():].strip():
+        return True
+    after = re.match(r"[ \u00a0]*-?[ \u00a0]*([^\W\d_]+)", text[match.end():])
     before = re.search(r"([^\W\d_]+)[ \u00a0]*$", text[:match.start()])
     return any(word is not None and CLASS_WORD.fullmatch(word.group(1)) for word in (after, before))
 
@@ -729,15 +734,12 @@ def _class_letter(text, match):
 def _class_letters(text, trusted):
     """The class letters of `text` the customer never wrote after the same number, as match objects."""
     said = fold(trusted.said)
-    shaped = trusted.said.translate(LOOKALIKES).casefold()
     found = []
     for match in CLASS_LETTER.finditer(text):
         if not _class_letter(text, match):
             continue
-        number = match.group(1)
-        if any(re.search(rf"(?<!\d){number}\W{{0,4}}{re.escape(letter)}(?![^\W\d_])", written)
-               for written, letter in ((said, fold(match.group(3))),
-                                       (shaped, match.group(3).translate(LOOKALIKES).casefold()))):
+        number, letter = match.group(1), fold(match.group(3))
+        if re.search(rf"(?<!\d){number}\W{{0,4}}{re.escape(letter)}(?![^\W\d_])", said):
             continue
         found.append(match)
     return found
