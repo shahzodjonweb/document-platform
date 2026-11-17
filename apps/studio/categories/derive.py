@@ -151,7 +151,7 @@ class Read:
     @property
     def money(self):
         """The currency the cell names ('usd', 'uzs', ...), '' when it names none."""
-        return _money(f'{self.prefix} {self.unit}')
+        return money(f'{self.prefix} {self.unit}')
 
     @property
     def places(self):
@@ -164,17 +164,24 @@ class Read:
         return self if unit == self.unit else Read(self.value, self.scale, self.exp, unit, self.prefix, self.decimals)
 
 
-def _money(text):
+def money(text):
+    """The currency `text` names ('usd', 'uzs', ...), '' when it names none."""
     return next((code for code, pattern in MONEY if pattern.search(text)), '')
 
 
-def _currencies(reads, currency):
-    """The currencies of `reads`, one with none taken as the paper's: the `currency` fact, else so‘m.
+def paper_currency(currency):
+    """The currency an amount that names none is in: the `currency` fact's, else so‘m.
 
     A fact no pattern knows ("tenge") stands for itself, so so‘m beside it is
     still two currencies: an amount is never added to one it may not be in.
+    The paper blocks ask this too, so a total is labelled as it was added.
     """
-    paper = _money(currency or '') or ' '.join(str(currency or '').casefold().split()) or 'uzs'
+    return money(currency or '') or ' '.join(str(currency or '').casefold().split()) or 'uzs'
+
+
+def _currencies(reads, currency):
+    """The currencies of `reads`, one with none taken as the paper's (paper_currency)."""
+    paper = paper_currency(currency)
     return {found.money or paper for found in reads}
 
 

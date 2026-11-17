@@ -1420,3 +1420,10 @@ tests/test_category_business_readiness.py::test_every_length_and_cue_subset_is_s
 tests/test_category_business_readiness.py::test_a_blank_row_whose_label_takes_two_lines_is_drawn_below_the_row_above_it
 tests/test_category_business_readiness.py::test_every_amount_and_total_of_the_drawn_offer_is_its_quantity_times_its_price[uz]
 tests/test_category_business_readiness.py::test_the_smoke_makes_every_business_paper_in_its_own_template[uz]
+
+# Business key figures (N2b review 3): a row figure whose unit the customer wrote is left out when it does not fit
+# with that unit, never drawn bare; only the currency code put on a computed total is dropped in a narrow box; and
+# that currency is the one derive added the total in, without a rate's per-unit tail
+tests/test_paper_business.py::test_a_row_figure_too_wide_with_its_unit_is_left_out_never_drawn_without_it[mln-uz]
+tests/test_paper_business.py::test_a_narrow_computed_total_loses_only_the_currency_it_was_given
+tests/test_paper_business.py::test_a_computed_total_is_labelled_as_derive_added_it[tenge]
