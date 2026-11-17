@@ -444,6 +444,7 @@
     "teacher"
    ],
    "params": {
+    "before_pt": 14,
     "side": "pair",
     "groups": [
      {

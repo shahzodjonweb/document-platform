@@ -611,6 +611,22 @@ def test_callout_label_source_and_a_passage_longer_than_a_page(tmp_path):
     assert clean(result) and result['page_count'] >= 2 and text(result).startswith('Matn')
 
 
+def test_a_callouts_heading_goes_over_a_page_foot_with_its_first_line(tmp_path):
+    # N2a made a named callout's first two rows one piece for the notes' "Key points"; every family draws callouts
+    # (a proposal's terms, a marketing plan's note), so here it is held in the official measures of this sample.
+    # Each filler length moves the box one line further down page 1, across the foot.
+    terms = '\n'.join(['Yetkazib berish muddati va to‘lov tartibi shu bandda.'] * 6)
+    for lines in range(32, 44):
+        result = draw(tmp_path, [{'block': 'paragraph', 'part': 'request'},
+                                 {'block': 'callout', 'part': 'passage', 'params': {'style': 'bar'}}],
+                      sections=[section('request', '\n'.join(['Oddiy xatboshi, sahifani to‘ldiradi.'] * lines)),
+                                section('passage', terms, heading='Taklif shartlari')], pages=2)
+        with pdf(result) as document:
+            pages = [page_.extract_text() or '' for page_ in document.pages]
+        holding = [text_ for text_ in pages if 'Taklif shartlari' in text_]
+        assert clean(result) and holding and all('Yetkazib berish' in text_ for text_ in holding), lines
+
+
 def test_inline_blank_draws_rules_never_underscores(tmp_path):
     result = draw(tmp_path, [{'block': 'inline_blank', 'params': {'label': 'blank_line'}},
                              {'block': 'inline_blank', 'params': {'width': 'full'}},

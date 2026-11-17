@@ -144,6 +144,9 @@ def test_a_test_of_any_size_holds_its_quote_in_every_language(questions, tmp_pat
         content['questions'] = [dict(given[number % len(given)]) for number in range(questions)]
         made = paper.render_paper(content, tmp_path / f'{locale}.pdf', locale, entry=test, template='study_test',
                                   pages=pages, day=sample.SAMPLE_DAY)
+        # A test is a `flow` paper: its rule holds it within one page past the quote (fit.py: `pages + 1`), and
+        # LONGER marks a run past that. Its key is inside the quote already (length.per.extra_pages), so this +1
+        # is that tolerance, not a key: 40 Russian questions take 7 pages of a 6-page quote.
         assert made['page_count'] <= pages + 1 and fit.LONGER not in made['metadata']['warnings'], (locale, made)
 
 
@@ -160,6 +163,12 @@ def test_a_lessons_cover_and_a_handouts_key_are_sheets_the_quote_does_not_count(
         metadata = made['metadata']
         assert (made['page_count'], metadata['uncounted']) == (3, 1), metadata
         assert fit.LONGER not in metadata['warnings'] and (metadata['trim_ratio'] or 1) >= 0.7, metadata
+        if 'cover' in held:
+            # A title page carries no number but still counts, as the body's "2 / 3" shows.
+            with pdfplumber.open(made['path']) as pdf:
+                feet = [' '.join(word['text'] for word in page.extract_words() if word['top'] > page.height - 40)
+                        for page in pdf.pages]
+            assert feet == ['', '2 / 3', '3 / 3'], feet
     # Without them, nothing beyond the quote.
     content = _content(lesson, 2, frozenset(), 6, (), random.Random(7))
     made = paper.render_paper(content, tmp_path / 'p.pdf', 'uz', entry=lesson, template='study_dars_ishlanmasi',
