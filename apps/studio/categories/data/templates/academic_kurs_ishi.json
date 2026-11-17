@@ -75,7 +75,8 @@
       "role": "institution",
       "fact": "university",
       "style": "bold_caps",
-      "blank_caption": "cap_university"
+      "blank_caption": "cap_university",
+      "blank_lines": 2
      },
      {
       "role": "faculty",
@@ -113,7 +114,8 @@
       "role": "credit",
       "fact": "student_name",
       "label": "done_by",
-      "blank_caption": "cap_name"
+      "blank_caption": "cap_name",
+      "sign": true
      },
      {
       "role": "credit_sub",
@@ -125,7 +127,8 @@
       "role": "credit",
       "fact": "supervisor",
       "label": "supervisor",
-      "blank_caption": "cap_name"
+      "blank_caption": "cap_name",
+      "sign": true
      },
      {
       "role": "foot",
@@ -167,7 +170,7 @@
    "when": "part:relevance",
    "params": {
     "style": "body",
-    "heading": "run_in"
+    "label": "lbl_relevance"
    }
   },
   {
@@ -176,7 +179,7 @@
    "when": "part:research_state",
    "params": {
     "style": "body",
-    "heading": "run_in"
+    "label": "lbl_research_state"
    }
   },
   {
@@ -185,7 +188,20 @@
    "when": "part:aim",
    "params": {
     "style": "body",
-    "heading": "run_in"
+    "label": "lbl_aim"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "tasks",
+   "when": "part:tasks",
+   "params": {
+    "level": 3,
+    "numbering": "none",
+    "label": "lbl_tasks",
+    "in_toc": false,
+    "before_pt": 0,
+    "after_pt": 0
    }
   },
   {
@@ -194,7 +210,8 @@
    "when": "part:tasks",
    "params": {
     "marker": "dash",
-    "heading": "run_in"
+    "before_pt": 0,
+    "after_pt": 0
    }
   },
   {
@@ -203,7 +220,7 @@
    "when": "part:object",
    "params": {
     "style": "body",
-    "heading": "run_in"
+    "label": "lbl_object"
    }
   },
   {
@@ -212,7 +229,7 @@
    "when": "part:subject_matter",
    "params": {
     "style": "body",
-    "heading": "run_in"
+    "label": "lbl_subject_matter"
    }
   },
   {
@@ -221,7 +238,7 @@
    "when": "part:methods",
    "params": {
     "style": "body",
-    "heading": "run_in"
+    "label": "lbl_methods"
    }
   },
   {
@@ -230,7 +247,7 @@
    "when": "part:significance",
    "params": {
     "style": "body",
-    "heading": "run_in"
+    "label": "lbl_significance"
    }
   },
   {
@@ -241,7 +258,8 @@
     "level": 1,
     "numbering": "chapter_word",
     "align": "centre",
-    "in_toc": true
+    "in_toc": true,
+    "caps": true
    },
    "page_break_before": true
   },
@@ -337,12 +355,26 @@
    }
   },
   {
+   "block": "heading",
+   "part": "proposals",
+   "when": "part:proposals",
+   "params": {
+    "level": 3,
+    "numbering": "none",
+    "label": "lbl_proposals",
+    "in_toc": false,
+    "before_pt": 0,
+    "after_pt": 0
+   }
+  },
+  {
    "block": "list",
    "part": "proposals",
    "when": "part:proposals",
    "params": {
     "marker": "number",
-    "heading": "run_in"
+    "before_pt": 0,
+    "after_pt": 0
    }
   },
   {
@@ -352,7 +384,8 @@
    "params": {
     "label": "references",
     "blank_entries": 20,
-    "groups": false
+    "blank_lines": 1,
+    "groups": true
    }
   },
   {
@@ -400,7 +433,7 @@
   },
   "direction_line": {
    "uz": "{direction} ta’lim yo‘nalishi",
-   "ru": "Направление {direction}",
+   "ru": "Направление «{direction}»",
    "en": "Programme {direction}"
   },
   "subject_line": {
@@ -425,7 +458,7 @@
   },
   "group_line": {
    "uz": "{course_group} talabasi",
-   "ru": "студент(ка) {course_group}",
+   "ru": "{course_group}",
    "en": "student, {course_group}"
   },
   "supervisor": {
@@ -462,6 +495,71 @@
    "uz": "(shahar)",
    "ru": "(город)",
    "en": "(city)"
+  },
+  "lbl_relevance": {
+   "uz": "Mavzuning dolzarbligi.",
+   "ru": "Актуальность темы.",
+   "en": "Relevance of the topic."
+  },
+  "lbl_research_state": {
+   "uz": "Mavzuning o‘rganilganlik darajasi.",
+   "ru": "Степень изученности темы.",
+   "en": "State of research."
+  },
+  "lbl_aim": {
+   "uz": "Kurs ishining maqsadi.",
+   "ru": "Цель курсовой работы.",
+   "en": "Aim of the course paper."
+  },
+  "lbl_tasks": {
+   "uz": "Kurs ishining vazifalari:",
+   "ru": "Задачи курсовой работы:",
+   "en": "Tasks of the course paper:"
+  },
+  "lbl_object": {
+   "uz": "Kurs ishining obyekti.",
+   "ru": "Объект исследования.",
+   "en": "Object of the study."
+  },
+  "lbl_subject_matter": {
+   "uz": "Kurs ishining predmeti.",
+   "ru": "Предмет исследования.",
+   "en": "Subject of the study."
+  },
+  "lbl_methods": {
+   "uz": "Kurs ishining nazariy-metodologik asoslari.",
+   "ru": "Теоретико-методологическая основа.",
+   "en": "Theoretical and methodological basis."
+  },
+  "lbl_significance": {
+   "uz": "Kurs ishining amaliy ahamiyati.",
+   "ru": "Практическая значимость.",
+   "en": "Practical significance."
+  },
+  "lbl_proposals": {
+   "uz": "Takliflar:",
+   "ru": "Предложения:",
+   "en": "Proposals:"
+  },
+  "group_normative": {
+   "uz": "Normativ-huquqiy hujjatlar",
+   "ru": "Нормативные правовые акты",
+   "en": "Laws and regulations"
+  },
+  "group_literature": {
+   "uz": "Ilmiy va o‘quv adabiyotlar",
+   "ru": "Научная и учебная литература",
+   "en": "Books and articles"
+  },
+  "group_online": {
+   "uz": "Internet manbalari",
+   "ru": "Интернет-источники",
+   "en": "Online sources"
+  },
+  "cap_reference": {
+   "uz": "(muallif, nomi, shahar: nashriyot, yil, sahifalar soni)",
+   "ru": "(автор, название, город: издательство, год, количество страниц)",
+   "en": "(author, title, city: publisher, year, pages)"
   }
  },
  "mock": "units/pdf.kurs_ishi/mock/academic_kurs_ishi.png"

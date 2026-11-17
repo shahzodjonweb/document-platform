@@ -1,0 +1,103 @@
+{
+ "template": "academic_mustaqil_ish",
+ "case": "full",
+ "entry": "pdf.mustaqil_ish",
+ "pages": 8,
+ "uz": {
+  "title": "Maktabda raqamli o‘quv resurslaridan foydalanishning pedagogik asoslari",
+  "facts": {
+   "topic": "Maktabda raqamli o‘quv resurslaridan foydalanishning pedagogik asoslari",
+   "work_kind": "mustaqil_ish",
+   "institution": "Gulzorobod davlat pedagogika instituti",
+   "faculty_department": "Boshlang‘ich ta’lim fakulteti",
+   "subject": "Pedagogika",
+   "student_name": "Tojiboyeva Sarvinoz Anvar qizi",
+   "student_group": "2-kurs, 204-guruh",
+   "checker_word": "checked",
+   "teacher": "dotsent Hamroqulov Lochinbek Zarifovich",
+   "city": "Gulzorobod"
+  },
+  "sections": [
+   {"id": "introduction", "heading": "Kirish", "layout": "text", "items": [], "body": "Raqamli texnologiyalar maktab hayotiga tobora chuqurroq kirib bormoqda. Darslik va doska bilan bir qatorda elektron darsliklar, interaktiv mashqlar va qisqa videodarslar o‘quv jarayonining odatiy qismiga aylanmoqda. Shu sababli o‘qituvchining bu resurslarni maqsadli tanlashi va darsga to‘g‘ri joylashtirishi pedagogik jihatdan dolzarb masala hisoblanadi.\nIshning maqsadi — raqamli o‘quv resurslaridan foydalanishning pedagogik asoslarini yoritish va ularni darsda qo‘llash yo‘llarini ko‘rsatish. Maqsadga erishish uchun quyidagi vazifalar belgilandi: asosiy tushunchalarni izohlash; resurslar turlarini tasniflash; o‘qituvchi tayyorgarligiga qo‘yiladigan talablarni aniqlash; samaradorlikni baholash mezonlarini ko‘rib chiqish.\nTadqiqot obyekti — umumta’lim maktabidagi o‘quv jarayoni. Ish kirish, ikki bob, xulosa va foydalanilgan adabiyotlar ro‘yxatidan iborat."},
+   {"id": "chapter", "heading": "Raqamli o‘quv resurslarining nazariy asoslari", "layout": "text", "items": [], "body": "Bobda raqamli o‘quv resursi tushunchasi va uning turlari ko‘rib chiqiladi."},
+   {"id": "section_a", "heading": "Tushuncha va mohiyati", "layout": "text", "items": [], "body": "Raqamli o‘quv resursi deganda o‘quv materialini elektron shaklda taqdim etuvchi har qanday vosita tushuniladi. Bunga elektron darslik, taqdimot, interaktiv mashq, test va qisqa videodars kiradi. Ularning umumiy xususiyati shundaki, o‘quvchi materialga o‘z sur’atida qaytishi va topshiriqni darhol tekshirib ko‘rishi mumkin.\nPedagogik nuqtai nazardan resursning qiymati texnik imkoniyatida emas, balki dars maqsadiga xizmat qilishida. Shu bois o‘qituvchi resursni tanlashda avvalo mavzuning mazmuni va o‘quvchilarning yoshini hisobga oladi."},
+   {"id": "section_b", "heading": "Resurslarning turlari va tasnifi", "layout": "text", "items": [], "body": "Resurslarni vazifasiga ko‘ra uch guruhga ajratish mumkin. Birinchi guruh yangi bilimni tushuntirishga xizmat qiladi: taqdimot, animatsiya va videodars. Ikkinchi guruh bilimni mustahkamlaydi: interaktiv mashq va o‘yin shaklidagi topshiriqlar. Uchinchi guruh natijani nazorat qiladi: test va so‘rovnomalar.\nBu tasnif o‘qituvchiga dars bosqichlariga mos vositani tanlashda yordam beradi. Bir darsda barcha guruhdan foydalanish shart emas: muhimi, har bir vosita aniq vazifani bajarishi."},
+   {"id": "chapter_2", "heading": "Raqamli resurslarni darsda qo‘llash yo‘llari", "layout": "text", "items": [], "body": "Bobda resurslarni darsda qo‘llash shartlari va natijani baholash yo‘llari tahlil qilinadi."},
+   {"id": "section_a_2", "heading": "O‘qituvchi tayyorgarligi va o‘quv muhiti", "layout": "text", "items": [], "body": "Resursdan samarali foydalanish birinchi navbatda o‘qituvchining tayyorgarligiga bog‘liq. O‘qituvchi vositani darsdan oldin sinab ko‘radi, uning qaysi bosqichda ishlatilishini rejalashtiradi va texnik nosozlik bo‘lsa, muqobil topshiriqni tayyorlab qo‘yadi.\nO‘quv muhiti ham muhim shart hisoblanadi. Barqaror internet, yetarli qurilmalar va qulay joylashuv bo‘lmasa, hatto yaxshi tanlangan resurs ham kutilgan natijani bermaydi."},
+   {"id": "section_b_2", "heading": "Samaradorlikni baholash mezonlari", "layout": "text", "items": [], "body": "Resursning samaradorligi faqat texnik ko‘rsatkichlar bilan baholanmaydi. Asosiy mezon — o‘quvchilarning bilim, ko‘nikma va mustaqil ishlash qobiliyatidagi o‘zgarish. Buning uchun dars boshida va oxirida qisqa nazorat topshiriqlari o‘tkaziladi, o‘quvchilarning fikri so‘raladi.\nNatijalar o‘qituvchiga keyingi darsni rejalashtirishda yordam beradi va qaysi vosita qaysi mavzuda o‘zini oqlashini ko‘rsatadi."},
+   {"id": "conclusion", "heading": "Xulosa", "layout": "text", "items": [], "body": "Mazkur mustaqil ishda raqamli o‘quv resurslaridan foydalanishning pedagogik asoslari ko‘rib chiqildi.\nBirinchidan, raqamli resurs texnik vosita emas, balki dars maqsadiga xizmat qiluvchi pedagogik vosita ekani aniqlandi. Ikkinchidan, resurslar vazifasiga ko‘ra tushuntiruvchi, mustahkamlovchi va nazorat qiluvchi guruhlarga ajratildi. Uchinchidan, o‘qituvchi tayyorgarligi va o‘quv muhiti samaradorlikning asosiy shartlari ekani ko‘rsatildi. To‘rtinchidan, natijani baholashda o‘quvchilar bilimidagi o‘zgarish asosiy mezon sifatida belgilandi.\nMavzuni amaliy kuzatuv natijalariga tayanib yanada chuqurroq o‘rganish mumkin."},
+   {"id": "references", "heading": "Foydalanilgan adabiyotlar", "layout": "list", "body": "", "items": [
+    {"label": "", "text": "Gulzorobod viloyati xalq ta’limi boshqarmasining «Raqamli maktab» nizomi. – Gulzorobod, 2024."},
+    {"label": "", "text": "Mirsoatova D. B. Raqamli pedagogika asoslari: o‘quv qo‘llanma. – Gulzorobod: Ilm nashriyoti, 2022. – 184 b."},
+    {"label": "", "text": "Shodmonov A. K., Oydinova N. R. Maktabda axborot texnologiyalari. – Gulzorobod: Ma’rifat, 2021. – 212 b."},
+    {"label": "", "text": "Ortiqboyev B. Interaktiv dars usullari // Pedagogik izlanishlar. – 2023. – № 4. – B. 31–37."},
+    {"label": "", "text": "Nurmatova L. Boshlang‘ich sinflarda elektron resurslar. – Gulzorobod, 2020. – 96 b."},
+    {"label": "", "text": "Gulzorobod pedagogika instituti. Raqamli resurslar katalogi [Elektron resurs]. – URL: https://example.com/resurslar/katalog/boshlangich-sinflar-uchun-interaktiv-mashqlar-toplami"}
+   ]}
+  ]
+ },
+ "ru": {
+  "title": "Педагогические основы использования цифровых учебных ресурсов в школе",
+  "facts": {
+   "topic": "Педагогические основы использования цифровых учебных ресурсов в школе",
+   "work_kind": "referat",
+   "institution": "Гулзорабадский государственный педагогический институт",
+   "faculty_department": "Факультет начального образования",
+   "subject": "Педагогика",
+   "student_name": "Тожибоева Сарвиноз Анваровна",
+   "student_group": "2 курс, группа 204",
+   "teacher": "доцент Хамрокулов Лочинбек Зарифович",
+   "city": "Гулзорабад"
+  },
+  "sections": [
+   {"id": "introduction", "heading": "Введение", "layout": "text", "items": [], "body": "Цифровые технологии всё глубже входят в школьную жизнь. Наряду с учебником и доской на уроке используются электронные учебники, интерактивные упражнения и короткие видеоуроки. Поэтому умение учителя целенаправленно отбирать такие ресурсы и правильно встраивать их в урок становится актуальной педагогической задачей.\nЦель работы — раскрыть педагогические основы использования цифровых учебных ресурсов и показать пути их применения на уроке. Для достижения цели поставлены задачи: разъяснить основные понятия; классифицировать виды ресурсов; определить требования к подготовке учителя; рассмотреть критерии оценки эффективности.\nОбъект исследования — учебный процесс общеобразовательной школы. Работа состоит из введения, двух глав, заключения и списка литературы."},
+   {"id": "chapter", "heading": "Теоретические основы цифровых учебных ресурсов", "layout": "text", "items": [], "body": "В главе рассматриваются понятие цифрового учебного ресурса и его виды."},
+   {"id": "section_a", "heading": "Понятие и сущность", "layout": "text", "items": [], "body": "Под цифровым учебным ресурсом понимается любое средство, представляющее учебный материал в электронной форме. Это электронный учебник, презентация, интерактивное упражнение, тест и короткий видеоурок. Их общее свойство в том, что ученик может возвращаться к материалу в своём темпе и сразу проверять выполненное задание.\nС педагогической точки зрения ценность ресурса определяется не его техническими возможностями, а тем, насколько он служит цели урока. Поэтому при выборе ресурса учитель прежде всего учитывает содержание темы и возраст учеников."},
+   {"id": "section_b", "heading": "Виды и классификация ресурсов", "layout": "text", "items": [], "body": "По назначению ресурсы можно разделить на три группы. Первая служит объяснению нового: презентация, анимация и видеоурок. Вторая закрепляет знания: интерактивные упражнения и задания в игровой форме. Третья контролирует результат: тесты и опросы.\nТакая классификация помогает учителю подобрать средство под этап урока. Использовать все группы на одном уроке не обязательно: важно, чтобы каждое средство выполняло ясную задачу."},
+   {"id": "chapter_2", "heading": "Пути применения цифровых ресурсов на уроке", "layout": "text", "items": [], "body": "В главе анализируются условия применения ресурсов на уроке и способы оценки результата."},
+   {"id": "section_a_2", "heading": "Подготовка учителя и учебная среда", "layout": "text", "items": [], "body": "Эффективность использования ресурса прежде всего зависит от подготовки учителя. Учитель заранее проверяет средство, планирует этап урока, на котором оно будет использовано, и готовит запасное задание на случай технического сбоя.\nВажным условием является и учебная среда. Без устойчивого интернета, достаточного числа устройств и удобной расстановки даже удачно выбранный ресурс не даст ожидаемого результата."},
+   {"id": "section_b_2", "heading": "Критерии оценки эффективности", "layout": "text", "items": [], "body": "Эффективность ресурса не оценивается только техническими показателями. Главный критерий — изменение знаний, умений и самостоятельности учеников. Для этого в начале и в конце урока проводятся короткие проверочные задания, учитывается мнение учеников.\nРезультаты помогают учителю планировать следующий урок и показывают, какое средство оправдывает себя на какой теме."},
+   {"id": "conclusion", "heading": "Заключение", "layout": "text", "items": [], "body": "В реферате рассмотрены педагогические основы использования цифровых учебных ресурсов.\nВо-первых, установлено, что цифровой ресурс является не техническим, а педагогическим средством, служащим цели урока. Во-вторых, ресурсы разделены по назначению на объясняющие, закрепляющие и контролирующие. В-третьих, показано, что подготовка учителя и учебная среда — основные условия эффективности. В-четвёртых, главным критерием оценки определено изменение знаний учеников.\nТему можно изучить глубже на основе практических наблюдений."},
+   {"id": "references", "heading": "Список литературы", "layout": "list", "body": "", "items": [
+    {"label": "", "text": "Положение «Цифровая школа» управления народного образования Гулзорабадской области. – Гулзорабад, 2024."},
+    {"label": "", "text": "Мирсоатова Д. Б. Основы цифровой педагогики: учебное пособие. – Гулзорабад: Илм, 2022. – 184 с."},
+    {"label": "", "text": "Шодмонов А. К., Ойдинова Н. Р. Информационные технологии в школе. – Гулзорабад: Маърифат, 2021. – 212 с."},
+    {"label": "", "text": "Ортикбоев Б. Интерактивные методы урока // Педагогические поиски. – 2023. – № 4. – С. 31–37."},
+    {"label": "", "text": "Нурматова Л. Электронные ресурсы в начальных классах. – Гулзорабад, 2020. – 96 с."},
+    {"label": "", "text": "Гулзорабадский педагогический институт. Каталог цифровых ресурсов [Электронный ресурс]. – URL: https://example.com/resurslar/katalog/boshlangich-sinflar-uchun-interaktiv-mashqlar-toplami"}
+   ]}
+  ]
+ },
+ "en": {
+  "title": "The pedagogical foundations of using digital learning resources at school",
+  "facts": {
+   "topic": "The pedagogical foundations of using digital learning resources at school",
+   "work_kind": "referat",
+   "institution": "Gulzorobod State Pedagogical Institute",
+   "faculty_department": "Faculty of Primary Education",
+   "subject": "Pedagogy",
+   "student_name": "Sarvinoz Tojiboyeva",
+   "student_group": "Year 2, group 204",
+   "teacher": "Associate Professor Lochinbek Hamroqulov",
+   "city": "Gulzorobod"
+  },
+  "sections": [
+   {"id": "introduction", "heading": "Introduction", "layout": "text", "items": [], "body": "Digital technologies are entering school life ever more deeply. Next to the textbook and the board, lessons now use electronic textbooks, interactive exercises and short video lessons. A teacher’s ability to choose such resources with a purpose and to place them well in a lesson is therefore a pressing pedagogical question.\nThe aim of the work is to set out the pedagogical foundations of using digital learning resources and to show how they can be applied in a lesson. To reach the aim, the following tasks were set: to explain the main concepts; to classify the kinds of resources; to define what is required of the teacher; to examine the criteria for judging effectiveness.\nThe object of the study is the learning process of a general secondary school. The work consists of an introduction, two chapters, a conclusion and a list of references."},
+   {"id": "chapter", "heading": "The theoretical foundations of digital learning resources", "layout": "text", "items": [], "body": "The chapter examines the concept of a digital learning resource and its kinds."},
+   {"id": "section_a", "heading": "Concept and essence", "layout": "text", "items": [], "body": "A digital learning resource is any means that presents learning material in electronic form: an electronic textbook, a presentation, an interactive exercise, a test or a short video lesson. What they share is that a pupil can return to the material at their own pace and check a task at once.\nFrom the pedagogical point of view, the value of a resource lies not in its technical features but in how well it serves the aim of the lesson. When choosing a resource, a teacher therefore first considers the content of the topic and the age of the pupils."},
+   {"id": "section_b", "heading": "Kinds and classification of resources", "layout": "text", "items": [], "body": "By purpose, resources fall into three groups. The first explains new material: presentations, animations and video lessons. The second consolidates knowledge: interactive exercises and tasks in the form of a game. The third checks the result: tests and surveys.\nThis classification helps a teacher match a tool to a stage of the lesson. A lesson need not use every group: what matters is that each tool does a clear job."},
+   {"id": "chapter_2", "heading": "Ways of using digital resources in a lesson", "layout": "text", "items": [], "body": "The chapter analyses the conditions for using resources in a lesson and the ways of judging the result."},
+   {"id": "section_a_2", "heading": "Teacher preparation and the learning environment", "layout": "text", "items": [], "body": "Using a resource well depends first of all on the teacher’s preparation. The teacher tries the tool before the lesson, plans the stage at which it will be used and keeps a spare task ready in case of a technical fault.\nThe learning environment is an important condition too. Without a stable connection, enough devices and a convenient layout, even a well-chosen resource will not give the expected result."},
+   {"id": "section_b_2", "heading": "Criteria for judging effectiveness", "layout": "text", "items": [], "body": "The effectiveness of a resource is not judged by technical measures alone. The main criterion is the change in the pupils’ knowledge, skills and independence. Short check tasks are given at the start and at the end of the lesson, and the pupils’ opinions are asked.\nThe results help the teacher plan the next lesson and show which tool proves its worth on which topic."},
+   {"id": "conclusion", "heading": "Conclusion", "layout": "text", "items": [], "body": "This report has examined the pedagogical foundations of using digital learning resources.\nFirst, a digital resource was shown to be a pedagogical rather than a technical tool, serving the aim of the lesson. Second, resources were divided by purpose into explaining, consolidating and checking ones. Third, the teacher’s preparation and the learning environment were shown to be the main conditions of effectiveness. Fourth, the change in the pupils’ knowledge was set as the main criterion of judgement.\nThe topic can be studied further on the basis of practical observation."},
+   {"id": "references", "heading": "References", "layout": "list", "body": "", "items": [
+    {"label": "", "text": "Gulzorobod Regional Education Board. Regulation on the Digital School. – Gulzorobod, 2024."},
+    {"label": "", "text": "Mirsoatova D. B. Foundations of Digital Pedagogy: a study guide. – Gulzorobod: Ilm, 2022. – 184 p."},
+    {"label": "", "text": "Shodmonov A. K., Oydinova N. R. Information Technology at School. – Gulzorobod: Marifat, 2021. – 212 p."},
+    {"label": "", "text": "Ortiqboyev B. Interactive lesson methods // Pedagogical Studies. – 2023. – No. 4. – P. 31–37."},
+    {"label": "", "text": "Nurmatova L. Electronic Resources in Primary Classes. – Gulzorobod, 2020. – 96 p."},
+    {"label": "", "text": "Gulzorobod Pedagogical Institute. Catalogue of digital resources [online]. – URL: https://example.com/resurslar/katalog/boshlangich-sinflar-uchun-interaktiv-mashqlar-toplami"}
+   ]}
+  ]
+ }
+}
