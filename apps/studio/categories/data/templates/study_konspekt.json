@@ -37,7 +37,8 @@
   "align": "left"
  },
  "page_rule": {
-  "kind": "count"
+  "kind": "count",
+  "stub_min": 0.12
  },
  "furniture": {
   "first": "number",
@@ -96,6 +97,16 @@
    }
   },
   {
+   "block": "heading",
+   "part": "key_terms",
+   "when": "part:key_terms",
+   "params": {
+    "level": 3,
+    "caps": true,
+    "in_toc": false
+   }
+  },
+  {
    "block": "list",
    "part": "key_terms",
    "when": "part:key_terms",
@@ -145,7 +156,8 @@
    "part": "formulas",
    "when": "part:formulas",
    "params": {
-    "source": "items"
+    "numbering": "section",
+    "legend": "legend"
    }
   },
   {
@@ -183,11 +195,31 @@
    }
   },
   {
+   "block": "heading",
+   "part": "review",
+   "when": "part:review",
+   "params": {
+    "level": 3,
+    "caps": true,
+    "in_toc": false
+   }
+  },
+  {
    "block": "list",
    "part": "review",
    "when": "part:review",
    "params": {
     "marker": "number"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "references",
+   "when": "part:references",
+   "params": {
+    "level": 3,
+    "caps": true,
+    "in_toc": false
    }
   },
   {

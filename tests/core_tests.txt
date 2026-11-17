@@ -1312,3 +1312,40 @@ tests/test_paper_regulations.py::test_the_chair_signs_by_name_and_never_by_post[
 tests/test_paper_regulations.py::test_the_instructions_author_with_ascii_initials_is_split_whole
 tests/test_paper_regulations.py::test_agreeing_signers_typed_with_ascii_apostrophes_a_comma_or_a_bare_name
 tests/test_paper_regulations.py::test_an_o_or_g_initial_typed_with_any_apostrophe_is_drawn_with_the_house_mark
+
+# The study papers (R3b): the test sheet is drawn by its template with its head, pupil strip, lettered options in
+# measured columns, passage, written answer boxes and the key on its own page; self-study has no strip and an
+# explained key; the key letter is a matching option, never a guess; formulas carry their section's numbers; the
+# test and the handout read well in every language; customer text is never markup
+tests/test_paper_study.py::test_the_study_blocks_are_registered_and_the_test_is_ready
+tests/test_paper_study.py::test_every_study_template_has_its_samples
+tests/test_paper_study.py::test_the_test_and_the_handout_read_well[study_test-uz-full]
+tests/test_paper_study.py::test_the_test_and_the_handout_read_well[study_tarqatma-uz-full]
+tests/test_paper_study.py::test_a_full_test_has_its_head_strip_parts_passage_written_answers_and_key_on_its_own_page
+tests/test_paper_study.py::test_self_study_has_no_strip_no_score_tab_and_an_explained_key
+tests/test_paper_study.py::test_two_options_equally_alike_give_no_letter
+tests/test_paper_study.py::test_an_answer_no_option_matches_is_printed_in_its_cell
+tests/test_paper_study.py::test_formulas_are_numbered_by_their_section_with_scripts_and_their_legend
+tests/test_paper_study.py::test_customer_text_is_text_never_markup
+# The study papers' review fixes (R3b): the key letter keeps signs and initials apart, a written-only test's model
+# answers and the handout's answers start their own page, the key ends with the paper's maximum.
+tests/test_paper_study.py::test_signs_and_numbers_keep_the_key_letter_apart[options0-5-D]
+tests/test_paper_study.py::test_signs_and_numbers_keep_the_key_letter_apart[options6-x<2-B]
+tests/test_paper_study.py::test_signs_and_numbers_keep_the_key_letter_apart[options10-a-b-B]
+tests/test_paper_study.py::test_signs_and_numbers_keep_the_key_letter_apart[options18-4-None]
+tests/test_paper_study.py::test_initials_and_letters_out_of_order_are_kept_as_written[options0]
+tests/test_paper_study.py::test_initials_and_letters_out_of_order_are_kept_as_written[options1]
+tests/test_paper_study.py::test_letters_every_option_carries_in_order_are_taken_off[options0-printed0]
+tests/test_paper_study.py::test_a_name_with_initials_is_printed_whole_in_the_test_and_its_key
+tests/test_paper_study.py::test_written_only_model_answers_start_a_page_after_the_last_question[None-KALITLAR]
+tests/test_paper_study.py::test_written_only_model_answers_start_a_page_after_the_last_question[self_study-JAVOBLAR]
+tests/test_paper_study.py::test_the_handouts_answers_are_on_a_sheet_of_their_own[uz-JAVOBLAR-tarqatilmaydi]
+tests/test_paper_study.py::test_the_key_ends_with_the_papers_overall_maximum
+tests/test_paper_study.py::test_passage_and_written_questions_get_the_closed_instruction_and_both_part_headings
+tests/test_paper_study.py::test_passage_questions_without_a_passage_get_no_reference_line
+# The study papers' second review fixes (R3b): a part heading and the answer sheet's head go over a page's foot with
+# what they head, and a passage too tall for the page left starts where it stands.
+tests/test_paper_study.py::test_a_part_heading_near_a_page_foot_goes_over_with_its_first_question[answer_sheet]
+tests/test_paper_study.py::test_the_answer_sheets_head_near_a_page_foot_goes_over_with_its_grid
+tests/test_paper_study.py::test_a_passage_with_its_question_too_tall_for_the_page_left_starts_where_it_stands
+tests/test_paper_study.py::test_a_passage_longer_than_a_page_flows_with_its_rule_and_its_title_stays_with_it

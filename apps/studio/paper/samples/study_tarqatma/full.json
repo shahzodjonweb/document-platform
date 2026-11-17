@@ -1,0 +1,372 @@
+{
+ "template": "study_tarqatma",
+ "case": "full",
+ "entry": "pdf.dars_ishlanmasi",
+ "pages": 2,
+ "cues": [
+  "handout"
+ ],
+ "uz": {
+  "title": "Hujayra tuzilishi",
+  "facts": {
+   "topic": "Hujayra tuzilishi",
+   "grade": "6-sinf",
+   "subject": "Biologiya"
+  },
+  "sections": [
+   {
+    "id": "h_rule",
+    "heading": "",
+    "body": "Hujayra — tirik organizmning eng kichik tuzilish birligi. Hujayra membrana, sitoplazma, yadro va organoidlardan iborat.",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "task",
+    "heading": "Jadvalni to‘ldiring",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "Hujayra membranasining vazifasini yozing: ____________________."
+     },
+     {
+      "label": "",
+      "text": "Yadroning vazifasini yozing: ____________________."
+     }
+    ]
+   },
+   {
+    "id": "task_2",
+    "heading": "To‘g‘ri javobni tanlang",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "Fotosintez qaysi qismda kechadi? A) yadro B) xloroplast C) vakuola"
+     },
+     {
+      "label": "",
+      "text": "Irsiy axborot qayerda saqlanadi? A) yadro B) membrana C) vakuola"
+     }
+    ]
+   },
+   {
+    "id": "task_3",
+    "heading": "Bo‘sh joylarni to‘ldiring",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "Hujayraning irsiy ma’lumoti ________ da saqlanadi."
+     },
+     {
+      "label": "",
+      "text": "Mitoxondriyada hujayra uchun zarur ________ hosil bo‘ladi."
+     }
+    ]
+   },
+   {
+    "id": "task_4",
+    "heading": "Savolga javob bering",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "Nima uchun hayvon hujayrasida xloroplast yo‘q? Fikringizni ikki-uch gap bilan yozing: ________________________________________."
+     }
+    ]
+   },
+   {
+    "id": "task_5",
+    "heading": "Juftini toping",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "Yadro — ________; mitoxondriya — ________; xloroplast — ________."
+     },
+     {
+      "label": "",
+      "text": "Membrana — ________; vakuola — ________."
+     }
+    ]
+   },
+   {
+    "id": "h_key",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "1-topshiriq",
+      "text": "Membrana moddalar o‘tishini boshqaradi; yadro irsiy axborotni saqlaydi."
+     },
+     {
+      "label": "2-topshiriq",
+      "text": "1-B, 2-A"
+     },
+     {
+      "label": "3-topshiriq",
+      "text": "yadro; energiya"
+     },
+     {
+      "label": "4-topshiriq",
+      "text": "Hayvon fotosintez qilmaydi."
+     },
+     {
+      "label": "5-topshiriq",
+      "text": "irsiy axborot; energiya; fotosintez"
+     }
+    ]
+   }
+  ]
+ },
+ "ru": {
+  "title": "Строение клетки",
+  "facts": {
+   "topic": "Строение клетки",
+   "grade": "6 класс",
+   "subject": "Биология"
+  },
+  "sections": [
+   {
+    "id": "h_rule",
+    "heading": "",
+    "body": "Клетка — наименьшая структурная единица живого организма. Клетка состоит из мембраны, цитоплазмы, ядра и органоидов.",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "task",
+    "heading": "Заполните таблицу",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "Напишите функцию клеточной мембраны: ____________________."
+     },
+     {
+      "label": "",
+      "text": "Напишите функцию ядра: ____________________."
+     }
+    ]
+   },
+   {
+    "id": "task_2",
+    "heading": "Выберите правильный ответ",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "Где идёт фотосинтез? A) ядро B) хлоропласт C) вакуоль"
+     },
+     {
+      "label": "",
+      "text": "Где хранится наследственная информация? A) ядро B) мембрана C) вакуоль"
+     }
+    ]
+   },
+   {
+    "id": "task_3",
+    "heading": "Заполните пропуски",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "Наследственная информация клетки хранится в ________."
+     },
+     {
+      "label": "",
+      "text": "В митохондрии образуется необходимая клетке ________."
+     }
+    ]
+   },
+   {
+    "id": "task_4",
+    "heading": "Ответьте на вопрос",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "Почему в животной клетке нет хлоропластов? Напишите два-три предложения: ________________________________________."
+     }
+    ]
+   },
+   {
+    "id": "task_5",
+    "heading": "Найдите пару",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "Ядро — ________; митохондрия — ________; хлоропласт — ________."
+     },
+     {
+      "label": "",
+      "text": "Мембрана — ________; вакуоль — ________."
+     }
+    ]
+   },
+   {
+    "id": "h_key",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "Задание 1",
+      "text": "Мембрана регулирует прохождение веществ; ядро хранит наследственную информацию."
+     },
+     {
+      "label": "Задание 2",
+      "text": "1-B, 2-A"
+     },
+     {
+      "label": "Задание 3",
+      "text": "ядре; энергия"
+     },
+     {
+      "label": "Задание 4",
+      "text": "Животное не фотосинтезирует."
+     },
+     {
+      "label": "Задание 5",
+      "text": "наследственность; энергия; фотосинтез"
+     }
+    ]
+   }
+  ]
+ },
+ "en": {
+  "title": "Cell structure",
+  "facts": {
+   "topic": "Cell structure",
+   "grade": "Grade 6",
+   "subject": "Biology"
+  },
+  "sections": [
+   {
+    "id": "h_rule",
+    "heading": "",
+    "body": "The cell is the smallest structural unit of a living organism. A cell is made of a membrane, cytoplasm, a nucleus and organelles.",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "task",
+    "heading": "Complete the table",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "Write the function of the cell membrane: ____________________."
+     },
+     {
+      "label": "",
+      "text": "Write the function of the nucleus: ____________________."
+     }
+    ]
+   },
+   {
+    "id": "task_2",
+    "heading": "Choose the correct answer",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "Where does photosynthesis take place? A) nucleus B) chloroplast C) vacuole"
+     },
+     {
+      "label": "",
+      "text": "Where is hereditary information stored? A) nucleus B) membrane C) vacuole"
+     }
+    ]
+   },
+   {
+    "id": "task_3",
+    "heading": "Fill in the gaps",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "The hereditary information of the cell is stored in the ________."
+     },
+     {
+      "label": "",
+      "text": "The mitochondrion produces the ________ the cell needs."
+     }
+    ]
+   },
+   {
+    "id": "task_4",
+    "heading": "Answer the question",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "Why does an animal cell have no chloroplasts? Write two or three sentences: ________________________________________."
+     }
+    ]
+   },
+   {
+    "id": "task_5",
+    "heading": "Match the pairs",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "Nucleus — ________; mitochondrion — ________; chloroplast — ________."
+     },
+     {
+      "label": "",
+      "text": "Membrane — ________; vacuole — ________."
+     }
+    ]
+   },
+   {
+    "id": "h_key",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "Task 1",
+      "text": "The membrane controls what passes in and out; the nucleus stores hereditary information."
+     },
+     {
+      "label": "Task 2",
+      "text": "1-B, 2-A"
+     },
+     {
+      "label": "Task 3",
+      "text": "nucleus; energy"
+     },
+     {
+      "label": "Task 4",
+      "text": "An animal does not photosynthesise."
+     },
+     {
+      "label": "Task 5",
+      "text": "heredity; energy; photosynthesis"
+     }
+    ]
+   }
+  ]
+ }
+}
