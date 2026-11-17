@@ -919,3 +919,42 @@ def test_a_numeric_dates_year_is_tied_to_its_day_and_month(brief, written, kept)
 ], ids=['bn', 'B', 'M', 'm', 'mlrd', 'bn-given', 'M-given', 'narrow-space', 'thin-space', 'metres-and-class'])
 def test_a_scale_written_short_or_glued_to_a_currency_is_read(brief, written, kept):
     assert all(numbers.known(number, numbers.values(brief)) for number in numbers.found(written)) is kept
+
+
+# ---------------------------------------------------------------- laws (stage-2 re-audit)
+
+
+@pytest.mark.parametrize('part', [
+    'Dars Xalq ta’limi vazirligining 2017-yil 6-apreldagi 187-sonli buyrug‘i asosida tashkil etiladi.',
+    'Bu hukumatning 2019-yil 3-martdagi 175-sonli qarorida belgilangan.',
+    'Bu 1998-yil 29-avgustdagi 625-I-sonli qonun bilan tasdiqlangan.',
+    'Bu 625-I-son qonun bilan tasdiqlangan.',
+    'Reja 45-sonli Nizom asosida tuziladi.',
+    'BMTning Bola huquqlari to‘g‘risidagi konvensiyasida shunday deyilgan.',
+    'In line with the Ministry of Public Education order of 6 April 2017 lessons last 45 minutes.',
+    'Under Regulation 2016/679 the data is protected.',
+    'Согласно Положению о школе уроки длятся 45 минут.',
+    'Согласно приказу Министерства образования от 6 апреля 2017 года урок длится 45 минут.',
+], ids=['ministry-sonli', 'government-sonli', 'law-sonli-roman', 'law-son-roman', 'nizom', 'convention', 'en-order',
+        'en-regulation', 'ru-polozhenie', 'ru-ministry'])
+def test_a_ministry_or_government_act_the_customer_never_named_is_a_legal_sentence(part):
+    known = trusting('7-sinf matematika fanidan dars ishlanmasi: kasrlarni qo‘shish.')
+    assert guard(part, known) == ('', ['ground:law'])
+    assert ground(part, known) == ('', ['ground:law']), 'never a skeleton of the citation with its figures blanked'
+
+
+@pytest.mark.parametrize('part', [
+    '1-sonli jadvalda ko‘rsatilganidek, natija yaxshi.', 'Tadqiqot Toshkent shahridagi 45-sonli maktabda o‘tkazildi.',
+    'Ma’lumotlar 3-sonli ilovada keltirilgan.', 'O‘quvchilar maktab nizomiga rioya qiladi.',
+    'In order to finish, we work.', 'We work in order to finish on time.', 'The order of the chapters is clear.',
+    'A naming convention helps the reader.',
+])
+def test_a_numbered_table_school_or_annex_and_order_in_other_senses_are_no_legal_sentence(part):
+    known = trusting('Iqtisodiyot fanidan kurs ishi: 1-sonli jadval, 45-sonli maktab, 3-sonli ilova.')
+    assert guard(part, known) == (part, [])
+
+
+def test_an_order_the_customer_named_stays():
+    known = trusting('Dars Xalq ta’limi vazirligining 2017-yil 6-apreldagi 187-sonli buyrug‘i asosida o‘tadi.')
+    part = 'Dars Xalq ta’limi vazirligining 2017-yil 6-apreldagi 187-sonli buyrug‘i asosida tashkil etiladi.'
+    assert guard(part, known) == (part, []) and ground(part, known) == (part, [])

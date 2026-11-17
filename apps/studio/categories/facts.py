@@ -189,13 +189,20 @@ LAW = (
     ('code', r"codes?", False),
     ('decree', r"farmon\w*|указ(?:а|е|ом|у|ы|ов|ами|ах)?|decrees?", True),
     ('order', r"farmoyish\w*|распоряжени\w*", True),
-    ('order', r"buyru[qg]\w*|приказ\w*", False),
+    # "order" in English, never "in order to".
+    ('order', r"buyru[qg]\w*|приказ\w*|(?<!in )orders?(?![ \t]+to(?![^\W\d_]))", False),
     ('resolution', r"постановлени\w*", True),
     ('resolution', r"qaror\w*|resolutions?", False),
     ('law', r"qonun(?!iyat)\w*|закон(?!омерн)\w*|laws?|acts?", False),
     ('article', r"modda\w*|стать(?:я|и|е|ю|ей|ям|ях)|articles?", False),
+    ('regulation', r"nizom\w*|положени\w*|regulations?", False),
+    ('convention', r"konvensiya\w*|конвенци\w*|conventions?", False),
 )
-NUMBERED = re.compile(r"\d[ \u00a0]?-[ \u00a0]?son(?:i|ga|da|dan|ning)?(?![^\W\d_])")
+# "593-son", "PF-5712-son", "625-I-son": an act's number. "187-sonli buyruq" is the adjective, a mark (`LEGAL_MARK`)
+# rather than a citation of its own, since "1-sonli jadval" and "45-sonli maktab" cite nothing.
+# The number of an act, "593-son", "625-I-son", in either reading below.
+SON = r"\d(?:[ \u00a0]?-[ \u00a0]?[ivxlc]{1,4})?[ \u00a0]?-[ \u00a0]?son"
+NUMBERED = re.compile(SON + r"(?:i|ga|da|dan|ning)?(?![^\W\d_])")
 # What makes a weak stem a citation (lower case). A bare digit anywhere in the sentence does not: "modda 100 °C da
 # qaynaydi", "2 ta qaror", "Ohm's law ... in 1827" are general knowledge. A number belongs to the citation only
 # when it is attached the way a citation attaches it: "214-moddasi" (an Uzbek count is "3 modda", never with the
@@ -208,7 +215,9 @@ LEGAL_MARK = re.compile(
     r"|(?<![^\W\d_])(?:under|pursuant to|according to|in accordance with|per)\s+(?:articles?|sections?)\s+\d"
     r"|№\s*\d|(?<![^\W\d_])no\.?\s*\d"  # language.normalised writes № as "No"
     r"|to'g'risida|togrisida|respublika|республик|federal|федеральн|mahkama|министр|prezident|президент"
-    r"|oliy majlis|parliament|парламент")
+    r"|oliy majlis|parliament|парламент"
+    # A ministry's or the government's act: "vazirligining 187-sonli buyrug‘i", "hukumat qarori", "Ministry ... order".
+    r"|" + SON + r"li|vazirli[gk]|hukumat|ministr(?:y|ies)|министерств")
 DATED = re.compile(r"(?<![\d.])\d{1,2}[./]\d{1,2}[./](?:\d{4}|\d{2})(?!\d)")
 # How far from a weak stem a date may stand and still be its date: "17.07.2019 dagi qaror", "закон от 12.05.2020".
 DATED_REACH = 30

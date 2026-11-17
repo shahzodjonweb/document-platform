@@ -950,3 +950,18 @@ def test_a_reports_date_moved_to_another_year_the_brief_names_is_not_kept():
     assert 'report_date' not in facts_of(made) and codes == ['fact:report_date']
     made, _, codes = finished(data, answer(data, facts={'items': [{'label': 'report_date', 'text': '15.01.2026'}]}))
     assert facts_of(made)['report_date'] == '15.01.2026' and codes == []
+
+
+# ---------------------------------------------------------------- stage-2 re-audit: laws
+
+
+LESSON_UZ = '7-sinf matematika fanidan dars ishlanmasi yozib bering, mavzu: kasrlarni qo‘shish.'
+
+
+def test_a_lessons_invented_ministry_order_goes_whole():
+    lesson = catalogue.get('pdf.dars_ishlanmasi')
+    data = draft(lesson, prompt=LESSON_UZ, length=2)
+    order = 'Dars Xalq ta’limi vazirligining 2017-yil 6-apreldagi 187-sonli buyrug‘i asosida tashkil etiladi.'
+    made, warnings, codes = finished(data, answer(data, stage_new={'body': f'Yangi mavzu tushuntiriladi. {order}'}))
+    assert section_of(made, 'stage_new')['body'] == 'Yangi mavzu tushuntiriladi.'
+    assert codes == ['ground:law'] and warnings == [finish.FACTS_BLANKED]

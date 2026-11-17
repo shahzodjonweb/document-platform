@@ -1470,3 +1470,12 @@ tests/test_category_finish_pdf.py::test_a_figure_in_the_common_spoken_forms_the_
 tests/test_category_finish_pdf.py::test_a_figure_in_the_common_spoken_forms_the_customer_never_gave_is_blanked[uz-dan]
 tests/test_category_finish_pdf.py::test_a_led_fact_with_a_fused_russian_count_the_customer_never_gave_is_not_kept[five-years]
 tests/test_category_finish_pdf.py::test_a_compound_split_on_figures_the_customer_gave_is_still_blanked
+
+# Stage-2 re-audit, laws: a ministry's or the government's act ("187-sonli buyrug‘i", "625-I-sonli qonun", a Nizom, a
+# convention, an English order or Regulation, «Положение») the customer never named is a legal sentence and goes
+# whole, never a skeleton with its figures blanked; "1-sonli jadval", "45-sonli maktab" and "in order to" are none
+tests/test_category_facts.py::test_a_ministry_or_government_act_the_customer_never_named_is_a_legal_sentence[ministry-sonli]
+tests/test_category_facts.py::test_a_ministry_or_government_act_the_customer_never_named_is_a_legal_sentence[en-order]
+tests/test_category_facts.py::test_a_numbered_table_school_or_annex_and_order_in_other_senses_are_no_legal_sentence[In order to finish, we work.]
+tests/test_category_facts.py::test_an_order_the_customer_named_stays
+tests/test_category_finish_pdf.py::test_a_lessons_invented_ministry_order_goes_whole

@@ -13,7 +13,8 @@
     {"kind": "phone", "code": "ground:number", "text": "Batafsil ma’lumot uchun +998 71 555 86 40 raqamiga qo‘ng‘iroq qiling."},
     {"kind": "decree", "code": "ground:law", "guard": true, "text": "Bu masala Vazirlar Mahkamasining 2019-yil 17-iyuldagi 593-son qarori bilan tartibga solingan."},
     {"kind": "law", "code": "ground:law", "guard": true, "text": "Mehnat kodeksining 214-moddasiga ko‘ra ta’til berilishi shart."},
-    {"kind": "quote", "code": "ground:quote", "guard": true, "text": "Muallif ta’kidlaganidek, «bilim olish har bir insonning muqaddas burchidir»."}
+    {"kind": "quote", "code": "ground:quote", "guard": true, "text": "Muallif ta’kidlaganidek, «bilim olish har bir insonning muqaddas burchidir»."},
+    {"kind": "order", "code": "ground:law", "guard": true, "text": "Dars Xalq ta’limi vazirligining 2017-yil 6-apreldagi 187-sonli buyrug‘i asosida tashkil etiladi."}
   ],
   "ru": [
     {"kind": "name", "code": "ground:name", "text": "Работой также руководил Холмирзаев Ботиржон Эргашевич."},
@@ -27,7 +28,8 @@
     {"kind": "phone", "code": "ground:number", "text": "Подробности по телефону +998 71 555 86 40."},
     {"kind": "decree", "code": "ground:law", "guard": true, "text": "Этот вопрос регулируется постановлением Кабинета Министров № 593 от 17 июля 2019 года."},
     {"kind": "law", "code": "ground:law", "guard": true, "text": "Согласно статье 214 Трудового кодекса отпуск предоставляется обязательно."},
-    {"kind": "quote", "code": "ground:quote", "guard": true, "text": "Как отмечал автор, «знание есть главная обязанность каждого человека»."}
+    {"kind": "quote", "code": "ground:quote", "guard": true, "text": "Как отмечал автор, «знание есть главная обязанность каждого человека»."},
+    {"kind": "order", "code": "ground:law", "guard": true, "text": "Урок проводится согласно приказу Министерства просвещения от 6 апреля 2017 года № 187."}
   ],
   "en": [
     {"kind": "name", "code": "ground:name", "text": "The project was also supervised by Botirjon Xolmirzayev."},
@@ -41,6 +43,7 @@
     {"kind": "phone", "code": "ground:number", "text": "For details call +998 71 555 86 40."},
     {"kind": "decree", "code": "ground:law", "guard": true, "text": "This is governed by Cabinet of Ministers Resolution No. 593 of 17 July 2019."},
     {"kind": "law", "code": "ground:law", "guard": true, "text": "Under Article 214 of the Labour Code, leave must be granted."},
-    {"kind": "quote", "code": "ground:quote", "guard": true, "text": "As the author put it, “knowledge is the sacred duty of every person”."}
+    {"kind": "quote", "code": "ground:quote", "guard": true, "text": "As the author put it, “knowledge is the sacred duty of every person”."},
+    {"kind": "order", "code": "ground:law", "guard": true, "text": "Lessons follow the Ministry of Public Education order of 6 April 2017."}
   ]
 }
