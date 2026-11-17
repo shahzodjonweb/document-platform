@@ -34,6 +34,7 @@ of one number: the groups of "1 150 000" or of a phone, and the day and month of
 
 Numbers inside an e-mail or a link are not numbers; facts.py checks those whole.
 """
+import functools
 import re
 from decimal import Decimal, InvalidOperation
 from typing import NamedTuple
@@ -148,12 +149,33 @@ WORD_TABLES = [_alternation(RU_WORDS + EN_WORDS), _alternation(UZ_WORDS)]
 # Cardinal numbers written as words, read on both sides when `found` is asked for them (`words`): "five years",
 # "twelve people", "two hundred clients", "besh yuz million so‘m", "yigirma foiz", "более пяти лет". A model asked
 # never to invent a figure still writes one in words, which the digit reading never saw. Only cardinals are read,
-# never an ordinal ("ikkinchi bob", "the second stage") nor "both" or "ikkala", and the words that are also ordinary
-# words are read only where they must be numbers: "one", "bir", "один" and "a" only before a multiplier or after a
-# ten ("a hundred", "one million", "twenty-one", "bir yarim"), Uzbek "yuz" (also a face, and "yuz berdi", it
-# happened) only after a number, before a scale, with -ta, or before a counted noun ("yuz nafar"), a scale word
-# alone only in the Russian forms that cannot mean "thousands" ("тысяча рублей"), and "семью" never (also "family").
-# Each word is a role and a value; a run of them side by side is one number (`_Reader.spelled`).
+# never an ordinal ("ikkinchi bob", "the second stage", nor the tens before one: "yigirma birinchi asr") nor "both"
+# or "ikkala", and the words that are also ordinary words are read only where they must be numbers: "one", "bir",
+# "один" and "a" only before a multiplier, after a ten or after a scale ("a hundred", "one million", "twenty-one",
+# "bir yarim", "девять тысяч один"), a bare Uzbek "yuz" or "ming" (also a face, and "yuz berdi", it happened) only
+# before a scale, a count of its own ("yuz ellik"), with -ta, before a counted noun ("yuz nafar", "ming tonna") or
+# as "yuzdan ortiq" (`_bare`), any other scale word alone only in the Russian forms that cannot mean "thousands"
+# ("тысяча рублей"), and "семью" never (also "family"). The common spoken forms are read too: an Uzbek count's case
+# endings ("ellikdan ortiq"), a Russian count fused to what it counts ("пятилетний"), half a scale ("yarim milliard",
+# "полмиллиона") and how many times over ("doubled", "вдвое"); "twice", "half", "decade" and the vague "o‘nlab",
+# "hundreds" are not. Each word is a role and a value; a run of them side by side is one number (`_Reader.spelled`).
+# The endings an Uzbek count takes as the last word of a number: "beshta", "ellikdan ortiq", "yigirmaga yetadi",
+# "o‘ttiz birta", "ellikka yaqin", "o‘ngacha", "beshdagi", "ikkini"; never "-lab" (o‘nlab, yuzlab: tens, hundreds),
+# which names no figure.
+UZ_CASES = r"(?:ta\w*|[gkq]a|[gkq]acha|dan|da|dagi|ni|ning)?"
+# Russian counts fused to what they count, "пятилетний опыт", "двухнедельный курс", "двадцатипятилетний",
+# "сорокакратный": the count is the figure. "десятилетия" (decades) and "многолетний" (many years) name none.
+RU_FUSED_TAIL = r"(?:летн|кратн|месячн|дневн|недельн|часов|минутн)\w*"
+RU_FUSED_UNITS = (('двух', 2), ('тр[её]х', 3), ('четыр[её]х', 4), ('пяти', 5), ('шести', 6), ('семи', 7),
+                  ('восьми', 8), ('девяти', 9))
+RU_FUSED_TENS = (('двадцати', 20), ('тридцати', 30), ('сорока', 40), ('пятидесяти', 50), ('шестидесяти', 60),
+                 ('семидесяти', 70), ('восьмидесяти', 80), ('девяноста', 90))
+RU_FUSED_ALONE = RU_FUSED_UNITS + RU_FUSED_TENS + (
+    ('десяти', 10), ('одиннадцати', 11), ('двенадцати', 12), ('тринадцати', 13), ('четырнадцати', 14),
+    ('пятнадцати', 15), ('шестнадцати', 16), ('семнадцати', 17), ('восемнадцати', 18), ('девятнадцати', 19),
+    ('сто', 100))
+RU_FUSED = tuple((stem + RU_FUSED_TAIL, 'unit', value) for stem, value in RU_FUSED_ALONE) + tuple(
+    (tens + unit + RU_FUSED_TAIL, 'unit', ten + one) for tens, ten in RU_FUSED_TENS for unit, one in RU_FUSED_UNITS)
 SPELLED = (
     # English.
     (r"one", 'one', 1), (r"an?", 'article', 1), (r"two", 'unit', 2), (r"three", 'unit', 3), (r"four", 'unit', 4),
@@ -165,6 +187,11 @@ SPELLED = (
     (r"eighty", 'tens', 80), (r"ninety", 'tens', 90), (r"hundred", 'hundred', 100), (r"dozen", 'dozen', 12),
     (r"thousand", 'scale', 3), (r"million", 'scale', 6), (r"billion", 'scale', 9), (r"trillion", 'scale', 12),
     (r"thirds?", 'fraction', 3), (r"and", 'and', 0),
+    # How many times over: "doubled", "tripled", "fivefold"; "twice" and "double" are left, being ordinary words too.
+    (r"doubled", 'unit', 2), (r"tripled", 'unit', 3), (r"quadrupled", 'unit', 4),
+    *((rf"{word}fold", 'unit', value) for word, value in (
+        ('two', 2), ('three', 3), ('four', 4), ('five', 5), ('six', 6), ('seven', 7), ('eight', 8), ('nine', 9),
+        ('ten', 10))),
     # Russian, in the cases a count takes.
     (r"один|одна|одно|одного|одной|одному|одним|одну", 'one', 1),
     (r"полтора|полторы|полутора", 'unit', Decimal('1.5')),
@@ -187,13 +214,25 @@ SPELLED = (
     (r"тысяча|тысячу|миллион|миллиона|миллиард|миллиарда", 'alone', 0),
     (r"тысяч\w*|тыс", 'scale', 3), (r"миллион\w*|млн", 'scale', 6), (r"миллиард\w*|млрд", 'scale', 9),
     (r"триллион\w*|трлн", 'scale', 12), (r"треть|трети", 'fraction', 3),
-    # Uzbek (Latin; Cyrillic is read in Latin first): a count's -ta, and -dan for "uchdan bir" (a third).
-    (r"bir", 'one', 1), (r"yarim", 'half', Decimal('0.5')),
-    *((re.escape(stem) + r"(?:ta\w*)?", 'tens' if value >= 20 or stem == "o'n" else 'unit', value)
-      for stem, value in UZ_STEMS),
+    # A hundred as a noun, "сотню клиентов" ("сотни", hundreds, names no figure); half a scale, "полмиллиона"; and
+    # how many times over, "вдвое", "впятеро".
+    (r"сотня|сотню|сотней", 'unit', 100), (r"полмиллиона", 'unit', 500000), (r"полмиллиарда", 'unit', 500000000),
+    (r"полтысячи", 'unit', 500),
+    *((rf"в{stem}", 'unit', value) for stem, value in (
+        ('двое', 2), ('трое', 3), ('четверо', 4), ('пятеро', 5), ('шестеро', 6), ('семеро', 7), ('восьмеро', 8),
+        ('девятеро', 9), ('десятеро', 10))),
+    # A count fused to what it counts: "пятилетний опыт", "двухнедельный", "двадцатипятилетний" (RU_FUSED).
+    *(RU_FUSED),
+    # Uzbek (Latin; Cyrillic is read in Latin first). "uchdan bir" is a third; a count takes the endings of a case,
+    # "ellikdan ortiq", "yigirmaga yetadi", "beshta", "o‘ttiz birta" (UZ_CASES), and "bir" keeps the role of "one",
+    # so "birdan" (suddenly) and "birga" (together) are never read alone.
+    (r"bir" + UZ_CASES, 'one', 1), (r"yarim", 'half', Decimal('0.5')),
     *((re.escape(stem) + r"dan", 'denominator', value) for stem, value in UZ_STEMS[:9]),
-    (r"yuz(?:ta\w*)?", 'hundred', 100),
-    (r"ming(?:ta\w*|ga|dan|ni|ning|da)?", 'scale', 3), (r"million\w*|mln", 'scale', 6),
+    # "oltini" is also "its gold".
+    *((re.escape(stem) + (UZ_CASES.replace('|ni|', '|') if stem == 'olti' else UZ_CASES),
+       'tens' if value >= 20 or stem == "o'n" else 'unit', value) for stem, value in UZ_STEMS),
+    (r"yuz" + UZ_CASES, 'hundred', 100),
+    (r"ming" + UZ_CASES, 'scale', 3), (r"million\w*|mln", 'scale', 6),
     (r"milliard\w*|mlrd", 'scale', 9), (r"trillion\w*|trln", 'scale', 12),
 )
 SPELLED_TABLE = re.compile('|'.join(f'(?P<s{index}>{pattern})' for index, (pattern, _, _) in enumerate(SPELLED)))
@@ -204,9 +243,25 @@ SPELLED_TOKEN = re.compile(r"[^\W\d_]+(?:['‘’ʻʼ`´][^\W\d_]+)*")
 FRACTION_END = re.compile(r"[ \t\u00a0]+of(?![^\W\d_])|[ \t\u00a0]*(?:[.,;:!?)]|$)")
 # What two number words of one number may stand apart by: spaces, or a hyphen ("twenty-five", "besh-olti").
 SPELLED_GAP = re.compile(r"[ \t\u00a0]*(?:[-–][ \t\u00a0]*)?")
-# What a bare Uzbek "yuz" counts: "yuz nafar", "yuz foiz", "yuz so‘m"; elsewhere it is a face or "yuz berdi".
+# What a bare Uzbek "yuz" or "ming" counts: "yuz nafar", "yuz foiz", "ming tonna"; elsewhere "yuz" is a face or "yuz
+# berdi" (it happened). Read on the Latin form, so "Юз нафар" counts too.
 UZ_COUNTED = re.compile(r"[ \t\u00a0]+(?:foiz|nafar|kishi|so'm|sum|dollar|evro|rubl|gektar|tonna|metr|kilo\w*|yil|oy|"
-                        r"kun|soat|daqiqa|marta|mijoz|xodim|o'quvchi|talaba|dona|xil)", re.IGNORECASE)
+                        r"kun|soat|daqiqa|marta|mijoz|xodim|o'quvchi|talaba|dona|xil|ish o'rn|o'rin|o'rn|oila|xonadon|"
+                        r"litr|nusxa|sahifa|savol|ball)", re.IGNORECASE)
+# What a bare "yuzdan" or "mingga" is a count before: "yuzdan ortiq", "mingga yaqin".
+UZ_ABOUT = re.compile(r"[ \t\u00a0]+(?:ortiq|ko'p|ziyod|oshiq|yaqin|kam|yet|osh)", re.IGNORECASE)
+# A word that makes the number words right before it an ordinal's: "yigirma birinchi", "twenty-first", "двадцать
+# первом", "o‘n beshinchi". The run is then not a count: "the twenty-first century" names no figure of twenty.
+ORDINAL = re.compile(
+    r"(?:first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|eleventh|twelfth|\w+teenth|\w+tieth"
+    r"|hundredth|thousandth|millionth)"
+    r"|(?:bir|ikki|uch|to'rt|besh|olti|yetti|sakkiz|to'qqiz|o'n|yigirma|o'ttiz|qirq|ellik|oltmish|yetmish|sakson"
+    r"|to'qson|yuz|ming|million|milliard)i?nchi\w*"
+    r"|перв\w*|втор(?:ой|ая|ое|ого|ом|ую|ые|ых|ым|ыми|ому|ою)|трет(?:ий|ья|ье|ьего|ьем|ью|ьи|ьих|ьему|ьей|ьим)"
+    r"|четв[её]рт\w*|(?:пят|шест|седьм|восьм|девят|десят|\w+надцат|двадцат|тридцат|сороков|пятидесят|шестидесят"
+    r"|семидесят|восьмидесят|девяност|сот|тысячн)(?:ый|ой|ая|ое|ого|ом|ую|ые|ых|ым|ыми|ому|ей)")
+# No number is read past this: a run of thousands of "hundred"s once made a value too long to write as digits.
+SPELLED_CAP = Decimal(10) ** 24
 
 
 class Number(NamedTuple):
@@ -225,7 +280,9 @@ class Number(NamedTuple):
 
 
 def canon(number):
-    """A Decimal as its key: "1150000", "1.5"; never an exponent or a trailing zero."""
+    """A Decimal as its key: "1150000", "1.5"; never an exponent or a trailing zero, below 10**30."""
+    if number.adjusted() >= 30:
+        return format(number.normalize(), 'E')  # past any real figure; never a string of thousands of digits
     if number == number.to_integral_value():
         return str(int(number))
     return format(number.normalize(), 'f')
@@ -309,8 +366,11 @@ def _readings(token):
 class _Reader:
     """Walks a text once, pattern by pattern, never reading the same characters as two numbers."""
 
-    def __init__(self, text):
+    def __init__(self, text, cyrillic=True):
         self.text = text
+        # Whether a word in Cyrillic is also read as Uzbek put in Latin ("беш юз минг"): the customer's side. A
+        # paper's own Cyrillic is Russian (Uzbek is written in Latin), where that reading made "тень" ten.
+        self.cyrillic = cyrillic
         # One byte per character, set where a number (or an address) was read: a long file has thousands of numbers.
         self.taken = bytearray(len(text))
         self.numbers = []
@@ -441,13 +501,22 @@ class _Reader:
                 self.add(match.start(), end, kind, canon(found[0]), [needs], extra)
 
     def spelled(self):
-        """The cardinal numbers written as words (`SPELLED`), outside every number and address already read."""
+        """The cardinal numbers written as words (`SPELLED`), outside every number and address already read.
+
+        A run of number words straight before an ordinal ("yigirma birinchi asr", "the twenty-first century") is an
+        ordinal's tens, not a count, and is left unread.
+        """
         text, run = self.text, []
         for match in SPELLED_TOKEN.finditer(text):
             role = None
-            if self.free(*match.span()):
-                role = _spelled_role(match.group(0))
-            if role is None or (run and not SPELLED_GAP.fullmatch(text[run[-1][1]:match.start()])):
+            free = self.free(*match.span())
+            if free:
+                role = _spelled_role(match.group(0), self.cyrillic)
+            beside = bool(run) and SPELLED_GAP.fullmatch(text[run[-1][1]:match.start()]) is not None
+            if role is None and beside and free and _ordinal(text, match):
+                run = []
+                continue
+            if role is None or (run and not beside):
                 self._spelled_run(run)
                 run = []
             if role is not None:
@@ -460,13 +529,29 @@ class _Reader:
         total, current, last, first, end, fraction = Decimal(0), None, None, None, None, None
         # Whether the number so far is only an "a" or "one" waiting for its multiplier, which is no number alone.
         lone = False
+        # The power of the last scale word taken into `total`, where that part of the number ends, and where the
+        # count after it starts: "ikki ming - uch ming" is a range of two numbers, never 2 003 000.
+        power_taken, taken_end, group = None, None, None
+        # Whether the last word multiplied the count ("yuz", "hundred", "dozen"): another right after it ("hundred
+        # hundred") starts no bigger number.
+        multiplied = False
 
         def close():
-            nonlocal total, current, last, first, end, lone
+            nonlocal total, current, last, first, end, lone, power_taken, taken_end, group, multiplied
             if first is not None and (total or current is not None) and not lone:
                 value = canon(total + (current or 0))
                 self.add(first, end, 'spelled', value, [{value}])
             total, current, last, first, end, lone = Decimal(0), None, None, None, None, False
+            power_taken, taken_end, group, multiplied = None, None, None, False
+
+        def count(start, stop, value):
+            """`value` added to the count after the last scale word."""
+            nonlocal current, last, end, lone, group, first, multiplied
+            if first is None:
+                first = start
+            if current is None:
+                group = start
+            current, last, end, lone, multiplied = (current or 0) + value, value, stop, False, False
 
         for index, (start, stop, role, value, word) in enumerate(run):
             after = run[index + 1][2] if index + 1 < len(run) else None
@@ -477,19 +562,24 @@ class _Reader:
                 self.add(begin, stop, 'fraction', key, [{key}])
                 continue
             if role in ('one', 'article'):
-                # "a", "one", "bir", "один": a number only before a multiplier or a fraction, or after a ten.
+                # "a", "one", "bir", "один": a number only before a multiplier or a fraction, after a ten ("twenty-one",
+                # "o‘ttiz birta"), or after a scale ("bir million bir yuz ...", "девять тысяч один").
                 if role == 'one' and current is not None and last is not None and last >= 10 and last % 10 == 0:
                     current, last, end = current + 1, 1, stop
                     continue
+                if role == 'one' and total and current is None and (
+                        after in ('hundred', 'dozen', 'half') or (after is None and not _hyphenated(text, stop))):
+                    group, current, last, end, lone, multiplied = start, Decimal(1), 1, stop, False, False
+                    continue
                 if after in ('hundred', 'dozen', 'scale', 'alone', 'fraction', 'half'):
                     close()
-                    first, current, last, end, lone = start, Decimal(1), 1, stop, True
+                    first, group, current, last, end, lone = start, start, Decimal(1), 1, stop, True
                     continue
                 close()
                 continue
             if role == 'and':
-                # "two hundred and fifty": only between a multiplier and what it is added to.
-                if current is None and not total or after not in ('unit', 'tens'):
+                # "two hundred and fifty", "one hundred and one": only between a multiplier and what it is added to.
+                if current is None and not total or after not in ('unit', 'tens', 'one'):
                     close()
                 continue
             if role == 'denominator':
@@ -506,43 +596,68 @@ class _Reader:
                 if (current is None and not russian) or (not russian and not FRACTION_END.match(text, stop)):
                     close()
                     continue
+                if not russian and current >= 10:
+                    # "the twenty-third of May": an ordinal, never 20/3.
+                    total, current, last, first, end, lone = Decimal(0), None, None, None, None, False
+                    power_taken, taken_end, group, multiplied = None, None, None, False
+                    continue
                 key = f'f:{canon(current if current is not None else Decimal(1))}/{value}'
                 begin = first if first is not None else start
                 total, current, last, first, end, lone = Decimal(0), None, None, None, None, False
+                power_taken, taken_end, group, multiplied = None, None, None, False
                 self.add(begin, stop, 'fraction', key, [{key}])
                 continue
             if role in ('unit', 'tens'):
                 value = Decimal(value)
                 if current is not None and last is not None and len(str(int(value))) >= len(str(int(last))):
                     close()  # two counts side by side: a range ("besh-olti"), never their sum
-                if first is None:
-                    first = start
-                current, last, end, lone = (current or 0) + value, value, stop, False
+                count(start, stop, value)
                 continue
             if role == 'half':
                 if current is not None and last is not None and last < 10:
                     current, last, end, lone = current + value, value, stop, False
+                elif current is None and not total and after == 'scale':
+                    # "yarim milliard": half the scale after it.
+                    count(start, stop, value)
                 else:
                     close()
                 continue
             if role in ('hundred', 'dozen'):
+                if multiplied:
+                    close()  # "hundred hundred", "yuz yuz": no bigger number
+                    continue
                 if current is None:
-                    # A bare "yuz" or "hundred": a number only before a scale or a counted noun.
-                    bare = normalised(to_latin(word)).casefold()
-                    if not (after == 'scale' or bare.startswith('yuzta')
-                            or (bare == 'yuz' and UZ_COUNTED.match(text, stop))):
+                    # A bare "yuz" or "hundred": a number only where it must be one (`_bare`); after a scale it
+                    # goes on the number ("ming yuz", 1100).
+                    if not total and not _bare(text, word, role, stop, after):
                         close()
                         continue
-                    first = start if first is None else first
-                current, last, end, lone = (current or Decimal(1)) * value, value, stop, False
+                    if first is None:
+                        first = start
+                    group = start
+                current, last, end, lone, multiplied = (current or Decimal(1)) * value, value, stop, False, True
+                if total + current >= SPELLED_CAP:
+                    close()
                 continue
             power = SPELLED_POWER.get(word.casefold(), value) if role == 'alone' else value
-            if current is None and not total:
-                if role != 'alone':
+            if current is None:
+                if total:
+                    close()  # "ming ming", "thousand million": a scale right after a scale counts nothing
+                    continue
+                if role != 'alone' and not _bare(text, word, role, stop, after):
                     continue  # "ming yillik", "thousands": no count before it
-                first, current = start, Decimal(1)
-            total, current, last, end = total + (current or Decimal(1)) * (Decimal(10) ** power), None, None, stop
-            lone = False
+                first = group = start
+                current = Decimal(1)
+            elif power_taken is not None and power >= power_taken:
+                # "ikki ming - uch ming": the count after a scale meets a scale as large again, so it is a number
+                # of its own, never 2 003 000.
+                value_so_far = canon(total)
+                self.add(first, taken_end, 'spelled', value_so_far, [{value_so_far}])
+                total, first = Decimal(0), group
+            total, current, last, end = total + current * (Decimal(10) ** power), None, None, stop
+            power_taken, taken_end, lone, multiplied = power, stop, False, False
+            if total >= SPELLED_CAP:
+                close()
         close()
 
     def _phone(self, start, end, digits):
@@ -552,18 +667,60 @@ class _Reader:
         self.add(start, end, 'phone', digits, [keys], extra)
 
 
-def _spelled_role(word):
-    """(role, value) of a number word (`SPELLED`), Uzbek Cyrillic read in Latin, or None."""
+@functools.lru_cache(maxsize=8192)
+def _spelled_role(word, cyrillic=True):
+    """(role, value) of a number word (`SPELLED`), Uzbek Cyrillic read in Latin when `cyrillic`, or None.
+
+    Cached: a long source repeats its words, and each is tried against the whole table, twice for Cyrillic.
+    """
     word = normalised(word).lower()
     match = SPELLED_TABLE.fullmatch(word)
-    if match is None and re.search('[а-яёўқғҳ]', word):
+    if match is None and cyrillic and re.search('[а-яёўқғҳ]', word):
         match = SPELLED_TABLE.fullmatch(normalised(to_latin(word)).lower())
     return SPELLED_ROLES[match.lastgroup] if match is not None else None
 
+def _bare(text, word, role, stop, after):
+    """Whether a multiplier with no count before it is a number: "a hundred thousand", "yuz ellik", "ming besh yuz".
 
-def found(text, *, words=False):
-    """Every number of `text`, in order, as Numbers; with `words`, the cardinals written as words too (`SPELLED`)."""
-    return _Reader(str(text or '')).read(words)
+    "hundred" or "yuz" before a scale; a bare Uzbek "yuz" or "ming" before a count of its own ("yuz ellik" is 150,
+    never 50), with -ta ("mingta non"), before a counted noun ("yuz nafar", "ming tonna"; "ming yillik tarix" is no
+    figure), or with -dan or -ga before "ortiq", "yaqin" ("yuzdan ortiq"). Elsewhere "yuz" is a face or "yuz
+    berdi", and a scale word alone ("thousands", "ming afsus") counts nothing.
+    """
+    bare = normalised(to_latin(word)).casefold()
+    if role != 'scale' and after == 'scale':
+        return True
+    if not bare.startswith(('yuz', 'ming')):
+        return False
+    if bare in ('yuz', 'ming') and after in ('unit', 'tens', 'one', 'denominator') \
+            or bare == 'ming' and after == 'hundred':
+        return True
+    if bare.startswith(('yuzta', 'mingta')):
+        return True
+    rest = normalised(to_latin(text[stop:stop + 40]))
+    counted = UZ_COUNTED.match(rest) if bare in ('yuz', 'ming') else None
+    if counted is not None and not (bare == 'ming' and rest[counted.end():counted.end() + 3] == 'lik'):
+        return True
+    return bare.endswith(('dan', 'ga', 'gacha')) and UZ_ABOUT.match(rest) is not None
+
+
+def _hyphenated(text, stop):
+    """Whether a word goes on in a hyphen and more letters ("one-time", "first-rate")."""
+    return re.match(r"-[^\W\d_]", text[stop:stop + 2]) is not None
+
+
+def _ordinal(text, match):
+    """Whether a word is an ordinal standing alone ("birinchi", "first", "первом"), never "first-rate"."""
+    return ORDINAL.fullmatch(normalised(match.group(0)).lower()) is not None and not _hyphenated(text, match.end())
+
+
+def found(text, *, words=False, uzbek_cyrillic=True):
+    """Every number of `text`, in order, as Numbers; with `words`, the cardinals written as words too (`SPELLED`).
+
+    `uzbek_cyrillic` also reads a Cyrillic word as Uzbek put in Latin ("беш юз минг"), as the customer may write;
+    a paper's own text is read without it (its Cyrillic is Russian, where "тень" and "уч." are no numbers).
+    """
+    return _Reader(str(text or ''), uzbek_cyrillic).read(words)
 
 
 def known(number, values):

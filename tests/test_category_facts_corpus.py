@@ -133,10 +133,20 @@ SPELLED_INVENTED = {
 }
 
 
+# The same as they are commonly spoken: a count fused to what it counts, half a scale, an Uzbek case ending, a bare
+# "ming", a compound with "and".
+SPOKEN_INVENTED = {
+    'uz': 'Yiliga ming yetti yuz tonna non sotiladi, mijozlar soni yetmish uchtadan oshadi.',
+    'ru': 'У меня семнадцатилетний опыт, а оборот превысил полмиллиарда.',
+    'en': 'We served one thousand and seventy-three clients.',
+}
+
+
 @pytest.mark.parametrize('entry_id, text', messages())
 def test_every_invented_figure_written_in_words_is_caught_in_a_paper(entry_id, text):
     known = trusted(entry_id, text)
-    missed = [locale for locale, sentence in SPELLED_INVENTED.items()
+    missed = [(locale, sentence) for invented in (SPELLED_INVENTED, SPOKEN_INVENTED)
+              for locale, sentence in invented.items()
               if 'ground:number' not in facts.guard(sentence, known, checks=('numbers',), words=True)[1]]
     assert not missed, f'invented figures in words that passed: {missed}'
 

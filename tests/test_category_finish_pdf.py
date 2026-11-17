@@ -892,6 +892,57 @@ COVER_RU = ('Напишите сопроводительное письмо на
 REPORT_UZ = 'Namuna Savdo MChJ uchun 2025-yil faoliyati bo‘yicha hisobot yozib bering, savdo bo‘limi.'
 
 
+@pytest.mark.parametrize('entry_id, prompt, locale, part_id, text, left', [
+    ('pdf.xat.ishga_kirish', COVER_RU, 'ru', 'fit', 'У меня более чем пятилетний опыт работы в продажах.',
+     'У меня более чем ____ опыт работы в продажах.'),
+    ('pdf.xat.ishga_kirish', COVER_RU, 'ru', 'fit', 'Оборот моего отдела превысил полмиллиона долларов.',
+     'Оборот моего отдела превысил ____ долларов.'),
+    ('pdf.xat.ishga_kirish', COVER_EN, 'en', 'fit', 'I doubled sales in my first year.',
+     'I ____ sales in my first year.'),
+    ('pdf.biz.biznes_reja', PLAN_UZ, 'uz', 'summary_lead', 'Loyihaning umumiy qiymati yarim milliard so‘m.',
+     'Loyihaning umumiy qiymati ____ so‘m.'),
+    ('pdf.biz.biznes_reja', PLAN_UZ, 'uz', 'summary_lead', 'Nonvoyxona yiliga ming tonna non ishlab chiqaradi.',
+     'Nonvoyxona yiliga ____ tonna non ishlab chiqaradi.'),
+    ('pdf.biz.biznes_reja', PLAN_UZ, 'uz', 'summary_lead', 'Kuniga mingta non sotiladi.', 'Kuniga ____ non sotiladi.'),
+    ('pdf.biz.biznes_reja', PLAN_UZ, 'uz', 'summary_lead', 'Loyiha doirasida ellikdan ortiq ish o‘rni yaratiladi.',
+     'Loyiha doirasida ____ ortiq ish o‘rni yaratiladi.'),
+    ('pdf.biz.biznes_reja', PLAN_UZ, 'uz', 'summary_lead', 'Mijozlar soni yigirmaga yetadi.',
+     'Mijozlar soni ____ yetadi.'),
+    ('pdf.biz.biznes_reja', PLAN_UZ, 'uz', 'summary_lead', 'Loyiha yuz ish o‘rnini yaratadi.',
+     'Loyiha ____ ish o‘rnini yaratadi.'),
+    ('pdf.biz.hisobot', REPORT_UZ, 'uz', 'summary', 'Hisobot davrida o‘ttizdan ortiq yangi mijoz jalb qilindi.',
+     'Hisobot davrida ____ ortiq yangi mijoz jalb qilindi.'),
+], ids=['ru-fused', 'ru-half-million', 'en-doubled', 'uz-half-billion', 'uz-bare-ming', 'uz-mingta', 'uz-dan',
+        'uz-ga', 'uz-bare-yuz', 'uz-report-dan'])
+def test_a_figure_in_the_common_spoken_forms_the_customer_never_gave_is_blanked(entry_id, prompt, locale, part_id,
+                                                                                text, left):
+    entry = catalogue.get(entry_id)
+    data = draft(entry, prompt=prompt, locale=locale, length=1 if entry_id.startswith('pdf.xat') else 6)
+    made, warnings, codes = finished(data, answer(data, **{part_id: {'body': text}}))
+    assert section_of(made, part_id)['body'] == left
+    assert 'ground:number' in codes and warnings == [finish.FACTS_BLANKED]
+
+
+@pytest.mark.parametrize('text', ['Более чем пятилетний опыт в розничных продажах', 'Двухлетний опыт работы кассиром'],
+                         ids=['five-years', 'two-years'])
+def test_a_led_fact_with_a_fused_russian_count_the_customer_never_gave_is_not_kept(text):
+    letter = catalogue.get('pdf.xat.ishga_kirish')
+    data = draft(letter, prompt=COVER_RU, locale='ru', length=1)
+    made, _, codes = finished(data, answer(data, facts={'items': [{'label': 'experience_facts', 'text': text}]}))
+    assert 'experience_facts' not in facts_of(made) and codes == ['fact:experience_facts']
+    data = draft(letter, prompt=COVER_RU + ' Опыт в продажах 5 лет, кассиром 2 года.', locale='ru', length=1)
+    made, _, codes = finished(data, answer(data, facts={'items': [{'label': 'experience_facts', 'text': text}]}))
+    assert facts_of(made)['experience_facts'] == text and codes == []
+
+
+def test_a_compound_split_on_figures_the_customer_gave_is_still_blanked():
+    plan = catalogue.get('pdf.biz.biznes_reja')
+    data = draft(plan, prompt=PLAN_UZ + ' Ustav kapitali 1 000 000 so‘m, aylanma mablag‘ 150 000 so‘m.', length=6)
+    made, _, codes = finished(data, answer(data, summary_lead={
+        'body': 'Jami mablag‘ bir million bir yuz ellik ming so‘m.'}))
+    assert section_of(made, 'summary_lead')['body'] == 'Jami mablag‘ ____ so‘m.' and 'ground:number' in codes
+
+
 def test_a_reports_date_moved_to_another_year_the_brief_names_is_not_kept():
     report = catalogue.get('pdf.biz.hisobot')
     data = draft(report, prompt=REPORT_UZ + ' Hisobot sanasi 15.01.2026.', length=6)

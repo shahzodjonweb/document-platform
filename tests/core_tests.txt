@@ -1451,3 +1451,22 @@ tests/test_category_facts.py::test_a_scale_written_short_or_glued_to_a_currency_
 tests/test_category_facts.py::test_a_scale_written_short_or_glued_to_a_currency_is_read[M]
 tests/test_category_facts.py::test_a_scale_written_short_or_glued_to_a_currency_is_read[narrow-space]
 tests/test_category_facts.py::test_a_scale_written_short_or_glued_to_a_currency_is_read[metres-and-class]
+
+# Stage-2 re-audit, figures in words: the common spoken forms are read on both sides (an Uzbek count's case endings,
+# a bare "ming" or "yuz" heading a count, a Russian count fused to what it counts, half a scale, how many times over),
+# a compound is read whole and never split into figures the customer gave, the tens of an ordinal are no count, a
+# paper's own Cyrillic is Russian, and a run of multipliers never makes a number too long to write
+tests/test_category_facts.py::test_the_common_ways_a_figure_is_spoken_are_read[ru-fused]
+tests/test_category_facts.py::test_the_common_ways_a_figure_is_spoken_are_read[uz-cases]
+tests/test_category_facts.py::test_vague_and_ordinary_words_are_still_not_read_as_figures[ming yillik tarix]
+tests/test_category_facts.py::test_a_compound_is_read_whole_never_split_into_numbers_the_customer_gave[uz-million]
+tests/test_category_facts.py::test_a_compound_another_way_round_never_passes_on_the_parts_the_customer_gave
+tests/test_category_facts.py::test_every_number_written_in_words_reads_as_itself
+tests/test_category_facts.py::test_the_tens_of_an_ordinal_are_never_read_as_a_count[the twenty-first century]
+tests/test_category_facts.py::test_a_paper_reads_its_own_cyrillic_as_russian_never_as_uzbek_in_latin
+tests/test_category_facts.py::test_a_run_of_multipliers_never_makes_a_number_too_long_to_write
+tests/test_category_facts.py::test_a_source_of_repeated_multipliers_never_fails_a_paper_or_unchecks_a_deck
+tests/test_category_finish_pdf.py::test_a_figure_in_the_common_spoken_forms_the_customer_never_gave_is_blanked[ru-fused]
+tests/test_category_finish_pdf.py::test_a_figure_in_the_common_spoken_forms_the_customer_never_gave_is_blanked[uz-dan]
+tests/test_category_finish_pdf.py::test_a_led_fact_with_a_fused_russian_count_the_customer_never_gave_is_not_kept[five-years]
+tests/test_category_finish_pdf.py::test_a_compound_split_on_figures_the_customer_gave_is_still_blanked

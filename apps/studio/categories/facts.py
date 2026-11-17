@@ -519,7 +519,8 @@ def supported(value, kind, trusted, *, translated=False, strict=False, words=Fal
     rest, whole = _strip_addresses(text, trusted)
     if not whole:
         return False
-    if not all(numbers.known(number, trusted.values) for number in numbers.found(rest, words=words)):
+    read = numbers.found(rest, words=words, uzbek_cyrillic=False)
+    if not all(numbers.known(number, trusted.values) for number in read):
         return False
     if kind in ('person', 'org', 'place', 'line') and (strict or not translated or kind == 'person'):
         return _names_known(rest, trusted, translated)
@@ -676,7 +677,7 @@ def _quotes(text, trusted, codes):
 
 
 def _numbers(text, trusted, codes, words=False):
-    spans = [(number.start, number.end) for number in numbers.found(text, words=words)
+    spans = [(number.start, number.end) for number in numbers.found(text, words=words, uzbek_cyrillic=False)
              if not _enumerator(text, number) and not numbers.known(number, trusted.values)]
     if spans:
         codes.append('ground:number')

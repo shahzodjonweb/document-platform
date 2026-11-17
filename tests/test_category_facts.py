@@ -708,6 +708,189 @@ def test_a_counted_copy_shares_the_respelled_words_rather_than_folding_the_sourc
     assert facts.counting(trusting('Pedagogik kengash'), 3).person('Namunova', True) is False
 
 
+# ---------------------------------------------------------------- numbers in words (stage-2 re-audit)
+
+
+def read(text, *, model=True):
+    """(value, words) of each number of `text`, read as a paper's own text is (`model`) or as the customer's."""
+    return [(number.value, text[number.start:number.end])
+            for number in numbers.found(text, words=True, uzbek_cyrillic=not model)]
+
+
+@pytest.mark.parametrize('text, found', [
+    ('У меня более чем пятилетний опыт работы', [('5', 'пятилетний')]),
+    ('Мой десятилетний опыт, двухнедельный курс', [('10', 'десятилетний'), ('2', 'двухнедельный')]),
+    ('двадцатипятилетний стаж и сорокакратный рост', [('25', 'двадцатипятилетний'), ('40', 'сорокакратный')]),
+    ('Оборот превысил полмиллиона долларов', [('500000', 'полмиллиона')]),
+    ('Loyihaning qiymati yarim milliard so‘m', [('500000000', 'yarim milliard')]),
+    ('Yiliga ming tonna non, kuniga mingta non', [('1000', 'ming'), ('1000', 'mingta')]),
+    ('Ellikdan ortiq ish o‘rni, mijozlar yigirmaga yetadi', [('50', 'Ellikdan'), ('20', 'yigirmaga')]),
+    ('Ellikka yaqin o‘rin, jamoa beshga yetadi, o‘ttizdan ortiq mijoz',
+     [('50', 'Ellikka'), ('5', 'beshga'), ('30', 'o‘ttizdan')]),
+    ('Loyiha yuz ish o‘rnini yaratadi, yuzdan ortiq mijoz', [('100', 'yuz'), ('100', 'yuzdan')]),
+    ('I doubled sales; a fivefold rise; продажи выросли вдвое; обслуживал сотню клиентов',
+     [('2', 'doubled'), ('5', 'fivefold'), ('2', 'вдвое'), ('100', 'сотню')]),
+], ids=['ru-fused', 'ru-fused-two', 'ru-fused-tens', 'ru-half-scale', 'uz-half-scale', 'uz-bare-ming', 'uz-cases',
+        'uz-cases-more', 'uz-bare-yuz', 'times-over'])
+def test_the_common_ways_a_figure_is_spoken_are_read(text, found):
+    assert read(text) == found
+
+
+@pytest.mark.parametrize('text', [
+    'последние десятилетия', 'многолетний опыт', 'полгода', 'o‘nlab mijozlar', 'yuzlab mijozlar', 'birdan',
+    'birga ishlaymiz', 'oltini', 'ming yillik tarix', 'muammo yuz berdi', 'yuzni yuvdi', 'ming afsus',
+    'a one-time fee', 'twice a week', 'hundreds of clients',
+])
+def test_vague_and_ordinary_words_are_still_not_read_as_figures(text):
+    assert read(text) == []
+
+
+@pytest.mark.parametrize('text, found', [
+    ('Jami bir million bir yuz ellik ming so‘m', [('1150000', 'bir million bir yuz ellik ming')]),
+    ('eleven thousand one hundred and forty-one', [('11141', 'eleven thousand one hundred and forty-one')]),
+    ('one hundred and one clients', [('101', 'one hundred and one')]),
+    ('two thousand one hundred people', [('2100', 'two thousand one hundred')]),
+    ('девять тысяч один рубль', [('9001', 'девять тысяч один')]),
+    ('o‘ttiz birta xodim', [('31', 'o‘ttiz birta')]),
+    ('Kuniga yuz ellik nafar mijoz', [('150', 'yuz ellik')]),
+    ('o‘n beshga yetadi', [('15', 'o‘n beshga')]),
+    ('ming besh yuz ming so‘m', [('1000', 'ming'), ('500000', 'besh yuz ming')]),
+    ('ikki ming-uch ming so‘m', [('2000', 'ikki ming'), ('3000', 'uch ming')]),
+], ids=['uz-million', 'en-thousands', 'en-and-one', 'en-one-hundred', 'ru-one-last', 'uz-birta', 'uz-bare-yuz',
+        'uz-ending', 'uz-scale-again', 'uz-range'])
+def test_a_compound_is_read_whole_never_split_into_numbers_the_customer_gave(text, found):
+    assert read(text) == found
+
+
+def test_a_compound_another_way_round_never_passes_on_the_parts_the_customer_gave():
+    for brief, written in (('Ustav kapitali 1 000 000 so‘m, aylanma 150 000 so‘m.', 'bir million bir yuz ellik ming'),
+                           ('Kafemiz 50 o‘rinli.', 'yuz ellik nafar'), ('30 nafar xodim', 'o‘ttiz birta xodim'),
+                           ('10 nafar xodim', 'o‘n beshga yetadi'), ('9000 рублей', 'девять тысяч один рубль')):
+        given = numbers.values(brief)
+        assert not all(numbers.known(number, given) for number in numbers.found(written, words=True)), written
+
+
+EN_UNITS = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve',
+            'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen']
+EN_TENS = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety']
+UZ_UNITS = ['', 'bir', 'ikki', 'uch', 'to‘rt', 'besh', 'olti', 'yetti', 'sakkiz', 'to‘qqiz']
+UZ_TENS = ['', 'o‘n', 'yigirma', 'o‘ttiz', 'qirq', 'ellik', 'oltmish', 'yetmish', 'sakson', 'to‘qson']
+RU_UNITS = ['', 'один', 'два', 'три', 'четыре', 'пять', 'шесть', 'семь', 'восемь', 'девять', 'десять',
+            'одиннадцать', 'двенадцать', 'тринадцать', 'четырнадцать', 'пятнадцать', 'шестнадцать', 'семнадцать',
+            'восемнадцать', 'девятнадцать']
+RU_TENS = ['', '', 'двадцать', 'тридцать', 'сорок', 'пятьдесят', 'шестьдесят', 'семьдесят', 'восемьдесят',
+           'девяносто']
+RU_HUNDREDS = ['', 'сто', 'двести', 'триста', 'четыреста', 'пятьсот', 'шестьсот', 'семьсот', 'восемьсот',
+               'девятьсот']
+
+
+def english(value):
+    if value >= 10 ** 6:
+        return f'{english(value // 10 ** 6)} million {english(value % 10 ** 6)}'.strip()
+    if value >= 1000:
+        joint = 'and ' if 0 < value % 1000 < 100 else ''
+        return f'{english(value // 1000)} thousand {joint}{english(value % 1000)}'.strip()
+    if value >= 100:
+        return f'{EN_UNITS[value // 100]} hundred {"and " if value % 100 else ""}{english(value % 100)}'.strip()
+    if value >= 20:
+        return EN_TENS[value // 10] + (f'-{EN_UNITS[value % 10]}' if value % 10 else '')
+    return EN_UNITS[value]
+
+
+def uzbek(value, formal):
+    """Uzbek in words, formally ("bir yuz", "bir ming") or as it is spoken ("yuz", "ming")."""
+    words = []
+    if value >= 10 ** 6:
+        words += [uzbek(value // 10 ** 6, formal), 'million']
+        value %= 10 ** 6
+    if value >= 1000:
+        if value // 1000 > 1 or formal:
+            words.append(uzbek(value // 1000, formal))
+        words.append('ming')
+        value %= 1000
+    if value >= 100:
+        if value // 100 > 1 or formal:
+            words.append(UZ_UNITS[value // 100])
+        words.append('yuz')
+        value %= 100
+    words += [UZ_TENS[value // 10], UZ_UNITS[value % 10]]
+    return ' '.join(word for word in words if word)
+
+
+def russian(value):
+    words = ['тысяча'] if value >= 1000 else []
+    value %= 1000
+    words.append(RU_HUNDREDS[value // 100])
+    value %= 100
+    words += [RU_UNITS[value]] if value < 20 else [RU_TENS[value // 10], RU_UNITS[value % 10]]
+    return ' '.join(word for word in words if word)
+
+
+def uzbek_with(text, case):
+    """`text` with a case ending on its last word, as Uzbek joins it: "ellikka", "qirqqa", "beshga", "beshdan"."""
+    if case == 'ga':
+        return text + ('ka' if text.endswith('k') else 'qa' if text.endswith('q') else 'ga')
+    return text + case
+
+
+def test_every_number_written_in_words_reads_as_itself():
+    """found(spelled(n)) == [n] for 2..1999 in each language and Uzbek's case endings, and for round amounts."""
+    wrong = []
+    for value in range(2, 2000):
+        texts = [f'{english(value)} clients', f'{russian(value)} рублей']
+        for formal in (True, False):
+            spoken = uzbek(value, formal)
+            texts += [f'{spoken} xodim', f'{spoken}ta xodim', f'{uzbek_with(spoken, "dan")} ortiq',
+                      f'{uzbek_with(spoken, "ga")} yetadi']
+        wrong += [(text, read(text)) for text in texts if [found for found, _ in read(text)] != [str(value)]]
+    for count in range(2, 1000, 37):
+        for value in (count * 1000, count * 10 ** 6, count * 10 ** 6 + 150000, count * 10 ** 6 + 1000 * count):
+            for text in (english(value), uzbek(value, True), uzbek(value, False)):
+                if [found for found, _ in read(f'{text} so‘m')] != [str(value)]:
+                    wrong.append((text, read(f'{text} so‘m')))
+    assert not wrong, wrong[:10]
+
+
+@pytest.mark.parametrize('text', [
+    'yigirma birinchi asr ko‘nikmalari', 'the twenty-first century', 'o‘n beshinchi mayda', 'o‘ttiz ikkinchi maktab',
+    'в двадцать первом веке', 'the twenty-third of May',
+])
+def test_the_tens_of_an_ordinal_are_never_read_as_a_count(text):
+    assert read(text) == []
+    assert ground_paper_of(text) == (text, [])
+
+
+def test_a_count_before_a_word_that_only_starts_like_an_ordinal_is_still_read():
+    assert read('twenty first-rate clients') == [('20', 'twenty')]
+
+
+def ground_paper_of(text):
+    from apps.studio.categories import finish
+    return finish.ground_paper(text, trusting('11-sinf o‘quvchilari uchun dars ishlanmasi'))
+
+
+def test_a_paper_reads_its_own_cyrillic_as_russian_never_as_uzbek_in_latin():
+    for text in ('Тень от дерева', 'Итоги 2024/25 уч. года', 'Саксонская династия'):
+        assert [found for found in read(text) if not found[1].isdigit() and '/' not in found[1]] == [], text
+    assert read('беш юз минг сўм', model=False) == [('500000', 'беш юз минг')]
+    assert '100' in numbers.values('Юз нафар ишчи ишлайди.'), 'a counted noun is read on the Latin form'
+
+
+def test_a_run_of_multipliers_never_makes_a_number_too_long_to_write():
+    for text in ('one ' + 'hundred ' * 2200, 'besh ' + 'yuz ' * 2200, 'a ' + 'dozen ' * 6000,
+                 'hundred thousand ' * 3000, '-'.join(['hundred'] * 2200)):
+        started = time.monotonic()
+        keys = numbers.values(text)
+        assert all(len(key) < 40 for key in keys) and time.monotonic() - started < 2
+    assert [found for found, _ in read('besh yuz yuz kishi')] == ['500']
+    assert [found for found, _ in read('one hundred hundred')] == ['100']
+
+
+def test_a_source_of_repeated_multipliers_never_fails_a_paper_or_unchecks_a_deck():
+    known = facts.trusted(draft('Ariza yozing. ' + 'bir ' + 'yuz ' * 2300))
+    assert ground('Kompaniya 2024-yilda 750 mln so‘m foyda oldi.', known)[1] == ['ground:number']
+
+
 @pytest.mark.parametrize('brief, written, kept', [
     ('2024-yil faoliyati bo‘yicha hisobot, sanasi 15.01.2025', '15.01.2024', False),
     ('2024-yil faoliyati bo‘yicha hisobot, sanasi 15.01.2025', '15.01.2025', True),
