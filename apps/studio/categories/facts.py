@@ -1415,6 +1415,25 @@ RU_VERB = re.compile(r"[а-яё]{3,}(?:[аяуеё]ет|[аяуеё]ют|ит|я
 RU_COMMON_ADJECTIVE = re.compile(r"[а-яё]{4,}(?:ый|[кгхжшщч]ий|ая|яя|ое|ее|ые|ие|ого|его|ому|ему|ую|юю|ых|их|ыми|ими)")
 
 
+# The shortest base an ending is read after (`common`), and the shortest a stem is cut to: a three-letter base made
+# names of common words ("Malika" of mal+ika, "Peter" of pet+er, "Termiz" of ter+miz, "Анна" of анн+а). A word of
+# three letters takes only a case or a plural (`SHORT_ENDINGS`): "Sexni", "Ishga", "Uylar", "Дома", "Uses".
+LEXICON_BASE = 4
+SHORT_ENDINGS = {
+    'uz': frozenset(case + more for case in ('', 'lar') for more in ('', 'ga', 'ka', 'qa', 'ni', 'ning', 'da', 'dan',
+                                                                       'dagi', 'gacha', 'dek')) - {''},
+    'ru': frozenset('а у е ы и ом ам ах ами ов ой ей ю я'.split()),
+    'en': frozenset(('s', 'es', 'ed', 'ing', "'s")),
+}
+# The endings a name takes in a sentence, folded (`_name_forms`): Uzbek cases ("Malikaga", "Toshkentdan"), the -lik
+# of a place's people ("Toshkentlik"), and the Russian cases of a name in -a ("Малике", "Маликой") and of one in a
+# consonant ("Ивана", "Иваном"). An English possessive is read off the word as typed ("Smith's"), never a plural.
+NAME_CASES = ('ga', 'ka', 'ni', 'ning', 'da', 'dan', 'dagi', 'gacha', 'dek', 'niki')
+PLACE_PEOPLE = ('lik', 'likka', 'likni', 'liklar', 'liklarga', 'liklarni', 'liklarning')
+RU_A_CASES = ('i', 'e', 'u', 'oy', 'ou', 'ey')
+RU_CASES = ('a', 'u', 'om', 'e')
+
+
 @functools.cache
 def _lexicon():
     """{language: (its common words, their stems before an ending)}, read once per process."""
@@ -1422,16 +1441,54 @@ def _lexicon():
     for language, endings in SUFFIXES.items():
         lines = (WORDS / f'{language}.txt').read_text('utf-8').splitlines()
         words = frozenset(line.strip() for line in lines if line.strip() and not line.startswith('#'))
-        stems = frozenset(word[:cut] for word in words for cut in range(3, len(word)) if word[cut:] in endings)
+        stems = frozenset(word[:cut] for word in words for cut in range(LEXICON_BASE, len(word))
+                          if word[cut:] in endings)
         found[language] = (words, stems)
     return found
+
+
+@functools.cache
+def _name_forms():
+    """(the names of words/names.txt folded, their forms with a case ending folded), read once per process."""
+    names, forms, place = set(), set(), False
+    for line in (WORDS / 'names.txt').read_text('utf-8').splitlines():
+        line = line.strip()
+        if line.startswith('#'):
+            place = place if not line.startswith('# ----') else 'places' in line.casefold()
+            continue
+        if not line:
+            continue
+        name = fold(line)
+        names.add(name)
+        forms.update(name + ending for ending in NAME_CASES + (PLACE_PEOPLE if place else ()))
+        forms.update(name[:-1] + ending for ending in RU_A_CASES) if name.endswith('a') else \
+            forms.update(name + ending for ending in RU_CASES)
+    return frozenset(names), frozenset(forms - names)
+
+
+def _named(low):
+    """Whether a word (lower case) is a name of words/names.txt, whole or with a case ending (`_name_forms`).
+
+    The name itself is one even where it is also a common word ("Umid", "Grace", "Надежда"); a form of it with an
+    ending only where the language has no such word ("Malikaga", never "Umidi", "Shirinlik", "Ширина").
+    """
+    names, forms = _name_forms()
+    possessive = re.fullmatch(r"(.{2,}?)(?:'s|s')", low)
+    if fold(low) in names or (possessive is not None and fold(possessive.group(1)) in names):
+        return True
+    if fold(low) not in forms:
+        return False
+    return not any(low in _lexicon()[language][0] for language in SUFFIXES)
 
 
 def common(word):
     """Whether a capitalised word is a common word of Uzbek, Russian or English rather than a name: one of the
     lexicon's (words/*.txt) with or without an ending, a number word, a plural or a Russian verb (no name is one:
-    "O‘quvchilar", "Соблюдает")."""
+    "O‘quvchilar", "Соблюдает"), and never a given name, a surname, a place or a brand of words/names.txt
+    (`_named`), even one that is also a common word: the owner's tie-break, a blank before a leak."""
     low = normalised(word).casefold()
+    if _named(low):
+        return False
     if numbers._spelled_role(low, False) is not None or numbers.ORDINAL.fullmatch(low):
         return True
     cyrillic = re.search('[а-яё]', low) is not None
@@ -1447,13 +1504,21 @@ def common(word):
         if low in words or low in stems:
             return True
         endings = SUFFIXES[language]
-        for cut in range(3, len(low)):
+        if len(low) > 3 and low[:3] in words and low[3:] in SHORT_ENDINGS[language]:
+            return True
+        for cut in range(LEXICON_BASE, len(low)):
             base = low[:cut]
             if low[cut:] in endings and (base in words or base in stems or (language == 'en' and (
                     base + 'e' in words or (low[cut:] in ('es', 'ed') and base.endswith('i')
                                             and base[:-1] + 'y' in words)))):
                 return True  # "Trading" of "trade", "Complies" of "comply"
     return False
+
+
+def _compound(text, run):
+    """Whether a run's one word joins a lower-case word with a hyphen ("Long-term", "Wood-fired"): no lone name."""
+    return len(run) == 1 and re.match(r"-[^\W\d_]", text[run[0][1]:]) is not None \
+        and text[run[0][1] + 1].islower()
 
 
 def _unknown_runs(text, trusted, translated=False, *, strict=False, orgs=False, invented=None, legal=(), lone=False):
@@ -1469,7 +1534,7 @@ def _unknown_runs(text, trusted, translated=False, *, strict=False, orgs=False, 
                                       or (len(run) > 1 and all(_letters(word) < 2 for _, _, word in run[1:]))
                                       or _surname(run[0][2]) or (orgs and _organisation(text, run))
                                       or (invented is not None and invented.has(fold(run[0][2])))
-                                      or (lone and not common(run[0][2]))):
+                                      or (lone and not common(run[0][2]) and not _compound(text, run))):
             first_free = False
         for position, (start, end, word) in enumerate(run):
             if _letters(word) < 2 or (position == 0 and first_free) or start in legal:
