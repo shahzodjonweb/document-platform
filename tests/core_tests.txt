@@ -1522,3 +1522,12 @@ tests/test_category_facts.py::test_a_translated_source_by_the_customers_author_i
 tests/test_category_finish_pdf.py::test_a_guarded_titles_author_under_any_title_page_label_goes[ru-vypolnila]
 tests/test_category_finish_pdf.py::test_a_guarded_titles_author_under_any_title_page_label_goes[uz-ilmiy-rahbar]
 tests/test_category_finish_pdf.py::test_a_topic_that_only_starts_with_a_label_word_stays[ru-topic]
+
+# Stage-2 re-audit, names beside figures: a paper's sum, reference, phone or date has the names beside its figures
+# read, so an invented bank in the seller's requisites, a lender beside the funding or a person beside the phone is
+# never kept; the value's own label word and the customer's bank stay, translated or not
+tests/test_category_facts.py::test_a_paper_facts_figure_never_carries_a_name_the_customer_did_not_give[bank-in-requisites]
+tests/test_category_facts.py::test_a_figures_own_label_and_the_customers_bank_stay_in_a_translated_paper[requisites]
+tests/test_category_facts.py::test_a_figures_own_label_and_the_customers_bank_stay_in_a_translated_paper[label-phone]
+tests/test_category_finish_pdf.py::test_an_offers_requisites_and_phone_never_carry_an_invented_bank_or_person
+tests/test_category_finish_pdf.py::test_a_plans_external_funding_never_names_an_invented_lender

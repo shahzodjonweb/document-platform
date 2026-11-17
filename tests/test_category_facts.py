@@ -1080,3 +1080,33 @@ def test_a_translated_source_by_the_customers_author_in_full_stays():
     known = trusting('Источники: Каримов Абдулла, учебник по цифровому маркетингу. Курсовая на узбекском.')
     item = 'Karimov Abdulla. Raqamli marketing strategiyalari.'
     assert verify_items([item], known, translated=True) == ([item], [])
+
+
+# ---------------------------------------------------------------- names beside figures (stage-2 re-audit)
+
+
+OFFER_UZ = ('Oqtosh Mebel MChJ nomidan tijorat taklifi. h/r 20208000900123456001, MFO 00440, STIR 301234567, '
+            'telefon +998 90 123 45 67.')
+
+
+@pytest.mark.parametrize('value, kind', [
+    ('h/r 20208000900123456001, «Kapitalbank» ATB Toshkent filiali, MFO 00440, STIR 301234567', 'ref'),
+    ('+998 90 123 45 67 (Aziz Karimov)', 'phone'),
+    ('200 mln so‘m (Hamkorbank krediti)', 'money'),
+], ids=['bank-in-requisites', 'person-beside-phone', 'lender-beside-sum'])
+def test_a_paper_facts_figure_never_carries_a_name_the_customer_did_not_give(value, kind):
+    known = trusting(OFFER_UZ + ' Kredit 200 mln so‘m.')
+    assert not supported(value, kind, known, strict=True, words=True)
+    assert supported(value, kind, known), 'a deck slot keeps its reading'
+
+
+@pytest.mark.parametrize('value, kind', [
+    ('account 20208000900123456001, Kapitalbank, MFO 00440, TIN 301234567', 'ref'),
+    ('Average check UZS 220,000', 'money'), ('As of 30 June', 'date'), ('Mobile: +998 90 123 45 67', 'phone'),
+    ('Year 7', 'number'), ('Contract No. 125', 'ref'),
+], ids=['requisites', 'label-money', 'label-date', 'label-phone', 'label-number', 'label-ref'])
+def test_a_figures_own_label_and_the_customers_bank_stay_in_a_translated_paper(value, kind):
+    known = trusting('Коммерческое предложение на английском. Р/с 20208000900123456001, Капиталбанк, МФО 00440, '
+                     'ИНН 301234567. Средний чек 220 000 сум. Договор № 125. Год 7. На 30 июня. '
+                     'Моб. +998 90 123 45 67.')
+    assert supported(value, kind, known, translated=True, strict=True, words=True)

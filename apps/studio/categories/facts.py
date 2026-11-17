@@ -116,6 +116,8 @@ ALLOWED = (
     "mchj aj xk qk yatt ooo ao pao ip llc ltd inc jsc plc gmbh ооо оао пао зао ао ип "
     "usd uzs eur rub gbp cny kzt so'm сум сума сумов рубль рубля рублей "
     "ceo cfo cto coo hr it pr qa kpi smm crm erp api ai ikt ict id qqs nds ндс vat inn stir инн "
+    # The words a seller's bank details carry: "MFO 00440", "TIN 301234567", "«Kapitalbank» ATB", "БИК", "IBAN".
+    "mfo мфо tin atb akb aitb oked окэд bik бик swift iban bic kpp кпп okpo окпо ogrn огрн "
     "pdf docx xlsx pptx kg km mb gb "
     "yanvar fevral mart aprel may iyun iyul avgust sentabr sentyabr oktabr oktyabr noyabr dekabr "
     "january february march april june july august september october november december "
@@ -545,6 +547,10 @@ def _names_known(text, trusted, translated=False):
     return True
 
 
+# The kinds whose values are figures first: read for their numbers, and in a paper's facts for the names beside them.
+NAMED_NUMBERS = ('date', 'number', 'money', 'ref', 'phone')
+
+
 def supported(value, kind, trusted, *, translated=False, strict=False, words=False):
     """Whether a fact of this kind is the customer's (architecture 4, "Verifying").
 
@@ -557,7 +563,8 @@ def supported(value, kind, trusted, *, translated=False, strict=False, words=Fal
     the Russian spellings of o and o‘ allowed (`respellings`).
 
     `strict` is for a paper's facts, where translation never switches the
-    names off: a paper draws its org, place, line and list values in a
+    names off, and a date, number, sum, reference or phone has the names
+    beside its figures read too (`NAMED_NUMBERS`): a paper draws its org, place, line and list values in a
     letterhead, a title page, the minutes' head and its signature rows, and
     those hold people ("Rais: …", "Director | …", a list of participants) as
     often as a person field does. With `translated` they are then read as a
@@ -587,6 +594,12 @@ def supported(value, kind, trusted, *, translated=False, strict=False, words=Fal
         return False
     if kind in ('person', 'org', 'place', 'line') and (strict or not translated or kind == 'person'):
         return _names_known(rest, trusted, translated)
+    if strict and kind in NAMED_NUMBERS:
+        # A paper's sum, reference, phone or date may carry a name beside its figures: the bank of "h/r …,
+        # «Kapitalbank» ATB, MFO 00440", the lender of "200 mln so‘m (Hamkorbank krediti)", the person of "+998 90 123
+        # 45 67 (Aziz Karimov)". Its names are read as a title-page line's are (people_known), so the value's own
+        # opening word ("Mobile:", "Average check", "Договор №") stays a label.
+        return people_known(rest, trusted, translated=translated)
     return True
 
 

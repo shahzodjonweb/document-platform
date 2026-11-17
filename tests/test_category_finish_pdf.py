@@ -1048,3 +1048,31 @@ def test_a_topic_that_only_starts_with_a_label_word_stays(locale, title):
     data = draft(test, prompt='Mustaqil ish yozib bering: ' + title, locale=locale, length=test.length['default'])
     made, _, codes = finished(data, answer(data, title=title))
     assert made['title'] == title and 'ground:name' not in codes
+
+
+# ---------------------------------------------------------------- stage-2 re-audit: names beside figures
+
+
+def test_an_offers_requisites_and_phone_never_carry_an_invented_bank_or_person():
+    offer = catalogue.get('pdf.biz.tijorat_taklifi')
+    prompt = ('Oqtosh Mebel MChJ nomidan ofis mebeli bo‘yicha tijorat taklifi yozing. Rekvizitlar: h/r '
+              '20208000900123456001, MFO 00440, STIR 301234567. Telefon +998 90 123 45 67.')
+    data = draft(offer, prompt=prompt, length=1)
+    made, warnings, codes = finished(data, answer(data, facts={'items': [
+        {'label': 'seller_requisites',
+         'text': 'h/r 20208000900123456001, «Kapitalbank» ATB Toshkent filiali, MFO 00440, STIR 301234567'},
+        {'label': 'seller_phone', 'text': '+998 90 123 45 67 (Aziz Karimov)'}]}))
+    assert 'seller_requisites' not in facts_of(made) and 'seller_phone' not in facts_of(made)
+    assert set(codes) == {'fact:seller_requisites', 'fact:seller_phone'} and warnings == [finish.FACTS_BLANKED]
+    made, _, codes = finished(data, answer(data, facts={'items': [
+        {'label': 'seller_requisites', 'text': 'h/r 20208000900123456001, MFO 00440, STIR 301234567'},
+        {'label': 'seller_phone', 'text': '+998 90 123 45 67'}]}))
+    assert facts_of(made)['seller_phone'] == '+998 90 123 45 67' and codes == []
+
+
+def test_a_plans_external_funding_never_names_an_invented_lender():
+    plan = catalogue.get('pdf.biz.biznes_reja')
+    data = draft(plan, prompt=PLAN_UZ + ' Kredit 200 mln so‘m olinadi.', length=6)
+    made, _, codes = finished(data, answer(data, facts={'items': [
+        {'label': 'external_funding', 'text': '200 mln so‘m (Hamkorbank krediti)'}]}))
+    assert 'external_funding' not in facts_of(made) and codes == ['fact:external_funding']
