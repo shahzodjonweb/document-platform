@@ -1089,3 +1089,39 @@ tests/test_category_edits.py::test_a_new_total_is_read_for_a_counted_entry_only[
 tests/test_category_edits.py::test_a_tests_questions_are_added_or_cut_and_never_taken_away
 tests/test_category_edits.py::test_a_new_total_sets_a_counted_papers_pages_and_keeps_its_parts
 tests/test_category_edits.py::test_a_paper_asked_for_as_slides_alone_is_answered_without_a_change
+# The paper engine (R0): a category paper is drawn in its template only when every block is registered; a block
+# that raises or breaks the layout is drawn plain, a build that fails anyway or an unknown template gives the
+# emergency fallback marked template_fallback; the fixed rule takes a page with its closing group whole, the count
+# rule cuts only elastic prose; the contents print the pages the headings land on
+tests/test_paper_engine.py::test_ready_needs_a_pdf_category_whose_template_blocks_are_all_registered
+tests/test_paper_engine.py::test_a_groups_placements_are_drawn_once_per_instance_the_content_holds_in_order
+tests/test_paper_engine.py::test_every_when_predicate
+tests/test_paper_engine.py::test_facts_blanks_and_clock_values
+tests/test_paper_engine.py::test_text_rules_set_house_apostrophes_and_glue
+tests/test_paper_engine.py::test_a_longer_fixed_paper_tightens_then_takes_a_page_with_its_closing_group_whole
+tests/test_paper_engine.py::test_a_count_paper_cuts_only_its_elastic_prose_when_no_step_holds_it
+tests/test_paper_engine.py::test_the_page_rules_choose_steps_as_specified
+tests/test_paper_engine.py::test_the_contents_print_the_pages_the_headings_land_on
+tests/test_paper_engine.py::test_a_block_that_raises_is_drawn_by_its_fallback
+tests/test_paper_engine.py::test_a_placement_that_breaks_the_layout_is_drawn_plain
+tests/test_paper_engine.py::test_a_build_that_fails_whatever_is_drawn_plain_gives_the_emergency_fallback
+tests/test_paper_engine.py::test_an_unknown_template_gives_the_emergency_fallback_or_the_callers
+# Paper engine after review: a heading and a short part stay with the closing group on the page they fit, a heading
+# stays with the contents, a request longer than two pages still ends with its enclosures and signatures, an empty
+# placement after a page break adds no page, a placement that broke one instance is plain in that one only, and
+# customer text never reaches the log
+tests/test_paper_engine.py::test_a_heading_and_a_one_paragraph_part_before_the_closing_group_stay_on_the_page_they_fit[fixed]
+tests/test_paper_engine.py::test_a_heading_and_a_one_paragraph_part_before_the_closing_group_stay_on_the_page_they_fit[flow]
+tests/test_paper_engine.py::test_a_heading_before_the_contents_stays_where_it_fits
+tests/test_paper_engine.py::test_a_request_paragraph_longer_than_two_pages_ends_with_its_closing_group
+tests/test_paper_engine.py::test_a_page_break_before_a_placement_that_draws_nothing_adds_no_page
+tests/test_paper_engine.py::test_a_placement_that_breaks_one_instance_is_drawn_plain_in_that_instance_only
+tests/test_paper_engine.py::test_customer_text_never_reaches_the_log
+# Paper engine after the second review: a keep group no page can hold starts where it stands, a gap alone after a
+# page break adds no page, the head left before a closing group is measured, and the final passes start from the
+# chosen build and record a page added or numbers that did not settle
+tests/test_paper_engine.py::test_a_spacer_alone_after_a_page_break_adds_no_page
+tests/test_paper_engine.py::test_a_keep_group_taller_than_any_page_starts_where_it_stands
+tests/test_paper_engine.py::test_the_head_left_before_a_closing_group_is_measured_not_counted
+tests/test_paper_engine.py::test_a_final_pass_that_adds_a_page_is_longer_than_quoted
+tests/test_paper_engine.py::test_the_final_passes_start_from_the_chosen_build_and_say_when_they_did_not_settle
