@@ -78,12 +78,22 @@ LONG = re.compile(r"(?<![\d.,])\d{9,15}(?![\d]|[.,]\d)")
 GROUPED = re.compile(rf"(?<![\d.,])\d{{1,3}}(?:{GAP}\d{{3}})+(?:[.,]\d+)?(?![\d]|[.,]\d)")
 DOTTED = re.compile(r"(?<![\d.,])\d+(?:[.,]\d+)+(?![\d]|[.,]\d)")
 PLAIN = re.compile(r"\d+")
-SCALE = re.compile(r"[ \u00a0]*(ming|минг|тыс\w*\.?|thousand\w*|mln\.?|млн\.?|million\w*|миллион\w*|mlrd\.?|млрд\.?"
-                   r"|milliard\w*|миллиард\w*|billion\w*|trln\.?|трлн\.?|trillion\w*)(?!\w)|(k)(?![^\W\d_])",
-                   re.IGNORECASE)
+# A thin or narrow no-break space before the scale word is a space too ("1,5\u202fmln"), and "bn" and "mn" are the
+# English papers' billion and million ("$1.2bn"): read as the bare number, a changed scale passed on any number the
+# customer gave.
+SCALE = re.compile(r"[ \u00a0\u202f\u2009]*(ming|минг|тыс\w*\.?|thousand\w*|mln\.?|млн\.?|million\w*|миллион\w*"
+                   r"|mlrd\.?|млрд\.?|milliard\w*|миллиард\w*|billion\w*|trln\.?|трлн\.?|trillion\w*|bn|mn)(?!\w)"
+                   r"|(k)(?![^\W\d_])", re.IGNORECASE)
 SCALES = (('ming', 3), ('минг', 3), ('тыс', 3), ('thousand', 3), ('k', 3), ('mln', 6), ('млн', 6), ('million', 6),
           ('миллион', 6), ('mlrd', 9), ('млрд', 9), ('milliard', 9), ('миллиард', 9), ('billion', 9), ('trln', 12),
-          ('трлн', 12), ('trillion', 12))
+          ('трлн', 12), ('trillion', 12), ('bn', 9), ('mn', 6))
+# "$3M", "€3m", "$1.2B", "3M USD": a capital M or B, or a small m, glued to an amount is its million or billion only
+# beside a currency, since "100 m" is metres and "9B sinf" a class.
+GLUED_SCALE = re.compile(r"([MBm])(?![^\W\d_])")
+GLUED_POWER = {'M': 6, 'm': 6, 'B': 9}
+CURRENCY_BEFORE = re.compile(r"[$€£₽¥][ \u00a0]?$")
+CURRENCY_AFTER = re.compile(r"[ \u00a0\u202f\u2009]*(?:usd|eur|gbp|rub|uzs|so['‘’ʻ]?m|sum|dollar\w*|euro\w*|evro\w*"
+                            r"|руб\w*|долл\w*|евро|сум\w*)(?![^\W\d_])", re.IGNORECASE)
 # An e-mail and a link as facts.py reads them (and as this module skips them), written to be read in time linear in
 # the text: a file of long runs of letters, dots and hyphens made the plain forms try every start in a run and read
 # the whole run from each, about 15 s for one 130,000-character source, inside the job's lease. Each run is now read
@@ -257,10 +267,14 @@ def _small(text, start, month_start, month_end):
     return not (after or before)
 
 
-def _scale(text, end):
-    """(power of ten, end) of the scale word right after a number ("1,5 mln", "20 ming"), or (0, end)."""
+def _scale(text, end, start=None):
+    """(power of ten, end) of the scale word right after a number ("1,5 mln", "20 ming", "$3M"), or (0, end)."""
     match = SCALE.match(text, end)
     if not match:
+        glued = GLUED_SCALE.match(text, end)
+        if glued and start is not None and (CURRENCY_BEFORE.search(text[max(0, start - 2):start])
+                                            or CURRENCY_AFTER.match(text, glued.end())):
+            return GLUED_POWER[glued.group(1)], glued.end()
         return 0, end
     word = (match.group(1) or match.group(2)).lower().rstrip('.')
     for stem, power in SCALES:
@@ -411,7 +425,7 @@ class _Reader:
                     # "1.2.3": not one number; each of its parts must be known.
                     self.add(*match.span(), 'integer', canon(found[0]), [{canon(item)} for item in found])
                     continue
-                power, end = _scale(text, match.end())
+                power, end = _scale(text, match.end(), match.start())
                 needs = {canon(item) for item in found}
                 if kind == 'decimal' and pattern is DOTTED and re.fullmatch(r'\d{1,2}[.]\d{1,2}', token):
                     day, month = token.split('.')

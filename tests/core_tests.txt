@@ -1443,3 +1443,11 @@ tests/test_category_finish_pdf.py::test_a_number_in_words_the_customer_gave_is_k
 tests/test_category_facts.py::test_a_numeric_dates_year_is_tied_to_its_day_and_month[other-year]
 tests/test_category_facts.py::test_a_numeric_dates_year_is_tied_to_its_day_and_month[written-apart]
 tests/test_category_finish_pdf.py::test_a_reports_date_moved_to_another_year_the_brief_names_is_not_kept
+
+# Stage-2 re-audit, scales: "bn", "mn", and M, B or m glued to an amount beside a currency are its scale, so an
+# invented "$1.2bn" or "$3M" never passes on a bare number the customer gave; a thin or narrow space before a scale
+# word is a space; "100 m" and "9B sinf" keep their reading
+tests/test_category_facts.py::test_a_scale_written_short_or_glued_to_a_currency_is_read[bn]
+tests/test_category_facts.py::test_a_scale_written_short_or_glued_to_a_currency_is_read[M]
+tests/test_category_facts.py::test_a_scale_written_short_or_glued_to_a_currency_is_read[narrow-space]
+tests/test_category_facts.py::test_a_scale_written_short_or_glued_to_a_currency_is_read[metres-and-class]

@@ -720,3 +720,19 @@ def test_a_counted_copy_shares_the_respelled_words_rather_than_folding_the_sourc
 ], ids=['other-year', 'same', 'iso', 'no-year', 'written-with-year', 'written-apart', 'year-not-given', 'dotted'])
 def test_a_numeric_dates_year_is_tied_to_its_day_and_month(brief, written, kept):
     assert all(numbers.known(number, numbers.values(brief)) for number in numbers.found(written)) is kept
+
+
+@pytest.mark.parametrize('brief, written, kept', [
+    ('I raised 1.2 million dollars.', 'I raised $1.2bn.', False),
+    ('I raised 1.2 million dollars.', 'I raised $1.2B.', False),
+    ('Our team has 3 people.', 'We raised $3M.', False),
+    ('Budget 5 thousand dollars.', 'Budget €5m.', False),
+    ('Narx 5 so‘m.', 'Narx 5 mlrd so‘m.', False),
+    ('I raised 1.2 billion dollars.', 'I raised $1.2bn.', True),
+    ('$2M seed round', 'a seed round of 2 million dollars', True),
+    ('Kredit 1 500 000 so‘m', 'Kredit 1,5\u202fmln so‘m', True),
+    ('Kredit 1 500 000 so‘m', 'Kredit 1,5\u2009mln so‘m', True),
+    ('Masofa 100 m, 9B sinf', '100 m masofa, 9B sinf', True),
+], ids=['bn', 'B', 'M', 'm', 'mlrd', 'bn-given', 'M-given', 'narrow-space', 'thin-space', 'metres-and-class'])
+def test_a_scale_written_short_or_glued_to_a_currency_is_read(brief, written, kept):
+    assert all(numbers.known(number, numbers.values(brief)) for number in numbers.found(written)) is kept
