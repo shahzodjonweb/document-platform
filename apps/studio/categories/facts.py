@@ -442,8 +442,8 @@ def _texts(content):
     return [text for _, text in _fields(content)] if isinstance(content, dict) else []
 
 
-def _held(content, entry):
-    """The texts of an earlier version whose values were held to the customer's words when it was made.
+def _held(content, entry, translated=False):
+    """The words of an earlier version that were held to the customer's words when it was made.
 
     That is the `facts` section, the grounded parts, the customer's and the
     template's slots and the verified sources. Guarded prose and deck draft
@@ -451,17 +451,72 @@ def _held(content, entry):
     written there must never become the customer's on the next change. A deck's
     sections are `s1..sN` and its slot mapping may no longer hold after the
     customer edited slides, so they resolve to no part and give nothing here.
+
+    Only what a check read is held, so nothing it let through by design comes
+    back as the customer's on the next change: a person's, organisation's,
+    place's, line's or list's fact whole; a figure's (date, number, money,
+    ref, phone) and a fact-led paper's text without the opening word its names
+    check left free; a guarded paper's text, a fact of no field and a sources
+    item verified in translation by their numbers and addresses only; and a
+    grounded part without each sentence's, cell's or item's free first word
+    (`_checked_only`). An invented "Hamkorbank krediti" cell or a translated
+    reference's publisher never makes the next version's loan_bank or
+    university the customer's.
     """
     if entry is None or not isinstance(content, dict):
         return []
-    def kept(section):
+    led = any(part.get('grounded') for part in entry.parts)
+    held = []
+    for section in content.get('sections') or []:
+        if not isinstance(section, dict):
+            continue
         if section.get('id') == 'facts':
-            return True
+            for item in section.get('items') or []:
+                if not isinstance(item, dict):
+                    continue
+                field = entry.field(str(item.get('label') or '').strip())
+                kind = field['kind'] if field is not None else None
+                for text in (item.get('text'), item.get('value')):
+                    if not isinstance(text, str) or not text.strip():
+                        continue
+                    if kind in ('person', 'org', 'place', 'line', 'list', 'email', 'choice', 'flag', 'file') \
+                            or (field is not None and (field.get('derived_from') or field.get('clock'))):
+                        held.append(text)
+                    elif kind in NAMED_NUMBERS or (kind == 'text' and led):
+                        held.append(_checked_only(text))
+                    else:
+                        held.append(_figures_only(text))
+            continue
         part = entry.part(section.get('id'))
-        return bool(part) and bool(part.get('grounded') or part.get('kind') == 'sources'
-                                   or part.get('source') in ('customer', 'template'))
-    sections = [section for section in content.get('sections') or [] if isinstance(section, dict) and kept(section)]
-    return [text for _, text in _fields({'sections': sections}) if text]
+        if not part:
+            continue
+        if part.get('kind') == 'sources':
+            texts = [text for _, text in _fields({'sections': [section]}) if text]
+            held += [_figures_only(text) for text in texts] if translated else texts
+        elif part.get('grounded') or part.get('source') in ('customer', 'template'):
+            held += [_checked_only(text) for _, text in _fields({'sections': [section]}) if text]
+    return [text for text in held if text.strip()]
+
+
+def _checked_only(text):
+    """`text` without the words no names check read: each sentence's, cell's or item's free first word (`_names`)."""
+    spans = []
+    for run in _runs(text):
+        start, end, word = run[0]
+        if not _starts(text, start) or _after_colon(text, start) or _surname(word) or _organisation(text, run) \
+                or (len(run) > 1 and all(_letters(other) < 2 for _, _, other in run[1:])):
+            continue
+        spans.append((start, end))
+    for start, end in reversed(spans):
+        text = text[:start] + ' ' + text[end:]
+    return text
+
+
+def _figures_only(text):
+    """Only the numbers and the addresses of `text`, as a check that read nothing else held it."""
+    kept = [text[number.start:number.end] for number in numbers.found(text, words=True)]
+    kept += [match.group(0) for pattern in (EMAIL, HANDLE, LINK) for match in pattern.finditer(text)]
+    return ' ; '.join(kept)
 
 
 def _fields(content):
@@ -492,6 +547,17 @@ def _catalogue_words(entry):
     return found
 
 
+def _translated(data, entry):
+    """Whether a paper is written in another language than its message (finish._translated, read the same way)."""
+    if entry is None:
+        return False
+    from ..language import written_in
+    revision = data.get('revision') or {}
+    said = written_in(revision.get('original_prompt') or data.get('prompt') or '')
+    locale = data.get('output_locale') if data.get('output_locale') in ('uz', 'ru', 'en') else 'en'
+    return bool(said) and said != locale
+
+
 def trusted(data):
     """Everything the customer has said in this draft, and the words of its category no one's facts are in."""
     from . import catalogue
@@ -510,8 +576,9 @@ def trusted(data):
     # document it went into. Only the parts held to the customer's words are read back as theirs (`_held`); the whole
     # earlier text may still be quoted or cited, never mined for names and numbers.
     earlier = [revision.get('before'), revision.get('base_content')]
+    translated = _translated(data, entry)
     for content in earlier:
-        parts += _held(content, entry)
+        parts += _held(content, entry, translated)
     wording = '\n'.join(text for content in earlier for text in _texts(content) if text)
     return trusting('\n'.join(str(part) for part in parts if part), allowed=_catalogue_words(entry), wording=wording)
 

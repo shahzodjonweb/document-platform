@@ -1541,3 +1541,9 @@ tests/test_category_finish_pdf.py::test_a_plans_bank_the_customer_named_opens_a_
 tests/test_category_finish_pdf.py::test_a_letters_rejected_employer_or_institution_never_opens_its_sentences
 tests/test_category_finish_pdf.py::test_a_reports_rejected_organisation_never_opens_its_summary[en-from-ru]
 tests/test_category_finish_pdf.py::test_a_lessons_rejected_teacher_is_not_named_in_its_guarded_stages_or_title
+
+# Stage-2 re-audit, what a change reads back: an earlier version gives back only what a check read, so a free first
+# word, a guarded topic's names or a translated reference's publisher never becomes the customer's on the next change
+tests/test_category_facts.py::test_a_word_no_names_check_read_is_never_read_back_as_the_customers
+tests/test_category_facts.py::test_a_guarded_papers_topic_and_a_translated_reference_give_back_only_their_figures
+tests/test_category_finish_pdf.py::test_a_translated_course_papers_invented_publisher_never_becomes_its_university_after_a_change

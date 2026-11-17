@@ -421,7 +421,8 @@ def test_the_categorys_own_words_are_allowed_but_its_made_up_examples_never_are(
 
 def test_an_earlier_version_is_trusted_only_where_it_was_held_to_the_customers_words():
     before = {'title': 'Test', 'sections': [
-        {'id': 'facts', 'layout': 'list', 'items': [{'label': 'teacher', 'text': 'Sobirova Gulnora'}]},
+        {'id': 'facts', 'layout': 'list', 'items': [{'label': 'school', 'text': 'Sobirova Gulnora nomidagi maktab'},
+                                                    {'label': 'teacher', 'text': 'Rasulova Iroda'}]},
         {'id': 'passage', 'heading': 'Matn', 'body': 'Matnni Jumanazarov Bekzod 1987-yilda yozgan. U '
                                                      '«bilim har bir yurtning eng katta boyligi» degan.'}]}
     data = {'prompt': 'Ona tili fanidan test', 'options': {'category': 'pdf.test'},
@@ -430,6 +431,8 @@ def test_an_earlier_version_is_trusted_only_where_it_was_held_to_the_customers_w
     known = facts.trusted(data)
     # The facts section was held to the customer's words when it was made; the passage is the model's own prose.
     assert supported('Sobirova Gulnora', 'person', known)
+    # A value under a label that is no field of the entry was held to nothing: only its figures could be.
+    assert not supported('Rasulova Iroda', 'person', known)
     assert ground('Testni Jumanazarov Bekzod 1987-yilda tuzgan.', known) == ('Testni ____-yilda tuzgan.',
                                                                               ['ground:number', 'ground:name'])
     # Its quotations may still be repeated in a later version.
@@ -1110,3 +1113,43 @@ def test_a_figures_own_label_and_the_customers_bank_stay_in_a_translated_paper(v
                      'ИНН 301234567. Средний чек 220 000 сум. Договор № 125. Год 7. На 30 июня. '
                      'Моб. +998 90 123 45 67.')
     assert supported(value, kind, known, translated=True, strict=True, words=True)
+
+
+# ---------------------------------------------------------------- what a change reads back (stage-2 re-audit)
+
+
+PLAN_CHANGE = ('Toshkentda nonvoyxona ochish bo‘yicha biznes-reja yozib bering. Direktor Qodirova Malika. Bankdan '
+               '200 mln so‘m kredit olamiz.')
+
+
+def changed(before, prompt=PLAN_CHANGE, category='pdf.biz.biznes_reja', locale='uz'):
+    return facts.trusted({'prompt': prompt, 'output_locale': locale, 'options': {'category': category},
+                          'revision': {'request': 'Moliyalashtirish bo‘limini batafsilroq yozing.',
+                                       'original_prompt': prompt, 'before': before}})
+
+
+def test_a_word_no_names_check_read_is_never_read_back_as_the_customers():
+    before = {'title': 'Biznes-reja', 'sections': [
+        {'id': 'facts', 'layout': 'list', 'items': [
+            {'label': 'director', 'text': 'Qodirova Malika'},
+            {'label': 'external_funding', 'text': 'Korzinka: 200 mln so‘m'}]},
+        {'id': 'finance_sources', 'layout': 'table', 'items': [
+            {'label': 'Makro krediti', 'text': '200 mln so‘m', 'value': ''}]},
+        {'id': 'summary_lead', 'body': 'Sardor loyihani boshqaradi. Kredit Qodirova Malika nomiga olinadi.'}]}
+    known = changed(before)
+    for invented in ('Korzinka', 'Makro', 'Sardor'):
+        assert not known.person(invented), invented
+    assert known.person('Qodirova') and known.person('Malika')
+    assert '200000000' in known.values, 'a figure that was checked is still the customer\'s'
+
+
+def test_a_guarded_papers_topic_and_a_translated_reference_give_back_only_their_figures():
+    before = {'title': 'Kurs ishi', 'sections': [
+        {'id': 'facts', 'layout': 'list', 'items': [
+            {'label': 'topic', 'text': 'Kredit riskini boshqarish («Hamkorbank» ATB misolida), 2024'}]},
+        {'id': 'references', 'layout': 'list', 'items': [
+            {'label': '', 'text': 'Kichik biznes iqtisodiyoti. Westminster University Press.', 'value': ''}]}]}
+    prompt = 'Напишите курсовую работу на узбекском языке о кредитном риске в коммерческих банках.'
+    known = changed(before, prompt=prompt, category='pdf.kurs_ishi')
+    assert not known.person('Hamkorbank') and not known.person('Westminster')
+    assert '2024' in known.values

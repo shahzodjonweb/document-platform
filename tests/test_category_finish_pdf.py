@@ -1168,3 +1168,21 @@ def test_a_lessons_rejected_teacher_is_not_named_in_its_guarded_stages_or_title(
                                                          'haqida qisqa suhbat.')
     assert made['title'] == 'Kasrlarni qo‘shish. ____'
     assert {'fact:teacher', 'ground:name'} <= set(codes) and warnings == [finish.FACTS_BLANKED]
+
+
+# ---------------------------------------------------------------- stage-2 re-audit: a change reads back
+
+
+def test_a_translated_course_papers_invented_publisher_never_becomes_its_university_after_a_change():
+    paper = catalogue.get('pdf.kurs_ishi')
+    prompt = 'Напишите курсовую работу на узбекском о малом бизнесе в регионах.'
+    data = draft(paper, prompt=prompt, length=10)
+    first, _, codes = finished(data, answer(data, references={'items': [
+        {'label': '1', 'text': 'Kichik biznes iqtisodiyoti. Westminster University Press.', 'value': ''}]},
+        facts={'items': [{'label': 'university', 'text': 'Westminster University'}]}))
+    assert 'university' not in facts_of(first) and 'fact:university' in codes
+    data = draft(paper, prompt=prompt, length=10)
+    data['revision'] = {'request': 'Сделайте введение подробнее.', 'original_prompt': prompt, 'before': first}
+    made, _, codes = finished(data, answer(data, facts={'items': [
+        {'label': 'university', 'text': 'Westminster University'}]}))
+    assert 'university' not in facts_of(made) and 'fact:university' in codes
