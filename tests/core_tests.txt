@@ -1987,3 +1987,5 @@ tests/test_category_grounding_matrix.py::test_grounding_matrix[names-a-rare-comm
 tests/test_category_grounding_matrix.py::test_grounding_matrix[names-a-rare-common-word-opening-a-sentence-ru-accepted_false_blank]
 tests/test_category_grounding_matrix.py::test_grounding_matrix[names-a-rare-common-word-opening-a-sentence-uz-to-en-accepted_false_blank]
 tests/test_category_grounding_matrix.py::test_grounding_matrix[author-tail-by-a-title-phrase-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[sources-genres-for-sources-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[sources-the-customers-book-with-its-publishers-words-uz-keep]

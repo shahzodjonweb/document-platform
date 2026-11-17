@@ -979,6 +979,12 @@ CASES = [
          translated=True),
     item('sources-the-topic-echoed-as-a-title-uz-blank', BLANK, 'pdf.kurs_ishi', COURSE_UZ, 'uz', 'references',
          'Raqamli marketing strategiyalari: o‘quv qo‘llanma.', gone=('o‘quv qo‘llanma',)),
+    # Round 4: a paper's source is the customer's word for word, its publisher's and pages' words aside.
+    item('sources-genres-for-sources-uz-blank', BLANK, 'pdf.kurs_ishi', COURSE_UZ, 'uz', 'references',
+         'Marketing bo‘yicha darsliklar va o‘quv qo‘llanmalar.', gone=('darsliklar',)),
+    item('sources-the-customers-book-with-its-publishers-words-uz-keep', KEEP, 'pdf.kurs_ishi',
+         COURSE_UZ + ' Adabiyot: Karimov A. Raqamli marketing. Toshkent: Fan, 2021.', 'uz', 'references',
+         'Karimov A. Raqamli marketing. — Toshkent: Fan nashriyoti, 2021.'),
     item('sources-invented-author-with-initials-uz-blank', BLANK, 'pdf.kurs_ishi', COURSE_UZ, 'uz', 'references',
          'Karimov A. Raqamli marketing. — T.: Fan, 2021.', gone=('Karimov',)),
     item('sources-the-customers-book-translated-ru-to-uz-keep', KEEP, 'pdf.kurs_ishi', COURSE_RU_UZ_NAMED, 'uz',

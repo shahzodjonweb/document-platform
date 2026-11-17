@@ -1871,13 +1871,34 @@ def _people_named_known(text, trusted):
     return all(people_known(name, trusted, translated=True) for name in names)
 
 
-def verify_items(items, trusted, *, file_names=(), translated=False):
+# The words a references item adds around a source's own words that say nothing of which source it is: its
+# publisher's and pages' words, its link's (folded). Never a genre ("darslik", "o‘quv qo‘llanma", "maqolalar"): the
+# topic with a genre after it is an invented book.
+BIBLIOGRAPHY = re.compile(r"nashr\w*|izd\w*|izdatel\w*|press|publish\w*|bet\w*|sahifa\w*|str|tom|jild|vol\w*|eds?"
+                          r"|edition|url|http\w*|www|doi|isbn|issn|vip\w*|nomer|son|no")
+
+
+def _words_given(text, trusted):
+    """Whether every word of a references item is the customer's, its bibliography's own words left (`verify_items`)."""
+    for word in WORD.findall(text):
+        if _letters(word) < 3 or BIBLIOGRAPHY.fullmatch(fold(word)) or trusted.allowed.known(word):
+            continue
+        if not trusted.words.known(word):
+            return False
+    return True
+
+
+def verify_items(items, trusted, *, file_names=(), translated=False, whole=False):
     """(kept, codes): the items of a references list that are the customer's sources, in order.
 
     Each is held as a line to what the customer said and the files' own text
-    (a book they named, a description taken from a file's first page). One
-    that is not, or that is an attached file's name with or without its
-    extension, is dropped: a references list never shows a file name.
+    (a book they named, a description taken from a file's first page); with
+    `whole` (a paper's) every word of it, lower case included, but its
+    publisher's and pages' (`BIBLIOGRAPHY`): the topic with a genre after it
+    ("Raqamli marketing strategiyalari: o‘quv qo‘llanma.") is no source the
+    customer gave. One that is not, or that is an attached file's name with
+    or without its extension, is dropped: a references list never shows a
+    file name.
     `translated` is for a list written in another language than the message,
     whose titles are translated: its capitalised words are then not checked,
     only its numbers, the authors it opens with ("Karimov A.", "Kotler,
@@ -1891,7 +1912,8 @@ def verify_items(items, trusted, *, file_names=(), translated=False):
         if not text:
             continue
         if _file_name(text, file_names) or not supported(text, 'line', trusted, translated=translated) \
-                or (translated and not (_authors_known(text, trusted) and _people_named_known(text, trusted))):
+                or (translated and not (_authors_known(text, trusted) and _people_named_known(text, trusted))) \
+                or (whole and not translated and not _words_given(text, trusted)):
             codes.append('source:dropped')
             continue
         kept.append(item)

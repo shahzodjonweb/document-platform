@@ -888,13 +888,13 @@ def _paper_sources(section, trusted, translated, names, codes):
     numbered form of ruled lines for the customer to fill in.
     """
     items, found = facts.verify_items([item for item in section.get('items') or [] if isinstance(item, dict)],
-                                      trusted, file_names=names, translated=translated)
+                                      trusted, file_names=names, translated=translated, whole=True)
     codes.extend(found)
     lines = [line for line in str(section.get('body') or '').split('\n') if line.strip()]
     kept = []
     for line in lines:
         verified, found = facts.verify_items([ENUMERATOR.sub('', line)], trusted, file_names=names,
-                                             translated=translated)
+                                             translated=translated, whole=True)
         codes.extend(found)
         if verified:
             kept.append(line)
