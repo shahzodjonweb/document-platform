@@ -65,7 +65,9 @@ adolatpesha
 adresi
 adrlar
 advantages
+advertising
 advokat
+advokatlik
 aerobika
 affillangan
 afsonalar
@@ -92,6 +94,7 @@ agentligining
 agentlik
 agrar
 agronom
+agronomiya
 ahamiyat
 ahamiyatga
 ahamiyati
@@ -132,6 +135,7 @@ ajratadilar
 ajratamiz
 ajratganingiz
 ajratganingizdan
+ajratgich
 ajratib
 ajratiladi
 ajratildi
@@ -182,6 +186,7 @@ aldash
 alfavit
 algebra
 algoritm
+alifbe
 alifbo
 alifboda
 alifbosiga
@@ -243,6 +248,7 @@ amaliyotni
 amallar
 amalni
 ammo
+amortizator
 amortizatsiya
 an
 an'ana
@@ -303,6 +309,7 @@ aniqlik
 aniqrog'i
 aniqroq
 anjir
+anjom
 anjuman
 anjumanida
 anjumanla
@@ -316,6 +323,7 @@ anor
 ansambl
 antena
 antik
+antiseptik
 aol
 aoliyati
 aorta
@@ -341,8 +349,10 @@ aralash
 aralashma
 aralashtirish
 arava
+aravacha
 aravachada
 arbobi
+archa
 arda
 ardan
 arena
@@ -401,8 +411,10 @@ asarlariga
 asarlarini
 asarlarni
 asbob
+asbobsoz
 asbobsozlik
 asfalt
+asfaltlash
 ashqi
 ashyo
 asi
@@ -512,6 +524,7 @@ auditoriyalarning
 auditoriyani
 auditorlik
 auksion
+autsorsing
 avans
 avaylash
 avgust
@@ -529,15 +542,18 @@ avto
 avtobiografiya
 avtobus
 avtohalokat
+avtokran
 avtomat
 avtomatik
 avtomatlashtirish
 avtomobil
 avtomobilga
 avtomobilni
+avtomobilsoz
 avtoritar
 avtoservis
 avtoturargoh
+avtoyuvish
 avval
 avvalambor
 avvalgi
@@ -556,6 +572,8 @@ axborotlarning
 axborotni
 axborotning
 axbrotning
+axlat
+axlatdon
 axloq
 axloqiy
 axloqqa
@@ -713,6 +731,7 @@ bajarmayotgan
 bajarmoq
 bajaruvchi
 bajaruvchilarga
+bak
 bakalavr
 bakalavriat
 bakteriyalar
@@ -728,6 +747,7 @@ baliqchilik
 baliqlar
 balk
 balki
+balkon
 ball
 ballar
 ballarda
@@ -740,6 +760,7 @@ ballning
 bamaslahat
 banan
 band
+bandaj
 bandda
 bandi
 bandida
@@ -767,6 +788,7 @@ bankrotlik
 banner
 baqqol
 bar
+baraban
 baravar
 baravargacha
 baravaridan
@@ -981,6 +1003,7 @@ bil
 bila
 biladi
 biladigan
+bilakuzuk
 bilamiz
 bilan
 bilangina
@@ -1039,6 +1062,7 @@ binolariga
 binolarini
 binosi
 binosining
+bint
 biologik
 biologiya
 biologiyaga
@@ -1245,6 +1269,8 @@ bo'yiga
 bo'yin
 bo'ylab
 bo'yoq
+bo'yoqchi
+bo'yoqlar
 bo'yra
 bo'ysunadi
 bo'ysunish
@@ -1258,10 +1284,12 @@ bobi
 bobida
 bobo
 bobolarimiz
+bochka
 bodring
 bog
 bog'bon
 bog'cha
+bog'dorchi
 bog'dorchilik
 bog'imizga
 bog'langan
@@ -1282,11 +1310,13 @@ bog'liqlikni
 bois
 boj
 bojxona
+bojxonachi
 bola
 bolalar
 bolalarni
 bolaning
 bolasi
+bolg'a
 bolgan
 bonus
 boqiy
@@ -1413,6 +1443,8 @@ bosimini
 bosing
 bosish
 bosma
+bosmachi
+bosmaxona
 bosqich
 bosqichda
 bosqichdan
@@ -1453,13 +1485,16 @@ brauzerga
 brend
 brendbuk
 brendi
+brezent
 brigada
 brigadir
 bron
+bronlash
 broshyura
 bu
 budget
 buferli
+bufet
 bug
 bug'doy
 bugun
@@ -1489,6 +1524,7 @@ burchakni
 burchakning
 burchi
 burchlari
+burg'u
 burilish
 burish
 burkanadi
@@ -1560,6 +1596,7 @@ chalg'itish
 chalingan
 chambarchas
 chang
+changyutgich
 channels
 chap
 chapdan
@@ -1571,6 +1608,7 @@ chaqirilgan
 chaqiriq
 character
 charchab
+charm
 chart
 chat
 chayin
@@ -1599,6 +1637,7 @@ cheklov
 cheklovlar
 chekni
 cheksiz
+chelak
 chet
 chetda
 chetdan
@@ -1617,7 +1656,9 @@ chetlashtirishga
 chi
 chida
 chidamli
+chig'iriq
 chinakam
+chinni
 chiq
 chiqa
 chiqadi
@@ -1687,6 +1728,7 @@ chirib
 chirish
 chirma
 chiroq
+chiroqlar
 chiroqlari
 chiroyli
 chizg'ich
@@ -1724,8 +1766,11 @@ choralarni
 chorasi
 chorasini
 chorasining
+chorva
+chorvachilik
 choy
 choynak
+choyshab
 chuchuk
 chumoli
 chun
@@ -1734,6 +1779,7 @@ chunonchi
 chuqur
 chuqurlashtirish
 chuqurligi
+chuqurlik
 chuqurroq
 chuvalchang
 chuvalchangi
@@ -1811,6 +1857,7 @@ daraxtlar
 dard
 darhol
 darkor
+darmon
 daromad
 daromaddan
 daromadlar
@@ -1839,6 +1886,7 @@ darxon
 daryo
 das
 dasta
+dastgoh
 dastla
 dastlab
 dastlabki
@@ -1945,6 +1993,8 @@ dekanini
 dekanining
 dekanlari
 deklaratsiya
+dekor
+dekorativ
 delegatsiya
 demak
 demakdir
@@ -1965,6 +2015,7 @@ devor
 devori
 devorining
 devoriy
+devorqog'oz
 deya
 deyarli
 deyiladi
@@ -1972,6 +2023,7 @@ deyilgan
 deyilsa
 deyish
 deyishimiz
+dezinfeksiya
 di
 diagnostika
 diagnostikasi
@@ -1987,6 +2039,7 @@ dil
 diler
 dilkash
 dim
+dimlama
 din
 dinamik
 dinamika
@@ -2020,6 +2073,7 @@ dividend
 dizayn
 dizayner
 dizaynerlariga
+dizaynerlik
 dizel
 do
 do'kon
@@ -2072,6 +2126,7 @@ dor
 doralarining
 dorchilik
 dori
+dorivor
 dorixona
 dorixonalar
 doska
@@ -2081,6 +2136,8 @@ dotsenti
 dotsentiman
 dovon
 doza
+dozator
+drel
 dual
 dub
 dublikat
@@ -2098,10 +2155,13 @@ dunyoqarashini
 dunyosi
 dunyosiga
 dunyosini
+duradgor
+duradgorlik
 during
 dush
 dushanba
 dushman
+dushxona
 duties
 duxovka
 dvigatel
@@ -2183,6 +2243,8 @@ ekologiya
 ekonometrikani
 ekran
 ekskursiya
+ekspeditor
+ekspeditsiya
 eksperiment
 ekspert
 ekspertiza
@@ -2203,6 +2265,8 @@ elektiron
 elektr
 elektrchi
 elektrik
+elektrod
+elektromontaj
 elektron
 elektronika
 element
@@ -2212,8 +2276,10 @@ elementlar
 elementlari
 elementlarini
 elementlarni
+elim
 elish
 ellik
+em
 ema
 email
 emas
@@ -2485,6 +2551,7 @@ farqlanish
 farqlash
 farqlay
 farqli
+fartuk
 farzand
 farzandi
 farzandingiz
@@ -2526,6 +2593,7 @@ fe
 fe'l
 fe'llar
 fedra
+fen
 ferma
 fermer
 fermerga
@@ -2617,6 +2685,8 @@ fors
 forum
 forumi
 foto
+fotoapparat
+fotograf
 fotonusxani
 fotosintez
 fotosintezda
@@ -2651,6 +2721,7 @@ foydalanuvchilarning
 foydali
 foydalilik
 foydasiz
+franshiza
 fransuz
 frantsuzcha
 funksional
@@ -2690,6 +2761,7 @@ g'ayriqonuniy
 g'bek
 g'i
 g'ildirak
+g'ilof
 g'isht
 g'liq
 g'olib
@@ -2742,8 +2814,10 @@ gazlama
 gazlardan
 gazni
 gazning
+gazplita
 gektar
 general
+generator
 geografik
 geografiya
 geologik
@@ -2753,10 +2827,12 @@ gerb
 gerbli
 geterotrof
 gi
+gid
 gidroelektr
 giga
 gigiyena
 gilam
+gilamcha
 gimnastika
 gimnaziya
 gina
@@ -2768,7 +2844,9 @@ giyohvandlik
 glashlaridan
 global
 go'dak
+go'ng
 go'sht
+go'shtqiyma
 go'yo
 go'zal
 goals
@@ -2792,6 +2870,8 @@ granti
 grantlar
 grantlari
 grantni
+grunt
+gugurt
 gul
 gulchilik
 gulga
@@ -2803,6 +2883,7 @@ gumanistik
 gumanitar
 gumon
 gur
+guruch
 guruh
 guruhda
 guruhdagi
@@ -2889,6 +2970,7 @@ hammaga
 hammasi
 hammaslak
 hammom
+hammomxona
 hamon
 hamshira
 hamshiralik
@@ -2928,6 +3010,7 @@ harakatlanadi
 harakatlanish
 harakatlanishi
 harakatlantiruvchi
+harakatlanuvchi
 harakatlar
 harakatlari
 harakatlariga
@@ -2977,8 +3060,10 @@ hay'ati
 hay'atlari
 hayajon
 hayajonli
+haydash
 haydovchi
 hayfsan
+haykal
 hayot
 hayotbaxsh
 hayotda
@@ -3305,6 +3390,7 @@ idan
 ideal
 identity
 idish
+idishlar
 idora
 idoraga
 idoralar
@@ -3392,6 +3478,7 @@ ildizi
 ildizning
 ilg
 ilg'or
+ilgak
 ilgan
 ilgar
 ilgari
@@ -3408,6 +3495,7 @@ ilm
 ilmiy
 ilmlar
 ilmlari
+ilmoq
 iloji
 ilov
 ilova
@@ -3812,6 +3900,7 @@ izohlarni
 izohlash
 izohlashda
 izohli
+izolyatsiya
 ja
 jabra
 jadal
@@ -3972,6 +4061,7 @@ jixatlari
 jjat
 jjatlar
 jo
+jo'mrak
 jo'nalish
 jo'natilib
 jo'natish
@@ -4046,8 +4136,10 @@ jurnali
 jurnalini
 jurnalist
 jurnalistika
+jurnalistlik
 jurnallar
 ka
+kabel
 kabi
 kabilar
 kabilarni
@@ -4069,6 +4161,7 @@ kafedraning
 kafedrasi
 kafedrasida
 kafedrasining
+kafel
 kafelar
 kafesi
 kafesiga
@@ -4085,6 +4178,7 @@ kalit
 kaliti
 kalitini
 kaliy
+kalkulyator
 kalkulyatorlar
 kalta
 kam
@@ -4134,17 +4228,22 @@ kanallari
 kanallarsiz
 kancelyariya
 kanikul
+kanselyariya
 kapalak
 kapillyar
 kapital
 kappa
+kapsula
 karam
 karavot
 karbonat
+karkas
+karniz
 karta
 kartochkalari
 karton
 kartoshka
+kartrij
 kasaba
 kasal
 kasallik
@@ -4161,6 +4260,7 @@ kasbning
 kashf
 kashfiyot
 kashta
+kashtachi
 kashtachilik
 kaslar
 kasr
@@ -4168,6 +4268,7 @@ kasrda
 kasrlar
 kasrlarni
 kassa
+kasseta
 kassir
 katagi
 katak
@@ -4180,6 +4281,7 @@ kattaligi
 kattalik
 kattaliklar
 kattayu
+kavsh
 kayfiyat
 kaytish
 kcha
@@ -4277,6 +4379,7 @@ keltirish
 keltiruvchi
 keluvchi
 kemachi
+kemirgich
 keng
 kengash
 kengashda
@@ -4306,6 +4409,8 @@ kerakligi
 kerakligini
 kerakmi
 keraksiz
+kerosin
+kesgich
 kesim
 kesimi
 kesish
@@ -4439,11 +4544,13 @@ kitobxon
 kitobxonlik
 kiyik
 kiyim
+kiyimjavon
 kiyimlar
 kiyinish
 klassifikatsiyasi
 klassik
 klaviatura
+klej
 klinika
 klubiga
 km
@@ -4451,6 +4558,7 @@ ko
 ko'cha
 ko'chasi
 ko'chat
+ko'chatlar
 ko'chirib
 ko'chiriladi
 ko'chirilgan
@@ -4627,13 +4735,17 @@ kodi
 kodidan
 kodlashini
 koeffitsienti
+kofemashina
 kofexona
 kognitiv
+koks
+kolba
 kollej
 kolleji
 kollektiv
 koloniya
 koloniyasi
+kombayn
 kombinat
 komediya
 komiss
@@ -4655,6 +4767,7 @@ kompaniyaning
 kompaniyasi
 kompaniyasida
 kompaniyasiga
+kompas
 kompensatsiya
 kompetensiya
 kompetensiyalar
@@ -4673,12 +4786,14 @@ kompyuterlar
 kompyuterlarda
 kompyuterlardan
 kon
+konditsioner
 konferensiya
 konferensiyalar
 konferensiyalarda
 konferensiyasi
 konferensiyasida
 konferentsiyalar
+konfet
 konfrensiyasida
 konfrensiyasining
 konkret
@@ -4688,6 +4803,7 @@ konsalting
 konsepsiyasi
 konsepsiyasini
 konsert
+konserva
 konspekt
 konspektim
 konspektiv
@@ -4727,9 +4843,11 @@ korxonalarining
 korxonalarning
 korxonani
 korxonaning
+kosa
 kosinusi
 kosinuslar
 kosmetika
+kosmetolog
 kosmik
 kostyum
 kotangensi
@@ -4741,12 +4859,17 @@ kotibining
 kotiblari
 kotibni
 kotibning
+kovorking
+kran
+kraska
 kredit
 krediti
 kreditini
 kreditor
 krem
 kremniy
+kreslo
+krovat
 ku
 kub
 kuch
@@ -4812,6 +4935,7 @@ kurslarida
 kursni
 kurtak
 kurtka
+kuryer
 kut
 kutib
 kutil
@@ -4836,6 +4960,7 @@ kuzatishlari
 kuzatuv
 kuzda
 kuzgi
+kuzgu
 kuzov
 kv
 kvadrat
@@ -4846,16 +4971,20 @@ kvorum
 kvt
 la
 lab
+labbo'yoq
 laboratoriya
 laboratoriyasida
 ladi
 ladigan
 lag'mon
 lahza
+lak
 laklar
 laklari
 laklarining
 lakli
+laminat
+lampa
 lampalar
 lan
 lanadi
@@ -4930,6 +5059,8 @@ limning
 linadi
 lingvistik
 lining
+liniya
+linoleum
 liq
 liqlar
 liqligi
@@ -4943,6 +5074,7 @@ litsenziya
 litsey
 litseyga
 liy
+lizing
 lizosoma
 ljallangan
 llaniladi
@@ -4958,10 +5090,12 @@ lo'nda
 lo'ndalik
 loan
 lochira
+logist
 logistika
 logotip
 lokal
 lola
+lom
 lon
 losalarni
 lotdagi
@@ -5006,6 +5140,7 @@ lumotlar
 lumotlarni
 lumotnoma
 lyozma
+lyuk
 ma
 ma'buda
 ma'lum
@@ -5143,6 +5278,7 @@ majmuasidir
 majmui
 majmuidir
 majmuini
+makaron
 maketlar
 makonni
 maksimal
@@ -5220,6 +5356,7 @@ manfaatlarini
 manfaatlarining
 manfaatli
 manfiy
+manikyur
 mansab
 mansabdor
 mansabidan
@@ -5284,6 +5421,9 @@ markazlashtirilgan
 market
 marketing
 marketingni
+marketolog
+marketpleys
+marmar
 maromiga
 marosim
 marotaba
@@ -5356,6 +5496,7 @@ mashqlari
 mashqlarini
 mashqlarni
 mashqni
+maska
 maskanlarida
 maslahat
 maslahatchi
@@ -5370,6 +5511,8 @@ masofani
 masofasi
 masofaviy
 massa
+massaj
+massajchi
 massasi
 massasiga
 massasini
@@ -5419,6 +5562,7 @@ matnli
 matnni
 matnning
 mato
+matras
 matter
 mav
 mavhum
@@ -5501,6 +5645,7 @@ me'yoriy
 me'yorlari
 me'yorlariga
 mebel
+mebelsoz
 mehmon
 mehmonlar
 mehmonxona
@@ -5548,11 +5693,14 @@ menyusi
 meros
 merosi
 merosini
+meshok
 metall
 metallar
 metallardan
+metallolom
 meteorit
 methods
+metlax
 metod
 metodbirlashma
 metodbirlashmasining
@@ -5571,6 +5719,7 @@ mevali
 mexanik
 mexanika
 mexanikasi
+mexanizator
 mexanizm
 mexanizmi
 mexanizmini
@@ -5596,7 +5745,11 @@ mijozni
 mikroehmlarga
 mikrofon
 mikroiqtisodiyot
+mikrokredit
+mikroqarz
 mikroskop
+mikrosxema
+mikser
 mil
 millat
 millati
@@ -5641,7 +5794,9 @@ miqyos
 miqyosda
 miqyosida
 miqyosidagi
+miqyosli
 mirlash
+mirshab
 mis
 mish
 miso
@@ -5654,6 +5809,7 @@ misollarni
 mitoxondriya
 mitti
 mix
+mixlar
 miyat
 mlansa
 mln
@@ -5986,6 +6142,7 @@ muzofot
 muzokarada
 muzokaralar
 muzokaralarda
+muzqaymoq
 na
 nadi
 nadilar
@@ -6033,6 +6190,7 @@ nashrga
 nashriyot
 nashriyoti
 nashriyotlari
+nasos
 nati
 natija
 natijada
@@ -6119,6 +6277,7 @@ nimalarga
 nimalarni
 nimaligini
 nimani
+nimcha
 ning
 nining
 niqligi
@@ -6244,6 +6403,7 @@ nuqtalar
 nuqtalarini
 nuqtalarni
 nuqtaning
+nuqtasi
 nuqtayi
 nuroniy
 nushadagi
@@ -6404,6 +6564,7 @@ o'quvchisi
 o'ra
 o'rab
 o'ralgan
+o'ram
 o'rgan
 o'rganadi
 o'rganadilar
@@ -6438,6 +6599,7 @@ o'rinbosariga
 o'rinbosariman
 o'rinbosarlari
 o'rinda
+o'rindiq
 o'rindoshlar
 o'rindoshlik
 o'rinishda
@@ -6462,6 +6624,7 @@ o'rni
 o'rnida
 o'rniga
 o'rnini
+o'roq
 o'rsatilgan
 o'rsatishi
 o'rt
@@ -6526,6 +6689,7 @@ o'tkaz
 o'tkazadi
 o'tkazdi
 o'tkazdik
+o'tkazgich
 o'tkazib
 o'tkazil
 o'tkaziladi
@@ -6726,6 +6890,8 @@ odobli
 of
 ofat
 ofis
+oftob
+oftobshuvoq
 og
 og'dirish
 og'ir
@@ -6892,6 +7058,7 @@ onida
 onlayn
 opening
 operator
+operatorlik
 operatsion
 operatsiyalari
 operatsiyalarni
@@ -7017,11 +7184,13 @@ oshmasa
 oshmasligi
 oshmaydi
 oshpaz
+oshpazlik
 oshqaruv
 oshqozon
 oshxona
 oshxonada
 oshxonaga
+oshxonasi
 osli
 osmon
 oson
@@ -7079,8 +7248,10 @@ oylik
 oyna
 oynachasi
 oynasi
+oynavand
 oyning
 oyoq
+oyoqkiyim
 oz
 ozda
 oziladi
@@ -7100,8 +7271,11 @@ ozuqa
 ozuqaviy
 pages
 pakana
+paket
+palos
 palto
 pana
+panel
 paneli
 panelida
 panellar
@@ -7117,8 +7291,12 @@ parchalanganda
 parchalanib
 parchalar
 parda
+pardoz
+pardozlash
+parfyumeriya
 parhez
 park
+parket
 parol
 parolini
 parolni
@@ -7149,6 +7327,7 @@ pastroq
 patir
 patta
 paxta
+paxtali
 paydo
 payshanba
 payt
@@ -7160,19 +7339,25 @@ payvand
 payvandchi
 payvandlash
 pech
+pechene
 pechenye
 pechka
 pedagog
 pedagogik
 pedagogika
+pedal
+penoplast
 pensiya
 pensiyaga
+perforator
 perimetri
 perimetrini
 peshtaxtasi
 peshtoq
+pestitsid
 phd
 pichoq
+pichoqlar
 pigmentga
 pigmentiga
 pilotlar
@@ -7185,6 +7370,7 @@ pishir
 pishiriladi
 pishiriq
 pishirish
+pishloq
 piyola
 piyoz
 plab
@@ -7195,17 +7381,26 @@ plans
 planshet
 plash
 plastik
+plastinka
+plastmassa
 platforma
 platformasi
+plita
+plombir
+plug
 plyonka
 po
 po'lat
 po'stin
 pochta
+pochtachi
 pochtasi
 podshosiga
+pol
 poliklinika
+polirovka
 poliz
+polka
 polyak
 portal
 portdir
@@ -7277,6 +7472,7 @@ publitsistik
 pul
 pulli
 pullik
+pulsiz
 punktuatsion
 purpose
 pushti
@@ -7297,6 +7493,7 @@ qadimgi
 qadimiy
 qadimroq
 qadoq
+qadoqchi
 qadoqla
 qadoqlash
 qadr
@@ -7310,8 +7507,10 @@ qadrlash
 qahramon
 qahramonlik
 qahva
+qahvaxona
 qalam
 qalamda
+qalamdon
 qalb
 qalbiga
 qalin
@@ -7895,8 +8094,10 @@ qororlarni
 qorovul
 qoshida
 qoshidagi
+qoshiq
 qotib
 qoyil
+qozon
 qtai
 qualification
 qualities
@@ -7924,6 +8125,7 @@ qurol
 qurti
 quruq
 quruqlik
+quruvchi
 qushlar
 qutb
 quv
@@ -7935,6 +8137,7 @@ quvonarli
 quvonch
 quvonchga
 quvontiradi
+quvur
 quvvat
 quvvati
 quvvatini
@@ -7996,6 +8199,7 @@ rahmat
 rais
 raisi
 raislik
+ramka
 ramzi
 rang
 rangda
@@ -8075,6 +8279,7 @@ rayonining
 razil
 rda
 reaksiyasi
+reaktiv
 real
 reason
 red
@@ -8083,6 +8288,7 @@ reestr
 referat
 referatlar
 references
+regal
 reglament
 reja
 rejada
@@ -8159,6 +8365,8 @@ retsept
 review
 reyting
 reytingini
+rezina
+rezistor
 rezyume
 rgan
 rganib
@@ -8225,6 +8433,7 @@ rni
 rning
 ro
 ro'mol
+ro'molcha
 ro'y
 ro'yxat
 ro'yxatda
@@ -8272,6 +8481,7 @@ ruhida
 ruhiy
 ruhiyatining
 ruhoniy
+rul
 rule
 rur
 rus
@@ -8346,6 +8556,7 @@ sakkiz
 sal
 salani
 salbiy
+salfetka
 salmoqli
 salohiyat
 salohiyatga
@@ -8359,6 +8570,7 @@ salomatligi
 salomatligini
 salomatlik
 salomlashadi
+salon
 samara
 samaradorligi
 samaradorligiga
@@ -8391,6 +8603,8 @@ sanasi
 sanasiga
 sanasigacha
 sanasini
+sandal
+sandiq
 sanitariya
 sanitariyasi
 sanitariyasiga
@@ -8401,6 +8615,7 @@ sanoatchi
 sanoatda
 sanoq
 santexnik
+santexnika
 saqla
 saqlab
 saqlagan
@@ -8440,6 +8655,9 @@ sarlavhasi
 sarlavhasidayoq
 sarlavhasiga
 sarmoya
+sartarosh
+sartaroshlik
+sartaroshxona
 sat
 sathi
 satr
@@ -8477,6 +8695,7 @@ sayli
 saylov
 sayohat
 sayoz
+sayqal
 sayr
 sayt
 sayti
@@ -8495,6 +8714,7 @@ seed
 sehr
 sekin
 sektorining
+sement
 semestr
 semestrga
 semestri
@@ -8506,6 +8726,7 @@ sendan
 senga
 seni
 sening
+sensor
 sentabr
 sentabrda
 sentabrdan
@@ -8515,6 +8736,7 @@ sentriola
 sentyabr
 sentyabrga
 sentyabrida
+sepkich
 serg'ayrat
 sergak
 seriya
@@ -8591,11 +8813,14 @@ shakllaridan
 shakllarini
 shakllarining
 shaklli
+shamdon
 shamol
 shamolni
+shampun
 shapka
 shar
 sharaf
+sharbat
 sharif
 sharifi
 sharifingiz
@@ -8695,11 +8920,14 @@ shisha
 shisiga
 shkaf
 shkaflar
+shlang
 shlarni
 shma
+shnur
 sho
 sho'ba
 sho'ro
+sho'rva
 shodlik
 shogird
 shogirdlik
@@ -8708,14 +8936,19 @@ shoiri
 shon
 shoshilinch
 shovqin
+shpatel
+shpris
 shqa
 shqaruv
 shrift
 shriftida
 shriftni
+shtamp
 shtat
 shtatdagi
 shtati
+shtativ
+shtora
 shu
 shubha
 shubhasiz
@@ -8746,6 +8979,7 @@ shunga
 shuni
 shuning
 shuningdek
+shurup
 si
 sichqoncha
 sida
@@ -8770,9 +9004,12 @@ sig'madi
 sig'maydi
 significance
 silliq
+sim
+simkarta
 sinab
 sinaldi
 sinang
+sindirish
 sinf
 sinfda
 sinfdan
@@ -8811,6 +9048,7 @@ sirasiga
 siri
 sirk
 sirlarini
+sirop
 sirt
 sirti
 sirtida
@@ -8841,9 +9079,11 @@ sizga
 sizni
 sizning
 skalyar
+skameyka
 skan
 skaner
 skelet
+skotch
 skrinshotlarini
 skript
 slayd
@@ -8934,6 +9174,7 @@ soatlari
 soatlik
 sobot
 soch
+sochiq
 sodda
 soddalashtirish
 sodiqlik
@@ -9025,6 +9266,7 @@ sovg'alar
 sovrin
 sovrindor
 sovrindori
+sovun
 sovuq
 sovutgich
 sovutgichli
@@ -9057,6 +9299,7 @@ stajiga
 stajini
 stajirovka
 stajyor
+stakan
 standard
 standart
 standarti
@@ -9065,6 +9308,7 @@ standartlarga
 standartlari
 standartlariga
 stanok
+stanoklar
 stansiyasi
 stansiyasini
 startap
@@ -9082,6 +9326,7 @@ stavka
 stavkali
 stavkasi
 stellajlar
+stend
 stenografik
 stenografiya
 stenogramma
@@ -9100,6 +9345,7 @@ stollar
 stollari
 stollarni
 stolni
+stomatolog
 strategik
 strategiya
 strategiyasi
@@ -9115,6 +9361,7 @@ student
 studiyasida
 study
 stul
+stulcha
 stuli
 stullar
 subject
@@ -9130,6 +9377,7 @@ sug'd
 sug'oramiz
 sug'orish
 sug'urta
+sug'urtachi
 suhbat
 suhbatdosh
 suhbatga
@@ -9147,6 +9395,7 @@ summani
 summary
 summasi
 sun'iy
+supurgi
 sur'atda
 sur'atida
 sur'atini
@@ -9177,9 +9426,11 @@ suvlari
 suvlaridan
 suvni
 suvning
+suvoq
 suyanchiq
 suyuq
 suyuqlik
+suzgich
 suzib
 svetofor
 swot
@@ -9269,6 +9520,7 @@ tabib
 tabiiy
 tabiiyki
 table
+tabletka
 tabrigi
 tabrik
 tabriklaymiz
@@ -9305,6 +9557,8 @@ tafsilotlari
 taftish
 tagacha
 tagida
+taglik
+tagliklar
 tahdidlar
 tahlil
 tahlilga
@@ -9370,6 +9624,7 @@ takrorlanadigan
 takrorlash
 takrorlaydi
 takrorlayman
+taksichi
 tala
 talab
 talaba
@@ -9588,6 +9843,7 @@ tarmoqlari
 tarmoqlarida
 tarmoqning
 taroj
+tarozi
 tarqalgan
 tarqat
 tarqatish
@@ -9752,6 +10008,7 @@ tavsiyasiga
 taxmin
 taxminan
 taxminiy
+taxta
 taxtga
 tayanadi
 tayanch
@@ -9852,6 +10109,7 @@ tekshiruvidan
 tekshiruvlar
 tekshiruvlari
 tekshiruvlarini
+tekstil
 tel
 telba
 telefon
@@ -9887,6 +10145,7 @@ terim
 termin
 termini
 terminlarni
+termometr
 terms
 terrorizm
 teshigi
@@ -10004,6 +10263,7 @@ tiplari
 tiqodi
 tire
 tiredan
+tirgak
 tirik
 tirilgan
 tirishqoq
@@ -10014,6 +10274,7 @@ tish
 tishda
 tishi
 tishlar
+tishsoz
 titul
 tituti
 tizim
@@ -10167,6 +10428,8 @@ tomonlar
 tomonlari
 tomonlarini
 tomonlarning
+tomoq
+tomorqa
 tomosha
 tomoshabin
 ton
@@ -10249,15 +10512,20 @@ tozalanib
 tozalash
 tozalaydi
 tozalik
+tozalovchi
 traektoriya
 trafaretli
+traktor
 transkript
 transpiratsiya
 transport
 tranzaksiya
+trener
 trening
 trigonometrik
+trikotaj
 trln
+truba
 trubalar
 true
 tsirkulyarlar
@@ -10359,6 +10627,7 @@ turlichadir
 turmush
 turmushda
 turmushi
+turnik
 turuvchi
 tus
 tusda
@@ -10436,11 +10705,14 @@ tutilishi
 tutilmagan
 tutish
 tutishi
+tutqich
 tutsa
+tutun
 tutuvchi
 tuvchi
 tuxum
 tuxumdan
+tuxumdon
 tuyg'u
 tuyg'usini
 tuz
@@ -10478,6 +10750,7 @@ tuzishdan
 tuzishga
 tuzishi
 tuzishni
+tuzlama
 tuzlar
 tuzlari
 tuzlarni
@@ -10532,6 +10805,7 @@ ularni
 ularning
 ulash
 ulashiladi
+ulgich
 ulgu
 ulgurji
 ulkan
@@ -10613,6 +10887,7 @@ urinma
 uritishning
 urug
 urug'langan
+urug'lik
 urush
 urushi
 us
@@ -10733,6 +11008,7 @@ vafo
 vafodor
 vafot
 vafoti
+vagon
 vakansiya
 vakansiyasi
 vakil
@@ -10756,6 +11032,7 @@ valyuta
 valyutalari
 valyutani
 valyutasi
+vanna
 vaqf
 vaqt
 vaqtda
@@ -10841,8 +11118,11 @@ vazn
 veb
 vektor
 vektorlar
+velosiped
+ventilyator
 vergul
 versiyasi
+veterinar
 video
 videodars
 videodarslar
@@ -10850,6 +11130,7 @@ videolavha
 videolavhasi
 vijdon
 viktorina
+vilka
 viloyat
 viloyatda
 viloyati
@@ -10858,6 +11139,7 @@ viloyatiga
 viloyatlarida
 viloyatlaridan
 vino
+vint
 virtual
 vitrina
 vizitka
@@ -10881,6 +11163,7 @@ voqelikn
 voqelikning
 vosita
 vositachi
+vositachilik
 vositalar
 vositalardan
 vositalarga
@@ -10897,6 +11180,7 @@ vositasidir
 vote
 voyaga
 voz
+vrach
 vujud
 vujudga
 weaknesses
@@ -10963,6 +11247,7 @@ xaridorning
 xarita
 xaritasi
 xarobazor
+xashak
 xat
 xatar
 xatari
@@ -11293,12 +11578,16 @@ yechimlarni
 yechish
 yechishda
 yedi
+yelim
+yelkan
+yem
 yemirilish
 yengillashtirish
 yer
 yerda
 yerga
 yerning
+yeryong'oq
 yetadi
 yetakchi
 yetakchilik
@@ -11468,6 +11757,7 @@ yo'riqnomasi
 yoay'atga
 yod
 yodga
+yog
 yog'ingarchilik
 yok
 yoki
@@ -11519,6 +11809,7 @@ yordami
 yordamida
 yordamning
 yorita
+yoritgich
 yoritib
 yoritiladi
 yoritildi
@@ -11550,6 +11841,7 @@ yoshlarimiz
 yoshlarni
 yoshlarning
 yoshli
+yostiq
 yot
 yotadi
 yotgan
@@ -11709,6 +12001,7 @@ yurtlarida
 yurtlarining
 yut
 yutadi
+yutgich
 yutuq
 yutuqlar
 yutuqlarga
@@ -11717,6 +12010,7 @@ yutuqlarini
 yutuqlarni
 yuvadi
 yuvish
+yuvuvchi
 yuz
 yuza
 yuzaga
@@ -11752,11 +12046,13 @@ zamonlardan
 zanjir
 zanjiri
 zarar
+zararkunanda
 zararli
 zararni
 zarb
 zarba
 zargar
+zargarlik
 zaro
 zarur
 zarurati
@@ -11794,6 +12090,8 @@ zikirini
 ziladi
 zilzila
 zimmasiga
+zinapoya
+zirak
 zitlar
 ziyod
 ziyolilik
