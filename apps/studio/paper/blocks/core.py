@@ -530,27 +530,42 @@ def line(ctx, place):
     drop_empty_slots (a sentence whose slot has no value is left out); align
     left | centre | right; style body | bold | italic | small | caps;
     balance (wrap at the narrowest width that keeps the line count);
-    max_lines (the size steps down, to 85%, until the line fits that many).
-    Without text or sentences: the part's own text, else the placement's facts.
+    max_lines (the size steps down, to 85%, until the line fits that many);
+    without ({field id: label key}: the formula said without that field when it
+    has no value, "X is recommended." for "X is recommended for {target}.");
+    indent_first_mm (a formula set as a paragraph of the letter).
+    Without text or sentences: the part's own text, else the placement's facts,
+    each after its word in `labels` ({field id: label key}), joined by
+    `separator` (a space by default).
     """
     params = _params(place)
     drop = bool(params.get('drop_empty_slots'))
     keys = params.get('sentences') if isinstance(params.get('sentences'), list) else (
         [params['text']] if params.get('text') else [])
+    without = params.get('without') if isinstance(params.get('without'), dict) else {}
+    for field_id, other in without.items():
+        if isinstance(other, str) and ctx.fact(field_id) is None:
+            keys = [other if key == params.get('text') else key for key in keys]
+    separator = ' '
     if keys:
         pieces = [_resolve(ctx, place, key, drop_empty=drop) for key in keys]
     elif place.part and place.section is not None:
         pieces = [_part_text(ctx, place, place.part['id'])]
     else:
-        pieces = [_shown(ctx, field_id) for field_id in place.fields]
-    text = ' '.join(piece.strip() for piece in pieces if piece and piece.strip())
+        labels = params.get('labels') if isinstance(params.get('labels'), dict) else {}
+        shown = [(field_id, _shown(ctx, field_id)) for field_id in place.fields]
+        pieces = [f'{_word(ctx, labels[field_id])} {value}' if labels.get(field_id) else value
+                  for field_id, value in shown if value]
+        separator = params['separator'] if isinstance(params.get('separator'), str) else ' '
+    text = separator.join(piece.strip() for piece in pieces if piece and piece.strip())
     if not text:
         return []
     choice = params.get('style') if params.get('style') in ('body', 'bold', 'italic', 'small', 'caps') else 'body'
     if choice == 'caps':
         text = text.upper()
     align = ALIGN.get(params.get('align'), TA_LEFT)
-    style = _style(ctx, choice, alignment=align)
+    indent = _num(params.get('indent_first_mm'), 0.0, 0, 40) * MM
+    style = _style(ctx, choice, alignment=align, firstLineIndent=indent)
     label = _word(ctx, params.get('label')) if params.get('label') else ''
 
     def made(chosen):
@@ -678,7 +693,11 @@ def doc_title(ctx, place):
     params: label (a label key of the fixed word; "title" when the template
     has no such label is the paper's own title); subject (field ids, or a part
     id, printed as centred lines under it); tracking_pt (1.2 by default); caps
-    (true for a label word, false for the paper's own title).
+    (true for a label word, false for the paper's own title). The last subject
+    field is the name line: labels name_before and name_after (label keys)
+    lead the subject and follow the name in the body face ("на студентку ...
+    ИВАНОВУ", "... haqida"), and name_style bold_caps sets the name in bold
+    capitals.
     """
     params = _params(place)
     key = params.get('label')
@@ -705,8 +724,20 @@ def doc_title(ctx, place):
         lines = [_shown(ctx, field_id) for field_id in subject[:3]]
     elif isinstance(subject, str):
         lines = [_part_text(ctx, place, subject)]
-    for text in (text for text in lines if text):
-        made.append(_plain_line(ctx, text, alignment=TA_CENTER, spaceBefore=2))
+    words = params.get('labels') if isinstance(params.get('labels'), dict) else {}
+    before, after = (_word(ctx, words.get(key)) if words.get(key) else '' for key in ('name_before', 'name_after'))
+    shown = [(number, text) for number, text in enumerate(lines) if text]
+    for position, (number, text) in enumerate(shown):
+        style = _style(ctx, 'body', alignment=TA_CENTER, spaceBefore=2)
+        markup = ctx.text(text, style)
+        if isinstance(subject, list) and number == len(lines) - 1:
+            if params.get('name_style') == 'bold_caps':
+                markup = f'<font name="{_font(ctx, "Bold")}">{ctx.text(text.upper(), style)}</font>'
+            if after:
+                markup = f'{markup} {ctx.text(after, style)}'
+        if before and position == 0 and isinstance(subject, list):
+            markup = f'{ctx.text(before, style)} {markup}'
+        made.append(Paragraph(markup, style))
     return _finish(place, made, before=30.0, after=24.0)
 
 
@@ -1151,12 +1182,17 @@ block('ruled_blank', fallback=_ruled_plain)(ruled_blank)
 
 
 def _typed(ctx, text, width, align=TA_CENTER):
-    """A value typed on a signature rule: the body size, stepped down to 85% to keep one line, else wrapped."""
+    """A value typed on a signature rule: the body size, stepped down to 85% to keep one line, else wrapped.
+
+    A value that needs two lines even at 85% wraps at the body size: a smaller
+    face would only make the two lines harder to read, as the mock-ups set them.
+    """
     style = _style(ctx, 'body', alignment=align)
     plain = ctx.plain(text)
     size = style.fontSize
-    while size > style.fontSize * 0.85 and stringWidth(plain, style.fontName, size) > width - 2 * MM:
-        size -= 0.5
+    if stringWidth(plain, style.fontName, size * 0.85) <= width - 2 * MM:
+        while stringWidth(plain, style.fontName, size) > width - 2 * MM:
+            size -= 0.5
     style = _style(ctx, style, fontSize=size, leading=size * 1.2)
     return Paragraph(ctx.text(text, style), style)
 
@@ -1204,6 +1240,14 @@ def _signers(ctx, place):
     found = []
     for index in range(0, len(fields), 2):
         pair = fields[index:index + 2]
+        if len(pair) == 1 and ctx.fact(pair[0]) is not None and (
+                ctx.entry.field(pair[0]) or {}).get('kind') in ('list', 'line'):
+            # A list or line field left without a partner is a list of signers, "post | name" a line, as the
+            # catalogue asks; a lone name keeps its one row, whatever its value holds.
+            for text in (piece.strip() for piece in ctx.fact(pair[0]).split('\n') if piece.strip()):
+                post, _, name = text.rpartition('|')
+                found.append((post.strip(), name.strip()))
+            continue
         post = (ctx.fact(pair[0]) or '') if len(pair) == 2 else ''
         name = ctx.fact(pair[-1]) or ''
         # A signer with nothing known but a blank to sign on still gets the row: the post and name are written by
@@ -1260,6 +1304,14 @@ def signature_row(ctx, place):
             signers = [('', (ctx.fact(place.fields[-1]) if place.fields else None) or '')]
         _warn_over(ctx, 'signature_row', len(signers), _int(params.get('max_rows'), 0, 0, 100))
         widths = [width * 0.38, width * 0.25, width - width * 0.63 - 2 * gap]
+        if variant == 'post_sign_name':
+            # Short names give their spare room to the post, so a long post wraps at the body size in fewer
+            # lines; every row keeps the same cells, and the name cell never drops under a caption's width.
+            body = ctx.styles['body']
+            needed = max([stringWidth(ctx.plain(name), body.fontName, body.fontSize) for _, name in signers
+                          if name] or [0.0]) + 2 * MM
+            named = min(widths[2], max(width * 0.22, needed))
+            widths = [width - widths[1] - named - 2 * gap, widths[1], named]
         for post, name in signers:
             if variant == 'label_sign_name':
                 # The label stands on the rules' line, as a typed value does: set like one, with the room the
@@ -1429,46 +1481,80 @@ def party_block(ctx, place):
     dative), flush left in the column, each wrapped at the narrowest width
     that keeps its line count; a line of several values is one per line of
     the value. A field that draws a blank is a ruled row with its caption.
-    params: anchor left | right_half; groups ([[field ids]]; the placement's
-    fields as one group by default); captions, labels, suffixes ({field id:
+    params: anchor left | right_half | centre; groups ([[field ids]]; the
+    placement's fields as one group by default, in `order` when it is given:
+    English names the person first); captions, labels, suffixes ({field id:
     label key}: the caption under a blank, the word before a value or a blank
-    ("Tel.:"), the case ending after a blank ("ga")); name_style body |
-    bold_large (the first line of each group); max_lines (per group, warned);
+    ("Tel.:"), the case ending after a blank ("ga")); label (a label key run
+    in before the first line: "To:"); name_style body | bold_large (the first
+    line of each group); caps (the first line in bold capitals, the lines under
+    it small: an issuer's head); contact_line (the fields after the group's
+    first, or with "all" every field, joined on one small line with " · ", a blank
+    there inline after its word);
+    no_blanks (a missing field draws nothing, never a ruled row); rule under (a
+    rule across the frame below the block); max_lines (per group, warned);
     gap_pt (between groups, and over the block: the gap from the column above).
     """
     params = _params(place)
-    groups = [_ids(group) for group in params['groups']] if isinstance(params.get('groups'), list) else [
-        list(place.fields)]
+    default = _ids(params['order']) if isinstance(params.get('order'), list) else list(place.fields)
+    groups = [_ids(group) for group in params['groups']] if isinstance(params.get('groups'), list) else [default]
     captions, labels, suffixes = (params.get(key) if isinstance(params.get(key), dict) else {}
                                   for key in ('captions', 'labels', 'suffixes'))
-    right = params.get('anchor') == 'right_half'
-    offset = ctx.width / 2 if right else 0.0
+    anchor = params.get('anchor')
+    offset = ctx.width / 2 if anchor == 'right_half' else 0.0
+    centred = anchor in ('centre', 'center')
     column = ctx.width - offset
     size = ctx.size
-    style = _style(ctx, 'body', alignment=TA_LEFT, leading=round(size * 1.25, 1), leftIndent=offset)
+    style = _style(ctx, 'body', alignment=TA_CENTER if centred else TA_LEFT, leading=round(size * 1.25, 1),
+                   leftIndent=offset)
     large = _style(ctx, style, fontName=_font(ctx, 'Bold'), fontSize=size * 1.15, leading=size * 1.4)
+    small = _style(ctx, style, fontSize=_cap_size(ctx) + 1, leading=round((_cap_size(ctx) + 1) * 1.3, 1))
+    capital = _style(ctx, style, fontName=_font(ctx, 'Bold'), fontSize=round(size * 0.9 * 2) / 2,
+                     leading=round(size * 1.2, 1))
     gap = _num(params.get('gap_pt'), 12.0, 0, 60)
     limit = _int(params.get('max_lines'), 0, 0, 40)
+    lead = _word(ctx, params.get('label')) if isinstance(params.get('label'), str) else ''
     made = []
+
+    def line(text, chosen):
+        markup = ctx.text(text, chosen)
+        if centred:
+            return Paragraph(markup, chosen)
+        room = _balanced(markup, _style(ctx, chosen, leftIndent=0), column)
+        return Paragraph(markup, _style(ctx, chosen, rightIndent=column - room))
     for group in groups:
-        rows = []
-        for field_id in group:
+        rows, contacts = [], []
+        for position, field_id in enumerate(group):
             word = _word(ctx, labels.get(field_id)) if labels.get(field_id) else ''
             value = ctx.fact(field_id)
+            if params.get('contact_line') and (position or params['contact_line'] == 'all'):
+                if value is not None:
+                    contacts.append(' '.join(value.split()))
+                elif ctx.blank(field_id) and not params.get('no_blanks'):
+                    contacts.append(f'{word} {ctx.blank_run(field_id)}'.strip())
+                continue
             if value is None:
-                if ctx.blank(field_id):
+                if ctx.blank(field_id) and not params.get('no_blanks'):
                     caption = _word(ctx, captions.get(field_id)) if captions.get(field_id) else ''
                     suffix = _word(ctx, suffixes.get(field_id)) if suffixes.get(field_id) else ''
+                    if lead and not made and not rows:
+                        word = f'{lead} {word}'.strip()
                     rows.append(BlankRow(offset, column, ctx.plain(word), ctx.plain(suffix), ctx.plain(caption),
                                          ctx.face, size, _cap_size(ctx),
                                          size * 1.67 if caption else size * 1.5))
                 continue
             for number, text in enumerate(piece.strip() for piece in value.split('\n') if piece.strip()):
-                chosen = large if params.get('name_style') == 'bold_large' and not rows else style
+                if params.get('caps'):
+                    chosen = small if rows else capital
+                    text = text if rows else text.upper()
+                else:
+                    chosen = large if params.get('name_style') == 'bold_large' and not rows else style
                 full = f'{word} {text}' if word and number == 0 else text
-                markup = ctx.text(full, chosen)
-                room = _balanced(markup, _style(ctx, chosen, leftIndent=0), column)
-                rows.append(Paragraph(markup, _style(ctx, chosen, rightIndent=column - room)))
+                if lead and not made and not rows:
+                    full = f'{lead} {full}'
+                rows.append(line(full, chosen))
+        if contacts:
+            rows.append(line(' · '.join(contacts), small))
         if not rows:
             continue
         if limit:
@@ -1483,7 +1569,11 @@ def party_block(ctx, place):
         if made:
             _space_before(rows, gap)
         made += rows
-    return _finish(place, made, before=_num(params.get('gap_pt'), 0.0, 0, 60) if params.get('gap_pt') else 0.0)
+    if params.get('rule') == 'under' and any(isinstance(row, Paragraph) for row in made):
+        # Under a column that is only ruled blanks the rule would double the last one.
+        made.append(Hair(thickness=0.6, above=1.5 * MM, below=0))
+    return _finish(place, made, before=_num(params.get('gap_pt'), 0.0, 0, 60) if params.get('gap_pt') else 0.0,
+                   after=ctx.leading if params.get('rule') == 'under' and made else 0.0)
 
 
 def _party_plain(ctx, place):

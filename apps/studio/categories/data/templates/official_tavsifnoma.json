@@ -101,9 +101,7 @@
       "uz": "about"
      }
     },
-    "captions": {
-     "subject_name": "cap_name"
-    }
+    "name_style": "bold_caps"
    }
   },
   {
@@ -167,16 +165,16 @@
    ],
    "when": "fact:purpose_recipient",
    "params": {
-    "label": "purpose_to",
-    "indent_first_mm": 12.5
+    "indent_first_mm": 12.5,
+    "text": "purpose_to"
    }
   },
   {
    "block": "line",
    "when": "nofact:purpose_recipient",
    "params": {
-    "label": "purpose_any",
-    "indent_first_mm": 12.5
+    "indent_first_mm": 12.5,
+    "text": "purpose_any"
    }
   },
   {
@@ -190,11 +188,11 @@
     "variant": "post_sign_name",
     "max_rows": 3,
     "sign_room_mm": 12,
-    "label": "sign",
-    "captions": {
-     "post": "cap_post",
-     "name": "cap_name"
-    }
+    "captions": [
+     "cap_post",
+     "sign",
+     "cap_name"
+    ]
    }
   },
   {
@@ -202,8 +200,8 @@
    "when": "nofact:without_seal=true",
    "keep": "closing",
    "params": {
-    "label": "seal",
-    "align": "left"
+    "align": "left",
+    "text": "seal"
    }
   },
   {

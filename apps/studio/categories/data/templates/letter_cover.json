@@ -103,7 +103,7 @@
    "block": "line",
    "when": "nofact:salutation",
    "params": {
-    "label": "fallback"
+    "text": "fallback"
    }
   },
   {
@@ -117,14 +117,19 @@
     "label": "lead",
     "style": "bold",
     "max_lines": 3,
-    "balance": true
+    "balance": true,
+    "separator": ", ",
+    "labels": {
+     "vacancy_reference": "reference"
+    }
    }
   },
   {
    "block": "paragraph",
    "part": "opening",
    "params": {
-    "gap_pt": 12
+    "gap_pt": 7,
+    "before_pt": 7
    }
   },
   {
@@ -132,7 +137,8 @@
    "part": "fit",
    "when": "part:fit",
    "params": {
-    "gap_pt": 12
+    "gap_pt": 7,
+    "before_pt": 7
    }
   },
   {
@@ -140,14 +146,16 @@
    "part": "motive",
    "when": "part:motive",
    "params": {
-    "gap_pt": 12
+    "gap_pt": 7,
+    "before_pt": 7
    }
   },
   {
    "block": "paragraph",
    "part": "closing",
    "params": {
-    "gap_pt": 12
+    "gap_pt": 7,
+    "before_pt": 7
    },
    "keep": "closing"
   },
@@ -157,7 +165,8 @@
    "when": "fact:salutation",
    "keep": "closing",
    "params": {
-    "label": "close_named"
+    "text": "close_named",
+    "before_pt": 10
    }
   },
   {
@@ -166,22 +175,35 @@
    "when": "nofact:salutation",
    "keep": "closing",
    "params": {
-    "label": "close"
+    "text": "close",
+    "before_pt": 10
    }
   },
   {
-   "block": "signature_row",
+   "block": "line",
    "part": "close",
    "fields": [
     "applicant_name"
    ],
+   "when": "fact:applicant_name",
    "keep": "closing",
    "params": {
-    "variant": "label_sign_name",
-    "sign_room_mm": 14,
-    "captions": {
-     "applicant_name": "cap_name"
-    }
+    "before_pt": 30
+   }
+  },
+  {
+   "block": "ruled_blank",
+   "fields": [
+    "applicant_name"
+   ],
+   "when": "blank:applicant_name",
+   "keep": "closing",
+   "params": {
+    "style": "captioned",
+    "caption": "cap_name",
+    "width_mm": 60,
+    "indent_mm": 0,
+    "pitch_pt": 36
    }
   },
   {
@@ -192,9 +214,6 @@
    "params": {
     "marker": "number",
     "label": "enclosure",
-    "labels": {
-     "several": "enclosures"
-    },
     "max_items": 4,
     "single_unnumbered": true
    }
@@ -235,6 +254,11 @@
    "uz": "(F.I.Sh.)",
    "ru": "(Ф.И.О.)",
    "en": "(full name)"
+  },
+  "reference": {
+   "uz": "№",
+   "ru": "№",
+   "en": "ref."
   }
  },
  "mock": "units/pdf.xat.ishga_kirish/mock/letter_cover.png"

@@ -61,7 +61,8 @@
    "params": {
     "anchor": "left",
     "name_style": "bold_large",
-    "rule": "under"
+    "rule": "under",
+    "contact_line": true
    }
   },
   {
@@ -98,7 +99,8 @@
    ],
    "params": {
     "label": "kind",
-    "style": "bold"
+    "style": "bold",
+    "separator": ", "
    }
   },
   {
@@ -109,14 +111,14 @@
    ],
    "when": "fact:salutation",
    "params": {
-    "label": "salutation"
+    "text": "salutation"
    }
   },
   {
    "block": "line",
    "when": "nofact:salutation",
    "params": {
-    "label": "to_whom"
+    "text": "to_whom"
    }
   },
   {
@@ -127,10 +129,10 @@
     "target"
    ],
    "params": {
-    "label": "opening_target",
     "without": {
      "target": "opening"
-    }
+    },
+    "text": "opening_target"
    }
   },
   {
@@ -138,7 +140,8 @@
    "part": "opening",
    "when": "part:opening",
    "params": {
-    "gap_pt": 12
+    "gap_pt": 7,
+    "before_pt": 7
    }
   },
   {
@@ -146,7 +149,8 @@
    "part": "evidence",
    "when": "part:evidence",
    "params": {
-    "gap_pt": 12
+    "gap_pt": 7,
+    "before_pt": 7
    }
   },
   {
@@ -164,7 +168,8 @@
    "part": "character",
    "when": "part:character",
    "params": {
-    "gap_pt": 12
+    "gap_pt": 7,
+    "before_pt": 7
    }
   },
   {
@@ -172,7 +177,8 @@
    "part": "context",
    "when": "part:context",
    "params": {
-    "gap_pt": 12
+    "gap_pt": 7,
+    "before_pt": 7
    }
   },
   {
@@ -180,7 +186,8 @@
    "part": "fit",
    "when": "part:fit",
    "params": {
-    "gap_pt": 12
+    "gap_pt": 7,
+    "before_pt": 7
    }
   },
   {
@@ -192,10 +199,11 @@
    ],
    "when": "fact:strength=strong",
    "params": {
-    "label": "verdict_strong",
     "without": {
      "target": "verdict_strong_plain"
-    }
+    },
+    "text": "verdict_strong",
+    "before_pt": 7
    }
   },
   {
@@ -207,17 +215,19 @@
    ],
    "when": "nofact:strength=strong",
    "params": {
-    "label": "verdict_target",
     "without": {
      "target": "verdict"
-    }
+    },
+    "text": "verdict_target",
+    "before_pt": 7
    }
   },
   {
    "block": "line",
    "when": "fact:recommender_phone",
    "params": {
-    "label": "contact_offer"
+    "text": "contact_offer",
+    "before_pt": 7
    }
   },
   {
@@ -225,7 +235,8 @@
    "when": "fact:salutation",
    "keep": "closing",
    "params": {
-    "label": "close_named"
+    "text": "close_named",
+    "before_pt": 10
    }
   },
   {
@@ -233,26 +244,62 @@
    "when": "nofact:salutation",
    "keep": "closing",
    "params": {
-    "label": "close"
+    "text": "close",
+    "before_pt": 10
    }
   },
   {
-   "block": "signature_row",
+   "block": "ruled_blank",
+   "when": "fact:recommender_name",
+   "keep": "closing",
+   "params": {
+    "lines": 1,
+    "width_mm": 60,
+    "indent_mm": 0,
+    "pitch_pt": 30
+   }
+  },
+  {
+   "block": "line",
    "part": "sign_off",
    "fields": [
-    "recommender_name",
+    "recommender_name"
+   ],
+   "when": "fact:recommender_name",
+   "keep": "closing",
+   "params": {
+    "style": "bold",
+    "before_pt": 0,
+    "after_pt": 0
+   }
+  },
+  {
+   "block": "ruled_blank",
+   "fields": [
+    "recommender_name"
+   ],
+   "when": "blank:recommender_name",
+   "keep": "closing",
+   "params": {
+    "style": "captioned",
+    "caption": "cap_name",
+    "width_mm": 60,
+    "indent_mm": 0,
+    "pitch_pt": 30
+   }
+  },
+  {
+   "block": "line",
+   "part": "sign_off",
+   "fields": [
     "recommender_position"
    ],
    "keep": "closing",
    "params": {
-    "variant": "label_sign_name",
-    "max_rows": 1,
-    "sign_room_mm": 14,
-    "captions": {
-     "recommender_name": "cap_name",
-     "recommender_position": "cap_post"
-    }
-   }
+    "before_pt": 0,
+    "after_pt": 0
+   },
+   "when": "fact:recommender_position"
   },
   {
    "block": "line",
@@ -267,7 +314,8 @@
     "labels": {
      "recommender_phone": "tel",
      "recommender_email": "email"
-    }
+    },
+    "separator": " · "
    }
   }
  ],
@@ -354,7 +402,7 @@
   },
   "email": {
    "uz": "E-mail:",
-   "ru": "E-mail:",
+   "ru": "Эл. почта:",
    "en": "E-mail:"
   },
   "date_blank": {

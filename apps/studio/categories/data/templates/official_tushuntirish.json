@@ -71,14 +71,16 @@
     "captions": {
      "addressee_position": "cap_head"
     },
-    "blank_suffix": {
-     "uz": "ga"
-    },
     "order": {
      "en": [
       "addressee_name",
       "addressee_position"
      ]
+    },
+    "suffixes": {
+     "uz": {
+      "addressee_position": "to_suffix"
+     }
     }
    }
   },
@@ -103,15 +105,17 @@
     "labels": {
      "writer_phone": "tel"
     },
-    "blank_suffix": {
-     "uz": "dan"
-    },
     "order": {
      "en": [
       "writer_name",
       "writer_role",
       "writer_phone"
      ]
+    },
+    "suffixes": {
+     "uz": {
+      "writer_name": "from_suffix"
+     }
     }
    }
   },
@@ -188,9 +192,6 @@
    "params": {
     "marker": "number",
     "label": "attachment",
-    "labels": {
-     "several": "attachments"
-    },
     "max_items": 6,
     "single_unnumbered": true
    }
@@ -206,11 +207,11 @@
    "params": {
     "variant": "date_sign_name",
     "sign_room_mm": 14,
-    "captions": {
-     "written_date": "date",
-     "signer_name": "name"
-    },
-    "label": "sign"
+    "captions": [
+     "date",
+     "sign",
+     "name"
+    ]
    }
   }
  ],
@@ -284,6 +285,16 @@
    "uz": "(F.I.Sh.)",
    "ru": "(Ф.И.О.)",
    "en": "(full name)"
+  },
+  "to_suffix": {
+   "uz": "ga",
+   "ru": "",
+   "en": ""
+  },
+  "from_suffix": {
+   "uz": "dan",
+   "ru": "",
+   "en": ""
   }
  },
  "mock": "units/pdf.xat.tushuntirish/mock/official_tushuntirish.png"

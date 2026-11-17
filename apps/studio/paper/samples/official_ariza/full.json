@@ -1,0 +1,63 @@
+{
+  "template": "official_ariza",
+  "case": "full",
+  "entry": "pdf.xat.ariza",
+  "pages": 1,
+  "uz": {
+    "title": "Ariza",
+    "facts": {
+      "addressee_org": "Namuna davlat pedagogika universiteti",
+      "addressee_position": "rektori B. A. To‘xtasinovga",
+      "applicant_role": "Tarix fakulteti 3-kurs talabasi",
+      "applicant_name": "Komilova Sevara Akmal qizidan",
+      "phone": "+998 90 111 22 33",
+      "date_written": "12.09.2026",
+      "signer_name": "S. A. Komilova"
+    },
+    "sections": [
+      {"id": "request", "heading": "", "layout": "text", "items": [],
+       "body": "Oilaviy sharoitim sababli 2026-yil 21-sentabrdan 3-oktabrgacha o‘qishga qatnasha olmayman. Shu kunlarda darsdan ozod qilishingizni hamda o‘tilgan mavzularni mustaqil topshirishimga ruxsat berishingizni so‘rayman."},
+      {"id": "enclosures", "heading": "", "layout": "list", "body": "",
+       "items": [{"label": "", "text": "Mahalla fuqarolar yig‘inining ma’lumotnomasi."},
+                 {"label": "", "text": "Talaba guvohnomasi nusxasi."}]}
+    ]
+  },
+  "ru": {
+    "title": "Заявление",
+    "facts": {
+      "addressee_org": "Образцовый государственный педагогический университет",
+      "addressee_position": "ректору Б. А. Тухтасинову",
+      "applicant_role": "студентки 3 курса исторического факультета",
+      "applicant_name": "Комиловой Севары Акмаловны",
+      "phone": "+998 90 111 22 33",
+      "date_written": "12.09.2026",
+      "signer_name": "С. А. Комилова"
+    },
+    "sections": [
+      {"id": "request", "heading": "", "layout": "text", "items": [],
+       "body": "По семейным обстоятельствам я не смогу посещать занятия с 21 сентября по 3 октября 2026 года. Прошу освободить меня от занятий в эти дни и разрешить сдать пройденные темы самостоятельно."},
+      {"id": "enclosures", "heading": "", "layout": "list", "body": "",
+       "items": [{"label": "", "text": "Справка схода граждан махалли."},
+                 {"label": "", "text": "Копия студенческого билета."}]}
+    ]
+  },
+  "en": {
+    "title": "Application",
+    "facts": {
+      "addressee_org": "Sample State Pedagogical University",
+      "addressee_position": "To the Rector, Mr B. A. Tukhtasinov",
+      "applicant_role": "Third-year student, Faculty of History",
+      "applicant_name": "From Sevara A. Komilova",
+      "phone": "+998 90 111 22 33",
+      "date_written": "12 September 2026",
+      "signer_name": "S. A. Komilova"
+    },
+    "sections": [
+      {"id": "request", "heading": "", "layout": "text", "items": [],
+       "body": "For family reasons I cannot attend classes from 21 September to 3 October 2026. I ask to be excused from classes on those days and allowed to cover the missed topics on my own."},
+      {"id": "enclosures", "heading": "", "layout": "list", "body": "",
+       "items": [{"label": "", "text": "A certificate from the neighbourhood council."},
+                 {"label": "", "text": "A copy of my student card."}]}
+    ]
+  }
+}

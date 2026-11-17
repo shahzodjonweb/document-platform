@@ -381,13 +381,32 @@ def _instances(ctx, run, group):
     return sorted(found)
 
 
+def localised(value, locale):
+    """A placement's parameters with every per-language map resolved to the paper's language.
+
+    A map whose keys are all languages ({"en": "to"}, {"uz": {...}}) is a
+    word or setting only those languages have: it becomes its value in
+    `locale`, and is left out where `locale` has none, so an English-only
+    "To:" prints nothing in an Uzbek note rather than falling back to English.
+    """
+    if isinstance(value, dict) and value and set(value) <= set(LOCALES):
+        return localised(value[locale], locale) if locale in value else None
+    if isinstance(value, dict):
+        made = {key: localised(item, locale) for key, item in value.items()}
+        return {key: item for key, item in made.items() if item is not None}
+    if isinstance(value, list):
+        return [item for item in (localised(item, locale) for item in value) if item is not None]
+    return value
+
+
 def _place(ctx, placement, index, instance, group):
     part = ctx.entry.part(placement['part']) if placement.get('part') else None
     section = ctx.section(part['id'], instance) if part and part['kind'] in WRITTEN else None
     fields = tuple(placement.get('fields') or (part or {}).get('fields') or ())
-    return Place(placement['block'], section, part, fields, dict(placement.get('params') or {}), instance, index,
-                 group, placement.get('when'), placement.get('keep'), bool(placement.get('page_break_before')),
-                 placement)
+    # A params object made only of language keys resolves to None in a language it does not name: still a dict.
+    params = localised(dict(placement.get('params') or {}), ctx.locale) or {}
+    return Place(placement['block'], section, part, fields, params, instance, index, group, placement.get('when'),
+                 placement.get('keep'), bool(placement.get('page_break_before')), placement)
 
 
 def places(ctx):
