@@ -469,6 +469,16 @@ CASES = [
        'The meeting is on the fifteenth of May.', gone=('fifteenth',)),
     gp('dates-spelled-day-ru-blank', BLANK, 'Собрание будет 12 мая.', 'ru', 'Собрание будет пятнадцатого мая.',
        gone=('пятнадцатого',)),
+    # An Uzbek month is written in lower case: only an English ordinal needs its month capitalised (round 3 of the
+    # convergence, from 16b2e75).
+    gp('dates-spelled-day-before-a-lower-case-uzbek-month-uz-blank', BLANK, MINUTES_UZ, 'uz',
+       'Keyingi majlis beshinchi mart kuni bo‘ladi.', gone=('beshinchi',)),
+    gp('dates-spelled-compound-day-before-an-uzbek-month-uz-blank', BLANK, REPORT_UZ, 'uz',
+       'Hisobot yigirma beshinchi dekabr kuni tasdiqlandi.', gone=('beshinchi',)),
+    body('dates-spelled-day-before-an-uzbek-month-in-a-decision-uz-blank', BLANK, 'pdf.biz.bayonnoma', MINUTES_UZ, 'uz',
+         'item_decisions', 'Birinchi sentabrdan boshlab yangi maktab formasi joriy etilsin.', gone=('Birinchi',)),
+    gp('dates-the-customers-day-spelled-before-an-uzbek-month-uz-keep', KEEP, 'Keyingi majlis 5-mart kuni bo‘ladi.',
+       'uz', 'Keyingi majlis beshinchi mart kuni bo‘ladi.'),
     gp('dates-year-from-another-date-en-blank', BLANK, 'I joined on 1 September 2019 and left on 30 June 2023.', 'en',
        'I joined on 1 September 2023.', gone=('September 2023',)),
     gp('dates-year-from-another-date-ru-blank', BLANK, 'Я работала с 1 сентября 2019 года по 30 июня 2023 года.', 'ru',

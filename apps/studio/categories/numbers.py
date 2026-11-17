@@ -304,6 +304,8 @@ ORDINAL_WORD = (r"(?:(?:twenty|thirty)[ -])?(?:" + '|'.join(EN_ORDINALS) + ")"
                 + RU_ORDINAL_ENDING +
                 r"|(?:(?:o" + APOSTROPHE + r"n|yigirma|o" + APOSTROPHE + r"ttiz)[ \u00a0])?[^\W\d_]+?i?nchi")
 GAP_ORDINAL = r"[  ]+"
+# An English ordinal, whose month a date writes capitalised (`_digits`).
+EN_ORDINAL = re.compile(r"(?:(?:twenty|thirty)[ -])?(?:" + '|'.join(EN_ORDINALS) + ")", re.IGNORECASE)
 # A placing is read with what makes it one, never an idiom of the same words: a prize; a run of years; a Russian
 # "место" in any case but the prepositional of "на первом месте"; an Uzbek "o‘rin" bare, in the accusative or the
 # genitive, or "o‘ringa sazovor"; a place an English verb wins ("won first place", "took the second place", "came in
@@ -538,10 +540,12 @@ class _Reader:
                 value, month = _ordinal_value(match.group(1)), _month(match.group(2))
                 if value is None or month is None or not _valid(value, month) or not self.free(*match.span()):
                     continue
-                if match.group(1).isascii() and match.group(2)[:1].islower() \
+                # An English month is capitalised ("the first may reduce costs" dates nothing); an Uzbek one is
+                # written in lower case ("beshinchi mart", "birinchi sentabrdan").
+                if EN_ORDINAL.fullmatch(match.group(1)) and match.group(2)[:1].islower() \
                         and not re.search(r"[  ]of[  ]", text[match.end(1):match.start(2)]) \
                         and not YEAR_AFTER.match(text, match.end()):
-                    continue  # an English month is capitalised: "the first may reduce costs" dates nothing
+                    continue
                 self.dated(match.start(1), match.end(), str(value), month)
         for match in TIME.finditer(text):
             if not self.free(*match.span()):
