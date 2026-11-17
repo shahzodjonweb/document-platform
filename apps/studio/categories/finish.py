@@ -790,7 +790,8 @@ def _rejected_names(field, value, trusted, translated, led, invented, rejected):
         return  # a guarded paper's text keeps its general knowledge, and its names were never read
     words = facts.failed_names(value, kind, trusted, translated=translated)
     if invented is not None:
-        for word in facts.held_names(value, kind, trusted, translated=translated):
+        for word in facts.held_names(value, kind, trusted, translated=translated,
+                                     people=field['id'] not in facts.NO_PEOPLE):
             invented.add(word)
     shaped = len(words) == 1 and re.fullmatch(r"[^\W\d_]{2,}bank[^\W\d_]*", words[0]) is not None
     if rejected is not None and words and (kind == 'person' or (kind == 'org' and (len(words) >= 2 or shaped))):

@@ -1216,12 +1216,26 @@ def test_a_held_name_is_matched_whole_or_with_a_case_ending_never_by_a_prefix():
     ('Artel MChJ', 'org', ['artel']), ('Acme Trading LLC', 'org', ['acme']), ('Aziz Rahim', 'line', ['aziz', 'raxim']),
     ('Dilnoza\nSardor', 'list', ['dilnoza', 'sardor']),
     ('Bosh direktor Karimova Dilnoza', 'person', ['karimova', 'dilnoza']),
+    # Round 3 of the convergence: a line's name holds every word of it, a word-like given name included.
+    ('Hikmat\nRahmat', 'list', ['xikmat', 'raxmat']), ('Direktor | Hikmat', 'line', ['xikmat']),
+    ('Direktor Hikmat Rahim', 'line', ['xikmat', 'raxim']), ('Rahmat aka', 'line', ['raxmat']),
+    ('Grant Fuller', 'line', ['grant', 'fuller']), ('Chase Banks', 'line', ['chase', 'banks']),
+    ('Bosh Hisobchi', 'line', []), ('Maktab Direktori', 'line', []), ('Diplom Nusxasi', 'list', []),
+    ('John Smith, Head of Sales', 'line', ['joxn', 'smitx']),
 ], ids=['role-and-person', 'chair', 'bank-of-a-word', 'university', 'llc', 'one-word', 'bank-shape', 'quoted-form',
         'quoted-project', 'ministry', 'city', 'given-name', 'uzbek-form', 'llc-of-two-words', 'a-line-only-a-name',
-        'a-list-of-names', 'a-role-before-a-person'])
+        'a-list-of-names', 'a-role-before-a-person', 'word-like-given-names', 'a-name-beside-its-role',
+        'a-name-after-its-role', 'a-name-and-its-honorific', 'word-like-surnames', 'a-plural-kind-in-a-surname',
+        'a-role-only', 'a-role-and-its-place', 'a-document', 'a-name-and-a-role-phrase'])
 def test_a_rejected_fact_holds_only_the_words_that_name_someone_wherever_they_stand(value, kind, held):
     known = trusting('Nonvoyxona uchun hujjat yozib bering.')
     assert facts.held_names(value, kind, known) == held
+
+
+def test_a_rejected_field_of_no_people_holds_no_name():
+    known = trusting('Ishga kirish xati yozing.')
+    assert facts.held_names('Rezyume\nTavsiyanoma', 'list', known, people=False) == []
+    assert 'enclosures' in facts.NO_PEOPLE and 'participants' not in facts.NO_PEOPLE
 
 
 # ---------------------------------------------------------------- laws in other senses (stage-2 re-audit, round 2)

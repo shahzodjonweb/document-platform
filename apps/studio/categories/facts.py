@@ -1859,15 +1859,17 @@ def failed_names(value, kind, trusted, *, translated=False):
     return list(dict.fromkeys(found))
 
 
-def held_names(value, kind, trusted, *, translated=False):
+def held_names(value, kind, trusted, *, translated=False, people=True):
     """The folded words of a fact taken out as not the customer's that a paper holds wherever they open a sentence.
 
     Only words that name someone wherever they stand (finish's `invented`, read whole or with a case ending,
     `Named`): a person's every word not the customer's but a role's opening word ("Bosh direktor Karimova
     Dilnoza" gives karimova and dilnoza, never bosh); else a person's beside a surname ("Bosh hisobchi Karimova
-    Dilnoza"), every word but a common one of a line that is only a name after its label ("Rais: Aziz Rahim", a
-    participants' list's "Dilnoza", never the "Bosh Hisobchi" or "Rezyume" of a line), an organisation's shaped or
-    quoted ("Hamkorbank", "«Baraka» nonvoyxonasi"), and an
+    Dilnoza"), every word of a line's name (`_line_names`: "Rais: Hikmat Rahim", a participants' list's
+    "Rahmat", "Direktor | Hikmat", "Grant Fuller", a given name that is also a word included: the owner's
+    tie-break, a blank before a leak), never the "Bosh Hisobchi", "Maktab Direktori" or "Rezyume" of a line, nor
+    any word of a field that holds no people (`people`: the enclosures), an organisation's shaped or quoted
+    ("Hamkorbank", "«Baraka» nonvoyxonasi"), and an
     organisation's or a place's name before its legal form or alone ("Acme LLC", "Artel MChJ", "Artel",
     "Samarqand"; of "Acme Trading LLC" the first). A name its value follows with its kind ("Xalq banki",
     "Westminster University") is held by that kind where it opens a sentence (`_organisation`); alone it may be a
@@ -1889,10 +1891,9 @@ def held_names(value, kind, trusted, *, translated=False):
             continue
         for run, bad in runs:
             found += _holdable(line, run, bad)
-        if kind in ('line', 'list') and _only_name(line):
-            # A line of capitalised common words ("Bosh Hisobchi", "Rezyume", "Maktab Direktori") names no one.
-            found += [fold(run[position][2]) for run, bad in runs for position in bad
-                      if _letters(run[position][2]) >= 2 and not common(run[position][2])]
+        if kind in ('line', 'list') and people:
+            found += [fold(word) for word in _line_names(line)
+                      if _letters(word) >= 2 and not trusted.person(word, translated)]
         if kind in ('org', 'place'):
             found += _one_name(line, runs)
     return list(dict.fromkeys(found))
@@ -1914,11 +1915,70 @@ def _role_opening(line, run):
 
 def _only_name(line):
     """Whether a line is a name and nothing else: one to three capitalised words with its initials, none a kind
-    ("Aziz Rahim", "Dilnoza", "Peter Brown"); never "Bosh hisobchi Karimova D." nor "Moliya Vazirligi"."""
+    ("Aziz Rahim", "Dilnoza", "Peter Brown", "Chase Banks"); never "Bosh hisobchi Karimova D." nor "Moliya
+    Vazirligi". An English kind in the plural is a surname's word there ("Banks"), never an organisation's kind."""
     words = [word for word in WORD.findall(line) if not HONORIFICS.fullmatch(normalised(word))]
     named = [word for word in words if _letters(word) >= 2]
     return 1 <= len(named) <= 3 and all(word[0].isupper() for word in words) and not any(
-        fold(word) in ORG_HEADS | ORG_AFTER | KIND_WORDS or re.search(r'(?:si|gi)$', fold(word)) for word in named)
+        fold(word) in ONLY_NAME_KINDS or re.search(r'(?:si|gi)$', fold(word)) for word in named)
+
+
+# The words of a line that make it a role's, a job's or a document's rather than someone's name: "Direktor",
+# "Bosh Hisobchi", "Maktab Direktori", "Rezyume", "Diplom nusxasi", "Head of Sales", "Секретарь", with the endings a
+# sentence gives them. A line's name stands after the last of them ("Direktor Hikmat Rahim", "Bosh hisobchi Karimova
+# Dilnoza"), and a line or a part of one that is only such words names no one (`_line_names`). Read for that only:
+# these are no allowed words of the names check, where a role that is also a given name would let a name through.
+ROLE_STEMS = UZ_ROLES + (
+    "rais o‘rinbosar hisobchi buxgalter kassir sotuvchi kotib kotiba muhandis yurist iqtisodchi mutaxassis "
+    "inspektor nazoratchi operator maslahatchi dasturchi dizayner shifokor hamshira haydovchi omborchi novvoy oshpaz "
+    "ofitsiant farrosh qorovul usta ishchi laborant metodist psixolog kutubxonachi murabbiy auditor koordinator "
+    "administrator assistent bosh "
+    # The documents an enclosures' or an attachments' line lists.
+    "rezyume tavsiyanoma tavsifnoma diplom sertifikat pasport ariza ma’lumotnoma guvohnoma nusxa xat shartnoma "
+    "buyruq dalolatnoma bayonnoma hujjat ilova attestat transkript portfolio").split()
+ROLE_MUTATED = ("boshlig‘ rahbarlig‘").split()
+# The line and list fields that hold no people, whose rejected words a paper never holds as a name (`held_names`'s
+# `people`): the documents a letter encloses, a statement's points, a position's or a status's words.
+NO_PEOPLE = frozenset(('enclosures', 'attachments', 'statements', 'key_dates', 'position', 'applicant_role',
+                       'writer_role', 'subject_role', 'candidate_status', 'recommender_position', 'approver_post',
+                       'signer_position', 'currency', 'period', 'legal_form', 'loan_term', 'loan_grace',
+                       'loan_repayment', 'tax_regime', 'vat_status', 'price_info', 'meeting_time', 'source_pages'))
+EN_ROLE_WORDS = EN_ROLES + (
+    "dean accountant cashier secretary engineer lawyer economist specialist deputy supervisor coordinator "
+    "administrator advisor adviser consultant inspector instructor tutor lecturer professor head vice "
+    "cv resume certificate certificates diploma transcript passport letter copy copies reference portfolio essay "
+    "enclosure enclosures attachment attachments").split()
+RU_ROLE_WORDS = re.compile(
+    r"(?:директор|ректор|декан|руководител|председател|заведующ|начальник|заместител|бухгалтер|кассир|продав"
+    r"|секретар|инженер|юрист|экономист|специалист|менеджер|учител|преподавател|член|главн|старш|инспектор"
+    r"|резюме|диплом|сертификат|справк|копи|паспорт|письм|рекомендац|характеристик|заявлени|приложени|аттестат)\w*")
+ROLE_WORDS = _folded([stem + ending for stem in ROLE_STEMS for ending in UZ_ENDINGS]
+                     + [stem + ending for stem in ROLE_MUTATED for ending in ('i', 'ini', 'iga', 'ida', 'idan', 'ining')]
+                     + [word + ending for word in EN_ROLE_WORDS for ending in ('', 's')])
+# The kinds no line that is only a name holds (`_only_name`): an English kind in the plural is a surname's word.
+ONLY_NAME_KINDS = (ORG_HEADS | ORG_AFTER | KIND_WORDS) - _folded([kind + 's' for kind in EN_ORG_KINDS])
+# Where a line's parts part: "Direktor | Hikmat", "John Smith, Head of Sales", "Hikmat Rahim (kotib)", "Rais — …".
+LINE_PARTS = re.compile(r"[ \t ]*[|,()/][ \t ]*|[ \t ]+[–—-][ \t ]+")
+
+
+def _role_word(word):
+    """Whether a word is a role's, a job's or a document's (`ROLE_WORDS`, `RU_ROLE_WORDS`)."""
+    return fold(word) in ROLE_WORDS or RU_ROLE_WORDS.fullmatch(normalised(word).casefold()) is not None
+
+
+def _line_names(line):
+    """The words of a line fact that are someone's name: of each part of it (`LINE_PARTS`), the words after its last
+    role's, job's or document's word (`_role_word`), when they are only a name (`_only_name`). "Direktor | Hikmat"
+    gives Hikmat, "Direktor Hikmat Rahim" and "Bosh hisobchi Hikmat Rahim" Hikmat and Rahim, "Rahmat aka" Rahmat;
+    "Bosh Hisobchi", "Maktab Direktori", "Rezyume", "Head of Sales" give none."""
+    found = []
+    for part in LINE_PARTS.split(line):
+        words = WORD.findall(part)
+        roles = [index for index, word in enumerate(words) if _role_word(word)]
+        rest = words[roles[-1] + 1:] if roles else words
+        if rest and _only_name(' '.join(rest)):
+            found += [word for word in rest if not HONORIFICS.fullmatch(normalised(word))]
+    return found
 
 
 # The legal forms, with the endings an Uzbek sentence gives them ("MChJning"), apart from an organisation's kinds.
