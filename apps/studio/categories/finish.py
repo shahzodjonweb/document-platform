@@ -656,6 +656,11 @@ def _fact(field, value, trusted, translated, verified, *, led=False):
     reason, which the template and the fallback print as they are, so it is
     also held as a grounded part is (`ground_paper`): an invented dean, law or
     quotation takes the whole value out, since half a reason is no reason.
+
+    Every fact is held strictly (facts.supported's `strict`): a paper in
+    another language than the message still checks the names of its org,
+    place, line and list fields, which hold signers, participants and
+    addressees as often as a person field does.
     """
     if EMPTY_VALUE.fullmatch(value):
         return (BLANK if field['missing'] == 'if_needed' else None), False
@@ -671,7 +676,7 @@ def _fact(field, value, trusted, translated, verified, *, led=False):
         if base and base != BLANK and facts.derived(value, base):
             return _cut(value, field.get('max_chars')), False
         return None, True
-    if not facts.supported(value, kind, trusted, translated=translated):
+    if not facts.supported(value, kind, trusted, translated=translated, strict=True):
         return None, True
     if led and kind == 'text' and ground_paper(value, trusted, translated=translated)[1]:
         return None, True

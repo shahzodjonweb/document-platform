@@ -214,15 +214,23 @@ def test_a_long_value_is_cut_at_a_words_end(sinov):
     assert len(facts_of(made)['author']) <= 40
 
 
-def test_a_translated_paper_leaves_organisations_to_the_translation_but_never_a_person(sinov):
+def test_a_translated_paper_still_holds_its_organisations_names_and_never_a_person(sinov):
+    # A paper's org, place, line and list facts are drawn in letterheads and signature rows, so translation never
+    # switches their names off: a translated organisation that does not fold to the customer's words goes.
     data = draft(sinov, prompt='Письмо от Кодировой Малики в Образцовый государственный университет, 12 книг.',
                  locale='uz')
     content = answer(data, facts={'items': [{'label': 'org', 'text': 'Namunaviy davlat universiteti'},
                                             {'label': 'author', 'text': 'Qodirova Malika'},
                                             {'label': 'signer', 'text': 'M. Qodirova'}]})
     made, _, codes = finished(data, content)
-    assert facts_of(made)['org'] == 'Namunaviy davlat universiteti'
-    assert facts_of(made)['author'] == 'Qodirova Malika' and codes == []
+    assert 'org' not in facts_of(made) and codes == ['fact:org'], 'a false blank, never an invention'
+    assert facts_of(made)['author'] == 'Qodirova Malika' and facts_of(made)['signer'] == 'M. Qodirova'
+    # An organisation the customer named in its own letters stays, its lower-case words translated.
+    data = draft(sinov, prompt='Письмо от Кодировой Малики в государственный университет Namuna, 12 книг.',
+                 locale='uz')
+    made, _, codes = finished(data, answer(data, facts={'items': [
+        {'label': 'org', 'text': 'Namuna davlat universiteti'}]}))
+    assert facts_of(made)['org'] == 'Namuna davlat universiteti' and codes == []
     content = answer(data, facts={'items': [{'label': 'author', 'text': 'Rahimov Javlon'}]})
     assert finished(data, content)[2] == ['fact:author']
 
@@ -585,6 +593,82 @@ def test_a_letters_text_fact_naming_an_invented_person_law_or_quotation_is_not_k
     assert facts_of(made) == {'reason': 'Oilaviy sabab bilan',
                               'request': '2-kurs talabasi sifatida ta’til berishingizni so‘rayman'}
     assert codes == [] and warnings == []
+
+
+TRANSLATED_MINUTES = 'Составьте протокол собрания отдела продаж о плане работы на следующий квартал, подробно и по делу.'
+
+
+def test_a_translated_minutes_never_keeps_an_invented_chair_secretary_or_participant():
+    # A Russian message, Uzbek minutes: the chair and secretary are line fields and the participants a list, and the
+    # template draws them in the minutes' head and its signature rows, so translation must not let them through.
+    minutes = catalogue.get('pdf.biz.bayonnoma')
+    data = draft(minutes, prompt=TRANSLATED_MINUTES, length=2)
+    assert finish._translated(data)
+    invented = {'chair': 'Rais: Karimov Aziz Bahodirovich', 'secretary': 'Kotiba: Yo‘ldosheva Malika',
+                'participants': 'Rahimov B.\nSaidova D.', 'organisation': 'Namuna Savdo MChJ',
+                'meeting_place': 'Toshkent shahri, Navoiy ko‘chasi'}
+    made, warnings, codes = finished(data, answer(data, facts={'items': [
+        {'label': label, 'text': text} for label, text in invented.items()]}))
+    assert not set(invented) & set(facts_of(made))
+    assert set(codes) == {f'fact:{label}' for label in invented} and warnings == [finish.FACTS_BLANKED]
+    # The people the customer named in Cyrillic stay in their Uzbek spelling.
+    data = draft(minutes, prompt=TRANSLATED_MINUTES + ' Председатель Каримов Азиз Баходирович, секретарь Юлдашева '
+                 'Малика, присутствовали Рахимов Б. и Саидова Д.', length=2)
+    given = {'chair': 'Karimov Aziz Bahodirovich', 'secretary': 'Yo‘ldosheva Malika',
+             'participants': 'Rahimov B.\nSaidova D.'}
+    made, warnings, codes = finished(data, answer(data, facts={'items': [
+        {'label': label, 'text': text} for label, text in given.items()]}))
+    assert {label: facts_of(made)[label] for label in given} == given and codes == [] and warnings == []
+
+
+def test_a_translated_cover_letter_never_keeps_an_invented_employer_or_recipient():
+    letter = catalogue.get('pdf.xat.ishga_kirish')
+    prompt = ('Menga ingliz tilida ishga kirish uchun xat yozib bering, sotuv menejeri lavozimiga, men Qodirova '
+              'Malika, savdo sohasida ishlaganman va mijozlar bilan ishlashni yaxshi bilaman.')
+    data = draft(letter, prompt=prompt, locale='en', length=1)
+    assert finish._translated(data)
+    invented = {'salutation': 'Dear Mr. Johnson,', 'employer_name': 'Bright Future Bank',
+                'recipient_title': 'Recruitment Director, Bright Future Bank'}
+    made, warnings, codes = finished(data, answer(data, facts={'items': [
+        {'label': 'applicant_name', 'text': 'Malika Qodirova'},
+        *({'label': label, 'text': text} for label, text in invented.items())]}))
+    assert facts_of(made)['applicant_name'] == 'Malika Qodirova'
+    assert not set(invented) & set(facts_of(made)) and set(codes) == {f'fact:{label}' for label in invented}
+    # What the customer named in Latin stays, with the role and the formula words a letter capitalises.
+    data = draft(letter, prompt=prompt + ' Xatni Namuna Bank kadrlar bo‘limiga yuboraman.', locale='en', length=1)
+    given = {'salutation': 'Dear Hiring Manager,', 'employer_name': 'Namuna Bank'}
+    made, _, codes = finished(data, answer(data, facts={'items': [
+        {'label': label, 'text': text} for label, text in given.items()]}))
+    assert {label: facts_of(made)[label] for label in given} == given and codes == []
+
+
+@pytest.mark.parametrize('prompt', [
+    'Please write a recommendation letter for my student Malika Qodirova, who studied economics with me for two '
+    'years and was always careful and hard-working in class.',
+    'Talabam Qodirova Malika uchun ingliz tilida tavsiyanoma yozib bering, u menda iqtisodiyot fanidan o‘qigan va '
+    'darslarda doim tirishqoq va mas’uliyatli bo‘lgan.',
+], ids=['english-message', 'uzbek-message'])
+def test_a_recommendations_addressee_the_customer_never_gave_is_not_kept(prompt):
+    letter = catalogue.get('pdf.xat.tavsiya')
+    data = draft(letter, prompt=prompt, locale='en', length=1)
+    made, warnings, codes = finished(data, answer(data, facts={'items': [
+        {'label': 'candidate_name', 'text': 'Malika Qodirova'},
+        {'label': 'addressee', 'text': 'Admissions Committee, Westbrook University'},
+        {'label': 'second_signer', 'text': 'Dean | Robert Hale'}]}))
+    assert facts_of(made)['candidate_name'] == 'Malika Qodirova'
+    assert 'addressee' not in facts_of(made) and 'second_signer' not in facts_of(made)
+    assert set(codes) == {'fact:addressee', 'fact:second_signer'} and warnings == [finish.FACTS_BLANKED]
+
+
+def test_a_translated_course_papers_invented_university_is_not_kept():
+    paper = catalogue.get('pdf.kurs_ishi')
+    data = draft(paper, prompt='Напишите курсовую работу по экономике на тему развития малого бизнеса в регионах.',
+                 length=10)
+    made, _, codes = finished(data, answer(data, facts={'items': [
+        {'label': 'university', 'text': 'Namuna iqtisodiyot universiteti'},
+        {'label': 'kafedra', 'text': '«Moliya» kafedrasi'}]}))
+    assert 'university' not in facts_of(made) and 'kafedra' not in facts_of(made)
+    assert set(codes) == {'fact:university', 'fact:kafedra'}
 
 
 def test_a_guarded_papers_text_fact_keeps_general_knowledge():

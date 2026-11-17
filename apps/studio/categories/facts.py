@@ -38,8 +38,10 @@ also matched as Russian spells Uzbek names, with o as а (`respellings`). Such a
 document's organisations and places are translated, so their words cannot be
 looked up; a grounded part still holds every capitalised run to the customer's
 names in those looser spellings, because an invented person must never pass
-for a translated organisation. A translated organisation's name may then be
-blanked: a false blank, never an invention.
+for a translated organisation. A paper's facts are held the same way
+(`supported`'s `strict`), since its org, line and list fields name signers
+and participants. A translated organisation's name may then be blanked: a
+false blank, never an invention.
 Folding can only make two spellings of the customer's own name meet; what it
 cannot see is said plainly in the architecture: a name the model writes in
 lower case, a wrong case ending. A transliteration the table misses blanks a
@@ -482,7 +484,7 @@ def _names_known(text, trusted, translated=False):
     return True
 
 
-def supported(value, kind, trusted, *, translated=False):
+def supported(value, kind, trusted, *, translated=False, strict=False):
     """Whether a fact of this kind is the customer's (architecture 4, "Verifying").
 
     person, org, place, line: every capitalised word is theirs and every number
@@ -492,6 +494,15 @@ def supported(value, kind, trusted, *, translated=False):
     message) checks names for a person only: organisations and places are
     translated, a person's name only spelled anew, which the fold meets, with
     the Russian spellings of o and o‘ allowed (`respellings`).
+
+    `strict` is for a paper's facts, where translation never switches the
+    names off: a paper draws its org, place, line and list values in a
+    letterhead, a title page, the minutes' head and its signature rows, and
+    those hold people ("Rais: …", "Director | …", a list of participants) as
+    often as a person field does. With `translated` they are then read as a
+    person's are, in the looser spellings, so a translated organisation whose
+    words do not fold to the customer's is not kept: a false blank, never an
+    invention, and never one that a later change would read back as theirs.
     """
     if kind in ('choice', 'flag', 'file') or value is None or isinstance(value, bool):
         return True
@@ -499,14 +510,14 @@ def supported(value, kind, trusted, *, translated=False):
     if not text or not re.sub(r'[_\s.\-]', '', text):
         return True  # nothing, or the blank the model returns for an if_needed field
     if kind == 'list':
-        return all(supported(line, 'line', trusted, translated=translated)
+        return all(supported(line, 'line', trusted, translated=translated, strict=strict)
                    for line in re.split(r'[\n;]+', text) if line.strip())
     rest, whole = _strip_addresses(text, trusted)
     if not whole:
         return False
     if not all(numbers.known(number, trusted.values) for number in numbers.found(rest)):
         return False
-    if kind in ('person', 'org', 'place', 'line') and not (translated and kind != 'person'):
+    if kind in ('person', 'org', 'place', 'line') and (strict or not translated or kind == 'person'):
         return _names_known(rest, trusted, translated)
     return True
 
