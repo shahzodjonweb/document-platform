@@ -1576,3 +1576,6 @@ tests/test_category_generation_pdf.py::test_a_fixed_document_sends_back_nothing_
 # the teacher's words reported, never quoted
 tests/test_category_finish_pdf.py::test_a_question_a_quotation_blank_left_unanswerable_goes[quoted-options]
 tests/test_category_finish_pdf.py::test_a_lessons_own_phrases_in_quotation_marks_stay
+
+# Stage-2 re-audit, Russian hundreds: a hundred in any case ("тремястами", "пятистам") and "десятком" are read
+tests/test_category_facts.py::test_russian_hundreds_in_every_case_and_a_ten_as_a_noun_are_read[instrumental]

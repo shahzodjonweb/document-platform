@@ -1153,3 +1153,13 @@ def test_a_guarded_papers_topic_and_a_translated_reference_give_back_only_their_
     known = changed(before, prompt=prompt, category='pdf.kurs_ishi')
     assert not known.person('Hamkorbank') and not known.person('Westminster')
     assert '2024' in known.values
+
+
+@pytest.mark.parametrize('text, found', [
+    ('Я работал с тремястами клиентами', [('300', 'тремястами')]),
+    ('Обслуживал пятистам клиентам, о двухстах заявках', [('500', 'пятистам'), ('200', 'двухстах')]),
+    ('Руководил десятком сотрудников', [('10', 'десятком')]),
+], ids=['instrumental', 'dative-prepositional', 'a-ten'])
+def test_russian_hundreds_in_every_case_and_a_ten_as_a_noun_are_read(text, found):
+    assert read(text) == found
+    assert read('десятки сотрудников, свою семью') == []
