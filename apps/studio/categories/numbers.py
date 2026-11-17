@@ -275,6 +275,13 @@ ORDINAL = re.compile(
     r"|семидесят|восьмидесят|девяност|сот|тысячн)(?:ый|ой|ая|ое|ого|ом|ую|ые|ых|ым|ыми|ому|ей)")
 # No number is read past this: a run of thousands of "hundred"s once made a value too long to write as digits.
 SPELLED_CAP = Decimal(10) ** 24
+# A year written beside a day and a month in words is that date's year, as a numeric date's is: "2025-yil 12-may",
+# "12 мая 2025 года", "1 September 2023", "May 12, 2025". The customer's "1 September 2019" never makes the model's
+# "1 September 2023", though 2023 is a year they wrote elsewhere.
+YEAR_AFTER = re.compile(r"(?:[ \u00a0]*,)?[ \u00a0]+((?:19|20)\d{2})"
+                        r"(?:[ \u00a0]*-?[ \u00a0]*(?:yil\w*|y\.|г\.|года|году|год))?(?![\d]|[.,]\d)", re.IGNORECASE)
+YEAR_BEFORE = re.compile(r"(?<![\d.,])((?:19|20)\d{2})[ \u00a0]*-?[ \u00a0]*(?:yil(?:ning|da|i)?|y\.)[ \u00a0,]*$",
+                         re.IGNORECASE)
 
 
 class Number(NamedTuple):
@@ -387,6 +394,7 @@ class _Reader:
         # One byte per character, set where a number (or an address) was read: a long file has thousands of numbers.
         self.taken = bytearray(len(text))
         self.numbers = []
+        self.words = False
         for match in SKIPPED.finditer(text):
             self.take(match.start(), match.end())
 
@@ -402,6 +410,8 @@ class _Reader:
         self.take(start, end)
 
     def read(self, words=False):
+        # A paper's reading (`words`) also ties a written date's year to it (`dated`); a deck's reads as before.
+        self.words = words
         self._digits()
         if words:
             self.spelled()
@@ -444,12 +454,14 @@ class _Reader:
             if month is None or not _valid(match.group(1), month) or not self.free(*match.span()) \
                     or _small(text, match.start(), *match.span(2)):
                 continue
-            key = _date_key(match.group(1), month)
-            self.add(*match.span(), 'date', key, [{key}], {str(int(match.group(1))), key + '.?'})
+            self.dated(match.start(), match.end(), match.group(1), month)
         for match in MONTH_DAY.finditer(text):
             month = _month(match.group(1))
             days = [day for day in (match.group(2), match.group(3)) if day]
             if month is None or not all(_valid(day, month) for day in days) or not self.free(*match.span()):
+                continue
+            if len(days) == 1:
+                self.dated(match.start(), match.end(), days[0], month)
                 continue
             needs = [{_date_key(day, month)} for day in days]
             self.add(*match.span(), 'date', _date_key(days[0], month), needs,
@@ -512,6 +524,22 @@ class _Reader:
                     needs = {canon(item) for item in found}
                     kind = 'scaled'
                 self.add(match.start(), end, kind, canon(found[0]), [needs], extra)
+
+    def dated(self, start, end, day, month):
+        """A day and a month written in words, with the year written beside them tied to them (`YEAR_AFTER`)."""
+        text, key = self.text, _date_key(day, month)
+        after = YEAR_AFTER.match(text, end) if self.words else None
+        before = YEAR_BEFORE.search(text, max(0, start - 24), start) if self.words else None
+        if after is not None and self.free(end, after.end()):
+            end, year = after.end(), after.group(1)
+        elif before is not None and self.free(before.start(), start):
+            start, year = before.start(), before.group(1)
+        else:
+            self.add(start, end, 'date', key, [{key}], {str(int(day)), key + '.?'})
+            return
+        # As a numeric date's: the customer's tied year gives no other year its day and month ("d:12.5.?").
+        self.add(start, end, 'date', key, [{f'{key}.{year}', f'{key}.?'}, {year}], {str(int(day))},
+                 gives={key, f'{key}.{year}', year})
 
     def spelled(self):
         """The cardinal numbers written as words (`SPELLED`), outside every number and address already read.

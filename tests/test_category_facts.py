@@ -865,6 +865,19 @@ def test_the_tens_of_an_ordinal_are_never_read_as_a_count(text):
     assert ground_paper_of(text) == (text, [])
 
 
+@pytest.mark.parametrize('brief, written, kept', [
+    ('I joined on 1 September 2019 and left on 30 June 2023.', 'I joined on 1 September 2023.', False),
+    ('Я работала с 1 сентября 2019 года по 30 июня 2023 года.', '1 сентября 2023 года', False),
+    ('Majlis 2025-yil 12-mayda bo‘ldi, 2024-yil natijalari.', '2024-yil 12-may', False),
+    ('Majlis 2025-yil 12-mayda bo‘ldi.', '2025-yil 12-may', True),
+    ('Majlis 12-may kuni, 2025-yil rejasi.', '2025-yil 12-may', True),
+    ('The meeting is on May 12, 2025.', '12 May 2025', True),
+], ids=['en-other-year', 'ru-other-year', 'uz-other-year', 'uz-same', 'uz-written-apart', 'en-month-first'])
+def test_a_written_dates_year_is_tied_to_its_day_and_month(brief, written, kept):
+    found = numbers.found(written, words=True)
+    assert all(numbers.known(number, numbers.values(brief)) for number in found) is kept
+
+
 def test_a_count_before_a_word_that_only_starts_like_an_ordinal_is_still_read():
     assert read('twenty first-rate clients') == [('20', 'twenty')]
 
