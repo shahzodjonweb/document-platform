@@ -105,9 +105,25 @@ def stage(account, file_ids):
 OTHER = 'other'
 
 
+def _switched_on():
+    """Whether the categories switch is on with something ticked, read from its row before the catalogue is loaded.
+
+    Off is the shipped default, and every AI PDF and AI Slides tap asks: importing the catalogue then builds and
+    checks every entry and template for nothing, and one that failed to load would break today's question. The
+    row is looked up on each call, as the catalogue's own switch read is, so a change takes effect at once.
+    """
+    import importlib
+    try:
+        settings = importlib.import_module('operations.categories_settings')
+    except ModuleNotFoundError:
+        return False
+    switch = settings.get()
+    return bool(switch.get('on') and switch.get('live'))
+
+
 def category_menu(feature_id, group=None):
     """The buttons of a service's list (or of one group in it); [] when there is no list to show."""
-    if feature_id not in (DOCUMENT, SLIDES):
+    if feature_id not in (DOCUMENT, SLIDES) or not _switched_on():
         return []
     from apps.studio import categories
     return categories.menu(feature_id, group)
@@ -115,7 +131,7 @@ def category_menu(feature_id, group=None):
 
 def category_live(feature_id, category):
     """The entry of `category` when customers may pick it for this service now, else None."""
-    if not isinstance(category, str) or not category or category == OTHER:
+    if not isinstance(category, str) or not category or category == OTHER or not _switched_on():
         return None
     from apps.studio import categories
     # Looked up among the live ones (only this service's), not with get(): with
