@@ -303,15 +303,26 @@ ORDINAL_WORD = (r"(?:(?:twenty|thirty)[ -])?(?:" + '|'.join(EN_ORDINALS) + ")"
                 r"|(?:(?:двадцать|тридцать)[ \u00a0])?(?:" + '|'.join(stem for stem, _ in RU_ORDINALS) + ")"
                 + RU_ORDINAL_ENDING +
                 r"|(?:(?:o" + APOSTROPHE + r"n|yigirma|o" + APOSTROPHE + r"ttiz)[ \u00a0])?[^\W\d_]+?i?nchi")
-GAP_ORDINAL = r"[ \u00a0]+"
+GAP_ORDINAL = r"[  ]+"
+# A placing is read with what makes it one, never an idiom of the same words: a prize; a place an English verb wins
+# ("won first place", "took second place", "came in third place") or one a line ends with ("Regional contest — first
+# place."), never "the first place I worked" nor "my first position"; a Russian "место" in any case but the
+# prepositional of "на первом месте"; an Uzbek "o‘rin" bare, in the accusative or before "sazovor", never the
+# locative "birinchi o‘rinda" nor "birinchi o‘ringa qo‘yiladi".
+PLACING_VERB = (r"(?:won|wins?|winning|took|takes?|taking|came|comes?|coming|finish(?:ed|es|ing)?|placed|earned"
+                r"|secured|got|gets|awarded|claimed|achieved|received|reached|shared|taken|given)")
 ORDINAL_PLACE = re.compile(
-    rf"(?<![^\W\d_])(?<!in the )({ORDINAL_WORD})(?=(?:{GAP_ORDINAL}(?:place|prize|position)s?"
+    rf"(?<![^\W\d_])(?<!in the )({ORDINAL_WORD})(?=(?:{GAP_ORDINAL}prizes?"
+    rf"|{GAP_ORDINAL}places?[  ]*(?:[.;!)]|$)"
     rf"|{GAP_ORDINAL}(?:consecutive|straight|successive){GAP_ORDINAL}(?:year|time|season|month|quarter)s?"
     rf"|{GAP_ORDINAL}(?:year|time|season)s?{GAP_ORDINAL}(?:in a row|running)"
-    rf"|{GAP_ORDINAL}мест\w*|{GAP_ORDINAL}(?:год|раз|сезон|месяц|квартал)\w*{GAP_ORDINAL}подряд"
-    rf"|{GAP_ORDINAL}(?:o{APOSTROPHE}rin|sovrin)\w*|{GAP_ORDINAL}(?:yil|marta|mavsum|chorak)\w*{GAP_ORDINAL}ketma-ket)"
+    rf"|{GAP_ORDINAL}мест(?:о|а|у|ом)|{GAP_ORDINAL}(?:год|раз|сезон|месяц|квартал)\w*{GAP_ORDINAL}подряд"
+    rf"|{GAP_ORDINAL}o{APOSTROPHE}rin(?:ni|i|ini|ning|ga(?={GAP_ORDINAL}sazovor))?|{GAP_ORDINAL}sovrin\w*"
+    rf"|{GAP_ORDINAL}(?:yil|marta|mavsum|chorak)\w*{GAP_ORDINAL}ketma-ket)"
     rf"(?![^\W\d_]))"
-    rf"|(?<=ketma-ket )({ORDINAL_WORD})(?={GAP_ORDINAL}(?:yil|marta|mavsum|chorak)\w*(?![^\W\d_]))",
+    rf"|(?<=ketma-ket )({ORDINAL_WORD})(?={GAP_ORDINAL}(?:yil|marta|mavsum|chorak)\w*(?![^\W\d_]))"
+    rf"|(?<![^\W\d_]){PLACING_VERB}(?:{GAP_ORDINAL}(?:in|the|a|an))*{GAP_ORDINAL}({ORDINAL_WORD})"
+    rf"(?={GAP_ORDINAL}places?(?![^\W\d_]))",
     re.IGNORECASE)
 ORDINAL_DATE = re.compile(rf"(?<![^\W\d_])(?:the[ \u00a0]+)?({ORDINAL_WORD})(?:[ \u00a0]+of)?[ \u00a0]+" + MONTH,
                           re.IGNORECASE)
@@ -506,6 +517,10 @@ class _Reader:
                 value, month = _ordinal_value(match.group(1)), _month(match.group(2))
                 if value is None or month is None or not _valid(value, month) or not self.free(*match.span()):
                     continue
+                if match.group(1).isascii() and match.group(2)[:1].islower() \
+                        and not re.search(r"[  ]of[  ]", text[match.end(1):match.start(2)]) \
+                        and not YEAR_AFTER.match(text, match.end()):
+                    continue  # an English month is capitalised: "the first may reduce costs" dates nothing
                 self.dated(match.start(1), match.end(), str(value), month)
         for match in TIME.finditer(text):
             if not self.free(*match.span()):
@@ -586,7 +601,7 @@ class _Reader:
         """The ordinals that are figures as a placing or a run's count (`ORDINAL_PLACE`); a date's day is read with the
         dates (`ORDINAL_DATE`, `_digits`)."""
         for match in ORDINAL_PLACE.finditer(self.text):
-            group = 1 if match.group(1) is not None else 2
+            group = next(number for number in (1, 2, 3) if match.group(number) is not None)
             value = _ordinal_value(match.group(group))
             if value is not None and self.free(*match.span(group)):
                 self.add(*match.span(group), 'spelled', str(value), [{str(value)}])
