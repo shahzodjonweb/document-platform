@@ -1899,16 +1899,24 @@ def _people_named_known(text, trusted):
 
 
 # The words a references item adds around a source's own words that say nothing of which source it is: its
-# publisher's and pages' words, its link's (folded). Never a genre ("darslik", "o‘quv qo‘llanma", "maqolalar"): the
-# topic with a genre after it is an invented book.
+# publisher's and pages' words, its link's (folded). A genre is one only beside an author (`GENRES`).
 BIBLIOGRAPHY = re.compile(r"nashr\w*|izd\w*|izdatel\w*|press|publish\w*|bet\w*|sahifa\w*|str|tom|jild|vol\w*|eds?"
                           r"|edition|url|http\w*|www|doi|isbn|issn|vip\w*|nomer|son|no")
+# A source's genre, which a GOST reference adds after its title ("Raqamli marketing: darslik", "o‘quv qo‘llanma",
+# "учебник", "учебное пособие", "a textbook"), folded: no word of the source's own when its author and title are the
+# customer's. The topic with a genre after it and no author ("Raqamli marketing strategiyalari: o‘quv qo‘llanma.") is
+# still an invented book.
+GENRES = re.compile(r"darslik\w*|ukuv|kullanma\w*|uslubi\w*|monografi\w*|risola\w*|uchebn\w*|posobi\w*|metodichesk\w*"
+                    r"|textbooks?|manual|handbook|monographs?|coursebook|guide")
 
 
 def _words_given(text, trusted):
-    """Whether every word of a references item is the customer's, its bibliography's own words left (`verify_items`)."""
+    """Whether every word of a references item is the customer's, its bibliography's own words left (`verify_items`),
+    and its genre's beside an author."""
+    authored = bool(_authors(text))
     for word in WORD.findall(text):
-        if _letters(word) < 3 or BIBLIOGRAPHY.fullmatch(fold(word)) or trusted.allowed.known(word):
+        if _letters(word) < 3 or BIBLIOGRAPHY.fullmatch(fold(word)) or trusted.allowed.known(word) \
+                or (authored and GENRES.fullmatch(fold(word))):
             continue
         if not trusted.words.known(word):
             return False

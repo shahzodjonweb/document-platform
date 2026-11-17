@@ -170,6 +170,10 @@ OFFER_UZ_RU = ('Menga rus tilida tijorat taklifi yozib bering, biz mebel sotamiz
                'Rekvizitlar: h/r 20208000900123456001, «Kapitalbank» ATB, MFO 00440, STIR 301234567. Shartnoma № 125 '
                'bo‘yicha ishlaymiz, mijozlar uchun chegirma bor.')
 COURSE_UZ = 'Marketing fanidan "Raqamli marketing strategiyalari" mavzusida kurs ishi yozib bering.'
+COURSE_UZ_BOOKS = ('Raqamli marketing mavzusida kurs ishi yozing. Adabiyotlar: Karimov A. Raqamli marketing. Toshkent: '
+                   'Fan, 2021. Kotler F. Marketing asoslari. Toshkent, 2019.')
+COURSE_RU_BOOKS = ('Курсовая работа по маркетингу. Литература: Котлер Ф. Основы маркетинга. М.: Вильямс, 2019. '
+                   'Ламбен Ж.-Ж. Менеджмент, ориентированный на рынок. СПб.: Питер, 2018.')
 COURSE_RU_UZ = ('Напишите, пожалуйста, курсовую работу по маркетингу на тему «Стратегии цифрового маркетинга», '
                 'на узбекском языке, объём около двадцати страниц.')
 COURSE_RU_UZ_UNIVERSITY = ('Напишите курсовую работу по экономике на узбекском языке, я учусь в Образцовом '
@@ -1087,6 +1091,26 @@ CASES = [
          'Karimov A. Raqamli marketing. — Toshkent: Fan nashriyoti, 2021.'),
     item('sources-invented-author-with-initials-uz-blank', BLANK, 'pdf.kurs_ishi', COURSE_UZ, 'uz', 'references',
          'Karimov A. Raqamli marketing. — T.: Fan, 2021.', gone=('Karimov',)),
+    # A GOST reference adds its genre to the customer's own book ("darslik", "o‘quv qo‘llanma", "учебник", "учебное
+    # пособие"): kept when its author and title are theirs (round 2 of the convergence, regression from 764d221).
+    item('sources-the-customers-book-with-a-genre-uz-keep', KEEP, 'pdf.kurs_ishi', COURSE_UZ_BOOKS, 'uz', 'references',
+         'Karimov A. Raqamli marketing: darslik. — T.: Fan, 2021.'),
+    item('sources-the-customers-book-with-a-two-word-genre-uz-keep', KEEP, 'pdf.kurs_ishi', COURSE_UZ_BOOKS, 'uz',
+         'references', 'Kotler F. Marketing asoslari: o‘quv qo‘llanma. — Toshkent, 2019.'),
+    item('sources-the-customers-book-with-a-genre-ru-keep', KEEP, 'pdf.kurs_ishi', COURSE_RU_BOOKS, 'ru', 'references',
+         'Котлер Ф. Основы маркетинга: учебник. — М.: Вильямс, 2019.'),
+    item('sources-the-customers-book-with-a-two-word-genre-ru-keep', KEEP, 'pdf.kurs_ishi', COURSE_RU_BOOKS, 'ru',
+         'references', 'Ламбен Ж.-Ж. Менеджмент, ориентированный на рынок: учебное пособие. — СПб.: Питер, 2018.'),
+    item('sources-the-customers-book-with-a-genre-en-keep', KEEP, 'pdf.kurs_ishi',
+         'Course paper on marketing. Sources: Kotler P. Principles of Marketing. Pearson, 2019.', 'en', 'references',
+         'Kotler P. Principles of Marketing: a textbook. Pearson, 2019.'),
+    item('sources-invented-author-with-a-genre-uz-blank', BLANK, 'pdf.kurs_ishi', COURSE_UZ_BOOKS, 'uz', 'references',
+         'Saidov B. Raqamli marketing: darslik. — T.: Fan, 2021.', gone=('Saidov',)),
+    item('sources-the-customers-author-with-an-invented-title-and-genre-uz-blank', BLANK, 'pdf.kurs_ishi',
+         COURSE_UZ_BOOKS, 'uz', 'references', 'Karimov A. Brend strategiyasi: darslik. — T.: Fan, 2021.',
+         gone=('Brend',)),
+    item('sources-an-authorless-topic-with-a-genre-ru-blank', BLANK, 'pdf.kurs_ishi', COURSE_RU_BOOKS, 'ru',
+         'references', 'Основы маркетинга: учебное пособие.', gone=('пособие',)),
     item('sources-the-customers-book-translated-ru-to-uz-keep', KEEP, 'pdf.kurs_ishi', COURSE_RU_UZ_NAMED, 'uz',
          'references', 'Karimov Abdulla. Raqamli marketing strategiyalari. — Toshkent: Fan.', translated=True),
     item('sources-the-customers-book-ru-to-en-keep', KEEP, 'pdf.mustaqil_ish', ESSAY_RU_EN_NAMED, 'en', 'references',
