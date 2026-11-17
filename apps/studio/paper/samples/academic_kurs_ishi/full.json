@@ -12,8 +12,8 @@
    "faculty": "Menejment fakulteti",
    "kafedra": "Korxona iqtisodiyoti",
    "course_group": "3-kurs 312-guruh",
-   "student_name": "Ergasheva Dilnoza",
-   "supervisor": "katta o‘qituvchi Yo‘ldoshev Bekzod",
+   "student_name": "Yusufbekova Gulshoda",
+   "supervisor": "katta o‘qituvchi Ilmiddinov Jasurbek",
    "city": "Gulzorobod"
   },
   "sections": [
@@ -55,9 +55,9 @@
    "university": "Гулзорабадский экономический университет",
    "faculty": "Факультет менеджмента",
    "kafedra": "Экономика предприятия",
-   "course_group": "3 курса группы 312",
-   "student_name": "Эргашева Дилноза",
-   "supervisor": "старший преподаватель Юлдошев Бекзод",
+   "course_group": "3 курс, группа 312",
+   "student_name": "Юсуфбекова Гулшода",
+   "supervisor": "старший преподаватель Илмиддинов Жасурбек",
    "city": "Гулзорабад"
   },
   "sections": [
@@ -100,8 +100,8 @@
    "faculty": "Faculty of Management",
    "kafedra": "Business Economics",
    "course_group": "Year 3, group 312",
-   "student_name": "Dilnoza Ergasheva",
-   "supervisor": "Senior Lecturer Bekzod Yoldoshev",
+   "student_name": "Gulshoda Yusufbekova",
+   "supervisor": "Senior Lecturer Jasurbek Ilmiddinov",
    "city": "Gulzorobod"
   },
   "sections": [

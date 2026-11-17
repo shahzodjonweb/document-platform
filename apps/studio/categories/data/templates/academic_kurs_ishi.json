@@ -199,7 +199,9 @@
     "level": 3,
     "numbering": "none",
     "label": "lbl_tasks",
-    "in_toc": false
+    "in_toc": false,
+    "before_pt": 0,
+    "after_pt": 0
    }
   },
   {
@@ -207,7 +209,9 @@
    "part": "tasks",
    "when": "part:tasks",
    "params": {
-    "marker": "dash"
+    "marker": "dash",
+    "before_pt": 0,
+    "after_pt": 0
    }
   },
   {
@@ -358,7 +362,9 @@
     "level": 3,
     "numbering": "none",
     "label": "lbl_proposals",
-    "in_toc": false
+    "in_toc": false,
+    "before_pt": 0,
+    "after_pt": 0
    }
   },
   {
@@ -366,7 +372,9 @@
    "part": "proposals",
    "when": "part:proposals",
    "params": {
-    "marker": "number"
+    "marker": "number",
+    "before_pt": 0,
+    "after_pt": 0
    }
   },
   {
@@ -425,7 +433,7 @@
   },
   "direction_line": {
    "uz": "{direction} ta’lim yo‘nalishi",
-   "ru": "Направление {direction}",
+   "ru": "Направление «{direction}»",
    "en": "Programme {direction}"
   },
   "subject_line": {
@@ -450,7 +458,7 @@
   },
   "group_line": {
    "uz": "{course_group} talabasi",
-   "ru": "студент(ка) {course_group}",
+   "ru": "{course_group}",
    "en": "student, {course_group}"
   },
   "supervisor": {

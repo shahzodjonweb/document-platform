@@ -22,7 +22,8 @@ two blocks.
   are the pages delivered. `style: strip` is the short plan without numbers.
 - `reference_list` lists only the sources that finish verified against the
   customer's words or files, numbered with a hanging indent, grouped (laws,
-  books and articles, online sources) only from six entries in two groups.
+  books and articles, online sources) only from six entries in two groups;
+  a law is an entry no person wrote with a law's own word in its title.
   With none it is a numbered form of ruled lines to fill in by hand: an
   honest empty list, never one the model made up.
 
@@ -37,11 +38,12 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.platypus import Flowable, Paragraph, Spacer, Table, TableStyle
 
-from ..ctx import INK, Lazy
+from ...categories.facts import AUTHOR
+from ..ctx import INK, STAND_IN, Lazy
 from ..registry import block
 from ..text import MM
-from .core import (SLOT, TYPED_MARKER, Gap, Tracked, _balanced, _cap_size, _finish, _font, _has_label, _int,
-                   _item_text, _items, _lines, _params, _style, _word)
+from .core import (SLOT, TYPED_MARKER, Gap, Tracked, _balanced, _cap_size, _finish, _font, _has_label, _int, _items,
+                   _lines, _params, _style, _word)
 
 # The title page's zones, by a row's role: the head of the sheet, the middle (what the work is), the credit column
 # (who wrote it, who checks it) and the foot (the city and the year).
@@ -87,10 +89,23 @@ GROUP_WORDS = {
 }
 # Group labels print only from this many entries in at least two groups: a short list reads better without them.
 GROUP_FROM = 6
-NORMATIVE = re.compile(r'(?<![^\W\d_])(qonun|farmon|qaror|kodeks|konstitutsiya|nizom|закон|указ|постановлени|'
-                       r'кодекс|конституци|положени|law|decree|regulation|resolution|constitution|statute)', re.IGNORECASE)
+# A law's or a regulation's own word. The Uzbek and Russian stems take their endings (Qonuni, закона); the English
+# words stand whole, so Lawrence or Self-regulation is not one. It counts only in the title of an entry no person
+# wrote: a book by an author about laws ("Karimov A. Qonunchilik asoslari") stays a book, since a false laws heading
+# shows on the page and a false books one does not.
+NORMATIVE = re.compile(r'(?<![\w-])(?:qonun|farmon|qaror|kodeks|konstitutsiya|nizom|закон|указ|постановлени|'
+                       r'кодекс|конституци|положени|(?:laws?|decrees?|regulations?|resolutions?|constitution|'
+                       r'statutes?)\b)', re.IGNORECASE)
+# Where an entry's title ends: the dash before the place and the year, or the slashes before a journal.
+TITLE_END = re.compile(r'\s[–—-]\s|\s//\s')
+# A label the model wrote only to number its sources ("1", "[2]", "3."): facts reads the item without it too.
+NUMBER_LABEL = re.compile(r'\W*\d{1,3}\W*')
+# What a label may end with and still run straight into its text; any other end takes a full stop first.
+LABEL_END = ('.', ',', ':', ';', '!', '?', '…', '–', '—', '-')
 ONLINE = re.compile(r'https?://|www\.|\[(elektron resurs|электронный ресурс|online|electronic resource)\]|URL:',
                     re.IGNORECASE)
+# The share of a line a long web address may leave empty before ReportLab breaks it after a slash instead.
+URI_WASTE = 0.3
 # A heading's number as the heading block writes it: "2.", "2.1", "II.", "2-BOB.", "ГЛАВА 2.", "CHAPTER 2.".
 NUMBER = re.compile(r'^(\d{1,2}(?:\.\d{1,2}){0,2}\.?|[IVXLC]{1,6}\.|\d{1,2}-BOB\.?|ГЛАВА \d{1,2}\.?|'
                     r'CHAPTER \d{1,2}\.?)\s+(\S.*)$', re.S)
@@ -224,15 +239,15 @@ class Leader(Paragraph):
     line really ends, however it wrapped. The page number column is the
     style's right indent; `page` None draws the row without leaders or number.
     A row split across pages keeps the mark, and so its leaders, on its last
-    part: the parts carry the row's page and callback.
+    part: the parts carry the row's page and callback. `name` is the mark's
+    callback name, numbered per build by the contents so the same paper
+    always draws the same marks.
     """
 
-    count = 0
-
-    def __init__(self, text, style=None, *args, page=None, dots=True, number_font=None, callback=None, **options):
+    def __init__(self, text, style=None, *args, page=None, dots=True, number_font=None, callback=None, name=None,
+                 **options):
         if callback is None and page is not None:
-            Leader.count += 1
-            callback = f'paperLeader{Leader.count}'
+            callback = name or 'paperLeader'
             text += f'<onDraw name="{callback}" label="leader"/>'
         self.page, self.dots, self.number_font, self.callback = page, dots, number_font, callback
         super().__init__(text, style, *args, **options)
@@ -367,6 +382,14 @@ def _business_rows(ctx, place, params):
     return rows
 
 
+def _own_title(ctx):
+    """The paper's own title, or None when it only stands in for one or carries a blank the finish guard left."""
+    title = ' '.join(str(ctx.content.get('title') or '').split())
+    if not title or STAND_IN.fullmatch(title) or '___' in title:
+        return None
+    return title
+
+
 def _resolved(ctx, place, row):
     """What one row prints: {text} or {blank} pieces, with its label; None when it prints nothing.
 
@@ -388,8 +411,8 @@ def _resolved(ctx, place, row):
     if key:
         raw = ctx.template['labels'][key].get(ctx.locale) or ctx.template['labels'][key].get('en', '')
     if row.get('own_title'):
-        title = ' '.join(str(ctx.content.get('title') or '').split())
-        return dict(found, text=title) if title else None
+        title = _own_title(ctx)
+        return dict(found, text=title) if title else dict(found, blank=True)
     if not facts:
         return dict(found, text=ctx.label(key)) if key else None
     values = [ctx.fact(field_id) for field_id in facts]
@@ -404,7 +427,7 @@ def _resolved(ctx, place, row):
     field_id, value = facts[0], values[0]
     if value is None and role in ('topic', 'title'):
         # The topic is asked for before the paper is written and the paper's title is made from it.
-        value = ' '.join(str(ctx.content.get('title') or '').split()) or None
+        value = _own_title(ctx)
     slot = SLOT.search(raw) if raw else None
     if slot:
         if value is not None:
@@ -592,14 +615,36 @@ def _sheet(ctx, rows, scale, height, year):
     return Sheet(zones, height, gap=10 * MM * scale, credit_gap=14 * MM * scale)
 
 
+def _rows(ctx, place, raw):
+    """The rows that print, resolved. A sub row whose credit row prints nothing goes with it: under the credit
+    before that one it would name the wrong person (a student's group under Qabul qildi)."""
+    rows, orphan = [], False
+    for row in raw:
+        if not isinstance(row, dict):
+            continue
+        found = _resolved(ctx, place, row)
+        role = row.get('role')
+        if role == 'credit':
+            orphan = found is None
+        elif role == 'credit_sub':
+            found = None if orphan else found
+        else:
+            orphan = False
+        if found:
+            rows.append(found)
+    return rows
+
+
 def title_page(ctx, place):
     """A whole first sheet, every line placed by its role; see the module's docstring.
 
-    params: rows ([{role, fact | facts, label, style, blank_caption,
-    blank_lines, choice, labels, sign}]: role ministry | institution | faculty
-    | kafedra | direction | place | unit (the head) | subject | kind | topic
-    (the middle) | credit | credit_sub (the column: who wrote, who checks;
-    sub rows stand under the credit before them) | foot (the city); `choice`
+    params: rows ([{role, fact | facts | own_title, label, style,
+    blank_caption, blank_lines, choice, labels, sign, colon}]: role ministry |
+    institution | faculty | kafedra | direction | place | unit (the head) |
+    subject | kind | topic | title | subtitle (the middle) | credit |
+    credit_sub (the column: who wrote, who checks; sub rows stand under the
+    credit before them and go with it when it prints nothing) | foot (the
+    city); `own_title` the paper's title, a blank when it only stands in; `choice`
     a choice field whose value picks the label key from `labels`; `sign` a
     signature rule and a date to fill in under the credit); year clock |
     fact | none (at the foot after the city, the year field's value or the
@@ -609,7 +654,7 @@ def title_page(ctx, place):
     """
     params = _params(place)
     raw = params.get('rows') if isinstance(params.get('rows'), list) else _business_rows(ctx, place, params)
-    rows = [found for found in (_resolved(ctx, place, row) for row in raw if isinstance(row, dict)) if found]
+    rows = _rows(ctx, place, raw)
     year = _year(ctx, place, params)
     if not rows and not year:
         return []
@@ -633,10 +678,7 @@ def _title_plain(ctx, place):
     params = _params(place)
     raw = params.get('rows') if isinstance(params.get('rows'), list) else _business_rows(ctx, place, params)
     lines = []
-    for row in raw:
-        found = _resolved(ctx, place, row) if isinstance(row, dict) else None
-        if not found:
-            continue
+    for found in _rows(ctx, place, raw):
         text = found['text'] if not found['blank'] else '_' * 16
         lines.append(' '.join(piece for piece in (found['label'], text) if piece))
     year = _year(ctx, place, params)
@@ -681,8 +723,10 @@ def _toc_rows(ctx, entries, *, numbers, leaders, strip):
                        bulletFontName=face, bulletFontSize=body.fontSize,
                        spaceBefore=ctx.leading * (0.1 if strip else 0.15) if rows and level == 1 else 0.0)
         shown = (page if page is not None else NO_PAGE) if numbers else None
+        # A count kept on this build's ctx, never across builds, so the marks are the same every time.
+        ctx.leader_rows = getattr(ctx, 'leader_rows', 0) + 1
         rows.append(Leader(ctx.text(text, style), style, page=shown, dots=leaders, number_font=body.fontName,
-                           bulletText=number or None))
+                           bulletText=number or None, name=f'paperLeader{ctx.leader_rows}'))
     return rows
 
 
@@ -741,11 +785,19 @@ block('toc', fallback=_toc_plain)(toc)
 
 
 def _entry_text(item):
-    """A source item as one entry: its label and text, as the model split them, without a typed number."""
+    """A source item as one entry: its label and text, as the model split them, without a typed number.
+
+    A label that only numbers the item is dropped, as facts drops it when it
+    verifies the item, so the list's own number is the only one. An author
+    label runs into its title as a reference does ("Valiyev A. Maktab..."),
+    never after a list item's dash.
+    """
     label = str(item.get('label') or '').strip()
+    if NUMBER_LABEL.fullmatch(label):
+        label = ''
     text = ' '.join(str(item.get(key) or '').strip() for key in ('text', 'value') if str(item.get(key) or '').strip())
     if label and text:
-        joined = f'{label} {text}' if label.endswith(('.', ',', ':', ';')) else _item_text(item)
+        joined = f'{label} {text}' if label.endswith(LABEL_END) else f'{label}. {text}'
     else:
         joined = label or text
     return TYPED_MARKER.sub('', ' '.join(joined.split()), count=1)
@@ -765,7 +817,7 @@ def _entries(section):
 
 
 def _group(text):
-    if NORMATIVE.search(text):
+    if not AUTHOR.match(text) and NORMATIVE.search(TITLE_END.split(text, maxsplit=1)[0]):
         return 'normative'
     if ONLINE.search(text):
         return 'online'
@@ -786,7 +838,8 @@ def reference_list(ctx, place):
     """The verified sources, numbered and hanging; with none, a numbered form of ruled lines to fill in.
 
     params: label (a label key: the heading, centred, in the contents
-    unless in_toc is false; else the part's heading); blank_entries (10: the
+    unless in_toc is false; else the part's heading); max_items (warned past
+    it, never cut); blank_entries (10: the
     entries of the empty form); blank_lines (2: rules per empty entry);
     groups (group labels, laws first, then books and articles, then online
     sources, when there are six entries or more in two groups or more; the
@@ -828,7 +881,7 @@ def reference_list(ctx, place):
             style = _style(ctx, 'body', alignment=TA_LEFT, leftIndent=hang, bulletIndent=0,
                            bulletFontName=body.fontName, bulletFontSize=body.fontSize,
                            spaceBefore=ctx.leading * 0.25 if number > 1 and not group else ctx.leading * 0.1)
-            made.append(Paragraph(ctx.text(text, style), style, bulletText=f'{number}.'))
+            made.append(_entry(ctx, text, style, f'{number}.'))
     else:
         count = _int(params.get('blank_entries'), 10, 1, 60)
         lines = _int(params.get('blank_lines'), 2, 1, 4)
@@ -841,6 +894,22 @@ def reference_list(ctx, place):
                 entry.spaceBefore = ctx.size * 0.45 if lines > 1 else 0.0
             made.append(entry)
     return _finish(place, made, after=ctx.leading * 0.25)
+
+
+def _entry(ctx, text, style, number):
+    """One numbered entry. A long web address breaks after a slash (uriWasteReduce), never inside the domain or a
+    word, unless what follows the slash is itself wider than a line: ReportLab then lets it run past the margin,
+    so the entry is set as before, the address cut where the line runs out."""
+    markup = ctx.text(text, style)
+    if not ONLINE.search(text):
+        return Paragraph(markup, style, bulletText=number)
+    made = Paragraph(markup, _style(ctx, style, uriWasteReduce=URI_WASTE), bulletText=number)
+    made.wrap(ctx.width, 100_000)
+    for line in getattr(made.blPara, 'lines', None) or ():
+        # A line is (room left, words) in a plain paragraph and an object with extraSpace in one with markup.
+        if (line[0] if isinstance(line, tuple) else getattr(line, 'extraSpace', 0)) < -0.01:
+            return Paragraph(markup, style, bulletText=number)
+    return made
 
 
 def _over(ctx, params, count):
@@ -882,9 +951,10 @@ SAMPLE_FACTS = {
     'faculty_department': _text3('Boshlang‘ich ta’lim fakulteti', 'Факультет начального образования',
                                  'Faculty of Primary Education'),
     'subject': _text3('Pedagogika', 'Педагогика', 'Pedagogy'),
-    'student_name': _text3('Qodirova Malika Anvar qizi', 'Кадырова Малика Анваровна', 'Malika Qodirova'),
+    'student_name': _text3('Tojiboyeva Sarvinoz Anvar qizi', 'Тожибоева Сарвиноз Анваровна', 'Sarvinoz Tojiboyeva'),
     'student_group': _text3('2-kurs, 204-guruh', '2 курс, группа 204', 'Year 2, group 204'),
-    'teacher': _text3('dotsent Hamidov Sardor', 'доцент Хамидов Сардор', 'Associate Professor Sardor Hamidov'),
+    'teacher': _text3('dotsent Hamroqulov Lochinbek', 'доцент Хамрокулов Лочинбек',
+                      'Associate Professor Lochinbek Hamroqulov'),
     'city': _text3('Gulzorobod', 'Гулзорабад', 'Gulzorobod'),
 }
 
@@ -905,18 +975,18 @@ SAMPLE_SECTIONS = {
         _text3('Namuna viloyati ta’lim boshqarmasining «Raqamli maktab» nizomi. – Gulzorobod, 2024.',
                'Положение «Цифровая школа» Образцовой области. – Гулзорабад, 2024.',
                'Example Regional Education Board. Regulation on the Digital School. – Gulzorobod, 2024.'),
-        _text3('Rahimova D. B. Raqamli pedagogika asoslari. – Gulzorobod: Ilm, 2022. – 184 b.',
-               'Рахимова Д. Б. Основы цифровой педагогики. – Гулзорабад: Илм, 2022. – 184 с.',
-               'Rahimova D. B. Foundations of Digital Pedagogy. – Gulzorobod: Ilm, 2022. – 184 p.'),
-        _text3('Sobirov A. K. Maktabda axborot texnologiyalari. – Gulzorobod, 2021. – 212 b.',
-               'Собиров А. К. Информационные технологии в школе. – Гулзорабад, 2021. – 212 с.',
-               'Sobirov A. K. Information Technology at School. – Gulzorobod, 2021. – 212 p.'),
-        _text3('Tursunov B. Interaktiv dars usullari // Pedagogik izlanishlar. – 2023. – № 4.',
-               'Турсунов Б. Интерактивные методы урока // Педагогические поиски. – 2023. – № 4.',
-               'Tursunov B. Interactive lesson methods // Pedagogical Studies. – 2023. – No. 4.'),
-        _text3('Karimova L. Elektron resurslar. – Gulzorobod, 2020. – 96 b.',
-               'Каримова Л. Электронные ресурсы. – Гулзорабад, 2020. – 96 с.',
-               'Karimova L. Electronic Resources. – Gulzorobod, 2020. – 96 p.'),
+        _text3('Mirsoatova D. B. Raqamli pedagogika asoslari. – Gulzorobod: Ilm, 2022. – 184 b.',
+               'Мирсоатова Д. Б. Основы цифровой педагогики. – Гулзорабад: Илм, 2022. – 184 с.',
+               'Mirsoatova D. B. Foundations of Digital Pedagogy. – Gulzorobod: Ilm, 2022. – 184 p.'),
+        _text3('Shodmonov A. K. Maktabda axborot texnologiyalari. – Gulzorobod, 2021. – 212 b.',
+               'Шодмонов А. К. Информационные технологии в школе. – Гулзорабад, 2021. – 212 с.',
+               'Shodmonov A. K. Information Technology at School. – Gulzorobod, 2021. – 212 p.'),
+        _text3('Ortiqboyev B. Interaktiv dars usullari // Pedagogik izlanishlar. – 2023. – № 4.',
+               'Ортикбоев Б. Интерактивные методы урока // Педагогические поиски. – 2023. – № 4.',
+               'Ortiqboyev B. Interactive lesson methods // Pedagogical Studies. – 2023. – No. 4.'),
+        _text3('Nurmatova L. Elektron resurslar. – Gulzorobod, 2020. – 96 b.',
+               'Нурматова Л. Электронные ресурсы. – Гулзорабад, 2020. – 96 с.',
+               'Nurmatova L. Electronic Resources. – Gulzorobod, 2020. – 96 p.'),
         _text3('Resurslar katalogi [Elektron resurs]. – URL: https://example.com/katalog/boshlangich-sinflar',
                'Каталог ресурсов [Электронный ресурс]. – URL: https://example.com/katalog/boshlangich-sinflar',
                'Catalogue of resources [online]. – URL: https://example.com/katalog/boshlangich-sinflar'),

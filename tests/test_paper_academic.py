@@ -49,8 +49,8 @@ def section(section_id, body='', heading='', items=()):
 
 FULL = dict(topic='Maktabda raqamli o‘quv resurslaridan foydalanish', work_kind='mustaqil_ish',
             institution='Gulzorobod davlat pedagogika instituti', faculty_department='Boshlang‘ich ta’lim fakulteti',
-            subject='Pedagogika', student_name='Qodirova Malika Anvar qizi', student_group='2-kurs, 204-guruh',
-            teacher='dotsent Hamidov Sardor', city='Gulzorobod')
+            subject='Pedagogika', student_name='Tojiboyeva Sarvinoz Anvar qizi', student_group='2-kurs, 204-guruh',
+            teacher='dotsent Hamroqulov Lochinbek', city='Gulzorobod')
 PROSE = ('Raqamli texnologiyalar maktab hayotiga tobora chuqurroq kirib bormoqda. O‘qituvchi resursni dars maqsadiga '
          'qarab tanlaydi va uni darsning aniq bosqichiga joylashtiradi.')
 
@@ -222,7 +222,7 @@ def test_a_long_topic_and_long_names_stay_on_the_sheet(tmp_path):
                                        'foydalanishning pedagogik asoslari'] * 3),
                  institution='Gulzorobod viloyati xalq ta’limi boshqarmasiga qarashli davlat pedagogika instituti '
                              'qoshidagi pedagog kadrlarni qayta tayyorlash markazi',
-                 teacher='pedagogika fanlari bo‘yicha falsafa doktori, dotsent Hamidov Sardor Karimovich')
+                 teacher='pedagogika fanlari bo‘yicha falsafa doktori, dotsent Hamroqulov Lochinbek Zarifovich')
     template = template_with('academic_mustaqil_ish', [0])
     page_content = content(**given)
     result = draw(tmp_path, page_content, template=template)
@@ -233,8 +233,8 @@ def test_a_long_topic_and_long_names_stay_on_the_sheet(tmp_path):
 def test_a_kurs_ishi_title_page_has_its_lines_signatures_and_dates(tmp_path):
     given = dict(topic='Kichik korxonalarda xodimlarni rag‘batlantirish', subject='Menejment',
                  university='Gulzorobod iqtisodiyot universiteti', kafedra='Korxona iqtisodiyoti',
-                 direction='Menejment', course_group='3-kurs 312-guruh', student_name='Ergasheva Dilnoza',
-                 supervisor='katta o‘qituvchi Yo‘ldoshev Bekzod', city='Gulzorobod')
+                 direction='Menejment', course_group='3-kurs 312-guruh', student_name='Yusufbekova Gulshoda',
+                 supervisor='katta o‘qituvchi Ilmiddinov Jasurbek', city='Gulzorobod')
     template = template_with('academic_kurs_ishi', [0])
     page_content = content(**given)
     result = draw(tmp_path, page_content, entry=kurs(), template=template, pages=12)
@@ -246,11 +246,28 @@ def test_a_kurs_ishi_title_page_has_its_lines_signatures_and_dates(tmp_path):
     assert problems(result, page_content, entry=kurs(), template=template, pages=12) == []
 
 
+def test_the_kurs_ishi_tasks_sit_directly_under_their_words_as_in_the_dense_kirish(tmp_path):
+    tasks = section('tasks', items=['nazariy asoslarni o‘rganish;', 'usullarni tasniflash;', 'takliflar berish.'])
+    page_content = content(section('relevance', PROSE), section('aim', PROSE), tasks, section('object', PROSE),
+                           topic='Kichik korxonalarda xodimlarni rag‘batlantirish')
+    template = template_with('academic_kurs_ishi', list(range(2, 9)))
+    result = draw(tmp_path, page_content, entry=kurs(), template=template, pages=12)
+    with pdfplumber.open(result['path']) as document:
+        words = document.pages[0].extract_words()
+    head = next(word['top'] for word in words if word['text'] == 'vazifalari:')
+    dashes = sorted(word['top'] for word in words if word['text'] == '–' and word['top'] > head)
+    aim = sorted({round(word['top'], 1) for word in words if word['top'] < head})
+    # The words, the items and the prose before them keep the body's line pitch: no extra air around the list.
+    pitch = aim[-1] - aim[-2]
+    assert dashes[0] - head <= pitch + 1 and head - aim[-1] <= pitch + 1 and dashes[1] - dashes[0] <= pitch * 1.2
+
+
 @pytest.mark.parametrize('locale, words', [('ru', ('Выполнил(а):', 'Принял(а):', 'по дисциплине', 'Тема:')),
                                            ('en', ('Prepared by:', 'Accepted by:', 'Subject:', 'Topic:'))])
 def test_a_title_page_in_russian_and_english_has_its_words(tmp_path, locale, words):
     given = dict(FULL, institution='Example State Institute', faculty_department='Faculty', subject='Pedagogy',
-                 student_name='Malika Qodirova', student_group='Year 2', teacher='Sardor Hamidov', city='Example')
+                 student_name='Sarvinoz Tojiboyeva', student_group='Year 2', teacher='Lochinbek Hamroqulov',
+                 city='Example')
     result = draw(tmp_path, content(**given), template=template_with('academic_mustaqil_ish', [0]), locale=locale)
     text = pages_text(result)[0]
     assert all(word in text for word in words)
@@ -278,6 +295,44 @@ def test_a_cover_with_no_year_and_a_credit_without_a_value_or_blank(tmp_path):
     result = draw(tmp_path, content(**FULL), template=template_with('academic_mustaqil_ish', [placement]))
     text = pages_text(result)[0]
     assert '2026' not in text and 'Bajardi' not in text and 'GULZOROBOD' in text
+
+
+def test_a_sub_row_under_a_credit_that_prints_nothing_goes_with_it(tmp_path):
+    # The ministry draws no blank, so its credit row prints nothing; the group under it must not move under the
+    # next credit's label.
+    placement = {'block': 'title_page', 'part': 'title_page', 'fields': ['ministry', 'student_group', 'teacher'],
+                 'params': {'rows': [{'role': 'credit', 'fact': 'ministry', 'label': 'done_by'},
+                                     {'role': 'credit_sub', 'fact': 'student_group'},
+                                     {'role': 'credit', 'fact': 'teacher', 'label': 'accepted_by'},
+                                     {'role': 'credit_sub', 'fact': 'student_group'}], 'year': 'none'}}
+    given = dict(FULL, student_group='2-kurs, 204-guruh')
+    result = draw(tmp_path, content(**given), template=template_with('academic_mustaqil_ish', [placement]))
+    text = pages_text(result)[0]
+    assert 'Bajardi' not in text and 'Qabul qildi:' in text and text.count('204-guruh') == 1
+    rows = academic._rows(ctx_for(content(**given)), None, placement['params']['rows'])
+    assert [found['role'] for found in rows] == ['credit', 'credit_sub']
+
+
+@pytest.mark.parametrize('title', ['________', 'Maktab ____ tarixi'])
+def test_a_stand_in_title_is_never_the_topic_the_topic_is_a_blank(tmp_path, title):
+    given = dict(FULL)
+    given.pop('topic')
+    result = draw(tmp_path, content(title=title, **given), template=template_with('academic_mustaqil_ish', [0]))
+    text = pages_text(result)[0]
+    assert 'Mavzu:' in text and '__' not in text and 'tarixi' not in text
+    ctx = ctx_for(content(title=title, **given))
+    assert academic._resolved(ctx, None, {'role': 'title', 'own_title': True})['blank']
+
+
+def test_a_russian_kurs_ishi_prints_the_course_and_group_as_given(tmp_path):
+    given = dict(topic='Методы стимулирования персонала', university='Гулзорабадский экономический университет',
+                 kafedra='Экономика предприятия', direction='Менеджмент', course_group='3 курс, группа 312',
+                 student_name='Юсуфбекова Гулшода', supervisor='доцент Илмиддинов Жасурбек', city='Гулзорабад')
+    template = template_with('academic_kurs_ishi', [0])
+    result = draw(tmp_path, content(**given), entry=kurs(), template=template, pages=12, locale='ru')
+    text = pages_text(result)[0]
+    assert 'Направление «Менеджмент»' in text and 'Кафедра «Экономика предприятия»' in text
+    assert '3 курс, группа 312' in text and 'студент' not in text
 
 
 def test_a_title_page_too_tall_for_one_sheet_flows_and_says_so():
@@ -356,6 +411,15 @@ def test_a_contents_row_draws_its_page_number_and_leaders_at_its_last_line(tmp_p
     assert any(set(word['text']) == {'.'} for word in line)
 
 
+def test_contents_marks_are_numbered_per_build_so_the_same_paper_draws_the_same_marks():
+    entries = [(1, 'KIRISH', 3), (1, '1. Asoslar', 4), (2, '1.1. Tushuncha', 4)]
+    names = []
+    for _ in range(2):
+        rows = academic._toc_rows(ctx_for(content(**FULL)), entries, numbers=True, leaders=True, strip=False)
+        names.append([row.callback for row in rows])
+    assert names[0] == names[1] == ['paperLeader1', 'paperLeader2', 'paperLeader3']
+
+
 def test_toc_plain_fallback_lists_the_headings(tmp_path):
     template = template_with('academic_mustaqil_ish', [1, 2, 4, 6])
     page_content = content(*chapters(), **FULL)
@@ -368,13 +432,13 @@ def test_toc_plain_fallback_lists_the_headings(tmp_path):
 # ---------------------------------------------------------------- reference_list
 
 
-SOURCES = ['1. Rahimova D. B. Raqamli pedagogika asoslari. – Gulzorobod: Ilm, 2022. – 184 b.',
-           'Sobirov A. K. Maktabda axborot texnologiyalari. – Gulzorobod, 2021.',
+SOURCES = ['1. Mirsoatova D. B. Raqamli pedagogika asoslari. – Gulzorobod: Ilm, 2022. – 184 b.',
+           'Shodmonov A. K. Maktabda axborot texnologiyalari. – Gulzorobod, 2021.',
            'Gulzorobod viloyati ta’lim boshqarmasining «Raqamli maktab» nizomi. – Gulzorobod, 2024.',
-           'Tursunov B. Interaktiv dars usullari // Pedagogik izlanishlar. – 2023. – № 4.',
+           'Ortiqboyev B. Interaktiv dars usullari // Pedagogik izlanishlar. – 2023. – № 4.',
            'Resurslar katalogi [Elektron resurs]. – URL: https://example.com/katalog/'
            'boshlangich-sinflar-uchun-interaktiv-mashqlar-toplami-va-qollanmalar-royxati',
-           'Karimova L. Elektron resurslar. – Gulzorobod, 2020. – 96 b.']
+           'Nurmatova L. Elektron resurslar. – Gulzorobod, 2020. – 96 b.']
 
 
 def references(tmp_path, items, *, name='refs.pdf', params=None, body=''):
@@ -392,16 +456,68 @@ def test_sources_are_numbered_in_groups_laws_first_with_a_long_url_inside_the_fr
     text = pages_text(result)[0]
     assert text.index('Normativ-huquqiy hujjatlar') < text.index('Ilmiy va o‘quv adabiyotlar') < \
         text.index('Internet manbalari')
-    assert re.search(r'^1\. Gulzorobod viloyati', text, re.M) and re.search(r'^2\. Rahimova', text, re.M)
+    assert re.search(r'^1\. Gulzorobod viloyati', text, re.M) and re.search(r'^2\. Mirsoatova', text, re.M)
     # The typed number is dropped: the list numbers itself.
-    assert '1. 1.' not in text and 'Rahimova' in text
+    assert '1. 1.' not in text and 'Mirsoatova' in text
+    assert problems(result, page_content, template=template) == []
+
+
+NUMBERED = [{'label': '1', 'text': 'Mirsoatova D. B. Raqamli pedagogika asoslari. – Gulzorobod: Ilm, 2022. – 184 b.'},
+            {'label': '[2]', 'text': 'Xolmatova K. Dars tahlili. – Gulzorobod, 2021.'},
+            {'label': '3.', 'text': 'Shodmonov A. K. Maktabda axborot texnologiyalari. – Gulzorobod, 2021.'},
+            {'label': 'Zarifboyev A', 'text': 'Maktab boshqaruvi. – Gulzorobod, 2020.'}]
+
+
+def test_a_label_that_only_numbers_a_source_is_dropped_and_an_author_label_runs_into_its_title(tmp_path):
+    # facts verifies an item without a number-only label, so the label reaches the page unless the block drops it.
+    assert [academic._entry_text(item) for item in NUMBERED] == [
+        'Mirsoatova D. B. Raqamli pedagogika asoslari. – Gulzorobod: Ilm, 2022. – 184 b.',
+        'Xolmatova K. Dars tahlili. – Gulzorobod, 2021.',
+        'Shodmonov A. K. Maktabda axborot texnologiyalari. – Gulzorobod, 2021.',
+        'Zarifboyev A. Maktab boshqaruvi. – Gulzorobod, 2020.']
+    assert academic._entry_text({'label': 'Zarifboyev A.', 'text': 'Maktab.'}) == 'Zarifboyev A. Maktab.'
+    sources = {'id': 'references', 'heading': '', 'body': '', 'layout': 'list', 'items': NUMBERED}
+    template = template_with('academic_mustaqil_ish', [{'block': 'reference_list', 'part': 'references',
+                                                        'params': {'label': 'references', 'groups': True}}])
+    result = draw(tmp_path, content(sources, **FULL), template=template, name='numbered.pdf')
+    lines = [line.strip() for line in pages_text(result)[0].splitlines()]
+    assert lines[1].startswith('1. Mirsoatova D. B. Raqamli')
+    assert '2. Xolmatova K. Dars tahlili. – Gulzorobod, 2021.' in lines
+    assert any(line.startswith('3. Shodmonov A. K. Maktabda') for line in lines)
+    assert '4. Zarifboyev A. Maktab boshqaruvi. – Gulzorobod, 2020.' in lines
+    assert not any(re.match(r'^\d+\. (\d|\[)', line) for line in lines) and '—' not in ''.join(lines)
+
+
+@pytest.mark.parametrize('text, group', [
+    ('O‘zbekiston Respublikasining «Ta’lim to‘g‘risida»gi Qonuni. – Toshkent, 2020.', 'normative'),
+    ('Закон Республики Узбекистан «Об образовании». – Ташкент, 2020.', 'normative'),
+    ('Gulzorobod viloyati ta’lim boshqarmasining «Raqamli maktab» nizomi. – Gulzorobod, 2024.', 'normative'),
+    ('Regulations on School Libraries. – Example City, 2022.', 'normative'),
+    ('Lawford P. Digital Tools. – London, 2020.', 'literature'),
+    ('Zarifboyev A. Qonunchilik asoslari. – Gulzorobod, 2019.', 'literature'),
+    ('Brightwell J. Self-regulation in learning. – Boston, 2018.', 'literature'),
+    ('Self-regulation in learning. – Boston, 2018.', 'literature'),
+    ('Петрушин И. Положения теории. – Москва, 2017.', 'literature'),
+    ('Huquq va jamiyat. – Gulzorobod: Qonun nashriyoti, 2021.', 'literature'),
+    ('Resurslar katalogi [Elektron resurs]. – URL: https://example.com/katalog', 'online'),
+])
+def test_only_the_title_of_an_entry_no_person_wrote_files_it_under_laws(text, group):
+    assert academic._group(text) == group
+
+
+def test_a_long_web_address_breaks_after_a_slash_and_stays_inside_the_frame(tmp_path):
+    url = 'https://example.com/katalog/boshlangich-sinflar-uchun/interaktiv-mashqlar'
+    result, page_content, template = references(tmp_path, [f'Resurslar katalogi [Elektron resurs]. – URL: {url}'])
+    lines = [line.strip() for line in pages_text(result)[0].splitlines() if line.strip()]
+    start = next(index for index, line in enumerate(lines) if 'https://' in line)
+    assert lines[start].endswith('/') and (lines[start] + lines[start + 1]).endswith(url)
     assert problems(result, page_content, template=template) == []
 
 
 def test_fewer_than_six_sources_or_one_group_keep_their_order_without_labels(tmp_path):
     result, _, _ = references(tmp_path, SOURCES[:5])
     text = pages_text(result)[0]
-    assert 'Normativ' not in text and re.search(r'^1\. Rahimova', text, re.M)
+    assert 'Normativ' not in text and re.search(r'^1\. Mirsoatova', text, re.M)
     books = [f'Muallif{number} A. Kitob {number}. – Gulzorobod, 2020.' for number in range(1, 8)]
     result, _, _ = references(tmp_path, books, name='books.pdf')
     assert 'Ilmiy va o‘quv' not in pages_text(result)[0]
@@ -410,7 +526,7 @@ def test_fewer_than_six_sources_or_one_group_keep_their_order_without_labels(tmp
 def test_sources_given_as_body_lines_and_repeated_items_print_once(tmp_path):
     result, _, _ = references(tmp_path, [SOURCES[1], SOURCES[1]], body=SOURCES[3] + '\n' + SOURCES[1])
     text = pages_text(result)[0]
-    assert text.count('Sobirov A. K.') == 1 and 'Tursunov' in text
+    assert text.count('Shodmonov A. K.') == 1 and 'Ortiqboyev' in text
 
 
 def test_no_source_draws_the_numbered_form_with_its_caption(tmp_path):

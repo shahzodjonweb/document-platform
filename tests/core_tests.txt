@@ -1258,3 +1258,9 @@ tests/test_paper_academic.py::test_a_blank_title_page_draws_rules_with_captions_
 tests/test_paper_academic.py::test_the_contents_lists_each_heading_with_the_page_it_lands_on
 tests/test_paper_academic.py::test_sources_are_numbered_in_groups_laws_first_with_a_long_url_inside_the_frame
 tests/test_paper_academic.py::test_no_source_draws_the_numbered_form_with_its_caption
+
+# Academic templates (R3a review): a label that only numbers a source never prints beside the list's own number;
+# a book by an author is never filed under laws; a sub row goes with a credit that prints nothing
+tests/test_paper_academic.py::test_a_label_that_only_numbers_a_source_is_dropped_and_an_author_label_runs_into_its_title
+tests/test_paper_academic.py::test_a_sub_row_under_a_credit_that_prints_nothing_goes_with_it
+tests/test_paper_academic.py::test_a_long_web_address_breaks_after_a_slash_and_stays_inside_the_frame

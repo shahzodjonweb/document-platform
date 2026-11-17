@@ -11,10 +11,10 @@
    "institution": "Gulzorobod davlat pedagogika instituti",
    "faculty_department": "Boshlang‘ich ta’lim fakulteti",
    "subject": "Pedagogika",
-   "student_name": "Qodirova Malika Anvar qizi",
+   "student_name": "Tojiboyeva Sarvinoz Anvar qizi",
    "student_group": "2-kurs, 204-guruh",
    "checker_word": "checked",
-   "teacher": "dotsent Hamidov Sardor Karimovich",
+   "teacher": "dotsent Hamroqulov Lochinbek Zarifovich",
    "city": "Gulzorobod"
   },
   "sections": [
@@ -28,10 +28,10 @@
    {"id": "conclusion", "heading": "Xulosa", "layout": "text", "items": [], "body": "Mazkur mustaqil ishda raqamli o‘quv resurslaridan foydalanishning pedagogik asoslari ko‘rib chiqildi.\nBirinchidan, raqamli resurs texnik vosita emas, balki dars maqsadiga xizmat qiluvchi pedagogik vosita ekani aniqlandi. Ikkinchidan, resurslar vazifasiga ko‘ra tushuntiruvchi, mustahkamlovchi va nazorat qiluvchi guruhlarga ajratildi. Uchinchidan, o‘qituvchi tayyorgarligi va o‘quv muhiti samaradorlikning asosiy shartlari ekani ko‘rsatildi. To‘rtinchidan, natijani baholashda o‘quvchilar bilimidagi o‘zgarish asosiy mezon sifatida belgilandi.\nMavzuni amaliy kuzatuv natijalariga tayanib yanada chuqurroq o‘rganish mumkin."},
    {"id": "references", "heading": "Foydalanilgan adabiyotlar", "layout": "list", "body": "", "items": [
     {"label": "", "text": "Gulzorobod viloyati xalq ta’limi boshqarmasining «Raqamli maktab» nizomi. – Gulzorobod, 2024."},
-    {"label": "", "text": "Rahimova D. B. Raqamli pedagogika asoslari: o‘quv qo‘llanma. – Gulzorobod: Ilm nashriyoti, 2022. – 184 b."},
-    {"label": "", "text": "Sobirov A. K., Usmonova N. R. Maktabda axborot texnologiyalari. – Gulzorobod: Ma’rifat, 2021. – 212 b."},
-    {"label": "", "text": "Tursunov B. Interaktiv dars usullari // Pedagogik izlanishlar. – 2023. – № 4. – B. 31–37."},
-    {"label": "", "text": "Karimova L. Boshlang‘ich sinflarda elektron resurslar. – Gulzorobod, 2020. – 96 b."},
+    {"label": "", "text": "Mirsoatova D. B. Raqamli pedagogika asoslari: o‘quv qo‘llanma. – Gulzorobod: Ilm nashriyoti, 2022. – 184 b."},
+    {"label": "", "text": "Shodmonov A. K., Oydinova N. R. Maktabda axborot texnologiyalari. – Gulzorobod: Ma’rifat, 2021. – 212 b."},
+    {"label": "", "text": "Ortiqboyev B. Interaktiv dars usullari // Pedagogik izlanishlar. – 2023. – № 4. – B. 31–37."},
+    {"label": "", "text": "Nurmatova L. Boshlang‘ich sinflarda elektron resurslar. – Gulzorobod, 2020. – 96 b."},
     {"label": "", "text": "Gulzorobod pedagogika instituti. Raqamli resurslar katalogi [Elektron resurs]. – URL: https://example.com/resurslar/katalog/boshlangich-sinflar-uchun-interaktiv-mashqlar-toplami"}
    ]}
   ]
@@ -44,9 +44,9 @@
    "institution": "Гулзорабадский государственный педагогический институт",
    "faculty_department": "Факультет начального образования",
    "subject": "Педагогика",
-   "student_name": "Кадырова Малика Анваровна",
+   "student_name": "Тожибоева Сарвиноз Анваровна",
    "student_group": "2 курс, группа 204",
-   "teacher": "доцент Хамидов Сардор Каримович",
+   "teacher": "доцент Хамрокулов Лочинбек Зарифович",
    "city": "Гулзорабад"
   },
   "sections": [
@@ -60,10 +60,10 @@
    {"id": "conclusion", "heading": "Заключение", "layout": "text", "items": [], "body": "В реферате рассмотрены педагогические основы использования цифровых учебных ресурсов.\nВо-первых, установлено, что цифровой ресурс является не техническим, а педагогическим средством, служащим цели урока. Во-вторых, ресурсы разделены по назначению на объясняющие, закрепляющие и контролирующие. В-третьих, показано, что подготовка учителя и учебная среда — основные условия эффективности. В-четвёртых, главным критерием оценки определено изменение знаний учеников.\nТему можно изучить глубже на основе практических наблюдений."},
    {"id": "references", "heading": "Список литературы", "layout": "list", "body": "", "items": [
     {"label": "", "text": "Положение «Цифровая школа» управления народного образования Гулзорабадской области. – Гулзорабад, 2024."},
-    {"label": "", "text": "Рахимова Д. Б. Основы цифровой педагогики: учебное пособие. – Гулзорабад: Илм, 2022. – 184 с."},
-    {"label": "", "text": "Собиров А. К., Усмонова Н. Р. Информационные технологии в школе. – Гулзорабад: Маърифат, 2021. – 212 с."},
-    {"label": "", "text": "Турсунов Б. Интерактивные методы урока // Педагогические поиски. – 2023. – № 4. – С. 31–37."},
-    {"label": "", "text": "Каримова Л. Электронные ресурсы в начальных классах. – Гулзорабад, 2020. – 96 с."},
+    {"label": "", "text": "Мирсоатова Д. Б. Основы цифровой педагогики: учебное пособие. – Гулзорабад: Илм, 2022. – 184 с."},
+    {"label": "", "text": "Шодмонов А. К., Ойдинова Н. Р. Информационные технологии в школе. – Гулзорабад: Маърифат, 2021. – 212 с."},
+    {"label": "", "text": "Ортикбоев Б. Интерактивные методы урока // Педагогические поиски. – 2023. – № 4. – С. 31–37."},
+    {"label": "", "text": "Нурматова Л. Электронные ресурсы в начальных классах. – Гулзорабад, 2020. – 96 с."},
     {"label": "", "text": "Гулзорабадский педагогический институт. Каталог цифровых ресурсов [Электронный ресурс]. – URL: https://example.com/resurslar/katalog/boshlangich-sinflar-uchun-interaktiv-mashqlar-toplami"}
    ]}
   ]
@@ -76,9 +76,9 @@
    "institution": "Gulzorobod State Pedagogical Institute",
    "faculty_department": "Faculty of Primary Education",
    "subject": "Pedagogy",
-   "student_name": "Malika Qodirova",
+   "student_name": "Sarvinoz Tojiboyeva",
    "student_group": "Year 2, group 204",
-   "teacher": "Associate Professor Sardor Hamidov",
+   "teacher": "Associate Professor Lochinbek Hamroqulov",
    "city": "Gulzorobod"
   },
   "sections": [
@@ -92,10 +92,10 @@
    {"id": "conclusion", "heading": "Conclusion", "layout": "text", "items": [], "body": "This report has examined the pedagogical foundations of using digital learning resources.\nFirst, a digital resource was shown to be a pedagogical rather than a technical tool, serving the aim of the lesson. Second, resources were divided by purpose into explaining, consolidating and checking ones. Third, the teacher’s preparation and the learning environment were shown to be the main conditions of effectiveness. Fourth, the change in the pupils’ knowledge was set as the main criterion of judgement.\nThe topic can be studied further on the basis of practical observation."},
    {"id": "references", "heading": "References", "layout": "list", "body": "", "items": [
     {"label": "", "text": "Gulzorobod Regional Education Board. Regulation on the Digital School. – Gulzorobod, 2024."},
-    {"label": "", "text": "Rahimova D. B. Foundations of Digital Pedagogy: a study guide. – Gulzorobod: Ilm, 2022. – 184 p."},
-    {"label": "", "text": "Sobirov A. K., Usmonova N. R. Information Technology at School. – Gulzorobod: Marifat, 2021. – 212 p."},
-    {"label": "", "text": "Tursunov B. Interactive lesson methods // Pedagogical Studies. – 2023. – No. 4. – P. 31–37."},
-    {"label": "", "text": "Karimova L. Electronic Resources in Primary Classes. – Gulzorobod, 2020. – 96 p."},
+    {"label": "", "text": "Mirsoatova D. B. Foundations of Digital Pedagogy: a study guide. – Gulzorobod: Ilm, 2022. – 184 p."},
+    {"label": "", "text": "Shodmonov A. K., Oydinova N. R. Information Technology at School. – Gulzorobod: Marifat, 2021. – 212 p."},
+    {"label": "", "text": "Ortiqboyev B. Interactive lesson methods // Pedagogical Studies. – 2023. – No. 4. – P. 31–37."},
+    {"label": "", "text": "Nurmatova L. Electronic Resources in Primary Classes. – Gulzorobod, 2020. – 96 p."},
     {"label": "", "text": "Gulzorobod Pedagogical Institute. Catalogue of digital resources [online]. – URL: https://example.com/resurslar/katalog/boshlangich-sinflar-uchun-interaktiv-mashqlar-toplami"}
    ]}
   ]
