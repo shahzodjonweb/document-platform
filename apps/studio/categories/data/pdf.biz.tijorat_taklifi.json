@@ -817,6 +817,9 @@
    ]
   },
   {
+   "text": "The currency in the price grid’s header (“Narxi, so‘m”) and the VAT state in the total’s word (“Jami (QQS bilan)”); this round the amounts print in the customer’s own units under the catalogue’s header and the VAT state stands in the terms."
+  },
+  {
    "text": "The price-basis question with buttons (each or total?) asked before the paper is made; this round a row whose basis is unclear stays blank."
   },
   {

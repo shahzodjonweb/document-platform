@@ -405,6 +405,15 @@ def _template_problems(name, raw, entries):
                 problems.append(f'{at}: {place["block"]} is not a drawing block')
             if place.get('part') is not None and place['part'] not in parts:
                 problems.append(f"{at}: part {place['part']} is not a part {where}")
+            # A misspelt id in a heading's any_part would hide its chapter heading without a word, and one in a
+            # table's stated total would print code's total as complete against a budget it never read.
+            params = place['params'] if isinstance(place.get('params'), dict) else {}
+            any_part = params.get('any_part')
+            if isinstance(any_part, list) and set(map(str, any_part)) - parts:
+                problems.append(f"{at}: any_part names {sorted(set(map(str, any_part)) - parts)}, not parts {where}")
+            stated = params.get('stated')
+            if stated is not None and (not isinstance(stated, str) or stated not in fields):
+                problems.append(f'{at}: stated names {stated}, not a field {where}')
             unknown = set(place.get('fields', ())) - set(fields)
             if unknown:
                 problems.append(f'{at}: unknown fields {sorted(unknown)} {where}')

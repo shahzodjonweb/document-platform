@@ -359,7 +359,9 @@ def test_a_list_written_as_lines_becomes_items_held_to_its_maximum(sinov):
                                                           'Shartnoma nusxasi.']
 
 
-def test_a_tables_computed_cells_are_emptied_for_derive_and_its_columns_never_stored(sinov):
+def test_a_tables_computed_cells_are_emptied_for_derive_and_its_columns_never_stored(sinov, monkeypatch):
+    # What the finish empties, seen before derive fills it (tests/test_category_derive.py holds what derive makes).
+    monkeypatch.setattr(derive, 'apply', lambda entry, content, trusted, **_: content)
     data = draft(sinov)
     rows = [{'label': 'Kitob', 'text': '12 | 45 000', 'value': '540 000'},
             {'label': 'Daftar', 'text': '12', 'value': '9 999'},
@@ -388,7 +390,7 @@ def test_cells_pad_and_merge_a_row_to_its_columns():
 def test_derive_fills_the_computed_cells_after_grounding(sinov, monkeypatch):
     seen = []
 
-    def fill(entry, content, trusted):
+    def fill(entry, content, trusted, **_):
         section = section_of(content, 'narxlar')
         seen.append([finish.cells(item, 4) for item in section['items']])
         for item in section['items']:
@@ -713,7 +715,8 @@ def test_the_plain_fallback_keeps_its_contract(sinov):
                                                                        'Manbalar']
     table = flat['sections'][3]
     assert table['layout'] == 'list' and table['body'] == 'Nomi — Soni — Narxi — Jami'
-    assert [item['text'] for item in table['items']] == ['Kitob — 12 — 45 000 — ____'], 'each value under its column'
+    # derive multiplied the quantity by the price; one row has no total row.
+    assert [item['text'] for item in table['items']] == ['Kitob — 12 — 45 000 — 540 000'], 'each value under its column'
     sources = flat['sections'][4]
     assert sources['layout'] == 'list' and len(sources['items']) == 1
     assert sources['items'][0]['label'] == '', 'the model\'s "1" is no label in a numbered list'

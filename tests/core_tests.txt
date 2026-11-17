@@ -1359,3 +1359,39 @@ tests/test_category_letter_readiness.py::test_the_switch_page_says_what_a_person
 tests/test_category_letter_readiness.py::test_every_length_and_cue_subset_is_seeded_and_drawn_in_its_template[pdf.xat.motivatsion]
 tests/test_category_letter_readiness.py::test_an_uzbek_ariza_blank_head_ends_in_ga_and_dan_as_the_mock_draws_it
 tests/test_category_letter_readiness.py::test_the_smoke_makes_every_letter_in_its_own_template
+
+# Business templates and computed columns (R5a): the offer, report, business plan and marketing plan are drawn by
+# their own templates; code multiplies, subtracts, takes per cents and shares and adds totals from verified numbers,
+# a partial total says so or is left out, a total the model wrote never prints; a heading never ends a page alone
+tests/test_category_derive.py::test_an_offer_multiplies_quantity_by_price_and_adds_the_total_last
+tests/test_category_derive.py::test_a_total_the_model_wrote_is_taken_out_and_made_again
+tests/test_category_derive.py::test_an_offer_with_a_line_it_cannot_compute_prints_no_total
+tests/test_category_derive.py::test_a_plan_total_of_only_the_items_with_a_figure_says_so
+tests/test_category_derive.py::test_a_report_computes_difference_and_per_cent_of_plan_with_their_signs
+tests/test_category_derive.py::test_shares_are_whole_per_cents_adding_to_a_hundred_and_the_total_row_says_so
+tests/test_category_derive.py::test_a_cell_computed_from_an_unread_input_stays_blank
+tests/test_category_derive.py::test_an_input_the_customer_never_gave_computes_nothing_while_code_made_cells_add_up
+tests/test_category_derive.py::test_the_finish_fills_computed_cells_from_the_customers_numbers_after_grounding
+tests/test_paper_business.py::test_every_template_reads_well[business_taklif-uz-full]
+tests/test_paper_business.py::test_every_template_reads_well[business_hisobot-uz-full]
+tests/test_paper_business.py::test_every_template_reads_well[business_biznes_reja-uz-full]
+tests/test_paper_business.py::test_every_template_reads_well[business_marketing_reja-uz-full]
+tests/test_paper_business.py::test_the_offer_ends_its_price_table_on_codes_total_in_bold
+tests/test_paper_business.py::test_a_heading_never_stands_alone_at_the_foot_of_a_page
+
+# Business templates (R5a review): a scaled price is rounded as a full amount, an amount drops the price's per-unit
+# tail, a total the customer typed is kept when code makes none, staff stands under the operations chapter, and no
+# table header word is broken
+tests/test_category_derive.py::test_a_scaled_price_is_rounded_as_a_full_amount_never_to_whole_millions[uz]
+tests/test_category_derive.py::test_an_amount_drops_the_prices_per_unit_tail_as_in_the_specs_own_example
+tests/test_category_derive.py::test_a_lone_total_the_customer_typed_is_kept_and_not_split
+tests/test_category_derive.py::test_one_line_against_a_stated_total_has_no_share_of_the_line_alone
+tests/test_category_derive.py::test_amounts_in_different_currencies_are_never_added
+tests/test_paper_business.py::test_staff_without_operations_prose_is_filed_under_the_operations_chapter
+tests/test_paper_business.py::test_no_table_header_word_is_broken_inside_nor_its_per_cent_sign_left_alone[business_hisobot]
+# R5a, second review round: shares and totals never mix currencies (an amount with no currency is the paper's), a
+# line named after the total word is an item, a stated budget the lines miss names code's total as the items listed.
+tests/test_category_derive.py::test_so_m_and_dollars_in_one_column_get_no_shares_and_no_total
+tests/test_category_derive.py::test_an_amount_with_no_currency_is_in_the_papers_and_never_added_to_dollars
+tests/test_category_derive.py::test_a_line_named_after_the_total_word_is_an_item_and_is_added_up
+tests/test_category_derive.py::test_a_marketing_total_that_differs_from_the_stated_budget_is_of_the_activities_listed

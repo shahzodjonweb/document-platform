@@ -45,7 +45,7 @@ from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.platypus import Flowable, Paragraph, Spacer, Table, TableStyle
 from reportlab.platypus.flowables import PageBreakIfNotEmpty
 
-from ..ctx import INK
+from ..ctx import INK, _has_text
 from ..registry import block
 from ..text import MM
 
@@ -56,6 +56,8 @@ SLOT = re.compile(r'\{(\w+)\}')
 CELL = re.compile(r'\s*\|\s*')
 # A marker the model typed at the start of an item, which the list draws itself.
 TYPED_MARKER = re.compile(r'^\s*(?:[-–—•*·]|\d{1,2}[.)]|[a-zа-я]\))\s+', re.IGNORECASE)
+# The codes a list part's instruction names for its labels: "label one of product, price, place, promotion".
+CODES = re.compile(r'label one of ([a-z_]+(?:,\s*[a-z_]+)*(?:,?\s+or\s+[a-z_]+)?)')
 # A parenthetical at the end of a field's label ("Ariza sanasi (ixtiyoriy)"): bot wording, not a paper's.
 TRAILING_NOTE = re.compile(r'\s*\([^()]*\)\s*$')
 LETTERS = {'ru': 'абвгдежзиклмнопрстуфхцчшщэюя', 'uz': 'abcdefghijklmnopqrstuvwxyz', 'en': 'abcdefghijklmnopqrstuvwxyz'}
@@ -639,9 +641,14 @@ def heading(ctx, place):
     set flush right on its line: an appendix mark); in_toc (marked for the
     contents; levels 1 and 2 by default); style plain | badge (the number in a
     box); fold_number_below (fewer instances of the group than this: no
-    number); page_break_before (a new page unless at the top of one).
+    number); page_break_before (a new page unless at the top of one);
+    any_part (part ids: drawn only when one of them has text, for a chapter
+    word over several optional parts, which a single `when` cannot say).
     """
     params = _params(place)
+    if isinstance(params.get('any_part'), list) and not any(
+            _has_text(ctx.section(part_id)) for part_id in params['any_part'] if isinstance(part_id, str)):
+        return []
     level = _int(params.get('level'), _int((place.part or {}).get('level'), 1), 1, 3)
     text = _word(ctx, params['label']) if params.get('label') else ctx.heading(place.part, place.section)
     text = ' '.join(str(text or '').split())
@@ -781,6 +788,34 @@ def _list_texts(section):
     return found or [_unmarked(text) for text in _lines(section)]
 
 
+def _list_leads(ctx, section, words, part=None):
+    """(lead word, text) per item when `words` maps item labels to label keys: a code label ("price") is its word.
+
+    A business list's items are labelled with a code the catalogue names
+    (product, price, place, promotion): the code prints as its template word,
+    run in bold ("Narx. ..."), and a code the map does not name is left out
+    rather than printed as an English id. Only a label that looks like a code
+    is left out (one with "_", or one the part's instruction lists after
+    "label one of"): a plain word the model put there ("ijara") is the
+    customer's and prints with its item.
+    """
+    found = CODES.search(str((part or {}).get('write') or ''))
+    codes = set(re.findall(r'[a-z_]+', found.group(1))) - {'or'} if found else set()
+    made = []
+    for item in _items(section):
+        label = str(item.get('label') or '').strip()
+        rest = ' '.join(piece for piece in (str(item.get(key) or '').strip() for key in ('text', 'value')) if piece)
+        key = words.get(label)
+        if key and _has_label(ctx, key):
+            made.append((ctx.label(key), _unmarked(rest)))
+        elif re.fullmatch(r'[a-z_]+', label) and ('_' in label or label in codes):
+            made.append(('', _unmarked(rest)))
+        else:
+            made.append(('', _unmarked(_item_text(item))))
+    return [(lead, text) for lead, text in made if lead or text] or [('', _unmarked(text))
+                                                                    for text in _lines(section)]
+
+
 @block('list')
 def list_block(ctx, place):
     """A list from a part's items (else its body lines) with one marker and a hanging indent.
@@ -791,10 +826,14 @@ def list_block(ctx, place):
     edge: "Ilova:"; a plural label is used for several items when the
     template has it as `label_many` or as the key with an s); max_items
     (warned, never cut); single_unnumbered (one item has no marker); columns
-    1 | 2. A marker the model typed is dropped: the list draws its own.
+    1 | 2; labels ({item label: label key}: a code label printed as its word,
+    run in bold before the item's text). A marker the model typed is
+    dropped: the list draws its own.
     """
     params = _params(place)
-    texts = _list_texts(place.section)
+    words = params.get('labels') if isinstance(params.get('labels'), dict) else None
+    leads = _list_leads(ctx, place.section, words, place.part) if words else None
+    texts = [text for _, text in leads] if leads is not None else _list_texts(place.section)
     if not texts:
         return []
     _warn_over(ctx, 'list', len(texts), _int(params.get('max_items'), 0, 0, 200))
@@ -811,25 +850,32 @@ def list_block(ctx, place):
         many = params.get('label_many') or f"{params['label']}s"
         label = ctx.label(many) if len(texts) > 1 and _has_label(ctx, many) else _word(ctx, params['label'])
     if label or _int(params.get('columns'), 1, 1, 2) == 2:
-        return _list_table(ctx, place, texts, markers, hang, label, style)
+        return _list_table(ctx, place, texts, markers, hang, label, style, leads)
     made = []
     for number, (text, marker) in enumerate(zip(texts, markers)):
         offset = -hang if params.get('gutter') else 0.0
         chosen = _style(ctx, style, leftIndent=offset + hang, bulletIndent=offset, bulletFontName=style.fontName,
                         bulletFontSize=style.fontSize, spaceBefore=ctx.leading * 0.15 if number else 0)
-        made.append(Paragraph(ctx.text(text, chosen), chosen, bulletText=marker or None))
+        made.append(Paragraph(_led(ctx, leads, number, text, chosen), chosen, bulletText=marker or None))
     return _finish(place, made, before=ctx.leading * 0.35, after=ctx.leading * 0.35)
 
 
-def _list_table(ctx, place, texts, markers, hang, label, style):
+def _led(ctx, leads, number, text, style):
+    """An item's markup: its lead word in bold before its text when it has one."""
+    lead = leads[number][0] if leads else ''
+    markup = ctx.text(text, style) if text else ''
+    return f'{_bold(ctx, lead, style)} {markup}'.strip() if lead else markup
+
+
+def _list_table(ctx, place, texts, markers, hang, label, style, leads=None):
     """A labelled list (the label's column, then the items on its edge) or a list in two columns."""
     params = _params(place)
     two = _int(params.get('columns'), 1, 1, 2) == 2 and not label
     cells = []
-    for text, marker in zip(texts, markers):
+    for number, (text, marker) in enumerate(zip(texts, markers)):
         chosen = _style(ctx, style, leftIndent=hang, bulletIndent=0, bulletFontName=style.fontName,
                         bulletFontSize=style.fontSize)
-        cells.append(Paragraph(ctx.text(text, chosen), chosen, bulletText=marker or None))
+        cells.append(Paragraph(_led(ctx, leads, number, text, chosen), chosen, bulletText=marker or None))
     if two:
         half = (len(cells) + 1) // 2
         rows = [[cells[row], cells[row + half] if row + half < len(cells) else '']
@@ -913,17 +959,29 @@ def _widths(ctx, specs, rows, headers, count):
     return [width * weight / total for weight in weights]
 
 
+def _total_word(item):
+    """Whether a row of a table with totals is its total by its first word ("Jami", "Итого", "Total").
+
+    derive marks the row it makes with `total`, but content checked again by
+    validate_content keeps only label, text and value: the word is what is left
+    of the mark, and derive reads a total by the same word.
+    """
+    from apps.studio.categories.derive import TOTAL_ROW
+    return bool(TOTAL_ROW.match(str(item.get('label') or '')))
+
+
 @block('table')
 def table(ctx, place):
     """A grid from a table part: the header from the template (else the part's columns), never from the draft.
 
-    params: columns [{label (a label key), width_mm (number or "flex"), align
+    params: columns [{label (a label key; the part's column by default), width_mm (number or "flex"), align
     left | centre | right, type text | number | money}]; rules horizontal |
     grid; heading (the part's heading over it); caption (numbered: "1-jadval.
     <heading>"); note (a label key under it); zebra; blank_rows (rows to fill
     by hand); drop_empty_columns; from "questions:open" (the model answers:
-    number, answer, marks). A row whose item carries `total` (derive.py's) is
-    set bold under a rule. The header repeats on each page and rows never
+    number, answer, marks). A row whose item carries `total` (derive.py's), or
+    in a part with totals a row starting with a total's word, is set bold
+    under a rule. The header repeats on each page and rows never
     split; a section's body is printed under the table as a note, never lost.
     """
     params = _params(place)
@@ -935,9 +993,14 @@ def table(ctx, place):
     else:
         part_columns = ctx.columns(place.part)
         count = len(specs) or len(part_columns) or max([_natural(item) for item in _items(section)] + [1])
-        rows = [{'cells': _cells(item, count), 'total': bool(item.get('total'))} for item in _items(section)]
+        totalled = bool((place.part or {}).get('total'))
+        rows = [{'cells': _cells(item, count), 'total': bool(item.get('total')) or (totalled and _total_word(item))}
+                for item in _items(section)]
     if specs:
-        headers = [_word(ctx, spec.get('label')) if spec.get('label') else '' for spec in specs]
+        # A column spec without its own label keeps the catalogue's header: widths and alignment are the template's.
+        own = ctx.columns(place.part)
+        headers = [_word(ctx, spec.get('label')) if spec.get('label') else (own[index] if index < len(own) else '')
+                   for index, spec in enumerate(specs)]
     else:
         headers = ctx.columns(place.part)[:count]
     headers = [re.sub(r'\s*:\s*$', '', header) for header in headers] + [''] * (count - len(headers))
@@ -1088,10 +1151,11 @@ def callout(ctx, place):
     if params.get('label') and _has_label(ctx, params['label']):
         label = ctx.label(params['label'])
     heading = ctx.heading(place.part, section)
-    rows = []
+    rows = [[Paragraph(ctx.text(text, 'body'), ctx.styles['body'])] for text in texts]
     if label or heading:
-        rows.append([Paragraph(ctx.text(heading or label, 'bold'), ctx.styles['bold'])])
-    rows += [[Paragraph(ctx.text(text, 'body'), ctx.styles['body'])] for text in texts]
+        # The title shares its cell with the first paragraph (the gap the two rows' paddings made kept between
+        # them), so the table never splits under it and leaves the title alone at a page's foot.
+        rows[0] = [[Paragraph(ctx.text(heading or label, 'bold'), ctx.styles['bold']), Spacer(1, 2.4), rows[0][0]]]
     kind = params.get('style') if params.get('style') in ('tint', 'box', 'bar') else 'tint'
     drawn = Table(rows, colWidths=[ctx.width], hAlign='LEFT')
     pad = 3 * MM
