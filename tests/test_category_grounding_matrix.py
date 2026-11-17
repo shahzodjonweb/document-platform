@@ -553,6 +553,16 @@ CASES = [
        'Yulduzlar akademiyasida malaka oshirganman.', gone=('Yulduzlar',)),
     gp('names-a-plural-noun-before-banki-uz-accepted_false_blank', ACCEPTED, COURSE_UZ, 'uz',
        'Keyslar banki ilovada berilgan.', gone=('Keyslar',), pair='names-plural-name-before-banki-uz-blank'),
+    # A plural of people a clinic or a cooperative serves is its kind, never its name ("Bolalar klinikasi", "Fermerlar
+    # shirkati"; round 3 of the convergence, should, from 2b740e7); any other plural or kind is still held.
+    gp('names-children-before-a-clinic-uz-keep', KEEP, COVER_UZ, 'uz',
+       'Bolalar klinikasida hamshira bo‘lib ishlaganman.'),
+    gp('names-farmers-before-a-cooperative-uz-keep', KEEP, PLAN_UZ, 'uz', 'Fermerlar shirkati bilan shartnoma tuzamiz.'),
+    gp('names-plural-name-before-a-clinic-uz-blank', BLANK, COVER_UZ, 'uz',
+       'Do‘stlar klinikasida hamshira bo‘lib ishlaganman.', gone=('Do‘stlar',)),
+    gp('names-youth-before-a-bank-uz-blank', BLANK, PLAN_UZ, 'uz', 'Yoshlar banki kredit beradi.', gone=('Yoshlar',)),
+    gp('names-children-before-a-company-uz-blank', BLANK, COVER_UZ, 'uz',
+       'Bolalar kompaniyasida sotuvchi bo‘lib ishlaganman.', gone=('Bolalar',)),
     # The customer's own plural before a kind is theirs, and stays.
     gp('names-a-plural-noun-before-banki-uz-keep', KEEP, COURSE_UZ + ' Keyslar banki ilovada bo‘lsin.', 'uz',
        'Keyslar banki ilovada berilgan.'),

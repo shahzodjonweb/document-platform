@@ -366,6 +366,11 @@ ORG_HEADS = _folded(ORG_FORMS + [form + ending for form in UZ_ORG_FORMS for endi
 ORG_AFTER = _folded([kind + own + case for kind in UZ_ORG_KINDS for own in ('i', 'si') for case in UZ_CASES]
                     + [place + case for place in UZ_PLACES_AFTER for case in UZ_CASES])
 CHAIN = _folded(['tarmog‘i' + case for case in UZ_CASES])
+# The people a clinic or a cooperative serves, whose plural before it is its kind, never its name: "Bolalar
+# klinikasi", "Fermerlar shirkati" (`_organisation`). "Do‘stlar klinikasi", "Yoshlar banki" are still names.
+PEOPLE_SERVED = _folded("bolalar fermerlar dehqonlar ayollar onalar keksalar nogironlar bemorlar hunarmandlar".split())
+SERVING_KINDS = _folded([kind + own + case for kind in ('klinika', 'shirkat') for own in ('i', 'si')
+                         for case in UZ_CASES])
 KIND_WORDS = _folded(KINDS_OF)
 
 
@@ -1470,8 +1475,11 @@ def _organisation(text, run):
         return RU_ORG_KINDS.fullmatch(after) is not None or (
             RU_ADJECTIVE.fullmatch(after) is not None and RU_ORG_KINDS.fullmatch(second) is not None)
     # A plural before a kind is a name as often as a common noun ("Do‘stlar kompaniyasida", "Yoshlar banki" beside
-    # "Keyslar banki", a bank of cases): it is held, a false blank at worst.
+    # "Keyslar banki", a bank of cases): it is held, a false blank at worst; never the people a clinic or a
+    # cooperative serves ("Bolalar klinikasida", "Fermerlar shirkati": `PEOPLE_SERVED`).
     word = fold(kind.group(1))
+    if len(run) == 1 and fold(first) in PEOPLE_SERVED and word in SERVING_KINDS:
+        return False
     return word in ORG_AFTER or (word.endswith('lar') and kind.group(2) is not None and fold(kind.group(2)) in CHAIN)
 
 
