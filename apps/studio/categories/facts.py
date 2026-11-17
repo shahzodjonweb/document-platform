@@ -1051,6 +1051,10 @@ LAW_NAMES = (
     # consumer rights"): read in any language as the codes' names are.
     r"buxgalteriya|бухгалтерск|accounting", r"iste'molchi|потребител|consumers?", r"raqobat|конкуренц|competition",
     r"reklama|реклам|advertising", r"litsenziya|лицензир|licen[cs]ing", r"sug'urta|страхован|insurance",
+    # The words of the commonest such law, "the Law on the protection of consumer rights" («О защите прав
+    # потребителей», "Iste’molchilarning huquqlarini himoya qilish to‘g‘risida"): read as names, so the customer's own
+    # law translated keeps its words and an invented one must still be theirs word for word.
+    r"himoya\w*|защит\w*|protection", r"huquq\w*|прав[оа]?(?![а-яё])|rights?",
 )
 # A Latin form is a whole word, with an ending a sentence may give it ("Labour", "Mehnat", "taxes", never
 # "laboratory", "taxi" or "suvenir"); a Russian one is a stem its adjective declines from ("трудового", "налоговому").
@@ -1091,10 +1095,19 @@ LAW_COUNTRY = re.compile(r"the|o'zbekiston\w*|respublika\w*|uzbekistan|republic|
 # training interns").
 LAW_OF = re.compile(r"of|on|об|о")
 LAW_OF_REACH = 6
+# A law or a code with no name before its stem ("the Law of the Republic of Uzbekistan on state duty", "the Law on
+# personal data", "the Code of professional ethics") is named by every word after its "of" or "on" up to a word that
+# goes on the sentence, a conjunction or a mark, at most this many, its own grammar words (`LAW_OF_GRAMMAR`) passed.
+LAW_OF_UNNAMED_REACH = 8
+LAW_OF_GRAMMAR = re.compile(r"of|the|a|an")
 LAW_OF_STOP = re.compile(
     r"is|are|was|were|be|been|being|has|have|had|do|does|did|will|shall|would|should|must|may|might|can|could"
-    r"|appl(?:y|ies|ied|ying)|govern\w*|regulat\w*|requir\w*|set|sets|cover\w*|say|says|said|state[sd]?|provid\w*"
-    r"|allow\w*|forbid\w*|oblig\w*|mean\w*|follow\w*|keep\w*|kept|make\w*|made|take\w*|took|give\w*|gave"
+    # A verb's forms only, never the noun of the same stem a law is named by ("on state duty", "on accounting
+    # requirements", "on the regulation of ...").
+    r"|appl(?:y|ies|ied|ying)|govern(?:s|ed|ing)?|regulat(?:e|es|ed|ing)|requir(?:e|es|ed|ing)|set|sets"
+    r"|cover(?:s|ed|ing)?|say|says|said|state[sd]|provid(?:e|es|ed|ing)"
+    r"|allow(?:s|ed|ing)?|forbid\w*|oblig(?:e|es|ed|ing)|mean(?:s|t)?|follow(?:s|ed|ing)?|keep\w*|kept|make\w*"
+    r"|made|take\w*|took|give\w*|gave"
     r"|when|where|while|which|who|whom|whose|that|this|these|those|if|unless|because|since|as|than|so|too|also"
     r"|to|in|into|for|with|without|by|at|from|under|over|after|before|during|through|within|about|against|between"
     r"|its|their|his|her|our|your|it|they|he|she|we|you|i|all|each|every|any|some|no|not|only|even")
@@ -1173,7 +1186,11 @@ def _law_names(sentence):
             index += 1  # a title in its marks: the Law "On Education", Закон «Об образовании»
         if word(index) and LAW_OF.fullmatch(normalised(tokens[index][1]).casefold()):
             index, taken = index + 1, 0
-            while word(index) and taken < LAW_OF_REACH:
+            # No name before the stem ("the Law of the Republic of Uzbekistan on state duty"): every word after its
+            # "of" or "on" is its name, so an invented subject in lower case is the customer's or the sentence goes.
+            unnamed = not any(_letters(text) >= 2 and not LAW_COUNTRY.fullmatch(normalised(text).casefold())
+                              for _, text in name)
+            while word(index) and taken < (LAW_OF_UNNAMED_REACH if unnamed else LAW_OF_REACH):
                 token = tokens[index][1]
                 low = normalised(token).casefold()
                 if not taken and (LAW_COUNTRY.fullmatch(low) or LAW_OF.fullmatch(low)):
@@ -1187,11 +1204,15 @@ def _law_names(sentence):
                     name.append(tokens[index])
                 elif token[0].isupper() or _law_name(token) or LAW_KIND.fullmatch(low):
                     name.append(tokens[index])
-                elif LAW_OF_STOP.fullmatch(low) or (not taken and not (
-                        word(index + 1) and normalised(tokens[index + 1][1]).casefold() == 'of')):
-                    # A word that goes on the sentence ends the name, and a first word that is no name word begins
-                    # one only before its own "of" ("the Law on the protection of consumer rights"; never "... of
-                    # Uzbekistan applies to land workers" or "... protects consumer interests").
+                elif LAW_OF_STOP.fullmatch(low):
+                    break  # a word that goes on the sentence ends the name
+                elif unnamed:
+                    if not LAW_OF_GRAMMAR.fullmatch(low):
+                        name.append(tokens[index])
+                elif not taken and not (word(index + 1) and normalised(tokens[index + 1][1]).casefold() == 'of'):
+                    # After a named stem, a first word that is no name word begins one only before its own "of"
+                    # ("the Labour Code on working hours" names the Labour Code; never "... of Uzbekistan applies
+                    # to land workers" or "... protects consumer interests").
                     break
                 index, taken = index + 1, taken + 1
         found += [(start, text) for start, text in name if _letters(text) >= 2

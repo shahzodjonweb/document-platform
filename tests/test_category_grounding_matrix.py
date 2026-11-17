@@ -144,6 +144,7 @@ JOB_UZ = ('Bosh buxgalter uchun lavozim yo‘riqnomasi tuzib bering. Mehnat kode
           'xodim moliya bo‘limiga bo‘ysunadi.')
 JOB_UZ_LAWS = ('Bosh buxgalter uchun lavozim yo‘riqnomasi tuzib bering. Mehnat kodeksi va qonun hujjatlariga muvofiq '
                'ishlaydi, direktorga bo‘ysunadi.')
+JOB_UZ_ETHICS = JOB_UZ_LAWS + ' Kasbiy etika va boshqaruv tamoyillariga rioya qiladi.'
 JOB_RU = ('Составьте должностную инструкцию главного бухгалтера на русском, в соответствии с Трудовым кодексом, '
           'подчиняется финансовому директору.')
 JOB_RU_UZ = JOB_RU.replace('на русском', 'на узбекском')
@@ -968,6 +969,61 @@ CASES = [
     guard('laws-another-law-named-in-russian-after-o-ru-blank', BLANK,
           'Составьте должностную инструкцию бухгалтера, по Закону о бухгалтерском учёте.', 'ru',
           'Бухгалтер соблюдает Закон о защите прав потребителей.', gone=('потребителей',)),
+    # A law or a code with no name before its stem is named by every word after its "of" or "on", the country passed
+    # over, up to a word that goes on the sentence, a conjunction or a mark: "the Law of the Republic of Uzbekistan on
+    # state duty" is the standard English for an Uzbek law, and "the Law on personal data" its bare form (round 3 of
+    # the convergence, must; kept at a2005ea and a591d6c, removed at 8146b7c).
+    guard('laws-law-of-the-republic-on-state-duty-en-blank', BLANK, JOB_EN_LAW, 'en',
+          'The accountant follows the Law of the Republic of Uzbekistan on state duty.', gone=('duty',)),
+    guard('laws-law-of-the-republic-on-personal-data-ru-to-en-blank', BLANK, JOB_RU_EN_LAW, 'en',
+          'The accountant follows the Law of the Republic of Uzbekistan on personal data.', gone=('personal',),
+          translated=True),
+    guard('laws-law-of-the-republic-on-state-procurement-uz-to-en-blank', BLANK,
+          'Menga ingliz tilida bosh buxgalter uchun lavozim yo‘riqnomasi yozing, Mehnat kodeksi va qonun hujjatlariga '
+          'muvofiq ishlaydi.', 'en', 'The accountant follows the Law of the Republic of Uzbekistan on state procurement.',
+          gone=('procurement',), translated=True),
+    item('laws-law-of-the-republic-on-auditing-activity-in-an-item-en-blank', BLANK, 'pdf.biz.lavozim_yoriqnomasi',
+         JOB_EN_LAW, 'en', 'general', 'The accountant follows the Law of the Republic of Uzbekistan on auditing activity.',
+         gone=('auditing',)),
+    gp('laws-law-of-the-republic-on-electronic-commerce-in-an-offer-en-blank', BLANK,
+       'Write a commercial offer for our furniture shop in Tashkent; we follow the Law on Accounting and give a 5% '
+       'discount.', 'en', 'The accountant follows the Law of the Republic of Uzbekistan on electronic commerce.',
+       gone=('electronic',)),
+    guard('laws-bare-law-on-personal-data-en-blank', BLANK, JOB_EN_LAW, 'en',
+          'The accountant follows the Law on personal data.', gone=('personal',)),
+    guard('laws-bare-law-on-the-protection-of-personal-data-en-blank', BLANK, JOB_EN_LAW, 'en',
+          'The accountant follows the Law on the protection of personal data.', gone=('personal',)),
+    guard('laws-bare-law-on-joint-stock-companies-ru-to-en-blank', BLANK, JOB_RU_EN_LAW, 'en',
+          'The accountant applies the Law on joint-stock companies.', gone=('joint',), translated=True),
+    guard('laws-bare-code-of-professional-ethics-en-blank', BLANK, JOB_EN_LAW, 'en',
+          'The accountant follows the Code of professional ethics.', gone=('ethics',)),
+    guard('laws-the-customers-law-of-the-republic-on-accounting-en-keep', KEEP, JOB_EN_LAW, 'en',
+          'The accountant follows the Law of the Republic of Uzbekistan on accounting.'),
+    guard('laws-the-customers-law-of-the-republic-on-accounting-ru-to-en-keep', KEEP, JOB_RU_EN_LAW, 'en',
+          'The accountant follows the Law of the Republic of Uzbekistan on accounting.', translated=True),
+    guard('laws-the-customers-law-on-state-duty-of-the-republic-en-keep', KEEP,
+          'Write a job description for an accountant in line with the Law on State Duty.', 'en',
+          'The accountant follows the Law of the Republic of Uzbekistan on state duty.'),
+    guard('laws-the-customers-law-on-accounting-before-a-verb-en-keep', KEEP, JOB_EN_LAW, 'en',
+          'The Law on accounting applies to every firm.'),
+    guard('laws-the-customers-law-on-accounting-before-a-conjunction-en-keep', KEEP, JOB_EN_LAW, 'en',
+          'The Law on accounting and the Labour Code apply.'),
+    guard('laws-the-customers-code-on-working-hours-en-keep', KEEP, JOB_EN, 'en',
+          'The Labour Code on working hours applies to all staff.'),
+    guard('laws-the-customers-code-of-uzbekistan-on-annual-leave-en-keep', KEEP, JOB_EN, 'en',
+          'The Labour Code of Uzbekistan on annual leave applies.'),
+    guard('laws-the-customers-consumer-rights-law-translated-ru-to-en-keep', KEEP,
+          'Составьте должностную инструкцию бухгалтера на английском, по Закону о защите прав потребителей.', 'en',
+          'The accountant follows the Law on the protection of consumer rights.', translated=True),
+    # A translated law's words not of LAW_NAMES cannot be told from an invented law's: the customer's own law goes.
+    guard('laws-the-customers-personal-data-law-translated-ru-to-en-accepted_false_blank', ACCEPTED,
+          'Составьте должностную инструкцию бухгалтера на английском, по Закону о персональных данных.', 'en',
+          'The accountant follows the Law on personal data.', gone=('personal',), translated=True,
+          pair='laws-law-of-the-republic-on-personal-data-ru-to-en-blank'),
+    # A word after the customer's law that goes on the sentence with no verb before it reads as the law's name.
+    guard('laws-a-noun-after-the-customers-law-on-accounting-en-accepted_false_blank', ACCEPTED, JOB_EN_LAW, 'en',
+          'The accountant follows the Law on accounting requirements strictly.', gone=('requirements',),
+          pair='laws-bare-law-on-personal-data-en-blank'),
 
     # ---- A legal sentence by its marks; a situation, a plural act, a convention centre is none (274f7c1, 9cd639f).
     guard('laws-cabinet-resolution-uz-blank', BLANK, ECONOMICS['uz'], 'uz',
