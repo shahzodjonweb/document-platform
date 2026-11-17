@@ -224,7 +224,10 @@ def test_a_deck_names_only_designs_and_variants_that_exist():
     assert any('bullets.no_such_variant is not a registered slide variant' in problem for problem in found)
 
 
-def test_readiness_gates_are_warnings_on_a_draft_and_errors_on_a_ready_entry():
+def test_readiness_gates_are_warnings_on_a_draft_and_errors_on_a_ready_entry(monkeypatch):
+    # The core blocks (R1) draw the whole ariza now: take one back to see the registration gate caught.
+    from apps.studio.paper import registry
+    monkeypatch.delitem(registry.BLOCKS, 'party_block')
     entries, templates, index = files()
     # A deck converted by C2s meets its count and block gates; take them away again to see them caught. The prompt
     # is replaced whole, so the check does not hang on how himoya's own copy happens to write its count.
