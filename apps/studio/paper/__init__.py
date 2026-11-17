@@ -35,15 +35,20 @@ written. Every word it adds is a template label or a clock value.
 import copy
 import inspect
 import logging
+import os
 from pathlib import Path
 
-from apps.core.errors import DomainError
+# `python -m apps.studio.paper.sample` imports this package before the tool's own code runs, and the catalogue's
+# imports read Django settings: name them when nothing has (a worker and the tests always have).
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 
-from ..categories import catalogue
-from ..categories.catalogue import LOCALES
-from ..categories.skeleton import FACTS, cues_of
-from . import fit, page, registry
-from .ctx import Ctx, places
+from apps.core.errors import DomainError  # noqa: E402
+
+from ..categories import catalogue  # noqa: E402
+from ..categories.catalogue import LOCALES  # noqa: E402
+from ..categories.skeleton import FACTS, cues_of  # noqa: E402
+from . import fit, page, registry  # noqa: E402
+from .ctx import Ctx, places  # noqa: E402
 
 log = logging.getLogger(__name__)
 

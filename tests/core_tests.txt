@@ -1222,3 +1222,26 @@ tests/test_paper_blocks_core.py::test_signature_row_types_the_date_and_the_name_
 tests/test_paper_blocks_core.py::test_a_block_that_raises_is_drawn_by_its_fallback
 tests/test_paper_blocks_core.py::test_customer_text_is_text_never_markup
 tests/test_paper_blocks_core.py::test_a_gap_never_starts_a_page
+
+# Paper checker and sample tool (R2): a drawn paper is read back for text outside the page or frame, overlapping
+# characters, fonts that are not Noto, missing facts and labels, a page count its rule does not allow, Cyrillic in
+# an Uzbek or English paper, a stub last page and the engine's fallback codes; the family helper draws every case
+# and language of a template's samples and fails on any of these
+tests/test_paper_check.py::test_text_outside_the_page_or_frame_is_found
+tests/test_paper_check.py::test_overlapping_words_and_foreign_fonts_are_found
+tests/test_paper_check.py::test_a_missing_fact_or_label_is_found_whatever_the_case_and_apostrophes
+tests/test_paper_check.py::test_cyrillic_is_found_in_uzbek_and_english_papers_only
+tests/test_paper_check.py::test_the_engines_codes_for_a_paper_not_drawn_as_its_template_are_problems
+tests/test_paper_check.py::test_expect_holds_the_printed_facts_of_placements_that_hold_and_their_labels
+tests/test_paper_check.py::test_the_family_helper_fails_a_paper_that_loses_a_fact
+tests/test_paper_check.py::test_a_template_without_its_blocks_fails_as_the_emergency_fallback
+# Paper checker after review (R2): a list of several items is held to its plural label, a label's underscore runs
+# are read as rules, a gutter list may hang left of the frame, the running header asks only for what it has room
+# for, the derived long case is sized to the page rule's overflow, and a block module's sample_paper draws its own
+tests/test_paper_check.py::test_expect_asks_for_the_plural_label_of_a_list_of_several_items[en-one]
+tests/test_paper_check.py::test_expect_asks_for_the_plural_label_of_a_list_of_several_items[en-two]
+tests/test_paper_check.py::test_a_label_with_underscore_rules_is_read_as_the_words_between_them
+tests/test_paper_check.py::test_a_gutter_list_may_hang_its_markers_left_of_the_frame
+tests/test_paper_check.py::test_the_long_case_is_sized_to_the_page_rule_and_shared_among_the_prose_parts
+tests/test_paper_check.py::test_the_long_case_of_a_fixed_paper_with_several_prose_parts_takes_one_page_more
+tests/test_paper_check.py::test_a_module_that_makes_its_own_sample_paper_draws_each_sample_on_it
