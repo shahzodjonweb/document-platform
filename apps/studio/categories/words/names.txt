@@ -220,6 +220,7 @@ umar
 xasan
 xusniddin
 zarif
+nur
 # ---- Uzbek given names, female
 adolat
 asal
@@ -347,6 +348,7 @@ sabohat
 shaxnoza
 xumora
 zuhro
+lazzat
 # ---- Uzbek surnames and pen names with no -ov or -ev shape
 navoiy
 qodiriy
@@ -511,6 +513,14 @@ volodya
 mira
 roma
 toma
+daniil
+samuil
+gavriil
+jamila
+kamila
+fazila
+nabila
+shamil
 # ---- Russian surnames with no -ov, -ev or -sky shape
 pushkin
 lenin

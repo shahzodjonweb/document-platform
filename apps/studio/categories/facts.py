@@ -1402,10 +1402,19 @@ RU_SUFFIXES = frozenset((
     'а я о е и ы у ю ь й ой ей ий ый ая яя ое ее ые ие ом ем ам ям ах ях ами ями ов ев ого его ому ему ую юю ых их ым '
     'им ыми ими ью ию ия ии ием иям иях иями ость ости остью остей ться тся ет ют ит ят ут ат ил ила ило или ал ала '
     'ало али ел ела ело ели').split())
-# An Uzbek verb's endings, after a stem a common word gives: "Ishlab", "Ta’minlaydi", "Bajarilsin".
+# An Uzbek verb's endings, after a stem a common word gives: "Ishlab", "Ta’minlaydi", "Bajarilsin", "Qadoqlanadi",
+# "O‘rgatilgan", "Tayyorlanmoqda": a voice (passive, causative, reflexive), a negation and a form.
 UZ_VERB_SUFFIXES = frozenset(
-    "adi aydi ydi di moqda sin ilsin lsin ib b ish ishi gan gach guncha masdan ladi lanadi ng ngiz".split())
-EN_SUFFIXES = frozenset("s es 's ed d ing er ers est ly ment ments ness ion ions al ally ity ive".split())
+    voice + negation + form
+    for voice in ('', 'il', 'in', 'n', 'l', 'tir', 'dir', 'iz', 'ish', 'sh', 'lan', 'lash', 'tiril', 'diril')
+    for negation in ('', 'ma')
+    for form in ('adi', 'aydi', 'ydi', 'di', 'dim', 'dik', 'ding', 'dingiz', 'dilar', 'gan', 'gandi', 'ganda',
+                 'gani', 'ganini', 'ganligi', 'gach', 'guncha', 'ib', 'b', 'ish', 'ishi', 'ishni', 'ishga', 'ishda',
+                 'ishdan', 'ishning', 'moq', 'moqda', 'moqchi', 'adigan', 'aydigan', 'ydigan', 'ayotgan', 'yotgan',
+                 'ayapti', 'yapti', 'sin', 'sinlar', 'ylik', 'aylik', 'ar', 'masdan', 'sa', 'sak', 'sangiz',
+                 'ng', 'ngiz', 'gin', 'ladi', 'lanadi')) - {''}
+# No -er nor -est: "Fuller", "Gardener", "Walker", "Turner" are surnames as often as words, so a word in -er is listed.
+EN_SUFFIXES = frozenset("s es 's ed d ing ly ment ments ness ion ions al ally ity ive".split())
 SUFFIXES = {'uz': (UZ_SUFFIXES | UZ_VERB_SUFFIXES) - {''}, 'ru': RU_SUFFIXES, 'en': EN_SUFFIXES}
 # A Russian finite verb or infinitive, which a list item of duties opens with ("Соблюдает", "Ведёт", "Руководствуется",
 # "Обеспечивать", "Участвовали", "Родился"), and an adjective not of a name's shape ("Переменные расходы",
@@ -1413,6 +1422,24 @@ SUFFIXES = {'uz': (UZ_SUFFIXES | UZ_VERB_SUFFIXES) - {''}, 'ru': RU_SUFFIXES, 'e
 RU_VERB = re.compile(r"[а-яё]{3,}(?:[аяуеё]ет|[аяуеё]ют|ит|ят|ётся|ется|ится|ются|ятся|ться|ать|ять|ить|еть|йте|ите"
                      r"|лся|лась|лось|лись)|[а-яё]{5,}(?:али|или|ели)")
 RU_COMMON_ADJECTIVE = re.compile(r"[а-яё]{4,}(?:ый|[кгхжшщч]ий|ая|яя|ое|ее|ые|ие|ого|его|ому|ему|ую|юю|ых|их|ыми|ими)")
+# The suffixes that make a common noun, an adjective, a verb's form or an adverb and never a name (`common`), on the
+# word as typed, after a base of four letters: an Uzbek abstract noun, agent, place, verbal noun or converb
+# ("Ko‘ngillilik", "Haydovchi", "Omborxona", "Qadoqlash", "Bitirgach", "Mikroiqtisodiyot"), a Russian abstract noun,
+# agent or action ("Скромность", "Волонтёрство", "Уборщица", "Упаковка", "Принимал"), an English abstract noun,
+# adjective or adverb ("Depreciation", "Punctuality", "Admittedly", "Upselling"). A name that ends so is in names.txt
+# ("Людмила", "Fleming", "Lawrence") and refused first.
+DERIVED = {
+    'uz': re.compile(r"[a-z']{4,}(?:lik|lig|chilik|garchilik|xona|lash|lashtir|lantir|uvchi|ovchi|uvchan|dosh|shunos"
+                     r"|iyat|iyot|gach|ilgach|ilgan|lgan|moq|chi|siz)(?:[a-z']*)"),
+    'ru': re.compile(r"[а-яё]{4,}(?:ость|ости|остью|остей|остям|ство|ства|ству|ством|стве|ств|ние|ния|нию|нием|нии"
+                     r"|ний|ниям|ниях|ция|ции|цию|цией|ций|циям|щик|щика|щику|щиком|щики|щиков|щица|щицы|щице|щицу"
+                     r"|щицей|чик|чика|чику|чиком|чики|чиков|чица|чицы|чице|чицу|тель|теля|телю|телем|тели|телей"
+                     r"|тельница|тельницы|изм|изма|изму|измом|ировка|ировки|ировку|овка|овки|овку|овкой|ёвка|евка"
+                     r"|ал|ала|ало|ял|яла|яло|ил|ила|ило|ел|ела|ело|ул|ула)"),
+    'en': re.compile(r"[a-z]{4,}(?:tion|tions|sion|sions|ment|ments|ness|ity|ities|ism|isms|ance|ances|ence|ences"
+                     r"|ship|ships|hood|ful|less|able|ible|ive|ous|ally|edly|ingly|ously|ively|fully|ately|ently"
+                     r"|antly|ably|ibly|ing|ings|ise|ize|ised|ized|ising|izing|isation|ization)"),
+}
 
 
 # The shortest base an ending is read after (`common`), and the shortest a stem is cut to: a three-letter base made
@@ -1512,6 +1539,8 @@ def common(word):
                     base + 'e' in words or (low[cut:] in ('es', 'ed') and base.endswith('i')
                                             and base[:-1] + 'y' in words)))):
                 return True  # "Trading" of "trade", "Complies" of "comply"
+        if DERIVED[language].fullmatch(low):
+            return True
     return False
 
 
