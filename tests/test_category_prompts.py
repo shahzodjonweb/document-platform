@@ -172,8 +172,11 @@ def test_an_ariza_block_puts_each_field_under_the_fixed_part_that_draws_it():
     addressee = next(n for n, line in enumerate(block) if line.startswith('Part addressee,'))
     assert [line.split(':')[0] for line in block[addressee + 1:addressee + 4]] == \
         ['- addressee_org', '- addressee_position', '- addressee_person']
+    # C2c draws six ruled lines for a message naming no request, so request sits under that blank, not with the rest.
+    blank = next(n for n, line in enumerate(block) if line.startswith('Part request_blank,'))
     other = block.index('Other fields:')
-    assert '- request: What you ask for, text' in block[other:]
+    assert block[blank + 1].startswith('- request: What you ask for, text') and blank < other
+    assert all(not line.startswith('- request:') for line in block[other:])
 
 
 # ---------------------------------------------------------------- the same prefix for everyone
