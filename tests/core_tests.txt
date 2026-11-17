@@ -1531,3 +1531,13 @@ tests/test_category_facts.py::test_a_figures_own_label_and_the_customers_bank_st
 tests/test_category_facts.py::test_a_figures_own_label_and_the_customers_bank_stay_in_a_translated_paper[label-phone]
 tests/test_category_finish_pdf.py::test_an_offers_requisites_and_phone_never_carry_an_invented_bank_or_person
 tests/test_category_finish_pdf.py::test_a_plans_external_funding_never_names_an_invented_lender
+
+# Stage-2 re-audit, names opening a sentence: a paper's grounded part holds a first word that opens an organisation's
+# name by its shape ("Hamkorbank ...", "Acme LLC ...", "«Baraka» MChJ ...") or that the same finish took out as a
+# fact or a blanked run ("Artel kompaniyasidagi ..."), its title, cells and list items included; its guarded parts
+# and title never name a rejected person or organisation; the customer's own stay, and every example message passes
+tests/test_category_finish_pdf.py::test_a_plans_rejected_bank_and_project_never_open_its_title_cells_or_sentences
+tests/test_category_finish_pdf.py::test_a_plans_bank_the_customer_named_opens_a_sentence_and_a_cell
+tests/test_category_finish_pdf.py::test_a_letters_rejected_employer_or_institution_never_opens_its_sentences
+tests/test_category_finish_pdf.py::test_a_reports_rejected_organisation_never_opens_its_summary[en-from-ru]
+tests/test_category_finish_pdf.py::test_a_lessons_rejected_teacher_is_not_named_in_its_guarded_stages_or_title

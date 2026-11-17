@@ -21,7 +21,7 @@ from pathlib import Path
 import pytest
 
 from apps.studio import categories
-from apps.studio.categories import facts, numbers
+from apps.studio.categories import facts, finish, numbers
 from apps.studio.language import CYRILLIC
 
 INVENTED = json.loads((Path(__file__).parent / 'fixtures' / 'categories' / 'invented.json').read_text('utf-8'))
@@ -117,6 +117,8 @@ def test_a_message_loses_none_of_its_own_facts(entry_id, text):
     # A paper's grounded parts also read the numbers written as words (finish.ground_paper): the message's own
     # "ikki hafta", "пять лет" or "two hundred" must be found as the values they are.
     assert facts.guard(text, known, checks=('numbers',), words=True) == (text, [])
+    # And as a paper's grounded part reads it, names strictly, an organisation's opening word held by its shape.
+    assert finish.ground_paper(text, known) == (text, [])
     blanked = [form for word in names(text) for form in [word, *endings(word)]
                if not facts.supported(form, 'person', known)]
     assert not blanked, f'names of the message blanked: {blanked}'
@@ -158,6 +160,8 @@ def test_every_invented_fact_is_caught(entry_id, text):
     missed = []
     for locale in LANGUAGES:
         for item in INVENTED[locale]:
+            if item.get('paper'):
+                continue  # read as a paper's grounded part reads it (below), where a sentence's first word is held
             written, codes = facts.ground(item['text'], known)
             if item['code'] not in codes or written == item['text']:
                 missed.append((locale, item['kind'], 'ground'))
@@ -171,3 +175,12 @@ def test_every_invented_fact_is_caught(entry_id, text):
                 if item['code'] not in codes:
                     missed.append((locale, item['kind'], 'guard'))
     assert not missed, f'invented facts that passed: {missed}'
+
+
+@pytest.mark.parametrize('entry_id, text', messages())
+def test_every_invented_organisation_opening_a_sentence_is_caught_in_a_paper(entry_id, text):
+    """The miss rate of a paper's grounded part: an organisation's name opening a sentence, held by its shape."""
+    known = trusted(entry_id, text)
+    missed = [(locale, item['text']) for locale in LANGUAGES for item in INVENTED[locale] if item.get('paper')
+              and item['code'] not in finish.ground_paper(item['text'], known)[1]]
+    assert not missed, f'invented organisations that passed: {missed}'

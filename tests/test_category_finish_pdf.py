@@ -1076,3 +1076,95 @@ def test_a_plans_external_funding_never_names_an_invented_lender():
     made, _, codes = finished(data, answer(data, facts={'items': [
         {'label': 'external_funding', 'text': '200 mln so‘m (Hamkorbank krediti)'}]}))
     assert 'external_funding' not in facts_of(made) and codes == ['fact:external_funding']
+
+
+# ---------------------------------------------------------------- stage-2 re-audit: names opening a sentence
+
+
+BAKERY_UZ = ('Toshkentda nonvoyxona ochish bo‘yicha biznes-reja yozib bering. Mahalla aholisiga issiq non va somsa '
+             'sotamiz. Direktor Qodirova Malika. O‘z mablag‘imiz 120 mln so‘m, bankdan 200 mln so‘m kredit '
+             'olmoqchimiz.')
+
+
+def test_a_plans_rejected_bank_and_project_never_open_its_title_cells_or_sentences():
+    plan = catalogue.get('pdf.biz.biznes_reja')
+    data = draft(plan, prompt=BAKERY_UZ, length=8)
+    made, warnings, codes = finished(data, answer(
+        data, title='«Baraka» nonvoyxonasi biznes-rejasi',
+        summary_lead={'body': 'Baraka nonvoyxonasi issiq non sotadi. Hamkorbank 200 mln so‘m kredit beradi.'},
+        finance_sources={'items': [{'label': 'Hamkorbank krediti', 'text': '200 mln so‘m', 'value': ''},
+                                   {'label': 'Kapitalbank', 'text': '200 mln so‘m', 'value': ''}]},
+        facts={'items': [{'label': 'director', 'text': 'Qodirova Malika'}, {'label': 'loan_bank', 'text': 'Hamkorbank'},
+                         {'label': 'project_name', 'text': '«Baraka» nonvoyxonasi'}]}))
+    assert {'fact:loan_bank', 'fact:project_name', 'ground:name'} <= set(codes) and warnings == [finish.FACTS_BLANKED]
+    assert made['title'] == '«____» nonvoyxonasi biznes-rejasi'
+    assert section_of(made, 'summary_lead')['body'] == ('____ nonvoyxonasi issiq non sotadi. ____ 200 mln so‘m kredit '
+                                                        'beradi.')
+    labels = [item['label'] for item in section_of(made, 'finance_sources')['items']]
+    assert labels[:2] == ['____ krediti', '____']
+
+
+def test_a_plans_bank_the_customer_named_opens_a_sentence_and_a_cell():
+    plan = catalogue.get('pdf.biz.biznes_reja')
+    data = draft(plan, prompt=BAKERY_UZ + ' Kreditni Hamkorbank beradi, loyiha nomi «Baraka» nonvoyxonasi.', length=8)
+    made, _, codes = finished(data, answer(
+        data, title='«Baraka» nonvoyxonasi biznes-rejasi',
+        summary_lead={'body': 'Hamkorbank 200 mln so‘m kredit beradi.'},
+        finance_sources={'items': [{'label': 'Hamkorbank krediti', 'text': '200 mln so‘m', 'value': ''}]},
+        facts={'items': [{'label': 'loan_bank', 'text': 'Hamkorbank'},
+                         {'label': 'project_name', 'text': '«Baraka» nonvoyxonasi'}]}))
+    assert made['title'] == '«Baraka» nonvoyxonasi biznes-rejasi' and 'ground:name' not in codes
+    assert section_of(made, 'summary_lead')['body'] == 'Hamkorbank 200 mln so‘m kredit beradi.'
+    assert section_of(made, 'finance_sources')['items'][0]['label'] == 'Hamkorbank krediti'
+
+
+def test_a_letters_rejected_employer_or_institution_never_opens_its_sentences():
+    cover = catalogue.get('pdf.xat.ishga_kirish')
+    data = draft(cover, prompt=('Sotuv menejeri lavozimiga ishga kirish uchun xat yozib bering. Men Qodirova Malika, '
+                                'savdo sohasida ishlaganman.'), length=1)
+    made, _, codes = finished(data, answer(
+        data, opening={'body': 'Artel kompaniyasidagi sotuv menejeri lavozimiga ariza bermoqchiman.'},
+        facts={'items': [{'label': 'applicant_name', 'text': 'Qodirova Malika'},
+                         {'label': 'employer_name', 'text': 'Artel'}]}))
+    assert section_of(made, 'opening')['body'] == '____ kompaniyasidagi sotuv menejeri lavozimiga ariza bermoqchiman.'
+    assert {'fact:employer_name', 'ground:name'} <= set(codes)
+    letter = catalogue.get('pdf.xat.motivatsion')
+    data = draft(letter, prompt=('Menga ingliz tilida motivatsion xat yozib bering, chet eldagi universitetga '
+                                 'magistraturaga kirmoqchiman. Ismim Qodirova Malika.'), locale='en', length=1)
+    made, _, codes = finished(data, answer(
+        data, opening={'body': 'Westminster University has long been the place where I hope to study.'},
+        evidence={'body': 'UNICEF later hired me as a volunteer.'},
+        facts={'items': [{'label': 'applicant_name', 'text': 'Malika Qodirova'},
+                         {'label': 'target_institution', 'text': 'Westminster University'}]}))
+    assert section_of(made, 'opening')['body'].startswith('____ ')
+    assert section_of(made, 'evidence')['body'] == '____ later hired me as a volunteer.'
+
+
+@pytest.mark.parametrize('locale, prompt, organisation, text, left', [
+    ('uz', 'Kompaniyamizning 2025-yil uchun yillik hisobotini yozing: sotuv 1,2 mlrd so‘m.', '«Baraka» MChJ',
+     '«Baraka» MChJ 2025-yil davomida sotuvni 1,2 mlrd so‘mga yetkazdi.',
+     '«____» MChJ 2025-yil davomida sotuvni 1,2 mlrd so‘mga yetkazdi.'),
+    ('en', 'Напишите отчёт о работе отдела продаж за 2025 год на английском: продажи 1,2 млрд сумов.', 'Acme LLC',
+     'Acme LLC increased sales to 1.2 billion soums in 2025.',
+     '____ LLC increased sales to 1.2 billion soums in 2025.'),
+], ids=['uz', 'en-from-ru'])
+def test_a_reports_rejected_organisation_never_opens_its_summary(locale, prompt, organisation, text, left):
+    report = catalogue.get('pdf.biz.hisobot')
+    data = draft(report, prompt=prompt, locale=locale, length=3)
+    made, _, codes = finished(data, answer(data, summary={'body': text}, facts={'items': [
+        {'label': 'organization', 'text': organisation}]}))
+    assert section_of(made, 'summary')['body'] == left and {'fact:organization', 'ground:name'} <= set(codes)
+
+
+def test_a_lessons_rejected_teacher_is_not_named_in_its_guarded_stages_or_title():
+    lesson = catalogue.get('pdf.dars_ishlanmasi')
+    data = draft(lesson, prompt=LESSON_UZ, length=2)
+    made, warnings, codes = finished(data, answer(
+        data, title='Kasrlarni qo‘shish. Karimova Dilnoza Bahodirovna',
+        stage_opening={'body': 'O‘qituvchi Karimova Dilnoza Bahodirovna o‘quvchilar bilan salomlashadi. Amir Temur '
+                               'haqida qisqa suhbat.'},
+        facts={'items': [{'label': 'teacher', 'text': 'Karimova Dilnoza Bahodirovna'}]}))
+    assert section_of(made, 'stage_opening')['body'] == ('O‘qituvchi ____ o‘quvchilar bilan salomlashadi. Amir Temur '
+                                                         'haqida qisqa suhbat.')
+    assert made['title'] == 'Kasrlarni qo‘shish. ____'
+    assert {'fact:teacher', 'ground:name'} <= set(codes) and warnings == [finish.FACTS_BLANKED]

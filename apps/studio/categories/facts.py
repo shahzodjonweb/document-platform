@@ -57,7 +57,14 @@ More limits, said as plainly:
   `checks` hold names (`guard`) takes the whole run instead, and a grammar word
   before an invented name may go with it (`_names`). There a lone first word
   is held only when it is shaped as a surname ("Xolmatovga yuklansin."), so an
-  invented given name alone at the start of a sentence still passes.
+  invented given name alone at the start of a sentence still passes. A
+  paper's grounded part (finish.ground_paper) also holds one that opens an
+  organisation's name by its shape ("Hamkorbank ...", "Acme LLC ...",
+  "«Baraka» MChJ ...") or that the same finish took out elsewhere, a rejected
+  fact's or a blanked run's ("Artel kompaniyasidagi ..." when the employer
+  Artel was blanked); a lone word with neither, a brand, a city or a given
+  name ("Korzinka", "Samarqand shahrida", "Smith led ..."), still passes, a
+  table's label cell and a list item included.
 - `guard` removes any sentence with a strong legal stem (kodeks, farmon,
   Konstitutsiya ...) the customer did not give, even one that cites nothing
   specific ("U ko‘plab farmonlar chiqargan"), and a part may come back empty.
@@ -156,6 +163,17 @@ RU_ROLES = ("директор директора директору директ
 EN_ROLES = ("hiring manager team committee member board recruitment recruiter director principal head rector "
             "chair chairman chairperson colleague partner customer client department faculty officer staff "
             "teacher parent guest participant").split()
+
+
+# What an organisation's name runs into: its legal form or its kind ("Acme LLC", "«Baraka» MChJ", "Westminster
+# University", "Uzum Market", "Xalq Banki"). In a paper's grounded part a run that does so is an organisation's name,
+# so its opening word is held too, as a surname-shaped one is (`_names`'s `orgs`). Whole words, with the endings a
+# sentence gives them, never by prefix.
+ORG_FORMS = ("mchj aj atb akb xk qk yatt oaj llc ltd inc jsc plc gmbh corp ooo oao pao zao ao ip "
+             "ооо оао пао зао ао ип").split()
+ORG_KINDS = ("universitet institut akademiya kollej market supermarket gipermarket bank kompaniya xolding "
+             "korporatsiya").split()
+EN_ORG_KINDS = "university institute academy college market supermarket group holding bank company corporation".split()
 
 
 def _forms():
@@ -279,6 +297,8 @@ def respellings(word):
 
 # The allowed words folded once, here, rather than for every draft.
 FORMULAS = _folded(_forms())
+ORG_HEADS = _folded(ORG_FORMS + [kind + ending for kind in ORG_KINDS for ending in UZ_ENDINGS]
+                    + [kind + ending for kind in EN_ORG_KINDS for ending in ('', 's')])
 
 
 def flat(text, *, folded=None):
@@ -599,7 +619,7 @@ def supported(value, kind, trusted, *, translated=False, strict=False, words=Fal
         # «Kapitalbank» ATB, MFO 00440", the lender of "200 mln so‘m (Hamkorbank krediti)", the person of "+998 90 123
         # 45 67 (Aziz Karimov)". Its names are read as a title-page line's are (people_known), so the value's own
         # opening word ("Mobile:", "Average check", "Договор №") stays a label.
-        return people_known(rest, trusted, translated=translated)
+        return people_known(rest, trusted, translated=translated, orgs=True)
     return True
 
 
@@ -872,7 +892,56 @@ def _after_colon(text, position):
     return at >= 0 and text[at] == ':'
 
 
-def _names(text, trusted, codes, translated=False, *, strict=False):
+def _organisation(text, run):
+    """Whether a run that opens a sentence names an organisation by its shape, so its first word is held (`orgs`).
+
+    Its first word is shaped as one ("Hamkorbank", "Kapitalbanki", "UzAuto", "UNICEF"; never a roman numeral), or
+    the run goes on in an organisation's form or kind ("Acme LLC", "Westminster University", "Xalq Banki"), or a
+    quoted name is followed by one ("«Baraka» MChJ").
+    """
+    first = run[0][2]
+    folded = fold(first)
+    if re.fullmatch(r"[^\W\d_]{2,}bank[^\W\d_]*", folded) or any(
+            a.islower() and b.isupper() for a, b in zip(first, first[1:])):
+        return True
+    if first.isupper() and _letters(first) >= 3 and not re.fullmatch(r"[IVXLCDM]+", first):
+        return True
+    if any(fold(word) in ORG_HEADS for _, _, word in run[1:]):
+        return True
+    after = re.match(r"[»\"”'’]+[ \t\u00a0]*([^\W\d_][^\W\d_'‘’ʻʼ`´-]*)", text[run[-1][1]:])
+    return after is not None and fold(after.group(1)) in ORG_HEADS
+
+
+def _unknown_runs(text, trusted, translated=False, *, strict=False, orgs=False, invented=None):
+    """(run, positions of its words not the customer's, whether its first word was left free) of each run (`_names`)."""
+    for run in _runs(text):
+        bad = []
+        first_free = _starts(text, run[0][0])
+        if strict and first_free and (_after_colon(text, run[0][0])
+                                      or (len(run) > 1 and all(_letters(word) < 2 for _, _, word in run[1:]))
+                                      or _surname(run[0][2]) or (orgs and _organisation(text, run))
+                                      or (invented is not None and invented.has(fold(run[0][2])))):
+            first_free = False
+        for position, (start, end, word) in enumerate(run):
+            if _letters(word) < 2 or (position == 0 and first_free):
+                continue
+            if not trusted.person(word, translated):
+                bad.append(position)
+        yield run, bad, first_free
+
+
+def _named(run, bad):
+    """Whether a run's blanked words name someone, so they are held elsewhere too (`_names`'s `blanked`).
+
+    Two words or more ("Sardor Xolmatov", "John Smith"), or one shaped as a surname or an organisation; a lone
+    capitalised common word mid-sentence ("Bosh direktor") is not, so it never blanks a sentence opened by it.
+    """
+    words = [run[position][2] for position in bad if _letters(run[position][2]) >= 2]
+    return len(words) >= 2 or any(_surname(word) or re.fullmatch(r"[^\W\d_]{2,}bank[^\W\d_]*", fold(word))
+                                  for word in words)
+
+
+def _names(text, trusted, codes, translated=False, *, strict=False, orgs=False, invented=None, blanked=None):
     """Blank the runs of capitalised words that are not the customer's (see `ground`).
 
     The first word of a sentence is capitalised by grammar ("Bunga",
@@ -891,20 +960,23 @@ def _names(text, trusted, codes, translated=False, *, strict=False):
     grammar word opening a sentence stays, and so does one before the
     customer's own people ("Nazorat Namunova M."). An invented given name alone
     at the start of a sentence ("Sardor javobgar.") is still read as grammar.
+
+    `orgs` (a paper's grounded part) also holds a first word that opens an
+    organisation's name by its shape (`_organisation`): "Hamkorbank 200 mln
+    so‘m kredit beradi.", "Acme LLC increased sales", "«Baraka» MChJ ...".
+    `invented` (facts.Words) holds the words the same finish has already
+    taken out as no one's the customer gave (a rejected fact's names, a
+    blanked run elsewhere): a first word that is one of them, with an ending,
+    is held too, so "Artel kompaniyasidagi ..." is not left when the employer
+    "Artel" was just blanked. `blanked`, a facts.Words, receives the words of
+    each run blanked here that name someone (`_named`).
     """
     spans = []
-    for run in _runs(text):
-        bad = []
-        first_free = _starts(text, run[0][0])
-        if strict and first_free and (_after_colon(text, run[0][0])
-                                      or (len(run) > 1 and all(_letters(word) < 2 for _, _, word in run[1:]))
-                                      or _surname(run[0][2])):
-            first_free = False
-        for position, (start, end, word) in enumerate(run):
-            if _letters(word) < 2 or (position == 0 and first_free):
-                continue
-            if not trusted.person(word, translated):
-                bad.append(position)
+    for run, bad, first_free in _unknown_runs(text, trusted, translated, strict=strict, orgs=orgs, invented=invented):
+        if blanked is not None and _named(run, bad):
+            for position in bad:
+                if _letters(run[position][2]) >= 2:
+                    blanked.add(fold(run[position][2]))
         if strict and bad:
             if first_free and bad[0] != 0 and _letters(run[0][2]) >= 2 and not trusted.person(run[0][2], translated):
                 bad.insert(0, 0)
@@ -969,7 +1041,46 @@ def ground(text, trusted, *, translated=False):
     return _tidy(text), list(dict.fromkeys(codes))
 
 
-def guard(text, trusted, *, translated=False, checks=(), words=False):
+def _rejected(text, trusted, rejected, codes, translated=False):
+    """Blank the runs naming a person or an organisation whose fact this finish has just taken out.
+
+    `rejected` holds each such fact's words that were not the customer's, folded ("karimova", "dilnoza",
+    "baxodirovna"). A run of a guarded part with two of them side by side, or the one of a one-word name, goes with
+    the initials beside it: the lesson's "O‘qituvchi Karimova Dilnoza Bahodirovna o‘quvchilar bilan salomlashadi"
+    when the teacher "Karimova Dilnoza Bahodirovna" was just blanked. Nothing else is read for names there.
+    """
+    spans = []
+    for run in _runs(text):
+        for value in rejected:
+            words = Words(value)
+            hits = [position for position, (_, _, word) in enumerate(run)
+                    if _letters(word) >= 2 and words.has(fold(word)) and not trusted.person(word, translated)]
+            group = []
+            for position in hits + [None]:
+                if position is not None and (not group or position == group[-1] + 1):
+                    group.append(position)
+                    continue
+                if len(group) >= min(2, len(value)):
+                    while group[0] > 0 and _letters(run[group[0] - 1][2]) < 2:
+                        group.insert(0, group[0] - 1)
+                    while group[-1] + 1 < len(run) and _letters(run[group[-1] + 1][2]) < 2:
+                        group.append(group[-1] + 1)
+                    spans.append(_span(text, run, group, True))
+                group = [position] if position is not None else []
+    if not spans:
+        return text
+    codes.append('ground:name')
+    merged = []
+    for start, end in sorted(set(spans)):
+        if merged and start < merged[-1][1]:
+            merged[-1] = (merged[-1][0], max(end, merged[-1][1]))
+        else:
+            merged.append((start, end))
+    return _replace(text, merged)
+
+
+def guard(text, trusted, *, translated=False, checks=(), words=False, orgs=False, invented=None, blanked=None,
+          rejected=()):
     """(text, codes): any other category part, with no quotation and no legal reference the customer did not give.
 
     Names, numbers and general knowledge are left as SYSTEM allows them in a
@@ -986,6 +1097,10 @@ def guard(text, trusted, *, translated=False, checks=(), words=False):
     `words` makes 'numbers' read the numbers written as words too
     (numbers.SPELLED), which a paper's grounded parts ask for: "five years of
     experience" or "yigirma foiz" the customer never gave becomes ____.
+    `orgs`, `invented` and `blanked` are passed to the 'names' check (`_names`,
+    a paper's grounded parts). `rejected` (`_rejected`) is for a paper's
+    guarded parts and title: the people and organisations of facts the same
+    finish has taken out are blanked there too.
     """
     codes = []
     text = str(text or '')
@@ -997,11 +1112,13 @@ def guard(text, trusted, *, translated=False, checks=(), words=False):
         text = _addresses(text, trusted, codes)
         text = _numbers(text, trusted, codes, words)
     if 'names' in checks:
-        text = _names(text, trusted, codes, translated, strict=True)
+        text = _names(text, trusted, codes, translated, strict=True, orgs=orgs, invented=invented, blanked=blanked)
+    if rejected:
+        text = _rejected(text, trusted, rejected, codes, translated)
     return _tidy(text), list(dict.fromkeys(codes))
 
 
-def people_known(text, trusted, *, translated=False):
+def people_known(text, trusted, *, translated=False, orgs=False):
     """Whether guard's 'names' check would leave `text` whole: every capitalised run the customer's, read strictly.
 
     For a line that is kept or dropped whole, such as a title-page line: a
@@ -1010,8 +1127,30 @@ def people_known(text, trusted, *, translated=False):
     name, but a surname, a word before initials or before an invented name is.
     """
     codes = []
-    _names(str(text or ''), trusted, codes, translated, strict=True)
+    _names(str(text or ''), trusted, codes, translated, strict=True, orgs=orgs)
     return not codes
+
+
+def failed_names(value, kind, trusted, *, translated=False):
+    """The folded words of a fact taken out as not the customer's that name someone they never gave.
+
+    A person's, an organisation's, a place's, a line's or a list's every capitalised word that is not theirs, a
+    label's before its colon left ("Rais: Karimov Aziz" gives karimov and aziz, never rais); a figure's or a text's
+    as a grounded line reads them (`_names`, its opening word free). A value taken out only for a number gives
+    nothing it did not fail on.
+    """
+    text, _ = _strip_addresses(str(value or ''), trusted)
+    found = []
+    for line in re.split(r'[\n;]+', text):
+        if kind in ('person', 'org', 'place', 'line', 'list'):
+            # Every capitalised word was checked; a label's own words before its colon ("Rais:", "Kotiba:") name no one.
+            line = re.sub(r'^[^:\d\n]{1,40}:', ' ', line.strip())
+            found += [fold(word) for word in WORD.findall(line)
+                      if word[0].isupper() and _letters(word) >= 2 and not trusted.person(word, translated)]
+            continue
+        for run, bad, _ in _unknown_runs(line, trusted, translated, strict=True, orgs=True):
+            found += [fold(run[position][2]) for position in bad if _letters(run[position][2]) >= 2]
+    return list(dict.fromkeys(found))
 
 
 # ---------------------------------------------------------------- references

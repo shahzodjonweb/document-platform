@@ -554,7 +554,7 @@ def clock_value(kind, locale, day=None):
     return f'{day.day} {month} {day.year}'
 
 
-def ground_paper(text, trusted, *, translated=False):
+def ground_paper(text, trusted, *, translated=False, invented=None, blanked=None):
     """(text, codes): a paper's grounded part held to the customer's words, its people's names read strictly.
 
     facts.ground's checks (laws, quotations, e-mails and links, numbers, runs
@@ -571,8 +571,17 @@ def ground_paper(text, trusted, *, translated=False):
     the customer never gave become ____ with their scale words, as digits do.
     The model writes a count in words as readily as in digits, and in a letter
     "five years" is the commonest invented figure.
+
+    A sentence's, a cell's or an item's first word is held where it opens an
+    organisation's name by its shape ("Hamkorbank 200 mln so‘m kredit
+    beradi.", "Acme LLC ...", "«Baraka» MChJ ...") and where it is one of the
+    `invented` words (facts.Words) this finish has already taken out as not
+    the customer's, a rejected fact's or a blanked run's ("Artel
+    kompaniyasidagi ..." when the employer "Artel" was blanked). `blanked`
+    receives the words of the runs blanked here that name someone.
     """
-    return facts.guard(text, trusted, translated=translated, checks=('numbers', 'names'), words=True)
+    return facts.guard(text, trusted, translated=translated, checks=('numbers', 'names'), words=True, orgs=True,
+                       invented=invented, blanked=blanked)
 
 
 def _led(entry):
@@ -701,7 +710,7 @@ def _fact(field, value, trusted, translated, verified, *, led=False):
     return _cut(value, field.get('max_chars')), lettered
 
 
-def _facts(entry, section, trusted, translated, locale, codes):
+def _facts(entry, section, trusted, translated, locale, codes, invented=None, rejected=None):
     """The facts section: one item per field the customer gave, verified by kind, and the clock fields' values.
 
     Items are written {label: field id, text: value} in the entry's field order.
@@ -712,6 +721,12 @@ def _facts(entry, section, trusted, translated, locale, codes):
     did not give is replaced by today's, silently, since nothing is left blank.
     The model writes today's year unasked, and a change re-finishes the value
     the first finish wrote, which the prompt does not hold either.
+
+    `invented` (facts.Words) receives the words of each value taken out that
+    name someone the customer never gave (facts.failed_names), which the
+    paper's grounded parts then hold at a sentence's start too; `rejected` (a
+    list) receives those of a person's, or an organisation's shaped as one,
+    which its guarded parts and title blank (facts.guard's `rejected`).
     """
     given = {}
     for item in section.get('items') or []:
@@ -732,9 +747,11 @@ def _facts(entry, section, trusted, translated, locale, codes):
     for field in fields:
         if field['id'] not in given:
             continue
-        value, invented = _fact(field, given[field['id']], trusted, translated, verified, led=led)
-        if invented and not field.get('clock'):
+        value, taken = _fact(field, given[field['id']], trusted, translated, verified, led=led)
+        if taken and not field.get('clock'):
             codes.append(f"fact:{field['id']}")
+            if value is None and not field.get('derived_from'):
+                _rejected_names(field, given[field['id']], trusted, translated, led, invented, rejected)
         if value is not None:
             verified[field['id']] = value
     for field in entry.fields:
@@ -745,6 +762,20 @@ def _facts(entry, section, trusted, translated, locale, codes):
                           for field in entry.fields if field['id'] in verified])
     if isinstance(section.get('columns'), list):
         section['columns'] = []
+
+
+def _rejected_names(field, value, trusted, translated, led, invented, rejected):
+    """Note the names of a fact taken out as not the customer's, for the rest of the paper (`_facts`)."""
+    kind = field['kind']
+    if kind in ('choice', 'flag', 'file', 'email') or (kind == 'text' and not led):
+        return  # a guarded paper's text keeps its general knowledge, and its names were never read
+    words = facts.failed_names(value, kind, trusted, translated=translated)
+    if invented is not None:
+        for word in words:
+            invented.add(word)
+    shaped = len(words) == 1 and re.fullmatch(r"[^\W\d_]{2,}bank[^\W\d_]*", words[0]) is not None
+    if rejected is not None and words and (kind == 'person' or (kind == 'org' and (len(words) >= 2 or shaped))):
+        rejected.append(tuple(words))
 
 
 def _shape(section, part, locale):
@@ -852,7 +883,7 @@ def _paper_sources(section, trusted, translated, names, codes):
         codes.extend(found)
 
 
-def _finish_part(section, part, *, locale, trusted, translated, names, codes):
+def _finish_part(section, part, *, locale, trusted, translated, names, codes, invented=None, rejected=()):
     """One written part of a paper: shaped, then grounded, guarded or verified by its kind.
 
     A section no part of the entry names (none should reach here) is grounded,
@@ -866,10 +897,20 @@ def _finish_part(section, part, *, locale, trusted, translated, names, codes):
     strict = part is None or part.get('grounded')
 
     def checked(text):
-        text, found = (ground_paper if strict else facts.guard)(text, trusted, translated=translated)
+        if strict:
+            text, found = ground_paper(text, trusted, translated=translated, invented=invented, blanked=invented)
+        else:
+            text, found = facts.guard(text, trusted, translated=translated, rejected=rejected)
         codes.extend(found)
         return text
     _texts(section, checked, heading=part is None or part.get('heading_mode') == 'model')
+
+
+def _held_again(text, trusted, translated, invented, codes):
+    """A grounded part's text read again for the names a later part or fact of the paper took out (`_paper`)."""
+    text, found = facts.guard(text, trusted, translated=translated, checks=('names',), orgs=True, invented=invented)
+    codes.extend(found)
+    return text
 
 
 def _drop_empty(entry, content):
@@ -940,31 +981,46 @@ def _paper(entry, data, content, *, only, file_names, codes):
         # first would push the model's last written part out (the template finds facts by id, wherever they are).
         sections.append({'id': FACTS, 'heading': '', 'body': '', 'notes': '', 'layout': 'list', 'items': []})
     tables = False
-    for section in sections:
+    # The names this finish takes out as not the customer's: a rejected fact's and a blanked run's (`invented`), and
+    # a rejected person's or organisation's (`rejected`). The facts go first, so every part can hold them where it
+    # leaves a name's first word free; a grounded part finished before a later one blanked a name is read again.
+    invented, rejected = facts.Words(), []
+    ordered = sorted(sections, key=lambda section: section.get('id') != FACTS)
+    grounded = []
+    for section in ordered:
         if scope is not None and section.get('id') not in scope:
             continue
         part = None if section.get('id') == FACTS else entry.part(section.get('id'))
         try:
             if section.get('id') == FACTS:
-                _facts(entry, section, trusted, translated, locale, found)
+                _facts(entry, section, trusted, translated, locale, found, invented=invented, rejected=rejected)
             else:
                 _finish_part(section, part, locale=locale, trusted=trusted, translated=translated, names=names,
-                             codes=found)
+                             codes=found, invented=invented, rejected=rejected)
                 tables = tables or (part is not None and part['kind'] == 'table')
+                if part is None or (part.get('grounded') and part['kind'] != 'sources'):
+                    grounded.append((section, len(invented.exact)))
         except Exception as error:
             # The type only, as the codes are: an exception's message may carry the customer's words.
             log.warning('Category %s: part %s could not be finished and is left empty (%s)', entry.id,
                         section.get('id'), type(error).__name__)
             section.update(body='', items=[])
             found.append('finish:form')
+    for section, known in grounded:
+        if len(invented.exact) > known:
+            _texts(section, lambda text: _held_again(text, trusted, translated, invented, found),
+                   heading=entry.part(section.get('id')) is None
+                   or entry.part(section.get('id')).get('heading_mode') == 'model')
     if whole:
         if entry.raw.get('title') == 'label':
             content['title'] = entry.name(locale)
         elif isinstance(content.get('title'), str):
             # A fact-led paper's title may name its people, so it is held as its grounded parts are.
             led = _led(entry)
-            check = ground_paper if led else facts.guard
-            title, title_codes = check(content['title'], trusted, translated=translated)
+            if led:
+                title, title_codes = ground_paper(content['title'], trusted, translated=translated, invented=invented)
+            else:
+                title, title_codes = facts.guard(content['title'], trusted, translated=translated, rejected=rejected)
             found.extend(title_codes)
             if not led:
                 title = _guarded_title(title, trusted, translated, found)
