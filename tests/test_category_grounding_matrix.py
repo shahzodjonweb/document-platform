@@ -152,6 +152,7 @@ JOB_EN = 'Write a job description for a chief accountant in line with the Labour
 JOB_EN_TAX = 'Write a job description for a lab assistant in line with the Tax Code; reports to the head of the lab.'
 JOB_RU_ADMIN = ('Составьте должностную инструкцию кассира на русском, ответственность по Кодексу об административной '
                 'ответственности, подчиняется директору.')
+JOB_RU_ADMIN_UZ = JOB_RU_ADMIN.replace('на русском', 'на узбекском')
 JOB_UZ_CYRILLIC = ('Бош бухгалтер учун лавозим йўриқномаси ёзинг. «Нур» МЧЖ. Меҳнат кодексига мувофиқ ишлайди, '
                    'директорга бўйсунади.')
 STATUTE_UZ_CYRILLIC = ('Мактаб ходими учун лавозим йўриқномаси ёзинг. Таълим тўғрисидаги қонунга мувофиқ ишлайди, '
@@ -686,6 +687,18 @@ CASES = [
          'general', 'The accountant follows the Labour Code of the Republic of Uzbekistan.', translated=True),
     item('laws-laboratory-is-no-labour-code-en-keep', KEEP, 'pdf.biz.lavozim_yoriqnomasi', JOB_EN_TAX, 'en', 'general',
          'The Tax Code of Uzbekistan applies to laboratory equipment purchases.'),
+    # A code's lower-case words before its stem are its name too, and a translation's cannot be told from an invented
+    # code's (round 4): the customer's administrative code written as Uzbek's about-phrase goes with them.
+    item('laws-invented-about-phrase-translated-ru-to-uz-blank', BLANK, 'pdf.biz.lavozim_yoriqnomasi', JOB_RU_UZ, 'uz',
+         'responsibility', 'Xodim raqamli iqtisodiyot to‘g‘risidagi kodeksga muvofiq javob beradi.',
+         gone=('raqamli',), translated=True),
+    guard('laws-the-customers-code-translated-as-an-about-phrase-ru-to-uz-accepted_false_blank', ACCEPTED,
+          JOB_RU_ADMIN_UZ, 'uz', 'Kassir Ma’muriy javobgarlik to‘g‘risidagi kodeksga muvofiq javob beradi.',
+          gone=('javobgarlik',), translated=True, pair='laws-invented-about-phrase-translated-ru-to-uz-blank'),
+    # Where the entry's own words hold it (lavozim_yoriqnomasi's "Javobgarlik" heading), the same sentence stays.
+    item('laws-the-customers-code-translated-as-an-about-phrase-of-the-entrys-words-ru-to-uz-keep', KEEP,
+         'pdf.biz.lavozim_yoriqnomasi', JOB_RU_ADMIN_UZ, 'uz', 'responsibility',
+         'Kassir Ma’muriy javobgarlik to‘g‘risidagi kodeksga muvofiq javob beradi.', translated=True),
     # The same window and prefix mechanisms through facts.guard alone, where no names check runs (round3/e_more.py).
     guard('laws-window-after-of-reads-tax-rules-ru-to-en-keep', KEEP, JOB_RU_EN, 'en',
           'The accountant follows the Labour Code of the Republic of Uzbekistan and tax rules.', translated=True),

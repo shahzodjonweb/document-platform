@@ -1006,7 +1006,15 @@ LAW_TOKEN = re.compile(WORD.pattern + r"|[,;:()«»\"“”„!?]")
 # A word that points at a code already named, no one's name for it: "Ushbu kodeks", "Mazkur kodeksga", "Настоящий
 # кодекс", "This Code".
 LAW_THIS = re.compile(r"ushbu|mazkur|bu|shu|amaldagi|yuqoridagi|настоящ\w*|данн\w*|указанн\w*|эт(?:от|ого|ому|им|ом)"
-                      r"|this|that|said|present|current")
+                      r"|действующ\w*|соответствующ\w*|нов(?:ый|ого|ому|ым|ом|ая|ой|ую)|this|that|said|present|current")
+# A Russian code is named by its adjectives, in lower case, before its stem: "по арбитражному процессуальному
+# кодексу", "Трудовой кодекс".
+LAW_ADJECTIVE = re.compile(r"[а-яё]+(?:ый|ий|ой|ая|яя|ое|ее|ого|его|ому|ему|ым|им|ом|ем|ую|юю|ых|их|ыми|ими)")
+# An Uzbek code is named by its first word, capitalised, and the words after it in lower case and no case of their
+# own ("Raqamli iqtisodiyot kodeksi", "Mehnat kodeksi"); "Barcha xodimlar kodeks talablariga ..." names none.
+UZ_LAW_STEM = re.compile(r"kodeks\w*|qonun\w*")
+UZ_INFLECTED = re.compile(r"[^\W\d_]*(?:lar\w*|ning|ni|ga|ka|qa|da|dan|dagi|gacha|ini|ida|idan|iga)")
+LAW_HEAD_REACH = 2
 
 
 def _law_names(sentence):
@@ -1034,7 +1042,8 @@ def _law_names(sentence):
         if not any(stem.fullmatch(token) for stem in NAMED_STEMS):
             continue
         name, index, about = [], at - 1, None
-        while word(index):
+        headed = _law_head(tokens, at, word) if UZ_LAW_STEM.fullmatch(normalised(token).casefold()) else []
+        while word(index) and not headed:
             low = normalised(tokens[index][1]).casefold()
             if LAW_THIS.fullmatch(low):
                 break
@@ -1045,13 +1054,16 @@ def _law_names(sentence):
                 name.append(tokens[index])
             elif LAW_ABOUT.fullmatch(low) and not name:
                 about = 0
-            elif _law_name(tokens[index][1]) or LAW_KIND.fullmatch(low) or tokens[index][1][0].isupper():
+            elif _law_name(tokens[index][1]) or LAW_KIND.fullmatch(low) or tokens[index][1][0].isupper() \
+                    or LAW_ADJECTIVE.fullmatch(low):
                 name.append(tokens[index])
             else:
                 break
             index -= 1
         name.reverse()
-        if len(name) > 1 and _starts(sentence, name[0][0]) and not _law_name(name[0][1]):
+        if headed:
+            name = headed
+        elif len(name) > 1 and _starts(sentence, name[0][0]) and not _law_name(name[0][1]):
             name = name[1:]
         index = at + 1
         while word(index) and LAW_COUNTRY.fullmatch(normalised(tokens[index][1]).casefold()):
@@ -1072,6 +1084,26 @@ def _law_names(sentence):
         found += [(start, text) for start, text in name if _letters(text) >= 2
                   and not LAW_COUNTRY.fullmatch(normalised(text).casefold())]
     return list(dict.fromkeys(found))
+
+
+def _law_head(tokens, at, word):
+    """An Uzbek code's name with its lower-case words before its stem at `at`, from its capitalised first word:
+    "Raqamli iqtisodiyot kodeksiga" gives Raqamli and iqtisodiyot; [] when the word before the stem is no such word."""
+    lower, index = [], at - 1
+    while word(index) and len(lower) < LAW_HEAD_REACH:
+        text = tokens[index][1]
+        low = normalised(text).casefold()
+        if text[0].isupper():
+            break
+        if _law_name(text) or LAW_KIND.fullmatch(low) or LAW_THIS.fullmatch(low) or LAW_ABOUT.fullmatch(low) \
+                or UZ_INFLECTED.fullmatch(low) or re.search('[а-яё]', low):
+            return []
+        lower.append(tokens[index])
+        index -= 1
+    if not lower or not word(index) or not tokens[index][1][0].isupper() \
+            or LAW_THIS.fullmatch(normalised(tokens[index][1]).casefold()):
+        return []
+    return [tokens[index], *reversed(lower)]
 
 
 def _law_name(word):
@@ -1098,6 +1130,13 @@ def _legal_known(sentence, concepts, trusted, translated):
     # Which code or law it is ("Jinoyat", "административных", "Labour"), in any case and any language, is the
     # customer's: the same code named in their words.
     if not all(_law_name(word).search(trusted.legal) for _, word in words if _law_name(word) is not None):
+        return False
+    # Its other words in lower case ("арбитражному", "iqtisodiyot", "javobgarlik") are the customer's too: as they
+    # wrote them, or in a translated paper in the spellings a translation gives a name. A translated code's words
+    # not of LAW_NAMES cannot be told from an invented one's, so they go: a false removal, never an invention.
+    plain = [word for _, word in words if not word[0].isupper() and _law_name(word) is None
+             and not LAW_KIND.fullmatch(normalised(word).casefold())]
+    if not all(trusted.person(word, True) if translated else trusted.words.known(word) for word in plain):
         return False
     named = [(start, word) for start, word in words if word[0].isupper()]
     if translated:

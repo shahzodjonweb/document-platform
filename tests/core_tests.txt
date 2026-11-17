@@ -1976,3 +1976,7 @@ tests/test_category_grounding_matrix.py::test_what_a_change_reads_back[change-fr
 tests/test_category_grounding_matrix.py::test_what_a_change_reads_back[change-translated-reference-publisher-not-read-back-ru-to-uz-blank]
 tests/test_category_grounding_matrix.py::test_what_a_change_reads_back[change-the-customers-facts-read-back-uz-keep]
 tests/test_category_grounding_matrix.py::test_what_a_change_reads_back[change-name-from-an-earlier-request-two-changes-later-uz-accepted_false_blank]
+# Stage-2 grounding matrix, round 4: cases added while closing the round-3 re-check.
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-invented-about-phrase-translated-ru-to-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-the-customers-code-translated-as-an-about-phrase-ru-to-uz-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-the-customers-code-translated-as-an-about-phrase-of-the-entrys-words-ru-to-uz-keep]
