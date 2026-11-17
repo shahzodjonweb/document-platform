@@ -516,3 +516,45 @@ def test_a_paper_written_in_several_calls_never_takes_a_reordered_span_by_positi
     made, _ = finish.apply(data, merged)
     flat = json.dumps(made, ensure_ascii=False)
     assert 'student_name —' not in flat and 'Mirzaxo‘jayev' not in flat and 'Xudoyberdiyev' not in flat
+
+
+# ---------------------------------------------------------------- stage-2 re-audit: citations a paper never prints
+
+
+def schema_shaped(value, schema):
+    """`value` held to a strict JSON schema, as the provider returns it: unknown fields gone, missing ones blank."""
+    kind = schema.get('type')
+    kind = [item for item in kind if item != 'null'][0] if isinstance(kind, list) else kind
+    if kind == 'object':
+        value = value if isinstance(value, dict) else {}
+        return {key: schema_shaped(value.get(key), field) for key, field in schema['properties'].items()}
+    if kind == 'array':
+        return [schema_shaped(item, schema['items']) for item in value or []]
+    if 'enum' in schema and value not in schema['enum']:
+        return schema['enum'][0]
+    blank = {'string': '', 'integer': 1, 'number': 1, 'boolean': True}
+    return blank.get(kind) if value is None else value
+
+
+def test_a_paper_with_an_attached_file_is_never_retried_or_failed_over_citations(settings, monkeypatch):
+    who = live(settings)
+    ready_with(monkeypatch)
+    upload = text_upload(who, 'manba.txt', 'Yillik ta’til xodimga har yili beriladi.\n' * 5)
+    sent = []
+
+    def reply(body, number):
+        sent.append(body)
+        outline = json.loads(body['input'] if isinstance(body['input'], str) else body['input'][0]['content'])
+        # A quote that is not word for word: before, the schema asked for it, the check refused it twice.
+        raw = {'title': 'Ariza', 'answer_supported': True,
+               'sections': [{'id': section['id'], 'heading': '', 'body': 'Sizdan ta’til berishingizni so‘rayman.'}
+                            for section in outline['outline']['sections']],
+               'citations': [{'asset_id': str(upload.id), 'page': 1, 'quote': 'Ta’til har yil beriladi.'}]}
+        return schema_shaped(raw, body['text']['format']['schema'])
+    transport(monkeypatch, reply)
+    draft = create_draft(who, {'feature_id': catalogue.get(ARIZA).feature_id, 'prompt': APPLICATION,
+                               'output_locale': 'uz', 'source_ids': [str(upload.id)], 'options': {'category': ARIZA}})
+    job, data = made(who, draft)
+    assert job.status == 'succeeded', job.error_code
+    assert len(sent) == 1 and 'citations' not in sent[0]['text']['format']['schema']['properties']
+    assert data['content']['citations'] == []

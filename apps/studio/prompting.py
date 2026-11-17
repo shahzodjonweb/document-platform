@@ -515,8 +515,10 @@ def schema(data, feature, *, final=True, design=False):
     # it never had; one that removes the test loses it, and the result has none.
     if outline or selected(data) or not asked_questions(data) or not final:
         properties.pop('questions', None)
-    # A CV cites nothing: the files it is made from are its facts, not sources.
-    if cv or not data.get('excerpts'):
+    # A CV cites nothing: the files it is made from are its facts, not sources. Nor does a category paper: its
+    # template never prints the citation lines, and its prompt never asks for them, so a quote that was not word for
+    # word could only cost a retry or the job.
+    if cv or paper or not data.get('excerpts'):
         properties.pop('citations', None)
     if selected(data):
         properties.pop('title', None)
