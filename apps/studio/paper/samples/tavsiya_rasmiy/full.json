@@ -18,6 +18,7 @@
    "strength": "standard",
    "recommender_position": "Axborot tizimlari kafedrasi dotsenti",
    "recommender_name": "Jamshid Qurbonov",
+   "second_signer": "Kafedra mudiri | O. N. Rasulov",
    "recommender_phone": "+998 90 123 45 67"
   },
   "sections": [
@@ -52,13 +53,14 @@
    "letter_date": "16.09.2026",
    "outgoing_number": "118",
    "addressee": "В приёмную комиссию магистратуры Университета «Мисол»",
-   "candidate_status": "студентку 4 курса направления «Информационные системы»",
-   "candidate_name": "Шахнозу Эргашеву",
+   "candidate_status": "студентке 4 курса направления «Информационные системы»",
+   "candidate_name": "Шахнозе Эргашевой",
    "candidate_short": "Ш. Эргашева",
    "target": "для поступления в магистратуру по информационным системам",
    "strength": "standard",
    "recommender_position": "Доцент кафедры информационных систем",
    "recommender_name": "Джамшид Курбанов",
+   "second_signer": "Заведующий кафедрой | О. Н. Расулов",
    "recommender_phone": "+998 90 123 45 67"
   },
   "sections": [
@@ -100,6 +102,7 @@
    "strength": "standard",
    "recommender_position": "Associate professor, information systems department",
    "recommender_name": "Jamshid Kurbanov",
+   "second_signer": "Head of department | O. N. Rasulov",
    "recommender_phone": "+998 90 123 45 67"
   },
   "sections": [

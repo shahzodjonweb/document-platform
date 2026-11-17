@@ -111,7 +111,9 @@ def test_every_template_has_its_samples():
     paper_family.assert_has_samples(TEMPLATES)
 
 
-def test_every_template_is_drawn_by_the_engine_and_every_letter_entry_is_ready_to_draw():
+def test_every_template_is_drawn_by_the_engine_and_every_letter_entry_finds_one():
+    # The engine can draw each entry's paper in every language; the entries themselves stay `draft` until N2's
+    # native reading, so none of this is live.
     assert 'split_row' in registry.BLOCKS
     for template_id in TEMPLATES:
         assert not registry.missing(paper.flow_blocks(catalogue.template(template_id))), template_id
@@ -297,6 +299,34 @@ def test_signers_given_as_post_and_name_sign_on_their_own_rows(tmp_path):
                            name='second.pdf')
     assert clean(artifact) and '|' not in text
     assert any(line.startswith('Kafedra mudiri') and line.endswith('O. N. Rasulov') for line in lines(text))
+    # The checker reads each side of the line back as the cell it prints in.
+    entry, template = catalogue.get('pdf.xat.tavsiya'), catalogue.template('tavsiya_rasmiy')
+    expect = check.expect_for(artifact, artifact['content'], entry=entry, template=template, locale='uz', pages=1,
+                              day=DAY)
+    assert {'Kafedra mudiri', 'O. N. Rasulov'} <= set(expect['facts'])
+    assert check.problems(artifact['path'], expect) == []
+
+
+def test_only_a_list_or_line_field_alone_is_read_as_post_and_name_lines():
+    ctx = context('tavsiya_rasmiy', 'uz', {'second_signer': 'Kafedra mudiri | O. N. Rasulov\nDekan | F. Qosimov',
+                                           'recommender_name': 'Jamshid Qurbonov\nikkinchi qator'})
+    assert core._signers(ctx, place('signature_row', {}, ['second_signer'])) == [
+        ('Kafedra mudiri', 'O. N. Rasulov'), ('Dekan', 'F. Qosimov')]
+    # A name field is a person, never a list: its one row stays one row whatever its value holds.
+    assert core._signers(ctx, place('signature_row', {}, ['recommender_name'])) == [
+        ('', 'Jamshid Qurbonov\nikkinchi qator')]
+
+
+def test_a_long_post_on_the_signature_row_wraps_at_the_body_size():
+    post = 'Associate professor, information systems department of the faculty of computing'
+    ctx = context('tavsiya_rasmiy', 'en', {'recommender_position': post, 'recommender_name': 'Jamshid Kurbanov'})
+    made = core.signature_row(ctx, place('signature_row', {'variant': 'post_sign_name'},
+                                         ['recommender_position', 'recommender_name']))
+    table = next(flowable for flowable in made if isinstance(flowable, Table))
+    typed = next(item for item in table._cellvalues[0][0] if isinstance(item, Paragraph))
+    assert typed.style.fontSize == ctx.styles['body'].fontSize
+    # The short name gives its spare room to the post.
+    assert table._colWidths[0] > ctx.width * 0.38
 
 
 def test_a_character_reference_without_signers_has_one_blank_row_to_sign(tmp_path):
@@ -412,3 +442,30 @@ def test_the_samples_keep_each_languages_script_and_the_house_apostrophes():
             assert not [text for text in strings(given[locale]) if CYRILLIC.search(text)], (template_id, locale)
         assert not [text for text in strings(given['uz']) if "'" in text], template_id
         assert 'Rahimov' not in str(given) and 'Рахимов' not in str(given)
+
+
+@pytest.mark.parametrize('template_id', [template_id for template_id in TEMPLATES
+                                         if catalogue.template(template_id)['family'] == 'letter'
+                                         and 'close' in catalogue.template(template_id)['labels']])
+def test_a_letters_close_and_its_signer_never_part_across_a_page(template_id, tmp_path):
+    # The closing paragraph, the close word, the signature, the name, the post, the contacts and the enclosures
+    # are one keep group: a body grown a sentence at a time never leaves "Hurmat bilan," at a page's foot with
+    # the name or the enclosures alone overleaf.
+    given = sample.load(template_id, 'full')
+    template = catalogue.template(template_id)
+    name = next(given['uz']['facts'][field_id] for field_id in ('recommender_name', 'applicant_name')
+                if field_id in given['uz']['facts'])
+    close = template['labels']['close']['uz']
+    body = max((section for section in given['uz']['sections'] if section.get('body')),
+               key=lambda section: len(section['body']))
+    sentence = 'Bu gap matnni sahifadan oshirish uchun qo‘shilgan.'
+    pages_seen = set()
+    for extra in range(0, 63, 3):
+        grown = dict(body, body=' '.join([body['body']] + [sentence] * extra))
+        artifact, text = drawn(tmp_path, template_id, 'uz', sections=[grown], name=f'grown-{extra}.pdf')
+        with pdfplumber.open(artifact['path']) as document:
+            pages = [(page_.extract_text() or '').replace('\xa0', ' ') for page_ in document.pages]
+        pages_seen.add(len(pages))
+        last = len(pages) - 1
+        assert close in pages[last] and name in pages[last], (extra, len(pages))
+    assert pages_seen >= {1, 2}, 'the sweep crosses the page break'

@@ -238,7 +238,7 @@
     "applicant_name"
    ],
    "when": "fact:applicant_name",
-   "keep": "close",
+   "keep": "closing",
    "params": {
     "before_pt": 30
    }
@@ -249,7 +249,7 @@
     "applicant_name"
    ],
    "when": "blank:applicant_name",
-   "keep": "close",
+   "keep": "closing",
    "params": {
     "style": "captioned",
     "caption": "cap_name",

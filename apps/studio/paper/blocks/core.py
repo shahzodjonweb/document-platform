@@ -1182,12 +1182,17 @@ block('ruled_blank', fallback=_ruled_plain)(ruled_blank)
 
 
 def _typed(ctx, text, width, align=TA_CENTER):
-    """A value typed on a signature rule: the body size, stepped down to 85% to keep one line, else wrapped."""
+    """A value typed on a signature rule: the body size, stepped down to 85% to keep one line, else wrapped.
+
+    A value that needs two lines even at 85% wraps at the body size: a smaller
+    face would only make the two lines harder to read, as the mock-ups set them.
+    """
     style = _style(ctx, 'body', alignment=align)
     plain = ctx.plain(text)
     size = style.fontSize
-    while size > style.fontSize * 0.85 and stringWidth(plain, style.fontName, size) > width - 2 * MM:
-        size -= 0.5
+    if stringWidth(plain, style.fontName, size * 0.85) <= width - 2 * MM:
+        while stringWidth(plain, style.fontName, size) > width - 2 * MM:
+            size -= 0.5
     style = _style(ctx, style, fontSize=size, leading=size * 1.2)
     return Paragraph(ctx.text(text, style), style)
 
@@ -1235,8 +1240,10 @@ def _signers(ctx, place):
     found = []
     for index in range(0, len(fields), 2):
         pair = fields[index:index + 2]
-        if len(pair) == 1 and ctx.fact(pair[0]) is not None:
-            # A field left without a partner is a list of signers, "post | name" a line, as the catalogue asks.
+        if len(pair) == 1 and ctx.fact(pair[0]) is not None and (
+                ctx.entry.field(pair[0]) or {}).get('kind') in ('list', 'line'):
+            # A list or line field left without a partner is a list of signers, "post | name" a line, as the
+            # catalogue asks; a lone name keeps its one row, whatever its value holds.
             for text in (piece.strip() for piece in ctx.fact(pair[0]).split('\n') if piece.strip()):
                 post, _, name = text.rpartition('|')
                 found.append((post.strip(), name.strip()))
@@ -1297,6 +1304,14 @@ def signature_row(ctx, place):
             signers = [('', (ctx.fact(place.fields[-1]) if place.fields else None) or '')]
         _warn_over(ctx, 'signature_row', len(signers), _int(params.get('max_rows'), 0, 0, 100))
         widths = [width * 0.38, width * 0.25, width - width * 0.63 - 2 * gap]
+        if variant == 'post_sign_name':
+            # Short names give their spare room to the post, so a long post wraps at the body size in fewer
+            # lines; every row keeps the same cells, and the name cell never drops under a caption's width.
+            body = ctx.styles['body']
+            needed = max([stringWidth(ctx.plain(name), body.fontName, body.fontSize) for _, name in signers
+                          if name] or [0.0]) + 2 * MM
+            named = min(widths[2], max(width * 0.22, needed))
+            widths = [width - widths[1] - named - 2 * gap, widths[1], named]
         for post, name in signers:
             if variant == 'label_sign_name':
                 # The label stands on the rules' line, as a typed value does: set like one, with the room the

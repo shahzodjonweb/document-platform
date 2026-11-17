@@ -403,7 +403,8 @@ def _place(ctx, placement, index, instance, group):
     part = ctx.entry.part(placement['part']) if placement.get('part') else None
     section = ctx.section(part['id'], instance) if part and part['kind'] in WRITTEN else None
     fields = tuple(placement.get('fields') or (part or {}).get('fields') or ())
-    params = localised(dict(placement.get('params') or {}), ctx.locale)
+    # A params object made only of language keys resolves to None in a language it does not name: still a dict.
+    params = localised(dict(placement.get('params') or {}), ctx.locale) or {}
     return Place(placement['block'], section, part, fields, params, instance, index, group, placement.get('when'),
                  placement.get('keep'), bool(placement.get('page_break_before')), placement)
 

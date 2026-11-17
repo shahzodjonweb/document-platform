@@ -317,7 +317,9 @@ def expect_for(artifact, content, *, entry, template, locale, pages, cues=frozen
         for field_id in place.fields:
             value = ctx.fact(field_id)
             if value is not None and _printed(entry, field_id):
-                facts.append(value)
+                # A signer written "post | name" prints as two cells, so each side is read back on its own.
+                facts += [piece.strip() for line in value.split('\n') for piece in line.split('|')
+                          if piece.strip()] if '|' in value else [value]
         key = _label_key(place, labels)
         if key is not None:
             text = labels[key].get(locale) or labels[key].get('en', '')
