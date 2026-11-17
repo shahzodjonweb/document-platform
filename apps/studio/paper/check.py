@@ -339,4 +339,3 @@ def expect_for(artifact, content, *, entry, template, locale, pages, cues=frozen
         'facts': list(dict.fromkeys(facts)), 'labels': list(dict.fromkeys(words)), 'locale': locale,
         'stub_min': stub, 'warnings': list(metadata.get('warnings') or ()), 'gutter': gutter,
     }
-
