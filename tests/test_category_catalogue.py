@@ -510,8 +510,9 @@ def test_the_package_answers_for_the_catalogue():
 def test_the_stubs_change_nothing_until_their_packages_build_them():
     entry = catalogue.get('pdf.test')
     content = {'title': 'Tarix', 'sections': [], 'questions': []}
-    assert edits.read('Kirish qo‘sh', entry, fmt='pdf', sections=[]) is None
     assert derive.apply(entry, content, object()) is content
+    # edits.read is built (E1, tests/test_category_edits.py): a deck's change is still today's reading.
+    assert edits.read('Kirish qo‘sh', catalogue.get('slides.himoya'), fmt='pptx', sections=[]) is None
 
 
 def test_the_unknown_category_refusal_has_words_in_each_language():

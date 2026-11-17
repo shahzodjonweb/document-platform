@@ -58,7 +58,14 @@ def with_sources_slot(monkeypatch):
 # ---------------------------------------------------------------- what is not a category deck
 
 
-@pytest.mark.parametrize('options', [{}, {'category': 'pdf.xat.ariza'}])
+def test_a_paper_gets_no_deck_pins():
+    # A paper's finish is its own (tests/test_category_finish_pdf.py); it never takes a deck's pins.
+    data = {'options': {'category': 'pdf.xat.ariza', 'length': 1}, 'output_locale': 'uz', 'output_format': 'pdf',
+            'content': {'sections': [{'id': 'request'}]}}
+    assert finish.pins(data, {'title': 'Ariza', 'sections': [{'id': 'request', 'body': 'Matn.'}]}) == {}
+
+
+@pytest.mark.parametrize('options', [{}])
 def test_a_draft_without_a_deck_category_is_left_as_it_is(options):
     data = {'options': options, 'prompt': 'Toshkent haqida 2026-yil', 'output_locale': 'uz',
             'output_format': 'pptx', 'content': {'sections': [{'id': 's1'}]}}
