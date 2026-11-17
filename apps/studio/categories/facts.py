@@ -1126,8 +1126,19 @@ LAW_ADJECTIVE = re.compile(r"[а-яё]+(?:ый|ий|ой|ая|яя|ое|ее|о�
 # An Uzbek code is named by its first word, capitalised, and the words after it in lower case and no case of their
 # own ("Raqamli iqtisodiyot kodeksi", "Mehnat kodeksi"); "Barcha xodimlar kodeks talablariga ..." names none.
 UZ_LAW_STEM = re.compile(r"kodeks\w*|qonun\w*")
-UZ_INFLECTED = re.compile(r"[^\W\d_]*(?:lar\w*|ning|ni|ga|ka|qa|da|dan|dagi|gacha|ini|ida|idan|iga)")
+# The dative's -ka and -qa only follow a k and a q ("bankka", "qishloqqa"): "etika", "texnika" are no case.
+UZ_INFLECTED = re.compile(r"[^\W\d_]*(?:lar\w*|ning|ni|ga|kka|qqa|da|dan|dagi|gacha|ini|ida|idan|iga)")
 LAW_HEAD_REACH = 2
+# A sentence's capitalised first word that is its subject or its grammar, no code's first word: a person, a job, a
+# workplace or a pronoun ("Xodim", "Buxgalter", "Korxona", "U", "Employees", "Under"), in any case.
+LAW_SUBJECT_NOUNS = ("xodim ishchi korxona tashkilot muassasa kompaniya jamiyat firma maktab bo‘lim rahbariyat "
+                     "ish beruvchi u ular biz men siz bu shu har barcha hamma ushbu mazkur "
+                     # The words a sentence opens with before what it says ("Hozirda mehnat kodeksiga ko‘ra ...").
+                     "hozirda hozir bugun bugungi shuningdek masalan ayniqsa odatda amalda asosan ya’ni chunki lekin "
+                     "ammo biroq demak avvalo birinchidan ikkinchidan keyin so‘ng bunda shunda unda").split()
+LAW_SUBJECT_WORDS = ("the a an under according per in by every each all our his her their its this that employee "
+                     "employees staff worker workers company organisation organization school").split()
+LAW_SUBJECTS = _folded([noun + ending for noun in LAW_SUBJECT_NOUNS for ending in UZ_ENDINGS] + LAW_SUBJECT_WORDS)
 
 
 def _law_names(sentence):
@@ -1176,7 +1187,8 @@ def _law_names(sentence):
         name.reverse()
         if headed:
             name = headed
-        elif len(name) > 1 and _starts(sentence, name[0][0]) and not _law_name(name[0][1]):
+        elif len(name) > 1 and _starts(sentence, name[0][0]) and not _law_name(name[0][1]) \
+                and (name[1][1][0].isupper() or _law_subject(name[0][1])):
             name = name[1:]
         index = at + 1
         while word(index) and LAW_COUNTRY.fullmatch(normalised(tokens[index][1]).casefold()):
@@ -1241,9 +1253,20 @@ def _law_head(sentence, tokens, at, word):
     if not lower or not word(index) or not tokens[index][1][0].isupper() \
             or LAW_THIS.fullmatch(normalised(tokens[index][1]).casefold()):
         return []
-    if _starts(sentence, tokens[index][0]) and not _law_name(tokens[index][1]):
+    if _starts(sentence, tokens[index][0]) and not _law_name(tokens[index][1]) and _law_subject(tokens[index][1]):
         return list(reversed(lower))
     return [tokens[index], *reversed(lower)]
+
+
+def _law_subject(word):
+    """Whether a capitalised word opening a sentence before a code's name is the sentence's subject or grammar, no word
+    of the name: a person's, a job's or a workplace's noun or a pronoun (`LAW_SUBJECT_NOUNS`, `_role_word`: "Xodim",
+    "Buxgalter", "Korxona"), an English determiner or preposition, or a Russian word that is no adjective ("Согласно",
+    "Работник"; "Арбитражный процессуальный кодекс" is a code's whole name, as "Korporativ boshqaruv kodeksi" is)."""
+    low = normalised(word).casefold()
+    if re.search('[а-яё]', low):
+        return LAW_ADJECTIVE.fullmatch(low) is None
+    return fold(word) in LAW_SUBJECTS or _role_word(word)
 
 
 def _law_name(word):

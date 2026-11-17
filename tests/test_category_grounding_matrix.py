@@ -1024,6 +1024,27 @@ CASES = [
     guard('laws-a-noun-after-the-customers-law-on-accounting-en-accepted_false_blank', ACCEPTED, JOB_EN_LAW, 'en',
           'The accountant follows the Law on accounting requirements strictly.', gone=('requirements',),
           pair='laws-bare-law-on-personal-data-en-blank'),
+    # A sentence's capitalised first word is no code's name only when it is a known subject (Xodim, Korxona,
+    # Buxgalter) or the next word is capitalised too (round 3 of the convergence, from 5c56d4f): "Korporativ
+    # boshqaruv kodeksi" is a code's whole name.
+    item('laws-capitalised-first-word-of-an-uzbek-code-uz-blank', BLANK, 'pdf.biz.lavozim_yoriqnomasi', JOB_UZ_ETHICS,
+         'uz', 'general', 'Korporativ boshqaruv kodeksiga muvofiq ishlaydi.', gone=('Korporativ',)),
+    item('laws-capitalised-first-word-before-a-noun-in-ka-uz-blank', BLANK, 'pdf.biz.lavozim_yoriqnomasi',
+         JOB_UZ_ETHICS, 'uz', 'general', 'Korporativ etika kodeksiga rioya qiladi.', gone=('Korporativ',)),
+    item('laws-subject-before-an-invented-lower-case-code-uz-blank', BLANK, 'pdf.biz.lavozim_yoriqnomasi',
+         JOB_UZ_ETHICS, 'uz', 'general', 'Xodim korporativ etika kodeksiga rioya qiladi.', gone=('korporativ',)),
+    item('laws-the-customers-code-of-ethics-opening-an-item-uz-keep', KEEP, 'pdf.biz.lavozim_yoriqnomasi',
+         JOB_UZ_ETHICS, 'uz', 'general', 'Kasbiy etika kodeksiga rioya qiladi.'),
+    item('laws-a-subject-before-the-customers-code-of-ethics-uz-keep', KEEP, 'pdf.biz.lavozim_yoriqnomasi',
+         JOB_UZ_ETHICS, 'uz', 'general', 'Xodim kasbiy etika kodeksiga rioya qiladi.'),
+    item('laws-a-known-subject-before-the-customers-code-uz-keep', KEEP, 'pdf.biz.lavozim_yoriqnomasi', JOB_UZ, 'uz',
+         'general', 'Korxona mehnat kodeksiga muvofiq ish yuritadi.'),
+    item('laws-a-subject-before-a-capitalised-code-uz-keep', KEEP, 'pdf.biz.lavozim_yoriqnomasi', JOB_UZ, 'uz',
+         'general', 'Korxona Mehnat kodeksiga muvofiq ish yuritadi.'),
+    guard('laws-capitalised-first-adjective-of-a-russian-code-ru-blank', BLANK, JOB_RU, 'ru',
+          'Арбитражный процессуальный кодекс применяется к спорам.', gone=('Арбитражный',)),
+    guard('laws-a-preposition-before-the-customers-russian-code-ru-keep', KEEP, JOB_RU, 'ru',
+          'Согласно трудовому кодексу работник несёт ответственность.'),
 
     # ---- A legal sentence by its marks; a situation, a plural act, a convention centre is none (274f7c1, 9cd639f).
     guard('laws-cabinet-resolution-uz-blank', BLANK, ECONOMICS['uz'], 'uz',
