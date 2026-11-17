@@ -81,7 +81,7 @@ import unicodedata
 from dataclasses import dataclass, field, replace
 
 from ..language import normalised
-from ..uzbek import LETTERS
+from ..uzbek import LETTERS, to_latin
 from . import numbers
 
 BLANK = '____'
@@ -90,6 +90,8 @@ BLANK = '____'
 LATIN = str.maketrans({**LETTERS, 'ъ': '', 'ь': '', 'ц': 'ts', 'щ': 'sh', 'ё': 'yo', 'е': 'e', 'э': 'e', 'і': 'i',
                        'ї': 'i', 'є': 'e', 'ў': "o'", 'ғ': "g'", 'ҳ': 'h'})
 WORD = re.compile(r"[^\W\d_](?:[^\W\d_]|['‘’ʻʼ`´](?=[^\W\d_]))*")
+# The letters only Uzbek writes in Cyrillic: a customer's text with them is Uzbek, read in Latin too (`Trusted.legal`).
+UZBEK_CYRILLIC = re.compile('[ўқғҳЎҚҒҲ]')
 FOLDED_WORD = re.compile(r'[^\W\d_]+')
 # The forms numbers.py skips, read in linear time there (numbers.EMAIL_PATTERN says how).
 EMAIL = re.compile(numbers.EMAIL_PATTERN)
@@ -466,6 +468,18 @@ class Trusted:
             self.cache['respelled'] = Words([*FOLDED_WORD.findall(folded.replace('o', 'a')),
                                              *FOLDED_WORD.findall(fold(self.said, respelled=True))])
         return self.cache['respelled']
+
+    @property
+    def legal(self):
+        """`lower` with the customer's Uzbek Cyrillic also put in Latin: what a law's stem and name are looked up in.
+
+        A customer who writes "Меҳнат кодексига мувофиқ" named the paper's "Mehnat kodeksi", which Uzbek is written
+        in; their Russian stays as it is ("Трудовой кодекс" is matched by its own forms).
+        """
+        if 'legal' not in self.cache:
+            latin = normalised(to_latin(self.said)).casefold() if UZBEK_CYRILLIC.search(self.said) else ''
+            self.cache['legal'] = self.lower + ('\n' + latin if latin else '')
+        return self.cache['legal']
 
     def person(self, word, translated=False):
         """Whether a capitalised word of a person's name is the customer's or one no one's facts are in."""
@@ -1045,20 +1059,20 @@ def _law_name_known(word, trusted):
     """Whether a word naming a code in a translated paper is the customer's: the same code named in any language."""
     forms = _law_name(word)
     if forms is not None:
-        return forms.search(trusted.lower) is not None
+        return forms.search(trusted.legal) is not None
     return trusted.allowed.known(word) or trusted.person(word, True)
 
 
 def _legal_known(sentence, concepts, trusted, translated):
     for concept in concepts - {'number'}:
-        if not any(stem.search(trusted.lower) for name, stem, _ in STEMS if name == concept):
+        if not any(stem.search(trusted.legal) for name, stem, _ in STEMS if name == concept):
             return False
     if not all(numbers.known(number, trusted.values) for number in numbers.found(sentence)):
         return False
     words = _law_names(sentence)
     # Which code or law it is ("Jinoyat", "административных", "Labour"), in any case and any language, is the
     # customer's: the same code named in their words.
-    if not all(_law_name(word).search(trusted.lower) for _, word in words if _law_name(word) is not None):
+    if not all(_law_name(word).search(trusted.legal) for _, word in words if _law_name(word) is not None):
         return False
     named = [(start, word) for start, word in words if word[0].isupper()]
     if translated:
