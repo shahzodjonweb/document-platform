@@ -28,16 +28,20 @@ out, which pins gave way and whether the file passes the alphabet read-back.
 `--category slides.` runs every deck entry, at one run each.
 
 A paper category the same way (`--category pdf.xat.ariza`, or `pdf.xat.` for
-a family): the draft seeded from the entry's parts at the length the domain
-gives the message, one provider.generate, quality.check with finish.exempt,
-finish.apply, and execution.draw_paper, which draws it in its own template.
-The message is the entry's first bot example in `--locale` (invented, as the
-catalogue's copy is), or `--prompt`; `--case` and `--slides` are a deck's. It
-reports whether the paper was drawn by its template and not the emergency
-fallback, its pages against the quote, the template's codes and the alphabet
-read-back. The top-up of a count paper is not run: this family's papers are
-ceilings, and one call is the smoke's budget. Nothing is stored, and the
-switch need not be on.
+a family, `pdf.` for every paper), as a job makes it once its entry is ready:
+the draft seeded from the entry's parts at the length the domain gives the
+message within the plan's 35 pages (`--slides` overrides the pages; a test's
+questions come from the message), one provider.generate (written in spans),
+quality.check with finish.exempt, title_lines and finish.apply, and
+execution.draw_paper, which draws it in its own template. The message is the
+entry's first bot example in `--locale` (invented, as the catalogue's copy
+is), or `--prompt`; `--case` is a deck's. It reports whether the paper was
+drawn by its template and not the emergency fallback, its pages against the
+quote (with the sheets the template leaves out of it, page_rule.uncounted, such
+as a lesson's cover), the template's codes and the alphabet read-back. The
+top-up of a count paper is not run, as one call is the smoke's budget: a paper
+the model wrote short is reported short here, where the job would fill it once.
+Nothing is stored, and the switch need not be on.
 """
 import argparse
 import os
@@ -66,7 +70,8 @@ parser.add_argument('--category',
                     help='a category id, or a prefix ending in "." (slides., pdf.xat.) for every entry under it')
 parser.add_argument('--locale', default='uz', choices=('uz', 'ru', 'en'))
 parser.add_argument('--case', default='figures', help='the sample to take the message from: figures or topic_only')
-parser.add_argument('--slides', type=int, help='the slide count; by default the one the entry gives the message')
+parser.add_argument('--slides', type=int,
+                    help='the slide or page count; by default the one the entry gives the message')
 parser.add_argument('--prompt', help='the customer\'s message, in place of the sample\'s')
 parser.add_argument('--out', help='where the decks are written; a new temporary folder by default')
 args = parser.parse_args()
@@ -173,7 +178,7 @@ def category_deck(entry, out):
 
 def category_paper(entry, out):
     """One category paper made as a job makes it, with no account and nothing stored; its checks are reported."""
-    from apps.studio import quality
+    from apps.studio import quality, title_lines
     from apps.studio.categories import finish, skeleton
     from apps.studio.execution import draw_paper
     from apps.studio.scripts import artifact_violations
@@ -182,8 +187,10 @@ def category_paper(entry, out):
     draft = {'output_locale': args.locale, 'prompt': prompt, 'source_text': '', 'source_ids': [], 'excerpts': [],
              'output_format': 'pdf', 'options': {'category': entry.id}}
     cues = skeleton.cues_of(draft)
-    questions = min(entry.raw['questions']['default'], entry.raw['questions']['max'])
-    length = skeleton.length(entry, asked=pages.requested_pages(prompt), cues=cues, ceiling=35, questions=questions)
+    questions = min(pages.requested_questions(prompt) or entry.raw['questions']['default'],
+                    entry.raw['questions']['max'])
+    length = skeleton.length(entry, asked=args.slides or pages.requested_pages(prompt), cues=cues, ceiling=35,
+                             questions=questions)
     draft['options'].update(length=length, question_count=questions, requested_pages=None, image_cap=0)
     draft['content'] = {'title': '', 'sections': skeleton.seed(entry, length, cues), 'questions': [],
                         'citations': []}
@@ -200,7 +207,7 @@ def category_paper(entry, out):
     wrong = {code: len(items) for code, items in found.issues.items() if items and code != 'script'}
     report(f'{name} quality', NOTE if found.to_repair() else PASS,
            ', '.join(f'{code} {count}' for code, count in sorted(wrong.items())) or 'nothing a job would send back')
-    content = quality.normalise(content, args.locale)
+    content = title_lines.apply(draft, quality.normalise(content, args.locale))
     codes = []
     content, warnings = finish.apply(draft, content, file_names=[], codes=codes)
     report(f'{name} held to the message', NOTE if codes else PASS,
@@ -210,9 +217,13 @@ def category_paper(entry, out):
     template = metadata.get('template') or '?'
     report(f'{name} template', FAIL if metadata.get('template_fallback') else PASS,
            'the emergency fallback drew it' if metadata.get('template_fallback') else template)
+    # A sheet the quote leaves out (a lesson's cover, a handout's key: page_rule.uncounted) is drawn on top of
+    # it by design, with no longer_than_quoted; only a paper over both is the renderer's own NOTE.
+    extra = int(metadata.get('uncounted') or 0)
     longer = 'longer_than_quoted' in (metadata.get('warnings') or ())
-    report(f'{name} pages', PASS if drawn['page_count'] <= length else NOTE if longer else FAIL,
-           f'{drawn["page_count"]} of {length} quoted, step {metadata.get("fit_step")}, '
+    report(f'{name} pages', PASS if drawn['page_count'] <= length + extra else NOTE if longer else FAIL,
+           f'{drawn["page_count"]} of {length} quoted{f" and {extra} uncounted" if extra else ""}, '
+           f'step {metadata.get("fit_step")}, '
            f'{", ".join(metadata.get("warnings") or ()) or "no codes"}')
     cyrillic = artifact_violations(drawn['path'], args.locale, '')
     report(f'{name} alphabet read-back', FAIL if cyrillic else PASS,
