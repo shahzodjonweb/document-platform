@@ -133,6 +133,23 @@ def test_clauses_are_read_from_lead_ins_actions_single_clauses_and_body_lines():
     assert regulations.clauses_of(None) == [] and regulations.clauses_of(section('duties')) == []
 
 
+def test_a_clause_opened_with_a_dash_loses_it_and_an_abbreviation_keeps_its_stop():
+    found = regulations.clauses_of(section('duties', [('- ish uchun javob beradi:', '– hujjatlarni | idishlar va h.k.'),
+                                                      '• Kalit topshiriladi.']))
+    assert found == [('ish uchun javob beradi:', ['hujjatlarni', 'idishlar va h.k.']), ('Kalit topshiriladi.', [])]
+    assert regulations._punctuated(['моет посуду и т.д.', 'убирает зал.', 'сдаёт кассу, т.д.']) == [
+        'моет посуду и т.д.;', 'убирает зал;', 'сдаёт кассу, т.д.']
+
+
+def test_a_caution_clause_taller_than_a_page_is_drawn_unboxed_and_keeps_its_numbers(tmp_path):
+    long = 'Diqqat! ' + ' '.join(['Ofitsiant issiq idishni ikki qo‘llab, sochiq bilan ushlab olib boradi.'] * 90)
+    made = content('business_yoriqnoma', sections=[section('during_work', [long, 'Xodim ishni tartib bilan bajaradi.'])])
+    result = draw(tmp_path, 'business_yoriqnoma', made)
+    assert not any(code.startswith('block_fallback') for code in result['metadata']['warnings'])
+    shown = text(result)
+    assert '3.1. Diqqat!' in shown and '3.2. Xodim ishni tartib bilan bajaradi.' in shown
+
+
 def test_chapters_are_numbered_as_drawn_and_an_empty_one_leaves_no_heading(tmp_path):
     made = content('official_lavozim_yoriqnomasi', drop=('qualification',))
     shown = text(draw(tmp_path, 'official_lavozim_yoriqnomasi', made))
@@ -231,16 +248,55 @@ def test_agreeing_posts_are_one_row_each_split_into_post_and_name(tmp_path):
     assert any(line.strip() == 'Kasaba uyushmasi raisi' for line in lines)
 
 
+def lines_of(result):
+    with pdfplumber.open(result['path']) as document:
+        return [line['text'].replace('\xa0', ' ') for page_ in document.pages for line in page_.extract_text_lines()]
+
+
+def test_agreeing_signers_joined_by_semicolons_are_one_row_each(tmp_path):
+    made = content('official_lavozim_yoriqnomasi', facts={
+        'agreement_signers': 'Yurist: D. A. Umarova; Bosh hisobchi — Rahimov B. S.'})
+    lines = lines_of(draw(tmp_path, 'official_lavozim_yoriqnomasi', made))
+    assert any(line.startswith('Yurist') and line.endswith('D. A. Umarova') for line in lines)
+    assert any(line.startswith('Bosh hisobchi') and line.endswith('Rahimov B. S.') for line in lines)
+    assert not any('Umarova;' in line for line in lines)
+
+
 @pytest.mark.parametrize(('line', 'expected'), [
-    ('ombor mudiri A. K. Sodiqov', ('ombor mudiri', 'A. K. Sodiqov')),
-    ('Direktor — B. S. Toshmatov', ('Direktor', 'B. S. Toshmatov')),
-    ('R. A. Aliyev — direktor', ('direktor', 'R. A. Aliyev')),
-    ('Bosh hisobchi Rahimov B. S.', ('Bosh hisobchi', 'Rahimov B. S.')),
-    ('mehnat muhofazasi bo‘yicha mutaxassis', ('mehnat muhofazasi bo‘yicha mutaxassis', '')),
-    ('Г. О. Юлдошева', ('', 'Г. О. Юлдошева')),
+    ('ombor mudiri A. K. Sodiqov', ('ombor mudiri', 'A. K. Sodiqov', True)),
+    ('Direktor — B. S. Toshmatov', ('Direktor', 'B. S. Toshmatov', True)),
+    ('R. A. Aliyev — direktor', ('direktor', 'R. A. Aliyev', True)),
+    ('Bosh hisobchi Rahimov B. S.', ('Bosh hisobchi', 'Rahimov B. S.', True)),
+    ('mehnat muhofazasi bo‘yicha mutaxassis', ('mehnat muhofazasi bo‘yicha mutaxassis', '', False)),
+    ('Г. О. Юлдошева', ('', 'Г. О. Юлдошева', True)),
+    # Uzbek digraph and o‘ initials are one letter each, and the stop after a final one stays.
+    ('Sh. R. Karimova', ('', 'Sh. R. Karimova', True)),
+    ('Ch. T. Ergashev', ('', 'Ch. T. Ergashev', True)),
+    ('Yo‘ldosheva G. O‘.', ('', 'Yo‘ldosheva G. O‘.', True)),
+    ('Karimova Sh.', ('', 'Karimova Sh.', True)),
+    ('Sh. R. Karimova — direktor', ('direktor', 'Sh. R. Karimova', True)),
+    ('huquqshunos.', ('huquqshunos', '', False)),
+    # A full name without initials is a name beside a post, and two capitalised sides are only a guess.
+    ('Rustamova Zarina — direktor', ('direktor', 'Rustamova Zarina', True)),
+    ('Иванов Иван Иванович — директор', ('директор', 'Иванов Иван Иванович', True)),
+    ('Chief Accountant — John Smith', ('Chief Accountant', 'John Smith', False)),
 ])
 def test_a_signers_line_is_split_into_post_and_name(line, expected):
     assert core._post_and_name(line) == expected
+
+
+@pytest.mark.parametrize(('locale', 'chair', 'word', 'name'), [
+    ('uz', 'Sh. R. Karimova — direktor', 'Rais', 'Sh. R. Karimova'),
+    ('uz', 'Rustamova Zarina — direktor', 'Rais', 'Rustamova Zarina'),
+    ('ru', 'Иванов Иван Иванович — директор', 'Председатель', 'Иванов Иван Иванович'),
+    # Neither side is surely a name: the line is typed whole, never the post alone in the name cell.
+    ('en', 'Head Teacher — Grace Hill', 'Chair', 'Head Teacher — Grace Hill'),
+], ids=['uz-digraph-initials', 'uz-full-name', 'ru-full-name', 'en-guess-kept-whole'])
+def test_the_chair_signs_by_name_and_never_by_post(tmp_path, locale, chair, word, name):
+    lines = lines_of(draw(tmp_path, 'official_bayonnoma', content('official_bayonnoma', locale,
+                                                                   facts={'chair': chair}), locale))
+    signed = [line for line in lines if line.startswith(word) and ':' not in line]
+    assert signed and signed[-1].endswith(name), signed
 
 
 def test_the_minutes_sign_by_name_while_the_roster_keeps_the_role(tmp_path):
@@ -249,6 +305,14 @@ def test_the_minutes_sign_by_name_while_the_roster_keeps_the_role(tmp_path):
         lines = [line['text'].replace('\xa0', ' ') for page_ in document.pages for line in page_.extract_text_lines()]
     assert 'Rais: Z. A. Rustamova — direktor' in lines
     assert any(line.startswith('Rais') and line.endswith('Z. A. Rustamova') for line in lines)
+
+
+@pytest.mark.parametrize(('word', 'title'), [(None, 'BAYONNOMA'), ('bayonnoma', 'BAYONNOMA'), ('bayon', 'BAYON'),
+                                             ('bayoni', 'BAYONI')])
+def test_the_minutes_title_takes_the_customers_word_and_only_one_title_is_drawn(tmp_path, word, title):
+    shown = text(draw(tmp_path, 'official_bayonnoma', content('official_bayonnoma', facts={'title_word': word})))
+    titles = [line for line in shown.split('\n') if line.replace(' ', '').startswith(('BAYON', 'B A Y O N'))]
+    assert len(titles) == 1 and titles[0].replace(' ', '').startswith(title + '№'), titles
 
 
 # ---------------------------------------------------------------- the minutes, drawn per agenda item

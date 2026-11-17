@@ -82,8 +82,63 @@
     "minute_number",
     "meeting_body"
    ],
+   "when": "nofact:title_word",
    "params": {
     "label": "title",
+    "caps": false,
+    "subject": [
+     "meeting_body"
+    ],
+    "before_pt": 24,
+    "after_pt": 14
+   }
+  },
+  {
+   "block": "doc_title",
+   "part": "head",
+   "fields": [
+    "minute_number",
+    "meeting_body"
+   ],
+   "when": "fact:title_word=bayonnoma",
+   "params": {
+    "label": "title",
+    "caps": false,
+    "subject": [
+     "meeting_body"
+    ],
+    "before_pt": 24,
+    "after_pt": 14
+   }
+  },
+  {
+   "block": "doc_title",
+   "part": "head",
+   "fields": [
+    "minute_number",
+    "meeting_body"
+   ],
+   "when": "fact:title_word=bayon",
+   "params": {
+    "label": "title_bayon",
+    "caps": false,
+    "subject": [
+     "meeting_body"
+    ],
+    "before_pt": 24,
+    "after_pt": 14
+   }
+  },
+  {
+   "block": "doc_title",
+   "part": "head",
+   "fields": [
+    "minute_number",
+    "meeting_body"
+   ],
+   "when": "fact:title_word=bayoni",
+   "params": {
+    "label": "title_bayoni",
     "caps": false,
     "subject": [
      "meeting_body"
@@ -307,6 +362,16 @@
  "labels": {
   "title": {
    "uz": "BAYONNOMA № {minute_number}",
+   "ru": "ПРОТОКОЛ № {minute_number}",
+   "en": "MINUTES No. {minute_number}"
+  },
+  "title_bayon": {
+   "uz": "BAYON № {minute_number}",
+   "ru": "ПРОТОКОЛ № {minute_number}",
+   "en": "MINUTES No. {minute_number}"
+  },
+  "title_bayoni": {
+   "uz": "BAYONI № {minute_number}",
    "ru": "ПРОТОКОЛ № {minute_number}",
    "en": "MINUTES No. {minute_number}"
   },

@@ -9,9 +9,11 @@ dropped, so a paper that loses a chapter is never numbered 1, 3, 4.
 
 Where the clauses come from (the catalogue's write rule for these parts):
 one item a clause; a lead-in in `label` with its actions in `text` joined
-by " | " (or one a line); a single clause in `text` alone. A part written as
-lines of a body works too: each line a clause, a line behind a dash an
-action of the clause before it.
+by " | " (or one a line); a single clause in `text` alone. A list part the
+model wrote as lines of a body reaches here as items already, one clause a
+line with its dash gone (finish._shape), so actions are written in `text`; the
+body reading below (a line behind a dash an action of the clause before it)
+serves only a part that is not a list.
 
 params:
 - `numbering` decimal ("2.3.", the chapter's number and the clause's) |
@@ -70,6 +72,8 @@ TYPED_NUMBER = re.compile(r'^\s*(?:(?:\d{1,2}\.){1,3}|\d{1,2}\))\s+')
 CAUTION = re.compile(r'^\s*(Diqqat|Ehtiyot\s+bo[‘’\'`]?ling|Внимание|Осторожно|Caution|Warning)\s*[!:]\s*',
                      re.IGNORECASE)
 # The closing bracket of a decision that names who is responsible and by when.
+# The last word of an action is an abbreviation whose own full stop stays: "h.k.", "т.д.", "i.e.", "etc.".
+ABBREVIATION = re.compile(r'(?:^|\s)(?:(?:[^\W\d_]{1,3}\.){2,}|etc\.|др\.|пр\.)$', re.IGNORECASE)
 TAIL = re.compile(r'\s*\((?:mas[‘’ʼ\'`]?ul|muddat|ответствен|срок|responsible|due)[^()]*\)[.;]?\s*$',
                   re.IGNORECASE)
 MARKERS = {'dash': '–', 'bullet': '•'}
@@ -104,7 +108,8 @@ def clauses_of(section):
                 found.append((line, []))
     tidy = []
     for clause, actions in found:
-        clause = TYPED_NUMBER.sub('', clause, count=1).strip()
+        # A clause the model opened with a dash or a bullet loses it too: the renderer's number stands there.
+        clause = TYPED_MARKER.sub('', TYPED_NUMBER.sub('', clause, count=1), count=1).strip()
         actions = [TYPED_MARKER.sub('', action, count=1).strip() for action in actions]
         actions = [action for action in actions if action]
         if clause or actions:
@@ -150,7 +155,12 @@ def _punctuated(actions):
         if action[-1:] in '?!':
             made.append(action)
             continue
-        made.append(action.rstrip(' ;,.:') + ('.' if number == len(actions) - 1 else ';'))
+        last = number == len(actions) - 1
+        kept = action.rstrip(' ;,:')
+        if ABBREVIATION.search(kept):
+            made.append(kept if last else kept + ';')
+            continue
+        made.append(kept.rstrip(' ;,.:') + ('.' if last else ';'))
     return made
 
 
@@ -253,8 +263,14 @@ def clauses(ctx, place):
 
 
 def _boxed(ctx, paragraph, style):
-    """A caution clause in a tinted box with a bar down its left edge; one row, so it never splits."""
+    """A caution clause in a tinted box with a bar down its left edge; one row, so it never splits.
+
+    A clause taller than a page cannot stand in one row (ReportLab raises), so
+    it stays an unboxed paragraph with its bold word: the chapter keeps its
+    numbers instead of falling back to plain lines."""
     pad = 2.5 * MM
+    if paragraph.wrap(ctx.width - 2 * pad, ctx.frame_height)[1] + 1.5 * pad > ctx.frame_height * 0.9:
+        return paragraph
     paragraph.style = _style(ctx, style, spaceBefore=0)
     drawn = Table([[paragraph]], colWidths=[ctx.width], hAlign='LEFT')
     drawn.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, -1), TINT), ('LINEBEFORE', (0, 0), (0, -1), 1.6, INK),

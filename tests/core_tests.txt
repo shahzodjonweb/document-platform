@@ -1259,3 +1259,11 @@ tests/test_paper_regulations.py::test_a_safety_instruction_titles_its_chapters_b
 tests/test_paper_regulations.py::test_agreeing_posts_are_one_row_each_split_into_post_and_name
 tests/test_paper_regulations.py::test_each_item_follows_its_agenda_line_with_its_report_decisions_and_vote
 tests/test_paper_regulations.py::test_a_clauses_block_that_raises_is_drawn_plain
+# Regulations and minutes (R5b review): a chair or secretary signs by name and never by post, Uzbek digraph initials
+# stay whole, semicolon-joined signers are rows of their own, the customer's title word is drawn, and a caution clause
+# taller than a page keeps its numbers
+tests/test_paper_regulations.py::test_the_chair_signs_by_name_and_never_by_post[uz-digraph-initials]
+tests/test_paper_regulations.py::test_the_chair_signs_by_name_and_never_by_post[ru-full-name]
+tests/test_paper_regulations.py::test_agreeing_signers_joined_by_semicolons_are_one_row_each
+tests/test_paper_regulations.py::test_the_minutes_title_takes_the_customers_word_and_only_one_title_is_drawn[bayoni-BAYONI]
+tests/test_paper_regulations.py::test_a_caution_clause_taller_than_a_page_is_drawn_unboxed_and_keeps_its_numbers
