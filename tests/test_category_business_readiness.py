@@ -15,6 +15,7 @@ zero (tests/test_category_facts_corpus.py) covers these entries' own examples
 as it covers every entry. Every person, organisation and figure here is
 invented.
 """
+import copy
 import itertools
 import runpy
 import sys
@@ -179,6 +180,44 @@ def test_every_amount_and_total_of_the_drawn_offer_is_its_quantity_times_its_pri
     for quantity, price, line_amount in rows:
         assert quantity * price == line_amount, (locale, quantity, price, line_amount)
     assert totals == [sum(row[2] for row in rows)]
+
+
+def strip_words(path):
+    """The words of the key-figure strip on the plan's second page, from its first label to the next heading."""
+    shown = [word['text'] for word in words(path)]
+    start = next(index for index, word in enumerate(shown) if word in ('Umumiy', 'Общие', 'Total'))
+    return shown[start:shown.index('1.1', start)]
+
+
+@pytest.mark.parametrize('locale, mark', [('uz', 'so‘m'), ('ru', 'сумов'), ('en', 'UZS')])
+def test_the_plans_computed_investment_card_carries_the_currency_its_neighbours_name(locale, mark, tmp_path):
+    # The investment rows name no currency, so derive's total is a bare number; beside "120 mln so‘m" the card
+    # read "420 000 000" alone. derive takes such amounts to be in the paper's currency, so the card says it: the
+    # strip's three cards each carry the mark (its small unit sits on its own line of the extracted text).
+    plan = catalogue.get('pdf.biz.biznes_reja')
+    artifact, found = drawn(plan, 'business_biznes_reja', 'full', locale, 5, frozenset(), tmp_path)
+    assert found == []
+    assert strip_words(artifact['path']).count(mark) == 3
+
+
+@pytest.mark.parametrize('facts, shown', [
+    # Dollars beside so‘m (no currency fact): which one the bare total is in would be a guess, so it stays bare.
+    ({'own_funds': '$10 000'}, ['420', '000', '000', '$10']),
+    # Dollars on both cards but no currency fact: derive reads the bare rows as so‘m, so the card names neither.
+    ({'own_funds': '$10 000', 'external_funding': '$20 000'}, ['420', '000', '000', '$10']),
+    # The customer named dollars: the rows, their total and both cards are in dollars, written as derive writes them.
+    ({'own_funds': '$10 000', 'external_funding': '$20 000', 'currency': 'AQSH dollari'}, ['$420', '000', '000']),
+])
+def test_a_computed_card_takes_a_currency_only_when_the_paper_and_its_neighbours_agree(facts, shown, tmp_path):
+    plan = catalogue.get('pdf.biz.biznes_reja')
+    given = copy.deepcopy(sample.load('business_biznes_reja', 'full'))
+    given['uz']['facts'].update(facts)
+    content = sample.content_of(given, 'uz')
+    artifact = paper.render_paper(content, tmp_path / 'mixed.pdf', 'uz', entry=plan, template='business_biznes_reja',
+                                  pages=5, cues=frozenset(), day=DAY)
+    strip = [word for word in strip_words(artifact['path']) if word not in ('so‘m', 'mln')]
+    first = strip.index(shown[0])
+    assert strip[first:first + len(shown)] == shown, strip
 
 
 def test_the_three_kinds_of_staff_instruction_take_their_own_head_and_chapters(tmp_path):

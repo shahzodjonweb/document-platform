@@ -198,8 +198,43 @@ def _spec_figures(ctx, params):
         elif isinstance(spec.get('total'), str):
             value = _total_cell(ctx, spec['total'], _int(spec.get('column'), 1, 0, 40))
             if value:
-                found.append((label, value, '', _word(ctx, spec.get('note')) if spec.get('note') else '', True))
+                found.append((label, value, None, _word(ctx, spec.get('note')) if spec.get('note') else '', True))
+    if any(unit is None for _, _, unit, _, _ in found):
+        mark = _money_mark(ctx, [value for _, value, unit, _, _ in found if unit is not None])
+        found = [(label, *(mark(value) if unit is None else (value, unit)), note, table)
+                 for label, value, unit, note, table in found]
     return found
+
+
+def _money_mark(ctx, given):
+    """`mark(figure)`: a code-made total that names no currency, as (figure, unit) with the paper's currency on it.
+
+    derive takes an amount that names no currency to be in the paper's (the
+    `currency` fact, else so‘m), so a total of such amounts is in it too. The
+    card beside "120 mln so‘m" then reads "420 000 000 so‘m", not a bare
+    number, and beside "UZS 120 mln" it reads "UZS 420,000,000". The mark is
+    the one the customer wrote on the strip's own figures, and only when all of
+    them name that same paper currency; otherwise (dollars beside so‘m, no
+    currency anywhere) the total stays as derive wrote it, since a guessed
+    currency would be an invented fact.
+    """
+    from apps.studio.categories import derive
+    paper = derive._money(ctx.fact('currency') or '') or 'uzs'
+    reads = [derive.read(value, ctx.locale) for value in given]
+    marks = {(found.prefix, ' '.join(word for word in found.unit.split() if derive._money(word)))
+             for found in reads if found is not None}
+    if not reads or len(marks) != 1 or any(found is None or found.money != paper for found in reads):
+        return lambda figure: (figure, '')
+    prefix, unit = marks.pop()
+
+    def mark(figure):
+        found = derive.read(figure, ctx.locale)
+        if found is None or found.money or found.unit or found.prefix or not (prefix or unit):
+            return figure, ''
+        # Written as derive writes a prefix: a sign touches the number ("$420,000"), a code stands apart.
+        joint = '' if prefix in ('$', '€', '£', '₽') else ' '
+        return (f'{prefix}{joint}{figure.strip()}' if prefix else figure), unit
+    return mark
 
 
 def _figure_markup(ctx, figure, unit, style, small):
@@ -255,6 +290,9 @@ def key_figures(ctx, place):
     for label, figure, unit, note, from_table in figures:
         if len(cells) == count:
             break
+        if from_table and unit and not _fits(ctx, figure, unit, figure_style, unit_style, width):
+            # The currency put on a code-made total is the first thing to go when the box is narrow.
+            unit = ''
         if from_table and not _fits(ctx, figure, unit, figure_style, unit_style, width):
             # A figure that does not fit its box is left out, never shrunk: a smaller figure reads as a smaller one.
             continue

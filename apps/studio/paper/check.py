@@ -298,7 +298,7 @@ def expect_for(artifact, content, *, entry, template, locale, pages, cues=frozen
     alone (a test's answer key): its fill is not judged.
     """
     from . import page as sheet
-    from .ctx import Ctx, _has_text, holds, places
+    from .ctx import Ctx, any_part_holds, holds, places
     raw = template
     metadata = artifact.get('metadata') or {}
     locale = locale if locale in LOCALES else 'en'
@@ -321,9 +321,7 @@ def expect_for(artifact, content, *, entry, template, locale, pages, cues=frozen
                 facts += [piece.strip() for line in value.split('\n') for piece in line.split('|')
                           if piece.strip()] if '|' in value else [value]
         key = _label_key(place, labels)
-        any_part = (place.params or {}).get('any_part')
-        if isinstance(any_part, list) and not any(_has_text(ctx.section(part_id)) for part_id in any_part
-                                                  if isinstance(part_id, str)):
+        if not any_part_holds(ctx, place.params):
             # A chapter word over optional parts is drawn only when one of them has text (the heading block's
             # any_part): a two-page business plan has no operations chapter to look for.
             key = None

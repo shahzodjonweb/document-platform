@@ -162,12 +162,17 @@ def test_it_is_not_an_editor_flag_and_the_web_is_not_told():
 
 
 @pytest.mark.parametrize('lang', ['en', 'uz', 'ru'])
-def test_the_page_is_in_every_language(lang):
+def test_the_page_is_in_every_language(lang, monkeypatch):
     from operations.i18n import CATALOGS
+    # Every entry is ready since N2b, so the test paper is held a draft here for the page to show both badges.
+    entries, templates, index = copy.deepcopy(catalogue.read())
+    entries['pdf.test']['status'] = 'draft'
+    made = catalogue.build(entries, templates, index)
+    monkeypatch.setattr(catalogue, '_catalogue', lambda: made)
     client, _ = staff_client('Operations')
     page = client.get(f'/ops/categories?lang={lang}')
     assert page.status_code == 200
     for label in ('categories_desc', 'categories_on', 'categories_switch_note', 'categories_service_pdf',
-                  'categories_status_draft', 'save_changes'):
+                  'categories_status_draft', 'categories_status_ready', 'save_changes'):
         assert CATALOGS[lang][label] in page.content.decode(), label
     assert categories.get('pdf.xat.ariza').label(lang) in page.content.decode()

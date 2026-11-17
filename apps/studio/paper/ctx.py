@@ -437,6 +437,18 @@ def _has_text(section):
                for item in section.get('items') or [])
 
 
+def any_part_holds(ctx, params):
+    """Whether a placement's `any_part` lets it draw: no such list, or one of its parts has text.
+
+    A chapter word over several optional parts (which a single `when` cannot
+    say) is drawn only then; the heading block and the checker both ask here,
+    so what is drawn and what is looked for never part ways.
+    """
+    any_part = (params or {}).get('any_part')
+    return not isinstance(any_part, list) or any(_has_text(ctx.section(part_id)) for part_id in any_part
+                                                 if isinstance(part_id, str))
+
+
 def holds(when, ctx, place=None):
     """Whether a placement's `when` holds (architecture 6.3); a placement without one always does.
 

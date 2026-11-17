@@ -22,7 +22,7 @@
    "payment_terms": "50% oldindan, qolgani o‘rnatilgandan keyin",
    "warranty": "3 yil",
    "validity": "30 kun",
-   "discount": "40 dan ortiq partaga 5%",
+   "discount": "200 dan ortiq partaga 5%",
    "signer_position": "Direktor",
    "signer_name": "Sherzod Qodirov",
    "contact_person": "Feruza Xolmatova, +998 90 111 22 34"
@@ -154,7 +154,7 @@
    "payment_terms": "50% предоплата, остаток после сборки",
    "warranty": "3 года",
    "validity": "30 дней",
-   "discount": "5% при заказе более 40 парт",
+   "discount": "5% при заказе более 200 парт",
    "signer_position": "Директор",
    "signer_name": "Шерзод Кодиров",
    "contact_person": "Феруза Холматова, +998 90 111 22 34"
@@ -286,7 +286,7 @@
    "payment_terms": "50% in advance, the rest after assembly",
    "warranty": "3 years",
    "validity": "30 days",
-   "discount": "5% on more than 40 desks",
+   "discount": "5% on more than 200 desks",
    "signer_position": "Director",
    "signer_name": "Sherzod Qodirov",
    "contact_person": "Feruza Xolmatova, +998 90 111 22 34"

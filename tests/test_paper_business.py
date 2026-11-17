@@ -338,7 +338,8 @@ def test_key_figures_from_facts_and_a_complete_total_only():
     ctx = context('business_biznes_reja', [dict(investment, items=investment['items'] + [total])],
                   facts={'own_funds': '120 mln so‘m'})
     found = texts(business.key_figures(ctx, place(ctx, 'key_figures', 'summary_figures', params=params)))
-    assert found == ['Umumiy investitsiya', '270 000 000', 'O‘z mablag‘i', '120 mln so‘m']
+    # The bare total is in the paper's currency (derive's rule), which the card beside it names: it says so too.
+    assert found == ['Umumiy investitsiya', '270 000 000 so‘m', 'O‘z mablag‘i', '120 mln so‘m']
     named = dict(total, total='named', label='Jami (ko‘rsatilgan moddalar)')
     ctx = context('business_biznes_reja', [dict(investment, items=investment['items'] + [named])],
                   facts={'own_funds': '120 mln so‘m'})

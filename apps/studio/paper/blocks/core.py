@@ -45,7 +45,7 @@ from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.platypus import Flowable, Paragraph, Spacer, Table, TableStyle
 from reportlab.platypus.flowables import PageBreakIfNotEmpty
 
-from ..ctx import INK, _has_text
+from ..ctx import INK, any_part_holds
 from ..registry import block
 from ..text import MM
 
@@ -646,8 +646,7 @@ def heading(ctx, place):
     word over several optional parts, which a single `when` cannot say).
     """
     params = _params(place)
-    if isinstance(params.get('any_part'), list) and not any(
-            _has_text(ctx.section(part_id)) for part_id in params['any_part'] if isinstance(part_id, str)):
+    if not any_part_holds(ctx, params):
         return []
     level = _int(params.get('level'), _int((place.part or {}).get('level'), 1), 1, 3)
     text = _word(ctx, params['label']) if params.get('label') else ctx.heading(place.part, place.section)
