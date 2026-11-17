@@ -757,6 +757,9 @@ def _call(config,data,feature_id,idempotency_key,*,token_limit,span=None,deadlin
     first,last=span or (0,len(data['content']['sections']))
     expected=data['content']['sections'][first:last]
     stage=data.get('_stage') or ('outline' if prompting.is_outline(data,feature_id) else 'revision' if data.get('revision') else 'generate')
+    # A category paper's ids are its catalogue's, so every span of one returns exactly the ids it was given, in order:
+    # renamed by position, a reordered span filed one part's text (or the facts) under another's id, unchecked.
+    paper=span is not None and category_paper(data)
 
     def validate(content):
         # A change's edit plan travels with its result (and its checkpoint), but
@@ -773,7 +776,7 @@ def _call(config,data,feature_id,idempotency_key,*,token_limit,span=None,deadlin
         counts=dict(got=len(content['sections']),want=len(expected))
         if len(content['sections'])!=len(expected):raise _Rejected('section_count',**counts)
         ids=[s['id'] for s in content['sections']]
-        if prompting.selected(data) or stage=='outline' or span is None:
+        if prompting.selected(data) or stage=='outline' or span is None or paper:
             if ids!=[s['id'] for s in expected]:raise _Rejected('section_identity',**counts)
         elif len(set(ids))!=len(ids):raise _Rejected('section_identity',**counts)
         for ref in content['citations']:

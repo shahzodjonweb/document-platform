@@ -1547,3 +1547,7 @@ tests/test_category_finish_pdf.py::test_a_lessons_rejected_teacher_is_not_named_
 tests/test_category_facts.py::test_a_word_no_names_check_read_is_never_read_back_as_the_customers
 tests/test_category_facts.py::test_a_guarded_papers_topic_and_a_translated_reference_give_back_only_their_figures
 tests/test_category_finish_pdf.py::test_a_translated_course_papers_invented_publisher_never_becomes_its_university_after_a_change
+
+# Stage-2 re-audit, spans: every call of a category paper written in several returns exactly its ids in order, so a
+# reordered span is retried, never filed under another part's id and finished unchecked
+tests/test_category_generation_pdf.py::test_a_paper_written_in_several_calls_never_takes_a_reordered_span_by_position

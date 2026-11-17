@@ -456,3 +456,63 @@ def test_top_up_with_only_changes_only_those_sections(settings, monkeypatch):
     assert filling.top_up({'model': 'test-model', 'api_key': 'offline'}, data, content, 3, 2, job=job,
                           only=set(), rules='x') is content
     assert sent == []
+
+
+# ---------------------------------------------------------------- stage-2 re-audit: every span's ids
+
+
+SPANNED = ('Kurs ishi: Mehnat bozorida yoshlar bandligi. Talaba: Yusufbekova Gulshoda, Toshkent davlat iqtisodiyot '
+           'universiteti, 3-kurs.')
+
+
+def spanned_section(section_id):
+    made = {'id': section_id, 'heading': f'H {section_id}', 'body': f'Matn {section_id} haqida umumiy fikr.',
+            'layout': 'text', 'items': []}
+    if section_id == 'facts':
+        made.update(body='', layout='list', items=[
+            {'label': 'student_name', 'text': 'Mirzaxo‘jayev Zafar Baxtiyorovich', 'value': ''}])
+    if section_id in ('references', 'proposals'):
+        made.update(body='', layout='list', items=[
+            {'label': '', 'text': 'Xudoyberdiyev B. Mehnat iqtisodiyoti asoslari. – Toshkent: Fan.', 'value': ''}
+            if section_id == 'references' else {'label': '', 'text': 'Yoshlar uchun kurslar ochish.', 'value': ''}])
+    return made
+
+
+def test_a_paper_written_in_several_calls_never_takes_a_reordered_span_by_position(monkeypatch):
+    from apps.studio.categories import skeleton
+    from tests.test_provider_contract import CONFIG
+    from tests.test_provider_optimization import transport
+    for name in ('start_attempt', 'received', 'finish'):
+        monkeypatch.setattr(f'apps.studio.provider_usage.{name}', lambda *args, **kwargs: None)
+    entry = catalogue.get('pdf.kurs_ishi')
+    data = {'output_locale': 'uz', 'prompt': SPANNED, 'source_text': '', 'excerpts': [], 'output_format': 'pdf',
+            'options': {'question_count': 0, 'length': 25, 'requested_pages': None, 'image_cap': 0,
+                        'category': entry.id}}
+    data['content'] = {'title': 'Untitled document', 'questions': [], 'citations': [],
+                       'sections': skeleton.seed(entry, 25, skeleton.cues(entry, SPANNED, has_files=False))}
+    assert len(skeleton.spans(data)) == 2, 'the paper is written in two calls'
+    swapped = set()
+
+    def reply(body, number):
+        sent = json.loads(body['input'] if isinstance(body['input'], str) else body['input'][0]['content'])
+        ids = [section['id'] for section in sent['outline']['sections']]
+        sections = [spanned_section(section_id) for section_id in ids]
+        for first, second in (('facts', 'relevance'), ('proposals', 'references')):
+            if first in ids and second in ids and (first, second) not in swapped:
+                swapped.add((first, second))  # the first try of each span comes back reordered, the retry whole
+                one, two = ids.index(first), ids.index(second)
+                sections[one], sections[two] = sections[two], sections[one]
+        full = {'title': 'Kurs ishi', 'answer_supported': True, 'sections': sections, 'citations': [],
+                'questions': []}
+        return {key: value for key, value in full.items() if key in body['text']['format']['schema']['properties']}
+    sent = transport(monkeypatch, reply)
+    merged, _ = provider.generate(CONFIG, data, DOCUMENT, 'not-a-job', token_limit=200_000)
+    seeded = [section['id'] for section in data['content']['sections']]
+    assert [section['id'] for section in merged['sections']] == seeded
+    assert len(sent) == 4 and sum(isinstance(body['input'], list) for body in sent) == 2, 'one retry a span'
+    facts_section = next(section for section in merged['sections'] if section['id'] == 'facts')
+    relevance = next(section for section in merged['sections'] if section['id'] == 'relevance')
+    assert facts_section['items'] and not relevance['items']
+    made, _ = finish.apply(data, merged)
+    flat = json.dumps(made, ensure_ascii=False)
+    assert 'student_name —' not in flat and 'Mirzaxo‘jayev' not in flat and 'Xudoyberdiyev' not in flat
