@@ -645,6 +645,21 @@ CASES = [
     body('names-a-rare-common-word-opening-a-sentence-ru-accepted_false_blank', ACCEPTED, 'pdf.biz.hisobot', REPORT_RU,
          'ru', 'work_done', 'Аутсорсинг бухгалтерии снизил расходы.', gone=('Аутсорсинг',),
          pair='names-lone-firm-opening-a-sentence-ru-blank'),
+    # A table's thing the lexicon lacks is held as a name (round 3 of the convergence, should): growing the English
+    # lexicon from the one real word list on this machine (Tesseract's) also made fresh surnames that are words read
+    # as common ("Whitehead", "Nightingale", "Valiant"), a leak, so the cell's blank is the price; no Uzbek or Russian
+    # list is here.
+    cell('names-a-things-name-the-lexicon-lacks-in-a-cell-ru-to-en-accepted_false_blank', ACCEPTED,
+         'pdf.biz.biznes_reja', PLAN_RU_EN, 'en', 'finance_costs', 'Tripod', row=('', '5 million soums'),
+         gone=('Tripod',), translated=True, pair='names-a-surname-that-is-a-rare-word-en-blank'),
+    gp('names-a-surname-that-is-a-rare-word-en-blank', BLANK, EN_NONE, 'en', 'Whitehead supervised the workshop.',
+       gone=('Whitehead',)),
+    cell('names-a-things-name-the-lexicon-lacks-in-a-cell-ru-accepted_false_blank', ACCEPTED, 'pdf.biz.biznes_reja',
+         PLAN_RU, 'ru', 'finance_costs', 'Штатив', row=('', '5 млн сумов'), gone=('Штатив',),
+         pair='names-lone-firm-opening-a-sentence-ru-blank'),
+    cell('names-a-things-name-the-lexicon-lacks-in-a-cell-uz-accepted_false_blank', ACCEPTED, 'pdf.biz.biznes_reja',
+         PLAN_UZ, 'uz', 'finance_costs', 'Softboks', row=('', '5 mln so‘m'), gone=('Softboks',),
+         pair='names-lone-brand-in-a-competitor-cell-uz-blank'),
     gp('names-a-word-of-the-grown-lexicon-opening-a-sentence-uz-keep', KEEP, PLAN_UZ, 'uz',
        'Pudratchi ishni o‘z vaqtida bajaradi.'),
     body('names-a-derived-noun-opening-a-sentence-ru-keep', KEEP, 'pdf.biz.hisobot', REPORT_RU, 'ru', 'work_done',
