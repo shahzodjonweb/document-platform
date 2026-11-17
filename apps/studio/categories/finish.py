@@ -684,12 +684,16 @@ def _fact(field, value, trusted, translated, verified, *, led=False):
         if base and base != BLANK and facts.derived(value, base):
             return _cut(value, field.get('max_chars')), False
         return None, True
+    # A class letter the customer never wrote ("7-«B» sinf" for their "7-sinf") goes, and the rest of the value stays.
+    lettered = False
+    if kind in ('person', 'org', 'place', 'line', 'list'):
+        value, lettered = facts.without_class_letters(value, trusted)
     if not facts.supported(value, kind, trusted, translated=translated, strict=True,
                            words=led or kind != 'text'):
         return None, True
     if led and kind == 'text' and ground_paper(value, trusted, translated=translated)[1]:
         return None, True
-    return _cut(value, field.get('max_chars')), False
+    return _cut(value, field.get('max_chars')), lettered
 
 
 def _facts(entry, section, trusted, translated, locale, codes):

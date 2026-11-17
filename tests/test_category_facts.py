@@ -1031,3 +1031,28 @@ def test_the_customers_own_handle_is_kept_however_they_gave_it():
     assert numbers.values('@aziz_2024 kanaliga yozing') == set(), 'a handle\'s digits are no figure'
     assert ground('Muallif: S.Xolmatov, sh.Chilonzor', trusting('S.Xolmatov, sh.Chilonzor')) == (
         'Muallif: S.Xolmatov, sh.Chilonzor', []), 'an initial or an abbreviation before a name is no link'
+
+
+# ---------------------------------------------------------------- class letters (stage-2 re-audit)
+
+
+@pytest.mark.parametrize('value, repaired', [
+    ('7-«B» sinf', '7-sinf'), ('7-B sinf', '7-sinf'), ('7 «B» sinf', '7 sinf'), ('Grade 7B', 'Grade 7'),
+    ('7Б класс', '7 класс'),
+], ids=['uz-quoted', 'uz-hyphen', 'uz-spaced', 'en', 'ru'])
+def test_a_class_letter_the_customer_never_wrote_is_not_theirs(value, repaired):
+    known = trusting('7-sinf matematika fanidan dars ishlanmasi yozing.')
+    assert not supported(value, 'line', known)
+    assert facts.without_class_letters(value, known) == (repaired, True)
+    assert facts.without_class_letters(repaired, known) == (repaired, False)
+
+
+@pytest.mark.parametrize('brief', ['7 «Б» класс, математика', '7b sinf matematika', '7-«B» sinf uchun dars'])
+def test_the_customers_own_class_letter_stays_in_either_alphabet(brief):
+    assert supported('7-«B» sinf', 'line', trusting(brief))
+    assert facts.without_class_letters('7-«B» sinf', trusting(brief)) == ('7-«B» sinf', False)
+
+
+def test_an_initial_after_a_number_is_no_class_letter():
+    known = trusting('7-sinf rahbari Karimova Aziza')
+    assert facts.without_class_letters('7-sinf rahbari A. Karimova', known) == ('7-sinf rahbari A. Karimova', False)

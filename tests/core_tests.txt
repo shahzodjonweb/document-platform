@@ -1502,3 +1502,9 @@ tests/test_category_facts.py::test_a_handle_or_a_site_the_customer_never_gave_is
 tests/test_category_facts.py::test_the_customers_own_handle_is_kept_however_they_gave_it
 tests/test_category_finish_pdf.py::test_a_cover_letters_invented_handle_and_site_are_not_kept_or_written
 tests/test_category_finish_pdf.py::test_an_offers_invented_website_is_not_kept_and_the_customers_is
+
+# Stage-2 re-audit, class letters: a class letter the customer never wrote after the same number ("7-«B» sinf" for
+# their "7-sinf") goes from a fact and the rest stays; their own letter stays in either alphabet
+tests/test_category_facts.py::test_a_class_letter_the_customer_never_wrote_is_not_theirs[uz-quoted]
+tests/test_category_facts.py::test_an_initial_after_a_number_is_no_class_letter
+tests/test_category_finish_pdf.py::test_a_lessons_invented_class_letter_goes_and_the_customers_class_stays

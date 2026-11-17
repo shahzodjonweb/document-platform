@@ -511,6 +511,29 @@ def _strip_addresses(text, trusted):
     return LINK.sub(' ', text), whole
 
 
+# A class's letter after its number: "7-«B» sinf", "7-B", "7 «Б» класс", "Grade 7B". A single capital is no name the
+# names check reads, so an invented parallel ("7-«B» sinf" for the customer's "7-sinf") is held here; never an
+# initial ("7 A. Karimova") or a word ("7 Apples").
+CLASS_LETTER = re.compile(r"""(?<!\d)(\d{1,2})([ \u00a0]?-?[ \u00a0]?[«"“'‘]?)([A-ZА-ЯЁ])([»"”'’]?)(?![^\W\d_]|\.)""")
+
+
+def _class_letters(text, trusted):
+    """The class letters of `text` the customer never wrote after the same number, as match objects."""
+    said = fold(trusted.said)
+    return [match for match in CLASS_LETTER.finditer(text)
+            if not re.search(rf"(?<!\d){match.group(1)}\W{{0,4}}{re.escape(fold(match.group(3)))}(?![^\W\d_])", said)]
+
+
+def without_class_letters(text, trusted):
+    """(`text` without the class letters the customer never wrote, whether any was taken): "7-«B» sinf" is "7-sinf"."""
+    found = _class_letters(text, trusted)
+    for match in reversed(found):
+        joint = '-' if '-' in match.group(2) else ''
+        rest = text[match.end():]
+        text = text[:match.start(2)] + joint + (rest.lstrip(' \u00a0') if joint else rest)
+    return text, bool(found)
+
+
 def _names_known(text, trusted, translated=False):
     """Whether every capitalised word of two letters or more is the customer's or one no one's facts are in."""
     for match in WORD.finditer(text):
@@ -559,6 +582,8 @@ def supported(value, kind, trusted, *, translated=False, strict=False, words=Fal
         return False
     read = numbers.found(rest, words=words, uzbek_cyrillic=False)
     if not all(numbers.known(number, trusted.values) for number in read):
+        return False
+    if kind in ('person', 'org', 'place', 'line') and _class_letters(rest, trusted):
         return False
     if kind in ('person', 'org', 'place', 'line') and (strict or not translated or kind == 'person'):
         return _names_known(rest, trusted, translated)

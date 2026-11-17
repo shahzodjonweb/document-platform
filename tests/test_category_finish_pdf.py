@@ -1005,3 +1005,17 @@ def test_an_offers_invented_website_is_not_kept_and_the_customers_is():
         cta={'body': 'Buyurtma uchun: @oqtosh_mebel yoki @oqtoshmebel.'}))
     assert 'seller_website' not in facts_of(made) and 'fact:seller_website' in codes
     assert section_of(made, 'cta')['body'] == 'Buyurtma uchun: @oqtosh_mebel yoki ____.'
+
+
+# ---------------------------------------------------------------- stage-2 re-audit: class letters
+
+
+def test_a_lessons_invented_class_letter_goes_and_the_customers_class_stays():
+    lesson = catalogue.get('pdf.dars_ishlanmasi')
+    data = draft(lesson, prompt=LESSON_UZ, length=2)
+    made, warnings, codes = finished(data, answer(data, facts={'items': [
+        {'label': 'grade', 'text': '7-«B» sinf'}, {'label': 'subject', 'text': 'Matematika'}]}))
+    assert facts_of(made)['grade'] == '7-sinf' and codes == ['fact:grade'] and warnings == [finish.FACTS_BLANKED]
+    data = draft(lesson, prompt='7 «Б» класс, математика, урок на тему сложение дробей.', locale='uz', length=2)
+    made, _, codes = finished(data, answer(data, facts={'items': [{'label': 'grade', 'text': '7-«B» sinf'}]}))
+    assert facts_of(made)['grade'] == '7-«B» sinf' and codes == []
