@@ -1565,3 +1565,8 @@ tests/test_paper_study.py::test_an_articles_test_is_keyed_by_the_options_text_in
 # Stage-2 re-audit, switch off: the bot reads the switch row before the catalogue, so a fresh bot with the switch off
 # answers every AI PDF and AI Slides tap with today's question and never imports the catalogue
 tests/test_bot_categories.py::test_with_the_switch_off_a_fresh_bot_never_imports_the_catalogue
+
+# Stage-2 re-audit, a fixed paper in the wrong language: its wrong-language parts alone are sent back once, then
+# grounded as any answer; a CV's deterministic finish still sends nothing back
+tests/test_category_generation_pdf.py::test_a_fixed_paper_answered_in_the_wrong_language_is_sent_back_once_for_that
+tests/test_category_generation_pdf.py::test_a_fixed_document_sends_back_nothing_it_was_not_asked_to

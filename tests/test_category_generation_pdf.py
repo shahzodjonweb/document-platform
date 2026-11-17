@@ -558,3 +558,57 @@ def test_a_paper_with_an_attached_file_is_never_retried_or_failed_over_citations
     assert job.status == 'succeeded', job.error_code
     assert len(sent) == 1 and 'citations' not in sent[0]['text']['format']['schema']['properties']
     assert data['content']['citations'] == []
+
+
+# ---------------------------------------------------------------- stage-2 re-audit: a fixed paper in the wrong language
+
+
+RUSSIAN_REQUEST = ('По семейным обстоятельствам я не смогу посещать занятия в течение недели. Прошу освободить меня '
+                   'от занятий на указанный период. Обязуюсь самостоятельно изучить пропущенный материал.')
+UZBEK_REQUEST = 'Sizdan 10-dekabrdan boshlab 5 kunlik mehnat ta’tili berishingizni so‘rayman.'
+
+
+class Translating(Model):
+    """The model of a fixed paper that wrote a part in Russian and rewrites it in Uzbek when sent back."""
+
+    def __call__(self, config, data, feature_id, request_id, **kwargs):
+        if data.get('_stage') == 'repair':
+            self.calls.append(['repair', *data['revision']['selected_section_ids']])
+            sections = [{**copy.deepcopy(section), 'body': UZBEK_REQUEST} for section in data['content']['sections']
+                        if section['id'] in data['revision']['selected_section_ids']]
+            return {'title': 'Xat', 'answer_supported': True, 'sections': sections, 'questions': [],
+                    'citations': []}, USAGE
+        return super().__call__(config, data, feature_id, request_id, **kwargs)
+
+
+def test_a_fixed_paper_answered_in_the_wrong_language_is_sent_back_once_for_that(settings, monkeypatch):
+    who = live(settings)
+    ready_with(monkeypatch)
+    assert catalogue.get(ARIZA).raw['quality'] == 'fixed'
+    model = Translating(monkeypatch, **{**ariza_answer(), 'request': {'body': RUSSIAN_REQUEST}})
+    draft = create_draft(who, {'feature_id': catalogue.get(ARIZA).feature_id, 'prompt': APPLICATION,
+                               'output_locale': 'uz', 'options': {'category': ARIZA}})
+    job, data = made(who, draft)
+    assert job.status == 'succeeded', job.error_code
+    assert model.calls[-1] == ['repair', 'request'], 'only the part in the wrong language goes back, once'
+    request = next(section for section in data['content']['sections'] if section['id'] == 'request')
+    assert request['body'] == UZBEK_REQUEST
+
+
+def test_a_fixed_document_sends_back_nothing_it_was_not_asked_to(monkeypatch):
+    from apps.studio import quality
+    content = {'title': 'Ariza', 'questions': [], 'citations': [], 'sections': [
+        {'id': 's1', 'heading': '', 'body': RUSSIAN_REQUEST}, {'id': 's2', 'heading': '', 'body': ''}]}
+    data = {'output_locale': 'uz', 'output_format': 'pdf', 'prompt': APPLICATION, 'content': content}
+    sent = []
+
+    def recorded(config, data, content, report, **kwargs):
+        sent.append(report.to_repair())
+        return content, 'failed'
+    monkeypatch.setattr(quality, 'repair', recorded)
+    # A CV's deterministic finish (no repair codes): nothing goes back, the empty section included.
+    _, summary = quality.finish({}, data, content, job=None, deterministic=True)
+    assert sent == [] and summary['repair'] is None and summary['left'].get('wrong_language') == 1
+    # A category paper's: only its wrong-language section, never the empty one.
+    _, summary = quality.finish({}, data, content, job=None, deterministic=True, repair_codes=('wrong_language',))
+    assert sent == [['s1']] and summary['repair'] == 'failed'

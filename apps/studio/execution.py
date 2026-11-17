@@ -296,6 +296,9 @@ def execute_generation(job,output_dir):
             if entry is not None:
                 from .categories import finish as category_finish
                 spared['exempt']=category_finish.exempt(data)
+                # A category paper answered in the wrong language is sent back for that once, even when its entry is
+                # 'fixed': translation adds nothing, and category_finish.apply grounds the result after quality.
+                if not cv and entry.service=='pdf':spared['repair_codes']=('wrong_language',)
             content,_=quality.finish(cfg,data,content,job=job,deadline=deadline,plan=raw.get('edit_plan'),deterministic=fixed,**spared)
             # Bounds can also change while the provider is running. Deliver
             # only a result that still preserves everything outside its scope,
