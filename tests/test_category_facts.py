@@ -857,12 +857,27 @@ def test_every_number_written_in_words_reads_as_itself():
 
 
 @pytest.mark.parametrize('text', [
-    'yigirma birinchi asr ko‘nikmalari', 'the twenty-first century', 'o‘n beshinchi mayda', 'o‘ttiz ikkinchi maktab',
-    'в двадцать первом веке', 'the twenty-third of May',
+    'yigirma birinchi asr ko‘nikmalari', 'the twenty-first century', 'o‘ttiz ikkinchi maktab', 'в двадцать первом веке',
 ])
 def test_the_tens_of_an_ordinal_are_never_read_as_a_count(text):
     assert read(text) == []
     assert ground_paper_of(text) == (text, [])
+
+
+# An ordinal before a month is a date's day, never a count of its tens (round 4: "o‘n beshinchi mayda" passed for the
+# customer's "12-may"); one before a placing or a run of years is a figure.
+@pytest.mark.parametrize('text, found', [
+    ('o‘n beshinchi mayda', [('d:15.5', 'o‘n beshinchi mayda')]),
+    ('the twenty-third of May', [('d:23.5', 'twenty-third of May')]),
+    ('пятнадцатого мая 2025 года', [('d:15.5', 'пятнадцатого мая 2025 года')]),
+    ('olimpiadada ikkinchi o‘rinni egalladi', [('2', 'ikkinchi')]),
+    ('I won first place', [('1', 'first')]), ('In the first place, I won', []),
+    ('for the fifth consecutive year', [('5', 'fifth')]), ('Пятый год подряд', [('5', 'Пятый')]),
+    ('over a decade of experience', [('10', 'a decade')]), ('decades of experience', []),
+], ids=['uz-date', 'en-date', 'ru-date-with-year', 'uz-place', 'en-place', 'en-firstly', 'en-years-running',
+        'ru-years-running', 'a-decade', 'decades'])
+def test_an_ordinal_that_dates_places_or_counts_years_is_read_as_its_figure(text, found):
+    assert read(text) == found
 
 
 @pytest.mark.parametrize('brief, written, kept', [

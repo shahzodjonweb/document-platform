@@ -153,8 +153,9 @@ WORD_TABLES = [_alternation(RU_WORDS + EN_WORDS), _alternation(UZ_WORDS)]
 
 # Cardinal numbers written as words, read on both sides when `found` is asked for them (`words`): "five years",
 # "twelve people", "two hundred clients", "besh yuz million so‘m", "yigirma foiz", "более пяти лет". A model asked
-# never to invent a figure still writes one in words, which the digit reading never saw. Only cardinals are read,
-# never an ordinal ("ikkinchi bob", "the second stage", nor the tens before one: "yigirma birinchi asr") nor "both"
+# never to invent a figure still writes one in words, which the digit reading never saw. Only cardinals are read
+# here, never an ordinal that orders ("ikkinchi bob", "the second stage", nor the tens before one: "yigirma birinchi
+# asr"; one that places, counts a run or dates is read on its own: `ORDINAL_PLACE`, `ORDINAL_DATE`) nor "both"
 # or "ikkala", and the words that are also ordinary words are read only where they must be numbers: "one", "bir",
 # "один" and "a" only before a multiplier, after a ten or after a scale ("a hundred", "one million", "twenty-one",
 # "bir yarim", "девять тысяч один"), a bare Uzbek "yuz" or "ming" (also a face, and "yuz berdi", it happened) only
@@ -162,8 +163,8 @@ WORD_TABLES = [_alternation(RU_WORDS + EN_WORDS), _alternation(UZ_WORDS)]
 # as "yuzdan ortiq" (`_bare`), any other scale word alone only in the Russian forms that cannot mean "thousands"
 # ("тысяча рублей"), and "семью" never (also "family"). The common spoken forms are read too: an Uzbek count's case
 # endings ("ellikdan ortiq"), a Russian count fused to what it counts ("пятилетний"), half a scale ("yarim milliard",
-# "полмиллиона") and how many times over ("doubled", "вдвое"); "twice", "half", "decade" and the vague "o‘nlab",
-# "hundreds" are not. Each word is a role and a value; a run of them side by side is one number (`_Reader.spelled`).
+# "полмиллиона"), how many times over ("doubled", "вдвое") and "a decade"; "twice", "half" and the vague "o‘nlab",
+# "hundreds", "decades" are not. An ordinal is read only where it is a figure (`ORDINAL_PLACE`, `ORDINAL_DATE`). Each word is a role and a value; a run of them side by side is one number (`_Reader.spelled`).
 # The endings an Uzbek count takes as the last word of a number: "beshta", "ellikdan ortiq", "yigirmaga yetadi",
 # "o‘ttiz birta", "ellikka yaqin", "o‘ngacha", "beshdagi", "ikkini"; never "-lab" (o‘nlab, yuzlab: tens, hundreds),
 # which names no figure.
@@ -190,6 +191,8 @@ SPELLED = (
     (r"eighteen", 'unit', 18), (r"nineteen", 'unit', 19), (r"twenty", 'tens', 20), (r"thirty", 'tens', 30),
     (r"forty", 'tens', 40), (r"fifty", 'tens', 50), (r"sixty", 'tens', 60), (r"seventy", 'tens', 70),
     (r"eighty", 'tens', 80), (r"ninety", 'tens', 90), (r"hundred", 'hundred', 100), (r"dozen", 'dozen', 12),
+    # "a decade" of experience is ten years, "two decades" twenty; a bare "decades" names no figure.
+    (r"decades?", 'dozen', 10),
     (r"thousand", 'scale', 3), (r"million", 'scale', 6), (r"billion", 'scale', 9), (r"trillion", 'scale', 12),
     (r"thirds?", 'fraction', 3), (r"and", 'and', 0),
     # How many times over: "doubled", "tripled", "fivefold"; "twice" and "double" are left, being ordinary words too.
@@ -282,6 +285,35 @@ YEAR_AFTER = re.compile(r"(?:[ \u00a0]*,)?[ \u00a0]+((?:19|20)\d{2})"
                         r"(?:[ \u00a0]*-?[ \u00a0]*(?:yil\w*|y\.|г\.|года|году|год))?(?![\d]|[.,]\d)", re.IGNORECASE)
 YEAR_BEFORE = re.compile(r"(?<![\d.,])((?:19|20)\d{2})[ \u00a0]*-?[ \u00a0]*(?:yil(?:ning|da|i)?|y\.)[ \u00a0,]*$",
                          re.IGNORECASE)
+# An ordinal is a figure where it places, counts a run or dates: "ikkinchi o‘rinni egalladi", "first place", "for the
+# fifth consecutive year", "пятый год подряд", "o‘n beshinchi mayda", "the fifteenth of May", "пятнадцатого мая".
+# Elsewhere it orders ("ikkinchi bob", "the twenty-first century", "my first internship") and is read as before.
+EN_ORDINALS = {'first': 1, 'second': 2, 'third': 3, 'fourth': 4, 'fifth': 5, 'sixth': 6, 'seventh': 7, 'eighth': 8,
+               'ninth': 9, 'tenth': 10, 'eleventh': 11, 'twelfth': 12, 'thirteenth': 13, 'fourteenth': 14,
+               'fifteenth': 15, 'sixteenth': 16, 'seventeenth': 17, 'eighteenth': 18, 'nineteenth': 19,
+               'twentieth': 20, 'thirtieth': 30}
+RU_ORDINALS = (('перв', 1), ('втор', 2), ('трет', 3), ('четв[её]рт', 4), ('пят', 5), ('шест', 6), ('седьм', 7),
+               ('восьм', 8), ('девят', 9), ('десят', 10), ('одиннадцат', 11), ('двенадцат', 12), ('тринадцат', 13),
+               ('четырнадцат', 14), ('пятнадцат', 15), ('шестнадцат', 16), ('семнадцат', 17), ('восемнадцат', 18),
+               ('девятнадцат', 19), ('двадцат', 20), ('тридцат', 30))
+RU_ORDINAL_ENDING = r"(?:ый|ой|ий|ая|ое|ого|ому|ом|ую|ые|ых|ым|ыми|ей|ья|ье|ьего|ьему|ьем|ью|ьи|ьих)"
+APOSTROPHE = "['‘’ʻʼ`´]"
+ORDINAL_WORD = (r"(?:(?:twenty|thirty)[ -])?(?:" + '|'.join(EN_ORDINALS) + ")"
+                r"|(?:(?:двадцать|тридцать)[ \u00a0])?(?:" + '|'.join(stem for stem, _ in RU_ORDINALS) + ")"
+                + RU_ORDINAL_ENDING +
+                r"|(?:(?:o" + APOSTROPHE + r"n|yigirma|o" + APOSTROPHE + r"ttiz)[ \u00a0])?[^\W\d_]+?i?nchi")
+GAP_ORDINAL = r"[ \u00a0]+"
+ORDINAL_PLACE = re.compile(
+    rf"(?<![^\W\d_])(?<!in the )({ORDINAL_WORD})(?=(?:{GAP_ORDINAL}(?:place|prize|position)s?"
+    rf"|{GAP_ORDINAL}(?:consecutive|straight|successive){GAP_ORDINAL}(?:year|time|season|month|quarter)s?"
+    rf"|{GAP_ORDINAL}(?:year|time|season)s?{GAP_ORDINAL}(?:in a row|running)"
+    rf"|{GAP_ORDINAL}мест\w*|{GAP_ORDINAL}(?:год|раз|сезон|месяц|квартал)\w*{GAP_ORDINAL}подряд"
+    rf"|{GAP_ORDINAL}(?:o{APOSTROPHE}rin|sovrin)\w*|{GAP_ORDINAL}(?:yil|marta|mavsum|chorak)\w*{GAP_ORDINAL}ketma-ket)"
+    rf"(?![^\W\d_]))"
+    rf"|(?<=ketma-ket )({ORDINAL_WORD})(?={GAP_ORDINAL}(?:yil|marta|mavsum|chorak)\w*(?![^\W\d_]))",
+    re.IGNORECASE)
+ORDINAL_DATE = re.compile(rf"(?<![^\W\d_])(?:the[ \u00a0]+)?({ORDINAL_WORD})(?:[ \u00a0]+of)?[ \u00a0]+" + MONTH,
+                          re.IGNORECASE)
 
 
 class Number(NamedTuple):
@@ -412,13 +444,14 @@ class _Reader:
     def read(self, words=False):
         # A paper's reading (`words`) also ties a written date's year to it (`dated`); a deck's reads as before.
         self.words = words
-        self._digits()
+        self._digits(words)
         if words:
+            self.ordinals()
             self.spelled()
         self.numbers.sort(key=lambda number: number.start)
         return self.numbers
 
-    def _digits(self):
+    def _digits(self, words=False):
         text = self.text
         for pattern, order in ((DMY, 'dmy'), (YMD, 'ymd')):
             for match in pattern.finditer(text):
@@ -466,6 +499,13 @@ class _Reader:
             needs = [{_date_key(day, month)} for day in days]
             self.add(*match.span(), 'date', _date_key(days[0], month), needs,
                      {str(int(day)) for day in days} | {_date_key(day, month) + '.?' for day in days})
+        if words:
+            # A day written as an ordinal, before the year beside it is read as a number of its own.
+            for match in ORDINAL_DATE.finditer(text):
+                value, month = _ordinal_value(match.group(1)), _month(match.group(2))
+                if value is None or month is None or not _valid(value, month) or not self.free(*match.span()):
+                    continue
+                self.dated(match.start(1), match.end(), str(value), month)
         for match in TIME.finditer(text):
             if not self.free(*match.span()):
                 continue
@@ -540,6 +580,15 @@ class _Reader:
         # As a numeric date's: the customer's tied year gives no other year its day and month ("d:12.5.?").
         self.add(start, end, 'date', key, [{f'{key}.{year}', f'{key}.?'}, {year}], {str(int(day))},
                  gives={key, f'{key}.{year}', year})
+
+    def ordinals(self):
+        """The ordinals that are figures as a placing or a run's count (`ORDINAL_PLACE`); a date's day is read with the
+        dates (`ORDINAL_DATE`, `_digits`)."""
+        for match in ORDINAL_PLACE.finditer(self.text):
+            group = 1 if match.group(1) is not None else 2
+            value = _ordinal_value(match.group(group))
+            if value is not None and self.free(*match.span(group)):
+                self.add(*match.span(group), 'spelled', str(value), [{str(value)}])
 
     def spelled(self):
         """The cardinal numbers written as words (`SPELLED`), outside every number and address already read.
@@ -727,6 +776,30 @@ def _spelled_role(word, cyrillic=True):
     if match is None and cyrillic and re.search('[а-яёўқғҳ]', word):
         match = SPELLED_TABLE.fullmatch(normalised(to_latin(word)).lower())
     return SPELLED_ROLES[match.lastgroup] if match is not None else None
+
+def _ordinal_value(words):
+    """The value of an ordinal written as words (`ORDINAL_WORD`): "fifth" 5, "twenty-first" 21, "двадцать первого"
+    21, "o‘n beshinchi" 15, "ikkinchi" 2; None for a word that is no ordinal ("kechinchi")."""
+    parts = re.split(r"[ \u00a0-]+", normalised(words).casefold())
+    total = 0
+    for part in parts[:-1]:
+        role = _spelled_role(part, False)
+        if role is None or role[0] not in ('tens', 'unit'):
+            return None
+        total += int(role[1])
+    last = parts[-1]
+    if last in EN_ORDINALS:
+        return total + EN_ORDINALS[last]
+    for stem, value in RU_ORDINALS:
+        if re.fullmatch(stem + RU_ORDINAL_ENDING, last):
+            return total + value
+    # "beshinchi" is besh and -inchi, "ikkinchi" ikki and -nchi.
+    for ending in ('inchi', 'nchi'):
+        role = _spelled_role(last[:-len(ending)], False) if last.endswith(ending) else None
+        if role is not None and role[0] in ('tens', 'unit', 'one'):
+            return total + int(role[1])
+    return None
+
 
 def _bare(text, word, role, stop, after):
     """Whether a multiplier with no count before it is a number: "a hundred thousand", "yuz ellik", "ming besh yuz".
