@@ -71,7 +71,8 @@ More limits, said as plainly:
   included). A given name, a surname, a place or a brand of words/names.txt
   is never a common word, even one that is also a word ("Umid", "Grace",
   "Надежда"): a false blank where it is the word ("Umid qilamanki"), never an
-  invention. A common word the lexicon lacks is held too: a false blank
+  invention. Its sections are read by the paper's language, so an English
+  given name refuses no Uzbek word in an Uzbek paper ("Joy ijarasi"). A common word the lexicon lacks is held too: a false blank
   ("Sinergiya ..."), counted on held-out prose in the commit that grew it. A
   name that is an everyday word and is left out of names.txt ("Yangi",
   "Xalq", "Hikmat") still passes alone.
