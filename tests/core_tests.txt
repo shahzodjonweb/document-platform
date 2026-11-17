@@ -1276,3 +1276,9 @@ tests/test_paper_study.py::test_the_handouts_answers_are_on_a_sheet_of_their_own
 tests/test_paper_study.py::test_the_key_ends_with_the_papers_overall_maximum
 tests/test_paper_study.py::test_passage_and_written_questions_get_the_closed_instruction_and_both_part_headings
 tests/test_paper_study.py::test_passage_questions_without_a_passage_get_no_reference_line
+# The study papers' second review fixes (R3b): a part heading and the answer sheet's head go over a page's foot with
+# what they head, and a passage too tall for the page left starts where it stands.
+tests/test_paper_study.py::test_a_part_heading_near_a_page_foot_goes_over_with_its_first_question[answer_sheet]
+tests/test_paper_study.py::test_the_answer_sheets_head_near_a_page_foot_goes_over_with_its_grid
+tests/test_paper_study.py::test_a_passage_with_its_question_too_tall_for_the_page_left_starts_where_it_stands
+tests/test_paper_study.py::test_a_passage_longer_than_a_page_flows_with_its_rule_and_its_title_stays_with_it

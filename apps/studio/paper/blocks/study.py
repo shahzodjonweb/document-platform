@@ -34,7 +34,7 @@ from xml.sax.saxutils import escape
 
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.pdfbase.pdfmetrics import stringWidth
-from reportlab.platypus import Flowable, KeepTogether, Paragraph, Spacer, Table, TableStyle
+from reportlab.platypus import CondPageBreak, Flowable, KeepTogether, Paragraph, Spacer, Table, TableStyle
 
 from ..ctx import INK, holds
 from ..registry import block
@@ -54,6 +54,9 @@ TAB_MM = (36.0, 7.0)
 # Key cells: rows of at most ten, a cell no wider than this.
 PER_ROW, CELL_MAX_MM = 10, 30.0
 NUMBER_ROW_MM, LETTER_ROW_MM = 6.2, 8.2
+# A passage and its first question that do not fit start on the next page only when less than this share of the
+# frame is left; with more the passage starts where it stands.
+PASSAGE_ROOM = 0.4
 # How alike an answer and an option's text must be for the option's letter to stand for it.
 ALIKE = 0.8
 OPTION_LETTERS = 'ABCDEFGH'
@@ -64,8 +67,9 @@ LOOKALIKE = {'А': 'A', 'В': 'B', 'С': 'C', 'Е': 'E', 'Н': 'H'}
 # with a full stop: "А. Н. Толстой" and "A. Qodiriy" begin with an initial, not a letter of the list. A colon
 # needs a space after it, so the ratios "A:B", "B:C" stay whole.
 TYPED_LETTER = re.compile(r'^\s*([A-Za-zА-Яа-яЁё])\s*(?:\)\s*|:\s+)(?=\S)')
-# An answer that is only a letter ("B", "B)").
-LETTER_ONLY = re.compile(r'^\s*([A-Ha-h])\s*[).]?\s*$')
+# An answer that is only a letter ("B", "B)", "Б"). A Cyrillic one counts by its place in the Russian list
+# (Б the second, Г the fourth) only when it looks like no Latin letter: "В" may mean the third option or B.
+LETTER_ONLY = re.compile(r'^\s*([A-Ha-hА-Яа-яЁё])\s*[).]?\s*$')
 # The signs that tell two answers apart once other punctuation goes: −5 and 5, x > 2 and x < 2, a + b and a − b.
 SIGNS = '-+<>≤≥≠/=×÷·*^%'
 DASHES = str.maketrans({mark: '-' for mark in '−–—‒'})
@@ -201,8 +205,13 @@ def key_letter(question):
     if not options or not answer:
         return None
     only = LETTER_ONLY.match(answer)
-    if only and only.group(1).upper() in OPTION_LETTERS[:len(options)]:
-        return only.group(1).upper()
+    if only:
+        letter = only.group(1).upper()
+        # Options that are single letters themselves ("Which letter…?") are matched by their text instead.
+        if letter in CYRILLIC_LETTERS and letter not in LOOKALIKE and not any(len(item) == 1 for item in options):
+            letter = OPTION_LETTERS[CYRILLIC_LETTERS.index(letter)]
+        if letter in OPTION_LETTERS[:len(options)]:
+            return letter
     found = _find(answer, options, alike=False)
     if found is not None:
         return OPTION_LETTERS[found]
@@ -697,6 +706,48 @@ def _part_heading(ctx, place):
     return [Paragraph(ctx.text(ctx.label(spec['label']), style), style), hair]
 
 
+class Passage(KeepTogether):
+    """The first question with the passage and the headings over it: one page when there is room, else flowing.
+
+    A plain KeepTogether that does not fit moves to the next page whatever it
+    leaves behind, so a passage of half a page under a test's head would push
+    a page of white before it. This one moves only when less than `room` is
+    left; with more it starts here, its opening kept with the passage's first
+    lines (`_flowing`), and the question, a KeepTogether of its own, follows
+    the passage's end. The gap left at a page's foot is never more than `room`.
+    """
+
+    def __init__(self, ctx, flowables, room):
+        super().__init__(flowables)
+        self.ctx, self.room = ctx, room
+
+    def split(self, aW, aH):
+        if getattr(self, '_wrapInfo', None) != (aW, aH):
+            self.wrap(aW, aH)
+        if self._H > aH and aH >= self.room:
+            return _flowing(self.ctx, self._content)
+        return super().split(aW, aH)
+
+
+def _flowing(ctx, flowables):
+    """A passage that flows: the opening loses its keep-with-next, and a CondPageBreak keeps it with three lines.
+
+    The opening (instruction, part heading, reference line, passage title)
+    keeping with next would wrap it with the passage's whole first paragraph
+    and move that taller group to the next page. The CondPageBreak asks
+    instead for room for the opening and three lines of the passage, so the
+    title never stands at a page's foot.
+    """
+    need, lines = 0.0, 3 * ctx.styles['body'].leading + Barred.PAD
+    for flowable in flowables:
+        if isinstance(flowable, Barred) and not flowable.getKeepWithNext():
+            need += min(lines, flowable.wrap(ctx.width, ctx.frame_height)[1])
+            break
+        need += flowable.wrap(ctx.width, ctx.frame_height)[1] + flowable.getSpaceBefore() + flowable.getSpaceAfter()
+        flowable.keepWithNext = 0
+    return [CondPageBreak(need), *flowables]
+
+
 @block('question_list', fallback=lambda ctx, place: _questions_plain(ctx, place))
 def question_list(ctx, place):
     """Numbered questions from content.questions, each kept on one page.
@@ -722,13 +773,15 @@ def question_list(ctx, place):
     if not found:
         return []
     number = _numbers(ctx, kind if kind != 'all' else 'choice', params.get('start'))
-    made = []
+    made, heads = [], []
     if not getattr(ctx, 'study_intro_drawn', False):
         intro = _intro(ctx, place)
         if intro:
             ctx.study_intro_drawn = True
-            made += intro
-    made += _part_heading(ctx, place)
+            heads += intro
+    # The instruction and the part heading go inside the first question's KeepTogether: a keep-with-next chain
+    # stops at a KeepTogether, so on their own they could stand at a page's foot with the question overleaf.
+    heads += _part_heading(ctx, place)
     lead = []
     spec = params.get('passage') if isinstance(params.get('passage'), dict) else None
     if kind == 'passage' and spec:
@@ -751,21 +804,18 @@ def question_list(ctx, place):
     gap = _num(params.get('gap_pt'), 10.0, 0, 40)
     for index, question in enumerate(found):
         item = (_closed_item if question.get('options') else _open_item)(ctx, place, question, number + index)
-        if index or made or lead:
+        if index or heads or lead:
             first = item[0]
             if isinstance(first, Paragraph):
                 first.style = _style(ctx, first.style, spaceBefore=gap)
             else:
                 item.insert(0, Spacer(1, gap))
         if index == 0 and lead:
-            # A passage of a usual length stays with its first question; a longer one flows on from where it
-            # starts, so it never pushes a page of white before it.
-            tall = sum(flowable.wrap(ctx.width, ctx.frame_height)[1] for flowable in lead)
-            if tall > ctx.frame_height * 0.6:
-                made += lead
-            else:
-                item = lead + item
-        made.append(KeepTogether(item))
+            # The passage stays with its first question when the page has room for both; else it starts where
+            # it stands while at least PASSAGE_ROOM of the page is left, so it never pushes a page of white.
+            made.append(Passage(ctx, heads + lead + [KeepTogether(item)], ctx.frame_height * PASSAGE_ROOM))
+            continue
+        made.append(KeepTogether(heads + item if index == 0 else item))
     return _finish(place, made, before=ctx.leading * 0.3, after=ctx.leading * 0.5)
 
 
@@ -898,7 +948,10 @@ def answer_key(ctx, place):
     subtitle (field ids under the note, joined by commas) and formats ({field
     id: label key}: "7-sinf"); section (a label key over the grid: Test
     savollari); total (a label key, `#` the closed questions' marks, at the
-    right under the grid); explain_when (a predicate or a list: when it holds,
+    right under the grid); total_with_open (a label key used for that line
+    instead when the paper has written questions too, so it does not read as
+    a second "maximum" beside the overall line under the model answers);
+    explain_when (a predicate or a list: when it holds,
     a grid is followed by the explanation table); columns (three label keys
     of the explanation table: No, Answer, Explanation); head_when_open (a
     paper of written questions only still gets the head, so its page break
@@ -928,13 +981,18 @@ def answer_key(ctx, place):
     if style == 'explained':
         made += _explained(ctx, place, questions, 1)
     else:
-        made.append(KeepTogether(_strips(ctx, questions, 1, per_row, style == 'sheet')))
+        made += _strips(ctx, questions, 1, per_row, style == 'sheet')
         total = sum(_marks(question, 1) for question in questions)
-        line = _counted(ctx, params.get('total'), total) if params.get('total') and style == 'grid' else ''
+        key = params.get('total_with_open') if ctx.questions('open') and params.get('total_with_open') else \
+            params.get('total')
+        line = _counted(ctx, key, total) if key and style == 'grid' else ''
         if line:
             small = max(8.5, round(ctx.size * 0.86 * 2) / 2)
             right = _style(ctx, 'body', fontSize=small, leading=small * 1.3, alignment=TA_RIGHT, spaceBefore=2)
             made.append(Paragraph(ctx.text(line, right), right))
+        # The head, the section line, the grid and its total in one KeepTogether: a heading's keep-with-next stops
+        # at a KeepTogether, so an answer sheet's plain head could otherwise end a page with its grid overleaf.
+        made = [KeepTogether(made)]
         if style == 'grid' and params.get('explain_when') and _all_hold(ctx, place, params['explain_when']):
             made.append(Spacer(1, ctx.leading * 0.6))
             made += _explained(ctx, place, questions, 1)

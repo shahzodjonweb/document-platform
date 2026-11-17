@@ -323,6 +323,7 @@
     },
     "section": "key_choice",
     "total": "max_score",
+    "total_with_open": "choice_score",
     "explain_when": "fact:answer_extras=explained",
     "columns": [
      "no",
@@ -532,6 +533,11 @@
    "uz": "Maksimal ball: #",
    "ru": "Максимальный балл: #",
    "en": "Maximum score: #"
+  },
+  "choice_score": {
+   "uz": "Test savollari uchun ball: #",
+   "ru": "Баллы за тестовые вопросы: #",
+   "en": "Multiple-choice points: #"
   },
   "answers_self": {
    "uz": "JAVOBLAR",

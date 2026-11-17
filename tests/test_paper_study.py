@@ -93,6 +93,16 @@ def words(result, number=0):
                 for word in document.pages[number].extract_words(extra_attrs=['fontname', 'size'])]
 
 
+def leaves(flowables):
+    """The flowables with every KeepTogether opened: a heading travels inside its first question's."""
+    for flowable in flowables:
+        content = getattr(flowable, '_content', None)
+        if isinstance(content, list):
+            yield from leaves(content)
+        else:
+            yield flowable
+
+
 def clean(result):
     warnings = result['metadata']['warnings']
     return not result['metadata'].get('template_fallback') and not any(code.startswith('block_fallback')
@@ -168,10 +178,10 @@ def test_a_full_test_has_its_head_strip_parts_passage_written_answers_and_key_on
     assert '3-4-savollarga matn asosida javob bering.' in whole
     assert 'II qism. Yozma javob bering' in whole and '(2 ball)' in whole and '(3 ball)' in whole
     assert 'Javob:' in whole and '/ 2' in whole and '/ 3' in whole
-    # The key starts its own page: its letters, the maximum of the closed questions, the model answers numbered on.
+    # The key starts its own page: its letters, the closed questions' points, the model answers numbered on.
     key = pages[-1]
     assert 'KALITLAR' in key.replace(' ', '') and 'KALITLAR' not in ''.join(pages[:-1]).replace(' ', '')
-    assert 'Faqat o‘qituvchi uchun' in key and 'Maksimal ball: 4' in key
+    assert 'Faqat o‘qituvchi uchun' in key and 'Test savollari uchun ball: 4' in key
     assert re.search(r'1 2 3 4\s*\nA C B A', key), key
     assert re.search(r'^5 Energiya hosil qiladi', key, re.M) and re.search(r'^6 Irsiy axborotni', key, re.M)
     # The pupil strip's total is every mark: four closed and five written.
@@ -203,6 +213,44 @@ def test_a_passage_longer_than_a_page_flows_with_its_rule_and_its_title_stays_wi
     pages = pages_text(result)
     starts = next(index for index, page_text in enumerate(pages) if 'matn asosida javob bering' in page_text)
     assert 'Fotosintez' in pages[starts].split('matn asosida javob bering')[1]
+    # It starts under the choice questions on the first page: no half page of white is pushed before it.
+    assert starts == 0
+
+
+def test_a_passage_with_its_question_too_tall_for_the_page_left_starts_where_it_stands(tmp_path):
+    long = ' '.join(['Fotosintez xloroplastlarda yorug‘lik ta’sirida kechadi.'] * 40)
+    pages = pages_text(draw_test(tmp_path, questions=PASSAGE + OPEN, sections=[passage_section(long)]))
+    # The instruction, Part I, the reference line and the passage's title and first lines share the first page.
+    first = flat(pages[0])
+    assert 'Ko‘rsatma' in first and 'I qism.' in first and '1-2-savollarga matn asosida javob bering.' in first
+    assert 'Fotosintez Fotosintez xloroplastlarda' in first
+
+
+@pytest.mark.parametrize('extras', ('', 'answer_sheet'))
+def test_a_part_heading_near_a_page_foot_goes_over_with_its_first_question(tmp_path, extras):
+    facts = {**FACTS, 'answer_extras': extras} if extras else FACTS
+    moved = False
+    # The passage's length moves Part II down the first page and over its foot.
+    for count in range(3, 25, 3):
+        body = ' '.join(['Fotosintez xloroplastlarda yorug‘lik ta’sirida kechadi.'] * count)
+        pages = pages_text(draw_test(tmp_path, sections=[passage_section(body)], facts=facts, name=f'{count}.pdf'))
+        heading = next(index for index, page_text in enumerate(pages) if 'II qism. Yozma javob bering' in page_text)
+        assert 'Mitoxondriyaning vazifasini' in pages[heading], (count, pages)
+        moved = moved or heading > 0
+    assert moved
+
+
+def test_the_answer_sheets_head_near_a_page_foot_goes_over_with_its_grid(tmp_path):
+    facts = {**FACTS, 'answer_extras': 'answer_sheet'}
+    moved = False
+    for count in range(16, 27, 2):
+        body = ' '.join(['Fotosintez xloroplastlarda yorug‘lik ta’sirida kechadi.'] * count)
+        pages = pages_text(draw_test(tmp_path, questions=CHOICE + PASSAGE, sections=[passage_section(body)],
+                                     facts=facts, name=f'{count}.pdf'))
+        sheet = next(index for index, page_text in enumerate(pages) if 'Javoblar varaqasi' in page_text)
+        assert re.search(r'Javoblar varaqasi\s*\n\s*1 2 3 4', pages[sheet]), (count, pages)
+        moved = moved or sheet > 0
+    assert moved
 
 
 def test_choice_only_has_no_part_headings_and_its_own_instruction(tmp_path):
@@ -233,8 +281,9 @@ def test_written_only_model_answers_start_a_page_after_the_last_question(tmp_pat
 
 def test_the_key_ends_with_the_papers_overall_maximum(tmp_path):
     key = pages_text(draw_test(tmp_path, sections=[passage_section()]))[-1]
-    assert 'Maksimal ball: 4' in key and 'Maksimal ball: 9 (4 + 5)' in key
-    assert key.index('Maksimal ball: 9') > key.index('Irsiy axborotni')
+    # One maximum on the page: the grid's line names the closed questions' points, the paper's maximum ends it.
+    assert 'Test savollari uchun ball: 4' in key and 'Maksimal ball: 9 (4 + 5)' in key
+    assert key.count('Maksimal ball') == 1 and key.index('Maksimal ball: 9') > key.index('Irsiy axborotni')
     given = pages_text(draw_test(tmp_path, facts={**FACTS, 'total_points': '20'}, name='given.pdf'))
     assert '/ 20' in given[0] and 'Maksimal ball: 20' in given[-1] and '(4 + 5)' not in given[-1]
 
@@ -366,6 +415,10 @@ def test_letters_every_option_carries_in_order_are_taken_off(options, printed):
     (['A) Yadro', 'B) Ribosoma', 'C) Vakuola', 'D) Lizosoma'], 'C) Vakuola', 'C'),
     (['А) Ядро', 'Б) Рибосома', 'В) Вакуоль', 'Г) Лизосома'], 'В) Вакуоль', 'C'),
     (['Ядро', 'Рибосома', 'Вакуоль', 'Лизосома'], 'В) Рибосома', 'B'),
+    # A Cyrillic letter alone counts by its place in the Russian list, unless it looks like a Latin letter.
+    (['Ядро', 'Рибосома', 'Вакуоль', 'Лизосома'], 'Б', 'B'), (['Ядро', 'Рибосома', 'Вакуоль', 'Лизосома'], 'г)', 'D'),
+    (['Ядро', 'Рибосома', 'Вакуоль', 'Лизосома'], 'В', None), (['Ядро', 'Рибосома', 'Вакуоль', 'Лизосома'], 'Е', None),
+    (['Ядро', 'Рибосома', 'Вакуоль'], 'Г', None), (['Б', 'Г', 'Д', 'Ж'], 'Г', 'B'),
     # The typed letter and the text name different options: no letter.
     (['Mitoxondriya', 'Lizosoma', 'Xloroplast', 'Ribosoma'], 'A) Xloroplast', None)])
 def test_initials_in_options_and_answers_still_find_their_letter(options, answer, letter):
@@ -460,8 +513,8 @@ def test_the_intro_is_drawn_once_over_the_first_questions():
                                             flow_params('study_test', 'question_list', 'part_choice'), ctx))
     opened = study.question_list(ctx, place('question_list', 'part_open',
                                             flow_params('study_test', 'question_list', 'part_open'), ctx))
-    intro = [flat(flowable.text) for flowable in choice + opened if hasattr(flowable, 'text') and 'Ko‘rsatma' in
-             flowable.text]
+    intro = [flat(flowable.text) for flowable in leaves(choice + opened) if hasattr(flowable, 'text') and
+             'Ko‘rsatma' in flowable.text]
     assert len(intro) == 1 and 'Vaqt: 25 daqiqa.' in intro[0] and 'I qismda' in intro[0]
 
 
