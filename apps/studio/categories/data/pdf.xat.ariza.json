@@ -1,7 +1,7 @@
 {
  "schema": 2,
  "id": "pdf.xat.ariza",
- "status": "draft",
+ "status": "ready",
  "service": "pdf",
  "parent": "pdf.xat",
  "order": 3,
@@ -577,10 +577,11 @@
  ],
  "look": null,
  "gates": [
-  "A native Uzbek reader checks every Uzbek formula in the request part's write and every fixed Uzbek label (ARIZA, Ilova:, Sababi:, Sana / Imzo / F.I.Sh., Tel.:, the six blank-row captions, fuqaro) BEFORE the category is enabled. The first review already corrected two (uzrli for excused, F.I.Sh. for the name label).",
+  "A native Uzbek reader checks every Uzbek formula in the request part's write and every fixed Uzbek label (ARIZA, Ilova:, Sababi:, Sana / Imzo / F.I.Sh., Tel.:, the six blank-row captions, fuqaro), and a native Russian reader every Russian formula and label (ЗАЯВЛЕНИЕ, Приложение:, Причина:, Дата / Подпись / Расшифровка, the captions), BEFORE the category is enabled. The first review already corrected two (uzrli for excused, F.I.Sh. for the name label).",
   "The kinds hiring, paid and unpaid leave, resignation, financial help, a parent’s ariza and a citizen’s request to a state body rest on pages the researcher read, not on a downloaded official sample; they are enabled only after the native check and, if one can be fetched, a check against an official sample (state forestry committee forms, or another state body).",
   "Every English word (title APPLICATION, To the ..., Enclosure(s):, the captions) is checked by a native English reader: the only English source is weak (sources/14).",
-  "Render the six sample cases of the mock in uz, ru and en with the sample tool and compare them with units/pdf.xat.ariza/mock/official_ariza.png before the entry is marked ready."
+  "Render the six sample cases of the mock in uz, ru and en with the sample tool and compare them with units/pdf.xat.ariza/mock/official_ariza.png before the entry is marked ready.",
+  "One real-provider run, scripts/operations/ai_smoke.py --category pdf.xat.ariza on the server, makes the paper in its own template with every check passing, and the paper is looked at, before the tick."
  ],
  "later": [
   {

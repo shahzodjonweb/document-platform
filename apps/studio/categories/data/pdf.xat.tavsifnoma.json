@@ -1,7 +1,7 @@
 {
  "schema": 2,
  "id": "pdf.xat.tavsifnoma",
- "status": "draft",
+ "status": "ready",
  "service": "pdf",
  "parent": "pdf.xat",
  "order": 4,
@@ -624,7 +624,8 @@
  "look": null,
  "gates": [
   "A native Uzbek reader checks the fixed words (TAVSIFNOMA, haqida, the presentation formula, M.O‘., the date pattern, the captions) and the third-person register of the samples; a native Russian reader the Russian ones, including the accusative subject lines (\"на ученика ...\"); a native English reader the English ones.",
-  "Render the school, university first-person, court and mahalla cases and the blank case in uz, ru and en with the paper sample tool and compare them with units/pdf.xat.tavsifnoma/mock/official_tavsifnoma.png and its ru-en and variants sheets."
+  "Render the school, university first-person, court and mahalla cases and the blank case in uz, ru and en with the paper sample tool and compare them with units/pdf.xat.tavsifnoma/mock/official_tavsifnoma.png and its ru-en and variants sheets.",
+  "One real-provider run, scripts/operations/ai_smoke.py --category pdf.xat.tavsifnoma on the server, makes the paper in its own template with every check passing, and the paper is looked at, before the tick."
  ],
  "later": [
   {

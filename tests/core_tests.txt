@@ -1262,3 +1262,13 @@ tests/test_paper_official.py::test_an_uzbek_blank_head_carries_its_case_ending_a
 tests/test_paper_official.py::test_signers_given_as_post_and_name_sign_on_their_own_rows
 tests/test_paper_official.py::test_the_verdict_says_its_target_when_given_and_its_own_words_without[tavsiya_rasmiy]
 tests/test_paper_official.py::test_a_letters_close_and_its_signer_never_part_across_a_page[letter_cover]
+
+# Letter readiness (N2c): the six official papers and letters are ready and meet every readiness check as an error,
+# the switch page names the native Uzbek and Russian read and the real-provider run left before a tick, every
+# length and cue set is seeded and drawn by its own template with the checker finding nothing, the ariza's blank
+# head ends in ga and dan as its mock does, and the smoke makes a paper in its template
+tests/test_category_letter_readiness.py::test_every_letter_is_ready_and_meets_its_gates_as_errors
+tests/test_category_letter_readiness.py::test_the_switch_page_says_what_a_person_still_checks_before_the_tick[pdf.xat.ariza]
+tests/test_category_letter_readiness.py::test_every_length_and_cue_subset_is_seeded_and_drawn_in_its_template[pdf.xat.motivatsion]
+tests/test_category_letter_readiness.py::test_an_uzbek_ariza_blank_head_ends_in_ga_and_dan_as_the_mock_draws_it
+tests/test_category_letter_readiness.py::test_the_smoke_makes_every_letter_in_its_own_template

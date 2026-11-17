@@ -31,7 +31,9 @@ def entry(entry_id):
 @pytest.mark.parametrize('entry_id', sorted(TEMPLATES))
 def test_each_letter_is_a_draft_on_its_own_template_within_its_budget(entry_id):
     paper = entry(entry_id)
-    assert (paper.service, paper.raw['parent'], paper.status) == ('pdf', 'pdf.xat', 'draft')
+    # Ready since N2c (tests/test_category_letter_readiness.py); the test keeps its name, which the append-only
+    # tests/core_tests.txt lists.
+    assert (paper.service, paper.raw['parent'], paper.status) == ('pdf', 'pdf.xat', 'ready')
     assert list(paper.templates) == TEMPLATES[entry_id]
     assert all(entry_id in catalogue.template(name)['entries'] for name in paper.templates)
     assert block_size(paper) <= (BLOCK_BUDGET, False)

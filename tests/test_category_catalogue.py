@@ -318,6 +318,8 @@ def test_new_ids_must_be_locked_and_locking_adds_them_without_removing_any():
     extra = copy.deepcopy(entries['pdf.xat.ariza']['fields'][0])
     extra['id'] = 'addressee_office'
     entries['pdf.xat.ariza']['fields'].append(extra)
+    # Ready since N2c, the ariza's block sits just under its budget: one field line more is read here on a draft.
+    entries['pdf.xat.ariza']['status'] = 'draft'
     found = checked(entries, templates, index, lock=lock)
     assert any('pdf.xat.ariza: not in ids.lock.json yet (field addressee_office)' in problem for problem in found)
     new = relock(build(entries, templates, index), lock)

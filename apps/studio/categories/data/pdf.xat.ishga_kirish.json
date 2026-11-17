@@ -1,7 +1,7 @@
 {
  "schema": 2,
  "id": "pdf.xat.ishga_kirish",
- "status": "draft",
+ "status": "ready",
  "service": "pdf",
  "parent": "pdf.xat",
  "order": 2,
@@ -686,7 +686,8 @@
  "look": null,
  "gates": [
   "A native Uzbek reader checks every Uzbek fixed word and formula (Vakansiya:, Hurmatli xonimlar va janoblar!, Hurmat bilan, Ilova:, the opening and closing formulas of the part rows); a native Russian reader the Russian ones and the gender rule; a native English reader the English lead and the Yours sincerely and Yours faithfully pair.",
-  "Render the three examples and a thin message (name and position only) in uz, ru and en with the paper sample tool and compare them with units/pdf.xat.ishga_kirish/mock/letter_cover.png."
+  "Render the three examples and a thin message (name and position only) in uz, ru and en with the paper sample tool and compare them with units/pdf.xat.ishga_kirish/mock/letter_cover.png.",
+  "One real-provider run, scripts/operations/ai_smoke.py --category pdf.xat.ishga_kirish on the server, makes the paper in its own template with every check passing, and the paper is looked at, before the tick."
  ],
  "later": [
   {

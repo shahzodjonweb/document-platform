@@ -1,7 +1,7 @@
 {
  "schema": 2,
  "id": "pdf.xat.tushuntirish",
- "status": "draft",
+ "status": "ready",
  "service": "pdf",
  "parent": "pdf.xat",
  "order": 6,
@@ -528,7 +528,8 @@
  "gates": [
   "A native Uzbek reader checks the fixed words (TUSHUNTIRISH XATI, Sababi:, Ilova:, Sana / Imzo / I.O. familiyasi, the four blank captions) and the case endings of the addressee and writer groups against the case corpus below; a native Russian reader the Russian ones; a native English reader the English ones.",
   "Case corpus, run against the real model in all three languages. uz: \"Misol Savdo direktori Rustam Aliyev\" gives \"Misol Savdo direktori R. Aliyevga\"; no name \"Misol Savdo direktoriga\"; \"dekan Sanjar Yoqubov\" gives \"Dekan S. Yoqubovga\"; \"Ibrohimbek\" gives \"Ibrohimbekka\" and \"Ibrohimbekdan\"; writer \"Karimova Dilnoza Rustam qizi\" gives \"Karimova Dilnoza Rustam qizidan\" and the printed name \"D. R. Karimova\"; a parent gives \"o‘quvchi Azizning ota-onasi / Bobur Karimovdan\". ru: \"директор «Мисол Савдо» Рустам Алиев\" gives \"Директору «Мисол Савдо» Р. Алиеву\"; writer \"бухгалтер Нигора Салимова\" gives \"от бухгалтера / Нигоры Салимовой\", printed \"Н. Салимова\"; \"Ким\" (a woman) and \"Шевченко\" stay unchanged. en (no case, names as written, no initials and no honorific added): \"Misol Savdo director Rustam Aliyev\" gives \"To: Rustam Aliyev / Director, Misol Savdo\"; no name \"To: Director, Misol Savdo\"; \"Dean Sanjar Yoqubov\" gives \"To: Sanjar Yoqubov / Dean\"; writer \"accountant Nigora Salimova\" gives \"From: Nigora Salimova / Accountant\" and the printed name \"Nigora Salimova\"; a parent gives \"From: Bobur Karimov / parent of Aziz, class 6 B\"; an unknown writer gives a ruled blank captioned (full name) and an empty printed-name cell.",
-  "Render the cases of the mocks (an ordinary note, an incident with attachments, a parent, no reason, no event and no reason, an overflow to two pages) in uz, ru and en with the paper sample tool and compare them with units/pdf.xat.tushuntirish/mock/official_tushuntirish.png and its cases, ru-en and overflow sheets."
+  "Render the cases of the mocks (an ordinary note, an incident with attachments, a parent, no reason, no event and no reason, an overflow to two pages) in uz, ru and en with the paper sample tool and compare them with units/pdf.xat.tushuntirish/mock/official_tushuntirish.png and its cases, ru-en and overflow sheets.",
+  "One real-provider run, scripts/operations/ai_smoke.py --category pdf.xat.tushuntirish on the server, makes the paper in its own template with every check passing, and the paper is looked at, before the tick."
  ],
  "later": [
   {
