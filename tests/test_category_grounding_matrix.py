@@ -1503,6 +1503,16 @@ CASES += [
          'pdf.biz.biznes_reja', PLAN_UZ, 'uz', 'product', 'Kumush rangli qadoqda sotamiz.', gone=('Kumush',),
          pair='names-uzbek-given-name-kumush-uz-blank'),
     gp('names-uzbek-given-name-aziz-uz-blank', BLANK, UZ_NONE, 'uz', 'Aziz loyihani boshqaradi.', gone=('Aziz',)),
+    # "Aziz" before a plural and the mark of an address is the letter's "dear", never a person (round 3 of the
+    # convergence: an offer's "Aziz hamkorlar, ..." was blanked).
+    body('names-aziz-addressing-plural-readers-uz-keep', KEEP, 'pdf.biz.tijorat_taklifi', OFFER_MEBEL_UZ, 'uz',
+         'opening', 'Aziz hamkorlar, sizga oshxona mebellarimizni taklif qilamiz.'),
+    gp('names-aziz-addressing-plural-readers-with-a-possessive-uz-keep', KEEP, UZ_NONE, 'uz',
+       'Aziz mijozlarimiz! Issiq non har kuni tayyor.'),
+    gp('names-aziz-before-a-plural-with-no-address-mark-uz-blank', BLANK, UZ_NONE, 'uz',
+       'Aziz hamkorlar bilan uchrashdi.', gone=('Aziz',)),
+    gp('names-aziz-before-a-comma-uz-blank', BLANK, UZ_NONE, 'uz', 'Aziz, hamkorlar bilan uchrashing.',
+       gone=('Aziz',)),
     gp('names-uzbek-given-name-said-in-an-english-paper-is-a-verb-en-accepted_false_blank', ACCEPTED, EN_NONE, 'en',
        'Said differently, our prices stay low.', gone=('Said',),
        pair='names-uzbek-given-name-said-in-an-english-paper-en-blank'),

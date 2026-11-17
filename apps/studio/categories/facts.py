@@ -1669,6 +1669,18 @@ def common(word, language=None):
     return False
 
 
+# "Aziz hamkorlar, …", "Aziz mijozlarimiz!": a letter's "dear" before the plural it addresses and that address's mark,
+# never a person named Aziz ("Aziz hamkorlar bilan uchrashdi", "Aziz, …").
+ADDRESS_WORDS = frozenset(('aziz', 'qadrli'))
+ADDRESSED = re.compile(r"[ \t\u00a0]+[^\W\d_A-ZА-ЯЁ](?:[^\W\d_]|['‘’ʻʼ`-](?=[^\W\d_]))*?"
+                       r"lar(?:im|imiz|ing|ingiz)?[ \t\u00a0]*[,!]")
+
+
+def _address(text, run):
+    """Whether a run's one word is a letter's "dear" addressing its readers (`ADDRESS_WORDS`, `ADDRESSED`)."""
+    return len(run) == 1 and fold(run[0][2]) in ADDRESS_WORDS and ADDRESSED.match(text, run[0][1]) is not None
+
+
 def _compound(text, run):
     """Whether a run's one word joins a lower-case word with a hyphen ("Long-term", "Wood-fired"): no lone name."""
     return len(run) == 1 and re.match(r"-[^\W\d_]", text[run[0][1]:]) is not None \
@@ -1690,7 +1702,8 @@ def _unknown_runs(text, trusted, translated=False, *, strict=False, orgs=False, 
                                       or (len(run) > 1 and all(_letters(word) < 2 for _, _, word in run[1:]))
                                       or _surname(run[0][2]) or (orgs and _organisation(text, run))
                                       or (invented is not None and invented.has(fold(run[0][2])))
-                                      or (lone and not common(run[0][2], language) and not _compound(text, run))):
+                                      or (lone and not common(run[0][2], language) and not _compound(text, run)
+                                          and not _address(text, run))):
             first_free = False
         for position, (start, end, word) in enumerate(run):
             if _letters(word) < 2 or (position == 0 and first_free) or start in legal:
