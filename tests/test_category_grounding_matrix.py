@@ -142,6 +142,8 @@ MINUTES_RU_UZ = ('Составьте протокол родительского
 MINUTES_RU_UZ_NAMED = MINUTES_RU_UZ + ' Председатель Каримов Азиз Баходирович, секретарь Юлдашева Малика.'
 JOB_UZ = ('Bosh buxgalter uchun lavozim yo‘riqnomasi tuzib bering. Mehnat kodeksiga muvofiq bo‘lsin, '
           'xodim moliya bo‘limiga bo‘ysunadi.')
+JOB_UZ_LAWS = ('Bosh buxgalter uchun lavozim yo‘riqnomasi tuzib bering. Mehnat kodeksi va qonun hujjatlariga muvofiq '
+               'ishlaydi, direktorga bo‘ysunadi.')
 JOB_RU = ('Составьте должностную инструкцию главного бухгалтера на русском, в соответствии с Трудовым кодексом, '
           'подчиняется финансовому директору.')
 JOB_RU_UZ = JOB_RU.replace('на русском', 'на узбекском')
@@ -756,6 +758,19 @@ CASES = [
          'general', 'The accountant follows the Labour Code of the Republic of Uzbekistan.', translated=True),
     item('laws-laboratory-is-no-labour-code-en-keep', KEEP, 'pdf.biz.lavozim_yoriqnomasi', JOB_EN_TAX, 'en', 'general',
          'The Tax Code of Uzbekistan applies to laboratory equipment purchases.'),
+    # A sentence's capitalised subject is no code's first word, and "tegishli", "boshqa", "yangi" point at a code
+    # without naming one (round 2 of the convergence, regression from 8a00abe); the lower-case words between the
+    # subject and the stem are still the code's name.
+    item('laws-subject-before-tegishli-kodeks-uz-keep', KEEP, 'pdf.biz.lavozim_yoriqnomasi', JOB_UZ_LAWS, 'uz',
+         'duties', 'Xodim tegishli kodeks talablarini biladi.'),
+    item('laws-subject-before-yangi-kodeks-uz-keep', KEEP, 'pdf.biz.lavozim_yoriqnomasi', JOB_UZ_LAWS, 'uz',
+         'duties', 'Xodim yangi kodeks talablarini o‘rganadi.'),
+    item('laws-subject-before-boshqa-qonun-hujjatlari-uz-keep', KEEP, 'pdf.biz.lavozim_yoriqnomasi', JOB_UZ_LAWS, 'uz',
+         'general', 'Xodim boshqa qonun hujjatlariga ham amal qiladi.'),
+    item('laws-subject-before-an-unnamed-code-of-ethics-uz-blank', BLANK, 'pdf.biz.lavozim_yoriqnomasi', JOB_UZ_LAWS,
+         'uz', 'general', 'Xodim odob-axloq kodeksiga va Mehnat kodeksiga rioya qiladi.', gone=('odob-axloq',)),
+    item('laws-subject-before-an-invented-code-uz-blank', BLANK, 'pdf.biz.lavozim_yoriqnomasi', JOB_UZ_LAWS, 'uz',
+         'general', 'Xodim Raqamli iqtisodiyot kodeksiga muvofiq ishlaydi.', gone=('Raqamli',)),
     # A code's lower-case words before its stem are its name too, and a translation's cannot be told from an invented
     # code's (round 4): the customer's administrative code written as Uzbek's about-phrase goes with them.
     item('laws-invented-about-phrase-translated-ru-to-uz-blank', BLANK, 'pdf.biz.lavozim_yoriqnomasi', JOB_RU_UZ, 'uz',

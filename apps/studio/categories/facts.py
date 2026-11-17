@@ -1049,7 +1049,9 @@ LAW_OF_CASE = re.compile(r"[а-яё]+(?:е|и|ах|ях|ой|ей|ом|ем|ых
 LAW_TOKEN = re.compile(WORD.pattern + r"|[,;:()«»\"“”„!?]")
 # A word that points at a code already named, no one's name for it: "Ushbu kodeks", "Mazkur kodeksga", "Настоящий
 # кодекс", "This Code".
-LAW_THIS = re.compile(r"ushbu|mazkur|bu|shu|amaldagi|yuqoridagi|настоящ\w*|данн\w*|указанн\w*|эт(?:от|ого|ому|им|ом)"
+# "Tegishli kodeks", "barcha", "boshqa", "har qanday", "yangi" point at a code without naming one either.
+LAW_THIS = re.compile(r"ushbu|mazkur|bu|shu|amaldagi|yuqoridagi|tegishli|barcha|boshqa|har|qanday|yangi|joriy"
+                      r"|настоящ\w*|данн\w*|указанн\w*|эт(?:от|ого|ому|им|ом)"
                       r"|действующ\w*|соответствующ\w*|нов(?:ый|ого|ому|ым|ом|ая|ой|ую)|this|that|said|present|current")
 # A Russian code is named by its adjectives, in lower case, before its stem: "по арбитражному процессуальному
 # кодексу", "Трудовой кодекс".
@@ -1086,7 +1088,7 @@ def _law_names(sentence):
         if not any(stem.fullmatch(token) for stem in NAMED_STEMS):
             continue
         name, index, about = [], at - 1, None
-        headed = _law_head(tokens, at, word) if UZ_LAW_STEM.fullmatch(normalised(token).casefold()) else []
+        headed = _law_head(sentence, tokens, at, word) if UZ_LAW_STEM.fullmatch(normalised(token).casefold()) else []
         while word(index) and not headed:
             low = normalised(tokens[index][1]).casefold()
             if LAW_THIS.fullmatch(low):
@@ -1143,9 +1145,13 @@ def _law_names(sentence):
     return list(dict.fromkeys(found))
 
 
-def _law_head(tokens, at, word):
+def _law_head(sentence, tokens, at, word):
     """An Uzbek code's name with its lower-case words before its stem at `at`, from its capitalised first word:
-    "Raqamli iqtisodiyot kodeksiga" gives Raqamli and iqtisodiyot; [] when the word before the stem is no such word."""
+    "Raqamli iqtisodiyot kodeksiga" gives Raqamli and iqtisodiyot; [] when the word before the stem is no such word.
+
+    A sentence's capitalised subject is no code's first word unless it is one of LAW_NAMES: of "Xodim odob-axloq
+    kodeksiga ..." only odob and axloq are the code's name, and "Xodim tegishli kodeks talablarini biladi" names none
+    (`LAW_THIS`)."""
     lower, index = [], at - 1
     while word(index) and len(lower) < LAW_HEAD_REACH:
         text = tokens[index][1]
@@ -1160,6 +1166,8 @@ def _law_head(tokens, at, word):
     if not lower or not word(index) or not tokens[index][1][0].isupper() \
             or LAW_THIS.fullmatch(normalised(tokens[index][1]).casefold()):
         return []
+    if _starts(sentence, tokens[index][0]) and not _law_name(tokens[index][1]):
+        return list(reversed(lower))
     return [tokens[index], *reversed(lower)]
 
 
