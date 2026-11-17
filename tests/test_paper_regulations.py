@@ -326,8 +326,12 @@ def test_an_o_or_g_initial_typed_with_any_apostrophe_is_drawn_with_the_house_mar
 def test_the_chair_signs_by_name_and_never_by_post(tmp_path, locale, chair, word, name):
     lines = lines_of(draw(tmp_path, 'official_bayonnoma', content('official_bayonnoma', locale,
                                                                    facts={'chair': chair}), locale))
-    signed = [line for line in lines if line.startswith(word) and ':' not in line]
-    assert signed and signed[-1].endswith(name), signed
+    rows = [index for index, line in enumerate(lines) if line.startswith(word) and ':' not in line]
+    assert rows, lines
+    # A name too long for its cell at 85% wraps at the body size: its first line sits above the label's row.
+    row = rows[-1]
+    signed = lines[row][len(word):].strip()
+    assert signed.endswith(name) or f'{lines[row - 1]} {signed}' == name, lines[row - 1:row + 1]
 
 
 def test_the_secretary_with_ascii_initials_keeps_the_surname_and_every_initial(tmp_path):

@@ -1249,8 +1249,10 @@ def _signers(ctx, place):
     # A list field holds one signer a line (or between semicolons), and a lone line field one signer, each as "post —
     # name" or "post A. B. Name" (the agreeing posts of a job description, the author of an instruction): split,
     # never retyped.
-    whole = [field_id for field_id in fields if (ctx.entry.field(field_id) or {}).get('kind') == 'list'
-             or (len(fields) == 1 and (ctx.entry.field(field_id) or {}).get('kind') == 'line')]
+    # A field without a value stays with the pairs below, so it still draws its one blank row to sign by hand.
+    whole = [field_id for field_id in fields if ctx.fact(field_id) is not None and (
+        (ctx.entry.field(field_id) or {}).get('kind') == 'list'
+        or (len(fields) == 1 and (ctx.entry.field(field_id) or {}).get('kind') == 'line'))]
     for field_id in whole:
         # Split as facts.supported reads a list fact: a line or a semicolon ends one signer.
         for line in re.split(r'[\n;]+', ctx.fact(field_id) or ''):
@@ -1316,6 +1318,10 @@ def _post_and_name(line):
     `sure` is False when the name side was guessed, so a caller can keep the line whole instead of printing a post
     as the name."""
     line = re.sub(r'\.{2,}$', '.', ' '.join(line.split()).strip(' ;,'))
+    if '|' in line:
+        # "post | name" is the catalogue's own form for a signer's line: its sides are already told apart.
+        post, _, name = line.rpartition('|')
+        return post.strip(), name.strip(), True
     # A closing full stop goes, never the one of a final initial ("Rahimov B. S.", "Yo‘ldosheva G. O‘.").
     if not re.search(rf'(?:^|[\s.]){SIGNER_INITIAL}$', line):
         line = re.sub(r'[\s.;,]+$', '', line)
