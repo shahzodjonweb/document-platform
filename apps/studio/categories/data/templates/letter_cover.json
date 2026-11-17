@@ -101,7 +101,6 @@
   },
   {
    "block": "line",
-   "part": "salutation",
    "when": "nofact:salutation",
    "params": {
     "label": "fallback"

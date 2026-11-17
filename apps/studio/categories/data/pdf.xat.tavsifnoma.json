@@ -386,7 +386,7 @@
    "block": "paragraph",
    "words": [
     12,
-    60
+    40
    ],
    "grounded": true
   },
@@ -402,7 +402,7 @@
    "block": "paragraph",
    "words": [
     6,
-    35
+    20
    ],
    "grounded": true
   },
@@ -412,7 +412,7 @@
    "heading": null,
    "heading_mode": "none",
    "need": "required",
-   "share": 0.27,
+   "share": 0.08,
    "elastic": true,
    "write": "The study or work facts given (marks, tasks, periods, a penalty or debt, or \"none\" only when said) as plain sentences. No attendance claim and no assessment the customer did not make.",
    "block": "paragraph",
@@ -424,7 +424,7 @@
    "heading": null,
    "heading_mode": "none",
    "need": "usual",
-   "share": 0.16,
+   "share": 0.04,
    "elastic": true,
    "write": "Awards, olympiads, talks, memberships and tasks, each with its year and title exactly as given. Empty when none was given.",
    "block": "paragraph",
@@ -436,7 +436,7 @@
    "heading": null,
    "heading_mode": "none",
    "need": "usual",
-   "share": 0.1,
+   "share": 0.04,
    "elastic": true,
    "write": "The customer's own words about character and relations, in the official register, no intensifier. Empty when none was given.",
    "block": "paragraph",
@@ -454,7 +454,7 @@
    "block": "paragraph",
    "words": [
     6,
-    30
+    25
    ],
    "grounded": true
   },

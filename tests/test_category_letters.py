@@ -81,13 +81,21 @@ def test_a_blank_form_is_drawn_only_when_the_model_asks_for_it():
     flow = {place.get('part'): place.get('when') for place in catalogue.template('official_tushuntirish')['flow']
             if place['block'] == 'ruled_blank'}
     assert flow == {'reason_blank': 'blank:reason', 'blank_body': 'blank:what_happened'}
-    assert entry('pdf.xat.ariza').field('reason')['missing'] == 'if_needed'
+    # A bare "ariza kerak" names no request: the model returns ____ and the form gets ruled lines for it by hand,
+    # never an ARIZA with nothing under the title. if_needed, not blank: a blank field would draw them always.
+    ariza = entry('pdf.xat.ariza')
+    assert ariza.field('reason')['missing'] == ariza.field('request')['missing'] == 'if_needed'
+    flow = {place.get('part'): place.get('when') for place in catalogue.template('official_ariza')['flow']
+            if place['block'] == 'ruled_blank'}
+    assert flow == {'reason_blank': 'blank:reason', 'request_blank': 'blank:request'}
 
 
 def test_the_explanatory_notes_case_corpus_covers_english_too():
     corpus = next(gate for gate in entry('pdf.xat.tushuntirish').raw['gates'] if gate.startswith('Case corpus'))
     assert ' uz: ' in corpus and ' ru: ' in corpus and ' en (' in corpus
-    assert '"To: Rustam Aliyev / Director, Bahor Foods"' in corpus and '"From: Nigora Rahimova / Accountant"' in corpus
+    assert '"To: Rustam Aliyev / Director, Misol Savdo"' in corpus and '"From: Nigora Salimova / Accountant"' in corpus
+    # Rahimova is the stage-2 prompt tests' marker of customer text leaking into the instructions (P2).
+    assert 'Rahimov' not in corpus and 'Рахимов' not in corpus
 
 
 def test_the_review_question_is_offered_for_a_thin_message_only():
@@ -102,7 +110,7 @@ def test_the_review_question_is_offered_for_a_thin_message_only():
             # Every example gives its reason, so customers learn to; a message without one is asked for it.
             assert not any(asking.wanted(letter, example[locale], has_files=False)
                            for example in letter.raw['bot']['examples'])
-    assert asking.wanted(cover, 'Zarnigor Soft kompaniyasiga dasturchi lavozimiga xat', has_files=False)
+    assert asking.wanted(cover, 'Misol Soft kompaniyasiga dasturchi lavozimiga xat', has_files=False)
     assert asking.wanted(motivation, 'Namuna universitetiga magistraturaga xat', has_files=False)
 
 
@@ -139,7 +147,7 @@ def test_an_uzbek_or_english_paper_writes_a_cyrillic_name_in_latin(entry_id):
 def test_the_statement_head_is_its_own_template_without_the_letters_apparatus():
     letter, statement = catalogue.template('letter_motivatsion'), catalogue.template('letter_statement')
     assert statement['pick'] == 'cue:statement'
-    assert not {place['part'] for place in statement['flow']} & {'addressee_row', 'salutation', 'close', 'enclosures'}
+    assert not {place.get('part') for place in statement['flow']} & {'addressee_row', 'salutation', 'close', 'enclosures'}
     assert not [place for place in letter['flow'] if 'statement' in (place.get('when') or '')]
     motivation = entry('pdf.xat.motivatsion')
     assert 'statement' in skeleton.cues(motivation, 'Personal statement for a master’s programme', has_files=False)
@@ -169,3 +177,76 @@ def test_english_names_the_person_first_in_the_head():
     applicant = next(place for place in catalogue.template('official_ariza')['flow'] if place.get('part') == 'applicant')
     assert applicant['params']['order']['en'][0] == 'applicant_name'
     assert sorted(applicant['params']['order']['en']) == sorted(applicant['fields'])
+
+
+LOCALE_KEYS = ('uz', 'ru', 'en')
+
+
+def label_names(params):
+    """(how it is named, label key, the locales it is drawn in) for each template label a placement's params name.
+
+    A label named by a string is drawn in every language; a {locale: key} map is drawn only in the languages it
+    names, which is how a placement gives a word to one language and none to the others.
+    """
+    for key, value in (params or {}).items():
+        if key == 'label':
+            values = [value]
+        elif key in ('labels', 'captions') and isinstance(value, dict):
+            values = list(value.values())
+        else:
+            continue
+        for item in values:
+            if isinstance(item, str):
+                yield 'string', item, LOCALE_KEYS
+            elif isinstance(item, dict):
+                yield from (('map', name, (locale,)) for locale, name in item.items())
+
+
+def test_a_label_drawn_in_a_language_has_words_in_it():
+    # An empty label is never relied on to draw nothing: the paper engine reads '' as missing and takes the English
+    # one, so a Russian note would print "To:". A word one language has and the others do not is a per-locale map.
+    for entry_id, name, place in places():
+        labels = catalogue.template(name)['labels']
+        for kind, key, locales in label_names(place.get('params')):
+            assert set(locales) <= set(LOCALE_KEYS), (name, key, locales)
+            assert all(labels[key][locale] for locale in locales), (name, kind, key, locales)
+
+
+def test_the_explanatory_notes_head_has_a_label_in_english_only():
+    flow = {place.get('part'): place for place in catalogue.template('official_tushuntirish')['flow']}
+    for part, key in (('addressee', 'to'), ('writer', 'from')):
+        drawn = {locale for _, name, locales in label_names(flow[part]['params']) for locale in locales if name == key}
+        assert drawn == {'en'}, part
+    for name in ('official_tavsifnoma', 'tavsiya_rasmiy'):
+        title = next(place for place in catalogue.template(name)['flow'] if place['block'] == 'doc_title')
+        assert title['params']['labels']['name_after'] == {'uz': 'about'}, name
+    lead = next(place for place in catalogue.template('official_tavsifnoma')['flow'] if place['block'] == 'doc_title')
+    assert lead['params']['labels']['name_before'] == {'ru': 'subject_lead'}
+
+
+def test_a_line_drawn_from_labels_alone_prints_no_inherited_fields():
+    # A placement without fields draws its part's fields (the paper engine's Place), and the plain fallback prints
+    # each: a closing line under sign_off would repeat the signer's name and phone, a seal line "M.O‘. false".
+    # Such a line names no part; a ruled blank keeps the one field it is the blank for.
+    for entry_id, name, place in places():
+        if place.get('fields') or not place.get('part'):
+            continue
+        inherited = entry(entry_id).part(place['part']).get('fields') or []
+        if place['block'] == 'ruled_blank':
+            assert len(inherited) == 1 and place['when'] == f'blank:{inherited[0]}', (name, place['part'])
+        else:
+            assert not inherited, (name, place['block'], place['part'], inherited)
+
+
+# What one page of each paper holds, in words (its own rules): the parts' most at the default length stay within it,
+# so a rich message never fills a one-page quote onto two pages.
+ONE_PAGE_WORDS = {'pdf.xat.ariza': 150, 'pdf.xat.ishga_kirish': 208, 'pdf.xat.motivatsion': 310,
+                  'pdf.xat.tavsifnoma': 170, 'pdf.xat.tavsiya': 200, 'pdf.xat.tushuntirish': 300}
+
+
+@pytest.mark.parametrize('entry_id', sorted(TEMPLATES))
+def test_the_parts_most_words_fit_the_papers_first_page(entry_id):
+    paper = entry(entry_id)
+    most = sum(skeleton.words(paper, use, 1, NONE)[1] for use in skeleton.parts(paper, 1, NONE)
+               if use.section_id and use.part['kind'] != 'list')
+    assert most <= ONE_PAGE_WORDS[entry_id], most

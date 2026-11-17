@@ -52,7 +52,6 @@
  "flow": [
   {
    "block": "line",
-   "part": "subject",
    "params": {
     "label": "kind",
     "style": "caps"

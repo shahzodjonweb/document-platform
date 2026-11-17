@@ -103,7 +103,9 @@
      "candidate_name"
     ],
     "labels": {
-     "name_after": "about"
+     "name_after": {
+      "uz": "about"
+     }
     },
     "captions": {
      "candidate_name": "cap_name"
@@ -244,7 +246,6 @@
   },
   {
    "block": "line",
-   "part": "sign_off",
    "when": "fact:seal=true",
    "keep": "closing",
    "params": {

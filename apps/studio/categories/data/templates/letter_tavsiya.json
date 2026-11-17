@@ -114,7 +114,6 @@
   },
   {
    "block": "line",
-   "part": "head_row",
    "when": "nofact:salutation",
    "params": {
     "label": "to_whom"
@@ -216,7 +215,6 @@
   },
   {
    "block": "line",
-   "part": "sign_off",
    "when": "fact:recommender_phone",
    "params": {
     "label": "contact_offer"
@@ -224,7 +222,6 @@
   },
   {
    "block": "line",
-   "part": "sign_off",
    "when": "fact:salutation",
    "keep": "closing",
    "params": {
@@ -233,7 +230,6 @@
   },
   {
    "block": "line",
-   "part": "sign_off",
    "when": "nofact:salutation",
    "keep": "closing",
    "params": {

@@ -117,6 +117,16 @@
   },
   {
    "block": "ruled_blank",
+   "part": "request_blank",
+   "when": "blank:request",
+   "params": {
+    "lines": 6,
+    "width_mm": "full",
+    "pitch_pt": 24
+   }
+  },
+  {
+   "block": "ruled_blank",
    "part": "reason_blank",
    "when": "blank:reason",
    "params": {

@@ -94,8 +94,12 @@
      "subject_name"
     ],
     "labels": {
-     "name_before": "subject_lead",
-     "name_after": "about"
+     "name_before": {
+      "ru": "subject_lead"
+     },
+     "name_after": {
+      "uz": "about"
+     }
     },
     "captions": {
      "subject_name": "cap_name"
@@ -169,7 +173,6 @@
   },
   {
    "block": "line",
-   "part": "purpose_line",
    "when": "nofact:purpose_recipient",
    "params": {
     "label": "purpose_any",
@@ -196,7 +199,6 @@
   },
   {
    "block": "line",
-   "part": "seal",
    "when": "nofact:without_seal=true",
    "keep": "closing",
    "params": {

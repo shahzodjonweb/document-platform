@@ -174,9 +174,9 @@
     "en": "Company or organisation"
    },
    "example": {
-    "uz": "Sharq Logistics",
+    "uz": "Namuna Logistika",
     "ru": "Школа «Намуна»",
-    "en": "Zarnigor Soft"
+    "en": "Misol Soft"
    },
    "kind": "org",
    "need": "required",
@@ -524,7 +524,7 @@
    "block": "paragraph",
    "words": [
     20,
-    60
+    45
    ],
    "grounded": true
   },
@@ -540,7 +540,7 @@
    "block": "paragraph",
    "words": [
     30,
-    110
+    80
    ],
    "grounded": true
   },
@@ -556,7 +556,7 @@
    "block": "paragraph",
    "words": [
     12,
-    50
+    35
    ],
    "grounded": true
   },
@@ -572,7 +572,7 @@
    "block": "paragraph",
    "words": [
     15,
-    50
+    40
    ],
    "grounded": true
   },
@@ -651,9 +651,9 @@
   },
   "examples": [
    {
-    "uz": "Zarnigor Soft kompaniyasiga backend dasturchi amaliyotchisi vakansiyasi uchun ishga kirish xati yozing. E’lonni ularning Telegram kanalida ko‘rdim. Men Bekzod Nazarov, Samarqand davlat universiteti kompyuter ilmlari 4-kurs talabasiman. Bitiruv loyiham — Django yordamida mehmon uylari uchun bron qilish tizimi. 2024-yil yozida dasturlash studiyasida amaliyot o‘tab, REST endpointlar va unit testlar yozdim. Python, Django, PostgreSQL, Docker, Git. Zarnigor Soft mehmon uylari uchun dasturlar yaratadi, bu mening bitiruv loyiham mavzusiga yaqin. Email: bekzod.nazarov@example.com.",
-    "ru": "Напишите сопроводительное письмо в компанию Zarnigor Soft на вакансию стажёра backend-разработчика. Объявление видел в их Telegram-канале. Я Бекзод Назаров, студент 4 курса, информатика, Самаркандский государственный университет. Дипломный проект — система бронирования для гостевых домов на Django. Летом 2024 года стажировался в студии разработки: писал REST-эндпоинты и юнит-тесты. Python, Django, PostgreSQL, Docker, Git. Zarnigor Soft делает программы для гостевых домов, это близко к моему дипломному проекту. Почта: bekzod.nazarov@example.com.",
-    "en": "Write a cover letter to Zarnigor Soft for the backend developer intern vacancy. I saw it on their Telegram channel. I am Bekzod Nazarov, a 4th-year Computer Science student at Samarkand State University. My final project is a booking system for guesthouses, built with Django. In summer 2024 I did an internship at a software studio: I wrote REST endpoints and unit tests. Python, Django, PostgreSQL, Docker, Git. Zarnigor Soft builds software for guesthouses, which is close to my final project. Email: bekzod.nazarov@example.com."
+    "uz": "Misol Soft kompaniyasiga backend dasturchi amaliyotchisi vakansiyasi uchun ishga kirish xati yozing. E’lonni ularning Telegram kanalida ko‘rdim. Men Bekzod Nazarov, Samarqand davlat universiteti kompyuter ilmlari 4-kurs talabasiman. Bitiruv loyiham — Django yordamida mehmon uylari uchun bron qilish tizimi. 2024-yil yozida dasturlash studiyasida amaliyot o‘tab, REST endpointlar va unit testlar yozdim. Python, Django, PostgreSQL, Docker, Git. Misol Soft mehmon uylari uchun dasturlar yaratadi, bu mening bitiruv loyiham mavzusiga yaqin. Email: bekzod.nazarov@example.com.",
+    "ru": "Напишите сопроводительное письмо в компанию «Мисол Софт» на вакансию стажёра backend-разработчика. Объявление видел в их Telegram-канале. Я Бекзод Назаров, студент 4 курса, информатика, Самаркандский государственный университет. Дипломный проект — система бронирования для гостевых домов на Django. Летом 2024 года стажировался в студии разработки: писал REST-эндпоинты и юнит-тесты. Python, Django, PostgreSQL, Docker, Git. «Мисол Софт» делает программы для гостевых домов, это близко к моему дипломному проекту. Почта: bekzod.nazarov@example.com.",
+    "en": "Write a cover letter to Misol Soft for the backend developer intern vacancy. I saw it on their Telegram channel. I am Bekzod Nazarov, a 4th-year Computer Science student at Samarkand State University. My final project is a booking system for guesthouses, built with Django. In summer 2024 I did an internship at a software studio: I wrote REST endpoints and unit tests. Python, Django, PostgreSQL, Docker, Git. Misol Soft builds software for guesthouses, which is close to my final project. Email: bekzod.nazarov@example.com."
    },
    {
     "uz": "«Namuna» xususiy maktabiga ingliz tili o‘qituvchisi vakansiyasi uchun xat yozing, direktor Anna Sergeyevna Belova. E’lonni maktab saytida ko‘rdim, vakansiya raqami E-7. Men Feruza Rahimova, Toshkentdagi davlat maktabida to‘rt yildan beri 5–9-sinflarga ingliz tilidan dars beraman. 9-sinf o‘quvchilarini olimpiadaga tayyorlayman: uch o‘quvchim shahar bosqichi sovrindori bo‘ldi. IELTS — 7.5. Maktabingizning kam o‘quvchili sinflarda dars berish tamoyili menga yoqadi. Ilova: rezyume va IELTS sertifikati nusxasi. Telefon: +998 90 123 45 67, email: feruza.rahimova@example.com.",
@@ -661,9 +661,9 @@
     "en": "Write a letter to the private school “Namuna” for the English teacher vacancy, addressed to the director, Anna Sergeyevna Belova. I saw the ad on the school’s website, vacancy no. E-7. I am Feruza Rahimova. For four years I have taught English to grades 5–9 at a state school in Tashkent. I prepare my 9th graders for olympiads: three of them placed in the city round. IELTS 7.5. I like your school’s principle of working with small classes. Enclosures: my CV and a copy of my IELTS certificate. Phone: +998 90 123 45 67, email: feruza.rahimova@example.com."
    },
    {
-    "uz": "Sharq Logistics kompaniyasi kadrlar bo‘limi boshlig‘i Nilufar Saidova xonimga marketing menejeri vakansiyasi (raqami M-214) uchun xat yozing. E’lonni kompaniya saytida ko‘rdim. CV’im ilovada: ism va tajribamni undan oling. Logistika sohasiga o‘tmoqchiman: e’londa onlayn buyurtmalarni kuzatish tizimi rivojlantirilayotgani yozilgan, bu mening onlayn savdo bilan ishlash tajribamga yaqin. Uslub — rasmiy.",
-    "ru": "Напишите письмо начальнику отдела кадров Sharq Logistics Нилуфар Саидовой на вакансию менеджера по маркетингу (номер M-214). Объявление на сайте компании. Моё резюме приложено: имя и опыт возьмите из него. Хочу перейти в логистику: в объявлении написано, что компания развивает систему отслеживания онлайн-заказов, это близко к моему опыту работы с онлайн-продажами. Стиль — официальный.",
-    "en": "Write to Nilufar Saidova, head of HR at Sharq Logistics, about the marketing manager vacancy (ref. M-214), seen on the company website. My CV is attached: take my name and experience from it. I want to move into logistics: the ad says the company is developing an online order-tracking system, which is close to my experience with online sales. Formal tone."
+    "uz": "Namuna Logistika kompaniyasi kadrlar bo‘limi boshlig‘i Nilufar Saidova xonimga marketing menejeri vakansiyasi (raqami M-214) uchun xat yozing. E’lonni kompaniya saytida ko‘rdim. CV’im ilovada: ism va tajribamni undan oling. Logistika sohasiga o‘tmoqchiman: e’londa onlayn buyurtmalarni kuzatish tizimi rivojlantirilayotgani yozilgan, bu mening onlayn savdo bilan ishlash tajribamga yaqin. Uslub — rasmiy.",
+    "ru": "Напишите письмо начальнику отдела кадров «Намуна Логистика» Нилуфар Саидовой на вакансию менеджера по маркетингу (номер M-214). Объявление на сайте компании. Моё резюме приложено: имя и опыт возьмите из него. Хочу перейти в логистику: в объявлении написано, что компания развивает систему отслеживания онлайн-заказов, это близко к моему опыту работы с онлайн-продажами. Стиль — официальный.",
+    "en": "Write to Nilufar Saidova, head of HR at Namuna Logistics, about the marketing manager vacancy (ref. M-214), seen on the company website. My CV is attached: take my name and experience from it. I want to move into logistics: the ad says the company is developing an online order-tracking system, which is close to my experience with online sales. Formal tone."
    }
   ],
   "attach": true,

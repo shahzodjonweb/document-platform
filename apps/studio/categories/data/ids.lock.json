@@ -63,6 +63,7 @@
     "enclosures": "list",
     "reason_blank": "fixed",
     "request": "prose",
+    "request_blank": "fixed",
     "signature": "fixed",
     "statements": "list",
     "title": "fixed"

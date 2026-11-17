@@ -515,7 +515,7 @@
    "block": "paragraph",
    "words": [
     10,
-    70
+    45
    ],
    "grounded": true
   },
@@ -525,7 +525,7 @@
    "heading": null,
    "heading_mode": "none",
    "need": "required",
-   "share": 0.36,
+   "share": 0.14,
    "elastic": true,
    "write": "One or two paragraphs of the customer's facts: what the person did, the result, the figure or the place in a group, only as given; episodes before adjectives. Empty when no fact was given.",
    "block": "paragraph",
@@ -551,7 +551,7 @@
    "heading": null,
    "heading_mode": "none",
    "need": "usual",
-   "share": 0.12,
+   "share": 0.05,
    "elastic": true,
    "write": "How the person works with others and with feedback, each quality tied to a fact the customer gave; no intensifier, no effort words he did not use. Empty when nothing was given.",
    "block": "paragraph",
@@ -569,7 +569,7 @@
    "block": "paragraph",
    "words": [
     8,
-    45
+    30
    ],
    "grounded": true
   },
@@ -585,7 +585,7 @@
    "block": "paragraph",
    "words": [
     8,
-    50
+    30
    ],
    "grounded": true
   },
@@ -678,7 +678,7 @@
    "to": "model"
   },
   {
-   "text": "A draft for someone else to sign (\"ustozim imzolaydi\", \"черновик\"): write in the signer's register from the customer's facts, add no praise and leave the signer's phone, e-mail and date to the template's blanks. Phone and e-mail digit for digit.",
+   "text": "A draft for someone else to sign (\"ustozim imzolaydi\", \"черновик\"): write in the signer's register from the customer's facts, add no praise and leave the signer's phone and e-mail to the template's blanks. The date is never yours to write: the template prints the customer's date, else today's. Phone and e-mail digit for digit.",
    "to": "model"
   },
   {
@@ -704,9 +704,9 @@
     "en": "I need a draft for my teacher, who will give me a recommendation for a master’s programme. I am Dilnoza Karimova, a 4th-year information systems student. The letter will be signed by Dilshod Rahimov, associate professor in the information systems department of Namuna State University, who has taught me the “Databases” course since 2023; it goes to the master’s admissions committee of Namuna University of Technology."
    },
    {
-    "uz": "Bahor Foods MChJ direktori sifatida sotuv menejeri Jasur Toshmatov uchun tavsiya xati kerak, u boshqa kompaniyaga ishga o‘tmoqchi. Men Bahodir Xolmatov, Bahor Foods MChJ direktoriman. Jasur menda 2021-yil martidan 2026-yil oktabrigacha ishladi: onlayn sotuvni 40 foizga oshirdi, besh kishilik jamoaga rahbarlik qildi, 2024-yilda «Yilning eng yaxshi xodimi» deb tan olindi. Ishdan o‘z xohishi bilan ketdi, intizomiy jazo olmagan. Xat kompaniya blankasida bo‘ladi, muhr bilan; chiqish raqami 118, sana 2026-yil 3-noyabr. Telefon: +998 71 000 00 00.",
-    "ru": "Нужно рекомендательное письмо на менеджера по продажам Жасура Тошматова, он переходит в другую компанию. Я Баходир Холматов, директор ООО «Bahor Foods». Жасур работал у меня с марта 2021 по октябрь 2026 года: увеличил онлайн-продажи на 40%, руководил командой из пяти человек, в 2024 году признан «Лучшим сотрудником года». Ушёл по собственному желанию, дисциплинарных взысканий нет. Письмо на бланке компании, с печатью; исходящий номер 118, дата 3 ноября 2026 года. Телефон: +998 71 000 00 00.",
-    "en": "I need a letter of recommendation for Jasur Toshmatov, a sales manager who is moving to another company. I am Bahodir Kholmatov, director of Bahor Foods LLC. Jasur worked for me from March 2021 to October 2026: he grew online sales by 40%, led a team of five, and in 2024 was named “Employee of the Year”. He left of his own accord and has no disciplinary record. The letter goes on a company letterhead with our seal, reference number 118, dated 3 November 2026. Phone: +998 71 000 00 00."
+    "uz": "Namuna Savdo MChJ direktori sifatida sotuv menejeri Jasur Toshmatov uchun tavsiya xati kerak, u boshqa kompaniyaga ishga o‘tmoqchi. Men Bahodir Xolmatov, Namuna Savdo MChJ direktoriman. Jasur menda 2021-yil martidan 2026-yil oktabrigacha ishladi: onlayn sotuvni 40 foizga oshirdi, besh kishilik jamoaga rahbarlik qildi, 2024-yilda «Yilning eng yaxshi xodimi» deb tan olindi. Ishdan o‘z xohishi bilan ketdi, intizomiy jazo olmagan. Xat kompaniya blankasida bo‘ladi, muhr bilan; chiqish raqami 118, sana 2026-yil 3-noyabr. Telefon: +998 71 000 00 00.",
+    "ru": "Нужно рекомендательное письмо на менеджера по продажам Жасура Тошматова, он переходит в другую компанию. Я Баходир Холматов, директор ООО «Намуна Савдо». Жасур работал у меня с марта 2021 по октябрь 2026 года: увеличил онлайн-продажи на 40%, руководил командой из пяти человек, в 2024 году признан «Лучшим сотрудником года». Ушёл по собственному желанию, дисциплинарных взысканий нет. Письмо на бланке компании, с печатью; исходящий номер 118, дата 3 ноября 2026 года. Телефон: +998 71 000 00 00.",
+    "en": "I need a letter of recommendation for Jasur Toshmatov, a sales manager who is moving to another company. I am Bahodir Kholmatov, director of Namuna Savdo LLC. Jasur worked for me from March 2021 to October 2026: he grew online sales by 40%, led a team of five, and in 2024 was named “Employee of the Year”. He left of his own accord and has no disciplinary record. The letter goes on a company letterhead with our seal, reference number 118, dated 3 November 2026. Phone: +998 71 000 00 00."
    }
   ],
   "pool": [
@@ -769,6 +769,14 @@
   },
   {
    "text": "Telling the customer when three or more pages were asked and two were made."
+  },
+  {
+   "text": "A blank date line for a draft someone else will sign (\"ustozim imzolaydi\", \"черновик\", \"for my teacher to sign\"); this round the letter is always dated, with the customer's date or the day it is made, and the signer corrects it by hand.",
+   "words": [
+    "sanasiz",
+    "без даты",
+    "undated"
+   ]
   }
  ]
 }

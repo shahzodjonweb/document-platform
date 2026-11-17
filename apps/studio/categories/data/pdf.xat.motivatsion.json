@@ -570,7 +570,7 @@
    "block": "paragraph",
    "words": [
     25,
-    80
+    60
    ],
    "grounded": true
   },
@@ -580,7 +580,7 @@
    "heading": null,
    "heading_mode": "none",
    "need": "usual",
-   "share": 0.22,
+   "share": 0.14,
    "elastic": true,
    "write": "The customer's own reason, then the specifics he gave or attached (courses, a method, the language), each beside something he said he wants to do. No module, professor, lab, ranking or city from memory; no praise of the institution. Empty when he gave no reason and no specifics.",
    "block": "paragraph",
@@ -592,7 +592,7 @@
    "heading": null,
    "heading_mode": "none",
    "need": "usual",
-   "share": 0.35,
+   "share": 0.23,
    "elastic": true,
    "write": "His facts, most relevant first: setting, period, role and figure exactly as given; at 2 or more pages grouped by kind (study, work, activity). A member is not a leader, a talk is not a publication. Empty when he gave none: no blank in its place.",
    "block": "paragraph",
@@ -604,7 +604,7 @@
    "heading": null,
    "heading_mode": "none",
    "need": "usual",
-   "share": 0.1,
+   "share": 0.06,
    "elastic": true,
    "write": "The goal after the programme as stated, and what he brings only as a restatement of facts already in the letter; a plan for the home country only if given. Empty without a stated goal.",
    "block": "paragraph",
@@ -622,7 +622,7 @@
    "block": "paragraph",
    "words": [
     15,
-    55
+    40
    ],
    "grounded": true
   },

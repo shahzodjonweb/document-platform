@@ -40,9 +40,9 @@
     "en": "To: position and organisation"
    },
    "example": {
-    "uz": "Bahor Foods direktori",
-    "ru": "Директору Bahor Foods",
-    "en": "Director, Bahor Foods"
+    "uz": "Misol Savdo direktori",
+    "ru": "Директору «Мисол Савдо»",
+    "en": "Director, Misol Savdo"
    },
    "kind": "line",
    "need": "required",
@@ -91,9 +91,9 @@
     "en": "Your full name"
    },
    "example": {
-    "uz": "Nigora Rahimovadan",
-    "ru": "Нигоры Рахимовой",
-    "en": "Nigora Rahimova"
+    "uz": "Nigora Salimovadan",
+    "ru": "Нигоры Салимовой",
+    "en": "Nigora Salimova"
    },
    "kind": "person",
    "need": "required",
@@ -125,9 +125,9 @@
     "en": "Printed name"
    },
    "example": {
-    "uz": "N. Rahimova",
-    "ru": "Н. Рахимова",
-    "en": "Nigora Rahimova"
+    "uz": "N. Salimova",
+    "ru": "Н. Салимова",
+    "en": "Nigora Salimova"
    },
    "kind": "person",
    "need": "recommended",
@@ -266,7 +266,7 @@
    "need": "required",
    "share": 0.1,
    "elastic": false,
-   "write": "The first group: addressee_position and addressee_name, each as the customer gave it, only the last word inflected. uz dative -ga (-ka after k, -qa after q), the possessive on the position only after the body it heads: \"Bahor Foods direktori\" + \"R. Aliyevga\"; no name: \"Bahor Foods direktoriga\"; \"Dekan S. Yoqubovga\"; \"6-«B» sinf rahbari Z. Nazarovaga\". ru dative from the first word, initials first: \"Директору Bahor Foods\", \"Р. Алиеву\". en no case, no initials added, no honorific: \"Director, Bahor Foods\", \"Rustam Aliyev\". Never an office the customer did not name.",
+   "write": "The first group: addressee_position and addressee_name, each as the customer gave it, only the last word inflected. uz dative -ga (-ka after k, -qa after q), the possessive on the position only after the body it heads: \"Misol Savdo direktori\" + \"R. Aliyevga\"; no name: \"Misol Savdo direktoriga\"; \"Dekan S. Yoqubovga\"; \"6-«B» sinf rahbari Z. Nazarovaga\". ru dative from the first word, initials first: \"Директору «Мисол Савдо»\", \"Р. Алиеву\". en no case, no initials added, no honorific: \"Director, Misol Savdo\", \"Rustam Aliyev\". Never an office the customer did not name.",
    "block": "party_block",
    "fields": [
     "addressee_position",
@@ -285,7 +285,7 @@
    "need": "required",
    "share": 0.1,
    "elastic": false,
-   "write": "The second group: writer_role, then writer_name, the full name exactly as written (patronymic, qizi or o‘g‘li only if given), never shortened. uz the last word takes -dan: \"buxgalter\" + \"Nigora Rahimovadan\"; a parent \"o‘quvchi Azizning ota-onasi\" + \"Bobur Karimovdan\". ru \"от\" + the role and the name in the genitive: \"от бухгалтера\" + \"Нигоры Рахимовой\". en as written: \"Nigora Rahimova\", \"Accountant\". signer_name: uz and ru the initials of the given names written, then the surname (\"N. Rahimova\", \"D. R. Karimova\"); en the name as written.",
+   "write": "The second group: writer_role, then writer_name, the full name exactly as written (patronymic, qizi or o‘g‘li only if given), never shortened. uz the last word takes -dan: \"buxgalter\" + \"Nigora Salimovadan\"; a parent \"o‘quvchi Azizning ota-onasi\" + \"Bobur Karimovdan\". ru \"от\" + the role and the name in the genitive: \"от бухгалтера\" + \"Нигоры Салимовой\". en as written: \"Nigora Salimova\", \"Accountant\". signer_name: uz and ru the initials of the given names written, then the surname (\"N. Salimova\", \"D. R. Karimova\"); en the name as written.",
    "block": "party_block",
    "fields": [
     "writer_role",
@@ -322,7 +322,7 @@
    "grounded": true,
    "words": [
     15,
-    120
+    100
    ]
   },
   {
@@ -338,7 +338,7 @@
    "grounded": true,
    "words": [
     8,
-    90
+    70
    ]
   },
   {
@@ -492,9 +492,9 @@
   },
   "examples": [
    {
-    "uz": "Bahor Foods direktori Rustam Aliyevga tushuntirish xati kerak. Men, buxgalter Nigora Rahimova, 12-noyabr kuni ishga 40 daqiqa kech qoldim: 9:40 da keldim. Sababi: yo‘lda avtohalokat bo‘lib, ko‘cha bir soatga yopilgan edi. Bo‘lim boshlig‘iga oldindan telefon qilib aytgandim.",
-    "ru": "Нужна объяснительная директору Bahor Foods Рустаму Алиеву. Я, бухгалтер Нигора Рахимова, 12 ноября опоздала на работу на 40 минут: пришла в 9:40. Причина: по дороге произошла авария, улицу перекрыли на час. Начальнику отдела я позвонила заранее.",
-    "en": "I need an explanatory note to Rustam Aliyev, director of Bahor Foods. I am Nigora Rahimova, an accountant, and on 12 November I was 40 minutes late for work: I arrived at 9:40. The reason: an accident on my way closed the street for an hour. I phoned my head of department in advance."
+    "uz": "Misol Savdo direktori Rustam Aliyevga tushuntirish xati kerak. Men, buxgalter Nigora Salimova, 12-noyabr kuni ishga 40 daqiqa kech qoldim: 9:40 da keldim. Sababi: yo‘lda avtohalokat bo‘lib, ko‘cha bir soatga yopilgan edi. Bo‘lim boshlig‘iga oldindan telefon qilib aytgandim.",
+    "ru": "Нужна объяснительная директору «Мисол Савдо» Рустаму Алиеву. Я, бухгалтер Нигора Салимова, 12 ноября опоздала на работу на 40 минут: пришла в 9:40. Причина: по дороге произошла авария, улицу перекрыли на час. Начальнику отдела я позвонила заранее.",
+    "en": "I need an explanatory note to Rustam Aliyev, director of Misol Savdo. I am Nigora Salimova, an accountant, and on 12 November I was 40 minutes late for work: I arrived at 9:40. The reason: an accident on my way closed the street for an hour. I phoned my head of department in advance."
    },
    {
     "uz": "Dekan Sanjar Yoqubovga tushuntirish xati yozing. Men, Moliya fakultetining 2-kurs talabasi Sardor Tursunov (MB-21 guruh), 10 va 11-noyabr kunlari darslarga kelmadim: isitmalab kasal bo‘lib qolgandim. Poliklinika ma’lumotnomasi bor, ilovada ko‘rsating. Qoldirgan mavzularni mustaqil o‘rganib olishga va’da beraman.",
@@ -527,7 +527,7 @@
  "look": null,
  "gates": [
   "A native Uzbek reader checks the fixed words (TUSHUNTIRISH XATI, Sababi:, Ilova:, Sana / Imzo / I.O. familiyasi, the four blank captions) and the case endings of the addressee and writer groups against the case corpus below; a native Russian reader the Russian ones; a native English reader the English ones.",
-  "Case corpus, run against the real model in all three languages. uz: \"Bahor Foods direktori Rustam Aliyev\" gives \"Bahor Foods direktori R. Aliyevga\"; no name \"Bahor Foods direktoriga\"; \"dekan Sanjar Yoqubov\" gives \"Dekan S. Yoqubovga\"; \"Ibrohimbek\" gives \"Ibrohimbekka\" and \"Ibrohimbekdan\"; writer \"Karimova Dilnoza Rustam qizi\" gives \"Karimova Dilnoza Rustam qizidan\" and the printed name \"D. R. Karimova\"; a parent gives \"o‘quvchi Azizning ota-onasi / Bobur Karimovdan\". ru: \"директор Bahor Foods Рустам Алиев\" gives \"Директору Bahor Foods Р. Алиеву\"; writer \"бухгалтер Нигора Рахимова\" gives \"от бухгалтера / Нигоры Рахимовой\", printed \"Н. Рахимова\"; \"Ким\" (a woman) and \"Шевченко\" stay unchanged. en (no case, names as written, no initials and no honorific added): \"Bahor Foods director Rustam Aliyev\" gives \"To: Rustam Aliyev / Director, Bahor Foods\"; no name \"To: Director, Bahor Foods\"; \"Dean Sanjar Yoqubov\" gives \"To: Sanjar Yoqubov / Dean\"; writer \"accountant Nigora Rahimova\" gives \"From: Nigora Rahimova / Accountant\" and the printed name \"Nigora Rahimova\"; a parent gives \"From: Bobur Karimov / parent of Aziz, class 6 B\"; an unknown writer gives a ruled blank captioned (full name) and an empty printed-name cell.",
+  "Case corpus, run against the real model in all three languages. uz: \"Misol Savdo direktori Rustam Aliyev\" gives \"Misol Savdo direktori R. Aliyevga\"; no name \"Misol Savdo direktoriga\"; \"dekan Sanjar Yoqubov\" gives \"Dekan S. Yoqubovga\"; \"Ibrohimbek\" gives \"Ibrohimbekka\" and \"Ibrohimbekdan\"; writer \"Karimova Dilnoza Rustam qizi\" gives \"Karimova Dilnoza Rustam qizidan\" and the printed name \"D. R. Karimova\"; a parent gives \"o‘quvchi Azizning ota-onasi / Bobur Karimovdan\". ru: \"директор «Мисол Савдо» Рустам Алиев\" gives \"Директору «Мисол Савдо» Р. Алиеву\"; writer \"бухгалтер Нигора Салимова\" gives \"от бухгалтера / Нигоры Салимовой\", printed \"Н. Салимова\"; \"Ким\" (a woman) and \"Шевченко\" stay unchanged. en (no case, names as written, no initials and no honorific added): \"Misol Savdo director Rustam Aliyev\" gives \"To: Rustam Aliyev / Director, Misol Savdo\"; no name \"To: Director, Misol Savdo\"; \"Dean Sanjar Yoqubov\" gives \"To: Sanjar Yoqubov / Dean\"; writer \"accountant Nigora Salimova\" gives \"From: Nigora Salimova / Accountant\" and the printed name \"Nigora Salimova\"; a parent gives \"From: Bobur Karimov / parent of Aziz, class 6 B\"; an unknown writer gives a ruled blank captioned (full name) and an empty printed-name cell.",
   "Render the cases of the mocks (an ordinary note, an incident with attachments, a parent, no reason, no event and no reason, an overflow to two pages) in uz, ru and en with the paper sample tool and compare them with units/pdf.xat.tushuntirish/mock/official_tushuntirish.png and its cases, ru-en and overflow sheets."
  ],
  "later": [

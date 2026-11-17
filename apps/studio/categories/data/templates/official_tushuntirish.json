@@ -65,7 +65,9 @@
    "params": {
     "anchor": "right_half",
     "max_lines": 5,
-    "label": "to",
+    "label": {
+     "en": "to"
+    },
     "captions": {
      "addressee_position": "cap_head"
     },
@@ -92,7 +94,9 @@
     "anchor": "right_half",
     "max_lines": 5,
     "gap_pt": 12,
-    "label": "from",
+    "label": {
+     "en": "from"
+    },
     "captions": {
      "writer_name": "cap_name"
     },

@@ -165,8 +165,8 @@
    },
    "kind": "text",
    "need": "required",
-   "missing": "blank",
-   "where": "the request paragraph under the title."
+   "missing": "if_needed",
+   "where": "the request paragraph under the title. ____ only when the message names no request at all (a bare \"ariza kerak\", or a form to fill in by hand): the paragraph stays empty and the template draws six ruled lines in its place."
   },
   {
    "id": "period",
@@ -464,6 +464,20 @@
     "date_written",
     "signer_name"
    ]
+  },
+  {
+   "id": "request_blank",
+   "kind": "fixed",
+   "heading": null,
+   "heading_mode": "none",
+   "need": "optional",
+   "share": 0.0,
+   "elastic": false,
+   "write": "Six ruled lines, drawn when request is ____: only for a message naming no request at all (\"ariza kerak\").",
+   "block": "ruled_blank",
+   "fields": [
+    "request"
+   ]
   }
  ],
  "rules": [
@@ -472,15 +486,15 @@
    "to": "model"
   },
   {
-   "text": "Length: always one page; the request and statements 25 to 90 words, never over 150. Never pad, never add backstory, never explain the law. One request, one decision: a second unrelated request is left out.",
+   "text": "Length: always one page; the request and statements 25 to 90 words, never over 150. Never pad, never explain the law. One request, one decision: a second unrelated request is left out.",
    "to": "model"
   },
   {
-   "text": "Voice: first person singular, polite Siz, the request first, ending with the formula verb (uz ... so‘rayman, ru Прошу ..., en I kindly ask you to ...). The object pronoun stays (Meni ..., Menga ...); never \"Men, <name>,\". No greeting or closing courtesy (Hurmatli, Rahmat, Уважаемый, Dear, Thank you), no flattery, exclamation mark, emoji, heading or subject line.",
+   "text": "Voice: first person singular, polite Siz, the request first, ending with the formula verb (uz ... so‘rayman, ru Прошу ..., en I kindly ask you to ...). The object pronoun stays (Meni ..., Menga ...); never \"Men, <name>,\". No greeting or closing courtesy (Hurmatli, Rahmat, Уважаемый, Dear, Thank you), no exclamation mark, emoji, heading or subject line.",
    "to": "model"
   },
   {
-   "text": "Never invent a person, organisation, position, address, phone, number, date, period, amount, paper, order, contract, law or article, nor the name of any head, nor a reason he did not give. A missing fact is left out of the facts (or ____ for an if_needed field) and the template draws the blank.",
+   "text": "Never invent a person, organisation, position, address, phone, number, date, period, amount, paper, order, contract, law or article, nor the name of any head, nor a reason he did not give.",
    "to": "model"
   },
   {
@@ -529,9 +543,9 @@
   ],
   "pool": [
    {
-    "uz": "Bahor Foods MChJ direktoriga ishdan bo‘shash arizasi. Men Jasur Toshmatov, sotuv menejeriman. O‘z xohishimga ko‘ra 2026-yil 1-dekabrdan ishdan bo‘shatishingizni so‘rayman. Telefon: +998 90 123 45 67.",
-    "ru": "Заявление об увольнении директору ООО «Bahor Foods». Я Жасур Тошматов, менеджер по продажам. Прошу уволить меня по собственному желанию с 1 декабря 2026 года. Телефон: +998 90 123 45 67.",
-    "en": "A resignation request to the director of Bahor Foods LLC. I am Jasur Toshmatov, a sales manager. I ask you to release me from my position at my own request from 1 December 2026. Phone: +998 90 123 45 67."
+    "uz": "Namuna Savdo MChJ direktoriga ishdan bo‘shash arizasi. Men Jasur Toshmatov, sotuv menejeriman. O‘z xohishimga ko‘ra 2026-yil 1-dekabrdan ishdan bo‘shatishingizni so‘rayman. Telefon: +998 90 123 45 67.",
+    "ru": "Заявление об увольнении директору ООО «Намуна Савдо». Я Жасур Тошматов, менеджер по продажам. Прошу уволить меня по собственному желанию с 1 декабря 2026 года. Телефон: +998 90 123 45 67.",
+    "en": "A resignation request to the director of Namuna Savdo LLC. I am Jasur Toshmatov, a sales manager. I ask you to release me from my position at my own request from 1 December 2026. Phone: +998 90 123 45 67."
    },
    {
     "uz": "Namuna davlat universiteti rektoriga ariza. Men Zarina Obidova, 3-kurs, 305-guruh talabasiman. 2026/2027 o‘quv yili uchun sog‘lig‘im sababli akademik ta’til berishingizni so‘rayman.",

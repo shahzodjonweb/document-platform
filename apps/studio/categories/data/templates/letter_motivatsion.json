@@ -109,7 +109,6 @@
   },
   {
    "block": "line",
-   "part": "salutation",
    "when": "fact:salutation_form=admissions",
    "params": {
     "label": "admissions"
@@ -117,7 +116,6 @@
   },
   {
    "block": "line",
-   "part": "salutation",
    "when": "fact:salutation_form=selection",
    "params": {
     "label": "selection"
@@ -125,7 +123,6 @@
   },
   {
    "block": "line",
-   "part": "salutation",
    "when": "fact:salutation_form=general",
    "params": {
     "label": "general"
@@ -133,7 +130,6 @@
   },
   {
    "block": "line",
-   "part": "salutation",
    "when": "nofact:salutation_form",
    "params": {
     "label": "general"
