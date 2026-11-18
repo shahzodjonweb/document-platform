@@ -2111,7 +2111,10 @@ CASES += [
           'The law on education and the act on media apply to schools.', gone=('media',)),
     guard('laws-the-customers-law-described-as-an-act-on-en-accepted_false_blank', ACCEPTED, EDU_EN, 'en',
           'The law on education is the main act on schooling.', gone=('schooling',),
-          pair='laws-an-invented-lower-case-act-on-beside-the-customers-law-en-blank'),
+          pair='laws-an-invented-lower-case-act-on-beside-the-customers-law-en-blank'),    # The customer's law in lower case is a citation like its title, so a year they never gave goes with it as it
+    # does with "The Law on Education first appeared in 1992".
+    guard('laws-an-invented-year-of-the-customers-lower-case-law-en-blank', BLANK, EDU_EN, 'en',
+          'The law on education first appeared in 1992.', gone=('1992',)),
 ]
 
 # ---- A blanked full name's free first word is held only as a two-word name's given name (should, from a2e73ae): a
