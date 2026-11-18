@@ -1046,8 +1046,8 @@ LOWER_DETERMINER = re.compile(r"the|this|that|its|their|our|his|her|my|your|[^\W
 LOWER_STEMS = {'code': re.compile(r"code"), 'law': re.compile(r"law")}
 LOWER_LAW_ON = re.compile(
     r"(?:[ \t\u00a0]+(?:of|the|o'zbekiston\w*|respublika\w*|uzbekistan|republic|республики|узбекистан))*[ \t\u00a0]+"
-    r"[«\"“„]?(?:on|о|об)[ \t\u00a0]+(?!(?:том|тех|чем|то|этом|этой|этих|этого|нём|нем|ней|них|чём|котор\w*|this|that|these"
-    r"|those|it|its|them|which|whom|whose|paper"
+    r"[«\"“„]?(?:on|о|об)[ \t\u00a0]+(?!(?:том|тех|чем|то|этом|этой|этих|этого|нём|нем|ней|них|чём|котор\w*"
+    r"|this|that|these|those|it|its|them|which|whom|whose|paper"
     r"|record|time|top|average|behalf|purpose|hold|demand|board|the[ \t\u00a0]+(?:books|ground|whole|other|one|contrary"
     r"|surface|face|record|table|way))(?![^\W\d_]))[^\W\d_]", re.IGNORECASE)
 LOWER_LAW = re.compile(r"law|закон|закона|закону|законом|законе")
@@ -1071,9 +1071,9 @@ CODE_BESIDE_BEFORE = re.compile(r"(?<![^\W\d_])([^\W\d_]+)[ \t\u00a0]+codes?[ \t
                                 r"(?:(?:the|a|an|its|their)[ \t\u00a0]+)?$", re.IGNORECASE)
 # The adjectives that may stand between a determiner and a law's name word: "the current labour law", "the Uzbek tax
 # code", "the new civil code".
-LOWER_ADJECTIVE = re.compile(r"new|old|current|existing|present|relevant|applicable|modern|recent|latest|amended|revised"
-                             r"|updated|whole|entire|main|basic|general|own|domestic|local|federal|uzbek|russian|kazakh"
-                             r"|[a-z]+(?:al|ian|ese|ish|ic|ive|ent|ant|ary)")
+LOWER_ADJECTIVE = re.compile(r"new|old|current|existing|present|relevant|applicable|modern|recent|latest|amended"
+                             r"|revised|updated|whole|entire|main|basic|general|own|domestic|local|federal|uzbek"
+                             r"|russian|kazakh|[a-z]+(?:al|ian|ese|ish|ic|ive|ent|ant|ary)")
 CODE_OF_ITEM = re.compile(r"[ \t\u00a0]+of[ \t\u00a0]+(?:(?:the|each|every|a|an|any|its|their|this|that)[ \t\u00a0]+)?"
                           r"([^\W\d_]+)", re.IGNORECASE)
 JURISDICTION = re.compile(r"country|state|nation|republic|uzbekistan|kazakhstan|russia|federation", re.IGNORECASE)
@@ -1116,7 +1116,8 @@ def _lower_cited(text, concept, match):
         return CODE_IDENTIFIER.match(text, match.end()) is None and CODE_PER_ITEM.match(text, match.end()) is None \
             and opener not in ('a', 'an') and (owner is None or JURISDICTION.fullmatch(owner.group(1)) is not None) \
             and (beside is None or _law_name(beside.group(1)) is not None) and (
-                item is None or _law_name(item.group(1)) is not None or JURISDICTION.fullmatch(item.group(1)) is not None
+                item is None or _law_name(item.group(1)) is not None
+                or JURISDICTION.fullmatch(item.group(1)) is not None
                 or LAW_COUNTRY.fullmatch(normalised(item.group(1)).casefold()) is not None)
     return LOWER_DETERMINER.fullmatch(opener) is not None and LAW_FIELD_HEAD.match(text, match.end()) is None
 
@@ -1342,8 +1343,8 @@ def _law_names(sentence):
             after = 0
             while word(index) and taken < (LAW_OF_UNNAMED_REACH if unnamed else LAW_OF_REACH):
                 start, token = tokens[index]
-                # A word of LAW_NAMES in the possessive is the name's last: "The Law on Accounting’s rules", "Education’s
-                # main aim"; any other possessive is inside a name ("the Law on Teachers’ Status", "Children’s Rights").
+                # A word of LAW_NAMES in the possessive is the name's last: "The Law on Accounting’s rules",
+                # "Education’s main aim"; any other possessive is inside a name ("the Law on Teachers’ Status").
                 owner = re.fullmatch(r"(.+?)['‘’ʻʼ`´]s", token)
                 last = owner is not None and _law_name(owner.group(1)) is not None
                 token = owner.group(1) if last else token
