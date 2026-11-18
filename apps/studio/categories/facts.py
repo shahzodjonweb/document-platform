@@ -2363,7 +2363,9 @@ def _line_roles(tokens):
     follows a role's word, a lower-case word or a modifier ("Kitchen Manager", "Quality Control Manager", "Social
     Media Manager", "Ishlab Chiqarish Menejeri"), never one after a capitalised word ("Gul Sabr kotiba").
     """
-    marked = [_role_word(token) for token in tokens]
+    # A hyphenated role is one by any of its parts: "Vice-President", "Bosh-hisobchi".
+    marked = [_role_word(token) or ('-' in token and any(_role_word(part) for part in token.split('-')))
+              for token in tokens]
     if 'by' in tokens:
         last = len(tokens) - 1 - tokens[::-1].index('by')
         marked[:last + 1] = [True] * (last + 1)

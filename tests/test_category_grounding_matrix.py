@@ -2173,6 +2173,9 @@ CASES += [
          'Grant also opened the new branch.', gone=('Grant',), facts=(('author', 'Grant Fuller Store Manager'),)),
     body('held-rejected-author-before-bosh-hisobchi-uz-blank', BLANK, 'pdf.biz.hisobot', REPORT_UZ, 'uz', 'summary',
          'Hikmat yangi filialni ochdi.', gone=('Hikmat',), facts=(('author', 'Hikmat Rahim bosh hisobchi'),)),
+    body('held-rejected-author-after-a-hyphenated-role-ru-to-en-blank', BLANK, 'pdf.biz.hisobot', REPORT_RU_EN, 'en',
+         'summary', 'Grant also opened the new branch.', gone=('Grant',),
+         facts=(('author', 'Vice-President for Sales Grant Fuller'),), translated=True),
 ]
 
 # ---- An English paper reads a Latin word against the Uzbek lexicon too (should, from a2e73ae): an Uzbek word the
