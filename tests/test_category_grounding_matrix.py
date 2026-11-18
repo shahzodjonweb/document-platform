@@ -2496,6 +2496,79 @@ for word, sentence in (('manti', 'Manti sell best in winter.'), ('mahalla', 'Mah
     CASES.append(gp(f'names-uzbek-word-{word}-opening-an-english-sentence-uz-to-en-keep', KEEP, PLAN_UZ_EN, 'en',
                     sentence, translated=True))
 
+# ---------------------------------------------------------------- the re-check of round 3 (fix-r3), both ways
+# Three exemptions of round 3 kept what c491da9 blanked: a position at the company held by a placing verb, the idiom
+# "birinchi o‘rinni egallaydi" with a person, a name or a product as its subject, and a technology token before a
+# school subject's or a curriculum's word. The leaks are pinned as blanks next to the keeps the exemptions were made
+# for.
+
+# ---- A position at the company is a job only after a possessive or a demonstrative, never after a placing verb
+# (must, from bdfb210 and 800bc39); "first position as ..." stays a job as in c491da9.
+CASES += [
+    gp('numbers-held-first-position-at-the-company-in-loan-sales-en-blank', BLANK, COVER_EN, 'en',
+       'She held first position at the company in loan sales.', gone=('first',)),
+    gp('numbers-reached-first-position-at-the-bank-en-blank', BLANK, COVER_EN, 'en',
+       'I reached first position at the bank.', gone=('first',)),
+    gp('numbers-reached-first-position-at-the-bank-in-deposits-en-blank', BLANK, COVER_EN, 'en',
+       'I reached first position at the bank in deposits.', gone=('first',)),
+    gp('numbers-took-first-position-at-the-firm-en-blank', BLANK, COVER_EN, 'en', 'He took first position at the firm.',
+       gone=('first',)),
+    gp('numbers-was-in-first-position-at-the-company-en-blank', BLANK, COVER_EN, 'en',
+       'She was in first position at the company for sales volume.', gone=('first',)),
+    gp('numbers-held-first-position-at-the-store-for-quarters-en-blank', BLANK, COVER_EN, 'en',
+       'I held first position at the store for three quarters.', gone=('first',)),
+    gp('numbers-secured-first-position-at-the-office-en-blank', BLANK, COVER_EN, 'en',
+       'I secured first position at the office in monthly sales.', gone=('first',)),
+    gp('numbers-claimed-first-position-at-the-organisation-en-blank', BLANK, COVER_EN, 'en',
+       'She claimed first position at the organisation last year.', gone=('first',)),
+    gp('numbers-achieved-first-position-at-the-shop-en-blank', BLANK, COVER_EN, 'en',
+       'He achieved first position at the shop for customer service.', gone=('first',)),
+    gp('numbers-earned-first-position-at-the-bank-en-blank', BLANK, COVER_EN, 'en',
+       'I earned first position at the bank in loan sales.', gone=('first',)),
+    gp('numbers-won-first-position-at-the-company-en-blank', BLANK, COVER_EN, 'en',
+       'She won first position at the company in customer reviews.', gone=('first',)),
+    gp('numbers-was-at-first-position-at-the-bank-en-blank', BLANK, COVER_EN, 'en',
+       'She was at first position at the bank all year.', gone=('first',)),
+    gp('numbers-remained-in-first-position-at-the-firm-en-blank', BLANK, COVER_EN, 'en',
+       'He remained in first position at the firm all year.', gone=('first',)),
+    gp('numbers-held-second-position-at-the-company-en-blank', BLANK, COVER_EN, 'en',
+       'She held second position at the company in sales.', gone=('second',)),
+    gp('numbers-reached-third-position-at-the-bank-en-blank', BLANK, COVER_EN, 'en',
+       'I reached third position at the bank in deposits.', gone=('third',)),
+    gp('numbers-kept-its-first-position-at-the-bank-en-blank', BLANK, COVER_EN, 'en',
+       'The branch kept its first position at the bank in deposits.', gone=('first',)),
+    gp('numbers-took-her-first-position-at-the-school-in-mathematics-en-blank', BLANK, RECOMMENDATION_EN, 'en',
+       'She took her first position at the school in mathematics.', gone=('first',)),
+    body('numbers-held-first-position-at-the-company-in-a-cover-letter-en-blank', BLANK, 'pdf.xat.ishga_kirish',
+         COVER_EN, 'en', 'fit', 'In my last job I held first position at the company in monthly sales.',
+         gone=('first',)),
+    body('numbers-reached-first-position-at-the-store-in-a-cover-letter-uz-to-en-blank', BLANK,
+         'pdf.xat.ishga_kirish', COVER_UZ_EN, 'en', 'fit',
+         'I reached first position at the store and kept it for a year.', gone=('first',)),
+    body('numbers-took-first-position-at-the-school-in-a-recommendation-en-blank', BLANK, 'pdf.xat.tavsiya',
+         RECOMMENDATION_EN, 'en', 'evidence', 'She took first position at the school in mathematics.',
+         gone=('first',)),
+    gp('numbers-her-first-position-at-the-bank-en-keep', KEEP, RECOMMENDATION_EN, 'en',
+       'Her first position at the bank was in the loans department.'),
+    gp('numbers-their-first-position-at-the-firm-en-keep', KEEP, RECOMMENDATION_EN, 'en',
+       'Their first position at the firm was an internship.'),
+    gp('numbers-this-first-position-at-the-company-en-keep', KEEP, COVER_EN, 'en',
+       'This first position at the company taught me discipline.'),
+    gp('numbers-that-first-position-at-the-store-en-keep', KEEP, COVER_EN, 'en',
+       'That first position at the store taught me patience.'),
+    gp('numbers-in-her-first-position-at-the-company-en-keep', KEEP, RECOMMENDATION_EN, 'en',
+       'In her first position at the company, she learned to listen to clients.'),
+    gp('numbers-my-first-position-as-an-analyst-en-keep', KEEP, COVER_EN, 'en',
+       'My first position as an analyst taught me to check every figure.'),
+    gp('numbers-took-her-first-position-as-an-analyst-en-keep', KEEP, RECOMMENDATION_EN, 'en',
+       'She took her first position as an analyst after university.'),
+    # A placing verb before the possessive reads as the placing the same words make: the blank is the price of "She
+    # took her first position at the school in mathematics" (c491da9 blanks it too).
+    gp('numbers-took-her-first-position-at-the-bank-en-accepted_false_blank', ACCEPTED, COVER_EN, 'en',
+       'She took her first position at the bank after university.', gone=('first',),
+       pair='numbers-took-her-first-position-at-the-school-in-mathematics-en-blank'),
+]
+
 CASE_IDS = [case.id for case in CASES]
 
 

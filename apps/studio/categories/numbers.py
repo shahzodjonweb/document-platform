@@ -355,10 +355,19 @@ ORDINAL_PLACE = re.compile(
 ORDINAL_SPOT = re.compile(rf"(?<![^\W\d_])({ORDINAL_WORD})({GAP_ORDINAL}|-)(place|places|position)(?![^\W\d_])",
                           re.IGNORECASE)
 SPOT_EXEMPT = re.compile(r"(?<![^\W\d_])(?:the|my|a|an)[  ]+$", re.IGNORECASE)
-# A position that is a job, whatever stands before it: "first position as a cashier", "His first position at the
-# company was ...". A possessive before "first place" exempts nothing: "Her first place at the science fair".
-POSITION_JOB = re.compile(r"[  ]+(?:as|(?:at|in|with)[  ]+(?:the|our|their|his|her|its|this|that)[  ]+"
-                          r"(?:company|firm|bank|store|shop|organi[sz]ation|school|office))(?![^\W\d_])", re.IGNORECASE)
+# A position that is a job (`_position_job`): "first position as a cashier" whatever stands before it
+# (`POSITION_AS`), and a position at the company (`POSITION_AT`) after a possessive or a demonstrative
+# (`POSITION_OWNER`): "His first position at the company was ...", "This first position at the bank taught me ...".
+# Never one a placing verb holds, with or without the possessive: "She held first position at the company in loan
+# sales", "I reached first position at the bank", "She took her first position at the school in mathematics". A
+# possessive before "first place" exempts nothing: "Her first place at the science fair".
+POSITION_AS = re.compile(r"[  ]+as(?![^\W\d_])", re.IGNORECASE)
+POSITION_AT = re.compile(r"[  ]+(?:at|in|with)[  ]+(?:the|our|their|his|her|its|this|that)[  ]+"
+                         r"(?:company|firm|bank|store|shop|organi[sz]ation|school|office)(?![^\W\d_])", re.IGNORECASE)
+POSITION_OWNER = re.compile(
+    r"(?<![^\W\d_])(?:(held|holds?|holding|reach(?:ed|es|ing)?|took|takes?|taking|won|wins?|winning|secur(?:ed|es|ing)"
+    r"|claim(?:ed|s|ing)|achiev(?:ed|es|ing)|earn(?:ed|s|ing))[  ]+)?(?:his|her|my|our|their|this|that)[  ]+$",
+    re.IGNORECASE)
 # A place of work, employment or study is never a placing: "First place of work: a pharmacy".
 SPOT_OF = re.compile(r"[  ]+of[  ]+(?:work|employment|study|studies|residence|birth|business)(?![^\W\d_])",
                      re.IGNORECASE)
@@ -749,7 +758,7 @@ class _Reader:
             if before[-7:].casefold().endswith('in the ') or SPOT_OF.match(text, match.end()) or (
                     not _contest(text, match.start(), first) and match.group(2) != '-' and (
                         SPOT_EXEMPT.search(before[-8:]) or (match.group(3).casefold() == 'position'
-                                                            and POSITION_JOB.match(text, match.end())))):
+                                                            and _position_job(text, match)))):
                 continue
             found.append(match)
         found += [match for match in ORDINAL_RANK.finditer(text) if _contest(text, match.start(), _ordinal_value(
@@ -972,6 +981,18 @@ def _contest(text, at, first=False):
         return False
     return not first or EN_RANKING.search(text, start, end) is not None \
         or FIRST_IN_SALES.search(text, start, end) is not None
+
+
+def _position_job(text, match):
+    """Whether an `ORDINAL_SPOT` "position" is a job: one "as" a role (`POSITION_AS`), or one at the company
+    (`POSITION_AT`) with a possessive or a demonstrative right before its ordinal and no placing verb before that
+    (`POSITION_OWNER`)."""
+    if POSITION_AS.match(text, match.end()):
+        return True
+    if POSITION_AT.match(text, match.end()) is None:
+        return False
+    owner = POSITION_OWNER.search(text[max(0, match.start() - 40):match.start()])
+    return owner is not None and owner.group(1) is None
 
 
 def _idiom(text, match):
