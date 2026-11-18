@@ -809,16 +809,18 @@ def _token(trusted, number, letter):
 
 
 # The technology tokens a number and a letter write ("3D modellash", "5G aloqa", "4K", "1C"). Uzbek classes are
-# lettered A, B, V, G, D, so "5G" and "3D" are also classes: a token is read as technology only with a technology word
-# right after it (`TECHNOLOGY_WORD`), never as a whole value or a class label's.
+# lettered A, B, V, G, D, so "5G" and "3D" are also classes: a token is read as technology only with a device's or a
+# medium's word right after it (`TECHNOLOGY_WORD`), never as a whole value or a class label's. A school subject's or a
+# curriculum's word is no such word: "3D texnologiya", "Texnologiya 3D dasturi asosida" and "Informatika, 5G dastur"
+# for a "3-sinf" or a "5-sinf" are classes.
 TECHNOLOGY = frozenset(('2D', '3D', '4D', '3G', '4G', '5G', '4K', '8K', '1C'))
 TECHNOLOGY_WORD = re.compile(
     r"[  ]*-?[  ]*(?:modell\w*|model\w*|printer\w*|print\w*|skaner\w*|scanner\w*|aloqa\w*|tarmo(?:q|g['‘’ʻʼ`])\w*"
     r"|internet\w*|network\w*|mobil\w*|video\w*|kamera\w*|camera\w*|grafika\w*|graphics?|animatsiya\w*|animation\w*"
     r"|dizayn\w*|design\w*|ekran\w*|screen\w*|monitor\w*|televizor\w*|display\w*|film\w*|kino\w*"
-    r"|ko['‘’ʻʼ`]zoynak\w*|glasses|router\w*|modem\w*|smartfon\w*|smartphone\w*|telefon\w*|phones?|dastur\w*"
-    r"|buxgalteriya\w*|program\w*|texnologiya\w*|technolog\w*|моделир\w*|модел\w*|принтер\w*|печат\w*|сет(?:ь|и|ей|ях)"
-    r"|связ\w*|интернет\w*|видео\w*|графи\w*|программ\w*|бухгалтери\w*|предприяти\w*|технолог\w*)(?![^\W\d_])",
+    r"|ko['‘’ʻʼ`]zoynak\w*|glasses|router\w*|modem\w*|smartfon\w*|smartphone\w*|telefon\w*|phones?"
+    r"|buxgalteriya\w*|моделир\w*|модел\w*|принтер\w*|печат\w*|сет(?:ь|и|ей|ях)"
+    r"|связ\w*|интернет\w*|видео\w*|графи\w*|бухгалтери\w*|предприяти\w*)(?![^\W\d_])",
     re.IGNORECASE)
 
 

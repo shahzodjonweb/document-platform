@@ -2653,6 +2653,51 @@ CASES += [
        pair='numbers-first-place-present-by-a-names-knowledge-uz-blank'),
 ]
 
+# ---- A technology token is no class letter only before a device's or a medium's word, never a school subject's or
+# a curriculum's (must, from f5904a5): "3D texnologiya", "Texnologiya 3D dasturi asosida" and "Informatika, 5G dastur"
+# for the customer's "3-sinf" and "5-sinf" are invented classes; "3D modellash", "3D printer", "5G aloqa" stay.
+for number, letter in (('3', 'D'), ('4', 'D'), ('5', 'G'), ('4', 'G'), ('2', 'D')):
+    brief = f'{number}-sinf texnologiya fanidan dars ishlanmasi yozing, mavzu: qog‘oz bilan ishlash.'
+    token = number + letter
+    CASES += [
+        fact(f'class-technology-shaped-letter-{token.lower()}-before-texnologiya-uz-blank', BLANK,
+             'pdf.dars_ishlanmasi', brief, 'uz', 'subject', f'{token} texnologiya', gone=(token,)),
+        fact(f'class-technology-shaped-letter-{token.lower()}-before-dasturi-uz-blank', BLANK,
+             'pdf.dars_ishlanmasi', brief, 'uz', 'subject', f'Texnologiya {token} dasturi asosida', gone=(token,)),
+        fact(f'class-technology-shaped-letter-{token.lower()}-before-a-lesson-of-texnologiya-uz-blank', BLANK,
+             'pdf.dars_ishlanmasi', brief, 'uz', 'textbook', f'{token} texnologiya darsi', gone=(token,)),
+    ]
+LESSON_UZ_3_PAPER = '3-sinf texnologiya fanidan dars ishlanmasi yozing, mavzu: qog‘oz bilan ishlash.'
+LESSON_UZ_5_NETWORKS = '5-sinf informatika fanidan dars ishlanmasi yozing, mavzu: kompyuter tarmoqlari.'
+LESSON_RU_3 = '3-класс, технология, составьте план урока, тема: работа с бумагой.'
+CASES += [
+    fact('class-technology-shaped-letter-3d-before-a-comma-and-dasturi-uz-blank', BLANK, 'pdf.dars_ishlanmasi',
+         LESSON_UZ_3_PAPER, 'uz', 'textbook', 'Texnologiya, 3D dasturi', gone=('3D',)),
+    fact('class-technology-shaped-letter-5g-before-dastur-uz-blank', BLANK, 'pdf.dars_ishlanmasi',
+         LESSON_UZ_5_NETWORKS, 'uz', 'textbook', 'Informatika, 5G dastur', gone=('5G',)),
+    fact('class-technology-shaped-letter-5g-before-dasturi-in-a-subject-line-uz-blank', BLANK, 'pdf.dars_ishlanmasi',
+         LESSON_UZ_5_NETWORKS, 'uz', 'subject', 'Informatika 5G dasturi', gone=('5G',)),
+    fact('class-technology-shaped-letter-3d-before-tekhnologiya-ru-blank', BLANK, 'pdf.dars_ishlanmasi', LESSON_RU_3,
+         'ru', 'subject', '3D технология', gone=('3D',)),
+    fact('class-technology-shaped-letter-3d-before-programma-ru-blank', BLANK, 'pdf.dars_ishlanmasi', LESSON_RU_3,
+         'ru', 'textbook', 'Технология, 3D программа', gone=('3D',)),
+    fact('class-technology-token-5g-before-tarmoq-uz-keep', KEEP, 'pdf.dars_ishlanmasi', LESSON_UZ_5_NETWORKS, 'uz',
+         'textbook', 'Informatika: 5G tarmoq'),
+    fact('class-technology-token-3d-before-modellash-uz-keep', KEEP, 'pdf.dars_ishlanmasi', LESSON_UZ_3_PAPER, 'uz',
+         'subject', '3D modellash'),
+    fact('class-technology-token-3d-before-printer-uz-keep', KEEP, 'pdf.dars_ishlanmasi', LESSON_UZ_3_PAPER, 'uz',
+         'textbook', 'Texnologiya: 3D printer'),
+    fact('class-technology-token-3d-before-grafika-uz-keep', KEEP, 'pdf.dars_ishlanmasi', LESSON_UZ_3_PAPER, 'uz',
+         'textbook', 'Texnologiya: 3D grafika asoslari'),
+    fact('class-technology-token-2d-before-animatsiya-uz-keep', KEEP, 'pdf.dars_ishlanmasi',
+         '2-sinf texnologiya fanidan dars ishlanmasi yozing, mavzu: multfilm.', 'uz', 'textbook',
+         'Texnologiya: 2D animatsiya'),
+    fact('class-technology-token-5g-before-aloqa-uz-keep', KEEP, 'pdf.dars_ishlanmasi', LESSON_UZ_5_NETWORKS, 'uz',
+         'subject', 'Informatika: 5G aloqa'),
+    fact('class-technology-token-3d-before-modelirovanie-ru-keep', KEEP, 'pdf.dars_ishlanmasi', LESSON_RU_3, 'ru',
+         'textbook', 'Технология: 3D моделирование'),
+]
+
 CASE_IDS = [case.id for case in CASES]
 
 
