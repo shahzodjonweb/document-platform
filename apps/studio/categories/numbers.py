@@ -312,7 +312,7 @@ EN_ORDINAL = re.compile(EN_ORDINAL_WORD, re.IGNORECASE)
 # genitive, or "o‘ringa sazovor"; a place an English verb wins ("won first place", "took the second place", "came in
 # third place"). The forms an idiom shares are read where `ORDINAL_SPOT` and `ORDINAL_RANK` say.
 # The present of "egallamoq" after an accusative "o‘rinni": "Mijoz manfaati birinchi o‘rinni egallaydi" (comes first), an
-# idiom read as a placing only beside a contest or an arena (`ORDINAL_RANK`, `ARENA`).
+# idiom with "birinchi" only, read where `_idiom` says (`ORDINAL_IDIOM`).
 IDIOM_VERB = r"(?:egallaydi|egallab[  ]+keladi|tutadi)(?![^\W\d_])"
 PLACING_VERB = (r"(?:won|wins?|winning|took|takes?|taking|came|comes?|coming|finish(?:ed|es|ing)?|placed|earned"
                 r"|secured|got|gets|awarded|claimed|achieved|received|reached|shared|taken|given)")
@@ -366,12 +366,20 @@ ORDINAL_RANK = re.compile(
     rf"|(?<![^\W\d_])(?<!the )({EN_ORDINAL_WORD})(?={GAP_ORDINAL}(?:in|at|among)(?![^\W\d_]))"
     rf"|(?<![^\W\d_])({EN_ORDINAL_WORD})(?=-best(?![^\W\d_]))",
     re.IGNORECASE)
-# The idiom of an accusative "o‘rinni" with the present of "egallamoq" (`IDIOM_VERB`), a placing beside a contest or an
-# arena only: "Viloyatda birinchi o‘rinni egallaydi", never "Mijoz manfaati birinchi o‘rinni egallaydi".
+# An ordinal before an accusative "o‘rinni" and the present of "egallamoq" (`IDIOM_VERB`): a placing ("U har yili
+# sinfda birinchi o‘rinni egallaydi", "Jamoamiz kompaniyada ikkinchi o‘rinni egallab keladi") unless it is the idiom
+# "comes first" (`_idiom`): "Mijoz manfaati birinchi o‘rinni egallaydi", "Sifat biz uchun birinchi o‘rinni egallaydi".
 ORDINAL_IDIOM = re.compile(rf"(?<![^\W\d_])({ORDINAL_WORD})(?={GAP_ORDINAL}o{APOSTROPHE}rinni{GAP_ORDINAL}{IDIOM_VERB})",
                            re.IGNORECASE)
-ARENA = re.compile(r"(?<![^\W\d_])(?:viloyat|tuman|shahar|shahr|respublika|mamlakat|bozor|o['‘’ʻʼ`]?zbekiston|dunyo"
-                   r"|soha|hudud|mintaqa)\w*(?:da|dagi)(?![^\W\d_])", re.IGNORECASE)
+# The idiom's abstract subjects, among a sentence's first two words ("Mijoz manfaati", "Sifat", "Bilim olish").
+IDIOM_SUBJECT = re.compile(
+    rf"(?:manfaat|sifat|xavfsizlik|salomatlik|sog{APOSTROPHE}l[iy][qg]|oila|ta{APOSTROPHE}lim|bilim|tarbiya|halollik"
+    rf"|mas{APOSTROPHE}uliyat|intizom|qadriyat|ishonch|axloq|odob|adolat|sabr)\w*", re.IGNORECASE)
+# Whom or what the idiom ranks for: "biz uchun", "uning hayotida".
+IDIOM_FOR = re.compile(r"(?<![^\W\d_])(?:uchun|hayotida)(?![^\W\d_])", re.IGNORECASE)
+# A place or a scope ranked in, which makes the same words a placing: a locative ("sinfda", "kompaniyada",
+# "mahallada", "O‘qishda", "Fan oyligida") or "bo‘yicha".
+IDIOM_SCOPE = re.compile(rf"(?<![^\W\d_])(?:[^\W\d_]{{2,}}(?:da|dagi)|bo{APOSTROPHE}yicha)(?![^\W\d_])", re.IGNORECASE)
 # An Uzbek ordinal made a noun, a placing: "ikkinchilikni qo‘lga kiritdi" in the accusative always, any other case
 # beside a contest ("tuman birinchiligida" is also the district's championship).
 ORDINAL_NOUN = re.compile(rf"(?<![^\W\d_])((?:(?:o{APOSTROPHE}n|yigirma|o{APOSTROPHE}ttiz)[ \u00a0])?[^\W\d_]+?i?nchi)"
@@ -676,8 +684,7 @@ class _Reader:
                 continue
             found.append(match)
         found += [match for match in ORDINAL_RANK.finditer(text) if _contest(text, match.start())]
-        found += [match for match in ORDINAL_IDIOM.finditer(text)
-                  if _contest(text, match.start()) or _contest(text, match.start(), ARENA)]
+        found += [match for match in ORDINAL_IDIOM.finditer(text) if not _idiom(text, match)]
         for match in found:
             group = next(number for number in range(1, (match.re.groups or 0) + 1)
                          if match.group(number) is not None and _ordinal_value(match.group(number)) is not None)
@@ -870,12 +877,34 @@ class _Reader:
         self.add(start, end, 'phone', digits, [keys], extra)
 
 
-def _contest(text, at, words=None):
-    """Whether the sentence `at` stands in names a contest or a ranking (`CONTEST`): "olimpiadasida", "в регионе";
-    with `words`, one of those instead (`ARENA`)."""
+def _sentence_span(text, at):
+    """(start, end) of the sentence `at` stands in."""
     start = max(text.rfind(mark, 0, at) for mark in '.!?\n') + 1
     ends = [found for found in (text.find(mark, at) for mark in '.!?\n') if found != -1]
-    return (words or CONTEST).search(text, start, min(ends) if ends else len(text)) is not None
+    return start, min(ends) if ends else len(text)
+
+
+def _contest(text, at):
+    """Whether the sentence `at` stands in names a contest or a ranking (`CONTEST`): "olimpiadasida", "в регионе"."""
+    return CONTEST.search(text, *_sentence_span(text, at)) is not None
+
+
+def _idiom(text, match):
+    """Whether an `ORDINAL_IDIOM` match is the idiom "comes first", no placing: "birinchi" only, with "uchun" or
+    "hayotida" before it or an abstract subject among its sentence's first two words (`IDIOM_FOR`, `IDIOM_SUBJECT`),
+    and no contest, place or "bo‘yicha" scope in its sentence (`CONTEST`, `IDIOM_SCOPE`). The idiom said with a place
+    ("Kompaniyamizda mijoz manfaati birinchi o‘rinni egallaydi") is read as the placing the same words make: an accepted
+    false blank, the owner's tie-break."""
+    if _ordinal_value(match.group(1)) != 1:
+        return False
+    start, end = _sentence_span(text, match.start())
+    if CONTEST.search(text, start, end) or any(found.group(0).casefold() != 'hayotida'
+                                                for found in IDIOM_SCOPE.finditer(text, start, end)):
+        return False
+    before = text[start:match.start()]
+    if IDIOM_FOR.search(before):
+        return True
+    return any(IDIOM_SUBJECT.match(word) for word in re.findall(rf"[^\W\d_]+(?:{APOSTROPHE}[^\W\d_]+)*", before)[:2])
 
 
 @functools.lru_cache(maxsize=8192)
