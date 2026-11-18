@@ -1,0 +1,563 @@
+{
+ "schema": 2,
+ "id": "business_hisobot",
+ "entries": [
+  "pdf.biz.hisobot"
+ ],
+ "name": {
+  "uz": "Zamonaviy hisobot",
+  "ru": "Современный отчёт",
+  "en": "Modern report"
+ },
+ "family": "business",
+ "page": {
+  "margins_mm": {
+   "left": 30,
+   "right": 15,
+   "top": 22,
+   "bottom": 20
+  }
+ },
+ "type": {
+  "face": "sans",
+  "ladder": [
+   [
+    10.5,
+    15.5
+   ],
+   [
+    10,
+    14.8
+   ],
+   [
+    9.5,
+    14
+   ],
+   [
+    9,
+    13.2
+   ]
+  ],
+  "align": "left"
+ },
+ "page_rule": {
+  "kind": "flow",
+  "stub_min": 0.12
+ },
+ "furniture": {
+  "first": "none",
+  "later": "header_number",
+  "format": "n_of_N",
+  "header": [
+   "organization"
+  ]
+ },
+ "flow": [
+  {
+   "block": "doc_head",
+   "part": "head",
+   "fields": [
+    "organization",
+    "subject",
+    "period",
+    "unit",
+    "author",
+    "addressee"
+   ],
+   "params": {
+    "overline": "organization",
+    "kind_default": "kind",
+    "title": [
+     "subject"
+    ],
+    "subtitle": [
+     "period"
+    ],
+    "meta": [
+     "unit",
+     "author",
+     "addressee"
+    ],
+    "labels": {
+     "unit": "row_unit",
+     "author": "row_author",
+     "addressee": "row_addressee"
+    },
+    "align": "left",
+    "rules": "below"
+   }
+  },
+  {
+   "block": "toc",
+   "part": "toc",
+   "when": "pages_from:12",
+   "params": {
+    "label": "toc",
+    "levels": 1
+   }
+  },
+  {
+   "block": "heading",
+   "part": "summary",
+   "params": {
+    "level": 1,
+    "numbering": "decimal",
+    "rule": "under"
+   },
+   "when": "part:summary"
+  },
+  {
+   "block": "paragraph",
+   "part": "summary",
+   "when": "part:summary",
+   "params": {
+    "gap_pt": 4
+   }
+  },
+  {
+   "block": "key_figures",
+   "part": "figures",
+   "params": {
+    "from": "indicators",
+    "value_column": 3,
+    "unit_column": 1,
+    "compare_column": 2,
+    "compare_label": "kf_plan",
+    "min_rows": 5,
+    "boxes": 4
+   }
+  },
+  {
+   "block": "heading",
+   "part": "indicators",
+   "params": {
+    "level": 1,
+    "numbering": "decimal",
+    "rule": "under"
+   },
+   "when": "part:indicators"
+  },
+  {
+   "block": "line",
+   "part": "indicators",
+   "params": {
+    "text": "as_of_line",
+    "style": "small"
+   },
+   "when": "fact:as_of"
+  },
+  {
+   "block": "table",
+   "part": "indicators",
+   "params": {
+    "columns": [
+     {
+      "width_mm": "flex"
+     },
+     {
+      "width_mm": 17
+     },
+     {
+      "width_mm": 17,
+      "type": "number"
+     },
+     {
+      "width_mm": 17,
+      "type": "number"
+     },
+     {
+      "width_mm": 22,
+      "type": "number"
+     },
+     {
+      "width_mm": 23,
+      "type": "number"
+     },
+     {
+      "width_mm": 28
+     }
+    ],
+    "rules": "horizontal",
+    "drop_empty_columns": true,
+    "note": "indicators_note",
+    "to_date": "as_of"
+   },
+   "when": "nofact:as_of"
+  },
+  {
+   "block": "table",
+   "part": "indicators",
+   "params": {
+    "columns": [
+     {
+      "width_mm": "flex"
+     },
+     {
+      "width_mm": 17
+     },
+     {
+      "width_mm": 17,
+      "type": "number"
+     },
+     {
+      "width_mm": 17,
+      "type": "number"
+     },
+     {
+      "width_mm": 1,
+      "type": "number"
+     },
+     {
+      "width_mm": 23,
+      "type": "number",
+      "label": "pct_to_date"
+     },
+     {
+      "width_mm": 28
+     }
+    ],
+    "rules": "horizontal",
+    "drop_empty_columns": true,
+    "note": "indicators_note_to_date",
+    "to_date": "as_of"
+   },
+   "when": "fact:as_of"
+  },
+  {
+   "block": "heading",
+   "part": "work_done",
+   "params": {
+    "level": 1,
+    "numbering": "decimal",
+    "rule": "under"
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "work_done",
+   "when": "part:work_done",
+   "params": {
+    "gap_pt": 4
+   }
+  },
+  {
+   "block": "ruled_blank",
+   "part": "work_done",
+   "when": "nopart:work_done",
+   "params": {
+    "lines": 5
+   }
+  },
+  {
+   "block": "heading",
+   "part": "tasks",
+   "params": {
+    "level": 1,
+    "numbering": "decimal",
+    "rule": "under"
+   },
+   "when": "part:tasks"
+  },
+  {
+   "block": "table",
+   "part": "tasks",
+   "params": {
+    "columns": [
+     {
+      "width_mm": "flex"
+     },
+     {
+      "width_mm": 60
+     },
+     {
+      "width_mm": 22,
+      "type": "number"
+     }
+    ],
+    "rules": "horizontal"
+   },
+   "when": "part:tasks"
+  },
+  {
+   "block": "heading",
+   "part": "problems",
+   "params": {
+    "level": 1,
+    "numbering": "decimal",
+    "rule": "under"
+   },
+   "when": "part:problems"
+  },
+  {
+   "block": "list",
+   "part": "problems",
+   "when": "part:problems",
+   "params": {
+    "marker": "bullet"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "plans",
+   "params": {
+    "level": 1,
+    "numbering": "decimal",
+    "rule": "under"
+   }
+  },
+  {
+   "block": "list",
+   "part": "plans",
+   "when": "part:plans",
+   "params": {
+    "marker": "number"
+   }
+  },
+  {
+   "block": "ruled_blank",
+   "part": "plans",
+   "when": "nopart:plans",
+   "params": {
+    "lines": 3
+   }
+  },
+  {
+   "block": "heading",
+   "part": "proposals",
+   "params": {
+    "level": 1,
+    "numbering": "decimal",
+    "rule": "under"
+   },
+   "when": "part:proposals"
+  },
+  {
+   "block": "list",
+   "part": "proposals",
+   "when": "part:proposals",
+   "params": {
+    "marker": "bullet"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "conclusion",
+   "params": {
+    "level": 1,
+    "numbering": "decimal",
+    "rule": "under"
+   },
+   "when": "part:conclusion"
+  },
+  {
+   "block": "paragraph",
+   "part": "conclusion",
+   "when": "part:conclusion",
+   "params": {
+    "gap_pt": 4
+   }
+  },
+  {
+   "block": "heading",
+   "part": "annexes",
+   "params": {
+    "level": 1,
+    "numbering": "decimal",
+    "rule": "under"
+   },
+   "when": "part:annexes"
+  },
+  {
+   "block": "list",
+   "part": "annexes",
+   "when": "part:annexes",
+   "params": {
+    "marker": "number"
+   }
+  },
+  {
+   "block": "line",
+   "params": {
+    "text": "prepared",
+    "style": "bold",
+    "before_pt": 18
+   },
+   "keep": "closing"
+  },
+  {
+   "block": "signature_row",
+   "part": "closing",
+   "fields": [
+    "author"
+   ],
+   "when": "fact:author",
+   "params": {
+    "variant": "post_sign_name",
+    "captions": [
+     "cap_position",
+     "cap_sign",
+     "cap_name"
+    ],
+    "sign_room_mm": 10,
+    "before_pt": 2
+   },
+   "keep": "closing"
+  },
+  {
+   "block": "signature_row",
+   "part": "closing",
+   "fields": [
+    "signers"
+   ],
+   "when": "nofact:author",
+   "params": {
+    "variant": "post_sign_name",
+    "captions": [
+     "cap_position",
+     "cap_sign",
+     "cap_name"
+    ],
+    "sign_room_mm": 10,
+    "before_pt": 2
+   },
+   "keep": "closing"
+  },
+  {
+   "block": "line",
+   "when": "fact:signers",
+   "params": {
+    "text": "agreed",
+    "style": "bold",
+    "before_pt": 10
+   },
+   "keep": "closing"
+  },
+  {
+   "block": "signature_row",
+   "part": "closing",
+   "fields": [
+    "signers"
+   ],
+   "when": "fact:signers",
+   "params": {
+    "variant": "post_sign_name",
+    "captions": [
+     "cap_position",
+     "cap_sign",
+     "cap_name"
+    ],
+    "sign_room_mm": 10,
+    "before_pt": 2
+   },
+   "keep": "closing"
+  },
+  {
+   "block": "date_line",
+   "part": "closing",
+   "fields": [
+    "report_date"
+   ],
+   "params": {
+    "label": "date"
+   },
+   "keep": "closing"
+  },
+  {
+   "block": "line",
+   "when": "fact:seal_request",
+   "params": {
+    "text": "seal",
+    "style": "small"
+   },
+   "keep": "closing"
+  }
+ ],
+ "labels": {
+  "kind": {
+   "uz": "HISOBOT",
+   "ru": "ОТЧЁТ",
+   "en": "REPORT"
+  },
+  "toc": {
+   "uz": "Mundarija",
+   "ru": "Содержание",
+   "en": "Contents"
+  },
+  "row_unit": {
+   "uz": "Bo‘lim",
+   "ru": "Подразделение",
+   "en": "Department"
+  },
+  "row_author": {
+   "uz": "Tayyorladi",
+   "ru": "Подготовил",
+   "en": "Prepared by"
+  },
+  "row_addressee": {
+   "uz": "Kimga",
+   "ru": "Кому",
+   "en": "To"
+  },
+  "kf_plan": {
+   "uz": "reja",
+   "ru": "план",
+   "en": "plan"
+  },
+  "indicators_note": {
+   "uz": "Izoh. Farqi va foizlar jadvaldagi raqamlardan hisoblangan.",
+   "ru": "Примечание. Разница и проценты рассчитаны по цифрам таблицы.",
+   "en": "Note. Differences and per cents are computed from the figures in the table."
+  },
+  "indicators_note_to_date": {
+   "uz": "Izoh. Foizlar jadvaldagi raqamlardan hisoblangan.",
+   "ru": "Примечание. Проценты рассчитаны по цифрам таблицы.",
+   "en": "Note. Per cents are computed from the figures in the table."
+  },
+  "pct_to_date": {
+   "uz": "Butun davr rejasiga nisbatan, %",
+   "ru": "К плану всего периода, %",
+   "en": "Of full-period plan, %"
+  },
+  "as_of_line": {
+   "uz": "{as_of} holatiga",
+   "ru": "По состоянию на {as_of}",
+   "en": "As of {as_of}"
+  },
+  "prepared": {
+   "uz": "Tayyorladi:",
+   "ru": "Подготовил:",
+   "en": "Prepared by:"
+  },
+  "agreed": {
+   "uz": "Kelishildi:",
+   "ru": "Согласовано:",
+   "en": "Agreed:"
+  },
+  "date": {
+   "uz": "Sana:",
+   "ru": "Дата:",
+   "en": "Date:"
+  },
+  "cap_position": {
+   "uz": "(lavozimi)",
+   "ru": "(должность)",
+   "en": "(position)"
+  },
+  "cap_sign": {
+   "uz": "(imzo)",
+   "ru": "(подпись)",
+   "en": "(signature)"
+  },
+  "cap_name": {
+   "uz": "(F.I.Sh.)",
+   "ru": "(Ф.И.О.)",
+   "en": "(full name)"
+  },
+  "seal": {
+   "uz": "M.O‘.",
+   "ru": "М.П.",
+   "en": "L.S."
+  }
+ },
+ "mock": "units/pdf.biz.hisobot/mock/business_hisobot.png"
+}

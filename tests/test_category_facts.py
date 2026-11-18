@@ -178,6 +178,46 @@ def test_words_that_only_look_like_months_or_numbers_are_not_dates():
     assert '3' not in numbers.values('uchun') and '2' not in numbers.values('один')
 
 
+@pytest.mark.parametrize('text, read', [
+    ('five years of experience', [('5', 'five')]),
+    ('a team of twelve people and two hundred clients', [('12', 'twelve'), ('200', 'two hundred')]),
+    ('two hundred and fifty thousand dollars', [('250000', 'two hundred and fifty thousand')]),
+    ('twenty-one days, a dozen eggs, a hundred per cent', [('21', 'twenty-one'), ('12', 'a dozen'),
+                                                           ('100', 'a hundred')]),
+    ('revenue grew by a third, then by two thirds of it', [('f:1/3', 'a third'), ('f:2/3', 'two thirds')]),
+    ('besh yuz million so‘m', [('500000000', 'besh yuz million')]),
+    ('yillik yigirma foiz, o‘n bir kun, yuz nafar', [('20', 'yigirma'), ('11', 'o‘n bir'), ('100', 'yuz')]),
+    ('bir yarim million so‘m, uchdan bir qismi', [('1500000', 'bir yarim million'), ('f:1/3', 'uchdan bir')]),
+    ('besh-olti kun', [('5', 'besh'), ('6', 'olti')]),
+    ('besh yuzta stul va yuzta stol', [('500', 'besh yuzta'), ('100', 'yuzta')]),
+    ('беш юз минг сўм', [('500000', 'беш юз минг')]),
+    ('более пяти лет, две тысячи пятьсот рублей', [('5', 'пяти'), ('2500', 'две тысячи пятьсот')]),
+    ('тысяча рублей, два миллиона, треть клиентов', [('1000', 'тысяча'), ('2000000', 'два миллиона'),
+                                                    ('f:1/3', 'треть')]),
+], ids=['five', 'twelve', 'compound', 'article', 'fraction', 'uz-scale', 'uz-counts', 'uz-half', 'uz-range',
+        'uz-yuzta', 'uz-cyrillic', 'ru-counts', 'ru-alone'])
+def test_cardinal_numbers_written_as_words_are_read_with_their_scales(text, read):
+    assert [(number.value, text[number.start:number.end]) for number in numbers.found(text, words=True)] == read
+    assert not [number for number in numbers.found(text) if number.kind in ('spelled', 'fraction')]
+
+
+@pytest.mark.parametrize('text', [
+    'one of the best', 'the second stage', 'once a quarter', 'thousands of clients', 'often', 'ikkinchi bob',
+    'muammo yuz berdi', 'ming yillik tarix', 'ikkala guruh', 'свою семью', 'третью неделю', 'a third party',
+    'a third-party vendor', 'a third option',
+])
+def test_words_that_are_not_counts_are_not_read_as_numbers(text):
+    assert [text[number.start:number.end] for number in numbers.found(text, words=True)] == []
+
+
+def test_a_number_in_words_is_known_however_the_customer_wrote_it():
+    given = numbers.values('Loyiha qiymati 500 mln so‘m, 5 yillik tajriba, yigirma besh nafar xodim, 33 foiz')
+    for written in ('besh yuz million so‘m', 'five years', '25 people', 'двадцать пять сотрудников'):
+        assert all(numbers.known(number, given) for number in numbers.found(written, words=True)), written
+    assert not all(numbers.known(number, given) for number in numbers.found('a third', words=True))
+    assert not all(numbers.known(number, given) for number in numbers.found('six years', words=True))
+
+
 def test_a_phone_is_its_digits_and_its_last_nine():
     keys = numbers.values('Tel: +998 (90) 123-45-67')
     assert {'998901234567', 'tel:901234567'} <= keys
@@ -381,7 +421,8 @@ def test_the_categorys_own_words_are_allowed_but_its_made_up_examples_never_are(
 
 def test_an_earlier_version_is_trusted_only_where_it_was_held_to_the_customers_words():
     before = {'title': 'Test', 'sections': [
-        {'id': 'facts', 'layout': 'list', 'items': [{'label': 'teacher', 'text': 'Sobirova Gulnora'}]},
+        {'id': 'facts', 'layout': 'list', 'items': [{'label': 'school', 'text': 'Sobirova Gulnora nomidagi maktab'},
+                                                    {'label': 'teacher', 'text': 'Rasulova Iroda'}]},
         {'id': 'passage', 'heading': 'Matn', 'body': 'Matnni Jumanazarov Bekzod 1987-yilda yozgan. U '
                                                      '«bilim har bir yurtning eng katta boyligi» degan.'}]}
     data = {'prompt': 'Ona tili fanidan test', 'options': {'category': 'pdf.test'},
@@ -390,6 +431,8 @@ def test_an_earlier_version_is_trusted_only_where_it_was_held_to_the_customers_w
     known = facts.trusted(data)
     # The facts section was held to the customer's words when it was made; the passage is the model's own prose.
     assert supported('Sobirova Gulnora', 'person', known)
+    # A value under a label that is no field of the entry was held to nothing: only its figures could be.
+    assert not supported('Rasulova Iroda', 'person', known)
     assert ground('Testni Jumanazarov Bekzod 1987-yilda tuzgan.', known) == ('Testni ____-yilda tuzgan.',
                                                                               ['ground:number', 'ground:name'])
     # Its quotations may still be repeated in a later version.
@@ -505,8 +548,9 @@ def test_a_translated_references_list_still_holds_the_authors_it_opens_with():
     known = trusting('Manba: Karimov A. Iqtisodiyot nazariyasi, 2019.')
     items = ['Karimov A. Economic Theory, 2019.', 'Каримов А. Экономическая теория, 2019.',
              'Xolmatov S. Basics of Economics', 'A. Karimov, S. Xolmatov. Economic Theory', 'Economic Theory. Part I.']
-    assert verify_items(items, known, translated=True) == \
-        ([items[0], items[1], items[4]], ['source:dropped'])
+    # A title opening an item is held as its head (`_people_named_known`): one a translation renamed goes, a false
+    # drop, so that an author written in full is never let through as a title.
+    assert verify_items(items, known, translated=True) == ([items[0], items[1]], ['source:dropped'])
 
 
 def test_a_translated_cover_keeps_an_academic_title():
@@ -529,8 +573,9 @@ def test_codes_name_what_was_taken_never_the_value(uz):
 
 # The address forms as they were before they were made linear, the reference for what they must still match.
 PLAIN_EMAIL = r"[\w.+\-]+@[\w\-]+(?:\.[\w\-]+)+"
-PLAIN_LINK = (r"(?:https?://|www\.)\S+|\b[\w\-]+(?:\.[\w\-]+)*\.(?:uz|com|ru|org|net|io|me|info|edu|gov)"
-              r"(?:/\S*)?(?!\w)")
+PLAIN_LINK = (r"(?:https?://|www\.)\S+|\b[\w\-]+(?:\.[\w\-]+)*\."
+              r"(?:uz|com|ru|org|net|io|me|info|edu|gov|kz|tj|kg|su|shop|store|online|site|co|de)(?:/\S*)?(?!\w)")
+PLAIN_HANDLE = r"(?<![\w.@])@[A-Za-z0-9_](?:[A-Za-z0-9_.]{1,30}[A-Za-z0-9_])(?![\w@])"
 ADDRESSES = (
     'E-pochta: dilnoza.k@example.com, nusxasi info@namuna.uz ga.',
     'Почта: d.karimova+ariza@mail.namuna.ru; сайт https://namuna.uz/qabul?id=7 и www.namuna-edu.uz/about.',
@@ -551,7 +596,7 @@ def test_addresses_are_read_as_before_on_ordinary_text():
         assert [m.span() for m in facts.LINK.finditer(text)] == \
             [m.span() for m in re.finditer(PLAIN_LINK, text, re.IGNORECASE)], text[:80]
         assert [m.span() for m in numbers.SKIPPED.finditer(text)] == \
-            [m.span() for m in re.finditer(f'{PLAIN_EMAIL}|{PLAIN_LINK}', text, re.IGNORECASE)], text[:80]
+            [m.span() for m in re.finditer(f'{PLAIN_EMAIL}|{PLAIN_LINK}|{PLAIN_HANDLE}', text, re.I)], text[:80]
     known = trusting(ADDRESSES[0] + ' ' + ADDRESSES[1])
     assert known.emails == {'dilnoza.k@example.com', 'info@namuna.uz', 'd.karimova+ariza@mail.namuna.ru'}
     assert known.links == {'namuna.uz/qabul?id=7', 'namuna-edu.uz/about'}
@@ -635,6 +680,18 @@ def test_people_known_reads_a_line_as_the_names_check_does():
     assert facts.people_known('Toshkent davlat iqtisodiyot universiteti', known)
 
 
+def test_guard_reads_numbers_in_words_only_when_asked():
+    known = trusting('Sotuv menejeri lavozimiga xat, men savdoda ishlaganman.')
+    text = 'With over five years of experience, I led twelve people.'
+    assert guard(text, known, checks=('numbers',)) == (text, [])
+    assert guard(text, known, checks=('numbers',), words=True) == (
+        'With over ____ years of experience, I led ____ people.', ['ground:number'])
+    assert ground(text, known) == (text, []), 'a deck slide keeps its reading'
+    assert not supported('five years in retail', 'text', known, words=True)
+    assert supported('five years in retail', 'text', known)
+    assert supported('five years in retail', 'text', trusting('5 yil savdoda ishlaganman'), words=True)
+
+
 def test_ground_still_leaves_the_first_word_of_a_sentence():
     # ground's limit is unchanged until the owner takes the false blanks the strict reading costs everywhere.
     known = trusting('Pedagogik kengash')
@@ -654,3 +711,689 @@ def test_a_counted_copy_shares_the_respelled_words_rather_than_folding_the_sourc
     counted = facts.counting(known, 4)
     assert counted is not known and counted.respelled is known.respelled
     assert facts.counting(trusting('Pedagogik kengash'), 3).person('Namunova', True) is False
+
+
+# ---------------------------------------------------------------- numbers in words (stage-2 re-audit)
+
+
+def read(text, *, model=True):
+    """(value, words) of each number of `text`, read as a paper's own text is (`model`) or as the customer's."""
+    return [(number.value, text[number.start:number.end])
+            for number in numbers.found(text, words=True, uzbek_cyrillic=not model)]
+
+
+@pytest.mark.parametrize('text, found', [
+    ('У меня более чем пятилетний опыт работы', [('5', 'пятилетний')]),
+    ('Мой десятилетний опыт, двухнедельный курс', [('10', 'десятилетний'), ('2', 'двухнедельный')]),
+    ('двадцатипятилетний стаж и сорокакратный рост', [('25', 'двадцатипятилетний'), ('40', 'сорокакратный')]),
+    ('Оборот превысил полмиллиона долларов', [('500000', 'полмиллиона')]),
+    ('Loyihaning qiymati yarim milliard so‘m', [('500000000', 'yarim milliard')]),
+    ('Yiliga ming tonna non, kuniga mingta non', [('1000', 'ming'), ('1000', 'mingta')]),
+    ('Ellikdan ortiq ish o‘rni, mijozlar yigirmaga yetadi', [('50', 'Ellikdan'), ('20', 'yigirmaga')]),
+    ('Ellikka yaqin o‘rin, jamoa beshga yetadi, o‘ttizdan ortiq mijoz',
+     [('50', 'Ellikka'), ('5', 'beshga'), ('30', 'o‘ttizdan')]),
+    ('Loyiha yuz ish o‘rnini yaratadi, yuzdan ortiq mijoz', [('100', 'yuz'), ('100', 'yuzdan')]),
+    ('I doubled sales; a fivefold rise; продажи выросли вдвое; обслуживал сотню клиентов',
+     [('2', 'doubled'), ('5', 'fivefold'), ('2', 'вдвое'), ('100', 'сотню')]),
+], ids=['ru-fused', 'ru-fused-two', 'ru-fused-tens', 'ru-half-scale', 'uz-half-scale', 'uz-bare-ming', 'uz-cases',
+        'uz-cases-more', 'uz-bare-yuz', 'times-over'])
+def test_the_common_ways_a_figure_is_spoken_are_read(text, found):
+    assert read(text) == found
+
+
+@pytest.mark.parametrize('text', [
+    'последние десятилетия', 'многолетний опыт', 'полгода', 'o‘nlab mijozlar', 'yuzlab mijozlar', 'birdan',
+    'birga ishlaymiz', 'oltini', 'ming yillik tarix', 'muammo yuz berdi', 'yuzni yuvdi', 'ming afsus',
+    'a one-time fee', 'twice a week', 'hundreds of clients',
+])
+def test_vague_and_ordinary_words_are_still_not_read_as_figures(text):
+    assert read(text) == []
+
+
+@pytest.mark.parametrize('text, found', [
+    ('Jami bir million bir yuz ellik ming so‘m', [('1150000', 'bir million bir yuz ellik ming')]),
+    ('eleven thousand one hundred and forty-one', [('11141', 'eleven thousand one hundred and forty-one')]),
+    ('one hundred and one clients', [('101', 'one hundred and one')]),
+    ('two thousand one hundred people', [('2100', 'two thousand one hundred')]),
+    ('девять тысяч один рубль', [('9001', 'девять тысяч один')]),
+    ('o‘ttiz birta xodim', [('31', 'o‘ttiz birta')]),
+    ('Kuniga yuz ellik nafar mijoz', [('150', 'yuz ellik')]),
+    ('o‘n beshga yetadi', [('15', 'o‘n beshga')]),
+    ('ming besh yuz ming so‘m', [('1000', 'ming'), ('500000', 'besh yuz ming')]),
+    ('ikki ming-uch ming so‘m', [('2000', 'ikki ming'), ('3000', 'uch ming')]),
+], ids=['uz-million', 'en-thousands', 'en-and-one', 'en-one-hundred', 'ru-one-last', 'uz-birta', 'uz-bare-yuz',
+        'uz-ending', 'uz-scale-again', 'uz-range'])
+def test_a_compound_is_read_whole_never_split_into_numbers_the_customer_gave(text, found):
+    assert read(text) == found
+
+
+def test_a_compound_another_way_round_never_passes_on_the_parts_the_customer_gave():
+    for brief, written in (('Ustav kapitali 1 000 000 so‘m, aylanma 150 000 so‘m.', 'bir million bir yuz ellik ming'),
+                           ('Kafemiz 50 o‘rinli.', 'yuz ellik nafar'), ('30 nafar xodim', 'o‘ttiz birta xodim'),
+                           ('10 nafar xodim', 'o‘n beshga yetadi'), ('9000 рублей', 'девять тысяч один рубль')):
+        given = numbers.values(brief)
+        assert not all(numbers.known(number, given) for number in numbers.found(written, words=True)), written
+
+
+EN_UNITS = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve',
+            'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen']
+EN_TENS = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety']
+UZ_UNITS = ['', 'bir', 'ikki', 'uch', 'to‘rt', 'besh', 'olti', 'yetti', 'sakkiz', 'to‘qqiz']
+UZ_TENS = ['', 'o‘n', 'yigirma', 'o‘ttiz', 'qirq', 'ellik', 'oltmish', 'yetmish', 'sakson', 'to‘qson']
+RU_UNITS = ['', 'один', 'два', 'три', 'четыре', 'пять', 'шесть', 'семь', 'восемь', 'девять', 'десять',
+            'одиннадцать', 'двенадцать', 'тринадцать', 'четырнадцать', 'пятнадцать', 'шестнадцать', 'семнадцать',
+            'восемнадцать', 'девятнадцать']
+RU_TENS = ['', '', 'двадцать', 'тридцать', 'сорок', 'пятьдесят', 'шестьдесят', 'семьдесят', 'восемьдесят',
+           'девяносто']
+RU_HUNDREDS = ['', 'сто', 'двести', 'триста', 'четыреста', 'пятьсот', 'шестьсот', 'семьсот', 'восемьсот',
+               'девятьсот']
+
+
+def english(value):
+    if value >= 10 ** 6:
+        return f'{english(value // 10 ** 6)} million {english(value % 10 ** 6)}'.strip()
+    if value >= 1000:
+        joint = 'and ' if 0 < value % 1000 < 100 else ''
+        return f'{english(value // 1000)} thousand {joint}{english(value % 1000)}'.strip()
+    if value >= 100:
+        return f'{EN_UNITS[value // 100]} hundred {"and " if value % 100 else ""}{english(value % 100)}'.strip()
+    if value >= 20:
+        return EN_TENS[value // 10] + (f'-{EN_UNITS[value % 10]}' if value % 10 else '')
+    return EN_UNITS[value]
+
+
+def uzbek(value, formal):
+    """Uzbek in words, formally ("bir yuz", "bir ming") or as it is spoken ("yuz", "ming")."""
+    words = []
+    if value >= 10 ** 6:
+        words += [uzbek(value // 10 ** 6, formal), 'million']
+        value %= 10 ** 6
+    if value >= 1000:
+        if value // 1000 > 1 or formal:
+            words.append(uzbek(value // 1000, formal))
+        words.append('ming')
+        value %= 1000
+    if value >= 100:
+        if value // 100 > 1 or formal:
+            words.append(UZ_UNITS[value // 100])
+        words.append('yuz')
+        value %= 100
+    words += [UZ_TENS[value // 10], UZ_UNITS[value % 10]]
+    return ' '.join(word for word in words if word)
+
+
+def russian(value):
+    words = ['тысяча'] if value >= 1000 else []
+    value %= 1000
+    words.append(RU_HUNDREDS[value // 100])
+    value %= 100
+    words += [RU_UNITS[value]] if value < 20 else [RU_TENS[value // 10], RU_UNITS[value % 10]]
+    return ' '.join(word for word in words if word)
+
+
+def uzbek_with(text, case):
+    """`text` with a case ending on its last word, as Uzbek joins it: "ellikka", "qirqqa", "beshga", "beshdan"."""
+    if case == 'ga':
+        return text + ('ka' if text.endswith('k') else 'qa' if text.endswith('q') else 'ga')
+    return text + case
+
+
+def test_every_number_written_in_words_reads_as_itself():
+    """found(spelled(n)) == [n] for 2..1999 in each language and Uzbek's case endings, and for round amounts."""
+    wrong = []
+    for value in range(2, 2000):
+        texts = [f'{english(value)} clients', f'{russian(value)} рублей']
+        for formal in (True, False):
+            spoken = uzbek(value, formal)
+            texts += [f'{spoken} xodim', f'{spoken}ta xodim', f'{uzbek_with(spoken, "dan")} ortiq',
+                      f'{uzbek_with(spoken, "ga")} yetadi']
+        wrong += [(text, read(text)) for text in texts if [found for found, _ in read(text)] != [str(value)]]
+    for count in range(2, 1000, 37):
+        for value in (count * 1000, count * 10 ** 6, count * 10 ** 6 + 150000, count * 10 ** 6 + 1000 * count):
+            for text in (english(value), uzbek(value, True), uzbek(value, False)):
+                if [found for found, _ in read(f'{text} so‘m')] != [str(value)]:
+                    wrong.append((text, read(f'{text} so‘m')))
+    assert not wrong, wrong[:10]
+
+
+@pytest.mark.parametrize('text', [
+    'yigirma birinchi asr ko‘nikmalari', 'the twenty-first century', 'o‘ttiz ikkinchi maktab', 'в двадцать первом веке',
+])
+def test_the_tens_of_an_ordinal_are_never_read_as_a_count(text):
+    assert read(text) == []
+    assert ground_paper_of(text) == (text, [])
+
+
+# An ordinal before a month is a date's day, never a count of its tens (round 4: "o‘n beshinchi mayda" passed for the
+# customer's "12-may"); one before a placing or a run of years is a figure.
+@pytest.mark.parametrize('text, found', [
+    ('o‘n beshinchi mayda', [('d:15.5', 'o‘n beshinchi mayda')]),
+    ('the twenty-third of May', [('d:23.5', 'twenty-third of May')]),
+    ('пятнадцатого мая 2025 года', [('d:15.5', 'пятнадцатого мая 2025 года')]),
+    ('olimpiadada ikkinchi o‘rinni egalladi', [('2', 'ikkinchi')]),
+    ('I won first place', [('1', 'first')]), ('In the first place, I won', []),
+    ('for the fifth consecutive year', [('5', 'fifth')]), ('Пятый год подряд', [('5', 'Пятый')]),
+    ('over a decade of experience', [('10', 'a decade')]), ('decades of experience', []),
+], ids=['uz-date', 'en-date', 'ru-date-with-year', 'uz-place', 'en-place', 'en-firstly', 'en-years-running',
+        'ru-years-running', 'a-decade', 'decades'])
+def test_an_ordinal_that_dates_places_or_counts_years_is_read_as_its_figure(text, found):
+    assert read(text) == found
+
+
+@pytest.mark.parametrize('brief, written, kept', [
+    ('I joined on 1 September 2019 and left on 30 June 2023.', 'I joined on 1 September 2023.', False),
+    ('Я работала с 1 сентября 2019 года по 30 июня 2023 года.', '1 сентября 2023 года', False),
+    ('Majlis 2025-yil 12-mayda bo‘ldi, 2024-yil natijalari.', '2024-yil 12-may', False),
+    ('Majlis 2025-yil 12-mayda bo‘ldi.', '2025-yil 12-may', True),
+    ('Majlis 12-may kuni, 2025-yil rejasi.', '2025-yil 12-may', True),
+    ('The meeting is on May 12, 2025.', '12 May 2025', True),
+], ids=['en-other-year', 'ru-other-year', 'uz-other-year', 'uz-same', 'uz-written-apart', 'en-month-first'])
+def test_a_written_dates_year_is_tied_to_its_day_and_month(brief, written, kept):
+    found = numbers.found(written, words=True)
+    assert all(numbers.known(number, numbers.values(brief)) for number in found) is kept
+
+
+def test_a_count_before_a_word_that_only_starts_like_an_ordinal_is_still_read():
+    assert read('twenty first-rate clients') == [('20', 'twenty')]
+
+
+def ground_paper_of(text):
+    from apps.studio.categories import finish
+    return finish.ground_paper(text, trusting('11-sinf o‘quvchilari uchun dars ishlanmasi'))
+
+
+def test_a_paper_reads_its_own_cyrillic_as_russian_never_as_uzbek_in_latin():
+    for text in ('Тень от дерева', 'Итоги 2024/25 уч. года', 'Саксонская династия'):
+        assert [found for found in read(text) if not found[1].isdigit() and '/' not in found[1]] == [], text
+    assert read('беш юз минг сўм', model=False) == [('500000', 'беш юз минг')]
+    assert '100' in numbers.values('Юз нафар ишчи ишлайди.'), 'a counted noun is read on the Latin form'
+
+
+def test_a_run_of_multipliers_never_makes_a_number_too_long_to_write():
+    for text in ('one ' + 'hundred ' * 2200, 'besh ' + 'yuz ' * 2200, 'a ' + 'dozen ' * 6000,
+                 'hundred thousand ' * 3000, '-'.join(['hundred'] * 2200)):
+        started = time.monotonic()
+        keys = numbers.values(text)
+        assert all(len(key) < 40 for key in keys) and time.monotonic() - started < 2
+    assert [found for found, _ in read('besh yuz yuz kishi')] == ['500']
+    assert [found for found, _ in read('one hundred hundred')] == ['100']
+
+
+def test_a_source_of_repeated_multipliers_never_fails_a_paper_or_unchecks_a_deck():
+    known = facts.trusted(draft('Ariza yozing. ' + 'bir ' + 'yuz ' * 2300))
+    assert ground('Kompaniya 2024-yilda 750 mln so‘m foyda oldi.', known)[1] == ['ground:number']
+
+
+@pytest.mark.parametrize('brief, written, kept', [
+    ('2024-yil faoliyati bo‘yicha hisobot, sanasi 15.01.2025', '15.01.2024', False),
+    ('2024-yil faoliyati bo‘yicha hisobot, sanasi 15.01.2025', '15.01.2025', True),
+    ('2024-yil faoliyati bo‘yicha hisobot, sanasi 15.01.2025', '2025-01-15', True),
+    ('2024-yil faoliyati bo‘yicha hisobot, sanasi 15.01.2025', '15-yanvar', True),
+    ('Majlis 2025-yil 12-mayda bo‘ldi, 2024-yil natijalari', '12.05.2025', True),
+    ('Majlis 12-may kuni, 2025-yil rejasi', '12.05.2025', True),
+    ('Sanasi 15.01', '15.01.2025', False),
+    ('Sanasi 15.01, 2025-yil', '15.01.2025', True),
+], ids=['other-year', 'same', 'iso', 'no-year', 'written-with-year', 'written-apart', 'year-not-given', 'dotted'])
+def test_a_numeric_dates_year_is_tied_to_its_day_and_month(brief, written, kept):
+    assert all(numbers.known(number, numbers.values(brief)) for number in numbers.found(written)) is kept
+
+
+@pytest.mark.parametrize('brief, written, kept', [
+    ('I raised 1.2 million dollars.', 'I raised $1.2bn.', False),
+    ('I raised 1.2 million dollars.', 'I raised $1.2B.', False),
+    ('Our team has 3 people.', 'We raised $3M.', False),
+    ('Budget 5 thousand dollars.', 'Budget €5m.', False),
+    ('Narx 5 so‘m.', 'Narx 5 mlrd so‘m.', False),
+    ('I raised 1.2 billion dollars.', 'I raised $1.2bn.', True),
+    ('$2M seed round', 'a seed round of 2 million dollars', True),
+    ('Kredit 1 500 000 so‘m', 'Kredit 1,5\u202fmln so‘m', True),
+    ('Kredit 1 500 000 so‘m', 'Kredit 1,5\u2009mln so‘m', True),
+    ('Masofa 100 m, 9B sinf', '100 m masofa, 9B sinf', True),
+], ids=['bn', 'B', 'M', 'm', 'mlrd', 'bn-given', 'M-given', 'narrow-space', 'thin-space', 'metres-and-class'])
+def test_a_scale_written_short_or_glued_to_a_currency_is_read(brief, written, kept):
+    assert all(numbers.known(number, numbers.values(brief)) for number in numbers.found(written)) is kept
+
+
+# ---------------------------------------------------------------- laws (stage-2 re-audit)
+
+
+@pytest.mark.parametrize('part', [
+    'Dars Xalq ta’limi vazirligining 2017-yil 6-apreldagi 187-sonli buyrug‘i asosida tashkil etiladi.',
+    'Bu hukumatning 2019-yil 3-martdagi 175-sonli qarorida belgilangan.',
+    'Bu 1998-yil 29-avgustdagi 625-I-sonli qonun bilan tasdiqlangan.',
+    'Bu 625-I-son qonun bilan tasdiqlangan.',
+    'Reja 45-sonli Nizom asosida tuziladi.',
+    'BMTning Bola huquqlari to‘g‘risidagi konvensiyasida shunday deyilgan.',
+    'In line with the Ministry of Public Education order of 6 April 2017 lessons last 45 minutes.',
+    'Under Regulation 2016/679 the data is protected.',
+    'Согласно Положению о школе уроки длятся 45 минут.',
+    'Согласно приказу Министерства образования от 6 апреля 2017 года урок длится 45 минут.',
+], ids=['ministry-sonli', 'government-sonli', 'law-sonli-roman', 'law-son-roman', 'nizom', 'convention', 'en-order',
+        'en-regulation', 'ru-polozhenie', 'ru-ministry'])
+def test_a_ministry_or_government_act_the_customer_never_named_is_a_legal_sentence(part):
+    known = trusting('7-sinf matematika fanidan dars ishlanmasi: kasrlarni qo‘shish.')
+    assert guard(part, known) == ('', ['ground:law'])
+    assert ground(part, known) == ('', ['ground:law']), 'never a skeleton of the citation with its figures blanked'
+
+
+@pytest.mark.parametrize('part', [
+    '1-sonli jadvalda ko‘rsatilganidek, natija yaxshi.', 'Tadqiqot Toshkent shahridagi 45-sonli maktabda o‘tkazildi.',
+    'Ma’lumotlar 3-sonli ilovada keltirilgan.', 'O‘quvchilar maktab nizomiga rioya qiladi.',
+    'In order to finish, we work.', 'We work in order to finish on time.', 'The order of the chapters is clear.',
+    'A naming convention helps the reader.',
+])
+def test_a_numbered_table_school_or_annex_and_order_in_other_senses_are_no_legal_sentence(part):
+    known = trusting('Iqtisodiyot fanidan kurs ishi: 1-sonli jadval, 45-sonli maktab, 3-sonli ilova.')
+    assert guard(part, known) == (part, [])
+
+
+def test_an_order_the_customer_named_stays():
+    known = trusting('Dars Xalq ta’limi vazirligining 2017-yil 6-apreldagi 187-sonli buyrug‘i asosida o‘tadi.')
+    part = 'Dars Xalq ta’limi vazirligining 2017-yil 6-apreldagi 187-sonli buyrug‘i asosida tashkil etiladi.'
+    assert guard(part, known) == (part, []) and ground(part, known) == (part, [])
+
+
+JOB_UZ = 'Bosh buxgalter uchun lavozim yo‘riqnomasi yozing, Mehnat kodeksiga muvofiq.'
+
+
+@pytest.mark.parametrize('part', [
+    'Soliq kodeksi va Mehnat kodeksi talablariga amal qiladi.', 'Fuqarolik kodeksining talablariga rioya qiladi.',
+    'Jinoyat kodeksiga muvofiq javobgar bo‘ladi.', '- Bojxona kodeksi talablarini biladi.',
+], ids=['tax-and-labour', 'civil', 'criminal', 'customs-item'])
+def test_a_code_the_customer_never_named_goes_when_its_name_opens_the_sentence(part):
+    known = trusting(JOB_UZ)
+    assert guard(part, known) == ('', ['ground:law'])
+    russian = trusting('Напишите должностную инструкцию главного бухгалтера согласно Трудовому кодексу.')
+    assert guard(part.lstrip('- '), russian, translated=True) == ('', ['ground:law'])
+
+
+@pytest.mark.parametrize('part, translated', [
+    ('Mehnat kodeksiga muvofiq ishlaydi.', False), ('O‘zbekiston Respublikasi Mehnat kodeksiga amal qiladi.', False),
+    ('Mehnat kodeksi talablariga amal qiladi.', True), ('The Labour Code requires a written contract.', True),
+    ('Согласно Трудовому кодексу работник отдыхает.', True),
+], ids=['uz', 'uz-republic', 'translated-uz', 'translated-en', 'ru'])
+def test_the_code_the_customer_named_stays_in_any_language(part, translated):
+    known = trusting('Напишите должностную инструкцию согласно Трудовому кодексу.') if translated else trusting(JOB_UZ)
+    assert guard(part, known, translated=translated) == (part, [])
+
+
+# ---------------------------------------------------------------- quotation marks (stage-2 re-audit)
+
+
+@pytest.mark.parametrize('part', [
+    'As Peter Drucker put it, ‘the aim of marketing is to make selling superfluous’.',
+    "As Peter Drucker put it, 'the aim of marketing is to make selling superfluous'.",
+    'Как писал Котлер, ‹маркетинг — это искусство находить клиентов›.',
+    'Как писал Котлер, ‚маркетинг — это искусство находить клиентов‘.',
+    'Muallif aytganidek, ‘bilim olish har bir o‘quvchining burchidir’.',
+], ids=['curly-single', 'straight-single', 'guillemet-single', 'low-single', 'uz-single'])
+def test_a_quotation_in_single_marks_is_checked_as_any_other(part):
+    known = trusting('Marketing bo‘yicha kurs ishi yozib bering.')
+    written, codes = guard(part, known)
+    assert codes == ['ground:quote'] and written.endswith(', ____.')
+    assert guard(part, trusting(part)) == (part, []), 'the customer\'s own quotation stays'
+
+
+@pytest.mark.parametrize('part', [
+    'O‘quvchilar ma’lumot oldi, g‘oyalar o‘rganildi va bo‘limlar ko‘rib chiqildi.',
+    "O'quvchilar ma'lumot oldi, g'oyalar o'rganildi va bo'limlar ko'rib chiqildi.",
+    "O ‘quvchilar ma ’lumot oldi, g ‘oyalar o ‘rganildi va bo ‘limlar ko ‘rib chiqildi.",
+    "Drucker's book and the students' work show the teachers' role in it's own way.",
+], ids=['uz-marks', 'uz-straight', 'uz-spaced', 'en-apostrophes'])
+def test_uzbek_letters_and_english_apostrophes_are_never_quotation_marks(part):
+    assert guard(part, trusting('Marketing bo‘yicha kurs ishi yozib bering.')) == (part, [])
+
+
+# ---------------------------------------------------------------- handles and sites (stage-2 re-audit)
+
+
+@pytest.mark.parametrize('value', ['@aziz_karimov', 'aziz-karimov.kz', 'aziz.shop', 'aziz.online/portfolio',
+                                   't.me/aziz', 'instagram.com/aziz'])
+def test_a_handle_or_a_site_the_customer_never_gave_is_not_kept(value):
+    known = trusting('Sotuv menejeri lavozimiga xat yozing. Men Aziz Karimov, telefon +998 90 123 45 67.')
+    assert not supported(value, 'line', known, strict=True)
+    assert ground(f'Bog‘lanish: {value}', known) == ('Bog‘lanish: ____', ['ground:number'])
+
+
+def test_the_customers_own_handle_is_kept_however_they_gave_it():
+    known = trusting('Telegram: @Oqtosh_Mebel, sayt oqtosh.shop, bot t.me/oqtosh_bot, Instagram: @oqtosh.uz')
+    for value in ('@oqtosh_mebel', '@Oqtosh_Mebel', '@oqtosh_bot', 'oqtosh.shop', '@oqtosh.uz'):
+        assert supported(value, 'line', known, strict=True), value
+        assert ground(f'Buyurtma: {value}.', known) == (f'Buyurtma: {value}.', []), value
+    assert numbers.values('@aziz_2024 kanaliga yozing') == set(), 'a handle\'s digits are no figure'
+    assert ground('Muallif: S.Xolmatov, sh.Chilonzor', trusting('S.Xolmatov, sh.Chilonzor')) == (
+        'Muallif: S.Xolmatov, sh.Chilonzor', []), 'an initial or an abbreviation before a name is no link'
+
+
+# ---------------------------------------------------------------- class letters (stage-2 re-audit)
+
+
+@pytest.mark.parametrize('value, repaired', [
+    ('7-«B» sinf', '7-sinf'), ('7-B sinf', '7-sinf'), ('7 «B» sinf', '7 sinf'), ('Grade 7B', 'Grade 7'),
+    ('7Б класс', '7 класс'),
+], ids=['uz-quoted', 'uz-hyphen', 'uz-spaced', 'en', 'ru'])
+def test_a_class_letter_the_customer_never_wrote_is_not_theirs(value, repaired):
+    known = trusting('7-sinf matematika fanidan dars ishlanmasi yozing.')
+    assert not supported(value, 'line', known)
+    assert facts.without_class_letters(value, known) == (repaired, True)
+    assert facts.without_class_letters(repaired, known) == (repaired, False)
+
+
+@pytest.mark.parametrize('brief', ['7 «Б» класс, математика', '7b sinf matematika', '7-«B» sinf uchun dars'])
+def test_the_customers_own_class_letter_stays_in_either_alphabet(brief):
+    assert supported('7-«B» sinf', 'line', trusting(brief))
+    assert facts.without_class_letters('7-«B» sinf', trusting(brief)) == ('7-«B» sinf', False)
+
+
+def test_an_initial_after_a_number_is_no_class_letter():
+    known = trusting('7-sinf rahbari Karimova Aziza')
+    assert facts.without_class_letters('7-sinf rahbari A. Karimova', known) == ('7-sinf rahbari A. Karimova', False)
+
+
+# ---------------------------------------------------------------- translated references (stage-2 re-audit)
+
+
+@pytest.mark.parametrize('item', [
+    'Karimov Abdulla. Raqamli marketing strategiyalari. — Toshkent: Fan.',
+    'Abdulla Karimov. Raqamli marketing asoslari: darslik.',
+    'Marketing asoslari / mas’ul muharrir Saidov B. — T.: Iqtisodiyot.',
+    'Kotler, Philip. Marketing Management. Pearson Education.',
+    'Philip Kotler and Kevin Keller. Marketing Management. Pearson.',
+    'Ryan, Damian. Understanding Digital Marketing. Kogan Page.',
+    'Digital Marketing. Edited by D. Chaffey. Pearson.',
+], ids=['surname-name', 'name-surname', 'editor-uz', 'surname-comma-name', 'two-full-names', 'ryan', 'editor-en'])
+def test_a_translated_source_whose_author_or_editor_is_written_in_full_is_still_held(item):
+    known = trusting('Напишите курсовую работу на узбекском языке о цифровом маркетинге.')
+    assert verify_items([item], known, translated=True) == ([], ['source:dropped'])
+
+
+def test_a_translated_source_by_the_customers_author_in_full_stays():
+    known = trusting('Источники: Каримов Абдулла, учебник по цифровому маркетингу. Курсовая на узбекском.')
+    item = 'Karimov Abdulla. Raqamli marketing strategiyalari.'
+    assert verify_items([item], known, translated=True) == ([item], [])
+
+
+# ---------------------------------------------------------------- names beside figures (stage-2 re-audit)
+
+
+OFFER_UZ = ('Oqtosh Mebel MChJ nomidan tijorat taklifi. h/r 20208000900123456001, MFO 00440, STIR 301234567, '
+            'telefon +998 90 123 45 67.')
+
+
+@pytest.mark.parametrize('value, kind', [
+    ('h/r 20208000900123456001, «Kapitalbank» ATB Toshkent filiali, MFO 00440, STIR 301234567', 'ref'),
+    ('+998 90 123 45 67 (Aziz Karimov)', 'phone'),
+    ('200 mln so‘m (Hamkorbank krediti)', 'money'),
+], ids=['bank-in-requisites', 'person-beside-phone', 'lender-beside-sum'])
+def test_a_paper_facts_figure_never_carries_a_name_the_customer_did_not_give(value, kind):
+    known = trusting(OFFER_UZ + ' Kredit 200 mln so‘m.')
+    assert not supported(value, kind, known, strict=True, words=True)
+    assert supported(value, kind, known), 'a deck slot keeps its reading'
+
+
+@pytest.mark.parametrize('value, kind', [
+    ('account 20208000900123456001, Kapitalbank, MFO 00440, TIN 301234567', 'ref'),
+    ('Average check UZS 220,000', 'money'), ('As of 30 June', 'date'), ('Mobile: +998 90 123 45 67', 'phone'),
+    ('Year 7', 'number'), ('Contract No. 125', 'ref'),
+], ids=['requisites', 'label-money', 'label-date', 'label-phone', 'label-number', 'label-ref'])
+def test_a_figures_own_label_and_the_customers_bank_stay_in_a_translated_paper(value, kind):
+    known = trusting('Коммерческое предложение на английском. Р/с 20208000900123456001, Капиталбанк, МФО 00440, '
+                     'ИНН 301234567. Средний чек 220 000 сум. Договор № 125. Год 7. На 30 июня. '
+                     'Моб. +998 90 123 45 67.')
+    assert supported(value, kind, known, translated=True, strict=True, words=True)
+
+
+# ---------------------------------------------------------------- what a change reads back (stage-2 re-audit)
+
+
+PLAN_CHANGE = ('Toshkentda nonvoyxona ochish bo‘yicha biznes-reja yozib bering. Direktor Qodirova Malika. Bankdan '
+               '200 mln so‘m kredit olamiz.')
+
+
+def changed(before, prompt=PLAN_CHANGE, category='pdf.biz.biznes_reja', locale='uz'):
+    return facts.trusted({'prompt': prompt, 'output_locale': locale, 'options': {'category': category},
+                          'revision': {'request': 'Moliyalashtirish bo‘limini batafsilroq yozing.',
+                                       'original_prompt': prompt, 'before': before}})
+
+
+def test_a_word_no_names_check_read_is_never_read_back_as_the_customers():
+    before = {'title': 'Biznes-reja', 'sections': [
+        {'id': 'facts', 'layout': 'list', 'items': [
+            {'label': 'director', 'text': 'Qodirova Malika'},
+            {'label': 'external_funding', 'text': 'Korzinka: 200 mln so‘m'}]},
+        {'id': 'finance_sources', 'layout': 'table', 'items': [
+            {'label': 'Makro krediti', 'text': '200 mln so‘m', 'value': ''}]},
+        {'id': 'summary_lead', 'body': 'Sardor loyihani boshqaradi. Kredit Qodirova Malika nomiga olinadi.'}]}
+    known = changed(before)
+    for invented in ('Korzinka', 'Makro', 'Sardor'):
+        assert not known.person(invented), invented
+    assert known.person('Qodirova') and known.person('Malika')
+    assert '200000000' in known.values, 'a figure that was checked is still the customer\'s'
+
+
+def test_a_guarded_papers_topic_and_a_translated_reference_give_back_only_their_figures():
+    before = {'title': 'Kurs ishi', 'sections': [
+        {'id': 'facts', 'layout': 'list', 'items': [
+            {'label': 'topic', 'text': 'Kredit riskini boshqarish («Hamkorbank» ATB misolida), 2024'}]},
+        {'id': 'references', 'layout': 'list', 'items': [
+            {'label': '', 'text': 'Kichik biznes iqtisodiyoti. Westminster University Press.', 'value': ''}]}]}
+    prompt = 'Напишите курсовую работу на узбекском языке о кредитном риске в коммерческих банках.'
+    known = changed(before, prompt=prompt, category='pdf.kurs_ishi')
+    assert not known.person('Hamkorbank') and not known.person('Westminster')
+    assert '2024' in known.values
+
+
+@pytest.mark.parametrize('text, found', [
+    ('Я работал с тремястами клиентами', [('300', 'тремястами')]),
+    ('Обслуживал пятистам клиентам, о двухстах заявках', [('500', 'пятистам'), ('200', 'двухстах')]),
+    ('Руководил десятком сотрудников', [('10', 'десятком')]),
+], ids=['instrumental', 'dative-prepositional', 'a-ten'])
+def test_russian_hundreds_in_every_case_and_a_ten_as_a_noun_are_read(text, found):
+    assert read(text) == found
+    assert read('десятки сотрудников, свою семью') == []
+
+
+# ---------------------------------------------------------------- what a paper holds again (stage-2 re-audit, round 2)
+
+
+def test_a_held_name_is_matched_whole_or_with_a_case_ending_never_by_a_prefix():
+    held = facts.Named([facts.fold(word) for word in ('Dilnoza', 'Artel', 'Xalq', 'Hamkorbank')])
+    for word in ('Dilnoza', 'Dilnozaga', 'Дилнозы', 'Дилнозой', 'Artelda', 'Arteldagi', 'Артелем', "Artel's",
+                 'Hamkorbankdan', 'Xalq'):
+        assert held.has(facts.fold(word)), word
+    for word in ('Xalqaro', 'Artelxona', 'Dilnozaxon', 'Hamkor'):
+        assert not held.has(facts.fold(word)), word
+
+
+@pytest.mark.parametrize('value, kind, held', [
+    ('Bosh hisobchi Karimova Dilnoza', 'line', ['karimova', 'dilnoza']),
+    ('Rais: Karimov Aziz Bahodirovich', 'line', ['karimov', 'aziz', 'baxodirovich']),
+    # A name before its legal form is always a name (round 3: a rejected "Acme LLC" printed "Acme also ..." again).
+    ('Xalq banki', 'org', []), ('Westminster University', 'org', []), ('Acme LLC', 'org', ['acme']),
+    ('Artel', 'org', ['artel']), ('Hamkorbank', 'org', ['xamkorbank']), ('«Baraka» MChJ', 'org', ['baraka']),
+    ('«Baraka» nonvoyxonasi', 'line', ['baraka']), ('Moliya Vazirligi', 'org', []),
+    ('Samarqand', 'place', ['samarkand']), ('Malika', 'person', ['malika']),
+    ('Artel MChJ', 'org', ['artel']), ('Acme Trading LLC', 'org', ['acme']), ('Aziz Rahim', 'line', ['aziz', 'raxim']),
+    ('Dilnoza\nSardor', 'list', ['dilnoza', 'sardor']),
+    ('Bosh direktor Karimova Dilnoza', 'person', ['karimova', 'dilnoza']),
+    # Round 3 of the convergence: a line's name holds every word of it, a word-like given name included.
+    ('Hikmat\nRahmat', 'list', ['xikmat', 'raxmat']), ('Direktor | Hikmat', 'line', ['xikmat']),
+    ('Direktor Hikmat Rahim', 'line', ['xikmat', 'raxim']), ('Rahmat aka', 'line', ['raxmat']),
+    ('Grant Fuller', 'line', ['grant', 'fuller']), ('Chase Banks', 'line', ['chase', 'banks']),
+    ('Bosh Hisobchi', 'line', []), ('Maktab Direktori', 'line', []), ('Diplom Nusxasi', 'list', []),
+    ('John Smith, Head of Sales', 'line', ['joxn', 'smitx']),
+], ids=['role-and-person', 'chair', 'bank-of-a-word', 'university', 'llc', 'one-word', 'bank-shape', 'quoted-form',
+        'quoted-project', 'ministry', 'city', 'given-name', 'uzbek-form', 'llc-of-two-words', 'a-line-only-a-name',
+        'a-list-of-names', 'a-role-before-a-person', 'word-like-given-names', 'a-name-beside-its-role',
+        'a-name-after-its-role', 'a-name-and-its-honorific', 'word-like-surnames', 'a-plural-kind-in-a-surname',
+        'a-role-only', 'a-role-and-its-place', 'a-document', 'a-name-and-a-role-phrase'])
+def test_a_rejected_fact_holds_only_the_words_that_name_someone_wherever_they_stand(value, kind, held):
+    known = trusting('Nonvoyxona uchun hujjat yozib bering.')
+    assert facts.held_names(value, kind, known) == held
+
+
+def test_a_rejected_field_of_no_people_holds_no_name():
+    known = trusting('Ishga kirish xati yozing.')
+    assert facts.held_names('Rezyume\nTavsiyanoma', 'list', known, people=False) == []
+    assert 'enclosures' in facts.NO_PEOPLE and 'participants' not in facts.NO_PEOPLE
+
+
+# ---------------------------------------------------------------- laws in other senses (stage-2 re-audit, round 2)
+
+
+@pytest.mark.parametrize('part', [
+    'Экономическое положение Республики Узбекистан улучшилось.',
+    'Социально-экономическое положение республики остаётся стабильным.',
+    'Министерство экономики изучило положение малого бизнеса.',
+    'The Ministry of Economy reports that orders from small firms grew.',
+    'Parliament discussed the convention centre project.',
+    'Hukumat kichik biznesni qo‘llab-quvvatlash bo‘yicha qator qarorlar qabul qildi.',
+    'Respublika iqtisodiyotida nizomlar soddalashtirildi.',
+    'ОБЩИЕ ПОЛОЖЕНИЯ',
+], ids=['ru-situation', 'ru-situation-lower', 'ru-ministry-situation', 'en-ministry-orders', 'en-convention-centre',
+        'uz-government-resolutions', 'uz-plural-regulations', 'ru-general-provisions'])
+def test_a_situation_a_plural_act_or_a_convention_centre_is_no_legal_sentence(part):
+    assert guard(part, trusting('Iqtisodiyot fanidan kurs ishi yozing.')) == (part, [])
+
+
+@pytest.mark.parametrize('brief, part', [
+    ('Bosh buxgalter uchun lavozim yo‘riqnomasi, Mehnat kodeksiga muvofiq.', 'Ushbu kodeks talablariga rioya qiladi.'),
+    ('Bosh buxgalter uchun lavozim yo‘riqnomasi, Mehnat kodeksiga muvofiq.', 'Mazkur kodeksga muvofiq javob beradi.'),
+    ('Должностная инструкция по Трудовому кодексу.', 'Настоящий кодекс обязателен для исполнения.'),
+    ('A job description under the Labour Code.', 'This Code applies to every employee.'),
+], ids=['ushbu', 'mazkur', 'nastoyashchiy', 'this'])
+def test_a_code_pointed_at_after_the_customer_named_one_stays(brief, part):
+    assert guard(part, trusting(brief)) == (part, [])
+    assert ground(part, trusting(brief)) == (part, [])
+
+
+@pytest.mark.parametrize('part', [
+    'Hukumat qarori bilan dastur tasdiqlangan.', 'The Ministry of Public Education order sets the length.',
+    'Согласно Положению о школе урок длится 45 минут.', 'Under the Geneva Convention prisoners are protected.',
+    'Respublika qonunchiligida nizom № 5 bilan belgilangan.',
+], ids=['government-resolution', 'ministry-order', 'ru-polozhenie', 'geneva-convention', 'numbered-nizom'])
+def test_an_issuers_act_a_regulation_and_a_convention_are_still_legal_sentences(part):
+    assert guard(part, trusting('7-sinf matematika fanidan dars ishlanmasi yozing.')) == ('', ['ground:law'])
+
+
+# ---------------------------------------------------------------- what no class letter is (stage-2 re-audit, round 2)
+
+
+@pytest.mark.parametrize('brief, value', [
+    ('1С dasturchisi lavozimiga ishga kirish xati kerak.', '1C dasturchisi'),
+    ('Нужно сопроводительное письмо, должность: программист 1С.', 'Programmer 1C'),
+    ('1C dasturchisi lavozimiga xat.', '1С dasturchisi'),
+    ('Buxgalter lavozimi, 1C bilishi kerak.', 'Buxgalter (1C)'),
+    ('3D dizayner lavozimiga xat.', '3D dizayner'),
+    ('Ofis manzili: Chilonzor 9-kvartal, 12A uy.', 'Chilonzor 9-kvartal, 12A uy'),
+], ids=['uz-cyrillic-1c', 'ru-1c', 'latin-given', 'brackets', '3d', 'house'])
+def test_a_letter_after_a_number_that_names_no_class_is_kept_whole(brief, value):
+    known = trusting(brief)
+    assert facts.without_class_letters(value, known) == (value, False)
+    assert supported(value, 'line', known, strict=True, words=True)
+
+
+# The customer's Cyrillic class letter is the Latin one Uzbek writes for it, never the one it looks like (round 3: a
+# paper's "7-«B»" passed for the customer's "7 «В»", the third parallel, not the second).
+@pytest.mark.parametrize('brief, kept, taken', [
+    ('7 «В» класс, математика', 'V', 'B'), ('7С класс, урок', 'S', 'C'), ('7 «Б» класс, математика', 'B', 'V'),
+], ids=['ve', 'es', 'be'])
+def test_the_customers_class_letter_typed_in_cyrillic_stays_in_latin(brief, kept, taken):
+    known = trusting(brief)
+    assert facts.without_class_letters(f'7-«{kept}» sinf', known) == (f'7-«{kept}» sinf', False)
+    assert facts.without_class_letters(f'7-«{taken}» sinf', known) == ('7-sinf', True)
+
+
+@pytest.mark.parametrize('value, left', [('7B', '7'), ('7B-sinf', '7-sinf'), ('Year 7B', 'Year 7'), ('7 B', '7')],
+                         ids=['bare', 'before-a-hyphenated-class-word', 'after-year', 'bare-spaced'])
+def test_an_invented_class_letter_is_taken_however_the_grade_writes_it(value, left):
+    known = trusting('7-sinf matematika dars ishlanmasi')
+    assert facts.without_class_letters(value, known, grade=True) == (left, True)
+    if not re.search(r'[a-z]', value):
+        # A value of a number and a letter alone is no class by itself in a person's, an organisation's or a place's
+        # fact; in a line's or a title-page line's (`weak`) it is, as the customer's "7-sinf" makes 7 a class (round 3
+        # of the convergence: "Sinf: 7B" and "7B" passed on a deck's cover).
+        assert facts.without_class_letters(value, known) == (value, False)
+        assert facts.without_class_letters(value, known, weak=True) == (left, True)
+
+
+@pytest.mark.parametrize('brief, value, taken', [
+    ('7-sinf matematika dars ishlanmasi', '7B matematika', True),
+    ('7-sinf matematika dars ishlanmasi', '11A o‘quvchisi', True),
+    ('Please write a reference for a student of grade 11.', 'an 11A student', True),
+    ('7-sinf matematika dars ishlanmasi', 'Sinf: 7B', True),
+    ('Презентация для 1 класса, мой папа программист 1С.', '1C dasturchisi', False),
+    ('Mavzu 1С dasturi haqida.', '1C', False),
+    ('Составьте план урока для 7 «В» класса.', '7B', True),
+], ids=['after-the-customers-class-number', 'beside-a-pupils-word', 'beside-a-students-word', 'a-labels-value',
+        'the-customers-1c-beside-a-class', 'the-customers-1c-whole', 'a-cyrillic-ve-is-no-b'])
+def test_a_class_letter_by_what_stands_beside_it_and_the_customers_class(brief, value, taken):
+    known = trusting(brief)
+    assert facts.without_class_letters(value, known, weak=True)[1] is taken
+
+
+# ---------------------------------------------------------------- a figure's own labels (stage-2 re-audit, round 2)
+
+
+REQUISITES_RU = ('Коммерческое предложение на английском. Телефон +998 90 123 45 67. Реквизиты: р/с '
+                 '20208000900123456001, АКБ «Капиталбанк», МФО 00440, ИНН 301234567.')
+
+
+@pytest.mark.parametrize('value, kind', [
+    ('Account 20208000900123456001, Kapitalbank JSCB, MFO 00440, TIN 301234567', 'ref'),
+    ('Account 20208000900123456001, JSCB Kapitalbank, MFO 00440, TIN 301234567', 'ref'),
+    ('Settlement account 20208000900123456001 at Kapitalbank, Bank code (MFO) 00440, TIN 301234567', 'ref'),
+    ('Расчётный счёт 20208000900123456001, Банк: АКБ «Капиталбанк», МФО 00440', 'ref'),
+    ('+998 90 123 45 67 (mobile, Telegram)', 'phone'),
+], ids=['jscb-after', 'jscb-before', 'bank-code', 'ru-bank-label', 'phone-telegram'])
+def test_the_customers_bank_details_and_phone_keep_their_labels_in_a_translated_paper(value, kind):
+    assert supported(value, kind, trusting(REQUISITES_RU), translated=True, strict=True, words=True)
+
+
+@pytest.mark.parametrize('value, kind', [
+    ('Account 20208000900123456001, Hamkorbank JSCB, MFO 00440, TIN 301234567', 'ref'),
+    ('Расчётный счёт 20208000900123456001, Банк: АКБ «Хамкорбанк», МФО 00440', 'ref'),
+    ('+998 90 123 45 67 (mobile, Aziz Karimov)', 'phone'),
+], ids=['other-bank', 'ru-other-bank', 'phone-person'])
+def test_an_invented_bank_or_person_beside_the_customers_figures_is_still_not_theirs(value, kind):
+    assert not supported(value, kind, trusting(REQUISITES_RU), translated=True, strict=True, words=True)
+
+
+# ---------------------------------------------------------------- numbers side by side (stage-2 re-audit, round 2)
+
+
+@pytest.mark.parametrize('brief, text', [
+    ('Team of 10; revenue tripled.', 'Our team of ten tripled revenue.'),
+    ('Команда из 10 человек, продажи выросли вдвое.', 'Десять сотрудников вдвое увеличили продажи.'),
+    ('Narxi 5000 so‘m.', 'Narxi besh ming bir dona uchun.'),
+], ids=['en-tripled', 'ru-vdvoe', 'uz-one-piece'])
+def test_a_count_beside_a_multiplier_or_a_counted_one_is_read_apart(brief, text):
+    assert guard(text, trusting(brief), checks=('numbers',), words=True) == (text, [])
+
+
+def test_a_thousand_and_one_is_still_read_whole():
+    assert [number.value for number in numbers.found('Ming bir kecha ertaklari.', words=True)] == ['1001']
+    assert [number.value for number in numbers.found('Zavodda ming bir xodim ishlaydi.', words=True)] == ['1001']
+    assert [number.value for number in numbers.found('Two thousand and one copies.', words=True)] == ['2001']
+    assert guard('Our team of ten tripled revenue.', trusting('Team of 12.'), checks=('numbers',), words=True)[1] == [
+        'ground:number'], 'an invented count beside a multiplier is still blanked'
+
+
+# ---------------------------------------------------------------- a name by the kind after it (stage-2 round 4)
+
+
+@pytest.mark.parametrize('sentence, brief, kept', [
+    ('Samarqand shahrida yangi filial ochildi.', 'Kompaniyamiz yillik hisoboti kerak.', False),
+    ('Yunusobod tumanida do‘kon ochamiz.', 'Nonvoyxona uchun biznes-reja yozing.', False),
+    ('Toshkent shahrida do‘kon ochamiz.', 'Toshkentda nonvoyxona ochmoqchimiz.', True),
+    ('Uzum platformasida savdo boshlandi.', 'Kompaniyamiz yillik hisoboti kerak.', False),
+    ('Вестминстерский университет принял меня.', 'Напишите сопроводительное письмо, я работала в рознице.', False),
+    ('Самаркандский государственный институт принял меня.', 'Напишите письмо, я работала в рознице.', False),
+    ('Медицинский институт принял меня.', 'Напишите сопроводительное письмо, я работала в рознице.', True),
+    # A plural before a kind is a name as often ("Do‘stlar kompaniyasida"): held, the price of it (owner's tie-break).
+    ('Keyslar banki ilovada berilgan.', 'Raqamli marketing mavzusida kurs ishi yozing.', False),
+], ids=['uz-city', 'uz-district', 'uz-the-customers-city', 'uz-platform', 'ru-name-adjective',
+        'ru-name-adjective-before-another', 'ru-kind-adjective', 'uz-plural-before-a-kind'])
+def test_a_first_word_is_a_name_by_the_kind_after_it(sentence, brief, kept):
+    from apps.studio.categories import finish
+    assert (finish.ground_paper(sentence, trusting(brief))[0] == sentence) is kept

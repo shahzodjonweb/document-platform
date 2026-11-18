@@ -61,8 +61,32 @@
     "captions": {
      "addressee_org": "cap_org",
      "addressee_position": "cap_head"
+    },
+    "suffixes": {
+     "uz": {
+      "addressee_position": "to_suffix"
+     }
     }
-   }
+   },
+   "when": "nofact:addressee_person"
+  },
+  {
+   "block": "party_block",
+   "part": "addressee",
+   "fields": [
+    "addressee_org",
+    "addressee_position",
+    "addressee_person"
+   ],
+   "params": {
+    "anchor": "right_half",
+    "max_lines": 4,
+    "captions": {
+     "addressee_org": "cap_org",
+     "addressee_position": "cap_head"
+    }
+   },
+   "when": "fact:addressee_person"
   },
   {
    "block": "party_block",
@@ -86,6 +110,21 @@
     },
     "labels": {
      "phone": "tel"
+    },
+    "order": {
+     "en": [
+      "applicant_name",
+      "applicant_role",
+      "on_behalf_of",
+      "applicant_address",
+      "phone",
+      "email"
+     ]
+    },
+    "suffixes": {
+     "uz": {
+      "applicant_name": "from_suffix"
+     }
     }
    }
   },
@@ -103,6 +142,16 @@
    "params": {
     "indent_first_mm": 12.5,
     "gap_pt": 0
+   }
+  },
+  {
+   "block": "ruled_blank",
+   "part": "request_blank",
+   "when": "blank:request",
+   "params": {
+    "lines": 6,
+    "width_mm": "full",
+    "pitch_pt": 24
    }
   },
   {
@@ -214,6 +263,16 @@
    "uz": "(yashash manzili)",
    "ru": "(адрес проживания)",
    "en": "(home address)"
+  },
+  "to_suffix": {
+   "uz": "ga",
+   "ru": "",
+   "en": ""
+  },
+  "from_suffix": {
+   "uz": "dan",
+   "ru": "",
+   "en": ""
   }
  },
  "mock": "units/pdf.xat.ariza/mock/official_ariza.png"

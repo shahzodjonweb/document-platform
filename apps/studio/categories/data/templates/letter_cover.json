@@ -1,0 +1,265 @@
+{
+ "schema": 2,
+ "id": "letter_cover",
+ "entries": [
+  "pdf.xat.ishga_kirish"
+ ],
+ "name": {
+  "uz": "Ishga kirish xati",
+  "ru": "Сопроводительное письмо",
+  "en": "Cover letter"
+ },
+ "family": "letter",
+ "page": {
+  "margins_mm": {
+   "left": 25,
+   "right": 25,
+   "top": 22,
+   "bottom": 20
+  }
+ },
+ "type": {
+  "face": "serif",
+  "ladder": [
+   [
+    11,
+    16
+   ],
+   [
+    10.5,
+    15
+   ]
+  ],
+  "align": "left"
+ },
+ "page_rule": {
+  "kind": "fixed",
+  "pages": 1
+ },
+ "furniture": {
+  "first": "none",
+  "later": "number_top",
+  "format": "n"
+ },
+ "flow": [
+  {
+   "block": "party_block",
+   "part": "sender",
+   "fields": [
+    "applicant_name",
+    "phone",
+    "email",
+    "applicant_city",
+    "other_contact"
+   ],
+   "params": {
+    "anchor": "left",
+    "name_style": "bold_large",
+    "rule": "under",
+    "contact_line": true,
+    "no_blanks": true
+   }
+  },
+  {
+   "block": "split_row",
+   "part": "addressee_row",
+   "fields": [
+    "recipient_person",
+    "recipient_title",
+    "employer_name",
+    "employer_address",
+    "date_written"
+   ],
+   "params": {
+    "left": {
+     "block": "party_block",
+     "fields": [
+      "recipient_person",
+      "recipient_title",
+      "employer_name",
+      "employer_address"
+     ],
+     "anchor": "left",
+     "max_lines": 4
+    },
+    "right": {
+     "block": "date_line",
+     "fact": "date_written",
+     "align": "right",
+     "year": "clock"
+    },
+    "left_mm": 104
+   }
+  },
+  {
+   "block": "line",
+   "part": "salutation",
+   "fields": [
+    "salutation"
+   ],
+   "when": "fact:salutation"
+  },
+  {
+   "block": "line",
+   "when": "nofact:salutation",
+   "params": {
+    "text": "fallback"
+   }
+  },
+  {
+   "block": "line",
+   "part": "subject",
+   "fields": [
+    "position",
+    "vacancy_reference"
+   ],
+   "params": {
+    "label": "lead",
+    "style": "bold",
+    "max_lines": 3,
+    "balance": true,
+    "separator": ", ",
+    "labels": {
+     "vacancy_reference": "reference"
+    }
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "opening",
+   "params": {
+    "gap_pt": 7,
+    "before_pt": 7
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "fit",
+   "when": "part:fit",
+   "params": {
+    "gap_pt": 7,
+    "before_pt": 7
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "motive",
+   "when": "part:motive",
+   "params": {
+    "gap_pt": 7,
+    "before_pt": 7
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "closing",
+   "params": {
+    "gap_pt": 7,
+    "before_pt": 7
+   },
+   "keep": "closing"
+  },
+  {
+   "block": "line",
+   "part": "close",
+   "when": "fact:salutation",
+   "keep": "closing",
+   "params": {
+    "text": "close_named",
+    "before_pt": 10
+   }
+  },
+  {
+   "block": "line",
+   "part": "close",
+   "when": "nofact:salutation",
+   "keep": "closing",
+   "params": {
+    "text": "close",
+    "before_pt": 10
+   }
+  },
+  {
+   "block": "line",
+   "part": "close",
+   "fields": [
+    "applicant_name"
+   ],
+   "when": "fact:applicant_name",
+   "keep": "closing",
+   "params": {
+    "before_pt": 30
+   }
+  },
+  {
+   "block": "ruled_blank",
+   "fields": [
+    "applicant_name"
+   ],
+   "when": "blank:applicant_name",
+   "keep": "closing",
+   "params": {
+    "style": "captioned",
+    "caption": "cap_name",
+    "width_mm": 60,
+    "indent_mm": 0,
+    "pitch_pt": 36
+   }
+  },
+  {
+   "block": "list",
+   "part": "enclosures",
+   "when": "part:enclosures",
+   "keep": "closing",
+   "params": {
+    "marker": "number",
+    "label": "enclosure",
+    "max_items": 4,
+    "single_unnumbered": true
+   }
+  }
+ ],
+ "labels": {
+  "lead": {
+   "uz": "Vakansiya:",
+   "ru": "Отклик на вакансию:",
+   "en": "Application for"
+  },
+  "fallback": {
+   "uz": "Hurmatli xonimlar va janoblar!",
+   "ru": "Уважаемые дамы и господа!",
+   "en": "Dear Sir or Madam,"
+  },
+  "close_named": {
+   "uz": "Hurmat bilan,",
+   "ru": "С уважением,",
+   "en": "Yours sincerely,"
+  },
+  "close": {
+   "uz": "Hurmat bilan,",
+   "ru": "С уважением,",
+   "en": "Yours faithfully,"
+  },
+  "enclosure": {
+   "uz": "Ilova:",
+   "ru": "Приложение:",
+   "en": "Enclosure:"
+  },
+  "enclosures": {
+   "uz": "Ilova:",
+   "ru": "Приложение:",
+   "en": "Enclosures:"
+  },
+  "cap_name": {
+   "uz": "(F.I.Sh.)",
+   "ru": "(Ф.И.О.)",
+   "en": "(full name)"
+  },
+  "reference": {
+   "uz": "№",
+   "ru": "№",
+   "en": "ref."
+  }
+ },
+ "mock": "units/pdf.xat.ishga_kirish/mock/letter_cover.png"
+}

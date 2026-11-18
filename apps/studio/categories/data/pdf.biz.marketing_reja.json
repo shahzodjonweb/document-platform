@@ -1,0 +1,947 @@
+{
+ "schema": 2,
+ "id": "pdf.biz.marketing_reja",
+ "status": "ready",
+ "service": "pdf",
+ "parent": "pdf.biz",
+ "order": 7,
+ "labels": {
+  "uz": "📣 Marketing reja",
+  "ru": "📣 Маркетинг-план",
+  "en": "📣 Marketing plan"
+ },
+ "summary": "A marketing plan as a PDF for a small or medium business or a product launch, written from one message: a short summary with key figures, goals with a number and a deadline (one table that also says where each is read), competitors and a SWOT grid, audience and positioning, the four Ps with a channel table, a budget table with share bars, a calendar, a review rule. Every number is what the customer typed or what the renderer computed from it; every activity the customer did not name carries a proposal tag; every missing fact is a ruled blank; the document never speaks to the reader and never mentions the chat.",
+ "tone": "plain working business register of a small-business owner’s plan: actions in the impersonal present or future, no second person, no mention of the chat, no slogans, short sentences, no advertising adjectives the customer did not use; every number is the customer’s, an attached file’s, or computed by code",
+ "topic": false,
+ "title": "model",
+ "length": {
+  "unit": "pages",
+  "mode": "count",
+  "target": "ceiling",
+  "default": 4,
+  "min": 1,
+  "max": 12,
+  "note": "A ceiling: the plan has the pages its facts fill, at most what was asked (4 when nothing is asked); the number also chooses the form."
+ },
+ "questions": {
+  "default": 0,
+  "max": 0
+ },
+ "quality": "repair",
+ "fill": false,
+ "cues": {},
+ "ask": {
+  "when": "no_digits",
+  "fields": [
+   "budget_total",
+   "period"
+  ],
+  "review": {
+   "uz": "Maqsad, byudjet yoki muddatni raqamda yozmadingiz: reja jadvallarida ular bo‘sh chiziq bo‘ladi.",
+   "ru": "Вы не указали цель, бюджет или срок в цифрах: в таблицах плана они будут пустыми линиями.",
+   "en": "You gave no goal, budget or timeframe in numbers: they stay blank lines in the plan’s tables."
+  },
+  "prompt": {
+   "uz": "💰 Reja aniqroq bo‘lishi uchun yozing:\n1) Maqsad, raqamda: nimaga erishmoqchisiz.\n2) Byudjet: jami summa yoki tadbirlar bo‘yicha.\n3) Muddat: qaysi oydan va necha oyga.\nYozilmaganlar rejada bo‘sh chiziq bo‘ladi.",
+   "ru": "💰 Чтобы план получился точнее, напишите:\n1) Цель в цифрах: чего хотите добиться.\n2) Бюджет: общая сумма или по мероприятиям.\n3) Срок: с какого месяца и на сколько месяцев.\nЧто не укажете, останется в плане пустой строкой.",
+   "en": "💰 To make the plan more precise, write:\n1) Goal in numbers: what you want to reach.\n2) Budget: a total or per activity.\n3) Timeframe: from which month and for how many months.\nWhatever you leave out stays a blank line in the plan."
+  }
+ },
+ "fields": [
+  {
+   "id": "business_name",
+   "label": {
+    "uz": "Biznes yoki mahsulot nomi",
+    "ru": "Название бизнеса или продукта",
+    "en": "Business or product name"
+   },
+   "example": {
+    "uz": "«Namuna Kiyim»",
+    "ru": "«Намуна Кийим»",
+    "en": "“Namuna Kiyim”"
+   },
+   "kind": "org",
+   "need": "required",
+   "missing": "blank",
+   "where": "Head (organisation line, title), running header from page 2, cover, summary. Without a name or a product nothing can be written, so the bot asks the topic question."
+  },
+  {
+   "id": "offer",
+   "label": {
+    "uz": "Nima sotasiz yoki nimani ishga tushirasiz",
+    "ru": "Что продаёте или запускаете",
+    "en": "What you sell or launch"
+   },
+   "example": {
+    "uz": "Onlayn kiyim do‘koni",
+    "ru": "Интернет-магазин одежды",
+    "en": "Online clothing shop"
+   },
+   "kind": "text",
+   "need": "required",
+   "missing": "omit",
+   "where": "Title, summary, the Product paragraph of 5.1, positioning. Without it nothing can be written, so the bot asks the topic question."
+  },
+  {
+   "id": "situation",
+   "label": {
+    "uz": "Holat: yangi biznes, mavjud biznes yoki yangi mahsulot",
+    "ru": "Ситуация: новый бизнес, действующий или запуск продукта",
+    "en": "Situation: a new business, an existing one or a launch"
+   },
+   "example": {
+    "uz": "Ochilishga 2 oy bor",
+    "ru": "До открытия 2 месяца",
+    "en": "It opens in 2 months"
+   },
+   "kind": "choice",
+   "need": "optional",
+   "missing": "omit",
+   "choices": [
+    "new",
+    "existing",
+    "launch"
+   ],
+   "where": "A new business has no Hozir column in the goals table; a stated opening date is a mark in the calendar."
+  },
+  {
+   "id": "location",
+   "label": {
+    "uz": "Hudud (shahar, tuman yoki onlayn)",
+    "ru": "Регион (город, район или онлайн)",
+    "en": "Area (city, district or online)"
+   },
+   "example": {
+    "uz": "Toshkent",
+    "ru": "Ташкент",
+    "en": "Tashkent"
+   },
+   "kind": "place",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "Summary, positioning, the Taqsimlash paragraph, the cover row Hudud. Not guessed: when missing, nothing about place is written."
+  },
+  {
+   "id": "period",
+   "label": {
+    "uz": "Reja davri: nechta oy va qaysi oydan",
+    "ru": "Период плана: сколько месяцев и с какого",
+    "en": "Plan period: how many months and from when"
+   },
+   "example": {
+    "uz": "1-martdan 6 oy",
+    "ru": "6 месяцев с 1 марта",
+    "en": "6 months from 1 March"
+   },
+   "kind": "line",
+   "need": "recommended",
+   "missing": "blank",
+   "where": "Period line under the title, calendar header, key figures. The year of a stated month is the next occurrence of that month after the delivery date (computed, never typed by the model). Missing: a ruled blank in the head table (a meta row “Reja davri”) and NO calendar at all (no invented horizon, no numbered months). A period derivable from stated numbers (“ochilishga 2 oy”, “ilk 3 oyda”) is computed and counts as given."
+  },
+  {
+   "id": "current_state",
+   "label": {
+    "uz": "Hozirgi holat: sotuv, mijozlar, obunachilar",
+    "ru": "Текущее состояние: продажи, клиенты, подписчики",
+    "en": "Where you are now: sales, customers, followers"
+   },
+   "example": {
+    "uz": "Instagramda 4 000 ta obunachi, oyiga 120 ta buyurtma",
+    "ru": "В Instagram 4 000 подписчиков, 120 заказов в месяц",
+    "en": "4,000 Instagram followers, 120 orders a month"
+   },
+   "kind": "text",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "The Hozir column of the goals table (blank cell for an existing business, column dropped for a new one) and the key-figure sub-lines."
+  },
+  {
+   "id": "budget_total",
+   "label": {
+    "uz": "Marketing byudjeti (jami)",
+    "ru": "Маркетинговый бюджет (всего)",
+    "en": "Marketing budget (total)"
+   },
+   "example": {
+    "uz": "36 mln so‘m",
+    "ru": "36 млн сум",
+    "en": "UZS 36 million"
+   },
+   "kind": "money",
+   "need": "recommended",
+   "missing": "blank",
+   "where": "Key figure, the Jami row of the budget table (or of the channel table when there are no lines), the summary. Missing: no total row."
+  },
+  {
+   "id": "audience",
+   "label": {
+    "uz": "Mijozlar kimlar: yosh, jins, hudud, qiziqish",
+    "ru": "Кто клиенты: возраст, пол, регион, интересы",
+    "en": "Who the customers are: age, sex, area, interests"
+   },
+   "example": {
+    "uz": "20–35 yoshli ayollar",
+    "ru": "женщины 20–35 лет",
+    "en": "women aged 20–35"
+   },
+   "kind": "text",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "4.1 target audience table (or two bullets in a short plan), the positioning statement, the Instagram or other channel text."
+  },
+  {
+   "id": "price_info",
+   "label": {
+    "uz": "Narx yoki narx oralig‘i",
+    "ru": "Цена или ценовой диапазон",
+    "en": "Price or price range"
+   },
+   "example": {
+    "uz": "150 000–400 000 so‘m",
+    "ru": "150 000–400 000 сум",
+    "en": "UZS 150,000–400,000"
+   },
+   "kind": "line",
+   "need": "recommended",
+   "missing": "if_needed",
+   "where": "The Price paragraph of 5.1 (an inline blank when missing, only when 5.1 is shown) and the SWOT. No discount, promotion or promo-code figure unless typed."
+  },
+  {
+   "id": "differentiator",
+   "label": {
+    "uz": "Sizning ustunligingiz",
+    "ru": "Ваше преимущество",
+    "en": "Your advantage"
+   },
+   "example": {
+    "uz": "7 kun ichida almashtirish",
+    "ru": "обмен в течение 7 дней",
+    "en": "exchange within 7 days"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "if_needed",
+   "where": "Positioning sentence, SWOT strengths, the competitor table’s “Bizning farqimiz”, the Product paragraph. Missing: the positioning ends with an inline blank “Farqi: ____”."
+  },
+  {
+   "id": "market_figures",
+   "label": {
+    "uz": "Bozor hajmi va talab raqamlari, manbasi bilan",
+    "ru": "Объём рынка и спрос в цифрах, с источником",
+    "en": "Market size and demand figures, with the source"
+   },
+   "example": {
+    "uz": "Toshkentda oyiga 40 000 buyurtma (manba: soha hisoboti)",
+    "ru": "в Ташкенте 40 000 заказов в месяц (источник: отчёт отрасли)",
+    "en": "40,000 orders a month in Tashkent (source: an industry report)"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Section 3.1 with a source line “Manba: …”. Missing: the section does not exist (no sentence says that figures were missing). Never filled by the model."
+  },
+  {
+   "id": "author",
+   "label": {
+    "uz": "Tayyorladi: F.I.Sh. va lavozim",
+    "ru": "Подготовил: Ф.И.О. и должность",
+    "en": "Prepared by: name and position"
+   },
+   "example": {
+    "uz": "Dilnoza, marketing menejeri",
+    "ru": "Дилноза, маркетолог",
+    "en": "Dilnoza, marketing manager"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Head meta row “Tayyorladi” (cover row from 8 pages) and the signature row when an approver is named. Never invented; no blank line when missing."
+  },
+  {
+   "id": "approver",
+   "label": {
+    "uz": "Tasdiqlovchi shaxs",
+    "ru": "Утверждающее лицо",
+    "en": "Who approves"
+   },
+   "example": {
+    "uz": "direktor",
+    "ru": "директор",
+    "en": "the director"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "omit",
+   "where": "The approval_block (TASDIQLAYMAN) flush right at the top of page 1 (or of the cover), with the position as the customer named it, and the signature row at the end. Never invented; no blank when missing."
+  },
+  {
+   "id": "key_dates",
+   "label": {
+    "uz": "Muhim sanalar yoki mavsum",
+    "ru": "Важные даты или сезон",
+    "en": "Key dates or season"
+   },
+   "example": {
+    "uz": "Navro‘z, 1-sentabr, Hayit",
+    "ru": "Навруз, 1 сентября, Курбан-хайит",
+    "en": "Navruz, 1 September, Eid"
+   },
+   "kind": "list",
+   "need": "optional",
+   "missing": "omit",
+   "where": "A diamond row in the calendar (a launch, an event) and the text of the activity it belongs to; never added by the model."
+  },
+  {
+   "id": "avg_check",
+   "label": {
+    "uz": "O‘rtacha chek yoki foyda",
+    "ru": "Средний чек или маржа",
+    "en": "Average check or margin"
+   },
+   "example": {
+    "uz": "o‘rtacha chek 220 000 so‘m",
+    "ru": "средний чек 220 000 сум",
+    "en": "average check UZS 220,000"
+   },
+   "kind": "money",
+   "need": "optional",
+   "missing": "omit",
+   "where": "The indicator table (from 9 pages): it is what lets “cost per order” carry a target; without it that indicator stays a definition with a blank target."
+  }
+ ],
+ "parts": [
+  {
+   "id": "title_page",
+   "kind": "fixed",
+   "heading": {
+    "uz": "Muqova",
+    "ru": "Титульная страница",
+    "en": "Cover"
+   },
+   "heading_mode": "none",
+   "need": "optional",
+   "share": 0.0,
+   "elastic": false,
+   "from": 8,
+   "write": "Nothing: from eight pages the template draws a cover with the fixed word, the title, the period and the business, area and author rows.",
+   "block": "title_page",
+   "fields": [
+    "business_name",
+    "location",
+    "author",
+    "period"
+   ]
+  },
+  {
+   "id": "plan_head",
+   "kind": "fixed",
+   "heading": {
+    "uz": "Reja boshi",
+    "ru": "Шапка плана",
+    "en": "Plan head"
+   },
+   "heading_mode": "none",
+   "need": "required",
+   "share": 0.05,
+   "elastic": false,
+   "write": "The template draws the business line, the word MARKETING REJA and the period line. The document title you return is one line naming the business and, when known, the period, at most 90 characters, no full stop; a title the customer dictated is kept whole.",
+   "block": "doc_head",
+   "fields": [
+    "business_name",
+    "period"
+   ]
+  },
+  {
+   "id": "approval",
+   "kind": "fixed",
+   "heading": {
+    "uz": "Tasdiqlash",
+    "ru": "Утверждение",
+    "en": "Approval"
+   },
+   "heading_mode": "none",
+   "need": "optional",
+   "share": 0.0,
+   "elastic": false,
+   "write": "Nothing: TASDIQLAYMAN at the top right only when the customer names an approver, with the position as named.",
+   "block": "approval_block",
+   "fields": [
+    "approver"
+   ]
+  },
+  {
+   "id": "toc",
+   "kind": "fixed",
+   "heading": {
+    "uz": "Mundarija",
+    "ru": "Содержание",
+    "en": "Contents"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "share": 0.0,
+   "elastic": false,
+   "from": 10,
+   "write": "Nothing: drawn by the template.",
+   "block": "toc"
+  },
+  {
+   "id": "summary_text",
+   "kind": "prose",
+   "heading": {
+    "uz": "Qisqacha xulosa",
+    "ru": "Краткое резюме",
+    "en": "Summary"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "share": 0.08,
+   "elastic": false,
+   "write": "Written last, at most 110 words in 4 to 6 sentences, in this order: who and what, where; where the business stands now (only stated numbers); the main goal with its number and date; how the money is spread (only when stated); how results are checked (each month). Repeats only numbers the tables show, in the same form.",
+   "block": "paragraph",
+   "grounded": true,
+   "words": [
+    0,
+    110
+   ]
+  },
+  {
+   "id": "summary_figures",
+   "kind": "fixed",
+   "heading": null,
+   "heading_mode": "none",
+   "need": "usual",
+   "share": 0.04,
+   "elastic": false,
+   "write": "Nothing: three or four boxes from the budget total and the main goals; fewer than three figures and the strip is left out.",
+   "block": "key_figures",
+   "fields": [
+    "budget_total",
+    "current_state"
+   ]
+  },
+  {
+   "id": "goals",
+   "kind": "table",
+   "heading": {
+    "uz": "Maqsadlar",
+    "ru": "Цели",
+    "en": "Goals"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "share": 0.1,
+   "elastic": false,
+   "write": "One row per goal the customer named, the main goal first (one to four rows): label the indicator, then where it is now (empty for a new business), the target and the deadline as stated, and where it is read last (the customer’s own record or channel: buyurtmalar hisobi, Instagram statistikasi). A target or deadline not stated stays empty; a vague aim keeps its row with an empty target. No goal at all: no rows.",
+   "block": "table",
+   "grounded": true,
+   "max_items": 4,
+   "columns": [
+    {
+     "uz": "Ko‘rsatkich",
+     "ru": "Показатель",
+     "en": "Indicator"
+    },
+    {
+     "uz": "Hozir",
+     "ru": "Сейчас",
+     "en": "Now"
+    },
+    {
+     "uz": "Maqsad",
+     "ru": "Цель",
+     "en": "Target"
+    },
+    {
+     "uz": "Muddat",
+     "ru": "Срок",
+     "en": "Deadline"
+    },
+    {
+     "uz": "Qayerdan olinadi",
+     "ru": "Где смотреть",
+     "en": "Read from"
+    }
+   ]
+  },
+  {
+   "id": "market",
+   "kind": "prose",
+   "heading": {
+    "uz": "Bozor holati",
+    "ru": "Состояние рынка",
+    "en": "Market situation"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "share": 0.04,
+   "elastic": false,
+   "write": "Only when the customer or an attached file gave market figures: two or three sentences that follow from them, with the source the customer named. Otherwise empty; never a sentence saying no figures were given.",
+   "block": "paragraph",
+   "grounded": true
+  },
+  {
+   "id": "competitors",
+   "kind": "table",
+   "heading": {
+    "uz": "Raqobatchilar",
+    "ru": "Конкуренты",
+    "en": "Competitors"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "share": 0.06,
+   "elastic": false,
+   "from": 3,
+   "write": "Two or more competitors or kinds the customer named: one row each, label the name, then the customer’s own comment, and the difference the customer gave last. A cell the customer did not fill stays empty. Fewer than two: no rows.",
+   "block": "table",
+   "grounded": true,
+   "max_items": 6,
+   "columns": [
+    {
+     "uz": "Raqobatchi",
+     "ru": "Конкурент",
+     "en": "Competitor"
+    },
+    {
+     "uz": "Izoh",
+     "ru": "Комментарий",
+     "en": "Comment"
+    },
+    {
+     "uz": "Bizning farqimiz",
+     "ru": "Наше отличие",
+     "en": "Our difference"
+    }
+   ]
+  },
+  {
+   "id": "swot",
+   "kind": "list",
+   "heading": {
+    "uz": "SWOT tahlili",
+    "ru": "SWOT-анализ",
+    "en": "SWOT analysis"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "share": 0.08,
+   "elastic": false,
+   "from": 3,
+   "write": "Up to three points per quadrant, each at most 12 words: label one of strengths, weaknesses, opportunities, threats, text the point. Strengths and weaknesses only from stated facts; opportunities and threats are number-free conditions tied to the stated activities, channels, place or competitors. No point repeats; no filler such as yuqori sifat. Fewer than three stated strengths and weaknesses together: no items.",
+   "block": "card_grid",
+   "grounded": true,
+   "max_items": 12
+  },
+  {
+   "id": "audience",
+   "kind": "prose",
+   "heading": {
+    "uz": "Maqsadli auditoriya",
+    "ru": "Целевая аудитория",
+    "en": "Target audience"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "share": 0.05,
+   "elastic": false,
+   "write": "The customer groups by stated facts (age, sex, place, behaviour, new or existing customers): one sentence for one group, a sentence each for two. No persona, size or share unless stated, and never three typical segments by guessing.",
+   "block": "paragraph",
+   "grounded": true
+  },
+  {
+   "id": "positioning",
+   "kind": "prose",
+   "heading": {
+    "uz": "Pozitsiyalash",
+    "ru": "Позиционирование",
+    "en": "Positioning"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "share": 0.04,
+   "elastic": false,
+   "from": 3,
+   "write": "One sentence: the business, for whom, what, and its difference, built only from stated facts, at most 40 words. No slogan, imperative, superlative or second person. No difference given: the sentence ends with “Farqi: ____” (ru “Отличие: ____”, en “Difference: ____”).",
+   "block": "callout",
+   "grounded": true,
+   "words": [
+    0,
+    40
+   ]
+  },
+  {
+   "id": "mix",
+   "kind": "list",
+   "heading": {
+    "uz": "Marketing kompleksi (4P)",
+    "ru": "Маркетинг-микс (4P)",
+    "en": "Marketing mix (4P)"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "share": 0.07,
+   "elastic": false,
+   "from": 3,
+   "write": "Up to four items in this order, label one of product, price, place, promotion, text one or two sentences built from stated facts. A P with no stated fact is left out, except price, which is “____” when no price was given. No discount or promotion percentage unless typed. Fewer than two items would remain: no items.",
+   "block": "list",
+   "grounded": true,
+   "max_items": 4
+  },
+  {
+   "id": "channels",
+   "kind": "table",
+   "heading": {
+    "uz": "Kanallar va tadbirlar",
+    "ru": "Каналы и мероприятия",
+    "en": "Channels and activities"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "share": 0.1,
+   "elastic": false,
+   "write": "The one list of activities, three to six rows (eight at most): label a name of at most three words, then a description of what the activity is and for whom (audience and place from the facts), and the owner last when the customer named one. The customer’s activities come first; an activity they did not name or clearly imply is a proposal and its name ends with “(taklif)” (ru “(предложение)”, en “(proposed)”). No count, rhythm, format, discount or partner unless stated.",
+   "block": "table",
+   "grounded": true,
+   "max_items": 8,
+   "columns": [
+    {
+     "uz": "Tadbir",
+     "ru": "Мероприятие",
+     "en": "Activity"
+    },
+    {
+     "uz": "Tavsif",
+     "ru": "Описание",
+     "en": "Description"
+    },
+    {
+     "uz": "Mas’ul",
+     "ru": "Ответственный",
+     "en": "Owner"
+    }
+   ]
+  },
+  {
+   "id": "budget",
+   "kind": "table",
+   "heading": {
+    "uz": "Byudjet",
+    "ru": "Бюджет",
+    "en": "Budget"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "share": 0.08,
+   "elastic": false,
+   "write": "Only when at least two activities carry an amount the customer typed: one row per activity with the same name as in the channels, the amount as typed, and an empty share cell (code computes the shares and the total). A total without lines never comes here: it stays a fact and every line is a blank.",
+   "block": "table",
+   "grounded": true,
+   "max_items": 8,
+   "columns": [
+    {
+     "uz": "Tadbir",
+     "ru": "Мероприятие",
+     "en": "Activity"
+    },
+    {
+     "uz": "Summa",
+     "ru": "Сумма",
+     "en": "Amount"
+    },
+    {
+     "uz": "Ulushi, %",
+     "ru": "Доля, %",
+     "en": "Share, %"
+    }
+   ],
+   "computed": [
+    {
+     "column": 2,
+     "op": "share",
+     "of": [
+      1
+     ]
+    }
+   ],
+   "total": [
+    1
+   ]
+  },
+  {
+   "id": "calendar",
+   "kind": "table",
+   "heading": {
+    "uz": "Kalendar",
+    "ru": "Календарь",
+    "en": "Calendar"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "share": 0.06,
+   "elastic": false,
+   "write": "Only when the plan period is known: one row per activity with the same name as in the channels, label the activity and the months the customer stated for it last (empty when none: it runs through the whole period). A launch or key date only as given. Never a calendar date the customer did not give.",
+   "block": "table",
+   "grounded": true,
+   "max_items": 8,
+   "columns": [
+    {
+     "uz": "Tadbir",
+     "ru": "Мероприятие",
+     "en": "Activity"
+    },
+    {
+     "uz": "Oylar",
+     "ru": "Месяцы",
+     "en": "Months"
+    }
+   ]
+  },
+  {
+   "id": "kpis",
+   "kind": "table",
+   "heading": {
+    "uz": "Qo‘shimcha ko‘rsatkichlar",
+    "ru": "Дополнительные показатели",
+    "en": "Further indicators"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "share": 0.03,
+   "elastic": false,
+   "write": "From nine pages only: two to four countable indicators beyond the goals table: label the indicator, then where it is read, how often (weekly or monthly), and the target last only as stated. A derived indicator (cost per inquiry) is a definition, never a value.",
+   "block": "table",
+   "grounded": true,
+   "max_items": 4,
+   "columns": [
+    {
+     "uz": "Ko‘rsatkich",
+     "ru": "Показатель",
+     "en": "Indicator"
+    },
+    {
+     "uz": "Qayerdan olinadi",
+     "ru": "Где смотреть",
+     "en": "Read from"
+    },
+    {
+     "uz": "Qanchalik tez-tez",
+     "ru": "Как часто",
+     "en": "How often"
+    },
+    {
+     "uz": "Maqsad",
+     "ru": "Цель",
+     "en": "Target"
+    }
+   ],
+   "from": 9
+  },
+  {
+   "id": "review",
+   "kind": "prose",
+   "heading": {
+    "uz": "Nazorat qoidasi",
+    "ru": "Правило контроля",
+    "en": "Review rule"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "share": 0.03,
+   "elastic": false,
+   "write": "One or two sentences: the plan is checked at the end of each month (the first check at the end of the first plan month when the start is known), and the money of an activity that does not move toward the goal moves to one that does. No number but the cadence.",
+   "block": "callout",
+   "grounded": true,
+   "words": [
+    10,
+    50
+   ]
+  },
+  {
+   "id": "ch_risks",
+   "kind": "table",
+   "heading": {
+    "uz": "Tavakkalchiliklar",
+    "ru": "Риски",
+    "en": "Risks"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "share": 0.04,
+   "elastic": false,
+   "write": "From nine pages only: two to four rows, label a condition “Agar … bo‘lsa” (ru “Если …”, en “If …”) and the mitigation last, made of the plan’s own levers. No probability, impact score or statistic.",
+   "block": "table",
+   "grounded": true,
+   "max_items": 4,
+   "columns": [
+    {
+     "uz": "Agar … bo‘lsa",
+     "ru": "Если …",
+     "en": "If …"
+    },
+    {
+     "uz": "Chora",
+     "ru": "Мера",
+     "en": "Measure"
+    }
+   ],
+   "from": 9
+  },
+  {
+   "id": "ch_conclusion",
+   "kind": "prose",
+   "heading": {
+    "uz": "Xulosa",
+    "ru": "Выводы",
+    "en": "Conclusion"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "share": 0.02,
+   "elastic": false,
+   "write": "From ten pages only: two or three sentences that restate the goal, the budget and the review rule; nothing new.",
+   "block": "paragraph",
+   "grounded": true,
+   "words": [
+    0,
+    70
+   ],
+   "from": 10
+  },
+  {
+   "id": "signature",
+   "kind": "fixed",
+   "heading": {
+    "uz": "Imzo",
+    "ru": "Подпись",
+    "en": "Signature"
+   },
+   "heading_mode": "none",
+   "need": "optional",
+   "share": 0.02,
+   "elastic": false,
+   "write": "Nothing: drawn when an approver is named: Tayyorladi with the author’s position when stated, the name and signature for the hand, and the date line.",
+   "block": "signature_row",
+   "fields": [
+    "author",
+    "approver"
+   ]
+  }
+ ],
+ "rules": [
+  {
+   "text": "What it is: the working marketing plan of a small business or a launch, from one message: goals with numbers and deadlines, competitors and SWOT, audience and positioning, the four Ps, one list of activities with budget and calendar, and a monthly review rule. The pages are a ceiling: a plan has the pages its facts fill.",
+   "to": "model"
+  },
+  {
+   "text": "Register: plain working language; actions in the impersonal present or future, facts about the business in the present. No second person, no mention of the chat, the customer, the template or what was or was not given; no slogan, imperative, emoji or advertising adjective the customer did not use; sentences up to 22 words.",
+   "to": "model"
+  },
+  {
+   "text": "Traceability: every statement about the business maps to a fact the customer gave; the only statements without one are proposed activities, and they carry the proposal tag. A sentence that cannot be traced is left out.",
+   "to": "model"
+  },
+  {
+   "text": "Never invent a person, organisation or competitor; a price, discount, promo code, budget, sales, customer or follower number; a market size, growth rate, share, benchmark, statistic or study; a date; a law, norm or licence; a quotation or source; how customers order or pay; how often something is done; how many bloggers, posts or events.",
+   "to": "model"
+  },
+  {
+   "text": "Numbers appear only as typed or in an attached file, identical wherever they repeat; code computes totals and shares. A missing fact is an empty cell or a run of underscores, never N/A, TBD, taxminan or an example passed off as fact.",
+   "to": "model"
+  },
+  {
+   "text": "Activities are one list used in the channels, budget and calendar tables with identical names. A total budget without lines is never split: the activity rows leave the amount empty and the total stays as typed.",
+   "to": "model"
+  },
+  {
+   "text": "Claims: promise no result (kafolatlangan, 100%) and make no medical, financial or legal claim. Platform names (Instagram, Telegram) stay as written. Uzbek is Latin only, with ‘ in o‘ and g‘ and ’ for the tutuq belgisi.",
+   "to": "model"
+  },
+  {
+   "text": "Attached files (a sales report, a price list) are a source of figures and facts only; no reference list is printed.",
+   "to": "model"
+  },
+  {
+   "text": "The budget shares are whole per cents adding to 100, with a bar each; the Jami row is the sum of the lines or, with no lines, the budget total as typed. The calendar months count from the start month; the year is the next occurrence of the stated month.",
+   "to": "engine"
+  },
+  {
+   "text": "Pages choose the form: one or two pages are the compact form, since the SWOT, competitor table, positioning and 4P parts start at 3 pages; the cover from 8, the extra indicators and risks from 9, the contents and conclusion from 10.",
+   "to": "engine"
+  }
+ ],
+ "bot": {
+  "prompt": {
+   "uz": "Biznes yoki mahsulotingizni bitta xabarda yozing: nima sotasiz, qayerda va kimga.\nImkon bo‘lsa, maqsad (raqamda), byudjet va muddatni ham qo‘shing: reja aniqroq chiqadi. Reja 4 sahifagacha, ma’lumotingiz yetganicha bo‘ladi.\nYozilmagan raqam, narx va nomlar o‘ylab topilmaydi: ular bo‘sh chiziq bo‘lib qoladi. Sotuv hisoboti yoki narxlar ro‘yxatini PDF, Word yoki TXT fayl qilib qo‘shishingiz mumkin.",
+   "ru": "Опишите бизнес или продукт одним сообщением: что продаёте, где и кому.\nЕсли можете, добавьте цель (в цифрах), бюджет и срок: так план получится точнее. План — до 4 страниц, сколько наберётся из ваших данных.\nНе названные цифры, цены и названия не выдумываются: они остаются пустыми строками. Отчёт о продажах или прайс можно приложить файлом PDF, Word или TXT.",
+   "en": "Describe your business or product in one message: what you sell, where and to whom.\nIf you can, add your goal (in numbers), budget and timeframe so the plan is more precise. The plan runs up to 4 pages, as far as your facts go.\nNumbers, prices and names you leave out are never made up: they stay blank lines. You can attach a sales report or a price list as a PDF, Word or TXT file."
+  },
+  "examples": [
+   {
+    "uz": "Samarqandda yangi kofexona ochyapman, «Namuna Kofe». Marketing reja kerak.",
+    "ru": "Открываю в Самарканде новую кофейню «Намуна Кофе». Нужен маркетинг-план.",
+    "en": "I am opening a new coffee shop in Samarkand, “Namuna Kofe”. I need a marketing plan."
+   },
+   {
+    "uz": "Toshkentdagi onlayn kiyim do‘konim «Namuna Kiyim» uchun 6 oylik marketing reja kerak, 1-martdan boshlab. Hozir Instagramda 4 000 ta obunachi, oyiga 120 ta buyurtma; 6 oyda oyiga 300 ta buyurtmaga chiqmoqchiman. Byudjet 36 mln so‘m. Mijozlar — 20–35 yoshli ayollar, narx 150 000–400 000 so‘m. Raqobatchilar — Instagramdagi arzonroq do‘konlar va onlayn bozordagi sotuvchilar; bizda 7 kun ichida almashtirish bor.",
+    "ru": "Нужен маркетинг-план на 6 месяцев, с 1 марта, для моего интернет-магазина одежды «Намуна Кийим» в Ташкенте. Сейчас в Instagram 4 000 подписчиков и 120 заказов в месяц; за 6 месяцев хочу выйти на 300 заказов в месяц. Бюджет 36 млн сум. Клиенты — женщины 20–35 лет, цены 150 000–400 000 сум. Конкуренты — магазины в Instagram с более низкими ценами и продавцы на онлайн-маркетплейсах; у нас обмен в течение 7 дней.",
+    "en": "I need a 6-month marketing plan from 1 March for my online clothing shop “Namuna Kiyim” in Tashkent. We have 4,000 Instagram followers and 120 orders a month now; in 6 months I want 300 orders a month. Budget UZS 36 million. Customers are women aged 20–35, prices UZS 150,000–400,000. Competitors are cheaper Instagram shops and marketplace sellers; we offer exchange within 7 days."
+   },
+   {
+    "uz": "Namuna Asal brendi uchun yangi mahsulot — tog‘ asali, 500 g bankada — ishga tushirish rejasi kerak, 4 sahifa. Sotuv: Telegram kanal, onlayn bozor va 2 ta do‘kon. Ishga tushirish 1-martda, byudjet 8 mln so‘m, narxi 85 000 so‘m. Birinchi oyda 300 ta banka sotmoqchimiz.",
+    "ru": "Нужен план запуска нового продукта бренда «Намуна Асал» — горного мёда в банке 500 г, на 4 страницы. Продажи: Telegram-канал, онлайн-маркетплейс и 2 магазина. Запуск 1 марта, бюджет 8 млн сум, цена 85 000 сум. В первый месяц хотим продать 300 банок.",
+    "en": "I need a launch plan, 4 pages, for a new product from the Namuna Asal brand: mountain honey in a 500 g jar. We sell through a Telegram channel, an online marketplace and 2 shops. Launch on 1 March, budget UZS 8 million, price UZS 85,000. We want to sell 300 jars in the first month."
+   }
+  ],
+  "attach": true,
+  "notices": {
+   "finished": {
+    "uz": "✅ Reja tayyor. «Taklif» belgisi bor tadbirlar taklif sifatida qo‘shilgan: ularni o‘qib chiqing.",
+    "ru": "✅ План готов. Мероприятия с пометкой «предложение» добавлены как предложения: проверьте их.",
+    "en": "✅ Your plan is ready. Activities tagged “proposed” are added as suggestions: please read them."
+   },
+   "blanks": {
+    "uz": "Ba’zi raqam va ma’lumotlar xabaringizda yo‘q edi, shuning uchun bo‘sh chiziq qoldirildi: ularni qo‘lda to‘ldiring.",
+    "ru": "Некоторых цифр и сведений не было в вашем сообщении, поэтому оставлены пустые линии: заполните их от руки.",
+    "en": "Some figures and facts were not in your message, so blank lines were left: fill them in by hand."
+   },
+   "shorter": {
+    "uz": "Reja {asked} sahifa o‘rniga {pages} sahifa bo‘ldi: yozgan ma’lumotlaringiz shunga yetdi, hech narsa to‘qilmadi.",
+    "ru": "План занял {pages} стр. из {asked}: написанного хватило на столько, ничего не выдумано.",
+    "en": "The plan takes {pages} of the {asked} pages asked for: what you wrote filled this much, and nothing was made up."
+   }
+  }
+ },
+ "templates": [
+  "business_marketing_reja"
+ ],
+ "look": null,
+ "gates": [
+  "A native Uzbek and a native Russian reader check the fixed headings, table headers, the SWOT quadrant names, the 4P run-in words and the proposal tag before the entry is marked ready.",
+  "Render the full, blank and long cases in uz, ru and en with the paper sample tool and compare them with units/pdf.biz.marketing_reja/mock/business_marketing_reja.png and the onepage and twopage mocks; check the computed shares and total by hand.",
+  "The facts corpus is at zero on this entry’s examples.",
+  "One real-provider run, scripts/operations/ai_smoke.py --category pdf.biz.marketing_reja on the server, makes the paper in its own template with every check passing, and the paper is looked at, before the tick."
+ ],
+ "later": [
+  {
+   "text": "The calendar drawn as month bars with launch diamonds (the gantt_grid block); this round the calendar is a table of activities and months."
+  },
+  {
+   "text": "The share bars beside the budget table."
+  },
+  {
+   "text": "The routing hint that sends a study assignment to the academic categories."
+  },
+  {
+   "text": "The split question asked when a budget total comes without lines, and the delivery lines that name each blank and a missing timeframe."
+  },
+  {
+   "text": "The account logo in the plan head.",
+   "words": [
+    "logotip",
+    "логотип",
+    "logo"
+   ]
+  }
+ ]
+}

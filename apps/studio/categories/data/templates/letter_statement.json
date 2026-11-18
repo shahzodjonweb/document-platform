@@ -1,0 +1,173 @@
+{
+ "schema": 2,
+ "id": "letter_statement",
+ "entries": [
+  "pdf.xat.motivatsion"
+ ],
+ "name": {
+  "uz": "Motivatsion xat (esse)",
+  "ru": "Мотивационное письмо (эссе)",
+  "en": "Personal statement"
+ },
+ "family": "letter",
+ "pick": "cue:statement",
+ "page": {
+  "margins_mm": {
+   "left": 25,
+   "right": 25,
+   "top": 22,
+   "bottom": 20
+  }
+ },
+ "type": {
+  "face": "serif",
+  "ladder": [
+   [
+    11,
+    16
+   ],
+   [
+    10.5,
+    15
+   ],
+   [
+    10,
+    14
+   ]
+  ],
+  "align": "left"
+ },
+ "page_rule": {
+  "kind": "flow",
+  "stub_min": 0.3
+ },
+ "furniture": {
+  "first": "none",
+  "later": "header_number",
+  "format": "n",
+  "header": [
+   "applicant_name"
+  ]
+ },
+ "flow": [
+  {
+   "block": "line",
+   "params": {
+    "style": "caps",
+    "text": "kind"
+   }
+  },
+  {
+   "block": "party_block",
+   "part": "sender",
+   "fields": [
+    "applicant_name"
+   ],
+   "params": {
+    "anchor": "left",
+    "name_style": "bold_large",
+    "captions": {
+     "applicant_name": "cap_name"
+    }
+   }
+  },
+  {
+   "block": "line",
+   "part": "subject",
+   "fields": [
+    "target_programme",
+    "target_institution",
+    "intake"
+   ],
+   "params": {
+    "style": "italic",
+    "separator": " · ",
+    "max_lines": 3
+   }
+  },
+  {
+   "block": "party_block",
+   "part": "sender",
+   "fields": [
+    "address",
+    "phone",
+    "email"
+   ],
+   "params": {
+    "anchor": "left",
+    "rule": "under",
+    "contact_line": "all",
+    "labels": {
+     "phone": "tel",
+     "email": "email"
+    }
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "opening",
+   "params": {
+    "gap_pt": 7,
+    "before_pt": 7
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "why",
+   "when": "part:why",
+   "params": {
+    "gap_pt": 7,
+    "before_pt": 7
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "evidence",
+   "when": "part:evidence",
+   "params": {
+    "gap_pt": 7,
+    "before_pt": 7
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "contribution_goals",
+   "when": "part:contribution_goals",
+   "params": {
+    "gap_pt": 7,
+    "before_pt": 7
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "closing",
+   "params": {
+    "gap_pt": 7,
+    "before_pt": 7
+   }
+  }
+ ],
+ "labels": {
+  "kind": {
+   "uz": "MOTIVATSION XAT",
+   "ru": "МОТИВАЦИОННОЕ ПИСЬМО",
+   "en": "PERSONAL STATEMENT"
+  },
+  "tel": {
+   "uz": "Tel.:",
+   "ru": "Тел.:",
+   "en": "Tel.:"
+  },
+  "email": {
+   "uz": "E-mail:",
+   "ru": "Эл. почта:",
+   "en": "E-mail:"
+  },
+  "cap_name": {
+   "uz": "(F.I.Sh.)",
+   "ru": "(Ф.И.О.)",
+   "en": "(full name)"
+  }
+ },
+ "mock": "units/pdf.xat.motivatsion/mock/letter_statement.png"
+}

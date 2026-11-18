@@ -172,8 +172,11 @@ def test_an_ariza_block_puts_each_field_under_the_fixed_part_that_draws_it():
     addressee = next(n for n, line in enumerate(block) if line.startswith('Part addressee,'))
     assert [line.split(':')[0] for line in block[addressee + 1:addressee + 4]] == \
         ['- addressee_org', '- addressee_position', '- addressee_person']
+    # C2c draws six ruled lines for a message naming no request, so request sits under that blank, not with the rest.
+    blank = next(n for n, line in enumerate(block) if line.startswith('Part request_blank,'))
     other = block.index('Other fields:')
-    assert '- request: What you ask for, text' in block[other:]
+    assert block[blank + 1].startswith('- request: What you ask for, text') and blank < other
+    assert all(not line.startswith('- request:') for line in block[other:])
 
 
 # ---------------------------------------------------------------- the same prefix for everyone
@@ -267,8 +270,8 @@ def test_a_change_names_its_category_but_sends_no_rows_and_keeps_todays_guidance
         assert user['writing_guidance'] == sent(provider.request_body(CONFIG, plain, SLIDES))['writing_guidance']
 
 
-def test_an_outline_and_a_category_paper_are_told_nothing_of_the_category_yet():
-    """An outline of a category deck is planned as any deck's; a paper's prompts are P2's."""
+def test_an_outline_of_a_category_deck_is_told_nothing_of_the_category():
+    """An outline of a category deck is planned as any deck's; a paper's prompts are tests/test_category_prompts_pdf.py's."""
     from apps.studio import outlines
     entry = catalogue.get('slides.himoya')
     data = deck(entry, 10, 'en')
@@ -277,12 +280,6 @@ def test_an_outline_and_a_category_paper_are_told_nothing_of_the_category_yet():
     outline = provider.request_body(CONFIG, outlines._payload(data), 'ai.outline')
     assert outline['instructions'] == provider.request_body(CONFIG, outlines._payload(plain), 'ai.outline')['instructions']
     assert 'parts' not in sent(outline) and 'category' not in sent(outline)
-    paper = draft(3)
-    paper['options']['category'] = 'pdf.xat.ariza'
-    body = provider.request_body(CONFIG, paper, DOCUMENT)
-    plain_paper = provider.request_body(CONFIG, draft(3), DOCUMENT)
-    assert body['instructions'] == plain_paper['instructions'] and body['input'] == plain_paper['input']
-    assert body['prompt_cache_key'] != plain_paper['prompt_cache_key']
 
 
 # ---------------------------------------------------------------- budgets

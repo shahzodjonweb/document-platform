@@ -1,0 +1,598 @@
+{
+ "schema": 2,
+ "id": "pdf.biz.lavozim_yoriqnomasi",
+ "status": "ready",
+ "service": "pdf",
+ "parent": "pdf.biz",
+ "order": 5,
+ "labels": {
+  "uz": "👔 Lavozim yo‘riqnomasi",
+  "ru": "👔 Должностная инструкция",
+  "en": "👔 Job description"
+ },
+ "summary": "A job description as a plain official A4 paper: the organisation at the top left, an approval block at the top right, the position under the title, numbered chapters (general provisions, qualification requirements when given, duties, rights, responsibility), agreement rows when signers are named and a signature line for the employee; every name, date and signature the customer did not give is a ruled blank, never an invention.",
+ "tone": "formal, impersonal, third person, present tense; short unambiguous sentences; every duty a checkable action; no praise, no first or second person; nothing stated that the customer did not give",
+ "topic": false,
+ "title": "model",
+ "length": {
+  "unit": "pages",
+  "mode": "count",
+  "target": "ceiling",
+  "default": 3,
+  "min": 1,
+  "max": 10,
+  "note": "Body pages: real job descriptions run 2 to 9. A ceiling: the drafted duties never pad a paper; the research’s 35 is capped at 10 because a post holds no more."
+ },
+ "questions": {
+  "default": 0,
+  "max": 0
+ },
+ "quality": "repair",
+ "fill": false,
+ "cues": {},
+ "ask": null,
+ "fields": [
+  {
+   "id": "position",
+   "label": {
+    "uz": "Lavozim nomi",
+    "ru": "Название должности",
+    "en": "Position title"
+   },
+   "example": {
+    "uz": "5–9-sinflar matematika o‘qituvchisi",
+    "ru": "Менеджер по продажам",
+    "en": "Sales assistant"
+   },
+   "kind": "line",
+   "need": "required",
+   "missing": "omit",
+   "where": "position_block under the title (as written, nominative; in Uzbek the genitive above the title when title_form is set); the subject of every clause. The one fact without which the paper is meaningless: if the reader finds no position in the message or the files, the bot asks the single question of bot.extra_step before writing (a fallback, not a standing step)"
+  },
+  {
+   "id": "organisation",
+   "label": {
+    "uz": "Tashkilot nomi",
+    "ru": "Название организации",
+    "en": "Organisation name"
+   },
+   "example": {
+    "uz": "Samarqand shahar 12-sonli umumiy o‘rta ta’lim maktabi",
+    "ru": "ООО «Намуна Савдо»",
+    "en": "Bahor Foods LLC"
+   },
+   "kind": "org",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "issuer_line top left in capitals; clause 1.1 with its short name; missing: no issuer line and no organisation phrase in 1.1"
+  },
+  {
+   "id": "unit",
+   "label": {
+    "uz": "Bo‘lim, kafedra yoki sinflar",
+    "ru": "Отдел, кафедра или классы",
+    "en": "Department or unit"
+   },
+   "example": {
+    "uz": "Moliya bo‘limi",
+    "ru": "Отдел продаж",
+    "en": "Sales department"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "omit",
+   "where": "second line under the position in position_block; clause 1.1"
+  },
+  {
+   "id": "reports_to",
+   "label": {
+    "uz": "Kimga bo‘ysunadi",
+    "ru": "Кому подчиняется",
+    "en": "Reports to"
+   },
+   "example": {
+    "uz": "o‘quv ishlari bo‘yicha direktor o‘rinbosari",
+    "ru": "директор",
+    "en": "the store manager"
+   },
+   "kind": "line",
+   "need": "recommended",
+   "missing": "omit",
+   "where": "clause 1.2; missing: the generic \"bevosita rahbariga bo‘ysunadi\" (to the immediate head), never a guessed title"
+  },
+  {
+   "id": "approver_post",
+   "label": {
+    "uz": "Tasdiqlovchi lavozimi",
+    "ru": "Должность утверждающего",
+    "en": "Approver’s position"
+   },
+   "example": {
+    "uz": "Maktab direktori",
+    "ru": "Директор ООО «Намуна Савдо»",
+    "en": "Director"
+   },
+   "kind": "line",
+   "need": "recommended",
+   "missing": "blank",
+   "where": "approval_block: the post line, or a blank row with the caption (lavozimi); never guessed from the organisation"
+  },
+  {
+   "id": "approver_name",
+   "label": {
+    "uz": "Tasdiqlovchi F.I.Sh.",
+    "ru": "Ф.И.О. утверждающего",
+    "en": "Approver’s name"
+   },
+   "example": {
+    "uz": "Z. T. Rahimov",
+    "ru": "Б. С. Тошматов",
+    "en": "R. Aliyev"
+   },
+   "kind": "person",
+   "need": "optional",
+   "missing": "blank",
+   "where": "approval_block: the name cell of the signature row (initials first), else a blank rule with (F.I.Sh.)"
+  },
+  {
+   "id": "approval_date",
+   "label": {
+    "uz": "Tasdiqlangan sana",
+    "ru": "Дата утверждения",
+    "en": "Approval date"
+   },
+   "example": {
+    "uz": "2026-yil 1-sentabr",
+    "ru": "1 сентября 2026 г.",
+    "en": "1 September 2026"
+   },
+   "kind": "date",
+   "need": "optional",
+   "missing": "blank",
+   "where": "approval_block date line. The model returns numbers (year, month, day), never a date string: the renderer composes it, year first in Uzbek: 2026-yil «1» sentabr; ru «1» сентября 2026 г.; en 1 September 2026. Missing: the blank pattern 20___-yil «___» ____________ (ru «___» ________ 20___ г.; en Date: ___ ________ 20___). Uzbek is year first everywhere in this template (the approval line, the order annex, the field example), as in sources 02 and the HR guidance; Russian keeps the day-first order of the Russian samples 03 and 05."
+  },
+  {
+   "id": "approval_mode",
+   "label": {
+    "uz": "Tasdiqlash bloki kerak emas",
+    "ru": "Гриф утверждения не нужен",
+    "en": "No approval block"
+   },
+   "example": {
+    "uz": "tasdiqlash blokisiz",
+    "ru": "без грифа утверждения",
+    "en": "without an approval block"
+   },
+   "kind": "flag",
+   "need": "optional",
+   "missing": "omit",
+   "where": "a switch, set only when the customer says the paper needs no approval block (the state samples 01 and 09 have none): the right column of the head row stays empty, the issuer line stays; the title and every later block are unchanged. Missing: the approval block is drawn (with blanks)."
+  },
+  {
+   "id": "qualification",
+   "label": {
+    "uz": "Malaka talablari (ma’lumot, ish staji, sertifikat)",
+    "ru": "Требования к квалификации (образование, стаж, сертификаты)",
+    "en": "Qualification requirements (education, experience, certificates)"
+   },
+   "example": {
+    "uz": "oliy pedagogik ma’lumot, kamida 2 yillik ish staji",
+    "ru": "высшее педагогическое образование, стаж не менее 2 лет",
+    "en": "higher pedagogical education, at least 2 years of experience"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "chapter \"Malaka talablari\": included only when something is given or the customer asks for it; asked for but empty: clause with inline blanks"
+  },
+  {
+   "id": "special_terms",
+   "label": {
+    "uz": "Alohida huquq yoki javobgarlik",
+    "ru": "Особые права или ответственность",
+    "en": "Special rights or liability"
+   },
+   "example": {
+    "uz": "moddiy javobgarlik shartnomasi tuziladi",
+    "ru": "заключается договор о материальной ответственности",
+    "en": "a liability agreement is signed"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "chapters \"Huquqlari\" and \"Javobgarlik\": one extra clause only for what is stated (signing, subordinates, financial liability)"
+  },
+  {
+   "id": "substitute",
+   "label": {
+    "uz": "O‘rniga kim ishlaydi",
+    "ru": "Кто замещает",
+    "en": "Who stands in"
+   },
+   "example": {
+    "uz": "direktor o‘rinbosari",
+    "ru": "заместитель директора",
+    "en": "the deputy head"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "omit",
+   "where": "clause 1.4; missing: the generic \"belgilangan tartibda tayinlangan shaxs\""
+  },
+  {
+   "id": "agreement_signers",
+   "label": {
+    "uz": "Kelishuvchilar (lavozim, F.I.Sh.)",
+    "ru": "Согласующие (должность, Ф.И.О.)",
+    "en": "Agreeing signers (position, name)"
+   },
+   "example": {
+    "uz": "huquqshunos; kadrlar bo‘limi boshlig‘i",
+    "ru": "юрист; начальник отдела кадров",
+    "en": "the lawyer; the head of HR"
+   },
+   "kind": "list",
+   "need": "optional",
+   "missing": "omit",
+   "where": "agreement_block, 1 to 10 rows (the real samples carry 3 to 5): posts and names as given; each row has a date line (a handwritten date, as source 05 dates every agreement signature; off when the customer says the rows need no dates). Up to 6 rows the block moves whole; from 7 rows it may break between rows. No signer named: no block; asked for with no post: one row of blanks."
+  },
+  {
+   "id": "employee_name",
+   "label": {
+    "uz": "Xodimning F.I.Sh. (tanishuv qatori uchun)",
+    "ru": "Ф.И.О. работника (для строки ознакомления)",
+    "en": "Employee’s name (for the read line)"
+   },
+   "example": {
+    "uz": "K. M. Aliyeva",
+    "ru": "Н. Рахимова",
+    "en": "N. Rahimova"
+   },
+   "kind": "person",
+   "need": "optional",
+   "missing": "blank",
+   "where": "acknowledgement_line: the name cell, else a blank rule with (F.I.Sh.); the date and signature are never typed"
+  },
+  {
+   "id": "title_form",
+   "label": {
+    "uz": "Sarlavha “…ning lavozim yo‘riqnomasi” shaklida",
+    "ru": "Заголовок с должностью в родительном падеже",
+    "en": "Title with the position in the genitive"
+   },
+   "example": {
+    "uz": "“mutaxassisining lavozim yo‘riqnomasi” shaklida",
+    "ru": "должность в родительном падеже",
+    "en": "n/a"
+   },
+   "kind": "flag",
+   "need": "optional",
+   "missing": "omit",
+   "where": "Uzbek only, off by default. The state samples 01 and 02 put the position in the genitive above LAVOZIM YO‘RIQNOMASI. The renderer makes it: nominative + \"ning\" (the Uzbek genitive suffix never changes, so o‘qituvchisi -> o‘qituvchisining, buxgalter -> buxgalterning); the model never writes a case ending. Not offered in ru (the genitive needs a model-made declension) or en."
+  },
+  {
+   "id": "document_ref",
+   "label": {
+    "uz": "Hujjat raqami, sanasi, joyi",
+    "ru": "Номер, дата и место документа",
+    "en": "Document number, date and place"
+   },
+   "example": {
+    "uz": "raqami 7, Toshkent shahri",
+    "ru": "№ 7, г. Ташкент",
+    "en": "No. 7, Tashkent"
+   },
+   "kind": "line",
+   "need": "optional",
+   "missing": "omit",
+   "where": "one centred line (Regular 11/14, joined by \" · \") under the position: date, number, place, only the parts given (an HR registry wants a number). Without any part: no line; the number is never invented."
+  },
+  {
+   "id": "final_facts",
+   "label": {
+    "uz": "Nusxalar soni, o‘zgartirish tartibi",
+    "ru": "Число экземпляров, порядок изменений",
+    "en": "Copies and how changes are made"
+   },
+   "example": {
+    "uz": "2 nusxada tuziladi",
+    "ru": "составляется в 2 экземплярах",
+    "en": "made in 2 copies"
+   },
+   "kind": "text",
+   "need": "optional",
+   "missing": "omit",
+   "where": "chapter \"Yakuniy qoidalar\": present only when facts are given"
+  }
+ ],
+ "parts": [
+  {
+   "id": "head",
+   "kind": "fixed",
+   "heading": {
+    "uz": "LAVOZIM YO‘RIQNOMASI",
+    "ru": "ДОЛЖНОСТНАЯ ИНСТРУКЦИЯ",
+    "en": "JOB DESCRIPTION"
+   },
+   "heading_mode": "none",
+   "need": "required",
+   "share": 0.05,
+   "elastic": false,
+   "write": "The template draws the organisation at the top left, the fixed title, the position line and the unit line under it, and the number, date and place line when given. The document title you return is the position exactly as the customer wrote it, first letter capital, in the nominative, at most 90 characters.",
+   "block": "doc_head",
+   "fields": [
+    "organisation",
+    "position",
+    "unit",
+    "document_ref",
+    "title_form"
+   ]
+  },
+  {
+   "id": "approval",
+   "kind": "fixed",
+   "heading": {
+    "uz": "TASDIQLAYMAN",
+    "ru": "УТВЕРЖДАЮ",
+    "en": "APPROVED"
+   },
+   "heading_mode": "none",
+   "need": "usual",
+   "share": 0.05,
+   "elastic": false,
+   "write": "Nothing: the fixed word and the approver’s post, name and date only as given, ruled blanks otherwise; left out when the customer says the paper needs no approval block.",
+   "block": "approval_block",
+   "fields": [
+    "approver_post",
+    "approver_name",
+    "approval_date",
+    "approval_mode"
+   ]
+  },
+  {
+   "id": "general",
+   "kind": "list",
+   "heading": {
+    "uz": "Umumiy qoidalar",
+    "ru": "Общие положения",
+    "en": "General provisions"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "share": 0.18,
+   "elastic": true,
+   "write": "Five one-sentence clauses in this order: the opening formula naming the organisation (if given), the unit (if given) and the position, each short name defined once (uz “Mazkur lavozim yo‘riqnomasi ... (keyingi o‘rinlarda — Maktab) ... (keyingi o‘rinlarda — O‘qituvchi) ... belgilaydi.”, ru “Настоящая должностная инструкция определяет ... (далее — Школа) ... (далее — Учитель)”, en “This job description sets ... (the School) ... (the Teacher)”); to whom the post reports (as given, else uz “bevosita rahbariga”, ru “непосредственному руководителю”, en “the line manager”); appointment and dismissal by order of the head (the approver’s post when given, else the organisation’s short name and uz “rahbari”, ru “руководитель”, en “head”); who stands in (as given, else uz “belgilangan tartibda tayinlangan shaxs”, ru “лицо, назначенное в установленном порядке”, en “a person appointed in the set manner”); what the post follows in its work (the legislation: uz “qonunchilik hujjatlari”, ru “законодательство”; the internal work rules, the charter for a type that has one, this instruction). One clause per item; a lead-in that ends with a colon goes in label and its dash items, one sentence each, in text joined by “ | ”; a single clause has only text.",
+   "block": "clauses",
+   "grounded": true,
+   "max_items": 30
+  },
+  {
+   "id": "qualification",
+   "kind": "list",
+   "heading": {
+    "uz": "Malaka talablari",
+    "ru": "Требования к квалификации",
+    "en": "Qualification requirements"
+   },
+   "heading_mode": "fixed",
+   "need": "usual",
+   "share": 0.1,
+   "elastic": true,
+   "write": "Only when the customer gave a requirement or asked for the chapter; otherwise empty. One clause with education, years of experience and certificates exactly as given (asked for but nothing given: the clause with “____” for each), then a “must know” lead-in with three to six items drawn from the duties. Never a degree, number of years, licence or language level the customer did not give. One clause per item; a lead-in that ends with a colon goes in label and its dash items, one sentence each, in text joined by “ | ”; a single clause has only text.",
+   "block": "clauses",
+   "grounded": true,
+   "max_items": 30
+  },
+  {
+   "id": "duties",
+   "kind": "list",
+   "heading": {
+    "uz": "Lavozim vazifalari",
+    "ru": "Должностные обязанности",
+    "en": "Duties"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "share": 0.38,
+   "elastic": true,
+   "write": "The largest part: a lead-in (uz “... quyidagi vazifalarni bajaradi:”, ru “... выполняет следующие обязанности:”, en “... performs the following duties:”) and eight to fourteen items for three pages, one thematic lead-in per five to seven items in a longer paper, never a sub-heading. Each item one sentence in the third person singular present, starting with a checkable verb (uz tuzadi, yuritadi, topshiradi, nazorat qiladi; ru составляет, ведёт, сдаёт, контролирует; en prepares, keeps, submits, checks). The customer’s duties first, in their order and meaning, then the usual duties of the post; a duty that needs a fact the customer did not give is written without it (uz “belgilangan muddatda”, ru “в установленный срок”, en “within the set time”). The usual practice of the post belongs here and is allowed although the row is grounded; it names no number, person, organisation, date or law the customer did not give. One clause per item; a lead-in that ends with a colon goes in label and its dash items, one sentence each, in text joined by “ | ”; a single clause has only text.",
+   "block": "clauses",
+   "grounded": true,
+   "max_items": 30
+  },
+  {
+   "id": "rights",
+   "kind": "list",
+   "heading": {
+    "uz": "Huquqlari",
+    "ru": "Права",
+    "en": "Rights"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "share": 0.12,
+   "elastic": true,
+   "write": "A lead-in (“... quyidagi huquqlarga ega:”, ru “... вправе:”, en “... has the right to:”) and four to seven items as verbal nouns: receive the information the work needs, make proposals, take part in meetings on the work, train, ask for safe conditions. Rights over subordinates, signing, spending or hiring only if the customer gave them. A closing clause: other rights as the legislation allows (uz “qonunchilik hujjatlari”, ru “законодательство”, en “the legislation”). The usual practice of the post belongs here and is allowed although the row is grounded; it names no number, person, organisation, date or law the customer did not give. One clause per item; a lead-in that ends with a colon goes in label and its dash items, one sentence each, in text joined by “ | ”; a single clause has only text.",
+   "block": "clauses",
+   "grounded": true,
+   "max_items": 30
+  },
+  {
+   "id": "responsibility",
+   "kind": "list",
+   "heading": {
+    "uz": "Javobgarlik",
+    "ru": "Ответственность",
+    "en": "Responsibility"
+   },
+   "heading_mode": "fixed",
+   "need": "required",
+   "share": 0.08,
+   "elastic": true,
+   "write": "Three clauses: for failing to do or doing badly the duties of this instruction, for offences in the work, and for material damage, each uz “amaldagi qonunchilikda belgilangan tartibda”, ru “в порядке, установленном действующим законодательством”, en “as the legislation in force sets”. A fourth on financial liability only when the customer said such an agreement exists. No code, article, sum or list of penalties. The usual practice of the post belongs here and is allowed although the row is grounded; it names no number, person, organisation, date or law the customer did not give. One clause per item; a lead-in that ends with a colon goes in label and its dash items, one sentence each, in text joined by “ | ”; a single clause has only text.",
+   "block": "clauses",
+   "grounded": true,
+   "max_items": 30
+  },
+  {
+   "id": "final",
+   "kind": "list",
+   "heading": {
+    "uz": "Yakuniy qoidalar",
+    "ru": "Заключительные положения",
+    "en": "Final provisions"
+   },
+   "heading_mode": "fixed",
+   "need": "optional",
+   "share": 0.04,
+   "elastic": false,
+   "write": "Only when the customer gave facts (copies, who keeps them, how changes are made): one to three clauses using exactly those facts. Otherwise empty. One clause per item; a lead-in that ends with a colon goes in label and its dash items, one sentence each, in text joined by “ | ”; a single clause has only text.",
+   "block": "clauses",
+   "grounded": true,
+   "max_items": 30
+  },
+  {
+   "id": "agreement",
+   "kind": "fixed",
+   "heading": {
+    "uz": "KELISHILDI:",
+    "ru": "СОГЛАСОВАНО:",
+    "en": "AGREED:"
+   },
+   "heading_mode": "none",
+   "need": "optional",
+   "share": 0.03,
+   "elastic": false,
+   "write": "Nothing: one row per agreeing post the customer named (1 to 10), names as given, a date line under each; no signer named: not drawn.",
+   "block": "signature_row",
+   "fields": [
+    "agreement_signers"
+   ]
+  },
+  {
+   "id": "acknowledgement",
+   "kind": "fixed",
+   "heading": {
+    "uz": "Yo‘riqnoma bilan tanishdim:",
+    "ru": "С инструкцией ознакомлен(а):",
+    "en": "I have read this job description:"
+   },
+   "heading_mode": "none",
+   "need": "usual",
+   "share": 0.03,
+   "elastic": false,
+   "write": "Nothing: the fixed sentence and a signature row with the employee’s name only if given; the date and signature are never typed.",
+   "block": "signature_row",
+   "fields": [
+    "employee_name"
+   ]
+  }
+ ],
+ "rules": [
+  {
+   "text": "What it is: the job description of one position: general provisions, qualification requirements when given, duties, rights and responsibility, approved by the head and read by the employee. Not a work or safety instruction for a whole staff.",
+   "to": "model"
+  },
+  {
+   "text": "Register: formal, impersonal, third person, present tense, short unambiguous sentences; the post is the subject by the short name defined in the first clause (O‘qituvchi, Buxgalter, Менеджер); never I, you or we. The position is spelled the same way everywhere; no clause repeats another.",
+   "to": "model"
+  },
+  {
+   "text": "Short names are generic nouns (Maktab, Jamiyat, Do‘kon, Tashkilot; ru Школа, Общество; en the School, the Company) and differ from every word used for a sub-unit or its head.",
+   "to": "model"
+  },
+  {
+   "text": "Invent nothing: names of people or organisations, orders, dates and numbers (years of experience, hours, pay, quotas) appear only if the message or an attached file holds them, copied exactly. Never name a code, the Constitution, a law, a decree or an article unless the customer did; the generic “qonunchilik hujjatlariga muvofiq” is enough.",
+   "to": "model"
+  },
+  {
+   "text": "Every duty is something a head can check (tuzadi, yuritadi, nazorat qiladi), never “faol ishtirok etadi” or “yuqori sifatli bajaradi”. Powers follow the post: no right to give orders, sign for the organisation, hire, dismiss or spend money unless the customer says so.",
+   "to": "model"
+  },
+  {
+   "text": "A missing fact inside a sentence is a run of underscores (3 for a number, 7 for a word, 15 for a name), never brackets, dots, (to‘ldiring) or a guess. Never type a clause number, bullet, KELISHILDI or any fixed word: the template prints them.",
+   "to": "model"
+  },
+  {
+   "text": "An attached old instruction, staff list or qualification extract: use its facts and duties, tidy the wording, copy no order numbers, names or dates, and never mention the file. Pay, hours, bonuses, discipline rules and personal details stay out unless asked for as a clause.",
+   "to": "model"
+  },
+  {
+   "text": "Uzbek is Latin only, with ‘ in o‘ and g‘ and ’ for the tutuq belgisi; English uses one British convention (organisation, offences).",
+   "to": "model"
+  },
+  {
+   "text": "The approval date is composed by the template in the document’s language (uz 2026-yil «1» sentabr; ru «1» сентября 2026 г.; en 1 September 2026). With title_form set, Uzbek prints the position with -ning above LAVOZIM YO‘RIQNOMASI. One page is the short form at 11/16.",
+   "to": "engine"
+  }
+ ],
+ "bot": {
+  "prompt": {
+   "uz": "👔 Lavozim yo‘riqnomasi: xodimning vazifalari, huquqlari va javobgarligi (ish tartibi yoki xavfsizlik bo‘yicha yo‘riqnoma uchun «Xodimlar uchun yo‘riqnoma»ni tanlang).\nHammasini bitta xabarda yozing. Majburiy: lavozim nomi.\nYaxshi chiqishi uchun: tashkilot yoki bo‘lim nomi, u kimga bo‘ysunishi, kim tasdiqlashi va kim bilan kelishilishi.\nIxtiyoriy: ma’lumot darajasi (masalan, oliy) va ish staji, asosiy vazifalar, necha sahifa (aytmasangiz — 3).\nYozmaganingiz bo‘sh chiziq bo‘lib qoladi — ism, sana va imzoni qo‘lda qo‘yasiz. Vazifalar va huquqlar ro‘yxati avtomatik tuziladi: rahbar bilan tekshiring.\nEski yo‘riqnoma bo‘lsa, PDF, Word yoki TXT qilib qo‘shing.",
+   "ru": "👔 Должностная инструкция: обязанности, права и ответственность работника (для инструкции по охране труда или порядку работы выберите «Инструкция для сотрудников»).\nНапишите всё одним сообщением. Обязательно: название должности.\nЧтобы вышло хорошо: организация или отдел, кому подчиняется, кто утверждает и кто согласовывает.\nПо желанию: уровень образования (например, высшее) и стаж, основные обязанности, сколько страниц (если не укажете — 3).\nЧего не напишете, останется пустой строкой — имя, дату и подпись поставите от руки. Перечни обязанностей и прав составляются автоматически: проверьте их с руководителем.\nЕсли есть старая инструкция, добавьте её файлом PDF, Word или TXT.",
+   "en": "👔 Job description: the duties, rights and responsibility of a position (for a safety or procedure instruction choose “Staff instruction”).\nWrite everything in one message. Required: the position title.\nFor a better result: the organisation or department, who it reports to, who approves it and who agrees it.\nOptional: education level (for example, higher) and experience, the main duties, how many pages (3 if you do not say).\nAnything you leave out becomes a blank line: you add names, dates and signatures by hand. The lists of duties and rights are drafted automatically, so check them with the head.\nIf you have an old job description, attach it as a PDF, Word or TXT file."
+  },
+  "examples": [
+   {
+    "uz": "Samarqand shahar 12-sonli umumiy o‘rta ta’lim maktabi uchun 5–9-sinflar matematika o‘qituvchisining lavozim yo‘riqnomasi kerak. U bevosita o‘quv ishlari bo‘yicha direktor o‘rinbosariga bo‘ysunadi. Talab: oliy pedagogik ma’lumot va kamida 2 yillik ish staji. Vazifalari: dars berish, ish rejasi, sinf jurnali, matematika to‘garagi, ota-onalar bilan ishlash. Maktab direktori Z. T. Rahimov tasdiqlaydi; o‘quv ishlari bo‘yicha direktor o‘rinbosari bilan kelishiladi.",
+    "ru": "Нужна должностная инструкция учителя математики 5–9 классов для общеобразовательной школы № 12 (г. Самарканд). Подчиняется непосредственно заместителю директора по учебной работе. Требования: высшее педагогическое образование и стаж не менее 2 лет. Обязанности: проведение уроков, рабочий план, классный журнал, кружок по математике, работа с родителями. Утверждает директор школы З. Т. Рахимов, согласует заместитель директора по учебной работе.",
+    "en": "I need a job description for a mathematics teacher (grades 5–9) at General Secondary School No. 12 in Samarkand. Reports directly to the deputy head for academic affairs. Requirements: higher pedagogical education and at least 2 years of experience. Duties: teaching lessons, the work plan, the class register, the mathematics club, working with parents. Approved by the school director Z. T. Rahimov, agreed by the deputy head for academic affairs."
+   },
+   {
+    "uz": "«Namuna Qurilish» MChJ uchun buxgalterning lavozim yo‘riqnomasi kerak, yo‘riqnoma raqami 7, Toshkent shahri. Bevosita bosh buxgalterga bo‘ysunadi. Talab: oliy iqtisodiy ma’lumot va kamida 3 yillik tajriba. Vazifalari: birlamchi hujjatlar, ish haqi hisobi, soliq hisobotlari, kassa operatsiyalari. U bilan moddiy javobgarlik shartnomasi tuziladi. Direktor B. S. Toshmatov tasdiqlaydi; huquqshunos bilan kelishiladi. Buxgalter K. M. Aliyeva tanishuvga imzo qo‘yadi.",
+    "ru": "Нужна должностная инструкция бухгалтера для ООО «Намуна Курилиш», номер инструкции 7, г. Ташкент. Подчиняется непосредственно главному бухгалтеру. Требования: высшее экономическое образование и опыт не менее 3 лет. Обязанности: первичные документы, расчёт заработной платы, налоговая отчётность, кассовые операции. С ним заключается договор о материальной ответственности. Утверждает директор Б. С. Тошматов, согласует юрист. Бухгалтер К. М. Алиева расписывается в ознакомлении.",
+    "en": "I need a job description for an accountant at Namuna Qurilish LLC, document number 7, Tashkent. Reports directly to the chief accountant. Requirements: higher education in economics and at least 3 years of experience. Duties: primary documents, payroll, tax returns, cash operations. A liability agreement is signed with the accountant. Approved by the director B. S. Toshmatov, agreed by the lawyer. The accountant K. M. Aliyeva signs the acknowledgement."
+   },
+   {
+    "uz": "Menejment fanidan topshiriq uchun Bahor Foods do‘konida sotuvchi-konsultantning lavozim yo‘riqnomasi kerak, 2 sahifa.",
+    "ru": "Нужна должностная инструкция продавца-консультанта магазина «Бахор Фудс» для задания по менеджменту, 2 страницы.",
+    "en": "For a management class assignment I need a job description for a sales assistant at the Bahor Foods shop, 2 pages."
+   }
+  ],
+  "attach": true,
+  "notices": {
+   "finished": {
+    "uz": "Tayyor. Vazifalar va huquqlar lavozimdan kelib chiqib tuzildi: tasdiqlashdan oldin ularni rahbar bilan tekshiring.",
+    "ru": "Готово. Обязанности и права составлены по должности: перед утверждением проверьте их с руководителем.",
+    "en": "Done. The duties and rights are drafted from the position: check them with the head before it is approved."
+   },
+   "blanks": {
+    "uz": "Ba’zi ma’lumotlar xabaringizda yo‘q edi, shuning uchun bo‘sh chiziq qoldirildi: ularni qo‘lda to‘ldiring.",
+    "ru": "Некоторых сведений не было в вашем сообщении, поэтому оставлены пустые линии: заполните их от руки.",
+    "en": "Some facts were not in your message, so blank lines were left: fill them in by hand."
+   },
+   "shorter": {
+    "uz": "Yo‘riqnoma {asked} sahifa o‘rniga {pages} sahifa bo‘ldi: lavozim bo‘yicha boshqa aniq ma’lumot yo‘q edi, to‘ldirish uchun gap qo‘shilmadi.",
+    "ru": "Инструкция заняла {pages} стр. из {asked}: по должности больше нечего сказать, лишнего не добавлено.",
+    "en": "The job description takes {pages} of the {asked} pages asked for: the post holds no more, so nothing was padded."
+   }
+  }
+ },
+ "templates": [
+  "official_lavozim_yoriqnomasi"
+ ],
+ "look": null,
+ "gates": [
+  "A native Uzbek and a native Russian reader check the fixed words (LAVOZIM YO‘RIQNOMASI, TASDIQLAYMAN, KELISHILDI, the chapter headings, the acknowledgement sentence) and the opening and appointment formulas before the entry is marked ready.",
+  "Render the full, blank and long cases in uz, ru and en with the paper sample tool and compare them with units/pdf.biz.lavozim_yoriqnomasi/mock/official_lavozim_yoriqnomasi.png; check that no clause names a code, law or article the brief lacks.",
+  "The facts corpus is at zero on this entry’s examples.",
+  "One real-provider run, scripts/operations/ai_smoke.py --category pdf.biz.lavozim_yoriqnomasi on the server, makes the paper in its own template with every check passing, and the paper is looked at, before the tick."
+ ],
+ "later": [
+  {
+   "text": "The order-annex block (an instruction issued as an annex of an order, with the issuing body, order number and annex number) in place of the approval block."
+  },
+  {
+   "text": "The acknowledgement sheet for a post held by several people (a ruled page of names, dates and signatures).",
+   "words": [
+    "tanishtiruv varaqasi",
+    "varaqasi",
+    "лист ознакомления",
+    "acknowledgement sheet"
+   ]
+  },
+  {
+   "text": "An informational warning code on every paper saying the duties and rights are drafted from the post; this round the finished notice says it."
+  }
+ ]
+}

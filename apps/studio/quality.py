@@ -705,7 +705,7 @@ def repair(config, data, content, report, *, job, deadline=None):
 
 
 def finish(config, data, content, *, job, deadline=None, mode='openai', plan=None, deterministic=False, exempt=(),
-           skip=None):
+           skip=None, repair_codes=()):
     """The checked, corrected and (where needed) repaired content, ready to draw.
 
     Returns (content, summary) where summary holds codes and counts only. A
@@ -723,6 +723,13 @@ def finish(config, data, content, *, job, deadline=None, mode='openai', plan=Non
     `exempt` is the ids `check` must not report for being empty, repeating or
     in the wrong language (a category document's, categories.finish.exempt).
     They are still tidied and put in the alphabet.
+
+    `repair_codes` are what a `deterministic` document may still send back,
+    once: a category paper's `wrong_language` sections (execution passes it
+    for a category, never for a CV). Rewriting a section the model wrote in
+    its own language adds nothing, and categories.finish grounds the result
+    after this, so the "nothing sent back" rule, which keeps a repair from
+    filling empty or fixed parts, still holds for everything else.
     """
     locale, fmt = data['output_locale'], data.get('output_format', 'pdf')
     revision = data.get('revision') or {}
@@ -734,8 +741,18 @@ def finish(config, data, content, *, job, deadline=None, mode='openai', plan=Non
         report = check(content, **scope, expected=None, subtopics=[])
         content, _ = tidy(content, selected)
         content, fixed = enforce(content, locale, selected, skip=skip)
-        summary = {'found': report.summary(), 'transliterated': len(fixed), 'repair': None,
-                   'left': {code: n for code, n in report.summary().items() if code not in ('script', 'continued_heading')}}
+        outcome, after = None, report
+        wanted = Report(issues={code: list(report.issues[code]) for code in repair_codes
+                                if report.issues.get(code)})
+        if mode == 'openai' and wanted.to_repair():
+            content, outcome = repair(config, data, content, wanted, job=job, deadline=deadline)
+            if outcome == 'repaired':
+                content, _ = tidy(content, selected)
+                content, _ = enforce(content, locale, selected, skip=skip)
+                after = check(content, **scope, expected=None, subtopics=[])
+        summary = {'found': report.summary(), 'transliterated': len(fixed), 'repair': outcome,
+                   'left': {code: n for code, n in after.summary().items()
+                            if code not in ('script', 'continued_heading')}}
         if report.summary():
             logger.info('Job %s quality: %s', getattr(job, 'id', None), summary)
         return content, summary

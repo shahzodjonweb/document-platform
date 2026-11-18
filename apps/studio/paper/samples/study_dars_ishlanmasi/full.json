@@ -1,0 +1,498 @@
+{
+ "template": "study_dars_ishlanmasi",
+ "case": "full",
+ "entry": "pdf.dars_ishlanmasi",
+ "pages": 2,
+ "uz": {
+  "title": "Maxrajlari bir xil kasrlarni qo‘shish va ayirish",
+  "facts": {
+   "topic": "Maxrajlari bir xil kasrlarni qo‘shish va ayirish",
+   "grade": "5-«A»",
+   "subject": "Matematika",
+   "date": "15.09.2026",
+   "teacher": "D. R. Namunaviyeva",
+   "school": "Namuna tumanidagi 12-maktab",
+   "duration": "45"
+  },
+  "sections": [
+   {
+    "id": "aim_education",
+    "heading": "",
+    "body": "O‘quvchilarga maxrajlari bir xil kasrlarni qo‘shish va ayirish qoidasini tushuntirish, qoidani misollarda qo‘llashni o‘rgatish.",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "aim_upbringing",
+    "heading": "",
+    "body": "O‘quvchilarni guruhda hamkorlikda ishlashga, bir-birining fikrini tinglashga o‘rgatish.",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "aim_development",
+    "heading": "",
+    "body": "Mantiqiy fikrlashni, yechim yo‘lini bosqichma-bosqich izohlash ko‘nikmasini rivojlantirish.",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "lesson_type",
+    "heading": "",
+    "body": "yangi bilim beruvchi dars",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "lesson_methods",
+    "heading": "",
+    "body": "aqliy hujum, savol-javob, guruhlarda ishlash",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "lesson_equipment",
+    "heading": "",
+    "body": "darslik, doska, topshiriq kartochkalari",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "outline",
+    "heading": "",
+    "body": "",
+    "layout": "table",
+    "items": [
+     {
+      "label": "Tashkiliy qism",
+      "text": "3",
+      "value": "Salomlashish, davomat"
+     },
+     {
+      "label": "O‘tilgan mavzuni takrorlash",
+      "text": "8",
+      "value": "Aqliy hujum"
+     },
+     {
+      "label": "Yangi mavzuni bayon qilish",
+      "text": "15",
+      "value": "Tushuntirish, misollar"
+     },
+     {
+      "label": "Mustahkamlash",
+      "text": "12",
+      "value": "Mashqlar, mini-test"
+     },
+     {
+      "label": "Yakunlash va uyga vazifa",
+      "text": "7",
+      "value": "Suhbat, baholash"
+     }
+    ]
+   },
+   {
+    "id": "stage_opening",
+    "heading": "",
+    "body": "O‘qituvchi o‘quvchilar bilan salomlashadi, davomatni aniqlaydi va sinfning darsga tayyorligini tekshiradi.",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "stage_review",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "Kasrning maxraji nimani bildiradi?"
+     },
+     {
+      "label": "",
+      "text": "Kasrning surati nimani bildiradi?"
+     },
+     {
+      "label": "",
+      "text": "3/7 kasrda surat va maxrajni ayting."
+     }
+    ]
+   },
+   {
+    "id": "stage_new",
+    "heading": "",
+    "body": "Qiziqtirish uchun masala: tort 8 teng bo‘lakka bo‘lingan, bir o‘quvchi 3 bo‘lakni, ikkinchisi 2 bo‘lakni yedi. O‘qituvchi tortning qancha qismi yeyilganini so‘raydi.\nO‘quvchilar rasm asosida 3/8 + 2/8 = 5/8 ekanini topadilar.",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "rule",
+    "heading": "",
+    "body": "Maxrajlari bir xil kasrlarni qo‘shishda suratlar qo‘shiladi, maxraj o‘zgarishsiz yoziladi.",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "stage_practice",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "4/9 + 3/9 ni hisoblang."
+     },
+     {
+      "label": "",
+      "text": "8/15 − 5/15 ni hisoblang."
+     },
+     {
+      "label": "",
+      "text": "1 − 3/8 ni hisoblang."
+     }
+    ]
+   },
+   {
+    "id": "stage_close",
+    "heading": "",
+    "body": "O‘qituvchi savollar beradi va faol o‘quvchilarni rag‘batlantiradi.",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "stage_homework",
+    "heading": "",
+    "body": "Darslikdagi mavzu bo‘yicha mashqlarni bajarish.",
+    "layout": "text",
+    "items": []
+   }
+  ]
+ },
+ "ru": {
+  "title": "Сложение и вычитание дробей с одинаковыми знаменателями",
+  "facts": {
+   "topic": "Сложение и вычитание дробей с одинаковыми знаменателями",
+   "grade": "5 «А»",
+   "subject": "Математика",
+   "date": "15.09.2026",
+   "teacher": "Д. Р. Образцова",
+   "school": "Школа № 12 Образцового района",
+   "duration": "45"
+  },
+  "sections": [
+   {
+    "id": "aim_education",
+    "heading": "",
+    "body": "Объяснить ученикам правило сложения и вычитания дробей с одинаковыми знаменателями, научить применять его в примерах.",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "aim_upbringing",
+    "heading": "",
+    "body": "Учить работать в группе, слушать мнение товарищей.",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "aim_development",
+    "heading": "",
+    "body": "Развивать логическое мышление и умение пошагово объяснять решение.",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "lesson_type",
+    "heading": "",
+    "body": "урок открытия нового знания",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "lesson_methods",
+    "heading": "",
+    "body": "мозговой штурм, беседа, работа в группах",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "lesson_equipment",
+    "heading": "",
+    "body": "учебник, доска, карточки с заданиями",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "outline",
+    "heading": "",
+    "body": "",
+    "layout": "table",
+    "items": [
+     {
+      "label": "Организационный момент",
+      "text": "3",
+      "value": "Приветствие, отметка отсутствующих"
+     },
+     {
+      "label": "Повторение",
+      "text": "8",
+      "value": "Мозговой штурм"
+     },
+     {
+      "label": "Объяснение нового",
+      "text": "15",
+      "value": "Объяснение, примеры"
+     },
+     {
+      "label": "Закрепление",
+      "text": "12",
+      "value": "Упражнения, мини-тест"
+     },
+     {
+      "label": "Итог и домашнее задание",
+      "text": "7",
+      "value": "Беседа, оценивание"
+     }
+    ]
+   },
+   {
+    "id": "stage_opening",
+    "heading": "",
+    "body": "Учитель приветствует учеников, отмечает отсутствующих и проверяет готовность класса к уроку.",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "stage_review",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "Что показывает знаменатель дроби?"
+     },
+     {
+      "label": "",
+      "text": "Что показывает числитель дроби?"
+     },
+     {
+      "label": "",
+      "text": "Назовите числитель и знаменатель дроби 3/7."
+     }
+    ]
+   },
+   {
+    "id": "stage_new",
+    "heading": "",
+    "body": "Задача для интереса: торт разрезали на 8 равных частей, один ученик съел 3 части, другой — 2. Учитель спрашивает, какая часть торта съедена.\nПо рисунку ученики находят, что 3/8 + 2/8 = 5/8.",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "rule",
+    "heading": "",
+    "body": "При сложении дробей с одинаковыми знаменателями числители складывают, а знаменатель оставляют прежним.",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "stage_practice",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "Вычислите 4/9 + 3/9."
+     },
+     {
+      "label": "",
+      "text": "Вычислите 8/15 − 5/15."
+     },
+     {
+      "label": "",
+      "text": "Вычислите 1 − 3/8."
+     }
+    ]
+   },
+   {
+    "id": "stage_close",
+    "heading": "",
+    "body": "Учитель задаёт вопросы и поощряет активных учеников.",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "stage_homework",
+    "heading": "",
+    "body": "Выполнить упражнения по теме из учебника.",
+    "layout": "text",
+    "items": []
+   }
+  ]
+ },
+ "en": {
+  "title": "Adding and subtracting fractions with the same denominator",
+  "facts": {
+   "topic": "Adding and subtracting fractions with the same denominator",
+   "grade": "5A",
+   "subject": "Mathematics",
+   "date": "15 September 2026",
+   "teacher": "D. R. Sample",
+   "school": "School No. 12, Namuna district",
+   "duration": "45"
+  },
+  "sections": [
+   {
+    "id": "aim_education",
+    "heading": "",
+    "body": "To explain the rule for adding and subtracting fractions with the same denominator and to practise it in examples.",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "aim_upbringing",
+    "heading": "",
+    "body": "To teach the pupils to work together in groups and to listen to each other.",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "aim_development",
+    "heading": "",
+    "body": "To develop logical thinking and the habit of explaining a solution step by step.",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "lesson_type",
+    "heading": "",
+    "body": "a lesson of new knowledge",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "lesson_methods",
+    "heading": "",
+    "body": "brainstorming, questions and answers, group work",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "lesson_equipment",
+    "heading": "",
+    "body": "textbook, board, task cards",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "outline",
+    "heading": "",
+    "body": "",
+    "layout": "table",
+    "items": [
+     {
+      "label": "Getting started",
+      "text": "3",
+      "value": "Greeting, register"
+     },
+     {
+      "label": "Review",
+      "text": "8",
+      "value": "Brainstorming"
+     },
+     {
+      "label": "New material",
+      "text": "15",
+      "value": "Explanation, examples"
+     },
+     {
+      "label": "Practice",
+      "text": "12",
+      "value": "Exercises, mini-test"
+     },
+     {
+      "label": "Summary and homework",
+      "text": "7",
+      "value": "Discussion, marking"
+     }
+    ]
+   },
+   {
+    "id": "stage_opening",
+    "heading": "",
+    "body": "The teacher greets the pupils, takes the register and checks that the class is ready.",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "stage_review",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "What does the denominator of a fraction show?"
+     },
+     {
+      "label": "",
+      "text": "What does the numerator show?"
+     },
+     {
+      "label": "",
+      "text": "Name the numerator and the denominator of 3/7."
+     }
+    ]
+   },
+   {
+    "id": "stage_new",
+    "heading": "",
+    "body": "A starter problem: a cake is cut into 8 equal pieces; one pupil eats 3 pieces and another eats 2. The teacher asks what part of the cake was eaten.\nFrom a picture the pupils find that 3/8 + 2/8 = 5/8.",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "rule",
+    "heading": "",
+    "body": "To add fractions with the same denominator, add the numerators and keep the denominator.",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "stage_practice",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "Work out 4/9 + 3/9."
+     },
+     {
+      "label": "",
+      "text": "Work out 8/15 − 5/15."
+     },
+     {
+      "label": "",
+      "text": "Work out 1 − 3/8."
+     }
+    ]
+   },
+   {
+    "id": "stage_close",
+    "heading": "",
+    "body": "The teacher asks questions and praises the active pupils.",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "stage_homework",
+    "heading": "",
+    "body": "Do the exercises on the topic in the textbook.",
+    "layout": "text",
+    "items": []
+   }
+  ]
+ }
+}

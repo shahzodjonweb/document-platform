@@ -1,7 +1,7 @@
 {
  "schema": 2,
  "id": "pdf.test",
- "status": "draft",
+ "status": "ready",
  "service": "pdf",
  "parent": null,
  "order": 5,
@@ -310,7 +310,7 @@
    "label": {
     "uz": "O‘quvchining F.I.Sh., sinfi va sanasi",
     "ru": "Фамилия, имя, класс и дата ученика",
-    "en": "Pupil's name, class and date"
+    "en": "Pupil’s name, class and date"
    },
    "example": {
     "uz": "(o‘quvchi qo‘lda yozadi)",
@@ -353,7 +353,7 @@
    "need": "required",
    "share": 0.04,
    "elastic": false,
-   "write": "Only two short strings, both taken from the customer's words: the title line \"Subject, N-sinf\" (or the subject alone) and one topic line of at most 160 characters. The kind line, the school line, the term line and the variant badge are filled by the renderer from fields; for BSB/CHSB the kind line is the customer's own text. Never a school, year, date or teacher the customer did not give; never the heading of another subject.",
+   "write": "Nothing to write: the head is drawn from the subject, class, topic, kind, school and term facts, each as the customer wrote it.",
    "block": "doc_head",
    "fields": [
     "school",
@@ -376,7 +376,7 @@
    "need": "usual",
    "share": 0.03,
    "elastic": false,
-   "write": "Nothing. Fixed ruled cells in two rows; the Ball cell shows \"/ N\" computed from the marks. Left out for self-study; the pupil cells can be dropped with one phrase; no Baho cell for BSB/CHSB.",
+   "write": "Nothing to write: ruled cells for the pupil’s name, class and date and the score and mark; left out for self-study.",
    "block": "cell_strip",
    "fields": [
     "pupil_identity",
@@ -396,7 +396,7 @@
    "need": "usual",
    "share": 0.02,
    "elastic": false,
-   "write": "Nothing: the renderer builds the sentences from the item mix (one correct answer, where to write, time, points per correct answer). The AI may pass one rule the customer stated (for example no calculator) in at most 12 words, copied in meaning, never added on its own.",
+   "write": "Nothing to write: the template builds the instruction sentences (one correct answer, the time, points) from the facts.",
    "block": "line",
    "fields": [
     "time_min"
@@ -414,7 +414,7 @@
    "need": "required",
    "share": 0.5,
    "elastic": true,
-   "write": "The closed questions: a complete stem, four options, the index of the one correct option, a one-line explanation (kept for self-study and for checking), marks 1. The heading is drawn only when a written Part II also exists. Number continues through the whole paper; with variants it restarts in each variant, and the count is per variant. Count scales the length: about 10 questions a page after page 1 (see writing rules for what each question must be).",
+   "write": "The closed questions: a complete stem, four options, the correct option’s text copied into answer, a one-sentence explanation, marks 1. Numbered through the whole paper; about ten a page after the first.",
    "block": "question_list"
   },
   {
@@ -444,7 +444,7 @@
    "need": "optional",
    "share": 0.2,
    "elastic": true,
-   "write": "Only when asked (yozma, ochiq, BSB, CHSB, nazorat ishi): a stem, marks, how much room the answer needs (rows, or a working box for calculations), a model answer of one to four sentences or the solution steps, and a rubric of how the marks are earned (the parts add up to the item's marks). The rubric is a proposal for the teacher, never presented as an official scheme. For BSB and CHSB each criterion line states the points it earns, so the key can print them in the criteria column.",
+   "write": "Only when asked (yozma, ochiq, BSB, CHSB, nazorat ishi): a stem, its marks, a model answer of one to four sentences or the solution steps, and a rubric whose lines add up to the marks, a proposal for the teacher, never an official scheme.",
    "block": "question_list"
   },
   {
@@ -459,7 +459,7 @@
    "need": "optional",
    "share": 0.02,
    "elastic": false,
-   "write": "Nothing. Empty numbered cells for the choice questions, at the end of the pupil part. Only when asked.",
+   "write": "Nothing to write: empty numbered cells for the choice questions, only when asked.",
    "block": "answer_key",
    "fields": [
     "answer_extras"
@@ -477,7 +477,7 @@
    "need": "required",
    "share": 0.06,
    "elastic": true,
-   "write": "Nothing new: letters are drawn from the answer indices. In the teacher copy it is always on its own last pages (numbered K1, K2; unnumbered when one page), one group per variant; the pupil copy has no key pages at all. For self-study (one file) the heading becomes JAVOBLAR / ОТВЕТЫ / ANSWERS and each row carries the explanation (at most 20 words).",
+   "write": "Nothing to write: the key letters are drawn from the answers on the last page.",
    "block": "answer_key"
   },
   {
@@ -492,7 +492,7 @@
    "need": "optional",
    "share": 0.06,
    "elastic": true,
-   "write": "The model answer and the marking rubric of each written item, exactly as produced with the item. Present only when Part II exists. For BSB and CHSB the rubric is printed in its own column \"Baholash mezoni\" with the points each criterion earns.",
+   "write": "Nothing to write here: the model answers and rubrics of the written questions are drawn from those questions.",
    "block": "table"
   },
   {
@@ -507,97 +507,62 @@
    "need": "optional",
    "share": 0.01,
    "elastic": false,
-   "write": "Nothing: the renderer turns the customer's percent bands (or, when asked for a scale without bands, the 0-29 / 30-65 / 66-85 / 86-100 bands of the Ministry order, doc 9) into point ranges for the paper's total. Never printed unasked, and the delivery caption says the bands are those used to convert the accumulated quarter score.",
+   "write": "Nothing: the grading-scale table is deferred.",
    "block": "table",
    "fields": [
     "grade_scale",
     "total_points"
-   ]
+   ],
+   "retired": true
   }
  ],
  "rules": [
   {
-   "text": "One language per test: the language the customer wrote in (picked > brief > attached file > Russian-written > settings). Uzbek is Latin script only, o‘ and g‘ with U+2018 and the tutuq belgisi with U+2019; no Cyrillic in an Uzbek or English test. Every fixed label (head, instruction, parts, key) comes from the template, never typed by the AI. BSB and CHSB are never expanded or translated; a long form is written only when the customer wrote it.",
+   "text": "One language per test, the customer’s; Uzbek in Latin only, o‘ and g‘ with ‘ and the tutuq with ’. Fixed labels are the template’s, never typed. BSB and CHSB are never expanded, and no paper is called official or from the ministry.",
    "to": "model"
   },
   {
-   "text": "The head is built from what the customer said: subject, class, topic, kind. Never copy a heading from another subject or class, never put a school, teacher, year, date, time limit or point total the customer did not give. When a fact is missing it is omitted (school, time, class) or left as a ruled blank by the template (pupil name, class, date, score, grade); the AI never types underscores for those.",
+   "text": "The head is only what the customer said: subject, class, topic, kind. Never a school, teacher, date, time limit or point total they did not give.",
    "to": "model"
   },
   {
-   "text": "Write exactly the number of questions asked PER VARIANT (default 20). The document holds at most 40 questions in all: when count x variants is over 40, write floor(40 / variants) in each variant (two variants: 20 + 20); the pipeline sets this number and the delivery caption tells the customer. Numbering is continuous 1..N through the paper and restarts in each variant. A page request (\"N bet\") without a count means about 10 x N - 3 questions for the pupil copy; the count wins when both are given; never pad with blank space or filler questions, and when the page request cannot be met with 40 questions the caption says what was made.",
-   "to": "rewrite"
+   "text": "Write exactly the number of questions asked, 20 when none is named, at most 40, numbered 1 to N. One variant only. A page count without a question count means about ten questions a page after the first.",
+   "to": "model"
   },
   {
    "text": "Every closed question has exactly four options and exactly one correct one. After your own final ordering of the options, copy the text of the correct option exactly into answer.",
    "to": "model"
   },
   {
-   "text": "Options of a question have the same grammatical form and a similar length (within about 30 %); the correct option is not systematically the longest or the most detailed. Across the paper the correct letters are spread (each of A to D about a quarter, never three in a row). Wrong options are plausible, wrong for one clear reason, and never partly correct.",
+   "text": "Options share one grammatical form and a similar length; correct letters are spread over A to D, never three in a row; wrong options are plausible. Never «all of the above» or «A and B»; numbers in ascending order.",
    "to": "model"
   },
   {
-   "text": "Never use \"all of the above\", \"none of the above\" or \"A and B\" as options. Options that are numbers, years or combinations are written in ascending or natural order and flagged order-locked so the renderer never reshuffles them.",
+   "text": "The stem is complete and answerable on its own, one idea, no hint inside it, never a picture or graph that is not on the page (give the data in words). A negative stem in at most one question in ten, its negative word in capitals. Difficulty rises: recall, application, reasoning.",
    "to": "model"
   },
   {
-   "text": "The stem is complete and answerable on its own, one idea, no hint that gives the answer away, no answer or letter inside the stem. A negative stem (\"qaysi biri noto‘g‘ri\") is used for at most one question in ten, with the negative word in capitals.",
+   "text": "Facts are textbook-level and certain; with attached files every correct answer is found in them. Without one, a date, name or number only when certain. Never a quotation, law, statistic or source of your own.",
    "to": "model"
   },
   {
-   "text": "Difficulty rises through the paper: about a third recall, a third application, a third reasoning (Bilish, Qo‘llash, Mulohaza qilish). These labels are never printed unless the customer asks.",
+   "text": "Work every numeric answer out step by step first; wrong numeric options come from plausible mistakes. Formulas in plain characters (x², H₂SO₄, ½, 3/4, √(x+1)); ∠ △ ⊥ ∥ ∈ ⊂ are said in words.",
    "to": "model"
   },
   {
-   "text": "Facts must be textbook-level and certain. With attached files every correct answer must be found in them. Without a file, history, geography and literature tests may contain dates, names and numbers only when you are certain of them; when a date, name or number is not certain write a conceptual question instead. Never invent a person, organisation, quotation, law, statistic or source. No reference list and no citation lines in a test. A separate, independent verify call solves every item blind and compares with answer_index (rule 16).",
+   "text": "DTM style only when asked: 5 to 8 statements «1) …», options are distinct combinations, one fully correct. Matching only when asked, options like «1-c, 2-d, 3-a».",
    "to": "model"
   },
   {
-   "text": "Calculations: the pipeline recomputes every numeric answer in code (a separate calculation step), numeric options are distinct values from plausible mistakes. Characters: x² (x+1)² aⁿ 10⁻⁶ H₂SO₄ Ca₁₀ ½ ¼ ¾ ⅓ ⅔ ⅕ ° ‰ ′ × ÷ − ± π and every Greek letter draw directly (Noto Serif has superscripts 0-9, subscripts 0-9, plus, minus, equals, parentheses and n). √ ≤ ≥ ≠ ≈ ∞ → may be used: the renderer draws them from Liberation Sans per glyph. ∠ △ ⊥ ∥ ∈ ∪ ⊂ ⇒ can be drawn from no shipped font: write \"ABC burchak\", \"ABC uchburchak\", \"perpendikulyar\", \"parallel\" and so on. Stacked fractions and roots over expressions are unsupported: write 3/4, a/b, 5√2, √(x+1).",
-   "to": "rewrite"
-  },
-  {
-   "text": "No question may depend on a picture, graph or table that is not on the page. Do not write \"rasmda ko‘rsatilganidek\". When the topic usually needs a figure (geometry, physics, geography) give the data in words and ask a text-only task, for example \"tomonlari 9 sm, 12 sm va 15 sm bo‘lgan uchburchakning to‘g‘ri burchakli ekanini isbotlang\" instead of \"rasmdagi uchburchak\"; the bot tells the customer that figures were replaced (see mock/study_test-bsb.pdf).",
+   "text": "Written questions only when asked: marks as stated, else 2 for a short answer and 3 or 4 for an extended one, adding up to a total given; a model answer or the solution steps and a rubric whose lines add up to the marks, a proposal, never called official.",
    "to": "model"
   },
   {
-   "text": "DTM style (only when the customer says DTM, UZBMB or asks for numbered statements): the stem introduces 5 to 8 numbered statements \"1) ...\", the four options are distinct number combinations, exactly one combination is fully correct. Matching (only when asked): numbered items \"1) ...\" and lettered items \"a) ...\" in two lists, options like \"1-c, 2-d, 3-a, 4-b\", four distinct.",
+   "text": "A passage only when asked, for a reading-based subject or with a source attached: 60 to 120 words with a short title, then 3 to 6 questions that need it, topic «passage», after the other closed questions.",
    "to": "model"
   },
   {
-   "text": "Written questions (only when asked): marks as the customer states, otherwise 2 for a short answer and 3 or 4 for an extended one; when a total is given the marks add up to exactly it. Give rows for the answer (about 2 per mark, 2 to 10) or, when the customer wants room for the solution, a working box (at least 13 mm per mark; below that the box is dropped), a model answer, and a rubric whose parts add up to the marks, one line per criterion with its points. The rubric is a proposal; never call it official.",
-   "to": "model"
-  },
-  {
-   "text": "Variants (I and II): identical structure, same question types in the same order, same marks, same topics, same count, different numbers, names, options and wording. Never the same question in both variants. Each variant has its own key.",
-   "to": "rewrite"
-  },
-  {
-   "text": "A passage is only written when asked, when the subject is reading-based, or when a source is attached: 60 to 120 words with a short title, original text or a paraphrase of the attached source, no quotation of copyrighted works, then 3 to 6 questions that cannot be answered without it. Give each of those questions the topic \"passage\" and put them after every other closed question.",
-   "to": "model"
-  },
-  {
-   "text": "Explanations (kept in the content, printed only in the self-study key): one sentence of at most 20 words saying why the answer is right. Verification is a SEPARATE call that does not see the author's answer: it solves each item blind and compares its choice with answer_index; on a disagreement the item is rewritten once, then dropped and replaced. The author re-reading its own work does not count.",
-   "to": "rewrite"
-  },
-  {
-   "text": "Language level follows the class when it is given (short sentences for classes 1 to 4); without a class use a general secondary-school level. The document never states the level.",
-   "to": "model"
-  },
-  {
-   "text": "A gap to fill inside a sentence is written as six underscores. Nothing else is typed as a blank.",
-   "to": "model"
-  },
-  {
-   "text": "Never print or mention that the text was written by an AI, and never add advice or comments outside the fields. Anything the customer asked for that the page cannot draw (pictures, graphs, long tables) is replaced by a text-only question, and the bot tells the customer. Anything undrawable is caught first by the deterministic glyph check (block glyph_safety): the item is returned for rewriting, never printed with a dropped symbol.",
-   "to": "model"
-  },
-  {
-   "text": "BSB and CHSB (only when the customer names them): a closed part and a written part are the usual shape; the written items carry criteria lines with points. Do not state that the paper is official or from the ministry; teachers may make their own papers within the ministry's criteria (doc 9), and no official sample was available to check the layout.",
-   "to": "model"
-  },
-  {
-   "text": "Quotation marks in Uzbek and English text are “ ” (as in the bot's own examples); Russian text uses « ».",
+   "text": "An explanation is one sentence of at most 20 words. The level follows the class. A gap is six underscores. Quotation marks “ ” in Uzbek and English, « » in Russian.",
    "to": "model"
   }
  ],
@@ -625,7 +590,25 @@
    }
   ],
   "attach": true,
-  "notices": {}
+  "notices": {
+   "finished": {
+    "uz": "📄 Test tayyor. Kalitlar oxirgi sahifada: o‘quvchilarga tarqatishdan oldin uni ajratib oling.",
+    "ru": "📄 Тест готов. Ключи — на последней странице: отделите её перед раздачей ученикам.",
+    "en": "📄 Your test is ready. The key is on the last page: take it off before handing the test out."
+   },
+   "blanks": {
+    "uz": "Siz bermagan ma’lumot o‘rniga bo‘sh joy qoldirildi: uni o‘zingiz to‘ldiring.",
+    "ru": "Где данных не было, оставлены пустые места: заполните их сами.",
+    "en": "Where you gave no details, blanks were left for you to fill in."
+   }
+  },
+  "pool": [
+   {
+    "uz": "8-sinf kimyo, “Kislotalar” mavzusida 10 ta savollik test. Maktab: 14-maktab.",
+    "ru": "Тест по химии для 8 класса, тема «Кислоты», 10 вопросов. Школа № 14.",
+    "en": "A chemistry test for grade 8 on acids, 10 questions. School No. 14."
+   }
+  ]
  },
  "templates": [
   "study_test"
@@ -634,7 +617,7 @@
  "gates": [
   "A native speaker reads the instruction sentences (one_answer, time, point_each, self_study) and the part headings in uz, ru and en against section 4.3 of units/pdf.test/template.md.",
   "A sample of 20 and of 40 questions in each language is rendered and every key letter is checked against its question by a person.",
-  "Reword or drop rules 3, 10, 14 and 16 (rewrite: variants, a recompute step and a blind verification call are not built)."
+  "The facts corpus is at zero on this entry’s examples, and one real-provider run (scripts/operations/ai_smoke.py --category pdf.test) is read before the tick."
  ],
  "later": [
   {
@@ -666,10 +649,18 @@
    ]
   },
   {
-   "text": "Recomputing numeric answers in code; the grade-scale table; BSB and CHSB criteria columns; the self-study explained key; a blind verification call."
+   "text": "The delivery file names of bot.delivery (the product names a result in apps/core/naming.py)."
   },
   {
-   "text": "The delivery file names of bot.delivery (the product names a result in apps/core/naming.py)."
+   "text": "Recomputing numeric answers in code, a blind verification call that solves every item, BSB and CHSB criteria columns, the self-study explained key."
+  },
+  {
+   "text": "The grading-scale table (percent bands turned into points): the part grade_scale is retired until its block is built.",
+   "words": [
+    "baholash jadvali",
+    "шкала оценивания",
+    "grading scale"
+   ]
   }
  ],
  "topic_prompt": {

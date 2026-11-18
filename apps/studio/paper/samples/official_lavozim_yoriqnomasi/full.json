@@ -1,0 +1,342 @@
+{
+ "template": "official_lavozim_yoriqnomasi",
+ "case": "full",
+ "entry": "pdf.biz.lavozim_yoriqnomasi",
+ "pages": 3,
+ "uz": {
+  "title": "Boshlang‘ich sinf o‘qituvchisi",
+  "facts": {
+   "position": "Boshlang‘ich sinf o‘qituvchisi",
+   "organisation": "Namuna tumanidagi 41-sonli maktab",
+   "unit": "1–4-sinflar",
+   "reports_to": "direktorning o‘quv ishlari bo‘yicha o‘rinbosari",
+   "approver_post": "Maktab direktori",
+   "approver_name": "Z. A. Rustamova",
+   "approval_date": "2026-yil 1-sentabr",
+   "qualification": "oliy pedagogik ma’lumot, kamida 2 yillik staj",
+   "agreement_signers": "O‘quv ishlari bo‘yicha direktor o‘rinbosari — M. B. Xolmatov",
+   "employee_name": "G. O‘. Yo‘ldosheva"
+  },
+  "sections": [
+   {
+    "id": "general",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "Mazkur lavozim yo‘riqnomasi Namuna tumanidagi 41-sonli maktab (keyingi o‘rinlarda — Maktab) boshlang‘ich sinf o‘qituvchisining (keyingi o‘rinlarda — O‘qituvchi) vazifalari, huquqlari va javobgarligini belgilaydi.",
+      "value": ""
+     },
+     {
+      "label": "",
+      "text": "O‘qituvchi direktorning o‘quv ishlari bo‘yicha o‘rinbosariga bo‘ysunadi.",
+      "value": ""
+     },
+     {
+      "label": "",
+      "text": "O‘qituvchi Maktab direktorining buyrug‘i bilan lavozimga tayinlanadi va lavozimdan ozod etiladi.",
+      "value": ""
+     }
+    ]
+   },
+   {
+    "id": "qualification",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "Lavozimga oliy pedagogik ma’lumotga va kamida 2 yillik ish stajiga ega shaxs tayinlanadi.",
+      "value": ""
+     },
+     {
+      "label": "O‘qituvchi quyidagilarni bilishi kerak:",
+      "text": "boshlang‘ich ta’lim dasturlarini | o‘quvchilar bilimini baholash tartibini | mehnat muhofazasi qoidalarini",
+      "value": ""
+     }
+    ]
+   },
+   {
+    "id": "duties",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "O‘qituvchi quyidagi vazifalarni bajaradi:",
+      "text": "1–4-sinflarda o‘quv dasturiga muvofiq dars o‘tadi | dars rejalarini tuzadi | sinf jurnalini o‘z vaqtida yuritadi | o‘quvchilar bilimini belgilangan tartibda baholaydi | ota-onalar bilan muntazam aloqa qiladi",
+      "value": ""
+     },
+     {
+      "label": "",
+      "text": "O‘qituvchi pedagogik kengash yig‘ilishlarida qatnashadi.",
+      "value": ""
+     }
+    ]
+   },
+   {
+    "id": "rights",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "O‘qituvchi quyidagi huquqlarga ega:",
+      "text": "ish uchun zarur ma’lumotlarni olish | o‘quv jarayonini yaxshilash bo‘yicha takliflar kiritish | malaka oshirish kurslarida o‘qish",
+      "value": ""
+     },
+     {
+      "label": "",
+      "text": "O‘qituvchi qonunchilikda belgilangan boshqa huquqlarga ham ega bo‘lishi mumkin.",
+      "value": ""
+     }
+    ]
+   },
+   {
+    "id": "responsibility",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "O‘qituvchi ushbu yo‘riqnomadagi vazifalarni bajarmagani uchun amaldagi qonunchilikda belgilangan tartibda javobgar bo‘ladi.",
+      "value": ""
+     },
+     {
+      "label": "",
+      "text": "O‘qituvchi Maktabga yetkazilgan moddiy zarar uchun amaldagi qonunchilikda belgilangan tartibda javobgar bo‘ladi.",
+      "value": ""
+     }
+    ]
+   }
+  ]
+ },
+ "ru": {
+  "title": "Учитель начальных классов",
+  "facts": {
+   "position": "Учитель начальных классов",
+   "organisation": "Школа № 41 Образцового района",
+   "unit": "1–4 классы",
+   "reports_to": "заместитель директора по учебной работе",
+   "approver_post": "Директор школы",
+   "approver_name": "З. А. Рустамова",
+   "approval_date": "1 сентября 2026 г.",
+   "qualification": "высшее педагогическое образование, стаж не менее 2 лет",
+   "agreement_signers": "Заместитель директора по учебной работе — М. Б. Холматов",
+   "employee_name": "Г. О. Юлдошева"
+  },
+  "sections": [
+   {
+    "id": "general",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "Настоящая должностная инструкция определяет обязанности, права и ответственность учителя начальных классов (далее — Учитель) школы № 41 Образцового района (далее — Школа).",
+      "value": ""
+     },
+     {
+      "label": "",
+      "text": "Учитель подчиняется заместителю директора по учебной работе.",
+      "value": ""
+     },
+     {
+      "label": "",
+      "text": "Учитель назначается на должность и освобождается от неё приказом директора Школы.",
+      "value": ""
+     }
+    ]
+   },
+   {
+    "id": "qualification",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "На должность назначается лицо с высшим педагогическим образованием и стажем работы не менее 2 лет.",
+      "value": ""
+     },
+     {
+      "label": "Учитель должен знать:",
+      "text": "программы начального образования | порядок оценки знаний учащихся | правила охраны труда",
+      "value": ""
+     }
+    ]
+   },
+   {
+    "id": "duties",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "Учитель выполняет следующие обязанности:",
+      "text": "проводит уроки в 1–4 классах по учебной программе | составляет планы уроков | своевременно ведёт классный журнал | оценивает знания учащихся в установленном порядке | регулярно поддерживает связь с родителями",
+      "value": ""
+     },
+     {
+      "label": "",
+      "text": "Учитель участвует в заседаниях педагогического совета.",
+      "value": ""
+     }
+    ]
+   },
+   {
+    "id": "rights",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "Учитель вправе:",
+      "text": "получать сведения, нужные для работы | вносить предложения по улучшению учебного процесса | проходить курсы повышения квалификации",
+      "value": ""
+     },
+     {
+      "label": "",
+      "text": "Учитель имеет и другие права, предусмотренные законодательством.",
+      "value": ""
+     }
+    ]
+   },
+   {
+    "id": "responsibility",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "Учитель несёт ответственность за неисполнение обязанностей, предусмотренных настоящей инструкцией, в порядке, установленном действующим законодательством.",
+      "value": ""
+     },
+     {
+      "label": "",
+      "text": "Учитель несёт ответственность за материальный ущерб, причинённый Школе, в порядке, установленном действующим законодательством.",
+      "value": ""
+     }
+    ]
+   }
+  ]
+ },
+ "en": {
+  "title": "Primary school teacher",
+  "facts": {
+   "position": "Primary school teacher",
+   "organisation": "School No. 41, Namuna district",
+   "unit": "grades 1–4",
+   "reports_to": "the deputy head for teaching",
+   "approver_post": "Head of school",
+   "approver_name": "Z. A. Rustamova",
+   "approval_date": "1 September 2026",
+   "qualification": "a degree in education, at least 2 years of experience",
+   "agreement_signers": "Deputy head for teaching — M. B. Kholmatov",
+   "employee_name": "G. O. Yuldosheva"
+  },
+  "sections": [
+   {
+    "id": "general",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "This job description sets the duties, rights and responsibility of the primary school teacher (the Teacher) of School No. 41, Namuna district (the School).",
+      "value": ""
+     },
+     {
+      "label": "",
+      "text": "The Teacher reports to the deputy head for teaching.",
+      "value": ""
+     },
+     {
+      "label": "",
+      "text": "The Teacher is appointed and dismissed by an order of the head of the School.",
+      "value": ""
+     }
+    ]
+   },
+   {
+    "id": "qualification",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "The post is held by a person with a degree in education and at least 2 years of experience.",
+      "value": ""
+     },
+     {
+      "label": "The Teacher must know:",
+      "text": "the primary education programmes | how pupils’ knowledge is assessed | the rules of labour protection",
+      "value": ""
+     }
+    ]
+   },
+   {
+    "id": "duties",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "The Teacher performs the following duties:",
+      "text": "teaches grades 1–4 by the curriculum | draws up lesson plans | keeps the class register on time | assesses the pupils’ knowledge as set | keeps in regular touch with parents",
+      "value": ""
+     },
+     {
+      "label": "",
+      "text": "The Teacher takes part in the meetings of the pedagogical council.",
+      "value": ""
+     }
+    ]
+   },
+   {
+    "id": "rights",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "The Teacher has the right to:",
+      "text": "receive the information the work needs | make proposals to improve teaching | attend training courses",
+      "value": ""
+     },
+     {
+      "label": "",
+      "text": "The Teacher has the other rights the legislation allows.",
+      "value": ""
+     }
+    ]
+   },
+   {
+    "id": "responsibility",
+    "heading": "",
+    "body": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "The Teacher is responsible for failing to perform the duties of this job description as the legislation in force sets.",
+      "value": ""
+     },
+     {
+      "label": "",
+      "text": "The Teacher is responsible for material damage caused to the School as the legislation in force sets.",
+      "value": ""
+     }
+    ]
+   }
+  ]
+ }
+}

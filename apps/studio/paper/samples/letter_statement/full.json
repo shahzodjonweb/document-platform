@@ -1,0 +1,156 @@
+{
+ "template": "letter_statement",
+ "case": "full",
+ "entry": "pdf.xat.motivatsion",
+ "pages": 1,
+ "cues": [
+  "statement"
+ ],
+ "uz": {
+  "title": "Motivatsion xat",
+  "facts": {
+   "applicant_name": "Aziz Normurodov",
+   "phone": "+998 90 765 43 21",
+   "email": "aziz.normurodov@example.com",
+   "address": "Samarqand",
+   "target_programme": "Axborot tizimlari magistraturasi",
+   "target_institution": "Misol Texnologiya Universiteti",
+   "intake": "2027-yil kuzgi qabul"
+  },
+  "sections": [
+   {
+    "id": "opening",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "Men Namuna davlat universitetida kompyuter ilmlari yo‘nalishining 4-kursida o‘qiyman. Misol Texnologiya Universitetining axborot tizimlari magistraturasiga 2027-yil kuzgi qabul bo‘yicha o‘qimoqchiman."
+   },
+   {
+    "id": "why",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "Dasturingizda ma’lumotlar bazalari va tizim tahlili kurslari bor; ular bitiruv ishimning mavzusiga yaqin."
+   },
+   {
+    "id": "evidence",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "2-kursda universitet kutubxonasi uchun kitoblar hisobi jadvalini dasturlaganman. 2025-yilda dasturlash olimpiadasida 2-o‘rinni egalladim."
+   },
+   {
+    "id": "contribution_goals",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "Maqsadim — kichik korxonalar uchun hisob tizimlarini yaratish."
+   },
+   {
+    "id": "closing",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "Xatni ko‘rib chiqish uchun vaqt ajratganingizdan minnatdorman."
+   }
+  ]
+ },
+ "ru": {
+  "title": "Мотивационное письмо",
+  "facts": {
+   "applicant_name": "Азиз Нормуродов",
+   "phone": "+998 90 765 43 21",
+   "email": "aziz.normurodov@example.com",
+   "address": "Самарканд",
+   "target_programme": "Магистратура по информационным системам",
+   "target_institution": "Технологический университет «Мисол»",
+   "intake": "набор осенью 2027 года"
+  },
+  "sections": [
+   {
+    "id": "opening",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "Я учусь на 4 курсе направления «Компьютерные науки» в Образцовом государственном университете и хочу поступить в магистратуру по информационным системам осенью 2027 года."
+   },
+   {
+    "id": "why",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "В вашей программе есть курсы по базам данных и системному анализу; они близки к теме моей выпускной работы."
+   },
+   {
+    "id": "evidence",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "На 2 курсе я написал программу учёта книг для университетской библиотеки. В 2025 году занял 2-е место на олимпиаде по программированию."
+   },
+   {
+    "id": "contribution_goals",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "Моя цель — создавать системы учёта для малого бизнеса."
+   },
+   {
+    "id": "closing",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "Благодарю за внимание к моему письму."
+   }
+  ]
+ },
+ "en": {
+  "title": "Letter of motivation",
+  "facts": {
+   "applicant_name": "Aziz Normurodov",
+   "phone": "+998 90 765 43 21",
+   "email": "aziz.normurodov@example.com",
+   "address": "Samarkand",
+   "target_programme": "Master’s in Information Systems",
+   "target_institution": "Misol University of Technology",
+   "intake": "autumn 2027 intake"
+  },
+  "sections": [
+   {
+    "id": "opening",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "I am a fourth-year student of computer science at Namuna State University, and I am applying for the Master’s in Information Systems at Misol University of Technology for autumn 2027."
+   },
+   {
+    "id": "why",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "Your programme has courses in databases and systems analysis, which are close to the topic of my graduation project."
+   },
+   {
+    "id": "evidence",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "In my second year I wrote a book-keeping program for the university library. In 2025 I took second place in a programming olympiad."
+   },
+   {
+    "id": "contribution_goals",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "My goal is to build accounting systems for small businesses."
+   },
+   {
+    "id": "closing",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "Thank you for taking the time to read my letter."
+   }
+  ]
+ }
+}

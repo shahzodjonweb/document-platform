@@ -105,9 +105,25 @@ def stage(account, file_ids):
 OTHER = 'other'
 
 
+def _switched_on():
+    """Whether the categories switch is on with something ticked, read from its row before the catalogue is loaded.
+
+    Off is the shipped default, and every AI PDF and AI Slides tap asks: importing the catalogue then builds and
+    checks every entry and template for nothing, and one that failed to load would break today's question. The
+    row is looked up on each call, as the catalogue's own switch read is, so a change takes effect at once.
+    """
+    import importlib
+    try:
+        settings = importlib.import_module('operations.categories_settings')
+    except ModuleNotFoundError:
+        return False
+    switch = settings.get()
+    return bool(switch.get('on') and switch.get('live'))
+
+
 def category_menu(feature_id, group=None):
     """The buttons of a service's list (or of one group in it); [] when there is no list to show."""
-    if feature_id not in (DOCUMENT, SLIDES):
+    if feature_id not in (DOCUMENT, SLIDES) or not _switched_on():
         return []
     from apps.studio import categories
     return categories.menu(feature_id, group)
@@ -115,7 +131,7 @@ def category_menu(feature_id, group=None):
 
 def category_live(feature_id, category):
     """The entry of `category` when customers may pick it for this service now, else None."""
-    if not isinstance(category, str) or not category or category == OTHER:
+    if not isinstance(category, str) or not category or category == OTHER or not _switched_on():
         return None
     from apps.studio import categories
     # Looked up among the live ones (only this service's), not with get(): with
@@ -230,8 +246,11 @@ def category_review(draft):
     {'entry', 'asked': the entry when its question is offered, 'unread': files
     that gave no text, 'cut': whether only each file's ends were read,
     'bounds': (fewest, most) of a count the stepper may choose, None when the
-    entry's length is not a count}. A category the catalogue no longer holds
-    has nothing to say: its job fails before the provider (category_unknown).
+    entry's length is not a count: an ariza is always one page (`fixed`) and a
+    test as long as its questions (`derived`), so the review offers no stepper
+    whose taps the server would answer with the same number}. A category the
+    catalogue no longer holds has nothing to say: its job fails before the
+    provider (category_unknown).
     """
     from apps.studio import categories
     from apps.studio.domain import unpack
@@ -464,6 +483,18 @@ def length_before(draft):
         _, original = revision_source(draft.account, source_id)
     except DomainError:
         return None
+    # A category paper's sections are its parts, not its pages: a one-page
+    # ariza has seven, and its change read "7 → 1". Its pages are its stored
+    # length (categories.skeleton.pages, the one reader of the number). A deck
+    # in a category keeps one section a slide, so it is read as today's.
+    if (original.get('options') or {}).get('category'):
+        from apps.studio.categories import skeleton
+        try:
+            pages = skeleton.pages(original)
+        except DomainError:
+            return None
+        if pages is not None:
+            return pages
     # A deck's question slides are slides too: without them a twelve-slide deck
     # whose change keeps every slide read "10 → 12".
     questions = int(original.get('options', {}).get('question_slides', 0) or 0) if draft.feature_id == SLIDES else 0

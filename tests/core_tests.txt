@@ -874,7 +874,6 @@ tests/test_category_admin.py::test_the_requests_list_the_request_and_the_custome
 # end in its slots, held to the customer (facts_blanked), pinned on its first render; bounds at the job's sites;
 # quality spares the exempt slides; ai_smoke --category
 tests/test_category_generation_decks.py::test_an_id_the_catalogue_no_longer_holds_fails_the_job_before_the_provider
-tests/test_category_generation_decks.py::test_a_paper_category_fails_as_unavailable_before_the_provider
 tests/test_category_generation_decks.py::test_a_job_without_a_category_never_reads_the_catalogue
 tests/test_category_generation_decks.py::test_a_deck_of_the_customers_own_figures_is_made_as_quoted_in_its_slots[uz]
 tests/test_category_generation_decks.py::test_a_topic_only_deck_loses_what_the_model_made_up_and_says_so
@@ -1024,3 +1023,1278 @@ tests/test_category_facts.py::test_a_slot_that_checks_names_takes_a_lone_invente
 tests/test_category_facts.py::test_a_surname_shaped_first_word_is_kept_when_it_is_the_customers_or_a_common_word[Namunova javobgar.]
 tests/test_category_finish_decks.py::test_an_invented_person_in_a_problem_proposal_or_request_is_blanked[council-problems]
 tests/test_category_facts.py::test_a_counted_copy_shares_the_respelled_words_rather_than_folding_the_source_again
+
+# Categories, prompting for papers (P2): a category paper is told DOCUMENT with SYSTEM's safety sentences and its
+# block in place of SYSTEM, DOCUMENT_RULES and the design guide, its parts as rows with their words and its pages, a
+# wire schema with no columns, photos or design; it is written one span of pages after another, never side by side,
+# its lease covers every span, and every stage stays inside its cap with the block at its budget
+tests/test_category_prompts_pdf.py::test_a_category_paper_is_told_its_stack_in_the_order_of_architecture_3_1[pdf.xat.ariza]
+tests/test_category_prompts_pdf.py::test_every_new_category_paper_body_says_safety_word_for_word[pdf.xat.ariza]
+tests/test_category_prompts_pdf.py::test_a_count_papers_rows_give_word_targets_instances_columns_and_computed_cells
+tests/test_category_prompts_pdf.py::test_a_papers_wire_schema_has_layouts_and_items_but_no_columns_photos_or_design
+tests/test_category_prompts_pdf.py::test_a_paper_is_never_written_side_by_side_and_is_cut_by_its_pages
+tests/test_category_prompts_pdf.py::test_the_lease_covers_every_span_of_a_paper_and_one_more
+tests/test_category_prompts_pdf.py::test_a_ready_paper_block_within_budget_keeps_every_stage_under_its_cap
+
+# The bot for category papers (B4): a paper whose length is not a count has no stepper, a change to a paper says
+# its pages before (its stored length, never a count of its parts), and a ceiling paper that came out shorter than
+# quoted says so under its file with both numbers
+tests/test_bot_category_papers.py::test_a_paper_whose_length_is_not_a_count_has_no_stepper[uz]
+tests/test_bot_category_papers.py::test_a_count_paper_steps_within_its_bounds_and_boshqa_as_today
+tests/test_bot_category_papers.py::test_a_change_to_a_paper_reads_its_pages_not_its_parts
+tests/test_bot_category_papers.py::test_a_change_to_a_category_deck_counts_its_slides_as_today
+tests/test_bot_category_papers.py::test_a_ceiling_paper_that_came_out_shorter_says_so_under_its_file[uz]
+tests/test_bot_category_papers.py::test_a_ceiling_paper_that_fills_its_pages_says_nothing_more
+tests/test_bot_category_papers.py::test_a_document_without_a_category_is_never_called_shorter
+tests/test_bot_category_papers.py::test_every_categorys_shorter_words_are_for_a_ceiling_paper_and_name_only_the_two_numbers
+
+# Categories, the finish of a paper (F2): facts kept only when the customer gave them, by kind, and clock values
+# written by code from the Tashkent date; a grounded part loses every invented number, name, quotation and law while
+# a guarded part keeps general knowledge; sources never a file name; empty instances of a model-sized group dropped;
+# a top-up's sections finished again alone; the emergency fallback's contract; an ariza held to the customer's words;
+# a section of a part the model does not write dropped whole; a clock value never counted as a blank
+tests/test_category_finish_pdf.py::test_facts_keep_only_what_the_customer_gave_each_held_to_its_kind
+tests/test_category_finish_pdf.py::test_an_invented_person_date_or_sum_is_not_a_fact
+tests/test_category_finish_pdf.py::test_clock_fields_are_written_by_code_from_the_tashkent_date[uz-2026-yil 16-noyabr]
+tests/test_category_finish_pdf.py::test_a_grounded_part_loses_every_number_name_quotation_and_law_the_customer_did_not_give
+tests/test_category_finish_pdf.py::test_a_guarded_part_keeps_general_knowledge_but_no_quotation_or_law
+tests/test_category_finish_pdf.py::test_sources_keep_only_what_the_customer_named_never_a_file_name
+tests/test_category_finish_pdf.py::test_an_uzbek_paper_with_cyrillic_sources_reads_back_in_latin
+tests/test_category_finish_pdf.py::test_empty_instances_of_a_model_sized_group_are_dropped
+tests/test_category_finish_pdf.py::test_only_finishes_the_sections_a_top_up_wrote_and_nothing_else
+tests/test_category_finish_pdf.py::test_the_plain_fallback_keeps_its_contract
+tests/test_category_finish_pdf.py::test_an_ariza_is_held_to_the_customers_words
+tests/test_category_finish_decks.py::test_a_paper_gets_no_deck_pins
+tests/test_category_finish_pdf.py::test_a_section_of_a_part_the_model_does_not_write_goes_whole_and_never_reaches_the_fallback
+tests/test_category_finish_pdf.py::test_a_clock_value_the_customer_never_gave_is_todays_without_a_blank
+
+# Categories, the finish of a paper (F2 review): a letter's text fact naming an invented person, law or quotation
+# goes whole and never reaches the fallback, while a guarded paper's keeps general knowledge; a guarded title loses
+# an invented labelled author; an empty scope leaves the paper as it is
+tests/test_category_finish_pdf.py::test_a_letters_text_fact_naming_an_invented_person_law_or_quotation_is_not_kept[dean]
+tests/test_category_finish_pdf.py::test_a_letters_text_fact_naming_an_invented_person_law_or_quotation_is_not_kept[law]
+tests/test_category_finish_pdf.py::test_a_guarded_papers_text_fact_keeps_general_knowledge
+tests/test_category_finish_pdf.py::test_a_guarded_titles_invented_author_tail_goes[uz]
+tests/test_category_finish_pdf.py::test_an_empty_scope_leaves_the_paper_as_it_is
+
+# Categories, change requests on papers (E1): a paper's change is read narrower than a document's: no new look, no
+# pages, parts or pictures added or taken away, a new total only for a counted entry and as its pages, a test's
+# questions added or cut but never removed, and a request for the file alone still answered without a change
+tests/test_category_edits.py::test_a_deck_or_no_entry_is_left_to_todays_reader
+tests/test_category_edits.py::test_pages_parts_and_pictures_are_not_added_or_taken_away[Add a conclusion and 3 more pages with pictures]
+tests/test_category_edits.py::test_a_new_look_is_refused_because_the_template_is_the_look[Change the design and the background]
+tests/test_category_edits.py::test_an_introduction_asked_of_a_paper_that_has_one_moves_nothing
+tests/test_category_edits.py::test_a_new_total_is_read_for_a_counted_entry_only[Make it 4 pages-4]
+tests/test_category_edits.py::test_a_tests_questions_are_added_or_cut_and_never_taken_away
+tests/test_category_edits.py::test_a_new_total_sets_a_counted_papers_pages_and_keeps_its_parts
+tests/test_category_edits.py::test_a_paper_asked_for_as_slides_alone_is_answered_without_a_change
+# The paper engine (R0): a category paper is drawn in its template only when every block is registered; a block
+# that raises or breaks the layout is drawn plain, a build that fails anyway or an unknown template gives the
+# emergency fallback marked template_fallback; the fixed rule takes a page with its closing group whole, the count
+# rule cuts only elastic prose; the contents print the pages the headings land on
+tests/test_paper_engine.py::test_ready_needs_a_pdf_category_whose_template_blocks_are_all_registered
+tests/test_paper_engine.py::test_a_groups_placements_are_drawn_once_per_instance_the_content_holds_in_order
+tests/test_paper_engine.py::test_every_when_predicate
+tests/test_paper_engine.py::test_facts_blanks_and_clock_values
+tests/test_paper_engine.py::test_text_rules_set_house_apostrophes_and_glue
+tests/test_paper_engine.py::test_a_longer_fixed_paper_tightens_then_takes_a_page_with_its_closing_group_whole
+tests/test_paper_engine.py::test_a_count_paper_cuts_only_its_elastic_prose_when_no_step_holds_it
+tests/test_paper_engine.py::test_the_page_rules_choose_steps_as_specified
+tests/test_paper_engine.py::test_the_contents_print_the_pages_the_headings_land_on
+tests/test_paper_engine.py::test_a_block_that_raises_is_drawn_by_its_fallback
+tests/test_paper_engine.py::test_a_placement_that_breaks_the_layout_is_drawn_plain
+tests/test_paper_engine.py::test_a_build_that_fails_whatever_is_drawn_plain_gives_the_emergency_fallback
+tests/test_paper_engine.py::test_an_unknown_template_gives_the_emergency_fallback_or_the_callers
+# Paper engine after review: a heading and a short part stay with the closing group on the page they fit, a heading
+# stays with the contents, a request longer than two pages still ends with its enclosures and signatures, an empty
+# placement after a page break adds no page, a placement that broke one instance is plain in that one only, and
+# customer text never reaches the log
+tests/test_paper_engine.py::test_a_heading_and_a_one_paragraph_part_before_the_closing_group_stay_on_the_page_they_fit[fixed]
+tests/test_paper_engine.py::test_a_heading_and_a_one_paragraph_part_before_the_closing_group_stay_on_the_page_they_fit[flow]
+tests/test_paper_engine.py::test_a_heading_before_the_contents_stays_where_it_fits
+tests/test_paper_engine.py::test_a_request_paragraph_longer_than_two_pages_ends_with_its_closing_group
+tests/test_paper_engine.py::test_a_page_break_before_a_placement_that_draws_nothing_adds_no_page
+tests/test_paper_engine.py::test_a_placement_that_breaks_one_instance_is_drawn_plain_in_that_instance_only
+tests/test_paper_engine.py::test_customer_text_never_reaches_the_log
+# Paper engine after the second review: a keep group no page can hold starts where it stands, a gap alone after a
+# page break adds no page, the head left before a closing group is measured, and the final passes start from the
+# chosen build and record a page added or numbers that did not settle
+tests/test_paper_engine.py::test_a_spacer_alone_after_a_page_break_adds_no_page
+tests/test_paper_engine.py::test_a_keep_group_taller_than_any_page_starts_where_it_stands
+tests/test_paper_engine.py::test_the_head_left_before_a_closing_group_is_measured_not_counted
+tests/test_paper_engine.py::test_a_final_pass_that_adds_a_page_is_longer_than_quoted
+tests/test_paper_engine.py::test_the_final_passes_start_from_the_chosen_build_and_say_when_they_did_not_settle
+
+# Categories, the seven business papers as draft entries (C2b): every business paper is a ceiling that asks no part
+# for a floor of words, the plan of two sentences is told its most and never to fill the pages, the short forms leave
+# out what their pages cannot hold; computed cells and totals name columns of their own table, and a line amount the
+# customer typed survives the finish while a product is left to code; the minutes repeat
+# their parts per agenda item; nothing the model reads is a research note or a law to cite; a draft of each is made,
+# seeded and quoted
+tests/test_category_business_entries.py::test_every_business_paper_is_a_ceiling_that_asks_no_part_for_a_floor_of_words
+tests/test_category_business_entries.py::test_the_business_plan_of_two_sentences_is_told_its_most_words_never_to_fill_the_pages[8]
+tests/test_category_business_entries.py::test_the_business_plan_of_two_sentences_is_told_its_most_words_never_to_fill_the_pages[10]
+tests/test_category_business_entries.py::test_the_short_forms_leave_out_the_parts_their_pages_cannot_hold
+tests/test_category_business_entries.py::test_every_written_part_of_a_business_paper_is_grounded
+tests/test_category_business_entries.py::test_computed_cells_and_totals_name_columns_of_their_own_table
+tests/test_category_business_entries.py::test_a_line_amount_the_customer_typed_survives_the_finish_while_a_product_is_left_to_code
+tests/test_category_business_entries.py::test_the_minutes_repeat_report_discussion_decisions_and_vote_once_per_agenda_item
+tests/test_category_business_entries.py::test_no_research_note_or_law_to_cite_reaches_the_model
+tests/test_category_business_entries.py::test_each_example_makes_a_draft_of_its_skeleton_held_to_its_pages_and_quoted[pdf.biz.tijorat_taklifi]
+tests/test_category_business_entries.py::test_each_example_makes_a_draft_of_its_skeleton_held_to_its_pages_and_quoted[pdf.biz.bayonnoma]
+
+# Categories, the letters and official papers (C2c): each is a draft on its own template within the block budget;
+# its written parts are grounded and its length a ceiling; a letter is dated by the clock and an official paper
+# never; the recommendation is the official form, the personal letter in English; a blank form only on the model's ask;
+# a flag holds only when true, and the statement head is its own template without salutation, close or signature
+tests/test_category_letters.py::test_each_letter_is_a_draft_on_its_own_template_within_its_budget[pdf.xat.tavsiya]
+tests/test_category_letters.py::test_the_recommendation_is_the_official_form_and_the_personal_letter_in_english
+tests/test_category_letters.py::test_every_written_part_is_grounded_and_the_length_is_a_ceiling[pdf.xat.tushuntirish]
+tests/test_category_letters.py::test_a_letter_is_dated_by_the_clock_and_an_official_paper_never[pdf.xat.ishga_kirish]
+tests/test_category_letters.py::test_a_letter_is_dated_by_the_clock_and_an_official_paper_never[pdf.xat.tavsifnoma]
+tests/test_category_letters.py::test_a_blank_form_is_drawn_only_when_the_model_asks_for_it
+tests/test_category_letters.py::test_a_flag_holds_only_when_it_is_true
+tests/test_category_letters.py::test_the_statement_head_is_its_own_template_without_the_letters_apparatus
+tests/test_category_letters.py::test_a_label_drawn_in_a_language_has_words_in_it
+tests/test_category_letters.py::test_the_explanatory_notes_head_has_a_label_in_english_only
+tests/test_category_letters.py::test_a_line_drawn_from_labels_alone_prints_no_inherited_fields
+
+# Categories, the academic and study papers as drafts (C2a): each stays inside its block budget and the paper bounds
+# at every length and cue subset; chapters are a group the model sizes to the plan; a title-page year is the clock's;
+# references only from what was supplied; a handout is its own template picked by its cue; the test keeps its locked
+# shape with its rules reworded
+tests/test_category_study_entries.py::test_each_entry_is_a_draft_paper_within_its_budgets[pdf.mustaqil_ish]
+tests/test_category_study_entries.py::test_each_entry_is_a_draft_paper_within_its_budgets[pdf.test]
+tests/test_category_study_entries.py::test_every_length_and_cue_subset_seeds_within_the_paper_bounds[pdf.dars_ishlanmasi]
+tests/test_category_study_entries.py::test_chapters_are_a_group_the_model_sizes_to_the_plan[pdf.kurs_ishi]
+tests/test_category_study_entries.py::test_a_title_page_year_is_the_clocks_and_no_other_fact_is
+tests/test_category_study_entries.py::test_references_are_a_sources_part_and_notes_list_them_only_when_supplied
+tests/test_category_study_entries.py::test_a_handout_is_its_own_template_picked_by_its_cue
+tests/test_category_study_entries.py::test_the_test_keeps_its_locked_shape_with_its_rules_reworded
+
+# Categories, the academic and study papers' sizes (C2a review): a reference list is never asked for words it has no
+# source for; only prose grows and shrinks in a count paper; each entry's shortest length holds the pages its template
+# forces; a handout key only in a handout
+tests/test_category_study_entries.py::test_a_reference_list_is_never_asked_for_words_it_has_no_source_for
+tests/test_category_study_entries.py::test_only_prose_grows_and_shrinks_in_a_count_paper
+tests/test_category_study_entries.py::test_the_shortest_length_holds_the_pages_its_template_forces[pdf.mustaqil_ish]
+tests/test_category_study_entries.py::test_the_shortest_length_holds_the_pages_its_template_forces[pdf.dars_ishlanmasi]
+tests/test_category_study_entries.py::test_a_handout_key_is_written_only_in_a_handout_and_only_when_asked
+
+# Categories, the academic and study papers' pages (C2a second review): a third chapter only where three can fill
+# their pages; a group the model sizes counts at its max among the page starts; a named lesson plan is the plan
+# whatever its methods and materials, a handout only when asked for with no plan; a handout holds its two pages with
+# its key; the shortest and the default length end on their page with no heavy cut (drawn with stand-in blocks)
+tests/test_category_study_entries.py::test_a_third_chapter_comes_only_where_three_can_fill_their_pages
+tests/test_category_study_entries.py::test_the_shortest_length_holds_the_pages_its_template_forces[pdf.kurs_ishi]
+tests/test_category_study_entries.py::test_a_named_lesson_plan_is_the_plan_whatever_its_methods_and_materials[uz-cards]
+tests/test_category_study_entries.py::test_a_named_lesson_plan_is_the_plan_whatever_its_methods_and_materials[ru-cards]
+tests/test_category_study_entries.py::test_a_handout_asked_for_without_a_plan_is_the_handout[uz]
+tests/test_category_study_entries.py::test_a_handout_holds_its_two_pages_with_its_key
+tests/test_category_study_entries.py::test_the_shortest_and_the_default_length_end_on_their_page_without_heavy_cuts[pdf.mustaqil_ish-8-plain-2]
+tests/test_category_study_entries.py::test_the_shortest_and_the_default_length_end_on_their_page_without_heavy_cuts[pdf.kurs_ishi-12-plain-3]
+
+# Execution for papers (X2): a PDF without a category never reaches the paper engine and is drawn as today; a paper
+# category is drawn in its template, or by the emergency fallback without its blocks, never printing citation lines;
+# a short count paper tops up only its ungrounded elastic prose under the category's rules and finishes it again; an
+# Uzbek paper with Cyrillic sources and file names is delivered
+tests/test_category_generation_pdf.py::test_a_pdf_without_a_category_never_reaches_the_paper_engine_and_is_drawn_as_today
+tests/test_category_generation_pdf.py::test_render_pdf_without_pages_holds_a_document_to_its_sections_as_before
+tests/test_category_generation_pdf.py::test_a_paper_category_is_made_in_its_template_and_never_topped_up_as_a_ceiling
+tests/test_category_generation_pdf.py::test_without_its_blocks_a_paper_is_the_emergency_fallback_on_todays_renderer
+tests/test_category_generation_pdf.py::test_draw_paper_never_prints_the_citation_lines
+tests/test_category_generation_pdf.py::test_a_short_count_paper_tops_up_only_its_ungrounded_prose_and_finishes_it_again
+tests/test_category_generation_pdf.py::test_an_uzbek_paper_with_cyrillic_sources_and_file_names_is_delivered
+
+# The core paper blocks (R1): an ariza is drawn by them alone, one page with every fact, its word and its captions,
+# blank rows with captions when facts are missing, a page more with its enclosures and signatures whole when long;
+# every block draws its samples in three languages without a fallback, table headers come from the catalogue,
+# signatures are typed on their rules, customer text is never markup and a gap never starts a page
+tests/test_paper_blocks_core.py::test_the_core_blocks_are_registered_and_an_ariza_is_drawn_by_them_alone
+tests/test_paper_blocks_core.py::test_a_full_ariza_is_one_page_with_every_fact_its_word_and_its_captions
+tests/test_paper_blocks_core.py::test_a_blank_ariza_draws_ruled_rows_with_captions_and_the_reason_lines
+tests/test_paper_blocks_core.py::test_a_long_ariza_takes_a_page_with_its_enclosures_and_signatures_whole
+tests/test_paper_blocks_core.py::test_the_sample_paper_draws_every_block_with_its_glyphs[uz]
+tests/test_paper_blocks_core.py::test_the_sample_paper_draws_every_block_with_its_glyphs[ru]
+tests/test_paper_blocks_core.py::test_the_sample_paper_draws_every_block_with_its_glyphs[en]
+tests/test_paper_blocks_core.py::test_table_headers_come_from_the_catalogue_and_rows_are_padded_or_merged
+tests/test_paper_blocks_core.py::test_signature_row_types_the_date_and_the_name_on_their_rules
+tests/test_paper_blocks_core.py::test_a_block_that_raises_is_drawn_by_its_fallback
+tests/test_paper_blocks_core.py::test_customer_text_is_text_never_markup
+tests/test_paper_blocks_core.py::test_a_gap_never_starts_a_page
+
+# Paper checker and sample tool (R2): a drawn paper is read back for text outside the page or frame, overlapping
+# characters, fonts that are not Noto, missing facts and labels, a page count its rule does not allow, Cyrillic in
+# an Uzbek or English paper, a stub last page and the engine's fallback codes; the family helper draws every case
+# and language of a template's samples and fails on any of these
+tests/test_paper_check.py::test_text_outside_the_page_or_frame_is_found
+tests/test_paper_check.py::test_overlapping_words_and_foreign_fonts_are_found
+tests/test_paper_check.py::test_a_missing_fact_or_label_is_found_whatever_the_case_and_apostrophes
+tests/test_paper_check.py::test_cyrillic_is_found_in_uzbek_and_english_papers_only
+tests/test_paper_check.py::test_the_engines_codes_for_a_paper_not_drawn_as_its_template_are_problems
+tests/test_paper_check.py::test_expect_holds_the_printed_facts_of_placements_that_hold_and_their_labels
+tests/test_paper_check.py::test_the_family_helper_fails_a_paper_that_loses_a_fact
+tests/test_paper_check.py::test_a_template_without_its_blocks_fails_as_the_emergency_fallback
+# Paper checker after review (R2): a list of several items is held to its plural label, a label's underscore runs
+# are read as rules, a gutter list may hang left of the frame, the running header asks only for what it has room
+# for, the derived long case is sized to the page rule's overflow, and a block module's sample_paper draws its own
+tests/test_paper_check.py::test_expect_asks_for_the_plural_label_of_a_list_of_several_items[en-one]
+tests/test_paper_check.py::test_expect_asks_for_the_plural_label_of_a_list_of_several_items[en-two]
+tests/test_paper_check.py::test_a_label_with_underscore_rules_is_read_as_the_words_between_them
+tests/test_paper_check.py::test_a_gutter_list_may_hang_its_markers_left_of_the_frame
+tests/test_paper_check.py::test_the_long_case_is_sized_to_the_page_rule_and_shared_among_the_prose_parts
+tests/test_paper_check.py::test_the_long_case_of_a_fixed_paper_with_several_prose_parts_takes_one_page_more
+tests/test_paper_check.py::test_a_module_that_makes_its_own_sample_paper_draws_each_sample_on_it
+# Official and letter templates (R4): every template drawn from its samples reads back clean in Uzbek, split_row
+# sets two blocks on one row, the English head names the person first, Uzbek blanks keep their case ending, signers
+# given as "post | name" sign on their own rows, the verdict says its target or its own words without it, a letter's
+# close never parts from its signer across a page
+tests/test_paper_official.py::test_every_template_reads_well[official_ariza-uz-full]
+tests/test_paper_official.py::test_every_template_reads_well[tavsiya_rasmiy-ru-blank]
+tests/test_paper_official.py::test_every_template_reads_well[letter_tavsiya-en-long]
+tests/test_paper_official.py::test_every_template_has_its_samples
+tests/test_paper_official.py::test_every_template_is_drawn_by_the_engine_and_every_letter_entry_finds_one
+tests/test_paper_official.py::test_split_row_puts_the_addressee_left_and_the_date_flush_right
+tests/test_paper_official.py::test_split_row_stacks_the_outgoing_number_under_the_date_only_when_there_is_one
+tests/test_paper_official.py::test_a_per_language_map_resolves_to_the_papers_language_and_is_absent_elsewhere
+tests/test_paper_official.py::test_the_english_note_names_the_person_first_after_to_and_from
+tests/test_paper_official.py::test_an_uzbek_blank_head_carries_its_case_ending_and_a_russian_one_none
+tests/test_paper_official.py::test_signers_given_as_post_and_name_sign_on_their_own_rows
+tests/test_paper_official.py::test_the_verdict_says_its_target_when_given_and_its_own_words_without[tavsiya_rasmiy]
+tests/test_paper_official.py::test_a_letters_close_and_its_signer_never_part_across_a_page[letter_cover]
+
+# Academic templates (R3a): the mustaqil ish and kurs ishi are drawn by their own templates; the title page is one
+# sheet with every fact by its role or a captioned blank and the clock's year; the contents prints the page each
+# heading lands on; the reference list holds only verified sources, grouped from six, else a numbered ruled form
+tests/test_paper_academic.py::test_the_academic_papers_are_drawn_by_their_own_templates[pdf.mustaqil_ish]
+tests/test_paper_academic.py::test_the_academic_papers_are_drawn_by_their_own_templates[pdf.kurs_ishi]
+tests/test_paper_academic.py::test_every_template_reads_well[academic_mustaqil_ish-uz-full]
+tests/test_paper_academic.py::test_every_template_reads_well[academic_kurs_ishi-uz-full]
+tests/test_paper_academic.py::test_a_title_page_is_one_whole_page_with_every_fact_by_its_role
+tests/test_paper_academic.py::test_a_blank_title_page_draws_rules_with_captions_and_the_clock_year
+tests/test_paper_academic.py::test_the_contents_lists_each_heading_with_the_page_it_lands_on
+tests/test_paper_academic.py::test_sources_are_numbered_in_groups_laws_first_with_a_long_url_inside_the_frame
+tests/test_paper_academic.py::test_no_source_draws_the_numbered_form_with_its_caption
+
+# Academic templates (R3a review): a label that only numbers a source never prints beside the list's own number;
+# a book by an author is never filed under laws; a sub row goes with a credit that prints nothing
+tests/test_paper_academic.py::test_a_label_that_only_numbers_a_source_is_dropped_and_an_author_label_runs_into_its_title
+tests/test_paper_academic.py::test_a_sub_row_under_a_credit_that_prints_nothing_goes_with_it
+tests/test_paper_academic.py::test_a_long_web_address_breaks_after_a_slash_and_stays_inside_the_frame
+
+# Regulations and minutes (R5b): numbered clauses with their chapter numbers, actions and caution boxes draw a staff
+# instruction, a job description and meeting minutes; every template reads well in its full case, an empty chapter
+# leaves no heading, a safety instruction takes the safety headings, signers split into post and name, and each
+# agenda item draws its heading, report, decisions and vote in order
+tests/test_paper_regulations.py::test_clauses_is_registered_here_and_the_three_papers_are_drawn_by_the_engine
+tests/test_paper_regulations.py::test_every_template_reads_well[business_yoriqnoma-uz-full]
+tests/test_paper_regulations.py::test_every_template_reads_well[official_lavozim_yoriqnomasi-ru-full]
+tests/test_paper_regulations.py::test_every_template_reads_well[official_bayonnoma-en-full]
+tests/test_paper_regulations.py::test_clauses_are_read_from_lead_ins_actions_single_clauses_and_body_lines
+tests/test_paper_regulations.py::test_chapters_are_numbered_as_drawn_and_an_empty_one_leaves_no_heading
+tests/test_paper_regulations.py::test_a_safety_instruction_titles_its_chapters_by_the_safety_rules
+tests/test_paper_regulations.py::test_agreeing_posts_are_one_row_each_split_into_post_and_name
+tests/test_paper_regulations.py::test_each_item_follows_its_agenda_line_with_its_report_decisions_and_vote
+tests/test_paper_regulations.py::test_a_clauses_block_that_raises_is_drawn_plain
+# Regulations and minutes (R5b review): a chair or secretary signs by name and never by post, Uzbek digraph initials
+# stay whole, semicolon-joined signers are rows of their own, the customer's title word is drawn, and a caution clause
+# taller than a page keeps its numbers
+tests/test_paper_regulations.py::test_the_chair_signs_by_name_and_never_by_post[uz-digraph-initials]
+tests/test_paper_regulations.py::test_the_chair_signs_by_name_and_never_by_post[ru-full-name]
+tests/test_paper_regulations.py::test_agreeing_signers_joined_by_semicolons_are_one_row_each
+tests/test_paper_regulations.py::test_the_minutes_title_takes_the_customers_word_and_only_one_title_is_drawn[bayoni-BAYONI]
+tests/test_paper_regulations.py::test_a_caution_clause_taller_than_a_page_is_drawn_unboxed_and_keeps_its_numbers
+# Regulations and minutes (R5b second review): an o‘ or g‘ initial typed with an ASCII apostrophe or ʻ keeps the
+# signer's surname, the comma form signs by the name, and a one-word surname beside an English post is kept whole
+tests/test_paper_regulations.py::test_the_chair_signs_by_name_and_never_by_post[uz-ascii-initial]
+tests/test_paper_regulations.py::test_the_chair_signs_by_name_and_never_by_post[ru-comma-form]
+tests/test_paper_regulations.py::test_the_chair_signs_by_name_and_never_by_post[en-one-word-surname]
+tests/test_paper_regulations.py::test_the_instructions_author_with_ascii_initials_is_split_whole
+tests/test_paper_regulations.py::test_agreeing_signers_typed_with_ascii_apostrophes_a_comma_or_a_bare_name
+tests/test_paper_regulations.py::test_an_o_or_g_initial_typed_with_any_apostrophe_is_drawn_with_the_house_mark
+
+# The study papers (R3b): the test sheet is drawn by its template with its head, pupil strip, lettered options in
+# measured columns, passage, written answer boxes and the key on its own page; self-study has no strip and an
+# explained key; the key letter is a matching option, never a guess; formulas carry their section's numbers; the
+# test and the handout read well in every language; customer text is never markup
+tests/test_paper_study.py::test_the_study_blocks_are_registered_and_the_test_is_ready
+tests/test_paper_study.py::test_every_study_template_has_its_samples
+tests/test_paper_study.py::test_the_test_and_the_handout_read_well[study_test-uz-full]
+tests/test_paper_study.py::test_the_test_and_the_handout_read_well[study_tarqatma-uz-full]
+tests/test_paper_study.py::test_a_full_test_has_its_head_strip_parts_passage_written_answers_and_key_on_its_own_page
+tests/test_paper_study.py::test_self_study_has_no_strip_no_score_tab_and_an_explained_key
+tests/test_paper_study.py::test_two_options_equally_alike_give_no_letter
+tests/test_paper_study.py::test_an_answer_no_option_matches_is_printed_in_its_cell
+tests/test_paper_study.py::test_formulas_are_numbered_by_their_section_with_scripts_and_their_legend
+tests/test_paper_study.py::test_customer_text_is_text_never_markup
+# The study papers' review fixes (R3b): the key letter keeps signs and initials apart, a written-only test's model
+# answers and the handout's answers start their own page, the key ends with the paper's maximum.
+tests/test_paper_study.py::test_signs_and_numbers_keep_the_key_letter_apart[options0-5-D]
+tests/test_paper_study.py::test_signs_and_numbers_keep_the_key_letter_apart[options6-x<2-B]
+tests/test_paper_study.py::test_signs_and_numbers_keep_the_key_letter_apart[options10-a-b-B]
+tests/test_paper_study.py::test_signs_and_numbers_keep_the_key_letter_apart[options18-4-None]
+tests/test_paper_study.py::test_initials_and_letters_out_of_order_are_kept_as_written[options0]
+tests/test_paper_study.py::test_initials_and_letters_out_of_order_are_kept_as_written[options1]
+tests/test_paper_study.py::test_letters_every_option_carries_in_order_are_taken_off[options0-printed0]
+tests/test_paper_study.py::test_a_name_with_initials_is_printed_whole_in_the_test_and_its_key
+tests/test_paper_study.py::test_written_only_model_answers_start_a_page_after_the_last_question[None-KALITLAR]
+tests/test_paper_study.py::test_written_only_model_answers_start_a_page_after_the_last_question[self_study-JAVOBLAR]
+tests/test_paper_study.py::test_the_handouts_answers_are_on_a_sheet_of_their_own[uz-JAVOBLAR-tarqatilmaydi]
+tests/test_paper_study.py::test_the_key_ends_with_the_papers_overall_maximum
+tests/test_paper_study.py::test_passage_and_written_questions_get_the_closed_instruction_and_both_part_headings
+tests/test_paper_study.py::test_passage_questions_without_a_passage_get_no_reference_line
+# The study papers' second review fixes (R3b): a part heading and the answer sheet's head go over a page's foot with
+# what they head, and a passage too tall for the page left starts where it stands.
+tests/test_paper_study.py::test_a_part_heading_near_a_page_foot_goes_over_with_its_first_question[answer_sheet]
+tests/test_paper_study.py::test_the_answer_sheets_head_near_a_page_foot_goes_over_with_its_grid
+tests/test_paper_study.py::test_a_passage_with_its_question_too_tall_for_the_page_left_starts_where_it_stands
+tests/test_paper_study.py::test_a_passage_longer_than_a_page_flows_with_its_rule_and_its_title_stays_with_it
+
+# Letter readiness (N2c): the six official papers and letters are ready and meet every readiness check as an error,
+# the switch page names the native Uzbek and Russian read and the real-provider run left before a tick, every
+# length and cue set is seeded and drawn by its own template with the checker finding nothing, the ariza's blank
+# head ends in ga and dan as its mock does, and the smoke makes a paper in its template
+tests/test_category_letter_readiness.py::test_every_letter_is_ready_and_meets_its_gates_as_errors
+tests/test_category_letter_readiness.py::test_the_switch_page_says_what_a_person_still_checks_before_the_tick[pdf.xat.ariza]
+tests/test_category_letter_readiness.py::test_every_length_and_cue_subset_is_seeded_and_drawn_in_its_template[pdf.xat.motivatsion]
+tests/test_category_letter_readiness.py::test_an_uzbek_ariza_blank_head_ends_in_ga_and_dan_as_the_mock_draws_it
+tests/test_category_letter_readiness.py::test_the_smoke_makes_every_letter_in_its_own_template
+
+# Business templates and computed columns (R5a): the offer, report, business plan and marketing plan are drawn by
+# their own templates; code multiplies, subtracts, takes per cents and shares and adds totals from verified numbers,
+# a partial total says so or is left out, a total the model wrote never prints; a heading never ends a page alone
+tests/test_category_derive.py::test_an_offer_multiplies_quantity_by_price_and_adds_the_total_last
+tests/test_category_derive.py::test_a_total_the_model_wrote_is_taken_out_and_made_again
+tests/test_category_derive.py::test_an_offer_with_a_line_it_cannot_compute_prints_no_total
+tests/test_category_derive.py::test_a_plan_total_of_only_the_items_with_a_figure_says_so
+tests/test_category_derive.py::test_a_report_computes_difference_and_per_cent_of_plan_with_their_signs
+tests/test_category_derive.py::test_shares_are_whole_per_cents_adding_to_a_hundred_and_the_total_row_says_so
+tests/test_category_derive.py::test_a_cell_computed_from_an_unread_input_stays_blank
+tests/test_category_derive.py::test_an_input_the_customer_never_gave_computes_nothing_while_code_made_cells_add_up
+tests/test_category_derive.py::test_the_finish_fills_computed_cells_from_the_customers_numbers_after_grounding
+tests/test_paper_business.py::test_every_template_reads_well[business_taklif-uz-full]
+tests/test_paper_business.py::test_every_template_reads_well[business_hisobot-uz-full]
+tests/test_paper_business.py::test_every_template_reads_well[business_biznes_reja-uz-full]
+tests/test_paper_business.py::test_every_template_reads_well[business_marketing_reja-uz-full]
+tests/test_paper_business.py::test_the_offer_ends_its_price_table_on_codes_total_in_bold
+tests/test_paper_business.py::test_a_heading_never_stands_alone_at_the_foot_of_a_page
+
+# Business templates (R5a review): a scaled price is rounded as a full amount, an amount drops the price's per-unit
+# tail, a total the customer typed is kept when code makes none, staff stands under the operations chapter, and no
+# table header word is broken
+tests/test_category_derive.py::test_a_scaled_price_is_rounded_as_a_full_amount_never_to_whole_millions[uz]
+tests/test_category_derive.py::test_an_amount_drops_the_prices_per_unit_tail_as_in_the_specs_own_example
+tests/test_category_derive.py::test_a_lone_total_the_customer_typed_is_kept_and_not_split
+tests/test_category_derive.py::test_one_line_against_a_stated_total_has_no_share_of_the_line_alone
+tests/test_category_derive.py::test_amounts_in_different_currencies_are_never_added
+tests/test_paper_business.py::test_staff_without_operations_prose_is_filed_under_the_operations_chapter
+tests/test_paper_business.py::test_no_table_header_word_is_broken_inside_nor_its_per_cent_sign_left_alone[business_hisobot]
+# R5a, second review round: shares and totals never mix currencies (an amount with no currency is the paper's), a
+# line named after the total word is an item, a stated budget the lines miss names code's total as the items listed.
+tests/test_category_derive.py::test_so_m_and_dollars_in_one_column_get_no_shares_and_no_total
+tests/test_category_derive.py::test_an_amount_with_no_currency_is_in_the_papers_and_never_added_to_dollars
+tests/test_category_derive.py::test_a_line_named_after_the_total_word_is_an_item_and_is_added_up
+tests/test_category_derive.py::test_a_marketing_total_that_differs_from_the_stated_budget_is_of_the_activities_listed
+
+# Study paper readiness (N2a): the five academic and study papers are ready and meet every readiness check as an
+# error, the switch page names the native read and the real-provider run (which the smoke now makes for a paper),
+# their shortest lengths and covered or keyed forms end within the quote barely cut, a lesson's cover and a
+# handout's key are sheets the quote does not count, and a boxed heading never stands alone at a page's foot
+tests/test_category_study_readiness.py::test_every_study_paper_is_ready_and_meets_its_gates_as_errors
+tests/test_category_study_readiness.py::test_the_switch_page_says_what_a_person_still_checks_before_the_tick[pdf.mustaqil_ish]
+tests/test_category_study_readiness.py::test_every_length_and_cue_subset_ends_within_its_quote_barely_cut[pdf.mustaqil_ish-plain-8]
+tests/test_category_study_readiness.py::test_every_length_and_cue_subset_ends_within_its_quote_barely_cut[pdf.dars_ishlanmasi-cover-2]
+tests/test_category_study_readiness.py::test_every_length_and_cue_subset_ends_within_its_quote_barely_cut[pdf.dars_ishlanmasi-handout-2]
+tests/test_category_study_readiness.py::test_a_lessons_cover_and_a_handouts_key_are_sheets_the_quote_does_not_count
+tests/test_category_study_readiness.py::test_a_boxed_heading_goes_over_a_page_foot_with_its_first_line
+tests/test_category_study_readiness.py::test_the_smoke_makes_a_study_paper_through_the_real_pipeline[pdf.kurs_ishi]
+
+# Business readiness (N2b): the seven business papers are ready and meet every readiness check as errors, the
+# switch page names the native Uzbek and Russian read and the real-provider run left before a tick, every length
+# and cue set is seeded and drawn by its own template with the checker finding nothing, a blank row's two-line
+# label stays below the row above it, the drawn offer's amounts are quantity times price, and the smoke makes
+# every business paper in its template
+tests/test_category_business_readiness.py::test_every_business_paper_is_ready_and_meets_its_gates_as_errors
+tests/test_category_business_readiness.py::test_the_switch_page_says_what_a_person_still_checks_before_the_tick[pdf.biz.tijorat_taklifi]
+tests/test_category_business_readiness.py::test_every_length_and_cue_subset_is_seeded_and_drawn_in_its_template[pdf.biz.tijorat_taklifi]
+tests/test_category_business_readiness.py::test_a_blank_row_whose_label_takes_two_lines_is_drawn_below_the_row_above_it
+tests/test_category_business_readiness.py::test_every_amount_and_total_of_the_drawn_offer_is_its_quantity_times_its_price[uz]
+tests/test_category_business_readiness.py::test_the_smoke_makes_every_business_paper_in_its_own_template[uz]
+
+# Business key figures (N2b review 3): a row figure whose unit the customer wrote is left out when it does not fit
+# with that unit, never drawn bare; only the currency code put on a computed total is dropped in a narrow box; and
+# that currency is the one derive added the total in, without a rate's per-unit tail
+tests/test_paper_business.py::test_a_row_figure_too_wide_with_its_unit_is_left_out_never_drawn_without_it[mln-uz]
+tests/test_paper_business.py::test_a_narrow_computed_total_loses_only_the_currency_it_was_given
+tests/test_paper_business.py::test_a_computed_total_is_labelled_as_derive_added_it[tenge]
+
+# Paper facts (stage-2 verification): a paper in another language than the message still holds the names in its
+# org, line and list facts, so an invented chair, secretary, participant or employer is never kept; and a figure the
+# model writes in words ("five years", "besh yuz million so‘m", "более пяти лет") is held to the customer's values
+tests/test_category_finish_pdf.py::test_a_translated_minutes_never_keeps_an_invented_chair_secretary_or_participant
+tests/test_category_finish_pdf.py::test_a_translated_cover_letter_never_keeps_an_invented_employer_or_recipient
+tests/test_category_finish_pdf.py::test_a_number_written_in_words_the_customer_never_gave_is_blanked[five-years]
+tests/test_category_finish_pdf.py::test_a_number_written_in_words_the_customer_never_gave_is_blanked[project-cost]
+tests/test_category_finish_pdf.py::test_a_number_in_words_the_customer_gave_is_kept_and_a_led_fact_in_words_is_held
+
+# Stage-2 re-audit, dates: a numeric date's year is tied to its day and month, so the customer's 15.01.2025 never
+# makes the model's 15.01.2024 although 2024 is a year they wrote elsewhere; a day and month written with no year
+# tied to it may take any of their years
+tests/test_category_facts.py::test_a_numeric_dates_year_is_tied_to_its_day_and_month[other-year]
+tests/test_category_facts.py::test_a_numeric_dates_year_is_tied_to_its_day_and_month[written-apart]
+tests/test_category_finish_pdf.py::test_a_reports_date_moved_to_another_year_the_brief_names_is_not_kept
+
+# Stage-2 re-audit, scales: "bn", "mn", and M, B or m glued to an amount beside a currency are its scale, so an
+# invented "$1.2bn" or "$3M" never passes on a bare number the customer gave; a thin or narrow space before a scale
+# word is a space; "100 m" and "9B sinf" keep their reading
+tests/test_category_facts.py::test_a_scale_written_short_or_glued_to_a_currency_is_read[bn]
+tests/test_category_facts.py::test_a_scale_written_short_or_glued_to_a_currency_is_read[M]
+tests/test_category_facts.py::test_a_scale_written_short_or_glued_to_a_currency_is_read[narrow-space]
+tests/test_category_facts.py::test_a_scale_written_short_or_glued_to_a_currency_is_read[metres-and-class]
+
+# Stage-2 re-audit, figures in words: the common spoken forms are read on both sides (an Uzbek count's case endings,
+# a bare "ming" or "yuz" heading a count, a Russian count fused to what it counts, half a scale, how many times over),
+# a compound is read whole and never split into figures the customer gave, the tens of an ordinal are no count, a
+# paper's own Cyrillic is Russian, and a run of multipliers never makes a number too long to write
+tests/test_category_facts.py::test_the_common_ways_a_figure_is_spoken_are_read[ru-fused]
+tests/test_category_facts.py::test_the_common_ways_a_figure_is_spoken_are_read[uz-cases]
+tests/test_category_facts.py::test_vague_and_ordinary_words_are_still_not_read_as_figures[ming yillik tarix]
+tests/test_category_facts.py::test_a_compound_is_read_whole_never_split_into_numbers_the_customer_gave[uz-million]
+tests/test_category_facts.py::test_a_compound_another_way_round_never_passes_on_the_parts_the_customer_gave
+tests/test_category_facts.py::test_every_number_written_in_words_reads_as_itself
+tests/test_category_facts.py::test_the_tens_of_an_ordinal_are_never_read_as_a_count[the twenty-first century]
+tests/test_category_facts.py::test_a_paper_reads_its_own_cyrillic_as_russian_never_as_uzbek_in_latin
+tests/test_category_facts.py::test_a_run_of_multipliers_never_makes_a_number_too_long_to_write
+tests/test_category_facts.py::test_a_source_of_repeated_multipliers_never_fails_a_paper_or_unchecks_a_deck
+tests/test_category_finish_pdf.py::test_a_figure_in_the_common_spoken_forms_the_customer_never_gave_is_blanked[ru-fused]
+tests/test_category_finish_pdf.py::test_a_figure_in_the_common_spoken_forms_the_customer_never_gave_is_blanked[uz-dan]
+tests/test_category_finish_pdf.py::test_a_led_fact_with_a_fused_russian_count_the_customer_never_gave_is_not_kept[five-years]
+tests/test_category_finish_pdf.py::test_a_compound_split_on_figures_the_customer_gave_is_still_blanked
+
+# Stage-2 re-audit, laws: a ministry's or the government's act ("187-sonli buyrug‘i", "625-I-sonli qonun", a Nizom, a
+# convention, an English order or Regulation, «Положение») the customer never named is a legal sentence and goes
+# whole, never a skeleton with its figures blanked; "1-sonli jadval", "45-sonli maktab" and "in order to" are none
+tests/test_category_facts.py::test_a_ministry_or_government_act_the_customer_never_named_is_a_legal_sentence[ministry-sonli]
+tests/test_category_facts.py::test_a_ministry_or_government_act_the_customer_never_named_is_a_legal_sentence[en-order]
+tests/test_category_facts.py::test_a_numbered_table_school_or_annex_and_order_in_other_senses_are_no_legal_sentence[In order to finish, we work.]
+tests/test_category_facts.py::test_an_order_the_customer_named_stays
+tests/test_category_finish_pdf.py::test_a_lessons_invented_ministry_order_goes_whole
+
+# Stage-2 re-audit, codes by name: the words naming a code are held wherever they stand, a sentence's or list item's
+# first word included, so "Jinoyat kodeksiga muvofiq ..." never passes once the customer named any code; in a
+# translated paper the code is held by what it is (Трудовой кодекс is Mehnat kodeksi), never by the word alone
+tests/test_category_facts.py::test_a_code_the_customer_never_named_goes_when_its_name_opens_the_sentence[criminal]
+tests/test_category_facts.py::test_the_code_the_customer_named_stays_in_any_language[translated-uz]
+tests/test_category_finish_pdf.py::test_a_job_descriptions_list_items_never_cite_a_code_the_customer_did_not_name
+
+# Stage-2 re-audit, quotation marks: a quotation in ‘…’, '…', ‹…› or ‚…‘ is checked as one in «…» or “…” is, while
+# Uzbek o‘, g‘, the tutuq and English apostrophes never open or close one
+tests/test_category_facts.py::test_a_quotation_in_single_marks_is_checked_as_any_other[straight-single]
+tests/test_category_facts.py::test_a_quotation_in_single_marks_is_checked_as_any_other[uz-single]
+tests/test_category_facts.py::test_uzbek_letters_and_english_apostrophes_are_never_quotation_marks[uz-marks]
+tests/test_category_facts.py::test_uzbek_letters_and_english_apostrophes_are_never_quotation_marks[en-apostrophes]
+
+# Stage-2 re-audit, contacts: a Telegram or Instagram handle and a site on the region's or the shops' endings (.kz,
+# .shop, .online ...) are found whole as e-mails are, so an invented one never reaches a cover letter's sender block,
+# an offer's letterhead or its call to action; the customer's own, given as "@name" or a t.me/ link, stays
+tests/test_category_facts.py::test_a_handle_or_a_site_the_customer_never_gave_is_not_kept[@aziz_karimov]
+tests/test_category_facts.py::test_a_handle_or_a_site_the_customer_never_gave_is_not_kept[aziz-karimov.kz]
+tests/test_category_facts.py::test_the_customers_own_handle_is_kept_however_they_gave_it
+tests/test_category_finish_pdf.py::test_a_cover_letters_invented_handle_and_site_are_not_kept_or_written
+tests/test_category_finish_pdf.py::test_an_offers_invented_website_is_not_kept_and_the_customers_is
+
+# Stage-2 re-audit, class letters: a class letter the customer never wrote after the same number ("7-«B» sinf" for
+# their "7-sinf") goes from a fact and the rest stays; their own letter stays in either alphabet
+tests/test_category_facts.py::test_a_class_letter_the_customer_never_wrote_is_not_theirs[uz-quoted]
+tests/test_category_facts.py::test_an_initial_after_a_number_is_no_class_letter
+tests/test_category_finish_pdf.py::test_a_lessons_invented_class_letter_goes_and_the_customers_class_stays
+
+# Stage-2 re-audit, translated references: an item's head and its editors are held as people in a translation's
+# spellings, so an author written in full ("Karimov Abdulla.", "Kotler, Philip.") or an editor ("Edited by D.
+# Chaffey") the customer never named is dropped, never only one written "Karimov A."
+tests/test_category_facts.py::test_a_translated_source_whose_author_or_editor_is_written_in_full_is_still_held[surname-name]
+tests/test_category_facts.py::test_a_translated_source_whose_author_or_editor_is_written_in_full_is_still_held[editor-en]
+tests/test_category_facts.py::test_a_translated_source_by_the_customers_author_in_full_stays
+
+# Stage-2 re-audit, a guarded title's author: a model-written author under any title-page label (Выполнила, Talaba,
+# Ilmiy rahbar, Ma’ruzachi, Student, Supervised by ...) goes from a guarded paper's title; a topic that only starts
+# with such a word stays
+tests/test_category_finish_pdf.py::test_a_guarded_titles_author_under_any_title_page_label_goes[ru-vypolnila]
+tests/test_category_finish_pdf.py::test_a_guarded_titles_author_under_any_title_page_label_goes[uz-ilmiy-rahbar]
+tests/test_category_finish_pdf.py::test_a_topic_that_only_starts_with_a_label_word_stays[ru-topic]
+
+# Stage-2 re-audit, names beside figures: a paper's sum, reference, phone or date has the names beside its figures
+# read, so an invented bank in the seller's requisites, a lender beside the funding or a person beside the phone is
+# never kept; the value's own label word and the customer's bank stay, translated or not
+tests/test_category_facts.py::test_a_paper_facts_figure_never_carries_a_name_the_customer_did_not_give[bank-in-requisites]
+tests/test_category_facts.py::test_a_figures_own_label_and_the_customers_bank_stay_in_a_translated_paper[requisites]
+tests/test_category_facts.py::test_a_figures_own_label_and_the_customers_bank_stay_in_a_translated_paper[label-phone]
+tests/test_category_finish_pdf.py::test_an_offers_requisites_and_phone_never_carry_an_invented_bank_or_person
+tests/test_category_finish_pdf.py::test_a_plans_external_funding_never_names_an_invented_lender
+
+# Stage-2 re-audit, names opening a sentence: a paper's grounded part holds a first word that opens an organisation's
+# name by its shape ("Hamkorbank ...", "Acme LLC ...", "«Baraka» MChJ ...") or that the same finish took out as a
+# fact or a blanked run ("Artel kompaniyasidagi ..."), its title, cells and list items included; its guarded parts
+# and title never name a rejected person or organisation; the customer's own stay, and every example message passes
+tests/test_category_finish_pdf.py::test_a_plans_rejected_bank_and_project_never_open_its_title_cells_or_sentences
+tests/test_category_finish_pdf.py::test_a_plans_bank_the_customer_named_opens_a_sentence_and_a_cell
+tests/test_category_finish_pdf.py::test_a_letters_rejected_employer_or_institution_never_opens_its_sentences
+tests/test_category_finish_pdf.py::test_a_reports_rejected_organisation_never_opens_its_summary[en-from-ru]
+tests/test_category_finish_pdf.py::test_a_lessons_rejected_teacher_is_not_named_in_its_guarded_stages_or_title
+
+# Stage-2 re-audit, what a change reads back: an earlier version gives back only what a check read, so a free first
+# word, a guarded topic's names or a translated reference's publisher never becomes the customer's on the next change
+tests/test_category_facts.py::test_a_word_no_names_check_read_is_never_read_back_as_the_customers
+tests/test_category_facts.py::test_a_guarded_papers_topic_and_a_translated_reference_give_back_only_their_figures
+tests/test_category_finish_pdf.py::test_a_translated_course_papers_invented_publisher_never_becomes_its_university_after_a_change
+
+# Stage-2 re-audit, spans: every call of a category paper written in several returns exactly its ids in order, so a
+# reordered span is retried, never filed under another part's id and finished unchecked
+tests/test_category_generation_pdf.py::test_a_paper_written_in_several_calls_never_takes_a_reordered_span_by_position
+
+# Stage-2 re-audit, citations: a category paper's schema has no citations, which its template never prints, so a
+# paper with an attached file is never retried or failed over a quote that was not word for word
+tests/test_category_generation_pdf.py::test_a_paper_with_an_attached_file_is_never_retried_or_failed_over_citations
+
+# Stage-2 re-audit, the test's key: an answer is matched to an option's text before it is read as a letter, so an
+# articles test's "a", a chemistry test's "C" or a note "D" is keyed to its own option, never to A, C or D
+tests/test_paper_study.py::test_an_answer_whose_option_is_one_letter_is_keyed_by_its_text[article]
+tests/test_paper_study.py::test_an_answer_whose_option_is_one_letter_is_keyed_by_its_text[note]
+tests/test_paper_study.py::test_an_articles_test_is_keyed_by_the_options_text_in_the_drawn_key
+
+# Stage-2 re-audit, switch off: the bot reads the switch row before the catalogue, so a fresh bot with the switch off
+# answers every AI PDF and AI Slides tap with today's question and never imports the catalogue
+tests/test_bot_categories.py::test_with_the_switch_off_a_fresh_bot_never_imports_the_catalogue
+
+# Stage-2 re-audit, a fixed paper in the wrong language: its wrong-language parts alone are sent back once, then
+# grounded as any answer; a CV's deterministic finish still sends nothing back
+tests/test_category_generation_pdf.py::test_a_fixed_paper_answered_in_the_wrong_language_is_sent_back_once_for_that
+tests/test_category_generation_pdf.py::test_a_fixed_document_sends_back_nothing_it_was_not_asked_to
+
+# Stage-2 re-audit, what the guard leaves of a test and a lesson plan: a question a quotation blank left
+# unanswerable goes as one a law emptied does; a lesson plan's own phrases in « » stay, and its voice rule asks for
+# the teacher's words reported, never quoted
+tests/test_category_finish_pdf.py::test_a_question_a_quotation_blank_left_unanswerable_goes[quoted-options]
+tests/test_category_finish_pdf.py::test_a_lessons_own_phrases_in_quotation_marks_stay
+
+# Stage-2 re-audit, Russian hundreds: a hundred in any case ("тремястами", "пятистам") and "десятком" are read
+tests/test_category_facts.py::test_russian_hundreds_in_every_case_and_a_ten_as_a_noun_are_read[instrumental]
+
+# Stage-2 re-audit round 2, an organisation's kind: an Uzbek name opening a sentence, a cell or an item before its
+# kind in the possessive ("Asaka banki", "Artel kompaniyasidagi", "Korzinka supermarketlar tarmog‘ida") is held in a
+# paper's grounded part, never a kind of organisation ("Tijorat banki", "Bizning kompaniyamiz"); a legal form with an
+# ending ("MChJning") is no name
+tests/test_category_finish_pdf.py::test_an_uzbek_organisation_opening_a_sentence_before_its_kind_in_lower_case_is_held[company]
+tests/test_category_finish_pdf.py::test_an_uzbek_organisation_opening_a_sentence_before_its_kind_in_lower_case_is_held[chain]
+tests/test_category_finish_pdf.py::test_a_kind_of_organisation_opening_a_sentence_is_no_ones_name[commercial-bank]
+tests/test_category_finish_pdf.py::test_a_reports_legal_form_with_an_ending_is_no_name
+
+# Stage-2 re-audit round 2, what a finish holds again: only words that name someone wherever they stand (a person's
+# beside a surname, an organisation's shaped or quoted, a one-word organisation or place), matched whole or with a
+# case ending, so a blanked "Davlat Soliq Qo‘mitasi", a rejected "Xalq banki" or "Bosh hisobchi Karimova Dilnoza"
+# never blanks "Davlat ro‘yxatidan", "Xalqaro", "Xalq sayllarida", "Bosh ofis" or "Moliyaviy" elsewhere
+tests/test_category_facts.py::test_a_held_name_is_matched_whole_or_with_a_case_ending_never_by_a_prefix
+tests/test_category_facts.py::test_a_rejected_fact_holds_only_the_words_that_name_someone_wherever_they_stand[role-and-person]
+tests/test_category_facts.py::test_a_rejected_fact_holds_only_the_words_that_name_someone_wherever_they_stand[bank-of-a-word]
+tests/test_category_finish_pdf.py::test_a_blanked_run_of_common_words_never_blanks_them_opening_other_sentences_or_cells
+tests/test_category_finish_pdf.py::test_a_rejected_bank_named_by_a_common_word_holds_the_bank_never_the_word
+tests/test_category_finish_pdf.py::test_a_rejected_authors_role_words_stay_and_the_person_is_held_in_any_case
+
+# Stage-2 re-audit round 2, a law's name in full: the words naming a code apart from its stem ("Ma’muriy javobgarlik
+# to‘g‘risidagi kodeks", "Fuqarolik protsessual kodeksi", "Jinoyat-protsessual") or after it ("Кодекс об
+# административных правонарушениях", "Code of Administrative Offences") are the customer's in any language and at a
+# sentence's or an item's start, or the sentence goes; their own code with the country's name stays
+tests/test_category_finish_pdf.py::test_a_code_named_by_words_apart_from_its_stem_or_after_it_is_the_customers_or_goes[uz]
+tests/test_category_finish_pdf.py::test_a_code_named_by_words_apart_from_its_stem_or_after_it_is_the_customers_or_goes[uz-from-ru]
+tests/test_category_finish_pdf.py::test_a_code_named_by_words_apart_from_its_stem_or_after_it_is_the_customers_or_goes[ru]
+tests/test_category_finish_pdf.py::test_a_code_named_by_words_apart_from_its_stem_or_after_it_is_the_customers_or_goes[en]
+
+# Stage-2 re-audit round 2, laws in other senses: a situation ("экономическое положение"), a plural act beside an
+# issuer or a plain mark ("Hukumat qator qarorlar qabul qildi", "the Ministry reports that orders grew", "nizomlar
+# soddalashtirildi") and "the convention centre" are no legal sentence; "Ushbu kodeks", "Настоящий кодекс" after the
+# customer named a code stay; an issuer's act, «Положение о …» and the Geneva Convention still go
+tests/test_category_facts.py::test_a_situation_a_plural_act_or_a_convention_centre_is_no_legal_sentence[ru-situation]
+tests/test_category_facts.py::test_a_situation_a_plural_act_or_a_convention_centre_is_no_legal_sentence[en-ministry-orders]
+tests/test_category_facts.py::test_a_situation_a_plural_act_or_a_convention_centre_is_no_legal_sentence[uz-government-resolutions]
+tests/test_category_facts.py::test_a_code_pointed_at_after_the_customer_named_one_stays[ushbu]
+tests/test_category_facts.py::test_a_code_pointed_at_after_the_customer_named_one_stays[nastoyashchiy]
+tests/test_category_facts.py::test_an_issuers_act_a_regulation_and_a_convention_are_still_legal_sentences[government-resolution]
+
+# Stage-2 re-audit round 2, no class letter: a letter after a number is a class's only quoted, after a hyphen or
+# beside a class word, so the customer's "1С"/"1C" position and "3D" stay whole, and their class letter typed in
+# Cyrillic ("7 «В» класс", "1С") meets the paper's Latin one
+tests/test_category_facts.py::test_a_letter_after_a_number_that_names_no_class_is_kept_whole[uz-cyrillic-1c]
+tests/test_category_facts.py::test_a_letter_after_a_number_that_names_no_class_is_kept_whole[3d]
+tests/test_category_facts.py::test_the_customers_class_letter_typed_in_cyrillic_stays_in_latin[es]
+tests/test_category_finish_pdf.py::test_a_cover_letters_1c_position_is_kept_whole[uz-from-ru]
+tests/test_category_finish_pdf.py::test_a_cover_letters_1c_position_is_kept_whole[en-from-ru]
+
+# Stage-2 re-audit round 2, a figure's own labels: the words bank details and a phone capitalise beside the
+# customer's figures ("Kapitalbank JSCB", "Bank code (MFO)", "Банк: АКБ «Капиталбанк»", "(mobile, Telegram)") are no
+# names in a translated paper's facts; an invented bank or person beside them still is
+tests/test_category_facts.py::test_the_customers_bank_details_and_phone_keep_their_labels_in_a_translated_paper[jscb-after]
+tests/test_category_facts.py::test_the_customers_bank_details_and_phone_keep_their_labels_in_a_translated_paper[ru-bank-label]
+tests/test_category_facts.py::test_the_customers_bank_details_and_phone_keep_their_labels_in_a_translated_paper[phone-telegram]
+tests/test_category_facts.py::test_an_invented_bank_or_person_beside_the_customers_figures_is_still_not_theirs[other-bank]
+tests/test_category_finish_pdf.py::test_a_translated_offers_bank_details_and_phone_are_kept_with_their_labels
+
+# Stage-2 re-audit round 2, numbers side by side: a multiplier ("tripled", "вдвое") is a number of its own, never
+# summed with the count before it, and an Uzbek "bir" of a price's "per one" ("besh ming bir dona uchun") is no part
+# of the thousand before it; "ming bir xodim" is still 1001
+tests/test_category_facts.py::test_a_count_beside_a_multiplier_or_a_counted_one_is_read_apart[en-tripled]
+tests/test_category_facts.py::test_a_count_beside_a_multiplier_or_a_counted_one_is_read_apart[uz-one-piece]
+tests/test_category_facts.py::test_a_thousand_and_one_is_still_read_whole
+
+# Stage-2 grounding matrix (tests/test_category_grounding_matrix.py): every case the audits, re-audits and their
+# probes found, pinned both ways: an invented person, organisation, place, number, date, quotation, law, handle,
+# class letter or reference is blanked, and the customer's own words, figures, laws and labels stay; the owner's
+# accepted false blanks are named beside the leak each pays for. Committed with failing cases on purpose: they are
+# the open work of the next fix round, and no case is xfail
+tests/test_category_grounding_matrix.py::test_grounding_matrix[translated-minutes-chair-ru-to-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[translated-minutes-secretary-ru-to-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[translated-minutes-participants-ru-to-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[translated-minutes-organisation-ru-to-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[translated-minutes-place-ru-to-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[translated-report-author-ru-to-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[translated-report-signers-ru-to-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[translated-report-organization-ru-to-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[translated-course-university-ru-to-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[translated-course-kafedra-ru-to-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[translated-cover-salutation-uz-to-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[translated-cover-employer-uz-to-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[translated-cover-recipient-title-uz-to-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[facts-recommendation-addressee-never-given-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[translated-recommendation-second-signer-uz-to-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[translated-minutes-chair-named-in-cyrillic-ru-to-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[translated-minutes-secretary-respelled-ru-to-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[translated-cover-employer-named-in-latin-uz-to-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[translated-cover-dear-hiring-manager-uz-to-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[translated-application-addressee-person-uz-to-ru-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[translated-application-applicant-respelled-uz-to-ru-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[translated-university-not-folding-ru-to-uz-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-spelled-five-years-and-a-third-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-spelled-twelve-people-two-hundred-clients-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-spelled-project-cost-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-spelled-loan-rate-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-spelled-payback-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-spelled-experience-ru-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-spelled-experience-fact-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-spelled-customer-gave-digits-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-spelled-customer-gave-words-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-spelled-customer-gave-digits-ru-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-yuz-berdi-is-no-number-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-a-third-option-and-third-party-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-both-is-no-number-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-ikkala-is-no-number-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-semyu-is-family-ru-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-spelled-compound-count-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-spelled-tadan-ending-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-bare-ming-with-ending-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-and-a-half-yarim-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-half-a-billion-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-fused-letniy-ru-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-pol-million-ru-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-multiplier-vdvoe-ru-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-genitive-count-ru-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-multiplier-doubled-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-half-a-dozen-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-a-decade-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-hyphenated-hundred-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-spelled-counts-the-customer-gave-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-fused-letniy-the-customer-gave-ru-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-doubled-the-customer-gave-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-loan-terms-the-customer-gave-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-count-beside-multiplier-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-price-per-one-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-thousand-and-one-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-hundred-fifty-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-nine-thousand-one-ru-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-hundred-and-one-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-teni-is-shade-ru-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-thirteen-beside-multiplier-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-hundred-fifty-not-fifty-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-hundred-and-one-not-hundred-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-thirty-one-not-thirty-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-nine-thousand-one-not-nine-thousand-ru-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-a-long-run-of-number-words-the-customer-pasted-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-scale-glued-million-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-scale-bn-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-scale-mlrd-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-scale-mlrd-ru-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-scale-written-out-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-scale-glued-euro-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-metres-are-no-scale-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-mln-for-digits-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-mln-for-digits-ru-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-class-9b-is-no-scale-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-twenty-first-century-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-twenty-first-century-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-twenty-first-century-ru-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-ordinal-the-customer-gave-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-ordinal-placing-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-digit-placing-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-ordinal-placing-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-ordinal-years-running-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-ordinal-years-running-ru-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[dates-numeric-year-from-another-date-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[dates-written-year-from-another-date-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[dates-month-changed-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[dates-month-changed-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[dates-month-changed-ru-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[dates-spelled-day-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[dates-spelled-day-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[dates-spelled-day-ru-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[dates-year-from-another-date-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[dates-year-from-another-date-ru-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[dates-the-customers-date-written-anew-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[dates-the-customers-date-written-anew-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[dates-the-customers-date-written-anew-ru-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[dates-the-customers-numeric-date-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-bank-shaped-first-word-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-kind-in-the-possessive-bank-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-kind-in-the-possessive-company-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-kind-in-the-possessive-university-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-chain-before-tarmogi-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-quoted-name-before-form-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-name-before-bare-form-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-name-before-title-case-kind-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-name-before-kind-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-name-before-form-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-name-before-lowercase-kind-ru-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-a-kind-of-bank-is-no-name-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-a-state-university-is-no-name-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-our-company-is-no-name-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-a-bare-kind-is-no-name-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-a-building-company-is-no-name-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-a-bread-factory-is-no-name-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-a-plural-noun-before-banki-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-a-bank-in-lower-case-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-a-bank-opening-a-sentence-ru-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-the-customers-bank-opening-a-sentence-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-form-with-ning-opening-a-sentence-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-form-with-ga-opening-a-sentence-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-quoted-name-before-form-with-ning-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-joint-stock-form-with-ga-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-form-with-ning-in-the-title-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-form-with-ning-in-a-summary-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-form-with-ga-in-a-list-item-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-form-with-ga-opening-a-letter-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-form-with-ning-in-a-table-cell-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-the-customers-form-with-ning-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-lone-brand-in-a-competitor-cell-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-lone-brand-makro-in-a-competitor-cell-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-lone-brand-havas-in-a-competitor-cell-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-lone-given-name-in-a-team-cell-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-lone-brand-in-a-list-item-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-lone-city-opening-a-sentence-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-lone-platform-opening-a-sentence-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-lone-brand-opening-a-sentence-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-lone-given-name-opening-a-sentence-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-lone-university-opening-a-sentence-uz-to-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-lone-firm-opening-a-sentence-uz-to-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-lone-surname-opening-a-sentence-ru-to-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-lone-firm-opening-a-sentence-ru-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-ordinary-first-word-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-ordinary-first-word-ru-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-ordinary-first-word-ru-to-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-common-word-after-a-blanked-run-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-common-word-cost-cell-after-a-blanked-run-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-common-word-cost-cell-soliqlar-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-common-word-cost-cell-xomashyo-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-translated-cost-cell-ru-to-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-common-word-after-a-blanked-central-bank-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-org-before-form-rejected-ru-to-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-org-before-form-with-possessive-ru-to-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-org-before-form-with-ending-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-org-before-form-bare-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-given-names-of-rejected-chair-and-participants-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-one-word-org-rejected-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-bank-rejected-opening-a-sentence-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-rejected-teacher-in-guarded-stage-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-given-name-beside-rejected-initials-in-guarded-stage-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-rejected-person-given-name-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-quoted-org-rejected-ru-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-common-word-after-rejected-org-ru-to-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-common-word-after-rejected-org-ru-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-common-words-after-rejected-bank-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-common-word-item-after-rejected-bank-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-role-word-after-rejected-author-line-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-role-item-after-rejected-author-line-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-common-word-item-after-blanked-ministry-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-common-word-after-blanked-ministry-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-role-word-of-rejected-person-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-given-name-that-is-a-common-word-uz-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-grammar-word-before-invented-name-uz-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-invented-full-name-opening-a-sentence-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[figures-invented-bank-in-requisites-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[figures-invented-person-beside-phone-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[figures-invented-lender-beside-a-sum-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[figures-invented-city-beside-a-date-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[figures-invented-bank-beside-the-customers-account-ru-to-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[figures-invented-bank-beside-the-customers-account-uz-to-ru-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[figures-jscb-label-beside-the-customers-bank-ru-to-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[figures-bank-code-label-ru-to-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[figures-bank-label-uz-to-ru-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[figures-phone-labels-ru-to-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[figures-the-customers-requisites-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[figures-the-customers-contract-number-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[figures-the-customers-contract-number-uz-to-ru-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[figures-mobile-label-ru-to-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[figures-vacancy-reference-respelled-ru-to-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[figures-year-label-of-a-class-uz-to-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[figures-as-of-label-uz-to-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-another-code-opening-an-item-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-code-named-before-togrisidagi-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-procedural-code-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-hyphenated-procedural-code-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-another-code-beside-the-customers-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-another-law-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-invented-code-name-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-code-named-after-ob-ru-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-lowercase-code-name-not-listed-ru-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-code-named-before-togrisidagi-ru-to-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-code-named-after-of-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-the-customers-code-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-the-customers-code-with-the-country-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-pointer-at-the-customers-code-ushbu-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-pointer-at-the-customers-code-mazkur-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-pointer-at-the-customers-code-ru-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-pointer-at-the-customers-code-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-the-customers-code-in-uzbek-cyrillic-general-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-the-customers-code-in-uzbek-cyrillic-responsibility-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-the-customers-law-in-uzbek-cyrillic-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-the-customers-code-translated-mid-sentence-ru-to-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-the-customers-code-translated-opening-an-item-ru-to-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-the-customers-article-translated-ru-to-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-words-after-the-customers-code-and-tax-rules-ru-to-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-words-after-the-customers-code-land-workers-ru-to-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-the-customers-code-of-the-republic-ru-to-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-laboratory-is-no-labour-code-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-window-after-of-reads-tax-rules-ru-to-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-window-after-of-reads-land-workers-ru-to-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-window-after-ob-reads-tax-rules-ru-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-another-code-named-after-of-ru-to-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-cabinet-resolution-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-government-resolution-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-ministry-order-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-capitalised-regulation-ru-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-regulation-opening-a-sentence-ru-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-geneva-convention-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-ministry-order-number-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-sonli-ministry-order-in-a-lesson-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-ministry-order-dated-in-a-lesson-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-convention-in-a-course-paper-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-numbered-regulation-in-a-course-paper-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-situation-of-the-republic-ru-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-social-situation-ru-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-ministry-studied-a-situation-ru-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-situation-opening-a-sentence-ru-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-situation-of-affairs-opening-a-sentence-ru-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-ministry-reports-orders-grew-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-convention-centre-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-in-order-to-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-firm-fulfils-orders-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-government-plural-resolutions-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-ministry-data-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-sonli-table-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-sonli-school-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-school-statute-in-general-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-newtons-law-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-strong-stem-citing-nothing-uz-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-strong-stem-citing-an-invented-decree-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[quotes-curly-single-marks-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[quotes-straight-single-marks-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[quotes-single-guillemets-ru-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[quotes-low-single-marks-ru-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[quotes-guillemets-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[quotes-apostrophes-are-no-marks-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[quotes-uzbek-letters-are-no-marks-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[quotes-a-one-word-name-in-marks-ru-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[quotes-lessons-own-phrase-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[quotes-lessons-own-homework-phrase-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[quotes-question-left-asking-nothing-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[quotes-work-title-in-a-test-question-uz-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[guarded-topic-with-invented-quotation-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[guarded-topic-with-invented-law-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[guarded-topic-with-invented-organisation-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[guarded-topic-with-invented-quotation-ru-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[guarded-topic-with-invented-quotation-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[guarded-topic-naming-the-customers-constitution-ru-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[guarded-topic-naming-the-customers-constitution-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[guarded-topic-naming-the-customers-code-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[guarded-topic-naming-the-customers-constitution-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[guarded-topic-short-work-title-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[guarded-topic-newtons-law-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[contacts-invented-handle-fact-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[contacts-invented-handle-and-site-in-a-letter-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[contacts-invented-shop-site-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[contacts-the-customers-handle-from-a-link-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[contacts-invented-handle-fact-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[contacts-the-customers-site-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[contacts-initial-glued-to-a-surname-is-no-site-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[class-letter-bare-in-the-grade-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[class-letter-before-a-hyphenated-class-word-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[class-letter-quoted-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[class-letter-after-year-ru-to-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[class-letter-after-grade-ru-to-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[class-letter-latin-b-for-cyrillic-ve-ru-to-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[class-letter-invented-in-a-russian-paper-uz-to-ru-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[class-letter-none-in-a-russian-paper-uz-to-ru-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[class-letter-year-label-without-a-letter-ru-to-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[class-letter-the-customers-cyrillic-ve-ru-to-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[class-letter-the-customers-letter-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[class-letter-the-customers-cyrillic-a-ru-to-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[class-letter-1c-position-ru-to-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[class-letter-1c-position-ru-to-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[class-letter-3d-position-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[class-letter-3d-position-invented-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[class-letter-house-number-is-no-class-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[author-tail-vypolnila-ru-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[author-tail-sostavila-ru-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[author-tail-maruzachi-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[author-tail-talaba-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[author-tail-student-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[author-tail-by-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[author-tail-label-opening-a-topic-ru-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[author-tail-label-opening-a-topic-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[author-tail-label-opening-a-topic-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[author-tail-the-customers-author-ru-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[sources-invented-full-name-author-ru-to-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[sources-invented-full-name-author-ru-to-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[sources-invented-editor-ru-to-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[sources-invented-authors-in-apa-form-ru-to-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[sources-the-topic-echoed-as-a-title-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[sources-invented-author-with-initials-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[sources-the-customers-book-translated-ru-to-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[sources-the-customers-book-ru-to-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[sources-the-customers-authorless-book-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[sources-the-customers-author-respelled-beyond-the-fold-ru-to-en-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[tables-invented-budget-line-with-a-reused-figure-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[tables-the-customers-budget-line-uz-keep]
+tests/test_category_grounding_matrix.py::test_every_accepted_false_blank_names_the_leak_it_pays_for
+tests/test_category_grounding_matrix.py::test_what_a_change_reads_back[change-free-first-word-of-a-cell-not-read-back-uz-blank]
+tests/test_category_grounding_matrix.py::test_what_a_change_reads_back[change-translated-reference-publisher-not-read-back-ru-to-uz-blank]
+tests/test_category_grounding_matrix.py::test_what_a_change_reads_back[change-the-customers-facts-read-back-uz-keep]
+tests/test_category_grounding_matrix.py::test_what_a_change_reads_back[change-name-from-an-earlier-request-two-changes-later-uz-accepted_false_blank]
+# Stage-2 grounding matrix, round 4: cases added while closing the round-3 re-check.
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-invented-about-phrase-translated-ru-to-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-the-customers-code-translated-as-an-about-phrase-ru-to-uz-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-the-customers-code-translated-as-an-about-phrase-of-the-entrys-words-ru-to-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-common-word-with-endings-opening-a-sentence-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-a-duty-opening-with-its-verb-ru-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-a-connector-opening-a-sentence-ru-to-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-a-rare-common-word-opening-a-sentence-uz-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-a-rare-common-word-opening-a-sentence-ru-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-a-rare-common-word-opening-a-sentence-uz-to-en-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[author-tail-by-a-title-phrase-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[sources-genres-for-sources-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[sources-the-customers-book-with-its-publishers-words-uz-keep]
+# Stage-2 round 4 unit cases: a rejected organisation before its legal form and a line that is only a name hold
+# their names; a class letter is taken however the grade writes it, and a Cyrillic one read as Uzbek writes it; an
+# ordinal that dates, places or counts years is its figure; a written date's year is tied; a name by the kind after it
+tests/test_category_facts.py::test_an_ordinal_that_dates_places_or_counts_years_is_read_as_its_figure[uz-date]
+tests/test_category_facts.py::test_an_ordinal_that_dates_places_or_counts_years_is_read_as_its_figure[en-date]
+tests/test_category_facts.py::test_an_ordinal_that_dates_places_or_counts_years_is_read_as_its_figure[ru-date-with-year]
+tests/test_category_facts.py::test_an_ordinal_that_dates_places_or_counts_years_is_read_as_its_figure[uz-place]
+tests/test_category_facts.py::test_an_ordinal_that_dates_places_or_counts_years_is_read_as_its_figure[en-place]
+tests/test_category_facts.py::test_an_ordinal_that_dates_places_or_counts_years_is_read_as_its_figure[en-firstly]
+tests/test_category_facts.py::test_an_ordinal_that_dates_places_or_counts_years_is_read_as_its_figure[en-years-running]
+tests/test_category_facts.py::test_an_ordinal_that_dates_places_or_counts_years_is_read_as_its_figure[ru-years-running]
+tests/test_category_facts.py::test_an_ordinal_that_dates_places_or_counts_years_is_read_as_its_figure[a-decade]
+tests/test_category_facts.py::test_an_ordinal_that_dates_places_or_counts_years_is_read_as_its_figure[decades]
+tests/test_category_facts.py::test_a_written_dates_year_is_tied_to_its_day_and_month[en-other-year]
+tests/test_category_facts.py::test_a_written_dates_year_is_tied_to_its_day_and_month[ru-other-year]
+tests/test_category_facts.py::test_a_written_dates_year_is_tied_to_its_day_and_month[uz-other-year]
+tests/test_category_facts.py::test_a_written_dates_year_is_tied_to_its_day_and_month[uz-same]
+tests/test_category_facts.py::test_a_written_dates_year_is_tied_to_its_day_and_month[uz-written-apart]
+tests/test_category_facts.py::test_a_written_dates_year_is_tied_to_its_day_and_month[en-month-first]
+tests/test_category_facts.py::test_a_rejected_fact_holds_only_the_words_that_name_someone_wherever_they_stand[llc]
+tests/test_category_facts.py::test_a_rejected_fact_holds_only_the_words_that_name_someone_wherever_they_stand[uzbek-form]
+tests/test_category_facts.py::test_a_rejected_fact_holds_only_the_words_that_name_someone_wherever_they_stand[llc-of-two-words]
+tests/test_category_facts.py::test_a_rejected_fact_holds_only_the_words_that_name_someone_wherever_they_stand[a-line-only-a-name]
+tests/test_category_facts.py::test_a_rejected_fact_holds_only_the_words_that_name_someone_wherever_they_stand[a-list-of-names]
+tests/test_category_facts.py::test_a_rejected_fact_holds_only_the_words_that_name_someone_wherever_they_stand[a-role-before-a-person]
+tests/test_category_facts.py::test_the_customers_class_letter_typed_in_cyrillic_stays_in_latin[ve]
+tests/test_category_facts.py::test_the_customers_class_letter_typed_in_cyrillic_stays_in_latin[be]
+tests/test_category_facts.py::test_an_invented_class_letter_is_taken_however_the_grade_writes_it[bare]
+tests/test_category_facts.py::test_an_invented_class_letter_is_taken_however_the_grade_writes_it[before-a-hyphenated-class-word]
+tests/test_category_facts.py::test_an_invented_class_letter_is_taken_however_the_grade_writes_it[after-year]
+tests/test_category_facts.py::test_an_invented_class_letter_is_taken_however_the_grade_writes_it[bare-spaced]
+tests/test_category_facts.py::test_a_first_word_is_a_name_by_the_kind_after_it[uz-city]
+tests/test_category_facts.py::test_a_first_word_is_a_name_by_the_kind_after_it[uz-district]
+tests/test_category_facts.py::test_a_first_word_is_a_name_by_the_kind_after_it[uz-the-customers-city]
+tests/test_category_facts.py::test_a_first_word_is_a_name_by_the_kind_after_it[uz-platform]
+tests/test_category_facts.py::test_a_first_word_is_a_name_by_the_kind_after_it[ru-name-adjective]
+tests/test_category_facts.py::test_a_first_word_is_a_name_by_the_kind_after_it[ru-name-adjective-before-another]
+tests/test_category_facts.py::test_a_first_word_is_a_name_by_the_kind_after_it[ru-kind-adjective]
+tests/test_category_facts.py::test_a_first_word_is_a_name_by_the_kind_after_it[uz-plural-before-a-kind]
+# Stage-2 grounding matrix, round 2 of the convergence: a plural before an Uzbek kind, a code's or a law's
+# name in lower case after its 'of' or 'on', placings and English months, a reference's genre, a class in a
+# grade's field only, a sentence's subject before a code, honorifics, platforms and towns of a kind, names
+# that are never common words, the grown lexicon, a rejected line of common words, a guarded title's 'by'.
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-ordinal-placing-with-sazovor-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-ordinal-placing-bare-in-a-list-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-ordinal-placing-with-its-verb-ru-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-ordinal-placing-with-took-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-ordinal-prize-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-first-place-locative-idiom-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-first-place-dative-idiom-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-first-place-idiom-opening-a-letter-sentence-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-first-place-locative-idiom-ru-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-first-position-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-the-first-place-i-worked-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-the-first-may-seem-harder-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-the-first-may-reduce-costs-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-ordinal-day-of-may-in-lower-case-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-an-education-platform-is-no-name-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-an-online-platform-is-no-name-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-a-digital-platform-is-no-name-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-an-industrial-town-is-no-name-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-a-platforms-name-before-its-kind-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-a-towns-name-before-its-kind-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-plural-name-before-banki-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-plural-name-before-kind-in-a-letter-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-plural-names-before-kinds-in-a-letter-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-plural-name-before-kind-in-a-competitor-cell-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-plural-name-before-zavodida-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-plural-name-before-akademiyasida-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-a-plural-noun-before-banki-uz-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-a-word-of-the-grown-lexicon-opening-a-sentence-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-a-derived-noun-opening-a-sentence-ru-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-lone-given-name-that-stemmed-as-common-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-lone-given-name-iroda-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-lone-given-name-umid-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-lone-given-name-bahor-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-lone-given-name-with-a-case-ending-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-lone-city-termiz-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-lone-city-with-a-case-ending-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-a-citys-people-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-lone-brand-asaka-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-lone-given-name-peter-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-lone-given-name-grace-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-lone-surname-brown-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-lone-surname-with-a-possessive-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-lone-given-name-jordan-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-lone-given-name-anna-ru-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-lone-given-name-nadezhda-ru-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-lone-given-name-with-a-case-ending-ru-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-a-given-name-that-is-a-common-word-opening-a-sentence-uz-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-a-given-name-that-is-a-season-uz-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-a-given-name-that-is-a-loan-term-en-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-a-surname-that-is-a-colour-en-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-a-given-name-that-is-a-common-word-ru-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-a-surname-word-in-a-hyphen-compound-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-a-plural-of-a-surname-word-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-a-case-form-that-is-a-common-word-ru-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-a-common-word-made-from-a-given-name-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-given-name-with-an-honorific-rejected-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-given-name-with-aka-rejected-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-given-name-with-an-honorific-in-a-chair-line-rejected-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-common-word-of-a-rejected-signers-line-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-common-words-of-rejected-enclosures-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-common-word-of-a-rejected-author-line-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-given-names-of-a-rejected-participants-list-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-subject-before-tegishli-kodeks-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-subject-before-yangi-kodeks-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-subject-before-boshqa-qonun-hujjatlari-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-subject-before-an-unnamed-code-of-ethics-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-subject-before-an-invented-code-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-code-named-in-lower-case-after-of-ru-to-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-procedure-code-named-in-lower-case-after-of-ru-to-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-law-named-in-lower-case-after-on-ru-to-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-law-named-in-lower-case-after-on-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-plural-law-name-after-on-ru-to-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-plural-law-name-after-on-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-law-name-after-the-country-ru-to-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-law-name-after-the-country-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-code-named-in-lower-case-beside-a-law-ru-to-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-code-named-in-lower-case-beside-a-law-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-law-named-in-lower-case-in-a-grounded-part-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-the-customers-law-in-lower-case-after-on-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-the-customers-law-after-on-ru-to-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-the-customers-law-after-on-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-the-customers-code-applies-to-an-education-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-law-named-after-on-the-protection-of-ru-to-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-the-customers-code-protects-consumer-interests-ru-to-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-the-customers-law-capitalised-after-on-ru-to-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-law-title-in-marks-after-its-stem-ru-to-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-the-customers-law-title-in-marks-ru-to-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-another-law-named-in-russian-after-o-ru-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[class-letter-1c-whole-value-of-a-line-ru-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[class-letter-1c-whole-value-of-a-position-ru-to-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[class-letter-bare-in-a-tests-class-level-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[class-letter-bare-in-a-notes-level-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[author-tail-by-a-common-given-name-and-a-surname-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[author-tail-by-a-given-name-and-a-male-surname-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[author-tail-by-an-english-name-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[author-tail-by-initials-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[author-tail-by-a-word-like-given-name-and-a-surname-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[author-tail-by-objectives-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[author-tail-by-doing-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[sources-the-customers-book-with-a-genre-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[sources-the-customers-book-with-a-two-word-genre-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[sources-the-customers-book-with-a-genre-ru-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[sources-the-customers-book-with-a-two-word-genre-ru-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[sources-the-customers-book-with-a-genre-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[sources-invented-author-with-a-genre-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[sources-the-customers-author-with-an-invented-title-and-genre-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[sources-an-authorless-topic-with-a-genre-ru-blank]
+
+# Stage-2 convergence round 3: the grounding matrix cases and the deck cover lines this round added (held names of
+# a rejected line, class letters beside a pupil, on a cover and after the customer's class, a law named only after its
+# "of" or "on", a code's first word, placings and Uzbek ordinal dates, names.txt by language, the people a clinic
+# serves), and the unit cases beside them.
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-bare-first-place-opening-an-evidence-sentence-uz-to-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-her-first-place-at-an-olympiad-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-ordinal-placing-dative-with-chiqdi-beside-an-olympiad-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-ordinal-placing-locative-beside-an-olympiad-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-ordinal-placing-prepositional-in-the-region-ru-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-bare-first-place-in-a-list-line-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-winner-of-first-place-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-held-first-position-in-regional-sales-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-the-first-place-at-an-olympiad-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-ranked-first-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-placed-second-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-a-first-place-finish-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-in-the-first-place-idiom-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-my-first-position-as-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-came-first-idiom-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-first-place-locative-idiom-beside-an-olympiad-uz-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-first-place-prepositional-idiom-beside-a-contest-ru-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-the-first-place-beside-a-contest-en-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[dates-spelled-day-before-a-lower-case-uzbek-month-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[dates-spelled-compound-day-before-an-uzbek-month-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[dates-spelled-day-before-an-uzbek-month-in-a-decision-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[dates-the-customers-day-spelled-before-an-uzbek-month-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-children-before-a-clinic-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-farmers-before-a-cooperative-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-plural-name-before-a-clinic-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-youth-before-a-bank-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-children-before-a-company-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-a-things-name-the-lexicon-lacks-in-a-cell-ru-to-en-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-a-surname-that-is-a-rare-word-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-a-things-name-the-lexicon-lacks-in-a-cell-ru-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-a-things-name-the-lexicon-lacks-in-a-cell-uz-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-rejected-participant-hikmat-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-rejected-participant-rahmat-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-rejected-participant-gul-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-rejected-chair-hikmat-rahim-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-rejected-chair-rahmat-aka-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-rejected-chair-hikmat-opa-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-rejected-signers-list-hikmat-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-rejected-signers-beside-their-roles-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-rejected-chair-after-a-role-in-one-run-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-rejected-second-signer-fuller-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-rejected-second-signer-rich-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-rejected-second-signer-banks-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-role-word-beside-a-rejected-signer-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[held-document-words-of-rejected-enclosures-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-law-of-the-republic-on-state-duty-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-law-of-the-republic-on-personal-data-ru-to-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-law-of-the-republic-on-state-procurement-uz-to-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-law-of-the-republic-on-auditing-activity-in-an-item-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-law-of-the-republic-on-electronic-commerce-in-an-offer-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-bare-law-on-personal-data-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-bare-law-on-the-protection-of-personal-data-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-bare-law-on-joint-stock-companies-ru-to-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-bare-code-of-professional-ethics-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-the-customers-law-of-the-republic-on-accounting-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-the-customers-law-of-the-republic-on-accounting-ru-to-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-the-customers-law-on-state-duty-of-the-republic-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-the-customers-law-on-accounting-before-a-verb-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-the-customers-law-on-accounting-before-a-conjunction-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-the-customers-code-on-working-hours-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-the-customers-code-of-uzbekistan-on-annual-leave-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-the-customers-consumer-rights-law-translated-ru-to-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-the-customers-personal-data-law-translated-ru-to-en-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-a-noun-after-the-customers-law-on-accounting-en-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-capitalised-first-word-of-an-uzbek-code-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-capitalised-first-word-before-a-noun-in-ka-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-subject-before-an-invented-lower-case-code-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-the-customers-code-of-ethics-opening-an-item-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-a-subject-before-the-customers-code-of-ethics-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-a-known-subject-before-the-customers-code-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-a-subject-before-a-capitalised-code-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-capitalised-first-adjective-of-a-russian-code-ru-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[laws-a-preposition-before-the-customers-russian-code-ru-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[class-letter-as-a-labels-value-in-the-grade-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[class-letter-beside-a-subject-in-the-grade-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[class-letter-after-the-customers-class-number-in-a-subject-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[class-letter-beside-a-pupils-word-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[class-letter-beside-a-students-word-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[class-letter-beside-a-pupils-word-in-a-grounded-part-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[class-letter-none-beside-a-pupils-word-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[class-letter-none-in-a-grounded-part-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[class-letter-the-customers-letter-beside-a-pupils-word-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[class-letter-1c-position-beside-the-customers-class-number-ru-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-english-given-name-joy-is-an-uzbek-word-in-a-cost-cell-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-english-given-name-joy-is-an-uzbek-word-opening-a-sentence-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-english-given-name-tom-is-an-uzbek-word-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-english-given-name-sara-is-an-uzbek-word-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-english-surname-kim-is-an-uzbek-word-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-english-given-name-joy-in-an-english-paper-uz-to-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-english-given-name-tom-in-an-english-paper-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-english-given-name-sara-in-an-english-paper-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-english-given-name-grace-in-an-uzbek-paper-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-uzbek-given-name-said-in-an-english-paper-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-uzbek-given-name-asal-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-uzbek-given-name-asal-is-honey-in-a-product-cell-uz-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-uzbek-given-name-erkin-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-uzbek-given-name-erkin-is-free-opening-a-sentence-uz-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-uzbek-given-name-kumush-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-uzbek-given-name-kumush-is-silver-opening-a-sentence-uz-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-uzbek-given-name-aziz-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-aziz-addressing-plural-readers-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-aziz-addressing-plural-readers-with-a-possessive-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-aziz-before-a-plural-with-no-address-mark-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-aziz-before-a-comma-uz-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-uzbek-given-name-said-in-an-english-paper-is-a-verb-en-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-english-surname-baker-is-a-trade-in-a-team-cell-uz-to-en-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-english-surname-cook-is-a-trade-in-a-team-cell-ru-to-en-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-english-surname-black-is-a-colour-in-a-product-cell-ru-to-en-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-english-surname-green-is-a-colour-in-a-product-cell-ru-to-en-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-brand-apple-is-a-fruit-in-a-product-cell-ru-to-en-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-english-surname-stone-is-a-material-uz-to-en-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-english-name-price-is-a-word-en-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-english-name-price-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-english-name-king-is-a-word-en-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-english-name-king-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-english-name-long-is-a-word-en-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-english-name-long-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-english-name-mark-is-a-word-en-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-english-name-mark-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-english-name-bill-is-a-word-en-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-english-name-bill-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-english-surname-baker-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-english-surname-cook-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-english-surname-black-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-english-surname-green-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-english-surname-stone-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-brand-apple-en-blank]
+tests/test_category_grounding_matrix.py::test_a_deck_cover_line[cover-class-letter-as-sinfs-value-uz-blank]
+tests/test_category_grounding_matrix.py::test_a_deck_cover_line[cover-class-letter-as-class-value-uz-blank]
+tests/test_category_grounding_matrix.py::test_a_deck_cover_line[cover-class-letter-as-the-whole-line-uz-blank]
+tests/test_category_grounding_matrix.py::test_a_deck_cover_line[cover-class-letter-beside-a-pupils-word-uz-blank]
+tests/test_category_grounding_matrix.py::test_a_deck_cover_line[cover-class-letter-quoted-uz-blank]
+tests/test_category_grounding_matrix.py::test_a_deck_cover_line[cover-class-letter-before-sinf-uz-blank]
+tests/test_category_grounding_matrix.py::test_a_deck_cover_line[cover-the-customers-class-uz-keep]
+tests/test_category_grounding_matrix.py::test_a_deck_cover_line[cover-the-customers-class-letter-uz-keep]
+tests/test_category_grounding_matrix.py::test_a_deck_cover_line[cover-the-customers-1c-uz-keep]
+tests/test_category_facts.py::test_a_rejected_fact_holds_only_the_words_that_name_someone_wherever_they_stand[word-like-given-names]
+tests/test_category_facts.py::test_a_rejected_fact_holds_only_the_words_that_name_someone_wherever_they_stand[a-name-beside-its-role]
+tests/test_category_facts.py::test_a_rejected_fact_holds_only_the_words_that_name_someone_wherever_they_stand[a-name-after-its-role]
+tests/test_category_facts.py::test_a_rejected_fact_holds_only_the_words_that_name_someone_wherever_they_stand[a-name-and-its-honorific]
+tests/test_category_facts.py::test_a_rejected_fact_holds_only_the_words_that_name_someone_wherever_they_stand[word-like-surnames]
+tests/test_category_facts.py::test_a_rejected_fact_holds_only_the_words_that_name_someone_wherever_they_stand[a-plural-kind-in-a-surname]
+tests/test_category_facts.py::test_a_rejected_fact_holds_only_the_words_that_name_someone_wherever_they_stand[a-role-only]
+tests/test_category_facts.py::test_a_rejected_fact_holds_only_the_words_that_name_someone_wherever_they_stand[a-role-and-its-place]
+tests/test_category_facts.py::test_a_rejected_fact_holds_only_the_words_that_name_someone_wherever_they_stand[a-document]
+tests/test_category_facts.py::test_a_rejected_fact_holds_only_the_words_that_name_someone_wherever_they_stand[a-name-and-a-role-phrase]
+tests/test_category_facts.py::test_a_rejected_field_of_no_people_holds_no_name
+tests/test_category_facts.py::test_a_class_letter_by_what_stands_beside_it_and_the_customers_class[after-the-customers-class-number]
+tests/test_category_facts.py::test_a_class_letter_by_what_stands_beside_it_and_the_customers_class[beside-a-pupils-word]
+tests/test_category_facts.py::test_a_class_letter_by_what_stands_beside_it_and_the_customers_class[beside-a-students-word]
+tests/test_category_facts.py::test_a_class_letter_by_what_stands_beside_it_and_the_customers_class[a-labels-value]
+tests/test_category_facts.py::test_a_class_letter_by_what_stands_beside_it_and_the_customers_class[the-customers-1c-beside-a-class]
+tests/test_category_facts.py::test_a_class_letter_by_what_stands_beside_it_and_the_customers_class[the-customers-1c-whole]
+tests/test_category_facts.py::test_a_class_letter_by_what_stands_beside_it_and_the_customers_class[a-cyrillic-ve-is-no-b]

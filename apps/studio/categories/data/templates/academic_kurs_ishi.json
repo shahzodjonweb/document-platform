@@ -1,0 +1,566 @@
+{
+ "schema": 2,
+ "id": "academic_kurs_ishi",
+ "entries": [
+  "pdf.kurs_ishi"
+ ],
+ "name": {
+  "uz": "Kurs ishi",
+  "ru": "Курсовая работа",
+  "en": "Course paper"
+ },
+ "family": "academic",
+ "page": {
+  "margins_mm": {
+   "left": 30,
+   "right": 15,
+   "top": 20,
+   "bottom": 20
+  }
+ },
+ "type": {
+  "face": "serif",
+  "ladder": [
+   [
+    13,
+    22
+   ],
+   [
+    12.5,
+    20
+   ],
+   [
+    12,
+    19
+   ]
+  ],
+  "align": "justify",
+  "indent_first_mm": 12.5
+ },
+ "page_rule": {
+  "kind": "count",
+  "trim": true
+ },
+ "furniture": {
+  "first": "none",
+  "later": "number_top",
+  "format": "n"
+ },
+ "flow": [
+  {
+   "block": "title_page",
+   "part": "title_page",
+   "fields": [
+    "ministry",
+    "university",
+    "faculty",
+    "kafedra",
+    "direction",
+    "subject",
+    "topic",
+    "course_group",
+    "student_name",
+    "supervisor",
+    "city",
+    "year"
+   ],
+   "params": {
+    "rows": [
+     {
+      "role": "ministry",
+      "fact": "ministry",
+      "style": "bold_caps"
+     },
+     {
+      "role": "institution",
+      "fact": "university",
+      "style": "bold_caps",
+      "blank_caption": "cap_university",
+      "blank_lines": 2
+     },
+     {
+      "role": "faculty",
+      "fact": "faculty"
+     },
+     {
+      "role": "kafedra",
+      "fact": "kafedra",
+      "label": "kafedra_line",
+      "blank_caption": "cap_kafedra"
+     },
+     {
+      "role": "direction",
+      "fact": "direction",
+      "label": "direction_line"
+     },
+     {
+      "role": "subject",
+      "fact": "subject",
+      "label": "subject_line",
+      "blank_caption": "cap_subject"
+     },
+     {
+      "role": "kind",
+      "label": "kind",
+      "style": "display"
+     },
+     {
+      "role": "topic",
+      "fact": "topic",
+      "label": "topic_label",
+      "style": "bold_caps"
+     },
+     {
+      "role": "credit",
+      "fact": "student_name",
+      "label": "done_by",
+      "blank_caption": "cap_name",
+      "sign": true
+     },
+     {
+      "role": "credit_sub",
+      "fact": "course_group",
+      "label": "group_line",
+      "blank_caption": "cap_group"
+     },
+     {
+      "role": "credit",
+      "fact": "supervisor",
+      "label": "supervisor",
+      "blank_caption": "cap_name",
+      "sign": true
+     },
+     {
+      "role": "foot",
+      "fact": "city",
+      "blank_caption": "cap_city"
+     }
+    ],
+    "year": "clock"
+   }
+  },
+  {
+   "block": "toc",
+   "part": "toc",
+   "page_break_before": true,
+   "params": {
+    "label": "toc",
+    "levels": 2,
+    "page_numbers": true,
+    "leaders": true,
+    "style": "page"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "relevance",
+   "page_break_before": true,
+   "params": {
+    "level": 1,
+    "numbering": "none",
+    "align": "centre",
+    "caps": true,
+    "in_toc": true,
+    "label": "introduction"
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "relevance",
+   "when": "part:relevance",
+   "params": {
+    "style": "body",
+    "label": "lbl_relevance"
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "research_state",
+   "when": "part:research_state",
+   "params": {
+    "style": "body",
+    "label": "lbl_research_state"
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "aim",
+   "when": "part:aim",
+   "params": {
+    "style": "body",
+    "label": "lbl_aim"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "tasks",
+   "when": "part:tasks",
+   "params": {
+    "level": 3,
+    "numbering": "none",
+    "label": "lbl_tasks",
+    "in_toc": false,
+    "before_pt": 0,
+    "after_pt": 0
+   }
+  },
+  {
+   "block": "list",
+   "part": "tasks",
+   "when": "part:tasks",
+   "params": {
+    "marker": "dash",
+    "before_pt": 0,
+    "after_pt": 0
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "object",
+   "when": "part:object",
+   "params": {
+    "style": "body",
+    "label": "lbl_object"
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "subject_matter",
+   "when": "part:subject_matter",
+   "params": {
+    "style": "body",
+    "label": "lbl_subject_matter"
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "methods",
+   "when": "part:methods",
+   "params": {
+    "style": "body",
+    "label": "lbl_methods"
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "significance",
+   "when": "part:significance",
+   "params": {
+    "style": "body",
+    "label": "lbl_significance"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "chapter",
+   "when": "part:chapter",
+   "params": {
+    "level": 1,
+    "numbering": "chapter_word",
+    "align": "centre",
+    "in_toc": true,
+    "caps": true
+   },
+   "page_break_before": true
+  },
+  {
+   "block": "paragraph",
+   "part": "chapter",
+   "when": "part:chapter",
+   "params": {
+    "style": "body"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "section_a",
+   "when": "part:section_a",
+   "params": {
+    "level": 2,
+    "numbering": "decimal",
+    "in_toc": true
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "section_a",
+   "when": "part:section_a",
+   "params": {
+    "style": "body"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "section_b",
+   "when": "part:section_b",
+   "params": {
+    "level": 2,
+    "numbering": "decimal",
+    "in_toc": true
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "section_b",
+   "when": "part:section_b",
+   "params": {
+    "style": "body"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "section_c",
+   "when": "part:section_c",
+   "params": {
+    "level": 2,
+    "numbering": "decimal",
+    "in_toc": true
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "section_c",
+   "when": "part:section_c",
+   "params": {
+    "style": "body"
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "chapter_close",
+   "when": "part:chapter_close",
+   "params": {
+    "style": "body"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "conclusion",
+   "when": "part:conclusion",
+   "params": {
+    "level": 1,
+    "numbering": "none",
+    "align": "centre",
+    "caps": true,
+    "in_toc": true
+   },
+   "page_break_before": true
+  },
+  {
+   "block": "paragraph",
+   "part": "conclusion",
+   "when": "part:conclusion",
+   "params": {
+    "style": "body"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "proposals",
+   "when": "part:proposals",
+   "params": {
+    "level": 3,
+    "numbering": "none",
+    "label": "lbl_proposals",
+    "in_toc": false,
+    "before_pt": 0,
+    "after_pt": 0
+   }
+  },
+  {
+   "block": "list",
+   "part": "proposals",
+   "when": "part:proposals",
+   "params": {
+    "marker": "number",
+    "before_pt": 0,
+    "after_pt": 0
+   }
+  },
+  {
+   "block": "reference_list",
+   "part": "references",
+   "page_break_before": true,
+   "params": {
+    "label": "references",
+    "blank_entries": 20,
+    "blank_lines": 1,
+    "groups": true
+   }
+  },
+  {
+   "block": "heading",
+   "part": "appendix",
+   "when": "part:appendix",
+   "page_break_before": true,
+   "params": {
+    "level": 1,
+    "numbering": "none",
+    "align": "centre",
+    "caps": true,
+    "in_toc": true
+   }
+  },
+  {
+   "block": "list",
+   "part": "appendix",
+   "when": "part:appendix",
+   "params": {
+    "marker": "number"
+   }
+  }
+ ],
+ "labels": {
+  "toc": {
+   "uz": "MUNDARIJA",
+   "ru": "ОГЛАВЛЕНИЕ",
+   "en": "CONTENTS"
+  },
+  "introduction": {
+   "uz": "KIRISH",
+   "ru": "ВВЕДЕНИЕ",
+   "en": "INTRODUCTION"
+  },
+  "references": {
+   "uz": "FOYDALANILGAN ADABIYOTLAR RO‘YXATI",
+   "ru": "СПИСОК ИСПОЛЬЗОВАННОЙ ЛИТЕРАТУРЫ",
+   "en": "REFERENCES"
+  },
+  "kafedra_line": {
+   "uz": "«{kafedra}» kafedrasi",
+   "ru": "Кафедра «{kafedra}»",
+   "en": "Department of {kafedra}"
+  },
+  "direction_line": {
+   "uz": "{direction} ta’lim yo‘nalishi",
+   "ru": "Направление «{direction}»",
+   "en": "Programme {direction}"
+  },
+  "subject_line": {
+   "uz": "«{subject}» fanidan",
+   "ru": "по дисциплине «{subject}»",
+   "en": "Subject: {subject}"
+  },
+  "kind": {
+   "uz": "KURS ISHI",
+   "ru": "КУРСОВАЯ РАБОТА",
+   "en": "COURSE PAPER"
+  },
+  "topic_label": {
+   "uz": "Mavzu:",
+   "ru": "Тема:",
+   "en": "Topic:"
+  },
+  "done_by": {
+   "uz": "Bajardi:",
+   "ru": "Выполнил(а):",
+   "en": "Prepared by:"
+  },
+  "group_line": {
+   "uz": "{course_group} talabasi",
+   "ru": "{course_group}",
+   "en": "student, {course_group}"
+  },
+  "supervisor": {
+   "uz": "Ilmiy rahbar:",
+   "ru": "Научный руководитель:",
+   "en": "Supervisor:"
+  },
+  "cap_university": {
+   "uz": "(universitet nomi)",
+   "ru": "(название университета)",
+   "en": "(university)"
+  },
+  "cap_kafedra": {
+   "uz": "(kafedra nomi)",
+   "ru": "(название кафедры)",
+   "en": "(department)"
+  },
+  "cap_subject": {
+   "uz": "(fan nomi)",
+   "ru": "(название предмета)",
+   "en": "(subject)"
+  },
+  "cap_name": {
+   "uz": "(F.I.Sh.)",
+   "ru": "(Ф. И. О.)",
+   "en": "(full name)"
+  },
+  "cap_group": {
+   "uz": "(kurs, guruh)",
+   "ru": "(курс, группа)",
+   "en": "(year, group)"
+  },
+  "cap_city": {
+   "uz": "(shahar)",
+   "ru": "(город)",
+   "en": "(city)"
+  },
+  "lbl_relevance": {
+   "uz": "Mavzuning dolzarbligi.",
+   "ru": "Актуальность темы.",
+   "en": "Relevance of the topic."
+  },
+  "lbl_research_state": {
+   "uz": "Mavzuning o‘rganilganlik darajasi.",
+   "ru": "Степень изученности темы.",
+   "en": "State of research."
+  },
+  "lbl_aim": {
+   "uz": "Kurs ishining maqsadi.",
+   "ru": "Цель курсовой работы.",
+   "en": "Aim of the course paper."
+  },
+  "lbl_tasks": {
+   "uz": "Kurs ishining vazifalari:",
+   "ru": "Задачи курсовой работы:",
+   "en": "Tasks of the course paper:"
+  },
+  "lbl_object": {
+   "uz": "Kurs ishining obyekti.",
+   "ru": "Объект исследования.",
+   "en": "Object of the study."
+  },
+  "lbl_subject_matter": {
+   "uz": "Kurs ishining predmeti.",
+   "ru": "Предмет исследования.",
+   "en": "Subject of the study."
+  },
+  "lbl_methods": {
+   "uz": "Kurs ishining nazariy-metodologik asoslari.",
+   "ru": "Теоретико-методологическая основа.",
+   "en": "Theoretical and methodological basis."
+  },
+  "lbl_significance": {
+   "uz": "Kurs ishining amaliy ahamiyati.",
+   "ru": "Практическая значимость.",
+   "en": "Practical significance."
+  },
+  "lbl_proposals": {
+   "uz": "Takliflar:",
+   "ru": "Предложения:",
+   "en": "Proposals:"
+  },
+  "group_normative": {
+   "uz": "Normativ-huquqiy hujjatlar",
+   "ru": "Нормативные правовые акты",
+   "en": "Laws and regulations"
+  },
+  "group_literature": {
+   "uz": "Ilmiy va o‘quv adabiyotlar",
+   "ru": "Научная и учебная литература",
+   "en": "Books and articles"
+  },
+  "group_online": {
+   "uz": "Internet manbalari",
+   "ru": "Интернет-источники",
+   "en": "Online sources"
+  },
+  "cap_reference": {
+   "uz": "(muallif, nomi, shahar: nashriyot, yil, sahifalar soni)",
+   "ru": "(автор, название, город: издательство, год, количество страниц)",
+   "en": "(author, title, city: publisher, year, pages)"
+  }
+ },
+ "mock": "units/pdf.kurs_ishi/mock/academic_kurs_ishi.png"
+}

@@ -1,0 +1,392 @@
+{
+ "schema": 2,
+ "id": "academic_mustaqil_ish",
+ "entries": [
+  "pdf.mustaqil_ish"
+ ],
+ "name": {
+  "uz": "Mustaqil ish / referat",
+  "ru": "Реферат",
+  "en": "Assignment / report"
+ },
+ "family": "academic",
+ "page": {
+  "margins_mm": {
+   "left": 30,
+   "right": 15,
+   "top": 20,
+   "bottom": 20
+  }
+ },
+ "type": {
+  "face": "serif",
+  "ladder": [
+   [
+    13,
+    22
+   ],
+   [
+    12.5,
+    20
+   ],
+   [
+    12,
+    19
+   ]
+  ],
+  "align": "left",
+  "indent_first_mm": 12.5
+ },
+ "page_rule": {
+  "kind": "count",
+  "trim": true
+ },
+ "furniture": {
+  "first": "none",
+  "later": "number_bottom",
+  "format": "n"
+ },
+ "flow": [
+  {
+   "block": "title_page",
+   "part": "title_page",
+   "fields": [
+    "ministry",
+    "institution",
+    "faculty_department",
+    "subject",
+    "work_kind",
+    "topic",
+    "student_name",
+    "student_group",
+    "checker_word",
+    "teacher",
+    "city",
+    "year"
+   ],
+   "params": {
+    "rows": [
+     {
+      "role": "ministry",
+      "fact": "ministry",
+      "style": "bold_caps"
+     },
+     {
+      "role": "institution",
+      "fact": "institution",
+      "style": "bold_caps",
+      "blank_caption": "cap_institution",
+      "blank_lines": 2
+     },
+     {
+      "role": "faculty",
+      "fact": "faculty_department",
+      "style": "body"
+     },
+     {
+      "role": "subject",
+      "fact": "subject",
+      "label": "subject_line",
+      "blank_caption": "cap_subject"
+     },
+     {
+      "role": "kind",
+      "label": "kind_referat",
+      "style": "display",
+      "choice": "work_kind",
+      "labels": {
+       "referat": "kind_referat",
+       "mustaqil_ish": "kind_mustaqil_ish"
+      }
+     },
+     {
+      "role": "topic",
+      "fact": "topic",
+      "label": "topic_label",
+      "style": "bold"
+     },
+     {
+      "role": "credit",
+      "fact": "student_name",
+      "label": "done_by",
+      "blank_caption": "cap_name"
+     },
+     {
+      "role": "credit_sub",
+      "fact": "student_group",
+      "blank_caption": "cap_group"
+     },
+     {
+      "role": "credit",
+      "fact": "teacher",
+      "label": "accepted_by",
+      "blank_caption": "cap_teacher",
+      "choice": "checker_word",
+      "labels": {
+       "accepted": "accepted_by",
+       "checked": "checked_by"
+      },
+      "blank_lines": 2
+     },
+     {
+      "role": "foot",
+      "fact": "city",
+      "blank_caption": "cap_city"
+     }
+    ],
+    "year": "clock"
+   }
+  },
+  {
+   "block": "toc",
+   "part": "plan",
+   "page_break_before": true,
+   "params": {
+    "label": "plan",
+    "levels": 2,
+    "page_numbers": true,
+    "leaders": true,
+    "style": "page"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "introduction",
+   "page_break_before": true,
+   "params": {
+    "level": 1,
+    "numbering": "none",
+    "align": "centre",
+    "caps": true,
+    "in_toc": true
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "introduction",
+   "params": {
+    "style": "body"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "chapter",
+   "when": "part:chapter",
+   "page_break_before": true,
+   "params": {
+    "level": 1,
+    "numbering": "arabic",
+    "align": "centre",
+    "in_toc": true
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "chapter",
+   "when": "part:chapter",
+   "params": {
+    "style": "body"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "section_a",
+   "when": "part:section_a",
+   "params": {
+    "level": 2,
+    "numbering": "decimal",
+    "in_toc": true
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "section_a",
+   "when": "part:section_a",
+   "params": {
+    "style": "body"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "section_b",
+   "when": "part:section_b",
+   "params": {
+    "level": 2,
+    "numbering": "decimal",
+    "in_toc": true
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "section_b",
+   "when": "part:section_b",
+   "params": {
+    "style": "body"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "section_c",
+   "when": "part:section_c",
+   "params": {
+    "level": 2,
+    "numbering": "decimal",
+    "in_toc": true
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "section_c",
+   "when": "part:section_c",
+   "params": {
+    "style": "body"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "section_d",
+   "when": "part:section_d",
+   "params": {
+    "level": 2,
+    "numbering": "decimal",
+    "in_toc": true
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "section_d",
+   "when": "part:section_d",
+   "params": {
+    "style": "body"
+   }
+  },
+  {
+   "block": "heading",
+   "part": "conclusion",
+   "page_break_before": true,
+   "params": {
+    "level": 1,
+    "numbering": "none",
+    "align": "centre",
+    "caps": true,
+    "in_toc": true
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "conclusion",
+   "params": {
+    "style": "body"
+   }
+  },
+  {
+   "block": "reference_list",
+   "part": "references",
+   "page_break_before": true,
+   "params": {
+    "label": "references",
+    "blank_entries": 10,
+    "blank_lines": 2,
+    "groups": true
+   }
+  }
+ ],
+ "labels": {
+  "plan": {
+   "uz": "REJA",
+   "ru": "СОДЕРЖАНИЕ",
+   "en": "CONTENTS"
+  },
+  "references": {
+   "uz": "FOYDALANILGAN ADABIYOTLAR",
+   "ru": "СПИСОК ЛИТЕРАТУРЫ",
+   "en": "REFERENCES"
+  },
+  "subject_line": {
+   "uz": "«{subject}» fanidan",
+   "ru": "по дисциплине «{subject}»",
+   "en": "Subject: {subject}"
+  },
+  "kind_referat": {
+   "uz": "REFERAT",
+   "ru": "РЕФЕРАТ",
+   "en": "REPORT"
+  },
+  "kind_mustaqil_ish": {
+   "uz": "MUSTAQIL ISH",
+   "ru": "САМОСТОЯТЕЛЬНАЯ РАБОТА",
+   "en": "INDEPENDENT WORK"
+  },
+  "topic_label": {
+   "uz": "Mavzu:",
+   "ru": "Тема:",
+   "en": "Topic:"
+  },
+  "done_by": {
+   "uz": "Bajardi:",
+   "ru": "Выполнил(а):",
+   "en": "Prepared by:"
+  },
+  "accepted_by": {
+   "uz": "Qabul qildi:",
+   "ru": "Принял(а):",
+   "en": "Accepted by:"
+  },
+  "checked_by": {
+   "uz": "Tekshirdi:",
+   "ru": "Проверил(а):",
+   "en": "Checked by:"
+  },
+  "cap_institution": {
+   "uz": "(ta’lim muassasasining nomi)",
+   "ru": "(название учебного заведения)",
+   "en": "(name of the institution)"
+  },
+  "cap_subject": {
+   "uz": "(fan nomi)",
+   "ru": "(название предмета)",
+   "en": "(subject)"
+  },
+  "cap_name": {
+   "uz": "(F.I.Sh.)",
+   "ru": "(Ф. И. О.)",
+   "en": "(full name)"
+  },
+  "cap_group": {
+   "uz": "(kurs, guruh)",
+   "ru": "(курс, группа)",
+   "en": "(year, group)"
+  },
+  "cap_teacher": {
+   "uz": "(lavozimi, ilmiy unvoni, F.I.Sh.)",
+   "ru": "(должность, звание, Ф. И. О.)",
+   "en": "(post, title, full name)"
+  },
+  "cap_city": {
+   "uz": "(shahar)",
+   "ru": "(город)",
+   "en": "(city)"
+  },
+  "group_normative": {
+   "uz": "Normativ-huquqiy hujjatlar",
+   "ru": "Нормативные правовые акты",
+   "en": "Laws and regulations"
+  },
+  "group_literature": {
+   "uz": "Ilmiy va o‘quv adabiyotlar",
+   "ru": "Научная и учебная литература",
+   "en": "Books and articles"
+  },
+  "group_online": {
+   "uz": "Internet manbalari",
+   "ru": "Интернет-источники",
+   "en": "Online sources"
+  },
+  "cap_reference": {
+   "uz": "(muallif, nomi, shahar: nashriyot, yil, sahifalar soni)",
+   "ru": "(автор, название, город: издательство, год, количество страниц)",
+   "en": "(author, title, city: publisher, year, pages)"
+  }
+ },
+ "mock": "units/pdf.mustaqil_ish/mock/academic_mustaqil_ish.png"
+}

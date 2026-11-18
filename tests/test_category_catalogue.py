@@ -128,6 +128,10 @@ def test_a_template_is_validated_against_its_own_schema():
     (lambda e, t, i: t['study_test']['flow'][0].update(part='cover'), 'part cover is not a part for pdf.test'),
     (lambda e, t, i: t['study_test']['flow'][1].update(when='nofact:use=homework'), 'homework is not one of the choices'),
     (lambda e, t, i: t['official_ariza']['flow'][2]['params'].update(label='heading'), "labels ['heading']"),
+    (lambda e, t, i: next(place for place in t['business_biznes_reja']['flow'] if 'any_part' in place.get(
+        'params', {}))['params']['any_part'].append('tem'), "any_part names ['tem']"),
+    (lambda e, t, i: next(place for place in t['business_marketing_reja']['flow'] if 'stated' in place.get(
+        'params', {}))['params'].update(stated='budget'), 'stated names budget, not a field'),
     (lambda e, t, i: t['official_ariza']['labels']['name'].update(
         uz='{applicant_nick}', ru='{applicant_nick}', en='{applicant_nick}'), "slots ['applicant_nick'] are not fields"),
     (lambda e, t, i: e['pdf.test'].update(order=2), 'order is 2 but index.json shows it at 5'),
@@ -173,9 +177,9 @@ def test_an_index_id_with_no_entry_yet_is_allowed_and_never_shown(switch, ready)
         landed = [item for item in items if item == 'other' or item in ready.entries
                   or any(child in ready.entries for child in index['groups'].get(item, {}).get('children', ()))]
         assert [node.id for node in catalogue.menu(feature)] == landed
-    # The deck entries have all landed (C2s); the papers still wait for theirs.
+    # The deck entries have all landed (C2s), and the academic and study papers (C2a) open the PDF list.
     assert [node.id for node in catalogue.menu('ai.pptx')] == OWNER_LISTS['ai.pptx']
-    assert 'pdf.mustaqil_ish' not in [node.id for node in catalogue.menu('ai.pdf_topic')]
+    assert [node.id for node in catalogue.menu('ai.pdf_topic')][:5] == OWNER_LISTS['ai.pdf_topic'][:5]
 
 
 @pytest.mark.parametrize('spoil, says', [
@@ -224,15 +228,23 @@ def test_a_deck_names_only_designs_and_variants_that_exist():
     assert any('bullets.no_such_variant is not a registered slide variant' in problem for problem in found)
 
 
-def test_readiness_gates_are_warnings_on_a_draft_and_errors_on_a_ready_entry():
+def test_readiness_gates_are_warnings_on_a_draft_and_errors_on_a_ready_entry(monkeypatch):
+    # The core blocks (R1) draw the whole ariza now: take one back to see the registration gate caught.
+    from apps.studio.paper import registry
+    monkeypatch.delitem(registry.BLOCKS, 'party_block')
     entries, templates, index = files()
     # A deck converted by C2s meets its count and block gates; take them away again to see them caught. The prompt
     # is replaced whole, so the check does not hang on how himoya's own copy happens to write its count.
     himoya = entries['slides.himoya']
     himoya['status'] = 'draft'  # ready since N1; the gates are read here on a draft first
+    # Every paper drawing party_block is ready since N2b and N2c: the ariza is read as a draft here first.
+    entries['pdf.xat.ariza']['status'] = 'draft'
     himoya['bot']['prompt'] = {'uz': 'Bitta xabarda yozing.', 'ru': 'Напишите одним сообщением.',
                                'en': 'Say it in one message.'}
     himoya['rules'].append({'text': 'A long rule. ' * 400, 'to': 'model'})
+    # The papers' own rewrite rules are reworded by their C2 packages; one is put back to see it caught.
+    entries['pdf.test']['status'] = 'draft'  # ready since N2a
+    entries['pdf.test']['rules'].append({'text': 'Variants are rebuilt by the pipeline.', 'to': 'rewrite'})
     made = build(entries, templates, index)
     drafts = check(catalogue=made, lock=relock(made, {}))
     assert any(problem.warning and 'rewrite rule is left' in problem.text for problem in drafts)
@@ -313,6 +325,8 @@ def test_new_ids_must_be_locked_and_locking_adds_them_without_removing_any():
     extra = copy.deepcopy(entries['pdf.xat.ariza']['fields'][0])
     extra['id'] = 'addressee_office'
     entries['pdf.xat.ariza']['fields'].append(extra)
+    # Ready since N2c, the ariza's block sits just under its budget: one field line more is read here on a draft.
+    entries['pdf.xat.ariza']['status'] = 'draft'
     found = checked(entries, templates, index, lock=lock)
     assert any('pdf.xat.ariza: not in ids.lock.json yet (field addressee_office)' in problem for problem in found)
     new = relock(build(entries, templates, index), lock)
@@ -417,7 +431,18 @@ def test_bounds_are_the_papers_for_a_category_pdf_and_todays_otherwise():
 
 
 def test_for_feature_lists_each_service_in_the_lists_order():
-    assert [entry.id for entry in catalogue.for_feature('ai.pdf_topic')] == ['pdf.test', 'pdf.xat.ariza']
+    # The paper entries land package by package (C2a, C2b, C2c): whatever has landed is listed in the owner's
+    # order, a group's children where the group stands.
+    order = list(catalogue._walk(catalogue.read()[2], 'ai.pdf_topic'))
+    papers = [entry.id for entry in catalogue.for_feature('ai.pdf_topic')]
+    assert papers == [item for item in order if item in papers] and {'pdf.test', 'pdf.xat.ariza'} <= set(papers)
+    assert papers[:5] == ['pdf.mustaqil_ish', 'pdf.kurs_ishi', 'pdf.konspekt', 'pdf.dars_ishlanmasi', 'pdf.test']
+    assert [item for item in papers if item.startswith('pdf.biz.')] == [
+        'pdf.biz.biznes_reja', 'pdf.biz.tijorat_taklifi', 'pdf.biz.hisobot', 'pdf.biz.yoriqnoma',
+        'pdf.biz.lavozim_yoriqnomasi', 'pdf.biz.bayonnoma', 'pdf.biz.marketing_reja']
+    assert [item for item in papers if item.startswith('pdf.xat.')] == [
+        'pdf.xat.motivatsion', 'pdf.xat.ishga_kirish', 'pdf.xat.ariza', 'pdf.xat.tavsifnoma', 'pdf.xat.tavsiya',
+        'pdf.xat.tushuntirish']
     assert [entry.id for entry in catalogue.for_feature('ai.pptx')] == [
         'slides.mavzu', 'slides.himoya', 'slides.dars', 'slides.tadbir.tarbiyaviy_soat', 'slides.tadbir.bayram',
         'slides.tadbir.ota_onalar', 'slides.tadbir.pedkengash', 'slides.pitch', 'slides.hisobot', 'slides.kompaniya']
@@ -435,12 +460,18 @@ def test_off_is_off_whatever_is_ticked(switch, ready):
     assert catalogue.on() is False and catalogue.live('ai.pptx') == [] and catalogue.menu('ai.pdf_topic') == []
 
 
-def test_only_ticked_ready_entries_of_the_service_are_live(switch):
-    switch.update(on=True, live=['slides.himoya', 'pdf.test'])
+def test_only_ticked_ready_entries_of_the_service_are_live(switch, monkeypatch):
+    # The decks are ready since N1 and the study papers since N2a; the ariza is held a draft here, as any paper
+    # is until its family is read: a ticked draft is not live.
+    entries, templates, index = files()
+    entries['pdf.xat.ariza']['status'] = 'draft'
+    made = build(entries, templates, index)
+    monkeypatch.setattr(catalogue, '_catalogue', lambda: made)
+    switch.update(on=True, live=['slides.himoya', 'pdf.test', 'pdf.xat.ariza'])
     assert catalogue.on() is True
-    # The decks are ready since N1 and the papers still drafts: a ticked draft is not live.
     assert [entry.id for entry in catalogue.live('ai.pptx')] == ['slides.himoya']
-    assert catalogue.live('ai.pdf_topic') == [] and catalogue.menu('ai.pdf_topic') == []
+    assert [entry.id for entry in catalogue.live('ai.pdf_topic')] == ['pdf.test']
+    assert [node.id for node in catalogue.menu('ai.pdf_topic')] == ['pdf.test', 'other']
 
 
 def test_the_list_shows_live_categories_groups_with_something_live_and_boshqa(switch, ready):
@@ -503,8 +534,9 @@ def test_the_package_answers_for_the_catalogue():
 def test_the_stubs_change_nothing_until_their_packages_build_them():
     entry = catalogue.get('pdf.test')
     content = {'title': 'Tarix', 'sections': [], 'questions': []}
-    assert edits.read('Kirish qo‘sh', entry, fmt='pdf', sections=[]) is None
     assert derive.apply(entry, content, object()) is content
+    # edits.read is built (E1, tests/test_category_edits.py): a deck's change is still today's reading.
+    assert edits.read('Kirish qo‘sh', catalogue.get('slides.himoya'), fmt='pptx', sections=[]) is None
 
 
 def test_the_unknown_category_refusal_has_words_in_each_language():

@@ -1,0 +1,285 @@
+{
+ "schema": 2,
+ "id": "official_tavsifnoma",
+ "entries": [
+  "pdf.xat.tavsifnoma"
+ ],
+ "name": {
+  "uz": "Rasmiy tavsifnoma",
+  "ru": "Официальная характеристика",
+  "en": "Official reference"
+ },
+ "family": "official",
+ "page": {
+  "margins_mm": {
+   "left": 30,
+   "right": 15,
+   "top": 20,
+   "bottom": 20
+  }
+ },
+ "type": {
+  "face": "serif",
+  "ladder": [
+   [
+    12,
+    18
+   ],
+   [
+    11.5,
+    17
+   ],
+   [
+    11,
+    16
+   ]
+  ],
+  "align": "left",
+  "indent_first_mm": 12.5
+ },
+ "page_rule": {
+  "kind": "flow"
+ },
+ "furniture": {
+  "first": "none",
+  "later": "number_top",
+  "format": "n"
+ },
+ "flow": [
+  {
+   "block": "party_block",
+   "part": "issuer",
+   "fields": [
+    "issuer_name",
+    "issuer_contact"
+   ],
+   "when": "nofact:letterhead=true",
+   "params": {
+    "anchor": "centre",
+    "caps": true,
+    "rule": "under",
+    "max_lines": 3,
+    "captions": {
+     "issuer_name": "cap_org"
+    }
+   }
+  },
+  {
+   "block": "party_block",
+   "part": "addressee",
+   "fields": [
+    "addressee"
+   ],
+   "when": "fact:addressee",
+   "params": {
+    "anchor": "right_half",
+    "max_lines": 4,
+    "captions": {
+     "addressee": "cap_body"
+    }
+   }
+  },
+  {
+   "block": "doc_title",
+   "part": "title",
+   "fields": [
+    "subject_role",
+    "subject_name"
+   ],
+   "params": {
+    "label": "title",
+    "tracking_pt": 1.2,
+    "subject": [
+     "subject_role",
+     "subject_name"
+    ],
+    "labels": {
+     "name_before": {
+      "ru": "subject_lead"
+     },
+     "name_after": {
+      "uz": "about"
+     }
+    },
+    "name_style": "bold_caps"
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "identity",
+   "params": {
+    "indent_first_mm": 12.5,
+    "gap_pt": 0
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "acquaintance",
+   "when": "part:acquaintance",
+   "params": {
+    "indent_first_mm": 12.5,
+    "gap_pt": 0
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "work_or_study",
+   "when": "part:work_or_study",
+   "params": {
+    "indent_first_mm": 12.5,
+    "gap_pt": 0
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "achievements",
+   "when": "part:achievements",
+   "params": {
+    "indent_first_mm": 12.5,
+    "gap_pt": 0
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "qualities",
+   "when": "part:qualities",
+   "params": {
+    "indent_first_mm": 12.5,
+    "gap_pt": 0
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "verdict",
+   "when": "part:verdict",
+   "params": {
+    "indent_first_mm": 12.5,
+    "gap_pt": 0
+   }
+  },
+  {
+   "block": "line",
+   "part": "purpose_line",
+   "fields": [
+    "purpose_recipient"
+   ],
+   "when": "fact:purpose_recipient",
+   "params": {
+    "indent_first_mm": 12.5,
+    "text": "purpose_to"
+   }
+  },
+  {
+   "block": "line",
+   "when": "nofact:purpose_recipient",
+   "params": {
+    "indent_first_mm": 12.5,
+    "text": "purpose_any"
+   }
+  },
+  {
+   "block": "signature_row",
+   "part": "signers",
+   "fields": [
+    "signers"
+   ],
+   "keep": "closing",
+   "params": {
+    "variant": "post_sign_name",
+    "max_rows": 3,
+    "sign_room_mm": 12,
+    "captions": [
+     "cap_post",
+     "sign",
+     "cap_name"
+    ]
+   }
+  },
+  {
+   "block": "line",
+   "when": "nofact:without_seal=true",
+   "keep": "closing",
+   "params": {
+    "align": "left",
+    "text": "seal"
+   }
+  },
+  {
+   "block": "date_line",
+   "part": "issue_date",
+   "fields": [
+    "issue_date"
+   ],
+   "keep": "closing",
+   "params": {
+    "fact": "issue_date",
+    "align": "left",
+    "pattern": "date_blank",
+    "year": "blank"
+   }
+  }
+ ],
+ "labels": {
+  "title": {
+   "uz": "TAVSIFNOMA",
+   "ru": "ХАРАКТЕРИСТИКА",
+   "en": "CHARACTER REFERENCE"
+  },
+  "about": {
+   "uz": "haqida",
+   "ru": "",
+   "en": ""
+  },
+  "subject_lead": {
+   "uz": "",
+   "ru": "на",
+   "en": ""
+  },
+  "purpose_to": {
+   "uz": "Tavsifnoma {purpose_recipient} taqdim etish uchun berildi.",
+   "ru": "Характеристика дана для представления {purpose_recipient}.",
+   "en": "This character reference is issued for presentation {purpose_recipient}."
+  },
+  "purpose_any": {
+   "uz": "Tavsifnoma talab qilingan joyga taqdim etish uchun berildi.",
+   "ru": "Характеристика дана для представления по месту требования.",
+   "en": "This character reference is issued for presentation wherever it is required."
+  },
+  "seal": {
+   "uz": "M.O‘.",
+   "ru": "М.П.",
+   "en": "Seal"
+  },
+  "date_blank": {
+   "uz": "«___» ____________ 20___-yil",
+   "ru": "«___» ____________ 20___ г.",
+   "en": "___ ____________ 20___"
+  },
+  "sign": {
+   "uz": "(imzo)",
+   "ru": "(подпись)",
+   "en": "(signature)"
+  },
+  "cap_org": {
+   "uz": "(tashkilot nomi)",
+   "ru": "(наименование организации)",
+   "en": "(name of the organisation)"
+  },
+  "cap_body": {
+   "uz": "(organ nomi)",
+   "ru": "(наименование органа)",
+   "en": "(name of the body)"
+  },
+  "cap_post": {
+   "uz": "(lavozimi)",
+   "ru": "(должность)",
+   "en": "(position)"
+  },
+  "cap_name": {
+   "uz": "(F.I.Sh.)",
+   "ru": "(Ф.И.О.)",
+   "en": "(full name)"
+  }
+ },
+ "mock": "units/pdf.xat.tavsifnoma/mock/official_tavsifnoma.png"
+}

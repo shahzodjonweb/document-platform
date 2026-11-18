@@ -1,0 +1,299 @@
+{
+ "schema": 2,
+ "id": "official_lavozim_yoriqnomasi",
+ "entries": [
+  "pdf.biz.lavozim_yoriqnomasi"
+ ],
+ "name": {
+  "uz": "Lavozim yo‘riqnomasi",
+  "ru": "Должностная инструкция",
+  "en": "Job description"
+ },
+ "family": "official",
+ "page": {
+  "margins_mm": {
+   "left": 30,
+   "right": 15,
+   "top": 20,
+   "bottom": 20
+  }
+ },
+ "type": {
+  "face": "serif",
+  "ladder": [
+   [
+    12,
+    18
+   ],
+   [
+    11.5,
+    17
+   ],
+   [
+    11,
+    16
+   ]
+  ],
+  "align": "left"
+ },
+ "page_rule": {
+  "kind": "flow",
+  "stub_min": 0.15
+ },
+ "furniture": {
+  "first": "none",
+  "later": "number_top",
+  "format": "n"
+ },
+ "flow": [
+  {
+   "block": "line",
+   "part": "head",
+   "fields": [
+    "organisation"
+   ],
+   "when": "fact:organisation",
+   "params": {
+    "text": "organisation",
+    "style": "caps",
+    "balance": true,
+    "after_pt": 10
+   }
+  },
+  {
+   "block": "approval_block",
+   "part": "approval",
+   "when": "nofact:approval_mode=true",
+   "fields": [
+    "approver_post",
+    "approver_name",
+    "approval_date"
+   ],
+   "params": {
+    "word": "approved",
+    "rows": [
+     "approver_post"
+    ],
+    "name": "approver_name",
+    "date": "approval_date",
+    "side": "right"
+   }
+  },
+  {
+   "block": "doc_title",
+   "part": "head",
+   "fields": [
+    "position",
+    "unit",
+    "document_ref"
+   ],
+   "params": {
+    "label": "title",
+    "subject": [
+     "position",
+     "unit",
+     "document_ref"
+    ],
+    "before_pt": 30,
+    "after_pt": 10
+   }
+  },
+  {
+   "block": "clauses",
+   "part": "general",
+   "params": {
+    "heading": {
+     "level": 2,
+     "numbering": "roman",
+     "align": "centre",
+     "in_toc": false
+    },
+    "numbering": "decimal",
+    "nested": "dash",
+    "punctuate": true,
+    "hang_mm": 12.5
+   }
+  },
+  {
+   "block": "clauses",
+   "part": "qualification",
+   "params": {
+    "heading": {
+     "level": 2,
+     "numbering": "roman",
+     "align": "centre",
+     "in_toc": false
+    },
+    "numbering": "decimal",
+    "nested": "dash",
+    "punctuate": true,
+    "hang_mm": 12.5
+   }
+  },
+  {
+   "block": "clauses",
+   "part": "duties",
+   "params": {
+    "heading": {
+     "level": 2,
+     "numbering": "roman",
+     "align": "centre",
+     "in_toc": false
+    },
+    "numbering": "decimal",
+    "nested": "dash",
+    "punctuate": true,
+    "hang_mm": 12.5
+   }
+  },
+  {
+   "block": "clauses",
+   "part": "rights",
+   "params": {
+    "heading": {
+     "level": 2,
+     "numbering": "roman",
+     "align": "centre",
+     "in_toc": false
+    },
+    "numbering": "decimal",
+    "nested": "dash",
+    "punctuate": true,
+    "hang_mm": 12.5
+   }
+  },
+  {
+   "block": "clauses",
+   "part": "responsibility",
+   "params": {
+    "heading": {
+     "level": 2,
+     "numbering": "roman",
+     "align": "centre",
+     "in_toc": false
+    },
+    "numbering": "decimal",
+    "nested": "dash",
+    "punctuate": true,
+    "hang_mm": 12.5
+   }
+  },
+  {
+   "block": "clauses",
+   "part": "final",
+   "params": {
+    "heading": {
+     "level": 2,
+     "numbering": "roman",
+     "align": "centre",
+     "in_toc": false
+    },
+    "numbering": "decimal",
+    "nested": "dash",
+    "punctuate": true,
+    "hang_mm": 12.5
+   }
+  },
+  {
+   "block": "line",
+   "part": "agreement",
+   "keep": "closing",
+   "when": "fact:agreement_signers",
+   "params": {
+    "text": "agreed",
+    "style": "bold",
+    "before_pt": 18
+   }
+  },
+  {
+   "block": "signature_row",
+   "part": "agreement",
+   "keep": "closing",
+   "when": "fact:agreement_signers",
+   "fields": [
+    "agreement_signers"
+   ],
+   "params": {
+    "variant": "post_sign_name",
+    "captions": [
+     "cap_position",
+     "cap_sign",
+     "cap_name"
+    ],
+    "sign_room_mm": 11,
+    "before_pt": 2,
+    "max_rows": 10
+   }
+  },
+  {
+   "block": "line",
+   "part": "acknowledgement",
+   "keep": "closing",
+   "params": {
+    "text": "ack",
+    "before_pt": 18
+   }
+  },
+  {
+   "block": "signature_row",
+   "part": "acknowledgement",
+   "keep": "closing",
+   "fields": [
+    "employee_name"
+   ],
+   "params": {
+    "variant": "post_sign_name",
+    "captions": [
+     "cap_date",
+     "cap_sign",
+     "cap_name"
+    ],
+    "sign_room_mm": 11,
+    "before_pt": 2
+   }
+  }
+ ],
+ "labels": {
+  "title": {
+   "uz": "LAVOZIM YO‘RIQNOMASI",
+   "ru": "ДОЛЖНОСТНАЯ ИНСТРУКЦИЯ",
+   "en": "JOB DESCRIPTION"
+  },
+  "approved": {
+   "uz": "TASDIQLAYMAN",
+   "ru": "УТВЕРЖДАЮ",
+   "en": "APPROVED"
+  },
+  "agreed": {
+   "uz": "KELISHILDI:",
+   "ru": "СОГЛАСОВАНО:",
+   "en": "AGREED:"
+  },
+  "ack": {
+   "uz": "Yo‘riqnoma bilan tanishdim:",
+   "ru": "С инструкцией ознакомлен(а):",
+   "en": "I have read this job description:"
+  },
+  "cap_position": {
+   "uz": "(lavozimi)",
+   "ru": "(должность)",
+   "en": "(position)"
+  },
+  "cap_sign": {
+   "uz": "(imzo)",
+   "ru": "(подпись)",
+   "en": "(signature)"
+  },
+  "cap_name": {
+   "uz": "(F.I.Sh.)",
+   "ru": "(Ф.И.О.)",
+   "en": "(full name)"
+  },
+  "cap_date": {
+   "uz": "(sana)",
+   "ru": "(дата)",
+   "en": "(date)"
+  }
+ },
+ "mock": "units/pdf.biz.lavozim_yoriqnomasi/mock/official_lavozim_yoriqnomasi.png"
+}

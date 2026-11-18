@@ -1,0 +1,168 @@
+{
+ "template": "official_tushuntirish",
+ "case": "full",
+ "entry": "pdf.xat.tushuntirish",
+ "pages": 1,
+ "uz": {
+  "title": "Tushuntirish xati",
+  "facts": {
+   "addressee_position": "Misol Savdo MChJ direktori",
+   "addressee_name": "R. A. Aliyevga",
+   "writer_role": "buxgalter",
+   "writer_name": "Nigora Salimovadan",
+   "writer_phone": "+998 90 000 11 22",
+   "written_date": "15.09.2026",
+   "signer_name": "N. Salimova"
+  },
+  "sections": [
+   {
+    "id": "event",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "2026-yil 14-sentabr kuni ishga 40 daqiqa kechikib keldim: soat 9:40 da yetib keldim."
+   },
+   {
+    "id": "reason",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "Kechikish sababi: yo‘lda avtohalokat bo‘lib, ko‘cha bir soatga yopilgan edi."
+   },
+   {
+    "id": "follow_up",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "Bo‘lim boshlig‘iga oldindan telefon qilib xabar bergan edim."
+   },
+   {
+    "id": "promise",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "Bundan buyon ishga vaqtliroq chiqaman."
+   },
+   {
+    "id": "attachments",
+    "heading": "",
+    "layout": "list",
+    "body": "",
+    "items": [
+     {
+      "label": "",
+      "text": "Yo‘l harakati xizmatining ma’lumotnomasi."
+     }
+    ]
+   }
+  ]
+ },
+ "ru": {
+  "title": "Объяснительная записка",
+  "facts": {
+   "addressee_position": "Директору ООО «Мисол Савдо»",
+   "addressee_name": "Р. А. Алиеву",
+   "writer_role": "от бухгалтера",
+   "writer_name": "Нигоры Салимовой",
+   "writer_phone": "+998 90 000 11 22",
+   "written_date": "15.09.2026",
+   "signer_name": "Н. Салимова"
+  },
+  "sections": [
+   {
+    "id": "event",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "14 сентября 2026 года я опоздала на работу на 40 минут: пришла в 9:40."
+   },
+   {
+    "id": "reason",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "Причина опоздания: на дороге произошла авария, улицу перекрыли на час."
+   },
+   {
+    "id": "follow_up",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "Начальнику отдела я позвонила заранее."
+   },
+   {
+    "id": "promise",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "Впредь буду выезжать на работу раньше."
+   },
+   {
+    "id": "attachments",
+    "heading": "",
+    "layout": "list",
+    "body": "",
+    "items": [
+     {
+      "label": "",
+      "text": "Справка службы дорожного движения."
+     }
+    ]
+   }
+  ]
+ },
+ "en": {
+  "title": "Explanatory note",
+  "facts": {
+   "addressee_position": "Director, Misol Savdo LLC",
+   "addressee_name": "Rustam Aliyev",
+   "writer_role": "Accountant",
+   "writer_name": "Nigora Salimova",
+   "writer_phone": "+998 90 000 11 22",
+   "written_date": "15 September 2026",
+   "signer_name": "Nigora Salimova"
+  },
+  "sections": [
+   {
+    "id": "event",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "On 14 September 2026 I was 40 minutes late for work: I arrived at 9:40."
+   },
+   {
+    "id": "reason",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "The reason for the delay: an accident on my way closed the street for an hour."
+   },
+   {
+    "id": "follow_up",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "I phoned my head of department in advance."
+   },
+   {
+    "id": "promise",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "From now on I will leave for work earlier."
+   },
+   {
+    "id": "attachments",
+    "heading": "",
+    "layout": "list",
+    "body": "",
+    "items": [
+     {
+      "label": "",
+      "text": "A certificate from the traffic police."
+     }
+    ]
+   }
+  ]
+ }
+}

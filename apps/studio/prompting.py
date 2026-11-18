@@ -473,6 +473,12 @@ def schema(data, feature, *, final=True, design=False):
     from .provider import EDIT_PLAN, schema_for, obj
     base = copy.deepcopy(schema_for(feature, data.get('output_format', 'pdf')))
     properties = base['properties']
+    # A category paper is drawn by its template: no design to choose, no
+    # photographs, and table headers that come from the catalogue, never
+    # stored. Its parts keep a layout and items, a table row being one item.
+    paper = paper_entry(data, feature) is not None
+    if paper:
+        design = False
     if 'design' in properties:
         # Only the call that chooses a deck's or document's look sees the field,
         # and it may not answer with the empty value the others are filled in with.
@@ -482,7 +488,13 @@ def schema(data, feature, *, final=True, design=False):
             properties.pop('design')
     from .provider import CV_FEATURE
     cv = feature == CV_FEATURE
-    if data.get('output_format') != 'pptx' and (cv or not data.get('options', {}).get('wants_layouts')):
+    if paper:
+        from .categories.prompting import PAPER_LAYOUTS
+        fields = properties['sections']['items']['properties']
+        for field in ('columns', 'image_query'):
+            fields.pop(field, None)
+        fields['layout'] = {'type': 'string', 'enum': list(PAPER_LAYOUTS)}
+    elif data.get('output_format') != 'pptx' and (cv or not data.get('options', {}).get('wants_layouts')):
         # A plain document is headings and prose: no layout fields to fill. A
         # CV is entries, so it keeps items and nothing else of a layout.
         from .provider import DOC_SECTION_FIELDS
@@ -503,8 +515,10 @@ def schema(data, feature, *, final=True, design=False):
     # it never had; one that removes the test loses it, and the result has none.
     if outline or selected(data) or not asked_questions(data) or not final:
         properties.pop('questions', None)
-    # A CV cites nothing: the files it is made from are its facts, not sources.
-    if cv or not data.get('excerpts'):
+    # A CV cites nothing: the files it is made from are its facts, not sources. Nor does a category paper: its
+    # template never prints the citation lines, and its prompt never asks for them, so a quote that was not word for
+    # word could only cost a retry or the job.
+    if cv or paper or not data.get('excerpts'):
         properties.pop('citations', None)
     if selected(data):
         properties.pop('title', None)
@@ -515,6 +529,7 @@ def schema(data, feature, *, final=True, design=False):
 
 
 def output_budget(data, feature, sections, questions=0):
+    """A call's max_output_tokens: `sections` is its pages (a category paper's, from its parts' shares) or sections."""
     from .pages import call_tokens, RESPONSE_CEILING
     if is_outline(data, feature):
         # Covers bounded coverage text, headings, source quotes and slide fields.
@@ -613,6 +628,20 @@ def categories_of(data):
     return categories
 
 
+def paper_entry(data, feature):
+    """The entry of a category paper's draft; None for any other, without loading the catalogue for one with no category.
+
+    An outline of a category paper is refused before it gets here (outlines.py),
+    and a CV never carries a category, so neither is a paper's.
+    """
+    categories = categories_of(data)
+    from .provider import CV_FEATURE
+    if categories is None or feature == CV_FEATURE or is_outline(data, feature) or data.get('output_format') == 'pptx':
+        return None
+    entry = categories.of(data)
+    return entry if entry is not None and entry.service == 'pdf' else None
+
+
 def request_body(config, data, feature, span=None):
     from . import layouts
     from .provider import SYSTEM, writing_guidance
@@ -648,14 +677,19 @@ def request_body(config, data, feature, span=None):
     with_photos = bool(options.get('image_cap'))
     # A change that asks the whole document for a new look may choose one again.
     redesign = bool(edit_of(data).get('redesign'))
-    shifting = structural(data) and not cv
-    shape = reshape(data) if shifting else None
     # A category deck (architecture 3.1) follows its slot list: DECK and the
     # category's block after the layout guide, and its rows in the input. An
-    # outline is planned as any deck's is, and a category paper waits for P2.
+    # outline is planned as any deck's is. A category paper is told DOCUMENT
+    # (or a change REVISION_SYSTEM and REVISION_NOTE) and its block in place
+    # of SYSTEM, DOCUMENT_RULES and the design guide, and its parts as rows.
     categories = categories_of(data)
     entry = categories.of(data) if categories is not None and not cv else None
     slotted = entry is not None and entry.service == 'slides' and fmt == 'pptx' and not outline
+    paper = entry is not None and entry.service == 'pdf' and fmt != 'pptx' and not outline
+    # A paper's parts keep their ids and kinds through a change, and none is
+    # added or removed (architecture 3.7): nothing moves between slots.
+    shifting = structural(data) and not cv and not paper
+    shape = reshape(data) if shifting else None
     # A new category deck always has its design (the entry's look); a change
     # may still ask for a new one, and then reads the designs as any deck's does.
     fresh = slotted and not revision
@@ -678,6 +712,13 @@ def request_body(config, data, feature, span=None):
         if cv_templates.wanted(data, 0):
             parts.append(cv_templates.reference(bool(data.get('options', {}).get('portrait_asset_id'))))
         design = cv_templates.wanted(data, first)
+    elif paper:
+        # The template is the look, so no design guide; and DOCUMENT_RULES'
+        # developed paragraphs that open by introducing the topic are wrong for
+        # a form, a letter or a list part.
+        parts = ([REVISION_SYSTEM, categories.REVISION_NOTE] if revision else [categories.DOCUMENT])
+        parts.append(categories.block(entry))
+        design = False
     else:
         parts = [OUTLINE_SYSTEM if outline else REVISION_SYSTEM if revision else SYSTEM]
         # An outline is told how to plan only: the writing rules ask for developed
@@ -720,8 +761,11 @@ def request_body(config, data, feature, span=None):
     user = {'task': feature, **language.wire(locale_of(data)),
             'prompt': data['prompt'], 'source_text': data['source_text'], 'excerpts': excerpts}
     from .topics import required
-    subtopics = [] if cv else required(data.get('_brief') or data.get('revision', {}).get('original_prompt')
-                                       or data['prompt'])
+    # A paper's plan, when the brief gives one, is its chapter headings as
+    # DOCUMENT says; its parts are fixed, so a list read out of the brief is
+    # no list of sections to cover.
+    subtopics = [] if cv or paper else required(data.get('_brief') or data.get('revision', {}).get('original_prompt')
+                                                or data['prompt'])
     if subtopics and locale_of(data) == 'uz':
         # Read from normalised text, so o‘ and g‘ arrive as o' and g'; the model
         # copies what it is given, so it is given the house spelling.
@@ -757,17 +801,23 @@ def request_body(config, data, feature, span=None):
     # sees what the earlier ones said, so it continues rather than repeats.
     if data.get('_written'):
         user['already_written'] = data['_written']
+    if paper:
+        # A paper's length is its pages, beside max_sections, which counts its
+        # parts; it places no photographs (architecture 3.1).
+        options = {'pages': categories.skeleton.pages(data),
+                   **{key: options[key] for key in ('question_count',) if key in options}}
     user.update(outline={**content, 'sections': [{'id': s['id']} for s in mine] if shifting else mine,
                          'questions': content.get('questions', []) if final and not outline and questions else []},
                 options=options, max_sections=len(mine),
                 max_questions=questions if final and not outline and not selected(data) else 0)
     if part:
         user['writing_this_part'] = f'sections {first+1}-{last} of {len(sections)}'
-    if slotted:
+    if slotted or paper:
         user['category'] = entry.id
-        # A change has no rows: the customer may have edited slides since, so
-        # the slots may no longer map (architecture 3.7).
-        if not revision:
+        # A deck's change has no rows: the customer may have edited slides
+        # since, so the slots may no longer map (architecture 3.7). A paper's
+        # parts are found by their ids, which no change moves.
+        if paper or not revision:
             user['parts'] = categories.rows(data, mine, first)
     if planning:
         user['writing_guidance'] = (categories.guidance(data, mine, first, len(sections), 'plan') if slotted else
@@ -783,6 +833,12 @@ def request_body(config, data, feature, span=None):
     elif cv:
         from .provider import CV_GUIDANCE, CV_REVISION_GUIDANCE
         user['writing_guidance'] = CV_REVISION_GUIDANCE if revision else CV_GUIDANCE
+    elif paper:
+        # All four of today's branches (new, later part, change, repair) are
+        # the category's, as a CV's are; a later part is told its place there.
+        user['writing_guidance'] = categories.guidance(data, mine, first, len(sections),
+                                                       'repair' if repair else 'change' if revision else 'new',
+                                                       questions=user['max_questions'])
     elif repair:
         # Sized like new sections, never as the cover: "preserve existing length"
         # means nothing for a page that came back empty.
@@ -797,7 +853,7 @@ def request_body(config, data, feature, span=None):
     else:
         user['writing_guidance'] = writing_guidance(options, len(mine), fmt, first,
                                                      len(sections), include_layouts=False)
-    if part and not revision:
+    if part and not revision and not paper:
         user['writing_guidance'] = user['writing_guidance'].rstrip() + ' ' + part_guidance(
             first, last, len(sections), outline, planned=bool(data.get('_planned')))
     if revision:
@@ -807,10 +863,13 @@ def request_body(config, data, feature, span=None):
     if planning:
         user['max_questions'] = 0
         user['outline']['questions'] = []
+    # A paper's call is sized by the pages its parts take, not one a section.
+    size = (categories.skeleton.pages_in({**data, 'content': {'sections': sections}}, first, last) if paper
+            else len(mine))
     result = {'model': config['model'], 'store': False, 'instructions': instructions,
               'input': json.dumps(user, ensure_ascii=False, separators=(',', ':')),
               'max_output_tokens': (plan_budget(fmt, len(mine)) if planning else
-                                    output_budget(data, feature, len(mine), user['max_questions'])),
+                                    output_budget(data, feature, size, user['max_questions'])),
               'text': {'format': {'type': 'json_schema', 'name': 'plan' if planning else 'document', 'strict': True,
                                  'schema': plan_schema(data, feature) if planning else
                                  schema(data, feature, final=final, design=design)}}}

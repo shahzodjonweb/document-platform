@@ -1,0 +1,507 @@
+{
+ "template": "study_test",
+ "case": "full",
+ "entry": "pdf.test",
+ "pages": 3,
+ "uz": {
+  "title": "Biologiya, 7-sinf: hujayra tuzilishi",
+  "facts": {
+   "school": "Namuna tumanidagi 99-sonli maktab",
+   "subject": "Biologiya",
+   "class_level": "7",
+   "topic": "Hujayra tuzilishi va organoidlarning vazifalari",
+   "time_min": "35"
+  },
+  "sections": [
+   {
+    "id": "passage",
+    "heading": "Fotosintez",
+    "body": "Fotosintez — o‘simlik hujayralarining xloroplastlarida yorug‘lik ta’sirida kechadigan jarayon. Bunda o‘simlik havodan karbonat angidridni yutadi va kislorod ajratadi. Bargning yashil rangi xlorofill pigmentiga bog‘liq.",
+    "layout": "text",
+    "items": []
+   }
+  ],
+  "questions": [
+   {
+    "stem": "Hujayraning irsiy axborotini saqlaydigan qism qaysi?",
+    "options": [
+     "Yadro",
+     "Ribosoma",
+     "Vakuola",
+     "Hujayra devori"
+    ],
+    "answer": "Yadro",
+    "explanation": "Irsiy axborot yadrodagi DNKda saqlanadi.",
+    "marks": 1,
+    "topic": ""
+   },
+   {
+    "stem": "Fotosintez jarayoni hujayraning qaysi organoidida kechadi?",
+    "options": [
+     "Mitoxondriya",
+     "Lizosoma",
+     "Xloroplast",
+     "Ribosoma"
+    ],
+    "answer": "Xloroplast",
+    "explanation": "Xloroplastda xlorofill bor.",
+    "marks": 1,
+    "topic": ""
+   },
+   {
+    "stem": "Quyidagilardan qaysi biri faqat o‘simlik hujayrasiga xos?",
+    "options": [
+     "Yadro",
+     "Xloroplast",
+     "Sitoplazma",
+     "Hujayra membranasi"
+    ],
+    "answer": "Xloroplast",
+    "explanation": "Hayvon hujayrasida xloroplast bo‘lmaydi.",
+    "marks": 1,
+    "topic": ""
+   },
+   {
+    "stem": "Hujayra uchun zarur energiya asosan qaysi organoidda hosil bo‘ladi?",
+    "options": [
+     "Vakuola",
+     "Lizosoma",
+     "Yadrocha",
+     "Mitoxondriya"
+    ],
+    "answer": "Mitoxondriya",
+    "explanation": "Mitoxondriya hujayraning energiya stansiyasi.",
+    "marks": 1,
+    "topic": ""
+   },
+   {
+    "stem": "Prokariot hujayralar eukariot hujayralardan asosan qaysi belgisi bilan farq qiladi?",
+    "options": [
+     "Ularda shakllangan yadro va mitoxondriya bo‘lmaydi",
+     "Ularda sitoplazma va hujayra membranasi bo‘lmaydi",
+     "Ularda irsiy axborotni saqlovchi DNK bo‘lmaydi",
+     "Ularda oqsil sintez qiluvchi ribosomalar bo‘lmaydi"
+    ],
+    "answer": "Ularda shakllangan yadro va mitoxondriya bo‘lmaydi",
+    "explanation": "Prokariotlarda yadro qobig‘i yo‘q.",
+    "marks": 1,
+    "topic": ""
+   },
+   {
+    "stem": "Quyidagi organoidlardan qaysilari membrana bilan o‘ralgan?\n1) yadro\n2) ribosoma\n3) mitoxondriya\n4) xloroplast\n5) hujayra markazi\n6) lizosoma",
+    "options": [
+     "1, 2, 3, 4",
+     "1, 3, 4, 6",
+     "2, 4, 5, 6",
+     "1, 3, 5, 6"
+    ],
+    "answer": "1, 3, 4, 6",
+    "explanation": "Ribosoma va hujayra markazida membrana yo‘q.",
+    "marks": 1,
+    "topic": ""
+   },
+   {
+    "stem": "Hujayra markazi (sentriola) hujayraning qaysi jarayonida ishtirok etadi?",
+    "options": [
+     "Fotosintezda",
+     "Nafas olishda",
+     "Oqsil sintezida",
+     "Hujayraning bo‘linishida"
+    ],
+    "answer": "Hujayraning bo‘linishida",
+    "explanation": "Sentriolalar bo‘linish urchug‘ini hosil qiladi.",
+    "marks": 1,
+    "topic": ""
+   },
+   {
+    "stem": "Matnga ko‘ra, fotosintezda o‘simlik havodan qaysi gazni yutadi?",
+    "options": [
+     "Karbonat angidrid",
+     "Kislorod",
+     "Azot",
+     "Vodorod"
+    ],
+    "answer": "Karbonat angidrid",
+    "explanation": "Matnning ikkinchi gapida aytilgan.",
+    "marks": 1,
+    "topic": "passage"
+   },
+   {
+    "stem": "Fotosintez jarayonida atmosferaga qaysi gaz ajraladi?",
+    "options": [
+     "Karbonat angidrid",
+     "Azot",
+     "Kislorod",
+     "Vodorod"
+    ],
+    "answer": "Kislorod",
+    "explanation": "Matnda kislorod ajralishi aytilgan.",
+    "marks": 1,
+    "topic": "passage"
+   },
+   {
+    "stem": "Bargning yashil rangi qaysi pigmentga bog‘liq?",
+    "options": [
+     "Karotin",
+     "Antosian",
+     "Gemoglobin",
+     "Xlorofill"
+    ],
+    "answer": "Xlorofill",
+    "explanation": "Matnning oxirgi gapida aytilgan.",
+    "marks": 1,
+    "topic": "passage"
+   },
+   {
+    "stem": "Prokariot va eukariot hujayralarning ikkita farqini yozing.",
+    "options": [],
+    "answer": "Prokariotlarda shakllangan yadro yo‘q, eukariotlarda bor. Prokariotlarda membranali organoidlar yo‘q.",
+    "explanation": "Har bir to‘g‘ri farq — 1 ball.",
+    "marks": 2,
+    "topic": ""
+   },
+   {
+    "stem": "Mitoxondriyaning hujayradagi vazifasini tushuntiring.",
+    "options": [],
+    "answer": "Mitoxondriyada organik moddalar parchalanib, hujayra uchun energiya hosil bo‘ladi.",
+    "explanation": "Energiya hosil bo‘lishi — 1 ball, jarayonning nomi — 1 ball.",
+    "marks": 2,
+    "topic": ""
+   }
+  ]
+ },
+ "ru": {
+  "title": "Биология, 7 класс: строение клетки",
+  "facts": {
+   "school": "Школа № 99 Образцового района",
+   "subject": "Биология",
+   "class_level": "7",
+   "topic": "Строение клетки и функции органоидов",
+   "time_min": "35"
+  },
+  "sections": [
+   {
+    "id": "passage",
+    "heading": "Фотосинтез",
+    "body": "Фотосинтез — процесс, который идёт в хлоропластах растительных клеток под действием света. Растение поглощает из воздуха углекислый газ и выделяет кислород. Зелёный цвет листа зависит от пигмента хлорофилла.",
+    "layout": "text",
+    "items": []
+   }
+  ],
+  "questions": [
+   {
+    "stem": "Какая часть клетки хранит наследственную информацию?",
+    "options": [
+     "Ядро",
+     "Рибосома",
+     "Вакуоль",
+     "Клеточная стенка"
+    ],
+    "answer": "Ядро",
+    "explanation": "Наследственная информация хранится в ДНК ядра.",
+    "marks": 1,
+    "topic": ""
+   },
+   {
+    "stem": "В каком органоиде клетки идёт фотосинтез?",
+    "options": [
+     "Митохондрия",
+     "Лизосома",
+     "Хлоропласт",
+     "Рибосома"
+    ],
+    "answer": "Хлоропласт",
+    "explanation": "В хлоропласте есть хлорофилл.",
+    "marks": 1,
+    "topic": ""
+   },
+   {
+    "stem": "Что из перечисленного есть только в растительной клетке?",
+    "options": [
+     "Ядро",
+     "Хлоропласт",
+     "Цитоплазма",
+     "Клеточная мембрана"
+    ],
+    "answer": "Хлоропласт",
+    "explanation": "В животной клетке хлоропластов нет.",
+    "marks": 1,
+    "topic": ""
+   },
+   {
+    "stem": "В каком органоиде образуется основная часть энергии клетки?",
+    "options": [
+     "Вакуоль",
+     "Лизосома",
+     "Ядрышко",
+     "Митохондрия"
+    ],
+    "answer": "Митохондрия",
+    "explanation": "Митохондрия — энергетическая станция клетки.",
+    "marks": 1,
+    "topic": ""
+   },
+   {
+    "stem": "Чем прокариотические клетки главным образом отличаются от эукариотических?",
+    "options": [
+     "У них нет оформленного ядра и митохондрий",
+     "У них нет цитоплазмы и клеточной мембраны",
+     "У них нет ДНК, хранящей наследственную информацию",
+     "У них нет рибосом, синтезирующих белок"
+    ],
+    "answer": "У них нет оформленного ядра и митохондрий",
+    "explanation": "У прокариот нет ядерной оболочки.",
+    "marks": 1,
+    "topic": ""
+   },
+   {
+    "stem": "Какие органоиды окружены мембраной?\n1) ядро\n2) рибосома\n3) митохондрия\n4) хлоропласт\n5) клеточный центр\n6) лизосома",
+    "options": [
+     "1, 2, 3, 4",
+     "1, 3, 4, 6",
+     "2, 4, 5, 6",
+     "1, 3, 5, 6"
+    ],
+    "answer": "1, 3, 4, 6",
+    "explanation": "У рибосомы и клеточного центра мембраны нет.",
+    "marks": 1,
+    "topic": ""
+   },
+   {
+    "stem": "В каком процессе участвует клеточный центр (центриоли)?",
+    "options": [
+     "В фотосинтезе",
+     "В дыхании",
+     "В синтезе белка",
+     "В делении клетки"
+    ],
+    "answer": "В делении клетки",
+    "explanation": "Центриоли образуют веретено деления.",
+    "marks": 1,
+    "topic": ""
+   },
+   {
+    "stem": "Какой газ, согласно тексту, растение поглощает из воздуха?",
+    "options": [
+     "Углекислый газ",
+     "Кислород",
+     "Азот",
+     "Водород"
+    ],
+    "answer": "Углекислый газ",
+    "explanation": "Сказано во втором предложении текста.",
+    "marks": 1,
+    "topic": "passage"
+   },
+   {
+    "stem": "Какой газ выделяется в атмосферу при фотосинтезе?",
+    "options": [
+     "Углекислый газ",
+     "Азот",
+     "Кислород",
+     "Водород"
+    ],
+    "answer": "Кислород",
+    "explanation": "В тексте сказано, что выделяется кислород.",
+    "marks": 1,
+    "topic": "passage"
+   },
+   {
+    "stem": "От какого пигмента зависит зелёный цвет листа?",
+    "options": [
+     "Каротин",
+     "Антоциан",
+     "Гемоглобин",
+     "Хлорофилл"
+    ],
+    "answer": "Хлорофилл",
+    "explanation": "Сказано в последнем предложении текста.",
+    "marks": 1,
+    "topic": "passage"
+   },
+   {
+    "stem": "Напишите два отличия прокариотической клетки от эукариотической.",
+    "options": [],
+    "answer": "У прокариот нет оформленного ядра, у эукариот оно есть. У прокариот нет мембранных органоидов.",
+    "explanation": "Каждое верное отличие — 1 балл.",
+    "marks": 2,
+    "topic": ""
+   },
+   {
+    "stem": "Объясните функцию митохондрии в клетке.",
+    "options": [],
+    "answer": "В митохондрии расщепляются органические вещества и образуется энергия для клетки.",
+    "explanation": "Образование энергии — 1 балл, название процесса — 1 балл.",
+    "marks": 2,
+    "topic": ""
+   }
+  ]
+ },
+ "en": {
+  "title": "Biology, grade 7: cell structure",
+  "facts": {
+   "school": "School No. 99, Namuna district",
+   "subject": "Biology",
+   "class_level": "7",
+   "topic": "Cell structure and the functions of organelles",
+   "time_min": "35"
+  },
+  "sections": [
+   {
+    "id": "passage",
+    "heading": "Photosynthesis",
+    "body": "Photosynthesis is the process that runs in the chloroplasts of plant cells under light. The plant takes in carbon dioxide from the air and gives off oxygen. The green colour of a leaf comes from the pigment chlorophyll.",
+    "layout": "text",
+    "items": []
+   }
+  ],
+  "questions": [
+   {
+    "stem": "Which part of the cell stores its hereditary information?",
+    "options": [
+     "Nucleus",
+     "Ribosome",
+     "Vacuole",
+     "Cell wall"
+    ],
+    "answer": "Nucleus",
+    "explanation": "Hereditary information is kept in the DNA of the nucleus.",
+    "marks": 1,
+    "topic": ""
+   },
+   {
+    "stem": "In which organelle does photosynthesis take place?",
+    "options": [
+     "Mitochondrion",
+     "Lysosome",
+     "Chloroplast",
+     "Ribosome"
+    ],
+    "answer": "Chloroplast",
+    "explanation": "The chloroplast holds chlorophyll.",
+    "marks": 1,
+    "topic": ""
+   },
+   {
+    "stem": "Which of these is found only in a plant cell?",
+    "options": [
+     "Nucleus",
+     "Chloroplast",
+     "Cytoplasm",
+     "Cell membrane"
+    ],
+    "answer": "Chloroplast",
+    "explanation": "Animal cells have no chloroplasts.",
+    "marks": 1,
+    "topic": ""
+   },
+   {
+    "stem": "In which organelle is most of the cell’s energy produced?",
+    "options": [
+     "Vacuole",
+     "Lysosome",
+     "Nucleolus",
+     "Mitochondrion"
+    ],
+    "answer": "Mitochondrion",
+    "explanation": "The mitochondrion is the power station of the cell.",
+    "marks": 1,
+    "topic": ""
+   },
+   {
+    "stem": "How do prokaryotic cells mainly differ from eukaryotic cells?",
+    "options": [
+     "They have no true nucleus and no mitochondria",
+     "They have no cytoplasm and no cell membrane",
+     "They have no DNA to store hereditary information",
+     "They have no ribosomes to make proteins"
+    ],
+    "answer": "They have no true nucleus and no mitochondria",
+    "explanation": "Prokaryotes have no nuclear envelope.",
+    "marks": 1,
+    "topic": ""
+   },
+   {
+    "stem": "Which of these organelles are surrounded by a membrane?\n1) nucleus\n2) ribosome\n3) mitochondrion\n4) chloroplast\n5) centrosome\n6) lysosome",
+    "options": [
+     "1, 2, 3, 4",
+     "1, 3, 4, 6",
+     "2, 4, 5, 6",
+     "1, 3, 5, 6"
+    ],
+    "answer": "1, 3, 4, 6",
+    "explanation": "The ribosome and the centrosome have no membrane.",
+    "marks": 1,
+    "topic": ""
+   },
+   {
+    "stem": "In which process does the centrosome (centrioles) take part?",
+    "options": [
+     "Photosynthesis",
+     "Respiration",
+     "Protein synthesis",
+     "Cell division"
+    ],
+    "answer": "Cell division",
+    "explanation": "Centrioles form the spindle.",
+    "marks": 1,
+    "topic": ""
+   },
+   {
+    "stem": "According to the text, which gas does the plant take in from the air?",
+    "options": [
+     "Carbon dioxide",
+     "Oxygen",
+     "Nitrogen",
+     "Hydrogen"
+    ],
+    "answer": "Carbon dioxide",
+    "explanation": "Said in the second sentence of the text.",
+    "marks": 1,
+    "topic": "passage"
+   },
+   {
+    "stem": "Which gas is given off into the air during photosynthesis?",
+    "options": [
+     "Carbon dioxide",
+     "Nitrogen",
+     "Oxygen",
+     "Hydrogen"
+    ],
+    "answer": "Oxygen",
+    "explanation": "The text says oxygen is given off.",
+    "marks": 1,
+    "topic": "passage"
+   },
+   {
+    "stem": "Which pigment gives a leaf its green colour?",
+    "options": [
+     "Carotene",
+     "Anthocyanin",
+     "Haemoglobin",
+     "Chlorophyll"
+    ],
+    "answer": "Chlorophyll",
+    "explanation": "Said in the last sentence of the text.",
+    "marks": 1,
+    "topic": "passage"
+   },
+   {
+    "stem": "Write two differences between prokaryotic and eukaryotic cells.",
+    "options": [],
+    "answer": "Prokaryotes have no true nucleus; eukaryotes have one. Prokaryotes have no membrane-bound organelles.",
+    "explanation": "Each correct difference — 1 point.",
+    "marks": 2,
+    "topic": ""
+   },
+   {
+    "stem": "Explain the function of the mitochondrion in the cell.",
+    "options": [],
+    "answer": "In the mitochondrion organic substances are broken down and energy is released for the cell.",
+    "explanation": "Energy released — 1 point, the process named — 1 point.",
+    "marks": 2,
+    "topic": ""
+   }
+  ]
+ }
+}

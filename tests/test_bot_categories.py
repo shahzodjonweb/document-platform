@@ -673,3 +673,32 @@ def test_the_list_words_say_the_same_in_every_language(key):
     assert not re.search('[а-яёўқғҳ]', uz.lower()) and not re.search('[а-яё]', en.lower())
     assert "'" not in uz and '`' not in uz, 'Uzbek writes ‘ and ’, never a typewriter apostrophe'
     assert not any(mark in value for value in (en, uz, ru) for mark in '<&'), f'{key} is shown as HTML'
+
+
+def test_with_the_switch_off_a_fresh_bot_never_imports_the_catalogue():
+    """Stage-2 re-audit: the switch row is read before the catalogue, so an off switch never builds it.
+
+    The tests above run with the catalogue already imported; a fresh process shows what a restarted bot does on
+    its first AI PDF or AI Slides tap: today's question, with apps.studio.categories.catalogue never imported.
+    """
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+    script = (
+        'import sys, django\n'
+        'django.setup()\n'
+        'import operations.categories_settings as switch\n'
+        "switch.get = lambda: {'on': False, 'live': ['pdf.test']}\n"
+        'from telegram import bot, generation\n'
+        "assert 'apps.studio.categories.catalogue' not in sys.modules, 'imported with the bot'\n"
+        "assert generation.door(generation.DOCUMENT) == ('prompt', None, False)\n"
+        "assert generation.door(generation.SLIDES, 'pdf.test') == ('prompt', None, False)\n"
+        "assert generation.category_live(generation.DOCUMENT, 'pdf.test') is None\n"
+        "assert bot.boshqa_back(generation.DOCUMENT) == {}\n"
+        "assert 'apps.studio.categories.catalogue' not in sys.modules, 'imported by a tap'\n"
+        "print('clean')\n")
+    env = {**os.environ, 'DJANGO_SETTINGS_MODULE': 'config.settings', 'DEBUG': '1'}
+    done = subprocess.run([sys.executable, '-c', script], cwd=Path(__file__).resolve().parent.parent, env=env,
+                          capture_output=True, text=True, timeout=120)
+    assert done.returncode == 0 and done.stdout.strip().endswith('clean'), done.stderr[-2000:]

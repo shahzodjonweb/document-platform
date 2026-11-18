@@ -1,0 +1,297 @@
+{
+ "template": "business_taklif",
+ "case": "full",
+ "entry": "pdf.biz.tijorat_taklifi",
+ "pages": 1,
+ "uz": {
+  "title": "Maktab mebeli: yetkazib berish va o‘rnatish bepul, 10 ish kunida",
+  "facts": {
+   "seller_name": "Misol Mebel MChJ",
+   "seller_address": "Toshkent sh., Yunusobod t., 7-uy",
+   "seller_phone": "+998 90 111 22 33",
+   "seller_email": "savdo@misolmebel.example",
+   "seller_requisites": "STIR 300 111 222, h/r 2020 8000 0000 1111 2222",
+   "addressee_org": "41-sonli umumta’lim maktabi",
+   "addressee_person": "Direktor Bekzod Ergashev",
+   "doc_number": "27/11",
+   "doc_date": "15.11.2026",
+   "offer_subject": "Sinf xonalari uchun mebel",
+   "currency": "so‘m",
+   "vat_status": "QQS bilan",
+   "delivery_terms": "10 ish kunida, bepul",
+   "payment_terms": "50% oldindan, qolgani o‘rnatilgandan keyin",
+   "warranty": "3 yil",
+   "validity": "30 kun",
+   "discount": "200 dan ortiq partaga 5%",
+   "signer_position": "Direktor",
+   "signer_name": "Sherzod Qodirov",
+   "contact_person": "Feruza Xolmatova, +998 90 111 22 34"
+  },
+  "sections": [
+   {
+    "id": "opening",
+    "heading": "",
+    "body": "Hurmatli Bekzod Ergashev!\nMisol Mebel MChJ 41-sonli maktab uchun o‘quvchi partalari, stullar va o‘qituvchi stolini yetkazib berish va o‘rnatishni taklif qiladi.",
+    "notes": "",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "advantages",
+    "heading": "",
+    "body": "",
+    "notes": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "Mebel o‘quvchining bo‘yiga moslab sozlanadi",
+      "value": ""
+     },
+     {
+      "label": "",
+      "text": "Yetkazib berish va o‘rnatish narxga kiritilgan",
+      "value": ""
+     },
+     {
+      "label": "",
+      "text": "Sinov uchun bitta parta oldindan beriladi",
+      "value": ""
+     }
+    ]
+   },
+   {
+    "id": "prices",
+    "heading": "",
+    "body": "",
+    "notes": "",
+    "layout": "table",
+    "items": [
+     {
+      "label": "O‘quvchi partasi",
+      "text": "dona | 40 | 650 000",
+      "value": "26 000 000"
+     },
+     {
+      "label": "O‘quvchi stuli",
+      "text": "dona | 40 | 280 000",
+      "value": "11 200 000"
+     },
+     {
+      "label": "O‘qituvchi stoli",
+      "text": "dona | 2 | 1 150 000",
+      "value": "2 300 000"
+     },
+     {
+      "label": "Jami",
+      "text": "",
+      "value": "39 500 000",
+      "total": true
+     }
+    ]
+   },
+   {
+    "id": "cta",
+    "heading": "",
+    "body": "Buyurtma berish uchun Feruza Xolmatova bilan bog‘laning: +998 90 111 22 34.",
+    "notes": "",
+    "layout": "text",
+    "items": []
+   }
+  ]
+ },
+ "ru": {
+  "title": "Школьная мебель: доставка и сборка бесплатно, за 10 рабочих дней",
+  "facts": {
+   "seller_name": "ООО «Мисол Мебель»",
+   "seller_address": "г. Ташкент, Юнусабадский р-н, д. 7",
+   "seller_phone": "+998 90 111 22 33",
+   "seller_email": "savdo@misolmebel.example",
+   "seller_requisites": "ИНН 300 111 222, р/с 2020 8000 0000 1111 2222",
+   "addressee_org": "Общеобразовательная школа № 41",
+   "addressee_person": "Директор Бекзод Эргашев",
+   "doc_number": "27/11",
+   "doc_date": "15.11.2026",
+   "offer_subject": "Мебель для классов",
+   "currency": "сум",
+   "vat_status": "с НДС",
+   "delivery_terms": "10 рабочих дней, бесплатно",
+   "payment_terms": "50% предоплата, остаток после сборки",
+   "warranty": "3 года",
+   "validity": "30 дней",
+   "discount": "5% при заказе более 200 парт",
+   "signer_position": "Директор",
+   "signer_name": "Шерзод Кодиров",
+   "contact_person": "Феруза Холматова, +998 90 111 22 34"
+  },
+  "sections": [
+   {
+    "id": "opening",
+    "heading": "",
+    "body": "Уважаемый г-н Эргашев!\nООО «Мисол Мебель» предлагает школе № 41 поставку и сборку ученических парт, стульев и учительского стола.",
+    "notes": "",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "advantages",
+    "heading": "",
+    "body": "",
+    "notes": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "Мебель регулируется под рост ученика",
+      "value": ""
+     },
+     {
+      "label": "",
+      "text": "Доставка и сборка входят в цену",
+      "value": ""
+     },
+     {
+      "label": "",
+      "text": "Одна парта даётся заранее на пробу",
+      "value": ""
+     }
+    ]
+   },
+   {
+    "id": "prices",
+    "heading": "",
+    "body": "",
+    "notes": "",
+    "layout": "table",
+    "items": [
+     {
+      "label": "Парта ученическая",
+      "text": "шт. | 40 | 650 000",
+      "value": "26 000 000"
+     },
+     {
+      "label": "Стул ученический",
+      "text": "шт. | 40 | 280 000",
+      "value": "11 200 000"
+     },
+     {
+      "label": "Стол учителя",
+      "text": "шт. | 2 | 1 150 000",
+      "value": "2 300 000"
+     },
+     {
+      "label": "Итого",
+      "text": "",
+      "value": "39 500 000",
+      "total": true
+     }
+    ]
+   },
+   {
+    "id": "cta",
+    "heading": "",
+    "body": "Чтобы заказать, свяжитесь с Ферузой Холматовой: +998 90 111 22 34.",
+    "notes": "",
+    "layout": "text",
+    "items": []
+   }
+  ]
+ },
+ "en": {
+  "title": "School furniture: free delivery and assembly within 10 working days",
+  "facts": {
+   "seller_name": "Misol Furniture LLC",
+   "seller_address": "7 Yunusobod district, Tashkent",
+   "seller_phone": "+998 90 111 22 33",
+   "seller_email": "savdo@misolmebel.example",
+   "seller_requisites": "TIN 300 111 222, account 2020 8000 0000 1111 2222",
+   "addressee_org": "School No. 41",
+   "addressee_person": "Head teacher Bekzod Ergashev",
+   "doc_number": "27/11",
+   "doc_date": "15 November 2026",
+   "offer_subject": "Classroom furniture",
+   "currency": "USD",
+   "vat_status": "VAT included",
+   "delivery_terms": "10 working days, free",
+   "payment_terms": "50% in advance, the rest after assembly",
+   "warranty": "3 years",
+   "validity": "30 days",
+   "discount": "5% on more than 200 desks",
+   "signer_position": "Director",
+   "signer_name": "Sherzod Qodirov",
+   "contact_person": "Feruza Xolmatova, +998 90 111 22 34"
+  },
+  "sections": [
+   {
+    "id": "opening",
+    "heading": "",
+    "body": "Dear Mr Ergashev,\nMisol Furniture LLC offers School No. 41 the delivery and assembly of pupils’ desks, chairs and a teacher’s desk.",
+    "notes": "",
+    "layout": "text",
+    "items": []
+   },
+   {
+    "id": "advantages",
+    "heading": "",
+    "body": "",
+    "notes": "",
+    "layout": "list",
+    "items": [
+     {
+      "label": "",
+      "text": "Desks adjust to each pupil’s height",
+      "value": ""
+     },
+     {
+      "label": "",
+      "text": "Delivery and assembly are in the price",
+      "value": ""
+     },
+     {
+      "label": "",
+      "text": "One desk is lent in advance for a trial",
+      "value": ""
+     }
+    ]
+   },
+   {
+    "id": "prices",
+    "heading": "",
+    "body": "",
+    "notes": "",
+    "layout": "table",
+    "items": [
+     {
+      "label": "Pupil’s desk",
+      "text": "pcs | 40 | 52.50",
+      "value": "2,100.00"
+     },
+     {
+      "label": "Pupil’s chair",
+      "text": "pcs | 40 | 22.75",
+      "value": "910.00"
+     },
+     {
+      "label": "Teacher’s desk",
+      "text": "pcs | 2 | 92.40",
+      "value": "184.80"
+     },
+     {
+      "label": "Total",
+      "text": "",
+      "value": "3,194.80",
+      "total": true
+     }
+    ]
+   },
+   {
+    "id": "cta",
+    "heading": "",
+    "body": "To order, contact Feruza Xolmatova: +998 90 111 22 34.",
+    "notes": "",
+    "layout": "text",
+    "items": []
+   }
+  ]
+ }
+}

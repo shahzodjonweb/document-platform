@@ -1,0 +1,332 @@
+{
+ "schema": 2,
+ "id": "letter_motivatsion",
+ "entries": [
+  "pdf.xat.motivatsion"
+ ],
+ "name": {
+  "uz": "Motivatsion xat",
+  "ru": "Мотивационное письмо",
+  "en": "Motivation letter"
+ },
+ "family": "letter",
+ "page": {
+  "margins_mm": {
+   "left": 25,
+   "right": 25,
+   "top": 22,
+   "bottom": 20
+  }
+ },
+ "type": {
+  "face": "serif",
+  "ladder": [
+   [
+    11,
+    16
+   ],
+   [
+    10.5,
+    15
+   ],
+   [
+    10,
+    14
+   ]
+  ],
+  "align": "left"
+ },
+ "page_rule": {
+  "kind": "flow",
+  "stub_min": 0.3
+ },
+ "furniture": {
+  "first": "none",
+  "later": "header_number",
+  "format": "n",
+  "header": [
+   "applicant_name"
+  ]
+ },
+ "flow": [
+  {
+   "block": "party_block",
+   "part": "sender",
+   "fields": [
+    "applicant_name",
+    "phone",
+    "email",
+    "address"
+   ],
+   "params": {
+    "anchor": "left",
+    "name_style": "bold_large",
+    "rule": "under",
+    "contact_line": true,
+    "captions": {
+     "applicant_name": "cap_name"
+    },
+    "labels": {
+     "phone": "tel",
+     "email": "email"
+    }
+   }
+  },
+  {
+   "block": "split_row",
+   "part": "addressee_row",
+   "fields": [
+    "recipient_lines",
+    "recipient_person",
+    "letter_date"
+   ],
+   "params": {
+    "left": {
+     "block": "party_block",
+     "fields": [
+      "recipient_lines",
+      "recipient_person"
+     ],
+     "anchor": "left",
+     "max_lines": 4
+    },
+    "right": {
+     "block": "date_line",
+     "fact": "letter_date",
+     "align": "right",
+     "year": "clock"
+    },
+    "left_mm": 104
+   }
+  },
+  {
+   "block": "line",
+   "part": "salutation",
+   "fields": [
+    "salutation"
+   ],
+   "when": "fact:salutation_form=person"
+  },
+  {
+   "block": "line",
+   "when": "fact:salutation_form=admissions",
+   "params": {
+    "text": "admissions"
+   }
+  },
+  {
+   "block": "line",
+   "when": "fact:salutation_form=selection",
+   "params": {
+    "text": "selection"
+   }
+  },
+  {
+   "block": "line",
+   "when": "fact:salutation_form=general",
+   "params": {
+    "text": "general"
+   }
+  },
+  {
+   "block": "line",
+   "when": "nofact:salutation_form",
+   "params": {
+    "text": "general"
+   }
+  },
+  {
+   "block": "line",
+   "part": "subject",
+   "fields": [
+    "target_programme",
+    "target_institution",
+    "intake"
+   ],
+   "params": {
+    "label": "kind",
+    "style": "bold",
+    "max_lines": 3,
+    "balance": true,
+    "separator": ", "
+   },
+   "when": "fact:target_programme"
+  },
+  {
+   "block": "line",
+   "part": "subject",
+   "fields": [
+    "target_institution",
+    "intake"
+   ],
+   "params": {
+    "style": "bold",
+    "max_lines": 3,
+    "balance": true,
+    "separator": ", "
+   },
+   "when": "nofact:target_programme"
+  },
+  {
+   "block": "paragraph",
+   "part": "opening",
+   "params": {
+    "gap_pt": 7,
+    "before_pt": 7
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "why",
+   "when": "part:why",
+   "params": {
+    "gap_pt": 7,
+    "before_pt": 7
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "evidence",
+   "when": "part:evidence",
+   "params": {
+    "gap_pt": 7,
+    "before_pt": 7
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "contribution_goals",
+   "when": "part:contribution_goals",
+   "params": {
+    "gap_pt": 7,
+    "before_pt": 7
+   }
+  },
+  {
+   "block": "paragraph",
+   "part": "closing",
+   "keep": "closing",
+   "params": {
+    "gap_pt": 7,
+    "before_pt": 7
+   }
+  },
+  {
+   "block": "line",
+   "part": "close",
+   "when": "fact:salutation_form=person",
+   "keep": "closing",
+   "params": {
+    "text": "close_named",
+    "before_pt": 10
+   }
+  },
+  {
+   "block": "line",
+   "part": "close",
+   "when": "nofact:salutation_form=person",
+   "keep": "closing",
+   "params": {
+    "text": "close",
+    "before_pt": 10
+   }
+  },
+  {
+   "block": "line",
+   "part": "close",
+   "fields": [
+    "applicant_name"
+   ],
+   "when": "fact:applicant_name",
+   "keep": "closing",
+   "params": {
+    "before_pt": 30
+   }
+  },
+  {
+   "block": "ruled_blank",
+   "fields": [
+    "applicant_name"
+   ],
+   "when": "blank:applicant_name",
+   "keep": "closing",
+   "params": {
+    "style": "captioned",
+    "caption": "cap_name",
+    "width_mm": 60,
+    "indent_mm": 0,
+    "pitch_pt": 36
+   }
+  },
+  {
+   "block": "list",
+   "part": "enclosures",
+   "when": "part:enclosures",
+   "keep": "closing",
+   "params": {
+    "marker": "number",
+    "label": "enclosure",
+    "max_items": 6,
+    "single_unnumbered": true
+   }
+  }
+ ],
+ "labels": {
+  "kind": {
+   "uz": "Motivatsion xat:",
+   "ru": "Мотивационное письмо:",
+   "en": "Letter of motivation:"
+  },
+  "admissions": {
+   "uz": "Hurmatli qabul komissiyasi a’zolari!",
+   "ru": "Уважаемые члены приёмной комиссии!",
+   "en": "Dear Admissions Committee,"
+  },
+  "selection": {
+   "uz": "Hurmatli tanlov komissiyasi a’zolari!",
+   "ru": "Уважаемые члены конкурсной комиссии!",
+   "en": "Dear Selection Committee,"
+  },
+  "general": {
+   "uz": "Hurmatli xonimlar va janoblar!",
+   "ru": "Уважаемые дамы и господа!",
+   "en": "Dear Sir or Madam,"
+  },
+  "close_named": {
+   "uz": "Hurmat bilan,",
+   "ru": "С уважением,",
+   "en": "Yours sincerely,"
+  },
+  "close": {
+   "uz": "Hurmat bilan,",
+   "ru": "С уважением,",
+   "en": "Yours faithfully,"
+  },
+  "enclosure": {
+   "uz": "Ilova:",
+   "ru": "Приложение:",
+   "en": "Enclosure:"
+  },
+  "enclosures": {
+   "uz": "Ilova:",
+   "ru": "Приложение:",
+   "en": "Enclosures:"
+  },
+  "tel": {
+   "uz": "Tel.:",
+   "ru": "Тел.:",
+   "en": "Tel.:"
+  },
+  "email": {
+   "uz": "E-mail:",
+   "ru": "Эл. почта:",
+   "en": "E-mail:"
+  },
+  "cap_name": {
+   "uz": "(F.I.Sh.)",
+   "ru": "(Ф.И.О.)",
+   "en": "(full name)"
+  }
+ },
+ "mock": "units/pdf.xat.motivatsion/mock/letter_motivatsion.png"
+}

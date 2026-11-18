@@ -1,0 +1,132 @@
+{
+ "template": "tavsiya_rasmiy",
+ "case": "full",
+ "entry": "pdf.xat.tavsiya",
+ "pages": 1,
+ "uz": {
+  "title": "Tavsiyanoma",
+  "facts": {
+   "recommender_org": "Namuna davlat universiteti",
+   "recommender_unit": "Axborot tizimlari kafedrasi",
+   "letter_date": "16.09.2026",
+   "outgoing_number": "118",
+   "addressee": "Misol Texnologiya Universiteti magistratura qabul komissiyasiga",
+   "candidate_status": "Axborot tizimlari yo‘nalishi 4-kurs talabasi",
+   "candidate_name": "Shahnoza Ergasheva",
+   "candidate_short": "Sh. Ergasheva",
+   "target": "axborot tizimlari magistraturasiga qabul qilish",
+   "strength": "standard",
+   "recommender_position": "Axborot tizimlari kafedrasi dotsenti",
+   "recommender_name": "Jamshid Qurbonov",
+   "second_signer": "Kafedra mudiri | O. N. Rasulov",
+   "recommender_phone": "+998 90 123 45 67"
+  },
+  "sections": [
+   {
+    "id": "opening",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "Namuna davlat universiteti axborot tizimlari kafedrasi dotsenti Jamshid Qurbonov Shahnoza Ergashevaga 2023-yildan beri «Ma’lumotlar bazalari» fanidan dars beradi va uning bitiruv ishiga rahbarlik qiladi."
+   },
+   {
+    "id": "evidence",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "Sh. Ergasheva kafedra talabalar jurnali uchun ma’lumotlar bazasini yaratdi; kafedra uni hozir ham ishlatadi. 2025-yilda u uchta talabalar anjumanida ma’ruza qildi."
+   },
+   {
+    "id": "character",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "Izohlarni har safar o‘sha haftaning o‘zida hisobga olib, ishni qayta topshiradi."
+   }
+  ]
+ },
+ "ru": {
+  "title": "Рекомендательное письмо",
+  "facts": {
+   "recommender_org": "Образцовый государственный университет",
+   "recommender_unit": "Кафедра информационных систем",
+   "letter_date": "16.09.2026",
+   "outgoing_number": "118",
+   "addressee": "В приёмную комиссию магистратуры Университета «Мисол»",
+   "candidate_status": "студентке 4 курса направления «Информационные системы»",
+   "candidate_name": "Шахнозе Эргашевой",
+   "candidate_short": "Ш. Эргашева",
+   "target": "для поступления в магистратуру по информационным системам",
+   "strength": "standard",
+   "recommender_position": "Доцент кафедры информационных систем",
+   "recommender_name": "Джамшид Курбанов",
+   "second_signer": "Заведующий кафедрой | О. Н. Расулов",
+   "recommender_phone": "+998 90 123 45 67"
+  },
+  "sections": [
+   {
+    "id": "opening",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "Доцент кафедры информационных систем Образцового государственного университета Джамшид Курбанов с 2023 года ведёт у Шахнозы Эргашевой курс «Базы данных» и руководит её выпускной работой."
+   },
+   {
+    "id": "evidence",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "Ш. Эргашева создала базу данных для студенческого журнала кафедры; кафедра пользуется ею до сих пор. В 2025 году она выступила с докладами на трёх студенческих конференциях."
+   },
+   {
+    "id": "character",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "Замечания учитывает в ту же неделю и сдаёт работу заново."
+   }
+  ]
+ },
+ "en": {
+  "title": "Letter of recommendation",
+  "facts": {
+   "recommender_org": "Namuna State University",
+   "recommender_unit": "Information systems department",
+   "letter_date": "16 September 2026",
+   "outgoing_number": "118",
+   "addressee": "Master’s admissions committee, Misol University of Technology",
+   "candidate_status": "Fourth-year student of information systems",
+   "candidate_name": "Shahnoza Ergasheva",
+   "candidate_short": "Shahnoza Ergasheva",
+   "target": "admission to the information systems master’s programme",
+   "strength": "standard",
+   "recommender_position": "Associate professor, information systems department",
+   "recommender_name": "Jamshid Kurbanov",
+   "second_signer": "Head of department | O. N. Rasulov",
+   "recommender_phone": "+998 90 123 45 67"
+  },
+  "sections": [
+   {
+    "id": "opening",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "I am an associate professor in the information systems department of Namuna State University. I have taught Shahnoza Ergasheva the Databases course since 2023 and supervise her graduation project."
+   },
+   {
+    "id": "evidence",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "Shahnoza built a database for the department’s student journal, and the department still uses it. In 2025 she spoke at three student conferences."
+   },
+   {
+    "id": "character",
+    "heading": "",
+    "layout": "text",
+    "items": [],
+    "body": "She acts on my comments within the same week and resubmits the work."
+   }
+  ]
+ }
+}
