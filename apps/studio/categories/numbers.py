@@ -750,8 +750,8 @@ class _Reader:
                 self.add(*match.span(), 'spelled', str(value), [{str(value)}])
         # A collective is a key of its own on both sides ("top:3"): being among the top three is not finishing third,
         # so the customer's "вошла в тройку лучших" or "eng yaxshi uchlikka kirdi" grounds the paper's same collective
-        # in any of the three languages, never its "3 года", "третье место" or "uchinchi o‘rin"; and the customer's "3"
-        # grounds no "тройку лучших".
+        # in Russian or Uzbek, never its "3 года", "третье место" or "uchinchi o‘rin"; and the customer's bare "3" (a
+        # top three in other words too: "среди трёх лучших", "the top three") grounds no "тройку лучших".
         for match in COLLECTIVE.finditer(text):
             value = next(value for stem, value in COLLECTIVES if re.fullmatch(stem, match.group(1).casefold()))
             if self.free(*match.span()):

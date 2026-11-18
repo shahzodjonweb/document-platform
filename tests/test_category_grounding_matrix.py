@@ -3086,8 +3086,16 @@ COVER_RU_TOP3_LEADERS = ('Напишите сопроводительное пи
                          'была в тройке лидеров продаж сети.')
 COVER_RU_THREE_YEARS = ('Напишите сопроводительное письмо на должность менеджера по продажам. Я Малика Кодирова, '
                         'работала в рознице 3 года.')
+COVER_RU_THREE_BEST = ('Напишите сопроводительное письмо на должность менеджера по продажам. Я Малика Кодирова, '
+                       'в прошлом году была среди трёх лучших продавцов региона.')
+COVER_EN_TOP3_RU = ('Please write in Russian a cover letter for me, Malika Qodirova, sales manager. Last year I was '
+                    'among the top three sellers of the region.')
 COVER_UZ_TOP3 = ('Ishga kirish xati yozing. Ismim Qodirova Malika, sotuv menejeri lavozimiga topshiraman. O‘tgan yili '
                  'viloyat sotuvchilari reytingida eng yaxshi uchlikka kirdim.')
+COVER_UZ_THREE_BEST = ('Ishga kirish xati yozing. Ismim Qodirova Malika, sotuv menejeri lavozimiga topshiraman. O‘tgan '
+                       'yili viloyatda eng yaxshi uch sotuvchidan biri bo‘ldim.')
+COVER_UZ_THREE_YEARS = ('Ishga kirish xati yozing. Ismim Qodirova Malika, sotuv menejeri lavozimiga topshiraman. '
+                        'Savdoda 3 yil ishlaganman.')
 REFERENCE_UZ_TOP5 = ('Qodirova Malika uchun tavsifnoma yozing, u o‘quvchi, viloyat olimpiadasida g‘oliblar beshligiga '
                      'kirgan, darslarda faol.')
 REPORT_RU_TOP3 = ('Напишите отчёт о работе нашей пекарни за год. Наша пекарня входит в тройку лидеров рынка Ташкента, '
@@ -3157,6 +3165,21 @@ CASES += [
        'O‘tgan yili viloyat reytingida eng yaxshi uchlikka kirdim.'),
     gp('numbers-the-customers-top-five-winners-uz-keep', KEEP, REFERENCE_UZ_TOP5, 'uz',
        'Viloyat olimpiadasida g‘oliblar beshligiga kirgan.'),
+    gp('numbers-three-years-grounds-no-top-three-uz-blank', BLANK, COVER_UZ_THREE_YEARS, 'uz',
+       'O‘tgan yili viloyatda eng yaxshi uchlikka kirdim.', gone=('uchlik',)),
+    # The customer's top three in other words ("среди трёх лучших", English "the top three", "eng yaxshi uch
+    # sotuvchidan biri") gives only its bare 3, as c491da9 reads it, and a bare 3 grounds no collective: the blanks are
+    # the price of "3 года" and "3 yil" grounding "тройку лучших" and "uchlikka" (c491da9 reads no collective and keeps
+    # these, as it keeps the leaks).
+    gp('numbers-the-customers-three-best-in-other-words-ru-accepted_false_blank', ACCEPTED, COVER_RU_THREE_BEST, 'ru',
+       'В прошлом году я вошла в тройку лучших продавцов региона.', gone=('тройку',),
+       pair='numbers-three-years-grounds-no-top-three-ru-blank'),
+    gp('numbers-the-customers-english-top-three-en-to-ru-accepted_false_blank', ACCEPTED, COVER_EN_TOP3_RU, 'ru',
+       'В прошлом году я вошла в тройку лучших продавцов региона.', gone=('тройку',), translated=True,
+       pair='numbers-three-years-grounds-no-top-three-ru-blank'),
+    gp('numbers-the-customers-best-three-in-other-words-uz-accepted_false_blank', ACCEPTED, COVER_UZ_THREE_BEST, 'uz',
+       'O‘tgan yili viloyatda eng yaxshi uchlikka kirdim.', gone=('uchlik',),
+       pair='numbers-three-years-grounds-no-top-three-uz-blank'),
 ]
 
 # ---- A translated paper's accounting law takes only its head noun's own forms (must, from 424c38a): "учёт", "учёта",
