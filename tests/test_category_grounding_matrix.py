@@ -2345,6 +2345,14 @@ CASES += [
     gp('numbers-second-to-none-at-an-olympiad-en-keep', KEEP, RECOMMENDATION_EN, 'en',
        'At the olympiad she was second to none in effort.'),
     gp('numbers-her-second-olympiad-en-keep', KEEP, RECOMMENDATION_EN, 'en', 'The regional olympiad was her second.'),
+    # The round-1 re-check's forms the sweep still printed: a contest between "finished" and the ordinal, and a sales
+    # race beside "my first place".
+    gp('numbers-finished-an-olympiad-in-second-en-blank', BLANK, RECOMMENDATION_EN, 'en',
+       'She finished the olympiad in second.', gone=('second',)),
+    gp('numbers-my-first-place-in-a-sales-race-en-blank', BLANK, COVER_EN, 'en',
+       'My first place in the sales race earned me a bonus.', gone=('first',)),
+    gp('numbers-finished-a-course-in-second-year-en-keep', KEEP, RECOMMENDATION_EN, 'en',
+       'She finished the course in second year.'),
     gp('numbers-her-first-result-at-an-olympiad-uz-keep', KEEP, REFERENCE_UZ, 'uz',
        'Olimpiadada uning birinchi natijasi yaxshi bo‘ldi.'),
     gp('numbers-the-first-from-a-school-who-went-to-an-olympiad-ru-keep', KEEP, COVER_RU, 'ru',

@@ -370,6 +370,9 @@ ORDINAL_RANK = re.compile(
     rf"|(?<![^\W\d_])на{GAP_ORDINAL}({ORDINAL_WORD})(?={GAP_ORDINAL}месте(?![^\W\d_]))"
     rf"|(?<![^\W\d_])(?:came|comes?|coming|finish(?:ed|es|ing)?){GAP_ORDINAL}(?:in{GAP_ORDINAL})?({ORDINAL_WORD})"
     rf"(?![^\W\d_])"
+    # The contest between the verb and the ordinal closing its clause: "She finished the olympiad in second."
+    rf"|(?<![^\W\d_])finish(?:ed|es|ing)?{GAP_ORDINAL}the{GAP_ORDINAL}[^\W\d_]+(?:{GAP_ORDINAL}[^\W\d_]+)?"
+    rf"{GAP_ORDINAL}in{GAP_ORDINAL}({EN_ORDINAL_WORD})(?=[  ]*(?:[,.;:!?)]|$))"
     # A placing said with "to be" or "to become", its past copula too: "olimpiadada uchinchi bo‘ldi", "viloyat
     # olimpiadasida u ikkinchi edi", "стала второй по продажам".
     rf"|(?<![^\W\d_])({ORDINAL_WORD})(?={GAP_ORDINAL}(?:bo{APOSTROPHE}l(?:di|dim|ding|dingiz|dik|dilar|gan\w*|adi)"
@@ -439,6 +442,7 @@ CONTEST = re.compile(
     r"|олимпиад\w*|конкурс\w*|соревновани\w*|чемпионат\w*|турнир\w*|рейтинг\w*|регион\w*"
     r"|по[  ]+(?:объ[её]му[  ]+)?продаж\w*"
     r"|olympiads?|contests?|competitions?|championships?|tournaments?|rankings?|leagues?|regional[  ]+sales"
+    r"|sales[  ]+races?"
     # A district's or a city's championship ("Tuman birinchiligida"), and a ranking by sales ("Sotuv bo‘yicha", "Savdo
     # hajmi bo‘yicha"), as "по продажам" is; never the job a sales scope names ("Savdo bo‘yicha menejer", "Sotuv
     # bo‘yicha ishda").
