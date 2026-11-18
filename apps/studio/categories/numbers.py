@@ -438,9 +438,21 @@ CONTEST = re.compile(
     r"|по[  ]+(?:объ[её]му[  ]+)?продаж\w*"
     r"|olympiads?|contests?|competitions?|championships?|tournaments?|rankings?|leagues?|regional[  ]+sales"
     # A district's or a city's championship ("Tuman birinchiligida"), and a ranking by sales ("Sotuv bo‘yicha", "Savdo
-    # hajmi bo‘yicha", "in sales", "for sales"), as "по продажам" is.
-    r"|birinchilig\w*|(?:sotuv|savdo)\w*(?:[  ]+[^\W\d_]+)?[  ]+bo['‘’ʻʼ`´]yicha|(?:in|for)[  ]+sales)",
+    # hajmi bo‘yicha"), as "по продажам" is; never the job a sales scope names ("Savdo bo‘yicha menejer", "Sotuv
+    # bo‘yicha ishda").
+    r"|birinchilig\w*|(?:sotuv|savdo)\w*(?:[  ]+[^\W\d_]+)?[  ]+bo['‘’ʻʼ`´]yicha(?![  ]+(?:menejer|mutaxassis"
+    r"|konsultant|maslahatchi|bo['‘’ʻʼ`´]lim|xodim|direktor|boshli|rahbar|ish|agent|vakil|operator|mudir)))",
     re.IGNORECASE)
+# The English sales scope (`_contest`): a ranking beside any ordinal but "first" ("I was second in sales", "third in
+# the company for sales"); beside "first" only with a ranking's word ("first in sales across the region") or as "was
+# first in sales" closing its clause or before its time ("I was first in sales last year"), never in "comes first in
+# sales", "put the client first in sales" or "my first position in sales".
+EN_SALES = re.compile(r"(?<![^\W\d_])(?:in|for)[  ]+sales(?![^\W\d_])", re.IGNORECASE)
+EN_RANKING = re.compile(r"(?<![^\W\d_])(?:rank\w*|among|across|regions?|regional|nationwide|branch(?:es)?|chain"
+                        r"|colleagues|peers)(?![^\W\d_])", re.IGNORECASE)
+FIRST_IN_SALES = re.compile(r"(?<![^\W\d_])(?:was|were|am|is|finished|ended|came)[  ]+first[  ]+(?:in|for)[  ]+sales"
+                            r"(?=[  ]*(?:[,.;:!?]|$)|[  ]+(?:last|this|that|every|each|in|for|across|among|at|of"
+                            r"|during|over)(?![^\W\d_]))", re.IGNORECASE)
 ORDINAL_DATE = re.compile(rf"(?<![^\W\d_])(?:the[ \u00a0]+)?({ORDINAL_WORD})(?:[ \u00a0]+of)?[ \u00a0]+" + MONTH,
                           re.IGNORECASE)
 
@@ -727,13 +739,15 @@ class _Reader:
         for match in ORDINAL_SPOT.finditer(text):
             before = text[:match.start()]
             # "a first-place finish" is a placing whatever stands before it; a place of work never is.
+            first = _ordinal_value(match.group(1)) == 1
             if before[-7:].casefold().endswith('in the ') or SPOT_OF.match(text, match.end()) or (
-                    not _contest(text, match.start()) and match.group(2) != '-' and (
+                    not _contest(text, match.start(), first) and match.group(2) != '-' and (
                         SPOT_EXEMPT.search(before[-8:]) or (match.group(3).casefold() == 'position'
                                                             and POSITION_JOB.match(text, match.end())))):
                 continue
             found.append(match)
-        found += [match for match in ORDINAL_RANK.finditer(text) if _contest(text, match.start())]
+        found += [match for match in ORDINAL_RANK.finditer(text) if _contest(text, match.start(), _ordinal_value(
+            next(group for group in match.groups() if group is not None)) == 1)]
         found += [match for match in ORDINAL_IDIOM.finditer(text) if not _idiom(text, match)]
         for match in found:
             group = next(number for number in range(1, (match.re.groups or 0) + 1)
@@ -941,9 +955,17 @@ def _sentence_span(text, at):
     return start, min(ends) if ends else len(text)
 
 
-def _contest(text, at):
-    """Whether the sentence `at` stands in names a contest or a ranking (`CONTEST`): "olimpiadasida", "в регионе"."""
-    return CONTEST.search(text, *_sentence_span(text, at)) is not None
+def _contest(text, at, first=False):
+    """Whether the sentence `at` stands in names a contest or a ranking (`CONTEST`): "olimpiadasida", "в регионе"; or
+    the English sales scope (`EN_SALES`), beside "first" (`first`) only with a ranking's word or as "was first in
+    sales" (`EN_RANKING`, `FIRST_IN_SALES`)."""
+    start, end = _sentence_span(text, at)
+    if CONTEST.search(text, start, end) is not None:
+        return True
+    if EN_SALES.search(text, start, end) is None:
+        return False
+    return not first or EN_RANKING.search(text, start, end) is not None \
+        or FIRST_IN_SALES.search(text, start, end) is not None
 
 
 def _idiom(text, match):
