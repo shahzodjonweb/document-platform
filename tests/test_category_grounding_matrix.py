@@ -2698,6 +2698,306 @@ CASES += [
          'textbook', 'Технология: 3D моделирование'),
 ]
 
+# ---------------------------------------------------------------- the re-check of round 4 (narrow-r1), both ways
+# Round 4's narrowings still kept what c491da9 blanked: a position at the company after a possessive with any verb the
+# list left out, the idiom "birinchi o‘rinni egallaydi" with a name, a person's or an organisation's possessed noun or
+# a comparison's scope, a technology token before a curriculum word its stem collides with, and a place of study a
+# verb holds. The leaks are pinned as blanks next to the keeps the exemptions were made for.
+
+# ---- A position at the company is a job only where the possessive or the demonstrative opens its sentence, past one
+# opening preposition, and no scope follows it (must, from 1bd1f8e): any verb, copula or noun before the possessive
+# makes it the placing the same words make.
+CASES += [
+    gp(f'numbers-{slug}-en-blank', BLANK, brief, 'en', sentence, gone=gone)
+    for slug, brief, sentence, gone in (
+        ('was-in-her-first-position-at-the-company', COVER_EN,
+         'She was in her first position at the company for sales volume.', ('first',)),
+        ('was-at-her-first-position-at-the-bank', COVER_EN,
+         'She was at her first position at the bank in deposits for a year.', ('first',)),
+        ('remained-in-his-first-position-at-the-firm', COVER_EN,
+         'He remained in his first position at the firm in loan sales.', ('first',)),
+        ('stayed-in-her-first-position-at-the-store', COVER_EN,
+         'She stayed in her first position at the store for three quarters.', ('first',)),
+        ('is-in-her-first-position-at-the-company', COVER_EN,
+         'She is in her first position at the company in loan sales this year.', ('first',)),
+        ('has-been-in-her-first-position-at-the-bank', COVER_EN,
+         'She has been in her first position at the bank in deposits since 2022.', ('first',)),
+        ('maintained-her-first-position-at-the-bank-in-deposits', COVER_EN,
+         'She maintained her first position at the bank in deposits for three years.', ('first',)),
+        ('defended-his-first-position-at-the-company', COVER_EN,
+         'He defended his first position at the company in sales volume.', ('first',)),
+        ('regained-her-first-position-at-the-store', COVER_EN,
+         'She regained her first position at the store last year.', ('first',)),
+        ('retook-her-first-position-at-the-bank', COVER_EN,
+         'She retook her first position at the bank in deposits.', ('first',)),
+        ('reclaimed-his-first-position-at-the-firm', COVER_EN,
+         'He reclaimed his first position at the firm in loan sales.', ('first',)),
+        ('clinched-her-first-position-at-the-company', COVER_EN,
+         'She clinched her first position at the company in monthly sales.', ('first',)),
+        ('climbed-to-her-first-position-at-the-bank', COVER_EN,
+         'She climbed to her first position at the bank in deposits.', ('first',)),
+        ('rose-to-her-first-position-at-the-company', COVER_EN,
+         'She rose to her first position at the company in loan sales.', ('first',)),
+        ('held-on-to-her-first-position-at-the-company', COVER_EN,
+         'She has held on to her first position at the company in loan sales.', ('first',)),
+        ('kept-her-first-position-at-the-company', COVER_EN,
+         'She kept her first position at the company in loan sales.', ('first',)),
+        ('retained-his-first-position-at-the-firm', COVER_EN,
+         'He retained his first position at the firm for two quarters.', ('first',)),
+        ('occupied-his-first-position-at-the-company', COVER_EN,
+         'He occupied his first position at the company in sales volume for a year.', ('first',)),
+        ('cemented-her-first-position-at-the-store', COVER_EN,
+         'She cemented her first position at the store for three quarters.', ('first',)),
+        ('sales-earn-her-first-position-at-the-bank', COVER_EN,
+         'Her loan sales earn her first position at the bank every quarter.', ('first',)),
+        ('helped-her-achieve-her-first-position-at-the-company', COVER_EN,
+         'Her results helped her achieve her first position at the company in loan sales.', ('first',)),
+        ('worked-hard-to-claim-her-first-position-at-the-store', COVER_EN,
+         'She worked hard to claim her first position at the store in monthly sales.', ('first',)),
+        ('went-on-to-secure-her-first-position-at-the-bank', COVER_EN,
+         'She went on to secure her first position at the bank in deposit growth.', ('first',)),
+        ('maintained-that-first-position-at-the-bank', COVER_EN,
+         'He maintained that first position at the bank in loan sales.', ('first',)),
+        ('kept-this-first-position-at-the-company', COVER_EN,
+         'She kept this first position at the company for a year.', ('first',)),
+        ('by-sales-volume-their-first-position-at-the-bank', COVER_EN,
+         'By sales volume, their first position at the bank never changed.', ('first',)),
+        ('top-seller-her-first-position-at-the-store', COVER_EN,
+         'Top seller of the year: her first position at the store in monthly sales.', ('first',)),
+        ('in-loan-sales-her-first-position-at-the-company', COVER_EN,
+         'In loan sales, her first position at the company lasted three quarters.', ('first',)),
+        ('with-record-deposits-her-first-position-at-the-bank', COVER_EN,
+         'With record deposits, her first position at the bank was secured.', ('first',)),
+        ('her-first-position-at-the-company-in-loan-sales', COVER_EN,
+         'Her first position at the company in loan sales lasted three quarters.', ('first',)),
+        ('their-first-position-at-the-bank-for-deposit-growth', COVER_EN,
+         'Their first position at the bank for deposit growth held all year.', ('first',)),
+        ('kept-her-second-position-at-the-company', COVER_EN,
+         'She kept her second position at the company in loan sales.', ('second',)),
+        ('was-in-her-third-position-at-the-store', COVER_EN,
+         'She was in her third position at the store in monthly sales.', ('third',)),
+        ('defended-her-second-position-at-the-school', RECOMMENDATION_EN,
+         'She defended her second position at the school in mathematics.', ('second',)),
+        ('kept-her-first-position-at-the-school', RECOMMENDATION_EN,
+         'She kept her first position at the school in mathematics.', ('first',)),
+        ('her-first-position-at-the-school-in-mathematics', RECOMMENDATION_EN,
+         'Her first position at the school in mathematics was well deserved.', ('first',)),
+    )
+]
+CASES += [
+    body('numbers-maintained-our-first-position-at-the-store-in-a-cover-letter-en-blank', BLANK,
+         'pdf.xat.ishga_kirish', COVER_EN, 'en', 'fit',
+         'In my last job I maintained our first position at the store in monthly sales.', gone=('first',)),
+    body('numbers-kept-her-first-position-at-the-school-in-a-recommendation-en-blank', BLANK, 'pdf.xat.tavsiya',
+         RECOMMENDATION_EN, 'en', 'evidence',
+         'She kept her first position at the school in mathematics for three years.', gone=('first',)),
+    gp('numbers-her-first-position-at-the-store-in-customer-service-en-keep', KEEP, COVER_EN, 'en',
+       'Her first position at the store was in customer service.'),
+    gp('numbers-during-his-first-position-at-the-bank-en-keep', KEEP, RECOMMENDATION_EN, 'en',
+       'During his first position at the bank, he learned to read contracts.'),
+    gp('numbers-after-her-first-position-at-the-firm-en-keep', KEEP, RECOMMENDATION_EN, 'en',
+       'After her first position at the firm, she studied accounting.'),
+    gp('numbers-her-second-position-at-the-bank-en-keep', KEEP, RECOMMENDATION_EN, 'en',
+       'Her second position at the bank was in risk management.'),
+    # A verb before the possessive, or a place after the company, reads as the placing the same words make: the blanks
+    # are the price of "She maintained her first position at the bank in deposits ..." and "Her first position at the
+    # company in loan sales ..." (c491da9 blanks both too).
+    gp('numbers-started-her-first-position-at-the-bank-en-accepted_false_blank', ACCEPTED, RECOMMENDATION_EN, 'en',
+       'She started her first position at the bank after university.', gone=('first',),
+       pair='numbers-maintained-her-first-position-at-the-bank-in-deposits-en-blank'),
+    gp('numbers-left-his-first-position-at-the-firm-en-accepted_false_blank', ACCEPTED, RECOMMENDATION_EN, 'en',
+       'He left his first position at the firm after university.', gone=('first',),
+       pair='numbers-maintained-her-first-position-at-the-bank-in-deposits-en-blank'),
+    gp('numbers-her-first-position-at-the-store-in-the-city-centre-en-accepted_false_blank', ACCEPTED, COVER_EN, 'en',
+       'Her first position at the store in the city centre was a cashier.', gone=('first',),
+       pair='numbers-her-first-position-at-the-company-in-loan-sales-en-blank'),
+]
+
+# ---- A place of work, study or business is no placing only where its ordinal or the possessive before it opens the
+# sentence and no contest or ranking stands in it (should, from bdfb210): "She held first place of study in her
+# class" is a placing.
+CASES += [
+    gp('numbers-held-first-place-of-study-in-her-class-en-blank', BLANK, RECOMMENDATION_EN, 'en',
+       'She held first place of study in her class.', gone=('first',)),
+    gp('numbers-held-first-place-of-study-in-a-cover-letter-en-blank', BLANK, COVER_EN, 'en',
+       'She held first place of study in her class.', gone=('first',)),
+    gp('numbers-holds-first-place-of-study-in-her-group-en-blank', BLANK, RECOMMENDATION_EN, 'en',
+       'She holds first place of study in her group.', gone=('first',)),
+    gp('numbers-her-first-place-of-study-an-olympiad-en-blank', BLANK, RECOMMENDATION_EN, 'en',
+       'Her first place of study: the regional olympiad, where she took the top prize.', gone=('first',)),
+    gp('numbers-her-second-place-of-study-ranked-second-en-blank', BLANK, RECOMMENDATION_EN, 'en',
+       'Her second place of study was ranked second in the region.', gone=('second',)),
+    gp('numbers-his-first-place-of-residence-en-keep', KEEP, RECOMMENDATION_EN, 'en',
+       'His first place of residence was a village.'),
+    gp('numbers-first-place-of-work-opening-a-line-en-keep', KEEP, COVER_EN, 'en', 'First place of work: a pharmacy.'),
+]
+
+# ---- "birinchi o‘rinni egallaydi" is the idiom only with an abstract noun as its subject: bare and alone, after a
+# dative ("Olimpiadaga tayyorgarlik") or, bare or possessed, after one word of a generic beneficiary ("Mijoz manfaati",
+# "Bolalar xavfsizligi"), past a "... uchun" or "... hayotida" and an adverb of "always" (must, from 89970c9). A name
+# ("Adolat"), a quoted or a capitalised word, a person's or an organisation's possessed noun ("Malika bilimi",
+# "Do‘konimiz mahsulotlari sifati", "Kompaniya sifati") and a comparison's or a ranking's scope ("nisbatan",
+# "bo‘ylab", "ko‘ra", "orasidan") make it a placing.
+REFERENCE_UZ_ADOLAT = ('Karimova Adolat uchun tavsifnoma yozib bering, u 9-sinf o‘quvchisi, darslarda faol.')
+REFERENCE_UZ_ADOLAT_CYRILLIC = 'Каримова Адолат учун тавсифнома ёзиб беринг, у 9-синф ўқувчиси, дарсларда фаол.'
+CASES += [
+    gp(f'numbers-first-place-present-{slug}-uz-blank', BLANK, brief, 'uz', sentence, gone=('birinchi',))
+    for slug, brief, sentence in (
+        ('every-year-by-a-name-that-is-an-abstract-noun', REFERENCE_UZ_ADOLAT,
+         'Har yili Adolat birinchi o‘rinni egallaydi.'),
+        ('always-by-a-name-that-is-an-abstract-noun', REFERENCE_UZ_ADOLAT, 'Adolat doimo birinchi o‘rinni egallaydi.'),
+        ('by-a-name-that-is-an-abstract-noun', REFERENCE_UZ_ADOLAT, 'Adolat birinchi o‘rinni egallaydi.'),
+        ('by-a-name-that-is-an-abstract-noun-cyrillic-brief', REFERENCE_UZ_ADOLAT_CYRILLIC,
+         'Har doim Adolat birinchi o‘rinni egallaydi.'),
+        ('held-by-a-name-that-is-an-abstract-noun', REFERENCE_UZ_ADOLAT, 'Adolat har doim birinchi o‘rinni tutadi.'),
+        ('by-a-names-knowledge-without-the-genitive', REFERENCE_UZ, 'Malika bilimi birinchi o‘rinni egallaydi.'),
+        ('always-by-a-names-knowledge', REFERENCE_UZ, 'Malika bilimi doimo birinchi o‘rinni egallaydi.'),
+        ('by-a-full-names-knowledge', REFERENCE_UZ, 'Qodirova Malika bilimi har doim birinchi o‘rinni egallaydi.'),
+        ('by-this-pupils-knowledge', REFERENCE_UZ, 'Bu o‘quvchi bilimi birinchi o‘rinni egallaydi.'),
+        ('by-her-class-discipline', REFERENCE_UZ, 'Uning sinfi intizomi birinchi o‘rinni egallaydi.'),
+        ('for-us-by-a-names-knowledge', REFERENCE_UZ, 'Biz uchun Malika bilimi birinchi o‘rinni egallaydi.'),
+        ('for-teachers-by-a-names-upbringing', REFERENCE_UZ,
+         'O‘qituvchilar uchun Malika tarbiyasi birinchi o‘rinni egallaydi.'),
+        ('by-a-name-and-quality', REFERENCE_UZ, 'Malika sifat birinchi o‘rinni egallaydi.'),
+        ('held-by-a-names-manners', REFERENCE_UZ, 'Malika odobi birinchi o‘rinni tutadi.'),
+        ('continuous-by-a-names-knowledge', REFERENCE_UZ, 'Malika bilimi har doim birinchi o‘rinni egallab keladi.'),
+        ('by-a-class-discipline', REFERENCE_UZ, 'Sinf intizomi har doim birinchi o‘rinni egallaydi.'),
+        ('by-her-own-knowledge-alone', REFERENCE_UZ, 'Bilimi doimo birinchi o‘rinni egallaydi.'),
+        ('across-a-district-by-knowledge', REFERENCE_UZ, 'Tuman bo‘ylab bilim birinchi o‘rinni egallaydi.'),
+        ('by-the-results-by-her-knowledge', REFERENCE_UZ, 'Natijalarga ko‘ra bilimi birinchi o‘rinni egallaydi.'),
+        ('by-the-figures-by-her-knowledge', REFERENCE_UZ,
+         'Ko‘rsatkichlar yuzasidan bilimi birinchi o‘rinni egallaydi.'),
+        ('from-the-marks-point-of-view-by-her-knowledge', REFERENCE_UZ,
+         'Baholar nuqtai nazaridan bilimi birinchi o‘rinni egallaydi.'),
+        ('beside-classmates-by-her-knowledge', REFERENCE_UZ,
+         'Sinfdoshlariga nisbatan bilimi birinchi o‘rinni egallaydi.'),
+        ('among-pupils-by-discipline', REFERENCE_UZ, 'O‘quvchilar orasidan intizom birinchi o‘rinni egallaydi.'),
+        ('by-our-stores-products-quality', OFFER_UZ_FURNITURE,
+         'Do‘konimiz mahsulotlari sifati birinchi o‘rinni egallaydi.'),
+        ('by-our-furnitures-quality', OFFER_UZ_FURNITURE, 'Bizning mebel sifati birinchi o‘rinni egallaydi.'),
+        ('by-our-firms-service-quality', OFFER_UZ_FURNITURE, 'Firmamiz xizmati sifati birinchi o‘rinni egallaydi.'),
+        ('by-a-companys-quality', OFFER_UZ_FURNITURE, 'Kompaniya sifati birinchi o‘rinni egallaydi.'),
+        ('by-a-stores-quality', OFFER_UZ_FURNITURE, 'Do‘kon sifati har doim birinchi o‘rinni egallaydi.'),
+        ('by-furnitures-quality', OFFER_UZ_FURNITURE, 'Mebel sifati doimo birinchi o‘rinni egallaydi.'),
+        ('by-a-quoted-name', OFFER_UZ_FURNITURE, '«Ishonch» birinchi o‘rinni egallaydi.'),
+        ('beside-competitors-by-furnitures-quality', OFFER_UZ_FURNITURE,
+         'Raqobatchilarga nisbatan mebel sifati birinchi o‘rinni egallaydi.'),
+        ('beside-other-stores-by-quality', OFFER_UZ_FURNITURE,
+         'Boshqa do‘konlarga nisbatan sifat birinchi o‘rinni egallaydi.'),
+        ('among-competitors-by-quality', OFFER_UZ_FURNITURE,
+         'Raqobatchilar orasidan sifat birinchi o‘rinni egallaydi.'),
+        ('compared-with-other-stores-by-quality', OFFER_UZ_FURNITURE,
+         'Boshqa do‘konlar bilan solishtirganda sifat birinchi o‘rinni egallaydi.'),
+        ('across-a-city-by-furnitures-quality', OFFER_UZ_FURNITURE,
+         'Toshkent bo‘ylab mebel sifati birinchi o‘rinni egallaydi.'),
+        ('across-a-region-by-quality', OFFER_UZ_FURNITURE, 'Viloyat bo‘ylab sifat birinchi o‘rinni egallaydi.'),
+        ('by-clients-opinion-by-furnitures-quality', OFFER_UZ_FURNITURE,
+         'Mijozlar fikriga ko‘ra mebel sifati birinchi o‘rinni egallaydi.'),
+        ('beside-colleagues-by-sales-quality', COVER_UZ,
+         'Hamkasblarga nisbatan sotuv sifati birinchi o‘rinni egallaydi.'),
+        ('across-a-branch-by-clients-trust', COVER_UZ, 'Filial bo‘ylab mijozlar ishonchi birinchi o‘rinni egallaydi.'),
+    )
+]
+CASES += [
+    body('numbers-first-place-present-by-a-names-knowledge-in-a-reference-uz-blank', BLANK, 'pdf.xat.tavsifnoma',
+         REFERENCE_UZ, 'uz', 'achievements', 'Malika bilimi doimo birinchi o‘rinni egallaydi.', gone=('birinchi',)),
+    body('numbers-first-place-present-by-a-name-that-is-an-abstract-noun-in-a-reference-uz-blank', BLANK,
+         'pdf.xat.tavsifnoma', REFERENCE_UZ_ADOLAT, 'uz', 'achievements',
+         'Har yili Adolat birinchi o‘rinni egallaydi.', gone=('birinchi',)),
+    body('numbers-first-place-present-by-a-name-that-is-an-abstract-noun-cyrillic-brief-in-a-reference-uz-blank',
+         BLANK, 'pdf.xat.tavsifnoma', REFERENCE_UZ_ADOLAT_CYRILLIC, 'uz', 'achievements',
+         'Har doim Adolat birinchi o‘rinni egallaydi.', gone=('birinchi',)),
+    body('numbers-first-place-present-across-a-city-in-an-offer-uz-blank', BLANK, 'pdf.biz.tijorat_taklifi',
+         OFFER_UZ_FURNITURE, 'uz', 'advantages', 'Toshkent bo‘ylab mebel sifati birinchi o‘rinni egallaydi.',
+         gone=('birinchi',)),
+    body('numbers-first-place-present-beside-competitors-in-an-offer-uz-blank', BLANK, 'pdf.biz.tijorat_taklifi',
+         OFFER_UZ_FURNITURE, 'uz', 'advantages', 'Raqobatchilarga nisbatan mebel sifati birinchi o‘rinni egallaydi.',
+         gone=('birinchi',)),
+    gp('numbers-first-place-idiom-trust-always-uz-keep', KEEP, PLAN_UZ, 'uz',
+       'Ishonch doimo birinchi o‘rinni egallaydi.'),
+    gp('numbers-first-place-idiom-clients-trust-always-uz-keep', KEEP, COVER_UZ, 'uz',
+       'Mijozlar ishonchi doimo birinchi o‘rinni egallaydi.'),
+    gp('numbers-first-place-idiom-buyers-interest-for-us-uz-keep', KEEP, OFFER_UZ_FURNITURE, 'uz',
+       'Xaridorlar manfaati biz uchun doimo birinchi o‘rinni egallaydi.'),
+    gp('numbers-first-place-idiom-exam-preparation-in-her-life-uz-keep', KEEP, REFERENCE_UZ, 'uz',
+       'Imtihonga tayyorgarlik uning hayotida birinchi o‘rinni egallaydi.'),
+    # A noun before the abstract noun that is no generic beneficiary reads as the owner a placing ranks: the blanks are
+    # the price of "Mebel sifati doimo ..." and "Kompaniya sifati ..." (c491da9 blanks both too).
+    gp('numbers-first-place-idiom-product-quality-uz-accepted_false_blank', ACCEPTED, OFFER_UZ_FURNITURE, 'uz',
+       'Mahsulot sifati birinchi o‘rinni egallaydi.', gone=('birinchi',),
+       pair='numbers-first-place-present-by-furnitures-quality-uz-blank'),
+    gp('numbers-first-place-idiom-service-quality-uz-accepted_false_blank', ACCEPTED, OFFER_UZ_FURNITURE, 'uz',
+       'Xizmat sifati birinchi o‘rinni egallaydi.', gone=('birinchi',),
+       pair='numbers-first-place-present-by-a-companys-quality-uz-blank'),
+]
+
+# ---- A technology token is no class letter only before its own device's or medium's word (must, from dbfe0b8): "3D"
+# and the other D tokens before a model, a printer, graphics, an animation or a film; "3G" to "5G" before a network, the
+# internet or a phone; "4K" and "8K" before a video or a screen; "1C" before accounting. A curriculum word a stem
+# collides with ("monitoring", "printsiplari", "videodars", "kinodars", "model darsi", "связная речь", "графики
+# функций") and a school subject ("dizayn va texnologiya", "Design and Technology") name no technology.
+LESSON_UZ_N = '{}-sinf matematika fanidan dars ishlanmasi yozing, mavzu: qo‘shish va ayirish.'
+TEST_UZ_MONITORING = '{}-sinf matematika fanidan choraklik monitoring testi tuzing, 10 ta savol.'
+LESSON_RU_N = 'Напишите план урока для {} класса по русскому языку, тема: {}.'
+LESSON_EN_DESIGN = 'Write a lesson plan for grade 3 design and technology, topic: paper models.'
+for number, letter in (('2', 'D'), ('3', 'D'), ('4', 'D'), ('3', 'G'), ('4', 'G'), ('5', 'G')):
+    token = number + letter
+    CASES += [
+        fact(f'class-technology-shaped-letter-{token.lower()}-before-monitoring-testi-uz-blank', BLANK, 'pdf.test',
+             TEST_UZ_MONITORING.format(number), 'uz', 'kind', f'{token} monitoring testi', gone=(token,)),
+        fact(f'class-technology-shaped-letter-{token.lower()}-before-monitoring-in-a-term-uz-blank', BLANK, 'pdf.test',
+             TEST_UZ_MONITORING.format(number), 'uz', 'term_and_number', f'{token} monitoring', gone=(token,)),
+        fact(f'class-technology-shaped-letter-{token.lower()}-before-monitoring-in-a-subject-uz-blank', BLANK,
+             'pdf.dars_ishlanmasi', LESSON_UZ_N.format(number), 'uz', 'subject', f'Matematika, {token} monitoring',
+             gone=(token,)),
+        fact(f'class-technology-shaped-letter-{token.lower()}-before-monitoringi-uz-blank', BLANK, 'pdf.test',
+             TEST_UZ_MONITORING.format(number), 'uz', 'kind', f'{token} monitoringi', gone=(token,)),
+        fact(f'class-technology-shaped-letter-{token.lower()}-hyphen-monitoring-uz-blank', BLANK, 'pdf.test',
+             TEST_UZ_MONITORING.format(number), 'uz', 'kind', f'{token}-monitoring', gone=(token,)),
+        fact(f'class-technology-shaped-letter-{token.lower()}-spaced-before-monitoring-uz-blank', BLANK, 'pdf.test',
+             TEST_UZ_MONITORING.format(number), 'uz', 'kind', f'{number} {letter} monitoring testi',
+             gone=(token, f'{number} {letter}')),
+    ]
+    CASES += [
+        fact(f'class-technology-shaped-letter-{token.lower()}-before-{slug}-uz-blank', BLANK, 'pdf.dars_ishlanmasi',
+             LESSON_UZ_N.format(number), 'uz', 'subject', f'{token} {words}', gone=(token,))
+        for slug, words in (('printsiplari', 'printsiplari'), ('videodars', 'videodars'), ('kinodars', 'kinodars'),
+                            ('model-darsi', 'model darsi'), ('dizayn-va-texnologiya', 'dizayn va texnologiya'),
+                            ('ekran-oldida', 'ekran oldida'), ('video-darslik', 'video darslik'))
+    ]
+for number, letter, words, slug in (('1', 'С', 'печатные буквы', 'pechatnye-bukvy'),
+                                    ('1', 'С', 'связная речь', 'svyaznaya-rech'),
+                                    ('8', 'К', 'графики функций', 'grafiki-funktsiy'),
+                                    ('4', 'К', 'графический диктант', 'graficheskiy-diktant'),
+                                    ('4', 'К', 'моделирование задач', 'modelirovanie-zadach'),
+                                    ('8', 'К', 'связь слов', 'svyaz-slov'),
+                                    ('8', 'К', 'графика', 'grafika')):
+    CASES.append(fact(f'class-technology-shaped-letter-{number}{"c" if letter == "С" else "k"}-before-{slug}-ru-blank',
+                      BLANK, 'pdf.dars_ishlanmasi', LESSON_RU_N.format(number, words), 'ru', 'subject',
+                      f'{number}{letter} {words}', gone=(number + letter,)))
+CASES += [
+    fact('class-technology-shaped-letter-5g-before-grafika-uz-blank', BLANK, 'pdf.dars_ishlanmasi',
+         LESSON_UZ_N.format(5), 'uz', 'subject', '5G grafika', gone=('5G',)),
+    fact('class-technology-shaped-letter-3d-before-aloqa-madaniyati-uz-blank', BLANK, 'pdf.dars_ishlanmasi',
+         LESSON_UZ_N.format(3), 'uz', 'subject', '3D aloqa madaniyati', gone=('3D',)),
+    fact('class-technology-shaped-letter-3d-before-design-and-technology-en-blank', BLANK, 'pdf.dars_ishlanmasi',
+         LESSON_EN_DESIGN, 'en', 'subject', '3D Design and Technology', gone=('3D',)),
+    fact('class-technology-shaped-letter-3d-before-design-en-blank', BLANK, 'pdf.dars_ishlanmasi', LESSON_EN_DESIGN,
+         'en', 'textbook', '3D design', gone=('3D',)),
+    fact('class-technology-token-3d-before-printing-en-keep', KEEP, 'pdf.dars_ishlanmasi', LESSON_EN_DESIGN, 'en',
+         'subject', '3D printing'),
+    fact('class-technology-token-3d-before-modelling-en-keep', KEEP, 'pdf.dars_ishlanmasi', LESSON_EN_DESIGN, 'en',
+         'textbook', '3D modelling'),
+    # A bare "model" or "dizayn" after "3D" reads as the class a curriculum word makes: the blanks are the price of "2D
+    # model darsi" and "3D dizayn va texnologiya" (c491da9 blanks both too).
+    fact('class-technology-token-3d-before-a-bare-model-uz-accepted_false_blank', ACCEPTED, 'pdf.dars_ishlanmasi',
+         LESSON_UZ_3_PAPER, 'uz', 'textbook', 'Texnologiya: 3D model yasash', gone=('3D',),
+         pair='class-technology-shaped-letter-2d-before-model-darsi-uz-blank'),
+    fact('class-technology-token-3d-before-dizayn-uz-accepted_false_blank', ACCEPTED, 'pdf.dars_ishlanmasi',
+         LESSON_UZ_3_PAPER, 'uz', 'textbook', 'Texnologiya: 3D dizayn asoslari', gone=('3D',),
+         pair='class-technology-shaped-letter-3d-before-dizayn-va-texnologiya-uz-blank'),
+]
+
 CASE_IDS = [case.id for case in CASES]
 
 
