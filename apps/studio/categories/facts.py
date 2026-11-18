@@ -1308,7 +1308,12 @@ def _law_names(sentence):
             # The words read after the "of" or "on" of an unnamed stem.
             after = 0
             while word(index) and taken < (LAW_OF_UNNAMED_REACH if unnamed else LAW_OF_REACH):
-                token = tokens[index][1]
+                start, token = tokens[index]
+                # A word of LAW_NAMES in the possessive is the name's last: "The Law on Accounting’s rules", "Education’s
+                # main aim"; any other possessive is inside a name ("the Law on Teachers’ Status", "Children’s Rights").
+                owner = re.fullmatch(r"(.+?)['‘’ʻʼ`´]s", token)
+                last = owner is not None and _law_name(owner.group(1)) is not None
+                token = owner.group(1) if last else token
                 low = normalised(token).casefold()
                 if not taken and (LAW_COUNTRY.fullmatch(low) or LAW_OF.fullmatch(low)):
                     index += 1
@@ -1321,20 +1326,22 @@ def _law_names(sentence):
                 if re.search('[а-яё]', low):
                     if LAW_OF_CASE.fullmatch(low) is None:
                         break
-                    name.append(tokens[index])
+                    name.append((start, token))
                 elif token[0].isupper() or _law_name(token) or LAW_KIND.fullmatch(low):
-                    name.append(tokens[index])
+                    name.append((start, token))
                     after += 1
                 elif LAW_OF_STOP.fullmatch(low):
                     break  # a word that goes on the sentence ends the name
                 elif unnamed:
                     if not LAW_OF_GRAMMAR.fullmatch(low):
-                        name.append(tokens[index])
+                        name.append((start, token))
                         after += 1
                 elif not taken and not (word(index + 1) and normalised(tokens[index + 1][1]).casefold() == 'of'):
                     # After a named stem, a first word that is no name word begins one only before its own "of"
                     # ("the Labour Code on working hours" names the Labour Code; never "... of Uzbekistan applies
                     # to land workers" or "... protects consumer interests").
+                    break
+                if last:
                     break
                 index, taken = index + 1, taken + 1
         found += [(start, text) for start, text in name if _letters(text) >= 2
@@ -1366,17 +1373,40 @@ LAW_VERBS = frozenset((
     "enact adopt pass approve sign ratify publish issue release open close begin start end finish continue keep "
     "need want try deserve offer present propose suggest recommend advise warn tell show prove confirm explain "
     "clarify interpret answer solve shape form build develop design plan organise organize manage run handle "
-    "cover touch reach hit leave miss lose win gain earn pay cost spend save invest").split())
-# The plural nouns a law is named by, never a verb's -s: "requirements", "relations", "securities", "procedures".
+    "cover touch reach hit leave miss lose win gain earn pay cost spend save invest "
+    # The verbs whose -s ends as a plural noun does ("ensures", "mentions", "assists", `LAW_NAME_NOUN`) or that take a
+    # plural object ("upholds students’ rights", "motivates teachers").
+    "mention feature enhance insist assure measure assist advance influence finance structure balance uphold "
+    "reinforce affirm motivate equip free target").split())
+# The plural nouns a law is named by: "requirements", "relations", "securities", "procedures". Such a word whose base
+# is one of LAW_VERBS ("ensures", "lists", "consists", "functions", "supplements") is the verb unless what follows
+# ends the name's noun phrase (`_goes_on`).
 LAW_NAME_NOUN = re.compile(r"[a-z]+(?:ments|tions|sions|ities|ances|ences|ships|nesses|isms|ists|ures)")
+# What only a verb's object opens, never the next word of a law's name: a determiner ("ensures the right", "features a
+# chapter"); a possessive ("upholds students’ rights") is read by its mark (`_object_follows`).
+LAW_OBJECT = re.compile(r"the|a|an|its|their|his|her|our|your|every|both|several|numerous|various")
+# The words after which a verb's -s like a plural noun is still the verb: "functions as", "exists to", "insists on".
+LAW_VERB_AFTER = re.compile(r"to|as|on|upon")
+
+
+def _object_follows(sentence, tokens, index, word):
+    """Whether the word after `index` opens a verb's object: a determiner (`LAW_OBJECT`) or a possessive ("students’",
+    "children’s")."""
+    if not word(index + 1):
+        return False
+    start, text = tokens[index + 1]
+    low = normalised(text).casefold()
+    after = sentence[start + len(text):start + len(text) + 1]
+    return LAW_OBJECT.fullmatch(low) is not None or low.endswith("'s") \
+        or (low.endswith('s') and after in "'’ʼ" and after != '')
 
 
 def _goes_on(sentence, tokens, index, word):
     """Whether a lower-case word after an unnamed law's first name word goes on the sentence rather than the name
     (`_law_names`): an adverb ("well", "daily", "carefully"), a past form ("adopted", "became") or a verb's -s before
-    what it governs ("guarantees free schooling", "defines the rights"), its base an English word (words/en.txt).
-    A plural noun the name ends with ("accounting requirements", "state fees for ...") and a compound's part
-    ("state-owned") are words of it."""
+    what it governs ("guarantees free schooling", "defines the rights", "ensures equal access", "upholds students’
+    rights"), its base an English word (words/en.txt). A plural noun the name ends with ("accounting requirements",
+    "state fees for ...", "food supplements applies ...") and a compound's part ("state-owned") are words of it."""
     low = normalised(tokens[index][1]).casefold()
     if not low.isascii() or sentence[tokens[index][0] - 1:tokens[index][0]] == '-':
         return False
@@ -1388,12 +1418,22 @@ def _goes_on(sentence, tokens, index, word):
     if low.endswith('ed') and len(low) > 4 and (low[:-2] in words or low[:-1] in words
                                                  or (low[-3] == low[-4] and low[:-3] in words)):
         return True
-    if not low.endswith('s') or low.endswith('ss') or LAW_NAME_NOUN.fullmatch(low):
+    if not low.endswith('s') or low.endswith('ss'):
         return False
     bases = _s_bases(low)
-    if any(base in LAW_VERBS for base in bases):
-        return True
+    if any(base in words or base in LAW_VERBS for base in bases) and _object_follows(sentence, tokens, index, word):
+        return True  # "features a chapter", "balances pupils’ rights"
     following = normalised(tokens[index + 1][1]).casefold() if word(index + 1) else None
+    if any(base in LAW_VERBS for base in bases):
+        if not LAW_NAME_NOUN.fullmatch(low):
+            return True
+        # "ensures equal access", "consists of", "functions as"; never "food supplements." or "state functions of".
+        return following is not None and not LAW_AND.fullmatch(following) \
+            and (following != 'of' or 'consist' in bases) \
+            and (LAW_VERB_AFTER.fullmatch(following) is not None or LAW_OF_STOP.fullmatch(following) is None) \
+            and not any(base in LAW_VERBS for base in _s_bases(following) if following.endswith('s'))
+    if LAW_NAME_NOUN.fullmatch(low):
+        return False
     if following is None or not any(base in words for base in bases):
         return False
     if following == 'to':
