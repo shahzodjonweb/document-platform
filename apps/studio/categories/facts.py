@@ -2322,6 +2322,8 @@ ROLE_MODIFIERS = _folded((
     "vice president managing founding interim acting").split())
 # A role's grammar words, part of it in a line: "Head of Sales", "Head of Sales and Marketing", "Head of the Department".
 ROLE_GRAMMAR = frozenset(('of', 'for', 'and', 'the'))
+# The words a unit's name ends with in a line, no one's name: "Planning Office", "Retail Network", "Sales Team".
+LINE_UNITS = _folded("office department division unit group team service network committee board council".split())
 
 
 def _role_word(word):
@@ -2349,12 +2351,17 @@ def _line_roles(tokens):
     of "Hikmat Rahim maktab direktori"); a modifier (`ROLE_MODIFIERS`) or a role's grammar word beside a role's word,
     or a Russian adjective before one ("Katta o‘qituvchi", "Senior Sales Manager", "Head of", "Sales and Marketing",
     "Финансовый директор"); the word a role's "of" or "for" names ("Head of Biology"); a word between two of them ("Head of the
-    Biology Department"); and every word before a "by" ("Prepared by", "Compiled and edited by").
+    Biology Department"); every word before a "by" ("Prepared by", "Compiled and edited by"); a unit's word ending the
+    part (`LINE_UNITS`: "Planning Office"); and a common word right before a role's word that opens the part or
+    follows a role's word, a lower-case word or a modifier ("Kitchen Manager", "Quality Control Manager", "Social
+    Media Manager", "Ishlab Chiqarish Menejeri"), never one after a capitalised word ("Gul Sabr kotiba").
     """
     marked = [_role_word(token) for token in tokens]
     if 'by' in tokens:
         last = len(tokens) - 1 - tokens[::-1].index('by')
         marked[:last + 1] = [True] * (last + 1)
+    if tokens and tokens[-1][:1].isupper() and fold(tokens[-1]) in LINE_UNITS:
+        marked[-1] = True
     changed = True
     while changed:
         changed = False
@@ -2367,7 +2374,10 @@ def _line_roles(tokens):
             if (right and _possessive(tokens[index + 1])) or (left and right) \
                     or ((left or right) and (fold(token) in ROLE_MODIFIERS or token in ROLE_GRAMMAR)) \
                     or (right and RU_ROLE_ADJECTIVE.fullmatch(low) is not None) \
-                    or (left and index >= 2 and tokens[index - 1] in ('of', 'for', 'the') and marked[index - 2]):
+                    or (left and index >= 2 and tokens[index - 1] in ('of', 'for', 'the') and marked[index - 2]) \
+                    or (right and token[:1].isupper() and common(token) and (
+                        index == 0 or marked[index - 1] or not tokens[index - 1][:1].isupper()
+                        or fold(tokens[index - 1]) in ROLE_MODIFIERS)):
                 marked[index] = changed = True
     return marked
 
@@ -2382,8 +2392,14 @@ def _line_names(line):
     found = []
     for part in LINE_PARTS.split(line):
         tokens = LINE_TOKEN.findall(part)
+        roles = _line_roles(tokens)
+        if not any(roles):
+            # No role in it: a part that is only a name ("Hikmat Rahim"), never the words of "Founders and Investors".
+            if part.strip() and _only_name(part.strip()):
+                found += [word for word in WORD.findall(part) if not HONORIFICS.fullmatch(normalised(word))]
+            continue
         run = []
-        for token, role in list(zip(tokens, _line_roles(tokens))) + [('', True)]:
+        for token, role in list(zip(tokens, roles)) + [('', True)]:
             if not role and token[:1].isupper():
                 run.append(token)
                 continue
