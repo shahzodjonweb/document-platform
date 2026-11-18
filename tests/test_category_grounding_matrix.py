@@ -3402,6 +3402,77 @@ CASES += [
           'Бухгалтер соблюдает Закон о бухгалтерском учёте от 13 апреля 2016 года.', translated=True),
 ]
 
+# ---------------------------------------------------------------- the re-check of round 7 (parity-r1), both ways
+# Round 7's targeted fixes still kept what c491da9 blanks, so parity with c491da9 is kept by construction (the owner's
+# decision): the customer's numbers are c491da9's reading, a placing read since adding only its place key
+# (numbers.values); a paper's number holds c491da9's reading of the same characters and needs what that needed
+# (numbers.found). Each leak is pinned here as a blank; each keep it costs is an accepted false blank (below) naming
+# the blank it pays for.
+
+# ---- A customer's sentence that is no placing, or a negated one, grounds no placing c491da9 reads (must, p1, p3):
+# its place key ("place:1") never stands for the figure "first place" needs.
+NOT_PLACINGS = (
+    ('en', 'not-first-in-the-ranking', 'She was not first in the ranking, but she improved a lot.',
+     'She won first place at the olympiad.', 'first'),
+    ('en', 'first-in-her-class-to-qualify', 'She was first in her class to qualify for the regional olympiad.',
+     'She won first place at the olympiad.', 'first'),
+    ('ru', 'did-not-become-first', 'Она не стала первой на олимпиаде.', 'На олимпиаде она заняла первое место.',
+     'первое'),
+    ('ru', 'first-olympiad-of-her-life', 'Эта олимпиада была первой в её жизни.',
+     'На олимпиаде она заняла первое место.', 'первое'),
+    ('ru', 'third-olympiad-of-her-life', 'Эта олимпиада стала третьей в её жизни.',
+     'На олимпиаде она заняла третье место.', 'третье'),
+    ('ru', 'first-of-her-class-through-to-the-olympiad', 'Она первой из класса прошла на олимпиаду.',
+     'На олимпиаде она заняла первое место.', 'первое'),
+    ('uz', 'contest-was-her-first', 'Bu tanlov u uchun birinchi edi.', 'U olimpiadada birinchi o‘rinni egalladi.',
+     'birinchi'),
+    ('uz', 'could-not-reach-the-first-step', 'U olimpiadada birinchi pog‘onaga chiqa olmadi.',
+     'U olimpiadada birinchi o‘rinni egalladi.', 'birinchi'),
+    ('uz', 'lost-the-first-ness', 'U tanlovda birinchilikni raqibiga boy berdi.',
+     'U olimpiadada birinchi o‘rinni egalladi.', 'birinchi'),
+    ('uz', 'registered-first', 'Musobaqada birinchi bo‘lib, ro‘yxatdan o‘tdi.',
+     'U olimpiadada birinchi o‘rinni egalladi.', 'birinchi'))
+for locale, slug, said, sentence, word in NOT_PLACINGS:
+    CASES += [
+        gp(f'numbers-a-customers-non-placing-{slug}-grounds-no-placing-{locale}-blank', BLANK,
+           PLACING_LETTERS[locale] + said, locale, sentence, gone=(word,)),
+        body(f'numbers-a-customers-non-placing-{slug}-grounds-no-placing-in-a-references-achievements-{locale}-blank',
+             BLANK, 'pdf.xat.tavsifnoma', PLACING_LETTERS[locale] + said, locale, 'achievements', sentence,
+             gone=(word,)),
+    ]
+CASES += [
+    gp('numbers-a-customers-non-placing-first-olympiad-of-her-life-grounds-no-placing-ru-to-uz-blank', BLANK,
+       'Напишите характеристику на узбекском для Малики Кодировой. Эта олимпиада была первой в её жизни.', 'uz',
+       'U olimpiadada birinchi o‘rinni egalladi.', gone=('birinchi',)),
+    gp('numbers-a-customers-non-placing-contest-was-her-first-grounds-no-placing-uz-to-en-blank', BLANK,
+       'Malika Qodirova uchun ingliz tilida tavsifnoma yozing. Bu tanlov u uchun birinchi edi.', 'en',
+       'She won first place at the olympiad.', gone=('first',)),
+]
+
+# ---- The keeps these readings cost: each is an accepted false blank naming the leak it pays for, and keeps its id
+# under the customer's own words (`removed`). c491da9 blanks them too.
+PAID = {
+    'numbers-the-customers-placing-became-first-as-first-place-uz-keep': (
+        ('birinchi',), 'numbers-a-customers-non-placing-contest-was-her-first-grounds-no-placing-uz-blank'),
+    'numbers-the-customers-placing-took-first-at-an-olympiad-as-first-place-en-keep': (
+        ('first',), 'numbers-a-customers-non-placing-first-in-her-class-to-qualify-grounds-no-placing-en-blank'),
+    'numbers-the-customers-placing-became-third-as-third-place-ru-keep': (
+        ('третье',), 'numbers-a-customers-non-placing-third-olympiad-of-her-life-grounds-no-placing-ru-blank'),
+    'numbers-the-customers-placing-finished-with-third-place-as-third-place-ru-keep': (
+        ('третье',), 'numbers-a-customers-non-placing-third-olympiad-of-her-life-grounds-no-placing-ru-blank'),
+}
+assert all(sum(case.id == keep for case in CASES) == 1 for keep in PAID), 'every paid keep is a case'
+
+
+def _paid(case):
+    """A paid keep: the accepted false blank, and its id under the customer's own words. Those words, in the paper's
+    language, may tell the brief's language otherwise, so the keep no longer asserts how it is read."""
+    keep, blank = removed(case, *PAID[case.id], listed=True)
+    return [replace(keep, translated=None), blank]
+
+
+CASES = [made for case in CASES for made in (_paid(case) if case.id in PAID else [case])]
+
 CASE_IDS = [case.id for case in CASES]
 
 
