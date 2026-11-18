@@ -1535,11 +1535,45 @@ LAW_NAME_HEADS = {LAW_NAMES.index(r"buxgalteriya|бухгалтерск|accounti
                   re.compile(r"уч[её]т(?:а|у|ом|е)?|hisob(?:i|ini|iga|ida|idan|ining)?")}
 
 
+# The name ends at its head noun only where nothing of it can follow (`_law_head_ends`), past a closing quote: the
+# Uzbek head stands before what joins the name to its stem ("Buxgalteriya hisobi to‘g‘risidagi qonun") or before the
+# stem; after the Russian one the sentence or its clause ends, a verb follows or the law's date or number does ("... о
+# бухгалтерском учёте от 13 апреля 2016 года"). After "и", a comma, a preposition or any other word the name may go on
+# ("... учёте и аудите", "... учёте, аудите и налогах", "... учёте в банках", "... учёте для банков") past the words
+# `_law_names` reads, so the head is no longer the name's own: it must be the customer's word, or the sentence goes.
+LAW_HEAD_CLOSE = re.compile(r"[»\"”“'’]*")
+LAW_HEAD_END = re.compile(r"[ \u00a0]*(?:[.!?…;)\]]|$)")
+LAW_HEAD_DATED = re.compile(r"[ \u00a0]+(?:от[ \u00a0]+)?(?:№|N[ \u00a0]*\d|\d)", re.IGNORECASE)
+# A Russian verb after the name: a present tense's ending no noun has ("регулирует", "устанавливает", "соблюдают"), a
+# reflexive's ("распространяется", "руководствуются"), or one of the verbs and short forms a law's sentence goes on
+# with that end as nouns may ("содержит", "вступил", "принят", "утверждён", "обязателен").
+RU_LAW_VERB = re.compile(
+    r"[а-яё]+(?:ает|яет|еет|ует|ают|яют|еют|уют)"
+    r"|[а-яё]+(?:ется|ётся|ются|ится|ятся|утся|атся|лся|лась|лось|лись)"
+    r"|содерж(?:ит|ат)|служ(?:ит|ат)|вв(?:одит|одят|[её]л)|вход(?:ит|ят)|вступил[аои]?|был[аои]?|стал[аои]?"
+    r"|действовал[аои]?|принят[аоы]?|утвержд[её]н[аоы]?|предусмотрен[аоы]?|установлен[аоы]?|определ[её]н[аоы]?"
+    r"|обязател(?:ен|ьна|ьно|ьны)")
+
+
 def _law_head_noun(before, word):
     """Whether `word` is the head noun of the law name word `before` stands for (`LAW_NAME_HEADS`)."""
     forms = _law_name(before)
     head = LAW_NAME_HEADS.get(LAW_NAME_FORMS.index(forms)) if forms is not None else None
     return head is not None and head.fullmatch(normalised(word).casefold()) is not None
+
+
+def _law_head_ends(sentence, start, word):
+    """Whether a law's name ends at its head noun `word` at `start` of `sentence` (`LAW_HEAD_END`, `RU_LAW_VERB`)."""
+    rest = sentence[start + len(word):]
+    rest = rest[LAW_HEAD_CLOSE.match(rest).end():]
+    if not re.search('[а-яё]', normalised(word).casefold()):
+        after = LAW_TOKEN.match(rest, len(rest) - len(rest.lstrip(' \u00a0')))
+        low = normalised(after.group(0)).casefold() if after is not None else ''
+        return LAW_ABOUT.fullmatch(low) is not None or UZ_LAW_STEM.fullmatch(low) is not None
+    if LAW_HEAD_END.match(rest) or LAW_HEAD_DATED.match(rest):
+        return True
+    verb = re.match(r"[ \u00a0]+([^\W\d_]+)(?![^\W\d_]|-)", rest)
+    return verb is not None and RU_LAW_VERB.fullmatch(normalised(verb.group(1)).casefold()) is not None
 
 
 def _legal_known(sentence, concepts, trusted, translated, *, names=True):
@@ -1558,9 +1592,9 @@ def _legal_known(sentence, concepts, trusted, translated, *, names=True):
     # Its other words in lower case ("арбитражному", "iqtisodiyot", "javobgarlik") are the customer's too: as they
     # wrote them, or in a translated paper in the spellings a translation gives a name. A translated code's words
     # not of LAW_NAMES cannot be told from an invented one's, so they go: a false removal, never an invention.
-    plain = [word for index, (_, word) in enumerate(words) if not word[0].isupper() and _law_name(word) is None
+    plain = [word for index, (start, word) in enumerate(words) if not word[0].isupper() and _law_name(word) is None
              and not LAW_KIND.fullmatch(normalised(word).casefold())
-             and not (index and _law_head_noun(words[index - 1][1], word))]
+             and not (index and _law_head_noun(words[index - 1][1], word) and _law_head_ends(sentence, start, word))]
     if not all(trusted.person(word, True) if translated else trusted.words.known(word) for word in plain):
         return False
     named = [(start, word) for start, word in words if word[0].isupper()]
