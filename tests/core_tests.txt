@@ -2976,3 +2976,7 @@ tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-top-three
 tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-top-three-in-a-cover-letter-grounds-no-three-years-in-words-uz-blank]
 tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-top-three-leaders-grounds-no-third-place-ru-blank]
 tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-top-three-leaders-grounds-no-three-years-ru-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-the-customers-best-three-in-other-words-uz-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-the-customers-english-top-three-en-to-ru-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-the-customers-three-best-in-other-words-ru-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-three-years-grounds-no-top-three-uz-blank]
