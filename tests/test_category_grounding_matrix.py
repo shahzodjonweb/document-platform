@@ -3072,6 +3072,132 @@ CASES += [
          pair='class-technology-shaped-letter-3d-before-dizayn-va-texnologiya-uz-blank'),
 ]
 
+# ---------------------------------------------------------------- the re-check of round 5 (drop-r1), both ways
+# Round 5 left two readings that kept what c491da9 blanks: the customer's collective of the best gave its count as a
+# figure, and a translated paper's accounting law took any word of its head noun's stem.
+
+# ---- A collective of the best is a key of its own (must, from 21147ba and 3167c90): the customer's "вошла в тройку
+# лучших", "входит в тройку лидеров рынка", "eng yaxshi uchlikka kirdi" or "g‘oliblar beshligiga kirgan" grounds the
+# paper's same collective, never a bare 3, "третье место", "uchinchi o‘rin" or "3 года". Being among the top three is
+# not finishing third.
+COVER_RU_TOP3 = ('Напишите сопроводительное письмо на должность менеджера по продажам. Я Малика Кодирова, работала в '
+                 'рознице, в прошлом году вошла в тройку лучших продавцов региона.')
+COVER_RU_TOP3_LEADERS = ('Напишите сопроводительное письмо менеджера по продажам. Я Малика Кодирова, в прошлом году '
+                         'была в тройке лидеров продаж сети.')
+COVER_RU_THREE_YEARS = ('Напишите сопроводительное письмо на должность менеджера по продажам. Я Малика Кодирова, '
+                        'работала в рознице 3 года.')
+COVER_UZ_TOP3 = ('Ishga kirish xati yozing. Ismim Qodirova Malika, sotuv menejeri lavozimiga topshiraman. O‘tgan yili '
+                 'viloyat sotuvchilari reytingida eng yaxshi uchlikka kirdim.')
+REFERENCE_UZ_TOP5 = ('Qodirova Malika uchun tavsifnoma yozing, u o‘quvchi, viloyat olimpiadasida g‘oliblar beshligiga '
+                     'kirgan, darslarda faol.')
+REPORT_RU_TOP3 = ('Напишите отчёт о работе нашей пекарни за год. Наша пекарня входит в тройку лидеров рынка Ташкента, '
+                  'продажи выросли, открыли новый цех.')
+REPORT_UZ_TOP3 = ('Nonvoyxonamiz faoliyati bo‘yicha yillik hisobot yozing. Nonvoyxonamiz shahar bozorida eng yaxshi '
+                  'uchlikka kirdi, sotuv o‘sdi, yangi sex ochdik.')
+for slug, brief, locale, rows in (
+        ('a-bakerys-report', REPORT_RU_TOP3, 'ru', (
+            ('three-new-branches', 'В этом году мы открыли 3 новых филиала.', ('3',)),
+            ('third-place-in-a-city-ranking', 'Пекарня заняла третье место в городском рейтинге.', ('третье',)),
+            ('three-quarters-in-a-row', 'Продажи выросли за 3 квартала подряд.', ('3',)))),
+        ('a-bakerys-report', REPORT_UZ_TOP3, 'uz', (
+            ('three-new-branches', 'Bu yil 3 ta yangi filial ochdik.', ('3',)),
+            ('third-place-in-a-city-ranking', 'Nonvoyxona shahar reytingida uchinchi o‘rinni egalladi.',
+             ('uchinchi',)),
+            ('three-quarters', 'Sotuv 3 chorak davomida o‘sdi.', ('3',))))):
+    for row_slug, sentence, gone in rows:
+        CASES += [
+            gp(f'numbers-top-three-in-{slug}-grounds-no-{row_slug}-{locale}-blank', BLANK, brief, locale, sentence,
+               gone=gone),
+            body(f'numbers-top-three-in-{slug}-grounds-no-{row_slug}-in-its-results-{locale}-blank', BLANK,
+                 'pdf.biz.hisobot', brief, locale, 'results', sentence, gone=gone),
+        ]
+for row_slug, sentence, gone in (
+        ('third-place-among-sellers', 'В прошлом году я заняла третье место среди продавцов региона.', ('третье',)),
+        ('three-years-in-sales', 'Я работаю в продажах 3 года.', ('3',)),
+        ('three-months', 'За 3 месяца я увеличила продажи вдвое.', ('3',)),
+        ('three-years-in-words', 'Мой опыт в рознице — три года.', ('три',))):
+    CASES += [
+        gp(f'numbers-top-three-in-a-cover-letter-grounds-no-{row_slug}-ru-blank', BLANK, COVER_RU_TOP3, 'ru', sentence,
+           gone=gone),
+        body(f'numbers-top-three-in-a-cover-letter-grounds-no-{row_slug}-in-its-fit-ru-blank', BLANK,
+             'pdf.xat.ishga_kirish', COVER_RU_TOP3, 'ru', 'fit', sentence, gone=gone),
+    ]
+for row_slug, sentence, gone in (
+        ('third-place-by-sales', 'O‘tgan yili viloyatda sotuv bo‘yicha uchinchi o‘rinni egalladim.', ('uchinchi',)),
+        ('third-in-a-ranking', 'Viloyat reytingida uchinchi bo‘ldim.', ('uchinchi',)),
+        ('three-years-in-trade', 'Savdoda 3 yil ishlaganman.', ('3',)),
+        ('three-months', 'Sotuvni 3 oyda oshirdim.', ('3',)),
+        ('three-years-in-words', 'Savdo sohasida uch yillik tajribam bor.', ('uch',))):
+    CASES.append(gp(f'numbers-top-three-in-a-cover-letter-grounds-no-{row_slug}-uz-blank', BLANK, COVER_UZ_TOP3, 'uz',
+                    sentence, gone=gone))
+for row_slug, sentence, gone in (
+        ('fifth-place', 'Viloyat olimpiadasida beshinchi o‘rinni egallagan.', ('beshinchi',)),
+        ('five-years', 'U 5 yildan beri olimpiadalarga tayyorlanadi.', ('5',))):
+    CASES += [
+        gp(f'numbers-top-five-in-a-reference-grounds-no-{row_slug}-uz-blank', BLANK, REFERENCE_UZ_TOP5, 'uz', sentence,
+           gone=gone),
+        body(f'numbers-top-five-in-a-reference-grounds-no-{row_slug}-in-its-traits-uz-blank', BLANK,
+             'pdf.xat.tavsifnoma', REFERENCE_UZ_TOP5, 'uz', 'traits', sentence, gone=gone),
+    ]
+CASES += [
+    gp('numbers-top-three-leaders-grounds-no-third-place-ru-blank', BLANK, COVER_RU_TOP3_LEADERS, 'ru',
+       'Она заняла третье место.', gone=('третье',)),
+    gp('numbers-top-three-leaders-grounds-no-three-years-ru-blank', BLANK, COVER_RU_TOP3_LEADERS, 'ru',
+       'Опыт работы — 3 года.', gone=('3',)),
+    # The paper's collective needs the customer's: their "3 года" grounds no "тройку лучших".
+    gp('numbers-three-years-grounds-no-top-three-ru-blank', BLANK, COVER_RU_THREE_YEARS, 'ru',
+       'В прошлом году я вошла в тройку лучших продавцов региона.', gone=('тройку',)),
+    gp('numbers-top-three-grounds-no-top-five-ru-blank', BLANK, COVER_RU_TOP3, 'ru',
+       'Вошла в пятёрку лучших продавцов региона.', gone=('пятёрку',)),
+    gp('numbers-the-customers-top-three-ru-keep', KEEP, COVER_RU_TOP3, 'ru',
+       'В прошлом году я вошла в тройку лучших продавцов региона.'),
+    gp('numbers-the-customers-top-three-leaders-of-a-market-ru-keep', KEEP, REPORT_RU_TOP3, 'ru',
+       'Пекарня входит в тройку лидеров рынка Ташкента.'),
+    gp('numbers-the-customers-top-three-uz-keep', KEEP, COVER_UZ_TOP3, 'uz',
+       'O‘tgan yili viloyat reytingida eng yaxshi uchlikka kirdim.'),
+    gp('numbers-the-customers-top-five-winners-uz-keep', KEEP, REFERENCE_UZ_TOP5, 'uz',
+       'Viloyat olimpiadasida g‘oliblar beshligiga kirgan.'),
+]
+
+# ---- A translated paper's accounting law takes only its head noun's own forms (must, from 424c38a): "учёт", "учёта",
+# "учёте" and "hisob", "hisobi", "hisobiga" are the name of the customer's Law on Accounting; a word built on the stem
+# ("hisobotlari", "hisobchilari", "hisobvaraqlari", "учётчиках", "учётности") names another law.
+ACCOUNTING_EN_UZ = 'Write a job description for an accountant in Uzbek. He must know the Law on Accounting.'
+ACCOUNTING_EN_RU = 'Write a job description for an accountant in Russian. He must know the Law on Accounting.'
+ACCOUNTING_UZ_RU = ('Buxgalter uchun rus tilida lavozim yo‘riqnomasi yozing. U Buxgalteriya hisobi to‘g‘risidagi '
+                    'qonunni bilishi kerak.')
+for slug, brief, locale, sentence, gone in (
+        ('hisobotlari-en-to-uz', ACCOUNTING_EN_UZ, 'uz',
+         'Buxgalter Buxgalteriya hisobotlari to‘g‘risidagi qonunni biladi.', ('hisobotlari',)),
+        ('hisobchilari-en-to-uz', ACCOUNTING_EN_UZ, 'uz',
+         'Buxgalter Buxgalteriya hisobchilari to‘g‘risidagi qonunga amal qiladi.', ('hisobchilari',)),
+        ('hisobvaraqlari-en-to-uz', ACCOUNTING_EN_UZ, 'uz',
+         'Buxgalter Buxgalteriya hisobvaraqlari to‘g‘risidagi qonunni biladi.', ('hisobvaraqlari',)),
+        ('lower-case-hisoboti-en-to-uz', ACCOUNTING_EN_UZ, 'uz',
+         'Buxgalter buxgalteriya hisoboti to‘g‘risidagi qonunni biladi.', ('hisoboti',)),
+        ('uchetchikah-en-to-ru', ACCOUNTING_EN_RU, 'ru', 'Бухгалтер соблюдает Закон о бухгалтерских учётчиках.',
+         ('учётчиках',)),
+        ('uchetnosti-en-to-ru', ACCOUNTING_EN_RU, 'ru', 'Бухгалтер соблюдает Закон о бухгалтерской учётности.',
+         ('учётности',)),
+        ('uchetchikah-uz-to-ru', ACCOUNTING_UZ_RU, 'ru', 'Бухгалтер соблюдает Закон о бухгалтерских учётчиках.',
+         ('учётчиках',)),
+        ('uchetnosti-uz-to-ru', ACCOUNTING_UZ_RU, 'ru', 'Бухгалтер соблюдает Закон о бухгалтерской учётности.',
+         ('учётности',))):
+    CASES += [
+        guard(f'laws-an-accounting-law-head-stem-{slug}-blank', BLANK, brief, locale, sentence, gone=gone,
+              translated=True),
+        body(f'laws-an-accounting-law-head-stem-in-a-qualification-{slug}-blank', BLANK, 'pdf.biz.lavozim_yoriqnomasi',
+             brief, locale, 'qualification', sentence, gone=gone),
+    ]
+CASES += [
+    guard('laws-the-customers-law-on-accounting-as-hisobi-en-to-uz-keep', KEEP, ACCOUNTING_EN_UZ, 'uz',
+          'Buxgalter Buxgalteriya hisobi to‘g‘risidagi qonunni biladi.', translated=True),
+    guard('laws-the-customers-law-on-accounting-as-uchete-en-to-ru-keep', KEEP, ACCOUNTING_EN_RU, 'ru',
+          'Бухгалтер соблюдает Закон о бухгалтерском учёте.', translated=True),
+    guard('laws-the-customers-law-on-accounting-as-uchete-uz-to-ru-keep', KEEP, ACCOUNTING_UZ_RU, 'ru',
+          'Бухгалтер руководствуется Законом о бухгалтерском учёте.', translated=True),
+]
+
 CASE_IDS = [case.id for case in CASES]
 
 
