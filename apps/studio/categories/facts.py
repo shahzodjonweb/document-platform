@@ -2013,14 +2013,24 @@ NAME_OPENERS = _folded((
     "сейчас сегодня теперь затем также ещё вчера завтра ранее").split())
 
 
+# The nouns for people a sentence names someone by before a surname, no given name of it: "Investor Karimov ...",
+# "Клиент Иванова ...", "Buyer Smith ..." (`_free_given_name`).
+PEOPLE_NOUNS = _folded((
+    "investor investorlar klient xaridor buyurtmachi homiy ta’minotchi yetkazuvchi ijarachi muassis ta’sischi aksioner "
+    "aksiyador bemor buyer supplier vendor sponsor donor contractor shareholder founder owner tenant landlord patient "
+    "инвестор клиент клиентка покупатель покупательница заказчик заказчица поставщик спонсор партнёр партнер "
+    "учредитель владелец владелица арендатор акционер пациент пациентка").split())
+
+
 def _free_given_name(run, bad):
     """Whether a run's free first word, blanked with the rest of it (`_names`'s `strict`), is a given name to hold
     wherever it stands: only right before a word shaped as a surname ("Hikmat Rahimov ..." gives hikmat), never a role
-    word, a role's modifier or an opener ("Bosh Hisobchi Nodira Karimova", "Today Larisa Ivanova", "Главный
-    Бухгалтер ...": "Bosh ofis ...", "Today the firm ...", "Главный офис ..." elsewhere stay)."""
+    word, a role's modifier, a noun for people or an opener ("Bosh Hisobchi Nodira Karimova", "Investor Karimov",
+    "Клиент Иванова", "Today Larisa Ivanova", "Главный Бухгалтер ...": "Bosh ofis ...", "Investor bilan ...",
+    "Клиент всегда прав", "Today the firm ...", "Главный офис ..." elsewhere stay)."""
     first = run[0][2]
     return len(run) > 1 and 1 in bad and _surname(run[1][2]) and not _role_word(first) \
-        and fold(first) not in ROLE_MODIFIERS and fold(first) not in NAME_OPENERS \
+        and fold(first) not in ROLE_MODIFIERS and fold(first) not in NAME_OPENERS and fold(first) not in PEOPLE_NOUNS \
         and RU_ROLE_ADJECTIVE.fullmatch(normalised(first).casefold()) is None and not first.casefold().endswith('ly')
 
 
