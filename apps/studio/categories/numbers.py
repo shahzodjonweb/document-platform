@@ -377,8 +377,9 @@ ORDINAL_RANK = re.compile(
     rf"|(?<![^\W\d_])(?:стал|стала|стали|был|была|были|оказал(?:ся|ась|ись)){GAP_ORDINAL}({ORDINAL_WORD})"
     rf"(?=[  ]*(?:[,.;:!?)]|$)|{GAP_ORDINAL}(?:по|на|в|во|среди|из|с|со)(?![^\W\d_]))"
     # An English ordinal before the contest it places in or a "best": "second in the regional ranking", "took second
-    # at the olympiad", "the second-best student"; never "the first in her family".
-    rf"|(?<![^\W\d_])(?<!the )({EN_ORDINAL_WORD})(?={GAP_ORDINAL}(?:in|at|among)(?![^\W\d_]))"
+    # at the olympiad", "the second-best student"; never "the first in her family" or "first in line".
+    rf"|(?<![^\W\d_])(?<!the )({EN_ORDINAL_WORD})(?={GAP_ORDINAL}(?:in|at|among)(?![^\W\d_])"
+    rf"(?!{GAP_ORDINAL}line(?![^\W\d_])))"
     rf"|(?<![^\W\d_])({EN_ORDINAL_WORD})(?=[- ](?:best|highest)(?![^\W\d_]))",
     re.IGNORECASE)
 # An ordinal before an accusative "o‘rinni" and the present of "egallamoq" (`IDIOM_VERB`): a placing ("U har yili

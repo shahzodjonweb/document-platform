@@ -2038,6 +2038,8 @@ CASES += [
     gp('numbers-her-second-olympiad-uz-keep', KEEP, REFERENCE_UZ, 'uz', 'Bu uning ikkinchi olimpiadasi bo‘ldi.'),
     gp('numbers-second-highest-cost-en-keep', KEEP, PLAN_EN, 'en', 'Rent is the second highest cost of the bakery.'),
     gp('numbers-third-task-ru-keep', KEEP, COVER_RU, 'ru', 'Третьей задачей было обучение персонала.'),
+    gp('numbers-first-in-line-beside-a-ranking-en-keep', KEEP, COVER_EN, 'en',
+       'I was first in line for promotion in the sales ranking review.'),
     # "был/была" before an ordinal with its noun after it orders, never places (should, from 21147ba).
     gp('numbers-it-was-her-first-experience-of-an-olympiad-ru-keep', KEEP, COVER_RU, 'ru',
        'Для неё это был первый опыт участия в олимпиаде.'),
@@ -2071,6 +2073,13 @@ CASES += [
     guard('laws-the-law-on-paper-en-keep', KEEP, COVER_EN, 'en', 'The law on paper differs from practice.'),
     guard('laws-labour-law-knowledge-en-keep', KEEP, COVER_EN, 'en', 'Their labour law knowledge is weak.'),
     guard('laws-a-law-of-which-ru-keep', KEEP, COVER_RU, 'ru', 'Это закон о котором многие не знают.'),
+    # "Закон о" something opening a sentence cites a law, even one said to be unadopted: the price of an invented
+    # "Закон о частном предпринимательстве".
+    guard('laws-an-invented-zakon-o-opening-a-sentence-ru-blank', BLANK, COVER_RU, 'ru',
+          'Закон о частном предпринимательстве защищает малые фирмы.', gone=('частном',)),
+    guard('laws-a-draft-zakon-o-opening-a-sentence-ru-accepted_false_blank', ACCEPTED, COVER_RU, 'ru',
+          'Закон о малом бизнесе обсуждается давно, но пока не принят.', gone=('малом',),
+          pair='laws-an-invented-zakon-o-opening-a-sentence-ru-blank'),
     # The customer's law named in Uzbek or English, cited in a Russian paper in lower case.
     guard('laws-the-customers-uzbek-law-as-zakon-o-in-lower-case-uz-to-ru-keep', KEEP,
           'Buxgalter uchun lavozim yo‘riqnomasini rus tilida yozing, Buxgalteriya hisobi to‘g‘risidagi qonunga muvofiq.',
