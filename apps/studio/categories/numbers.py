@@ -297,7 +297,7 @@ RU_ORDINALS = (('перв', 1), ('втор', 2), ('трет', 3), ('четв[е�
                ('восьм', 8), ('девят', 9), ('десят', 10), ('одиннадцат', 11), ('двенадцат', 12), ('тринадцат', 13),
                ('четырнадцат', 14), ('пятнадцат', 15), ('шестнадцат', 16), ('семнадцат', 17), ('восемнадцат', 18),
                ('девятнадцат', 19), ('двадцат', 20), ('тридцат', 30))
-RU_ORDINAL_ENDING = r"(?:ый|ой|ий|ая|ое|ого|ому|ом|ую|ые|ых|ым|ыми|ей|ья|ье|ьего|ьему|ьем|ью|ьи|ьих)"
+RU_ORDINAL_ENDING = r"(?:ый|ой|ий|ая|ое|ого|ому|ом|ую|ые|ых|ым|ыми|ей|ья|ье|ьего|ьему|ьем|ью|ьими|ьим|ьи|ьих|ьей)"
 APOSTROPHE = "['‘’ʻʼ`´]"
 ORDINAL_WORD = (r"(?:(?:twenty|thirty)[ -])?(?:" + '|'.join(EN_ORDINALS) + ")"
                 r"|(?:(?:двадцать|тридцать)[ \u00a0])?(?:" + '|'.join(stem for stem, _ in RU_ORDINALS) + ")"
@@ -314,6 +314,9 @@ EN_ORDINAL = re.compile(EN_ORDINAL_WORD, re.IGNORECASE)
 # The present of "egallamoq" after an accusative "o‘rinni": "Mijoz manfaati birinchi o‘rinni egallaydi" (comes first), an
 # idiom with "birinchi" only, read where `_idiom` says (`ORDINAL_IDIOM`).
 IDIOM_VERB = r"(?:egallaydi|egallab[  ]+keladi|tutadi)(?![^\W\d_])"
+# The people an ordinal "-highest" or "-best" ranks (`ORDINAL_PLACE`).
+RANKED_PEOPLE = (r"seller|salesperson|salesman|saleswoman|earner|performer|student|pupil|scorer|employee|agent|manager"
+                 r"|worker|representative|rep|cashier|consultant|graduate|participant|competitor|candidate")
 PLACING_VERB = (r"(?:won|wins?|winning|took|takes?|taking|came|comes?|coming|finish(?:ed|es|ing)?|placed|earned"
                 r"|secured|got|gets|awarded|claimed|achieved|received|reached|shared|taken|given)")
 ORDINAL_PLACE = re.compile(
@@ -336,7 +339,10 @@ ORDINAL_PLACE = re.compile(
     # A diploma's degree after it: "диплом второй степени", "a diploma of the second degree".
     rf"|(?<![^\W\d_])диплом\w{{0,3}}{GAP_ORDINAL}({ORDINAL_WORD})(?={GAP_ORDINAL}степени(?![^\W\d_]))"
     rf"|(?<![^\W\d_])(?:diploma|certificate)s?{GAP_ORDINAL}of{GAP_ORDINAL}(?:the{GAP_ORDINAL})?({ORDINAL_WORD})"
-    rf"(?={GAP_ORDINAL}degree(?![^\W\d_]))",
+    rf"(?={GAP_ORDINAL}degree(?![^\W\d_]))"
+    # A person ranked among others by an ordinal "-highest" or "-best": "the second highest seller", "the store’s
+    # second-highest earner", "the third-best student"; never "the second highest cost" (`ORDINAL_RANK`).
+    rf"|(?<![^\W\d_])({EN_ORDINAL_WORD})(?=[- ](?:highest|best|top)[- ](?:{RANKED_PEOPLE})s?(?![^\W\d_]))",
     re.IGNORECASE)
 # A bare English "first place" or "first position": a placing ("First place, Regional Olympiad", "Her first place at
 # the olympiad", "held first position in regional sales") unless "the", "my", "a" or "an" stands before it ("The
@@ -363,12 +369,17 @@ ORDINAL_RANK = re.compile(
     # A placing said with "to be" or "to become": "olimpiadada uchinchi bo‘ldi", "стала второй по продажам".
     rf"|(?<![^\W\d_])({ORDINAL_WORD})(?={GAP_ORDINAL}bo{APOSTROPHE}l(?:di|dim|ding|dingiz|dik|dilar|gan\w*|adi)"
     rf"(?![^\W\d_]))"
+    # "bo‘lib" closing its clause or before a prize: "musobaqada ikkinchi bo‘lib, kumush medal oldi"; never "birinchi
+    # bo‘lib ro‘yxatdan o‘tdi" (the first to register).
+    rf"|(?<![^\W\d_])({ORDINAL_WORD})(?={GAP_ORDINAL}bo{APOSTROPHE}lib(?:[  ]*[,.;]|[  ]*$|{GAP_ORDINAL}(?:kumush|oltin"
+    rf"|bronza|medal|diplom|sovrin|mukofot|g{APOSTROPHE}olib|faxriy)\w*))"
+    # Never an ordinal with its noun after it: "это был первый опыт", "это была вторая олимпиада".
     rf"|(?<![^\W\d_])(?:стал|стала|стали|был|была|были|оказал(?:ся|ась|ись)){GAP_ORDINAL}({ORDINAL_WORD})"
-    rf"(?![^\W\d_])"
+    rf"(?=[  ]*(?:[,.;:!?)]|$)|{GAP_ORDINAL}(?:по|на|в|во|среди|из|с|со)(?![^\W\d_]))"
     # An English ordinal before the contest it places in or a "best": "second in the regional ranking", "took second
     # at the olympiad", "the second-best student"; never "the first in her family".
     rf"|(?<![^\W\d_])(?<!the )({EN_ORDINAL_WORD})(?={GAP_ORDINAL}(?:in|at|among)(?![^\W\d_]))"
-    rf"|(?<![^\W\d_])({EN_ORDINAL_WORD})(?=-best(?![^\W\d_]))",
+    rf"|(?<![^\W\d_])({EN_ORDINAL_WORD})(?=[- ](?:best|highest)(?![^\W\d_]))",
     re.IGNORECASE)
 # An ordinal before an accusative "o‘rinni" and the present of "egallamoq" (`IDIOM_VERB`): a placing ("U har yili
 # sinfda birinchi o‘rinni egallaydi", "Jamoamiz kompaniyada ikkinchi o‘rinni egallab keladi") unless it is the idiom
@@ -393,10 +404,24 @@ COLLECTIVES = (('тройк', 3), ('четв[её]рк', 4), ('пят[её]рк'
                ('восьм[её]рк', 8), ('девятк', 9), ('десятк', 10), ('двадцатк', 20))
 COLLECTIVE = re.compile(r"(?<![^\W\d_])(" + '|'.join(stem for stem, _ in COLLECTIVES) + r")(?:а|у|е|ой|и)"
                         r"(?=[  ]+(?:лучш|сильнейш|призёр|призер|победител|лидер)\w*)", re.IGNORECASE)
+# An Uzbek collective of the best, a placing: "eng yaxshi uchlikka kirdi", "g‘oliblar uchligidan joy oldi".
+UZ_COLLECTIVES = (('uch', 3), (f"to{APOSTROPHE}rt", 4), ('besh', 5), ('olti', 6), ('yetti', 7), ('sakkiz', 8),
+                  (f"o{APOSTROPHE}n(?:ta)?", 10))
+UZ_COLLECTIVE = re.compile(rf"(?<=[  ])(?:{'|'.join(stem for stem, _ in UZ_COLLECTIVES)})li[kg]\w*", re.IGNORECASE)
+UZ_COLLECTIVE_BEFORE = re.compile(rf"(?:(?<![^\W\d_])eng[  ]+(?:yaxshi|kuchli|ilg{APOSTROPHE}or)|(?<![^\W\d_])"
+                                  rf"(?:g{APOSTROPHE}oliblar|sovrindorlar|yetakchilar))[  ]+$", re.IGNORECASE)
+# A stem every ordinal and collective word the placings read holds (`_Reader.ordinals`): a text with none is not scanned.
+ORDINAL_HINT = re.compile(
+    r"nchi|first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|eleventh|twelfth|teenth|tieth"
+    r"|перв|втор|трет|четв|пят|шест|седьм|восьм|девят|десят|надцат|двадцат|тридцат|тройк|сем[её]рк"
+    rf"|(?:uch|to{APOSTROPHE}rt|besh|olti|yetti|sakkiz|o{APOSTROPHE}n(?:ta)?)li[kg]", re.IGNORECASE)
 CONTEST = re.compile(
     r"(?<![^\W\d_])(?:olimpiad\w*|tanlov\w*|musobaqa\w*|chempionat\w*|konkurs\w*|turnir\w*|reyting\w*"
     r"|олимпиад\w*|конкурс\w*|соревновани\w*|чемпионат\w*|турнир\w*|рейтинг\w*|в[  ]+регионе|по[  ]+продажам"
-    r"|olympiads?|contests?|competitions?|championships?|tournaments?|rankings?|leagues?|regional[  ]+sales)",
+    r"|olympiads?|contests?|competitions?|championships?|tournaments?|rankings?|leagues?|regional[  ]+sales"
+    # A district's or a city's championship ("Tuman birinchiligida"), and a ranking by sales ("Sotuv bo‘yicha", "Savdo
+    # hajmi bo‘yicha", "in sales", "for sales"), as "по продажам" is.
+    r"|birinchilig\w*|(?:sotuv|savdo)\w*(?:[  ]+[^\W\d_]+)?[  ]+bo['‘’ʻʼ`´]yicha|(?:in|for)[  ]+sales)",
     re.IGNORECASE)
 ORDINAL_DATE = re.compile(rf"(?<![^\W\d_])(?:the[ \u00a0]+)?({ORDINAL_WORD})(?:[ \u00a0]+of)?[ \u00a0]+" + MONTH,
                           re.IGNORECASE)
@@ -675,8 +700,11 @@ class _Reader:
 
     def ordinals(self):
         """The ordinals that are figures as a placing or a run's count (`ORDINAL_PLACE`, `ORDINAL_SPOT`,
-        `ORDINAL_RANK`); a date's day is read with the dates (`ORDINAL_DATE`, `_digits`)."""
+        `ORDINAL_RANK`); a date's day is read with the dates (`ORDINAL_DATE`, `_digits`). A text with no ordinal's or
+        collective's stem in it (`ORDINAL_HINT`) is not scanned: each reading starts at every word."""
         text = self.text
+        if ORDINAL_HINT.search(text) is None:
+            return
         found = [match for match in ORDINAL_PLACE.finditer(text)]
         for match in ORDINAL_SPOT.finditer(text):
             before = text[:match.start()]
@@ -703,6 +731,13 @@ class _Reader:
                 self.add(*match.span(), 'spelled', str(value), [{str(value)}])
         for match in COLLECTIVE.finditer(text):
             value = next(value for stem, value in COLLECTIVES if re.fullmatch(stem, match.group(1).casefold()))
+            if self.free(*match.span()):
+                self.add(*match.span(), 'spelled', str(value), [{str(value)}])
+        for match in UZ_COLLECTIVE.finditer(text):
+            if not UZ_COLLECTIVE_BEFORE.search(text, max(0, match.start() - 24), match.start()):
+                continue
+            word = match.group(0).casefold()
+            value = next(value for stem, value in UZ_COLLECTIVES if re.match(stem + 'li[kg]', word))
             if self.free(*match.span()):
                 self.add(*match.span(), 'spelled', str(value), [{str(value)}])
 
