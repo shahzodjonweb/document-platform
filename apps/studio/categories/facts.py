@@ -1528,8 +1528,11 @@ def _law_name_known(word, trusted):
 # The noun a law's name word stands before in one language and not in another: the Russian "о бухгалтерском учёте"
 # and the Uzbek "Buxgalteriya hisobi" of the English "on Accounting". It is the name's, read as the word before it is
 # (`_legal_known`), so the customer's "Buxgalteriya hisobi to‘g‘risidagi qonun" or "Law on Accounting" is a Russian
-# paper's "закон о бухгалтерском учёте" whether or not the message's language could be told.
-LAW_NAME_HEADS = {LAW_NAMES.index(r"buxgalteriya|бухгалтерск|accounting"): re.compile(r"уч[её]т\w*|hisob\w*")}
+# paper's "закон о бухгалтерском учёте" whether or not the message's language could be told. Only the head noun's own
+# forms are: a word built on its stem ("hisobotlari", "hisobchilari", "hisobvaraqlari", "учётчиках", "учётности")
+# names another law and must be the customer's word.
+LAW_NAME_HEADS = {LAW_NAMES.index(r"buxgalteriya|бухгалтерск|accounting"):
+                  re.compile(r"уч[её]т(?:а|у|ом|е)?|hisob(?:i|ini|iga|ida|idan|ining)?")}
 
 
 def _law_head_noun(before, word):
