@@ -402,7 +402,8 @@ ORDINAL_RANK = re.compile(
 # beside a contest ("tuman birinchiligida" is also the district's championship).
 ORDINAL_NOUN = re.compile(rf"(?<![^\W\d_])((?:(?:o{APOSTROPHE}n|yigirma|o{APOSTROPHE}ttiz)[ \u00a0])?[^\W\d_]+?i?nchi)"
                           r"(lik(?:ni|ka|ga|da|dan|ning|i|ini|ida|iga|idan|ining)?)(?![^\W\d_])", re.IGNORECASE)
-# A Russian collective of the best, a placing: "вошла в тройку лучших", "в пятёрку сильнейших".
+# A Russian collective of the best, a placing: "вошла в тройку лучших", "в пятёрку сильнейших". It is its own key
+# ("top:3"), never its count (`_Reader.ordinals`).
 COLLECTIVES = (('тройк', 3), ('четв[её]рк', 4), ('пят[её]рк', 5), ('шест[её]рк', 6), ('сем[её]рк', 7),
                ('восьм[её]рк', 8), ('девятк', 9), ('десятк', 10), ('двадцатк', 20))
 COLLECTIVE = re.compile(r"(?<![^\W\d_])(" + '|'.join(stem for stem, _ in COLLECTIVES) + r")(?:а|у|е|ой|и)"
@@ -747,17 +748,21 @@ class _Reader:
             if value is not None and self.free(*match.span()) and (
                     match.group(2).casefold() == 'likni' or _contest(text, match.start())):
                 self.add(*match.span(), 'spelled', str(value), [{str(value)}])
+        # A collective is a key of its own on both sides ("top:3"): being among the top three is not finishing third,
+        # so the customer's "вошла в тройку лучших" or "eng yaxshi uchlikka kirdi" grounds the paper's same collective
+        # in any of the three languages, never its "3 года", "третье место" or "uchinchi o‘rin"; and the customer's "3"
+        # grounds no "тройку лучших".
         for match in COLLECTIVE.finditer(text):
             value = next(value for stem, value in COLLECTIVES if re.fullmatch(stem, match.group(1).casefold()))
             if self.free(*match.span()):
-                self.add(*match.span(), 'spelled', str(value), [{str(value)}])
+                self.add(*match.span(), 'spelled', f'top:{value}', [{f'top:{value}'}])
         for match in UZ_COLLECTIVE.finditer(text):
             if not UZ_COLLECTIVE_BEFORE.search(text, max(0, match.start() - 24), match.start()):
                 continue
             word = match.group(0).casefold()
             value = next(value for stem, value in UZ_COLLECTIVES if re.match(stem + 'li[kg]', word))
             if self.free(*match.span()):
-                self.add(*match.span(), 'spelled', str(value), [{str(value)}])
+                self.add(*match.span(), 'spelled', f'top:{value}', [{f'top:{value}'}])
 
     def spelled(self):
         """The cardinal numbers written as words (`SPELLED`), outside every number and address already read.
