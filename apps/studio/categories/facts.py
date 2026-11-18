@@ -73,9 +73,10 @@ More limits, said as plainly:
   "Надежда"): a false blank where it is the word ("Umid qilamanki"), never an
   invention, in a paper of any language: an English given name that is an
   Uzbek word ("Tom yopish") is blanked in an Uzbek paper too, since "Tom yangi
-  filialni ochdi" names an invented person in the same words; and an English
-  paper reads a Latin word against the English lexicon only (`common`'s
-  `language`). A common word the lexicon lacks is held too: a false blank
+  filialni ochdi" names an invented person in the same words. An English
+  paper still reads a Latin word against the Uzbek lexicon too ("Tandir
+  bread"), refusing only the few names it parses ("Yana", `EN_PAPER_NAMES`).
+  A common word the lexicon lacks is held too: a false blank
   ("Sinergiya ..."), counted on held-out prose in the commit that grew it. A
   name that is an everyday word and is left out of names.txt ("Yangi",
   "Xalq", "Hikmat") still passes alone.
@@ -1813,6 +1814,11 @@ def _named(low):
     return not any(low in _lexicon()[language][0] for language in SUFFIXES)
 
 
+# Given names an English paper may hold that the Uzbek lexicon reads as words ("yana" again, "sita" as sit+a): refused
+# there only (`common`), never in an Uzbek paper's "Yana bir ...".
+EN_PAPER_NAMES = frozenset(('yana', 'sita'))
+
+
 def common(word, language=None):
     """Whether a capitalised word is a common word of Uzbek, Russian or English rather than a name: one of the
     lexicon's (words/*.txt) with or without an ending, a number word, a plural or a Russian verb (no name is one:
@@ -1820,12 +1826,13 @@ def common(word, language=None):
     (`_named`), even one that is also a common word, in a paper of any language: the owner's tie-break, a blank
     before a leak. An Uzbek paper's "Tom yopish ishlari" is blanked as its "Tom yangi filialni ochdi" must be.
 
-    `language` is the paper's: an English paper reads a Latin word against the English lexicon only, so a name the
-    Uzbek lexicon happens to parse ("Yana", "Sita", "Larisa" as lari+sa) is no common word there; an Uzbek or a
-    Russian paper, or no language, reads it against both."""
+    `language` is the paper's. A Latin word is read against the Uzbek and the English lexicons in any paper, so an
+    English paper's "Tandir bread", "Bozor prices" and "Kurash clubs" are words; the given names the Uzbek lexicon
+    parses (`EN_PAPER_NAMES`: "Yana", "Sita") are names in an English paper only, where no sentence opens with the
+    Uzbek "yana" (again)."""
     low = normalised(word).casefold()
     cyrillic = re.search('[а-яё]', low) is not None
-    if _named(low):
+    if _named(low) or (language == 'en' and low in EN_PAPER_NAMES):
         return False
     if numbers._spelled_role(low, False) is not None or numbers.ORDINAL.fullmatch(low):
         return True
@@ -1836,7 +1843,7 @@ def common(word, language=None):
         return True
     if re.fullmatch(r"[A-Z]{2,}s", word) or re.fullmatch(r"[IVXLC]+", word):
         return True  # an acronym's plural ("SOPs", "CVs"; an organisation's name is no plural), a roman numeral
-    for lexicon in (('ru',) if cyrillic else ('en',) if language == 'en' else ('uz', 'en')):
+    for lexicon in (('ru',) if cyrillic else ('uz', 'en')):
         words, stems = _lexicon()[lexicon]
         if low in words or low in stems:
             return True
