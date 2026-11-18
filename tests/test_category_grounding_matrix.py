@@ -2342,6 +2342,12 @@ CASES += [
     gp('numbers-second-to-none-at-an-olympiad-en-keep', KEEP, RECOMMENDATION_EN, 'en',
        'At the olympiad she was second to none in effort.'),
     gp('numbers-her-second-olympiad-en-keep', KEEP, RECOMMENDATION_EN, 'en', 'The regional olympiad was her second.'),
+    gp('numbers-her-first-result-at-an-olympiad-uz-keep', KEEP, REFERENCE_UZ, 'uz',
+       'Olimpiadada uning birinchi natijasi yaxshi bo‘ldi.'),
+    gp('numbers-the-first-from-a-school-who-went-to-an-olympiad-ru-keep', KEEP, COVER_RU, 'ru',
+       'Мы с ней — первые из школы, кто поехал на олимпиаду.'),
+    gp('numbers-winning-is-second-at-an-olympiad-en-keep', KEEP, RECOMMENDATION_EN, 'en',
+       'Her goal at the olympiad is to learn, and winning is second.'),
 ]
 
 # ---- "In sales" and "savdo bo‘yicha" are a ranking's scope only beside a ranking (should, from 3167c90): a sales

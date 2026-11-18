@@ -374,15 +374,17 @@ ORDINAL_RANK = re.compile(
     # olimpiadasida u ikkinchi edi", "стала второй по продажам".
     rf"|(?<![^\W\d_])({ORDINAL_WORD})(?={GAP_ORDINAL}(?:bo{APOSTROPHE}l(?:di|dim|ding|dingiz|dik|dilar|gan\w*|adi)"
     rf"|edi\w*)(?![^\W\d_]))"
-    # A result, a podium's step, a ranking's line or position held: "olimpiadada ikkinchi natijani ko‘rsatdi",
-    # "ikkinchi pog‘onaga ko‘tarildi", "заняла третью строчку рейтинга".
-    rf"|(?<![^\W\d_])({ORDINAL_WORD})(?={GAP_ORDINAL}(?:natija|pog{APOSTROPHE}ona|строчк|позици)\w*)"
+    # A result, a podium's step, a ranking's line or position held, never one's own ("birinchi natijasi"):
+    # "olimpiadada ikkinchi natijani ko‘rsatdi", "ikkinchi pog‘onaga ko‘tarildi", "заняла третью строчку рейтинга".
+    rf"|(?<![^\W\d_])({ORDINAL_WORD})(?={GAP_ORDINAL}(?:(?:natija|pog{APOSTROPHE}ona)(?:ni|ga|da|dan)?(?![^\W\d_])"
+    rf"|(?:строчк|позици)\w*))"
     # A Russian ordinal with no verb after its subject or a dash, before what it places in: "Она вторая в рейтинге",
-    # "По продажам она третья в филиале", "Она — третий продавец банка по объёму продаж".
+    # "По продажам она третья в филиале", "Она — третий продавец банка по объёму продаж"; never the first of those
+    # who did something ("— первые из школы, кто поехал").
     rf"|(?<![^\W\d_])(?:она|он|я|мы|они|вы|ты)[  ]+(?:[—–-][  ]+)?({ORDINAL_WORD})"
-    rf"(?={GAP_ORDINAL}(?:в|во|по|среди|из|на)(?![^\W\d_]))"
+    rf"(?={GAP_ORDINAL}(?:в|во|по|среди|из|на)(?![^\W\d_]))(?![^.!?\n]*,[  ]*(?:кто|котор|чтобы))"
     rf"|(?<=[—–] )({ORDINAL_WORD})(?=(?:{GAP_ORDINAL}(?:{RU_RANKED_PEOPLE})\w*(?:{GAP_ORDINAL}[а-яё]+)?)?"
-    rf"{GAP_ORDINAL}(?:в|во|по|среди|из|на)(?![^\W\d_]))"
+    rf"{GAP_ORDINAL}(?:в|во|по|среди|из|на)(?![^\W\d_]))(?![^.!?\n]*,[  ]*(?:кто|котор|чтобы))"
     # "bo‘lib" closing its clause or before a prize: "musobaqada ikkinchi bo‘lib, kumush medal oldi"; never "birinchi
     # bo‘lib ro‘yxatdan o‘tdi" (the first to register).
     rf"|(?<![^\W\d_])({ORDINAL_WORD})(?={GAP_ORDINAL}bo{APOSTROPHE}lib(?:[  ]*[,.;]|[  ]*$|{GAP_ORDINAL}(?:kumush|oltin"
@@ -390,8 +392,8 @@ ORDINAL_RANK = re.compile(
     # Never an ordinal with its noun after it: "это был первый опыт", "это была вторая олимпиада".
     rf"|(?<![^\W\d_])(?:стал|стала|стали|был|была|были|оказал(?:ся|ась|ись)){GAP_ORDINAL}({ORDINAL_WORD})"
     rf"(?=[  ]*(?:[,.;:!?)]|$)|{GAP_ORDINAL}(?:по|на|в|во|среди|из|с|со)(?![^\W\d_]))"
-    # "was second" closing its clause: "At the regional olympiad she was second."
-    rf"|(?<![^\W\d_])(?:was|were|is|am|are){GAP_ORDINAL}({EN_ORDINAL_WORD})(?=[  ]*(?:[,.;:!?)]|$))"
+    # "was second" closing its clause: "At the regional olympiad she was second."; never a present "winning is second".
+    rf"|(?<![^\W\d_])(?:was|were){GAP_ORDINAL}({EN_ORDINAL_WORD})(?=[  ]*(?:[,.;:!?)]|$))"
     # An English ordinal before the contest it places in or a "best": "second in the regional ranking", "took second
     # at the olympiad", "the second-best student"; never "the first in her family" or "first in line".
     rf"|(?<![^\W\d_])(?<!the )({EN_ORDINAL_WORD})(?={GAP_ORDINAL}(?:in|at|among)(?![^\W\d_])"
