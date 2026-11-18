@@ -311,6 +311,9 @@ EN_ORDINAL = re.compile(EN_ORDINAL_WORD, re.IGNORECASE)
 # "место" in any case but the prepositional of "на первом месте"; an Uzbek "o‘rin" bare, in the accusative or the
 # genitive, or "o‘ringa sazovor"; a place an English verb wins ("won first place", "took the second place", "came in
 # third place"). The forms an idiom shares are read where `ORDINAL_SPOT` and `ORDINAL_RANK` say.
+# The present of "egallamoq" after an accusative "o‘rinni": "Mijoz manfaati birinchi o‘rinni egallaydi" (comes first), an
+# idiom read as a placing only beside a contest or an arena (`ORDINAL_RANK`, `ARENA`).
+IDIOM_VERB = r"(?:egallaydi|egallab[  ]+keladi|tutadi)(?![^\W\d_])"
 PLACING_VERB = (r"(?:won|wins?|winning|took|takes?|taking|came|comes?|coming|finish(?:ed|es|ing)?|placed|earned"
                 r"|secured|got|gets|awarded|claimed|achieved|received|reached|shared|taken|given)")
 ORDINAL_PLACE = re.compile(
@@ -318,7 +321,7 @@ ORDINAL_PLACE = re.compile(
     rf"|{GAP_ORDINAL}(?:consecutive|straight|successive){GAP_ORDINAL}(?:year|time|season|month|quarter)s?"
     rf"|{GAP_ORDINAL}(?:year|time|season)s?{GAP_ORDINAL}(?:in a row|running)"
     rf"|{GAP_ORDINAL}мест(?:о|а|у|ом)|{GAP_ORDINAL}(?:год|раз|сезон|месяц|квартал)\w*{GAP_ORDINAL}подряд"
-    rf"|{GAP_ORDINAL}o{APOSTROPHE}rin(?:ni|i|ini|ning|ga(?={GAP_ORDINAL}sazovor))?"
+    rf"|{GAP_ORDINAL}o{APOSTROPHE}rin(?:ni(?!{GAP_ORDINAL}{IDIOM_VERB})|i|ini|ning|ga(?={GAP_ORDINAL}sazovor))?"
     rf"|{GAP_ORDINAL}sovrin\w*"
     # A diploma's or an award's degree: "ikkinchi darajali diplom", "second-degree diploma".
     rf"|{GAP_ORDINAL}darajali{GAP_ORDINAL}(?:diplom|sertifikat|mukofot|faxriy{GAP_ORDINAL}yorliq|yorliq|sovrin)\w*"
@@ -341,7 +344,10 @@ ORDINAL_PLACE = re.compile(
 # a job's ("first position as ..."); "in the first place" never.
 ORDINAL_SPOT = re.compile(rf"(?<![^\W\d_])({ORDINAL_WORD})({GAP_ORDINAL}|-)(place|places|position)(?![^\W\d_])",
                           re.IGNORECASE)
-SPOT_EXEMPT = re.compile(r"(?<![^\W\d_])(?:the|my|a|an)[  ]+$", re.IGNORECASE)
+SPOT_EXEMPT = re.compile(r"(?<![^\W\d_])(?:the|my|a|an|her|his|its|our|their|your|this|that)[  ]+$", re.IGNORECASE)
+# A place of work, employment or study is never a placing: "First place of work: a pharmacy".
+SPOT_OF = re.compile(r"[  ]+of[  ]+(?:work|employment|study|studies|residence|birth|business)(?![^\W\d_])",
+                     re.IGNORECASE)
 # The forms an idiom shares, read only beside a contest's or a ranking's word in the sentence (`CONTEST`): Uzbek
 # "ikkinchi o‘ringa chiqdi", "ikkinchi o‘rinda bo‘ldi" (never "birinchi o‘rinda turadi", "birinchi o‘ringa
 # qo‘yiladi"), Russian "на первом месте в регионе" (never "на первом месте качество"), "came first", "finished second".
@@ -360,6 +366,12 @@ ORDINAL_RANK = re.compile(
     rf"|(?<![^\W\d_])(?<!the )({EN_ORDINAL_WORD})(?={GAP_ORDINAL}(?:in|at|among)(?![^\W\d_]))"
     rf"|(?<![^\W\d_])({EN_ORDINAL_WORD})(?=-best(?![^\W\d_]))",
     re.IGNORECASE)
+# The idiom of an accusative "o‘rinni" with the present of "egallamoq" (`IDIOM_VERB`), a placing beside a contest or an
+# arena only: "Viloyatda birinchi o‘rinni egallaydi", never "Mijoz manfaati birinchi o‘rinni egallaydi".
+ORDINAL_IDIOM = re.compile(rf"(?<![^\W\d_])({ORDINAL_WORD})(?={GAP_ORDINAL}o{APOSTROPHE}rinni{GAP_ORDINAL}{IDIOM_VERB})",
+                           re.IGNORECASE)
+ARENA = re.compile(r"(?<![^\W\d_])(?:viloyat|tuman|shahar|shahr|respublika|mamlakat|bozor|o['‘’ʻʼ`]?zbekiston|dunyo"
+                   r"|soha|hudud|mintaqa)\w*(?:da|dagi)(?![^\W\d_])", re.IGNORECASE)
 # An Uzbek ordinal made a noun, a placing: "ikkinchilikni qo‘lga kiritdi" in the accusative always, any other case
 # beside a contest ("tuman birinchiligida" is also the district's championship).
 ORDINAL_NOUN = re.compile(rf"(?<![^\W\d_])((?:(?:o{APOSTROPHE}n|yigirma|o{APOSTROPHE}ttiz)[ \u00a0])?[^\W\d_]+?i?nchi)"
@@ -656,14 +668,16 @@ class _Reader:
         found = [match for match in ORDINAL_PLACE.finditer(text)]
         for match in ORDINAL_SPOT.finditer(text):
             before = text[:match.start()]
-            # "a first-place finish" is a placing whatever stands before it.
-            if before[-7:].casefold().endswith('in the ') or (
+            # "a first-place finish" is a placing whatever stands before it; a place of work never is.
+            if before[-7:].casefold().endswith('in the ') or SPOT_OF.match(text, match.end()) or (
                     not _contest(text, match.start()) and match.group(2) != '-' and (
                         SPOT_EXEMPT.search(before[-8:]) or (match.group(3).casefold() == 'position' and re.match(
                             r"[  ]+as(?![^\W\d_])", text[match.end():], re.IGNORECASE)))):
                 continue
             found.append(match)
         found += [match for match in ORDINAL_RANK.finditer(text) if _contest(text, match.start())]
+        found += [match for match in ORDINAL_IDIOM.finditer(text)
+                  if _contest(text, match.start()) or _contest(text, match.start(), ARENA)]
         for match in found:
             group = next(number for number in range(1, (match.re.groups or 0) + 1)
                          if match.group(number) is not None and _ordinal_value(match.group(number)) is not None)
@@ -856,11 +870,12 @@ class _Reader:
         self.add(start, end, 'phone', digits, [keys], extra)
 
 
-def _contest(text, at):
-    """Whether the sentence `at` stands in names a contest or a ranking (`CONTEST`): "olimpiadasida", "в регионе"."""
+def _contest(text, at, words=None):
+    """Whether the sentence `at` stands in names a contest or a ranking (`CONTEST`): "olimpiadasida", "в регионе";
+    with `words`, one of those instead (`ARENA`)."""
     start = max(text.rfind(mark, 0, at) for mark in '.!?\n') + 1
     ends = [found for found in (text.find(mark, at) for mark in '.!?\n') if found != -1]
-    return CONTEST.search(text, start, min(ends) if ends else len(text)) is not None
+    return (words or CONTEST).search(text, start, min(ends) if ends else len(text)) is not None
 
 
 @functools.lru_cache(maxsize=8192)
