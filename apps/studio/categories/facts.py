@@ -82,6 +82,9 @@ More limits, said as plainly:
 - `guard` removes any sentence with a strong legal stem (kodeks, farmon,
   Konstitutsiya ...) the customer did not give, even one that cites nothing
   specific ("U ko‘plab farmonlar chiqargan"), and a part may come back empty.
+  A code or a law in lower case is a citation by what names it ("the civil
+  code", "the law on state duty", "закон о бухгалтерском учёте"), never as a
+  field ("tax law") or "the code of conduct".
 - A quotation is read by its marks (`QUOTE`): one written with none, an
   attribution only ("Filip Kotler ta’kidlaganidek, marketing — bu ..."), is
   not told from the model's own words and is not checked.
@@ -1010,12 +1013,44 @@ def _sentences(text):
     return spans
 
 
+# A code or a law written in lower case is cited by what names it (`_lower_cited`): a code or a law after "the" (or a
+# possessive) and the name of one ("the civil code", "the tax code", "Uzbekistan's labour law"), a code of or on one
+# ("the code on administrative offences"), and a law on something, the country passed over ("the law on state duty",
+# "the law of the Republic of Uzbekistan on ...", "закон о бухгалтерском учёте"). Never a field ("tax law"), "the code
+# of conduct", "the law of gravity", "закон спроса" nor "закон о том, что ...".
+LOWER_DETERMINER = re.compile(r"the|this|that|its|their|our|his|her|my|your|[^\W\d_]+'s")
+LOWER_STEMS = {'code': re.compile(r"code"), 'law': re.compile(r"law")}
+LOWER_LAW_ON = re.compile(r"(?:[ \t\u00a0]+(?:of|the|o'zbekiston\w*|respublika\w*|uzbekistan|republic|республики"
+                          r"|узбекистан))*[ \t\u00a0]+(?:on|о|об)[ \t\u00a0]+(?!(?:том|тех|чем|то)(?![^\W\d_]))"
+                          r"[^\W\d_]", re.IGNORECASE)
+LOWER_LAW = re.compile(r"law|закон|закона|закону|законом|законе")
+LOWER_CODE_OF = re.compile(r"[ \t\u00a0]+(?:of|on)[ \t\u00a0]+(?:the[ \t\u00a0]+)?([^\W\d_]+)", re.IGNORECASE)
+
+
+def _lower_cited(text, concept, match):
+    """Whether a weak stem of a code or a law that is no title (`_concepts`) is cited by what names it
+    (`LOWER_DETERMINER`, `LOWER_LAW_ON`): "the civil code", "the law on state duty", "закон о бухгалтерском учёте"."""
+    if concept not in LOWER_STEMS:
+        return False
+    stem = match.group(0).casefold()
+    if concept == 'law' and LOWER_LAW.fullmatch(stem) and LOWER_LAW_ON.match(text, match.end()):
+        return True
+    if not LOWER_STEMS[concept].fullmatch(stem):
+        return False
+    named = LOWER_CODE_OF.match(text, match.end()) if concept == 'code' else None
+    if named is not None and _law_name(named.group(1)) is not None:
+        return True
+    before = re.findall(r"[^\W\d_]+(?:'s)?", text[max(0, match.start() - 60):match.start()])
+    return len(before) >= 2 and _law_name(before[-1]) is not None \
+        and LOWER_DETERMINER.fullmatch(normalised(before[-2]).casefold()) is not None
+
+
 def _concepts(sentence):
     """The legal things `sentence` cites, or an empty set when it cites none (a weak stem with no mark beside it).
 
     A weak stem cites with a strong one, a number or a date beside it (NUMBER_MARK, `DATED`) or a word mark
     anywhere (WORD_MARK), a LOOSE one in the plural only with the first two; with an issuer (ISSUER) only in the
-    singular and near it.
+    singular and near it. A code or a law in lower case cites by what names it (`_lower_cited`).
     """
     text = normalised(sentence)
     found, weak, dated = set(), [], False
@@ -1024,7 +1059,8 @@ def _concepts(sentence):
             if strong == LOOSE and match.group(0).startswith('Положени') and _starts(text, match.start()):
                 continue  # "Положение в экономике ...": a situation; «Положение о …» is read by its title above
             # A weak stem capitalised inside a sentence is a title ("Mehnat Kodeksi", "Labour Code", "Закон о …").
-            if strong is True or (match.group(0)[0].isupper() and not _starts(text, match.start())):
+            if strong is True or (match.group(0)[0].isupper() and not _starts(text, match.start())) \
+                    or _lower_cited(text, concept, match):
                 found.add(concept)
             else:
                 weak.append((concept, match, strong))
@@ -1207,6 +1243,9 @@ def _law_names(sentence):
         elif len(name) > 1 and _starts(sentence, name[0][0]) and not _law_name(name[0][1]) \
                 and (name[1][1][0].isupper() or _law_subject(name[0][1])):
             name = name[1:]
+        elif len(name) == 1 and _starts(sentence, name[0][0]) and not _law_name(name[0][1]) \
+                and _law_subject(name[0][1]) and _named_after(tokens, at, word):
+            name = []  # a duty's verb right before a stem its name follows: "Соблюдает закон о бухгалтерском учёте"
         index = at + 1
         while word(index) and LAW_COUNTRY.fullmatch(normalised(tokens[index][1]).casefold()):
             index += 1
@@ -1247,6 +1286,16 @@ def _law_names(sentence):
         found += [(start, text) for start, text in name if _letters(text) >= 2
                   and not LAW_COUNTRY.fullmatch(normalised(text).casefold())]
     return list(dict.fromkeys(found))
+
+
+def _named_after(tokens, at, word):
+    """Whether a code's or a law's name follows its stem at `at`, after its "of", "on", "об" or "о" (`_law_names`)."""
+    index = at + 1
+    while word(index) and LAW_COUNTRY.fullmatch(normalised(tokens[index][1]).casefold()):
+        index += 1
+    if index < len(tokens) and tokens[index][1] in '«"“„':
+        index += 1
+    return word(index) and LAW_OF.fullmatch(normalised(tokens[index][1]).casefold()) is not None and word(index + 1)
 
 
 def _law_head(sentence, tokens, at, word):
