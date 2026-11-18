@@ -1033,25 +1033,47 @@ def _sentences(text):
 
 # A code or a law written in lower case is cited by what names it (`_lower_cited`): a code after the name of one,
 # adjectives or a determiner before it or none ("the civil code", "the new tax code", "the Uzbek tax code", "tax code
-# requirements"), a law after "the" (or a possessive) and the name of one ("Uzbekistan's labour law"), a code of or on
-# one ("the code on administrative offences"), and a law on something, the country passed over ("the law on state
-# duty", "the law of the Republic of Uzbekistan on ...", "закон о бухгалтерском учёте"). Never a field ("tax law",
-# "their labour law knowledge"), a code's identifier ("the tax code of each supplier", "the tax code number"), "the
-# code of conduct", "the law of gravity", "the law on this point", "закон спроса" nor "закон о том, что ...". The
-# identifier written with no "of" ("the customs code to each item") is read as the code: an accepted false blank.
+# requirements"), a law after "the" (or a possessive) and the name of one, adjectives between ("Uzbekistan's labour
+# law", "the current labour law", "the Uzbek labour law"), a code of or on one ("the code on administrative
+# offences"), and a law on something, the country passed over ("the law on state duty", "the law of the Republic of
+# Uzbekistan on ...", "закон о бухгалтерском учёте"). Never a field ("tax law", "their labour law knowledge"), a code's
+# identifier ("the tax code of each supplier", "the tax code number", "a budget code", "each item's customs code",
+# "the tax code for VAT on each line", "the customs code to each item", "the product code and the tax code"), "the
+# code of conduct", "the law of gravity", "the law on this point", "закон спроса", "закон об этом" nor "закон о том,
+# что ...". The identifier with nothing to tell it ("the customs code to imported items") is read as the code: an
+# accepted false blank.
 LOWER_DETERMINER = re.compile(r"the|this|that|its|their|our|his|her|my|your|[^\W\d_]+'s")
 LOWER_STEMS = {'code': re.compile(r"code"), 'law': re.compile(r"law")}
 LOWER_LAW_ON = re.compile(
     r"(?:[ \t\u00a0]+(?:of|the|o'zbekiston\w*|respublika\w*|uzbekistan|republic|республики|узбекистан))*[ \t\u00a0]+"
-    r"(?:on|о|об)[ \t\u00a0]+(?!(?:том|тех|чем|то|котор\w*|this|that|these|those|it|its|them|which|whom|whose|paper"
+    r"[«\"“„]?(?:on|о|об)[ \t\u00a0]+(?!(?:том|тех|чем|то|этом|этой|этих|этого|нём|нем|ней|них|чём|котор\w*|this|that|these"
+    r"|those|it|its|them|which|whom|whose|paper"
     r"|record|time|top|average|behalf|purpose|hold|demand|board|the[ \t\u00a0]+(?:books|ground|whole|other|one|contrary"
     r"|surface|face|record|table|way))(?![^\W\d_]))[^\W\d_]", re.IGNORECASE)
 LOWER_LAW = re.compile(r"law|закон|закона|закону|законом|законе")
 LOWER_CODE_OF = re.compile(r"[ \t\u00a0]+(?:of|on)[ \t\u00a0]+(?:the[ \t\u00a0]+)?([^\W\d_]+)", re.IGNORECASE)
 # The words a code's identifier sense takes after it ("the tax code number"), and the determiners before what a code's
 # identifier is of ("the tax code of each supplier"); a jurisdiction after "of" makes it the code ("of the country").
-CODE_IDENTIFIER = re.compile(r"[ \t\u00a0]+(?:numbers?|digits?|fields?|box|boxes|columns?|entry|entries|values?)"
-                             r"(?![^\W\d_])", re.IGNORECASE)
+CODE_IDENTIFIER = re.compile(r"[ \t\u00a0]+(?:numbers?|digits?|fields?|box|boxes|columns?|entry|entries|values?"
+                             r"|lists?|tables?)(?![^\W\d_])", re.IGNORECASE)
+# What a code's identifier sense is given to after it: "a budget code to each expense", "the tax code for VAT on each
+# line", "one tax code per invoice"; never "the tax code in each filing".
+CODE_PER_ITEM = re.compile(
+    r"[ \t\u00a0]+(?:(?:to|for|on)[ \t\u00a0]+(?:each|every)[ \t\u00a0]+(?:[^\W\d_]+[ \t\u00a0]+)?(?:items?|lines?"
+    r"|invoices?|products?|goods?|expenses?|transactions?|entr(?:y|ies)|documents?|suppliers?|purchases?|sales?"
+    r"|orders?|receipts?|articles?|positions?|payments?|accounts?)|per[ \t\u00a0]+[^\W\d_]+|for[ \t\u00a0]+VAT)"
+    r"(?![^\W\d_])", re.IGNORECASE)
+# Another code beside it whose word is no law's name: "the product code and the tax code", "the tax code and the
+# item code".
+CODE_BESIDE_AFTER = re.compile(r"[ \t\u00a0]+(?:and|or)[ \t\u00a0]+(?:(?:the|a|an|its|their)[ \t\u00a0]+)?"
+                               r"([^\W\d_]+)[ \t\u00a0]+codes?(?![^\W\d_])", re.IGNORECASE)
+CODE_BESIDE_BEFORE = re.compile(r"(?<![^\W\d_])([^\W\d_]+)[ \t\u00a0]+codes?[ \t\u00a0]+(?:and|or)[ \t\u00a0]+"
+                                r"(?:(?:the|a|an|its|their)[ \t\u00a0]+)?$", re.IGNORECASE)
+# The adjectives that may stand between a determiner and a law's name word: "the current labour law", "the Uzbek tax
+# code", "the new civil code".
+LOWER_ADJECTIVE = re.compile(r"new|old|current|existing|present|relevant|applicable|modern|recent|latest|amended|revised"
+                             r"|updated|whole|entire|main|basic|general|own|domestic|local|federal|uzbek|russian|kazakh"
+                             r"|[a-z]+(?:al|ian|ese|ish|ic|ive|ent|ant|ary)")
 CODE_OF_ITEM = re.compile(r"[ \t\u00a0]+of[ \t\u00a0]+(?:(?:the|each|every|a|an|any|its|their|this|that)[ \t\u00a0]+)?"
                           r"([^\W\d_]+)", re.IGNORECASE)
 JURISDICTION = re.compile(r"country|state|nation|republic|uzbekistan|kazakhstan|russia|federation", re.IGNORECASE)
@@ -1078,14 +1100,25 @@ def _lower_cited(text, concept, match):
     before = re.findall(r"[^\W\d_]+(?:'s)?", text[max(0, match.start() - 60):match.start()])
     if not before or _law_name(before[-1]) is None:
         return False
+    # The word before the law's name word and its adjectives ("the current labour law", "a correct tax code").
+    at = len(before) - 2
+    while at >= 0 and len(before) - 2 - at < 2 and LOWER_ADJECTIVE.fullmatch(normalised(before[at]).casefold()):
+        at -= 1
+    opener = normalised(before[at]).casefold() if at >= 0 else ''
     if concept == 'code':
-        # "the new tax code", "tax code requirements"; never "the tax code number" or "the tax code of each supplier".
+        # "the new tax code", "tax code requirements"; never "the tax code number", "the tax code of each supplier",
+        # "a budget code", "each item's customs code", "the tax code for VAT on each line" or "the product code and
+        # the tax code".
         item = CODE_OF_ITEM.match(text, match.end())
-        return CODE_IDENTIFIER.match(text, match.end()) is None and (
-            item is None or _law_name(item.group(1)) is not None or JURISDICTION.fullmatch(item.group(1)) is not None
-            or LAW_COUNTRY.fullmatch(normalised(item.group(1)).casefold()) is not None)
-    return len(before) >= 2 and LOWER_DETERMINER.fullmatch(normalised(before[-2]).casefold()) is not None \
-        and LAW_FIELD_HEAD.match(text, match.end()) is None
+        owner = re.fullmatch(r"(.+)'s", opener)
+        beside = CODE_BESIDE_AFTER.match(text, match.end()) \
+            or CODE_BESIDE_BEFORE.search(text, max(0, match.start() - 80), text.rfind(before[-1], 0, match.start()))
+        return CODE_IDENTIFIER.match(text, match.end()) is None and CODE_PER_ITEM.match(text, match.end()) is None \
+            and opener not in ('a', 'an') and (owner is None or JURISDICTION.fullmatch(owner.group(1)) is not None) \
+            and (beside is None or _law_name(beside.group(1)) is not None) and (
+                item is None or _law_name(item.group(1)) is not None or JURISDICTION.fullmatch(item.group(1)) is not None
+                or LAW_COUNTRY.fullmatch(normalised(item.group(1)).casefold()) is not None)
+    return LOWER_DETERMINER.fullmatch(opener) is not None and LAW_FIELD_HEAD.match(text, match.end()) is None
 
 
 def _concepts(sentence):

@@ -2047,8 +2047,8 @@ CASES += [
 ]
 
 # ---- A lower-case code after a law-name word is cited with or without "the" right before it (must, item 5):
-# adjectives may stand between ("the new tax code"); a code's identifier sense ("the customs code to each item") is
-# the accepted price; "code of" a noun that names no law is an identifier and stays.
+# adjectives may stand between ("the new tax code"); a code's identifier sense with nothing to tell it ("the customs
+# code to imported items") is the accepted price; "code of" a noun that names no law is an identifier and stays.
 CASES += [
     guard('laws-lower-case-new-tax-code-en-blank', BLANK, JOB_EN, 'en', 'He follows the new tax code in all filings.',
           gone=('tax code',)),
@@ -2066,8 +2066,12 @@ CASES += [
           'He enters the tax code of each supplier in the register.'),
     guard('laws-a-promo-code-en-keep', KEEP, COVER_EN, 'en', 'Customers enter the promo code at checkout.'),
     guard('laws-the-customs-code-of-an-item-en-accepted_false_blank', ACCEPTED, JOB_EN, 'en',
-          'He assigns the customs code to each imported item.', gone=('customs code',),
+          'He assigns the customs code to imported items.', gone=('customs code',),
           pair='laws-lower-case-customs-code-provisions-en-blank'),
+    # Accepted as a blank in round 2 as "... the customs code to each imported item"; the re-check of round 2 reads
+    # "to each" item as the identifier, so that sentence is kept now while its pair still blanks.
+    guard('laws-the-customs-code-to-each-imported-item-en-keep', KEEP, JOB_EN, 'en',
+          'He assigns the customs code to each imported item.'),
     # "the law on" a pronoun or a stock phrase, and a law field before a noun, cite nothing (should, from 02ef0cc).
     guard('laws-the-law-on-this-point-en-keep', KEEP, COVER_EN, 'en', 'The law on this point is not clear.'),
     guard('laws-the-law-on-paper-en-keep', KEEP, COVER_EN, 'en', 'The law on paper differs from practice.'),
@@ -2380,6 +2384,15 @@ CASES += [
     guard('laws-lower-case-current-labour-law-en-blank', BLANK, JD_EN, 'en',
           'She applies the current labour law to every contract.', gone=('labour law',)),
     guard('laws-a-degree-in-labour-law-en-keep', KEEP, JD_EN, 'en', 'She holds a degree in labour law.'),
+    # A lower-case law with its "on" in quotation marks cites a law as the title in them does.
+    guard('laws-lower-case-law-with-a-quoted-on-en-blank', BLANK, JD_EN, 'en', 'He follows the law “on accounting” closely.',
+          gone=('accounting',)),
+    guard('laws-the-customers-lower-case-law-with-a-quoted-on-en-keep', KEEP, ACCOUNTING_EN, 'en',
+          'He follows the law “on accounting” closely.'),
+    guard('laws-the-customers-lower-case-zakon-with-its-quoted-title-ru-keep', KEEP, JOB_RU_ACCOUNTING, 'ru',
+          'Применяет закон «О бухгалтерском учёте».'),
+    guard('laws-an-invented-lower-case-zakon-with-its-quoted-title-ru-blank', BLANK, JOB_RU_ACCOUNTING, 'ru',
+          'Применяет закон «О государственной пошлине».', gone=('пошлине',)),
     guard('laws-her-current-labour-law-knowledge-en-keep', KEEP, JD_EN, 'en', 'Her current labour law knowledge is strong.'),
 ]
 
