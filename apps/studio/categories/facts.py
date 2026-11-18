@@ -1887,9 +1887,10 @@ def _named(low):
     return not any(low in _lexicon()[language][0] for language in SUFFIXES)
 
 
-# Given names an English paper may hold that the Uzbek lexicon reads as words ("yana" again, "sita" as sit+a): refused
-# there only (`common`), never in an Uzbek paper's "Yana bir ...".
-EN_PAPER_NAMES = frozenset(('yana', 'sita'))
+# Given names an English paper may hold that the Uzbek lexicon reads as words, whole ("yana" again, "dan", "ida") or
+# as a verb's stem ("kira", "lina", "alma", "kara", "lana"): refused there only (`common`), never in an Uzbek paper's
+# "Yana bir ...". A parse with an ending ("sita" sit+a, "Bogdan" bog+dan) is no Uzbek word in an English paper at all.
+EN_PAPER_NAMES = frozenset(('yana', 'sita', 'dan', 'ida', 'kira', 'lina', 'alma', 'kara', 'lana'))
 
 
 def common(word, language=None):
@@ -1900,9 +1901,9 @@ def common(word, language=None):
     before a leak. An Uzbek paper's "Tom yopish ishlari" is blanked as its "Tom yangi filialni ochdi" must be.
 
     `language` is the paper's. A Latin word is read against the Uzbek and the English lexicons in any paper, so an
-    English paper's "Tandir bread", "Bozor prices" and "Kurash clubs" are words; the given names the Uzbek lexicon
-    parses (`EN_PAPER_NAMES`: "Yana", "Sita") are names in an English paper only, where no sentence opens with the
-    Uzbek "yana" (again)."""
+    English paper's "Tandir bread", "Bozor prices" and "Kurash clubs" are words; there an Uzbek word is read whole, as
+    a stem or a compound, never through an ending ("Bogdan" is no bog+dan), and the given names the Uzbek lexicon
+    holds (`EN_PAPER_NAMES`: "Yana", "Kira", "Dan") are names, where no sentence opens with the Uzbek "yana" (again)."""
     low = normalised(word).casefold()
     cyrillic = re.search('[а-яё]', low) is not None
     if _named(low) or (language == 'en' and low in EN_PAPER_NAMES):
@@ -1920,6 +1921,10 @@ def common(word, language=None):
         words, stems = _lexicon()[lexicon]
         if low in words or low in stems:
             return True
+        if lexicon == 'uz' and language == 'en':
+            if DERIVED[lexicon].fullmatch(low):
+                return True
+            continue  # an English paper's Uzbek word is whole, never parsed through an ending
         endings = SUFFIXES[lexicon]
         if len(low) > 3 and low[:3] in words and low[3:] in SHORT_ENDINGS[lexicon]:
             return True
