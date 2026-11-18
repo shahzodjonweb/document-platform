@@ -3327,6 +3327,30 @@ CASES += [
        PLACING_LETTERS['en'] + 'She won first place at the city olympiad.', 'en',
        'She won 1st place at the city olympiad.'),
 ]
+# No ordinal written in Uzbek Cyrillic is read, on either side: the customer's "биринчи бўлди" or "биринчи даражали
+# диплом" grounds no placing, so the paper's "birinchi bo‘ldi" and "birinchi darajali diplom" blank under their brief.
+# c491da9 reads neither paper form and keeps them, as it keeps them invented: the blanks are the price of the pairs.
+REFERENCE_UZC_FIRST = 'Қодирова Малика учун тавсифнома ёзинг, у олимпиадада биринчи бўлди.'
+REFERENCE_UZC_DIPLOMA = 'Қодирова Малика учун тавсифнома ёзинг, у биринчи даражали диплом олган.'
+CASES += [
+    gp('numbers-first-with-boldi-beside-an-olympiad-uz-blank', BLANK, REFERENCE_UZ, 'uz',
+       'U olimpiadada birinchi bo‘ldi.', gone=('birinchi',)),
+    gp('numbers-first-degree-diploma-with-darajali-uz-blank', BLANK, REFERENCE_UZ, 'uz',
+       'U birinchi darajali diplom olgan.', gone=('birinchi',)),
+    gp('numbers-the-customers-cyrillic-placing-became-first-uz-accepted_false_blank', ACCEPTED, REFERENCE_UZC_FIRST,
+       'uz', 'U olimpiadada birinchi bo‘ldi.', gone=('birinchi',),
+       pair='numbers-first-with-boldi-beside-an-olympiad-uz-blank'),
+    body('numbers-the-customers-cyrillic-placing-became-first-in-a-references-achievements-uz-accepted_false_blank',
+         ACCEPTED, 'pdf.xat.tavsifnoma', REFERENCE_UZC_FIRST, 'uz', 'achievements', 'U olimpiadada birinchi bo‘ldi.',
+         gone=('birinchi',), pair='numbers-first-with-boldi-beside-an-olympiad-uz-blank'),
+    gp('numbers-the-customers-cyrillic-first-degree-diploma-uz-accepted_false_blank', ACCEPTED, REFERENCE_UZC_DIPLOMA,
+       'uz', 'U birinchi darajali diplom olgan.', gone=('birinchi',),
+       pair='numbers-first-degree-diploma-with-darajali-uz-blank'),
+    body('numbers-the-customers-cyrillic-first-degree-diploma-in-a-references-achievements-uz-accepted_false_blank',
+         ACCEPTED, 'pdf.xat.tavsifnoma', REFERENCE_UZC_DIPLOMA, 'uz', 'achievements',
+         'U birinchi darajali diplom olgan.', gone=('birinchi',),
+         pair='numbers-first-degree-diploma-with-darajali-uz-blank'),
+]
 
 # ---- A translated paper's accounting law exempts its head noun only where its name ends there (must, from 424c38a
 # and 0bdb620): "... о бухгалтерском учёте." or "... учёте» регулирует ...". After "и", a comma or a preposition
