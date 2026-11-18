@@ -71,8 +71,11 @@ More limits, said as plainly:
   included). A given name, a surname, a place or a brand of words/names.txt
   is never a common word, even one that is also a word ("Umid", "Grace",
   "Надежда"): a false blank where it is the word ("Umid qilamanki"), never an
-  invention. Its sections are read by the paper's language, so an English
-  given name refuses no Uzbek word in an Uzbek paper ("Joy ijarasi"). A common word the lexicon lacks is held too: a false blank
+  invention, in a paper of any language: an English given name that is an
+  Uzbek word ("Tom yopish") is blanked in an Uzbek paper too, since "Tom yangi
+  filialni ochdi" names an invented person in the same words; and an English
+  paper reads a Latin word against the English lexicon only (`common`'s
+  `language`). A common word the lexicon lacks is held too: a false blank
   ("Sinergiya ..."), counted on held-out prose in the commit that grew it. A
   name that is an everyday word and is left out of names.txt ("Yangi",
   "Xalq", "Hikmat") still passes alone.
@@ -1579,75 +1582,57 @@ def _lexicon():
     return found
 
 
-# The languages of words/names.txt's sections (`_name_forms`): a section's header names it. Places and brands are
-# every language's.
-NAME_SECTIONS = (('uzbek', 'uz'), ('russian', 'ru'), ('english', 'en'), ('places', 'any'), ('brands', 'any'))
-
-
 @functools.cache
 def _name_forms():
-    """{language: (its names of words/names.txt folded, their forms with a case ending folded)}, read once per process.
+    """(the names of words/names.txt folded, their forms with a case ending folded), read once per process.
 
-    A section's language is its header's (`NAME_SECTIONS`): an English given name ("Joy", "Tom", "Sara") is an
-    English paper's name, never one that refuses an Uzbek word in an Uzbek paper (`common`)."""
-    found, language, place = {}, 'any', False
+    Every section refuses its words in a paper of any language (`common`): a Russian given name ("Larisa") is as
+    realistic an invented person in an English or an Uzbek paper as in a Russian one, and an English given name that
+    is an Uzbek word ("Tom", "Sara", "Joy", "Kim") as realistic in an Uzbek paper as the word itself."""
+    names, forms, place = set(), set(), False
     for line in (WORDS / 'names.txt').read_text('utf-8').splitlines():
         line = line.strip()
-        if line.startswith('# ----'):
-            header = line.casefold()
-            language = next((code for word, code in NAME_SECTIONS if word in header), 'any')
-            place = 'places' in header
+        if line.startswith('#'):
+            place = place if not line.startswith('# ----') else 'places' in line.casefold()
             continue
-        if not line or line.startswith('#'):
+        if not line:
             continue
-        names, forms = found.setdefault(language, (set(), set()))
         name = fold(line)
         names.add(name)
         forms.update(name + ending for ending in NAME_CASES + (PLACE_PEOPLE if place else ()))
         forms.update(name[:-1] + ending for ending in RU_A_CASES) if name.endswith('a') else \
             forms.update(name + ending for ending in RU_CASES)
-    return {language: (frozenset(names), frozenset(forms - names)) for language, (names, forms) in found.items()}
+    return frozenset(names), frozenset(forms - names)
 
 
-def _named(low, languages=None):
-    """Whether a word (lower case) is a name of words/names.txt, whole or with a case ending (`_name_forms`), of the
-    sections of `languages` (every section's when None).
+def _named(low):
+    """Whether a word (lower case) is a name of words/names.txt, whole or with a case ending (`_name_forms`).
 
     The name itself is one even where it is also a common word ("Umid", "Grace", "Надежда"); a form of it with an
     ending only where the language has no such word ("Malikaga", never "Umidi", "Shirinlik", "Ширина").
     """
-    sections = _name_forms()
-    chosen = [sections[language] for language in (languages or sections) if language in sections]
+    names, forms = _name_forms()
     possessive = re.fullmatch(r"(.{2,}?)(?:'s|s')", low)
-    folded = fold(low)
-    if any(folded in names or (possessive is not None and fold(possessive.group(1)) in names)
-           for names, _ in chosen):
+    if fold(low) in names or (possessive is not None and fold(possessive.group(1)) in names):
         return True
-    if not any(folded in forms for _, forms in chosen):
+    if fold(low) not in forms:
         return False
     return not any(low in _lexicon()[language][0] for language in SUFFIXES)
-
-
-def _refusing(language, cyrillic):
-    """The sections of words/names.txt whose names are never a common word in a paper of `language` (`common`): its
-    own, the Uzbek names any paper here may hold, the places and the brands; with no language, every section."""
-    if language not in ('uz', 'ru', 'en'):
-        return None
-    return {language, 'uz', 'any'} | ({'ru'} if cyrillic else set())
 
 
 def common(word, language=None):
     """Whether a capitalised word is a common word of Uzbek, Russian or English rather than a name: one of the
     lexicon's (words/*.txt) with or without an ending, a number word, a plural or a Russian verb (no name is one:
     "O‘quvchilar", "Соблюдает"), and never a given name, a surname, a place or a brand of words/names.txt
-    (`_named`), even one that is also a common word: the owner's tie-break, a blank before a leak.
+    (`_named`), even one that is also a common word, in a paper of any language: the owner's tie-break, a blank
+    before a leak. An Uzbek paper's "Tom yopish ishlari" is blanked as its "Tom yangi filialni ochdi" must be.
 
-    `language` is the paper's: there a name of another language's section refuses only that language's words
-    (`_refusing`), so an Uzbek paper's "Joy ijarasi", "Tom yopish" and "Sara navli" are Uzbek words while an English
-    paper's "Joy", "Tom" and "Sara" are names; with no language every name refuses every word."""
+    `language` is the paper's: an English paper reads a Latin word against the English lexicon only, so a name the
+    Uzbek lexicon happens to parse ("Yana", "Sita", "Larisa" as lari+sa) is no common word there; an Uzbek or a
+    Russian paper, or no language, reads it against both."""
     low = normalised(word).casefold()
     cyrillic = re.search('[а-яё]', low) is not None
-    if _named(low, _refusing(language, cyrillic)):
+    if _named(low):
         return False
     if numbers._spelled_role(low, False) is not None or numbers.ORDINAL.fullmatch(low):
         return True
@@ -1658,22 +1643,20 @@ def common(word, language=None):
         return True
     if re.fullmatch(r"[A-Z]{2,}s", word) or re.fullmatch(r"[IVXLC]+", word):
         return True  # an acronym's plural ("SOPs", "CVs"; an organisation's name is no plural), a roman numeral
-    for language in (('ru',) if cyrillic else ('uz', 'en')):
-        if _named(low, (language,)):
-            continue  # a name of the lexicon's own language is never one of its common words
-        words, stems = _lexicon()[language]
+    for lexicon in (('ru',) if cyrillic else ('en',) if language == 'en' else ('uz', 'en')):
+        words, stems = _lexicon()[lexicon]
         if low in words or low in stems:
             return True
-        endings = SUFFIXES[language]
-        if len(low) > 3 and low[:3] in words and low[3:] in SHORT_ENDINGS[language]:
+        endings = SUFFIXES[lexicon]
+        if len(low) > 3 and low[:3] in words and low[3:] in SHORT_ENDINGS[lexicon]:
             return True
         for cut in range(LEXICON_BASE, len(low)):
             base = low[:cut]
-            if low[cut:] in endings and (base in words or base in stems or (language == 'en' and (
+            if low[cut:] in endings and (base in words or base in stems or (lexicon == 'en' and (
                     base + 'e' in words or (low[cut:] in ('es', 'ed') and base.endswith('i')
                                             and base[:-1] + 'y' in words)))):
                 return True  # "Trading" of "trade", "Complies" of "comply"
-        if DERIVED[language].fullmatch(low):
+        if DERIVED[lexicon].fullmatch(low):
             return True
     return False
 
@@ -1787,16 +1770,15 @@ def _names(text, trusted, codes, translated=False, *, strict=False, orgs=False, 
     is held too, so "Artelda ishlaganman." is not left when the employer
     "Artel" was just blanked. `blanked`, a `Named`, receives the words of each
     run blanked here that name someone (`_holdable`): a person's beside a
-    surname, an organisation's shaped or quoted, never a common word.
+    surname, the free first word of one blanked whole included ("Hikmat
+    Rahimov ..." gives hikmat too), an organisation's shaped or quoted, never
+    a common word alone.
     """
     spans = []
     # A paper's grounded part names the customer's code in its own language (`_legal_words`).
     legal = _legal_words(text, trusted) if orgs else ()
     for run, bad, first_free in _unknown_runs(text, trusted, translated, strict=strict, orgs=orgs, invented=invented,
                                               legal=legal, lone=lone, language=language):
-        if blanked is not None:
-            for word in _holdable(text, run, bad):
-                blanked.add(word)
         if strict and bad:
             if first_free and bad[0] != 0 and _letters(run[0][2]) >= 2 and not trusted.person(run[0][2], translated):
                 bad.insert(0, 0)
@@ -1808,6 +1790,11 @@ def _names(text, trusted, codes, translated=False, *, strict=False, orgs=False, 
                         taken.add(near)
                         near += step
             bad = sorted(taken)
+        if blanked is not None:
+            # Read once the run is blanked whole: a person's free first word goes with the surname beside it
+            # ("Larisa Ivanova ...", then "Larisa also ..."), so a later lone reference is held too.
+            for word in _holdable(text, run, bad):
+                blanked.add(word)
         group = []
         for position in bad:
             if group and position != group[-1] + 1:

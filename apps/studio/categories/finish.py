@@ -589,8 +589,8 @@ def ground_paper(text, trusted, *, translated=False, invented=None, blanked=None
     beside a surname or an organisation's shaped or quoted, never a common
     word ("Davlat" of a blanked "Davlat Soliq Qo‘mitasi"). `language` is the
     paper's, in which a lone first word is read as a common word or a name
-    (facts.common): an Uzbek paper's "Joy ijarasi" is an Uzbek word, an
-    English paper's "Joy" a name.
+    (facts.common): an English paper reads a Latin word against the English
+    lexicon only.
     """
     text, codes = facts.guard(text, trusted, translated=translated, checks=('numbers', 'names'), words=True,
                               orgs=True, invented=invented, blanked=blanked, lone=True, language=language)
