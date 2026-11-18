@@ -344,7 +344,11 @@ ORDINAL_PLACE = re.compile(
 # a job's ("first position as ..."); "in the first place" never.
 ORDINAL_SPOT = re.compile(rf"(?<![^\W\d_])({ORDINAL_WORD})({GAP_ORDINAL}|-)(place|places|position)(?![^\W\d_])",
                           re.IGNORECASE)
-SPOT_EXEMPT = re.compile(r"(?<![^\W\d_])(?:the|my|a|an|her|his|its|our|their|your|this|that)[  ]+$", re.IGNORECASE)
+SPOT_EXEMPT = re.compile(r"(?<![^\W\d_])(?:the|my|a|an)[  ]+$", re.IGNORECASE)
+# A position that is a job, whatever stands before it: "first position as a cashier", "His first position at the
+# company was ...". A possessive before "first place" exempts nothing: "Her first place at the science fair".
+POSITION_JOB = re.compile(r"[  ]+(?:as|(?:at|in|with)[  ]+(?:the|our|their|his|her|its|this|that)[  ]+"
+                          r"(?:company|firm|bank|store|shop|organi[sz]ation|school|office))(?![^\W\d_])", re.IGNORECASE)
 # A place of work, employment or study is never a placing: "First place of work: a pharmacy".
 SPOT_OF = re.compile(r"[  ]+of[  ]+(?:work|employment|study|studies|residence|birth|business)(?![^\W\d_])",
                      re.IGNORECASE)
@@ -679,8 +683,8 @@ class _Reader:
             # "a first-place finish" is a placing whatever stands before it; a place of work never is.
             if before[-7:].casefold().endswith('in the ') or SPOT_OF.match(text, match.end()) or (
                     not _contest(text, match.start()) and match.group(2) != '-' and (
-                        SPOT_EXEMPT.search(before[-8:]) or (match.group(3).casefold() == 'position' and re.match(
-                            r"[  ]+as(?![^\W\d_])", text[match.end():], re.IGNORECASE)))):
+                        SPOT_EXEMPT.search(before[-8:]) or (match.group(3).casefold() == 'position'
+                                                            and POSITION_JOB.match(text, match.end())))):
                 continue
             found.append(match)
         found += [match for match in ORDINAL_RANK.finditer(text) if _contest(text, match.start())]
