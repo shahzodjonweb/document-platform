@@ -1151,6 +1151,8 @@ LAW_OF_REACH = 6
 # A law or a code with no name before its stem ("the Law of the Republic of Uzbekistan on state duty", "the Law on
 # personal data", "the Code of professional ethics") is named by every word after its "of" or "on" up to a word that
 # goes on the sentence, a conjunction or a mark, at most this many, its own grammar words (`LAW_OF_GRAMMAR`) passed.
+# A title's name ends at its first lower-case word ("The Law on Education guarantees ..."), a lower-case name at a
+# word that cannot continue it (`_goes_on`: "the Law on education guarantees free schooling", "... well").
 LAW_OF_UNNAMED_REACH = 8
 LAW_OF_GRAMMAR = re.compile(r"of|the|a|an")
 LAW_OF_STOP = re.compile(
@@ -1258,6 +1260,8 @@ def _law_names(sentence):
             # "of" or "on" is its name, so an invented subject in lower case is the customer's or the sentence goes.
             unnamed = not any(_letters(text) >= 2 and not LAW_COUNTRY.fullmatch(normalised(text).casefold())
                               for _, text in name)
+            # The words read after the "of" or "on" of an unnamed stem, and whether one is capitalised: a title's.
+            after, titled = 0, False
             while word(index) and taken < (LAW_OF_UNNAMED_REACH if unnamed else LAW_OF_REACH):
                 token = tokens[index][1]
                 low = normalised(token).casefold()
@@ -1266,17 +1270,23 @@ def _law_names(sentence):
                     continue
                 if LAW_AND.fullmatch(low):
                     break
+                if unnamed and not re.search('[а-яё]', low) and not token[0].isupper() \
+                        and not LAW_OF_GRAMMAR.fullmatch(low) and (titled or (after and _goes_on(
+                            sentence, tokens, index, word))):
+                    break  # the name ends where the sentence goes on: "The Law on Education guarantees ..."
                 if re.search('[а-яё]', low):
                     if LAW_OF_CASE.fullmatch(low) is None:
                         break
                     name.append(tokens[index])
                 elif token[0].isupper() or _law_name(token) or LAW_KIND.fullmatch(low):
                     name.append(tokens[index])
+                    after, titled = after + 1, titled or token[0].isupper()
                 elif LAW_OF_STOP.fullmatch(low):
                     break  # a word that goes on the sentence ends the name
                 elif unnamed:
                     if not LAW_OF_GRAMMAR.fullmatch(low):
                         name.append(tokens[index])
+                        after += 1
                 elif not taken and not (word(index + 1) and normalised(tokens[index + 1][1]).casefold() == 'of'):
                     # After a named stem, a first word that is no name word begins one only before its own "of"
                     # ("the Labour Code on working hours" names the Labour Code; never "... of Uzbekistan applies
@@ -1286,6 +1296,41 @@ def _law_names(sentence):
         found += [(start, text) for start, text in name if _letters(text) >= 2
                   and not LAW_COUNTRY.fullmatch(normalised(text).casefold())]
     return list(dict.fromkeys(found))
+
+
+# The words that go on a sentence after an unnamed law's name and are no word of it (`_goes_on`): adverbs and the
+# past forms that end in no -ed.
+LAW_NAME_END = re.compile(
+    r"well|daily|together|again|still|already|often|always|never|now|then|today|just|once|soon|yet|here|there|very"
+    r"|much|more|most|further|became|become|becomes|began|came|grew|held|laid|led|left|put|rose|stood|won|brought"
+    r"|built|fell|got|sent|spent|paid|ran|saw|showed|shown|told|understood|wrote|written|went|gone|done|seen|known")
+# The plural nouns a law is named by, never a verb's -s: "requirements", "relations", "securities", "procedures".
+LAW_NAME_NOUN = re.compile(r"[a-z]+(?:ments|tions|sions|ities|ances|ences|ships|nesses|isms|ists|ures)")
+
+
+def _goes_on(sentence, tokens, index, word):
+    """Whether a lower-case word after an unnamed law's first name word goes on the sentence rather than the name
+    (`_law_names`): an adverb ("well", "daily", "carefully"), a past form ("adopted", "became") or a verb's -s before
+    what it governs ("guarantees free schooling", "defines the rights"), its base an English word (words/en.txt).
+    A plural noun the name ends with ("accounting requirements", "state fees for ...") and a compound's part
+    ("state-owned") are words of it."""
+    low = normalised(tokens[index][1]).casefold()
+    if not low.isascii() or sentence[tokens[index][0] - 1:tokens[index][0]] == '-':
+        return False
+    words = _lexicon()['en'][0]
+    if LAW_NAME_END.fullmatch(low):
+        return True
+    if low.endswith('ly') and len(low) > 5 and (low[:-2] in words or low[:-3] + 'y' in words):
+        return True
+    if low.endswith('ed') and len(low) > 4 and (low[:-2] in words or low[:-1] in words
+                                                 or (low[-3] == low[-4] and low[:-3] in words)):
+        return True
+    if not low.endswith('s') or low.endswith('ss') or LAW_NAME_NOUN.fullmatch(low):
+        return False
+    bases = [low[:-1]] + ([low[:-2]] if low.endswith('es') else []) + ([low[:-3] + 'y'] if low.endswith('ies') else [])
+    following = normalised(tokens[index + 1][1]).casefold() if word(index + 1) else None
+    return any(base in words for base in bases) and following is not None \
+        and not LAW_AND.fullmatch(following) and following != 'of' and not LAW_OF_STOP.fullmatch(following)
 
 
 def _named_after(tokens, at, word):
