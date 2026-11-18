@@ -2289,6 +2289,12 @@ CASES += [
     body('held-role-only-line-moliya-bolimi-tomonidan-holds-no-common-word-uz-keep', KEEP, 'pdf.biz.hisobot',
          REPORT_UZ, 'uz', 'summary', 'Moliya bo‘limi xarajatlarni kamaytirdi.',
          facts=(('author', 'Moliya bo‘limi tomonidan tayyorlandi'),)),
+    # A line led by its verb of preparing holds the run that ends it, as "Prepared by" does.
+    body('held-rejected-author-after-tayyorladi-uz-blank', BLANK, 'pdf.biz.hisobot', REPORT_UZ, 'uz', 'summary',
+         'Hikmat xarajatlarni kamaytirdi.', gone=('Hikmat',), facts=(('author', 'Hisobotni tayyorladi Hikmat Rahim'),)),
+    body('held-role-only-line-tayyorladi-moliya-bolimi-holds-no-common-word-uz-keep', KEEP, 'pdf.biz.hisobot',
+         REPORT_UZ, 'uz', 'summary', 'Moliya bo‘limi xarajatlarni kamaytirdi.',
+         facts=(('author', 'Hisobotni tayyorladi Moliya bo‘limi'),)),
 ]
 
 # ---- Placings written as ordinal words, the paraphrases round 2 left (must, item 4): the Uzbek past copula "edi" and

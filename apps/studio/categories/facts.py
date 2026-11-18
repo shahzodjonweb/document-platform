@@ -2337,6 +2337,8 @@ NO_PEOPLE = frozenset(('enclosures', 'attachments', 'statements', 'key_dates', '
 EN_ROLE_WORDS = EN_ROLES + (
     "dean accountant cashier secretary engineer lawyer economist specialist deputy supervisor coordinator "
     "administrator advisor adviser consultant inspector instructor tutor lecturer professor head vice "
+    # A vice president's abbreviations: "VP of Finance", "SVP of Sales".
+    "vp svp evp avp "
     "cv resume certificate certificates diploma transcript passport letter copy copies reference portfolio essay "
     "enclosure enclosures attachment attachments").split()
 RU_ROLE_WORDS = re.compile(
@@ -2352,6 +2354,8 @@ ONLY_NAME_KINDS = (ORG_HEADS | ORG_AFTER | KIND_WORDS) - _folded([kind + 's' for
 LINE_PARTS = re.compile(r"[ \t ]*[|,()/][ \t ]*|[ \t ]+[–—-][ \t ]+")
 
 
+# The Uzbek verbs a line's preparer follows ("Hisobotni tayyorladi Hikmat Rahim", "Tuzdi Hikmat Rahim").
+LINE_PREPARED = re.compile(r"(?:tayyorla|tuz|yoz|imzola)(?:di|gan)")
 # A line's words, a hyphenated one whole ("Ota-onalar", "Vice-President").
 LINE_TOKEN = re.compile(WORD.pattern + r"(?:-" + WORD.pattern + r")*")
 # The words that make a role a kind of one beside it in a line, no one's name there (`_line_roles`): "Katta
@@ -2398,7 +2402,8 @@ def _line_roles(tokens):
     of "Hikmat Rahim maktab direktori"); a modifier (`ROLE_MODIFIERS`) or a role's grammar word beside a role's word,
     or a Russian adjective before one ("Katta o‘qituvchi", "Senior Sales Manager", "Head of", "Sales and Marketing",
     "Финансовый директор"); the word a role's "of" or "for" names ("Head of Biology"); a word between two of them ("Head of the
-    Biology Department"); every word before a "by" ("Prepared by", "Compiled and edited by"); a unit's word ending the
+    Biology Department"); every word before a "by" ("Prepared by", "Compiled and edited by"), and the Uzbek "tomonidan"
+    with every word after it and the lower-case ones before it ("... tomonidan tayyorlandi"); a unit's word ending the
     part (`LINE_UNITS`: "Planning Office"); and a common word right before a role's word that opens the part or
     follows a role's word, a lower-case word or a modifier ("Kitchen Manager", "Quality Control Manager", "Social
     Media Manager", "Ishlab Chiqarish Menejeri"), never one after a capitalised word ("Gul Sabr kotiba").
@@ -2409,6 +2414,21 @@ def _line_roles(tokens):
     if 'by' in tokens:
         last = len(tokens) - 1 - tokens[::-1].index('by')
         marked[:last + 1] = [True] * (last + 1)
+    if 'tomonidan' in tokens:
+        # The Uzbek "by" follows its agent: "Hikmat Rahim tomonidan tayyorlandi". It and what follows are the line's
+        # role, and so are the lower-case words right before it ("Moliya bo‘limi tomonidan ..."), so the
+        # capitalised run before them is a name only when it stands right before "tomonidan".
+        first = tokens.index('tomonidan')
+        marked[first:] = [True] * (len(tokens) - first)
+        index = first - 1
+        while index >= 0 and not tokens[index][:1].isupper():
+            marked[index] = True
+            index -= 1
+    # An Uzbek line led by its verb of preparing ("Hisobotni tayyorladi Hikmat Rahim") holds the run after the verb,
+    # as "Prepared by" does, when that run ends the part.
+    verbs = [index for index, token in enumerate(tokens) if LINE_PREPARED.fullmatch(normalised(token).casefold())]
+    if verbs and verbs[-1] + 1 < len(tokens) and all(token[:1].isupper() for token in tokens[verbs[-1] + 1:]):
+        marked[:verbs[-1] + 1] = [True] * (verbs[-1] + 1)
     if tokens and tokens[-1][:1].isupper() and fold(tokens[-1]) in LINE_UNITS:
         marked[-1] = True
     changed = True
@@ -2436,7 +2456,8 @@ def _line_names(line):
     words that are not its role's (`_line_roles`) when the run is only a name (`_only_name`), before the role, after it
     or with none. "Direktor | Hikmat" gives Hikmat, "Direktor Hikmat Rahim", "Hikmat Rahim kotib", "Hikmat Rahim
     maktab direktori" and "Bosh hisobchi Hikmat Rahim" Hikmat and Rahim, "Head of Sales Grant Fuller", "Grant Fuller
-    Head of Sales" and "Prepared by Grant Fuller" Grant and Fuller, "Rahmat aka" Rahmat; "Bosh Hisobchi", "Maktab
+    Head of Sales", "VP of Finance Grant Fuller", "Prepared by Grant Fuller" Grant and Fuller, "Hikmat Rahim tomonidan
+    tayyorlandi" Hikmat and Rahim, "Rahmat aka" Rahmat; "Bosh Hisobchi", "Maktab
     Direktori", "Moliya bo‘limi boshlig‘i", "Rezyume", "Head of Sales", "Senior Sales Manager" give none."""
     found = []
     for part in LINE_PARTS.split(line):
