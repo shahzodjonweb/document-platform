@@ -3180,3 +3180,6 @@ tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-the-custo
 tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-the-customers-placing-won-the-first-ness-grounds-no-a-year-uz-blank]
 tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-the-customers-placing-won-the-first-ness-grounds-no-branches-uz-blank]
 tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-the-customers-placing-won-the-first-ness-restated-uz-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-an-inflected-uzbek-word-opening-an-english-sentence-musobaqada-en-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-an-inflected-uzbek-word-opening-an-english-sentence-olimpiadada-en-accepted_false_blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[names-an-inflected-uzbek-word-opening-an-english-sentence-reytingda-en-accepted_false_blank]
