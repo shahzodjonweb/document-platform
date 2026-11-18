@@ -3351,6 +3351,17 @@ CASES += [
          'U birinchi darajali diplom olgan.', gone=('birinchi',),
          pair='numbers-first-degree-diploma-with-darajali-uz-blank'),
 ]
+# An English paper reads a Latin word against the Uzbek lexicon only whole (8bb7198), so an Uzbek sentence's inflected
+# first word ("Olimpiadada", "Reytingda", "Musobaqada") blanks as a name, as "Bogdan" (bog+dan) must: the re-check's
+# Uzbek placings in an English paper (r2) showed it. c491da9 keeps the word, as it keeps "Bogdan".
+COVER_EN_FIGURES = ('Please write a cover letter for me, Malika Qodirova. I have 1 year of retail experience, '
+                    '2 certificates and 3 languages.')
+for word, sentence in (('Olimpiadada', 'Olimpiadada uchinchi natijani qayd etdi.'),
+                       ('Reytingda', 'Reytingda ikkinchi pog‘onani egalladi.'),
+                       ('Musobaqada', 'Musobaqada uchinchi bo‘lib, bronza medal oldi.')):
+    CASES.append(gp(f'names-an-inflected-uzbek-word-opening-an-english-sentence-{word.lower()}-en-accepted_false_blank',
+                    ACCEPTED, COVER_EN_FIGURES, 'en', sentence, gone=(word,),
+                    pair='names-uzbek-lexicon-given-name-bogdan-ru-to-en-blank'))
 
 # ---- A translated paper's accounting law exempts its head noun only where its name ends there (must, from 424c38a
 # and 0bdb620): "... о бухгалтерском учёте." or "... учёте» регулирует ...". After "и", a comma or a preposition
