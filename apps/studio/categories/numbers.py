@@ -420,19 +420,29 @@ ORDINAL_RANK = re.compile(
 ORDINAL_IDIOM = re.compile(rf"(?<![^\W\d_])({ORDINAL_WORD})(?={GAP_ORDINAL}o{APOSTROPHE}rinni{GAP_ORDINAL}{IDIOM_VERB})",
                            re.IGNORECASE)
 # The idiom's abstract subjects, a whole word right before "birinchi" (`_idiom`): the noun bare, plural or its third
-# person's ("Sifat", "Mijoz manfaati", "Bolalar xavfsizligi", "Mijozlar talabi"), never another word of the same stem
-# ("talaba", "sifatida", "bilimdon").
+# person's ("Sifat", "Mijoz manfaati", "Bolalar xavfsizligi", "Mijozlar talabi"; the group is the third person's
+# ending), never another word of the same stem ("talaba", "sifatida", "bilimdon") nor "adolat", a given name too.
 IDIOM_SUBJECT = re.compile(
     rf"(?:manfaat|sifat|xavfsizli[kg]|salomatli[kg]|sog{APOSTROPHE}l[iy](?:q|g{APOSTROPHE}?)|oila|ta{APOSTROPHE}lim"
-    rf"|bilim|tarbiya|halolli[kg]|mas{APOSTROPHE}uliyat|intizom|qadriyat|ishonch|axloq|odob|adolat|sabr|ehtiyoj|talab"
-    rf"|tayyorgarli[kg])(?:lar)?(?:i|si)?", re.IGNORECASE)
+    rf"|bilim|tarbiya|halolli[kg]|mas{APOSTROPHE}uliyat|intizom|qadriyat|ishonch|axloq|odob|sabr|ehtiyoj|talab"
+    rf"|tayyorgarli[kg])(?:lar)?(i|si)?", re.IGNORECASE)
+# The one word the idiom's subject may follow: a generic beneficiary whose noun it is ("Mijoz manfaati", "Bolalar
+# xavfsizligi"), or a dative before a bare subject ("Olimpiadaga tayyorgarlik"); never a person, a name, an
+# organisation or a product ("Malika bilimi", "Kompaniya sifati", "Mebel sifati").
+IDIOM_BENEFICIARY = re.compile(rf"(?:mijoz|xaridor|bola|inson|odam|bemor|iste{APOSTROPHE}molchi|fuqaro)(?:lar)?",
+                               re.IGNORECASE)
+IDIOM_DATIVE = re.compile(r"[^\W\d_]{2,}(?:ga|kka|qqa)", re.IGNORECASE)  # never "Malika": -ka only after a k
 # Whom or what the idiom ranks for: "biz uchun", "uning hayotida".
 IDIOM_FOR = re.compile(r"(?<![^\W\d_])(?:uchun|hayotida)(?![^\W\d_])", re.IGNORECASE)
 # The adverbs of "always" between the idiom's subject and "birinchi": "Mijozlar ehtiyoji har doim birinchi ...".
 IDIOM_ALWAYS = frozenset(('doimo', 'doim', 'har', 'hamisha', 'albatta', 'ham'))
-# A respect or a means before the ordinal, which makes the same words a placing: "Sifat jihatidan mahsulotimiz ...",
-# "Bilimi bilan u ..." ("bo‘yicha" is a scope, `IDIOM_SCOPE`).
-IDIOM_NEVER = re.compile(r"jihat(?:i|lar|lari)?dan|bilan", re.IGNORECASE)
+# A respect, a means, a comparison or a ranking's scope before the ordinal, which makes the same words a placing:
+# "Sifat jihatidan mahsulotimiz ...", "Bilimi bilan u ...", "Raqobatchilarga nisbatan mebel sifati ...", "Toshkent
+# bo‘ylab ...", "Natijalarga ko‘ra ...", "Raqobatchilar orasidan ..." ("bo‘yicha" is a scope, `IDIOM_SCOPE`).
+IDIOM_NEVER = re.compile(rf"jihat(?:i|lar|lari)?dan|bilan|nisbatan|orasidan|bo{APOSTROPHE}ylab|ko{APOSTROPHE}ra"
+                         r"|yuzasidan|nazaridan|solishtirganda", re.IGNORECASE)
+# The quote marks around a name: "«Ishonch» birinchi o‘rinni egallaydi".
+IDIOM_QUOTES = frozenset('«»"“”„‘’\'`')
 # A place or a scope ranked in, which makes the same words a placing: a locative ("sinfda", "kompaniyada",
 # "mahallada", "O‘qishda", "Fan oyligida") or "bo‘yicha".
 IDIOM_SCOPE = re.compile(rf"(?<![^\W\d_])(?:[^\W\d_]{{2,}}(?:da|dagi)|bo{APOSTROPHE}yicha)(?![^\W\d_])", re.IGNORECASE)
@@ -1008,14 +1018,19 @@ def _position_job(text, match):
 
 def _idiom(text, match):
     """Whether an `ORDINAL_IDIOM` match is the idiom "comes first", no placing: "birinchi" only, with an abstract noun
-    as its subject right before it (`IDIOM_SUBJECT`), past an adverb of "always" (`IDIOM_ALWAYS`) and a "biz uchun" or
-    an "uning hayotida" (`IDIOM_FOR`): "Mijoz manfaati ...", "Malika uchun bilim ...", "Sifat biz uchun ...". Never
-    with a person, a name or a possessed organisation or product as the subject ("Jamoa uchun u doimo ...", "Sinfi
-    uchun Malika ...", "... mahsulotimiz birinchi"), with a genitive or an "our" before the abstract noun ("Uning
-    bilimi", "Mahsulotimiz sifati"), after "jihatidan" or "bilan" (`IDIOM_NEVER`), with a place or "bo‘yicha" scope in
-    its sentence (`IDIOM_SCOPE`), nor with a contest (`CONTEST`) but one the idiom's "uchun" or "hayotida" subject is
-    about, outside the locative. The idiom said with a place ("Kompaniyamizda mijoz manfaati birinchi o‘rinni
-    egallaydi") is read as the placing the same words make: an accepted false blank, the owner's tie-break."""
+    as its subject right before it (`IDIOM_SUBJECT`) past the adverbs of "always" (`IDIOM_ALWAYS`) and a "biz uchun" or
+    an "uning hayotida" (`IDIOM_FOR`) after the subject or before it ("Mijoz manfaati ...", "Sifat biz uchun ...",
+    "Malika uchun bilim ...", "Uning hayotida bilim ..."). The subject stands alone and bare ("Talab", "Ishonch", two
+    with "va": "Sifat va halollik"), or after one word: a generic beneficiary whose noun it is ("Mijozlar ehtiyoji",
+    "Bolalar xavfsizligi") or a dative before it bare ("Olimpiadaga tayyorgarlik"; `IDIOM_BENEFICIARY`,
+    `IDIOM_DATIVE`). Never with a person, a name or an organisation or a product as its subject or its owner ("Jamoa
+    uchun u doimo ...", "Har yili Adolat ...", "Malika bilimi ...", "Bilimi doimo ...", "Do‘konimiz mahsulotlari sifati
+    ...", "Kompaniya sifati ...", "Mahsulotimiz sifati ..."), a quoted or a capitalised word inside the sentence
+    ("«Ishonch» ..."), after "jihatidan", "bilan" or a comparison's or a ranking's scope (`IDIOM_NEVER`), with a place
+    or "bo‘yicha" scope in its sentence (`IDIOM_SCOPE`), nor with a contest (`CONTEST`) but one the idiom's "uchun" or
+    "hayotida" subject is about, outside the locative. The idiom said with a place ("Kompaniyamizda mijoz manfaati
+    birinchi o‘rinni egallaydi") or after a noun that is no beneficiary ("Mahsulot sifati ...") is read as the placing
+    the same words make: an accepted false blank, the owner's tie-break."""
     if _ordinal_value(match.group(1)) != 1:
         return False
     start, end = _sentence_span(text, match.start())
@@ -1028,18 +1043,37 @@ def _idiom(text, match):
     if contests and not (IDIOM_FOR.search(before) and not any(
             re.search(r"(?:da|dagi)$", found.group(0), re.IGNORECASE) for found in contests)):
         return False
-    words = re.findall(rf"[^\W\d_]+(?:{APOSTROPHE}[^\W\d_]+)*", before)
-    if any(IDIOM_NEVER.fullmatch(word) for word in words):
+    words = list(re.finditer(rf"[^\W\d_]+(?:{APOSTROPHE}[^\W\d_]+)*", text[:match.start()]))
+    words = [word for word in words if word.start() >= start]
+    if any(IDIOM_NEVER.fullmatch(word.group(0)) for word in words):
         return False
-    while words and words[-1].casefold() in IDIOM_ALWAYS:
-        words.pop()
-    if words and IDIOM_FOR.fullmatch(words[-1]):
+    first = words[0].start() if words else -1
+
+    def named(word):
+        """A capitalised word inside the sentence or a quoted one: a name."""
+        return (word.group(0)[0].isupper() and word.start() != first) or \
+            text[word.start() - 1:word.start()] in IDIOM_QUOTES or text[word.end():word.end() + 1] in IDIOM_QUOTES
+
+    words = [word for word in words if word.group(0).casefold() not in IDIOM_ALWAYS]
+    if len(words) >= 2 and IDIOM_FOR.fullmatch(words[-1].group(0)):
         del words[-2:]
-        while words and words[-1].casefold() in IDIOM_ALWAYS:
-            words.pop()
-    if not words or IDIOM_SUBJECT.fullmatch(words[-1]) is None:
+    whom = [index for index, word in enumerate(words) if IDIOM_FOR.fullmatch(word.group(0))]
+    if whom:
+        del words[:whom[-1] + 1]
+    # Two bare abstract nouns: "Sifat va halollik ...".
+    pair = [IDIOM_SUBJECT.fullmatch(word.group(0)) for word in words[::2]] if len(words) == 3 else []
+    if pair and words[1].group(0).casefold() in ('va', 'hamda') and all(
+            found is not None and found.group(1) is None for found in pair):
+        del words[:2]
+    if not words or len(words) > 2:
         return False
-    return len(words) < 2 or not words[-2].casefold().endswith(('ning', 'miz', 'ngiz'))
+    subject = IDIOM_SUBJECT.fullmatch(words[-1].group(0))
+    if subject is None or any(named(word) for word in words):
+        return False
+    if len(words) == 1:
+        return subject.group(1) is None
+    return IDIOM_BENEFICIARY.fullmatch(words[0].group(0)) is not None or (
+        subject.group(1) is None and IDIOM_DATIVE.fullmatch(words[0].group(0)) is not None)
 
 
 @functools.lru_cache(maxsize=8192)

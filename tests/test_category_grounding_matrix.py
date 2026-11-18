@@ -2921,6 +2921,10 @@ CASES += [
        'Xaridorlar manfaati biz uchun doimo birinchi o‘rinni egallaydi.'),
     gp('numbers-first-place-idiom-exam-preparation-in-her-life-uz-keep', KEEP, REFERENCE_UZ, 'uz',
        'Imtihonga tayyorgarlik uning hayotida birinchi o‘rinni egallaydi.'),
+    gp('numbers-first-place-idiom-quality-and-honesty-uz-keep', KEEP, OFFER_UZ_FURNITURE, 'uz',
+       'Sifat va halollik birinchi o‘rinni egallaydi.'),
+    gp('numbers-first-place-present-by-a-name-and-knowledge-uz-blank', BLANK, REFERENCE_UZ, 'uz',
+       'Malika va bilimi birinchi o‘rinni egallaydi.', gone=('birinchi',)),
     # A noun before the abstract noun that is no generic beneficiary reads as the owner a placing ranks: the blanks are
     # the price of "Mebel sifati doimo ..." and "Kompaniya sifati ..." (c491da9 blanks both too).
     gp('numbers-first-place-idiom-product-quality-uz-accepted_false_blank', ACCEPTED, OFFER_UZ_FURNITURE, 'uz',
