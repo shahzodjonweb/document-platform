@@ -2779,3 +2779,6 @@ tests/test_category_grounding_matrix.py::test_grounding_matrix[names-uzbek-word-
 tests/test_category_grounding_matrix.py::test_grounding_matrix[names-uzbek-word-mahalla-opening-an-english-sentence-uz-to-en-keep]
 tests/test_category_grounding_matrix.py::test_grounding_matrix[names-uzbek-word-somsa-opening-an-english-sentence-uz-to-en-keep]
 tests/test_category_grounding_matrix.py::test_grounding_matrix[names-uzbek-word-halim-opening-an-english-sentence-uz-to-en-keep]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-finished-an-olympiad-in-second-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-my-first-place-in-a-sales-race-en-blank]
+tests/test_category_grounding_matrix.py::test_grounding_matrix[numbers-finished-a-course-in-second-year-en-keep]
