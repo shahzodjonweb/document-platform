@@ -2400,6 +2400,13 @@ CASES += [
     guard('laws-an-invented-lower-case-zakon-with-its-quoted-title-ru-blank', BLANK, JOB_RU_ACCOUNTING, 'ru',
           'Применяет закон «О государственной пошлине».', gone=('пошлине',)),
     guard('laws-her-current-labour-law-knowledge-en-keep', KEEP, JD_EN, 'en', 'Her current labour law knowledge is strong.'),
+    # A law's rules after an adjective read as the law the same words cite: the blank is the price of "the new labour
+    # law rules on leave".
+    guard('laws-lower-case-new-labour-law-rules-en-blank', BLANK, JD_EN, 'en', 'She follows the new labour law rules on leave.',
+          gone=('labour law',)),
+    guard('laws-the-basic-labour-law-rules-en-accepted_false_blank', ACCEPTED, JD_EN, 'en',
+          'She explains the basic labour law rules to staff.', gone=('labour law',),
+          pair='laws-lower-case-new-labour-law-rules-en-blank'),
 ]
 
 # ---- A code's identifier sense after an indefinite article or an item's possessive, before "to each", "per", "for
