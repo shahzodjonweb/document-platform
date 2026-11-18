@@ -441,6 +441,40 @@ EN_RANKING = re.compile(r"(?<![^\W\d_])(?:rank\w*|among|across|regions?|regional
 FIRST_IN_SALES = re.compile(r"(?<![^\W\d_])(?:was|were|am|is|finished|ended|came)[  ]+first[  ]+(?:in|for)[  ]+sales"
                             r"(?=[  ]*(?:[,.;:!?]|$)|[  ]+(?:last|this|that|every|each|in|for|across|among|at|of"
                             r"|during|over)(?![^\W\d_]))", re.IGNORECASE)
+# The placings whose ordinal gives its bare figure on the customer's side (`_Reader.figures`), as they always did: a
+# prize, a run, "место", "o‘rin", a place an English verb wins, "ranked first", a bare "first place", and beside a
+# contest "o‘rinda", "на первом месте" and "came first", in the forms and contests first read. Every placing read since
+# ("birinchi bo‘ldi", "I was first in sales", "стала третьей", "first-degree diploma", "birinchilikni") gives the
+# customer's side a key of its own ("place:1"), which grounds the paper's placings and never its figures: being first
+# at an olympiad is no "1 yil", "1-sinf", "1%" or "3 года".
+FIGURE_ORDINAL_WORD = ORDINAL_WORD.replace(RU_ORDINAL_ENDING, r"(?:ый|ой|ий|ая|ое|ого|ому|ом|ую|ые|ых|ым|ыми|ей|ья|ье"
+                                                              r"|ьего|ьему|ьем|ью|ьи|ьих)")
+FIGURE_PLACE = re.compile(
+    rf"(?<![^\W\d_])(?<!in the )({FIGURE_ORDINAL_WORD})(?=(?:{GAP_ORDINAL}prizes?"
+    rf"|{GAP_ORDINAL}(?:consecutive|straight|successive){GAP_ORDINAL}(?:year|time|season|month|quarter)s?"
+    rf"|{GAP_ORDINAL}(?:year|time|season)s?{GAP_ORDINAL}(?:in a row|running)"
+    rf"|{GAP_ORDINAL}мест(?:о|а|у|ом)|{GAP_ORDINAL}(?:год|раз|сезон|месяц|квартал)\w*{GAP_ORDINAL}подряд"
+    rf"|{GAP_ORDINAL}o{APOSTROPHE}rin(?:ni|i|ini|ning|ga(?={GAP_ORDINAL}sazovor))?|{GAP_ORDINAL}sovrin\w*"
+    rf"|{GAP_ORDINAL}(?:yil|marta|mavsum|chorak)\w*{GAP_ORDINAL}ketma-ket)"
+    rf"(?![^\W\d_]))"
+    rf"|(?<=ketma-ket )({FIGURE_ORDINAL_WORD})(?={GAP_ORDINAL}(?:yil|marta|mavsum|chorak)\w*(?![^\W\d_]))"
+    rf"|(?<![^\W\d_]){PLACING_VERB}(?:{GAP_ORDINAL}(?:in|the|a|an))*{GAP_ORDINAL}({FIGURE_ORDINAL_WORD})"
+    rf"(?={GAP_ORDINAL}places?(?![^\W\d_]))"
+    rf"|(?<![^\W\d_])(?:ranked|placed){GAP_ORDINAL}({FIGURE_ORDINAL_WORD})(?![^\W\d_])",
+    re.IGNORECASE)
+FIGURE_SPOT = re.compile(rf"(?<![^\W\d_])({FIGURE_ORDINAL_WORD})({GAP_ORDINAL}|-)(place|places|position)(?![^\W\d_])",
+                         re.IGNORECASE)
+FIGURE_RANK = re.compile(
+    rf"(?<![^\W\d_])({FIGURE_ORDINAL_WORD})(?={GAP_ORDINAL}o{APOSTROPHE}rin(?:da|ga)(?![^\W\d_]))"
+    rf"|(?<![^\W\d_])на{GAP_ORDINAL}({FIGURE_ORDINAL_WORD})(?={GAP_ORDINAL}месте(?![^\W\d_]))"
+    rf"|(?<![^\W\d_])(?:came|comes?|coming|finish(?:ed|es|ing)?){GAP_ORDINAL}(?:in{GAP_ORDINAL})?"
+    rf"({FIGURE_ORDINAL_WORD})(?![^\W\d_])",
+    re.IGNORECASE)
+FIGURE_CONTEST = re.compile(
+    r"(?<![^\W\d_])(?:olimpiad\w*|tanlov\w*|musobaqa\w*|chempionat\w*|konkurs\w*|turnir\w*|reyting\w*"
+    r"|олимпиад\w*|конкурс\w*|соревновани\w*|чемпионат\w*|турнир\w*|рейтинг\w*|в[  ]+регионе|по[  ]+продажам"
+    r"|olympiads?|contests?|competitions?|championships?|tournaments?|rankings?|leagues?|regional[  ]+sales)",
+    re.IGNORECASE)
 ORDINAL_DATE = re.compile(rf"(?<![^\W\d_])(?:the[ \u00a0]+)?({ORDINAL_WORD})(?:[ \u00a0]+of)?[ \u00a0]+" + MONTH,
                           re.IGNORECASE)
 
@@ -547,11 +581,15 @@ def _readings(token):
 class _Reader:
     """Walks a text once, pattern by pattern, never reading the same characters as two numbers."""
 
-    def __init__(self, text, cyrillic=True):
+    def __init__(self, text, cyrillic=True, giving=False):
         self.text = text
         # Whether a word in Cyrillic is also read as Uzbek put in Latin ("беш юз минг"): the customer's side. A
         # paper's own Cyrillic is Russian (Uzbek is written in Latin), where that reading made "тень" ten.
         self.cyrillic = cyrillic
+        # Whether what each number gives the customer's side is read (`values`): a placing's bare figure (`figures`).
+        self.giving = giving
+        # The placings read that give their figure (`placing`).
+        self.placed = set()
         # One byte per character, set where a number (or an address) was read: a long file has thousands of numbers.
         self.taken = bytearray(len(text))
         self.numbers = []
@@ -719,10 +757,13 @@ class _Reader:
     def ordinals(self):
         """The ordinals that are figures as a placing or a run's count (`ORDINAL_PLACE`, `ORDINAL_SPOT`,
         `ORDINAL_RANK`); a date's day is read with the dates (`ORDINAL_DATE`, `_digits`). A text with no ordinal's or
-        collective's stem in it (`ORDINAL_HINT`) is not scanned: each reading starts at every word."""
+        collective's stem in it (`ORDINAL_HINT`) is not scanned: each reading starts at every word. On the customer's
+        side (`giving`) a placing gives its bare figure only as one that always did (`figures`), any other its place
+        key alone (`placing`)."""
         text = self.text
         if ORDINAL_HINT.search(text) is None:
             return
+        figures = self.figures() if self.giving else set()
         found = [match for match in ORDINAL_PLACE.finditer(text)]
         for match in ORDINAL_SPOT.finditer(text):
             before = text[:match.start()]
@@ -741,13 +782,13 @@ class _Reader:
                          if match.group(number) is not None and _ordinal_value(match.group(number)) is not None)
             value = _ordinal_value(match.group(group))
             if self.free(*match.span(group)):
-                self.add(*match.span(group), 'spelled', str(value), [{str(value)}])
+                self.placing(*match.span(group), value, figures)
         # A noun made of an ordinal and a collective of the best are read whole: "____ qo‘lga kiritdi", "в ____ лучших".
         for match in ORDINAL_NOUN.finditer(text):
             value = _ordinal_value(match.group(1))
             if value is not None and self.free(*match.span()) and (
                     match.group(2).casefold() == 'likni' or _contest(text, match.start())):
-                self.add(*match.span(), 'spelled', str(value), [{str(value)}])
+                self.placing(*match.span(), value, figures)
         # A collective is a key of its own on both sides ("top:3"): being among the top three is not finishing third,
         # so the customer's "вошла в тройку лучших" or "eng yaxshi uchlikka kirdi" grounds the paper's same collective
         # in Russian or Uzbek, never its "3 года", "третье место" or "uchinchi o‘rin"; and the customer's bare "3" (a
@@ -763,6 +804,44 @@ class _Reader:
             value = next(value for stem, value in UZ_COLLECTIVES if re.match(stem + 'li[kg]', word))
             if self.free(*match.span()):
                 self.add(*match.span(), 'spelled', f'top:{value}', [{f'top:{value}'}])
+        # A placing that gives its figure still gives it where the readings above read its words otherwise.
+        for start, end, value in sorted(figures - self.placed):
+            self.placing(start, end, value, figures)
+
+    def placing(self, start, end, value, figures):
+        """A placing's ordinal, of `value`: the paper's is known by the customer's figure or placing of that value
+        ("place:2"); the customer's gives its figure only as a placing that always did (`figures`, `FIGURE_PLACE`)."""
+        figure, place = str(value), f'place:{value}'
+        given = (start, end, value) in figures
+        if given:
+            self.placed.add((start, end, value))
+        self.add(start, end, 'spelled', figure, [{figure, place}], gives={figure, place} if given else {place})
+
+    def figures(self):
+        """(start, end, value) of each placing whose ordinal gives its bare figure on the customer's side, read as the
+        placings were first read (`FIGURE_PLACE`, `FIGURE_SPOT`, `FIGURE_RANK` beside a `FIGURE_CONTEST`), outside
+        the numbers read before them."""
+        text, taken = self.text, bytearray(self.taken)
+        found = list(FIGURE_PLACE.finditer(text))
+        for match in FIGURE_SPOT.finditer(text):
+            before = text[:match.start()]
+            if before[-7:].casefold().endswith('in the ') or (
+                    not _figure_contest(text, match.start()) and match.group(2) != '-' and (
+                        SPOT_EXEMPT.search(before[-8:]) or (match.group(3).casefold() == 'position'
+                                                            and POSITION_AS.match(text, match.end())))):
+                continue
+            found.append(match)
+        found += [match for match in FIGURE_RANK.finditer(text) if _figure_contest(text, match.start())]
+        figures = set()
+        for match in found:
+            group = next((number for number in range(1, (match.re.groups or 0) + 1)
+                          if match.group(number) is not None and _ordinal_value(match.group(number)) is not None),
+                         None)
+            if group is None or 1 in taken[match.start(group):match.end(group)]:
+                continue
+            taken[match.start(group):match.end(group)] = b'\x01' * (match.end(group) - match.start(group))
+            figures.add((match.start(group), match.end(group), _ordinal_value(match.group(group))))
+        return figures
 
     def spelled(self):
         """The cardinal numbers written as words (`SPELLED`), outside every number and address already read.
@@ -959,6 +1038,12 @@ def _contest(text, at, first=False):
         or FIRST_IN_SALES.search(text, start, end) is not None
 
 
+def _figure_contest(text, at):
+    """Whether the sentence `at` stands in names a contest or a ranking as a placing that gives its figure needs one
+    (`FIGURE_CONTEST`, `_Reader.figures`)."""
+    return FIGURE_CONTEST.search(text, *_sentence_span(text, at)) is not None
+
+
 @functools.lru_cache(maxsize=8192)
 def _spelled_role(word, cyrillic=True):
     """(role, value) of a number word (`SPELLED`), Uzbek Cyrillic read in Latin when `cyrillic`, or None.
@@ -1062,7 +1147,7 @@ def unknown(text, values):
 def values(text):
     """Every value `text` gives as a set of keys: what a number the model wrote is looked up in."""
     keys = set()
-    for number in found(text, words=True):
+    for number in _Reader(str(text or ''), giving=True).read(words=True):
         if number.gives is not None:
             keys |= number.gives
         else:
