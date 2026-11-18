@@ -83,8 +83,12 @@ More limits, said as plainly:
   Konstitutsiya ...) the customer did not give, even one that cites nothing
   specific ("U ko‘plab farmonlar chiqargan"), and a part may come back empty.
   A code or a law in lower case is a citation by what names it ("the civil
-  code", "the law on state duty", "закон о бухгалтерском учёте"), never as a
-  field ("tax law") or "the code of conduct".
+  code", "the new tax code", "tax code requirements", "the law on state
+  duty", "закон о бухгалтерском учёте"), never as a field ("tax law", "labour
+  law knowledge"), "the code of conduct" or a code's identifier "of" an item
+  ("the tax code of each supplier"). Its identifier with no "of" ("the
+  customs code to each item") and a lower-case "act on" something ("the main
+  act on schooling") are read as citations: accepted false blanks.
 - A quotation is read by its marks (`QUOTE`): one written with none, an
   attribution only ("Filip Kotler ta’kidlaganidek, marketing — bu ..."), is
   not told from the model's own words and is not checked.
@@ -1026,18 +1030,35 @@ def _sentences(text):
     return spans
 
 
-# A code or a law written in lower case is cited by what names it (`_lower_cited`): a code or a law after "the" (or a
-# possessive) and the name of one ("the civil code", "the tax code", "Uzbekistan's labour law"), a code of or on one
-# ("the code on administrative offences"), and a law on something, the country passed over ("the law on state duty",
-# "the law of the Republic of Uzbekistan on ...", "закон о бухгалтерском учёте"). Never a field ("tax law"), "the code
-# of conduct", "the law of gravity", "закон спроса" nor "закон о том, что ...".
+# A code or a law written in lower case is cited by what names it (`_lower_cited`): a code after the name of one,
+# adjectives or a determiner before it or none ("the civil code", "the new tax code", "the Uzbek tax code", "tax code
+# requirements"), a law after "the" (or a possessive) and the name of one ("Uzbekistan's labour law"), a code of or on
+# one ("the code on administrative offences"), and a law on something, the country passed over ("the law on state
+# duty", "the law of the Republic of Uzbekistan on ...", "закон о бухгалтерском учёте"). Never a field ("tax law",
+# "their labour law knowledge"), a code's identifier ("the tax code of each supplier", "the tax code number"), "the
+# code of conduct", "the law of gravity", "the law on this point", "закон спроса" nor "закон о том, что ...". The
+# identifier written with no "of" ("the customs code to each item") is read as the code: an accepted false blank.
 LOWER_DETERMINER = re.compile(r"the|this|that|its|their|our|his|her|my|your|[^\W\d_]+'s")
 LOWER_STEMS = {'code': re.compile(r"code"), 'law': re.compile(r"law")}
-LOWER_LAW_ON = re.compile(r"(?:[ \t\u00a0]+(?:of|the|o'zbekiston\w*|respublika\w*|uzbekistan|republic|республики"
-                          r"|узбекистан))*[ \t\u00a0]+(?:on|о|об)[ \t\u00a0]+(?!(?:том|тех|чем|то)(?![^\W\d_]))"
-                          r"[^\W\d_]", re.IGNORECASE)
+LOWER_LAW_ON = re.compile(
+    r"(?:[ \t\u00a0]+(?:of|the|o'zbekiston\w*|respublika\w*|uzbekistan|republic|республики|узбекистан))*[ \t\u00a0]+"
+    r"(?:on|о|об)[ \t\u00a0]+(?!(?:том|тех|чем|то|котор\w*|this|that|these|those|it|its|them|which|whom|whose|paper"
+    r"|record|time|top|average|behalf|purpose|hold|demand|board|the[ \t\u00a0]+(?:books|ground|whole|other|one|contrary"
+    r"|surface|face|record|table|way))(?![^\W\d_]))[^\W\d_]", re.IGNORECASE)
 LOWER_LAW = re.compile(r"law|закон|закона|закону|законом|законе")
 LOWER_CODE_OF = re.compile(r"[ \t\u00a0]+(?:of|on)[ \t\u00a0]+(?:the[ \t\u00a0]+)?([^\W\d_]+)", re.IGNORECASE)
+# The words a code's identifier sense takes after it ("the tax code number"), and the determiners before what a code's
+# identifier is of ("the tax code of each supplier"); a jurisdiction after "of" makes it the code ("of the country").
+CODE_IDENTIFIER = re.compile(r"[ \t\u00a0]+(?:numbers?|digits?|fields?|box|boxes|columns?|entry|entries|values?)"
+                             r"(?![^\W\d_])", re.IGNORECASE)
+CODE_OF_ITEM = re.compile(r"[ \t\u00a0]+of[ \t\u00a0]+(?:(?:the|each|every|a|an|any|its|their|this|that)[ \t\u00a0]+)?"
+                          r"([^\W\d_]+)", re.IGNORECASE)
+JURISDICTION = re.compile(r"country|state|nation|republic|uzbekistan|kazakhstan|russia|federation", re.IGNORECASE)
+# The nouns a law field stands before ("labour law knowledge", "a tax law firm"): a field, never a law cited.
+LAW_FIELD_HEAD = re.compile(r"[ \t\u00a0]+(?:knowledge|firms?|degrees?|courses?|students?|schools?|faculty|departments?"
+                            r"|experts?|expertise|practice|background|studies|exams?|training|clinic|offices?"
+                            r"|textbooks?|lecturers?|teachers?|professors?|graduates?|careers?|specialists?"
+                            r"|consultants?|consultancy|advice|skills?)(?![^\W\d_])", re.IGNORECASE)
 
 
 def _lower_cited(text, concept, match):
@@ -1054,8 +1075,16 @@ def _lower_cited(text, concept, match):
     if named is not None and _law_name(named.group(1)) is not None:
         return True
     before = re.findall(r"[^\W\d_]+(?:'s)?", text[max(0, match.start() - 60):match.start()])
-    return len(before) >= 2 and _law_name(before[-1]) is not None \
-        and LOWER_DETERMINER.fullmatch(normalised(before[-2]).casefold()) is not None
+    if not before or _law_name(before[-1]) is None:
+        return False
+    if concept == 'code':
+        # "the new tax code", "tax code requirements"; never "the tax code number" or "the tax code of each supplier".
+        item = CODE_OF_ITEM.match(text, match.end())
+        return CODE_IDENTIFIER.match(text, match.end()) is None and (
+            item is None or _law_name(item.group(1)) is not None or JURISDICTION.fullmatch(item.group(1)) is not None
+            or LAW_COUNTRY.fullmatch(normalised(item.group(1)).casefold()) is not None)
+    return len(before) >= 2 and LOWER_DETERMINER.fullmatch(normalised(before[-2]).casefold()) is not None \
+        and LAW_FIELD_HEAD.match(text, match.end()) is None
 
 
 def _concepts(sentence):
@@ -1407,6 +1436,20 @@ def _law_name_known(word, trusted):
     return trusted.allowed.known(word) or trusted.person(word, True)
 
 
+# The noun a law's name word stands before in one language and not in another: the Russian "о бухгалтерском учёте"
+# and the Uzbek "Buxgalteriya hisobi" of the English "on Accounting". It is the name's, read as the word before it is
+# (`_legal_known`), so the customer's "Buxgalteriya hisobi to‘g‘risidagi qonun" or "Law on Accounting" is a Russian
+# paper's "закон о бухгалтерском учёте" whether or not the message's language could be told.
+LAW_NAME_HEADS = {LAW_NAMES.index(r"buxgalteriya|бухгалтерск|accounting"): re.compile(r"уч[её]т\w*|hisob\w*")}
+
+
+def _law_head_noun(before, word):
+    """Whether `word` is the head noun of the law name word `before` stands for (`LAW_NAME_HEADS`)."""
+    forms = _law_name(before)
+    head = LAW_NAME_HEADS.get(LAW_NAME_FORMS.index(forms)) if forms is not None else None
+    return head is not None and head.fullmatch(normalised(word).casefold()) is not None
+
+
 def _legal_known(sentence, concepts, trusted, translated, *, names=True):
     """Whether a legal sentence cites only what the customer gave: its kinds of act, numbers and the code's name;
     with `names`, every other capitalised word of it too (a person, a ministry, a date's issuer)."""
@@ -1423,8 +1466,9 @@ def _legal_known(sentence, concepts, trusted, translated, *, names=True):
     # Its other words in lower case ("арбитражному", "iqtisodiyot", "javobgarlik") are the customer's too: as they
     # wrote them, or in a translated paper in the spellings a translation gives a name. A translated code's words
     # not of LAW_NAMES cannot be told from an invented one's, so they go: a false removal, never an invention.
-    plain = [word for _, word in words if not word[0].isupper() and _law_name(word) is None
-             and not LAW_KIND.fullmatch(normalised(word).casefold())]
+    plain = [word for index, (_, word) in enumerate(words) if not word[0].isupper() and _law_name(word) is None
+             and not LAW_KIND.fullmatch(normalised(word).casefold())
+             and not (index and _law_head_noun(words[index - 1][1], word))]
     if not all(trusted.person(word, True) if translated else trusted.words.known(word) for word in plain):
         return False
     named = [(start, word) for start, word in words if word[0].isupper()]

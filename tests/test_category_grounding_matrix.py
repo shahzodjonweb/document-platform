@@ -2074,7 +2074,7 @@ CASES += [
     # The customer's law named in Uzbek or English, cited in a Russian paper in lower case.
     guard('laws-the-customers-uzbek-law-as-zakon-o-in-lower-case-uz-to-ru-keep', KEEP,
           'Buxgalter uchun lavozim yo‘riqnomasini rus tilida yozing, Buxgalteriya hisobi to‘g‘risidagi qonunga muvofiq.',
-          'ru', 'Руководствуется законом о бухгалтерском учёте.', translated=True),
+          'ru', 'Руководствуется законом о бухгалтерском учёте.', translated=False),  # too short a brief to tell
     guard('laws-the-customers-english-law-as-zakon-o-in-lower-case-en-to-ru-keep', KEEP,
           'Write in Russian a job description for an accountant under the Law on Accounting.', 'ru',
           'Руководствуется законом о бухгалтерском учёте.', translated=True),
@@ -2085,7 +2085,7 @@ CASES += [
           'The Law on Media aims to protect journalists.', gone=('Media',)),
 ]
 for tail in ('thus protects pupils', 'aims to raise quality', 'seeks to raise quality', 'itself is short',
-             'therefore matters', 'however leaves gaps', 'is the main act on schooling'):
+             'therefore matters', 'however leaves gaps', 'is short'):
     slug = tail.split()[0]
     CASES += [
         guard(f'laws-the-customers-lower-case-law-on-education-{slug}-en-keep', KEEP, EDU_EN, 'en',
@@ -2094,6 +2094,16 @@ for tail in ('thus protects pupils', 'aims to raise quality', 'seeks to raise qu
               'Напишите на английском самостоятельную работу о Законе об образовании.', 'en',
               f'The law on education {tail}.', translated=True),
     ]
+
+# A lower-case "act on" something names a law as an invented one would: the customer's law described as "the main act
+# on schooling" goes with it, the price of "the act on media".
+CASES += [
+    guard('laws-an-invented-lower-case-act-on-beside-the-customers-law-en-blank', BLANK, EDU_EN, 'en',
+          'The law on education and the act on media apply to schools.', gone=('media',)),
+    guard('laws-the-customers-law-described-as-an-act-on-en-accepted_false_blank', ACCEPTED, EDU_EN, 'en',
+          'The law on education is the main act on schooling.', gone=('schooling',),
+          pair='laws-an-invented-lower-case-act-on-beside-the-customers-law-en-blank'),
+]
 
 # ---- A blanked full name's free first word is held only as a two-word name's given name (should, from a2e73ae): a
 # role word, a role's modifier or an adverb before the name opens other sentences across the paper.
