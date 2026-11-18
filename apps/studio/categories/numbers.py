@@ -406,7 +406,7 @@ ORDINAL_IDIOM = re.compile(rf"(?<![^\W\d_])({ORDINAL_WORD})(?={GAP_ORDINAL}o{APO
 # The idiom's abstract subjects, among a sentence's first two words ("Mijoz manfaati", "Sifat", "Bilim olish").
 IDIOM_SUBJECT = re.compile(
     rf"(?:manfaat|sifat|xavfsizlik|salomatlik|sog{APOSTROPHE}l[iy][qg]|oila|ta{APOSTROPHE}lim|bilim|tarbiya|halollik"
-    rf"|mas{APOSTROPHE}uliyat|intizom|qadriyat|ishonch|axloq|odob|adolat|sabr)\w*", re.IGNORECASE)
+    rf"|mas{APOSTROPHE}uliyat|intizom|qadriyat|ishonch|axloq|odob|adolat|sabr|ehtiyoj|talab)\w*", re.IGNORECASE)
 # Whom or what the idiom ranks for: "biz uchun", "uning hayotida".
 IDIOM_FOR = re.compile(r"(?<![^\W\d_])(?:uchun|hayotida)(?![^\W\d_])", re.IGNORECASE)
 # A place or a scope ranked in, which makes the same words a placing: a locative ("sinfda", "kompaniyada",
@@ -971,16 +971,22 @@ def _contest(text, at, first=False):
 def _idiom(text, match):
     """Whether an `ORDINAL_IDIOM` match is the idiom "comes first", no placing: "birinchi" only, with "uchun" or
     "hayotida" before it or an abstract subject among its sentence's first two words (`IDIOM_FOR`, `IDIOM_SUBJECT`),
-    and no contest, place or "bo‘yicha" scope in its sentence (`CONTEST`, `IDIOM_SCOPE`). The idiom said with a place
+    and no place or "bo‘yicha" scope in its sentence (`IDIOM_SCOPE`), nor a contest (`CONTEST`) but one the idiom's
+    "uchun" or "hayotida" subject is about, outside the locative. The idiom said with a place
     ("Kompaniyamizda mijoz manfaati birinchi o‘rinni egallaydi") is read as the placing the same words make: an accepted
     false blank, the owner's tie-break."""
     if _ordinal_value(match.group(1)) != 1:
         return False
     start, end = _sentence_span(text, match.start())
-    if CONTEST.search(text, start, end) or any(found.group(0).casefold() != 'hayotida'
-                                                for found in IDIOM_SCOPE.finditer(text, start, end)):
-        return False
     before = text[start:match.start()]
+    if any(found.group(0).casefold() != 'hayotida' for found in IDIOM_SCOPE.finditer(text, start, end)):
+        return False
+    # A contest's word is the placing's place unless it is what the idiom's subject is about ("Olimpiadaga tayyorgarlik
+    # uning hayotida birinchi o‘rinni egallaydi"): with "uchun" or "hayotida", a contest not in the locative.
+    contests = list(CONTEST.finditer(text, start, end))
+    if contests and not (IDIOM_FOR.search(before) and not any(
+            re.search(r"(?:da|dagi)$", found.group(0), re.IGNORECASE) for found in contests)):
+        return False
     if IDIOM_FOR.search(before):
         return True
     return any(IDIOM_SUBJECT.match(word) for word in re.findall(rf"[^\W\d_]+(?:{APOSTROPHE}[^\W\d_]+)*", before)[:2])

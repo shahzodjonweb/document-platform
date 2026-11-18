@@ -2431,9 +2431,22 @@ CASES += [
 ]
 
 # ---- The idiom's accepted blank is paid for by a placing the same words make (should, matrix): "birinchi", an
-# abstract subject among the first two words and a place.
-CASES.append(gp('numbers-first-place-of-quality-in-a-region-uz-blank', BLANK, PLAN_UZ, 'uz',
-                'Mahsulot sifati viloyatda birinchi o‘rinni egallaydi.', gone=('birinchi',)))
+# abstract subject among the first two words and a place. A need comes first as an interest does, and a contest the
+# idiom's "hayotida" subject is about places nothing (round 1's sweep, from 2ea06f3); the same idiom said at a
+# workplace is the placing's accepted price.
+CASES += [
+    gp('numbers-first-place-of-quality-in-a-region-uz-blank', BLANK, PLAN_UZ, 'uz',
+       'Mahsulot sifati viloyatda birinchi o‘rinni egallaydi.', gone=('birinchi',)),
+    gp('numbers-first-place-idiom-customers-needs-uz-keep', KEEP, COVER_UZ, 'uz',
+       'Mijozlar ehtiyoji har doim birinchi o‘rinni egallaydi.'),
+    gp('numbers-first-place-idiom-preparing-for-an-olympiad-in-her-life-uz-keep', KEEP, REFERENCE_UZ, 'uz',
+       'Olimpiadaga tayyorgarlik uning hayotida birinchi o‘rinni egallaydi.'),
+    gp('numbers-first-place-at-an-olympiad-in-her-life-uz-blank', BLANK, REFERENCE_UZ, 'uz',
+       'Hayotida ilk bor olimpiadada birinchi o‘rinni egallaydi.', gone=('birinchi',)),
+    gp('numbers-first-place-idiom-at-my-workplace-uz-accepted_false_blank', ACCEPTED, COVER_UZ, 'uz',
+       'Ish joyimda mijoz manfaati birinchi o‘rinni egallaydi.', gone=('birinchi',),
+       pair='numbers-first-place-of-quality-in-a-region-uz-blank'),
+]
 
 # ---- An English paper reads a Latin word against the Uzbek lexicon whole, never through an ending (should, item 1):
 # the given names the Uzbek lexicon parses ("Bogdan" bog+dan) or holds as a bare form ("Kira", "Dan", "Ida") are
