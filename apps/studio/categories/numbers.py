@@ -417,12 +417,20 @@ ORDINAL_RANK = re.compile(
 # "comes first" (`_idiom`): "Mijoz manfaati birinchi o‘rinni egallaydi", "Sifat biz uchun birinchi o‘rinni egallaydi".
 ORDINAL_IDIOM = re.compile(rf"(?<![^\W\d_])({ORDINAL_WORD})(?={GAP_ORDINAL}o{APOSTROPHE}rinni{GAP_ORDINAL}{IDIOM_VERB})",
                            re.IGNORECASE)
-# The idiom's abstract subjects, among a sentence's first two words ("Mijoz manfaati", "Sifat", "Bilim olish").
+# The idiom's abstract subjects, a whole word right before "birinchi" (`_idiom`): the noun bare, plural or its third
+# person's ("Sifat", "Mijoz manfaati", "Bolalar xavfsizligi", "Mijozlar talabi"), never another word of the same stem
+# ("talaba", "sifatida", "bilimdon").
 IDIOM_SUBJECT = re.compile(
-    rf"(?:manfaat|sifat|xavfsizlik|salomatlik|sog{APOSTROPHE}l[iy][qg]|oila|ta{APOSTROPHE}lim|bilim|tarbiya|halollik"
-    rf"|mas{APOSTROPHE}uliyat|intizom|qadriyat|ishonch|axloq|odob|adolat|sabr|ehtiyoj|talab)\w*", re.IGNORECASE)
+    rf"(?:manfaat|sifat|xavfsizli[kg]|salomatli[kg]|sog{APOSTROPHE}l[iy](?:q|g{APOSTROPHE}?)|oila|ta{APOSTROPHE}lim"
+    rf"|bilim|tarbiya|halolli[kg]|mas{APOSTROPHE}uliyat|intizom|qadriyat|ishonch|axloq|odob|adolat|sabr|ehtiyoj|talab"
+    rf"|tayyorgarli[kg])(?:lar)?(?:i|si)?", re.IGNORECASE)
 # Whom or what the idiom ranks for: "biz uchun", "uning hayotida".
 IDIOM_FOR = re.compile(r"(?<![^\W\d_])(?:uchun|hayotida)(?![^\W\d_])", re.IGNORECASE)
+# The adverbs of "always" between the idiom's subject and "birinchi": "Mijozlar ehtiyoji har doim birinchi ...".
+IDIOM_ALWAYS = frozenset(('doimo', 'doim', 'har', 'hamisha', 'albatta', 'ham'))
+# A respect or a means before the ordinal, which makes the same words a placing: "Sifat jihatidan mahsulotimiz ...",
+# "Bilimi bilan u ..." ("bo‘yicha" is a scope, `IDIOM_SCOPE`).
+IDIOM_NEVER = re.compile(r"jihat(?:i|lar|lari)?dan|bilan", re.IGNORECASE)
 # A place or a scope ranked in, which makes the same words a placing: a locative ("sinfda", "kompaniyada",
 # "mahallada", "O‘qishda", "Fan oyligida") or "bo‘yicha".
 IDIOM_SCOPE = re.compile(rf"(?<![^\W\d_])(?:[^\W\d_]{{2,}}(?:da|dagi)|bo{APOSTROPHE}yicha)(?![^\W\d_])", re.IGNORECASE)
@@ -996,12 +1004,15 @@ def _position_job(text, match):
 
 
 def _idiom(text, match):
-    """Whether an `ORDINAL_IDIOM` match is the idiom "comes first", no placing: "birinchi" only, with "uchun" or
-    "hayotida" before it or an abstract subject among its sentence's first two words (`IDIOM_FOR`, `IDIOM_SUBJECT`),
-    and no place or "bo‘yicha" scope in its sentence (`IDIOM_SCOPE`), nor a contest (`CONTEST`) but one the idiom's
-    "uchun" or "hayotida" subject is about, outside the locative. The idiom said with a place
-    ("Kompaniyamizda mijoz manfaati birinchi o‘rinni egallaydi") is read as the placing the same words make: an accepted
-    false blank, the owner's tie-break."""
+    """Whether an `ORDINAL_IDIOM` match is the idiom "comes first", no placing: "birinchi" only, with an abstract noun
+    as its subject right before it (`IDIOM_SUBJECT`), past an adverb of "always" (`IDIOM_ALWAYS`) and a "biz uchun" or
+    an "uning hayotida" (`IDIOM_FOR`): "Mijoz manfaati ...", "Malika uchun bilim ...", "Sifat biz uchun ...". Never
+    with a person, a name or a possessed organisation or product as the subject ("Jamoa uchun u doimo ...", "Sinfi
+    uchun Malika ...", "... mahsulotimiz birinchi"), with a genitive or an "our" before the abstract noun ("Uning
+    bilimi", "Mahsulotimiz sifati"), after "jihatidan" or "bilan" (`IDIOM_NEVER`), with a place or "bo‘yicha" scope in
+    its sentence (`IDIOM_SCOPE`), nor with a contest (`CONTEST`) but one the idiom's "uchun" or "hayotida" subject is
+    about, outside the locative. The idiom said with a place ("Kompaniyamizda mijoz manfaati birinchi o‘rinni
+    egallaydi") is read as the placing the same words make: an accepted false blank, the owner's tie-break."""
     if _ordinal_value(match.group(1)) != 1:
         return False
     start, end = _sentence_span(text, match.start())
@@ -1014,9 +1025,18 @@ def _idiom(text, match):
     if contests and not (IDIOM_FOR.search(before) and not any(
             re.search(r"(?:da|dagi)$", found.group(0), re.IGNORECASE) for found in contests)):
         return False
-    if IDIOM_FOR.search(before):
-        return True
-    return any(IDIOM_SUBJECT.match(word) for word in re.findall(rf"[^\W\d_]+(?:{APOSTROPHE}[^\W\d_]+)*", before)[:2])
+    words = re.findall(rf"[^\W\d_]+(?:{APOSTROPHE}[^\W\d_]+)*", before)
+    if any(IDIOM_NEVER.fullmatch(word) for word in words):
+        return False
+    while words and words[-1].casefold() in IDIOM_ALWAYS:
+        words.pop()
+    if words and IDIOM_FOR.fullmatch(words[-1]):
+        del words[-2:]
+        while words and words[-1].casefold() in IDIOM_ALWAYS:
+            words.pop()
+    if not words or IDIOM_SUBJECT.fullmatch(words[-1]) is None:
+        return False
+    return len(words) < 2 or not words[-2].casefold().endswith(('ning', 'miz', 'ngiz'))
 
 
 @functools.lru_cache(maxsize=8192)

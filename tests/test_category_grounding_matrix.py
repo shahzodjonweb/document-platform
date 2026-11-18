@@ -2569,6 +2569,90 @@ CASES += [
        pair='numbers-took-her-first-position-at-the-school-in-mathematics-en-blank'),
 ]
 
+# ---- "birinchi o‘rinni egallaydi" is the idiom "comes first" only with an abstract noun as its subject right before
+# "birinchi", past an adverb of "always" and a "... uchun" or "... hayotida" (must, from 2ea06f3 and d4eeef4): a
+# person, a name or a possessed organisation or product as the subject, a genitive or an "our" before the abstract
+# noun ("Uning bilimi", "Mahsulotimiz sifati"), and "jihatidan", "bilan" or "bo‘yicha" before it make it a placing.
+OFFER_UZ_FURNITURE = ('Mebel do‘konimiz uchun tijorat taklifi yozing, Toshkentda oshxona mebeli sotamiz, '
+                      'chegirma 10 foiz.')
+ESSAY_UZ_EDUCATION = 'Ta’lim sifati mavzusida mustaqil ish yozib bering.'
+CASES += [
+    gp('numbers-first-place-present-with-knowledge-by-a-pronoun-uz-blank', BLANK, REFERENCE_UZ, 'uz',
+       'Bilimi bilan u birinchi o‘rinni egallaydi.', gone=('birinchi',)),
+    gp('numbers-first-place-present-continuous-for-a-team-by-a-pronoun-uz-blank', BLANK, REFERENCE_UZ, 'uz',
+       'Jamoa uchun u doimo birinchi o‘rinni egallab keladi.', gone=('birinchi',)),
+    gp('numbers-first-place-present-for-a-school-every-year-uz-blank', BLANK, REFERENCE_UZ, 'uz',
+       'Maktab uchun u har yili birinchi o‘rinni egallaydi.', gone=('birinchi',)),
+    gp('numbers-first-place-present-for-a-class-by-a-name-uz-blank', BLANK, REFERENCE_UZ, 'uz',
+       'Sinfi uchun Malika birinchi o‘rinni egallaydi.', gone=('birinchi',)),
+    gp('numbers-first-place-present-in-her-own-life-by-a-pronoun-uz-blank', BLANK, REFERENCE_UZ, 'uz',
+       'U o‘z hayotida birinchi o‘rinni egallaydi.', gone=('birinchi',)),
+    gp('numbers-first-place-present-for-us-by-a-pronoun-always-uz-blank', BLANK, REFERENCE_UZ, 'uz',
+       'Biz uchun u har doim birinchi o‘rinni egallaydi.', gone=('birinchi',)),
+    gp('numbers-first-place-present-for-students-by-a-name-uz-blank', BLANK, REFERENCE_UZ, 'uz',
+       'Talabalar uchun Malika har doim birinchi o‘rinni egallaydi.', gone=('birinchi',)),
+    gp('numbers-first-place-present-by-a-student-uz-blank', BLANK, REFERENCE_UZ, 'uz',
+       'Bu talaba har doim birinchi o‘rinni egallaydi.', gone=('birinchi',)),
+    gp('numbers-first-place-present-with-manners-and-knowledge-by-a-name-uz-blank', BLANK, REFERENCE_UZ, 'uz',
+       'Odobi va bilimi bilan Malika birinchi o‘rinni egallaydi.', gone=('birinchi',)),
+    gp('numbers-first-place-present-continuous-for-them-by-a-name-uz-blank', BLANK, REFERENCE_UZ, 'uz',
+       'Ular uchun Malika birinchi o‘rinni egallab keladi.', gone=('birinchi',)),
+    gp('numbers-first-place-present-in-quality-by-our-product-uz-blank', BLANK, PLAN_UZ, 'uz',
+       'Sifat jihatidan mahsulotimiz birinchi o‘rinni egallaydi.', gone=('birinchi',)),
+    gp('numbers-first-place-present-in-quality-by-our-bakery-uz-blank', BLANK, PLAN_UZ, 'uz',
+       'Sifat jihatdan nonvoyxonamiz birinchi o‘rinni egallaydi.', gone=('birinchi',)),
+    gp('numbers-first-place-present-in-its-quality-by-our-bread-uz-blank', BLANK, PLAN_UZ, 'uz',
+       'Sifati jihatidan nonimiz birinchi o‘rinni egallaydi.', gone=('birinchi',)),
+    gp('numbers-first-place-present-with-its-quality-by-our-product-uz-blank', BLANK, PLAN_UZ, 'uz',
+       'Mahsulotimiz sifati bilan birinchi o‘rinni egallaydi.', gone=('birinchi',)),
+    gp('numbers-first-place-present-by-our-products-in-demand-uz-blank', BLANK, PLAN_UZ, 'uz',
+       'Ehtiyoji yuqori mahsulotlarimiz birinchi o‘rinni egallaydi.', gone=('birinchi',)),
+    gp('numbers-first-place-present-for-a-client-by-our-team-uz-blank', BLANK, COVER_UZ, 'uz',
+       'Jamoamiz mijoz uchun birinchi o‘rinni egallaydi.', gone=('birinchi',)),
+    gp('numbers-first-place-present-by-our-products-quality-uz-blank', BLANK, PLAN_UZ, 'uz',
+       'Mahsulotimiz sifati birinchi o‘rinni egallaydi.', gone=('birinchi',)),
+    gp('numbers-first-place-present-by-her-knowledge-uz-blank', BLANK, REFERENCE_UZ, 'uz',
+       'Uning bilimi birinchi o‘rinni egallaydi.', gone=('birinchi',)),
+    gp('numbers-first-place-present-by-a-names-knowledge-uz-blank', BLANK, REFERENCE_UZ, 'uz',
+       'Malikaning bilimi birinchi o‘rinni egallaydi.', gone=('birinchi',)),
+    gp('numbers-first-place-present-for-a-school-by-a-pupil-uz-blank', BLANK, REFERENCE_UZ, 'uz',
+       'Maktab uchun o‘quvchi har doim birinchi o‘rinni egallaydi.', gone=('birinchi',)),
+    body('numbers-first-place-present-with-knowledge-in-a-reference-uz-blank', BLANK, 'pdf.xat.tavsifnoma',
+         REFERENCE_UZ, 'uz', 'achievements', 'Bilimi bilan u birinchi o‘rinni egallaydi.', gone=('birinchi',)),
+    body('numbers-first-place-present-continuous-for-a-team-in-a-reference-uz-blank', BLANK, 'pdf.xat.tavsifnoma',
+         REFERENCE_UZ, 'uz', 'achievements', 'Jamoa uchun u doimo birinchi o‘rinni egallab keladi.',
+         gone=('birinchi',)),
+    body('numbers-first-place-present-in-quality-in-an-offer-uz-blank', BLANK, 'pdf.biz.tijorat_taklifi',
+         OFFER_UZ_FURNITURE, 'uz', 'advantages', 'Sifat jihatidan mahsulotimiz birinchi o‘rinni egallaydi.',
+         gone=('birinchi',)),
+    gp('numbers-first-place-idiom-knowledge-for-a-name-uz-keep', KEEP, REFERENCE_UZ, 'uz',
+       'Malika uchun bilim birinchi o‘rinni egallaydi.'),
+    gp('numbers-first-place-idiom-demand-uz-keep', KEEP, PLAN_UZ, 'uz', 'Talab birinchi o‘rinni egallaydi.'),
+    gp('numbers-first-place-idiom-clients-demands-for-us-uz-keep', KEEP, PLAN_UZ, 'uz',
+       'Mijozlar talabi biz uchun birinchi o‘rinni egallaydi.'),
+    gp('numbers-first-place-idiom-safety-always-for-us-uz-keep', KEEP, PLAN_UZ, 'uz',
+       'Biz uchun xavfsizlik har doim birinchi o‘rinni egallaydi.'),
+    gp('numbers-first-place-idiom-childrens-safety-uz-keep', KEEP, PLAN_UZ, 'uz',
+       'Bolalar xavfsizligi birinchi o‘rinni egallaydi.'),
+    gp('numbers-first-place-idiom-family-in-her-life-uz-keep', KEEP, REFERENCE_UZ, 'uz',
+       'Oila uning hayotida birinchi o‘rinni egallaydi.'),
+    # The idiom said in a field ("sohasida", a locative) reads as the placing the same words make, as at a company or
+    # a workplace above: the blank is the price of "Mahsulot sifati viloyatda birinchi o‘rinni egallaydi" (c491da9
+    # blanks it too).
+    gp('numbers-first-place-idiom-quality-in-the-field-of-education-uz-accepted_false_blank', ACCEPTED,
+       ESSAY_UZ_EDUCATION, 'uz', 'Ta’lim sohasida sifat birinchi o‘rinni egallaydi.', gone=('birinchi',),
+       pair='numbers-first-place-of-quality-in-a-region-uz-blank'),
+    # A person's noun as the subject reads as the placing a pupil's makes, and a genitive before the abstract noun as
+    # someone's own: the blanks are the price of "Maktab uchun o‘quvchi ..." and "Malikaning bilimi ..." (c491da9
+    # blanks both too).
+    gp('numbers-first-place-idiom-the-client-for-us-uz-accepted_false_blank', ACCEPTED, COVER_UZ, 'uz',
+       'Biz uchun mijoz har doim birinchi o‘rinni egallaydi.', gone=('birinchi',),
+       pair='numbers-first-place-present-for-a-school-by-a-pupil-uz-blank'),
+    gp('numbers-first-place-idiom-the-clients-interest-in-the-genitive-uz-accepted_false_blank', ACCEPTED, COVER_UZ,
+       'uz', 'Mijozning manfaati birinchi o‘rinni egallaydi.', gone=('birinchi',),
+       pair='numbers-first-place-present-by-a-names-knowledge-uz-blank'),
+]
+
 CASE_IDS = [case.id for case in CASES]
 
 
