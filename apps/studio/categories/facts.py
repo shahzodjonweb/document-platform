@@ -800,18 +800,25 @@ def _token(trusted, number, letter):
                and not _class_letter(said, match) for match in CLASS_TOKEN.finditer(said))
 
 
+# The technology tokens a number and a letter write ("3D modellash", "5G aloqa", "4K", "1C"): no class in a weak reading.
+TECHNOLOGY = frozenset(('2D', '3D', '4D', '3G', '4G', '5G', '4K', '8K', '1C'))
+
+
 def _class_letters(text, trusted, grade=False, weak=False):
     """The class letters of `text` the customer never wrote after the same number, as match objects.
 
     `weak` (a title-page line, a line or a list fact) also reads as a class a number and a letter that are the whole
     value ("7B" on a cover, "Sinf: 7B" once its label is split off) or whose number the customer wrote as their class
-    ("7B matematika" for their "7-sinf"), unless the customer wrote them as a token of their own (`_token`)."""
+    ("7B matematika" for their "7-sinf"), unless the customer wrote them as a token of their own (`_token`) or they
+    are a technology token (`TECHNOLOGY`: "Texnologiya 3D modellash" for a "3-sinf"), which only a class's own marks
+    make a class (quoted, after a hyphen, beside a class's or a pupil's word)."""
     said = fold(trusted.said)
     found = []
     for match in CLASS_LETTER.finditer(text):
         strong = _class_letter(text, match, grade)
         whole = not text[:match.start()].strip() and not text[match.end():].strip()
-        if not strong and not (weak and (whole or match.group(1) in _class_numbers(trusted))):
+        technology = match.group(1) + match.group(3).translate(LOOKALIKES) in TECHNOLOGY
+        if not strong and not (weak and not technology and (whole or match.group(1) in _class_numbers(trusted))):
             continue
         number, letter = match.group(1), fold(match.group(3))
         if re.search(rf"(?<!\d){number}\W{{0,4}}{re.escape(letter)}(?![^\W\d_])", said):
