@@ -750,17 +750,18 @@ def _strip_addresses(text, trusted):
 CLASS_LETTER = re.compile(r"""(?<!\d)(\d{1,2})([ \u00a0]?-?[ \u00a0]?[«"“'‘]?)([A-ZА-ЯЁ])([»"”'’]?)(?![^\W\d_]|\.)""")
 # The same in the customer's words, where a full stop may end it ("... программист 1С.").
 CLASS_TOKEN = re.compile(r"""(?<!\d)(\d{1,2})([ \u00a0]?-?[ \u00a0]?[«"“'‘]?)([A-ZА-ЯЁ])([»"”'’]?)(?![^\W\d_])""")
-CLASS_WORD = re.compile(r"sinf\w*|класс\w*|class(?:es)?|grades?|years?", re.IGNORECASE)
+# The Uzbek Cyrillic "синф" is the customer's too ("7-синф математика ...").
+CLASS_WORD = re.compile(r"sinf\w*|синф\w*|класс\w*|class(?:es)?|grades?|years?", re.IGNORECASE)
 # A pupil's word, beside which a number and a letter are a class: "7B o‘quvchisi", "an 11A student", "ученик 9Б".
 PUPIL_WORD = re.compile(r"o['‘’ʻʼ`]?quvchi\w*|ученик\w*|ученица\w*|учащ\w*|школьни\w*|students?|pupils?"
                         r"|schoolchild\w*", re.IGNORECASE)
 # A class's label, whose value a number and a letter are a class as: "Sinf: 7B", "Class: 7B", "Класс: 7Б".
 CLASS_LABEL = re.compile(r"(?<![^\W\d_])(?:sinf\w*|класс\w*|class|grade|year)[  ]*:[  ]*$", re.IGNORECASE)
-# A number the customer wrote as their class: "7-sinf", "7 «В» класса", "в 7-м классе", "grade 11", "Year 7".
+# A number the customer wrote as their class: "7-sinf", "7-синф", "7 «В» класса", "в 7-м классе", "grade 11", "Year 7".
 CLASS_NUMBER = re.compile(
     r"(?<!\d)(\d{1,2})[  ]*-?[  ]*(?:[«\"“'‘]?[^\W\d_]{1,2}[»\"”'’]?[  ]*-?[  ]*)?"
-    r"(?:sinf|класс|class|grade)"
-    r"|(?<![^\W\d_])(?:sinf\w*|класс\w*|class|grade|year)[  ]*№?[  ]*(\d{1,2})(?!\d)", re.IGNORECASE)
+    r"(?:sinf|синф|класс|class|grade)"
+    r"|(?<![^\W\d_])(?:sinf\w*|синф\w*|класс\w*|class|grade|year)[  ]*№?[  ]*(\d{1,2})(?!\d)", re.IGNORECASE)
 # The Cyrillic capitals a Latin one looks like: the customer's "1С" is the paper's "1C" where no class is written.
 LOOKALIKES = str.maketrans('АВСЕКМНОРТХ', 'ABCEKMHOPTX')
 # The fields that hold a grade or a class: there a number and a letter anywhere ("7B", "Sinf: 7B", "7B, matematika")
